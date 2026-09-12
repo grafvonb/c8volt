@@ -125,3 +125,20 @@ Started: 2026-09-12 19:35:54
 **Learnings**:
 - Shared bootstrap observation makes safe API records part of verbose stderr across commands; existing progress tests must distinguish those records while continuing to prohibit endpoint detail in command-owned lifecycle messages.
 ---
+
+---
+## Iteration 7 - 2026-09-12 21:02
+**Work Unit**: US2 Use diagnostics safely in operational workflows (T016 command matrix)
+**Tasks Completed**:
+- [x] T016: Extended real root execution coverage across logger/result modes, quiet machine output, read and cancellation no-op/submission flows, request preservation and effective stderr routing.
+**Tasks Remaining in Work Unit**: 5 US2 tasks (T017-T021)
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/root.go
+- cmd/root_api_diagnostics_test.go
+- specs/305-api-request-diagnostics/tasks.md
+- specs/305-api-request-diagnostics/ralph-memory.md
+- specs/305-api-request-diagnostics/progress.md
+**Learnings**:
+- Selecting root stderr before inspecting the executing leaf bypasses configured child destinations; activity wrapping should use the effective leaf writer without replacing the child's plain prompt writer.
+---

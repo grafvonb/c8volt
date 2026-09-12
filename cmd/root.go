@@ -81,9 +81,9 @@ Use capabilities to discover supported commands and automation options.`,
 		}
 		tenantProvenance := tenantOverrideProvenanceFromConfig(v, bindings, cfg)
 		root := cmd.Root()
-		activityWriter := logging.NewActivityWriterEnabled(root.ErrOrStderr(), indicatorEnabled(cmd, cfg))
+		effectiveStderr := cmd.ErrOrStderr()
+		activityWriter := logging.NewActivityWriterEnabled(effectiveStderr, indicatorEnabled(cmd, cfg))
 		root.SetErr(activityWriter)
-		cmd.SetErr(activityWriter)
 		ctx := cfg.ToContextWithLogWriter(cmd.Context(), activityWriter)
 		ctx = tenantProvenance.ToContext(ctx)
 		ctx = logging.ToActivityContext(ctx, activityWriter)

@@ -14,6 +14,7 @@ Started: 2026-09-12T17:35:53Z
 - Diagnostics are installed beneath the existing log and read-retry transports; `httptrace.WithClientTrace` composes callbacks, response termination owns final timing, and request/response wrappers retain `GetBody`, Read/Close results and `io.WriterTo` when supplied.
 - `httpc.ShareDiagnostics` finds the invocation collector through known wrappers and attaches it to OAuth's timeout-preserving, unauthenticated, non-retrying token client so token and API exchanges share one sequence.
 - Root bootstrap passes `flagVerbose` and the existing configured invocation logger to `httpc.WithDiagnostics` before authenticator construction, so OAuth token and cookie login traffic are observed without separate command logic.
+- Root bootstrap must resolve the executing leaf's `cmd.ErrOrStderr()` before activity wrapping and set only the root to that wrapper; setting the child writer too hides its configured destination and risks stale invocation routing.
 
 ## Decisions
 
@@ -41,4 +42,4 @@ Started: 2026-09-12T17:35:53Z
 - Do not add diagnostics to individual commands or generated clients; keep observation at the shared HTTP transport boundary.
 
 ## Current Handoff
-- Start US2 at T016: extend the command execution matrix for log/result modes and read/cancellation workflows, without beginning T017 or later tasks unless T016 is validated in the same story work unit.
+- Continue US2 at T017: add real-terminal diagnostic cases for accepted/aborted cancellation, effective stderr, quiet/machine modes, prompt-free empty scopes and activity coexistence; T019 remains unchecked until the T017 stream contract also passes.
