@@ -196,3 +196,19 @@ Started: 2026-09-12 19:35:54
 **Learnings**:
 - Partial request reads must retain an explicit `request-complete=false`; request Close remains transparent and does not prove upload completion. Focused race tests and the second full race-enabled repository gate passed; one initial full run hit a non-reproducible OAuth timeout-classification failure that passed 30 targeted repetitions.
 ---
+---
+## Iteration 11 - 2026-09-12 21:45
+**Work Unit**: US3 Interpret failures and partial evidence accurately (T023 and T025 trace concurrency)
+**Tasks Completed**:
+- [x] T023: Added trace and concurrency coverage for reuse, overlapping and unfinished phase attempts, late and composed callbacks, reordered completion, concurrent read/close, invocation isolation and writer failures.
+- [x] T025: Validated phase matching and terminal synchronization for start-ordered DNS/TCP/TLS samples, observed zero durations, non-TCP omission, frozen records and synchronized emission.
+**Tasks Remaining in Work Unit**: 4 US3 tasks (T024, T026-T028)
+**Commit**: This work-unit commit
+**Files Changed**:
+- internal/services/httpc/diagnostics_concurrency_test.go
+- specs/305-api-request-diagnostics/tasks.md
+- specs/305-api-request-diagnostics/ralph-memory.md
+- specs/305-api-request-diagnostics/progress.md
+**Learnings**:
+- The existing keyed connect queues and immutable terminal snapshot already met the advanced phase contract; deterministic callback clocks now prove start-order formatting, zero-versus-absent evidence and late-callback rejection under the race detector.
+---
