@@ -36,3 +36,20 @@ Started: 2026-09-12 19:35:54
 **Learnings**:
 - Optional evidence must distinguish absence from observed zero/false; the red test failed at the missing record contract, and targeted race plus full repository tests passed after implementation.
 ---
+
+## Iteration 3 - 2026-09-12 20:01
+**Work Unit**: Foundational diagnostic sanitization (T004-T005)
+**Tasks Completed**:
+- [x] T004: Added sanitizer contract tests for URL/query redaction, credential and cookie reflection, allowed header parsing, bounded identifiers, typed errors, and zero body access.
+- [x] T005: Implemented centralized exchange sanitization, private known-secret matching, safe metadata parsing, and bounded typed failure classification.
+**Tasks Remaining in Work Unit**: 1 foundational task (T006)
+**Commit**: This work-unit commit
+**Files Changed**:
+- internal/services/httpc/diagnostics_redaction.go
+- internal/services/httpc/diagnostics_redaction_test.go
+- specs/305-api-request-diagnostics/tasks.md
+- specs/305-api-request-diagnostics/ralph-memory.md
+- specs/305-api-request-diagnostics/progress.md
+**Learnings**:
+- Secrets from response cookies must be collected before allowed correlation headers are evaluated; malformed query strings are safest when their entire query component is omitted.
+---
