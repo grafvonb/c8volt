@@ -27,7 +27,7 @@ Use existing `cmd/`, `internal/services/httpc/`, `internal/services/auth/`, `c8v
 
 **Purpose**: Confirm the working context and establish the existing behavior before changes.
 
-- [ ] T001 Confirm branch `codex/305-api-request-diagnostics` and review the feature artifacts and constitution; inspect shared HTTP/auth/bootstrap and existing terminal fixtures, run `go test ./internal/services/httpc ./internal/services/auth/... ./cmd -run 'ReadRetry|ProcessInstanceConfirmationTerminal|RootHelp' -count=1`, and record the baseline command/outcome or blockers in `specs/305-api-request-diagnostics/quickstart.md` without changing product code; if implementing through Ralph, first read `specs/ralph-implementation-rules.md` and surface any conflict.
+- [x] T001 Confirm branch `codex/305-api-request-diagnostics` and review the feature artifacts and constitution; inspect shared HTTP/auth/bootstrap and existing terminal fixtures, run `go test ./internal/services/httpc ./internal/services/auth/... ./cmd -run 'ReadRetry|ProcessInstanceConfirmationTerminal|RootHelp' -count=1`, and record the baseline command/outcome or blockers in `specs/305-api-request-diagnostics/quickstart.md` without changing product code; if implementing through Ralph, first read `specs/ralph-implementation-rules.md` and surface any conflict.
 
 ## Phase 2: Foundational (Blocking Prerequisites)
 

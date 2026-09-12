@@ -9,6 +9,16 @@
 
 See [the output contract](contracts/api-diagnostics.md) for field/redaction rules and [the data model](data-model.md) for lifecycle semantics.
 
+## Baseline before implementation
+
+On 2026-09-12, branch `codex/305-api-request-diagnostics` passed the required pre-implementation baseline:
+
+```sh
+go test ./internal/services/httpc ./internal/services/auth/... ./cmd -run 'ReadRetry|ProcessInstanceConfirmationTerminal|RootHelp' -count=1
+```
+
+The shared HTTP retry tests and command root-help/real-terminal confirmation tests passed. Auth packages without matching baseline test names reported `[no tests to run]`; no package failed. Review of the feature artifacts, constitution and `specs/ralph-implementation-rules.md` found no conflicts.
+
 ## 1. Check implementation coverage and run focused validation
 
 Add acceptance tests under the shared `TestAPIDiagnostics...` naming prefix in httpc, OAuth and cmd during implementation. Confirm the test lists contain the intended cases before running them; a successful command with no matching tests is not validation.
