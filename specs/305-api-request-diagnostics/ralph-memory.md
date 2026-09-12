@@ -11,12 +11,15 @@ Started: 2026-09-12T17:35:53Z
 - Diagnostic record optional numeric and boolean evidence uses pointers so observed zero/false remains distinct from absence; `diagnosticRecord.format` owns stable field order and ASCII duration units.
 - Diagnostic sanitization is exchange-owned and collects configured, URL, header and parsed cookie secrets before producing allowed request/response metadata; malformed queries fail closed without body access.
 - The invocation collector is absent unless verbose INFO is admitted, copies only private context/redaction seeds, allocates atomic exchange sequences, freezes deep snapshots under an exchange lock and emits through the existing logger after unlocking.
+- Diagnostics are installed beneath the existing log and read-retry transports; `httptrace.WithClientTrace` composes callbacks, response termination owns final timing, and request/response wrappers retain `GetBody`, Read/Close results and `io.WriterTo` when supplied.
+- `httpc.ShareDiagnostics` finds the invocation collector through known wrappers and attaches it to OAuth's timeout-preserving, unauthenticated, non-retrying token client so token and API exchanges share one sequence.
 
 ## Decisions
 
 - No conflict exists between the feature artifacts, constitution, AGENTS.md and `specs/ralph-implementation-rules.md` for the planned shared-interceptor design.
 - T002's red test cannot be committed alone under repository quality policy, so T002 and its paired T003 implementation form one validated work-unit commit.
 - T004 and T005 are paired for the same green-suite requirement; allowed correlation values are bounded identifiers, while Retry-After and Server-Timing are parsed into safe canonical forms.
+- T007 through T012 form one validated lower-layer US1 slice because transport/OAuth contract tests require their paired body, trace, stack and token-client implementations to remain green.
 
 ## Gotchas
 
@@ -28,10 +31,11 @@ Started: 2026-09-12T17:35:53Z
 - Record checks: `go test ./internal/services/httpc -run 'TestAPIDiagnosticsRecord' -race -count=1`
 - Sanitizer checks: `go test ./internal/services/httpc -run 'TestAPIDiagnostics' -race -count=1`
 - Full gate: `make test`
+- US1 transport/auth gate: `go test ./internal/services/httpc ./internal/services/auth/oauth2 -run 'TestAPIDiagnostics' -race -count=1`
 
 ## Do Not Repeat
 
 - Do not add diagnostics to individual commands or generated clients; keep observation at the shared HTTP transport boundary.
 
 ## Current Handoff
-- Begin US1 with T007 and T008 transport and OAuth contract tests; keep the new collector internal and attach observation below retries only in the later ordered implementation tasks.
+- Continue US1 at T013: pass the resolved verbose setting and existing invocation logger into `httpc.WithDiagnostics` before authenticator initialization, then add command/bootstrap coverage in T014 and record the US1 gate in T015.

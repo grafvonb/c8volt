@@ -70,3 +70,29 @@ Started: 2026-09-12 19:35:54
 **Learnings**:
 - Existing logger filtering can prevent collector installation up front; emission remains synchronous through the shared logger and occurs only after exchange state is frozen and unlocked.
 ---
+
+---
+## Iteration 5 - 2026-09-12 20:27
+**Work Unit**: US1 lower-layer transport and OAuth diagnostics (T007-T012)
+**Tasks Completed**:
+- [x] T007: Added transport contract coverage for timing, body lifecycle, failures, redirects, disabled behavior, trace composition and unchanged request/read/close counts.
+- [x] T008: Added OAuth coverage for token fetch/cache, shared sequence, inherited timeout, no auth/retry recursion and secret exclusion.
+- [x] T009: Implemented transparent request/response body observation with actual byte counts, completion evidence, replay preservation and optional WriterTo support.
+- [x] T010: Implemented the diagnostic transport with composed HTTP traces, monotonic header/body/total timing, connection and paired phase evidence, and terminal snapshots.
+- [x] T011: Added diagnostics service wiring and collector discovery with the required Auth -> ReadRetry -> Log -> Diagnostics -> base placement.
+- [x] T012: Shared the invocation collector with OAuth's separate timeout-preserving unauthenticated token client.
+**Tasks Remaining in Work Unit**: 3 US1 tasks (T013-T015)
+**Commit**: This work-unit commit
+**Files Changed**:
+- internal/services/httpc/diagnostics.go
+- internal/services/httpc/diagnostics_body.go
+- internal/services/httpc/diagnostics_transport_test.go
+- internal/services/httpc/service.go
+- internal/services/auth/oauth2/service.go
+- internal/services/auth/oauth2/diagnostics_test.go
+- specs/305-api-request-diagnostics/tasks.md
+- specs/305-api-request-diagnostics/ralph-memory.md
+- specs/305-api-request-diagnostics/progress.md
+**Learnings**:
+- Final-header timing is defined by RoundTrip return, while body termination owns total emission; sharing the collector through known wrappers preserves OAuth timeout and avoids adding auth or retry behavior.
+---

@@ -64,6 +64,31 @@ func WithActivitySink(activity logging.ActivitySink) Option {
 	}
 }
 
+// WithDiagnostics installs invocation-scoped observation below logging and retries when enabled.
+func WithDiagnostics(verbose bool) Option {
+	return func(s *Service) {
+		collector := newDiagnosticCollector(s.cfg, s.log, verbose)
+		if collector == nil {
+			return
+		}
+		if logTransport := unwrapLogTransport(s.c.Transport); logTransport != nil {
+			logTransport.base = &DiagnosticsTransport{base: logTransport.base, collector: collector}
+		}
+	}
+}
+
+// ShareDiagnostics attaches the source client's collector to a separate unauthenticated client.
+func ShareDiagnostics(source, target *http.Client) {
+	if source == nil || target == nil {
+		return
+	}
+	collector := diagnosticCollectorFromTransport(source.Transport)
+	if collector == nil {
+		return
+	}
+	target.Transport = &DiagnosticsTransport{base: target.Transport, collector: collector}
+}
+
 func New(cfg *config.Config, log *slog.Logger, opts ...Option) (*Service, error) {
 	if cfg == nil {
 		return nil, errors.New("cfg is nil")
@@ -110,6 +135,23 @@ func unwrapLogTransport(rt http.RoundTripper) *LogTransport {
 		return unwrapLogTransport(t.base)
 	case *ReadRetryTransport:
 		return unwrapLogTransport(t.base)
+	case *DiagnosticsTransport:
+		return unwrapLogTransport(t.base)
+	default:
+		return nil
+	}
+}
+
+func diagnosticCollectorFromTransport(rt http.RoundTripper) *diagnosticCollector {
+	switch transport := rt.(type) {
+	case *DiagnosticsTransport:
+		return transport.collector
+	case *LogTransport:
+		return diagnosticCollectorFromTransport(transport.base)
+	case *AuthTransport:
+		return diagnosticCollectorFromTransport(transport.base)
+	case *ReadRetryTransport:
+		return diagnosticCollectorFromTransport(transport.base)
 	default:
 		return nil
 	}
