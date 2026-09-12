@@ -39,7 +39,7 @@ func TestRootHelp_PreservesHumanTaxonomyAndDiscoveryCommand(t *testing.T) {
 		"Camunda 8.7, 8.8, 8.9, and 8.10",
 		"Camunda 8.10 baseline: 8.10.0-alpha4 (prerelease)",
 		"--verbose emits redacted request diagnostics at INFO",
-		"configured stderr",
+		"alongside other configured logs",
 		"--quiet and log-level filtering still",
 		"log format, timestamps, and source settings use the existing logger",
 		"--automation",

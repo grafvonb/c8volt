@@ -25,6 +25,7 @@ Started: 2026-09-12T17:35:53Z
 - Client timeout finalization must compare the terminal observation with the request context deadline in addition to checking `Context.Err()`, because cancellation state can lag the transport return under race-suite load.
 - Separate command invocations should be tested in subprocesses: each owns a fresh Cobra singleton, diagnostic collector, stderr destination and sequence beginning at 1.
 - Root `Long`, `Example` and persistent-flag metadata are the source for generated root and inherited help; README content is also copied into the generated documentation homepage by `make docs-content`.
+- `make docs-content` regenerates the root guidance in `docs/cli/c8volt.md`, propagates the persistent verbose description to every inherited-flag page and copies the README diagnostics section into `docs/index.md`; root `Long` help must describe diagnostics as configured logging without the presentation term `stderr`, which `TestAllCommandHelpFocusesOnActions` reserves for documentation outside action-focused help.
 
 ## Decisions
 
@@ -56,4 +57,4 @@ Started: 2026-09-12T17:35:53Z
 - Do not add diagnostics to individual commands or generated clients; keep observation at the shared HTTP transport boundary.
 
 ## Current Handoff
-- Continue Phase 6 at T030: run `make docs-content`, inspect the generated root/inherited CLI pages and README homepage, and fix source metadata rather than generated files if needed.
+- Continue Phase 6 at T031: add and run enabled/disabled small-body and streaming-body diagnostic benchmarks, verify allocation behavior is independent of payload size, and record measured outcomes in `quickstart.md`.

@@ -267,3 +267,21 @@ Started: 2026-09-12 19:35:54
 **Learnings**:
 - Root Cobra metadata feeds generated root and inherited help, while the README feeds the generated homepage; the acceptance inventory commands now enumerate every package that owns diagnostic coverage.
 ---
+---
+## Iteration 15 - 2026-09-12 22:20
+**Work Unit**: Phase 6 Polish and cross-cutting concerns (T030 generated documentation)
+**Tasks Completed**:
+- [x] T030: Regenerated CLI and homepage documentation, inspected root and inherited verbose guidance, and corrected root source metadata to satisfy the action-focused help contract.
+**Tasks Remaining in Work Unit**: 2 Phase 6 tasks (T031-T032)
+**Commit**: This work-unit commit
+**Files Changed**:
+- docs/cli/*.md
+- docs/index.md
+- cmd/root.go
+- cmd/root_test.go
+- specs/305-api-request-diagnostics/tasks.md
+- specs/305-api-request-diagnostics/ralph-memory.md
+- specs/305-api-request-diagnostics/progress.md
+**Learnings**:
+- The generator propagated the root persistent flag description across inherited command pages and copied the README guidance into the homepage; stream details belong there, while root long help uses action-focused configured-logging language.
+---

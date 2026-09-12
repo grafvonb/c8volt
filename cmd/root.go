@@ -46,8 +46,8 @@ Camunda 8.10 aliases: 8.10, 810, v810, v8.10. Default: 8.9.
 Use capabilities to discover supported commands and automation options.
 
 On API-backed commands, --verbose emits redacted request diagnostics at INFO
-to the command's configured stderr. --quiet and log-level filtering still
-apply; log format, timestamps, and source settings use the existing logger.`,
+alongside other configured logs. --quiet and log-level filtering still apply;
+log format, timestamps, and source settings use the existing logger.`,
 	Example: `  ./c8volt config show --template
   ./c8volt --config ./config.yaml config show --validate
   ./c8volt get cluster topology
