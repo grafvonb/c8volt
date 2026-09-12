@@ -33,6 +33,8 @@ func WithIncidentErrorMessage(message string) CallOption {
 func WithAffectedProcessInstanceCount(count int) CallOption {
 	return func(c *CallCfg) { c.AffectedProcessInstanceCount = count }
 }
+
+// WithProgress installs a structured progress callback for service workflows.
 func WithProgress(progress func(d.OpsProgressEvent)) CallOption {
 	return func(c *CallCfg) { c.Progress = progress }
 }

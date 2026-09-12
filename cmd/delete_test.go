@@ -15,6 +15,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/grafvonb/c8volt/c8volt/foptions"
+	"github.com/grafvonb/c8volt/c8volt/ops"
 	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/grafvonb/c8volt/c8volt/resource"
 	"github.com/grafvonb/c8volt/internal/exitcode"
@@ -56,7 +58,7 @@ func TestDeleteCommands_RegressionPreservesCleanupContracts(t *testing.T) {
 		Type:        "bool",
 		Required:    false,
 		Repeated:    false,
-		Description: "force cancellation of the process instance(s), prior to deletion",
+		Description: "allow cancellation when deletion encounters nonterminal process instances",
 	})
 
 	pdCapability := commandCapabilityForCommand(deleteProcessDefinitionCmd)
@@ -96,15 +98,71 @@ func TestDeleteCommands_RegressionPreservesCleanupContracts(t *testing.T) {
 	})
 }
 
+// TestDeleteProcessDefinitionSemanticProgressDefaultMilestonesAndFinalFlush
+// verifies basic process-definition deletion uses paced aggregate milestones
+// and a single final flush instead of per-definition default chatter.
+func TestDeleteProcessDefinitionSemanticProgressDefaultMilestonesAndFinalFlush(t *testing.T) {
+	resetProcessInstanceCommandGlobals()
+	t.Cleanup(resetProcessInstanceCommandGlobals)
+	now := time.Date(2026, 9, 1, 6, 30, 0, 0, time.UTC)
+	processDefinitionDeleteSemanticProgressNow = func() time.Time { return now }
+	t.Cleanup(func() { processDefinitionDeleteSemanticProgressNow = time.Now })
+
+	cmd := &cobra.Command{}
+	stderr := &bytes.Buffer{}
+	cmd.SetErr(stderr)
+	progress := newProcessDefinitionDeleteSemanticProgress(cmd, 2)
+	progress.Start(2)
+
+	now = now.Add(opsDurableMilestoneMinimumElapsed)
+	reportProcessDefinitionDeleteCompletionEvent(progress, "pd-1", 2, foptions.CompletionDispositionConfirmed, "")
+	reportProcessDefinitionDeleteCompletionEvent(progress, "pd-2", 2, foptions.CompletionDispositionConfirmed, "")
+	progress.Close()
+	progress.Close()
+
+	output := stderr.String()
+	require.Equal(t, 1, strings.Count(output, "deleting process definitions, 1/2 process definition(s)"))
+	require.Equal(t, 1, strings.Count(output, "deleting process definitions, 2/2 process definition(s)"))
+	require.NotContains(t, output, "pd-1 deleted")
+	require.NotContains(t, output, "pd-2 deleted")
+}
+
+// TestDeleteProcessDefinitionSemanticProgressModeGate verifies basic
+// process-definition deletion progress keeps machine modes silent while quiet
+// still reports failures on stderr.
+func TestDeleteProcessDefinitionSemanticProgressModeGate(t *testing.T) {
+	assertOpsCompletionProgressModeGate(t, opsCompletionProgressModeGateCase{
+		Configure: func(cmd *cobra.Command) (func(ops.ProgressEvent), func()) {
+			progress := newProcessDefinitionDeleteSemanticProgress(cmd, 1)
+			progress.Start(1)
+			return progress.Report, progress.Close
+		},
+		Event: func(disposition ops.CompletionDisposition, detail string) ops.ProgressEvent {
+			return ops.ProgressEvent{
+				Kind: ops.ProgressEventKindCompletion,
+				Completion: &ops.CompletionProgress{
+					Phase:         processDefinitionDeleteCompletionPhase,
+					CoreResource:  "process definition(s)",
+					Total:         1,
+					Identity:      "pd-1",
+					Disposition:   disposition,
+					FailureDetail: detail,
+				},
+			}
+		},
+		QuietWarning: "pd-1 failed: request rejected (deleting process definitions, 1/1 process definition(s), 1 failed)",
+	})
+}
+
 // TestDeleteProcessDefinitionHelp_DocumentsTenantContract verifies destructive
 // definition help separates selector discovery from explicit admin keys.
 func TestDeleteProcessDefinitionHelp_DocumentsTenantContract(t *testing.T) {
 	output := executeRootForTest(t, "delete", "process-definition", "--help")
 
-	require.Contains(t, output, "Tenant contract:")
-	require.Contains(t, output, "--tenant scopes BPMN selector discovery")
-	require.Contains(t, output, "Explicit --key and stdin process-definition keys are backend-authorized admin input")
-	require.Contains(t, output, "existing impact, confirmation, force, and wait safety checks still apply")
+	require.Contains(t, output, "tenant")
+	require.Contains(t, output, "--tenant limits BPMN selector discovery")
+	require.Contains(t, output, "Explicit --key and stdin keys use backend authorization without tenant filtering")
+	require.Contains(t, output, "--dry-run")
 }
 
 // TestDeleteCommand_CommandLocalBackoffTimeoutFlagOverridesEnvProfileAndConfig verifies command-local timeout precedence.
@@ -123,17 +181,17 @@ func TestDeleteHelp_DocumentsDestructiveConfirmationPaths(t *testing.T) {
 	output := assertCommandHelpOutput(t, []string{"delete"}, []string{
 		"Delete process instances or process definitions",
 		"--auto-confirm",
-		"show verification examples",
+		"validate its scope and confirm deletion",
 		"./c8volt delete process-definition --bpmn-process-id <bpmn-process-id> --latest --auto-confirm",
 	}, nil)
 	require.Contains(t, output, "process-instance")
 	require.Contains(t, output, "process-definition")
 
 	output = assertCommandHelpOutput(t, []string{"delete", "process-instance"}, []string{
-		"validates the complete affected tree before submitting any delete request",
-		"the whole delete batch is refused before mutation",
-		"Use --force to cancel the affected scope first",
-		"Use --auto-confirm for unattended destructive runs",
+		"validates the affected tree before any deletion",
+		"Nonterminal instances block deletion unless --force is set",
+		"--force allows cancellation when deletion encounters a nonterminal instance",
+		"--auto-confirm for unattended",
 		"process instance key(s) to delete; repeat or combine with stdin '-'",
 		"number of process instances to inspect per discovery page; does not cap total frozen scope",
 		"maximum number of matching process instances to freeze for deletion across all pages; omit to continue through all matches",
@@ -146,14 +204,14 @@ func TestDeleteHelp_DocumentsDestructiveConfirmationPaths(t *testing.T) {
 
 	output = assertCommandHelpOutput(t, []string{"delete", "process-definition"}, []string{
 		"Delete process definition resources from Camunda",
-		"checks delete impact without changing anything",
-		"requires the full process-definition history deletion capability, currently Camunda 8.9 or newer",
+		"Before mutation, c8volt checks active-instance impact",
+		"Camunda 8.9 or newer",
 		"associated history",
-		"c8volt delete process-instance --bpmn-process-id <bpmn-process-id>",
-		"Use --dry-run to preview process-definition delete impact without submitting deletion or cancellation requests",
+		"delete process-instance --bpmn-process-id <bpmn-process-id>",
+		"Use --dry-run to preview impact without mutation",
 		"./c8volt delete process-definition --key <process-definition-key> --dry-run",
 		"./c8volt delete process-definition --bpmn-process-id <bpmn-process-id> --latest --dry-run",
-		"Use --auto-confirm for unattended destructive runs",
+		"--auto-confirm for unattended",
 		"./c8volt delete process-definition --bpmn-process-id <bpmn-process-id> --latest --auto-confirm",
 	}, nil)
 	require.NotContains(t, output, "--allow-inconsistent")
@@ -189,6 +247,45 @@ func TestDeleteProcessDefinitionImpact_RenderForceImpact(t *testing.T) {
 	require.Contains(t, output, "delete impact check: 1 process definition(s); 2 active process instance(s) found; no changes made yet")
 	require.Contains(t, output, "--force will cancel 1 root process instance(s), then delete 2 affected process instance(s), before deleting process definitions")
 	require.NotContains(t, output, "WARNING:")
+}
+
+// TestDeleteProcessDefinitionImpact_RendersTenantWarningsBeforeImpact verifies
+// compact destructive confirmation context keeps cross-tenant and unknown
+// warnings prominent before process-definition impact details.
+func TestDeleteProcessDefinitionImpact_RendersTenantWarningsBeforeImpact(t *testing.T) {
+	resetProcessInstanceCommandGlobals()
+	t.Cleanup(resetProcessInstanceCommandGlobals)
+	flagForce = true
+
+	cmd := &cobra.Command{}
+	buf := &bytes.Buffer{}
+	cmd.SetOut(buf)
+	cmd.SetErr(buf)
+	attachTenantContext(cmd, withTenantContextEvidence(newDiscoveryTenantContext(""), []string{"tenant-b", "tenant-a"}, 1))
+
+	renderDeleteProcessDefinitionImpact(cmd, resource.DeleteProcessDefinitionPlan{
+		Items: []resource.DeleteProcessDefinitionPlanItem{
+			{
+				Key:                        "pd-1",
+				TenantId:                   "tenant-b",
+				ActiveProcessInstanceCount: 2,
+				CancellationPlan: process.DryRunPIKeyExpansion{
+					Roots:     typex.Keys{"root-1"},
+					Collected: typex.Keys{"root-1", "child-1"},
+				},
+			},
+		},
+	})
+
+	output := buf.String()
+	requireLineOrder(t, output,
+		"selection scope: unfiltered across accessible tenants",
+		"affected tenants: tenant-a, tenant-b",
+		"tenant metadata is unknown for 1 target",
+		"delete impact check: 1 process definition(s); 2 active process instance(s) found; no changes made yet",
+		"--force will cancel 1 root process instance(s), then delete 2 affected process instance(s), before deleting process definitions",
+	)
+	require.Equal(t, 1, strings.Count(output, "affected tenants: tenant-a, tenant-b"))
 }
 
 // Verifies delete process-definition requires either --key or --bpmn-process-id as a target selector.
@@ -238,8 +335,9 @@ func TestDeleteProcessDefinitionCommand_DashStdinSatisfiesTargetSelector(t *test
 	}, "2251799813692357\n")
 	require.NoError(t, err, string(output))
 	require.NotContains(t, string(output), "either --key")
-	require.NotContains(t, string(output), "WARN WARNING")
-	require.NotContains(t, string(output), "WARNING:")
+	require.Contains(t, string(output), "selection scope: explicit resource keys; tenant filter not applied")
+	require.Contains(t, string(output), "tenant metadata is unknown for 1 target")
+	require.NotContains(t, string(output), "affected tenants:")
 	require.Contains(t, string(output), "pd delete done; requested 1, ok 1, failed 0")
 	body := decodeSingleRequestJSON(t, deleteBodies)
 	require.Equal(t, true, body["deleteHistory"])
@@ -432,6 +530,13 @@ func TestDeleteProcessDefinitionCommand_KeyTenantMismatchUsesAdminScope(t *testi
 		require.NotContains(t, filter, "tenantId")
 		require.Equal(t, tenantAdminKeysProcessDefinitionKey, stringFilterEqValue(t, filter["processDefinitionKey"]))
 	}
+	require.Contains(t, output, "selection scope: explicit resource keys; tenant filter not applied\n")
+	require.Contains(t, output, "affected tenants: "+tenantAdminKeysReturnedTenant+"\n")
+	require.NotContains(t, output, "selection scope: "+tenantAdminKeysSelectedTenant)
+	require.Less(t,
+		strings.Index(output, "selection scope: explicit resource keys; tenant filter not applied"),
+		strings.Index(output, "delete impact check:"),
+	)
 	require.Contains(t, output, "tenant-b")
 	require.Contains(t, output, "delete accepted")
 }
@@ -632,6 +737,20 @@ func countRequestPrefixes(requests []string, prefix string) int {
 	return count
 }
 
+// requireLineOrder asserts that each expected fragment appears after the
+// previous one in a combined command-output stream.
+func requireLineOrder(t *testing.T, output string, expected ...string) {
+	t.Helper()
+
+	last := -1
+	for _, want := range expected {
+		idx := strings.Index(output, want)
+		require.NotEqualf(t, -1, idx, "missing output fragment %q in:\n%s", want, output)
+		require.Greaterf(t, idx, last, "output fragment %q appeared out of order in:\n%s", want, output)
+		last = idx
+	}
+}
+
 func requestBodyForPrefix(t *testing.T, requests []string, prefix string) []string {
 	t.Helper()
 
@@ -699,6 +818,22 @@ func executeDeleteProcessInstanceSuccessHelper(t *testing.T, helperName string, 
 		return out, err
 	}
 	return out, nil
+}
+
+// reportProcessDefinitionDeleteCompletionEvent sends one facade-level
+// process-definition delete completion fact through the command adapter.
+func reportProcessDefinitionDeleteCompletionEvent(progress *processDefinitionDeleteSemanticProgress, identity string, total int, disposition foptions.CompletionDisposition, detail string) {
+	progress.FacadeProgress(foptions.ProgressEvent{
+		Kind: foptions.ProgressEventKindCompletion,
+		Completion: &foptions.CompletionProgress{
+			Phase:         processDefinitionDeleteCompletionPhase,
+			CoreResource:  "process definition(s)",
+			Total:         total,
+			Identity:      identity,
+			Disposition:   disposition,
+			FailureDetail: detail,
+		},
+	})
 }
 
 // Helper-process entrypoint for delete process-definition target-selector validation.

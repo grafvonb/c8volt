@@ -9,6 +9,7 @@ import (
 
 	processOptions "github.com/grafvonb/c8volt/c8volt/foptions"
 	"github.com/grafvonb/c8volt/c8volt/process"
+	"github.com/grafvonb/c8volt/c8volt/tenant"
 	"github.com/grafvonb/c8volt/config"
 	"github.com/spf13/cobra"
 )
@@ -65,6 +66,17 @@ func cancelProcessInstanceSearchPages(cmd *cobra.Command, cli process.API, cfg *
 	firstPage := true
 	var results processInstancePageActionResults
 	progress, progressSeen := newProcessInstanceMutationProgressReporterWithState(cmd, "cancel")
+	planningActivity := newProcessInstanceMutationPlanningActivity(cmd, "cancel")
+	defer planningActivity.Stop()
+	tenantCtx := attachDiscoveryTenantContext(cmd, cfg)
+	tenantContextRendered := false
+	renderDiscoveryTenantContext := func(evidence process.TenantEvidence) {
+		if tenantContextRendered {
+			return
+		}
+		renderCancelSearchTenantContext(cmd, attachProcessInstanceDiscoveryTenantContext(cmd, tenantCtx, evidence))
+		tenantContextRendered = true
+	}
 
 	planned, err := cli.PlanProcessInstanceMutationPages(cmd.Context(), process.ProcessInstanceMutationPlanRequest{
 		SearchRequest: newProcessInstanceSearchRequest(cmd, cfg, filter),
@@ -72,6 +84,9 @@ func cancelProcessInstanceSearchPages(cmd *cobra.Command, cli process.API, cfg *
 	}, func(step process.ProcessInstanceMutationPlanStep) (process.ProcessInstanceSearchPageAction, error) {
 		hasSelection := len(step.RequestedKeys) > 0
 		if hasSelection {
+			if !flagDryRun {
+				renderDiscoveryTenantContext(step.Plan.TenantEvidence)
+			}
 			result := processInstancePageActionResultFromPlan("cancel", step)
 			printProcessInstanceMutationPlanStepFallbackProgress(cmd, "cancel", step, progressSeen)
 			if flagDryRun {
@@ -81,22 +96,21 @@ func cancelProcessInstanceSearchPages(cmd *cobra.Command, cli process.API, cfg *
 			} else {
 				printDryRunExpansionWarning(cmd, step.Plan)
 				impact := result.Impact
+				planningActivity.Stop()
 				if firstPage {
 					affectedCount, rootCount, requestedCount := impact.Affected, impact.Roots, impact.Requested
 					prompt := fmt.Sprintf("You are about to cancel %d process instance(s). Do you want to proceed?", affectedCount)
 					if affectedCount > requestedCount {
 						prompt = fmt.Sprintf("You have requested to cancel %d process instance(s), but due to dependencies, a total of %d instance(s) with %d root instance(s) will be canceled. Do you want to proceed?", requestedCount, affectedCount, rootCount)
 					}
-					if err := confirmCmdOrAbortFn(shouldImplicitlyConfirm(cmd), prompt); err != nil {
+					if err := confirmCmdOrAbortFn(cmd.ErrOrStderr(), shouldImplicitlyConfirm(cmd), prompt); err != nil {
 						return process.ProcessInstanceSearchPageActionStop, err
 					}
 				}
 
-				mutationOpts := append(compactProcessInstanceMutationOptions(collectOptions()),
-					processOptions.WithAffectedProcessInstanceCount(len(step.Plan.Collected)),
-					processOptions.WithProgress(progress),
-				)
+				mutationOpts, closeSemanticProgress := appendProcessInstanceMutationSemanticProgressOptions(cmd, "cancel", impact, collectOptions(), len(step.Plan.Collected))
 				reports, err := cli.CancelProcessInstances(cmd.Context(), step.Plan.Roots, flagWorkers, mutationOpts...)
+				closeSemanticProgress()
 				if err != nil {
 					return process.ProcessInstanceSearchPageActionStop, fmt.Errorf("cancel process instances: %w", err)
 				}
@@ -119,10 +133,15 @@ func cancelProcessInstanceSearchPages(cmd *cobra.Command, cli process.API, cfg *
 			if hasSelection {
 				firstPage = false
 			}
+			planningActivity.Resume()
 			return process.ProcessInstanceSearchPageActionContinue, nil
 		case processInstanceContinuationPrompt:
+			planningActivity.Stop()
+			if hasSelection {
+				renderDiscoveryTenantContext(step.Plan.TenantEvidence)
+			}
 			prompt := fmt.Sprintf("Processed %d process instance(s) on this page (%s, %d including dependencies). More matching process instances remain. Continue?", summary.CurrentPageCount, formatProcessInstancePagingProgress(step.Page, summary.CumulativeCount, "requested"), step.CumulativeImpact)
-			if err := confirmCmdOrAbortFn(shouldImplicitlyConfirm(cmd), prompt); err != nil {
+			if err := confirmCmdOrAbortFn(cmd.ErrOrStderr(), shouldImplicitlyConfirm(cmd), prompt); err != nil {
 				if isCmdAborted(err) {
 					printPISearchProgress(cmd, processInstanceProgressSummary{
 						PageSize:          summary.PageSize,
@@ -138,12 +157,16 @@ func cancelProcessInstanceSearchPages(cmd *cobra.Command, cli process.API, cfg *
 			if hasSelection {
 				firstPage = false
 			}
+			planningActivity.Resume()
 			return process.ProcessInstanceSearchPageActionContinue, nil
 		}
 		return process.ProcessInstanceSearchPageActionStop, nil
 	}, append(collectOptions(), processOptions.WithProgress(progress))...)
 	if err != nil {
 		return processInstancePageActionResults{}, err
+	}
+	if flagDryRun && planned.RequestedCount > 0 {
+		attachTenantContext(cmd, withTenantContextEvidence(tenantCtx, planned.TenantEvidence.ResolvedTenantIDs, planned.TenantEvidence.UnknownTargetCount))
 	}
 	if len(results.Reports) > 0 {
 		renderProcessInstanceMutationResultSummary(cmd, "cancel", results.Reports, processInstancePageImpact{
@@ -153,7 +176,19 @@ func cancelProcessInstanceSearchPages(cmd *cobra.Command, cli process.API, cfg *
 		})
 	}
 	if planned.RequestedCount == 0 {
-		renderOutputLine(cmd, "found: %d", 0)
+		if err := renderEmptyProcessInstanceSelectorResult(cmd, "cancel", flagDryRun); err != nil {
+			return processInstancePageActionResults{}, fmt.Errorf("render empty cancel result: %w", err)
+		}
 	}
 	return results, nil
+}
+
+// renderCancelSearchTenantContext keeps preview scope visible while preserving
+// the destructive search progress contract that reserves stdout for results.
+func renderCancelSearchTenantContext(cmd *cobra.Command, ctx tenant.Context) {
+	if flagDryRun {
+		renderTenantContext(cmd, ctx)
+		return
+	}
+	renderProcessInstanceMutationTenantContextStderr(cmd, ctx)
 }

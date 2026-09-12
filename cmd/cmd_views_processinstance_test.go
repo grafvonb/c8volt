@@ -13,6 +13,7 @@ import (
 
 	"github.com/grafvonb/c8volt/c8volt/incident"
 	"github.com/grafvonb/c8volt/c8volt/process"
+	"github.com/grafvonb/c8volt/c8volt/tenant"
 	"github.com/grafvonb/c8volt/config"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
@@ -33,6 +34,77 @@ func TestProcessInstanceAgeDays(t *testing.T) {
 
 	_, ok = processInstanceAgeDays("not-a-date")
 	require.False(t, ok)
+}
+
+// TestProcessInstanceSelectorEmptyResultView verifies operation-specific empty
+// reports, aggregate previews, keys-only silence, and the human fallback.
+func TestProcessInstanceSelectorEmptyResultView(t *testing.T) {
+	tests := []struct {
+		name      string
+		operation string
+		dryRun    bool
+		mode      RenderMode
+	}{
+		{name: "delete json", operation: "delete", mode: RenderModeJSON},
+		{name: "delete dry run json", operation: "delete", dryRun: true, mode: RenderModeJSON},
+		{name: "cancel json", operation: "cancel", mode: RenderModeJSON},
+		{name: "cancel dry run json", operation: "cancel", dryRun: true, mode: RenderModeJSON},
+		{name: "keys only", operation: "delete", mode: RenderModeKeysOnly},
+		{name: "human", operation: "cancel", mode: RenderModeOneLine},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			resetProcessInstanceCommandGlobals()
+			t.Cleanup(resetProcessInstanceCommandGlobals)
+			flagViewAsJson = tt.mode == RenderModeJSON
+			flagViewKeysOnly = tt.mode == RenderModeKeysOnly
+
+			parent := &cobra.Command{Use: tt.operation}
+			cmd := &cobra.Command{Use: "process-instance"}
+			parent.AddCommand(cmd)
+			setContractSupport(cmd, ContractSupportFull)
+			stdout := &bytes.Buffer{}
+			stderr := &bytes.Buffer{}
+			cmd.SetOut(stdout)
+			cmd.SetErr(stderr)
+
+			require.NoError(t, renderEmptyProcessInstanceSelectorResult(cmd, tt.operation, tt.dryRun))
+			if tt.mode == RenderModeOneLine {
+				require.Equal(t, "found: 0\n", stdout.String())
+				require.Empty(t, stderr.String())
+				return
+			}
+			requireEmptyProcessInstanceSelectorOutput(t, stdout.String(), stderr.String(), tt.operation+" process-instance", tt.operation, tt.dryRun, tt.mode)
+		})
+	}
+}
+
+// TestProcessInstanceSelectorEmptyResultViewPreservesTenantContext verifies
+// empty JSON rendering carries already-attached context without discovery.
+func TestProcessInstanceSelectorEmptyResultViewPreservesTenantContext(t *testing.T) {
+	resetProcessInstanceCommandGlobals()
+	t.Cleanup(resetProcessInstanceCommandGlobals)
+	flagViewAsJson = true
+
+	parent := &cobra.Command{Use: "delete"}
+	cmd := &cobra.Command{Use: "process-instance"}
+	parent.AddCommand(cmd)
+	setContractSupport(cmd, ContractSupportFull)
+	stdout := &bytes.Buffer{}
+	cmd.SetOut(stdout)
+	attachTenantContext(cmd, tenant.Context{
+		Mode:               tenant.ContextModeDiscovery,
+		Filter:             tenant.ContextFilterNamed,
+		ConfiguredTenantID: "tenant-a",
+	})
+
+	require.NoError(t, renderEmptyProcessInstanceSelectorResult(cmd, "delete", false))
+	var envelope ResultEnvelope[process.DeleteReports]
+	require.NoError(t, json.Unmarshal(stdout.Bytes(), &envelope))
+	require.NotNil(t, envelope.TenantContext)
+	require.Equal(t, "tenant-a", envelope.TenantContext.ConfiguredTenantID)
+	require.Empty(t, envelope.Payload.Items)
 }
 
 func TestOneLinePI_RendersAge(t *testing.T) {

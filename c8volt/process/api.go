@@ -31,6 +31,21 @@ type MissingAncestor struct {
 	StartKey string
 }
 
+// TenantEvidenceTarget records one affected target's tenant observation for
+// cross-page deduplication.
+type TenantEvidenceTarget struct {
+	Key      string
+	TenantID string
+}
+
+// TenantEvidence captures already-resolved tenant metadata for affected process-instance targets.
+type TenantEvidence struct {
+	ResolvedTenantIDs  []string
+	UnknownTargetCount int
+	TargetCount        int
+	Targets            []TenantEvidenceTarget
+}
+
 type TraversalResult struct {
 	Mode             TraversalMode
 	StartKey         string
@@ -50,6 +65,7 @@ func (r TraversalResult) HasActionableResults() bool {
 type DryRunPIKeyExpansion struct {
 	Roots                      types.Keys
 	Collected                  types.Keys
+	TenantEvidence             TenantEvidence
 	SelectedFinalState         []ProcessInstance
 	RequiresCancelBeforeDelete []ProcessInstance
 	MissingAncestors           []MissingAncestor

@@ -18,11 +18,16 @@ var (
 var deployProcessDefinitionCmd = &cobra.Command{
 	Use:   "process-definition",
 	Short: "Deploy BPMN process definition files",
-	Long: "Deploy BPMN process definition files and report the deployed definitions.\n\n" +
-		"By default c8volt waits for deployment confirmation. Use --run to start one process instance for each deployed definition.",
+	Long: `Deploy BPMN process definition files to Camunda.
+
+Deployment uses the configured tenant, or the default tenant when none is configured. --all-tenants is not supported because deployment requires one destination tenant.
+
+By default c8volt waits for deployment confirmation. Use --run to start one process instance for each deployed definition.`,
 	Example: `  ./c8volt embed export --file processdefinitions/<embedded-process>.bpmn --out ./fixtures
   ./c8volt deploy process-definition --file ./fixtures/processdefinitions/<embedded-process>.bpmn
+  ./c8volt --tenant tenant-a deploy process-definition --file ./fixtures/processdefinitions/<embedded-process>.bpmn
   ./c8volt deploy process-definition --file ./fixtures/processdefinitions/<embedded-process>.bpmn --run
+  ./c8volt --verbose deploy process-definition --file ./fixtures/processdefinitions/<embedded-process>.bpmn
   ./c8volt get process-definition --bpmn-process-id <bpmn-process-id> --latest --json`,
 	Aliases: []string{"pd"},
 	Run: func(cmd *cobra.Command, args []string) {
@@ -40,12 +45,18 @@ var deployProcessDefinitionCmd = &cobra.Command{
 		if err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("collecting process definition(s): %w", err))
 		}
+		tenantCtx := attachCreationTenantContext(cmd, cfg)
+		renderTenantContext(cmd, tenantCtx)
 		log.Debug(fmt.Sprintf("deploying pd; tenant %s", cfg.App.ViewTenant()))
 		opts := collectOptions()
+		deployProgress := newProcessDefinitionDeploySemanticProgress(cmd)
+		opts = appendProcessDefinitionDeployProgressOptions(cmd, opts, deployProgress)
 		pdds, err := cli.DeployProcessDefinition(cmd.Context(), res, opts...)
+		deployProgress.Close()
 		if err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("deploying process definition(s): %w", err))
 		}
+		attachTenantContext(cmd, withTenantContextEvidence(tenantCtx, processDefinitionDeploymentTenantIDs(pdds), 0))
 		if err := renderCommandResult(cmd, pdds); err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("render deployment result: %w", err))
 		}
@@ -84,4 +95,5 @@ func init() {
 	setCommandMutation(deployProcessDefinitionCmd, CommandMutationStateChanging)
 	setContractSupport(deployProcessDefinitionCmd, ContractSupportFull)
 	setAutomationSupport(deployProcessDefinitionCmd, AutomationSupportFull, "supports shared machine output and accepted results")
+	setAllTenantsSupport(deployProcessDefinitionCmd, AllTenantsSupportRejectedConcreteDestination)
 }

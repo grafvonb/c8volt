@@ -34,17 +34,14 @@ import (
 func TestGetProcessInstanceHelp_DocumentsPagingAndAutomationSurface(t *testing.T) {
 	output := executeRootForProcessInstanceTest(t, "get", "process-instance", "--help")
 
-	require.Contains(t, output, "Get process instances by key or by search criteria.")
-	require.Contains(t, output, "Search results support interactive paging, scriptable JSON aggregation, and count-only workflows.")
-	require.Contains(t, output, "matching process instances by process definition")
-	require.Contains(t, output, "Direct key lookup stays strict")
-	require.Contains(t, output, "Use --with-incidents to include direct incident details under matching process-instance rows in keyed or list/search output.")
-	require.Contains(t, output, "Use --with-vars to include process-instance-scope variables under matching process-instance rows in keyed or list/search output.")
-	require.Contains(t, output, "Use --with-elements to include runtime element instances under matching process-instance rows.")
-	require.Contains(t, output, "Nested human element rows include dur:<duration>")
-	require.Contains(t, output, "Use --with-listeners with --with-elements to include runtime listener jobs under matching element rows.")
+	require.Contains(t, output, "Get process instances by key or search criteria.")
+	require.Contains(t, output, "search by process definition")
+	require.Contains(t, output, "Missing explicit keys return not-found")
+	require.Contains(t, output, "Use --with-incidents for direct incidents")
+	require.Contains(t, output, "--with-vars for process-instance-scope variables")
+	require.Contains(t, output, "--with-elements for runtime element instances")
+	require.Contains(t, output, "Add --with-listeners to --with-elements for runtime listener jobs")
 	require.NotContains(t, output, "Add --incident-message-limit <chars> to shorten incident messages")
-	require.Contains(t, output, "Run `c8volt get process-instance --help` for the complete flag reference.")
 	require.Contains(t, output, "./c8volt get process-instance --bpmn-process-id <bpmn-process-id> --state active --limit 5")
 	require.Contains(t, output, "./c8volt get process-instance --key <process-instance-key>")
 	require.Contains(t, output, "./c8volt get process-instance --state active --total")
@@ -61,7 +58,7 @@ func TestGetProcessInstanceHelp_DocumentsPagingAndAutomationSurface(t *testing.T
 	require.Contains(t, output, "capped backend totals are counted by paging")
 	require.Contains(t, output, "--auto-confirm")
 	require.Contains(t, output, "--batch-size int32")
-	require.Contains(t, output, "number of process instances to request per page; does not cap total returned rows")
+	require.Contains(t, output, "number of process instances to request per page; does not cap total results")
 	require.Contains(t, output, "--incident-message-limit int")
 	require.Contains(t, output, "maximum characters to show for incident messages when --with-incidents is set")
 	require.Contains(t, output, "--incident-error-message string")
@@ -86,7 +83,7 @@ func TestGetProcessInstanceHelp_DocumentsPagingAndAutomationSurface(t *testing.T
 	require.Contains(t, output, "--with-elements")
 	require.Contains(t, output, "include runtime element instances for keyed or list/search process-instance output")
 	require.Contains(t, output, "--with-listeners")
-	require.Contains(t, output, "include runtime listener jobs under matching element rows; requires --with-elements")
+	require.Contains(t, output, "include runtime listener jobs; requires --with-elements")
 	require.NotContains(t, output, "--count")
 }
 
@@ -2055,7 +2052,7 @@ func TestGetProcessInstanceListWithElements_BPMNSelectorPreservesProcessFilter(t
 func TestGetProcessInstanceListWithElements_IncrementalPagingKeepsProcessInstancePromptCounts(t *testing.T) {
 	var prompts []string
 	prevConfirm := confirmCmdOrAbortFn
-	confirmCmdOrAbortFn = func(autoConfirm bool, prompt string) error {
+	confirmCmdOrAbortFn = func(_ io.Writer, autoConfirm bool, prompt string) error {
 		prompts = append(prompts, prompt)
 		return localPreconditionError(ErrCmdAborted)
 	}
@@ -3118,6 +3115,147 @@ func TestGetProcessInstanceSearch_V87StillSupportsTenantScopedSearch(t *testing.
 	require.Equal(t, "<default>", filter["tenantId"])
 	require.Equal(t, "ACTIVE", filter["state"])
 	require.Contains(t, output, `"tenantId": "<default>"`)
+}
+
+// TestGetProcessInstanceSearch_AllTenantsOmitsTenantFilterAcrossVersions proves
+// the root override clears configured tenants before every supported PI search
+// adapter builds its request body.
+func TestGetProcessInstanceSearch_AllTenantsOmitsTenantFilterAcrossVersions(t *testing.T) {
+	tests := []struct {
+		name       string
+		version    string
+		path       string
+		response   string
+		wantOutput string
+	}{
+		{
+			name:       "v87",
+			version:    "8.7",
+			path:       "/v1/process-instances/search",
+			response:   `{"items":[{"key":123,"bpmnProcessId":"demo","processVersion":3,"state":"ACTIVE","startDate":"2026-03-23T18:00:00Z","tenantId":"tenant-visible"}]}`,
+			wantOutput: `"tenantId": "tenant-visible"`,
+		},
+		{
+			name:       "v88",
+			version:    "8.8",
+			path:       "/v2/process-instances/search",
+			response:   `{"items":[{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"123","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant-visible"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`,
+			wantOutput: `"tenantId": "tenant-visible"`,
+		},
+		{
+			name:       "v89",
+			version:    "8.9",
+			path:       "/v2/process-instances/search",
+			response:   `{"items":[{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"123","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant-visible"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`,
+			wantOutput: `"tenantId": "tenant-visible"`,
+		},
+		{
+			name:       "v810",
+			version:    "8.10",
+			path:       "/v2/process-instances/search",
+			response:   `{"items":[{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"123","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant-visible"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`,
+			wantOutput: `"tenantId": "tenant-visible"`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var requests []string
+			srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				require.Equal(t, http.MethodPost, r.Method)
+				require.Equal(t, tt.path, r.URL.Path)
+
+				body, err := io.ReadAll(r.Body)
+				require.NoError(t, err)
+				requests = append(requests, string(body))
+
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = w.Write([]byte(tt.response))
+			}))
+			t.Cleanup(srv.Close)
+
+			cfgPath := writeRawTestConfig(t, `app:
+  camunda_version: "`+tt.version+`"
+  tenant: tenant-a
+auth:
+  mode: none
+apis:
+  camunda_api:
+    base_url: `+srv.URL+`
+`)
+
+			output := executeRootForProcessInstanceTest(t,
+				"--config", cfgPath,
+				"--all-tenants",
+				"--json",
+				"get", "process-instance",
+				"--state", "active",
+			)
+
+			filter := decodeCapturedPISearchFilter(t, requests)
+			require.NotContains(t, filter, "tenantId")
+			require.Equal(t, "ACTIVE", filter["state"])
+			require.Contains(t, output, tt.wantOutput)
+			require.NotContains(t, output, "--all-tenants overrides")
+		})
+	}
+}
+
+// TestGetProcessInstanceSearch_AllTenantsProtectedOutputModesStayClean keeps
+// command-line tenant provenance out of quiet, total-only, and keys-only output.
+func TestGetProcessInstanceSearch_AllTenantsProtectedOutputModesStayClean(t *testing.T) {
+	tests := []struct {
+		name       string
+		args       []string
+		response   string
+		wantStdout string
+	}{
+		{
+			name:       "quiet",
+			args:       []string{"--quiet", "get", "process-instance", "--state", "active"},
+			response:   `{"items":[{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"123","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant-visible"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`,
+			wantStdout: "123 tenant-visible demo v3 ACTIVE",
+		},
+		{
+			name:       "total-only",
+			args:       []string{"get", "process-instance", "--state", "active", "--total"},
+			response:   `{"items":[],"page":{"totalItems":1,"hasMoreTotalItems":false}}`,
+			wantStdout: "1\n",
+		},
+		{
+			name:       "keys-only",
+			args:       []string{"--keys-only", "get", "process-instance", "--state", "active"},
+			response:   `{"items":[{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"123","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant-visible"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`,
+			wantStdout: "123\n",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var requests []string
+			srv := newProcessInstanceSearchCaptureServerWithResponses(t, &requests, tt.response)
+			t.Cleanup(srv.Close)
+
+			cfgPath := writeRawTestConfig(t, `app:
+  camunda_version: "8.9"
+  tenant: tenant-a
+auth:
+  mode: none
+apis:
+  camunda_api:
+    base_url: `+srv.URL+`
+`)
+			args := append([]string{"--config", cfgPath, "--all-tenants"}, tt.args...)
+
+			stdout, stderr := executeRootForProcessInstanceWithSeparateOutputs(t, args...)
+
+			filter := decodeCapturedPISearchFilter(t, requests)
+			require.NotContains(t, filter, "tenantId")
+			require.Contains(t, stdout, tt.wantStdout)
+			require.NotContains(t, stdout, "--all-tenants overrides")
+			require.NotContains(t, stderr, "--all-tenants overrides")
+		})
+	}
 }
 
 // TestGetProcessInstanceCommand_VariableFiltersUnsupportedOnV87 verifies native variable filters fail before any 8.7 fallback path.
@@ -4372,9 +4510,13 @@ func resetProcessInstanceCommandGlobals() {
 	flagWalkPIWithElements = false
 	flagWalkPIWithListeners = false
 	flagCmdAutoConfirm = false
+	flagCmdAutomation = false
 	flagVerbose = false
 	flagViewAsJson = false
 	flagViewKeysOnly = false
+	flagQuiet = false
+	flagNoIndicator = false
+	flagAllTenants = false
 	flagNoWait = false
 	flagForce = false
 	flagNoStateCheck = false

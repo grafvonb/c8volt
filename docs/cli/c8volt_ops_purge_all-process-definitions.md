@@ -9,9 +9,15 @@ Purge all selected process definitions
 
 ### Synopsis
 
-Purge all selected process definitions.
+Delete selected process definitions and their associated history on Camunda 8.9 or newer.
 
-The workflow discovers candidate process-definition versions using the same filters as `get process-definition`, freezes the candidate keys, validates the existing delete plan, and then either reports the plan with --dry-run or submits deletion only after confirmation. Discovery pages through all matching process definitions by default. --batch-size tunes per-page discovery requests only, and --limit intentionally caps the frozen scope. Human, JSON, and audit report output identify whether discovery completed or was user-limited. This purge requires the full process-definition history deletion capability, currently Camunda 8.9 or newer. Preview with --dry-run before confirmed deletion. Use --auto-confirm or --automation for unattended deletion, combine --automation with --json for deterministic machine output, and use --report-file to write an audit report.
+Select definitions with the same filters as get process-definition, or provide explicit --key values. The workflow fixes the candidate set, validates delete impact, and requires confirmation before deletion.
+
+Active-instance impact blocks deletion unless --force is set. Forced cleanup cancels root instances, waits for active instances to drain, deletes instance history, then deletes the definitions.
+
+--tenant limits selector discovery; an empty tenant or --all-tenants searches across accessible tenants. Explicit keys use backend authorization without tenant filtering. --batch-size controls each discovery request; --limit caps the selected scope.
+
+Use --dry-run to inspect impact without mutation, --auto-confirm or --automation for unattended deletion, and --report-file to save an audit report.
 
 ```
 c8volt ops purge all-process-definitions [flags]
@@ -21,8 +27,11 @@ c8volt ops purge all-process-definitions [flags]
 
 ```
   ./c8volt ops purge all-process-definitions --dry-run
+  ./c8volt --tenant tenant-a ops purge all-process-definitions --bpmn-process-id <bpmn-process-id> --latest --dry-run
+  ./c8volt --tenant "" ops purge all-process-definitions --bpmn-process-id <bpmn-process-id> --latest --dry-run
   ./c8volt ops purge all-process-definitions --bpmn-process-id <bpmn-process-id> --latest --dry-run
   ./c8volt ops purge all-process-definitions --bpmn-process-id <bpmn-process-id> --latest --force
+  ./c8volt --verbose ops purge all-process-definitions --bpmn-process-id <bpmn-process-id> --latest --auto-confirm
   ./c8volt ops purge all-process-definitions --key <process-definition-key> --force --report-file process-definition-purge.md
 ```
 
@@ -50,6 +59,7 @@ c8volt ops purge all-process-definitions [flags]
 ### Options inherited from parent commands
 
 ```
+      --all-tenants        clear configured tenant filtering and search all tenants visible to the authenticated user; mutually exclusive with --tenant
   -y, --auto-confirm       auto-confirm prompts for non-interactive use
       --automation         enable non-interactive mode for commands that explicitly support it
       --config string      path to config file
@@ -60,7 +70,7 @@ c8volt ops purge all-process-definitions [flags]
       --no-indicator       disable transient terminal activity indicators
       --profile string     config active profile name to use (e.g. dev, prod)
   -q, --quiet              suppress output except errors
-      --tenant string      tenant ID for discovery/search, selection, create, deploy, and run flows; explicit keys/IDs remain backend-authorized
+      --tenant string      tenant ID for discovery/search, selection, create, deploy, and run flows; explicit empty values can clear configured discovery filters, and explicit keys/IDs remain backend-authorized
       --timeout duration   HTTP request timeout (default 30s)
   -v, --verbose            show additional output
 ```

@@ -38,6 +38,7 @@ c8volt get cluster [flags]
 ### Options inherited from parent commands
 
 ```
+      --all-tenants        clear configured tenant filtering and search all tenants visible to the authenticated user; mutually exclusive with --tenant
   -y, --auto-confirm       auto-confirm prompts for non-interactive use
       --automation         enable non-interactive mode for commands that explicitly support it
       --config string      path to config file
@@ -48,7 +49,7 @@ c8volt get cluster [flags]
       --no-indicator       disable transient terminal activity indicators
       --profile string     config active profile name to use (e.g. dev, prod)
   -q, --quiet              suppress output except errors
-      --tenant string      tenant ID for discovery/search, selection, create, deploy, and run flows; explicit keys/IDs remain backend-authorized
+      --tenant string      tenant ID for discovery/search, selection, create, deploy, and run flows; explicit empty values can clear configured discovery filters, and explicit keys/IDs remain backend-authorized
       --timeout duration   HTTP request timeout (default 30s)
   -v, --verbose            show additional output
 ```
@@ -57,6 +58,6 @@ c8volt get cluster [flags]
 
 * [c8volt get]({{ "/cli/c8volt_get" | relative_url }})	 - Inspect cluster, process, job, element, incident, tenant, and resource state
 * [c8volt get cluster license]({{ "/cli/c8volt_get_cluster_license" | relative_url }})	 - Show connected cluster license
-* [c8volt get cluster topology]({{ "/cli/c8volt_get_cluster_topology" | relative_url }})	 - Show connected cluster topology as a tree
+* [c8volt get cluster topology]({{ "/cli/c8volt_get_cluster_topology" | relative_url }})	 - Inspect connected cluster topology
 * [c8volt get cluster version]({{ "/cli/c8volt_get_cluster_version" | relative_url }})	 - Show connected cluster version
 

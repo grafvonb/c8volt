@@ -5,6 +5,7 @@ package cmd
 
 import (
 	"fmt"
+
 	"github.com/grafvonb/c8volt/c8volt/incident"
 
 	processOptions "github.com/grafvonb/c8volt/c8volt/foptions"
@@ -25,12 +26,16 @@ type resolveProcessInstanceAPI interface {
 var resolveProcessInstanceCmd = &cobra.Command{
 	Use:   "process-instance",
 	Short: "Resolve process-instance incidents by key",
-	Long: "Resolve process-instance incidents by key.\n\n" +
-		"The command accepts repeated --key values or newline-separated keys from stdin with '-'. For each unique process instance, c8volt expands to the process-instance family, discovers active incidents at command start for direct incidents on in-scope instances, resolves that fixed incident set, and reports process instances with no active incidents as skipped.\n\n" +
-		"By default c8volt validates the affected root and descendant instances and asks for confirmation before resolving active incidents in the family. Use --dry-run to preview the family scope and incident resolution plan without submitting mutations.\n\n" +
-		"By default c8volt waits until the initially discovered incidents are no longer active by polling process-instance incident lookup through the incident service.",
+	Long: `Resolve active incidents in process-instance families.
+
+Provide repeated --key values or newline-separated keys from stdin with '-'. c8volt expands each target to its family, validates the affected scope, and asks for confirmation. Explicit keys use backend authorization without tenant filtering.
+
+Only incidents discovered at command start are resolved. Instances with no active incidents require no mutation. By default c8volt waits until those incidents are no longer active.
+
+Use --dry-run to inspect the family and incident plan without mutation.`,
 	Example: `  ./c8volt resolve process-instance --key <process-instance-key> --dry-run
   ./c8volt resolve process-instance --key <process-instance-key>
+  ./c8volt --tenant tenant-a resolve process-instance --key <process-instance-key> --dry-run
   ./c8volt resolve process-instance --key <process-instance-key> --key <another-process-instance-key>
   printf '%s\n' "$PROCESS_INSTANCE_KEY_A" "$PROCESS_INSTANCE_KEY_B" | ./c8volt resolve process-instance -`,
 	Aliases: []string{"pi"},
@@ -55,7 +60,7 @@ var resolveProcessInstanceCmd = &cobra.Command{
 		if err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}
-		keys := mergeAndValidateKeys(flagResolvePIKeys, stdinKeys, log, cfg).Unique()
+		keys := mergeAndValidateKeys(cmd, flagResolvePIKeys, stdinKeys, log, cfg).Unique()
 		if len(keys) == 0 {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, localPreconditionError(fmt.Errorf("no process instance keys provided or found to resolve")))
 		}
@@ -72,7 +77,7 @@ var resolveProcessInstanceCmd = &cobra.Command{
 }
 
 func resolveProcessInstancesWithPlan(cmd *cobra.Command, cli resolveProcessInstanceAPI, keys types.Keys, firstPage bool) (incident.ProcessInstanceResolutionResults, error) {
-	planned, err := planProcessInstanceDryRunPreview(cmd, cli, "resolve", keys)
+	planned, err := planProcessInstanceDryRunPreviewWithOptions(cmd, cli, "resolve", keys, collectExplicitPIAdminInputOptions())
 	if err != nil {
 		return incident.ProcessInstanceResolutionResults{}, err
 	}
@@ -83,7 +88,7 @@ func resolveProcessInstancesWithPlan(cmd *cobra.Command, cli resolveProcessInsta
 				return incident.ProcessInstanceResolutionResults{}, fmt.Errorf("render resolve dry-run scope: %w", err)
 			}
 		}
-		opts := append(collectOptions(), processOptions.WithAffectedProcessInstanceCount(len(plan.Collected)))
+		opts := append(collectExplicitPIAdminInputOptions(), processOptions.WithAffectedProcessInstanceCount(len(plan.Collected)))
 		results, err := cli.ResolveProcessInstancesIncidents(cmd.Context(), plan.Collected, flagWorkers, opts...)
 		renderErr := renderProcessInstanceResolutionResults(cmd, results)
 		if err != nil {
@@ -94,6 +99,7 @@ func resolveProcessInstancesWithPlan(cmd *cobra.Command, cli resolveProcessInsta
 		}
 		return results, nil
 	}
+	renderAttachedTenantContext(cmd)
 	printDryRunExpansionWarning(cmd, plan)
 
 	if firstPage {
@@ -103,12 +109,12 @@ func resolveProcessInstancesWithPlan(cmd *cobra.Command, cli resolveProcessInsta
 		if affectedCount > requestedCount {
 			prompt = fmt.Sprintf("You have requested to resolve incidents for %d process instance(s), but due to the process-instance family scope, %d instance(s) with %d root instance(s) will be inspected and active incidents found in that family will be resolved. Do you want to proceed?", requestedCount, affectedCount, rootCount)
 		}
-		if err := confirmCmdOrAbortFn(shouldImplicitlyConfirm(cmd), prompt); err != nil {
+		if err := confirmCmdOrAbortFn(cmd.ErrOrStderr(), shouldImplicitlyConfirm(cmd), prompt); err != nil {
 			return incident.ProcessInstanceResolutionResults{}, err
 		}
 	}
 
-	opts := append(collectOptions(), processOptions.WithAffectedProcessInstanceCount(len(plan.Collected)))
+	opts := append(collectExplicitPIAdminInputOptions(), processOptions.WithAffectedProcessInstanceCount(len(plan.Collected)))
 	results, err := cli.ResolveProcessInstancesIncidents(cmd.Context(), plan.Collected, flagWorkers, opts...)
 	renderErr := renderProcessInstanceResolutionResults(cmd, results)
 	if err != nil {

@@ -23,11 +23,13 @@ var configShowCmd = &cobra.Command{
 	Short: "Show effective configuration",
 	Long: `Show effective configuration with sensitive values sanitized.
 
-Precedence: flag > env > profile > base config > default.
-The --validate and --template flags remain supported as compatibility shortcuts
-for validation and template rendering.`,
+Precedence: flag > env > profile > base config > default. A named tenant limits discovery; an empty tenant leaves discovery unfiltered.
+
+--validate and --template are compatibility shortcuts for config validate and config template.`,
 	Example: `  ./c8volt config show
-  ./c8volt --config ./config.yaml --profile prod config show
+  ./c8volt --config ./config.yaml --profile <profile-name> config show
+  ./c8volt --tenant tenant-a config show
+  ./c8volt --tenant "" config show
   ./c8volt --config ./config.yaml config show --validate
   ./c8volt config show --template`,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -41,7 +43,8 @@ for validation and template rendering.`,
 			configSource := configSourceDescriptionFromContext(cmd.Context())
 			log.Info(configSource.InfoMessage())
 
-			yCfg, err := cfg.ToSanitizedYAML()
+			tenantCtx := attachConfigurationTenantContext(cmd, cfg)
+			yCfg, err := cfg.ToSanitizedYAMLWithTenantContext(tenantCtx)
 			if err != nil {
 				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("marshaling configuration to YAML: %w", err))
 			}
@@ -50,6 +53,7 @@ for validation and template rendering.`,
 				cmd.PrintErrf("warning: %s\n", warning)
 			}
 			if flagShowConfigValidate {
+				renderTenantContext(cmd, tenantCtx)
 				validateConfigForCommand(log, cfg)
 			}
 		} else {

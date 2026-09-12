@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/grafvonb/c8volt/config"
 	"github.com/grafvonb/c8volt/toolx"
@@ -25,6 +26,7 @@ var (
 	flagNoErrCodes     bool
 	flagCmdAutomation  bool
 	flagCmdAutoConfirm bool
+	flagAllTenants     bool
 	flagHTTPTimeout    = "30s"
 )
 
@@ -41,22 +43,27 @@ state changes, walk process trees, cancel, and delete.
 Supports Camunda 8.7, 8.8, 8.9, and 8.10.
 Camunda 8.10 baseline: 8.10.0-alpha4 (prerelease).
 Camunda 8.10 aliases: 8.10, 810, v810, v8.10. Default: 8.9.
-Use capabilities for the machine-readable command contract.`,
+Use capabilities to discover supported commands and automation options.`,
 	Example: `  ./c8volt config show --template
   ./c8volt --config ./config.yaml config show --validate
   ./c8volt get cluster topology
+  ./c8volt --all-tenants get process-instance --state active
   ./c8volt embed deploy --all --run
   ./c8volt run process-instance --bpmn-process-id <bpmn-process-id>
   ./c8volt capabilities --json
   ./c8volt get --help`,
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+		if hasHelpFlag(cmd) {
+			return nil
+		}
+		if err := validateAllTenantsSelection(cmd); err != nil {
+			return silenceUsageForError(cmd, err)
+		}
+
 		v := viper.New()
 		bindings, err := initViper(v, cmd)
 		if err != nil {
 			return silenceUsageForError(cmd, bootstrapLocalPrecondition(err))
-		}
-		if hasHelpFlag(cmd) {
-			return nil
 		}
 
 		switch {
@@ -72,11 +79,13 @@ Use capabilities for the machine-readable command contract.`,
 			}
 			return silenceUsageForError(cmd, bootstrapLocalPrecondition(err))
 		}
+		tenantProvenance := tenantOverrideProvenanceFromConfig(v, bindings, cfg)
 		root := cmd.Root()
 		activityWriter := logging.NewActivityWriterEnabled(root.ErrOrStderr(), indicatorEnabled(cmd, cfg))
 		root.SetErr(activityWriter)
 		cmd.SetErr(activityWriter)
 		ctx := cfg.ToContextWithLogWriter(cmd.Context(), activityWriter)
+		ctx = tenantProvenance.ToContext(ctx)
 		ctx = logging.ToActivityContext(ctx, activityWriter)
 		log, err := logging.FromContext(ctx)
 		if err != nil {
@@ -141,6 +150,35 @@ func silenceUsageForError(cmd *cobra.Command, err error) error {
 	return err
 }
 
+// validateAllTenantsSelection rejects command-line all-tenants choices before
+// configuration loading or command execution can perform side effects.
+func validateAllTenantsSelection(cmd *cobra.Command) error {
+	if cmd == nil || !flagAllTenants {
+		return nil
+	}
+	if tenantFlag := cmd.Flags().Lookup("tenant"); tenantFlag != nil && tenantFlag.Changed {
+		return mutuallyExclusiveFlagsf("--tenant cannot be combined with --all-tenants")
+	}
+	if allTenantsSupportForCommand(cmd) == AllTenantsSupportRejectedConcreteDestination {
+		return invalidFlagValuef("--all-tenants cannot be used with %s; this command requires a concrete destination tenant", validationCommandPath(cmd))
+	}
+	return nil
+}
+
+// validationCommandPath formats a command path without depending on the root
+// singleton during root command initialization.
+func validationCommandPath(cmd *cobra.Command) string {
+	if cmd == nil {
+		return ""
+	}
+	path := cmd.CommandPath()
+	root := cmd.Root()
+	if root == nil || root.Name() == "" {
+		return path
+	}
+	return strings.TrimSpace(strings.TrimPrefix(path, root.Name()))
+}
+
 func Execute() {
 	rootCmd.SetOut(os.Stdout)
 	rootCmd.SetErr(os.Stderr)
@@ -173,7 +211,8 @@ func init() {
 	pf.String("log-format", "plain-time", "log format (plain-time, plain, json, text)")
 	pf.Bool("log-with-source", false, "include source file and line number in logs")
 
-	pf.String("tenant", "", "tenant ID for discovery/search, selection, create, deploy, and run flows; explicit keys/IDs remain backend-authorized")
+	pf.String("tenant", "", "tenant ID for discovery/search, selection, create, deploy, and run flows; explicit empty values can clear configured discovery filters, and explicit keys/IDs remain backend-authorized")
+	pf.BoolVar(&flagAllTenants, "all-tenants", false, "clear configured tenant filtering and search all tenants visible to the authenticated user; mutually exclusive with --tenant")
 	pf.BoolVar(&flagNoErrCodes, "no-err-codes", false, "suppress error codes in error outputs")
 
 	pf.String("camunda-version", string(toolx.CurrentCamundaVersion), fmt.Sprintf("Camunda version (%s) expected; aliases include 810, v810, and v8.10 for 8.10. Causes usage of specific API versions.", toolx.SupportedCamundaVersionsString()))

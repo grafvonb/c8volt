@@ -151,10 +151,17 @@ func TestSlowProcessAnalysisProgressCallbackReceivesFrozenScopeSnapshots(t *test
 	})
 
 	require.NoError(t, err)
-	require.Len(t, events, 2)
+	require.Len(t, events, 3)
 	require.Equal(t, d.OpsProgressEventKindFrozenScope, events[0].Kind)
 	require.Equal(t, d.OpsFrozenScopeProgress{Phase: "loading runtime elements", CoreResource: "process instance(s)", Done: 0, Total: 1}, *events[0].FrozenScope)
 	require.Equal(t, d.OpsFrozenScopeProgress{Phase: "loading runtime elements", CoreResource: "process instance(s)", Done: 1, Total: 1}, *events[1].FrozenScope)
+	require.Equal(t, []d.OpsCompletionProgress{{
+		Phase:        "loading runtime elements",
+		CoreResource: "process instance(s)",
+		Total:        1,
+		Identity:     root.Key,
+		Disposition:  d.OpsCompletionDispositionConfirmed,
+	}}, opsCompletionProgressByPhase(events, "loading runtime elements"))
 	require.Equal(t, *events[1].FrozenScope, *got.FrozenScopeProgress)
 }
 

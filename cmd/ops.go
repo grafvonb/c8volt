@@ -7,12 +7,10 @@ import "github.com/spf13/cobra"
 
 var opsCmd = &cobra.Command{
 	Use:   "ops",
-	Short: "Discover high-level operational workflows",
-	Long: `Discover high-level operational workflows.
+	Short: "Run operational playbooks",
+	Long: `Run operational playbooks for analysis, retention, purge, repair, and cluster smoke testing.
 
-The ops command family groups operational playbooks for execution, repair, and
-future maintenance workflows. This root command is intentionally discovery-only;
-target-specific subcommands will define concrete behavior as they are added.`,
+Choose a subcommand for a specific workflow.`,
 	Example: `  ./c8volt ops --help
   ./c8volt capabilities --json`,
 	Aliases: []string{"operations"},

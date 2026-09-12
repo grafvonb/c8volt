@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/grafvonb/c8volt/c8volt/ops"
+	"github.com/grafvonb/c8volt/c8volt/tenant"
 	"github.com/grafvonb/c8volt/config"
 	"github.com/grafvonb/c8volt/consts"
 	"github.com/grafvonb/c8volt/typex"
@@ -32,11 +33,21 @@ var (
 var opsPurgeAllProcessDefinitionsCmd = &cobra.Command{
 	Use:   "all-process-definitions",
 	Short: "Purge all selected process definitions",
-	Long: "Purge all selected process definitions.\n\n" +
-		"The workflow discovers candidate process-definition versions using the same filters as `get process-definition`, freezes the candidate keys, validates the existing delete plan, and then either reports the plan with --dry-run or submits deletion only after confirmation. Discovery pages through all matching process definitions by default. --batch-size tunes per-page discovery requests only, and --limit intentionally caps the frozen scope. Human, JSON, and audit report output identify whether discovery completed or was user-limited. This purge requires the full process-definition history deletion capability, currently Camunda 8.9 or newer. Preview with --dry-run before confirmed deletion. Use --auto-confirm or --automation for unattended deletion, combine --automation with --json for deterministic machine output, and use --report-file to write an audit report.",
+	Long: `Delete selected process definitions and their associated history on Camunda 8.9 or newer.
+
+Select definitions with the same filters as get process-definition, or provide explicit --key values. The workflow fixes the candidate set, validates delete impact, and requires confirmation before deletion.
+
+Active-instance impact blocks deletion unless --force is set. Forced cleanup cancels root instances, waits for active instances to drain, deletes instance history, then deletes the definitions.
+
+--tenant limits selector discovery; an empty tenant or --all-tenants searches across accessible tenants. Explicit keys use backend authorization without tenant filtering. --batch-size controls each discovery request; --limit caps the selected scope.
+
+Use --dry-run to inspect impact without mutation, --auto-confirm or --automation for unattended deletion, and --report-file to save an audit report.`,
 	Example: `  ./c8volt ops purge all-process-definitions --dry-run
+  ./c8volt --tenant tenant-a ops purge all-process-definitions --bpmn-process-id <bpmn-process-id> --latest --dry-run
+  ./c8volt --tenant "" ops purge all-process-definitions --bpmn-process-id <bpmn-process-id> --latest --dry-run
   ./c8volt ops purge all-process-definitions --bpmn-process-id <bpmn-process-id> --latest --dry-run
   ./c8volt ops purge all-process-definitions --bpmn-process-id <bpmn-process-id> --latest --force
+  ./c8volt --verbose ops purge all-process-definitions --bpmn-process-id <bpmn-process-id> --latest --auto-confirm
   ./c8volt ops purge all-process-definitions --key <process-definition-key> --force --report-file process-definition-purge.md`,
 	Aliases: []string{"all-pds", "apd"},
 	Args:    validateOpsPurgeAllProcessDefinitionsArgs,
@@ -70,7 +81,9 @@ var opsPurgeAllProcessDefinitionsCmd = &cobra.Command{
 			ReportFormat:  flagOpsPurgeAllPDReportFormat,
 			StartedAt:     time.Now().UTC(),
 		}
-		configureOpsPurgeAllProcessDefinitionsProgress(cmd, &request)
+		initializeOpsTenantContextHumanReporting(cmd, cfg, request.Selection.Key != "")
+		executionProgress := newOpsPurgeAllProcessDefinitionsProgressForCommand(cmd)
+		configureOpsPurgeAllProcessDefinitionsProgress(cmd, &request, executionProgress)
 		if !flagDryRun && !effectiveAutoConfirm {
 			planRequest := request
 			planRequest.DryRun = true
@@ -85,8 +98,10 @@ var opsPurgeAllProcessDefinitionsCmd = &cobra.Command{
 				return
 			}
 			if len(planned.DeletePlan.CandidateProcessDefinitionKeys) > 0 {
+				ctx := attachOpsPurgeAllProcessDefinitionsTenantContext(cmd, cfg, planned)
+				printOpsTenantContextForCommand(cmd, ctx)
 				prompt := opsPurgeAllProcessDefinitionsConfirmationPrompt(planned)
-				if err := confirmCmdOrAbortFn(shouldImplicitlyConfirm(cmd), prompt); err != nil {
+				if err := confirmCmdOrAbortFn(cmd.ErrOrStderr(), shouldImplicitlyConfirm(cmd), prompt); err != nil {
 					abortOpsPurgeAllProcessDefinitionsAfterReport(cmd, log, cfg, markOpsPurgeAllProcessDefinitionsLocalFailure(planned, ops.WorkflowStepStatusConfirmationFailed, err), err)
 					return
 				}
@@ -94,9 +109,11 @@ var opsPurgeAllProcessDefinitionsCmd = &cobra.Command{
 			request.DiscoveredCandidateProcessDefinitionKeys = append(typex.Keys{}, planned.Discovery.CandidateProcessDefinitionKeys...)
 			request.DiscoveredScopeStatus = planned.Discovery.DiscoveryScopeStatus
 		}
-		result, err := purgeAllProcessDefinitionsWithCommandActivity(cmd, request, func() (ops.AllProcessDefinitionsPurgeResult, error) {
+		result, err := runOpsPurgeAllProcessDefinitionsWithCommandProgress(cmd, request, executionProgress, func() (ops.AllProcessDefinitionsPurgeResult, error) {
 			return cli.PurgeAllProcessDefinitions(cmd.Context(), request, collectOptions()...)
 		})
+		executionProgress.Close()
+		result = attachOpsPurgeAllProcessDefinitionsResultTenantContext(cmd, cfg, result)
 		if err != nil {
 			if reportErr := writeOpsPurgeAllProcessDefinitionsReport(result, cfg, opsPurgeAllProcessDefinitionsReportWriteMode(result)); reportErr != nil {
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("ops purge all process definitions: %w; write audit report: %v", err, reportErr))
@@ -187,31 +204,12 @@ func purgeAllProcessDefinitionsWithCommandActivity(cmd *cobra.Command, request o
 
 func formatOpsPurgeAllProcessDefinitionsActivity(request ops.AllProcessDefinitionsPurgeRequest) string {
 	if request.DiscoveredCandidateProcessDefinitionKeys != nil {
-		return "deleting process definitions"
+		return "running process-definition purge workflow"
 	}
 	if request.DryRun {
 		return "checking process-definition delete impact"
 	}
 	return "running process-definition purge workflow"
-}
-
-func configureOpsPurgeAllProcessDefinitionsProgress(cmd *cobra.Command, request *ops.AllProcessDefinitionsPurgeRequest) {
-	if request == nil {
-		return
-	}
-	channel := opsProgressChannelForMode(opsProgressModeForCommand(cmd, pickMode()))
-	request.Progress = func(event ops.ProgressEvent) {
-		switch event.Kind {
-		case ops.ProgressEventKindPreflight:
-			if event.Preflight != nil {
-				printOpsPreflightScope(cmd, *event.Preflight, channel)
-			}
-		case ops.ProgressEventKindPage:
-			if event.Page != nil {
-				printOpsSlowProcessAnalysisProgress(cmd, formatOpsPageProgress(*event.Page, "process definition(s)"), channel)
-			}
-		}
-	}
 }
 
 // rejectOpsPurgeAllProcessDefinitionsPlanRequiringForce blocks mutation before prompting when active process instances are affected.
@@ -304,9 +302,11 @@ func writeOpsPurgeAllProcessDefinitionsReport(result ops.AllProcessDefinitionsPu
 // enrichOpsPurgeAllProcessDefinitionsReport adds runtime config metadata that is not owned by services.
 func enrichOpsPurgeAllProcessDefinitionsReport(report ops.AllProcessDefinitionsPurgeReport, cfg *config.Config) ops.AllProcessDefinitionsPurgeReport {
 	report.C8voltVersion = CurrentBuildInfo().Version
+	ctx := opsPurgeAllProcessDefinitionsReportTenantContext(report, cfg)
+	report.TenantContext = cloneTenantContextPtr(ctx)
+	report.TenantID = opsLegacyTenantIDForContext(report.TenantContext)
 	if cfg != nil {
 		report.CamundaVersion = cfg.App.CamundaVersion.String()
-		report.TenantID = cfg.App.ViewTenant()
 		if cfg.ActiveProfile != "" {
 			report.ProfileIdentity = "profile:" + cfg.ActiveProfile
 		} else {
@@ -314,6 +314,34 @@ func enrichOpsPurgeAllProcessDefinitionsReport(report ops.AllProcessDefinitionsP
 		}
 	}
 	return report
+}
+
+// attachOpsPurgeAllProcessDefinitionsResultTenantContext freezes all-PD purge
+// tenant context before command result rendering.
+func attachOpsPurgeAllProcessDefinitionsResultTenantContext(cmd *cobra.Command, cfg *config.Config, result ops.AllProcessDefinitionsPurgeResult) ops.AllProcessDefinitionsPurgeResult {
+	ctx := attachOpsPurgeAllProcessDefinitionsTenantContext(cmd, cfg, result)
+	result.Report.TenantContext = cloneTenantContextPtr(ctx)
+	result.Report.TenantID = opsLegacyTenantIDForContext(result.Report.TenantContext)
+	return result
+}
+
+// attachOpsPurgeAllProcessDefinitionsTenantContext chooses explicit-key
+// semantics for direct process-definition keys and discovery semantics otherwise.
+func attachOpsPurgeAllProcessDefinitionsTenantContext(cmd *cobra.Command, cfg *config.Config, result ops.AllProcessDefinitionsPurgeResult) tenant.Context {
+	if result.Request.Selection.Key != "" {
+		return attachOpsExplicitKeysTenantContext(cmd, cfg, result.DeletePlan.TenantEvidence)
+	}
+	return attachOpsDiscoveryTenantContext(cmd, cfg, result.DeletePlan.TenantEvidence)
+}
+
+// opsPurgeAllProcessDefinitionsReportTenantContext mirrors command semantics
+// for audit report enrichment.
+func opsPurgeAllProcessDefinitionsReportTenantContext(report ops.AllProcessDefinitionsPurgeReport, cfg *config.Config) tenant.Context {
+	base := newDiscoveryTenantContext(configuredTenantID(cfg))
+	if report.SelectionFilters.Key != "" {
+		base = newExplicitKeysTenantContext(configuredTenantID(cfg))
+	}
+	return opsTenantContextWithEvidence(base, report.DeletePlan.TenantEvidence)
 }
 
 func populateOpsPurgeAllProcessDefinitionsSelection() ops.ProcessDefinitionSelection {

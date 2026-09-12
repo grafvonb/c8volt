@@ -453,12 +453,17 @@ func (s *Service) CancelProcessInstance(ctx context.Context, key string, opts ..
 		s.log.Debug(fmt.Sprintf("pi %s cancel precheck; loading state and parent", key))
 		st, pi, err := s.GetProcessInstanceStateByKey(ctx, key, opts...)
 		if err != nil {
-			return d.CancelResponse{}, nil, err
+			if errors.Is(err, d.ErrNotFound) {
+				st = d.StateAbsent
+			} else {
+				return d.CancelResponse{}, nil, err
+			}
 		}
 		s.log.Debug(fmt.Sprintf("pi %s cancel precheck; state %s", key, st))
 		if st.IsTerminal() {
 			s.infoProcessInstanceDetail(cCfg, fmt.Sprintf("pi %s already %s; cancel skipped", key, st))
 			return d.CancelResponse{
+				Ok:         true,
 				StatusCode: http.StatusOK,
 				Status:     fmt.Sprintf("process instance with key %s is already in state %s, no need to cancel", key, st),
 			}, pis, nil
@@ -523,7 +528,7 @@ func (s *Service) CancelProcessInstance(ctx context.Context, key string, opts ..
 			return d.CancelResponse{}, nil, fmt.Errorf("cancel family: %w", err)
 		}
 		s.infoProcessInstanceDetail(cCfg, fmt.Sprintf("waiting for pi %s cancel", key))
-		states := []d.State{d.StateCanceled, d.StateTerminated}
+		states := []d.State{d.StateCompleted, d.StateCanceled, d.StateTerminated, d.StateAbsent}
 		if _, err = waiter.WaitForProcessInstancesState(ctx, s, s.cfg, s.log, keys, states, len(keys), opts...); err != nil {
 			return d.CancelResponse{}, nil, fmt.Errorf("cancel wait: %w", err)
 		}
@@ -590,7 +595,7 @@ func (s *Service) DeleteProcessInstance(ctx context.Context, key string, opts ..
 				return d.DeleteResponse{}, fmt.Errorf("delete cancel: %w", err)
 			}
 			s.infoProcessInstanceDetail(cCfg, fmt.Sprintf("waiting for pi %s cancel", key))
-			states := []d.State{d.StateCanceled, d.StateTerminated}
+			states := []d.State{d.StateCompleted, d.StateCanceled, d.StateTerminated, d.StateAbsent}
 			if _, _, err = waiter.WaitForProcessInstanceState(ctx, s, s.cfg, s.log, key, states, opts...); err != nil {
 				return d.DeleteResponse{}, fmt.Errorf("delete wait canceled: %w", err)
 			}

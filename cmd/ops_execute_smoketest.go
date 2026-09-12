@@ -25,10 +25,19 @@ var (
 var opsExecuteSmokeTestCmd = &cobra.Command{
 	Use:   "smoke-test",
 	Short: "Execute a cluster smoke test workflow",
-	Long: "Execute a cluster smoke test workflow.\n\n" +
-		"The workflow validates the configured profile, selects the embedded multiple-subprocess fixture for the configured Camunda version, deploys it, creates process instances, walks their families, and cleans up resources it can safely attribute to the run unless --no-cleanup is set. Cleanup always removes created process instances. Process-definition cleanup runs only when no unrelated instances still use the deployed fixture definition; dirty clusters skip that final definition cleanup and report retained resources instead of failing the smoke proof. Use --dry-run to validate the requested plan without submitting mutation requests.",
+	Long: `Verify a configured Camunda environment through deployment, execution, and cleanup.
+
+The workflow validates the profile, deploys the bundled multiple-subprocess fixture for the configured Camunda version, starts instances, and walks their families.
+
+Unless --no-cleanup is set, cleanup removes created process instances. It deletes the fixture definition only when no unrelated instances use it; otherwise the definition is retained.
+
+Creation uses the configured tenant, or the default tenant when none is configured. --all-tenants is not supported because creation requires one destination tenant.
+
+Use --dry-run to validate the plan without mutation.`,
 	Example: `  ./c8volt ops execute smoke-test --dry-run
+  ./c8volt --tenant tenant-a ops execute smoke-test --dry-run
   ./c8volt ops execute smoke-test --report-file smoke-test.md
+  ./c8volt --verbose ops execute smoke-test --count 5 --auto-confirm
   ./c8volt ops execute smoke-test --count 5 --report-file smoke-test.md`,
 	Aliases: []string{"st"},
 	Args:    cobra.NoArgs,
@@ -60,19 +69,23 @@ var opsExecuteSmokeTestCmd = &cobra.Command{
 			ReportFormat:  flagOpsExecuteSmokeTestReportFormat,
 			StartedAt:     time.Now().UTC(),
 		}
-		configureOpsExecuteSmokeTestProgress(cmd, &request)
+		smokeProgress := configureOpsExecuteSmokeTestProgress(cmd, &request)
 		if err := validateOpsWorkflowReportPathForPlanning(flagOpsExecuteSmokeTestReportFile, opsWorkflowReportWriteModeForConfirmedMutation(effectiveAutoConfirm && !flagDryRun)); err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}
 		if !flagDryRun && !flagOpsExecuteSmokeTestNoCleanup {
+			ctx := attachCreationTenantContext(cmd, cfg)
+			printOpsTenantContext(cmd, ctx, ops.ProgressChannel{Mode: ops.ProgressModeHuman, DurableAllowed: true, StderrAllowed: true})
 			prompt := opsExecuteSmokeTestConfirmationPrompt(request)
-			if err := confirmCmdOrAbortFn(effectiveAutoConfirm, prompt); err != nil {
+			if err := confirmCmdOrAbortFn(cmd.ErrOrStderr(), effectiveAutoConfirm, prompt); err != nil {
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 			}
 		}
 		result, err := executeSmokeTestWithCommandActivity(cmd, request, func() (ops.SmokeTestResult, error) {
 			return cli.ExecuteSmokeTest(cmd.Context(), request, collectOptions()...)
 		})
+		smokeProgress.Close()
+		result = attachOpsExecuteSmokeTestResultTenantContext(cmd, cfg, result)
 		if err != nil {
 			if reportErr := writeOpsExecuteSmokeTestReport(result, cfg, opsExecuteSmokeTestReportWriteMode(result)); reportErr != nil {
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("ops execute smoke-test: %w; write audit report: %v", err, reportErr))
@@ -106,6 +119,7 @@ func init() {
 	setCommandMutation(opsExecuteSmokeTestCmd, CommandMutationStateChanging)
 	setContractSupport(opsExecuteSmokeTestCmd, ContractSupportFull)
 	setAutomationSupport(opsExecuteSmokeTestCmd, AutomationSupportFull, "supports unattended dry-run previews and implicitly confirmed smoke-test cleanup with shared machine output")
+	setAllTenantsSupport(opsExecuteSmokeTestCmd, AllTenantsSupportRejectedConcreteDestination)
 }
 
 func validateOpsExecuteSmokeTestFlags(cmd *cobra.Command) error {

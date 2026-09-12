@@ -21,6 +21,7 @@ func renderOpsPurgeProcessInstancesWithIncidentsResult(cmd *cobra.Command, resul
 	} else {
 		renderHumanLine(cmd, "purge process-instances with incidents")
 	}
+	renderAttachedTenantContext(cmd)
 	renderOpsPurgeProcessInstancesWithIncidentsDiscovery(cmd, result)
 	renderOpsPurgeProcessInstancesWithIncidentsPlan(cmd, result)
 	renderOpsPurgeProcessInstancesWithIncidentsDeletion(cmd, result)

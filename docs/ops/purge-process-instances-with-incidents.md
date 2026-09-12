@@ -46,6 +46,8 @@ c8volt delete process-instance -
 
 Generated references: [get incident](/cli/c8volt_get_incident), [delete process-instance](/cli/c8volt_delete_process-instance).
 
-## Output And Safety
+## Safety
 
 `--dry-run` reports the discovered incidents, frozen process-instance keys, and delete plan without mutation. Real execution requires confirmation unless automation controls are used. Incident matching is discovery only; deletion still follows the same process-instance family rules as `delete process-instance`.
+
+A named tenant limits discovery. An empty tenant or `--all-tenants` searches across tenants visible to the authenticated identity. `--all-tenants` conflicts with an explicit `--tenant` value. Explicit keys use backend authorization without tenant filtering.

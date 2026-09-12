@@ -7,7 +7,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/grafvonb/c8volt/c8volt/incident"
 	"io"
 	"net/http"
 	"os"
@@ -17,7 +16,9 @@ import (
 	"testing"
 
 	options "github.com/grafvonb/c8volt/c8volt/foptions"
+	"github.com/grafvonb/c8volt/c8volt/incident"
 	"github.com/grafvonb/c8volt/c8volt/process"
+	"github.com/grafvonb/c8volt/config"
 	"github.com/grafvonb/c8volt/internal/exitcode"
 	"github.com/grafvonb/c8volt/testx"
 	types "github.com/grafvonb/c8volt/typex"
@@ -84,7 +85,7 @@ func TestResolveProcessInstancesWithPlan_ExpandsFamilyScopeAndPrompts(t *testing
 
 	var prompt string
 	prevConfirm := confirmCmdOrAbortFn
-	confirmCmdOrAbortFn = func(autoConfirm bool, got string) error {
+	confirmCmdOrAbortFn = func(_ io.Writer, autoConfirm bool, got string) error {
 		require.True(t, autoConfirm)
 		prompt = got
 		return nil
@@ -130,6 +131,65 @@ func TestResolveProcessInstancesWithPlan_ExpandsFamilyScopeAndPrompts(t *testing
 	require.Contains(t, buf.String(), "resolved process-instance 2251799813735372: confirmed (1 incident(s))")
 	require.Equal(t, 2, got.Total)
 	require.Equal(t, 1, got.Confirmed)
+}
+
+// TestResolveProcessInstancesWithPlan_ExplicitKeyRendersActualTenant verifies
+// direct-key incident resolution preserves admin-scope options and shows known
+// resource tenant evidence before reporting dry-run results.
+func TestResolveProcessInstancesWithPlan_ExplicitKeyRendersActualTenant(t *testing.T) {
+	resetProcessInstanceCommandGlobals()
+	t.Cleanup(resetProcessInstanceCommandGlobals)
+	flagDryRun = true
+
+	cmd := &cobra.Command{}
+	buf := &bytes.Buffer{}
+	cmd.SetOut(buf)
+	cmd.SetErr(buf)
+	cfg := &config.Config{App: config.App{Tenant: tenantAdminKeysSelectedTenant}}
+	cmd.SetContext(cfg.ToContextWithLogWriter(context.Background(), buf))
+
+	cli := stubProcessAPI{
+		dryRunCancelOrDeletePlan: func(_ context.Context, keys types.Keys, opts ...options.FacadeOption) (process.DryRunPIKeyExpansion, error) {
+			require.Equal(t, types.Keys{tenantAdminKeysProcessInstanceKey}, keys)
+			require.True(t, options.ApplyFacadeOptions(opts).IgnoreTenant)
+			return process.DryRunPIKeyExpansion{
+				Roots:     types.Keys{tenantAdminKeysProcessInstanceKey},
+				Collected: types.Keys{tenantAdminKeysProcessInstanceKey},
+				TenantEvidence: process.TenantEvidence{
+					ResolvedTenantIDs: []string{tenantAdminKeysReturnedTenant},
+					TargetCount:       1,
+				},
+				Outcome: process.TraversalOutcomeComplete,
+			}, nil
+		},
+		resolveProcessInstancesIncidents: func(_ context.Context, keys types.Keys, _ int, opts ...options.FacadeOption) (incident.ProcessInstanceResolutionResults, error) {
+			require.Equal(t, types.Keys{tenantAdminKeysProcessInstanceKey}, keys)
+			applied := options.ApplyFacadeOptions(opts)
+			require.True(t, applied.IgnoreTenant)
+			require.True(t, applied.DryRun)
+			require.Equal(t, 1, applied.AffectedProcessInstanceCount)
+			return incident.ProcessInstanceResolutionResults{
+				Operation: incident.ResolutionOperationProcessInstance,
+				Total:     1,
+				Items: []incident.ProcessInstanceResolutionResult{{
+					ProcessInstanceKey: tenantAdminKeysProcessInstanceKey,
+					Status:             incident.ProcessInstanceResolutionStatusPlanned,
+					AttemptedIncidentKeys: []string{
+						"2251799813685249",
+					},
+					MutationSubmitted: false,
+				}},
+			}, nil
+		},
+	}
+
+	_, err := resolveProcessInstancesWithPlan(cmd, cli, types.Keys{tenantAdminKeysProcessInstanceKey}, true)
+
+	require.NoError(t, err)
+	output := buf.String()
+	require.Contains(t, output, "selection scope: explicit resource keys; tenant filter not applied\n")
+	require.Contains(t, output, "affected tenants: "+tenantAdminKeysReturnedTenant+"\n")
+	require.NotContains(t, output, "selection scope: "+tenantAdminKeysSelectedTenant)
 }
 
 func TestResolveProcessInstanceCommand_ParentFamilyScopeResolvesChildIncident(t *testing.T) {

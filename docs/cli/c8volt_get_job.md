@@ -12,7 +12,11 @@ Inspect or search jobs
 
 Inspect or search Camunda jobs.
 
-Use --key with the jobKey exposed by incident-aware process-instance output to inspect a matching runtime job directly. Search mode will use list filters such as --state, --type, --pi-key, --element-instance-key, --element-id, --worker, --retries, --kind, and --listener-event-type. Search mode pages through matching jobs by default. --batch-size controls each backend page request, --limit caps total returned jobs across all pages, and --total returns only the matching count. Verbose paging progress is written away from stdout; JSON, keys-only, quiet, and automation output remain free of prompts and progress text. Use --json for the stable job payload, or --error-message-limit to shorten long error messages. Job lookup and search are supported for Camunda 8.8 or newer; Camunda 8.7 returns an unsupported-version error.
+Use --key for a known job. Otherwise search by state, type, process instance, element instance, BPMN element, worker, retries, job kind, or listener event type.
+
+--batch-size controls each discovery request; --limit caps jobs across all pages; --total counts matching jobs.
+
+Requires Camunda 8.8 or newer.
 
 ```
 c8volt get job [flags]
@@ -30,7 +34,7 @@ c8volt get job [flags]
 ### Options
 
 ```
-  -n, --batch-size int32              number of jobs to request per page; does not cap total returned rows (max limit 1000 enforced by server) (default 1000)
+  -n, --batch-size int32              number of jobs to request per page; does not cap total results (max limit 1000 enforced by server) (default 1000)
       --element-id string             BPMN element ID to filter in search mode
       --element-instance-key string   element instance key to filter in search mode
       --error-message-limit int       maximum characters to show for error messages; 0 keeps full messages
@@ -50,6 +54,7 @@ c8volt get job [flags]
 ### Options inherited from parent commands
 
 ```
+      --all-tenants        clear configured tenant filtering and search all tenants visible to the authenticated user; mutually exclusive with --tenant
   -y, --auto-confirm       auto-confirm prompts for non-interactive use
       --automation         enable non-interactive mode for commands that explicitly support it
       --config string      path to config file
@@ -60,7 +65,7 @@ c8volt get job [flags]
       --no-indicator       disable transient terminal activity indicators
       --profile string     config active profile name to use (e.g. dev, prod)
   -q, --quiet              suppress output except errors
-      --tenant string      tenant ID for discovery/search, selection, create, deploy, and run flows; explicit keys/IDs remain backend-authorized
+      --tenant string      tenant ID for discovery/search, selection, create, deploy, and run flows; explicit empty values can clear configured discovery filters, and explicit keys/IDs remain backend-authorized
       --timeout duration   HTTP request timeout (default 30s)
   -v, --verbose            show additional output
 ```

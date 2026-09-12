@@ -13,6 +13,7 @@ import (
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/services"
 	pitraversal "github.com/grafvonb/c8volt/internal/services/processinstance/traversal"
+	"github.com/grafvonb/c8volt/typex"
 	"github.com/stretchr/testify/require"
 )
 
@@ -245,6 +246,262 @@ func TestExecuteRetentionPolicyDryRunDiscoversFrozenSeedSetAndSkipsDeleteWork(t 
 	require.Equal(t, d.OpsWorkflowStepStatusSkipped, got.Deletion.Status)
 	require.Equal(t, got.Discovery, got.Report.Discovery)
 	require.Empty(t, got.Errors)
+}
+
+// TestExecuteRetentionPolicyAggregatesTenantEvidenceFromFrozenTraversal proves
+// retention planning reuses already-loaded traversal chains for tenant evidence.
+func TestExecuteRetentionPolicyAggregatesTenantEvidenceFromFrozenTraversal(t *testing.T) {
+	t.Parallel()
+
+	piAPI := stubProcessInstanceAPI{
+		ancestryResult: func(_ context.Context, key string, _ ...services.CallOption) (pitraversal.Result, error) {
+			tenantID := "tenant-b"
+			if key == "root-b" {
+				tenantID = ""
+			}
+			return pitraversal.Result{
+				StartKey: key,
+				RootKey:  key,
+				Keys:     []string{key},
+				Chain: map[string]d.ProcessInstance{
+					key: {Key: key, State: d.StateCompleted, TenantId: tenantID},
+				},
+				Outcome: pitraversal.OutcomeComplete,
+			}, nil
+		},
+		descendantsResult: func(_ context.Context, rootKey string, _ ...services.CallOption) (pitraversal.Result, error) {
+			switch rootKey {
+			case "root-a":
+				return pitraversal.Result{
+					StartKey: rootKey,
+					RootKey:  rootKey,
+					Keys:     []string{"root-a", "child-unknown"},
+					Chain: map[string]d.ProcessInstance{
+						"root-a":        {Key: "root-a", State: d.StateCompleted, TenantId: "tenant-b"},
+						"child-unknown": {Key: "child-unknown", State: d.StateCompleted},
+					},
+					Outcome: pitraversal.OutcomeComplete,
+				}, nil
+			case "root-b":
+				return pitraversal.Result{
+					StartKey: rootKey,
+					RootKey:  rootKey,
+					Keys:     []string{"root-b"},
+					Chain: map[string]d.ProcessInstance{
+						"root-b": {Key: "root-b", State: d.StateCompleted, TenantId: "tenant-a"},
+					},
+					Outcome: pitraversal.OutcomeComplete,
+				}, nil
+			default:
+				t.Fatalf("unexpected root key %s", rootKey)
+				return pitraversal.Result{}, nil
+			}
+		},
+	}
+
+	got, err := New(piAPI, nil).ExecuteRetentionPolicy(context.Background(), d.RetentionPolicyRequest{
+		CommandName:            "ops execute retention-policy",
+		RetentionDays:          90,
+		DerivedEndDateBoundary: "2026-02-13",
+		DryRun:                 true,
+		DiscoveredKeys:         typexKeys("root-a", "root-b"),
+		StartedAt:              time.Date(2026, 5, 14, 10, 0, 0, 0, time.UTC),
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, d.TenantEvidence{
+		ResolvedTenantIDs:  []string{"tenant-a", "tenant-b"},
+		UnknownTargetCount: 1,
+		TargetCount:        3,
+		Targets: []d.TenantEvidenceTarget{
+			{Key: "root-a", TenantID: "tenant-b"},
+			{Key: "child-unknown"},
+			{Key: "root-b", TenantID: "tenant-a"},
+		},
+	}, got.DeletePlan.TenantEvidence)
+	require.Equal(t, got.DeletePlan.TenantEvidence, got.Report.DeletePlan.TenantEvidence)
+}
+
+// TestExecuteRetentionPolicyEmitsExpandedTenantScopeBeforeDeletion verifies the
+// validated dependency-expanded scope is copied and published before mutation.
+func TestExecuteRetentionPolicyEmitsExpandedTenantScopeBeforeDeletion(t *testing.T) {
+	t.Parallel()
+
+	var events []d.OpsProgressEvent
+	ancestryCalls := 0
+	descendantCalls := 0
+	deleted := false
+	piAPI := stubProcessInstanceAPI{
+		ancestryResult: func(_ context.Context, key string, _ ...services.CallOption) (pitraversal.Result, error) {
+			ancestryCalls++
+			return pitraversal.Result{
+				Mode: pitraversal.ModeAncestry, StartKey: key, RootKey: "root-a", Keys: []string{key, "root-a"},
+				Chain: map[string]d.ProcessInstance{
+					key:      {Key: key, State: d.StateCompleted, TenantId: "tenant-a"},
+					"root-a": {Key: "root-a", State: d.StateCompleted, TenantId: "tenant-a"},
+				},
+				Outcome: pitraversal.OutcomeComplete,
+			}, nil
+		},
+		descendantsResult: func(_ context.Context, rootKey string, _ ...services.CallOption) (pitraversal.Result, error) {
+			descendantCalls++
+			return pitraversal.Result{
+				Mode: pitraversal.ModeDescendants, StartKey: rootKey, RootKey: rootKey, Keys: []string{rootKey, "seed-a", "child-b"},
+				Chain: map[string]d.ProcessInstance{
+					rootKey:   {Key: rootKey, State: d.StateCompleted, TenantId: "tenant-a"},
+					"seed-a":  {Key: "seed-a", State: d.StateCompleted, TenantId: "tenant-a"},
+					"child-b": {Key: "child-b", State: d.StateCompleted, TenantId: "tenant-b"},
+				},
+				Outcome: pitraversal.OutcomeComplete,
+			}, nil
+		},
+		deleteProcessInstance: func(_ context.Context, key string, _ ...services.CallOption) (d.DeleteResponse, error) {
+			require.Equal(t, "root-a", key)
+			require.Len(t, events, 1, "tenant scope must precede the first deletion")
+			require.Equal(t, d.OpsProgressEventKindTenantScope, events[0].Kind)
+			deleted = true
+			return d.DeleteResponse{Ok: true, StatusCode: 202, Status: "accepted"}, nil
+		},
+	}
+
+	got, err := New(piAPI, nil).ExecuteRetentionPolicy(context.Background(), d.RetentionPolicyRequest{
+		RetentionDays:          90,
+		DerivedEndDateBoundary: "2026-02-13",
+		Workers:                1,
+		DiscoveredKeys:         typexKeys("seed-a"),
+		Progress: func(event d.OpsProgressEvent) {
+			if event.Kind != d.OpsProgressEventKindTenantScope {
+				return
+			}
+			events = append(events, event)
+			event.TenantScope.Evidence.ResolvedTenantIDs[0] = "mutated"
+			event.TenantScope.Evidence.Targets[0].TenantID = "mutated"
+		},
+	}, services.WithNoWait())
+
+	require.NoError(t, err)
+	require.True(t, deleted)
+	require.Equal(t, 1, ancestryCalls)
+	require.Equal(t, 1, descendantCalls)
+	require.Len(t, events, 1)
+	require.Equal(t, []string{"root-a"}, []string(got.DeletePlan.ResolvedRootKeys))
+	require.Equal(t, []string{"root-a", "seed-a", "child-b"}, []string(got.DeletePlan.AffectedKeys))
+	require.Equal(t, []string{"tenant-a", "tenant-b"}, got.DeletePlan.TenantEvidence.ResolvedTenantIDs)
+	require.Equal(t, "tenant-a", got.DeletePlan.TenantEvidence.Targets[0].TenantID)
+}
+
+// TestExecuteRetentionPolicyTenantScopeRespectsPlanningGates verifies failed or
+// blocked plans publish nothing while previews and empty scopes publish once.
+func TestExecuteRetentionPolicyTenantScopeRespectsPlanningGates(t *testing.T) {
+	t.Parallel()
+
+	t.Run("failed planning", func(t *testing.T) {
+		t.Parallel()
+
+		tenantEvents := 0
+		piAPI := stubProcessInstanceAPI{
+			ancestryResult: func(context.Context, string, ...services.CallOption) (pitraversal.Result, error) {
+				return pitraversal.Result{}, errors.New("expansion failed")
+			},
+		}
+		got, err := New(piAPI, nil).ExecuteRetentionPolicy(context.Background(), d.RetentionPolicyRequest{
+			RetentionDays:          90,
+			DerivedEndDateBoundary: "2026-02-13",
+			DryRun:                 true,
+			DiscoveredKeys:         typexKeys("seed-a"),
+			Progress: func(event d.OpsProgressEvent) {
+				if event.Kind == d.OpsProgressEventKindTenantScope {
+					tenantEvents++
+				}
+			},
+		})
+
+		require.Error(t, err)
+		require.Equal(t, d.RetentionPolicyOutcomeFailed, got.Outcome)
+		require.Zero(t, tenantEvents)
+	})
+
+	t.Run("force blocked", func(t *testing.T) {
+		t.Parallel()
+
+		tenantEvents := 0
+		piAPI := stubProcessInstanceAPI{
+			ancestryResult: func(_ context.Context, key string, _ ...services.CallOption) (pitraversal.Result, error) {
+				return retentionPolicySingleKeyAncestryResult(key), nil
+			},
+			descendantsResult: func(_ context.Context, rootKey string, _ ...services.CallOption) (pitraversal.Result, error) {
+				result := retentionPolicySingleKeyDescendantsResult(rootKey)
+				result.Chain[rootKey] = d.ProcessInstance{Key: rootKey, State: d.StateActive}
+				return result, nil
+			},
+		}
+		got, err := New(piAPI, nil).ExecuteRetentionPolicy(context.Background(), d.RetentionPolicyRequest{
+			RetentionDays:          90,
+			DerivedEndDateBoundary: "2026-02-13",
+			DiscoveredKeys:         typexKeys("root-a"),
+			Progress: func(event d.OpsProgressEvent) {
+				if event.Kind == d.OpsProgressEventKindTenantScope {
+					tenantEvents++
+				}
+			},
+		})
+
+		require.Error(t, err)
+		require.Equal(t, d.RetentionPolicyOutcomeFailed, got.Outcome)
+		require.Equal(t, d.OpsWorkflowStepStatusBlocked, got.Deletion.Status)
+		require.Zero(t, tenantEvents)
+	})
+
+	t.Run("preview", func(t *testing.T) {
+		t.Parallel()
+
+		var scopes []d.TenantEvidence
+		piAPI := stubProcessInstanceAPI{
+			ancestryResult: func(_ context.Context, key string, _ ...services.CallOption) (pitraversal.Result, error) {
+				return retentionPolicySingleKeyAncestryResult(key), nil
+			},
+			descendantsResult: func(_ context.Context, rootKey string, _ ...services.CallOption) (pitraversal.Result, error) {
+				return retentionPolicySingleKeyDescendantsResult(rootKey), nil
+			},
+		}
+		got, err := New(piAPI, nil).ExecuteRetentionPolicy(context.Background(), d.RetentionPolicyRequest{
+			RetentionDays:          90,
+			DerivedEndDateBoundary: "2026-02-13",
+			DryRun:                 true,
+			DiscoveredKeys:         typexKeys("root-a"),
+			Progress: func(event d.OpsProgressEvent) {
+				if event.Kind == d.OpsProgressEventKindTenantScope {
+					scopes = append(scopes, event.TenantScope.Evidence)
+				}
+			},
+		})
+
+		require.NoError(t, err)
+		require.Equal(t, d.RetentionPolicyOutcomePlanned, got.Outcome)
+		require.Equal(t, []d.TenantEvidence{got.DeletePlan.TenantEvidence}, scopes)
+	})
+
+	t.Run("empty frozen scope", func(t *testing.T) {
+		t.Parallel()
+
+		var scopes []d.TenantEvidence
+		got, err := New(stubProcessInstanceAPI{}, nil).ExecuteRetentionPolicy(context.Background(), d.RetentionPolicyRequest{
+			RetentionDays:          90,
+			DerivedEndDateBoundary: "2026-02-13",
+			DryRun:                 true,
+			DiscoveredKeys:         typex.Keys{},
+			Progress: func(event d.OpsProgressEvent) {
+				if event.Kind == d.OpsProgressEventKindTenantScope {
+					scopes = append(scopes, event.TenantScope.Evidence)
+				}
+			},
+		})
+
+		require.NoError(t, err)
+		require.Equal(t, d.RetentionPolicyOutcomePlanned, got.Outcome)
+		require.Equal(t, []d.TenantEvidence{{}}, scopes)
+		require.Equal(t, d.OpsWorkflowStepStatusSkipped, got.DeletePlan.Status)
+	})
 }
 
 func TestExecuteRetentionPolicyDryRunNoTargetsSkipsPlanAndDeletion(t *testing.T) {
@@ -675,6 +932,81 @@ func TestExecuteRetentionPolicyDeletesResolvedRootsWithNoWait(t *testing.T) {
 	require.False(t, got.Deletion.Confirmed)
 	require.True(t, got.Deletion.NoWait)
 	require.Equal(t, got.Deletion, got.Report.Deletion)
+}
+
+// TestExecuteRetentionPolicyPropagatesDeleteCompletionProgress verifies
+// retention execution forwards live root-tree deletion facts from the shared
+// process-instance delete path.
+func TestExecuteRetentionPolicyPropagatesDeleteCompletionProgress(t *testing.T) {
+	t.Parallel()
+
+	var events []d.OpsProgressEvent
+	piAPI := stubProcessInstanceAPI{
+		searchPage: func(_ context.Context, _ d.ProcessInstanceFilter, page d.ProcessInstancePageRequest, _ ...services.CallOption) (d.ProcessInstancePage, error) {
+			return d.ProcessInstancePage{
+				Request:       page,
+				OverflowState: d.ProcessInstanceOverflowStateNoMore,
+				Items: []d.ProcessInstance{
+					{Key: "child-1", EndDate: "2026-02-12"},
+				},
+			}, nil
+		},
+		ancestryResult: func(_ context.Context, key string, _ ...services.CallOption) (pitraversal.Result, error) {
+			return pitraversal.Result{
+				Mode:     pitraversal.ModeAncestry,
+				StartKey: key,
+				RootKey:  "root-1",
+				Keys:     []string{key, "root-1"},
+				Chain: map[string]d.ProcessInstance{
+					"root-1": {Key: "root-1", State: d.StateCompleted},
+					key:      {Key: key, State: d.StateCompleted},
+				},
+				Outcome: pitraversal.OutcomeComplete,
+			}, nil
+		},
+		descendantsResult: func(_ context.Context, rootKey string, _ ...services.CallOption) (pitraversal.Result, error) {
+			require.Equal(t, "root-1", rootKey)
+			return pitraversal.Result{
+				Mode:     pitraversal.ModeDescendants,
+				StartKey: rootKey,
+				RootKey:  rootKey,
+				Keys:     []string{"root-1", "child-1"},
+				Chain: map[string]d.ProcessInstance{
+					"root-1":  {Key: "root-1", State: d.StateCompleted},
+					"child-1": {Key: "child-1", State: d.StateCompleted},
+				},
+				Outcome: pitraversal.OutcomeComplete,
+			}, nil
+		},
+		deleteProcessInstance: func(_ context.Context, key string, _ ...services.CallOption) (d.DeleteResponse, error) {
+			require.Equal(t, "root-1", key)
+			return d.DeleteResponse{Ok: true, StatusCode: 204, Status: "204 No Content"}, nil
+		},
+	}
+
+	got, err := New(piAPI, nil).ExecuteRetentionPolicy(context.Background(), d.RetentionPolicyRequest{
+		CommandName:            "ops execute retention-policy",
+		RetentionDays:          90,
+		DerivedEndDateBoundary: "2026-02-13",
+		StartedAt:              time.Date(2026, 5, 14, 10, 0, 0, 0, time.UTC),
+		Progress: func(event d.OpsProgressEvent) {
+			events = append(events, event)
+		},
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, d.RetentionPolicyOutcomeDeleted, got.Outcome)
+	require.Equal(t, []d.OpsCompletionProgress{
+		{
+			Phase:            "delete",
+			CoreResource:     "process-instance tree(s)",
+			Total:            1,
+			Identity:         "root-1",
+			Disposition:      d.OpsCompletionDispositionConfirmed,
+			AffectedResource: "affected process instances",
+			AffectedCount:    opsIntPtr(2),
+		},
+	}, opsCompletionProgressByPhase(events, "delete"))
 }
 
 // receiveRetentionPolicyResult bounds tests that intentionally block retention planning workers behind a release gate.

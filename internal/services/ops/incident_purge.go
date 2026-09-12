@@ -50,6 +50,7 @@ func (s *Service) PurgeProcessInstancesWithIncidents(ctx context.Context, reques
 	if len(discovery.CandidateProcessInstanceKeys) == 0 {
 		result.DeletePlan.Status = d.OpsWorkflowStepStatusSkipped
 		result.Deletion.Status = d.OpsWorkflowStepStatusSkipped
+		emitOpsTenantScope(request.Progress, d.TenantEvidence{})
 		return finishIncidentPurgeResult(result, d.IncidentPurgeOutcomePlanned, nil)
 	}
 
@@ -70,6 +71,8 @@ func (s *Service) PurgeProcessInstancesWithIncidents(ctx context.Context, reques
 		result.Deletion.Errors = []string{err.Error()}
 		return finishIncidentPurgeResult(result, d.IncidentPurgeOutcomeFailed, err)
 	}
+
+	emitOpsTenantScope(request.Progress, plan.TenantEvidence)
 
 	if request.DryRun || len(plan.ResolvedRootKeys) == 0 {
 		result.Deletion.Status = d.OpsWorkflowStepStatusSkipped
@@ -117,6 +120,7 @@ func buildIncidentPurgeDeletePlan(ctx context.Context, api pisvc.API, discovery 
 		CandidateProcessInstanceKeys:          candidates,
 		ResolvedRootKeys:                      preview.Roots,
 		AffectedKeys:                          preview.Collected,
+		TenantEvidence:                        preview.TenantEvidence,
 		DuplicateCandidateProcessInstanceKeys: discovery.DuplicateCandidateProcessInstanceKeys.Unique(),
 		DuplicateResolvedRootKeys:             preview.DuplicateRoots,
 		FinalStateItems:                       preview.SelectedFinalState,

@@ -215,6 +215,7 @@ func renderProcessInstanceDryRunPreview(cmd *cobra.Command, preview processInsta
 		return nil
 	}
 
+	renderAttachedTenantContext(cmd)
 	renderHumanLine(cmd, "dry run: %s process-instance", preview.Operation)
 	renderHumanLine(cmd, "selected process instances: %d", preview.RequestedCount)
 	renderHumanLine(cmd, "process-instance trees to %s: %d", preview.Operation, preview.ResolvedRootCount)
@@ -235,7 +236,16 @@ func renderProcessInstanceDryRunSummary(cmd *cobra.Command, summary processInsta
 	if pickMode() == RenderModeJSON {
 		return renderProcessInstanceDryRunResult(cmd, summary)
 	}
+	if pickMode() == RenderModeKeysOnly {
+		for _, preview := range summary.Previews {
+			for _, key := range preview.AffectedFamilyKeys {
+				renderOutputLine(cmd, "%s", key)
+			}
+		}
+		return nil
+	}
 
+	renderAttachedTenantContext(cmd)
 	renderHumanLine(cmd, "dry run: %s process-instance", summary.Operation)
 	renderHumanLine(cmd, "selected process instances: %d", summary.RequestedCount)
 	renderHumanLine(cmd, "process-instance trees to %s: %d", summary.Operation, summary.ResolvedRootCount)

@@ -3,7 +3,11 @@
 
 package resource
 
-import "github.com/grafvonb/c8volt/c8volt/process"
+import (
+	"slices"
+
+	"github.com/grafvonb/c8volt/c8volt/process"
+)
 
 type ProcessDefinitionDeployment struct {
 	Key               string `json:"key"`
@@ -87,6 +91,99 @@ func (p DeleteProcessDefinitionPlan) Totals() DeleteProcessDefinitionPlanTotals 
 	}
 	totals.Warnings += len(p.Warnings)
 	return totals
+}
+
+// TenantEvidence aggregates tenant metadata already present in the process-definition
+// impact plan and any nested process-instance cancellation plan.
+func (p DeleteProcessDefinitionPlan) TenantEvidence() process.TenantEvidence {
+	evidence := processDefinitionPlanTenantEvidence{}
+	for _, item := range p.Items {
+		evidence.Add("pd", item.Key, item.TenantId)
+		evidence.MergeProcessInstanceEvidence(item.CancellationPlan.TenantEvidence)
+	}
+	return evidence.Snapshot()
+}
+
+// processDefinitionPlanTenantEvidence accumulates tenant observations across
+// process-definition items and nested process-instance cancellation plans.
+type processDefinitionPlanTenantEvidence struct {
+	tenantSet          map[string]struct{}
+	seenTargets        map[string]struct{}
+	targets            []process.TenantEvidenceTarget
+	targetCount        int
+	unknownTargetCount int
+}
+
+// Add records one affected process-definition or process-instance target,
+// counting missing tenant IDs as unknown evidence.
+func (e *processDefinitionPlanTenantEvidence) Add(kind string, key string, tenantID string) {
+	if key == "" {
+		return
+	}
+	e.ensureMaps()
+	seenKey := kind + ":" + key
+	if _, ok := e.seenTargets[seenKey]; ok {
+		return
+	}
+	e.seenTargets[seenKey] = struct{}{}
+	e.targetCount++
+	if tenantID == "" {
+		e.unknownTargetCount++
+	} else {
+		e.tenantSet[tenantID] = struct{}{}
+	}
+	e.targets = append(e.targets, process.TenantEvidenceTarget{Key: key, TenantID: tenantID})
+}
+
+// MergeProcessInstanceEvidence folds nested cancellation evidence into the
+// process-definition impact evidence without double-counting repeated targets.
+func (e *processDefinitionPlanTenantEvidence) MergeProcessInstanceEvidence(nested process.TenantEvidence) {
+	if len(nested.Targets) > 0 {
+		for _, target := range nested.Targets {
+			e.Add("pi", target.Key, target.TenantID)
+		}
+		return
+	}
+	e.ensureMaps()
+	for _, tenantID := range nested.ResolvedTenantIDs {
+		if tenantID != "" {
+			e.tenantSet[tenantID] = struct{}{}
+		}
+	}
+	e.unknownTargetCount += nested.UnknownTargetCount
+	e.targetCount += nested.TargetCount
+}
+
+// Snapshot returns deterministic public tenant evidence for command context.
+func (e *processDefinitionPlanTenantEvidence) Snapshot() process.TenantEvidence {
+	e.ensureMaps()
+	resolvedTenantIDs := make([]string, 0, len(e.tenantSet))
+	for tenantID := range e.tenantSet {
+		resolvedTenantIDs = append(resolvedTenantIDs, tenantID)
+	}
+	return process.TenantEvidence{
+		ResolvedTenantIDs:  sortProcessDefinitionPlanTenantIDs(resolvedTenantIDs),
+		UnknownTargetCount: e.unknownTargetCount,
+		TargetCount:        e.targetCount,
+		Targets:            append([]process.TenantEvidenceTarget(nil), e.targets...),
+	}
+}
+
+// ensureMaps lazily initializes aggregation maps for zero-value use.
+func (e *processDefinitionPlanTenantEvidence) ensureMaps() {
+	if e.tenantSet == nil {
+		e.tenantSet = make(map[string]struct{})
+	}
+	if e.seenTargets == nil {
+		e.seenTargets = make(map[string]struct{})
+	}
+}
+
+// sortProcessDefinitionPlanTenantIDs keeps command-rendered resource tenant
+// evidence deterministic for previews and structured envelopes.
+func sortProcessDefinitionPlanTenantIDs(ids []string) []string {
+	slices.Sort(ids)
+	return slices.Compact(ids)
 }
 
 type DeleteProcessDefinitionPlanTotals struct {

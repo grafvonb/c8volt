@@ -10,29 +10,19 @@ List or fetch process instances
 
 ### Synopsis
 
-Get process instances by key or by search criteria.
+Get process instances by key or search criteria.
 
-Use direct lookup when you know a process-instance key, or combine search filters to inspect matching process instances by process definition, tenant, state, incidents, variables, jobs, user tasks, and time ranges.
+Use a known key or search by process definition, tenant, state, incidents, variables, jobs, user tasks, and time ranges. Missing explicit keys return not-found.
 
-Search results support interactive paging, scriptable JSON aggregation, and count-only workflows. --batch-size controls each backend page request, --limit caps total returned process instances across all pages, and --total prints only the matching count. Verbose paging progress is written away from stdout; JSON, keys-only, quiet, and automation output remain free of prompts and progress text. Direct key lookup stays strict: missing keys return not-found.
+--batch-size controls each discovery request; --limit caps instances across all pages; --total counts matching instances.
 
-Tenant contract: --tenant scopes search/list discovery and selector validation where supported. Explicit --key and stdin keys are backend-authorized admin input; c8volt displays returned tenant metadata without rejecting solely because it differs from the selected tenant.
+--tenant limits search and selector discovery. Explicit --key and stdin keys use backend authorization without tenant filtering. A --bpmn-process-id selector must match a visible process definition before discovery.
 
-When --bpmn-process-id is set, c8volt validates that the process definition is visible before searching process instances. A missing selector fails with a local diagnostic instead of looking like a valid empty result; --json, --automation, --keys-only, and non-TTY runs never prompt for recovery output.
-
-Use --with-incidents to include direct incident details under matching process-instance rows in keyed or list/search output.
-
-Use --with-vars to include process-instance-scope variables under matching process-instance rows in keyed or list/search output.
-
-Use --with-elements to include runtime element instances under matching process-instance rows. Nested human element rows include dur:<duration> when start/end timestamps or active state support a runtime duration.
-
-Use --with-listeners with --with-elements to include runtime listener jobs under matching element rows.
+Use --with-incidents for direct incidents, --with-vars for process-instance-scope variables, or --with-elements for runtime element instances. Add --with-listeners to --with-elements for runtime listener jobs.
 
 Use variable-search flags to narrow list/search results natively on Camunda 8.8 or newer; Camunda 8.7 returns an unsupported-version error for those flags. --var-exists requires every listed variable name to exist. --var accepts name=value equality shorthand plus advanced name.$operator=value clauses for $eq, $neq, $exists, $in, $notIn, and $like; $notin is accepted as $notIn. --var-like uses native wildcard patterns: * matches zero or more characters, ? matches one character, and escaped wildcards remain literal. Commas inside quoted values and JSON arrays stay inside the variable clause. Variable scopeKey means the scope where the variable is directly defined.
 
 Use --has-user-tasks to fetch process instances by their owning user-task keys.
-
-Run `c8volt get process-instance --help` for the complete flag reference.
 
 ```
 c8volt get process-instance [flags]
@@ -64,7 +54,7 @@ c8volt get process-instance [flags]
 ### Options
 
 ```
-  -n, --batch-size int32                number of process instances to request per page; does not cap total returned rows (max limit 1000 enforced by server) (default 1000)
+  -n, --batch-size int32                number of process instances to request per page; does not cap total results (max limit 1000 enforced by server) (default 1000)
   -b, --bpmn-process-id string          BPMN process ID to filter process instances
       --children-only                   show only child process instances
       --direct-incidents-only           show only process instances with direct incident details
@@ -102,7 +92,7 @@ c8volt get process-instance [flags]
       --var-value-limit int             maximum characters to show for variable values when --with-vars is set; 0 disables truncation
       --with-elements                   include runtime element instances for keyed or list/search process-instance output
       --with-incidents                  include direct incident keys, states, and messages for keyed or list/search process-instance output
-      --with-listeners                  include runtime listener jobs under matching element rows; requires --with-elements
+      --with-listeners                  include runtime listener jobs; requires --with-elements
       --with-vars                       include process-instance-scope variables for keyed or list/search process-instance output
   -w, --workers int                     maximum concurrent workers when --batch-size > 1 (default: min(batch-size, 2*GOMAXPROCS, 32))
 ```
@@ -110,6 +100,7 @@ c8volt get process-instance [flags]
 ### Options inherited from parent commands
 
 ```
+      --all-tenants        clear configured tenant filtering and search all tenants visible to the authenticated user; mutually exclusive with --tenant
   -y, --auto-confirm       auto-confirm prompts for non-interactive use
       --automation         enable non-interactive mode for commands that explicitly support it
       --config string      path to config file
@@ -120,7 +111,7 @@ c8volt get process-instance [flags]
       --no-indicator       disable transient terminal activity indicators
       --profile string     config active profile name to use (e.g. dev, prod)
   -q, --quiet              suppress output except errors
-      --tenant string      tenant ID for discovery/search, selection, create, deploy, and run flows; explicit keys/IDs remain backend-authorized
+      --tenant string      tenant ID for discovery/search, selection, create, deploy, and run flows; explicit empty values can clear configured discovery filters, and explicit keys/IDs remain backend-authorized
       --timeout duration   HTTP request timeout (default 30s)
   -v, --verbose            show additional output
 ```

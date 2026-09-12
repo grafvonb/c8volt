@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/grafvonb/c8volt/consts"
@@ -80,6 +81,7 @@ func (s *Service) repairExplicitIncidents(ctx context.Context, request d.OpsRepa
 		return finishRepairResult(result, s.version, d.OpsRepairOutcomeFailed, err)
 	}
 	result.FrozenSet = freezeExplicitIncidentSet(request, incidents)
+	emitOpsTenantScope(request.Progress, result.FrozenSet.TenantEvidence)
 	if request.DryRun {
 		return s.finishDryRunIncidentRepair(request, result, incidents)
 	}
@@ -90,16 +92,17 @@ func (s *Service) repairExplicitIncidents(ctx context.Context, request d.OpsRepa
 	cfg := services.ApplyCallOptions(opts)
 	workers := toolx.DetermineNoOfWorkers(len(incidents), request.Workers, cfg.NoWorkerLimit)
 	emitRepairFrozenScopeProgress(request, "repairing incidents", "incident(s)", 0, len(incidents))
+	var completed int64
 	items, runErr := pool.ExecuteSlice(ctx, incidents, workers, cfg.FailFast, func(ctx context.Context, incident d.ProcessInstanceIncidentDetail, _ int) (repairIncidentExecution, error) {
-		return s.executeIncidentRepair(ctx, request, incident, variableUpdates, opts...)
+		item, err := s.executeIncidentRepair(ctx, request, incident, variableUpdates, len(incidents), opts...)
+		done := int(atomic.AddInt64(&completed, 1))
+		emitRepairFrozenScopeProgress(request, "repairing incidents", "incident(s)", done, len(incidents))
+		return item, err
 	})
-	completedRepairs := 0
 	for _, item := range items {
 		if item.Plan.IncidentKey == "" {
 			continue
 		}
-		completedRepairs++
-		emitRepairFrozenScopeProgress(request, "repairing incidents", "incident(s)", completedRepairs, len(incidents))
 		result.Plan = append(result.Plan, item.Plan)
 		result.JobApplicability = append(result.JobApplicability, item.JobApplicability)
 	}
@@ -119,6 +122,7 @@ func (s *Service) repairFilteredIncidents(ctx context.Context, request d.OpsRepa
 		return finishRepairResult(result, s.version, d.OpsRepairOutcomeFailed, err)
 	}
 	result.FrozenSet = frozen
+	emitOpsTenantScope(request.Progress, result.FrozenSet.TenantEvidence)
 	incidents := frozen.OriginalIncidents
 	if len(incidents) == 0 {
 		result.Remaining.Status = d.OpsWorkflowStepStatusSkipped
@@ -139,16 +143,17 @@ func (s *Service) repairFilteredIncidents(ctx context.Context, request d.OpsRepa
 	cfg := services.ApplyCallOptions(opts)
 	workers := toolx.DetermineNoOfWorkers(len(incidents), request.Workers, cfg.NoWorkerLimit)
 	emitRepairFrozenScopeProgress(request, "repairing incidents", "incident(s)", 0, len(incidents))
+	var completed int64
 	items, runErr := pool.ExecuteSlice(ctx, incidents, workers, cfg.FailFast, func(ctx context.Context, incident d.ProcessInstanceIncidentDetail, _ int) (repairIncidentExecution, error) {
-		return s.executeIncidentRepair(ctx, request, incident, variableUpdates, opts...)
+		item, err := s.executeIncidentRepair(ctx, request, incident, variableUpdates, len(incidents), opts...)
+		done := int(atomic.AddInt64(&completed, 1))
+		emitRepairFrozenScopeProgress(request, "repairing incidents", "incident(s)", done, len(incidents))
+		return item, err
 	})
-	completedRepairs := 0
 	for _, item := range items {
 		if item.Plan.IncidentKey == "" {
 			continue
 		}
-		completedRepairs++
-		emitRepairFrozenScopeProgress(request, "repairing incidents", "incident(s)", completedRepairs, len(incidents))
 		result.Plan = append(result.Plan, item.Plan)
 		result.JobApplicability = append(result.JobApplicability, item.JobApplicability)
 	}
@@ -184,7 +189,7 @@ func (s *Service) repairExplicitProcessInstances(ctx context.Context, request d.
 		result.FrozenSet.Errors = []string{err.Error()}
 		return finishRepairResult(result, s.version, d.OpsRepairOutcomeFailed, err)
 	}
-	result.FrozenSet = freezeProcessInstanceRepairSet(request, processInstanceKeys, incidents)
+	result.FrozenSet = freezeProcessInstanceRepairSet(request, processInstanceKeys, pis, incidents)
 	return s.finishProcessInstanceIncidentRepair(ctx, request, result, incidents, opts...)
 }
 
@@ -207,7 +212,7 @@ func (s *Service) repairFilteredProcessInstances(ctx context.Context, request d.
 	if request.DirectIncidentsOnly {
 		processInstanceKeys = processInstanceKeysFromIncidents(incidents)
 	}
-	result.FrozenSet = freezeProcessInstanceRepairSet(request, processInstanceKeys, incidents)
+	result.FrozenSet = freezeProcessInstanceRepairSet(request, processInstanceKeys, pis, incidents)
 	result.FrozenSet.DiscoveryMode = d.OpsRepairDiscoveryModeSearch
 	result.FrozenSet.InputKeys = nil
 	result.FrozenSet.ProcessFilters = request.ProcessInstanceSelection
@@ -218,6 +223,7 @@ func (s *Service) repairFilteredProcessInstances(ctx context.Context, request d.
 
 // finishProcessInstanceIncidentRepair routes process-instance selected incidents through the shared incident execution rules.
 func (s *Service) finishProcessInstanceIncidentRepair(ctx context.Context, request d.OpsRepairRequest, result d.OpsRepairResult, incidents []d.ProcessInstanceIncidentDetail, opts ...services.CallOption) (d.OpsRepairResult, error) {
+	emitOpsTenantScope(request.Progress, result.FrozenSet.TenantEvidence)
 	if len(incidents) == 0 {
 		result.Remaining.Status = d.OpsWorkflowStepStatusSkipped
 		result.Notices = append(result.Notices, d.OpsRepairWorkflowNotice{
@@ -237,16 +243,17 @@ func (s *Service) finishProcessInstanceIncidentRepair(ctx context.Context, reque
 	cfg := services.ApplyCallOptions(opts)
 	workers := toolx.DetermineNoOfWorkers(len(incidents), request.Workers, cfg.NoWorkerLimit)
 	emitRepairFrozenScopeProgress(request, "repairing incidents", "incident(s)", 0, len(incidents))
+	var completed int64
 	items, runErr := pool.ExecuteSlice(ctx, incidents, workers, cfg.FailFast, func(ctx context.Context, incident d.ProcessInstanceIncidentDetail, _ int) (repairIncidentExecution, error) {
-		return s.executeIncidentRepair(ctx, request, incident, variableUpdates, opts...)
+		item, err := s.executeIncidentRepair(ctx, request, incident, variableUpdates, len(incidents), opts...)
+		done := int(atomic.AddInt64(&completed, 1))
+		emitRepairFrozenScopeProgress(request, "repairing incidents", "incident(s)", done, len(incidents))
+		return item, err
 	})
-	completedRepairs := 0
 	for _, item := range items {
 		if item.Plan.IncidentKey == "" {
 			continue
 		}
-		completedRepairs++
-		emitRepairFrozenScopeProgress(request, "repairing incidents", "incident(s)", completedRepairs, len(incidents))
 		result.Plan = append(result.Plan, item.Plan)
 		result.JobApplicability = append(result.JobApplicability, item.JobApplicability)
 	}
@@ -315,6 +322,7 @@ func freezeExplicitIncidentSet(request d.OpsRepairRequest, incidents []d.Process
 	if len(request.Variables) > 0 {
 		frozen.VariableScopes = frozen.ProcessInstanceKeys.Unique()
 	}
+	frozen.TenantEvidence = opsTenantEvidenceFromIncidents(incidents)
 	frozen.OriginalIncidents = append([]d.ProcessInstanceIncidentDetail(nil), incidents...)
 	return frozen
 }
@@ -329,7 +337,7 @@ func freezeIncidentSearchSet(request d.OpsRepairRequest, incidents []d.ProcessIn
 }
 
 // freezeProcessInstanceRepairSet records repairable process instances and skipped direct selections.
-func freezeProcessInstanceRepairSet(request d.OpsRepairRequest, selectedProcessInstanceKeys typex.Keys, incidents []d.ProcessInstanceIncidentDetail) d.OpsRepairFrozenSet {
+func freezeProcessInstanceRepairSet(request d.OpsRepairRequest, selectedProcessInstanceKeys typex.Keys, selectedProcessInstances []d.ProcessInstance, incidents []d.ProcessInstanceIncidentDetail) d.OpsRepairFrozenSet {
 	frozen := newRepairResult(request).FrozenSet
 	frozen.Status = d.OpsWorkflowStepStatusConfirmed
 	frozen.IncidentKeys = incidentKeysFromDetails(incidents)
@@ -340,6 +348,7 @@ func freezeProcessInstanceRepairSet(request d.OpsRepairRequest, selectedProcessI
 	if len(request.Variables) > 0 {
 		frozen.VariableScopes = frozen.ProcessInstanceKeys.Unique()
 	}
+	frozen.TenantEvidence = opsTenantEvidenceFromProcessInstanceKeysAndDetails(selectedProcessInstanceKeys, selectedProcessInstances, incidents)
 	frozen.OriginalIncidents = append([]d.ProcessInstanceIncidentDetail(nil), incidents...)
 	return frozen
 }
@@ -665,8 +674,13 @@ func repairVariableErrors(item d.ProcessInstanceVariableUpdateResult) []string {
 	return []string{item.Error}
 }
 
-func (s *Service) executeIncidentRepair(ctx context.Context, request d.OpsRepairRequest, incident d.ProcessInstanceIncidentDetail, variables map[string]d.OpsRepairVariableScopeUpdate, opts ...services.CallOption) (repairIncidentExecution, error) {
+func (s *Service) executeIncidentRepair(ctx context.Context, request d.OpsRepairRequest, incident d.ProcessInstanceIncidentDetail, variables map[string]d.OpsRepairVariableScopeUpdate, total int, opts ...services.CallOption) (out repairIncidentExecution, err error) {
 	plan, jobApplicability := newIncidentRepairPlan(request, incident)
+	defer func() {
+		if out.Plan.IncidentKey != "" {
+			emitRepairCompletionProgress(request, out.Plan, err, total)
+		}
+	}()
 	if applyRepairVariableStatus(&plan, variables[incident.ProcessInstanceKey]) && repairVariableStatusBlocksResolution(plan.VariableUpdateStatus) {
 		plan.ResolutionStatus = d.OpsWorkflowStepStatusBlocked
 		plan.ConfirmationStatus = d.OpsWorkflowStepStatusSkipped

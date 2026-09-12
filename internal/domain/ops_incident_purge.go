@@ -87,6 +87,7 @@ type IncidentPurgeDeletePlan struct {
 	CandidateProcessInstanceKeys          typex.Keys
 	ResolvedRootKeys                      typex.Keys
 	AffectedKeys                          typex.Keys
+	TenantEvidence                        TenantEvidence
 	DuplicateCandidateProcessInstanceKeys typex.Keys
 	DuplicateResolvedRootKeys             typex.Keys
 	FinalStateItems                       []ProcessInstance
@@ -120,6 +121,7 @@ type IncidentPurgeReport struct {
 	CamundaVersion   string
 	ProfileIdentity  string
 	TenantID         string
+	TenantContext    *TenantContext
 	SelectionFilters IncidentFilter
 	Discovery        IncidentDiscoveryResult
 	DeletePlan       IncidentPurgeDeletePlan

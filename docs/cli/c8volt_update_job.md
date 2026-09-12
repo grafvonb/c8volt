@@ -10,9 +10,13 @@ Update a job by key
 
 ### Synopsis
 
-Update a Camunda job by key.
+Update a Camunda job by key on Camunda 8.8 or newer.
 
-The command supports retries, timeout updates, and worker outcome modes for Camunda 8.8 or newer. It builds a pre-mutation plan, supports --dry-run previews, and asks for confirmation before material interactive mutations. Retry updates are confirmed by reading the job by key by default; timeout updates and worker outcomes report accepted submission without deadline or outcome confirmation. JSON mutations require --dry-run, --auto-confirm, or --automation, and --json cannot be combined with --verbose. Camunda 8.7 returns an unsupported-version error before mutation.
+Supports retry and timeout updates and worker outcomes. Explicit --key uses backend authorization without tenant filtering.
+
+c8volt plans the update and asks for confirmation before material interactive mutations. Retry updates are verified by reading the job; timeout updates and worker outcomes return after acceptance without waiting for confirmation.
+
+Use --dry-run to inspect the plan without mutation. With --json, mutations require --dry-run, --auto-confirm, or --automation; --json cannot be combined with --verbose.
 
 ```
 c8volt update job [flags]
@@ -22,6 +26,7 @@ c8volt update job [flags]
 
 ```
   ./c8volt update job --key <job-key> --retries 3 --dry-run
+  ./c8volt --tenant tenant-a update job --key <job-key> --retries 3 --dry-run
   ./c8volt update job --key <job-key> --retries 3 --auto-confirm
   ./c8volt update job --key <job-key> --timeout 5m --auto-confirm
   ./c8volt update job --key <job-key> --fail --retries 0 --message "worker unavailable" --dry-run
@@ -50,6 +55,7 @@ c8volt update job [flags]
 ### Options inherited from parent commands
 
 ```
+      --all-tenants        clear configured tenant filtering and search all tenants visible to the authenticated user; mutually exclusive with --tenant
   -y, --auto-confirm       auto-confirm prompts for non-interactive use
       --automation         enable non-interactive mode for commands that explicitly support it
       --config string      path to config file
@@ -60,7 +66,7 @@ c8volt update job [flags]
       --no-indicator       disable transient terminal activity indicators
       --profile string     config active profile name to use (e.g. dev, prod)
   -q, --quiet              suppress output except errors
-      --tenant string      tenant ID for discovery/search, selection, create, deploy, and run flows; explicit keys/IDs remain backend-authorized
+      --tenant string      tenant ID for discovery/search, selection, create, deploy, and run flows; explicit empty values can clear configured discovery filters, and explicit keys/IDs remain backend-authorized
   -v, --verbose            show additional output
 ```
 

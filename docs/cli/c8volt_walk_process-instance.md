@@ -10,17 +10,13 @@ Inspect the parent/child tree of process instances
 
 ### Synopsis
 
-Inspect the parent/child tree of process instances.
+Inspect process-instance ancestry, descendants, or the full family.
 
-By default, walk shows the full process-instance family as an ASCII tree. Use --parent for ancestry, --children for descendants, or --flat for a path-style family view.
+Use --parent for ancestry or --children for descendants; the default scope is the full family. Explicit --key uses backend authorization without tenant filtering.
 
-Tenant contract: explicit --key process-instance targets are backend-authorized admin input; returned tenant metadata may differ from the selected tenant.
+Add --with-incidents, --with-vars, or --with-elements for incident details, process-instance-scope variables, or runtime elements. Add --with-listeners to --with-elements for runtime listener jobs.
 
-Add --with-incidents, --with-vars, and/or --with-elements to keyed walks to show incident details, process-instance-scope variables, and runtime element instances below matching rows.
-
-Use --with-listeners with --with-elements to include runtime listener jobs under matching element rows.
-
-When an ancestor is missing but reachable family data still exists, walk returns the partial tree plus a warning. Direct single-resource lookups stay strict.
+When an ancestor is missing but reachable family data remains, walk returns the available family. Direct single-resource lookups remain strict.
 
 ```
 c8volt walk process-instance [flags]
@@ -51,13 +47,14 @@ c8volt walk process-instance [flags]
       --var-value-limit int          maximum characters to show for variable values when --with-vars is set; 0 disables truncation
       --with-elements                show runtime element instances for keyed process-instance walks
       --with-incidents               show incident keys, states, and messages for keyed process-instance walks
-      --with-listeners               show runtime listener jobs under matching element rows; requires --with-elements
+      --with-listeners               include runtime listener jobs; requires --with-elements
       --with-vars                    show process-instance-scope variables for keyed process-instance walks
 ```
 
 ### Options inherited from parent commands
 
 ```
+      --all-tenants        clear configured tenant filtering and search all tenants visible to the authenticated user; mutually exclusive with --tenant
   -y, --auto-confirm       auto-confirm prompts for non-interactive use
       --automation         enable non-interactive mode for commands that explicitly support it
       --config string      path to config file
@@ -68,7 +65,7 @@ c8volt walk process-instance [flags]
       --no-indicator       disable transient terminal activity indicators
       --profile string     config active profile name to use (e.g. dev, prod)
   -q, --quiet              suppress output except errors
-      --tenant string      tenant ID for discovery/search, selection, create, deploy, and run flows; explicit keys/IDs remain backend-authorized
+      --tenant string      tenant ID for discovery/search, selection, create, deploy, and run flows; explicit empty values can clear configured discovery filters, and explicit keys/IDs remain backend-authorized
       --timeout duration   HTTP request timeout (default 30s)
   -v, --verbose            show additional output
 ```

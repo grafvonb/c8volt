@@ -7,6 +7,8 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
+	"io"
 	"testing"
 
 	"github.com/grafvonb/c8volt/c8volt/ferrors"
@@ -123,13 +125,19 @@ func TestProcessDefinitionSelectorValidation_SearchesEveryDistinctBpmnProcessID(
 	require.Contains(t, result.MatchesByBpmnProcessID, "invoice")
 }
 
-func TestProcessDefinitionSelectorValidation_UsesLatestSearchWhenRequested(t *testing.T) {
-	var latestCalls int
+// TestProcessDefinitionSelectorValidation_UsesPagedCollectionWhenLatestRequested
+// verifies latest selector checks use the canonical paged facade collection path.
+func TestProcessDefinitionSelectorValidation_UsesPagedCollectionWhenLatestRequested(t *testing.T) {
+	var pagedCalls int
 	cli := stubProcessAPI{
-		searchProcessDefinitionsLatest: func(_ context.Context, filter process.ProcessDefinitionFilter, opts ...options.FacadeOption) (process.ProcessDefinitions, error) {
-			latestCalls++
-			require.Equal(t, process.ProcessDefinitionFilter{BpmnProcessId: "order"}, filter)
-			return process.ProcessDefinitions{Total: 1}, nil
+		searchProcessDefinitionsPages: func(_ context.Context, request process.ProcessDefinitionSearchRequest, visitor process.ProcessDefinitionSearchPageVisitor, opts ...options.FacadeOption) (process.ProcessDefinitionSearchPagesResult, error) {
+			pagedCalls++
+			require.Equal(t, process.ProcessDefinitionFilter{BpmnProcessId: "order"}, request.Filter)
+			require.True(t, request.Latest)
+			require.Nil(t, visitor)
+			return process.ProcessDefinitionSearchPagesResult{
+				Items: []process.ProcessDefinition{{Key: "pd-order-latest", BpmnProcessId: "order"}},
+			}, nil
 		},
 	}
 
@@ -140,7 +148,7 @@ func TestProcessDefinitionSelectorValidation_UsesLatestSearchWhenRequested(t *te
 
 	require.NoError(t, err)
 	require.True(t, result.Valid())
-	require.Equal(t, 1, latestCalls)
+	require.Equal(t, 1, pagedCalls)
 }
 
 func TestProcessDefinitionSelectorValidationForCommand_ReturnsNoPromptErrorWhenPromptForbidden(t *testing.T) {
@@ -348,11 +356,13 @@ func TestProcessDefinitionSelectorHumanDiagnostic_SingleMissingSelectorOffersLis
 	resetProcessDefinitionSelectorPromptTestState(t)
 	processDefinitionSelectorInteractiveTerminalFn = func() bool { return true }
 
-	cmd, _ := newProcessDefinitionSelectorValidationTestCommand()
+	cmd, stdout, stderr := newProcessDefinitionSelectorValidationSeparateOutputTestCommand()
 	var prompt string
-	confirmProcessDefinitionSelectorListVisibleFn = func(autoConfirm bool, got string) error {
+	confirmProcessDefinitionSelectorListVisibleFn = func(promptWriter io.Writer, autoConfirm bool, got string) error {
 		require.False(t, autoConfirm)
 		prompt = got
+		_, err := fmt.Fprint(promptWriter, "configured-stderr-marker")
+		require.NoError(t, err)
 		return localPreconditionError(ErrCmdAborted)
 	}
 	cli := stubProcessAPI{
@@ -379,6 +389,8 @@ func TestProcessDefinitionSelectorHumanDiagnostic_SingleMissingSelectorOffersLis
 	require.Equal(t, "List visible process definitions?", prompt)
 	require.NotContains(t, prompt, "credentials may not have access")
 	require.NotContains(t, prompt, "\n\n")
+	require.Empty(t, stdout.String())
+	require.Equal(t, "configured-stderr-marker", stderr.String())
 }
 
 // Multiple misses use one prompt and one compact error instead of printing a help-style explanation per selector.
@@ -388,7 +400,7 @@ func TestProcessDefinitionSelectorHumanDiagnostic_MultipleMissingSelectorsOffers
 
 	cmd, _ := newProcessDefinitionSelectorValidationTestCommand()
 	var prompt string
-	confirmProcessDefinitionSelectorListVisibleFn = func(autoConfirm bool, got string) error {
+	confirmProcessDefinitionSelectorListVisibleFn = func(_ io.Writer, autoConfirm bool, got string) error {
 		require.False(t, autoConfirm)
 		prompt = got
 		return localPreconditionError(ErrCmdAborted)
@@ -425,7 +437,7 @@ func TestProcessDefinitionSelectorValidationError_SkipsPromptWhenNoVisibleDefini
 	processDefinitionSelectorInteractiveTerminalFn = func() bool { return true }
 
 	cmd, output := newProcessDefinitionSelectorValidationTestCommand()
-	confirmProcessDefinitionSelectorListVisibleFn = func(bool, string) error {
+	confirmProcessDefinitionSelectorListVisibleFn = func(_ io.Writer, _ bool, _ string) error {
 		t.Fatal("unexpected process-definition selector listing prompt")
 		return nil
 	}
@@ -488,7 +500,7 @@ func TestProcessDefinitionSelectorValidationError_MachineAndNonTTYModesDoNotProm
 			processDefinitionSelectorInteractiveTerminalFn = func() bool { return true }
 			cmd, _ := newProcessDefinitionSelectorValidationTestCommand()
 			tt.setup(cmd)
-			confirmProcessDefinitionSelectorListVisibleFn = func(bool, string) error {
+			confirmProcessDefinitionSelectorListVisibleFn = func(_ io.Writer, _ bool, _ string) error {
 				t.Fatal("unexpected process-definition selector listing prompt")
 				return nil
 			}
@@ -511,11 +523,13 @@ func TestProcessDefinitionSelectorValidationError_AcceptedPromptListsVisibleDefi
 	resetProcessDefinitionSelectorPromptTestState(t)
 	processDefinitionSelectorInteractiveTerminalFn = func() bool { return true }
 
-	cmd, output := newProcessDefinitionSelectorValidationTestCommand()
+	cmd, output, stderr := newProcessDefinitionSelectorValidationSeparateOutputTestCommand()
 	var prompt string
-	confirmProcessDefinitionSelectorListVisibleFn = func(autoConfirm bool, got string) error {
+	confirmProcessDefinitionSelectorListVisibleFn = func(promptWriter io.Writer, autoConfirm bool, got string) error {
 		require.False(t, autoConfirm)
 		prompt = got
+		_, err := fmt.Fprint(promptWriter, "configured-stderr-marker")
+		require.NoError(t, err)
 		return nil
 	}
 	cli := stubProcessAPI{
@@ -551,6 +565,7 @@ func TestProcessDefinitionSelectorValidationError_AcceptedPromptListsVisibleDefi
 	require.Contains(t, output.String(), "order")
 	require.Contains(t, output.String(), "v7/stable")
 	require.Contains(t, output.String(), "found: 2")
+	require.Equal(t, "configured-stderr-marker", stderr.String())
 }
 
 // Near-match recovery uses the validation result instead of issuing another broad listing request.
@@ -558,11 +573,13 @@ func TestProcessDefinitionSelectorValidationError_AcceptedPromptListsNearMatches
 	resetProcessDefinitionSelectorPromptTestState(t)
 	processDefinitionSelectorInteractiveTerminalFn = func() bool { return true }
 
-	cmd, output := newProcessDefinitionSelectorValidationTestCommand()
+	cmd, output, stderr := newProcessDefinitionSelectorValidationInheritedOutputTestCommand()
 	var prompt string
-	confirmProcessDefinitionSelectorListVisibleFn = func(autoConfirm bool, got string) error {
+	confirmProcessDefinitionSelectorListVisibleFn = func(promptWriter io.Writer, autoConfirm bool, got string) error {
 		require.False(t, autoConfirm)
 		prompt = got
+		_, err := fmt.Fprint(promptWriter, "inherited-stderr-marker")
+		require.NoError(t, err)
 		return nil
 	}
 	cli := stubProcessAPI{
@@ -600,6 +617,7 @@ func TestProcessDefinitionSelectorValidationError_AcceptedPromptListsNearMatches
 	require.Contains(t, output.String(), "order")
 	require.Contains(t, output.String(), "v2/stable")
 	require.Contains(t, output.String(), "found: 1")
+	require.Equal(t, "inherited-stderr-marker", stderr.String())
 }
 
 func newProcessDefinitionSelectorValidationTestCommand() (*cobra.Command, *bytes.Buffer) {
@@ -610,6 +628,33 @@ func newProcessDefinitionSelectorValidationTestCommand() (*cobra.Command, *bytes
 	cmd.SetErr(buf)
 	cmd.Flags().Bool("automation", false, "")
 	return cmd, buf
+}
+
+// newProcessDefinitionSelectorValidationSeparateOutputTestCommand keeps result stdout and configured stderr independently observable.
+func newProcessDefinitionSelectorValidationSeparateOutputTestCommand() (*cobra.Command, *bytes.Buffer, *bytes.Buffer) {
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	cmd := &cobra.Command{Use: "test"}
+	cmd.SetContext(context.Background())
+	cmd.SetOut(stdout)
+	cmd.SetErr(stderr)
+	cmd.Flags().Bool("automation", false, "")
+	return cmd, stdout, stderr
+}
+
+// newProcessDefinitionSelectorValidationInheritedOutputTestCommand proves a child recovery prompt inherits its parent stderr destination.
+func newProcessDefinitionSelectorValidationInheritedOutputTestCommand() (*cobra.Command, *bytes.Buffer, *bytes.Buffer) {
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	parent := &cobra.Command{Use: "parent"}
+	parent.SetOut(stdout)
+	parent.SetErr(stderr)
+	cmd := &cobra.Command{Use: "test"}
+	cmd.SetContext(context.Background())
+	cmd.SetOut(stdout)
+	cmd.Flags().Bool("automation", false, "")
+	parent.AddCommand(cmd)
+	return cmd, stdout, stderr
 }
 
 func resetProcessDefinitionSelectorPromptTestState(t *testing.T) {

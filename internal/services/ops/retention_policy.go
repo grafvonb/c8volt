@@ -77,6 +77,7 @@ func (s *Service) ExecuteRetentionPolicy(ctx context.Context, request d.Retentio
 	if len(discovery.Keys) == 0 {
 		result.DeletePlan.Status = d.OpsWorkflowStepStatusSkipped
 		result.Deletion.Status = d.OpsWorkflowStepStatusSkipped
+		emitOpsTenantScope(request.Progress, d.TenantEvidence{})
 		return finishRetentionPolicyResult(result, d.RetentionPolicyOutcomePlanned, nil)
 	}
 
@@ -91,21 +92,18 @@ func (s *Service) ExecuteRetentionPolicy(ctx context.Context, request d.Retentio
 		return finishRetentionPolicyResult(result, d.RetentionPolicyOutcomeFailed, fmt.Errorf("retention policy delete-plan validation: %w", err))
 	}
 
-	if request.DryRun {
-		result.Deletion.Status = d.OpsWorkflowStepStatusSkipped
-		return finishRetentionPolicyResult(result, d.RetentionPolicyOutcomePlanned, nil)
-	}
-
-	if len(plan.ResolvedRootKeys) == 0 {
-		result.Deletion.Status = d.OpsWorkflowStepStatusSkipped
-		return finishRetentionPolicyResult(result, d.RetentionPolicyOutcomePlanned, nil)
-	}
-
-	if !request.Force && len(plan.NonFinalAffectedItems) > 0 {
+	if !request.DryRun && len(plan.ResolvedRootKeys) > 0 && !request.Force && len(plan.NonFinalAffectedItems) > 0 {
 		err = fmt.Errorf("%w: refusing to delete retention process-instance scope: %s; no delete request was submitted; use --force to cancel the non-final affected scope before delete", d.ErrPrecondition, formatRetentionBlockedScope(plan))
 		result.Deletion.Status = d.OpsWorkflowStepStatusBlocked
 		result.Deletion.Errors = []string{err.Error()}
 		return finishRetentionPolicyResult(result, d.RetentionPolicyOutcomeFailed, err)
+	}
+
+	emitOpsTenantScope(request.Progress, plan.TenantEvidence)
+
+	if request.DryRun || len(plan.ResolvedRootKeys) == 0 {
+		result.Deletion.Status = d.OpsWorkflowStepStatusSkipped
+		return finishRetentionPolicyResult(result, d.RetentionPolicyOutcomePlanned, nil)
 	}
 
 	deleteOpts := compactOpsExecutionOptions(opts...)
@@ -210,6 +208,7 @@ func buildRetentionDeletePlan(ctx context.Context, api pisvc.API, seedKeys typex
 		SeedKeys:              seeds,
 		ResolvedRootKeys:      roots,
 		AffectedKeys:          collected,
+		TenantEvidence:        opsTenantEvidenceFromTraversalResults(collected, ancestryResults, descendantResults),
 		DuplicateKeys:         duplicateRoots.Unique(),
 		FinalStateItems:       retentionSelectedFinalStateProcessInstances(seeds, ancestryResults),
 		NonFinalAffectedItems: retentionNonFinalProcessInstances(collected, descendantResults),

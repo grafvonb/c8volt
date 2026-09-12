@@ -12,28 +12,15 @@ List or fetch deployed process definitions
 
 List or fetch deployed process definitions.
 
-Inspect deployed BPMN models by key, BPMN process ID, version selectors, or
-latest deployed version. Use `--xml` only with `--key`.
+Select by key, BPMN process ID, version, or version tag. Use --xml only with --key. A --bpmn-process-id selector must match a visible definition.
 
-Tenant contract: `--tenant` scopes list/latest and BPMN selector discovery where
-supported. Explicit `--key` and XML key lookups are backend-authorized admin input;
-c8volt displays returned tenant metadata without rejecting solely because it differs
-from the selected tenant.
+--tenant limits list and selector discovery. Explicit --key and XML lookups use backend authorization without tenant filtering.
 
-Watch mode repaints one terminal view, starting immediately and then waiting
-`1s` between refreshes unless `--watch-interval` is set. Each refresh body
-matches normal list output without watch-only snapshot labels. Without a selector,
-`--watch` observes all visible process definitions. JSON, keys-only, XML,
-quiet, and automation combinations are rejected before lookup work. Existing
-timeout and backoff retry settings bound the watch run; successful refreshes reset
-the consecutive retry budget.
+--latest selects the newest definition per exact tenant ID and BPMN process ID, breaking version ties by the lowest exact-text key. Camunda 8.7 selects within its 1000 visible-definition compatibility window; Camunda 8.8 or newer uses native latest filtering.
 
-When `--bpmn-process-id` is set, c8volt validates that at least one visible
-process definition matches the selector before rendering output. A missing selector
-fails with the shared local diagnostic instead of rendering an ambiguous empty list.
+--stat includes exact-version statistics and requires Camunda 8.8 or newer.
 
-`--stat` requires Camunda `8.8` or newer and prints exact-version
-counts. Camunda `8.7` does not support native statistics.
+--watch repeats the lookup until interrupted, timed out, or retries are exhausted. It starts immediately; --watch-interval controls subsequent checks. Without a selector it observes all visible definitions. Successful checks reset the consecutive retry budget. --watch cannot be combined with --json, --keys-only, --xml, --quiet, or --automation.
 
 ```
 c8volt get process-definition [flags]
@@ -53,15 +40,15 @@ c8volt get process-definition [flags]
 ### Options
 
 ```
-  -n, --batch-size int32          number of process definitions to request per discovery page; does not cap total returned rows (max limit 1000 enforced by server) (default 1000)
+  -n, --batch-size int32          number of process definitions to request per discovery page; does not cap total results (max limit 1000 enforced by server) (default 1000)
   -b, --bpmn-process-id string    BPMN process ID to filter process instances
   -h, --help                      help for process-definition
   -k, --key string                process definition key to fetch
-      --latest                    fetch the latest version(s) of the given BPMN process(s)
+      --latest                    only include the latest matching process-definition version per exact tenant/BPMN process group
       --pd-version int32          process definition version
       --pd-version-tag string     process definition version tag
       --stat                      include process definition statistics; 8.8 or newer includes incident counts, 8.7 unsupported
-      --watch                     repeat the process-definition lookup as a repainted terminal view until interrupted, timed out, or retry-exhausted
+      --watch                     repeat the process-definition lookup until interrupted, timed out, or retries are exhausted
       --watch-interval duration   interval between process-definition watch refreshes after the immediate first refresh (default 1s)
       --xml                       output the selected process definition as raw XML (requires --key and no other filters)
 ```
@@ -69,6 +56,7 @@ c8volt get process-definition [flags]
 ### Options inherited from parent commands
 
 ```
+      --all-tenants        clear configured tenant filtering and search all tenants visible to the authenticated user; mutually exclusive with --tenant
   -y, --auto-confirm       auto-confirm prompts for non-interactive use
       --automation         enable non-interactive mode for commands that explicitly support it
       --config string      path to config file
@@ -79,7 +67,7 @@ c8volt get process-definition [flags]
       --no-indicator       disable transient terminal activity indicators
       --profile string     config active profile name to use (e.g. dev, prod)
   -q, --quiet              suppress output except errors
-      --tenant string      tenant ID for discovery/search, selection, create, deploy, and run flows; explicit keys/IDs remain backend-authorized
+      --tenant string      tenant ID for discovery/search, selection, create, deploy, and run flows; explicit empty values can clear configured discovery filters, and explicit keys/IDs remain backend-authorized
       --timeout duration   HTTP request timeout (default 30s)
   -v, --verbose            show additional output
 ```

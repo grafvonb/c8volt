@@ -224,6 +224,110 @@ func TestService_SearchProcessDefinitions(t *testing.T) {
 	}
 }
 
+// TestService_SearchProcessDefinitions_RequestsCanonicalSortAndNormalizesResults
+// verifies v8.8 asks Camunda for the strongest stable order and still protects
+// callers from shuffled backend results.
+func TestService_SearchProcessDefinitions_RequestsCanonicalSortAndNormalizesResults(t *testing.T) {
+	ctx := context.Background()
+	m := &mockProcessDefinitionClient{}
+
+	resp := &camundav88.SearchProcessDefinitionsResponse{
+		HTTPResponse: newHTTPResponse(http.MethodPost, "https://example.com/v2/process-definitions", http.StatusOK, "200 OK"),
+		JSON200: &camundav88.ProcessDefinitionSearchQueryResult{
+			Items: []camundav88.ProcessDefinitionResult{
+				makeTenantProcessDefinitionResult("tenant-b", "order", "202", 9),
+				makeTenantProcessDefinitionResult("tenant-a", "invoice", "10", 4),
+				makeTenantProcessDefinitionResult("tenant-a", "invoice", "2", 4),
+				makeTenantProcessDefinitionResult("tenant-a", "order", "111", 9),
+				makeTenantProcessDefinitionResult("tenant-a", "order", "112", 10),
+				makeTenantProcessDefinitionResult("tenant-b", "alpha", "301", 1),
+			},
+		},
+	}
+
+	m.On("SearchProcessDefinitionsWithResponse", mock.Anything, mock.Anything).
+		Run(func(args mock.Arguments) {
+			body := args.Get(1).(camundav88.SearchProcessDefinitionsJSONRequestBody)
+			assertV88ProcessDefinitionSort(t, body.Sort, []expectedV88Sort{
+				{field: camundav88.ProcessDefinitionSearchQuerySortRequestFieldTenantId, order: camundav88.ASC},
+				{field: camundav88.ProcessDefinitionSearchQuerySortRequestFieldProcessDefinitionId, order: camundav88.ASC},
+				{field: camundav88.ProcessDefinitionSearchQuerySortRequestFieldVersion, order: camundav88.DESC},
+				{field: camundav88.ProcessDefinitionSearchQuerySortRequestFieldProcessDefinitionKey, order: camundav88.ASC},
+			})
+		}).
+		Return(resp, nil)
+
+	svc, err := v88.New(testConfig(), &http.Client{}, slog.New(slog.NewTextHandler(io.Discard, nil)), v88.WithClientCamunda(m))
+	require.NoError(t, err)
+
+	defs, err := svc.SearchProcessDefinitions(ctx, domain.ProcessDefinitionFilter{}, 25, services.WithIgnoreTenant())
+
+	require.NoError(t, err)
+	require.Len(t, defs, 6)
+	assert.Equal(t, []string{"10", "2", "112", "111", "301", "202"}, processDefinitionKeys(defs))
+	m.AssertExpectations(t)
+}
+
+func TestService_SearchProcessDefinitionsWithStat_PreservesCanonicalOrderAndStatisticsByKey(t *testing.T) {
+	ctx := context.Background()
+	expectedKeys := []string{"10", "2", "112", "111", "301", "202"}
+	makeResp := func() *camundav88.SearchProcessDefinitionsResponse {
+		return &camundav88.SearchProcessDefinitionsResponse{
+			HTTPResponse: newHTTPResponse(http.MethodPost, "https://example.com/v2/process-definitions", http.StatusOK, "200 OK"),
+			JSON200: &camundav88.ProcessDefinitionSearchQueryResult{
+				Items: []camundav88.ProcessDefinitionResult{
+					makeTenantProcessDefinitionResult("tenant-b", "order", "202", 9),
+					makeTenantProcessDefinitionResult("tenant-a", "invoice", "10", 4),
+					makeTenantProcessDefinitionResult("tenant-a", "invoice", "2", 4),
+					makeTenantProcessDefinitionResult("tenant-a", "order", "111", 9),
+					makeTenantProcessDefinitionResult("tenant-a", "order", "112", 10),
+					makeTenantProcessDefinitionResult("tenant-b", "alpha", "301", 1),
+				},
+			},
+		}
+	}
+
+	mNoStat := &mockProcessDefinitionClient{}
+	mNoStat.On("SearchProcessDefinitionsWithResponse", mock.Anything, mock.Anything).Return(makeResp(), nil)
+	svcNoStat, err := v88.New(testConfig(), &http.Client{}, slog.New(slog.NewTextHandler(io.Discard, nil)), v88.WithClientCamunda(mNoStat))
+	require.NoError(t, err)
+
+	defsNoStat, err := svcNoStat.SearchProcessDefinitions(ctx, domain.ProcessDefinitionFilter{}, 25, services.WithIgnoreTenant())
+	require.NoError(t, err)
+	assert.Equal(t, expectedKeys, processDefinitionKeys(defsNoStat))
+	mNoStat.AssertExpectations(t)
+
+	mWithStat := &mockProcessDefinitionClient{}
+	mWithStat.On("SearchProcessDefinitionsWithResponse", mock.Anything, mock.Anything).Return(makeResp(), nil)
+	expectedStats := map[string]expectedProcessDefinitionStats{
+		"10":  {active: 10, completed: 11, canceled: 12, incidents: 13},
+		"2":   {active: 20, completed: 21, canceled: 22, incidents: 23},
+		"112": {active: 112, completed: 113, canceled: 114, incidents: 115},
+		"111": {active: 111, completed: 112, canceled: 113, incidents: 114},
+		"301": {active: 301, completed: 302, canceled: 303, incidents: 304},
+		"202": {active: 202, completed: 203, canceled: 204, incidents: 205},
+	}
+	for key, stats := range expectedStats {
+		mockProcessDefinitionStats(mWithStat, t, key, "", stats)
+	}
+	svcWithStat, err := v88.New(testConfig(), &http.Client{}, slog.New(slog.NewTextHandler(io.Discard, nil)), v88.WithClientCamunda(mWithStat))
+	require.NoError(t, err)
+
+	defsWithStat, err := svcWithStat.SearchProcessDefinitions(ctx, domain.ProcessDefinitionFilter{}, 25, services.WithIgnoreTenant(), services.WithStat())
+	require.NoError(t, err)
+	assert.Equal(t, processDefinitionKeys(defsNoStat), processDefinitionKeys(defsWithStat))
+	for _, def := range defsWithStat {
+		stats := expectedStats[def.Key]
+		require.NotNil(t, def.Statistics, "missing statistics for key %s", def.Key)
+		assert.Equal(t, stats.active, def.Statistics.Active, "active count for key %s", def.Key)
+		assert.Equal(t, stats.completed, def.Statistics.Completed, "completed count for key %s", def.Key)
+		assert.Equal(t, stats.canceled, def.Statistics.Canceled, "canceled count for key %s", def.Key)
+		assert.Equal(t, stats.incidents, def.Statistics.Incidents, "incident count for key %s", def.Key)
+		assert.True(t, def.Statistics.IncidentCountSupported, "incident support for key %s", def.Key)
+	}
+	mWithStat.AssertExpectations(t)
+}
+
 // TestService_SearchProcessDefinitionsWithStat_UsesActivityIndicator verifies stats retrieval exposes progress activity.
 func TestService_SearchProcessDefinitionsWithStat_UsesActivityIndicator(t *testing.T) {
 	sink := &activitysink.Sink{}
@@ -283,8 +387,8 @@ func TestService_SearchProcessDefinitionsLatestForcesLatest(t *testing.T) {
 			assert.Equal(t, int32(1000), *page.Limit)
 			require.NotNil(t, body.Sort)
 			require.Len(t, *body.Sort, 2)
-			assert.Equal(t, camundav88.ProcessDefinitionSearchQuerySortRequestFieldProcessDefinitionId, (*body.Sort)[0].Field)
-			assert.Equal(t, camundav88.ProcessDefinitionSearchQuerySortRequestFieldTenantId, (*body.Sort)[1].Field)
+			assert.Equal(t, camundav88.ProcessDefinitionSearchQuerySortRequestFieldTenantId, (*body.Sort)[0].Field)
+			assert.Equal(t, camundav88.ProcessDefinitionSearchQuerySortRequestFieldProcessDefinitionId, (*body.Sort)[1].Field)
 		}).
 		Return(resp, nil)
 	mockProcessInstanceStateCount(m, t, "123", "", camundav88.ProcessInstanceStateEnumACTIVE, 7)
@@ -304,6 +408,78 @@ func TestService_SearchProcessDefinitionsLatestForcesLatest(t *testing.T) {
 	assert.Equal(t, int64(9), defs[0].Statistics.Canceled)
 	assert.Zero(t, defs[0].Statistics.Incidents)
 	assert.True(t, defs[0].Statistics.IncidentCountSupported)
+	m.AssertExpectations(t)
+}
+
+// TestService_SearchProcessDefinitionsPage_LatestUsesNativeFilterSortAndCursorMetadata
+// verifies v8.8 latest pages use native latest filtering, tenant/process
+// backend ordering, cursor paging, and continuation metadata across pages.
+func TestService_SearchProcessDefinitionsPage_LatestUsesNativeFilterSortAndCursorMetadata(t *testing.T) {
+	ctx := context.Background()
+	m := &mockProcessDefinitionClient{}
+	firstEnd := camundav88.EndCursor("cursor-1")
+	secondEnd := camundav88.EndCursor("cursor-2")
+	firstResp := &camundav88.SearchProcessDefinitionsResponse{
+		HTTPResponse: newHTTPResponse(http.MethodPost, "https://example.com/v2/process-definitions", http.StatusOK, "200 OK"),
+		JSON200: &camundav88.ProcessDefinitionSearchQueryResult{
+			Items: []camundav88.ProcessDefinitionResult{
+				makeTenantProcessDefinitionResult("tenant-b", "invoice", "201", 4),
+				makeTenantProcessDefinitionResult("tenant-a", "order", "101", 3),
+			},
+			Page: camundav88.SearchQueryPageResponse{
+				EndCursor:         &firstEnd,
+				HasMoreTotalItems: true,
+				TotalItems:        10000,
+			},
+		},
+	}
+	secondResp := &camundav88.SearchProcessDefinitionsResponse{
+		HTTPResponse: newHTTPResponse(http.MethodPost, "https://example.com/v2/process-definitions", http.StatusOK, "200 OK"),
+		JSON200: &camundav88.ProcessDefinitionSearchQueryResult{
+			Items: []camundav88.ProcessDefinitionResult{
+				makeTenantProcessDefinitionResult("tenant-b", "order", "202", 2),
+			},
+			Page: camundav88.SearchQueryPageResponse{
+				EndCursor:  &secondEnd,
+				TotalItems: 3,
+			},
+		},
+	}
+
+	m.On("SearchProcessDefinitionsWithResponse", mock.Anything, mock.Anything).
+		Run(func(args mock.Arguments) {
+			body := args.Get(1).(camundav88.SearchProcessDefinitionsJSONRequestBody)
+			assertV88LatestProcessDefinitionSearchBody(t, body, "", 2)
+		}).
+		Return(firstResp, nil).
+		Once()
+	m.On("SearchProcessDefinitionsWithResponse", mock.Anything, mock.Anything).
+		Run(func(args mock.Arguments) {
+			body := args.Get(1).(camundav88.SearchProcessDefinitionsJSONRequestBody)
+			assertV88LatestProcessDefinitionSearchBody(t, body, "cursor-1", 2)
+		}).
+		Return(secondResp, nil).
+		Once()
+
+	svc, err := v88.New(testConfig(), &http.Client{}, slog.New(slog.NewTextHandler(io.Discard, nil)), v88.WithClientCamunda(m))
+	require.NoError(t, err)
+	firstPage, err := svc.SearchProcessDefinitionsPage(ctx, domain.ProcessDefinitionFilter{IsLatestVersion: true}, domain.ProcessDefinitionPageRequest{Size: 2})
+	require.NoError(t, err)
+	secondPage, err := svc.SearchProcessDefinitionsPage(ctx, domain.ProcessDefinitionFilter{IsLatestVersion: true}, domain.ProcessDefinitionPageRequest{After: firstPage.EndCursor, Size: 2})
+
+	require.NoError(t, err)
+	assert.Equal(t, []string{"201", "101"}, processDefinitionKeys(firstPage.Items))
+	assert.Equal(t, domain.ProcessInstanceOverflowStateHasMore, firstPage.OverflowState)
+	assert.Equal(t, "cursor-1", firstPage.EndCursor)
+	require.NotNil(t, firstPage.ReportedTotal)
+	assert.Equal(t, int64(10000), firstPage.ReportedTotal.Count)
+	assert.Equal(t, domain.ProcessDefinitionReportedTotalKindLowerBound, firstPage.ReportedTotal.Kind)
+	assert.Equal(t, []string{"202"}, processDefinitionKeys(secondPage.Items))
+	assert.Equal(t, domain.ProcessInstanceOverflowStateNoMore, secondPage.OverflowState)
+	assert.Equal(t, "cursor-2", secondPage.EndCursor)
+	require.NotNil(t, secondPage.ReportedTotal)
+	assert.Equal(t, int64(3), secondPage.ReportedTotal.Count)
+	assert.Equal(t, domain.ProcessDefinitionReportedTotalKindExact, secondPage.ReportedTotal.Kind)
 	m.AssertExpectations(t)
 }
 
@@ -713,6 +889,68 @@ func makeProcessDefinitionResult(id, key string, version int32) camundav88.Proce
 	}
 }
 
+// makeTenantProcessDefinitionResult creates a v8.8 fixture with all canonical
+// sort fields populated.
+func makeTenantProcessDefinitionResult(tenantID, id, key string, version int32) camundav88.ProcessDefinitionResult {
+	pd := makeProcessDefinitionResult(id, key, version)
+	pd.TenantId = tenantID
+	return pd
+}
+
+type expectedV88Sort struct {
+	field camundav88.ProcessDefinitionSearchQuerySortRequestField
+	order camundav88.SortOrderEnum
+}
+
+type expectedProcessDefinitionStats struct {
+	active    int64
+	completed int64
+	canceled  int64
+	incidents int64
+}
+
+// assertV88ProcessDefinitionSort checks the exact Camunda sort tuple used to
+// stabilize v8.8 process-definition paging.
+func assertV88ProcessDefinitionSort(t *testing.T, got *[]camundav88.ProcessDefinitionSearchQuerySortRequest, want []expectedV88Sort) {
+	t.Helper()
+
+	require.NotNil(t, got)
+	require.Len(t, *got, len(want))
+	for i, expected := range want {
+		require.NotNil(t, (*got)[i].Order)
+		assert.Equal(t, expected.field, (*got)[i].Field)
+		assert.Equal(t, expected.order, *(*got)[i].Order)
+	}
+}
+
+func assertV88LatestProcessDefinitionSearchBody(t *testing.T, body camundav88.SearchProcessDefinitionsJSONRequestBody, after string, limit int32) {
+	t.Helper()
+
+	require.NotNil(t, body.Filter)
+	require.NotNil(t, body.Filter.IsLatestVersion)
+	assert.True(t, *body.Filter.IsLatestVersion)
+	assertV88ProcessDefinitionSort(t, body.Sort, []expectedV88Sort{
+		{field: camundav88.ProcessDefinitionSearchQuerySortRequestFieldTenantId, order: camundav88.ASC},
+		{field: camundav88.ProcessDefinitionSearchQuerySortRequestFieldProcessDefinitionId, order: camundav88.ASC},
+	})
+	require.NotNil(t, body.Page)
+	page, err := body.Page.AsCursorForwardPagination()
+	require.NoError(t, err)
+	assert.Equal(t, camundav88.EndCursor(after), page.After)
+	require.NotNil(t, page.Limit)
+	assert.Equal(t, limit, *page.Limit)
+}
+
+// processDefinitionKeys extracts keys in slice order for readable ordering
+// assertions.
+func processDefinitionKeys(defs []domain.ProcessDefinition) []string {
+	keys := make([]string, 0, len(defs))
+	for _, def := range defs {
+		keys = append(keys, def.Key)
+	}
+	return keys
+}
+
 func makeSearchProcessInstancesResponse(total int64) *camundav88.SearchProcessInstancesResponse {
 	return makeSearchProcessInstancesPageResponse(total, false, 0, "")
 }
@@ -755,6 +993,13 @@ func mockProcessInstanceIncidentCount(m *mockProcessDefinitionClient, t *testing
 	m.On("SearchProcessInstancesWithResponse", mock.Anything, mock.MatchedBy(func(body camundav88.SearchProcessInstancesJSONRequestBody) bool {
 		return processInstanceIncidentSearchMatches(body, processDefinitionKey, tenantID)
 	})).Return(makeSearchProcessInstancesResponse(total), nil).Once()
+}
+
+func mockProcessDefinitionStats(m *mockProcessDefinitionClient, t *testing.T, processDefinitionKey, tenantID string, stats expectedProcessDefinitionStats) {
+	mockProcessInstanceStateCount(m, t, processDefinitionKey, tenantID, camundav88.ProcessInstanceStateEnumACTIVE, stats.active)
+	mockProcessInstanceStateCount(m, t, processDefinitionKey, tenantID, camundav88.ProcessInstanceStateEnumCOMPLETED, stats.completed)
+	mockProcessInstanceStateCount(m, t, processDefinitionKey, tenantID, camundav88.ProcessInstanceStateEnum(domain.StateTerminated), stats.canceled)
+	mockProcessInstanceIncidentCount(m, t, processDefinitionKey, tenantID, stats.incidents)
 }
 
 func processInstanceSearchMatches(body camundav88.SearchProcessInstancesJSONRequestBody, processDefinitionKey, tenantID string, expectedState camundav88.ProcessInstanceStateEnum) bool {

@@ -47,6 +47,8 @@ c8volt walk process-instance --key <created-process-instance-key>
 
 Generated references: [config test-connection](/cli/c8volt_config_test-connection), [run process-instance](/cli/c8volt_run_process-instance), [walk process-instance](/cli/c8volt_walk_process-instance), [delete process-instance](/cli/c8volt_delete_process-instance).
 
-## Output And Safety
+## Safety
 
 `--dry-run` reports the planned smoke-test steps without mutation. Real execution creates c8volt-owned runtime data and cleans it up unless `--no-cleanup` is supplied. On Camunda 8.8, prefer `--no-cleanup` because full process-definition deletion is supported by c8volt from Camunda 8.9 onward.
+
+Creation uses the configured tenant, or the default tenant when none is configured. This workflow rejects `--all-tenants`, including with `--dry-run`, because it requires one destination tenant.

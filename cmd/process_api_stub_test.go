@@ -36,6 +36,7 @@ type stubProcessAPI struct {
 	enrichProcessInstanceVars        func(context.Context, process.ProcessInstances, ...options.FacadeOption) (process.VariableEnrichedProcessInstances, error)
 	enrichProcessInstanceElements    func(context.Context, process.ProcessInstances, ...options.FacadeOption) (process.ElementEnrichedProcessInstances, error)
 	enrichProcessInstanceListeners   func(context.Context, process.ProcessInstances, ...options.FacadeOption) (process.ElementEnrichedProcessInstances, error)
+	searchProcessInstanceVariables   func(context.Context, string, ...options.FacadeOption) ([]process.ProcessInstanceVariable, error)
 	updateProcessInstancesVars       func(context.Context, types.Keys, map[string]any, int, ...options.FacadeOption) (process.ProcessInstanceVariableUpdateResults, error)
 	resolveProcessInstancesIncidents func(context.Context, types.Keys, int, ...options.FacadeOption) (incident.ProcessInstanceResolutionResults, error)
 }
@@ -169,10 +170,21 @@ func (s stubProcessAPI) SearchProcessDefinitionsLatest(ctx context.Context, filt
 }
 
 func (s stubProcessAPI) SearchProcessDefinitionsPages(ctx context.Context, request process.ProcessDefinitionSearchRequest, visitor process.ProcessDefinitionSearchPageVisitor, opts ...options.FacadeOption) (process.ProcessDefinitionSearchPagesResult, error) {
-	if s.searchProcessDefinitionsPages == nil {
-		panic("unexpected call")
+	if s.searchProcessDefinitionsPages != nil {
+		return s.searchProcessDefinitionsPages(ctx, request, visitor, opts...)
 	}
-	return s.searchProcessDefinitionsPages(ctx, request, visitor, opts...)
+	if s.searchProcessDefinitions != nil {
+		pds, err := s.searchProcessDefinitions(ctx, request.Filter, opts...)
+		if err != nil {
+			return process.ProcessDefinitionSearchPagesResult{}, err
+		}
+		items := pds.Items
+		if len(items) == 0 && pds.Total > 0 {
+			items = []process.ProcessDefinition{{}}
+		}
+		return process.ProcessDefinitionSearchPagesResult{Items: items}, nil
+	}
+	panic("unexpected call")
 }
 
 func (s stubProcessAPI) CollectProcessDefinitionWatchSnapshot(ctx context.Context, request process.ProcessDefinitionWatchSnapshotRequest, opts ...options.FacadeOption) (process.ProcessDefinitionWatchSnapshot, error) {
@@ -259,8 +271,11 @@ func (s stubProcessAPI) ResolveProcessInstancesIncidents(ctx context.Context, ke
 	return s.resolveProcessInstancesIncidents(ctx, keys, wantedWorkers, opts...)
 }
 
-func (stubProcessAPI) SearchProcessInstanceVariables(context.Context, string, ...options.FacadeOption) ([]process.ProcessInstanceVariable, error) {
-	panic("unexpected call")
+func (s stubProcessAPI) SearchProcessInstanceVariables(ctx context.Context, key string, opts ...options.FacadeOption) ([]process.ProcessInstanceVariable, error) {
+	if s.searchProcessInstanceVariables == nil {
+		panic("unexpected call")
+	}
+	return s.searchProcessInstanceVariables(ctx, key, opts...)
 }
 
 func (stubProcessAPI) UpdateProcessInstanceVariables(context.Context, process.ProcessInstanceVariableUpdateRequest, ...options.FacadeOption) (process.ProcessInstanceVariableUpdateResult, error) {

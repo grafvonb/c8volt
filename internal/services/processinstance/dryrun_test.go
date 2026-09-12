@@ -340,6 +340,216 @@ func TestPlanProcessInstanceMutationPages_ProgressContractPendingT064(t *testing
 	require.Equal(t, 2, events[3].FrozenScope.Total)
 }
 
+// TestPlanProcessInstanceMutationPages_MergesTenantEvidenceAcrossPages proves
+// search-selected planning deduplicates affected tenant evidence across page
+// boundaries without making enrichment calls.
+func TestPlanProcessInstanceMutationPages_MergesTenantEvidenceAcrossPages(t *testing.T) {
+	ctx := context.Background()
+	var searchedFrom []int32
+
+	api := stubDryRunProcessInstanceAPI{
+		searchForProcessInstancesPage: func(_ context.Context, _ d.ProcessInstanceFilter, page d.ProcessInstancePageRequest, _ ...services.CallOption) (d.ProcessInstancePage, error) {
+			searchedFrom = append(searchedFrom, page.From)
+			switch page.From {
+			case 0:
+				return d.ProcessInstancePage{
+					Items: []d.ProcessInstance{
+						{Key: "child-1", TenantId: "tenant-b", State: d.StateActive},
+					},
+					Request:       page,
+					OverflowState: d.ProcessInstanceOverflowStateHasMore,
+				}, nil
+			case 1:
+				return d.ProcessInstancePage{
+					Items: []d.ProcessInstance{
+						{Key: "child-2", TenantId: "tenant-a", State: d.StateActive},
+					},
+					Request:       page,
+					OverflowState: d.ProcessInstanceOverflowStateNoMore,
+				}, nil
+			default:
+				t.Fatalf("unexpected search page offset %d", page.From)
+				return d.ProcessInstancePage{}, nil
+			}
+		},
+		ancestryResult: func(_ context.Context, key string, _ ...services.CallOption) (pitraversal.Result, error) {
+			return pitraversal.Result{
+				Mode:     pitraversal.ModeAncestry,
+				StartKey: key,
+				RootKey:  "root-shared",
+				Keys:     []string{key, "root-shared"},
+				Chain: map[string]d.ProcessInstance{
+					key:           {Key: key, TenantId: map[string]string{"child-1": "tenant-b", "child-2": "tenant-a"}[key], State: d.StateActive},
+					"root-shared": {Key: "root-shared", TenantId: "tenant-a", State: d.StateActive},
+				},
+				Outcome: pitraversal.OutcomeComplete,
+			}, nil
+		},
+		descendantsResult: func(_ context.Context, root string, _ ...services.CallOption) (pitraversal.Result, error) {
+			require.Equal(t, "root-shared", root)
+			return pitraversal.Result{
+				Mode:     pitraversal.ModeDescendants,
+				StartKey: root,
+				RootKey:  root,
+				Keys:     []string{"root-shared", "child-1", "child-2", "unknown-child"},
+				Chain: map[string]d.ProcessInstance{
+					"root-shared":   {Key: "root-shared", TenantId: "tenant-a", State: d.StateActive},
+					"child-1":       {Key: "child-1", TenantId: "tenant-b", State: d.StateActive},
+					"child-2":       {Key: "child-2", TenantId: "tenant-a", State: d.StateActive},
+					"unknown-child": {Key: "unknown-child", State: d.StateActive},
+				},
+				Outcome: pitraversal.OutcomeComplete,
+			}, nil
+		},
+	}
+
+	got, err := PlanProcessInstanceMutationPages(ctx, api, stubDryRunIncidentAPI{}, d.ProcessInstanceMutationPlanRequest{
+		SearchRequest: d.ProcessInstanceSearchRequest{
+			Page: d.ProcessInstancePageRequest{Size: 1},
+		},
+		Workers: 1,
+	}, nil)
+
+	require.NoError(t, err)
+	require.Equal(t, []int32{0, 1}, searchedFrom)
+	require.Equal(t, d.TenantEvidence{
+		ResolvedTenantIDs:  []string{"tenant-a", "tenant-b"},
+		UnknownTargetCount: 1,
+		TargetCount:        4,
+		Targets: []d.TenantEvidenceTarget{
+			{Key: "root-shared", TenantID: "tenant-a"},
+			{Key: "child-1", TenantID: "tenant-b"},
+			{Key: "child-2", TenantID: "tenant-a"},
+			{Key: "unknown-child"},
+		},
+	}, got.TenantEvidence)
+}
+
+// TestDryRunCancelOrDeletePlan_RetainsTenantEvidenceFromTraversalChains proves
+// dry-run plans preserve actual tenant metadata already present in traversal data.
+func TestDryRunCancelOrDeletePlan_RetainsTenantEvidenceFromTraversalChains(t *testing.T) {
+	ctx := context.Background()
+
+	api := stubDryRunProcessInstanceAPI{
+		ancestryResult: func(_ context.Context, key string, _ ...services.CallOption) (pitraversal.Result, error) {
+			return pitraversal.Result{
+				Mode:     pitraversal.ModeAncestry,
+				StartKey: key,
+				RootKey:  "root-1",
+				Keys:     []string{key, "root-1"},
+				Chain: map[string]d.ProcessInstance{
+					key:      {Key: key, TenantId: "tenant-b", State: d.StateActive},
+					"root-1": {Key: "root-1", TenantId: "tenant-a", State: d.StateActive},
+				},
+				Outcome: pitraversal.OutcomeComplete,
+			}, nil
+		},
+		descendantsResult: func(_ context.Context, root string, _ ...services.CallOption) (pitraversal.Result, error) {
+			require.Equal(t, "root-1", root)
+			return pitraversal.Result{
+				Mode:    pitraversal.ModeDescendants,
+				RootKey: root,
+				Keys:    []string{root, "child-1"},
+				Chain: map[string]d.ProcessInstance{
+					root:      {Key: root, TenantId: "tenant-a", State: d.StateActive},
+					"child-1": {Key: "child-1", TenantId: "tenant-b", State: d.StateActive},
+				},
+				Outcome: pitraversal.OutcomeComplete,
+			}, nil
+		},
+	}
+
+	got, err := DryRunCancelOrDeletePlan(ctx, api, typex.Keys{"child-1"}, 1, services.WithIgnoreTenant())
+
+	require.NoError(t, err)
+	require.Equal(t, d.TenantEvidence{
+		ResolvedTenantIDs:  []string{"tenant-a", "tenant-b"},
+		UnknownTargetCount: 0,
+		TargetCount:        2,
+		Targets: []d.TenantEvidenceTarget{
+			{Key: "root-1", TenantID: "tenant-a"},
+			{Key: "child-1", TenantID: "tenant-b"},
+		},
+	}, got.TenantEvidence)
+}
+
+// TestDryRunCancelOrDeletePlan_MarksMissingTraversalTenantMetadataUnknown proves
+// unavailable tenant fields remain unknown instead of being inferred as default.
+func TestDryRunCancelOrDeletePlan_MarksMissingTraversalTenantMetadataUnknown(t *testing.T) {
+	ctx := context.Background()
+
+	api := stubDryRunProcessInstanceAPI{
+		ancestryResult: func(_ context.Context, key string, _ ...services.CallOption) (pitraversal.Result, error) {
+			return pitraversal.Result{
+				Mode:     pitraversal.ModeAncestry,
+				StartKey: key,
+				RootKey:  "root-1",
+				Keys:     []string{key, "root-1"},
+				Chain: map[string]d.ProcessInstance{
+					key:      {Key: key, State: d.StateActive},
+					"root-1": {Key: "root-1", State: d.StateActive},
+				},
+				Outcome: pitraversal.OutcomeComplete,
+			}, nil
+		},
+		descendantsResult: func(_ context.Context, root string, _ ...services.CallOption) (pitraversal.Result, error) {
+			return pitraversal.Result{
+				Mode:    pitraversal.ModeDescendants,
+				RootKey: root,
+				Keys:    []string{root, "child-1"},
+				Chain: map[string]d.ProcessInstance{
+					root:      {Key: root, State: d.StateActive},
+					"child-1": {Key: "child-1", State: d.StateActive},
+				},
+				Outcome: pitraversal.OutcomeComplete,
+			}, nil
+		},
+	}
+
+	got, err := DryRunCancelOrDeletePlan(ctx, api, typex.Keys{"child-1"}, 1, services.WithIgnoreTenant())
+
+	require.NoError(t, err)
+	require.Equal(t, d.TenantEvidence{
+		ResolvedTenantIDs:  []string{},
+		UnknownTargetCount: 2,
+		TargetCount:        2,
+		Targets: []d.TenantEvidenceTarget{
+			{Key: "root-1"},
+			{Key: "child-1"},
+		},
+	}, got.TenantEvidence)
+}
+
+// TestDryRunCancelOrDeletePlan_LegacyKeyOnlyTenantEvidenceUnknown proves the
+// v8.7 key-only traversal path does not perform enrichment requests for tenants.
+func TestDryRunCancelOrDeletePlan_LegacyKeyOnlyTenantEvidenceUnknown(t *testing.T) {
+	ctx := context.Background()
+
+	api := legacyDryRunProcessInstanceAPI{
+		ancestry: func(_ context.Context, key string, _ ...services.CallOption) (string, []string, map[string]d.ProcessInstance, error) {
+			require.Equal(t, "child-1", key)
+			return "root-1", []string{"child-1", "root-1"}, nil, nil
+		},
+		descendants: func(_ context.Context, root string, _ ...services.CallOption) ([]string, map[string][]string, map[string]d.ProcessInstance, error) {
+			require.Equal(t, "root-1", root)
+			return []string{"root-1", "child-1"}, nil, nil, nil
+		},
+	}
+
+	got, err := DryRunCancelOrDeletePlan(ctx, api, typex.Keys{"child-1"}, 1, services.WithIgnoreTenant())
+
+	require.NoError(t, err)
+	require.Equal(t, d.TenantEvidence{
+		ResolvedTenantIDs:  []string{},
+		UnknownTargetCount: 2,
+		TargetCount:        2,
+		Targets: []d.TenantEvidenceTarget{
+			{Key: "root-1"},
+			{Key: "child-1"},
+		},
+	}, got.TenantEvidence)
+}
+
 func waitForDryRunOverlap(t *testing.T, active, max *atomic.Int32, released *atomic.Bool, release chan struct{}, phase string) func() {
 	t.Helper()
 	current := active.Add(1)
@@ -476,4 +686,32 @@ func (stubDryRunIncidentAPI) SearchIncidentsPage(context.Context, d.IncidentFilt
 
 func (stubDryRunIncidentAPI) SearchProcessInstanceIncidents(context.Context, string, ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error) {
 	return nil, errors.New("unexpected process instance incident search")
+}
+
+// legacyDryRunProcessInstanceAPI opts into key-only traversal for legacy dry-run coverage.
+type legacyDryRunProcessInstanceAPI struct {
+	stubDryRunProcessInstanceAPI
+	ancestry    func(context.Context, string, ...services.CallOption) (string, []string, map[string]d.ProcessInstance, error)
+	descendants func(context.Context, string, ...services.CallOption) ([]string, map[string][]string, map[string]d.ProcessInstance, error)
+}
+
+// LegacyDryRunTraversalOnly routes the test double through the v8.7 key-only dry-run path.
+func (s legacyDryRunProcessInstanceAPI) LegacyDryRunTraversalOnly() bool {
+	return true
+}
+
+// Ancestry returns the configured legacy ancestry response without tenant evidence.
+func (s legacyDryRunProcessInstanceAPI) Ancestry(ctx context.Context, key string, opts ...services.CallOption) (string, []string, map[string]d.ProcessInstance, error) {
+	if s.ancestry == nil {
+		return "", nil, nil, errors.New("unexpected legacy ancestry")
+	}
+	return s.ancestry(ctx, key, opts...)
+}
+
+// Descendants returns the configured legacy descendants response without tenant evidence.
+func (s legacyDryRunProcessInstanceAPI) Descendants(ctx context.Context, root string, opts ...services.CallOption) ([]string, map[string][]string, map[string]d.ProcessInstance, error) {
+	if s.descendants == nil {
+		return nil, nil, nil, errors.New("unexpected legacy descendants")
+	}
+	return s.descendants(ctx, root, opts...)
 }

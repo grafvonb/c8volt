@@ -9,6 +9,8 @@ import (
 	"github.com/grafvonb/c8volt/c8volt/incident"
 	"github.com/grafvonb/c8volt/c8volt/ops"
 	"github.com/grafvonb/c8volt/c8volt/process"
+	"github.com/grafvonb/c8volt/c8volt/tenant"
+	"github.com/grafvonb/c8volt/config"
 	"github.com/grafvonb/c8volt/typex"
 	"github.com/spf13/cobra"
 )
@@ -16,13 +18,9 @@ import (
 var opsRepairCmd = &cobra.Command{
 	Use:   "repair",
 	Short: "Discover repair and remediation workflows",
-	Long: `Discover repair and remediation workflows.
+	Long: `Repair incidents and affected process instances.
 
-The repair command group lists target-specific remediation workflows for
-incidents and process-instance selected incidents. Use a concrete target command
-to provide keys, filters, dry-run controls, variable updates, job repair
-options, and audit reports. This grouping command does not define target keys or
-run remediation behavior by itself.`,
+Choose a target command to select resources, update variables or jobs, resolve incidents, and verify recovery.`,
 	Example: `  ./c8volt ops repair --help
   ./c8volt capabilities --json`,
 	Args: cobra.NoArgs,
@@ -98,4 +96,22 @@ func opsRepairConfirmationPrompt(planned ops.RepairResult) string {
 			variableScopes,
 		)
 	}
+}
+
+// attachOpsRepairResultTenantContext freezes repair tenant context before
+// command result rendering.
+func attachOpsRepairResultTenantContext(cmd *cobra.Command, cfg *config.Config, result ops.RepairResult) ops.RepairResult {
+	ctx := attachOpsRepairTenantContext(cmd, cfg, result)
+	result.Report.TenantContext = cloneTenantContextPtr(ctx)
+	result.Report.TenantID = opsLegacyTenantIDForContext(result.Report.TenantContext)
+	return result
+}
+
+// attachOpsRepairTenantContext chooses discovery context for repair search mode
+// and explicit-key context for key or stdin repair modes.
+func attachOpsRepairTenantContext(cmd *cobra.Command, cfg *config.Config, result ops.RepairResult) tenant.Context {
+	if result.Request.DiscoveryMode == ops.RepairDiscoveryModeSearch {
+		return attachOpsDiscoveryTenantContext(cmd, cfg, result.FrozenSet.TenantEvidence)
+	}
+	return attachOpsExplicitKeysTenantContext(cmd, cfg, result.FrozenSet.TenantEvidence)
 }

@@ -10,9 +10,7 @@ var resolveCmd = &cobra.Command{
 	Short: "Resolve operational incidents",
 	Long: `Resolve operational incidents.
 
-The incident command resolves known incident keys and reports each target
-independently. Resolution is state-changing and waits for confirmation by
-default unless a leaf command supports an explicit opt-out.`,
+Choose incident keys or process-instance families. Resolution changes state and waits for clearance unless --no-wait is set.`,
 	Example: `  ./c8volt resolve incident --key <incident-key>
   ./c8volt resolve incident --key <incident-key> --key <another-incident-key>
   printf '%s\n' "$INCIDENT_KEY_A" "$INCIDENT_KEY_B" | ./c8volt resolve incident -`,

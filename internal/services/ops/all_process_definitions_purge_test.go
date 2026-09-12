@@ -463,7 +463,7 @@ func TestPurgeAllProcessDefinitionsDiscoveryEmitsProgress(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, d.AllProcessDefinitionsPurgeOutcomePlanned, got.Outcome)
 	require.Len(t, requests, 2)
-	require.Len(t, events, 3)
+	require.Len(t, events, 4)
 	require.Equal(t, d.OpsProgressEventKindPreflight, events[0].Kind)
 	require.NotNil(t, events[0].Preflight)
 	require.Equal(t, "preflight", events[0].Preflight.Phase)
@@ -496,6 +496,10 @@ func TestPurgeAllProcessDefinitionsDiscoveryEmitsProgress(t *testing.T) {
 	require.Equal(t, d.OpsPageCountKindExact, events[2].Page.PageCountKind)
 	require.Equal(t, 2, events[2].Page.Seen)
 	require.Equal(t, 2, events[2].Page.Selected)
+
+	require.Equal(t, d.OpsProgressEventKindTenantScope, events[3].Kind)
+	require.NotNil(t, events[3].TenantScope)
+	require.Equal(t, 2, events[3].TenantScope.Evidence.TargetCount)
 }
 
 // TestPurgeAllProcessDefinitionsLimitStopsAfterFrozenScopeCap keeps --batch-size distinct from the total cap.
@@ -625,6 +629,197 @@ func TestPurgeAllProcessDefinitionsBuildsDeletePlan(t *testing.T) {
 	require.True(t, got.DeletePlan.RequiresForce)
 	require.Equal(t, d.OpsWorkflowStepStatusSkipped, got.Deletion.Status)
 	require.Equal(t, got.DeletePlan, got.Report.DeletePlan)
+}
+
+// TestPurgeAllProcessDefinitionsAggregatesTenantEvidenceFromFrozenPreview
+// proves APD purge preserves delete-pd preview evidence without extra lookups.
+func TestPurgeAllProcessDefinitionsAggregatesTenantEvidenceFromFrozenPreview(t *testing.T) {
+	t.Parallel()
+
+	getCalls := 0
+	got, err := NewWithProcessDefinitionPurge(
+		stubProcessInstanceAPI{},
+		nil,
+		stubProcessDefinitionAPI{
+			getProcessDefinition: func(_ context.Context, key string, opts ...services.CallOption) (d.ProcessDefinition, error) {
+				getCalls++
+				require.True(t, services.ApplyCallOptions(opts).WithStat)
+				tenants := map[string]string{
+					"pd-a": "tenant-b",
+					"pd-b": "tenant-a",
+				}
+				return d.ProcessDefinition{
+					Key:        key,
+					TenantId:   tenants[key],
+					Statistics: &d.ProcessDefinitionStatistics{},
+				}, nil
+			},
+		},
+		stubResourceAPI{},
+	).PurgeAllProcessDefinitions(context.Background(), d.AllProcessDefinitionsPurgeRequest{
+		DryRun: true,
+		DiscoveredCandidateProcessDefinitionKeys: typex.Keys{
+			"pd-a",
+			"pd-b",
+			"pd-missing-tenant",
+		},
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, 3, getCalls)
+	require.Equal(t, d.TenantEvidence{
+		ResolvedTenantIDs:  []string{"tenant-a", "tenant-b"},
+		UnknownTargetCount: 1,
+		TargetCount:        3,
+		Targets: []d.TenantEvidenceTarget{
+			{Key: "pd-a", TenantID: "tenant-b"},
+			{Key: "pd-b", TenantID: "tenant-a"},
+			{Key: "pd-missing-tenant"},
+		},
+	}, got.DeletePlan.TenantEvidence)
+	require.Equal(t, got.DeletePlan.TenantEvidence, got.Report.DeletePlan.TenantEvidence)
+}
+
+// TestPurgeAllProcessDefinitionsEmitsTenantScopeBeforeDeletion verifies the
+// validated scope is delivered once before mutation without exposing plan slices.
+func TestPurgeAllProcessDefinitionsEmitsTenantScopeBeforeDeletion(t *testing.T) {
+	t.Parallel()
+
+	var events []d.OpsProgressEvent
+	deleted := false
+	planningGets := 0
+	got, err := NewWithProcessDefinitionPurge(
+		stubProcessInstanceAPI{},
+		nil,
+		stubProcessDefinitionAPI{
+			getProcessDefinition: func(_ context.Context, key string, opts ...services.CallOption) (d.ProcessDefinition, error) {
+				if services.ApplyCallOptions(opts).WithStat {
+					if deleted {
+						return d.ProcessDefinition{}, d.ErrNotFound
+					}
+					planningGets++
+					return d.ProcessDefinition{Key: key, TenantId: "tenant-a", Statistics: &d.ProcessDefinitionStatistics{}}, nil
+				}
+				require.True(t, deleted, "operational confirmation must follow deletion")
+				return d.ProcessDefinition{}, d.ErrNotFound
+			},
+		},
+		stubResourceAPI{
+			delete: func(_ context.Context, key string, _ ...services.CallOption) (d.ResourceDeleteResponse, error) {
+				require.Equal(t, "pd-a", key)
+				require.Len(t, events, 1, "tenant scope must precede the first deletion")
+				require.Equal(t, d.OpsProgressEventKindTenantScope, events[0].Kind)
+				deleted = true
+				return d.ResourceDeleteResponse{Ok: true, StatusCode: http.StatusNoContent, Status: "204 No Content", DeleteHistory: true}, nil
+			},
+		},
+	).PurgeAllProcessDefinitions(context.Background(), d.AllProcessDefinitionsPurgeRequest{
+		Workers:                                  1,
+		DiscoveredCandidateProcessDefinitionKeys: typex.Keys{"pd-a"},
+		Progress: func(event d.OpsProgressEvent) {
+			if event.Kind != d.OpsProgressEventKindTenantScope {
+				return
+			}
+			events = append(events, event)
+			event.TenantScope.Evidence.ResolvedTenantIDs[0] = "mutated"
+			event.TenantScope.Evidence.Targets[0].TenantID = "mutated"
+		},
+	})
+
+	require.NoError(t, err)
+	require.True(t, deleted)
+	require.Equal(t, 2, planningGets)
+	require.Len(t, events, 1)
+	require.Equal(t, []string{"pd-a"}, []string(got.Deletion.SubmittedProcessDefinitionKeys))
+	require.Equal(t, []string{"tenant-a"}, got.DeletePlan.TenantEvidence.ResolvedTenantIDs)
+	require.Equal(t, "tenant-a", got.DeletePlan.TenantEvidence.Targets[0].TenantID)
+}
+
+// TestPurgeAllProcessDefinitionsTenantScopeRequiresAValidatedPlan verifies
+// failed planning publishes no partial evidence while an empty scope publishes once.
+func TestPurgeAllProcessDefinitionsTenantScopeRequiresAValidatedPlan(t *testing.T) {
+	t.Parallel()
+
+	t.Run("failed planning", func(t *testing.T) {
+		t.Parallel()
+
+		tenantEvents := 0
+		got, err := NewWithProcessDefinitionPurge(
+			stubProcessInstanceAPI{},
+			nil,
+			stubProcessDefinitionAPI{
+				getProcessDefinition: func(context.Context, string, ...services.CallOption) (d.ProcessDefinition, error) {
+					return d.ProcessDefinition{}, errors.New("preview failed")
+				},
+			},
+			stubResourceAPI{},
+		).PurgeAllProcessDefinitions(context.Background(), d.AllProcessDefinitionsPurgeRequest{
+			DryRun:                                   true,
+			DiscoveredCandidateProcessDefinitionKeys: typex.Keys{"pd-a"},
+			Progress: func(event d.OpsProgressEvent) {
+				if event.Kind == d.OpsProgressEventKindTenantScope {
+					tenantEvents++
+				}
+			},
+		})
+
+		require.Error(t, err)
+		require.Equal(t, d.AllProcessDefinitionsPurgeOutcomeFailed, got.Outcome)
+		require.Zero(t, tenantEvents)
+	})
+
+	t.Run("empty frozen scope", func(t *testing.T) {
+		t.Parallel()
+
+		var scopes []d.TenantEvidence
+		got, err := NewWithProcessDefinitionPurge(
+			stubProcessInstanceAPI{}, nil, stubProcessDefinitionAPI{}, stubResourceAPI{},
+		).PurgeAllProcessDefinitions(context.Background(), d.AllProcessDefinitionsPurgeRequest{
+			DryRun:                                   true,
+			DiscoveredCandidateProcessDefinitionKeys: typex.Keys{},
+			Progress: func(event d.OpsProgressEvent) {
+				if event.Kind == d.OpsProgressEventKindTenantScope {
+					scopes = append(scopes, event.TenantScope.Evidence)
+				}
+			},
+		})
+
+		require.NoError(t, err)
+		require.Equal(t, d.AllProcessDefinitionsPurgeOutcomePlanned, got.Outcome)
+		require.Equal(t, []d.TenantEvidence{{}}, scopes)
+		require.Equal(t, d.OpsWorkflowStepStatusSkipped, got.DeletePlan.Status)
+	})
+}
+
+// TestOpsMergeTenantEvidencePreservesAggregateOnlyFallback verifies legacy
+// nested evidence without target records remains visible without inventing
+// synthetic targets or dropping its counts.
+func TestOpsMergeTenantEvidencePreservesAggregateOnlyFallback(t *testing.T) {
+	t.Parallel()
+
+	got := opsMergeTenantEvidence(
+		d.TenantEvidence{
+			ResolvedTenantIDs: []string{"tenant-b"},
+			TargetCount:       1,
+			Targets: []d.TenantEvidenceTarget{
+				{Key: "pd-1", TenantID: "tenant-b"},
+			},
+		},
+		d.TenantEvidence{
+			ResolvedTenantIDs:  []string{"tenant-a", "tenant-a"},
+			UnknownTargetCount: 1,
+			TargetCount:        3,
+		},
+	)
+
+	require.Equal(t, d.TenantEvidence{
+		ResolvedTenantIDs:  []string{"tenant-a", "tenant-b"},
+		UnknownTargetCount: 1,
+		TargetCount:        4,
+		Targets: []d.TenantEvidenceTarget{
+			{Key: "pd-1", TenantID: "tenant-b"},
+		},
+	}, got)
 }
 
 // TestPurgeAllProcessDefinitionsBlocksUnsafeActiveInstancesWithoutForce verifies destructive planning stops before mutation.
@@ -766,6 +961,7 @@ func TestPurgeAllProcessDefinitionsForceCleanupDeduplicatesProcessInstanceRoots(
 	var cancelled []string
 	var deletedPI []string
 	var deletedPD typex.Keys
+	var events []d.OpsProgressEvent
 	getCalls := map[string]int{}
 
 	got, err := NewWithProcessDefinitionPurge(
@@ -840,7 +1036,13 @@ func TestPurgeAllProcessDefinitionsForceCleanupDeduplicatesProcessInstanceRoots(
 				return d.ResourceDeleteResponse{Ok: true, StatusCode: http.StatusOK, Status: "200 OK", DeleteHistory: true}, nil
 			},
 		},
-	).PurgeAllProcessDefinitions(context.Background(), d.AllProcessDefinitionsPurgeRequest{Force: true, Workers: 1})
+	).PurgeAllProcessDefinitions(context.Background(), d.AllProcessDefinitionsPurgeRequest{
+		Force:   true,
+		Workers: 1,
+		Progress: func(event d.OpsProgressEvent) {
+			events = append(events, event)
+		},
+	})
 
 	require.NoError(t, err)
 	require.Equal(t, []string{"pi-root"}, cancelled)
@@ -849,6 +1051,200 @@ func TestPurgeAllProcessDefinitionsForceCleanupDeduplicatesProcessInstanceRoots(
 	require.EqualValues(t, 2, got.DeletePlan.ActiveProcessInstanceCount)
 	require.EqualValues(t, 3, got.DeletePlan.AffectedProcessInstanceCount)
 	require.Equal(t, d.AllProcessDefinitionsPurgeOutcomeDeleted, got.Outcome)
+	require.Equal(t, []string{
+		"stage:cancel",
+		"completion:cancel:pi-root",
+		"stage:drain process instances",
+		"stage:delete",
+		"completion:delete:pi-root",
+		"stage:delete process definitions",
+		"completion:delete process definitions:pd-a",
+		"completion:delete process definitions:pd-b",
+	}, opsMutationProgressSequence(events))
+	require.Equal(t, []d.OpsStageProgress{
+		{
+			Phase:                "cancel",
+			CoreResource:         "process-instance tree(s)",
+			Total:                opsIntPtr(1),
+			PlannedAffectedCount: opsIntPtr(3),
+		},
+		{
+			Phase: "drain process instances",
+		},
+		{
+			Phase:        "delete",
+			CoreResource: "process-instance tree(s)",
+			Total:        opsIntPtr(1),
+		},
+		{
+			Phase:        "delete process definitions",
+			CoreResource: "process definition(s)",
+			Total:        opsIntPtr(2),
+		},
+	}, opsStageProgress(events))
+	require.Equal(t, []d.OpsCompletionProgress{
+		{
+			Phase:            "cancel",
+			CoreResource:     "process-instance tree(s)",
+			Total:            1,
+			Identity:         "pi-root",
+			Disposition:      d.OpsCompletionDispositionConfirmed,
+			AffectedResource: "affected process instances",
+			AffectedCount:    opsIntPtr(3),
+		},
+	}, opsCompletionProgressByPhase(events, "cancel"))
+	require.Equal(t, []d.OpsCompletionProgress{
+		{
+			Phase:            "delete",
+			CoreResource:     "process-instance tree(s)",
+			Total:            1,
+			Identity:         "pi-root",
+			Disposition:      d.OpsCompletionDispositionConfirmed,
+			AffectedResource: "affected process instances",
+			AffectedCount:    opsIntPtr(3),
+		},
+	}, opsCompletionProgressByPhase(events, "delete"))
+	require.Equal(t, []d.OpsCompletionProgress{
+		{
+			Phase:        "delete process definitions",
+			CoreResource: "process definition(s)",
+			Total:        2,
+			Identity:     "pd-a",
+			Disposition:  d.OpsCompletionDispositionConfirmed,
+		},
+		{
+			Phase:        "delete process definitions",
+			CoreResource: "process definition(s)",
+			Total:        2,
+			Identity:     "pd-b",
+			Disposition:  d.OpsCompletionDispositionConfirmed,
+		},
+	}, opsCompletionProgressByPhase(events, "delete process definitions"))
+	require.Equal(t, []d.OpsFrozenScopeProgress{
+		{Phase: "cancelling process instances", CoreResource: "process instance(s)", Done: 0, Total: 1},
+		{Phase: "cancelling process instances", CoreResource: "process instance(s)", Done: 1, Total: 1},
+		{Phase: "deleting process instances", CoreResource: "process instance(s)", Done: 0, Total: 1},
+		{Phase: "deleting process instances", CoreResource: "process instance(s)", Done: 1, Total: 1},
+	}, opsFrozenScopeProgress(events))
+}
+
+// TestPurgeAllProcessDefinitionsForceCleanupWithoutActiveInstancesEntersDefinitionStageOnly
+// proves forced APD deletion with no cleanup scope does not manufacture PI cleanup progress.
+func TestPurgeAllProcessDefinitionsForceCleanupWithoutActiveInstancesEntersDefinitionStageOnly(t *testing.T) {
+	var deletedPD typex.Keys
+	var events []d.OpsProgressEvent
+
+	got, err := NewWithProcessDefinitionPurge(
+		stubProcessInstanceAPI{},
+		nil,
+		stubProcessDefinitionAPI{
+			searchProcessDefinitions: func(_ context.Context, _ d.ProcessDefinitionFilter, _ int32, _ ...services.CallOption) ([]d.ProcessDefinition, error) {
+				return []d.ProcessDefinition{
+					{Key: "pd-a", BpmnProcessId: "invoice", ProcessVersion: 2},
+					{Key: "pd-b", BpmnProcessId: "invoice", ProcessVersion: 1},
+				}, nil
+			},
+			getProcessDefinition: func(_ context.Context, key string, opts ...services.CallOption) (d.ProcessDefinition, error) {
+				cfg := services.ApplyCallOptions(opts)
+				if !cfg.WithStat && deletedPD.Contains(key) {
+					return d.ProcessDefinition{}, d.ErrNotFound
+				}
+				require.True(t, cfg.WithStat)
+				return d.ProcessDefinition{Key: key, Statistics: &d.ProcessDefinitionStatistics{}}, nil
+			},
+		},
+		stubResourceAPI{
+			delete: func(_ context.Context, resourceKey string, opts ...services.CallOption) (d.ResourceDeleteResponse, error) {
+				deletedPD = append(deletedPD, resourceKey)
+				require.True(t, services.ApplyCallOptions(opts).SuppressProcessInstanceDetailLogs)
+				return d.ResourceDeleteResponse{Ok: true, StatusCode: http.StatusOK, Status: "200 OK", DeleteHistory: true}, nil
+			},
+		},
+	).PurgeAllProcessDefinitions(context.Background(), d.AllProcessDefinitionsPurgeRequest{
+		Force:   true,
+		Workers: 1,
+		Progress: func(event d.OpsProgressEvent) {
+			events = append(events, event)
+		},
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, d.AllProcessDefinitionsPurgeOutcomeDeleted, got.Outcome)
+	require.Equal(t, typex.Keys{"pd-a", "pd-b"}, deletedPD)
+	require.Equal(t, []string{
+		"stage:delete process definitions",
+		"completion:delete process definitions:pd-a",
+		"completion:delete process definitions:pd-b",
+	}, opsMutationProgressSequence(events))
+	require.Equal(t, []d.OpsStageProgress{
+		{
+			Phase:        "delete process definitions",
+			CoreResource: "process definition(s)",
+			Total:        opsIntPtr(2),
+		},
+	}, opsStageProgress(events))
+	require.Empty(t, opsCompletionProgressByPhase(events, "cancel"))
+	require.Empty(t, opsCompletionProgressByPhase(events, "delete"))
+	require.Empty(t, opsFrozenScopeProgress(events))
+}
+
+// TestPurgeAllProcessDefinitionsNonForceDeletionEntersDefinitionStageOnly proves
+// APD non-force deletion uses the ordinary worker path and emits one definition stage entry.
+func TestPurgeAllProcessDefinitionsNonForceDeletionEntersDefinitionStageOnly(t *testing.T) {
+	var deletedPD typex.Keys
+	var events []d.OpsProgressEvent
+
+	got, err := NewWithProcessDefinitionPurge(
+		stubProcessInstanceAPI{},
+		nil,
+		stubProcessDefinitionAPI{
+			searchProcessDefinitions: func(_ context.Context, _ d.ProcessDefinitionFilter, _ int32, _ ...services.CallOption) ([]d.ProcessDefinition, error) {
+				return []d.ProcessDefinition{
+					{Key: "pd-a", BpmnProcessId: "invoice", ProcessVersion: 2},
+					{Key: "pd-b", BpmnProcessId: "invoice", ProcessVersion: 1},
+				}, nil
+			},
+			getProcessDefinition: func(_ context.Context, key string, opts ...services.CallOption) (d.ProcessDefinition, error) {
+				cfg := services.ApplyCallOptions(opts)
+				if !cfg.WithStat && deletedPD.Contains(key) {
+					return d.ProcessDefinition{}, d.ErrNotFound
+				}
+				require.True(t, cfg.WithStat)
+				return d.ProcessDefinition{Key: key, Statistics: &d.ProcessDefinitionStatistics{}}, nil
+			},
+		},
+		stubResourceAPI{
+			delete: func(_ context.Context, resourceKey string, opts ...services.CallOption) (d.ResourceDeleteResponse, error) {
+				deletedPD = append(deletedPD, resourceKey)
+				require.True(t, services.ApplyCallOptions(opts).SuppressProcessInstanceDetailLogs)
+				return d.ResourceDeleteResponse{Ok: true, StatusCode: http.StatusOK, Status: "200 OK", DeleteHistory: true}, nil
+			},
+		},
+	).PurgeAllProcessDefinitions(context.Background(), d.AllProcessDefinitionsPurgeRequest{
+		Workers: 1,
+		Progress: func(event d.OpsProgressEvent) {
+			events = append(events, event)
+		},
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, d.AllProcessDefinitionsPurgeOutcomeDeleted, got.Outcome)
+	require.Equal(t, typex.Keys{"pd-a", "pd-b"}, deletedPD)
+	require.Equal(t, []string{
+		"stage:delete process definitions",
+		"completion:delete process definitions:pd-a",
+		"completion:delete process definitions:pd-b",
+	}, opsMutationProgressSequence(events))
+	require.Equal(t, []d.OpsStageProgress{
+		{
+			Phase:        "delete process definitions",
+			CoreResource: "process definition(s)",
+			Total:        opsIntPtr(2),
+		},
+	}, opsStageProgress(events))
+	require.Empty(t, opsCompletionProgressByPhase(events, "cancel"))
+	require.Empty(t, opsCompletionProgressByPhase(events, "delete"))
+	require.Empty(t, opsFrozenScopeProgress(events))
 }
 
 // emptyStringSliceIfNil lets tests compare logical empty collections independent of nil slice representation.
@@ -868,6 +1264,52 @@ func requireNoticeCodes(t *testing.T, notices []d.AllProcessDefinitionsPurgeWork
 		got = append(got, notice.Code)
 	}
 	require.Equal(t, emptyStringSliceIfNil(want), emptyStringSliceIfNil(got))
+}
+
+func opsCompletionProgressByPhase(events []d.OpsProgressEvent, phase string) []d.OpsCompletionProgress {
+	out := make([]d.OpsCompletionProgress, 0, len(events))
+	for _, event := range events {
+		if event.Kind != d.OpsProgressEventKindCompletion || event.Completion == nil || event.Completion.Phase != phase {
+			continue
+		}
+		out = append(out, *event.Completion)
+	}
+	return out
+}
+
+func opsStageProgress(events []d.OpsProgressEvent) []d.OpsStageProgress {
+	out := make([]d.OpsStageProgress, 0, len(events))
+	for _, event := range events {
+		if event.Kind != d.OpsProgressEventKindStage || event.Stage == nil {
+			continue
+		}
+		out = append(out, *event.Stage)
+	}
+	return out
+}
+
+func opsFrozenScopeProgress(events []d.OpsProgressEvent) []d.OpsFrozenScopeProgress {
+	out := make([]d.OpsFrozenScopeProgress, 0, len(events))
+	for _, event := range events {
+		if event.Kind != d.OpsProgressEventKindFrozenScope || event.FrozenScope == nil {
+			continue
+		}
+		out = append(out, *event.FrozenScope)
+	}
+	return out
+}
+
+func opsMutationProgressSequence(events []d.OpsProgressEvent) []string {
+	out := make([]string, 0, len(events))
+	for _, event := range events {
+		switch {
+		case event.Kind == d.OpsProgressEventKindStage && event.Stage != nil:
+			out = append(out, "stage:"+event.Stage.Phase)
+		case event.Kind == d.OpsProgressEventKindCompletion && event.Completion != nil:
+			out = append(out, "completion:"+event.Completion.Phase+":"+event.Completion.Identity)
+		}
+	}
+	return out
 }
 
 type stubProcessDefinitionAPI struct {

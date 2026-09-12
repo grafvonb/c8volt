@@ -12,9 +12,7 @@ Resolve incidents by key
 
 Resolve incidents by key.
 
-The command accepts repeated --key values or newline-separated keys from stdin with '-'. Each unique incident key is submitted for resolution and reported independently.
-
-By default c8volt waits until each incident is no longer active by polling incident lookup through the incident service.
+Provide repeated --key values or newline-separated keys from stdin with '-'. Each unique incident is resolved once. By default c8volt waits until it is no longer active.
 
 ```
 c8volt resolve incident [flags]
@@ -44,6 +42,7 @@ c8volt resolve incident [flags]
 ### Options inherited from parent commands
 
 ```
+      --all-tenants        clear configured tenant filtering and search all tenants visible to the authenticated user; mutually exclusive with --tenant
   -y, --auto-confirm       auto-confirm prompts for non-interactive use
       --automation         enable non-interactive mode for commands that explicitly support it
       --config string      path to config file
@@ -54,7 +53,7 @@ c8volt resolve incident [flags]
       --no-indicator       disable transient terminal activity indicators
       --profile string     config active profile name to use (e.g. dev, prod)
   -q, --quiet              suppress output except errors
-      --tenant string      tenant ID for discovery/search, selection, create, deploy, and run flows; explicit keys/IDs remain backend-authorized
+      --tenant string      tenant ID for discovery/search, selection, create, deploy, and run flows; explicit empty values can clear configured discovery filters, and explicit keys/IDs remain backend-authorized
       --timeout duration   HTTP request timeout (default 30s)
   -v, --verbose            show additional output
 ```

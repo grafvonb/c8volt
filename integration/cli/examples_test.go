@@ -143,6 +143,29 @@ func TestDestructiveWarningDetection(t *testing.T) {
 	}
 }
 
+func TestAllTenantsExampleRootFlagRecognition(t *testing.T) {
+	if !isRootFlag("--all-tenants") {
+		t.Fatal("expected --all-tenants to be recognized as an inherited root flag")
+	}
+	if rootFlagConsumesValue("--all-tenants") {
+		t.Fatal("expected --all-tenants to be a non-value-consuming root flag")
+	}
+	if !isRootFlag("--all-tenants=false") {
+		t.Fatal("expected --all-tenants=false to be recognized as an inherited root flag")
+	}
+	if rootFlagConsumesValue("--all-tenants=false") {
+		t.Fatal("expected --all-tenants=false to be non-value-consuming")
+	}
+
+	args, err := exampleCommandArgs("c8volt --all-tenants get pi --state active")
+	if err != nil {
+		t.Fatalf("parse example command: %v", err)
+	}
+	if path := resolveExampleCommandPath(args); path != "get process-instance" {
+		t.Fatalf("resolved command path = %q, want get process-instance", path)
+	}
+}
+
 func TestExamples(t *testing.T) {
 	helpExamples := extractLiveHelpExamples(t)
 	docExamples, err := extractGeneratedDocExamples(filepath.Join(suite.repoRoot, "docs", "cli"))
@@ -736,7 +759,7 @@ func isRootFlag(arg string) bool {
 		return false
 	}
 	switch strings.TrimPrefix(strings.SplitN(arg, "=", 2)[0], "--") {
-	case "auto-confirm", "automation", "debug", "help", "json", "keys-only", "no-indicator", "quiet", "verbose", "config", "log-level", "profile", "tenant", "timeout":
+	case "all-tenants", "auto-confirm", "automation", "debug", "help", "json", "keys-only", "no-indicator", "quiet", "verbose", "config", "log-level", "profile", "tenant", "timeout":
 		return true
 	default:
 		return false

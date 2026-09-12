@@ -9,9 +9,15 @@ Repair incidents by key or filter
 
 ### Synopsis
 
-Repair incidents by key or filter.
+Repair incidents by key or search filters.
 
-The command accepts repeated --key values, newline-separated keys from stdin with '-', or incident search filters. Keyed mode and search mode are mutually exclusive. Search mode pages through all matching incidents by default. --batch-size tunes per-page discovery requests only, and --limit intentionally caps the frozen scope. Human, JSON, and audit report output identify whether discovery completed or was user-limited. It builds a fixed incident target set before mutation, applies process-instance-scope variable updates once per unique scope when requested, applies job retry and timeout updates only when an incident has a related job, resolves each incident, and confirms clearance unless --no-wait is set. Incidents without related jobs are reported and still proceed to incident resolution. Use --report-file with Markdown or JSON output for an audit record of discovery, targets, step statuses, notices, errors, and final outcome.
+Provide repeated --key values, newline-separated keys from stdin with '-', or search filters. Keyed mode and search mode are mutually exclusive.
+
+The workflow fixes the incident target set, applies requested variables once per process-instance scope, updates retries and timeouts for related jobs, and resolves incidents. Incidents without related jobs still proceed to resolution. Unless --no-wait is set, it confirms that incidents are cleared.
+
+--tenant limits search; an empty tenant or --all-tenants searches across accessible tenants. Explicit keys use backend authorization without tenant filtering. --batch-size controls each discovery request; --limit caps the selected scope.
+
+Use --dry-run to inspect planned repairs without mutation, --auto-confirm or --automation for unattended repair, and --report-file to save an audit report.
 
 ```
 c8volt ops repair incident [flags]
@@ -21,8 +27,11 @@ c8volt ops repair incident [flags]
 
 ```
   ./c8volt ops repair incident --key <incident-key> --dry-run
+  ./c8volt --tenant tenant-a ops repair incident --key <incident-key> --dry-run
+  ./c8volt --tenant "" ops repair incident --state active --limit 5 --dry-run
   ./c8volt ops repair incident --state active --error-type io_mapping_error --limit 5 --dry-run
   ./c8volt ops repair incident --key <incident-key> --vars '{"hasIncident":false}' --dry-run
+  ./c8volt --verbose ops repair incident --state active --error-type io_mapping_error --limit 5 --auto-confirm
   ./c8volt ops repair incident --key <incident-key> --vars '{"hasIncident":false}' --report-file repair-incident.md
 ```
 
@@ -62,6 +71,7 @@ c8volt ops repair incident [flags]
 ### Options inherited from parent commands
 
 ```
+      --all-tenants        clear configured tenant filtering and search all tenants visible to the authenticated user; mutually exclusive with --tenant
   -y, --auto-confirm       auto-confirm prompts for non-interactive use
       --automation         enable non-interactive mode for commands that explicitly support it
       --config string      path to config file
@@ -72,7 +82,7 @@ c8volt ops repair incident [flags]
       --no-indicator       disable transient terminal activity indicators
       --profile string     config active profile name to use (e.g. dev, prod)
   -q, --quiet              suppress output except errors
-      --tenant string      tenant ID for discovery/search, selection, create, deploy, and run flows; explicit keys/IDs remain backend-authorized
+      --tenant string      tenant ID for discovery/search, selection, create, deploy, and run flows; explicit empty values can clear configured discovery filters, and explicit keys/IDs remain backend-authorized
       --timeout duration   HTTP request timeout (default 30s)
   -v, --verbose            show additional output
 ```

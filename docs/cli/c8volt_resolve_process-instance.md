@@ -10,13 +10,13 @@ Resolve process-instance incidents by key
 
 ### Synopsis
 
-Resolve process-instance incidents by key.
+Resolve active incidents in process-instance families.
 
-The command accepts repeated --key values or newline-separated keys from stdin with '-'. For each unique process instance, c8volt expands to the process-instance family, discovers active incidents at command start for direct incidents on in-scope instances, resolves that fixed incident set, and reports process instances with no active incidents as skipped.
+Provide repeated --key values or newline-separated keys from stdin with '-'. c8volt expands each target to its family, validates the affected scope, and asks for confirmation. Explicit keys use backend authorization without tenant filtering.
 
-By default c8volt validates the affected root and descendant instances and asks for confirmation before resolving active incidents in the family. Use --dry-run to preview the family scope and incident resolution plan without submitting mutations.
+Only incidents discovered at command start are resolved. Instances with no active incidents require no mutation. By default c8volt waits until those incidents are no longer active.
 
-By default c8volt waits until the initially discovered incidents are no longer active by polling process-instance incident lookup through the incident service.
+Use --dry-run to inspect the family and incident plan without mutation.
 
 ```
 c8volt resolve process-instance [flags]
@@ -27,6 +27,7 @@ c8volt resolve process-instance [flags]
 ```
   ./c8volt resolve process-instance --key <process-instance-key> --dry-run
   ./c8volt resolve process-instance --key <process-instance-key>
+  ./c8volt --tenant tenant-a resolve process-instance --key <process-instance-key> --dry-run
   ./c8volt resolve process-instance --key <process-instance-key> --key <another-process-instance-key>
   printf '%s\n' "$PROCESS_INSTANCE_KEY_A" "$PROCESS_INSTANCE_KEY_B" | ./c8volt resolve process-instance -
 ```
@@ -46,6 +47,7 @@ c8volt resolve process-instance [flags]
 ### Options inherited from parent commands
 
 ```
+      --all-tenants        clear configured tenant filtering and search all tenants visible to the authenticated user; mutually exclusive with --tenant
   -y, --auto-confirm       auto-confirm prompts for non-interactive use
       --automation         enable non-interactive mode for commands that explicitly support it
       --config string      path to config file
@@ -56,7 +58,7 @@ c8volt resolve process-instance [flags]
       --no-indicator       disable transient terminal activity indicators
       --profile string     config active profile name to use (e.g. dev, prod)
   -q, --quiet              suppress output except errors
-      --tenant string      tenant ID for discovery/search, selection, create, deploy, and run flows; explicit keys/IDs remain backend-authorized
+      --tenant string      tenant ID for discovery/search, selection, create, deploy, and run flows; explicit empty values can clear configured discovery filters, and explicit keys/IDs remain backend-authorized
       --timeout duration   HTTP request timeout (default 30s)
   -v, --verbose            show additional output
 ```

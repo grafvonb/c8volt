@@ -34,16 +34,16 @@ This generated tree lists the root reference plus the 55 available c8volt comman
   - [`c8volt get`]({{ "/cli/c8volt_get" | relative_url }}) - Inspect cluster, process, job, element, incident, tenant, and resource state
     - [`c8volt get cluster`]({{ "/cli/c8volt_get_cluster" | relative_url }}) - Inspect cluster-wide topology, version, and license information
       - [`c8volt get cluster license`]({{ "/cli/c8volt_get_cluster_license" | relative_url }}) - Show connected cluster license
-      - [`c8volt get cluster topology`]({{ "/cli/c8volt_get_cluster_topology" | relative_url }}) - Show connected cluster topology as a tree
+      - [`c8volt get cluster topology`]({{ "/cli/c8volt_get_cluster_topology" | relative_url }}) - Inspect connected cluster topology
       - [`c8volt get cluster version`]({{ "/cli/c8volt_get_cluster_version" | relative_url }}) - Show connected cluster version
     - [`c8volt get element`]({{ "/cli/c8volt_get_element" | relative_url }}) - List or fetch runtime element instances
     - [`c8volt get incident`]({{ "/cli/c8volt_get_incident" | relative_url }}) - List or fetch incidents
     - [`c8volt get job`]({{ "/cli/c8volt_get_job" | relative_url }}) - Inspect or search jobs
     - [`c8volt get process-definition`]({{ "/cli/c8volt_get_process-definition" | relative_url }}) - List or fetch deployed process definitions
     - [`c8volt get process-instance`]({{ "/cli/c8volt_get_process-instance" | relative_url }}) - List or fetch process instances
-    - [`c8volt get resource`]({{ "/cli/c8volt_get_resource" | relative_url }}) - Get a resource by ID
+    - [`c8volt get resource`]({{ "/cli/c8volt_get_resource" | relative_url }}) - Get a resource by key
     - [`c8volt get tenant`]({{ "/cli/c8volt_get_tenant" | relative_url }}) - List tenants
-  - [`c8volt ops`]({{ "/cli/c8volt_ops" | relative_url }}) - Discover high-level operational workflows
+  - [`c8volt ops`]({{ "/cli/c8volt_ops" | relative_url }}) - Run operational playbooks
     - [`c8volt ops analyse`]({{ "/cli/c8volt_ops_analyse" | relative_url }}) - Discover read-only operational analyses
       - [`c8volt ops analyse slow-process-instances`]({{ "/cli/c8volt_ops_analyse_slow-process-instances" | relative_url }}) - Analyse slow process-instance timings
     - [`c8volt ops execute`]({{ "/cli/c8volt_ops_execute" | relative_url }}) - Discover predefined operational playbooks

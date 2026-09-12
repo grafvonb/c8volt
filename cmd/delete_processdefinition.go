@@ -6,6 +6,7 @@ package cmd
 import (
 	"fmt"
 
+	"github.com/grafvonb/c8volt/c8volt/foptions"
 	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/grafvonb/c8volt/c8volt/resource"
 	d "github.com/grafvonb/c8volt/internal/domain"
@@ -24,17 +25,22 @@ var (
 var deleteProcessDefinitionCmd = &cobra.Command{
 	Use:   "process-definition",
 	Short: "Delete process definition resources",
-	Long: "Delete process definition resources from Camunda.\n\n" +
-		"By default c8volt first checks delete impact without changing anything: active process instances, required cancellation roots and process-instance tree scope when --force is used, and batch-operation read access before prompting. Process-definition deletion requires the full process-definition history deletion capability, currently Camunda 8.9 or newer. With --force, it cancels the root process instances, deletes the affected process-instance history, then asks Camunda to delete the process definition and remaining associated history. If you only want to delete process instances for a definition, use `c8volt delete process-instance --bpmn-process-id <bpmn-process-id>`.\n\n" +
-		"Tenant contract: --tenant scopes BPMN selector discovery where supported. Explicit --key and stdin process-definition keys are backend-authorized admin input; existing impact, confirmation, force, and wait safety checks still apply.\n\n" +
-		"When --bpmn-process-id is set, c8volt validates visible process-definition matches before delete impact planning, confirmation, cancellation, or deletion. A missing selector fails with the shared local diagnostic.\n\n" +
-		"Use --dry-run to preview process-definition delete impact without submitting deletion or cancellation requests.\n\n" +
-		"Use --auto-confirm for unattended destructive runs.",
+	Long: `Delete process definition resources from Camunda 8.9 or newer.
+
+Before mutation, c8volt checks active-instance impact, required cancellation roots, affected instance families, and batch-operation read access. With --force, it cancels root instances, deletes affected instance history, then deletes the definition and remaining associated history.
+
+--tenant limits BPMN selector discovery. An empty tenant or --all-tenants leaves discovery unfiltered across accessible tenants. Explicit --key and stdin keys use backend authorization without tenant filtering. A --bpmn-process-id selector must match visible definitions before impact planning.
+
+Use --dry-run to preview impact without mutation, or --auto-confirm for unattended deletion. To delete only a definition's instances, use delete process-instance --bpmn-process-id <bpmn-process-id>.`,
 	Example: `  ./c8volt delete process-definition --key <process-definition-key> --auto-confirm
   ./c8volt delete process-definition --key <process-definition-key> --dry-run
+  ./c8volt --tenant tenant-a delete process-definition --key <process-definition-key> --dry-run
+  ./c8volt --tenant tenant-a delete process-definition --bpmn-process-id <bpmn-process-id> --latest --dry-run
+  ./c8volt --tenant "" delete process-definition --bpmn-process-id <bpmn-process-id> --latest --dry-run
   ./c8volt delete process-definition --bpmn-process-id <bpmn-process-id> --latest --force
   ./c8volt delete process-definition --bpmn-process-id <bpmn-process-id> --latest --dry-run
   ./c8volt delete process-definition --bpmn-process-id <bpmn-process-id> --latest --auto-confirm
+  ./c8volt --verbose delete process-definition --bpmn-process-id <bpmn-process-id> --latest --auto-confirm
   ./c8volt get process-definition --bpmn-process-id <bpmn-process-id> --latest --json
   ./c8volt get process-definition --bpmn-process-id <bpmn-process-id> --latest --keys-only | ./c8volt delete process-definition --auto-confirm -`,
 	Aliases: []string{"pd"},
@@ -56,7 +62,7 @@ var deleteProcessDefinitionCmd = &cobra.Command{
 		if err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}
-		keys := mergeAndValidateKeys(flagDeletePDKeys, stdinKeys, log, cfg)
+		keys := mergeAndValidateKeys(cmd, flagDeletePDKeys, stdinKeys, log, cfg)
 		explicitInput := len(keys) > 0
 		callOpts := collectOptions()
 		if explicitInput {
@@ -112,6 +118,12 @@ var deleteProcessDefinitionCmd = &cobra.Command{
 		if err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("checking process-definition delete impact: %w", err))
 		}
+		tenantCtx := newDiscoveryTenantContext(configuredTenantID(cfg))
+		if explicitInput {
+			tenantCtx = newExplicitKeysTenantContext(configuredTenantID(cfg))
+		}
+		evidence := impactPlan.TenantEvidence()
+		attachTenantContext(cmd, withTenantContextEvidence(tenantCtx, evidence.ResolvedTenantIDs, evidence.UnknownTargetCount))
 		if flagDryRun {
 			if err := renderDeleteProcessDefinitionDryRun(cmd, impactPlan); err != nil {
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("render delete dry-run result: %w", err))
@@ -129,10 +141,15 @@ var deleteProcessDefinitionCmd = &cobra.Command{
 			}
 		}
 		prompt := "Proceed with this deletion?"
-		if err := confirmCmdOrAbort(shouldImplicitlyConfirm(cmd), prompt); err != nil {
+		if err := confirmCmdOrAbort(cmd.ErrOrStderr(), shouldImplicitlyConfirm(cmd), prompt); err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}
-		reports, err := cli.DeleteProcessDefinitions(cmd.Context(), keys, flagWorkers, callOpts...)
+		deletionProgress := newProcessDefinitionDeleteSemanticProgress(cmd, len(keys))
+		deletionProgress.Start(len(keys))
+		deleteOpts := append([]foptions.FacadeOption{}, callOpts...)
+		deleteOpts = append(deleteOpts, foptions.WithProgress(deletionProgress.FacadeProgress))
+		reports, err := cli.DeleteProcessDefinitions(cmd.Context(), keys, flagWorkers, deleteOpts...)
+		deletionProgress.Close()
 		if err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("deleting process definition(s): %w", err))
 		}
@@ -166,12 +183,14 @@ func renderDeleteProcessDefinitionDryRun(cmd *cobra.Command, plan resource.Delet
 	if commandUsesSharedEnvelope(cmd, pickMode()) {
 		return renderSucceededResult(cmd, preview)
 	}
+	renderAttachedTenantContext(cmd)
 	renderHumanLine(cmd, "dry run: delete process-definition")
 	renderDeleteProcessDefinitionImpact(cmd, plan)
 	return nil
 }
 
 func renderDeleteProcessDefinitionImpact(cmd *cobra.Command, plan resource.DeleteProcessDefinitionPlan) {
+	renderAttachedTenantContext(cmd)
 	totals := plan.Totals()
 	if plan.StateCheckSkipped {
 		renderHumanLine(cmd, "delete impact check: %d process definition(s); process-instance state check skipped; no changes made yet", totals.ProcessDefinitions)

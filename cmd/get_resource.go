@@ -16,13 +16,13 @@ var flagGetResourceID string
 
 var getResourceCmd = &cobra.Command{
 	Use:   "resource",
-	Short: "Get a resource by ID",
-	Long: "Get a single resource by ID.\n\n" +
-		"Requires --id. The ID must be a Camunda resource ID; process-definition keys and deployment response keys are not resource IDs.\n\n" +
-		"Tenant contract: explicit --id resource targets are backend-authorized admin input; returned tenant metadata may differ from the selected tenant.",
-	Example: `  ./c8volt get resource --id <resource-id>
-  ./c8volt --json get resource --id <resource-id>
-  ./c8volt --keys-only get resource --id <resource-id>`,
+	Short: "Get a resource by key",
+	Long: "Get a single resource by key.\n\n" +
+		"Requires --id with the resourceKey from the resource deployment response, not its resourceId or the deploymentKey.\n\n" +
+		"Explicit --id uses backend authorization without tenant filtering.",
+	Example: `  ./c8volt get resource --id <resource-key>
+  ./c8volt --json get resource --id <resource-key>
+  ./c8volt --keys-only get resource --id <resource-key>`,
 	Aliases: []string{"r"},
 	Args: func(cmd *cobra.Command, args []string) error {
 		_, err := validatedResourceID()
@@ -60,7 +60,7 @@ func init() {
 	getCmd.AddCommand(getResourceCmd)
 
 	fs := getResourceCmd.Flags()
-	fs.StringVarP(&flagGetResourceID, "id", "i", "", "resource ID to fetch")
+	fs.StringVarP(&flagGetResourceID, "id", "i", "", "resource key to fetch")
 	_ = getResourceCmd.MarkFlagRequired("id")
 
 	setCommandMutation(getResourceCmd, CommandMutationReadOnly)

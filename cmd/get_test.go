@@ -61,7 +61,7 @@ func TestGetHelp(t *testing.T) {
 func TestGetCommand_PreservesExistingProcessInstanceHelp(t *testing.T) {
 	output := executeRootForTest(t, "get", "process-instance", "--help")
 
-	require.Contains(t, output, "Get process instances by key or by search criteria.")
+	require.Contains(t, output, "Get process instances by key or search criteria.")
 	require.Contains(t, output, "./c8volt get process-instance --state active")
 	require.Contains(t, output, "--key")
 	require.Contains(t, output, "--state")
@@ -241,18 +241,18 @@ func TestCapabilitiesCommand_AutomationJSONKeepsStdoutMachineReadable(t *testing
 	require.Empty(t, stderr)
 }
 
-// Verifies `get resource --help` documents required ID-based lookup usage.
+// Verifies `get resource --help` documents required resource-key lookup usage.
 func TestGetResourceHelp(t *testing.T) {
 	output := executeRootForTest(t, "get", "resource", "--help")
 
-	require.Contains(t, output, "Get a single resource by ID")
+	require.Contains(t, output, "Get a single resource by key")
 	require.Contains(t, output, "Requires --id")
-	require.Contains(t, output, "Tenant contract:")
-	require.Contains(t, output, "explicit --id resource targets are backend-authorized admin input")
-	require.Contains(t, output, "returned tenant metadata may differ from the selected tenant")
+	require.Contains(t, output, "tenant")
+	require.Contains(t, output, "Explicit --id uses backend authorization without tenant filtering")
+	require.Contains(t, output, "without tenant filtering")
 	require.Contains(t, output, "c8volt get resource")
 	require.Contains(t, output, "--id")
-	require.Contains(t, output, "resource ID to fetch")
+	require.Contains(t, output, "resource key to fetch")
 	require.Contains(t, output, "--keys-only")
 }
 
@@ -277,9 +277,7 @@ func TestGetClusterHelp(t *testing.T) {
 func TestGetClusterLicenseHelp(t *testing.T) {
 	output := executeRootForTest(t, "get", "cluster", "license", "--help")
 
-	require.Contains(t, output, "Show connected cluster license")
-	require.Contains(t, output, "flat fields")
-	require.Contains(t, output, "Use --json for the structured license payload")
+	require.Contains(t, output, "Inspect the connected Camunda cluster's license")
 	require.Contains(t, output, "c8volt get cluster license")
 	require.Contains(t, output, "./c8volt get cluster license --json")
 	require.Contains(t, output, "./c8volt get cluster licence")
@@ -289,9 +287,7 @@ func TestGetClusterLicenseHelp(t *testing.T) {
 func TestGetClusterTopologyHelp(t *testing.T) {
 	output := executeRootForTest(t, "get", "cluster", "topology", "--help")
 
-	require.Contains(t, output, "Show connected cluster topology as a sorted tree")
-	require.Contains(t, output, "sorted tree")
-	require.Contains(t, output, "Use --json for the structured topology payload")
+	require.Contains(t, output, "Inspect brokers, partitions, and gateway metadata")
 	require.Contains(t, output, "./c8volt get cluster topology")
 	require.Contains(t, output, "./c8volt get cluster topology --json")
 }
@@ -300,26 +296,28 @@ func TestGetClusterTopologyHelp(t *testing.T) {
 func TestGetClusterVersionHelp(t *testing.T) {
 	output := executeRootForTest(t, "get", "cluster", "version", "--help")
 
-	require.Contains(t, output, "Show connected cluster version")
-	require.Contains(t, output, "gateway version by default")
+	require.Contains(t, output, "Get the connected Camunda gateway version")
+	require.Contains(t, output, "Camunda gateway version")
 	require.Contains(t, output, "include broker versions")
 	require.Contains(t, output, "./c8volt get cluster version")
 	require.Contains(t, output, "./c8volt get cluster version --with-brokers")
+	require.Contains(t, output, "./c8volt get cluster version --json")
 	require.Contains(t, output, "--with-brokers")
 }
 
+// TestGetProcessDefinitionHelp_DocumentsJSONAndXMLModes verifies output modes and their execution-error boundary.
 func TestGetProcessDefinitionHelp_DocumentsJSONAndXMLModes(t *testing.T) {
 	output := executeRootForTest(t, "get", "process-definition", "--help")
 
 	require.Contains(t, output, "List or fetch deployed process definitions")
-	require.Contains(t, output, "Inspect deployed BPMN models")
-	require.Contains(t, output, "Use `--xml` only with `--key`")
-	require.Contains(t, output, "`--stat` requires Camunda `8.8` or newer")
-	require.Contains(t, output, "prints exact-version")
-	require.Contains(t, output, "Camunda `8.7` does not support")
-	require.Contains(t, output, "Tenant contract:")
-	require.Contains(t, output, "`--tenant` scopes list/latest and BPMN selector discovery")
-	require.Contains(t, output, "Explicit `--key` and XML key lookups are backend-authorized admin")
+	require.Contains(t, output, "Select by key, BPMN process ID, version, or version tag")
+	require.Contains(t, output, "Use --xml only with --key")
+	require.Contains(t, output, "--stat includes exact-version statistics and requires Camunda 8.8 or newer")
+	require.Contains(t, output, "exact-version statistics")
+	require.Contains(t, output, "Camunda 8.7 selects within its 1000 visible-definition compatibility window")
+	require.Contains(t, output, "tenant")
+	require.Contains(t, output, "--tenant limits list and selector discovery")
+	require.Contains(t, output, "Explicit --key and XML lookups use backend authorization without tenant filtering")
 	require.Contains(t, output, "./c8volt get process-definition --key <process-definition-key> --json")
 }
 
@@ -1151,6 +1149,65 @@ apis:
 	require.NotContains(t, output, "base-tenant")
 }
 
+// TestGetProcessDefinitionLatest_AllTenantsOmitsConfiguredTenantFilter verifies
+// get-family search commands consume the effective unfiltered tenant produced by
+// the root override without leaking command-line provenance to protected output.
+func TestGetProcessDefinitionLatest_AllTenantsOmitsConfiguredTenantFilter(t *testing.T) {
+	var requests []string
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodPost, r.Method)
+		require.Equal(t, "/v2/process-definitions/search", r.URL.Path)
+
+		body, err := io.ReadAll(r.Body)
+		require.NoError(t, err)
+		requests = append(requests, string(body))
+
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{
+  "items": [
+    {
+      "processDefinitionId": "order-process",
+      "processDefinitionKey": "2251799813685255",
+      "tenantId": "tenant-visible",
+      "version": 7,
+      "versionTag": "stable"
+    }
+  ],
+  "page": {
+    "totalItems": 1,
+    "hasMoreTotalItems": false
+  }
+}`))
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeRawTestConfig(t, `app:
+  camunda_version: "8.9"
+  tenant: tenant-a
+auth:
+  mode: none
+apis:
+  camunda_api:
+    base_url: `+srv.URL+`
+`)
+
+	stdout, stderr := executeRootWithSeparateOutputsForTest(t,
+		"--config", cfgPath,
+		"--all-tenants",
+		"--json",
+		"get", "process-definition",
+		"--latest",
+	)
+
+	body := decodeSingleRequestJSON(t, requests)
+	filter := requireJSONObject(t, body["filter"])
+	require.NotContains(t, filter, "tenantId")
+	require.Equal(t, true, filter["isLatestVersion"])
+	require.Contains(t, stdout, `"tenantId": "tenant-visible"`)
+	require.NotContains(t, stdout, "--all-tenants overrides")
+	require.NotContains(t, stderr, "--all-tenants overrides")
+}
+
 func TestOneLinePD_IncidentCountRenderingByVersionBoundary(t *testing.T) {
 	t.Parallel()
 
@@ -1318,6 +1375,51 @@ func TestGetResourceCommand_KeysOnlyOutput(t *testing.T) {
 	output := executeRootForTest(t, "--config", cfgPath, "--keys-only", "get", "resource", "--id", "resource-id-123")
 
 	require.Equal(t, "resource-id-123\n", output)
+}
+
+// TestGetResourceCommand_AllTenantsKeysOnlyReadStaysOnDirectEndpoint verifies
+// direct get-family reads keep their backend-authorized endpoint and protected
+// output contract when the inherited all-tenants flag is active.
+func TestGetResourceCommand_AllTenantsKeysOnlyReadStaysOnDirectEndpoint(t *testing.T) {
+	var requests []string
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests = append(requests, r.Method+" "+r.URL.Path)
+		require.Equal(t, http.MethodGet, r.Method)
+		require.Equal(t, "/v2/resources/resource-id-123", r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{
+  "resourceId": "resource-id-123",
+  "resourceKey": "resource-key-123",
+  "resourceName": "order-process.bpmn",
+  "tenantId": "tenant-visible",
+  "version": 7,
+  "versionTag": "stable"
+}`))
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeRawTestConfig(t, `app:
+  camunda_version: "8.9"
+  tenant: tenant-a
+auth:
+  mode: none
+apis:
+  camunda_api:
+    base_url: `+srv.URL+`
+`)
+
+	stdout, stderr := executeRootWithSeparateOutputsForTest(t,
+		"--config", cfgPath,
+		"--all-tenants",
+		"--keys-only",
+		"get", "resource",
+		"--id", "resource-id-123",
+	)
+
+	require.Equal(t, []string{"GET /v2/resources/resource-id-123"}, requests)
+	require.Equal(t, "resource-id-123\n", stdout)
+	require.NotContains(t, stdout, "--all-tenants overrides")
+	require.NotContains(t, stderr, "--all-tenants overrides")
 }
 
 // Verifies V810 resource lookup keeps the established human, JSON, and keys-only render contracts.
@@ -2008,6 +2110,7 @@ func executeRootForTest(t *testing.T, args ...string) string {
 
 	root := Root()
 	resetCommandTreeFlags(root)
+	resetDeployCommandContextForTest(root)
 	buf := &bytes.Buffer{}
 	root.SetOut(buf)
 	root.SetErr(buf)
@@ -2024,6 +2127,7 @@ func executeRootWithSeparateOutputsForTest(t *testing.T, args ...string) (string
 
 	root := Root()
 	resetCommandTreeFlags(root)
+	resetDeployCommandContextForTest(root)
 	stdout := &bytes.Buffer{}
 	stderr := &bytes.Buffer{}
 	root.SetOut(stdout)

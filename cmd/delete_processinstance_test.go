@@ -13,9 +13,11 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	options "github.com/grafvonb/c8volt/c8volt/foptions"
 	"github.com/grafvonb/c8volt/c8volt/process"
+	"github.com/grafvonb/c8volt/config"
 	"github.com/grafvonb/c8volt/internal/exitcode"
 	"github.com/grafvonb/c8volt/internal/services"
 	"github.com/grafvonb/c8volt/testx"
@@ -42,7 +44,7 @@ func TestDeleteProcessInstanceDryRun_KeyedChildEscalatesToRootWithoutMutation(t 
 
 	prevConfirm := confirmCmdOrAbortFn
 	t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
-	confirmCmdOrAbortFn = func(bool, string) error {
+	confirmCmdOrAbortFn = func(_ io.Writer, _ bool, _ string) error {
 		t.Fatal("unexpected confirmation prompt during delete dry run")
 		return nil
 	}
@@ -92,7 +94,7 @@ func TestDeleteProcessInstanceDryRun_KeyedRootReportsFullFamilyWithoutMutation(t
 
 	prevConfirm := confirmCmdOrAbortFn
 	t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
-	confirmCmdOrAbortFn = func(bool, string) error {
+	confirmCmdOrAbortFn = func(_ io.Writer, _ bool, _ string) error {
 		t.Fatal("unexpected confirmation prompt during delete dry run")
 		return nil
 	}
@@ -167,6 +169,162 @@ func TestDeleteProcessInstanceCommand_DuplicateStdinKeysDeduplicateBeforePlannin
 	require.NotContains(t, output, "selected process instances: 4")
 }
 
+// TestDeleteProcessInstanceSearch_TenantContextPrecedesConfirmation verifies
+// selector-based destructive deletion renders discovery scope before the
+// operator is asked to confirm the frozen mutation plan.
+func TestDeleteProcessInstanceSearch_TenantContextPrecedesConfirmation(t *testing.T) {
+	resetProcessInstanceCommandGlobals()
+	t.Cleanup(resetProcessInstanceCommandGlobals)
+
+	cmd := &cobra.Command{Use: "process-instance"}
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	cmd.SetOut(stdout)
+	cmd.SetErr(stderr)
+	cmd.SetContext(logging.ToContext(context.Background(), logging.New(logging.LoggerConfig{
+		Level:  "info",
+		Format: "plain",
+		Writer: stderr,
+	})))
+
+	var prompt string
+	prevConfirm := confirmCmdOrAbortFn
+	t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
+	confirmCmdOrAbortFn = func(_ io.Writer, _ bool, got string) error {
+		prompt = got
+		outputBeforePrompt := stderr.String()
+		require.Contains(t, outputBeforePrompt, "selection scope: unfiltered across accessible tenants\n")
+		require.NotContains(t, outputBeforePrompt, "deletion:")
+		return nil
+	}
+
+	planningCalls := 0
+	mutationCalls := 0
+	cli := stubProcessAPI{
+		planProcessInstanceMutationPages: func(_ context.Context, _ process.ProcessInstanceMutationPlanRequest, visitor process.ProcessInstanceMutationPlanVisitor, _ ...options.FacadeOption) (process.ProcessInstanceMutationPlanPagesResult, error) {
+			planningCalls++
+			plan := process.DryRunPIKeyExpansion{
+				Roots:     typex.Keys{"401"},
+				Collected: typex.Keys{"401"},
+				Outcome:   process.TraversalOutcomeComplete,
+			}
+			action, err := visitor(process.ProcessInstanceMutationPlanStep{
+				Page: process.ProcessInstancePage{
+					Items:         []process.ProcessInstance{{Key: "401", State: process.StateCompleted}},
+					OverflowState: process.ProcessInstanceOverflowStateNoMore,
+				},
+				RequestedKeys:    []string{"401"},
+				Plan:             plan,
+				CumulativeCount:  1,
+				CumulativeImpact: 1,
+			})
+			require.NoError(t, err)
+			require.Equal(t, process.ProcessInstanceSearchPageActionStop, action)
+			return process.ProcessInstanceMutationPlanPagesResult{RequestedCount: 1, CumulativeImpact: 1}, nil
+		},
+		deleteProcessInstances: func(_ context.Context, keys typex.Keys, _ int, _ ...options.FacadeOption) (process.DeleteReports, error) {
+			mutationCalls++
+			require.Equal(t, typex.Keys{"401"}, keys)
+			return process.DeleteReports{Items: []process.DeleteReport{{Key: "401", Ok: true}}}, nil
+		},
+	}
+
+	results, err := deleteProcessInstanceSearchPages(cmd, cli, &config.Config{}, process.ProcessInstanceFilter{})
+
+	require.NoError(t, err)
+	require.Len(t, results.Reports, 1)
+	require.Equal(t, 1, planningCalls, "tenant logging must not add discovery planning calls")
+	require.Equal(t, 1, mutationCalls, "tenant logging must not add deletion calls")
+	require.Empty(t, stdout.String())
+	require.Contains(t, prompt, "You are about to delete 1 process instance(s)")
+	require.Contains(t, stderr.String(), "deletion: deleted 1/1 process-instance tree(s)")
+}
+
+// TestDeleteProcessInstanceSearch_TenantWarningsPrecedeConfirmation verifies
+// aggregate destructive deletion renders merged tenant evidence before the
+// operator confirms the frozen mutation scope.
+func TestDeleteProcessInstanceSearch_TenantWarningsPrecedeConfirmation(t *testing.T) {
+	resetProcessInstanceCommandGlobals()
+	t.Cleanup(resetProcessInstanceCommandGlobals)
+
+	cmd := &cobra.Command{Use: "process-instance"}
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	cmd.SetOut(stdout)
+	cmd.SetErr(stderr)
+	cmd.SetContext(logging.ToContext(context.Background(), logging.New(logging.LoggerConfig{
+		Level:  "info",
+		Format: "plain",
+		Writer: stderr,
+	})))
+
+	var prompt string
+	prevConfirm := confirmCmdOrAbortFn
+	t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
+	confirmCmdOrAbortFn = func(_ io.Writer, _ bool, got string) error {
+		prompt = got
+		outputBeforePrompt := stderr.String()
+		require.Contains(t, outputBeforePrompt, "selection scope: unfiltered across accessible tenants\n")
+		require.Contains(t, outputBeforePrompt, "affected tenants: tenant-a, tenant-b\n")
+		require.Equal(t, 1, strings.Count(outputBeforePrompt, "affected tenants: tenant-a, tenant-b\n"))
+		require.Contains(t, outputBeforePrompt, "tenant metadata is unknown for 1 target\n")
+		require.Less(t, strings.Index(outputBeforePrompt, "selection scope:"), strings.Index(outputBeforePrompt, "affected tenants:"))
+		require.Less(t, strings.Index(outputBeforePrompt, "affected tenants:"), strings.Index(outputBeforePrompt, "tenant metadata is unknown"))
+		return nil
+	}
+
+	pagePlan := process.DryRunPIKeyExpansion{
+		Roots:     typex.Keys{"root-401"},
+		Collected: typex.Keys{"root-401", "401", "unknown-401"},
+		TenantEvidence: process.TenantEvidence{
+			ResolvedTenantIDs:  []string{"tenant-b", "tenant-a"},
+			UnknownTargetCount: 1,
+			TargetCount:        3,
+		},
+		Outcome: process.TraversalOutcomeComplete,
+	}
+	planningCalls := 0
+	mutationCalls := 0
+	cli := stubProcessAPI{
+		planProcessInstanceMutationPages: func(_ context.Context, _ process.ProcessInstanceMutationPlanRequest, visitor process.ProcessInstanceMutationPlanVisitor, _ ...options.FacadeOption) (process.ProcessInstanceMutationPlanPagesResult, error) {
+			planningCalls++
+			action, err := visitor(process.ProcessInstanceMutationPlanStep{
+				Page: process.ProcessInstancePage{
+					Items:         []process.ProcessInstance{{Key: "401", State: process.StateCompleted}},
+					OverflowState: process.ProcessInstanceOverflowStateNoMore,
+				},
+				RequestedKeys:    []string{"401"},
+				Plan:             pagePlan,
+				CumulativeCount:  1,
+				CumulativeImpact: 3,
+			})
+			require.NoError(t, err)
+			require.Equal(t, process.ProcessInstanceSearchPageActionStop, action)
+			return process.ProcessInstanceMutationPlanPagesResult{
+				RequestedCount:   1,
+				CumulativeImpact: 3,
+				TenantEvidence:   pagePlan.TenantEvidence,
+			}, nil
+		},
+		deleteProcessInstances: func(_ context.Context, keys typex.Keys, _ int, _ ...options.FacadeOption) (process.DeleteReports, error) {
+			mutationCalls++
+			require.Equal(t, typex.Keys{"root-401"}, keys)
+			return process.DeleteReports{Items: []process.DeleteReport{{Key: "root-401", Ok: true}}}, nil
+		},
+	}
+
+	results, err := deleteProcessInstanceSearchPages(cmd, cli, &config.Config{}, process.ProcessInstanceFilter{})
+
+	require.NoError(t, err)
+	require.Len(t, results.Reports, 1)
+	require.Equal(t, 1, planningCalls, "tenant logging must not add discovery planning calls")
+	require.Equal(t, 1, mutationCalls, "tenant logging must not add deletion calls")
+	require.Empty(t, stdout.String())
+	require.Contains(t, stderr.String(), " WARN affected tenants: tenant-a, tenant-b\n")
+	require.Contains(t, stderr.String(), " WARN tenant metadata is unknown for 1 target\n")
+	require.Contains(t, prompt, "You have requested to delete 1 process instance(s)")
+}
+
 func TestDeleteProcessInstanceStdinPipelineKeysSkipBpmnSelectorValidation(t *testing.T) {
 	const key = "2251799813711967"
 	var requests []string
@@ -217,7 +375,7 @@ func TestDeleteProcessInstanceDryRun_PartialOrphanParentRendersWarningAndMissing
 
 	prevConfirm := confirmCmdOrAbortFn
 	t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
-	confirmCmdOrAbortFn = func(bool, string) error {
+	confirmCmdOrAbortFn = func(_ io.Writer, _ bool, _ string) error {
 		t.Fatal("unexpected confirmation prompt during delete dry-run orphan preview")
 		return nil
 	}
@@ -265,7 +423,7 @@ func TestDeleteProcessInstanceDryRun_UnresolvedOrphanFailsWithoutMutation(t *tes
 
 	prevConfirm := confirmCmdOrAbortFn
 	t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
-	confirmCmdOrAbortFn = func(bool, string) error {
+	confirmCmdOrAbortFn = func(_ io.Writer, _ bool, _ string) error {
 		t.Fatal("unexpected confirmation prompt during unresolved delete dry run")
 		return nil
 	}
@@ -328,6 +486,47 @@ func TestDeleteProcessInstanceDryRun_KeyTenantMismatchUsesAdminScope(t *testing.
 	require.Contains(t, requests.Snapshot(), "POST /v2/process-instances/search")
 	require.Contains(t, output, `"requestedCount": 1`)
 	require.Contains(t, output, tenantAdminKeysProcessInstanceKey)
+}
+
+// TestDeleteProcessInstanceDryRun_ExplicitKeyRendersUnknownTenantEvidence verifies
+// direct-key deletion keeps admin-scope options while warning when the frozen
+// plan lacks tenant metadata for affected targets.
+func TestDeleteProcessInstanceDryRun_ExplicitKeyRendersUnknownTenantEvidence(t *testing.T) {
+	resetProcessInstanceCommandGlobals()
+	t.Cleanup(resetProcessInstanceCommandGlobals)
+	flagDryRun = true
+
+	cmd := &cobra.Command{}
+	buf := &bytes.Buffer{}
+	cmd.SetOut(buf)
+	cmd.SetErr(buf)
+	cfg := &config.Config{App: config.App{Tenant: tenantAdminKeysSelectedTenant}}
+	cmd.SetContext(cfg.ToContextWithLogWriter(context.Background(), buf))
+
+	cli := stubProcessAPI{
+		dryRunCancelOrDeletePlan: func(_ context.Context, keys typex.Keys, opts ...options.FacadeOption) (process.DryRunPIKeyExpansion, error) {
+			require.Equal(t, typex.Keys{"child-a"}, keys)
+			require.True(t, options.ApplyFacadeOptions(opts).IgnoreTenant)
+			return process.DryRunPIKeyExpansion{
+				Roots:     typex.Keys{"root-a"},
+				Collected: typex.Keys{"root-a", "child-a"},
+				TenantEvidence: process.TenantEvidence{
+					UnknownTargetCount: 2,
+					TargetCount:        2,
+				},
+				Outcome: process.TraversalOutcomeComplete,
+			}, nil
+		},
+		deleteProcessInstances: dryRunDeleteMutationGuard(t),
+	}
+
+	_, err := deleteProcessInstancesWithPlan(cmd, cli, typex.Keys{"child-a"}, true)
+
+	require.NoError(t, err)
+	output := buf.String()
+	require.Contains(t, output, "selection scope: explicit resource keys; tenant filter not applied\n")
+	require.Contains(t, output, "tenant metadata is unknown for 2 targets\n")
+	require.NotContains(t, output, "affected tenants:")
 }
 
 // Verifies date filters cannot be combined with direct key lookup mode.
@@ -462,7 +661,7 @@ func TestDeleteProcessInstancesWithPlan_PrintsOrphanWarningForKeyedImpactCheck(t
 	t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
 
 	var prompt string
-	confirmCmdOrAbortFn = func(_ bool, got string) error {
+	confirmCmdOrAbortFn = func(_ io.Writer, _ bool, got string) error {
 		prompt = got
 		return nil
 	}
@@ -519,7 +718,7 @@ func TestDeleteProcessInstancesWithPlan_SubmitsResolvedRootsOnlyForKeyedHierarch
 	t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
 
 	var prompt string
-	confirmCmdOrAbortFn = func(_ bool, got string) error {
+	confirmCmdOrAbortFn = func(_ io.Writer, _ bool, got string) error {
 		prompt = got
 		return nil
 	}
@@ -577,7 +776,7 @@ func TestDeleteProcessInstancesWithPlan_RegressionForceNoWaitAndWorkerControls(t
 
 	prevConfirm := confirmCmdOrAbortFn
 	t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
-	confirmCmdOrAbortFn = func(autoConfirm bool, prompt string) error {
+	confirmCmdOrAbortFn = func(_ io.Writer, autoConfirm bool, prompt string) error {
 		require.True(t, autoConfirm)
 		require.Contains(t, prompt, "requested to delete 2 process instance(s)")
 		return nil
@@ -619,6 +818,212 @@ func TestDeleteProcessInstancesWithPlan_RegressionForceNoWaitAndWorkerControls(t
 	require.Equal(t, typex.Keys{"root-a"}, typex.Keys(got.DryRunPreview.ResolvedRoots))
 }
 
+// TestDeleteProcessInstancesWithPlan_PreservesCommandContracts verifies
+// attached tenant logging stays off stdout while delete options, request counts,
+// activity, and human or JSON result contracts remain unchanged.
+func TestDeleteProcessInstancesWithPlan_PreservesCommandContracts(t *testing.T) {
+	for _, tt := range []struct {
+		name         string
+		json         bool
+		noWait       bool
+		noStateCheck bool
+		wantOutcome  Outcome
+	}{
+		{name: "human", wantOutcome: OutcomeSucceeded},
+		{name: "json", json: true, wantOutcome: OutcomeSucceeded},
+		{name: "json no-wait", json: true, noWait: true, wantOutcome: OutcomeAccepted},
+		{name: "json no-state-check", json: true, noStateCheck: true, wantOutcome: OutcomeSucceeded},
+		{name: "json combined opt-outs", json: true, noWait: true, noStateCheck: true, wantOutcome: OutcomeAccepted},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			resetProcessInstanceCommandGlobals()
+			t.Cleanup(resetProcessInstanceCommandGlobals)
+			flagCmdAutoConfirm = true
+			flagViewAsJson = tt.json
+			flagNoWait = tt.noWait
+			flagNoStateCheck = tt.noStateCheck
+
+			root := &cobra.Command{Use: "c8volt"}
+			deleteCmd := &cobra.Command{Use: "delete"}
+			cmd := &cobra.Command{Use: "process-instance"}
+			root.AddCommand(deleteCmd)
+			deleteCmd.AddCommand(cmd)
+			setCommandMutation(cmd, CommandMutationStateChanging)
+			setContractSupport(cmd, ContractSupportFull)
+
+			stdout := &bytes.Buffer{}
+			stderr := &bytes.Buffer{}
+			cmd.SetOut(stdout)
+			cmd.SetErr(stderr)
+			sink := &activitysink.Sink{}
+			ctx := logging.ToActivityContext(context.Background(), sink)
+			cmd.SetContext(logging.ToContext(ctx, logging.New(logging.LoggerConfig{
+				Level:  "info",
+				Format: "plain",
+				Writer: stderr,
+			})))
+
+			promptCount := 0
+			prevConfirm := confirmCmdOrAbortFn
+			t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
+			confirmCmdOrAbortFn = func(_ io.Writer, autoConfirm bool, prompt string) error {
+				promptCount++
+				require.True(t, autoConfirm)
+				require.Equal(t, "You are about to delete 1 process instance(s). Do you want to proceed?", prompt)
+				return nil
+			}
+
+			assertOptions := func(opts []options.FacadeOption) {
+				cfg := options.ApplyFacadeOptions(opts)
+				require.True(t, cfg.IgnoreTenant)
+				require.Equal(t, tt.noWait, cfg.NoWait)
+				require.Equal(t, tt.noStateCheck, cfg.NoStateCheck)
+			}
+			planCalls := 0
+			mutationCalls := 0
+			cli := stubProcessAPI{
+				dryRunCancelOrDeletePlan: func(_ context.Context, keys typex.Keys, opts ...options.FacadeOption) (process.DryRunPIKeyExpansion, error) {
+					planCalls++
+					require.Equal(t, typex.Keys{"root-terminal"}, keys)
+					assertOptions(opts)
+					return process.DryRunPIKeyExpansion{
+						Roots:     typex.Keys{"root-terminal"},
+						Collected: typex.Keys{"root-terminal"},
+						TenantEvidence: process.TenantEvidence{
+							ResolvedTenantIDs: []string{"tenant-a"},
+							TargetCount:       1,
+						},
+						Outcome: process.TraversalOutcomeComplete,
+					}, nil
+				},
+				deleteProcessInstances: func(_ context.Context, keys typex.Keys, _ int, opts ...options.FacadeOption) (process.DeleteReports, error) {
+					mutationCalls++
+					require.Equal(t, typex.Keys{"root-terminal"}, keys)
+					assertOptions(opts)
+					cfg := options.ApplyFacadeOptions(opts)
+					require.True(t, cfg.SuppressWorkflowDetailLogs)
+					require.True(t, cfg.SuppressProcessInstanceDetailLogs)
+					return process.DeleteReports{Items: []process.DeleteReport{{Key: "root-terminal", Ok: true}}}, nil
+				},
+			}
+
+			result, err := deleteProcessInstancesWithPlan(cmd, cli, typex.Keys{"root-terminal"}, true)
+
+			require.NoError(t, err)
+			require.Equal(t, 1, planCalls, "tenant logging must not repeat planning")
+			require.Equal(t, 1, mutationCalls, "tenant logging must not add deletion calls")
+			require.Equal(t, 1, promptCount)
+			require.Equal(t, []process.Reporter{{Key: "root-terminal", Ok: true}}, result.Reports)
+			started, stopped, messages := sink.Snapshot()
+			if tt.json {
+				require.Equal(t, 1, started)
+				require.Equal(t, 1, stopped)
+				require.Equal(t, []string{"preparing delete dry-run scope for 1 process instance(s)"}, messages)
+			} else {
+				require.Equal(t, 2, started)
+				require.Equal(t, 2, stopped)
+				require.Equal(t, []string{
+					"preparing delete dry-run scope for 1 process instance(s)",
+					"deletion process-instance trees, 0/1 process-instance tree(s), affected process instances: 0",
+				}, messages)
+			}
+
+			payload := process.DeleteReports{Items: []process.DeleteReport{process.DeleteReport(result.Reports[0])}}
+			require.NoError(t, renderCommandResult(cmd, payload))
+			if !tt.json {
+				require.Empty(t, stdout.String())
+				require.Contains(t, stderr.String(), " INFO selection scope: explicit resource keys; tenant filter not applied\n")
+				require.Contains(t, stderr.String(), " INFO affected tenants: tenant-a\n")
+				require.Contains(t, stderr.String(), "deletion: deleted 1/1 process-instance tree(s)")
+				return
+			}
+
+			require.Empty(t, stderr.String())
+			decoder := json.NewDecoder(stdout)
+			var envelope ResultEnvelope[process.DeleteReports]
+			require.NoError(t, decoder.Decode(&envelope))
+			var trailing any
+			require.ErrorIs(t, decoder.Decode(&trailing), io.EOF)
+			require.Equal(t, tt.wantOutcome, envelope.Outcome)
+			require.Equal(t, "delete process-instance", envelope.Command)
+			require.Equal(t, payload, envelope.Payload)
+		})
+	}
+}
+
+// TestDeleteProcessInstancesWithPlan_ForceCleanupKeepsMilestonesOnDeletionScope
+// verifies force delete commands ignore nested cleanup progress while keeping
+// no-wait delete completions on the single semantic deletion scope.
+func TestDeleteProcessInstancesWithPlan_ForceCleanupKeepsMilestonesOnDeletionScope(t *testing.T) {
+	resetProcessInstanceCommandGlobals()
+	t.Cleanup(resetProcessInstanceCommandGlobals)
+	flagCmdAutoConfirm = true
+	flagForce = true
+	flagNoWait = true
+	now := time.Date(2026, 9, 1, 6, 0, 0, 0, time.UTC)
+	processInstanceMutationSemanticProgressNow = func() time.Time { return now }
+	t.Cleanup(func() { processInstanceMutationSemanticProgressNow = time.Now })
+
+	cmd := &cobra.Command{}
+	buf := &bytes.Buffer{}
+	cmd.SetOut(buf)
+	cmd.SetErr(buf)
+
+	prevConfirm := confirmCmdOrAbortFn
+	t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
+	confirmCmdOrAbortFn = func(_ io.Writer, autoConfirm bool, prompt string) error {
+		require.True(t, autoConfirm)
+		require.Contains(t, prompt, "delete")
+		return nil
+	}
+
+	cli := stubProcessAPI{
+		dryRunCancelOrDeletePlan: func(_ context.Context, keys typex.Keys, opts ...options.FacadeOption) (process.DryRunPIKeyExpansion, error) {
+			require.Equal(t, typex.Keys{"child-a"}, keys)
+			require.True(t, options.ApplyFacadeOptions(opts).IgnoreTenant)
+			return process.DryRunPIKeyExpansion{
+				Roots:     typex.Keys{"root-a"},
+				Collected: typex.Keys{"root-a", "child-a", "child-b"},
+				RequiresCancelBeforeDelete: []process.ProcessInstance{
+					{Key: "child-a", State: process.StateActive},
+				},
+				Outcome: process.TraversalOutcomeComplete,
+			}, nil
+		},
+		deleteProcessInstances: func(_ context.Context, keys typex.Keys, _ int, opts ...options.FacadeOption) (process.DeleteReports, error) {
+			require.Equal(t, typex.Keys{"root-a"}, keys)
+			cfg := options.ApplyFacadeOptions(opts)
+			require.True(t, cfg.Force)
+			require.True(t, cfg.NoWait)
+			require.NotNil(t, cfg.Progress)
+			reportProcessInstanceMutationCompletionEvent(cfg.Progress, "cancel", "root-a", 1, options.CompletionDispositionConfirmed, "", ptrInt(3))
+			cfg.Progress(options.ProgressEvent{
+				Kind: options.ProgressEventKindFrozenScope,
+				FrozenScope: &options.FrozenScopeProgress{
+					Phase:        "deleting process instances",
+					CoreResource: "process instance(s)",
+					Done:         1,
+					Total:        1,
+				},
+			})
+			now = now.Add(opsDurableMilestoneMinimumElapsed)
+			reportProcessInstanceMutationCompletionEvent(cfg.Progress, "delete", "root-a", 1, options.CompletionDispositionSubmitted, "", ptrInt(3))
+			return process.DeleteReports{Items: []process.DeleteReport{{Key: "root-a", Ok: true}}}, nil
+		},
+	}
+
+	got, err := deleteProcessInstancesWithPlan(cmd, cli, typex.Keys{"child-a"}, true)
+
+	require.NoError(t, err)
+	require.Len(t, got.Reports, 1)
+	output := buf.String()
+	require.Contains(t, output, "deletion process-instance trees, 1/1 process-instance tree(s), affected process instances: 3")
+	require.Contains(t, output, "deletion: submitted 1/1 process-instance tree(s); affected process instances: 3")
+	require.NotContains(t, output, "cancellation process-instance trees")
+	require.NotContains(t, output, "root-a canceled")
+	require.NotContains(t, output, "deleting process instances 1/1 process instance(s)")
+}
+
 // TestDeleteProcessInstancesWithPlan_RequiresForceBeforeAnyMutation verifies
 // delete is all-or-nothing when the expanded scope includes non-final instances.
 func TestDeleteProcessInstancesWithPlan_RequiresForceBeforeAnyMutation(t *testing.T) {
@@ -633,7 +1038,7 @@ func TestDeleteProcessInstancesWithPlan_RequiresForceBeforeAnyMutation(t *testin
 
 	prevConfirm := confirmCmdOrAbortFn
 	t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
-	confirmCmdOrAbortFn = func(_ bool, _ string) error {
+	confirmCmdOrAbortFn = func(_ io.Writer, _ bool, _ string) error {
 		t.Fatal("unexpected confirmation prompt before force impact-check failure")
 		return nil
 	}
@@ -699,7 +1104,7 @@ func TestDeleteProcessInstanceCommand_DirectKeyBypassesTopLevelSearchPaging(t *t
 
 	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
 	prevConfirm := confirmCmdOrAbortFn
-	confirmCmdOrAbortFn = func(autoConfirm bool, prompt string) error { return nil }
+	confirmCmdOrAbortFn = func(_ io.Writer, autoConfirm bool, prompt string) error { return nil }
 	t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
 
 	stdout, stderr := executeRootForProcessInstanceWithSeparateOutputs(t,

@@ -30,13 +30,13 @@ var (
 var getElementCmd = &cobra.Command{
 	Use:   "element",
 	Short: "List or fetch runtime element instances",
-	Long: "List or fetch Camunda runtime element instances.\n\n" +
-		"Use --key when you know an element instance key. Omit --key to list or search element instances by process instance, BPMN element ID, state, type, process definition, or BPMN process ID.\n\n" +
-		"Search mode follows the shared get paging and limit conventions. --batch-size controls each backend page request, --limit caps returned element rows across all pages, and --total prints only the matching count. Verbose paging progress is written away from stdout; JSON, keys-only, quiet, and automation output remain free of prompts and progress text.\n\n" +
-		"Compact human rows include dur:<duration> when start/end timestamps or active state support a runtime duration.\n\n" +
-		"Use --with-listeners to include runtime listener jobs under matching element rows.\n\n" +
-		"Use --json for the stable element payload and --keys-only when piping element instance keys.\n\n" +
-		"Element lookup and search require Camunda 8.8 or newer. Camunda 8.7 returns an unsupported-version error.",
+	Long: `List or fetch Camunda runtime element instances.
+
+Use --key for a known element instance. Otherwise search by process instance, BPMN element ID, state, type, process definition, or BPMN process ID.
+
+--batch-size controls each discovery request; --limit caps returned elements across all pages. Use --total to count matching elements, or --with-listeners to include runtime listener jobs.
+
+Requires Camunda 8.8 or newer.`,
 	Example: `  ./c8volt get element --key <element-instance-key>
   ./c8volt get element --key <element-instance-key> --with-listeners
   ./c8volt get element --pi-key <process-instance-key> --limit 10
@@ -102,10 +102,10 @@ func init() {
 	fs.StringVar(&flagGetElementType, "type", "", "runtime element type to filter in search mode; case-insensitive")
 	fs.StringVar(&flagGetElementProcessDefKey, "pd-key", "", "process definition key to filter in search mode")
 	fs.StringVarP(&flagGetElementBpmnProcessID, "bpmn-process-id", "b", "", "BPMN process ID to filter in search mode")
-	fs.Int32VarP(&flagGetElementBatchSize, "batch-size", "n", consts.MaxPISearchSize, fmt.Sprintf("number of elements to request per page; does not cap total returned rows (max limit %d enforced by server)", consts.MaxPISearchSize))
+	fs.Int32VarP(&flagGetElementBatchSize, "batch-size", "n", consts.MaxPISearchSize, fmt.Sprintf("number of elements to request per page; does not cap total results (max limit %d enforced by server)", consts.MaxPISearchSize))
 	fs.Int32VarP(&flagGetElementLimit, "limit", "l", 0, "maximum number of matching elements to return across all pages; omit to continue through all matches")
 	fs.BoolVar(&flagGetElementTotal, "total", false, "return only the numeric total of matching elements")
-	fs.BoolVar(&flagGetElementWithListeners, "with-listeners", false, "include runtime listener jobs under matching element rows")
+	fs.BoolVar(&flagGetElementWithListeners, "with-listeners", false, "include runtime listener jobs")
 
 	useInvalidInputFlagErrors(getElementCmd)
 	setCommandMutation(getElementCmd, CommandMutationReadOnly)

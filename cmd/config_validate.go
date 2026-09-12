@@ -17,10 +17,11 @@ var configValidateCmd = &cobra.Command{
 	Short: "Validate effective configuration",
 	Long: `Validate effective configuration.
 
-Loads the effective configuration through the normal config resolver and uses
-the same validation behavior as ` + "`config show --validate`" + `.`,
+Loads the effective configuration using the normal precedence rules and applies the same validation as config show --validate.`,
 	Example: `  ./c8volt --config ./config.yaml config validate
-  ./c8volt --profile prod config validate`,
+  ./c8volt --profile <profile-name> config validate
+  ./c8volt --tenant tenant-a config validate
+  ./c8volt --tenant "" config validate`,
 	Run: func(cmd *cobra.Command, args []string) {
 		log, _ := logging.FromContext(cmd.Context())
 		cfg, err := config.FromContext(cmd.Context())
@@ -28,6 +29,8 @@ the same validation behavior as ` + "`config show --validate`" + `.`,
 			_, noErrCodes := bootstrapFailureContext(cmd)
 			ferrors.HandleAndExit(log, noErrCodes, normalizeBootstrapError(fmt.Errorf("loading configuration: %w", err)))
 		}
+		tenantCtx := attachConfigurationTenantContext(cmd, cfg)
+		renderTenantContext(cmd, tenantCtx)
 		validateConfigForCommand(log, cfg)
 	},
 }

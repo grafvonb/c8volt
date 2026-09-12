@@ -4,6 +4,7 @@
 package cmd
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"io"
@@ -15,6 +16,7 @@ import (
 	"testing"
 	"time"
 
+	options "github.com/grafvonb/c8volt/c8volt/foptions"
 	"github.com/grafvonb/c8volt/c8volt/ops"
 	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/grafvonb/c8volt/internal/exitcode"
@@ -45,8 +47,9 @@ func TestRunHelp_DocumentsWaitAndVerificationRouting(t *testing.T) {
 	require.Contains(t, output, "process-instance")
 
 	output = assertCommandHelpOutput(t, []string{"run", "process-instance"}, []string{
-		"Run by BPMN process ID",
+		"Use a BPMN process ID",
 		"waits until created instances are observable",
+		"--all-tenants is not supported because",
 		"./c8volt run process-instance --bpmn-process-id <bpmn-process-id> --count 3 --workers 2",
 		"./c8volt run process-instance --bpmn-process-id <bpmn-process-id> --keys-only | ./c8volt expect process-instance --state completed -",
 	}, nil)
@@ -93,6 +96,50 @@ func TestRunProcessInstanceCommand_RegressionPreservesSelectorAndWorkerContract(
 		Repeated:    false,
 		Description: "return after creation is accepted",
 	})
+}
+
+// TestRunProcessInstanceCommand_AllTenantsRejectsBeforeInputValidationOrRequest
+// proves process-instance creation rejects all-tenants before variable parsing,
+// selector validation, activity, or creation requests can run.
+func TestRunProcessInstanceCommand_AllTenantsRejectsBeforeInputValidationOrRequest(t *testing.T) {
+	tests := []struct {
+		name string
+		args []string
+	}{
+		{
+			name: "invalid vars",
+			args: []string{"run", "process-instance", "--all-tenants", "--bpmn-process-id", "order-process", "--vars", "{"},
+		},
+		{
+			name: "bpmn selector",
+			args: []string{"--all-tenants", "run", "process-instance", "--bpmn-process-id", "order-process"},
+		},
+		{
+			name: "direct process definition key",
+			args: []string{"run", "process-instance", "--pd-key", "9001", "--all-tenants"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var requests testx.SafeSlice[string]
+			srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				requests.Append(r.Method + " " + r.URL.Path)
+				t.Fatalf("run process-instance must reject --all-tenants before request work: %s %s", r.Method, r.URL.Path)
+			}))
+			t.Cleanup(srv.Close)
+			args := append([]string{"--config", writeTestConfigForVersion(t, srv.URL, "8.9")}, tt.args...)
+
+			output, err := testx.RunCmdSubprocess(t, "TestRunProcessInstanceCommand_AllTenantsRejectsBeforeInputValidationOrRequestHelper", map[string]string{
+				"C8VOLT_TEST_ROOT_ARGS": marshalRootArgsForEnv(t, args),
+			})
+			assertAllTenantsConcreteDestinationSubprocessFailure(t, output, err, "run process-instance")
+			require.Empty(t, requests.Snapshot())
+			require.NotContains(t, string(output), "parsing --vars JSON")
+			require.NotContains(t, string(output), "creation target:")
+			require.NotContains(t, string(output), "running process instance")
+		})
+	}
 }
 
 // Verifies run commands consume the profile selected by the root flag for tenant and API URL resolution.
@@ -330,6 +377,214 @@ func TestRunProcessInstanceCommand_VarsPayloadRemainsCreationInput(t *testing.T)
 	require.Contains(t, output, "2251799813711967")
 }
 
+// Helper-process entrypoint for all-tenants process-instance run rejection.
+func TestRunProcessInstanceCommand_AllTenantsRejectsBeforeInputValidationOrRequestHelper(t *testing.T) {
+	executeRootHelperFromArgsEnv(t, "C8VOLT_TEST_ROOT_ARGS")
+}
+
+// Verifies run process-instance renders the creation tenant before the backend creation request.
+func TestRunProcessInstanceCommand_CreationContextPrecedesCreateRequest(t *testing.T) {
+	tests := []struct {
+		name       string
+		configYAML func(baseURL string) string
+		wantLine   string
+		wantTenant string
+	}{
+		{
+			name: "named target",
+			configYAML: func(baseURL string) string {
+				return `app:
+  camunda_version: "8.9"
+  tenant: tenant-a
+auth:
+  mode: none
+apis:
+  camunda_api:
+    base_url: ` + baseURL + `
+`
+			},
+			wantLine:   "creation target: tenant-a",
+			wantTenant: "tenant-a",
+		},
+		{
+			name: "default target",
+			configYAML: func(baseURL string) string {
+				return `app:
+  camunda_version: "8.9"
+auth:
+  mode: none
+apis:
+  camunda_api:
+    base_url: ` + baseURL + `
+`
+			},
+			wantLine:   "creation target: default tenant",
+			wantTenant: "<default>",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			resetProcessInstanceCommandGlobals()
+			t.Cleanup(resetProcessInstanceCommandGlobals)
+			stdout := &bytes.Buffer{}
+			stderr := &bytes.Buffer{}
+			var sawRun bool
+			srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				require.Equal(t, http.MethodPost, r.Method)
+				require.Equal(t, "/v2/process-instances", r.URL.Path)
+				sawRun = true
+				require.Contains(t, stderr.String(), tt.wantLine)
+				defer r.Body.Close()
+				var body map[string]any
+				require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
+				require.Equal(t, "2251799813685255", body["processDefinitionKey"])
+				require.Equal(t, tt.wantTenant, body["tenantId"])
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = w.Write([]byte(`{"processDefinitionKey":"2251799813685255","processInstanceKey":"2251799813711967","tenantId":"` + tt.wantTenant + `","variables":{}}`))
+			}))
+			t.Cleanup(srv.Close)
+
+			cfgPath := writeRawTestConfig(t, tt.configYAML(srv.URL))
+			root := Root()
+			resetCommandTreeFlags(root)
+			resetDeployCommandContextForTest(root)
+			root.SetOut(stdout)
+			root.SetErr(stderr)
+			root.SetArgs([]string{"--config", cfgPath, "run", "process-instance", "--pd-key", "2251799813685255", "--no-wait"})
+
+			_, err := root.ExecuteC()
+			require.NoError(t, err)
+			require.True(t, sawRun)
+			require.Contains(t, stdout.String(), "2251799813711967")
+			require.Contains(t, stderr.String(), tt.wantLine)
+			require.NotContains(t, stderr.String(), "Proceed?")
+		})
+	}
+}
+
+// Verifies run process-instance JSON results include creation context without reshaping the payload.
+func TestRunProcessInstanceCommand_JSONEnvelopeIncludesCreationContext(t *testing.T) {
+	resetProcessInstanceCommandGlobals()
+	t.Cleanup(resetProcessInstanceCommandGlobals)
+	var sawRun bool
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodPost, r.Method)
+		require.Equal(t, "/v2/process-instances", r.URL.Path)
+		sawRun = true
+		defer r.Body.Close()
+		var body map[string]any
+		require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
+		require.Equal(t, "tenant-a", body["tenantId"])
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"processDefinitionKey":"2251799813685255","processInstanceKey":"2251799813711967","tenantId":"tenant-a","variables":{}}`))
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeRawTestConfig(t, `app:
+  camunda_version: "8.9"
+  tenant: tenant-a
+auth:
+  mode: none
+apis:
+  camunda_api:
+    base_url: `+srv.URL+`
+`)
+	resetDeployCommandContextForTest(Root())
+
+	stdout, stderr := executeRootForProcessInstanceWithSeparateOutputs(t,
+		"--config", cfgPath,
+		"--automation",
+		"--json",
+		"run", "process-instance",
+		"--pd-key", "2251799813685255",
+		"--no-wait",
+	)
+
+	require.True(t, sawRun)
+	require.NotContains(t, stderr, "creation target:")
+	require.NotContains(t, stdout, "creation target:")
+	var got map[string]any
+	require.NoError(t, json.Unmarshal([]byte(stdout), &got))
+	require.Equal(t, string(OutcomeAccepted), got["outcome"])
+	require.Equal(t, "run process-instance", got["command"])
+	tenantContext := requireJSONObject(t, got["tenantContext"])
+	require.Equal(t, "creation", tenantContext["mode"])
+	require.Equal(t, "not_applicable", tenantContext["filter"])
+	require.Equal(t, "tenant-a", tenantContext["targetTenantId"])
+	require.Equal(t, []any{"tenant-a"}, tenantContext["resolvedTenantIds"])
+	require.Equal(t, float64(0), tenantContext["unknownTargetCount"])
+	require.Equal(t, false, tenantContext["crossTenant"])
+	require.Empty(t, tenantContext["warnings"])
+	payload := requireJSONObject(t, got["payload"])
+	require.EqualValues(t, 1, payload["total"])
+	items, ok := payload["items"].([]any)
+	require.True(t, ok)
+	require.Len(t, items, 1)
+}
+
+// Verifies quiet and keys-only run output never mixes tenant context into protected streams.
+func TestRunProcessInstanceCommand_ProtectedModesSuppressCreationContext(t *testing.T) {
+	tests := []struct {
+		name       string
+		argsPrefix []string
+		wantStdout string
+		exact      bool
+	}{
+		{
+			name:       "quiet",
+			argsPrefix: []string{"--quiet"},
+			wantStdout: "2251799813711967",
+		},
+		{
+			name:       "keys only",
+			argsPrefix: []string{},
+			wantStdout: "2251799813711967\n",
+			exact:      true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			resetProcessInstanceCommandGlobals()
+			t.Cleanup(resetProcessInstanceCommandGlobals)
+			resetDeployCommandContextForTest(Root())
+			srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				require.Equal(t, http.MethodPost, r.Method)
+				require.Equal(t, "/v2/process-instances", r.URL.Path)
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = w.Write([]byte(`{"processDefinitionKey":"2251799813685255","processInstanceKey":"2251799813711967","tenantId":"tenant-a","variables":{}}`))
+			}))
+			t.Cleanup(srv.Close)
+
+			cfgPath := writeRawTestConfig(t, `app:
+  camunda_version: "8.9"
+  tenant: tenant-a
+auth:
+  mode: none
+apis:
+  camunda_api:
+    base_url: `+srv.URL+`
+`)
+			args := append([]string{"--config", cfgPath}, tt.argsPrefix...)
+			args = append(args, "run", "process-instance", "--pd-key", "2251799813685255", "--no-wait")
+			if tt.name == "keys only" {
+				args = append(args, "--keys-only")
+			}
+
+			stdout, stderr := executeRootForProcessInstanceWithSeparateOutputs(t, args...)
+
+			if tt.exact {
+				require.Equal(t, tt.wantStdout, stdout)
+			} else {
+				require.Contains(t, stdout, tt.wantStdout)
+			}
+			require.NotContains(t, stdout, "creation target:")
+			require.NotContains(t, stderr, "creation target:")
+		})
+	}
+}
+
 // Verifies normal run output shows the state observed by creation confirmation.
 func TestRunProcessInstanceCommand_NormalOutputRendersObservedState(t *testing.T) {
 	srv := newRunProcessInstanceObservedStateServer(t, "COMPLETED")
@@ -526,6 +781,193 @@ func TestRunProcessInstanceBulkProgressUsesWorkflowImportance(t *testing.T) {
 
 	require.Equal(t, []activitysink.Update{{
 		Message:    "starting process instances 2/5 process instance(s)",
+		Importance: logging.ActivityImportanceWorkflow,
+	}}, sink.PriorityUpdates())
+}
+
+// TestRunProcessInstanceBulkStartCompletionUsesSemanticWorkflowActivity verifies
+// explicit-count starts are eligible for exact semantic completion aggregation.
+func TestRunProcessInstanceBulkStartCompletionUsesSemanticWorkflowActivity(t *testing.T) {
+	resetProcessInstanceCommandGlobals()
+	t.Cleanup(resetProcessInstanceCommandGlobals)
+
+	sink := &activitysink.Sink{}
+	cmd := &cobra.Command{}
+	cmd.SetContext(logging.ToActivityContext(context.Background(), sink))
+	reporter := newRunProcessInstanceSemanticProgressReporter(cmd, 2)
+	defer reporter.Close()
+	opts := appendRunProcessInstanceProgressOption(cmd, nil, reporter)
+	progress := options.ApplyFacadeOptions(opts).Progress
+	require.NotNil(t, progress)
+
+	recordHTTPFallbackActivity(cmd.Context(), "creating process instance request")
+	affected := 1
+	progress(options.ProgressEvent{
+		Kind: options.ProgressEventKindCompletion,
+		Completion: &options.CompletionProgress{
+			Phase:            "create",
+			CoreResource:     "process instance(s)",
+			Total:            2,
+			Identity:         "2251799813711967",
+			Disposition:      options.CompletionDispositionConfirmed,
+			AffectedResource: "process instances",
+			AffectedCount:    &affected,
+		},
+	})
+	progress(options.ProgressEvent{
+		Kind: options.ProgressEventKindFrozenScope,
+		FrozenScope: &options.FrozenScopeProgress{
+			Phase:        "starting process instances",
+			CoreResource: "process instance(s)",
+			Done:         1,
+			Total:        2,
+		},
+	})
+	progress(options.ProgressEvent{
+		Kind: options.ProgressEventKindCompletion,
+		Completion: &options.CompletionProgress{
+			Phase:            "create",
+			CoreResource:     "process instance(s)",
+			Total:            2,
+			Identity:         "2251799813711968",
+			Disposition:      options.CompletionDispositionConfirmed,
+			AffectedResource: "process instances",
+			AffectedCount:    &affected,
+		},
+	})
+	progress(options.ProgressEvent{
+		Kind: options.ProgressEventKindFrozenScope,
+		FrozenScope: &options.FrozenScopeProgress{
+			Phase:        "starting process instances",
+			CoreResource: "process instance(s)",
+			Done:         2,
+			Total:        2,
+		},
+	})
+
+	require.Equal(t, []activitysink.Update{
+		{
+			Message:    "starting process instances, 1/2 process instance(s), process instances: 1",
+			Importance: logging.ActivityImportanceWorkflow,
+		},
+		{
+			Message:    "starting process instances, 2/2 process instance(s), process instances: 2",
+			Importance: logging.ActivityImportanceWorkflow,
+		},
+	}, sink.PriorityUpdates())
+	require.Equal(t, opsSemanticProgressAggregate{
+		Completed:     2,
+		Failed:        0,
+		Total:         2,
+		Affected:      2,
+		AffectedValid: true,
+	}, reporter.Aggregate())
+}
+
+// TestRunProcessInstanceDefaultStartMilestonesAndFinalFlush verifies explicit
+// count starts use default semantic milestones and flush only once on close.
+func TestRunProcessInstanceDefaultStartMilestonesAndFinalFlush(t *testing.T) {
+	resetProcessInstanceCommandGlobals()
+	t.Cleanup(resetProcessInstanceCommandGlobals)
+	now := time.Date(2026, 9, 1, 7, 6, 0, 0, time.UTC)
+	runProcessInstanceSemanticProgressNow = func() time.Time { return now }
+	t.Cleanup(func() { runProcessInstanceSemanticProgressNow = time.Now })
+
+	cmd, stderr := newSemanticProgressStderrCommand()
+	reporter := newRunProcessInstanceSemanticProgressReporter(cmd, 2)
+	opts := appendRunProcessInstanceProgressOption(cmd, nil, reporter)
+	progress := options.ApplyFacadeOptions(opts).Progress
+
+	now = now.Add(opsDurableMilestoneMinimumElapsed)
+	reportRunProcessInstanceCompletionEvent(progress, "pi-1", 2, options.CompletionDispositionConfirmed, "", ptrInt(1))
+	reportRunProcessInstanceCompletionEvent(progress, "pi-2", 2, options.CompletionDispositionConfirmed, "", ptrInt(1))
+	reporter.Close()
+	reporter.Close()
+
+	output := stderr.String()
+	require.Equal(t, 1, strings.Count(output, "starting process instances, 1/2 process instance(s), process instances: 1"))
+	require.Equal(t, 1, strings.Count(output, "starting process instances, 2/2 process instance(s), process instances: 2"))
+	require.NotContains(t, output, "pi-1 started")
+}
+
+// TestRunProcessInstanceVerboseLifecycleVocabulary verifies bulk-start progress
+// maps submitted, started, and failed wording in the command layer.
+func TestRunProcessInstanceVerboseLifecycleVocabulary(t *testing.T) {
+	resetProcessInstanceCommandGlobals()
+	t.Cleanup(resetProcessInstanceCommandGlobals)
+	flagVerbose = true
+
+	cmd, stderr := newSemanticProgressStderrCommand()
+	reporter := newRunProcessInstanceSemanticProgressReporter(cmd, 3)
+	opts := appendRunProcessInstanceProgressOption(cmd, nil, reporter)
+	progress := options.ApplyFacadeOptions(opts).Progress
+	defer reporter.Close()
+
+	reportRunProcessInstanceCompletionEvent(progress, "pi-1", 3, options.CompletionDispositionSubmitted, "", ptrInt(1))
+	reportRunProcessInstanceCompletionEvent(progress, "pi-2", 3, options.CompletionDispositionConfirmed, "", ptrInt(1))
+	reportRunProcessInstanceCompletionEvent(progress, "pi-3", 3, options.CompletionDispositionFailed, "start rejected", ptrInt(0))
+	reporter.Close()
+
+	output := stderr.String()
+	require.Contains(t, output, "pi-1 submitted (starting process instances, 1/3 process instance(s), process instances: 1)")
+	require.Contains(t, output, "pi-2 started (starting process instances, 2/3 process instance(s), process instances: 2)")
+	require.Contains(t, output, "pi-3 failed: start rejected (starting process instances, 3/3 process instance(s), 1 failed, process instances: 2)")
+}
+
+// reportRunProcessInstanceCompletionEvent sends one facade-level bulk-start
+// completion fact through the configured run command progress callback.
+func reportRunProcessInstanceCompletionEvent(progress func(options.ProgressEvent), identity string, total int, disposition options.CompletionDisposition, detail string, affected *int) {
+	progress(options.ProgressEvent{
+		Kind: options.ProgressEventKindCompletion,
+		Completion: &options.CompletionProgress{
+			Phase:         "create",
+			CoreResource:  "process instance(s)",
+			Total:         total,
+			Identity:      identity,
+			Disposition:   disposition,
+			FailureDetail: detail,
+			AffectedCount: affected,
+		},
+	})
+}
+
+// TestExplicitLargeWorkSharedAdapterIgnoresCompletionFacts documents that
+// walk-style callers remain frozen-scope progress only until a finite semantic
+// completion boundary is explicitly added for that command family.
+func TestExplicitLargeWorkSharedAdapterIgnoresCompletionFacts(t *testing.T) {
+	resetProcessInstanceCommandGlobals()
+	t.Cleanup(resetProcessInstanceCommandGlobals)
+
+	sink := &activitysink.Sink{}
+	cmd := &cobra.Command{}
+	cmd.SetContext(logging.ToActivityContext(context.Background(), sink))
+	opts := appendExplicitLargeWorkProgressOption(cmd, nil)
+	progress := options.ApplyFacadeOptions(opts).Progress
+	require.NotNil(t, progress)
+
+	affected := 1
+	progress(options.ProgressEvent{
+		Kind: options.ProgressEventKindCompletion,
+		Completion: &options.CompletionProgress{
+			Phase:         "walking process-instance family",
+			Total:         2,
+			Identity:      "child",
+			Disposition:   options.CompletionDispositionConfirmed,
+			AffectedCount: &affected,
+		},
+	})
+	progress(options.ProgressEvent{
+		Kind: options.ProgressEventKindFrozenScope,
+		FrozenScope: &options.FrozenScopeProgress{
+			Phase:        "walking process-instance family",
+			CoreResource: "process instance(s)",
+			Done:         2,
+			Total:        2,
+		},
+	})
+
+	require.Equal(t, []activitysink.Update{{
+		Message:    "walking process-instance family 2/2 process instance(s)",
 		Importance: logging.ActivityImportanceWorkflow,
 	}}, sink.PriorityUpdates())
 }

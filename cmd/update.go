@@ -8,13 +8,9 @@ import "github.com/spf13/cobra"
 var updateCmd = &cobra.Command{
 	Use:   "update",
 	Short: "Update existing resources",
-	Long: `Update existing resources.
+	Long: `Update process-instance variables or job retries, timeouts, and worker outcomes.
 
-The process-instance command updates process-instance-scope variables on
-existing Camunda 8.8 or newer process instances. The job command updates
-job retries and timeout by key, with dry-run planning, confirmation prompts,
-and submitted output. Camunda 8.7 configurations return an
-unsupported-version error before these mutations.`,
+Requires Camunda 8.8 or newer. Use a resource subcommand to plan and confirm updates.`,
 	Example: `  ./c8volt update process-instance --key <process-instance-key> --vars '{"customerTier":"gold"}' --dry-run
   ./c8volt update process-instance --key <process-instance-key> --vars-file ./vars.json --dry-run
   ./c8volt update process-instance --key <process-instance-key> --vars '{"customerTier":"gold"}' --dry-run

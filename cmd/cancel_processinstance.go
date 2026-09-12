@@ -20,20 +20,32 @@ var (
 var cancelProcessInstanceCmd = &cobra.Command{
 	Use:   "process-instance",
 	Short: "Cancel process instances by key or filters",
-	Long: "Cancel process instances by key or search filters.\n\n" +
-		"By default c8volt validates the affected root and descendant instances, asks for confirmation, and waits until cancellation is observed. Use --force when a selected child must be escalated to its root instance.\n\n" +
-		"Tenant contract: --tenant scopes search-derived candidate discovery where supported. Explicit --key and stdin keys are backend-authorized admin input; existing dry-run, confirmation, force, and wait safety checks still apply.\n\n" +
-		"When --bpmn-process-id is set, c8volt validates that the process definition is visible before searching process instances. A missing selector fails with a local diagnostic before paging, dry-run planning, confirmation, or cancellation; --json, --automation, and non-TTY runs never prompt for recovery output. If the selector is visible but no matching instances are found, no cancellation request is submitted.\n\n" +
-		"Search mode pages through matching process instances by default. --batch-size controls each discovery page request, --limit caps the selected process-instance scope across all pages, and --workers, --fail-fast, and --no-worker-limit bound independent planning or cancellation work. Verbose paging progress is written away from stdout; JSON, quiet, and automation output remain free of prompts unless confirmation is explicitly supplied.\n\n" +
-		"Use --dry-run to preview selected, in-scope, final-state, and partial-scope instances without cancelling.\n\n" +
-		"Use --auto-confirm for unattended destructive runs.",
+	Long: `Cancel process instances by key or search filters.
+
+By default c8volt validates the affected root and descendant instances, asks for confirmation, and waits until cancellation is observed. Use --force when a selected child must be escalated to its root instance.
+
+Cancellation succeeds when every affected family member is completed, canceled, terminated, or absent. The explicit expect process-instance --state canceled check still requires canceled or terminated instances.
+
+--tenant limits search-derived selection. An empty tenant or --all-tenants leaves discovery unfiltered across accessible tenants. Explicit --key and stdin keys use backend authorization without tenant filtering.
+
+A --bpmn-process-id selector must match a visible process definition before instance discovery. An empty selection completes without confirmation or cancellation.
+
+--batch-size controls each discovery request; --limit caps selected instances across all pages. --workers, --fail-fast, and --no-worker-limit control planning and cancellation work.
+
+Use --dry-run to preview the affected family without cancelling. Use --auto-confirm for unattended cancellation.`,
 	Example: `  ./c8volt cancel process-instance --key <process-instance-key>
   ./c8volt cancel process-instance --key <process-instance-key> --dry-run
   ./c8volt cancel process-instance --key <process-instance-key> --force
+  ./c8volt --tenant tenant-a cancel process-instance --key <process-instance-key> --dry-run
+  ./c8volt --tenant tenant-a cancel process-instance --state active --limit 5 --dry-run
+  ./c8volt --tenant "" cancel process-instance --state active --limit 5 --dry-run
   ./c8volt cancel process-instance --state active --batch-size 250 --limit 5 --dry-run
+  ./c8volt cancel process-instance --state active --json --dry-run
+  ./c8volt cancel process-instance --state active --keys-only
   ./c8volt cancel process-instance --state active --start-date-before 2026-05-31 --limit 5 --dry-run
   ./c8volt cancel process-instance --state active --start-date-newer-days 30 --limit 5 --dry-run
   ./c8volt cancel process-instance --bpmn-process-id <bpmn-process-id> --state active --limit 5 --auto-confirm
+  ./c8volt --verbose cancel process-instance --state active --limit 25 --auto-confirm
   ./c8volt expect process-instance --key <process-instance-key> --state canceled
   ./c8volt get process-instance --key <process-instance-key> --keys-only | ./c8volt cancel process-instance --auto-confirm -`,
 	Aliases: []string{"pi"},
@@ -59,7 +71,7 @@ var cancelProcessInstanceCmd = &cobra.Command{
 		if err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}
-		keys := mergeAndValidateKeys(flagCancelPIKeys, stdinKeys, log, cfg).Unique()
+		keys := mergeAndValidateKeys(cmd, flagCancelPIKeys, stdinKeys, log, cfg).Unique()
 		if err := validatePIKeyedModeDateFilters(len(keys)); err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}
@@ -127,6 +139,7 @@ func cancelProcessInstancesWithPlanAndRenderWithOptions(cmd *cobra.Command, cli 
 			DryRunPreview: &planned.Preview,
 		}, nil
 	}
+	renderAttachedTenantContext(cmd)
 	printDryRunExpansionWarning(cmd, plan)
 
 	impact := planned.Impact
@@ -136,13 +149,14 @@ func cancelProcessInstancesWithPlanAndRenderWithOptions(cmd *cobra.Command, cli 
 		if affectedCount > requestedCount {
 			prompt = fmt.Sprintf("You have requested to cancel %d process instance(s), but due to dependencies, a total of %d instance(s) with %d root instance(s) will be canceled. Do you want to proceed?", requestedCount, affectedCount, rootCount)
 		}
-		if err := confirmCmdOrAbortFn(shouldImplicitlyConfirm(cmd), prompt); err != nil {
+		if err := confirmCmdOrAbortFn(cmd.ErrOrStderr(), shouldImplicitlyConfirm(cmd), prompt); err != nil {
 			return processInstancePageActionResult{}, err
 		}
 	}
 
-	mutationOpts := append(compactProcessInstanceMutationOptions(opts), processOptions.WithAffectedProcessInstanceCount(len(plan.Collected)))
+	mutationOpts, closeSemanticProgress := appendProcessInstanceMutationSemanticProgressOptions(cmd, "cancel", impact, opts, len(plan.Collected))
 	reports, err := cli.CancelProcessInstances(cmd.Context(), plan.Roots, flagWorkers, mutationOpts...)
+	closeSemanticProgress()
 	if err != nil {
 		return processInstancePageActionResult{}, fmt.Errorf("cancel process instances: %w", err)
 	}
@@ -174,7 +188,7 @@ func init() {
 	fs.StringSliceVarP(&flagCancelPIKeys, "key", "k", nil, "process instance key(s) to cancel")
 	fs.BoolVar(&flagForce, "force", false, "cancel the root instance when a selected instance is a child")
 
-	fs.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers when --batch-size > 1 (default: min(batch-size, 2*GOMAXPROCS, 32))")
+	fs.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers for queued work; mutation work uses root trees (default: min(queued work, 2*GOMAXPROCS, 32)); independent of discovery page size")
 	fs.BoolVar(&flagNoWorkerLimit, "no-worker-limit", false, "use all queued jobs as workers when --workers is unset")
 	fs.BoolVar(&flagFailFast, "fail-fast", false, "stop scheduling new instances after the first error")
 

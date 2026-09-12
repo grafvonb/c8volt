@@ -10,13 +10,13 @@ Update process-instance variables by key
 
 ### Synopsis
 
-Update process-instance variables by key.
+Update process-instance-scope variables on Camunda 8.8 or newer.
 
-The command accepts repeated --key values or newline-separated keys from stdin with '-'. Provide exactly one variable payload source: --vars with a JSON object or --vars-file with a path to a JSON object file. The same variable map is applied to every unique target key.
+Provide repeated --key values or newline-separated keys from stdin with '-'. Supply exactly one payload source: --vars with a JSON object or --vars-file with its file path. The same variable map is applied to every unique key. Explicit keys use backend authorization without tenant filtering.
 
-By default c8volt loads current process-instance-scope variables, previews planned additions and changes, asks for confirmation, then waits until requested variables are visible through the same lookup path as `get process-instance --with-vars`. Use --dry-run to preview without mutating, or --auto-confirm for unattended mutation.
+c8volt loads current variables, plans additions and changes, asks for confirmation, and waits until the requested variables are visible through the same lookup as get process-instance --with-vars.
 
-Variable updates are supported for Camunda 8.8 or newer. Camunda 8.7 returns an unsupported-version error before mutation.
+Use --dry-run to inspect changes without mutation, or --auto-confirm for unattended updates.
 
 ```
 c8volt update process-instance [flags]
@@ -27,7 +27,7 @@ c8volt update process-instance [flags]
 ```
   ./c8volt update process-instance --key <process-instance-key> --vars '{"customerTier":"gold"}' --dry-run
   ./c8volt update process-instance --key <process-instance-key> --vars-file ./vars.json --dry-run
-  ./c8volt update process-instance --key <process-instance-key> --vars '{"customerTier":"gold"}' --dry-run
+  ./c8volt --tenant tenant-a update process-instance --key <process-instance-key> --vars '{"customerTier":"gold"}' --dry-run
   ./c8volt update process-instance --key <process-instance-key-a> --key <process-instance-key-b> --vars '{"customerTier":"gold"}' --dry-run
   printf '%s\n' "$PROCESS_INSTANCE_KEY_A" "$PROCESS_INSTANCE_KEY_B" | ./c8volt update process-instance - --vars '{"customerTier":"gold"}' --dry-run
   ./c8volt --json update process-instance --key <process-instance-key> --vars '{"customerTier":"gold"}' --dry-run
@@ -50,6 +50,7 @@ c8volt update process-instance [flags]
 ### Options inherited from parent commands
 
 ```
+      --all-tenants        clear configured tenant filtering and search all tenants visible to the authenticated user; mutually exclusive with --tenant
   -y, --auto-confirm       auto-confirm prompts for non-interactive use
       --automation         enable non-interactive mode for commands that explicitly support it
       --config string      path to config file
@@ -60,7 +61,7 @@ c8volt update process-instance [flags]
       --no-indicator       disable transient terminal activity indicators
       --profile string     config active profile name to use (e.g. dev, prod)
   -q, --quiet              suppress output except errors
-      --tenant string      tenant ID for discovery/search, selection, create, deploy, and run flows; explicit keys/IDs remain backend-authorized
+      --tenant string      tenant ID for discovery/search, selection, create, deploy, and run flows; explicit empty values can clear configured discovery filters, and explicit keys/IDs remain backend-authorized
       --timeout duration   HTTP request timeout (default 30s)
   -v, --verbose            show additional output
 ```

@@ -1,0 +1,289 @@
+// SPDX-FileCopyrightText: 2026 Adam Bogdan Boczek
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+package cmd
+
+import (
+	"context"
+	"strings"
+	"sync"
+	"time"
+
+	"github.com/grafvonb/c8volt/c8volt/ops"
+	"github.com/grafvonb/c8volt/toolx/logging"
+	"github.com/spf13/cobra"
+)
+
+// opsSemanticProgressScope describes one frozen command-owned completion scope.
+type opsSemanticProgressScope struct {
+	Phase                     string
+	ActivityLabel             string
+	CoreResource              string
+	Total                     int
+	AffectedResource          string
+	AffectedCoverageAvailable bool
+	SubmittedVerb             string
+	ConfirmedVerb             string
+	FailedVerb                string
+}
+
+// opsSemanticProgressLifecycleWords keeps command-family lifecycle vocabulary
+// together so services can stay limited to wording-free dispositions.
+type opsSemanticProgressLifecycleWords struct {
+	Submitted string
+	Confirmed string
+	Failed    string
+}
+
+// opsSemanticProgressConfig groups the fixed dependencies needed for one
+// semantic progress reporter lifetime.
+type opsSemanticProgressConfig struct {
+	Scope  opsSemanticProgressScope
+	Policy opsSemanticProgressOutputPolicy
+	Now    func() time.Time
+}
+
+// opsSemanticProgressAggregate is the monotonic command-owned projection of
+// wording-free completion facts.
+type opsSemanticProgressAggregate struct {
+	Completed     int
+	Failed        int
+	Total         int
+	Affected      int
+	AffectedValid bool
+}
+
+// opsSemanticProgressReporter serializes completion facts, transient activity
+// updates, and durable diagnostic output for one workflow scope.
+type opsSemanticProgressReporter struct {
+	mu                  sync.Mutex
+	cmd                 *cobra.Command
+	scope               opsSemanticProgressScope
+	policy              opsSemanticProgressOutputPolicy
+	now                 func() time.Time
+	startedAt           time.Time
+	lastInformationalAt time.Time
+	aggregate           opsSemanticProgressAggregate
+	durableActivated    bool
+	dirty               bool
+	stop                func()
+	closed              bool
+}
+
+// newOpsSemanticProgressReporter constructs one reporter and immediately owns
+// the workflow activity when the current output policy permits transient output.
+func newOpsSemanticProgressReporter(cmd *cobra.Command, cfg opsSemanticProgressConfig) *opsSemanticProgressReporter {
+	now := cfg.Now
+	if now == nil {
+		now = time.Now
+	}
+	scope := cfg.Scope
+	aggregate := opsSemanticProgressAggregate{
+		Total:         scope.Total,
+		AffectedValid: scope.AffectedCoverageAvailable,
+	}
+	reporter := &opsSemanticProgressReporter{
+		cmd:       cmd,
+		scope:     scope,
+		policy:    cfg.Policy,
+		now:       now,
+		startedAt: now(),
+		aggregate: aggregate,
+		stop:      func() {},
+	}
+	reporter.lastInformationalAt = reporter.startedAt
+	if cmd != nil && cfg.Policy.TransientActivity {
+		reporter.stop = logging.StartActivityWithImportance(opsSemanticProgressCommandContext(cmd), formatOpsSemanticProgressAggregate(scope, aggregate), logging.ActivityImportanceWorkflow)
+	}
+	return reporter
+}
+
+// Report ingests one completion event and ignores unrelated progress facts so
+// existing service callbacks can share a single function safely.
+func (r *opsSemanticProgressReporter) Report(event ops.ProgressEvent) {
+	if r == nil || event.Kind != ops.ProgressEventKindCompletion || event.Completion == nil {
+		return
+	}
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.closed || !r.completionMatchesScope(*event.Completion) {
+		return
+	}
+	r.ingestCompletionLocked(*event.Completion)
+	aggregate := r.aggregate
+	if r.policy.TransientActivity && r.cmd != nil {
+		logging.UpdateActivityWithImportance(opsSemanticProgressCommandContext(r.cmd), formatOpsSemanticProgressAggregate(r.scope, aggregate), logging.ActivityImportanceWorkflow)
+	}
+	if r.policy.VerboseItems {
+		r.printDurableLineLocked(formatOpsSemanticProgressCompletion(r.scope, aggregate, *event.Completion), r.policy.FailureWarnings && event.Completion.Disposition == ops.CompletionDispositionFailed)
+		r.durableActivated = true
+		r.dirty = false
+		return
+	}
+	if r.policy.FailureWarnings && event.Completion.Disposition == ops.CompletionDispositionFailed {
+		r.printDurableLineLocked(formatOpsSemanticProgressCompletion(r.scope, aggregate, *event.Completion), true)
+		r.durableActivated = true
+		r.dirty = false
+		return
+	}
+	if r.policy.PacedAggregate && r.dirty {
+		now := r.now()
+		if now.Before(r.lastInformationalAt.Add(opsDurableMilestoneMinimumElapsed)) {
+			return
+		}
+		r.printDurableLineLocked(formatOpsSemanticProgressAggregate(r.scope, aggregate), false)
+		r.lastInformationalAt = now
+		r.durableActivated = true
+		r.dirty = false
+	}
+}
+
+// Aggregate returns a copy of the current completion aggregate for tests and
+// command-family adapters that need fallback decisions.
+func (r *opsSemanticProgressReporter) Aggregate() opsSemanticProgressAggregate {
+	if r == nil {
+		return opsSemanticProgressAggregate{}
+	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return r.aggregate
+}
+
+// Close flushes pending activated durable progress and ends the owned workflow
+// activity exactly once.
+func (r *opsSemanticProgressReporter) Close() {
+	if r == nil {
+		return
+	}
+	r.mu.Lock()
+	if r.closed {
+		r.mu.Unlock()
+		return
+	}
+	r.closed = true
+	stop := r.stop
+	var finalLine string
+	if r.policy.PacedAggregate && r.durableActivated && r.dirty {
+		finalLine = formatOpsSemanticProgressAggregate(r.scope, r.aggregate)
+		r.dirty = false
+	}
+	r.mu.Unlock()
+	if finalLine != "" {
+		printOpsDurableLine(r.cmd, finalLine, false)
+	}
+	if stop != nil {
+		stop()
+	}
+}
+
+// printDurableLineLocked keeps quiet-mode failure warnings visible even when
+// the attached logger is configured to filter warn records.
+func (r *opsSemanticProgressReporter) printDurableLineLocked(line string, warn bool) {
+	if r.policy.Channel.Mode == ops.ProgressModeQuiet && warn {
+		printOpsDurableLineDirect(r.cmd, line)
+		return
+	}
+	printOpsDurableLine(r.cmd, line, warn)
+}
+
+// ingestCompletionLocked applies one fact while preserving monotonic counters
+// and permanently invalidating affected output on unknown or invalid deltas.
+func (r *opsSemanticProgressReporter) ingestCompletionLocked(completion ops.CompletionProgress) {
+	aggregate, dirty := applyOpsSemanticCompletionToAggregate(r.aggregate, completion)
+	r.aggregate = aggregate
+	if dirty {
+		r.dirty = true
+	}
+}
+
+// applyOpsSemanticCompletionToAggregate reduces one completion fact into a
+// bounded aggregate without touching reporter output, clocks, or activity state.
+func applyOpsSemanticCompletionToAggregate(aggregate opsSemanticProgressAggregate, completion ops.CompletionProgress) (opsSemanticProgressAggregate, bool) {
+	if aggregate.Total <= 0 && completion.Total > 0 {
+		aggregate.Total = completion.Total
+	}
+	if aggregate.Total > 0 && aggregate.Completed >= aggregate.Total {
+		return aggregate, false
+	}
+	aggregate.Completed++
+	if completion.Disposition == ops.CompletionDispositionFailed {
+		aggregate.Failed++
+	}
+	if !aggregate.AffectedValid {
+		return aggregate, true
+	}
+	if completion.AffectedCount == nil || *completion.AffectedCount < 0 {
+		aggregate.AffectedValid = false
+		return aggregate, true
+	}
+	aggregate.Affected += *completion.AffectedCount
+	return aggregate, true
+}
+
+// completionMatchesScope avoids mixing unrelated completion phases when a
+// command reuses the same facade callback for discovery and mutation.
+func (r *opsSemanticProgressReporter) completionMatchesScope(completion ops.CompletionProgress) bool {
+	phase := strings.TrimSpace(r.scope.Phase)
+	return phase == "" || strings.TrimSpace(completion.Phase) == "" || strings.TrimSpace(completion.Phase) == phase
+}
+
+// opsSemanticProgressCommandContext keeps nil command contexts from disabling
+// reporter construction in focused unit tests.
+func opsSemanticProgressCommandContext(cmd *cobra.Command) context.Context {
+	if cmd == nil || cmd.Context() == nil {
+		return context.Background()
+	}
+	return cmd.Context()
+}
+
+// opsSemanticProgressLifecycleWordsFor returns the standard submitted/failed
+// wording around a command-family-specific confirmed verb.
+func opsSemanticProgressLifecycleWordsFor(confirmed string) opsSemanticProgressLifecycleWords {
+	confirmed = strings.TrimSpace(confirmed)
+	if confirmed == "" {
+		confirmed = "completed"
+	}
+	return opsSemanticProgressLifecycleWords{
+		Submitted: "submitted",
+		Confirmed: confirmed,
+		Failed:    "failed",
+	}
+}
+
+// withLifecycleWords returns scope with explicit lifecycle verbs filled from
+// command-owned vocabulary while preserving any unrelated scope metadata.
+func (s opsSemanticProgressScope) withLifecycleWords(words opsSemanticProgressLifecycleWords) opsSemanticProgressScope {
+	s.SubmittedVerb = strings.TrimSpace(words.Submitted)
+	s.ConfirmedVerb = strings.TrimSpace(words.Confirmed)
+	s.FailedVerb = strings.TrimSpace(words.Failed)
+	return s
+}
+
+// processInstanceMutationSemanticProgressScope returns the shared vocabulary
+// for process-instance cancel/delete workflow completions.
+func processInstanceMutationSemanticProgressScope(operation string, total int, affectedCoverageAvailable bool) opsSemanticProgressScope {
+	label, words := processInstanceMutationSemanticProgressWords(operation)
+	activity := strings.TrimSpace(label)
+	if activity == "" {
+		activity = "mutation"
+	}
+	return opsSemanticProgressScope{
+		Phase:                     strings.TrimSpace(operation),
+		ActivityLabel:             activity + " process-instance trees",
+		CoreResource:              "process-instance tree(s)",
+		Total:                     total,
+		AffectedResource:          "affected process instances",
+		AffectedCoverageAvailable: affectedCoverageAvailable,
+	}.withLifecycleWords(words)
+}
+
+// processInstanceMutationSemanticProgressWords maps cancel/delete lifecycle
+// wording once for every direct, stdin, and search-selected mutation path.
+func processInstanceMutationSemanticProgressWords(operation string) (string, opsSemanticProgressLifecycleWords) {
+	label, confirmedVerb := processInstanceMutationResultWords(operation, false)
+	_, submittedVerb := processInstanceMutationResultWords(operation, true)
+	words := opsSemanticProgressLifecycleWordsFor(confirmedVerb)
+	words.Submitted = submittedVerb
+	return label, words
+}

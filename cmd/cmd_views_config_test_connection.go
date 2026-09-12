@@ -7,16 +7,18 @@ import (
 	"fmt"
 
 	"github.com/grafvonb/c8volt/c8volt/cluster"
+	"github.com/grafvonb/c8volt/c8volt/tenant"
 	"github.com/grafvonb/c8volt/config"
 )
 
 type configTestConnectionView struct {
-	OK         bool                            `json:"ok"`
-	ConfigFile string                          `json:"config_file,omitempty"`
-	Profile    string                          `json:"profile,omitempty"`
-	BaseURL    string                          `json:"base_url"`
-	Cluster    configTestConnectionClusterView `json:"cluster"`
-	Warnings   []string                        `json:"warnings"`
+	OK            bool                            `json:"ok"`
+	ConfigFile    string                          `json:"config_file,omitempty"`
+	Profile       string                          `json:"profile,omitempty"`
+	BaseURL       string                          `json:"base_url"`
+	TenantContext *tenant.Context                 `json:"tenantContext,omitempty"`
+	Cluster       configTestConnectionClusterView `json:"cluster"`
+	Warnings      []string                        `json:"warnings"`
 }
 
 type configTestConnectionClusterView struct {
@@ -43,7 +45,7 @@ type configTestConnectionPartitionView struct {
 	Health string `json:"health,omitempty"`
 }
 
-func newConfigTestConnectionView(cfg *config.Config, source configSourceDescription, topology cluster.Topology, warnings []string) configTestConnectionView {
+func newConfigTestConnectionView(cfg *config.Config, source configSourceDescription, topology cluster.Topology, warnings []string, tenantCtx tenant.Context) configTestConnectionView {
 	view := configTestConnectionView{
 		OK:         true,
 		ConfigFile: source.loadedPath,
@@ -56,6 +58,10 @@ func newConfigTestConnectionView(cfg *config.Config, source configSourceDescript
 			LastCompletedChangeID: topology.LastCompletedChangeId,
 		},
 		Warnings: warnings,
+	}
+	if !tenantContextIsZero(tenantCtx) {
+		cloned := cloneTenantContext(tenantCtx)
+		view.TenantContext = &cloned
 	}
 	if cfg.ActiveProfile != "" {
 		view.Profile = cfg.ActiveProfile

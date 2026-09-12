@@ -43,6 +43,8 @@ c8volt resolve incident --key <incident-key>
 
 Generated references: [get incident](/cli/c8volt_get_incident), [update process-instance](/cli/c8volt_update_process-instance), [update job](/cli/c8volt_update_job), [resolve incident](/cli/c8volt_resolve_incident).
 
-## Output And Safety
+## Safety
 
 `--dry-run` shows selected incidents and planned variable, job, and resolution steps without mutation. Real execution submits only the requested repair actions and reports planned, skipped, submitted, confirmed, and failed work. Keyed mode and search mode are mutually exclusive.
+
+A named tenant limits discovery. An empty tenant or `--all-tenants` searches across tenants visible to the authenticated identity. `--all-tenants` conflicts with an explicit `--tenant` value. Explicit keys use backend authorization without tenant filtering.

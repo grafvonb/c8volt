@@ -7,6 +7,7 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"os"
 	"strings"
@@ -61,11 +62,15 @@ func handleNewCliError(cmd *cobra.Command, log *slog.Logger, cfg *config.Config,
 	handleCommandError(cmd, log, noErrCodes, err)
 }
 
-func confirmCmdOrAbort(autoConfirm bool, prompt string) error {
+// confirmCmdOrAbort applies the shared default-no terminal confirmation policy.
+func confirmCmdOrAbort(promptWriter io.Writer, autoConfirm bool, prompt string) error {
 	if autoConfirm || !term.IsTerminal(int(os.Stdin.Fd())) {
 		return nil
 	}
-	fmt.Print(formatConfirmationPrompt(prompt, "[y/N]"))
+	if promptWriter == nil {
+		promptWriter = os.Stderr
+	}
+	fmt.Fprint(promptWriter, formatConfirmationPrompt(prompt, "[y/N]"))
 	in := bufio.NewScanner(os.Stdin)
 	if !in.Scan() {
 		return localPreconditionError(ErrCmdAborted)
@@ -127,16 +132,18 @@ func requireAutomationSupport(cmd *cobra.Command) error {
 	)
 }
 
-func mergeAndValidateKeys(baseKeys []string, stdinKeys []string, log *slog.Logger, cfg *config.Config) typex.Keys {
+// mergeAndValidateKeys preserves flag-before-stdin ordering and routes invalid
+// piped input through the invoking command's established error contract.
+func mergeAndValidateKeys(cmd *cobra.Command, baseKeys []string, stdinKeys []string, log *slog.Logger, cfg *config.Config) typex.Keys {
 	keys := append([]string{}, baseKeys...)
 
 	if len(stdinKeys) > 0 {
 		if ok, firstBadKey, firstBadIndex := validateKeys(stdinKeys); !ok {
 			if strings.HasPrefix(firstBadKey, "filter: ") {
-				ferrors.HandleAndExit(log, cfg.App.NoErrCodes,
+				handleCommandError(cmd, log, cfg.App.NoErrCodes,
 					invalidFlagValuef("validating keys from stdin failed: use --keys-only flag to get only keys as input"))
 			}
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes,
+			handleCommandError(cmd, log, cfg.App.NoErrCodes,
 				invalidFlagValuef("validating keys from stdin failed: line %q at index %d is not a valid key; have you forgotten to use --keys-only flag in case of c8volt commands?",
 					firstBadKey, firstBadIndex))
 		}

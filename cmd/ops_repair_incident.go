@@ -46,11 +46,21 @@ var (
 var opsRepairIncidentCmd = &cobra.Command{
 	Use:   "incident",
 	Short: "Repair incidents by key or filter",
-	Long: "Repair incidents by key or filter.\n\n" +
-		"The command accepts repeated --key values, newline-separated keys from stdin with '-', or incident search filters. Keyed mode and search mode are mutually exclusive. Search mode pages through all matching incidents by default. --batch-size tunes per-page discovery requests only, and --limit intentionally caps the frozen scope. Human, JSON, and audit report output identify whether discovery completed or was user-limited. It builds a fixed incident target set before mutation, applies process-instance-scope variable updates once per unique scope when requested, applies job retry and timeout updates only when an incident has a related job, resolves each incident, and confirms clearance unless --no-wait is set. Incidents without related jobs are reported and still proceed to incident resolution. Use --report-file with Markdown or JSON output for an audit record of discovery, targets, step statuses, notices, errors, and final outcome.",
+	Long: `Repair incidents by key or search filters.
+
+Provide repeated --key values, newline-separated keys from stdin with '-', or search filters. Keyed mode and search mode are mutually exclusive.
+
+The workflow fixes the incident target set, applies requested variables once per process-instance scope, updates retries and timeouts for related jobs, and resolves incidents. Incidents without related jobs still proceed to resolution. Unless --no-wait is set, it confirms that incidents are cleared.
+
+--tenant limits search; an empty tenant or --all-tenants searches across accessible tenants. Explicit keys use backend authorization without tenant filtering. --batch-size controls each discovery request; --limit caps the selected scope.
+
+Use --dry-run to inspect planned repairs without mutation, --auto-confirm or --automation for unattended repair, and --report-file to save an audit report.`,
 	Example: `  ./c8volt ops repair incident --key <incident-key> --dry-run
+  ./c8volt --tenant tenant-a ops repair incident --key <incident-key> --dry-run
+  ./c8volt --tenant "" ops repair incident --state active --limit 5 --dry-run
   ./c8volt ops repair incident --state active --error-type io_mapping_error --limit 5 --dry-run
   ./c8volt ops repair incident --key <incident-key> --vars '{"hasIncident":false}' --dry-run
+  ./c8volt --verbose ops repair incident --state active --error-type io_mapping_error --limit 5 --auto-confirm
   ./c8volt ops repair incident --key <incident-key> --vars '{"hasIncident":false}' --report-file repair-incident.md`,
 	Aliases: []string{"inc"},
 	Args: func(cmd *cobra.Command, args []string) error {
@@ -89,7 +99,7 @@ var opsRepairIncidentCmd = &cobra.Command{
 		if err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}
-		keys := mergeAndValidateKeys(flagOpsRepairIncidentKeys, stdinKeys, log, cfg).Unique()
+		keys := mergeAndValidateKeys(cmd, flagOpsRepairIncidentKeys, stdinKeys, log, cfg).Unique()
 		searchMode := hasOpsRepairIncidentSearchModeFlags(cmd)
 		keyedMode := len(flagOpsRepairIncidentKeys) > 0 || len(stdinKeys) > 0
 		if keyedMode && searchMode {
@@ -132,7 +142,8 @@ var opsRepairIncidentCmd = &cobra.Command{
 			ReportFormat:        reportFormat,
 			StartedAt:           time.Now().UTC(),
 		}
-		configureOpsRepairProgress(cmd, &request)
+		initializeOpsTenantContextHumanReporting(cmd, cfg, mode != ops.RepairDiscoveryModeSearch)
+		repairProgress := configureOpsRepairProgress(cmd, &request)
 		if opsRepairNeedsPreflight(cmd) {
 			planRequest := request
 			planRequest.DryRun = true
@@ -142,7 +153,11 @@ var opsRepairIncidentCmd = &cobra.Command{
 			if err != nil {
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("plan ops repair incident: %w", err))
 			}
-			if err := confirmCmdOrAbortFn(false, opsRepairConfirmationPrompt(planned)); err != nil {
+			if opsRepairPlanHasRepairTargets(planned) {
+				ctx := attachOpsRepairTenantContext(cmd, cfg, planned)
+				printOpsTenantContextForCommand(cmd, ctx)
+			}
+			if err := confirmCmdOrAbortFn(cmd.ErrOrStderr(), false, opsRepairConfirmationPrompt(planned)); err != nil {
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 			}
 			request = opsRepairConfirmedRequestFromPlan(request, planned)
@@ -150,6 +165,8 @@ var opsRepairIncidentCmd = &cobra.Command{
 		result, err := repairIncidentWithCommandActivity(cmd, request, func() (ops.RepairResult, error) {
 			return cli.RepairIncidents(cmd.Context(), request, collectOptions()...)
 		})
+		repairProgress.Close()
+		result = attachOpsRepairResultTenantContext(cmd, cfg, result)
 		if reportErr := writeOpsRepairReport(result, cfg, OpsWorkflowReportPreserveExisting); reportErr != nil {
 			if err != nil {
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("ops repair incident: %w; write audit report: %v", err, reportErr))

@@ -24,9 +24,15 @@ var (
 var updateJobCmd = &cobra.Command{
 	Use:   "job",
 	Short: "Update a job by key",
-	Long: "Update a Camunda job by key.\n\n" +
-		"The command supports retries, timeout updates, and worker outcome modes for Camunda 8.8 or newer. It builds a pre-mutation plan, supports --dry-run previews, and asks for confirmation before material interactive mutations. Retry updates are confirmed by reading the job by key by default; timeout updates and worker outcomes report accepted submission without deadline or outcome confirmation. JSON mutations require --dry-run, --auto-confirm, or --automation, and --json cannot be combined with --verbose. Camunda 8.7 returns an unsupported-version error before mutation.",
+	Long: `Update a Camunda job by key on Camunda 8.8 or newer.
+
+Supports retry and timeout updates and worker outcomes. Explicit --key uses backend authorization without tenant filtering.
+
+c8volt plans the update and asks for confirmation before material interactive mutations. Retry updates are verified by reading the job; timeout updates and worker outcomes return after acceptance without waiting for confirmation.
+
+Use --dry-run to inspect the plan without mutation. With --json, mutations require --dry-run, --auto-confirm, or --automation; --json cannot be combined with --verbose.`,
 	Example: `  ./c8volt update job --key <job-key> --retries 3 --dry-run
+  ./c8volt --tenant tenant-a update job --key <job-key> --retries 3 --dry-run
   ./c8volt update job --key <job-key> --retries 3 --auto-confirm
   ./c8volt update job --key <job-key> --timeout 5m --auto-confirm
   ./c8volt update job --key <job-key> --fail --retries 0 --message "worker unavailable" --dry-run
@@ -53,6 +59,7 @@ var updateJobCmd = &cobra.Command{
 		if err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("plan job update: %w", err))
 		}
+		attachUpdateJobExplicitTenantContext(cmd, cfg, plan)
 		request.UpdatePlan = &plan
 		if err := validateUpdateJobPlanPreconditions(plan, request); err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
@@ -74,9 +81,11 @@ var updateJobCmd = &cobra.Command{
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("render job update plan: %w", err))
 			}
 			prompt := fmt.Sprintf("You are about to update job %s. Do you want to proceed?", request.Key)
-			if err := confirmCmdOrAbortFn(false, prompt); err != nil {
+			if err := confirmCmdOrAbortFn(cmd.ErrOrStderr(), false, prompt); err != nil {
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 			}
+		} else {
+			renderAttachedTenantContext(cmd)
 		}
 		if request.WorkerOutcome != nil {
 			if err := executeUpdateJobWorkerOutcome(cmd, cli, request, plan); err != nil {

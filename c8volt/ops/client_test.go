@@ -62,15 +62,25 @@ func TestClientPurgeOrphanProcessInstancesMapsServiceBoundary(t *testing.T) {
 					Count:  1,
 				},
 				DeletionPlan: d.DeletionPlan{
-					Status:               d.OpsWorkflowStepStatusPlanned,
-					RequestedKeys:        []string{"2251799813685249"},
-					AffectedKeys:         []string{"2251799813685249", "2251799813685250"},
-					RootKeys:             []string{"2251799813685248"},
+					Status:        d.OpsWorkflowStepStatusPlanned,
+					RequestedKeys: []string{"2251799813685249"},
+					AffectedKeys:  []string{"2251799813685249", "2251799813685250"},
+					RootKeys:      []string{"2251799813685248"},
+					TenantEvidence: d.TenantEvidence{
+						ResolvedTenantIDs: []string{"tenant-a"},
+						TargetCount:       1,
+						Targets:           []d.TenantEvidenceTarget{{Key: "2251799813685249", TenantID: "tenant-a"}},
+					},
 					RequiresConfirmation: true,
 					DryRunPreview: d.DryRunPIKeyExpansion{
 						Roots:     []string{"2251799813685248"},
 						Collected: []string{"2251799813685249", "2251799813685250"},
-						Outcome:   d.TraversalOutcomeComplete,
+						TenantEvidence: d.TenantEvidence{
+							ResolvedTenantIDs: []string{"tenant-a"},
+							TargetCount:       1,
+							Targets:           []d.TenantEvidenceTarget{{Key: "2251799813685249", TenantID: "tenant-a"}},
+						},
+						Outcome: d.TraversalOutcomeComplete,
 					},
 				},
 				Deletion: d.DeletionResult{
@@ -114,6 +124,12 @@ func TestClientPurgeOrphanProcessInstancesMapsServiceBoundary(t *testing.T) {
 	require.Equal(t, OrphanPurgeOutcomePlanned, got.Outcome)
 	require.Equal(t, []string{"2251799813685249"}, []string(got.Discovery.Keys))
 	require.Equal(t, []string{"2251799813685248"}, []string(got.DeletionPlan.RootKeys))
+	require.Equal(t, process.TenantEvidence{
+		ResolvedTenantIDs: []string{"tenant-a"},
+		TargetCount:       1,
+		Targets:           []process.TenantEvidenceTarget{{Key: "2251799813685249", TenantID: "tenant-a"}},
+	}, got.DeletionPlan.TenantEvidence)
+	require.Equal(t, got.DeletionPlan.TenantEvidence, got.DeletionPlan.DryRunPreview.TenantEvidence)
 	require.Equal(t, process.TraversalOutcomeComplete, got.DeletionPlan.DryRunPreview.Outcome)
 	require.True(t, got.DeleteRequested)
 	require.Equal(t, WorkflowStepStatusSubmitted, got.Deletion.Status)
@@ -311,6 +327,47 @@ func TestClientExecuteSmokeTestMapsProgressOption(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, foptions.ProgressEventKindFrozenScope, gotEvent.Kind)
 	require.Equal(t, &foptions.FrozenScopeProgress{Phase: "starting process instances", CoreResource: "process instance(s)", Done: 1, Total: 2}, gotEvent.FrozenScope)
+}
+
+// TestClientExecuteSmokeTestMapsProgressTenantContext verifies preflight
+// callbacks expose the common tenant context through the public facade.
+func TestClientExecuteSmokeTestMapsProgressTenantContext(t *testing.T) {
+	t.Parallel()
+
+	domainCtx := d.TenantContext{
+		Mode:              d.TenantContextModeCreation,
+		Filter:            d.TenantContextFilterNotApplicable,
+		TargetTenantID:    "<default>",
+		ResolvedTenantIDs: []string{"<default>"},
+	}
+	var gotEvent foptions.ProgressEvent
+	api := stubOpsService{
+		smokeTest: func(_ context.Context, _ d.SmokeTestRequest, opts ...services.CallOption) (d.SmokeTestResult, error) {
+			progress := services.ApplyCallOptions(opts).Progress
+			require.NotNil(t, progress)
+			progress(d.OpsProgressEvent{
+				Kind: d.OpsProgressEventKindPreflight,
+				Preflight: &d.OpsPreflightScope{
+					Phase:         "preflight",
+					TenantContext: &domainCtx,
+				},
+			})
+			return d.SmokeTestResult{Request: d.SmokeTestRequest{CommandName: "ops execute smoke-test", Count: 1}}, nil
+		},
+	}
+
+	_, err := New(api, slog.Default()).ExecuteSmokeTest(context.Background(), SmokeTestRequest{CommandName: "ops execute smoke-test", Count: 1}, foptions.WithProgress(func(event foptions.ProgressEvent) {
+		gotEvent = event
+	}))
+	require.NoError(t, err)
+	domainCtx.ResolvedTenantIDs[0] = "changed"
+
+	require.Equal(t, foptions.ProgressEventKindPreflight, gotEvent.Kind)
+	require.NotNil(t, gotEvent.Preflight.TenantContext)
+	require.Equal(t, foptions.TenantContextModeCreation, gotEvent.Preflight.TenantContext.Mode)
+	require.Equal(t, foptions.TenantContextFilterNotApplicable, gotEvent.Preflight.TenantContext.Filter)
+	require.Equal(t, "<default>", gotEvent.Preflight.TenantContext.TargetTenantID)
+	require.Equal(t, []string{"<default>"}, gotEvent.Preflight.TenantContext.ResolvedTenantIDs)
 }
 
 // TestClientAnalyseSlowProcessInstancesMapsListenerServiceBoundary verifies the slow-analysis facade stays thin.
@@ -829,12 +886,19 @@ func TestClientPurgeProcessInstancesWithIncidentsMapsServiceBoundary(t *testing.
 	require.Equal(t, []process.DeleteReport{{Key: "root-a", Ok: true, StatusCode: 202, Status: "accepted"}}, got.Deletion.Items)
 }
 
+// TestClientPurgeAllProcessDefinitionsMapsServiceBoundary verifies APD purge
+// remains a thin facade conversion while forwarding stage progress callbacks.
 func TestClientPurgeAllProcessDefinitionsMapsServiceBoundary(t *testing.T) {
 	t.Parallel()
 
 	started := time.Date(2026, 5, 16, 18, 0, 0, 0, time.UTC)
+	finished := started.Add(time.Second)
+	var progressEvents []ProgressEvent
 	api := stubOpsService{
 		allProcessDefinitionsPurge: func(_ context.Context, request d.AllProcessDefinitionsPurgeRequest, opts ...services.CallOption) (d.AllProcessDefinitionsPurgeResult, error) {
+			require.NotNil(t, request.Progress)
+			requestForCompare := request
+			requestForCompare.Progress = nil
 			require.Equal(t, d.AllProcessDefinitionsPurgeRequest{
 				CommandName:   "ops purge all-process-definitions",
 				DryRun:        true,
@@ -856,68 +920,120 @@ func TestClientPurgeAllProcessDefinitionsMapsServiceBoundary(t *testing.T) {
 				},
 				DiscoveredScopeStatus: d.DiscoveryScopeStatus{Limited: true, Limit: 5, BatchSize: 25, Pages: 1, CandidatesSeen: 6, CandidatesFrozen: 5},
 				StartedAt:             started,
-			}, request)
+			}, requestForCompare)
 			cfg := services.ApplyCallOptions(opts)
 			require.True(t, cfg.Verbose)
 			require.True(t, cfg.NoWait)
 			require.True(t, cfg.Force)
 			require.True(t, cfg.FailFast)
+			require.Nil(t, cfg.Progress)
+
+			stageTotal := 2
+			plannedAffected := 7
+			request.Progress(d.OpsProgressEvent{
+				Kind: d.OpsProgressEventKindStage,
+				Stage: &d.OpsStageProgress{
+					Phase:                "cancel",
+					CoreResource:         "process-instance tree(s)",
+					Total:                &stageTotal,
+					PlannedAffectedCount: &plannedAffected,
+				},
+			})
+			stageTotal = 99
+			plannedAffected = 100
+
+			discovery := d.ProcessDefinitionDiscoveryResult{
+				Status:                         d.OpsWorkflowStepStatusPlanned,
+				DiscoveryScopeStatus:           d.DiscoveryScopeStatus{Limited: true, Limit: 5, BatchSize: 25, Pages: 1, CandidatesSeen: 6, CandidatesFrozen: 5},
+				Filters:                        request.Selection,
+				CandidateProcessDefinitionKeys: typex.Keys{"pd-a"},
+				CandidateProcessDefinitions: []d.ProcessDefinition{{
+					Key:               "pd-a",
+					BpmnProcessId:     "invoice",
+					Name:              "Invoice",
+					TenantId:          "tenant-a",
+					ProcessVersion:    3,
+					ProcessVersionTag: "stable",
+					Statistics:        &d.ProcessDefinitionStatistics{Active: 2, Completed: 5, IncidentCountSupported: true},
+				}},
+				DuplicateCandidateProcessDefinitionKeys: typex.Keys{"pd-a"},
+				CandidateProcessDefinitionCount:         1,
+				LatestOnly:                              true,
+				Notices:                                 []d.AllProcessDefinitionsPurgeWorkflowNotice{{Code: "candidate_duplicates", Severity: "info", Message: "duplicates found", Details: map[string]string{"processDefinitionKey": "pd-a"}}},
+			}
+			deletePlan := d.AllProcessDefinitionsPurgeDeletePlan{
+				Status:                         d.OpsWorkflowStepStatusPlanned,
+				CandidateProcessDefinitionKeys: typex.Keys{"pd-a"},
+				Items: []d.DeleteProcessDefinitionPlanItem{{
+					Key:                        "pd-a",
+					ActiveProcessInstanceCount: 2,
+					ActiveProcessInstanceKeys:  []string{"pi-a", "pi-b"},
+					CancellationPlan: d.DryRunPIKeyExpansion{
+						Roots:     typex.Keys{"pi-a"},
+						Collected: typex.Keys{"pi-a", "pi-b"},
+						Outcome:   d.TraversalOutcomeComplete,
+					},
+				}},
+				TenantEvidence: d.TenantEvidence{
+					ResolvedTenantIDs: []string{"tenant-a"},
+					TargetCount:       2,
+					Targets: []d.TenantEvidenceTarget{
+						{Key: "pi-a", TenantID: "tenant-a"},
+						{Key: "pi-b", TenantID: "tenant-a"},
+					},
+				},
+				DuplicateCandidateProcessDefinitionKeys: typex.Keys{"pd-a"},
+				AffectedProcessInstanceCount:            2,
+				ActiveProcessInstanceCount:              2,
+				RequiresConfirmation:                    true,
+				RequiresForce:                           true,
+			}
+			deletion := d.AllProcessDefinitionsPurgeDeletionResult{
+				Status:                         d.OpsWorkflowStepStatusSubmitted,
+				SubmittedProcessDefinitionKeys: typex.Keys{"pd-a"},
+				Submitted:                      true,
+				NoWait:                         true,
+				Items: []d.ResourceDeleteResponse{{
+					Ok:                true,
+					StatusCode:        202,
+					Status:            "accepted",
+					BatchOperationKey: "batch-a",
+					BatchState:        "ACTIVE",
+					DeleteHistory:     true,
+				}},
+			}
+			notices := []d.AllProcessDefinitionsPurgeWorkflowNotice{{Code: "candidate_duplicates", Severity: "info", Message: "duplicates found", Details: map[string]string{"processDefinitionKey": "pd-a"}}}
 			return d.AllProcessDefinitionsPurgeResult{
-				Request: request,
-				Discovery: d.ProcessDefinitionDiscoveryResult{
-					Status:                         d.OpsWorkflowStepStatusPlanned,
-					DiscoveryScopeStatus:           d.DiscoveryScopeStatus{Limited: true, Limit: 5, BatchSize: 25, Pages: 1, CandidatesSeen: 6, CandidatesFrozen: 5},
-					Filters:                        request.Selection,
-					CandidateProcessDefinitionKeys: typex.Keys{"pd-a"},
-					CandidateProcessDefinitions: []d.ProcessDefinition{{
-						Key:               "pd-a",
-						BpmnProcessId:     "invoice",
-						Name:              "Invoice",
-						TenantId:          "tenant-a",
-						ProcessVersion:    3,
-						ProcessVersionTag: "stable",
-						Statistics:        &d.ProcessDefinitionStatistics{Active: 2, Completed: 5, IncidentCountSupported: true},
-					}},
-					DuplicateCandidateProcessDefinitionKeys: typex.Keys{"pd-a"},
-					CandidateProcessDefinitionCount:         1,
-					LatestOnly:                              true,
-					Notices:                                 []d.AllProcessDefinitionsPurgeWorkflowNotice{{Code: "candidate_duplicates", Severity: "info", Message: "duplicates found", Details: map[string]string{"processDefinitionKey": "pd-a"}}},
-				},
-				DeletePlan: d.AllProcessDefinitionsPurgeDeletePlan{
-					Status:                         d.OpsWorkflowStepStatusPlanned,
-					CandidateProcessDefinitionKeys: typex.Keys{"pd-a"},
-					Items: []d.DeleteProcessDefinitionPlanItem{{
-						Key:                        "pd-a",
-						ActiveProcessInstanceCount: 2,
-						ActiveProcessInstanceKeys:  []string{"pi-a", "pi-b"},
-						CancellationPlan: d.DryRunPIKeyExpansion{
-							Roots:     typex.Keys{"pi-a"},
-							Collected: typex.Keys{"pi-a", "pi-b"},
-							Outcome:   d.TraversalOutcomeComplete,
-						},
-					}},
-					DuplicateCandidateProcessDefinitionKeys: typex.Keys{"pd-a"},
-					AffectedProcessInstanceCount:            2,
-					ActiveProcessInstanceCount:              2,
-					RequiresConfirmation:                    true,
-					RequiresForce:                           true,
-				},
-				Deletion: d.AllProcessDefinitionsPurgeDeletionResult{
-					Status:                         d.OpsWorkflowStepStatusSubmitted,
-					SubmittedProcessDefinitionKeys: typex.Keys{"pd-a"},
-					Submitted:                      true,
-					NoWait:                         true,
-					Items: []d.ResourceDeleteResponse{{
-						Ok:                true,
-						StatusCode:        202,
-						Status:            "accepted",
-						BatchOperationKey: "batch-a",
-						BatchState:        "ACTIVE",
-						DeleteHistory:     true,
-					}},
+				Request:    request,
+				Discovery:  discovery,
+				DeletePlan: deletePlan,
+				Deletion:   deletion,
+				Report: d.AllProcessDefinitionsPurgeReport{
+					SchemaVersion:    "ops.all-process-definitions-purge.v1",
+					CommandName:      "ops purge all-process-definitions",
+					StartedAt:        started,
+					FinishedAt:       finished,
+					Duration:         "1s",
+					DryRun:           true,
+					C8voltVersion:    "dev",
+					CamundaVersion:   "8.9",
+					ProfileIdentity:  "profile-a",
+					TenantID:         "tenant-a",
+					SelectionFilters: request.Selection,
+					Discovery:        discovery,
+					DeletePlan:       deletePlan,
+					Deletion:         deletion,
+					AutoConfirm:      true,
+					Automation:       true,
+					NoWait:           true,
+					Force:            true,
+					FailFast:         true,
+					NoWorkerLimit:    true,
+					Notices:          notices,
+					Outcome:          d.AllProcessDefinitionsPurgeOutcomePlanned,
 				},
 				Outcome: d.AllProcessDefinitionsPurgeOutcomePlanned,
-				Notices: []d.AllProcessDefinitionsPurgeWorkflowNotice{{Code: "candidate_duplicates", Severity: "info", Message: "duplicates found", Details: map[string]string{"processDefinitionKey": "pd-a"}}},
+				Notices: notices,
 			}, nil
 		},
 	}
@@ -943,10 +1059,28 @@ func TestClientPurgeAllProcessDefinitionsMapsServiceBoundary(t *testing.T) {
 		},
 		DiscoveredScopeStatus: DiscoveryScopeStatus{Limited: true, Limit: 5, BatchSize: 25, Pages: 1, CandidatesSeen: 6, CandidatesFrozen: 5},
 		StartedAt:             started,
+		Progress: func(event ProgressEvent) {
+			progressEvents = append(progressEvents, event)
+		},
 	}, foptions.WithVerbose(), foptions.WithNoWait(), foptions.WithForce(), foptions.WithFailFast())
 
 	require.NoError(t, err)
+	require.Len(t, progressEvents, 1)
+	require.Equal(t, ProgressEventKindStage, progressEvents[0].Kind)
+	require.NotNil(t, progressEvents[0].Stage)
+	require.Equal(t, "cancel", progressEvents[0].Stage.Phase)
+	require.Equal(t, "process-instance tree(s)", progressEvents[0].Stage.CoreResource)
+	require.NotNil(t, progressEvents[0].Stage.Total)
+	require.Equal(t, 2, *progressEvents[0].Stage.Total)
+	require.NotNil(t, progressEvents[0].Stage.PlannedAffectedCount)
+	require.Equal(t, 7, *progressEvents[0].Stage.PlannedAffectedCount)
 	require.Equal(t, AllProcessDefinitionsPurgeOutcomePlanned, got.Outcome)
+	require.NotNil(t, got.Request.Progress)
+	require.Equal(t, []string{"pd-a"}, []string(got.Request.DiscoveredCandidateProcessDefinitionKeys))
+	require.True(t, got.Request.Force)
+	require.True(t, got.Request.NoWait)
+	require.True(t, got.Request.FailFast)
+	require.True(t, got.Request.NoWorkerLimit)
 	require.Equal(t, []string{"pd-a"}, []string(got.Discovery.CandidateProcessDefinitionKeys))
 	require.True(t, got.Discovery.Limited)
 	require.EqualValues(t, 25, got.Discovery.BatchSize)
@@ -958,12 +1092,189 @@ func TestClientPurgeAllProcessDefinitionsMapsServiceBoundary(t *testing.T) {
 	require.Equal(t, "pd-a", got.Discovery.Notices[0].Details["processDefinitionKey"])
 	require.Equal(t, []string{"pd-a"}, []string(got.DeletePlan.CandidateProcessDefinitionKeys))
 	require.EqualValues(t, 2, got.DeletePlan.ActiveProcessInstanceCount)
+	require.Equal(t, process.TenantEvidence{
+		ResolvedTenantIDs: []string{"tenant-a"},
+		TargetCount:       2,
+		Targets: []process.TenantEvidenceTarget{
+			{Key: "pi-a", TenantID: "tenant-a"},
+			{Key: "pi-b", TenantID: "tenant-a"},
+		},
+	}, got.DeletePlan.TenantEvidence)
 	require.True(t, got.DeletePlan.RequiresForce)
 	require.Equal(t, []string{"pi-a"}, []string(got.DeletePlan.Items[0].CancellationPlan.Roots))
 	require.Equal(t, WorkflowStepStatusSubmitted, got.Deletion.Status)
 	require.True(t, got.Deletion.NoWait)
 	require.Equal(t, "batch-a", got.Deletion.Items[0].BatchOperationKey)
+	require.Equal(t, "ops.all-process-definitions-purge.v1", got.Report.SchemaVersion)
+	require.Equal(t, "tenant-a", got.Report.TenantID)
+	require.Equal(t, got.DeletePlan.TenantEvidence, got.Report.DeletePlan.TenantEvidence)
+	require.True(t, got.Report.DryRun)
+	require.True(t, got.Report.Force)
+	require.True(t, got.Report.NoWait)
+	require.True(t, got.Report.FailFast)
+	require.True(t, got.Report.NoWorkerLimit)
+	require.Equal(t, AllProcessDefinitionsPurgeOutcomePlanned, got.Report.Outcome)
 	require.Equal(t, "candidate_duplicates", got.Notices[0].Code)
+}
+
+// TestClientPurgeAllProcessDefinitionsLeavesNilCallbacksUnset verifies nil
+// APD progress callbacks remain nil across request fields and facade options.
+func TestClientPurgeAllProcessDefinitionsLeavesNilCallbacksUnset(t *testing.T) {
+	t.Parallel()
+
+	api := stubOpsService{
+		allProcessDefinitionsPurge: func(_ context.Context, request d.AllProcessDefinitionsPurgeRequest, opts ...services.CallOption) (d.AllProcessDefinitionsPurgeResult, error) {
+			require.Nil(t, request.Progress)
+			require.Nil(t, services.ApplyCallOptions(opts).Progress)
+			return d.AllProcessDefinitionsPurgeResult{
+				Request: request,
+				Outcome: d.AllProcessDefinitionsPurgeOutcomePlanned,
+			}, nil
+		},
+	}
+
+	got, err := New(api, slog.Default()).PurgeAllProcessDefinitions(
+		context.Background(),
+		AllProcessDefinitionsPurgeRequest{},
+		foptions.WithProgress(nil),
+	)
+
+	require.NoError(t, err)
+	require.Nil(t, got.Request.Progress)
+	require.Equal(t, AllProcessDefinitionsPurgeOutcomePlanned, got.Outcome)
+}
+
+// TestClientPurgeAllProcessDefinitionsMapsTenantScopeProgress verifies a
+// callback consumer cannot mutate the service-owned delete-plan evidence.
+func TestClientPurgeAllProcessDefinitionsMapsTenantScopeProgress(t *testing.T) {
+	t.Parallel()
+
+	serviceEvidence := d.TenantEvidence{
+		ResolvedTenantIDs:  []string{"tenant-a", "tenant-b"},
+		UnknownTargetCount: 1,
+		TargetCount:        3,
+		Targets: []d.TenantEvidenceTarget{
+			{Key: "pi-a", TenantID: "tenant-a"},
+			{Key: "pi-b", TenantID: "tenant-b"},
+			{Key: "pi-c"},
+		},
+	}
+	api := stubOpsService{
+		allProcessDefinitionsPurge: func(_ context.Context, request d.AllProcessDefinitionsPurgeRequest, _ ...services.CallOption) (d.AllProcessDefinitionsPurgeResult, error) {
+			require.NotNil(t, request.Progress)
+			request.Progress(d.OpsProgressEvent{
+				Kind: d.OpsProgressEventKindTenantScope,
+				TenantScope: &d.OpsTenantScopeProgress{
+					Evidence: serviceEvidence,
+				},
+			})
+			require.Equal(t, []string{"tenant-a", "tenant-b"}, serviceEvidence.ResolvedTenantIDs)
+			require.Equal(t, "pi-a", serviceEvidence.Targets[0].Key)
+			return d.AllProcessDefinitionsPurgeResult{Outcome: d.AllProcessDefinitionsPurgeOutcomePlanned}, nil
+		},
+	}
+
+	var got ProgressEvent
+	_, err := New(api, slog.Default()).PurgeAllProcessDefinitions(context.Background(), AllProcessDefinitionsPurgeRequest{
+		Progress: func(event ProgressEvent) {
+			got = event
+			event.TenantScope.Evidence.ResolvedTenantIDs[0] = "changed"
+			event.TenantScope.Evidence.Targets[0].Key = "changed"
+		},
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, ProgressEventKindTenantScope, got.Kind)
+	require.NotNil(t, got.TenantScope)
+	require.Nil(t, got.Preflight)
+	require.Nil(t, got.Page)
+	require.Nil(t, got.FrozenScope)
+	require.Nil(t, got.ETA)
+	require.Nil(t, got.Stage)
+	require.Nil(t, got.Completion)
+}
+
+// TestTenantScopeProgressConversionsPreservePresence verifies absent payloads
+// remain nil while a present payload with empty evidence remains nonnil.
+func TestTenantScopeProgressConversionsPreservePresence(t *testing.T) {
+	t.Parallel()
+
+	publicAbsent := fromDomainProgressEvent(d.OpsProgressEvent{Kind: d.OpsProgressEventKindTenantScope})
+	require.Equal(t, ProgressEventKindTenantScope, publicAbsent.Kind)
+	require.Nil(t, publicAbsent.TenantScope)
+
+	publicEmpty := fromDomainProgressEvent(d.OpsProgressEvent{
+		Kind:        d.OpsProgressEventKindTenantScope,
+		TenantScope: &d.OpsTenantScopeProgress{},
+	})
+	require.NotNil(t, publicEmpty.TenantScope)
+	require.Empty(t, publicEmpty.TenantScope.Evidence.ResolvedTenantIDs)
+	require.Empty(t, publicEmpty.TenantScope.Evidence.Targets)
+
+	domainAbsent := toDomainProgressEvent(ProgressEvent{Kind: ProgressEventKindTenantScope})
+	require.Equal(t, d.OpsProgressEventKindTenantScope, domainAbsent.Kind)
+	require.Nil(t, domainAbsent.TenantScope)
+
+	domainEmpty := toDomainProgressEvent(ProgressEvent{
+		Kind:        ProgressEventKindTenantScope,
+		TenantScope: &TenantScopeProgress{},
+	})
+	require.NotNil(t, domainEmpty.TenantScope)
+	require.Empty(t, domainEmpty.TenantScope.Evidence.ResolvedTenantIDs)
+	require.Empty(t, domainEmpty.TenantScope.Evidence.Targets)
+}
+
+// TestTenantScopeProgressConversionCopiesPublicEvidence verifies public slices
+// and target entries do not alias the mapped internal callback payload.
+func TestTenantScopeProgressConversionCopiesPublicEvidence(t *testing.T) {
+	t.Parallel()
+
+	publicEvent := ProgressEvent{
+		Kind: ProgressEventKindTenantScope,
+		TenantScope: &TenantScopeProgress{Evidence: process.TenantEvidence{
+			ResolvedTenantIDs:  []string{"tenant-a"},
+			UnknownTargetCount: 1,
+			TargetCount:        2,
+			Targets: []process.TenantEvidenceTarget{
+				{Key: "pi-a", TenantID: "tenant-a"},
+				{Key: "pi-b"},
+			},
+		}},
+	}
+
+	domainEvent := toDomainProgressEvent(publicEvent)
+	publicEvent.TenantScope.Evidence.ResolvedTenantIDs[0] = "changed"
+	publicEvent.TenantScope.Evidence.Targets[0].Key = "changed"
+
+	require.Equal(t, d.OpsProgressEventKindTenantScope, domainEvent.Kind)
+	require.NotNil(t, domainEvent.TenantScope)
+	require.Equal(t, []string{"tenant-a"}, domainEvent.TenantScope.Evidence.ResolvedTenantIDs)
+	require.Equal(t, []d.TenantEvidenceTarget{
+		{Key: "pi-a", TenantID: "tenant-a"},
+		{Key: "pi-b"},
+	}, domainEvent.TenantScope.Evidence.Targets)
+}
+
+// TestClientPurgeAllProcessDefinitionsNormalizesValidationErrors verifies APD
+// partial results return with facade-normalized domain errors.
+func TestClientPurgeAllProcessDefinitionsNormalizesValidationErrors(t *testing.T) {
+	t.Parallel()
+
+	api := stubOpsService{
+		allProcessDefinitionsPurge: func(_ context.Context, request d.AllProcessDefinitionsPurgeRequest, _ ...services.CallOption) (d.AllProcessDefinitionsPurgeResult, error) {
+			return d.AllProcessDefinitionsPurgeResult{
+				Request: request,
+				Outcome: d.AllProcessDefinitionsPurgeOutcomeFailed,
+				Errors:  []string{"invalid selection"},
+			}, fmt.Errorf("%w: invalid selection", d.ErrValidation)
+		},
+	}
+
+	got, err := New(api, slog.Default()).PurgeAllProcessDefinitions(context.Background(), AllProcessDefinitionsPurgeRequest{Selection: ProcessDefinitionSelection{Key: "bad"}})
+
+	require.ErrorIs(t, err, ferr.ErrInvalidInput)
+	require.Equal(t, AllProcessDefinitionsPurgeOutcomeFailed, got.Outcome)
+	require.Equal(t, []string{"invalid selection"}, got.Errors)
 }
 
 // TestClientPurgeAllProcessDefinitionsMapsDiscoveryFields protects public discovery output conversion.

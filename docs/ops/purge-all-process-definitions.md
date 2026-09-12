@@ -46,6 +46,12 @@ c8volt delete process-definition --key <process-definition-key>
 
 Generated references: [get process-definition](/cli/c8volt_get_process-definition), [delete process-definition](/cli/c8volt_delete_process-definition).
 
-## Output And Safety
+## Safety
 
 `--dry-run` reports selected definitions and process-instance impact without mutation. Real execution requires confirmation unless automation controls are used. Full process-definition purge is supported from Camunda 8.9 onward.
+
+A named tenant limits discovery. An empty tenant or `--all-tenants` searches across tenants visible to the authenticated identity. `--all-tenants` conflicts with an explicit `--tenant` value. Explicit keys use backend authorization without tenant filtering.
+
+## Forced Cleanup
+
+With `--force`, cleanup cancels root process instances, waits for active instances to drain, deletes process-instance histories, and then deletes process definitions.

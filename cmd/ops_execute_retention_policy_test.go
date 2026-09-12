@@ -6,6 +6,7 @@ package cmd
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -18,6 +19,8 @@ import (
 
 	"github.com/grafvonb/c8volt/c8volt/ops"
 	"github.com/grafvonb/c8volt/c8volt/process"
+	"github.com/grafvonb/c8volt/c8volt/tenant"
+	"github.com/grafvonb/c8volt/config"
 	"github.com/grafvonb/c8volt/internal/exitcode"
 	"github.com/grafvonb/c8volt/testx"
 	"github.com/spf13/cobra"
@@ -26,18 +29,45 @@ import (
 
 const opsRetentionPolicySeedKey = "2251799813685249"
 
+// TestOpsExecuteRetentionPolicyResultTenantContext verifies retention cleanup
+// uses discovery semantics and frozen delete-plan evidence for command output.
+func TestOpsExecuteRetentionPolicyResultTenantContext(t *testing.T) {
+	cmd := &cobra.Command{}
+	cfg := &config.Config{App: config.App{Tenant: "tenant-a"}}
+	result := ops.RetentionPolicyResult{
+		DeletePlan: ops.RetentionDeletePlan{
+			TenantEvidence: process.TenantEvidence{
+				ResolvedTenantIDs: []string{"tenant-b"},
+				Targets:           []process.TenantEvidenceTarget{{Key: "root-a", TenantID: "tenant-b"}},
+			},
+		},
+	}
+
+	got := attachOpsExecuteRetentionPolicyResultTenantContext(cmd, cfg, result)
+
+	require.NotNil(t, got.Report.TenantContext)
+	require.Equal(t, tenant.ContextModeDiscovery, got.Report.TenantContext.Mode)
+	require.Equal(t, tenant.ContextFilterNamed, got.Report.TenantContext.Filter)
+	require.Equal(t, "tenant-a", got.Report.TenantContext.ConfiguredTenantID)
+	require.Equal(t, []string{"tenant-b"}, got.Report.TenantContext.ResolvedTenantIDs)
+	require.Equal(t, "tenant-a", got.Report.TenantID)
+	attached, ok := attachedTenantContext(cmd)
+	require.True(t, ok)
+	require.Equal(t, *got.Report.TenantContext, *attached)
+}
+
 func TestOpsExecuteRetentionPolicyHelpDocumentsCommand(t *testing.T) {
 	output := executeRootForProcessInstanceTest(t, "ops", "execute", "--help")
 
 	assertHelpOutputContainsAll(t, output,
-		"Discover predefined operational playbooks",
+		"Run predefined operational playbooks",
 		"retention-policy",
 	)
 
 	commandOutput := executeRootForProcessInstanceTest(t, "ops", "execute", "retention-policy", "--help")
 
 	assertHelpOutputContainsAll(t, commandOutput,
-		"Execute process-instance retention cleanup",
+		"Delete process instances older than the required retention age",
 		"--retention-days int",
 		"./c8volt ops execute retention-policy --retention-days 90 --dry-run",
 		"./c8volt ops execute retention-policy --retention-days 90 --state completed --bpmn-process-id <bpmn-process-id> --dry-run",
@@ -272,6 +302,93 @@ func TestOpsExecuteRetentionPolicyConfirmedDeletionUsesFrozenPlanRoots(t *testin
 	require.NotContains(t, strings.Join(deleted.Snapshot(), "\n"), opsRetentionPolicyChangedSeedKey)
 }
 
+// TestOpsExecuteRetentionPolicyInteractiveTenantContext verifies accepted and
+// declined retention plans show complete context at the prompt, suppress
+// repeated callbacks/final summaries, and retain frozen-seed reuse.
+func TestOpsExecuteRetentionPolicyInteractiveTenantContext(t *testing.T) {
+	for _, tt := range []struct {
+		name    string
+		decline bool
+	}{
+		{name: "accepted"},
+		{name: "declined", decline: true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			var requests testx.SafeSlice[string]
+			var deleted testx.SafeSlice[string]
+			srv := newOpsRetentionPolicyChangingSeedServer(t, &requests, &deleted)
+			t.Cleanup(srv.Close)
+			promptPath := filepath.Join(t.TempDir(), "prompt.txt")
+			promptOutputPath := filepath.Join(t.TempDir(), "prompt-output.txt")
+			env := map[string]string{
+				"C8VOLT_TEST_CONFIG":                  writeTestConfigForVersion(t, srv.URL, "8.9"),
+				"C8VOLT_TEST_RETENTION_PROMPT":        promptPath,
+				"C8VOLT_TEST_RETENTION_PROMPT_OUTPUT": promptOutputPath,
+			}
+			if tt.decline {
+				env["C8VOLT_TEST_RETENTION_DECLINE"] = "1"
+			}
+
+			stdout, stderr, err := testx.RunCmdSubprocessSeparate(t, "TestOpsExecuteRetentionPolicyInteractiveHelper", env)
+			if tt.decline {
+				require.Error(t, err, stderr)
+			} else {
+				require.NoError(t, err, stderr)
+			}
+			promptOutput := readReportFile(t, promptOutputPath)
+			require.Contains(t, readReportFile(t, promptPath), "retention cleanup: 1 retention candidate(s)")
+			require.Contains(t, promptOutput, "selection scope: tenant-a only")
+			require.Contains(t, promptOutput, "affected tenants: tenant")
+			require.Less(t, strings.Index(promptOutput, "selection scope: tenant-a only"), strings.Index(promptOutput, "affected tenants: tenant"))
+			combined := stdout + stderr
+			require.Equal(t, 1, strings.Count(combined, "selection scope: tenant-a only"), combined)
+			require.Equal(t, 1, strings.Count(combined, "affected tenants: tenant"), combined)
+			if tt.decline {
+				require.Empty(t, deleted.Snapshot())
+				return
+			}
+			require.Equal(t, []string{"/v2/process-instances/" + opsRetentionPolicySeedKey + "/deletion"}, deleted.Snapshot())
+			require.NotContains(t, strings.Join(requests.Snapshot(), "\n"), opsRetentionPolicyChangedSeedKey)
+		})
+	}
+}
+
+// TestOpsExecuteRetentionPolicyAutoConfirmReportsTenantScopeBeforeWork verifies
+// named retention selection precedes discovery and affected evidence precedes
+// the unchanged first deletion target without invoking confirmation.
+func TestOpsExecuteRetentionPolicyAutoConfirmReportsTenantScopeBeforeWork(t *testing.T) {
+	var requests testx.SafeSlice[string]
+	var deleted testx.SafeSlice[string]
+	backend := newOpsRetentionPolicyServerWithSeed(t, &requests, &deleted)
+	t.Cleanup(backend.Close)
+	output := &opsTenantTimingOutput{}
+	proxy, observations := newOpsTenantTimingProxy(t, backend.URL, output, func(r *http.Request) bool {
+		return (r.Method == http.MethodPost || r.Method == http.MethodDelete) && strings.HasSuffix(r.URL.Path, "/deletion")
+	})
+	t.Cleanup(proxy.Close)
+	reset := func() {
+		resetProcessInstanceCommandGlobals()
+		flagOpsExecuteRetentionPolicyReportFile = ""
+		flagOpsExecuteRetentionPolicyReportFormat = ""
+	}
+
+	promptCount, err := executeRootForOpsTenantTiming(t, output, reset,
+		"--config", writeTestConfigForVersion(t, proxy.URL, "8.9"),
+		"--tenant", "tenant-a",
+		"ops", "execute", "retention-policy",
+		"--retention-days", "90",
+		"--auto-confirm",
+		"--no-wait",
+	)
+	require.NoError(t, err, output.String())
+	firstRequest, firstMutation := observations.snapshot()
+	require.Contains(t, firstRequest, "selection scope: tenant-a only")
+	require.Contains(t, firstMutation, "affected tenants: tenant")
+	require.Zero(t, promptCount)
+	require.Equal(t, 3, countRequestPrefixes(requests.Snapshot(), "POST /v2/process-instances/search "))
+	require.Equal(t, []string{"/v2/process-instances/" + opsRetentionPolicySeedKey + "/deletion"}, deleted.Snapshot())
+}
+
 func TestOpsExecuteRetentionPolicyAutomationJSONExecutesWithoutAutoConfirm(t *testing.T) {
 	var requests testx.SafeSlice[string]
 	var deleted testx.SafeSlice[string]
@@ -341,7 +458,9 @@ func TestOpsExecuteRetentionPolicyWritesMarkdownReport(t *testing.T) {
 	require.Contains(t, report, "- Outcome: planned")
 	require.Contains(t, report, "- Camunda Version: 8.8")
 	require.Contains(t, report, "- Profile: default")
-	require.Contains(t, report, "- Tenant: <default>")
+	require.Contains(t, report, "- Tenant: -")
+	require.Contains(t, report, "- Tenant Context: selection scope: unfiltered across accessible tenants")
+	require.Contains(t, report, "- Resource Tenant: tenant")
 	require.Contains(t, report, "  - "+opsRetentionPolicySeedKey)
 }
 
@@ -374,7 +493,11 @@ func TestOpsExecuteRetentionPolicyWritesJSONReport(t *testing.T) {
 	require.Equal(t, "deleted", report["outcome"])
 	require.Equal(t, float64(90), report["retentionDays"])
 	require.Equal(t, "8.9", report["camundaVersion"])
-	require.Equal(t, "<default>", report["tenantId"])
+	require.NotContains(t, report, "tenantId")
+	tenantContext := requireJSONObject(t, report["tenantContext"])
+	require.Equal(t, "discovery", tenantContext["mode"])
+	require.Equal(t, "none", tenantContext["filter"])
+	require.Equal(t, []any{"tenant"}, tenantContext["resolvedTenantIds"])
 	discovery := requireJSONObject(t, report["discovery"])
 	require.Equal(t, float64(1), discovery["count"])
 	keys := discovery["seedKeys"].([]any)
@@ -438,6 +561,8 @@ func TestOpsExecuteRetentionPolicyExistingReportFailsBeforePreflight(t *testing.
 	}
 }
 
+// TestOpsExecuteRetentionPolicyWritesReportAfterPostDiscoveryFailure verifies
+// force-blocked audit output retains the complete validated tenant scope.
 func TestOpsExecuteRetentionPolicyWritesReportAfterPostDiscoveryFailure(t *testing.T) {
 	var requests testx.SafeSlice[string]
 	var deleted testx.SafeSlice[string]
@@ -466,6 +591,14 @@ func TestOpsExecuteRetentionPolicyWritesReportAfterPostDiscoveryFailure(t *testi
 	var report map[string]any
 	require.NoError(t, json.Unmarshal([]byte(readReportFile(t, reportPath)), &report))
 	require.Equal(t, "failed", report["outcome"])
+	require.NotContains(t, report, "tenantId")
+	tenantContext := requireJSONObject(t, report["tenantContext"])
+	require.Equal(t, "discovery", tenantContext["mode"])
+	require.Equal(t, "none", tenantContext["filter"])
+	require.Equal(t, []any{"tenant"}, tenantContext["resolvedTenantIds"])
+	require.Equal(t, float64(0), tenantContext["unknownTargetCount"])
+	require.Equal(t, false, tenantContext["crossTenant"])
+	require.Equal(t, "unfiltered_selection", requireJSONObject(t, requireJSONItems(t, tenantContext["warnings"], 1)[0])["code"])
 	discovery := requireJSONObject(t, report["discovery"])
 	require.Equal(t, float64(1), discovery["count"])
 	deletion := requireJSONObject(t, report["deletion"])
@@ -530,6 +663,41 @@ func TestOpsExecuteRetentionPolicyBlocksNonFinalScopeBeforeMutationHelper(t *tes
 	if err := root.Execute(); err != nil {
 		handleBootstrapError(root, err)
 	}
+}
+
+func TestOpsExecuteRetentionPolicyInteractiveHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+
+	var promptOutput bytes.Buffer
+	confirmCmdOrAbortFn = func(_ io.Writer, autoConfirm bool, prompt string) error {
+		if autoConfirm {
+			return fmt.Errorf("unexpected auto-confirm prompt")
+		}
+		if err := os.WriteFile(os.Getenv("C8VOLT_TEST_RETENTION_PROMPT"), []byte(prompt), 0o600); err != nil {
+			return err
+		}
+		if err := os.WriteFile(os.Getenv("C8VOLT_TEST_RETENTION_PROMPT_OUTPUT"), promptOutput.Bytes(), 0o600); err != nil {
+			return err
+		}
+		if os.Getenv("C8VOLT_TEST_RETENTION_DECLINE") == "1" {
+			return localPreconditionError(ErrCmdAborted)
+		}
+		return nil
+	}
+	root := Root()
+	resetCommandTreeFlags(root)
+	root.SetArgs([]string{
+		"--config", os.Getenv("C8VOLT_TEST_CONFIG"),
+		"--tenant", "tenant-a",
+		"ops", "execute", "retention-policy",
+		"--retention-days", "90",
+		"--no-wait",
+	})
+	root.SetOut(os.Stdout)
+	root.SetErr(io.MultiWriter(os.Stderr, &promptOutput))
+	_ = root.Execute()
 }
 
 func TestOpsExecuteRetentionPolicyDryRunDiscoveryOutput(t *testing.T) {
@@ -685,10 +853,10 @@ func TestOpsExecuteRetentionPolicyProgressContractPendingT066(t *testing.T) {
 	require.Contains(t, stderr, "retention cleanup scope: retention-policy matched 1 process instance; page size: 1; discovery pages: 1")
 	require.Contains(t, stderr, "discovering retention process instances, page 1/1, 1 seen")
 	require.Contains(t, stderr, "planning retention delete scope 1/1 process instance(s)")
-	require.Contains(t, stderr, "deleting process instances 1/1 process instance(s)")
+	require.Contains(t, stderr, opsRetentionPolicySeedKey+" submitted (deletion process-instance trees, 1/1 process-instance tree(s), affected process instances: 1)")
 	require.NotContains(t, stderr, "/v2/")
 	require.NotContains(t, stderr, "cursor")
-	require.NotContains(t, stdout, "scope:")
+	require.NotContains(t, stdout, "retention cleanup scope:")
 	require.NotContains(t, stdout, "discovering retention process instances")
 	require.Contains(t, stderr, "report: written "+reportPath)
 	require.Contains(t, stderr, "outcome: deleted")
@@ -698,6 +866,35 @@ func TestOpsExecuteRetentionPolicyProgressContractPendingT066(t *testing.T) {
 	require.NoError(t, json.Unmarshal([]byte(readReportFile(t, reportPath)), &report))
 	require.Equal(t, "deleted", report["outcome"])
 	require.Equal(t, true, report["deleteRequested"])
+}
+
+// TestOpsExecuteRetentionPolicyDefaultDeletionMilestonesAndFinalFlush verifies
+// retention deletion progress writes paced aggregate evidence and a final
+// completion flush from the semantic delete facts.
+func TestOpsExecuteRetentionPolicyDefaultDeletionMilestonesAndFinalFlush(t *testing.T) {
+	resetSemanticProgressModeFlags(t)
+	now := time.Date(2026, 9, 1, 7, 0, 0, 0, time.UTC)
+	opsProcessInstancePurgeSemanticProgressNow = func() time.Time { return now }
+	t.Cleanup(func() { opsProcessInstancePurgeSemanticProgressNow = time.Now })
+
+	cmd, stderr := newSemanticProgressStderrCommand()
+	request := ops.RetentionPolicyRequest{}
+	progress := configureOpsExecuteRetentionPolicyProgress(cmd, &request)
+	defer progress.Close()
+
+	now = now.Add(opsDurableMilestoneMinimumElapsed)
+	reportOpsProcessInstancePurgeCompletionEvent(request.Progress, "retention-root-1", 3, ops.CompletionDispositionConfirmed, "", ptrInt(2))
+	now = now.Add(opsDurableMilestoneMinimumElapsed)
+	reportOpsProcessInstancePurgeCompletionEvent(request.Progress, "retention-root-2", 3, ops.CompletionDispositionConfirmed, "", ptrInt(3))
+	reportOpsProcessInstancePurgeCompletionEvent(request.Progress, "retention-root-3", 3, ops.CompletionDispositionConfirmed, "", ptrInt(4))
+	progress.Close()
+	progress.Close()
+
+	output := stderr.String()
+	require.Equal(t, 1, strings.Count(output, "deletion process-instance trees, 2/3 process-instance tree(s), affected process instances: 5"))
+	require.Equal(t, 1, strings.Count(output, "deletion process-instance trees, 3/3 process-instance tree(s), affected process instances: 9"))
+	require.NotContains(t, output, "retention-root-1 deleted")
+	require.NotContains(t, output, "retention-root-2 deleted")
 }
 
 // TestOpsExecuteRetentionPolicyMachineProgressSafetyPendingT066 pins retention
@@ -719,20 +916,151 @@ func TestOpsExecuteRetentionPolicyMachineProgressSafetyPendingT066(t *testing.T)
 
 			args := append([]string{"--config", writeTestConfigForVersion(t, srv.URL, "8.9")}, mode.args...)
 			stdout, stderr := executeRootForProcessInstanceWithSeparateOutputs(t, args...)
-			require.NotContains(t, stdout, "scope:")
+			require.NotContains(t, stdout, "retention cleanup scope:")
 			require.NotContains(t, stdout, "discovering retention process instances")
 			require.NotContains(t, stdout, "planning retention delete scope")
-			require.NotContains(t, stdout, "deleting process instances")
-			require.NotContains(t, stderr, "scope:")
+			require.NotContains(t, stdout, "deletion process-instance trees")
+			require.NotContains(t, stderr, "retention cleanup scope:")
 			require.NotContains(t, stderr, "discovering retention process instances")
 			require.NotContains(t, stderr, "planning retention delete scope")
-			require.NotContains(t, stderr, "deleting process instances")
+			require.NotContains(t, stderr, "deletion process-instance trees")
 			if mode.name == "json" {
 				var envelope map[string]any
 				require.NoError(t, json.Unmarshal([]byte(stdout), &envelope), stdout)
 			}
 		})
 	}
+}
+
+// TestOpsExecuteRetentionPolicySemanticProgressModeGate verifies retention
+// completion progress stays off stdout and follows JSON, keys-only, quiet, and
+// automation suppression rules.
+func TestOpsExecuteRetentionPolicySemanticProgressModeGate(t *testing.T) {
+	assertOpsCompletionProgressModeGate(t, opsCompletionProgressModeGateCase{
+		Configure: func(cmd *cobra.Command) (func(ops.ProgressEvent), func()) {
+			request := ops.RetentionPolicyRequest{}
+			progress := configureOpsExecuteRetentionPolicyProgress(cmd, &request)
+			return request.Progress, progress.Close
+		},
+		Event: func(disposition ops.CompletionDisposition, detail string) ops.ProgressEvent {
+			return ops.ProgressEvent{
+				Kind: ops.ProgressEventKindCompletion,
+				Completion: &ops.CompletionProgress{
+					Phase:            "delete",
+					CoreResource:     "process-instance tree(s)",
+					Total:            1,
+					Identity:         "retention-root-1",
+					Disposition:      disposition,
+					FailureDetail:    detail,
+					AffectedResource: "affected process instances",
+					AffectedCount:    ptrInt(1),
+				},
+			}
+		},
+		QuietWarning: "retention-root-1 failed: request rejected (deletion process-instance trees, 1/1 process-instance tree(s), 1 failed, affected process instances: 1)",
+	})
+}
+
+// opsCompletionProgressModeGateCase describes one command-family progress
+// adapter and the quiet failure line expected from its vocabulary.
+type opsCompletionProgressModeGateCase struct {
+	Configure    func(*cobra.Command) (func(ops.ProgressEvent), func())
+	Event        func(ops.CompletionDisposition, string) ops.ProgressEvent
+	QuietWarning string
+}
+
+// assertOpsCompletionProgressModeGate drives one command-family progress
+// adapter through protected output modes so mode regressions stay consistent.
+func assertOpsCompletionProgressModeGate(t *testing.T, tc opsCompletionProgressModeGateCase) {
+	t.Helper()
+	for _, mode := range []struct {
+		name             string
+		setup            func()
+		disposition      ops.CompletionDisposition
+		detail           string
+		wantQuietWarning bool
+	}{
+		{name: "json failure silence", setup: func() { flagViewAsJson = true }, disposition: ops.CompletionDispositionFailed, detail: "request rejected"},
+		{name: "keys-only failure silence", setup: func() { flagViewKeysOnly = true }, disposition: ops.CompletionDispositionFailed, detail: "request rejected"},
+		{name: "quiet success silence", setup: func() { flagQuiet = true }, disposition: ops.CompletionDispositionConfirmed},
+		{name: "quiet failure warning", setup: func() { flagQuiet = true }, disposition: ops.CompletionDispositionFailed, detail: "request rejected", wantQuietWarning: true},
+		{name: "automation failure silence", setup: func() { flagCmdAutomation = true }, disposition: ops.CompletionDispositionFailed, detail: "request rejected"},
+		{name: "quiet automation failure silence", setup: func() { flagQuiet = true; flagCmdAutomation = true }, disposition: ops.CompletionDispositionFailed, detail: "request rejected"},
+		{name: "quiet json failure silence", setup: func() { flagQuiet = true; flagViewAsJson = true }, disposition: ops.CompletionDispositionFailed, detail: "request rejected"},
+		{name: "quiet keys-only failure silence", setup: func() { flagQuiet = true; flagViewKeysOnly = true }, disposition: ops.CompletionDispositionFailed, detail: "request rejected"},
+	} {
+		t.Run(mode.name, func(t *testing.T) {
+			resetSemanticProgressModeFlags(t)
+			mode.setup()
+			cmd, stderr := newSemanticProgressStderrCommand()
+			stdout := &bytes.Buffer{}
+			cmd.SetOut(stdout)
+			report, closeProgress := tc.Configure(cmd)
+			require.NotNil(t, report)
+
+			report(tc.Event(mode.disposition, mode.detail))
+			closeProgress()
+
+			require.Empty(t, stdout.String())
+			if mode.wantQuietWarning {
+				require.Equal(t, tc.QuietWarning+"\n", stderr.String())
+				return
+			}
+			require.Empty(t, strings.TrimSpace(stderr.String()))
+		})
+	}
+}
+
+// newSemanticProgressStderrCommand returns a minimal command that captures
+// semantic progress diagnostics without involving root command setup.
+func newSemanticProgressStderrCommand() (*cobra.Command, *bytes.Buffer) {
+	cmd := &cobra.Command{}
+	stderr := &bytes.Buffer{}
+	cmd.SetErr(stderr)
+	return cmd, stderr
+}
+
+// resetSemanticProgressModeFlags isolates tests that derive progress policy
+// from package-level render and verbosity flags.
+func resetSemanticProgressModeFlags(t *testing.T) {
+	t.Helper()
+	prevVerbose := flagVerbose
+	prevQuiet := flagQuiet
+	prevDebug := flagDebug
+	prevJSON := flagViewAsJson
+	prevKeysOnly := flagViewKeysOnly
+	prevAutomation := flagCmdAutomation
+	t.Cleanup(func() {
+		flagVerbose = prevVerbose
+		flagQuiet = prevQuiet
+		flagDebug = prevDebug
+		flagViewAsJson = prevJSON
+		flagViewKeysOnly = prevKeysOnly
+		flagCmdAutomation = prevAutomation
+	})
+	flagVerbose = false
+	flagQuiet = false
+	flagDebug = false
+	flagViewAsJson = false
+	flagViewKeysOnly = false
+	flagCmdAutomation = false
+}
+
+// reportOpsProcessInstancePurgeCompletionEvent sends one ops-level deletion
+// completion fact through the configured purge command progress callback.
+func reportOpsProcessInstancePurgeCompletionEvent(progress func(ops.ProgressEvent), identity string, total int, disposition ops.CompletionDisposition, detail string, affected *int) {
+	progress(ops.ProgressEvent{
+		Kind: ops.ProgressEventKindCompletion,
+		Completion: &ops.CompletionProgress{
+			Phase:         "delete",
+			CoreResource:  "process-instance tree(s)",
+			Total:         total,
+			Identity:      identity,
+			Disposition:   disposition,
+			FailureDetail: detail,
+			AffectedCount: affected,
+		},
+	})
 }
 
 func marshalRetentionArgsForEnv(t *testing.T, args []string) string {

@@ -53,16 +53,13 @@ var opsAnalyseCmd = &cobra.Command{
 var opsAnalyseSlowProcessInstancesCmd = &cobra.Command{
 	Use:   "slow-process-instances [-]",
 	Short: "Analyse slow process-instance timings",
-	Long: "Analyse slow process-instance timings.\n\n" +
-		"The command is read-only. Select process instances by explicit --key values or by exactly one process-definition selector, then inspect process and runtime element timing without changing cluster state.\n\n" +
-		"Search mode pages through discovered process instances by default. Broad search selectors show preflight scope from the first discovery page before timeline loading, including exact, lower-bound, or unknown total wording and page-count context when available. Explicit keys bypass discovery paging and broad preflight.\n\n" +
-		"--batch-size controls each discovery page request; it does not cap the frozen analysis scope, explicit keys, or timeline detail loading. --limit caps the number of matching process instances frozen for analysis across all discovery pages.\n\n" +
-		"Default human mode uses terminal activity for preflight, discovery progress, and exact frozen-scope counters. Verbose and debug modes keep durable progress lines on stderr. JSON, keys-only, quiet, and automation output stay free of progress text.\n\n" +
-		"Use --dur-longer to keep only process-instance roots whose whole duration is above a threshold. Detail filters such as --element-id, --type, --element-state, and --dur-element-longer keep only process instances with matching element or transition detail rows, then show those matching rows under the root.\n\n" +
-		"Default output shows compact slowest element contributors. Use --with-full-timeline to inspect complete chronological element and transition detail.\n\n" +
-		"Use --with-listeners to include runtime listener jobs under matching element timeline rows.\n\n" +
-		"Duration thresholds use Go duration syntax such as 500ms, 30s, 5m, 1h, 1h30m, or 24h. Calendar units such as 1d are not accepted.\n\n" +
-		"JSON output exposes stable duration, comparison, and timeline fields. Keys-only output prints selected process-instance keys in result order, one per line.",
+	Long: `Analyse process-instance and runtime-element durations without changing cluster state.
+
+Select explicit --key values or exactly one process-definition selector. --batch-size controls each discovery request; --limit caps selected instances across all pages. Explicit keys bypass discovery paging.
+
+--dur-longer selects roots whose total duration exceeds a threshold. --element-id, --type, --element-state, and --dur-element-longer restrict analysis to matching element or transition details. Use --with-full-timeline to inspect the complete chronology, or --with-listeners to include runtime listener jobs.
+
+Durations use Go syntax such as 500ms, 30s, 5m, 1h30m, or 24h. Calendar units such as 1d are not supported.`,
 	Example: `  ./c8volt ops analyse slow-process-instances --key <process-instance-key>
   ./c8volt ops analyse slow-process-instances --bpmn-process-id <bpmn-process-id> --state active --dur-longer 5m
   ./c8volt ops analyse slow-process-instances --bpmn-process-id <bpmn-process-id> --batch-size 500 --limit 2000
@@ -90,7 +87,7 @@ var opsAnalyseSlowProcessInstancesCmd = &cobra.Command{
 		if err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}
-		keys := mergeAndValidateKeys(flagOpsAnalyseSlowProcessInstanceKeys, stdinKeys, log, cfg).Unique()
+		keys := mergeAndValidateKeys(cmd, flagOpsAnalyseSlowProcessInstanceKeys, stdinKeys, log, cfg).Unique()
 		if ok, firstBadKey, _ := validateKeys(keys); !ok {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, invalidFlagValuef("process-instance key %q is not a valid key", firstBadKey))
 		}
@@ -98,8 +95,9 @@ var opsAnalyseSlowProcessInstancesCmd = &cobra.Command{
 		if err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}
-		configureOpsSlowProcessAnalysisPreflight(cmd, &parsed.Request)
+		progress := configureOpsSlowProcessAnalysisPreflight(cmd, &parsed.Request)
 		result, err := cli.AnalyseSlowProcessInstances(cmd.Context(), parsed.Request, collectOptions()...)
+		progress.Close()
 		if err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("ops analyse slow-process-instances: %w", err))
 		}
@@ -133,13 +131,13 @@ func init() {
 	fs.BoolVar(&flagOpsAnalyseSlowProcessInstanceNoIncidentsOnly, "no-incidents-only", false, "only include process instances without incidents during discovery")
 	fs.Int32VarP(&flagOpsAnalyseSlowProcessInstanceBatchSize, "batch-size", "n", consts.MaxPISearchSize, fmt.Sprintf("number of process instances to inspect per discovery page; does not cap frozen analysis scope, explicit keys, or timeline details (max limit %d enforced by server)", consts.MaxPISearchSize))
 	fs.Int32VarP(&flagOpsAnalyseSlowProcessInstanceLimit, "limit", "l", 0, "maximum number of matching process instances to freeze for analysis across all discovery pages; omit to discover all matches")
-	fs.StringVar(&flagOpsAnalyseSlowProcessInstanceElementID, "element-id", "", "BPMN element ID to keep in detail rows")
-	fs.StringVar(&flagOpsAnalyseSlowProcessInstanceType, "type", "", "runtime element type to keep in detail rows")
-	fs.StringVar(&flagOpsAnalyseSlowProcessInstanceElementState, "element-state", "", "runtime element state to keep in detail rows")
+	fs.StringVar(&flagOpsAnalyseSlowProcessInstanceElementID, "element-id", "", "BPMN element ID to include in the analysis")
+	fs.StringVar(&flagOpsAnalyseSlowProcessInstanceType, "type", "", "runtime element type to include in the analysis")
+	fs.StringVar(&flagOpsAnalyseSlowProcessInstanceElementState, "element-state", "", "runtime element state to include in the analysis")
 	fs.StringVar(&flagOpsAnalyseSlowProcessInstanceDurationLonger, "dur-longer", "", "only include process instances whose whole duration is longer than this duration, for example 5m or 1h30m")
-	fs.StringVar(&flagOpsAnalyseSlowProcessInstanceElementDurationLonger, "dur-element-longer", "", "only include process instances with element or transition detail rows longer than this duration, for example 30s or 2m")
+	fs.StringVar(&flagOpsAnalyseSlowProcessInstanceElementDurationLonger, "dur-element-longer", "", "only include process instances with elements or transitions longer than this duration, for example 30s or 2m")
 	fs.BoolVar(&flagOpsAnalyseSlowProcessInstanceWithFullTimeline, "with-full-timeline", false, "show complete chronological element and transition detail")
-	fs.BoolVar(&flagOpsAnalyseSlowProcessInstanceWithListeners, "with-listeners", false, "include runtime listener jobs under matching element timeline rows")
+	fs.BoolVar(&flagOpsAnalyseSlowProcessInstanceWithListeners, "with-listeners", false, "include runtime listener jobs")
 
 	setCommandMutation(opsAnalyseCmd, CommandMutationReadOnly)
 	setCommandMutation(opsAnalyseSlowProcessInstancesCmd, CommandMutationReadOnly)

@@ -30,7 +30,7 @@ c8volt get [flags]
   ./c8volt get incident --key <incident-key>
   ./c8volt get incident --state active --error-type io_mapping_error --pi-keys-only
   ./c8volt get tenant
-  ./c8volt get resource --id <resource-id>
+  ./c8volt get resource --id <resource-key>
 ```
 
 ### Options
@@ -42,6 +42,7 @@ c8volt get [flags]
 ### Options inherited from parent commands
 
 ```
+      --all-tenants        clear configured tenant filtering and search all tenants visible to the authenticated user; mutually exclusive with --tenant
   -y, --auto-confirm       auto-confirm prompts for non-interactive use
       --automation         enable non-interactive mode for commands that explicitly support it
       --config string      path to config file
@@ -52,7 +53,7 @@ c8volt get [flags]
       --no-indicator       disable transient terminal activity indicators
       --profile string     config active profile name to use (e.g. dev, prod)
   -q, --quiet              suppress output except errors
-      --tenant string      tenant ID for discovery/search, selection, create, deploy, and run flows; explicit keys/IDs remain backend-authorized
+      --tenant string      tenant ID for discovery/search, selection, create, deploy, and run flows; explicit empty values can clear configured discovery filters, and explicit keys/IDs remain backend-authorized
       --timeout duration   HTTP request timeout (default 30s)
   -v, --verbose            show additional output
 ```
@@ -66,6 +67,6 @@ c8volt get [flags]
 * [c8volt get job]({{ "/cli/c8volt_get_job" | relative_url }})	 - Inspect or search jobs
 * [c8volt get process-definition]({{ "/cli/c8volt_get_process-definition" | relative_url }})	 - List or fetch deployed process definitions
 * [c8volt get process-instance]({{ "/cli/c8volt_get_process-instance" | relative_url }})	 - List or fetch process instances
-* [c8volt get resource]({{ "/cli/c8volt_get_resource" | relative_url }})	 - Get a resource by ID
+* [c8volt get resource]({{ "/cli/c8volt_get_resource" | relative_url }})	 - Get a resource by key
 * [c8volt get tenant]({{ "/cli/c8volt_get_tenant" | relative_url }})	 - List tenants
 

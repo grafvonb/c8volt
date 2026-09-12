@@ -46,6 +46,8 @@ c8volt delete process-instance -
 
 Generated references: [get process-instance](/cli/c8volt_get_process-instance), [delete process-instance](/cli/c8volt_delete_process-instance).
 
-## Output And Safety
+## Safety
 
 `--dry-run` reports orphan candidates and the delete plan without mutation. Real execution deletes only after confirmation unless automation controls are used. Process-instance delete safety, waiting, report format, worker controls, and fail-fast behavior follow the underlying delete workflow.
+
+A named tenant limits discovery. An empty tenant or `--all-tenants` searches across tenants visible to the authenticated identity. `--all-tenants` conflicts with an explicit `--tenant` value.

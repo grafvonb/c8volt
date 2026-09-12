@@ -6,6 +6,7 @@ package ops
 import (
 	"bytes"
 	"context"
+	"errors"
 	"log/slog"
 	"testing"
 	"time"
@@ -105,6 +106,228 @@ func TestPurgeOrphanProcessInstancesDryRunDiscoversOrphansAndPlansDeletion(t *te
 	require.Equal(t, d.OpsWorkflowStepStatusSkipped, got.Deletion.Status)
 	require.Equal(t, d.OrphanPurgeOutcomePlanned, got.Outcome)
 	require.Equal(t, d.OrphanPurgeOutcomePlanned, got.Report.Outcome)
+}
+
+// TestPurgeOrphanProcessInstancesAggregatesTenantEvidenceFromFrozenPlan proves
+// orphan purge exposes dry-run plan evidence without an enrichment lookup.
+func TestPurgeOrphanProcessInstancesAggregatesTenantEvidenceFromFrozenPlan(t *testing.T) {
+	t.Parallel()
+
+	piAPI := stubProcessInstanceAPI{
+		ancestryResult: func(_ context.Context, key string, _ ...services.CallOption) (pitraversal.Result, error) {
+			return pitraversal.Result{
+				StartKey: key,
+				RootKey:  key,
+				Keys:     []string{key},
+				Chain: map[string]d.ProcessInstance{
+					key: {Key: key, State: d.StateCompleted, TenantId: "tenant-b"},
+				},
+				Outcome: pitraversal.OutcomeComplete,
+			}, nil
+		},
+		descendantsResult: func(_ context.Context, rootKey string, _ ...services.CallOption) (pitraversal.Result, error) {
+			return pitraversal.Result{
+				StartKey: rootKey,
+				RootKey:  rootKey,
+				Keys:     []string{rootKey, "child-unknown"},
+				Chain: map[string]d.ProcessInstance{
+					rootKey:         {Key: rootKey, State: d.StateCompleted, TenantId: "tenant-b"},
+					"child-unknown": {Key: "child-unknown", State: d.StateCompleted},
+				},
+				Outcome: pitraversal.OutcomeComplete,
+			}, nil
+		},
+	}
+
+	got, err := New(piAPI, nil).PurgeOrphanProcessInstances(context.Background(), d.OrphanPurgeRequest{
+		CommandName:    "ops purge orphan-process-instances",
+		DryRun:         true,
+		DiscoveredKeys: typexKeys("root-a"),
+		StartedAt:      time.Date(2026, 5, 11, 12, 0, 0, 0, time.UTC),
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, d.TenantEvidence{
+		ResolvedTenantIDs:  []string{"tenant-b"},
+		UnknownTargetCount: 1,
+		TargetCount:        2,
+		Targets: []d.TenantEvidenceTarget{
+			{Key: "root-a", TenantID: "tenant-b"},
+			{Key: "child-unknown"},
+		},
+	}, got.DeletionPlan.TenantEvidence)
+	require.Equal(t, got.DeletionPlan.TenantEvidence, got.DeletionPlan.DryRunPreview.TenantEvidence)
+	require.Equal(t, got.DeletionPlan.TenantEvidence, got.Report.DeletionPlan.TenantEvidence)
+}
+
+// TestPurgeOrphanProcessInstancesEmitsExpandedTenantScopeBeforeDeletion verifies
+// the validated dependency-expanded scope is copied and published before mutation.
+func TestPurgeOrphanProcessInstancesEmitsExpandedTenantScopeBeforeDeletion(t *testing.T) {
+	t.Parallel()
+
+	var events []d.OpsProgressEvent
+	ancestryCalls := 0
+	descendantCalls := 0
+	deleted := false
+	piAPI := stubProcessInstanceAPI{
+		ancestryResult: func(_ context.Context, key string, _ ...services.CallOption) (pitraversal.Result, error) {
+			ancestryCalls++
+			return pitraversal.Result{
+				Mode: pitraversal.ModeAncestry, StartKey: key, RootKey: key, Keys: []string{key},
+				Chain:   map[string]d.ProcessInstance{key: {Key: key, State: d.StateCompleted, TenantId: "tenant-a"}},
+				Outcome: pitraversal.OutcomeComplete,
+			}, nil
+		},
+		descendantsResult: func(_ context.Context, rootKey string, _ ...services.CallOption) (pitraversal.Result, error) {
+			descendantCalls++
+			return pitraversal.Result{
+				Mode: pitraversal.ModeDescendants, StartKey: rootKey, RootKey: rootKey, Keys: []string{rootKey, "child-b"},
+				Chain: map[string]d.ProcessInstance{
+					rootKey:   {Key: rootKey, State: d.StateCompleted, TenantId: "tenant-a"},
+					"child-b": {Key: "child-b", State: d.StateCompleted, TenantId: "tenant-b"},
+				},
+				Outcome: pitraversal.OutcomeComplete,
+			}, nil
+		},
+		deleteProcessInstance: func(_ context.Context, key string, _ ...services.CallOption) (d.DeleteResponse, error) {
+			require.Equal(t, "root-a", key)
+			require.Len(t, events, 1, "tenant scope must precede the first deletion")
+			require.Equal(t, d.OpsProgressEventKindTenantScope, events[0].Kind)
+			deleted = true
+			return d.DeleteResponse{Ok: true, StatusCode: 202, Status: "accepted"}, nil
+		},
+	}
+
+	got, err := New(piAPI, nil).PurgeOrphanProcessInstances(context.Background(), d.OrphanPurgeRequest{
+		Workers:        1,
+		DiscoveredKeys: typexKeys("root-a"),
+		Progress: func(event d.OpsProgressEvent) {
+			if event.Kind != d.OpsProgressEventKindTenantScope {
+				return
+			}
+			events = append(events, event)
+			event.TenantScope.Evidence.ResolvedTenantIDs[0] = "mutated"
+			event.TenantScope.Evidence.Targets[0].TenantID = "mutated"
+		},
+	}, services.WithNoWait())
+
+	require.NoError(t, err)
+	require.True(t, deleted)
+	require.Equal(t, 1, ancestryCalls)
+	require.Equal(t, 1, descendantCalls)
+	require.Len(t, events, 1)
+	require.Equal(t, []string{"root-a"}, []string(got.DeletionPlan.RootKeys))
+	require.Equal(t, []string{"root-a", "child-b"}, []string(got.DeletionPlan.AffectedKeys))
+	require.Equal(t, []string{"tenant-a", "tenant-b"}, got.DeletionPlan.TenantEvidence.ResolvedTenantIDs)
+	require.Equal(t, "tenant-a", got.DeletionPlan.TenantEvidence.Targets[0].TenantID)
+}
+
+// TestPurgeOrphanProcessInstancesTenantScopeRespectsPlanningGates verifies
+// failed or blocked plans publish nothing while previews and empty scopes publish once.
+func TestPurgeOrphanProcessInstancesTenantScopeRespectsPlanningGates(t *testing.T) {
+	t.Parallel()
+
+	t.Run("failed planning", func(t *testing.T) {
+		t.Parallel()
+
+		tenantEvents := 0
+		piAPI := stubProcessInstanceAPI{
+			ancestryResult: func(context.Context, string, ...services.CallOption) (pitraversal.Result, error) {
+				return pitraversal.Result{}, errors.New("expansion failed")
+			},
+		}
+		got, err := New(piAPI, nil).PurgeOrphanProcessInstances(context.Background(), d.OrphanPurgeRequest{
+			DryRun:         true,
+			DiscoveredKeys: typexKeys("root-a"),
+			Progress: func(event d.OpsProgressEvent) {
+				if event.Kind == d.OpsProgressEventKindTenantScope {
+					tenantEvents++
+				}
+			},
+		})
+
+		require.Error(t, err)
+		require.Equal(t, d.OrphanPurgeOutcomeFailed, got.Outcome)
+		require.Zero(t, tenantEvents)
+	})
+
+	t.Run("force blocked", func(t *testing.T) {
+		t.Parallel()
+
+		tenantEvents := 0
+		piAPI := stubProcessInstanceAPI{
+			ancestryResult: func(_ context.Context, key string, _ ...services.CallOption) (pitraversal.Result, error) {
+				return pitraversal.Result{StartKey: key, RootKey: key, Keys: []string{key}, Chain: map[string]d.ProcessInstance{key: {Key: key, State: d.StateActive}}, Outcome: pitraversal.OutcomeComplete}, nil
+			},
+			descendantsResult: func(_ context.Context, rootKey string, _ ...services.CallOption) (pitraversal.Result, error) {
+				return pitraversal.Result{StartKey: rootKey, RootKey: rootKey, Keys: []string{rootKey}, Chain: map[string]d.ProcessInstance{rootKey: {Key: rootKey, State: d.StateActive}}, Outcome: pitraversal.OutcomeComplete}, nil
+			},
+		}
+		got, err := New(piAPI, nil).PurgeOrphanProcessInstances(context.Background(), d.OrphanPurgeRequest{
+			DiscoveredKeys: typexKeys("root-a"),
+			Progress: func(event d.OpsProgressEvent) {
+				if event.Kind == d.OpsProgressEventKindTenantScope {
+					tenantEvents++
+				}
+			},
+		})
+
+		require.Error(t, err)
+		require.Equal(t, d.OrphanPurgeOutcomeFailed, got.Outcome)
+		require.Equal(t, d.OpsWorkflowStepStatusBlocked, got.Deletion.Status)
+		require.Zero(t, tenantEvents)
+	})
+
+	t.Run("preview", func(t *testing.T) {
+		t.Parallel()
+
+		var scopes []d.TenantEvidence
+		piAPI := stubProcessInstanceAPI{
+			ancestryResult: func(_ context.Context, key string, _ ...services.CallOption) (pitraversal.Result, error) {
+				return retentionPolicySingleKeyAncestryResult(key), nil
+			},
+			descendantsResult: func(_ context.Context, rootKey string, _ ...services.CallOption) (pitraversal.Result, error) {
+				return retentionPolicySingleKeyDescendantsResult(rootKey), nil
+			},
+		}
+		got, err := New(piAPI, nil).PurgeOrphanProcessInstances(context.Background(), d.OrphanPurgeRequest{
+			DryRun:         true,
+			DiscoveredKeys: typexKeys("root-a"),
+			Progress: func(event d.OpsProgressEvent) {
+				if event.Kind == d.OpsProgressEventKindTenantScope {
+					scopes = append(scopes, event.TenantScope.Evidence)
+				}
+			},
+		})
+
+		require.NoError(t, err)
+		require.Equal(t, d.OrphanPurgeOutcomePlanned, got.Outcome)
+		require.Len(t, scopes, 1)
+		require.Empty(t, scopes[0].ResolvedTenantIDs)
+		require.Equal(t, got.DeletionPlan.TenantEvidence.UnknownTargetCount, scopes[0].UnknownTargetCount)
+		require.Equal(t, got.DeletionPlan.TenantEvidence.TargetCount, scopes[0].TargetCount)
+		require.Equal(t, got.DeletionPlan.TenantEvidence.Targets, scopes[0].Targets)
+	})
+
+	t.Run("empty frozen scope", func(t *testing.T) {
+		t.Parallel()
+
+		var scopes []d.TenantEvidence
+		got, err := New(stubProcessInstanceAPI{}, nil).PurgeOrphanProcessInstances(context.Background(), d.OrphanPurgeRequest{
+			DryRun:         true,
+			DiscoveredKeys: typex.Keys{},
+			Progress: func(event d.OpsProgressEvent) {
+				if event.Kind == d.OpsProgressEventKindTenantScope {
+					scopes = append(scopes, event.TenantScope.Evidence)
+				}
+			},
+		})
+
+		require.NoError(t, err)
+		require.Equal(t, d.OrphanPurgeOutcomePlanned, got.Outcome)
+		require.Equal(t, []d.TenantEvidence{{}}, scopes)
+		require.Equal(t, d.OpsWorkflowStepStatusSkipped, got.DeletionPlan.Status)
+	})
 }
 
 func TestPurgeOrphanProcessInstancesDryRunNoTargetsSkipsPlan(t *testing.T) {
@@ -207,6 +430,80 @@ func TestPurgeOrphanProcessInstancesConfirmedDeletesImmutableDiscoveredSet(t *te
 	require.True(t, got.Deletion.NoWait)
 	require.True(t, got.Report.NoWait)
 	require.Equal(t, d.OrphanPurgeOutcomeDeleted, got.Outcome)
+}
+
+// TestPurgeOrphanProcessInstancesPropagatesDeleteCompletionProgress verifies
+// orphan cleanup keeps live deletion completions attached to the frozen root
+// scope rather than discovery progress.
+func TestPurgeOrphanProcessInstancesPropagatesDeleteCompletionProgress(t *testing.T) {
+	t.Parallel()
+
+	var events []d.OpsProgressEvent
+	piAPI := stubProcessInstanceAPI{
+		searchPage: func(_ context.Context, _ d.ProcessInstanceFilter, page d.ProcessInstancePageRequest, _ ...services.CallOption) (d.ProcessInstancePage, error) {
+			return d.ProcessInstancePage{
+				Request:       page,
+				OverflowState: d.ProcessInstanceOverflowStateNoMore,
+				Items: []d.ProcessInstance{
+					{Key: "child-1", ParentKey: "missing-parent", State: d.StateTerminated},
+				},
+			}, nil
+		},
+		filterOrphans: func(_ context.Context, items []d.ProcessInstance, _ ...services.CallOption) ([]d.ProcessInstance, error) {
+			require.Len(t, items, 1)
+			return items, nil
+		},
+		ancestryResult: func(_ context.Context, key string, _ ...services.CallOption) (pitraversal.Result, error) {
+			require.Equal(t, "child-1", key)
+			return pitraversal.Result{
+				StartKey: key,
+				RootKey:  key,
+				Keys:     []string{key},
+				Chain: map[string]d.ProcessInstance{
+					key: {Key: key, ParentKey: "missing-parent", State: d.StateTerminated},
+				},
+				Outcome: pitraversal.OutcomeComplete,
+			}, nil
+		},
+		descendantsResult: func(_ context.Context, rootKey string, _ ...services.CallOption) (pitraversal.Result, error) {
+			require.Equal(t, "child-1", rootKey)
+			return pitraversal.Result{
+				StartKey: rootKey,
+				RootKey:  rootKey,
+				Keys:     []string{rootKey},
+				Chain: map[string]d.ProcessInstance{
+					rootKey: {Key: rootKey, ParentKey: "missing-parent", State: d.StateTerminated},
+				},
+				Outcome: pitraversal.OutcomeComplete,
+			}, nil
+		},
+		deleteProcessInstance: func(_ context.Context, key string, _ ...services.CallOption) (d.DeleteResponse, error) {
+			require.Equal(t, "child-1", key)
+			return d.DeleteResponse{Ok: true, StatusCode: 204, Status: "204 No Content"}, nil
+		},
+	}
+
+	got, err := New(piAPI, nil).PurgeOrphanProcessInstances(context.Background(), d.OrphanPurgeRequest{
+		CommandName: "ops purge orphan-process-instances",
+		StartedAt:   time.Date(2026, 5, 11, 12, 0, 0, 0, time.UTC),
+		Progress: func(event d.OpsProgressEvent) {
+			events = append(events, event)
+		},
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, d.OrphanPurgeOutcomeDeleted, got.Outcome)
+	require.Equal(t, []d.OpsCompletionProgress{
+		{
+			Phase:            "delete",
+			CoreResource:     "process-instance tree(s)",
+			Total:            1,
+			Identity:         "child-1",
+			Disposition:      d.OpsCompletionDispositionConfirmed,
+			AffectedResource: "affected process instances",
+			AffectedCount:    opsIntPtr(1),
+		},
+	}, opsCompletionProgressByPhase(events, "delete"))
 }
 
 func TestPurgeOrphanProcessInstancesSuppressesDefaultDeleteSummary(t *testing.T) {
@@ -364,4 +661,8 @@ func (s stubProcessInstanceAPI) DeleteProcessInstance(ctx context.Context, key s
 
 func typexKeys(keys ...string) typex.Keys {
 	return keys
+}
+
+func opsIntPtr(v int) *int {
+	return &v
 }

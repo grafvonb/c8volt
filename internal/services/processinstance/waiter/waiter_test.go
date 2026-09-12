@@ -213,6 +213,103 @@ func TestWaitForProcessInstanceExpectation_StateAndIncidentCompatibility(t *test
 	})
 }
 
+// TestWaitForProcessInstanceExpectation_ExplicitCanceledCompatibility keeps explicit canceled matching narrower than cancellation cleanup acceptance.
+func TestWaitForProcessInstanceExpectation_ExplicitCanceledCompatibility(t *testing.T) {
+	wantIncident := true
+	tests := []struct {
+		name       string
+		state      d.State
+		incident   bool
+		err        error
+		wantOK     bool
+		wantState  d.State
+		wantCalls  int
+		wantResult d.ProcessInstance
+	}{
+		{
+			name:       "accepts canceled with the required incident",
+			state:      d.StateCanceled,
+			incident:   true,
+			wantOK:     true,
+			wantState:  d.StateCanceled,
+			wantCalls:  1,
+			wantResult: d.ProcessInstance{Key: "123", State: d.StateCanceled, Incident: true},
+		},
+		{
+			name:       "accepts terminated with the required incident",
+			state:      d.StateTerminated,
+			incident:   true,
+			wantOK:     true,
+			wantState:  d.StateTerminated,
+			wantCalls:  1,
+			wantResult: d.ProcessInstance{Key: "123", State: d.StateTerminated, Incident: true},
+		},
+		{
+			name:      "rejects completed",
+			state:     d.StateCompleted,
+			incident:  true,
+			wantState: d.StateUnknown,
+			wantCalls: 2,
+		},
+		{
+			name:      "rejects absent",
+			err:       d.ErrNotFound,
+			wantState: d.StateUnknown,
+			wantCalls: 2,
+		},
+		{
+			name:      "still requires the requested incident",
+			state:     d.StateCanceled,
+			wantState: d.StateUnknown,
+			wantCalls: 2,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			calls := 0
+			waiter := stubPIWaiter{
+				getProcessInstance: func(ctx context.Context, key string) (d.ProcessInstance, error) {
+					calls++
+					if tt.err != nil {
+						return d.ProcessInstance{}, tt.err
+					}
+					return d.ProcessInstance{Key: key, State: tt.state, Incident: tt.incident}, nil
+				},
+			}
+
+			got, pi, err := WaitForProcessInstanceExpectation(
+				context.Background(),
+				waiter,
+				testConfig(time.Millisecond, 2, 100*time.Millisecond),
+				testLogger(),
+				"123",
+				d.ProcessInstanceExpectationRequest{
+					States:   d.States{d.StateCanceled},
+					Incident: &wantIncident,
+				},
+			)
+
+			assert.Equal(t, tt.wantCalls, calls)
+			assert.Equal(t, tt.wantOK, got.Ok)
+			assert.Equal(t, tt.wantState, got.State)
+			assert.Equal(t, tt.wantResult, pi)
+			if tt.wantOK {
+				require.NoError(t, err)
+				require.NotNil(t, got.Incident)
+				assert.True(t, *got.Incident)
+				assert.Contains(t, got.Status, "satisfied expectation(s)")
+				return
+			}
+			require.Error(t, err)
+			assert.Nil(t, got.Incident)
+			assert.Contains(t, got.Status, "exceeded max_retries (2)")
+		})
+	}
+}
+
 // TestWaitForProcessInstanceState verifies single-instance wait behavior across success, retry, timeout, and activity paths.
 func TestWaitForProcessInstanceState(t *testing.T) {
 	t.Run("returns immediately when desired state is already present", func(t *testing.T) {
@@ -560,6 +657,134 @@ func TestWaitForProcessInstancesState_UsesAggregateCommandActivity(t *testing.T)
 		Message:    "waiting for 2 pi state",
 		Importance: logging.ActivityImportanceWait,
 	})
+}
+
+func TestWaitForProcessInstancesStateEmitsCompletionFacts(t *testing.T) {
+	t.Parallel()
+
+	waiter := stubPIWaiter{
+		getStateByKey: func(ctx context.Context, key string) (d.State, d.ProcessInstance, error) {
+			if key == "124" {
+				return d.StateActive, d.ProcessInstance{Key: key, State: d.StateActive}, errors.New("still active")
+			}
+			return d.StateCompleted, d.ProcessInstance{Key: key, State: d.StateCompleted}, nil
+		},
+	}
+	var completions []d.OpsCompletionProgress
+
+	_, err := WaitForProcessInstancesState(
+		context.Background(),
+		waiter,
+		testConfig(time.Nanosecond, 1, 25*time.Millisecond),
+		testLogger(),
+		typex.Keys{"123", "124"},
+		d.States{d.StateCompleted},
+		1,
+		services.WithProgress(func(event d.OpsProgressEvent) {
+			if event.Kind == d.OpsProgressEventKindCompletion && event.Completion != nil {
+				completions = append(completions, *event.Completion)
+			}
+		}),
+	)
+
+	require.Error(t, err)
+	require.Len(t, completions, 2)
+	require.Equal(t, d.OpsCompletionProgress{
+		Phase:        "expect process instances",
+		CoreResource: "process instance(s)",
+		Total:        2,
+		Identity:     "123",
+		Disposition:  d.OpsCompletionDispositionConfirmed,
+	}, completions[0])
+	require.Equal(t, "expect process instances", completions[1].Phase)
+	require.Equal(t, "process instance(s)", completions[1].CoreResource)
+	require.Equal(t, 2, completions[1].Total)
+	require.Equal(t, "124", completions[1].Identity)
+	require.Equal(t, d.OpsCompletionDispositionFailed, completions[1].Disposition)
+	require.Contains(t, completions[1].FailureDetail, "still active")
+}
+
+func TestWaitForProcessInstancesExpectationEmitsCompletionFacts(t *testing.T) {
+	t.Parallel()
+
+	wantIncident := true
+	waiter := stubPIWaiter{
+		getProcessInstance: func(ctx context.Context, key string) (d.ProcessInstance, error) {
+			return d.ProcessInstance{Key: key, State: d.StateActive, Incident: true}, nil
+		},
+	}
+	var completions []d.OpsCompletionProgress
+
+	_, err := WaitForProcessInstancesExpectation(
+		context.Background(),
+		waiter,
+		testConfig(time.Nanosecond, 1, 25*time.Millisecond),
+		testLogger(),
+		typex.Keys{"123", "124"},
+		d.ProcessInstanceExpectationRequest{Incident: &wantIncident},
+		1,
+		services.WithProgress(func(event d.OpsProgressEvent) {
+			if event.Kind == d.OpsProgressEventKindCompletion && event.Completion != nil {
+				completions = append(completions, *event.Completion)
+			}
+		}),
+	)
+
+	require.NoError(t, err)
+	require.Equal(t, []d.OpsCompletionProgress{
+		{
+			Phase:        "expect process instances",
+			CoreResource: "process instance(s)",
+			Total:        2,
+			Identity:     "123",
+			Disposition:  d.OpsCompletionDispositionConfirmed,
+		},
+		{
+			Phase:        "expect process instances",
+			CoreResource: "process instance(s)",
+			Total:        2,
+			Identity:     "124",
+			Disposition:  d.OpsCompletionDispositionConfirmed,
+		},
+	}, completions)
+}
+
+// TestWaitForProcessInstanceState_SingleTargetPollingIsNotWorkflowProgress
+// pins single-key waits as transient waiter activity rather than semantic
+// workflow completion progress.
+func TestWaitForProcessInstanceState_SingleTargetPollingIsNotWorkflowProgress(t *testing.T) {
+	t.Parallel()
+
+	sink := &activitysink.Sink{}
+	attempts := 0
+	waiter := stubPIWaiter{
+		getStateByKey: func(ctx context.Context, key string) (d.State, d.ProcessInstance, error) {
+			attempts++
+			if attempts == 1 {
+				return d.StateActive, d.ProcessInstance{Key: key, State: d.StateActive}, nil
+			}
+			return d.StateCompleted, d.ProcessInstance{Key: key, State: d.StateCompleted}, nil
+		},
+	}
+
+	_, _, err := WaitForProcessInstanceState(
+		logging.ToActivityContext(context.Background(), sink),
+		waiter,
+		testConfig(time.Nanosecond, 3, 25*time.Millisecond),
+		testLogger(),
+		"123",
+		d.States{d.StateCompleted},
+	)
+
+	require.NoError(t, err)
+	assert.Equal(t, []activitysink.Start{{
+		Message:    "waiting for pi 123 state",
+		Importance: logging.ActivityImportanceWait,
+	}}, sink.Starts())
+	assert.Equal(t, []activitysink.Update{{
+		Message:    "pi 123 waiting; state ACTIVE, attempt 1",
+		Importance: logging.ActivityImportanceWait,
+	}}, sink.PriorityUpdates())
 }
 
 // testConfig builds a waiter config with explicit retry timing for unit tests.

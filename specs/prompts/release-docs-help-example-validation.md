@@ -1,279 +1,171 @@
 # Release Docs And Help Example Validation Prompt
 
-Use this prompt before publishing a c8volt release when all documentation and
-CLI help examples need a real integration pass against the local/default Camunda
-development cluster. It is the canonical prompt for release example validation;
-use README-only mode when only `README.md` examples need to be checked.
+Use this prompt to validate README, documentation, and command-help examples
+against a real Camunda 8.9 development cluster before a release. The default is
+an integration audit with a findings report; documentation repairs are a
+separate, explicitly requested step. VHS is entirely outside this workflow.
 
-Before using this prompt, follow `specs/prompts/AGENTS.md`. In particular, do
-not treat files under `specs/prompts/` as release-change source material.
+Before using this prompt, follow `specs/prompts/AGENTS.md`. Do not treat prompt
+templates as product behavior or release-change source material.
 
 ```text
-Perform a deep integration audit of every c8volt command example shown in
-README.md, docs, generated documentation, and CLI help output. Syntax-review
-VHS demo tapes separately without changing their recorded flow. Validate
-examples against the real local Camunda development cluster configured by the
-repository's normal `config.yaml` resolution.
+Audit every c8volt command example in README.md, documentation, generated CLI
+references, and command help against the intended Camunda 8.9 development
+cluster. Also validate every nested ops command, including commands without a
+public example. Do not scan, syntax-check, execute, or edit VHS tapes or their
+supporting scripts. VHS maintenance and Camunda 8.10 preparation are separate
+workflows.
 
 Inputs:
-- Target release train: v4
-- Target Camunda version: v89 only
-- Default config: the repository's normal `config.yaml` resolution
-- Cluster: caller's local/default Camunda development cluster
+- Release under validation: <VERSION>
+- Target Camunda version: 8.9 only
+- Absolute configuration path: <CONFIG_PATH>
+- Configuration profile: <PROFILE>, or explicitly no profile
+- Expected development cluster identity/base URL: <CLUSTER>
+- Disposable fixture prefix: <FIXTURE_PREFIX>
+- Authorized mutation boundary: <DISPOSABLE_SCOPE>
+- Private report/evidence directory: <REPORT_DIR>
 - Optional build output path: /tmp/c8volt-release-docs-help-verify
 
-Goal:
-Make all examples copyable, generic, bounded, operator-friendly, and true
-against the real v89 cluster. Examples in user-facing docs and help must be
-agnostic placeholders for real values, not embedded fixture names, stale runtime
-keys, or one developer's local IDs. Use concrete real values only in the private
-validation run. VHS tapes are the exception: they are real recorded examples
-and may keep concrete IDs, keys, fixture names, and timing-specific flow.
-Ops examples must represent the real operational workflow, including destructive
-execution examples where deletion, purge, cancellation, or mutation is the core
-use case. Do not reduce ops documentation to dry-run-only examples.
+Default mode — report only:
+Execute validation within the caller's authorized scope and report findings.
+Do not edit README, documentation, command help, tests, or product code. Building
+a temporary binary, capturing private evidence, and creating or cleaning up
+explicitly authorized disposable fixtures are permitted validation activities.
+Report-only describes repository edits; it does not imply cluster reads only.
+This template does not itself grant permission to mutate a cluster. Reuse
+explicit authorization already provided by the caller; resolve missing target
+or mutation boundaries before dependent cluster operations. Continue independent
+static inventory work while those inputs are missing.
 
-Default mode:
-This is a deep integration validation and repair task. Fix findings in README,
-docs, and CLI help examples. Update the relevant source docs, generated-doc
-source, CLI help source, and tests as needed, then rerun the corrected examples.
-Do not refactor, genericize, reorder, or otherwise update VHS tapes as part of
-this prompt run. For VHS tapes, review only whether the c8volt command syntax is
-valid; warn at the end which tape files need human review.
+Repair mode:
+Only when the caller explicitly requests fixes, repair confirmed documentation
+and help-example findings, regenerate affected docs, and rerun changed examples.
+Keep runtime implementation changes out of scope; report product defects
+separately. Do not commit, push, or publish unless asked.
 
 README-only mode:
-If the caller explicitly asks for README-only validation, restrict the executable
-example scan to `README.md` and compare CLI help only for contradictions. In
-README-only mode, report findings by default and edit README/help/docs only when
-the caller explicitly asks for fixes. Do not update product behavior or
-implementation code as part of README-only validation. Use caller-provided
-values for `<VERSION>`, `<RELEASE_DATE>`, `<CAMUNDA_MINOR>`, and
-`<FIXTURE_PREFIX>` when they are relevant to the README examples being checked.
+If explicitly requested, restrict the example inventory to README.md and consult
+help only to check its examples for contradictions. The exhaustive command-help
+and ops matrix requirements below apply to the full audit, not README-only mode.
+Report-only remains the default.
 
-Required safety and example rules:
-1. Validate every example against the real cluster before keeping it.
-2. Use v89 only. Remove or rewrite v87/v88 examples because they are not
-   testable against the target environment for this release.
-3. Keep docs and help examples generic. Use placeholders such as
-   `<process-instance-key>`, `<process-definition-key>`, `<incident-key>`,
-   `<job-key>`, `<resource-key>`, `<tenant-id>`, and
-   `<bpmn-process-id>`.
-4. Do not publish examples that mention embedded fixture IDs such as
-   `C89_SimpleUserTask`. The validation run may use fixtures privately
-   to discover real keys and prove syntax, but public docs/help must stay
-   environment-agnostic.
-5. Keep only a small number of examples per command. Prefer the standard
-   operator path over many flag variants.
-6. Do not show unusual or exception-path flags in normal examples, including
-   `--no-wait`. Keep them out of README, docs, and everyday help examples
-   unless a section explicitly documents exceptional behavior.
-7. Bound examples that can scan or print too much cluster state. Prefer small
-   limits such as `--limit 5`, a concrete key placeholder, or a narrow selector.
-8. Include destructive examples for ops commands where destruction or mutation
-   is the core use case. A dry-run-only example is not representative for purge,
-   cancel, delete, resolve, repair, or update workflows.
-9. Prefer preview-then-execute examples for risky operations: show the
-   `--dry-run` or preview command first, then the real destructive command.
-10. Clearly mark every docs/help example by operator impact when the surrounding
-    format allows it:
-    - read-only: observes cluster state only
-    - harmless: creates disposable demo/test data or writes only local reports
-    - destructive: deletes, purges, cancels, resolves, repairs, updates, or
-      otherwise mutates cluster state
-11. Destructive examples must be explicitly labeled destructive in docs/help and
-    must include a short warning or note explaining the affected scope.
-12. Critical mutation commands must be tested for real against the dev cluster,
-    including destructive operations. The caller allows the validation run to
-    delete process instances, process definitions, and other test data on this
-    dev cluster.
-13. The real cluster validation should focus especially on destructive examples:
-    prove that the preview command works, the destructive command works on
-    disposable scoped data, and the post-check confirms the expected impact.
-14. Do not leave long-running commands alive. If an example scans too much data,
-    floods output, or takes too long for normal operator use, stop it, rewrite
-    the example to be bounded or remove it.
-15. When validating interactive destructive commands, answer confirmation
-    prompts explicitly in the test harness. Do not add `--auto-confirm` to
-    public examples unless the section is explicitly about automation.
-16. Treat examples that require unavailable sample data as documentation bugs.
-    Create temporary fixture data privately for validation, then publish a
-    generic placeholder command shape.
-17. Exclude VHS tapes from generic-placeholder cleanup. VHS tapes may use
-    concrete process IDs, keys, fixture names, shell timing, and typed
-    confirmations because they are real recorded demos.
-18. Do not change VHS flow. Do not replace concrete VHS values with
-    placeholders, do not add or remove VHS flags, do not reorder VHS steps, and
-    do not rewrite VHS output rendering as part of this prompt run.
-19. For VHS tapes, check only c8volt command syntax: command path, subcommand
-    names, flags, required arguments, and obvious shell quoting needed for the
-    recorded command to be accepted. If a VHS command looks syntactically wrong,
-    list the tape at the end for manual review instead of editing it.
+Scope and example rules:
+1. Public executable examples target Camunda 8.9. Flag 8.7/8.8-specific examples
+   for removal or rewriting; perform those changes only in repair mode. Do not
+   remove older-version support documentation merely because executable
+   examples now target 8.9. Identify 8.10-specific examples as outside this pass
+   and defer their validation to the separate 8.10 preparation workflow.
+2. Keep public examples generic, using placeholders for keys, tenant IDs, BPMN
+   process IDs, and file paths. Substitute real values privately during testing.
+   Record prerequisite data and setup steps. Missing fixtures are a validation
+   blocker unless the documentation incorrectly describes those prerequisites;
+   they are not automatically documentation defects.
+3. Separate execution findings from editorial suggestions. Do not reduce working
+   examples, add repetitive impact labels or warnings, or describe output layout
+   merely to satisfy a style preference. Keep help focused on what commands do,
+   selection, safety, compatibility, and completion semantics.
+4. Prefer ordinary operator workflows. Flag exception-path options such as
+   --no-wait in everyday examples for review; retain them where exceptional
+   behavior is explicitly documented. Do not replace real mutation examples with
+   dry-run-only examples.
+5. Run the documented command shape with only necessary private substitutions
+   and explicit test configuration. Preserve pipelines, flags, and interaction
+   behavior. If extra selectors or limits are needed for safe execution, record
+   that variant separately; do not count it as proof of the original example.
+6. Mutations must affect only disposable resources within the authorized scope.
+   Preview when supported, execute, then verify the post-condition. Creation and
+   deployment are mutations too. Do not assume a tenant filter restricts explicit
+   keys or every cleanup operation. If a broad command cannot be safely isolated,
+   use an explicitly authorized disposable cluster or mark it blocked.
+7. Bound runtime, output capture, and resource creation. Stop long-running or
+   unbounded commands through the harness and record why they stopped. Watch and
+   wait examples need a defined observation period and deliberate termination;
+   do not leave background commands running.
+8. Exercise documented interactive examples with terminal input and explicit
+   confirmation responses. Do not silently add --auto-confirm or --automation
+   to make them pass. Use those flags when they are part of the documented example.
+9. Keep credentials and sensitive configuration out of reports and public docs.
+   Retain only necessary redacted configuration evidence and fixture mappings.
 
 Required workflow:
-1. Build a temporary validation binary from the current checkout:
-   `GOCACHE=/tmp/c8volt-gocache go build -o /tmp/c8volt-release-docs-help-verify .`
-   Use this binary as the runtime equivalent of public `c8volt` examples.
-2. Confirm default configuration and connectivity before validating examples:
-   - `/tmp/c8volt-release-docs-help-verify version`
-   - `/tmp/c8volt-release-docs-help-verify config validate`
-   - `/tmp/c8volt-release-docs-help-verify config test-connection`
-   Stop if the config is not the intended local dev cluster or if the cluster is
-   not a healthy v89 environment.
-3. Capture private machine-readable preflight data:
-   - `/tmp/c8volt-release-docs-help-verify capabilities --json`
-   - `/tmp/c8volt-release-docs-help-verify config show --json`
-   - `/tmp/c8volt-release-docs-help-verify config test-connection --json`
-   Use these outputs to understand command paths, flags, config resolution,
-   active profile, base URL, and cluster metadata. Do not convert public
-   examples to JSON unless the surrounding section is explicitly about
-   automation or JSON output.
-4. Extract all executable examples from:
-   - `README.md`
-   - `docs/**/*.md`
-   - generated docs source or generated docs output used by the site
-   - CLI help output from every command family, including nested ops commands
-   In README-only mode, extract executable examples from `README.md` only, then
-   check help output just far enough to detect contradictions with README.
-5. Extract c8volt commands from `demos/vhs/**/*.tape` into a separate VHS syntax
-   review list. Do not include VHS tapes in the big docs/help genericization or
-   example-reduction pass.
-6. Include command help in the audit:
-   - run `c8volt --help`
-   - run help for every top-level command
-   - run help for every subcommand and ops command family
-   - enumerate every nested `ops` command and alias from help output, including
-     every `ops execute ...`, `ops purge ...`, `ops repair ...`, and future ops
-     subcommand that appears in the binary
-   - compare help examples with README and docs examples so they do not
-     contradict each other
-7. Classify every docs/help example:
-   - read-only lookup
-   - bounded search/list
-   - dry-run preview
-   - normal mutation
-   - critical mutation
-   - stdin or pipeline
-   - setup-only snippet
-8. Classify VHS tape commands separately as syntax-only review items. Preserve
-   their concrete values and recorded flow.
-9. Create or discover temporary data as needed:
-   - deploy embedded fixtures privately when useful
-   - start process instances to obtain real keys
-   - create incidents or jobs creatively through supported cluster behavior
-   - discover process definition, process instance, incident, job, resource, and
-     tenant values from the cluster
-   - clean up temporary data after validation when practical
-10. For placeholder examples, run the same command shape with real values
-   substituted privately. Public examples must remain placeholder-based.
-11. Test critical mutation behavior against the real dev cluster, with special
-    focus on destructive examples that remain in docs/help:
-   - purge/delete/cancel/resolve commands
-   - broad ops cleanup commands
-   - commands that remove process definitions or process instances
-   - commands that change jobs, variables, incidents, or task state
-   Prefer isolated fixture data, preview first, real mutation second, and a
-   post-check proving the expected cluster impact.
-12. Build and execute a complete ops validation matrix:
-    - include every nested `ops` command discovered from help, not just commands
-      that currently have docs/help examples
-    - record command path, aliases, support status for the target v89 cluster,
-      impact class, required fixture/setup data, dry-run support, automation or
-      JSON support, confirmation behavior, and cleanup expectations
-    - for read-only or dry-run-only ops commands, run the command and verify the
-      observed output is bounded and actionable
-    - for supported mutating ops commands, run a preview/dry-run when available,
-      then run the real mutation on disposable scoped data and verify the
-      expected post-condition
-    - for unsupported or intentionally blocked ops commands, verify failure
-      happens before mutation with a clear diagnostic
-    - if an ops command has no public example but is part of the binary, still
-      validate it and decide whether it needs a docs/help example, an explicit
-      omission, or a follow-up issue
-13. Decide for each docs/help example whether to keep, reduce, rewrite, move behind a
-    warning, or remove:
-    - keep only examples that represent normal operator workflows
-    - include destructive execution examples for ops commands where the real
-      workflow is destructive
-    - reduce repeated flag variants
-    - remove untestable v87/v88 examples
-    - remove nonstandard `--no-wait` style examples from normal docs/help
-    - replace hardcoded fixture IDs and runtime keys with placeholders
-    - label examples as read-only, harmless, or destructive where the format
-      allows it
-    - add explicit destructive warnings for destructive examples that remain
-14. For each VHS tape command, verify only that the c8volt command path, flags,
-    and required arguments are syntactically valid for the current binary. Do
-    not run a VHS rewrite. Do not edit tape files. If a VHS command is stale,
-    ambiguous, v87/v88-only, or syntactically suspicious, record the tape path
-    and reason for the final VHS review warning section.
-15. If edits are needed, update source files rather than generated output
-    when a generation path exists, then regenerate affected docs.
-16. After edits, rerun every changed docs/help example against the real cluster.
-17. Run targeted automated validation:
-    - `go test ./cmd -count=1`
-    - `go test ./docsgen -count=1` when generated documentation or docs links
-      changed
-    - broader tests only when product behavior changed
-
-Suggested investigation commands:
-- `rg -n -- 'C87_|C88_|C89_|--no-wait|225179981|<process|<incident|<job|<resource|ops ' README.md docs cmd demos/vhs -g '*.md' -g '*.go' -g '*.tape'`
-- `rg -n -- 'Example|Examples|Use:|Aliases:|ops execute|ops purge|ops repair' cmd docs README.md demos/vhs`
-- `/tmp/c8volt-release-docs-help-verify capabilities --json`
-- `/tmp/c8volt-release-docs-help-verify config show`
-- `/tmp/c8volt-release-docs-help-verify config test-connection`
-- `/tmp/c8volt-release-docs-help-verify embed list`
-- `/tmp/c8volt-release-docs-help-verify embed deploy --all --run`
-- `/tmp/c8volt-release-docs-help-verify get cluster version`
-- `/tmp/c8volt-release-docs-help-verify get cluster topology`
-- `/tmp/c8volt-release-docs-help-verify get pd --latest --limit 5`
-- `/tmp/c8volt-release-docs-help-verify get pi --state active --limit 5`
-- `/tmp/c8volt-release-docs-help-verify get incident --state active --limit 5`
-- `/tmp/c8volt-release-docs-help-verify ops execute smoke-test --dry-run`
-- `/tmp/c8volt-release-docs-help-verify ops execute retention-policy --retention-days 90 --dry-run`
-- `/tmp/c8volt-release-docs-help-verify ops purge orphan-process-instances --dry-run`
-- `/tmp/c8volt-release-docs-help-verify ops purge process-instances-with-incidents --dry-run`
-- `/tmp/c8volt-release-docs-help-verify ops purge all-process-definitions --dry-run`
-- `/tmp/c8volt-release-docs-help-verify ops execute retention-policy --retention-days 90`
-- `/tmp/c8volt-release-docs-help-verify ops purge orphan-process-instances`
-- `/tmp/c8volt-release-docs-help-verify ops purge process-instances-with-incidents`
-- `/tmp/c8volt-release-docs-help-verify ops purge all-process-definitions`
-- enumerate all ops commands from help before finalizing:
-  `/tmp/c8volt-release-docs-help-verify ops --help`,
-  `/tmp/c8volt-release-docs-help-verify ops execute --help`,
-  `/tmp/c8volt-release-docs-help-verify ops purge --help`,
-  `/tmp/c8volt-release-docs-help-verify ops repair --help`, then run help for
-  every nested command listed by those outputs
-- `go test ./cmd -count=1`
-- `go test ./docsgen -count=1`
+1. Inventory examples before executing them:
+   - README.md and docs/**/*.md, including generated references
+   - command Example metadata and help for every command, including hidden
+     commands, nested commands, and documented aliases
+   - setup snippets, pipelines, and local-only commands as well as cluster calls
+   Exclude VHS assets and scripts entirely. Do not follow screencast links into
+   VHS files. Deduplicate identical examples for execution while retaining every
+   source location and any differences in surrounding prerequisites.
+2. Build a temporary binary from the current checkout:
+   GOCACHE=/tmp/c8volt-gocache go build -o /tmp/c8volt-release-docs-help-verify .
+   Record the checkout commit and working-tree state. Use this binary as the
+   equivalent of public c8volt examples.
+3. Pin --config <CONFIG_PATH> and the selected --profile <PROFILE> on every
+   cluster invocation; omit --profile only when no profile was explicitly
+   selected. Check environment overrides that could change the effective target.
+   Do not rely on config discovery beside a binary built under /tmp. Examples
+   specifically testing configuration resolution need isolated local setup and
+   an explicit check of the effective target before any cluster request.
+4. Run version, config validate, config test-connection, and get cluster version
+   with the pinned configuration. Confirm both the effective compatibility
+   setting and real cluster version are 8.9 and the endpoint is the intended
+   development cluster. Stop cluster execution on mismatch or unhealthy
+   connectivity; retain the static inventory and explain the blocker.
+5. Capture capabilities --json and help to map the command surface and supported
+   flags. Inspect effective configuration privately with config show --json if
+   needed, storing only redacted evidence. Compare source metadata, generated
+   references, README, and live help for contradictions or stale examples.
+6. Give every example a stable ID and classify it as read-only lookup, search,
+   preview, mutation, pipeline, local setup, or bounded watch/wait. Record its
+   prerequisites, expected outcome, mutation scope, and verification method.
+7. Create disposable fixtures within the authorized boundary as needed, using
+   supported Camunda behavior. Track created definitions, instances, incidents,
+   jobs, files, and other resources so their ownership and cleanup are clear.
+   Do not use unrelated existing resources as mutation fixtures.
+8. Execute every applicable example with real private substitutions. Capture
+   exit status, separate stdout/stderr, duration, and evidence of the expected
+   outcome. A successful exit alone is insufficient proof of a mutation. Run
+   post-checks for cancellation, deletion, purge, repair, resolution, updates,
+   deployment, and creation. Validate local-only snippets locally rather than
+   requiring artificial cluster calls.
+9. Build the complete ops matrix, including analyse, execute, purge, repair, and
+   any additional groups present in the binary. Record every command and alias,
+   8.9 support status, fixtures, impact, dry-run support, confirmation behavior,
+   automation/JSON support, post-check, and cleanup requirements. For mutating
+   commands, execute a preview when available and the real workflow on disposable
+   data. For unsupported commands, verify the expected rejection before mutation
+   where safe. Grouping commands need help/navigation validation, not mutation.
+   Do not omit commands because they lack examples; report that gap separately.
+10. Clean up owned disposable resources within the authorized boundary and verify
+    cleanup. Report residual resources, stopped processes, and cleanup failures.
+    Never broaden cleanup to unrelated cluster data.
+11. Produce the report before editorial repair. If fixes were explicitly
+    requested, update source docs or command example metadata, not generated
+    files directly; run make docs-content where applicable. Rerun each changed
+    example, preserving before/after evidence. Run go test ./cmd -count=1 for
+    command-help changes and go test ./docsgen -count=1 for generated-doc changes,
+    plus git diff --check. Do not change runtime behavior to make an example pass.
 
 Output expectations:
-- Report the docs/help/VHS surfaces scanned.
-- Report every command family validated with real cluster calls.
-- Report every nested `ops` command discovered, how it was classified, and
-  whether it was validated by dry-run, real execution, expected unsupported
-  failure, or explicit documented omission.
-- Report examples removed or rewritten because they were v87/v88-only,
-  fixture-specific, stale, unbounded, unsafe, too slow, or too chatty.
-- Report examples kept as placeholders and the private real values used to
-  validate them, without turning those real values into public docs.
-- Report destructive examples included in public docs/help and confirm their
-  destructive labels or warning text.
-- Report destructive examples intentionally excluded only when they are too
-  broad, too slow, unbounded, or not representative of normal operator use.
-- Report validation commands run, including cluster preflight and Go tests.
-- Report VHS tapes checked for c8volt command syntax.
-- Report VHS files that need human review, and do not edit those tapes.
-- End with this section:
-
-  Critical Mutation Cases Tested:
-  - Command:
-  - Real test performed:
-  - Result:
-  - Public docs/help decision: included with destructive warning, or excluded
-  - Reason:
-
-  VHS Files Needing Manual Review:
-  - Tape:
-  - Command:
-  - Reason:
+- Identify the version/commit, effective 8.9 test target, scope, and mode.
+- List all scanned README/docs/help surfaces, including hidden command coverage.
+- Provide an example inventory with ID, all source locations, command shape,
+  prerequisites, private substitution reference, status, exit result, expected
+  outcome, post-check evidence, and proposed correction where applicable.
+- Use passed, failed, or blocked status. Distinguish documented expected
+  unsupported failures from unexpected failures. Mark older-version examples
+  slated for removal/rewrite and 8.10 examples deferred from this pass explicitly
+  as excluded, never passed. Explain all unexecuted cases.
+- Provide the complete ops matrix, distinguishing help-only grouping checks,
+  previews, real execution, expected unsupported rejection, and blocked cases.
+- Summarize total source occurrences, unique examples, executed examples,
+  failures, blockers, exclusions, and coverage gaps. Do not claim complete runtime
+  validation while applicable examples remain unexecuted.
+- Separate confirmed documentation defects, product defects, missing environment
+  prerequisites, and optional editorial suggestions.
+- For critical mutations, report the exact scoped test, preview result,
+  post-condition evidence, and cleanup outcome, including residual fixture data.
+- Report actual checks run and any repairs explicitly authorized and completed.
+- State that VHS was excluded entirely; do not produce a VHS review inventory.
 ```

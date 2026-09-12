@@ -57,6 +57,16 @@ func buildRunProcessInstanceDatasFromDeployments(
 	return datas, nil
 }
 
+// processInstanceTenantIDs extracts tenant evidence from returned process
+// instances for creation-result tenant context.
+func processInstanceTenantIDs(items []process.ProcessInstance) []string {
+	tenantIDs := make([]string, 0, len(items))
+	for _, it := range items {
+		tenantIDs = append(tenantIDs, it.TenantId)
+	}
+	return tenantIDs
+}
+
 func extractBPMNProcessIDs(data []byte) ([]string, error) {
 	dec := xml.NewDecoder(bytes.NewReader(data))
 	seen := map[string]struct{}{}

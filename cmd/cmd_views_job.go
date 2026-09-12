@@ -50,6 +50,7 @@ func jobUpdateResultView(cmd *cobra.Command, result job.UpdateResult) error {
 	if pickMode() == RenderModeJSON {
 		return renderJSONPayload(cmd, RenderModeJSON, result)
 	}
+	renderAttachedTenantContext(cmd)
 	switch result.Status {
 	case "confirmed":
 		parts := []string{fmt.Sprintf("confirmed retries=%d", derefInt32(result.ConfirmedRetries))}
@@ -80,6 +81,7 @@ func jobWorkerOutcomeResultView(cmd *cobra.Command, result job.WorkerOutcomeResu
 	if pickMode() == RenderModeJSON {
 		return renderJSONPayload(cmd, RenderModeJSON, result)
 	}
+	renderAttachedTenantContext(cmd)
 	switch result.Status {
 	case "submitted":
 		parts := []string{fmt.Sprintf("submitted %s", formatJobMutationMode(job.MutationMode(result.Mode)))}
@@ -105,6 +107,7 @@ func jobUpdatePlanView(cmd *cobra.Command, plan job.UpdatePlan, label string) er
 	if pickMode() == RenderModeJSON {
 		return renderJSONPayload(cmd, RenderModeJSON, plan)
 	}
+	renderAttachedTenantContext(cmd)
 	status := jobUpdatePlanHumanStatus(plan, label)
 	if !plan.HasMaterialChange() {
 		renderHumanLine(cmd, "%s: update job %s: nothing to update; %s", label, plan.Key, status)

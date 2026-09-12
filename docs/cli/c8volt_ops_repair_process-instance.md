@@ -9,9 +9,15 @@ Repair incidents selected by process instances
 
 ### Synopsis
 
-Repair incidents selected by process instances.
+Repair active incidents associated with selected process instances.
 
-The command accepts repeated --key values, newline-separated process-instance keys from stdin with '-', or process-instance search filters. Search mode automatically limits discovery to incident-bearing process instances; use --direct-incidents-only for stricter direct active incident matching. Search mode pages through all matching incident-bearing process instances by default. --batch-size tunes per-page discovery requests only, and --limit intentionally caps the frozen scope. Human, JSON, and audit report output identify whether discovery completed or was user-limited. The workflow builds a fixed target set of repairable process instances and active incidents before mutation, applies process-instance-scope variable updates once per unique scope when requested, then reuses the incident repair steps for job updates, incident resolution, and confirmation. Use --report-file with Markdown or JSON output for an audit record of discovery, targets, duplicate handling, skipped keys, step statuses, notices, errors, and final outcome.
+Provide repeated --key values, newline-separated keys from stdin with '-', or process-instance search filters. Search selects incident-bearing instances; --direct-incidents-only restricts matching to direct active incidents.
+
+The workflow fixes the repairable instance and incident sets, applies requested variables once per process-instance scope, then updates related jobs, resolves incidents, and confirms clearance unless --no-wait is set.
+
+--tenant limits search; an empty tenant or --all-tenants searches across accessible tenants. Explicit keys use backend authorization without tenant filtering. --batch-size controls each discovery request; --limit caps the selected scope.
+
+Use --dry-run to inspect planned repairs without mutation, --auto-confirm or --automation for unattended repair, and --report-file to save an audit report.
 
 ```
 c8volt ops repair process-instance [flags]
@@ -21,8 +27,11 @@ c8volt ops repair process-instance [flags]
 
 ```
   ./c8volt ops repair process-instance --key <process-instance-key> --dry-run
+  ./c8volt --tenant tenant-a ops repair process-instance --key <process-instance-key> --dry-run
+  ./c8volt --tenant "" ops repair process-instance --state active --limit 5 --dry-run
   ./c8volt ops repair process-instance --state active --limit 5 --dry-run
   ./c8volt ops repair process-instance --direct-incidents-only --bpmn-process-id <bpmn-process-id> --limit 5 --dry-run
+  ./c8volt --verbose ops repair process-instance --state active --limit 5 --auto-confirm
   ./c8volt ops repair process-instance --key <process-instance-key> --vars '{"hasIncident":false}' --report-file repair-process-instance.md
 ```
 
@@ -69,6 +78,7 @@ c8volt ops repair process-instance [flags]
 ### Options inherited from parent commands
 
 ```
+      --all-tenants        clear configured tenant filtering and search all tenants visible to the authenticated user; mutually exclusive with --tenant
   -y, --auto-confirm       auto-confirm prompts for non-interactive use
       --automation         enable non-interactive mode for commands that explicitly support it
       --config string      path to config file
@@ -79,7 +89,7 @@ c8volt ops repair process-instance [flags]
       --no-indicator       disable transient terminal activity indicators
       --profile string     config active profile name to use (e.g. dev, prod)
   -q, --quiet              suppress output except errors
-      --tenant string      tenant ID for discovery/search, selection, create, deploy, and run flows; explicit keys/IDs remain backend-authorized
+      --tenant string      tenant ID for discovery/search, selection, create, deploy, and run flows; explicit empty values can clear configured discovery filters, and explicit keys/IDs remain backend-authorized
       --timeout duration   HTTP request timeout (default 30s)
   -v, --verbose            show additional output
 ```

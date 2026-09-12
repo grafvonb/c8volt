@@ -18,6 +18,7 @@ import (
 	camundav89 "github.com/grafvonb/c8volt/internal/clients/camunda/v89/camunda"
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/services"
+	resourcepayload "github.com/grafvonb/c8volt/internal/services/resource/payload"
 	"github.com/grafvonb/c8volt/testx"
 	"github.com/grafvonb/c8volt/testx/activitysink"
 	"github.com/grafvonb/c8volt/toolx/logging"
@@ -193,6 +194,109 @@ func TestService_Deploy(t *testing.T) {
 		require.Error(t, err)
 		assert.ErrorIs(t, err, d.ErrMalformedResponse)
 	})
+}
+
+// TestService_DeployEmitsSubmittedCompletionFactsForNoWait verifies accepted
+// no-wait deployments report submitted facts for every returned process definition.
+func TestService_DeployEmitsSubmittedCompletionFactsForNoWait(t *testing.T) {
+	ctx := context.Background()
+	tenantID := "tenant"
+	resourceName := "demo.bpmn"
+	resourceData := []byte("<xml>demo</xml>")
+	var events []d.OpsProgressEvent
+	svc := newTestService(t, tenantID, &mockResourceClient{
+		createDeploymentWithBodyWithResponse: func(ctx context.Context, contentType string, body io.Reader, reqEditors ...camundav89.RequestEditorFn) (*camundav89.CreateDeploymentResponse, error) {
+			assertMultipartDeploymentRequest(t, contentType, body, tenantID, resourceName, resourceData)
+			return &camundav89.CreateDeploymentResponse{
+				HTTPResponse: newHTTPResponse(http.MethodPost, "https://camunda.local/v2/deployments", http.StatusOK, "200 OK"),
+				JSON200: &camundav89.DeploymentResult{
+					DeploymentKey: "deployment-1",
+					TenantId:      tenantID,
+					Deployments: []camundav89.DeploymentMetadataResult{
+						{ProcessDefinition: &camundav89.DeploymentProcessResult{ProcessDefinitionKey: "proc-1"}},
+						{ProcessDefinition: &camundav89.DeploymentProcessResult{ProcessDefinitionKey: "proc-2"}},
+					},
+				},
+			}, nil
+		},
+		deleteResourceWithResponse: func(ctx context.Context, resourceKey string, body camundav89.DeleteResourceOpJSONRequestBody, reqEditors ...camundav89.RequestEditorFn) (*camundav89.DeleteResourceOpResponse, error) {
+			t.Fatalf("unexpected delete call")
+			return nil, nil
+		},
+		getResourceWithResponse: func(ctx context.Context, resourceKey string, reqEditors ...camundav89.RequestEditorFn) (*camundav89.GetResourceResponse, error) {
+			t.Fatalf("unexpected get call")
+			return nil, nil
+		},
+	}, &mockProcessDefinitionClient{
+		getProcessDefinitionWithResponse: func(ctx context.Context, key string, reqEditors ...camundav89.RequestEditorFn) (*camundav89.GetProcessDefinitionResponse, error) {
+			t.Fatalf("unexpected confirmation poll")
+			return nil, nil
+		},
+	})
+
+	_, err := svc.Deploy(ctx, []d.DeploymentUnitData{{Name: resourceName, Data: resourceData}}, services.WithNoWait(), services.WithSuppressWorkflowDetailLogs(), services.WithProgress(func(event d.OpsProgressEvent) {
+		events = append(events, event)
+	}))
+
+	require.NoError(t, err)
+	require.Equal(t, []d.OpsCompletionProgress{
+		deploymentCompletionFact("proc-1", 2, d.OpsCompletionDispositionSubmitted),
+		deploymentCompletionFact("proc-2", 2, d.OpsCompletionDispositionSubmitted),
+	}, deploymentCompletionFacts(events))
+}
+
+// TestService_DeployEmitsConfirmedCompletionFactsWhenDefinitionsAreVisible
+// verifies waited deployments report confirmed facts from the visibility checks.
+func TestService_DeployEmitsConfirmedCompletionFactsWhenDefinitionsAreVisible(t *testing.T) {
+	ctx := context.Background()
+	tenantID := "tenant"
+	resourceName := "demo.bpmn"
+	resourceData := []byte("<xml>demo</xml>")
+	var events []d.OpsProgressEvent
+	var lookedUp []string
+	svc := newTestService(t, tenantID, &mockResourceClient{
+		createDeploymentWithBodyWithResponse: func(ctx context.Context, contentType string, body io.Reader, reqEditors ...camundav89.RequestEditorFn) (*camundav89.CreateDeploymentResponse, error) {
+			assertMultipartDeploymentRequest(t, contentType, body, tenantID, resourceName, resourceData)
+			return &camundav89.CreateDeploymentResponse{
+				HTTPResponse: newHTTPResponse(http.MethodPost, "https://camunda.local/v2/deployments", http.StatusOK, "200 OK"),
+				JSON200: &camundav89.DeploymentResult{
+					DeploymentKey: "deployment-1",
+					TenantId:      tenantID,
+					Deployments: []camundav89.DeploymentMetadataResult{
+						{ProcessDefinition: &camundav89.DeploymentProcessResult{ProcessDefinitionKey: "proc-1"}},
+						{ProcessDefinition: &camundav89.DeploymentProcessResult{ProcessDefinitionKey: "proc-2"}},
+					},
+				},
+			}, nil
+		},
+		deleteResourceWithResponse: func(ctx context.Context, resourceKey string, body camundav89.DeleteResourceOpJSONRequestBody, reqEditors ...camundav89.RequestEditorFn) (*camundav89.DeleteResourceOpResponse, error) {
+			t.Fatalf("unexpected delete call")
+			return nil, nil
+		},
+		getResourceWithResponse: func(ctx context.Context, resourceKey string, reqEditors ...camundav89.RequestEditorFn) (*camundav89.GetResourceResponse, error) {
+			t.Fatalf("unexpected get call")
+			return nil, nil
+		},
+	}, &mockProcessDefinitionClient{
+		getProcessDefinitionWithResponse: func(ctx context.Context, key string, reqEditors ...camundav89.RequestEditorFn) (*camundav89.GetProcessDefinitionResponse, error) {
+			lookedUp = append(lookedUp, key)
+			return &camundav89.GetProcessDefinitionResponse{
+				HTTPResponse: newHTTPResponse(http.MethodGet, "https://camunda.local/v2/process-definitions/"+key, http.StatusOK, "200 OK"),
+				JSON200:      &camundav89.ProcessDefinitionResult{ProcessDefinitionKey: key},
+			}, nil
+		},
+	})
+
+	_, err := svc.Deploy(ctx, []d.DeploymentUnitData{{Name: resourceName, Data: resourceData}}, services.WithSuppressWorkflowDetailLogs(), services.WithProgress(func(event d.OpsProgressEvent) {
+		events = append(events, event)
+	}))
+
+	require.NoError(t, err)
+	require.Equal(t, []string{"proc-1", "proc-2"}, lookedUp)
+	require.Equal(t, []d.OpsCompletionProgress{
+		deploymentCompletionFact("proc-1", 2, d.OpsCompletionDispositionConfirmed),
+		deploymentCompletionFact("proc-2", 2, d.OpsCompletionDispositionConfirmed),
+	}, deploymentCompletionFacts(events))
 }
 
 func TestService_Deploy_DefaultsEmptyTenantToDefaultTenant(t *testing.T) {
@@ -578,3 +682,25 @@ func testConfigWithTenant(t *testing.T, tenantID string) *config.Config {
 
 // testStringPtr mirrors nullable fields in generated v8.9 response types.
 func testStringPtr(v string) *string { return &v }
+
+// deploymentCompletionFacts filters service progress down to completion facts.
+func deploymentCompletionFacts(events []d.OpsProgressEvent) []d.OpsCompletionProgress {
+	out := make([]d.OpsCompletionProgress, 0, len(events))
+	for _, event := range events {
+		if event.Kind == d.OpsProgressEventKindCompletion && event.Completion != nil {
+			out = append(out, *event.Completion)
+		}
+	}
+	return out
+}
+
+// deploymentCompletionFact builds the expected wording-free deployment completion fact.
+func deploymentCompletionFact(key string, total int, disposition d.OpsCompletionDisposition) d.OpsCompletionProgress {
+	return d.OpsCompletionProgress{
+		Phase:        resourcepayload.DeploymentProcessDefinitionsPhase,
+		CoreResource: resourcepayload.DeploymentProcessDefinitionsCoreResource,
+		Total:        total,
+		Identity:     key,
+		Disposition:  disposition,
+	}
+}

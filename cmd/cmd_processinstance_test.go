@@ -4,6 +4,7 @@
 package cmd
 
 import (
+	"bytes"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -13,11 +14,56 @@ import (
 	"testing"
 	"time"
 
+	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/grafvonb/c8volt/testx"
 	"github.com/stretchr/testify/require"
 )
 
 const testRelativeDayNowEnv = "C8VOLT_TEST_RELATIVE_DAY_NOW"
+
+// requireEmptyProcessInstanceSelectorOutput verifies the shared no-op contract
+// without accepting trailing JSON values or cross-stream human summaries.
+func requireEmptyProcessInstanceSelectorOutput(t *testing.T, stdout, stderr, command, operation string, dryRun bool, mode RenderMode) {
+	t.Helper()
+	require.NotContains(t, stdout, "found: 0")
+	require.NotContains(t, stderr, "found: 0")
+
+	if mode == RenderModeKeysOnly {
+		require.Empty(t, stdout)
+		return
+	}
+
+	require.Equal(t, RenderModeJSON, mode)
+	decoder := json.NewDecoder(bytes.NewBufferString(stdout))
+	var envelope ResultEnvelope[json.RawMessage]
+	require.NoError(t, decoder.Decode(&envelope))
+	var trailing any
+	require.ErrorIs(t, decoder.Decode(&trailing), io.EOF)
+	require.Equal(t, OutcomeSucceeded, envelope.Outcome)
+	require.Equal(t, command, envelope.Command)
+	require.Empty(t, envelope.Class)
+	require.Empty(t, envelope.Detail)
+
+	var payload map[string]any
+	require.NoError(t, json.Unmarshal(envelope.Payload, &payload))
+	if !dryRun {
+		require.Empty(t, payload)
+		return
+	}
+
+	require.Equal(t, operation, payload["operation"])
+	for _, field := range []string{"requestedCount", "resolvedRootCount", "affectedCount", "selectedFinalStateCount", "requiresCancelBeforeDeleteCount"} {
+		require.EqualValues(t, 0, payload[field], field)
+	}
+	for _, field := range []string{"selectedFinalState", "requiresCancelBeforeDelete", "missingAncestors", "previews"} {
+		require.Contains(t, payload, field)
+		require.Nil(t, payload[field], field)
+	}
+	require.Equal(t, string(process.TraversalOutcomeComplete), payload["traversalOutcome"])
+	require.Equal(t, true, payload["scopeComplete"])
+	require.Equal(t, "", payload["warning"])
+	require.Equal(t, false, payload["mutationSubmitted"])
+}
 
 func applyRelativeDayNowOverrideFromEnv(t *testing.T) {
 	t.Helper()
@@ -281,46 +327,63 @@ func decodeCapturedTopLevelPISearchSizes(t *testing.T, requests []string) []floa
 func TestProcessInstanceDestructiveHelp_DocumentsDryRunPreviewMode(t *testing.T) {
 	cancelOutput := executeRootForProcessInstanceTest(t, "cancel", "process-instance", "--help")
 	require.Contains(t, cancelOutput, "--dry-run")
-	require.Contains(t, cancelOutput, "preview selected, in-scope, final-state")
+	require.Contains(t, cancelOutput, "preview the affected family")
 	require.Contains(t, cancelOutput, "preview cancel scope without submitting cancellation")
 	require.Contains(t, cancelOutput, "./c8volt cancel process-instance --key <process-instance-key> --dry-run")
 	require.Contains(t, cancelOutput, "./c8volt cancel process-instance --state active --batch-size 250 --limit 5 --dry-run")
 
 	deleteOutput := executeRootForProcessInstanceTest(t, "delete", "process-instance", "--help")
 	require.Contains(t, deleteOutput, "--dry-run")
-	require.Contains(t, deleteOutput, "final-state, non-final, and partial-scope")
+	require.Contains(t, deleteOutput, "without deleting or cancelling")
 	require.Contains(t, deleteOutput, "preview delete scope without submitting deletion or cancel-before-delete requests")
 	require.Contains(t, deleteOutput, "./c8volt delete process-instance --key <process-instance-key> --dry-run")
 	require.Contains(t, deleteOutput, "./c8volt delete process-instance --state terminated --batch-size 250 --limit 5 --dry-run")
+}
+
+// TestProcessInstanceDestructiveHelp_DocumentsEmptySelectorNoOp verifies
+// cancel and delete help describe prompt-free completion for empty selections.
+func TestProcessInstanceDestructiveHelp_DocumentsEmptySelectorNoOp(t *testing.T) {
+	for _, testCase := range []struct {
+		operation string
+		state     string
+	}{
+		{operation: "cancel", state: "active"},
+		{operation: "delete", state: "terminated"},
+	} {
+		output := executeRootForProcessInstanceTest(t, testCase.operation, "process-instance", "--help")
+		require.Contains(t, output, "An empty selection completes without confirmation")
+		require.Contains(t, output, "--state "+testCase.state+" --json --dry-run")
+		require.Contains(t, output, "--state "+testCase.state+" --keys-only")
+	}
 }
 
 // TestProcessInstanceHelp_DocumentsTenantContract verifies command help names
 // discovery-scoped tenant behavior separately from explicit admin input.
 func TestProcessInstanceHelp_DocumentsTenantContract(t *testing.T) {
 	getOutput := executeRootForProcessInstanceTest(t, "get", "process-instance", "--help")
-	require.Contains(t, getOutput, "Tenant contract:")
-	require.Contains(t, getOutput, "--tenant scopes search/list discovery and selector validation")
-	require.Contains(t, getOutput, "Explicit --key and stdin keys are backend-authorized admin input")
+	require.Contains(t, getOutput, "tenant")
+	require.Contains(t, getOutput, "--tenant limits search and selector discovery")
+	require.Contains(t, getOutput, "Explicit --key and stdin keys use backend authorization without tenant filtering")
 
 	walkOutput := executeRootForProcessInstanceTest(t, "walk", "process-instance", "--help")
-	require.Contains(t, walkOutput, "Tenant contract:")
-	require.Contains(t, walkOutput, "explicit --key process-instance targets are backend-authorized admin input")
+	require.Contains(t, walkOutput, "tenant")
+	require.Contains(t, walkOutput, "Explicit --key uses backend authorization without tenant filtering")
 
 	expectOutput := executeRootForProcessInstanceTest(t, "expect", "process-instance", "--help")
-	require.Contains(t, expectOutput, "Tenant contract:")
+	require.Contains(t, expectOutput, "tenant")
 	require.Contains(t, expectOutput, "explicit --key and stdin process-instance targets are backend-authorized admin input")
 
 	cancelOutput := executeRootForProcessInstanceTest(t, "cancel", "process-instance", "--help")
-	require.Contains(t, cancelOutput, "Tenant contract:")
-	require.Contains(t, cancelOutput, "--tenant scopes search-derived candidate discovery")
-	require.Contains(t, cancelOutput, "Explicit --key and stdin keys are backend-authorized admin input")
-	require.Contains(t, cancelOutput, "existing dry-run, confirmation, force, and wait safety checks still apply")
+	require.Contains(t, cancelOutput, "tenant")
+	require.Contains(t, cancelOutput, "--tenant limits search-derived selection")
+	require.Contains(t, cancelOutput, "Explicit --key and stdin keys use backend authorization without tenant filtering")
+	require.Contains(t, cancelOutput, "--dry-run")
 
 	deleteOutput := executeRootForProcessInstanceTest(t, "delete", "process-instance", "--help")
-	require.Contains(t, deleteOutput, "Tenant contract:")
-	require.Contains(t, deleteOutput, "--tenant scopes search-derived candidate discovery")
-	require.Contains(t, deleteOutput, "Explicit --key and stdin keys are backend-authorized admin input")
-	require.Contains(t, deleteOutput, "existing dry-run, confirmation, force, and wait safety checks still apply")
+	require.Contains(t, deleteOutput, "tenant")
+	require.Contains(t, deleteOutput, "--tenant limits search-derived selection")
+	require.Contains(t, deleteOutput, "Explicit --key and stdin keys use backend authorization without tenant filtering")
+	require.Contains(t, deleteOutput, "--dry-run")
 }
 
 func TestProcessInstanceSearchDefaultOneLineOutput_IgnoresReportedTotalMetadata(t *testing.T) {

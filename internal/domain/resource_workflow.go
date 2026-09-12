@@ -8,6 +8,7 @@ type DeleteProcessDefinitionPlan struct {
 	StateCheckSkipped     bool
 	ProcessDefinitionKeys []string
 	Warnings              []string
+	TenantEvidence        TenantEvidence
 }
 
 type DeleteProcessDefinitionPlanItem struct {

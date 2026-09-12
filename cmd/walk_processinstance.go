@@ -32,12 +32,13 @@ const (
 var walkProcessInstanceCmd = &cobra.Command{
 	Use:   "process-instance",
 	Short: "Inspect the parent/child tree of process instances",
-	Long: "Inspect the parent/child tree of process instances.\n\n" +
-		"By default, walk shows the full process-instance family as an ASCII tree. Use --parent for ancestry, --children for descendants, or --flat for a path-style family view.\n\n" +
-		"Tenant contract: explicit --key process-instance targets are backend-authorized admin input; returned tenant metadata may differ from the selected tenant.\n\n" +
-		"Add --with-incidents, --with-vars, and/or --with-elements to keyed walks to show incident details, process-instance-scope variables, and runtime element instances below matching rows.\n\n" +
-		"Use --with-listeners with --with-elements to include runtime listener jobs under matching element rows.\n\n" +
-		"When an ancestor is missing but reachable family data still exists, walk returns the partial tree plus a warning. Direct single-resource lookups stay strict.",
+	Long: `Inspect process-instance ancestry, descendants, or the full family.
+
+Use --parent for ancestry or --children for descendants; the default scope is the full family. Explicit --key uses backend authorization without tenant filtering.
+
+Add --with-incidents, --with-vars, or --with-elements for incident details, process-instance-scope variables, or runtime elements. Add --with-listeners to --with-elements for runtime listener jobs.
+
+When an ancestor is missing but reachable family data remains, walk returns the available family. Direct single-resource lookups remain strict.`,
 	Example: `  ./c8volt walk process-instance --key <process-instance-key>
   ./c8volt walk process-instance --key <process-instance-key> --with-incidents
   ./c8volt walk process-instance --key <process-instance-key> --with-vars
@@ -235,7 +236,7 @@ func init() {
 	fs.BoolVar(&flagWalkPIWithVars, "with-vars", false, "show process-instance-scope variables for keyed process-instance walks")
 	fs.IntVar(&flagGetPIVarValueLimit, "var-value-limit", 0, "maximum characters to show for variable values when --with-vars is set; 0 disables truncation")
 	fs.BoolVar(&flagWalkPIWithElements, "with-elements", false, "show runtime element instances for keyed process-instance walks")
-	fs.BoolVar(&flagWalkPIWithListeners, "with-listeners", false, "show runtime listener jobs under matching element rows; requires --with-elements")
+	fs.BoolVar(&flagWalkPIWithListeners, "with-listeners", false, "include runtime listener jobs; requires --with-elements")
 
 	setCommandMutation(walkProcessInstanceCmd, CommandMutationReadOnly)
 	setContractSupport(walkProcessInstanceCmd, ContractSupportFull)

@@ -6,13 +6,11 @@ nav_exclude: true
 [CLI Reference]({{ "/cli/" | relative_url }})
 ## c8volt get cluster topology
 
-Show connected cluster topology as a tree
+Inspect connected cluster topology
 
 ### Synopsis
 
-Show connected cluster topology as a sorted tree.
-
-This command reports brokers, partitions, and gateway metadata for the configured Camunda cluster. Use --json for the structured topology payload.
+Inspect brokers, partitions, and gateway metadata for the connected Camunda cluster.
 
 ```
 c8volt get cluster topology [flags]
@@ -34,6 +32,7 @@ c8volt get cluster topology [flags]
 ### Options inherited from parent commands
 
 ```
+      --all-tenants        clear configured tenant filtering and search all tenants visible to the authenticated user; mutually exclusive with --tenant
   -y, --auto-confirm       auto-confirm prompts for non-interactive use
       --automation         enable non-interactive mode for commands that explicitly support it
       --config string      path to config file
@@ -44,7 +43,7 @@ c8volt get cluster topology [flags]
       --no-indicator       disable transient terminal activity indicators
       --profile string     config active profile name to use (e.g. dev, prod)
   -q, --quiet              suppress output except errors
-      --tenant string      tenant ID for discovery/search, selection, create, deploy, and run flows; explicit keys/IDs remain backend-authorized
+      --tenant string      tenant ID for discovery/search, selection, create, deploy, and run flows; explicit empty values can clear configured discovery filters, and explicit keys/IDs remain backend-authorized
       --timeout duration   HTTP request timeout (default 30s)
   -v, --verbose            show additional output
 ```

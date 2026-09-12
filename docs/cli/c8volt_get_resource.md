@@ -6,15 +6,15 @@ nav_exclude: true
 [CLI Reference]({{ "/cli/" | relative_url }})
 ## c8volt get resource
 
-Get a resource by ID
+Get a resource by key
 
 ### Synopsis
 
-Get a single resource by ID.
+Get a single resource by key.
 
-Requires --id. The ID must be a Camunda resource ID; process-definition keys and deployment response keys are not resource IDs.
+Requires --id with the resourceKey from the resource deployment response, not its resourceId or the deploymentKey.
 
-Tenant contract: explicit --id resource targets are backend-authorized admin input; returned tenant metadata may differ from the selected tenant.
+Explicit --id uses backend authorization without tenant filtering.
 
 ```
 c8volt get resource [flags]
@@ -23,21 +23,22 @@ c8volt get resource [flags]
 ### Examples
 
 ```
-  ./c8volt get resource --id <resource-id>
-  ./c8volt --json get resource --id <resource-id>
-  ./c8volt --keys-only get resource --id <resource-id>
+  ./c8volt get resource --id <resource-key>
+  ./c8volt --json get resource --id <resource-key>
+  ./c8volt --keys-only get resource --id <resource-key>
 ```
 
 ### Options
 
 ```
   -h, --help        help for resource
-  -i, --id string   resource ID to fetch
+  -i, --id string   resource key to fetch
 ```
 
 ### Options inherited from parent commands
 
 ```
+      --all-tenants        clear configured tenant filtering and search all tenants visible to the authenticated user; mutually exclusive with --tenant
   -y, --auto-confirm       auto-confirm prompts for non-interactive use
       --automation         enable non-interactive mode for commands that explicitly support it
       --config string      path to config file
@@ -48,7 +49,7 @@ c8volt get resource [flags]
       --no-indicator       disable transient terminal activity indicators
       --profile string     config active profile name to use (e.g. dev, prod)
   -q, --quiet              suppress output except errors
-      --tenant string      tenant ID for discovery/search, selection, create, deploy, and run flows; explicit keys/IDs remain backend-authorized
+      --tenant string      tenant ID for discovery/search, selection, create, deploy, and run flows; explicit empty values can clear configured discovery filters, and explicit keys/IDs remain backend-authorized
       --timeout duration   HTTP request timeout (default 30s)
   -v, --verbose            show additional output
 ```

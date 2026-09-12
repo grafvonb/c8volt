@@ -238,6 +238,15 @@ func printOpsDurableLine(cmd *cobra.Command, line string, warn bool) {
 	fmt.Fprintln(cmd.ErrOrStderr(), line)
 }
 
+// printOpsDurableLineDirect bypasses logger level filtering for progress
+// warnings whose mode contract requires stderr visibility.
+func printOpsDurableLineDirect(cmd *cobra.Command, line string) {
+	if cmd == nil || strings.TrimSpace(line) == "" {
+		return
+	}
+	fmt.Fprintln(cmd.ErrOrStderr(), line)
+}
+
 type opsPreflightResourceLabels struct {
 	Singular string
 	Plural   string
@@ -367,6 +376,72 @@ func formatOpsETASampleWindow(window ops.ETASampleWindow) string {
 		parts = append(parts, fmt.Sprintf("~%s remaining", window.Remaining.Round(time.Second)))
 	}
 	return strings.Join(nonEmptyOpsProgressParts(parts), ", ")
+}
+
+// formatOpsSemanticProgressAggregate renders completion counters without
+// implying affected-count coverage when any contributing fact is unknown.
+func formatOpsSemanticProgressAggregate(scope opsSemanticProgressScope, aggregate opsSemanticProgressAggregate) string {
+	resource := strings.TrimSpace(scope.CoreResource)
+	if resource == "" {
+		resource = "resource(s)"
+	}
+	label := strings.TrimSpace(scope.ActivityLabel)
+	if label == "" {
+		label = strings.TrimSpace(scope.Phase)
+	}
+	if label == "" {
+		label = "progress"
+	}
+	parts := []string{label}
+	if aggregate.Total > 0 {
+		parts = append(parts, fmt.Sprintf("%d/%d %s", aggregate.Completed, aggregate.Total, resource))
+	} else {
+		parts = append(parts, fmt.Sprintf("%d %s completed", aggregate.Completed, resource))
+	}
+	if aggregate.Failed > 0 {
+		parts = append(parts, fmt.Sprintf("%d failed", aggregate.Failed))
+	}
+	if aggregate.AffectedValid && strings.TrimSpace(scope.AffectedResource) != "" {
+		parts = append(parts, fmt.Sprintf("%s: %d", strings.TrimSpace(scope.AffectedResource), aggregate.Affected))
+	}
+	return strings.Join(nonEmptyOpsProgressParts(parts), ", ")
+}
+
+// formatOpsSemanticProgressCompletion renders one verbose or warning
+// completion line using command-owned lifecycle wording.
+func formatOpsSemanticProgressCompletion(scope opsSemanticProgressScope, aggregate opsSemanticProgressAggregate, completion ops.CompletionProgress) string {
+	identity := strings.TrimSpace(completion.Identity)
+	if identity == "" {
+		identity = "item"
+	}
+	verb := opsSemanticProgressLifecycleVerb(scope, completion.Disposition)
+	line := fmt.Sprintf("%s %s", identity, strings.TrimSpace(verb))
+	if detail := strings.TrimSpace(completion.FailureDetail); detail != "" && completion.Disposition == ops.CompletionDispositionFailed {
+		line += ": " + detail
+	}
+	return line + " (" + formatOpsSemanticProgressAggregate(scope, aggregate) + ")"
+}
+
+// opsSemanticProgressLifecycleVerb projects a wording-free disposition into
+// command-owned lifecycle wording without exposing raw confirmed fallbacks.
+func opsSemanticProgressLifecycleVerb(scope opsSemanticProgressScope, disposition ops.CompletionDisposition) string {
+	switch disposition {
+	case ops.CompletionDispositionSubmitted:
+		if verb := strings.TrimSpace(scope.SubmittedVerb); verb != "" {
+			return verb
+		}
+		return "submitted"
+	case ops.CompletionDispositionFailed:
+		if verb := strings.TrimSpace(scope.FailedVerb); verb != "" {
+			return verb
+		}
+		return "failed"
+	default:
+		if verb := strings.TrimSpace(scope.ConfirmedVerb); verb != "" {
+			return verb
+		}
+		return "completed"
+	}
 }
 
 // nonEmptyOpsProgressParts trims empty formatter fragments before joining human progress text.

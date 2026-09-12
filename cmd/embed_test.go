@@ -4,6 +4,7 @@
 package cmd
 
 import (
+	"bytes"
 	"encoding/json"
 	"mime"
 	"net/http"
@@ -18,11 +19,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestEmbedListHelp_DocumentsReadOnlyDiscoveryExamples verifies examples and the execution-error boundary.
 func TestEmbedListHelp_DocumentsReadOnlyDiscoveryExamples(t *testing.T) {
 	output := executeRootForTest(t, "embed", "list", "--help")
 
 	require.Contains(t, output, "List bundled BPMN fixture files")
-	require.Contains(t, output, "Shows files for the configured Camunda version")
+	require.Contains(t, output, "List bundled BPMN fixture files for the configured Camunda version")
 	require.Contains(t, output, "./c8volt embed list --details")
 	require.Contains(t, output, "./c8volt --json embed list")
 }
@@ -88,6 +90,7 @@ func TestEmbedDeployHelp_DocumentsRunWithoutExpectationFlags(t *testing.T) {
 	output := executeRootForTest(t, "embed", "deploy", "--help")
 
 	require.Contains(t, output, "Add --run to start one process instance")
+	require.Contains(t, output, "--all-tenants is not supported because")
 	require.Contains(t, output, "--run")
 	require.NotContains(t, output, "--expected-status")
 }
@@ -163,6 +166,46 @@ func TestEmbedDeployCommand_RegressionPreservesSelectedFixtureDeployOnly(t *test
 	require.True(t, sawDeploy)
 }
 
+// TestEmbedDeployCommand_AllTenantsRejectsBeforeEmbeddedOrRequestWork proves
+// embedded deployment cannot inspect fixture selections or submit deployments
+// when all-tenants is active.
+func TestEmbedDeployCommand_AllTenantsRejectsBeforeEmbeddedOrRequestWork(t *testing.T) {
+	tests := []struct {
+		name string
+		args []string
+	}{
+		{
+			name: "unknown fixture",
+			args: []string{"embed", "deploy", "--all-tenants", "--file", "processdefinitions/DOES_NOT_EXIST.bpmn"},
+		},
+		{
+			name: "all with optional run",
+			args: []string{"--all-tenants", "embed", "deploy", "--all", "--run"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var requests testx.SafeSlice[string]
+			srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				requests.Append(r.Method + " " + r.URL.Path)
+				t.Fatalf("embed deploy must reject --all-tenants before request work: %s %s", r.Method, r.URL.Path)
+			}))
+			t.Cleanup(srv.Close)
+			args := append([]string{"--config", writeTestConfigForVersion(t, srv.URL, "8.9")}, tt.args...)
+
+			output, err := testx.RunCmdSubprocess(t, "TestEmbedDeployCommand_AllTenantsRejectsBeforeEmbeddedOrRequestWorkHelper", map[string]string{
+				"C8VOLT_TEST_ROOT_ARGS": marshalRootArgsForEnv(t, args),
+			})
+			assertAllTenantsConcreteDestinationSubprocessFailure(t, output, err, "embed deploy")
+			require.Empty(t, requests.Snapshot())
+			require.NotContains(t, string(output), "embedded file")
+			require.NotContains(t, string(output), "deploying embedded resource")
+			require.NotContains(t, string(output), "creation target:")
+		})
+	}
+}
+
 func TestEmbedDeployCommand_AllRunFallsBackToBPMNIDForV87(t *testing.T) {
 	resetEmbedCommandStateForTest()
 	var sawDeploy bool
@@ -199,6 +242,56 @@ func TestEmbedDeployCommand_AllRunFallsBackToBPMNIDForV87(t *testing.T) {
 	require.NoError(t, err, string(output))
 	require.True(t, sawDeploy)
 	require.True(t, sawRun)
+}
+
+func TestEmbedDeployCommand_CreationContextPrecedesDeploymentRequest(t *testing.T) {
+	resetEmbedCommandStateForTest()
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	var sawDeploy bool
+
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/deployments":
+			sawDeploy = true
+			require.Contains(t, stderr.String(), "creation target: tenant-a")
+			require.NoError(t, r.ParseMultipartForm(1<<20))
+			require.Equal(t, "tenant-a", r.FormValue("tenantId"))
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"deploymentKey":"deployment-188","tenantId":"tenant-a","deployments":[{"processDefinition":{"processDefinitionId":"C89_MultipleSubProcessesParent","processDefinitionKey":"188001","processDefinitionVersion":1,"resourceName":"processdefinitions/C89_MultipleSubProcessesParent.bpmn","tenantId":"tenant-a"}}]}`))
+		default:
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeRawTestConfig(t, `app:
+  camunda_version: "8.9"
+  tenant: tenant-a
+auth:
+  mode: none
+apis:
+  camunda_api:
+    base_url: `+srv.URL+`
+`)
+
+	root := Root()
+	resetCommandTreeFlags(root)
+	root.SetOut(stdout)
+	root.SetErr(stderr)
+	root.SetArgs([]string{
+		"--config", cfgPath,
+		"embed", "deploy",
+		"--file", "processdefinitions/C89_MultipleSubProcessesParent.bpmn",
+		"--no-wait",
+	})
+
+	_, err := root.ExecuteC()
+	require.NoError(t, err)
+	require.True(t, sawDeploy)
+	require.Empty(t, stdout.String())
+	require.Contains(t, stderr.String(), "creation target: tenant-a")
+	require.Less(t, strings.Index(stderr.String(), "creation target: tenant-a"), strings.Index(stderr.String(), "pd deploy done"))
 }
 
 func TestEmbedDeployCommand_RegressionPreservesSelectedFixtureDeployOnlyHelper(t *testing.T) {
@@ -251,6 +344,11 @@ func TestEmbedDeployCommand_AllRunFallsBackToBPMNIDForV87Helper(t *testing.T) {
 	_ = root.Execute()
 }
 
+// Helper-process entrypoint for all-tenants embedded deployment rejection.
+func TestEmbedDeployCommand_AllTenantsRejectsBeforeEmbeddedOrRequestWorkHelper(t *testing.T) {
+	executeRootHelperFromArgsEnv(t, "C8VOLT_TEST_ROOT_ARGS")
+}
+
 // Verifies embed export requires an explicit selection via --all or at least one --file.
 func TestEmbedExportCommand_RequiresSelection(t *testing.T) {
 	resetEmbedCommandStateForTest()
@@ -277,6 +375,11 @@ func resetEmbedCommandStateForTest() {
 	flagEmbedExportOut = "."
 	flagEmbedExportAll = false
 	flagForce = false
+	flagNoWait = false
+	flagViewAsJson = false
+	flagViewKeysOnly = false
+	flagQuiet = false
+	resetDeployCommandContextForTest(Root())
 }
 
 // Helper-process entrypoint for embed export selection validation.

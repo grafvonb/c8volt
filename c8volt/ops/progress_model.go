@@ -3,7 +3,12 @@
 
 package ops
 
-import "time"
+import (
+	"time"
+
+	"github.com/grafvonb/c8volt/c8volt/process"
+	"github.com/grafvonb/c8volt/c8volt/tenant"
+)
 
 // TotalCertainty classifies whether a progress count is exact, approximate, or unavailable.
 type TotalCertainty string
@@ -55,8 +60,26 @@ const (
 	ProgressEventKindPage ProgressEventKind = "page"
 	// ProgressEventKindFrozenScope carries exact counters for a frozen work set.
 	ProgressEventKindFrozenScope ProgressEventKind = "frozen_scope"
+	// ProgressEventKindTenantScope carries validated tenant evidence for the complete applicable work set.
+	ProgressEventKindTenantScope ProgressEventKind = "tenant_scope"
 	// ProgressEventKindETA carries timing samples used for approximate ETA rendering.
 	ProgressEventKindETA ProgressEventKind = "eta"
+	// ProgressEventKindStage carries a service-owned stage entry before mutation work begins.
+	ProgressEventKindStage ProgressEventKind = "stage"
+	// ProgressEventKindCompletion carries one wording-free item or stage completion fact.
+	ProgressEventKindCompletion ProgressEventKind = "completion"
+)
+
+// CompletionDisposition identifies the lifecycle boundary reached by a completed work item.
+type CompletionDisposition string
+
+const (
+	// CompletionDispositionSubmitted means the request was accepted without waiting for operational confirmation.
+	CompletionDispositionSubmitted CompletionDisposition = "submitted"
+	// CompletionDispositionConfirmed means the command's configured wait or proof contract completed.
+	CompletionDispositionConfirmed CompletionDisposition = "confirmed"
+	// CompletionDispositionFailed means the configured completion boundary was not reached.
+	CompletionDispositionFailed CompletionDisposition = "failed"
 )
 
 // ProgressMode identifies an output context for progress-channel gating.
@@ -103,6 +126,7 @@ type PreflightScope struct {
 	Command              string             `json:"command,omitempty"`
 	CoreResource         string             `json:"coreResource,omitempty"`
 	SelectorSummary      string             `json:"selectorSummary,omitempty"`
+	TenantContext        *tenant.Context    `json:"tenantContext,omitempty"`
 	Total                *int64             `json:"total,omitempty"`
 	TotalKind            TotalCertainty     `json:"totalKind,omitempty"`
 	PageSize             int32              `json:"pageSize,omitempty"`
@@ -139,6 +163,22 @@ type FrozenScopeProgress struct {
 	Errors       int            `json:"errors,omitempty"`
 }
 
+// TenantScopeProgress carries a snapshot of validated tenant evidence. An
+// empty evidence value represents a successfully established empty scope.
+type TenantScopeProgress struct {
+	Evidence process.TenantEvidence `json:"evidence,omitempty"`
+}
+
+// StageProgress reports that a service workflow entered a stage. Optional
+// counts are nil when unavailable; non-nil counts must be nonnegative, and zero
+// represents a known empty scope rather than unknown work.
+type StageProgress struct {
+	Phase                string `json:"phase,omitempty"`
+	CoreResource         string `json:"coreResource,omitempty"`
+	Total                *int   `json:"total,omitempty"`
+	PlannedAffectedCount *int   `json:"plannedAffectedCount,omitempty"`
+}
+
 // ETASampleWindow carries enough timing data for command formatters to decide whether ETA is useful.
 type ETASampleWindow struct {
 	Phase             string         `json:"phase,omitempty"`
@@ -151,11 +191,26 @@ type ETASampleWindow struct {
 	Remaining         *time.Duration `json:"remaining,omitempty"`
 }
 
+// CompletionProgress reports one service-owned completion fact without command-rendered wording.
+type CompletionProgress struct {
+	Phase            string                `json:"phase,omitempty"`
+	CoreResource     string                `json:"coreResource,omitempty"`
+	Total            int                   `json:"total,omitempty"`
+	Identity         string                `json:"identity,omitempty"`
+	Disposition      CompletionDisposition `json:"disposition,omitempty"`
+	FailureDetail    string                `json:"failureDetail,omitempty"`
+	AffectedResource string                `json:"affectedResource,omitempty"`
+	AffectedCount    *int                  `json:"affectedCount,omitempty"`
+}
+
 // ProgressEvent is a typed envelope for service progress callbacks.
 type ProgressEvent struct {
 	Kind        ProgressEventKind    `json:"kind,omitempty"`
 	Preflight   *PreflightScope      `json:"preflight,omitempty"`
 	Page        *PageProgress        `json:"page,omitempty"`
 	FrozenScope *FrozenScopeProgress `json:"frozenScope,omitempty"`
+	TenantScope *TenantScopeProgress `json:"tenantScope,omitempty"`
 	ETA         *ETASampleWindow     `json:"eta,omitempty"`
+	Stage       *StageProgress       `json:"stage,omitempty"`
+	Completion  *CompletionProgress  `json:"completion,omitempty"`
 }

@@ -12,17 +12,11 @@ List or fetch runtime element instances
 
 List or fetch Camunda runtime element instances.
 
-Use --key when you know an element instance key. Omit --key to list or search element instances by process instance, BPMN element ID, state, type, process definition, or BPMN process ID.
+Use --key for a known element instance. Otherwise search by process instance, BPMN element ID, state, type, process definition, or BPMN process ID.
 
-Search mode follows the shared get paging and limit conventions. --batch-size controls each backend page request, --limit caps returned element rows across all pages, and --total prints only the matching count. Verbose paging progress is written away from stdout; JSON, keys-only, quiet, and automation output remain free of prompts and progress text.
+--batch-size controls each discovery request; --limit caps returned elements across all pages. Use --total to count matching elements, or --with-listeners to include runtime listener jobs.
 
-Compact human rows include dur:<duration> when start/end timestamps or active state support a runtime duration.
-
-Use --with-listeners to include runtime listener jobs under matching element rows.
-
-Use --json for the stable element payload and --keys-only when piping element instance keys.
-
-Element lookup and search require Camunda 8.8 or newer. Camunda 8.7 returns an unsupported-version error.
+Requires Camunda 8.8 or newer.
 
 ```
 c8volt get element [flags]
@@ -43,7 +37,7 @@ c8volt get element [flags]
 ### Options
 
 ```
-  -n, --batch-size int32         number of elements to request per page; does not cap total returned rows (max limit 1000 enforced by server) (default 1000)
+  -n, --batch-size int32         number of elements to request per page; does not cap total results (max limit 1000 enforced by server) (default 1000)
   -b, --bpmn-process-id string   BPMN process ID to filter in search mode
       --element-id string        BPMN element ID to filter in search mode
   -h, --help                     help for element
@@ -54,12 +48,13 @@ c8volt get element [flags]
   -s, --state string             runtime element state to filter in search mode; case-insensitive
       --total                    return only the numeric total of matching elements
       --type string              runtime element type to filter in search mode; case-insensitive
-      --with-listeners           include runtime listener jobs under matching element rows
+      --with-listeners           include runtime listener jobs
 ```
 
 ### Options inherited from parent commands
 
 ```
+      --all-tenants        clear configured tenant filtering and search all tenants visible to the authenticated user; mutually exclusive with --tenant
   -y, --auto-confirm       auto-confirm prompts for non-interactive use
       --automation         enable non-interactive mode for commands that explicitly support it
       --config string      path to config file
@@ -70,7 +65,7 @@ c8volt get element [flags]
       --no-indicator       disable transient terminal activity indicators
       --profile string     config active profile name to use (e.g. dev, prod)
   -q, --quiet              suppress output except errors
-      --tenant string      tenant ID for discovery/search, selection, create, deploy, and run flows; explicit keys/IDs remain backend-authorized
+      --tenant string      tenant ID for discovery/search, selection, create, deploy, and run flows; explicit empty values can clear configured discovery filters, and explicit keys/IDs remain backend-authorized
       --timeout duration   HTTP request timeout (default 30s)
   -v, --verbose            show additional output
 ```

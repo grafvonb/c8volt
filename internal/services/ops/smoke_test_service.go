@@ -141,6 +141,7 @@ func (s *Service) executeSmokeTestDeployment(ctx context.Context, result d.Smoke
 			BpmnProcessID: fixture.BpmnProcessID,
 			Errors:        []string{err.Error()},
 		}
+		reportSmokeTestCompletion(result.Request.Progress, "deploying smoke-test fixture", "deployment(s)", 1, fixture.File, d.OpsCompletionDispositionFailed, err.Error())
 		result.Run.Status = d.OpsWorkflowStepStatusSkipped
 		result.Walk.Status = d.OpsWorkflowStepStatusSkipped
 		result.Cleanup.ProcessInstanceCleanup.Status = d.OpsWorkflowStepStatusSkipped
@@ -152,6 +153,7 @@ func (s *Service) executeSmokeTestDeployment(ctx context.Context, result d.Smoke
 
 	result.Deployment = smokeTestDeploymentResult(fixture, deployment, d.OpsWorkflowStepStatusConfirmed)
 	reportSmokeTestFrozenProgress(result.Request.Progress, "deploying smoke-test fixture", "deployment(s)", 1, 1)
+	reportSmokeTestCompletion(result.Request.Progress, "deploying smoke-test fixture", "deployment(s)", 1, smokeTestDeploymentIdentity(result.Deployment), d.OpsCompletionDispositionConfirmed, "")
 	smokeTestProgressf(s.log, result.Request, "deploy: confirmed process definition %s", smokeTestDeploymentIdentity(result.Deployment))
 	if s.piAPI == nil {
 		err := fmt.Errorf("%w: smoke-test run requires process-instance service", d.ErrValidation)
@@ -214,7 +216,7 @@ func smokeTestProgressf(log *slog.Logger, request d.SmokeTestRequest, format str
 }
 
 func smokeTestShouldLogProgress(request d.SmokeTestRequest) bool {
-	return !request.DryRun && !strings.EqualFold(request.OutputMode, "json")
+	return !request.DryRun && request.Progress == nil && !strings.EqualFold(request.OutputMode, "json")
 }
 
 func smokeTestDeploymentIdentity(deployment d.SmokeTestDeploymentResult) string {
@@ -247,7 +249,9 @@ func smokeTestCreateProcessInstances(ctx context.Context, api pisvc.API, log *sl
 		RequestedCount: request.Count,
 	}
 	data := smokeTestProcessInstanceData(deployment)
-	created, err := pisvc.CreateNProcessInstances(ctx, api, log, data, request.Count, request.Workers, opts...)
+	createOpts := smokeTestMirrorCompletionOptions(opts, "create", "starting process instances", "process instance(s)")
+	created, err := pisvc.CreateNProcessInstances(ctx, api, log, data, request.Count, request.Workers, createOpts...)
+	out.TenantEvidence = opsTenantEvidenceFromCreations(created)
 	out.Items = make([]d.SmokeTestRunItem, 0, len(created))
 	for _, item := range created {
 		if item.Key == "" {
@@ -289,12 +293,15 @@ func smokeTestWalkCreatedFamilies(ctx context.Context, api pisvc.API, keys []str
 	var completed int64
 	walkOpts := smokeTestNestedOptions(opts...)
 	items, err := pool.ExecuteSlice[string, d.SmokeTestWalkItem](ctx, keys, workers, cfg.FailFast, func(ctx context.Context, key string, _ int) (d.SmokeTestWalkItem, error) {
+		var item d.SmokeTestWalkItem
+		var walkErr error
 		defer func() {
 			done := int(atomic.AddInt64(&completed, 1))
 			reportSmokeTestFrozenProgress(cfg.Progress, "walking process-instance families", "process instance(s)", done, len(keys))
+			reportSmokeTestCompletion(cfg.Progress, "walking process-instance families", "process instance(s)", len(keys), key, smokeTestCompletionDisposition(walkErr == nil, cfg.NoWait), smokeTestCompletionFailureDetail(walkErr == nil, walkErr, item.Error))
 		}()
 		result, walkErr := api.FamilyResult(ctx, key, walkOpts...)
-		item := smokeTestWalkItemFromTraversal(key, result)
+		item = smokeTestWalkItemFromTraversal(key, result)
 		if walkErr != nil {
 			item.Status = d.OpsWorkflowStepStatusFailed
 			item.Error = walkErr.Error()
@@ -478,12 +485,14 @@ func smokeTestCleanupProcessInstances(ctx context.Context, api pisvc.API, log *s
 		return out, nil, err
 	}
 	roots := plan.Roots.Unique()
+	out.TenantEvidence = plan.TenantEvidence
 	affected := len(plan.Collected.Unique())
 	if affected == 0 {
 		affected = len(roots)
 	}
 	deleteOpts := append([]services.CallOption{}, opts...)
 	deleteOpts = append(deleteOpts, services.WithAffectedProcessInstanceCount(affected))
+	deleteOpts = smokeTestMirrorCompletionOptions(deleteOpts, "delete", "cleaning up smoke-test process instances", "process-instance tree(s)")
 	reports, err := pisvc.DeleteProcessInstances(ctx, api, log, roots, wantedWorkers, affected, deleteOpts...)
 	out.Submitted = len(reports) > 0
 	out.SubmittedKeys = append(typex.Keys(nil), roots...)
@@ -533,7 +542,8 @@ func smokeTestCleanupProcessDefinition(ctx context.Context, resourceAPI pdsvc.Re
 	if key == "" {
 		return out, nil
 	}
-	responses, err := pdsvc.DeleteProcessDefinitions(ctx, resourceAPI, pdAPI, piAPI, log, typex.Keys{key}, wantedWorkers, opts...)
+	deleteOpts := smokeTestMirrorCompletionOptions(opts, "delete process definitions", "cleaning up smoke-test process definition", "process definition(s)")
+	responses, err := pdsvc.DeleteProcessDefinitions(ctx, resourceAPI, pdAPI, piAPI, log, typex.Keys{key}, wantedWorkers, deleteOpts...)
 	out.Submitted = len(responses) > 0
 	out.SubmittedProcessDefinitionKey = key
 	out.Items = append([]d.ResourceDeleteResponse(nil), responses...)
@@ -731,6 +741,7 @@ func smokeTestDeploymentResult(fixture d.EmbeddedSmokeTestFixture, deployment d.
 		}
 		break
 	}
+	out.TenantEvidence = opsTenantEvidenceFromDeployment(out)
 	return out
 }
 
@@ -824,6 +835,66 @@ func reportSmokeTestFrozenProgress(progress func(d.OpsProgressEvent), phase stri
 			Total:        total,
 		},
 	})
+}
+
+// reportSmokeTestCompletion emits one high-level smoke-test stage completion fact.
+func reportSmokeTestCompletion(progress func(d.OpsProgressEvent), phase string, coreResource string, total int, identity string, disposition d.OpsCompletionDisposition, failureDetail string) {
+	if progress == nil || total <= 0 {
+		return
+	}
+	completion := d.OpsCompletionProgress{
+		Phase:         phase,
+		CoreResource:  coreResource,
+		Total:         total,
+		Identity:      identity,
+		Disposition:   disposition,
+		FailureDetail: failureDetail,
+	}
+	progress(d.OpsProgressEvent{Kind: d.OpsProgressEventKindCompletion, Completion: &completion})
+}
+
+// smokeTestMirrorCompletionOptions forwards nested completion facts as smoke-test stage facts.
+func smokeTestMirrorCompletionOptions(opts []services.CallOption, sourcePhase string, phase string, coreResource string) []services.CallOption {
+	cfg := services.ApplyCallOptions(opts)
+	if cfg.Progress == nil {
+		return opts
+	}
+	progress := cfg.Progress
+	out := append([]services.CallOption{}, opts...)
+	return append(out, services.WithProgress(func(event d.OpsProgressEvent) {
+		progress(event)
+		if event.Kind != d.OpsProgressEventKindCompletion || event.Completion == nil || event.Completion.Phase != sourcePhase {
+			return
+		}
+		completion := *event.Completion
+		completion.Phase = phase
+		completion.CoreResource = coreResource
+		completion.AffectedResource = ""
+		completion.AffectedCount = nil
+		progress(d.OpsProgressEvent{Kind: d.OpsProgressEventKindCompletion, Completion: &completion})
+	}))
+}
+
+// smokeTestCompletionDisposition maps stage success and no-wait controls to lifecycle facts.
+func smokeTestCompletionDisposition(ok bool, noWait bool) d.OpsCompletionDisposition {
+	if !ok {
+		return d.OpsCompletionDispositionFailed
+	}
+	if noWait {
+		return d.OpsCompletionDispositionSubmitted
+	}
+	return d.OpsCompletionDispositionConfirmed
+}
+
+// smokeTestCompletionFailureDetail preserves existing stage error text for failed completions.
+func smokeTestCompletionFailureDetail(ok bool, err error, status string) string {
+	if ok {
+		return ""
+	}
+	if err != nil {
+		return err.Error()
+	}
+	return status
 }
 
 // newSmokeTestResult initializes the common report envelope before validation or workflow execution.

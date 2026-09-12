@@ -9,11 +9,9 @@ Discover predefined operational playbooks
 
 ### Synopsis
 
-Discover predefined operational playbooks.
+Run predefined operational playbooks.
 
-The execute command group lists playbooks that discover target sets and execute
-existing c8volt resource actions. This grouping command does not run concrete
-operational workflows by itself.
+Choose retention-policy to clean up old process instances or smoke-test to verify deployment, execution, and cleanup.
 
 ```
 c8volt ops execute [flags]
@@ -37,6 +35,7 @@ c8volt ops execute [flags]
 ### Options inherited from parent commands
 
 ```
+      --all-tenants        clear configured tenant filtering and search all tenants visible to the authenticated user; mutually exclusive with --tenant
   -y, --auto-confirm       auto-confirm prompts for non-interactive use
       --automation         enable non-interactive mode for commands that explicitly support it
       --config string      path to config file
@@ -47,14 +46,14 @@ c8volt ops execute [flags]
       --no-indicator       disable transient terminal activity indicators
       --profile string     config active profile name to use (e.g. dev, prod)
   -q, --quiet              suppress output except errors
-      --tenant string      tenant ID for discovery/search, selection, create, deploy, and run flows; explicit keys/IDs remain backend-authorized
+      --tenant string      tenant ID for discovery/search, selection, create, deploy, and run flows; explicit empty values can clear configured discovery filters, and explicit keys/IDs remain backend-authorized
       --timeout duration   HTTP request timeout (default 30s)
   -v, --verbose            show additional output
 ```
 
 ### SEE ALSO
 
-* [c8volt ops]({{ "/cli/c8volt_ops" | relative_url }})	 - Discover high-level operational workflows
+* [c8volt ops]({{ "/cli/c8volt_ops" | relative_url }})	 - Run operational playbooks
 * [c8volt ops execute retention-policy]({{ "/cli/c8volt_ops_execute_retention-policy" | relative_url }})	 - Execute process-instance retention cleanup
 * [c8volt ops execute smoke-test]({{ "/cli/c8volt_ops_execute_smoke-test" | relative_url }})	 - Execute a cluster smoke test workflow
 

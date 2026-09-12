@@ -22,7 +22,7 @@ directly, ` + "`config template`" + ` to print a starter configuration file, or
   ./c8volt --config ./config.yaml config test-connection
   ./c8volt --config ./config.yaml config show --validate
   ./c8volt config show --template
-  ./c8volt --profile prod config show`,
+  ./c8volt --profile <profile-name> config show`,
 	Aliases: []string{"cfg"},
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return cmd.Help()

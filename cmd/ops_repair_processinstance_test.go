@@ -4,7 +4,9 @@
 package cmd
 
 import (
+	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -13,12 +15,47 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/grafvonb/c8volt/c8volt/ops"
+	"github.com/grafvonb/c8volt/c8volt/process"
+	"github.com/grafvonb/c8volt/c8volt/tenant"
+	"github.com/grafvonb/c8volt/config"
 	"github.com/grafvonb/c8volt/consts"
 	"github.com/grafvonb/c8volt/internal/exitcode"
 	"github.com/grafvonb/c8volt/testx"
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 )
+
+// TestOpsRepairProcessInstanceSearchTenantContextUsesDiscoverySemantics verifies
+// process-instance repair search reports tenant filtering separately from
+// resolved target evidence.
+func TestOpsRepairProcessInstanceSearchTenantContextUsesDiscoverySemantics(t *testing.T) {
+	cmd := &cobra.Command{}
+	cfg := &config.Config{App: config.App{Tenant: "tenant-a"}}
+	result := ops.RepairResult{
+		Request: ops.RepairRequest{DiscoveryMode: ops.RepairDiscoveryModeSearch},
+		FrozenSet: ops.RepairFrozenSet{
+			TenantEvidence: process.TenantEvidence{
+				ResolvedTenantIDs: []string{"tenant-a", "tenant-b"},
+				Targets: []process.TenantEvidenceTarget{
+					{Key: "2251799813685249", TenantID: "tenant-b"},
+					{Key: "2251799813685250", TenantID: "tenant-a"},
+				},
+			},
+		},
+	}
+
+	got := attachOpsRepairResultTenantContext(cmd, cfg, result)
+
+	require.NotNil(t, got.Report.TenantContext)
+	require.Equal(t, tenant.ContextModeDiscovery, got.Report.TenantContext.Mode)
+	require.Equal(t, tenant.ContextFilterNamed, got.Report.TenantContext.Filter)
+	require.True(t, got.Report.TenantContext.CrossTenant)
+	require.Equal(t, tenant.ContextWarningMultipleTenants, got.Report.TenantContext.Warnings[0].Code)
+	require.Equal(t, "tenant-a", got.Report.TenantID)
+}
 
 // TestOpsRepairProcessInstanceHelpDocumentsSelectionShape verifies the target-specific key and incident selector contract.
 func TestOpsRepairProcessInstanceHelpDocumentsSelectionShape(t *testing.T) {
@@ -28,7 +65,7 @@ func TestOpsRepairProcessInstanceHelpDocumentsSelectionShape(t *testing.T) {
 	output := executeRootForProcessInstanceTest(t, "ops", "repair", "process-instance", "--help")
 
 	assertHelpOutputContainsAll(t, output,
-		"Repair incidents selected by process instances",
+		"Repair active incidents associated with selected process instances",
 		"Aliases:",
 		"pi",
 		"--key strings",
@@ -71,6 +108,11 @@ func TestOpsRepairProcessInstanceDryRunWritesMarkdownReport(t *testing.T) {
 	require.Contains(t, report, "# Repair Process Instance Audit Report")
 	require.Contains(t, report, "- Command: ops repair process-instance")
 	require.Contains(t, report, "- Dry Run: true")
+	require.Contains(t, report, "- Tenant: -")
+	require.Contains(t, report, "- Tenant Context: selection scope: explicit resource keys; tenant filter not applied")
+	require.Contains(t, report, "- Resource Tenant: <default>")
+	require.Contains(t, report, "- Unknown Target Tenants: 0")
+	require.Contains(t, report, "- Cross Tenant: false")
 	require.Contains(t, report, "- Outcome: planned")
 	require.Contains(t, report, "## Fixed Targets")
 	require.Contains(t, report, "  - 2251799813685251")
@@ -211,6 +253,209 @@ func TestOpsRepairProcessInstanceSearchPreflightsBeforeMutation(t *testing.T) {
 	requireRequestBefore(t, requests.Snapshot(), "GET /v2/process-instances/2251799813685251", "PATCH /v2/jobs/2251799813685252")
 }
 
+// TestOpsRepairProcessInstanceAutoConfirmReportsTenantScopeBeforeWork verifies
+// keyed and search paths report selection and affected evidence before the
+// first variable update while preserving target discovery and prompt behavior.
+func TestOpsRepairProcessInstanceAutoConfirmReportsTenantScopeBeforeWork(t *testing.T) {
+	tests := []struct {
+		name               string
+		args               []string
+		selection          string
+		notSelection       string
+		wantSearchRequests int
+		wantProcessGets    int
+	}{
+		{
+			name: "keyed tenant filter not applied",
+			args: []string{
+				"--tenant", "tenant-a",
+				"ops", "repair", "process-instance",
+				"--key", "2251799813685251",
+				"--vars", `{"approved":true}`,
+				"--auto-confirm",
+				"--no-wait",
+			},
+			selection:       "selection scope: explicit resource keys; tenant filter not applied",
+			notSelection:    "selection scope: tenant-a only",
+			wantProcessGets: 1,
+		},
+		{
+			name: "unfiltered search",
+			args: []string{
+				"ops", "repair", "process-instance",
+				"--state", "active",
+				"--vars", `{"approved":true}`,
+				"--auto-confirm",
+				"--no-wait",
+			},
+			selection:          "selection scope: unfiltered across accessible tenants",
+			wantSearchRequests: 1,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			resetOpsRepairProcessInstanceFlagState()
+			t.Cleanup(resetOpsRepairProcessInstanceFlagState)
+
+			var requests testx.SafeSlice[string]
+			backend := newOpsRepairProcessInstanceServer(t, &requests)
+			t.Cleanup(backend.Close)
+			output := &opsTenantTimingOutput{}
+			proxy, observations := newOpsTenantTimingProxy(t, backend.URL, output, func(r *http.Request) bool {
+				return r.Method == http.MethodPut && strings.HasSuffix(r.URL.Path, "/variables")
+			})
+			t.Cleanup(proxy.Close)
+
+			args := append([]string{"--config", writeTestConfigForVersion(t, proxy.URL, "8.9")}, tt.args...)
+			promptCount, err := executeRootForOpsTenantTiming(t, output, resetOpsRepairProcessInstanceFlagState, args...)
+			require.NoError(t, err, output.String())
+			firstRequest, firstMutation := observations.snapshot()
+			require.Contains(t, firstRequest, tt.selection)
+			if tt.notSelection != "" {
+				require.NotContains(t, firstRequest, tt.notSelection)
+			}
+			require.Contains(t, firstMutation, "affected tenants: <default>")
+			require.Zero(t, promptCount)
+			snapshot := requests.Snapshot()
+			requireRequestCount(t, snapshot, "POST /v2/process-instances/search", tt.wantSearchRequests)
+			requireRequestCount(t, snapshot, "GET /v2/process-instances/", tt.wantProcessGets)
+			requireRequestCount(t, snapshot, "/incidents/search", 1)
+			requireRequestCount(t, snapshot, "PUT /v2/element-instances/2251799813685251/variables", 1)
+			requireRequestCount(t, snapshot, "/resolution", 1)
+		})
+	}
+}
+
+// TestOpsRepairProcessInstanceInteractiveTenantContext verifies keyed and
+// search plans expose complete tenant context at confirmation, suppress
+// repeated warning/context output, preserve repair counts, and never mutate
+// on decline.
+func TestOpsRepairProcessInstanceInteractiveTenantContext(t *testing.T) {
+	for _, tt := range []struct {
+		name               string
+		args               []string
+		selection          string
+		warning            string
+		decline            bool
+		wantSearchRequests int
+		wantProcessGets    int
+		wantIncidentSearch int
+		wantMutations      int
+	}{
+		{
+			name: "keyed accepted",
+			args: []string{
+				"ops", "repair", "process-instance",
+				"--key", "2251799813685251",
+				"--vars", `{"approved":true}`,
+				"--no-wait",
+			},
+			selection:          "selection scope: explicit resource keys; tenant filter not applied",
+			wantProcessGets:    2,
+			wantIncidentSearch: 2,
+			wantMutations:      1,
+		},
+		{
+			name: "keyed declined",
+			args: []string{
+				"ops", "repair", "process-instance",
+				"--key", "2251799813685251",
+				"--vars", `{"approved":true}`,
+				"--no-wait",
+			},
+			selection:          "selection scope: explicit resource keys; tenant filter not applied",
+			decline:            true,
+			wantProcessGets:    1,
+			wantIncidentSearch: 1,
+		},
+		{
+			name: "search accepted",
+			args: []string{
+				"--tenant", "",
+				"ops", "repair", "process-instance",
+				"--state", "active",
+				"--vars", `{"approved":true}`,
+				"--no-wait",
+			},
+			selection:          "selection scope: unfiltered across accessible tenants",
+			warning:            `--tenant "" overrides the configured tenant filter; selection is unfiltered`,
+			wantSearchRequests: 1,
+			wantProcessGets:    1,
+			wantIncidentSearch: 2,
+			wantMutations:      1,
+		},
+		{
+			name: "search declined",
+			args: []string{
+				"--tenant", "",
+				"ops", "repair", "process-instance",
+				"--state", "active",
+				"--vars", `{"approved":true}`,
+				"--no-wait",
+			},
+			selection:          "selection scope: unfiltered across accessible tenants",
+			warning:            `--tenant "" overrides the configured tenant filter; selection is unfiltered`,
+			decline:            true,
+			wantSearchRequests: 1,
+			wantIncidentSearch: 1,
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			var requests testx.SafeSlice[string]
+			srv := newOpsRepairProcessInstanceServer(t, &requests)
+			t.Cleanup(srv.Close)
+			promptPath := filepath.Join(t.TempDir(), "prompt.txt")
+			promptOutputPath := filepath.Join(t.TempDir(), "prompt-output.txt")
+			cfgPath := writeRawTestConfig(t, fmt.Sprintf(`app:
+  camunda_version: "8.9"
+  tenant: tenant-a
+auth:
+  mode: none
+apis:
+  camunda_api:
+    base_url: %s
+`, srv.URL))
+			env := map[string]string{
+				"C8VOLT_TEST_CONFIG":                   cfgPath,
+				"C8VOLT_TEST_OPS_REPAIR_PI_PROMPT":     promptPath,
+				"C8VOLT_TEST_OPS_REPAIR_PI_PROMPT_OUT": promptOutputPath,
+				"C8VOLT_TEST_OPS_REPAIR_PI_ARGS":       marshalOpsRepairProcessInstanceArgsForEnv(t, tt.args),
+			}
+			if tt.decline {
+				env["C8VOLT_TEST_OPS_REPAIR_PI_DECLINE"] = "1"
+			}
+
+			stdout, stderr, err := testx.RunCmdSubprocessSeparate(t, "TestOpsRepairProcessInstanceCommandHelper", env)
+			if tt.decline {
+				require.Error(t, err, stderr)
+			} else {
+				require.NoError(t, err, stderr)
+			}
+			promptOutput := readReportFile(t, promptOutputPath)
+			require.Contains(t, readReportFile(t, promptPath), "process-instance repair:")
+			require.Contains(t, promptOutput, tt.selection)
+			require.Contains(t, promptOutput, "affected tenants: <default>")
+			require.Less(t, strings.Index(promptOutput, tt.selection), strings.Index(promptOutput, "affected tenants: <default>"))
+			combined := stdout + stderr
+			require.Equal(t, 1, strings.Count(combined, tt.selection), combined)
+			require.Equal(t, 1, strings.Count(combined, "affected tenants: <default>"), combined)
+			if tt.warning != "" {
+				require.Contains(t, promptOutput, tt.warning)
+				require.Less(t, strings.Index(promptOutput, tt.warning), strings.Index(promptOutput, tt.selection))
+				require.Equal(t, 1, strings.Count(combined, tt.warning), combined)
+			}
+			snapshot := requests.Snapshot()
+			requireRequestCount(t, snapshot, "POST /v2/process-instances/search", tt.wantSearchRequests)
+			requireRequestCount(t, snapshot, "GET /v2/process-instances/", tt.wantProcessGets)
+			requireRequestCount(t, snapshot, "/incidents/search", tt.wantIncidentSearch)
+			requireRequestCount(t, snapshot, "PATCH /v2/jobs/", tt.wantMutations)
+			requireRequestCount(t, snapshot, "PUT /v2/element-instances/", tt.wantMutations)
+			requireRequestCount(t, snapshot, "/resolution", tt.wantMutations)
+		})
+	}
+}
+
 // TestOpsRepairProcessInstanceBareDryRunSearchesIncidents verifies no explicit selector means the default incident-bearing search.
 func TestOpsRepairProcessInstanceBareDryRunSearchesIncidents(t *testing.T) {
 	resetOpsRepairProcessInstanceFlagState()
@@ -320,7 +565,7 @@ func TestOpsRepairProcessInstanceProgressContractPendingT068(t *testing.T) {
 
 	prevConfirm := confirmCmdOrAbortFn
 	t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
-	confirmCmdOrAbortFn = func(autoConfirm bool, prompt string) error {
+	confirmCmdOrAbortFn = func(_ io.Writer, autoConfirm bool, prompt string) error {
 		require.False(t, autoConfirm)
 		require.Contains(t, prompt, "process-instance repair: 1 repairable process instance(s)")
 		require.Contains(t, prompt, "1 active incident(s)")
@@ -346,11 +591,64 @@ func TestOpsRepairProcessInstanceProgressContractPendingT068(t *testing.T) {
 	require.Contains(t, stderr, "repairing incidents 1/1 incident(s)")
 	require.NotContains(t, stderr, "/v2/")
 	require.NotContains(t, stderr, "cursor")
-	require.NotContains(t, stdout, "scope:")
+	require.NotContains(t, stdout, "process-instance repair scope:")
 	require.NotContains(t, stdout, "discovering repair process instances")
 	require.NotContains(t, stdout, "planning process-instance repair scope")
 	require.Contains(t, stderr, "report: written "+reportPath)
 	require.Contains(t, stderr, "outcome: repaired")
+}
+
+// TestOpsRepairProcessInstanceQuietProgressShowsOnlyFailureWarning verifies
+// process-instance repair keeps quiet mode free of success chatter while still
+// exposing the immediate failure warning.
+func TestOpsRepairProcessInstanceQuietProgressShowsOnlyFailureWarning(t *testing.T) {
+	resetSemanticProgressModeFlags(t)
+	flagQuiet = true
+	now := time.Date(2026, 9, 1, 7, 4, 0, 0, time.UTC)
+	opsRepairSemanticProgressNow = func() time.Time { return now }
+	t.Cleanup(func() { opsRepairSemanticProgressNow = time.Now })
+
+	cmd, stderr := newSemanticProgressStderrCommand()
+	request := ops.RepairRequest{}
+	progress := configureOpsRepairProgress(cmd, &request)
+	defer progress.Close()
+
+	now = now.Add(opsDurableMilestoneMinimumElapsed)
+	reportOpsRepairCompletionEvent(request.Progress, "incident-1", 2, ops.CompletionDispositionConfirmed, "")
+	reportOpsRepairCompletionEvent(request.Progress, "incident-2", 2, ops.CompletionDispositionFailed, "retry exhausted")
+	progress.Close()
+
+	output := stderr.String()
+	require.Contains(t, output, "incident-2 failed: retry exhausted (repairing incidents, 2/2 incident(s), 1 failed)")
+	require.NotContains(t, output, "incident-1 repaired")
+	require.NotContains(t, output, "\nrepairing incidents,")
+}
+
+// TestOpsRepairProcessInstanceSemanticProgressModeGate verifies
+// process-instance-selected repair progress preserves protected output modes
+// and still surfaces quiet failure warnings.
+func TestOpsRepairProcessInstanceSemanticProgressModeGate(t *testing.T) {
+	assertOpsCompletionProgressModeGate(t, opsCompletionProgressModeGateCase{
+		Configure: func(cmd *cobra.Command) (func(ops.ProgressEvent), func()) {
+			request := ops.RepairRequest{}
+			progress := configureOpsRepairProgress(cmd, &request)
+			return request.Progress, progress.Close
+		},
+		Event: func(disposition ops.CompletionDisposition, detail string) ops.ProgressEvent {
+			return ops.ProgressEvent{
+				Kind: ops.ProgressEventKindCompletion,
+				Completion: &ops.CompletionProgress{
+					Phase:         opsRepairCompletionPhase,
+					CoreResource:  "incident(s)",
+					Total:         1,
+					Identity:      "incident-1",
+					Disposition:   disposition,
+					FailureDetail: detail,
+				},
+			}
+		},
+		QuietWarning: "incident-1 failed: request rejected (repairing incidents, 1/1 incident(s), 1 failed)",
+	})
 }
 
 // TestOpsRepairProcessInstanceMachineProgressSafetyPendingT068 pins
@@ -376,7 +674,7 @@ func TestOpsRepairProcessInstanceMachineProgressSafetyPendingT068(t *testing.T) 
 			args := append([]string{"--config", writeTestConfigForVersion(t, srv.URL, "8.9")}, mode.args...)
 			stdout, stderr := executeRootForProcessInstanceWithSeparateOutputs(t, args...)
 			for _, disallowed := range []string{
-				"scope:",
+				"process-instance repair scope:",
 				"discovering repair process instances",
 				"loading process-instance repair incidents",
 				"planning process-instance repair scope",
@@ -403,9 +701,35 @@ func TestOpsRepairProcessInstanceCommandHelper(t *testing.T) {
 	root := Root()
 	resetCommandTreeFlags(root)
 	resetOpsRepairProcessInstanceFlagState()
+	var promptOutput bytes.Buffer
+	errWriter := io.Writer(os.Stderr)
+	if os.Getenv("C8VOLT_TEST_OPS_REPAIR_PI_PROMPT_OUT") != "" {
+		errWriter = io.MultiWriter(os.Stderr, &promptOutput)
+	}
+	if promptPath := os.Getenv("C8VOLT_TEST_OPS_REPAIR_PI_PROMPT"); promptPath != "" {
+		prevConfirm := confirmCmdOrAbortFn
+		defer func() { confirmCmdOrAbortFn = prevConfirm }()
+		confirmCmdOrAbortFn = func(_ io.Writer, autoConfirm bool, prompt string) error {
+			if autoConfirm {
+				return fmt.Errorf("unexpected auto-confirm prompt")
+			}
+			if err := os.WriteFile(promptPath, []byte(prompt), 0o600); err != nil {
+				return err
+			}
+			if outputPath := os.Getenv("C8VOLT_TEST_OPS_REPAIR_PI_PROMPT_OUT"); outputPath != "" {
+				if err := os.WriteFile(outputPath, promptOutput.Bytes(), 0o600); err != nil {
+					return err
+				}
+			}
+			if os.Getenv("C8VOLT_TEST_OPS_REPAIR_PI_DECLINE") == "1" {
+				return fmt.Errorf("confirmation declined")
+			}
+			return nil
+		}
+	}
 	root.SetArgs(append([]string{"--config", cfgPath}, args...))
 	root.SetOut(os.Stdout)
-	root.SetErr(os.Stderr)
+	root.SetErr(errWriter)
 	if err := root.Execute(); err != nil {
 		handleBootstrapError(root, err)
 	}
@@ -444,6 +768,9 @@ func newOpsRepairProcessInstanceServer(t *testing.T, requests *testx.SafeSlice[s
 			_, _ = w.Write([]byte(`{"items":[` + opsRepairProcessInstanceJSON("2251799813685251") + `],"page":{"totalItems":1}}`))
 		case "/v2/jobs/2251799813685252":
 			require.Equal(t, http.MethodPatch, r.Method)
+			w.WriteHeader(http.StatusNoContent)
+		case "/v2/element-instances/2251799813685251/variables":
+			require.Equal(t, http.MethodPut, r.Method)
 			w.WriteHeader(http.StatusNoContent)
 		case "/v2/incidents/2251799813685249/resolution":
 			require.Equal(t, http.MethodPost, r.Method)

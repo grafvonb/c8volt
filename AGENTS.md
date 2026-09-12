@@ -38,6 +38,53 @@
 - Do not add noisy endpoint, request, cursor, or per-key lifecycle detail to default human output; keep diagnostics behind `--verbose`.
 - When command output changes, update tests for the affected human, JSON, keys-only, error, prompt, and activity behavior where relevant.
 
+### Empty Results And Successful No-Ops
+- Treat empty results and early returns as part of the command's output contract.
+  Route them through a mode-aware view helper; do not print human summaries
+  directly from discovery or execution branches before checking the output mode.
+- For commands using the shared JSON contract, a successful empty result must
+  emit exactly one successful envelope with the existing command-appropriate
+  empty payload. Preserve established omission and null-versus-empty-array rules;
+  do not invent report entries or change shared schemas to represent no work.
+- Keys-only output with no keys must contain zero bytes, including no blank line.
+  Preserve the established human empty-result wording, and suppress informational
+  summaries in quiet mode without suppressing explicitly requested JSON results.
+  Preserve existing output-mode precedence and automation behavior.
+- Derive a successful no-op from authoritative completed discovery or planning,
+  not from an empty intermediate page, absent reports, a user abort, or an error.
+  Preserve continuation through sparse pages and existing failure handling.
+- When no mutation was submitted, do not report an accepted or pending mutation,
+  even with `--no-wait`. Dry-run output must remain a preview and must not claim
+  mutation submission. Empty scopes must not trigger mutation confirmation or
+  mutation requests, and rendering must not add discovery requests.
+- Test affected commands through their execution paths, not only view helpers:
+  cover normal execution and dry-run, human/JSON/keys-only/quiet output, quiet
+  combined with machine output, and supported auto-confirm/automation/no-wait
+  combinations. Capture stdout and stderr separately; decode one JSON envelope
+  and require EOF afterward, assert exact human output and zero-byte keys output,
+  and verify request counts and absence of confirmation and mutation calls.
+- Use real terminal stdin to verify prompt-free empty-scope completion when
+  interactive confirmation is otherwise eligible. Retain regression coverage
+  for nonempty results, sparse pages, explicit-key execution, aborts, and errors.
+
+### Output Streams And Interactive Prompts
+- Reserve stdout for command results in the selected output format.
+- Write confirmation questions, paging continuation prompts, and other interactive
+  control text to the command's configured stderr writer (`cmd.ErrOrStderr()`).
+- Shared prompt helpers must accept an explicit writer; do not write directly to
+  process stdout or use a mutable global prompt destination.
+- Keep prompts as plain interactive text without logger prefixes.
+- Terminal stdin does not imply terminal stdout. Preserve each command's existing
+  prompt eligibility checks when stdout is redirected or piped.
+- Stream-routing changes must preserve prompt wording, default answers, input
+  handling, EOF behavior, auto-confirm, automation, and caller-specific abort or
+  paging-stop behavior.
+- Tests for interactive output must exercise real terminal stdin with stdout and
+  stderr captured separately. Pipe-only input and mocked terminal checks are
+  insufficient to prove prompt routing.
+- Verify configured and inherited stderr destinations, uncontaminated command
+  results, and keys-only paging with exactly one key per stdout line.
+
 ## Command File Cohesion
 - Keep `cmd/<verb>_<noun>.go` focused on Cobra construction, flags, validation, top-level dispatch, and the command's ordinary execution path.
 - Put a distinct execution mode or lifecycle such as watch, polling, streaming, follow, batch, or interactive operation in `cmd/<verb>_<noun>_<mode>.go` once it has its own runner, state, timing, retry, status, or request-building behavior.
@@ -64,7 +111,6 @@
 
 ## Git And Commit Rules
 - Reuse existing issue or feature branches when they already exist.
-- Do not create or switch branches unless the user explicitly asks.
 - For GitHub issue-backed Spec Kit work, the GitHub issue number is authoritative for the `specs/<number>-<slug>/` prefix and feature branch label. This overrides `.specify/extensions/git/git-config.yml` `branch_numbering: sequential`; pass the issue number explicitly with `--number <issue>` or correct the generated folder and references before planning or implementation continues.
 - Commit messages must follow Conventional Commits format.
 - Add a scope in parentheses when a clear scope exists.
@@ -74,5 +120,5 @@
 
 ## Active Speckit Plan
 <!-- SPECKIT START -->
-- Active Speckit implementation plan: `specs/139-pi-variable-search/plan.md`
+- Active Speckit implementation plan: `specs/303-standard-tenant-logging/plan.md`
 <!-- SPECKIT END -->

@@ -10,15 +10,13 @@ List or fetch incidents
 
 ### Synopsis
 
-Get Camunda incidents by key or by search criteria.
+Get Camunda incidents by key or search criteria.
 
-The command accepts repeated --key values or newline-separated keys from stdin with '-'. Each unique incident key is fetched once and rendered through the shared get output modes.
+Provide repeated --key values or newline-separated keys from stdin with '-'. Each unique incident key is fetched once.
 
-When no keys are supplied, incidents are searched by state, error type, error message, process context, element context, and creation time. Search mode defaults to active incidents and follows the shared get paging and limit conventions. --batch-size controls each backend page request, --limit caps total returned incidents across all pages, and --total returns only the exact matching count. Verbose paging progress is written away from stdout; JSON, keys-only, pi-keys-only, quiet, and automation output remain free of prompts and progress text.
+Without keys, search by state, error type, error message, process context, element context, and creation time. Search defaults to active incidents. --batch-size controls each discovery request; --limit caps incidents across all pages; --total counts matching incidents.
 
-When --bpmn-process-id is supplied in search mode, the BPMN process definition selector is validated before incident totals, keys-only output, process-instance-key output, or paging. Missing or invisible definitions fail explicitly; --json, --automation, --keys-only, --pi-keys-only, and non-TTY runs never prompt for recovery output.
-
-Use --json for the stable incident payload, --keys-only for incident keys, --pi-keys-only for process instance keys, --error-message-limit to shorten long error messages, or --with-no-error-message to omit them.
+A --bpmn-process-id selector must match a visible process definition before discovery.
 
 ```
 c8volt get incident [flags]
@@ -45,7 +43,7 @@ c8volt get incident [flags]
 ### Options
 
 ```
-  -n, --batch-size int32               number of incidents to request per page; does not cap total returned rows (max limit 1000 enforced by server) (default 1000)
+  -n, --batch-size int32               number of incidents to request per page; does not cap total results (max limit 1000 enforced by server) (default 1000)
   -b, --bpmn-process-id string         BPMN process ID to validate and filter incidents
       --creation-time-after string     only include incidents with creation time >= RFC3339 timestamp, c8volt timestamp, or YYYY-MM-DD
       --creation-time-before string    only include incidents with creation time <= RFC3339 timestamp, c8volt timestamp, or YYYY-MM-DD
@@ -74,6 +72,7 @@ c8volt get incident [flags]
 ### Options inherited from parent commands
 
 ```
+      --all-tenants        clear configured tenant filtering and search all tenants visible to the authenticated user; mutually exclusive with --tenant
   -y, --auto-confirm       auto-confirm prompts for non-interactive use
       --automation         enable non-interactive mode for commands that explicitly support it
       --config string      path to config file
@@ -84,7 +83,7 @@ c8volt get incident [flags]
       --no-indicator       disable transient terminal activity indicators
       --profile string     config active profile name to use (e.g. dev, prod)
   -q, --quiet              suppress output except errors
-      --tenant string      tenant ID for discovery/search, selection, create, deploy, and run flows; explicit keys/IDs remain backend-authorized
+      --tenant string      tenant ID for discovery/search, selection, create, deploy, and run flows; explicit empty values can clear configured discovery filters, and explicit keys/IDs remain backend-authorized
       --timeout duration   HTTP request timeout (default 30s)
   -v, --verbose            show additional output
 ```

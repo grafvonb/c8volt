@@ -9,9 +9,15 @@ Execute a cluster smoke test workflow
 
 ### Synopsis
 
-Execute a cluster smoke test workflow.
+Verify a configured Camunda environment through deployment, execution, and cleanup.
 
-The workflow validates the configured profile, selects the embedded multiple-subprocess fixture for the configured Camunda version, deploys it, creates process instances, walks their families, and cleans up resources it can safely attribute to the run unless --no-cleanup is set. Cleanup always removes created process instances. Process-definition cleanup runs only when no unrelated instances still use the deployed fixture definition; dirty clusters skip that final definition cleanup and report retained resources instead of failing the smoke proof. Use --dry-run to validate the requested plan without submitting mutation requests.
+The workflow validates the profile, deploys the bundled multiple-subprocess fixture for the configured Camunda version, starts instances, and walks their families.
+
+Unless --no-cleanup is set, cleanup removes created process instances. It deletes the fixture definition only when no unrelated instances use it; otherwise the definition is retained.
+
+Creation uses the configured tenant, or the default tenant when none is configured. --all-tenants is not supported because creation requires one destination tenant.
+
+Use --dry-run to validate the plan without mutation.
 
 ```
 c8volt ops execute smoke-test [flags]
@@ -21,7 +27,9 @@ c8volt ops execute smoke-test [flags]
 
 ```
   ./c8volt ops execute smoke-test --dry-run
+  ./c8volt --tenant tenant-a ops execute smoke-test --dry-run
   ./c8volt ops execute smoke-test --report-file smoke-test.md
+  ./c8volt --verbose ops execute smoke-test --count 5 --auto-confirm
   ./c8volt ops execute smoke-test --count 5 --report-file smoke-test.md
 ```
 
@@ -43,6 +51,7 @@ c8volt ops execute smoke-test [flags]
 ### Options inherited from parent commands
 
 ```
+      --all-tenants        clear configured tenant filtering and search all tenants visible to the authenticated user; mutually exclusive with --tenant
   -y, --auto-confirm       auto-confirm prompts for non-interactive use
       --automation         enable non-interactive mode for commands that explicitly support it
       --config string      path to config file
@@ -53,7 +62,7 @@ c8volt ops execute smoke-test [flags]
       --no-indicator       disable transient terminal activity indicators
       --profile string     config active profile name to use (e.g. dev, prod)
   -q, --quiet              suppress output except errors
-      --tenant string      tenant ID for discovery/search, selection, create, deploy, and run flows; explicit keys/IDs remain backend-authorized
+      --tenant string      tenant ID for discovery/search, selection, create, deploy, and run flows; explicit empty values can clear configured discovery filters, and explicit keys/IDs remain backend-authorized
       --timeout duration   HTTP request timeout (default 30s)
   -v, --verbose            show additional output
 ```

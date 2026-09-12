@@ -9,9 +9,13 @@ Purge process instances selected by incidents
 
 ### Synopsis
 
-Purge process instances selected by incidents.
+Delete process-instance families selected through incidents.
 
-The workflow discovers candidate incidents from incident filters, freezes the candidate process-instance keys, validates the delete plan, and then either reports the plan with --dry-run or submits deletion only after confirmation. Discovery pages through all matching incidents by default. --batch-size tunes per-page discovery requests only, and --limit intentionally caps the frozen scope. Human, JSON, and audit report output identify whether discovery completed or was user-limited. Use --auto-confirm or --automation for unattended deletion, combine --automation with --json for deterministic machine output, and use --report-file to write an audit report.
+Select incidents using filters or explicit --inc-key values. The workflow fixes the candidate process-instance set, validates the delete plan, and requires confirmation before deletion. Incident matching only selects candidates; process-instance family, force, and wait rules govern deletion.
+
+--tenant limits incident discovery; an empty tenant or --all-tenants searches across accessible tenants. Explicit incident keys use backend authorization without tenant filtering. --batch-size controls each discovery request; --limit caps the selected scope.
+
+Use --dry-run to inspect the plan without mutation, --auto-confirm or --automation for unattended deletion, and --report-file to save an audit report.
 
 ```
 c8volt ops purge process-instances-with-incidents [flags]
@@ -22,8 +26,11 @@ c8volt ops purge process-instances-with-incidents [flags]
 ```
   ./c8volt ops purge process-instances-with-incidents --dry-run
   ./c8volt ops purge process-instances-with-incidents --inc-key <incident-key> --dry-run
+  ./c8volt --tenant tenant-a ops purge process-instances-with-incidents --inc-key <incident-key> --dry-run
+  ./c8volt --tenant "" ops purge process-instances-with-incidents --state active --limit 5 --dry-run
   ./c8volt ops purge process-instances-with-incidents --state active --error-type io_mapping_error --dry-run
   ./c8volt ops purge process-instances-with-incidents --state active --error-type io_mapping_error --limit 5 --force
+  ./c8volt --verbose ops purge process-instances-with-incidents --state active --error-type io_mapping_error --limit 5 --force --auto-confirm
   ./c8volt ops purge process-instances-with-incidents --state active --error-type io_mapping_error --limit 5 --force --report-file incident-purge.md
 ```
 
@@ -42,7 +49,7 @@ c8volt ops purge process-instances-with-incidents [flags]
       --error-message string           case-insensitive incident error message substring filter for discovery
       --error-type string              case-insensitive incident error type filter for discovery
       --fail-fast                      stop scheduling validation or deletion work after the first error
-      --force                          force cancellation of the process instance(s), prior to deletion
+      --force                          allow cancellation when deletion encounters nonterminal process instances
   -h, --help                           help for process-instances-with-incidents
       --inc-key strings                incident key(s) to select for candidate discovery
   -l, --limit int32                    maximum number of matching incidents to freeze before candidate process-instance dedupe; omit to discover all matches
@@ -60,6 +67,7 @@ c8volt ops purge process-instances-with-incidents [flags]
 ### Options inherited from parent commands
 
 ```
+      --all-tenants        clear configured tenant filtering and search all tenants visible to the authenticated user; mutually exclusive with --tenant
   -y, --auto-confirm       auto-confirm prompts for non-interactive use
       --automation         enable non-interactive mode for commands that explicitly support it
       --config string      path to config file
@@ -70,7 +78,7 @@ c8volt ops purge process-instances-with-incidents [flags]
       --no-indicator       disable transient terminal activity indicators
       --profile string     config active profile name to use (e.g. dev, prod)
   -q, --quiet              suppress output except errors
-      --tenant string      tenant ID for discovery/search, selection, create, deploy, and run flows; explicit keys/IDs remain backend-authorized
+      --tenant string      tenant ID for discovery/search, selection, create, deploy, and run flows; explicit empty values can clear configured discovery filters, and explicit keys/IDs remain backend-authorized
       --timeout duration   HTTP request timeout (default 30s)
   -v, --verbose            show additional output
 ```

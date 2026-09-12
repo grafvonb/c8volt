@@ -11,14 +11,18 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"regexp"
 	"strings"
 	"sync"
 	"testing"
 
 	options "github.com/grafvonb/c8volt/c8volt/foptions"
 	"github.com/grafvonb/c8volt/c8volt/process"
+	"github.com/grafvonb/c8volt/config"
 	"github.com/grafvonb/c8volt/internal/exitcode"
 	"github.com/grafvonb/c8volt/testx"
+	"github.com/grafvonb/c8volt/testx/activitysink"
+	"github.com/grafvonb/c8volt/toolx/logging"
 	"github.com/grafvonb/c8volt/typex"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
@@ -43,7 +47,7 @@ func TestCancelProcessInstanceDryRun_SearchPagesAggregateStructuredOutput(t *tes
 
 	prevConfirm := confirmCmdOrAbortFn
 	t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
-	confirmCmdOrAbortFn = func(bool, string) error {
+	confirmCmdOrAbortFn = func(_ io.Writer, _ bool, _ string) error {
 		t.Fatal("unexpected confirmation prompt during cancel dry-run search")
 		return nil
 	}
@@ -128,6 +132,223 @@ func TestCancelProcessInstanceDryRun_SearchPagesAggregateStructuredOutput(t *tes
 	requireDryRunPreviewStringSlice(t, secondPreview, "affectedFamilyKeys", typex.Keys{"root-b"})
 }
 
+// TestCancelProcessInstanceSearchSelectedUsesSemanticCompletionActivity verifies
+// search-selected cancellation starts a fresh completion activity after the
+// selected mutation scope is confirmed.
+func TestCancelProcessInstanceSearchSelectedUsesSemanticCompletionActivity(t *testing.T) {
+	resetProcessInstanceCommandGlobals()
+	t.Cleanup(resetProcessInstanceCommandGlobals)
+	flagCmdAutoConfirm = true
+	flagGetPISize = 1
+
+	sink := &activitysink.Sink{}
+	cmd := &cobra.Command{}
+	cmd.SetContext(logging.ToActivityContext(context.Background(), sink))
+	cmd.Flags().Int32("batch-size", 1000, "")
+	require.NoError(t, cmd.Flags().Set("batch-size", "1"))
+
+	prevConfirm := confirmCmdOrAbortFn
+	t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
+	confirmCmdOrAbortFn = func(_ io.Writer, autoConfirm bool, prompt string) error {
+		require.True(t, autoConfirm)
+		require.Contains(t, prompt, "cancel")
+		requireProcessInstanceMutationPlanningStoppedBeforePrompt(t, sink, "cancel")
+		return nil
+	}
+
+	cli := stubProcessAPI{
+		planProcessInstanceMutationPages: func(_ context.Context, request process.ProcessInstanceMutationPlanRequest, visitor process.ProcessInstanceMutationPlanVisitor, opts ...options.FacadeOption) (process.ProcessInstanceMutationPlanPagesResult, error) {
+			require.Equal(t, int32(1), request.SearchRequest.Page.Size)
+			require.NotNil(t, options.ApplyFacadeOptions(opts).Progress)
+			page := process.ProcessInstancePage{
+				Items:         []process.ProcessInstance{{Key: "401", State: process.StateActive}},
+				Request:       process.ProcessInstancePageRequest{From: 0, Size: 1},
+				OverflowState: process.ProcessInstanceOverflowStateNoMore,
+				ReportedTotal: &process.ProcessInstanceReportedTotal{Count: 1, Kind: process.ProcessInstanceReportedTotalKindExact},
+			}
+			plan := process.DryRunPIKeyExpansion{
+				Roots:     typex.Keys{"root-401"},
+				Collected: typex.Keys{"root-401", "401"},
+				Outcome:   process.TraversalOutcomeComplete,
+			}
+			action, err := visitor(process.ProcessInstanceMutationPlanStep{
+				Page:             page,
+				RequestedKeys:    []string{"401"},
+				Plan:             plan,
+				CumulativeCount:  1,
+				CumulativeImpact: 2,
+			})
+			require.NoError(t, err)
+			require.Equal(t, process.ProcessInstanceSearchPageActionStop, action)
+			return process.ProcessInstanceMutationPlanPagesResult{
+				Plans:            []process.ProcessInstanceMutationPlanStep{{Page: page, RequestedKeys: []string{"401"}, Plan: plan, CumulativeCount: 1, CumulativeImpact: 2}},
+				Pages:            1,
+				RequestedCount:   1,
+				CumulativeImpact: 2,
+			}, nil
+		},
+		cancelProcessInstances: func(_ context.Context, keys typex.Keys, _ int, opts ...options.FacadeOption) (process.CancelReports, error) {
+			reportProcessInstanceMutationCompletionForTest(t, "cancel", "root-401", 2, keys, opts...)
+			return process.CancelReports{Items: []process.CancelReport{{Key: "root-401", Ok: true}}}, nil
+		},
+	}
+
+	got, err := cancelProcessInstanceSearchPages(cmd, cli, nil, process.ProcessInstanceFilter{State: process.StateActive})
+
+	require.NoError(t, err)
+	require.Len(t, got.Reports, 1)
+	requireProcessInstanceMutationSemanticActivity(t, sink, "cancel", "root-401")
+}
+
+// TestCancelProcessInstanceSearchSelectedSemanticLifecycleParity verifies
+// search-selected cancel renders submitted, confirmed, and unknown-affected
+// completion semantics after the destructive confirmation boundary.
+func TestCancelProcessInstanceSearchSelectedSemanticLifecycleParity(t *testing.T) {
+	tests := []struct {
+		name                 string
+		noWait               bool
+		roots                typex.Keys
+		collected            typex.Keys
+		dispositions         []options.CompletionDisposition
+		affected             []*int
+		wantCompletionLines  []string
+		wantSummary          string
+		wantNoAffectedOutput bool
+	}{
+		{
+			name:         "waited",
+			roots:        typex.Keys{"cancel-root-1"},
+			collected:    typex.Keys{"cancel-root-1", "cancel-child-1"},
+			dispositions: []options.CompletionDisposition{options.CompletionDispositionConfirmed},
+			affected:     []*int{ptrInt(2)},
+			wantCompletionLines: []string{
+				"cancel-root-1 canceled (cancellation process-instance trees, 1/1 process-instance tree(s), affected process instances: 2)",
+			},
+			wantSummary: "cancellation: canceled 1/1 process-instance tree(s); affected process instances: 2",
+		},
+		{
+			name:         "no wait",
+			noWait:       true,
+			roots:        typex.Keys{"cancel-root-1"},
+			collected:    typex.Keys{"cancel-root-1", "cancel-child-1"},
+			dispositions: []options.CompletionDisposition{options.CompletionDispositionSubmitted},
+			affected:     []*int{ptrInt(2)},
+			wantCompletionLines: []string{
+				"cancel-root-1 submitted (cancellation process-instance trees, 1/1 process-instance tree(s), affected process instances: 2)",
+			},
+			wantSummary: "cancellation: submitted 1/1 process-instance tree(s); affected process instances: 2",
+		},
+		{
+			name:         "affected unknown",
+			roots:        typex.Keys{"cancel-root-1", "cancel-root-2"},
+			collected:    typex.Keys{"cancel-root-1", "cancel-root-2", "cancel-child-2"},
+			dispositions: []options.CompletionDisposition{options.CompletionDispositionConfirmed, options.CompletionDispositionConfirmed},
+			affected:     []*int{nil, ptrInt(1)},
+			wantCompletionLines: []string{
+				"cancel-root-1 canceled (cancellation process-instance trees, 1/2 process-instance tree(s))",
+				"cancel-root-2 canceled (cancellation process-instance trees, 2/2 process-instance tree(s))",
+			},
+			wantSummary:          "cancellation: canceled 2/2 process-instance tree(s); affected process instances: 3",
+			wantNoAffectedOutput: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			resetProcessInstanceCommandGlobals()
+			t.Cleanup(resetProcessInstanceCommandGlobals)
+			flagCmdAutoConfirm = true
+			flagVerbose = true
+			flagNoWait = tt.noWait
+			flagGetPISize = 1
+
+			cmd := &cobra.Command{}
+			stdout := &bytes.Buffer{}
+			stderr := &bytes.Buffer{}
+			cmd.SetOut(stdout)
+			cmd.SetErr(stderr)
+			cmd.Flags().Int32("batch-size", 1000, "")
+			require.NoError(t, cmd.Flags().Set("batch-size", "1"))
+
+			prevConfirm := confirmCmdOrAbortFn
+			t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
+			confirmCmdOrAbortFn = func(_ io.Writer, autoConfirm bool, prompt string) error {
+				require.True(t, autoConfirm)
+				require.Contains(t, prompt, "cancel")
+				_, _ = fmt.Fprintln(cmd.ErrOrStderr(), "CONFIRMATION-MARKER")
+				return nil
+			}
+
+			cli := stubProcessAPI{
+				planProcessInstanceMutationPages: func(_ context.Context, _ process.ProcessInstanceMutationPlanRequest, visitor process.ProcessInstanceMutationPlanVisitor, opts ...options.FacadeOption) (process.ProcessInstanceMutationPlanPagesResult, error) {
+					require.NotNil(t, options.ApplyFacadeOptions(opts).Progress)
+					page := process.ProcessInstancePage{
+						Items:         []process.ProcessInstance{{Key: "cancel-child-1", State: process.StateActive}},
+						Request:       process.ProcessInstancePageRequest{From: 0, Size: 1},
+						OverflowState: process.ProcessInstanceOverflowStateNoMore,
+						ReportedTotal: &process.ProcessInstanceReportedTotal{Count: 1, Kind: process.ProcessInstanceReportedTotalKindExact},
+					}
+					plan := process.DryRunPIKeyExpansion{
+						Roots:     tt.roots,
+						Collected: tt.collected,
+						Outcome:   process.TraversalOutcomeComplete,
+					}
+					step := process.ProcessInstanceMutationPlanStep{
+						Page:             page,
+						RequestedKeys:    []string{"cancel-child-1"},
+						Plan:             plan,
+						CumulativeCount:  1,
+						CumulativeImpact: int32(len(tt.collected)),
+					}
+					action, err := visitor(step)
+					require.NoError(t, err)
+					require.Equal(t, process.ProcessInstanceSearchPageActionStop, action)
+					return process.ProcessInstanceMutationPlanPagesResult{
+						Plans:            []process.ProcessInstanceMutationPlanStep{step},
+						Pages:            1,
+						RequestedCount:   1,
+						CumulativeImpact: int32(len(tt.collected)),
+					}, nil
+				},
+				cancelProcessInstances: func(_ context.Context, keys typex.Keys, _ int, opts ...options.FacadeOption) (process.CancelReports, error) {
+					require.Equal(t, tt.roots, keys)
+					cfg := options.ApplyFacadeOptions(opts)
+					require.Equal(t, len(tt.collected), cfg.AffectedProcessInstanceCount)
+					require.True(t, cfg.NoWait == tt.noWait)
+					require.NotNil(t, cfg.Progress)
+					for i, root := range tt.roots {
+						reportProcessInstanceMutationCompletionEvent(cfg.Progress, "cancel", root, len(tt.roots), tt.dispositions[i], "", tt.affected[i])
+					}
+					reports := make([]process.CancelReport, len(tt.roots))
+					for i, root := range tt.roots {
+						reports[i] = process.CancelReport{Key: root, Ok: true}
+					}
+					return process.CancelReports{Items: reports}, nil
+				},
+			}
+
+			got, err := cancelProcessInstanceSearchPages(cmd, cli, nil, process.ProcessInstanceFilter{State: process.StateActive})
+
+			require.NoError(t, err)
+			require.Len(t, got.Reports, len(tt.roots))
+			require.Empty(t, stdout.String())
+			output := stderr.String()
+			require.Contains(t, output, "planning process-instance cancel scope 1/1 process instance(s)")
+			require.Contains(t, output, "CONFIRMATION-MARKER")
+			for _, line := range tt.wantCompletionLines {
+				require.Contains(t, output, line)
+				require.Less(t, strings.Index(output, "CONFIRMATION-MARKER"), strings.Index(output, line))
+			}
+			require.Contains(t, output, tt.wantSummary)
+			if tt.wantNoAffectedOutput {
+				for _, line := range tt.wantCompletionLines {
+					require.NotContains(t, line, "affected process instances:")
+				}
+			}
+		})
+	}
+}
+
 // TestCancelProcessInstanceDryRun_SearchTenantScopedCandidates protects the
 // search-derived dry-run path from broadening beyond tenant-scoped candidates.
 func TestCancelProcessInstanceDryRun_SearchTenantScopedCandidates(t *testing.T) {
@@ -188,6 +409,74 @@ func TestCancelProcessInstanceDryRun_SearchTenantScopedCandidates(t *testing.T) 
 	require.NotContains(t, output, tenantAdminKeysReturnedTenant)
 }
 
+// TestCancelProcessInstanceDryRun_SearchTenantContextPrecedesPreview verifies
+// selector-based cancel previews explain named and unfiltered discovery scope
+// before the dry-run body is rendered.
+func TestCancelProcessInstanceDryRun_SearchTenantContextPrecedesPreview(t *testing.T) {
+	tests := []struct {
+		name   string
+		tenant string
+		want   string
+	}{
+		{name: "named", tenant: "tenant-a", want: "selection scope: tenant-a only\n"},
+		{name: "empty", tenant: "", want: "selection scope: unfiltered across accessible tenants\n"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			resetProcessInstanceCommandGlobals()
+			t.Cleanup(resetProcessInstanceCommandGlobals)
+			flagDryRun = true
+
+			cmd := &cobra.Command{Use: "process-instance"}
+			buf := &bytes.Buffer{}
+			cmd.SetOut(buf)
+			cmd.SetErr(buf)
+
+			prevConfirm := confirmCmdOrAbortFn
+			t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
+			confirmCmdOrAbortFn = func(_ io.Writer, _ bool, _ string) error {
+				t.Fatal("unexpected confirmation prompt during cancel dry-run search")
+				return nil
+			}
+
+			cli := stubProcessAPI{
+				planProcessInstanceMutationPages: func(_ context.Context, _ process.ProcessInstanceMutationPlanRequest, visitor process.ProcessInstanceMutationPlanVisitor, _ ...options.FacadeOption) (process.ProcessInstanceMutationPlanPagesResult, error) {
+					plan := process.DryRunPIKeyExpansion{
+						Roots:     typex.Keys{"101"},
+						Collected: typex.Keys{"101"},
+						Outcome:   process.TraversalOutcomeComplete,
+					}
+					action, err := visitor(process.ProcessInstanceMutationPlanStep{
+						Page: process.ProcessInstancePage{
+							Items:         []process.ProcessInstance{{Key: "101", State: process.StateActive}},
+							OverflowState: process.ProcessInstanceOverflowStateNoMore,
+						},
+						RequestedKeys:    []string{"101"},
+						Plan:             plan,
+						CumulativeCount:  1,
+						CumulativeImpact: 1,
+					})
+					require.NoError(t, err)
+					require.Equal(t, process.ProcessInstanceSearchPageActionStop, action)
+					return process.ProcessInstanceMutationPlanPagesResult{RequestedCount: 1, CumulativeImpact: 1}, nil
+				},
+				cancelProcessInstances: dryRunCancelMutationGuard(t),
+			}
+
+			results, err := cancelProcessInstanceSearchPages(cmd, cli, &config.Config{App: config.App{Tenant: tt.tenant}}, process.ProcessInstanceFilter{})
+			require.NoError(t, err)
+			require.Len(t, results.DryRunPreviews, 1)
+			require.NoError(t, renderProcessInstanceDryRunSummary(cmd, newProcessInstanceDryRunSummary("cancel", results.DryRunPreviews)))
+
+			output := buf.String()
+			require.Contains(t, output, tt.want)
+			require.Contains(t, output, "dry run: cancel process-instance\n")
+			require.Less(t, strings.Index(output, tt.want), strings.Index(output, "dry run: cancel process-instance\n"))
+		})
+	}
+}
+
 // TestCancelProcessInstanceDryRun_SearchBatchSizeLimitUsesLimitedPage verifies
 // dry-run paging honors the requested limit before planning.
 func TestCancelProcessInstanceDryRun_SearchBatchSizeLimitUsesLimitedPage(t *testing.T) {
@@ -202,7 +491,7 @@ func TestCancelProcessInstanceDryRun_SearchBatchSizeLimitUsesLimitedPage(t *test
 	require.NoError(t, cmd.Flags().Set("batch-size", "4"))
 	prevConfirm := confirmCmdOrAbortFn
 	t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
-	confirmCmdOrAbortFn = func(bool, string) error {
+	confirmCmdOrAbortFn = func(_ io.Writer, _ bool, _ string) error {
 		t.Fatal("unexpected confirmation prompt during cancel dry-run limited search")
 		return nil
 	}
@@ -443,6 +732,192 @@ func TestCancelProcessInstanceBpmnSelectorVisiblePreservesSearchNoOp(t *testing.
 	require.Equal(t, "found: 0\n", output)
 }
 
+// TestCancelProcessInstanceEmptySelectorOutput verifies empty selector cancels
+// preserve machine contracts and human or quiet output across execution controls.
+func TestCancelProcessInstanceEmptySelectorOutput(t *testing.T) {
+	tests := []struct {
+		name    string
+		flags   []string
+		dryRun  bool
+		mode    RenderMode
+		quiet   bool
+		verbose bool
+	}{
+		{name: "json", flags: []string{"--json"}, mode: RenderModeJSON},
+		{name: "dry run json", flags: []string{"--json", "--dry-run"}, dryRun: true, mode: RenderModeJSON},
+		{name: "keys only", flags: []string{"--keys-only"}, mode: RenderModeKeysOnly},
+		{name: "dry run keys only", flags: []string{"--keys-only", "--dry-run"}, dryRun: true, mode: RenderModeKeysOnly},
+		{name: "auto confirm json", flags: []string{"--json", "--auto-confirm"}, mode: RenderModeJSON},
+		{name: "auto confirm human", flags: []string{"--auto-confirm"}, mode: RenderModeOneLine},
+		{name: "automation json", flags: []string{"--json", "--automation"}, mode: RenderModeJSON},
+		{name: "automation human", flags: []string{"--automation"}, mode: RenderModeOneLine},
+		{name: "automation keys only", flags: []string{"--keys-only", "--automation"}, mode: RenderModeKeysOnly},
+		{name: "no wait json", flags: []string{"--json", "--no-wait"}, mode: RenderModeJSON},
+		{name: "no wait keys only", flags: []string{"--keys-only", "--no-wait"}, mode: RenderModeKeysOnly},
+		{name: "human", mode: RenderModeOneLine},
+		{name: "verbose human", flags: []string{"--verbose"}, mode: RenderModeOneLine, verbose: true},
+		{name: "dry run human", flags: []string{"--dry-run"}, dryRun: true, mode: RenderModeOneLine},
+		{name: "verbose dry run human", flags: []string{"--verbose", "--dry-run"}, dryRun: true, mode: RenderModeOneLine, verbose: true},
+		{name: "quiet human", flags: []string{"--quiet"}, mode: RenderModeOneLine, quiet: true},
+		{name: "dry run quiet human", flags: []string{"--dry-run", "--quiet"}, dryRun: true, mode: RenderModeOneLine, quiet: true},
+		{name: "quiet json", flags: []string{"--json", "--quiet"}, mode: RenderModeJSON, quiet: true},
+		{name: "quiet no wait json", flags: []string{"--json", "--quiet", "--no-wait"}, mode: RenderModeJSON, quiet: true},
+		{name: "dry run quiet json", flags: []string{"--json", "--dry-run", "--quiet"}, dryRun: true, mode: RenderModeJSON, quiet: true},
+		{name: "quiet keys only", flags: []string{"--keys-only", "--quiet"}, mode: RenderModeKeysOnly, quiet: true},
+		{name: "dry run quiet keys only", flags: []string{"--keys-only", "--dry-run", "--quiet"}, dryRun: true, mode: RenderModeKeysOnly, quiet: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var requests []string
+			srv := newProcessInstanceSearchCaptureServer(t, &requests)
+			t.Cleanup(srv.Close)
+			cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+			prevConfirm := confirmCmdOrAbortFn
+			confirmCmdOrAbortFn = func(_ io.Writer, _ bool, _ string) error {
+				t.Fatal("unexpected confirmation for empty cancel selector")
+				return nil
+			}
+			t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
+
+			args := []string{"--config", cfgPath, "cancel", "process-instance", "--state", "active"}
+			args = append(args, tt.flags...)
+			stdout, stderr := executeRootForProcessInstanceWithSeparateOutputs(t, args...)
+
+			require.Len(t, requests, 1)
+			if tt.mode == RenderModeOneLine {
+				if tt.quiet {
+					require.Empty(t, stdout)
+					require.Empty(t, stderr)
+					return
+				}
+				require.Equal(t, "found: 0\n", stdout)
+				if tt.verbose {
+					normalized := regexp.MustCompile(`(?m)^\d{2}:\d{2}:\d{2}\.\d{3} (INFO|WARN) `).ReplaceAllString(stderr, `$1 `)
+					want := "INFO process-instance cancel scope: cancel process-instance matched no process instances; page size: 1000; discovery pages: 1\n" +
+						"WARN process-instance cancel is destructive: plan process-instance mutation scope\n" +
+						"INFO discovering process instances, page 1/1\n" +
+						"page size: 1000, current page: 0, total so far: 0, more matches: no, next step: complete, detail: no additional matching process instances remain\n"
+					if !tt.dryRun {
+						want = "INFO selection scope: unfiltered across accessible tenants\n" + want
+					}
+					if start := strings.Index(normalized, "INFO selection scope:"); start >= 0 && !tt.dryRun {
+						normalized = normalized[start:]
+					}
+					require.Equal(t, want, normalized)
+					return
+				}
+				require.Empty(t, stderr)
+				return
+			}
+			requireEmptyProcessInstanceSelectorOutput(t, stdout, stderr, "cancel process-instance", "cancel", tt.dryRun, tt.mode)
+		})
+	}
+}
+
+// TestCancelProcessInstanceEmptySelectorPreservesDiscoveryRequests verifies
+// empty-result rendering neither repeats discovery nor skips BPMN validation.
+func TestCancelProcessInstanceEmptySelectorPreservesDiscoveryRequests(t *testing.T) {
+	tests := []struct {
+		name      string
+		selectors []string
+		dryRun    bool
+		wantPaths []string
+		assert    func(*testing.T, []string)
+	}{
+		{
+			name:      "state",
+			selectors: []string{"--state", "active"},
+			wantPaths: []string{"POST /v2/process-instances/search"},
+			assert: func(t *testing.T, bodies []string) {
+				require.Equal(t, "ACTIVE", decodeCapturedPISearchFilter(t, bodies)["state"])
+			},
+		},
+		{
+			name:      "state dry run",
+			selectors: []string{"--state", "active"},
+			dryRun:    true,
+			wantPaths: []string{"POST /v2/process-instances/search"},
+			assert: func(t *testing.T, bodies []string) {
+				require.Equal(t, "ACTIVE", decodeCapturedPISearchFilter(t, bodies)["state"])
+			},
+		},
+		{
+			name:      "date",
+			selectors: []string{"--start-date-after", "2026-01-01"},
+			wantPaths: []string{"POST /v2/process-instances/search"},
+			assert: func(t *testing.T, bodies []string) {
+				requireCapturedPISearchDateBound(t, decodeCapturedPISearchFilter(t, bodies), "startDate", "$gte", "2026-01-01T00:00:00Z")
+			},
+		},
+		{
+			name:      "date dry run",
+			selectors: []string{"--start-date-after", "2026-01-01"},
+			dryRun:    true,
+			wantPaths: []string{"POST /v2/process-instances/search"},
+			assert: func(t *testing.T, bodies []string) {
+				requireCapturedPISearchDateBound(t, decodeCapturedPISearchFilter(t, bodies), "startDate", "$gte", "2026-01-01T00:00:00Z")
+			},
+		},
+		{
+			name:      "bpmn",
+			selectors: []string{"--state", "active", "--bpmn-process-id", "order-process"},
+			wantPaths: []string{"POST /v2/process-definitions/search", "POST /v2/process-instances/search"},
+			assert: func(t *testing.T, bodies []string) {
+				require.Contains(t, bodies[0], `"processDefinitionId":"order-process"`)
+				require.Contains(t, bodies[1], `"processDefinitionId":"order-process"`)
+			},
+		},
+		{
+			name:      "bpmn dry run",
+			selectors: []string{"--state", "active", "--bpmn-process-id", "order-process"},
+			dryRun:    true,
+			wantPaths: []string{"POST /v2/process-definitions/search", "POST /v2/process-instances/search"},
+			assert: func(t *testing.T, bodies []string) {
+				require.Contains(t, bodies[0], `"processDefinitionId":"order-process"`)
+				require.Contains(t, bodies[1], `"processDefinitionId":"order-process"`)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var paths []string
+			var bodies []string
+			srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				paths = append(paths, r.Method+" "+r.URL.Path)
+				body, err := io.ReadAll(r.Body)
+				require.NoError(t, err)
+				bodies = append(bodies, string(body))
+				switch r.URL.Path {
+				case "/v2/process-definitions/search":
+					writeVisibleProcessDefinitionSearchResponse(w)
+				case "/v2/process-instances/search":
+					w.Header().Set("Content-Type", "application/json")
+					_, _ = w.Write([]byte(`{"items":[],"page":{"totalItems":0,"hasMoreTotalItems":false}}`))
+				default:
+					t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+				}
+			}))
+			t.Cleanup(srv.Close)
+
+			cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+			args := []string{"--config", cfgPath, "cancel", "process-instance"}
+			args = append(args, tt.selectors...)
+			if tt.dryRun {
+				args = append(args, "--dry-run")
+			}
+			stdout, stderr := executeRootForProcessInstanceWithSeparateOutputs(t, args...)
+
+			require.Equal(t, tt.wantPaths, paths)
+			tt.assert(t, bodies)
+			require.Equal(t, "found: 0\n", stdout)
+			require.Empty(t, stderr)
+		})
+	}
+}
+
 // Verifies date-filtered search selection cancels matched instances and keeps descendant lookup behavior intact.
 func TestCancelProcessInstanceCommand_SearchSelectionUsesDateFiltersAndCancelsMatches(t *testing.T) {
 	var requests []string
@@ -653,7 +1128,7 @@ func TestCancelProcessInstanceCommand_SearchPagingPromptFlow(t *testing.T) {
 	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
 	var prompts []string
 	prevConfirm := confirmCmdOrAbortFn
-	confirmCmdOrAbortFn = func(autoConfirm bool, prompt string) error {
+	confirmCmdOrAbortFn = func(_ io.Writer, autoConfirm bool, prompt string) error {
 		prompts = append(prompts, prompt)
 		return nil
 	}
@@ -850,7 +1325,7 @@ func TestCancelProcessInstanceCommand_SearchPagingAutoConfirmFlow(t *testing.T) 
 	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
 	promptCalls := 0
 	prevConfirm := confirmCmdOrAbortFn
-	confirmCmdOrAbortFn = func(autoConfirm bool, prompt string) error {
+	confirmCmdOrAbortFn = func(_ io.Writer, autoConfirm bool, prompt string) error {
 		promptCalls++
 		return nil
 	}
@@ -938,7 +1413,7 @@ func TestCancelProcessInstanceCommand_SearchPagingLimitFlow(t *testing.T) {
 	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
 	promptCalls := 0
 	prevConfirm := confirmCmdOrAbortFn
-	confirmCmdOrAbortFn = func(autoConfirm bool, prompt string) error {
+	confirmCmdOrAbortFn = func(_ io.Writer, autoConfirm bool, prompt string) error {
 		promptCalls++
 		return nil
 	}
@@ -1018,7 +1493,7 @@ func TestCancelProcessInstanceCommand_SearchPagingBatchSizeLimitFlow(t *testing.
 	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
 	promptCalls := 0
 	prevConfirm := confirmCmdOrAbortFn
-	confirmCmdOrAbortFn = func(autoConfirm bool, prompt string) error {
+	confirmCmdOrAbortFn = func(_ io.Writer, autoConfirm bool, prompt string) error {
 		promptCalls++
 		return nil
 	}
@@ -1105,7 +1580,7 @@ func TestCancelProcessInstanceCommand_SearchPagingAutomationFlow(t *testing.T) {
 	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
 	promptCalls := 0
 	prevConfirm := confirmCmdOrAbortFn
-	confirmCmdOrAbortFn = func(autoConfirm bool, prompt string) error {
+	confirmCmdOrAbortFn = func(_ io.Writer, autoConfirm bool, prompt string) error {
 		promptCalls++
 		return nil
 	}
@@ -1184,7 +1659,7 @@ func TestCancelProcessInstanceCommand_SearchPagingPartialCompletionSummary(t *te
 	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
 	callCount := 0
 	prevConfirm := confirmCmdOrAbortFn
-	confirmCmdOrAbortFn = func(autoConfirm bool, prompt string) error {
+	confirmCmdOrAbortFn = func(_ io.Writer, autoConfirm bool, prompt string) error {
 		callCount++
 		if callCount == 1 {
 			return nil
@@ -1260,7 +1735,7 @@ func TestCancelProcessInstanceCommand_SearchPagingWarningStopSummary(t *testing.
 
 	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
 	prevConfirm := confirmCmdOrAbortFn
-	confirmCmdOrAbortFn = func(autoConfirm bool, prompt string) error { return nil }
+	confirmCmdOrAbortFn = func(_ io.Writer, autoConfirm bool, prompt string) error { return nil }
 	t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
 
 	output := executeRootForProcessInstanceTest(t,

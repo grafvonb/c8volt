@@ -4,6 +4,7 @@
 package foptions
 
 import (
+	"slices"
 	"time"
 
 	d "github.com/grafvonb/c8volt/internal/domain"
@@ -107,6 +108,22 @@ const (
 	ProgressEventKindPage ProgressEventKind = "page"
 	// ProgressEventKindFrozenScope carries exact counters for a frozen work set.
 	ProgressEventKindFrozenScope ProgressEventKind = "frozen_scope"
+	// ProgressEventKindStage carries a service-owned stage entry before mutation work begins.
+	ProgressEventKindStage ProgressEventKind = "stage"
+	// ProgressEventKindCompletion carries one wording-free item or stage completion fact.
+	ProgressEventKindCompletion ProgressEventKind = "completion"
+)
+
+// CompletionDisposition identifies the lifecycle boundary reached by a completed work item.
+type CompletionDisposition string
+
+const (
+	// CompletionDispositionSubmitted means the request was accepted without waiting for operational confirmation.
+	CompletionDispositionSubmitted CompletionDisposition = "submitted"
+	// CompletionDispositionConfirmed means the command's configured wait or proof contract completed.
+	CompletionDispositionConfirmed CompletionDisposition = "confirmed"
+	// CompletionDispositionFailed means the configured completion boundary was not reached.
+	CompletionDispositionFailed CompletionDisposition = "failed"
 )
 
 // TotalCertainty classifies whether a progress count is exact, approximate, or unavailable.
@@ -152,6 +169,7 @@ type PreflightScope struct {
 	Command              string             `json:"command,omitempty"`
 	CoreResource         string             `json:"coreResource,omitempty"`
 	SelectorSummary      string             `json:"selectorSummary,omitempty"`
+	TenantContext        *TenantContext     `json:"tenantContext,omitempty"`
 	Total                *int64             `json:"total,omitempty"`
 	TotalKind            TotalCertainty     `json:"totalKind,omitempty"`
 	PageSize             int32              `json:"pageSize,omitempty"`
@@ -188,12 +206,36 @@ type FrozenScopeProgress struct {
 	Errors       int            `json:"errors,omitempty"`
 }
 
+// StageProgress reports that a service workflow entered a stage. Optional
+// counts are nil when unavailable; non-nil counts must be nonnegative, and zero
+// represents a known empty scope rather than unknown work.
+type StageProgress struct {
+	Phase                string `json:"phase,omitempty"`
+	CoreResource         string `json:"coreResource,omitempty"`
+	Total                *int   `json:"total,omitempty"`
+	PlannedAffectedCount *int   `json:"plannedAffectedCount,omitempty"`
+}
+
+// CompletionProgress reports one service-owned completion fact without command-rendered wording.
+type CompletionProgress struct {
+	Phase            string                `json:"phase,omitempty"`
+	CoreResource     string                `json:"coreResource,omitempty"`
+	Total            int                   `json:"total,omitempty"`
+	Identity         string                `json:"identity,omitempty"`
+	Disposition      CompletionDisposition `json:"disposition,omitempty"`
+	FailureDetail    string                `json:"failureDetail,omitempty"`
+	AffectedResource string                `json:"affectedResource,omitempty"`
+	AffectedCount    *int                  `json:"affectedCount,omitempty"`
+}
+
 // ProgressEvent is a typed envelope for facade progress callbacks.
 type ProgressEvent struct {
 	Kind        ProgressEventKind    `json:"kind,omitempty"`
 	Preflight   *PreflightScope      `json:"preflight,omitempty"`
 	Page        *PageProgress        `json:"page,omitempty"`
 	FrozenScope *FrozenScopeProgress `json:"frozenScope,omitempty"`
+	Stage       *StageProgress       `json:"stage,omitempty"`
+	Completion  *CompletionProgress  `json:"completion,omitempty"`
 }
 
 // ApplyFacadeOptions folds facade options into a new configuration value.
@@ -280,6 +322,8 @@ func fromDomainProgressEvent(event d.OpsProgressEvent) ProgressEvent {
 		Preflight:   fromDomainPreflightScopePtr(event.Preflight),
 		Page:        fromDomainPageProgressPtr(event.Page),
 		FrozenScope: fromDomainFrozenScopeProgressPtr(event.FrozenScope),
+		Stage:       fromDomainStageProgressPtr(event.Stage),
+		Completion:  fromDomainCompletionProgressPtr(event.Completion),
 	}
 }
 
@@ -292,6 +336,7 @@ func fromDomainPreflightScopePtr(scope *d.OpsPreflightScope) *PreflightScope {
 		Command:         scope.Command,
 		CoreResource:    scope.CoreResource,
 		SelectorSummary: scope.SelectorSummary,
+		TenantContext:   fromDomainTenantContextPtr(scope.TenantContext),
 		Total:           scope.Total,
 		TotalKind:       TotalCertainty(scope.TotalKind),
 		PageSize:        scope.PageSize,
@@ -305,6 +350,33 @@ func fromDomainPreflightScopePtr(scope *d.OpsPreflightScope) *PreflightScope {
 		},
 		RequiresConfirmation: scope.RequiresConfirmation,
 		ExpensivePreflight:   scope.ExpensivePreflight,
+	}
+	return &out
+}
+
+// fromDomainTenantContextPtr copies optional tenant context from service
+// progress so facade callers cannot mutate service-owned evidence slices.
+func fromDomainTenantContextPtr(ctx *d.TenantContext) *TenantContext {
+	if ctx == nil {
+		return nil
+	}
+	out := TenantContext{
+		Mode:               TenantContextMode(ctx.Mode),
+		Filter:             TenantContextFilter(ctx.Filter),
+		ConfiguredTenantID: ctx.ConfiguredTenantID,
+		TargetTenantID:     ctx.TargetTenantID,
+		ResolvedTenantIDs:  slices.Clone(ctx.ResolvedTenantIDs),
+		UnknownTargetCount: ctx.UnknownTargetCount,
+		CrossTenant:        ctx.CrossTenant,
+	}
+	if ctx.Warnings != nil {
+		out.Warnings = make([]TenantContextWarning, len(ctx.Warnings))
+		for i, warning := range ctx.Warnings {
+			out.Warnings[i] = TenantContextWarning{
+				Code:    TenantContextWarningCode(warning.Code),
+				Message: warning.Message,
+			}
+		}
 	}
 	return &out
 }
@@ -341,6 +413,45 @@ func fromDomainFrozenScopeProgressPtr(progress *d.OpsFrozenScopeProgress) *Froze
 		Rate:         progress.Rate,
 		ETA:          progress.ETA,
 		Errors:       progress.Errors,
+	}
+	return &out
+}
+
+// fromDomainStageProgressPtr maps optional stage-entry progress while
+// preserving nil counts and copying known optional values.
+func fromDomainStageProgressPtr(progress *d.OpsStageProgress) *StageProgress {
+	if progress == nil {
+		return nil
+	}
+	out := StageProgress{
+		Phase:        progress.Phase,
+		CoreResource: progress.CoreResource,
+	}
+	if progress.Total != nil {
+		total := *progress.Total
+		out.Total = &total
+	}
+	if progress.PlannedAffectedCount != nil {
+		plannedAffected := *progress.PlannedAffectedCount
+		out.PlannedAffectedCount = &plannedAffected
+	}
+	return &out
+}
+
+// fromDomainCompletionProgressPtr maps optional completion facts while preserving nil as absent.
+func fromDomainCompletionProgressPtr(progress *d.OpsCompletionProgress) *CompletionProgress {
+	if progress == nil {
+		return nil
+	}
+	out := CompletionProgress{
+		Phase:            progress.Phase,
+		CoreResource:     progress.CoreResource,
+		Total:            progress.Total,
+		Identity:         progress.Identity,
+		Disposition:      CompletionDisposition(progress.Disposition),
+		FailureDetail:    progress.FailureDetail,
+		AffectedResource: progress.AffectedResource,
+		AffectedCount:    progress.AffectedCount,
 	}
 	return &out
 }

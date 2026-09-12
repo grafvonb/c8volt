@@ -13,9 +13,11 @@ import (
 
 	"github.com/grafvonb/c8volt/config"
 	"github.com/grafvonb/c8volt/consts"
+	"github.com/grafvonb/c8volt/toolx"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
+	"gopkg.in/yaml.v3"
 )
 
 type configSourceDescription struct {
@@ -48,6 +50,19 @@ func (r *resolverBindings) hasHigherPrecedenceSource(key string) bool {
 		return true
 	}
 	return hasEnvConfigByKeys([]string{key})
+}
+
+// changedFlagValue returns the raw persistent flag value only when the user
+// explicitly supplied that flag.
+func (r *resolverBindings) changedFlagValue(key string) (string, bool) {
+	if r == nil {
+		return "", false
+	}
+	flag, ok := r.flags[key]
+	if !ok || flag == nil || !flag.Changed {
+		return "", false
+	}
+	return flag.Value.String(), true
 }
 
 func initViper(v *viper.Viper, cmd *cobra.Command) (*resolverBindings, error) {
@@ -130,6 +145,101 @@ func retrieveAndNormalizeConfig(v *viper.Viper, bindings *resolverBindings) (*co
 		return nil, err
 	}
 	return cfg, nil
+}
+
+// applyAllTenantsOverride clears the post-normalization tenant only when the
+// command-line all-tenants flag actively broadens a named configured filter.
+func applyAllTenantsOverride(cfg *config.Config) tenantOverrideProvenance {
+	if cfg == nil || !flagAllTenants || cfg.App.Tenant == "" {
+		return tenantOverrideProvenance{}
+	}
+	configuredTenantID := cfg.App.Tenant
+	cfg.App.Tenant = ""
+	return tenantOverrideProvenance{
+		ConfiguredTenantID: configuredTenantID,
+		AllTenants:         true,
+	}
+}
+
+// tenantOverrideProvenanceFromConfig captures command-line tenant provenance
+// after config normalization and applies any active all-tenants override.
+func tenantOverrideProvenanceFromConfig(v *viper.Viper, bindings *resolverBindings, cfg *config.Config) tenantOverrideProvenance {
+	if flagAllTenants {
+		return applyAllTenantsOverride(cfg)
+	}
+	explicitTenantID, explicit := bindings.changedFlagValue("app.tenant")
+	if !explicit {
+		return tenantOverrideProvenance{}
+	}
+	return tenantOverrideProvenance{
+		ConfiguredTenantID: tenantBeforeExplicitFlag(v, cfg),
+		ExplicitTenantID:   explicitTenantID,
+		Explicit:           true,
+	}
+}
+
+// tenantBeforeExplicitFlag approximates the tenant that configuration would
+// have produced before the command-line tenant flag overrode it.
+func tenantBeforeExplicitFlag(v *viper.Viper, cfg *config.Config) string {
+	if value, ok := os.LookupEnv(envNameForKey("app.tenant")); ok {
+		return value
+	}
+	activeProfile := ""
+	if v != nil {
+		activeProfile = v.GetString("active_profile")
+	}
+	if value, ok := tenantFromConfigFile(v, activeProfile); ok {
+		return value
+	}
+	if cfg != nil && cfg.App.CamundaVersion == toolx.V87 {
+		return config.DefaultTenant
+	}
+	return ""
+}
+
+// tenantFromConfigFile reads only the tenant field from the loaded config file,
+// preserving explicit empty values and profile overlay precedence.
+func tenantFromConfigFile(v *viper.Viper, activeProfile string) (string, bool) {
+	if v == nil || v.ConfigFileUsed() == "" {
+		return "", false
+	}
+	data, err := os.ReadFile(v.ConfigFileUsed())
+	if err != nil {
+		return "", false
+	}
+	var root map[string]any
+	if err := yaml.Unmarshal(data, &root); err != nil {
+		return "", false
+	}
+	tenantPath := []string{"app", "tenant"}
+	if activeProfile != "" {
+		if value, ok := stringAtYAMLPath(root, []string{"profiles", activeProfile, "app", "tenant"}); ok {
+			return value, true
+		}
+	}
+	return stringAtYAMLPath(root, tenantPath)
+}
+
+// stringAtYAMLPath returns a string scalar from nested YAML maps.
+func stringAtYAMLPath(root map[string]any, path []string) (string, bool) {
+	var current any = root
+	for _, part := range path {
+		m, ok := current.(map[string]any)
+		if !ok {
+			return "", false
+		}
+		value, ok := m[part]
+		if !ok {
+			return "", false
+		}
+		current = value
+	}
+	switch value := current.(type) {
+	case string:
+		return value, true
+	default:
+		return "", false
+	}
 }
 
 func (s configSourceDescription) InfoMessage() string {

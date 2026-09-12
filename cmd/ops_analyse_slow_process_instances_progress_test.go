@@ -5,6 +5,7 @@ package cmd
 
 import (
 	"bytes"
+	"io"
 	"strings"
 	"testing"
 	"time"
@@ -88,11 +89,11 @@ func TestOpsAnalyseSlowProcessInstancesPreflightUsesCommandLogger(t *testing.T) 
 	require.Contains(t, got, "WARN slow analysis is expensive: discover all matches and load runtime element timelines")
 }
 
-// TestOpsAnalyseSlowProcessInstancesConfiguresBroadPreflightOnlyForSearch verifies explicit-key mode stays concise.
+// TestOpsAnalyseSlowProcessInstancesConfiguresBroadPreflightOnlyForSearch verifies explicit-key mode keeps prompt-free progress.
 func TestOpsAnalyseSlowProcessInstancesConfiguresBroadPreflightOnlyForSearch(t *testing.T) {
 	keyRequest := ops.SlowProcessAnalysisRequest{SelectionMode: ops.SlowProcessAnalysisSelectionModeExplicitKeys}
 	configureOpsSlowProcessAnalysisPreflight(resetOpsSlowProcessAnalysisTestFlags(t), &keyRequest)
-	require.Nil(t, keyRequest.Progress)
+	require.NotNil(t, keyRequest.Progress)
 	require.Nil(t, keyRequest.ConfirmPreflight)
 
 	searchRequest := ops.SlowProcessAnalysisRequest{SelectionMode: ops.SlowProcessAnalysisSelectionModeProcessDefinitionSearch}
@@ -160,6 +161,37 @@ func TestOpsAnalyseSlowProcessInstancesRoutesDefaultProgressToActivity(t *testin
 	}, sink.PriorityUpdates())
 }
 
+// TestOpsAnalyseSlowProcessInstancesSearchDiscoveryStaysTransientOnly documents
+// why discovery pages are excluded from semantic completion aggregation.
+func TestOpsAnalyseSlowProcessInstancesSearchDiscoveryStaysTransientOnly(t *testing.T) {
+	cmd := resetOpsSlowProcessAnalysisTestFlags(t)
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	sink := &activitysink.Sink{}
+	cmd.SetOut(&stdout)
+	cmd.SetErr(&stderr)
+	cmd.SetContext(logging.ToActivityContext(cmd.Context(), sink))
+	request := ops.SlowProcessAnalysisRequest{SelectionMode: ops.SlowProcessAnalysisSelectionModeProcessDefinitionSearch}
+
+	configureOpsSlowProcessAnalysisPreflight(cmd, &request)
+	request.Progress(ops.ProgressEvent{Kind: ops.ProgressEventKindPage, Page: &ops.PageProgress{
+		Phase:         "discovering process instances",
+		CurrentPage:   3,
+		PageCount:     ptrInt64(6),
+		PageCountKind: ops.PageCountKindExact,
+		Seen:          2400,
+		Selected:      2397,
+	}})
+
+	require.Empty(t, stdout.String())
+	require.Empty(t, stderr.String())
+	require.Equal(t, []activitysink.Update{{
+		Message:    "discovering process instances, page 3/6, 2400 seen, 2397 selected",
+		Importance: logging.ActivityImportanceWorkflow,
+	}}, sink.PriorityUpdates())
+	require.NotContains(t, sink.Updates()[0], "completed")
+}
+
 // TestOpsAnalyseSlowProcessInstancesDefaultProgressWritesPacedMilestones verifies broad human runs get sparse durable progress after confirmation.
 func TestOpsAnalyseSlowProcessInstancesDefaultProgressWritesPacedMilestones(t *testing.T) {
 	cmd := resetOpsSlowProcessAnalysisTestFlags(t)
@@ -170,7 +202,7 @@ func TestOpsAnalyseSlowProcessInstancesDefaultProgressWritesPacedMilestones(t *t
 	pacer := newOpsProgressMilestonePacer(func() time.Time { return now })
 	prevConfirm := confirmCmdOrAbortFn
 	t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
-	confirmCmdOrAbortFn = func(autoConfirm bool, prompt string) error {
+	confirmCmdOrAbortFn = func(_ io.Writer, autoConfirm bool, prompt string) error {
 		require.False(t, autoConfirm)
 		require.Equal(t, "Continue slow analysis for 2000 process instances?", prompt)
 		return nil
@@ -259,12 +291,100 @@ func TestOpsAnalyseSlowProcessInstancesWorkflowActivityOutranksNestedRuntimeWork
 	}, sink.Starts())
 }
 
+// TestOpsAnalyseSlowProcessInstancesSemanticCompletionActivity verifies finite
+// enrichment completions open workflow activity separate from discovery.
+func TestOpsAnalyseSlowProcessInstancesSemanticCompletionActivity(t *testing.T) {
+	cmd := resetOpsSlowProcessAnalysisTestFlags(t)
+	sink := &activitysink.Sink{}
+	cmd.SetContext(logging.ToActivityContext(cmd.Context(), sink))
+	request := ops.SlowProcessAnalysisRequest{SelectionMode: ops.SlowProcessAnalysisSelectionModeProcessDefinitionSearch}
+
+	progress := configureOpsSlowProcessAnalysisPreflight(cmd, &request)
+	defer progress.Close()
+	recordHTTPFallbackActivity(cmd.Context(), "loading runtime elements from Camunda")
+	request.Progress(ops.ProgressEvent{
+		Kind: ops.ProgressEventKindCompletion,
+		Completion: &ops.CompletionProgress{
+			Phase:        "loading runtime elements",
+			CoreResource: "process instance(s)",
+			Total:        2,
+			Identity:     "123",
+			Disposition:  ops.CompletionDispositionConfirmed,
+		},
+	})
+	request.Progress(ops.ProgressEvent{
+		Kind: ops.ProgressEventKindCompletion,
+		Completion: &ops.CompletionProgress{
+			Phase:        "loading runtime elements",
+			CoreResource: "process instance(s)",
+			Total:        2,
+			Identity:     "124",
+			Disposition:  ops.CompletionDispositionConfirmed,
+		},
+	})
+
+	require.Equal(t, []activitysink.Update{
+		{
+			Message:    "loading runtime elements, 1/2 process instance(s)",
+			Importance: logging.ActivityImportanceWorkflow,
+		},
+		{
+			Message:    "loading runtime elements, 2/2 process instance(s)",
+			Importance: logging.ActivityImportanceWorkflow,
+		},
+	}, sink.PriorityUpdates())
+}
+
+// TestOpsAnalyseSlowProcessInstancesSemanticCompletionMilestones verifies
+// enrichment completion facts produce paced default milestones and one final
+// flush independent of discovery-page pacing.
+func TestOpsAnalyseSlowProcessInstancesSemanticCompletionMilestones(t *testing.T) {
+	resetSemanticProgressModeFlags(t)
+	cmd := resetOpsSlowProcessAnalysisTestFlags(t)
+	var stderr bytes.Buffer
+	cmd.SetErr(&stderr)
+	now := time.Date(2026, 9, 1, 7, 7, 0, 0, time.UTC)
+	opsSlowProcessAnalysisSemanticProgressNow = func() time.Time { return now }
+	t.Cleanup(func() { opsSlowProcessAnalysisSemanticProgressNow = time.Now })
+	request := ops.SlowProcessAnalysisRequest{}
+	progress := configureOpsSlowProcessAnalysisPreflight(cmd, &request)
+	defer progress.Close()
+
+	reportOpsSlowAnalysisCompletionEvent(request.Progress, "loading runtime elements", "pi-1", 3, ops.CompletionDispositionConfirmed, "")
+	now = now.Add(opsDurableMilestoneMinimumElapsed)
+	reportOpsSlowAnalysisCompletionEvent(request.Progress, "loading runtime elements", "pi-2", 3, ops.CompletionDispositionConfirmed, "")
+	reportOpsSlowAnalysisCompletionEvent(request.Progress, "loading runtime elements", "pi-3", 3, ops.CompletionDispositionConfirmed, "")
+	progress.Close()
+	progress.Close()
+
+	output := stderr.String()
+	require.Equal(t, 1, strings.Count(output, "loading runtime elements, 2/3 process instance(s)"))
+	require.Equal(t, 1, strings.Count(output, "loading runtime elements, 3/3 process instance(s)"))
+	require.NotContains(t, output, "pi-1 loaded")
+}
+
+// reportOpsSlowAnalysisCompletionEvent sends one slow-analysis enrichment
+// completion fact through the configured command progress callback.
+func reportOpsSlowAnalysisCompletionEvent(progress func(ops.ProgressEvent), phase string, identity string, total int, disposition ops.CompletionDisposition, detail string) {
+	progress(ops.ProgressEvent{
+		Kind: ops.ProgressEventKindCompletion,
+		Completion: &ops.CompletionProgress{
+			Phase:         phase,
+			CoreResource:  "process instance(s)",
+			Total:         total,
+			Identity:      identity,
+			Disposition:   disposition,
+			FailureDetail: detail,
+		},
+	})
+}
+
 // TestOpsAnalyseSlowProcessInstancesVerboseProgressWritesDurableStderr verifies verbose mode keeps an auditable progress trail off stdout.
 func TestOpsAnalyseSlowProcessInstancesVerboseProgressWritesDurableStderr(t *testing.T) {
 	previousVerbose := flagVerbose
-	flagVerbose = true
 	t.Cleanup(func() { flagVerbose = previousVerbose })
 	cmd := resetOpsSlowProcessAnalysisTestFlags(t)
+	flagVerbose = true
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 	cmd.SetOut(&stdout)
@@ -295,9 +415,9 @@ func TestOpsAnalyseSlowProcessInstancesVerboseProgressWritesDurableStderr(t *tes
 // TestOpsAnalyseSlowProcessInstancesDebugProgressWritesDurableStderr verifies debug mode keeps detailed durable progress off stdout.
 func TestOpsAnalyseSlowProcessInstancesDebugProgressWritesDurableStderr(t *testing.T) {
 	previousDebug := flagDebug
-	flagDebug = true
 	t.Cleanup(func() { flagDebug = previousDebug })
 	cmd := resetOpsSlowProcessAnalysisTestFlags(t)
+	flagDebug = true
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 	cmd.SetOut(&stdout)
@@ -368,9 +488,9 @@ func TestOpsAnalyseSlowProcessInstancesDefaultMilestonesStayCompact(t *testing.T
 // TestOpsAnalyseSlowProcessInstancesJSONProgressKeepsStdoutClean verifies JSON mode suppresses transient and durable progress text.
 func TestOpsAnalyseSlowProcessInstancesJSONProgressKeepsStdoutClean(t *testing.T) {
 	previousJSON := flagViewAsJson
-	flagViewAsJson = true
 	t.Cleanup(func() { flagViewAsJson = previousJSON })
 	cmd := resetOpsSlowProcessAnalysisTestFlags(t)
+	flagViewAsJson = true
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 	sink := &activitysink.Sink{}
@@ -418,9 +538,9 @@ func TestOpsAnalyseSlowProcessInstancesJSONProgressKeepsStdoutClean(t *testing.T
 // TestOpsAnalyseSlowProcessInstancesKeysOnlyProgressKeepsStdoutClean verifies key pipelines never receive progress or preflight lines.
 func TestOpsAnalyseSlowProcessInstancesKeysOnlyProgressKeepsStdoutClean(t *testing.T) {
 	previousKeysOnly := flagViewKeysOnly
-	flagViewKeysOnly = true
 	t.Cleanup(func() { flagViewKeysOnly = previousKeysOnly })
 	cmd := resetOpsSlowProcessAnalysisTestFlags(t)
+	flagViewKeysOnly = true
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 	sink := &activitysink.Sink{}

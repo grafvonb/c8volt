@@ -59,6 +59,7 @@ func (s *Service) PurgeAllProcessDefinitions(ctx context.Context, request d.AllP
 	if len(discovery.CandidateProcessDefinitionKeys) == 0 {
 		result.DeletePlan.Status = d.OpsWorkflowStepStatusSkipped
 		result.Deletion.Status = d.OpsWorkflowStepStatusSkipped
+		emitOpsTenantScope(request.Progress, d.TenantEvidence{})
 		return finishAllProcessDefinitionsPurgeResult(result, d.AllProcessDefinitionsPurgeOutcomePlanned, nil)
 	}
 
@@ -78,12 +79,17 @@ func (s *Service) PurgeAllProcessDefinitions(ctx context.Context, request d.AllP
 		return finishAllProcessDefinitionsPurgeResult(result, d.AllProcessDefinitionsPurgeOutcomeFailed, err)
 	}
 
+	emitOpsTenantScope(request.Progress, plan.TenantEvidence)
+
 	if request.DryRun || len(plan.CandidateProcessDefinitionKeys) == 0 {
 		result.Deletion.Status = d.OpsWorkflowStepStatusSkipped
 		return finishAllProcessDefinitionsPurgeResult(result, d.AllProcessDefinitionsPurgeOutcomePlanned, nil)
 	}
 
 	deleteOpts := compactOpsExecutionOptions(opts...)
+	if request.Progress != nil {
+		deleteOpts = append(deleteOpts, services.WithProgress(request.Progress))
+	}
 	if request.Force {
 		deleteOpts = append(deleteOpts, services.WithForce())
 	}
@@ -124,6 +130,7 @@ func buildAllProcessDefinitionsPurgeDeletePlan(ctx context.Context, pdAPI pdsvc.
 		Status:                                  d.OpsWorkflowStepStatusPlanned,
 		CandidateProcessDefinitionKeys:          candidates,
 		Items:                                   append([]d.DeleteProcessDefinitionPlanItem(nil), preview.Items...),
+		TenantEvidence:                          opsTenantEvidenceFromProcessDefinitionPlan(preview),
 		DuplicateCandidateProcessDefinitionKeys: discovery.DuplicateCandidateProcessDefinitionKeys.Unique(),
 		RequiresConfirmation:                    requiresConfirmation && len(candidates) > 0,
 	}

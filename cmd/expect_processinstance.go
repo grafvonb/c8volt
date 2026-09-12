@@ -67,7 +67,7 @@ var expectProcessInstanceCmd = &cobra.Command{
 		if err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}
-		keys := mergeAndValidateKeys(flagExpectPIKeys, stdinKeys, log, cfg)
+		keys := mergeAndValidateKeys(cmd, flagExpectPIKeys, stdinKeys, log, cfg)
 		if len(keys) == 0 {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, localPreconditionError(fmt.Errorf("no process instance keys provided or found to watch")))
 		}
@@ -89,8 +89,12 @@ var expectProcessInstanceCmd = &cobra.Command{
 				)
 			}
 		}
+		expectOpts := collectExplicitPIAdminInputOptions()
+		expectProgress := newExpectProcessInstanceSemanticProgress(cmd, len(keys))
+		expectOpts = appendExpectProcessInstanceProgressOption(expectOpts, expectProgress)
 		if incidentSet {
-			reports, err := cli.WaitForProcessInstancesExpectation(cmd.Context(), keys, expectation, flagWorkers, collectExplicitPIAdminInputOptions()...)
+			reports, err := cli.WaitForProcessInstancesExpectation(cmd.Context(), keys, expectation, flagWorkers, expectOpts...)
+			expectProgress.Close()
 			if err != nil {
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("expecting process instance: %w", err))
 			}
@@ -108,7 +112,8 @@ var expectProcessInstanceCmd = &cobra.Command{
 			}
 			return
 		}
-		reports, err := cli.WaitForProcessInstancesState(cmd.Context(), keys, states, flagWorkers, collectExplicitPIAdminInputOptions()...)
+		reports, err := cli.WaitForProcessInstancesState(cmd.Context(), keys, states, flagWorkers, expectOpts...)
+		expectProgress.Close()
 		if err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("expecting process instance: %w", err))
 		}

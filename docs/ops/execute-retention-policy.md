@@ -39,13 +39,19 @@ c8volt ops execute retention-policy --retention-days 90 --bpmn-process-id <bpmn-
 
 ## Built From Lower-Level Commands
 
+For an unattended pipeline, select the process and skip deletion when discovery returns no keys:
+
 ```bash
-c8volt get process-instance --end-date-older-days <days> --keys-only
-c8volt delete process-instance -
+keys=$(c8volt get process-instance --bpmn-process-id <bpmn-process-id> --end-date-older-days <days> --keys-only) &&
+if [ -n "$keys" ]; then
+  printf '%s\n' "$keys" | c8volt delete process-instance --auto-confirm -
+fi
 ```
 
 Generated references: [get process-instance](/cli/c8volt_get_process-instance), [delete process-instance](/cli/c8volt_delete_process-instance).
 
-## Output And Safety
+## Safety
 
 `--dry-run` reports the frozen retention set and delete plan without mutation. Real execution confirms or runs under automation, deletes through normal process-instance delete planning, waits unless disabled, and can write Markdown or JSON reports. Discovery page size and frozen scope are separate: use `--batch-size` for request size and `--limit` only when the retention scope should intentionally stop early.
+
+A named tenant limits discovery. An empty tenant or `--all-tenants` searches across tenants visible to the authenticated identity. `--all-tenants` conflicts with an explicit `--tenant` value.

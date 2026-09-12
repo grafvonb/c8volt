@@ -6,7 +6,6 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/grafvonb/c8volt/c8volt/ferrors"
 	"github.com/spf13/cobra"
 )
 
@@ -15,10 +14,12 @@ var flagGetClusterVersionWithBrokers bool
 var getClusterVersionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Show connected cluster version",
-	Long: "Show connected cluster version.\n\n" +
-		"This command prints the gateway version by default. Use --with-brokers to include broker versions sorted by broker node id. Use --json for the structured version payload.",
+	Long: `Get the connected Camunda gateway version.
+
+Use --with-brokers to include broker versions.`,
 	Example: `  ./c8volt get cluster version
-  ./c8volt get cluster version --with-brokers`,
+  ./c8volt get cluster version --with-brokers
+  ./c8volt get cluster version --json`,
 	Args: cobra.NoArgs,
 	Run:  runGetClusterVersion,
 }
@@ -54,7 +55,7 @@ func runGetClusterVersion(cmd *cobra.Command, args []string) {
 	log.Debug("getting cluster topology for version")
 	topology, err := cli.GetClusterTopology(cmd.Context())
 	if err != nil {
-		ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("get cluster version: %w", err))
+		handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("get cluster version: %w", err))
 	}
 	if pickMode() == RenderModeJSON {
 		if err := renderJSONPayload(cmd, RenderModeJSON, newClusterVersionView(topology, flagGetClusterVersionWithBrokers)); err != nil {

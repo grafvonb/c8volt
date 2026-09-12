@@ -78,6 +78,7 @@ func toDomainProcessDefinitionSearchRequest(x ProcessDefinitionSearchRequest) d.
 		Filter: toDomainProcessDefinitionFilter(x.Filter),
 		Page:   toDomainProcessDefinitionPageRequest(x.Page),
 		Limit:  x.Limit,
+		Latest: x.Latest,
 	}
 }
 
@@ -396,10 +397,24 @@ func fromDomainDeleteReports(xs []d.Reporter) DeleteReports {
 	return DeleteReports{Items: toolx.MapSlice(xs, func(x d.Reporter) DeleteReport { return fromDomainReporter(x) })}
 }
 
+// fromDomainTenantEvidence copies service-resolved tenant evidence without
+// adding operation semantics, which command code attaches later.
+func fromDomainTenantEvidence(x d.TenantEvidence) TenantEvidence {
+	return TenantEvidence{
+		ResolvedTenantIDs:  append([]string(nil), x.ResolvedTenantIDs...),
+		UnknownTargetCount: x.UnknownTargetCount,
+		TargetCount:        x.TargetCount,
+		Targets: toolx.MapSlice(x.Targets, func(target d.TenantEvidenceTarget) TenantEvidenceTarget {
+			return TenantEvidenceTarget{Key: target.Key, TenantID: target.TenantID}
+		}),
+	}
+}
+
 func fromDomainDryRunPIKeyExpansion(x d.DryRunPIKeyExpansion) DryRunPIKeyExpansion {
 	return DryRunPIKeyExpansion{
 		Roots:                      append([]string(nil), x.Roots...),
 		Collected:                  append([]string(nil), x.Collected...),
+		TenantEvidence:             fromDomainTenantEvidence(x.TenantEvidence),
 		SelectedFinalState:         toolx.MapSlice(x.SelectedFinalState, fromDomainProcessInstance),
 		RequiresCancelBeforeDelete: toolx.MapSlice(x.RequiresCancelBeforeDelete, fromDomainProcessInstance),
 		MissingAncestors: toolx.MapSlice(x.MissingAncestors, func(item d.MissingAncestor) MissingAncestor {
@@ -447,6 +462,7 @@ func fromDomainProcessInstanceSearchPageStep(x d.ProcessInstanceSearchPageStep) 
 func fromDomainProcessInstanceMutationPlanPagesResult(x d.ProcessInstanceMutationPlanPagesResult) ProcessInstanceMutationPlanPagesResult {
 	return ProcessInstanceMutationPlanPagesResult{
 		Plans:            toolx.MapSlice(x.Plans, fromDomainProcessInstanceMutationPlanStep),
+		TenantEvidence:   fromDomainTenantEvidence(x.TenantEvidence),
 		Limit:            x.Limit,
 		Pages:            x.Pages,
 		RequestedCount:   x.RequestedCount,

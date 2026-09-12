@@ -9,6 +9,7 @@ import (
 
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/services"
+	"github.com/grafvonb/c8volt/internal/services/common"
 	pitraversal "github.com/grafvonb/c8volt/internal/services/processinstance/traversal"
 	"github.com/grafvonb/c8volt/toolx"
 	"github.com/grafvonb/c8volt/toolx/pool"
@@ -76,6 +77,7 @@ func DryRunCancelOrDeletePlan(ctx context.Context, api API, keys typex.Keys, wan
 	plan := d.DryRunPIKeyExpansion{
 		Roots:                      roots,
 		Collected:                  collected,
+		TenantEvidence:             tenantEvidenceFromTraversalResults(collected, ancestryResults, descendantResults),
 		DuplicateRoots:             duplicateRoots.Unique(),
 		SelectedFinalState:         selectedFinalStateProcessInstances(keys, ancestryResults),
 		RequiresCancelBeforeDelete: nonFinalProcessInstances(collected, descendantResults),
@@ -117,10 +119,12 @@ func dryRunCancelOrDeletePlanLegacy(ctx context.Context, api API, keys typex.Key
 	for _, desc := range descendantLists {
 		collected = append(collected, desc...)
 	}
+	collected = collected.Unique()
 	return d.DryRunPIKeyExpansion{
-		Roots:     roots,
-		Collected: collected.Unique(),
-		Outcome:   d.TraversalOutcomeComplete,
+		Roots:          roots,
+		Collected:      collected,
+		TenantEvidence: tenantEvidenceFromKeys(collected),
+		Outcome:        d.TraversalOutcomeComplete,
 	}, nil
 }
 
@@ -130,6 +134,9 @@ func dryRunCancelOrDeletePlanLegacy(ctx context.Context, api API, keys typex.Key
 func PlanProcessInstanceMutationPages(ctx context.Context, api API, incAPI SearchProcessInstanceIncidentAPI, request d.ProcessInstanceMutationPlanRequest, visitor d.ProcessInstanceMutationPlanVisitor, opts ...services.CallOption) (d.ProcessInstanceMutationPlanPagesResult, error) {
 	var out d.ProcessInstanceMutationPlanPagesResult
 	var cumulativeImpact int32
+	evidence := common.NewTenantEvidenceAccumulator()
+	var evidenceTargets []d.TenantEvidenceTarget
+	seenEvidenceTargets := make(map[string]struct{})
 	cfg := services.ApplyCallOptions(opts)
 	var planningTotal int
 	if request.SearchRequest.Limit > 0 {
@@ -191,6 +198,7 @@ func PlanProcessInstanceMutationPages(ctx context.Context, api API, incAPI Searc
 		}
 		if len(keys) > 0 {
 			out.Plans = append(out.Plans, planStep)
+			evidenceTargets = mergeTenantEvidenceTargets(evidence, evidenceTargets, seenEvidenceTargets, plan.TenantEvidence)
 		}
 		if cfg.Progress != nil && planningTotal > 0 {
 			done := int(step.CumulativeCount)
@@ -227,6 +235,8 @@ func PlanProcessInstanceMutationPages(ctx context.Context, api API, incAPI Searc
 	out.Pages = result.Pages
 	out.RequestedCount = int32(len(result.Items))
 	out.CumulativeImpact = cumulativeImpact
+	out.TenantEvidence = domainTenantEvidence(evidence.Snapshot())
+	out.TenantEvidence.Targets = evidenceTargets
 	return out, nil
 }
 
@@ -328,6 +338,89 @@ func processInstancePageKeys(items []d.ProcessInstance) typex.Keys {
 		keys = append(keys, item.Key)
 	}
 	return keys
+}
+
+// tenantEvidenceFromTraversalResults records evidence for affected keys from traversal chains.
+func tenantEvidenceFromTraversalResults(collected typex.Keys, resultGroups ...[]pitraversal.Result) d.TenantEvidence {
+	if len(collected) == 0 {
+		return d.TenantEvidence{ResolvedTenantIDs: []string{}}
+	}
+
+	tenantByKey := make(map[string]string, len(collected))
+	for _, results := range resultGroups {
+		for _, result := range results {
+			mergeTraversalTenantEvidence(tenantByKey, result.Chain)
+		}
+	}
+
+	acc := common.NewTenantEvidenceAccumulator()
+	targets := make([]d.TenantEvidenceTarget, 0, len(collected.Unique()))
+	for _, key := range collected.Unique() {
+		tenantID := tenantByKey[key]
+		acc.Add(key, tenantID)
+		targets = append(targets, d.TenantEvidenceTarget{Key: key, TenantID: tenantID})
+	}
+	evidence := domainTenantEvidence(acc.Snapshot())
+	evidence.Targets = targets
+	return evidence
+}
+
+// mergeTraversalTenantEvidence prefers known tenant metadata when any traversal result provides it.
+func mergeTraversalTenantEvidence(tenantByKey map[string]string, chain map[string]d.ProcessInstance) {
+	for key, pi := range chain {
+		if key == "" {
+			key = pi.Key
+		}
+		if key == "" {
+			continue
+		}
+		if existing, ok := tenantByKey[key]; ok && existing != "" {
+			continue
+		}
+		tenantByKey[key] = pi.TenantId
+	}
+}
+
+// tenantEvidenceFromKeys marks key-only legacy dry-run targets as unknown without enrichment.
+func tenantEvidenceFromKeys(keys typex.Keys) d.TenantEvidence {
+	acc := common.NewTenantEvidenceAccumulator()
+	targets := make([]d.TenantEvidenceTarget, 0, len(keys.Unique()))
+	for _, key := range keys.Unique() {
+		acc.Add(key, "")
+		targets = append(targets, d.TenantEvidenceTarget{Key: key})
+	}
+	evidence := domainTenantEvidence(acc.Snapshot())
+	evidence.Targets = targets
+	return evidence
+}
+
+// domainTenantEvidence converts service accumulator output into a domain plan value.
+func domainTenantEvidence(snapshot common.TenantEvidenceSnapshot) d.TenantEvidence {
+	return d.TenantEvidence{
+		ResolvedTenantIDs:  append([]string{}, snapshot.ResolvedTenantIDs...),
+		UnknownTargetCount: snapshot.UnknownTargetCount,
+		TargetCount:        snapshot.TargetCount,
+	}
+}
+
+// mergeTenantEvidenceTargets adds per-target evidence from a page plan so
+// duplicate affected keys across page boundaries are counted once.
+func mergeTenantEvidenceTargets(acc *common.TenantEvidenceAccumulator, targets []d.TenantEvidenceTarget, seen map[string]struct{}, evidence d.TenantEvidence) []d.TenantEvidenceTarget {
+	if acc == nil {
+		return targets
+	}
+	for _, target := range evidence.Targets {
+		if target.Key == "" {
+			continue
+		}
+		acc.Add(target.Key, target.TenantID)
+		if _, ok := seen[target.Key]; ok {
+			continue
+		}
+		seen[target.Key] = struct{}{}
+		targets = append(targets, d.TenantEvidenceTarget{Key: target.Key, TenantID: target.TenantID})
+	}
+	return targets
 }
 
 func mapDryRunTraversalWarning(results []pitraversal.Result) (warning string, missing []d.MissingAncestor, outcome d.TraversalOutcome) {

@@ -21,6 +21,7 @@ func renderOpsRepairIncidentResult(cmd *cobra.Command, result ops.RepairResult) 
 	} else {
 		renderHumanLine(cmd, "repair incidents")
 	}
+	renderAttachedTenantContext(cmd)
 	if result.Request.DiscoveryMode == ops.RepairDiscoveryModeSearch {
 		renderHumanLine(cmd, "selection filters: %s", result.FrozenSet.IncidentFilters.String())
 	}
@@ -72,6 +73,7 @@ func renderOpsRepairProcessInstanceResult(cmd *cobra.Command, result ops.RepairR
 	} else {
 		renderHumanLine(cmd, "repair process-instance incidents")
 	}
+	renderAttachedTenantContext(cmd)
 	if result.Request.DiscoveryMode == ops.RepairDiscoveryModeSearch {
 		renderHumanLine(cmd, "selection filters: %s", result.FrozenSet.ProcessFilters.String())
 	}

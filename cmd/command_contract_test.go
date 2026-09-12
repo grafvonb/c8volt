@@ -4,6 +4,8 @@
 package cmd
 
 import (
+	"bytes"
+	"encoding/json"
 	"go/ast"
 	"go/parser"
 	"go/token"
@@ -12,6 +14,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/grafvonb/c8volt/c8volt/tenant"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 )
@@ -50,7 +53,7 @@ func TestCommandCapabilityForCommand_IncludesInheritedAndRequiredFlags(t *testin
 		Type:        "string",
 		Required:    true,
 		Repeated:    false,
-		Description: "resource ID to fetch",
+		Description: "resource key to fetch",
 	})
 	require.Contains(t, capability.Flags, FlagContract{
 		Name:        "automation",
@@ -113,7 +116,7 @@ func TestCommandCapabilityForCommand_DocumentsTenantContract(t *testing.T) {
 	root := Root()
 	resetCommandTreeFlags(root)
 
-	const tenantDescription = "tenant ID for discovery/search, selection, create, deploy, and run flows; explicit keys/IDs remain backend-authorized"
+	const tenantDescription = "tenant ID for discovery/search, selection, create, deploy, and run flows; explicit empty values can clear configured discovery filters, and explicit keys/IDs remain backend-authorized"
 	capability := commandCapabilityForCommand(getProcessInstanceCmd)
 
 	require.Contains(t, capability.Flags, FlagContract{
@@ -132,9 +135,66 @@ func TestCommandCapabilityForCommand_DocumentsTenantContract(t *testing.T) {
 		deleteProcessDefinitionCmd,
 		getResourceCmd,
 	} {
-		require.Contains(t, cmd.Long, "Tenant contract:")
-		require.Contains(t, cmd.Long, "backend-authorized admin input")
+		require.Contains(t, cmd.Long, "tenant")
+		require.Contains(t, cmd.Long, "backend authorization")
 	}
+}
+
+// TestRenderSucceededResult_AttachesTenantContextBesidePayload verifies the
+// shared envelope adds tenant context without wrapping or reshaping payloads.
+func TestRenderSucceededResult_AttachesTenantContextBesidePayload(t *testing.T) {
+	resetTenantContextRenderFlags(t)
+	flagViewAsJson = true
+	cmd, buf := newContractTenantContextTestCommand()
+	setContractSupport(cmd, ContractSupportFull)
+	attachTenantContext(cmd, withTenantContextEvidence(newExplicitKeysTenantContext("tenant-a"), []string{"tenant-b"}, 0))
+
+	require.NoError(t, renderSucceededResult(cmd, map[string]any{"items": []string{"pi-1"}}))
+
+	var envelope map[string]any
+	require.NoError(t, json.Unmarshal(buf.Bytes(), &envelope))
+	require.Equal(t, string(OutcomeSucceeded), envelope["outcome"])
+	require.Equal(t, "cancel process-instance", envelope["command"])
+	payload := requireJSONObject(t, envelope["payload"])
+	require.Equal(t, []any{"pi-1"}, payload["items"])
+	require.NotContains(t, payload, "tenantContext")
+	tenantContext := requireJSONObject(t, envelope["tenantContext"])
+	require.Equal(t, string(tenant.ContextModeExplicitKeys), tenantContext["mode"])
+	require.Equal(t, string(tenant.ContextFilterNotApplied), tenantContext["filter"])
+	require.Equal(t, "tenant-a", tenantContext["configuredTenantId"])
+	require.Equal(t, []any{"tenant-b"}, tenantContext["resolvedTenantIds"])
+	require.Equal(t, float64(0), tenantContext["unknownTargetCount"])
+	require.Equal(t, false, tenantContext["crossTenant"])
+	require.NotContains(t, tenantContext, "payload")
+}
+
+// TestRenderSucceededResult_OmitsTenantContextWhenUnattached keeps commands
+// without tenant semantics on the previous envelope shape.
+func TestRenderSucceededResult_OmitsTenantContextWhenUnattached(t *testing.T) {
+	resetTenantContextRenderFlags(t)
+	flagViewAsJson = true
+	cmd, buf := newContractTenantContextTestCommand()
+	setContractSupport(cmd, ContractSupportFull)
+
+	require.NoError(t, renderSucceededResult(cmd, map[string]any{"ok": true}))
+
+	var envelope map[string]any
+	require.NoError(t, json.Unmarshal(buf.Bytes(), &envelope))
+	require.NotContains(t, envelope, "tenantContext")
+	payload := requireJSONObject(t, envelope["payload"])
+	require.Equal(t, true, payload["ok"])
+}
+
+// newContractTenantContextTestCommand builds a nested command so envelope tests
+// exercise the same command-path logic as normal subcommands.
+func newContractTenantContextTestCommand() (*cobra.Command, *bytes.Buffer) {
+	buf := &bytes.Buffer{}
+	parent := &cobra.Command{Use: "cancel"}
+	cmd := &cobra.Command{Use: "process-instance"}
+	cmd.SetOut(buf)
+	cmd.SetErr(buf)
+	parent.AddCommand(cmd)
+	return cmd, buf
 }
 
 // TestCommandCapabilityForCommand_ProcessDefinitionWatchMetadata keeps command
@@ -158,7 +218,7 @@ func TestCommandCapabilityForCommand_ProcessDefinitionWatchMetadata(t *testing.T
 		Type:        "bool",
 		Required:    false,
 		Repeated:    false,
-		Description: "repeat the process-definition lookup as a repainted terminal view until interrupted, timed out, or retry-exhausted",
+		Description: "repeat the process-definition lookup until interrupted, timed out, or retries are exhausted",
 	})
 	require.Contains(t, capability.Flags, FlagContract{
 		Name:        "watch-interval",
@@ -183,7 +243,7 @@ func TestCommandCapabilityForCommand_ProcessDefinitionWatchMetadata(t *testing.T
 		Supported: true,
 		Notes:     "finite key stream for non-watch invocations; --watch rejects keys-only output",
 	})
-	require.Contains(t, getProcessDefinitionCmd.Long, "JSON, keys-only, XML,\nquiet, and automation combinations are rejected before lookup work")
+	require.Contains(t, getProcessDefinitionCmd.Long, "--watch cannot be combined with --json, --keys-only, --xml, --quiet, or --automation")
 }
 
 // TestCommandContractFocusedModeFilesOwnLifecycleDeclarations guards the file
@@ -252,48 +312,44 @@ func TestCommandCapabilityForCommand_BasicPagedReadContracts(t *testing.T) {
 		{
 			name:      "job",
 			cmd:       getJobCmd,
-			batchDesc: "number of jobs to request per page; does not cap total returned rows (max limit 1000 enforced by server)",
+			batchDesc: "number of jobs to request per page; does not cap total results (max limit 1000 enforced by server)",
 			limitDesc: "maximum number of matching jobs to return across all pages; omit to continue through all matches",
 			longFragments: []string{
-				"--batch-size controls each backend page request",
-				"--limit caps total returned jobs across all pages",
-				"JSON, keys-only, quiet, and automation output remain free of prompts and progress text",
+				"--batch-size controls each discovery request",
+				"--limit caps jobs across all pages",
 			},
 		},
 		{
 			name:      "element",
 			cmd:       getElementCmd,
 			aliases:   []string{"ei"},
-			batchDesc: "number of elements to request per page; does not cap total returned rows (max limit 1000 enforced by server)",
+			batchDesc: "number of elements to request per page; does not cap total results (max limit 1000 enforced by server)",
 			limitDesc: "maximum number of matching elements to return across all pages; omit to continue through all matches",
 			longFragments: []string{
-				"--batch-size controls each backend page request",
-				"--limit caps returned element rows across all pages",
-				"JSON, keys-only, quiet, and automation output remain free of prompts and progress text",
+				"--batch-size controls each discovery request",
+				"--limit caps returned elements across all pages",
 			},
 		},
 		{
 			name:      "incident",
 			cmd:       getIncidentCmd,
 			aliases:   []string{"incidents", "inc"},
-			batchDesc: "number of incidents to request per page; does not cap total returned rows (max limit 1000 enforced by server)",
+			batchDesc: "number of incidents to request per page; does not cap total results (max limit 1000 enforced by server)",
 			limitDesc: "maximum number of matching incidents to return across all pages; omit to continue through all matches",
 			longFragments: []string{
-				"--batch-size controls each backend page request",
-				"--limit caps total returned incidents across all pages",
-				"JSON, keys-only, pi-keys-only, quiet, and automation output remain free of prompts and progress text",
+				"--batch-size controls each discovery request",
+				"--limit caps incidents across all pages",
 			},
 		},
 		{
 			name:      "process instance",
 			cmd:       getProcessInstanceCmd,
 			aliases:   []string{"process-instances", "pi", "pis"},
-			batchDesc: "number of process instances to request per page; does not cap total returned rows (max limit 1000 enforced by server)",
+			batchDesc: "number of process instances to request per page; does not cap total results (max limit 1000 enforced by server)",
 			limitDesc: "maximum number of matching process instances to return across all pages; omit to continue through all matches",
 			longFragments: []string{
-				"--batch-size controls each backend page request",
-				"--limit caps total returned process instances across all pages",
-				"JSON, keys-only, quiet, and automation output remain free of prompts and progress text",
+				"--batch-size controls each discovery request",
+				"--limit caps instances across all pages",
 			},
 		},
 	}
@@ -352,9 +408,9 @@ func TestCommandCapabilityForCommand_ProcessInstanceMutationPagingContracts(t *t
 			batchDesc: "number of process instances to inspect per discovery page; does not cap total selected scope (max limit 1000 enforced by server)",
 			limitDesc: "maximum number of matching process instances to select for cancellation across all pages; omit to continue through all matches",
 			longFragments: []string{
-				"--batch-size controls each discovery page request",
-				"--limit caps the selected process-instance scope across all pages",
-				"--workers, --fail-fast, and --no-worker-limit bound independent planning or cancellation work",
+				"--batch-size controls each discovery request",
+				"--limit caps selected instances across all pages",
+				"--workers, --fail-fast, and --no-worker-limit control planning and cancellation work",
 			},
 		},
 		{
@@ -363,10 +419,10 @@ func TestCommandCapabilityForCommand_ProcessInstanceMutationPagingContracts(t *t
 			batchDesc: "number of process instances to inspect per discovery page; does not cap total frozen scope (max limit 1000 enforced by server)",
 			limitDesc: "maximum number of matching process instances to freeze for deletion across all pages; omit to continue through all matches",
 			longFragments: []string{
-				"freezes every selected page-level delete plan before one confirmation and mutation",
-				"--batch-size controls each discovery page request",
-				"--limit caps the frozen delete scope across all pages",
-				"--workers, --fail-fast, and --no-worker-limit bound independent planning, cancellation, or deletion work",
+				"Search mode plans all selected pages before one confirmation and deletion",
+				"--batch-size controls each discovery request",
+				"--limit caps the selected scope across all pages",
+				"--workers, --fail-fast, and --no-worker-limit control planning and deletion work",
 			},
 		},
 	}
@@ -497,20 +553,15 @@ func TestCommandContractOpsAnalyseSlowProcessInstances(t *testing.T) {
 	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Example, "--with-full-timeline")
 	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Example, "--with-listeners")
 	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Example, "get process-instance --state active --keys-only")
-	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Long, "Default output shows compact slowest element contributors")
-	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Long, "Use --with-full-timeline to inspect complete chronological element and transition detail")
-	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Long, "Use --with-listeners to include runtime listener jobs under matching element timeline rows")
-	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Long, "Broad search selectors show preflight scope from the first discovery page")
-	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Long, "including exact, lower-bound, or unknown total wording")
-	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Long, "--batch-size controls each discovery page request")
-	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Long, "--limit caps the number of matching process instances frozen for analysis across all discovery pages")
-	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Long, "Verbose and debug modes keep durable progress lines on stderr")
-	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Long, "JSON, keys-only, quiet, and automation output stay free of progress text")
-	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Long, "Use --dur-longer to keep only process-instance roots")
-	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Long, "Detail filters such as --element-id, --type, --element-state, and --dur-element-longer keep only process instances with matching element or transition detail rows")
+	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Long, "--with-full-timeline to inspect the complete chronology")
+	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Long, "--with-listeners to include runtime listener jobs")
+	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Long, "--batch-size controls each discovery request")
+	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Long, "--limit caps selected instances across all pages")
+	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Long, "--dur-longer selects roots whose total duration exceeds a threshold")
+	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Long, "--element-id, --type, --element-state, and --dur-element-longer restrict analysis")
 	require.NotContains(t, opsAnalyseSlowProcessInstancesCmd.Long, "--duration-after")
-	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Long, "Duration thresholds use Go duration syntax")
-	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Long, "Calendar units such as 1d are not accepted")
+	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Long, "Durations use Go syntax")
+	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Long, "Calendar units such as 1d are not supported")
 	require.Equal(t, []OutputModeContract{
 		{Name: "one-line", Supported: true},
 		{Name: "json", Supported: true, MachinePreferred: true, Notes: "stdout remains one JSON document; preflight and frozen-scope metadata are exposed as result fields"},
@@ -582,7 +633,7 @@ func TestCommandContractOpsAnalyseSlowProcessInstances(t *testing.T) {
 		Type:        "string",
 		Required:    false,
 		Repeated:    false,
-		Description: "only include process instances with element or transition detail rows longer than this duration, for example 30s or 2m",
+		Description: "only include process instances with elements or transitions longer than this duration, for example 30s or 2m",
 	})
 	require.Contains(t, capability.Flags, FlagContract{
 		Name:        "with-full-timeline",
@@ -596,7 +647,7 @@ func TestCommandContractOpsAnalyseSlowProcessInstances(t *testing.T) {
 		Type:        "bool",
 		Required:    false,
 		Repeated:    false,
-		Description: "include runtime listener jobs under matching element timeline rows",
+		Description: "include runtime listener jobs",
 	})
 	require.False(t, hasFlagContractNamed(capability.Flags, "duration-after"))
 	require.False(t, hasFlagContractNamed(capability.Flags, "incidents-only"))
@@ -628,9 +679,8 @@ func TestCommandCapabilityForCommand_OpsPagedDiscoveryFlagContracts(t *testing.T
 			batchDesc: "number of incidents to inspect per discovery page; does not cap total frozen scope (max limit 1000 enforced by server)",
 			limitDesc: "maximum number of matching incidents to freeze before candidate process-instance dedupe; omit to discover all matches",
 			longFragments: []string{
-				"Discovery pages through all matching incidents by default.",
-				"--batch-size tunes per-page discovery requests only",
-				"--limit intentionally caps the frozen scope",
+				"--batch-size controls each discovery request",
+				"--limit caps the selected scope",
 			},
 		},
 		{
@@ -639,9 +689,8 @@ func TestCommandCapabilityForCommand_OpsPagedDiscoveryFlagContracts(t *testing.T
 			batchDesc: "number of incidents to inspect per discovery page; does not cap total frozen scope (max limit 1000 enforced by server)",
 			limitDesc: "maximum number of matching incidents to freeze for repair; omit to discover all matches",
 			longFragments: []string{
-				"Search mode pages through all matching incidents by default.",
-				"--batch-size tunes per-page discovery requests only",
-				"--limit intentionally caps the frozen scope",
+				"--batch-size controls each discovery request",
+				"--limit caps the selected scope",
 			},
 		},
 		{
@@ -650,9 +699,8 @@ func TestCommandCapabilityForCommand_OpsPagedDiscoveryFlagContracts(t *testing.T
 			batchDesc: "number of process instances to inspect per discovery page; does not cap total frozen scope (max limit 1000 enforced by server)",
 			limitDesc: "maximum number of matching process instances to freeze for repair; omit to discover all matches",
 			longFragments: []string{
-				"Search mode pages through all matching incident-bearing process instances by default.",
-				"--batch-size tunes per-page discovery requests only",
-				"--limit intentionally caps the frozen scope",
+				"--batch-size controls each discovery request",
+				"--limit caps the selected scope",
 			},
 		},
 		{
@@ -661,9 +709,8 @@ func TestCommandCapabilityForCommand_OpsPagedDiscoveryFlagContracts(t *testing.T
 			batchDesc: "number of process definitions to inspect per discovery page; does not cap total frozen scope (max limit 1000 enforced by server)",
 			limitDesc: "maximum number of matching process definitions to freeze for purge; omit to discover all matches",
 			longFragments: []string{
-				"Discovery pages through all matching process definitions by default.",
-				"--batch-size tunes per-page discovery requests only",
-				"--limit intentionally caps the frozen scope",
+				"--batch-size controls each discovery request",
+				"--limit caps the selected scope",
 			},
 		},
 		{
@@ -672,10 +719,9 @@ func TestCommandCapabilityForCommand_OpsPagedDiscoveryFlagContracts(t *testing.T
 			batchDesc: "number of process instances to inspect per discovery page; does not cap total frozen scope (max limit 1000 enforced by server)",
 			limitDesc: "maximum number of matching process instances to freeze for retention cleanup; omit to discover all matches",
 			longFragments: []string{
-				"Discovery pages through all matching retention candidates by default.",
-				"--batch-size controls each discovery page request",
-				"--limit caps the frozen retention scope",
-				"--workers, --fail-fast, and --no-worker-limit bound independent delete planning or deletion work",
+				"--batch-size controls each discovery request",
+				"--limit caps the selected scope",
+				"--workers, --fail-fast, and --no-worker-limit control planning and deletion",
 			},
 		},
 		{
@@ -684,12 +730,8 @@ func TestCommandCapabilityForCommand_OpsPagedDiscoveryFlagContracts(t *testing.T
 			batchDesc: "number of process instances to inspect per discovery page; does not cap frozen analysis scope, explicit keys, or timeline details (max limit 1000 enforced by server)",
 			limitDesc: "maximum number of matching process instances to freeze for analysis across all discovery pages; omit to discover all matches",
 			longFragments: []string{
-				"Search mode pages through discovered process instances by default.",
-				"--batch-size controls each discovery page request",
-				"--limit caps the number of matching process instances frozen for analysis across all discovery pages",
-				"Broad search selectors show preflight scope from the first discovery page",
-				"including exact, lower-bound, or unknown total wording",
-				"JSON, keys-only, quiet, and automation output stay free of progress text",
+				"--batch-size controls each discovery request",
+				"--limit caps selected instances across all pages",
 			},
 		},
 	}
@@ -787,13 +829,13 @@ func TestCommandCapabilityForCommand_WalkProcessInstanceElementFlagAndContract(t
 		Type:        "bool",
 		Required:    false,
 		Repeated:    false,
-		Description: "show runtime listener jobs under matching element rows; requires --with-elements",
+		Description: "include runtime listener jobs; requires --with-elements",
 	})
 	require.Contains(t, capability.OutputModes, OutputModeContract{Name: "one-line", Supported: true})
 	require.Contains(t, capability.OutputModes, OutputModeContract{Name: "json", Supported: true, MachinePreferred: true})
 	require.Contains(t, capability.OutputModes, OutputModeContract{Name: "keys-only", Supported: true})
-	require.Contains(t, walkProcessInstanceCmd.Long, "Add --with-incidents, --with-vars, and/or --with-elements")
-	require.Contains(t, walkProcessInstanceCmd.Long, "Use --with-listeners with --with-elements to include runtime listener jobs under matching element rows.")
+	require.Contains(t, walkProcessInstanceCmd.Long, "Add --with-incidents, --with-vars, or --with-elements")
+	require.Contains(t, walkProcessInstanceCmd.Long, "Add --with-listeners to --with-elements for runtime listener jobs")
 	require.Contains(t, walkProcessInstanceCmd.Example, "./c8volt walk process-instance --key <process-instance-key> --with-elements")
 	require.Contains(t, walkProcessInstanceCmd.Example, "./c8volt walk process-instance --key <process-instance-key> --with-elements --with-listeners")
 }
@@ -811,9 +853,9 @@ func TestCommandContractWalkProcessInstanceWithListeners(t *testing.T) {
 		Type:        "bool",
 		Required:    false,
 		Repeated:    false,
-		Description: "show runtime listener jobs under matching element rows; requires --with-elements",
+		Description: "include runtime listener jobs; requires --with-elements",
 	})
-	require.Contains(t, walkProcessInstanceCmd.Long, "Use --with-listeners with --with-elements to include runtime listener jobs under matching element rows.")
+	require.Contains(t, walkProcessInstanceCmd.Long, "Add --with-listeners to --with-elements for runtime listener jobs")
 	require.Contains(t, walkProcessInstanceCmd.Example, "./c8volt walk process-instance --key <process-instance-key> --with-elements --with-listeners")
 }
 
@@ -889,6 +931,99 @@ func TestContractSupportForCommand_IgnoresHiddenChildren(t *testing.T) {
 	parent.AddCommand(hiddenChild)
 
 	require.Equal(t, ContractSupportUnsupported, contractSupportForCommand(parent))
+}
+
+// TestAllTenantsSupportForCommand_DefaultsAccepted verifies unannotated commands
+// inherit the safe parsing contract for the root override.
+func TestAllTenantsSupportForCommand_DefaultsAccepted(t *testing.T) {
+	t.Parallel()
+
+	require.Equal(t, AllTenantsSupportAccepted, allTenantsSupportForCommand(nil))
+	require.Equal(t, AllTenantsSupportAccepted, allTenantsSupportForCommand(&cobra.Command{Use: "demo"}))
+}
+
+// TestAllTenantsSupportForCommand_UsesExplicitAnnotation keeps runtime validation
+// and future capability serialization on a single command annotation resolver.
+func TestAllTenantsSupportForCommand_UsesExplicitAnnotation(t *testing.T) {
+	t.Parallel()
+
+	cmd := &cobra.Command{Use: "deploy process-definition"}
+	setAllTenantsSupport(cmd, AllTenantsSupportRejectedConcreteDestination)
+
+	require.Equal(t, AllTenantsSupportRejectedConcreteDestination, allTenantsSupportForCommand(cmd))
+	require.Equal(t, string(AllTenantsSupportRejectedConcreteDestination), cmd.Annotations[allTenantsSupportAnnotation])
+}
+
+// TestAllTenantsSupportForCommand_ConcreteDestinationInventory pins the
+// complete command set whose creation semantics reject all-tenants at runtime.
+func TestAllTenantsSupportForCommand_ConcreteDestinationInventory(t *testing.T) {
+	root := Root()
+	resetCommandTreeFlags(root)
+
+	tests := []struct {
+		path string
+		cmd  *cobra.Command
+	}{
+		{path: "deploy process-definition", cmd: deployProcessDefinitionCmd},
+		{path: "embed deploy", cmd: embedDeployCmd},
+		{path: "run process-instance", cmd: runProcessInstanceCmd},
+		{path: "ops execute smoke-test", cmd: opsExecuteSmokeTestCmd},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.path, func(t *testing.T) {
+			require.Equal(t, tt.path, commandPath(tt.cmd))
+			require.Equal(t, AllTenantsSupportRejectedConcreteDestination, allTenantsSupportForCommand(tt.cmd))
+		})
+	}
+}
+
+// TestCommandCapabilityForCommand_IncludesAllTenantsSupport keeps capability
+// metadata aligned with the same resolver used by root validation.
+func TestCommandCapabilityForCommand_IncludesAllTenantsSupport(t *testing.T) {
+	root := Root()
+	resetCommandTreeFlags(root)
+
+	tests := []struct {
+		path string
+		cmd  *cobra.Command
+		want AllTenantsSupport
+	}{
+		{path: "get process-instance", cmd: getProcessInstanceCmd, want: AllTenantsSupportAccepted},
+		{path: "cancel process-instance", cmd: cancelProcessInstanceCmd, want: AllTenantsSupportAccepted},
+		{path: "get resource", cmd: getResourceCmd, want: AllTenantsSupportAccepted},
+		{path: "deploy process-definition", cmd: deployProcessDefinitionCmd, want: AllTenantsSupportRejectedConcreteDestination},
+		{path: "embed deploy", cmd: embedDeployCmd, want: AllTenantsSupportRejectedConcreteDestination},
+		{path: "run process-instance", cmd: runProcessInstanceCmd, want: AllTenantsSupportRejectedConcreteDestination},
+		{path: "ops execute smoke-test", cmd: opsExecuteSmokeTestCmd, want: AllTenantsSupportRejectedConcreteDestination},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.path, func(t *testing.T) {
+			capability := commandCapabilityForCommand(tt.cmd)
+
+			require.Equal(t, tt.path, capability.Path)
+			require.Equal(t, tt.want, capability.AllTenantsSupport)
+			require.Equal(t, allTenantsSupportForCommand(tt.cmd), capability.AllTenantsSupport)
+		})
+	}
+}
+
+// TestCapabilityDocumentForRoot_KeepsV1WithAllTenantsSupport proves the new
+// support metadata is additive and does not require a document version bump.
+func TestCapabilityDocumentForRoot_KeepsV1WithAllTenantsSupport(t *testing.T) {
+	root := Root()
+	resetCommandTreeFlags(root)
+
+	doc := capabilityDocumentForRoot(root)
+
+	require.Equal(t, "v1", doc.Version)
+	searchCapability, ok := findCommandCapability(doc.Commands, "get process-instance")
+	require.True(t, ok)
+	require.Equal(t, AllTenantsSupportAccepted, searchCapability.AllTenantsSupport)
+	destinationCapability, ok := findCommandCapability(doc.Commands, "run process-instance")
+	require.True(t, ok)
+	require.Equal(t, AllTenantsSupportRejectedConcreteDestination, destinationCapability.AllTenantsSupport)
 }
 
 func TestCapabilityDocumentForRoot_ExcludesHiddenAndShellInternalCommands(t *testing.T) {
@@ -1074,14 +1209,13 @@ func TestCommandCapabilityForCommand_ProcessInstanceElementFlagAndContract(t *te
 		Type:        "bool",
 		Required:    false,
 		Repeated:    false,
-		Description: "include runtime listener jobs under matching element rows; requires --with-elements",
+		Description: "include runtime listener jobs; requires --with-elements",
 	})
 	require.Contains(t, capability.OutputModes, OutputModeContract{Name: "one-line", Supported: true})
 	require.Contains(t, capability.OutputModes, OutputModeContract{Name: "json", Supported: true, MachinePreferred: true})
 	require.Contains(t, capability.OutputModes, OutputModeContract{Name: "keys-only", Supported: true})
-	require.Contains(t, getProcessInstanceCmd.Long, "Use --with-elements to include runtime element instances under matching process-instance rows.")
-	require.Contains(t, getProcessInstanceCmd.Long, "Nested human element rows include dur:<duration>")
-	require.Contains(t, getProcessInstanceCmd.Long, "Use --with-listeners with --with-elements to include runtime listener jobs under matching element rows.")
+	require.Contains(t, getProcessInstanceCmd.Long, "--with-elements for runtime element instances")
+	require.Contains(t, getProcessInstanceCmd.Long, "Add --with-listeners to --with-elements for runtime listener jobs")
 	require.Contains(t, getProcessInstanceCmd.Example, "./c8volt get process-instance --key <process-instance-key> --with-elements")
 	require.Contains(t, getProcessInstanceCmd.Example, "./c8volt get process-instance --key <process-instance-key> --with-elements --with-listeners")
 }
@@ -1099,9 +1233,9 @@ func TestCommandContractGetProcessInstanceWithListeners(t *testing.T) {
 		Type:        "bool",
 		Required:    false,
 		Repeated:    false,
-		Description: "include runtime listener jobs under matching element rows; requires --with-elements",
+		Description: "include runtime listener jobs; requires --with-elements",
 	})
-	require.Contains(t, getProcessInstanceCmd.Long, "Use --with-listeners with --with-elements to include runtime listener jobs under matching element rows.")
+	require.Contains(t, getProcessInstanceCmd.Long, "Add --with-listeners to --with-elements for runtime listener jobs")
 	require.Contains(t, getProcessInstanceCmd.Example, "./c8volt get process-instance --key <process-instance-key> --with-elements --with-listeners")
 }
 
@@ -1166,8 +1300,8 @@ func TestCommandCapabilityForCommand_GetAndUpdateJobContract(t *testing.T) {
 	require.Contains(t, getCapability.AutomationNotes, "unattended job reads")
 	require.Contains(t, getCapability.OutputModes, OutputModeContract{Name: "json", Supported: true, MachinePreferred: true})
 	require.Contains(t, getCapability.OutputModes, OutputModeContract{Name: "keys-only", Supported: true})
-	require.Contains(t, getJobCmd.Long, "Search mode will use list filters")
-	require.Contains(t, getJobCmd.Long, "Camunda 8.7 returns an unsupported-version error")
+	require.Contains(t, getJobCmd.Long, "Otherwise search by state")
+	require.Contains(t, getJobCmd.Long, "Camunda 8.8 or newer")
 	require.Contains(t, getCapability.Flags, FlagContract{
 		Name:        "key",
 		Shorthand:   "k",
@@ -1254,7 +1388,7 @@ func TestCommandCapabilityForCommand_GetAndUpdateJobContract(t *testing.T) {
 		Type:        "int32",
 		Required:    false,
 		Repeated:    false,
-		Description: "number of jobs to request per page; does not cap total returned rows (max limit 1000 enforced by server)",
+		Description: "number of jobs to request per page; does not cap total results (max limit 1000 enforced by server)",
 	})
 	require.Contains(t, getCapability.Flags, FlagContract{
 		Name:        "total",
@@ -1279,8 +1413,8 @@ func TestCommandCapabilityForCommand_GetAndUpdateJobContract(t *testing.T) {
 	require.Contains(t, updateCapability.AutomationNotes, "non-mutating dry-run previews")
 	require.Contains(t, updateCapability.OutputModes, OutputModeContract{Name: "json", Supported: true, MachinePreferred: true})
 	require.NotContains(t, updateCapability.OutputModes, OutputModeContract{Name: "keys-only", Supported: true})
-	require.Contains(t, updateJobCmd.Long, "worker outcome modes")
-	require.Contains(t, updateJobCmd.Long, "Camunda 8.7 returns an unsupported-version error before mutation")
+	require.Contains(t, updateJobCmd.Long, "worker outcomes")
+	require.Contains(t, updateJobCmd.Long, "Camunda 8.8 or newer")
 	require.Contains(t, updateCapability.Flags, FlagContract{
 		Name:        "key",
 		Shorthand:   "k",
@@ -1385,11 +1519,8 @@ func TestCommandCapabilityForCommand_GetElementContract(t *testing.T) {
 	require.Contains(t, capability.OutputModes, OutputModeContract{Name: "json", Supported: true, MachinePreferred: true})
 	require.Contains(t, capability.OutputModes, OutputModeContract{Name: "keys-only", Supported: true})
 	require.Equal(t, []string{"ei"}, capability.Aliases)
-	require.Contains(t, getElementCmd.Long, "Use --key when you know an element instance key.")
-	require.Contains(t, getElementCmd.Long, "Search mode follows the shared get paging and limit conventions.")
-	require.Contains(t, getElementCmd.Long, "Compact human rows include dur:<duration>")
-	require.Contains(t, getElementCmd.Long, "Use --with-listeners to include runtime listener jobs under matching element rows.")
-	require.Contains(t, getElementCmd.Long, "Use --json for the stable element payload and --keys-only when piping element instance keys.")
+	require.Contains(t, getElementCmd.Long, "Use --key for a known element instance")
+	require.Contains(t, getElementCmd.Long, "--with-listeners to include runtime listener jobs")
 	require.Contains(t, getElementCmd.Example, "./c8volt get element --key <element-instance-key> --with-listeners")
 	require.Contains(t, getElementCmd.Example, "./c8volt get element --pi-key <process-instance-key> --limit 10")
 	require.Contains(t, getElementCmd.Example, "./c8volt get element --pi-key <process-instance-key> --with-listeners")
@@ -1453,7 +1584,7 @@ func TestCommandCapabilityForCommand_GetElementContract(t *testing.T) {
 		Type:        "int32",
 		Required:    false,
 		Repeated:    false,
-		Description: "number of elements to request per page; does not cap total returned rows (max limit 1000 enforced by server)",
+		Description: "number of elements to request per page; does not cap total results (max limit 1000 enforced by server)",
 	})
 	require.Contains(t, capability.Flags, FlagContract{
 		Name:        "limit",
@@ -1475,7 +1606,7 @@ func TestCommandCapabilityForCommand_GetElementContract(t *testing.T) {
 		Type:        "bool",
 		Required:    false,
 		Repeated:    false,
-		Description: "include runtime listener jobs under matching element rows",
+		Description: "include runtime listener jobs",
 	})
 }
 
@@ -1978,7 +2109,7 @@ func TestCommandCapabilityForCommand_OpsPurgeProcessInstancesWithIncidentsContra
 		Type:        "bool",
 		Required:    false,
 		Repeated:    false,
-		Description: "force cancellation of the process instance(s), prior to deletion",
+		Description: "allow cancellation when deletion encounters nonterminal process instances",
 	})
 	require.Contains(t, capability.Flags, FlagContract{
 		Name:        "no-wait",
@@ -2090,7 +2221,7 @@ func TestCommandCapabilityForCommand_OpsExecuteRetentionPolicyContract(t *testin
 		Type:        "bool",
 		Required:    false,
 		Repeated:    false,
-		Description: "force cancellation of the process instance(s), prior to deletion",
+		Description: "allow cancellation when deletion encounters nonterminal process instances",
 	})
 	require.Contains(t, capability.Flags, FlagContract{
 		Name:        "auto-confirm",
@@ -2402,14 +2533,11 @@ func TestGetJobAndUpdateJobHelp_DocumentsDiscoveryAndMutationGuards(t *testing.T
 
 	output = assertCommandHelpOutput(t, []string{"get", "job"}, []string{
 		"Inspect or search Camunda jobs",
-		"Use --key with the jobKey exposed by incident-aware process-instance output",
-		"Search mode will use list filters",
-		"Search mode pages through matching jobs by default",
-		"--batch-size controls each backend page request",
-		"--limit caps total returned jobs across all pages",
-		"JSON, keys-only, quiet, and automation output remain free of prompts and progress text",
-		"--total returns only the matching count",
-		"Use --json for the stable job payload",
+		"Use --key for a known job",
+		"Otherwise search by state",
+		"--batch-size controls each discovery request",
+		"--limit caps jobs across all pages",
+		"--total counts matching jobs",
 		"--error-message-limit",
 		"Camunda 8.8 or newer",
 		"./c8volt get job --key <job-key>",
@@ -2428,10 +2556,9 @@ func TestGetJobAndUpdateJobHelp_DocumentsDiscoveryAndMutationGuards(t *testing.T
 	}, nil)
 
 	output = assertCommandHelpOutput(t, []string{"update"}, []string{
-		"Update existing resources",
-		"job retries and timeout by key",
-		"dry-run planning",
-		"submitted output",
+		"Update process-instance variables or job retries, timeouts, and worker outcomes",
+		"job retries, timeouts, and worker outcomes",
+		"plan and confirm updates",
 		"./c8volt update job --key <job-key> --retries 3 --dry-run",
 		"./c8volt update job --key <job-key> --timeout 5m --auto-confirm",
 	}, nil)
@@ -2439,14 +2566,14 @@ func TestGetJobAndUpdateJobHelp_DocumentsDiscoveryAndMutationGuards(t *testing.T
 
 	output = assertCommandHelpOutput(t, []string{"update", "job"}, []string{
 		"Update a Camunda job by key",
-		"supports retries, timeout updates, and worker outcome modes",
-		"pre-mutation plan",
-		"--dry-run previews",
-		"Retry updates are confirmed by reading the job by key by default",
-		"timeout updates and worker outcomes report accepted submission",
-		"JSON mutations require --dry-run, --auto-confirm, or --automation",
+		"Supports retry and timeout updates and worker outcomes",
+		"plans the update",
+		"--dry-run to inspect the plan",
+		"Retry updates are verified by reading the job",
+		"timeout updates and worker outcomes return after acceptance",
+		"mutations require --dry-run, --auto-confirm, or --automation",
 		"--json cannot be combined with --verbose",
-		"Camunda 8.7 returns an unsupported-version error before mutation",
+		"Camunda 8.8 or newer",
 		"./c8volt update job --key <job-key> --retries 3 --dry-run",
 		"./c8volt update job --key <job-key> --fail --retries 0",
 		"./c8volt update job --key <job-key> --throw-bpmn-error PAYMENT_DECLINED",
@@ -2471,17 +2598,13 @@ func TestGetJobAndUpdateJobHelp_DocumentsDiscoveryAndMutationGuards(t *testing.T
 func TestGetElementHelp_DocumentsSearchAndOutputModes(t *testing.T) {
 	output := assertCommandHelpOutput(t, []string{"get", "element"}, []string{
 		"List or fetch Camunda runtime element instances",
-		"Use --key when you know an element instance key",
-		"Omit --key to list or search element instances by process instance, BPMN element ID, state, type, process definition, or BPMN process ID",
-		"Search mode follows the shared get paging and limit conventions",
-		"--batch-size controls each backend page request",
-		"--limit caps returned element rows across all pages",
-		"JSON, keys-only, quiet, and automation output remain free of prompts and progress text",
-		"--total prints only the matching count",
-		"Compact human rows include dur:<duration>",
-		"Use --with-listeners to include runtime listener jobs under matching element rows",
-		"Use --json for the stable element payload and --keys-only when piping element instance keys",
-		"Element lookup and search require Camunda 8.8 or newer",
+		"Use --key for a known element instance",
+		"Otherwise search by process instance, BPMN element ID, state, type, process definition, or BPMN process ID",
+		"--batch-size controls each discovery request",
+		"--limit caps returned elements across all pages",
+		"--total to count matching elements",
+		"--with-listeners to include runtime listener jobs",
+		"Requires Camunda 8.8 or newer",
 		"Aliases:",
 		"ei",
 		"./c8volt get element --key <element-instance-key>",
@@ -2504,15 +2627,15 @@ func TestGetElementHelp_DocumentsSearchAndOutputModes(t *testing.T) {
 		"--json",
 		"--keys-only",
 	}, nil)
-	require.NotContains(t, output, "--all")
+	require.NotContains(t, output, "--all ")
 }
 
 func TestGetIncidentHelp_DocumentsAliasesPipelinesAndInheritedOutputModes(t *testing.T) {
 	output := assertCommandHelpOutput(t, []string{"get", "incident"}, []string{
-		"Get Camunda incidents by key or by search criteria",
+		"Get Camunda incidents by key or search criteria",
 		"repeated --key values or newline-separated keys from stdin with '-'",
-		"Search mode defaults to active incidents",
-		"When --bpmn-process-id is supplied in search mode, the BPMN process definition selector is validated before incident totals, keys-only output, process-instance-key output, or paging.",
+		"Search defaults to active incidents",
+		"A --bpmn-process-id selector must match a visible process definition before discovery",
 		"./c8volt get incident --key <incident-key>",
 		"./c8volt get incident --key <incident-key> --key <another-incident-key>",
 		"./c8volt get incident --state resolved --error-type io_mapping_error --limit 5",
@@ -2568,9 +2691,9 @@ func TestIncidentCommandHelpOmitsLegacyElementTerminology(t *testing.T) {
 
 func TestUpdateProcessInstanceHelp_DocumentsVariableUpdateDiscovery(t *testing.T) {
 	output := assertCommandHelpOutput(t, []string{"update"}, []string{
-		"Update existing resources",
+		"Update process-instance variables or job retries, timeouts, and worker outcomes",
 		"Camunda 8.8 or newer",
-		"unsupported-version error before these mutations",
+		"Requires Camunda 8.8 or newer",
 		"./c8volt update process-instance --key <process-instance-key> --vars",
 		"./c8volt update process-instance --key <process-instance-key> --vars-file",
 		"./c8volt --automation --json update process-instance --key <process-instance-key> --vars",
@@ -2578,14 +2701,14 @@ func TestUpdateProcessInstanceHelp_DocumentsVariableUpdateDiscovery(t *testing.T
 	require.Contains(t, output, "process-instance")
 
 	output = assertCommandHelpOutput(t, []string{"update", "process-instance"}, []string{
-		"Update process-instance variables by key",
-		"Provide exactly one variable payload source",
-		"--vars with a JSON object or --vars-file with a path",
+		"Update process-instance-scope variables",
+		"Supply exactly one payload source",
+		"--vars with a JSON object or --vars-file with its file path",
 		"repeated --key values or newline-separated keys from stdin with '-'",
-		"loads current process-instance-scope variables",
-		"Use --dry-run to preview without mutating",
-		"--auto-confirm for unattended mutation",
-		"Camunda 8.7 returns an unsupported-version error before mutation",
+		"loads current variables",
+		"Use --dry-run to inspect changes without mutation",
+		"--auto-confirm for unattended updates",
+		"Camunda 8.8 or newer",
 		"./c8volt update process-instance --key <process-instance-key> --vars '{\"customerTier\":\"gold\"}' --dry-run",
 		"./c8volt update process-instance --key <process-instance-key-a> --key <process-instance-key-b> --vars",
 		"printf '%s\\n' \"$PROCESS_INSTANCE_KEY_A\" \"$PROCESS_INSTANCE_KEY_B\" | ./c8volt update process-instance - --vars",
@@ -2598,7 +2721,7 @@ func TestUpdateProcessInstanceHelp_DocumentsVariableUpdateDiscovery(t *testing.T
 	require.Contains(t, output, "pi")
 
 	aliasOutput := assertCommandHelpOutput(t, []string{"update", "pi"}, []string{
-		"Update process-instance variables by key",
+		"Update process-instance-scope variables",
 		"--vars string",
 		"--vars-file string",
 		"--dry-run",
@@ -2618,36 +2741,33 @@ func TestProcessInstanceSelectorValidationHelpContract(t *testing.T) {
 			name: "get process-instance",
 			args: []string{"get", "pi", "--help"},
 			wants: []string{
-				"When --bpmn-process-id is set, c8volt validates that the process definition is visible before searching process instances.",
-				"A missing selector fails with a local diagnostic instead of looking like a valid empty result",
-				"--json, --automation, --keys-only, and non-TTY runs never prompt for recovery output.",
+				"A --bpmn-process-id selector must match a visible process definition before",
+				"A --bpmn-process-id selector must match a visible process definition",
 			},
 		},
 		{
 			name: "cancel process-instance",
 			args: []string{"cancel", "pi", "--help"},
 			wants: []string{
-				"When --bpmn-process-id is set, c8volt validates that the process definition is visible before searching process instances.",
-				"A missing selector fails with a local diagnostic before paging, dry-run planning, confirmation, or cancellation",
-				"If the selector is visible but no matching instances are found, no cancellation request is submitted.",
+				"A --bpmn-process-id selector must match a visible process definition before",
+				"A --bpmn-process-id selector must match a visible process definition before instance discovery",
+				"An empty selection completes without confirmation or cancellation",
 			},
 		},
 		{
 			name: "delete process-instance",
 			args: []string{"delete", "pi", "--help"},
 			wants: []string{
-				"When --bpmn-process-id is set, c8volt validates that the process definition is visible before searching process instances.",
-				"A missing selector fails with a local diagnostic before paging, dry-run planning, confirmation, cancellation, or deletion",
-				"If the selector is visible but no matching instances are found, no deletion request is submitted.",
+				"A --bpmn-process-id selector must match a visible process definition before",
+				"A --bpmn-process-id selector must match a visible process definition before instance discovery",
+				"An empty selection completes without confirmation or mutation",
 			},
 		},
 		{
 			name: "run process-instance",
 			args: []string{"run", "pi", "--help"},
 			wants: []string{
-				"When running by BPMN process ID, c8volt validates all requested process definitions before creating anything.",
-				"Mixed visible and missing BPMN IDs fail as one request, so no partial process instances are started",
-				"automation-oriented modes never prompt for recovery output.",
+				"All requested BPMN IDs must be visible before any instance is started",
 			},
 		},
 	}
@@ -2663,7 +2783,7 @@ func TestProcessInstanceSelectorValidationHelpContract(t *testing.T) {
 }
 
 // TestProcessDefinitionSelectorValidationHelpContract keeps process-definition
-// help text aligned with selector validation and watch repaint behavior.
+// help text aligned with selector validation and watch execution limits.
 func TestProcessDefinitionSelectorValidationHelpContract(t *testing.T) {
 	tests := []struct {
 		name  string
@@ -2674,28 +2794,18 @@ func TestProcessDefinitionSelectorValidationHelpContract(t *testing.T) {
 			name: "get process-definition",
 			args: []string{"get", "pd", "--help"},
 			wants: []string{
-				"Watch mode repaints one terminal view",
-				"Each refresh body",
-				"matches normal list output without watch-only snapshot labels.",
 				"Without a selector",
-				"`--watch` observes all visible process definitions.",
-				"JSON, keys-only,",
-				"XML,",
-				"quiet, and automation combinations are rejected before lookup work.",
-				"Existing",
-				"timeout and backoff retry settings bound the watch run",
-				"When `--bpmn-process-id` is set, c8volt validates that at least one visible",
-				"process definition matches the selector before rendering output.",
-				"A missing selector",
-				"fails with the shared local diagnostic instead of rendering an ambiguous empty list.",
+				"Without a selector it observes all visible definitions",
+				"--watch cannot be combined with --json, --keys-only, --xml, --quiet, or --automation",
+				"--watch repeats the lookup until interrupted, timed out, or retries are exhausted",
+				"A --bpmn-process-id selector must match a visible definition",
 			},
 		},
 		{
 			name: "delete process-definition",
 			args: []string{"delete", "pd", "--help"},
 			wants: []string{
-				"When --bpmn-process-id is set, c8volt validates visible process-definition matches before delete impact planning, confirmation, cancellation, or deletion.",
-				"A missing selector fails with the shared local diagnostic.",
+				"A --bpmn-process-id selector must match visible definitions before impact planning",
 			},
 		},
 	}

@@ -8,11 +8,9 @@ import "github.com/spf13/cobra"
 var opsPurgeCmd = &cobra.Command{
 	Use:   "purge",
 	Short: "Discover destructive operational cleanup workflows",
-	Long: `Discover destructive operational cleanup workflows.
+	Long: `Remove operational resources through validated cleanup workflows.
 
-The purge command group is reserved for workflows that remove operational
-targets through target-specific subcommands. This grouping command only shows
-available purge workflows and never performs cleanup by itself.`,
+Choose a subcommand to purge process definitions, orphan instances, or instances selected by incidents.`,
 	Example: `  ./c8volt ops purge --help
   ./c8volt ops purge orphan-process-instances --dry-run
   ./c8volt ops purge orphan-process-instances --state completed --limit 25 --auto-confirm --report-file orphan-purge.md`,

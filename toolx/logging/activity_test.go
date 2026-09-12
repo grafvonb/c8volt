@@ -6,7 +6,10 @@ package logging
 import (
 	"bytes"
 	"context"
+	"fmt"
+	"regexp"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -96,6 +99,55 @@ func TestActivityWriter_ClearsIndicatorBeforeDurableOutput(t *testing.T) {
 			require.Contains(t, out, "\r"+strings.Repeat(" ", activityClearWidth(len("| waiting"), w.maxWidth))+"\r"+tt.output)
 		})
 	}
+}
+
+// TestActivityWriter_ConcurrentDurableWritesClearAndRedrawWorkflowActivity verifies durable lines stay readable and restore the selected workflow scope under concurrent nested updates.
+func TestActivityWriter_ConcurrentDurableWritesClearAndRedrawWorkflowActivity(t *testing.T) {
+	t.Parallel()
+
+	var buf bytes.Buffer
+	w := newActivityWriter(&buf, true)
+
+	stopWorkflow := w.StartActivityWithImportance("deleting process-instance trees, 0/8", ActivityImportanceWorkflow)
+	w.tick()
+	stopWait := w.StartActivityWithImportance("waiting for process-instance state", ActivityImportanceWait)
+	stopHTTP := w.StartActivityWithImportance("loading process instance", ActivityImportanceHTTP)
+
+	const writes = 8
+	start := make(chan struct{})
+	errs := make(chan error, writes)
+	var wg sync.WaitGroup
+	for i := range writes {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			<-start
+			w.UpdateActivityWithImportance(fmt.Sprintf("waiting for process-instance %02d", i), ActivityImportanceWait)
+			w.UpdateActivityWithImportance(fmt.Sprintf("loading process-instance %02d", i), ActivityImportanceHTTP)
+			_, err := w.Write([]byte(fmt.Sprintf("INFO durable milestone %02d\n", i)))
+			errs <- err
+		}(i)
+	}
+
+	close(start)
+	wg.Wait()
+	close(errs)
+
+	for err := range errs {
+		require.NoError(t, err)
+	}
+
+	out := buf.String()
+	for i := range writes {
+		line := fmt.Sprintf("INFO durable milestone %02d\n", i)
+		require.Contains(t, out, line)
+		require.Regexp(t, regexp.MustCompile(`\r +\r`+regexp.QuoteMeta(line)), out)
+	}
+	require.Contains(t, lastActivityLine(out), "deleting process-instance trees, 0/8")
+
+	stopHTTP()
+	stopWait()
+	stopWorkflow()
 }
 
 // TestActivityWriter_DisabledSuppressesActivityOutput verifies root-level gating can silence the shared writer.
@@ -287,6 +339,33 @@ func TestActivityWriter_WorkflowRemainsVisibleAboveWaitAndHTTP(t *testing.T) {
 	stopWorkflow()
 }
 
+func TestActivityWriter_WorkflowUpdateStaysVisibleDuringNestedUpdates(t *testing.T) {
+	t.Parallel()
+
+	var buf bytes.Buffer
+	w := newActivityWriter(&buf, true)
+
+	stopWorkflow := w.StartActivityWithImportance("deleting process-instance trees, 0/64", ActivityImportanceWorkflow)
+	w.tick()
+	stopWait := w.StartActivityWithImportance("waiting for pi 123 state", ActivityImportanceWait)
+	stopHTTP := w.StartActivityWithImportance("loading process instance", ActivityImportanceHTTP)
+
+	w.UpdateActivityWithImportance("deleting process-instance trees, 18/64", ActivityImportanceWorkflow)
+	w.tick()
+
+	require.Equal(t, "- deleting process-instance trees, 18/64", lastActivityLine(buf.String()))
+
+	w.UpdateActivityWithImportance("loading process instance 42", ActivityImportanceHTTP)
+	w.UpdateActivityWithImportance("waiting for pi 456 state", ActivityImportanceWait)
+	w.tick()
+
+	require.Equal(t, `\ deleting process-instance trees, 18/64`, lastActivityLine(buf.String()))
+
+	stopHTTP()
+	stopWait()
+	stopWorkflow()
+}
+
 // TestActivityWriter_WaitFallsBackAboveHTTPAfterWorkflowStops verifies wait scopes outrank HTTP fallback after workflow progress ends.
 func TestActivityWriter_WaitFallsBackAboveHTTPAfterWorkflowStops(t *testing.T) {
 	t.Parallel()
@@ -306,6 +385,31 @@ func TestActivityWriter_WaitFallsBackAboveHTTPAfterWorkflowStops(t *testing.T) {
 
 	stopWait()
 	stopHTTP()
+}
+
+// TestActivityWriter_DurableRedrawKeepsNestedWorkflowPriority verifies durable output redraws the newest highest-priority nested workflow scope.
+func TestActivityWriter_DurableRedrawKeepsNestedWorkflowPriority(t *testing.T) {
+	t.Parallel()
+
+	var buf bytes.Buffer
+	w := newActivityWriter(&buf, true)
+
+	stopOuterWorkflow := w.StartActivityWithImportance("deleting process-instance trees, 2/8", ActivityImportanceWorkflow)
+	w.tick()
+	stopWait := w.StartActivityWithImportance("waiting for process-instance state", ActivityImportanceWait)
+	stopInnerWorkflow := w.StartActivityWithImportance("cleaning up process definitions, 1/3", ActivityImportanceWorkflow)
+
+	_, err := w.Write([]byte("WARN cleanup failed for process definition 225\n"))
+	require.NoError(t, err)
+	require.Contains(t, lastActivityLine(buf.String()), "cleaning up process definitions, 1/3")
+
+	stopInnerWorkflow()
+	require.Contains(t, lastActivityLine(buf.String()), "deleting process-instance trees, 2/8")
+
+	stopOuterWorkflow()
+	require.Contains(t, lastActivityLine(buf.String()), "waiting for process-instance state")
+
+	stopWait()
 }
 
 func TestStartActivityWithImportance_UsesPriorityContextSink(t *testing.T) {

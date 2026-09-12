@@ -24,6 +24,7 @@ func renderOpsExecuteRetentionPolicyResult(cmd *cobra.Command, result ops.Retent
 	} else {
 		renderHumanLine(cmd, "execute retention policy")
 	}
+	renderAttachedTenantContext(cmd)
 	renderOpsExecuteRetentionPolicyDiscovery(cmd, result)
 	renderOpsExecuteRetentionPolicyDeletePlan(cmd, result)
 	renderOpsExecuteRetentionPolicyDeletion(cmd, result)
@@ -214,6 +215,7 @@ func renderOpsExecuteRetentionPolicyMarkdownReport(report ops.RetentionAuditRepo
 	writeMarkdownReportField(&out, "Camunda Version", report.CamundaVersion)
 	writeMarkdownReportField(&out, "Profile", report.ProfileIdentity)
 	writeMarkdownReportField(&out, "Tenant", report.TenantID)
+	writeMarkdownTenantContext(&out, report.TenantContext)
 	writeMarkdownReportField(&out, "Retention Days", fmt.Sprintf("%d", report.RetentionDays))
 	writeMarkdownReportField(&out, "Derived End Date Boundary", report.DerivedEndDateBoundary)
 	writeMarkdownReportField(&out, "Auto Confirm", fmt.Sprintf("%t", report.AutoConfirm))

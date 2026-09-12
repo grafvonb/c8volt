@@ -25,7 +25,8 @@ var embedDeployCmd = &cobra.Command{
 	Short: "Deploy bundled BPMN fixtures",
 	Long: "Deploy bundled BPMN fixtures.\n\n" +
 		"Use `--all` for the configured Camunda version, or pass one or more `--file` values from `embed list`. " +
-		"Add --run to start one process instance after deployment.",
+		"Add --run to start one process instance after deployment. " +
+		"--all-tenants is not supported because deployment requires one destination tenant.",
 	Example: `  ./c8volt embed list
   ./c8volt embed deploy --all
   ./c8volt embed deploy --file processdefinitions/<embedded-process>.bpmn
@@ -70,11 +71,17 @@ var embedDeployCmd = &cobra.Command{
 		}
 
 		// TODO (Adam): currently only deployment of process definitions is supported, extend to other resource types as needed
+		tenantCtx := attachCreationTenantContext(cmd, cfg)
+		renderTenantContext(cmd, tenantCtx)
 		opts := collectOptions()
+		deployProgress := newProcessDefinitionDeploySemanticProgress(cmd)
+		opts = appendProcessDefinitionDeployProgressOptions(cmd, opts, deployProgress)
 		pdds, err := cli.DeployProcessDefinition(cmd.Context(), units, opts...)
+		deployProgress.Close()
 		if err != nil {
 			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("deploying embedded resource(s): %w", err))
 		}
+		attachTenantContext(cmd, withTenantContextEvidence(tenantCtx, processDefinitionDeploymentTenantIDs(pdds), 0))
 		err = listProcessDefinitionDeploymentsView(cmd, pdds)
 		if err != nil {
 			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("rendering process definition deployment view: %w", err))
@@ -104,4 +111,6 @@ func init() {
 	embedDeployCmd.MarkFlagsMutuallyExclusive("file", "all")
 
 	fs.BoolVar(&flagEmbedDeployWithRun, "run", false, "start one process instance after deployment")
+
+	setAllTenantsSupport(embedDeployCmd, AllTenantsSupportRejectedConcreteDestination)
 }

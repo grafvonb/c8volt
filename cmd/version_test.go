@@ -87,7 +87,7 @@ func TestVersionCommand_DefaultOutputRemainsCompactPlainText(t *testing.T) {
 func TestVersionHelp_DocumentsReadOnlyAutomationGuidance(t *testing.T) {
 	output := executeRootForTest(t, "version", "--help")
 
-	require.Contains(t, output, "Use --json for version metadata")
+	require.Contains(t, output, "Show the c8volt version, build metadata")
 	require.Contains(t, output, "./c8volt version --json")
 }
 

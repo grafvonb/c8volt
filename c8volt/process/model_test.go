@@ -67,6 +67,32 @@ func TestProcessDefinitionWatchSnapshotRequestConversionPreservesSelectorFields(
 	}, got)
 }
 
+// TestProcessDefinitionSearchRequestConversionPreservesLatestIntent verifies
+// public paged search can select latest service traversal without schema churn.
+func TestProcessDefinitionSearchRequestConversionPreservesLatestIntent(t *testing.T) {
+	got := toDomainProcessDefinitionSearchRequest(ProcessDefinitionSearchRequest{
+		Filter: ProcessDefinitionFilter{
+			BpmnProcessId:     "invoice",
+			ProcessVersion:    4,
+			ProcessVersionTag: "stable",
+		},
+		Page:   ProcessDefinitionPageRequest{From: 5, Size: 10, After: "cursor-2"},
+		Limit:  3,
+		Latest: true,
+	})
+
+	require.Equal(t, d.ProcessDefinitionSearchRequest{
+		Filter: d.ProcessDefinitionFilter{
+			BpmnProcessId:     "invoice",
+			ProcessVersion:    4,
+			ProcessVersionTag: "stable",
+		},
+		Page:   d.ProcessDefinitionPageRequest{From: 5, Size: 10, After: "cursor-2"},
+		Limit:  3,
+		Latest: true,
+	}, got)
+}
+
 // TestProcessDefinitionWatchSnapshotConversionPreservesPagingMetadata verifies
 // service-collected snapshot counts and reported totals cross the facade boundary.
 func TestProcessDefinitionWatchSnapshotConversionPreservesPagingMetadata(t *testing.T) {
@@ -98,4 +124,25 @@ func TestProcessDefinitionWatchSnapshotConversionPreservesPagingMetadata(t *test
 	require.Equal(t, "invoice", got.Items[0].BpmnProcessId)
 	require.NotNil(t, got.Items[0].Statistics)
 	require.True(t, got.Items[0].Statistics.IncidentCountSupported)
+}
+
+// TestDryRunPIKeyExpansionConversionCopiesTenantEvidence verifies tenant
+// evidence is mapped across the process facade without sharing mutable slices.
+func TestDryRunPIKeyExpansionConversionCopiesTenantEvidence(t *testing.T) {
+	domainTenants := []string{"tenant-b", "tenant-a"}
+	got := fromDomainDryRunPIKeyExpansion(d.DryRunPIKeyExpansion{
+		TenantEvidence: d.TenantEvidence{
+			ResolvedTenantIDs:  domainTenants,
+			UnknownTargetCount: 1,
+			TargetCount:        3,
+		},
+	})
+
+	domainTenants[0] = "changed"
+
+	require.Equal(t, TenantEvidence{
+		ResolvedTenantIDs:  []string{"tenant-b", "tenant-a"},
+		UnknownTargetCount: 1,
+		TargetCount:        3,
+	}, got.TenantEvidence)
 }

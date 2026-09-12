@@ -10,17 +10,13 @@ Delete process definition resources
 
 ### Synopsis
 
-Delete process definition resources from Camunda.
+Delete process definition resources from Camunda 8.9 or newer.
 
-By default c8volt first checks delete impact without changing anything: active process instances, required cancellation roots and process-instance tree scope when --force is used, and batch-operation read access before prompting. Process-definition deletion requires the full process-definition history deletion capability, currently Camunda 8.9 or newer. With --force, it cancels the root process instances, deletes the affected process-instance history, then asks Camunda to delete the process definition and remaining associated history. If you only want to delete process instances for a definition, use `c8volt delete process-instance --bpmn-process-id <bpmn-process-id>`.
+Before mutation, c8volt checks active-instance impact, required cancellation roots, affected instance families, and batch-operation read access. With --force, it cancels root instances, deletes affected instance history, then deletes the definition and remaining associated history.
 
-Tenant contract: --tenant scopes BPMN selector discovery where supported. Explicit --key and stdin process-definition keys are backend-authorized admin input; existing impact, confirmation, force, and wait safety checks still apply.
+--tenant limits BPMN selector discovery. An empty tenant or --all-tenants leaves discovery unfiltered across accessible tenants. Explicit --key and stdin keys use backend authorization without tenant filtering. A --bpmn-process-id selector must match visible definitions before impact planning.
 
-When --bpmn-process-id is set, c8volt validates visible process-definition matches before delete impact planning, confirmation, cancellation, or deletion. A missing selector fails with the shared local diagnostic.
-
-Use --dry-run to preview process-definition delete impact without submitting deletion or cancellation requests.
-
-Use --auto-confirm for unattended destructive runs.
+Use --dry-run to preview impact without mutation, or --auto-confirm for unattended deletion. To delete only a definition's instances, use delete process-instance --bpmn-process-id <bpmn-process-id>.
 
 ```
 c8volt delete process-definition [flags]
@@ -31,9 +27,13 @@ c8volt delete process-definition [flags]
 ```
   ./c8volt delete process-definition --key <process-definition-key> --auto-confirm
   ./c8volt delete process-definition --key <process-definition-key> --dry-run
+  ./c8volt --tenant tenant-a delete process-definition --key <process-definition-key> --dry-run
+  ./c8volt --tenant tenant-a delete process-definition --bpmn-process-id <bpmn-process-id> --latest --dry-run
+  ./c8volt --tenant "" delete process-definition --bpmn-process-id <bpmn-process-id> --latest --dry-run
   ./c8volt delete process-definition --bpmn-process-id <bpmn-process-id> --latest --force
   ./c8volt delete process-definition --bpmn-process-id <bpmn-process-id> --latest --dry-run
   ./c8volt delete process-definition --bpmn-process-id <bpmn-process-id> --latest --auto-confirm
+  ./c8volt --verbose delete process-definition --bpmn-process-id <bpmn-process-id> --latest --auto-confirm
   ./c8volt get process-definition --bpmn-process-id <bpmn-process-id> --latest --json
   ./c8volt get process-definition --bpmn-process-id <bpmn-process-id> --latest --keys-only | ./c8volt delete process-definition --auto-confirm -
 ```
@@ -59,6 +59,7 @@ c8volt delete process-definition [flags]
 ### Options inherited from parent commands
 
 ```
+      --all-tenants        clear configured tenant filtering and search all tenants visible to the authenticated user; mutually exclusive with --tenant
   -y, --auto-confirm       auto-confirm prompts for non-interactive use
       --automation         enable non-interactive mode for commands that explicitly support it
       --config string      path to config file
@@ -69,7 +70,7 @@ c8volt delete process-definition [flags]
       --no-indicator       disable transient terminal activity indicators
       --profile string     config active profile name to use (e.g. dev, prod)
   -q, --quiet              suppress output except errors
-      --tenant string      tenant ID for discovery/search, selection, create, deploy, and run flows; explicit keys/IDs remain backend-authorized
+      --tenant string      tenant ID for discovery/search, selection, create, deploy, and run flows; explicit empty values can clear configured discovery filters, and explicit keys/IDs remain backend-authorized
       --timeout duration   HTTP request timeout (default 30s)
   -v, --verbose            show additional output
 ```

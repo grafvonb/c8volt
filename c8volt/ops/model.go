@@ -9,6 +9,7 @@ import (
 	"github.com/grafvonb/c8volt/c8volt/incident"
 	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/grafvonb/c8volt/c8volt/resource"
+	"github.com/grafvonb/c8volt/c8volt/tenant"
 	"github.com/grafvonb/c8volt/toolx"
 	"github.com/grafvonb/c8volt/typex"
 )
@@ -259,6 +260,7 @@ type RepairFrozenSet struct {
 	RootProcessKeys            typex.Keys                               `json:"rootProcessKeys,omitempty"`
 	JobKeys                    typex.Keys                               `json:"jobKeys,omitempty"`
 	VariableScopes             typex.Keys                               `json:"variableScopes,omitempty"`
+	TenantEvidence             process.TenantEvidence                   `json:"tenantEvidence,omitempty"`
 	OriginalIncidents          []incident.ProcessInstanceIncidentDetail `json:"originalIncidents,omitempty"`
 	IncidentFilters            incident.Filter                          `json:"incidentFilters,omitempty"`
 	ProcessFilters             process.ProcessInstanceFilter            `json:"processFilters,omitempty"`
@@ -335,6 +337,7 @@ type RepairAuditReport struct {
 	CamundaVersion   string                         `json:"camundaVersion,omitempty"`
 	ProfileIdentity  string                         `json:"profileIdentity,omitempty"`
 	TenantID         string                         `json:"tenantId,omitempty"`
+	TenantContext    *tenant.Context                `json:"tenantContext,omitempty"`
 	Request          RepairRequest                  `json:"request,omitempty"`
 	FrozenSet        RepairFrozenSet                `json:"frozenSet,omitempty"`
 	Plan             []RepairPlanItem               `json:"plan,omitempty"`
@@ -428,13 +431,14 @@ type SmokeTestPlan struct {
 
 // SmokeTestDeploymentResult captures deployment step output.
 type SmokeTestDeploymentResult struct {
-	Status                   WorkflowStepStatus `json:"status,omitempty"`
-	FixtureFile              string             `json:"fixtureFile,omitempty"`
-	BpmnProcessID            string             `json:"bpmnProcessId,omitempty"`
-	ProcessDefinitionKey     string             `json:"processDefinitionKey,omitempty"`
-	ProcessDefinitionVersion int32              `json:"processDefinitionVersion,omitempty"`
-	TenantID                 string             `json:"tenantId,omitempty"`
-	Errors                   []string           `json:"errors,omitempty"`
+	Status                   WorkflowStepStatus     `json:"status,omitempty"`
+	FixtureFile              string                 `json:"fixtureFile,omitempty"`
+	BpmnProcessID            string                 `json:"bpmnProcessId,omitempty"`
+	ProcessDefinitionKey     string                 `json:"processDefinitionKey,omitempty"`
+	ProcessDefinitionVersion int32                  `json:"processDefinitionVersion,omitempty"`
+	TenantID                 string                 `json:"tenantId,omitempty"`
+	TenantEvidence           process.TenantEvidence `json:"tenantEvidence,omitempty"`
+	Errors                   []string               `json:"errors,omitempty"`
 }
 
 // SmokeTestRunItem captures one process-instance creation attempt.
@@ -446,12 +450,13 @@ type SmokeTestRunItem struct {
 
 // SmokeTestRunResult captures process-instance creation output.
 type SmokeTestRunResult struct {
-	Status              WorkflowStepStatus `json:"status,omitempty"`
-	RequestedCount      int                `json:"requestedCount"`
-	CreatedCount        int                `json:"createdCount"`
-	ProcessInstanceKeys typex.Keys         `json:"processInstanceKeys,omitempty"`
-	Items               []SmokeTestRunItem `json:"items,omitempty"`
-	Errors              []string           `json:"errors,omitempty"`
+	Status              WorkflowStepStatus     `json:"status,omitempty"`
+	RequestedCount      int                    `json:"requestedCount"`
+	CreatedCount        int                    `json:"createdCount"`
+	ProcessInstanceKeys typex.Keys             `json:"processInstanceKeys,omitempty"`
+	TenantEvidence      process.TenantEvidence `json:"tenantEvidence,omitempty"`
+	Items               []SmokeTestRunItem     `json:"items,omitempty"`
+	Errors              []string               `json:"errors,omitempty"`
 }
 
 // SmokeTestTraversalSummary captures report-safe traversal details for one created instance family.
@@ -489,13 +494,14 @@ type SmokeTestCleanupEligibility struct {
 
 // SmokeTestProcessInstanceCleanupResult captures delete-pi cleanup output.
 type SmokeTestProcessInstanceCleanupResult struct {
-	Status        WorkflowStepStatus     `json:"status,omitempty"`
-	SubmittedKeys typex.Keys             `json:"submittedKeys,omitempty"`
-	Items         []process.DeleteReport `json:"items,omitempty"`
-	Submitted     bool                   `json:"submitted,omitempty"`
-	Confirmed     bool                   `json:"confirmed,omitempty"`
-	NoWait        bool                   `json:"noWait,omitempty"`
-	Errors        []string               `json:"errors,omitempty"`
+	Status         WorkflowStepStatus     `json:"status,omitempty"`
+	SubmittedKeys  typex.Keys             `json:"submittedKeys,omitempty"`
+	TenantEvidence process.TenantEvidence `json:"tenantEvidence,omitempty"`
+	Items          []process.DeleteReport `json:"items,omitempty"`
+	Submitted      bool                   `json:"submitted,omitempty"`
+	Confirmed      bool                   `json:"confirmed,omitempty"`
+	NoWait         bool                   `json:"noWait,omitempty"`
+	Errors         []string               `json:"errors,omitempty"`
 }
 
 // SmokeTestProcessDefinitionCleanupResult captures process-definition cleanup output.
@@ -534,6 +540,7 @@ type SmokeTestAuditReport struct {
 	CamundaVersion   string                    `json:"camundaVersion,omitempty"`
 	ProfileIdentity  string                    `json:"profileIdentity,omitempty"`
 	TenantID         string                    `json:"tenantId,omitempty"`
+	TenantContext    *tenant.Context           `json:"tenantContext,omitempty"`
 	Fixture          EmbeddedSmokeTestFixture  `json:"fixture,omitempty"`
 	Plan             SmokeTestPlan             `json:"plan,omitempty"`
 	Deployment       SmokeTestDeploymentResult `json:"deployment,omitempty"`
@@ -603,6 +610,7 @@ type DeletionPlan struct {
 	RequestedKeys        typex.Keys                   `json:"requestedKeys,omitempty"`
 	AffectedKeys         typex.Keys                   `json:"affectedKeys,omitempty"`
 	RootKeys             typex.Keys                   `json:"rootKeys,omitempty"`
+	TenantEvidence       process.TenantEvidence       `json:"tenantEvidence,omitempty"`
 	RequiresConfirmation bool                         `json:"requiresConfirmation,omitempty"`
 	DryRunPreview        process.DryRunPIKeyExpansion `json:"dryRunPreview,omitempty"`
 	Errors               []string                     `json:"errors,omitempty"`
@@ -627,6 +635,7 @@ type OrphanPurgeReport struct {
 	C8voltVersion    string                        `json:"c8voltVersion,omitempty"`
 	CamundaVersion   string                        `json:"camundaVersion,omitempty"`
 	ProfileIdentity  string                        `json:"profileIdentity,omitempty"`
+	TenantContext    *tenant.Context               `json:"tenantContext,omitempty"`
 	SelectionFilters process.ProcessInstanceFilter `json:"selectionFilters,omitempty"`
 	Discovery        OrphanDiscoveryResult         `json:"discovery,omitempty"`
 	DeletionPlan     DeletionPlan                  `json:"deletionPlan,omitempty"`
@@ -699,6 +708,7 @@ type RetentionDeletePlan struct {
 	SeedKeys              typex.Keys                `json:"seedKeys,omitempty"`
 	ResolvedRootKeys      typex.Keys                `json:"resolvedRootKeys,omitempty"`
 	AffectedKeys          typex.Keys                `json:"affectedKeys,omitempty"`
+	TenantEvidence        process.TenantEvidence    `json:"tenantEvidence,omitempty"`
 	DuplicateKeys         typex.Keys                `json:"duplicateKeys,omitempty"`
 	FinalStateItems       []process.ProcessInstance `json:"finalStateItems,omitempty"`
 	NonFinalAffectedItems []process.ProcessInstance `json:"nonFinalAffectedItems,omitempty"`
@@ -731,6 +741,7 @@ type RetentionAuditReport struct {
 	CamundaVersion         string                        `json:"camundaVersion,omitempty"`
 	ProfileIdentity        string                        `json:"profileIdentity,omitempty"`
 	TenantID               string                        `json:"tenantId,omitempty"`
+	TenantContext          *tenant.Context               `json:"tenantContext,omitempty"`
 	RetentionDays          int                           `json:"retentionDays"`
 	DerivedEndDateBoundary string                        `json:"derivedEndDateBoundary,omitempty"`
 	SelectionFilters       process.ProcessInstanceFilter `json:"selectionFilters,omitempty"`
@@ -833,6 +844,7 @@ type IncidentPurgeDeletePlan struct {
 	CandidateProcessInstanceKeys          typex.Keys                `json:"candidateProcessInstanceKeys,omitempty"`
 	ResolvedRootKeys                      typex.Keys                `json:"resolvedRootKeys,omitempty"`
 	AffectedKeys                          typex.Keys                `json:"affectedKeys,omitempty"`
+	TenantEvidence                        process.TenantEvidence    `json:"tenantEvidence,omitempty"`
 	DuplicateCandidateProcessInstanceKeys typex.Keys                `json:"duplicateCandidateProcessInstanceKeys,omitempty"`
 	DuplicateResolvedRootKeys             typex.Keys                `json:"duplicateResolvedRootKeys,omitempty"`
 	FinalStateItems                       []process.ProcessInstance `json:"finalStateItems,omitempty"`
@@ -866,6 +878,7 @@ type IncidentPurgeReport struct {
 	CamundaVersion   string                        `json:"camundaVersion,omitempty"`
 	ProfileIdentity  string                        `json:"profileIdentity,omitempty"`
 	TenantID         string                        `json:"tenantId,omitempty"`
+	TenantContext    *tenant.Context               `json:"tenantContext,omitempty"`
 	SelectionFilters incident.Filter               `json:"selectionFilters,omitempty"`
 	Discovery        IncidentDiscoveryResult       `json:"discovery,omitempty"`
 	DeletePlan       IncidentPurgeDeletePlan       `json:"deletePlan,omitempty"`
@@ -974,6 +987,7 @@ type AllProcessDefinitionsPurgeDeletePlan struct {
 	Status                                  WorkflowStepStatus                         `json:"status,omitempty"`
 	CandidateProcessDefinitionKeys          typex.Keys                                 `json:"candidateProcessDefinitionKeys,omitempty"`
 	Items                                   []resource.DeleteProcessDefinitionPlanItem `json:"items,omitempty"`
+	TenantEvidence                          process.TenantEvidence                     `json:"tenantEvidence,omitempty"`
 	DuplicateCandidateProcessDefinitionKeys typex.Keys                                 `json:"duplicateCandidateProcessDefinitionKeys,omitempty"`
 	AffectedProcessInstanceCount            int64                                      `json:"affectedProcessInstanceCount,omitempty"`
 	ActiveProcessInstanceCount              int64                                      `json:"activeProcessInstanceCount,omitempty"`
@@ -1005,6 +1019,7 @@ type AllProcessDefinitionsPurgeReport struct {
 	CamundaVersion   string                                   `json:"camundaVersion,omitempty"`
 	ProfileIdentity  string                                   `json:"profileIdentity,omitempty"`
 	TenantID         string                                   `json:"tenantId,omitempty"`
+	TenantContext    *tenant.Context                          `json:"tenantContext,omitempty"`
 	SelectionFilters ProcessDefinitionSelection               `json:"selectionFilters,omitempty"`
 	Discovery        ProcessDefinitionDiscoveryResult         `json:"discovery,omitempty"`
 	DeletePlan       AllProcessDefinitionsPurgeDeletePlan     `json:"deletePlan,omitempty"`

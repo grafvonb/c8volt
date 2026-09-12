@@ -14,15 +14,15 @@ Cancel process instances by key or search filters.
 
 By default c8volt validates the affected root and descendant instances, asks for confirmation, and waits until cancellation is observed. Use --force when a selected child must be escalated to its root instance.
 
-Tenant contract: --tenant scopes search-derived candidate discovery where supported. Explicit --key and stdin keys are backend-authorized admin input; existing dry-run, confirmation, force, and wait safety checks still apply.
+Cancellation succeeds when every affected family member is completed, canceled, terminated, or absent. The explicit expect process-instance --state canceled check still requires canceled or terminated instances.
 
-When --bpmn-process-id is set, c8volt validates that the process definition is visible before searching process instances. A missing selector fails with a local diagnostic before paging, dry-run planning, confirmation, or cancellation; --json, --automation, and non-TTY runs never prompt for recovery output. If the selector is visible but no matching instances are found, no cancellation request is submitted.
+--tenant limits search-derived selection. An empty tenant or --all-tenants leaves discovery unfiltered across accessible tenants. Explicit --key and stdin keys use backend authorization without tenant filtering.
 
-Search mode pages through matching process instances by default. --batch-size controls each discovery page request, --limit caps the selected process-instance scope across all pages, and --workers, --fail-fast, and --no-worker-limit bound independent planning or cancellation work. Verbose paging progress is written away from stdout; JSON, quiet, and automation output remain free of prompts unless confirmation is explicitly supplied.
+A --bpmn-process-id selector must match a visible process definition before instance discovery. An empty selection completes without confirmation or cancellation.
 
-Use --dry-run to preview selected, in-scope, final-state, and partial-scope instances without cancelling.
+--batch-size controls each discovery request; --limit caps selected instances across all pages. --workers, --fail-fast, and --no-worker-limit control planning and cancellation work.
 
-Use --auto-confirm for unattended destructive runs.
+Use --dry-run to preview the affected family without cancelling. Use --auto-confirm for unattended cancellation.
 
 ```
 c8volt cancel process-instance [flags]
@@ -34,10 +34,16 @@ c8volt cancel process-instance [flags]
   ./c8volt cancel process-instance --key <process-instance-key>
   ./c8volt cancel process-instance --key <process-instance-key> --dry-run
   ./c8volt cancel process-instance --key <process-instance-key> --force
+  ./c8volt --tenant tenant-a cancel process-instance --key <process-instance-key> --dry-run
+  ./c8volt --tenant tenant-a cancel process-instance --state active --limit 5 --dry-run
+  ./c8volt --tenant "" cancel process-instance --state active --limit 5 --dry-run
   ./c8volt cancel process-instance --state active --batch-size 250 --limit 5 --dry-run
+  ./c8volt cancel process-instance --state active --json --dry-run
+  ./c8volt cancel process-instance --state active --keys-only
   ./c8volt cancel process-instance --state active --start-date-before 2026-05-31 --limit 5 --dry-run
   ./c8volt cancel process-instance --state active --start-date-newer-days 30 --limit 5 --dry-run
   ./c8volt cancel process-instance --bpmn-process-id <bpmn-process-id> --state active --limit 5 --auto-confirm
+  ./c8volt --verbose cancel process-instance --state active --limit 25 --auto-confirm
   ./c8volt expect process-instance --key <process-instance-key> --state canceled
   ./c8volt get process-instance --key <process-instance-key> --keys-only | ./c8volt cancel process-instance --auto-confirm -
 ```
@@ -67,12 +73,13 @@ c8volt cancel process-instance [flags]
       --start-date-newer-days int   only include process instances N days old or newer (0 means today) (default -1)
       --start-date-older-days int   only include process instances N days old or older (default -1)
   -s, --state string                state to filter process instances: all, active, completed, canceled, terminated (default "all")
-  -w, --workers int                 maximum concurrent workers when --batch-size > 1 (default: min(batch-size, 2*GOMAXPROCS, 32))
+  -w, --workers int                 maximum concurrent workers for queued work; mutation work uses root trees (default: min(queued work, 2*GOMAXPROCS, 32)); independent of discovery page size
 ```
 
 ### Options inherited from parent commands
 
 ```
+      --all-tenants        clear configured tenant filtering and search all tenants visible to the authenticated user; mutually exclusive with --tenant
   -y, --auto-confirm       auto-confirm prompts for non-interactive use
       --automation         enable non-interactive mode for commands that explicitly support it
       --config string      path to config file
@@ -83,7 +90,7 @@ c8volt cancel process-instance [flags]
       --no-indicator       disable transient terminal activity indicators
       --profile string     config active profile name to use (e.g. dev, prod)
   -q, --quiet              suppress output except errors
-      --tenant string      tenant ID for discovery/search, selection, create, deploy, and run flows; explicit keys/IDs remain backend-authorized
+      --tenant string      tenant ID for discovery/search, selection, create, deploy, and run flows; explicit empty values can clear configured discovery filters, and explicit keys/IDs remain backend-authorized
       --timeout duration   HTTP request timeout (default 30s)
   -v, --verbose            show additional output
 ```

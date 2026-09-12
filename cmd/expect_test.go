@@ -9,10 +9,12 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
 
+	options "github.com/grafvonb/c8volt/c8volt/foptions"
 	"github.com/grafvonb/c8volt/internal/exitcode"
 	"github.com/grafvonb/c8volt/testx"
 	"github.com/stretchr/testify/require"
@@ -44,6 +46,49 @@ func TestExpectHelp_DocumentsWaitVerificationUsage(t *testing.T) {
 	}, nil)
 	require.Contains(t, output, "--state")
 	require.Contains(t, output, "--incident")
+}
+
+// TestExpectProcessInstanceDefaultMilestonesAndFinalFlush verifies multi-key
+// expectations keep default progress aggregate-first and flush accumulated
+// progress once when the reporter closes.
+func TestExpectProcessInstanceDefaultMilestonesAndFinalFlush(t *testing.T) {
+	resetProcessInstanceCommandGlobals()
+	t.Cleanup(resetProcessInstanceCommandGlobals)
+	now := time.Date(2026, 9, 1, 7, 8, 0, 0, time.UTC)
+	expectProcessInstanceSemanticProgressNow = func() time.Time { return now }
+	t.Cleanup(func() { expectProcessInstanceSemanticProgressNow = time.Now })
+
+	cmd, stderr := newSemanticProgressStderrCommand()
+	reporter := newExpectProcessInstanceSemanticProgress(cmd, 2)
+	opts := appendExpectProcessInstanceProgressOption(nil, reporter)
+	progress := options.ApplyFacadeOptions(opts).Progress
+
+	now = now.Add(opsDurableMilestoneMinimumElapsed)
+	reportExpectProcessInstanceCompletionEvent(progress, "pi-1", 2, options.CompletionDispositionConfirmed, "")
+	reportExpectProcessInstanceCompletionEvent(progress, "pi-2", 2, options.CompletionDispositionFailed, "state remained active")
+	reporter.Close()
+	reporter.Close()
+
+	output := stderr.String()
+	require.Contains(t, output, "waiting for process-instance expectations, 1/2 process instance(s)")
+	require.Contains(t, output, "pi-2 failed: state remained active (waiting for process-instance expectations, 2/2 process instance(s), 1 failed)")
+	require.NotContains(t, output, "pi-1 satisfied")
+}
+
+// reportExpectProcessInstanceCompletionEvent sends one facade-level expectation
+// completion fact through the configured expect command progress callback.
+func reportExpectProcessInstanceCompletionEvent(progress func(options.ProgressEvent), identity string, total int, disposition options.CompletionDisposition, detail string) {
+	progress(options.ProgressEvent{
+		Kind: options.ProgressEventKindCompletion,
+		Completion: &options.CompletionProgress{
+			Phase:         expectProcessInstanceCompletionPhase,
+			CoreResource:  "process instance(s)",
+			Total:         total,
+			Identity:      identity,
+			Disposition:   disposition,
+			FailureDetail: detail,
+		},
+	})
 }
 
 // Verifies expect process-instance rejects unsupported state values through invalid-input handling.
@@ -213,20 +258,29 @@ apis:
 	require.Contains(t, string(output), "2251799813685255")
 }
 
-// Strict state expectations must not inherit run confirmation's broader observable-state success set.
+// Strict canceled expectations accept only canceled-equivalent states across
+// human and JSON command contracts, not every terminal cleanup state.
 func TestExpectProcessInstanceCommand_StateMismatchRemainsStrict(t *testing.T) {
-	var attempts atomic.Int32
-	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, http.MethodGet, r.Method)
-		require.Equal(t, "/v2/process-instances/2251799813685255", r.URL.Path)
+	for _, state := range []string{"COMPLETED", "ABSENT", "CANCELED", "TERMINATED"} {
+		for _, mode := range []string{"human", "json"} {
+			t.Run(strings.ToLower(state)+"/"+mode, func(t *testing.T) {
+				var attempts atomic.Int32
+				srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					require.Equal(t, http.MethodGet, r.Method)
+					require.Equal(t, "/v2/process-instances/2251799813685255", r.URL.Path)
 
-		attempts.Add(1)
-		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"2251799813685255","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}`))
-	}))
-	t.Cleanup(srv.Close)
+					attempts.Add(1)
+					w.Header().Set("Content-Type", "application/json")
+					if state == "ABSENT" {
+						w.WriteHeader(http.StatusNotFound)
+						_, _ = w.Write([]byte(`{"title":"Not Found","status":404,"detail":"resource not found"}`))
+						return
+					}
+					_, _ = w.Write([]byte(fmt.Sprintf(`{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"2251799813685255","startDate":"2026-03-23T18:00:00Z","state":%q,"tenantId":"tenant"}`, state)))
+				}))
+				t.Cleanup(srv.Close)
 
-	cfgPath := writeRawTestConfig(t, `app:
+				cfgPath := writeRawTestConfig(t, `app:
   camunda_version: 8.8
   backoff:
     strategy: fixed
@@ -240,18 +294,48 @@ apis:
     base_url: `+srv.URL+`
 `)
 
-	output, err := testx.RunCmdSubprocessWithStdin(t, "TestHelperExpectProcessInstanceCommand_StateMismatchRemainsStrict", map[string]string{
-		"C8VOLT_TEST_CONFIG": cfgPath,
-	}, "2251799813685255\n")
-	require.Error(t, err)
+				output, err := testx.RunCmdSubprocessWithStdin(t, "TestHelperExpectProcessInstanceCommand_StateMismatchRemainsStrict", map[string]string{
+					"C8VOLT_TEST_CONFIG":      cfgPath,
+					"C8VOLT_TEST_RENDER_MODE": mode,
+				}, "2251799813685255\n")
+				matchesCanceled := state == "CANCELED" || state == "TERMINATED"
+				if matchesCanceled {
+					require.NoError(t, err)
+					require.Equal(t, int32(1), attempts.Load())
+				} else {
+					require.Error(t, err)
+					exitErr, ok := err.(*exec.ExitError)
+					require.True(t, ok)
+					require.Equal(t, exitcode.Error, exitErr.ExitCode())
+					require.GreaterOrEqual(t, attempts.Load(), int32(2))
+				}
 
-	exitErr, ok := err.(*exec.ExitError)
-	require.True(t, ok)
-	require.Equal(t, exitcode.Error, exitErr.ExitCode())
-	require.GreaterOrEqual(t, attempts.Load(), int32(2))
-	require.Contains(t, string(output), "expecting process instance")
-	require.Contains(t, string(output), "state")
-	require.Contains(t, string(output), "COMPLETED")
+				if mode == "json" {
+					var envelope map[string]any
+					require.NoError(t, json.Unmarshal(output, &envelope))
+					require.Equal(t, "expect process-instance", envelope["command"])
+					if matchesCanceled {
+						require.Equal(t, string(OutcomeSucceeded), envelope["outcome"])
+						require.NotNil(t, envelope["payload"])
+						require.Nil(t, envelope["detail"])
+					} else {
+						require.Equal(t, string(OutcomeFailed), envelope["outcome"])
+						require.NotNil(t, envelope["detail"])
+						require.Nil(t, envelope["payload"])
+					}
+					return
+				}
+
+				if matchesCanceled {
+					require.Contains(t, string(output), "1 pi reached states")
+				} else {
+					require.Contains(t, string(output), "expecting process instance")
+					require.Contains(t, string(output), "state")
+					require.Contains(t, string(output), "CANCELED")
+				}
+			})
+		}
+	}
 }
 
 // Incident waits must poll the full process instance until the marker changes, not only inspect state.
@@ -427,6 +511,61 @@ apis:
 	require.Contains(t, output, `"ok": true`)
 }
 
+// TestExpectProcessInstanceCommand_MultiKeyStateJSONRemainsProgressFree
+// records multi-key expect as an eligible finite workflow while protecting JSON
+// stdout from waiter activity and future semantic progress text.
+func TestExpectProcessInstanceCommand_MultiKeyStateJSONRemainsProgressFree(t *testing.T) {
+	var requests testx.SafeSlice[string]
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodGet, r.Method)
+		requests.Append(r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		key := strings.TrimPrefix(r.URL.Path, "/v2/process-instances/")
+		_, _ = w.Write([]byte(fmt.Sprintf(`{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":%q,"startDate":"2026-03-23T18:00:00Z","state":"COMPLETED","tenantId":"tenant"}`, key)))
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeRawTestConfig(t, `app:
+  camunda_version: 8.8
+  backoff:
+    strategy: fixed
+    initial_delay: 1ms
+    max_retries: 3
+    timeout: 100ms
+auth:
+  mode: none
+apis:
+  camunda_api:
+    base_url: `+srv.URL+`
+`)
+
+	stdout, stderr := executeRootForProcessInstanceWithSeparateOutputs(t,
+		"--config", cfgPath,
+		"--json",
+		"expect", "pi",
+		"--key", "123",
+		"--key", "124",
+		"--state", "completed",
+		"--workers", "1",
+	)
+
+	var got map[string]any
+	require.NoError(t, json.Unmarshal([]byte(stdout), &got))
+	require.Equal(t, "succeeded", got["outcome"])
+	require.Equal(t, "expect process-instance", got["command"])
+	payload, ok := got["payload"].(map[string]any)
+	require.True(t, ok)
+	items, ok := payload["items"].([]any)
+	require.True(t, ok)
+	require.Len(t, items, 2)
+	require.Contains(t, stdout, "process instance 123 is already in one of the desired state(s) [COMPLETED] (current: COMPLETED)")
+	require.Contains(t, stdout, "process instance 124 is already in one of the desired state(s) [COMPLETED] (current: COMPLETED)")
+	require.NotContains(t, stdout, "waiting for 2 pi")
+	require.NotContains(t, stdout, "progress")
+	require.Empty(t, stderr)
+	require.ElementsMatch(t, []string{"/v2/process-instances/123", "/v2/process-instances/124"}, requests.Snapshot())
+}
+
 // Helper-process entrypoint for invalid expect-state validation.
 func TestExpectProcessInstanceCommand_RejectsInvalidStatesHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
@@ -542,8 +681,14 @@ func TestHelperExpectProcessInstanceCommand_StateMismatchRemainsStrict(t *testin
 	root := Root()
 	resetCommandTreeFlags(root)
 	resetProcessInstanceCommandGlobals()
-	root.SetArgs([]string{"--config", os.Getenv("C8VOLT_TEST_CONFIG"), "expect", "process-instance", "--state", "completed", "-"})
+	args := []string{"--config", os.Getenv("C8VOLT_TEST_CONFIG")}
+	if os.Getenv("C8VOLT_TEST_RENDER_MODE") == "json" {
+		args = append(args, "--json")
+	}
+	args = append(args, "expect", "process-instance", "--state", "canceled", "-")
+	root.SetArgs(args)
 	root.SetOut(os.Stdout)
 	root.SetErr(os.Stderr)
 	_ = root.Execute()
+	os.Exit(0)
 }

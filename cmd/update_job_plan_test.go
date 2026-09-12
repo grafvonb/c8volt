@@ -5,7 +5,9 @@ package cmd
 
 import (
 	"encoding/json"
+	"io"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/grafvonb/c8volt/c8volt/job"
@@ -29,10 +31,61 @@ func TestUpdateJobCommand_RetriesDryRunLoadsCurrentJobAndSkipsMutation(t *testin
 	require.Contains(t, output, "dry run: update job 2251799813711967: retries: 1 -> 3; no changes applied")
 }
 
+// TestUpdateJobCommand_RetriesDryRunRendersExplicitKeyTenantContext verifies
+// direct job updates report backend-authorized tenant evidence from the loaded job.
+func TestUpdateJobCommand_RetriesDryRunRendersExplicitKeyTenantContext(t *testing.T) {
+	var requests []string
+	var patchBodies []map[string]any
+	srv := newJobUpdateServer(t, &requests, &patchBodies, []string{
+		jobSearchResponseWithTenant("2251799813711967", 1, "FAILED", tenantAdminKeysReturnedTenant),
+	}, http.StatusNoContent)
+	t.Cleanup(srv.Close)
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForJobTest(t, "--config", cfgPath, "--tenant", tenantAdminKeysSelectedTenant, "update", "job", "--key", "2251799813711967", "--retries", "3", "--dry-run")
+
+	require.Equal(t, []string{"POST /v2/jobs/search"}, requests)
+	require.Empty(t, patchBodies)
+	require.Contains(t, output, "selection scope: explicit resource keys; tenant filter not applied\n")
+	require.Contains(t, output, "affected tenants: "+tenantAdminKeysReturnedTenant+"\n")
+	require.NotContains(t, output, "selection scope: "+tenantAdminKeysSelectedTenant)
+	require.Less(t,
+		strings.Index(output, "selection scope: explicit resource keys; tenant filter not applied"),
+		strings.Index(output, "dry run: update job"),
+	)
+}
+
+// TestUpdateJobCommand_JSONDryRunIncludesExplicitKeyTenantContext verifies the
+// shared JSON envelope carries explicit-key tenant evidence without reshaping the plan payload.
+func TestUpdateJobCommand_JSONDryRunIncludesExplicitKeyTenantContext(t *testing.T) {
+	var requests []string
+	var patchBodies []map[string]any
+	srv := newJobUpdateServer(t, &requests, &patchBodies, []string{
+		jobSearchResponseWithTenant("2251799813711967", 1, "FAILED", tenantAdminKeysReturnedTenant),
+	}, http.StatusNoContent)
+	t.Cleanup(srv.Close)
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForJobTest(t, "--config", cfgPath, "--tenant", tenantAdminKeysSelectedTenant, "--json", "update", "job", "--key", "2251799813711967", "--retries", "3", "--dry-run")
+
+	require.Equal(t, []string{"POST /v2/jobs/search"}, requests)
+	require.Empty(t, patchBodies)
+	var envelope map[string]any
+	require.NoError(t, json.Unmarshal([]byte(output), &envelope))
+	tenantContext := requireJSONObject(t, envelope["tenantContext"])
+	require.Equal(t, "explicit_keys", tenantContext["mode"])
+	require.Equal(t, "not_applied", tenantContext["filter"])
+	require.Equal(t, tenantAdminKeysSelectedTenant, tenantContext["configuredTenantId"])
+	require.Equal(t, []any{tenantAdminKeysReturnedTenant}, tenantContext["resolvedTenantIds"])
+	payload := requireJSONObject(t, envelope["payload"])
+	require.Equal(t, "2251799813711967", payload["key"])
+	require.Equal(t, false, payload["mutationSubmitted"])
+}
+
 // TestUpdateJobCommand_RetriesNoOpSkipsPromptAndMutation verifies the update job planning and dry-run behavior covered by this scenario.
 func TestUpdateJobCommand_RetriesNoOpSkipsPromptAndMutation(t *testing.T) {
 	prevConfirm := confirmCmdOrAbortFn
-	confirmCmdOrAbortFn = func(bool, string) error {
+	confirmCmdOrAbortFn = func(_ io.Writer, _ bool, _ string) error {
 		t.Fatal("unexpected confirmation prompt for retry no-op")
 		return nil
 	}

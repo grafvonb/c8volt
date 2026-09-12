@@ -9,9 +9,13 @@ Purge orphan child process instances
 
 ### Synopsis
 
-Purge orphan child process instances.
+Delete orphan child process instances whose parents are missing.
 
-The workflow discovers child process instances with missing parents, freezes the discovered key set, validates the delete plan, and then either reports the plan with --dry-run or submits deletion only after confirmation. Use --auto-confirm or --automation for unattended deletion, combine --automation with --json for deterministic machine output, and use --report-file to write an audit report.
+The workflow discovers orphan candidates, fixes the target set, validates the delete plan, and requires confirmation before deletion. Process-instance family, force, and wait rules apply.
+
+--tenant limits discovery; an empty tenant or --all-tenants searches across accessible tenants.
+
+Use --dry-run to inspect the plan without mutation, --auto-confirm or --automation for unattended deletion, and --report-file to save an audit report.
 
 ```
 c8volt ops purge orphan-process-instances [flags]
@@ -21,8 +25,11 @@ c8volt ops purge orphan-process-instances [flags]
 
 ```
   ./c8volt ops purge orphan-process-instances --dry-run
+  ./c8volt --tenant tenant-a ops purge orphan-process-instances --dry-run
+  ./c8volt --tenant "" ops purge orphan-process-instances --dry-run
   ./c8volt ops purge orphan-process-instances --dry-run --bpmn-process-id <bpmn-process-id> --limit 25
   ./c8volt ops purge orphan-process-instances --state completed --limit 25
+  ./c8volt --verbose ops purge orphan-process-instances --state completed --limit 25 --auto-confirm
   ./c8volt ops purge orphan-process-instances --state completed --limit 25 --report-file orphan-purge.md
 ```
 
@@ -37,7 +44,7 @@ c8volt ops purge orphan-process-instances [flags]
       --end-date-newer-days int     only include process instances with end date N days old or newer (0 means today) (default -1)
       --end-date-older-days int     only include process instances with end date N days old or older (default -1)
       --fail-fast                   stop scheduling validation work after the first error
-      --force                       force cancellation of the process instance(s), prior to deletion
+      --force                       allow cancellation when deletion encounters nonterminal process instances
   -h, --help                        help for orphan-process-instances
       --incidents-only              show only process instances that have incidents
   -l, --limit int32                 maximum number of matching child process instances to inspect across all pages
@@ -61,6 +68,7 @@ c8volt ops purge orphan-process-instances [flags]
 ### Options inherited from parent commands
 
 ```
+      --all-tenants        clear configured tenant filtering and search all tenants visible to the authenticated user; mutually exclusive with --tenant
   -y, --auto-confirm       auto-confirm prompts for non-interactive use
       --automation         enable non-interactive mode for commands that explicitly support it
       --config string      path to config file
@@ -71,7 +79,7 @@ c8volt ops purge orphan-process-instances [flags]
       --no-indicator       disable transient terminal activity indicators
       --profile string     config active profile name to use (e.g. dev, prod)
   -q, --quiet              suppress output except errors
-      --tenant string      tenant ID for discovery/search, selection, create, deploy, and run flows; explicit keys/IDs remain backend-authorized
+      --tenant string      tenant ID for discovery/search, selection, create, deploy, and run flows; explicit empty values can clear configured discovery filters, and explicit keys/IDs remain backend-authorized
       --timeout duration   HTTP request timeout (default 30s)
   -v, --verbose            show additional output
 ```

@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/grafvonb/c8volt/c8volt/ops"
+	"github.com/grafvonb/c8volt/c8volt/tenant"
 	"github.com/grafvonb/c8volt/config"
 	"github.com/grafvonb/c8volt/consts"
 	"github.com/grafvonb/c8volt/typex"
@@ -27,11 +28,19 @@ var (
 var opsExecuteRetentionPolicyCmd = &cobra.Command{
 	Use:   "retention-policy",
 	Short: "Execute process-instance retention cleanup",
-	Long: "Execute process-instance retention cleanup.\n\n" +
-		"The workflow discovers process instances older than the required retention age, freezes that candidate set, validates the delete plan, and then either reports the plan with --dry-run or submits deletion after confirmation. Discovery pages through all matching retention candidates by default. --batch-size controls each discovery page request, --limit caps the frozen retention scope, and --workers, --fail-fast, and --no-worker-limit bound independent delete planning or deletion work. Human, JSON, and audit report output identify whether discovery completed or was user-limited. Use compatible process-instance filters to narrow discovery, --auto-confirm or --automation for unattended deletion, and --report-file to write an audit report.",
+	Long: `Delete process instances older than the required retention age.
+
+The workflow discovers candidates, fixes the target set, validates the delete plan, and requires confirmation before deletion. Use process-instance filters to narrow the candidates.
+
+--tenant limits discovery; an empty tenant or --all-tenants searches across accessible tenants. --batch-size controls each discovery request; --limit caps the selected scope. --workers, --fail-fast, and --no-worker-limit control planning and deletion.
+
+Use --dry-run to inspect the plan without mutation, --auto-confirm or --automation for unattended deletion, and --report-file to save an audit report.`,
 	Example: `  ./c8volt ops execute retention-policy --retention-days 90 --dry-run
+  ./c8volt --tenant tenant-a ops execute retention-policy --retention-days 90 --dry-run
+  ./c8volt --tenant "" ops execute retention-policy --retention-days 90 --dry-run
   ./c8volt ops execute retention-policy --retention-days 90 --state completed --bpmn-process-id <bpmn-process-id> --dry-run
   ./c8volt ops execute retention-policy --retention-days 90 --state completed --bpmn-process-id <bpmn-process-id> --limit 25
+  ./c8volt --verbose ops execute retention-policy --retention-days 90 --state completed --limit 25 --auto-confirm
   ./c8volt ops execute retention-policy --retention-days 90 --state completed --bpmn-process-id <bpmn-process-id> --limit 25 --report-file retention-report.md`,
 	Aliases: []string{"ret-pol", "rp"},
 	Args:    cobra.NoArgs,
@@ -80,10 +89,11 @@ var opsExecuteRetentionPolicyCmd = &cobra.Command{
 			ReportFormat:           flagOpsExecuteRetentionPolicyReportFormat,
 			StartedAt:              time.Now().UTC(),
 		}
-		configureOpsExecuteRetentionPolicyProgress(cmd, &request)
+		progress := configureOpsExecuteRetentionPolicyProgress(cmd, &request)
 		if err := validateOpsWorkflowReportPathForPlanning(flagOpsExecuteRetentionPolicyReportFile, opsWorkflowReportWriteModeForConfirmedMutation(effectiveAutoConfirm)); err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}
+		initializeOpsTenantContextHumanReporting(cmd, cfg, false)
 		if !flagDryRun && !effectiveAutoConfirm {
 			planRequest := request
 			planRequest.DryRun = true
@@ -98,8 +108,10 @@ var opsExecuteRetentionPolicyCmd = &cobra.Command{
 				return
 			}
 			if len(planned.DeletePlan.ResolvedRootKeys) > 0 {
+				ctx := attachOpsDiscoveryTenantContext(cmd, cfg, planned.DeletePlan.TenantEvidence)
+				printOpsTenantContextForCommand(cmd, ctx)
 				prompt := opsExecuteRetentionPolicyConfirmationPrompt(planned)
-				if err := confirmCmdOrAbortFn(shouldImplicitlyConfirm(cmd), prompt); err != nil {
+				if err := confirmCmdOrAbortFn(cmd.ErrOrStderr(), shouldImplicitlyConfirm(cmd), prompt); err != nil {
 					abortOpsExecuteRetentionPolicyAfterReport(cmd, log, cfg, markOpsExecuteRetentionPolicyLocalFailure(planned, ops.WorkflowStepStatusConfirmationFailed, err), err)
 					return
 				}
@@ -109,6 +121,8 @@ var opsExecuteRetentionPolicyCmd = &cobra.Command{
 		result, err := executeRetentionPolicyWithCommandActivity(cmd, request, func() (ops.RetentionPolicyResult, error) {
 			return cli.ExecuteRetentionPolicy(cmd.Context(), request, collectOptions()...)
 		})
+		progress.Close()
+		result = attachOpsExecuteRetentionPolicyResultTenantContext(cmd, cfg, result)
 		if err != nil {
 			if reportErr := writeOpsExecuteRetentionPolicyReport(result, cfg, opsExecuteRetentionPolicyReportWriteMode(result)); reportErr != nil {
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("ops execute retention-policy: %w; write audit report: %v", err, reportErr))
@@ -147,13 +161,17 @@ func init() {
 	fs.BoolVar(&flagFailFast, "fail-fast", false, "stop scheduling validation or deletion work after the first error")
 	fs.BoolVar(&flagNoWait, "no-wait", false, "return after deletion requests are accepted without deletion confirmation")
 	fs.BoolVar(&flagNoStateCheck, "no-state-check", false, "skip checking process-instance state before deleting")
-	fs.BoolVar(&flagForce, "force", false, "force cancellation of the process instance(s), prior to deletion")
+	fs.BoolVar(&flagForce, "force", false, "allow cancellation when deletion encounters nonterminal process instances")
 	fs.StringVar(&flagOpsExecuteRetentionPolicyReportFile, "report-file", "", "write an audit report to the given path")
 	fs.StringVar(&flagOpsExecuteRetentionPolicyReportFormat, "report-format", "", "audit report format: markdown, json (default inferred from report-file extension)")
 
 	setCommandMutation(opsExecuteRetentionPolicyCmd, CommandMutationStateChanging)
 	setContractSupport(opsExecuteRetentionPolicyCmd, ContractSupportFull)
 	setAutomationSupport(opsExecuteRetentionPolicyCmd, AutomationSupportFull, "supports unattended dry-run previews and implicitly confirmed retention cleanup with shared machine output")
+	setOutputModes(opsExecuteRetentionPolicyCmd,
+		OutputModeContract{Name: RenderModeOneLine.String(), Supported: true},
+		OutputModeContract{Name: RenderModeJSON.String(), Supported: true, MachinePreferred: true},
+	)
 	setFlagContractRequired(opsExecuteRetentionPolicyCmd, "retention-days")
 }
 
@@ -295,9 +313,11 @@ func writeOpsExecuteRetentionPolicyReport(result ops.RetentionPolicyResult, cfg 
 
 func enrichOpsExecuteRetentionPolicyReport(report ops.RetentionAuditReport, cfg *config.Config) ops.RetentionAuditReport {
 	report.C8voltVersion = CurrentBuildInfo().Version
+	ctx := attachOpsExecuteRetentionPolicyReportTenantContext(report, cfg)
+	report.TenantContext = cloneTenantContextPtr(ctx)
+	report.TenantID = opsLegacyTenantIDForContext(report.TenantContext)
 	if cfg != nil {
 		report.CamundaVersion = cfg.App.CamundaVersion.String()
-		report.TenantID = cfg.App.ViewTenant()
 		if cfg.ActiveProfile != "" {
 			report.ProfileIdentity = "profile:" + cfg.ActiveProfile
 		} else {
@@ -305,4 +325,19 @@ func enrichOpsExecuteRetentionPolicyReport(report ops.RetentionAuditReport, cfg 
 		}
 	}
 	return report
+}
+
+// attachOpsExecuteRetentionPolicyResultTenantContext freezes retention tenant
+// context before command result rendering.
+func attachOpsExecuteRetentionPolicyResultTenantContext(cmd *cobra.Command, cfg *config.Config, result ops.RetentionPolicyResult) ops.RetentionPolicyResult {
+	ctx := attachOpsDiscoveryTenantContext(cmd, cfg, result.DeletePlan.TenantEvidence)
+	result.Report.TenantContext = cloneTenantContextPtr(ctx)
+	result.Report.TenantID = opsLegacyTenantIDForContext(result.Report.TenantContext)
+	return result
+}
+
+// attachOpsExecuteRetentionPolicyReportTenantContext derives audit context from
+// the frozen retention delete plan.
+func attachOpsExecuteRetentionPolicyReportTenantContext(report ops.RetentionAuditReport, cfg *config.Config) tenant.Context {
+	return opsTenantContextWithEvidence(newDiscoveryTenantContext(configuredTenantID(cfg)), report.DeletePlan.TenantEvidence)
 }

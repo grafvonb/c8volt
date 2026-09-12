@@ -6,7 +6,6 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/grafvonb/c8volt/c8volt/ferrors"
 	processOptions "github.com/grafvonb/c8volt/c8volt/foptions"
 	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/grafvonb/c8volt/consts"
@@ -21,18 +20,30 @@ var (
 var deleteProcessInstanceCmd = &cobra.Command{
 	Use:   "process-instance",
 	Short: "Delete process instances by key or filters",
-	Long: "Delete process instances by key or search filters, optionally cancelling first.\n\n" +
-		"By default c8volt validates the complete affected tree before submitting any delete request, prompts before deletion, and waits until deletion is observed. If any affected process instance is not in a final state, the whole delete batch is refused before mutation. Use --force to cancel the affected scope first, then delete it.\n\n" +
-		"Tenant contract: --tenant scopes search-derived candidate discovery where supported. Explicit --key and stdin keys are backend-authorized admin input; existing dry-run, confirmation, force, and wait safety checks still apply.\n\n" +
-		"When --bpmn-process-id is set, c8volt validates that the process definition is visible before searching process instances. A missing selector fails with a local diagnostic before paging, dry-run planning, confirmation, cancellation, or deletion; --json, --automation, and non-TTY runs never prompt for recovery output. If the selector is visible but no matching instances are found, no deletion request is submitted.\n\n" +
-		"Search mode pages through matching process instances by default and freezes every selected page-level delete plan before one confirmation and mutation. --batch-size controls each discovery page request, --limit caps the frozen delete scope across all pages, and --workers, --fail-fast, and --no-worker-limit bound independent planning, cancellation, or deletion work. Verbose paging progress is written away from stdout; JSON, quiet, and automation output remain free of prompts unless confirmation is explicitly supplied.\n\n" +
-		"Use --dry-run to preview selected, in-scope, final-state, non-final, and partial-scope instances without deleting or cancelling.\n\n" +
-		"Use --auto-confirm for unattended destructive runs.",
+	Long: `Delete process instances by key or search filters.
+
+c8volt validates the affected tree before any deletion, asks for confirmation, and waits until deletion is observed. Nonterminal instances block deletion unless --force is set.
+
+--force allows cancellation when deletion encounters a nonterminal instance. Deletion traverses children first and retries after cancellation; the entire scope is not canceled before any deletion.
+
+--tenant limits search-derived selection. An empty tenant or --all-tenants leaves discovery unfiltered across accessible tenants. Explicit --key and stdin keys use backend authorization without tenant filtering.
+
+A --bpmn-process-id selector must match a visible process definition before instance discovery. An empty selection completes without confirmation or mutation.
+
+Search mode plans all selected pages before one confirmation and deletion. --batch-size controls each discovery request; --limit caps the selected scope across all pages. --workers, --fail-fast, and --no-worker-limit control planning and deletion work.
+
+Use --dry-run to preview the affected family without deleting or cancelling. Use --auto-confirm for unattended deletion.`,
 	Example: `  ./c8volt delete process-instance --key <process-instance-key> --force
   ./c8volt delete process-instance --key <process-instance-key> --dry-run
+  ./c8volt --tenant tenant-a delete process-instance --key <process-instance-key> --dry-run
+  ./c8volt --tenant tenant-a delete process-instance --state terminated --limit 5 --dry-run
+  ./c8volt --tenant "" delete process-instance --state terminated --limit 5 --dry-run
   ./c8volt delete process-instance --state terminated --batch-size 250 --limit 5 --dry-run
+  ./c8volt delete process-instance --state terminated --json --dry-run
+  ./c8volt delete process-instance --state terminated --keys-only
   ./c8volt delete process-instance --state terminated --end-date-after 2026-05-01 --end-date-before 2026-05-31 --limit 5 --dry-run
   ./c8volt delete process-instance --bpmn-process-id <bpmn-process-id> --state terminated --batch-size 250 --limit 5 --dry-run
+  ./c8volt --verbose delete process-instance --state terminated --limit 25 --auto-confirm
   ./c8volt expect process-instance --key <process-instance-key> --state absent`,
 	Aliases: []string{"pi"},
 	Args: func(cmd *cobra.Command, args []string) error {
@@ -47,14 +58,14 @@ var deleteProcessInstanceCmd = &cobra.Command{
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}
 		if err := validatePISearchFlags(cmd); err != nil {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, err)
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}
 
 		stdinKeys, err := readKeysIfDash(args) // only reads when args == []{"-"}
 		if err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}
-		keys := mergeAndValidateKeys(flagDeletePIKeys, stdinKeys, log, cfg).Unique()
+		keys := mergeAndValidateKeys(cmd, flagDeletePIKeys, stdinKeys, log, cfg).Unique()
 		if err := validatePIKeyedModeDateFilters(len(keys)); err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}
@@ -122,6 +133,7 @@ func deleteProcessInstancesWithPlanAndRenderWithOptions(cmd *cobra.Command, cli 
 			DryRunPreview: &planned.Preview,
 		}, nil
 	}
+	renderAttachedTenantContext(cmd)
 	printDryRunExpansionWarning(cmd, plan)
 	if err := rejectDeletePlanRequiringForce(plan); err != nil {
 		return processInstancePageActionResult{}, err
@@ -135,13 +147,14 @@ func deleteProcessInstancesWithPlanAndRenderWithOptions(cmd *cobra.Command, cli 
 		if affectedCount > requestedCount {
 			prompt = fmt.Sprintf("You have requested to delete %d process instance(s), but due to dependencies, a total of %d instance(s) with %d root instance(s) will be deleted. Do you want to proceed?", requestedCount, affectedCount, rootCount)
 		}
-		if err := confirmCmdOrAbortFn(shouldImplicitlyConfirm(cmd), prompt); err != nil {
+		if err := confirmCmdOrAbortFn(cmd.ErrOrStderr(), shouldImplicitlyConfirm(cmd), prompt); err != nil {
 			return processInstancePageActionResult{}, err
 		}
 	}
 
-	mutationOpts := append(compactProcessInstanceMutationOptions(opts), processOptions.WithAffectedProcessInstanceCount(len(plan.Collected)))
+	mutationOpts, closeSemanticProgress := appendProcessInstanceMutationSemanticProgressOptions(cmd, "delete", impact, opts, len(plan.Collected))
 	reports, err := cli.DeleteProcessInstances(cmd.Context(), plan.Roots, flagWorkers, mutationOpts...)
+	closeSemanticProgress()
 	if err != nil {
 		return processInstancePageActionResult{}, fmt.Errorf("delete process instances: %w", err)
 	}
@@ -178,9 +191,9 @@ func init() {
 	fs.BoolVar(&flagNoStateCheck, "no-state-check", false, "skip checking the current state of the process instance before deleting it")
 	fs.BoolVar(&flagDryRun, "dry-run", false, "preview delete scope without submitting deletion or cancel-before-delete requests")
 	fs.StringSliceVarP(&flagDeletePIKeys, "key", "k", nil, "process instance key(s) to delete; repeat or combine with stdin '-'")
-	fs.BoolVar(&flagForce, "force", false, "force cancellation of the process instance(s), prior to deletion")
+	fs.BoolVar(&flagForce, "force", false, "allow cancellation when deletion encounters nonterminal process instances")
 
-	fs.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers when --batch-size > 1 (default: min(batch-size, 2*GOMAXPROCS, 32))")
+	fs.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers for queued work; mutation work uses root trees (default: min(queued work, 2*GOMAXPROCS, 32)); independent of discovery page size")
 	fs.BoolVar(&flagNoWorkerLimit, "no-worker-limit", false, "use all queued jobs as workers when --workers is unset")
 	fs.BoolVar(&flagFailFast, "fail-fast", false, "stop scheduling new instances after the first error")
 

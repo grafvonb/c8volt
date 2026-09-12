@@ -79,7 +79,7 @@ func searchElementsWithPaging(cmd *cobra.Command, cli element.API, request eleme
 			return element.SearchPageActionContinue, nil
 		}
 		prompt := fmt.Sprintf("Fetched %d element(s) on this page (%d loaded). More matching elements remain. Continue?", len(page.Items), processedTotal)
-		if err := confirmCmdOrAbortFn(shouldImplicitlyConfirm(cmd), prompt); err != nil {
+		if err := confirmCmdOrAbortFn(cmd.ErrOrStderr(), shouldImplicitlyConfirm(cmd), prompt); err != nil {
 			if isCmdAborted(err) {
 				return element.SearchPageActionStop, nil
 			}

@@ -58,6 +58,7 @@ type RetentionDeletePlan struct {
 	SeedKeys              typex.Keys
 	ResolvedRootKeys      typex.Keys
 	AffectedKeys          typex.Keys
+	TenantEvidence        TenantEvidence
 	DuplicateKeys         typex.Keys
 	FinalStateItems       []ProcessInstance
 	NonFinalAffectedItems []ProcessInstance
@@ -90,6 +91,7 @@ type RetentionAuditReport struct {
 	CamundaVersion         string
 	ProfileIdentity        string
 	TenantID               string
+	TenantContext          *TenantContext
 	RetentionDays          int
 	DerivedEndDateBoundary string
 	SelectionFilters       ProcessInstanceFilter

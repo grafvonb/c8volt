@@ -4,10 +4,16 @@
 package cmd
 
 import (
+	"bytes"
+	"context"
+	"strings"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/grafvonb/c8volt/c8volt/ops"
+	"github.com/grafvonb/c8volt/toolx/logging"
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 )
 
@@ -100,6 +106,80 @@ func TestFormatOpsFrozenScopeProgressOmitsPercentForUnknownTotal(t *testing.T) {
 	}))
 }
 
+// TestFormatOpsSemanticProgressAggregateRendersCumulativeAffectedAndFailed
+// verifies durable aggregate text carries exact failed and affected totals
+// while affected output disappears when coverage becomes untrustworthy.
+func TestFormatOpsSemanticProgressAggregateRendersCumulativeAffectedAndFailed(t *testing.T) {
+	scope := opsSemanticProgressScope{
+		ActivityLabel:    "deleting process-instance trees",
+		CoreResource:     "process-instance tree(s)",
+		AffectedResource: "affected process instances",
+	}
+
+	require.Equal(t, "deleting process-instance trees, 3/4 process-instance tree(s), 1 failed, affected process instances: 12", formatOpsSemanticProgressAggregate(scope, opsSemanticProgressAggregate{
+		Completed:     3,
+		Failed:        1,
+		Total:         4,
+		Affected:      12,
+		AffectedValid: true,
+	}))
+	require.Equal(t, "deleting process-instance trees, 3/4 process-instance tree(s), 1 failed", formatOpsSemanticProgressAggregate(scope, opsSemanticProgressAggregate{
+		Completed: 3,
+		Failed:    1,
+		Total:     4,
+		Affected:  12,
+	}))
+}
+
+// TestFormatOpsSemanticProgressCompletionUsesLifecycleVocabulary verifies
+// rendered item outcomes come from command-owned words with safe defaults.
+func TestFormatOpsSemanticProgressCompletionUsesLifecycleVocabulary(t *testing.T) {
+	scope := opsSemanticProgressScope{
+		ActivityLabel: "running work",
+		CoreResource:  "item(s)",
+		Total:         3,
+	}.withLifecycleWords(opsSemanticProgressLifecycleWordsFor("finished"))
+	aggregate := opsSemanticProgressAggregate{Completed: 1, Total: 3}
+
+	require.Equal(t, "item-1 submitted (running work, 1/3 item(s))", formatOpsSemanticProgressCompletion(scope, aggregate, ops.CompletionProgress{
+		Identity:    "item-1",
+		Disposition: ops.CompletionDispositionSubmitted,
+	}))
+	require.Equal(t, "item-1 finished (running work, 1/3 item(s))", formatOpsSemanticProgressCompletion(scope, aggregate, ops.CompletionProgress{
+		Identity:    "item-1",
+		Disposition: ops.CompletionDispositionConfirmed,
+	}))
+	require.Equal(t, "item-1 failed: boom (running work, 1/3 item(s))", formatOpsSemanticProgressCompletion(scope, aggregate, ops.CompletionProgress{
+		Identity:      "item-1",
+		Disposition:   ops.CompletionDispositionFailed,
+		FailureDetail: "boom",
+	}))
+
+	fallbackScope := opsSemanticProgressScope{ActivityLabel: "running work", CoreResource: "item(s)", Total: 1}
+	require.Equal(t, "item completed (running work, 1/1 item(s))", formatOpsSemanticProgressCompletion(fallbackScope, opsSemanticProgressAggregate{Completed: 1, Total: 1}, ops.CompletionProgress{
+		Disposition: ops.CompletionDispositionConfirmed,
+	}))
+}
+
+// TestPrintOpsDurableLineDirectBypassesLoggerSeverity verifies direct progress
+// warnings are not filtered by the command logger's configured severity.
+func TestPrintOpsDurableLineDirectBypassesLoggerSeverity(t *testing.T) {
+	cmd := &cobra.Command{}
+	var stderr bytes.Buffer
+	var logBuf bytes.Buffer
+	cmd.SetErr(&stderr)
+	cmd.SetContext(logging.ToContext(context.Background(), logging.New(logging.LoggerConfig{
+		Level:  "error",
+		Format: "plain-time",
+		Writer: &logBuf,
+	})))
+
+	printOpsDurableLineDirect(cmd, "root-1 failed")
+
+	require.Empty(t, logBuf.String())
+	require.Equal(t, "root-1 failed\n", stderr.String())
+}
+
 // ptrInt64 returns a stable pointer for compact progress formatter fixtures.
 func ptrInt64(value int64) *int64 {
 	return &value
@@ -113,6 +193,172 @@ func TestOpsProgressChannelForModeProtectsMachineOutput(t *testing.T) {
 	require.Equal(t, ops.ProgressChannel{Mode: ops.ProgressModeKeysOnly}, opsProgressChannelForMode(opsProgressModeInput{RenderMode: RenderModeKeysOnly}))
 	require.Equal(t, ops.ProgressChannel{Mode: ops.ProgressModeQuiet}, opsProgressChannelForMode(opsProgressModeInput{RenderMode: RenderModeOneLine, Quiet: true}))
 	require.Equal(t, ops.ProgressChannel{Mode: ops.ProgressModeAutomation, StructuredReportAllowed: true}, opsProgressChannelForMode(opsProgressModeInput{RenderMode: RenderModeOneLine, Automation: true}))
+	require.Equal(t, ops.ProgressChannel{Mode: ops.ProgressModeAutomation, StructuredReportAllowed: true}, opsProgressChannelForMode(opsProgressModeInput{RenderMode: RenderModeOneLine, Quiet: true, Automation: true}))
+	require.Equal(t, ops.ProgressChannel{Mode: ops.ProgressModeJSON}, opsProgressChannelForMode(opsProgressModeInput{RenderMode: RenderModeJSON, Quiet: true}))
+	require.Equal(t, ops.ProgressChannel{Mode: ops.ProgressModeKeysOnly}, opsProgressChannelForMode(opsProgressModeInput{RenderMode: RenderModeKeysOnly, Quiet: true}))
+}
+
+// TestPrintOpsPreflightScopeRendersTenantContextBeforeScope verifies ops
+// preflight emits the shared tenant block before expensive-work scope lines.
+func TestPrintOpsPreflightScopeRendersTenantContextBeforeScope(t *testing.T) {
+	cmd := &cobra.Command{}
+	var stderr bytes.Buffer
+	cmd.SetErr(&stderr)
+	ctx := withTenantContextEvidence(newDiscoveryTenantContext(""), []string{"tenant-b", "tenant-a"}, 1)
+
+	printOpsPreflightScope(cmd, ops.PreflightScope{
+		Command:         "ops purge process-instances-with-incidents",
+		CoreResource:    "process_instance",
+		SelectorSummary: "incident filters",
+		Total:           ptrInt64(2),
+		TotalKind:       ops.TotalCertaintyExact,
+		TenantContext:   &ctx,
+	}, ops.ProgressChannel{Mode: ops.ProgressModeHuman, DurableAllowed: true, StderrAllowed: true})
+
+	got := stderr.String()
+	require.Contains(t, got, "selection scope: unfiltered across accessible tenants")
+	require.Contains(t, got, "incident purge scope")
+	require.Less(t, strings.Index(got, "selection scope: unfiltered across accessible tenants"), strings.Index(got, "incident purge scope"))
+	require.Contains(t, got, "affected tenants: tenant-a, tenant-b")
+	require.Contains(t, got, "tenant metadata is unknown for 1 target")
+	require.Equal(t, 1, strings.Count(got, "affected tenants: tenant-a, tenant-b"))
+}
+
+// TestPrintOpsTenantContextUsesLoggerSeverityExactlyOnce guards the compact
+// warning contract when the logger supplies severity prefixes.
+func TestPrintOpsTenantContextUsesLoggerSeverityExactlyOnce(t *testing.T) {
+	cmd := &cobra.Command{}
+	var logBuf bytes.Buffer
+	cmd.SetContext(logging.ToContext(context.Background(), logging.New(logging.LoggerConfig{
+		Format: "plain-time",
+		Writer: &logBuf,
+	})))
+	ctx := withTenantContextEvidence(newDiscoveryTenantContext(""), []string{"tenant-b", "tenant-a"}, 1)
+
+	printOpsTenantContext(cmd, ctx, ops.ProgressChannel{
+		Mode:           ops.ProgressModeHuman,
+		DurableAllowed: true,
+		StderrAllowed:  true,
+	})
+
+	got := logBuf.String()
+	require.Contains(t, got, " WARN affected tenants: tenant-a, tenant-b\n")
+	require.Contains(t, got, " WARN tenant metadata is unknown for 1 target\n")
+	require.Equal(t, 1, strings.Count(got, "affected tenants: tenant-a, tenant-b"))
+	require.NotContains(t, got, "WARN WARNING")
+	require.NotContains(t, got, "WARNING:")
+}
+
+// TestPrintOpsTenantContextRendersTenantOverrideProvenance verifies ops
+// durable progress reports explicit tenant broadening before the final scope.
+func TestPrintOpsTenantContextRendersTenantOverrideProvenance(t *testing.T) {
+	cmd := &cobra.Command{}
+	var logBuf bytes.Buffer
+	cmd.SetContext(tenantOverrideProvenance{
+		ConfiguredTenantID: "tenant-a",
+		ExplicitTenantID:   "",
+		Explicit:           true,
+	}.ToContext(logging.ToContext(context.Background(), logging.New(logging.LoggerConfig{
+		Format: "plain-time",
+		Writer: &logBuf,
+	}))))
+	ctx := newDiscoveryTenantContext("")
+
+	printOpsTenantContext(cmd, ctx, ops.ProgressChannel{
+		Mode:           ops.ProgressModeHuman,
+		DurableAllowed: true,
+		StderrAllowed:  true,
+	})
+
+	got := logBuf.String()
+	require.Contains(t, got, " INFO configured tenant: tenant-a\n")
+	require.Contains(t, got, " WARN --tenant \"\" overrides the configured tenant filter; selection is unfiltered\n")
+	require.Contains(t, got, " INFO selection scope: unfiltered across accessible tenants\n")
+	require.Less(t, strings.Index(got, "configured tenant: tenant-a"), strings.Index(got, "--tenant \"\" overrides"))
+	require.Less(t, strings.Index(got, "--tenant \"\" overrides"), strings.Index(got, "selection scope: unfiltered"))
+}
+
+// TestPrintOpsTenantContextRendersAllTenantsOverrideOnceBeforeScope verifies
+// ops durable progress reports the all-tenants broadening warning once before
+// the effective unfiltered discovery scope.
+func TestPrintOpsTenantContextRendersAllTenantsOverrideOnceBeforeScope(t *testing.T) {
+	cmd := &cobra.Command{}
+	var logBuf bytes.Buffer
+	cmd.SetContext(tenantOverrideProvenance{
+		ConfiguredTenantID: "tenant-a",
+		AllTenants:         true,
+	}.ToContext(logging.ToContext(context.Background(), logging.New(logging.LoggerConfig{
+		Format: "plain-time",
+		Writer: &logBuf,
+	}))))
+	ctx := newDiscoveryTenantContext("")
+
+	channel := ops.ProgressChannel{
+		Mode:           ops.ProgressModeHuman,
+		DurableAllowed: true,
+		StderrAllowed:  true,
+	}
+	printOpsTenantContext(cmd, ctx, channel)
+	printOpsTenantContext(cmd, ctx, channel)
+
+	got := logBuf.String()
+	configuredLine := " INFO configured tenant: tenant-a\n"
+	overrideWarning := " WARN --all-tenants overrides the configured tenant filter; selection is unfiltered\n"
+	tenantLine := " INFO selection scope: unfiltered across accessible tenants\n"
+	require.Contains(t, got, configuredLine)
+	require.Contains(t, got, overrideWarning)
+	require.Contains(t, got, tenantLine)
+	require.Equal(t, 1, strings.Count(got, overrideWarning))
+	require.Equal(t, 1, strings.Count(got, tenantLine))
+	require.Less(t, strings.Index(got, "configured tenant: tenant-a"), strings.Index(got, "--all-tenants overrides"))
+	require.Less(t, strings.Index(got, "--all-tenants overrides"), strings.Index(got, "selection scope: unfiltered"))
+}
+
+// TestPrintOpsPreflightScopeSuppressesTenantContextForProtectedModes verifies
+// quiet and keys-only progress channels keep stdout-safe contracts silent.
+func TestPrintOpsPreflightScopeSuppressesTenantContextForProtectedModes(t *testing.T) {
+	ctx := withTenantContextEvidence(newDiscoveryTenantContext("tenant-a"), []string{"tenant-a"}, 0)
+	for _, channel := range []ops.ProgressChannel{
+		{Mode: ops.ProgressModeKeysOnly},
+		{Mode: ops.ProgressModeQuiet},
+	} {
+		cmd := &cobra.Command{}
+		var stderr bytes.Buffer
+		cmd.SetErr(&stderr)
+
+		printOpsPreflightScope(cmd, ops.PreflightScope{TenantContext: &ctx}, channel)
+
+		require.Empty(t, stderr.String())
+		_, ok := attachedTenantContext(cmd)
+		require.False(t, ok)
+	}
+}
+
+// TestPrintOpsPreflightScopeSuppressesAllTenantsProvenanceForProtectedModes
+// verifies protected ops progress channels do not leak command-line
+// all-tenants provenance.
+func TestPrintOpsPreflightScopeSuppressesAllTenantsProvenanceForProtectedModes(t *testing.T) {
+	ctx := newDiscoveryTenantContext("")
+	for _, channel := range []ops.ProgressChannel{
+		{Mode: ops.ProgressModeJSON},
+		{Mode: ops.ProgressModeKeysOnly},
+		{Mode: ops.ProgressModeQuiet},
+		{Mode: ops.ProgressModeAutomation, StructuredReportAllowed: true},
+	} {
+		cmd := &cobra.Command{}
+		var stderr bytes.Buffer
+		cmd.SetErr(&stderr)
+		cmd.SetContext(tenantOverrideProvenance{
+			ConfiguredTenantID: "tenant-a",
+			AllTenants:         true,
+		}.ToContext(context.Background()))
+
+		printOpsPreflightScope(cmd, ops.PreflightScope{TenantContext: &ctx}, channel)
+
+		require.Empty(t, stderr.String())
+		_, ok := attachedTenantContext(cmd)
+		require.False(t, ok)
+	}
 }
 
 // TestOpsProgressDurableMilestoneRequiresElapsedTimeAndPageProgress verifies default-human milestones wait for silence and observed discovery movement.
@@ -135,6 +381,12 @@ func TestOpsProgressDurableMilestoneRequiresElapsedTimeAndPageProgress(t *testin
 	require.True(t, pacer.AllowDurableMilestone(event, channel))
 }
 
+// TestOpsDurableMilestoneCadenceIsTenSeconds verifies fake-clock tests exercise
+// the semantic progress cadence required for default durable milestones.
+func TestOpsDurableMilestoneCadenceIsTenSeconds(t *testing.T) {
+	require.Equal(t, 10*time.Second, opsDurableMilestoneMinimumElapsed)
+}
+
 // TestOpsProgressDurableMilestoneRequiresForwardProgress verifies elapsed time alone does not repeat the same milestone.
 func TestOpsProgressDurableMilestoneRequiresForwardProgress(t *testing.T) {
 	now := time.Date(2026, time.August, 4, 12, 0, 0, 0, time.UTC)
@@ -151,6 +403,42 @@ func TestOpsProgressDurableMilestoneRequiresForwardProgress(t *testing.T) {
 	now = now.Add(opsDurableMilestoneMinimumElapsed)
 
 	require.False(t, pacer.AllowDurableMilestone(event, channel))
+}
+
+// TestOpsProgressDurableMilestonePacerSerializesConcurrentCallbacks verifies
+// shared command progress callbacks cannot race the pacer's mutable milestone
+// state or emit more than one line for a single elapsed window.
+func TestOpsProgressDurableMilestonePacerSerializesConcurrentCallbacks(t *testing.T) {
+	startedAt := time.Date(2026, time.August, 4, 12, 0, 0, 0, time.UTC)
+	now := startedAt
+	pacer := newOpsProgressMilestonePacer(func() time.Time { return now })
+	now = startedAt.Add(opsDurableMilestoneMinimumElapsed)
+	channel := ops.ProgressChannel{Mode: ops.ProgressModeHuman, DurableAllowed: true, StderrAllowed: true}
+	results := make(chan bool, 64)
+	var wg sync.WaitGroup
+
+	for i := 1; i <= cap(results); i++ {
+		i := i
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			event := ops.ProgressEvent{
+				Kind: ops.ProgressEventKindPage,
+				Page: &ops.PageProgress{Phase: "discovering process instances", CurrentPage: i, Seen: i * 100, Selected: i * 90},
+			}
+			results <- pacer.AllowDurableMilestone(event, channel)
+		}()
+	}
+	wg.Wait()
+	close(results)
+
+	allowed := 0
+	for result := range results {
+		if result {
+			allowed++
+		}
+	}
+	require.Equal(t, 1, allowed)
 }
 
 // TestOpsProgressDurableMilestoneAllowsFrozenScopeProgress verifies frozen-scope counters can drive sparse default-human milestones.

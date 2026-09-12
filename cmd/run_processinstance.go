@@ -27,12 +27,15 @@ var (
 var runProcessInstanceCmd = &cobra.Command{
 	Use:   "process-instance",
 	Short: "Start process instances and confirm creation",
-	Long: "Start process instances and confirm creation.\n\n" +
-		"Run by BPMN process ID for the latest version, or by process definition key for an exact definition.\n\n" +
-		"When running by BPMN process ID, c8volt validates all requested process definitions before creating anything. Mixed visible and missing BPMN IDs fail as one request, so no partial process instances are started; automation-oriented modes never prompt for recovery output.\n\n" +
-		"By default c8volt waits until created instances are observable. Created instances are confirmed after Camunda observes ACTIVE, COMPLETED, CANCELED, or TERMINATED.\n\n" +
-		"Use --keys-only to pipe created process instance keys into strict lifecycle checks with expect process-instance.",
+	Long: `Start process instances and confirm creation.
+
+Use a BPMN process ID for the latest version or a process-definition key for an exact definition. All requested BPMN IDs must be visible before any instance is started.
+
+Creation uses the configured tenant, or the default tenant when none is configured. --all-tenants is not supported because creation requires one destination tenant.
+
+By default c8volt waits until created instances are observable as ACTIVE, COMPLETED, CANCELED, or TERMINATED.`,
 	Example: `  ./c8volt run process-instance --bpmn-process-id <bpmn-process-id>
+  ./c8volt --tenant tenant-a run process-instance --bpmn-process-id <bpmn-process-id>
   ./c8volt run process-instance --bpmn-process-id <bpmn-process-id> --vars '{"customerId":"1234"}'
   ./c8volt run process-instance --bpmn-process-id <bpmn-process-id> --count 3 --workers 2
   ./c8volt --json run process-instance --bpmn-process-id <bpmn-process-id> --vars '{"customerId":"1234"}'
@@ -105,6 +108,9 @@ var runProcessInstanceCmd = &cobra.Command{
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, missingDependentFlagsf("provide either --pd-key or --bpmn-process-id"))
 		}
 
+		tenantCtx := attachCreationTenantContext(cmd, cfg)
+		renderTenantContext(cmd, tenantCtx)
+
 		if flagFailFast {
 			fopts = append(fopts, foptions.WithFailFast())
 		}
@@ -114,6 +120,7 @@ var runProcessInstanceCmd = &cobra.Command{
 			if err != nil {
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("running process instance(s) for %s: %w", contextForErr, err))
 			}
+			attachTenantContext(cmd, withTenantContextEvidence(tenantCtx, processInstanceTenantIDs(created), 0))
 			if err := renderRunProcessInstanceResult(cmd, process.ProcessInstances{
 				Total: int32(len(created)),
 				Items: created,
@@ -127,12 +134,15 @@ var runProcessInstanceCmd = &cobra.Command{
 				forbiddenFlagCombinationf("--count requires exactly one process definition; got %d", len(datas)))
 		}
 		fopts = append(fopts, foptions.WithSuppressWorkflowDetailLogs())
-		fopts = appendExplicitLargeWorkProgressOption(cmd, fopts)
+		runProgress := newRunProcessInstanceSemanticProgressReporter(cmd, flagRunPICount)
+		fopts = appendRunProcessInstanceProgressOption(cmd, fopts, runProgress)
 		created, err := cli.CreateNProcessInstances(cmd.Context(), datas[0], flagRunPICount, flagWorkers, fopts...)
+		runProgress.Close()
 		if err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("running %d process instances for %s: %w", flagRunPICount, contextForErr, err))
 		}
 		sortRunProcessInstancesForOutput(created)
+		attachTenantContext(cmd, withTenantContextEvidence(tenantCtx, processInstanceTenantIDs(created), 0))
 		if err := renderRunProcessInstanceResult(cmd, process.ProcessInstances{
 			Total: int32(len(created)),
 			Items: created,
@@ -231,4 +241,5 @@ func init() {
 	setCommandMutation(runProcessInstanceCmd, CommandMutationStateChanging)
 	setContractSupport(runProcessInstanceCmd, ContractSupportFull)
 	setAutomationSupport(runProcessInstanceCmd, AutomationSupportFull, "supports shared machine output and accepted results")
+	setAllTenantsSupport(runProcessInstanceCmd, AllTenantsSupportRejectedConcreteDestination)
 }

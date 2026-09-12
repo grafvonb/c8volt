@@ -39,11 +39,13 @@ var (
 var getIncidentCmd = &cobra.Command{
 	Use:   "incident",
 	Short: "List or fetch incidents",
-	Long: "Get Camunda incidents by key or by search criteria.\n\n" +
-		"The command accepts repeated --key values or newline-separated keys from stdin with '-'. Each unique incident key is fetched once and rendered through the shared get output modes.\n\n" +
-		"When no keys are supplied, incidents are searched by state, error type, error message, process context, element context, and creation time. Search mode defaults to active incidents and follows the shared get paging and limit conventions. --batch-size controls each backend page request, --limit caps total returned incidents across all pages, and --total returns only the exact matching count. Verbose paging progress is written away from stdout; JSON, keys-only, pi-keys-only, quiet, and automation output remain free of prompts and progress text.\n\n" +
-		"When --bpmn-process-id is supplied in search mode, the BPMN process definition selector is validated before incident totals, keys-only output, process-instance-key output, or paging. Missing or invisible definitions fail explicitly; --json, --automation, --keys-only, --pi-keys-only, and non-TTY runs never prompt for recovery output.\n\n" +
-		"Use --json for the stable incident payload, --keys-only for incident keys, --pi-keys-only for process instance keys, --error-message-limit to shorten long error messages, or --with-no-error-message to omit them.",
+	Long: `Get Camunda incidents by key or search criteria.
+
+Provide repeated --key values or newline-separated keys from stdin with '-'. Each unique incident key is fetched once.
+
+Without keys, search by state, error type, error message, process context, element context, and creation time. Search defaults to active incidents. --batch-size controls each discovery request; --limit caps incidents across all pages; --total counts matching incidents.
+
+A --bpmn-process-id selector must match a visible process definition before discovery.`,
 	Example: `  ./c8volt get incident --key <incident-key>
   ./c8volt get incident --key <incident-key> --key <another-incident-key>
   printf '%s\n' "$INCIDENT_KEY_A" "$INCIDENT_KEY_B" | ./c8volt get incident -
@@ -79,7 +81,7 @@ var getIncidentCmd = &cobra.Command{
 		if err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}
-		keys := mergeAndValidateKeys(flagGetIncidentKeys, stdinKeys, log, cfg).Unique()
+		keys := mergeAndValidateKeys(cmd, flagGetIncidentKeys, stdinKeys, log, cfg).Unique()
 		keyedMode := len(flagGetIncidentKeys) > 0 || len(args) == 1 && args[0] == "-"
 		if keyedMode {
 			if len(keys) == 0 {
@@ -168,7 +170,7 @@ func init() {
 	fs.StringVar(&flagGetIncidentCreationTimeBefore, "creation-time-before", "", "only include incidents with creation time <= RFC3339 timestamp, c8volt timestamp, or YYYY-MM-DD")
 	fs.IntVar(&flagGetIncidentCreationTimeNewer, "creation-time-newer-days", -1, "only include incidents with creation time N days old or newer (0 means today)")
 	fs.IntVar(&flagGetIncidentCreationTimeOlder, "creation-time-older-days", -1, "only include incidents with creation time N days old or older")
-	fs.Int32VarP(&flagGetIncidentSize, "batch-size", "n", consts.MaxPISearchSize, fmt.Sprintf("number of incidents to request per page; does not cap total returned rows (max limit %d enforced by server)", consts.MaxPISearchSize))
+	fs.Int32VarP(&flagGetIncidentSize, "batch-size", "n", consts.MaxPISearchSize, fmt.Sprintf("number of incidents to request per page; does not cap total results (max limit %d enforced by server)", consts.MaxPISearchSize))
 	fs.Int32VarP(&flagGetIncidentLimit, "limit", "l", 0, "maximum number of matching incidents to return across all pages; omit to continue through all matches")
 	fs.BoolVar(&flagGetIncidentTotal, "total", false, "return only the exact numeric total of matching incidents")
 	fs.IntVar(&flagGetIncidentMessageLimit, "error-message-limit", 0, "maximum characters to show for incident messages; 0 keeps full messages")
