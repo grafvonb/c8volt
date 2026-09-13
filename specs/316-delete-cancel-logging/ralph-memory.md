@@ -26,6 +26,7 @@ Started: 2026-09-13T13:39:33Z
 - OAuth cache reuse is silent at DEBUG. Token fetch/store and the shared HTTP exchange diagnostic still show acquisition, while expiry-skew refresh behavior and credential redaction remain unchanged.
 - The exact polling budget is deterministic through `expect process-instance`: ACTIVE for checks 1-35 and CANCELED on check 36 yields 36 state observations and 36 process-instance HTTP records, separate from the one token bootstrap exchange.
 - Joined mutation errors contain an enriched delete failure wrapping the original cancel failure for each tree. Failure collection must stop at the outer domain mutation node on each joined branch to avoid double-counting roots or accepted submissions.
+- Quiet suppresses DEBUG diagnostics for failed process-instance mutations, but keys-only remains a non-envelope mode and retains the compact final error on stderr; quiet JSON emits its explicit failure envelope on stdout with empty stderr.
 
 ## Reusable Commands
 
@@ -41,4 +42,4 @@ Started: 2026-09-13T13:39:33Z
 - Do not make timeout transcript assertions depend on which concurrent waiter notices the deadline first.
 
 ## Current Handoff
-- T006 is next: complete the combined output compatibility matrix and affected facade, adapter, process-definition-delete, prompt, request-order, and exit-classification regressions without changing output or mutation contracts.
+- T007 is next: update README logging guidance and delete/cancel command metadata, regenerate CLI docs, then record all targeted and full-suite validation results in quickstart.md.

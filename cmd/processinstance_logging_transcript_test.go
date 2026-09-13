@@ -98,6 +98,58 @@ apis:
 	require.Contains(t, envelope.Detail.Message, "delete cancel: cancel wait:")
 
 	for _, tc := range []struct {
+		name       string
+		guard      string
+		outputMode string
+		wantDebug  bool
+	}{
+		{name: "JSONWithDebug", outputMode: "json", wantDebug: true},
+		{name: "QuietJSONWithDebug", guard: "quiet", outputMode: "json"},
+		{name: "AutomationJSONWithDebug", guard: "automation", outputMode: "json", wantDebug: true},
+		{name: "KeysOnlyWithDebug", outputMode: "keys", wantDebug: true},
+		{name: "QuietKeysOnlyWithDebug", guard: "quiet", outputMode: "keys"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			modeStdout, modeStderr, modeErr := testx.RunCmdSubprocessInDirWithSeparateOutputs(t, processInstanceLoggingTimeoutHelper, "", map[string]string{
+				"C8VOLT_TEST_CONFIG":       cfgPath,
+				"C8VOLT_TEST_GUARD_MODE":   tc.guard,
+				"C8VOLT_TEST_LOGGING_MODE": "debug",
+				"C8VOLT_TEST_OUTPUT_MODE":  tc.outputMode,
+			}, "")
+			require.Error(t, modeErr)
+			var modeExitErr *exec.ExitError
+			require.ErrorAs(t, modeErr, &modeExitErr)
+			require.Equal(t, exitcode.Timeout, modeExitErr.ExitCode())
+			require.NotContains(t, modeStdout, "pi state observation:")
+			require.NotContains(t, modeStdout, "api #")
+			require.NotContains(t, modeStderr, "pi deletion conflicted:", "DEBUG must not enable verbose workflow narration")
+
+			if tc.outputMode == "json" {
+				decoder := json.NewDecoder(strings.NewReader(modeStdout))
+				var got decodedCommandErrorEnvelope
+				require.NoError(t, decoder.Decode(&got))
+				require.ErrorIs(t, decoder.Decode(&struct{}{}), io.EOF)
+				require.Equal(t, "failed", got.Outcome)
+				require.Equal(t, "timeout", got.Class)
+			} else {
+				require.Empty(t, modeStdout, "a failed keys-only command must not emit a result key or blank line")
+			}
+
+			if tc.wantDebug {
+				require.Contains(t, modeStderr, "pi state observation:")
+				require.Contains(t, modeStderr, "api #")
+				require.Equal(t, 1, strings.Count(modeStderr, "process-instance mutation failure"))
+			} else if tc.outputMode == "keys" {
+				require.NotContains(t, modeStderr, "pi state observation:")
+				require.NotContains(t, modeStderr, "api #")
+				require.Contains(t, modeStderr, "ERROR delete process instances: cancellation confirmation timed out")
+			} else {
+				require.Empty(t, modeStderr, "quiet must suppress diagnostics without suppressing an explicit JSON result")
+			}
+		})
+	}
+
+	for _, tc := range []struct {
 		name        string
 		mode        string
 		wantVerbose bool
@@ -190,9 +242,6 @@ func TestProcessInstanceDeleteCancellationTimeoutTranscriptHelper(t *testing.T) 
 	}
 	require.Equal(t, processInstanceLoggingTimeoutHelper, os.Getenv(testx.CmdSubprocessNameEnv))
 	os.Args = processInstanceLoggingHelperArgs()
-	if os.Getenv("C8VOLT_TEST_OUTPUT_MODE") == "json" {
-		os.Args = append(os.Args[:3], append([]string{"--json"}, os.Args[3:]...)...)
-	}
 	Execute()
 }
 
@@ -245,8 +294,16 @@ func TestProcessInstanceDeleteCancellationSuccessTranscriptHelper(t *testing.T) 
 	Execute()
 }
 
+// processInstanceLoggingHelperArgs builds the shared real-command invocation,
+// including output and logging modes used by compatibility subtests.
 func processInstanceLoggingHelperArgs() []string {
 	args := []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "--no-indicator"}
+	switch os.Getenv("C8VOLT_TEST_OUTPUT_MODE") {
+	case "json":
+		args = append(args, "--json")
+	case "keys":
+		args = append(args, "--keys-only")
+	}
 	switch os.Getenv("C8VOLT_TEST_LOGGING_MODE") {
 	case "verbose":
 		args = append(args, "--verbose")
