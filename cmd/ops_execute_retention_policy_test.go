@@ -854,7 +854,7 @@ func TestOpsExecuteRetentionPolicyProgressContractPendingT066(t *testing.T) {
 	require.Contains(t, stderr, "discovering retention process instances, page 1/1, 1 seen")
 	require.Contains(t, stderr, "planning retention delete scope 1/1 process instance(s)")
 	require.Contains(t, stderr, opsRetentionPolicySeedKey+" submitted (deletion process-instance trees, 1/1 process-instance tree(s), affected process instances: 1)")
-	require.NotContains(t, stderr, "/v2/")
+	require.NotContains(t, withoutAPIDiagnosticLines(stderr), "/v2/")
 	require.NotContains(t, stderr, "cursor")
 	require.NotContains(t, stdout, "retention cleanup scope:")
 	require.NotContains(t, stdout, "discovering retention process instances")

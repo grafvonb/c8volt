@@ -888,7 +888,7 @@ func TestOpsPurgeProcessInstancesWithIncidentsProgressContractPendingT066(t *tes
 	require.Contains(t, stderr, opsIncidentPurgeRootKey+" submitted (deletion process-instance trees")
 	require.Contains(t, stderr, opsIncidentPurgeChildKey+" submitted (deletion process-instance trees")
 	require.Contains(t, stderr, "2/2 process-instance tree(s)")
-	require.NotContains(t, stderr, "/v2/")
+	require.NotContains(t, withoutAPIDiagnosticLines(stderr), "/v2/")
 	require.NotContains(t, stderr, "cursor")
 	require.NotContains(t, stdout, "incident purge scope:")
 	require.NotContains(t, stdout, "discovering incidents")

@@ -589,7 +589,7 @@ func TestOpsRepairProcessInstanceProgressContractPendingT068(t *testing.T) {
 	require.Contains(t, stderr, "loading process-instance repair incidents 1/1 process instance(s)")
 	require.Contains(t, stderr, "planning process-instance repair scope 1/1 process instance(s)")
 	require.Contains(t, stderr, "repairing incidents 1/1 incident(s)")
-	require.NotContains(t, stderr, "/v2/")
+	require.NotContains(t, withoutAPIDiagnosticLines(stderr), "/v2/")
 	require.NotContains(t, stderr, "cursor")
 	require.NotContains(t, stdout, "process-instance repair scope:")
 	require.NotContains(t, stdout, "discovering repair process instances")
