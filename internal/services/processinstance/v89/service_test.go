@@ -835,6 +835,12 @@ func TestService_CancelAndDeleteProcessInstance(t *testing.T) {
 		require.Error(t, err)
 		assert.ErrorIs(t, err, d.ErrInternal)
 		assert.Contains(t, err.Error(), "cancel family")
+		var failure *d.ProcessInstanceMutationFailure
+		require.ErrorAs(t, err, &failure)
+		assert.True(t, failure.CancellationSubmitted)
+		assert.Equal(t, "123", failure.RootKey)
+		assert.Equal(t, "cancellation scope discovery", failure.Phase)
+		assert.Empty(t, failure.Scope, "failed discovery must not invent a completed scope")
 		assert.False(t, resp.Ok)
 		assert.Equal(t, 1, cancellations)
 		assert.Equal(t, 3, keyReads, "precheck and family traversal reads must finish before polling")

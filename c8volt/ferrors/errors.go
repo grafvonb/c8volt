@@ -22,6 +22,7 @@ import (
 type ProcessInstanceMutationFailure struct {
 	Operation              string
 	Phase                  string
+	FailureReason          string
 	RootKey                string
 	Scope                  []string
 	Timeout                time.Duration
@@ -43,7 +44,6 @@ type classifiedError struct {
 func (e *classifiedError) Error() string        { return e.class.Error() + ": " + e.cause.Error() }
 func (e *classifiedError) Unwrap() error        { return e.cause }
 func (e *classifiedError) Is(target error) bool { return target == e.class }
-func (e *classifiedError) failureClass() error  { return e.class }
 
 // Class is the bounded machine-facing classification for CLI failures.
 type Class string
@@ -176,53 +176,53 @@ func Classify(err error) Class {
 	if normalized == nil {
 		return ""
 	}
-	var classified interface{ failureClass() error }
-	if errors.As(normalized, &classified) {
-		return classForSentinel(classified.failureClass())
-	}
 	switch {
-	case errors.Is(normalized, ErrInvalidInput):
+	case matchesClassification(normalized, ErrInvalidInput):
 		return ClassInvalidInput
-	case errors.Is(normalized, ErrLocalPrecondition):
+	case matchesClassification(normalized, ErrLocalPrecondition):
 		return ClassLocalPrecondition
-	case errors.Is(normalized, ErrUnsupported):
+	case matchesClassification(normalized, ErrUnsupported):
 		return ClassUnsupported
-	case errors.Is(normalized, ErrNotFound):
+	case matchesClassification(normalized, ErrNotFound):
 		return ClassNotFound
-	case errors.Is(normalized, ErrConflict):
+	case matchesClassification(normalized, ErrConflict):
 		return ClassConflict
-	case errors.Is(normalized, ErrTimeout):
+	case matchesClassification(normalized, ErrTimeout):
 		return ClassTimeout
-	case errors.Is(normalized, ErrUnavailable):
+	case matchesClassification(normalized, ErrUnavailable):
 		return ClassUnavailable
-	case errors.Is(normalized, ErrMalformedResponse):
+	case matchesClassification(normalized, ErrMalformedResponse):
 		return ClassMalformedResponse
 	default:
 		return ClassInternal
 	}
 }
 
-func classForSentinel(classErr error) Class {
-	switch classErr {
-	case ErrInvalidInput:
-		return ClassInvalidInput
-	case ErrLocalPrecondition:
-		return ClassLocalPrecondition
-	case ErrUnsupported:
-		return ClassUnsupported
-	case ErrNotFound:
-		return ClassNotFound
-	case ErrConflict:
-		return ClassConflict
-	case ErrTimeout:
-		return ClassTimeout
-	case ErrUnavailable:
-		return ClassUnavailable
-	case ErrMalformedResponse:
-		return ClassMalformedResponse
-	default:
-		return ClassInternal
+// matchesClassification preserves the historical priority across joined branches,
+// while an explicit class masks its own cause for classification only.
+// Unwrapping remains available to errors.Is/As callers.
+func matchesClassification(err, target error) bool {
+	if err == nil {
+		return false
 	}
+	if classified, ok := err.(*classifiedError); ok {
+		return classified.class == target
+	}
+	if err == target {
+		return true
+	}
+	if matcher, ok := err.(interface{ Is(error) bool }); ok && matcher.Is(target) {
+		return true
+	}
+	if joined, ok := err.(interface{ Unwrap() []error }); ok {
+		for _, child := range joined.Unwrap() {
+			if matchesClassification(child, target) {
+				return true
+			}
+		}
+		return false
+	}
+	return matchesClassification(errors.Unwrap(err), target)
 }
 
 // ExitCode maps a normalized or raw error to the process exit code used by CLI entry points.
@@ -372,6 +372,7 @@ func projectProcessInstanceMutationFailure(failure *domain.ProcessInstanceMutati
 	return &ProcessInstanceMutationFailure{
 		Operation:              failure.Operation,
 		Phase:                  failure.Phase,
+		FailureReason:          failure.FailureReason,
 		RootKey:                failure.RootKey,
 		Scope:                  slices.Clone(failure.Scope),
 		Timeout:                failure.Timeout,

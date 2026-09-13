@@ -27,7 +27,19 @@ func formatProcessInstanceMutationCommandFailures(failures []*ferrors.ProcessIns
 	if phase == "" {
 		phase = "confirmation"
 	}
-	message := fmt.Sprintf("%s: %s timed out", operation, phase)
+	reason := failures[0].FailureReason
+	if reason == "" {
+		reason = "failed"
+	}
+	for _, failure := range failures[1:] {
+		if failure.Phase != phase {
+			phase = "cancellation follow-up"
+		}
+		if failure.FailureReason != reason {
+			reason = "failed"
+		}
+	}
+	message := fmt.Sprintf("%s: %s %s", operation, phase, reason)
 	roots := processInstanceMutationFailureRoots(failures)
 	switch len(roots) {
 	case 1:

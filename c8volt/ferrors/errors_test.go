@@ -321,3 +321,23 @@ func TestProcessInstanceMutationFailureRepeatedNormalizationPreservesOuterClass(
 		require.Len(t, ProcessInstanceMutationFailures(err), 1)
 	}
 }
+
+func TestClassifyJoinedErrorsPreservesPriority(t *testing.T) {
+	t.Parallel()
+	timeout := WrapClass(ErrTimeout, errors.New("slow"))
+	invalid := WrapClass(ErrInvalidInput, errors.New("bad input"))
+	for _, err := range []error{
+		errors.Join(timeout, invalid), errors.Join(invalid, timeout),
+		errors.Join(ErrInvalidInput, timeout), errors.Join(timeout, ErrInvalidInput),
+		fmt.Errorf("workflow: %w", errors.Join(timeout, invalid)),
+	} {
+		require.Equal(t, ClassInvalidInput, Classify(err))
+		require.Equal(t, exitcode.InvalidArgs, ExitCode(err))
+		require.Equal(t, "invalid", Outcome(err))
+		require.ErrorIs(t, err, ErrTimeout)
+	}
+	// A sibling's explicit outer class hides only its own nested class.
+	outer := WrapClass(ErrTimeout, invalid)
+	require.Equal(t, ClassConflict, Classify(errors.Join(outer, ErrConflict)))
+	require.ErrorIs(t, outer, ErrInvalidInput)
+}

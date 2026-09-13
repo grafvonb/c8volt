@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 	"strings"
@@ -1023,4 +1024,27 @@ func observationLines(output string) []string {
 		}
 	}
 	return lines
+}
+
+func TestWaitForProcessInstanceStateMutationOwnsLookupFailure(t *testing.T) {
+	for _, suppressed := range []bool{false, true} {
+		t.Run(fmt.Sprint(suppressed), func(t *testing.T) {
+			var output bytes.Buffer
+			log := slog.New(slog.NewTextHandler(&output, &slog.HandlerOptions{Level: slog.LevelDebug}))
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			s := stubPIWaiter{getStateByKey: func(ctx context.Context, key string) (d.State, d.ProcessInstance, error) {
+				cancel() // Cancellation happens inside the lookup, never in the sleep branch.
+				return d.StateUnknown, d.ProcessInstance{}, ctx.Err()
+			}}
+			var opts []services.CallOption
+			if suppressed {
+				opts = append(opts, services.WithSuppressProcessInstanceDetailLogs())
+			}
+			_, _, err := WaitForProcessInstanceState(ctx, s, testConfig(time.Millisecond, 2, time.Second), log, "root", d.States{d.StateCanceled}, opts...)
+			require.ErrorIs(t, err, context.Canceled)
+			require.Equal(t, 1, strings.Count(output.String(), "pi state observation:"))
+			require.Equal(t, !suppressed, strings.Contains(output.String(), "level=ERROR"))
+		})
+	}
 }

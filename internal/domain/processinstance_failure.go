@@ -13,6 +13,7 @@ import (
 // state wait ends without confirmation. Error text and the original cause are
 // deliberately unchanged for callers that consume the existing error contract.
 type ProcessInstanceWaitFailure struct {
+	Reason    string
 	Key       string
 	LastState State
 	Attempts  int
@@ -28,6 +29,7 @@ func (e *ProcessInstanceWaitFailure) Unwrap() error { return e.Err }
 type ProcessInstanceMutationFailure struct {
 	Operation              string
 	Phase                  string
+	FailureReason          string
 	RootKey                string
 	Scope                  []string
 	Timeout                time.Duration

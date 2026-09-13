@@ -136,7 +136,9 @@ func WaitForProcessInstanceExpectation(ctx context.Context, s PIWaiter, cfg *con
 				logProcessInstanceLookupObservation(log, key, attempts, errInDelay, observedAt)
 				elapsed := time.Since(start)
 				status := fmt.Sprintf("stopped waiting for process instance %s after %d attempts in %s due to error", key, attempts, elapsed)
-				log.Error(status)
+				if !cCfg.SuppressProcessInstanceDetailLogs {
+					log.Error(status)
+				}
 				return d.ProcessInstanceExpectationResponse{Key: key, Ok: false, State: pi.State, Status: status}, d.ProcessInstance{}, fmt.Errorf("%w: %s", errInDelay, status)
 			}
 		}
@@ -205,7 +207,7 @@ func WaitForProcessInstanceState(ctx context.Context, s PIWaiter, cfg *config.Co
 			elapsed := time.Since(start)
 			status := fmt.Sprintf("stopped waiting for process instance %s after %d attempts in %s due to context error", key, attempts, elapsed)
 			log.Debug(status)
-			return waitStateFailure(key, lastState, attempts, elapsed, status, fmt.Errorf("%w: %s", errCtx, status))
+			return waitStateFailure(key, lastState, attempts, elapsed, status, "", fmt.Errorf("%w: %s", errCtx, status))
 		}
 		attempts++
 		got, pi, errInDelay := s.GetProcessInstanceStateByKey(ctx, key, nestedOpts...)
@@ -246,8 +248,10 @@ func WaitForProcessInstanceState(ctx context.Context, s PIWaiter, cfg *config.Co
 				logProcessInstanceLookupObservation(log, key, attempts, errInDelay, observedAt)
 				elapsed := time.Since(start)
 				status := fmt.Sprintf("stopped waiting for process instance %s after %d attempts in %s due to error", key, attempts, elapsed)
-				log.Error(status)
-				return waitStateFailure(key, lastState, attempts, elapsed, status, fmt.Errorf("%w: %s", errInDelay, status))
+				if !cCfg.SuppressProcessInstanceDetailLogs {
+					log.Error(status)
+				}
+				return waitStateFailure(key, lastState, attempts, elapsed, status, "failed during lookup", fmt.Errorf("%w: %s", errInDelay, status))
 			}
 		}
 		if backoff.MaxRetries > 0 && attempts >= backoff.MaxRetries {
@@ -255,7 +259,7 @@ func WaitForProcessInstanceState(ctx context.Context, s PIWaiter, cfg *config.Co
 			elapsed := time.Since(start)
 			status := fmt.Sprintf("exceeded max_retries (%d) waiting for state %q of process instance %s after %d attempts in %s", backoff.MaxRetries, desired, key, attempts, elapsed)
 			log.Debug(status)
-			return waitStateFailure(key, lastState, attempts, elapsed, status, errors.New(status))
+			return waitStateFailure(key, lastState, attempts, elapsed, status, "exhausted polling attempts", errors.New(status))
 		}
 		select {
 		case <-time.After(delay):
@@ -266,7 +270,7 @@ func WaitForProcessInstanceState(ctx context.Context, s PIWaiter, cfg *config.Co
 			elapsed := time.Since(start)
 			status := fmt.Sprintf("stopped waiting for process instance %s after %d attempts in %s due to context done", key, attempts, elapsed)
 			log.Debug(status)
-			return waitStateFailure(key, lastState, attempts, elapsed, status, fmt.Errorf("%w: %s", ctx.Err(), status))
+			return waitStateFailure(key, lastState, attempts, elapsed, status, "", fmt.Errorf("%w: %s", ctx.Err(), status))
 		}
 	}
 }
@@ -295,9 +299,9 @@ func logProcessInstanceLookupObservation(log *slog.Logger, key string, attempt i
 	log.Debug(fmt.Sprintf("pi state observation: key=%s attempt=%d lookup_error=%s elapsed=%s", key, attempt, detail, elapsed))
 }
 
-func waitStateFailure(key string, lastState d.State, attempts int, elapsed time.Duration, status string, err error) (d.StateResponse, d.ProcessInstance, error) {
+func waitStateFailure(key string, lastState d.State, attempts int, elapsed time.Duration, status, reason string, err error) (d.StateResponse, d.ProcessInstance, error) {
 	return d.StateResponse{Ok: false, State: d.StateUnknown, Status: status}, d.ProcessInstance{}, &d.ProcessInstanceWaitFailure{
-		Key: key, LastState: lastState, Attempts: attempts, Elapsed: elapsed, Err: err,
+		Reason: reason, Key: key, LastState: lastState, Attempts: attempts, Elapsed: elapsed, Err: err,
 	}
 }
 

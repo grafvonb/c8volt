@@ -226,14 +226,20 @@ func TestFormatProcessInstanceMutationCommandFailures(t *testing.T) {
 	t.Parallel()
 
 	failures := []*ferrors.ProcessInstanceMutationFailure{
-		{Operation: "delete", Phase: "cancellation confirmation", RootKey: "root-b", Timeout: 30 * time.Millisecond, LastStates: map[string]string{"root-b": "ACTIVE"}, CancellationSubmitted: true},
-		{Operation: "delete", Phase: "cancellation confirmation", RootKey: "root-a", Timeout: 30 * time.Millisecond, CancellationSubmitted: true},
+		{Operation: "delete", Phase: "cancellation confirmation", FailureReason: "timed out", RootKey: "root-b", Timeout: 30 * time.Millisecond, LastStates: map[string]string{"root-b": "ACTIVE"}, CancellationSubmitted: true},
+		{Operation: "delete", Phase: "cancellation confirmation", FailureReason: "timed out", RootKey: "root-a", Timeout: 30 * time.Millisecond, CancellationSubmitted: true},
 	}
 
 	require.Equal(t,
 		"delete process instances: cancellation confirmation timed out for roots root-a,root-b (2 trees); cancellations submitted, outcomes unconfirmed",
 		formatProcessInstanceMutationCommandFailures(failures),
 	)
+	failures[0].FailureReason = "failed during lookup"
+	require.Contains(t, formatProcessInstanceMutationCommandFailures(failures), "cancellation confirmation failed for roots")
+	require.NotContains(t, formatProcessInstanceMutationCommandFailures(failures), "timed out")
+	failures[0].Phase = "cancellation scope discovery"
+	require.Contains(t, formatProcessInstanceMutationCommandFailures(failures), "cancellation follow-up failed for roots")
+
 }
 
 func TestProcessInstanceDeleteCancellationTimeoutTranscriptHelper(t *testing.T) {
@@ -317,6 +323,9 @@ func processInstanceLoggingHelperArgs() []string {
 		args = append(args, "--quiet")
 	case "automation":
 		args = append(args, "--automation")
+	}
+	if os.Getenv("C8VOLT_TEST_OPERATION") == "cancel" {
+		return append(args, "--auto-confirm", "cancel", "process-instance", "--key", "root")
 	}
 	return append(args, "--auto-confirm", "delete", "process-instance", "--key", "root", "--force")
 }
@@ -515,4 +524,102 @@ func indexOfString(values []string, wanted string) int {
 		}
 	}
 	return -1
+}
+
+// Exercise post-submission failures through the same command, adapter and
+// rendering paths as the timeout transcript; keep the HTTP request ledger.
+func TestProcessInstanceCancellationFailureReasons(t *testing.T) {
+	for _, tc := range []struct {
+		name, operation, failure, want, output, guard string
+		retries, code                                 int
+	}{
+		{name: "CancelAttempts", operation: "cancel", retries: 1, code: exitcode.Error, want: "cancellation confirmation exhausted polling attempts"},
+		{name: "DeleteAttempts", retries: 1, code: exitcode.Error, want: "cancellation confirmation exhausted polling attempts"},
+		{name: "DiscoveryForbidden", failure: "discovery", code: exitcode.Error, want: "cancellation scope discovery failed"},
+		{name: "LookupForbidden", failure: "lookup", code: exitcode.Error, want: "cancellation confirmation failed during lookup"},
+		{name: "QuietJSONInterruptedLookup", failure: "deadline", code: exitcode.Timeout, output: "json", guard: "quiet"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			requests := &testx.SafeSlice[string]{}
+			base := processInstanceLoggingTimeoutServer(t, requests)
+			var submitted atomic.Bool
+			var rootReads atomic.Int32
+			var interrupted atomic.Bool
+			server := testx.NewIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if submitted.Load() && r.Method == http.MethodGet && r.URL.Path == "/v2/process-instances/root" {
+					read := rootReads.Add(1)
+					if tc.failure == "discovery" || (tc.failure == "lookup" && read == 3) {
+						requests.Append(r.Method + " " + r.URL.Path)
+						w.Header().Set("Content-Type", "application/json")
+						w.WriteHeader(http.StatusForbidden)
+						_, _ = io.WriteString(w, `{"title":"Forbidden","status":403,"detail":"fixture denied"}`)
+						return
+					}
+					if tc.failure == "deadline" && read == 3 {
+						requests.Append(r.Method + " " + r.URL.Path)
+						interrupted.Store(true)
+						<-r.Context().Done()
+						return
+					}
+				}
+				if r.URL.Path == "/v2/process-instances/root/cancellation" {
+					submitted.Store(true)
+				}
+				base.ServeHTTP(w, r)
+			}))
+			t.Cleanup(server.Close)
+			cfgPath := writeRawTestConfig(t, fmt.Sprintf(`app:
+  camunda_version: 8.9
+  backoff:
+    strategy: fixed
+    initial_delay: 1ms
+    max_retries: %d
+    timeout: 200ms
+auth:
+  mode: none
+apis:
+  camunda_api:
+    base_url: %s
+`, tc.retries, server.URL))
+			loggingMode := ""
+			if tc.guard == "quiet" {
+				loggingMode = "debug"
+			}
+			stdout, stderr, err := testx.RunCmdSubprocessInDirWithSeparateOutputs(t, processInstanceLoggingTimeoutHelper, "", map[string]string{
+				"C8VOLT_TEST_CONFIG": cfgPath, "C8VOLT_TEST_OPERATION": tc.operation,
+				"C8VOLT_TEST_OUTPUT_MODE": tc.output, "C8VOLT_TEST_GUARD_MODE": tc.guard,
+				"C8VOLT_TEST_LOGGING_MODE": loggingMode,
+			}, "")
+			var exitErr *exec.ExitError
+			require.ErrorAs(t, err, &exitErr)
+			require.Equal(t, tc.code, exitErr.ExitCode(), stderr)
+			require.True(t, submitted.Load())
+			ledger := requests.Snapshot()
+			require.Equal(t, 1, strings.Count(strings.Join(ledger, "\n"), "POST /v2/process-instances/root/cancellation"))
+			require.NotContains(t, ledger, "POST /v2/process-instances/root/deletion")
+			if tc.output == "json" {
+				require.True(t, interrupted.Load(), "must interrupt a real in-flight polling request")
+				require.Empty(t, stderr)
+				var envelope decodedCommandErrorEnvelope
+				decoder := json.NewDecoder(strings.NewReader(stdout))
+				require.NoError(t, decoder.Decode(&envelope))
+				require.ErrorIs(t, decoder.Decode(&struct{}{}), io.EOF)
+				require.Equal(t, "timeout", envelope.Class)
+				require.Contains(t, envelope.Detail.Message, "delete cancel: cancel wait:")
+				return
+			}
+			require.Empty(t, stdout)
+			require.Contains(t, stderr, tc.want)
+			require.Contains(t, stderr, "cancellation submitted, outcome unconfirmed")
+			require.NotContains(t, stderr, "timed out")
+			require.NotContains(t, stderr, "cancel family:")
+			require.NotContains(t, stderr, "cancel wait:")
+			if tc.operation == "cancel" {
+				require.NotContains(t, stderr, "deletion")
+			} else {
+				require.Contains(t, stderr, "resumed deletion not reached")
+				require.Equal(t, 1, strings.Count(strings.Join(ledger, "\n"), "POST /v2/process-instances/child/deletion"))
+			}
+		})
+	}
 }

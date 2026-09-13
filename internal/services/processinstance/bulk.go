@@ -262,7 +262,15 @@ func processInstanceCompletionFailureDetail(ok bool, err error, status string) s
 }
 
 func conciseProcessInstanceMutationFailure(failure *d.ProcessInstanceMutationFailure) string {
-	parts := []string{fmt.Sprintf("%s timed out after %s", failure.Phase, failure.Timeout)}
+	reason := failure.FailureReason
+	if reason == "" {
+		reason = "failed"
+	}
+	summary := failure.Phase + " " + reason
+	if reason == "timed out" && failure.Timeout > 0 {
+		summary += fmt.Sprintf(" after %s", failure.Timeout)
+	}
+	parts := []string{summary}
 	if failure.RootKey != "" {
 		parts = append(parts, "root "+failure.RootKey)
 	}
@@ -293,7 +301,7 @@ func conciseProcessInstanceMutationFailure(failure *d.ProcessInstanceMutationFai
 	if failure.CancellationSubmitted {
 		parts = append(parts, "root cancellation submitted, outcome unconfirmed")
 	}
-	if !failure.ResumedDeletionReached {
+	if failure.Operation == "delete" && !failure.ResumedDeletionReached {
 		parts = append(parts, "resumed deletion not reached")
 	}
 	return strings.Join(parts, "; ")

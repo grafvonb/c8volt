@@ -414,7 +414,7 @@ func (s *Service) CancelProcessInstance(ctx context.Context, key string, opts ..
 	if !cCfg.NoWait {
 		keys, _, _, err := s.Family(ctx, key, opts...)
 		if err != nil {
-			return d.CancelResponse{}, nil, fmt.Errorf("cancel family: %w", err)
+			return d.CancelResponse{}, nil, common.NewProcessInstanceCancellationDiscoveryFailure(key, fmt.Errorf("cancel family: %w", err))
 		}
 		s.infoProcessInstanceDetail(cCfg, fmt.Sprintf("waiting for pi %s cancel", key))
 		states := []d.State{d.StateCompleted, d.StateCanceled, d.StateTerminated, d.StateAbsent}
