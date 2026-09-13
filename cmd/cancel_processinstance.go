@@ -32,6 +32,8 @@ A --bpmn-process-id selector must match a visible process definition before inst
 
 --batch-size controls each discovery request; --limit caps selected instances across all pages. --workers, --fail-fast, and --no-worker-limit control planning and cancellation work.
 
+Use --verbose to explain root escalation, accepted cancellation, and confirmation waits. Use --debug for per-check state observations and HTTP diagnostics; it remains independent of --verbose. A confirmation timeout reports accepted cancellation as submitted but unconfirmed.
+
 Use --dry-run to preview the affected family without cancelling. Use --auto-confirm for unattended cancellation.`,
 	Example: `  ./c8volt cancel process-instance --key <process-instance-key>
   ./c8volt cancel process-instance --key <process-instance-key> --dry-run
@@ -46,6 +48,7 @@ Use --dry-run to preview the affected family without cancelling. Use --auto-conf
   ./c8volt cancel process-instance --state active --start-date-newer-days 30 --limit 5 --dry-run
   ./c8volt cancel process-instance --bpmn-process-id <bpmn-process-id> --state active --limit 5 --auto-confirm
   ./c8volt --verbose cancel process-instance --state active --limit 25 --auto-confirm
+  ./c8volt --verbose --debug cancel process-instance --key <process-instance-key> --force
   ./c8volt expect process-instance --key <process-instance-key> --state canceled
   ./c8volt get process-instance --key <process-instance-key> --keys-only | ./c8volt cancel process-instance --auto-confirm -`,
 	Aliases: []string{"pi"},

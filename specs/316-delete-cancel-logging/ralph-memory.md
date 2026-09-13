@@ -27,6 +27,7 @@ Started: 2026-09-13T13:39:33Z
 - The exact polling budget is deterministic through `expect process-instance`: ACTIVE for checks 1-35 and CANCELED on check 36 yields 36 state observations and 36 process-instance HTTP records, separate from the one token bootstrap exchange.
 - Joined mutation errors contain an enriched delete failure wrapping the original cancel failure for each tree. Failure collection must stop at the outer domain mutation node on each joined branch to avoid double-counting roots or accepted submissions.
 - Quiet suppresses DEBUG diagnostics for failed process-instance mutations, but keys-only remains a non-envelope mode and retains the compact final error on stderr; quiet JSON emits its explicit failure envelope on stdout with empty stderr.
+- Logging guidance lives with the existing API diagnostics section in README; command-specific behavior is sourced from the delete/cancel Cobra Long and Example metadata and propagated with `make docs-content`.
 
 ## Reusable Commands
 
@@ -42,4 +43,4 @@ Started: 2026-09-13T13:39:33Z
 - Do not make timeout transcript assertions depend on which concurrent waiter notices the deadline first.
 
 ## Current Handoff
-- T007 is next: update README logging guidance and delete/cancel command metadata, regenerate CLI docs, then record all targeted and full-suite validation results in quickstart.md.
+- Feature complete; no handoff required.

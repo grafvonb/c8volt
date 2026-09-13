@@ -141,3 +141,25 @@ Started: 2026-09-13 15:39:33
 - Quiet JSON preserves one explicit failure envelope and no stderr diagnostics, while quiet keys-only retains the compact final error on stderr and emits zero stdout bytes.
 - The combined command matrix, real-terminal cases without skips, all process-instance adapters, facade/error packages, and process-definition delete regressions passed.
 ---
+---
+## Iteration 7 - 2026-09-13 17:17
+**Work Unit**: Delivery complete - document and validate delete/cancel logging
+**Tasks Completed**:
+- [x] T007: Update logging guidance and command metadata, regenerate CLI docs, and complete required validation
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- README.md
+- cmd/cancel_processinstance.go
+- cmd/delete_processinstance.go
+- docs/cli/c8volt_cancel_process-instance.md
+- docs/cli/c8volt_delete_process-instance.md
+- docs/index.md
+- specs/316-delete-cancel-logging/tasks.md
+- specs/316-delete-cancel-logging/ralph-memory.md
+- specs/316-delete-cancel-logging/quickstart.md
+- specs/316-delete-cancel-logging/progress.md
+**Learnings**:
+- README and generated command references now document verbose workflow narration, DEBUG polling diagnostics, and submitted-but-unconfirmed timeout semantics consistently.
+- All targeted checks and the full race-enabled suite passed with no terminal-test skips or blockers.
+---

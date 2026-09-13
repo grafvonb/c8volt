@@ -75,3 +75,14 @@ git status --short
 ```
 
 Expected: CLI docs generated from updated command metadata, README aligned with actual logging behavior, no unintended files changed, and the full race-enabled suite passes. Investigate failures before implementation acceptance or commit; report any blocked validation explicitly. No runtime tests or implementation completion are claimed by the planning artifacts themselves.
+
+## Validation Results — 2026-09-13
+
+- Acceptance-test discovery passed on `codex/316-delete-cancel-logging` with Go 1.26.2 darwin/arm64. The timeout transcript, success transcript, and polling record-budget tests were all listed.
+- Timeout/success transcript and deterministic polling-budget tests passed, including the complete human, verbose, DEBUG, JSON, quiet, automation, and keys-only mode matrix.
+- Waiter, all four process-instance adapters, OAuth diagnostics, facade options/errors, and process facade targeted checks passed.
+- Command output and prompt compatibility checks passed. The real-terminal tests ran on macOS; none were skipped.
+- Process-definition deletion regressions passed across the shared package and all four supported adapters.
+- `gofmt`, `make docs-content`, and `git diff --check` passed.
+- `make test` passed (`go test ./... -race -count=1`); the `cmd` package completed in 365.806s.
+- No required checks were skipped and no blockers remain.

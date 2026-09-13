@@ -32,6 +32,8 @@ A --bpmn-process-id selector must match a visible process definition before inst
 
 Search mode plans all selected pages before one confirmation and deletion. --batch-size controls each discovery request; --limit caps the selected scope across all pages. --workers, --fail-fast, and --no-worker-limit control planning and deletion work.
 
+Use --verbose to explain cancellation prerequisites, root escalation, accepted cancellation, confirmation waits, and deletion resumption. Use --debug for per-check state observations and HTTP diagnostics; it remains independent of --verbose. A confirmation timeout reports accepted cancellation as submitted but unconfirmed and does not claim that deletion resumed.
+
 Use --dry-run to preview the affected family without deleting or cancelling. Use --auto-confirm for unattended deletion.`,
 	Example: `  ./c8volt delete process-instance --key <process-instance-key> --force
   ./c8volt delete process-instance --key <process-instance-key> --dry-run
@@ -44,6 +46,7 @@ Use --dry-run to preview the affected family without deleting or cancelling. Use
   ./c8volt delete process-instance --state terminated --end-date-after 2026-05-01 --end-date-before 2026-05-31 --limit 5 --dry-run
   ./c8volt delete process-instance --bpmn-process-id <bpmn-process-id> --state terminated --batch-size 250 --limit 5 --dry-run
   ./c8volt --verbose delete process-instance --state terminated --limit 25 --auto-confirm
+  ./c8volt --verbose --debug delete process-instance --key <process-instance-key> --force
   ./c8volt expect process-instance --key <process-instance-key> --state absent`,
 	Aliases: []string{"pi"},
 	Args: func(cmd *cobra.Command, args []string) error {
