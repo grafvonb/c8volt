@@ -301,3 +301,23 @@ Started: 2026-09-12 19:35:54
 **Learnings**:
 - Enabled diagnostics allocated about 4.3 KiB per exchange for both 32-byte and streamed 8 MiB responses; runtime scaled with consumed bytes, while metadata memory did not retain or scale with payload size.
 ---
+---
+## Iteration 17 - 2026-09-12 22:47
+**Work Unit**: Phase 6 Polish and cross-cutting concerns (T032 final delivery validation)
+**Tasks Completed**:
+- [x] T032: Formatted feature Go files, passed every automated quickstart scenario and the full race suite, checked the final diff, and completed the FR-001–FR-011 delivery review.
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- docs/index.md
+- specs/305-api-request-diagnostics/quickstart.md
+- specs/305-api-request-diagnostics/tasks.md
+- specs/305-api-request-diagnostics/ralph-memory.md
+- specs/305-api-request-diagnostics/progress.md
+**Learnings**:
+- Final validation confirms the shared interceptor preserves operation traffic and results while keeping generated clients and individual command paths untouched; all local terminal checks were supported on Darwin/arm64.
+---
+
+## Finalization recovery - 2026-09-13
+
+Iteration 17 stopped after its successful race suite because agent tooling and the agent turn failed before the coordinated commit. The recovery reviewed all five pending paths. A sandboxed test attempt failed on denied local socket binding; the unrestricted `make test` rerun passed with exit code 0. Production code was unchanged. The final commit includes T032, this progress record, the terminal memory handoff, quickstart evidence and generated homepage metadata together.

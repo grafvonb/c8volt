@@ -35,6 +35,7 @@ Started: 2026-09-12T17:35:53Z
 - T004 and T005 are paired for the same green-suite requirement; allowed correlation values are bounded identifiers, while Retry-After and Server-Timing are parsed into safe canonical forms.
 - T007 through T012 form one validated lower-layer US1 slice because transport/OAuth contract tests require their paired body, trace, stack and token-client implementations to remain green.
 - US2 security coverage retains safe fallback correlation identifiers while dropping unsafe first values, and collects response cookie/API-key secrets before parsing allowed response metadata.
+- Final FR-001–FR-011 review confirmed production changes remain at root bootstrap, shared httpc and OAuth collector sharing; no generated clients, production facades, dependencies, configuration keys or individual command diagnostic paths changed.
 
 ## Gotchas
 
@@ -58,4 +59,4 @@ Started: 2026-09-12T17:35:53Z
 - Do not add diagnostics to individual commands or generated clients; keep observation at the shared HTTP transport boundary.
 
 ## Current Handoff
-- Continue Phase 6 at T032: run the final formatting, automated quickstart scenarios, full race suite and diff/requirements review, then record actual outcomes before the coordinated final commit.
+- Feature complete; no handoff required.

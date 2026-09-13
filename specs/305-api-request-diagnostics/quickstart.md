@@ -163,3 +163,13 @@ git diff --check
 ```
 
 Inspect generated CLI documentation for existing verbose behavior and README guidance for timing, incomplete transfers, retained identifiers, redaction, quiet/stderr behavior and the observation boundary. Do not hand-edit generated CLI pages. Record test outcomes and any platform limitations before committing; full race-enabled `make test` is mandatory for implementation delivery.
+
+## Final delivery validation
+
+On 2026-09-12, iteration 17 formatted every Go file changed from the `origin/develop` merge base; `gofmt` produced no diff. All automated quickstart test-list and focused acceptance commands passed, including the real command/terminal suite and the race-enabled diagnostics, retry, authentication and root-help gate. The benchmark gate also passed on Darwin/arm64 (Apple M3 Pro): enabled allocation was 4311 B/op for the 32-byte body and 4424 B/op while generating and consuming the 8 MiB stream, confirming payload-size-independent metadata.
+
+`make docs-content` completed and refreshed only the generated homepage build metadata. The final `make test` race suite and `git diff --check` passed. No platform limitation applied to the real-terminal tests.
+
+The FR-001–FR-011 diff review found diagnostics confined to root bootstrap, the shared `internal/services/httpc` transport boundary and OAuth collector sharing. There are no new flags, configuration keys or dependencies; no production facade, individual command or generated-client diagnostic edits; and no extra network requests, body consumption or mutation behavior. Acceptance coverage verifies request counts and bodies, stdout and exit preservation, prompt and mutation behavior, quiet/logger routing, timing and partial evidence, retries, redaction, concurrency and invocation isolation. README, root metadata and regenerated documentation cover the required operator guidance.
+
+Recovery validation on 2026-09-13: `make test` passed with exit code 0 outside the sandbox after the initial sandboxed run was blocked from binding local fixture sockets. `git diff --check` passed. No production code changes were needed for recovery.
