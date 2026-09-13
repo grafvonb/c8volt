@@ -53,3 +53,21 @@ Started: 2026-09-13 15:39:33
 - Conditional delay fields require deferring each observation until the existing sleep/stop decision, without changing polling mechanics.
 - Targeted regressions and the complete race-enabled `make test` suite passed.
 ---
+---
+## Iteration 3 - 2026-09-13 16:19
+**Work Unit**: US3 complete - remove OAuth cache chatter and enforce polling record budget
+**Tasks Completed**:
+- [x] T003: Remove routine OAuth cache lookup/hit diagnostics and prove the deterministic 36-check cached-auth record budget
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/processinstance_logging_transcript_test.go
+- internal/services/auth/oauth2/diagnostics_test.go
+- internal/services/auth/oauth2/service.go
+- specs/316-delete-cancel-logging/tasks.md
+- specs/316-delete-cancel-logging/ralph-memory.md
+- specs/316-delete-cancel-logging/progress.md
+**Learnings**:
+- A real expect command with a terminal state on check 36 isolates the exact polling budget from token bootstrap and unrelated phase records.
+- Targeted regressions and the complete race-enabled `make test` suite passed.
+---

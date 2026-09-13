@@ -20,10 +20,14 @@ Started: 2026-09-13T13:39:33Z
 - `ferrors` class wrappers must preserve both the outer class precedence and the nested cause. A plain multi-`%w` format exposes causes but can let a nested normalized class win unless classification reads the outer wrapper explicitly.
 - Waiter observations must remain pending until the existing continuation decision: emit `next_delay` only after the sleep completes, and omit it for terminal state, lookup failure, retry exhaustion, or interrupted/deadline stop.
 - `WithSuppressNestedProcessInstanceLookupLogs` is deliberately narrower than workflow/detail suppression. Waiters add it to nested calls; v8.7 gates its tenant-safe search message, while v8.8-v8.10 gate direct-get/state messages. HTTP transport diagnostics remain unaffected.
+- OAuth cache reuse is silent at DEBUG. Token fetch/store and the shared HTTP exchange diagnostic still show acquisition, while expiry-skew refresh behavior and credential redaction remain unchanged.
+- The exact polling budget is deterministic through `expect process-instance`: ACTIVE for checks 1-35 and CANCELED on check 36 yields 36 state observations and 36 process-instance HTTP records, separate from the one token bootstrap exchange.
 
 ## Reusable Commands
 
 - `go test ./cmd -run '^TestProcessInstanceDeleteCancellationTimeoutTranscript$' -count=5`
+- `go test ./cmd -run '^TestProcessInstancePollingRecordBudget$' -count=1 -v`
+- `go test ./internal/services/auth/oauth2 -run 'Test(APIDiagnosticsOAuth|RetrieveTokenForAPI)' -count=1`
 - `go test ./internal/services/processinstance/waiter ./internal/services/processinstance/v89 ./internal/services/processinstance ./c8volt/process ./c8volt/ferrors -count=1`
 - `make test`
 
@@ -32,4 +36,4 @@ Started: 2026-09-13T13:39:33Z
 - Do not make timeout transcript assertions depend on which concurrent waiter notices the deadline first.
 
 ## Current Handoff
-- T003 is next: remove routine OAuth cache lookup/hit DEBUG messages and add the deterministic 36-check polling record-budget test on top of T002's consolidated observations.
+- T004 is next: restore only the required verbose delete/cancel transition explanations across all four adapters and selectively adjust command suppression without changing workflow events or mutation behavior.
