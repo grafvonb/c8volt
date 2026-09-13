@@ -190,7 +190,7 @@ func TestAPIDiagnosticsConcurrentCompletionKeepsRecordsIndivisible(t *testing.T)
 	require.Contains(t, lines[1], "api #1 ")
 	seen := make(map[string]struct{}, exchanges)
 	for _, line := range lines {
-		require.Equal(t, 1, strings.Count(line, "INFO api #"))
+		require.Equal(t, 1, strings.Count(line, "DEBUG api #"))
 		fields := strings.Fields(line)
 		require.GreaterOrEqual(t, len(fields), 5)
 		for _, field := range fields {
@@ -246,7 +246,7 @@ func TestAPIDiagnosticsCollectorsAndWriterFailuresStayIsolated(t *testing.T) {
 	newCollector := func(profile string, writer io.Writer) *diagnosticCollector {
 		cfg := config.New()
 		cfg.ActiveProfile = profile
-		collector := newDiagnosticCollector(cfg, logging.New(logging.LoggerConfig{Writer: writer, Level: "info", Format: "plain"}), true)
+		collector := newDiagnosticCollector(cfg, logging.New(logging.LoggerConfig{Writer: writer, Level: "debug", Format: "plain"}))
 		require.NotNil(t, collector)
 		return collector
 	}

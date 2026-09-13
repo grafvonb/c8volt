@@ -6,7 +6,7 @@ nav_exclude: true
 has_toc: true
 ---
 
-> Generated from build `c8volt v4.3.0-beta.1-277-g222ac53e`, commit `222ac53e`, built `2026-09-12T20:46:43Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.0-alpha4 (prerelease)
+> Generated from build `c8volt v4.3.0-beta.1-278-g68aca57a-dirty`, commit `68aca57a`, built `2026-09-13T09:06:48Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.0-alpha4 (prerelease)
 
 <img src="./logo/c8volt_logo_transparent_w_shadow_400x244.png" alt="c8volt logo" />
 
@@ -156,13 +156,15 @@ For the full setup contract, see the generated [config reference](./cli/c8volt_c
 
 ### API Request Diagnostics
 
-Add the existing `--verbose` flag to an API-backed command to emit one compact,
-redacted INFO record for each HTTP exchange. Results remain on stdout; records
+Add the existing `--debug` flag to an API-backed command to emit one compact,
+redacted DEBUG record for each HTTP exchange. Results remain on stdout; records
 and interactive prompts use the command's configured or inherited stderr.
-`--quiet` suppresses these INFO records, as does a `warn` or `error` log level.
+`--quiet` suppresses these DEBUG records. Configured DEBUG logging also enables them;
+INFO and higher levels filter them. `--verbose` adds functional detail and does
+not enable HTTP diagnostics.
 
 ```bash
-./c8volt --config ./config.yaml --verbose get process-definition --latest \
+./c8volt --config ./config.yaml --debug get process-definition --latest \
   > results.txt 2> diagnostics.txt
 ```
 
@@ -197,6 +199,12 @@ presentation; source-file output remains controlled by the existing logger
 source setting. Diagnostic formatting and writes happen synchronously after the
 exchange duration is captured, so a slow stderr destination can add command
 latency without inflating the reported exchange time.
+
+HTTP exchange logging has one owner: the diagnostic interceptor. API and OAuth
+clients both place it below the existing activity/request-dump wrapper. The old
+`calling:` start message is removed; an exchange record appears only at observed
+termination. Existing activity indicators remain the in-flight signal where
+enabled. Explicit request-dump configuration remains separate and unchanged.
 
 The observation boundary is the shared c8volt HTTP transport. Explicit retries,
 redirects, authentication requests, and service retries that cross it receive

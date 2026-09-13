@@ -20,24 +20,23 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestAPIDiagnosticsCollectorGating verifies disabled or INFO-filtered invocations install no collector.
+// TestAPIDiagnosticsCollectorGating verifies DEBUG-filtered invocations install no collector.
 func TestAPIDiagnosticsCollectorGating(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name    string
-		logger  *slog.Logger
-		verbose bool
+		name   string
+		logger *slog.Logger
 	}{
-		{name: "verbose disabled", logger: logging.New(logging.LoggerConfig{Writer: &bytes.Buffer{}, Level: "info", Format: "plain"})},
-		{name: "info filtered", logger: logging.New(logging.LoggerConfig{Writer: &bytes.Buffer{}, Level: "warn", Format: "plain"}), verbose: true},
-		{name: "logger absent", verbose: true},
+		{name: "info filtered", logger: logging.New(logging.LoggerConfig{Writer: &bytes.Buffer{}, Level: "info", Format: "plain"})},
+		{name: "warn filtered", logger: logging.New(logging.LoggerConfig{Writer: &bytes.Buffer{}, Level: "warn", Format: "plain"})},
+		{name: "logger absent"},
 	}
 	for _, test := range tests {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
-			require.Nil(t, newDiagnosticCollector(config.New(), test.logger, test.verbose))
+			require.Nil(t, newDiagnosticCollector(config.New(), test.logger))
 		})
 	}
 }
@@ -51,7 +50,7 @@ func TestAPIDiagnosticsCollectorCopiesPrivateContext(t *testing.T) {
 	cfg.ActiveProfile = "prod-secret-value"
 	cfg.App.Tenant = "tenant-secret-value"
 	cfg.Auth.OAuth2.ClientSecret = "secret-value"
-	collector := newDiagnosticCollector(cfg, logging.New(logging.LoggerConfig{Writer: &output, Level: "info", Format: "plain"}), true)
+	collector := newDiagnosticCollector(cfg, logging.New(logging.LoggerConfig{Writer: &output, Level: "debug", Format: "plain"}))
 	require.NotNil(t, collector)
 
 	cfg.ActiveProfile = "changed-profile"
@@ -73,7 +72,7 @@ func TestAPIDiagnosticsCollectorSequencesAndIsolation(t *testing.T) {
 		var output bytes.Buffer
 		cfg := config.New()
 		cfg.ActiveProfile = profile
-		collector := newDiagnosticCollector(cfg, logging.New(logging.LoggerConfig{Writer: &output, Level: "info", Format: "plain"}), true)
+		collector := newDiagnosticCollector(cfg, logging.New(logging.LoggerConfig{Writer: &output, Level: "debug", Format: "plain"}))
 		require.NotNil(t, collector)
 		return collector, &output
 	}
@@ -121,7 +120,7 @@ func TestAPIDiagnosticsCollectorSequencesAndIsolation(t *testing.T) {
 		require.Contains(t, seen, "#"+strconv.Itoa(expected))
 	}
 
-	require.Contains(t, secondOutput.String(), "INFO api #1 HEAD /v2/topology: total=0s profile=second\n")
+	require.Contains(t, secondOutput.String(), "DEBUG api #1 HEAD /v2/topology: total=0s profile=second\n")
 }
 
 // TestAPIDiagnosticsCollectorFreezesAndEmitsAfterUnlock verifies concurrent terminal events emit one immutable record without holding the state lock.
@@ -129,7 +128,7 @@ func TestAPIDiagnosticsCollectorFreezesAndEmitsAfterUnlock(t *testing.T) {
 	t.Parallel()
 
 	writer := &diagnosticCallbackWriter{}
-	collector := newDiagnosticCollector(config.New(), logging.New(logging.LoggerConfig{Writer: writer, Level: "info", Format: "plain"}), true)
+	collector := newDiagnosticCollector(config.New(), logging.New(logging.LoggerConfig{Writer: writer, Level: "debug", Format: "plain"}))
 	require.NotNil(t, collector)
 	exchange := collector.start(&http.Request{Method: http.MethodGet, URL: &url.URL{Path: "/v2/topology"}})
 	writer.callback = func() {
@@ -153,7 +152,7 @@ func TestAPIDiagnosticsCollectorFreezesAndEmitsAfterUnlock(t *testing.T) {
 	workers.Wait()
 
 	require.False(t, writer.lateUpdate.Load())
-	require.Contains(t, writer.String(), "INFO api #1 GET /v2/topology: total=1s host=frozen.example\n")
+	require.Contains(t, writer.String(), "DEBUG api #1 GET /v2/topology: total=1s host=frozen.example\n")
 	require.False(t, exchange.update(func(record *diagnosticRecord) { record.host = "later.example" }))
 }
 

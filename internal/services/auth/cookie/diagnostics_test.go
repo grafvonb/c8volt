@@ -43,14 +43,15 @@ func TestAPIDiagnosticsCookieLoginRedactsCredentialsAndReflections(t *testing.T)
 	cfg.Auth.Cookie.Username = username
 	cfg.Auth.Cookie.Password = password
 	var output bytes.Buffer
-	logger := logging.New(logging.LoggerConfig{Writer: &output, Level: "info", Format: "plain"})
-	httpService, err := httpc.New(cfg, logger, httpc.WithDiagnostics(true))
+	logger := logging.New(logging.LoggerConfig{Writer: &output, Level: "debug", Format: "plain"})
+	httpService, err := httpc.New(cfg, logger, httpc.WithDiagnostics())
 	require.NoError(t, err)
 	service, err := cookie.New(cfg, httpService.Client(), logger)
 	require.NoError(t, err)
 	require.NoError(t, service.Init(context.Background()))
 
 	record := output.String()
+	require.NotContains(t, record, "calling:")
 	require.Equal(t, 1, strings.Count(record, "api #"))
 	require.Contains(t, record, "POST /api/login:")
 	require.Contains(t, record, "correlation-id=safe-cookie-correlation")

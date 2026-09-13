@@ -12,7 +12,7 @@
 
 ### User Story 1 - Investigate a slow command (Priority: P1)
 
-As an operator, I can enable `--verbose` on an existing API-backed command and identify the actual requests that contribute to its runtime, so I can correlate evidence with Camunda logs and infrastructure metrics.
+As an operator, I can enable `--debug` on an existing API-backed command and identify the actual requests that contribute to its runtime, so I can correlate evidence with Camunda logs and infrastructure metrics.
 
 **Why this priority**: Request-level evidence is the core capability needed to investigate slow or timed-out operations.
 
@@ -20,7 +20,7 @@ As an operator, I can enable `--verbose` on an existing API-backed command and i
 
 **Acceptance Scenarios**:
 
-1. **Given** an existing API-backed command, **When** the operator adds `--verbose` and the configured logger admits INFO, **Then** each observed HTTP exchange produces one diagnostic record on configured stderr, with available request identity, context, outcome, timing and size information.
+1. **Given** an existing API-backed command, **When** the operator adds `--debug` and the configured logger admits DEBUG, **Then** each observed HTTP exchange produces one diagnostic record on configured stderr, with available request identity, context, outcome, timing and size information.
 2. **Given** a response whose headers arrive before its body finishes, **When** the body completes, **Then** `headers` measures exchange start through final response headers, `body` measures final headers through observed body completion, and `total` measures their combined elapsed interval.
 3. **Given** a workflow that retries a request, **When** diagnostics are enabled, **Then** each attempt appears as a separate exchange with an invocation-local sequence identifier. The log message MUST lead with `api #<sequence> <METHOD> <safe-path-and-query>: status=<code> error=<failure>`, followed by compact timing, connection and secondary metadata fields in stable order; no narrative diagnosis or report.
 4. **Given** a command run without the flag, **When** it completes or fails, **Then** it emits no API diagnostic records and retains existing behavior and output.
@@ -38,7 +38,7 @@ As an operator running commands interactively or in automation, I can collect us
 **Acceptance Scenarios**:
 
 1. **Given** normal, JSON or keys-only output, **When** diagnostics are enabled, **Then** stdout and exit behavior match the same invocation without diagnostics; records appear only on configured or inherited stderr.
-2. **Given** `--quiet --verbose`, **When** exchanges occur, **Then** INFO diagnostics are suppressed by existing quiet filtering, while explicitly selected result-output behavior is preserved.
+2. **Given** `--quiet --debug`, **When** exchanges occur, **Then** DEBUG diagnostics are suppressed by existing quiet filtering, while explicitly selected result-output behavior is preserved.
 3. **Given** credentials, secret query parameters, sensitive header values or secrets in errors, **When** records are emitted, **Then** those secrets are absent, while safe hosts, paths, resource keys, profile identities, tenant IDs, non-secret query parameters and correlation IDs remain visible.
 4. **Given** request and response bodies contain business data, **When** diagnostics are enabled, **Then** body contents and process variable values never appear in records.
 5. **Given** an existing mutation workflow, **When** diagnostics are enabled, **Then** its requests, confirmation behavior, operational verification and outcome remain unchanged, with no extra requests or mutations.
@@ -76,8 +76,8 @@ As an operator, I can distinguish failed, canceled, incomplete and concurrent ex
 
 ### Functional Requirements
 
-- **FR-001**: API exchange diagnostics MUST use the existing `--verbose` opt-in and invocation logger at INFO level, respecting existing quiet and configured log-level filtering. No new diagnostic flag or logging configuration is introduced.
-- **FR-002**: An enabled invocation whose logger admits INFO MUST emit one complete diagnostic record per observed HTTP exchange, including separate records for retry attempts, with an invocation-local sequence identifier. The log message MUST lead with `api #<sequence> <METHOD> <safe-path-and-query>: status=<code> error=<failure>`, followed by compact timing, connection and secondary metadata fields in stable order; no narrative diagnosis or report.
+- **FR-001**: API exchange diagnostics MUST use the effective invocation logger at DEBUG level, enabled by `--debug` or configured DEBUG logging and independent of `--verbose`, respecting existing quiet and configured log-level filtering. No new diagnostic flag or logging configuration is introduced.
+- **FR-002**: An enabled invocation whose logger admits DEBUG MUST emit one complete diagnostic record per observed HTTP exchange, including separate records for retry attempts, with an invocation-local sequence identifier. The log message MUST lead with `api #<sequence> <METHOD> <safe-path-and-query>: status=<code> error=<failure>`, followed by compact timing, connection and secondary metadata fields in stable order; no narrative diagnosis or report.
 - **FR-003**: Records MUST include, when available, logger-provided emission timestamp, method, host, path and path resource identifiers, active profile and tenant, non-secret query parameters, response status or transport error, timeout or cancellation, connection reuse, request and response sizes, and safe correlation information including request ID, Retry-After and Server-Timing.
 - **FR-004**: Records MUST show `total`, `headers` (exchange start through final response headers), and `body` (final headers through observed body termination), when available. DNS, TCP connection and TLS handshake durations MUST appear only when observed, retaining separate completed samples when attempts overlap. Connection timings are already included in elapsed time and MUST NOT be presented as additive components. Informational responses MUST NOT end `headers`.
 - **FR-005**: Unavailable information MUST be omitted. A body closed before completion or interrupted by failure MUST report only observed duration and size and explicitly indicate an incomplete transfer.
@@ -98,7 +98,7 @@ As an operator, I can distinguish failed, canceled, incomplete and concurrent ex
 
 ### Measurable Outcomes
 
-- **SC-001**: In controlled successful, failed, timed-out, canceled and retried workflows, 100% of observed terminated exchanges produce exactly one distinguishable record when verbose is enabled and INFO is admitted, and zero diagnostic records when disabled or filtered.
+- **SC-001**: In controlled successful, failed, timed-out, canceled and retried workflows, 100% of observed terminated exchanges produce exactly one distinguishable record when DEBUG is admitted, and zero diagnostic records when disabled or filtered.
 - **SC-002**: Operators can distinguish time through final headers from subsequent observed body lifetime, connection reuse from newly observed connection phases, and complete from incomplete transfers in every corresponding acceptance scenario without consulting payload contents.
 - **SC-003**: For one existing read command and one existing mutation command, enabling diagnostics produces byte-for-byte equivalent stdout and identical exit outcomes across supported normal, JSON, keys-only and quiet combinations, while admitted records reach the selected stderr destination and quiet suppresses diagnostic records.
 - **SC-004**: All seeded credentials, secrets and payload contents are absent from diagnostic output, while all available safe operational identifiers in the redaction acceptance cases remain usable for correlation.
@@ -118,4 +118,4 @@ As an operator, I can distinguish failed, canceled, incomplete and concurrent ex
 
 Keep issue #305 and its shared-interceptor scope. The user-approved compact log contract supersedes the original first-byte timing proposal: use final-header elapsed time plus observed body lifetime. DNS/TCP/TLS evidence comes from low-level tracing in the implementation plan. No workflow reports or per-command instrumentation are introduced.
 
-The latest user-approved refinement follows AGENTS.md: existing verbose gating and invocation logging replace the dedicated flag and direct-write exception. INFO filtering, quiet, timestamps, source and configured log format remain authoritative. The diagnostic message uses ASCII punctuation and duration units; prompts stay plain text on configured stderr and stdout remains exclusively command results.
+The latest user-approved refinement follows AGENTS.md: existing debug gating and invocation logging replace the dedicated flag and direct-write exception. DEBUG filtering, quiet, timestamps, source and configured log format remain authoritative. The diagnostic message uses ASCII punctuation and duration units; prompts stay plain text on configured stderr and stdout remains exclusively command results.

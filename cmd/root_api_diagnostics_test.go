@@ -23,7 +23,7 @@ import (
 const apiDiagnosticsProcessDefinitionKey = "2251799813685255"
 const apiDiagnosticsInvocationHelper = "TestAPIDiagnosticsInvocationHelper"
 
-// TestAPIDiagnosticsCommandReadPreservesResultsAndRequests verifies inherited verbose placement enables one diagnostic without changing command results or traffic.
+// TestAPIDiagnosticsCommandReadPreservesResultsAndRequests verifies inherited debug placement enables one diagnostic without changing command results or traffic.
 func TestAPIDiagnosticsCommandReadPreservesResultsAndRequests(t *testing.T) {
 	var requests atomic.Int32
 	server := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
@@ -45,8 +45,8 @@ func TestAPIDiagnosticsCommandReadPreservesResultsAndRequests(t *testing.T) {
 	require.NotContains(t, baselineStderr, "api #")
 
 	for _, args := range [][]string{
-		{"--verbose", "--config", configPath, "--log-format", "plain", "get", "process-definition", "--key", apiDiagnosticsProcessDefinitionKey},
-		{"--config", configPath, "--log-format", "plain", "get", "process-definition", "--key", apiDiagnosticsProcessDefinitionKey, "--verbose"},
+		{"--debug", "--config", configPath, "--log-format", "plain", "get", "process-definition", "--key", apiDiagnosticsProcessDefinitionKey},
+		{"--config", configPath, "--log-format", "plain", "get", "process-definition", "--key", apiDiagnosticsProcessDefinitionKey, "--debug"},
 	} {
 		stdout, stderr := executeAPIDiagnosticsRoot(t, args...)
 		require.Equal(t, baselineStdout, stdout)
@@ -93,12 +93,13 @@ func TestAPIDiagnosticsCommandAuthenticationBootstrap(t *testing.T) {
 			configPath := writeAPIDiagnosticsCommandConfig(t, server.URL, test.authMode)
 
 			_, stderr := executeAPIDiagnosticsRoot(t,
-				"--config", configPath, "--log-format", "plain", "--verbose",
+				"--config", configPath, "--log-format", "plain", "--debug",
 				"get", "process-definition", "--key", apiDiagnosticsProcessDefinitionKey,
 			)
 
 			require.Equal(t, test.wantRequests, requests.Load())
 			require.Equal(t, int(test.wantRequests), strings.Count(stderr, "api #"))
+			require.NotContains(t, stderr, "calling:")
 			require.Contains(t, stderr, "api #1 "+test.wantFirstTarget)
 			require.NotContains(t, stderr, "command-client-secret")
 			require.NotContains(t, stderr, "command-token")
@@ -107,7 +108,7 @@ func TestAPIDiagnosticsCommandAuthenticationBootstrap(t *testing.T) {
 	}
 }
 
-// TestAPIDiagnosticsCommandFiltering verifies verbose-off, debug-only, quiet and restrictive INFO settings install no admitted command diagnostic output.
+// TestAPIDiagnosticsCommandFiltering verifies DEBUG is sufficient without verbose, configured levels are honored and quiet wins.
 func TestAPIDiagnosticsCommandFiltering(t *testing.T) {
 	server := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
 		require.Equal(t, "/v2/process-definitions/"+apiDiagnosticsProcessDefinitionKey, request.URL.Path)
@@ -120,27 +121,36 @@ func TestAPIDiagnosticsCommandFiltering(t *testing.T) {
 	for _, test := range []struct {
 		name string
 		args []string
+		want bool
 	}{
-		{name: "verbose off", args: nil},
-		{name: "debug only", args: []string{"--debug"}},
-		{name: "quiet verbose", args: []string{"--quiet", "--verbose"}},
-		{name: "info filtered", args: []string{"--verbose", "--log-level", "warn"}},
+		{name: "default"},
+		{name: "verbose only", args: []string{"--verbose"}},
+		{name: "debug only", args: []string{"--debug"}, want: true},
+		{name: "debug and verbose", args: []string{"--debug", "--verbose"}, want: true},
+		{name: "configured debug", args: []string{"--log-level", "debug"}, want: true},
+		{name: "quiet debug", args: []string{"--quiet", "--debug"}},
+		{name: "quiet debug verbose", args: []string{"--quiet", "--debug", "--verbose"}},
+		{name: "info filtered", args: []string{"--log-level", "info"}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			args := []string{"--config", configPath, "--log-format", "plain"}
 			args = append(args, test.args...)
 			args = append(args, "get", "process-definition", "--key", apiDiagnosticsProcessDefinitionKey)
-			_, stderr := executeAPIDiagnosticsRoot(t, args...)
-			require.NotContains(t, stderr, "api #")
+			stdout, stderr := executeAPIDiagnosticsRoot(t, args...)
+			require.NotContains(t, stdout, "api #")
+			require.Equal(t, test.want, strings.Contains(stderr, "api #"))
+			if test.want {
+				require.Contains(t, stderr, "DEBUG api #")
+			}
 		})
 	}
 }
 
-// TestAPIDiagnosticsCommandHelpPerformsNoExchange verifies help accepts verbose without bootstrapping remote services.
+// TestAPIDiagnosticsCommandHelpPerformsNoExchange verifies help accepts debug without bootstrapping remote services.
 func TestAPIDiagnosticsCommandHelpPerformsNoExchange(t *testing.T) {
-	stdout, stderr := executeAPIDiagnosticsRoot(t, "get", "process-definition", "--verbose", "--help")
+	stdout, stderr := executeAPIDiagnosticsRoot(t, "get", "process-definition", "--debug", "--help")
 
-	require.Contains(t, stdout, "--verbose")
+	require.Contains(t, stdout, "--debug")
 	require.NotContains(t, stderr, "api #")
 }
 
@@ -156,7 +166,7 @@ func TestAPIDiagnosticsCommandEffectiveStderrRouting(t *testing.T) {
 	t.Cleanup(server.Close)
 	configPath := writeAPIDiagnosticsCommandConfig(t, server.URL, "none")
 	args := []string{
-		"--config", configPath, "--log-format", "plain", "--verbose",
+		"--config", configPath, "--log-format", "plain", "--debug",
 		"get", "process-definition", "--key", apiDiagnosticsProcessDefinitionKey,
 	}
 
@@ -229,7 +239,7 @@ func TestAPIDiagnosticsInvocationHelper(t *testing.T) {
 	os.Args = []string{
 		"c8volt",
 		"--config", os.Getenv("C8VOLT_API_DIAGNOSTICS_CONFIG"),
-		"--log-format", "plain", "--verbose",
+		"--log-format", "plain", "--debug",
 		"get", "process-definition", "--key", apiDiagnosticsProcessDefinitionKey,
 	}
 	Execute()
@@ -268,7 +278,7 @@ func TestAPIDiagnosticsCommandReadOutputAndLogFormatMatrix(t *testing.T) {
 			base := append([]string{"--config", configPath, "--log-format", "plain-time"}, test.mode...)
 			command := []string{"get", "process-definition", "--key", apiDiagnosticsProcessDefinitionKey}
 			baselineStdout, baselineStderr := executeAPIDiagnosticsRoot(t, append(base, command...)...)
-			enabledArgs := append(append([]string{}, base...), "--verbose")
+			enabledArgs := append(append([]string{}, base...), "--debug")
 			enabledStdout, enabledStderr := executeAPIDiagnosticsRoot(t, append(enabledArgs, command...)...)
 
 			require.Equal(t, baselineStdout, enabledStdout)
@@ -291,7 +301,7 @@ func TestAPIDiagnosticsCommandReadOutputAndLogFormatMatrix(t *testing.T) {
 	for _, format := range []string{"plain", "plain-time", "text", "json"} {
 		t.Run("log format "+format, func(t *testing.T) {
 			_, stderr := executeAPIDiagnosticsRoot(t,
-				"--config", configPath, "--log-format", format, "--log-with-source", "--verbose",
+				"--config", configPath, "--log-format", format, "--log-with-source", "--debug",
 				"get", "process-definition", "--key", apiDiagnosticsProcessDefinitionKey,
 			)
 			line := apiDiagnosticLine(t, stderr)
@@ -302,7 +312,7 @@ func TestAPIDiagnosticsCommandReadOutputAndLogFormatMatrix(t *testing.T) {
 			if format == "json" {
 				var record map[string]any
 				require.NoError(t, json.Unmarshal([]byte(line), &record))
-				require.Equal(t, "INFO", record["level"])
+				require.Equal(t, "DEBUG", record["level"])
 				require.Contains(t, record["msg"], "api #1 GET")
 				require.NotNil(t, record["source"], "source-enabled JSON framing must retain source metadata")
 			} else {
@@ -345,7 +355,7 @@ func TestAPIDiagnosticsCommandEmptyCancellationMatrix(t *testing.T) {
 			prefix := append([]string{"--config", configPath, "--log-format", "plain-time"}, test.rootFlags...)
 			command := append([]string{"cancel", "process-instance", "--state", "active"}, test.commandFlags...)
 			baselineStdout, baselineStderr := executeRootForProcessInstanceWithSeparateOutputs(t, append(prefix, command...)...)
-			enabledArgs := append(append([]string{}, prefix...), "--verbose")
+			enabledArgs := append(append([]string{}, prefix...), "--debug")
 			enabledStdout, enabledStderr := executeRootForProcessInstanceWithSeparateOutputs(t, append(enabledArgs, command...)...)
 
 			require.Equal(t, baselineStdout, enabledStdout)
@@ -388,7 +398,7 @@ func TestAPIDiagnosticsCommandExplicitCancellationPreservesSubmission(t *testing
 
 // runAPIDiagnosticsNoWaitCancellation executes an isolated explicit-key
 // cancellation fixture and captures each request method, path and body.
-func runAPIDiagnosticsNoWaitCancellation(t *testing.T, verbose bool) (string, string, []string) {
+func runAPIDiagnosticsNoWaitCancellation(t *testing.T, debug bool) (string, string, []string) {
 	t.Helper()
 	var requests testx.SafeSlice[string]
 	server := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
@@ -412,8 +422,8 @@ func runAPIDiagnosticsNoWaitCancellation(t *testing.T, verbose bool) (string, st
 	args := []string{
 		"--config", configPath, "--log-format", "plain-time", "--automation", "--auto-confirm", "--json",
 	}
-	if verbose {
-		args = append(args, "--verbose")
+	if debug {
+		args = append(args, "--debug")
 	}
 	args = append(args, "cancel", "process-instance", "--key", "301", "--no-wait")
 	stdout, stderr := executeRootForProcessInstanceWithSeparateOutputs(t, args...)

@@ -14,7 +14,7 @@ All design questions identified during planning are resolved below. Research use
 
 ### 2. Authentication requests
 
-**Decision:** Attach the same collector to the separate unauthenticated OAuth token client using a shared `httpc` wrapping helper. Recover the collector from the supplied API client's known transport chain; do not pass it through arbitrary global state. Preserve the token client's current timeout and absence of auth/retry wrappers. Cookie authentication continues to use the supplied shared client.
+**Decision:** Attach the same collector to the separate unauthenticated OAuth token client using the same `httpc` attachment helper as the API client, always beneath LogTransport when present. Recover the collector from the supplied API client's known transport chain; do not pass it through arbitrary global state. Preserve the token client's current timeout and absence of auth/retry wrappers. Cookie authentication continues to use the supplied shared client.
 
 **Rationale:** `internal/services/auth/oauth2/service.go` creates its own `LogTransport` and would otherwise escape observation. Reusing the authenticated API client would risk authentication recursion. `auth/cookie/service.go` already uses the supplied client, including initialization traffic.
 
@@ -22,9 +22,9 @@ All design questions identified during planning are resolved below. Research use
 
 ### 3. Invocation wiring and stderr
 
-**Decision:** Reuse resolved verbose configuration and the existing invocation logger before authentication initialization. Capture `cmd.ErrOrStderr()` before activity wrapping and construct the normal configured logger with that writer. Pass verbose/logger context into httpc; install no observer when verbose is off or INFO is filtered. Reuse `logging.InfoIfVerbose` for emission; do not create a diagnostic writer or logger.
+**Decision:** Reuse resolved logger configuration and the existing invocation logger before authentication initialization. Capture `cmd.ErrOrStderr()` before activity wrapping and construct the normal configured logger with that writer. Pass debug/logger context into httpc; install no observer when DEBUG is filtered. Reuse `log.Debug` for emission; do not create a diagnostic writer or logger.
 
-**Rationale:** `cmd/root.go` currently uses root stderr and can override a configured leaf destination. Effective command stderr must remain authoritative. Existing logging/activity helpers provide formatting, synchronization and terminal coexistence; quiet and configured log levels intentionally suppress INFO diagnostics.
+**Rationale:** `cmd/root.go` currently uses root stderr and can override a configured leaf destination. Effective command stderr must remain authoritative. Existing logging/activity helpers provide formatting, synchronization and terminal coexistence; quiet and configured log levels intentionally suppress DEBUG diagnostics.
 
 **Alternatives considered:** Direct writes bypass quiet, configured formats and shared logging conventions. Raw process stderr ignores command routing; a mutable global writer breaks isolation. No command-specific runner or separate logger is needed.
 
@@ -52,7 +52,7 @@ Primary references: [Go HTTP contracts](https://pkg.go.dev/net/http), [Go HTTP t
 
 **Decision:** Emit one compact `api #<sequence> <METHOD> <safe-path-and-query>: status=<code> error=<failure>` line followed by space-separated timing, connection and secondary metadata fields. Keep numbers beside short technical field names; quote/escape unsafe textual tokens. Use `httptrace` DNSStart/Done, ConnectStart/Done and TLSHandshakeStart/Done for `dns`, `tcp` and `tls`; only TCP network attempts qualify as `tcp`. GotConn supplies `conn=new|reused`. Use classified error categories instead of arbitrary error text. Build a new redacted record rather than dumping requests or headers. Exact fields and redaction rules are in `contracts/api-diagnostics.md`.
 
-**Rationale:** Existing `LogTransport` prints raw URLs and optionally uses `httputil.DumpRequestOut`; neither is an appropriate formatter. Diagnostics must never enable those options. Error strings and free-form header descriptions can contain payloads and credentials. A safe category preserves the failure signal without trusting arbitrary strings.
+**Rationale:** The old `LogTransport` raw URL start line is removed. LogTransport retains activity and optionally uses `httputil.DumpRequestOut`; explicit dumps are separate from exchange diagnostics. Diagnostics must never enable those options. Error strings and free-form header descriptions can contain payloads and credentials. A safe category preserves the failure signal without trusting arbitrary strings.
 
 **Decision:** Strip URL userinfo/fragments; classify query parameters after decoding and normalizing names, remove secret values and scrub their known encoded/decoded representations from retained fields. Preserve operational query values; fail closed for malformed or demonstrably sensitive values. Use an explicit correlation-header allowlist, parse Retry-After, and retain only validated Server-Timing metric names/durations, not free-form descriptions. Seed known secrets from configured credentials, request auth/cookie/query values and sensitive response headers (including parsed Set-Cookie values) without inspecting bodies. Collect response secrets before sanitizing response correlation fields.
 
@@ -70,6 +70,6 @@ Primary references: [Go HTTP contracts](https://pkg.go.dev/net/http), [Go HTTP t
 
 **Decision:** Use existing `testx` HTTP servers, root execution patterns, and `testx.NewCmdTerminalRunner` for separate stdout/stderr with real terminal stdin. Cover `get process-definition` and `cancel process-instance`, auth variants, all supported version wiring, retries, body lifecycle, tracing, output modes and redaction. Run targeted tests before `make test`; update root metadata and README, then regenerate with `make docs-content`.
 
-**Rationale:** Existing root, cancellation and terminal tests provide realistic invocation paths. Isolated rendering tests cannot prove existing verbose resolution, bootstrap auth coverage, request counts or configured stderr routing.
+**Rationale:** Existing root, cancellation and terminal tests provide realistic invocation paths. Isolated rendering tests cannot prove existing debug resolution, bootstrap auth coverage, request counts or configured stderr routing.
 
 **Alternatives considered:** Live mutation testing is not needed for default validation; deterministic local handlers can assert operation behavior without real resource changes. Pure mock-facade tests miss the transport entirely.

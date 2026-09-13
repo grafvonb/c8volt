@@ -645,7 +645,7 @@ func runProcessInstanceConfirmationTerminalHelper(t *testing.T) {
 		"--log-format", os.Getenv(processInstanceConfirmFormatEnv),
 	}
 	if os.Getenv(testx.CmdSubprocessNameEnv) == "TestAPIDiagnosticsTerminalCancellation" {
-		args = append(args, "--verbose")
+		args = append(args, "--debug")
 		switch os.Getenv(apiDiagnosticsTerminalModeEnv) {
 		case "json":
 			args = append(args, "--json")

@@ -6,9 +6,9 @@ All entities are in-memory and invocation-scoped. No persisted schema or public 
 
 | Field | Type / rule |
 | --- | --- |
-| logger / verbose | Existing invocation `*slog.Logger` and resolved verbose setting; no collector-owned output sink or global logger fallback |
+| logger | Existing invocation `*slog.Logger`; no collector-owned output sink or global logger fallback |
 | sequence | Atomic unsigned integer, allocated once per observed exchange, starting at 1 |
-| emission | Existing verbose INFO helper and synchronized logging writer; honor configured levels and format |
+| emission | Existing `log.Debug` call and synchronized logging writer; honor configured levels and format |
 | profile | Optional resolved active profile identity; absent when unset |
 | tenant | Optional resolved configured tenant selection; absent when unset; not inferred resource ownership |
 | redaction context | Private known credential values from configuration and sensitive request/response metadata, plus sanitization policy; never serialized |

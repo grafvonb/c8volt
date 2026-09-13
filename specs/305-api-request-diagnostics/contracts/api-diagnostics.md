@@ -2,7 +2,7 @@
 
 ## Flag and scope
 
-Use the existing `--verbose` opt-in and invocation `*slog.Logger` at INFO level through the established verbose logging helper. There is no new flag, configuration key or separate diagnostic output mode. Quiet and configured levels filter records normally, including failure diagnostics; do not promote them to ERROR to bypass filtering. Without verbose, emit no diagnostic records even if debug is enabled. Commands with no HTTP exchanges emit none.
+Use the existing `--debug` opt-in and invocation `*slog.Logger` at DEBUG level through the established DEBUG logger. There is no new flag, configuration key or separate diagnostic output mode. Quiet and configured levels filter records normally, including failure diagnostics; do not promote them to ERROR to bypass filtering. No verbose flag is required: configured DEBUG logging is sufficient. Verbose alone at INFO emits no HTTP diagnostics. Commands with no HTTP exchanges emit none.
 
 An observed exchange is one invocation at the shared instrumented RoundTripper boundary. HTTP retries, service retries and redirects are separate when they cross this boundary. Transport-internal retransmissions within a single call are not promised separate records. Authentication HTTP traffic is included; a token cache hit is not an HTTP exchange.
 
@@ -10,7 +10,7 @@ An observed exchange is one invocation at the shared instrumented RoundTripper b
 
 Records go through the existing invocation logger and activity-aware writer to the executing command's effective configured or inherited `cmd.ErrOrStderr()`. Existing stdout and result envelopes remain unchanged. Prompts remain plain text on configured stderr without logger prefixes. Never write diagnostics directly to process stderr/stdout or a separate collector-owned output sink.
 
-Each admitted record is emitted once as an INFO log message using existing logging features. The logger owns timestamp, level, source and plain/plain-time/text/JSON framing. The following grammar defines the message, not the entire serialized log line. Keep stable space-separated field order; omit unavailable fields.
+Each admitted record is emitted once as an DEBUG log message using existing logging features. The logger owns timestamp, level, source and plain/plain-time/text/JSON framing. The following grammar defines the message, not the entire serialized log line. Keep stable space-separated field order; omit unavailable fields.
 
 ```text
 api #<sequence> <METHOD> <safe-path-and-query>: status=<code> error=<failure> total=<duration> headers=<duration> body=<duration> phase=<phase> reason=<reason> conn=<new|reused> dns=<duration> tcp=<duration> tls=<duration> <secondary metadata>
@@ -79,14 +79,14 @@ All elapsed measurements use monotonic time. Before display rounding, total=head
 4. Seed a private known-secret set from configured credentials, sensitive request header/URL userinfo/query values and sensitive response header values, including parsed Set-Cookie cookie values. Collect response secrets before sanitizing any allowed response correlation header. Apply decoded and standard URL-encoded secret matching to all retained strings, including allowed header values and profile/tenant labels; omit or replace secret occurrences with `[REDACTED]`. This set is never serialized and does not require reading a body.
 5. Never record Authorization, Proxy-Authorization, cookies/Set-Cookie, token headers, passwords, client secrets or API keys. Only the correlation headers listed above are eligible. Validate correlation IDs as bounded (at most 256 characters), control-free identifier text and reject values that match known secrets or credential patterns. Validate Retry-After syntactically; parse Server-Timing and omit `desc` and unsupported free text. Omit malformed or suspicious allowed-header values.
 6. Classify errors through typed/sentinel checks, not `err.Error()` string output. Unknown transport errors become `TRANSPORT_ERROR`; body errors become `BODY_ERROR` unless timeout/cancellation is established. Preserve phase separately and omit an unsupported reason. Do not expose payloads embedded in errors.
-7. No request/response body contents or process variable values enter diagnostics. Verbose diagnostics never enable existing debug/body-dump logging. Existing independently enabled logging is outside this new record format.
+7. No request/response body contents or process variable values enter diagnostics. DEBUG diagnostics do not enable body-dump logging. Existing independently enabled logging is outside this new record format.
 8. Apply the token escaping rules to all strings after sanitization to prevent terminal control injection or forged extra diagnostic lines.
 
 Validate explicit sensitive classes and known-secret reflection; do not claim semantic detection of arbitrary secrets disguised as unrelated identifiers. Unknown or malformed metadata that cannot be safely represented is omitted.
 
 ## Completion and preservation
 
-- When verbose and INFO are enabled, one logger emission is attempted at transport failure, known bodyless response, EOF, read error or early Close, guarded against duplicate emission.
+- When DEBUG is enabled, one logger emission is attempted at transport failure, known bodyless response, EOF, read error or early Close, guarded against duplicate emission.
 - Reused connections omit unperformed DNS/connect/TLS samples. Actual zero-duration observations may be retained.
 - Incomplete response records report observed counts/duration with `response-complete=false`. Existing retry response closure does not trigger a drain.
 - Counters include `n > 0` returned alongside errors. Preserve underlying Read/Close values and request replay behavior.
@@ -98,7 +98,7 @@ Validate explicit sensitive classes and known-secret reflection; do not claim se
 
 | Contract area | Required evidence |
 | --- | --- |
-| Flag/disabled/quiet | Existing verbose gating, disabled/debug-only baseline, quiet suppression, configured levels and all existing log formats |
+| Flag/disabled/quiet | Existing debug gating, default/verbose-only baseline and debug-only admission, quiet suppression, configured levels and all existing log formats |
 | Streams | Normal/JSON/keys-only, quiet combinations, configured leaf and inherited root stderr, real-terminal stdin |
 | Lifecycle/timing | Final headers after informational responses and before delayed body; total=headers+body; failure-phase evidence, EOF/partial/error/no-body; reuse and overlapping trace callbacks |
 | Attempts | Retry, redirects, mutation attempts and auth requests with identical enabled/disabled request counts |
@@ -108,8 +108,12 @@ Validate explicit sensitive classes and known-secret reflection; do not claim se
 
 ## Existing logger integration
 
-Build the safe compact content as the message passed to the existing verbose INFO helper. PlainHandler ignores structured attributes, so do not place required diagnostic fields exclusively in slog attributes or redesign the shared handler. In JSON log format, the same message is in the logger's existing `msg` field; this is stderr logging, separate from the stdout command JSON envelope. Default plain-time example:
+Build the safe compact content as the message passed to the existing `log.Debug` call. PlainHandler ignores structured attributes, so do not place required diagnostic fields exclusively in slog attributes or redesign the shared handler. In JSON log format, the same message is in the logger's existing `msg` field; this is stderr logging, separate from the stdout command JSON envelope. Default plain-time example:
 
 ```text
-12:34:56.789 INFO api #45 GET /v2/topology: status=200 total=180ms headers=170ms body=10ms dns=8ms tcp=24ms tls=61ms
+12:34:56.789 DEBUG api #45 GET /v2/topology: status=200 total=180ms headers=170ms body=10ms dns=8ms tcp=24ms tls=61ms
 ```
+
+## DEBUG activation refinement — 2026-09-13
+
+HTTP diagnostics use the effective invocation logger at DEBUG, enabled by `--debug` or configured debug level. `--verbose` remains functional detail and is neither required nor sufficient. Quiet wins through existing level resolution. Do not enable body dumping. Remove the legacy `calling:` request-start log entirely; diagnostics is the only exchange-log owner. Both API and OAuth place the observer beneath LogTransport via one attachment helper. Repeat attachment does not add a second observer. An outstanding exchange has no fabricated completion or additional start log; existing activity remains the in-flight signal where enabled. Explicitly configured body dumps remain a separate existing feature.

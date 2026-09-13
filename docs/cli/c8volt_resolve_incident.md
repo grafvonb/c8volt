@@ -55,7 +55,7 @@ c8volt resolve incident [flags]
   -q, --quiet              suppress output except errors
       --tenant string      tenant ID for discovery/search, selection, create, deploy, and run flows; explicit empty values can clear configured discovery filters, and explicit keys/IDs remain backend-authorized
       --timeout duration   HTTP request timeout (default 30s)
-  -v, --verbose            show additional output and API request diagnostics on stderr
+  -v, --verbose            show additional output
 ```
 
 ### SEE ALSO

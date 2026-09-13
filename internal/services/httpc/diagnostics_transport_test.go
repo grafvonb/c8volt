@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
@@ -25,7 +26,7 @@ import (
 
 func newAPIDiagnosticCollector(t *testing.T, output *bytes.Buffer) *diagnosticCollector {
 	t.Helper()
-	collector := newDiagnosticCollector(config.New(), logging.New(logging.LoggerConfig{Writer: output, Level: "info", Format: "plain"}), true)
+	collector := newDiagnosticCollector(config.New(), logging.New(logging.LoggerConfig{Writer: output, Level: "debug", Format: "plain"}))
 	require.NotNil(t, collector)
 	return collector
 }
@@ -83,7 +84,7 @@ func TestAPIDiagnosticsTransportPreservesTraceAndInformationalResponses(t *testi
 
 	cfg := config.New()
 	cfg.HTTP.Timeout = "1s"
-	service, err := New(cfg, slog.New(slog.NewTextHandler(io.Discard, nil)), WithDiagnostics(true))
+	service, err := New(cfg, slog.New(slog.NewTextHandler(io.Discard, nil)), WithDiagnostics())
 	require.NoError(t, err)
 	// Replace the gated-away collector with an admitted one while retaining the real base transport.
 	logTransport := unwrapLogTransport(service.Client().Transport)
@@ -231,7 +232,7 @@ func TestAPIDiagnosticsServiceStackPlacesObservationBelowRetriesAndLogging(t *te
 	var output bytes.Buffer
 	cfg := config.New()
 	cfg.HTTP.Timeout = "1s"
-	service, err := New(cfg, logging.New(logging.LoggerConfig{Writer: &output, Level: "info", Format: "plain"}), WithDiagnostics(true))
+	service, err := New(cfg, logging.New(logging.LoggerConfig{Writer: &output, Level: "debug", Format: "plain"}), WithDiagnostics())
 	require.NoError(t, err)
 	retry, ok := service.Client().Transport.(*ReadRetryTransport)
 	require.True(t, ok)
@@ -241,6 +242,47 @@ func TestAPIDiagnosticsServiceStackPlacesObservationBelowRetriesAndLogging(t *te
 	require.True(t, ok)
 	require.Same(t, diagnostics.collector, diagnosticCollectorFromTransport(service.Client().Transport))
 	require.Same(t, http.DefaultTransport, diagnostics.rt())
+}
+
+// TestAPIDiagnosticsSharedAttachment preserves wrapper order without duplicate observation.
+func TestAPIDiagnosticsSharedAttachment(t *testing.T) {
+	for _, withLogging := range []bool{false, true} {
+		t.Run(fmt.Sprint(withLogging), func(t *testing.T) {
+			var output bytes.Buffer
+			collector := newAPIDiagnosticCollector(t, &output)
+			var requests int
+			base := roundTripFunc(func(req *http.Request) (*http.Response, error) {
+				requests++
+				return &http.Response{StatusCode: http.StatusNoContent, Header: make(http.Header), Body: http.NoBody, Request: req}, nil
+			})
+			var targetTransport http.RoundTripper = base
+			if withLogging {
+				targetTransport = &LogTransport{Log: collector.log, base: base}
+			}
+			source := &http.Client{Transport: &DiagnosticsTransport{collector: collector}}
+			target := &http.Client{Transport: targetTransport, Timeout: time.Second}
+			ShareDiagnostics(source, target)
+			attached := target.Transport
+			ShareDiagnostics(source, target)
+			require.Same(t, attached, target.Transport)
+			require.Equal(t, time.Second, target.Timeout)
+			if withLogging {
+				logger, ok := target.Transport.(*LogTransport)
+				require.True(t, ok)
+				observed, ok := logger.base.(*DiagnosticsTransport)
+				require.True(t, ok)
+				require.Same(t, collector, observed.collector)
+			}
+			req, err := http.NewRequest(http.MethodGet, "http://example.test/v2/topology", nil)
+			require.NoError(t, err)
+			resp, err := target.Do(req)
+			require.NoError(t, err)
+			require.NoError(t, resp.Body.Close())
+			require.Equal(t, 1, requests)
+			require.Equal(t, 1, strings.Count(output.String(), "api #"))
+			require.NotContains(t, output.String(), "calling:")
+		})
+	}
 }
 
 func diagnosticDurationField(t *testing.T, line, name string) time.Duration {

@@ -321,3 +321,11 @@ Started: 2026-09-12 19:35:54
 ## Finalization recovery - 2026-09-13
 
 Iteration 17 stopped after its successful race suite because agent tooling and the agent turn failed before the coordinated commit. The recovery reviewed all five pending paths. A sandboxed test attempt failed on denied local socket binding; the unrestricted `make test` rerun passed with exit code 0. Production code was unchanged. The final commit includes T032, this progress record, the terminal memory handoff, quickstart evidence and generated homepage metadata together.
+
+## DEBUG activation correction — 2026-09-13
+
+Completed T033: removed verbose collection state, gate on effective DEBUG and emit with the invocation logger. Updated AGENTS.md and Ralph guidance to separate functional verbosity from technical HTTP logs. Updated tests, metadata and generated docs; suppressed duplicate legacy raw URLs under the safe observer after the cookie-redaction regression exposed credentials. Targeted race suites and final `make test` passed; `git diff --check` passed. No new flag or body-dump behavior was introduced.
+
+## HTTP logging consolidation — 2026-09-13
+
+Completed T034: API and OAuth use one idempotent attachment helper placing diagnostics beneath LogTransport. Removed the legacy calling start message entirely. LogTransport retains activity and explicit request dumps; diagnostics alone emits terminal exchange records. Tests cover wrapper order, repeated attachment, one record per exchange, shared authentication/API sequence, unchanged request counts and no calling lines. Targeted race tests (`APIDiagnostics|Activity|LogTransport`), `make docs-content`, full `make test` and `git diff --check` passed.

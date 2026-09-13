@@ -43,8 +43,8 @@ func benchmarkAPIDiagnostics(b *testing.B, enabled bool, bodyBytes int64) {
 	b.Helper()
 	transport := &DiagnosticsTransport{base: diagnosticBenchmarkTransport{bodyBytes: bodyBytes}}
 	if enabled {
-		log := logging.New(logging.LoggerConfig{Writer: io.Discard, Level: "info", Format: "plain"})
-		transport.collector = newDiagnosticCollector(config.New(), log, true)
+		log := logging.New(logging.LoggerConfig{Writer: io.Discard, Level: "debug", Format: "plain"})
+		transport.collector = newDiagnosticCollector(config.New(), log)
 		if transport.collector == nil {
 			b.Fatal("enabled benchmark requires an admitted diagnostic collector")
 		}

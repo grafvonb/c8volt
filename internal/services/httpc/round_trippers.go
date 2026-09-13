@@ -5,7 +5,6 @@ package httpc
 
 import (
 	"bytes"
-	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
@@ -54,7 +53,6 @@ func (t *LogTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 		t.Log.Debug(string(bodyCopy))
 		return t.rt().RoundTrip(req)
 	}
-	t.Log.Debug(fmt.Sprintf("calling: %s %s", req.Method, req.URL.String()))
 	return t.rt().RoundTrip(req)
 }
 

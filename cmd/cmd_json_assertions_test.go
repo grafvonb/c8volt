@@ -123,7 +123,7 @@ func TestPagedSearchMachineOutputCleanliness(t *testing.T) {
 
 			require.Len(t, bodies, 2)
 			if slices.Contains(tt.args, "--verbose") && !slices.Contains(tt.args, "--quiet") {
-				require.Equal(t, 2, strings.Count(stderr, "api #"))
+				require.NotContains(t, stderr, "api #", "verbose must not enable HTTP diagnostics")
 				require.NotContains(t, stdout, "api #")
 			} else {
 				require.Empty(t, stderr)

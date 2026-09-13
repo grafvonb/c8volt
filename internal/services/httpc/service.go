@@ -64,16 +64,14 @@ func WithActivitySink(activity logging.ActivitySink) Option {
 	}
 }
 
-// WithDiagnostics installs invocation-scoped observation below logging and retries when enabled.
-func WithDiagnostics(verbose bool) Option {
+// WithDiagnostics installs invocation-scoped observation below logging and retries when the logger admits DEBUG.
+func WithDiagnostics() Option {
 	return func(s *Service) {
-		collector := newDiagnosticCollector(s.cfg, s.log, verbose)
+		collector := newDiagnosticCollector(s.cfg, s.log)
 		if collector == nil {
 			return
 		}
-		if logTransport := unwrapLogTransport(s.c.Transport); logTransport != nil {
-			logTransport.base = &DiagnosticsTransport{base: logTransport.base, collector: collector}
-		}
+		s.c.Transport = attachDiagnostics(s.c.Transport, collector)
 	}
 }
 
@@ -86,7 +84,20 @@ func ShareDiagnostics(source, target *http.Client) {
 	if collector == nil {
 		return
 	}
-	target.Transport = &DiagnosticsTransport{base: target.Transport, collector: collector}
+	target.Transport = attachDiagnostics(target.Transport, collector)
+}
+
+// attachDiagnostics gives API and authentication clients the same observation boundary.
+// Existing observation is retained so repeated attachment cannot duplicate records.
+func attachDiagnostics(base http.RoundTripper, collector *diagnosticCollector) http.RoundTripper {
+	if collector == nil || diagnosticCollectorFromTransport(base) != nil {
+		return base
+	}
+	if logger := unwrapLogTransport(base); logger != nil {
+		logger.base = &DiagnosticsTransport{base: logger.base, collector: collector}
+		return base
+	}
+	return &DiagnosticsTransport{base: base, collector: collector}
 }
 
 func New(cfg *config.Config, log *slog.Logger, opts ...Option) (*Service, error) {

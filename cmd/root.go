@@ -45,13 +45,13 @@ Camunda 8.10 baseline: 8.10.0-alpha4 (prerelease).
 Camunda 8.10 aliases: 8.10, 810, v810, v8.10. Default: 8.9.
 Use capabilities to discover supported commands and automation options.
 
-On API-backed commands, --verbose emits redacted request diagnostics at INFO
+On API-backed commands, --debug emits redacted request diagnostics at DEBUG
 alongside other configured logs. --quiet and log-level filtering still apply;
 log format, timestamps, and source settings use the existing logger.`,
 	Example: `  ./c8volt config show --template
   ./c8volt --config ./config.yaml config show --validate
   ./c8volt get cluster topology
-  ./c8volt --config ./config.yaml --verbose get process-definition --latest
+  ./c8volt --config ./config.yaml --debug get process-definition --latest
   ./c8volt --all-tenants get process-instance --state active
   ./c8volt embed deploy --all --run
   ./c8volt run process-instance --bpmn-process-id <bpmn-process-id>
@@ -202,7 +202,7 @@ func init() {
 	pf.BoolVarP(&flagQuiet, "quiet", "q", false, "suppress output except errors")
 	pf.BoolVar(&flagCmdAutomation, "automation", false, "enable non-interactive mode for commands that explicitly support it")
 	pf.BoolVarP(&flagCmdAutoConfirm, "auto-confirm", "y", false, "auto-confirm prompts for non-interactive use")
-	pf.BoolVarP(&flagVerbose, "verbose", "v", false, "show additional output and API request diagnostics on stderr")
+	pf.BoolVarP(&flagVerbose, "verbose", "v", false, "show additional output")
 	pf.BoolVar(&flagNoIndicator, "no-indicator", false, "disable transient terminal activity indicators")
 	pf.BoolVar(&flagDebug, "debug", false, "enable debug logging")
 	pf.BoolVarP(&flagViewAsJson, "json", "j", false, "output as JSON (where applicable)")

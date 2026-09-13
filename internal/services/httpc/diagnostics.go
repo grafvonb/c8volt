@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"github.com/grafvonb/c8volt/config"
-	"github.com/grafvonb/c8volt/toolx/logging"
 )
 
 // diagnosticInvocationContext is the private immutable redaction seed for one invocation.
@@ -27,7 +26,6 @@ type diagnosticInvocationContext struct {
 // diagnosticCollector owns invocation-local sequencing, logger routing and redaction context.
 type diagnosticCollector struct {
 	log      *slog.Logger
-	verbose  bool
 	sequence diagnosticSequence
 	context  diagnosticInvocationContext
 }
@@ -71,14 +69,13 @@ type DiagnosticsTransport struct {
 	now       func() time.Time
 }
 
-// newDiagnosticCollector avoids installing observation when verbose INFO output is unavailable.
-func newDiagnosticCollector(cfg *config.Config, log *slog.Logger, verbose bool) *diagnosticCollector {
-	if !verbose || log == nil || !log.Enabled(context.Background(), slog.LevelInfo) {
+// newDiagnosticCollector avoids installing observation when DEBUG output is unavailable.
+func newDiagnosticCollector(cfg *config.Config, log *slog.Logger) *diagnosticCollector {
+	if log == nil || !log.Enabled(context.Background(), slog.LevelDebug) {
 		return nil
 	}
 	return &diagnosticCollector{
 		log:     log,
-		verbose: verbose,
 		context: newDiagnosticInvocationContext(cfg),
 	}
 }
@@ -468,11 +465,11 @@ func cloneDiagnosticPointer[T any](value *T) *T {
 	return &copy
 }
 
-// emit formats safe fields and delegates one complete line to the existing verbose logger.
+// emit formats safe fields and delegates one complete line to the existing DEBUG logger.
 func (collector *diagnosticCollector) emit(record diagnosticRecord) {
 	message, err := record.format()
 	if err != nil {
 		return
 	}
-	logging.InfoIfVerbose(message, collector.log, collector.verbose)
+	collector.log.Debug(message)
 }

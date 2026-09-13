@@ -10,7 +10,7 @@ description: "Implementation tasks for issue #305 API request diagnostics"
 
 **Tests**: Required by the source specification and constitution. Write the behavioral tests before the corresponding implementation, confirm the intended failure, and keep implementation plus its passing tests in the same commit. Use the `TestAPIDiagnostics...` prefix for new acceptance tests so quickstart commands find them.
 
-**Organization**: Tasks are grouped by user story. The shared foundation provides safe records before verbose/logger wiring is connected. Story-specific tests are independently runnable after their stated prerequisites. No task authorizes live mutations or generated-client edits.
+**Organization**: Tasks are grouped by user story. The shared foundation provides safe records before debug/logger wiring is connected. Story-specific tests are independently runnable after their stated prerequisites. No task authorizes live mutations or generated-client edits.
 
 ## Format: `[ID] [P?] [Story] Description`
 
@@ -31,13 +31,13 @@ Use existing `cmd/`, `internal/services/httpc/`, `internal/services/auth/`, `c8v
 
 ## Phase 2: Foundational (Blocking Prerequisites)
 
-**Purpose**: Establish safe immutable records and invocation ownership before attaching observation to existing verbose logging.
+**Purpose**: Establish safe immutable records and invocation ownership before attaching observation to existing debug logging.
 
 - [x] T002 Add record contract tests in `internal/services/httpc/diagnostics_record_test.go` for the field order, compact `api #` prefix, space-separated ASCII timing fields and `us` units, conditional quoting/escaping and one-line grammar and omission rules in `specs/305-api-request-diagnostics/contracts/api-diagnostics.md`; enforce “All durations and counts are nonnegative. Sequence is positive and unique per invocation.” and “Unknown fields are omitted, not filled with zero, empty strings or fabricated defaults.”
 - [x] T003 Implement observation/snapshot types and deterministic safe formatting in `internal/services/httpc/diagnostics_record.go`, including optional status, reuse, total/headers/body, evidence-backed failure phase/reason, phase samples, context and separate request/response completion fields; enforce “HTTP error statuses retain their real status; transport error categories do not manufacture HTTP statuses.” and “A non-EOF body error can coexist with a real HTTP status and incomplete response evidence.”; make T002 pass.
 - [x] T004 Add sanitizer unit tests in `internal/services/httpc/diagnostics_redaction_test.go` for URL userinfo/fragments, normalized/encoded/repeated query names, known-secret reflection, request and response cookies, allowed headers and typed errors; require correlation IDs “at most 256 characters”, response secrets collected before correlation formatting, and no body access.
 - [x] T005 Implement centralized sanitization in `internal/services/httpc/diagnostics_redaction.go`: retain safe operational URL/query/context values; omit secret/payload-bearing or malformed metadata; seed known credentials from config and sensitive request/response metadata including parsed Set-Cookie; parse allowed Retry-After/Server-Timing fields and drop free-form descriptions; classify failure outcomes, phases and bounded safe reasons exactly as defined in the contract, preserving numeric HTTP status when a body fails; enforce “Secret matching/redaction applies before any string is serialized. Bodies and raw errors never enter a record.” and make T004 pass.
-- [x] T006 Implement the invocation collector in `internal/services/httpc/diagnostics.go` with tests in `internal/services/httpc/diagnostics_test.go`: retain the existing invocation logger and resolved verbose setting, atomic sequence starting at 1, private context, state locks and once-only snapshot. Emit through `logging.InfoIfVerbose` after releasing state locks; reuse shared logger synchronization and formatting. No separate writer/logger, global destination, payload/history retention or observer when verbose is off or INFO is filtered.
+- [x] T006 Implement the invocation collector in `internal/services/httpc/diagnostics.go` with tests in `internal/services/httpc/diagnostics_test.go`: retain the existing invocation logger and resolved logger level, atomic sequence starting at 1, private context, state locks and once-only snapshot. Emit through `log.Debug` after releasing state locks; reuse shared logger synchronization and formatting. No separate writer/logger, global destination, payload/history retention or observer when DEBUG is filtered.
 
 **Checkpoint**: Record and redaction tests pass, collector state is invocation-owned, and no public invocation enables an unsafe/raw formatter. Run `go test ./internal/services/httpc -run 'TestAPIDiagnostics' -count=1` before proceeding.
 
@@ -58,8 +58,8 @@ Use existing `cmd/`, `internal/services/httpc/`, `internal/services/auth/`, `c8v
 - [x] T010 [US1] Implement `DiagnosticsTransport` and composed `httptrace` hooks in `internal/services/httpc/diagnostics.go`, using UTC start time and monotonic durations, final headers at delegate return, body interval from that return through observed termination, total across both intervals (body=0s when known bodyless), optional reuse and paired phase evidence; enforce “Absent hooks or unperformed phases are absent fields.” and freeze records against late callbacks; connect the body wrappers and safe formatter from T003–T009.
 - [x] T011 [US1] Add `WithDiagnostics` and shared collector lookup/wrapping helpers in `internal/services/httpc/service.go`, integrating with `internal/services/httpc/round_trippers.go` so the enabled stack is Auth → ReadRetry → Log → Diagnostics → base; preserve existing logging/activity, retry/auth wrapper behavior and default transports, and pass T007 without changes to `internal/services/httpc/read_retry.go` policy.
 - [x] T012 [US1] Attach the existing invocation collector to the separate unauthenticated token client in `internal/services/auth/oauth2/service.go` using the shared httpc helper, preserving its timeout and no-auth/no-retry semantics; make T008 pass and confirm cookie authentication continues using the supplied shared client.
-- [x] T013 [US1] Reuse resolved verbose configuration and the existing invocation logger in `cmd/root.go` and pass diagnostic options through `cmd/root_services.go` before authenticator initialization. Preserve configuration precedence and omit unset context. Add no flag, logger or config setting, enable no debug/body dumps, and add no diagnostic logic to individual commands, facades or generated clients.
-- [x] T014 [US1] Add `TestAPIDiagnosticsCommand...` basic read/bootstrap coverage in `cmd/root_api_diagnostics_test.go` using deterministic local HTTP fixtures and fresh command state: exercise `get process-definition`, before/after-command flag inheritance, token/cookie/auth-none bootstrap traffic, no-exchange/help paths, and enabled/disabled byte-identical stdout and equal request counts; verify existing verbose help and update examples in `cmd/root_test.go` as needed; test verbose-off, debug-only, quiet and restrictive INFO filtering.
+- [x] T013 [US1] Reuse resolved logger configuration and the existing invocation logger in `cmd/root.go` and pass diagnostic options through `cmd/root_services.go` before authenticator initialization. Preserve configuration precedence and omit unset context. Add no flag, logger or config setting, enable no body dumps, and add no diagnostic logic to individual commands, facades or generated clients.
+- [x] T014 [US1] Add `TestAPIDiagnosticsCommand...` basic read/bootstrap coverage in `cmd/root_api_diagnostics_test.go` using deterministic local HTTP fixtures and fresh command state: exercise `get process-definition`, before/after-command flag inheritance, token/cookie/auth-none bootstrap traffic, no-exchange/help paths, and enabled/disabled byte-identical stdout and equal request counts; verify existing debug help and update examples in `cmd/root_test.go` as needed; test default/verbose-only suppression, debug-only admission, quiet and restrictive DEBUG filtering.
 - [x] T015 [US1] Run `go test ./internal/services/httpc ./internal/services/auth/oauth2 ./cmd -run 'TestAPIDiagnostics|RootHelp' -count=1`, verify tests are actually discovered, fix failures within the US1-owned files, and record the commands/outcomes in `specs/305-api-request-diagnostics/quickstart.md`.
 
 **Checkpoint**: The read-only timing workflow is demonstrable with the safe foundation; token exchanges and explicit attempts are visible without added requests. This is the development MVP, not permission to skip the remaining required stories or release gates.
@@ -72,7 +72,7 @@ Use existing `cmd/`, `internal/services/httpc/`, `internal/services/auth/`, `c8v
 
 ### Tests for User Story 2
 
-- [x] T016 [P] [US2] Extend `cmd/root_api_diagnostics_test.go` with plain/plain-time/text/JSON log formats with timestamp/source settings, normal/JSON/keys-only/quiet and quiet+machine result-output matrices for reads and cancellations, inherited root versus configured child stderr, explicit-key and selector flows, auto-confirm/automation/no-wait, dry-run where supported, sparse pages, empty scope and failures; decode exactly one JSON envelope then require EOF, assert exact human/keys output including zero-byte empty keys, and compare request bodies/counts, mutation/polling outcomes and prompt absence against disabled fixtures; assert INFO diagnostics are absent under quiet/restrictive levels and required message fields survive every log format.
+- [x] T016 [P] [US2] Extend `cmd/root_api_diagnostics_test.go` with plain/plain-time/text/JSON log formats with timestamp/source settings, normal/JSON/keys-only/quiet and quiet+machine result-output matrices for reads and cancellations, inherited root versus configured child stderr, explicit-key and selector flows, auto-confirm/automation/no-wait, dry-run where supported, sparse pages, empty scope and failures; decode exactly one JSON envelope then require EOF, assert exact human/keys output including zero-byte empty keys, and compare request bodies/counts, mutation/polling outcomes and prompt absence against disabled fixtures; assert DEBUG diagnostics are absent under quiet/restrictive levels and required message fields survive every log format.
 - [x] T017 [P] [US2] Extend `cmd/cmd_confirmation_terminal_test.go` with `TestAPIDiagnosticsTerminal...` cases using `testx.NewCmdTerminalRunner`, real terminal stdin and separately captured streams: accepted/aborted cancellation, configured/inherited stderr, quiet/machine combinations, prompt-free empty scopes and activity coexistence; retain exact prompt wording/defaults/EOF behavior and verify aborted/empty selections submit no mutations.
 - [x] T018 [P] [US2] Extend adversarial sanitizer coverage and add fuzz seeds in `internal/services/httpc/diagnostics_redaction_test.go` for signed-URL families, encoded/repeated names and values, known secrets reflected under safe query/header/context fields, Set-Cookie reflected in X-Request-ID, malformed metadata, arbitrary error payloads, control injection, and safe identifier retention; validate the output against `specs/305-api-request-diagnostics/contracts/api-diagnostics.md` without reading bodies for redaction.
 
@@ -82,7 +82,7 @@ Use existing `cmd/`, `internal/services/httpc/`, `internal/services/auth/`, `c8v
 - [x] T020 [US2] Complete security integration in `internal/services/httpc/diagnostics_redaction.go` and `internal/services/auth/oauth2/diagnostics_test.go`, adding cookie-login reflection coverage in `internal/services/auth/cookie/diagnostics_test.go`; verify config/request/response secrets are available before allowed-field formatting, auth bootstrap does not leak them and arbitrary raw error/header/body output is absent; make T018 and auth security regressions pass.
 - [x] T021 [US2] Run `go test ./internal/services/httpc ./internal/services/auth/... ./cmd -run 'TestAPIDiagnostics|ProcessInstanceConfirmationTerminal' -count=1`, verify supported terminal cases really execute and no mutations reach a live service, and record results or explicit platform limitations in `specs/305-api-request-diagnostics/quickstart.md`.
 
-**Checkpoint**: The read and mutation execution matrices preserve operation behavior and clean stdout; admitted records reach intended stderr and quiet suppresses INFO diagnostics, and seeded credentials/payloads are excluded.
+**Checkpoint**: The read and mutation execution matrices preserve operation behavior and clean stdout; admitted records reach intended stderr and quiet suppresses DEBUG diagnostics, and seeded credentials/payloads are excluded.
 
 ## Phase 5: User Story 3 — Interpret failures and partial evidence accurately (Priority: P2)
 
@@ -109,7 +109,7 @@ Use existing `cmd/`, `internal/services/httpc/`, `internal/services/auth/`, `c8v
 
 **Purpose**: Align operator documentation, quantify instrumentation costs and complete delivery gates.
 
-- [x] T029 Update `README.md` and command metadata/examples in `cmd/root.go` for existing verbose diagnostics, ASCII messages, logger formats/timestamps/source, configured stderr, quiet suppression, final-header versus total, phase overlap/reuse, observed body bytes/partial transfers, retained identifiers/redaction, synchronous writer backpressure and the transport observation boundary; align `specs/305-api-request-diagnostics/quickstart.md` with the implemented commands and test names.
+- [x] T029 Update `README.md` and command metadata/examples in `cmd/root.go` for existing debug diagnostics, ASCII messages, logger formats/timestamps/source, configured stderr, quiet suppression, final-header versus total, phase overlap/reuse, observed body bytes/partial transfers, retained identifiers/redaction, synchronous writer backpressure and the transport observation boundary; align `specs/305-api-request-diagnostics/quickstart.md` with the implemented commands and test names.
 - [x] T030 Run `make docs-content` from `Makefile`, inspect regenerated `docs/cli/c8volt.md` and inherited-flag pages plus the generated README homepage for correct output guidance, and fix source metadata if needed rather than hand-editing generated CLI documents.
 - [x] T031 Add enabled/disabled small-body and streaming-body benchmarks in `internal/services/httpc/diagnostics_benchmark_test.go`, run `go test ./internal/services/httpc -run '^$' -bench APIDiagnostics -benchmem`, confirm memory is independent of payload size with no history/queue/buffering, and record measured outcomes in `specs/305-api-request-diagnostics/quickstart.md` without inventing an unsupported latency threshold.
 - [x] T032 Run gofmt on touched Go files, execute the automated validation scenarios in `specs/305-api-request-diagnostics/quickstart.md`, run full `make test` and `git diff --check` after final source/doc changes, and review the diff against FR-001–FR-011 for layering, no extra requests, no generated-client edits and preserved operation results; record actual outcomes/limitations in `specs/305-api-request-diagnostics/quickstart.md` before any Conventional Commit referencing #305.
@@ -186,7 +186,7 @@ Complete setup, safe foundation and US1 for a controlled read-only development d
 ### Incremental Delivery
 
 1. Establish safe record/collector primitives and their tests.
-2. Integrate real exchange observation, OAuth coverage and the existing verbose/logger wiring; validate US1.
+2. Integrate real exchange observation, OAuth coverage and the existing debug/logger wiring; validate US1.
 3. Complete effective stderr, quiet and mutation/terminal matrices; validate US2.
 4. Complete lifecycle/trace/concurrency and supported-client regressions; validate US3.
 5. Regenerate documentation, measure overhead and pass `make test`.
@@ -195,7 +195,7 @@ Complete setup, safe foundation and US1 for a controlled read-only development d
 
 | Requirement | Tasks |
 | --- | --- |
-| FR-001 existing verbose opt-in/level filtering | T011, T013–T014 |
+| FR-001 existing debug opt-in/level filtering | T011, T013–T014 |
 | FR-002 per-exchange records/separate retries | T006–T012, T024, T026 |
 | FR-003 identity/context/outcomes/sizes/correlation | T002–T006, T009–T014, T020 |
 | FR-004 distinct timings/observed phases | T007, T010, T023, T025 |
@@ -215,3 +215,9 @@ SC-001/SC-002 are proven by US1 and US3; SC-003/SC-004 by US2; SC-005 by retry, 
 - Preserve Spec Kit memory and existing feature artifacts. No public facade result-schema changes, additional requests, synthetic diagnostics, resource cleanup or monitoring integration belong to this feature.
 - Keep commits small and use Conventional Commits with #305 in the subject. Run the closest relevant checks and full `make test` before committing, as required by the constitution; never commit deliberately failing test-only work.
 - Optional extension hooks are separate actions; task generation does not execute commits or start Ralph.
+
+## Activation correction — 2026-09-13
+
+- [x] T033 Move HTTP collection and emission to effective DEBUG logging independent of verbose; preserve quiet, formats, safe URLs, body-dump settings and stdout/stderr behavior. Verify default/verbose-only suppression, debug-only/configured-debug admission, auth redaction and terminal modes; align AGENTS.md, implementation guidance and feature artifacts, regenerate docs, then run the full race suite.
+
+- [x] T034 Consolidate API/OAuth attachment beneath LogTransport with one idempotent helper, remove legacy calling start logs, and preserve activity/request dumps. Verify wrapper order, single exchange records, auth shared sequence and request counts; update docs and run targeted plus full race suites.

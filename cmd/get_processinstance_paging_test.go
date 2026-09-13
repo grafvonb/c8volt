@@ -684,7 +684,7 @@ func TestGetProcessInstancePagingFlow(t *testing.T) {
 		require.Contains(t, stdout, `"outcome": "succeeded"`)
 		require.Contains(t, stdout, `"total": 3`)
 		require.NotContains(t, stdout, "page size:")
-		require.Equal(t, 2, strings.Count(stderr, "api #"))
+		require.NotContains(t, stderr, "api #", "verbose must not enable HTTP diagnostics")
 		require.NotContains(t, stdout, "api #")
 	})
 

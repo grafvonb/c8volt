@@ -55,8 +55,8 @@ func TestAPIDiagnosticsTopLevelClientUsesSuppliedInstrumentedClient(t *testing.T
 			cfg.APIs.Camunda.BaseURL = camunda.URL + "/v2"
 			cfg.APIs.Operate.BaseURL = operate.URL + "/v1"
 			cfg.APIs.Tasklist.BaseURL = tasklist.URL + "/v1"
-			logger := logging.New(logging.LoggerConfig{Writer: &output, Level: "info", Format: "plain"})
-			httpService, err := httpc.New(cfg, logger, httpc.WithDiagnostics(true))
+			logger := logging.New(logging.LoggerConfig{Writer: &output, Level: "debug", Format: "plain"})
+			httpService, err := httpc.New(cfg, logger, httpc.WithDiagnostics())
 			require.NoError(t, err)
 			cli, err := New(WithConfig(cfg), WithHTTPClient(httpService.Client()), WithLogger(slog.Default()))
 			require.NoError(t, err)

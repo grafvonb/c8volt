@@ -26,7 +26,7 @@ func installRemoteCommandServices(ctx context.Context, cfg *config.Config, log *
 		log,
 		httpc.WithCookieJar(),
 		httpc.WithActivitySink(activity),
-		httpc.WithDiagnostics(flagVerbose),
+		httpc.WithDiagnostics(),
 	)
 	if err != nil {
 		return ctx, bootstrapLocalPrecondition(fmt.Errorf("create http service: %w", err))

@@ -52,8 +52,8 @@ func TestAPIDiagnosticsOAuthSharesSequenceAndCachesToken(t *testing.T) {
 
 	var output bytes.Buffer
 	cfg := diagnosticOAuthConfig(server.URL, clientSecret)
-	logger := logging.New(logging.LoggerConfig{Writer: &output, Level: "info", Format: "plain"})
-	apiService, err := httpc.New(cfg, logger, httpc.WithDiagnostics(true))
+	logger := logging.New(logging.LoggerConfig{Writer: &output, Level: "debug", Format: "plain"})
+	apiService, err := httpc.New(cfg, logger, httpc.WithDiagnostics())
 	require.NoError(t, err)
 	service, err := New(cfg, apiService.Client(), logger)
 	require.NoError(t, err)
@@ -73,6 +73,7 @@ func TestAPIDiagnosticsOAuthSharesSequenceAndCachesToken(t *testing.T) {
 	require.Equal(t, int32(1), tokenRequests.Load(), "cache hit must not issue a second token request")
 	require.Equal(t, int32(2), apiRequests.Load())
 	require.Equal(t, 3, strings.Count(output.String(), "api #"))
+	require.NotContains(t, output.String(), "calling:")
 	require.Contains(t, output.String(), "api #1 POST /oauth/token: status=200")
 	require.Contains(t, output.String(), "api #2 GET /v2/topology: status=200")
 	require.Contains(t, output.String(), "api #3 GET /v2/topology: status=200")
@@ -95,8 +96,8 @@ func TestAPIDiagnosticsOAuthPreservesAPITimeout(t *testing.T) {
 
 	var output bytes.Buffer
 	cfg := diagnosticOAuthConfig(server.URL, "timeout-secret")
-	logger := logging.New(logging.LoggerConfig{Writer: &output, Level: "info", Format: "plain"})
-	apiService, err := httpc.New(cfg, logger, httpc.WithTimeout(25*time.Millisecond), httpc.WithDiagnostics(true))
+	logger := logging.New(logging.LoggerConfig{Writer: &output, Level: "debug", Format: "plain"})
+	apiService, err := httpc.New(cfg, logger, httpc.WithTimeout(25*time.Millisecond), httpc.WithDiagnostics())
 	require.NoError(t, err)
 	service, err := New(cfg, apiService.Client(), logger)
 	require.NoError(t, err)

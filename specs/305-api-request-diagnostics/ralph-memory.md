@@ -37,6 +37,10 @@ Started: 2026-09-12T17:35:53Z
 - US2 security coverage retains safe fallback correlation identifiers while dropping unsafe first values, and collects response cookie/API-key secrets before parsing allowed response metadata.
 - Final FR-001–FR-011 review confirmed production changes remain at root bootstrap, shared httpc and OAuth collector sharing; no generated clients, production facades, dependencies, configuration keys or individual command diagnostic paths changed.
 
+- DEBUG activation correction (T033): HTTP records use effective DEBUG logging without verbose; quiet still wins. The legacy raw request URL line is suppressed when the safe observer is attached. Targeted race checks, generated docs and the final full race suite passed on 2026-09-13.
+
+- HTTP logging consolidation (T034): API/OAuth share attachment beneath LogTransport; legacy calling start logs are removed. Activity and explicit dumps are preserved. Targeted and full race suites passed on 2026-09-13.
+
 ## Gotchas
 
 - The baseline regex intentionally has no matching tests in several auth packages; their `[no tests to run]` result is not a failure.
