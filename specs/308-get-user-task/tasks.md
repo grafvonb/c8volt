@@ -18,8 +18,8 @@ Read `AGENTS.md` and, for Ralph execution, `specs/ralph-implementation-rules.md`
 
 **Purpose**: Establish the current baseline without initializing another project or changing dependency versions.
 
-- [ ] T001 Review feature artifacts, `AGENTS.md`, and `specs/ralph-implementation-rules.md`; initialize `specs/308-get-user-task/progress.md` with issue/branch, layer ownership, native-versus-legacy getter distinction, and validation evidence conventions.
-- [ ] T002 Run baseline `go test ./internal/services/usertask/... -count=1`, `go test ./c8volt/task -count=1`, and existing user-task resolver command tests selected from `cmd/get_processinstance_test.go`; record exact executed test names and results in `specs/308-get-user-task/progress.md`, resolving baseline failures before relying on them as regressions.
+- [x] T001 Review feature artifacts, `AGENTS.md`, and `specs/ralph-implementation-rules.md`; initialize `specs/308-get-user-task/progress.md` with issue/branch, layer ownership, native-versus-legacy getter distinction, and validation evidence conventions.
+- [x] T002 Run baseline `go test ./internal/services/usertask/... -count=1`, `go test ./c8volt/task -count=1`, and existing user-task resolver command tests selected from `cmd/get_processinstance_test.go`; record exact executed test names and results in `specs/308-get-user-task/progress.md`, resolving baseline failures before relying on them as regressions.
 
 ## Phase 2: Foundational (Blocking Prerequisites)
 
