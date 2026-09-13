@@ -191,17 +191,19 @@ func WaitForProcessInstanceState(ctx context.Context, s PIWaiter, cfg *config.Co
 
 	attempts := 0
 	delay := backoff.InitialDelay
+	lastState := d.StateUnknown
 	for {
 		if errCtx := ctx.Err(); errCtx != nil {
 			elapsed := time.Since(start)
 			status := fmt.Sprintf("stopped waiting for process instance %s after %d attempts in %s due to context error", key, attempts, elapsed)
 			log.Debug(status)
-			return d.StateResponse{Ok: false, State: d.StateUnknown, Status: status}, d.ProcessInstance{}, fmt.Errorf("%w: %s", errCtx, status)
+			return waitStateFailure(key, lastState, attempts, elapsed, status, fmt.Errorf("%w: %s", errCtx, status))
 		}
 		attempts++
 		log.Debug(fmt.Sprintf("pi %s fetch state; attempt %d", key, attempts))
 		got, pi, errInDelay := s.GetProcessInstanceStateByKey(ctx, key, opts...)
 		if errInDelay == nil {
+			lastState = got
 			if stateIn(got, desired) {
 				if attempts == 1 {
 					status := fmt.Sprintf("process instance %s is already in one of the desired state(s) [%s] (current: %s)", key, desired, got)
@@ -220,6 +222,7 @@ func WaitForProcessInstanceState(ctx context.Context, s PIWaiter, cfg *config.Co
 			if isProcessInstanceAbsentErr(errInDelay) {
 				// Only waiter-driven absent/deleted confirmation maps not-found into ABSENT; direct lookups stay strict.
 				got = d.StateAbsent
+				lastState = got
 				if stateIn(got, desired) {
 					elapsed := time.Since(start)
 					status := fmt.Sprintf("process instance %s reached one of the desired state(s) [%s] (current: %s) after %d checks in %s", key, desired, got, attempts, elapsed)
@@ -233,14 +236,14 @@ func WaitForProcessInstanceState(ctx context.Context, s PIWaiter, cfg *config.Co
 				elapsed := time.Since(start)
 				status := fmt.Sprintf("stopped waiting for process instance %s after %d attempts in %s due to error", key, attempts, elapsed)
 				log.Error(status)
-				return d.StateResponse{Ok: false, State: got, Status: status}, d.ProcessInstance{}, fmt.Errorf("%w: %s", errInDelay, status)
+				return waitStateFailure(key, lastState, attempts, elapsed, status, fmt.Errorf("%w: %s", errInDelay, status))
 			}
 		}
 		if backoff.MaxRetries > 0 && attempts >= backoff.MaxRetries {
 			elapsed := time.Since(start)
 			status := fmt.Sprintf("exceeded max_retries (%d) waiting for state %q of process instance %s after %d attempts in %s", backoff.MaxRetries, desired, key, attempts, elapsed)
 			log.Debug(status)
-			return d.StateResponse{Ok: false, State: d.StateUnknown, Status: status}, d.ProcessInstance{}, errors.New(status)
+			return waitStateFailure(key, lastState, attempts, elapsed, status, errors.New(status))
 		}
 		select {
 		case <-time.After(delay):
@@ -249,8 +252,14 @@ func WaitForProcessInstanceState(ctx context.Context, s PIWaiter, cfg *config.Co
 			elapsed := time.Since(start)
 			status := fmt.Sprintf("stopped waiting for process instance %s after %d attempts in %s due to context done", key, attempts, elapsed)
 			log.Debug(status)
-			return d.StateResponse{Ok: false, State: d.StateUnknown, Status: status}, d.ProcessInstance{}, fmt.Errorf("%w: %s", ctx.Err(), status)
+			return waitStateFailure(key, lastState, attempts, elapsed, status, fmt.Errorf("%w: %s", ctx.Err(), status))
 		}
+	}
+}
+
+func waitStateFailure(key string, lastState d.State, attempts int, elapsed time.Duration, status string, err error) (d.StateResponse, d.ProcessInstance, error) {
+	return d.StateResponse{Ok: false, State: d.StateUnknown, Status: status}, d.ProcessInstance{}, &d.ProcessInstanceWaitFailure{
+		Key: key, LastState: lastState, Attempts: attempts, Elapsed: elapsed, Err: err,
 	}
 }
 

@@ -6,7 +6,9 @@ package ferrors
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
+	"time"
 
 	"github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/exitcode"
@@ -212,4 +214,64 @@ func TestWrapClassPreservesUnavailablePrefixAndDetailText(t *testing.T) {
 	require.ErrorIs(t, err, ErrUnavailable)
 	require.Equal(t, ClassUnavailable, Classify(err))
 	require.Equal(t, exitcode.Unavailable, ExitCode(err))
+}
+
+// TestWrapClassPreservesOriginalCause verifies classification no longer
+// stringifies the lower-level chain needed by final DEBUG diagnostics.
+func TestWrapClassPreservesOriginalCause(t *testing.T) {
+	t.Parallel()
+
+	cause := fmt.Errorf("confirmation: %w", context.DeadlineExceeded)
+	err := WrapClass(ErrTimeout, cause)
+
+	require.Equal(t, "operation timed out: confirmation: context deadline exceeded", err.Error())
+	require.ErrorIs(t, err, ErrTimeout)
+	require.ErrorIs(t, err, context.DeadlineExceeded)
+	require.Equal(t, ClassTimeout, Classify(err))
+}
+
+func TestWrapClassPreservesOuterClassificationPrecedence(t *testing.T) {
+	t.Parallel()
+
+	cause := WrapClass(ErrConflict, errors.New("active instance"))
+	err := WrapClass(ErrTimeout, cause)
+
+	require.ErrorIs(t, err, ErrTimeout)
+	require.ErrorIs(t, err, ErrConflict)
+	require.Equal(t, ClassTimeout, Classify(err))
+	require.Equal(t, "operation timed out: conflict: active instance", err.Error())
+}
+
+// TestFromDomainExposesProcessInstanceMutationFacts verifies the facade error
+// projection retains operational facts and every wrapped cause.
+func TestFromDomainExposesProcessInstanceMutationFacts(t *testing.T) {
+	t.Parallel()
+
+	domainFailure := &domain.ProcessInstanceMutationFailure{
+		Operation:             "delete",
+		Phase:                 "cancellation confirmation",
+		RootKey:               "root",
+		Scope:                 []string{"root", "child"},
+		Timeout:               30 * time.Millisecond,
+		LastStates:            map[string]domain.State{"root": domain.StateActive},
+		DeleteConflictKey:     "child",
+		CancellationSubmitted: true,
+		Err:                   fmt.Errorf("cancel wait: %w", context.DeadlineExceeded),
+	}
+
+	err := FromDomain(fmt.Errorf("delete cancel: %w", domainFailure))
+	var exposed *ProcessInstanceMutationFailure
+	require.ErrorAs(t, err, &exposed)
+	require.Equal(t, "root", exposed.RootKey)
+	require.Equal(t, []string{"root", "child"}, exposed.Scope)
+	require.Equal(t, "ACTIVE", exposed.LastStates["root"])
+	require.ErrorIs(t, err, context.DeadlineExceeded)
+	require.ErrorIs(t, err, ErrTimeout)
+	require.Equal(t, ClassTimeout, Classify(err))
+	require.Equal(t, "operation timed out: delete cancel: cancel wait: context deadline exceeded", err.Error())
+
+	exposed.Scope[0] = "changed"
+	exposed.LastStates["root"] = "CANCELED"
+	require.Equal(t, "root", domainFailure.Scope[0])
+	require.Equal(t, domain.StateActive, domainFailure.LastStates["root"])
 }

@@ -4,6 +4,7 @@
 package cmd
 
 import (
+	"errors"
 	"log/slog"
 	"os"
 	"strings"
@@ -65,11 +66,20 @@ func handleCommandError(cmd *cobra.Command, log *slog.Logger, noErrCodes bool, e
 	if err == nil {
 		return
 	}
-	if commandUsesSharedEnvelope(cmd, pickMode()) {
-		_ = renderResultEnvelope(cmd, resultEnvelopeForError(cmd, err))
-		os.Exit(ferrors.ResolveExitCode(noErrCodes, err))
+	normalized := ferrors.Normalize(err)
+	var mutationFailure *ferrors.ProcessInstanceMutationFailure
+	if errors.As(normalized, &mutationFailure) {
+		log.Debug("process-instance mutation failure", "error", normalized.Error())
 	}
-	ferrors.HandleAndExit(log, noErrCodes, err)
+	if commandUsesSharedEnvelope(cmd, pickMode()) {
+		_ = renderResultEnvelope(cmd, resultEnvelopeForError(cmd, normalized))
+		os.Exit(ferrors.ResolveExitCode(noErrCodes, normalized))
+	}
+	if mutationFailure != nil {
+		log.Error(formatProcessInstanceMutationCommandFailure(mutationFailure))
+		os.Exit(ferrors.ResolveExitCode(noErrCodes, normalized))
+	}
+	ferrors.HandleAndExit(log, noErrCodes, normalized)
 }
 
 func exitAfterRenderedResult(noErrCodes bool, err error) {

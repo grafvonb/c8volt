@@ -529,8 +529,19 @@ func (s *Service) CancelProcessInstance(ctx context.Context, key string, opts ..
 		}
 		s.infoProcessInstanceDetail(cCfg, fmt.Sprintf("waiting for pi %s cancel", key))
 		states := []d.State{d.StateCompleted, d.StateCanceled, d.StateTerminated, d.StateAbsent}
+		waitTimeout := effectiveProcessInstanceWaitTimeout(ctx, s.cfg.App.Backoff.Timeout)
 		if _, err = waiter.WaitForProcessInstancesState(ctx, s, s.cfg, s.log, keys, states, len(keys), opts...); err != nil {
-			return d.CancelResponse{}, nil, fmt.Errorf("cancel wait: %w", err)
+			cause := fmt.Errorf("cancel wait: %w", err)
+			return d.CancelResponse{}, nil, &d.ProcessInstanceMutationFailure{
+				Operation:             "cancel",
+				Phase:                 "cancellation confirmation",
+				RootKey:               key,
+				Scope:                 append([]string(nil), keys...),
+				Timeout:               waitTimeout,
+				LastStates:            d.ProcessInstanceWaitObservations(err),
+				CancellationSubmitted: true,
+				Err:                   cause,
+			}
 		}
 		s.infoProcessInstanceDetail(cCfg, fmt.Sprintf("pi %s canceled", key))
 	} else {
@@ -592,7 +603,17 @@ func (s *Service) DeleteProcessInstance(ctx context.Context, key string, opts ..
 		if cCfg.Force {
 			s.infoProcessInstanceDetail(cCfg, fmt.Sprintf("pi %s not terminal; cancelling before delete", key))
 			if _, _, err = s.CancelProcessInstance(ctx, key, opts...); err != nil {
-				return d.DeleteResponse{}, fmt.Errorf("delete cancel: %w", err)
+				cause := fmt.Errorf("delete cancel: %w", err)
+				var failure *d.ProcessInstanceMutationFailure
+				if errors.As(err, &failure) {
+					enriched := d.CloneProcessInstanceMutationFailure(failure)
+					enriched.Operation = "delete"
+					enriched.DeleteConflictKey = key
+					enriched.ResumedDeletionReached = false
+					enriched.Err = cause
+					return d.DeleteResponse{}, enriched
+				}
+				return d.DeleteResponse{}, cause
 			}
 			s.infoProcessInstanceDetail(cCfg, fmt.Sprintf("waiting for pi %s cancel", key))
 			states := []d.State{d.StateCompleted, d.StateCanceled, d.StateTerminated, d.StateAbsent}
@@ -630,6 +651,16 @@ func (s *Service) DeleteProcessInstance(ctx context.Context, key string, opts ..
 		Ok:         true,
 		StatusCode: resp.StatusCode(),
 	}, nil
+}
+
+func effectiveProcessInstanceWaitTimeout(ctx context.Context, configured time.Duration) time.Duration {
+	if deadline, ok := ctx.Deadline(); ok {
+		remaining := time.Until(deadline)
+		if configured <= 0 || remaining < configured {
+			return max(remaining, 0)
+		}
+	}
+	return configured
 }
 
 func (s *Service) infoProcessInstanceDetail(cCfg *services.CallCfg, msg string) {

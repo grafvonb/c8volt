@@ -6,15 +6,44 @@ package ferrors
 import (
 	"context"
 	"errors"
-	"fmt"
 	"log/slog"
 	"os"
+	"slices"
+	"time"
 
 	"github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/exitcode"
 	"github.com/grafvonb/c8volt/internal/services"
 	"github.com/grafvonb/c8volt/toolx"
 )
+
+// ProcessInstanceMutationFailure exposes operational facts for command-owned
+// human formatting while preserving the original service error and machine text.
+type ProcessInstanceMutationFailure struct {
+	Operation              string
+	Phase                  string
+	RootKey                string
+	Scope                  []string
+	Timeout                time.Duration
+	LastStates             map[string]string
+	DeleteConflictKey      string
+	CancellationSubmitted  bool
+	ResumedDeletionReached bool
+	err                    error
+}
+
+func (e *ProcessInstanceMutationFailure) Error() string { return e.err.Error() }
+func (e *ProcessInstanceMutationFailure) Unwrap() error { return e.err }
+
+type classifiedError struct {
+	class error
+	cause error
+}
+
+func (e *classifiedError) Error() string        { return e.class.Error() + ": " + e.cause.Error() }
+func (e *classifiedError) Unwrap() error        { return e.cause }
+func (e *classifiedError) Is(target error) bool { return target == e.class }
+func (e *classifiedError) failureClass() error  { return e.class }
 
 // Class is the bounded machine-facing classification for CLI failures.
 type Class string
@@ -54,6 +83,7 @@ func NormalizeDomain(err error) error {
 		return nil
 	}
 
+	err = exposeProcessInstanceMutationFailure(err)
 	switch {
 	case isNormalized(err):
 		return err
@@ -142,9 +172,15 @@ func FromDomain(err error) error {
 
 // Classify returns the machine-facing failure class after full normalization.
 func Classify(err error) Class {
-	switch normalized := Normalize(err); {
-	case normalized == nil:
+	normalized := Normalize(err)
+	if normalized == nil {
 		return ""
+	}
+	var classified interface{ failureClass() error }
+	if errors.As(normalized, &classified) {
+		return classForSentinel(classified.failureClass())
+	}
+	switch {
 	case errors.Is(normalized, ErrInvalidInput):
 		return ClassInvalidInput
 	case errors.Is(normalized, ErrLocalPrecondition):
@@ -160,6 +196,29 @@ func Classify(err error) Class {
 	case errors.Is(normalized, ErrUnavailable):
 		return ClassUnavailable
 	case errors.Is(normalized, ErrMalformedResponse):
+		return ClassMalformedResponse
+	default:
+		return ClassInternal
+	}
+}
+
+func classForSentinel(classErr error) Class {
+	switch classErr {
+	case ErrInvalidInput:
+		return ClassInvalidInput
+	case ErrLocalPrecondition:
+		return ClassLocalPrecondition
+	case ErrUnsupported:
+		return ClassUnsupported
+	case ErrNotFound:
+		return ClassNotFound
+	case ErrConflict:
+		return ClassConflict
+	case ErrTimeout:
+		return ClassTimeout
+	case ErrUnavailable:
+		return ClassUnavailable
+	case ErrMalformedResponse:
 		return ClassMalformedResponse
 	default:
 		return ClassInternal
@@ -244,5 +303,32 @@ func wrap(classErr error, err error) error {
 	if err == nil || errors.Is(err, classErr) {
 		return err
 	}
-	return fmt.Errorf("%w: %v", classErr, err)
+	return &classifiedError{class: classErr, cause: err}
+}
+
+func exposeProcessInstanceMutationFailure(err error) error {
+	var exposed *ProcessInstanceMutationFailure
+	if errors.As(err, &exposed) {
+		return err
+	}
+	var failure *domain.ProcessInstanceMutationFailure
+	if !errors.As(err, &failure) {
+		return err
+	}
+	states := make(map[string]string, len(failure.LastStates))
+	for key, state := range failure.LastStates {
+		states[key] = state.String()
+	}
+	return &ProcessInstanceMutationFailure{
+		Operation:              failure.Operation,
+		Phase:                  failure.Phase,
+		RootKey:                failure.RootKey,
+		Scope:                  slices.Clone(failure.Scope),
+		Timeout:                failure.Timeout,
+		LastStates:             states,
+		DeleteConflictKey:      failure.DeleteConflictKey,
+		CancellationSubmitted:  failure.CancellationSubmitted,
+		ResumedDeletionReached: failure.ResumedDeletionReached,
+		err:                    err,
+	}
 }

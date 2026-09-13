@@ -5,10 +5,12 @@ package processinstance
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
 	"sort"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -250,9 +252,47 @@ func processInstanceCompletionFailureDetail(ok bool, err error, status string) s
 		return ""
 	}
 	if err != nil {
+		var failure *d.ProcessInstanceMutationFailure
+		if errors.As(err, &failure) {
+			return conciseProcessInstanceMutationFailure(failure)
+		}
 		return err.Error()
 	}
 	return status
+}
+
+func conciseProcessInstanceMutationFailure(failure *d.ProcessInstanceMutationFailure) string {
+	parts := []string{fmt.Sprintf("%s timed out after %s", failure.Phase, failure.Timeout)}
+	if failure.RootKey != "" {
+		parts = append(parts, "root "+failure.RootKey)
+	}
+	if len(failure.Scope) > 0 {
+		scope := append([]string(nil), failure.Scope...)
+		sort.Strings(scope)
+		parts = append(parts, "scope "+strings.Join(scope, ","))
+	}
+	if len(failure.LastStates) > 0 {
+		keys := make([]string, 0, len(failure.LastStates))
+		for key := range failure.LastStates {
+			keys = append(keys, key)
+		}
+		sort.Strings(keys)
+		states := make([]string, 0, len(keys))
+		for _, key := range keys {
+			states = append(states, fmt.Sprintf("%s=%s", key, failure.LastStates[key]))
+		}
+		parts = append(parts, "last observed "+strings.Join(states, ", "))
+	}
+	if failure.DeleteConflictKey != "" {
+		parts = append(parts, "child "+failure.DeleteConflictKey+" deletion conflicted")
+	}
+	if failure.CancellationSubmitted {
+		parts = append(parts, "root cancellation submitted, outcome unconfirmed")
+	}
+	if !failure.ResumedDeletionReached {
+		parts = append(parts, "resumed deletion not reached")
+	}
+	return strings.Join(parts, "; ")
 }
 
 func processInstanceCreationAffectedCount(err error) *int {
