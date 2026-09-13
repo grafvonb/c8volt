@@ -148,6 +148,65 @@ For scripts or CI, request JSON with `--json`:
 
 For the full setup contract, see the generated [config reference](docs/cli/c8volt_config.md).
 
+### API Request Diagnostics
+
+Add the existing `--debug` flag to an API-backed command to emit one compact,
+redacted DEBUG record for each HTTP exchange. Results remain on stdout; records
+and interactive prompts use the command's configured or inherited stderr.
+`--quiet` suppresses these DEBUG records. Configured DEBUG logging also enables them;
+INFO and higher levels filter them. `--verbose` adds functional detail and does
+not enable HTTP diagnostics.
+
+```bash
+./c8volt --config ./config.yaml --debug get process-definition --latest \
+  > results.txt 2> diagnostics.txt
+```
+
+A record starts with ASCII-only message text such as:
+
+```text
+api #1 GET /v2/process-definitions/search: status=200 total=180ms headers=170ms body=10ms conn=reused response-bytes=842 response-complete=true
+```
+
+`headers` measures from the request start until final response headers arrive;
+`body` measures from final headers until the body reaches an observed terminal
+event; and `total` spans both intervals. DNS, TCP, and TLS samples are already
+inside `total`, may overlap, and are not an additive breakdown. Reused
+connections normally omit phases that did not run.
+
+Request and response byte counts describe bytes observed by the client body
+readers, not HTTP framing or declared content lengths. A response closed early
+or interrupted by an error retains its observed timing and byte count with
+`response-complete=false`. Decompressed response bytes can differ from the
+wire-transfer size.
+
+Diagnostics retain useful operational context when safely available, including
+host, path/resource keys, profile, tenant, non-secret query values, and validated
+request or correlation IDs. They omit credentials, authorization, tokens,
+passwords, cookies, API keys, signed-URL secrets, arbitrary error text, and all
+request/response body content. Values are escaped so each message stays on one
+line.
+
+Logger configuration still controls framing. The supported `plain-time`
+(default), `plain`, `text`, and `json` formats determine timestamp and message
+presentation; source-file output remains controlled by the existing logger
+source setting. Diagnostic formatting and writes happen synchronously after the
+exchange duration is captured, so a slow stderr destination can add command
+latency without inflating the reported exchange time.
+
+HTTP exchange logging has one owner: the diagnostic interceptor. API and OAuth
+clients both place it below the existing activity/request-dump wrapper. The old
+`calling:` start message is removed; an exchange record appears only at observed
+termination. Existing activity indicators remain the in-flight signal where
+enabled. Explicit request-dump configuration remains separate and unchanged.
+
+The observation boundary is the shared c8volt HTTP transport. Explicit retries,
+redirects, authentication requests, and service retries that cross it receive
+separate invocation-local sequence numbers. Retransmissions hidden inside Go's
+underlying transport are not promised as separate records, and a cached OAuth
+token performs no exchange to record. Diagnostics add no requests and do not
+read, drain, buffer, or close bodies on their own.
+
 ## Example Notes
 
 Examples use placeholders such as `<process-instance-key>` and `<bpmn-process-id>` so they stay safe to copy into real environments. Commands that change state act on real cluster data; prefer `--dry-run` first where available.

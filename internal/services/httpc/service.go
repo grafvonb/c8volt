@@ -64,6 +64,42 @@ func WithActivitySink(activity logging.ActivitySink) Option {
 	}
 }
 
+// WithDiagnostics installs invocation-scoped observation below logging and retries when the logger admits DEBUG.
+func WithDiagnostics() Option {
+	return func(s *Service) {
+		collector := newDiagnosticCollector(s.cfg, s.log)
+		if collector == nil {
+			return
+		}
+		s.c.Transport = attachDiagnostics(s.c.Transport, collector)
+	}
+}
+
+// ShareDiagnostics attaches the source client's collector to a separate unauthenticated client.
+func ShareDiagnostics(source, target *http.Client) {
+	if source == nil || target == nil {
+		return
+	}
+	collector := diagnosticCollectorFromTransport(source.Transport)
+	if collector == nil {
+		return
+	}
+	target.Transport = attachDiagnostics(target.Transport, collector)
+}
+
+// attachDiagnostics gives API and authentication clients the same observation boundary.
+// Existing observation is retained so repeated attachment cannot duplicate records.
+func attachDiagnostics(base http.RoundTripper, collector *diagnosticCollector) http.RoundTripper {
+	if collector == nil || diagnosticCollectorFromTransport(base) != nil {
+		return base
+	}
+	if logger := unwrapLogTransport(base); logger != nil {
+		logger.base = &DiagnosticsTransport{base: logger.base, collector: collector}
+		return base
+	}
+	return &DiagnosticsTransport{base: base, collector: collector}
+}
+
 func New(cfg *config.Config, log *slog.Logger, opts ...Option) (*Service, error) {
 	if cfg == nil {
 		return nil, errors.New("cfg is nil")
@@ -110,6 +146,23 @@ func unwrapLogTransport(rt http.RoundTripper) *LogTransport {
 		return unwrapLogTransport(t.base)
 	case *ReadRetryTransport:
 		return unwrapLogTransport(t.base)
+	case *DiagnosticsTransport:
+		return unwrapLogTransport(t.base)
+	default:
+		return nil
+	}
+}
+
+func diagnosticCollectorFromTransport(rt http.RoundTripper) *diagnosticCollector {
+	switch transport := rt.(type) {
+	case *DiagnosticsTransport:
+		return transport.collector
+	case *LogTransport:
+		return diagnosticCollectorFromTransport(transport.base)
+	case *AuthTransport:
+		return diagnosticCollectorFromTransport(transport.base)
+	case *ReadRetryTransport:
+		return diagnosticCollectorFromTransport(transport.base)
 	default:
 		return nil
 	}

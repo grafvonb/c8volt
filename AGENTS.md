@@ -35,7 +35,7 @@
 - Human output should be compact, stable, and scan-friendly.
 - JSON and other machine-readable output must use stable structs and the shared command envelope when the command supports the shared contract.
 - Keys-only output must print one key per line and nothing else.
-- Do not add noisy endpoint, request, cursor, or per-key lifecycle detail to default human output; keep diagnostics behind `--verbose`.
+- Do not add noisy endpoint, request, cursor, or per-key lifecycle detail to default human output; keep functional workflow details behind `--verbose` and low-level HTTP diagnostics at DEBUG (`--debug` or configured debug logging), independent of verbose.
 - When command output changes, update tests for the affected human, JSON, keys-only, error, prompt, and activity behavior where relevant.
 
 ### Empty Results And Successful No-Ops
