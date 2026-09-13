@@ -15,7 +15,9 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
 
+	"github.com/grafvonb/c8volt/c8volt/ferrors"
 	"github.com/grafvonb/c8volt/internal/exitcode"
 	"github.com/grafvonb/c8volt/testx"
 	"github.com/stretchr/testify/require"
@@ -128,6 +130,7 @@ apis:
 			if tc.wantDebug {
 				require.Contains(t, modeStderr, "pi state observation:")
 				require.Contains(t, modeStderr, "api #")
+				require.Equal(t, 1, strings.Count(modeStderr, "process-instance mutation failure"), "full chain must be logged once at DEBUG\nstderr:\n%s", modeStderr)
 			} else {
 				require.NotContains(t, modeStderr, "pi state observation:")
 				require.NotContains(t, modeStderr, "api #")
@@ -163,6 +166,22 @@ apis:
 			}
 		})
 	}
+}
+
+// TestFormatProcessInstanceMutationCommandFailures verifies joined tree
+// failures produce a deterministic compact aggregate without state detail.
+func TestFormatProcessInstanceMutationCommandFailures(t *testing.T) {
+	t.Parallel()
+
+	failures := []*ferrors.ProcessInstanceMutationFailure{
+		{Operation: "delete", Phase: "cancellation confirmation", RootKey: "root-b", Timeout: 30 * time.Millisecond, LastStates: map[string]string{"root-b": "ACTIVE"}, CancellationSubmitted: true},
+		{Operation: "delete", Phase: "cancellation confirmation", RootKey: "root-a", Timeout: 30 * time.Millisecond, CancellationSubmitted: true},
+	}
+
+	require.Equal(t,
+		"delete process instances: cancellation confirmation timed out for roots root-a,root-b (2 trees); cancellations submitted, outcomes unconfirmed",
+		formatProcessInstanceMutationCommandFailures(failures),
+	)
 }
 
 func TestProcessInstanceDeleteCancellationTimeoutTranscriptHelper(t *testing.T) {

@@ -26,17 +26,23 @@ func VerboseProcessInstanceWaitLog(ctx context.Context, callCfg *services.CallCf
 	if ctx == nil || cfg == nil {
 		return
 	}
-	timeout := cfg.App.Backoff.Timeout
-	if deadline, ok := ctx.Deadline(); ok {
-		remaining := time.Until(deadline)
-		if timeout <= 0 || remaining < timeout {
-			timeout = max(remaining, 0)
-		}
-	}
+	timeout := EffectiveProcessInstanceWaitTimeout(ctx, cfg.App.Backoff.Timeout)
 	VerboseLog(ctx, callCfg, log, fmt.Sprintf(
 		"pi wait: phase=%s root=%s scope=%v states=%v timeout=%s backoff=%s initial_delay=%s max_retries=%d",
 		phase, root, scope, states, timeout, cfg.App.Backoff.Strategy, cfg.App.Backoff.InitialDelay, cfg.App.Backoff.MaxRetries,
 	))
+}
+
+// EffectiveProcessInstanceWaitTimeout returns the shorter configured or parent
+// context budget so diagnostics describe the wait that can actually occur.
+func EffectiveProcessInstanceWaitTimeout(ctx context.Context, configured time.Duration) time.Duration {
+	if deadline, ok := ctx.Deadline(); ok {
+		remaining := time.Until(deadline)
+		if configured <= 0 || remaining < configured {
+			return max(remaining, 0)
+		}
+	}
+	return configured
 }
 
 // ProcessDefinitionStatsActivity returns the user-facing activity text for process-definition statistics.

@@ -399,6 +399,50 @@ func TestDeleteProcessInstancesFailFastOmitsUnscheduledCompletionFacts(t *testin
 	}, completions[0])
 }
 
+// TestConciseProcessInstanceMutationFailureOmitsUnknownObservations verifies
+// warnings report only observed states and keep scope ordering deterministic.
+func TestConciseProcessInstanceMutationFailureOmitsUnknownObservations(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name       string
+		lastStates map[string]d.State
+		want       string
+		notWant    string
+	}{
+		{
+			name:       "partial observations",
+			lastStates: map[string]d.State{"root": d.StateActive, "child": d.StateUnknown},
+			want:       "cancellation confirmation timed out after 30ms; root root; scope child,root; last observed root=ACTIVE; child child deletion conflicted; root cancellation submitted, outcome unconfirmed; resumed deletion not reached",
+			notWant:    "child=UNKNOWN",
+		},
+		{
+			name:       "no observations",
+			lastStates: nil,
+			want:       "cancellation confirmation timed out after 30ms; root root; scope child,root; child child deletion conflicted; root cancellation submitted, outcome unconfirmed; resumed deletion not reached",
+			notWant:    "last observed",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			got := conciseProcessInstanceMutationFailure(&d.ProcessInstanceMutationFailure{
+				Phase:                 "cancellation confirmation",
+				RootKey:               "root",
+				Scope:                 []string{"root", "child"},
+				Timeout:               30 * time.Millisecond,
+				LastStates:            tt.lastStates,
+				DeleteConflictKey:     "child",
+				CancellationSubmitted: true,
+			})
+
+			require.Equal(t, tt.want, got)
+			require.NotContains(t, got, tt.notWant)
+		})
+	}
+}
+
 func intPtr(v int) *int {
 	return &v
 }

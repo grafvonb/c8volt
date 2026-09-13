@@ -275,3 +275,49 @@ func TestFromDomainExposesProcessInstanceMutationFacts(t *testing.T) {
 	require.Equal(t, "root", domainFailure.Scope[0])
 	require.Equal(t, domain.StateActive, domainFailure.LastStates["root"])
 }
+
+// TestProcessInstanceMutationFailuresCollectsJoinedFailures verifies aggregate
+// command formatting can inspect every tree without losing joined causes.
+func TestProcessInstanceMutationFailuresCollectsJoinedFailures(t *testing.T) {
+	t.Parallel()
+
+	firstCause := fmt.Errorf("first wait: %w", context.DeadlineExceeded)
+	secondCause := fmt.Errorf("second wait: %w", domain.ErrGatewayTimeout)
+	err := FromDomain(errors.Join(
+		&domain.ProcessInstanceMutationFailure{Operation: "delete", Phase: "cancellation confirmation", RootKey: "root-b", CancellationSubmitted: true, Err: firstCause},
+		&domain.ProcessInstanceMutationFailure{Operation: "delete", Phase: "cancellation confirmation", RootKey: "root-a", CancellationSubmitted: true, Err: secondCause},
+	))
+
+	failures := ProcessInstanceMutationFailures(err)
+	require.Len(t, failures, 2)
+	require.Equal(t, []string{"root-b", "root-a"}, []string{failures[0].RootKey, failures[1].RootKey})
+	require.ErrorIs(t, err, context.DeadlineExceeded)
+	require.ErrorIs(t, err, domain.ErrGatewayTimeout)
+	require.ErrorIs(t, err, ErrTimeout)
+	require.Equal(t, ClassTimeout, Classify(err))
+}
+
+// TestProcessInstanceMutationFailureRepeatedNormalizationPreservesOuterClass
+// locks exact text, cause inspection, and explicit class precedence.
+func TestProcessInstanceMutationFailureRepeatedNormalizationPreservesOuterClass(t *testing.T) {
+	t.Parallel()
+
+	cause := errors.New("active instance")
+	domainFailure := &domain.ProcessInstanceMutationFailure{
+		Operation: "delete",
+		Phase:     "cancellation confirmation",
+		RootKey:   "root",
+		Err:       fmt.Errorf("cancel wait: %w", cause),
+	}
+	err := WrapClass(ErrTimeout, FromDomain(domainFailure))
+	wantText := "operation timed out: cancel wait: active instance"
+
+	for range 3 {
+		err = Normalize(err)
+		require.Equal(t, wantText, err.Error())
+		require.ErrorIs(t, err, cause)
+		require.ErrorIs(t, err, ErrTimeout)
+		require.Equal(t, ClassTimeout, Classify(err))
+		require.Len(t, ProcessInstanceMutationFailures(err), 1)
+	}
+}

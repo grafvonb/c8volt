@@ -25,6 +25,7 @@ Started: 2026-09-13T13:39:33Z
 - `WithSuppressNestedProcessInstanceLookupLogs` is deliberately narrower than workflow/detail suppression. Waiters add it to nested calls; v8.7 gates its tenant-safe search message, while v8.8-v8.10 gate direct-get/state messages. HTTP transport diagnostics remain unaffected.
 - OAuth cache reuse is silent at DEBUG. Token fetch/store and the shared HTTP exchange diagnostic still show acquisition, while expiry-skew refresh behavior and credential redaction remain unchanged.
 - The exact polling budget is deterministic through `expect process-instance`: ACTIVE for checks 1-35 and CANCELED on check 36 yields 36 state observations and 36 process-instance HTTP records, separate from the one token bootstrap exchange.
+- Joined mutation errors contain an enriched delete failure wrapping the original cancel failure for each tree. Failure collection must stop at the outer domain mutation node on each joined branch to avoid double-counting roots or accepted submissions.
 
 ## Reusable Commands
 
@@ -40,4 +41,4 @@ Started: 2026-09-13T13:39:33Z
 - Do not make timeout transcript assertions depend on which concurrent waiter notices the deadline first.
 
 ## Current Handoff
-- T005 is next: finish concise failure presentation and cause-preservation coverage using the existing mutation failure facts, completion `FailureDetail`, process-instance view, and final command error boundary.
+- T006 is next: complete the combined output compatibility matrix and affected facade, adapter, process-definition-delete, prompt, request-order, and exit-classification regressions without changing output or mutation contracts.

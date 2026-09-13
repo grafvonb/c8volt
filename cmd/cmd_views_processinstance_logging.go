@@ -5,26 +5,68 @@ package cmd
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/grafvonb/c8volt/c8volt/ferrors"
 )
 
-// formatProcessInstanceMutationCommandFailure keeps the final human error
+// formatProcessInstanceMutationCommandFailures keeps the final human error
 // compact; per-tree warnings carry the available scope and observation detail.
-func formatProcessInstanceMutationCommandFailure(failure *ferrors.ProcessInstanceMutationFailure) string {
-	operation := strings.TrimSpace(failure.Operation)
+func formatProcessInstanceMutationCommandFailures(failures []*ferrors.ProcessInstanceMutationFailure) string {
+	if len(failures) == 0 {
+		return "process-instance mutation failed"
+	}
+	operation := strings.TrimSpace(failures[0].Operation)
 	if operation == "" {
 		operation = "process-instance mutation"
 	} else {
 		operation += " process instances"
 	}
-	message := fmt.Sprintf("%s: %s timed out", operation, failure.Phase)
-	if failure.RootKey != "" {
-		message += " for root " + failure.RootKey + " (1 tree)"
+	phase := strings.TrimSpace(failures[0].Phase)
+	if phase == "" {
+		phase = "confirmation"
 	}
-	if failure.CancellationSubmitted {
+	message := fmt.Sprintf("%s: %s timed out", operation, phase)
+	roots := processInstanceMutationFailureRoots(failures)
+	switch len(roots) {
+	case 1:
+		message += " for root " + roots[0] + " (1 tree)"
+	case 0:
+		message += fmt.Sprintf(" for %d tree(s)", len(failures))
+	default:
+		message += fmt.Sprintf(" for roots %s (%d trees)", strings.Join(roots, ","), len(roots))
+	}
+	submitted := 0
+	for _, failure := range failures {
+		if failure != nil && failure.CancellationSubmitted {
+			submitted++
+		}
+	}
+	if submitted == 1 {
 		message += "; cancellation submitted, outcome unconfirmed"
+	} else if submitted > 1 {
+		message += "; cancellations submitted, outcomes unconfirmed"
 	}
 	return message
+}
+
+// processInstanceMutationFailureRoots returns unique known roots in stable key order.
+func processInstanceMutationFailureRoots(failures []*ferrors.ProcessInstanceMutationFailure) []string {
+	seen := make(map[string]struct{}, len(failures))
+	for _, failure := range failures {
+		if failure == nil {
+			continue
+		}
+		root := strings.TrimSpace(failure.RootKey)
+		if root != "" {
+			seen[root] = struct{}{}
+		}
+	}
+	roots := make([]string, 0, len(seen))
+	for root := range seen {
+		roots = append(roots, root)
+	}
+	sort.Strings(roots)
+	return roots
 }

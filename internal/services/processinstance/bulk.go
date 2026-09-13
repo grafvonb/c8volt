@@ -273,15 +273,19 @@ func conciseProcessInstanceMutationFailure(failure *d.ProcessInstanceMutationFai
 	}
 	if len(failure.LastStates) > 0 {
 		keys := make([]string, 0, len(failure.LastStates))
-		for key := range failure.LastStates {
-			keys = append(keys, key)
+		for key, state := range failure.LastStates {
+			if state != "" && state != d.StateUnknown {
+				keys = append(keys, key)
+			}
 		}
 		sort.Strings(keys)
 		states := make([]string, 0, len(keys))
 		for _, key := range keys {
 			states = append(states, fmt.Sprintf("%s=%s", key, failure.LastStates[key]))
 		}
-		parts = append(parts, "last observed "+strings.Join(states, ", "))
+		if len(states) > 0 {
+			parts = append(parts, "last observed "+strings.Join(states, ", "))
+		}
 	}
 	if failure.DeleteConflictKey != "" {
 		parts = append(parts, "child "+failure.DeleteConflictKey+" deletion conflicted")

@@ -97,3 +97,31 @@ Started: 2026-09-13 15:39:33
 - Workflow narration must be admitted independently from DEBUG while per-attempt waiter INFO remains suppressed for compact process-instance mutations.
 - Full-path timeout and success fixtures proved mode guards, both confirmation waits, resumed deletion, and unchanged request ordering; `make test` passed.
 ---
+---
+## Iteration 5 - 2026-09-13 16:59
+**Work Unit**: US1 complete - present unconfirmed cancellation failures concisely
+**Tasks Completed**:
+- [x] T005: Preserve per-tree cancellation evidence and causes while rendering concise warnings and deterministic aggregate errors
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- c8volt/ferrors/errors.go
+- c8volt/ferrors/errors_test.go
+- cmd/cmd_views_contract.go
+- cmd/cmd_views_processinstance_logging.go
+- cmd/processinstance_logging_transcript_test.go
+- internal/services/common/logging.go
+- internal/services/common/processinstance_failure.go
+- internal/services/processinstance/bulk.go
+- internal/services/processinstance/bulk_test.go
+- internal/services/processinstance/v87/service.go
+- internal/services/processinstance/v88/service.go
+- internal/services/processinstance/v89/service.go
+- internal/services/processinstance/v810/service.go
+- specs/316-delete-cancel-logging/tasks.md
+- specs/316-delete-cancel-logging/ralph-memory.md
+- specs/316-delete-cancel-logging/progress.md
+**Learnings**:
+- Joined delete failures wrap their original cancellation failure, so aggregate collection must count only the outer mutation node on each joined branch.
+- Targeted transcript, all-adapter/service/facade regressions, five repeated timeout runs, and the complete race-enabled `make test` suite passed.
+---

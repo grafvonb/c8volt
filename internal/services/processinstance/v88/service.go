@@ -544,8 +544,10 @@ func (s *Service) CancelProcessInstance(ctx context.Context, key string, opts ..
 		s.infoProcessInstanceDetail(cCfg, fmt.Sprintf("waiting for pi %s cancel", key))
 		states := []d.State{d.StateCompleted, d.StateCanceled, d.StateTerminated, d.StateAbsent}
 		common.VerboseProcessInstanceWaitLog(ctx, cCfg, s.cfg, s.log, "cancellation confirmation", key, keys, states)
+		waitTimeout := common.EffectiveProcessInstanceWaitTimeout(ctx, s.cfg.App.Backoff.Timeout)
 		if _, err = waiter.WaitForProcessInstancesState(ctx, s, s.cfg, s.log, keys, states, len(keys), opts...); err != nil {
-			return d.CancelResponse{}, nil, fmt.Errorf("cancel wait: %w", err)
+			cause := fmt.Errorf("cancel wait: %w", err)
+			return d.CancelResponse{}, nil, common.NewProcessInstanceCancellationConfirmationFailure("cancel", key, keys, waitTimeout, cause)
 		}
 		s.infoProcessInstanceDetail(cCfg, fmt.Sprintf("pi %s canceled", key))
 	} else {
@@ -623,7 +625,7 @@ func (s *Service) DeleteProcessInstance(ctx context.Context, key string, opts ..
 			s.infoProcessInstanceDetail(cCfg, fmt.Sprintf("pi %s not terminal; cancelling before delete", key))
 			_, _, err = s.CancelProcessInstance(ctx, key, opts...)
 			if err != nil {
-				return d.DeleteResponse{}, fmt.Errorf("delete cancel: %w", err)
+				return d.DeleteResponse{}, common.EnrichProcessInstanceDeleteCancellationFailure(err, key)
 			}
 			s.infoProcessInstanceDetail(cCfg, fmt.Sprintf("waiting for pi %s cancel", key))
 			states := []d.State{d.StateCompleted, d.StateCanceled, d.StateTerminated, d.StateAbsent}

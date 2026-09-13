@@ -315,6 +315,56 @@ func exposeProcessInstanceMutationFailure(err error) error {
 	if !errors.As(err, &failure) {
 		return err
 	}
+	return projectProcessInstanceMutationFailure(failure, err)
+}
+
+// ProcessInstanceMutationFailures returns every per-tree mutation failure in a
+// joined error while keeping the error tree and its ordering untouched.
+func ProcessInstanceMutationFailures(err error) []*ProcessInstanceMutationFailure {
+	var domainFailures []*domain.ProcessInstanceMutationFailure
+	var exposedFailures []*ProcessInstanceMutationFailure
+	seenDomain := make(map[*domain.ProcessInstanceMutationFailure]struct{})
+	seenExposed := make(map[*ProcessInstanceMutationFailure]struct{})
+	var collect func(error)
+	collect = func(candidate error) {
+		if candidate == nil {
+			return
+		}
+		switch failure := candidate.(type) {
+		case *domain.ProcessInstanceMutationFailure:
+			if _, ok := seenDomain[failure]; !ok {
+				seenDomain[failure] = struct{}{}
+				domainFailures = append(domainFailures, failure)
+			}
+			// An outer mutation failure enriches an inner failure for the same
+			// tree; treating both as roots would double-count submitted work.
+			return
+		case *ProcessInstanceMutationFailure:
+			if _, ok := seenExposed[failure]; !ok {
+				seenExposed[failure] = struct{}{}
+				exposedFailures = append(exposedFailures, failure)
+			}
+		}
+		if joined, ok := candidate.(interface{ Unwrap() []error }); ok {
+			for _, child := range joined.Unwrap() {
+				collect(child)
+			}
+			return
+		}
+		collect(errors.Unwrap(candidate))
+	}
+	collect(err)
+	if len(domainFailures) == 0 {
+		return exposedFailures
+	}
+	projected := make([]*ProcessInstanceMutationFailure, 0, len(domainFailures))
+	for _, failure := range domainFailures {
+		projected = append(projected, projectProcessInstanceMutationFailure(failure, failure))
+	}
+	return projected
+}
+
+func projectProcessInstanceMutationFailure(failure *domain.ProcessInstanceMutationFailure, err error) *ProcessInstanceMutationFailure {
 	states := make(map[string]string, len(failure.LastStates))
 	for key, state := range failure.LastStates {
 		states[key] = state.String()
