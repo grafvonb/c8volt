@@ -131,7 +131,7 @@ func WaitForProcessInstanceExpectation(ctx context.Context, s PIWaiter, cfg *con
 				pi = d.ProcessInstance{Key: key, State: d.StateAbsent}
 				waitMsg := fmt.Sprintf("pi %s absent; waiting, attempt %d", key, attempts)
 				logging.UpdateActivityWithImportance(ctx, waitMsg, logging.ActivityImportanceWait)
-				logging.InfoIfVerbose(waitMsg, log, cCfg.Verbose)
+				logging.InfoIfVerbose(waitMsg, log, cCfg.Verbose && !cCfg.SuppressProcessInstanceDetailLogs)
 			} else {
 				logProcessInstanceLookupObservation(log, key, attempts, errInDelay, observedAt)
 				elapsed := time.Since(start)
@@ -157,7 +157,7 @@ func WaitForProcessInstanceExpectation(ctx context.Context, s PIWaiter, cfg *con
 		if present {
 			waitMsg := fmt.Sprintf("pi %s waiting; state %s, incident %t, attempt %d", key, pi.State, pi.Incident, attempts)
 			logging.UpdateActivityWithImportance(ctx, waitMsg, logging.ActivityImportanceWait)
-			logging.InfoIfVerbose(waitMsg, log, cCfg.Verbose)
+			logging.InfoIfVerbose(waitMsg, log, cCfg.Verbose && !cCfg.SuppressProcessInstanceDetailLogs)
 		}
 		if backoff.MaxRetries > 0 && attempts >= backoff.MaxRetries {
 			logProcessInstanceStateObservation(log, key, attempts, pi.State, observedAt, 0, false)
@@ -226,7 +226,7 @@ func WaitForProcessInstanceState(ctx context.Context, s PIWaiter, cfg *config.Co
 			}
 			waitMsg := fmt.Sprintf("pi %s waiting; state %s, attempt %d", key, got, attempts)
 			logging.UpdateActivityWithImportance(ctx, waitMsg, logging.ActivityImportanceWait)
-			logging.InfoIfVerbose(waitMsg, log, cCfg.Verbose)
+			logging.InfoIfVerbose(waitMsg, log, cCfg.Verbose && !cCfg.SuppressProcessInstanceDetailLogs)
 		} else if errInDelay != nil {
 			if isProcessInstanceAbsentErr(errInDelay) {
 				// Only waiter-driven absent/deleted confirmation maps not-found into ABSENT; direct lookups stay strict.

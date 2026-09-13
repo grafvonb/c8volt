@@ -7,15 +7,36 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"time"
 
+	"github.com/grafvonb/c8volt/config"
+	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/services"
 )
 
 func VerboseLog(ctx context.Context, callCfg *services.CallCfg, log *slog.Logger, msg string, args ...any) {
-	if ctx == nil || callCfg == nil || !callCfg.Verbose || log == nil {
+	if ctx == nil || callCfg == nil || !callCfg.Verbose || callCfg.SuppressWorkflowDetailLogs || log == nil {
 		return
 	}
 	log.InfoContext(ctx, msg, args...)
+}
+
+// VerboseProcessInstanceWaitLog explains one process-instance workflow wait without owning its polling lifecycle.
+func VerboseProcessInstanceWaitLog(ctx context.Context, callCfg *services.CallCfg, cfg *config.Config, log *slog.Logger, phase, root string, scope []string, states []d.State) {
+	if ctx == nil || cfg == nil {
+		return
+	}
+	timeout := cfg.App.Backoff.Timeout
+	if deadline, ok := ctx.Deadline(); ok {
+		remaining := time.Until(deadline)
+		if timeout <= 0 || remaining < timeout {
+			timeout = max(remaining, 0)
+		}
+	}
+	VerboseLog(ctx, callCfg, log, fmt.Sprintf(
+		"pi wait: phase=%s root=%s scope=%v states=%v timeout=%s backoff=%s initial_delay=%s max_retries=%d",
+		phase, root, scope, states, timeout, cfg.App.Backoff.Strategy, cfg.App.Backoff.InitialDelay, cfg.App.Backoff.MaxRetries,
+	))
 }
 
 // ProcessDefinitionStatsActivity returns the user-facing activity text for process-definition statistics.

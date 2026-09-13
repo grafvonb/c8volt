@@ -208,7 +208,7 @@ func newProcessInstanceMutationSemanticReporter(cmd *cobra.Command, operation st
 // completion reporter after the command has confirmed the frozen mutation scope.
 func appendProcessInstanceMutationSemanticProgressOptions(cmd *cobra.Command, operation string, impact processInstancePageImpact, opts []processOptions.FacadeOption, affectedCount int) ([]processOptions.FacadeOption, func()) {
 	semanticReporter := newProcessInstanceMutationSemanticReporter(cmd, operation, impact)
-	mutationOpts := append(compactProcessInstanceMutationOptions(opts),
+	mutationOpts := append(compactProcessInstanceMutationOptions(cmd, opts),
 		processOptions.WithAffectedProcessInstanceCount(affectedCount),
 		processOptions.WithProgress(processInstanceMutationSemanticProgressCallback(semanticReporter)),
 	)
@@ -418,12 +418,14 @@ func processInstanceMutationResultWords(operation string, noWait bool) (label st
 
 // compactProcessInstanceMutationOptions suppresses duplicate low-level service
 // detail once semantic command progress is installed.
-func compactProcessInstanceMutationOptions(opts []processOptions.FacadeOption) []processOptions.FacadeOption {
+func compactProcessInstanceMutationOptions(cmd *cobra.Command, opts []processOptions.FacadeOption) []processOptions.FacadeOption {
 	out := append([]processOptions.FacadeOption{}, opts...)
-	return append(out,
-		processOptions.WithSuppressWorkflowDetailLogs(),
-		processOptions.WithSuppressProcessInstanceDetailLogs(),
-	)
+	out = append(out, processOptions.WithSuppressProcessInstanceDetailLogs())
+	mode := processInstanceMutationProgressModeForCommand(cmd)
+	if !mode.Verbose || mode.Quiet || mode.Automation || mode.RenderMode != RenderModeOneLine {
+		out = append(out, processOptions.WithSuppressWorkflowDetailLogs())
+	}
+	return out
 }
 
 // formatProcessInstanceMutationFrozenProgress renders planning counters without

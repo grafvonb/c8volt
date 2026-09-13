@@ -1197,7 +1197,7 @@ func TestDeleteProcessInstanceSearchPages_FreezesAllPlansBeforeMutation(t *testi
 			require.Zero(t, wantedWorkers)
 			cfg := options.ApplyFacadeOptions(opts)
 			require.Equal(t, 4, cfg.AffectedProcessInstanceCount)
-			require.True(t, cfg.SuppressWorkflowDetailLogs)
+			require.False(t, cfg.SuppressWorkflowDetailLogs)
 			require.True(t, cfg.SuppressProcessInstanceDetailLogs)
 			return process.DeleteReports{Items: []process.DeleteReport{
 				{Key: "root-a", Ok: true},
@@ -1323,7 +1323,7 @@ func TestDeleteProcessInstancePage_PrintsOrphanWarningForPagedImpactCheck(t *tes
 			require.Zero(t, wantedWorkers)
 			cfg := options.ApplyFacadeOptions(opts)
 			require.Equal(t, 2, cfg.AffectedProcessInstanceCount)
-			require.True(t, cfg.SuppressWorkflowDetailLogs)
+			require.False(t, cfg.SuppressWorkflowDetailLogs)
 			require.True(t, cfg.SuppressProcessInstanceDetailLogs)
 			return process.DeleteReports{Items: []process.DeleteReport{{Key: "2251799813711900", Ok: true}}}, nil
 		},

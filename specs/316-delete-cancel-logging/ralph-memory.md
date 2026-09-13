@@ -10,11 +10,14 @@ Started: 2026-09-13T13:39:33Z
 
 ## Decisions
 
+- Process-instance mutation commands retain per-key lifecycle suppression in every mode, but admit service-owned workflow explanations only for verbose one-line human output; quiet, automation, JSON, and keys-only keep workflow suppression.
+- Required narration is owned by the four versioned adapters at actual transition sites. A shared wait formatter records phase, root/scope, desired states, effective timeout, and configured backoff once per real confirmation wait.
 - Timeout evidence uses small internal wait/mutation wrappers with `Unwrap`; `c8volt/ferrors` projects only command-needed facts and preserves the original Error text and causes.
 - The T001 fixture uses Camunda 8.9's real HTTP adapter and subprocess command path. It asserts child deletion conflict precedes accepted root cancellation, no root deletion follows timeout, and JSON remains exactly one envelope.
 
 ## Gotchas
 
+- Waiter `InfoIfVerbose` calls must also honor process-instance detail suppression; otherwise command-level compact mode leaks one line per polling attempt while the adapter owns the single wait explanation.
 - Camunda 8.9 deletion is `POST /v2/process-instances/<key>/deletion`, not HTTP DELETE.
 - Concurrent waiters may end through either the timer select or a context-canceled HTTP lookup. Both branches must retain the prior successful state; machine-mode stderr may contain the existing lookup-stop diagnostic.
 - `ferrors` class wrappers must preserve both the outer class precedence and the nested cause. A plain multi-`%w` format exposes causes but can let a nested normalized class win unless classification reads the outer wrapper explicitly.
@@ -25,6 +28,7 @@ Started: 2026-09-13T13:39:33Z
 
 ## Reusable Commands
 
+- `go test ./cmd -run '^TestProcessInstanceDeleteCancellation(Timeout|Success)Transcript$' -count=1 -v`
 - `go test ./cmd -run '^TestProcessInstanceDeleteCancellationTimeoutTranscript$' -count=5`
 - `go test ./cmd -run '^TestProcessInstancePollingRecordBudget$' -count=1 -v`
 - `go test ./internal/services/auth/oauth2 -run 'Test(APIDiagnosticsOAuth|RetrieveTokenForAPI)' -count=1`
@@ -36,4 +40,4 @@ Started: 2026-09-13T13:39:33Z
 - Do not make timeout transcript assertions depend on which concurrent waiter notices the deadline first.
 
 ## Current Handoff
-- T004 is next: restore only the required verbose delete/cancel transition explanations across all four adapters and selectively adjust command suppression without changing workflow events or mutation behavior.
+- T005 is next: finish concise failure presentation and cause-preservation coverage using the existing mutation failure facts, completion `FailureDetail`, process-instance view, and final command error boundary.

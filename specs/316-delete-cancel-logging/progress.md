@@ -71,3 +71,29 @@ Started: 2026-09-13 15:39:33
 - A real expect command with a terminal state on check 36 isolates the exact polling budget from token bootstrap and unrelated phase records.
 - Targeted regressions and the complete race-enabled `make test` suite passed.
 ---
+---
+## Iteration 4 - 2026-09-13 16:41
+**Work Unit**: US2 complete - restore verbose cancellation and deletion progress
+**Tasks Completed**:
+- [x] T004: Restore one-owner verbose explanations for cancellation prerequisites, root escalation, accepted submission, wait policy, and resumed deletion
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/cancel_processinstance_selector_test.go
+- cmd/delete_processinstance_selector_test.go
+- cmd/processinstance_logging_transcript_test.go
+- cmd/processinstance_mutation_progress.go
+- cmd/processinstance_mutation_progress_test.go
+- internal/services/common/logging.go
+- internal/services/processinstance/v87/service.go
+- internal/services/processinstance/v88/service.go
+- internal/services/processinstance/v89/service.go
+- internal/services/processinstance/v810/service.go
+- internal/services/processinstance/waiter/waiter.go
+- specs/316-delete-cancel-logging/tasks.md
+- specs/316-delete-cancel-logging/ralph-memory.md
+- specs/316-delete-cancel-logging/progress.md
+**Learnings**:
+- Workflow narration must be admitted independently from DEBUG while per-attempt waiter INFO remains suppressed for compact process-instance mutations.
+- Full-path timeout and success fixtures proved mode guards, both confirmation waits, resumed deletion, and unchanged request ordering; `make test` passed.
+---

@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 
@@ -22,6 +23,7 @@ import (
 
 const (
 	processInstanceLoggingTimeoutHelper = "TestProcessInstanceDeleteCancellationTimeoutTranscriptHelper"
+	processInstanceLoggingSuccessHelper = "TestProcessInstanceDeleteCancellationSuccessTranscriptHelper"
 	processInstancePollingBudgetHelper  = "TestProcessInstancePollingRecordBudgetHelper"
 )
 
@@ -92,6 +94,75 @@ apis:
 	require.Contains(t, envelope.Detail.Message, "delete process instances: operation timed out:")
 	require.Contains(t, envelope.Detail.Message, "deleting child process instance with key child of process instance with key root:")
 	require.Contains(t, envelope.Detail.Message, "delete cancel: cancel wait:")
+
+	for _, tc := range []struct {
+		name        string
+		mode        string
+		wantVerbose bool
+		wantDebug   bool
+	}{
+		{name: "VerboseOnly", mode: "verbose", wantVerbose: true},
+		{name: "DebugOnly", mode: "debug", wantDebug: true},
+		{name: "VerboseAndDebug", mode: "both", wantVerbose: true, wantDebug: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, modeStderr, modeErr := testx.RunCmdSubprocessInDirWithSeparateOutputs(t, processInstanceLoggingTimeoutHelper, "", map[string]string{
+				"C8VOLT_TEST_CONFIG":       cfgPath,
+				"C8VOLT_TEST_LOGGING_MODE": tc.mode,
+			}, "")
+			require.Error(t, modeErr)
+			verboseRecords := []string{
+				"pi deletion conflicted: key=child cancellation required before deletion can proceed",
+				"pi cancellation escalated: requested=child root=root reason=cancel affected tree",
+				"pi cancellation submitted: root=root accepted=true",
+				"pi wait: phase=cancellation confirmation root=root scope=[root child] states=[COMPLETED CANCELED TERMINATED ABSENT] timeout=30ms backoff=fixed initial_delay=1ms max_retries=0",
+			}
+			for _, record := range verboseRecords {
+				if tc.wantVerbose {
+					require.Equal(t, 1, strings.Count(modeStderr, record), "%s\nstderr:\n%s", record, modeStderr)
+				} else {
+					require.NotContains(t, modeStderr, record)
+				}
+			}
+			require.NotContains(t, modeStderr, "resuming deletion")
+			if tc.wantDebug {
+				require.Contains(t, modeStderr, "pi state observation:")
+				require.Contains(t, modeStderr, "api #")
+			} else {
+				require.NotContains(t, modeStderr, "pi state observation:")
+				require.NotContains(t, modeStderr, "api #")
+			}
+		})
+	}
+
+	for _, tc := range []struct {
+		name       string
+		guard      string
+		outputMode string
+	}{
+		{name: "QuietVerbose", guard: "quiet"},
+		{name: "AutomationVerbose", guard: "automation"},
+		{name: "JSONVerbose", outputMode: "json"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			guardStdout, guardStderr, guardErr := testx.RunCmdSubprocessInDirWithSeparateOutputs(t, processInstanceLoggingTimeoutHelper, "", map[string]string{
+				"C8VOLT_TEST_CONFIG":       cfgPath,
+				"C8VOLT_TEST_LOGGING_MODE": "verbose",
+				"C8VOLT_TEST_GUARD_MODE":   tc.guard,
+				"C8VOLT_TEST_OUTPUT_MODE":  tc.outputMode,
+			}, "")
+			require.Error(t, guardErr)
+			require.NotContains(t, guardStderr, "pi deletion conflicted:")
+			require.NotContains(t, guardStderr, "pi cancellation escalated:")
+			require.NotContains(t, guardStderr, "pi cancellation submitted:")
+			require.NotContains(t, guardStderr, "pi wait: phase=")
+			if tc.outputMode == "json" {
+				decoder := json.NewDecoder(strings.NewReader(guardStdout))
+				require.NoError(t, decoder.Decode(&decodedCommandErrorEnvelope{}))
+				require.ErrorIs(t, decoder.Decode(&struct{}{}), io.EOF)
+			}
+		})
+	}
 }
 
 func TestProcessInstanceDeleteCancellationTimeoutTranscriptHelper(t *testing.T) {
@@ -99,11 +170,79 @@ func TestProcessInstanceDeleteCancellationTimeoutTranscriptHelper(t *testing.T) 
 		return
 	}
 	require.Equal(t, processInstanceLoggingTimeoutHelper, os.Getenv(testx.CmdSubprocessNameEnv))
-	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "--auto-confirm", "delete", "process-instance", "--key", "root", "--force"}
+	os.Args = processInstanceLoggingHelperArgs()
 	if os.Getenv("C8VOLT_TEST_OUTPUT_MODE") == "json" {
 		os.Args = append(os.Args[:3], append([]string{"--json"}, os.Args[3:]...)...)
 	}
 	Execute()
+}
+
+// TestProcessInstanceDeleteCancellationSuccessTranscript proves verbose narration follows
+// accepted cancellation through both confirmation waits and resumed deletion.
+func TestProcessInstanceDeleteCancellationSuccessTranscript(t *testing.T) {
+	requests := &testx.SafeSlice[string]{}
+	server := testx.NewIPv4Server(t, processInstanceLoggingSuccessServer(t, requests))
+	t.Cleanup(server.Close)
+	cfgPath := writeRawTestConfig(t, `app:
+  camunda_version: 8.9
+  backoff:
+    strategy: fixed
+    initial_delay: 1ms
+    max_retries: 4
+    timeout: 200ms
+auth:
+  mode: none
+apis:
+  camunda_api:
+    base_url: `+server.URL+`
+`)
+
+	_, stderr, err := testx.RunCmdSubprocessInDirWithSeparateOutputs(t, processInstanceLoggingSuccessHelper, "", map[string]string{
+		"C8VOLT_TEST_CONFIG":       cfgPath,
+		"C8VOLT_TEST_LOGGING_MODE": "verbose",
+	}, "")
+	require.NoError(t, err)
+	require.Equal(t, 1, strings.Count(stderr, "pi deletion conflicted: key=child cancellation required before deletion can proceed"), "stderr:\n%s", stderr)
+	require.Equal(t, 1, strings.Count(stderr, "pi cancellation escalated: requested=child root=root reason=cancel affected tree"))
+	require.Equal(t, 1, strings.Count(stderr, "pi cancellation submitted: root=root accepted=true"))
+	require.Equal(t, 1, strings.Count(stderr, "pi wait: phase=cancellation confirmation root=root"))
+	require.Equal(t, 1, strings.Count(stderr, "pi wait: phase=deletion prerequisite confirmation root=child scope=[child]"))
+	require.Equal(t, 1, strings.Count(stderr, "pi cancellation confirmed: key=child resuming deletion"))
+	require.NotContains(t, stderr, "pi state observation:")
+	require.NotContains(t, stderr, "api #")
+
+	gotRequests := requests.Snapshot()
+	require.Contains(t, gotRequests, "POST /v2/process-instances/root/cancellation")
+	require.Contains(t, gotRequests, "POST /v2/process-instances/root/deletion")
+	require.Less(t, indexOfString(gotRequests, "POST /v2/process-instances/root/cancellation"), indexOfString(gotRequests, "POST /v2/process-instances/root/deletion"))
+}
+
+func TestProcessInstanceDeleteCancellationSuccessTranscriptHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+	require.Equal(t, processInstanceLoggingSuccessHelper, os.Getenv(testx.CmdSubprocessNameEnv))
+	os.Args = processInstanceLoggingHelperArgs()
+	Execute()
+}
+
+func processInstanceLoggingHelperArgs() []string {
+	args := []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "--no-indicator"}
+	switch os.Getenv("C8VOLT_TEST_LOGGING_MODE") {
+	case "verbose":
+		args = append(args, "--verbose")
+	case "debug":
+		args = append(args, "--debug", "--log-format", "plain")
+	case "both":
+		args = append(args, "--verbose", "--debug", "--log-format", "plain")
+	}
+	switch os.Getenv("C8VOLT_TEST_GUARD_MODE") {
+	case "quiet":
+		args = append(args, "--quiet")
+	case "automation":
+		args = append(args, "--automation")
+	}
+	return append(args, "--auto-confirm", "delete", "process-instance", "--key", "root", "--force")
 }
 
 // TestProcessInstancePollingRecordBudget proves 36 cached-auth state checks
@@ -227,6 +366,65 @@ func processInstanceLoggingTimeoutServer(t *testing.T, requests *testx.SafeSlice
 			w.WriteHeader(http.StatusConflict)
 			_, _ = io.WriteString(w, `{"title":"Conflict","status":409,"detail":"active instance"}`)
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/root/cancellation":
+			w.WriteHeader(http.StatusNoContent)
+		default:
+			t.Fatalf("unexpected request %s %s body=%s", r.Method, r.URL.Path, body)
+		}
+	})
+}
+
+func processInstanceLoggingSuccessServer(t *testing.T, requests *testx.SafeSlice[string]) http.Handler {
+	t.Helper()
+	var mu sync.Mutex
+	cancellationSubmitted := false
+	deleted := map[string]bool{}
+	deleteAttempts := map[string]int{}
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, err := io.ReadAll(r.Body)
+		require.NoError(t, err)
+		requests.Append(r.Method + " " + r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		mu.Lock()
+		defer mu.Unlock()
+		switch {
+		case r.Method == http.MethodGet && strings.HasPrefix(r.URL.Path, "/v2/process-instances/"):
+			key := strings.TrimPrefix(r.URL.Path, "/v2/process-instances/")
+			if deleted[key] {
+				w.WriteHeader(http.StatusNotFound)
+				_, _ = io.WriteString(w, `{"title":"Not Found","status":404,"detail":"missing"}`)
+				return
+			}
+			parent := ""
+			if key == "child" {
+				parent = "root"
+			}
+			state := "ACTIVE"
+			if cancellationSubmitted {
+				state = "CANCELED"
+			}
+			_, _ = fmt.Fprintf(w, `{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":1,"processInstanceKey":%q,"parentProcessInstanceKey":%q,"rootProcessInstanceKey":"root","startDate":"2026-09-13T12:00:00Z","state":%q,"tenantId":"tenant"}`, key, parent, state)
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
+			if strings.Contains(string(body), `"parentProcessInstanceKey":"root"`) && !deleted["child"] {
+				state := "ACTIVE"
+				if cancellationSubmitted {
+					state = "CANCELED"
+				}
+				_, _ = fmt.Fprintf(w, `{"items":[{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":1,"processInstanceKey":"child","parentProcessInstanceKey":"root","rootProcessInstanceKey":"root","startDate":"2026-09-13T12:00:00Z","state":%q,"tenantId":"tenant"}],"page":{"totalItems":1}}`, state)
+			} else {
+				_, _ = io.WriteString(w, `{"items":[],"page":{"totalItems":0}}`)
+			}
+		case r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/deletion"):
+			key := strings.TrimSuffix(strings.TrimPrefix(r.URL.Path, "/v2/process-instances/"), "/deletion")
+			deleteAttempts[key]++
+			if key == "child" && deleteAttempts[key] == 1 {
+				w.WriteHeader(http.StatusConflict)
+				_, _ = io.WriteString(w, `{"title":"Conflict","status":409,"detail":"active instance"}`)
+				return
+			}
+			deleted[key] = true
+			w.WriteHeader(http.StatusNoContent)
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/root/cancellation":
+			cancellationSubmitted = true
 			w.WriteHeader(http.StatusNoContent)
 		default:
 			t.Fatalf("unexpected request %s %s body=%s", r.Method, r.URL.Path, body)

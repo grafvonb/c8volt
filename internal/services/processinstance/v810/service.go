@@ -511,6 +511,7 @@ func (s *Service) CancelProcessInstance(ctx context.Context, key string, opts ..
 						Status:     fmt.Sprintf("dry-run: would cancel %d process instances with keys %v", len(keys), keys),
 					}, pis, nil
 				}
+				common.VerboseLog(ctx, cCfg, s.log, fmt.Sprintf("pi cancellation escalated: requested=%s root=%s reason=cancel affected tree", key, rootPIKey))
 				if !cCfg.SuppressProcessInstanceDetailLogs {
 					logging.InfoOrVerbose(
 						fmt.Sprintf("force: cancelling %d pi", len(keys)),
@@ -543,6 +544,7 @@ func (s *Service) CancelProcessInstance(ctx context.Context, key string, opts ..
 	if err = httpc.HttpStatusErr(resp.HTTPResponse, resp.Body); err != nil {
 		return d.CancelResponse{}, nil, err
 	}
+	common.VerboseLog(ctx, cCfg, s.log, fmt.Sprintf("pi cancellation submitted: root=%s accepted=true", key))
 	if !cCfg.NoWait {
 		keys, _, _, err := s.Family(ctx, key, opts...)
 		if err != nil {
@@ -550,6 +552,7 @@ func (s *Service) CancelProcessInstance(ctx context.Context, key string, opts ..
 		}
 		s.infoProcessInstanceDetail(cCfg, fmt.Sprintf("waiting for pi %s cancel", key))
 		states := []d.State{d.StateCompleted, d.StateCanceled, d.StateTerminated, d.StateAbsent}
+		common.VerboseProcessInstanceWaitLog(ctx, cCfg, s.cfg, s.log, "cancellation confirmation", key, keys, states)
 		if _, err = waiter.WaitForProcessInstancesState(ctx, s, s.cfg, s.log, keys, states, len(keys), opts...); err != nil {
 			return d.CancelResponse{}, nil, fmt.Errorf("cancel wait: %w", err)
 		}
@@ -617,15 +620,18 @@ func (s *Service) DeleteProcessInstance(ctx context.Context, key string, opts ..
 	}
 	if resp.StatusCode() == http.StatusConflict {
 		if cCfg.Force {
+			common.VerboseLog(ctx, cCfg, s.log, fmt.Sprintf("pi deletion conflicted: key=%s cancellation required before deletion can proceed", key))
 			s.infoProcessInstanceDetail(cCfg, fmt.Sprintf("pi %s not terminal; cancelling before delete", key))
 			if _, _, err = s.CancelProcessInstance(ctx, key, opts...); err != nil {
 				return d.DeleteResponse{}, fmt.Errorf("delete cancel: %w", err)
 			}
 			s.infoProcessInstanceDetail(cCfg, fmt.Sprintf("waiting for pi %s cancel", key))
 			states := []d.State{d.StateCompleted, d.StateCanceled, d.StateTerminated, d.StateAbsent}
+			common.VerboseProcessInstanceWaitLog(ctx, cCfg, s.cfg, s.log, "deletion prerequisite confirmation", key, []string{key}, states)
 			if _, _, err = waiter.WaitForProcessInstanceState(ctx, s, s.cfg, s.log, key, states, opts...); err != nil {
 				return d.DeleteResponse{}, fmt.Errorf("delete wait canceled: %w", err)
 			}
+			common.VerboseLog(ctx, cCfg, s.log, fmt.Sprintf("pi cancellation confirmed: key=%s resuming deletion", key))
 			s.infoProcessInstanceDetail(cCfg, fmt.Sprintf("retrying pi %s delete", key))
 			resp, err = services.RetryCamundaMutation(ctx, s.log, "delete pi", func(ctx context.Context) (*camundav810.DeleteProcessInstanceResponse, *http.Response, []byte, error) {
 				resp, err := s.cc.DeleteProcessInstanceWithResponse(ctx, key, camundav810.DeleteProcessInstanceJSONRequestBody{})
