@@ -21,6 +21,11 @@ func WithSuppressWorkflowDetailLogs() CallOption {
 func WithSuppressProcessInstanceDetailLogs() CallOption {
 	return func(c *CallCfg) { c.SuppressProcessInstanceDetailLogs = true }
 }
+
+// WithSuppressNestedProcessInstanceLookupLogs suppresses lookup-owned DEBUG messages when a waiter owns the observation.
+func WithSuppressNestedProcessInstanceLookupLogs() CallOption {
+	return func(c *CallCfg) { c.SuppressNestedProcessInstanceLookupLogs = true }
+}
 func WithIncidentState(state string) CallOption {
 	return func(c *CallCfg) { c.IncidentState = state }
 }
@@ -54,11 +59,13 @@ type CallCfg struct {
 	IgnoreTenant                      bool
 	SuppressWorkflowDetailLogs        bool
 	SuppressProcessInstanceDetailLogs bool
-	IncidentState                     string
-	IncidentErrorType                 string
-	IncidentErrorMessage              string
-	AffectedProcessInstanceCount      int
-	Progress                          func(d.OpsProgressEvent)
+	// SuppressNestedProcessInstanceLookupLogs leaves direct lookup diagnostics intact while avoiding duplicate waiter records.
+	SuppressNestedProcessInstanceLookupLogs bool
+	IncidentState                           string
+	IncidentErrorType                       string
+	IncidentErrorMessage                    string
+	AffectedProcessInstanceCount            int
+	Progress                                func(d.OpsProgressEvent)
 }
 
 func ApplyCallOptions(opts []CallOption) *CallCfg {

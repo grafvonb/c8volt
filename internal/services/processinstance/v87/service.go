@@ -234,8 +234,10 @@ func (s *Service) SearchForProcessInstances(ctx context.Context, filter d.Proces
 }
 
 func (s *Service) SearchForProcessInstancesPage(ctx context.Context, filter d.ProcessInstanceFilter, pageReq d.ProcessInstancePageRequest, opts ...services.CallOption) (d.ProcessInstancePage, error) {
-	_ = services.ApplyCallOptions(opts)
-	s.log.Debug(fmt.Sprintf("searching pi; filter %s", filter.String()))
+	cCfg := services.ApplyCallOptions(opts)
+	if !cCfg.SuppressNestedProcessInstanceLookupLogs {
+		s.log.Debug(fmt.Sprintf("searching pi; filter %s", filter.String()))
+	}
 	if hasDateFilterBounds(filter) {
 		return d.ProcessInstancePage{}, fmt.Errorf("%w: process-instance date filters require Camunda 8.8", d.ErrUnsupported)
 	}
@@ -429,8 +431,10 @@ func (s *Service) CancelProcessInstance(ctx context.Context, key string, opts ..
 }
 
 func (s *Service) GetProcessInstanceStateByKey(ctx context.Context, key string, opts ...services.CallOption) (d.State, d.ProcessInstance, error) {
-	_ = services.ApplyCallOptions(opts)
-	s.log.Debug(fmt.Sprintf("checking pi %s state", key))
+	cCfg := services.ApplyCallOptions(opts)
+	if !cCfg.SuppressNestedProcessInstanceLookupLogs {
+		s.log.Debug(fmt.Sprintf("checking pi %s state", key))
+	}
 	_, err := processInstanceKeyInt64(key)
 	if err != nil {
 		return "", d.ProcessInstance{}, err
@@ -440,7 +444,9 @@ func (s *Service) GetProcessInstanceStateByKey(ctx context.Context, key string, 
 		return "", d.ProcessInstance{}, fmt.Errorf("process instance state: %w", err)
 	}
 	st := pi.State
-	s.log.Debug(fmt.Sprintf("pi %s state %s", key, st))
+	if !cCfg.SuppressNestedProcessInstanceLookupLogs {
+		s.log.Debug(fmt.Sprintf("pi %s state %s", key, st))
+	}
 	return st, pi, nil
 }
 

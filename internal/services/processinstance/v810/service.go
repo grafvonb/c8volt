@@ -165,8 +165,10 @@ func (s *Service) CreateProcessInstance(ctx context.Context, data d.ProcessInsta
 
 // GetProcessInstance retrieves one visible process instance by key.
 func (s *Service) GetProcessInstance(ctx context.Context, key string, opts ...services.CallOption) (d.ProcessInstance, error) {
-	_ = services.ApplyCallOptions(opts)
-	s.log.Debug(fmt.Sprintf("fetching pi %s", key))
+	cCfg := services.ApplyCallOptions(opts)
+	if !cCfg.SuppressNestedProcessInstanceLookupLogs {
+		s.log.Debug(fmt.Sprintf("fetching pi %s", key))
+	}
 	resp, err := s.cc.GetProcessInstanceWithResponse(ctx, key)
 	if err != nil {
 		return d.ProcessInstance{}, fmt.Errorf("get process instance: %w", err)
@@ -564,14 +566,18 @@ func (s *Service) CancelProcessInstance(ctx context.Context, key string, opts ..
 
 // GetProcessInstanceStateByKey returns the current state and process-instance row for a key.
 func (s *Service) GetProcessInstanceStateByKey(ctx context.Context, key string, opts ...services.CallOption) (d.State, d.ProcessInstance, error) {
-	_ = services.ApplyCallOptions(opts)
-	s.log.Debug(fmt.Sprintf("checking pi %s state", key))
+	cCfg := services.ApplyCallOptions(opts)
+	if !cCfg.SuppressNestedProcessInstanceLookupLogs {
+		s.log.Debug(fmt.Sprintf("checking pi %s state", key))
+	}
 	pi, err := s.GetProcessInstance(ctx, key, opts...)
 	if err != nil {
 		return "", d.ProcessInstance{}, fmt.Errorf("process instance state: %w", err)
 	}
 	st := pi.State
-	s.log.Debug(fmt.Sprintf("pi %s state %s", key, st))
+	if !cCfg.SuppressNestedProcessInstanceLookupLogs {
+		s.log.Debug(fmt.Sprintf("pi %s state %s", key, st))
+	}
 	return st, pi, nil
 }
 

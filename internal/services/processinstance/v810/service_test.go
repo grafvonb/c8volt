@@ -1622,6 +1622,34 @@ func newTestService(t *testing.T, cfg *config.Config, camundaClient *mockCamunda
 	return svc
 }
 
+// TestService_GetProcessInstanceStateByKeyLoggingScope keeps direct diagnostics while allowing waiter-owned suppression.
+func TestService_GetProcessInstanceStateByKeyLoggingScope(t *testing.T) {
+	var logBuf bytes.Buffer
+	client := newStrictCamundaClient(t)
+	client.getProcessInstanceWithResponse = func(ctx context.Context, key camundav810.ProcessInstanceKey, reqEditors ...camundav810.RequestEditorFn) (*camundav810.GetProcessInstanceResponse, error) {
+		return &camundav810.GetProcessInstanceResponse{
+			HTTPResponse: newHTTPResponse(http.MethodGet, "https://camunda.local/v2/process-instances/123", http.StatusOK, "200 OK"),
+			JSON200:      new(makeProcessInstanceResult("123", "COMPLETED", "")),
+		}, nil
+	}
+	svc, err := v810.New(
+		testConfig(), &http.Client{}, slog.New(logging.NewPlainHandler(&logBuf, slog.LevelDebug)),
+		v810.WithClientCamunda(client),
+	)
+	require.NoError(t, err)
+
+	_, _, err = svc.GetProcessInstanceStateByKey(context.Background(), "123")
+	require.NoError(t, err)
+	assert.Contains(t, logBuf.String(), "checking pi 123 state")
+	assert.Contains(t, logBuf.String(), "fetching pi 123")
+	assert.Contains(t, logBuf.String(), "pi 123 state COMPLETED")
+
+	logBuf.Reset()
+	_, _, err = svc.GetProcessInstanceStateByKey(context.Background(), "123", services.WithSuppressNestedProcessInstanceLookupLogs())
+	require.NoError(t, err)
+	assert.Empty(t, logBuf.String())
+}
+
 // newStrictCamundaClient returns a v8.10 Camunda client mock that fails on unexpected calls.
 func newStrictCamundaClient(t *testing.T) *mockCamundaClient {
 	t.Helper()

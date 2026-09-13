@@ -4,6 +4,7 @@
 package v87_test
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -23,6 +24,7 @@ import (
 	"github.com/grafvonb/c8volt/internal/services"
 	v87 "github.com/grafvonb/c8volt/internal/services/processinstance/v87"
 	"github.com/grafvonb/c8volt/toolx"
+	"github.com/grafvonb/c8volt/toolx/logging"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -706,6 +708,39 @@ func TestService_GetProcessInstanceStateByKey(t *testing.T) {
 			tt.assertResult(t, state, pi)
 		})
 	}
+}
+
+// TestService_GetProcessInstanceStateByKeyLoggingScope preserves tenant-safe search while suppressing only nested waiter chatter.
+func TestService_GetProcessInstanceStateByKeyLoggingScope(t *testing.T) {
+	var logBuf bytes.Buffer
+	operateClient := &mockOperateClient{
+		searchProcessInstancesWithResponse: func(ctx context.Context, body operatev87.SearchProcessInstancesJSONRequestBody, reqEditors ...operatev87.RequestEditorFn) (*operatev87.SearchProcessInstancesResponse, error) {
+			require.NotNil(t, body.Filter)
+			require.NotNil(t, body.Filter.Key)
+			assert.Equal(t, int64(123), *body.Filter.Key)
+			items := []operatev87.ProcessInstance{*makeProcessInstanceResponse(123, "COMPLETED", "")}
+			return &operatev87.SearchProcessInstancesResponse{
+				HTTPResponse: newHTTPResponse(http.MethodPost, "https://operate.local/process-instances/search", http.StatusOK, "200 OK"),
+				JSON200:      &operatev87.ResultsProcessInstance{Items: &items},
+			}, nil
+		},
+	}
+	svc, err := v87.New(
+		testConfig(), &http.Client{}, slog.New(logging.NewPlainHandler(&logBuf, slog.LevelDebug)),
+		v87.WithClientCamunda(newStrictCamundaClient(t)), v87.WithClientOperate(operateClient),
+	)
+	require.NoError(t, err)
+
+	_, _, err = svc.GetProcessInstanceStateByKey(context.Background(), "123")
+	require.NoError(t, err)
+	assert.Contains(t, logBuf.String(), "checking pi 123 state")
+	assert.Contains(t, logBuf.String(), "searching pi; filter")
+	assert.Contains(t, logBuf.String(), "pi 123 state COMPLETED")
+
+	logBuf.Reset()
+	_, _, err = svc.GetProcessInstanceStateByKey(context.Background(), "123", services.WithSuppressNestedProcessInstanceLookupLogs())
+	require.NoError(t, err)
+	assert.Empty(t, logBuf.String())
 }
 
 // TestService_WaitForProcessInstanceCreationStates verifies the v8.7 waiter accepts the shared creation-confirmation state set.
