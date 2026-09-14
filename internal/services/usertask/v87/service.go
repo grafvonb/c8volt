@@ -26,6 +26,11 @@ func (s *Service) GetUserTask(context.Context, string, ...services.CallOption) (
 	return d.UserTask{}, fmt.Errorf("%w: has-user-tasks lookup is unsupported in Camunda 8.7; requires Camunda 8.8 or newer", d.ErrUnsupported)
 }
 
+// GetNativeUserTask rejects direct native reads because Camunda 8.7 does not expose the required API contract.
+func (s *Service) GetNativeUserTask(context.Context, string, ...services.CallOption) (d.UserTask, error) {
+	return d.UserTask{}, fmt.Errorf("%w: native user-task lookup is unsupported in Camunda 8.7; requires Camunda 8.8 or newer", d.ErrUnsupported)
+}
+
 type Option func(*Service)
 
 func WithLogger(logger *slog.Logger) Option {

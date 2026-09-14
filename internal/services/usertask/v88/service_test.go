@@ -22,7 +22,16 @@ import (
 )
 
 type mockUserTaskCamundaClient struct {
+	getUserTaskWithResponse     func(context.Context, camundav88.UserTaskKey, ...camundav88.RequestEditorFn) (*camundav88.GetUserTaskResponse, error)
 	searchUserTasksWithResponse func(context.Context, camundav88.SearchUserTasksJSONRequestBody, ...camundav88.RequestEditorFn) (*camundav88.SearchUserTasksResponse, error)
+}
+
+// GetUserTaskWithResponse delegates direct reads while making accidental legacy-test calls explicit.
+func (m *mockUserTaskCamundaClient) GetUserTaskWithResponse(ctx context.Context, key camundav88.UserTaskKey, reqEditors ...camundav88.RequestEditorFn) (*camundav88.GetUserTaskResponse, error) {
+	if m.getUserTaskWithResponse == nil {
+		return nil, fmt.Errorf("unexpected native user-task read for %s", key)
+	}
+	return m.getUserTaskWithResponse(ctx, key, reqEditors...)
 }
 
 func (m *mockUserTaskCamundaClient) SearchUserTasksWithResponse(ctx context.Context, body camundav88.SearchUserTasksJSONRequestBody, reqEditors ...camundav88.RequestEditorFn) (*camundav88.SearchUserTasksResponse, error) {

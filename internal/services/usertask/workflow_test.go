@@ -24,6 +24,11 @@ func (a *orderedUserTaskAPI) GetUserTask(_ context.Context, key string, _ ...ser
 	return a.tasks[key], nil
 }
 
+// GetNativeUserTask fails if the legacy resolver accidentally switches to the direct-read path.
+func (a *orderedUserTaskAPI) GetNativeUserTask(context.Context, string, ...services.CallOption) (d.UserTask, error) {
+	panic("legacy resolver must not call GetNativeUserTask")
+}
+
 // TestResolveProcessInstanceKeys_PreservesInputOrder pins the legacy resolver's one-for-one task and owning-process ordering.
 func TestResolveProcessInstanceKeys_PreservesInputOrder(t *testing.T) {
 	t.Parallel()

@@ -98,3 +98,40 @@ Started: 2026-09-13 13:20:06
 - Legacy ownership resolution preserves task input order; v88/v89 Tasklist fallback rejects tenant and returned-key mismatches, while v810 rejects native returned-key mismatches.
 - `go test ./internal/services/usertask/... -count=1` and `git diff --check` passed, covering the existing v87 unsupported path and all retained primary/fallback resolver regressions.
 ---
+
+---
+## Iteration 3 - 2026-09-14 13:42
+**Work Unit**: US1 Inspect Known User Tasks (native direct-read contract and adapters)
+**Tasks Completed**:
+- [x] T006: Add native direct-read contract coverage for supported adapters and zero-request V87 rejection.
+- [x] T010: Add and implement `GetNativeUserTask` across the version-neutral and versioned service contracts.
+**Tasks Remaining in Work Unit**: 11 (T007–T009 and T011–T018)
+**Commit**: This work-unit commit
+**Files Changed**:
+- internal/services/usertask/api.go
+- internal/services/usertask/workflow_test.go
+- internal/services/usertask/v87/contract.go
+- internal/services/usertask/v87/service.go
+- internal/services/usertask/v87/native_test.go
+- internal/services/usertask/v88/contract.go
+- internal/services/usertask/v88/convert.go
+- internal/services/usertask/v88/service.go
+- internal/services/usertask/v88/service_test.go
+- internal/services/usertask/v88/native_test.go
+- internal/services/usertask/v89/contract.go
+- internal/services/usertask/v89/convert.go
+- internal/services/usertask/v89/service.go
+- internal/services/usertask/v89/service_test.go
+- internal/services/usertask/v89/native_test.go
+- internal/services/usertask/v810/contract.go
+- internal/services/usertask/v810/convert.go
+- internal/services/usertask/v810/service.go
+- internal/services/usertask/v810/native_test.go
+- specs/308-get-user-task/tasks.md
+- specs/308-get-user-task/ralph-memory.md
+- specs/308-get-user-task/progress.md
+**Learnings**:
+- Direct reads must validate key, state, and owning process identity while retaining authorized foreign-tenant metadata; the legacy resolver remains on its existing search/fallback or tenant-checked path.
+- `go test ./internal/services/usertask/... -count=1`, `go test ./... -run '^$' -count=1`, and `git diff --check` passed; the first focused run identified and then resolved the expected legacy test-stub interface update.
+- The prior work-unit subject was repaired from `feat(ralph): pin legacy user task resolver behavior #308` to `feat(ralph): pin legacy user task resolver behavior` because `issue: auto` cannot infer from the `codex/` branch prefix.
+---

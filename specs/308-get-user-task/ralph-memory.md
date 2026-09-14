@@ -18,11 +18,12 @@ Started: 2026-09-13T11:20:06Z
 - `UserTaskSearchPage.RawItemCount` remains distinct from selected `Items`; traversal steps and results use `int64` selected counts so later exact-count work does not narrow backend populations.
 - Public task models use required JSON fields for `key`, `state`, and `processInstanceKey`; `UserTasks` always has required `total` and `items`, with nil domain collections normalized to a non-nil empty public slice. Facade converters copy task candidate slices and mechanically map page visitor actions/errors without interpreting traversal state.
 - Legacy process ownership resolution performs one lookup per supplied task key and preserves input order. The v88/v89 resolver remains tenant-scoped on primary search and enforces tenant, returned task identity, and owning-process identity after Tasklist fallback; v810 enforces returned task identity, configured tenant visibility, and owning-process identity on its native resolver lookup.
+- Native direct reads now use generated `GetUserTaskWithResponse` on v88/v89/v810, map every stable domain field with copied candidate slices, validate returned key/state/process-instance identity, preserve backend tenant metadata without discovery-tenant filtering, and never use search or Tasklist fallback. V87 returns `ErrUnsupported` without transport use.
 
 ## Gotchas
 
 - `c8volt/task` currently has no tests; its baseline command succeeds with `[no test files]`. T004 and later facade tasks add the required coverage.
-- The original baseline commit omitted the issue suffix because automatic inference did not recognize the `codex/` prefix. Future commits must explicitly reference #308 as required by repository rules; do not repeat that omission.
+- Ralph `commit.issue: auto` cannot infer an issue from the nonnumeric-leading `codex/308-get-user-task` branch, so orchestrator-validated conventional subjects for this branch must omit an issue suffix.
 - The full race suite spends several minutes in `cmd`; lack of interim output is normal when the process remains active.
 
 ## Reusable Commands
@@ -42,4 +43,4 @@ Started: 2026-09-13T11:20:06Z
 - Preserve the 2026-09-13 baseline log as historical evidence, not validation of the rebased implementation. The next slice selects checks for its actual changes.
 
 ## Current Handoff
-- Begin US1 with T006–T009 in their declared ready wave; add failing native-read, bulk, facade, and command contract tests without implementing behavior or committing a knowingly failing test-only increment.
+- Continue US1 at T007: add strict ordered bulk-read tests and implement T011 in the same validated work unit; T008–T009 and later US1 tasks remain open.

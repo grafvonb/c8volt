@@ -11,8 +11,10 @@ import (
 	"github.com/grafvonb/c8volt/internal/services"
 )
 
+// API defines the V810 user-task service contract.
 type API interface {
 	GetUserTask(ctx context.Context, key string, opts ...services.CallOption) (d.UserTask, error)
+	GetNativeUserTask(ctx context.Context, key string, opts ...services.CallOption) (d.UserTask, error)
 }
 
 type GenUserTaskClientCamunda interface {
