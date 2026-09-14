@@ -1109,11 +1109,34 @@ func TestCapabilityDocumentForRoot_CoversCLIDebtAssessment(t *testing.T) {
 
 	doc := capabilityDocumentForRoot(root)
 	paths := commandCapabilityPaths(doc.Commands)
-	require.Len(t, paths, 55)
+	require.Len(t, paths, 56)
 
 	assessmentPaths := readCLIDebtAssessmentCommandPaths(t)
-	require.Len(t, assessmentPaths, 55)
+	require.Len(t, assessmentPaths, 56)
 	require.ElementsMatch(t, paths, assessmentPaths)
+}
+
+// TestCommandCapabilityForCommand_UserTaskReadContract verifies every alias
+// resolves to the canonical read-only command with full machine and automation support.
+func TestCommandCapabilityForCommand_UserTaskReadContract(t *testing.T) {
+	root := Root()
+	resetCommandTreeFlags(root)
+
+	capability := commandCapabilityForCommand(getUserTaskCmd)
+	require.Equal(t, "get user-task", capability.Path)
+	require.ElementsMatch(t, []string{"user-tasks", "ut", "uts"}, capability.Aliases)
+	require.Equal(t, CommandMutationReadOnly, capability.Mutation)
+	require.Equal(t, ContractSupportFull, capability.ContractSupport)
+	require.Equal(t, AutomationSupportFull, capability.AutomationSupport)
+	require.Contains(t, capability.OutputModes, OutputModeContract{Name: RenderModeJSON.String(), Supported: true, MachinePreferred: true})
+	require.Contains(t, capability.OutputModes, OutputModeContract{Name: RenderModeKeysOnly.String(), Supported: true})
+
+	for _, alias := range capability.Aliases {
+		resolved, remaining, err := root.Find([]string{"get", alias})
+		require.NoError(t, err)
+		require.Empty(t, remaining)
+		require.Same(t, getUserTaskCmd, resolved)
+	}
 }
 
 func TestCommandCapabilityForCommand_ProcessInstanceExpectIncidentFlag(t *testing.T) {

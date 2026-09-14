@@ -21,6 +21,8 @@ Started: 2026-09-13T11:20:06Z
 - Native direct reads now use generated `GetUserTaskWithResponse` on v88/v89/v810, map every stable domain field with copied candidate slices, validate returned key/state/process-instance identity, preserve backend tenant metadata without discovery-tenant filtering, and never use search or Tasklist fallback. V87 returns `ErrUnsupported` without transport use.
 - Shared native bulk reads stable-deduplicate task keys before scheduling, preserve first-input order through `pool.ExecuteSlice`, forward call options unchanged, and return nil results for any joined read or cancellation failure. Empty input returns an initialized empty slice without touching the adapter.
 - Public `task.GetUserTask` delegates only to `GetNativeUserTask`; public `task.GetUserTasks` delegates to the service-owned bulk workflow. Both map facade options at the boundary, convert domain failures through `ferrors.FromDomain`, and copy domain results into stable public models without changing constructor or root embedding.
+- The keyed `get user-task` command owns only input, validation, dispatch, metadata, and rendering. Its focused stdin reader consumes explicit dash input or nonterminal implicit input, preserves the shared 10 MiB scanner ceiling, allows an empty implicit stream to reach future search, and never consumes terminal stdin to infer keys.
+- User-task command output uses one collection payload for every keyed cardinality, JSON-before-keys-before-human precedence, quiet suppression only for human output, aligned contract-order rows with element-ID name fallback, and writer errors propagated from human/key lines.
 
 ## Gotchas
 
@@ -28,6 +30,7 @@ Started: 2026-09-13T11:20:06Z
 - Ralph `commit.issue: auto` cannot infer an issue from the nonnumeric-leading `codex/308-get-user-task` branch, so orchestrator-validated conventional subjects for this branch must omit an issue suffix.
 - The full race suite spends several minutes in `cmd`; lack of interim output is normal when the process remains active.
 - `pool.ExecuteSlice` may return no pool error when a context is already canceled before non-fail-fast work is scheduled, so strict workflows must check `ctx.Err()` before treating the returned slots as success.
+- Adding a canonical command requires updating `specs/254-cli-debt-refactor/assessment.md`; `TestCapabilityDocumentForRoot_CoversCLIDebtAssessment` compares the live capability inventory against that historical assessment table.
 
 ## Reusable Commands
 
@@ -46,4 +49,4 @@ Started: 2026-09-13T11:20:06Z
 - Preserve the 2026-09-13 baseline log as historical evidence, not validation of the rebased implementation. The next slice selects checks for its actual changes.
 
 ## Current Handoff
-- Continue US1 at T009: add keyed command subprocess contract tests before implementing the US1 command/view/input tasks T013–T017; T018 remains the story validation gate.
+- Continue US1 at T017: update keyed help/README and regenerate CLI docs, then complete the T018 MVP validation gate without starting US2.

@@ -176,3 +176,32 @@ Started: 2026-09-13 13:20:06
 - `go test ./c8volt/task -count=1`, `go test -race ./c8volt/task -count=1`, repository-wide `go test ./... -run '^$' -count=1`, the targeted existing resolver command tests, and `git diff --check` passed.
 - The focused facade slice did not require repeating `make test`; race-enabled facade behavior plus repository-wide interface compilation covered its concrete risk, while the integrated MVP gate remains T018.
 ---
+
+---
+## Iteration 6 - 2026-09-14 14:07
+**Work Unit**: US1 Inspect Known User Tasks (keyed CLI input, rendering, metadata, and execution matrix)
+**Tasks Completed**:
+- [x] T009: Add subprocess coverage for aliases, key sources, strict validation, conflicts, failures, and basic output modes.
+- [x] T013: Add mode-aware user-task collection views with stable rows, fallback display, quiet handling, and writer errors.
+- [x] T014: Register the keyed command, reserved search controls, scoped implicit stdin, validation, and native bulk dispatch.
+- [x] T015: Register and verify invalid-input, read-only, full-contract, automation, alias, and stdin error-envelope metadata.
+- [x] T016: Complete supported-version, V87, tenant, denial, candidate, quiet-machine, and partial-failure command coverage.
+**Tasks Remaining in Work Unit**: 2 (T017–T018)
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/cmd_stdin_error_envelope_test.go
+- cmd/cmd_views_usertask.go
+- cmd/cmd_views_usertask_test.go
+- cmd/command_contract_test.go
+- cmd/get_usertask.go
+- cmd/get_usertask_input.go
+- cmd/get_usertask_test.go
+- specs/254-cli-debt-refactor/assessment.md
+- specs/308-get-user-task/tasks.md
+- specs/308-get-user-task/ralph-memory.md
+- specs/308-get-user-task/progress.md
+**Learnings**:
+- The new command can reuse shared key validation while keeping optional implicit stdin isolated; an empty implicit stream reaches the explicitly unsupported pre-US2 search path instead of fabricating an empty result.
+- `go test ./internal/services/usertask/... -count=1`, `go test ./c8volt/task -count=1`, and `go test ./cmd -run 'TestGetUserTask|Test.*UserTask|Test.*Stdin.*Envelope' -count=1` passed the complete retained US1 service/facade/command slice.
+- `go test ./cmd -count=1` passed after synchronizing the live command inventory assessment; repository-wide `go test ./... -run '^$' -count=1` and `git diff --check` also passed.
+---
