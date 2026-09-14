@@ -52,7 +52,7 @@ Camunda operations rarely end when an API accepts a request. `c8volt` emphasizes
 It is built for operators, developers, support engineers, CI pipelines, and agents that need to:
 
 - run high-level ops playbooks for analysis, retention, purge, repair, and smoke testing
-- inspect process instances, runtime elements, listener jobs, variables, incidents, and trees
+- inspect process instances, user tasks, runtime elements, listener jobs, variables, incidents, and trees
 - deploy BPMN, run process instances, wait for outcomes, and clean up safely
 - use dry-run, JSON, keys-only, automation, tenant, and profile controls when workflows need them
 - discover the public command contract with `c8volt capabilities --json`
@@ -269,6 +269,8 @@ Use `get process-instance` for direct lookup, scoped search, variables, incident
 Generated reference: [get process-instance](./cli/c8volt_get_process-instance).
 
 ### Inspect And Search User Tasks
+
+Find human work waiting in your processes, inspect assignments, and count matching tasks directly from your terminal.
 
 Use `get user-task` to fetch known native user tasks or search visible work on Camunda 8.8, 8.9, and 8.10; Camunda 8.7 is unsupported. Repeat or comma-separate `--key`, or pipe newline-separated keys with or without the optional `-`. Every requested key must resolve; keyed reads rely on backend authorization, do not filter by the selected discovery tenant, and preserve each task's actual tenant metadata.
 
