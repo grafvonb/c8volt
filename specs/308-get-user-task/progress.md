@@ -344,3 +344,20 @@ Started: 2026-09-13 13:20:06
 - Command-level request capture confirmed AND-combined exact predicates, case-insensitive lifecycle states, effective tenant variants, bounded sparse traversal, exact and capped totals, and zero-request validation failures across supported versions.
 - Targeted service, facade, command, legacy resolver, docsgen, race, and vet checks passed; repository-wide compile-only tests and `git diff --check` also passed.
 ---
+
+---
+## Iteration 12 - 2026-09-14 15:14
+**Work Unit**: US3 Use Results Interactively and in Automation (combined output-mode execution matrix)
+**Tasks Completed**:
+- [x] T034: Add combined-mode execution coverage for human, JSON, keys-only, quiet, unattended, empty, total, verbose, debug, and activity-stream behavior.
+**Tasks Remaining in Work Unit**: 8 (T035–T042)
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/get_usertask_output_test.go
+- specs/308-get-user-task/tasks.md
+- specs/308-get-user-task/ralph-memory.md
+- specs/308-get-user-task/progress.md
+**Learnings**:
+- Execution-level subprocess coverage confirms exact output bytes, one JSON envelope through EOF, prompt-free unattended modes, quiet machine-output preservation, one backend read per case, and debug diagnostics isolated to stderr.
+- `go test ./cmd -run '^TestGetUserTaskOutput_' -count=1` and `git diff --check` passed; no production change was needed for this test-contract work unit.
+---
