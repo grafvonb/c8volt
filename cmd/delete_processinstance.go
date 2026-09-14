@@ -83,7 +83,7 @@ Use --dry-run to preview the affected family without deleting or cancelling. Use
 
 		result, err := runDeleteProcessInstanceDirect(cmd, cli, keys)
 		if err != nil {
-			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+			handleProcessInstanceMutationError(cmd, log, cfg.App.NoErrCodes, err)
 		}
 		if flagDryRun {
 			return

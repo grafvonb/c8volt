@@ -14,6 +14,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestCancellationConfirmationFailureReasons verifies stop-reason precedence
+// across joined waits while preserving the original error text and causes.
 func TestCancellationConfirmationFailureReasons(t *testing.T) {
 	t.Parallel()
 	lookup := &d.ProcessInstanceWaitFailure{Reason: "failed during lookup", Err: d.ErrForbidden}
@@ -38,6 +40,5 @@ func TestCancellationConfirmationFailureReasons(t *testing.T) {
 		require.Equal(t, tc.want, failure.FailureReason)
 		require.Equal(t, err.Error(), failure.Error())
 		require.ErrorIs(t, failure, tc.err)
-		require.True(t, failure.CancellationSubmitted)
 	}
 }

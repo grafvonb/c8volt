@@ -17,7 +17,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafvonb/c8volt/c8volt/ferrors"
+	"github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/exitcode"
 	"github.com/grafvonb/c8volt/testx"
 	"github.com/stretchr/testify/require"
@@ -225,9 +225,9 @@ apis:
 func TestFormatProcessInstanceMutationCommandFailures(t *testing.T) {
 	t.Parallel()
 
-	failures := []*ferrors.ProcessInstanceMutationFailure{
-		{Operation: "delete", Phase: "cancellation confirmation", FailureReason: "timed out", RootKey: "root-b", Timeout: 30 * time.Millisecond, LastStates: map[string]string{"root-b": "ACTIVE"}, CancellationSubmitted: true},
-		{Operation: "delete", Phase: "cancellation confirmation", FailureReason: "timed out", RootKey: "root-a", Timeout: 30 * time.Millisecond, CancellationSubmitted: true},
+	failures := []*domain.ProcessInstanceMutationFailure{
+		{Operation: "delete", Phase: "cancellation confirmation", FailureReason: "timed out", RootKey: "root-b", Timeout: 30 * time.Millisecond, LastStates: map[string]domain.State{"root-b": domain.StateActive}},
+		{Operation: "delete", Phase: "cancellation confirmation", FailureReason: "timed out", RootKey: "root-a", Timeout: 30 * time.Millisecond},
 	}
 
 	require.Equal(t,
@@ -242,6 +242,7 @@ func TestFormatProcessInstanceMutationCommandFailures(t *testing.T) {
 
 }
 
+// TestProcessInstanceDeleteCancellationTimeoutTranscriptHelper executes the timeout fixture command only in its designated subprocess.
 func TestProcessInstanceDeleteCancellationTimeoutTranscriptHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return
@@ -291,6 +292,7 @@ apis:
 	require.Less(t, indexOfString(gotRequests, "POST /v2/process-instances/root/cancellation"), indexOfString(gotRequests, "POST /v2/process-instances/root/deletion"))
 }
 
+// TestProcessInstanceDeleteCancellationSuccessTranscriptHelper executes the successful cancellation/deletion fixture in its designated subprocess.
 func TestProcessInstanceDeleteCancellationSuccessTranscriptHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return
@@ -422,6 +424,7 @@ func TestProcessInstancePollingRecordBudgetHelper(t *testing.T) {
 	Execute()
 }
 
+// processInstanceLoggingTimeoutServer records requests and keeps the family ACTIVE after accepting root cancellation; child deletion conflicts.
 func processInstanceLoggingTimeoutServer(t *testing.T, requests *testx.SafeSlice[string]) http.Handler {
 	t.Helper()
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -458,6 +461,7 @@ func processInstanceLoggingTimeoutServer(t *testing.T, requests *testx.SafeSlice
 	})
 }
 
+// processInstanceLoggingSuccessServer records requests and models accepted cancellation, terminal confirmation and successful resumed deletion.
 func processInstanceLoggingSuccessServer(t *testing.T, requests *testx.SafeSlice[string]) http.Handler {
 	t.Helper()
 	var mu sync.Mutex
@@ -517,6 +521,7 @@ func processInstanceLoggingSuccessServer(t *testing.T, requests *testx.SafeSlice
 	})
 }
 
+// indexOfString returns the first matching index, or -1 when the request is absent.
 func indexOfString(values []string, wanted string) int {
 	for i, value := range values {
 		if value == wanted {

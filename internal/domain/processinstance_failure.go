@@ -5,7 +5,6 @@ package domain
 
 import (
 	"errors"
-	"slices"
 	"time"
 )
 
@@ -21,65 +20,77 @@ type ProcessInstanceWaitFailure struct {
 	Err       error
 }
 
+// Error preserves the underlying error text without adding annotation details.
 func (e *ProcessInstanceWaitFailure) Error() string { return e.Err.Error() }
+
+// Unwrap retains the original cause for errors.Is and errors.As inspection.
 func (e *ProcessInstanceWaitFailure) Unwrap() error { return e.Err }
 
-// ProcessInstanceMutationFailure records only the operational facts needed to
-// explain an unconfirmed cancel-before-delete workflow.
+// ProcessInstanceMutationFailure annotates failed follow-up after accepted
+// cancellation. Its presence means submission succeeded but confirmation did
+// not; in a delete workflow, resumed deletion has therefore not been reached.
 type ProcessInstanceMutationFailure struct {
-	Operation              string
-	Phase                  string
-	FailureReason          string
-	RootKey                string
-	Scope                  []string
-	Timeout                time.Duration
-	LastStates             map[string]State
-	DeleteConflictKey      string
-	CancellationSubmitted  bool
-	ResumedDeletionReached bool
-	Err                    error
+	Operation         string
+	Phase             string
+	FailureReason     string
+	RootKey           string
+	Scope             []string
+	Timeout           time.Duration
+	LastStates        map[string]State
+	DeleteConflictKey string
+	Err               error
 }
 
+// Error preserves the underlying error text without adding annotation details.
 func (e *ProcessInstanceMutationFailure) Error() string { return e.Err.Error() }
+
+// Unwrap retains the original cause for errors.Is and errors.As inspection.
 func (e *ProcessInstanceMutationFailure) Unwrap() error { return e.Err }
 
-// ProcessInstanceWaitObservations extracts available last states from single
-// or joined wait failures without manufacturing observations for unseen keys.
-func ProcessInstanceWaitObservations(err error) map[string]State {
-	observations := make(map[string]State)
-	visitErrors(err, func(candidate error) {
-		var failure *ProcessInstanceWaitFailure
-		if errors.As(candidate, &failure) && failure.Key != "" && failure.LastState != "" && failure.LastState != StateUnknown {
-			observations[failure.Key] = failure.LastState
+// ProcessInstanceWaitFailures extracts one annotation per stopped wait.
+func ProcessInstanceWaitFailures(err error) []*ProcessInstanceWaitFailure {
+	var failures []*ProcessInstanceWaitFailure
+	visitErrors(err, func(candidate error) bool {
+		if failure, ok := candidate.(*ProcessInstanceWaitFailure); ok {
+			failures = append(failures, failure)
+			return false
 		}
+		return true
 	})
-	return observations
+	return failures
 }
 
-func visitErrors(err error, visit func(error)) {
-	if err == nil {
-		return
-	}
-	visit(err)
-	if joined, ok := err.(interface{ Unwrap() []error }); ok {
-		for _, child := range joined.Unwrap() {
-			visitErrors(child, visit)
+// ProcessInstanceMutationFailures returns the outer annotation for each tree;
+// an enriched inner annotation describes the same failure and is skipped.
+func ProcessInstanceMutationFailures(err error) []*ProcessInstanceMutationFailure {
+	var failures []*ProcessInstanceMutationFailure
+	visitErrors(err, func(candidate error) bool {
+		if failure, ok := candidate.(*ProcessInstanceMutationFailure); ok {
+			failures = append(failures, failure)
+			return false
 		}
-		return
-	}
-	if wrapped := errors.Unwrap(err); wrapped != nil {
-		visitErrors(wrapped, visit)
-	}
+		return true
+	})
+	return failures
 }
 
-// CloneProcessInstanceMutationFailure makes slice/map facts safe to enrich at
-// the next workflow boundary while retaining the same underlying cause.
-func CloneProcessInstanceMutationFailure(in *ProcessInstanceMutationFailure) *ProcessInstanceMutationFailure {
-	out := *in
-	out.Scope = slices.Clone(in.Scope)
-	out.LastStates = make(map[string]State, len(in.LastStates))
-	for key, state := range in.LastStates {
-		out.LastStates[key] = state
+// visitErrors visits a non-nil error before its descendants. Returning false from
+// descend prunes that branch without skipping siblings. Cause takes precedence
+// over Unwrap; joined children are visited in order, followed recursively by their
+// descendants. Callers must supply an acyclic error tree.
+func visitErrors(err error, descend func(error) bool) {
+	if err == nil || !descend(err) {
+		return
 	}
-	return &out
+	if cause, ok := err.(interface{ Cause() error }); ok {
+		// Facade normalization keeps the selected class in Unwrap and the
+		// inspectable cancellation error here, without copying its facts.
+		visitErrors(cause.Cause(), descend)
+	} else if joined, ok := err.(interface{ Unwrap() []error }); ok {
+		for _, child := range joined.Unwrap() {
+			visitErrors(child, descend)
+		}
+	} else {
+		visitErrors(errors.Unwrap(err), descend)
+	}
 }

@@ -14,6 +14,9 @@ import (
 	"github.com/grafvonb/c8volt/internal/services"
 )
 
+// VerboseLog emits an INFO workflow explanation only when verbose output is
+// enabled and workflow details are not suppressed. Missing context, call options
+// or logger disable the message; the logger still applies its severity filter.
 func VerboseLog(ctx context.Context, callCfg *services.CallCfg, log *slog.Logger, msg string, args ...any) {
 	if ctx == nil || callCfg == nil || !callCfg.Verbose || callCfg.SuppressWorkflowDetailLogs || log == nil {
 		return

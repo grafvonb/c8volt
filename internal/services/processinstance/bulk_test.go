@@ -428,15 +428,14 @@ func TestConciseProcessInstanceMutationFailureOmitsUnknownObservations(t *testin
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			got := conciseProcessInstanceMutationFailure(&d.ProcessInstanceMutationFailure{
-				Operation:             "delete",
-				FailureReason:         "timed out",
-				Phase:                 "cancellation confirmation",
-				RootKey:               "root",
-				Scope:                 []string{"root", "child"},
-				Timeout:               30 * time.Millisecond,
-				LastStates:            tt.lastStates,
-				DeleteConflictKey:     "child",
-				CancellationSubmitted: true,
+				Operation:         "delete",
+				FailureReason:     "timed out",
+				Phase:             "cancellation confirmation",
+				RootKey:           "root",
+				Scope:             []string{"root", "child"},
+				Timeout:           30 * time.Millisecond,
+				LastStates:        tt.lastStates,
+				DeleteConflictKey: "child",
 			})
 
 			require.Equal(t, tt.want, got)

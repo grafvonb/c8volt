@@ -233,6 +233,9 @@ func (s *Service) SearchForProcessInstances(ctx context.Context, filter d.Proces
 	return page.Items, nil
 }
 
+// SearchForProcessInstancesPage fetches a tenant-scoped Camunda 8.7 search page,
+// rejecting unsupported filters. Nested polling can suppress the search diagnostic
+// without changing the request or pagination behavior.
 func (s *Service) SearchForProcessInstancesPage(ctx context.Context, filter d.ProcessInstanceFilter, pageReq d.ProcessInstancePageRequest, opts ...services.CallOption) (d.ProcessInstancePage, error) {
 	cCfg := services.ApplyCallOptions(opts)
 	if !cCfg.SuppressNestedProcessInstanceLookupLogs {
@@ -332,6 +335,9 @@ func hasDateFilterBounds(filter d.ProcessInstanceFilter) bool {
 		filter.EndDateBefore != ""
 }
 
+// CancelProcessInstance applies the configured precheck, escalates active child
+// cancellation to its root, and submits cancellation. Unless NoWait is set, it
+// discovers and confirms the family, annotating failures after accepted submission.
 func (s *Service) CancelProcessInstance(ctx context.Context, key string, opts ...services.CallOption) (d.CancelResponse, []d.ProcessInstance, error) {
 	cCfg := services.ApplyCallOptions(opts)
 	var pis []d.ProcessInstance
@@ -435,6 +441,8 @@ func (s *Service) CancelProcessInstance(ctx context.Context, key string, opts ..
 	}, pis, nil
 }
 
+// GetProcessInstanceStateByKey returns the instance state and supporting instance
+// data. Nested polling can suppress lookup diagnostics while direct lookups retain them.
 func (s *Service) GetProcessInstanceStateByKey(ctx context.Context, key string, opts ...services.CallOption) (d.State, d.ProcessInstance, error) {
 	cCfg := services.ApplyCallOptions(opts)
 	if !cCfg.SuppressNestedProcessInstanceLookupLogs {
@@ -455,6 +463,9 @@ func (s *Service) GetProcessInstanceStateByKey(ctx context.Context, key string, 
 	return st, pi, nil
 }
 
+// DeleteProcessInstance enforces the child-tree force guard and deletes descendants
+// before their parent. A conflicting active instance is canceled and confirmed
+// before deletion is retried, retaining cancellation failure facts on error.
 func (s *Service) DeleteProcessInstance(ctx context.Context, key string, opts ...services.CallOption) (d.DeleteResponse, error) {
 	cCfg := services.ApplyCallOptions(opts)
 	s.log.Debug(fmt.Sprintf("deleting pi %s", key))

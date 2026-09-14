@@ -299,6 +299,9 @@ func logProcessInstanceLookupObservation(log *slog.Logger, key string, attempt i
 	log.Debug(fmt.Sprintf("pi state observation: key=%s attempt=%d lookup_error=%s elapsed=%s", key, attempt, detail, elapsed))
 }
 
+// waitStateFailure returns the established unsuccessful response while attaching
+// the last observed state, attempts, elapsed time and stop reason to the original
+// error. The observation is evidence, not a confirmed final response state.
 func waitStateFailure(key string, lastState d.State, attempts int, elapsed time.Duration, status, reason string, err error) (d.StateResponse, d.ProcessInstance, error) {
 	return d.StateResponse{Ok: false, State: d.StateUnknown, Status: status}, d.ProcessInstance{}, &d.ProcessInstanceWaitFailure{
 		Reason: reason, Key: key, LastState: lastState, Attempts: attempts, Elapsed: elapsed, Err: err,

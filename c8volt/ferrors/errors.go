@@ -6,10 +6,9 @@ package ferrors
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"os"
-	"slices"
-	"time"
 
 	"github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/exitcode"
@@ -17,33 +16,32 @@ import (
 	"github.com/grafvonb/c8volt/toolx"
 )
 
-// ProcessInstanceMutationFailure exposes operational facts for command-owned
-// human formatting while preserving the original service error and machine text.
-type ProcessInstanceMutationFailure struct {
-	Operation              string
-	Phase                  string
-	FailureReason          string
-	RootKey                string
-	Scope                  []string
-	Timeout                time.Duration
-	LastStates             map[string]string
-	DeleteConflictKey      string
-	CancellationSubmitted  bool
-	ResumedDeletionReached bool
-	err                    error
+// mutationError preserves inspection of cancellation failure facts without
+// changing the class chain used by ordinary normalization and exit handling.
+type mutationError struct{ classified, cause error }
+
+// Error returns the classified text used by existing machine error results.
+func (e *mutationError) Error() string { return e.classified.Error() }
+
+// Unwrap exposes the selected class chain, keeping ordinary classification priority intact.
+func (e *mutationError) Unwrap() error { return e.classified }
+
+// Cause exposes the original cancellation error tree for collecting failure annotations.
+func (e *mutationError) Cause() error { return e.cause }
+
+// As delegates typed cause inspection to the original cancellation error.
+func (e *mutationError) As(target any) bool { return errors.As(e.cause, target) }
+
+// Is preserves the selected facade class while allowing non-class causes to be inspected.
+// Inner facade classes are deliberately hidden so they cannot change exit classification.
+func (e *mutationError) Is(target error) bool {
+	// Inner facade classes must not override the selected outer class.
+	switch target {
+	case ErrInvalidInput, ErrLocalPrecondition, ErrUnsupported, ErrNotFound, ErrConflict, ErrTimeout, ErrUnavailable, ErrMalformedResponse, ErrInternal:
+		return errors.Is(e.classified, target)
+	}
+	return errors.Is(e.cause, target)
 }
-
-func (e *ProcessInstanceMutationFailure) Error() string { return e.err.Error() }
-func (e *ProcessInstanceMutationFailure) Unwrap() error { return e.err }
-
-type classifiedError struct {
-	class error
-	cause error
-}
-
-func (e *classifiedError) Error() string        { return e.class.Error() + ": " + e.cause.Error() }
-func (e *classifiedError) Unwrap() error        { return e.cause }
-func (e *classifiedError) Is(target error) bool { return target == e.class }
 
 // Class is the bounded machine-facing classification for CLI failures.
 type Class string
@@ -83,7 +81,6 @@ func NormalizeDomain(err error) error {
 		return nil
 	}
 
-	err = exposeProcessInstanceMutationFailure(err)
 	switch {
 	case isNormalized(err):
 		return err
@@ -172,57 +169,28 @@ func FromDomain(err error) error {
 
 // Classify returns the machine-facing failure class after full normalization.
 func Classify(err error) Class {
-	normalized := Normalize(err)
-	if normalized == nil {
+	switch normalized := Normalize(err); {
+	case normalized == nil:
 		return ""
-	}
-	switch {
-	case matchesClassification(normalized, ErrInvalidInput):
+	case errors.Is(normalized, ErrInvalidInput):
 		return ClassInvalidInput
-	case matchesClassification(normalized, ErrLocalPrecondition):
+	case errors.Is(normalized, ErrLocalPrecondition):
 		return ClassLocalPrecondition
-	case matchesClassification(normalized, ErrUnsupported):
+	case errors.Is(normalized, ErrUnsupported):
 		return ClassUnsupported
-	case matchesClassification(normalized, ErrNotFound):
+	case errors.Is(normalized, ErrNotFound):
 		return ClassNotFound
-	case matchesClassification(normalized, ErrConflict):
+	case errors.Is(normalized, ErrConflict):
 		return ClassConflict
-	case matchesClassification(normalized, ErrTimeout):
+	case errors.Is(normalized, ErrTimeout):
 		return ClassTimeout
-	case matchesClassification(normalized, ErrUnavailable):
+	case errors.Is(normalized, ErrUnavailable):
 		return ClassUnavailable
-	case matchesClassification(normalized, ErrMalformedResponse):
+	case errors.Is(normalized, ErrMalformedResponse):
 		return ClassMalformedResponse
 	default:
 		return ClassInternal
 	}
-}
-
-// matchesClassification preserves the historical priority across joined branches,
-// while an explicit class masks its own cause for classification only.
-// Unwrapping remains available to errors.Is/As callers.
-func matchesClassification(err, target error) bool {
-	if err == nil {
-		return false
-	}
-	if classified, ok := err.(*classifiedError); ok {
-		return classified.class == target
-	}
-	if err == target {
-		return true
-	}
-	if matcher, ok := err.(interface{ Is(error) bool }); ok && matcher.Is(target) {
-		return true
-	}
-	if joined, ok := err.(interface{ Unwrap() []error }); ok {
-		for _, child := range joined.Unwrap() {
-			if matchesClassification(child, target) {
-				return true
-			}
-		}
-		return false
-	}
-	return matchesClassification(errors.Unwrap(err), target)
 }
 
 // ExitCode maps a normalized or raw error to the process exit code used by CLI entry points.
@@ -298,88 +266,17 @@ func isNormalized(err error) bool {
 		errors.Is(err, ErrInternal)
 }
 
-// wrap attaches a failure-class sentinel while preserving the original error text exactly once.
+// wrap attaches a failure-class sentinel while preserving error text exactly once.
+// Only cancellation annotations retain inspectable original causes; ordinary
+// errors keep the established class-only wrapping contract.
 func wrap(classErr error, err error) error {
 	if err == nil || errors.Is(err, classErr) {
 		return err
 	}
-	return &classifiedError{class: classErr, cause: err}
-}
-
-func exposeProcessInstanceMutationFailure(err error) error {
-	var exposed *ProcessInstanceMutationFailure
-	if errors.As(err, &exposed) {
-		return err
-	}
+	classified := fmt.Errorf("%w: %v", classErr, err)
 	var failure *domain.ProcessInstanceMutationFailure
-	if !errors.As(err, &failure) {
-		return err
+	if errors.As(err, &failure) {
+		return &mutationError{classified: classified, cause: err}
 	}
-	return projectProcessInstanceMutationFailure(failure, err)
-}
-
-// ProcessInstanceMutationFailures returns every per-tree mutation failure in a
-// joined error while keeping the error tree and its ordering untouched.
-func ProcessInstanceMutationFailures(err error) []*ProcessInstanceMutationFailure {
-	var domainFailures []*domain.ProcessInstanceMutationFailure
-	var exposedFailures []*ProcessInstanceMutationFailure
-	seenDomain := make(map[*domain.ProcessInstanceMutationFailure]struct{})
-	seenExposed := make(map[*ProcessInstanceMutationFailure]struct{})
-	var collect func(error)
-	collect = func(candidate error) {
-		if candidate == nil {
-			return
-		}
-		switch failure := candidate.(type) {
-		case *domain.ProcessInstanceMutationFailure:
-			if _, ok := seenDomain[failure]; !ok {
-				seenDomain[failure] = struct{}{}
-				domainFailures = append(domainFailures, failure)
-			}
-			// An outer mutation failure enriches an inner failure for the same
-			// tree; treating both as roots would double-count submitted work.
-			return
-		case *ProcessInstanceMutationFailure:
-			if _, ok := seenExposed[failure]; !ok {
-				seenExposed[failure] = struct{}{}
-				exposedFailures = append(exposedFailures, failure)
-			}
-		}
-		if joined, ok := candidate.(interface{ Unwrap() []error }); ok {
-			for _, child := range joined.Unwrap() {
-				collect(child)
-			}
-			return
-		}
-		collect(errors.Unwrap(candidate))
-	}
-	collect(err)
-	if len(domainFailures) == 0 {
-		return exposedFailures
-	}
-	projected := make([]*ProcessInstanceMutationFailure, 0, len(domainFailures))
-	for _, failure := range domainFailures {
-		projected = append(projected, projectProcessInstanceMutationFailure(failure, failure))
-	}
-	return projected
-}
-
-func projectProcessInstanceMutationFailure(failure *domain.ProcessInstanceMutationFailure, err error) *ProcessInstanceMutationFailure {
-	states := make(map[string]string, len(failure.LastStates))
-	for key, state := range failure.LastStates {
-		states[key] = state.String()
-	}
-	return &ProcessInstanceMutationFailure{
-		Operation:              failure.Operation,
-		Phase:                  failure.Phase,
-		FailureReason:          failure.FailureReason,
-		RootKey:                failure.RootKey,
-		Scope:                  slices.Clone(failure.Scope),
-		Timeout:                failure.Timeout,
-		LastStates:             states,
-		DeleteConflictKey:      failure.DeleteConflictKey,
-		CancellationSubmitted:  failure.CancellationSubmitted,
-		ResumedDeletionReached: failure.ResumedDeletionReached,
-		err:                    err,
-	}
+	return classified
 }

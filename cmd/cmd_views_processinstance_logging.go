@@ -5,15 +5,18 @@ package cmd
 
 import (
 	"fmt"
+	"log/slog"
 	"sort"
 	"strings"
 
 	"github.com/grafvonb/c8volt/c8volt/ferrors"
+	"github.com/grafvonb/c8volt/internal/domain"
+	"github.com/spf13/cobra"
 )
 
 // formatProcessInstanceMutationCommandFailures keeps the final human error
 // compact; per-tree warnings carry the available scope and observation detail.
-func formatProcessInstanceMutationCommandFailures(failures []*ferrors.ProcessInstanceMutationFailure) string {
+func formatProcessInstanceMutationCommandFailures(failures []*domain.ProcessInstanceMutationFailure) string {
 	if len(failures) == 0 {
 		return "process-instance mutation failed"
 	}
@@ -49,12 +52,7 @@ func formatProcessInstanceMutationCommandFailures(failures []*ferrors.ProcessIns
 	default:
 		message += fmt.Sprintf(" for roots %s (%d trees)", strings.Join(roots, ","), len(roots))
 	}
-	submitted := 0
-	for _, failure := range failures {
-		if failure != nil && failure.CancellationSubmitted {
-			submitted++
-		}
-	}
+	submitted := len(failures)
 	if submitted == 1 {
 		message += "; cancellation submitted, outcome unconfirmed"
 	} else if submitted > 1 {
@@ -64,7 +62,7 @@ func formatProcessInstanceMutationCommandFailures(failures []*ferrors.ProcessIns
 }
 
 // processInstanceMutationFailureRoots returns unique known roots in stable key order.
-func processInstanceMutationFailureRoots(failures []*ferrors.ProcessInstanceMutationFailure) []string {
+func processInstanceMutationFailureRoots(failures []*domain.ProcessInstanceMutationFailure) []string {
 	seen := make(map[string]struct{}, len(failures))
 	for _, failure := range failures {
 		if failure == nil {
@@ -81,4 +79,16 @@ func processInstanceMutationFailureRoots(failures []*ferrors.ProcessInstanceMuta
 	}
 	sort.Strings(roots)
 	return roots
+}
+
+// handleProcessInstanceMutationError owns cancellation diagnostics; the shared
+// boundary still owns JSON envelopes, class selection and process exit.
+func handleProcessInstanceMutationError(cmd *cobra.Command, log *slog.Logger, noErrCodes bool, err error) {
+	failures := domain.ProcessInstanceMutationFailures(err)
+	if len(failures) == 0 {
+		handleCommandError(cmd, log, noErrCodes, err)
+		return
+	}
+	log.Debug("process-instance mutation failure", "error", ferrors.Normalize(err).Error())
+	handleCommandError(cmd, log, noErrCodes, err, formatProcessInstanceMutationCommandFailures(failures))
 }

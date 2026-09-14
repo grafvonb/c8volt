@@ -61,21 +61,21 @@ func renderCommandResult[T any](cmd *cobra.Command, payload T) error {
 	return renderSucceededResult(cmd, payload)
 }
 
-func handleCommandError(cmd *cobra.Command, log *slog.Logger, noErrCodes bool, err error) {
+// handleCommandError returns for nil errors; otherwise it renders the selected
+// error output and exits with the normalized class, honoring noErrCodes. The first
+// optional humanMessage replaces only human error text; JSON retains the original
+// normalized detail and class.
+func handleCommandError(cmd *cobra.Command, log *slog.Logger, noErrCodes bool, err error, humanMessage ...string) {
 	if err == nil {
 		return
 	}
 	normalized := ferrors.Normalize(err)
-	mutationFailures := ferrors.ProcessInstanceMutationFailures(normalized)
-	if len(mutationFailures) > 0 {
-		log.Debug("process-instance mutation failure", "error", normalized.Error())
-	}
 	if commandUsesSharedEnvelope(cmd, pickMode()) {
 		_ = renderResultEnvelope(cmd, resultEnvelopeForError(cmd, normalized))
 		os.Exit(ferrors.ResolveExitCode(noErrCodes, normalized))
 	}
-	if len(mutationFailures) > 0 {
-		log.Error(formatProcessInstanceMutationCommandFailures(mutationFailures))
+	if len(humanMessage) > 0 {
+		log.Error(humanMessage[0])
 		os.Exit(ferrors.ResolveExitCode(noErrCodes, normalized))
 	}
 	ferrors.HandleAndExit(log, noErrCodes, normalized)

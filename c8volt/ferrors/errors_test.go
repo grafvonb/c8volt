@@ -216,12 +216,12 @@ func TestWrapClassPreservesUnavailablePrefixAndDetailText(t *testing.T) {
 	require.Equal(t, exitcode.Unavailable, ExitCode(err))
 }
 
-// TestWrapClassPreservesOriginalCause verifies classification no longer
-// stringifies the lower-level chain needed by final DEBUG diagnostics.
+// Cancellation annotations retain their original cause for inspection.
+// Ordinary errors keep the pre-#316 class-only wrapping contract.
 func TestWrapClassPreservesOriginalCause(t *testing.T) {
 	t.Parallel()
 
-	cause := fmt.Errorf("confirmation: %w", context.DeadlineExceeded)
+	cause := &domain.ProcessInstanceMutationFailure{Err: fmt.Errorf("confirmation: %w", context.DeadlineExceeded)}
 	err := WrapClass(ErrTimeout, cause)
 
 	require.Equal(t, "operation timed out: confirmation: context deadline exceeded", err.Error())
@@ -230,6 +230,7 @@ func TestWrapClassPreservesOriginalCause(t *testing.T) {
 	require.Equal(t, ClassTimeout, Classify(err))
 }
 
+// TestWrapClassPreservesOuterClassificationPrecedence verifies ordinary wrapping exposes only the selected outer class.
 func TestWrapClassPreservesOuterClassificationPrecedence(t *testing.T) {
 	t.Parallel()
 
@@ -237,43 +238,39 @@ func TestWrapClassPreservesOuterClassificationPrecedence(t *testing.T) {
 	err := WrapClass(ErrTimeout, cause)
 
 	require.ErrorIs(t, err, ErrTimeout)
-	require.ErrorIs(t, err, ErrConflict)
+	require.NotErrorIs(t, err, ErrConflict)
 	require.Equal(t, ClassTimeout, Classify(err))
 	require.Equal(t, "operation timed out: conflict: active instance", err.Error())
 }
 
 // TestFromDomainExposesProcessInstanceMutationFacts verifies the facade error
-// projection retains operational facts and every wrapped cause.
+// annotation retains operational facts and every wrapped cause.
 func TestFromDomainExposesProcessInstanceMutationFacts(t *testing.T) {
 	t.Parallel()
 
 	domainFailure := &domain.ProcessInstanceMutationFailure{
-		Operation:             "delete",
-		Phase:                 "cancellation confirmation",
-		RootKey:               "root",
-		Scope:                 []string{"root", "child"},
-		Timeout:               30 * time.Millisecond,
-		LastStates:            map[string]domain.State{"root": domain.StateActive},
-		DeleteConflictKey:     "child",
-		CancellationSubmitted: true,
-		Err:                   fmt.Errorf("cancel wait: %w", context.DeadlineExceeded),
+		Operation:         "delete",
+		Phase:             "cancellation confirmation",
+		RootKey:           "root",
+		Scope:             []string{"root", "child"},
+		Timeout:           30 * time.Millisecond,
+		LastStates:        map[string]domain.State{"root": domain.StateActive},
+		DeleteConflictKey: "child",
+		Err:               fmt.Errorf("cancel wait: %w", context.DeadlineExceeded),
 	}
 
 	err := FromDomain(fmt.Errorf("delete cancel: %w", domainFailure))
-	var exposed *ProcessInstanceMutationFailure
+	var exposed *domain.ProcessInstanceMutationFailure
 	require.ErrorAs(t, err, &exposed)
 	require.Equal(t, "root", exposed.RootKey)
 	require.Equal(t, []string{"root", "child"}, exposed.Scope)
-	require.Equal(t, "ACTIVE", exposed.LastStates["root"])
+	require.Equal(t, domain.StateActive, exposed.LastStates["root"])
 	require.ErrorIs(t, err, context.DeadlineExceeded)
 	require.ErrorIs(t, err, ErrTimeout)
 	require.Equal(t, ClassTimeout, Classify(err))
 	require.Equal(t, "operation timed out: delete cancel: cancel wait: context deadline exceeded", err.Error())
 
-	exposed.Scope[0] = "changed"
-	exposed.LastStates["root"] = "CANCELED"
-	require.Equal(t, "root", domainFailure.Scope[0])
-	require.Equal(t, domain.StateActive, domainFailure.LastStates["root"])
+	require.Same(t, domainFailure, exposed)
 }
 
 // TestProcessInstanceMutationFailuresCollectsJoinedFailures verifies aggregate
@@ -284,11 +281,11 @@ func TestProcessInstanceMutationFailuresCollectsJoinedFailures(t *testing.T) {
 	firstCause := fmt.Errorf("first wait: %w", context.DeadlineExceeded)
 	secondCause := fmt.Errorf("second wait: %w", domain.ErrGatewayTimeout)
 	err := FromDomain(errors.Join(
-		&domain.ProcessInstanceMutationFailure{Operation: "delete", Phase: "cancellation confirmation", RootKey: "root-b", CancellationSubmitted: true, Err: firstCause},
-		&domain.ProcessInstanceMutationFailure{Operation: "delete", Phase: "cancellation confirmation", RootKey: "root-a", CancellationSubmitted: true, Err: secondCause},
+		&domain.ProcessInstanceMutationFailure{Operation: "delete", Phase: "cancellation confirmation", RootKey: "root-b", Err: firstCause},
+		&domain.ProcessInstanceMutationFailure{Operation: "delete", Phase: "cancellation confirmation", RootKey: "root-a", Err: secondCause},
 	))
 
-	failures := ProcessInstanceMutationFailures(err)
+	failures := domain.ProcessInstanceMutationFailures(err)
 	require.Len(t, failures, 2)
 	require.Equal(t, []string{"root-b", "root-a"}, []string{failures[0].RootKey, failures[1].RootKey})
 	require.ErrorIs(t, err, context.DeadlineExceeded)
@@ -318,10 +315,11 @@ func TestProcessInstanceMutationFailureRepeatedNormalizationPreservesOuterClass(
 		require.ErrorIs(t, err, cause)
 		require.ErrorIs(t, err, ErrTimeout)
 		require.Equal(t, ClassTimeout, Classify(err))
-		require.Len(t, ProcessInstanceMutationFailures(err), 1)
+		require.Len(t, domain.ProcessInstanceMutationFailures(err), 1)
 	}
 }
 
+// TestClassifyJoinedErrorsPreservesPriority checks that sibling order does not change class, outcome or exit code.
 func TestClassifyJoinedErrorsPreservesPriority(t *testing.T) {
 	t.Parallel()
 	timeout := WrapClass(ErrTimeout, errors.New("slow"))
@@ -339,5 +337,35 @@ func TestClassifyJoinedErrorsPreservesPriority(t *testing.T) {
 	// A sibling's explicit outer class hides only its own nested class.
 	outer := WrapClass(ErrTimeout, invalid)
 	require.Equal(t, ClassConflict, Classify(errors.Join(outer, ErrConflict)))
-	require.ErrorIs(t, outer, ErrInvalidInput)
+	require.NotErrorIs(t, outer, ErrInvalidInput)
+}
+
+// TestWrapClassOrdinaryErrorsKeepOriginalContract compares ordinary wrapping with its original text and class-only cause contract.
+func TestWrapClassOrdinaryErrorsKeepOriginalContract(t *testing.T) {
+	t.Parallel()
+	cause := fmt.Errorf("lookup: %w", domain.ErrForbidden)
+	got := WrapClass(ErrTimeout, cause)
+	want := fmt.Errorf("%w: %v", ErrTimeout, cause)
+	require.Equal(t, want.Error(), got.Error())
+	require.Equal(t, Classify(want), Classify(got))
+	require.Equal(t, ExitCode(want), ExitCode(got))
+	require.NotErrorIs(t, got, domain.ErrForbidden)
+	require.Same(t, ErrTimeout, errors.Unwrap(got))
+}
+
+// TestMutationClassPreservesPriorityWithoutLeakingInnerClasses checks that cancellation facts remain inspectable without exposing hidden facade classes.
+func TestMutationClassPreservesPriorityWithoutLeakingInnerClasses(t *testing.T) {
+	t.Parallel()
+	failure := &domain.ProcessInstanceMutationFailure{Err: fmt.Errorf("lookup: %w", domain.ErrForbidden)}
+	outer := WrapClass(ErrTimeout, FromDomain(failure))
+	require.Equal(t, ClassTimeout, Classify(outer))
+	require.ErrorIs(t, outer, domain.ErrForbidden)
+	require.NotErrorIs(t, outer, ErrLocalPrecondition)
+	var original *domain.ProcessInstanceMutationFailure
+	require.ErrorAs(t, outer, &original)
+	require.Same(t, failure, original)
+	for _, joined := range []error{errors.Join(outer, ErrInvalidInput), errors.Join(ErrInvalidInput, outer)} {
+		require.Equal(t, ClassInvalidInput, Classify(joined))
+		require.Len(t, domain.ProcessInstanceMutationFailures(joined), 1)
+	}
 }

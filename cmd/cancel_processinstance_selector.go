@@ -35,7 +35,7 @@ func runCancelProcessInstanceSearch(cmd *cobra.Command, cli process.API, cfg *co
 
 	results, err := cancelProcessInstanceSearchPages(cmd, cli, cfg, populatePISearchFilterOpts())
 	if err != nil {
-		handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("cancel process instances: %w", err))
+		handleProcessInstanceMutationError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("cancel process instances: %w", err))
 	}
 	if flagDryRun {
 		if len(results.DryRunPreviews) > 0 {

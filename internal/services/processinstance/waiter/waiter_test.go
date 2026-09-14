@@ -30,6 +30,7 @@ type stubPIWaiter struct {
 	observeOptions     func(opts []services.CallOption)
 }
 
+// GetProcessInstance observes the supplied options and delegates to the configured fixture; unexpected calls panic.
 func (s stubPIWaiter) GetProcessInstance(ctx context.Context, key string, opts ...services.CallOption) (d.ProcessInstance, error) {
 	if s.observeOptions != nil {
 		s.observeOptions(opts)
@@ -40,6 +41,7 @@ func (s stubPIWaiter) GetProcessInstance(ctx context.Context, key string, opts .
 	return s.getProcessInstance(ctx, key)
 }
 
+// GetProcessInstanceStateByKey observes the supplied options before executing the configured state lookup.
 func (s stubPIWaiter) GetProcessInstanceStateByKey(ctx context.Context, key string, opts ...services.CallOption) (d.State, d.ProcessInstance, error) {
 	if s.observeOptions != nil {
 		s.observeOptions(opts)
@@ -1026,6 +1028,9 @@ func observationLines(output string) []string {
 	return lines
 }
 
+// TestWaitForProcessInstanceStateMutationOwnsLookupFailure cancels inside a lookup
+// to verify that caller-owned failure reporting suppresses the duplicate ERROR
+// while retaining one polling observation and the original cancellation cause.
 func TestWaitForProcessInstanceStateMutationOwnsLookupFailure(t *testing.T) {
 	for _, suppressed := range []bool{false, true} {
 		t.Run(fmt.Sprint(suppressed), func(t *testing.T) {

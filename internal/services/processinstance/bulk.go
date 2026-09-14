@@ -247,6 +247,9 @@ func processInstanceCompletionDisposition(ok bool, noWait bool) d.OpsCompletionD
 	return d.OpsCompletionDispositionConfirmed
 }
 
+// processInstanceCompletionFailureDetail selects warning text for a completion:
+// no detail on success, concise facts for annotated cancellation failures, and
+// the original error or status for other failures.
 func processInstanceCompletionFailureDetail(ok bool, err error, status string) string {
 	if ok {
 		return ""
@@ -261,6 +264,9 @@ func processInstanceCompletionFailureDetail(ok bool, err error, status string) s
 	return status
 }
 
+// conciseProcessInstanceMutationFailure formats known failure facts in stable key
+// order without repeating the causal chain. The annotation implies accepted
+// cancellation; unreached deletion is mentioned only for delete workflows.
 func conciseProcessInstanceMutationFailure(failure *d.ProcessInstanceMutationFailure) string {
 	reason := failure.FailureReason
 	if reason == "" {
@@ -298,10 +304,8 @@ func conciseProcessInstanceMutationFailure(failure *d.ProcessInstanceMutationFai
 	if failure.DeleteConflictKey != "" {
 		parts = append(parts, "child "+failure.DeleteConflictKey+" deletion conflicted")
 	}
-	if failure.CancellationSubmitted {
-		parts = append(parts, "root cancellation submitted, outcome unconfirmed")
-	}
-	if failure.Operation == "delete" && !failure.ResumedDeletionReached {
+	parts = append(parts, "root cancellation submitted, outcome unconfirmed")
+	if failure.Operation == "delete" {
 		parts = append(parts, "resumed deletion not reached")
 	}
 	return strings.Join(parts, "; ")

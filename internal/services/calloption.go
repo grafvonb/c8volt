@@ -18,6 +18,10 @@ func WithIgnoreTenant() CallOption  { return func(c *CallCfg) { c.IgnoreTenant =
 func WithSuppressWorkflowDetailLogs() CallOption {
 	return func(c *CallCfg) { c.SuppressWorkflowDetailLogs = true }
 }
+
+// WithSuppressProcessInstanceDetailLogs suppresses per-instance lifecycle detail
+// when the caller owns progress and failure reporting; polling DEBUG observations
+// and explicitly owned workflow explanations remain separately controlled.
 func WithSuppressProcessInstanceDetailLogs() CallOption {
 	return func(c *CallCfg) { c.SuppressProcessInstanceDetailLogs = true }
 }

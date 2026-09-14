@@ -151,6 +151,8 @@ func (s *Service) CreateProcessInstance(ctx context.Context, data d.ProcessInsta
 	return pi, nil
 }
 
+// GetProcessInstance fetches and converts one instance, preserving transport and
+// payload errors. Nested polling can suppress its lookup diagnostic.
 func (s *Service) GetProcessInstance(ctx context.Context, key string, opts ...services.CallOption) (d.ProcessInstance, error) {
 	cCfg := services.ApplyCallOptions(opts)
 	if !cCfg.SuppressNestedProcessInstanceLookupLogs {
@@ -448,6 +450,9 @@ func endDateExistsFilter(filter d.ProcessInstanceFilter) *bool {
 	return new(true)
 }
 
+// CancelProcessInstance applies the configured precheck, escalates active child
+// cancellation to its root, and submits cancellation. Unless NoWait is set, it
+// discovers and confirms the family, annotating failures after accepted submission.
 func (s *Service) CancelProcessInstance(ctx context.Context, key string, opts ...services.CallOption) (d.CancelResponse, []d.ProcessInstance, error) {
 	cCfg := services.ApplyCallOptions(opts)
 	var pis []d.ProcessInstance
@@ -550,6 +555,8 @@ func (s *Service) CancelProcessInstance(ctx context.Context, key string, opts ..
 	}, pis, nil
 }
 
+// GetProcessInstanceStateByKey returns the instance state and supporting instance
+// data. Nested polling can suppress lookup diagnostics while direct lookups retain them.
 func (s *Service) GetProcessInstanceStateByKey(ctx context.Context, key string, opts ...services.CallOption) (d.State, d.ProcessInstance, error) {
 	cCfg := services.ApplyCallOptions(opts)
 	if !cCfg.SuppressNestedProcessInstanceLookupLogs {
@@ -566,6 +573,9 @@ func (s *Service) GetProcessInstanceStateByKey(ctx context.Context, key string, 
 	return st, pi, nil
 }
 
+// DeleteProcessInstance enforces the child-tree force guard and deletes descendants
+// before their parent. A conflicting active instance is canceled and confirmed
+// before deletion is retried, retaining cancellation failure facts on error.
 func (s *Service) DeleteProcessInstance(ctx context.Context, key string, opts ...services.CallOption) (d.DeleteResponse, error) {
 	cCfg := services.ApplyCallOptions(opts)
 	s.log.Debug(fmt.Sprintf("deleting pi %s", key))

@@ -89,7 +89,7 @@ Use --dry-run to preview the affected family without cancelling. Use --auto-conf
 
 		result, err := runCancelProcessInstanceDirect(cmd, cli, keys)
 		if err != nil {
-			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+			handleProcessInstanceMutationError(cmd, log, cfg.App.NoErrCodes, err)
 		}
 		if flagDryRun {
 			return
