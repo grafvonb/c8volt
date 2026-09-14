@@ -42,8 +42,53 @@ type stubProcessAPI struct {
 }
 
 type stubTaskAPI struct {
+	getUserTask                             func(context.Context, string, ...options.FacadeOption) (task.UserTask, error)
+	getUserTasks                            func(context.Context, types.Keys, int, ...options.FacadeOption) (task.UserTasks, error)
+	searchUserTasks                         func(context.Context, task.SearchRequest, ...options.FacadeOption) (task.UserTasks, error)
+	searchUserTasksPages                    func(context.Context, task.SearchRequest, task.SearchPageVisitor, ...options.FacadeOption) (task.SearchPagesResult, error)
+	searchUserTasksTotal                    func(context.Context, task.SearchRequest, ...options.FacadeOption) (int64, error)
 	resolveProcessInstanceKeyFromUserTask   func(context.Context, string, ...options.FacadeOption) (string, error)
 	resolveProcessInstanceKeysFromUserTasks func(context.Context, types.Keys, ...options.FacadeOption) (types.Keys, error)
+}
+
+// GetUserTask delegates one native task read to the configured command-test behavior.
+func (s stubTaskAPI) GetUserTask(ctx context.Context, taskKey string, opts ...options.FacadeOption) (task.UserTask, error) {
+	if s.getUserTask == nil {
+		panic("unexpected call")
+	}
+	return s.getUserTask(ctx, taskKey, opts...)
+}
+
+// GetUserTasks delegates bulk native task reads to the configured command-test behavior.
+func (s stubTaskAPI) GetUserTasks(ctx context.Context, taskKeys types.Keys, wantedWorkers int, opts ...options.FacadeOption) (task.UserTasks, error) {
+	if s.getUserTasks == nil {
+		panic("unexpected call")
+	}
+	return s.getUserTasks(ctx, taskKeys, wantedWorkers, opts...)
+}
+
+// SearchUserTasks delegates collected search to the configured command-test behavior.
+func (s stubTaskAPI) SearchUserTasks(ctx context.Context, request task.SearchRequest, opts ...options.FacadeOption) (task.UserTasks, error) {
+	if s.searchUserTasks == nil {
+		panic("unexpected call")
+	}
+	return s.searchUserTasks(ctx, request, opts...)
+}
+
+// SearchUserTasksPages delegates visitor search to the configured command-test behavior.
+func (s stubTaskAPI) SearchUserTasksPages(ctx context.Context, request task.SearchRequest, visitor task.SearchPageVisitor, opts ...options.FacadeOption) (task.SearchPagesResult, error) {
+	if s.searchUserTasksPages == nil {
+		panic("unexpected call")
+	}
+	return s.searchUserTasksPages(ctx, request, visitor, opts...)
+}
+
+// SearchUserTasksTotal delegates exact counting to the configured command-test behavior.
+func (s stubTaskAPI) SearchUserTasksTotal(ctx context.Context, request task.SearchRequest, opts ...options.FacadeOption) (int64, error) {
+	if s.searchUserTasksTotal == nil {
+		panic("unexpected call")
+	}
+	return s.searchUserTasksTotal(ctx, request, opts...)
 }
 
 func (s stubTaskAPI) ResolveProcessInstanceKeyFromUserTask(ctx context.Context, taskKey string, opts ...options.FacadeOption) (string, error) {

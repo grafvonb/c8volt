@@ -106,6 +106,47 @@ func (s *Service) GetUserTask(ctx context.Context, key string, opts ...services.
 	return s.searchFallbackTask(ctx, key)
 }
 
+// GetNativeUserTask reads one task directly without applying discovery-tenant filtering or legacy Tasklist fallback.
+func (s *Service) GetNativeUserTask(ctx context.Context, key string, opts ...services.CallOption) (d.UserTask, error) {
+	_ = services.ApplyCallOptions(opts)
+	s.log.Debug(fmt.Sprintf("getting native user task %s", key))
+	resp, err := s.cc.GetUserTaskWithResponse(ctx, camundav88.UserTaskKey(key))
+	if err != nil {
+		return d.UserTask{}, fmt.Errorf("get native user task: %w", err)
+	}
+	payload, err := common.RequirePayload(resp.HTTPResponse, resp.Body, resp.JSON200)
+	if err != nil {
+		if errors.Is(err, d.ErrNotFound) {
+			return d.UserTask{}, nativeUserTaskNotFound(key)
+		}
+		return d.UserTask{}, fmt.Errorf("get native user task: %w", err)
+	}
+	task := fromUserTaskResult(*payload)
+	if err := validateNativeUserTask(task, key); err != nil {
+		return d.UserTask{}, err
+	}
+	return task, nil
+}
+
+// validateNativeUserTask rejects successful payloads that cannot satisfy the stable task identity contract.
+func validateNativeUserTask(task d.UserTask, key string) error {
+	if task.Key != key {
+		return fmt.Errorf("%w: native user task %s returned mismatched task %s", d.ErrMalformedResponse, key, task.Key)
+	}
+	if task.State == "" {
+		return fmt.Errorf("%w: native user task %s has no state", d.ErrMalformedResponse, key)
+	}
+	if task.ProcessInstanceKey == "" {
+		return fmt.Errorf("%w: native user task %s has no process instance key", d.ErrMalformedResponse, key)
+	}
+	return nil
+}
+
+// nativeUserTaskNotFound keeps direct-read misses independent from configured discovery tenant semantics.
+func nativeUserTaskNotFound(key string) error {
+	return fmt.Errorf("%w: native user task %s", d.ErrNotFound, key)
+}
+
 func (s *Service) searchPrimaryUserTask(ctx context.Context, key string) (d.UserTask, error) {
 	s.log.Debug(fmt.Sprintf("searching user task %s", key))
 	body, err := searchUserTaskRequest(common.EffectiveTenant(s.cfg), key)

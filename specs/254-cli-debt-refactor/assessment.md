@@ -9,7 +9,7 @@ Created: 2026-07-24
 
 - Reviewed `specs/ralph-implementation-rules.md` against `specs/254-cli-debt-refactor/spec.md`; no conflict found.
 - Binding ownership boundary for this feature: `cmd` owns flags, validation, prompts, render-mode selection, stdout/stderr rendering, command metadata, and help; facades map public inputs and errors; internal services own backend paging, traversal, frozen discovery, mutation planning, polling, retries, and worker execution.
-- The feature's first deliverable is a checked-in assessment. Refactor tasks must not start until the full assessment structure and all 55 command-node classifications are complete.
+- The feature's first deliverable is a checked-in assessment. Refactor tasks must not start until the full assessment structure and all 56 command-node classifications are complete.
 
 ### Basic Paging Implementations
 
@@ -88,6 +88,7 @@ Required columns: path, aliases, family, mutation, contract support, automation 
 | `get process-instance` | process-instances, pi, pis | basic read | read_only | full | full | one-line | service-owned search paging, local compatibility filtering, direct incident-index strategy, limit trimming, and total fallback | no | shared HTTP activity possible | verbose page progress, prompts, warning-stop and found summaries | inherited JSON and keys-only flags must stay clean; automation must not prompt | cmd owns flags, validation, mode selection, prompts, rendering, and enrichment display boundaries; facade/service own traversal, query strategy, compatibility filtering, and totals | mixed service page visitor plus bounded enrichment/lookup paths | high |
 | `get resource` | r | basic read | read_only | full | unsupported | one-line | none | no | shared HTTP activity possible | none | one-line contract only | cmd owns flags and rendering; service owns resource lookup | serial remote lookup | low |
 | `get tenant` | tenants | basic read | read_only | full | full | one-line | service-owned tenant listing/filter | no | shared HTTP activity possible | none | inherited JSON output must remain one valid document where used | cmd owns flags and rendering; service owns tenant lookup/list | serial remote lookup | low |
+| `get user-task` | user-tasks, ut, uts | basic read | read_only | full | full | one-line | strict service-owned stable-deduplicated keyed bulk reads | no | shared HTTP activity possible | found summary | inherited JSON and keys-only output must remain clean; automation must not prompt | cmd owns input, validation, and rendering; facade/service own native keyed lookup and bounded bulk scheduling | bounded native keyed lookup | medium |
 | `ops` | operations | high-level ops grouping | state_changing | limited | unsupported | one-line | none | routes ops workflows | no direct remote work | none | child commands own machine contracts | cmd owns grouping and routing | serial dispatch | low |
 | `ops analyse` | analyze | ops grouping | read_only | limited | unsupported | one-line | none | no | no direct remote work | none | child command owns machine contract | cmd owns grouping and alias routing | serial dispatch | low |
 | `ops analyse slow-process-instances` | slow-pi, spi | high-level ops read | read_only | full | full | one-line, json, keys-only | service-owned process-instance discovery and detail enrichment | no | shared activity through facade and HTTP context | discovery summary and optional detail progress | JSON and keys-only must stay clean | cmd owns flags and rendering; ops/process services own discovery, filtering, enrichment | mixed service discovery with bounded explicit-key lookup and enrichment paths | high |
@@ -164,7 +165,7 @@ Accepted retained serial paths:
 
 | Criterion | Evidence |
 | --- | --- |
-| SC-001 | The command node assessment table contains all 55 command nodes and is guarded by `cmd/command_contract_test.go` plus docsgen assessment artifact validation. |
+| SC-001 | The command node assessment table contains all 56 command nodes and is guarded by `cmd/command_contract_test.go` plus docsgen assessment artifact validation. |
 | SC-002 | US1 and US4 command tests cover clean JSON, keys-only, quiet, automation, prompt, and no-indicator behavior for changed command families; validation commands are recorded in `quickstart.md`. |
 | SC-003 | The US3 performance characterization results table covers process-instance search/enrichment, cancel/delete planning, ops repair, ops purge, retention policy, slow-process analysis, and job/element/incident search. |
 | SC-004 | US3 fake-latency and worker-control validation showed bounded-worker improvements or retained serial page traversal with documented safety reasons; no changed high-volume workflow has an undocumented slowdown. |

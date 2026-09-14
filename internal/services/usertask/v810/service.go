@@ -98,6 +98,34 @@ func (s *Service) GetUserTask(ctx context.Context, key string, opts ...services.
 	return task, nil
 }
 
+// GetNativeUserTask reads one task directly and leaves authorization and tenant visibility to the backend.
+func (s *Service) GetNativeUserTask(ctx context.Context, key string, opts ...services.CallOption) (d.UserTask, error) {
+	_ = services.ApplyCallOptions(opts)
+	s.log.Debug(fmt.Sprintf("getting native user task %s", key))
+	resp, err := s.cc.GetUserTaskWithResponse(ctx, camundav810.UserTaskKey(key))
+	if err != nil {
+		return d.UserTask{}, fmt.Errorf("get native user task: %w", err)
+	}
+	payload, err := common.RequirePayload(resp.HTTPResponse, resp.Body, resp.JSON200)
+	if err != nil {
+		if errors.Is(err, d.ErrNotFound) {
+			return d.UserTask{}, fmt.Errorf("%w: native user task %s", d.ErrNotFound, key)
+		}
+		return d.UserTask{}, fmt.Errorf("get native user task: %w", err)
+	}
+	task := fromUserTaskResult(*payload)
+	if task.Key != key {
+		return d.UserTask{}, fmt.Errorf("%w: native user task %s returned mismatched task %s", d.ErrMalformedResponse, key, task.Key)
+	}
+	if task.State == "" {
+		return d.UserTask{}, fmt.Errorf("%w: native user task %s has no state", d.ErrMalformedResponse, key)
+	}
+	if task.ProcessInstanceKey == "" {
+		return d.UserTask{}, fmt.Errorf("%w: native user task %s has no process instance key", d.ErrMalformedResponse, key)
+	}
+	return task, nil
+}
+
 func userTaskNotFound(key string) error {
 	return fmt.Errorf("%w: user task %s was not found or is not visible to the configured tenant", d.ErrNotFound, key)
 }

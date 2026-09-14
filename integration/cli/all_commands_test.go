@@ -14,7 +14,7 @@ import (
 	"testing"
 )
 
-const expectedCommandInventoryCount = 55
+const expectedCommandInventoryCount = 56
 
 type capabilityDocument struct {
 	Command  string              `json:"command"`
@@ -102,6 +102,7 @@ var commandCoverageManifest = map[string]coverageEntry{
 	"get process-definition":             {Path: "get process-definition", Family: "get", ScenarioOwner: "integration/cli/get_test.go", Aliases: []string{"pd", "pds"}, Flags: []string{"bpmn-process-id", "key", "latest", "pd-version", "pd-version-tag", "stat", "xml"}, OutputModes: []string{"json"}, Destructive: false},
 	"get process-instance":               {Path: "get process-instance", Family: "get", ScenarioOwner: "integration/cli/get_test.go", Aliases: []string{"pi", "pis", "process-instances"}, Flags: []string{"batch-size", "bpmn-process-id", "children-only", "direct-incidents-only", "end-date-after", "end-date-before", "end-date-newer-days", "end-date-older-days", "fail-fast", "has-user-tasks", "incident-error-message", "incident-error-type", "incident-message-limit", "incident-state", "incidents-only", "key", "limit", "no-incidents-only", "no-worker-limit", "orphan-children-only", "parent-key", "pd-key", "pd-version", "pd-version-tag", "roots-only", "start-date-after", "start-date-before", "start-date-newer-days", "start-date-older-days", "state", "total", "var", "var-exists", "var-like", "var-value-limit", "with-elements", "with-incidents", "with-listeners", "with-vars", "workers"}, OutputModes: []string{"one-line"}, Destructive: false},
 	"get resource":                       {Path: "get resource", Family: "get", ScenarioOwner: "integration/cli/get_test.go", Aliases: []string{"r"}, Flags: []string{"id"}, OutputModes: []string{"one-line"}, Destructive: false},
+	"get user-task":                      {Path: "get user-task", Family: "get", ScenarioOwner: "integration/cli/get_usertask_test.go", Aliases: []string{"user-tasks", "ut", "uts"}, Flags: []string{"assignee", "batch-size", "bpmn-process-id", "candidate-group", "candidate-user", "element-id", "fail-fast", "key", "limit", "no-worker-limit", "pd-key", "pi-key", "state", "total", "workers"}, OutputModes: []string{"json", "keys-only", "one-line"}, Destructive: false},
 	"get tenant":                         {Path: "get tenant", Family: "get", ScenarioOwner: "integration/cli/get_test.go", Aliases: []string{"tenants"}, Flags: []string{"filter", "key"}, OutputModes: []string{"one-line"}, Destructive: false},
 	"ops":                                {Path: "ops", Family: "ops", ScenarioOwner: "integration/cli/all_commands_test.go", Aliases: []string{"operations"}, Flags: []string{}, OutputModes: []string{"one-line"}, Destructive: true},
 	"ops analyse":                        {Path: "ops analyse", Family: "ops analyse", ScenarioOwner: "integration/cli/ops_analyse_test.go", Aliases: []string{"analyze"}, Flags: []string{}, OutputModes: []string{"one-line"}, Destructive: false},

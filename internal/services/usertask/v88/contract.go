@@ -12,11 +12,16 @@ import (
 	"github.com/grafvonb/c8volt/internal/services"
 )
 
+// API defines the V88 user-task service contract.
 type API interface {
 	GetUserTask(ctx context.Context, key string, opts ...services.CallOption) (d.UserTask, error)
+	GetNativeUserTask(ctx context.Context, key string, opts ...services.CallOption) (d.UserTask, error)
+	SearchUserTasksPage(ctx context.Context, query d.UserTaskSearchQuery, page d.UserTaskPageRequest, opts ...services.CallOption) (d.UserTaskSearchPage, error)
 }
 
+// GenUserTaskClientCamunda captures the generated native read and legacy search operations used by this adapter.
 type GenUserTaskClientCamunda interface {
+	GetUserTaskWithResponse(ctx context.Context, userTaskKey camundav88.UserTaskKey, reqEditors ...camundav88.RequestEditorFn) (*camundav88.GetUserTaskResponse, error)
 	SearchUserTasksWithResponse(ctx context.Context, body camundav88.SearchUserTasksJSONRequestBody, reqEditors ...camundav88.RequestEditorFn) (*camundav88.SearchUserTasksResponse, error)
 }
 

@@ -1109,11 +1109,41 @@ func TestCapabilityDocumentForRoot_CoversCLIDebtAssessment(t *testing.T) {
 
 	doc := capabilityDocumentForRoot(root)
 	paths := commandCapabilityPaths(doc.Commands)
-	require.Len(t, paths, 55)
+	require.Len(t, paths, 56)
 
 	assessmentPaths := readCLIDebtAssessmentCommandPaths(t)
-	require.Len(t, assessmentPaths, 55)
+	require.Len(t, assessmentPaths, 56)
 	require.ElementsMatch(t, paths, assessmentPaths)
+}
+
+// TestCommandCapabilityForCommand_UserTaskReadContract verifies every alias
+// resolves to the canonical read-only command with full machine and automation support.
+func TestCommandCapabilityForCommand_UserTaskReadContract(t *testing.T) {
+	root := Root()
+	resetCommandTreeFlags(root)
+
+	capability := commandCapabilityForCommand(getUserTaskCmd)
+	require.Equal(t, "get user-task", capability.Path)
+	require.ElementsMatch(t, []string{"user-tasks", "ut", "uts"}, capability.Aliases)
+	require.Equal(t, CommandMutationReadOnly, capability.Mutation)
+	require.Equal(t, ContractSupportFull, capability.ContractSupport)
+	require.Equal(t, AutomationSupportFull, capability.AutomationSupport)
+	require.Contains(t, capability.AutomationNotes, "unattended reads")
+	require.Equal(t, []OutputModeContract{
+		{Name: RenderModeOneLine.String(), Supported: true},
+		{Name: RenderModeJSON.String(), Supported: true, MachinePreferred: true},
+		{Name: RenderModeKeysOnly.String(), Supported: true},
+	}, capability.OutputModes)
+	for _, excluded := range []string{"variables", "forms", "audit-log", "date", "sort", "watch"} {
+		require.False(t, hasFlagContractNamed(capability.Flags, excluded), "out-of-scope --%s flag was advertised", excluded)
+	}
+
+	for _, alias := range capability.Aliases {
+		resolved, remaining, err := root.Find([]string{"get", alias})
+		require.NoError(t, err)
+		require.Empty(t, remaining)
+		require.Same(t, getUserTaskCmd, resolved)
+	}
 }
 
 func TestCommandCapabilityForCommand_ProcessInstanceExpectIncidentFlag(t *testing.T) {

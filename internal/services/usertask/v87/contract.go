@@ -10,6 +10,9 @@ import (
 	"github.com/grafvonb/c8volt/internal/services"
 )
 
+// API defines the V87 compatibility surface for user-task reads.
 type API interface {
 	GetUserTask(ctx context.Context, key string, opts ...services.CallOption) (d.UserTask, error)
+	GetNativeUserTask(ctx context.Context, key string, opts ...services.CallOption) (d.UserTask, error)
+	SearchUserTasksPage(ctx context.Context, query d.UserTaskSearchQuery, page d.UserTaskPageRequest, opts ...services.CallOption) (d.UserTaskSearchPage, error)
 }

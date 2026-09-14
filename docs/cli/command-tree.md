@@ -43,6 +43,7 @@ This generated tree lists the root reference plus the 55 available c8volt comman
     - [`c8volt get process-instance`]({{ "/cli/c8volt_get_process-instance" | relative_url }}) - List or fetch process instances
     - [`c8volt get resource`]({{ "/cli/c8volt_get_resource" | relative_url }}) - Get a resource by key
     - [`c8volt get tenant`]({{ "/cli/c8volt_get_tenant" | relative_url }}) - List tenants
+    - [`c8volt get user-task`]({{ "/cli/c8volt_get_user-task" | relative_url }}) - Fetch or search native user tasks
   - [`c8volt ops`]({{ "/cli/c8volt_ops" | relative_url }}) - Run operational playbooks
     - [`c8volt ops analyse`]({{ "/cli/c8volt_ops_analyse" | relative_url }}) - Discover read-only operational analyses
       - [`c8volt ops analyse slow-process-instances`]({{ "/cli/c8volt_ops_analyse_slow-process-instances" | relative_url }}) - Analyse slow process-instance timings

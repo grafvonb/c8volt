@@ -14,8 +14,11 @@ import (
 	v89 "github.com/grafvonb/c8volt/internal/services/usertask/v89"
 )
 
+// API exposes legacy resolver lookup plus native direct and paged user-task reads.
 type API interface {
 	GetUserTask(ctx context.Context, key string, opts ...services.CallOption) (d.UserTask, error)
+	GetNativeUserTask(ctx context.Context, key string, opts ...services.CallOption) (d.UserTask, error)
+	SearchUserTasksPage(ctx context.Context, query d.UserTaskSearchQuery, page d.UserTaskPageRequest, opts ...services.CallOption) (d.UserTaskSearchPage, error)
 }
 
 var _ API = (*v87.Service)(nil)

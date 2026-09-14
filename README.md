@@ -46,7 +46,7 @@ Camunda operations rarely end when an API accepts a request. `c8volt` emphasizes
 It is built for operators, developers, support engineers, CI pipelines, and agents that need to:
 
 - run high-level ops playbooks for analysis, retention, purge, repair, and smoke testing
-- inspect process instances, runtime elements, listener jobs, variables, incidents, and trees
+- inspect process instances, user tasks, runtime elements, listener jobs, variables, incidents, and trees
 - deploy BPMN, run process instances, wait for outcomes, and clean up safely
 - use dry-run, JSON, keys-only, automation, tenant, and profile controls when workflows need them
 - discover the public command contract with `c8volt capabilities --json`
@@ -261,6 +261,29 @@ Use `get process-instance` for direct lookup, scoped search, variables, incident
 ```
 
 Generated reference: [get process-instance](docs/cli/c8volt_get_process-instance.md).
+
+### Inspect And Search User Tasks
+
+Find human work waiting in your processes, inspect assignments, and count matching tasks directly from your terminal.
+
+Use `get user-task` to fetch known native user tasks or search visible work on Camunda 8.8, 8.9, and 8.10; Camunda 8.7 is unsupported. Repeat or comma-separate `--key`, or pipe newline-separated keys with or without the optional `-`. Every requested key must resolve; keyed reads rely on backend authorization, do not filter by the selected discovery tenant, and preserve each task's actual tenant metadata.
+
+Without keys, combine process, element, state, assignment, candidate, and effective tenant filters. States are `ASSIGNING`, `CANCELED`, `CANCELING`, `COMPLETED`, `COMPLETING`, `CREATED`, `CREATING`, `FAILED`, and `UPDATING` (case-insensitive); `all` applies no state predicate. `--batch-size` controls page size, `--limit` bounds the returned collection, and `--total` prints the exact matching count. Interactive searches offer additional pages on stderr; use `--auto-confirm` or `--automation` for unattended paging. `--quiet` suppresses human results while preserving explicitly requested JSON, keys-only, and numeric total output. Keys conflict with search filters, `--limit`, and `--total`; total mode also conflicts with `--limit`, `--json`, and `--keys-only`.
+
+Human rows follow the other get commands: task key, tenant, element ID, and state, followed by optional `name:` and `assignee:` details, then BPMN process ID and related `pi:`, `ei:`, and `pd:` keys. Empty optional fields are omitted; collections end with `found: N`.
+
+This command is read-only and intentionally excludes task mutations, variables, forms, audit history, date filters, custom sorting, and watch mode.
+
+```bash
+./c8volt get user-task --key <user-task-key>
+./c8volt get user-task --key <user-task-key>,<another-user-task-key>
+./c8volt get user-task --state created --candidate-group accounting --limit 25
+./c8volt get user-task --assignee alice --total
+./c8volt --automation --keys-only get user-task --batch-size 100
+printf '%s\n' "<user-task-key>" "<another-user-task-key>" | ./c8volt --keys-only get user-task
+```
+
+Generated reference: [get user-task](docs/cli/c8volt_get_user-task.md).
 
 ### Inspect Runtime Elements
 

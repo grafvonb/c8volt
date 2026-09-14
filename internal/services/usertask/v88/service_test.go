@@ -22,7 +22,16 @@ import (
 )
 
 type mockUserTaskCamundaClient struct {
+	getUserTaskWithResponse     func(context.Context, camundav88.UserTaskKey, ...camundav88.RequestEditorFn) (*camundav88.GetUserTaskResponse, error)
 	searchUserTasksWithResponse func(context.Context, camundav88.SearchUserTasksJSONRequestBody, ...camundav88.RequestEditorFn) (*camundav88.SearchUserTasksResponse, error)
+}
+
+// GetUserTaskWithResponse delegates direct reads while making accidental legacy-test calls explicit.
+func (m *mockUserTaskCamundaClient) GetUserTaskWithResponse(ctx context.Context, key camundav88.UserTaskKey, reqEditors ...camundav88.RequestEditorFn) (*camundav88.GetUserTaskResponse, error) {
+	if m.getUserTaskWithResponse == nil {
+		return nil, fmt.Errorf("unexpected native user-task read for %s", key)
+	}
+	return m.getUserTaskWithResponse(ctx, key, reqEditors...)
 }
 
 func (m *mockUserTaskCamundaClient) SearchUserTasksWithResponse(ctx context.Context, body camundav88.SearchUserTasksJSONRequestBody, reqEditors ...camundav88.RequestEditorFn) (*camundav88.SearchUserTasksResponse, error) {
@@ -97,6 +106,67 @@ func TestService_GetUserTask_FallsBackToTasklistAfterPrimaryMiss(t *testing.T) {
 	require.Equal(t, "2251799815391233", task.Key)
 	require.Equal(t, "2251799813711967", task.ProcessInstanceKey)
 	require.Equal(t, "tenant-a", task.TenantId)
+}
+
+// TestService_GetUserTask_RejectsFallbackTenantMismatch pins tenant enforcement after the legacy Tasklist lookup.
+func TestService_GetUserTask_RejectsFallbackTenantMismatch(t *testing.T) {
+	svc := newTestServiceWithTasklist(t, &mockUserTaskCamundaClient{
+		searchUserTasksWithResponse: func(_ context.Context, body camundav88.SearchUserTasksJSONRequestBody, _ ...camundav88.RequestEditorFn) (*camundav88.SearchUserTasksResponse, error) {
+			requireUserTaskSearchBody(t, body, "2251799815391233", "tenant-a")
+			return &camundav88.SearchUserTasksResponse{
+				HTTPResponse: newHTTPResponse(http.MethodPost, "https://camunda.local/v2/user-tasks/search", http.StatusOK, "200 OK"),
+				JSON200:      &camundav88.UserTaskSearchQueryResult{},
+			}, nil
+		},
+	}, &mockUserTaskTasklistClient{
+		getTaskByIdWithResponse: func(_ context.Context, taskID string, _ ...tasklistv88.RequestEditorFn) (*tasklistv88.GetTaskByIdResponse, error) {
+			require.Equal(t, "2251799815391233", taskID)
+			return &tasklistv88.GetTaskByIdResponse{
+				HTTPResponse: newHTTPResponse(http.MethodGet, "https://tasklist.local/v1/tasks/2251799815391233", http.StatusOK, "200 OK"),
+				JSON200: &tasklistv88.TaskResponse{
+					Id:                 ptr("2251799815391233"),
+					ProcessInstanceKey: ptr("2251799813711967"),
+					TenantId:           ptr("tenant-b"),
+				},
+			}, nil
+		},
+	}, "tenant-a")
+
+	_, err := svc.GetUserTask(context.Background(), "2251799815391233")
+
+	require.Error(t, err)
+	require.ErrorIs(t, err, d.ErrNotFound)
+	require.Contains(t, err.Error(), "fallback user task 2251799815391233 was not found or is not visible to the configured tenant")
+}
+
+// TestService_GetUserTask_RejectsFallbackIdentityMismatch pins identity validation after the legacy Tasklist lookup.
+func TestService_GetUserTask_RejectsFallbackIdentityMismatch(t *testing.T) {
+	svc := newTestServiceWithTasklist(t, &mockUserTaskCamundaClient{
+		searchUserTasksWithResponse: func(_ context.Context, body camundav88.SearchUserTasksJSONRequestBody, _ ...camundav88.RequestEditorFn) (*camundav88.SearchUserTasksResponse, error) {
+			requireUserTaskSearchBody(t, body, "2251799815391233", "")
+			return &camundav88.SearchUserTasksResponse{
+				HTTPResponse: newHTTPResponse(http.MethodPost, "https://camunda.local/v2/user-tasks/search", http.StatusOK, "200 OK"),
+				JSON200:      &camundav88.UserTaskSearchQueryResult{},
+			}, nil
+		},
+	}, &mockUserTaskTasklistClient{
+		getTaskByIdWithResponse: func(_ context.Context, taskID string, _ ...tasklistv88.RequestEditorFn) (*tasklistv88.GetTaskByIdResponse, error) {
+			require.Equal(t, "2251799815391233", taskID)
+			return &tasklistv88.GetTaskByIdResponse{
+				HTTPResponse: newHTTPResponse(http.MethodGet, "https://tasklist.local/v1/tasks/2251799815391233", http.StatusOK, "200 OK"),
+				JSON200: &tasklistv88.TaskResponse{
+					Id:                 ptr("2251799815399999"),
+					ProcessInstanceKey: ptr("2251799813711967"),
+				},
+			}, nil
+		},
+	})
+
+	_, err := svc.GetUserTask(context.Background(), "2251799815391233")
+
+	require.Error(t, err)
+	require.ErrorIs(t, err, d.ErrMalformedResponse)
+	require.Contains(t, err.Error(), "fallback user task 2251799815391233 returned mismatched task 2251799815399999")
 }
 
 // TestService_GetUserTask_DoesNotCallFallbackAfterPrimarySuccess keeps deprecated Tasklist calls out of the modern v2 success path.

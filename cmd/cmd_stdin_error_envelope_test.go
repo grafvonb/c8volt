@@ -24,10 +24,11 @@ type stdinErrorEnvelopeCaller struct {
 	Args        []string
 }
 
-// stdinErrorEnvelopeCallers is the audited 12-command caller inventory.
+// stdinErrorEnvelopeCallers is the audited full-contract stdin caller inventory.
 var stdinErrorEnvelopeCallers = []stdinErrorEnvelopeCaller{
 	{Name: "get-incident", CommandPath: "get incident", Args: []string{"get", "incident", "-"}},
 	{Name: "get-process-instance", CommandPath: "get process-instance", Args: []string{"get", "process-instance", "-"}},
+	{Name: "get-user-task", CommandPath: "get user-task", Args: []string{"get", "user-task", "-"}},
 	{Name: "expect-process-instance", CommandPath: "expect process-instance", Args: []string{"expect", "process-instance", "--state", "active", "-"}},
 	{Name: "update-process-instance", CommandPath: "update process-instance", Args: []string{"update", "process-instance", "--vars", `{"updated":true}`, "--dry-run", "-"}},
 	{Name: "cancel-process-instance", CommandPath: "cancel process-instance", Args: []string{"cancel", "process-instance", "-"}},
