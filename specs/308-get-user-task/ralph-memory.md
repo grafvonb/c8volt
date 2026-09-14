@@ -28,6 +28,7 @@ Started: 2026-09-13T11:20:06Z
 - One-page search adapters always preserve raw item count separately, map exact versus capped totals, treat an advancing cursor on capped results as continuation, and leave capped no-cursor exhaustion indeterminate for the shared traversal. Search results validate key, state, and owning-process identity before crossing the adapter boundary.
 - Shared user-task traversal prefers unseen advancing cursors, otherwise advances offsets by raw count for nonempty pages or requested size for sparse empty pages. It validates request echoes, counts, totals, continuation, cursor cycles, and arithmetic before returning a typed exhausted, limit-reached, or visitor-stopped result.
 - Exact user-task counts return trustworthy exact metadata immediately. Capped counts reuse the same validated walker with int64 raw progress, no caller limit or visitor, and no accumulated task collection; an empty indeterminate probe ends traversal only after the known lower bound has been observed.
+- Public user-task search methods map requests, options, visitor steps/actions, result metadata, and errors mechanically around the service-owned collected, paged, and exact-total workflows; facade conversion preserves independently owned candidate slices and non-nil empty collections.
 
 ## Gotchas
 
@@ -56,4 +57,4 @@ Started: 2026-09-13T11:20:06Z
 - Preserve the 2026-09-13 baseline log as historical evidence, not validation of the rebased implementation. The next slice selects checks for its actual changes.
 
 ## Current Handoff
-- Continue US2 at T021: add public facade search/visitor/count contract tests before implementing thin facade delegation in T028.
+- Continue US2 at T022: add command search/count execution tests before implementing query validation, search dispatch, and views in T029–T032.

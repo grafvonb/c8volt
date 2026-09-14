@@ -49,6 +49,37 @@ func (c *client) GetUserTasks(ctx context.Context, taskKeys types.Keys, wantedWo
 	return fromDomainUserTasks(got), nil
 }
 
+// SearchUserTasks delegates collection and traversal to the internal service
+// and maps the selected tasks into the stable public collection contract.
+func (c *client) SearchUserTasks(ctx context.Context, request SearchRequest, opts ...options.FacadeOption) (UserTasks, error) {
+	got, err := utsvc.SearchUserTasks(ctx, c.utApi, toDomainSearchRequest(request), options.MapFacadeOptionsToCallOptions(opts)...)
+	if err != nil {
+		return UserTasks{}, ferr.FromDomain(err)
+	}
+	return fromDomainUserTasks(got), nil
+}
+
+// SearchUserTasksPages exposes public visitor facts while the internal service
+// retains ownership of page advancement, limits, and completion decisions.
+func (c *client) SearchUserTasksPages(ctx context.Context, request SearchRequest, visitor SearchPageVisitor, opts ...options.FacadeOption) (SearchPagesResult, error) {
+	got, err := utsvc.SearchUserTasksPages(ctx, c.utApi, toDomainSearchRequest(request), toDomainSearchPageVisitor(visitor), options.MapFacadeOptionsToCallOptions(opts)...)
+	out := fromDomainSearchPagesResult(got)
+	if err != nil {
+		return out, ferr.FromDomain(err)
+	}
+	return out, nil
+}
+
+// SearchUserTasksTotal returns the internal service's exact matching count
+// without exposing its capped-total fallback traversal.
+func (c *client) SearchUserTasksTotal(ctx context.Context, request SearchRequest, opts ...options.FacadeOption) (int64, error) {
+	total, err := utsvc.SearchUserTasksTotal(ctx, c.utApi, toDomainSearchRequest(request), options.MapFacadeOptionsToCallOptions(opts)...)
+	if err != nil {
+		return 0, ferr.FromDomain(err)
+	}
+	return total, nil
+}
+
 // ResolveProcessInstanceKeyFromUserTask keeps single task-key lookup aligned with the multi-key path used by the CLI.
 func (c *client) ResolveProcessInstanceKeyFromUserTask(ctx context.Context, taskKey string, opts ...options.FacadeOption) (string, error) {
 	keys, err := c.ResolveProcessInstanceKeysFromUserTasks(ctx, types.Keys{taskKey}, opts...)

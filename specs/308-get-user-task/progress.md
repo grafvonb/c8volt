@@ -290,3 +290,23 @@ Started: 2026-09-13 13:20:06
 - Capped lower bounds constrain when an empty indeterminate page can prove exhaustion; reaching the bound on a nonempty page still requires a terminal probe.
 - The focused search contract passed ten repeated runs, and the complete user-task service area passed race-enabled tests and package vet.
 ---
+
+---
+## Iteration 10 - 2026-09-14 14:58
+**Work Unit**: US2 Discover and Count Matching User Tasks (public facade search, visitor, and total delegation)
+**Tasks Completed**:
+- [x] T021: Add facade search, visitor, and count contract coverage.
+- [x] T028: Expose public collected, paged, and exact-total user-task search methods with thin service delegation.
+**Tasks Remaining in Work Unit**: 6 (T022 and T029–T033)
+**Commit**: This work-unit commit
+**Files Changed**:
+- c8volt/task/api.go
+- c8volt/task/client.go
+- c8volt/task/search_test.go
+- specs/308-get-user-task/tasks.md
+- specs/308-get-user-task/ralph-memory.md
+- specs/308-get-user-task/progress.md
+**Learnings**:
+- Existing foundational converters already covered public page metadata and independently owned candidate slices, so the facade implementation remained limited to request/option conversion, service delegation, result conversion, and error normalization.
+- The focused tests first failed because the public search methods were absent; after implementation, focused tests, all `c8volt/...` packages, race-enabled task facade tests, package vet, and `git diff --check` passed.
+---
