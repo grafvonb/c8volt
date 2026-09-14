@@ -18,7 +18,7 @@ Started: 2026-09-13T11:20:06Z
 ## Gotchas
 
 - `c8volt/task` currently has no tests; its baseline command succeeds with `[no test files]`. T004 and later facade tasks add the required coverage.
-- With `commit.issue: auto`, branch `codex/308-get-user-task` has no leading numeric prefix, so Ralph commit subjects omit an issue suffix.
+- The original baseline commit omitted the issue suffix because automatic inference did not recognize the `codex/` prefix. Future commits must explicitly reference #308 as required by repository rules; do not repeat that omission.
 - The full race suite spends several minutes in `cmd`; lack of interim output is normal when the process remains active.
 
 ## Reusable Commands
@@ -33,5 +33,12 @@ Started: 2026-09-13T11:20:06Z
 - Do not change the legacy resolver getter to satisfy native keyed-read semantics; add the distinct native API required by the plan.
 - Do not infer completion from an empty or short search page when continuation evidence remains.
 
+## Validation Policy
+
+- Follow constitution v2.0.0: documentation-only changes use diff, consistency, and local-link checks; implementation starts with the closest behavior checks. Run `make test` when shared contracts/concurrency or other concrete broad risks justify it, not before every commit. Reuse passing evidence until relevant changes invalidate it.
+- Preserve the 2026-09-13 baseline log as historical evidence, not validation of the rebased implementation. The next slice selects checks for its actual changes.
+
 ## Current Handoff
+- Rebased onto `develop` at `a9aef2c3` on 2026-09-14; T001–T002 remain complete and all feature implementation is outstanding.
+- Live issue #308 verification remains pending: GitHub returned HTTP 401 during this refresh. Retained requirements have not been claimed as newly verified against GitHub.
 - Continue with T003 in Phase 2: add and validate the version-neutral domain task, query, page, visitor, total, and completion models without changing legacy resolver behavior.

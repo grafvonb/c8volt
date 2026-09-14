@@ -120,5 +120,5 @@
 
 ## Active Speckit Plan
 <!-- SPECKIT START -->
-- Active Speckit implementation plan: `specs/316-delete-cancel-logging/plan.md`
+- Active Speckit implementation plan: `specs/308-get-user-task/plan.md`
 <!-- SPECKIT END -->

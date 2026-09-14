@@ -13,7 +13,7 @@ See [CLI contract](contracts/cli.md), [facade/service contract](contracts/facade
 
 ## Automated validation
 
-Run the closest suites as their implementation slices land:
+Select the closest suites or narrower test patterns for the behavior changed by each implementation slice. These commands describe acceptance coverage, not a checklist to rerun for every commit:
 
 ```sh
 go test ./internal/services/usertask/... -count=1
@@ -96,4 +96,4 @@ git diff --check
 make test
 ```
 
-Verify the generated reference contains `get user-task` and its aliases/examples and that existing command docs remain accurate. All required checks must pass before accepting or committing implementation. Record any environment limitation explicitly; a missing test run is not a pass.
+Verify the generated reference contains `get user-task` and its aliases/examples and that existing command docs remain accurate. The integrated feature warrants the full race suite because it changes shared service/facade contracts and concurrent bulk execution. Reuse a passing run that covers those changes; repeat only after relevant changes, failures, or new evidence. Focused slices use targeted checks when sufficient. Documentation-only planning changes use diff, consistency, and local-link checks, without runtime tests or CLI generation. Record the reason for broader validation and any environment limitation explicitly; a missing test run is not a pass.

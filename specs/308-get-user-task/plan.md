@@ -16,7 +16,7 @@ Add `c8volt get user-task` and aliases for strict keyed reads, backend-filtered 
 
 **Storage**: Camunda is authoritative. No local persistent storage or migration; in-memory collected results and page traversal state only.
 
-**Testing**: Go tests with testify, HTTP fixtures, facade stubs, command subprocesses, and `testx.NewCmdTerminalRunner` for real terminal stdin with separate result/control streams. Full gate: `make test` (`go test ./... -race -count=1`).
+**Testing**: Go tests with testify, HTTP fixtures, facade stubs, command subprocesses, and `testx.NewCmdTerminalRunner` for real terminal stdin with separate result/control streams. Start with checks covering the changed behavior. The integrated feature warrants `make test` (`go test ./... -race -count=1`) because it changes shared service/facade contracts and concurrent bulk execution; a commit alone does not trigger tests.
 
 **Target Platform**: Existing Linux, macOS, and Windows CLI builds for amd64/arm64. Real-terminal integration tests use the repository's Linux/macOS support and existing unsupported-platform handling.
 
@@ -36,7 +36,7 @@ Add `c8volt get user-task` and aliases for strict keyed reads, backend-filtered 
 | --- | --- | --- |
 | Operational proof over intent | Reads must return backend facts; no partial success claims | Strict missing-key errors; authoritative traversal completion; capped totals counted to completion; failures do not render successful JSON or a numeric count |
 | CLI-first, script-safe interfaces | Existing command grammar and output contract apply | Explicit CLI contract, JSON/keys purity, mode-aware empty views, terminal prompt tests, full contract/automation annotations |
-| Tests and validation mandatory | Closest-layer tests plus full suite required | Adapter, traversal, facade, command, real-terminal, legacy-regression matrix and full `make test` before implementation acceptance/commit |
+| Validation proportional to the change | Constitution v2.0.0: select checks by behavior and risk | Preserve adapter, traversal, facade, command, real-terminal, and legacy-regression coverage; use targeted checks for focused slices and `make test` for integrated shared-contract/concurrency changes; documentation-only work uses lightweight checks |
 | Documentation matches behavior | New command is user-visible | Help, parent command metadata, README, examples, and `make docs-content` included |
 | Small compatible repository-native changes | Existing area and dependencies can own work | Native getter is separate from legacy resolver; shared service functions; no generated edits or new framework; dedicated command paging file |
 
@@ -59,7 +59,7 @@ specs/308-get-user-task/
     └── facade-service.md
 ```
 
-`tasks.md` will be created by `$speckit-tasks`; this command stops after design.
+`tasks.md` is present. T001–T002 record the original setup baseline; T003 is the first incomplete task. The 2026-09-14 refresh follows the rebase onto `develop` at `a9aef2c3` and does not implement feature behavior.
 
 ### Source Code (repository root)
 
@@ -132,7 +132,7 @@ Start with domain and native contracts, implement v810 first and compare v89/v88
 
 ### Validation gates
 
-Run targeted service, facade, and command tests in [quickstart.md](quickstart.md), format touched Go files, update metadata/README, regenerate CLI documentation, and run `make test` before accepting or committing implementation. Verify command declaration ownership before completion. This planning run validates documentation consistency only; feature tests run after implementation exists.
+Follow [constitution v2.0.0](../../.specify/memory/constitution.md): select the smallest checks covering each changed behavior, using [quickstart.md](quickstart.md) as the acceptance matrix. Format touched Go files and regenerate CLI documentation when command metadata changes. Run `make test` for the integrated shared-contract and concurrent bulk changes, or when other concrete cross-package risk warrants it, and record the reason. Reuse passing evidence until relevant changes or failures invalidate it; do not rerun tests merely to commit or mark a task complete. Verify command declaration ownership before completion. Documentation-only refreshes require diff, consistency, and local-link checks, not runtime tests or CLI generation.
 
 ## Complexity Tracking
 

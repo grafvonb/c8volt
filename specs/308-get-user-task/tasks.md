@@ -12,7 +12,7 @@
 
 Each executable item uses `- [ ] Tnnn [P?] [USn?] description`. Paths are repository-relative. `[P]` identifies disjoint work within an explicitly described ready wave; prerequisites must finish first. A parallel marker is not permission to edit another task's files. Source files named below may be created if absent. No new dependencies, generated-client edits, task mutations, forms, variables, dates, custom sorting, or watch mode.
 
-Read `AGENTS.md` and, for Ralph execution, `specs/ralph-implementation-rules.md`. Keep existing legacy resolver semantics, comments on new/touched declarations and tests, and deterministic options/errors. Run `gofmt` on touched Go files and the closest relevant tests for every implementation unit; `make test` is required before implementation acceptance or commit. Record commands, outcomes, and any limits in `specs/308-get-user-task/progress.md`; a skipped check is not a pass.
+Read `AGENTS.md` and, for Ralph execution, `specs/ralph-implementation-rules.md`. Keep existing legacy resolver semantics, comments on new/touched declarations and tests, and deterministic options/errors. Run `gofmt` on touched Go files and the closest relevant tests for every implementation unit; select broader validation only for concrete cross-package, concurrency, dependency, or unresolved-regression risk under constitution v2.0.0. Documentation-only work uses diff, consistency, and local-link checks. Do not repeat passing checks solely to commit or mark tasks complete. Record commands, outcomes, and any limits in `specs/308-get-user-task/progress.md`; a skipped check is not a pass.
 
 ## Phase 1: Setup (Shared Infrastructure)
 
@@ -54,7 +54,7 @@ Read `AGENTS.md` and, for Ralph execution, `specs/ralph-implementation-rules.md`
 - [ ] T015 [US1] Register invalid-input, read-only, shared-contract, and automation annotations in `cmd/get_usertask.go`; verify canonical alias capability metadata in `cmd/command_contract_test.go` and malformed-key error envelopes via `cmd/cmd_stdin_error_envelope_test.go`, including zero native requests and no success payload after partial bulk failure.
 - [ ] T016 [US1] Complete the keyed command matrix in `cmd/get_usertask_test.go` across 8.8/8.9/8.10 and v87 rejection, including configured tenant versus authorized foreign-tenant keys, denial, explicit `--state all` conflict versus default all, quiet+JSON/keys, returned candidate metadata, and nonempty implicit stdin with search-filter conflicts; ensure all US1 tests pass.
 - [ ] T017 [US1] Update keyed-read help/examples in `cmd/get_usertask.go`, parent help in `cmd/get.go`, and README keyed usage in `README.md`; run `make docs-content` to generate `docs/cli/c8volt_get_user-task.md` and related references, describing only implemented behavior for an MVP demonstration.
-- [ ] T018 [US1] Run native/bulk/facade tests and targeted `go test ./cmd -run 'TestGetUserTask|Test.*UserTask|Test.*Stdin.*Envelope' -count=1`, retain existing resolver regressions, verify formatted code and `make test` before any MVP commit, and record evidence in `specs/308-get-user-task/progress.md`.
+- [ ] T018 [US1] Run native/bulk/facade tests and targeted `go test ./cmd -run 'TestGetUserTask|Test.*UserTask|Test.*Stdin.*Envelope' -count=1`, retain existing resolver regressions, verify formatted code and run `make test` for this MVP's shared interface and concurrent bulk changes, reusing still-valid passing evidence, and record evidence in `specs/308-get-user-task/progress.md`.
 
 **Checkpoint**: Known-key inspection is demonstrable without search. This is an internal MVP checkpoint, not completion of issue #308 or permission to ship unfinished search behavior.
 
@@ -117,7 +117,7 @@ Read `AGENTS.md` and, for Ralph execution, `specs/ralph-implementation-rules.md`
 - [ ] T043 Update final command/parent help and examples in `cmd/get_usertask.go` and `cmd/get.go`, plus `README.md`, for all input forms, filters, states, version support, tenant behavior, count conflicts, paging, quiet/automation, and unsupported features; run `make docs-content` and inspect generated `docs/cli/c8volt_get_user-task.md` and related docs without hand edits.
 - [ ] T044 Audit touched files against `AGENTS.md` and `specs/ralph-implementation-rules.md`: inventory declarations in `cmd/get_usertask.go` and `cmd/get_usertask_search.go`, verify three-or-more mode declarations remain split, keep final formatting in `cmd/cmd_views_usertask.go`, check thin facade/service ownership and comments, confirm generated clients unchanged, and record findings in `specs/308-get-user-task/progress.md`.
 - [ ] T045 Execute the deterministic validation matrix in `specs/308-get-user-task/quickstart.md` against fake backends, verify each example/contract maps to tested behavior, update guide commands only if implementation names require it, and record outcomes in `specs/308-get-user-task/progress.md`; live reads remain optional and no mutation setup is required.
-- [ ] T046 Run `gofmt` on all touched Go files, `git diff --check`, and `make test` through `Makefile`; review generated docs and confirm all tests pass before acceptance/commit, then record final validation and requirement coverage in `specs/308-get-user-task/progress.md` and update completed checkboxes in `specs/308-get-user-task/tasks.md` without marking skipped checks complete.
+- [ ] T046 Verify formatting of touched Go files and run `git diff --check`; review generated docs and reconcile acceptance coverage with recorded passing checks. Run `make test` through `Makefile` for the integrated shared service/facade contracts and concurrent bulk behavior if no still-valid full-suite result covers those changes; do not rerun solely for documentation, acceptance, or commit. Record the reason for broader validation, actual outcomes, and final requirement coverage in `specs/308-get-user-task/progress.md` and update completed checkboxes in `specs/308-get-user-task/tasks.md` without marking skipped checks complete.
 
 ## Dependencies & Execution Order
 
@@ -175,7 +175,7 @@ These are implementation scheduling examples, not instructions to start backgrou
 2. Deliver US1 as the MVP: native keyed lookup, every key input form, strict errors, correct tenant metadata, basic result modes, and its documentation/tests. Demonstrate with explicit keys; do not present incomplete search as shipped behavior.
 3. Deliver US2 with version-tested backend filters, service-owned traversal, sparse-page handling, exact counts, and command-level validation.
 4. Complete US3's cross-mode and real-terminal matrix, preserving the existing resolver and stream contracts.
-5. Finish docs and full race-enabled validation. Issue #308 is complete only when every phase is complete; use Conventional Commits with a clear scope and issue reference after required validation.
+5. Finish docs and confirm race-enabled validation covers the integrated shared contracts and concurrency, reusing still-valid results. Issue #308 is complete only when every phase is complete; use Conventional Commits with a clear scope and issue reference after required validation.
 
 ## Notes
 

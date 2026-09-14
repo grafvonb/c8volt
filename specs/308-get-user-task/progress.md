@@ -10,7 +10,7 @@ Started: 2026-09-13 13:20:06
 - Issue/branch: GitHub issue #308 on `codex/308-get-user-task`.
 - Layer ownership: `cmd` owns CLI input, metadata, prompting, and rendering; `c8volt/task` owns stable public models and thin delegation; `internal/domain` and `internal/services/usertask` own version-neutral state and workflows; version packages own generated-client differences.
 - Native-versus-legacy getter: retain legacy `GetUserTask` resolver behavior and add separate native direct-read methods with no Tasklist fallback or discovery-tenant post-filter.
-- Validation evidence: record exact commands and outcomes, run closest package tests first, run `gofmt` for touched Go files, and require the race-enabled `make test` gate before each implementation commit.
+- Validation evidence: record exact commands and outcomes, run closest package tests first, run `gofmt` for touched Go files, and select broader validation by concrete risk under constitution v2.0.0. The integrated feature warrants `make test` for shared contracts and concurrency; documentation-only refreshes use lightweight checks, and a commit alone never triggers a rerun.
 
 ---
 ## Iteration 1 - 2026-09-13 13:28
@@ -29,3 +29,15 @@ Started: 2026-09-13 13:20:06
 - `go test ./cmd -run 'TestGetProcessInstanceCommand_(HasUserTasks|RejectsHasUserTasks)|TestGetProcessInstanceHelp_DocumentsHasUserTasksLookup' -count=1` passed the existing resolver command selection.
 - `make test` (`go test ./... -race -count=1`) passed; the `cmd` package completed in 369.987s.
 ---
+
+## Planning Refresh - 2026-09-14
+
+**Scope**: Documentation only, after rebasing the two planning/baseline commits onto `develop` at `a9aef2c3`. No implementation task completed in this refresh.
+
+- Updated `AGENTS.md` to select this feature's plan. Aligned spec, plan, tasks, quickstart, and durable Ralph guidance with constitution v2.0.0: targeted checks first, full-suite validation justified by shared contracts/concurrency, and no runtime tests solely for documentation or commits.
+- Preserved the original iteration and baseline outcomes above as historical evidence; they do not claim validation of new feature behavior or the rebased runtime. T001–T002 remain complete; resume at T003.
+- Reviewed spec, plan, task coverage, data model, research, CLI/service contracts, and quickstart for agreement on native versus legacy reads, supported versions, tenant handling, keyed conflicts, sparse paging, exact counts, output modes, and terminal acceptance. No local blocking inconsistency identified after the guidance refresh; implementation still must prove these contracts.
+- Corrected the durable commit guidance to require an explicit #308 reference when automatic issue inference misses the branch prefix.
+- Validation: `git diff --check` passed. A read-only Python structural check passed for all 18 local Markdown links, all 46 unique sequential task IDs, unchanged completion flags (only T001/T002), 19 functional requirement IDs, 7 success-criterion IDs, and the active-plan target. Reviewed the documentation diff and remaining validation wording.
+- Live issue verification remains pending: `gh issue view 308 --json title,body,state,url` returned HTTP 401 (Bad credentials). The retained requirements were not newly verified against the live issue.
+- Runtime tests and CLI documentation generation were not run: this change affects planning guidance only, with no executable code or command metadata changes.
