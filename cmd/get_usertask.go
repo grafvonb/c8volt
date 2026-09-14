@@ -28,12 +28,14 @@ var (
 
 var getUserTaskCmd = &cobra.Command{
 	Use:   "user-task [-]",
-	Short: "List or fetch user tasks",
-	Long: `Get native Camunda user tasks by key or search criteria.
+	Short: "Fetch native user tasks by key",
+	Long: `Get native Camunda user tasks by key.
 
 Provide repeated or comma-separated --key values, or newline-separated keys on stdin. A trailing '-' explicitly selects stdin; nonterminal stdin is also detected without it. Each unique key is fetched once in first-input order.
 
-Keyed reads require Camunda 8.8 or newer and use backend authorization without discovery-tenant filtering. Search flags are reserved for paginated discovery and cannot be combined with keys.`,
+Every requested key must resolve or the command fails without a partial result. Keyed reads require Camunda 8.8 or newer and use backend authorization without discovery-tenant filtering, so --tenant does not hide an authorized task and the task's actual tenant is returned.
+
+Use --json for one collection envelope or --keys-only for one task key per line. Search, filtering, limits, and totals are not yet available; their reserved flags cannot be combined with keys.`,
 	Example: `  ./c8volt get user-task --key <user-task-key>
   ./c8volt get ut -k <user-task-key>,<another-user-task-key>
   printf '%s\n' "$USER_TASK_KEY" | ./c8volt get user-tasks
@@ -86,17 +88,17 @@ func init() {
 
 	flags := getUserTaskCmd.Flags()
 	flags.StringSliceVarP(&flagGetUserTaskKeys, "key", "k", nil, "user task key(s) to fetch; repeat, comma-separate, or combine with stdin")
-	flags.StringVar(&flagGetUserTaskPIKey, "pi-key", "", "process instance key to filter user tasks")
-	flags.StringVar(&flagGetUserTaskPDKey, "pd-key", "", "process definition key to filter user tasks")
-	flags.StringVarP(&flagGetUserTaskBpmnProcessID, "bpmn-process-id", "b", "", "BPMN process ID to filter user tasks")
-	flags.StringVar(&flagGetUserTaskElementID, "element-id", "", "BPMN task element ID to filter user tasks")
-	flags.StringVarP(&flagGetUserTaskState, "state", "s", "all", "user task state to filter; case-insensitive, or all")
-	flags.StringVar(&flagGetUserTaskAssignee, "assignee", "", "exact assignee to filter user tasks")
-	flags.StringVar(&flagGetUserTaskCandidateUser, "candidate-user", "", "exact candidate user membership to filter user tasks")
-	flags.StringVar(&flagGetUserTaskCandidateGroup, "candidate-group", "", "exact candidate group membership to filter user tasks")
-	flags.Int32VarP(&flagGetUserTaskBatchSize, "batch-size", "n", consts.MaxPISearchSize, fmt.Sprintf("number of user tasks to request per page (maximum %d)", consts.MaxPISearchSize))
-	flags.Int32VarP(&flagGetUserTaskLimit, "limit", "l", 0, "maximum number of matching user tasks to return across all pages")
-	flags.BoolVar(&flagGetUserTaskTotal, "total", false, "return only the exact numeric total of matching user tasks")
+	flags.StringVar(&flagGetUserTaskPIKey, "pi-key", "", "reserved for search by process instance key; not yet available")
+	flags.StringVar(&flagGetUserTaskPDKey, "pd-key", "", "reserved for search by process definition key; not yet available")
+	flags.StringVarP(&flagGetUserTaskBpmnProcessID, "bpmn-process-id", "b", "", "reserved for search by BPMN process ID; not yet available")
+	flags.StringVar(&flagGetUserTaskElementID, "element-id", "", "reserved for search by BPMN task element ID; not yet available")
+	flags.StringVarP(&flagGetUserTaskState, "state", "s", "all", "reserved for case-insensitive state search; not yet available")
+	flags.StringVar(&flagGetUserTaskAssignee, "assignee", "", "reserved for exact assignee search; not yet available")
+	flags.StringVar(&flagGetUserTaskCandidateUser, "candidate-user", "", "reserved for candidate-user search; not yet available")
+	flags.StringVar(&flagGetUserTaskCandidateGroup, "candidate-group", "", "reserved for candidate-group search; not yet available")
+	flags.Int32VarP(&flagGetUserTaskBatchSize, "batch-size", "n", consts.MaxPISearchSize, fmt.Sprintf("reserved search page size (maximum %d); not yet available", consts.MaxPISearchSize))
+	flags.Int32VarP(&flagGetUserTaskLimit, "limit", "l", 0, "reserved search result limit; not yet available")
+	flags.BoolVar(&flagGetUserTaskTotal, "total", false, "reserved exact search count; not yet available")
 	flags.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers when fetching multiple user tasks")
 	flags.BoolVar(&flagNoWorkerLimit, "no-worker-limit", false, "use all queued user task reads as workers when --workers is unset")
 	flags.BoolVar(&flagFailFast, "fail-fast", false, "stop scheduling new user task reads after the first error")

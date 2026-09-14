@@ -50,9 +50,11 @@ func TestGetHelp(t *testing.T) {
 	require.NotContains(t, output, "cluster-topology")
 	require.Contains(t, output, "tenant")
 	require.Contains(t, output, "resource")
+	require.Contains(t, output, "user-task")
 	require.Contains(t, output, "Check cluster health")
 	require.Contains(t, output, "./c8volt get cluster topology")
 	require.Contains(t, output, "./c8volt get process-instance --state active")
+	require.Contains(t, output, "./c8volt get user-task --key <user-task-key>")
 	require.Contains(t, output, "./c8volt get tenant")
 	require.NotContains(t, output, "canonical non-interactive contract")
 }

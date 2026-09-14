@@ -63,6 +63,7 @@ func TestNestedCompletion_SubcommandsStayUserFacing(t *testing.T) {
 
 	require.Contains(t, output, "process-definition\tList or fetch deployed process definitions\n")
 	require.Contains(t, output, "process-instance\tList or fetch process instances\n")
+	require.Contains(t, output, "user-task\tFetch native user tasks by key\n")
 	require.Contains(t, output, "tenant\tList tenants\n")
 	requireCompletionOutputStaysUserFacing(t, output)
 }

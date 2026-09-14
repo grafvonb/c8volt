@@ -205,3 +205,32 @@ Started: 2026-09-13 13:20:06
 - `go test ./internal/services/usertask/... -count=1`, `go test ./c8volt/task -count=1`, and `go test ./cmd -run 'TestGetUserTask|Test.*UserTask|Test.*Stdin.*Envelope' -count=1` passed the complete retained US1 service/facade/command slice.
 - `go test ./cmd -count=1` passed after synchronizing the live command inventory assessment; repository-wide `go test ./... -run '^$' -count=1` and `git diff --check` also passed.
 ---
+
+---
+## Iteration 7 - 2026-09-14 14:27
+**Work Unit**: US1 Inspect Known User Tasks (keyed MVP documentation and integrated validation)
+**Tasks Completed**:
+- [x] T017: Document keyed reads in command and parent help and README, then regenerate CLI references.
+- [x] T018: Validate native, bulk, facade, keyed command, legacy resolver, formatting, docs generation, and the full race-enabled repository suite.
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- README.md
+- cmd/completion_test.go
+- cmd/get.go
+- cmd/get_test.go
+- cmd/get_usertask.go
+- docs/cli/c8volt_get.md
+- docs/cli/c8volt_get_user-task.md
+- docs/cli/command-tree.md
+- docs/index.md
+- docsgen/main_test.go
+- specs/254-cli-debt-refactor/assessment.md
+- specs/308-get-user-task/tasks.md
+- specs/308-get-user-task/ralph-memory.md
+- specs/308-get-user-task/progress.md
+**Learnings**:
+- Keyed-only help now distinguishes implemented reads from reserved US2 search flags, and the parent keeps its compatibility-sensitive short summary while adding user-task discovery in long help and examples.
+- Initial `make test` identified stale parent-help and 55-command inventory assertions; focused command/docsgen regressions passed after synchronization, and the repeated `make test` passed with `cmd` completing in 390.615s.
+- Targeted `go test ./internal/services/usertask/... -count=1`, `go test ./c8volt/task -count=1`, `go test ./cmd -run 'TestGetUserTask|Test.*UserTask|Test.*Stdin.*Envelope' -count=1`, and the explicit legacy resolver command pattern all passed before the full gate.
+---

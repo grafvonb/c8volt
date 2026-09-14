@@ -13,7 +13,7 @@ Inspect cluster, process, job, element, incident, tenant, and resource state
 Inspect cluster, process, job, element, incident, tenant, and resource state without changing it.
 
 Check cluster health, list deployed process definitions, inspect process
-instances, inspect jobs, elements, and incidents by key or search, list visible tenants, or fetch a known resource.
+instances, fetch native user tasks by key, inspect jobs, elements, and incidents by key or search, list visible tenants, or fetch a known resource.
 
 ```
 c8volt get [flags]
@@ -25,6 +25,7 @@ c8volt get [flags]
   ./c8volt get cluster topology
   ./c8volt get process-definition --latest
   ./c8volt get process-instance --state active --limit 5
+  ./c8volt get user-task --key <user-task-key>
   ./c8volt get job --key <job-key>
   ./c8volt get element --pi-key <process-instance-key> --limit 10
   ./c8volt get incident --key <incident-key>
@@ -69,4 +70,5 @@ c8volt get [flags]
 * [c8volt get process-instance]({{ "/cli/c8volt_get_process-instance" | relative_url }})	 - List or fetch process instances
 * [c8volt get resource]({{ "/cli/c8volt_get_resource" | relative_url }})	 - Get a resource by key
 * [c8volt get tenant]({{ "/cli/c8volt_get_tenant" | relative_url }})	 - List tenants
+* [c8volt get user-task]({{ "/cli/c8volt_get_user-task" | relative_url }})	 - Fetch native user tasks by key
 

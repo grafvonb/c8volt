@@ -9,7 +9,7 @@ Created: 2026-07-24
 
 - Reviewed `specs/ralph-implementation-rules.md` against `specs/254-cli-debt-refactor/spec.md`; no conflict found.
 - Binding ownership boundary for this feature: `cmd` owns flags, validation, prompts, render-mode selection, stdout/stderr rendering, command metadata, and help; facades map public inputs and errors; internal services own backend paging, traversal, frozen discovery, mutation planning, polling, retries, and worker execution.
-- The feature's first deliverable is a checked-in assessment. Refactor tasks must not start until the full assessment structure and all 55 command-node classifications are complete.
+- The feature's first deliverable is a checked-in assessment. Refactor tasks must not start until the full assessment structure and all 56 command-node classifications are complete.
 
 ### Basic Paging Implementations
 
@@ -165,7 +165,7 @@ Accepted retained serial paths:
 
 | Criterion | Evidence |
 | --- | --- |
-| SC-001 | The command node assessment table contains all 55 command nodes and is guarded by `cmd/command_contract_test.go` plus docsgen assessment artifact validation. |
+| SC-001 | The command node assessment table contains all 56 command nodes and is guarded by `cmd/command_contract_test.go` plus docsgen assessment artifact validation. |
 | SC-002 | US1 and US4 command tests cover clean JSON, keys-only, quiet, automation, prompt, and no-indicator behavior for changed command families; validation commands are recorded in `quickstart.md`. |
 | SC-003 | The US3 performance characterization results table covers process-instance search/enrichment, cancel/delete planning, ops repair, ops purge, retention policy, slow-process analysis, and job/element/incident search. |
 | SC-004 | US3 fake-latency and worker-control validation showed bounded-worker improvements or retained serial page traversal with documented safety reasons; no changed high-volume workflow has an undocumented slowdown. |

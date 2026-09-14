@@ -6,7 +6,7 @@ nav_exclude: true
 has_toc: true
 ---
 
-> Generated from build `c8volt v4.3.0-beta.1-288-g391dfd7c-dirty`, commit `391dfd7c`, built `2026-09-13T15:09:37Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.0-alpha4 (prerelease)
+> Generated from build `c8volt v4.3.0-beta.1-303-g8e7dafcc-dirty`, commit `8e7dafcc`, built `2026-09-14T12:20:10Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.0-alpha4 (prerelease)
 
 <img src="./logo/c8volt_logo_transparent_w_shadow_400x244.png" alt="c8volt logo" />
 
@@ -267,6 +267,18 @@ Use `get process-instance` for direct lookup, scoped search, variables, incident
 ```
 
 Generated reference: [get process-instance](./cli/c8volt_get_process-instance).
+
+### Inspect User Tasks By Key
+
+Use `get user-task` to fetch one or more known native user tasks on Camunda 8.8 or newer. Repeat or comma-separate `--key`, or pipe newline-separated keys with or without the optional `-`. Every requested key must resolve; keyed reads rely on backend authorization, do not filter by the selected discovery tenant, and preserve each task's actual tenant metadata. Search and count flags are reserved for a later implementation stage.
+
+```bash
+./c8volt get user-task --key <user-task-key>
+./c8volt get user-task --key <user-task-key>,<another-user-task-key>
+printf '%s\n' "<user-task-key>" "<another-user-task-key>" | ./c8volt --keys-only get user-task
+```
+
+Generated reference: [get user-task](./cli/c8volt_get_user-task).
 
 ### Inspect Runtime Elements
 

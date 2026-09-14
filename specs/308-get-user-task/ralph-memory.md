@@ -23,6 +23,7 @@ Started: 2026-09-13T11:20:06Z
 - Public `task.GetUserTask` delegates only to `GetNativeUserTask`; public `task.GetUserTasks` delegates to the service-owned bulk workflow. Both map facade options at the boundary, convert domain failures through `ferrors.FromDomain`, and copy domain results into stable public models without changing constructor or root embedding.
 - The keyed `get user-task` command owns only input, validation, dispatch, metadata, and rendering. Its focused stdin reader consumes explicit dash input or nonterminal implicit input, preserves the shared 10 MiB scanner ceiling, allows an empty implicit stream to reach future search, and never consumes terminal stdin to infer keys.
 - User-task command output uses one collection payload for every keyed cardinality, JSON-before-keys-before-human precedence, quiet suppression only for human output, aligned contract-order rows with element-ID name fallback, and writer errors propagated from human/key lines.
+- Keyed-only help must label search/filter/limit/total flags as reserved until US2 implements them. Keep the established `get` short summary stable because command help, shell-completion, and docsgen tests treat it as a compatibility string; add new resource discoverability in the parent long text, examples, and generated command tree.
 
 ## Gotchas
 
@@ -31,6 +32,7 @@ Started: 2026-09-13T11:20:06Z
 - The full race suite spends several minutes in `cmd`; lack of interim output is normal when the process remains active.
 - `pool.ExecuteSlice` may return no pool error when a context is already canceled before non-fail-fast work is scheduled, so strict workflows must check `ctx.Err()` before treating the returned slots as success.
 - Adding a canonical command requires updating `specs/254-cli-debt-refactor/assessment.md`; `TestCapabilityDocumentForRoot_CoversCLIDebtAssessment` compares the live capability inventory against that historical assessment table.
+- The canonical `get user-task` node raises the generated command-tree and CLI-debt assessment inventory from 55 to 56; keep the assessment prose and `docsgen/main_test.go` count guards synchronized with its row.
 
 ## Reusable Commands
 
@@ -49,4 +51,4 @@ Started: 2026-09-13T11:20:06Z
 - Preserve the 2026-09-13 baseline log as historical evidence, not validation of the rebased implementation. The next slice selects checks for its actual changes.
 
 ## Current Handoff
-- Continue US1 at T017: update keyed help/README and regenerate CLI docs, then complete the T018 MVP validation gate without starting US2.
+- Start US2 at T019: add the versioned native search request/response contract tests without beginning another user story in the same iteration.
