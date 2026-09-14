@@ -1128,8 +1128,15 @@ func TestCommandCapabilityForCommand_UserTaskReadContract(t *testing.T) {
 	require.Equal(t, CommandMutationReadOnly, capability.Mutation)
 	require.Equal(t, ContractSupportFull, capability.ContractSupport)
 	require.Equal(t, AutomationSupportFull, capability.AutomationSupport)
-	require.Contains(t, capability.OutputModes, OutputModeContract{Name: RenderModeJSON.String(), Supported: true, MachinePreferred: true})
-	require.Contains(t, capability.OutputModes, OutputModeContract{Name: RenderModeKeysOnly.String(), Supported: true})
+	require.Contains(t, capability.AutomationNotes, "unattended reads")
+	require.Equal(t, []OutputModeContract{
+		{Name: RenderModeOneLine.String(), Supported: true},
+		{Name: RenderModeJSON.String(), Supported: true, MachinePreferred: true},
+		{Name: RenderModeKeysOnly.String(), Supported: true},
+	}, capability.OutputModes)
+	for _, excluded := range []string{"variables", "forms", "audit-log", "date", "sort", "watch"} {
+		require.False(t, hasFlagContractNamed(capability.Flags, excluded), "out-of-scope --%s flag was advertised", excluded)
+	}
 
 	for _, alias := range capability.Aliases {
 		resolved, remaining, err := root.Find([]string{"get", alias})

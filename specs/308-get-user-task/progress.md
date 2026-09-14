@@ -379,3 +379,26 @@ Started: 2026-09-13 13:20:06
 - PTY execution exposed that JSON collection still reached the terminal prompt path; user-task paging now explicitly auto-continues JSON alongside automation and auto-confirm.
 - `go test ./cmd -run 'Test.*UserTask.*Terminal|TestGetProcessInstanceKeysOnlyPagingTerminal' -count=1`, the retained combined-output suite, formatting, declaration ownership review, and `git diff --check` passed.
 ---
+---
+## Iteration 14 - 2026-09-14 15:27
+**Work Unit**: US3 Use Results Interactively and in Automation (failure, compatibility, capability, and integrated acceptance)
+**Tasks Completed**:
+- [x] T036: Add failure-after-streaming, collected failure, cancellation, and legacy resolver command coverage.
+- [x] T037: Validate terminal paging and truthful late-error propagation.
+- [x] T038: Validate final mode selection, stream purity, summaries, JSON, quiet, and total behavior.
+- [x] T039: Validate native error integration and legacy tenant/Tasklist resolver compatibility.
+- [x] T040: Complete canonical capability, alias, automation, output-mode, and bounded-scope assertions.
+- [x] T041: Execute the complete US3 terminal, output, error, and capability command selection.
+- [x] T042: Re-run service/facade and legacy resolver regressions plus race-enabled affected command tests.
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/command_contract_test.go
+- cmd/get_usertask_error_test.go
+- specs/308-get-user-task/tasks.md
+- specs/308-get-user-task/ralph-memory.md
+- specs/308-get-user-task/progress.md
+**Learnings**:
+- Late streamed failures preserve already-written rows but never append a success summary; collected JSON produces one failed envelope with no payload, and failed exact counting produces no numeric stdout.
+- The verbose command selection confirmed every intended PTY case executed; service/facade, tenant/Tasklist resolver, and race-enabled affected command checks passed with safe request collection and no new parallel global-state tests.
+---
