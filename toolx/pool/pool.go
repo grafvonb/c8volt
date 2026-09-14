@@ -6,9 +6,12 @@ package pool
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/grafvonb/c8volt/toolx/logging"
 )
 
 const (
@@ -30,6 +33,8 @@ func ExecuteNTimes[T any](ctx context.Context, n int, wantedWorkers int, failFas
 	if wantedWorkers > n {
 		wantedWorkers = n
 	}
+	log, _ := logging.FromContext(ctx)
+	log.DebugContext(ctx, fmt.Sprintf("worker pool: jobs=%d workers=%d", n, wantedWorkers))
 
 	out := make([]T, n)
 	errs := make([]error, n)
