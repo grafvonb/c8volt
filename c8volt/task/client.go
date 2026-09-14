@@ -31,6 +31,24 @@ func New(pdApi pdsvc.API, piApi pisvc.API, utApi utsvc.API, log *slog.Logger) AP
 	}
 }
 
+// GetUserTask reads one native user task and maps it to the stable public model.
+func (c *client) GetUserTask(ctx context.Context, taskKey string, opts ...options.FacadeOption) (UserTask, error) {
+	got, err := c.utApi.GetNativeUserTask(ctx, taskKey, options.MapFacadeOptionsToCallOptions(opts)...)
+	if err != nil {
+		return UserTask{}, ferr.FromDomain(err)
+	}
+	return fromDomainUserTask(got), nil
+}
+
+// GetUserTasks reads stable-unique native task keys and returns them in first-input order.
+func (c *client) GetUserTasks(ctx context.Context, taskKeys types.Keys, wantedWorkers int, opts ...options.FacadeOption) (UserTasks, error) {
+	got, err := utsvc.GetUserTasks(ctx, c.utApi, taskKeys, wantedWorkers, options.MapFacadeOptionsToCallOptions(opts)...)
+	if err != nil {
+		return UserTasks{}, ferr.FromDomain(err)
+	}
+	return fromDomainUserTasks(got), nil
+}
+
 // ResolveProcessInstanceKeyFromUserTask keeps single task-key lookup aligned with the multi-key path used by the CLI.
 func (c *client) ResolveProcessInstanceKeyFromUserTask(ctx context.Context, taskKey string, opts ...options.FacadeOption) (string, error) {
 	keys, err := c.ResolveProcessInstanceKeysFromUserTasks(ctx, types.Keys{taskKey}, opts...)

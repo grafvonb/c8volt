@@ -154,3 +154,25 @@ Started: 2026-09-13 13:20:06
 - The shared pool preserves indexed result order and joins worker failures; the strict workflow must discard those result slots on any error and separately detect a context canceled before work was scheduled.
 - `go test ./internal/services/usertask -run '^TestGetUserTasks' -count=10`, `go test -race ./internal/services/usertask/... -count=1`, and `git diff --check` passed.
 ---
+
+---
+## Iteration 5 - 2026-09-14 13:53
+**Work Unit**: US1 Inspect Known User Tasks (public facade native and bulk reads)
+**Tasks Completed**:
+- [x] T008: Add facade getter and bulk delegation coverage for selection, options, mapping, collection shape, slice ownership, and errors.
+- [x] T012: Add thin public native getter and strict bulk-read delegation with facade option and error conversion.
+**Tasks Remaining in Work Unit**: 7 (T009 and T013–T018)
+**Commit**: This work-unit commit
+**Files Changed**:
+- c8volt/task/api.go
+- c8volt/task/client.go
+- c8volt/task/client_test.go
+- cmd/process_api_stub_test.go
+- specs/308-get-user-task/tasks.md
+- specs/308-get-user-task/ralph-memory.md
+- specs/308-get-user-task/progress.md
+**Learnings**:
+- The public single getter selects only the native adapter method, while the public bulk getter preserves stable service-owned deduplication and ordering; neither changes legacy resolver delegation.
+- `go test ./c8volt/task -count=1`, `go test -race ./c8volt/task -count=1`, repository-wide `go test ./... -run '^$' -count=1`, the targeted existing resolver command tests, and `git diff --check` passed.
+- The focused facade slice did not require repeating `make test`; race-enabled facade behavior plus repository-wide interface compilation covered its concrete risk, while the integrated MVP gate remains T018.
+---

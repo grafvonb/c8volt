@@ -42,8 +42,26 @@ type stubProcessAPI struct {
 }
 
 type stubTaskAPI struct {
+	getUserTask                             func(context.Context, string, ...options.FacadeOption) (task.UserTask, error)
+	getUserTasks                            func(context.Context, types.Keys, int, ...options.FacadeOption) (task.UserTasks, error)
 	resolveProcessInstanceKeyFromUserTask   func(context.Context, string, ...options.FacadeOption) (string, error)
 	resolveProcessInstanceKeysFromUserTasks func(context.Context, types.Keys, ...options.FacadeOption) (types.Keys, error)
+}
+
+// GetUserTask delegates one native task read to the configured command-test behavior.
+func (s stubTaskAPI) GetUserTask(ctx context.Context, taskKey string, opts ...options.FacadeOption) (task.UserTask, error) {
+	if s.getUserTask == nil {
+		panic("unexpected call")
+	}
+	return s.getUserTask(ctx, taskKey, opts...)
+}
+
+// GetUserTasks delegates bulk native task reads to the configured command-test behavior.
+func (s stubTaskAPI) GetUserTasks(ctx context.Context, taskKeys types.Keys, wantedWorkers int, opts ...options.FacadeOption) (task.UserTasks, error) {
+	if s.getUserTasks == nil {
+		panic("unexpected call")
+	}
+	return s.getUserTasks(ctx, taskKeys, wantedWorkers, opts...)
 }
 
 func (s stubTaskAPI) ResolveProcessInstanceKeyFromUserTask(ctx context.Context, taskKey string, opts ...options.FacadeOption) (string, error) {

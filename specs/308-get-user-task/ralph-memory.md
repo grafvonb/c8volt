@@ -20,6 +20,7 @@ Started: 2026-09-13T11:20:06Z
 - Legacy process ownership resolution performs one lookup per supplied task key and preserves input order. The v88/v89 resolver remains tenant-scoped on primary search and enforces tenant, returned task identity, and owning-process identity after Tasklist fallback; v810 enforces returned task identity, configured tenant visibility, and owning-process identity on its native resolver lookup.
 - Native direct reads now use generated `GetUserTaskWithResponse` on v88/v89/v810, map every stable domain field with copied candidate slices, validate returned key/state/process-instance identity, preserve backend tenant metadata without discovery-tenant filtering, and never use search or Tasklist fallback. V87 returns `ErrUnsupported` without transport use.
 - Shared native bulk reads stable-deduplicate task keys before scheduling, preserve first-input order through `pool.ExecuteSlice`, forward call options unchanged, and return nil results for any joined read or cancellation failure. Empty input returns an initialized empty slice without touching the adapter.
+- Public `task.GetUserTask` delegates only to `GetNativeUserTask`; public `task.GetUserTasks` delegates to the service-owned bulk workflow. Both map facade options at the boundary, convert domain failures through `ferrors.FromDomain`, and copy domain results into stable public models without changing constructor or root embedding.
 
 ## Gotchas
 
@@ -45,4 +46,4 @@ Started: 2026-09-13T11:20:06Z
 - Preserve the 2026-09-13 baseline log as historical evidence, not validation of the rebased implementation. The next slice selects checks for its actual changes.
 
 ## Current Handoff
-- Continue US1 at T008: add facade getter/bulk delegation tests and implement T012 in the same validated work unit; T009 and later US1 command tasks remain open.
+- Continue US1 at T009: add keyed command subprocess contract tests before implementing the US1 command/view/input tasks T013–T017; T018 remains the story validation gate.
