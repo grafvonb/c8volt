@@ -361,3 +361,21 @@ Started: 2026-09-13 13:20:06
 - Execution-level subprocess coverage confirms exact output bytes, one JSON envelope through EOF, prompt-free unattended modes, quiet machine-output preservation, one backend read per case, and debug diagnostics isolated to stderr.
 - `go test ./cmd -run '^TestGetUserTaskOutput_' -count=1` and `git diff --check` passed; no production change was needed for this test-contract work unit.
 ---
+
+---
+## Iteration 13 - 2026-09-14 15:20
+**Work Unit**: US3 Use Results Interactively and in Automation (real-terminal paging contract)
+**Tasks Completed**:
+- [x] T035: Add real-terminal paging, prompt-routing, limit, sparse-page, terminal-stdin, and unattended-mode coverage.
+**Tasks Remaining in Work Unit**: 7 (T036-T042)
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/get_usertask_search.go
+- cmd/get_usertask_terminal_test.go
+- specs/308-get-user-task/tasks.md
+- specs/308-get-user-task/ralph-memory.md
+- specs/308-get-user-task/progress.md
+**Learnings**:
+- PTY execution exposed that JSON collection still reached the terminal prompt path; user-task paging now explicitly auto-continues JSON alongside automation and auto-confirm.
+- `go test ./cmd -run 'Test.*UserTask.*Terminal|TestGetProcessInstanceKeysOnlyPagingTerminal' -count=1`, the retained combined-output suite, formatting, declaration ownership review, and `git diff --check` passed.
+---

@@ -32,6 +32,7 @@ Started: 2026-09-13T11:20:06Z
 - Command search validation normalizes only the closed nine-state lifecycle set, maps `all` to no predicate, trims identifiers without case-folding assignee/candidate values, and keeps the 1000 page-size and positive explicit-limit boundary in `cmd/get_usertask.go`.
 - User-task paging uses `cmd/get_usertask_search.go`: human and keys modes stream selected pages, JSON/quiet/auto-confirm collect one bounded result, sparse and indeterminate pages continue without prompting, and only authoritative `has_more` pages with items are eligible for the shared stderr prompt.
 - Combined output acceptance belongs in `cmd/get_usertask_output_test.go`: exercise real command subprocesses, decode exactly one JSON envelope through EOF, compare human/keys/empty/total bytes exactly, and prove each render path adds no backend read. Debug diagnostics stay on stderr while verbose keys-only output remains clean.
+- Real-terminal user-task paging belongs in `cmd/get_usertask_terminal_test.go`: drive the actual command with `testx.NewCmdTerminalRunner`, keep prompt text on configured or inherited stderr, and explicitly auto-continue collected JSON as well as automation/auto-confirm modes.
 
 ## Gotchas
 
@@ -60,4 +61,4 @@ Started: 2026-09-13T11:20:06Z
 - Preserve the 2026-09-13 baseline log as historical evidence, not validation of the rebased implementation. The next slice selects checks for its actual changes.
 
 ## Current Handoff
-- Continue US3 at T035: add real-terminal paging and prompt-routing coverage before T036 failure/regression tests and the interaction implementation tasks.
+- Continue US3 at T036: add failure-after-streaming and legacy resolver regression coverage; use it to finish and validate T037 error integration before proceeding to later US3 tasks.
