@@ -310,3 +310,37 @@ Started: 2026-09-13 13:20:06
 - Existing foundational converters already covered public page metadata and independently owned candidate slices, so the facade implementation remained limited to request/option conversion, service delegation, result conversion, and error normalization.
 - The focused tests first failed because the public search methods were absent; after implementation, focused tests, all `c8volt/...` packages, race-enabled task facade tests, package vet, and `git diff --check` passed.
 ---
+
+---
+## Iteration 11 - 2026-09-14 15:10
+**Work Unit**: US2 Discover and Count Matching User Tasks (command search, paging, rendering, and validation)
+**Tasks Completed**:
+- [x] T022: Add command search/count execution coverage.
+- [x] T029: Implement complete query construction and state/bound validation.
+- [x] T030: Implement search dispatch and facade visitor integration.
+- [x] T031: Implement exact-total and completed-empty rendering.
+- [x] T032: Complete per-version, tenant, failure, limit, sparse-page, and count command coverage.
+- [x] T033: Validate the US2 service, facade, command, legacy resolver, formatting, docs, race, vet, and repository compile checkpoint.
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- README.md
+- cmd/cmd_views_usertask.go
+- cmd/cmd_views_usertask_test.go
+- cmd/completion_test.go
+- cmd/get.go
+- cmd/get_usertask.go
+- cmd/get_usertask_search.go
+- cmd/get_usertask_search_test.go
+- cmd/process_api_stub_test.go
+- docs/cli/c8volt_get.md
+- docs/cli/c8volt_get_user-task.md
+- docs/cli/command-tree.md
+- docs/index.md
+- specs/308-get-user-task/tasks.md
+- specs/308-get-user-task/ralph-memory.md
+- specs/308-get-user-task/progress.md
+**Learnings**:
+- Command-level request capture confirmed AND-combined exact predicates, case-insensitive lifecycle states, effective tenant variants, bounded sparse traversal, exact and capped totals, and zero-request validation failures across supported versions.
+- Targeted service, facade, command, legacy resolver, docsgen, race, and vet checks passed; repository-wide compile-only tests and `git diff --check` also passed.
+---

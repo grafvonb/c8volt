@@ -262,13 +262,15 @@ Use `get process-instance` for direct lookup, scoped search, variables, incident
 
 Generated reference: [get process-instance](docs/cli/c8volt_get_process-instance.md).
 
-### Inspect User Tasks By Key
+### Inspect And Search User Tasks
 
-Use `get user-task` to fetch one or more known native user tasks on Camunda 8.8 or newer. Repeat or comma-separate `--key`, or pipe newline-separated keys with or without the optional `-`. Every requested key must resolve; keyed reads rely on backend authorization, do not filter by the selected discovery tenant, and preserve each task's actual tenant metadata. Search and count flags are reserved for a later implementation stage.
+Use `get user-task` to fetch known native user tasks or search visible work on Camunda 8.8 or newer. Repeat or comma-separate `--key`, or pipe newline-separated keys with or without the optional `-`. Every requested key must resolve; keyed reads rely on backend authorization, do not filter by the selected discovery tenant, and preserve each task's actual tenant metadata. Without keys, combine process, element, state, assignment, candidate, and tenant filters; use `--limit` for bounded discovery or `--total` for the exact matching count.
 
 ```bash
 ./c8volt get user-task --key <user-task-key>
 ./c8volt get user-task --key <user-task-key>,<another-user-task-key>
+./c8volt get user-task --state created --candidate-group accounting --limit 25
+./c8volt get user-task --assignee alice --total
 printf '%s\n' "<user-task-key>" "<another-user-task-key>" | ./c8volt --keys-only get user-task
 ```
 

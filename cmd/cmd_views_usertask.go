@@ -41,6 +41,11 @@ func userTasksView(cmd *cobra.Command, result task.UserTasks) error {
 	}
 }
 
+// userTaskTotalView emits the exact matching count independently of quiet human output.
+func userTaskTotalView(cmd *cobra.Command, total int64) error {
+	return writeUserTaskLine(cmd.OutOrStdout(), fmt.Sprintf("%d", total))
+}
+
 // flatRowUserTask keeps optional columns in contract order so list alignment
 // retains intentional empty name/assignee cells.
 func flatRowUserTask(item task.UserTask) flatRow {

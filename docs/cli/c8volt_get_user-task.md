@@ -6,17 +6,19 @@ nav_exclude: true
 [CLI Reference]({{ "/cli/" | relative_url }})
 ## c8volt get user-task
 
-Fetch native user tasks by key
+Fetch or search native user tasks
 
 ### Synopsis
 
-Get native Camunda user tasks by key.
+Get native Camunda user tasks by key or search criteria.
 
 Provide repeated or comma-separated --key values, or newline-separated keys on stdin. A trailing '-' explicitly selects stdin; nonterminal stdin is also detected without it. Each unique key is fetched once in first-input order.
 
 Every requested key must resolve or the command fails without a partial result. Keyed reads require Camunda 8.8 or newer and use backend authorization without discovery-tenant filtering, so --tenant does not hide an authorized task and the task's actual tenant is returned.
 
-Use --json for one collection envelope or --keys-only for one task key per line. Search, filtering, limits, and totals are not yet available; their reserved flags cannot be combined with keys.
+Without keys, search by process, element, state, assignment, candidate, and effective tenant scope. Predicates are combined with AND. --batch-size controls each discovery request, --limit caps returned tasks across all pages, and --total emits the exact matching count.
+
+Use --json for one collection envelope or --keys-only for one task key per line. Keys cannot be combined with search filters, --limit, or --total; --total also conflicts with --limit, --json, and --keys-only. Search and keyed reads require Camunda 8.8 or newer.
 
 ```
 c8volt get user-task [-] [flags]
@@ -27,6 +29,8 @@ c8volt get user-task [-] [flags]
 ```
   ./c8volt get user-task --key <user-task-key>
   ./c8volt get ut -k <user-task-key>,<another-user-task-key>
+  ./c8volt get user-task --state created --assignee alice --limit 25
+  ./c8volt get user-task --candidate-group accounting --total
   printf '%s\n' "$USER_TASK_KEY" | ./c8volt get user-tasks
   printf '%s\n' "$USER_TASK_KEY" | ./c8volt get uts -
   ./c8volt --json get user-task --key <user-task-key>
@@ -36,21 +40,21 @@ c8volt get user-task [-] [flags]
 ### Options
 
 ```
-      --assignee string          reserved for exact assignee search; not yet available
-  -n, --batch-size int32         reserved search page size (maximum 1000); not yet available (default 1000)
-  -b, --bpmn-process-id string   reserved for search by BPMN process ID; not yet available
-      --candidate-group string   reserved for candidate-group search; not yet available
-      --candidate-user string    reserved for candidate-user search; not yet available
-      --element-id string        reserved for search by BPMN task element ID; not yet available
+      --assignee string          exact assignee to filter in search mode
+  -n, --batch-size int32         number of user tasks to request per page; does not cap total results (maximum 1000) (default 1000)
+  -b, --bpmn-process-id string   BPMN process ID to filter in search mode
+      --candidate-group string   exact candidate-group membership to filter in search mode
+      --candidate-user string    exact candidate-user membership to filter in search mode
+      --element-id string        BPMN task element ID to filter in search mode
       --fail-fast                stop scheduling new user task reads after the first error
   -h, --help                     help for user-task
   -k, --key strings              user task key(s) to fetch; repeat, comma-separate, or combine with stdin
-  -l, --limit int32              reserved search result limit; not yet available
+  -l, --limit int32              maximum number of matching user tasks to return across all pages; omit for unlimited
       --no-worker-limit          use all queued user task reads as workers when --workers is unset
-      --pd-key string            reserved for search by process definition key; not yet available
-      --pi-key string            reserved for search by process instance key; not yet available
-  -s, --state string             reserved for case-insensitive state search; not yet available (default "all")
-      --total                    reserved exact search count; not yet available
+      --pd-key string            process definition key to filter in search mode
+      --pi-key string            process instance key to filter in search mode
+  -s, --state string             user task state to filter in search mode; case-insensitive; all disables the predicate (default "all")
+      --total                    return only the exact numeric total of matching user tasks
   -w, --workers int              maximum concurrent workers when fetching multiple user tasks
 ```
 

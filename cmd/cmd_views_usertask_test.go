@@ -67,6 +67,14 @@ func TestUserTasksView_PropagatesWriterErrors(t *testing.T) {
 	}
 }
 
+// TestUserTaskTotalView_PropagatesWriterErrors keeps numeric count output from
+// being reported as successful after a truncated write.
+func TestUserTaskTotalView_PropagatesWriterErrors(t *testing.T) {
+	cmd := &cobra.Command{Use: "user-task"}
+	cmd.SetOut(failingUserTaskWriter{})
+	require.ErrorIs(t, userTaskTotalView(cmd, 42), errUserTaskWriter)
+}
+
 var errUserTaskWriter = errors.New("writer failed")
 
 type failingUserTaskWriter struct{}

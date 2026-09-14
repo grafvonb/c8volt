@@ -29,6 +29,8 @@ Started: 2026-09-13T11:20:06Z
 - Shared user-task traversal prefers unseen advancing cursors, otherwise advances offsets by raw count for nonempty pages or requested size for sparse empty pages. It validates request echoes, counts, totals, continuation, cursor cycles, and arithmetic before returning a typed exhausted, limit-reached, or visitor-stopped result.
 - Exact user-task counts return trustworthy exact metadata immediately. Capped counts reuse the same validated walker with int64 raw progress, no caller limit or visitor, and no accumulated task collection; an empty indeterminate probe ends traversal only after the known lower bound has been observed.
 - Public user-task search methods map requests, options, visitor steps/actions, result metadata, and errors mechanically around the service-owned collected, paged, and exact-total workflows; facade conversion preserves independently owned candidate slices and non-nil empty collections.
+- Command search validation normalizes only the closed nine-state lifecycle set, maps `all` to no predicate, trims identifiers without case-folding assignee/candidate values, and keeps the 1000 page-size and positive explicit-limit boundary in `cmd/get_usertask.go`.
+- User-task paging uses `cmd/get_usertask_search.go`: human and keys modes stream selected pages, JSON/quiet/auto-confirm collect one bounded result, sparse and indeterminate pages continue without prompting, and only authoritative `has_more` pages with items are eligible for the shared stderr prompt.
 
 ## Gotchas
 
@@ -57,4 +59,4 @@ Started: 2026-09-13T11:20:06Z
 - Preserve the 2026-09-13 baseline log as historical evidence, not validation of the rebased implementation. The next slice selects checks for its actual changes.
 
 ## Current Handoff
-- Continue US2 at T022: add command search/count execution tests before implementing query validation, search dispatch, and views in T029–T032.
+- Continue US3 at T034: add the combined-mode execution matrix, then real-terminal and failure/regression coverage before completing interaction behavior.

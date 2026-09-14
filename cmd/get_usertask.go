@@ -5,9 +5,11 @@ package cmd
 
 import (
 	"fmt"
+	"strings"
 
+	"github.com/grafvonb/c8volt/c8volt/task"
 	"github.com/grafvonb/c8volt/consts"
-	"github.com/grafvonb/c8volt/internal/domain"
+	"github.com/grafvonb/c8volt/toolx"
 	"github.com/spf13/cobra"
 )
 
@@ -28,16 +30,20 @@ var (
 
 var getUserTaskCmd = &cobra.Command{
 	Use:   "user-task [-]",
-	Short: "Fetch native user tasks by key",
-	Long: `Get native Camunda user tasks by key.
+	Short: "Fetch or search native user tasks",
+	Long: `Get native Camunda user tasks by key or search criteria.
 
 Provide repeated or comma-separated --key values, or newline-separated keys on stdin. A trailing '-' explicitly selects stdin; nonterminal stdin is also detected without it. Each unique key is fetched once in first-input order.
 
 Every requested key must resolve or the command fails without a partial result. Keyed reads require Camunda 8.8 or newer and use backend authorization without discovery-tenant filtering, so --tenant does not hide an authorized task and the task's actual tenant is returned.
 
-Use --json for one collection envelope or --keys-only for one task key per line. Search, filtering, limits, and totals are not yet available; their reserved flags cannot be combined with keys.`,
+Without keys, search by process, element, state, assignment, candidate, and effective tenant scope. Predicates are combined with AND. --batch-size controls each discovery request, --limit caps returned tasks across all pages, and --total emits the exact matching count.
+
+Use --json for one collection envelope or --keys-only for one task key per line. Keys cannot be combined with search filters, --limit, or --total; --total also conflicts with --limit, --json, and --keys-only. Search and keyed reads require Camunda 8.8 or newer.`,
 	Example: `  ./c8volt get user-task --key <user-task-key>
   ./c8volt get ut -k <user-task-key>,<another-user-task-key>
+  ./c8volt get user-task --state created --assignee alice --limit 25
+  ./c8volt get user-task --candidate-group accounting --total
   printf '%s\n' "$USER_TASK_KEY" | ./c8volt get user-tasks
   printf '%s\n' "$USER_TASK_KEY" | ./c8volt get uts -
   ./c8volt --json get user-task --key <user-task-key>
@@ -64,7 +70,28 @@ Use --json for one collection envelope or --keys-only for one task key per line.
 		}
 		keys := mergeAndValidateKeys(cmd, flagGetUserTaskKeys, stdinKeys, log, cfg).Unique()
 		if len(keys) == 0 {
-			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("%w: user task search is not implemented", domain.ErrUnsupported))
+			request := newGetUserTaskSearchRequest()
+			if flagGetUserTaskTotal {
+				total, err := cli.SearchUserTasksTotal(cmd.Context(), request, collectOptions()...)
+				if err != nil {
+					handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("get user tasks total: %w", err))
+				}
+				if err := userTaskTotalView(cmd, total); err != nil {
+					handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("render user tasks total: %w", err))
+				}
+				return
+			}
+			result, renderedIncrementally, err := searchUserTasksWithPaging(cmd, cli, request)
+			if err != nil {
+				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("get user tasks: %w", err))
+			}
+			if renderedIncrementally {
+				return
+			}
+			if err := userTasksView(cmd, result); err != nil {
+				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("render user tasks: %w", err))
+			}
+			return
 		}
 		if hasGetUserTaskSearchFlags(cmd) {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, mutuallyExclusiveFlagsf("--key cannot be combined with search filters, --limit, or --total"))
@@ -88,17 +115,17 @@ func init() {
 
 	flags := getUserTaskCmd.Flags()
 	flags.StringSliceVarP(&flagGetUserTaskKeys, "key", "k", nil, "user task key(s) to fetch; repeat, comma-separate, or combine with stdin")
-	flags.StringVar(&flagGetUserTaskPIKey, "pi-key", "", "reserved for search by process instance key; not yet available")
-	flags.StringVar(&flagGetUserTaskPDKey, "pd-key", "", "reserved for search by process definition key; not yet available")
-	flags.StringVarP(&flagGetUserTaskBpmnProcessID, "bpmn-process-id", "b", "", "reserved for search by BPMN process ID; not yet available")
-	flags.StringVar(&flagGetUserTaskElementID, "element-id", "", "reserved for search by BPMN task element ID; not yet available")
-	flags.StringVarP(&flagGetUserTaskState, "state", "s", "all", "reserved for case-insensitive state search; not yet available")
-	flags.StringVar(&flagGetUserTaskAssignee, "assignee", "", "reserved for exact assignee search; not yet available")
-	flags.StringVar(&flagGetUserTaskCandidateUser, "candidate-user", "", "reserved for candidate-user search; not yet available")
-	flags.StringVar(&flagGetUserTaskCandidateGroup, "candidate-group", "", "reserved for candidate-group search; not yet available")
-	flags.Int32VarP(&flagGetUserTaskBatchSize, "batch-size", "n", consts.MaxPISearchSize, fmt.Sprintf("reserved search page size (maximum %d); not yet available", consts.MaxPISearchSize))
-	flags.Int32VarP(&flagGetUserTaskLimit, "limit", "l", 0, "reserved search result limit; not yet available")
-	flags.BoolVar(&flagGetUserTaskTotal, "total", false, "reserved exact search count; not yet available")
+	flags.StringVar(&flagGetUserTaskPIKey, "pi-key", "", "process instance key to filter in search mode")
+	flags.StringVar(&flagGetUserTaskPDKey, "pd-key", "", "process definition key to filter in search mode")
+	flags.StringVarP(&flagGetUserTaskBpmnProcessID, "bpmn-process-id", "b", "", "BPMN process ID to filter in search mode")
+	flags.StringVar(&flagGetUserTaskElementID, "element-id", "", "BPMN task element ID to filter in search mode")
+	flags.StringVarP(&flagGetUserTaskState, "state", "s", "all", "user task state to filter in search mode; case-insensitive; all disables the predicate")
+	flags.StringVar(&flagGetUserTaskAssignee, "assignee", "", "exact assignee to filter in search mode")
+	flags.StringVar(&flagGetUserTaskCandidateUser, "candidate-user", "", "exact candidate-user membership to filter in search mode")
+	flags.StringVar(&flagGetUserTaskCandidateGroup, "candidate-group", "", "exact candidate-group membership to filter in search mode")
+	flags.Int32VarP(&flagGetUserTaskBatchSize, "batch-size", "n", consts.MaxPISearchSize, fmt.Sprintf("number of user tasks to request per page; does not cap total results (maximum %d)", consts.MaxPISearchSize))
+	flags.Int32VarP(&flagGetUserTaskLimit, "limit", "l", 0, "maximum number of matching user tasks to return across all pages; omit for unlimited")
+	flags.BoolVar(&flagGetUserTaskTotal, "total", false, "return only the exact numeric total of matching user tasks")
 	flags.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers when fetching multiple user tasks")
 	flags.BoolVar(&flagNoWorkerLimit, "no-worker-limit", false, "use all queued user task reads as workers when --workers is unset")
 	flags.BoolVar(&flagFailFast, "fail-fast", false, "stop scheduling new user task reads after the first error")
@@ -149,10 +176,50 @@ func validateGetUserTaskFlags(cmd *cobra.Command) error {
 			return mutuallyExclusiveFlagsf("--total cannot be combined with --keys-only")
 		}
 	}
+	if !validUserTaskState(flagGetUserTaskState) {
+		return invalidFlagValuef("invalid value for --state: %q, valid values are: all, %s", flagGetUserTaskState, strings.Join(validUserTaskStates, ", "))
+	}
 	if len(flagGetUserTaskKeys) > 0 && hasGetUserTaskSearchFlags(cmd) {
 		return mutuallyExclusiveFlagsf("--key cannot be combined with search filters, --limit, or --total")
 	}
 	return nil
+}
+
+// newGetUserTaskSearchRequest maps validated command flags into an AND-combined
+// native search request without changing case-sensitive identity predicates.
+func newGetUserTaskSearchRequest() task.SearchRequest {
+	return task.SearchRequest{
+		ProcessInstanceKey:   strings.TrimSpace(flagGetUserTaskPIKey),
+		ProcessDefinitionKey: strings.TrimSpace(flagGetUserTaskPDKey),
+		BpmnProcessId:        strings.TrimSpace(flagGetUserTaskBpmnProcessID),
+		ElementId:            strings.TrimSpace(flagGetUserTaskElementID),
+		State:                normalizedUserTaskState(flagGetUserTaskState),
+		Assignee:             strings.TrimSpace(flagGetUserTaskAssignee),
+		CandidateUser:        strings.TrimSpace(flagGetUserTaskCandidateUser),
+		CandidateGroup:       strings.TrimSpace(flagGetUserTaskCandidateGroup),
+		BatchSize:            flagGetUserTaskBatchSize,
+		Limit:                flagGetUserTaskLimit,
+	}
+}
+
+var validUserTaskStates = []string{
+	"ASSIGNING", "CANCELED", "CANCELING", "COMPLETED", "COMPLETING",
+	"CREATED", "CREATING", "FAILED", "UPDATING",
+}
+
+// validUserTaskState accepts the unrestricted all sentinel or one supported state.
+func validUserTaskState(value string) bool {
+	return strings.EqualFold(strings.TrimSpace(value), "all") || toolx.ValidEnumString(strings.TrimSpace(value), validUserTaskStates)
+}
+
+// normalizedUserTaskState converts supported names to backend form and omits all.
+func normalizedUserTaskState(value string) string {
+	value = strings.TrimSpace(value)
+	if strings.EqualFold(value, "all") {
+		return ""
+	}
+	canonical, _ := toolx.CanonicalEnumString(value, validUserTaskStates)
+	return canonical
 }
 
 // hasGetUserTaskSearchFlags distinguishes explicitly supplied selectors from
