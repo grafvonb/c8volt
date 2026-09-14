@@ -135,3 +135,22 @@ Started: 2026-09-13 13:20:06
 - `go test ./internal/services/usertask/... -count=1`, `go test ./... -run '^$' -count=1`, and `git diff --check` passed; the first focused run identified and then resolved the expected legacy test-stub interface update.
 - The prior work-unit subject was repaired from `feat(ralph): pin legacy user task resolver behavior #308` to `feat(ralph): pin legacy user task resolver behavior` because `issue: auto` cannot infer from the `codex/` branch prefix.
 ---
+
+---
+## Iteration 4 - 2026-09-14 13:47
+**Work Unit**: US1 Inspect Known User Tasks (strict ordered native bulk reads)
+**Tasks Completed**:
+- [x] T007: Add strict bulk-read coverage for ordering, failures, cancellation, fail-fast, workers/options, and empty input.
+- [x] T011: Implement strict service-owned native user-task bulk reads.
+**Tasks Remaining in Work Unit**: 9 (T008–T009 and T012–T018)
+**Commit**: This work-unit commit
+**Files Changed**:
+- internal/services/usertask/bulk.go
+- internal/services/usertask/bulk_test.go
+- specs/308-get-user-task/tasks.md
+- specs/308-get-user-task/ralph-memory.md
+- specs/308-get-user-task/progress.md
+**Learnings**:
+- The shared pool preserves indexed result order and joins worker failures; the strict workflow must discard those result slots on any error and separately detect a context canceled before work was scheduled.
+- `go test ./internal/services/usertask -run '^TestGetUserTasks' -count=10`, `go test -race ./internal/services/usertask/... -count=1`, and `git diff --check` passed.
+---
