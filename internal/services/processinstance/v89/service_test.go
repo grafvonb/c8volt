@@ -835,6 +835,11 @@ func TestService_CancelAndDeleteProcessInstance(t *testing.T) {
 		require.Error(t, err)
 		assert.ErrorIs(t, err, d.ErrInternal)
 		assert.Contains(t, err.Error(), "cancel family")
+		var failure *d.ProcessInstanceMutationFailure
+		require.ErrorAs(t, err, &failure)
+		assert.Equal(t, "123", failure.RootKey)
+		assert.Equal(t, "cancellation scope discovery", failure.Phase)
+		assert.Empty(t, failure.Scope, "failed discovery must not invent a completed scope")
 		assert.False(t, resp.Ok)
 		assert.Equal(t, 1, cancellations)
 		assert.Equal(t, 3, keyReads, "precheck and family traversal reads must finish before polling")
@@ -1620,6 +1625,34 @@ func newTestService(t *testing.T, cfg *config.Config, camundaClient *mockCamunda
 	)
 	require.NoError(t, err)
 	return svc
+}
+
+// TestService_GetProcessInstanceStateByKeyLoggingScope keeps direct diagnostics while allowing waiter-owned suppression.
+func TestService_GetProcessInstanceStateByKeyLoggingScope(t *testing.T) {
+	var logBuf bytes.Buffer
+	client := newStrictCamundaClient(t)
+	client.getProcessInstanceWithResponse = func(ctx context.Context, key camundav89.ProcessInstanceKey, reqEditors ...camundav89.RequestEditorFn) (*camundav89.GetProcessInstanceResponse, error) {
+		return &camundav89.GetProcessInstanceResponse{
+			HTTPResponse: newHTTPResponse(http.MethodGet, "https://camunda.local/v2/process-instances/123", http.StatusOK, "200 OK"),
+			JSON200:      new(makeProcessInstanceResult("123", "COMPLETED", "")),
+		}, nil
+	}
+	svc, err := v89.New(
+		testConfig(), &http.Client{}, slog.New(logging.NewPlainHandler(&logBuf, slog.LevelDebug)),
+		v89.WithClientCamunda(client),
+	)
+	require.NoError(t, err)
+
+	_, _, err = svc.GetProcessInstanceStateByKey(context.Background(), "123")
+	require.NoError(t, err)
+	assert.Contains(t, logBuf.String(), "checking pi 123 state")
+	assert.Contains(t, logBuf.String(), "fetching pi 123")
+	assert.Contains(t, logBuf.String(), "pi 123 state COMPLETED")
+
+	logBuf.Reset()
+	_, _, err = svc.GetProcessInstanceStateByKey(context.Background(), "123", services.WithSuppressNestedProcessInstanceLookupLogs())
+	require.NoError(t, err)
+	assert.Empty(t, logBuf.String())
 }
 
 // newStrictCamundaClient returns a v8.9 Camunda client mock that fails on unexpected calls.

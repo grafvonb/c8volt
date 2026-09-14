@@ -1,26 +1,3 @@
-<!--
-Sync Impact Report
-Version change: template -> 1.0.0
-Modified principles:
-- template principle 1 -> I. Operational Proof Over Intent
-- template principle 2 -> II. CLI-First, Script-Safe Interfaces
-- template principle 3 -> III. Tests and Validation Are Mandatory
-- template principle 4 -> IV. Documentation Matches User Behavior
-- template principle 5 -> V. Small, Compatible, Repository-Native Changes
-Added sections:
-- Project Constraints
-- Delivery Workflow
-Removed sections:
-- None
-Templates requiring updates:
-- ✅ updated /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/.specify/templates/plan-template.md
-- ✅ updated /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/.specify/templates/spec-template.md
-- ✅ updated /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/.specify/templates/tasks-template.md
-- ✅ reviewed /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/.specify/templates/agent-file-template.md
-- ⚠ pending directory not present: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/.specify/templates/commands/
-Follow-up TODOs:
-- None
--->
 # c8volt Constitution
 
 ## Core Principles
@@ -39,13 +16,39 @@ MUST follow existing Cobra layouts, naming, and flag propagation rules already u
 the repository. Changes that break documented command behavior require an explicit
 compatibility note in the plan and accompanying documentation updates.
 
-### III. Tests and Validation Are Mandatory
-Every code change MUST add or update automated tests at the closest useful level, with
-preference for realistic command execution paths when inherited flags or wiring matter.
-Before merge or commit, contributors MUST run `make test`; a change is incomplete if
-validation is skipped or knowingly failing. When a defect cannot be reproduced in an
-automated test, the implementation plan MUST explain the gap and define the manual
-verification path.
+### III. Validation Proportional to the Change
+Validation MUST address the behavior and risk of the actual diff. A commit, merge,
+Spec Kit command, or documentation update alone MUST NOT trigger runtime tests.
+
+- Documentation-only changes (including specifications, plans, tasks, governance,
+  prose, and comments with no executable effect) MUST use relevant lightweight
+  checks, such as diff review, formatting, and changed-link validation. Do not run
+  `go test` or `make test` solely for these changes. If documentation generation or
+  examples are affected, run the relevant generator or example check only when it
+  provides useful validation of the change.
+- For executable code, configuration, dependency, build, or generated-code changes,
+  contributors MUST select the smallest checks that meaningfully cover the affected
+  behavior. Start with targeted tests in the changed package or execution path.
+  Reuse existing coverage; add or update tests when behavior changes or a regression
+  lacks coverage. Do not add tests merely to mirror implementation or satisfy a
+  per-file quota.
+- Run the full race-enabled suite (`make test`) when a change affects shared runtime
+  behavior across packages, concurrency, dependencies or generated clients with
+  broad impact, or when targeted failures leave broader regressions unresolved.
+  A focused change adequately covered by targeted checks does not require the full
+  suite. State the concrete reason when selecting broader validation.
+- After relevant checks pass, do not repeat or broaden them merely to commit, merge,
+  or mark a task complete. Repeat checks only when subsequent relevant changes,
+  failures, or new evidence invalidate the earlier result. Documentation edits after
+  a successful test run do not invalidate that result.
+- Report the checks actually performed and any material validation gaps. Do not
+  present skipped, unavailable, or failing checks as passing. When automated coverage
+  is impractical, explain the gap and use a focused manual check where useful.
+
+These rules replace older blanket test-before-commit wording in feature artifacts
+or workflow guidance. A specific acceptance test remains required for the behavior
+it covers; it does not make a planning-only or documentation-only commit require
+runtime tests. This keeps validation useful without spending time on unrelated work.
 
 ### IV. Documentation Matches User Behavior
 User-visible command changes MUST update `README.md` and any relevant generated CLI
@@ -77,7 +80,7 @@ including why simpler repository-native alternatives were rejected.
 - Specifications MUST describe independently testable user stories ordered by
   delivery priority.
 - Implementation plans MUST include a Constitution Check that confirms operational
-  verification, CLI compatibility, required tests, documentation impact, and any
+  verification, CLI compatibility, proportionate validation, documentation impact, and any
   justified complexity.
 - Task lists MUST include concrete validation tasks and documentation tasks whenever a
   story changes user-visible behavior.
@@ -88,12 +91,13 @@ including why simpler repository-native alternatives were rejected.
 
 This constitution supersedes informal local practice for planning, implementation,
 review, and documentation in this repository. Amendments require: (1) updating this
-file, (2) recording sync impact at the top of the document, and (3) updating affected
-templates or runtime guidance in the same change. Versioning follows semantic rules for
+file, (2) recording sync impact for review, and (3) identifying conflicting dependent
+guidance. Dependent workflows MUST read the current constitution; copied older rules
+do not override it. Remove the temporary sync report before committing the amendment. Versioning follows semantic rules for
 governance: MAJOR for incompatible principle changes or removals, MINOR for new
 principles or materially stronger obligations, PATCH for clarifications that do not
 change expected behavior. Compliance review is required in every feature plan and code
 review, with unresolved exceptions documented under the plan's complexity or risk
 tracking section.
 
-**Version**: 1.0.0 | **Ratified**: 2026-03-15 | **Last Amended**: 2026-03-15
+**Version**: 2.0.0 | **Ratified**: 2026-03-15 | **Last Amended**: 2026-09-13

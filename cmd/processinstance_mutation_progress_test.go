@@ -1050,7 +1050,8 @@ func reportProcessInstanceMutationCompletionForTestWithDisposition(t *testing.T,
 	cfg := options.ApplyFacadeOptions(opts)
 	require.Equal(t, affectedCount, cfg.AffectedProcessInstanceCount)
 	require.NotNil(t, cfg.Progress)
-	require.True(t, cfg.SuppressWorkflowDetailLogs)
+	wantWorkflowSuppressed := !flagVerbose || flagQuiet || flagCmdAutomation || pickMode() != RenderModeOneLine
+	require.Equal(t, wantWorkflowSuppressed, cfg.SuppressWorkflowDetailLogs)
 	require.True(t, cfg.SuppressProcessInstanceDetailLogs)
 	cfg.Progress(options.ProgressEvent{
 		Kind: options.ProgressEventKindCompletion,

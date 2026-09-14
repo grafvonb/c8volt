@@ -36,7 +36,7 @@ func runDeleteProcessInstanceSearch(cmd *cobra.Command, cli process.API, cfg *co
 
 	results, err := deleteProcessInstanceSearchPages(cmd, cli, cfg, populatePISearchFilterOpts())
 	if err != nil {
-		handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("delete process instances: %w", err))
+		handleProcessInstanceMutationError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("delete process instances: %w", err))
 	}
 	if flagDryRun {
 		if len(results.DryRunPreviews) > 0 {

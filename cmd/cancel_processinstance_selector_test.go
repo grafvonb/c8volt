@@ -1253,7 +1253,7 @@ func TestCancelProcessInstancePage_PrintsOrphanWarningForPagedImpactCheck(t *tes
 			require.Zero(t, wantedWorkers)
 			cfg := options.ApplyFacadeOptions(opts)
 			require.Equal(t, 1, cfg.AffectedProcessInstanceCount)
-			require.True(t, cfg.SuppressWorkflowDetailLogs)
+			require.False(t, cfg.SuppressWorkflowDetailLogs)
 			require.True(t, cfg.SuppressProcessInstanceDetailLogs)
 			return process.CancelReports{Items: []process.CancelReport{{Key: "2251799813711967", Ok: true}}}, nil
 		},

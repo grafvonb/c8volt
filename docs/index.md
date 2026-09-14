@@ -6,7 +6,7 @@ nav_exclude: true
 has_toc: true
 ---
 
-> Generated from build `c8volt v4.3.0-beta.1-278-g68aca57a-dirty`, commit `68aca57a`, built `2026-09-13T09:06:48Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.0-alpha4 (prerelease)
+> Generated from build `c8volt v4.3.0-beta.1-288-g391dfd7c-dirty`, commit `391dfd7c`, built `2026-09-13T15:09:37Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.0-alpha4 (prerelease)
 
 <img src="./logo/c8volt_logo_transparent_w_shadow_400x244.png" alt="c8volt logo" />
 
@@ -162,6 +162,16 @@ and interactive prompts use the command's configured or inherited stderr.
 `--quiet` suppresses these DEBUG records. Configured DEBUG logging also enables them;
 INFO and higher levels filter them. `--verbose` adds functional detail and does
 not enable HTTP diagnostics.
+
+For `cancel process-instance` and `delete process-instance --force`, `--verbose`
+explains cancellation prerequisites, root escalation, accepted submissions,
+confirmation waits, and deletion resumption. During those waits, DEBUG emits one
+completed state observation per polling check alongside the HTTP exchange record;
+routine OAuth cache hits and nested lookup chatter are omitted. If confirmation
+times out, normal human output distinguishes an accepted cancellation from an
+unconfirmed outcome and identifies deletion work that was not reached. Use
+`--verbose --debug` when both workflow narration and low-level diagnostics are
+needed.
 
 ```bash
 ./c8volt --config ./config.yaml --debug get process-definition --latest \

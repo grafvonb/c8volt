@@ -7,8 +7,10 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
+	"strings"
 	"testing"
 	"time"
 
@@ -25,16 +27,25 @@ import (
 type stubPIWaiter struct {
 	getProcessInstance func(ctx context.Context, key string) (d.ProcessInstance, error)
 	getStateByKey      func(ctx context.Context, key string) (d.State, d.ProcessInstance, error)
+	observeOptions     func(opts []services.CallOption)
 }
 
+// GetProcessInstance observes the supplied options and delegates to the configured fixture; unexpected calls panic.
 func (s stubPIWaiter) GetProcessInstance(ctx context.Context, key string, opts ...services.CallOption) (d.ProcessInstance, error) {
+	if s.observeOptions != nil {
+		s.observeOptions(opts)
+	}
 	if s.getProcessInstance == nil {
 		panic("unexpected GetProcessInstance call")
 	}
 	return s.getProcessInstance(ctx, key)
 }
 
-func (s stubPIWaiter) GetProcessInstanceStateByKey(ctx context.Context, key string, _ ...services.CallOption) (d.State, d.ProcessInstance, error) {
+// GetProcessInstanceStateByKey observes the supplied options before executing the configured state lookup.
+func (s stubPIWaiter) GetProcessInstanceStateByKey(ctx context.Context, key string, opts ...services.CallOption) (d.State, d.ProcessInstance, error) {
+	if s.observeOptions != nil {
+		s.observeOptions(opts)
+	}
 	return s.getStateByKey(ctx, key)
 }
 
@@ -628,6 +639,201 @@ func TestWaitForProcessInstanceState(t *testing.T) {
 	})
 }
 
+// TestWaitForProcessInstanceStateObservations verifies each actual state lookup has one completed DEBUG observation.
+func TestWaitForProcessInstanceStateObservations(t *testing.T) {
+	t.Run("retry then success includes a delay only on the continued check", func(t *testing.T) {
+		t.Parallel()
+
+		attempts := 0
+		waiter := stubPIWaiter{
+			getStateByKey: func(ctx context.Context, key string) (d.State, d.ProcessInstance, error) {
+				attempts++
+				if attempts == 1 {
+					return d.StateActive, d.ProcessInstance{Key: key, State: d.StateActive}, nil
+				}
+				return d.StateCompleted, d.ProcessInstance{Key: key, State: d.StateCompleted}, nil
+			},
+			observeOptions: func(opts []services.CallOption) {
+				assert.True(t, services.ApplyCallOptions(opts).SuppressNestedProcessInstanceLookupLogs)
+			},
+		}
+		var output bytes.Buffer
+
+		got, _, err := WaitForProcessInstanceState(
+			context.Background(), waiter, testConfig(time.Nanosecond, 3, time.Second), debugLogger(&output),
+			"123", d.States{d.StateCompleted},
+		)
+
+		require.NoError(t, err)
+		assert.True(t, got.Ok)
+		lines := observationLines(output.String())
+		require.Len(t, lines, 2)
+		assert.Contains(t, lines[0], "key=123 attempt=1 state=ACTIVE")
+		assert.Contains(t, lines[0], "next_delay=1ns")
+		assert.Contains(t, lines[1], "key=123 attempt=2 state=COMPLETED")
+		assert.NotContains(t, lines[1], "next_delay=")
+		assert.NotContains(t, output.String(), "fetch state")
+	})
+
+	t.Run("absence is a terminal observed state", func(t *testing.T) {
+		t.Parallel()
+
+		waiter := stubPIWaiter{getStateByKey: func(ctx context.Context, key string) (d.State, d.ProcessInstance, error) {
+			return d.StateUnknown, d.ProcessInstance{}, d.ErrNotFound
+		}}
+		var output bytes.Buffer
+
+		got, _, err := WaitForProcessInstanceState(
+			context.Background(), waiter, testConfig(time.Millisecond, 3, time.Second), debugLogger(&output),
+			"missing", d.States{d.StateAbsent},
+		)
+
+		require.NoError(t, err)
+		assert.Equal(t, d.StateAbsent, got.State)
+		lines := observationLines(output.String())
+		require.Len(t, lines, 1)
+		assert.Contains(t, lines[0], "key=missing attempt=1 state=ABSENT")
+		assert.NotContains(t, lines[0], "next_delay=")
+	})
+
+	t.Run("failed lookup records a concise outcome once", func(t *testing.T) {
+		t.Parallel()
+
+		waiter := stubPIWaiter{getStateByKey: func(ctx context.Context, key string) (d.State, d.ProcessInstance, error) {
+			return d.StateUnknown, d.ProcessInstance{}, errors.New("lookup failed: nested transport detail")
+		}}
+		var output bytes.Buffer
+
+		_, _, err := WaitForProcessInstanceState(
+			context.Background(), waiter, testConfig(time.Millisecond, 3, time.Second), debugLogger(&output),
+			"123", d.States{d.StateCompleted},
+		)
+
+		require.Error(t, err)
+		lines := observationLines(output.String())
+		require.Len(t, lines, 1)
+		assert.Contains(t, lines[0], "key=123 attempt=1 lookup_error=lookup failed")
+		assert.NotContains(t, lines[0], "nested transport detail")
+		assert.NotContains(t, lines[0], "next_delay=")
+	})
+
+	t.Run("interrupted sleep omits a delay because no next check occurs", func(t *testing.T) {
+		t.Parallel()
+
+		ctx, cancel := context.WithCancel(context.Background())
+		waiter := stubPIWaiter{getStateByKey: func(ctx context.Context, key string) (d.State, d.ProcessInstance, error) {
+			cancel()
+			return d.StateActive, d.ProcessInstance{Key: key, State: d.StateActive}, nil
+		}}
+		var output bytes.Buffer
+
+		_, _, err := WaitForProcessInstanceState(
+			ctx, waiter, testConfig(time.Second, 3, 0), debugLogger(&output), "123", d.States{d.StateCompleted},
+		)
+
+		require.ErrorIs(t, err, context.Canceled)
+		lines := observationLines(output.String())
+		require.Len(t, lines, 1)
+		assert.Contains(t, lines[0], "key=123 attempt=1 state=ACTIVE")
+		assert.NotContains(t, lines[0], "next_delay=")
+	})
+
+	t.Run("max retries emits the final observation without another delay", func(t *testing.T) {
+		t.Parallel()
+
+		waiter := stubPIWaiter{getStateByKey: func(ctx context.Context, key string) (d.State, d.ProcessInstance, error) {
+			return d.StateActive, d.ProcessInstance{Key: key, State: d.StateActive}, nil
+		}}
+		var output bytes.Buffer
+
+		_, _, err := WaitForProcessInstanceState(
+			context.Background(), waiter, testConfig(time.Nanosecond, 2, time.Second), debugLogger(&output),
+			"123", d.States{d.StateCompleted},
+		)
+
+		require.Error(t, err)
+		lines := observationLines(output.String())
+		require.Len(t, lines, 2)
+		assert.Contains(t, lines[0], "attempt=1 state=ACTIVE")
+		assert.Contains(t, lines[0], "next_delay=1ns")
+		assert.Contains(t, lines[1], "attempt=2 state=ACTIVE")
+		assert.NotContains(t, lines[1], "next_delay=")
+	})
+
+	t.Run("wait timeout records the completed check without advertising continuation", func(t *testing.T) {
+		t.Parallel()
+
+		waiter := stubPIWaiter{getStateByKey: func(ctx context.Context, key string) (d.State, d.ProcessInstance, error) {
+			return d.StateActive, d.ProcessInstance{Key: key, State: d.StateActive}, nil
+		}}
+		var output bytes.Buffer
+
+		_, _, err := WaitForProcessInstanceState(
+			context.Background(), waiter, testConfig(time.Second, 0, 5*time.Millisecond), debugLogger(&output),
+			"123", d.States{d.StateCompleted},
+		)
+
+		require.ErrorIs(t, err, context.DeadlineExceeded)
+		lines := observationLines(output.String())
+		require.Len(t, lines, 1)
+		assert.Contains(t, lines[0], "attempt=1 state=ACTIVE")
+		assert.NotContains(t, lines[0], "next_delay=")
+	})
+
+	t.Run("already canceled context performs and records no check", func(t *testing.T) {
+		t.Parallel()
+
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+		var output bytes.Buffer
+		called := false
+		waiter := stubPIWaiter{getStateByKey: func(ctx context.Context, key string) (d.State, d.ProcessInstance, error) {
+			called = true
+			return d.StateUnknown, d.ProcessInstance{}, nil
+		}}
+
+		_, _, err := WaitForProcessInstanceState(
+			ctx, waiter, testConfig(time.Millisecond, 3, 0), debugLogger(&output), "123", d.States{d.StateCompleted},
+		)
+
+		require.ErrorIs(t, err, context.Canceled)
+		assert.False(t, called)
+		assert.Empty(t, observationLines(output.String()))
+	})
+}
+
+// TestWaitForProcessInstanceExpectationObservations verifies full-instance polling uses the same observation budget.
+func TestWaitForProcessInstanceExpectationObservations(t *testing.T) {
+	t.Parallel()
+
+	wantIncident := true
+	attempts := 0
+	waiter := stubPIWaiter{
+		getProcessInstance: func(ctx context.Context, key string) (d.ProcessInstance, error) {
+			attempts++
+			return d.ProcessInstance{Key: key, State: d.StateActive, Incident: attempts == 2}, nil
+		},
+		observeOptions: func(opts []services.CallOption) {
+			assert.True(t, services.ApplyCallOptions(opts).SuppressNestedProcessInstanceLookupLogs)
+		},
+	}
+	var output bytes.Buffer
+
+	got, _, err := WaitForProcessInstanceExpectation(
+		context.Background(), waiter, testConfig(time.Nanosecond, 3, time.Second), debugLogger(&output),
+		"123", d.ProcessInstanceExpectationRequest{Incident: &wantIncident},
+	)
+
+	require.NoError(t, err)
+	assert.True(t, got.Ok)
+	lines := observationLines(output.String())
+	require.Len(t, lines, 2)
+	assert.Contains(t, lines[0], "state=ACTIVE")
+	assert.Contains(t, lines[0], "next_delay=1ns")
+	assert.Contains(t, lines[1], "state=ACTIVE")
+	assert.NotContains(t, lines[1], "next_delay=")
+}
+
 // TestWaitForProcessInstancesState_UsesAggregateCommandActivity verifies aggregate waits expose one shared activity scope.
 func TestWaitForProcessInstancesState_UsesAggregateCommandActivity(t *testing.T) {
 	t.Parallel()
@@ -804,4 +1010,46 @@ func testConfig(initialDelay time.Duration, maxRetries int, timeout time.Duratio
 // testLogger returns a discard logger for waiter tests.
 func testLogger() *slog.Logger {
 	return slog.New(slog.NewTextHandler(io.Discard, nil))
+}
+
+// debugLogger captures DEBUG observations for exact polling-budget assertions.
+func debugLogger(w io.Writer) *slog.Logger {
+	return slog.New(slog.NewTextHandler(w, &slog.HandlerOptions{Level: slog.LevelDebug}))
+}
+
+// observationLines extracts only waiter-owned observation records from captured structured logs.
+func observationLines(output string) []string {
+	var lines []string
+	for _, line := range strings.Split(output, "\n") {
+		if strings.Contains(line, "pi state observation:") {
+			lines = append(lines, line)
+		}
+	}
+	return lines
+}
+
+// TestWaitForProcessInstanceStateMutationOwnsLookupFailure cancels inside a lookup
+// to verify that caller-owned failure reporting suppresses the duplicate ERROR
+// while retaining one polling observation and the original cancellation cause.
+func TestWaitForProcessInstanceStateMutationOwnsLookupFailure(t *testing.T) {
+	for _, suppressed := range []bool{false, true} {
+		t.Run(fmt.Sprint(suppressed), func(t *testing.T) {
+			var output bytes.Buffer
+			log := slog.New(slog.NewTextHandler(&output, &slog.HandlerOptions{Level: slog.LevelDebug}))
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			s := stubPIWaiter{getStateByKey: func(ctx context.Context, key string) (d.State, d.ProcessInstance, error) {
+				cancel() // Cancellation happens inside the lookup, never in the sleep branch.
+				return d.StateUnknown, d.ProcessInstance{}, ctx.Err()
+			}}
+			var opts []services.CallOption
+			if suppressed {
+				opts = append(opts, services.WithSuppressProcessInstanceDetailLogs())
+			}
+			_, _, err := WaitForProcessInstanceState(ctx, s, testConfig(time.Millisecond, 2, time.Second), log, "root", d.States{d.StateCanceled}, opts...)
+			require.ErrorIs(t, err, context.Canceled)
+			require.Equal(t, 1, strings.Count(output.String(), "pi state observation:"))
+			require.Equal(t, !suppressed, strings.Contains(output.String(), "level=ERROR"))
+		})
+	}
 }
