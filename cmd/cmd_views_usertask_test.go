@@ -88,3 +88,32 @@ func resetGetUserTaskGlobalModes(t *testing.T) {
 	t.Cleanup(func() { flagViewAsJson, flagViewKeysOnly, flagQuiet = previousJSON, previousKeys, previousQuiet })
 	flagViewAsJson, flagViewKeysOnly, flagQuiet = false, false, false
 }
+
+// TestUserTasksView_CompletesIncrementalOutput verifies page rendering and final
+// summaries share the collected view without duplicating rows or keys.
+func TestUserTasksView_CompletesIncrementalOutput(t *testing.T) {
+	for _, keysOnly := range []bool{false, true} {
+		resetGetUserTaskGlobalModes(t)
+		flagViewKeysOnly = keysOnly
+		items := []task.UserTask{
+			{Key: "2251799815391233", State: "CREATED"},
+			{Key: "2251799815391234", State: "CREATED"},
+		}
+		var incremental, collected bytes.Buffer
+		command := &cobra.Command{Use: "user-task"}
+		command.SetOut(&incremental)
+		for _, item := range items {
+			require.NoError(t, renderUserTaskSearchPage(command, []task.UserTask{item}))
+		}
+		require.NoError(t, userTasksView(command, task.UserTasks{Total: 2}))
+		command.SetOut(&collected)
+		require.NoError(t, userTasksView(command, task.UserTasks{Total: 2, Items: items}))
+		require.Equal(t, collected.String(), incremental.String())
+		command.SetOut(failingUserTaskWriter{})
+		if keysOnly {
+			require.ErrorIs(t, renderUserTaskSearchPage(command, items), errUserTaskWriter)
+		} else {
+			require.ErrorIs(t, userTasksView(command, task.UserTasks{Total: 2}), errUserTaskWriter)
+		}
+	}
+}

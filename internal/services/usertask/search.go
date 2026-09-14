@@ -129,16 +129,24 @@ func walkUserTaskSearchPages(ctx context.Context, api API, query d.UserTaskSearc
 		}
 		pages++
 
+		exhausted, err := userTaskSearchExhausted(page, rawTotal)
+		if err != nil {
+			return false, err
+		}
+		// Resolve exact cursor-page continuation before the visitor decides
+		// whether another page should be offered to the operator.
+		if page.ContinuationState == d.UserTaskContinuationStateIndeterminate && page.ReportedTotal != nil && page.ReportedTotal.Kind == d.UserTaskReportedTotalKindExact {
+			page.ContinuationState = d.UserTaskContinuationStateHasMore
+			if exhausted {
+				page.ContinuationState = d.UserTaskContinuationStateNoMore
+			}
+		}
 		stopped, err := observer(page, rawTotal, pages)
 		if err != nil {
 			return false, err
 		}
 		if stopped {
 			return true, nil
-		}
-		exhausted, err := userTaskSearchExhausted(page, rawTotal)
-		if err != nil {
-			return false, err
 		}
 		if exhausted {
 			return false, nil

@@ -12,32 +12,20 @@ import (
 )
 
 // userTasksView renders keyed and collected user tasks with one stable
-// collection shape in every cardinality.
+// collection shape in every cardinality. After incremental output, callers pass
+// only the returned total to render the final summary without repeating rows.
 func userTasksView(cmd *cobra.Command, result task.UserTasks) error {
 	switch pickMode() {
 	case RenderModeJSON:
 		return renderJSONPayload(cmd, RenderModeJSON, result)
-	case RenderModeKeysOnly:
-		for _, item := range result.Items {
-			if err := writeUserTaskLine(cmd.OutOrStdout(), item.Key); err != nil {
-				return err
-			}
+	default:
+		if err := renderUserTaskSearchPage(cmd, result.Items); err != nil {
+			return err
+		}
+		if pickMode() == RenderModeOneLine && !flagQuiet {
+			return writeUserTaskLine(cmd.OutOrStdout(), fmt.Sprintf("found: %d", result.Total))
 		}
 		return nil
-	default:
-		if flagQuiet {
-			return nil
-		}
-		rows := make([]flatRow, 0, len(result.Items))
-		for _, item := range result.Items {
-			rows = append(rows, flatRowUserTask(item))
-		}
-		for _, line := range formatFlatRows(rows) {
-			if err := writeUserTaskLine(cmd.OutOrStdout(), line); err != nil {
-				return err
-			}
-		}
-		return writeUserTaskLine(cmd.OutOrStdout(), fmt.Sprintf("found: %d", len(result.Items)))
 	}
 }
 
@@ -68,4 +56,32 @@ func flatRowUserTask(item task.UserTask) flatRow {
 func writeUserTaskLine(writer io.Writer, line string) error {
 	_, err := fmt.Fprintln(writer, line)
 	return err
+}
+
+// renderUserTaskSearchPage writes only selected page results; summaries remain
+// rendered by userTasksView after traversal so sparse pages add no output.
+func renderUserTaskSearchPage(cmd *cobra.Command, items []task.UserTask) error {
+	switch pickMode() {
+	case RenderModeKeysOnly:
+		for _, item := range items {
+			if err := writeUserTaskLine(cmd.OutOrStdout(), item.Key); err != nil {
+				return err
+			}
+		}
+		return nil
+	default:
+		if flagQuiet {
+			return nil
+		}
+		rows := make([]flatRow, 0, len(items))
+		for _, item := range items {
+			rows = append(rows, flatRowUserTask(item))
+		}
+		for _, line := range formatFlatRows(rows) {
+			if err := writeUserTaskLine(cmd.OutOrStdout(), line); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
 }

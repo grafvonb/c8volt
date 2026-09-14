@@ -14,9 +14,7 @@ import (
 // incremental result output and interactive control text on separate streams.
 func searchUserTasksWithPaging(cmd *cobra.Command, cli task.API, request task.SearchRequest) (task.UserTasks, bool, error) {
 	incremental := shouldRenderUserTaskSearchIncrementally(cmd)
-	var processedTotal int64
 	result, err := cli.SearchUserTasksPages(cmd.Context(), request, func(step task.SearchPageStep) (task.SearchPageAction, error) {
-		processedTotal = step.CumulativeCount
 		if incremental {
 			if err := renderUserTaskSearchPage(cmd, step.Page.Items); err != nil {
 				return task.SearchPageActionStop, err
@@ -41,10 +39,8 @@ func searchUserTasksWithPaging(cmd *cobra.Command, cli task.API, request task.Se
 		return task.UserTasks{}, false, err
 	}
 	if incremental {
-		if pickMode() == RenderModeOneLine && !flagQuiet {
-			if err := writeUserTaskLine(cmd.OutOrStdout(), fmt.Sprintf("found: %d", processedTotal)); err != nil {
-				return task.UserTasks{}, false, err
-			}
+		if err := userTasksView(cmd, task.UserTasks{Total: result.Total}); err != nil {
+			return task.UserTasks{}, false, err
 		}
 		return task.UserTasks{}, true, nil
 	}
@@ -65,29 +61,4 @@ func shouldRenderUserTaskSearchIncrementally(cmd *cobra.Command) bool {
 	}
 	mode := pickMode()
 	return mode == RenderModeOneLine || mode == RenderModeKeysOnly
-}
-
-// renderUserTaskSearchPage writes only selected page results; summaries remain
-// owned by the completed traversal so sparse pages add no output.
-func renderUserTaskSearchPage(cmd *cobra.Command, items []task.UserTask) error {
-	switch pickMode() {
-	case RenderModeKeysOnly:
-		for _, item := range items {
-			if err := writeUserTaskLine(cmd.OutOrStdout(), item.Key); err != nil {
-				return err
-			}
-		}
-		return nil
-	default:
-		rows := make([]flatRow, 0, len(items))
-		for _, item := range items {
-			rows = append(rows, flatRowUserTask(item))
-		}
-		for _, line := range formatFlatRows(rows) {
-			if err := writeUserTaskLine(cmd.OutOrStdout(), line); err != nil {
-				return err
-			}
-		}
-		return nil
-	}
 }

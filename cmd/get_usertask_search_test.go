@@ -164,24 +164,66 @@ func TestGetUserTaskCommand_SearchRejectsInvalidInputBeforeRequests(t *testing.T
 	}
 }
 
-// TestGetUserTaskCommand_SearchTraversesSparsePagesAndHonorsLimit verifies an
-// empty cursor page cannot end discovery and a mid-page limit is never exceeded.
+// TestGetUserTaskCommand_SearchTraversesSparsePagesAndHonorsLimit verifies exact
+// totals across cursor pages, sparse intermediate pages, and nonfinal limits on every adapter.
 func TestGetUserTaskCommand_SearchTraversesSparsePagesAndHonorsLimit(t *testing.T) {
-	server, requests := newGetUserTaskSearchServer(t, func(index int, _ map[string]any) string {
-		if index == 0 {
-			return userTaskSearchResponse(3, false, "cursor-a")
+	for _, version := range []string{"8.8", "8.9", "8.10"} {
+		for _, sparse := range []bool{false, true} {
+			for _, limited := range []bool{false, true} {
+				for _, jsonOutput := range []bool{false, true} {
+					t.Run(fmt.Sprintf("%s/sparse=%t/limited=%t/json=%t", version, sparse, limited, jsonOutput), func(t *testing.T) {
+						responses := []string{
+							userTaskSearchResponse(3, false, "cursor-a", "2251799815391233"),
+							userTaskSearchResponse(3, false, "cursor-b", "2251799815391234"),
+							userTaskSearchResponse(3, false, "cursor-c", "2251799815391235"),
+						}
+						if sparse {
+							responses = append(responses[:1], append([]string{userTaskSearchResponse(3, false, "cursor-sparse")}, responses[1:]...)...)
+						}
+						server, requests := newGetUserTaskSearchServer(t, func(index int, _ map[string]any) string {
+							require.Less(t, index, len(responses))
+							return responses[index]
+						})
+						configPath := testx.WriteTestConfigForVersion(t, server.URL, version)
+						args := []string{"--keys-only", "get", "ut", "--batch-size", "1"}
+						if jsonOutput {
+							args[0] = "--json"
+						}
+						wantCount := 3
+						wantRequests := len(responses)
+						if limited {
+							args = append(args, "--limit", "2")
+							wantCount = 2
+							wantRequests--
+						}
+						stdout, stderr, err := runGetUserTaskCommand(t, configPath, "", args...)
+						require.NoError(t, err, stderr)
+						require.Empty(t, stderr)
+						if jsonOutput {
+							requireSucceededUserTaskEnvelope(t, stdout, int64(wantCount))
+						} else {
+							want := "2251799815391233\n2251799815391234\n"
+							if !limited {
+								want += "2251799815391235\n"
+							}
+							require.Equal(t, want, stdout)
+						}
+						got := requests.snapshot(t)
+						require.Len(t, got, wantRequests)
+						for i := 1; i < len(got); i++ {
+							var previous struct {
+								Page struct {
+									EndCursor string `json:"endCursor"`
+								} `json:"page"`
+							}
+							require.NoError(t, json.Unmarshal([]byte(responses[i-1]), &previous))
+							require.Equal(t, previous.Page.EndCursor, jsonPageAfter(t, got[i]))
+						}
+					})
+				}
+			}
 		}
-		return userTaskSearchResponse(3, false, "", "2251799815391233", "2251799815391234", "2251799815391235")
-	})
-	configPath := testx.WriteTestConfigForVersion(t, server.URL, "8.9")
-
-	stdout, stderr, err := runGetUserTaskCommand(t, configPath, "", "--keys-only", "get", "ut", "--batch-size", "3", "--limit", "2")
-	require.NoError(t, err, stderr)
-	require.Empty(t, stderr)
-	require.Equal(t, "2251799815391233\n2251799815391234\n", stdout)
-	got := requests.snapshot(t)
-	require.Len(t, got, 2)
-	require.Equal(t, "cursor-a", jsonPageAfter(t, got[1]))
+	}
 }
 
 // TestGetUserTaskCommand_SearchLimitBoundaries verifies limits before, at, and

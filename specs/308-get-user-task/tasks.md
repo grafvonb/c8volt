@@ -119,6 +119,11 @@ Read `AGENTS.md` and, for Ralph execution, `specs/ralph-implementation-rules.md`
 - [x] T045 Execute the deterministic validation matrix in `specs/308-get-user-task/quickstart.md` against fake backends, verify each example/contract maps to tested behavior, update guide commands only if implementation names require it, and record outcomes in `specs/308-get-user-task/progress.md`; live reads remain optional and no mutation setup is required.
 - [x] T046 Verify formatting of touched Go files and run `git diff --check`; review generated docs and reconcile acceptance coverage with recorded passing checks. Run `make test` through `Makefile` for the integrated shared service/facade contracts and concurrent bulk behavior if no still-valid full-suite result covers those changes; do not rerun solely for documentation, acceptance, or commit. Record the reason for broader validation, actual outcomes, and final requirement coverage in `specs/308-get-user-task/progress.md` and update completed checkboxes in `specs/308-get-user-task/tasks.md` without marking skipped checks complete.
 
+## Post-review corrections
+
+- [x] T047 Correct exact-total cursor continuation in the existing v88/v89/v810 adapters and user-task traversal; resolve cumulative continuation before visitors without new helpers or public API changes. Verify ordinary/sparse cursor pages, nonfinal limits, and terminal prompts across supported versions.
+- [x] T048 Move the existing page renderer into `cmd/cmd_views_usertask.go` and reuse existing views for collected output and final incremental summaries. Preserve output, quiet/JSON/keys precedence, and writer errors; validate with focused command, terminal, race, and existing architecture-boundary checks.
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies

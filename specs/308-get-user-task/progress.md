@@ -427,3 +427,24 @@ Started: 2026-09-13 13:20:06
 - The quickstart service, facade, command, terminal, compatibility, capability, and docsgen checks passed against fake backends; live Camunda reads were optional and were not run.
 - The first full race run exposed only action-help wording that named `stderr`; after replacing it with result-separation wording, the focused policy test passed and the repeated `make test` passed with `cmd` completing in 459.360s. `gofmt` and `git diff --check` also passed.
 ---
+
+## Review corrections — 2026-09-14
+
+**Scope**: T047–T048 only. No new production functions, public signatures, shared services, cross-cutting infrastructure, dependencies, generated clients, or unrelated runtime changes. The existing user-task models and rendering functions were reused.
+
+- Reproduced the exact-total cursor defect before the fix: the cross-version command regression failed on page two with `no-more state leaves ... reported matches unobserved`; the service regression also showed unresolved continuation reaching visitors.
+- Existing adapters now leave exact cursor completion indeterminate. The existing traversal resolves it using cumulative raw counts before invoking its observer/visitor, preserving final-page completion and intermediate-page prompts.
+- Moved `renderUserTaskSearchPage` into the view file; `userTasksView` reuses it for collected output and uses the returned total for the final incremental summary. Removed duplicate rendering and command-local count tracking.
+- Extended command regressions across 8.8/8.9/8.10, JSON/keys output, ordinary and empty intermediate cursor pages, and limits on nonfinal pages. Expanded the existing terminal matrix across supported versions with exact and capped totals; all 72 terminal cases executed and passed with no skips.
+- Added a focused service assertion for continuation observed by visitors and a view regression comparing incremental/collected output and preserving writer failures. No new test helper was introduced.
+
+**Validation performed**:
+
+- `go test ./internal/services/usertask/... ./c8volt/task -count=1` — passed.
+- `go test ./cmd -run 'TestGetUserTask|TestUserTasksView|TestUserTaskTotalView' -count=1 -v` — passed, no skipped cases.
+- `go test -race ./internal/services/usertask/... ./c8volt/task -count=1` — passed.
+- `go test -race ./cmd -run '^TestGetUserTaskCommand_SearchTraversesSparsePagesAndHonorsLimit$|^TestUserTasksView|^TestGetUserTaskPagingTerminal$/8.10/exact=true/yes_yes' -count=1 -v` — passed; includes the real-terminal exact-total continuation case.
+- `go test ./internal/services -run 'TestCommandAndFacadeSourceBoundaryForGeneratedClients|TestV810AdapterSourceBoundary|TestNonJobServiceAPIsDoNotExposeJobOperations' -count=1` — passed.
+- Targeted `gofmt` and `git diff --check` — passed. Production declaration inventory confirms no functions added or removed; the page renderer was relocated.
+
+Tests requiring local HTTP listeners and Go cache access ran outside the restricted sandbox to avoid skipped listener tests. The full repository suite was not repeated: these changes are contained to user-task continuation and rendering, and affected service/adapter/facade, command, PTY, race, and boundary checks cover that risk. README/help/generated CLI docs remain accurate because the correction restores the existing contract and changes no flags, metadata, or documented output.

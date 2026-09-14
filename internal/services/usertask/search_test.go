@@ -6,6 +6,7 @@ package usertask
 import (
 	"context"
 	"errors"
+	"fmt"
 	"math"
 	"testing"
 
@@ -389,4 +390,25 @@ func userTaskKeys(tasks []d.UserTask) []string {
 		keys[i] = task.Key
 	}
 	return keys
+}
+
+// TestSearchUserTasksPagesResolvesExactContinuationBeforeVisitor verifies that
+// cumulative service progress determines whether cursor pages require another page.
+func TestSearchUserTasksPagesResolvesExactContinuationBeforeVisitor(t *testing.T) {
+	t.Parallel()
+	calls := 0
+	api := &searchUserTaskAPI{searchPage: func(_ context.Context, _ d.UserTaskSearchQuery, request d.UserTaskPageRequest, _ ...services.CallOption) (d.UserTaskSearchPage, error) {
+		calls++
+		require.LessOrEqual(t, calls, 3)
+		return searchPage(request, []string{"task"}, 1, fmt.Sprintf("cursor-%d", calls), 3, d.UserTaskReportedTotalKindExact, d.UserTaskContinuationStateIndeterminate), nil
+	}}
+	var states []d.UserTaskContinuationState
+	result, err := SearchUserTasksPages(context.Background(), api, d.UserTaskSearchQuery{BatchSize: 1}, func(step d.UserTaskSearchPageStep) (d.UserTaskSearchPageAction, error) {
+		states = append(states, step.Page.ContinuationState)
+		return d.UserTaskSearchPageActionContinue, nil
+	})
+	require.NoError(t, err)
+	require.Equal(t, []d.UserTaskContinuationState{d.UserTaskContinuationStateHasMore, d.UserTaskContinuationStateHasMore, d.UserTaskContinuationStateNoMore}, states)
+	require.EqualValues(t, 3, result.Total)
+	require.Equal(t, d.UserTaskSearchCompletionExhausted, result.Completion)
 }

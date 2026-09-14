@@ -220,7 +220,12 @@ func userTaskContinuationState(pageReq d.UserTaskPageRequest, rawCount int32, en
 		}
 		return d.UserTaskContinuationStateIndeterminate
 	}
-	if pageReq.After == "" && int64(pageReq.From)+int64(rawCount) < total {
+	// A cursor does not reveal how many matching rows precede this page.
+	// The traversal service resolves exact completion from cumulative progress.
+	if pageReq.After != "" {
+		return d.UserTaskContinuationStateIndeterminate
+	}
+	if int64(pageReq.From)+int64(rawCount) < total {
 		return d.UserTaskContinuationStateHasMore
 	}
 	return d.UserTaskContinuationStateNoMore
