@@ -27,6 +27,7 @@ c8volt get [flags]
   ./c8volt get process-instance --state active --limit 5
   ./c8volt get user-task --key <user-task-key>
   ./c8volt get user-task --state created --limit 25
+  ./c8volt get user-task --candidate-group accounting --total
   ./c8volt get job --key <job-key>
   ./c8volt get element --pi-key <process-instance-key> --limit 10
   ./c8volt get incident --key <incident-key>

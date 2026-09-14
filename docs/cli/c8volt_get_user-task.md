@@ -16,9 +16,11 @@ Provide repeated or comma-separated --key values, or newline-separated keys on s
 
 Every requested key must resolve or the command fails without a partial result. Keyed reads require Camunda 8.8 or newer and use backend authorization without discovery-tenant filtering, so --tenant does not hide an authorized task and the task's actual tenant is returned.
 
-Without keys, search by process, element, state, assignment, candidate, and effective tenant scope. Predicates are combined with AND. --batch-size controls each discovery request, --limit caps returned tasks across all pages, and --total emits the exact matching count.
+Without keys, search by process, element, state, assignment, candidate, and effective tenant scope. Predicates are combined with AND. Supported states are ASSIGNING, CANCELED, CANCELING, COMPLETED, COMPLETING, CREATED, CREATING, FAILED, and UPDATING; state matching is case-insensitive, and all applies no state predicate. --batch-size controls each discovery request, --limit caps returned tasks across all pages, and --total emits the exact matching count.
 
-Use --json for one collection envelope or --keys-only for one task key per line. Keys cannot be combined with search filters, --limit, or --total; --total also conflicts with --limit, --json, and --keys-only. Search and keyed reads require Camunda 8.8 or newer.
+Interactive searches offer another page separately from command results when more matches remain. Use --auto-confirm or --automation for unattended paging. --quiet suppresses human results but preserves explicitly requested JSON, keys-only, and numeric total output.
+
+Use --json for one collection envelope or --keys-only for one task key per line. Keys cannot be combined with search filters, --limit, or --total; --total also conflicts with --limit, --json, and --keys-only. Search and keyed reads require Camunda 8.8, 8.9, or 8.10; Camunda 8.7 is unsupported. Task mutations, variables, forms, audit history, date filters, custom sorting, and watch mode are not provided by this command.
 
 ```
 c8volt get user-task [-] [flags]
@@ -31,6 +33,7 @@ c8volt get user-task [-] [flags]
   ./c8volt get ut -k <user-task-key>,<another-user-task-key>
   ./c8volt get user-task --state created --assignee alice --limit 25
   ./c8volt get user-task --candidate-group accounting --total
+  ./c8volt --automation --keys-only get user-task --batch-size 100
   printf '%s\n' "$USER_TASK_KEY" | ./c8volt get user-tasks
   printf '%s\n' "$USER_TASK_KEY" | ./c8volt get uts -
   ./c8volt --json get user-task --key <user-task-key>

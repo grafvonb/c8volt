@@ -402,3 +402,28 @@ Started: 2026-09-13 13:20:06
 - Late streamed failures preserve already-written rows but never append a success summary; collected JSON produces one failed envelope with no payload, and failed exact counting produces no numeric stdout.
 - The verbose command selection confirmed every intended PTY case executed; service/facade, tenant/Tasklist resolver, and race-enabled affected command checks passed with safe request collection and no new parallel global-state tests.
 ---
+---
+## Iteration 15 - 2026-09-14 15:50
+**Work Unit**: Phase 6 Polish & Cross-Cutting Concerns
+**Tasks Completed**:
+- [x] T043: Finalize command, parent, README, and generated CLI documentation.
+- [x] T044: Audit command cohesion, facade/service layering, comments, and generated-client scope.
+- [x] T045: Execute the deterministic fake-backend quickstart validation matrix.
+- [x] T046: Complete formatting, diff, documentation, acceptance, and repository-wide race validation.
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- README.md
+- cmd/get.go
+- cmd/get_usertask.go
+- docs/cli/c8volt_get.md
+- docs/cli/c8volt_get_user-task.md
+- docs/index.md
+- specs/308-get-user-task/tasks.md
+- specs/308-get-user-task/ralph-memory.md
+- specs/308-get-user-task/progress.md
+**Learnings**:
+- The ownership audit confirmed command paging policy remains isolated in `cmd/get_usertask_search.go`, final rendering remains in `cmd/cmd_views_usertask.go`, facade methods stay mechanical, traversal and bulk concurrency stay in internal services, and generated Camunda clients are unchanged from the feature base.
+- The quickstart service, facade, command, terminal, compatibility, capability, and docsgen checks passed against fake backends; live Camunda reads were optional and were not run.
+- The first full race run exposed only action-help wording that named `stderr`; after replacing it with result-separation wording, the focused policy test passed and the repeated `make test` passed with `cmd` completing in 459.360s. `gofmt` and `git diff --check` also passed.
+---

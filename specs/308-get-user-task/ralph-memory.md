@@ -44,6 +44,7 @@ Started: 2026-09-13T11:20:06Z
 - `pool.ExecuteSlice` may return no pool error when a context is already canceled before non-fail-fast work is scheduled, so strict workflows must check `ctx.Err()` before treating the returned slots as success.
 - Adding a canonical command requires updating `specs/254-cli-debt-refactor/assessment.md`; `TestCapabilityDocumentForRoot_CoversCLIDebtAssessment` compares the live capability inventory against that historical assessment table.
 - The canonical `get user-task` node raises the generated command-tree and CLI-debt assessment inventory from 55 to 56; keep the assessment prose and `docsgen/main_test.go` count guards synchronized with its row.
+- Command `Short`/`Long` help is action-focused and must avoid presentation internals such as `stdout` and `stderr`; describe interactive prompts as remaining separate from command results, while detailed stream guarantees may remain in README and generated option documentation.
 
 ## Reusable Commands
 
@@ -63,4 +64,4 @@ Started: 2026-09-13T11:20:06Z
 - Preserve the 2026-09-13 baseline log as historical evidence, not validation of the rebased implementation. The next slice selects checks for its actual changes.
 
 ## Current Handoff
-- Begin finalization at T043: complete final help/README wording, regenerate CLI docs, and then continue the audit and quickstart validation tasks without reopening completed US3 behavior.
+- Feature complete; no handoff required.
