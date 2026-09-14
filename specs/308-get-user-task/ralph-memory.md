@@ -26,6 +26,8 @@ Started: 2026-09-13T11:20:06Z
 - Keyed-only help must label search/filter/limit/total flags as reserved until US2 implements them. Keep the established `get` short summary stable because command help, shell-completion, and docsgen tests treat it as a compatibility string; add new resource discoverability in the parent long text, examples, and generated command tree.
 - Native search adapters use limit pagination for an initial position, offset pagination only when `From` is nonzero, and forward-cursor pagination when `After` is set. V810 process-instance, process-definition-key, and process-definition-ID selectors are generated equality unions; V88/V89 use scalar pointers while assignment, candidate, state, and tenant predicates remain equality unions.
 - One-page search adapters always preserve raw item count separately, map exact versus capped totals, treat an advancing cursor on capped results as continuation, and leave capped no-cursor exhaustion indeterminate for the shared traversal. Search results validate key, state, and owning-process identity before crossing the adapter boundary.
+- Shared user-task traversal prefers unseen advancing cursors, otherwise advances offsets by raw count for nonempty pages or requested size for sparse empty pages. It validates request echoes, counts, totals, continuation, cursor cycles, and arithmetic before returning a typed exhausted, limit-reached, or visitor-stopped result.
+- Exact user-task counts return trustworthy exact metadata immediately. Capped counts reuse the same validated walker with int64 raw progress, no caller limit or visitor, and no accumulated task collection; an empty indeterminate probe ends traversal only after the known lower bound has been observed.
 
 ## Gotchas
 
@@ -39,6 +41,7 @@ Started: 2026-09-13T11:20:06Z
 ## Reusable Commands
 
 - `go test ./internal/services/usertask/... -count=1`
+- `go test ./internal/services/usertask -run 'TestSearchUserTasks' -count=10`
 - `go test ./internal/domain -run 'TestUserTask' -count=1`
 - `go test ./internal/domain -count=1`
 - `go test ./c8volt/task -count=1`
@@ -53,4 +56,4 @@ Started: 2026-09-13T11:20:06Z
 - Preserve the 2026-09-13 baseline log as historical evidence, not validation of the rebased implementation. The next slice selects checks for its actual changes.
 
 ## Current Handoff
-- Continue US2 at T020: add shared traversal and exact-count contract tests before implementing the service-owned traversal in T026–T027.
+- Continue US2 at T021: add public facade search/visitor/count contract tests before implementing thin facade delegation in T028.

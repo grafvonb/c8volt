@@ -270,3 +270,23 @@ Started: 2026-09-13 13:20:06
 - Generated v8.10 process selectors require equality unions, while v8.8/v8.9 expose scalar selector pointers; the task-state and string predicates remain generated equality unions on all supported versions.
 - `go test ./internal/services/usertask/... -count=1`, `go test ./c8volt/task -count=1`, repository-wide compile-only tests, and `git diff --check` passed for the expanded service interface and adapter contracts.
 ---
+
+---
+## Iteration 9 - 2026-09-14 14:52
+**Work Unit**: US2 Discover and Count Matching User Tasks (shared traversal and exact counting)
+**Tasks Completed**:
+- [x] T020: Add shared traversal and exact-count contract coverage.
+- [x] T026: Implement collected and visitor-driven user-task search traversal.
+- [x] T027: Implement exact user-task total resolution with capped fallback counting.
+**Tasks Remaining in Work Unit**: 8 (T021–T022 and T028–T033)
+**Commit**: This work-unit commit
+**Files Changed**:
+- internal/services/usertask/search.go
+- internal/services/usertask/search_test.go
+- specs/308-get-user-task/tasks.md
+- specs/308-get-user-task/ralph-memory.md
+- specs/308-get-user-task/progress.md
+**Learnings**:
+- Capped lower bounds constrain when an empty indeterminate page can prove exhaustion; reaching the bound on a nonempty page still requires a terminal probe.
+- The focused search contract passed ten repeated runs, and the complete user-task service area passed race-enabled tests and package vet.
+---
