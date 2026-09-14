@@ -415,7 +415,7 @@ func userTaskSearchResponse(total int64, capped bool, cursor string, keys ...str
 	for _, key := range keys {
 		items = append(items, map[string]any{
 			"userTaskKey": key, "state": "CREATED", "name": "Approve invoice",
-			"elementId": "approve_invoice", "assignee": "alice",
+			"elementId": "approve_invoice", "assignee": "alice", "elementInstanceKey": "2251799815391200",
 			"processInstanceKey": "2251799813711967", "processDefinitionKey": "2251799813689000",
 			"processDefinitionId": "invoice", "tenantId": "tenant-a",
 		})

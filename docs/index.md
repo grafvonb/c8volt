@@ -6,7 +6,7 @@ nav_exclude: true
 has_toc: true
 ---
 
-> Generated from build `c8volt v4.3.0-beta.1-311-gf7fd27ab-dirty`, commit `f7fd27ab`, built `2026-09-14T13:41:44Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.0-alpha4 (prerelease)
+> Generated from build `c8volt v4.3.0-beta.1-313-g5402a8d9-dirty`, commit `5402a8d9`, built `2026-09-14T15:13:46Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.0-alpha4 (prerelease)
 
 <img src="./logo/c8volt_logo_transparent_w_shadow_400x244.png" alt="c8volt logo" />
 
@@ -273,6 +273,8 @@ Generated reference: [get process-instance](./cli/c8volt_get_process-instance).
 Use `get user-task` to fetch known native user tasks or search visible work on Camunda 8.8, 8.9, and 8.10; Camunda 8.7 is unsupported. Repeat or comma-separate `--key`, or pipe newline-separated keys with or without the optional `-`. Every requested key must resolve; keyed reads rely on backend authorization, do not filter by the selected discovery tenant, and preserve each task's actual tenant metadata.
 
 Without keys, combine process, element, state, assignment, candidate, and effective tenant filters. States are `ASSIGNING`, `CANCELED`, `CANCELING`, `COMPLETED`, `COMPLETING`, `CREATED`, `CREATING`, `FAILED`, and `UPDATING` (case-insensitive); `all` applies no state predicate. `--batch-size` controls page size, `--limit` bounds the returned collection, and `--total` prints the exact matching count. Interactive searches offer additional pages on stderr; use `--auto-confirm` or `--automation` for unattended paging. `--quiet` suppresses human results while preserving explicitly requested JSON, keys-only, and numeric total output. Keys conflict with search filters, `--limit`, and `--total`; total mode also conflicts with `--limit`, `--json`, and `--keys-only`.
+
+Human rows follow the other get commands: task key, tenant, element ID, and state, followed by optional `name:` and `assignee:` details, then BPMN process ID and related `pi:`, `ei:`, and `pd:` keys. Empty optional fields are omitted; collections end with `found: N`.
 
 This command is read-only and intentionally excludes task mutations, variables, forms, audit history, date filters, custom sorting, and watch mode.
 

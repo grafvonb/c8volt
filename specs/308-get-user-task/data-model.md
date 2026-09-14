@@ -9,7 +9,7 @@ Extend `internal/domain.UserTask` and introduce the corresponding public `task.U
 | Key | string | `key` | Native `userTaskKey`; task identity, required on successful reads |
 | State | string | `state` | Native state; uppercase backend value |
 | Name | string | `name,omitempty` | Nullable native name becomes empty string when absent |
-| ElementId | string | `elementId,omitempty` | BPMN task element ID; display fallback for absent name |
+| ElementId | string | `elementId,omitempty` | BPMN task element ID; displayed independently of the optional name |
 | ElementInstanceKey | string | `elementInstanceKey,omitempty` | Runtime element identity |
 | Assignee | string | `assignee,omitempty` | Nullable native value becomes empty string; assignment is not a state |
 | CandidateUsers | []string | `candidateUsers,omitempty` | Copy at facade boundary; empty/absent values omitted |

@@ -14,11 +14,11 @@ import (
 )
 
 // TestUserTasksView_RendersContractModes pins aligned optional cells, display
-// fallback, collection JSON, keys, and quiet precedence.
+// identities, labelled details, collection JSON, keys, and quiet precedence.
 func TestUserTasksView_RendersContractModes(t *testing.T) {
 	result := task.UserTasks{Total: 2, Items: []task.UserTask{
-		{Key: "2251799815391233", State: "CREATED", Name: "Approve invoice", Assignee: "alice", ProcessInstanceKey: "2251799813711967", TenantId: "tenant-a"},
-		{Key: "2251799815391234", State: "COMPLETED", ElementId: "archive_invoice", ProcessInstanceKey: "2251799813711968", TenantId: "tenant-b"},
+		{Key: "2251799815391233", State: "CREATED", Name: "Approve invoice", ElementId: "approve_invoice", Assignee: "alice", ProcessInstanceKey: "2251799813711967", TenantId: "tenant-a", ProcessDefinitionId: "invoice", ProcessDefinitionKey: "2251799813689000", ElementInstanceKey: "2251799815391200"},
+		{Key: "2251799815391234", State: "COMPLETED", ElementId: "archive_invoice", ProcessInstanceKey: "2251799813711968", TenantId: "tenant-b", ProcessDefinitionId: "invoice", ProcessDefinitionKey: "2251799813689000", ElementInstanceKey: "2251799815391200"},
 	}}
 
 	for _, test := range []struct {
@@ -29,7 +29,7 @@ func TestUserTasksView_RendersContractModes(t *testing.T) {
 		want     string
 		contains []string
 	}{
-		{name: "human", want: "2251799815391233 CREATED   Approve invoice alice pi:2251799813711967 tenant-a\n2251799815391234 COMPLETED archive_invoice       pi:2251799813711968 tenant-b\nfound: 2\n"},
+		{name: "human", want: "2251799815391233 tenant-a approve_invoice CREATED   name:Approve invoice assignee:alice invoice pi:2251799813711967 ei:2251799815391200 pd:2251799813689000\n2251799815391234 tenant-b archive_invoice COMPLETED                                     invoice pi:2251799813711968 ei:2251799815391200 pd:2251799813689000\nfound: 2\n"},
 		{name: "keys", keys: true, want: "2251799815391233\n2251799815391234\n"},
 		{name: "quiet", quiet: true, want: ""},
 		{name: "quiet keys", keys: true, quiet: true, want: "2251799815391233\n2251799815391234\n"},
@@ -116,4 +116,15 @@ func TestUserTasksView_CompletesIncrementalOutput(t *testing.T) {
 			require.ErrorIs(t, userTasksView(command, task.UserTasks{Total: 2}), errUserTaskWriter)
 		}
 	}
+}
+
+// TestFlatRowUserTask_UsesGetGrammar verifies the reported task keeps its name,
+// technical identities, and related keys in the agreed human-output order.
+func TestFlatRowUserTask_UsesGetGrammar(t *testing.T) {
+	item := task.UserTask{
+		Key: "2251799813900041", TenantId: "tenant-a", ProcessDefinitionId: "C89_SimpleUserTask",
+		ElementId: "SimpleUserTask_UserTask", State: "CREATED", Name: "Simple User Task",
+		ProcessInstanceKey: "2251799813900036", ElementInstanceKey: "2251799813900040", ProcessDefinitionKey: "2251799813873873",
+	}
+	require.Equal(t, "2251799813900041 tenant-a SimpleUserTask_UserTask CREATED name:Simple User Task C89_SimpleUserTask pi:2251799813900036 ei:2251799813900040 pd:2251799813873873", compactFlatRow(flatRowUserTask(item)))
 }

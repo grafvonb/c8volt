@@ -13,14 +13,14 @@ import (
 )
 
 // TestGetUserTaskOutput_HumanExecution verifies keyed and search execution use
-// exact compact rows, including element-ID fallback and an empty assignee cell.
+// exact compact rows, including technical identities, related keys, and omitted optional details.
 func TestGetUserTaskOutput_HumanExecution(t *testing.T) {
 	keyedServer, keyedRequests := newGetUserTaskCommandServer(t)
 	keyedConfig := testx.WriteTestConfigForVersion(t, keyedServer.URL, "8.9")
 	stdout, stderr, err := runGetUserTaskCommand(t, keyedConfig, "", "get", "ut", "-k", "2251799815391233,2251799815391234")
 	require.NoError(t, err, stderr)
 	require.Empty(t, stderr)
-	require.Equal(t, "2251799815391233 CREATED   Approve invoice alice pi:2251799813711967 tenant-a\n2251799815391234 COMPLETED archive_invoice       pi:2251799813711968 tenant-a\nfound: 2\n", stdout)
+	require.Equal(t, "2251799815391233 tenant-a approve_invoice CREATED   name:Approve invoice assignee:alice invoice pi:2251799813711967 ei:2251799815391200 pd:2251799813689000\n2251799815391234 tenant-a archive_invoice COMPLETED                                     invoice pi:2251799813711968 ei:2251799815391200 pd:2251799813689000\nfound: 2\n", stdout)
 	require.Equal(t, int32(2), keyedRequests.Load())
 
 	searchServer, searchRequests := newGetUserTaskSearchServer(t, func(_ int, _ map[string]any) string {
@@ -30,7 +30,7 @@ func TestGetUserTaskOutput_HumanExecution(t *testing.T) {
 	stdout, stderr, err = runGetUserTaskCommand(t, searchConfig, "", "get", "ut")
 	require.NoError(t, err, stderr)
 	require.Empty(t, stderr)
-	require.Equal(t, "2251799815391233 CREATED Approve invoice alice pi:2251799813711967 tenant-a\nfound: 1\n", stdout)
+	require.Equal(t, "2251799815391233 tenant-a approve_invoice CREATED name:Approve invoice assignee:alice invoice pi:2251799813711967 ei:2251799815391200 pd:2251799813689000\nfound: 1\n", stdout)
 	require.Len(t, searchRequests.snapshot(t), 1)
 }
 

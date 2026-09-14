@@ -34,20 +34,20 @@ func userTaskTotalView(cmd *cobra.Command, total int64) error {
 	return writeUserTaskLine(cmd.OutOrStdout(), fmt.Sprintf("%d", total))
 }
 
-// flatRowUserTask keeps optional columns in contract order so list alignment
-// retains intentional empty name/assignee cells.
+// flatRowUserTask follows get-command identity ordering and labels optional
+// task details and related keys without hiding the BPMN element identity.
 func flatRowUserTask(item task.UserTask) flatRow {
-	name := item.Name
-	if name == "" {
-		name = item.ElementId
-	}
 	return flatRow{
 		item.Key,
-		item.State,
-		name,
-		item.Assignee,
-		prefixedElementField("pi", item.ProcessInstanceKey),
 		item.TenantId,
+		item.ElementId,
+		item.State,
+		prefixedElementField("name", item.Name),
+		prefixedElementField("assignee", item.Assignee),
+		item.ProcessDefinitionId,
+		prefixedElementField("pi", item.ProcessInstanceKey),
+		prefixedElementField("ei", item.ElementInstanceKey),
+		prefixedElementField("pd", item.ProcessDefinitionKey),
 	}
 }
 
