@@ -41,3 +41,21 @@ Started: 2026-09-13 13:20:06
 - Validation: `git diff --check` passed. A read-only Python structural check passed for all 18 local Markdown links, all 46 unique sequential task IDs, unchanged completion flags (only T001/T002), 19 functional requirement IDs, 7 success-criterion IDs, and the active-plan target. Reviewed the documentation diff and remaining validation wording.
 - Live issue verification remains pending: `gh issue view 308 --json title,body,state,url` returned HTTP 401 (Bad credentials). The retained requirements were not newly verified against the live issue.
 - Runtime tests and CLI documentation generation were not run: this change affects planning guidance only, with no executable code or command metadata changes.
+
+---
+## Iteration 1 - 2026-09-14 10:00
+**Work Unit**: Phase 2 Foundational (T003 domain user-task models)
+**Tasks Completed**:
+- [x] T003: Add and validate version-neutral task, query, page, visitor, total, continuation, and completion models.
+**Tasks Remaining in Work Unit**: 2 (T004–T005)
+**Commit**: This work-unit commit
+**Files Changed**:
+- internal/domain/usertask.go
+- internal/domain/usertask_test.go
+- specs/308-get-user-task/tasks.md
+- specs/308-get-user-task/ralph-memory.md
+- specs/308-get-user-task/progress.md
+**Learnings**:
+- String-backed task identity fields preserve values beyond JavaScript's exact integer range, and page-position plus closed-enum validation makes later traversal state rejectable before use.
+- `go test ./internal/domain -run 'TestUserTask' -count=1`, `go test ./internal/domain -count=1`, and `go test ./internal/services/usertask/... -count=1` passed; `go test ./... -run '^$' -count=1` compiled every package successfully; `git diff --check` passed.
+---

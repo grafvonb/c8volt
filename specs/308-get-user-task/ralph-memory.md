@@ -14,6 +14,8 @@ Started: 2026-09-13T11:20:06Z
 - Preserve legacy `GetUserTask` resolver behavior, including v88/v89 tenant-search and Tasklist fallback plus v810 tenant/identity checks. New direct reads use a separate `GetNativeUserTask` path with backend authorization, no discovery-tenant post-filter, and no Tasklist fallback.
 - Keep traversal, sparse-page continuation, limits, worker scheduling, and exact-total fallback in internal services; command visitors only render or decide whether to continue.
 - Camunda 8.8, 8.9, and 8.10 support the new native reads; 8.7 must return the established unsupported domain error without issuing a request.
+- Domain user-task paging uses task-specific closed enums with validation: reported totals are `exact`/`lower_bound`, continuation is `has_more`/`no_more`/`indeterminate`, visitor actions are `continue`/`stop`, and successful completion is `exhausted`/`limit_reached`/`visitor_stopped`.
+- `UserTaskSearchPage.RawItemCount` remains distinct from selected `Items`; traversal steps and results use `int64` selected counts so later exact-count work does not narrow backend populations.
 
 ## Gotchas
 
@@ -24,6 +26,8 @@ Started: 2026-09-13T11:20:06Z
 ## Reusable Commands
 
 - `go test ./internal/services/usertask/... -count=1`
+- `go test ./internal/domain -run 'TestUserTask' -count=1`
+- `go test ./internal/domain -count=1`
 - `go test ./c8volt/task -count=1`
 - `go test ./cmd -run 'TestGetProcessInstanceCommand_(HasUserTasks|RejectsHasUserTasks)|TestGetProcessInstanceHelp_DocumentsHasUserTasksLookup' -count=1`
 - `make test`
@@ -32,13 +36,8 @@ Started: 2026-09-13T11:20:06Z
 
 - Do not change the legacy resolver getter to satisfy native keyed-read semantics; add the distinct native API required by the plan.
 - Do not infer completion from an empty or short search page when continuation evidence remains.
-
-## Validation Policy
-
 - Follow constitution v2.0.0: documentation-only changes use diff, consistency, and local-link checks; implementation starts with the closest behavior checks. Run `make test` when shared contracts/concurrency or other concrete broad risks justify it, not before every commit. Reuse passing evidence until relevant changes invalidate it.
 - Preserve the 2026-09-13 baseline log as historical evidence, not validation of the rebased implementation. The next slice selects checks for its actual changes.
 
 ## Current Handoff
-- Rebased onto `develop` at `a9aef2c3` on 2026-09-14; T001–T002 remain complete and all feature implementation is outstanding.
-- Live issue #308 verification remains pending: GitHub returned HTTP 401 during this refresh. Retained requirements have not been claimed as newly verified against GitHub.
-- Continue with T003 in Phase 2: add and validate the version-neutral domain task, query, page, visitor, total, and completion models without changing legacy resolver behavior.
+- Continue with T004 in Phase 2: add matching public task/search/page models and mechanical, copy-safe converters against the validated domain types; keep public empty collections non-nil and preserve required JSON fields.
