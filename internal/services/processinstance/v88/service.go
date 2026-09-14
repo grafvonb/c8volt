@@ -458,6 +458,9 @@ func endDateExistsFilter(filter d.ProcessInstanceFilter) *bool {
 	return new(true)
 }
 
+// CancelProcessInstance applies the configured precheck, escalates active child
+// cancellation to its root, and submits cancellation. Unless NoWait is set, it
+// discovers and confirms the family, annotating failures after accepted submission.
 func (s *Service) CancelProcessInstance(ctx context.Context, key string, opts ...services.CallOption) (d.CancelResponse, []d.ProcessInstance, error) {
 	cCfg := services.ApplyCallOptions(opts)
 	var pis []d.ProcessInstance
@@ -502,6 +505,7 @@ func (s *Service) CancelProcessInstance(ctx context.Context, key string, opts ..
 						Status:     fmt.Sprintf("dry-run: would cancel %d process instances with keys %v", len(keys), keys),
 					}, pis, nil
 				}
+				common.VerboseLog(ctx, cCfg, s.log, fmt.Sprintf("pi cancellation escalated: requested=%s root=%s reason=cancel affected tree", key, rootPIKey))
 				if !cCfg.SuppressProcessInstanceDetailLogs {
 					logging.InfoOrVerbose(
 						fmt.Sprintf("force: cancelling %d pi", len(keys)),
@@ -534,15 +538,19 @@ func (s *Service) CancelProcessInstance(ctx context.Context, key string, opts ..
 	if err = httpc.HttpStatusErr(resp.HTTPResponse, resp.Body); err != nil {
 		return d.CancelResponse{}, nil, err
 	}
+	common.VerboseLog(ctx, cCfg, s.log, fmt.Sprintf("pi cancellation submitted: root=%s accepted=true", key))
 	if !cCfg.NoWait {
 		keys, _, _, err := s.Family(ctx, key, opts...)
 		if err != nil {
-			return d.CancelResponse{}, nil, fmt.Errorf("cancel family: %w", err)
+			return d.CancelResponse{}, nil, common.NewProcessInstanceCancellationDiscoveryFailure(key, fmt.Errorf("cancel family: %w", err))
 		}
 		s.infoProcessInstanceDetail(cCfg, fmt.Sprintf("waiting for pi %s cancel", key))
 		states := []d.State{d.StateCompleted, d.StateCanceled, d.StateTerminated, d.StateAbsent}
+		common.VerboseProcessInstanceWaitLog(ctx, cCfg, s.cfg, s.log, "cancellation confirmation", key, keys, states)
+		waitTimeout := common.EffectiveProcessInstanceWaitTimeout(ctx, s.cfg.App.Backoff.Timeout)
 		if _, err = waiter.WaitForProcessInstancesState(ctx, s, s.cfg, s.log, keys, states, len(keys), opts...); err != nil {
-			return d.CancelResponse{}, nil, fmt.Errorf("cancel wait: %w", err)
+			cause := fmt.Errorf("cancel wait: %w", err)
+			return d.CancelResponse{}, nil, common.NewProcessInstanceCancellationConfirmationFailure("cancel", key, keys, waitTimeout, cause)
 		}
 		s.infoProcessInstanceDetail(cCfg, fmt.Sprintf("pi %s canceled", key))
 	} else {
@@ -555,18 +563,27 @@ func (s *Service) CancelProcessInstance(ctx context.Context, key string, opts ..
 	}, pis, nil
 }
 
+// GetProcessInstanceStateByKey returns the instance state and supporting instance
+// data. Nested polling can suppress lookup diagnostics while direct lookups retain them.
 func (s *Service) GetProcessInstanceStateByKey(ctx context.Context, key string, opts ...services.CallOption) (d.State, d.ProcessInstance, error) {
-	_ = services.ApplyCallOptions(opts)
-	s.log.Debug(fmt.Sprintf("checking pi %s state", key))
+	cCfg := services.ApplyCallOptions(opts)
+	if !cCfg.SuppressNestedProcessInstanceLookupLogs {
+		s.log.Debug(fmt.Sprintf("checking pi %s state", key))
+	}
 	pi, err := s.GetProcessInstance(ctx, key, opts...)
 	if err != nil {
 		return "", d.ProcessInstance{}, fmt.Errorf("process instance state: %w", err)
 	}
 	st := pi.State
-	s.log.Debug(fmt.Sprintf("pi %s state %s", key, st))
+	if !cCfg.SuppressNestedProcessInstanceLookupLogs {
+		s.log.Debug(fmt.Sprintf("pi %s state %s", key, st))
+	}
 	return st, pi, nil
 }
 
+// DeleteProcessInstance enforces the child-tree force guard and deletes descendants
+// before their parent. A conflicting active instance is canceled and confirmed
+// before deletion is retried, retaining cancellation failure facts on error.
 func (s *Service) DeleteProcessInstance(ctx context.Context, key string, opts ...services.CallOption) (d.DeleteResponse, error) {
 	cCfg := services.ApplyCallOptions(opts)
 	s.log.Debug(fmt.Sprintf("deleting pi %s", key))
@@ -612,16 +629,19 @@ func (s *Service) DeleteProcessInstance(ctx context.Context, key string, opts ..
 	})
 	if isDeleteWrongStateResponse(resp) {
 		if cCfg.Force {
+			common.VerboseLog(ctx, cCfg, s.log, fmt.Sprintf("pi deletion conflicted: key=%s cancellation required before deletion can proceed", key))
 			s.infoProcessInstanceDetail(cCfg, fmt.Sprintf("pi %s not terminal; cancelling before delete", key))
 			_, _, err = s.CancelProcessInstance(ctx, key, opts...)
 			if err != nil {
-				return d.DeleteResponse{}, fmt.Errorf("delete cancel: %w", err)
+				return d.DeleteResponse{}, common.EnrichProcessInstanceDeleteCancellationFailure(err, key)
 			}
 			s.infoProcessInstanceDetail(cCfg, fmt.Sprintf("waiting for pi %s cancel", key))
 			states := []d.State{d.StateCompleted, d.StateCanceled, d.StateTerminated, d.StateAbsent}
+			common.VerboseProcessInstanceWaitLog(ctx, cCfg, s.cfg, s.log, "deletion prerequisite confirmation", key, []string{key}, states)
 			if _, _, err = waiter.WaitForProcessInstanceState(ctx, s, s.cfg, s.log, key, states, opts...); err != nil {
 				return d.DeleteResponse{}, fmt.Errorf("delete wait canceled: %w", err)
 			}
+			common.VerboseLog(ctx, cCfg, s.log, fmt.Sprintf("pi cancellation confirmed: key=%s resuming deletion", key))
 			s.infoProcessInstanceDetail(cCfg, fmt.Sprintf("retrying pi %d delete", oldKey))
 			resp, err = services.RetryCamundaMutation(ctx, s.log, "delete pi", func(ctx context.Context) (*operatev88.DeleteProcessInstanceAndAllDependantDataByKeyResponse, *http.Response, []byte, error) {
 				resp, err := s.co.DeleteProcessInstanceAndAllDependantDataByKeyWithResponse(ctx, oldKey)
@@ -686,9 +706,13 @@ func isDeleteWrongStateResponse(resp *operatev88.DeleteProcessInstanceAndAllDepe
 		(strings.Contains(msg, "completed") || strings.Contains(msg, "canceled") || strings.Contains(msg, "cancelled") || strings.Contains(msg, "terminated"))
 }
 
+// GetProcessInstance fetches and converts one instance, preserving transport and
+// payload errors. Nested polling can suppress its lookup diagnostic.
 func (s *Service) GetProcessInstance(ctx context.Context, key string, opts ...services.CallOption) (d.ProcessInstance, error) {
-	_ = services.ApplyCallOptions(opts)
-	s.log.Debug(fmt.Sprintf("fetching pi %s", key))
+	cCfg := services.ApplyCallOptions(opts)
+	if !cCfg.SuppressNestedProcessInstanceLookupLogs {
+		s.log.Debug(fmt.Sprintf("fetching pi %s", key))
+	}
 	resp, err := s.cc.GetProcessInstanceWithResponse(ctx, key)
 	if err != nil {
 		return d.ProcessInstance{}, fmt.Errorf("get process instance: %w", err)

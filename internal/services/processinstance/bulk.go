@@ -5,10 +5,12 @@ package processinstance
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
 	"sort"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -245,14 +247,68 @@ func processInstanceCompletionDisposition(ok bool, noWait bool) d.OpsCompletionD
 	return d.OpsCompletionDispositionConfirmed
 }
 
+// processInstanceCompletionFailureDetail selects warning text for a completion:
+// no detail on success, concise facts for annotated cancellation failures, and
+// the original error or status for other failures.
 func processInstanceCompletionFailureDetail(ok bool, err error, status string) string {
 	if ok {
 		return ""
 	}
 	if err != nil {
+		var failure *d.ProcessInstanceMutationFailure
+		if errors.As(err, &failure) {
+			return conciseProcessInstanceMutationFailure(failure)
+		}
 		return err.Error()
 	}
 	return status
+}
+
+// conciseProcessInstanceMutationFailure formats known failure facts in stable key
+// order without repeating the causal chain. The annotation implies accepted
+// cancellation; unreached deletion is mentioned only for delete workflows.
+func conciseProcessInstanceMutationFailure(failure *d.ProcessInstanceMutationFailure) string {
+	reason := failure.FailureReason
+	if reason == "" {
+		reason = "failed"
+	}
+	summary := failure.Phase + " " + reason
+	if reason == "timed out" && failure.Timeout > 0 {
+		summary += fmt.Sprintf(" after %s", failure.Timeout)
+	}
+	parts := []string{summary}
+	if failure.RootKey != "" {
+		parts = append(parts, "root "+failure.RootKey)
+	}
+	if len(failure.Scope) > 0 {
+		scope := append([]string(nil), failure.Scope...)
+		sort.Strings(scope)
+		parts = append(parts, "scope "+strings.Join(scope, ","))
+	}
+	if len(failure.LastStates) > 0 {
+		keys := make([]string, 0, len(failure.LastStates))
+		for key, state := range failure.LastStates {
+			if state != "" && state != d.StateUnknown {
+				keys = append(keys, key)
+			}
+		}
+		sort.Strings(keys)
+		states := make([]string, 0, len(keys))
+		for _, key := range keys {
+			states = append(states, fmt.Sprintf("%s=%s", key, failure.LastStates[key]))
+		}
+		if len(states) > 0 {
+			parts = append(parts, "last observed "+strings.Join(states, ", "))
+		}
+	}
+	if failure.DeleteConflictKey != "" {
+		parts = append(parts, "child "+failure.DeleteConflictKey+" deletion conflicted")
+	}
+	parts = append(parts, "root cancellation submitted, outcome unconfirmed")
+	if failure.Operation == "delete" {
+		parts = append(parts, "resumed deletion not reached")
+	}
+	return strings.Join(parts, "; ")
 }
 
 func processInstanceCreationAffectedCount(err error) *int {

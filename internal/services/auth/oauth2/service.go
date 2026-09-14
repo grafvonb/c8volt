@@ -157,11 +157,9 @@ func (s *Service) RetrieveTokenForAPI(ctx context.Context, target string) (strin
 		return "", errors.New("oauth2 service is nil (not wired)")
 	}
 	targetLabel := tokenTargetLabel(target)
-	s.log.Debug(fmt.Sprintf("auth token cache lookup; target %s", targetLabel))
 	s.mu.Lock()
 	if tok, ok := s.cache[target]; ok && s.cachedTokenUsable(tok) {
 		s.mu.Unlock()
-		s.log.Debug(fmt.Sprintf("auth token cache hit; target %s", targetLabel))
 		return tok.value, nil
 	}
 	s.mu.Unlock()

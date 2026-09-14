@@ -157,6 +157,16 @@ and interactive prompts use the command's configured or inherited stderr.
 INFO and higher levels filter them. `--verbose` adds functional detail and does
 not enable HTTP diagnostics.
 
+For `cancel process-instance` and `delete process-instance --force`, `--verbose`
+explains cancellation prerequisites, root escalation, accepted submissions,
+confirmation waits, and deletion resumption. During those waits, DEBUG emits one
+completed state observation per polling check alongside the HTTP exchange record;
+routine OAuth cache hits and nested lookup chatter are omitted. If confirmation
+times out, normal human output distinguishes an accepted cancellation from an
+unconfirmed outcome and identifies deletion work that was not reached. Use
+`--verbose --debug` when both workflow narration and low-level diagnostics are
+needed.
+
 ```bash
 ./c8volt --config ./config.yaml --debug get process-definition --latest \
   > results.txt 2> diagnostics.txt

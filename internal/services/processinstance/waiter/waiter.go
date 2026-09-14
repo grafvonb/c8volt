@@ -114,6 +114,7 @@ func WaitForProcessInstanceExpectation(ctx context.Context, s PIWaiter, cfg *con
 
 	attempts := 0
 	delay := backoff.InitialDelay
+	nestedOpts := nestedProcessInstanceLookupOptions(opts)
 	for {
 		if errCtx := ctx.Err(); errCtx != nil {
 			elapsed := time.Since(start)
@@ -122,24 +123,28 @@ func WaitForProcessInstanceExpectation(ctx context.Context, s PIWaiter, cfg *con
 			return d.ProcessInstanceExpectationResponse{Key: key, Ok: false, State: d.StateUnknown, Status: status}, d.ProcessInstance{}, fmt.Errorf("%w: %s", errCtx, status)
 		}
 		attempts++
-		log.Debug(fmt.Sprintf("pi %s fetch for expectations; attempt %d", key, attempts))
-		pi, errInDelay := s.GetProcessInstance(ctx, key, opts...)
+		pi, errInDelay := s.GetProcessInstance(ctx, key, nestedOpts...)
+		observedAt := time.Since(start)
 		present := errInDelay == nil
 		if errInDelay != nil {
 			if isProcessInstanceAbsentErr(errInDelay) {
 				pi = d.ProcessInstance{Key: key, State: d.StateAbsent}
 				waitMsg := fmt.Sprintf("pi %s absent; waiting, attempt %d", key, attempts)
 				logging.UpdateActivityWithImportance(ctx, waitMsg, logging.ActivityImportanceWait)
-				logging.InfoIfVerbose(waitMsg, log, cCfg.Verbose)
+				logging.InfoIfVerbose(waitMsg, log, cCfg.Verbose && !cCfg.SuppressProcessInstanceDetailLogs)
 			} else {
+				logProcessInstanceLookupObservation(log, key, attempts, errInDelay, observedAt)
 				elapsed := time.Since(start)
 				status := fmt.Sprintf("stopped waiting for process instance %s after %d attempts in %s due to error", key, attempts, elapsed)
-				log.Error(status)
+				if !cCfg.SuppressProcessInstanceDetailLogs {
+					log.Error(status)
+				}
 				return d.ProcessInstanceExpectationResponse{Key: key, Ok: false, State: pi.State, Status: status}, d.ProcessInstance{}, fmt.Errorf("%w: %s", errInDelay, status)
 			}
 		}
 
 		if present && processInstanceExpectationMatches(pi, present, request) {
+			logProcessInstanceStateObservation(log, key, attempts, pi.State, observedAt, 0, false)
 			incident := pi.Incident
 			if attempts == 1 {
 				status := fmt.Sprintf("process instance %s already satisfied expectation(s) (state: %s, incident: %t)", key, pi.State, pi.Incident)
@@ -154,9 +159,10 @@ func WaitForProcessInstanceExpectation(ctx context.Context, s PIWaiter, cfg *con
 		if present {
 			waitMsg := fmt.Sprintf("pi %s waiting; state %s, incident %t, attempt %d", key, pi.State, pi.Incident, attempts)
 			logging.UpdateActivityWithImportance(ctx, waitMsg, logging.ActivityImportanceWait)
-			logging.InfoIfVerbose(waitMsg, log, cCfg.Verbose)
+			logging.InfoIfVerbose(waitMsg, log, cCfg.Verbose && !cCfg.SuppressProcessInstanceDetailLogs)
 		}
 		if backoff.MaxRetries > 0 && attempts >= backoff.MaxRetries {
+			logProcessInstanceStateObservation(log, key, attempts, pi.State, observedAt, 0, false)
 			elapsed := time.Since(start)
 			status := fmt.Sprintf("exceeded max_retries (%d) waiting for expectation(s) of process instance %s after %d attempts in %s", backoff.MaxRetries, key, attempts, elapsed)
 			log.Debug(status)
@@ -164,8 +170,10 @@ func WaitForProcessInstanceExpectation(ctx context.Context, s PIWaiter, cfg *con
 		}
 		select {
 		case <-time.After(delay):
+			logProcessInstanceStateObservation(log, key, attempts, pi.State, observedAt, delay, true)
 			delay = backoff.NextDelay(delay)
 		case <-ctx.Done():
+			logProcessInstanceStateObservation(log, key, attempts, pi.State, observedAt, 0, false)
 			elapsed := time.Since(start)
 			status := fmt.Sprintf("stopped waiting for process instance %s after %d attempts in %s due to context done", key, attempts, elapsed)
 			log.Debug(status)
@@ -174,6 +182,7 @@ func WaitForProcessInstanceExpectation(ctx context.Context, s PIWaiter, cfg *con
 	}
 }
 
+// WaitForProcessInstanceState polls one process instance while emitting one completed observation per lookup.
 func WaitForProcessInstanceState(ctx context.Context, s PIWaiter, cfg *config.Config, log *slog.Logger, key string, desired d.States, opts ...services.CallOption) (d.StateResponse, d.ProcessInstance, error) {
 	cCfg := services.ApplyCallOptions(opts)
 	stopActivity := logging.StartActivityWithImportance(ctx, fmt.Sprintf("waiting for pi %s state", key), logging.ActivityImportanceWait)
@@ -191,18 +200,22 @@ func WaitForProcessInstanceState(ctx context.Context, s PIWaiter, cfg *config.Co
 
 	attempts := 0
 	delay := backoff.InitialDelay
+	lastState := d.StateUnknown
+	nestedOpts := nestedProcessInstanceLookupOptions(opts)
 	for {
 		if errCtx := ctx.Err(); errCtx != nil {
 			elapsed := time.Since(start)
 			status := fmt.Sprintf("stopped waiting for process instance %s after %d attempts in %s due to context error", key, attempts, elapsed)
 			log.Debug(status)
-			return d.StateResponse{Ok: false, State: d.StateUnknown, Status: status}, d.ProcessInstance{}, fmt.Errorf("%w: %s", errCtx, status)
+			return waitStateFailure(key, lastState, attempts, elapsed, status, "", fmt.Errorf("%w: %s", errCtx, status))
 		}
 		attempts++
-		log.Debug(fmt.Sprintf("pi %s fetch state; attempt %d", key, attempts))
-		got, pi, errInDelay := s.GetProcessInstanceStateByKey(ctx, key, opts...)
+		got, pi, errInDelay := s.GetProcessInstanceStateByKey(ctx, key, nestedOpts...)
+		observedAt := time.Since(start)
 		if errInDelay == nil {
+			lastState = got
 			if stateIn(got, desired) {
+				logProcessInstanceStateObservation(log, key, attempts, got, observedAt, 0, false)
 				if attempts == 1 {
 					status := fmt.Sprintf("process instance %s is already in one of the desired state(s) [%s] (current: %s)", key, desired, got)
 					log.Debug(status)
@@ -215,12 +228,14 @@ func WaitForProcessInstanceState(ctx context.Context, s PIWaiter, cfg *config.Co
 			}
 			waitMsg := fmt.Sprintf("pi %s waiting; state %s, attempt %d", key, got, attempts)
 			logging.UpdateActivityWithImportance(ctx, waitMsg, logging.ActivityImportanceWait)
-			logging.InfoIfVerbose(waitMsg, log, cCfg.Verbose)
+			logging.InfoIfVerbose(waitMsg, log, cCfg.Verbose && !cCfg.SuppressProcessInstanceDetailLogs)
 		} else if errInDelay != nil {
 			if isProcessInstanceAbsentErr(errInDelay) {
 				// Only waiter-driven absent/deleted confirmation maps not-found into ABSENT; direct lookups stay strict.
 				got = d.StateAbsent
+				lastState = got
 				if stateIn(got, desired) {
+					logProcessInstanceStateObservation(log, key, attempts, got, observedAt, 0, false)
 					elapsed := time.Since(start)
 					status := fmt.Sprintf("process instance %s reached one of the desired state(s) [%s] (current: %s) after %d checks in %s", key, desired, got, attempts, elapsed)
 					log.Debug(status)
@@ -230,27 +245,66 @@ func WaitForProcessInstanceState(ctx context.Context, s PIWaiter, cfg *config.Co
 				logging.UpdateActivityWithImportance(ctx, waitMsg, logging.ActivityImportanceWait)
 				logging.InfoIfVerbose(waitMsg, log, cCfg.Verbose)
 			} else {
+				logProcessInstanceLookupObservation(log, key, attempts, errInDelay, observedAt)
 				elapsed := time.Since(start)
 				status := fmt.Sprintf("stopped waiting for process instance %s after %d attempts in %s due to error", key, attempts, elapsed)
-				log.Error(status)
-				return d.StateResponse{Ok: false, State: got, Status: status}, d.ProcessInstance{}, fmt.Errorf("%w: %s", errInDelay, status)
+				if !cCfg.SuppressProcessInstanceDetailLogs {
+					log.Error(status)
+				}
+				return waitStateFailure(key, lastState, attempts, elapsed, status, "failed during lookup", fmt.Errorf("%w: %s", errInDelay, status))
 			}
 		}
 		if backoff.MaxRetries > 0 && attempts >= backoff.MaxRetries {
+			logProcessInstanceStateObservation(log, key, attempts, got, observedAt, 0, false)
 			elapsed := time.Since(start)
 			status := fmt.Sprintf("exceeded max_retries (%d) waiting for state %q of process instance %s after %d attempts in %s", backoff.MaxRetries, desired, key, attempts, elapsed)
 			log.Debug(status)
-			return d.StateResponse{Ok: false, State: d.StateUnknown, Status: status}, d.ProcessInstance{}, errors.New(status)
+			return waitStateFailure(key, lastState, attempts, elapsed, status, "exhausted polling attempts", errors.New(status))
 		}
 		select {
 		case <-time.After(delay):
+			logProcessInstanceStateObservation(log, key, attempts, got, observedAt, delay, true)
 			delay = backoff.NextDelay(delay)
 		case <-ctx.Done():
+			logProcessInstanceStateObservation(log, key, attempts, got, observedAt, 0, false)
 			elapsed := time.Since(start)
 			status := fmt.Sprintf("stopped waiting for process instance %s after %d attempts in %s due to context done", key, attempts, elapsed)
 			log.Debug(status)
-			return d.StateResponse{Ok: false, State: d.StateUnknown, Status: status}, d.ProcessInstance{}, fmt.Errorf("%w: %s", ctx.Err(), status)
+			return waitStateFailure(key, lastState, attempts, elapsed, status, "", fmt.Errorf("%w: %s", ctx.Err(), status))
 		}
+	}
+}
+
+// nestedProcessInstanceLookupOptions gives the waiter sole ownership of per-check observation messages.
+func nestedProcessInstanceLookupOptions(opts []services.CallOption) []services.CallOption {
+	nested := append([]services.CallOption(nil), opts...)
+	return append(nested, services.WithSuppressNestedProcessInstanceLookupLogs())
+}
+
+// logProcessInstanceStateObservation records a successful lookup after the continuation decision is known.
+func logProcessInstanceStateObservation(log *slog.Logger, key string, attempt int, state d.State, elapsed, nextDelay time.Duration, continuing bool) {
+	message := fmt.Sprintf("pi state observation: key=%s attempt=%d state=%s elapsed=%s", key, attempt, state, elapsed)
+	if continuing {
+		message += fmt.Sprintf(" next_delay=%s", nextDelay)
+	}
+	log.Debug(message)
+}
+
+// logProcessInstanceLookupObservation records a failed lookup without repeating its nested causal chain.
+func logProcessInstanceLookupObservation(log *slog.Logger, key string, attempt int, err error, elapsed time.Duration) {
+	detail := err.Error()
+	if prefix, _, ok := strings.Cut(detail, ":"); ok {
+		detail = prefix
+	}
+	log.Debug(fmt.Sprintf("pi state observation: key=%s attempt=%d lookup_error=%s elapsed=%s", key, attempt, detail, elapsed))
+}
+
+// waitStateFailure returns the established unsuccessful response while attaching
+// the last observed state, attempts, elapsed time and stop reason to the original
+// error. The observation is evidence, not a confirmed final response state.
+func waitStateFailure(key string, lastState d.State, attempts int, elapsed time.Duration, status, reason string, err error) (d.StateResponse, d.ProcessInstance, error) {
+	return d.StateResponse{Ok: false, State: d.StateUnknown, Status: status}, d.ProcessInstance{}, &d.ProcessInstanceWaitFailure{
+		Reason: reason, Key: key, LastState: lastState, Attempts: attempts, Elapsed: elapsed, Err: err,
 	}
 }
 

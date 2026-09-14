@@ -4,6 +4,7 @@
 package v88_test
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -23,6 +24,7 @@ import (
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/services"
 	v88 "github.com/grafvonb/c8volt/internal/services/processinstance/v88"
+	"github.com/grafvonb/c8volt/toolx/logging"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -1038,11 +1040,13 @@ func TestService_SearchForProcessInstancesPage_UsesCursorAndCompatibilityFilters
 	require.Equal(t, "cursor-next", page.EndCursor)
 }
 
+// TestService_GetProcessInstanceStateByKey verifies state lookup behavior and scoped nested-log suppression.
 func TestService_GetProcessInstanceStateByKey(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("Success", func(t *testing.T) {
-		svc := newTestService(t, testConfig(), &mockCamundaClient{
+		var logBuf bytes.Buffer
+		client := &mockCamundaClient{
 			createProcessInstanceWithResponse: unexpectedCreateProcessInstance(t),
 			getProcessInstanceWithResponse: func(ctx context.Context, key string, reqEditors ...camundav88.RequestEditorFn) (*camundav88.GetProcessInstanceResponse, error) {
 				assert.Equal(t, "123", key)
@@ -1053,13 +1057,26 @@ func TestService_GetProcessInstanceStateByKey(t *testing.T) {
 			},
 			searchProcessInstancesWithResp:    unexpectedSearchProcessInstances(t),
 			cancelProcessInstanceWithResponse: unexpectedCancelProcessInstance(t),
-		}, newStrictOperateClient(t))
+		}
+		svc, err := v88.New(
+			testConfig(), &http.Client{}, slog.New(logging.NewPlainHandler(&logBuf, slog.LevelDebug)),
+			v88.WithClientCamunda(client), v88.WithClientOperate(newStrictOperateClient(t)),
+		)
+		require.NoError(t, err)
 
 		state, pi, err := svc.GetProcessInstanceStateByKey(ctx, "123")
 
 		require.NoError(t, err)
 		assert.Equal(t, d.StateCompleted, state)
 		assert.Equal(t, "123", pi.Key)
+		assert.Contains(t, logBuf.String(), "checking pi 123 state")
+		assert.Contains(t, logBuf.String(), "fetching pi 123")
+		assert.Contains(t, logBuf.String(), "pi 123 state COMPLETED")
+
+		logBuf.Reset()
+		_, _, err = svc.GetProcessInstanceStateByKey(ctx, "123", services.WithSuppressNestedProcessInstanceLookupLogs())
+		require.NoError(t, err)
+		assert.Empty(t, logBuf.String())
 	})
 
 	t.Run("MalformedSuccessPayload", func(t *testing.T) {
