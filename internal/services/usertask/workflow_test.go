@@ -29,6 +29,11 @@ func (a *orderedUserTaskAPI) GetNativeUserTask(context.Context, string, ...servi
 	panic("legacy resolver must not call GetNativeUserTask")
 }
 
+// SearchUserTasksPage fails if legacy ownership resolution switches to native discovery.
+func (a *orderedUserTaskAPI) SearchUserTasksPage(context.Context, d.UserTaskSearchQuery, d.UserTaskPageRequest, ...services.CallOption) (d.UserTaskSearchPage, error) {
+	panic("legacy resolver must not call SearchUserTasksPage")
+}
+
 // TestResolveProcessInstanceKeys_PreservesInputOrder pins the legacy resolver's one-for-one task and owning-process ordering.
 func TestResolveProcessInstanceKeys_PreservesInputOrder(t *testing.T) {
 	t.Parallel()

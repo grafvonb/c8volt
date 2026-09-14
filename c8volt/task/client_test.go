@@ -48,6 +48,11 @@ func (a *facadeUserTaskAPI) GetNativeUserTask(_ context.Context, key string, opt
 	return a.tasks[key], nil
 }
 
+// SearchUserTasksPage rejects search until the facade search contract is exercised by its dedicated work unit.
+func (a *facadeUserTaskAPI) SearchUserTasksPage(context.Context, d.UserTaskSearchQuery, d.UserTaskPageRequest, ...services.CallOption) (d.UserTaskSearchPage, error) {
+	panic("unexpected user-task search")
+}
+
 // snapshot returns independently owned observations from the facade service stub.
 func (a *facadeUserTaskAPI) snapshot() ([]string, []string, []*services.CallCfg) {
 	a.mu.Lock()

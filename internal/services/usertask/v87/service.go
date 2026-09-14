@@ -31,6 +31,11 @@ func (s *Service) GetNativeUserTask(context.Context, string, ...services.CallOpt
 	return d.UserTask{}, fmt.Errorf("%w: native user-task lookup is unsupported in Camunda 8.7; requires Camunda 8.8 or newer", d.ErrUnsupported)
 }
 
+// SearchUserTasksPage rejects native discovery because Camunda 8.7 does not expose the required API contract.
+func (s *Service) SearchUserTasksPage(context.Context, d.UserTaskSearchQuery, d.UserTaskPageRequest, ...services.CallOption) (d.UserTaskSearchPage, error) {
+	return d.UserTaskSearchPage{}, fmt.Errorf("%w: native user-task search is unsupported in Camunda 8.7; requires Camunda 8.8 or newer", d.ErrUnsupported)
+}
+
 type Option func(*Service)
 
 func WithLogger(logger *slog.Logger) Option {

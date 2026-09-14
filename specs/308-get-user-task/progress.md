@@ -234,3 +234,39 @@ Started: 2026-09-13 13:20:06
 - Initial `make test` identified stale parent-help and 55-command inventory assertions; focused command/docsgen regressions passed after synchronization, and the repeated `make test` passed with `cmd` completing in 390.615s.
 - Targeted `go test ./internal/services/usertask/... -count=1`, `go test ./c8volt/task -count=1`, `go test ./cmd -run 'TestGetUserTask|Test.*UserTask|Test.*Stdin.*Envelope' -count=1`, and the explicit legacy resolver command pattern all passed before the full gate.
 ---
+
+---
+## Iteration 8 - 2026-09-14 14:41
+**Work Unit**: US2 Discover and Count Matching User Tasks (native one-page search contracts and adapters)
+**Tasks Completed**:
+- [x] T019: Add versioned search request/response contract coverage and zero-request V87 rejection.
+- [x] T023: Extend service contracts and implement the V810 page adapter plus V87 unsupported behavior.
+- [x] T024: Implement the V89 scalar-selector page adapter.
+- [x] T025: Implement the V88 scalar-selector page adapter.
+**Tasks Remaining in Work Unit**: 11 (T020–T022 and T026–T033)
+**Commit**: This work-unit commit
+**Files Changed**:
+- c8volt/task/client_test.go
+- internal/services/usertask/api.go
+- internal/services/usertask/bulk_test.go
+- internal/services/usertask/v87/contract.go
+- internal/services/usertask/v87/native_test.go
+- internal/services/usertask/v87/service.go
+- internal/services/usertask/v88/contract.go
+- internal/services/usertask/v88/search.go
+- internal/services/usertask/v88/search_test.go
+- internal/services/usertask/v89/contract.go
+- internal/services/usertask/v89/search.go
+- internal/services/usertask/v89/search_test.go
+- internal/services/usertask/v810/contract.go
+- internal/services/usertask/v810/search.go
+- internal/services/usertask/v810/search_test.go
+- internal/services/usertask/v810/service_test.go
+- internal/services/usertask/workflow_test.go
+- specs/308-get-user-task/tasks.md
+- specs/308-get-user-task/ralph-memory.md
+- specs/308-get-user-task/progress.md
+**Learnings**:
+- Generated v8.10 process selectors require equality unions, while v8.8/v8.9 expose scalar selector pointers; the task-state and string predicates remain generated equality unions on all supported versions.
+- `go test ./internal/services/usertask/... -count=1`, `go test ./c8volt/task -count=1`, repository-wide compile-only tests, and `git diff --check` passed for the expanded service interface and adapter contracts.
+---

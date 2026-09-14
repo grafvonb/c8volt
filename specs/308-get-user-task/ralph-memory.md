@@ -24,6 +24,8 @@ Started: 2026-09-13T11:20:06Z
 - The keyed `get user-task` command owns only input, validation, dispatch, metadata, and rendering. Its focused stdin reader consumes explicit dash input or nonterminal implicit input, preserves the shared 10 MiB scanner ceiling, allows an empty implicit stream to reach future search, and never consumes terminal stdin to infer keys.
 - User-task command output uses one collection payload for every keyed cardinality, JSON-before-keys-before-human precedence, quiet suppression only for human output, aligned contract-order rows with element-ID name fallback, and writer errors propagated from human/key lines.
 - Keyed-only help must label search/filter/limit/total flags as reserved until US2 implements them. Keep the established `get` short summary stable because command help, shell-completion, and docsgen tests treat it as a compatibility string; add new resource discoverability in the parent long text, examples, and generated command tree.
+- Native search adapters use limit pagination for an initial position, offset pagination only when `From` is nonzero, and forward-cursor pagination when `After` is set. V810 process-instance, process-definition-key, and process-definition-ID selectors are generated equality unions; V88/V89 use scalar pointers while assignment, candidate, state, and tenant predicates remain equality unions.
+- One-page search adapters always preserve raw item count separately, map exact versus capped totals, treat an advancing cursor on capped results as continuation, and leave capped no-cursor exhaustion indeterminate for the shared traversal. Search results validate key, state, and owning-process identity before crossing the adapter boundary.
 
 ## Gotchas
 
@@ -51,4 +53,4 @@ Started: 2026-09-13T11:20:06Z
 - Preserve the 2026-09-13 baseline log as historical evidence, not validation of the rebased implementation. The next slice selects checks for its actual changes.
 
 ## Current Handoff
-- Start US2 at T019: add the versioned native search request/response contract tests without beginning another user story in the same iteration.
+- Continue US2 at T020: add shared traversal and exact-count contract tests before implementing the service-owned traversal in T026–T027.

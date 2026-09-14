@@ -31,6 +31,11 @@ func (a *bulkUserTaskAPI) GetNativeUserTask(ctx context.Context, key string, opt
 	return a.getNative(ctx, key, opts...)
 }
 
+// SearchUserTasksPage rejects accidental use of search by the native bulk workflow.
+func (a *bulkUserTaskAPI) SearchUserTasksPage(context.Context, d.UserTaskSearchQuery, d.UserTaskPageRequest, ...services.CallOption) (d.UserTaskSearchPage, error) {
+	panic("bulk native reads must not call user-task search")
+}
+
 // TestGetUserTasksDeduplicatesStablyAndPreservesInputOrder verifies concurrent completion cannot reorder the first occurrence of each requested key.
 func TestGetUserTasksDeduplicatesStablyAndPreservesInputOrder(t *testing.T) {
 	t.Parallel()
