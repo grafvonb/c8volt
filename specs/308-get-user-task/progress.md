@@ -78,3 +78,23 @@ Started: 2026-09-13 13:20:06
 - Required task identity fields and collection fields retain stable JSON names while nullable native strings become omitted empty public values; candidate and result slices are independently owned across the facade boundary.
 - `go test ./c8volt/task -count=1`, `go test ./... -run '^$' -count=1`, and `git diff --check` passed; the compile-only repository check confirmed the new public types do not break package consumers.
 ---
+
+---
+## Iteration 2 - 2026-09-14 13:33
+**Work Unit**: Phase 2 Foundational (T005 legacy resolver compatibility)
+**Tasks Completed**:
+- [x] T005: Pin shared and version-specific legacy user-task resolver behavior.
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- internal/services/usertask/workflow_test.go
+- internal/services/usertask/v88/service_test.go
+- internal/services/usertask/v89/service_test.go
+- internal/services/usertask/v810/service_test.go
+- specs/308-get-user-task/tasks.md
+- specs/308-get-user-task/ralph-memory.md
+- specs/308-get-user-task/progress.md
+**Learnings**:
+- Legacy ownership resolution preserves task input order; v88/v89 Tasklist fallback rejects tenant and returned-key mismatches, while v810 rejects native returned-key mismatches.
+- `go test ./internal/services/usertask/... -count=1` and `git diff --check` passed, covering the existing v87 unsupported path and all retained primary/fallback resolver regressions.
+---

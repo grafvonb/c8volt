@@ -17,6 +17,7 @@ Started: 2026-09-13T11:20:06Z
 - Domain user-task paging uses task-specific closed enums with validation: reported totals are `exact`/`lower_bound`, continuation is `has_more`/`no_more`/`indeterminate`, visitor actions are `continue`/`stop`, and successful completion is `exhausted`/`limit_reached`/`visitor_stopped`.
 - `UserTaskSearchPage.RawItemCount` remains distinct from selected `Items`; traversal steps and results use `int64` selected counts so later exact-count work does not narrow backend populations.
 - Public task models use required JSON fields for `key`, `state`, and `processInstanceKey`; `UserTasks` always has required `total` and `items`, with nil domain collections normalized to a non-nil empty public slice. Facade converters copy task candidate slices and mechanically map page visitor actions/errors without interpreting traversal state.
+- Legacy process ownership resolution performs one lookup per supplied task key and preserves input order. The v88/v89 resolver remains tenant-scoped on primary search and enforces tenant, returned task identity, and owning-process identity after Tasklist fallback; v810 enforces returned task identity, configured tenant visibility, and owning-process identity on its native resolver lookup.
 
 ## Gotchas
 
@@ -41,4 +42,4 @@ Started: 2026-09-13T11:20:06Z
 - Preserve the 2026-09-13 baseline log as historical evidence, not validation of the rebased implementation. The next slice selects checks for its actual changes.
 
 ## Current Handoff
-- Continue with T005 in Phase 2: pin every legacy resolver path across the shared workflow and v87/v88/v89/v810 adapters, including tenant search, Tasklist fallback, native identity checks, and input-order resolution; do not alter production behavior.
+- Begin US1 with T006–T009 in their declared ready wave; add failing native-read, bulk, facade, and command contract tests without implementing behavior or committing a knowingly failing test-only increment.

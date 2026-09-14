@@ -116,6 +116,29 @@ func TestService_GetUserTask_ReturnsNotFoundForTenantMismatch(t *testing.T) {
 	require.NotContains(t, err.Error(), "fallback")
 }
 
+// TestService_GetUserTask_RejectsIdentityMismatch pins V810's native response-key validation before resolver use.
+func TestService_GetUserTask_RejectsIdentityMismatch(t *testing.T) {
+	svc := newTestService(t, &mockUserTaskClient{
+		getUserTaskWithResponse: func(_ context.Context, key camundav810.UserTaskKey, _ ...camundav810.RequestEditorFn) (*camundav810.GetUserTaskResponse, error) {
+			require.Equal(t, camundav810.UserTaskKey("2251799815391233"), key)
+			return &camundav810.GetUserTaskResponse{
+				HTTPResponse: newHTTPResponse(http.MethodGet, "https://camunda.local/v2/user-tasks/2251799815391233", http.StatusOK, "200 OK"),
+				JSON200: &camundav810.UserTaskResult{
+					UserTaskKey:        "2251799815399999",
+					ProcessInstanceKey: "2251799813711967",
+					TenantId:           "tenant-a",
+				},
+			}, nil
+		},
+	})
+
+	_, err := svc.GetUserTask(context.Background(), "2251799815391233")
+
+	require.Error(t, err)
+	require.ErrorIs(t, err, d.ErrMalformedResponse)
+	require.Contains(t, err.Error(), "user task 2251799815391233 returned mismatched task 2251799815399999")
+}
+
 // TestService_GetUserTask_RejectsMissingProcessInstanceKey protects command callers from rendering incomplete lookup results.
 func TestService_GetUserTask_RejectsMissingProcessInstanceKey(t *testing.T) {
 	svc := newTestService(t, &mockUserTaskClient{
