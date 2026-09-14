@@ -59,3 +59,22 @@ Started: 2026-09-13 13:20:06
 - String-backed task identity fields preserve values beyond JavaScript's exact integer range, and page-position plus closed-enum validation makes later traversal state rejectable before use.
 - `go test ./internal/domain -run 'TestUserTask' -count=1`, `go test ./internal/domain -count=1`, and `go test ./internal/services/usertask/... -count=1` passed; `go test ./... -run '^$' -count=1` compiled every package successfully; `git diff --check` passed.
 ---
+
+---
+## Iteration 1 - 2026-09-14 13:30
+**Work Unit**: Phase 2 Foundational (T004 public user-task models and converters)
+**Tasks Completed**:
+- [x] T004: Add matching public task/search/page models and copy-safe mechanical converters.
+**Tasks Remaining in Work Unit**: 1 (T005)
+**Commit**: This work-unit commit
+**Files Changed**:
+- c8volt/task/model.go
+- c8volt/task/convert.go
+- c8volt/task/convert_test.go
+- specs/308-get-user-task/tasks.md
+- specs/308-get-user-task/ralph-memory.md
+- specs/308-get-user-task/progress.md
+**Learnings**:
+- Required task identity fields and collection fields retain stable JSON names while nullable native strings become omitted empty public values; candidate and result slices are independently owned across the facade boundary.
+- `go test ./c8volt/task -count=1`, `go test ./... -run '^$' -count=1`, and `git diff --check` passed; the compile-only repository check confirmed the new public types do not break package consumers.
+---

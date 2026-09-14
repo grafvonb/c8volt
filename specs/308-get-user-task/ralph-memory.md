@@ -16,6 +16,7 @@ Started: 2026-09-13T11:20:06Z
 - Camunda 8.8, 8.9, and 8.10 support the new native reads; 8.7 must return the established unsupported domain error without issuing a request.
 - Domain user-task paging uses task-specific closed enums with validation: reported totals are `exact`/`lower_bound`, continuation is `has_more`/`no_more`/`indeterminate`, visitor actions are `continue`/`stop`, and successful completion is `exhausted`/`limit_reached`/`visitor_stopped`.
 - `UserTaskSearchPage.RawItemCount` remains distinct from selected `Items`; traversal steps and results use `int64` selected counts so later exact-count work does not narrow backend populations.
+- Public task models use required JSON fields for `key`, `state`, and `processInstanceKey`; `UserTasks` always has required `total` and `items`, with nil domain collections normalized to a non-nil empty public slice. Facade converters copy task candidate slices and mechanically map page visitor actions/errors without interpreting traversal state.
 
 ## Gotchas
 
@@ -40,4 +41,4 @@ Started: 2026-09-13T11:20:06Z
 - Preserve the 2026-09-13 baseline log as historical evidence, not validation of the rebased implementation. The next slice selects checks for its actual changes.
 
 ## Current Handoff
-- Continue with T004 in Phase 2: add matching public task/search/page models and mechanical, copy-safe converters against the validated domain types; keep public empty collections non-nil and preserve required JSON fields.
+- Continue with T005 in Phase 2: pin every legacy resolver path across the shared workflow and v87/v88/v89/v810 adapters, including tenant search, Tasklist fallback, native identity checks, and input-order resolution; do not alter production behavior.
