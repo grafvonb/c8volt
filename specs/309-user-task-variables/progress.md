@@ -264,3 +264,24 @@ Started: 2026-09-15 10:04:53
 **Learnings**:
 - Keeping the display limit explicit at the task-view boundary preserves JSON values and prevents process-instance flag state from influencing user-task rendering.
 ---
+---
+## Iteration 14 - 2026-09-15 11:53
+**Work Unit**: Polish and cross-cutting completion (T033-T036)
+**Tasks Completed**:
+- [x] T033: Update README and final quickstart documentation
+- [x] T034: Regenerate and review CLI documentation
+- [x] T035: Review the integrated implementation against CLI and facade/service contracts
+- [x] T036: Format and run focused plus repository-wide validation
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- README.md
+- docs/cli/c8volt_get_user-task.md
+- docs/index.md
+- specs/309-user-task-variables/quickstart.md
+- specs/309-user-task-variables/tasks.md
+- specs/309-user-task-variables/ralph-memory.md
+- specs/309-user-task-variables/progress.md
+**Learnings**:
+- The full race suite needs a longer package timeout on this machine; after the default timeout and an isolated passing diagnostic test, the same `make test` target passed with `GOFLAGS='-timeout=20m'`.
+---

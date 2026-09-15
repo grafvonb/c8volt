@@ -6,7 +6,7 @@ nav_exclude: true
 has_toc: true
 ---
 
-> Generated from build `c8volt v4.3.0-beta.1-317-gcf528907-dirty`, commit `cf528907`, built `2026-09-15T06:27:01Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.0-alpha4 (prerelease)
+> Generated from build `c8volt v4.3.0-beta.1-335-gec9546cb-dirty`, commit `ec9546cb`, built `2026-09-15T09:30:51Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.0-alpha4 (prerelease)
 
 <img src="./logo/c8volt_logo_transparent_w_shadow_400x244.png" alt="c8volt logo" />
 
@@ -278,11 +278,17 @@ Without keys, combine process, element, state, assignment, candidate, and effect
 
 Human rows follow the other get commands: task key, tenant, element ID, and state, followed by related `pi:`, `ei:`, and `pd:` keys. Assignee is always last: `assignee:<user>` when assigned, otherwise `assignee:<unassigned>`. Task name, BPMN process ID, and process-definition version are available in JSON. Other empty optional fields are omitted; collections end with `found: N`.
 
-This command is read-only and intentionally excludes task mutations, variables, forms, audit history, date filters, custom sorting, and watch mode.
+Add `--with-vars` to include the effective variables selected by the backend for each returned task. This variable display is supported on Camunda 8.8, 8.9, and 8.10. Values are shown in full by default; `--var-value-limit N` shortens only the compact human presentation after `N` Unicode characters, while JSON preserves the received value. Truncation labels distinguish values already incomplete at the backend from values shortened only for display. Effective `--keys-only` output and `--total` skip variable retrieval.
+
+This command is read-only and intentionally excludes task mutations, variable filtering, forms, audit history, date filters, custom sorting, and watch mode.
 
 ```bash
 ./c8volt get user-task --key <user-task-key>
 ./c8volt get user-task --key <user-task-key>,<another-user-task-key>
+./c8volt get ut --key <user-task-key> --with-vars
+./c8volt get ut --assignee alice --limit 10 --with-vars
+./c8volt get ut --pi-key <process-instance-key> --with-vars --var-value-limit 120
+./c8volt --json get ut --key <user-task-key> --with-vars
 ./c8volt get user-task --state created --candidate-group accounting --limit 25
 ./c8volt get user-task --assignee alice --total
 ./c8volt --automation --keys-only get user-task --batch-size 100

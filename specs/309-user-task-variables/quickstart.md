@@ -1,6 +1,6 @@
 # Quickstart Validation: User-Task Variables
 
-This guide validates the implemented feature. The planning phase does not implement flags or run these runtime checks. See [CLI contract](contracts/cli.md), [service contract](contracts/facade-service.md), and [data model](data-model.md) for precise outcomes.
+This guide validates the implemented feature. See [CLI contract](contracts/cli.md), [service contract](contracts/facade-service.md), and [data model](data-model.md) for precise outcomes.
 
 ## Prerequisites
 
@@ -11,7 +11,7 @@ This guide validates the implemented feature. The planning phase does not implem
 
 ## Focused automated checks
 
-Run checks relevant to the changed slice. Proposed test files should retain the following names/prefixes so these filters execute the new coverage. Confirm the output includes the intended tests rather than a no-tests-to-run result.
+Run checks relevant to the changed slice. These filters match the implemented test names; confirm the output includes the intended tests rather than a no-tests-to-run result.
 
 ```sh
 go test ./internal/services/usertask/... -run 'Test.*(Variable|Native|Resolve)' -count=1

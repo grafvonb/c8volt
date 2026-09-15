@@ -21,6 +21,7 @@ Started: 2026-09-15T08:04:53Z
 - Bounded search enrichment reuses `enrichSelectedUserTasks` from `cmd/get_usertask_vars.go`: incremental human pages enrich only service-trimmed `step.Page.Items` before rendering/prompting, while collected/quiet/unattended modes enrich the final selected collection once; the final streamed summary remains count-only.
 - User-task value limits remain presentation-only: `cmd/get_usertask.go` validates explicit `--var-value-limit` dependency/range before reads, and keyed/search dispatch passes the integer explicitly through task views into `variableValueHumanLine`; JSON bypasses the human formatter and process-instance flags remain independent.
 - US3 command output coverage lives in `cmd/get_usertask_vars_output_test.go`; fresh task-local fixtures keep request counts isolated across default/zero/positive limits, mixed output modes, validation failures, and quiet retrieval errors.
+- Final user documentation lives in the README user-task section and generated `docs/cli/c8volt_get_user-task.md`; `make docs-content` also refreshes the dependent `docs/index.md` aggregate.
 
 ## Decisions
 
@@ -32,6 +33,7 @@ Started: 2026-09-15T08:04:53Z
 - `gh issue view 309` cannot currently validate the remote issue because the configured GitHub credentials return HTTP 401. The committed feature artifacts provide the implementation contract for this iteration.
 - Generated sort constants use the package-level `camundav810.ASC` name, and generated effective-variable results omit raw value/truncation fields even when `JSON200` is populated.
 - `commit.issue: auto` adds no suffix on `codex/309-user-task-variables` because the branch does not begin with a numeric prefix; iteration 8's subject was repaired accordingly before iteration 9 work.
+- The repository-wide race suite can exceed Go's default 10-minute package timeout in `cmd` on this machine. The isolated timed-out diagnostics test passes; `GOFLAGS='-timeout=20m' make test` completed successfully with `cmd` taking 612.012 seconds.
 
 ## Reusable Commands
 
@@ -51,4 +53,4 @@ Started: 2026-09-15T08:04:53Z
 
 ## Current Handoff
 
-- Start polish with T033 by updating README and quickstart documentation for the now-complete keyed/search/value-limit behavior; US3 T027–T032 is complete, while generated docs and integrated review/test tasks remain T034–T036.
+- Feature complete; no handoff required.
