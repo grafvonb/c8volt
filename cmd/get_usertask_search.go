@@ -16,7 +16,16 @@ func searchUserTasksWithPaging(cmd *cobra.Command, cli task.API, request task.Se
 	incremental := shouldRenderUserTaskSearchIncrementally(cmd)
 	result, err := cli.SearchUserTasksPages(cmd.Context(), request, func(step task.SearchPageStep) (task.SearchPageAction, error) {
 		if incremental {
-			if err := renderUserTaskSearchPage(cmd, step.Page.Items); err != nil {
+			selected := task.UserTasks{Total: int64(len(step.Page.Items)), Items: step.Page.Items}
+			if shouldEnrichSelectedUserTasks(selected) {
+				enriched, err := enrichSelectedUserTasks(cmd, cli, selected)
+				if err != nil {
+					return task.SearchPageActionStop, err
+				}
+				if err := renderVariableEnrichedUserTaskSearchPage(cmd, enriched.Items); err != nil {
+					return task.SearchPageActionStop, fmt.Errorf("render user task variables: %w", err)
+				}
+			} else if err := renderUserTaskSearchPage(cmd, step.Page.Items); err != nil {
 				return task.SearchPageActionStop, err
 			}
 		}

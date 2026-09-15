@@ -94,8 +94,8 @@ Use --json for one collection envelope or --keys-only for one task key per line.
 			if renderedIncrementally {
 				return
 			}
-			if err := userTasksView(cmd, result); err != nil {
-				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("render user tasks: %w", err))
+			if err := renderSelectedUserTasks(cmd, cli, result); err != nil {
+				handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 			}
 			return
 		}

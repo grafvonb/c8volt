@@ -226,6 +226,89 @@ func TestGetUserTaskCommand_SearchTraversesSparsePagesAndHonorsLimit(t *testing.
 	}
 }
 
+// TestGetUserTaskCommand_SearchVariablesEnrichOnlySelectedTasks verifies search
+// filters and limits select tasks before complete per-task variable retrieval in
+// both incremental human and collected JSON execution.
+func TestGetUserTaskCommand_SearchVariablesEnrichOnlySelectedTasks(t *testing.T) {
+	const (
+		firstKey    = "2251799815391233"
+		secondKey   = "2251799815391234"
+		excludedKey = "2251799815391235"
+	)
+	variable := func(name, value string) userTaskVariableFixtureValue {
+		return userTaskVariableFixtureValue{
+			Name: name, Value: value, VariableKey: "901", ProcessInstanceKey: "2251799813711967",
+			ScopeKey: "2251799815391200", TenantID: "tenant-a",
+		}
+	}
+	for _, test := range []struct {
+		name       string
+		args       []string
+		wantSearch int
+		wantTotal  int64
+	}{
+		{name: "incremental partial page limit", args: []string{"--tenant", "tenant-a", "get", "ut", "--assignee", "alice", "--batch-size", "3", "--limit", "2", "--with-vars"}, wantSearch: 1, wantTotal: 2},
+		{name: "collected json partial page limit", args: []string{"--tenant", "tenant-a", "--json", "get", "ut", "--assignee", "alice", "--batch-size", "3", "--limit", "2", "--with-vars"}, wantSearch: 1, wantTotal: 2},
+		{name: "sparse incremental pages", args: []string{"get", "ut", "--batch-size", "1", "--with-vars"}, wantSearch: 2, wantTotal: 1},
+		{name: "sparse collected pages", args: []string{"--json", "get", "ut", "--batch-size", "1", "--with-vars"}, wantSearch: 2, wantTotal: 1},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			server, requests := newGetUserTaskVariablesServer(t, getUserTaskVariablesFixture{
+				SearchRespond: func(index int, _ map[string]any) string {
+					if strings.Contains(test.name, "sparse") {
+						if index == 0 {
+							return userTaskSearchResponse(1, false, "cursor-sparse")
+						}
+						return userTaskSearchResponse(1, false, "", firstKey)
+					}
+					return userTaskSearchResponse(3, false, "cursor-unused", firstKey, secondKey, excludedKey)
+				},
+				VariablePages: map[string][]userTaskVariablePageFixture{
+					firstKey: {
+						{Total: 2, Items: []userTaskVariableFixtureValue{variable("alpha", "1")}},
+						{Total: 2, Items: []userTaskVariableFixtureValue{variable("omega", "2")}},
+					},
+					secondKey:   {{Total: 1, Items: []userTaskVariableFixtureValue{variable("beta", "3")}}},
+					excludedKey: {{Total: 1, Items: []userTaskVariableFixtureValue{variable("excluded", "4")}}},
+				},
+			})
+			configPath := testx.WriteTestConfigForVersion(t, server.URL, "8.9")
+
+			stdout, stderr, err := runGetUserTaskCommand(t, configPath, "", test.args...)
+			require.NoError(t, err, stderr)
+			require.Empty(t, stderr)
+			if strings.Contains(test.name, "json") || strings.Contains(test.name, "collected") {
+				requireSucceededUserTaskEnvelope(t, stdout, test.wantTotal)
+				require.Contains(t, stdout, `"variables"`)
+			} else {
+				require.Contains(t, stdout, "alpha=1")
+				require.Contains(t, stdout, "omega=2")
+				if test.wantTotal == 2 {
+					require.Contains(t, stdout, "beta=3")
+				} else {
+					require.NotContains(t, stdout, "beta=3")
+				}
+				require.Equal(t, 1, strings.Count(stdout, fmt.Sprintf("found: %d\n", test.wantTotal)), "final summary must not re-enrich or rerender tasks")
+			}
+
+			_, searches, _ := requests.snapshot()
+			require.Len(t, searches, test.wantSearch)
+			if !strings.Contains(test.name, "sparse") {
+				filter := requireJSONMap(t, searches[0]["filter"])
+				require.Equal(t, "alice", jsonFilterValue(t, filter["assignee"]))
+				require.Equal(t, "tenant-a", jsonFilterValue(t, filter["tenantId"]))
+			}
+			require.Equal(t, 2, requests.variableRequestCount(firstKey), "variable pagination must complete independently of the task limit")
+			if test.wantTotal == 2 {
+				require.Equal(t, 1, requests.variableRequestCount(secondKey))
+			} else {
+				require.Zero(t, requests.variableRequestCount(secondKey))
+			}
+			require.Zero(t, requests.variableRequestCount(excludedKey), "trimmed tasks must never be enriched")
+		})
+	}
+}
+
 // TestGetUserTaskCommand_SearchLimitBoundaries verifies limits before, at, and
 // after a backend page boundary stop with the exact required request count.
 func TestGetUserTaskCommand_SearchLimitBoundaries(t *testing.T) {

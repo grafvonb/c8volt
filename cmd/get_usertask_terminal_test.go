@@ -50,6 +50,7 @@ func TestGetUserTaskPagingTerminal(t *testing.T) {
 		wantStderr       string
 		wantStderrPart   string
 		wantRequests     int
+		wantVarRequests  int
 		wantExitCode     int
 	}{
 		{
@@ -152,6 +153,55 @@ func TestGetUserTaskPagingTerminal(t *testing.T) {
 			wantRequests: 1,
 		},
 		{
+			name:      "variables continue then decline enriches accepted pages only",
+			responses: threePages,
+			args:      []string{"get", "ut", "--batch-size", "1", "--with-vars"},
+			exchanges: []testx.CmdTerminalExchange{
+				{Prompt: firstPrompt, Response: "yes"},
+				{Prompt: secondPrompt, Response: "no"},
+			},
+			configuredStderr: true,
+			wantStdout: "2251799815391233 tenant-a approve_invoice CREATED pi:2251799813711967 ei:2251799815391200 pd:2251799813689000 assignee:alice\n" +
+				"└─ vars:\n   └─ amount=120\n" +
+				"2251799815391234 tenant-a approve_invoice CREATED pi:2251799813711967 ei:2251799815391200 pd:2251799813689000 assignee:alice\n" +
+				"└─ vars:\n   └─ amount=120\nfound: 2\n",
+			wantStderr:      firstPrompt + secondPrompt,
+			wantRequests:    2,
+			wantVarRequests: 2,
+		},
+		{
+			name:            "variables empty completion is prompt free",
+			responses:       []string{userTaskSearchResponse(0, false, "")},
+			args:            []string{"get", "ut", "--with-vars"},
+			wantStdout:      "found: 0\n",
+			wantRequests:    1,
+			wantVarRequests: 0,
+		},
+		{
+			name:            "variables automation is prompt free",
+			responses:       threePages,
+			args:            []string{"get", "ut", "--batch-size", "1", "--with-vars", "--automation"},
+			wantStdout:      "2251799815391233 tenant-a approve_invoice CREATED pi:2251799813711967 ei:2251799815391200 pd:2251799813689000 assignee:alice\n└─ vars:\n   └─ amount=120\n2251799815391234 tenant-a approve_invoice CREATED pi:2251799813711967 ei:2251799815391200 pd:2251799813689000 assignee:alice\n└─ vars:\n   └─ amount=120\n2251799815391235 tenant-a approve_invoice CREATED pi:2251799813711967 ei:2251799815391200 pd:2251799813689000 assignee:alice\n└─ vars:\n   └─ amount=120\nfound: 3\n",
+			wantRequests:    3,
+			wantVarRequests: 3,
+		},
+		{
+			name:            "variables auto confirm honors limit without a prompt",
+			responses:       threePages,
+			args:            []string{"get", "ut", "--batch-size", "1", "--limit", "2", "--with-vars", "--auto-confirm"},
+			wantStdout:      "2251799815391233 tenant-a approve_invoice CREATED pi:2251799813711967 ei:2251799815391200 pd:2251799813689000 assignee:alice\n└─ vars:\n   └─ amount=120\n2251799815391234 tenant-a approve_invoice CREATED pi:2251799813711967 ei:2251799815391200 pd:2251799813689000 assignee:alice\n└─ vars:\n   └─ amount=120\nfound: 2\n",
+			wantRequests:    2,
+			wantVarRequests: 2,
+		},
+		{
+			name:            "variables keys paging stays pure and skips enrichment",
+			responses:       threePages,
+			args:            []string{"--keys-only", "get", "ut", "--batch-size", "1", "--with-vars", "--auto-confirm"},
+			wantStdout:      "2251799815391233\n2251799815391234\n2251799815391235\n",
+			wantRequests:    3,
+			wantVarRequests: 0,
+		},
+		{
 			name:           "explicit dash rejects terminal stdin",
 			args:           []string{"--keys-only", "get", "ut", "-"},
 			wantStderrPart: "invalid flag value: '-' requires piped/redirected stdin",
@@ -164,17 +214,24 @@ func TestGetUserTaskPagingTerminal(t *testing.T) {
 		for _, exactTotals := range []bool{false, true} {
 			for _, tt := range tests {
 				t.Run(fmt.Sprintf("%s/exact=%t/%s", version, exactTotals, tt.name), func(t *testing.T) {
-					server, requests := newGetUserTaskSearchServer(t, func(index int, _ map[string]any) string {
-						require.Less(t, index, len(tt.responses))
-						if exactTotals {
-							var payload map[string]any
-							require.NoError(t, json.Unmarshal([]byte(tt.responses[index]), &payload))
-							payload["page"].(map[string]any)["hasMoreTotalItems"] = false
-							encoded, err := json.Marshal(payload)
-							require.NoError(t, err)
-							return string(encoded)
-						}
-						return tt.responses[index]
+					server, requests := newGetUserTaskVariablesServer(t, getUserTaskVariablesFixture{
+						SearchRespond: func(index int, _ map[string]any) string {
+							require.Less(t, index, len(tt.responses))
+							if exactTotals {
+								var payload map[string]any
+								require.NoError(t, json.Unmarshal([]byte(tt.responses[index]), &payload))
+								payload["page"].(map[string]any)["hasMoreTotalItems"] = false
+								encoded, err := json.Marshal(payload)
+								require.NoError(t, err)
+								return string(encoded)
+							}
+							return tt.responses[index]
+						},
+						VariablePages: map[string][]userTaskVariablePageFixture{
+							"2251799815391233": {terminalUserTaskVariablePage()},
+							"2251799815391234": {terminalUserTaskVariablePage()},
+							"2251799815391235": {terminalUserTaskVariablePage()},
+						},
 					})
 					configPath := testx.WriteTestConfigForVersion(t, server.URL, version)
 					configuredPath := filepath.Join(t.TempDir(), "configured-stderr.txt")
@@ -214,7 +271,9 @@ func TestGetUserTaskPagingTerminal(t *testing.T) {
 					} else {
 						require.Equal(t, tt.wantStderr, result.Stderr)
 					}
-					require.Len(t, requests.snapshot(t), tt.wantRequests)
+					_, searchRequests, variableRequests := requests.snapshot()
+					require.Len(t, searchRequests, tt.wantRequests)
+					require.Len(t, variableRequests, tt.wantVarRequests)
 					require.Equal(t, len(tt.exchanges), strings.Count(result.Stderr, "Continue? [y/N]: "))
 					require.NotContains(t, result.Stdout, "Fetched")
 					require.NotContains(t, result.Stdout, "Continue?")
@@ -227,6 +286,15 @@ func TestGetUserTaskPagingTerminal(t *testing.T) {
 			}
 		}
 	}
+}
+
+// terminalUserTaskVariablePage supplies one deterministic variable for prompt
+// tests so request boundaries can be asserted without changing page behavior.
+func terminalUserTaskVariablePage() userTaskVariablePageFixture {
+	return userTaskVariablePageFixture{Total: 1, Items: []userTaskVariableFixtureValue{{
+		Name: "amount", Value: "120", VariableKey: "901", ProcessInstanceKey: "2251799813711967",
+		ScopeKey: "2251799815391200", TenantID: "tenant-a",
+	}}}
 }
 
 // runGetUserTaskPagingTerminalHelper executes one isolated command scenario

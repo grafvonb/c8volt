@@ -18,6 +18,7 @@ Started: 2026-09-15T08:04:53Z
 - The public task facade now exposes only `EnrichUserTasksWithVariables`: `c8volt/task/client.go` maps selected tasks and facade options once into the internal enrichment workflow, while `convert.go` initializes both empty item and variable slices and preserves the service returned-count total.
 - Keyed CLI enrichment is isolated in `cmd/get_usertask_vars.go`: strict `GetUserTasks` completes first, then one eligible facade enrichment pass runs; absent opt-in, effective keys-only, total, and empty selections skip variable calls while quiet human and JSON precedence retain retrieval.
 - Variable presentation is now command-independent in `cmd/cmd_views_variable_values.go`; the process-instance wrapper supplies its existing flag limit, while the baseline user-task view supplies unlimited zero and renders a `vars:` tree without process-age metadata.
+- Bounded search enrichment reuses `enrichSelectedUserTasks` from `cmd/get_usertask_vars.go`: incremental human pages enrich only service-trimmed `step.Page.Items` before rendering/prompting, while collected/quiet/unattended modes enrich the final selected collection once; the final streamed summary remains count-only.
 
 ## Decisions
 
@@ -47,4 +48,4 @@ Started: 2026-09-15T08:04:53Z
 
 ## Current Handoff
 
-- Start US2 with T021 in `cmd/get_usertask_search_test.go`; US1 keyed enrichment and its focused validation are complete, while search paths intentionally remain unenriched until T025.
+- Start US3 with T027 in `cmd/get_usertask_vars_output_test.go`; keyed and bounded-search enrichment are complete, while configurable human value-limit flag behavior remains intentionally deferred to T029–T030.

@@ -19,14 +19,24 @@ func renderSelectedUserTasks(cmd *cobra.Command, cli task.API, result task.UserT
 		}
 		return nil
 	}
-	enriched, err := cli.EnrichUserTasksWithVariables(cmd.Context(), result, collectOptions()...)
+	enriched, err := enrichSelectedUserTasks(cmd, cli, result)
 	if err != nil {
-		return fmt.Errorf("get user task variables: %w", err)
+		return err
 	}
 	if err := variableEnrichedUserTasksView(cmd, enriched); err != nil {
 		return fmt.Errorf("render user task variables: %w", err)
 	}
 	return nil
+}
+
+// enrichSelectedUserTasks delegates the single selected-collection pass used
+// by keyed, incremental-search, and collected-search execution.
+func enrichSelectedUserTasks(cmd *cobra.Command, cli task.API, result task.UserTasks) (task.VariableEnrichedUserTasks, error) {
+	enriched, err := cli.EnrichUserTasksWithVariables(cmd.Context(), result, collectOptions()...)
+	if err != nil {
+		return task.VariableEnrichedUserTasks{}, fmt.Errorf("get user task variables: %w", err)
+	}
+	return enriched, nil
 }
 
 // shouldEnrichSelectedUserTasks excludes successful no-ops and output modes

@@ -209,3 +209,30 @@ Started: 2026-09-15 10:04:53
 **Learnings**:
 - Keyed enrichment stays a single post-lookup pass, and an explicit-limit shared formatter preserves process-instance behavior without coupling task output to process-command globals.
 ---
+---
+## Iteration 12 - 2026-09-15 11:18
+**Work Unit**: US2 bounded search variable enrichment (T021-T026)
+**Tasks Completed**:
+- [x] T021: Add bounded and sparse search enrichment coverage
+- [x] T022: Add real-terminal enrichment and request-boundary coverage
+- [x] T023: Add empty enriched search output-mode coverage
+- [x] T024: Add streamed, collected, and writer enrichment failure coverage
+- [x] T025: Enrich selected incremental pages or the final collected search once
+- [x] T026: Run focused US2, terminal, race, and keyed regression checks
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/cmd_views_usertask_vars.go
+- cmd/get_usertask.go
+- cmd/get_usertask_error_test.go
+- cmd/get_usertask_output_test.go
+- cmd/get_usertask_search.go
+- cmd/get_usertask_search_test.go
+- cmd/get_usertask_terminal_test.go
+- cmd/get_usertask_vars.go
+- specs/309-user-task-variables/tasks.md
+- specs/309-user-task-variables/ralph-memory.md
+- specs/309-user-task-variables/progress.md
+**Learnings**:
+- Incremental search can preserve prompt timing and avoid refetching by enriching only the service-trimmed visitor page, while collected modes reuse one final selected-collection pass.
+---

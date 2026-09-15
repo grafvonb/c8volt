@@ -16,15 +16,27 @@ func variableEnrichedUserTasksView(cmd *cobra.Command, result task.VariableEnric
 	if pickMode() == RenderModeJSON {
 		return renderJSONPayload(cmd, RenderModeJSON, result)
 	}
+	if err := renderVariableEnrichedUserTaskSearchPage(cmd, result.Items); err != nil {
+		return err
+	}
 	if flagQuiet {
 		return nil
 	}
-	rows := make([]flatRow, 0, len(result.Items))
-	for _, enriched := range result.Items {
+	return writeUserTaskLine(cmd.OutOrStdout(), fmt.Sprintf("found: %d", result.Total))
+}
+
+// renderVariableEnrichedUserTaskSearchPage writes only selected enriched rows;
+// callers retain ownership of a single final summary after traversal.
+func renderVariableEnrichedUserTaskSearchPage(cmd *cobra.Command, items []task.VariableEnrichedUserTask) error {
+	if flagQuiet {
+		return nil
+	}
+	rows := make([]flatRow, 0, len(items))
+	for _, enriched := range items {
 		rows = append(rows, flatRowUserTask(enriched.Item))
 	}
 	lines := formatFlatRows(rows)
-	for index, enriched := range result.Items {
+	for index, enriched := range items {
 		if err := writeUserTaskLine(cmd.OutOrStdout(), lines[index]); err != nil {
 			return err
 		}
@@ -41,5 +53,5 @@ func variableEnrichedUserTasksView(cmd *cobra.Command, result task.VariableEnric
 			}
 		}
 	}
-	return writeUserTaskLine(cmd.OutOrStdout(), fmt.Sprintf("found: %d", result.Total))
+	return nil
 }
