@@ -50,3 +50,18 @@ Started: 2026-09-15 10:04:53
 **Learnings**:
 - A direct public alias preserves the established process-variable JSON contract while task-specific wrappers retain explicit empty collections.
 ---
+---
+## Iteration 4 - 2026-09-15 10:19
+**Work Unit**: T004 Add user-task variable HTTP fixtures
+**Tasks Completed**:
+- [x] T004: Add task-keyed effective-variable pages, raw value/truncation payloads, request counters, and injected HTTP errors
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/get_usertask_vars_test.go
+- specs/309-user-task-variables/tasks.md
+- specs/309-user-task-variables/ralph-memory.md
+- specs/309-user-task-variables/progress.md
+**Learnings**:
+- Task-local page counters keep concurrent keyed reads deterministic, and HTTP handlers must report malformed fixture requests without test-fatal calls from server goroutines.
+---

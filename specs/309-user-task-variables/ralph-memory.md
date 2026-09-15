@@ -9,6 +9,7 @@ Started: 2026-09-15T08:04:53Z
 - Active feature selection is duplicated intentionally: `.specify/feature.json` names `specs/309-user-task-variables`, while `AGENTS.md` names its `plan.md` under the active Speckit marker.
 - User-task effective-variable paging records live beside the existing task paging records in `internal/domain/usertask.go`; the offset-only request validates `From >= 0` and `Size > 0`, while the page reuses `UserTaskReportedTotal` and `ProcessInstanceVariable`.
 - Public effective user-task variables are a true alias of `process.ProcessInstanceVariable`; task-specific enriched wrappers live in `c8volt/task/model.go`, use `int64` totals, and keep explicit `items`/`variables` JSON arrays.
+- Command variable tests use `newGetUserTaskVariablesServer` in `cmd/get_usertask_vars_test.go`; it combines stable native task reads, the existing search response callback shape, and task-local effective-variable page queues without changing command globals.
 
 ## Decisions
 
@@ -23,6 +24,7 @@ Started: 2026-09-15T08:04:53Z
 
 - Base command regression: `go test ./cmd -run '^TestGetUserTask' -count=1`
 - User-task domain models: `go test ./internal/domain -run 'TestUserTaskVariable' -count=1`
+- User-task variable fixture: `go test ./cmd -run '^TestGetUserTaskVariablesFixture$' -race -count=1`
 
 ## Do Not Repeat
 
@@ -30,4 +32,4 @@ Started: 2026-09-15T08:04:53Z
 
 ## Current Handoff
 
-- Continue with T004 in Phase 2, adding only the feature-specific user-task/effective-variable HTTP fixture support before starting a user story.
+- Continue with T005 in US1 by adding the v810 native effective-variable adapter contract tests in `internal/services/usertask/v810/variables_test.go`.
