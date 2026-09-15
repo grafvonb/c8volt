@@ -122,3 +122,21 @@ Started: 2026-09-15 10:04:53
 **Learnings**:
 - The v8.8 generated request contract matches later supported versions, and its keyed route preserves backend-selected scope and tenant metadata without discovery filters.
 ---
+---
+## Iteration 8 - 2026-09-15 10:37
+**Work Unit**: US1 v8.7 effective-variable compatibility (T008, T015)
+**Tasks Completed**:
+- [x] T008: Add v87 no-request unsupported-operation coverage
+- [x] T015: Add the v87 effective-variable compatibility implementation and contract signature
+**Tasks Remaining in Work Unit**: 8 US1 tasks
+**Commit**: This work-unit commit
+**Files Changed**:
+- internal/services/usertask/v87/contract.go
+- internal/services/usertask/v87/variables.go
+- internal/services/usertask/v87/variables_test.go
+- specs/309-user-task-variables/tasks.md
+- specs/309-user-task-variables/ralph-memory.md
+- specs/309-user-task-variables/progress.md
+**Learnings**:
+- Camunda 8.7 can implement the shared page signature as a transport-free domain unsupported result without disturbing existing native-read or legacy resolver behavior.
+---

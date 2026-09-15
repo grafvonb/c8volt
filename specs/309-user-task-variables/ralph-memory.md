@@ -13,6 +13,7 @@ Started: 2026-09-15T08:04:53Z
 - The v810 effective-variable adapter lives in `internal/services/usertask/v810/variables.go`; it uses pointer-backed raw DTO fields to distinguish missing required JSON from valid empty strings, while `isTruncated` takes precedence over `truncated`.
 - The v89 generated effective-variable operation is request-compatible with v810, but its explicit adapter and client-double method remain version-owned in `internal/services/usertask/v89`; raw decoding is still required because the generated success model omits value and truncation fields.
 - The v88 native effective-variable endpoint and generated shapes also match v89/v810; the keyed endpoint receives no discovery tenant predicate, so backend authorization applies while returned scope and tenant metadata remain unchanged.
+- The v87 adapter exposes the same version-owned effective-variable page signature but returns `domain.ErrUnsupported` before transport use; the implementation stays in `v87/variables.go` and leaves native task reads and legacy resolver/fallback behavior unchanged.
 
 ## Decisions
 
@@ -39,4 +40,4 @@ Started: 2026-09-15T08:04:53Z
 
 ## Current Handoff
 
-- Continue with T008 in US1 by adding v87 no-request unsupported-operation coverage in `internal/services/usertask/v87/variables_test.go`, retaining native-read and legacy resolver/fallback regressions; then implement T015 with the established unsupported error and no native variable request.
+- Continue US1 with T009 by adding complete pagination and sequential enrichment tests in `internal/services/usertask/variables_test.go`; T010 and T011 remain parallel test-authoring tasks before their dependent implementations.
