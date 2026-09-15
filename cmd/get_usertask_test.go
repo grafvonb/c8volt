@@ -29,7 +29,7 @@ func TestGetUserTaskCommand_KeyInputsAndAliases(t *testing.T) {
 		stdout, stderr, err := runGetUserTaskCommand(t, configPath, "", "get", name, "--key", "2251799815391233")
 		require.NoError(t, err, stderr)
 		require.Empty(t, stderr)
-		require.Contains(t, stdout, "2251799815391233 tenant-a approve_invoice CREATED name:Approve invoice invoice pi:2251799813711967 ei:2251799815391200 pd:2251799813689000 assignee:alice")
+		require.Contains(t, stdout, "2251799815391233 tenant-a approve_invoice CREATED pi:2251799813711967 ei:2251799815391200 pd:2251799813689000 assignee:alice")
 		require.Contains(t, stdout, "found: 1\n")
 	}
 
@@ -226,7 +226,7 @@ func newGetUserTaskCommandServer(t *testing.T) (*httptest.Server, *atomic.Int32)
 			name, elementID, state, assignee, piKey = "", "archive_invoice", "COMPLETED", "", "2251799813711968"
 		}
 		writer.Header().Set("Content-Type", "application/json")
-		_, _ = fmt.Fprintf(writer, `{"userTaskKey":%q,"state":%q,"name":%q,"elementId":%q,"assignee":%q,"candidateUsers":["bob"],"candidateGroups":["accounting"],"processInstanceKey":%q,"elementInstanceKey":"2251799815391200","processDefinitionKey":"2251799813689000","processDefinitionId":"invoice","tenantId":"tenant-a"}`, key, state, name, elementID, assignee, piKey)
+		_, _ = fmt.Fprintf(writer, `{"userTaskKey":%q,"state":%q,"name":%q,"elementId":%q,"assignee":%q,"candidateUsers":["bob"],"candidateGroups":["accounting"],"processInstanceKey":%q,"elementInstanceKey":"2251799815391200","processDefinitionKey":"2251799813689000","processDefinitionId":"invoice","processDefinitionVersion":7,"tenantId":"tenant-a"}`, key, state, name, elementID, assignee, piKey)
 	}))
 	t.Cleanup(server.Close)
 	return server, &requests

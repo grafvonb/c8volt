@@ -11,18 +11,19 @@ import (
 // fromDomainUserTask maps a native domain task into an independently owned public value.
 func fromDomainUserTask(x d.UserTask) UserTask {
 	return UserTask{
-		Key:                  x.Key,
-		State:                x.State,
-		Name:                 x.Name,
-		ElementId:            x.ElementId,
-		ElementInstanceKey:   x.ElementInstanceKey,
-		Assignee:             x.Assignee,
-		CandidateUsers:       append([]string(nil), x.CandidateUsers...),
-		CandidateGroups:      append([]string(nil), x.CandidateGroups...),
-		ProcessInstanceKey:   x.ProcessInstanceKey,
-		ProcessDefinitionKey: x.ProcessDefinitionKey,
-		ProcessDefinitionId:  x.ProcessDefinitionId,
-		TenantId:             x.TenantId,
+		Key:                      x.Key,
+		State:                    x.State,
+		Name:                     x.Name,
+		ElementId:                x.ElementId,
+		ElementInstanceKey:       x.ElementInstanceKey,
+		Assignee:                 x.Assignee,
+		CandidateUsers:           append([]string(nil), x.CandidateUsers...),
+		CandidateGroups:          append([]string(nil), x.CandidateGroups...),
+		ProcessInstanceKey:       x.ProcessInstanceKey,
+		ProcessDefinitionKey:     x.ProcessDefinitionKey,
+		ProcessDefinitionId:      x.ProcessDefinitionId,
+		ProcessDefinitionVersion: x.ProcessDefinitionVersion,
+		TenantId:                 x.TenantId,
 	}
 }
 

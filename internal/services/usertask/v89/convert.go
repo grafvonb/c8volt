@@ -12,18 +12,19 @@ import (
 
 func fromUserTaskResult(r camundav89.UserTaskResult) d.UserTask {
 	return d.UserTask{
-		Key:                  r.UserTaskKey,
-		State:                string(r.State),
-		Name:                 toolx.Deref(r.Name, ""),
-		ElementId:            r.ElementId,
-		ElementInstanceKey:   r.ElementInstanceKey,
-		Assignee:             toolx.Deref(r.Assignee, ""),
-		CandidateUsers:       append([]string(nil), r.CandidateUsers...),
-		CandidateGroups:      append([]string(nil), r.CandidateGroups...),
-		ProcessInstanceKey:   r.ProcessInstanceKey,
-		ProcessDefinitionKey: r.ProcessDefinitionKey,
-		ProcessDefinitionId:  r.ProcessDefinitionId,
-		TenantId:             r.TenantId,
+		Key:                      r.UserTaskKey,
+		State:                    string(r.State),
+		Name:                     toolx.Deref(r.Name, ""),
+		ElementId:                r.ElementId,
+		ElementInstanceKey:       r.ElementInstanceKey,
+		Assignee:                 toolx.Deref(r.Assignee, ""),
+		CandidateUsers:           append([]string(nil), r.CandidateUsers...),
+		CandidateGroups:          append([]string(nil), r.CandidateGroups...),
+		ProcessInstanceKey:       r.ProcessInstanceKey,
+		ProcessDefinitionKey:     r.ProcessDefinitionKey,
+		ProcessDefinitionId:      r.ProcessDefinitionId,
+		ProcessDefinitionVersion: r.ProcessDefinitionVersion,
+		TenantId:                 r.TenantId,
 	}
 }
 

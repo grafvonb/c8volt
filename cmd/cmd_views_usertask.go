@@ -46,8 +46,6 @@ func flatRowUserTask(item task.UserTask) flatRow {
 		item.TenantId,
 		item.ElementId,
 		item.State,
-		prefixedElementField("name", item.Name),
-		item.ProcessDefinitionId,
 		prefixedElementField("pi", item.ProcessInstanceKey),
 		prefixedElementField("ei", item.ElementInstanceKey),
 		prefixedElementField("pd", item.ProcessDefinitionKey),

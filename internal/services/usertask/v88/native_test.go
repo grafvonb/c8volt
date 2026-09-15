@@ -48,6 +48,7 @@ func TestService_GetNativeUserTask_UsesDirectGetAndPreservesForeignTenant(t *tes
 	require.Equal(t, "2251799815391222", task.ElementInstanceKey)
 	require.Equal(t, "2251799813689000", task.ProcessDefinitionKey)
 	require.Equal(t, "invoice", task.ProcessDefinitionId)
+	require.Equal(t, int32(7), task.ProcessDefinitionVersion)
 	payload.CandidateUsers[0] = "changed"
 	require.Equal(t, []string{"bob"}, task.CandidateUsers)
 
@@ -96,7 +97,7 @@ func TestService_GetNativeUserTask_RejectsBackendAndMalformedResponses(t *testin
 
 // nativeUserTaskResult builds a complete V88 payload while allowing nullable native strings to vary.
 func nativeUserTaskResult(name, assignee *string) camundav88.UserTaskResult {
-	return camundav88.UserTaskResult{UserTaskKey: "2251799815391233", State: "CREATED", Name: name, ElementId: "approve_invoice", ElementInstanceKey: "2251799815391222", Assignee: assignee, CandidateUsers: []string{"bob"}, CandidateGroups: []string{"accounting"}, ProcessInstanceKey: "2251799813711967", ProcessDefinitionKey: "2251799813689000", ProcessDefinitionId: "invoice", TenantId: "foreign-tenant"}
+	return camundav88.UserTaskResult{UserTaskKey: "2251799815391233", State: "CREATED", Name: name, ElementId: "approve_invoice", ElementInstanceKey: "2251799815391222", Assignee: assignee, CandidateUsers: []string{"bob"}, CandidateGroups: []string{"accounting"}, ProcessInstanceKey: "2251799813711967", ProcessDefinitionKey: "2251799813689000", ProcessDefinitionId: "invoice", ProcessDefinitionVersion: 7, TenantId: "foreign-tenant"}
 }
 
 // nativeUserTaskResultPtr creates the minimum payload needed to exercise V88 identity validation.

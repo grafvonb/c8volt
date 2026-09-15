@@ -73,12 +73,12 @@ Task fields and omission rules are defined in the data model. `total` is the ret
 
 ### Human, keys, and quiet
 
-Human rows use existing flat-row alignment without headings. Column order is task key, tenant, element ID, state, optional `name:<name>`, BPMN process ID (`processDefinitionId`), `pi:<process-instance-key>`, `ei:<element-instance-key>`, `pd:<process-definition-key>`, and always `assignee:<assignee>` last (`assignee:<unassigned>` when empty). The display name does not replace the technical element ID. Other empty optional fields are omitted using existing alignment behavior. The list summary is `found: N` with a trailing newline. Completed empty search emits exactly `found: 0\n`.
+Human rows use existing flat-row alignment without headings. Column order is task key, tenant, element ID, state, `pi:<process-instance-key>`, `ei:<element-instance-key>`, `pd:<process-definition-key>`, and always `assignee:<assignee>` last (`assignee:<unassigned>` when empty). Task name, BPMN process ID, and process-definition version are JSON-only fields. Other empty optional fields are omitted using existing alignment behavior. The list summary is `found: N` with a trailing newline. Completed empty search emits exactly `found: 0\n`.
 
 Example:
 
 ```text
-2251799813900041 tenant-a SimpleUserTask_UserTask CREATED name:Simple User Task C89_SimpleUserTask pi:2251799813900036 ei:2251799813900040 pd:2251799813873873 assignee:<unassigned>
+2251799813900041 tenant-a SimpleUserTask_UserTask CREATED pi:2251799813900036 ei:2251799813900040 pd:2251799813873873 assignee:<unassigned>
 found: 1
 ```
 

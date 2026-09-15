@@ -20,7 +20,7 @@ Without keys, search by process, element, state, assignment, candidate, and effe
 
 Interactive searches offer another page separately from command results when more matches remain. Use --auto-confirm or --automation for unattended paging. --quiet suppresses human results but preserves explicitly requested JSON, keys-only, and numeric total output.
 
-Human rows show task key, tenant, element ID, and state, followed by optional name: details, then BPMN process ID and related pi:, ei:, and pd: keys. Assignee is always last: assignee:<user> when assigned, otherwise assignee:<unassigned>. Other empty optional fields are omitted.
+Human rows show task key, tenant, element ID, and state, followed by related pi:, ei:, and pd: keys. Assignee is always last: assignee:<user> when assigned, otherwise assignee:<unassigned>. Task name, BPMN process ID, and process-definition version are available in JSON. Other empty optional fields are omitted.
 
 Use --json for one collection envelope or --keys-only for one task key per line. Keys cannot be combined with search filters, --limit, or --total; --total also conflicts with --limit, --json, and --keys-only. Search and keyed reads require Camunda 8.8, 8.9, or 8.10; Camunda 8.7 is unsupported. Task mutations, variables, forms, audit history, date filters, custom sorting, and watch mode are not provided by this command.
 

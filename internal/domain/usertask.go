@@ -11,18 +11,19 @@ import (
 // UserTask represents one version-neutral native user task while retaining the
 // identity fields used by the legacy process-instance resolver.
 type UserTask struct {
-	Key                  string
-	State                string
-	Name                 string
-	ElementId            string
-	ElementInstanceKey   string
-	Assignee             string
-	CandidateUsers       []string
-	CandidateGroups      []string
-	ProcessInstanceKey   string
-	ProcessDefinitionKey string
-	ProcessDefinitionId  string
-	TenantId             string
+	Key                      string
+	State                    string
+	Name                     string
+	ElementId                string
+	ElementInstanceKey       string
+	Assignee                 string
+	CandidateUsers           []string
+	CandidateGroups          []string
+	ProcessInstanceKey       string
+	ProcessDefinitionKey     string
+	ProcessDefinitionId      string
+	ProcessDefinitionVersion int32
+	TenantId                 string
 }
 
 // UserTaskSearchQuery carries backend predicates and collection bounds without
