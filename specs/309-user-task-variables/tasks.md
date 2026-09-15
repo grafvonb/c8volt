@@ -20,7 +20,7 @@
 
 **Purpose**: Confirm the existing feature context; the Go project is already initialized.
 
-- [ ] T001 Confirm branch `codex/309-user-task-variables`, the active paths in `.specify/feature.json` and `AGENTS.md`, and the #308 base command in `cmd/get_usertask.go`; read the linked artifacts and record any blocking divergence in `specs/309-user-task-variables/tasks.md` before implementation, preserving existing uncommitted work and dependencies in `go.mod`.
+- [x] T001 Confirm branch `codex/309-user-task-variables`, the active paths in `.specify/feature.json` and `AGENTS.md`, and the #308 base command in `cmd/get_usertask.go`; read the linked artifacts and record any blocking divergence in `specs/309-user-task-variables/tasks.md` before implementation, preserving existing uncommitted work and dependencies in `go.mod`.
 
 ## Phase 2: Foundational (Blocking Prerequisites)
 
@@ -191,3 +191,5 @@ Tests are required by this feature, not by the act of generating tasks. For exec
 ## Execution Notes
 
 Task generation only: implementation and runtime validation have not started. Future execution should record checks, discovered constraints, and justified plan adjustments here without changing the original scope silently.
+
+- 2026-09-15, iteration 1 (T001): Confirmed branch `codex/309-user-task-variables`; `.specify/feature.json` and the `AGENTS.md` active-plan marker both select `specs/309-user-task-variables`; the #308 base command remains in `cmd/get_usertask.go` with keyed lookup, search, aliases, output modes, and the intentional pre-#309 variable exclusion. Read the feature specification, plan, data model, research, quickstart, contracts, #308 specification, and Ralph implementation rules. No blocking divergence was found. Preserved the existing untracked Ralph state files and left `go.mod` unchanged. Validation: `go test ./cmd -run '^TestGetUserTask' -count=1` passed.
