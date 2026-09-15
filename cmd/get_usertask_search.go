@@ -22,7 +22,7 @@ func searchUserTasksWithPaging(cmd *cobra.Command, cli task.API, request task.Se
 				if err != nil {
 					return task.SearchPageActionStop, err
 				}
-				if err := renderVariableEnrichedUserTaskSearchPage(cmd, enriched.Items); err != nil {
+				if err := renderVariableEnrichedUserTaskSearchPage(cmd, enriched.Items, flagGetUserTaskVarValueLimit); err != nil {
 					return task.SearchPageActionStop, fmt.Errorf("render user task variables: %w", err)
 				}
 			} else if err := renderUserTaskSearchPage(cmd, step.Page.Items); err != nil {

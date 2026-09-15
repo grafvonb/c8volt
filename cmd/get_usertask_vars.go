@@ -23,7 +23,7 @@ func renderSelectedUserTasks(cmd *cobra.Command, cli task.API, result task.UserT
 	if err != nil {
 		return err
 	}
-	if err := variableEnrichedUserTasksView(cmd, enriched); err != nil {
+	if err := variableEnrichedUserTasksView(cmd, enriched, flagGetUserTaskVarValueLimit); err != nil {
 		return fmt.Errorf("render user task variables: %w", err)
 	}
 	return nil

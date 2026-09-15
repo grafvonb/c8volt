@@ -12,11 +12,11 @@ import (
 
 // variableEnrichedUserTasksView renders the selected enriched collection as
 // one JSON envelope or as ordinary task rows with nested effective variables.
-func variableEnrichedUserTasksView(cmd *cobra.Command, result task.VariableEnrichedUserTasks) error {
+func variableEnrichedUserTasksView(cmd *cobra.Command, result task.VariableEnrichedUserTasks, valueLimit int) error {
 	if pickMode() == RenderModeJSON {
 		return renderJSONPayload(cmd, RenderModeJSON, result)
 	}
-	if err := renderVariableEnrichedUserTaskSearchPage(cmd, result.Items); err != nil {
+	if err := renderVariableEnrichedUserTaskSearchPage(cmd, result.Items, valueLimit); err != nil {
 		return err
 	}
 	if flagQuiet {
@@ -27,7 +27,7 @@ func variableEnrichedUserTasksView(cmd *cobra.Command, result task.VariableEnric
 
 // renderVariableEnrichedUserTaskSearchPage writes only selected enriched rows;
 // callers retain ownership of a single final summary after traversal.
-func renderVariableEnrichedUserTaskSearchPage(cmd *cobra.Command, items []task.VariableEnrichedUserTask) error {
+func renderVariableEnrichedUserTaskSearchPage(cmd *cobra.Command, items []task.VariableEnrichedUserTask, valueLimit int) error {
 	if flagQuiet {
 		return nil
 	}
@@ -47,7 +47,7 @@ func renderVariableEnrichedUserTaskSearchPage(cmd *cobra.Command, items []task.V
 			return err
 		}
 		for variableIndex, variable := range enriched.Variables {
-			line := "   " + incidentTreeBranch(variableIndex, len(enriched.Variables)) + variableValueHumanLine(variable, 0)
+			line := "   " + incidentTreeBranch(variableIndex, len(enriched.Variables)) + variableValueHumanLine(variable, valueLimit)
 			if err := writeUserTaskLine(cmd.OutOrStdout(), line); err != nil {
 				return err
 			}

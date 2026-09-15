@@ -32,7 +32,7 @@ func TestVariableEnrichedUserTasksViewPreservesTaskRowsAndEmptyVariables(t *test
 	cmd := &cobra.Command{Use: "user-task"}
 	cmd.SetOut(&stdout)
 
-	require.NoError(t, variableEnrichedUserTasksView(cmd, result))
+	require.NoError(t, variableEnrichedUserTasksView(cmd, result, 0))
 	require.Equal(t, ""+
 		"1 tenant-a approve CREATED   pi:11 ei:12 pd:13 assignee:alice\n"+
 		"└─ vars:\n"+
@@ -54,7 +54,7 @@ func TestVariableEnrichedUserTasksViewJSONKeepsInitializedCollections(t *testing
 		Item: task.UserTask{Key: "1", State: "CREATED", ProcessInstanceKey: "11"}, Variables: []task.UserTaskVariable{},
 	}}}
 
-	require.NoError(t, variableEnrichedUserTasksView(cmd, result))
+	require.NoError(t, variableEnrichedUserTasksView(cmd, result, 0))
 	decoder := json.NewDecoder(bytes.NewReader(stdout.Bytes()))
 	var envelope map[string]any
 	require.NoError(t, decoder.Decode(&envelope))
@@ -74,5 +74,47 @@ func TestVariableEnrichedUserTasksViewPropagatesWriterErrors(t *testing.T) {
 	result := task.VariableEnrichedUserTasks{Total: 1, Items: []task.VariableEnrichedUserTask{{
 		Item: task.UserTask{Key: "1", State: "CREATED", ProcessInstanceKey: "11"}, Variables: []task.UserTaskVariable{},
 	}}}
-	require.ErrorIs(t, variableEnrichedUserTasksView(cmd, result), errUserTaskWriter)
+	require.ErrorIs(t, variableEnrichedUserTasksView(cmd, result, 0), errUserTaskWriter)
+}
+
+// TestVariableEnrichedUserTasksViewAppliesExplicitRuneLimit verifies exact
+// boundaries, post-compaction truncation, and every truncation label state.
+func TestVariableEnrichedUserTasksViewAppliesExplicitRuneLimit(t *testing.T) {
+	resetGetUserTaskGlobalModes(t)
+	flagGetPIVarValueLimit = 1
+	result := task.VariableEnrichedUserTasks{Total: 1, Items: []task.VariableEnrichedUserTask{{
+		Item: task.UserTask{Key: "1", State: "CREATED"},
+		Variables: []task.UserTaskVariable{
+			{Name: "boundary", Value: "äöü"},
+			{Name: "client", Value: "äöüa"},
+			{Name: "backend", Value: "abc", APITruncated: true},
+			{Name: "both", Value: `{ "a": 12 }`, APITruncated: true},
+		},
+	}}}
+	var stdout bytes.Buffer
+	cmd := &cobra.Command{Use: "user-task"}
+	cmd.SetOut(&stdout)
+
+	require.NoError(t, variableEnrichedUserTasksView(cmd, result, 3))
+	require.Contains(t, stdout.String(), "boundary=äöü\n")
+	require.Contains(t, stdout.String(), "client=äöü... [cli-truncated]\n")
+	require.Contains(t, stdout.String(), "backend=abc [api-truncated]\n")
+	require.Contains(t, stdout.String(), `both={"a... [api-truncated,cli-truncated]`)
+}
+
+// TestVariableEnrichedUserTasksViewUnlimitedKeepsBackendIncompleteLabel proves
+// the default task limit is independent of process-command flag state.
+func TestVariableEnrichedUserTasksViewUnlimitedKeepsBackendIncompleteLabel(t *testing.T) {
+	resetGetUserTaskGlobalModes(t)
+	flagGetPIVarValueLimit = 1
+	result := task.VariableEnrichedUserTasks{Total: 1, Items: []task.VariableEnrichedUserTask{{
+		Item:      task.UserTask{Key: "1", State: "CREATED"},
+		Variables: []task.UserTaskVariable{{Name: "payload", Value: "abcdef", APITruncated: true}},
+	}}}
+	var stdout bytes.Buffer
+	cmd := &cobra.Command{Use: "user-task"}
+	cmd.SetOut(&stdout)
+
+	require.NoError(t, variableEnrichedUserTasksView(cmd, result, 0))
+	require.Contains(t, stdout.String(), "payload=abcdef [api-truncated]\n")
 }

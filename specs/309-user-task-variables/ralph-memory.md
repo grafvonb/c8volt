@@ -19,6 +19,8 @@ Started: 2026-09-15T08:04:53Z
 - Keyed CLI enrichment is isolated in `cmd/get_usertask_vars.go`: strict `GetUserTasks` completes first, then one eligible facade enrichment pass runs; absent opt-in, effective keys-only, total, and empty selections skip variable calls while quiet human and JSON precedence retain retrieval.
 - Variable presentation is now command-independent in `cmd/cmd_views_variable_values.go`; the process-instance wrapper supplies its existing flag limit, while the baseline user-task view supplies unlimited zero and renders a `vars:` tree without process-age metadata.
 - Bounded search enrichment reuses `enrichSelectedUserTasks` from `cmd/get_usertask_vars.go`: incremental human pages enrich only service-trimmed `step.Page.Items` before rendering/prompting, while collected/quiet/unattended modes enrich the final selected collection once; the final streamed summary remains count-only.
+- User-task value limits remain presentation-only: `cmd/get_usertask.go` validates explicit `--var-value-limit` dependency/range before reads, and keyed/search dispatch passes the integer explicitly through task views into `variableValueHumanLine`; JSON bypasses the human formatter and process-instance flags remain independent.
+- US3 command output coverage lives in `cmd/get_usertask_vars_output_test.go`; fresh task-local fixtures keep request counts isolated across default/zero/positive limits, mixed output modes, validation failures, and quiet retrieval errors.
 
 ## Decisions
 
@@ -41,6 +43,7 @@ Started: 2026-09-15T08:04:53Z
 - V88 effective-variable adapter: `go test ./internal/services/usertask/v88 -run '^TestService_SearchUserTaskEffectiveVariablesPage' -race -count=1`
 - Complete user-task variable service workflow: `go test ./internal/services/usertask -run 'Test(SearchUserTaskEffectiveVariables|EnrichUserTasksWithVariables)' -race -count=1`
 - User-task variable facade: `go test ./c8volt/task -run 'Test.*(Variable|Enrich|Convert)' -race -count=1`
+- User-task value-limit/output matrix: `go test ./cmd -run 'Test(GetUserTaskVariable|VariableEnrichedUserTasksView|CommandCapabilityForCommand_UserTaskReadContract)' -race -count=1`
 
 ## Do Not Repeat
 
@@ -48,4 +51,4 @@ Started: 2026-09-15T08:04:53Z
 
 ## Current Handoff
 
-- Start US3 with T027 in `cmd/get_usertask_vars_output_test.go`; keyed and bounded-search enrichment are complete, while configurable human value-limit flag behavior remains intentionally deferred to T029–T030.
+- Start polish with T033 by updating README and quickstart documentation for the now-complete keyed/search/value-limit behavior; US3 T027–T032 is complete, while generated docs and integrated review/test tasks remain T034–T036.

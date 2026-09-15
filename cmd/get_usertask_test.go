@@ -363,6 +363,7 @@ func TestGetUserTaskCommandHelper(t *testing.T) {
 	if err := json.Unmarshal([]byte(os.Getenv("C8VOLT_TEST_USER_TASK_ARGS")), &args); err != nil {
 		t.Fatalf("decode helper args: %v", err)
 	}
+	flagGetUserTaskVarValueLimit = 0
 	os.Args = append([]string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG")}, args...)
 	Execute()
 	os.Exit(0)

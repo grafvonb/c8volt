@@ -236,3 +236,31 @@ Started: 2026-09-15 10:04:53
 **Learnings**:
 - Incremental search can preserve prompt timing and avoid refetching by enriching only the service-trimmed visitor page, while collected modes reuse one final selected-collection pass.
 ---
+---
+## Iteration 13 - 2026-09-15 11:26
+**Work Unit**: US3 predictable human and machine variable results (T027-T032)
+**Tasks Completed**:
+- [x] T027: Add display-limit and output-precedence execution tests
+- [x] T028: Add explicit-limit formatter, tree, writer, and PI independence regressions
+- [x] T029: Register and validate the user-task value-limit flag
+- [x] T030: Pass the task display limit explicitly through command views
+- [x] T031: Update source help, examples, and command capability expectations
+- [x] T032: Run focused output, flag, metadata, and PI formatter validation
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/cmd_views_usertask_test.go
+- cmd/cmd_views_usertask_vars.go
+- cmd/cmd_views_usertask_vars_test.go
+- cmd/command_contract_test.go
+- cmd/get_usertask.go
+- cmd/get_usertask_search.go
+- cmd/get_usertask_test.go
+- cmd/get_usertask_vars.go
+- cmd/get_usertask_vars_output_test.go
+- specs/309-user-task-variables/tasks.md
+- specs/309-user-task-variables/ralph-memory.md
+- specs/309-user-task-variables/progress.md
+**Learnings**:
+- Keeping the display limit explicit at the task-view boundary preserves JSON values and prevents process-instance flag state from influencing user-task rendering.
+---

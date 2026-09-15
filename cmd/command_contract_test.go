@@ -1134,9 +1134,34 @@ func TestCommandCapabilityForCommand_UserTaskReadContract(t *testing.T) {
 		{Name: RenderModeJSON.String(), Supported: true, MachinePreferred: true},
 		{Name: RenderModeKeysOnly.String(), Supported: true},
 	}, capability.OutputModes)
-	for _, excluded := range []string{"variables", "forms", "audit-log", "date", "sort", "watch"} {
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "with-vars",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "include effective variables for selected user tasks",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "var-value-limit",
+		Type:        "int",
+		Required:    false,
+		Repeated:    false,
+		Description: "maximum characters to show for variable values when --with-vars is set; 0 disables truncation",
+	})
+	for _, excluded := range []string{"var", "var-exists", "var-like", "forms", "audit-log", "date", "sort", "watch"} {
 		require.False(t, hasFlagContractNamed(capability.Flags, excluded), "out-of-scope --%s flag was advertised", excluded)
 	}
+	for _, example := range []string{
+		"./c8volt get ut --key <user-task-key> --with-vars",
+		"./c8volt get ut --assignee alice --limit 10 --with-vars",
+		"./c8volt get ut --pi-key <process-instance-key> --with-vars --var-value-limit 120",
+		"./c8volt --json get ut --key <user-task-key> --with-vars",
+	} {
+		require.Contains(t, getUserTaskCmd.Example, example)
+	}
+	require.Contains(t, getUserTaskCmd.Long, "zero, the default, keeps full received values")
+	require.Contains(t, getUserTaskCmd.Long, "JSON always preserves received values")
+	require.Contains(t, getUserTaskCmd.Long, "Effective keys-only and --total output skip variable retrieval")
 
 	for _, alias := range capability.Aliases {
 		resolved, remaining, err := root.Find([]string{"get", alias})
