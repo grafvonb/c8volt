@@ -34,3 +34,19 @@ Started: 2026-09-15 10:04:53
 **Learnings**:
 - The existing user-task exact/lower-bound total type can be reused directly while raw item counts remain separate from later normalization.
 ---
+---
+## Iteration 3 - 2026-09-15 10:14
+**Work Unit**: T003 Add public user-task variable records
+**Tasks Completed**:
+- [x] T003: Add the public process-variable alias and enriched user-task wrappers with int64 totals
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- c8volt/task/model.go
+- c8volt/task/model_test.go
+- specs/309-user-task-variables/tasks.md
+- specs/309-user-task-variables/ralph-memory.md
+- specs/309-user-task-variables/progress.md
+**Learnings**:
+- A direct public alias preserves the established process-variable JSON contract while task-specific wrappers retain explicit empty collections.
+---

@@ -3,6 +3,8 @@
 
 package task
 
+import "github.com/grafvonb/c8volt/c8volt/process"
+
 // UserTask is the stable public representation of one native user task.
 type UserTask struct {
 	Key                      string   `json:"key"`
@@ -24,6 +26,32 @@ type UserTask struct {
 type UserTasks struct {
 	Total int64      `json:"total"`
 	Items []UserTask `json:"items"`
+}
+
+// UserTaskVariable reuses the public process-variable wire contract for one
+// backend-selected effective user-task variable. Name is the backend-selected
+// effective name and is unique within each successful task collection. Value
+// is serialized as received; empty strings are valid and are not shortened for
+// JSON. VariableKey is the identity returned by the backend.
+// ProcessInstanceKey is the owning process, not a discovery filter. ScopeKey is
+// the actual winning scope and may differ from the process-instance key.
+// TenantId is backend tenant metadata and must not be rewritten from discovery
+// settings. APITruncated is true when the received value is reported incomplete
+// by the backend.
+type UserTaskVariable = process.ProcessInstanceVariable
+
+// VariableEnrichedUserTask pairs an unchanged selected task with its effective
+// variables. Variables must be initialized even when the collection is empty.
+type VariableEnrichedUserTask struct {
+	Item      UserTask           `json:"item"`
+	Variables []UserTaskVariable `json:"variables"`
+}
+
+// VariableEnrichedUserTasks preserves input task order in initialized Items.
+// Total equals the number of returned items rather than a backend search total.
+type VariableEnrichedUserTasks struct {
+	Total int64                      `json:"total"`
+	Items []VariableEnrichedUserTask `json:"items"`
 }
 
 // SearchRequest carries native task predicates and collection bounds.

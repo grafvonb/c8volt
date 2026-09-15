@@ -8,6 +8,7 @@ Started: 2026-09-15T08:04:53Z
 - The implemented #308 base command is `cmd/get_usertask.go`; it owns Cobra setup, key/search validation, top-level dispatch, aliases `user-tasks`/`ut`/`uts`, and delegates paging to `searchUserTasksWithPaging`.
 - Active feature selection is duplicated intentionally: `.specify/feature.json` names `specs/309-user-task-variables`, while `AGENTS.md` names its `plan.md` under the active Speckit marker.
 - User-task effective-variable paging records live beside the existing task paging records in `internal/domain/usertask.go`; the offset-only request validates `From >= 0` and `Size > 0`, while the page reuses `UserTaskReportedTotal` and `ProcessInstanceVariable`.
+- Public effective user-task variables are a true alias of `process.ProcessInstanceVariable`; task-specific enriched wrappers live in `c8volt/task/model.go`, use `int64` totals, and keep explicit `items`/`variables` JSON arrays.
 
 ## Decisions
 
@@ -29,4 +30,4 @@ Started: 2026-09-15T08:04:53Z
 
 ## Current Handoff
 
-- Continue with T003 in Phase 2, adding the public user-task variable alias and enriched wrappers without starting a user story.
+- Continue with T004 in Phase 2, adding only the feature-specific user-task/effective-variable HTTP fixture support before starting a user story.
