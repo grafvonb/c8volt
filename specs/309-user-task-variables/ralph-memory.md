@@ -7,6 +7,7 @@ Started: 2026-09-15T08:04:53Z
 
 - The implemented #308 base command is `cmd/get_usertask.go`; it owns Cobra setup, key/search validation, top-level dispatch, aliases `user-tasks`/`ut`/`uts`, and delegates paging to `searchUserTasksWithPaging`.
 - Active feature selection is duplicated intentionally: `.specify/feature.json` names `specs/309-user-task-variables`, while `AGENTS.md` names its `plan.md` under the active Speckit marker.
+- User-task effective-variable paging records live beside the existing task paging records in `internal/domain/usertask.go`; the offset-only request validates `From >= 0` and `Size > 0`, while the page reuses `UserTaskReportedTotal` and `ProcessInstanceVariable`.
 
 ## Decisions
 
@@ -20,6 +21,7 @@ Started: 2026-09-15T08:04:53Z
 ## Reusable Commands
 
 - Base command regression: `go test ./cmd -run '^TestGetUserTask' -count=1`
+- User-task domain models: `go test ./internal/domain -run 'TestUserTaskVariable' -count=1`
 
 ## Do Not Repeat
 
@@ -27,4 +29,4 @@ Started: 2026-09-15T08:04:53Z
 
 ## Current Handoff
 
-- Continue with T002 in Phase 2, adding the version-neutral enriched user-task and offset variable-page domain records without starting a user story.
+- Continue with T003 in Phase 2, adding the public user-task variable alias and enriched wrappers without starting a user story.
