@@ -37,17 +37,21 @@ func userTaskTotalView(cmd *cobra.Command, total int64) error {
 // flatRowUserTask follows get-command identity ordering and labels optional
 // task details and related keys without hiding the BPMN element identity.
 func flatRowUserTask(item task.UserTask) flatRow {
+	assignee := item.Assignee
+	if assignee == "" {
+		assignee = "<unassigned>"
+	}
 	return flatRow{
 		item.Key,
 		item.TenantId,
 		item.ElementId,
 		item.State,
 		prefixedElementField("name", item.Name),
-		prefixedElementField("assignee", item.Assignee),
 		item.ProcessDefinitionId,
 		prefixedElementField("pi", item.ProcessInstanceKey),
 		prefixedElementField("ei", item.ElementInstanceKey),
 		prefixedElementField("pd", item.ProcessDefinitionKey),
+		prefixedElementField("assignee", assignee),
 	}
 }
 

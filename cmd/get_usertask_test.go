@@ -29,7 +29,7 @@ func TestGetUserTaskCommand_KeyInputsAndAliases(t *testing.T) {
 		stdout, stderr, err := runGetUserTaskCommand(t, configPath, "", "get", name, "--key", "2251799815391233")
 		require.NoError(t, err, stderr)
 		require.Empty(t, stderr)
-		require.Contains(t, stdout, "2251799815391233 tenant-a approve_invoice CREATED name:Approve invoice assignee:alice invoice pi:2251799813711967 ei:2251799815391200 pd:2251799813689000")
+		require.Contains(t, stdout, "2251799815391233 tenant-a approve_invoice CREATED name:Approve invoice invoice pi:2251799813711967 ei:2251799815391200 pd:2251799813689000 assignee:alice")
 		require.Contains(t, stdout, "found: 1\n")
 	}
 

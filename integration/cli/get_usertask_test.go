@@ -80,10 +80,12 @@ func runGetUserTaskScenarios(t *testing.T, profile integrationProfile, pdKey str
 	if sample.Name != "" {
 		details = append(details, "name:"+sample.Name)
 	}
-	if sample.Assignee != "" {
+	details = append(details, sample.ProcessDefinitionId, "pi:"+sample.ProcessInstanceKey, "ei:"+sample.ElementInstanceKey, "pd:"+sample.ProcessDefinitionKey)
+	if sample.Assignee == "" {
+		details = append(details, "assignee:<unassigned>")
+	} else {
 		details = append(details, "assignee:"+sample.Assignee)
 	}
-	details = append(details, sample.ProcessDefinitionId, "pi:"+sample.ProcessInstanceKey, "ei:"+sample.ElementInstanceKey, "pd:"+sample.ProcessDefinitionKey)
 	var fields []string
 	for _, field := range details {
 		if field != "" {
