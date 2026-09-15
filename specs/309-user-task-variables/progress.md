@@ -84,3 +84,22 @@ Started: 2026-09-15 10:04:53
 **Learnings**:
 - Pointer-backed raw DTOs are required to preserve valid empty values while rejecting absent required fields omitted by generated response models.
 ---
+---
+## Iteration 6 - 2026-09-15 10:30
+**Work Unit**: US1 v8.9 effective-variable adapter (T006, T013)
+**Tasks Completed**:
+- [x] T006: Add v89 native effective-variable contract tests
+- [x] T013: Implement the v89 effective-variable page adapter and generated-client contract
+**Tasks Remaining in Work Unit**: 12 US1 tasks
+**Commit**: This work-unit commit
+**Files Changed**:
+- internal/services/usertask/v89/contract.go
+- internal/services/usertask/v89/service_test.go
+- internal/services/usertask/v89/variables.go
+- internal/services/usertask/v89/variables_test.go
+- specs/309-user-task-variables/tasks.md
+- specs/309-user-task-variables/ralph-memory.md
+- specs/309-user-task-variables/progress.md
+**Learnings**:
+- The v8.9 generated request contract matches v8.10, but raw response decoding remains necessary to preserve required-value presence and truncation metadata.
+---

@@ -17,12 +17,14 @@ type API interface {
 	GetUserTask(ctx context.Context, key string, opts ...services.CallOption) (d.UserTask, error)
 	GetNativeUserTask(ctx context.Context, key string, opts ...services.CallOption) (d.UserTask, error)
 	SearchUserTasksPage(ctx context.Context, query d.UserTaskSearchQuery, page d.UserTaskPageRequest, opts ...services.CallOption) (d.UserTaskSearchPage, error)
+	SearchUserTaskEffectiveVariablesPage(ctx context.Context, key string, page d.UserTaskVariablePageRequest, opts ...services.CallOption) (d.UserTaskVariablePage, error)
 }
 
-// GenUserTaskClientCamunda captures the generated native read and legacy search operations used by this adapter.
+// GenUserTaskClientCamunda captures the generated native read and search operations used by this adapter.
 type GenUserTaskClientCamunda interface {
 	GetUserTaskWithResponse(ctx context.Context, userTaskKey camundav89.UserTaskKey, reqEditors ...camundav89.RequestEditorFn) (*camundav89.GetUserTaskResponse, error)
 	SearchUserTasksWithResponse(ctx context.Context, body camundav89.SearchUserTasksJSONRequestBody, reqEditors ...camundav89.RequestEditorFn) (*camundav89.SearchUserTasksResponse, error)
+	SearchUserTaskEffectiveVariablesWithResponse(ctx context.Context, userTaskKey camundav89.UserTaskKey, params *camundav89.SearchUserTaskEffectiveVariablesParams, body camundav89.SearchUserTaskEffectiveVariablesJSONRequestBody, reqEditors ...camundav89.RequestEditorFn) (*camundav89.SearchUserTaskEffectiveVariablesResponse, error)
 }
 
 type GenUserTaskClientTasklist interface {

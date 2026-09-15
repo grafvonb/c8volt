@@ -22,8 +22,9 @@ import (
 )
 
 type mockUserTaskCamundaClient struct {
-	getUserTaskWithResponse     func(context.Context, camundav89.UserTaskKey, ...camundav89.RequestEditorFn) (*camundav89.GetUserTaskResponse, error)
-	searchUserTasksWithResponse func(context.Context, camundav89.SearchUserTasksJSONRequestBody, ...camundav89.RequestEditorFn) (*camundav89.SearchUserTasksResponse, error)
+	getUserTaskWithResponse                      func(context.Context, camundav89.UserTaskKey, ...camundav89.RequestEditorFn) (*camundav89.GetUserTaskResponse, error)
+	searchUserTasksWithResponse                  func(context.Context, camundav89.SearchUserTasksJSONRequestBody, ...camundav89.RequestEditorFn) (*camundav89.SearchUserTasksResponse, error)
+	searchUserTaskEffectiveVariablesWithResponse func(context.Context, camundav89.UserTaskKey, *camundav89.SearchUserTaskEffectiveVariablesParams, camundav89.SearchUserTaskEffectiveVariablesJSONRequestBody, ...camundav89.RequestEditorFn) (*camundav89.SearchUserTaskEffectiveVariablesResponse, error)
 }
 
 // GetUserTaskWithResponse delegates direct reads while making accidental legacy-test calls explicit.
@@ -36,6 +37,14 @@ func (m *mockUserTaskCamundaClient) GetUserTaskWithResponse(ctx context.Context,
 
 func (m *mockUserTaskCamundaClient) SearchUserTasksWithResponse(ctx context.Context, body camundav89.SearchUserTasksJSONRequestBody, reqEditors ...camundav89.RequestEditorFn) (*camundav89.SearchUserTasksResponse, error) {
 	return m.searchUserTasksWithResponse(ctx, body, reqEditors...)
+}
+
+// SearchUserTaskEffectiveVariablesWithResponse delegates effective-variable requests to the test-specific callback.
+func (m *mockUserTaskCamundaClient) SearchUserTaskEffectiveVariablesWithResponse(ctx context.Context, key camundav89.UserTaskKey, params *camundav89.SearchUserTaskEffectiveVariablesParams, body camundav89.SearchUserTaskEffectiveVariablesJSONRequestBody, reqEditors ...camundav89.RequestEditorFn) (*camundav89.SearchUserTaskEffectiveVariablesResponse, error) {
+	if m.searchUserTaskEffectiveVariablesWithResponse == nil {
+		panic("unexpected SearchUserTaskEffectiveVariablesWithResponse call")
+	}
+	return m.searchUserTaskEffectiveVariablesWithResponse(ctx, key, params, body, reqEditors...)
 }
 
 var _ v89.GenUserTaskClientCamunda = (*mockUserTaskCamundaClient)(nil)
