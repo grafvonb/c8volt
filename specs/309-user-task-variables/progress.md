@@ -163,3 +163,23 @@ Started: 2026-09-15 10:04:53
 **Learnings**:
 - Raw backend counts must drive offset progress while duplicate-name normalization waits until retrieval is complete; capped totals require a terminal empty probe even after their retained lower bound is satisfied.
 ---
+---
+## Iteration 10 - 2026-09-15 10:52
+**Work Unit**: US1 public user-task variable enrichment facade (T010, T017)
+**Tasks Completed**:
+- [x] T010: Add facade option, error, mapping, and initialized-empty JSON contract tests
+- [x] T017: Add the public selected-task variable enrichment operation and mechanical mappings
+**Tasks Remaining in Work Unit**: 4 US1 tasks
+**Commit**: This work-unit commit
+**Files Changed**:
+- c8volt/task/api.go
+- c8volt/task/client.go
+- c8volt/task/convert.go
+- c8volt/task/variables_test.go
+- cmd/process_api_stub_test.go
+- specs/309-user-task-variables/tasks.md
+- specs/309-user-task-variables/ralph-memory.md
+- specs/309-user-task-variables/progress.md
+**Learnings**:
+- The thin facade can preserve initialized empty arrays and option/error semantics while delegating all variable paging and sequential enrichment to the internal user-task service.
+---

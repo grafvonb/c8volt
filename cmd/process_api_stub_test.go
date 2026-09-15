@@ -47,6 +47,7 @@ type stubTaskAPI struct {
 	searchUserTasks                         func(context.Context, task.SearchRequest, ...options.FacadeOption) (task.UserTasks, error)
 	searchUserTasksPages                    func(context.Context, task.SearchRequest, task.SearchPageVisitor, ...options.FacadeOption) (task.SearchPagesResult, error)
 	searchUserTasksTotal                    func(context.Context, task.SearchRequest, ...options.FacadeOption) (int64, error)
+	enrichUserTasksWithVariables            func(context.Context, task.UserTasks, ...options.FacadeOption) (task.VariableEnrichedUserTasks, error)
 	resolveProcessInstanceKeyFromUserTask   func(context.Context, string, ...options.FacadeOption) (string, error)
 	resolveProcessInstanceKeysFromUserTasks func(context.Context, types.Keys, ...options.FacadeOption) (types.Keys, error)
 }
@@ -89,6 +90,14 @@ func (s stubTaskAPI) SearchUserTasksTotal(ctx context.Context, request task.Sear
 		panic("unexpected call")
 	}
 	return s.searchUserTasksTotal(ctx, request, opts...)
+}
+
+// EnrichUserTasksWithVariables delegates selected-task enrichment to configured command-test behavior.
+func (s stubTaskAPI) EnrichUserTasksWithVariables(ctx context.Context, tasks task.UserTasks, opts ...options.FacadeOption) (task.VariableEnrichedUserTasks, error) {
+	if s.enrichUserTasksWithVariables == nil {
+		panic("unexpected call")
+	}
+	return s.enrichUserTasksWithVariables(ctx, tasks, opts...)
 }
 
 func (s stubTaskAPI) ResolveProcessInstanceKeyFromUserTask(ctx context.Context, taskKey string, opts ...options.FacadeOption) (string, error) {

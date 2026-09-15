@@ -15,6 +15,7 @@ Started: 2026-09-15T08:04:53Z
 - The v88 native effective-variable endpoint and generated shapes also match v89/v810; the keyed endpoint receives no discovery tenant predicate, so backend authorization applies while returned scope and tenant metadata remain unchanged.
 - The v87 adapter exposes the same version-owned effective-variable page signature but returns `domain.ErrUnsupported` before transport use; the implementation stays in `v87/variables.go` and leaves native task reads and legacy resolver/fallback behavior unchanged.
 - Complete effective-variable retrieval lives in `internal/services/usertask/variables.go`: offset advances by raw count or page size for a required empty continuation, capped totals retain their highest lower bound, normalization happens only after retrieval, and enrichment is sequential to preserve task order.
+- The public task facade now exposes only `EnrichUserTasksWithVariables`: `c8volt/task/client.go` maps selected tasks and facade options once into the internal enrichment workflow, while `convert.go` initializes both empty item and variable slices and preserves the service returned-count total.
 
 ## Decisions
 
@@ -36,6 +37,7 @@ Started: 2026-09-15T08:04:53Z
 - V89 effective-variable adapter: `go test ./internal/services/usertask/v89 -run '^TestService_SearchUserTaskEffectiveVariablesPage' -race -count=1`
 - V88 effective-variable adapter: `go test ./internal/services/usertask/v88 -run '^TestService_SearchUserTaskEffectiveVariablesPage' -race -count=1`
 - Complete user-task variable service workflow: `go test ./internal/services/usertask -run 'Test(SearchUserTaskEffectiveVariables|EnrichUserTasksWithVariables)' -race -count=1`
+- User-task variable facade: `go test ./c8volt/task -run 'Test.*(Variable|Enrich|Convert)' -race -count=1`
 
 ## Do Not Repeat
 
@@ -43,4 +45,4 @@ Started: 2026-09-15T08:04:53Z
 
 ## Current Handoff
 
-- Continue US1 with T010 by adding facade option/error/mapping and initialized-empty JSON-shape contract tests in `c8volt/task/variables_test.go`; T011 remains the next parallel test-authoring task before facade and command implementations.
+- Continue US1 with T011 by adding keyed execution tests in `cmd/get_usertask_test.go`; T018 and T019 remain the dependent view and command implementations after those tests define the contract.

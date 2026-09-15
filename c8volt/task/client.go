@@ -12,6 +12,7 @@ import (
 	pdsvc "github.com/grafvonb/c8volt/internal/services/processdefinition"
 	pisvc "github.com/grafvonb/c8volt/internal/services/processinstance"
 	utsvc "github.com/grafvonb/c8volt/internal/services/usertask"
+	"github.com/grafvonb/c8volt/toolx"
 	types "github.com/grafvonb/c8volt/typex"
 )
 
@@ -78,6 +79,16 @@ func (c *client) SearchUserTasksTotal(ctx context.Context, request SearchRequest
 		return 0, ferr.FromDomain(err)
 	}
 	return total, nil
+}
+
+// EnrichUserTasksWithVariables attaches effective variables to selected task
+// results without changing their order or re-fetching task metadata.
+func (c *client) EnrichUserTasksWithVariables(ctx context.Context, tasks UserTasks, opts ...options.FacadeOption) (VariableEnrichedUserTasks, error) {
+	got, err := utsvc.EnrichUserTasksWithVariables(ctx, c.utApi, toolx.MapSlice(tasks.Items, toDomainUserTask), options.MapFacadeOptionsToCallOptions(opts)...)
+	if err != nil {
+		return VariableEnrichedUserTasks{}, ferr.FromDomain(err)
+	}
+	return fromDomainVariableEnrichedUserTasks(got), nil
 }
 
 // ResolveProcessInstanceKeyFromUserTask keeps single task-key lookup aligned with the multi-key path used by the CLI.

@@ -27,6 +27,26 @@ func fromDomainUserTask(x d.UserTask) UserTask {
 	}
 }
 
+// toDomainUserTask maps a selected public task into an independently owned
+// service value without interpreting or replacing its metadata.
+func toDomainUserTask(x UserTask) d.UserTask {
+	return d.UserTask{
+		Key:                      x.Key,
+		State:                    x.State,
+		Name:                     x.Name,
+		ElementId:                x.ElementId,
+		ElementInstanceKey:       x.ElementInstanceKey,
+		Assignee:                 x.Assignee,
+		CandidateUsers:           append([]string(nil), x.CandidateUsers...),
+		CandidateGroups:          append([]string(nil), x.CandidateGroups...),
+		ProcessInstanceKey:       x.ProcessInstanceKey,
+		ProcessDefinitionKey:     x.ProcessDefinitionKey,
+		ProcessDefinitionId:      x.ProcessDefinitionId,
+		ProcessDefinitionVersion: x.ProcessDefinitionVersion,
+		TenantId:                 x.TenantId,
+	}
+}
+
 // fromDomainUserTasks maps a task slice and always initializes the public collection.
 func fromDomainUserTasks(xs []d.UserTask) UserTasks {
 	items := toolx.MapSlice(xs, fromDomainUserTask)
@@ -34,6 +54,43 @@ func fromDomainUserTasks(xs []d.UserTask) UserTasks {
 		items = []UserTask{}
 	}
 	return UserTasks{Total: int64(len(items)), Items: items}
+}
+
+// fromDomainUserTaskVariable maps every received variable field without
+// applying process-root filtering or presentation shortening.
+func fromDomainUserTaskVariable(x d.ProcessInstanceVariable) UserTaskVariable {
+	return UserTaskVariable{
+		Name:               x.Name,
+		Value:              x.Value,
+		VariableKey:        x.VariableKey,
+		ProcessInstanceKey: x.ProcessInstanceKey,
+		ScopeKey:           x.ScopeKey,
+		TenantId:           x.TenantId,
+		APITruncated:       x.APITruncated,
+	}
+}
+
+// fromDomainVariableEnrichedUserTask maps one unchanged selected task and
+// ensures its effective-variable collection remains initialized when empty.
+func fromDomainVariableEnrichedUserTask(x d.VariableEnrichedUserTask) VariableEnrichedUserTask {
+	variables := toolx.MapSlice(x.Variables, fromDomainUserTaskVariable)
+	if variables == nil {
+		variables = []UserTaskVariable{}
+	}
+	return VariableEnrichedUserTask{
+		Item:      fromDomainUserTask(x.Item),
+		Variables: variables,
+	}
+}
+
+// fromDomainVariableEnrichedUserTasks maps the service result while preserving
+// its returned-item total and initialized empty collection contract.
+func fromDomainVariableEnrichedUserTasks(x d.VariableEnrichedUserTasks) VariableEnrichedUserTasks {
+	items := toolx.MapSlice(x.Items, fromDomainVariableEnrichedUserTask)
+	if items == nil {
+		items = []VariableEnrichedUserTask{}
+	}
+	return VariableEnrichedUserTasks{Total: x.Total, Items: items}
 }
 
 // toDomainSearchRequest maps public selectors and bounds without adding tenant scope.
