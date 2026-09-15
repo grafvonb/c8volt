@@ -10,6 +10,7 @@ Started: 2026-09-15T08:04:53Z
 - User-task effective-variable paging records live beside the existing task paging records in `internal/domain/usertask.go`; the offset-only request validates `From >= 0` and `Size > 0`, while the page reuses `UserTaskReportedTotal` and `ProcessInstanceVariable`.
 - Public effective user-task variables are a true alias of `process.ProcessInstanceVariable`; task-specific enriched wrappers live in `c8volt/task/model.go`, use `int64` totals, and keep explicit `items`/`variables` JSON arrays.
 - Command variable tests use `newGetUserTaskVariablesServer` in `cmd/get_usertask_vars_test.go`; it combines stable native task reads, the existing search response callback shape, and task-local effective-variable page queues without changing command globals.
+- The v810 effective-variable adapter lives in `internal/services/usertask/v810/variables.go`; it uses pointer-backed raw DTO fields to distinguish missing required JSON from valid empty strings, while `isTruncated` takes precedence over `truncated`.
 
 ## Decisions
 
@@ -19,12 +20,14 @@ Started: 2026-09-15T08:04:53Z
 ## Gotchas
 
 - `gh issue view 309` cannot currently validate the remote issue because the configured GitHub credentials return HTTP 401. The committed feature artifacts provide the implementation contract for this iteration.
+- Generated sort constants use the package-level `camundav810.ASC` name, and generated effective-variable results omit raw value/truncation fields even when `JSON200` is populated.
 
 ## Reusable Commands
 
 - Base command regression: `go test ./cmd -run '^TestGetUserTask' -count=1`
 - User-task domain models: `go test ./internal/domain -run 'TestUserTaskVariable' -count=1`
 - User-task variable fixture: `go test ./cmd -run '^TestGetUserTaskVariablesFixture$' -race -count=1`
+- V810 effective-variable adapter: `go test ./internal/services/usertask/v810 -run '^TestService_SearchUserTaskEffectiveVariablesPage' -race -count=1`
 
 ## Do Not Repeat
 
@@ -32,4 +35,4 @@ Started: 2026-09-15T08:04:53Z
 
 ## Current Handoff
 
-- Continue with T005 in US1 by adding the v810 native effective-variable adapter contract tests in `internal/services/usertask/v810/variables_test.go`.
+- Continue with T006 in US1 by adding equivalent v89 effective-variable adapter tests in `internal/services/usertask/v89/variables_test.go`; use the completed v810 adapter/tests as the explicit pattern without assuming generated-type parity.

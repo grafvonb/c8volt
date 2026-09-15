@@ -65,3 +65,22 @@ Started: 2026-09-15 10:04:53
 **Learnings**:
 - Task-local page counters keep concurrent keyed reads deterministic, and HTTP handlers must report malformed fixture requests without test-fatal calls from server goroutines.
 ---
+---
+## Iteration 5 - 2026-09-15 10:25
+**Work Unit**: US1 v8.10 effective-variable adapter (T005, T012)
+**Tasks Completed**:
+- [x] T005: Add v810 native effective-variable contract tests
+- [x] T012: Implement the v810 effective-variable page adapter and generated-client contract
+**Tasks Remaining in Work Unit**: 14 US1 tasks
+**Commit**: This work-unit commit
+**Files Changed**:
+- internal/services/usertask/v810/contract.go
+- internal/services/usertask/v810/service_test.go
+- internal/services/usertask/v810/variables.go
+- internal/services/usertask/v810/variables_test.go
+- specs/309-user-task-variables/tasks.md
+- specs/309-user-task-variables/ralph-memory.md
+- specs/309-user-task-variables/progress.md
+**Learnings**:
+- Pointer-backed raw DTOs are required to preserve valid empty values while rejecting absent required fields omitted by generated response models.
+---

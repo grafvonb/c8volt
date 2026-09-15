@@ -19,8 +19,9 @@ import (
 )
 
 type mockUserTaskClient struct {
-	getUserTaskWithResponse     func(context.Context, camundav810.UserTaskKey, ...camundav810.RequestEditorFn) (*camundav810.GetUserTaskResponse, error)
-	searchUserTasksWithResponse func(context.Context, camundav810.SearchUserTasksJSONRequestBody, ...camundav810.RequestEditorFn) (*camundav810.SearchUserTasksResponse, error)
+	getUserTaskWithResponse                      func(context.Context, camundav810.UserTaskKey, ...camundav810.RequestEditorFn) (*camundav810.GetUserTaskResponse, error)
+	searchUserTasksWithResponse                  func(context.Context, camundav810.SearchUserTasksJSONRequestBody, ...camundav810.RequestEditorFn) (*camundav810.SearchUserTasksResponse, error)
+	searchUserTaskEffectiveVariablesWithResponse func(context.Context, camundav810.UserTaskKey, *camundav810.SearchUserTaskEffectiveVariablesParams, camundav810.SearchUserTaskEffectiveVariablesJSONRequestBody, ...camundav810.RequestEditorFn) (*camundav810.SearchUserTaskEffectiveVariablesResponse, error)
 }
 
 func (m *mockUserTaskClient) GetUserTaskWithResponse(ctx context.Context, key camundav810.UserTaskKey, reqEditors ...camundav810.RequestEditorFn) (*camundav810.GetUserTaskResponse, error) {
@@ -30,6 +31,14 @@ func (m *mockUserTaskClient) GetUserTaskWithResponse(ctx context.Context, key ca
 // SearchUserTasksWithResponse delegates native search requests to the test-specific callback.
 func (m *mockUserTaskClient) SearchUserTasksWithResponse(ctx context.Context, body camundav810.SearchUserTasksJSONRequestBody, reqEditors ...camundav810.RequestEditorFn) (*camundav810.SearchUserTasksResponse, error) {
 	return m.searchUserTasksWithResponse(ctx, body, reqEditors...)
+}
+
+// SearchUserTaskEffectiveVariablesWithResponse delegates effective-variable requests to the test-specific callback.
+func (m *mockUserTaskClient) SearchUserTaskEffectiveVariablesWithResponse(ctx context.Context, key camundav810.UserTaskKey, params *camundav810.SearchUserTaskEffectiveVariablesParams, body camundav810.SearchUserTaskEffectiveVariablesJSONRequestBody, reqEditors ...camundav810.RequestEditorFn) (*camundav810.SearchUserTaskEffectiveVariablesResponse, error) {
+	if m.searchUserTaskEffectiveVariablesWithResponse == nil {
+		panic("unexpected SearchUserTaskEffectiveVariablesWithResponse call")
+	}
+	return m.searchUserTaskEffectiveVariablesWithResponse(ctx, key, params, body, reqEditors...)
 }
 
 var _ v810.GenUserTaskClientCamunda = (*mockUserTaskClient)(nil)
