@@ -36,6 +36,11 @@ func (a *bulkUserTaskAPI) SearchUserTasksPage(context.Context, d.UserTaskSearchQ
 	panic("bulk native reads must not call user-task search")
 }
 
+// SearchUserTaskEffectiveVariablesPage rejects accidental enrichment during native bulk reads.
+func (a *bulkUserTaskAPI) SearchUserTaskEffectiveVariablesPage(context.Context, string, d.UserTaskVariablePageRequest, ...services.CallOption) (d.UserTaskVariablePage, error) {
+	panic("bulk native reads must not call effective-variable search")
+}
+
 // TestGetUserTasksDeduplicatesStablyAndPreservesInputOrder verifies concurrent completion cannot reorder the first occurrence of each requested key.
 func TestGetUserTasksDeduplicatesStablyAndPreservesInputOrder(t *testing.T) {
 	t.Parallel()

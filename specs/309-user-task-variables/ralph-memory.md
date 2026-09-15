@@ -14,6 +14,7 @@ Started: 2026-09-15T08:04:53Z
 - The v89 generated effective-variable operation is request-compatible with v810, but its explicit adapter and client-double method remain version-owned in `internal/services/usertask/v89`; raw decoding is still required because the generated success model omits value and truncation fields.
 - The v88 native effective-variable endpoint and generated shapes also match v89/v810; the keyed endpoint receives no discovery tenant predicate, so backend authorization applies while returned scope and tenant metadata remain unchanged.
 - The v87 adapter exposes the same version-owned effective-variable page signature but returns `domain.ErrUnsupported` before transport use; the implementation stays in `v87/variables.go` and leaves native task reads and legacy resolver/fallback behavior unchanged.
+- Complete effective-variable retrieval lives in `internal/services/usertask/variables.go`: offset advances by raw count or page size for a required empty continuation, capped totals retain their highest lower bound, normalization happens only after retrieval, and enrichment is sequential to preserve task order.
 
 ## Decisions
 
@@ -24,6 +25,7 @@ Started: 2026-09-15T08:04:53Z
 
 - `gh issue view 309` cannot currently validate the remote issue because the configured GitHub credentials return HTTP 401. The committed feature artifacts provide the implementation contract for this iteration.
 - Generated sort constants use the package-level `camundav810.ASC` name, and generated effective-variable results omit raw value/truncation fields even when `JSON200` is populated.
+- `commit.issue: auto` adds no suffix on `codex/309-user-task-variables` because the branch does not begin with a numeric prefix; iteration 8's subject was repaired accordingly before iteration 9 work.
 
 ## Reusable Commands
 
@@ -33,6 +35,7 @@ Started: 2026-09-15T08:04:53Z
 - V810 effective-variable adapter: `go test ./internal/services/usertask/v810 -run '^TestService_SearchUserTaskEffectiveVariablesPage' -race -count=1`
 - V89 effective-variable adapter: `go test ./internal/services/usertask/v89 -run '^TestService_SearchUserTaskEffectiveVariablesPage' -race -count=1`
 - V88 effective-variable adapter: `go test ./internal/services/usertask/v88 -run '^TestService_SearchUserTaskEffectiveVariablesPage' -race -count=1`
+- Complete user-task variable service workflow: `go test ./internal/services/usertask -run 'Test(SearchUserTaskEffectiveVariables|EnrichUserTasksWithVariables)' -race -count=1`
 
 ## Do Not Repeat
 
@@ -40,4 +43,4 @@ Started: 2026-09-15T08:04:53Z
 
 ## Current Handoff
 
-- Continue US1 with T009 by adding complete pagination and sequential enrichment tests in `internal/services/usertask/variables_test.go`; T010 and T011 remain parallel test-authoring tasks before their dependent implementations.
+- Continue US1 with T010 by adding facade option/error/mapping and initialized-empty JSON-shape contract tests in `c8volt/task/variables_test.go`; T011 remains the next parallel test-authoring task before facade and command implementations.

@@ -140,3 +140,26 @@ Started: 2026-09-15 10:04:53
 **Learnings**:
 - Camunda 8.7 can implement the shared page signature as a transport-free domain unsupported result without disturbing existing native-read or legacy resolver behavior.
 ---
+---
+## Iteration 9 - 2026-09-15 10:45
+**Work Unit**: US1 complete effective-variable pagination and sequential enrichment (T009, T016)
+**Tasks Completed**:
+- [x] T009: Add complete pagination and enrichment service tests
+- [x] T016: Implement complete offset retrieval and sequential user-task enrichment
+**Tasks Remaining in Work Unit**: 6 US1 tasks
+**Commit**: This work-unit commit
+**Files Changed**:
+- c8volt/task/client_test.go
+- c8volt/task/search_test.go
+- internal/services/usertask/api.go
+- internal/services/usertask/bulk_test.go
+- internal/services/usertask/search_test.go
+- internal/services/usertask/variables.go
+- internal/services/usertask/variables_test.go
+- internal/services/usertask/workflow_test.go
+- specs/309-user-task-variables/tasks.md
+- specs/309-user-task-variables/ralph-memory.md
+- specs/309-user-task-variables/progress.md
+**Learnings**:
+- Raw backend counts must drive offset progress while duplicate-name normalization waits until retrieval is complete; capped totals require a terminal empty probe even after their retained lower bound is satisfied.
+---

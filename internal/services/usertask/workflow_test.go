@@ -34,6 +34,11 @@ func (a *orderedUserTaskAPI) SearchUserTasksPage(context.Context, d.UserTaskSear
 	panic("legacy resolver must not call SearchUserTasksPage")
 }
 
+// SearchUserTaskEffectiveVariablesPage fails if legacy ownership resolution starts variable enrichment.
+func (a *orderedUserTaskAPI) SearchUserTaskEffectiveVariablesPage(context.Context, string, d.UserTaskVariablePageRequest, ...services.CallOption) (d.UserTaskVariablePage, error) {
+	panic("legacy resolver must not call SearchUserTaskEffectiveVariablesPage")
+}
+
 // TestResolveProcessInstanceKeys_PreservesInputOrder pins the legacy resolver's one-for-one task and owning-process ordering.
 func TestResolveProcessInstanceKeys_PreservesInputOrder(t *testing.T) {
 	t.Parallel()

@@ -35,6 +35,11 @@ func (a *searchUserTaskAPI) SearchUserTasksPage(ctx context.Context, query d.Use
 	return a.searchPage(ctx, query, page, opts...)
 }
 
+// SearchUserTaskEffectiveVariablesPage rejects accidental enrichment during task discovery.
+func (a *searchUserTaskAPI) SearchUserTaskEffectiveVariablesPage(context.Context, string, d.UserTaskVariablePageRequest, ...services.CallOption) (d.UserTaskVariablePage, error) {
+	panic("user-task search must not call effective-variable search")
+}
+
 // TestSearchUserTasksPagesPrefersAdvancingCursors verifies cursor metadata takes precedence over offset fallback and a final nonempty cursor receives a terminal probe.
 func TestSearchUserTasksPagesPrefersAdvancingCursors(t *testing.T) {
 	t.Parallel()
