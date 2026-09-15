@@ -84,9 +84,12 @@ func (failingUserTaskWriter) Write([]byte) (int, error) { return 0, errUserTaskW
 // resetGetUserTaskGlobalModes restores shared output flags after direct view tests.
 func resetGetUserTaskGlobalModes(t *testing.T) {
 	t.Helper()
-	previousJSON, previousKeys, previousQuiet := flagViewAsJson, flagViewKeysOnly, flagQuiet
-	t.Cleanup(func() { flagViewAsJson, flagViewKeysOnly, flagQuiet = previousJSON, previousKeys, previousQuiet })
+	previousJSON, previousKeys, previousQuiet, previousWithVars := flagViewAsJson, flagViewKeysOnly, flagQuiet, flagGetUserTaskWithVars
+	t.Cleanup(func() {
+		flagViewAsJson, flagViewKeysOnly, flagQuiet, flagGetUserTaskWithVars = previousJSON, previousKeys, previousQuiet, previousWithVars
+	})
 	flagViewAsJson, flagViewKeysOnly, flagQuiet = false, false, false
+	flagGetUserTaskWithVars = false
 }
 
 // TestUserTasksView_CompletesIncrementalOutput verifies page rendering and final

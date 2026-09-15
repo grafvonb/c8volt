@@ -183,3 +183,29 @@ Started: 2026-09-15 10:04:53
 **Learnings**:
 - The thin facade can preserve initialized empty arrays and option/error semantics while delegating all variable paging and sequential enrichment to the internal user-task service.
 ---
+---
+## Iteration 11 - 2026-09-15 11:03
+**Work Unit**: US1 keyed variable inspection and baseline views (T011, T018-T020)
+**Tasks Completed**:
+- [x] T011: Add keyed variable execution tests across aliases, merged/stdin keys, output, metadata, and failures
+- [x] T018: Extract the explicit-limit formatter and add enriched user-task human/JSON views
+- [x] T019: Register `--with-vars` and add focused keyed selected-result enrichment dispatch
+- [x] T020: Format and run the focused US1 adapter, service, facade, command, and formatter checks
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/cmd_views_processinstance_vars.go
+- cmd/cmd_views_usertask_test.go
+- cmd/cmd_views_usertask_vars.go
+- cmd/cmd_views_usertask_vars_test.go
+- cmd/cmd_views_variable_values.go
+- cmd/get_usertask.go
+- cmd/get_usertask_test.go
+- cmd/get_usertask_vars.go
+- cmd/get_usertask_vars_test.go
+- specs/309-user-task-variables/tasks.md
+- specs/309-user-task-variables/ralph-memory.md
+- specs/309-user-task-variables/progress.md
+**Learnings**:
+- Keyed enrichment stays a single post-lookup pass, and an explicit-limit shared formatter preserves process-instance behavior without coupling task output to process-command globals.
+---

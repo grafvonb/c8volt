@@ -39,6 +39,7 @@ type userTaskVariablePageFixture struct {
 
 type getUserTaskVariablesFixture struct {
 	SearchRespond func(int, map[string]any) string
+	TaskStatuses  map[string]int
 	VariablePages map[string][]userTaskVariablePageFixture
 }
 
@@ -90,7 +91,7 @@ func newGetUserTaskVariablesServer(t *testing.T, fixture getUserTaskVariablesFix
 		case request.Method == http.MethodPost && strings.HasSuffix(request.URL.Path, "/effective-variables/search"):
 			serveUserTaskVariableFixturePage(writer, request, fixture.VariablePages, requests)
 		case request.Method == http.MethodGet && strings.HasPrefix(request.URL.Path, "/v2/user-tasks/"):
-			serveUserTaskFixtureRead(writer, request, requests)
+			serveUserTaskFixtureRead(writer, request, fixture.TaskStatuses, requests)
 		default:
 			http.NotFound(writer, request)
 		}
@@ -161,8 +162,8 @@ func serveUserTaskVariableFixturePage(writer http.ResponseWriter, request *http.
 }
 
 // serveUserTaskFixtureRead returns the stable native task record already used
-// by keyed command tests and records only valid-looking task routes.
-func serveUserTaskFixtureRead(writer http.ResponseWriter, request *http.Request, requests *capturedGetUserTaskVariableRequests) {
+// by keyed command tests, with task-keyed status failures for strict read cases.
+func serveUserTaskFixtureRead(writer http.ResponseWriter, request *http.Request, statuses map[string]int, requests *capturedGetUserTaskVariableRequests) {
 	taskKey := strings.TrimPrefix(request.URL.Path, "/v2/user-tasks/")
 	if taskKey == request.URL.Path || taskKey == "" || strings.Contains(taskKey, "/") {
 		http.NotFound(writer, request)
@@ -171,6 +172,10 @@ func serveUserTaskFixtureRead(writer http.ResponseWriter, request *http.Request,
 	requests.mu.Lock()
 	requests.taskKeys = append(requests.taskKeys, taskKey)
 	requests.mu.Unlock()
+	if status := statuses[taskKey]; status != 0 && status != http.StatusOK {
+		http.Error(writer, `{"message":"injected user-task read error"}`, status)
+		return
+	}
 	writer.Header().Set("Content-Type", "application/json")
 	_, _ = fmt.Fprintf(writer, `{"userTaskKey":%q,"state":"CREATED","name":"Approve invoice","elementId":"approve_invoice","assignee":"alice","candidateUsers":["bob"],"candidateGroups":["accounting"],"processInstanceKey":"2251799813711967","elementInstanceKey":"2251799815391200","processDefinitionKey":"2251799813689000","processDefinitionId":"invoice","processDefinitionVersion":7,"tenantId":"tenant-a"}`, taskKey)
 }

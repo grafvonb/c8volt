@@ -26,6 +26,7 @@ var (
 	flagGetUserTaskBatchSize      int32
 	flagGetUserTaskLimit          int32
 	flagGetUserTaskTotal          bool
+	flagGetUserTaskWithVars       bool
 )
 
 var getUserTaskCmd = &cobra.Command{
@@ -109,8 +110,8 @@ Use --json for one collection envelope or --keys-only for one task key per line.
 		if err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("get user tasks: %w", err))
 		}
-		if err := userTasksView(cmd, result); err != nil {
-			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("render user tasks: %w", err))
+		if err := renderSelectedUserTasks(cmd, cli, result); err != nil {
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}
 	},
 }
@@ -131,6 +132,7 @@ func init() {
 	flags.Int32VarP(&flagGetUserTaskBatchSize, "batch-size", "n", consts.MaxPISearchSize, fmt.Sprintf("number of user tasks to request per page; does not cap total results (maximum %d)", consts.MaxPISearchSize))
 	flags.Int32VarP(&flagGetUserTaskLimit, "limit", "l", 0, "maximum number of matching user tasks to return across all pages; omit for unlimited")
 	flags.BoolVar(&flagGetUserTaskTotal, "total", false, "return only the exact numeric total of matching user tasks")
+	flags.BoolVar(&flagGetUserTaskWithVars, "with-vars", false, "include effective variables for selected user tasks")
 	flags.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers when fetching multiple user tasks")
 	flags.BoolVar(&flagNoWorkerLimit, "no-worker-limit", false, "use all queued user task reads as workers when --workers is unset")
 	flags.BoolVar(&flagFailFast, "fail-fast", false, "stop scheduling new user task reads after the first error")
