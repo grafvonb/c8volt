@@ -270,7 +270,7 @@ Use `get user-task` to fetch known native user tasks or search visible work on C
 
 Without keys, combine process, element, state, assignment, candidate, and effective tenant filters. States are `ASSIGNING`, `CANCELED`, `CANCELING`, `COMPLETED`, `COMPLETING`, `CREATED`, `CREATING`, `FAILED`, and `UPDATING` (case-insensitive); `all` applies no state predicate. `--batch-size` controls page size, `--limit` bounds the returned collection, and `--total` prints the exact matching count. Interactive searches offer additional pages on stderr; use `--auto-confirm` or `--automation` for unattended paging. `--quiet` suppresses human results while preserving explicitly requested JSON, keys-only, and numeric total output. Keys conflict with search filters, `--limit`, and `--total`; total mode also conflicts with `--limit`, `--json`, and `--keys-only`.
 
-Human rows follow the other get commands: task key, tenant, element ID, and state, followed by optional `name:` and `assignee:` details, then BPMN process ID and related `pi:`, `ei:`, and `pd:` keys. Empty optional fields are omitted; collections end with `found: N`.
+Human rows follow the other get commands: task key, tenant, element ID, and state, followed by related `pi:`, `ei:`, and `pd:` keys. Assignee is always last: `assignee:<user>` when assigned, otherwise `assignee:<unassigned>`. Task name, BPMN process ID, and process-definition version are available in JSON. Other empty optional fields are omitted; collections end with `found: N`.
 
 This command is read-only and intentionally excludes task mutations, variables, forms, audit history, date filters, custom sorting, and watch mode.
 

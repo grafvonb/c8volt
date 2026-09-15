@@ -15,18 +15,19 @@ func TestUserTaskModelPreservesStringKeys(t *testing.T) {
 	t.Parallel()
 
 	task := UserTask{
-		Key:                  "9007199254740993",
-		State:                "CREATED",
-		Name:                 "Approve invoice",
-		ElementId:            "approve_invoice",
-		ElementInstanceKey:   "9007199254740995",
-		Assignee:             "alice",
-		CandidateUsers:       []string{"bob"},
-		CandidateGroups:      []string{"accounting"},
-		ProcessInstanceKey:   "9007199254740997",
-		ProcessDefinitionKey: "9007199254740999",
-		ProcessDefinitionId:  "invoice",
-		TenantId:             "tenant-a",
+		Key:                      "9007199254740993",
+		State:                    "CREATED",
+		Name:                     "Approve invoice",
+		ElementId:                "approve_invoice",
+		ElementInstanceKey:       "9007199254740995",
+		Assignee:                 "alice",
+		CandidateUsers:           []string{"bob"},
+		CandidateGroups:          []string{"accounting"},
+		ProcessInstanceKey:       "9007199254740997",
+		ProcessDefinitionKey:     "9007199254740999",
+		ProcessDefinitionId:      "invoice",
+		ProcessDefinitionVersion: 7,
+		TenantId:                 "tenant-a",
 	}
 
 	raw, err := json.Marshal(task)
@@ -43,6 +44,7 @@ func TestUserTaskModelPreservesStringKeys(t *testing.T) {
 		"ProcessInstanceKey":"9007199254740997",
 		"ProcessDefinitionKey":"9007199254740999",
 		"ProcessDefinitionId":"invoice",
+		"ProcessDefinitionVersion":7,
 		"TenantId":"tenant-a"
 	}`, string(raw))
 }

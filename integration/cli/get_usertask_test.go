@@ -73,17 +73,17 @@ func runGetUserTaskScenarios(t *testing.T, profile integrationProfile, pdKey str
 		require.Equal(t, "CREATED", sample.State)
 		require.NotEmpty(t, sample.Key)
 		require.NotEmpty(t, sample.ElementInstanceKey)
+		require.Positive(t, sample.ProcessDefinitionVersion)
 		expectedKeys = append(expectedKeys, sample.Key)
 	}
 	require.NotEmpty(t, expectedKeys)
 	details := []string{sample.Key, sample.TenantId, sample.ElementId, sample.State}
-	if sample.Name != "" {
-		details = append(details, "name:"+sample.Name)
-	}
-	if sample.Assignee != "" {
+	details = append(details, "pi:"+sample.ProcessInstanceKey, "ei:"+sample.ElementInstanceKey, "pd:"+sample.ProcessDefinitionKey)
+	if sample.Assignee == "" {
+		details = append(details, "assignee:<unassigned>")
+	} else {
 		details = append(details, "assignee:"+sample.Assignee)
 	}
-	details = append(details, sample.ProcessDefinitionId, "pi:"+sample.ProcessInstanceKey, "ei:"+sample.ElementInstanceKey, "pd:"+sample.ProcessDefinitionKey)
 	var fields []string
 	for _, field := range details {
 		if field != "" {

@@ -33,18 +33,19 @@ func TestService_GetNativeUserTask_MapsCompleteAndNullablePayloads(t *testing.T)
 
 	require.NoError(t, err)
 	require.Equal(t, d.UserTask{
-		Key:                  "2251799815391233",
-		State:                "CREATED",
-		Name:                 "Approve invoice",
-		ElementId:            "approve_invoice",
-		ElementInstanceKey:   "2251799815391222",
-		Assignee:             "alice",
-		CandidateUsers:       []string{"bob"},
-		CandidateGroups:      []string{"accounting"},
-		ProcessInstanceKey:   "2251799813711967",
-		ProcessDefinitionKey: "2251799813689000",
-		ProcessDefinitionId:  "invoice",
-		TenantId:             "foreign-tenant",
+		Key:                      "2251799815391233",
+		State:                    "CREATED",
+		Name:                     "Approve invoice",
+		ElementId:                "approve_invoice",
+		ElementInstanceKey:       "2251799815391222",
+		Assignee:                 "alice",
+		CandidateUsers:           []string{"bob"},
+		CandidateGroups:          []string{"accounting"},
+		ProcessInstanceKey:       "2251799813711967",
+		ProcessDefinitionKey:     "2251799813689000",
+		ProcessDefinitionId:      "invoice",
+		ProcessDefinitionVersion: 7,
+		TenantId:                 "foreign-tenant",
 	}, task)
 	payload.CandidateUsers[0] = "changed"
 	require.Equal(t, []string{"bob"}, task.CandidateUsers)
@@ -95,18 +96,19 @@ func TestService_GetNativeUserTask_RejectsBackendAndMalformedResponses(t *testin
 // nativeUserTaskResult builds a complete V810 payload while allowing nullable native strings to vary.
 func nativeUserTaskResult(name, assignee *string) camundav810.UserTaskResult {
 	return camundav810.UserTaskResult{
-		UserTaskKey:          "2251799815391233",
-		State:                "CREATED",
-		Name:                 name,
-		ElementId:            "approve_invoice",
-		ElementInstanceKey:   "2251799815391222",
-		Assignee:             assignee,
-		CandidateUsers:       []string{"bob"},
-		CandidateGroups:      []string{"accounting"},
-		ProcessInstanceKey:   "2251799813711967",
-		ProcessDefinitionKey: "2251799813689000",
-		ProcessDefinitionId:  "invoice",
-		TenantId:             "foreign-tenant",
+		UserTaskKey:              "2251799815391233",
+		State:                    "CREATED",
+		Name:                     name,
+		ElementId:                "approve_invoice",
+		ElementInstanceKey:       "2251799815391222",
+		Assignee:                 assignee,
+		CandidateUsers:           []string{"bob"},
+		CandidateGroups:          []string{"accounting"},
+		ProcessInstanceKey:       "2251799813711967",
+		ProcessDefinitionKey:     "2251799813689000",
+		ProcessDefinitionId:      "invoice",
+		ProcessDefinitionVersion: 7,
+		TenantId:                 "foreign-tenant",
 	}
 }
 

@@ -29,7 +29,7 @@ func TestUserTasksView_RendersContractModes(t *testing.T) {
 		want     string
 		contains []string
 	}{
-		{name: "human", want: "2251799815391233 tenant-a approve_invoice CREATED   name:Approve invoice assignee:alice invoice pi:2251799813711967 ei:2251799815391200 pd:2251799813689000\n2251799815391234 tenant-b archive_invoice COMPLETED                                     invoice pi:2251799813711968 ei:2251799815391200 pd:2251799813689000\nfound: 2\n"},
+		{name: "human", want: "2251799815391233 tenant-a approve_invoice CREATED   pi:2251799813711967 ei:2251799815391200 pd:2251799813689000 assignee:alice\n2251799815391234 tenant-b archive_invoice COMPLETED pi:2251799813711968 ei:2251799815391200 pd:2251799813689000 assignee:<unassigned>\nfound: 2\n"},
 		{name: "keys", keys: true, want: "2251799815391233\n2251799815391234\n"},
 		{name: "quiet", quiet: true, want: ""},
 		{name: "quiet keys", keys: true, quiet: true, want: "2251799815391233\n2251799815391234\n"},
@@ -126,5 +126,5 @@ func TestFlatRowUserTask_UsesGetGrammar(t *testing.T) {
 		ElementId: "SimpleUserTask_UserTask", State: "CREATED", Name: "Simple User Task",
 		ProcessInstanceKey: "2251799813900036", ElementInstanceKey: "2251799813900040", ProcessDefinitionKey: "2251799813873873",
 	}
-	require.Equal(t, "2251799813900041 tenant-a SimpleUserTask_UserTask CREATED name:Simple User Task C89_SimpleUserTask pi:2251799813900036 ei:2251799813900040 pd:2251799813873873", compactFlatRow(flatRowUserTask(item)))
+	require.Equal(t, "2251799813900041 tenant-a SimpleUserTask_UserTask CREATED pi:2251799813900036 ei:2251799813900040 pd:2251799813873873 assignee:<unassigned>", compactFlatRow(flatRowUserTask(item)))
 }

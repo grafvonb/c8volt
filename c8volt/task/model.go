@@ -5,18 +5,19 @@ package task
 
 // UserTask is the stable public representation of one native user task.
 type UserTask struct {
-	Key                  string   `json:"key"`
-	State                string   `json:"state"`
-	Name                 string   `json:"name,omitempty"`
-	ElementId            string   `json:"elementId,omitempty"`
-	ElementInstanceKey   string   `json:"elementInstanceKey,omitempty"`
-	Assignee             string   `json:"assignee,omitempty"`
-	CandidateUsers       []string `json:"candidateUsers,omitempty"`
-	CandidateGroups      []string `json:"candidateGroups,omitempty"`
-	ProcessInstanceKey   string   `json:"processInstanceKey"`
-	ProcessDefinitionKey string   `json:"processDefinitionKey,omitempty"`
-	ProcessDefinitionId  string   `json:"processDefinitionId,omitempty"`
-	TenantId             string   `json:"tenantId,omitempty"`
+	Key                      string   `json:"key"`
+	State                    string   `json:"state"`
+	Name                     string   `json:"name,omitempty"`
+	ElementId                string   `json:"elementId,omitempty"`
+	ElementInstanceKey       string   `json:"elementInstanceKey,omitempty"`
+	Assignee                 string   `json:"assignee,omitempty"`
+	CandidateUsers           []string `json:"candidateUsers,omitempty"`
+	CandidateGroups          []string `json:"candidateGroups,omitempty"`
+	ProcessInstanceKey       string   `json:"processInstanceKey"`
+	ProcessDefinitionKey     string   `json:"processDefinitionKey,omitempty"`
+	ProcessDefinitionId      string   `json:"processDefinitionId,omitempty"`
+	ProcessDefinitionVersion int32    `json:"processDefinitionVersion,omitempty"`
+	TenantId                 string   `json:"tenantId,omitempty"`
 }
 
 // UserTasks contains returned tasks and their returned count.

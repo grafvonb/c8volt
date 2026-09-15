@@ -17,6 +17,7 @@ Extend `internal/domain.UserTask` and introduce the corresponding public `task.U
 | ProcessInstanceKey | string | `processInstanceKey` | Owning process instance |
 | ProcessDefinitionKey | string | `processDefinitionKey,omitempty` | Owning process definition |
 | ProcessDefinitionId | string | `processDefinitionId,omitempty` | BPMN process ID; input flag is `--bpmn-process-id` |
+| ProcessDefinitionVersion | int32 | `processDefinitionVersion,omitempty` | Native process-definition version; JSON-only, omitted when zero/unavailable |
 | TenantId | string | `tenantId,omitempty` | Preserve backend metadata, including keyed reads outside discovery tenant |
 
 All keys remain strings, avoiding numeric precision loss in JSON. No dates, forms, variables, custom headers, business IDs, or mutation state are added. Missing mandatory identity fields or invalid successful payloads use the existing invalid-response/error policy rather than producing a fabricated task. Legacy resolver checks and fallback conversions remain unchanged.

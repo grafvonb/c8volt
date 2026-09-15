@@ -20,7 +20,7 @@ func TestFromDomainUserTaskMapsEveryFieldAndCopiesCandidates(t *testing.T) {
 		Key: "9007199254740993", State: "CREATED", Name: "Approve invoice", ElementId: "approve_invoice",
 		ElementInstanceKey: "9007199254740995", Assignee: "alice", CandidateUsers: []string{"bob"},
 		CandidateGroups: []string{"accounting"}, ProcessInstanceKey: "9007199254740997",
-		ProcessDefinitionKey: "9007199254740999", ProcessDefinitionId: "invoice", TenantId: "foreign-tenant",
+		ProcessDefinitionKey: "9007199254740999", ProcessDefinitionId: "invoice", ProcessDefinitionVersion: 7, TenantId: "foreign-tenant",
 	}
 
 	got := fromDomainUserTask(source)
@@ -28,7 +28,7 @@ func TestFromDomainUserTaskMapsEveryFieldAndCopiesCandidates(t *testing.T) {
 		Key: "9007199254740993", State: "CREATED", Name: "Approve invoice", ElementId: "approve_invoice",
 		ElementInstanceKey: "9007199254740995", Assignee: "alice", CandidateUsers: []string{"bob"},
 		CandidateGroups: []string{"accounting"}, ProcessInstanceKey: "9007199254740997",
-		ProcessDefinitionKey: "9007199254740999", ProcessDefinitionId: "invoice", TenantId: "foreign-tenant",
+		ProcessDefinitionKey: "9007199254740999", ProcessDefinitionId: "invoice", ProcessDefinitionVersion: 7, TenantId: "foreign-tenant",
 	}, got)
 
 	source.CandidateUsers[0] = "changed-user"
@@ -50,6 +50,7 @@ func TestFromDomainUserTaskMapsEveryFieldAndCopiesCandidates(t *testing.T) {
 		"processInstanceKey":"9007199254740997",
 		"processDefinitionKey":"9007199254740999",
 		"processDefinitionId":"invoice",
+		"processDefinitionVersion":7,
 		"tenantId":"foreign-tenant"
 	}`, string(raw))
 }
