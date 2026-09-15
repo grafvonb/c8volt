@@ -12,6 +12,7 @@ Started: 2026-09-15T08:04:53Z
 - Command variable tests use `newGetUserTaskVariablesServer` in `cmd/get_usertask_vars_test.go`; it combines stable native task reads, the existing search response callback shape, and task-local effective-variable page queues without changing command globals.
 - The v810 effective-variable adapter lives in `internal/services/usertask/v810/variables.go`; it uses pointer-backed raw DTO fields to distinguish missing required JSON from valid empty strings, while `isTruncated` takes precedence over `truncated`.
 - The v89 generated effective-variable operation is request-compatible with v810, but its explicit adapter and client-double method remain version-owned in `internal/services/usertask/v89`; raw decoding is still required because the generated success model omits value and truncation fields.
+- The v88 native effective-variable endpoint and generated shapes also match v89/v810; the keyed endpoint receives no discovery tenant predicate, so backend authorization applies while returned scope and tenant metadata remain unchanged.
 
 ## Decisions
 
@@ -30,6 +31,7 @@ Started: 2026-09-15T08:04:53Z
 - User-task variable fixture: `go test ./cmd -run '^TestGetUserTaskVariablesFixture$' -race -count=1`
 - V810 effective-variable adapter: `go test ./internal/services/usertask/v810 -run '^TestService_SearchUserTaskEffectiveVariablesPage' -race -count=1`
 - V89 effective-variable adapter: `go test ./internal/services/usertask/v89 -run '^TestService_SearchUserTaskEffectiveVariablesPage' -race -count=1`
+- V88 effective-variable adapter: `go test ./internal/services/usertask/v88 -run '^TestService_SearchUserTaskEffectiveVariablesPage' -race -count=1`
 
 ## Do Not Repeat
 
@@ -37,4 +39,4 @@ Started: 2026-09-15T08:04:53Z
 
 ## Current Handoff
 
-- Continue with T007 in US1 by adding equivalent v88 effective-variable adapter tests in `internal/services/usertask/v88/variables_test.go`, including authorization of the selected task key and preservation of actual scope/tenant metadata; then implement T014 if the tests fail only for the missing adapter.
+- Continue with T008 in US1 by adding v87 no-request unsupported-operation coverage in `internal/services/usertask/v87/variables_test.go`, retaining native-read and legacy resolver/fallback regressions; then implement T015 with the established unsupported error and no native variable request.

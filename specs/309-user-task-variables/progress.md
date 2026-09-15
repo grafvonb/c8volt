@@ -103,3 +103,22 @@ Started: 2026-09-15 10:04:53
 **Learnings**:
 - The v8.9 generated request contract matches v8.10, but raw response decoding remains necessary to preserve required-value presence and truncation metadata.
 ---
+---
+## Iteration 7 - 2026-09-15 10:34
+**Work Unit**: US1 v8.8 effective-variable adapter (T007, T014)
+**Tasks Completed**:
+- [x] T007: Add v88 native effective-variable contract tests
+- [x] T014: Implement the v88 effective-variable page adapter and generated-client contract
+**Tasks Remaining in Work Unit**: 10 US1 tasks
+**Commit**: This work-unit commit
+**Files Changed**:
+- internal/services/usertask/v88/contract.go
+- internal/services/usertask/v88/service_test.go
+- internal/services/usertask/v88/variables.go
+- internal/services/usertask/v88/variables_test.go
+- specs/309-user-task-variables/tasks.md
+- specs/309-user-task-variables/ralph-memory.md
+- specs/309-user-task-variables/progress.md
+**Learnings**:
+- The v8.8 generated request contract matches later supported versions, and its keyed route preserves backend-selected scope and tenant metadata without discovery filters.
+---
