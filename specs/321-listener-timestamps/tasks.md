@@ -16,7 +16,7 @@
 
 **Purpose**: Confirm existing project context; no new dependencies or scaffolding are needed.
 
-- [ ] T001 Verify `AGENTS.md`, `.specify/memory/constitution.md`, and `specs/321-listener-timestamps/plan.md` against the current branch and feature pointer in `.specify/feature.json`; inspect existing test helpers and confirm the Go toolchain from `go.mod`. If executing through Ralph, also read `specs/ralph-implementation-rules.md` and surface any conflicting instructions before implementation.
+- [x] T001 Verify `AGENTS.md`, `.specify/memory/constitution.md`, and `specs/321-listener-timestamps/plan.md` against the current branch and feature pointer in `.specify/feature.json`; inspect existing test helpers and confirm the Go toolchain from `go.mod`. If executing through Ralph, also read `specs/ralph-implementation-rules.md` and surface any conflicting instructions before implementation.
 
 ## Phase 2: Foundational (Blocking Prerequisites)
 
