@@ -98,11 +98,14 @@ func (c *client) SubmitJobWorkerOutcome(ctx context.Context, request WorkerOutco
 	return out, nil
 }
 
+// fromDomainJob preserves independently optional job facts at the public boundary.
 func fromDomainJob(result d.Job) Job {
 	return Job{
 		Key:                result.Key,
 		State:              result.State,
 		Retries:            result.Retries,
+		CreationTime:       result.CreationTime,
+		EndTime:            result.EndTime,
 		Deadline:           result.Deadline,
 		Type:               result.Type,
 		Worker:             result.Worker,

@@ -14,6 +14,8 @@ type Job struct {
 	Key                string     `json:"key,omitempty"`
 	State              string     `json:"state,omitempty"`
 	Retries            int32      `json:"retries"`
+	CreationTime       *time.Time `json:"creationTime,omitempty"`
+	EndTime            *time.Time `json:"endTime,omitempty"`
 	Deadline           *time.Time `json:"deadline,omitempty"`
 	Type               string     `json:"type,omitempty"`
 	Worker             string     `json:"worker,omitempty"`
@@ -35,6 +37,8 @@ type RuntimeListenerJob struct {
 	State              string     `json:"state,omitempty"`
 	Retries            int32      `json:"retries"`
 	Worker             string     `json:"worker,omitempty"`
+	CreationTime       *time.Time `json:"creationTime,omitempty"`
+	EndTime            *time.Time `json:"endTime,omitempty"`
 	Deadline           *time.Time `json:"deadline,omitempty"`
 	ProcessInstanceKey string     `json:"processInstanceKey,omitempty"`
 	ElementInstanceKey string     `json:"elementInstanceKey,omitempty"`
@@ -53,6 +57,8 @@ func RuntimeListenerJobFromJob(job Job) RuntimeListenerJob {
 		State:              job.State,
 		Retries:            job.Retries,
 		Worker:             job.Worker,
+		CreationTime:       job.CreationTime,
+		EndTime:            job.EndTime,
 		Deadline:           job.Deadline,
 		ProcessInstanceKey: job.ProcessInstanceKey,
 		ElementInstanceKey: job.ElementInstanceKey,

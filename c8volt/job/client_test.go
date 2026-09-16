@@ -5,6 +5,7 @@ package job
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"io"
 	"log/slog"
@@ -76,7 +77,11 @@ func (f fakeJobService) SubmitJobWorkerOutcome(ctx context.Context, request d.Jo
 	return f.outcome(ctx, request, opts...)
 }
 
+// TestClient_GetJob_Found verifies all job facts, including timestamp offsets,
+// survive the public get conversion.
 func TestClient_GetJob_Found(t *testing.T) {
+	creation := time.Date(2026, 5, 8, 10, 12, 0, 123000000, time.FixedZone("UTC+2", 2*60*60))
+	end := time.Date(2026, 5, 8, 10, 14, 0, 456000000, time.FixedZone("UTC+2", 2*60*60))
 	deadline := time.Date(2026, 5, 8, 10, 15, 0, 0, time.UTC)
 	api := New(fakeJobService{
 		get: func(_ context.Context, key string, _ ...services.CallOption) (d.Job, error) {
@@ -85,6 +90,8 @@ func TestClient_GetJob_Found(t *testing.T) {
 				Key:                key,
 				State:              "FAILED",
 				Retries:            2,
+				CreationTime:       &creation,
+				EndTime:            &end,
 				Deadline:           &deadline,
 				Type:               "payment-worker",
 				Worker:             "worker-a",
@@ -106,6 +113,8 @@ func TestClient_GetJob_Found(t *testing.T) {
 	require.Equal(t, "2251799813711967", result.Key)
 	require.Equal(t, "FAILED", result.State)
 	require.Equal(t, int32(2), result.Retries)
+	require.Equal(t, &creation, result.CreationTime)
+	require.Equal(t, &end, result.EndTime)
 	require.Equal(t, &deadline, result.Deadline)
 	require.Equal(t, "payment-worker", result.Type)
 	require.Equal(t, "worker-a", result.Worker)
@@ -117,10 +126,14 @@ func TestClient_GetJob_Found(t *testing.T) {
 	require.Equal(t, "PAYMENT_ERROR", result.ErrorCode)
 	require.Equal(t, "worker failed", result.ErrorMessage)
 	require.Equal(t, "tenant-a", result.TenantId)
+	requireJobTimestampJSON(t, result, true, true, true)
 }
 
+// TestClient_SearchJobs_MapsFoundationalQueryAndResults verifies search inputs
+// and independently optional timestamp results cross the facade unchanged.
 func TestClient_SearchJobs_MapsFoundationalQueryAndResults(t *testing.T) {
 	retries := int32(0)
+	creation := time.Date(2026, 5, 8, 10, 12, 0, 123000000, time.FixedZone("UTC-3", -3*60*60))
 	api := New(fakeJobService{
 		search: func(_ context.Context, request d.JobSearchQuery, _ ...services.CallOption) (d.JobSearchResult, error) {
 			require.Equal(t, "FAILED", request.State)
@@ -134,7 +147,7 @@ func TestClient_SearchJobs_MapsFoundationalQueryAndResults(t *testing.T) {
 			require.Equal(t, "COMPLETING", request.ListenerEventType)
 			require.Equal(t, int32(50), request.Limit)
 			return d.JobSearchResult{
-				Items: []d.Job{{Key: "2251799813711967", State: "FAILED", Type: request.Type}},
+				Items: []d.Job{{Key: "2251799813711967", State: "FAILED", Type: request.Type, CreationTime: &creation}},
 				Limit: request.Limit,
 			}, nil
 		},
@@ -158,6 +171,9 @@ func TestClient_SearchJobs_MapsFoundationalQueryAndResults(t *testing.T) {
 	require.Len(t, result.Items, 1)
 	require.Equal(t, "2251799813711967", result.Items[0].Key)
 	require.Equal(t, "payment-worker", result.Items[0].Type)
+	require.Equal(t, &creation, result.Items[0].CreationTime)
+	require.Nil(t, result.Items[0].EndTime)
+	requireJobTimestampJSON(t, result.Items[0], true, false, false)
 }
 
 // TestClient_SearchJobs_PreservesZeroRetriesAndLimit protects search mapping
@@ -221,13 +237,14 @@ func TestClient_SearchJobs_ForwardsPageCollectionControls(t *testing.T) {
 // TestClient_SearchJobsPages_MapsVisitorStepAndAction verifies the facade keeps
 // rendering callbacks public while delegating traversal state to the service.
 func TestClient_SearchJobsPages_MapsVisitorStepAndAction(t *testing.T) {
+	end := time.Date(2026, 5, 8, 10, 14, 0, 456000000, time.FixedZone("UTC+5:30", 5*60*60+30*60))
 	api := New(fakeJobService{
 		pages: func(_ context.Context, request d.JobSearchQuery, visitor d.JobSearchPageVisitor, _ ...services.CallOption) (d.JobSearchPagesResult, error) {
 			require.Equal(t, int32(2), request.BatchSize)
 			require.NotNil(t, visitor)
 			action, err := visitor(d.JobSearchPageStep{
 				Page: d.JobSearchPage{
-					Items: []d.Job{{Key: "2251799813711967", State: "FAILED"}},
+					Items: []d.Job{{Key: "2251799813711967", State: "FAILED", EndTime: &end}},
 					Request: d.JobPageRequest{
 						From: 0,
 						Size: 2,
@@ -239,7 +256,7 @@ func TestClient_SearchJobsPages_MapsVisitorStepAndAction(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, d.JobSearchPageActionStop, action)
 			return d.JobSearchPagesResult{
-				Items: []d.Job{{Key: "2251799813711967", State: "FAILED"}},
+				Items: []d.Job{{Key: "2251799813711967", State: "FAILED", EndTime: &end}},
 				Limit: request.Limit,
 				Pages: 1,
 			}, nil
@@ -261,9 +278,51 @@ func TestClient_SearchJobsPages_MapsVisitorStepAndAction(t *testing.T) {
 	require.Equal(t, int32(2), seen.Page.Request.Size)
 	require.Equal(t, OverflowStateHasMore, seen.Page.OverflowState)
 	require.Equal(t, "2251799813711967", seen.Page.Items[0].Key)
+	require.Nil(t, seen.Page.Items[0].CreationTime)
+	require.Equal(t, &end, seen.Page.Items[0].EndTime)
+	requireJobTimestampJSON(t, seen.Page.Items[0], false, true, false)
 	require.Equal(t, int32(4), result.Limit)
 	require.Equal(t, int32(1), result.Pages)
 	require.Len(t, result.Items, 1)
+	require.Equal(t, &end, result.Items[0].EndTime)
+}
+
+// TestClient_SearchJobsPage_OmitsMissingTimestamps verifies page conversion
+// leaves independently absent timestamps nil and absent from public JSON.
+func TestClient_SearchJobsPage_OmitsMissingTimestamps(t *testing.T) {
+	api := New(fakeJobService{
+		page: func(_ context.Context, _ d.JobSearchQuery, request d.JobPageRequest, _ ...services.CallOption) (d.JobSearchPage, error) {
+			require.Equal(t, d.JobPageRequest{From: 4, Size: 2}, request)
+			return d.JobSearchPage{
+				Items:   []d.Job{{Key: "2251799813711970", State: "CANCELED"}},
+				Request: request,
+			}, nil
+		},
+	}, slog.New(slog.NewTextHandler(io.Discard, nil)))
+
+	result, err := api.SearchJobsPage(context.Background(), SearchRequest{State: "CANCELED"}, PageRequest{From: 4, Size: 2})
+
+	require.NoError(t, err)
+	require.Len(t, result.Items, 1)
+	require.Nil(t, result.Items[0].CreationTime)
+	require.Nil(t, result.Items[0].EndTime)
+	requireJobTimestampJSON(t, result.Items[0], false, false, false)
+}
+
+// requireJobTimestampJSON verifies the public wire names, omission rules, and
+// retained deadline independently of the source job state.
+func requireJobTimestampJSON(t *testing.T, value Job, wantCreation, wantEnd, wantDeadline bool) {
+	t.Helper()
+	raw, err := json.Marshal(value)
+	require.NoError(t, err)
+	var got map[string]any
+	require.NoError(t, json.Unmarshal(raw, &got))
+	_, hasCreation := got["creationTime"]
+	_, hasEnd := got["endTime"]
+	_, hasDeadline := got["deadline"]
+	require.Equal(t, wantCreation, hasCreation)
+	require.Equal(t, wantEnd, hasEnd)
+	require.Equal(t, wantDeadline, hasDeadline)
 }
 
 // TestClient_SearchJobsTotal_DelegatesTotalFallback verifies the facade exposes

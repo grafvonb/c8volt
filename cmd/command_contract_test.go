@@ -1521,6 +1521,10 @@ func TestCommandCapabilityForCommand_GetElementContract(t *testing.T) {
 	require.Equal(t, []string{"ei"}, capability.Aliases)
 	require.Contains(t, getElementCmd.Long, "Use --key for a known element instance")
 	require.Contains(t, getElementCmd.Long, "--with-listeners to include runtime listener jobs")
+	require.Contains(t, getElementCmd.Long, "job creation time as s: (not worker execution start)")
+	require.Contains(t, getElementCmd.Long, "job end time as e:")
+	require.Contains(t, getElementCmd.Long, "d: only for an ACTIVATED job with a deadline")
+	require.Contains(t, getElementCmd.Long, "s:2026-09-16T13:07:16.359 e:2026-09-16T13:07:16.842")
 	require.Contains(t, getElementCmd.Example, "./c8volt get element --key <element-instance-key> --with-listeners")
 	require.Contains(t, getElementCmd.Example, "./c8volt get element --pi-key <process-instance-key> --limit 10")
 	require.Contains(t, getElementCmd.Example, "./c8volt get element --pi-key <process-instance-key> --with-listeners")
@@ -2604,6 +2608,11 @@ func TestGetElementHelp_DocumentsSearchAndOutputModes(t *testing.T) {
 		"--limit caps returned elements across all pages",
 		"--total to count matching elements",
 		"--with-listeners to include runtime listener jobs",
+		"job creation time as s: (not worker execution start)",
+		"job end time as e:",
+		"d: only for an ACTIVATED job with a deadline",
+		"omit unavailable timestamps",
+		"s:2026-09-16T13:07:16.359 e:2026-09-16T13:07:16.842",
 		"Requires Camunda 8.8 or newer",
 		"Aliases:",
 		"ei",

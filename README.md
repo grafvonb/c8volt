@@ -266,6 +266,14 @@ Generated reference: [get process-instance](docs/cli/c8volt_get_process-instance
 
 Use `--with-elements` when the process instance is the main target, and `get element` when element filters should drive the search.
 
+Listener rows use `s:` for the job creation time—not worker execution start—and `e:` for the recorded job end time. An available deadline appears as `d:` only while the job state is exactly `ACTIVATED`; unavailable timestamps are omitted independently. For example, a completed listener can appear as:
+
+```text
+job-1 TASK_LISTENER lsnr:CREATING COMPLETED tp:updateTaskData r:0 s:2026-09-16T13:07:16.359 e:2026-09-16T13:07:16.842
+```
+
+The same timestamp grammar applies to listener rows from `get element`, `get process-instance`, `walk process-instance`, and `ops analyse slow-process-instances`.
+
 ```bash
 ./c8volt get process-instance --key <process-instance-key> --with-elements
 ./c8volt get process-instance --key <process-instance-key> --with-elements --with-listeners

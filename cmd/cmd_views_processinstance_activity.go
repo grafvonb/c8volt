@@ -388,11 +388,7 @@ func flatRowProcessInstanceElementListenerWithTimezone(item process.RuntimeListe
 		"r:" + strconv.FormatInt(int64(item.Retries), 10),
 		prefixedJobField("worker", item.Worker),
 	}
-	if item.Deadline != nil {
-		parts = append(parts, "d:"+toolx.FormatTime(*item.Deadline, showTimezoneOffset))
-	} else {
-		parts = append(parts, "")
-	}
+	parts = append(parts, listenerTimestampColumns(item.CreationTime, item.EndTime, item.Deadline, item.State, showTimezoneOffset)...)
 	if item.ErrorCode != "" {
 		parts = append(parts, "ec:"+item.ErrorCode)
 	} else {

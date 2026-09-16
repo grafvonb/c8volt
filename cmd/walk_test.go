@@ -96,6 +96,8 @@ func TestWalkHelp_DocumentsTraversalVerificationGuidance(t *testing.T) {
 	require.Contains(t, output, "--flat")
 	require.Contains(t, output, "--with-elements")
 	require.Contains(t, output, "--with-listeners")
+	require.Contains(t, output, "s: for job creation (not worker execution start), e: for job end")
+	require.Contains(t, output, "d: for an available deadline only while the state is exactly ACTIVATED")
 	require.Contains(t, output, "--incident-message-limit int")
 	require.Contains(t, output, "--incident-state string")
 	require.Contains(t, output, "incident state scope for --with-incidents: active, pending, resolved, migrated, unknown, all")
@@ -301,12 +303,12 @@ func TestWalkProcessInstanceCommand_WithListenersFamilyHumanOutputNestsListenerR
 		),
 	}, map[string][]string{
 		"123": {
-			walkedJobSearchJSON(t, map[string]any{"jobKey": "job-exec-root", "kind": "EXECUTION_LISTENER", "listenerEventType": "START", "type": "audit-start", "state": "CREATED", "retries": 3, "worker": "worker-a", "processInstanceKey": "123", "elementInstanceKey": "element-root", "elementId": "root-task", "tenantId": "tenant"}),
+			walkedJobSearchJSON(t, map[string]any{"jobKey": "job-exec-root", "kind": "EXECUTION_LISTENER", "listenerEventType": "START", "type": "audit-start", "state": "ACTIVATED", "retries": 3, "worker": "worker-a", "creationTime": "2026-09-16T13:07:16.359+02:00", "deadline": "2026-09-16T13:08:00+02:00", "processInstanceKey": "123", "elementInstanceKey": "element-root", "elementId": "root-task", "tenantId": "tenant"}),
 			walkedJobSearchJSON(t),
 		},
 		"124": {
 			walkedJobSearchJSON(t),
-			walkedJobSearchJSON(t, map[string]any{"jobKey": "job-task-child", "kind": "TASK_LISTENER", "listenerEventType": "COMPLETING", "type": "audit-task", "state": "FAILED", "retries": 0, "processInstanceKey": "124", "elementInstanceKey": "element-child", "elementId": "child-task", "tenantId": "tenant", "errorCode": "LISTENER_FAILED", "errorMessage": "worker failed"}),
+			walkedJobSearchJSON(t, map[string]any{"jobKey": "job-task-child", "kind": "TASK_LISTENER", "listenerEventType": "COMPLETING", "type": "audit-task", "state": "CANCELED", "retries": 0, "creationTime": "2026-09-16T13:07:16.359+02:00", "endTime": "2026-09-16T13:07:16.842+02:00", "deadline": "2026-09-16T13:08:00+02:00", "processInstanceKey": "124", "elementInstanceKey": "element-child", "elementId": "child-task", "tenantId": "tenant", "errorCode": "LISTENER_FAILED", "errorMessage": "worker failed"}),
 		},
 	})
 	t.Cleanup(srv.Close)
@@ -335,10 +337,11 @@ func TestWalkProcessInstanceCommand_WithListenersFamilyHumanOutputNestsListenerR
 	}, requests)
 	require.Contains(t, output, "123 tenant demo v3 ACTIVE")
 	require.Contains(t, output, "├─ elements:\n│  └─ element-root SERVICE_TASK root-task ACTIVE")
-	require.Contains(t, output, "│     └─ listeners:\n│        └─ job-exec-root EXECUTION_LISTENER lsnr:START CREATED tp:audit-start r:3 worker:worker-a")
+	require.Contains(t, output, "│     └─ listeners:\n│        └─ job-exec-root EXECUTION_LISTENER lsnr:START ACTIVATED tp:audit-start r:3 worker:worker-a s:2026-09-16T13:07:16.359 d:2026-09-16T13:08:00.000")
 	require.Contains(t, output, "└─ 124 tenant demo v3 ACTIVE")
 	require.Contains(t, output, "   └─ elements:\n      └─ element-child SERVICE_TASK child-task ACTIVE")
-	require.Contains(t, output, "         └─ listeners:\n            └─ job-task-child TASK_LISTENER lsnr:COMPLETING FAILED tp:audit-task r:0")
+	require.Contains(t, output, "         └─ listeners:\n            └─ job-task-child TASK_LISTENER lsnr:COMPLETING CANCELED tp:audit-task r:0 s:2026-09-16T13:07:16.359 e:2026-09-16T13:07:16.842")
+	require.NotRegexp(t, `(?m)^.*job-task-child TASK_LISTENER .* d:.*$`, output)
 	require.Contains(t, output, "ec:LISTENER_FAILED")
 	require.Less(t, strings.Index(output, "element-root"), strings.Index(output, "job-exec-root"))
 	require.Less(t, strings.Index(output, "job-exec-root"), strings.Index(output, "124 tenant demo"))
@@ -494,7 +497,7 @@ func TestWalkProcessInstanceCommand_WithListenersChildrenParentAndFlatModes(t *t
 			wantFirst:   "123 tenant demo",
 			wantSecond:  "124 tenant demo",
 			wantElement: "element-124 SERVICE_TASK task-124 ACTIVE",
-			wantJob:     "job-task-124 TASK_LISTENER lsnr:COMPLETING CREATED tp:audit-task r:1",
+			wantJob:     "job-task-124 TASK_LISTENER lsnr:COMPLETING CREATED tp:audit-task r:1 s:2026-09-16T13:07:16.359",
 		},
 		{
 			name:        "parent",
@@ -503,7 +506,7 @@ func TestWalkProcessInstanceCommand_WithListenersChildrenParentAndFlatModes(t *t
 			wantFirst:   "124 tenant demo",
 			wantSecond:  "123 tenant demo",
 			wantElement: "element-124 SERVICE_TASK task-124 ACTIVE",
-			wantJob:     "job-task-124 TASK_LISTENER lsnr:COMPLETING CREATED tp:audit-task r:1",
+			wantJob:     "job-task-124 TASK_LISTENER lsnr:COMPLETING CREATED tp:audit-task r:1 s:2026-09-16T13:07:16.359",
 		},
 		{
 			name:        "flat",
@@ -512,7 +515,7 @@ func TestWalkProcessInstanceCommand_WithListenersChildrenParentAndFlatModes(t *t
 			wantFirst:   "123 tenant demo",
 			wantSecond:  "124 tenant demo",
 			wantElement: "element-124 SERVICE_TASK task-124 ACTIVE",
-			wantJob:     "job-task-124 TASK_LISTENER lsnr:COMPLETING CREATED tp:audit-task r:1",
+			wantJob:     "job-task-124 TASK_LISTENER lsnr:COMPLETING CREATED tp:audit-task r:1 s:2026-09-16T13:07:16.359",
 		},
 	}
 
@@ -533,7 +536,7 @@ func TestWalkProcessInstanceCommand_WithListenersChildrenParentAndFlatModes(t *t
 				},
 				"124": {
 					walkedJobSearchJSON(t),
-					walkedJobSearchJSON(t, map[string]any{"jobKey": "job-task-124", "kind": "TASK_LISTENER", "listenerEventType": "COMPLETING", "type": "audit-task", "state": "CREATED", "retries": 1, "processInstanceKey": "124", "elementInstanceKey": "element-124", "elementId": "task-124", "tenantId": "tenant"}),
+					walkedJobSearchJSON(t, map[string]any{"jobKey": "job-task-124", "kind": "TASK_LISTENER", "listenerEventType": "COMPLETING", "type": "audit-task", "state": "CREATED", "retries": 1, "creationTime": "2026-09-16T13:07:16.359+02:00", "processInstanceKey": "124", "elementInstanceKey": "element-124", "elementId": "task-124", "tenantId": "tenant"}),
 				},
 			})
 			t.Cleanup(srv.Close)
@@ -813,7 +816,7 @@ func TestWalkProcessInstanceCommand_WithListenersJSONOutputPreservesEmptyArraysA
 	}, map[string][]string{
 		"123": {
 			walkedJobSearchJSON(t,
-				map[string]any{"jobKey": "job-exec-root", "kind": "EXECUTION_LISTENER", "listenerEventType": "START", "type": "audit-start", "state": "CREATED", "retries": 3, "processInstanceKey": "123", "elementInstanceKey": "element-root", "elementId": "root-task", "tenantId": "tenant"},
+				map[string]any{"jobKey": "job-exec-root", "kind": "EXECUTION_LISTENER", "listenerEventType": "START", "type": "audit-start", "state": "COMPLETED", "retries": 3, "endTime": "2026-09-16T13:07:16.842-03:00", "deadline": "2026-09-16T13:08:00-03:00", "processInstanceKey": "123", "elementInstanceKey": "element-root", "elementId": "root-task", "tenantId": "tenant"},
 				map[string]any{"jobKey": "job-unmatched", "kind": "EXECUTION_LISTENER", "listenerEventType": "END", "type": "audit-end", "state": "CREATED", "retries": 3, "processInstanceKey": "123", "elementInstanceKey": "element-missing", "elementId": "missing", "tenantId": "tenant"},
 			),
 			walkedJobSearchJSON(t),
@@ -827,7 +830,7 @@ func TestWalkProcessInstanceCommand_WithListenersJSONOutputPreservesEmptyArraysA
 
 	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
 
-	output := executeRootForProcessInstanceTest(t,
+	output, stderr := executeRootForProcessInstanceWithSeparateOutputs(t,
 		"--config", cfgPath,
 		"--json",
 		"walk", "process-instance",
@@ -836,6 +839,7 @@ func TestWalkProcessInstanceCommand_WithListenersJSONOutputPreservesEmptyArraysA
 		"--with-listeners",
 	)
 
+	require.Empty(t, stderr)
 	require.Contains(t, strings.Join(requests, ","), "POST /v2/jobs/search")
 	payload := requireWalkProcessInstanceJSONPayload(t, output)
 	require.Equal(t, "family", payload["mode"])
@@ -849,7 +853,11 @@ func TestWalkProcessInstanceCommand_WithListenersJSONOutputPreservesEmptyArraysA
 		elementsByKey[key] = element
 	}
 	firstListeners := requireJSONItems(t, elementsByKey["element-root"]["listeners"], 1)
-	require.Equal(t, "job-exec-root", requireJSONObject(t, firstListeners[0])["jobKey"])
+	listener := requireJSONObject(t, firstListeners[0])
+	require.Equal(t, "job-exec-root", listener["jobKey"])
+	require.NotContains(t, listener, "creationTime")
+	require.Equal(t, "2026-09-16T13:07:16.842-03:00", listener["endTime"])
+	require.Equal(t, "2026-09-16T13:08:00-03:00", listener["deadline"])
 	require.Empty(t, requireJSONItems(t, elementsByKey["element-empty"]["listeners"], 0))
 	child := requireJSONObject(t, items[1])
 	require.Empty(t, requireJSONItems(t, child["elements"], 0))
@@ -2614,8 +2622,7 @@ func newWalkProcessInstanceWithListenersServer(t *testing.T, requests *[]string,
 func requireWalkProcessInstanceJSONPayload(t *testing.T, output string) map[string]any {
 	t.Helper()
 
-	var envelope map[string]any
-	require.NoError(t, json.Unmarshal([]byte(output), &envelope))
+	envelope := requireSingleJSONObjectDocument(t, output)
 	require.Equal(t, string(OutcomeSucceeded), envelope["outcome"])
 	require.Equal(t, "walk process-instance", envelope["command"])
 	return requireJSONObject(t, envelope["payload"])

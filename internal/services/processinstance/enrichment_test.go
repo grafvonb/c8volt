@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/services"
@@ -202,6 +203,8 @@ func TestEnrichProcessInstancesWithElementsEmitsFrozenProgress(t *testing.T) {
 func TestEnrichProcessInstancesWithElementListenersAttachesByOwnerAndOmitsUnmatched(t *testing.T) {
 	elementCalls := []string{}
 	jobCalls := []d.JobSearchQuery{}
+	creation := time.Date(2026, 9, 16, 13, 7, 16, 359000000, time.FixedZone("UTC+2", 2*60*60))
+	end := time.Date(2026, 9, 16, 13, 7, 16, 842000000, time.FixedZone("UTC+2", 2*60*60))
 
 	got, err := EnrichProcessInstancesWithElementListeners(context.Background(), stubElementSearcher{
 		search: func(_ context.Context, query d.ElementSearchQuery, opts ...services.CallOption) (d.ElementSearchResult, error) {
@@ -238,7 +241,7 @@ func TestEnrichProcessInstancesWithElementListenersAttachesByOwnerAndOmitsUnmatc
 				}}, nil
 			case "pi-2/" + d.JobKindTaskListener:
 				return d.JobSearchResult{Items: []d.Job{
-					{Key: "job-2", Kind: d.JobKindTaskListener, ListenerEventType: "COMPLETING", Type: "review-listener", State: "CREATED", Retries: 3, ProcessInstanceKey: "pi-2", ElementInstanceKey: "el-2", ElementId: "review", Worker: "worker-a"},
+					{Key: "job-2", Kind: d.JobKindTaskListener, ListenerEventType: "COMPLETING", Type: "review-listener", State: "CREATED", Retries: 3, Worker: "worker-a", CreationTime: &creation, EndTime: &end, ProcessInstanceKey: "pi-2", ElementInstanceKey: "el-2", ElementId: "review"},
 					{Key: "job-1", Kind: d.JobKindTaskListener, ListenerEventType: "CREATING", Type: "review-listener", State: "CREATED", Retries: 1, ProcessInstanceKey: "pi-2", ElementInstanceKey: "el-2", ElementId: "review"},
 				}}, nil
 			case "pi-1/" + d.JobKindExecutionListener, "pi-1/" + d.JobKindTaskListener:
@@ -267,7 +270,7 @@ func TestEnrichProcessInstancesWithElementListenersAttachesByOwnerAndOmitsUnmatc
 	require.Empty(t, *got.Items[0].Elements[0].Listeners)
 	require.Equal(t, []d.RuntimeListenerJob{
 		{JobKey: "job-1", Kind: d.JobKindTaskListener, ListenerEventType: "CREATING", Type: "review-listener", State: "CREATED", Retries: 1, ProcessInstanceKey: "pi-2", ElementInstanceKey: "el-2", ElementId: "review"},
-		{JobKey: "job-2", Kind: d.JobKindTaskListener, ListenerEventType: "COMPLETING", Type: "review-listener", State: "CREATED", Retries: 3, Worker: "worker-a", ProcessInstanceKey: "pi-2", ElementInstanceKey: "el-2", ElementId: "review"},
+		{JobKey: "job-2", Kind: d.JobKindTaskListener, ListenerEventType: "COMPLETING", Type: "review-listener", State: "CREATED", Retries: 3, Worker: "worker-a", CreationTime: &creation, EndTime: &end, ProcessInstanceKey: "pi-2", ElementInstanceKey: "el-2", ElementId: "review"},
 	}, *got.Items[0].Elements[1].Listeners)
 	require.Equal(t, []d.RuntimeListenerJob{
 		{JobKey: "job-3", Kind: d.JobKindExecutionListener, ListenerEventType: "END", Type: "ship-listener", State: "FAILED", Retries: 0, ProcessInstanceKey: "pi-2", ElementInstanceKey: "el-3", ElementId: "ship", ErrorCode: "E_SHIP"},
