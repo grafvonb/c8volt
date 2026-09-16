@@ -373,6 +373,8 @@ func TestClientExecuteSmokeTestMapsProgressTenantContext(t *testing.T) {
 // TestClientAnalyseSlowProcessInstancesMapsListenerServiceBoundary verifies the slow-analysis facade stays thin.
 func TestClientAnalyseSlowProcessInstancesMapsListenerServiceBoundary(t *testing.T) {
 	t.Parallel()
+	creation := time.Date(2026, 9, 16, 13, 7, 16, 359000000, time.FixedZone("UTC+2", 2*60*60))
+	end := time.Date(2026, 9, 16, 13, 7, 16, 842000000, time.FixedZone("UTC+2", 2*60*60))
 
 	captured := time.Date(2026, 7, 18, 10, 30, 0, 0, time.UTC)
 	rootDurationLonger := 10 * time.Minute
@@ -499,6 +501,8 @@ func TestClientAnalyseSlowProcessInstancesMapsListenerServiceBoundary(t *testing
 							Type:               "audit-user-task",
 							State:              "CREATED",
 							Retries:            3,
+							CreationTime:       &creation,
+							EndTime:            &end,
 							ProcessInstanceKey: "2251799813685249",
 							ElementInstanceKey: "2251799813685250",
 						}},
@@ -575,6 +579,8 @@ func TestClientAnalyseSlowProcessInstancesMapsListenerServiceBoundary(t *testing
 		Type:               "audit-user-task",
 		State:              "CREATED",
 		Retries:            3,
+		CreationTime:       &creation,
+		EndTime:            &end,
 		ProcessInstanceKey: "2251799813685249",
 		ElementInstanceKey: "2251799813685250",
 	}}, *got.Items[0].Timeline[0].Listeners)

@@ -1221,6 +1221,8 @@ func TestClient_EnrichProcessInstancesWithElements_MapsProgress(t *testing.T) {
 
 func TestClient_EnrichProcessInstancesWithElementListeners_MapsListenerFields(t *testing.T) {
 	t.Parallel()
+	creation := time.Date(2026, 9, 16, 13, 7, 16, 359000000, time.FixedZone("UTC+2", 2*60*60))
+	end := time.Date(2026, 9, 16, 13, 7, 16, 842000000, time.FixedZone("UTC+2", 2*60*60))
 
 	ctx := context.Background()
 	elAPI := stubElementAPI{
@@ -1248,6 +1250,8 @@ func TestClient_EnrichProcessInstancesWithElementListeners_MapsListenerFields(t 
 				State:              "CREATED",
 				Retries:            3,
 				Worker:             "audit-worker",
+				CreationTime:       &creation,
+				EndTime:            &end,
 				ProcessInstanceKey: "pi-1",
 				ElementInstanceKey: "el-1",
 				ElementId:          "ReviewOrder",
@@ -1273,6 +1277,8 @@ func TestClient_EnrichProcessInstancesWithElementListeners_MapsListenerFields(t 
 		State:              "CREATED",
 		Retries:            3,
 		Worker:             "audit-worker",
+		CreationTime:       &creation,
+		EndTime:            &end,
 		ProcessInstanceKey: "pi-1",
 		ElementInstanceKey: "el-1",
 		ElementId:          "ReviewOrder",

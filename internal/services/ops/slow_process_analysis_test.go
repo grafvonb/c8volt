@@ -955,6 +955,8 @@ func TestSlowProcessAnalysisRuntimeElementsBuildChronologicalTimeline(t *testing
 func TestSlowProcessAnalysisWithListenersAttachesOnlyMatchingElementJobs(t *testing.T) {
 	captured := slowProcessAnalysisFixtureTime(t, "2026-07-18T10:10:00Z")
 	start := slowProcessAnalysisFixtureTime(t, "2026-07-18T10:00:00Z")
+	listenerCreated := slowProcessAnalysisFixtureTime(t, "2026-07-18T10:00:10+02:00")
+	listenerEnded := slowProcessAnalysisFixtureTime(t, "2026-07-18T10:00:11+02:00")
 	root := slowProcessAnalysisFixtureProcessInstance("2251799813685249", start, start.Add(10*time.Minute))
 	elements := []d.Element{
 		slowProcessAnalysisFixtureElement(root.Key, "2251799813685250", "ReserveStock", start.Add(10*time.Second), start.Add(time.Minute)),
@@ -976,7 +978,7 @@ func TestSlowProcessAnalysisWithListenersAttachesOnlyMatchingElementJobs(t *test
 		search: func(_ context.Context, query d.JobSearchQuery, _ ...services.CallOption) (d.JobSearchResult, error) {
 			jobQueries = append(jobQueries, query)
 			return d.JobSearchResult{Items: []d.Job{
-				{Key: "job-match", Kind: query.Kind, ListenerEventType: "START", State: "CREATED", Type: "audit", Retries: 3, ProcessInstanceKey: root.Key, ElementInstanceKey: "2251799813685250"},
+				{Key: "job-match", Kind: query.Kind, ListenerEventType: "START", State: "CREATED", Type: "audit", Retries: 3, CreationTime: &listenerCreated, EndTime: &listenerEnded, ProcessInstanceKey: root.Key, ElementInstanceKey: "2251799813685250"},
 				{Key: "job-unmatched-element", Kind: query.Kind, ProcessInstanceKey: root.Key, ElementInstanceKey: "missing"},
 				{Key: "job-other-process", Kind: query.Kind, ProcessInstanceKey: "other", ElementInstanceKey: "2251799813685250"},
 			}}, nil
@@ -998,6 +1000,9 @@ func TestSlowProcessAnalysisWithListenersAttachesOnlyMatchingElementJobs(t *test
 	elementRows := slowProcessAnalysisTimelineElements(got.Items[0].Timeline)
 	require.NotNil(t, elementRows[0].Listeners)
 	require.Equal(t, []string{"job-match", "job-match"}, []string{(*elementRows[0].Listeners)[0].JobKey, (*elementRows[0].Listeners)[1].JobKey})
+	require.Equal(t, &listenerCreated, (*elementRows[0].Listeners)[0].CreationTime)
+	require.Equal(t, &listenerEnded, (*elementRows[0].Listeners)[0].EndTime)
+	require.EqualValues(t, 10*time.Minute/time.Millisecond, got.Items[0].DurationMillis)
 	require.Equal(t, []d.RuntimeListenerJob{}, *elementRows[1].Listeners)
 }
 

@@ -11,6 +11,8 @@ Started: 2026-09-16T02:43:39Z
 - Versioned job adapters map optional generated `CreationTime` and `EndTime` pointers directly in `fromJobSearchResult`; the existing get/search fixtures are the narrow regression seam for all supported versions.
 - Element facade listener conversion preserves optional creation/end pointers while retaining nil-versus-requested-empty listener collection semantics.
 - `cmd/listenerTimestampColumns` returns fixed `s:`, `e:`, `d:` positions, formats through `toolx.FormatTime`, and exposes deadlines only for exact `ACTIVATED`; element listener rows consume it after worker and before errors.
+- Process get/walk share `flatRowProcessInstanceElementListenerWithTimezone`, while slow analysis owns a parallel row builder; both now consume `listenerTimestampColumns` and preserve their surrounding nesting and duration output.
+- Process and ops public listener facades copy optional creation/end pointers directly, preserving requested-empty versus unrequested listener collections.
 
 ## Decisions
 
@@ -30,6 +32,9 @@ Started: 2026-09-16T02:43:39Z
 - `go test ./internal/services/job/v87 -run 'TestService_GetJob_Unsupported|TestService_SearchJobs_Unsupported' -count=1 -v`
 - `go test ./c8volt/element -run 'Listener|Timestamp' -count=1`
 - `go test ./cmd -run 'GetElement|ElementListener|ListenerTimestamp' -count=1`
+- `go test ./c8volt/process ./c8volt/ops -run 'Listener|Timestamp|SlowProcessAnalysis' -count=1`
+- `go test ./internal/services/element/... ./internal/services/processinstance/... ./internal/services/ops/... -run 'Listener|SlowProcessAnalysis' -count=1`
+- `go test ./cmd -run 'GetProcessInstance|WalkProcessInstance|ProcessInstance.*Listener|SlowProcessAnalysis|OpsAnalyseSlowProcessInstances' -count=1`
 
 ## Do Not Repeat
 
@@ -37,4 +42,4 @@ Started: 2026-09-16T02:43:39Z
 
 ## Current Handoff
 
-- Begin US2 with T014–T020; author process get/walk and slow-analysis timestamp regressions before reusing `listenerTimestampColumns` in their renderers and adding process/ops facade mappings.
+- Begin US3 with T021–T025; add public job and command JSON regressions before wiring optional timestamps through `c8volt/job` and validating every programmatic listener contract.

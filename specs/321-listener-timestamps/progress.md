@@ -90,3 +90,47 @@ Started: 2026-09-16 04:43:39
 **Learnings**:
 - A fixed three-column helper preserves flat-row alignment while making lifecycle timestamp semantics reusable; command execution fixtures confirm mapping survives transport without additional requests.
 ---
+
+## Iteration 5 - 2026-09-16 05:10
+**Work Unit**: User Story 2 — Read the Same Timeline Across Investigation Commands
+**Tasks Completed**:
+- [x] T014: Add process get/walk timestamp rendering regressions across keyed, list, family, children, parent, and flat paths
+- [x] T015: Add slow-analysis timestamp rendering and normal/full-timeline command execution regressions
+- [x] T016: Preserve process facade listener timestamps and reuse the shared human timestamp grammar
+- [x] T017: Preserve ops facade listener timestamps and reuse the shared human timestamp grammar
+- [x] T018: Verify enrichment retains timestamps without changing ownership, requests, durations, or analysis outcomes
+- [x] T019: Document the common listener timestamp contract and regenerate affected CLI references
+- [x] T020: Validate US2 facade, enrichment, command, and unsupported-version regression selections
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- README.md
+- c8volt/process/model.go
+- c8volt/process/convert.go
+- c8volt/process/client_test.go
+- c8volt/ops/model.go
+- c8volt/ops/convert.go
+- c8volt/ops/client_test.go
+- cmd/cmd_views_processinstance_activity.go
+- cmd/cmd_views_processinstance_activity_test.go
+- cmd/cmd_views_ops_slow_process_analysis.go
+- cmd/cmd_views_ops_slow_process_analysis_test.go
+- cmd/get_processinstance.go
+- cmd/get_processinstance_test.go
+- cmd/walk_processinstance.go
+- cmd/walk_test.go
+- cmd/ops_analyse_slow_process_instances.go
+- cmd/ops_analyse_slow_process_instances_test.go
+- internal/services/element/enrichment_test.go
+- internal/services/processinstance/enrichment_test.go
+- internal/services/ops/slow_process_analysis_test.go
+- docs/cli/c8volt_get_process-instance.md
+- docs/cli/c8volt_walk_process-instance.md
+- docs/cli/c8volt_ops_analyse_slow-process-instances.md
+- docs/index.md
+- specs/321-listener-timestamps/tasks.md
+- specs/321-listener-timestamps/ralph-memory.md
+- specs/321-listener-timestamps/progress.md
+**Learnings**:
+- The shared fixed-column helper applies cleanly to process and slow-analysis views; existing enrichment already preserves projected timestamps without affecting timeline calculations or discovery counts.
+---

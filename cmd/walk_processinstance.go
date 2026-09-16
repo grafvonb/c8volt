@@ -36,7 +36,7 @@ var walkProcessInstanceCmd = &cobra.Command{
 
 Use --parent for ancestry or --children for descendants; the default scope is the full family. Explicit --key uses backend authorization without tenant filtering.
 
-Add --with-incidents, --with-vars, or --with-elements for incident details, process-instance-scope variables, or runtime elements. Add --with-listeners to --with-elements for runtime listener jobs.
+Add --with-incidents, --with-vars, or --with-elements for incident details, process-instance-scope variables, or runtime elements. Add --with-listeners to --with-elements for runtime listener jobs. Listener rows use s: for job creation (not worker execution start), e: for job end, and d: for an available deadline only while the state is exactly ACTIVATED; missing times are omitted.
 
 When an ancestor is missing but reachable family data remains, walk returns the available family. Direct single-resource lookups remain strict.`,
 	Example: `  ./c8volt walk process-instance --key <process-instance-key>
