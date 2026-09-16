@@ -58,3 +58,35 @@ Started: 2026-09-16 04:43:39
 **Learnings**:
 - All supported generated job rows expose optional timestamp pointers; direct adapter mapping preserves supplied offsets and independent absence without new requests or version gates.
 ---
+
+## Iteration 4 - 2026-09-16 04:59
+**Work Unit**: User Story 1 — Distinguish Listener Creation, End, and Deadline
+**Tasks Completed**:
+- [x] T008: Add listener timestamp-column and rendered-row regression coverage
+- [x] T009: Extend keyed and search element execution fixtures with timestamp-bearing listeners
+- [x] T010: Preserve optional listener timestamps through the public element facade
+- [x] T011: Render fixed creation, end, and activated-only deadline columns in element listener rows
+- [x] T012: Document listener timestamp meanings and regenerate element CLI documentation
+- [x] T013: Validate the US1 facade, command, acceptance scenarios, and generated documentation
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- README.md
+- c8volt/element/client_test.go
+- c8volt/element/convert.go
+- c8volt/element/model.go
+- cmd/cmd_views_element.go
+- cmd/cmd_views_element_test.go
+- cmd/cmd_views_listener.go
+- cmd/cmd_views_listener_test.go
+- cmd/command_contract_test.go
+- cmd/get_element.go
+- cmd/get_element_test.go
+- docs/cli/c8volt_get_element.md
+- docs/index.md
+- specs/321-listener-timestamps/tasks.md
+- specs/321-listener-timestamps/ralph-memory.md
+- specs/321-listener-timestamps/progress.md
+**Learnings**:
+- A fixed three-column helper preserves flat-row alignment while making lifecycle timestamp semantics reusable; command execution fixtures confirm mapping survives transport without additional requests.
+---

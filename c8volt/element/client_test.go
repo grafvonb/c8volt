@@ -9,6 +9,7 @@ import (
 	"io"
 	"log/slog"
 	"testing"
+	"time"
 
 	"github.com/grafvonb/c8volt/c8volt/ferrors"
 	options "github.com/grafvonb/c8volt/c8volt/foptions"
@@ -97,6 +98,7 @@ func (f fakeElementService) SearchElementsTotal(ctx context.Context, request d.E
 	return f.total(ctx, request, opts...)
 }
 
+// TestClient_GetElement_Found verifies plain lookup mapping leaves unrequested listeners nil.
 func TestClient_GetElement_Found(t *testing.T) {
 	api := New(fakeElementService{
 		get: func(_ context.Context, key string, _ ...services.CallOption) (d.Element, error) {
@@ -123,6 +125,7 @@ func TestClient_GetElement_Found(t *testing.T) {
 	result, err := api.GetElement(context.Background(), "2251799813689002")
 
 	require.NoError(t, err)
+	require.Nil(t, result.Listeners)
 	require.Equal(t, Element{
 		ElementInstanceKey:     "2251799813689002",
 		ElementId:              "ship-order",
@@ -158,6 +161,8 @@ func TestClient_GetElement_NotFound(t *testing.T) {
 // TestClient_GetElementWithListeners_AttachesMatchingJobs verifies keyed enrichment keeps only element-owned listener jobs.
 func TestClient_GetElementWithListeners_AttachesMatchingJobs(t *testing.T) {
 	var jobQueries []d.JobSearchQuery
+	creation := time.Date(2026, 9, 16, 13, 7, 16, 359000000, time.FixedZone("UTC+2", 2*60*60))
+	end := time.Date(2026, 9, 16, 13, 7, 16, 842000000, time.FixedZone("UTC+2", 2*60*60))
 	api := NewWithListeners(fakeElementService{
 		get: func(_ context.Context, key string, _ ...services.CallOption) (d.Element, error) {
 			require.Equal(t, "2251799813689002", key)
@@ -173,7 +178,7 @@ func TestClient_GetElementWithListeners_AttachesMatchingJobs(t *testing.T) {
 		search: func(_ context.Context, query d.JobSearchQuery, _ ...services.CallOption) (d.JobSearchResult, error) {
 			jobQueries = append(jobQueries, query)
 			return d.JobSearchResult{Items: []d.Job{
-				{Key: "2251799813689101", Kind: query.Kind, ListenerEventType: "START", Type: "audit", State: "CREATED", Retries: 3, ProcessInstanceKey: "2251799813688001", ElementInstanceKey: "2251799813689002", ElementId: "ship-order"},
+				{Key: "2251799813689101", Kind: query.Kind, ListenerEventType: "START", Type: "audit", State: "CREATED", Retries: 3, CreationTime: &creation, EndTime: &end, ProcessInstanceKey: "2251799813688001", ElementInstanceKey: "2251799813689002", ElementId: "ship-order"},
 				{Key: "2251799813689999", Kind: query.Kind, ProcessInstanceKey: "2251799813688001", ElementInstanceKey: "2251799813689998"},
 			}}, nil
 		},
@@ -190,6 +195,8 @@ func TestClient_GetElementWithListeners_AttachesMatchingJobs(t *testing.T) {
 	require.Len(t, *result.Listeners, 2)
 	require.Equal(t, "2251799813689101", (*result.Listeners)[0].JobKey)
 	require.Equal(t, d.JobKindExecutionListener, (*result.Listeners)[0].Kind)
+	require.Equal(t, creation, *(*result.Listeners)[0].CreationTime)
+	require.Equal(t, end, *(*result.Listeners)[0].EndTime)
 }
 
 // TestClient_SearchElementsWithListeners_IncludesEmptyArrays verifies requested listener enrichment survives empty matches.

@@ -36,6 +36,10 @@ Use --key for a known element instance. Otherwise search by process instance, BP
 
 --batch-size controls each discovery request; --limit caps returned elements across all pages. Use --total to count matching elements, or --with-listeners to include runtime listener jobs.
 
+Listener rows label job creation time as s: (not worker execution start) and job end time as e:. They show d: only for an ACTIVATED job with a deadline, and omit unavailable timestamps. A completed listener can appear as:
+
+  job-1 TASK_LISTENER lsnr:CREATING COMPLETED tp:updateTaskData r:0 s:2026-09-16T13:07:16.359 e:2026-09-16T13:07:16.842
+
 Requires Camunda 8.8 or newer.`,
 	Example: `  ./c8volt get element --key <element-instance-key>
   ./c8volt get element --key <element-instance-key> --with-listeners

@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strings"
 	"testing"
 
 	elementapi "github.com/grafvonb/c8volt/c8volt/element"
@@ -29,6 +30,15 @@ func TestGetElementCommand_ValidateDirectLookupKey(t *testing.T) {
 	flagGetElementKey = "2251799813689002"
 
 	require.NoError(t, validateGetElementFlags(getElementCmd))
+}
+
+// TestGetElementCommand_ListenerTimestampHelp documents lifecycle meanings and missing-value behavior at the command source.
+func TestGetElementCommand_ListenerTimestampHelp(t *testing.T) {
+	require.Contains(t, getElementCmd.Long, "job creation time as s: (not worker execution start)")
+	require.Contains(t, getElementCmd.Long, "job end time as e:")
+	require.Contains(t, getElementCmd.Long, "d: only for an ACTIVATED job with a deadline")
+	require.Contains(t, getElementCmd.Long, "omit unavailable timestamps")
+	require.Contains(t, getElementCmd.Long, "s:2026-09-16T13:07:16.359 e:2026-09-16T13:07:16.842")
 }
 
 // TestGetElementCommand_HTTPFallbackActivityUsesCommandContext verifies element search preserves fallback activity.
@@ -609,13 +619,13 @@ func TestGetElementCommand_KeyedLookupWithListenersHumanOutput(t *testing.T) {
   "tenantId": "tenant-a",
   "hasIncident": false
 }`}, []string{
-		`{"items":[{"jobKey":"2251799813689101","kind":"EXECUTION_LISTENER","listenerEventType":"START","type":"audit-start","state":"CREATED","retries":3,"processInstanceKey":"2251799813688001","elementInstanceKey":"2251799813689002","elementId":"ship-order","tenantId":"tenant-a"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`,
-		`{"items":[{"jobKey":"2251799813689102","kind":"TASK_LISTENER","listenerEventType":"COMPLETING","type":"audit-task","state":"FAILED","retries":0,"processInstanceKey":"2251799813688001","elementInstanceKey":"2251799813689002","elementId":"ship-order","tenantId":"tenant-a","errorCode":"LISTENER_FAILED","errorMessage":"worker failed"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`,
+		`{"items":[{"jobKey":"2251799813689101","kind":"EXECUTION_LISTENER","listenerEventType":"START","type":"audit-start","state":"COMPLETED","retries":3,"creationTime":"2026-09-16T13:07:16.359Z","endTime":"2026-09-16T13:07:16.842Z","deadline":"2026-09-16T13:08:00Z","processInstanceKey":"2251799813688001","elementInstanceKey":"2251799813689002","elementId":"ship-order","tenantId":"tenant-a"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`,
+		`{"items":[{"jobKey":"2251799813689102","kind":"TASK_LISTENER","listenerEventType":"COMPLETING","type":"audit-task","state":"ACTIVATED","retries":0,"worker":"worker-a","creationTime":"2026-09-16T13:09:00Z","deadline":"2026-09-16T13:10:00Z","processInstanceKey":"2251799813688001","elementInstanceKey":"2251799813689002","elementId":"ship-order","tenantId":"tenant-a","errorCode":"LISTENER_FAILED","errorMessage":"worker failed"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`,
 	})
 	t.Cleanup(srv.Close)
 	cfgPath := testx.WriteTestConfigForVersion(t, srv.URL, "8.8")
 
-	output := executeRootForElementTest(t, "--config", cfgPath, "get", "element", "--key", "2251799813689002", "--with-listeners")
+	output, stderr := executeRootForElementTestWithSeparateOutputs(t, "--config", cfgPath, "get", "element", "--key", "2251799813689002", "--with-listeners")
 
 	require.Equal(t, []string{
 		"GET /v2/element-instances/2251799813689002",
@@ -624,12 +634,37 @@ func TestGetElementCommand_KeyedLookupWithListenersHumanOutput(t *testing.T) {
 	}, requests)
 	require.Contains(t, output, "2251799813689002")
 	require.Contains(t, output, "└─ listeners:")
-	require.Contains(t, output, "2251799813689101 EXECUTION_LISTENER lsnr:START")
+	require.Contains(t, output, "2251799813689101 EXECUTION_LISTENER lsnr:START      COMPLETED tp:audit-start r:3")
+	require.Contains(t, output, "s:2026-09-16T13:07:16.359 e:2026-09-16T13:07:16.842")
+	require.NotContains(t, strings.Split(output, "2251799813689102")[0], "d:2026-09-16T13:08:00.000")
 	require.Contains(t, output, "2251799813689102 TASK_LISTENER")
-	require.Contains(t, output, "lsnr:COMPLETING FAILED")
+	require.Contains(t, output, "lsnr:COMPLETING ACTIVATED")
 	require.Contains(t, output, "tp:audit-task")
 	require.Contains(t, output, "r:0")
+	require.Contains(t, output, "worker:worker-a")
+	require.Contains(t, output, "s:2026-09-16T13:09:00.000")
+	require.Contains(t, output, "d:2026-09-16T13:10:00.000")
 	require.Contains(t, output, "ec:LISTENER_FAILED")
+	require.NotContains(t, stderr, "2251799813689101")
+}
+
+// TestGetElementCommand_SearchWithListenersHumanOutput preserves timestamp meaning through the search execution path.
+func TestGetElementCommand_SearchWithListenersHumanOutput(t *testing.T) {
+	var requests []string
+	srv := newElementWithListenersServer(t, &requests, []string{`{"items":[{"elementInstanceKey":"2251799813689002","elementId":"ship-order","type":"SERVICE_TASK","state":"ACTIVE","processInstanceKey":"2251799813688001","tenantId":"tenant-a","hasIncident":false}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`}, []string{
+		`{"items":[{"jobKey":"2251799813689101","kind":"EXECUTION_LISTENER","listenerEventType":"START","type":"audit-start","state":"CANCELED","retries":0,"creationTime":"2026-09-16T13:07:16.359Z","endTime":"2026-09-16T13:07:16.842Z","deadline":"2026-09-16T13:08:00Z","processInstanceKey":"2251799813688001","elementInstanceKey":"2251799813689002"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`,
+		`{"items":[],"page":{"totalItems":0,"hasMoreTotalItems":false}}`,
+	})
+	t.Cleanup(srv.Close)
+	cfgPath := testx.WriteTestConfigForVersion(t, srv.URL, "8.8")
+
+	stdout, stderr := executeRootForElementTestWithSeparateOutputs(t, "--config", cfgPath, "get", "element", "--pi-key", "2251799813688001", "--with-listeners")
+
+	require.Equal(t, []string{"POST /v2/element-instances/search", "POST /v2/jobs/search", "POST /v2/jobs/search"}, requests)
+	require.Contains(t, stdout, "2251799813689101 EXECUTION_LISTENER lsnr:START CANCELED")
+	require.Contains(t, stdout, "s:2026-09-16T13:07:16.359 e:2026-09-16T13:07:16.842")
+	require.NotContains(t, stdout, "d:2026-09-16T13:08:00.000")
+	require.NotContains(t, stderr, "2251799813689101")
 }
 
 // TestGetElementCommand_SearchWithListenersJSONOutput preserves requested-empty arrays and omits unmatched jobs.

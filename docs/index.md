@@ -6,7 +6,7 @@ nav_exclude: true
 has_toc: true
 ---
 
-> Generated from build `c8volt v4.3.0-beta.1-288-g391dfd7c-dirty`, commit `391dfd7c`, built `2026-09-13T15:09:37Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.0-alpha4 (prerelease)
+> Generated from build `c8volt v4.3.3-4-ga91e07ec-dirty`, commit `a91e07ec`, built `2026-09-16T02:58:32Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.0-alpha4 (prerelease)
 
 <img src="./logo/c8volt_logo_transparent_w_shadow_400x244.png" alt="c8volt logo" />
 
@@ -271,6 +271,12 @@ Generated reference: [get process-instance](./cli/c8volt_get_process-instance).
 ### Inspect Runtime Elements
 
 Use `--with-elements` when the process instance is the main target, and `get element` when element filters should drive the search.
+
+Listener rows use `s:` for the job creation time—not worker execution start—and `e:` for the recorded job end time. An available deadline appears as `d:` only while the job state is exactly `ACTIVATED`; unavailable timestamps are omitted independently. For example, a completed listener can appear as:
+
+```text
+job-1 TASK_LISTENER lsnr:CREATING COMPLETED tp:updateTaskData r:0 s:2026-09-16T13:07:16.359 e:2026-09-16T13:07:16.842
+```
 
 ```bash
 ./c8volt get process-instance --key <process-instance-key> --with-elements
