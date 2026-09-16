@@ -630,6 +630,34 @@ func TestRuntimeListenerJobJSONPreservesTimestampsAndCollectionStates(t *testing
 			require.Equal(t, deadline.Format(time.RFC3339Nano), listener["deadline"])
 		})
 	}
+	for _, tc := range []struct {
+		name          string
+		creation, end *time.Time
+	}{
+		{name: "both", creation: &creation, end: &end},
+		{name: "creation only", creation: &creation},
+		{name: "end only", end: &end},
+		{name: "neither"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			listener := fromDomainRuntimeListenerJob(d.RuntimeListenerJob{
+				JobKey: "job-optional", State: "CANCELED",
+				CreationTime: tc.creation, EndTime: tc.end, Deadline: &deadline,
+			})
+			raw, err := json.Marshal(listener)
+			require.NoError(t, err)
+			var got map[string]any
+			require.NoError(t, json.Unmarshal(raw, &got))
+			for field, want := range map[string]*time.Time{"creationTime": tc.creation, "endTime": tc.end} {
+				if want == nil {
+					require.NotContains(t, got, field)
+				} else {
+					require.Equal(t, want.Format(time.RFC3339Nano), got[field])
+				}
+			}
+			require.Equal(t, deadline.Format(time.RFC3339Nano), got["deadline"])
+		})
+	}
 }
 
 // TestClientAnalyseSlowProcessInstancesCopiesKeysAndMapsErrors verifies public slices and domain errors stay boundary-safe.

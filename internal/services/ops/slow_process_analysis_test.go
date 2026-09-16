@@ -974,11 +974,16 @@ func TestSlowProcessAnalysisWithListenersAttachesOnlyMatchingElementJobs(t *test
 		},
 	}
 	var jobQueries []d.JobSearchQuery
+	includeTimestamps := true
 	jobAPI := stubSlowProcessAnalysisJobAPI{
 		search: func(_ context.Context, query d.JobSearchQuery, _ ...services.CallOption) (d.JobSearchResult, error) {
 			jobQueries = append(jobQueries, query)
+			var creation, end *time.Time
+			if includeTimestamps {
+				creation, end = &listenerCreated, &listenerEnded
+			}
 			return d.JobSearchResult{Items: []d.Job{
-				{Key: "job-match", Kind: query.Kind, ListenerEventType: "START", State: "CREATED", Type: "audit", Retries: 3, CreationTime: &listenerCreated, EndTime: &listenerEnded, ProcessInstanceKey: root.Key, ElementInstanceKey: "2251799813685250"},
+				{Key: "job-match", Kind: query.Kind, ListenerEventType: "START", State: "CREATED", Type: "audit", Retries: 3, CreationTime: creation, EndTime: end, ProcessInstanceKey: root.Key, ElementInstanceKey: "2251799813685250"},
 				{Key: "job-unmatched-element", Kind: query.Kind, ProcessInstanceKey: root.Key, ElementInstanceKey: "missing"},
 				{Key: "job-other-process", Kind: query.Kind, ProcessInstanceKey: "other", ElementInstanceKey: "2251799813685250"},
 			}}, nil
@@ -1004,6 +1009,26 @@ func TestSlowProcessAnalysisWithListenersAttachesOnlyMatchingElementJobs(t *test
 	require.Equal(t, &listenerEnded, (*elementRows[0].Listeners)[0].EndTime)
 	require.EqualValues(t, 10*time.Minute/time.Millisecond, got.Items[0].DurationMillis)
 	require.Equal(t, []d.RuntimeListenerJob{}, *elementRows[1].Listeners)
+
+	// Run the same analysis without lifecycle facts. Clear only those added
+	// fields before comparing the complete result, including every duration,
+	// ranking, transition, filter outcome, and listener association.
+	includeTimestamps = false
+	baseline, err := NewWithAnalysisDependencies(nil, piAPI, nil, nil, nil, jobAPI, elementAPI, toolx.V88).AnalyseSlowProcessInstances(context.Background(), got.Request)
+	require.NoError(t, err)
+	for i := range got.Items {
+		for j := range got.Items[i].Timeline {
+			listeners := got.Items[i].Timeline[j].Listeners
+			if listeners == nil {
+				continue
+			}
+			for k := range *listeners {
+				(*listeners)[k].CreationTime = nil
+				(*listeners)[k].EndTime = nil
+			}
+		}
+	}
+	require.Equal(t, baseline, got)
 }
 
 // TestSlowProcessAnalysisWithoutListenersDoesNotLookupJobs verifies default output remains listener-free.

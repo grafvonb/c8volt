@@ -62,7 +62,26 @@ The targeted checks above were executed successfully during Ralph iterations 2â€
 - `go test ./c8volt/job -run 'TestClient_SearchJobsPage_OmitsMissingTimestamps' -count=1` passed, covering the single-page conversion not uniquely selected by the consolidated job pattern.
 - The element command selection included keyed and search human output, JSON output, help, validation, and the shared timestamp-column tests.
 - The process/walk/slow-analysis command selection included keyed, list, family, children, parent, flat, normal-timeline, full-timeline, JSON, and v8.7 unsupported paths.
-- Facade and enrichment selections covered populated, independently absent, requested-empty, and unrequested listener collections; retained non-active deadlines; stable ownership/order/request counts; and unchanged duration/analysis results.
+- Original facade and enrichment selections covered populated, requested-empty, and unrequested listener collections, retained deadlines, timestamp transport, and ownership/request assertions. Independent optional-field coverage was distributed across the suite; the listener-enriched analysis test checked the root duration but did not yet compare complete analysis results. The review follow-up below closes those specific gaps.
 - `make docs-content` completed after the command-source guidance changes. Final review confirmed the four generated command references match their source descriptions, README and generated index use the same timestamp definitions, all touched Go files produce an empty `gofmt -d`, and `git diff --check main...HEAD` passes.
 
 No targeted failures or broader-impact changes required `make test`, so the full race suite was not rerun. Optional live inspection was not performed; controlled fixtures remain the authoritative validation for missing and independently populated timestamps.
+
+## Review follow-up validation
+
+The follow-up changes tests and validation evidence only; production code and generated command documentation are unchanged.
+
+- Deadline suppression assertions for process get and walk now reject a `d:` token anywhere on the target listener row, including after creation/end tags.
+- `TestListenerTimestampCommandsHonorTimezoneConfig` executes all four commands with `app.show_timezone_offset` explicitly false and true. It verifies exact creation/end/deadline tokens, clean stderr, and two listener discovery requests for each case, including an activated listener with an end time.
+- Each facade's `TestRuntimeListenerJobJSONPreservesTimestampsAndCollectionStates` now sends both, creation-only, end-only, and neither-present domain listener timestamps through its converter and JSON marshaler, checking omission, supplied values, and retained canceled-job deadlines.
+- `TestSlowProcessAnalysisWithListenersAttachesOnlyMatchingElementJobs` now runs identical input with and without listener lifecycle timestamps. After clearing only those timestamp fields, it compares the complete analysis result, including process/element/transition durations, rankings, and associations for that fixture.
+
+The following targeted checks passed after these changes:
+
+```sh
+go test ./cmd -run 'TestListenerTimestampCommandsHonorTimezoneConfig|TestGetProcessInstanceWithElementsAndListeners_Human|TestWalkProcessInstanceCommand_WithListenersFamily' -count=1
+go test ./c8volt/element ./c8volt/process ./c8volt/ops -run '^TestRuntimeListenerJobJSONPreservesTimestampsAndCollectionStates$' -count=1
+go test ./internal/services/ops -run '^TestSlowProcessAnalysisWithListenersAttachesOnlyMatchingElementJobs$' -count=1
+```
+
+Touched Go files were formatted and `git diff --check` passed. These are focused fixture-based checks, not an exhaustive cross-product of every command mode, lifecycle state, and timestamp combination. Full race-suite and live-server validation remain unperformed. Existing Ralph commit subjects remain unchanged; future feature commits should explicitly reference #321 rather than relying on issue-number inference from the namespaced branch.

@@ -341,7 +341,7 @@ func TestWalkProcessInstanceCommand_WithListenersFamilyHumanOutputNestsListenerR
 	require.Contains(t, output, "└─ 124 tenant demo v3 ACTIVE")
 	require.Contains(t, output, "   └─ elements:\n      └─ element-child SERVICE_TASK child-task ACTIVE")
 	require.Contains(t, output, "         └─ listeners:\n            └─ job-task-child TASK_LISTENER lsnr:COMPLETING CANCELED tp:audit-task r:0 s:2026-09-16T13:07:16.359 e:2026-09-16T13:07:16.842")
-	require.NotContains(t, output, "job-task-child TASK_LISTENER lsnr:COMPLETING CANCELED tp:audit-task r:0 d:")
+	require.NotRegexp(t, `(?m)^.*job-task-child TASK_LISTENER .* d:.*$`, output)
 	require.Contains(t, output, "ec:LISTENER_FAILED")
 	require.Less(t, strings.Index(output, "element-root"), strings.Index(output, "job-exec-root"))
 	require.Less(t, strings.Index(output, "job-exec-root"), strings.Index(output, "124 tenant demo"))
