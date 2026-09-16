@@ -162,3 +162,20 @@ Started: 2026-09-16 04:43:39
 **Learnings**:
 - The shared public job converter covers direct, search, visitor-page, and single-page results; one-document command assertions close the remaining JSON contract gap without altering request behavior.
 ---
+
+---
+## Iteration 7 - 2026-09-16 05:21
+**Work Unit**: Polish & Cross-Cutting Concerns — final audit and validation reconciliation
+**Tasks Completed**:
+- [x] T026: Audit FR-001–FR-010, the listener timestamp contract, documentation consistency, formatting, and whitespace
+- [x] T027: Reconcile targeted validation evidence, actual regression names, and material gaps in the quickstart
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- specs/321-listener-timestamps/quickstart.md
+- specs/321-listener-timestamps/tasks.md
+- specs/321-listener-timestamps/ralph-memory.md
+- specs/321-listener-timestamps/progress.md
+**Learnings**:
+- The final diff satisfies the functional and output contracts without broader-impact changes; targeted checks were sufficient, while the full race suite and optional live inspection remain explicitly unexecuted.
+---

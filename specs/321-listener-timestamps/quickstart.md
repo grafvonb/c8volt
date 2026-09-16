@@ -53,3 +53,16 @@ git diff --check
 Review generated CLI references and README-derived documentation for consistent tag definitions and the completed-listener example. Run `gofmt` on touched Go files during implementation. Broaden to `make test` only if targeted failures or a wider actual diff justify it, as described in [plan.md](plan.md).
 
 For planning-only edits, validate Markdown links, required artifacts, whitespace, and absence of unresolved placeholders; do not run runtime tests or regenerate command documentation.
+
+## Recorded implementation validation
+
+The targeted checks above were executed successfully during Ralph iterations 2–6, with these explicit additions and narrower selections where the consolidated patterns do not name every regression:
+
+- `go test ./internal/services/job/v87 -run 'TestService_GetJob_Unsupported|TestService_SearchJobs_Unsupported' -count=1 -v` passed, preserving the unsupported-version boundary.
+- `go test ./c8volt/job -run 'TestClient_SearchJobsPage_OmitsMissingTimestamps' -count=1` passed, covering the single-page conversion not uniquely selected by the consolidated job pattern.
+- The element command selection included keyed and search human output, JSON output, help, validation, and the shared timestamp-column tests.
+- The process/walk/slow-analysis command selection included keyed, list, family, children, parent, flat, normal-timeline, full-timeline, JSON, and v8.7 unsupported paths.
+- Facade and enrichment selections covered populated, independently absent, requested-empty, and unrequested listener collections; retained non-active deadlines; stable ownership/order/request counts; and unchanged duration/analysis results.
+- `make docs-content` completed after the command-source guidance changes. Final review confirmed the four generated command references match their source descriptions, README and generated index use the same timestamp definitions, all touched Go files produce an empty `gofmt -d`, and `git diff --check main...HEAD` passes.
+
+No targeted failures or broader-impact changes required `make test`, so the full race suite was not rerun. Optional live inspection was not performed; controlled fixtures remain the authoritative validation for missing and independently populated timestamps.

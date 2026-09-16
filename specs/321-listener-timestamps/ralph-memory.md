@@ -15,6 +15,7 @@ Started: 2026-09-16T02:43:39Z
 - Process and ops public listener facades copy optional creation/end pointers directly, preserving requested-empty versus unrequested listener collections.
 - Public job get, search, collected-page, and single-page results share `fromDomainJob`, which now preserves optional creation/end pointers and `omitempty` JSON behavior without changing standalone human rendering.
 - Command JSON execution regressions use `requireSingleJSONObjectDocument` to enforce exactly one envelope plus EOF while checking stdout/stderr separation, offsets, independent omission, retained non-active deadlines, and requested-empty listeners.
+- Final FR-001–FR-010 and output-contract review found no gaps: the feature diff is formatted, passes `git diff --check`, preserves request/duration/grouping behavior, and keeps README, command metadata, and generated CLI references consistent.
 
 ## Decisions
 
@@ -44,4 +45,4 @@ Started: 2026-09-16T02:43:39Z
 
 ## Current Handoff
 
-- Begin polish with T026; audit the final diff against FR-001–FR-010 and the listener timestamp contract before reconciling validation evidence in T027.
+- Feature complete; no handoff required.

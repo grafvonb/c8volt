@@ -93,8 +93,8 @@
 
 ## Phase 6: Polish & Cross-Cutting Concerns
 
-- [ ] T026 Audit the final diff against FR-001–FR-010 in `specs/321-listener-timestamps/spec.md` and the matrix in `specs/321-listener-timestamps/contracts/listener-timestamps.md`; review `README.md` and generated `docs/cli/` output for consistent definitions and intentional compatibility changes, ensure touched Go files are formatted, and run `git diff --check`. Do not regenerate documentation again unless source guidance changed after the last generation.
-- [ ] T027 Reconcile actual test names and validation evidence with `specs/321-listener-timestamps/quickstart.md` and record checks, results, and material gaps there; run only missing or invalidated targeted checks. Use `make test` only if the actual diff or unresolved failures meet the broader-validation conditions in `specs/321-listener-timestamps/plan.md`; do not rerun tests merely to finish or commit. Live inspection remains optional and must not be reported as executed unless performed.
+- [x] T026 Audit the final diff against FR-001–FR-010 in `specs/321-listener-timestamps/spec.md` and the matrix in `specs/321-listener-timestamps/contracts/listener-timestamps.md`; review `README.md` and generated `docs/cli/` output for consistent definitions and intentional compatibility changes, ensure touched Go files are formatted, and run `git diff --check`. Do not regenerate documentation again unless source guidance changed after the last generation.
+- [x] T027 Reconcile actual test names and validation evidence with `specs/321-listener-timestamps/quickstart.md` and record checks, results, and material gaps there; run only missing or invalidated targeted checks. Use `make test` only if the actual diff or unresolved failures meet the broader-validation conditions in `specs/321-listener-timestamps/plan.md`; do not rerun tests merely to finish or commit. Live inspection remains optional and must not be reported as executed unless performed.
 
 ## Dependencies & Execution Order
 
