@@ -230,6 +230,8 @@ type RuntimeListenerJob struct {
 	State              string     `json:"state,omitempty"`
 	Retries            int32      `json:"retries"`
 	Worker             string     `json:"worker,omitempty"`
+	CreationTime       *time.Time `json:"creationTime,omitempty"`
+	EndTime            *time.Time `json:"endTime,omitempty"`
 	Deadline           *time.Time `json:"deadline,omitempty"`
 	ProcessInstanceKey string     `json:"processInstanceKey,omitempty"`
 	ElementInstanceKey string     `json:"elementInstanceKey,omitempty"`

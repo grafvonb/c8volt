@@ -318,7 +318,18 @@ func TestRenderOpsSlowProcessAnalysisResultHumanRendersHotspotSummaryDetails(t *
 
 // TestRenderOpsSlowProcessAnalysisResultHumanRendersListenerRows verifies listeners stay under element timeline rows.
 func TestRenderOpsSlowProcessAnalysisResultHumanRendersListenerRows(t *testing.T) {
+	previousJSON, previousKeys, previousQuiet := flagViewAsJson, flagViewKeysOnly, flagQuiet
+	previousFullTimeline := flagOpsAnalyseSlowProcessInstanceWithFullTimeline
+	t.Cleanup(func() {
+		flagViewAsJson, flagViewKeysOnly, flagQuiet = previousJSON, previousKeys, previousQuiet
+		flagOpsAnalyseSlowProcessInstanceWithFullTimeline = previousFullTimeline
+	})
+	flagViewAsJson, flagViewKeysOnly, flagQuiet = false, false, false
+	flagOpsAnalyseSlowProcessInstanceWithFullTimeline = false
 	cmd, buf := newOpsSlowProcessAnalysisRenderTestCommand()
+	creation := time.Date(2026, 9, 16, 13, 7, 16, 359000000, time.UTC)
+	end := time.Date(2026, 9, 16, 13, 7, 16, 842000000, time.UTC)
+	deadline := time.Date(2026, 9, 16, 13, 8, 0, 0, time.UTC)
 	listeners := []ops.RuntimeListenerJob{{
 		JobKey:            "job-task",
 		Kind:              "TASK_LISTENER",
@@ -326,6 +337,9 @@ func TestRenderOpsSlowProcessAnalysisResultHumanRendersListenerRows(t *testing.T
 		Type:              "audit-task",
 		State:             "FAILED",
 		Retries:           0,
+		CreationTime:      &creation,
+		EndTime:           &end,
+		Deadline:          &deadline,
 		ErrorCode:         "LISTENER_FAILED",
 		ErrorMessage:      "handler rejected",
 	}}
@@ -341,8 +355,25 @@ func TestRenderOpsSlowProcessAnalysisResultHumanRendersListenerRows(t *testing.T
 	require.Contains(t, output, "└─ slowest elements:\n")
 	require.Contains(t, output, "   ├─ USER_TASK ReviewOrder COMPLETED")
 	require.Contains(t, output, "   │  └─ listeners:\n")
-	require.Contains(t, output, "   │     └─ job-task TASK_LISTENER lsnr:COMPLETING FAILED tp:audit-task r:0 ec:LISTENER_FAILED err:handler rejected")
+	require.Contains(t, output, "job-task TASK_LISTENER lsnr:COMPLETING FAILED tp:audit-task r:0 s:2026-09-16T13:07:16.359 e:2026-09-16T13:07:16.842")
+	require.Contains(t, output, "ec:LISTENER_FAILED err:handler rejected")
+	require.NotContains(t, output, "d:2026-09-16T13:08:00.000")
 	require.NotContains(t, output, "ReviewOrder -> OrderFinished")
+}
+
+func TestOpsSlowProcessListenerRowUsesConfiguredTimezoneOffset(t *testing.T) {
+	offset := time.FixedZone("UTC+2", 2*60*60)
+	creation := time.Date(2026, 9, 16, 13, 7, 16, 359000000, offset)
+	end := time.Date(2026, 9, 16, 13, 7, 16, 842000000, offset)
+	deadline := time.Date(2026, 9, 16, 13, 8, 0, 0, offset)
+
+	row := formatFlatRows([]flatRow{flatRowOpsSlowProcessAnalysisListenerWithTimezone(ops.RuntimeListenerJob{
+		JobKey: "job-active", State: "ACTIVATED", CreationTime: &creation, EndTime: &end, Deadline: &deadline,
+	}, true)})[0]
+
+	require.Contains(t, row, "s:2026-09-16T13:07:16.359+02:00")
+	require.Contains(t, row, "e:2026-09-16T13:07:16.842+02:00")
+	require.Contains(t, row, "d:2026-09-16T13:08:00.000+02:00")
 }
 
 // TestRenderOpsSlowProcessAnalysisResultKeysOnlyRendersRootKeys verifies keyed output remains pipeline-safe.

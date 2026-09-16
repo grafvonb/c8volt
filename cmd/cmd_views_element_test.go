@@ -110,3 +110,26 @@ func TestElementFlatRowsAlignElementIDColumn(t *testing.T) {
 	require.NotContains(t, lines[0], "element:")
 	require.NotContains(t, lines[1], "element:")
 }
+
+// TestElementListenerRowsKeepTimestampAndErrorColumnsAligned verifies both listener kinds retain fixed optional columns.
+func TestElementListenerRowsKeepTimestampAndErrorColumnsAligned(t *testing.T) {
+	creation := time.Date(2026, 9, 16, 13, 7, 16, 359000000, time.UTC)
+	end := time.Date(2026, 9, 16, 13, 7, 16, 842000000, time.UTC)
+	deadline := time.Date(2026, 9, 16, 13, 8, 0, 0, time.UTC)
+	listeners := []element.RuntimeListenerJob{
+		{JobKey: "job-1", Kind: "EXECUTION_LISTENER", ListenerEventType: "START", State: "COMPLETED", Type: "audit", Retries: 0, CreationTime: &creation, EndTime: &end, Deadline: &deadline},
+		{JobKey: "job-2", Kind: "TASK_LISTENER", ListenerEventType: "COMPLETING", State: "ACTIVATED", Type: "notify", Retries: 1, Worker: "worker-a", CreationTime: &creation, Deadline: &deadline, ErrorCode: "E1", ErrorMessage: "failed"},
+	}
+
+	lines := formatElementListenerRows(&listeners, false)
+
+	require.Len(t, lines, 2)
+	require.Contains(t, lines[0], "s:2026-09-16T13:07:16.359 e:2026-09-16T13:07:16.842")
+	require.NotContains(t, lines[0], "d:")
+	require.Contains(t, lines[1], "worker:worker-a")
+	require.Contains(t, lines[1], "s:2026-09-16T13:07:16.359")
+	require.Contains(t, lines[1], "d:2026-09-16T13:08:00.000")
+	require.Contains(t, lines[1], "ec:E1 err:failed")
+	require.Less(t, strings.Index(lines[1], "worker:"), strings.Index(lines[1], "s:"))
+	require.Less(t, strings.Index(lines[1], "d:"), strings.Index(lines[1], "ec:"))
+}
