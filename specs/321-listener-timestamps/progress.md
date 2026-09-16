@@ -134,3 +134,31 @@ Started: 2026-09-16 04:43:39
 **Learnings**:
 - The shared fixed-column helper applies cleanly to process and slow-analysis views; existing enrichment already preserves projected timestamps without affecting timeline calculations or discovery counts.
 ---
+
+## Iteration 6 - 2026-09-16 05:18
+**Work Unit**: User Story 3 — Retain Available Timestamps for Programmatic Consumers
+**Tasks Completed**:
+- [x] T021: Cover public job get, search, collected-page, and single-page timestamp conversion and JSON omission
+- [x] T022: Verify all four command JSON execution paths preserve listener timestamps and existing envelopes
+- [x] T023: Verify public listener JSON names, optional values, deadlines, offsets, and collection states
+- [x] T024: Expose optional creation and end timestamps through the public job model and converter
+- [x] T025: Validate the complete public job and listener programmatic contract
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- c8volt/element/client_test.go
+- c8volt/job/client.go
+- c8volt/job/client_test.go
+- c8volt/job/model.go
+- c8volt/ops/client_test.go
+- c8volt/process/client_test.go
+- cmd/get_element_test.go
+- cmd/get_processinstance_test.go
+- cmd/ops_analyse_slow_process_instances_test.go
+- cmd/walk_test.go
+- specs/321-listener-timestamps/tasks.md
+- specs/321-listener-timestamps/ralph-memory.md
+- specs/321-listener-timestamps/progress.md
+**Learnings**:
+- The shared public job converter covers direct, search, visitor-page, and single-page results; one-document command assertions close the remaining JSON contract gap without altering request behavior.
+---

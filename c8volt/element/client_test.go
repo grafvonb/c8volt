@@ -5,6 +5,7 @@ package element
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"io"
 	"log/slog"
@@ -163,6 +164,7 @@ func TestClient_GetElementWithListeners_AttachesMatchingJobs(t *testing.T) {
 	var jobQueries []d.JobSearchQuery
 	creation := time.Date(2026, 9, 16, 13, 7, 16, 359000000, time.FixedZone("UTC+2", 2*60*60))
 	end := time.Date(2026, 9, 16, 13, 7, 16, 842000000, time.FixedZone("UTC+2", 2*60*60))
+	deadline := time.Date(2026, 9, 16, 13, 8, 0, 0, time.FixedZone("UTC+2", 2*60*60))
 	api := NewWithListeners(fakeElementService{
 		get: func(_ context.Context, key string, _ ...services.CallOption) (d.Element, error) {
 			require.Equal(t, "2251799813689002", key)
@@ -178,7 +180,7 @@ func TestClient_GetElementWithListeners_AttachesMatchingJobs(t *testing.T) {
 		search: func(_ context.Context, query d.JobSearchQuery, _ ...services.CallOption) (d.JobSearchResult, error) {
 			jobQueries = append(jobQueries, query)
 			return d.JobSearchResult{Items: []d.Job{
-				{Key: "2251799813689101", Kind: query.Kind, ListenerEventType: "START", Type: "audit", State: "CREATED", Retries: 3, CreationTime: &creation, EndTime: &end, ProcessInstanceKey: "2251799813688001", ElementInstanceKey: "2251799813689002", ElementId: "ship-order"},
+				{Key: "2251799813689101", Kind: query.Kind, ListenerEventType: "START", Type: "audit", State: "COMPLETED", Retries: 3, CreationTime: &creation, EndTime: &end, Deadline: &deadline, ProcessInstanceKey: "2251799813688001", ElementInstanceKey: "2251799813689002", ElementId: "ship-order"},
 				{Key: "2251799813689999", Kind: query.Kind, ProcessInstanceKey: "2251799813688001", ElementInstanceKey: "2251799813689998"},
 			}}, nil
 		},
@@ -197,6 +199,7 @@ func TestClient_GetElementWithListeners_AttachesMatchingJobs(t *testing.T) {
 	require.Equal(t, d.JobKindExecutionListener, (*result.Listeners)[0].Kind)
 	require.Equal(t, creation, *(*result.Listeners)[0].CreationTime)
 	require.Equal(t, end, *(*result.Listeners)[0].EndTime)
+	require.Equal(t, deadline, *(*result.Listeners)[0].Deadline)
 }
 
 // TestClient_SearchElementsWithListeners_IncludesEmptyArrays verifies requested listener enrichment survives empty matches.
@@ -222,6 +225,48 @@ func TestClient_SearchElementsWithListeners_IncludesEmptyArrays(t *testing.T) {
 	require.Len(t, result.Items, 1)
 	require.NotNil(t, result.Items[0].Listeners)
 	require.Empty(t, *result.Items[0].Listeners)
+}
+
+// TestRuntimeListenerJobJSONPreservesTimestampsAndCollectionStates verifies
+// exact public names, optional omission, retained deadlines, and nil-versus-empty arrays.
+func TestRuntimeListenerJobJSONPreservesTimestampsAndCollectionStates(t *testing.T) {
+	creation := time.Date(2026, 9, 16, 13, 7, 16, 359000000, time.FixedZone("UTC+2", 2*60*60))
+	end := time.Date(2026, 9, 16, 13, 7, 16, 842000000, time.FixedZone("UTC+2", 2*60*60))
+	deadline := time.Date(2026, 9, 16, 13, 8, 0, 0, time.FixedZone("UTC+2", 2*60*60))
+	listeners := []RuntimeListenerJob{{JobKey: "job-1", State: "COMPLETED", CreationTime: &creation, EndTime: &end, Deadline: &deadline}}
+	empty := []RuntimeListenerJob{}
+
+	for _, tc := range []struct {
+		name          string
+		value         Element
+		wantListeners bool
+		wantLen       int
+	}{
+		{name: "unrequested", value: Element{}},
+		{name: "requested empty", value: Element{Listeners: &empty}, wantListeners: true},
+		{name: "populated", value: Element{Listeners: &listeners}, wantListeners: true, wantLen: 1},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			raw, err := json.Marshal(tc.value)
+			require.NoError(t, err)
+			var got map[string]any
+			require.NoError(t, json.Unmarshal(raw, &got))
+			rawListeners, present := got["listeners"]
+			require.Equal(t, tc.wantListeners, present)
+			if !present {
+				return
+			}
+			gotListeners := rawListeners.([]any)
+			require.Len(t, gotListeners, tc.wantLen)
+			if tc.wantLen == 0 {
+				return
+			}
+			listener := gotListeners[0].(map[string]any)
+			require.Equal(t, creation.Format(time.RFC3339Nano), listener["creationTime"])
+			require.Equal(t, end.Format(time.RFC3339Nano), listener["endTime"])
+			require.Equal(t, deadline.Format(time.RFC3339Nano), listener["deadline"])
+		})
+	}
 }
 
 func TestClient_SearchElementsWithListeners_MapsProgress(t *testing.T) {

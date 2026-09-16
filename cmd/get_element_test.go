@@ -674,28 +674,36 @@ func TestGetElementCommand_SearchWithListenersJSONOutput(t *testing.T) {
   "items": [
     {"elementInstanceKey":"2251799813689002","elementId":"ship-order","type":"SERVICE_TASK","state":"ACTIVE","processInstanceKey":"2251799813688001","tenantId":"tenant-a","hasIncident":false},
     {"elementInstanceKey":"2251799813689003","elementId":"finish-order","type":"END_EVENT","state":"COMPLETED","processInstanceKey":"2251799813688001","tenantId":"tenant-a","hasIncident":false}
-  ],
+	],
   "page": {"totalItems":2,"hasMoreTotalItems":false}
 }`}, []string{
-		`{"items":[{"jobKey":"2251799813689101","kind":"EXECUTION_LISTENER","listenerEventType":"START","type":"audit-start","state":"CREATED","retries":3,"processInstanceKey":"2251799813688001","elementInstanceKey":"2251799813689002","elementId":"ship-order","tenantId":"tenant-a"},{"jobKey":"2251799813689999","kind":"EXECUTION_LISTENER","processInstanceKey":"2251799813688001","elementInstanceKey":"2251799813689998"}],"page":{"totalItems":2,"hasMoreTotalItems":false}}`,
-		`{"items":[],"page":{"totalItems":0,"hasMoreTotalItems":false}}`,
+		`{"items":[{"jobKey":"2251799813689101","kind":"EXECUTION_LISTENER","listenerEventType":"START","type":"audit-start","state":"COMPLETED","retries":3,"creationTime":"2026-09-16T13:07:16.359+02:00","endTime":"2026-09-16T13:07:16.842+02:00","deadline":"2026-09-16T13:08:00+02:00","processInstanceKey":"2251799813688001","elementInstanceKey":"2251799813689002","elementId":"ship-order","tenantId":"tenant-a"},{"jobKey":"2251799813689999","kind":"EXECUTION_LISTENER","processInstanceKey":"2251799813688001","elementInstanceKey":"2251799813689998"}],"page":{"totalItems":2,"hasMoreTotalItems":false}}`,
+		`{"items":[{"jobKey":"2251799813689102","kind":"TASK_LISTENER","listenerEventType":"COMPLETING","type":"audit-task","state":"CANCELED","retries":0,"endTime":"2026-09-16T13:09:16.842-03:00","deadline":"2026-09-16T13:10:00-03:00","processInstanceKey":"2251799813688001","elementInstanceKey":"2251799813689002","elementId":"ship-order","tenantId":"tenant-a"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`,
 	})
 	t.Cleanup(srv.Close)
 	cfgPath := testx.WriteTestConfigForVersion(t, srv.URL, "8.8")
 
-	output := executeRootForElementTest(t, "--config", cfgPath, "--json", "get", "element", "--pi-key", "2251799813688001", "--with-listeners")
+	output, stderr := executeRootForElementTestWithSeparateOutputs(t, "--config", cfgPath, "--json", "get", "element", "--pi-key", "2251799813688001", "--with-listeners")
 
 	require.Equal(t, []string{"POST /v2/element-instances/search", "POST /v2/jobs/search", "POST /v2/jobs/search"}, requests)
-	var envelope map[string]any
-	require.NoError(t, json.Unmarshal([]byte(output), &envelope))
+	require.Empty(t, stderr)
+	envelope := requireSingleJSONObjectDocument(t, output)
 	payload := requireJSONObject(t, envelope["payload"])
 	items := payload["items"].([]any)
 	require.Len(t, items, 2)
 	first := requireJSONObject(t, items[0])
 	require.NotNil(t, first["listeners"], output)
 	firstListeners := first["listeners"].([]any)
-	require.Len(t, firstListeners, 1)
-	require.Equal(t, "2251799813689101", requireJSONObject(t, firstListeners[0])["jobKey"])
+	require.Len(t, firstListeners, 2)
+	completed := requireJSONObject(t, firstListeners[0])
+	require.Equal(t, "2251799813689101", completed["jobKey"])
+	require.Equal(t, "2026-09-16T13:07:16.359+02:00", completed["creationTime"])
+	require.Equal(t, "2026-09-16T13:07:16.842+02:00", completed["endTime"])
+	require.Equal(t, "2026-09-16T13:08:00+02:00", completed["deadline"])
+	canceled := requireJSONObject(t, firstListeners[1])
+	require.NotContains(t, canceled, "creationTime")
+	require.Equal(t, "2026-09-16T13:09:16.842-03:00", canceled["endTime"])
+	require.Equal(t, "2026-09-16T13:10:00-03:00", canceled["deadline"])
 	second := requireJSONObject(t, items[1])
 	require.Empty(t, second["listeners"].([]any))
 }

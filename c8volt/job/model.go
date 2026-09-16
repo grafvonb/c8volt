@@ -5,10 +5,13 @@ package job
 
 import "time"
 
+// Job exposes one runtime job and its optional lifecycle timestamps.
 type Job struct {
 	Key                string     `json:"key,omitempty"`
 	State              string     `json:"state,omitempty"`
 	Retries            int32      `json:"retries"`
+	CreationTime       *time.Time `json:"creationTime,omitempty"`
+	EndTime            *time.Time `json:"endTime,omitempty"`
 	Deadline           *time.Time `json:"deadline,omitempty"`
 	Type               string     `json:"type,omitempty"`
 	Worker             string     `json:"worker,omitempty"`

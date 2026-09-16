@@ -13,6 +13,8 @@ Started: 2026-09-16T02:43:39Z
 - `cmd/listenerTimestampColumns` returns fixed `s:`, `e:`, `d:` positions, formats through `toolx.FormatTime`, and exposes deadlines only for exact `ACTIVATED`; element listener rows consume it after worker and before errors.
 - Process get/walk share `flatRowProcessInstanceElementListenerWithTimezone`, while slow analysis owns a parallel row builder; both now consume `listenerTimestampColumns` and preserve their surrounding nesting and duration output.
 - Process and ops public listener facades copy optional creation/end pointers directly, preserving requested-empty versus unrequested listener collections.
+- Public job get, search, collected-page, and single-page results share `fromDomainJob`, which now preserves optional creation/end pointers and `omitempty` JSON behavior without changing standalone human rendering.
+- Command JSON execution regressions use `requireSingleJSONObjectDocument` to enforce exactly one envelope plus EOF while checking stdout/stderr separation, offsets, independent omission, retained non-active deadlines, and requested-empty listeners.
 
 ## Decisions
 
@@ -42,4 +44,4 @@ Started: 2026-09-16T02:43:39Z
 
 ## Current Handoff
 
-- Begin US3 with T021–T025; add public job and command JSON regressions before wiring optional timestamps through `c8volt/job` and validating every programmatic listener contract.
+- Begin polish with T026; audit the final diff against FR-001–FR-010 and the listener timestamp contract before reconciling validation evidence in T027.

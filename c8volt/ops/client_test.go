@@ -5,6 +5,7 @@ package ops
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -375,6 +376,7 @@ func TestClientAnalyseSlowProcessInstancesMapsListenerServiceBoundary(t *testing
 	t.Parallel()
 	creation := time.Date(2026, 9, 16, 13, 7, 16, 359000000, time.FixedZone("UTC+2", 2*60*60))
 	end := time.Date(2026, 9, 16, 13, 7, 16, 842000000, time.FixedZone("UTC+2", 2*60*60))
+	deadline := time.Date(2026, 9, 16, 13, 8, 0, 0, time.FixedZone("UTC+2", 2*60*60))
 
 	captured := time.Date(2026, 7, 18, 10, 30, 0, 0, time.UTC)
 	rootDurationLonger := 10 * time.Minute
@@ -503,6 +505,7 @@ func TestClientAnalyseSlowProcessInstancesMapsListenerServiceBoundary(t *testing
 							Retries:            3,
 							CreationTime:       &creation,
 							EndTime:            &end,
+							Deadline:           &deadline,
 							ProcessInstanceKey: "2251799813685249",
 							ElementInstanceKey: "2251799813685250",
 						}},
@@ -581,9 +584,52 @@ func TestClientAnalyseSlowProcessInstancesMapsListenerServiceBoundary(t *testing
 		Retries:            3,
 		CreationTime:       &creation,
 		EndTime:            &end,
+		Deadline:           &deadline,
 		ProcessInstanceKey: "2251799813685249",
 		ElementInstanceKey: "2251799813685250",
 	}}, *got.Items[0].Timeline[0].Listeners)
+}
+
+// TestRuntimeListenerJobJSONPreservesTimestampsAndCollectionStates verifies
+// exact public names, optional omission, retained deadlines, and nil-versus-empty arrays.
+func TestRuntimeListenerJobJSONPreservesTimestampsAndCollectionStates(t *testing.T) {
+	creation := time.Date(2026, 9, 16, 13, 7, 16, 359000000, time.FixedZone("UTC+5:30", 5*60*60+30*60))
+	end := time.Date(2026, 9, 16, 13, 7, 16, 842000000, time.FixedZone("UTC+5:30", 5*60*60+30*60))
+	deadline := time.Date(2026, 9, 16, 13, 8, 0, 0, time.FixedZone("UTC+5:30", 5*60*60+30*60))
+	listeners := []RuntimeListenerJob{{JobKey: "job-1", State: "COMPLETED", CreationTime: &creation, EndTime: &end, Deadline: &deadline}}
+	empty := []RuntimeListenerJob{}
+
+	for _, tc := range []struct {
+		name          string
+		value         SlowProcessAnalysisTimelineEntry
+		wantListeners bool
+		wantLen       int
+	}{
+		{name: "unrequested", value: SlowProcessAnalysisTimelineEntry{}},
+		{name: "requested empty", value: SlowProcessAnalysisTimelineEntry{Listeners: &empty}, wantListeners: true},
+		{name: "populated", value: SlowProcessAnalysisTimelineEntry{Listeners: &listeners}, wantListeners: true, wantLen: 1},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			raw, err := json.Marshal(tc.value)
+			require.NoError(t, err)
+			var got map[string]any
+			require.NoError(t, json.Unmarshal(raw, &got))
+			rawListeners, present := got["listeners"]
+			require.Equal(t, tc.wantListeners, present)
+			if !present {
+				return
+			}
+			gotListeners := rawListeners.([]any)
+			require.Len(t, gotListeners, tc.wantLen)
+			if tc.wantLen == 0 {
+				return
+			}
+			listener := gotListeners[0].(map[string]any)
+			require.Equal(t, creation.Format(time.RFC3339Nano), listener["creationTime"])
+			require.Equal(t, end.Format(time.RFC3339Nano), listener["endTime"])
+			require.Equal(t, deadline.Format(time.RFC3339Nano), listener["deadline"])
+		})
+	}
 }
 
 // TestClientAnalyseSlowProcessInstancesCopiesKeysAndMapsErrors verifies public slices and domain errors stay boundary-safe.

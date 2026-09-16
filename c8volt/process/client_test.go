@@ -1223,6 +1223,7 @@ func TestClient_EnrichProcessInstancesWithElementListeners_MapsListenerFields(t 
 	t.Parallel()
 	creation := time.Date(2026, 9, 16, 13, 7, 16, 359000000, time.FixedZone("UTC+2", 2*60*60))
 	end := time.Date(2026, 9, 16, 13, 7, 16, 842000000, time.FixedZone("UTC+2", 2*60*60))
+	deadline := time.Date(2026, 9, 16, 13, 8, 0, 0, time.FixedZone("UTC+2", 2*60*60))
 
 	ctx := context.Background()
 	elAPI := stubElementAPI{
@@ -1252,6 +1253,7 @@ func TestClient_EnrichProcessInstancesWithElementListeners_MapsListenerFields(t 
 				Worker:             "audit-worker",
 				CreationTime:       &creation,
 				EndTime:            &end,
+				Deadline:           &deadline,
 				ProcessInstanceKey: "pi-1",
 				ElementInstanceKey: "el-1",
 				ElementId:          "ReviewOrder",
@@ -1279,6 +1281,7 @@ func TestClient_EnrichProcessInstancesWithElementListeners_MapsListenerFields(t 
 		Worker:             "audit-worker",
 		CreationTime:       &creation,
 		EndTime:            &end,
+		Deadline:           &deadline,
 		ProcessInstanceKey: "pi-1",
 		ElementInstanceKey: "el-1",
 		ElementId:          "ReviewOrder",
@@ -1288,6 +1291,48 @@ func TestClient_EnrichProcessInstancesWithElementListeners_MapsListenerFields(t 
 	}}, *got.Items[0].Elements[0].Listeners)
 	require.NotNil(t, got.Items[0].Elements[1].Listeners)
 	require.Empty(t, *got.Items[0].Elements[1].Listeners)
+}
+
+// TestRuntimeListenerJobJSONPreservesTimestampsAndCollectionStates verifies
+// exact public names, optional omission, retained deadlines, and nil-versus-empty arrays.
+func TestRuntimeListenerJobJSONPreservesTimestampsAndCollectionStates(t *testing.T) {
+	creation := time.Date(2026, 9, 16, 13, 7, 16, 359000000, time.FixedZone("UTC-3", -3*60*60))
+	end := time.Date(2026, 9, 16, 13, 7, 16, 842000000, time.FixedZone("UTC-3", -3*60*60))
+	deadline := time.Date(2026, 9, 16, 13, 8, 0, 0, time.FixedZone("UTC-3", -3*60*60))
+	listeners := []RuntimeListenerJob{{JobKey: "job-1", State: "CANCELED", CreationTime: &creation, EndTime: &end, Deadline: &deadline}}
+	empty := []RuntimeListenerJob{}
+
+	for _, tc := range []struct {
+		name          string
+		value         ProcessInstanceElement
+		wantListeners bool
+		wantLen       int
+	}{
+		{name: "unrequested", value: ProcessInstanceElement{}},
+		{name: "requested empty", value: ProcessInstanceElement{Listeners: &empty}, wantListeners: true},
+		{name: "populated", value: ProcessInstanceElement{Listeners: &listeners}, wantListeners: true, wantLen: 1},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			raw, err := json.Marshal(tc.value)
+			require.NoError(t, err)
+			var got map[string]any
+			require.NoError(t, json.Unmarshal(raw, &got))
+			rawListeners, present := got["listeners"]
+			require.Equal(t, tc.wantListeners, present)
+			if !present {
+				return
+			}
+			gotListeners := rawListeners.([]any)
+			require.Len(t, gotListeners, tc.wantLen)
+			if tc.wantLen == 0 {
+				return
+			}
+			listener := gotListeners[0].(map[string]any)
+			require.Equal(t, creation.Format(time.RFC3339Nano), listener["creationTime"])
+			require.Equal(t, end.Format(time.RFC3339Nano), listener["endTime"])
+			require.Equal(t, deadline.Format(time.RFC3339Nano), listener["deadline"])
+		})
+	}
 }
 
 func TestUpdateProcessInstanceVariablesMapsConfirmedServiceResponse(t *testing.T) {

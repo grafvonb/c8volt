@@ -2369,14 +2369,14 @@ func TestGetProcessInstanceWithElementsAndListeners_JSONOutputPreservesEmptyArra
 		{"elementInstanceKey":"element-1","elementId":"task-a","type":"SERVICE_TASK","state":"ACTIVE","processInstanceKey":"123","processDefinitionKey":"9001","tenantId":"tenant","hasIncident":false},
 		{"elementInstanceKey":"element-empty","elementId":"empty-task","type":"SERVICE_TASK","state":"ACTIVE","processInstanceKey":"123","processDefinitionKey":"9001","tenantId":"tenant","hasIncident":false}
 	],"page":{"totalItems":2,"hasMoreTotalItems":false}}`}, []string{
-		`{"items":[{"jobKey":"job-exec-1","kind":"EXECUTION_LISTENER","listenerEventType":"START","type":"audit-start","state":"CREATED","retries":3,"processInstanceKey":"123","elementInstanceKey":"element-1","elementId":"task-a","tenantId":"tenant"},{"jobKey":"job-unmatched","kind":"EXECUTION_LISTENER","listenerEventType":"END","type":"audit-end","state":"CREATED","retries":3,"processInstanceKey":"123","elementInstanceKey":"element-missing","elementId":"missing","tenantId":"tenant"}],"page":{"totalItems":2,"hasMoreTotalItems":false}}`,
+		`{"items":[{"jobKey":"job-exec-1","kind":"EXECUTION_LISTENER","listenerEventType":"START","type":"audit-start","state":"CANCELED","retries":3,"creationTime":"2026-09-16T13:07:16.359+02:00","deadline":"2026-09-16T13:08:00+02:00","processInstanceKey":"123","elementInstanceKey":"element-1","elementId":"task-a","tenantId":"tenant"},{"jobKey":"job-unmatched","kind":"EXECUTION_LISTENER","listenerEventType":"END","type":"audit-end","state":"CREATED","retries":3,"processInstanceKey":"123","elementInstanceKey":"element-missing","elementId":"missing","tenantId":"tenant"}],"page":{"totalItems":2,"hasMoreTotalItems":false}}`,
 		`{"items":[],"page":{"totalItems":0,"hasMoreTotalItems":false}}`,
 	})
 	t.Cleanup(srv.Close)
 
 	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
 
-	output := executeRootForProcessInstanceTest(t,
+	output, stderr := executeRootForProcessInstanceWithSeparateOutputs(t,
 		"--config", cfgPath,
 		"--tenant", "tenant",
 		"--json",
@@ -2392,13 +2392,18 @@ func TestGetProcessInstanceWithElementsAndListeners_JSONOutputPreservesEmptyArra
 		"POST /v2/jobs/search",
 		"POST /v2/jobs/search",
 	}, requests.Snapshot())
+	require.Empty(t, stderr)
 	payload := requireProcessInstanceElementJSONPayload(t, output)
 	items := requireJSONItems(t, payload["items"], 1)
 	first := requireJSONObject(t, items[0])
 	elements := requireJSONItems(t, first["elements"], 2)
 	firstElement := requireJSONObject(t, elements[0])
 	firstListeners := requireJSONItems(t, firstElement["listeners"], 1)
-	require.Equal(t, "job-exec-1", requireJSONObject(t, firstListeners[0])["jobKey"])
+	listener := requireJSONObject(t, firstListeners[0])
+	require.Equal(t, "job-exec-1", listener["jobKey"])
+	require.Equal(t, "2026-09-16T13:07:16.359+02:00", listener["creationTime"])
+	require.NotContains(t, listener, "endTime")
+	require.Equal(t, "2026-09-16T13:08:00+02:00", listener["deadline"])
 	secondElement := requireJSONObject(t, elements[1])
 	require.Empty(t, requireJSONItems(t, secondElement["listeners"], 0))
 	require.NotContains(t, output, "job-unmatched")
@@ -4360,8 +4365,7 @@ func requireProcessInstanceVariableJSONPayload(t *testing.T, output string) map[
 func requireProcessInstanceElementJSONPayload(t *testing.T, output string) map[string]any {
 	t.Helper()
 
-	var envelope map[string]any
-	require.NoError(t, json.Unmarshal([]byte(output), &envelope))
+	envelope := requireSingleJSONObjectDocument(t, output)
 	require.Equal(t, string(OutcomeSucceeded), envelope["outcome"])
 	require.Equal(t, "get process-instance", envelope["command"])
 	return requireJSONObject(t, envelope["payload"])

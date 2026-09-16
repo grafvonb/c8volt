@@ -816,7 +816,7 @@ func TestWalkProcessInstanceCommand_WithListenersJSONOutputPreservesEmptyArraysA
 	}, map[string][]string{
 		"123": {
 			walkedJobSearchJSON(t,
-				map[string]any{"jobKey": "job-exec-root", "kind": "EXECUTION_LISTENER", "listenerEventType": "START", "type": "audit-start", "state": "CREATED", "retries": 3, "processInstanceKey": "123", "elementInstanceKey": "element-root", "elementId": "root-task", "tenantId": "tenant"},
+				map[string]any{"jobKey": "job-exec-root", "kind": "EXECUTION_LISTENER", "listenerEventType": "START", "type": "audit-start", "state": "COMPLETED", "retries": 3, "endTime": "2026-09-16T13:07:16.842-03:00", "deadline": "2026-09-16T13:08:00-03:00", "processInstanceKey": "123", "elementInstanceKey": "element-root", "elementId": "root-task", "tenantId": "tenant"},
 				map[string]any{"jobKey": "job-unmatched", "kind": "EXECUTION_LISTENER", "listenerEventType": "END", "type": "audit-end", "state": "CREATED", "retries": 3, "processInstanceKey": "123", "elementInstanceKey": "element-missing", "elementId": "missing", "tenantId": "tenant"},
 			),
 			walkedJobSearchJSON(t),
@@ -830,7 +830,7 @@ func TestWalkProcessInstanceCommand_WithListenersJSONOutputPreservesEmptyArraysA
 
 	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
 
-	output := executeRootForProcessInstanceTest(t,
+	output, stderr := executeRootForProcessInstanceWithSeparateOutputs(t,
 		"--config", cfgPath,
 		"--json",
 		"walk", "process-instance",
@@ -839,6 +839,7 @@ func TestWalkProcessInstanceCommand_WithListenersJSONOutputPreservesEmptyArraysA
 		"--with-listeners",
 	)
 
+	require.Empty(t, stderr)
 	require.Contains(t, strings.Join(requests, ","), "POST /v2/jobs/search")
 	payload := requireWalkProcessInstanceJSONPayload(t, output)
 	require.Equal(t, "family", payload["mode"])
@@ -852,7 +853,11 @@ func TestWalkProcessInstanceCommand_WithListenersJSONOutputPreservesEmptyArraysA
 		elementsByKey[key] = element
 	}
 	firstListeners := requireJSONItems(t, elementsByKey["element-root"]["listeners"], 1)
-	require.Equal(t, "job-exec-root", requireJSONObject(t, firstListeners[0])["jobKey"])
+	listener := requireJSONObject(t, firstListeners[0])
+	require.Equal(t, "job-exec-root", listener["jobKey"])
+	require.NotContains(t, listener, "creationTime")
+	require.Equal(t, "2026-09-16T13:07:16.842-03:00", listener["endTime"])
+	require.Equal(t, "2026-09-16T13:08:00-03:00", listener["deadline"])
 	require.Empty(t, requireJSONItems(t, elementsByKey["element-empty"]["listeners"], 0))
 	child := requireJSONObject(t, items[1])
 	require.Empty(t, requireJSONItems(t, child["elements"], 0))
@@ -2617,8 +2622,7 @@ func newWalkProcessInstanceWithListenersServer(t *testing.T, requests *[]string,
 func requireWalkProcessInstanceJSONPayload(t *testing.T, output string) map[string]any {
 	t.Helper()
 
-	var envelope map[string]any
-	require.NoError(t, json.Unmarshal([]byte(output), &envelope))
+	envelope := requireSingleJSONObjectDocument(t, output)
 	require.Equal(t, string(OutcomeSucceeded), envelope["outcome"])
 	require.Equal(t, "walk process-instance", envelope["command"])
 	return requireJSONObject(t, envelope["payload"])
