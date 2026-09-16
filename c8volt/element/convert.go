@@ -29,6 +29,7 @@ func fromDomainElement(result d.Element) Element {
 	}
 }
 
+// fromDomainRuntimeListenerJob preserves optional listener lifecycle facts at the facade boundary.
 func fromDomainRuntimeListenerJob(result d.RuntimeListenerJob) RuntimeListenerJob {
 	return RuntimeListenerJob{
 		JobKey:             result.JobKey,
@@ -38,6 +39,8 @@ func fromDomainRuntimeListenerJob(result d.RuntimeListenerJob) RuntimeListenerJo
 		State:              result.State,
 		Retries:            result.Retries,
 		Worker:             result.Worker,
+		CreationTime:       result.CreationTime,
+		EndTime:            result.EndTime,
 		Deadline:           result.Deadline,
 		ProcessInstanceKey: result.ProcessInstanceKey,
 		ElementInstanceKey: result.ElementInstanceKey,

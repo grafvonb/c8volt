@@ -60,7 +60,10 @@ func (m *mockJobClient) FailJobWithResponse(ctx context.Context, jobKey camundav
 	return m.failJobWithResponse(ctx, jobKey, body, reqEditors...)
 }
 
+// TestSearchJobsByKey verifies v8.9 key lookup preserves all supplied job timestamps.
 func TestSearchJobsByKey(t *testing.T) {
+	creationTime := time.Date(2026, 5, 8, 8, 10, 0, 0, time.FixedZone("UTC+02", 2*60*60))
+	endTime := time.Date(2026, 5, 8, 9, 20, 0, 0, time.FixedZone("UTC-04", -4*60*60))
 	deadline := time.Date(2026, 5, 8, 10, 15, 0, 0, time.UTC)
 	svc := newJobServiceTest(t, &mockJobClient{
 		searchJobsWithResponse: func(_ context.Context, body camundav89.SearchJobsJSONRequestBody, _ ...camundav89.RequestEditorFn) (*camundav89.SearchJobsResponse, error) {
@@ -72,6 +75,8 @@ func TestSearchJobsByKey(t *testing.T) {
 						JobKey:             "2251799813711967",
 						State:              camundav89.JobStateEnum("FAILED"),
 						Retries:            2,
+						CreationTime:       &creationTime,
+						EndTime:            &endTime,
 						Deadline:           &deadline,
 						ProcessInstanceKey: "2251799813711000",
 						ElementInstanceKey: "2251799813711001",
@@ -91,6 +96,8 @@ func TestSearchJobsByKey(t *testing.T) {
 		Key:                "2251799813711967",
 		State:              "FAILED",
 		Retries:            2,
+		CreationTime:       &creationTime,
+		EndTime:            &endTime,
 		Deadline:           &deadline,
 		ProcessInstanceKey: "2251799813711000",
 		ElementInstanceKey: "2251799813711001",
@@ -122,6 +129,8 @@ func TestService_GetJob_NotFound(t *testing.T) {
 func TestService_SearchJobs_ConstructsFiltersAndConvertsRows(t *testing.T) {
 	retries := int32(0)
 	elementID := camundav89.ElementId("charge-card")
+	creationTime := time.Date(2026, 5, 8, 8, 10, 0, 0, time.FixedZone("UTC+02", 2*60*60))
+	endTime := time.Date(2026, 5, 8, 9, 20, 0, 0, time.FixedZone("UTC-04", -4*60*60))
 	svc := newJobServiceTest(t, &mockJobClient{
 		searchJobsWithResponse: func(_ context.Context, body camundav89.SearchJobsJSONRequestBody, _ ...camundav89.RequestEditorFn) (*camundav89.SearchJobsResponse, error) {
 			requireJobSearchFilterJSON(t, body, map[string]any{
@@ -142,6 +151,8 @@ func TestService_SearchJobs_ConstructsFiltersAndConvertsRows(t *testing.T) {
 						JobKey:             "2251799813711967",
 						State:              camundav89.JobStateEnumFAILED,
 						Retries:            retries,
+						CreationTime:       &creationTime,
+						EndTime:            &endTime,
 						Type:               "payment-worker",
 						Worker:             "worker-a",
 						Kind:               camundav89.BPMNELEMENT,
@@ -150,6 +161,18 @@ func TestService_SearchJobs_ConstructsFiltersAndConvertsRows(t *testing.T) {
 						ElementInstanceKey: "2251799813711001",
 						ElementId:          &elementID,
 						TenantId:           "tenant-a",
+					}, {
+						JobKey:       "creation-only",
+						CreationTime: &creationTime,
+						EndTime:      nil,
+					}, {
+						JobKey:       "end-only",
+						CreationTime: nil,
+						EndTime:      &endTime,
+					}, {
+						JobKey:       "timestamps-null",
+						CreationTime: nil,
+						EndTime:      nil,
 					}},
 				},
 			}, nil
@@ -171,13 +194,21 @@ func TestService_SearchJobs_ConstructsFiltersAndConvertsRows(t *testing.T) {
 
 	require.NoError(t, err)
 	require.Equal(t, int32(25), result.Limit)
-	require.Len(t, result.Items, 1)
+	require.Len(t, result.Items, 4)
 	require.Equal(t, "2251799813711967", result.Items[0].Key)
 	require.Equal(t, "payment-worker", result.Items[0].Type)
 	require.Equal(t, "worker-a", result.Items[0].Worker)
 	require.Equal(t, "BPMN_ELEMENT", result.Items[0].Kind)
 	require.Equal(t, "COMPLETING", result.Items[0].ListenerEventType)
 	require.Equal(t, "charge-card", result.Items[0].ElementId)
+	require.Equal(t, &creationTime, result.Items[0].CreationTime)
+	require.Equal(t, &endTime, result.Items[0].EndTime)
+	require.Equal(t, &creationTime, result.Items[1].CreationTime)
+	require.Nil(t, result.Items[1].EndTime)
+	require.Nil(t, result.Items[2].CreationTime)
+	require.Equal(t, &endTime, result.Items[2].EndTime)
+	require.Nil(t, result.Items[3].CreationTime)
+	require.Nil(t, result.Items[3].EndTime)
 }
 
 func TestService_SearchJobsPagesByBatchSizeUntilComplete(t *testing.T) {

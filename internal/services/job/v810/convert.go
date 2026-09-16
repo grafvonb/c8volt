@@ -171,6 +171,8 @@ func fromJobSearchResult(r camundav810.JobSearchResult) d.Job {
 		Key:                string(r.JobKey),
 		State:              string(r.State),
 		Retries:            r.Retries,
+		CreationTime:       r.CreationTime,
+		EndTime:            r.EndTime,
 		Deadline:           r.Deadline,
 		Type:               r.Type,
 		Worker:             r.Worker,

@@ -5,12 +5,34 @@ package cmd
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/stretchr/testify/require"
 )
+
+func TestProcessInstanceListenerRowsUseSharedTimestampGrammar(t *testing.T) {
+	offset := time.FixedZone("UTC+2", 2*60*60)
+	creation := time.Date(2026, 9, 16, 13, 7, 16, 359000000, offset)
+	end := time.Date(2026, 9, 16, 13, 7, 16, 842000000, offset)
+	deadline := time.Date(2026, 9, 16, 13, 8, 0, 0, offset)
+	listeners := []process.RuntimeListenerJob{
+		{JobKey: "job-complete", Kind: "EXECUTION_LISTENER", ListenerEventType: "END", State: "COMPLETED", Type: "audit", CreationTime: &creation, EndTime: &end, Deadline: &deadline},
+		{JobKey: "job-active", Kind: "TASK_LISTENER", ListenerEventType: "COMPLETING", State: "ACTIVATED", Type: "notify", Worker: "worker-a", CreationTime: &creation, Deadline: &deadline, ErrorCode: "E1", ErrorMessage: "failed"},
+	}
+
+	lines := formatProcessInstanceElementListenerRows(&listeners, true)
+
+	require.Len(t, lines, 2)
+	require.Contains(t, lines[0], "s:2026-09-16T13:07:16.359+02:00 e:2026-09-16T13:07:16.842+02:00")
+	require.NotContains(t, lines[0], "d:")
+	require.Contains(t, lines[1], "s:2026-09-16T13:07:16.359+02:00")
+	require.Contains(t, lines[1], "d:2026-09-16T13:08:00.000+02:00")
+	require.Less(t, strings.Index(lines[1], "worker:"), strings.Index(lines[1], "s:"))
+	require.Less(t, strings.Index(lines[1], "d:"), strings.Index(lines[1], "ec:"))
+}
 
 func TestFormatProcessInstanceActivityElementListenersNestUnderOwningElement(t *testing.T) {
 	capturedNow := time.Date(2026, 7, 15, 10, 13, 0, 0, time.UTC)

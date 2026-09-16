@@ -272,6 +272,8 @@ func fromDomainRuntimeListenerJob(x d.RuntimeListenerJob) RuntimeListenerJob {
 		State:              x.State,
 		Retries:            x.Retries,
 		Worker:             x.Worker,
+		CreationTime:       x.CreationTime,
+		EndTime:            x.EndTime,
 		Deadline:           x.Deadline,
 		ProcessInstanceKey: x.ProcessInstanceKey,
 		ElementInstanceKey: x.ElementInstanceKey,

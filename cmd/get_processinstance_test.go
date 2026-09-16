@@ -41,6 +41,8 @@ func TestGetProcessInstanceHelp_DocumentsPagingAndAutomationSurface(t *testing.T
 	require.Contains(t, output, "--with-vars for process-instance-scope variables")
 	require.Contains(t, output, "--with-elements for runtime element instances")
 	require.Contains(t, output, "Add --with-listeners to --with-elements for runtime listener jobs")
+	require.Contains(t, output, "s: for job creation (not worker execution start), e: for job end")
+	require.Contains(t, output, "d: for an available deadline only while the state is exactly ACTIVATED")
 	require.NotContains(t, output, "Add --incident-message-limit <chars> to shorten incident messages")
 	require.Contains(t, output, "./c8volt get process-instance --bpmn-process-id <bpmn-process-id> --state active --limit 5")
 	require.Contains(t, output, "./c8volt get process-instance --key <process-instance-key>")
@@ -2291,8 +2293,8 @@ func TestGetProcessInstanceWithElementsAndListeners_HumanOutputNestsListenerRows
 		{"elementInstanceKey":"element-1","elementId":"task-a","type":"SERVICE_TASK","state":"ACTIVE","startDate":"2026-07-15T10:12:01Z","processInstanceKey":"123","processDefinitionKey":"9001","tenantId":"tenant","hasIncident":false},
 		{"elementInstanceKey":"element-2","elementId":"user-task","type":"USER_TASK","state":"ACTIVE","startDate":"2026-07-15T10:12:02Z","processInstanceKey":"123","processDefinitionKey":"9001","tenantId":"tenant","hasIncident":false}
 	],"page":{"totalItems":2,"hasMoreTotalItems":false}}`}, []string{
-		`{"items":[{"jobKey":"job-exec-1","kind":"EXECUTION_LISTENER","listenerEventType":"START","type":"audit-start","state":"CREATED","retries":3,"worker":"worker-a","processInstanceKey":"123","elementInstanceKey":"element-1","elementId":"task-a","tenantId":"tenant"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`,
-		`{"items":[{"jobKey":"job-task-1","kind":"TASK_LISTENER","listenerEventType":"COMPLETING","type":"audit-task","state":"FAILED","retries":0,"processInstanceKey":"123","elementInstanceKey":"element-2","elementId":"user-task","tenantId":"tenant","errorCode":"LISTENER_FAILED","errorMessage":"worker failed"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`,
+		`{"items":[{"jobKey":"job-exec-1","kind":"EXECUTION_LISTENER","listenerEventType":"START","type":"audit-start","state":"ACTIVATED","retries":3,"worker":"worker-a","creationTime":"2026-09-16T13:07:16.359+02:00","deadline":"2026-09-16T13:08:00+02:00","processInstanceKey":"123","elementInstanceKey":"element-1","elementId":"task-a","tenantId":"tenant"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`,
+		`{"items":[{"jobKey":"job-task-1","kind":"TASK_LISTENER","listenerEventType":"COMPLETING","type":"audit-task","state":"COMPLETED","retries":0,"creationTime":"2026-09-16T13:07:16.359+02:00","endTime":"2026-09-16T13:07:16.842+02:00","deadline":"2026-09-16T13:08:00+02:00","processInstanceKey":"123","elementInstanceKey":"element-2","elementId":"user-task","tenantId":"tenant","errorCode":"LISTENER_FAILED","errorMessage":"worker failed"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`,
 	})
 	t.Cleanup(srv.Close)
 
@@ -2318,12 +2320,46 @@ func TestGetProcessInstanceWithElementsAndListeners_HumanOutputNestsListenerRows
 	require.Contains(t, output, "element-1 SERVICE_TASK task-a")
 	require.Contains(t, output, "ACTIVE")
 	require.Contains(t, output, "│  └─ listeners:")
-	require.Contains(t, output, "job-exec-1 EXECUTION_LISTENER lsnr:START CREATED tp:audit-start r:3 worker:worker-a")
+	require.Contains(t, output, "job-exec-1 EXECUTION_LISTENER lsnr:START ACTIVATED tp:audit-start r:3 worker:worker-a s:2026-09-16T13:07:16.359 d:2026-09-16T13:08:00.000")
 	require.Contains(t, output, "element-2 USER_TASK")
 	require.Contains(t, output, "user-task ACTIVE")
-	require.Contains(t, output, "job-task-1 TASK_LISTENER lsnr:COMPLETING FAILED tp:audit-task r:0")
+	require.Contains(t, output, "job-task-1 TASK_LISTENER lsnr:COMPLETING COMPLETED tp:audit-task r:0 s:2026-09-16T13:07:16.359 e:2026-09-16T13:07:16.842")
+	require.NotRegexp(t, `(?m)^.*job-task-1 TASK_LISTENER .* d:.*$`, output)
 	require.Contains(t, output, "ec:LISTENER_FAILED")
 	require.Contains(t, output, "found: 1")
+}
+
+func TestGetProcessInstanceListWithElementsAndListeners_HumanOutputRendersLifecycleTimestamps(t *testing.T) {
+	var requests testx.SafeSlice[string]
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests.Append(r.Method + " " + r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/v2/process-instances/search":
+			_, _ = w.Write([]byte(`{"items":[{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionVersion":3,"processInstanceKey":"2251799813685249","startDate":"2026-07-15T10:12:00Z","state":"ACTIVE","tenantId":"tenant"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
+		case "/v2/element-instances/search":
+			_, _ = w.Write([]byte(`{"items":[{"elementInstanceKey":"element-1","elementId":"task-a","type":"SERVICE_TASK","state":"ACTIVE","startDate":"2026-07-15T10:12:01Z","processInstanceKey":"2251799813685249","processDefinitionKey":"9001","tenantId":"tenant","hasIncident":false}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
+		case "/v2/jobs/search":
+			_, _ = w.Write([]byte(`{"items":[{"jobKey":"job-list-1","kind":"EXECUTION_LISTENER","listenerEventType":"START","type":"audit-start","state":"ACTIVATED","retries":3,"creationTime":"2026-09-16T13:07:16.359+02:00","deadline":"2026-09-16T13:08:00+02:00","processInstanceKey":"2251799813685249","elementInstanceKey":"element-1","elementId":"task-a","tenantId":"tenant"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
+		default:
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	stdout, stderr := executeRootForProcessInstanceWithSeparateOutputs(t,
+		"--config", writeTestConfigForVersion(t, srv.URL, "8.8"), "--no-indicator",
+		"get", "process-instance", "--state", "active", "--with-elements", "--with-listeners",
+	)
+
+	require.Contains(t, stdout, "job-list-1 EXECUTION_LISTENER lsnr:START ACTIVATED tp:audit-start r:3 s:2026-09-16T13:07:16.359 d:2026-09-16T13:08:00.000")
+	require.Empty(t, stderr)
+	require.ElementsMatch(t, []string{
+		"POST /v2/process-instances/search",
+		"POST /v2/element-instances/search",
+		"POST /v2/jobs/search",
+		"POST /v2/jobs/search",
+	}, requests.Snapshot())
 }
 
 // TestGetProcessInstanceWithElementsAndListeners_JSONOutputPreservesEmptyArraysAndOmitsUnmatchedJobs verifies requested listener arrays survive JSON rendering.
@@ -2333,14 +2369,14 @@ func TestGetProcessInstanceWithElementsAndListeners_JSONOutputPreservesEmptyArra
 		{"elementInstanceKey":"element-1","elementId":"task-a","type":"SERVICE_TASK","state":"ACTIVE","processInstanceKey":"123","processDefinitionKey":"9001","tenantId":"tenant","hasIncident":false},
 		{"elementInstanceKey":"element-empty","elementId":"empty-task","type":"SERVICE_TASK","state":"ACTIVE","processInstanceKey":"123","processDefinitionKey":"9001","tenantId":"tenant","hasIncident":false}
 	],"page":{"totalItems":2,"hasMoreTotalItems":false}}`}, []string{
-		`{"items":[{"jobKey":"job-exec-1","kind":"EXECUTION_LISTENER","listenerEventType":"START","type":"audit-start","state":"CREATED","retries":3,"processInstanceKey":"123","elementInstanceKey":"element-1","elementId":"task-a","tenantId":"tenant"},{"jobKey":"job-unmatched","kind":"EXECUTION_LISTENER","listenerEventType":"END","type":"audit-end","state":"CREATED","retries":3,"processInstanceKey":"123","elementInstanceKey":"element-missing","elementId":"missing","tenantId":"tenant"}],"page":{"totalItems":2,"hasMoreTotalItems":false}}`,
+		`{"items":[{"jobKey":"job-exec-1","kind":"EXECUTION_LISTENER","listenerEventType":"START","type":"audit-start","state":"CANCELED","retries":3,"creationTime":"2026-09-16T13:07:16.359+02:00","deadline":"2026-09-16T13:08:00+02:00","processInstanceKey":"123","elementInstanceKey":"element-1","elementId":"task-a","tenantId":"tenant"},{"jobKey":"job-unmatched","kind":"EXECUTION_LISTENER","listenerEventType":"END","type":"audit-end","state":"CREATED","retries":3,"processInstanceKey":"123","elementInstanceKey":"element-missing","elementId":"missing","tenantId":"tenant"}],"page":{"totalItems":2,"hasMoreTotalItems":false}}`,
 		`{"items":[],"page":{"totalItems":0,"hasMoreTotalItems":false}}`,
 	})
 	t.Cleanup(srv.Close)
 
 	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
 
-	output := executeRootForProcessInstanceTest(t,
+	output, stderr := executeRootForProcessInstanceWithSeparateOutputs(t,
 		"--config", cfgPath,
 		"--tenant", "tenant",
 		"--json",
@@ -2356,13 +2392,18 @@ func TestGetProcessInstanceWithElementsAndListeners_JSONOutputPreservesEmptyArra
 		"POST /v2/jobs/search",
 		"POST /v2/jobs/search",
 	}, requests.Snapshot())
+	require.Empty(t, stderr)
 	payload := requireProcessInstanceElementJSONPayload(t, output)
 	items := requireJSONItems(t, payload["items"], 1)
 	first := requireJSONObject(t, items[0])
 	elements := requireJSONItems(t, first["elements"], 2)
 	firstElement := requireJSONObject(t, elements[0])
 	firstListeners := requireJSONItems(t, firstElement["listeners"], 1)
-	require.Equal(t, "job-exec-1", requireJSONObject(t, firstListeners[0])["jobKey"])
+	listener := requireJSONObject(t, firstListeners[0])
+	require.Equal(t, "job-exec-1", listener["jobKey"])
+	require.Equal(t, "2026-09-16T13:07:16.359+02:00", listener["creationTime"])
+	require.NotContains(t, listener, "endTime")
+	require.Equal(t, "2026-09-16T13:08:00+02:00", listener["deadline"])
 	secondElement := requireJSONObject(t, elements[1])
 	require.Empty(t, requireJSONItems(t, secondElement["listeners"], 0))
 	require.NotContains(t, output, "job-unmatched")
@@ -4324,8 +4365,7 @@ func requireProcessInstanceVariableJSONPayload(t *testing.T, output string) map[
 func requireProcessInstanceElementJSONPayload(t *testing.T, output string) map[string]any {
 	t.Helper()
 
-	var envelope map[string]any
-	require.NoError(t, json.Unmarshal([]byte(output), &envelope))
+	envelope := requireSingleJSONObjectDocument(t, output)
 	require.Equal(t, string(OutcomeSucceeded), envelope["outcome"])
 	require.Equal(t, "get process-instance", envelope["command"])
 	return requireJSONObject(t, envelope["payload"])

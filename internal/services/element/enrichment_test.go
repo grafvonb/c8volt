@@ -7,11 +7,37 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/services"
 	"github.com/stretchr/testify/require"
 )
+
+func TestEnrichElementWithListenersPreservesLifecycleTimestamps(t *testing.T) {
+	creation := time.Date(2026, 9, 16, 13, 7, 16, 359000000, time.FixedZone("UTC+2", 2*60*60))
+	end := time.Date(2026, 9, 16, 13, 7, 16, 842000000, time.FixedZone("UTC+2", 2*60*60))
+	deadline := time.Date(2026, 9, 16, 13, 8, 0, 0, time.FixedZone("UTC+2", 2*60*60))
+	got, err := EnrichElementWithListeners(context.Background(), stubElementAPI{
+		get: func(context.Context, string, ...services.CallOption) (d.Element, error) {
+			return d.Element{ElementInstanceKey: "el-1", ProcessInstanceKey: "pi-1"}, nil
+		},
+	}, stubJobAPI{
+		search: func(_ context.Context, query d.JobSearchQuery, _ ...services.CallOption) (d.JobSearchResult, error) {
+			if query.Kind != d.JobKindTaskListener {
+				return d.JobSearchResult{}, nil
+			}
+			return d.JobSearchResult{Items: []d.Job{{Key: "job-1", Kind: query.Kind, State: "COMPLETED", ProcessInstanceKey: "pi-1", ElementInstanceKey: "el-1", CreationTime: &creation, EndTime: &end, Deadline: &deadline}}}, nil
+		},
+	}, "el-1")
+
+	require.NoError(t, err)
+	require.NotNil(t, got.Listeners)
+	require.Len(t, *got.Listeners, 1)
+	require.Equal(t, &creation, (*got.Listeners)[0].CreationTime)
+	require.Equal(t, &end, (*got.Listeners)[0].EndTime)
+	require.Equal(t, &deadline, (*got.Listeners)[0].Deadline)
+}
 
 type stubElementAPI struct {
 	get    func(context.Context, string, ...services.CallOption) (d.Element, error)
