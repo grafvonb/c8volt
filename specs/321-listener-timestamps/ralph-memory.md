@@ -7,6 +7,7 @@ Started: 2026-09-16T02:43:39Z
 
 - Command execution tests can use `testx.RunCmdSubprocessInDirWithSeparateOutputs`; HTTP fixtures use `testx.WriteTestConfigForVersion` and `testx.NewIPv4Server`.
 - Concurrent request observations use `testx.SafeSlice` and `testx.AtomicCounter`.
+- Domain listener projection copies optional timestamp pointers directly; table-driven tests in `internal/domain/job_test.go` cover independent absence, offsets, and non-active deadlines.
 
 ## Decisions
 
@@ -28,4 +29,4 @@ Started: 2026-09-16T02:43:39Z
 
 ## Current Handoff
 
-- Continue with foundational task T002: add domain regression assertions for listener timestamp projection before changing `internal/domain/job.go`.
+- Continue the foundational phase with T004–T006: add adapter regression fixtures and map `CreationTime`/`EndTime` in the v88, v89, and v810 job converters; then complete the T007 foundation gate.
