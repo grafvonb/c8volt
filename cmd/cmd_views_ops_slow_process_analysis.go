@@ -223,7 +223,7 @@ func formatOpsSlowProcessAnalysisElementRow(entry ops.SlowProcessAnalysisTimelin
 
 // renderOpsSlowProcessAnalysisListenerLines nests listener rows below the owning element timeline row.
 func renderOpsSlowProcessAnalysisListenerLines(cmd *cobra.Command, prefix string, branchIndex int, totalBranches int, listeners *[]ops.RuntimeListenerJob, showTimezoneOffset bool) {
-	listenerRows := formatOpsSlowProcessAnalysisListenerRows(listeners, showTimezoneOffset)
+	listenerRows := formatOpsSlowProcessAnalysisListenerRows(listeners, showTimezoneOffset, time.Now().UTC())
 	if len(listenerRows) == 0 {
 		return
 	}
@@ -236,19 +236,19 @@ func renderOpsSlowProcessAnalysisListenerLines(cmd *cobra.Command, prefix string
 }
 
 // formatOpsSlowProcessAnalysisListenerRows renders slow-analysis listener jobs using the shared row grammar.
-func formatOpsSlowProcessAnalysisListenerRows(listeners *[]ops.RuntimeListenerJob, showTimezoneOffset bool) []string {
+func formatOpsSlowProcessAnalysisListenerRows(listeners *[]ops.RuntimeListenerJob, showTimezoneOffset bool, capturedNow time.Time) []string {
 	if listeners == nil || len(*listeners) == 0 {
 		return nil
 	}
 	rows := make([]flatRow, 0, len(*listeners))
 	for _, listener := range *listeners {
-		rows = append(rows, flatRowOpsSlowProcessAnalysisListenerWithTimezone(listener, showTimezoneOffset))
+		rows = append(rows, flatRowOpsSlowProcessAnalysisListenerWithTimezone(listener, showTimezoneOffset, capturedNow))
 	}
 	return formatFlatRows(rows)
 }
 
 // flatRowOpsSlowProcessAnalysisListenerWithTimezone formats one runtime listener job below a timeline element row.
-func flatRowOpsSlowProcessAnalysisListenerWithTimezone(item ops.RuntimeListenerJob, showTimezoneOffset bool) flatRow {
+func flatRowOpsSlowProcessAnalysisListenerWithTimezone(item ops.RuntimeListenerJob, showTimezoneOffset bool, capturedNow time.Time) flatRow {
 	parts := flatRow{
 		item.JobKey,
 		item.Kind,
@@ -269,6 +269,7 @@ func flatRowOpsSlowProcessAnalysisListenerWithTimezone(item ops.RuntimeListenerJ
 	} else {
 		parts = append(parts, "")
 	}
+	parts = append(parts, prefixedElementField("dur", runtimeListenerDuration(item.CreationTime, item.EndTime, item.State, capturedNow)))
 	return parts
 }
 

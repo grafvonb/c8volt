@@ -636,6 +636,7 @@ func TestGetElementCommand_KeyedLookupWithListenersHumanOutput(t *testing.T) {
 	require.Contains(t, output, "└─ listeners:")
 	require.Contains(t, output, "2251799813689101 EXECUTION_LISTENER lsnr:START      COMPLETED tp:audit-start r:3")
 	require.Contains(t, output, "s:2026-09-16T13:07:16.359 e:2026-09-16T13:07:16.842")
+	require.Regexp(t, `(?m)^.*2251799813689101 .*dur:483ms$`, output)
 	require.NotContains(t, strings.Split(output, "2251799813689102")[0], "d:2026-09-16T13:08:00.000")
 	require.Contains(t, output, "2251799813689102 TASK_LISTENER")
 	require.Contains(t, output, "lsnr:COMPLETING ACTIVATED")

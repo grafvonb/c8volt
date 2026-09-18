@@ -369,11 +369,12 @@ func TestOpsSlowProcessListenerRowUsesConfiguredTimezoneOffset(t *testing.T) {
 
 	row := formatFlatRows([]flatRow{flatRowOpsSlowProcessAnalysisListenerWithTimezone(ops.RuntimeListenerJob{
 		JobKey: "job-active", State: "ACTIVATED", CreationTime: &creation, EndTime: &end, Deadline: &deadline,
-	}, true)})[0]
+	}, true, deadline)})[0]
 
 	require.Contains(t, row, "s:2026-09-16T13:07:16.359+02:00")
 	require.Contains(t, row, "e:2026-09-16T13:07:16.842+02:00")
 	require.Contains(t, row, "d:2026-09-16T13:08:00.000+02:00")
+	require.True(t, strings.HasSuffix(row, "dur:483ms"))
 }
 
 // TestRenderOpsSlowProcessAnalysisResultKeysOnlyRendersRootKeys verifies keyed output remains pipeline-safe.

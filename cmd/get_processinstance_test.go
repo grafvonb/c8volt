@@ -2323,7 +2323,7 @@ func TestGetProcessInstanceWithElementsAndListeners_HumanOutputNestsListenerRows
 	require.Contains(t, output, "job-exec-1 EXECUTION_LISTENER lsnr:START ACTIVATED tp:audit-start r:3 worker:worker-a s:2026-09-16T13:07:16.359 d:2026-09-16T13:08:00.000")
 	require.Contains(t, output, "element-2 USER_TASK")
 	require.Contains(t, output, "user-task ACTIVE")
-	require.Contains(t, output, "job-task-1 TASK_LISTENER lsnr:COMPLETING COMPLETED tp:audit-task r:0 s:2026-09-16T13:07:16.359 e:2026-09-16T13:07:16.842")
+	require.Contains(t, output, "job-task-1 TASK_LISTENER lsnr:COMPLETING COMPLETED tp:audit-task r:0 s:2026-09-16T13:07:16.359 e:2026-09-16T13:07:16.842 ec:LISTENER_FAILED err:worker failed dur:483ms")
 	require.NotRegexp(t, `(?m)^.*job-task-1 TASK_LISTENER .* d:.*$`, output)
 	require.Contains(t, output, "ec:LISTENER_FAILED")
 	require.Contains(t, output, "found: 1")

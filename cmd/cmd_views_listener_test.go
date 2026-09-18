@@ -44,3 +44,40 @@ func TestListenerTimestampColumns(t *testing.T) {
 		})
 	}
 }
+
+func TestRuntimeListenerDuration(t *testing.T) {
+	creation := time.Date(2026, 9, 16, 5, 38, 52, 855000000, time.UTC)
+	end := creation.Add(483 * time.Millisecond)
+	now := creation.Add(55*time.Hour + 17*time.Minute + 44*time.Second + 701435*time.Microsecond)
+	before := creation.Add(-time.Second)
+	zero := time.Time{}
+	for _, tc := range []struct {
+		name       string
+		state      string
+		start, end *time.Time
+		now        time.Time
+		want       string
+	}{
+		{"created waiting", "CREATED", &creation, nil, now, "55h17m44.701435s"},
+		{"activated", "ACTIVATED", &creation, nil, now, "55h17m44.701435s"},
+		{"failed awaiting retry", "FAILED", &creation, nil, now, "55h17m44.701435s"},
+		{"timed out", "TIMED_OUT", &creation, nil, now, "55h17m44.701435s"},
+		{"retries updated", "RETRIES_UPDATED", &creation, nil, now, "55h17m44.701435s"},
+		{"completed", "COMPLETED", &creation, &end, now, "483ms"},
+		{"canceled", "CANCELED", &creation, &end, now, "483ms"},
+		{"end takes precedence", "ACTIVATED", &creation, &end, now, "483ms"},
+		{"zero duration", "COMPLETED", &creation, &creation, now, "0s"},
+		{"missing creation", "COMPLETED", nil, &end, now, ""},
+		{"zero creation", "CREATED", &zero, nil, now, ""},
+		{"completed missing end", "COMPLETED", &creation, nil, now, ""},
+		{"canceled missing end", "CANCELED", &creation, nil, now, ""},
+		{"error thrown missing end", "ERROR_THROWN", &creation, nil, now, ""},
+		{"unknown state", "UNKNOWN", &creation, nil, now, ""},
+		{"end before creation", "COMPLETED", &creation, &before, now, ""},
+		{"future creation", "CREATED", &creation, nil, before, ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			require.Equal(t, tc.want, runtimeListenerDuration(tc.start, tc.end, tc.state, tc.now))
+		})
+	}
+}
