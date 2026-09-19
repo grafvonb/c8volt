@@ -15,6 +15,7 @@ Started: 2026-09-19T10:56:01Z
 - Command request fixtures accept only `POST /v2/user-tasks/search`; successful filtered execution therefore proves no task-variable or name-discovery request was added while asserting exact `filter.localVariables` placement.
 - Version-neutral traversal retains the complete ordinary and variable-filter query on initial, cursor, offset, sparse, bounded, stopped, total, and failure paths. Total mode clears only `Limit`; the search-only fake API panics on any effective-variable read.
 - Filtered output coverage uses the existing subprocess runner to capture stdout/stderr separately and a search-only fixture to prove every human, machine, total, quiet, auto-confirm, and automation mode retains the native local predicate with exactly one request.
+- Real-terminal filtered paging uses `testx.NewCmdTerminalRunner`; representative configured/inherited stderr, default-no/continue/decline/EOF, sparse/empty, JSON, automation, and auto-confirm cases assert every native page retains the exact local predicate while stdout remains prompt-free.
 
 ## Decisions
 
@@ -41,4 +42,4 @@ Started: 2026-09-19T10:56:01Z
 - Do not broaden the existing PI grammar, hand-edit generated clients, add client-side variable matching, or introduce new paging/filter loops.
 
 ## Current Handoff
-- Continue US2 with T018: extend real-terminal-stdin coverage for filtered configured/inherited stderr, redirected stdout, paging decisions, sparse and empty results, keys output, and unattended modes using `testx.NewCmdTerminalRunner`.
+- Continue US2 with T019: extend filtered first/later search failure and existing total/limit/output-conflict coverage without duplicating the key-conflict evidence from T013.

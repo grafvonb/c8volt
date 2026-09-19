@@ -162,3 +162,17 @@ Started: 2026-09-19 12:56:01
 **Learnings**:
 - Existing output paths preserve exact filtered human, JSON, keys-only, quiet, total, auto-confirm, and automation contracts with one native search request, so no production change was required.
 ---
+## Iteration 10 - 2026-09-19 13:36
+**Work Unit**: US2 Bound and Count Filtered Work Reliably — Real-Terminal Paging Contracts
+**Tasks Completed**:
+- [x] T018: Add filtered real-terminal stdin coverage for prompt routing, paging decisions, sparse and empty results, keys output, and unattended modes
+**Tasks Remaining in Work Unit**: T019–T021
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/get_usertask_terminal_test.go
+- specs/310-user-task-variable-filtering/tasks.md
+- specs/310-user-task-variable-filtering/ralph-memory.md
+- specs/310-user-task-variable-filtering/progress.md
+**Learnings**:
+- The existing terminal path preserves native local predicates on every page while routing exact default-no prompts only to configured or inherited stderr; no production change was required.
+---
