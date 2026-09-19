@@ -154,3 +154,11 @@ Review generated task help and grammar compatibility, confirm no generated clien
 - `go test ./cmd -run 'TestGetUserTaskCommand_FilteredDisplay(PreservesSelection|StopsBeforeUnreadPages)$' -count=1` passed.
 - `go test -race ./cmd -run 'Test(GetUserTaskCommand_(FilteredDisplayPreservesSelection|FilteredDisplayStopsBeforeUnreadPages|SearchVariablesEnrichOnlySelectedTasks)|FilteredUserTaskVariablesFixture)$' -count=1` passed.
 - Request-fixture results prove selection/display request boundaries and native predicate propagation; no live backend scope validation was attempted.
+
+### Iteration 16 — filtered display integration and validation (2026-09-19)
+
+- Reviewed `cmd/get_usertask_vars.go` and `cmd/get_usertask_search.go`; service-selected and limit-trimmed tasks reach the command before the shared enrichment gate, so incremental and collected paths each enrich only eligible selected tasks once. No production edit was required.
+- `go test -v ./cmd -run 'Test(GetUserTaskVariable|GetUserTaskCommand_(FilteredDisplay|SearchVariables))' -count=1` passed and visibly executed the filtered display selection/output suites plus existing user-task variable display regressions.
+- `go test -race -v ./cmd -run 'Test(GetUserTaskVariable|FilteredUserTaskVariablesFixture|GetUserTaskCommand_(KeyedVari|VariableModeGates|SearchVariables|FilteredDisplay))' -count=1` passed, including keyed display, exclusions, limits, sparse and stopped paging, effective-variable pagination, truncation, JSON fidelity, and failure behavior.
+- Filter-only execution and keys-only, total, and empty display exclusions performed zero effective-variable reads; eligible display read only selected tasks. The fixtures expose only task reads, task searches, and effective-variable searches, so successful runs also prove no mutation requests were issued.
+- Native request fixtures, rather than a live backend, remain the evidence for local predicate propagation and request boundaries; no live scope or missing/null validation was attempted.

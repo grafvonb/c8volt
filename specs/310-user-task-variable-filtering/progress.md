@@ -248,3 +248,18 @@ Started: 2026-09-19 12:56:01
 **Learnings**:
 - Existing enrichment and rendering paths preserve filtered keys-only, total, empty, quiet, JSON-precedence, value-fidelity, truncation, and failure contracts without production changes.
 ---
+## Iteration 16 - 2026-09-19 14:02
+**Work Unit**: US3 Inspect Effective Variables After Local Filtering — Integration and Validation
+**Tasks Completed**:
+- [x] T025: Verify filtered display integration against the existing enrichment gate and ordering
+- [x] T026: Run filtered and existing variable display regressions and record outcomes
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- specs/310-user-task-variable-filtering/tasks.md
+- specs/310-user-task-variable-filtering/ralph-memory.md
+- specs/310-user-task-variable-filtering/quickstart.md
+- specs/310-user-task-variable-filtering/progress.md
+**Learnings**:
+- Service selection and limit trimming precede the shared display gate, so existing incremental and collected paths enrich only eligible selected tasks once and issue no mutations.
+---

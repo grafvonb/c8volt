@@ -21,6 +21,7 @@ Started: 2026-09-19T10:56:01Z
 - The shared variable-display fixture now captures ordered native `localVariables` arrays separately from full search bodies, counts searches and effective-variable pages, and exposes backend-preselected local/inherited/shadowing examples; tests must choose returned task keys rather than evaluate predicates in the mock.
 - Filtered display selection remains downstream of native search and service trimming: filter-only execution performs zero effective-variable reads, and display reads occur exactly once per rendered task across ordinary, limited, sparse, incremental, and terminal-stopped paths.
 - Filtered output uses the same enrichment gate as unfiltered output: effective keys-only, total, and empty selections make zero variable reads; quiet human still performs requested enrichment; quiet JSON and JSON-over-keys preserve full received values while human limits remain rune-aware and retain API/CLI truncation labels.
+- US3 integration requires no production changes: service-selected and limit-trimmed tasks reach the command before the shared enrichment gate, incremental pages enrich once before rendering, and collected results enrich once at final rendering; fixtures expose only read/search routes, so the passing display suites also exclude mutation requests.
 
 ## Decisions
 
@@ -48,4 +49,4 @@ Started: 2026-09-19T10:56:01Z
 - Do not broaden the existing PI grammar, hand-edit generated clients, add client-side variable matching, or introduce new paging/filter loops.
 
 ## Current Handoff
-- Continue US3 with T025: verify T023–T024 against `cmd/get_usertask_vars.go` and `cmd/get_usertask_search.go`; retain the existing selected-task enrichment gate and ordering, and make production changes only for demonstrated gaps.
+- Begin Polish with T027: update user-task help/examples/metadata, command contract assertions, and README for the six workflows, grammar/alias/encoding, local-only filtering, and independent effective-variable display.

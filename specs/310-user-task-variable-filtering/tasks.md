@@ -83,8 +83,8 @@
 
 ### Integration and validation
 
-- [ ] T025 [US3] Verify T023–T024 against `cmd/get_usertask_vars.go` and `cmd/get_usertask_search.go`, retaining the existing selected-task enrichment gate and ordering; fix only demonstrated integration gaps. Do not change `--with-vars` semantics, view schemas, backend scope resolution, or use displayed variables to filter results.
-- [ ] T026 [US3] Run filtered display tests plus the existing user-task variable display regressions and record outcomes in `specs/310-user-task-variable-filtering/quickstart.md`, explicitly checking no variable reads without display or in excluded modes, and no mutation requests.
+- [x] T025 [US3] Verify T023–T024 against `cmd/get_usertask_vars.go` and `cmd/get_usertask_search.go`, retaining the existing selected-task enrichment gate and ordering; fix only demonstrated integration gaps. Do not change `--with-vars` semantics, view schemas, backend scope resolution, or use displayed variables to filter results.
+- [x] T026 [US3] Run filtered display tests plus the existing user-task variable display regressions and record outcomes in `specs/310-user-task-variable-filtering/quickstart.md`, explicitly checking no variable reads without display or in excluded modes, and no mutation requests.
 
 **Checkpoint**: Filtering and inspection compose without a new grammar, new output layout, or extra reads for matching.
 
