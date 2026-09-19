@@ -77,7 +77,7 @@
 
 ### Tests
 
-- [ ] T022 [US3] Extend the existing fixtures in `cmd/get_usertask_vars_test.go` to capture local-variable search predicates alongside task-keyed effective-variable reads, exposing deterministic selected tasks with local/parent/shadowed variable examples and request counters; do not implement a second filter evaluator in the fixture or claim mocked data proves native scope semantics.
+- [x] T022 [US3] Extend the existing fixtures in `cmd/get_usertask_vars_test.go` to capture local-variable search predicates alongside task-keyed effective-variable reads, exposing deterministic selected tasks with local/parent/shadowed variable examples and request counters; do not implement a second filter evaluator in the fixture or claim mocked data proves native scope semantics.
 - [ ] T023 [P] [US3] Add filtered display selection tests in `cmd/get_usertask_search_test.go` using T022's fixture: same selected identities with/without display, within-page limits, sparse pages, stopped paging, and no reads for unselected tasks or duplicate reads after incremental rendering; filters themselves cause zero variable reads.
 - [ ] T024 [P] [US3] Extend `cmd/get_usertask_vars_output_test.go` with filtered display tests for effective keys-only, total, empty, quiet human, quiet+JSON, and JSON-over-keys precedence; assert existing retrieval exclusions, Unicode/structured-value limits, truncation labels, full JSON values, and propagated enrichment failures.
 

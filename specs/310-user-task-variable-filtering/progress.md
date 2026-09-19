@@ -205,3 +205,17 @@ Started: 2026-09-19 12:56:01
 **Learnings**:
 - Existing command/facade/service ownership preserves the complete native filter through every US2 path; total mode changes only the caller limit, and backend failures never become successful empty results.
 ---
+## Iteration 13 - 2026-09-19 13:49
+**Work Unit**: US3 Inspect Effective Variables After Local Filtering — Filtered Display Fixture
+**Tasks Completed**:
+- [x] T022: Capture native local predicates and task-keyed effective-variable reads in a deterministic display fixture
+**Tasks Remaining in Work Unit**: T023–T026
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/get_usertask_vars_test.go
+- specs/310-user-task-variable-filtering/tasks.md
+- specs/310-user-task-variable-filtering/ralph-memory.md
+- specs/310-user-task-variable-filtering/progress.md
+**Learnings**:
+- Backend-preselected fixture responses can exercise local, inherited, and shadowing display data while exact predicate capture proves native filtering without duplicating server matching logic in tests.
+---

@@ -18,6 +18,7 @@ Started: 2026-09-19T10:56:01Z
 - Real-terminal filtered paging uses `testx.NewCmdTerminalRunner`; representative configured/inherited stderr, default-no/continue/decline/EOF, sparse/empty, JSON, automation, and auto-confirm cases assert every native page retains the exact local predicate while stdout remains prompt-free.
 - Filtered backend-failure coverage captures every attempted native search request: first-page failures emit no result, later keys output stays plainly partial without `found:`, collected JSON emits exactly one failed envelope, totals emit no number, and total/limit/output conflicts fail before HTTP.
 - US2 integration needs no production changes: the command forwards one complete request to facade traversal, the service reuses the normalized query across cursor, offset, sparse, bounded, stopped, total, and failure paths, and total mode clears only `Limit`.
+- The shared variable-display fixture now captures ordered native `localVariables` arrays separately from full search bodies, counts searches and effective-variable pages, and exposes backend-preselected local/inherited/shadowing examples; tests must choose returned task keys rather than evaluate predicates in the mock.
 
 ## Decisions
 
@@ -44,4 +45,4 @@ Started: 2026-09-19T10:56:01Z
 - Do not broaden the existing PI grammar, hand-edit generated clients, add client-side variable matching, or introduce new paging/filter loops.
 
 ## Current Handoff
-- Start US3 with T022: extend the existing variable-display fixture to capture local search predicates and task-keyed effective-variable reads without adding client-side matching.
+- Continue US3 with T023: use the filtered variable fixture to prove identical selection with and without display across limits, sparse pages, paging stops, and incremental rendering without unselected or duplicate reads.
