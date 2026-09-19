@@ -190,3 +190,18 @@ Started: 2026-09-19 12:56:01
 **Learnings**:
 - Existing command failure paths retain every local predicate while preventing failed first/later searches from becoming empty successes, false summaries, partial collected payloads, or numeric totals; no production change was required.
 ---
+## Iteration 12 - 2026-09-19 13:45
+**Work Unit**: US2 Bound and Count Filtered Work Reliably — Integration and Validation
+**Tasks Completed**:
+- [x] T020: Verify unchanged query propagation through command and service integration
+- [x] T021: Run filtered traversal, count, output, error, terminal, and focused race validation
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- specs/310-user-task-variable-filtering/tasks.md
+- specs/310-user-task-variable-filtering/ralph-memory.md
+- specs/310-user-task-variable-filtering/quickstart.md
+- specs/310-user-task-variable-filtering/progress.md
+**Learnings**:
+- Existing command/facade/service ownership preserves the complete native filter through every US2 path; total mode changes only the caller limit, and backend failures never become successful empty results.
+---

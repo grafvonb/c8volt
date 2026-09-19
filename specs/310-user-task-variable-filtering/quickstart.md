@@ -138,3 +138,12 @@ Review generated task help and grammar compatibility, confirm no generated clien
 - Focused race variants of the command, task facade, and user-task service/adapter commands above passed.
 - Request fixtures prove exact native request construction and absence of added endpoints. No live backend scope, missing/null, parent-only, or shadowing validation was attempted.
 - `git diff --check` and the touched-command declaration inventory passed before coordinated persistence.
+
+### Iteration 12 — US2 integration and validation (2026-09-19)
+
+- Reviewed `cmd/get_usertask_search.go` and `internal/services/usertask/search.go`; the complete query already flows unchanged through command/facade traversal and every service page, while total mode intentionally clears only `Limit`. No production edit was required.
+- `go test -v ./internal/services/usertask -run 'TestFilteredSearchUserTasks' -count=1` passed and visibly executed the filtered cursor, offset, sparse, limit, stop, exact/capped total, cancellation, malformed-metadata, and later-page failure cases.
+- `go test -v ./cmd -run 'TestGetUserTask(Output_FilteredNonemptyModes|Output_FilteredEmptyModes|PagingTerminal|Error_FilteredSearchFailuresNeverClaimSuccess|Error_FilteredTotalConflictsFailBeforeRequests)$' -count=1` passed and visibly executed the intended filtered output/error suites plus real-terminal paging across Camunda 8.8, 8.9, and 8.10.
+- `go test -race ./internal/services/usertask -run 'TestFilteredSearchUserTasks' -count=1` passed.
+- `go test -race ./cmd -run 'TestGetUserTask(Output_FilteredNonemptyModes|Output_FilteredEmptyModes|Error_FilteredSearchFailuresNeverClaimSuccess|Error_FilteredTotalConflictsFailBeforeRequests)$' -count=1` passed.
+- Failure cases remained errors with no empty-success envelope, false final summary, or numeric total. No live backend validation was attempted; request fixtures remain the evidence for native predicate propagation rather than server scope semantics.

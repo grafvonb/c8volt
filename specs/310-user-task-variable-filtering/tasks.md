@@ -64,8 +64,8 @@
 
 ### Integration and validation
 
-- [ ] T020 [US2] Verify the query added in US1 flows through the existing `cmd/get_usertask_search.go` and `internal/services/usertask/search.go` unchanged for all T016–T019 scenarios; fix only demonstrated feature integration gaps in these files. Retain service-owned traversal/counting and current prompt/view helpers; if the tests pass, no production edits are required.
-- [ ] T021 [US2] Run the new filtered traversal/count/output/error tests and `TestGetUserTaskPagingTerminal`, including focused race coverage where appropriate, and record results in `specs/310-user-task-variable-filtering/quickstart.md`; confirm test selectors actually execute the intended cases and no backend failure is classified as a successful empty search.
+- [x] T020 [US2] Verify the query added in US1 flows through the existing `cmd/get_usertask_search.go` and `internal/services/usertask/search.go` unchanged for all T016–T019 scenarios; fix only demonstrated feature integration gaps in these files. Retain service-owned traversal/counting and current prompt/view helpers; if the tests pass, no production edits are required.
+- [x] T021 [US2] Run the new filtered traversal/count/output/error tests and `TestGetUserTaskPagingTerminal`, including focused race coverage where appropriate, and record results in `specs/310-user-task-variable-filtering/quickstart.md`; confirm test selectors actually execute the intended cases and no backend failure is classified as a successful empty search.
 
 **Checkpoint**: Filtered bounded searches and scripts preserve the base command's operational contract.
 
