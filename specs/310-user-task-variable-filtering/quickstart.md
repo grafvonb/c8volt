@@ -92,3 +92,11 @@ Review generated task help and grammar compatibility, confirm no generated clien
 - `go test ./internal/domain -count=1` passed.
 - `go test -race ./c8volt/task -run 'Test.*(Search|VariableFilter)' -count=1` passed.
 - `git diff --check` passed before coordinated persistence; no live backend validation was attempted because this work unit only establishes facade/domain propagation.
+
+### Iteration 3 — parser parity and isolation (2026-09-19)
+
+- Extracted explicit-input orchestration while retaining the existing PI wrapper and all lower-level grammar helpers.
+- Added task-wrapper parity coverage for all operators, aliases, repeated/grouped inputs, quoted commas, arrays, assignment characters, wildcard escapes, malformed inputs, exact diagnostics, and independent globals.
+- `go test ./cmd -run 'Test(UserTaskVariableFilterParser|ParsePIVariableFilters)' -count=1` passed.
+- `go test -race ./cmd -run 'Test(UserTaskVariableFilterParser|ParsePIVariableFilters)' -count=1` passed.
+- `git diff --check` passed; no live backend validation was attempted because this work unit does not yet construct native task requests.

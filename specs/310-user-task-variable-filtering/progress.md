@@ -41,3 +41,21 @@ Started: 2026-09-19 12:56:01
 **Learnings**:
 - Struct-valued `omitempty` serializes an empty public filter set as an empty object; conversion still preserves an empty clause set for unfiltered service behavior.
 ---
+## Iteration 3 - 2026-09-19 13:06
+**Work Unit**: US1 Find Tasks Using Familiar Variable Filters — Parser Parity and Isolation
+**Tasks Completed**:
+- [x] T005: Add parser parity and command-global isolation cases
+- [x] T009: Extract explicit-input parser orchestration and add the task-owned wrapper
+**Tasks Remaining in Work Unit**: T006–T008 and T010–T015
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/get_processinstance_variable_filter.go
+- cmd/get_usertask_variable_filter.go
+- cmd/get_usertask_variable_filter_test.go
+- specs/310-user-task-variable-filtering/tasks.md
+- specs/310-user-task-variable-filtering/ralph-memory.md
+- specs/310-user-task-variable-filtering/quickstart.md
+- specs/310-user-task-variable-filtering/progress.md
+**Learnings**:
+- Explicit raw slices preserve the established grammar while proving PI and task command flag state cannot leak across wrappers.
+---
