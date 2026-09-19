@@ -60,6 +60,10 @@ func userTaskSearchRequest(query d.UserTaskSearchQuery, pageReq d.UserTaskPageRe
 	if err != nil {
 		return camundav89.SearchUserTasksJSONRequestBody{}, err
 	}
+	localVariables, err := newVariableValueFiltersPtr(query.VariableFilters)
+	if err != nil {
+		return camundav89.SearchUserTasksJSONRequestBody{}, err
+	}
 	filter := &camundav89.UserTaskFilter{
 		ProcessInstanceKey:   stringPtrAs[camundav89.ProcessInstanceKey](query.ProcessInstanceKey),
 		ProcessDefinitionKey: stringPtrAs[camundav89.ProcessDefinitionKey](query.ProcessDefinitionKey),
@@ -70,6 +74,7 @@ func userTaskSearchRequest(query d.UserTaskSearchQuery, pageReq d.UserTaskPageRe
 		CandidateUser:        candidateUser,
 		CandidateGroup:       candidateGroup,
 		TenantId:             tenant,
+		LocalVariables:       localVariables,
 	}
 	page := newUserTaskSearchPageRequest(pageReq)
 	return camundav89.SearchUserTasksJSONRequestBody{Filter: filter, Page: &page}, nil
