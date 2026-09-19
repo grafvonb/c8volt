@@ -417,3 +417,279 @@ func TestSearchUserTasksPagesResolvesExactContinuationBeforeVisitor(t *testing.T
 	require.EqualValues(t, 3, result.Total)
 	require.Equal(t, d.UserTaskSearchCompletionExhausted, result.Completion)
 }
+
+// TestFilteredSearchUserTasksPagesPreservesPredicatesAcrossTraversal verifies
+// cursor and offset advancement never rebuild or discard the native filters.
+func TestFilteredSearchUserTasksPagesPreservesPredicatesAcrossTraversal(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name         string
+		pages        func(d.UserTaskPageRequest, int) (d.UserTaskSearchPage, error)
+		wantRequests []d.UserTaskPageRequest
+		wantKeys     []string
+	}{
+		{
+			name: "cursor pages",
+			pages: func(request d.UserTaskPageRequest, call int) (d.UserTaskSearchPage, error) {
+				switch call {
+				case 1:
+					return searchPage(request, []string{"task-a"}, 1, "cursor-a", 2, d.UserTaskReportedTotalKindLowerBound, d.UserTaskContinuationStateHasMore), nil
+				case 2:
+					return searchPage(request, []string{"task-b"}, 1, "cursor-b", 2, d.UserTaskReportedTotalKindLowerBound, d.UserTaskContinuationStateHasMore), nil
+				default:
+					return searchPage(request, nil, 0, "", 2, d.UserTaskReportedTotalKindLowerBound, d.UserTaskContinuationStateIndeterminate), nil
+				}
+			},
+			wantRequests: []d.UserTaskPageRequest{{Size: 2}, {Size: 2, After: "cursor-a"}, {Size: 2, After: "cursor-b"}},
+			wantKeys:     []string{"task-a", "task-b"},
+		},
+		{
+			name: "offset pages with sparse continuation",
+			pages: func(request d.UserTaskPageRequest, call int) (d.UserTaskSearchPage, error) {
+				switch call {
+				case 1:
+					return searchPage(request, []string{"task-a"}, 1, "", 2, d.UserTaskReportedTotalKindLowerBound, d.UserTaskContinuationStateHasMore), nil
+				case 2:
+					return searchPage(request, nil, 0, "", 2, d.UserTaskReportedTotalKindLowerBound, d.UserTaskContinuationStateHasMore), nil
+				case 3:
+					return searchPage(request, []string{"task-b"}, 1, "", 2, d.UserTaskReportedTotalKindLowerBound, d.UserTaskContinuationStateIndeterminate), nil
+				default:
+					return searchPage(request, nil, 0, "", 2, d.UserTaskReportedTotalKindLowerBound, d.UserTaskContinuationStateIndeterminate), nil
+				}
+			},
+			wantRequests: []d.UserTaskPageRequest{{Size: 2}, {From: 1, Size: 2}, {From: 3, Size: 2}, {From: 4, Size: 2}},
+			wantKeys:     []string{"task-a", "task-b"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			query := filteredUserTaskSearchQuery(2, 0)
+			requests := make([]d.UserTaskPageRequest, 0, len(tt.wantRequests))
+			api := &searchUserTaskAPI{searchPage: func(_ context.Context, gotQuery d.UserTaskSearchQuery, request d.UserTaskPageRequest, _ ...services.CallOption) (d.UserTaskSearchPage, error) {
+				require.Equal(t, query, gotQuery)
+				requests = append(requests, request)
+				return tt.pages(request, len(requests))
+			}}
+
+			result, err := SearchUserTasksPages(context.Background(), api, query, nil)
+
+			require.NoError(t, err)
+			require.Equal(t, tt.wantRequests, requests)
+			require.Equal(t, tt.wantKeys, userTaskKeys(result.Items))
+			require.Equal(t, d.UserTaskSearchCompletionExhausted, result.Completion)
+		})
+	}
+}
+
+// TestFilteredSearchUserTasksPagesPreservesPredicatesForLimitsAndStops verifies
+// selected-row bounds and caller stops do not mutate the search predicates.
+func TestFilteredSearchUserTasksPagesPreservesPredicatesForLimitsAndStops(t *testing.T) {
+	t.Parallel()
+
+	t.Run("within-page limit", func(t *testing.T) {
+		t.Parallel()
+
+		query := filteredUserTaskSearchQuery(3, 2)
+		calls := 0
+		api := &searchUserTaskAPI{searchPage: func(_ context.Context, gotQuery d.UserTaskSearchQuery, request d.UserTaskPageRequest, _ ...services.CallOption) (d.UserTaskSearchPage, error) {
+			require.Equal(t, query, gotQuery)
+			calls++
+			return searchPage(request, []string{"task-a", "task-b", "task-c"}, 3, "cursor-a", 10, d.UserTaskReportedTotalKindLowerBound, d.UserTaskContinuationStateHasMore), nil
+		}}
+
+		result, err := SearchUserTasksPages(context.Background(), api, query, nil)
+
+		require.NoError(t, err)
+		require.Equal(t, []string{"task-a", "task-b"}, userTaskKeys(result.Items))
+		require.Equal(t, d.UserTaskSearchCompletionLimitReached, result.Completion)
+		require.Equal(t, 1, calls)
+	})
+
+	t.Run("visitor stop", func(t *testing.T) {
+		t.Parallel()
+
+		query := filteredUserTaskSearchQuery(1, 0)
+		calls := 0
+		api := &searchUserTaskAPI{searchPage: func(_ context.Context, gotQuery d.UserTaskSearchQuery, request d.UserTaskPageRequest, _ ...services.CallOption) (d.UserTaskSearchPage, error) {
+			require.Equal(t, query, gotQuery)
+			calls++
+			return searchPage(request, []string{"task-a"}, 1, "cursor-a", 2, d.UserTaskReportedTotalKindLowerBound, d.UserTaskContinuationStateHasMore), nil
+		}}
+
+		result, err := SearchUserTasksPages(context.Background(), api, query, func(d.UserTaskSearchPageStep) (d.UserTaskSearchPageAction, error) {
+			return d.UserTaskSearchPageActionStop, nil
+		})
+
+		require.NoError(t, err)
+		require.Equal(t, []string{"task-a"}, userTaskKeys(result.Items))
+		require.Equal(t, d.UserTaskSearchCompletionVisitorStopped, result.Completion)
+		require.Equal(t, 1, calls)
+	})
+}
+
+// TestFilteredSearchUserTasksTotalPreservesPredicates verifies exact metadata
+// and capped traversal use the same filters while intentionally clearing Limit.
+func TestFilteredSearchUserTasksTotalPreservesPredicates(t *testing.T) {
+	t.Parallel()
+
+	t.Run("exact metadata", func(t *testing.T) {
+		t.Parallel()
+
+		input := filteredUserTaskSearchQuery(2, 1)
+		wantQuery := input
+		wantQuery.Limit = 0
+		calls := 0
+		api := &searchUserTaskAPI{searchPage: func(_ context.Context, gotQuery d.UserTaskSearchQuery, request d.UserTaskPageRequest, _ ...services.CallOption) (d.UserTaskSearchPage, error) {
+			require.Equal(t, wantQuery, gotQuery)
+			calls++
+			return searchPage(request, []string{"task-a"}, 1, "cursor-a", 7, d.UserTaskReportedTotalKindExact, d.UserTaskContinuationStateHasMore), nil
+		}}
+
+		total, err := SearchUserTasksTotal(context.Background(), api, input)
+
+		require.NoError(t, err)
+		require.EqualValues(t, 7, total)
+		require.Equal(t, 1, calls)
+	})
+
+	t.Run("capped traversal", func(t *testing.T) {
+		t.Parallel()
+
+		input := filteredUserTaskSearchQuery(2, 1)
+		wantQuery := input
+		wantQuery.Limit = 0
+		requests := make([]d.UserTaskPageRequest, 0, 3)
+		api := &searchUserTaskAPI{searchPage: func(_ context.Context, gotQuery d.UserTaskSearchQuery, request d.UserTaskPageRequest, _ ...services.CallOption) (d.UserTaskSearchPage, error) {
+			require.Equal(t, wantQuery, gotQuery)
+			requests = append(requests, request)
+			switch len(requests) {
+			case 1:
+				return searchPage(request, []string{"task-a", "task-b"}, 2, "cursor-a", 2, d.UserTaskReportedTotalKindLowerBound, d.UserTaskContinuationStateHasMore), nil
+			case 2:
+				return searchPage(request, nil, 0, "cursor-b", 2, d.UserTaskReportedTotalKindLowerBound, d.UserTaskContinuationStateHasMore), nil
+			default:
+				return searchPage(request, []string{"task-c"}, 1, "", 2, d.UserTaskReportedTotalKindLowerBound, d.UserTaskContinuationStateNoMore), nil
+			}
+		}}
+
+		total, err := SearchUserTasksTotal(context.Background(), api, input)
+
+		require.NoError(t, err)
+		require.EqualValues(t, 3, total)
+		require.Equal(t, []d.UserTaskPageRequest{{Size: 2}, {Size: 2, After: "cursor-a"}, {Size: 2, After: "cursor-b"}}, requests)
+	})
+}
+
+// TestFilteredSearchUserTasksPagesPreservesFailures verifies cancellation,
+// malformed facts, and later-page failures cannot become partial successes.
+func TestFilteredSearchUserTasksPagesPreservesFailures(t *testing.T) {
+	t.Parallel()
+
+	t.Run("pre-canceled context", func(t *testing.T) {
+		t.Parallel()
+
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+		called := false
+		api := &searchUserTaskAPI{searchPage: func(context.Context, d.UserTaskSearchQuery, d.UserTaskPageRequest, ...services.CallOption) (d.UserTaskSearchPage, error) {
+			called = true
+			return d.UserTaskSearchPage{}, nil
+		}}
+
+		result, err := SearchUserTasksPages(ctx, api, filteredUserTaskSearchQuery(1, 0), nil)
+
+		require.ErrorIs(t, err, context.Canceled)
+		require.Empty(t, result)
+		require.False(t, called)
+	})
+
+	t.Run("cancellation during request", func(t *testing.T) {
+		t.Parallel()
+
+		query := filteredUserTaskSearchQuery(1, 0)
+		ctx, cancel := context.WithCancel(context.Background())
+		api := &searchUserTaskAPI{searchPage: func(_ context.Context, gotQuery d.UserTaskSearchQuery, _ d.UserTaskPageRequest, _ ...services.CallOption) (d.UserTaskSearchPage, error) {
+			require.Equal(t, query, gotQuery)
+			cancel()
+			return d.UserTaskSearchPage{}, context.Canceled
+		}}
+
+		result, err := SearchUserTasksPages(ctx, api, query, nil)
+
+		require.ErrorIs(t, err, context.Canceled)
+		require.Empty(t, result)
+	})
+
+	t.Run("malformed later metadata", func(t *testing.T) {
+		t.Parallel()
+
+		query := filteredUserTaskSearchQuery(1, 0)
+		calls := 0
+		api := &searchUserTaskAPI{searchPage: func(_ context.Context, gotQuery d.UserTaskSearchQuery, request d.UserTaskPageRequest, _ ...services.CallOption) (d.UserTaskSearchPage, error) {
+			require.Equal(t, query, gotQuery)
+			calls++
+			if calls == 1 {
+				return searchPage(request, []string{"task-a"}, 1, "cursor-a", 2, d.UserTaskReportedTotalKindExact, d.UserTaskContinuationStateHasMore), nil
+			}
+			page := searchPage(request, []string{"task-b"}, 1, "", 2, d.UserTaskReportedTotalKindExact, d.UserTaskContinuationStateNoMore)
+			page.Request.After = "wrong-cursor"
+			return page, nil
+		}}
+
+		result, err := SearchUserTasksPages(context.Background(), api, query, nil)
+
+		require.ErrorIs(t, err, d.ErrMalformedResponse)
+		require.Empty(t, result)
+		require.Equal(t, 2, calls)
+	})
+
+	t.Run("later-page adapter error", func(t *testing.T) {
+		t.Parallel()
+
+		query := filteredUserTaskSearchQuery(1, 0)
+		errLater := errors.New("later page failed")
+		calls := 0
+		api := &searchUserTaskAPI{searchPage: func(_ context.Context, gotQuery d.UserTaskSearchQuery, request d.UserTaskPageRequest, _ ...services.CallOption) (d.UserTaskSearchPage, error) {
+			require.Equal(t, query, gotQuery)
+			calls++
+			if calls == 1 {
+				return searchPage(request, []string{"task-a"}, 1, "cursor-a", 2, d.UserTaskReportedTotalKindLowerBound, d.UserTaskContinuationStateHasMore), nil
+			}
+			return d.UserTaskSearchPage{}, errLater
+		}}
+
+		result, err := SearchUserTasksPages(context.Background(), api, query, nil)
+
+		require.ErrorIs(t, err, errLater)
+		require.Empty(t, result)
+		require.Equal(t, 2, calls)
+	})
+}
+
+// filteredUserTaskSearchQuery returns a representative native query. The fake
+// API panics on effective-variable reads, proving filter traversal remains a
+// page-search-only operation; mutation operations are absent from this API.
+func filteredUserTaskSearchQuery(batchSize, limit int32) d.UserTaskSearchQuery {
+	return d.UserTaskSearchQuery{
+		ProcessInstanceKey:   "process-a",
+		ProcessDefinitionKey: "definition-a",
+		BpmnProcessId:        "invoice",
+		ElementId:            "approve",
+		State:                "CREATED",
+		Assignee:             "alice",
+		CandidateUser:        "bob",
+		CandidateGroup:       "operators",
+		VariableFilters: d.ProcessInstanceVariableFilterSet{Clauses: []d.ProcessInstanceVariableFilterClause{{
+			Name:     "status",
+			Operator: d.ProcessInstanceVariableFilterOperatorEq,
+			Value:    `"approved"`,
+			Source:   "--var",
+		}}},
+		BatchSize: batchSize,
+		Limit:     limit,
+	}
+}

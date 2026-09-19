@@ -134,3 +134,17 @@ Started: 2026-09-19 12:56:01
 **Learnings**:
 - Re-parsing during request construction avoids mutable cached state, while successful search-only fixtures prove filter execution adds no variable or discovery endpoint calls.
 ---
+## Iteration 8 - 2026-09-19 13:26
+**Work Unit**: US2 Bound and Count Filtered Work Reliably — Service Traversal and Counting
+**Tasks Completed**:
+- [x] T016: Prove filtered predicates survive traversal, bounds, counts, stops, cancellation, malformed metadata, and later-page errors
+**Tasks Remaining in Work Unit**: T017–T021
+**Commit**: This work-unit commit
+**Files Changed**:
+- internal/services/usertask/search_test.go
+- specs/310-user-task-variable-filtering/tasks.md
+- specs/310-user-task-variable-filtering/ralph-memory.md
+- specs/310-user-task-variable-filtering/progress.md
+**Learnings**:
+- Existing service traversal already preserves the full filtered query on every page and failure path; total mode intentionally clears only the caller limit, so no production change was required.
+---

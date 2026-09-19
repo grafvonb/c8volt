@@ -13,6 +13,7 @@ Started: 2026-09-19T10:56:01Z
 - The v8.8, v8.9, and v8.10 generated local-variable unions have matching shapes; their adapter-local request tests cover ordered duplicates, ordinary/tenant selectors, null text distinctions, false existence, escaped wildcards, empty omission, and pre-HTTP invalid input.
 - User-task variable flags are repeatable `StringArray` inputs. Validation parses them before request dispatch, request construction parses again without cached state, and key conflicts use Cobra's `Changed` state so explicit and stdin keys reject all three flags.
 - Command request fixtures accept only `POST /v2/user-tasks/search`; successful filtered execution therefore proves no task-variable or name-discovery request was added while asserting exact `filter.localVariables` placement.
+- Version-neutral traversal retains the complete ordinary and variable-filter query on initial, cursor, offset, sparse, bounded, stopped, total, and failure paths. Total mode clears only `Limit`; the search-only fake API panics on any effective-variable read.
 
 ## Decisions
 
@@ -39,4 +40,4 @@ Started: 2026-09-19T10:56:01Z
 - Do not broaden the existing PI grammar, hand-edit generated clients, add client-side variable matching, or introduce new paging/filter loops.
 
 ## Current Handoff
-- Start US2 with T016: extend version-neutral user-task traversal tests to prove filtered predicates survive every page, sparse continuation, limits, totals, stops, cancellation, metadata failures, and later-page errors without variable or mutation requests.
+- Continue US2 with T017: extend command output coverage for filtered nonempty and empty human, JSON, keys-only, quiet, total, auto-confirm, and automation execution, including exact stdout/stderr, JSON EOF, empty payload, and request-count assertions.
