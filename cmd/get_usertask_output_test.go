@@ -108,6 +108,48 @@ func TestGetUserTaskOutput_EmptyAndTotalModes(t *testing.T) {
 	}
 }
 
+// TestGetUserTaskOutput_EmptyVariableSearchModes verifies opt-in enrichment
+// preserves every successful empty/count output contract without variable reads.
+func TestGetUserTaskOutput_EmptyVariableSearchModes(t *testing.T) {
+	for _, test := range []struct {
+		name     string
+		args     []string
+		want     string
+		wantJSON bool
+	}{
+		{name: "human", args: []string{"get", "ut", "--with-vars"}, want: "found: 0\n"},
+		{name: "quiet human", args: []string{"--quiet", "get", "ut", "--with-vars"}},
+		{name: "keys", args: []string{"--keys-only", "get", "ut", "--with-vars"}},
+		{name: "quiet keys", args: []string{"--quiet", "--keys-only", "get", "ut", "--with-vars"}},
+		{name: "json", args: []string{"--json", "get", "ut", "--with-vars"}, wantJSON: true},
+		{name: "quiet json", args: []string{"--quiet", "--json", "get", "ut", "--with-vars"}, wantJSON: true},
+		{name: "automation", args: []string{"--automation", "get", "ut", "--with-vars"}, want: "found: 0\n"},
+		{name: "auto confirm", args: []string{"--auto-confirm", "get", "ut", "--with-vars"}, want: "found: 0\n"},
+		{name: "total zero", args: []string{"get", "ut", "--total", "--with-vars"}, want: "0\n"},
+		{name: "quiet total zero", args: []string{"--quiet", "get", "ut", "--total", "--with-vars"}, want: "0\n"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			server, requests := newGetUserTaskVariablesServer(t, getUserTaskVariablesFixture{
+				SearchRespond: func(_ int, _ map[string]any) string { return userTaskSearchResponse(0, false, "") },
+			})
+			configPath := testx.WriteTestConfigForVersion(t, server.URL, "8.9")
+			stdout, stderr, err := runGetUserTaskCommand(t, configPath, "", test.args...)
+			require.NoError(t, err, stderr)
+			require.Empty(t, stderr)
+			if test.wantJSON {
+				requireSucceededUserTaskEnvelope(t, stdout, 0)
+				require.Contains(t, stdout, `"items": []`)
+				require.NotContains(t, stdout, `"variables"`)
+			} else {
+				require.Equal(t, test.want, stdout)
+			}
+			_, searches, variables := requests.snapshot()
+			require.Len(t, searches, 1)
+			require.Empty(t, variables)
+		})
+	}
+}
+
 // TestGetUserTaskOutput_DiagnosticsStayOffStdout verifies verbose, debug, and
 // activity plumbing cannot contaminate keys-only command results.
 func TestGetUserTaskOutput_DiagnosticsStayOffStdout(t *testing.T) {

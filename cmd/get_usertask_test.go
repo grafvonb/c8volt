@@ -6,6 +6,7 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -178,6 +179,180 @@ func TestGetUserTaskCommand_MissingKeyFailsWithoutPartialSuccess(t *testing.T) {
 	require.NotContains(t, stdout, `"items"`)
 }
 
+// TestGetUserTaskCommand_KeyedVariablesInputAndAliases verifies every keyed
+// spelling enriches selected tasks after stable stdin/flag merging and deduplication.
+func TestGetUserTaskCommand_KeyedVariablesInputAndAliases(t *testing.T) {
+	const firstKey = "2251799815391233"
+	const secondKey = "2251799815391234"
+	onePage := func(name, value string) []userTaskVariablePageFixture {
+		return []userTaskVariablePageFixture{{Total: 1, Items: []userTaskVariableFixtureValue{{
+			Name: name, Value: value, VariableKey: "901", ProcessInstanceKey: "2251799813711967",
+			ScopeKey: "2251799815391200", TenantID: "tenant-a",
+		}}}}
+	}
+
+	for _, alias := range []string{"user-task", "user-tasks", "ut", "uts"} {
+		t.Run(alias, func(t *testing.T) {
+			server, requests := newGetUserTaskVariablesServer(t, getUserTaskVariablesFixture{
+				VariablePages: map[string][]userTaskVariablePageFixture{firstKey: onePage("amount", "120")},
+			})
+			configPath := testx.WriteTestConfigForVersion(t, server.URL, "8.9")
+			stdout, stderr, err := runGetUserTaskCommand(t, configPath, "", "get", alias, "--key", firstKey, "--with-vars")
+			require.NoError(t, err, stderr)
+			require.Empty(t, stderr)
+			require.Equal(t, ""+
+				firstKey+" tenant-a approve_invoice CREATED pi:2251799813711967 ei:2251799815391200 pd:2251799813689000 assignee:alice\n"+
+				"└─ vars:\n"+
+				"   └─ amount=120\n"+
+				"found: 1\n", stdout)
+			require.Equal(t, 1, requests.variableRequestCount(firstKey))
+		})
+	}
+
+	server, requests := newGetUserTaskVariablesServer(t, getUserTaskVariablesFixture{
+		VariablePages: map[string][]userTaskVariablePageFixture{
+			firstKey:  onePage("amount", "120"),
+			secondKey: {{Total: 0, Items: []userTaskVariableFixtureValue{}}},
+		},
+	})
+	configPath := testx.WriteTestConfigForVersion(t, server.URL, "8.9")
+	stdout, stderr, err := runGetUserTaskCommand(t, configPath, "\n"+secondKey+"\n"+firstKey+"\n", "get", "ut", "--workers", "1", "--key", firstKey+","+firstKey, "--with-vars", "-")
+	require.NoError(t, err, stderr)
+	require.Empty(t, stderr)
+	require.Less(t, strings.Index(stdout, firstKey+" tenant-a"), strings.Index(stdout, secondKey+" tenant-a"))
+	require.Equal(t, 1, strings.Count(stdout, firstKey+" tenant-a"))
+	require.Equal(t, 1, strings.Count(stdout, "amount=120"))
+	require.Equal(t, 1, strings.Count(stdout, "vars:"), "the task without variables must not invent a subtree")
+	taskKeys, _, _ := requests.snapshot()
+	require.Equal(t, []string{firstKey, secondKey}, taskKeys)
+	require.Equal(t, 1, requests.variableRequestCount(firstKey))
+	require.Equal(t, 1, requests.variableRequestCount(secondKey))
+
+	implicitServer, implicitRequests := newGetUserTaskVariablesServer(t, getUserTaskVariablesFixture{
+		VariablePages: map[string][]userTaskVariablePageFixture{secondKey: onePage("status", `"done"`)},
+	})
+	implicitConfig := testx.WriteTestConfigForVersion(t, implicitServer.URL, "8.9")
+	stdout, stderr, err = runGetUserTaskCommand(t, implicitConfig, secondKey+"\n", "get", "ut", "--with-vars")
+	require.NoError(t, err, stderr)
+	require.Empty(t, stderr)
+	require.Contains(t, stdout, `status="done"`)
+	require.Equal(t, 1, implicitRequests.variableRequestCount(secondKey))
+}
+
+// TestGetUserTaskCommand_KeyedVariablesJSONPreservesEffectiveMetadata verifies
+// complete variable paging, backend-selected scope, authorized tenant metadata,
+// stable effective-name normalization, and a single enriched JSON envelope.
+func TestGetUserTaskCommand_KeyedVariablesJSONPreservesEffectiveMetadata(t *testing.T) {
+	const key = "2251799815391233"
+	server, requests := newGetUserTaskVariablesServer(t, getUserTaskVariablesFixture{
+		VariablePages: map[string][]userTaskVariablePageFixture{key: {
+			{Total: 4, Items: []userTaskVariableFixtureValue{
+				{Name: "shared", Value: `"local"`, VariableKey: "902", ProcessInstanceKey: "2251799813711967", ScopeKey: "2251799815391200", TenantID: "tenant-foreign"},
+				{Name: "zeta", Value: "2", VariableKey: "903", ProcessInstanceKey: "2251799813711967", ScopeKey: "2251799813711967", TenantID: "tenant-foreign"},
+			}},
+			{Total: 4, Items: []userTaskVariableFixtureValue{
+				{Name: "shared", Value: `"local"`, VariableKey: "902", ProcessInstanceKey: "2251799813711967", ScopeKey: "2251799815391200", TenantID: "tenant-foreign"},
+				{Name: "alpha", Value: "1", VariableKey: "904", ProcessInstanceKey: "2251799813711967", ScopeKey: "2251799813711967", TenantID: "tenant-foreign"},
+			}},
+		}},
+	})
+	configPath := testx.WriteTestConfigForVersion(t, server.URL, "8.9")
+	stdout, stderr, err := runGetUserTaskCommand(t, configPath, "", "--tenant", "configured-tenant", "--json", "get", "ut", "--key", key, "--with-vars")
+	require.NoError(t, err, stderr)
+	require.Empty(t, stderr)
+	decoder := json.NewDecoder(strings.NewReader(stdout))
+	var envelope map[string]any
+	require.NoError(t, decoder.Decode(&envelope))
+	require.ErrorIs(t, decoder.Decode(&struct{}{}), io.EOF)
+	payload := envelope["payload"].(map[string]any)
+	require.Equal(t, float64(1), payload["total"])
+	enriched := payload["items"].([]any)[0].(map[string]any)
+	require.Equal(t, "tenant-a", enriched["item"].(map[string]any)["tenantId"])
+	variables := enriched["variables"].([]any)
+	require.Len(t, variables, 3)
+	require.Equal(t, "alpha", variables[0].(map[string]any)["name"])
+	require.Equal(t, "shared", variables[1].(map[string]any)["name"])
+	require.Equal(t, "2251799815391200", variables[1].(map[string]any)["scopeKey"])
+	require.Equal(t, "tenant-foreign", variables[1].(map[string]any)["tenantId"])
+	require.Equal(t, "zeta", variables[2].(map[string]any)["name"])
+	require.Equal(t, 2, requests.variableRequestCount(key))
+}
+
+// TestGetUserTaskCommand_KeyedVariableFailuresDoNotRenderPartialSuccess verifies
+// denied or disappeared tasks and later variable-page failures retain strict errors.
+func TestGetUserTaskCommand_KeyedVariableFailuresDoNotRenderPartialSuccess(t *testing.T) {
+	const deniedKey = "2251799815391288"
+	const missingKey = "2251799815391299"
+	const failingKey = "2251799815391233"
+	for _, test := range []struct {
+		name          string
+		fixture       getUserTaskVariablesFixture
+		key           string
+		want          string
+		variableCalls int
+	}{
+		{name: "denied task", key: deniedKey, fixture: getUserTaskVariablesFixture{TaskStatuses: map[string]int{deniedKey: http.StatusForbidden}}, want: "forbidden"},
+		{name: "disappeared task", key: missingKey, fixture: getUserTaskVariablesFixture{TaskStatuses: map[string]int{missingKey: http.StatusNotFound}}, want: "not found"},
+		{name: "later variable page", key: failingKey, fixture: getUserTaskVariablesFixture{VariablePages: map[string][]userTaskVariablePageFixture{failingKey: {
+			{Total: 2, Items: []userTaskVariableFixtureValue{{Name: "alpha", Value: "1", VariableKey: "901", ProcessInstanceKey: "2251799813711967", ScopeKey: "2251799813711967", TenantID: "tenant-a"}}},
+			{Status: http.StatusInternalServerError},
+		}}}, want: "internal server error", variableCalls: 2},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			server, requests := newGetUserTaskVariablesServer(t, test.fixture)
+			configPath := testx.WriteTestConfigForVersion(t, server.URL, "8.9")
+			stdout, stderr, err := runGetUserTaskCommand(t, configPath, "", "get", "ut", "--key", test.key, "--with-vars")
+			require.Error(t, err)
+			require.Empty(t, stdout)
+			require.Contains(t, strings.ToLower(stderr), test.want)
+			require.Equal(t, test.variableCalls, requests.variableRequestCount(test.key))
+		})
+	}
+}
+
+// TestGetUserTaskCommand_VariableModeGates verifies enrichment is skipped for
+// absent opt-in, effective keys-only, total, and empty selections while quiet
+// human and JSON-precedence executions still retrieve requested variables.
+func TestGetUserTaskCommand_VariableModeGates(t *testing.T) {
+	const key = "2251799815391233"
+	newFixture := func() getUserTaskVariablesFixture {
+		return getUserTaskVariablesFixture{
+			SearchRespond: func(_ int, _ map[string]any) string { return userTaskSearchResponse(0, false, "") },
+			VariablePages: map[string][]userTaskVariablePageFixture{key: {{
+				Total: 1, Items: []userTaskVariableFixtureValue{{Name: "amount", Value: "120", VariableKey: "901", ProcessInstanceKey: "2251799813711967", ScopeKey: "2251799815391200", TenantID: "tenant-a"}},
+			}}},
+		}
+	}
+	for _, test := range []struct {
+		name          string
+		args          []string
+		want          string
+		wantEmpty     bool
+		variableCalls int
+	}{
+		{name: "absent flag", args: []string{"get", "ut", "--key", key}, want: "found: 1\n"},
+		{name: "keys only", args: []string{"--keys-only", "get", "ut", "--key", key, "--with-vars"}, want: key + "\n"},
+		{name: "total", args: []string{"get", "ut", "--total", "--with-vars"}, want: "0\n"},
+		{name: "empty search", args: []string{"get", "ut", "--with-vars"}, want: "found: 0\n"},
+		{name: "quiet human", args: []string{"--quiet", "get", "ut", "--key", key, "--with-vars"}, wantEmpty: true, variableCalls: 1},
+		{name: "json precedence", args: []string{"--json", "--keys-only", "get", "ut", "--key", key, "--with-vars"}, want: `"variables"`, variableCalls: 1},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			server, requests := newGetUserTaskVariablesServer(t, newFixture())
+			configPath := testx.WriteTestConfigForVersion(t, server.URL, "8.9")
+			stdout, stderr, err := runGetUserTaskCommand(t, configPath, "", test.args...)
+			require.NoError(t, err, stderr)
+			require.Empty(t, stderr)
+			if test.wantEmpty {
+				require.Empty(t, stdout)
+			} else {
+				require.Contains(t, stdout, test.want)
+			}
+			require.Equal(t, test.variableCalls, requests.variableRequestCount(key))
+		})
+	}
+}
+
 // TestGetUserTaskCommandHelper executes one isolated real command path because
 // production command errors terminate the process.
 func TestGetUserTaskCommandHelper(t *testing.T) {
@@ -188,6 +363,7 @@ func TestGetUserTaskCommandHelper(t *testing.T) {
 	if err := json.Unmarshal([]byte(os.Getenv("C8VOLT_TEST_USER_TASK_ARGS")), &args); err != nil {
 		t.Fatalf("decode helper args: %v", err)
 	}
+	flagGetUserTaskVarValueLimit = 0
 	os.Args = append([]string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG")}, args...)
 	Execute()
 	os.Exit(0)

@@ -23,3 +23,24 @@ func listenerTimestampColumns(creationTime *time.Time, endTime *time.Time, deadl
 	}
 	return columns
 }
+
+// runtimeListenerDuration measures job lifetime, including time waiting for a worker.
+func runtimeListenerDuration(creationTime, endTime *time.Time, state string, capturedNow time.Time) string {
+	if creationTime == nil || creationTime.IsZero() {
+		return ""
+	}
+	end := capturedNow
+	if endTime != nil {
+		end = *endTime
+	} else {
+		switch state {
+		case "CREATED", "ACTIVATED", "FAILED", "TIMED_OUT", "RETRIES_UPDATED":
+		default:
+			return ""
+		}
+	}
+	if end.Before(*creationTime) {
+		return ""
+	}
+	return end.Sub(*creationTime).String()
+}

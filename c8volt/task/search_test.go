@@ -36,6 +36,11 @@ func (a facadeSearchUserTaskAPI) SearchUserTasksPage(ctx context.Context, query 
 	return a.searchPage(ctx, query, page, opts...)
 }
 
+// SearchUserTaskEffectiveVariablesPage rejects enrichment from ordinary public search methods.
+func (a facadeSearchUserTaskAPI) SearchUserTaskEffectiveVariablesPage(context.Context, string, d.UserTaskVariablePageRequest, ...services.CallOption) (d.UserTaskVariablePage, error) {
+	return d.UserTaskVariablePage{}, errors.New("unexpected effective-variable search")
+}
+
 // TestClientSearchUserTasksMapsRequestOptionsAndReturnedCount verifies the
 // facade forwards every selector while exposing the limited returned count.
 func TestClientSearchUserTasksMapsRequestOptionsAndReturnedCount(t *testing.T) {

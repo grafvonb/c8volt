@@ -26,6 +26,8 @@ var (
 	flagGetUserTaskBatchSize      int32
 	flagGetUserTaskLimit          int32
 	flagGetUserTaskTotal          bool
+	flagGetUserTaskWithVars       bool
+	flagGetUserTaskVarValueLimit  int
 )
 
 var getUserTaskCmd = &cobra.Command{
@@ -43,8 +45,14 @@ Interactive searches offer another page separately from command results when mor
 
 Human rows show task key, tenant, element ID, and state, followed by related pi:, ei:, and pd: keys. Assignee is always last: assignee:<user> when assigned, otherwise assignee:<unassigned>. Task name, BPMN process ID, and process-definition version are available in JSON. Other empty optional fields are omitted.
 
-Use --json for one collection envelope or --keys-only for one task key per line. Keys cannot be combined with search filters, --limit, or --total; --total also conflicts with --limit, --json, and --keys-only. Search and keyed reads require Camunda 8.8, 8.9, or 8.10; Camunda 8.7 is unsupported. Task mutations, variables, forms, audit history, date filters, custom sorting, and watch mode are not provided by this command.`,
-	Example: `  ./c8volt get user-task --key <user-task-key>
+Add --with-vars to retrieve the effective variables selected by the backend for each returned task on Camunda 8.8, 8.9, or 8.10. Human output nests variables beneath their task. --var-value-limit sets a nonnegative Unicode-character limit after structured values are compacted; zero, the default, keeps full received values. Truncation labels distinguish backend-incomplete values from display shortening. JSON always preserves received values and backend truncation metadata. Effective keys-only and --total output skip variable retrieval.
+
+Use --json for one collection envelope or --keys-only for one task key per line. Keys cannot be combined with search filters, --limit, or --total; --total also conflicts with --limit, --json, and --keys-only. Search and keyed reads require Camunda 8.8, 8.9, or 8.10; Camunda 8.7 is unsupported. Variable filtering and mutation, task mutations, forms, audit history, date filters, custom sorting, and watch mode are not provided by this command.`,
+	Example: `  ./c8volt get ut --key <user-task-key> --with-vars
+  ./c8volt get ut --assignee alice --limit 10 --with-vars
+  ./c8volt get ut --pi-key <process-instance-key> --with-vars --var-value-limit 120
+  ./c8volt --json get ut --key <user-task-key> --with-vars
+  ./c8volt get user-task --key <user-task-key>
   ./c8volt get ut -k <user-task-key>,<another-user-task-key>
   ./c8volt get user-task --state created --assignee alice --limit 25
   ./c8volt get user-task --candidate-group accounting --total
@@ -93,8 +101,8 @@ Use --json for one collection envelope or --keys-only for one task key per line.
 			if renderedIncrementally {
 				return
 			}
-			if err := userTasksView(cmd, result); err != nil {
-				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("render user tasks: %w", err))
+			if err := renderSelectedUserTasks(cmd, cli, result); err != nil {
+				handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 			}
 			return
 		}
@@ -109,8 +117,8 @@ Use --json for one collection envelope or --keys-only for one task key per line.
 		if err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("get user tasks: %w", err))
 		}
-		if err := userTasksView(cmd, result); err != nil {
-			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("render user tasks: %w", err))
+		if err := renderSelectedUserTasks(cmd, cli, result); err != nil {
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}
 	},
 }
@@ -131,6 +139,8 @@ func init() {
 	flags.Int32VarP(&flagGetUserTaskBatchSize, "batch-size", "n", consts.MaxPISearchSize, fmt.Sprintf("number of user tasks to request per page; does not cap total results (maximum %d)", consts.MaxPISearchSize))
 	flags.Int32VarP(&flagGetUserTaskLimit, "limit", "l", 0, "maximum number of matching user tasks to return across all pages; omit for unlimited")
 	flags.BoolVar(&flagGetUserTaskTotal, "total", false, "return only the exact numeric total of matching user tasks")
+	flags.BoolVar(&flagGetUserTaskWithVars, "with-vars", false, "include effective variables for selected user tasks")
+	flags.IntVar(&flagGetUserTaskVarValueLimit, "var-value-limit", 0, "maximum characters to show for variable values when --with-vars is set; 0 disables truncation")
 	flags.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers when fetching multiple user tasks")
 	flags.BoolVar(&flagNoWorkerLimit, "no-worker-limit", false, "use all queued user task reads as workers when --workers is unset")
 	flags.BoolVar(&flagFailFast, "fail-fast", false, "stop scheduling new user task reads after the first error")
@@ -152,6 +162,12 @@ func validateGetUserTaskFlags(cmd *cobra.Command) error {
 	}
 	if cmd.Flags().Changed("workers") && flagWorkers < 1 {
 		return invalidFlagValuef("--workers must be positive integer")
+	}
+	if flagGetUserTaskVarValueLimit < 0 {
+		return invalidFlagValuef("invalid value for --var-value-limit: %d, expected non-negative integer", flagGetUserTaskVarValueLimit)
+	}
+	if cmd.Flags().Changed("var-value-limit") && !flagGetUserTaskWithVars {
+		return missingDependentFlagsf("--var-value-limit requires --with-vars")
 	}
 	for _, candidate := range []struct {
 		flag   string

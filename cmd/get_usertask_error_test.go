@@ -74,6 +74,94 @@ func TestGetUserTaskError_CollectedAndTotalFailuresHaveNoPartialSuccess(t *testi
 	}
 }
 
+// TestGetUserTaskError_SearchVariableFailuresNeverClaimCompletion verifies a
+// later selected-page enrichment failure leaves streamed output partial while
+// collected JSON emits only the established failed envelope.
+func TestGetUserTaskError_SearchVariableFailuresNeverClaimCompletion(t *testing.T) {
+	const (
+		firstKey  = "2251799815391233"
+		secondKey = "2251799815391234"
+	)
+	for _, test := range []struct {
+		name string
+		args []string
+		json bool
+	}{
+		{name: "streamed human", args: []string{"get", "ut", "--batch-size", "1", "--with-vars"}},
+		{name: "collected json", args: []string{"--json", "get", "ut", "--batch-size", "1", "--with-vars"}, json: true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			server, requests := newGetUserTaskVariablesServer(t, getUserTaskVariablesFixture{
+				SearchRespond: func(index int, _ map[string]any) string {
+					if index == 0 {
+						return userTaskSearchResponse(2, true, "cursor-a", firstKey)
+					}
+					return userTaskSearchResponse(2, false, "", secondKey)
+				},
+				VariablePages: map[string][]userTaskVariablePageFixture{
+					firstKey: {{Total: 1, Items: []userTaskVariableFixtureValue{{
+						Name: "amount", Value: "120", VariableKey: "901", ProcessInstanceKey: "2251799813711967",
+						ScopeKey: "2251799815391200", TenantID: "tenant-a",
+					}}}},
+					secondKey: {{Status: http.StatusServiceUnavailable, ErrorBody: `{"message":"variables unavailable"}`}},
+				},
+			})
+			configPath := testx.WriteTestConfigForVersion(t, server.URL, "8.9")
+
+			stdout, stderr, err := runGetUserTaskCommand(t, configPath, "", test.args...)
+			require.Error(t, err)
+			require.Equal(t, 1, requests.variableRequestCount(firstKey))
+			require.Equal(t, 1, requests.variableRequestCount(secondKey))
+			if test.json {
+				require.Empty(t, stderr)
+				var envelope map[string]any
+				decoder := json.NewDecoder(bytes.NewBufferString(stdout))
+				require.NoError(t, decoder.Decode(&envelope))
+				require.Equal(t, "failed", envelope["outcome"])
+				require.Nil(t, envelope["payload"])
+				var extra any
+				require.Error(t, decoder.Decode(&extra))
+				return
+			}
+			require.Contains(t, stdout, firstKey)
+			require.Contains(t, stdout, "amount=120")
+			require.NotContains(t, stdout, secondKey)
+			require.NotContains(t, stdout, "found:")
+			require.Contains(t, stderr, "variables unavailable")
+		})
+	}
+}
+
+// TestGetUserTaskError_SearchVariableWriterFailurePropagates verifies enriched
+// incremental rendering errors stop traversal and cannot produce a summary.
+func TestGetUserTaskError_SearchVariableWriterFailurePropagates(t *testing.T) {
+	resetGetUserTaskGlobalModes(t)
+	flagGetUserTaskWithVars = true
+	cmd := &cobra.Command{}
+	cmd.SetOut(failingUserTaskWriter{})
+	cmd.SetErr(&bytes.Buffer{})
+	item := task.UserTask{Key: "2251799815391233", State: "CREATED"}
+	enrichmentCalls := 0
+	cli := stubTaskAPI{
+		searchUserTasksPages: func(_ context.Context, _ task.SearchRequest, visitor task.SearchPageVisitor, _ ...options.FacadeOption) (task.SearchPagesResult, error) {
+			_, err := visitor(task.SearchPageStep{
+				Page:            task.SearchPage{Items: []task.UserTask{item}, ContinuationState: task.ContinuationStateNoMore},
+				CumulativeCount: 1,
+			})
+			return task.SearchPagesResult{}, err
+		},
+		enrichUserTasksWithVariables: func(_ context.Context, selected task.UserTasks, _ ...options.FacadeOption) (task.VariableEnrichedUserTasks, error) {
+			enrichmentCalls++
+			return task.VariableEnrichedUserTasks{Total: 1, Items: []task.VariableEnrichedUserTask{{Item: selected.Items[0], Variables: []task.UserTaskVariable{}}}}, nil
+		},
+	}
+
+	_, rendered, err := searchUserTasksWithPaging(cmd, cli, task.SearchRequest{})
+	require.ErrorIs(t, err, errUserTaskWriter)
+	require.False(t, rendered)
+	require.Equal(t, 1, enrichmentCalls)
+}
+
 // TestGetUserTaskError_CancellationRemainsCallerVisible verifies the paging
 // bridge does not reinterpret cancellation as visitor stop or empty success.
 func TestGetUserTaskError_CancellationRemainsCallerVisible(t *testing.T) {

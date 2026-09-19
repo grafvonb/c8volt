@@ -26,6 +26,20 @@ type UserTask struct {
 	TenantId                 string
 }
 
+// VariableEnrichedUserTask pairs an unchanged selected task with its effective
+// variables. Variables must be initialized even when the collection is empty.
+type VariableEnrichedUserTask struct {
+	Item      UserTask
+	Variables []ProcessInstanceVariable
+}
+
+// VariableEnrichedUserTasks preserves input task order in initialized Items.
+// Total equals the number of returned items rather than a backend search total.
+type VariableEnrichedUserTasks struct {
+	Total int64
+	Items []VariableEnrichedUserTask
+}
+
 // UserTaskSearchQuery carries backend predicates and collection bounds without
 // embedding tenant scope, which remains a service call option.
 type UserTaskSearchQuery struct {
@@ -47,6 +61,25 @@ type UserTaskPageRequest struct {
 	From  int32
 	Size  int32
 	After string
+}
+
+// UserTaskVariablePageRequest describes one offset-only effective-variable
+// request. It intentionally has no cursor field because the native operation
+// accepts only a nonnegative offset and a positive page size.
+type UserTaskVariablePageRequest struct {
+	From int32
+	Size int32
+}
+
+// Validate rejects bounds that cannot advance effective-variable pagination.
+func (r UserTaskVariablePageRequest) Validate() error {
+	if r.From < 0 {
+		return errors.New("user-task variable page request offset cannot be negative")
+	}
+	if r.Size <= 0 {
+		return errors.New("user-task variable page request size must be positive")
+	}
+	return nil
 }
 
 // Validate prevents an adapter from combining the mutually exclusive offset
@@ -127,6 +160,17 @@ type UserTaskSearchPage struct {
 	EndCursor         string
 	ReportedTotal     *UserTaskReportedTotal
 	ContinuationState UserTaskContinuationState
+}
+
+// UserTaskVariablePage contains effective variables plus the raw paging facts
+// needed to retain exact or lower-bound totals and sparse-page continuation.
+// RawItemCount remains independent of later duplicate-name normalization.
+type UserTaskVariablePage struct {
+	Items                   []ProcessInstanceVariable
+	Request                 UserTaskVariablePageRequest
+	RawItemCount            int32
+	ReportedTotal           UserTaskReportedTotal
+	HasContinuationEvidence bool
 }
 
 // UserTaskSearchPageAction tells service-owned traversal whether a caller wants

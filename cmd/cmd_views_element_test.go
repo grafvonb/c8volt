@@ -121,9 +121,11 @@ func TestElementListenerRowsKeepTimestampAndErrorColumnsAligned(t *testing.T) {
 		{JobKey: "job-2", Kind: "TASK_LISTENER", ListenerEventType: "COMPLETING", State: "ACTIVATED", Type: "notify", Retries: 1, Worker: "worker-a", CreationTime: &creation, Deadline: &deadline, ErrorCode: "E1", ErrorMessage: "failed"},
 	}
 
-	lines := formatElementListenerRows(&listeners, false)
+	lines := formatElementListenerRows(&listeners, false, deadline)
 
 	require.Len(t, lines, 2)
+	require.True(t, strings.HasSuffix(lines[0], "dur:483ms"))
+	require.True(t, strings.HasSuffix(lines[1], "dur:43.641s"))
 	require.Contains(t, lines[0], "s:2026-09-16T13:07:16.359 e:2026-09-16T13:07:16.842")
 	require.NotContains(t, lines[0], "d:")
 	require.Contains(t, lines[1], "worker:worker-a")

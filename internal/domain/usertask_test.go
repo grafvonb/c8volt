@@ -162,3 +162,52 @@ func TestUserTaskTraversalModelsCarryServiceFacts(t *testing.T) {
 	require.EqualValues(t, 2, result.Pages)
 	require.Equal(t, UserTaskSearchCompletionLimitReached, result.Completion)
 }
+
+// TestUserTaskVariablePageRequestValidationRejectsInvalidBounds verifies effective-variable paging stays offset-only with usable bounds.
+func TestUserTaskVariablePageRequestValidationRejectsInvalidBounds(t *testing.T) {
+	t.Parallel()
+
+	require.NoError(t, (UserTaskVariablePageRequest{From: 0, Size: 1}).Validate())
+	require.NoError(t, (UserTaskVariablePageRequest{From: 1000, Size: 1000}).Validate())
+	require.EqualError(t, (UserTaskVariablePageRequest{From: -1, Size: 1000}).Validate(), "user-task variable page request offset cannot be negative")
+	require.EqualError(t, (UserTaskVariablePageRequest{From: 0, Size: 0}).Validate(), "user-task variable page request size must be positive")
+	require.EqualError(t, (UserTaskVariablePageRequest{From: 0, Size: -1}).Validate(), "user-task variable page request size must be positive")
+}
+
+// TestUserTaskVariableModelsCarryEnrichmentAndPagingFacts verifies the domain records preserve task order, initialized empty collections, and raw continuation metadata.
+func TestUserTaskVariableModelsCarryEnrichmentAndPagingFacts(t *testing.T) {
+	t.Parallel()
+
+	variable := ProcessInstanceVariable{
+		Name:               "approvalReason",
+		Value:              `"accepted"`,
+		VariableKey:        "2251799813685250",
+		ProcessInstanceKey: "2251799813685249",
+		ScopeKey:           "2251799813685251",
+		TenantId:           "tenant-a",
+		APITruncated:       true,
+	}
+	page := UserTaskVariablePage{
+		Items:                   []ProcessInstanceVariable{variable},
+		Request:                 UserTaskVariablePageRequest{From: 1000, Size: 1000},
+		RawItemCount:            2,
+		ReportedTotal:           UserTaskReportedTotal{Count: 10000, Kind: UserTaskReportedTotalKindLowerBound},
+		HasContinuationEvidence: true,
+	}
+	enriched := VariableEnrichedUserTasks{
+		Total: 2,
+		Items: []VariableEnrichedUserTask{
+			{Item: UserTask{Key: "task-1"}, Variables: []ProcessInstanceVariable{variable}},
+			{Item: UserTask{Key: "task-2"}, Variables: make([]ProcessInstanceVariable, 0)},
+		},
+	}
+
+	require.EqualValues(t, 2, page.RawItemCount)
+	require.True(t, page.HasContinuationEvidence)
+	require.Equal(t, UserTaskReportedTotalKindLowerBound, page.ReportedTotal.Kind)
+	require.EqualValues(t, 2, enriched.Total)
+	require.Equal(t, "task-1", enriched.Items[0].Item.Key)
+	require.Equal(t, "approvalReason", enriched.Items[0].Variables[0].Name)
+	require.NotNil(t, enriched.Items[1].Variables)
+	require.Empty(t, enriched.Items[1].Variables)
+}

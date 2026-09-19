@@ -53,6 +53,11 @@ func (a *facadeUserTaskAPI) SearchUserTasksPage(context.Context, d.UserTaskSearc
 	panic("unexpected user-task search")
 }
 
+// SearchUserTaskEffectiveVariablesPage rejects enrichment until its facade contract work unit.
+func (a *facadeUserTaskAPI) SearchUserTaskEffectiveVariablesPage(context.Context, string, d.UserTaskVariablePageRequest, ...services.CallOption) (d.UserTaskVariablePage, error) {
+	panic("unexpected user-task effective-variable search")
+}
+
 // snapshot returns independently owned observations from the facade service stub.
 func (a *facadeUserTaskAPI) snapshot() ([]string, []string, []*services.CallCfg) {
 	a.mu.Lock()

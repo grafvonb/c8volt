@@ -186,7 +186,7 @@ func TestOpsAnalyseSlowProcessInstancesWithListenersCommandRendersLifecycleTimes
 			args = append(args, tc.args...)
 			stdout, stderr := executeRootForProcessInstanceWithSeparateOutputs(t, args...)
 
-			require.Contains(t, stdout, "job-exec-1 EXECUTION_LISTENER lsnr:END COMPLETED tp:audit-end r:0 s:2026-09-16T13:07:16.359 e:2026-09-16T13:07:16.842")
+			require.Contains(t, stdout, "job-exec-1 EXECUTION_LISTENER lsnr:END COMPLETED tp:audit-end r:0 s:2026-09-16T13:07:16.359 e:2026-09-16T13:07:16.842 dur:483ms")
 			require.NotContains(t, stdout, "d:2026-09-16T13:08:00.000")
 			require.Empty(t, stderr)
 			require.ElementsMatch(t, []string{

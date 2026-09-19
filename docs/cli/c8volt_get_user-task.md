@@ -22,7 +22,9 @@ Interactive searches offer another page separately from command results when mor
 
 Human rows show task key, tenant, element ID, and state, followed by related pi:, ei:, and pd: keys. Assignee is always last: assignee:<user> when assigned, otherwise assignee:<unassigned>. Task name, BPMN process ID, and process-definition version are available in JSON. Other empty optional fields are omitted.
 
-Use --json for one collection envelope or --keys-only for one task key per line. Keys cannot be combined with search filters, --limit, or --total; --total also conflicts with --limit, --json, and --keys-only. Search and keyed reads require Camunda 8.8, 8.9, or 8.10; Camunda 8.7 is unsupported. Task mutations, variables, forms, audit history, date filters, custom sorting, and watch mode are not provided by this command.
+Add --with-vars to retrieve the effective variables selected by the backend for each returned task on Camunda 8.8, 8.9, or 8.10. Human output nests variables beneath their task. --var-value-limit sets a nonnegative Unicode-character limit after structured values are compacted; zero, the default, keeps full received values. Truncation labels distinguish backend-incomplete values from display shortening. JSON always preserves received values and backend truncation metadata. Effective keys-only and --total output skip variable retrieval.
+
+Use --json for one collection envelope or --keys-only for one task key per line. Keys cannot be combined with search filters, --limit, or --total; --total also conflicts with --limit, --json, and --keys-only. Search and keyed reads require Camunda 8.8, 8.9, or 8.10; Camunda 8.7 is unsupported. Variable filtering and mutation, task mutations, forms, audit history, date filters, custom sorting, and watch mode are not provided by this command.
 
 ```
 c8volt get user-task [-] [flags]
@@ -31,6 +33,10 @@ c8volt get user-task [-] [flags]
 ### Examples
 
 ```
+  ./c8volt get ut --key <user-task-key> --with-vars
+  ./c8volt get ut --assignee alice --limit 10 --with-vars
+  ./c8volt get ut --pi-key <process-instance-key> --with-vars --var-value-limit 120
+  ./c8volt --json get ut --key <user-task-key> --with-vars
   ./c8volt get user-task --key <user-task-key>
   ./c8volt get ut -k <user-task-key>,<another-user-task-key>
   ./c8volt get user-task --state created --assignee alice --limit 25
@@ -60,6 +66,8 @@ c8volt get user-task [-] [flags]
       --pi-key string            process instance key to filter in search mode
   -s, --state string             user task state to filter in search mode; case-insensitive; all disables the predicate (default "all")
       --total                    return only the exact numeric total of matching user tasks
+      --var-value-limit int      maximum characters to show for variable values when --with-vars is set; 0 disables truncation
+      --with-vars                include effective variables for selected user tasks
   -w, --workers int              maximum concurrent workers when fetching multiple user tasks
 ```
 

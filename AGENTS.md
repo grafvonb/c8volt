@@ -120,5 +120,5 @@
 
 ## Active Speckit Plan
 <!-- SPECKIT START -->
-- Active Speckit implementation plan: `specs/308-get-user-task/plan.md`
+- Active Speckit implementation plan: `specs/309-user-task-variables/plan.md`
 <!-- SPECKIT END -->

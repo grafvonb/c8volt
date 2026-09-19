@@ -111,7 +111,7 @@ func renderElementRowsWithListeners(cmd *cobra.Command, items []element.Element,
 	elementLines := formatFlatRows(rows)
 	for i, item := range items {
 		renderOutputLine(cmd, "%s", elementLines[i])
-		listenerRows := formatElementListenerRows(item.Listeners, showTimezoneOffset)
+		listenerRows := formatElementListenerRows(item.Listeners, showTimezoneOffset, capturedNow)
 		if len(listenerRows) == 0 {
 			continue
 		}
@@ -123,19 +123,19 @@ func renderElementRowsWithListeners(cmd *cobra.Command, items []element.Element,
 }
 
 // formatElementListenerRows renders element-owned listener jobs using the shared listener row grammar.
-func formatElementListenerRows(listeners *[]element.RuntimeListenerJob, showTimezoneOffset bool) []string {
+func formatElementListenerRows(listeners *[]element.RuntimeListenerJob, showTimezoneOffset bool, capturedNow time.Time) []string {
 	if listeners == nil || len(*listeners) == 0 {
 		return nil
 	}
 	rows := make([]flatRow, 0, len(*listeners))
 	for _, listener := range *listeners {
-		rows = append(rows, flatRowElementListenerWithTimezone(listener, showTimezoneOffset))
+		rows = append(rows, flatRowElementListenerWithTimezone(listener, showTimezoneOffset, capturedNow))
 	}
 	return formatFlatRows(rows)
 }
 
 // flatRowElementListenerWithTimezone formats one runtime listener job below an element row.
-func flatRowElementListenerWithTimezone(item element.RuntimeListenerJob, showTimezoneOffset bool) flatRow {
+func flatRowElementListenerWithTimezone(item element.RuntimeListenerJob, showTimezoneOffset bool, capturedNow time.Time) flatRow {
 	parts := flatRow{
 		item.JobKey,
 		item.Kind,
@@ -156,6 +156,7 @@ func flatRowElementListenerWithTimezone(item element.RuntimeListenerJob, showTim
 	} else {
 		parts = append(parts, "")
 	}
+	parts = append(parts, prefixedElementField("dur", runtimeListenerDuration(item.CreationTime, item.EndTime, item.State, capturedNow)))
 	return parts
 }
 
