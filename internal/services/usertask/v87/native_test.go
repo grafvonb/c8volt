@@ -53,6 +53,30 @@ func TestService_SearchUserTasksPage_ReturnsUnsupportedWithoutRequest(t *testing
 	require.Zero(t, requests.Load())
 }
 
+// TestService_SearchUserTasksPage_FilteredReturnsUnsupportedWithoutRequest
+// proves V87 cannot silently discard a local-variable predicate or fall back
+// to client-side matching.
+func TestService_SearchUserTasksPage_FilteredReturnsUnsupportedWithoutRequest(t *testing.T) {
+	var requests atomic.Int32
+	client := &http.Client{Transport: roundTripperFunc(func(*http.Request) (*http.Response, error) {
+		requests.Add(1)
+		return nil, nil
+	})}
+	svc, err := v87.New(&config.Config{APIs: config.APIs{Camunda: config.API{BaseURL: "https://camunda.local/v2"}}}, client, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	require.NoError(t, err)
+
+	page, err := svc.SearchUserTasksPage(context.Background(), d.UserTaskSearchQuery{
+		VariableFilters: d.ProcessInstanceVariableFilterSet{Clauses: []d.ProcessInstanceVariableFilterClause{{
+			Name: "status", Operator: d.ProcessInstanceVariableFilterOperatorEq, Value: `"approved"`, Source: "--var",
+		}}},
+	}, d.UserTaskPageRequest{Size: 10})
+
+	require.Empty(t, page)
+	require.ErrorIs(t, err, d.ErrUnsupported)
+	require.Contains(t, err.Error(), "native user-task search is unsupported in Camunda 8.7")
+	require.Zero(t, requests.Load())
+}
+
 // roundTripperFunc gives the V87 test an observable transport without starting a server.
 type roundTripperFunc func(*http.Request) (*http.Response, error)
 

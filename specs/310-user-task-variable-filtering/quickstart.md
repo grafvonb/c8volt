@@ -124,3 +124,17 @@ Review generated task help and grammar compatibility, confirm no generated clien
 - `go test ./internal/services/usertask/v810 -count=1` passed.
 - `go test -race ./internal/services/usertask/v810 -run 'TestService_SearchUserTasksPage_' -count=1` passed.
 - `git diff --check` passed; fixture assertions prove exact native request construction, not live backend missing/null or parent-scope semantics.
+
+### Iteration 7 — user-task command integration and US1 validation (2026-09-19)
+
+- Registered `--var-exists`, `--var`, and `--var-like` as task-owned repeatable flags; validation and request construction both propagate parser errors without cached parsed state.
+- Added execution coverage for every user-task alias across Camunda 8.8, 8.9, and 8.10, combined ordinary/tenant selectors, exact native `localVariables` placement and clause order, malformed and unknown clauses, and explicit/implicit stdin key conflicts.
+- Added direct request-construction coverage and a filtered Camunda 8.7 unsupported regression that proves rejection occurs before transport use.
+- `go test ./cmd -count=1` passed after flag registration.
+- `go test ./cmd -run 'Test.*(VariableFilter|PIVariable|UserTask.*Filter|GetUserTask.*Variable|NewGetUserTaskSearchRequest|RejectsInvalidInputBeforeReads)' -count=1` passed.
+- `go test ./c8volt/task -run 'Test.*(Search|VariableFilter)' -count=1` passed.
+- `go test ./internal/services/usertask/... -run 'Test.*(Search|VariableFilter|Native)' -count=1` passed for the version-neutral service and v8.7–v8.10 adapters.
+- `go test ./internal/services/processinstance/... -run 'Test.*Variable' -count=1` passed; packages without matching tests reported `[no tests to run]` and were not counted as direct evidence.
+- Focused race variants of the command, task facade, and user-task service/adapter commands above passed.
+- Request fixtures prove exact native request construction and absence of added endpoints. No live backend scope, missing/null, parent-only, or shadowing validation was attempted.
+- `git diff --check` and the touched-command declaration inventory passed before coordinated persistence.

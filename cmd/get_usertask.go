@@ -83,7 +83,10 @@ Use --json for one collection envelope or --keys-only for one task key per line.
 		}
 		keys := mergeAndValidateKeys(cmd, flagGetUserTaskKeys, stdinKeys, log, cfg).Unique()
 		if len(keys) == 0 {
-			request := newGetUserTaskSearchRequest()
+			request, err := newGetUserTaskSearchRequest()
+			if err != nil {
+				handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+			}
 			if flagGetUserTaskTotal {
 				total, err := cli.SearchUserTasksTotal(cmd.Context(), request, collectOptions()...)
 				if err != nil {
@@ -141,6 +144,9 @@ func init() {
 	flags.BoolVar(&flagGetUserTaskTotal, "total", false, "return only the exact numeric total of matching user tasks")
 	flags.BoolVar(&flagGetUserTaskWithVars, "with-vars", false, "include effective variables for selected user tasks")
 	flags.IntVar(&flagGetUserTaskVarValueLimit, "var-value-limit", 0, "maximum characters to show for variable values when --with-vars is set; 0 disables truncation")
+	flags.StringArrayVar(&flagGetUserTaskVarExists, "var-exists", nil, "require local variable name(s) to exist; repeat or separate names with commas")
+	flags.StringArrayVar(&flagGetUserTaskVars, "var", nil, "require local variable equality or advanced clause(s); repeat or separate clauses with commas")
+	flags.StringArrayVar(&flagGetUserTaskVarLikes, "var-like", nil, "require local variable value pattern clause(s); repeat or separate clauses with commas")
 	flags.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers when fetching multiple user tasks")
 	flags.BoolVar(&flagNoWorkerLimit, "no-worker-limit", false, "use all queued user task reads as workers when --workers is unset")
 	flags.BoolVar(&flagFailFast, "fail-fast", false, "stop scheduling new user task reads after the first error")
@@ -200,6 +206,9 @@ func validateGetUserTaskFlags(cmd *cobra.Command) error {
 	if !validUserTaskState(flagGetUserTaskState) {
 		return invalidFlagValuef("invalid value for --state: %q, valid values are: all, %s", flagGetUserTaskState, strings.Join(validUserTaskStates, ", "))
 	}
+	if _, err := parseUserTaskVariableFilters(); err != nil {
+		return err
+	}
 	if len(flagGetUserTaskKeys) > 0 && hasGetUserTaskSearchFlags(cmd) {
 		return mutuallyExclusiveFlagsf("--key cannot be combined with search filters, --limit, or --total")
 	}
@@ -208,7 +217,11 @@ func validateGetUserTaskFlags(cmd *cobra.Command) error {
 
 // newGetUserTaskSearchRequest maps validated command flags into an AND-combined
 // native search request without changing case-sensitive identity predicates.
-func newGetUserTaskSearchRequest() task.SearchRequest {
+func newGetUserTaskSearchRequest() (task.SearchRequest, error) {
+	variableFilters, err := parseUserTaskVariableFilters()
+	if err != nil {
+		return task.SearchRequest{}, err
+	}
 	return task.SearchRequest{
 		ProcessInstanceKey:   strings.TrimSpace(flagGetUserTaskPIKey),
 		ProcessDefinitionKey: strings.TrimSpace(flagGetUserTaskPDKey),
@@ -218,9 +231,10 @@ func newGetUserTaskSearchRequest() task.SearchRequest {
 		Assignee:             strings.TrimSpace(flagGetUserTaskAssignee),
 		CandidateUser:        strings.TrimSpace(flagGetUserTaskCandidateUser),
 		CandidateGroup:       strings.TrimSpace(flagGetUserTaskCandidateGroup),
+		VariableFilters:      variableFilters,
 		BatchSize:            flagGetUserTaskBatchSize,
 		Limit:                flagGetUserTaskLimit,
-	}
+	}, nil
 }
 
 var validUserTaskStates = []string{
@@ -249,7 +263,7 @@ func hasGetUserTaskSearchFlags(cmd *cobra.Command) bool {
 	if cmd == nil {
 		return false
 	}
-	for _, name := range []string{"pi-key", "pd-key", "bpmn-process-id", "element-id", "state", "assignee", "candidate-user", "candidate-group", "limit", "total"} {
+	for _, name := range []string{"pi-key", "pd-key", "bpmn-process-id", "element-id", "state", "assignee", "candidate-user", "candidate-group", "var-exists", "var", "var-like", "limit", "total"} {
 		if cmd.Flags().Changed(name) {
 			return true
 		}

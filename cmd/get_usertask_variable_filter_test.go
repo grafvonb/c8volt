@@ -4,11 +4,82 @@
 package cmd
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/grafvonb/c8volt/c8volt/process"
+	"github.com/grafvonb/c8volt/testx"
 	"github.com/stretchr/testify/require"
 )
+
+// TestGetUserTaskCommand_VariableFiltersBuildNativeRequests verifies every
+// command alias carries task-owned variable flags into the native local scope
+// alongside ordinary selectors on each supported adapter.
+func TestGetUserTaskCommand_VariableFiltersBuildNativeRequests(t *testing.T) {
+	for _, version := range []string{"8.8", "8.9", "8.10"} {
+		for _, alias := range []string{"user-task", "user-tasks", "ut", "uts"} {
+			t.Run(fmt.Sprintf("%s/%s", version, alias), func(t *testing.T) {
+				server, requests := newGetUserTaskSearchServer(t, func(_ int, _ map[string]any) string {
+					return userTaskSearchResponse(1, false, "", "2251799815391233")
+				})
+				configPath := testx.WriteTestConfigForVersion(t, server.URL, version)
+
+				stdout, stderr, err := runGetUserTaskCommand(t, configPath, "", "--tenant", "tenant-a", "--keys-only", "get", alias,
+					"--assignee", "alice",
+					"--var-exists", "payload,email",
+					"--var", `status="approved"`,
+					"--var", `active.$exists=false,kind.$in=["a","b"]`,
+					"--var-like", `address=*@example.com`)
+				require.NoError(t, err, stderr)
+				require.Empty(t, stderr)
+				require.Equal(t, "2251799815391233\n", stdout)
+
+				got := requests.snapshot(t)
+				require.Len(t, got, 1, "filtering must issue only the native task search request")
+				filter := requireJSONMap(t, got[0]["filter"])
+				require.Equal(t, "alice", jsonFilterValue(t, filter["assignee"]))
+				require.Equal(t, "tenant-a", jsonFilterValue(t, filter["tenantId"]))
+				localVariables, ok := filter["localVariables"].([]any)
+				require.True(t, ok, "expected native local-variable filters")
+				require.Equal(t, []any{
+					map[string]any{"name": "payload", "value": map[string]any{"$exists": true}},
+					map[string]any{"name": "email", "value": map[string]any{"$exists": true}},
+					map[string]any{"name": "status", "value": map[string]any{"$eq": `"approved"`}},
+					map[string]any{"name": "active", "value": map[string]any{"$exists": false}},
+					map[string]any{"name": "kind", "value": map[string]any{"$in": []any{"a", "b"}}},
+					map[string]any{"name": "address", "value": map[string]any{"$like": `*@example.com`}},
+				}, localVariables)
+			})
+		}
+	}
+}
+
+// TestGetUserTaskCommand_VariableFiltersRejectMalformedInputBeforeRequests
+// protects parser diagnostics and prevents an unfiltered fallback.
+func TestGetUserTaskCommand_VariableFiltersRejectMalformedInputBeforeRequests(t *testing.T) {
+	server, requests := newGetUserTaskSearchServer(t, func(_ int, _ map[string]any) string {
+		return userTaskSearchResponse(0, false, "")
+	})
+	configPath := testx.WriteTestConfigForVersion(t, server.URL, "8.9")
+	tests := []struct {
+		name string
+		args []string
+		want string
+	}{
+		{name: "malformed", args: []string{"get", "ut", "--var", "status"}, want: "must use name=value syntax"},
+		{name: "unknown operator", args: []string{"get", "ut", "--var", "status.$contains=approved"}, want: "unsupported variable operator"},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			before := len(requests.snapshot(t))
+			stdout, stderr, err := runGetUserTaskCommand(t, configPath, "", test.args...)
+			require.Error(t, err)
+			require.Empty(t, stdout)
+			require.Contains(t, stderr, test.want)
+			require.Len(t, requests.snapshot(t), before)
+		})
+	}
+}
 
 // TestUserTaskVariableFilterParserParity verifies both command wrappers retain
 // the same operators, aliases, delimiters, serialized values, and group order.

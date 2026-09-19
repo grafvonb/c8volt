@@ -19,6 +19,46 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestNewGetUserTaskSearchRequest_MapsVariableFiltersAndPropagatesErrors pins
+// construction independently of Cobra execution and prevents parser failures
+// from being silently dropped by future call sites.
+func TestNewGetUserTaskSearchRequest_MapsVariableFiltersAndPropagatesErrors(t *testing.T) {
+	previousPIKey, previousAssignee := flagGetUserTaskPIKey, flagGetUserTaskAssignee
+	previousBatchSize, previousLimit := flagGetUserTaskBatchSize, flagGetUserTaskLimit
+	previousExists, previousVars, previousLikes := flagGetUserTaskVarExists, flagGetUserTaskVars, flagGetUserTaskVarLikes
+	t.Cleanup(func() {
+		flagGetUserTaskPIKey, flagGetUserTaskAssignee = previousPIKey, previousAssignee
+		flagGetUserTaskBatchSize, flagGetUserTaskLimit = previousBatchSize, previousLimit
+		flagGetUserTaskVarExists, flagGetUserTaskVars, flagGetUserTaskVarLikes = previousExists, previousVars, previousLikes
+	})
+
+	flagGetUserTaskPIKey = " 2251799813711967 "
+	flagGetUserTaskAssignee = " alice "
+	flagGetUserTaskBatchSize = 25
+	flagGetUserTaskLimit = 10
+	flagGetUserTaskVarExists = []string{"payload"}
+	flagGetUserTaskVars = []string{`status="approved"`}
+	flagGetUserTaskVarLikes = []string{"email=*@example.com"}
+
+	request, err := newGetUserTaskSearchRequest()
+	require.NoError(t, err)
+	require.Equal(t, "2251799813711967", request.ProcessInstanceKey)
+	require.Equal(t, "alice", request.Assignee)
+	require.Equal(t, int32(25), request.BatchSize)
+	require.Equal(t, int32(10), request.Limit)
+	require.Len(t, request.VariableFilters.Clauses, 3)
+	require.Equal(t, []string{"payload", "status", "email"}, []string{
+		request.VariableFilters.Clauses[0].Name,
+		request.VariableFilters.Clauses[1].Name,
+		request.VariableFilters.Clauses[2].Name,
+	})
+
+	flagGetUserTaskVars = []string{"status"}
+	request, err = newGetUserTaskSearchRequest()
+	require.ErrorContains(t, err, "must use name=value syntax")
+	require.Empty(t, request)
+}
+
 // TestGetUserTaskCommand_SearchBuildsAllPredicates verifies normalized state,
 // exact string predicates, selector keys, tenant scope, bounds, and AND composition.
 func TestGetUserTaskCommand_SearchBuildsAllPredicates(t *testing.T) {
