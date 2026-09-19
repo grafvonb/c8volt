@@ -268,15 +268,23 @@ Find human work waiting in your processes, inspect assignments, and count matchi
 
 Use `get user-task` to fetch known native user tasks or search visible work on Camunda 8.8, 8.9, and 8.10; Camunda 8.7 is unsupported. Repeat or comma-separate `--key`, or pipe newline-separated keys with or without the optional `-`. Every requested key must resolve; keyed reads rely on backend authorization, do not filter by the selected discovery tenant, and preserve each task's actual tenant metadata.
 
-Without keys, combine process, element, state, assignment, candidate, and effective tenant filters. States are `ASSIGNING`, `CANCELED`, `CANCELING`, `COMPLETED`, `COMPLETING`, `CREATED`, `CREATING`, `FAILED`, and `UPDATING` (case-insensitive); `all` applies no state predicate. `--batch-size` controls page size, `--limit` bounds the returned collection, and `--total` prints the exact matching count. Interactive searches offer additional pages on stderr; use `--auto-confirm` or `--automation` for unattended paging. `--quiet` suppresses human results while preserving explicitly requested JSON, keys-only, and numeric total output. Keys conflict with search filters, `--limit`, and `--total`; total mode also conflicts with `--limit`, `--json`, and `--keys-only`.
+Without keys, combine process, element, state, assignment, candidate, local-variable, and effective tenant filters. States are `ASSIGNING`, `CANCELED`, `CANCELING`, `COMPLETED`, `COMPLETING`, `CREATED`, `CREATING`, `FAILED`, and `UPDATING` (case-insensitive); `all` applies no state predicate. `--batch-size` controls page size, `--limit` bounds the returned collection, and `--total` prints the exact matching count. Interactive searches offer additional pages on stderr; use `--auto-confirm` or `--automation` for unattended paging. `--quiet` suppresses human results while preserving explicitly requested JSON, keys-only, and numeric total output. Keys conflict with search filters, `--limit`, and `--total`; total mode also conflicts with `--limit`, `--json`, and `--keys-only`.
+
+The repeatable variable-search flags reuse the `get process-instance` grammar. `--var-exists` requires listed local names to exist. `--var` accepts `name=value` and `name.$operator=value` with `$eq`, `$neq`, `$exists`, `$in`, `$notIn`, and `$like`; `$notin` is an alias for `$notIn`. Quote string values and use JSON string arrays with membership operators. `--var-like` accepts native `*` and `?` wildcard patterns, including escaped literal wildcards. Commas inside quoted values and JSON arrays stay within a clause. All variable clauses and ordinary selectors are combined with AND and sent as native local-task filters. Parent-scope values do not satisfy positive local filters; negative and existence behavior remains backend-defined.
 
 Human rows follow the other get commands: task key, tenant, element ID, and state, followed by related `pi:`, `ei:`, and `pd:` keys. Assignee is always last: `assignee:<user>` when assigned, otherwise `assignee:<unassigned>`. Task name, BPMN process ID, and process-definition version are available in JSON. Other empty optional fields are omitted; collections end with `found: N`.
 
-Add `--with-vars` to include the effective variables selected by the backend for each returned task. This variable display is supported on Camunda 8.8, 8.9, and 8.10. Values are shown in full by default; `--var-value-limit N` shortens only the compact human presentation after `N` Unicode characters, while JSON preserves the received value. Truncation labels distinguish values already incomplete at the backend from values shortened only for display. Effective `--keys-only` output and `--total` skip variable retrieval.
+Filtering itself does not retrieve variables. Add `--with-vars` independently to include the effective variables selected by the backend for each returned task. This variable display is supported on Camunda 8.8, 8.9, and 8.10. Values are shown in full by default; `--var-value-limit N` shortens only the compact human presentation after `N` Unicode characters, while JSON preserves the received value. Truncation labels distinguish values already incomplete at the backend from values shortened only for display. Effective `--keys-only` output and `--total` skip variable retrieval.
 
-This command is read-only and intentionally excludes task mutations, variable filtering, forms, audit history, date filters, custom sorting, and watch mode.
+This command is read-only and intentionally excludes task mutations, variable mutation, forms, audit history, date filters, custom sorting, and watch mode.
 
 ```bash
+./c8volt get ut --var 'status="approved"'
+./c8volt get ut --var-exists payload
+./c8volt get ut --var-like 'email=*@example.com'
+./c8volt get ut --assignee alice --var 'status="approved"' --limit 20
+./c8volt get ut --var 'status="approved"' --total
+./c8volt get ut --var 'status="approved"' --with-vars
 ./c8volt get user-task --key <user-task-key>
 ./c8volt get user-task --key <user-task-key>,<another-user-task-key>
 ./c8volt get ut --key <user-task-key> --with-vars

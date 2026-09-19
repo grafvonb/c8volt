@@ -263,3 +263,19 @@ Started: 2026-09-19 12:56:01
 **Learnings**:
 - Service selection and limit trimming precede the shared display gate, so existing incremental and collected paths enrich only eligible selected tasks once and issue no mutations.
 ---
+## Iteration 17 - 2026-09-19 14:06
+**Work Unit**: Polish — User-Task Variable Filter Help and README
+**Tasks Completed**:
+- [x] T027: Document six workflows, grammar, encoding, local scope, and independent effective-variable display in source help, metadata assertions, and README
+**Tasks Remaining in Work Unit**: T028–T030
+**Commit**: This work-unit commit
+**Files Changed**:
+- README.md
+- cmd/get_usertask.go
+- cmd/command_contract_test.go
+- specs/310-user-task-variable-filtering/tasks.md
+- specs/310-user-task-variable-filtering/ralph-memory.md
+- specs/310-user-task-variable-filtering/progress.md
+**Learnings**:
+- Command help is the canonical generated-doc source; capability assertions now prevent the three repeatable local-variable flags and six issue workflows from disappearing from command metadata.
+---

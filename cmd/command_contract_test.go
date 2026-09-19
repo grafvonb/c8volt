@@ -1117,7 +1117,7 @@ func TestCapabilityDocumentForRoot_CoversCLIDebtAssessment(t *testing.T) {
 }
 
 // TestCommandCapabilityForCommand_UserTaskReadContract verifies every alias
-// resolves to the canonical read-only command with full machine and automation support.
+// resolves to the canonical read-only command with documented local-variable search support.
 func TestCommandCapabilityForCommand_UserTaskReadContract(t *testing.T) {
 	root := Root()
 	resetCommandTreeFlags(root)
@@ -1148,17 +1148,51 @@ func TestCommandCapabilityForCommand_UserTaskReadContract(t *testing.T) {
 		Repeated:    false,
 		Description: "maximum characters to show for variable values when --with-vars is set; 0 disables truncation",
 	})
-	for _, excluded := range []string{"var", "var-exists", "var-like", "forms", "audit-log", "date", "sort", "watch"} {
+	for _, expected := range []FlagContract{
+		{
+			Name:        "var-exists",
+			Type:        "stringArray",
+			Required:    false,
+			Repeated:    true,
+			Description: "require local variable name(s) to exist; repeat or separate names with commas",
+		},
+		{
+			Name:        "var",
+			Type:        "stringArray",
+			Required:    false,
+			Repeated:    true,
+			Description: "require local variable equality or advanced clause(s); repeat or separate clauses with commas",
+		},
+		{
+			Name:        "var-like",
+			Type:        "stringArray",
+			Required:    false,
+			Repeated:    true,
+			Description: "require local variable value pattern clause(s); repeat or separate clauses with commas",
+		},
+	} {
+		require.Contains(t, capability.Flags, expected)
+	}
+	for _, excluded := range []string{"forms", "audit-log", "date", "sort", "watch"} {
 		require.False(t, hasFlagContractNamed(capability.Flags, excluded), "out-of-scope --%s flag was advertised", excluded)
 	}
 	for _, example := range []string{
-		"./c8volt get ut --key <user-task-key> --with-vars",
-		"./c8volt get ut --assignee alice --limit 10 --with-vars",
-		"./c8volt get ut --pi-key <process-instance-key> --with-vars --var-value-limit 120",
-		"./c8volt --json get ut --key <user-task-key> --with-vars",
+		`./c8volt get ut --var 'status="approved"'`,
+		"./c8volt get ut --var-exists payload",
+		"./c8volt get ut --var-like 'email=*@example.com'",
+		`./c8volt get ut --assignee alice --var 'status="approved"' --limit 20`,
+		`./c8volt get ut --var 'status="approved"' --total`,
+		`./c8volt get ut --var 'status="approved"' --with-vars`,
 	} {
 		require.Contains(t, getUserTaskCmd.Example, example)
 	}
+	require.Contains(t, getUserTaskCmd.Long, "local variables")
+	require.Contains(t, getUserTaskCmd.Long, "$eq, $neq, $exists, $in, $notIn, and $like")
+	require.Contains(t, getUserTaskCmd.Long, "$notin is accepted as $notIn")
+	require.Contains(t, getUserTaskCmd.Long, "quote strings")
+	require.Contains(t, getUserTaskCmd.Long, "JSON string arrays")
+	require.Contains(t, getUserTaskCmd.Long, "Parent-scope values do not satisfy local filters")
+	require.Contains(t, getUserTaskCmd.Long, "Filtering does not retrieve variables")
 	require.Contains(t, getUserTaskCmd.Long, "zero, the default, keeps full received values")
 	require.Contains(t, getUserTaskCmd.Long, "JSON always preserves received values")
 	require.Contains(t, getUserTaskCmd.Long, "Effective keys-only and --total output skip variable retrieval")
