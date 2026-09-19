@@ -59,3 +59,21 @@ Started: 2026-09-19 12:56:01
 **Learnings**:
 - Explicit raw slices preserve the established grammar while proving PI and task command flag state cannot leak across wrappers.
 ---
+## Iteration 4 - 2026-09-19 13:09
+**Work Unit**: US1 Find Tasks Using Familiar Variable Filters — v8.8 Native Mapping
+**Tasks Completed**:
+- [x] T006: Add v8.8 native local-variable request and validation cases
+- [x] T010: Implement and attach the v8.8 adapter-local variable mapper
+**Tasks Remaining in Work Unit**: T007–T008 and T011–T015
+**Commit**: This work-unit commit
+**Files Changed**:
+- internal/services/usertask/v88/search.go
+- internal/services/usertask/v88/search_test.go
+- internal/services/usertask/v88/variable_filter.go
+- specs/310-user-task-variable-filtering/tasks.md
+- specs/310-user-task-variable-filtering/ralph-memory.md
+- specs/310-user-task-variable-filtering/quickstart.md
+- specs/310-user-task-variable-filtering/progress.md
+**Learnings**:
+- The v8.8 generated local-variable field accepts the same advanced string-filter union as process-instance variables, while adapter-side JSON decoding is still required to reject malformed membership arrays before HTTP.
+---

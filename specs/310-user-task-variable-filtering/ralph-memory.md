@@ -9,6 +9,7 @@ Started: 2026-09-19T10:56:01Z
 - Reuse the process-instance variable-filter grammar and domain validation without importing process-instance service adapters into user-task services.
 - Public task filter types alias the existing process facade records; task conversion allocates the domain clause slice and copies `Exists` with `toolx.CopyPtr` so caller mutation cannot cross the facade boundary.
 - The shared parser orchestration accepts explicit exists/value/like slices; PI and task wrappers retain independent package globals while reusing every lower-level grammar helper and diagnostic.
+- Each supported user-task version owns a small local mapper mirroring its process-instance adapter: validate the shared domain set, decode membership arrays to `[]string`, and assign the generated slice only to `UserTaskFilter.LocalVariables`.
 
 ## Decisions
 
@@ -33,4 +34,4 @@ Started: 2026-09-19T10:56:01Z
 - Do not broaden the existing PI grammar, hand-edit generated clients, add client-side variable matching, or introduce new paging/filter loops.
 
 ## Current Handoff
-- Continue US1 with T006 and T010: add v8.8 native local-variable request/validation cases, then implement the matching adapter-local mapper.
+- Continue US1 with T007 and T011: add v8.9 native local-variable request/validation cases, then implement the matching adapter-local mapper using the validated v8.8 pattern.

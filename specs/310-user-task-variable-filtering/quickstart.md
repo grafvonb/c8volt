@@ -100,3 +100,11 @@ Review generated task help and grammar compatibility, confirm no generated clien
 - `go test ./cmd -run 'Test(UserTaskVariableFilterParser|ParsePIVariableFilters)' -count=1` passed.
 - `go test -race ./cmd -run 'Test(UserTaskVariableFilterParser|ParsePIVariableFilters)' -count=1` passed.
 - `git diff --check` passed; no live backend validation was attempted because this work unit does not yet construct native task requests.
+
+### Iteration 4 — v8.8 native local-variable mapping (2026-09-19)
+
+- Added v8.8 request coverage for all six operators, ordered duplicate clauses, ordinary and tenant selectors, empty-filter omission, serialized null versus string-null, false existence, escaped wildcards, and pre-request rejection of invalid filters and malformed/non-string membership arrays.
+- Added the adapter-local v8.8 mapper and attached its output only to `UserTaskFilter.LocalVariables`; generated clients and process-instance services were unchanged.
+- `go test ./internal/services/usertask/v88 -count=1` passed.
+- `go test -race ./internal/services/usertask/v88 -run 'TestService_SearchUserTasksPage_' -count=1` passed.
+- `git diff --check` passed; fixture assertions prove exact native request construction, not live backend missing/null or parent-scope semantics.
