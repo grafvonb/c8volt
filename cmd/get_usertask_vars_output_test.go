@@ -127,6 +127,128 @@ func TestGetUserTaskVariableOutputModes(t *testing.T) {
 	require.Zero(t, requests.variableRequestCount(userTaskVariableOutputKey))
 }
 
+// TestGetUserTaskVariableFilteredOutputModes verifies local filtering retains
+// every display exclusion and machine-output precedence rule for --with-vars.
+func TestGetUserTaskVariableFilteredOutputModes(t *testing.T) {
+	const filter = `status="approved"`
+	tests := []struct {
+		name          string
+		args          []string
+		emptySearch   bool
+		want          string
+		wantJSON      bool
+		wantVariables int
+	}{
+		{
+			name: "effective keys only",
+			args: []string{"--keys-only", "get", "ut", "--var", filter, "--with-vars"},
+			want: userTaskVariableOutputKey + "\n",
+		},
+		{
+			name: "total",
+			args: []string{"get", "ut", "--var", filter, "--total", "--with-vars"},
+			want: "1\n",
+		},
+		{
+			name:        "empty",
+			args:        []string{"get", "ut", "--var", filter, "--with-vars"},
+			emptySearch: true,
+			want:        "found: 0\n",
+		},
+		{
+			name:          "quiet human",
+			args:          []string{"--quiet", "get", "ut", "--var", filter, "--with-vars"},
+			wantVariables: 1,
+		},
+		{
+			name:          "quiet json",
+			args:          []string{"--quiet", "--json", "get", "ut", "--var", filter, "--with-vars", "--var-value-limit", "3"},
+			wantJSON:      true,
+			wantVariables: 1,
+		},
+		{
+			name:          "json over keys",
+			args:          []string{"--keys-only", "--json", "get", "ut", "--var", filter, "--with-vars", "--var-value-limit", "3"},
+			wantJSON:      true,
+			wantVariables: 1,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			fixture := userTaskVariableOutputFixture(http.StatusOK)
+			if test.emptySearch {
+				fixture.SearchRespond = func(_ int, _ map[string]any) string {
+					return userTaskSearchResponse(0, false, "")
+				}
+			}
+			server, requests := newGetUserTaskVariablesServer(t, fixture)
+			configPath := testx.WriteTestConfigForVersion(t, server.URL, "8.9")
+
+			stdout, stderr, err := runGetUserTaskCommand(t, configPath, "", test.args...)
+			require.NoError(t, err, stderr)
+			require.Empty(t, stderr)
+			if test.wantJSON {
+				decoder := json.NewDecoder(strings.NewReader(stdout))
+				var envelope map[string]any
+				require.NoError(t, decoder.Decode(&envelope))
+				require.ErrorIs(t, decoder.Decode(&struct{}{}), io.EOF)
+				items := envelope["payload"].(map[string]any)["items"].([]any)
+				require.Len(t, items, 1)
+				variables := items[0].(map[string]any)["variables"].([]any)
+				require.Equal(t, `{ "amount": 120 }`, variables[3].(map[string]any)["value"], "JSON preserves structured values")
+				require.Equal(t, true, variables[3].(map[string]any)["apiTruncated"])
+				require.Equal(t, "äöüabc", variables[4].(map[string]any)["value"], "human limits do not shorten JSON")
+			} else {
+				require.Equal(t, test.want, stdout)
+			}
+			require.Equal(t, 1, requests.searchRequestCount())
+			require.Equal(t, [][]any{{
+				map[string]any{"name": "status", "value": map[string]any{"$eq": `"approved"`}},
+			}}, requests.localVariablePredicates())
+			require.Equal(t, test.wantVariables, requests.variableRequestCount(userTaskVariableOutputKey))
+		})
+	}
+}
+
+// TestGetUserTaskVariableFilteredHumanValueLimit verifies filtered human
+// display keeps structured compaction, Unicode rune limits, and truncation labels.
+func TestGetUserTaskVariableFilteredHumanValueLimit(t *testing.T) {
+	server, requests := newUserTaskVariableOutputServer(t, http.StatusOK)
+	configPath := testx.WriteTestConfigForVersion(t, server.URL, "8.9")
+
+	stdout, stderr, err := runGetUserTaskCommand(t, configPath, "", "get", "ut", "--var", `status="approved"`, "--with-vars", "--var-value-limit", "3")
+	require.NoError(t, err, stderr)
+	require.Empty(t, stderr)
+	for _, want := range []string{
+		`array=[1,... [cli-truncated]`,
+		`object={"a... [api-truncated,cli-truncated]`,
+		`unicode=äöü... [cli-truncated]`,
+	} {
+		require.Contains(t, stdout, want)
+	}
+	require.Contains(t, stdout, "found: 1\n")
+	require.Equal(t, 1, requests.variableRequestCount(userTaskVariableOutputKey))
+	require.Equal(t, 1, requests.searchRequestCount())
+}
+
+// TestGetUserTaskVariableFilteredEnrichmentFailure verifies an effective-value
+// retrieval error remains a command failure after a successful native filter.
+func TestGetUserTaskVariableFilteredEnrichmentFailure(t *testing.T) {
+	server, requests := newUserTaskVariableOutputServer(t, http.StatusBadGateway)
+	configPath := testx.WriteTestConfigForVersion(t, server.URL, "8.9")
+
+	stdout, stderr, err := runGetUserTaskCommand(t, configPath, "", "get", "ut", "--var", `status="approved"`, "--with-vars")
+	require.Error(t, err)
+	require.Empty(t, stdout)
+	require.Contains(t, stderr, "get user task variables")
+	require.Equal(t, 1, requests.searchRequestCount())
+	require.Equal(t, 1, requests.variableRequestCount(userTaskVariableOutputKey))
+	require.Equal(t, [][]any{{
+		map[string]any{"name": "status", "value": map[string]any{"$eq": `"approved"`}},
+	}}, requests.localVariablePredicates())
+}
+
 // TestGetUserTaskVariableLimitValidationAndQuietFailure verifies local limit
 // errors happen before reads and quiet human retrieval still propagates errors.
 func TestGetUserTaskVariableLimitValidationAndQuietFailure(t *testing.T) {
@@ -167,8 +289,14 @@ func TestGetUserTaskVariableLimitValidationAndQuietFailure(t *testing.T) {
 // output-mode case receives an independent effective-variable page sequence.
 func newUserTaskVariableOutputServer(t *testing.T, variableStatus int) (*httptest.Server, *capturedGetUserTaskVariableRequests) {
 	t.Helper()
+	return newGetUserTaskVariablesServer(t, userTaskVariableOutputFixture(variableStatus))
+}
+
+// userTaskVariableOutputFixture supplies structured, Unicode, and truncated
+// effective values for both keyed and filtered output-contract tests.
+func userTaskVariableOutputFixture(variableStatus int) getUserTaskVariablesFixture {
 	apiTruncated := true
-	return newGetUserTaskVariablesServer(t, getUserTaskVariablesFixture{
+	return getUserTaskVariablesFixture{
 		SearchRespond: func(_ int, _ map[string]any) string {
 			return userTaskSearchResponse(1, false, "", userTaskVariableOutputKey)
 		},
@@ -185,5 +313,5 @@ func newUserTaskVariableOutputServer(t *testing.T, variableStatus int) (*httptes
 				},
 			}},
 		},
-	})
+	}
 }
