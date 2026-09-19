@@ -174,3 +174,12 @@ Review generated task help and grammar compatibility, confirm no generated clien
 - The `-race` variants of all six focused commands above passed, covering changed parser/command/facade/service paths, PI regressions, terminal paging, and command metadata.
 - `make test` was not run: targeted ordinary and race coverage passed, and the implementation adds no concurrency, dependency, generated-client, or unresolved shared-runtime risk requiring the full suite under constitution principle III.
 - No live backend validation was attempted because no authorized fixture or credentials were provided; deterministic request fixtures remain the evidence for exact native mapping, while backend missing/null, parent-only, shadowing, and negative-existence semantics remain intentionally unclaimed.
+
+### Iteration 20 — final contract and scope review (2026-09-19)
+
+- Reviewed the complete `develop...HEAD` diff against `spec.md`, `contracts/cli.md`, and `contracts/facade-service.md`; the implementation and documented behavior satisfy the additive local-variable filtering, validation, paging/output, display-independence, supported-version, and compatibility contracts.
+- `git diff --check develop...HEAD` passed.
+- No files under `internal/clients/camunda/` changed. The only public model addition is the search-input `VariableFilters` field and aliases; task result records, command view files, and shared result envelopes are unchanged.
+- `cmd/get_usertask_search.go`, `cmd/get_usertask_vars.go`, and `internal/services/usertask/search.go` are unchanged, confirming no new production paging, filtering, total, or enrichment loop. The versioned adapters only validate/map predicates into native `filter.localVariables` before the existing search request.
+- No mutation command, mutation endpoint, or task lifecycle behavior changed. The shared process-instance parser change only parameterizes its existing orchestration with explicit slices; lower-level grammar helpers and PI behavior remain unchanged.
+- Prior focused ordinary and race results remain valid because this iteration changed only feature evidence and completion records; constitution principle III does not require repeating runtime tests for this documentation-only review.

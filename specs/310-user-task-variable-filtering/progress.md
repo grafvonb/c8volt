@@ -308,3 +308,17 @@ Started: 2026-09-19 12:56:01
 **Learnings**:
 - The complete targeted ordinary and race matrix passes; no full-suite escalation or unauthorized live-backend fixture was warranted.
 ---
+## Iteration 20 - 2026-09-19 14:17
+**Work Unit**: Polish — Final Contract and Scope Review
+**Tasks Completed**:
+- [x] T030: Review the completed diff against the specification and contracts and confirm all scope exclusions
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- specs/310-user-task-variable-filtering/tasks.md
+- specs/310-user-task-variable-filtering/ralph-memory.md
+- specs/310-user-task-variable-filtering/quickstart.md
+- specs/310-user-task-variable-filtering/progress.md
+**Learnings**:
+- The completed diff matches both contracts and stays within additive native read-only filtering: generated clients, task result schemas, traversal/enrichment loops, mutation behavior, and lower-level PI grammar remain unchanged.
+---
