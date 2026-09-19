@@ -108,6 +108,96 @@ func TestGetUserTaskOutput_EmptyAndTotalModes(t *testing.T) {
 	}
 }
 
+// TestGetUserTaskOutput_FilteredNonemptyModes proves local-variable selection
+// preserves every result mode and unattended execution without extra reads.
+func TestGetUserTaskOutput_FilteredNonemptyModes(t *testing.T) {
+	const (
+		filter = `status="approved"`
+		key    = "2251799815391233"
+		human  = "2251799815391233 tenant-a approve_invoice CREATED pi:2251799813711967 ei:2251799815391200 pd:2251799813689000 assignee:alice\nfound: 1\n"
+	)
+	tests := []struct {
+		name      string
+		args      []string
+		want      string
+		wantJSON  bool
+		wantTotal int64
+	}{
+		{name: "human", args: []string{"get", "ut", "--var", filter}, want: human, wantTotal: 1},
+		{name: "json", args: []string{"--json", "get", "ut", "--var", filter}, wantJSON: true, wantTotal: 1},
+		{name: "keys", args: []string{"--keys-only", "get", "ut", "--var", filter}, want: key + "\n", wantTotal: 1},
+		{name: "quiet", args: []string{"--quiet", "get", "ut", "--var", filter}, wantTotal: 1},
+		{name: "quiet json", args: []string{"--quiet", "--json", "get", "ut", "--var", filter}, wantJSON: true, wantTotal: 1},
+		{name: "quiet keys", args: []string{"--quiet", "--keys-only", "get", "ut", "--var", filter}, want: key + "\n", wantTotal: 1},
+		{name: "json over keys", args: []string{"--keys-only", "--json", "get", "ut", "--var", filter}, wantJSON: true, wantTotal: 1},
+		{name: "total", args: []string{"get", "ut", "--var", filter, "--total"}, want: "7\n", wantTotal: 7},
+		{name: "auto confirm", args: []string{"--auto-confirm", "get", "ut", "--var", filter}, want: human, wantTotal: 1},
+		{name: "automation", args: []string{"--automation", "get", "ut", "--var", filter}, want: human, wantTotal: 1},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			server, requests := newGetUserTaskSearchServer(t, func(_ int, _ map[string]any) string {
+				if test.name == "total" {
+					return userTaskSearchResponse(test.wantTotal, false, "")
+				}
+				return userTaskSearchResponse(test.wantTotal, false, "", key)
+			})
+			configPath := testx.WriteTestConfigForVersion(t, server.URL, "8.9")
+
+			stdout, stderr, err := runGetUserTaskCommand(t, configPath, "", test.args...)
+			require.NoError(t, err, stderr)
+			require.Empty(t, stderr)
+			if test.wantJSON {
+				requireSucceededUserTaskEnvelope(t, stdout, 1)
+			} else {
+				require.Equal(t, test.want, stdout)
+			}
+			requireFilteredUserTaskOutputRequest(t, requests, filter)
+		})
+	}
+}
+
+// TestGetUserTaskOutput_FilteredEmptyModes proves an authoritative empty
+// filtered result retains exact text, zero-byte keys, and one JSON envelope.
+func TestGetUserTaskOutput_FilteredEmptyModes(t *testing.T) {
+	const filter = `status="missing"`
+	tests := []struct {
+		name     string
+		args     []string
+		want     string
+		wantJSON bool
+	}{
+		{name: "human", args: []string{"get", "ut", "--var", filter}, want: "found: 0\n"},
+		{name: "json", args: []string{"--json", "get", "ut", "--var", filter}, wantJSON: true},
+		{name: "keys", args: []string{"--keys-only", "get", "ut", "--var", filter}},
+		{name: "quiet", args: []string{"--quiet", "get", "ut", "--var", filter}},
+		{name: "quiet json", args: []string{"--quiet", "--json", "get", "ut", "--var", filter}, wantJSON: true},
+		{name: "quiet keys", args: []string{"--quiet", "--keys-only", "get", "ut", "--var", filter}},
+		{name: "json over keys", args: []string{"--keys-only", "--json", "get", "ut", "--var", filter}, wantJSON: true},
+		{name: "total", args: []string{"get", "ut", "--var", filter, "--total"}, want: "0\n"},
+		{name: "auto confirm", args: []string{"--auto-confirm", "get", "ut", "--var", filter}, want: "found: 0\n"},
+		{name: "automation", args: []string{"--automation", "get", "ut", "--var", filter}, want: "found: 0\n"},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			server, requests := newGetUserTaskSearchServer(t, func(_ int, _ map[string]any) string {
+				return userTaskSearchResponse(0, false, "")
+			})
+			configPath := testx.WriteTestConfigForVersion(t, server.URL, "8.9")
+
+			stdout, stderr, err := runGetUserTaskCommand(t, configPath, "", test.args...)
+			require.NoError(t, err, stderr)
+			require.Empty(t, stderr)
+			if test.wantJSON {
+				requireSucceededUserTaskEnvelope(t, stdout, 0)
+			} else {
+				require.Equal(t, test.want, stdout)
+			}
+			requireFilteredUserTaskOutputRequest(t, requests, filter)
+		})
+	}
+}
+
 // TestGetUserTaskOutput_EmptyVariableSearchModes verifies opt-in enrichment
 // preserves every successful empty/count output contract without variable reads.
 func TestGetUserTaskOutput_EmptyVariableSearchModes(t *testing.T) {
@@ -204,4 +294,16 @@ func requireSucceededUserTaskEnvelope(t *testing.T, stdout string, wantTotal int
 	require.Len(t, envelope.Payload.Items, int(wantTotal))
 	var extra any
 	require.Error(t, decoder.Decode(&extra), "JSON output must contain exactly one envelope")
+}
+
+// requireFilteredUserTaskOutputRequest verifies rendering did not add reads
+// and the sole native search retained the expected local predicate.
+func requireFilteredUserTaskOutputRequest(t *testing.T, requests *capturedUserTaskSearchRequests, filter string) {
+	t.Helper()
+	got := requests.snapshot(t)
+	require.Len(t, got, 1, "filtered rendering or unattended mode added a read")
+	requestFilter := requireJSONMap(t, got[0]["filter"])
+	require.Equal(t, []any{
+		map[string]any{"name": "status", "value": map[string]any{"$eq": strings.TrimPrefix(filter, "status=")}},
+	}, requestFilter["localVariables"])
 }

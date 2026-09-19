@@ -148,3 +148,17 @@ Started: 2026-09-19 12:56:01
 **Learnings**:
 - Existing service traversal already preserves the full filtered query on every page and failure path; total mode intentionally clears only the caller limit, so no production change was required.
 ---
+## Iteration 9 - 2026-09-19 13:31
+**Work Unit**: US2 Bound and Count Filtered Work Reliably — Command Output Contracts
+**Tasks Completed**:
+- [x] T017: Add filtered nonempty and empty execution coverage for all result and unattended modes
+**Tasks Remaining in Work Unit**: T018–T021
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/get_usertask_output_test.go
+- specs/310-user-task-variable-filtering/tasks.md
+- specs/310-user-task-variable-filtering/ralph-memory.md
+- specs/310-user-task-variable-filtering/progress.md
+**Learnings**:
+- Existing output paths preserve exact filtered human, JSON, keys-only, quiet, total, auto-confirm, and automation contracts with one native search request, so no production change was required.
+---
