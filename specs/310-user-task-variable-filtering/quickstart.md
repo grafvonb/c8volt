@@ -83,3 +83,12 @@ Review generated task help and grammar compatibility, confirm no generated clien
 - The prerequisite check selected `specs/310-user-task-variable-filtering` and reported the expected design and task artifacts.
 - Scope remained documentation-only for T001; no runtime tests or CLI documentation generation were warranted under constitution principle III.
 - `git diff --check` passed for the coordinated setup changes.
+
+### Iteration 2 — foundational facade plumbing (2026-09-19)
+
+- Added public task filter aliases/constants, the additive search/domain fields, and mechanical ordered conversion with copied existence pointers.
+- `go test ./c8volt/task -run 'Test.*(Search|VariableFilter)' -count=1` passed.
+- `go test ./c8volt/task -count=1` passed.
+- `go test ./internal/domain -count=1` passed.
+- `go test -race ./c8volt/task -run 'Test.*(Search|VariableFilter)' -count=1` passed.
+- `git diff --check` passed before coordinated persistence; no live backend validation was attempted because this work unit only establishes facade/domain propagation.

@@ -46,6 +46,8 @@ func (a facadeSearchUserTaskAPI) SearchUserTaskEffectiveVariablesPage(context.Co
 func TestClientSearchUserTasksMapsRequestOptionsAndReturnedCount(t *testing.T) {
 	t.Parallel()
 
+	exists := false
+	filters := VariableFilterSet{Clauses: []VariableFilterClause{{Name: "payload", Operator: VariableFilterOperatorExists, Exists: &exists, Source: "--var-exists"}}}
 	source := []d.UserTask{
 		{Key: "task-a", State: "CREATED", ProcessInstanceKey: "process-a", CandidateUsers: []string{"alice"}},
 		{Key: "task-b", State: "COMPLETED", ProcessInstanceKey: "process-b", CandidateGroups: []string{"accounting"}},
@@ -55,6 +57,7 @@ func TestClientSearchUserTasksMapsRequestOptionsAndReturnedCount(t *testing.T) {
 			ProcessInstanceKey: "process-a", ProcessDefinitionKey: "definition-a", BpmnProcessId: "invoice",
 			ElementId: "approve_invoice", State: "CREATED", Assignee: "alice", CandidateUser: "bob",
 			CandidateGroup: "accounting", BatchSize: 25, Limit: 1,
+			VariableFilters: d.ProcessInstanceVariableFilterSet{Clauses: []d.ProcessInstanceVariableFilterClause{{Name: "payload", Operator: d.ProcessInstanceVariableFilterOperatorExists, Exists: boolPointer(false), Source: "--var-exists"}}},
 		}, query)
 		require.Equal(t, d.UserTaskPageRequest{Size: 25}, page)
 		cfg := services.ApplyCallOptions(opts)
@@ -72,6 +75,7 @@ func TestClientSearchUserTasksMapsRequestOptionsAndReturnedCount(t *testing.T) {
 		ProcessInstanceKey: "process-a", ProcessDefinitionKey: "definition-a", BpmnProcessId: "invoice",
 		ElementId: "approve_invoice", State: "CREATED", Assignee: "alice", CandidateUser: "bob",
 		CandidateGroup: "accounting", BatchSize: 25, Limit: 1,
+		VariableFilters: filters,
 	}, options.WithIgnoreTenant(), options.WithVerbose())
 	require.NoError(t, err)
 	require.Equal(t, int64(1), got.Total)
@@ -87,8 +91,11 @@ func TestClientSearchUserTasksMapsRequestOptionsAndReturnedCount(t *testing.T) {
 func TestClientSearchUserTasksPagesMapsVisitorFactsAndAction(t *testing.T) {
 	t.Parallel()
 
+	filters := VariableFilterSet{Clauses: []VariableFilterClause{{Name: "status", Operator: VariableFilterOperatorEq, Value: `"approved"`, Source: "--var"}}}
 	source := []d.UserTask{{Key: "task-a", State: "CREATED", ProcessInstanceKey: "process-a", CandidateGroups: []string{"ops"}}}
-	api := facadeSearchUserTaskAPI{searchPage: func(_ context.Context, _ d.UserTaskSearchQuery, page d.UserTaskPageRequest, _ ...services.CallOption) (d.UserTaskSearchPage, error) {
+	api := facadeSearchUserTaskAPI{searchPage: func(_ context.Context, query d.UserTaskSearchQuery, page d.UserTaskPageRequest, _ ...services.CallOption) (d.UserTaskSearchPage, error) {
+		require.Equal(t, d.ProcessInstanceVariableFilterOperatorEq, query.VariableFilters.Clauses[0].Operator)
+		require.Equal(t, `"approved"`, query.VariableFilters.Clauses[0].Value)
 		return d.UserTaskSearchPage{
 			Items: source, Request: page, RawItemCount: 1, EndCursor: "cursor-a",
 			ReportedTotal:     &d.UserTaskReportedTotal{Count: 10, Kind: d.UserTaskReportedTotalKindLowerBound},
@@ -97,7 +104,7 @@ func TestClientSearchUserTasksPagesMapsVisitorFactsAndAction(t *testing.T) {
 	}}
 	client := New(nil, nil, api, nil)
 
-	got, err := client.SearchUserTasksPages(context.Background(), SearchRequest{BatchSize: 10}, func(step SearchPageStep) (SearchPageAction, error) {
+	got, err := client.SearchUserTasksPages(context.Background(), SearchRequest{BatchSize: 10, VariableFilters: filters}, func(step SearchPageStep) (SearchPageAction, error) {
 		require.Equal(t, int64(1), step.CumulativeCount)
 		require.False(t, step.LimitReached)
 		require.Equal(t, PageRequest{Size: 10}, step.Page.Request)
@@ -183,9 +190,11 @@ func TestClientSearchUserTasksMapsVisitorAndServiceErrors(t *testing.T) {
 func TestClientSearchUserTasksTotalDelegatesExactCount(t *testing.T) {
 	t.Parallel()
 
+	filters := VariableFilterSet{Clauses: []VariableFilterClause{{Name: "email", Operator: VariableFilterOperatorLike, Value: "*@example.com", Source: "--var-like"}}}
 	api := facadeSearchUserTaskAPI{searchPage: func(_ context.Context, query d.UserTaskSearchQuery, page d.UserTaskPageRequest, opts ...services.CallOption) (d.UserTaskSearchPage, error) {
 		require.Equal(t, "accounting", query.CandidateGroup)
 		require.Equal(t, int32(50), query.BatchSize)
+		require.Equal(t, d.ProcessInstanceVariableFilterSet{Clauses: []d.ProcessInstanceVariableFilterClause{{Name: "email", Operator: d.ProcessInstanceVariableFilterOperatorLike, Value: "*@example.com", Source: "--var-like"}}}, query.VariableFilters)
 		require.True(t, services.ApplyCallOptions(opts).IgnoreTenant)
 		return d.UserTaskSearchPage{
 			Request: page, ReportedTotal: &d.UserTaskReportedTotal{Count: int64(1) << 40, Kind: d.UserTaskReportedTotalKindExact},
@@ -194,7 +203,7 @@ func TestClientSearchUserTasksTotalDelegatesExactCount(t *testing.T) {
 	}}
 	client := New(nil, nil, api, nil)
 
-	total, err := client.SearchUserTasksTotal(context.Background(), SearchRequest{CandidateGroup: "accounting", BatchSize: 50, Limit: 1}, options.WithIgnoreTenant())
+	total, err := client.SearchUserTasksTotal(context.Background(), SearchRequest{CandidateGroup: "accounting", BatchSize: 50, Limit: 1, VariableFilters: filters}, options.WithIgnoreTenant())
 	require.NoError(t, err)
 	require.Equal(t, int64(1)<<40, total)
 }

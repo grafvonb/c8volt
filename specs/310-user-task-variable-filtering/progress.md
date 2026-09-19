@@ -19,3 +19,25 @@ Started: 2026-09-19 12:56:01
 **Learnings**:
 - The feature artifacts align with repository layering and UX rules; implementation starts with facade predicate regression coverage in T002.
 ---
+## Iteration 2 - 2026-09-19 13:01
+**Work Unit**: Phase 2 Foundational — Predicate Search Inputs
+**Tasks Completed**:
+- [x] T002: Add public model, conversion, and facade propagation regression cases
+- [x] T003: Add task filter aliases, constants, and additive search/domain fields
+- [x] T004: Map ordered predicates with independent optional boolean ownership
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- c8volt/task/model.go
+- c8volt/task/convert.go
+- internal/domain/usertask.go
+- c8volt/task/model_test.go
+- c8volt/task/convert_test.go
+- c8volt/task/search_test.go
+- specs/310-user-task-variable-filtering/tasks.md
+- specs/310-user-task-variable-filtering/ralph-memory.md
+- specs/310-user-task-variable-filtering/quickstart.md
+- specs/310-user-task-variable-filtering/progress.md
+**Learnings**:
+- Struct-valued `omitempty` serializes an empty public filter set as an empty object; conversion still preserves an empty clause set for unfiltered service behavior.
+---
