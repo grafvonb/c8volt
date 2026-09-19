@@ -279,3 +279,18 @@ Started: 2026-09-19 12:56:01
 **Learnings**:
 - Command help is the canonical generated-doc source; capability assertions now prevent the three repeatable local-variable flags and six issue workflows from disappearing from command metadata.
 ---
+## Iteration 18 - 2026-09-19 14:08
+**Work Unit**: Polish — Generated User-Task Variable Filter Documentation
+**Tasks Completed**:
+- [x] T028: Regenerate and review the user-task CLI page and documentation index
+**Tasks Remaining in Work Unit**: T029–T030
+**Commit**: This work-unit commit
+**Files Changed**:
+- docs/cli/c8volt_get_user-task.md
+- docs/index.md
+- specs/310-user-task-variable-filtering/tasks.md
+- specs/310-user-task-variable-filtering/ralph-memory.md
+- specs/310-user-task-variable-filtering/progress.md
+**Learnings**:
+- Generated output changed only the expected task page and index, with consistent flags, grammar, examples, local scope, backend semantics, and independent effective-variable display; the index build metadata refresh is generator-owned.
+---

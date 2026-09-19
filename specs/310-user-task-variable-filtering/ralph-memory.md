@@ -23,6 +23,7 @@ Started: 2026-09-19T10:56:01Z
 - Filtered output uses the same enrichment gate as unfiltered output: effective keys-only, total, and empty selections make zero variable reads; quiet human still performs requested enrichment; quiet JSON and JSON-over-keys preserve full received values while human limits remain rune-aware and retain API/CLI truncation labels.
 - US3 integration requires no production changes: service-selected and limit-trimmed tasks reach the command before the shared enrichment gate, incremental pages enrich once before rendering, and collected results enrich once at final rendering; fixtures expose only read/search routes, so the passing display suites also exclude mutation requests.
 - User-task source help and README now use the same six filter workflows and explicitly document shared operators, `$notin`, serialized string/array encoding, native local-only scope, backend-defined negative/existence behavior, and display enrichment as an independent option.
+- `make docs-content` regenerates only `docs/cli/c8volt_get_user-task.md` and `docs/index.md` for this source-help change; the index build metadata refresh is expected alongside the matching flag, grammar, workflow, scope, and display text.
 
 ## Decisions
 
@@ -50,4 +51,4 @@ Started: 2026-09-19T10:56:01Z
 - Do not broaden the existing PI grammar, hand-edit generated clients, add client-side variable matching, or introduce new paging/filter loops.
 
 ## Current Handoff
-- Continue Polish with T028: run `make docs-content` and review only the generated task CLI page and index changes for flag, grammar, example, and scope consistency.
+- Continue Polish with T029: run `gofmt` on touched Go files and the proportionate targeted/race checks recorded in `quickstart.md`, then record the actual results and skipped live-backend validation.
