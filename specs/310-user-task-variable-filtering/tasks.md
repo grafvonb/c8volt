@@ -12,7 +12,7 @@
 
 **Purpose**: Establish the existing behavior as the baseline, without new dependencies or scaffolding.
 
-- [ ] T001 Review `specs/310-user-task-variable-filtering/plan.md`, `specs/310-user-task-variable-filtering/contracts/cli.md`, `specs/310-user-task-variable-filtering/contracts/facade-service.md`, `AGENTS.md`, and `.specify/memory/constitution.md`; confirm the current branch and record implementation validation results in `specs/310-user-task-variable-filtering/quickstart.md` as work proceeds. For Ralph execution also read `specs/ralph-implementation-rules.md`; stop on a genuine conflict. Do not change grammar, generated clients, or unrelated branch work.
+- [x] T001 Review `specs/310-user-task-variable-filtering/plan.md`, `specs/310-user-task-variable-filtering/contracts/cli.md`, `specs/310-user-task-variable-filtering/contracts/facade-service.md`, `AGENTS.md`, and `.specify/memory/constitution.md`; confirm the current branch and record implementation validation results in `specs/310-user-task-variable-filtering/quickstart.md` as work proceeds. For Ralph execution also read `specs/ralph-implementation-rules.md`; stop on a genuine conflict. Do not change grammar, generated clients, or unrelated branch work.
 
 ## Phase 2: Foundational (Blocking Prerequisites)
 
