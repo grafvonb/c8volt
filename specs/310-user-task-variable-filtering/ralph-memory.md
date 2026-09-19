@@ -24,6 +24,7 @@ Started: 2026-09-19T10:56:01Z
 - US3 integration requires no production changes: service-selected and limit-trimmed tasks reach the command before the shared enrichment gate, incremental pages enrich once before rendering, and collected results enrich once at final rendering; fixtures expose only read/search routes, so the passing display suites also exclude mutation requests.
 - User-task source help and README now use the same six filter workflows and explicitly document shared operators, `$notin`, serialized string/array encoding, native local-only scope, backend-defined negative/existence behavior, and display enrichment as an independent option.
 - `make docs-content` regenerates only `docs/cli/c8volt_get_user-task.md` and `docs/index.md` for this source-help change; the index build metadata refresh is expected alongside the matching flag, grammar, workflow, scope, and display text.
+- The complete quickstart-focused ordinary and race matrix passes across command/parser, task facade, user-task service/adapters, PI variable regressions, terminal paging, and command metadata; targeted coverage is proportionate because the feature adds no concurrency, dependency, generated-client, or broader shared-runtime change.
 
 ## Decisions
 
@@ -51,4 +52,4 @@ Started: 2026-09-19T10:56:01Z
 - Do not broaden the existing PI grammar, hand-edit generated clients, add client-side variable matching, or introduce new paging/filter loops.
 
 ## Current Handoff
-- Continue Polish with T029: run `gofmt` on touched Go files and the proportionate targeted/race checks recorded in `quickstart.md`, then record the actual results and skipped live-backend validation.
+- Continue Polish with T030: review the completed diff against the specification and both contracts, run `git diff --check`, finalize quickstart evidence, and confirm all scope exclusions before terminal coordinated persistence.

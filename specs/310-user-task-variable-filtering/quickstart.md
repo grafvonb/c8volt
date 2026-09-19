@@ -162,3 +162,15 @@ Review generated task help and grammar compatibility, confirm no generated clien
 - `go test -race -v ./cmd -run 'Test(GetUserTaskVariable|FilteredUserTaskVariablesFixture|GetUserTaskCommand_(KeyedVari|VariableModeGates|SearchVariables|FilteredDisplay))' -count=1` passed, including keyed display, exclusions, limits, sparse and stopped paging, effective-variable pagination, truncation, JSON fidelity, and failure behavior.
 - Filter-only execution and keys-only, total, and empty display exclusions performed zero effective-variable reads; eligible display read only selected tasks. The fixtures expose only task reads, task searches, and effective-variable searches, so successful runs also prove no mutation requests were issued.
 - Native request fixtures, rather than a live backend, remain the evidence for local predicate propagation and request boundaries; no live scope or missing/null validation was attempted.
+
+### Iteration 19 — final focused implementation validation (2026-09-19)
+
+- Ran `gofmt` across every Go file changed from `develop`; it produced no diff.
+- `go test ./cmd -run 'Test.*(VariableFilter|PIVariable|UserTask.*Filter|GetUserTask.*Variable)' -count=1` passed.
+- `go test ./c8volt/task -run 'Test.*(Search|VariableFilter)' -count=1` passed.
+- `go test ./internal/services/usertask/... -run 'Test.*(Search|VariableFilter|Native)' -count=1` passed across the version-neutral service and v8.7–v8.10 adapters.
+- `go test ./internal/services/processinstance/... -run 'Test.*Variable' -count=1` passed across packages with matching PI variable regressions; traversal, waiter, and walker reported no matching tests and were not counted as direct evidence.
+- `go test ./cmd -run 'TestGetUserTaskPagingTerminal' -count=1` and `go test ./cmd -run 'TestCommandCapabilityForCommand_UserTaskReadContract' -count=1` passed.
+- The `-race` variants of all six focused commands above passed, covering changed parser/command/facade/service paths, PI regressions, terminal paging, and command metadata.
+- `make test` was not run: targeted ordinary and race coverage passed, and the implementation adds no concurrency, dependency, generated-client, or unresolved shared-runtime risk requiring the full suite under constitution principle III.
+- No live backend validation was attempted because no authorized fixture or credentials were provided; deterministic request fixtures remain the evidence for exact native mapping, while backend missing/null, parent-only, shadowing, and negative-existence semantics remain intentionally unclaimed.
