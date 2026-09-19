@@ -16,6 +16,7 @@ Started: 2026-09-19T10:56:01Z
 - Version-neutral traversal retains the complete ordinary and variable-filter query on initial, cursor, offset, sparse, bounded, stopped, total, and failure paths. Total mode clears only `Limit`; the search-only fake API panics on any effective-variable read.
 - Filtered output coverage uses the existing subprocess runner to capture stdout/stderr separately and a search-only fixture to prove every human, machine, total, quiet, auto-confirm, and automation mode retains the native local predicate with exactly one request.
 - Real-terminal filtered paging uses `testx.NewCmdTerminalRunner`; representative configured/inherited stderr, default-no/continue/decline/EOF, sparse/empty, JSON, automation, and auto-confirm cases assert every native page retains the exact local predicate while stdout remains prompt-free.
+- Filtered backend-failure coverage captures every attempted native search request: first-page failures emit no result, later keys output stays plainly partial without `found:`, collected JSON emits exactly one failed envelope, totals emit no number, and total/limit/output conflicts fail before HTTP.
 
 ## Decisions
 
@@ -42,4 +43,4 @@ Started: 2026-09-19T10:56:01Z
 - Do not broaden the existing PI grammar, hand-edit generated clients, add client-side variable matching, or introduce new paging/filter loops.
 
 ## Current Handoff
-- Continue US2 with T019: extend filtered first/later search failure and existing total/limit/output-conflict coverage without duplicating the key-conflict evidence from T013.
+- Continue US2 with T020: verify the US1 query flows unchanged through existing command and service integration for all T016–T019 scenarios; edit production only for demonstrated gaps.

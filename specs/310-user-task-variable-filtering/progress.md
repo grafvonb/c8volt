@@ -176,3 +176,17 @@ Started: 2026-09-19 12:56:01
 **Learnings**:
 - The existing terminal path preserves native local predicates on every page while routing exact default-no prompts only to configured or inherited stderr; no production change was required.
 ---
+## Iteration 11 - 2026-09-19 13:40
+**Work Unit**: US2 Bound and Count Filtered Work Reliably — Failure and Conflict Contracts
+**Tasks Completed**:
+- [x] T019: Add filtered first/later search failure and total-mode conflict coverage
+**Tasks Remaining in Work Unit**: T020–T021
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/get_usertask_error_test.go
+- specs/310-user-task-variable-filtering/tasks.md
+- specs/310-user-task-variable-filtering/ralph-memory.md
+- specs/310-user-task-variable-filtering/progress.md
+**Learnings**:
+- Existing command failure paths retain every local predicate while preventing failed first/later searches from becoming empty successes, false summaries, partial collected payloads, or numeric totals; no production change was required.
+---

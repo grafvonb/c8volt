@@ -74,6 +74,95 @@ func TestGetUserTaskError_CollectedAndTotalFailuresHaveNoPartialSuccess(t *testi
 	}
 }
 
+// TestGetUserTaskError_FilteredSearchFailuresNeverClaimSuccess verifies native
+// predicates survive first- and later-page failures without an empty success
+// result, a false final summary, or a partial collected payload.
+func TestGetUserTaskError_FilteredSearchFailuresNeverClaimSuccess(t *testing.T) {
+	const filter = `status="approved"`
+	for _, test := range []struct {
+		name          string
+		failAtRequest int
+		args          []string
+		wantPartial   bool
+		wantJSON      bool
+		wantTotal     bool
+	}{
+		{name: "first page keys", args: []string{"--keys-only", "get", "ut", "--var", filter}},
+		{name: "first page json", args: []string{"--json", "get", "ut", "--var", filter}, wantJSON: true},
+		{name: "first page total", args: []string{"get", "ut", "--var", filter, "--total"}, wantTotal: true},
+		{name: "later page keys", failAtRequest: 1, args: []string{"--keys-only", "get", "ut", "--var", filter, "--batch-size", "1"}, wantPartial: true},
+		{name: "later page json", failAtRequest: 1, args: []string{"--json", "get", "ut", "--var", filter, "--batch-size", "1"}, wantJSON: true},
+		{name: "later page total", failAtRequest: 1, args: []string{"get", "ut", "--var", filter, "--total", "--batch-size", "1"}, wantTotal: true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			server, requests := newFilteredFailingUserTaskSearchServer(t, test.failAtRequest)
+			configPath := testx.WriteTestConfigForVersion(t, server.URL, "8.9")
+
+			stdout, stderr, err := runGetUserTaskCommand(t, configPath, "", test.args...)
+			require.Error(t, err)
+			got := requests.snapshot(t)
+			require.Len(t, got, test.failAtRequest+1)
+			for _, request := range got {
+				require.Equal(t, []any{
+					map[string]any{"name": "status", "value": map[string]any{"$eq": `"approved"`}},
+				}, requireJSONMap(t, request["filter"])["localVariables"])
+			}
+
+			if test.wantJSON {
+				require.Empty(t, stderr)
+				var envelope map[string]any
+				decoder := json.NewDecoder(bytes.NewBufferString(stdout))
+				require.NoError(t, decoder.Decode(&envelope))
+				require.Equal(t, "failed", envelope["outcome"])
+				require.Nil(t, envelope["payload"])
+				require.NotContains(t, stdout, `"items"`)
+				var extra any
+				require.Error(t, decoder.Decode(&extra), "failure output must contain exactly one envelope")
+				return
+			}
+
+			if test.wantPartial {
+				require.Equal(t, "2251799815391233\n", stdout)
+			} else {
+				require.Empty(t, stdout)
+			}
+			require.NotContains(t, stdout, "found:")
+			if test.wantTotal {
+				require.Contains(t, stderr, "get user tasks total")
+			} else {
+				require.Contains(t, stderr, "get user tasks")
+			}
+		})
+	}
+}
+
+// TestGetUserTaskError_FilteredTotalConflictsFailBeforeRequests verifies adding
+// a native variable predicate does not weaken established total-mode conflicts.
+func TestGetUserTaskError_FilteredTotalConflictsFailBeforeRequests(t *testing.T) {
+	server, requests := newGetUserTaskSearchServer(t, func(_ int, _ map[string]any) string {
+		return userTaskSearchResponse(0, false, "")
+	})
+	configPath := testx.WriteTestConfigForVersion(t, server.URL, "8.9")
+	for _, test := range []struct {
+		name string
+		args []string
+		want string
+	}{
+		{name: "limit", args: []string{"get", "ut", "--var", `status="approved"`, "--total", "--limit", "1"}, want: "--total cannot be combined with --limit"},
+		{name: "json", args: []string{"--json", "get", "ut", "--var", `status="approved"`, "--total"}, want: "--total cannot be combined with --json"},
+		{name: "keys", args: []string{"--keys-only", "get", "ut", "--var", `status="approved"`, "--total"}, want: "--total cannot be combined with --keys-only"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			before := len(requests.snapshot(t))
+			stdout, stderr, err := runGetUserTaskCommand(t, configPath, "", test.args...)
+			require.Error(t, err)
+			require.Empty(t, stdout)
+			require.Contains(t, stderr, test.want)
+			require.Len(t, requests.snapshot(t), before)
+		})
+	}
+}
+
 // TestGetUserTaskError_SearchVariableFailuresNeverClaimCompletion verifies a
 // later selected-page enrichment failure leaves streamed output partial while
 // collected JSON emits only the established failed envelope.
@@ -261,4 +350,34 @@ func newFailingUserTaskPagingServer(t *testing.T) (*httptest.Server, *testx.Safe
 	}))
 	t.Cleanup(server.Close)
 	return server, &requests
+}
+
+// newFilteredFailingUserTaskSearchServer fails at the requested zero-based
+// search call while capturing each native request for predicate assertions.
+func newFilteredFailingUserTaskSearchServer(t *testing.T, failAtRequest int) (*httptest.Server, *capturedUserTaskSearchRequests) {
+	t.Helper()
+	requests := new(capturedUserTaskSearchRequests)
+	server := testx.NewIPv4Server(t, http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		if request.Method != http.MethodPost || request.URL.Path != "/v2/user-tasks/search" {
+			http.NotFound(writer, request)
+			return
+		}
+		var body map[string]any
+		if err := json.NewDecoder(request.Body).Decode(&body); err != nil {
+			http.Error(writer, err.Error(), http.StatusBadRequest)
+			return
+		}
+		requests.mu.Lock()
+		index := len(requests.items)
+		requests.items = append(requests.items, body)
+		requests.mu.Unlock()
+		if index == failAtRequest {
+			http.Error(writer, `{"message":"backend exploded"}`, http.StatusServiceUnavailable)
+			return
+		}
+		writer.Header().Set("Content-Type", "application/json")
+		_, _ = fmt.Fprint(writer, userTaskSearchResponse(2, true, "cursor-a", "2251799815391233"))
+	}))
+	t.Cleanup(server.Close)
+	return server, requests
 }
