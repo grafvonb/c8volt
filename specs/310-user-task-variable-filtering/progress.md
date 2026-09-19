@@ -95,3 +95,21 @@ Started: 2026-09-19 12:56:01
 **Learnings**:
 - The v8.9 generated local-variable filter shape matches v8.8, while retaining a version-local mapper avoids coupling distinct generated clients.
 ---
+## Iteration 6 - 2026-09-19 13:16
+**Work Unit**: US1 Find Tasks Using Familiar Variable Filters — v8.10 Native Mapping
+**Tasks Completed**:
+- [x] T008: Add v8.10 native local-variable request and validation cases
+- [x] T012: Implement and attach the v8.10 adapter-local variable mapper
+**Tasks Remaining in Work Unit**: T013–T015
+**Commit**: This work-unit commit
+**Files Changed**:
+- internal/services/usertask/v810/search.go
+- internal/services/usertask/v810/search_test.go
+- internal/services/usertask/v810/variable_filter.go
+- specs/310-user-task-variable-filtering/tasks.md
+- specs/310-user-task-variable-filtering/ralph-memory.md
+- specs/310-user-task-variable-filtering/quickstart.md
+- specs/310-user-task-variable-filtering/progress.md
+**Learnings**:
+- The v8.10 generated local-variable union matches the earlier supported versions, while its ordinary selectors retain distinct generated equality unions.
+---

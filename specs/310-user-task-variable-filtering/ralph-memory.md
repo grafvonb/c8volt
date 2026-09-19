@@ -10,7 +10,7 @@ Started: 2026-09-19T10:56:01Z
 - Public task filter types alias the existing process facade records; task conversion allocates the domain clause slice and copies `Exists` with `toolx.CopyPtr` so caller mutation cannot cross the facade boundary.
 - The shared parser orchestration accepts explicit exists/value/like slices; PI and task wrappers retain independent package globals while reusing every lower-level grammar helper and diagnostic.
 - Each supported user-task version owns a small local mapper mirroring its process-instance adapter: validate the shared domain set, decode membership arrays to `[]string`, and assign the generated slice only to `UserTaskFilter.LocalVariables`.
-- The v8.8 and v8.9 generated local-variable unions have matching shapes; their adapter-local request tests cover ordered duplicates, ordinary/tenant selectors, null text distinctions, false existence, escaped wildcards, empty omission, and pre-HTTP invalid input.
+- The v8.8, v8.9, and v8.10 generated local-variable unions have matching shapes; their adapter-local request tests cover ordered duplicates, ordinary/tenant selectors, null text distinctions, false existence, escaped wildcards, empty omission, and pre-HTTP invalid input.
 
 ## Decisions
 
@@ -35,4 +35,4 @@ Started: 2026-09-19T10:56:01Z
 - Do not broaden the existing PI grammar, hand-edit generated clients, add client-side variable matching, or introduce new paging/filter loops.
 
 ## Current Handoff
-- Continue US1 with T008 and T012: add v8.10 native local-variable request/validation cases, then implement the matching adapter-local mapper using the validated v8.8/v8.9 pattern.
+- Continue US1 with T013 and T014: add command execution/request-construction coverage first, then register and parse the three task-owned flags while preserving key conflicts and request counts.
