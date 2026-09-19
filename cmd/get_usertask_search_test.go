@@ -14,6 +14,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/grafvonb/c8volt/testx"
 	"github.com/stretchr/testify/require"
@@ -347,6 +348,135 @@ func TestGetUserTaskCommand_SearchVariablesEnrichOnlySelectedTasks(t *testing.T)
 			require.Zero(t, requests.variableRequestCount(excludedKey), "trimmed tasks must never be enriched")
 		})
 	}
+}
+
+// TestGetUserTaskCommand_FilteredDisplayPreservesSelection verifies native
+// local filtering selects independently of effective-variable display while
+// limits and sparse pages bound enrichment to the tasks actually rendered.
+func TestGetUserTaskCommand_FilteredDisplayPreservesSelection(t *testing.T) {
+	t.Run("same selected identities with and without display", func(t *testing.T) {
+		for _, withVariables := range []bool{false, true} {
+			t.Run(fmt.Sprintf("with-vars=%t", withVariables), func(t *testing.T) {
+				server, requests := newGetUserTaskVariablesServer(t, filteredUserTaskVariablesFixture())
+				configPath := testx.WriteTestConfigForVersion(t, server.URL, "8.9")
+				args := []string{"get", "ut", "--var", `status="approved"`}
+				if withVariables {
+					args = append(args, "--with-vars")
+				}
+
+				stdout, stderr, err := runGetUserTaskCommand(t, configPath, "", args...)
+				require.NoError(t, err, stderr)
+				require.Empty(t, stderr)
+				require.Equal(t, 1, strings.Count(stdout, userTaskLocalMatchKey))
+				require.Equal(t, 1, strings.Count(stdout, userTaskShadowedMatchKey))
+				require.NotContains(t, stdout, userTaskParentOnlyKey)
+				require.Equal(t, 1, strings.Count(stdout, "found: 2\n"), "incremental rendering must emit one final summary")
+				require.Equal(t, 1, requests.searchRequestCount())
+				require.Equal(t, [][]any{{
+					map[string]any{"name": "status", "value": map[string]any{"$eq": `"approved"`}},
+				}}, requests.localVariablePredicates())
+				if withVariables {
+					require.Equal(t, 1, requests.variableRequestCount(userTaskLocalMatchKey))
+					require.Equal(t, 1, requests.variableRequestCount(userTaskShadowedMatchKey))
+					require.Contains(t, stdout, `region="eu"`)
+					require.Contains(t, stdout, `status="approved-local"`)
+				} else {
+					require.Zero(t, requests.totalVariableRequestCount(), "the native filter must not trigger effective-variable reads")
+				}
+				require.Zero(t, requests.variableRequestCount(userTaskParentOnlyKey))
+			})
+		}
+	})
+
+	t.Run("within-page limit excludes enrichment", func(t *testing.T) {
+		fixture := filteredUserTaskVariablesFixture()
+		fixture.SearchRespond = func(_ int, _ map[string]any) string {
+			return userTaskSearchResponse(3, false, "", userTaskLocalMatchKey, userTaskShadowedMatchKey, userTaskParentOnlyKey)
+		}
+		server, requests := newGetUserTaskVariablesServer(t, fixture)
+		configPath := testx.WriteTestConfigForVersion(t, server.URL, "8.9")
+
+		stdout, stderr, err := runGetUserTaskCommand(t, configPath, "", "get", "ut", "--var", `status="approved"`, "--limit", "1", "--with-vars")
+		require.NoError(t, err, stderr)
+		require.Empty(t, stderr)
+		require.Contains(t, stdout, userTaskLocalMatchKey)
+		require.NotContains(t, stdout, userTaskShadowedMatchKey)
+		require.NotContains(t, stdout, userTaskParentOnlyKey)
+		require.Equal(t, 1, requests.variableRequestCount(userTaskLocalMatchKey))
+		require.Zero(t, requests.variableRequestCount(userTaskShadowedMatchKey))
+		require.Zero(t, requests.variableRequestCount(userTaskParentOnlyKey))
+	})
+
+	t.Run("sparse pages retain the filter and enrich once", func(t *testing.T) {
+		fixture := filteredUserTaskVariablesFixture()
+		fixture.SearchRespond = func(index int, _ map[string]any) string {
+			if index == 0 {
+				return userTaskSearchResponse(1, false, "cursor-sparse")
+			}
+			return userTaskSearchResponse(1, false, "", userTaskLocalMatchKey)
+		}
+		server, requests := newGetUserTaskVariablesServer(t, fixture)
+		configPath := testx.WriteTestConfigForVersion(t, server.URL, "8.9")
+
+		stdout, stderr, err := runGetUserTaskCommand(t, configPath, "", "get", "ut", "--var", `status="approved"`, "--batch-size", "1", "--with-vars", "--auto-confirm")
+		require.NoError(t, err, stderr)
+		require.Empty(t, stderr)
+		require.Equal(t, 1, strings.Count(stdout, userTaskLocalMatchKey))
+		require.Equal(t, 2, requests.searchRequestCount())
+		require.Equal(t, 1, requests.variableRequestCount(userTaskLocalMatchKey))
+		require.Zero(t, requests.variableRequestCount(userTaskShadowedMatchKey))
+		require.Zero(t, requests.variableRequestCount(userTaskParentOnlyKey))
+		require.Equal(t, 2, len(requests.localVariablePredicates()))
+		for _, clauses := range requests.localVariablePredicates() {
+			require.Equal(t, []any{
+				map[string]any{"name": "status", "value": map[string]any{"$eq": `"approved"`}},
+			}, clauses)
+		}
+	})
+}
+
+// TestGetUserTaskCommand_FilteredDisplayStopsBeforeUnreadPages verifies a
+// real terminal decline cannot enrich tasks beyond the accepted filtered page.
+func TestGetUserTaskCommand_FilteredDisplayStopsBeforeUnreadPages(t *testing.T) {
+	fixture := filteredUserTaskVariablesFixture()
+	fixture.SearchRespond = func(index int, _ map[string]any) string {
+		if index == 0 {
+			return userTaskSearchResponse(2, false, "cursor-next", userTaskLocalMatchKey)
+		}
+		return userTaskSearchResponse(2, false, "", userTaskShadowedMatchKey)
+	}
+	server, requests := newGetUserTaskVariablesServer(t, fixture)
+	configPath := testx.WriteTestConfigForVersion(t, server.URL, "8.9")
+	args, err := json.Marshal([]string{
+		"--config", configPath, "--tenant", "tenant-a", "get", "ut", "--batch-size", "1",
+		"--var", `status="approved"`, "--with-vars",
+	})
+	require.NoError(t, err)
+
+	result := testx.NewCmdTerminalRunner().Run(t, testx.CmdTerminalRunRequest{
+		ScopeTestName: "TestGetUserTaskPagingTerminal",
+		Env: map[string]string{
+			userTaskTerminalArgsEnv:       string(args),
+			userTaskTerminalConfiguredEnv: "",
+		},
+		Exchanges: []testx.CmdTerminalExchange{{Prompt: userTaskTerminalPrompt(1, 1), Response: "no"}},
+		Timeout:   3 * time.Second,
+	})
+	if !result.Supported {
+		t.Skip(result.UnsupportedReason)
+	}
+	require.NoError(t, result.Err, result.Stderr)
+	require.Contains(t, result.Stdout, userTaskLocalMatchKey)
+	require.NotContains(t, result.Stdout, userTaskShadowedMatchKey)
+	require.NotContains(t, result.Stdout, userTaskParentOnlyKey)
+	require.Equal(t, userTaskTerminalPrompt(1, 1), result.Stderr)
+	require.Equal(t, 1, requests.searchRequestCount())
+	require.Equal(t, 1, requests.variableRequestCount(userTaskLocalMatchKey))
+	require.Zero(t, requests.variableRequestCount(userTaskShadowedMatchKey))
+	require.Zero(t, requests.variableRequestCount(userTaskParentOnlyKey))
+	require.Equal(t, [][]any{{
+		map[string]any{"name": "status", "value": map[string]any{"$eq": `"approved"`}},
+	}}, requests.localVariablePredicates())
 }
 
 // TestGetUserTaskCommand_SearchLimitBoundaries verifies limits before, at, and

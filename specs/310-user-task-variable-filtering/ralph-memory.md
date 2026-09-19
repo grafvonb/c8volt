@@ -19,6 +19,7 @@ Started: 2026-09-19T10:56:01Z
 - Filtered backend-failure coverage captures every attempted native search request: first-page failures emit no result, later keys output stays plainly partial without `found:`, collected JSON emits exactly one failed envelope, totals emit no number, and total/limit/output conflicts fail before HTTP.
 - US2 integration needs no production changes: the command forwards one complete request to facade traversal, the service reuses the normalized query across cursor, offset, sparse, bounded, stopped, total, and failure paths, and total mode clears only `Limit`.
 - The shared variable-display fixture now captures ordered native `localVariables` arrays separately from full search bodies, counts searches and effective-variable pages, and exposes backend-preselected local/inherited/shadowing examples; tests must choose returned task keys rather than evaluate predicates in the mock.
+- Filtered display selection remains downstream of native search and service trimming: filter-only execution performs zero effective-variable reads, and display reads occur exactly once per rendered task across ordinary, limited, sparse, incremental, and terminal-stopped paths.
 
 ## Decisions
 
@@ -45,4 +46,4 @@ Started: 2026-09-19T10:56:01Z
 - Do not broaden the existing PI grammar, hand-edit generated clients, add client-side variable matching, or introduce new paging/filter loops.
 
 ## Current Handoff
-- Continue US3 with T023: use the filtered variable fixture to prove identical selection with and without display across limits, sparse pages, paging stops, and incremental rendering without unselected or duplicate reads.
+- Continue US3 with T024: extend filtered display output/exclusion coverage in `cmd/get_usertask_vars_output_test.go`, including keys-only, total, empty, quiet/JSON precedence, value limits, truncation, full JSON values, and enrichment failures.

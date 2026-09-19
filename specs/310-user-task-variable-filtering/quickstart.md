@@ -147,3 +147,10 @@ Review generated task help and grammar compatibility, confirm no generated clien
 - `go test -race ./internal/services/usertask -run 'TestFilteredSearchUserTasks' -count=1` passed.
 - `go test -race ./cmd -run 'TestGetUserTask(Output_FilteredNonemptyModes|Output_FilteredEmptyModes|Error_FilteredSearchFailuresNeverClaimSuccess|Error_FilteredTotalConflictsFailBeforeRequests)$' -count=1` passed.
 - Failure cases remained errors with no empty-success envelope, false final summary, or numeric total. No live backend validation was attempted; request fixtures remain the evidence for native predicate propagation rather than server scope semantics.
+
+### Iteration 14 — filtered display selection (2026-09-19)
+
+- Added filtered command regressions proving identical selected task identities with and without `--with-vars`, zero filter-only effective-variable reads, within-page limit trimming before enrichment, sparse-page continuation with predicates retained, and terminal-decline enrichment only for accepted pages.
+- `go test ./cmd -run 'TestGetUserTaskCommand_FilteredDisplay(PreservesSelection|StopsBeforeUnreadPages)$' -count=1` passed.
+- `go test -race ./cmd -run 'Test(GetUserTaskCommand_(FilteredDisplayPreservesSelection|FilteredDisplayStopsBeforeUnreadPages|SearchVariablesEnrichOnlySelectedTasks)|FilteredUserTaskVariablesFixture)$' -count=1` passed.
+- Request-fixture results prove selection/display request boundaries and native predicate propagation; no live backend scope validation was attempted.
