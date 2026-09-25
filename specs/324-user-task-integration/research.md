@@ -28,7 +28,7 @@
 
 ## Operators and display
 
-**Decision**: Use numeric local `incident=1` for six operators, basic native wildcard text, and false existence on the known-present local name. Keep missing-variable negative semantics and rich local string/null cases out of the live dataset. Use parent variables for long structured/Unicode display values, not for positive local string matching.
+**Decision**: Use numeric local `incident=1` for five operators ($eq, $neq, $exists, $in, $like), basic native wildcard text, and false existence on the known-present local name. Keep missing-variable negative semantics and rich local string/null cases out of the live dataset. Use parent variables for long structured/Unicode display values, not for positive local string matching.
 
 **Rationale**: Public filter values use serialized text; membership arrays contain strings representing serialized values. JSON display uses `task.VariableEnrichedUserTasks` with `items[].item` and `items[].variables`, while ordinary search uses `task.UserTasks`. Assert both correctly without inventing a new schema.
 
@@ -53,3 +53,7 @@
 ## Research boundary
 
 No live cluster requests or runtime tests were made during planning. Repository facts resolve implementation choices; all backend semantic assertions remain subject to actual version-specific live evidence during implementation. No unresolved design clarification remains.
+
+## Superseding user decision
+
+Remove both live `$notIn` cases across all versions, without skip branches. C89 produced HTTP 500; similar behavior on other versions is assumed only for this coverage decision. Retain unit request-encoding coverage; do not claim live `$notIn` verification.

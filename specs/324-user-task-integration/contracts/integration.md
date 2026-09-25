@@ -23,8 +23,6 @@ Every command is scoped to a ready known owning PI. The target has local numeric
 | `--var 'incident.$neq=1'` | Excluded |
 | `--var 'incident.$in=["1","99"]'` | Included |
 | `--var 'incident.$in=["99"]'` | Excluded |
-| `--var 'incident.$notIn=["99"]'` | Included |
-| `--var 'incident.$notIn=["1"]'` | Excluded |
 | `--var-like 'incident=1*'` | Included, basic pattern over serialized local value |
 | `--var-like 'incident=9*'` | Excluded |
 | `--var 'customer="alice"'` | Excluded |
@@ -40,3 +38,7 @@ Volume uses batch size one, at least three seeded matches, an unrestricted trave
 ## Evidence and failure boundaries
 
 Use exact deployed definition/PI scopes and label preexisting matches distinctly from owned seeds. Readiness must observe the expected variables before exclusions. Timeouts, wrong scope, wrong child, malformed result, command errors and assertion errors are failures. Preserve existing skip behavior for unavailable prerequisites with a precise reason, never a verified result. Record version-by-version status. No new runtime backlog/proposal generation; any discovered capability gap belongs in spec-owned documentation.
+
+## Live coverage exclusion
+
+`$notIn` is excluded for every Camunda version at user request after the observed C89 HTTP 500. Similar backend behavior elsewhere is an unverified assumption; no other-version `$notIn` behavior is claimed. Existing unit encoding tests are retained. No skip or automatic HTTP-500 suppression is introduced.

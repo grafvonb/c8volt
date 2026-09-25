@@ -52,3 +52,7 @@ The existing aggregate selects the added scenarios through baseline and volume g
 Use existing emitted work directories and command logs. If setting `C8VOLT_IT_WORKDIR`, give separate Go invocations separate directories to avoid overwriting summary metadata. Confirm actual test execution, per-profile versions, seeded/child task keys, local versus process scope, complete duplicate-free paging, limit two, consistent total, and zero-byte unmatched keys output. Distinguish preexisting volume matches, failed setup, skipped prerequisites, and verified unsupported behavior.
 
 Record a concise final validation summary with commands and versions actually run. Do not duplicate iteration history here. Planning performed document checks only; no live results are claimed.
+
+## Recovery validation
+
+See [validation.md](validation.md) for actual commands, passing C89 coverage and unresolved backend/profile/inventory limitations. The focused volume selector is `^TestVolumeGetFamilyUserTaskVariables$`; it is included by the existing volume target.

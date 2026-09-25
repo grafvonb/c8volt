@@ -23,7 +23,7 @@ As an operator validating a release, I want real-cluster evidence that task-loca
 1. **Given** a task created from `SimpleUserTaskWithIncident` with `hasIncident=false`, process-scope `incident=99`, a process-only string, a longer structured value, and the run marker, **When** its task and variables become observable, **Then** its local `incident` is `1`, `--var 'incident=1'` and `--var-exists incident` select it, and `--var 'incident=99'` excludes it.
 2. **Given** a process-only string visible to an active task, **When** searching for that value with a task-local filter, **Then** the task is excluded while effective-variable display still exposes that process-scope value. The ordinary `SimpleUserTask` supplies a case without the incident model's local mapping.
 3. **Given** a matching local filter, **When** adding `--with-vars`, **Then** the selected task keys remain identical, effective `incident=1` shadows process `incident=99`, and the process-only variables remain visible with their expected scope metadata.
-4. **Given** the existing model's known local value, **When** exercising a compact operator table, **Then** equality, inequality, explicit existence, membership, non-membership, and basic wildcard cases select the expected task identities under the established filter grammar and backend contract.
+4. **Given** the existing model's known local value, **When** exercising a compact operator table, **Then** equality, inequality, explicit existence, membership and basic wildcard cases select the expected task identities under the established filter grammar and backend contract.
 5. **Given** a long structured value in effective display, **When** requesting human shortening with `--var-value-limit`, **Then** the existing shortening contract is preserved and JSON retains the full received value and truncation metadata.
 
 ---
@@ -77,7 +77,7 @@ As a release operator, I want filtered paging and counts verified using existing
 
 - **FR-001**: Coverage MUST exercise actual CLI commands against selected disposable profiles for features #309 and #310, using existing authentication, profile selection, and version readiness checks.
 - **FR-002**: Each supported profile MUST use its corresponding existing C88, C89, or C810 embedded models. No model identifier rewriting, cross-version definitions, new models, or model modifications are permitted. C87 coverage MUST assert unsupported native user-task behavior.
-- **FR-003**: Baseline coverage MUST prove local matching, process-only exclusion, shadowing, display independence, and display shortening as specified in Story 1, including a compact table of the six existing operators using available local values.
+- **FR-003**: Baseline coverage MUST prove local matching, process-only exclusion, shadowing, display independence, and display shortening as specified in Story 1, including a compact table of five operators ($eq, $neq, $exists, $in, $like) using available local values.
 - **FR-004**: Called-process coverage MUST use the matching incident parent/child models and discovered child PI keys, proving local and effective scopes without assuming live caller-variable inheritance.
 - **FR-005**: Volume coverage MUST prove complete filtered traversal, duplicate-free identities, bounded results, consistent counts, and established empty output using multiple matching tasks.
 - **FR-006**: Seeded scenarios MUST preserve run markers and existing defaults while allowing scenario-specific starting variables. Setup and discovery MUST use existing commands, without direct API setup.
@@ -114,3 +114,7 @@ As a release operator, I want filtered paging and counts verified using existing
 - Existing models constrain the live dataset. Rich string escaping, arbitrary task-local nulls, and exhaustive grammar/output combinations remain covered by focused non-live tests.
 - `SimpleParent` and `MultipleSubProcessesParent` may be reused where existing discovery coverage helps; adding redundant topology permutations is not required.
 - This specification defines test outcomes and scope. Detailed helper changes and test organization belong in the implementation plan. Broader aggregate-runner corrections remain separate work.
+
+## Approved coverage adjustment
+
+The user requested removal of both live `$notIn` cases for all Camunda versions after the C89 HTTP 500. Similar behavior on other versions is a working assumption, not verified evidence. Live `$notIn` semantics are outside this suite; existing unit request-encoding tests remain unchanged. Other-version availability gaps remain explicit.
