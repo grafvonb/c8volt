@@ -61,6 +61,113 @@ func TestService_SearchUserTasksPage_MapsAllFiltersAndPaginationUnions(t *testin
 	}
 }
 
+// TestService_SearchUserTasksPage_MapsLocalVariableFilters verifies v8.10 sends
+// every supported variable operator to the native local-variable field without
+// losing clause order, duplicate names, serialized values, or scalar selectors.
+func TestService_SearchUserTasksPage_MapsLocalVariableFilters(t *testing.T) {
+	exists := false
+	query := d.UserTaskSearchQuery{
+		ProcessInstanceKey: "2251799813711967",
+		Assignee:           "alice",
+		VariableFilters: d.ProcessInstanceVariableFilterSet{Clauses: []d.ProcessInstanceVariableFilterClause{
+			{Name: "status", Operator: d.ProcessInstanceVariableFilterOperatorEq, Value: `null`},
+			{Name: "status", Operator: d.ProcessInstanceVariableFilterOperatorEq, Value: `"null"`},
+			{Name: "status", Operator: d.ProcessInstanceVariableFilterOperatorNeq, Value: `"failed"`},
+			{Name: "active", Operator: d.ProcessInstanceVariableFilterOperatorExists, Exists: &exists},
+			{Name: "kind", Operator: d.ProcessInstanceVariableFilterOperatorIn, Value: `["approved","pending"]`},
+			{Name: "segment", Operator: d.ProcessInstanceVariableFilterOperatorNotIn, Value: `["legacy","test"]`},
+			{Name: "literal", Operator: d.ProcessInstanceVariableFilterOperatorLike, Value: `invoice-\*`},
+		}},
+	}
+	svc := newTestService(t, &mockUserTaskClient{searchUserTasksWithResponse: func(_ context.Context, body camundav810.SearchUserTasksJSONRequestBody, _ ...camundav810.RequestEditorFn) (*camundav810.SearchUserTasksResponse, error) {
+		require.NotNil(t, body.Filter)
+		processInstanceKey, err := body.Filter.ProcessInstanceKey.AsProcessInstanceKeyFilterProperty0()
+		require.NoError(t, err)
+		require.Equal(t, "2251799813711967", string(processInstanceKey))
+		assignee, err := body.Filter.Assignee.AsStringFilterProperty0()
+		require.NoError(t, err)
+		require.Equal(t, "alice", assignee)
+		tenant, err := body.Filter.TenantId.AsStringFilterProperty0()
+		require.NoError(t, err)
+		require.Equal(t, "tenant-a", tenant)
+		require.NotNil(t, body.Filter.LocalVariables)
+		require.Len(t, *body.Filter.LocalVariables, 7)
+
+		filters := make([]camundav810.AdvancedStringFilter, 7)
+		for i, variable := range *body.Filter.LocalVariables {
+			filters[i], err = variable.Value.AsAdvancedStringFilter()
+			require.NoError(t, err)
+		}
+		require.Equal(t, []string{"status", "status", "status", "active", "kind", "segment", "literal"}, []string{
+			(*body.Filter.LocalVariables)[0].Name,
+			(*body.Filter.LocalVariables)[1].Name,
+			(*body.Filter.LocalVariables)[2].Name,
+			(*body.Filter.LocalVariables)[3].Name,
+			(*body.Filter.LocalVariables)[4].Name,
+			(*body.Filter.LocalVariables)[5].Name,
+			(*body.Filter.LocalVariables)[6].Name,
+		})
+		require.Equal(t, `null`, *filters[0].Eq)
+		require.Equal(t, `"null"`, *filters[1].Eq)
+		require.Equal(t, `"failed"`, *filters[2].Neq)
+		require.NotNil(t, filters[3].Exists)
+		require.False(t, *filters[3].Exists)
+		require.Equal(t, []string{"approved", "pending"}, *filters[4].In)
+		require.Equal(t, []string{"legacy", "test"}, *filters[5].NotIn)
+		require.Equal(t, `invoice-\*`, string(*filters[6].Like))
+		return v810SearchResponse(http.StatusOK, &camundav810.UserTaskSearchQueryResult{}), nil
+	}}, "tenant-a")
+
+	_, err := svc.SearchUserTasksPage(context.Background(), query, d.UserTaskPageRequest{Size: 10})
+	require.NoError(t, err)
+}
+
+// TestService_SearchUserTasksPage_OmitsEmptyLocalVariableFilters protects the
+// existing unfiltered request shape.
+func TestService_SearchUserTasksPage_OmitsEmptyLocalVariableFilters(t *testing.T) {
+	svc := newTestService(t, &mockUserTaskClient{searchUserTasksWithResponse: func(_ context.Context, body camundav810.SearchUserTasksJSONRequestBody, _ ...camundav810.RequestEditorFn) (*camundav810.SearchUserTasksResponse, error) {
+		require.NotNil(t, body.Filter)
+		require.Nil(t, body.Filter.LocalVariables)
+		return v810SearchResponse(http.StatusOK, &camundav810.UserTaskSearchQueryResult{}), nil
+	}})
+
+	_, err := svc.SearchUserTasksPage(context.Background(), d.UserTaskSearchQuery{}, d.UserTaskPageRequest{Size: 10})
+	require.NoError(t, err)
+}
+
+// TestService_SearchUserTasksPage_RejectsInvalidLocalVariableFiltersBeforeHTTP
+// proves direct service callers cannot submit malformed native predicates.
+func TestService_SearchUserTasksPage_RejectsInvalidLocalVariableFiltersBeforeHTTP(t *testing.T) {
+	tests := []struct {
+		name    string
+		clause  d.ProcessInstanceVariableFilterClause
+		wantErr string
+	}{
+		{name: "blank name", clause: d.ProcessInstanceVariableFilterClause{Operator: d.ProcessInstanceVariableFilterOperatorEq, Value: `"approved"`}, wantErr: "name must not be blank"},
+		{name: "unknown operator", clause: d.ProcessInstanceVariableFilterClause{Name: "status", Operator: "$contains", Value: `"approved"`}, wantErr: "unsupported variable filter operator"},
+		{name: "missing value", clause: d.ProcessInstanceVariableFilterClause{Name: "status", Operator: d.ProcessInstanceVariableFilterOperatorEq}, wantErr: "requires a value"},
+		{name: "missing exists", clause: d.ProcessInstanceVariableFilterClause{Name: "active", Operator: d.ProcessInstanceVariableFilterOperatorExists}, wantErr: "requires an exists value"},
+		{name: "malformed membership", clause: d.ProcessInstanceVariableFilterClause{Name: "kind", Operator: d.ProcessInstanceVariableFilterOperatorIn, Value: `["approved",]`}, wantErr: "requires a JSON string array"},
+		{name: "non-string membership", clause: d.ProcessInstanceVariableFilterClause{Name: "kind", Operator: d.ProcessInstanceVariableFilterOperatorNotIn, Value: `["approved",1]`}, wantErr: "requires a JSON string array"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			calls := 0
+			svc := newTestService(t, &mockUserTaskClient{searchUserTasksWithResponse: func(context.Context, camundav810.SearchUserTasksJSONRequestBody, ...camundav810.RequestEditorFn) (*camundav810.SearchUserTasksResponse, error) {
+				calls++
+				return v810SearchResponse(http.StatusOK, &camundav810.UserTaskSearchQueryResult{}), nil
+			}})
+
+			_, err := svc.SearchUserTasksPage(context.Background(), d.UserTaskSearchQuery{
+				VariableFilters: d.ProcessInstanceVariableFilterSet{Clauses: []d.ProcessInstanceVariableFilterClause{tt.clause}},
+			}, d.UserTaskPageRequest{Size: 10})
+
+			require.ErrorContains(t, err, tt.wantErr)
+			require.Zero(t, calls)
+		})
+	}
+}
+
 // TestService_SearchUserTasksPage_MapsItemsAndPageFacts verifies nullable fields, raw counts, cursors, totals, and continuation normalization.
 func TestService_SearchUserTasksPage_MapsItemsAndPageFacts(t *testing.T) {
 	endCursor := camundav810.EndCursor("cursor-b")

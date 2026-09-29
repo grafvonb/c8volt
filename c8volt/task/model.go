@@ -40,6 +40,32 @@ type UserTasks struct {
 // by the backend.
 type UserTaskVariable = process.ProcessInstanceVariable
 
+// VariableFilterOperator reuses the established process-instance variable
+// filter operator contract for local user-task variable searches.
+type VariableFilterOperator = process.ProcessInstanceVariableFilterOperator
+
+const (
+	// VariableFilterOperatorEq matches a local variable's serialized value exactly.
+	VariableFilterOperatorEq = process.ProcessInstanceVariableFilterOperatorEq
+	// VariableFilterOperatorNeq excludes a local variable's serialized value.
+	VariableFilterOperatorNeq = process.ProcessInstanceVariableFilterOperatorNeq
+	// VariableFilterOperatorExists checks whether a local variable is present.
+	VariableFilterOperatorExists = process.ProcessInstanceVariableFilterOperatorExists
+	// VariableFilterOperatorIn matches any serialized value in an array.
+	VariableFilterOperatorIn = process.ProcessInstanceVariableFilterOperatorIn
+	// VariableFilterOperatorNotIn excludes serialized values in an array.
+	VariableFilterOperatorNotIn = process.ProcessInstanceVariableFilterOperatorNotIn
+	// VariableFilterOperatorLike uses native wildcard matching.
+	VariableFilterOperatorLike = process.ProcessInstanceVariableFilterOperatorLike
+)
+
+// VariableFilterClause reuses the established ordered predicate record for a
+// local user-task variable condition.
+type VariableFilterClause = process.ProcessInstanceVariableFilterClause
+
+// VariableFilterSet keeps local user-task variable predicates in caller order.
+type VariableFilterSet = process.ProcessInstanceVariableFilterSet
+
 // VariableEnrichedUserTask pairs an unchanged selected task with its effective
 // variables. Variables must be initialized even when the collection is empty.
 type VariableEnrichedUserTask struct {
@@ -56,16 +82,17 @@ type VariableEnrichedUserTasks struct {
 
 // SearchRequest carries native task predicates and collection bounds.
 type SearchRequest struct {
-	ProcessInstanceKey   string `json:"processInstanceKey,omitempty"`
-	ProcessDefinitionKey string `json:"processDefinitionKey,omitempty"`
-	BpmnProcessId        string `json:"bpmnProcessId,omitempty"`
-	ElementId            string `json:"elementId,omitempty"`
-	State                string `json:"state,omitempty"`
-	Assignee             string `json:"assignee,omitempty"`
-	CandidateUser        string `json:"candidateUser,omitempty"`
-	CandidateGroup       string `json:"candidateGroup,omitempty"`
-	BatchSize            int32  `json:"batchSize,omitempty"`
-	Limit                int32  `json:"limit,omitempty"`
+	ProcessInstanceKey   string            `json:"processInstanceKey,omitempty"`
+	ProcessDefinitionKey string            `json:"processDefinitionKey,omitempty"`
+	BpmnProcessId        string            `json:"bpmnProcessId,omitempty"`
+	ElementId            string            `json:"elementId,omitempty"`
+	State                string            `json:"state,omitempty"`
+	Assignee             string            `json:"assignee,omitempty"`
+	CandidateUser        string            `json:"candidateUser,omitempty"`
+	CandidateGroup       string            `json:"candidateGroup,omitempty"`
+	VariableFilters      VariableFilterSet `json:"variableFilters,omitempty"`
+	BatchSize            int32             `json:"batchSize,omitempty"`
+	Limit                int32             `json:"limit,omitempty"`
 }
 
 // PageRequest identifies one offset, cursor, or initial native search page.

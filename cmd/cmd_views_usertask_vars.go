@@ -48,6 +48,18 @@ func renderVariableEnrichedUserTaskSearchPage(cmd *cobra.Command, items []task.V
 		}
 		for variableIndex, variable := range enriched.Variables {
 			line := "   " + incidentTreeBranch(variableIndex, len(enriched.Variables)) + variableValueHumanLine(variable, valueLimit)
+			if variable.ScopeKey != "" {
+				if variable.ScopeKey != enriched.Item.ElementInstanceKey {
+					line += " (inherited)"
+				}
+				if flagVerbose {
+					scopeKind := "element:"
+					if variable.ScopeKey == variable.ProcessInstanceKey {
+						scopeKind = "pi:"
+					}
+					line += " " + scopeKind + variable.ScopeKey
+				}
+			}
 			if err := writeUserTaskLine(cmd.OutOrStdout(), line); err != nil {
 				return err
 			}

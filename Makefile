@@ -159,7 +159,8 @@ run: build ## Build the binary and print the CLI help output.
 	./$(BIN_DIR)/$(BINARY) --help
 
 test: ## Run the full Go test suite with the race detector enabled.
-	go test $(PKG) -race -count=1
+	# Avoid a one-second race-detector exit delay for every CLI test subprocess.
+	GORACE="$(GORACE) atexit_sleep_ms=0" go test $(PKG) -race -count=1
 
 integration-test-confirm:
 	@if [ "$(C8VOLT_IT_AUTOMATION)" = "1" ]; then \
@@ -285,7 +286,7 @@ clean: ## Remove local build artifacts and coverage output.
 
 cover: ## Generate a text coverage report and print the total coverage summary.
 	mkdir -p $(COVER_DIR)
-	go test $(PKG) -race -covermode=atomic -coverprofile=$(COVER_OUT)
+	GORACE="$(GORACE) atexit_sleep_ms=0" go test $(PKG) -race -covermode=atomic -coverprofile=$(COVER_OUT)
 	go tool cover -func=$(COVER_OUT) | tail -n 1
 
 cover.html: cover ## Generate the HTML coverage report after collecting coverage data.

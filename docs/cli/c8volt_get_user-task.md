@@ -18,13 +18,15 @@ Every requested key must resolve or the command fails without a partial result. 
 
 Without keys, search by process, element, state, assignment, candidate, and effective tenant scope. Predicates are combined with AND. Supported states are ASSIGNING, CANCELED, CANCELING, COMPLETED, COMPLETING, CREATED, CREATING, FAILED, and UPDATING; state matching is case-insensitive, and all applies no state predicate. --batch-size controls each discovery request, --limit caps returned tasks across all pages, and --total emits the exact matching count.
 
+Use variable-search flags to narrow native searches by local variables on each task. --var-exists requires every listed local variable name to exist. --var accepts name=value equality shorthand plus advanced name.$operator=value clauses for $eq, $neq, $exists, $in, $notIn, and $like; $notin is accepted as $notIn. Values use the existing process-instance filter encoding: quote strings and use JSON string arrays for membership operators. --var-like uses native wildcard patterns: * matches zero or more characters, ? matches one character, and escaped wildcards remain literal. Commas inside quoted values and JSON arrays stay inside the variable clause. Variable clauses and ordinary search predicates are combined with AND. Parent-scope values do not satisfy local filters; negative and existence matching retain backend semantics.
+
 Interactive searches offer another page separately from command results when more matches remain. Use --auto-confirm or --automation for unattended paging. --quiet suppresses human results but preserves explicitly requested JSON, keys-only, and numeric total output.
 
 Human rows show task key, tenant, element ID, and state, followed by related pi:, ei:, and pd: keys. Assignee is always last: assignee:<user> when assigned, otherwise assignee:<unassigned>. Task name, BPMN process ID, and process-definition version are available in JSON. Other empty optional fields are omitted.
 
-Add --with-vars to retrieve the effective variables selected by the backend for each returned task on Camunda 8.8, 8.9, or 8.10. Human output nests variables beneath their task. --var-value-limit sets a nonnegative Unicode-character limit after structured values are compacted; zero, the default, keeps full received values. Truncation labels distinguish backend-incomplete values from display shortening. JSON always preserves received values and backend truncation metadata. Effective keys-only and --total output skip variable retrieval.
+Filtering does not retrieve variables. Add --with-vars independently to retrieve the effective variables selected by the backend for each returned task on Camunda 8.8, 8.9, or 8.10. Human output nests variables beneath their task. Values marked (inherited) come from an enclosing scope and do not satisfy task-local variable filters. With --verbose, each variable shows pi:<scopeKey> for process-instance scopes or element:<scopeKey> for element scopes; inspect these with get pi --key or get element --key respectively. --var-value-limit sets a nonnegative Unicode-character limit after structured values are compacted; zero, the default, keeps full received values. Truncation labels distinguish backend-incomplete values from display shortening. JSON always preserves received values and backend truncation metadata. Effective keys-only and --total output skip variable retrieval.
 
-Use --json for one collection envelope or --keys-only for one task key per line. Keys cannot be combined with search filters, --limit, or --total; --total also conflicts with --limit, --json, and --keys-only. Search and keyed reads require Camunda 8.8, 8.9, or 8.10; Camunda 8.7 is unsupported. Variable filtering and mutation, task mutations, forms, audit history, date filters, custom sorting, and watch mode are not provided by this command.
+Use --json for one collection envelope or --keys-only for one task key per line. Keys cannot be combined with search filters, --limit, or --total; --total also conflicts with --limit, --json, and --keys-only. Search and keyed reads require Camunda 8.8, 8.9, or 8.10; Camunda 8.7 is unsupported. Variable mutation, task mutations, forms, audit history, date filters, custom sorting, and watch mode are not provided by this command.
 
 ```
 c8volt get user-task [-] [flags]
@@ -33,6 +35,12 @@ c8volt get user-task [-] [flags]
 ### Examples
 
 ```
+  ./c8volt get ut --var 'status="approved"'
+  ./c8volt get ut --var-exists payload
+  ./c8volt get ut --var-like 'email=*@example.com'
+  ./c8volt get ut --assignee alice --var 'status="approved"' --limit 20
+  ./c8volt get ut --var 'status="approved"' --total
+  ./c8volt get ut --var 'status="approved"' --with-vars
   ./c8volt get ut --key <user-task-key> --with-vars
   ./c8volt get ut --assignee alice --limit 10 --with-vars
   ./c8volt get ut --pi-key <process-instance-key> --with-vars --var-value-limit 120
@@ -66,6 +74,9 @@ c8volt get user-task [-] [flags]
       --pi-key string            process instance key to filter in search mode
   -s, --state string             user task state to filter in search mode; case-insensitive; all disables the predicate (default "all")
       --total                    return only the exact numeric total of matching user tasks
+      --var stringArray          require local variable equality or advanced clause(s); repeat or separate clauses with commas
+      --var-exists stringArray   require local variable name(s) to exist; repeat or separate names with commas
+      --var-like stringArray     require local variable value pattern clause(s); repeat or separate clauses with commas
       --var-value-limit int      maximum characters to show for variable values when --with-vars is set; 0 disables truncation
       --with-vars                include effective variables for selected user tasks
   -w, --workers int              maximum concurrent workers when fetching multiple user tasks

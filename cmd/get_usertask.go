@@ -41,14 +41,22 @@ Every requested key must resolve or the command fails without a partial result. 
 
 Without keys, search by process, element, state, assignment, candidate, and effective tenant scope. Predicates are combined with AND. Supported states are ASSIGNING, CANCELED, CANCELING, COMPLETED, COMPLETING, CREATED, CREATING, FAILED, and UPDATING; state matching is case-insensitive, and all applies no state predicate. --batch-size controls each discovery request, --limit caps returned tasks across all pages, and --total emits the exact matching count.
 
+Use variable-search flags to narrow native searches by local variables on each task. --var-exists requires every listed local variable name to exist. --var accepts name=value equality shorthand plus advanced name.$operator=value clauses for $eq, $neq, $exists, $in, $notIn, and $like; $notin is accepted as $notIn. Values use the existing process-instance filter encoding: quote strings and use JSON string arrays for membership operators. --var-like uses native wildcard patterns: * matches zero or more characters, ? matches one character, and escaped wildcards remain literal. Commas inside quoted values and JSON arrays stay inside the variable clause. Variable clauses and ordinary search predicates are combined with AND. Parent-scope values do not satisfy local filters; negative and existence matching retain backend semantics.
+
 Interactive searches offer another page separately from command results when more matches remain. Use --auto-confirm or --automation for unattended paging. --quiet suppresses human results but preserves explicitly requested JSON, keys-only, and numeric total output.
 
 Human rows show task key, tenant, element ID, and state, followed by related pi:, ei:, and pd: keys. Assignee is always last: assignee:<user> when assigned, otherwise assignee:<unassigned>. Task name, BPMN process ID, and process-definition version are available in JSON. Other empty optional fields are omitted.
 
-Add --with-vars to retrieve the effective variables selected by the backend for each returned task on Camunda 8.8, 8.9, or 8.10. Human output nests variables beneath their task. --var-value-limit sets a nonnegative Unicode-character limit after structured values are compacted; zero, the default, keeps full received values. Truncation labels distinguish backend-incomplete values from display shortening. JSON always preserves received values and backend truncation metadata. Effective keys-only and --total output skip variable retrieval.
+Filtering does not retrieve variables. Add --with-vars independently to retrieve the effective variables selected by the backend for each returned task on Camunda 8.8, 8.9, or 8.10. Human output nests variables beneath their task. Values marked (inherited) come from an enclosing scope and do not satisfy task-local variable filters. With --verbose, each variable shows pi:<scopeKey> for process-instance scopes or element:<scopeKey> for element scopes; inspect these with get pi --key or get element --key respectively. --var-value-limit sets a nonnegative Unicode-character limit after structured values are compacted; zero, the default, keeps full received values. Truncation labels distinguish backend-incomplete values from display shortening. JSON always preserves received values and backend truncation metadata. Effective keys-only and --total output skip variable retrieval.
 
-Use --json for one collection envelope or --keys-only for one task key per line. Keys cannot be combined with search filters, --limit, or --total; --total also conflicts with --limit, --json, and --keys-only. Search and keyed reads require Camunda 8.8, 8.9, or 8.10; Camunda 8.7 is unsupported. Variable filtering and mutation, task mutations, forms, audit history, date filters, custom sorting, and watch mode are not provided by this command.`,
-	Example: `  ./c8volt get ut --key <user-task-key> --with-vars
+Use --json for one collection envelope or --keys-only for one task key per line. Keys cannot be combined with search filters, --limit, or --total; --total also conflicts with --limit, --json, and --keys-only. Search and keyed reads require Camunda 8.8, 8.9, or 8.10; Camunda 8.7 is unsupported. Variable mutation, task mutations, forms, audit history, date filters, custom sorting, and watch mode are not provided by this command.`,
+	Example: `  ./c8volt get ut --var 'status="approved"'
+  ./c8volt get ut --var-exists payload
+  ./c8volt get ut --var-like 'email=*@example.com'
+  ./c8volt get ut --assignee alice --var 'status="approved"' --limit 20
+  ./c8volt get ut --var 'status="approved"' --total
+  ./c8volt get ut --var 'status="approved"' --with-vars
+  ./c8volt get ut --key <user-task-key> --with-vars
   ./c8volt get ut --assignee alice --limit 10 --with-vars
   ./c8volt get ut --pi-key <process-instance-key> --with-vars --var-value-limit 120
   ./c8volt --json get ut --key <user-task-key> --with-vars
@@ -83,7 +91,10 @@ Use --json for one collection envelope or --keys-only for one task key per line.
 		}
 		keys := mergeAndValidateKeys(cmd, flagGetUserTaskKeys, stdinKeys, log, cfg).Unique()
 		if len(keys) == 0 {
-			request := newGetUserTaskSearchRequest()
+			request, err := newGetUserTaskSearchRequest()
+			if err != nil {
+				handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+			}
 			if flagGetUserTaskTotal {
 				total, err := cli.SearchUserTasksTotal(cmd.Context(), request, collectOptions()...)
 				if err != nil {
@@ -141,6 +152,9 @@ func init() {
 	flags.BoolVar(&flagGetUserTaskTotal, "total", false, "return only the exact numeric total of matching user tasks")
 	flags.BoolVar(&flagGetUserTaskWithVars, "with-vars", false, "include effective variables for selected user tasks")
 	flags.IntVar(&flagGetUserTaskVarValueLimit, "var-value-limit", 0, "maximum characters to show for variable values when --with-vars is set; 0 disables truncation")
+	flags.StringArrayVar(&flagGetUserTaskVarExists, "var-exists", nil, "require local variable name(s) to exist; repeat or separate names with commas")
+	flags.StringArrayVar(&flagGetUserTaskVars, "var", nil, "require local variable equality or advanced clause(s); repeat or separate clauses with commas")
+	flags.StringArrayVar(&flagGetUserTaskVarLikes, "var-like", nil, "require local variable value pattern clause(s); repeat or separate clauses with commas")
 	flags.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers when fetching multiple user tasks")
 	flags.BoolVar(&flagNoWorkerLimit, "no-worker-limit", false, "use all queued user task reads as workers when --workers is unset")
 	flags.BoolVar(&flagFailFast, "fail-fast", false, "stop scheduling new user task reads after the first error")
@@ -200,6 +214,9 @@ func validateGetUserTaskFlags(cmd *cobra.Command) error {
 	if !validUserTaskState(flagGetUserTaskState) {
 		return invalidFlagValuef("invalid value for --state: %q, valid values are: all, %s", flagGetUserTaskState, strings.Join(validUserTaskStates, ", "))
 	}
+	if _, err := parseUserTaskVariableFilters(); err != nil {
+		return err
+	}
 	if len(flagGetUserTaskKeys) > 0 && hasGetUserTaskSearchFlags(cmd) {
 		return mutuallyExclusiveFlagsf("--key cannot be combined with search filters, --limit, or --total")
 	}
@@ -208,7 +225,11 @@ func validateGetUserTaskFlags(cmd *cobra.Command) error {
 
 // newGetUserTaskSearchRequest maps validated command flags into an AND-combined
 // native search request without changing case-sensitive identity predicates.
-func newGetUserTaskSearchRequest() task.SearchRequest {
+func newGetUserTaskSearchRequest() (task.SearchRequest, error) {
+	variableFilters, err := parseUserTaskVariableFilters()
+	if err != nil {
+		return task.SearchRequest{}, err
+	}
 	return task.SearchRequest{
 		ProcessInstanceKey:   strings.TrimSpace(flagGetUserTaskPIKey),
 		ProcessDefinitionKey: strings.TrimSpace(flagGetUserTaskPDKey),
@@ -218,9 +239,10 @@ func newGetUserTaskSearchRequest() task.SearchRequest {
 		Assignee:             strings.TrimSpace(flagGetUserTaskAssignee),
 		CandidateUser:        strings.TrimSpace(flagGetUserTaskCandidateUser),
 		CandidateGroup:       strings.TrimSpace(flagGetUserTaskCandidateGroup),
+		VariableFilters:      variableFilters,
 		BatchSize:            flagGetUserTaskBatchSize,
 		Limit:                flagGetUserTaskLimit,
-	}
+	}, nil
 }
 
 var validUserTaskStates = []string{
@@ -249,7 +271,7 @@ func hasGetUserTaskSearchFlags(cmd *cobra.Command) bool {
 	if cmd == nil {
 		return false
 	}
-	for _, name := range []string{"pi-key", "pd-key", "bpmn-process-id", "element-id", "state", "assignee", "candidate-user", "candidate-group", "limit", "total"} {
+	for _, name := range []string{"pi-key", "pd-key", "bpmn-process-id", "element-id", "state", "assignee", "candidate-user", "candidate-group", "var-exists", "var", "var-like", "limit", "total"} {
 		if cmd.Flags().Changed(name) {
 			return true
 		}

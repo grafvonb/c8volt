@@ -6,13 +6,13 @@ package usertask
 import (
 	"context"
 	"errors"
-	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
 
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/services"
+	"github.com/grafvonb/c8volt/testx"
 	"github.com/grafvonb/c8volt/typex"
 	"github.com/stretchr/testify/require"
 )
@@ -45,17 +45,14 @@ func (a *bulkUserTaskAPI) SearchUserTaskEffectiveVariablesPage(context.Context, 
 func TestGetUserTasksDeduplicatesStablyAndPreservesInputOrder(t *testing.T) {
 	t.Parallel()
 
-	var mu sync.Mutex
-	requested := make(typex.Keys, 0, 3)
+	var requested testx.SafeSlice[string]
 	delays := map[string]time.Duration{
 		"task-c": 30 * time.Millisecond,
 		"task-a": 20 * time.Millisecond,
 		"task-b": 10 * time.Millisecond,
 	}
 	api := &bulkUserTaskAPI{getNative: func(ctx context.Context, key string, _ ...services.CallOption) (d.UserTask, error) {
-		mu.Lock()
-		requested = append(requested, key)
-		mu.Unlock()
+		requested.Append(key)
 		select {
 		case <-ctx.Done():
 			return d.UserTask{}, ctx.Err()
@@ -68,9 +65,7 @@ func TestGetUserTasksDeduplicatesStablyAndPreservesInputOrder(t *testing.T) {
 
 	require.NoError(t, err)
 	require.Equal(t, []d.UserTask{{Key: "task-c"}, {Key: "task-a"}, {Key: "task-b"}}, tasks)
-	mu.Lock()
-	require.ElementsMatch(t, typex.Keys{"task-c", "task-a", "task-b"}, requested)
-	mu.Unlock()
+	require.ElementsMatch(t, typex.Keys{"task-c", "task-a", "task-b"}, requested.Snapshot())
 }
 
 // TestGetUserTasksReturnsJoinedFailuresWithoutSubset verifies every non-fail-fast read is attempted while any failure makes the whole lookup unsuccessful.
@@ -103,9 +98,9 @@ func TestGetUserTasksPropagatesPreCanceledContext(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	var calls atomic.Int32
+	var calls testx.AtomicCounter
 	api := &bulkUserTaskAPI{getNative: func(context.Context, string, ...services.CallOption) (d.UserTask, error) {
-		calls.Add(1)
+		calls.Inc()
 		return d.UserTask{}, nil
 	}}
 
@@ -121,15 +116,12 @@ func TestGetUserTasksFailFastStopsUnstartedReads(t *testing.T) {
 	t.Parallel()
 
 	errRead := errors.New("read failed")
-	var mu sync.Mutex
-	requested := make(typex.Keys, 0, 1)
+	var requested testx.SafeSlice[string]
 	var sawFailFast atomic.Bool
 	api := &bulkUserTaskAPI{getNative: func(_ context.Context, key string, opts ...services.CallOption) (d.UserTask, error) {
 		cfg := services.ApplyCallOptions(opts)
 		sawFailFast.Store(cfg.FailFast)
-		mu.Lock()
-		requested = append(requested, key)
-		mu.Unlock()
+		requested.Append(key)
 		if key == "fail" {
 			return d.UserTask{}, errRead
 		}
@@ -141,9 +133,7 @@ func TestGetUserTasksFailFastStopsUnstartedReads(t *testing.T) {
 	require.Nil(t, tasks)
 	require.ErrorIs(t, err, errRead)
 	require.True(t, sawFailFast.Load())
-	mu.Lock()
-	require.Equal(t, typex.Keys{"fail"}, requested)
-	mu.Unlock()
+	require.Equal(t, []string{"fail"}, requested.Snapshot())
 }
 
 // TestGetUserTasksHonorsWorkerLimitAndPropagatesOptions verifies explicit concurrency bounds and unchanged call-option forwarding.
@@ -176,9 +166,9 @@ func TestGetUserTasksHonorsWorkerLimitAndPropagatesOptions(t *testing.T) {
 func TestGetUserTasksEmptyInputReturnsInitializedCollection(t *testing.T) {
 	t.Parallel()
 
-	var calls atomic.Int32
+	var calls testx.AtomicCounter
 	api := &bulkUserTaskAPI{getNative: func(context.Context, string, ...services.CallOption) (d.UserTask, error) {
-		calls.Add(1)
+		calls.Inc()
 		return d.UserTask{}, nil
 	}}
 

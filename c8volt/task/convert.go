@@ -93,6 +93,26 @@ func fromDomainVariableEnrichedUserTasks(x d.VariableEnrichedUserTasks) Variable
 	return VariableEnrichedUserTasks{Total: x.Total, Items: items}
 }
 
+// toDomainVariableFilterClause maps one predicate without retaining its
+// caller-owned optional existence pointer.
+func toDomainVariableFilterClause(x VariableFilterClause) d.ProcessInstanceVariableFilterClause {
+	return d.ProcessInstanceVariableFilterClause{
+		Name:     x.Name,
+		Operator: d.ProcessInstanceVariableFilterOperator(x.Operator),
+		Value:    x.Value,
+		Exists:   toolx.CopyPtr(x.Exists),
+		Source:   x.Source,
+	}
+}
+
+// toDomainVariableFilterSet allocates an independently owned ordered clause
+// collection for the internal user-task query.
+func toDomainVariableFilterSet(x VariableFilterSet) d.ProcessInstanceVariableFilterSet {
+	return d.ProcessInstanceVariableFilterSet{
+		Clauses: toolx.MapSlice(x.Clauses, toDomainVariableFilterClause),
+	}
+}
+
 // toDomainSearchRequest maps public selectors and bounds without adding tenant scope.
 func toDomainSearchRequest(x SearchRequest) d.UserTaskSearchQuery {
 	return d.UserTaskSearchQuery{
@@ -104,6 +124,7 @@ func toDomainSearchRequest(x SearchRequest) d.UserTaskSearchQuery {
 		Assignee:             x.Assignee,
 		CandidateUser:        x.CandidateUser,
 		CandidateGroup:       x.CandidateGroup,
+		VariableFilters:      toDomainVariableFilterSet(x.VariableFilters),
 		BatchSize:            x.BatchSize,
 		Limit:                x.Limit,
 	}

@@ -46,6 +46,7 @@ func TestGetUserTaskPagingTerminal(t *testing.T) {
 		args             []string
 		exchanges        []testx.CmdTerminalExchange
 		configuredStderr bool
+		filtered         bool
 		wantStdout       string
 		wantStderr       string
 		wantStderrPart   string
@@ -62,6 +63,7 @@ func TestGetUserTaskPagingTerminal(t *testing.T) {
 				{Prompt: secondPrompt, Response: "yes"},
 			},
 			configuredStderr: true,
+			filtered:         true,
 			wantStdout:       "2251799815391233\n2251799815391234\n2251799815391235\n",
 			wantStderr:       firstPrompt + secondPrompt,
 			wantRequests:     3,
@@ -71,6 +73,7 @@ func TestGetUserTaskPagingTerminal(t *testing.T) {
 			responses:    threePages,
 			args:         []string{"--keys-only", "get", "ut", "--batch-size", "1"},
 			exchanges:    []testx.CmdTerminalExchange{{Prompt: firstPrompt, Response: "n"}},
+			filtered:     true,
 			wantStdout:   "2251799815391233\n",
 			wantStderr:   firstPrompt,
 			wantRequests: 1,
@@ -80,6 +83,17 @@ func TestGetUserTaskPagingTerminal(t *testing.T) {
 			responses:    threePages,
 			args:         []string{"--keys-only", "get", "ut", "--batch-size", "1"},
 			exchanges:    []testx.CmdTerminalExchange{{Prompt: firstPrompt, Response: "later"}},
+			filtered:     true,
+			wantStdout:   "2251799815391233\n",
+			wantStderr:   firstPrompt,
+			wantRequests: 1,
+		},
+		{
+			name:         "empty answer uses the default decline",
+			responses:    threePages,
+			args:         []string{"--keys-only", "get", "ut", "--batch-size", "1"},
+			exchanges:    []testx.CmdTerminalExchange{{Prompt: firstPrompt, Response: ""}},
+			filtered:     true,
 			wantStdout:   "2251799815391233\n",
 			wantStderr:   firstPrompt,
 			wantRequests: 1,
@@ -89,6 +103,7 @@ func TestGetUserTaskPagingTerminal(t *testing.T) {
 			responses:    threePages,
 			args:         []string{"--keys-only", "get", "ut", "--batch-size", "1"},
 			exchanges:    []testx.CmdTerminalExchange{{Prompt: firstPrompt, EndOfInput: true}},
+			filtered:     true,
 			wantStdout:   "2251799815391233\n",
 			wantStderr:   firstPrompt,
 			wantRequests: 1,
@@ -109,6 +124,7 @@ func TestGetUserTaskPagingTerminal(t *testing.T) {
 			name:         "completed empty search is prompt free",
 			responses:    []string{userTaskSearchResponse(0, false, "")},
 			args:         []string{"--keys-only", "get", "ut", "--batch-size", "1"},
+			filtered:     true,
 			wantStdout:   "",
 			wantStderr:   "",
 			wantRequests: 1,
@@ -120,6 +136,7 @@ func TestGetUserTaskPagingTerminal(t *testing.T) {
 				userTaskSearchResponse(1, false, "", "2251799815391233"),
 			},
 			args:         []string{"--keys-only", "get", "ut", "--batch-size", "1"},
+			filtered:     true,
 			wantStdout:   "2251799815391233\n",
 			wantStderr:   "",
 			wantRequests: 2,
@@ -128,12 +145,14 @@ func TestGetUserTaskPagingTerminal(t *testing.T) {
 			name:         "json is prompt free",
 			responses:    threePages,
 			args:         []string{"--json", "get", "ut", "--batch-size", "1"},
+			filtered:     true,
 			wantRequests: 3,
 		},
 		{
 			name:         "automation is prompt free",
 			responses:    threePages,
 			args:         []string{"--keys-only", "get", "ut", "--batch-size", "1", "--automation"},
+			filtered:     true,
 			wantStdout:   "2251799815391233\n2251799815391234\n2251799815391235\n",
 			wantRequests: 3,
 		},
@@ -141,6 +160,7 @@ func TestGetUserTaskPagingTerminal(t *testing.T) {
 			name:         "auto confirm is prompt free",
 			responses:    threePages,
 			args:         []string{"--keys-only", "get", "ut", "--batch-size", "1", "--auto-confirm"},
+			filtered:     true,
 			wantStdout:   "2251799815391233\n2251799815391234\n2251799815391235\n",
 			wantRequests: 3,
 		},
@@ -235,7 +255,11 @@ func TestGetUserTaskPagingTerminal(t *testing.T) {
 					})
 					configPath := testx.WriteTestConfigForVersion(t, server.URL, version)
 					configuredPath := filepath.Join(t.TempDir(), "configured-stderr.txt")
-					args := append([]string{"--config", configPath, "--tenant", "tenant-a"}, tt.args...)
+					commandArgs := append([]string(nil), tt.args...)
+					if tt.filtered {
+						commandArgs = append(commandArgs, "--var", `status="approved"`)
+					}
+					args := append([]string{"--config", configPath, "--tenant", "tenant-a"}, commandArgs...)
 					encodedArgs, err := json.Marshal(args)
 					require.NoError(t, err)
 
@@ -274,6 +298,14 @@ func TestGetUserTaskPagingTerminal(t *testing.T) {
 					_, searchRequests, variableRequests := requests.snapshot()
 					require.Len(t, searchRequests, tt.wantRequests)
 					require.Len(t, variableRequests, tt.wantVarRequests)
+					if tt.filtered {
+						for _, request := range searchRequests {
+							requestFilter := requireJSONMap(t, request["filter"])
+							require.Equal(t, []any{
+								map[string]any{"name": "status", "value": map[string]any{"$eq": `"approved"`}},
+							}, requestFilter["localVariables"])
+						}
+					}
 					require.Equal(t, len(tt.exchanges), strings.Count(result.Stderr, "Continue? [y/N]: "))
 					require.NotContains(t, result.Stdout, "Fetched")
 					require.NotContains(t, result.Stdout, "Continue?")

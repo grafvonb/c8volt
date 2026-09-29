@@ -20,22 +20,28 @@ const (
 // parsePIVariableFilters normalizes all process-instance variable-search flag
 // inputs into the public facade filter shape before backend clients are used.
 func parsePIVariableFilters() (process.ProcessInstanceVariableFilterSet, error) {
+	return parseVariableFilters(flagGetPIVarExists, flagGetPIVars, flagGetPIVarLikes)
+}
+
+// parseVariableFilters normalizes explicit variable-search inputs while
+// preserving the established exists, value, and like clause group order.
+func parseVariableFilters(existsInputs, valueInputs, likeInputs []string) (process.ProcessInstanceVariableFilterSet, error) {
 	var clauses []process.ProcessInstanceVariableFilterClause
-	for _, raw := range flagGetPIVarExists {
+	for _, raw := range existsInputs {
 		parsed, err := parsePIVariableExistsFilter(raw)
 		if err != nil {
 			return process.ProcessInstanceVariableFilterSet{}, err
 		}
 		clauses = append(clauses, parsed...)
 	}
-	for _, raw := range flagGetPIVars {
+	for _, raw := range valueInputs {
 		parsed, err := parsePIVariableValueFilter(raw, piVariableFilterSourceVar, process.ProcessInstanceVariableFilterOperatorEq)
 		if err != nil {
 			return process.ProcessInstanceVariableFilterSet{}, err
 		}
 		clauses = append(clauses, parsed...)
 	}
-	for _, raw := range flagGetPIVarLikes {
+	for _, raw := range likeInputs {
 		parsed, err := parsePIVariableValueFilter(raw, piVariableFilterSourceLike, process.ProcessInstanceVariableFilterOperatorLike)
 		if err != nil {
 			return process.ProcessInstanceVariableFilterSet{}, err

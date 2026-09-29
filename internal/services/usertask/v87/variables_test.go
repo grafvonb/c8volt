@@ -8,20 +8,20 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
-	"sync/atomic"
 	"testing"
 
 	"github.com/grafvonb/c8volt/config"
 	d "github.com/grafvonb/c8volt/internal/domain"
 	v87 "github.com/grafvonb/c8volt/internal/services/usertask/v87"
+	"github.com/grafvonb/c8volt/testx"
 	"github.com/stretchr/testify/require"
 )
 
 // TestService_SearchUserTaskEffectiveVariablesPage_ReturnsUnsupportedWithoutRequest proves V87 rejects effective-variable reads before transport use.
 func TestService_SearchUserTaskEffectiveVariablesPage_ReturnsUnsupportedWithoutRequest(t *testing.T) {
-	var requests atomic.Int32
+	var requests testx.AtomicCounter
 	client := &http.Client{Transport: variableRoundTripperFunc(func(*http.Request) (*http.Response, error) {
-		requests.Add(1)
+		requests.Inc()
 		return nil, nil
 	})}
 	svc, err := v87.New(&config.Config{APIs: config.APIs{Camunda: config.API{BaseURL: "https://camunda.local/v2"}}}, client, slog.New(slog.NewTextHandler(io.Discard, nil)))

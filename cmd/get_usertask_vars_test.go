@@ -17,6 +17,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const (
+	userTaskLocalMatchKey       = "2251799815391233"
+	userTaskShadowedMatchKey    = "2251799815391234"
+	userTaskParentOnlyKey       = "2251799815391235"
+	userTaskFixtureProcessScope = "2251799813711967"
+	userTaskFixtureLocalScope   = "2251799815391200"
+)
+
 type userTaskVariableFixtureValue struct {
 	Name               string
 	Value              string
@@ -50,10 +58,12 @@ type capturedUserTaskVariableRequest struct {
 }
 
 type capturedGetUserTaskVariableRequests struct {
-	mu               sync.Mutex
-	taskKeys         []string
-	searchRequests   []map[string]any
-	variableRequests []capturedUserTaskVariableRequest
+	mu                            sync.Mutex
+	taskKeys                      testx.SafeSlice[string]
+	searchRequests                testx.SafeSlice[map[string]any]
+	localVariableSearchPredicates testx.SafeSlice[[]any]
+	variableRequests              []capturedUserTaskVariableRequest
+	searchRequestIndex            testx.AtomicCounter
 }
 
 // snapshot returns independent request slices for deterministic assertions
@@ -61,8 +71,8 @@ type capturedGetUserTaskVariableRequests struct {
 func (c *capturedGetUserTaskVariableRequests) snapshot() ([]string, []map[string]any, []capturedUserTaskVariableRequest) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	return append([]string(nil), c.taskKeys...),
-		append([]map[string]any(nil), c.searchRequests...),
+	return c.taskKeys.Snapshot(),
+		c.searchRequests.Snapshot(),
 		append([]capturedUserTaskVariableRequest(nil), c.variableRequests...)
 }
 
@@ -77,6 +87,67 @@ func (c *capturedGetUserTaskVariableRequests) variableRequestCount(taskKey strin
 		}
 	}
 	return count
+}
+
+// searchRequestCount reports native search calls independently of effective
+// variable reads so filtered display tests can prove their request boundaries.
+func (c *capturedGetUserTaskVariableRequests) searchRequestCount() int {
+	return len(c.searchRequests.Snapshot())
+}
+
+// totalVariableRequestCount reports all effective-variable page reads without
+// obscuring the task-keyed counts used to detect reads for excluded tasks.
+func (c *capturedGetUserTaskVariableRequests) totalVariableRequestCount() int {
+	_, _, requests := c.snapshot()
+	return len(requests)
+}
+
+// localVariablePredicates returns the native local-variable arrays captured
+// from search requests, preserving request and clause order for assertions.
+func (c *capturedGetUserTaskVariableRequests) localVariablePredicates() [][]any {
+	predicates := c.localVariableSearchPredicates.Snapshot()
+	for i, clauses := range predicates {
+		predicates[i] = append([]any(nil), clauses...)
+	}
+	return predicates
+}
+
+// filteredUserTaskVariablesFixture returns backend-preselected task identities
+// and effective values spanning local, inherited, and locally shadowing scopes.
+// It deliberately does not evaluate the captured native predicate.
+func filteredUserTaskVariablesFixture() getUserTaskVariablesFixture {
+	variable := func(name, value, key, scope string) userTaskVariableFixtureValue {
+		return userTaskVariableFixtureValue{
+			Name: name, Value: value, VariableKey: key, ProcessInstanceKey: userTaskFixtureProcessScope,
+			ScopeKey: scope, TenantID: "tenant-a",
+		}
+	}
+	return getUserTaskVariablesFixture{
+		SearchRespond: func(_ int, _ map[string]any) string {
+			return userTaskSearchResponse(2, false, "", userTaskLocalMatchKey, userTaskShadowedMatchKey)
+		},
+		VariablePages: map[string][]userTaskVariablePageFixture{
+			userTaskLocalMatchKey: {{
+				Total: 2,
+				Items: []userTaskVariableFixtureValue{
+					variable("status", `"approved"`, "901", userTaskFixtureLocalScope),
+					variable("region", `"eu"`, "902", userTaskFixtureProcessScope),
+				},
+			}},
+			userTaskShadowedMatchKey: {{
+				Total: 1,
+				Items: []userTaskVariableFixtureValue{
+					variable("status", `"approved-local"`, "903", userTaskFixtureLocalScope),
+				},
+			}},
+			userTaskParentOnlyKey: {{
+				Total: 1,
+				Items: []userTaskVariableFixtureValue{
+					variable("status", `"approved-parent"`, "904", userTaskFixtureProcessScope),
+				},
+			}},
+		},
+	}
 }
 
 // newGetUserTaskVariablesServer provides only the user-task routes needed by
@@ -108,10 +179,15 @@ func serveUserTaskFixtureSearch(writer http.ResponseWriter, request *http.Reques
 		http.Error(writer, err.Error(), http.StatusBadRequest)
 		return
 	}
-	requests.mu.Lock()
-	index := len(requests.searchRequests)
-	requests.searchRequests = append(requests.searchRequests, body)
-	requests.mu.Unlock()
+	var localVariables []any
+	if filter, ok := body["filter"].(map[string]any); ok {
+		if clauses, ok := filter["localVariables"].([]any); ok {
+			localVariables = append([]any(nil), clauses...)
+		}
+	}
+	index := int(requests.searchRequestIndex.Inc() - 1)
+	requests.searchRequests.Append(body)
+	requests.localVariableSearchPredicates.Append(localVariables)
 	if respond == nil {
 		respond = func(_ int, _ map[string]any) string { return userTaskSearchResponse(0, false, "") }
 	}
@@ -132,6 +208,7 @@ func serveUserTaskVariableFixturePage(writer http.ResponseWriter, request *http.
 		http.Error(writer, err.Error(), http.StatusBadRequest)
 		return
 	}
+	// Counting and recording a page must remain atomic for each task.
 	requests.mu.Lock()
 	pageIndex := 0
 	for _, captured := range requests.variableRequests {
@@ -169,9 +246,7 @@ func serveUserTaskFixtureRead(writer http.ResponseWriter, request *http.Request,
 		http.NotFound(writer, request)
 		return
 	}
-	requests.mu.Lock()
-	requests.taskKeys = append(requests.taskKeys, taskKey)
-	requests.mu.Unlock()
+	requests.taskKeys.Append(taskKey)
 	if status := statuses[taskKey]; status != 0 && status != http.StatusOK {
 		http.Error(writer, `{"message":"injected user-task read error"}`, status)
 		return
@@ -248,4 +323,48 @@ func TestGetUserTaskVariablesFixture(t *testing.T) {
 	_, _, captured := requests.snapshot()
 	require.Equal(t, "false", captured[0].TruncateValues)
 	require.Equal(t, float64(0), requireJSONMap(t, captured[0].Body["page"])["from"])
+}
+
+// TestFilteredUserTaskVariablesFixture verifies the reusable US3 scenario
+// captures native predicates and keeps backend selection separate from keyed
+// effective-variable reads for local, inherited, and shadowing examples.
+func TestFilteredUserTaskVariablesFixture(t *testing.T) {
+	fixture := filteredUserTaskVariablesFixture()
+	require.Equal(t, []string{userTaskFixtureLocalScope, userTaskFixtureProcessScope}, []string{
+		fixture.VariablePages[userTaskLocalMatchKey][0].Items[0].ScopeKey,
+		fixture.VariablePages[userTaskLocalMatchKey][0].Items[1].ScopeKey,
+	})
+	require.Equal(t, userTaskFixtureLocalScope, fixture.VariablePages[userTaskShadowedMatchKey][0].Items[0].ScopeKey)
+	require.Equal(t, userTaskFixtureProcessScope, fixture.VariablePages[userTaskParentOnlyKey][0].Items[0].ScopeKey)
+
+	server, requests := newGetUserTaskVariablesServer(t, fixture)
+	searchBody := `{"filter":{"localVariables":[{"name":"status","value":{"$eq":"\"approved\""}}]},"page":{"limit":2}}`
+	response, err := http.Post(server.URL+"/v2/user-tasks/search", "application/json", bytes.NewBufferString(searchBody))
+	require.NoError(t, err)
+	defer response.Body.Close()
+	require.Equal(t, http.StatusOK, response.StatusCode)
+	var searchPayload struct {
+		Items []struct {
+			Key string `json:"userTaskKey"`
+		} `json:"items"`
+	}
+	require.NoError(t, json.NewDecoder(response.Body).Decode(&searchPayload))
+	require.Len(t, searchPayload.Items, 2)
+	require.Equal(t, []string{userTaskLocalMatchKey, userTaskShadowedMatchKey}, []string{
+		searchPayload.Items[0].Key,
+		searchPayload.Items[1].Key,
+	})
+	require.Equal(t, 1, requests.searchRequestCount())
+	require.Equal(t, [][]any{{
+		map[string]any{"name": "status", "value": map[string]any{"$eq": `"approved"`}},
+	}}, requests.localVariablePredicates())
+
+	for _, key := range []string{userTaskLocalMatchKey, userTaskShadowedMatchKey, userTaskParentOnlyKey} {
+		variableResponse, postErr := http.Post(server.URL+"/v2/user-tasks/"+key+"/effective-variables/search", "application/json", bytes.NewBufferString(`{"page":{"from":0,"limit":1000}}`))
+		require.NoError(t, postErr)
+		require.Equal(t, http.StatusOK, variableResponse.StatusCode)
+		require.NoError(t, variableResponse.Body.Close())
+		require.Equal(t, 1, requests.variableRequestCount(key))
+	}
+	require.Equal(t, 3, requests.totalVariableRequestCount())
 }

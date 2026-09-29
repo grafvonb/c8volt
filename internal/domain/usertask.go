@@ -51,6 +51,7 @@ type UserTaskSearchQuery struct {
 	Assignee             string
 	CandidateUser        string
 	CandidateGroup       string
+	VariableFilters      ProcessInstanceVariableFilterSet
 	BatchSize            int32
 	Limit                int32
 }

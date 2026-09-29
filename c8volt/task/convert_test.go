@@ -80,14 +80,36 @@ func TestFromDomainUserTasksInitializesEmptyCollection(t *testing.T) {
 func TestToDomainSearchRequestMapsEverySelectorAndBound(t *testing.T) {
 	t.Parallel()
 
+	exists := false
 	request := SearchRequest{
 		ProcessInstanceKey: "1", ProcessDefinitionKey: "2", BpmnProcessId: "invoice", ElementId: "approve_invoice",
 		State: "CREATED", Assignee: "Alice", CandidateUser: "Bob", CandidateGroup: "Accounting", BatchSize: 1000, Limit: 25,
+		VariableFilters: VariableFilterSet{Clauses: []VariableFilterClause{
+			{Name: "status", Operator: VariableFilterOperatorEq, Value: `"approved"`, Source: "--var"},
+			{Name: "payload", Operator: VariableFilterOperatorExists, Exists: &exists, Source: "--var-exists"},
+		}},
 	}
+	got := toDomainSearchRequest(request)
 	require.Equal(t, d.UserTaskSearchQuery{
 		ProcessInstanceKey: "1", ProcessDefinitionKey: "2", BpmnProcessId: "invoice", ElementId: "approve_invoice",
 		State: "CREATED", Assignee: "Alice", CandidateUser: "Bob", CandidateGroup: "Accounting", BatchSize: 1000, Limit: 25,
-	}, toDomainSearchRequest(request))
+		VariableFilters: d.ProcessInstanceVariableFilterSet{Clauses: []d.ProcessInstanceVariableFilterClause{
+			{Name: "status", Operator: d.ProcessInstanceVariableFilterOperatorEq, Value: `"approved"`, Source: "--var"},
+			{Name: "payload", Operator: d.ProcessInstanceVariableFilterOperatorExists, Exists: boolPointer(false), Source: "--var-exists"},
+		}},
+	}, got)
+	require.NotSame(t, request.VariableFilters.Clauses[1].Exists, got.VariableFilters.Clauses[1].Exists)
+
+	request.VariableFilters.Clauses[0].Name = "changed"
+	*request.VariableFilters.Clauses[1].Exists = true
+	require.Equal(t, "status", got.VariableFilters.Clauses[0].Name)
+	require.False(t, *got.VariableFilters.Clauses[1].Exists)
+	require.Empty(t, toDomainSearchRequest(SearchRequest{}).VariableFilters.Clauses)
+}
+
+// boolPointer returns an independently allocated boolean for conversion expectations.
+func boolPointer(value bool) *bool {
+	return &value
 }
 
 // TestSearchPageVisitorConversionMapsFactsActionErrorAndCopies verifies visitor adaptation does not reinterpret traversal state.
