@@ -159,7 +159,8 @@ run: build ## Build the binary and print the CLI help output.
 	./$(BIN_DIR)/$(BINARY) --help
 
 test: ## Run the full Go test suite with the race detector enabled.
-	go test $(PKG) -race -count=1
+	# Avoid a one-second race-detector exit delay for every CLI test subprocess.
+	GORACE="$(GORACE) atexit_sleep_ms=0" go test $(PKG) -race -count=1
 
 integration-test-confirm:
 	@if [ "$(C8VOLT_IT_AUTOMATION)" = "1" ]; then \

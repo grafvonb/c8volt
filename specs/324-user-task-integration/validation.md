@@ -38,3 +38,9 @@ Final checks: `TestUserTaskVariableResultContract` and `TestSeededVariablePayloa
 Removed both live `$notIn` cases across all versions at user request. Similar behavior on other versions is an assumption only; live `$notIn` is no longer claimed as covered. Unit request-encoding tests are unchanged. No runtime skip or HTTP-500 suppression was added.
 
 `C8VOLT_IT_PROFILES=c89local C8VOLT_IT_WORKDIR=/tmp/c8volt-324-get-without-notin make integration-cli-get C8VOLT_IT_AUTOMATION=1` passed (37.889s), exercising the complete previously failing get slice. The full `integration-test-all` aggregate was not rerun; later slices are not claimed to pass from this result. Formatting and diff checks passed. Changes remain uncommitted.
+
+## Normal test suite follow-up
+
+The full `make test` (`go test ./... -race -count=1`) was run. Its first sandboxed attempt could not bind local test-server ports and was interrupted. With those permissions granted, the suite reached the default ten-minute command-package timeout without reporting an assertion failure; all other packages passed.
+
+`GORACE=atexit_sleep_ms=0 make test` then passed across all packages with race detection enabled. The normal Make recipe now applies this setting while preserving other GORACE options, removing the default one-second exit delay paid by each CLI test subprocess. No tests or race checks were disabled. The validated equivalent command, recipe dry-run, and whitespace checks were used instead of repeating the full suite solely for the recipe/documentation change.
