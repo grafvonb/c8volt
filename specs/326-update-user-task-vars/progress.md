@@ -44,3 +44,22 @@ Started: 2026-09-29 17:39:20
 **Learnings**:
 - Complete task-variable planning can reuse the existing native bulk lookup and sparse-page traversal while grouping physical writes by scope without losing task-variable counts.
 ---
+## Iteration 3 - 2026-09-29 18:08
+**Work Unit**: US1 partial — execute and confirm frozen user-task variable updates
+**Tasks Completed**:
+- [x] T003: Implement execution, confirmation and partial outcomes
+**Tasks Remaining in Work Unit**: T004 remains in US1
+**Commit**: This work-unit commit
+**Files Changed**:
+- internal/services/usertask/update.go
+- internal/services/usertask/update_validation.go
+- internal/services/usertask/update_wait.go
+- internal/services/usertask/update_test.go
+- internal/services/usertask/update_bulk_test.go
+- internal/services/usertask/update_wait_test.go
+- specs/326-update-user-task-vars/tasks.md
+- specs/326-update-user-task-vars/ralph-memory.md
+- specs/326-update-user-task-vars/progress.md
+**Learnings**:
+- Frozen target execution needs explicit skipped-slot materialization after pool fail-fast/cancellation so shared task outcomes cannot mistake unstarted work for success.
+---

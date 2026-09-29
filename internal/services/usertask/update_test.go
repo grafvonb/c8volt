@@ -280,6 +280,23 @@ func TestPlanUserTaskVariableUpdatesRejectsIncompleteOrConflictingDiscovery(t *t
 	}
 }
 
+// TestExecuteUserTaskVariableUpdatesRejectsInconsistentPlanBeforeRequests
+// verifies the execution boundary revalidates frozen target associations.
+func TestExecuteUserTaskVariableUpdatesRejectsInconsistentPlanBeforeRequests(t *testing.T) {
+	t.Parallel()
+
+	writer := &updateExecutionScopeWriter{}
+	plan := sharedExecutionPlan()
+	plan.Targets[0].Associations[0].Names = []string{"local"}
+
+	results, err := NewVariableUpdates(nil, writer, config.New(), nil).
+		ExecuteUserTaskVariableUpdates(context.Background(), plan, 1, services.WithNoWait())
+
+	require.ErrorIs(t, err, d.ErrValidation)
+	require.Empty(t, results.Items)
+	require.Zero(t, writer.callCount())
+}
+
 // updatePlanningPage builds traversal metadata while the fake fills the actual request.
 func updatePlanningPage(items []d.ProcessInstanceVariable, raw int32, total int64, kind d.UserTaskReportedTotalKind, continuation bool) d.UserTaskVariablePage {
 	return d.UserTaskVariablePage{

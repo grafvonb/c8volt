@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -17,6 +18,8 @@ import (
 	"github.com/grafvonb/c8volt/config"
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/services"
+	"github.com/grafvonb/c8volt/toolx"
+	"github.com/grafvonb/c8volt/toolx/pool"
 	"github.com/grafvonb/c8volt/typex"
 )
 
@@ -26,10 +29,10 @@ type ScopeVariableAPI interface {
 	UpdateScopeVariables(ctx context.Context, scopeKey string, variables map[string]any, opts ...services.CallOption) (d.ScopeVariableUpdateResponse, error)
 }
 
-// VariableUpdateAPI exposes only the completed planning stage until execution
-// and confirmation are implemented as one contract in the next work unit.
+// VariableUpdateAPI exposes the two-stage frozen-plan update workflow.
 type VariableUpdateAPI interface {
 	PlanUserTaskVariableUpdates(ctx context.Context, keys typex.Keys, variables map[string]any, opts ...services.CallOption) (d.UserTaskVariableUpdatePlan, error)
+	ExecuteUserTaskVariableUpdates(ctx context.Context, plan d.UserTaskVariableUpdatePlan, wantedWorkers int, opts ...services.CallOption) (d.UserTaskVariableUpdateResults, error)
 }
 
 // VariableUpdateService composes native task reads with scope-local writes.
@@ -95,6 +98,195 @@ func (s *VariableUpdateService) PlanUserTaskVariableUpdates(ctx context.Context,
 		return d.UserTaskVariableUpdatePlan{}, err
 	}
 	return planner.plan(requestedKeys, tenantContext), nil
+}
+
+// ExecuteUserTaskVariableUpdates validates and freezes a supplied plan before
+// submitting each unique scope once and confirming fully accepted tasks.
+func (s *VariableUpdateService) ExecuteUserTaskVariableUpdates(ctx context.Context, plan d.UserTaskVariableUpdatePlan, wantedWorkers int, opts ...services.CallOption) (d.UserTaskVariableUpdateResults, error) {
+	frozen, err := validateAndCopyUserTaskVariableUpdatePlan(plan)
+	if err != nil {
+		return d.UserTaskVariableUpdateResults{}, err
+	}
+	cfg := services.ApplyCallOptions(opts)
+	if cfg.DryRun || len(frozen.Targets) == 0 {
+		return d.UserTaskVariableUpdateResults{Items: make([]d.UserTaskVariableUpdateResult, 0)}, nil
+	}
+	if s.variables == nil {
+		return d.UserTaskVariableUpdateResults{}, fmt.Errorf("%w: user-task variable execution requires a scope variable service", d.ErrPrecondition)
+	}
+	if !cfg.NoWait && s.userTasks == nil {
+		return d.UserTaskVariableUpdateResults{}, fmt.Errorf("%w: user-task variable confirmation requires a user-task service", d.ErrPrecondition)
+	}
+
+	workers := toolx.DetermineNoOfWorkers(len(frozen.Targets), wantedWorkers, cfg.NoWorkerLimit)
+	outcomes, mutationErr := pool.ExecuteSlice[d.ScopeVariableUpdateTarget, d.ScopeVariableUpdateOutcome](ctx, frozen.Targets, workers, cfg.FailFast,
+		func(ctx context.Context, target d.ScopeVariableUpdateTarget, _ int) (d.ScopeVariableUpdateOutcome, error) {
+			response, err := s.variables.UpdateScopeVariables(ctx, target.ScopeKey, copyVariableMap(target.Variables), opts...)
+			outcome := d.ScopeVariableUpdateOutcome{
+				ScopeKey: target.ScopeKey, Names: sortedStringMapKeys(target.Variables),
+				Accepted: response.Accepted, StatusCode: response.StatusCode, Message: response.Status,
+			}
+			if err != nil {
+				outcome.Status = d.ScopeVariableUpdateStatusMutationFailed
+				outcome.Error = err.Error()
+				return outcome, err
+			}
+			if !response.Accepted {
+				err = fmt.Errorf("%w: scope %s variable update was not accepted", d.ErrUpstream, target.ScopeKey)
+				outcome.Status = d.ScopeVariableUpdateStatusMutationFailed
+				outcome.Error = err.Error()
+				return outcome, err
+			}
+			outcome.Status = d.ScopeVariableUpdateStatusSubmitted
+			return outcome, nil
+		})
+	mutationErr = joinContextError(mutationErr, ctx.Err())
+	for i := range frozen.Targets {
+		if outcomes[i].ScopeKey == "" {
+			outcomes[i] = skippedScopeVariableUpdateOutcome(frozen.Targets[i])
+		}
+	}
+
+	results := resultsFromScopeVariableUpdateOutcomes(frozen, outcomes)
+	if cfg.NoWait {
+		return results, mutationErr
+	}
+
+	confirmationIndexes := make([]int, 0, len(results.Items))
+	for i := range results.Items {
+		if results.Items[i].Status == d.UserTaskVariableUpdateStatusSubmitted {
+			confirmationIndexes = append(confirmationIndexes, i)
+		}
+	}
+	if len(confirmationIndexes) == 0 {
+		return results, mutationErr
+	}
+	confirmationWorkers := toolx.DetermineNoOfWorkers(len(confirmationIndexes), wantedWorkers, cfg.NoWorkerLimit)
+	confirmations, confirmationErr := pool.ExecuteSlice[int, userTaskVariableConfirmation](ctx, confirmationIndexes, confirmationWorkers, cfg.FailFast,
+		func(ctx context.Context, resultIndex int, _ int) (userTaskVariableConfirmation, error) {
+			err := waitForUserTaskVariableUpdate(ctx, s.userTasks, s.config, frozen.UserTasks[resultIndex], opts...)
+			return userTaskVariableConfirmation{attempted: true, err: err}, err
+		})
+	confirmationErr = joinContextError(confirmationErr, ctx.Err())
+	for i, resultIndex := range confirmationIndexes {
+		if !confirmations[i].attempted {
+			continue
+		}
+		if confirmations[i].err != nil {
+			results.Items[resultIndex].Status = d.UserTaskVariableUpdateStatusConfirmationFailed
+			results.Items[resultIndex].ConfirmationStatus = "failed"
+			results.Items[resultIndex].Error = confirmations[i].err.Error()
+			continue
+		}
+		results.Items[resultIndex].Status = d.UserTaskVariableUpdateStatusConfirmed
+		results.Items[resultIndex].ConfirmationStatus = "confirmed"
+	}
+	return results, errors.Join(mutationErr, confirmationErr)
+}
+
+type userTaskVariableConfirmation struct {
+	attempted bool
+	err       error
+}
+
+// skippedScopeVariableUpdateOutcome represents a frozen target that the pool
+// did not start after fail-fast or caller cancellation.
+func skippedScopeVariableUpdateOutcome(target d.ScopeVariableUpdateTarget) d.ScopeVariableUpdateOutcome {
+	return d.ScopeVariableUpdateOutcome{
+		ScopeKey: target.ScopeKey, Names: sortedStringMapKeys(target.Variables),
+		Status: d.ScopeVariableUpdateStatusSkipped,
+	}
+}
+
+// resultsFromScopeVariableUpdateOutcomes propagates each physical scope fact
+// to all associated task results without losing stable requested-key order.
+func resultsFromScopeVariableUpdateOutcomes(plan d.UserTaskVariableUpdatePlan, outcomes []d.ScopeVariableUpdateOutcome) d.UserTaskVariableUpdateResults {
+	byScope := make(map[string]d.ScopeVariableUpdateOutcome, len(outcomes))
+	for _, outcome := range outcomes {
+		byScope[outcome.ScopeKey] = outcome
+	}
+	items := make([]d.UserTaskVariableUpdateResult, len(plan.UserTasks))
+	for i, task := range plan.UserTasks {
+		result := d.UserTaskVariableUpdateResult{
+			Key: task.UserTaskKey, Variables: requestedVariablesForTaskPlan(task), ConfirmationStatus: "skipped",
+		}
+		if len(task.TargetScopeKeys) == 0 {
+			result.Status = d.UserTaskVariableUpdateStatusUnchanged
+			items[i] = result
+			continue
+		}
+		var hasFailed, hasSkipped bool
+		var taskErrors []error
+		for _, scopeKey := range task.TargetScopeKeys {
+			outcome := byScope[scopeKey]
+			outcome.Names = associatedNamesForTask(plan.Targets, scopeKey, task.UserTaskKey)
+			result.Scopes = append(result.Scopes, outcome)
+			result.MutationAccepted = result.MutationAccepted || outcome.Accepted
+			switch outcome.Status {
+			case d.ScopeVariableUpdateStatusMutationFailed:
+				hasFailed = true
+				if outcome.Error != "" {
+					taskErrors = append(taskErrors, errors.New(outcome.Error))
+				}
+			case d.ScopeVariableUpdateStatusSkipped:
+				hasSkipped = true
+			}
+		}
+		switch {
+		case hasFailed:
+			result.Status = d.UserTaskVariableUpdateStatusMutationFailed
+		case hasSkipped:
+			result.Status = d.UserTaskVariableUpdateStatusSkipped
+		default:
+			result.Status = d.UserTaskVariableUpdateStatusSubmitted
+		}
+		if err := errors.Join(taskErrors...); err != nil {
+			result.Error = err.Error()
+		}
+		items[i] = result
+	}
+	return d.UserTaskVariableUpdateResults{Items: items}
+}
+
+// requestedVariablesForTaskPlan reconstructs the task-level requested payload
+// from its mutually exclusive plan categories.
+func requestedVariablesForTaskPlan(task d.UserTaskVariablePlan) map[string]any {
+	variables := make(map[string]any, len(task.Additions)+len(task.Changes)+len(task.UnchangedRequested))
+	for _, value := range task.Additions {
+		variables[value.Name] = copyVariableValue(value.Value)
+	}
+	for _, value := range task.Changes {
+		variables[value.Name] = copyVariableValue(value.After)
+	}
+	for _, value := range task.UnchangedRequested {
+		variables[value.Name] = copyVariableValue(value.Value)
+	}
+	return variables
+}
+
+// associatedNamesForTask narrows a shared scope outcome to the logical names
+// on the selected task while preserving the planned sorted order.
+func associatedNamesForTask(targets []d.ScopeVariableUpdateTarget, scopeKey, taskKey string) []string {
+	for _, target := range targets {
+		if target.ScopeKey != scopeKey {
+			continue
+		}
+		for _, association := range target.Associations {
+			if association.UserTaskKey == taskKey {
+				return append([]string(nil), association.Names...)
+			}
+		}
+	}
+	return nil
+}
+
+// joinContextError retains cancellation when the pool stopped before it could
+// attach the caller's context error to a started work item.
+func joinContextError(err, contextErr error) error {
+	if contextErr == nil || errors.Is(err, contextErr) {
+		return err
+	}
+	return errors.Join(err, contextErr)
 }
 
 type scopeVariableIdentity struct {
