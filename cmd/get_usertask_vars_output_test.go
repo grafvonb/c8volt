@@ -11,6 +11,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/grafvonb/c8volt/c8volt/task"
 	"github.com/grafvonb/c8volt/testx"
 	"github.com/stretchr/testify/require"
 )
@@ -313,5 +314,75 @@ func userTaskVariableOutputFixture(variableStatus int) getUserTaskVariablesFixtu
 				},
 			}},
 		},
+	}
+}
+
+// TestGetUserTaskVariableScopeLabels verifies scope hints without extra reads,
+// for keyed and searched tasks, while JSON retains the original metadata.
+func TestGetUserTaskVariableScopeLabels(t *testing.T) {
+	for _, selection := range []string{"keyed", "search"} {
+		for _, mode := range []string{"human", "verbose", "json", "verbose-json"} {
+			t.Run(selection+"/"+mode, func(t *testing.T) {
+				fixture := filteredUserTaskVariablesFixture()
+				fixture.SearchRespond = func(_ int, _ map[string]any) string {
+					return userTaskSearchResponse(1, false, "", userTaskLocalMatchKey)
+				}
+				page := &fixture.VariablePages[userTaskLocalMatchKey][0]
+				page.Total = 3
+				page.Items = append(page.Items, userTaskVariableFixtureValue{
+					Name: "team", Value: `"ops"`, VariableKey: "905",
+					ProcessInstanceKey: userTaskFixtureProcessScope, ScopeKey: "2251799815391199", TenantID: "tenant-a",
+				})
+				server, requests := newGetUserTaskVariablesServer(t, fixture)
+				configPath := testx.WriteTestConfigForVersion(t, server.URL, "8.9")
+				args := []string{"get", "ut", "--with-vars"}
+				if selection == "keyed" {
+					args = append(args, "--key", userTaskLocalMatchKey)
+				}
+				if strings.Contains(mode, "verbose") {
+					args = append(args, "--verbose")
+				}
+				if strings.Contains(mode, "json") {
+					args = append(args, "--json")
+				}
+				stdout, stderr, err := runGetUserTaskCommand(t, configPath, "", args...)
+				require.NoError(t, err, stderr)
+				require.Equal(t, 1, requests.variableRequestCount(userTaskLocalMatchKey))
+				tasks, searches, _ := requests.snapshot()
+				if selection == "keyed" {
+					require.Len(t, tasks, 1)
+					require.Empty(t, searches)
+				} else {
+					require.Empty(t, tasks)
+					require.Len(t, searches, 1)
+				}
+				if strings.Contains(mode, "json") {
+					var envelope struct {
+						Payload task.VariableEnrichedUserTasks `json:"payload"`
+					}
+					decoder := json.NewDecoder(strings.NewReader(stdout))
+					require.NoError(t, decoder.Decode(&envelope))
+					require.ErrorIs(t, decoder.Decode(&struct{}{}), io.EOF)
+					require.Len(t, envelope.Payload.Items, 1)
+					variables := envelope.Payload.Items[0].Variables
+					require.Len(t, variables, 3)
+					require.Equal(t, userTaskFixtureProcessScope, variables[0].ScopeKey)
+					require.Equal(t, userTaskFixtureLocalScope, variables[1].ScopeKey)
+					require.Equal(t, "2251799815391199", variables[2].ScopeKey)
+					require.NotContains(t, stdout, "(inherited)")
+					return
+				}
+				region, status, team := "", "", ""
+				if mode == "verbose" {
+					region = " pi:" + userTaskFixtureProcessScope
+					status = " element:" + userTaskFixtureLocalScope
+					team = " element:2251799815391199"
+				}
+				require.Contains(t, stdout, "└─ vars:\n"+
+					"   ├─ region=\"eu\" (inherited)"+region+"\n"+
+					"   ├─ status=\"approved\""+status+"\n"+
+					"   └─ team=\"ops\" (inherited)"+team+"\nfound: 1\n")
+			})
+		}
 	}
 }

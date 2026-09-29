@@ -6,7 +6,7 @@ nav_exclude: true
 has_toc: true
 ---
 
-> Generated from build `c8volt v4.3.4-66-g031997d8`, commit `031997d8`, built `2026-09-19T12:08:09Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.0-alpha4 (prerelease)
+> Generated from build `c8volt v4.3.4-73-g60afd062-dirty`, commit `60afd062`, built `2026-09-29T06:16:06Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.0-alpha4 (prerelease)
 
 <img src="./logo/c8volt_logo_transparent_w_shadow_400x244.png" alt="c8volt logo" />
 
@@ -280,7 +280,7 @@ The repeatable variable-search flags reuse the `get process-instance` grammar. `
 
 Human rows follow the other get commands: task key, tenant, element ID, and state, followed by related `pi:`, `ei:`, and `pd:` keys. Assignee is always last: `assignee:<user>` when assigned, otherwise `assignee:<unassigned>`. Task name, BPMN process ID, and process-definition version are available in JSON. Other empty optional fields are omitted; collections end with `found: N`.
 
-Filtering itself does not retrieve variables. Add `--with-vars` independently to include the effective variables selected by the backend for each returned task. This variable display is supported on Camunda 8.8, 8.9, and 8.10. Values are shown in full by default; `--var-value-limit N` shortens only the compact human presentation after `N` Unicode characters, while JSON preserves the received value. Truncation labels distinguish values already incomplete at the backend from values shortened only for display. Effective `--keys-only` output and `--total` skip variable retrieval.
+Filtering itself does not retrieve variables. Add `--with-vars` independently to include the effective variables selected by the backend for each returned task. This variable display is supported on Camunda 8.8, 8.9, and 8.10. Values marked `(inherited)` come from an enclosing scope and do not match task-local variable filters. With `--verbose`, variable rows include `pi:<scopeKey>` or `element:<scopeKey>`; inspect these with `get pi --key` or `get element --key` respectively. Values are shown in full by default; `--var-value-limit N` shortens only the compact human presentation after `N` Unicode characters, while JSON preserves the received value. Truncation labels distinguish values already incomplete at the backend from values shortened only for display. Effective `--keys-only` output and `--total` skip variable retrieval.
 
 This command is read-only and intentionally excludes task mutations, variable mutation, forms, audit history, date filters, custom sorting, and watch mode.
 
