@@ -30,15 +30,23 @@ func TestUpdateUserTaskCommand_SharedScopeWritesOnce(t *testing.T) {
 	require.Equal(t, "accepted", envelope["outcome"])
 	payload := requireJSONObject(t, envelope["payload"])
 	items := requireJSONItems(t, payload["items"], 2)
-	for _, raw := range items {
+	for i, raw := range items {
 		item := requireJSONObject(t, raw)
+		require.Equal(t, []string{"2251799815391233", "2251799815391234"}[i], item["key"])
 		require.Equal(t, "submitted", item["status"])
+		require.Equal(t, true, item["mutationAccepted"])
+		scopes := requireJSONItems(t, item["scopes"], 1)
+		scope := requireJSONObject(t, scopes[0])
+		require.Equal(t, "2251799815391100", scope["scopeKey"])
+		require.Equal(t, []any{"approved"}, scope["names"])
+		require.Equal(t, "submitted", scope["status"])
 	}
 	tenantContext := requireJSONObject(t, envelope["tenantContext"])
 	require.Equal(t, []any{"tenant-a"}, tenantContext["resolvedTenantIds"])
 
 	capture.mu.Lock()
 	defer capture.mu.Unlock()
+	require.Equal(t, 5, capture.requests, "two task reads, two planning variable reads, and one shared write")
 	require.Equal(t, 1, capture.mutations)
 	require.Len(t, capture.variableReads, 2, "--no-wait must skip confirmation reads")
 }

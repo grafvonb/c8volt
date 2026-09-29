@@ -124,3 +124,20 @@ Started: 2026-09-29 17:39:20
 **Learnings**:
 - A stable preview payload needs a command-owned projection so machine output does not expose internal execution targets or duplicate tenant evidence; output writers must propagate failures without triggering a second envelope attempt.
 ---
+## Iteration 7 - 2026-09-29 18:50
+**Work Unit**: US3 partial — terminal, automation, version, and error-path acceptance
+**Tasks Completed**:
+- [x] T007: Complete end-to-end terminal, automation, version, and error coverage
+**Tasks Remaining in Work Unit**: T008 remains in US3
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/update_usertask_terminal_test.go
+- cmd/update_usertask_error_test.go
+- cmd/update_usertask_bulk_test.go
+- specs/326-update-user-task-vars/tasks.md
+- specs/326-update-user-task-vars/ralph-memory.md
+- specs/326-update-user-task-vars/progress.md
+**Learnings**:
+- Real PTY coverage confirms prompt routing and abort safety independently of stdout, while version/error fixtures prove accepted, unsupported, malformed, truncated-confirmation, and partial-result exit contracts without live backend dependencies.
+- Validation passed: race-enabled focused command/output/terminal/metadata tests (30.378s) and repository-wide compile-only tests. No optional live Camunda mutation was run.
+---

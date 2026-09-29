@@ -19,6 +19,8 @@ Started: 2026-09-29T15:39:19Z
 - User-task preview JSON uses a command-owned projection: it preserves task-level category null/empty semantics but excludes internal frozen targets and duplicate tenant context; outer envelopes carry tenant evidence.
 - User-task result views count confirmed/submitted, unchanged, failed, and skipped states separately; only confirmed/submitted changed tasks appear in keys-only output.
 - Shared envelope and user-task key writers propagate destination failures. User-task dispatch reports those failures on stderr without attempting a second result envelope.
+- Real-terminal update coverage must use `testx.NewCmdTerminalRunner` with redirected stdout and separate stderr; the command preserves the exact default-no prompt for yes/no/default/EOF and skips prompting for dry-run, no-op, automation, and auto-confirm paths.
+- The command contract is equivalent across 8.8, 8.9, and 8.10; 8.7 rejects during native task planning before transport. Scope-level functional outcomes remain verbose-only, while HTTP exchange diagnostics remain DEBUG-only.
 
 ## Decisions
 
@@ -51,4 +53,4 @@ Started: 2026-09-29T15:39:19Z
 - Do not reuse `UpdateProcessInstanceVariables` for task scopes: it omits `local=true` and invokes the process-instance waiter.
 
 ## Current Handoff
-- Continue with US3 T007: add real-terminal, automation, supported-version, and error-path coverage, fixing only findings owned by the command or service paths under test.
+- Continue with US3 T008: finish README/help/quickstart documentation, regenerate CLI docs, review the full feature diff, and run the required integrated validation.
