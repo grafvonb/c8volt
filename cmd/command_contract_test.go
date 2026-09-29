@@ -2677,7 +2677,7 @@ func TestGetJobAndUpdateJobHelp_DocumentsDiscoveryAndMutationGuards(t *testing.T
 	}, nil)
 
 	output = assertCommandHelpOutput(t, []string{"update"}, []string{
-		"Update process-instance variables or job retries, timeouts, and worker outcomes",
+		"Update process-instance or user-task variables, or update job retries, timeouts, and worker outcomes",
 		"job retries, timeouts, and worker outcomes",
 		"plan and confirm updates",
 		"./c8volt update job --key <job-key> --retries 3 --dry-run",
@@ -2817,7 +2817,7 @@ func TestIncidentCommandHelpOmitsLegacyElementTerminology(t *testing.T) {
 
 func TestUpdateProcessInstanceHelp_DocumentsVariableUpdateDiscovery(t *testing.T) {
 	output := assertCommandHelpOutput(t, []string{"update"}, []string{
-		"Update process-instance variables or job retries, timeouts, and worker outcomes",
+		"Update process-instance or user-task variables, or update job retries, timeouts, and worker outcomes",
 		"Camunda 8.8 or newer",
 		"Requires Camunda 8.8 or newer",
 		"./c8volt update process-instance --key <process-instance-key> --vars",

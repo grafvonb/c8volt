@@ -19,7 +19,7 @@ var (
 var updateUserTaskCmd = &cobra.Command{
 	Use:   "user-task [-]",
 	Short: "Update user-task variables by key",
-	Long: `Update effective user-task variables on Camunda 8.8 or newer.
+	Long: `Update effective user-task variables on Camunda 8.8, 8.9, or 8.10. Camunda 8.7 returns an unsupported-version error without mutation.
 
 Provide repeated --key values or newline-separated keys from stdin with '-'. Supply exactly one payload source: --vars with a JSON object or --vars-file with its file path. The same variable map is applied to every unique key. Explicit keys use backend authorization without tenant filtering.
 

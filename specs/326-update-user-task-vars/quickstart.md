@@ -1,6 +1,6 @@
 # Quickstart Validation: Update User-Task Variables
 
-These commands describe validation after implementation. The planning workflow has not implemented the command or run runtime tests.
+These commands validate the implemented command with fixture-backed tests and optional live checks. The automated suites require no external Camunda credentials; live mutation remains optional.
 
 ## Prerequisites
 
@@ -11,16 +11,16 @@ These commands describe validation after implementation. The planning workflow h
 
 ## 1. Focused automated validation
 
-After tests are added, begin with the affected packages and proposed test names:
+Begin with the affected packages and test patterns that select the implemented coverage:
 
 ```bash
-go test ./internal/services/variable/... -run 'Test.*UpdateScopeVariables' -count=1
-go test ./internal/services/usertask/... -run 'Test.*(VariableUpdate|UpdateUserTask)' -count=1
-go test ./c8volt/task -run 'Test.*(VariableUpdate|UpdateUserTask)' -count=1
+go test ./internal/services/variable/... -run 'TestUpdateScopeVariables' -count=1
+go test ./internal/services/usertask/... -run 'Test(PlanUserTaskVariableUpdates|ExecuteUserTaskVariableUpdates)' -count=1
+go test ./c8volt/task -run 'Test(VariableUpdateFacade|LegacyTaskConstructorRejectsVariableUpdates)' -count=1
 go test ./cmd -run 'Test(UpdateUserTask|CommandCapabilityForCommand_UpdateUserTask)' -count=1
 ```
 
-These are planned test patterns, not existing passing test evidence. Confirm they select real tests using `go test <package> -list '<pattern>'`; update names in this guide during implementation if necessary. A run with no selected tests is not acceptance evidence.
+Confirm patterns select real tests using `go test <package> -list '<pattern>'`; a run with no selected tests is not acceptance evidence.
 
 Cover the matrices in [CLI contract](contracts/cli.md) and [service contract](contracts/facade-service.md). Assert request bodies, target keys, `local=true`, ordering, deduplication, exact counts, full variable pagination, no hidden reads during rendering, and absence of mutation/prompt calls on dry-run/no-op.
 

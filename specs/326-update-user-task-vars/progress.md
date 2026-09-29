@@ -141,3 +141,29 @@ Started: 2026-09-29 17:39:20
 - Real PTY coverage confirms prompt routing and abort safety independently of stdout, while version/error fixtures prove accepted, unsupported, malformed, truncated-confirmation, and partial-result exit contracts without live backend dependencies.
 - Validation passed: race-enabled focused command/output/terminal/metadata tests (30.378s) and repository-wide compile-only tests. No optional live Camunda mutation was run.
 ---
+## Iteration 8 - 2026-09-29 19:02
+**Work Unit**: US3 — documentation and integrated feature review
+**Tasks Completed**:
+- [x] T008: Finish documentation, regenerate CLI references, review the feature, and run integrated validation
+**Tasks Remaining in Work Unit**: 0; US3 and the feature are complete
+**Commit**: This work-unit commit
+**Files Changed**:
+- README.md
+- cmd/command_contract_test.go
+- cmd/update.go
+- cmd/update_usertask.go
+- docs/cli/c8volt_update.md
+- docs/cli/c8volt_update_user-task.md
+- docs/cli/command-tree.md
+- docs/index.md
+- docsgen/main.go
+- docsgen/main_test.go
+- specs/254-cli-debt-refactor/assessment.md
+- specs/326-update-user-task-vars/quickstart.md
+- specs/326-update-user-task-vars/tasks.md
+- specs/326-update-user-task-vars/ralph-memory.md
+- specs/326-update-user-task-vars/progress.md
+**Learnings**:
+- Integrated review found and corrected stale parent-help assertions and command-count sources after adding the 57th command; generated docs now include the user-task update page and links.
+- Validation passed: quickstart patterns select real tests, `make docs-content`, `git diff --check`, targeted command/docsgen regressions, and the full race-enabled `make test`. No optional live Camunda mutation was run.
+---

@@ -16,6 +16,7 @@ Started: 2026-09-29T15:39:19Z
 - `update user-task` is a thin plan/confirm/execute command: it passes explicit-key admin options, executes the original frozen facade plan, and attaches tenant evidence returned by planning without rediscovery.
 - Variable update commands share only payload-source decoding in `cmd/update_variables_payload.go`; the existing PI planning and mutation workflow remains otherwise unchanged.
 - Canonical command additions must update the enforced command-node inventory in `specs/254-cli-debt-refactor/assessment.md`; the inventory now contains 57 paths.
+- Command-count changes must stay synchronized across README prose, `docsgen/main.go`, docsgen count assertions, and the CLI assessment; generated pages alone do not update those source counts.
 - User-task preview JSON uses a command-owned projection: it preserves task-level category null/empty semantics but excludes internal frozen targets and duplicate tenant context; outer envelopes carry tenant evidence.
 - User-task result views count confirmed/submitted, unchanged, failed, and skipped states separately; only confirmed/submitted changed tasks appear in keys-only output.
 - Shared envelope and user-task key writers propagate destination failures. User-task dispatch reports those failures on stderr without attempting a second result envelope.
@@ -53,4 +54,4 @@ Started: 2026-09-29T15:39:19Z
 - Do not reuse `UpdateProcessInstanceVariables` for task scopes: it omits `local=true` and invokes the process-instance waiter.
 
 ## Current Handoff
-- Continue with US3 T008: finish README/help/quickstart documentation, regenerate CLI docs, review the full feature diff, and run the required integrated validation.
+- Feature complete; no handoff required.

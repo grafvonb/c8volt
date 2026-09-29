@@ -6,7 +6,7 @@ nav_exclude: true
 has_toc: true
 ---
 
-> Generated from build `c8volt v4.3.4-73-g60afd062-dirty`, commit `60afd062`, built `2026-09-29T06:16:06Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.0-alpha4 (prerelease)
+> Generated from build `c8volt v4.3.4-85-g90d8a943-dirty`, commit `90d8a943`, built `2026-09-29T17:02:38Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.0-alpha4 (prerelease)
 
 <img src="./logo/c8volt_logo_transparent_w_shadow_400x244.png" alt="c8volt logo" />
 
@@ -59,9 +59,9 @@ It is built for operators, developers, support engineers, CI pipelines, and agen
 
 That is the gap `c8volt` closes.
 
-## 55 Commands, One Operator Model
+## 57 Commands, One Operator Model
 
-`c8volt` currently exposes 55 commands for Camunda 8 operators, developers, CI pipelines, and agents. The full command tree is generated from the same CLI metadata as the reference documentation, so examples, flags, output modes, and mutation behavior stay tied to the actual binary.
+`c8volt` currently exposes 57 commands for Camunda 8 operators, developers, CI pipelines, and agents. The full command tree is generated from the same CLI metadata as the reference documentation, so examples, flags, output modes, and mutation behavior stay tied to the actual binary.
 
 Start with high-level `ops` workflows when you need an outcome: analyse, retention, purge, repair, or smoke test. Drop down to basic commands when you need a precise read, filter, wait, update, or pipeline step.
 
@@ -237,7 +237,7 @@ Set `app.camunda_version` to `"8.10"` for Camunda 8.10. Use `c8volt version` to 
 
 `8.9` is the default when no Camunda version is configured. `8.9` and `8.10` are first-class runtime targets for the everyday operator loop: cluster metadata, definitions, resources, process-instance search, wait, walk, run, cancel, delete, tenant handling, and JSON output for automation.
 
-Process-instance variable updates, incident resolution, and `get job`/`update job` commands are supported on Camunda `8.8` or newer; Camunda `8.7` returns an unsupported-version error for those state-changing job, variable update, and incident resolution commands. `8.7` remains supported with known upstream limitations where tenant-safe direct keyed process-instance behavior is not available.
+Process-instance and user-task variable updates, incident resolution, and `get job`/`update job` commands are supported on Camunda `8.8` or newer; Camunda `8.7` returns an unsupported-version error for those state-changing job, variable update, and incident resolution commands. `8.7` remains supported with known upstream limitations where tenant-safe direct keyed process-instance behavior is not available.
 
 ## Core Workflows
 
@@ -353,13 +353,16 @@ Generated references: [get incident](./cli/c8volt_get_incident), [get job](./cli
 
 Use dry-run first for runtime mutations, then confirm explicitly or run under automation.
 
+`update user-task` accepts explicit task keys only. It updates existing variables at the local or inherited scopes returned by `get user-task --with-vars`, creates missing names at the task's element scope, and deduplicates shared inherited writes across selected tasks. Ordinary execution confirms the requested values at those frozen scopes; `--no-wait` reports accepted writes without confirmation. The command is supported on Camunda 8.8, 8.9, and 8.10.
+
 ```bash
 ./c8volt update process-instance --key <process-instance-key> --vars '{"customerTier":"gold"}' --dry-run
+./c8volt update user-task --key <user-task-key> --vars '{"approved":true}' --dry-run
 ./c8volt update job --key <job-key> --retries 3 --dry-run
 ./c8volt expect process-instance --key <process-instance-key> --state completed
 ```
 
-Generated references: [update process-instance](./cli/c8volt_update_process-instance), [update job](./cli/c8volt_update_job), [expect process-instance](./cli/c8volt_expect_process-instance).
+Generated references: [update process-instance](./cli/c8volt_update_process-instance), [update user-task](./cli/c8volt_update_user-task), [update job](./cli/c8volt_update_job), [expect process-instance](./cli/c8volt_expect_process-instance).
 
 ### Cancel And Delete Safely
 

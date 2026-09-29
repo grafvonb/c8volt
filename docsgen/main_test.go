@@ -167,6 +167,7 @@ func TestCLICommandTreeDocumentsGeneratedCommandSurface(t *testing.T) {
 		"    - [`c8volt get process-instance`]({{ \"/cli/c8volt_get_process-instance\" | relative_url }})",
 		"    - [`c8volt get element`]({{ \"/cli/c8volt_get_element\" | relative_url }})",
 		"    - [`c8volt get user-task`]({{ \"/cli/c8volt_get_user-task\" | relative_url }})",
+		"    - [`c8volt update user-task`]({{ \"/cli/c8volt_update_user-task\" | relative_url }})",
 		"    - [`c8volt ops analyse`]({{ \"/cli/c8volt_ops_analyse\" | relative_url }})",
 		"      - [`c8volt ops analyse slow-process-instances`]({{ \"/cli/c8volt_ops_analyse_slow-process-instances\" | relative_url }})",
 	} {
@@ -175,8 +176,8 @@ func TestCLICommandTreeDocumentsGeneratedCommandSurface(t *testing.T) {
 		}
 	}
 
-	if got := strings.Count(tree, "- [`") - 1; got != 56 {
-		t.Fatalf("expected command tree to contain 56 non-root commands, got %d", got)
+	if got := strings.Count(tree, "- [`") - 1; got != 57 {
+		t.Fatalf("expected command tree to contain 57 non-root commands, got %d", got)
 	}
 }
 
@@ -217,8 +218,8 @@ func TestCLIDebtRefactorAssessmentArtifactDocumentsBaseline(t *testing.T) {
 		}
 	}
 
-	if got := strings.Count(body, "\n| `"); got != 56 {
-		t.Fatalf("expected assessment artifact to contain 56 command-node rows, got %d", got)
+	if got := strings.Count(body, "\n| `"); got != 57 {
+		t.Fatalf("expected assessment artifact to contain 57 command-node rows, got %d", got)
 	}
 }
 
