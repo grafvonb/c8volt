@@ -59,10 +59,11 @@ type capturedUserTaskVariableRequest struct {
 
 type capturedGetUserTaskVariableRequests struct {
 	mu                            sync.Mutex
-	taskKeys                      []string
-	searchRequests                []map[string]any
-	localVariableSearchPredicates [][]any
+	taskKeys                      testx.SafeSlice[string]
+	searchRequests                testx.SafeSlice[map[string]any]
+	localVariableSearchPredicates testx.SafeSlice[[]any]
 	variableRequests              []capturedUserTaskVariableRequest
+	searchRequestIndex            testx.AtomicCounter
 }
 
 // snapshot returns independent request slices for deterministic assertions
@@ -70,8 +71,8 @@ type capturedGetUserTaskVariableRequests struct {
 func (c *capturedGetUserTaskVariableRequests) snapshot() ([]string, []map[string]any, []capturedUserTaskVariableRequest) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	return append([]string(nil), c.taskKeys...),
-		append([]map[string]any(nil), c.searchRequests...),
+	return c.taskKeys.Snapshot(),
+		c.searchRequests.Snapshot(),
 		append([]capturedUserTaskVariableRequest(nil), c.variableRequests...)
 }
 
@@ -91,9 +92,7 @@ func (c *capturedGetUserTaskVariableRequests) variableRequestCount(taskKey strin
 // searchRequestCount reports native search calls independently of effective
 // variable reads so filtered display tests can prove their request boundaries.
 func (c *capturedGetUserTaskVariableRequests) searchRequestCount() int {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	return len(c.searchRequests)
+	return len(c.searchRequests.Snapshot())
 }
 
 // totalVariableRequestCount reports all effective-variable page reads without
@@ -106,10 +105,8 @@ func (c *capturedGetUserTaskVariableRequests) totalVariableRequestCount() int {
 // localVariablePredicates returns the native local-variable arrays captured
 // from search requests, preserving request and clause order for assertions.
 func (c *capturedGetUserTaskVariableRequests) localVariablePredicates() [][]any {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	predicates := make([][]any, len(c.localVariableSearchPredicates))
-	for i, clauses := range c.localVariableSearchPredicates {
+	predicates := c.localVariableSearchPredicates.Snapshot()
+	for i, clauses := range predicates {
 		predicates[i] = append([]any(nil), clauses...)
 	}
 	return predicates
@@ -188,11 +185,9 @@ func serveUserTaskFixtureSearch(writer http.ResponseWriter, request *http.Reques
 			localVariables = append([]any(nil), clauses...)
 		}
 	}
-	requests.mu.Lock()
-	index := len(requests.searchRequests)
-	requests.searchRequests = append(requests.searchRequests, body)
-	requests.localVariableSearchPredicates = append(requests.localVariableSearchPredicates, localVariables)
-	requests.mu.Unlock()
+	index := int(requests.searchRequestIndex.Inc() - 1)
+	requests.searchRequests.Append(body)
+	requests.localVariableSearchPredicates.Append(localVariables)
 	if respond == nil {
 		respond = func(_ int, _ map[string]any) string { return userTaskSearchResponse(0, false, "") }
 	}
@@ -213,6 +208,7 @@ func serveUserTaskVariableFixturePage(writer http.ResponseWriter, request *http.
 		http.Error(writer, err.Error(), http.StatusBadRequest)
 		return
 	}
+	// Counting and recording a page must remain atomic for each task.
 	requests.mu.Lock()
 	pageIndex := 0
 	for _, captured := range requests.variableRequests {
@@ -250,9 +246,7 @@ func serveUserTaskFixtureRead(writer http.ResponseWriter, request *http.Request,
 		http.NotFound(writer, request)
 		return
 	}
-	requests.mu.Lock()
-	requests.taskKeys = append(requests.taskKeys, taskKey)
-	requests.mu.Unlock()
+	requests.taskKeys.Append(taskKey)
 	if status := statuses[taskKey]; status != 0 && status != http.StatusOK {
 		http.Error(writer, `{"message":"injected user-task read error"}`, status)
 		return

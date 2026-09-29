@@ -21,7 +21,7 @@ func TestGetUserTaskOutput_HumanExecution(t *testing.T) {
 	require.NoError(t, err, stderr)
 	require.Empty(t, stderr)
 	require.Equal(t, "2251799815391233 tenant-a approve_invoice CREATED   pi:2251799813711967 ei:2251799815391200 pd:2251799813689000 assignee:alice\n2251799815391234 tenant-a archive_invoice COMPLETED pi:2251799813711968 ei:2251799815391200 pd:2251799813689000 assignee:<unassigned>\nfound: 2\n", stdout)
-	require.Equal(t, int32(2), keyedRequests.Load())
+	require.Equal(t, int64(2), keyedRequests.Load())
 
 	searchServer, searchRequests := newGetUserTaskSearchServer(t, func(_ int, _ map[string]any) string {
 		return userTaskSearchResponse(1, false, "", "2251799815391233")
@@ -31,7 +31,7 @@ func TestGetUserTaskOutput_HumanExecution(t *testing.T) {
 	require.NoError(t, err, stderr)
 	require.Empty(t, stderr)
 	require.Equal(t, "2251799815391233 tenant-a approve_invoice CREATED pi:2251799813711967 ei:2251799815391200 pd:2251799813689000 assignee:alice\nfound: 1\n", stdout)
-	require.Len(t, searchRequests.snapshot(t), 1)
+	require.Len(t, searchRequests.Snapshot(), 1)
 }
 
 // TestGetUserTaskOutput_MachineAndUnattendedModes verifies JSON precedence,
@@ -65,7 +65,7 @@ func TestGetUserTaskOutput_MachineAndUnattendedModes(t *testing.T) {
 			} else {
 				requireSucceededUserTaskEnvelope(t, stdout, 1)
 			}
-			require.Len(t, requests.snapshot(t), 1, "rendering or unattended mode added a read")
+			require.Len(t, requests.Snapshot(), 1, "rendering or unattended mode added a read")
 		})
 	}
 }
@@ -103,7 +103,7 @@ func TestGetUserTaskOutput_EmptyAndTotalModes(t *testing.T) {
 			} else {
 				require.Equal(t, test.want, stdout)
 			}
-			require.Len(t, requests.snapshot(t), 1, "empty or total rendering added a read")
+			require.Len(t, requests.Snapshot(), 1, "empty or total rendering added a read")
 		})
 	}
 }
@@ -268,7 +268,7 @@ func TestGetUserTaskOutput_DiagnosticsStayOffStdout(t *testing.T) {
 				require.Empty(t, stderr)
 			}
 			require.NotContains(t, stdout, "Fetching")
-			require.Len(t, requests.snapshot(t), 1)
+			require.Len(t, requests.Snapshot(), 1)
 		})
 	}
 }
@@ -298,9 +298,9 @@ func requireSucceededUserTaskEnvelope(t *testing.T, stdout string, wantTotal int
 
 // requireFilteredUserTaskOutputRequest verifies rendering did not add reads
 // and the sole native search retained the expected local predicate.
-func requireFilteredUserTaskOutputRequest(t *testing.T, requests *capturedUserTaskSearchRequests, filter string) {
+func requireFilteredUserTaskOutputRequest(t *testing.T, requests *testx.SafeSlice[map[string]any], filter string) {
 	t.Helper()
-	got := requests.snapshot(t)
+	got := requests.Snapshot()
 	require.Len(t, got, 1, "filtered rendering or unattended mode added a read")
 	requestFilter := requireJSONMap(t, got[0]["filter"])
 	require.Equal(t, []any{

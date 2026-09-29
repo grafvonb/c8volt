@@ -100,7 +100,7 @@ func TestGetUserTaskError_FilteredSearchFailuresNeverClaimSuccess(t *testing.T) 
 
 			stdout, stderr, err := runGetUserTaskCommand(t, configPath, "", test.args...)
 			require.Error(t, err)
-			got := requests.snapshot(t)
+			got := requests.Snapshot()
 			require.Len(t, got, test.failAtRequest+1)
 			for _, request := range got {
 				require.Equal(t, []any{
@@ -153,12 +153,12 @@ func TestGetUserTaskError_FilteredTotalConflictsFailBeforeRequests(t *testing.T)
 		{name: "keys", args: []string{"--keys-only", "get", "ut", "--var", `status="approved"`, "--total"}, want: "--total cannot be combined with --keys-only"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			before := len(requests.snapshot(t))
+			before := len(requests.Snapshot())
 			stdout, stderr, err := runGetUserTaskCommand(t, configPath, "", test.args...)
 			require.Error(t, err)
 			require.Empty(t, stdout)
 			require.Contains(t, stderr, test.want)
-			require.Len(t, requests.snapshot(t), before)
+			require.Len(t, requests.Snapshot(), before)
 		})
 	}
 }
@@ -354,9 +354,10 @@ func newFailingUserTaskPagingServer(t *testing.T) (*httptest.Server, *testx.Safe
 
 // newFilteredFailingUserTaskSearchServer fails at the requested zero-based
 // search call while capturing each native request for predicate assertions.
-func newFilteredFailingUserTaskSearchServer(t *testing.T, failAtRequest int) (*httptest.Server, *capturedUserTaskSearchRequests) {
+func newFilteredFailingUserTaskSearchServer(t *testing.T, failAtRequest int) (*httptest.Server, *testx.SafeSlice[map[string]any]) {
 	t.Helper()
-	requests := new(capturedUserTaskSearchRequests)
+	requests := new(testx.SafeSlice[map[string]any])
+	var requestCount testx.AtomicCounter
 	server := testx.NewIPv4Server(t, http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		if request.Method != http.MethodPost || request.URL.Path != "/v2/user-tasks/search" {
 			http.NotFound(writer, request)
@@ -367,10 +368,8 @@ func newFilteredFailingUserTaskSearchServer(t *testing.T, failAtRequest int) (*h
 			http.Error(writer, err.Error(), http.StatusBadRequest)
 			return
 		}
-		requests.mu.Lock()
-		index := len(requests.items)
-		requests.items = append(requests.items, body)
-		requests.mu.Unlock()
+		index := int(requestCount.Inc() - 1)
+		requests.Append(body)
 		if index == failAtRequest {
 			http.Error(writer, `{"message":"backend exploded"}`, http.StatusServiceUnavailable)
 			return

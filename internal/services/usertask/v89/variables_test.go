@@ -17,23 +17,24 @@ import (
 	camundav89 "github.com/grafvonb/c8volt/internal/clients/camunda/v89/camunda"
 	d "github.com/grafvonb/c8volt/internal/domain"
 	v89 "github.com/grafvonb/c8volt/internal/services/usertask/v89"
+	"github.com/grafvonb/c8volt/testx"
 	"github.com/stretchr/testify/require"
 )
 
 // TestService_SearchUserTaskEffectiveVariablesPage_RequestsNativeOffsetPage verifies the v8.9 route and generated request contract.
 func TestService_SearchUserTaskEffectiveVariablesPage_RequestsNativeOffsetPage(t *testing.T) {
-	var requests int
-	var method, path, truncateValues string
-	var requestBody camundav89.SearchUserTaskEffectiveVariablesJSONRequestBody
-	var decodeErr, writeErr error
+	type observation struct {
+		method, path, truncateValues string
+		requestBody                  camundav89.SearchUserTaskEffectiveVariablesJSONRequestBody
+		decodeErr, writeErr          error
+	}
+	var requests testx.SafeSlice[observation]
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		requests++
-		method = r.Method
-		path = r.URL.Path
-		truncateValues = r.URL.Query().Get("truncateValues")
-		decodeErr = json.NewDecoder(r.Body).Decode(&requestBody)
+		got := observation{method: r.Method, path: r.URL.Path, truncateValues: r.URL.Query().Get("truncateValues")}
+		got.decodeErr = json.NewDecoder(r.Body).Decode(&got.requestBody)
 		w.Header().Set("Content-Type", "application/json")
-		_, writeErr = io.WriteString(w, `{"items":[{"name":"alpha","value":"","variableKey":"0","processInstanceKey":"process-a","scopeKey":"task-scope","tenantId":"tenant-b","isTruncated":false,"truncated":true},{"name":"zeta","value":"{\"ok\":true}","variableKey":"variable-z","processInstanceKey":"process-a","scopeKey":"process-a","tenantId":"","truncated":true}],"page":{"totalItems":2,"hasMoreTotalItems":false,"endCursor":"next-page"}}`)
+		_, got.writeErr = io.WriteString(w, `{"items":[{"name":"alpha","value":"","variableKey":"0","processInstanceKey":"process-a","scopeKey":"task-scope","tenantId":"tenant-b","isTruncated":false,"truncated":true},{"name":"zeta","value":"{\"ok\":true}","variableKey":"variable-z","processInstanceKey":"process-a","scopeKey":"process-a","tenantId":"","truncated":true}],"page":{"totalItems":2,"hasMoreTotalItems":false,"endCursor":"next-page"}}`)
+		requests.Append(got)
 	}))
 	t.Cleanup(server.Close)
 
@@ -44,21 +45,25 @@ func TestService_SearchUserTaskEffectiveVariablesPage_RequestsNativeOffsetPage(t
 	page, err := svc.SearchUserTaskEffectiveVariablesPage(context.Background(), "task-a", request)
 
 	require.NoError(t, err)
-	require.Equal(t, 1, requests)
-	require.NoError(t, decodeErr)
-	require.NoError(t, writeErr)
-	require.Equal(t, http.MethodPost, method)
-	require.Equal(t, "/v2/user-tasks/task-a/effective-variables/search", path)
-	require.Equal(t, "false", truncateValues)
-	require.Nil(t, requestBody.Filter)
-	require.NotNil(t, requestBody.Page)
-	require.Equal(t, int32(40), *requestBody.Page.From)
-	require.Equal(t, int32(20), *requestBody.Page.Limit)
-	require.NotNil(t, requestBody.Sort)
-	require.Len(t, *requestBody.Sort, 1)
-	require.Equal(t, camundav89.UserTaskVariableSearchQuerySortRequestFieldName, (*requestBody.Sort)[0].Field)
-	require.NotNil(t, (*requestBody.Sort)[0].Order)
-	require.Equal(t, camundav89.ASC, *(*requestBody.Sort)[0].Order)
+	// Close waits for handlers to finish, including recording response-write errors.
+	server.Close()
+	captured := requests.Snapshot()
+	require.Len(t, captured, 1)
+	got := captured[0]
+	require.NoError(t, got.decodeErr)
+	require.NoError(t, got.writeErr)
+	require.Equal(t, http.MethodPost, got.method)
+	require.Equal(t, "/v2/user-tasks/task-a/effective-variables/search", got.path)
+	require.Equal(t, "false", got.truncateValues)
+	require.Nil(t, got.requestBody.Filter)
+	require.NotNil(t, got.requestBody.Page)
+	require.Equal(t, int32(40), *got.requestBody.Page.From)
+	require.Equal(t, int32(20), *got.requestBody.Page.Limit)
+	require.NotNil(t, got.requestBody.Sort)
+	require.Len(t, *got.requestBody.Sort, 1)
+	require.Equal(t, camundav89.UserTaskVariableSearchQuerySortRequestFieldName, (*got.requestBody.Sort)[0].Field)
+	require.NotNil(t, (*got.requestBody.Sort)[0].Order)
+	require.Equal(t, camundav89.ASC, *(*got.requestBody.Sort)[0].Order)
 	require.Equal(t, request, page.Request)
 	require.Equal(t, int32(2), page.RawItemCount)
 	require.Equal(t, d.UserTaskReportedTotal{Count: 2, Kind: d.UserTaskReportedTotalKindExact}, page.ReportedTotal)

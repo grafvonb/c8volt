@@ -34,7 +34,7 @@ func TestGetUserTaskCommand_VariableFiltersBuildNativeRequests(t *testing.T) {
 				require.Empty(t, stderr)
 				require.Equal(t, "2251799815391233\n", stdout)
 
-				got := requests.snapshot(t)
+				got := requests.Snapshot()
 				require.Len(t, got, 1, "filtering must issue only the native task search request")
 				filter := requireJSONMap(t, got[0]["filter"])
 				require.Equal(t, "alice", jsonFilterValue(t, filter["assignee"]))
@@ -71,12 +71,12 @@ func TestGetUserTaskCommand_VariableFiltersRejectMalformedInputBeforeRequests(t 
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			before := len(requests.snapshot(t))
+			before := len(requests.Snapshot())
 			stdout, stderr, err := runGetUserTaskCommand(t, configPath, "", test.args...)
 			require.Error(t, err)
 			require.Empty(t, stdout)
 			require.Contains(t, stderr, test.want)
-			require.Len(t, requests.snapshot(t), before)
+			require.Len(t, requests.Snapshot(), before)
 		})
 	}
 }

@@ -11,7 +11,6 @@ import (
 	"net/http/httptest"
 	"os"
 	"strings"
-	"sync/atomic"
 	"testing"
 
 	"github.com/grafvonb/c8volt/testx"
@@ -39,7 +38,7 @@ func TestGetUserTaskCommand_KeyInputsAndAliases(t *testing.T) {
 	require.NoError(t, err, stderr)
 	require.Empty(t, stderr)
 	require.Equal(t, "2251799815391233\n2251799815391234\n", stdout)
-	require.Equal(t, int32(2), requests.Load()-before)
+	require.Equal(t, int64(2), requests.Load()-before)
 
 	stdout, stderr, err = runGetUserTaskCommand(t, configPath, "2251799815391234\n", "--keys-only", "get", "user-task")
 	require.NoError(t, err, stderr)
@@ -388,11 +387,11 @@ func runGetUserTaskCommand(t *testing.T, configPath, stdin string, args ...strin
 
 // newGetUserTaskCommandServer returns native tasks and counts every request so
 // validation cases can prove they stop before backend access.
-func newGetUserTaskCommandServer(t *testing.T) (*httptest.Server, *atomic.Int32) {
+func newGetUserTaskCommandServer(t *testing.T) (*httptest.Server, *testx.AtomicCounter) {
 	t.Helper()
-	var requests atomic.Int32
+	var requests testx.AtomicCounter
 	server := testx.NewIPv4Server(t, http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
-		requests.Add(1)
+		requests.Inc()
 		key := strings.TrimPrefix(request.URL.Path, "/v2/user-tasks/")
 		if key == "2251799815391288" {
 			http.Error(writer, `{"message":"denied"}`, http.StatusForbidden)
