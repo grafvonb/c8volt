@@ -65,6 +65,12 @@ func (s *Service) UpdateProcessInstanceVariables(_ context.Context, key string, 
 	return d.ProcessInstanceVariableUpdateResponse{Key: key}, fmt.Errorf("%w: process-instance variable updates require Camunda 8.8 or newer", d.ErrUnsupported)
 }
 
+// UpdateScopeVariables reports the missing scope-write capability without making a transport call.
+func (s *Service) UpdateScopeVariables(_ context.Context, scopeKey string, _ map[string]any, opts ...services.CallOption) (d.ScopeVariableUpdateResponse, error) {
+	_ = services.ApplyCallOptions(opts)
+	return d.ScopeVariableUpdateResponse{ScopeKey: scopeKey}, fmt.Errorf("%w: scope variable updates require Camunda 8.8 or newer", d.ErrUnsupported)
+}
+
 // fromOperateVariable maps an Operate variable result to the shared domain model.
 func fromOperateVariable(v operatev87.Variable) d.ProcessInstanceVariable {
 	return d.ProcessInstanceVariable{
