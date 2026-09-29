@@ -106,3 +106,21 @@ Started: 2026-09-29 17:39:20
 **Learnings**:
 - The command can preserve shared-scope deduplication and actual tenant evidence by passing the frozen facade plan through unchanged; command registration also requires updating the enforced CLI assessment inventory.
 ---
+## Iteration 6 - 2026-09-29 18:42
+**Work Unit**: US3 partial — complete user-task variable update output contracts
+**Tasks Completed**:
+- [x] T006: Complete views and output-mode contract coverage
+**Tasks Remaining in Work Unit**: T007 and T008 remain in US3
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/cmd_views_contract.go
+- cmd/cmd_views_usertask_update.go
+- cmd/cmd_views_usertask_update_test.go
+- cmd/update_usertask.go
+- cmd/update_usertask_output_test.go
+- specs/326-update-user-task-vars/tasks.md
+- specs/326-update-user-task-vars/ralph-memory.md
+- specs/326-update-user-task-vars/progress.md
+**Learnings**:
+- A stable preview payload needs a command-owned projection so machine output does not expose internal execution targets or duplicate tenant evidence; output writers must propagate failures without triggering a second envelope attempt.
+---

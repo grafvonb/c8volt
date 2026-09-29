@@ -4,6 +4,7 @@
 package cmd
 
 import (
+	"fmt"
 	"log/slog"
 	"os"
 	"strings"
@@ -13,14 +14,16 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// renderResultEnvelope writes exactly one shared-contract value and reports
+// destination failures so callers cannot mistake dropped output for success.
 func renderResultEnvelope[T any](cmd *cobra.Command, envelope ResultEnvelope[T]) error {
 	if envelope.TenantContext == nil {
 		if ctx, ok := attachedTenantContext(cmd); ok {
 			envelope.TenantContext = ctx
 		}
 	}
-	cmd.Print(toolx.ToJSONString(envelope))
-	return nil
+	_, err := fmt.Fprint(cmd.OutOrStdout(), toolx.ToJSONString(envelope))
+	return err
 }
 
 func renderSucceededResult[T any](cmd *cobra.Command, payload T) error {

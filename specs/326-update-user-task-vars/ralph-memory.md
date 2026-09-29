@@ -16,6 +16,9 @@ Started: 2026-09-29T15:39:19Z
 - `update user-task` is a thin plan/confirm/execute command: it passes explicit-key admin options, executes the original frozen facade plan, and attaches tenant evidence returned by planning without rediscovery.
 - Variable update commands share only payload-source decoding in `cmd/update_variables_payload.go`; the existing PI planning and mutation workflow remains otherwise unchanged.
 - Canonical command additions must update the enforced command-node inventory in `specs/254-cli-debt-refactor/assessment.md`; the inventory now contains 57 paths.
+- User-task preview JSON uses a command-owned projection: it preserves task-level category null/empty semantics but excludes internal frozen targets and duplicate tenant context; outer envelopes carry tenant evidence.
+- User-task result views count confirmed/submitted, unchanged, failed, and skipped states separately; only confirmed/submitted changed tasks appear in keys-only output.
+- Shared envelope and user-task key writers propagate destination failures. User-task dispatch reports those failures on stderr without attempting a second result envelope.
 
 ## Decisions
 
@@ -41,10 +44,11 @@ Started: 2026-09-29T15:39:19Z
 - `go test ./... -run '^$' -count=1`
 - `go test ./cmd -run 'Test(UpdateUserTask|CommandCapabilityForCommand_UpdateUserTask)' -count=1`
 - `go test -race ./cmd -run 'TestUpdateUserTask' -count=1`
+- `go test ./cmd -run 'Test(UserTaskVariableUpdate|UpdateUserTask(OutputModes|PartialFailureJSON)|UpdateUserTaskCommand|CommandCapabilityForCommand_UpdateUserTask)' -count=1`
 
 ## Do Not Repeat
 
 - Do not reuse `UpdateProcessInstanceVariables` for task scopes: it omits `local=true` and invokes the process-instance waiter.
 
 ## Current Handoff
-- Continue with US3 T006: complete and lock down all user-task variable update views and output-mode contracts, building on the truthful minimal T005 renderers.
+- Continue with US3 T007: add real-terminal, automation, supported-version, and error-path coverage, fixing only findings owned by the command or service paths under test.

@@ -12,20 +12,49 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// userTaskVariableUpdatePreview is the stable CLI payload and intentionally
+// excludes internal execution targets and nested tenant context.
 type userTaskVariableUpdatePreview struct {
-	Operation string `json:"operation"`
-	task.UserTaskVariableUpdatePlan
+	Operation              string                      `json:"operation"`
+	RequestedKeys          []string                    `json:"requestedKeys"`
+	RequestedCount         int                         `json:"requestedCount"`
+	UpdateCount            int                         `json:"updateCount"`
+	VariableAddCount       int                         `json:"variableAddCount"`
+	VariableChangeCount    int                         `json:"variableChangeCount"`
+	VariableUnchangedCount int                         `json:"variableUnchangedCount"`
+	VariableUntouchedCount int                         `json:"variableUntouchedCount"`
+	UserTasks              []task.UserTaskVariablePlan `json:"userTasks,omitempty"`
+	MutationSubmitted      bool                        `json:"mutationSubmitted"`
+}
+
+// newUserTaskVariableUpdatePreview exposes only the stable command payload,
+// excluding internal execution targets and duplicate tenant evidence.
+func newUserTaskVariableUpdatePreview(plan task.UserTaskVariableUpdatePlan) userTaskVariableUpdatePreview {
+	return userTaskVariableUpdatePreview{
+		Operation:              "update",
+		RequestedKeys:          append([]string(nil), plan.RequestedKeys...),
+		RequestedCount:         plan.RequestedCount,
+		UpdateCount:            plan.UpdateCount,
+		VariableAddCount:       plan.VariableAddCount,
+		VariableChangeCount:    plan.VariableChangeCount,
+		VariableUnchangedCount: plan.VariableUnchangedCount,
+		VariableUntouchedCount: plan.VariableUntouchedCount,
+		UserTasks:              append([]task.UserTaskVariablePlan(nil), plan.UserTasks...),
+		MutationSubmitted:      false,
+	}
 }
 
 // renderUpdateUserTaskVariablePreview renders a frozen plan without claiming submission.
 func renderUpdateUserTaskVariablePreview(cmd *cobra.Command, plan task.UserTaskVariableUpdatePlan) error {
 	if pickMode() == RenderModeJSON {
-		return renderSucceededResult(cmd, userTaskVariableUpdatePreview{Operation: "update", UserTaskVariableUpdatePlan: plan})
+		return renderSucceededResult(cmd, newUserTaskVariableUpdatePreview(plan))
 	}
 	if pickMode() == RenderModeKeysOnly {
 		for _, item := range plan.UserTasks {
 			if len(item.TargetScopeKeys) > 0 {
-				renderOutputLine(cmd, "%s", item.UserTaskKey)
+				if err := writeUserTaskVariableUpdateKey(cmd, item.UserTaskKey); err != nil {
+					return err
+				}
 			}
 		}
 		return nil
@@ -37,7 +66,7 @@ func renderUpdateUserTaskVariablePreview(cmd *cobra.Command, plan task.UserTaskV
 // renderUpdateUserTaskVariablePlan renders the confirmation or successful no-op plan.
 func renderUpdateUserTaskVariablePlan(cmd *cobra.Command, plan task.UserTaskVariableUpdatePlan) error {
 	if commandUsesSharedEnvelope(cmd, pickMode()) {
-		return renderSucceededResult(cmd, userTaskVariableUpdatePreview{Operation: "update", UserTaskVariableUpdatePlan: plan})
+		return renderSucceededResult(cmd, newUserTaskVariableUpdatePreview(plan))
 	}
 	if pickMode() == RenderModeKeysOnly {
 		return nil
@@ -125,36 +154,72 @@ func renderUpdateUserTaskVariableResultsHumanOrKeys(cmd *cobra.Command, results 
 	if pickMode() == RenderModeKeysOnly {
 		for _, item := range results.Items {
 			if item.Status == task.UserTaskVariableUpdateStatusConfirmed || item.Status == task.UserTaskVariableUpdateStatusSubmitted {
-				renderOutputLine(cmd, "%s", item.Key)
+				if err := writeUserTaskVariableUpdateKey(cmd, item.Key); err != nil {
+					return err
+				}
 			}
 		}
 		return nil
 	}
-	confirmedOrSubmitted := 0
-	failed := 0
+	confirmedOrSubmitted, unchanged, failed, skipped := userTaskVariableUpdateResultCounts(results)
 	for _, item := range results.Items {
 		switch item.Status {
 		case task.UserTaskVariableUpdateStatusConfirmed:
-			confirmedOrSubmitted++
-			renderHumanLine(cmd, "updated user-task %s: confirmed", item.Key)
+			renderHumanLine(cmd, "updated user-task %s: confirmed%s", item.Key, formatUserTaskVariableScopeOutcomes(item))
 		case task.UserTaskVariableUpdateStatusSubmitted:
-			confirmedOrSubmitted++
-			renderHumanLine(cmd, "updated user-task %s: submitted", item.Key)
+			renderHumanLine(cmd, "updated user-task %s: submitted%s", item.Key, formatUserTaskVariableScopeOutcomes(item))
 		case task.UserTaskVariableUpdateStatusUnchanged:
 			renderHumanLine(cmd, "updated user-task %s: unchanged", item.Key)
 		case task.UserTaskVariableUpdateStatusConfirmationFailed:
-			failed++
-			renderHumanLine(cmd, "updated user-task %s: confirmation failed: %s", item.Key, item.Error)
+			renderHumanLine(cmd, "updated user-task %s: confirmation failed: %s%s", item.Key, item.Error, formatUserTaskVariableScopeOutcomes(item))
 		case task.UserTaskVariableUpdateStatusMutationFailed:
-			failed++
-			renderHumanLine(cmd, "updated user-task %s: mutation failed: %s", item.Key, item.Error)
+			renderHumanLine(cmd, "updated user-task %s: mutation failed: %s%s", item.Key, item.Error, formatUserTaskVariableScopeOutcomes(item))
+		case task.UserTaskVariableUpdateStatusSkipped:
+			renderHumanLine(cmd, "updated user-task %s: skipped%s", item.Key, formatUserTaskVariableScopeOutcomes(item))
 		default:
-			failed++
 			renderHumanLine(cmd, "updated user-task %s: %s", item.Key, item.Status)
 		}
 	}
-	renderHumanLine(cmd, "updated: %d (confirmed/submitted: %d, failed/skipped: %d)", len(results.Items), confirmedOrSubmitted, failed)
+	renderHumanLine(cmd, "updated: %d (confirmed/submitted: %d, unchanged: %d, failed: %d, skipped: %d)", len(results.Items), confirmedOrSubmitted, unchanged, failed, skipped)
 	return nil
+}
+
+// userTaskVariableUpdateResultCounts keeps each terminal state visible in the
+// aggregate rather than treating unchanged or unscheduled tasks as updates.
+func userTaskVariableUpdateResultCounts(results task.UserTaskVariableUpdateResults) (confirmedOrSubmitted, unchanged, failed, skipped int) {
+	for _, item := range results.Items {
+		switch item.Status {
+		case task.UserTaskVariableUpdateStatusConfirmed, task.UserTaskVariableUpdateStatusSubmitted:
+			confirmedOrSubmitted++
+		case task.UserTaskVariableUpdateStatusUnchanged:
+			unchanged++
+		case task.UserTaskVariableUpdateStatusSkipped:
+			skipped++
+		default:
+			failed++
+		}
+	}
+	return confirmedOrSubmitted, unchanged, failed, skipped
+}
+
+// formatUserTaskVariableScopeOutcomes adds scope-level evidence only when the
+// operator explicitly requests verbose functional detail.
+func formatUserTaskVariableScopeOutcomes(item task.UserTaskVariableUpdateResult) string {
+	if !flagVerbose || len(item.Scopes) == 0 {
+		return ""
+	}
+	parts := make([]string, 0, len(item.Scopes))
+	for _, scope := range item.Scopes {
+		parts = append(parts, fmt.Sprintf("%s=%s", scope.ScopeKey, scope.Status))
+	}
+	return "; scopes: " + strings.Join(parts, ", ")
+}
+
+// writeUserTaskVariableUpdateKey preserves one-key-per-line output and returns
+// destination failures to the command instead of silently losing results.
+func writeUserTaskVariableUpdateKey(cmd *cobra.Command, key string) error {
+	_, err := fmt.Fprintln(cmd.OutOrStdout(), key)
+	return err
 }
 
 // formatUserTaskVariablePlan uses established variable tokens and annotates inherited scope effects.
@@ -170,7 +235,11 @@ func formatUserTaskVariablePlan(plan task.UserTaskVariablePlan) string {
 		parts = append(parts, fmt.Sprintf("~ %s%s: %s (unchanged)", item.Name, formatUserTaskVariableScope(item.ScopeKey, item.Inherited), formatProcessInstanceVariablePlanValue(item.Value)))
 	}
 	if len(plan.Untouched) > 0 {
-		parts = append(parts, fmt.Sprintf("= %d variable(s) left untouched", len(plan.Untouched)))
+		untouched := make([]string, 0, len(plan.Untouched))
+		for _, item := range plan.Untouched {
+			untouched = append(untouched, fmt.Sprintf("%s: %s", item.Name, formatProcessInstanceVariablePlanValue(item.Value)))
+		}
+		parts = append(parts, "= "+strings.Join(untouched, ", "))
 	}
 	if len(parts) == 0 {
 		return "no variable changes"

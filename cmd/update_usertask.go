@@ -6,6 +6,7 @@ package cmd
 import (
 	"fmt"
 
+	"github.com/grafvonb/c8volt/c8volt/ferrors"
 	"github.com/spf13/cobra"
 )
 
@@ -67,19 +68,19 @@ Use --dry-run to inspect changes without mutation, or --auto-confirm for unatten
 		}
 		if flagDryRun {
 			if err := renderUpdateUserTaskVariablePreview(cmd, plan); err != nil {
-				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("render update dry-run result: %w", err))
+				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("render update dry-run result: %w", err))
 			}
 			return
 		}
 		if !userTaskVariablePlanHasChanges(plan) {
 			if err := renderUpdateUserTaskVariablePlan(cmd, plan); err != nil {
-				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("render update plan: %w", err))
+				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("render update plan: %w", err))
 			}
 			return
 		}
 		if !shouldImplicitlyConfirm(cmd) {
 			if err := renderUpdateUserTaskVariablePlan(cmd, plan); err != nil {
-				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("render update plan: %w", err))
+				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("render update plan: %w", err))
 			}
 			requestedUpdates := plan.VariableAddCount + plan.VariableChangeCount
 			prompt := fmt.Sprintf("You are about to update %d requested variable value(s) on %d user task(s). Do you want to proceed?", requestedUpdates, plan.UpdateCount)
@@ -92,14 +93,14 @@ Use --dry-run to inspect changes without mutation, or --auto-confirm for unatten
 		if executeErr != nil {
 			if len(results.Items) > 0 {
 				if err := renderUpdateUserTaskVariableFailure(cmd, results, executeErr); err != nil {
-					handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("render partial update result: %w", err))
+					ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("render partial update result: %w", err))
 				}
 				exitAfterRenderedResult(cfg.App.NoErrCodes, executeErr)
 			}
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("update user-task variables: %w", executeErr))
 		}
 		if err := renderUpdateUserTaskVariableResults(cmd, results); err != nil {
-			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("render update result: %w", err))
+			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("render update result: %w", err))
 		}
 	},
 }
