@@ -84,3 +84,25 @@ Started: 2026-09-29 17:39:20
 **Learnings**:
 - A public frozen plan needs bidirectional deep-copy conversion because execution accepts the previewed facade value back after caller inspection.
 ---
+## Iteration 5 - 2026-09-29 18:29
+**Work Unit**: US2 — explicit-key user-task update command and bulk integration
+**Tasks Completed**:
+- [x] T005: Implement CLI construction, shared payload parsing, confirmation, dispatch, metadata, and minimal truthful views
+**Tasks Remaining in Work Unit**: 0; US2 complete
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/update_usertask.go
+- cmd/update_usertask_variables.go
+- cmd/update_variables_payload.go
+- cmd/update_processinstance_variables.go
+- cmd/cmd_views_usertask_update.go
+- cmd/update_usertask_test.go
+- cmd/update_usertask_bulk_test.go
+- cmd/command_contract_test.go
+- specs/254-cli-debt-refactor/assessment.md
+- specs/326-update-user-task-vars/tasks.md
+- specs/326-update-user-task-vars/ralph-memory.md
+- specs/326-update-user-task-vars/progress.md
+**Learnings**:
+- The command can preserve shared-scope deduplication and actual tenant evidence by passing the frozen facade plan through unchanged; command registration also requires updating the enforced CLI assessment inventory.
+---

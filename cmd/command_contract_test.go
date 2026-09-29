@@ -1109,10 +1109,10 @@ func TestCapabilityDocumentForRoot_CoversCLIDebtAssessment(t *testing.T) {
 
 	doc := capabilityDocumentForRoot(root)
 	paths := commandCapabilityPaths(doc.Commands)
-	require.Len(t, paths, 56)
+	require.Len(t, paths, 57)
 
 	assessmentPaths := readCLIDebtAssessmentCommandPaths(t)
-	require.Len(t, assessmentPaths, 56)
+	require.Len(t, assessmentPaths, 57)
 	require.ElementsMatch(t, paths, assessmentPaths)
 }
 
@@ -1202,6 +1202,34 @@ func TestCommandCapabilityForCommand_UserTaskReadContract(t *testing.T) {
 		require.NoError(t, err)
 		require.Empty(t, remaining)
 		require.Same(t, getUserTaskCmd, resolved)
+	}
+}
+
+// TestCommandCapabilityForCommand_UpdateUserTaskContract verifies aliases,
+// mutation metadata, automation, and the PI-equivalent control surface.
+func TestCommandCapabilityForCommand_UpdateUserTaskContract(t *testing.T) {
+	root := Root()
+	resetCommandTreeFlags(root)
+
+	capability := commandCapabilityForCommand(updateUserTaskCmd)
+	require.Equal(t, "update user-task", capability.Path)
+	require.ElementsMatch(t, []string{"user-tasks", "ut", "uts"}, capability.Aliases)
+	require.Equal(t, CommandMutationStateChanging, capability.Mutation)
+	require.Equal(t, ContractSupportFull, capability.ContractSupport)
+	require.Equal(t, AutomationSupportFull, capability.AutomationSupport)
+	require.Equal(t, []OutputModeContract{
+		{Name: RenderModeOneLine.String(), Supported: true},
+		{Name: RenderModeJSON.String(), Supported: true, MachinePreferred: true},
+		{Name: RenderModeKeysOnly.String(), Supported: true},
+	}, capability.OutputModes)
+	for _, name := range []string{"key", "vars", "vars-file", "dry-run", "no-wait", "workers", "no-worker-limit", "fail-fast"} {
+		require.True(t, hasFlagContractNamed(capability.Flags, name), "missing --%s", name)
+	}
+	for _, alias := range capability.Aliases {
+		resolved, remaining, err := root.Find([]string{"update", alias})
+		require.NoError(t, err)
+		require.Empty(t, remaining)
+		require.Same(t, updateUserTaskCmd, resolved)
 	}
 }
 

@@ -13,6 +13,9 @@ Started: 2026-09-29T15:39:19Z
 - Confirmation reuses complete effective-variable traversal with configured backoff bounds and requires matching name, frozen scope, complete JSON, and normalized value; no-wait and no-target execution perform no confirmation reads.
 - The public task facade round-trips the frozen plan, target associations, tenant evidence, and partial outcomes mechanically; JSON-like maps and slices are recursively copied in both directions.
 - `task.New` remains read-compatible and returns normalized precondition errors for update calls, while root construction uses `task.NewWithVariableUpdates` with a composed user-task and variable service.
+- `update user-task` is a thin plan/confirm/execute command: it passes explicit-key admin options, executes the original frozen facade plan, and attaches tenant evidence returned by planning without rediscovery.
+- Variable update commands share only payload-source decoding in `cmd/update_variables_payload.go`; the existing PI planning and mutation workflow remains otherwise unchanged.
+- Canonical command additions must update the enforced command-node inventory in `specs/254-cli-debt-refactor/assessment.md`; the inventory now contains 57 paths.
 
 ## Decisions
 
@@ -36,10 +39,12 @@ Started: 2026-09-29T15:39:19Z
 - `go test -race ./internal/services/usertask/... -run 'Test(PlanUserTaskVariableUpdates|SearchUserTaskEffectiveVariables|GetUserTasks)' -count=1`
 - `go test -race ./internal/services/usertask/... -run 'Test(ExecuteUserTaskVariableUpdates|PlanUserTaskVariableUpdates|SearchUserTaskEffectiveVariables|GetUserTasks)' -count=1`
 - `go test ./... -run '^$' -count=1`
+- `go test ./cmd -run 'Test(UpdateUserTask|CommandCapabilityForCommand_UpdateUserTask)' -count=1`
+- `go test -race ./cmd -run 'TestUpdateUserTask' -count=1`
 
 ## Do Not Repeat
 
 - Do not reuse `UpdateProcessInstanceVariables` for task scopes: it omits `local=true` and invokes the process-instance waiter.
 
 ## Current Handoff
-- Continue with US2 T005: add the explicit-key user-task update command, shared payload parsing, confirmation/dispatch, and minimal truthful view entry points.
+- Continue with US3 T006: complete and lock down all user-task variable update views and output-mode contracts, building on the truthful minimal T005 renderers.
