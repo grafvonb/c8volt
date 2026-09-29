@@ -4,6 +4,9 @@
 package task
 
 import (
+	"slices"
+
+	options "github.com/grafvonb/c8volt/c8volt/foptions"
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/toolx"
 )
@@ -25,6 +28,167 @@ func fromDomainUserTask(x d.UserTask) UserTask {
 		ProcessDefinitionVersion: x.ProcessDefinitionVersion,
 		TenantId:                 x.TenantId,
 	}
+}
+
+func copyUserTaskVariableValue(value any) any {
+	switch value := value.(type) {
+	case map[string]any:
+		return copyUserTaskVariableMap(value)
+	case []any:
+		out := make([]any, len(value))
+		for i := range value {
+			out[i] = copyUserTaskVariableValue(value[i])
+		}
+		return out
+	default:
+		return value
+	}
+}
+
+func copyUserTaskVariableMap(values map[string]any) map[string]any {
+	if values == nil {
+		return nil
+	}
+	out := make(map[string]any, len(values))
+	for name, value := range values {
+		out[name] = copyUserTaskVariableValue(value)
+	}
+	return out
+}
+
+func fromDomainUserTaskVariablePlannedValue(x d.UserTaskVariablePlannedValue) UserTaskVariablePlannedValue {
+	return UserTaskVariablePlannedValue{
+		Name: x.Name, ScopeKey: x.ScopeKey, Inherited: x.Inherited,
+		Value: copyUserTaskVariableValue(x.Value), APITruncated: x.APITruncated,
+	}
+}
+
+func toDomainUserTaskVariablePlannedValue(x UserTaskVariablePlannedValue) d.UserTaskVariablePlannedValue {
+	return d.UserTaskVariablePlannedValue{
+		Name: x.Name, ScopeKey: x.ScopeKey, Inherited: x.Inherited,
+		Value: copyUserTaskVariableValue(x.Value), APITruncated: x.APITruncated,
+	}
+}
+
+func fromDomainUserTaskVariablePlannedChange(x d.UserTaskVariablePlannedChange) UserTaskVariablePlannedChange {
+	return UserTaskVariablePlannedChange{
+		Name: x.Name, ScopeKey: x.ScopeKey, Inherited: x.Inherited,
+		Before: copyUserTaskVariableValue(x.Before), After: copyUserTaskVariableValue(x.After), APITruncated: x.APITruncated,
+	}
+}
+
+func toDomainUserTaskVariablePlannedChange(x UserTaskVariablePlannedChange) d.UserTaskVariablePlannedChange {
+	return d.UserTaskVariablePlannedChange{
+		Name: x.Name, ScopeKey: x.ScopeKey, Inherited: x.Inherited,
+		Before: copyUserTaskVariableValue(x.Before), After: copyUserTaskVariableValue(x.After), APITruncated: x.APITruncated,
+	}
+}
+
+func fromDomainScopeVariableUpdateAssociation(x d.ScopeVariableUpdateAssociation) ScopeVariableUpdateAssociation {
+	return ScopeVariableUpdateAssociation{UserTaskKey: x.UserTaskKey, Names: slices.Clone(x.Names)}
+}
+
+func toDomainScopeVariableUpdateAssociation(x ScopeVariableUpdateAssociation) d.ScopeVariableUpdateAssociation {
+	return d.ScopeVariableUpdateAssociation{UserTaskKey: x.UserTaskKey, Names: slices.Clone(x.Names)}
+}
+
+func fromDomainScopeVariableUpdateTarget(x d.ScopeVariableUpdateTarget) ScopeVariableUpdateTarget {
+	return ScopeVariableUpdateTarget{
+		ScopeKey: x.ScopeKey, TenantId: x.TenantId, Variables: copyUserTaskVariableMap(x.Variables),
+		Associations: toolx.MapSlice(x.Associations, fromDomainScopeVariableUpdateAssociation),
+	}
+}
+
+func toDomainScopeVariableUpdateTarget(x ScopeVariableUpdateTarget) d.ScopeVariableUpdateTarget {
+	return d.ScopeVariableUpdateTarget{
+		ScopeKey: x.ScopeKey, TenantId: x.TenantId, Variables: copyUserTaskVariableMap(x.Variables),
+		Associations: toolx.MapSlice(x.Associations, toDomainScopeVariableUpdateAssociation),
+	}
+}
+
+func fromDomainUserTaskVariablePlan(x d.UserTaskVariablePlan) UserTaskVariablePlan {
+	return UserTaskVariablePlan{
+		UserTaskKey: x.UserTaskKey, ElementInstanceKey: x.ElementInstanceKey, TenantId: x.TenantId,
+		Additions:          toolx.MapSlice(x.Additions, fromDomainUserTaskVariablePlannedValue),
+		Changes:            toolx.MapSlice(x.Changes, fromDomainUserTaskVariablePlannedChange),
+		UnchangedRequested: toolx.MapSlice(x.UnchangedRequested, fromDomainUserTaskVariablePlannedValue),
+		Untouched:          toolx.MapSlice(x.Untouched, fromDomainUserTaskVariablePlannedValue),
+		TargetScopeKeys:    slices.Clone(x.TargetScopeKeys),
+	}
+}
+
+func toDomainUserTaskVariablePlan(x UserTaskVariablePlan) d.UserTaskVariablePlan {
+	return d.UserTaskVariablePlan{
+		UserTaskKey: x.UserTaskKey, ElementInstanceKey: x.ElementInstanceKey, TenantId: x.TenantId,
+		Additions:          toolx.MapSlice(x.Additions, toDomainUserTaskVariablePlannedValue),
+		Changes:            toolx.MapSlice(x.Changes, toDomainUserTaskVariablePlannedChange),
+		UnchangedRequested: toolx.MapSlice(x.UnchangedRequested, toDomainUserTaskVariablePlannedValue),
+		Untouched:          toolx.MapSlice(x.Untouched, toDomainUserTaskVariablePlannedValue),
+		TargetScopeKeys:    slices.Clone(x.TargetScopeKeys),
+	}
+}
+
+func fromDomainTenantContext(x d.TenantContext) options.TenantContext {
+	return options.TenantContext{
+		Mode: options.TenantContextMode(x.Mode), Filter: options.TenantContextFilter(x.Filter),
+		ConfiguredTenantID: x.ConfiguredTenantID, TargetTenantID: x.TargetTenantID,
+		ResolvedTenantIDs: slices.Clone(x.ResolvedTenantIDs), UnknownTargetCount: x.UnknownTargetCount,
+		CrossTenant: x.CrossTenant,
+		Warnings: toolx.MapSlice(x.Warnings, func(w d.TenantContextWarning) options.TenantContextWarning {
+			return options.TenantContextWarning{Code: options.TenantContextWarningCode(w.Code), Message: w.Message}
+		}),
+	}
+}
+
+func toDomainTenantContext(x options.TenantContext) d.TenantContext {
+	return d.TenantContext{
+		Mode: d.TenantContextMode(x.Mode), Filter: d.TenantContextFilter(x.Filter),
+		ConfiguredTenantID: x.ConfiguredTenantID, TargetTenantID: x.TargetTenantID,
+		ResolvedTenantIDs: slices.Clone(x.ResolvedTenantIDs), UnknownTargetCount: x.UnknownTargetCount,
+		CrossTenant: x.CrossTenant,
+		Warnings: toolx.MapSlice(x.Warnings, func(w options.TenantContextWarning) d.TenantContextWarning {
+			return d.TenantContextWarning{Code: d.TenantContextWarningCode(w.Code), Message: w.Message}
+		}),
+	}
+}
+
+func fromDomainUserTaskVariableUpdatePlan(x d.UserTaskVariableUpdatePlan) UserTaskVariableUpdatePlan {
+	return UserTaskVariableUpdatePlan{
+		RequestedKeys: slices.Clone(x.RequestedKeys), UserTasks: toolx.MapSlice(x.UserTasks, fromDomainUserTaskVariablePlan),
+		Targets: toolx.MapSlice(x.Targets, fromDomainScopeVariableUpdateTarget), RequestedCount: x.RequestedCount,
+		UpdateCount: x.UpdateCount, VariableAddCount: x.VariableAddCount, VariableChangeCount: x.VariableChangeCount,
+		VariableUnchangedCount: x.VariableUnchangedCount, VariableUntouchedCount: x.VariableUntouchedCount,
+		MutationSubmitted: x.MutationSubmitted, TenantContext: fromDomainTenantContext(x.TenantContext),
+	}
+}
+
+func toDomainUserTaskVariableUpdatePlan(x UserTaskVariableUpdatePlan) d.UserTaskVariableUpdatePlan {
+	return d.UserTaskVariableUpdatePlan{
+		RequestedKeys: slices.Clone(x.RequestedKeys), UserTasks: toolx.MapSlice(x.UserTasks, toDomainUserTaskVariablePlan),
+		Targets: toolx.MapSlice(x.Targets, toDomainScopeVariableUpdateTarget), RequestedCount: x.RequestedCount,
+		UpdateCount: x.UpdateCount, VariableAddCount: x.VariableAddCount, VariableChangeCount: x.VariableChangeCount,
+		VariableUnchangedCount: x.VariableUnchangedCount, VariableUntouchedCount: x.VariableUntouchedCount,
+		MutationSubmitted: x.MutationSubmitted, TenantContext: toDomainTenantContext(x.TenantContext),
+	}
+}
+
+func fromDomainScopeVariableUpdateOutcome(x d.ScopeVariableUpdateOutcome) ScopeVariableUpdateOutcome {
+	return ScopeVariableUpdateOutcome{
+		ScopeKey: x.ScopeKey, Names: slices.Clone(x.Names), Status: ScopeVariableUpdateStatus(x.Status),
+		Accepted: x.Accepted, StatusCode: x.StatusCode, Message: x.Message, Error: x.Error,
+	}
+}
+
+func fromDomainUserTaskVariableUpdateResult(x d.UserTaskVariableUpdateResult) UserTaskVariableUpdateResult {
+	return UserTaskVariableUpdateResult{
+		Key: x.Key, Status: UserTaskVariableUpdateStatus(x.Status), MutationAccepted: x.MutationAccepted,
+		ConfirmationStatus: x.ConfirmationStatus, Message: x.Message, Error: x.Error,
+		Variables: copyUserTaskVariableMap(x.Variables), Scopes: toolx.MapSlice(x.Scopes, fromDomainScopeVariableUpdateOutcome),
+	}
+}
+
+func fromDomainUserTaskVariableUpdateResults(x d.UserTaskVariableUpdateResults) UserTaskVariableUpdateResults {
+	return UserTaskVariableUpdateResults{Items: toolx.MapSlice(x.Items, fromDomainUserTaskVariableUpdateResult)}
 }
 
 // toDomainUserTask maps a selected public task into an independently owned

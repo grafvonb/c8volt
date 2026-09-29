@@ -50,6 +50,22 @@ type stubTaskAPI struct {
 	enrichUserTasksWithVariables            func(context.Context, task.UserTasks, ...options.FacadeOption) (task.VariableEnrichedUserTasks, error)
 	resolveProcessInstanceKeyFromUserTask   func(context.Context, string, ...options.FacadeOption) (string, error)
 	resolveProcessInstanceKeysFromUserTasks func(context.Context, types.Keys, ...options.FacadeOption) (types.Keys, error)
+	planUserTaskVariableUpdates             func(context.Context, types.Keys, map[string]any, ...options.FacadeOption) (task.UserTaskVariableUpdatePlan, error)
+	executeUserTaskVariableUpdates          func(context.Context, task.UserTaskVariableUpdatePlan, int, ...options.FacadeOption) (task.UserTaskVariableUpdateResults, error)
+}
+
+func (s stubTaskAPI) PlanUserTaskVariableUpdates(ctx context.Context, keys types.Keys, variables map[string]any, opts ...options.FacadeOption) (task.UserTaskVariableUpdatePlan, error) {
+	if s.planUserTaskVariableUpdates == nil {
+		panic("unexpected call")
+	}
+	return s.planUserTaskVariableUpdates(ctx, keys, variables, opts...)
+}
+
+func (s stubTaskAPI) ExecuteUserTaskVariableUpdates(ctx context.Context, plan task.UserTaskVariableUpdatePlan, wantedWorkers int, opts ...options.FacadeOption) (task.UserTaskVariableUpdateResults, error) {
+	if s.executeUserTaskVariableUpdates == nil {
+		panic("unexpected call")
+	}
+	return s.executeUserTaskVariableUpdates(ctx, plan, wantedWorkers, opts...)
 }
 
 // GetUserTask delegates one native task read to the configured command-test behavior.

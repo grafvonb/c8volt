@@ -63,3 +63,24 @@ Started: 2026-09-29 17:39:20
 **Learnings**:
 - Frozen target execution needs explicit skipped-slot materialization after pool fail-fast/cancellation so shared task outcomes cannot mistake unstarted work for success.
 ---
+## Iteration 4 - 2026-09-29 18:15
+**Work Unit**: US1 — expose and wire the user-task variable update facade
+**Tasks Completed**:
+- [x] T004: Expose and wire the thin task facade with conversion, delegation, and constructor coverage
+**Tasks Remaining in Work Unit**: 0; US1 complete
+**Commit**: This work-unit commit
+**Files Changed**:
+- c8volt/client.go
+- c8volt/client_test.go
+- c8volt/task/api.go
+- c8volt/task/client.go
+- c8volt/task/convert.go
+- c8volt/task/model.go
+- c8volt/task/update_test.go
+- cmd/process_api_stub_test.go
+- specs/326-update-user-task-vars/tasks.md
+- specs/326-update-user-task-vars/ralph-memory.md
+- specs/326-update-user-task-vars/progress.md
+**Learnings**:
+- A public frozen plan needs bidirectional deep-copy conversion because execution accepts the previewed facade value back after caller inspection.
+---

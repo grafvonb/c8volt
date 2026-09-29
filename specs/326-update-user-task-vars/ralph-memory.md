@@ -11,6 +11,8 @@ Started: 2026-09-29T15:39:19Z
 - Planning traverses tasks in stable unique input order and requested variable names in sorted order. Scope targets retain first-encounter order, group names by scope, and carry per-task name associations for shared-target fan-out.
 - Execution validates and deep-copies the complete supplied plan before I/O, submits unique targets through `pool.ExecuteSlice`, fills zero-value unscheduled slots as explicit skipped outcomes, and fans shared outcomes back to stable task order.
 - Confirmation reuses complete effective-variable traversal with configured backoff bounds and requires matching name, frozen scope, complete JSON, and normalized value; no-wait and no-target execution perform no confirmation reads.
+- The public task facade round-trips the frozen plan, target associations, tenant evidence, and partial outcomes mechanically; JSON-like maps and slices are recursively copied in both directions.
+- `task.New` remains read-compatible and returns normalized precondition errors for update calls, while root construction uses `task.NewWithVariableUpdates` with a composed user-task and variable service.
 
 ## Decisions
 
@@ -40,4 +42,4 @@ Started: 2026-09-29T15:39:19Z
 - Do not reuse `UpdateProcessInstanceVariables` for task scopes: it omits `local=true` and invokes the process-instance waiter.
 
 ## Current Handoff
-- Continue US1 with T004: expose the plan and execute workflow through the thin `c8volt/task` facade, conversions, compatible constructor wiring, and facade tests.
+- Continue with US2 T005: add the explicit-key user-task update command, shared payload parsing, confirmation/dispatch, and minimal truthful view entry points.
