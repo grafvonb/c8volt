@@ -286,7 +286,7 @@ clean: ## Remove local build artifacts and coverage output.
 
 cover: ## Generate a text coverage report and print the total coverage summary.
 	mkdir -p $(COVER_DIR)
-	go test $(PKG) -race -covermode=atomic -coverprofile=$(COVER_OUT)
+	GORACE="$(GORACE) atexit_sleep_ms=0" go test $(PKG) -race -covermode=atomic -coverprofile=$(COVER_OUT)
 	go tool cover -func=$(COVER_OUT) | tail -n 1
 
 cover.html: cover ## Generate the HTML coverage report after collecting coverage data.
