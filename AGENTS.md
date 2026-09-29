@@ -120,5 +120,5 @@
 
 ## Active Speckit Plan
 <!-- SPECKIT START -->
-- Active Speckit implementation plan: `specs/309-user-task-variables/plan.md`
+- Active Speckit implementation plan: `specs/326-update-user-task-vars/plan.md`
 <!-- SPECKIT END -->
