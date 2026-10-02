@@ -30,6 +30,8 @@ func fromDomainUserTask(x d.UserTask) UserTask {
 	}
 }
 
+// copyUserTaskVariableValue recursively copies JSON maps and arrays so mutable values do not cross
+// the facade boundary by reference.
 func copyUserTaskVariableValue(value any) any {
 	switch value := value.(type) {
 	case map[string]any:
@@ -45,6 +47,8 @@ func copyUserTaskVariableValue(value any) any {
 	}
 }
 
+// copyUserTaskVariableMap copies each variable value into an independently owned map while
+// preserving a nil input.
 func copyUserTaskVariableMap(values map[string]any) map[string]any {
 	if values == nil {
 		return nil
@@ -56,6 +60,8 @@ func copyUserTaskVariableMap(values map[string]any) map[string]any {
 	return out
 }
 
+// fromDomainUserTaskVariablePlannedValue maps a planned value into the public model, copying
+// nested data and retaining scope and truncation evidence.
 func fromDomainUserTaskVariablePlannedValue(x d.UserTaskVariablePlannedValue) UserTaskVariablePlannedValue {
 	return UserTaskVariablePlannedValue{
 		Name: x.Name, ScopeKey: x.ScopeKey, Inherited: x.Inherited,
@@ -63,6 +69,8 @@ func fromDomainUserTaskVariablePlannedValue(x d.UserTaskVariablePlannedValue) Us
 	}
 }
 
+// toDomainUserTaskVariablePlannedValue maps a public planned value into the domain model without
+// sharing nested variable data.
 func toDomainUserTaskVariablePlannedValue(x UserTaskVariablePlannedValue) d.UserTaskVariablePlannedValue {
 	return d.UserTaskVariablePlannedValue{
 		Name: x.Name, ScopeKey: x.ScopeKey, Inherited: x.Inherited,
@@ -70,6 +78,8 @@ func toDomainUserTaskVariablePlannedValue(x UserTaskVariablePlannedValue) d.User
 	}
 }
 
+// fromDomainUserTaskVariablePlannedChange copies the before and after values into the public model
+// while retaining the planned scope and truncation evidence.
 func fromDomainUserTaskVariablePlannedChange(x d.UserTaskVariablePlannedChange) UserTaskVariablePlannedChange {
 	return UserTaskVariablePlannedChange{
 		Name: x.Name, ScopeKey: x.ScopeKey, Inherited: x.Inherited,
@@ -77,6 +87,8 @@ func fromDomainUserTaskVariablePlannedChange(x d.UserTaskVariablePlannedChange) 
 	}
 }
 
+// toDomainUserTaskVariablePlannedChange copies a public change into the domain model while
+// preserving its before and after values and target scope.
 func toDomainUserTaskVariablePlannedChange(x UserTaskVariablePlannedChange) d.UserTaskVariablePlannedChange {
 	return d.UserTaskVariablePlannedChange{
 		Name: x.Name, ScopeKey: x.ScopeKey, Inherited: x.Inherited,
@@ -84,14 +96,20 @@ func toDomainUserTaskVariablePlannedChange(x UserTaskVariablePlannedChange) d.Us
 	}
 }
 
+// fromDomainScopeVariableUpdateAssociation maps a shared scope association into the public model
+// with an independent variable-name slice.
 func fromDomainScopeVariableUpdateAssociation(x d.ScopeVariableUpdateAssociation) ScopeVariableUpdateAssociation {
 	return ScopeVariableUpdateAssociation{UserTaskKey: x.UserTaskKey, Names: slices.Clone(x.Names)}
 }
 
+// toDomainScopeVariableUpdateAssociation maps a public task association into the domain model with
+// an independent variable-name slice.
 func toDomainScopeVariableUpdateAssociation(x ScopeVariableUpdateAssociation) d.ScopeVariableUpdateAssociation {
 	return d.ScopeVariableUpdateAssociation{UserTaskKey: x.UserTaskKey, Names: slices.Clone(x.Names)}
 }
 
+// fromDomainScopeVariableUpdateTarget copies a planned scope payload and its task associations
+// into the public model.
 func fromDomainScopeVariableUpdateTarget(x d.ScopeVariableUpdateTarget) ScopeVariableUpdateTarget {
 	return ScopeVariableUpdateTarget{
 		ScopeKey: x.ScopeKey, TenantId: x.TenantId, Variables: copyUserTaskVariableMap(x.Variables),
@@ -99,6 +117,8 @@ func fromDomainScopeVariableUpdateTarget(x d.ScopeVariableUpdateTarget) ScopeVar
 	}
 }
 
+// toDomainScopeVariableUpdateTarget copies a public scope payload and its task associations into
+// the domain model without changing the target.
 func toDomainScopeVariableUpdateTarget(x ScopeVariableUpdateTarget) d.ScopeVariableUpdateTarget {
 	return d.ScopeVariableUpdateTarget{
 		ScopeKey: x.ScopeKey, TenantId: x.TenantId, Variables: copyUserTaskVariableMap(x.Variables),
@@ -106,6 +126,8 @@ func toDomainScopeVariableUpdateTarget(x ScopeVariableUpdateTarget) d.ScopeVaria
 	}
 }
 
+// fromDomainUserTaskVariablePlan maps one task plan into the public model, copying each variable
+// category and the target scope keys.
 func fromDomainUserTaskVariablePlan(x d.UserTaskVariablePlan) UserTaskVariablePlan {
 	return UserTaskVariablePlan{
 		UserTaskKey: x.UserTaskKey, ElementInstanceKey: x.ElementInstanceKey, TenantId: x.TenantId,
@@ -117,6 +139,8 @@ func fromDomainUserTaskVariablePlan(x d.UserTaskVariablePlan) UserTaskVariablePl
 	}
 }
 
+// toDomainUserTaskVariablePlan copies one public task plan into the domain model while preserving
+// its variable categories and target scopes.
 func toDomainUserTaskVariablePlan(x UserTaskVariablePlan) d.UserTaskVariablePlan {
 	return d.UserTaskVariablePlan{
 		UserTaskKey: x.UserTaskKey, ElementInstanceKey: x.ElementInstanceKey, TenantId: x.TenantId,
@@ -128,6 +152,8 @@ func toDomainUserTaskVariablePlan(x UserTaskVariablePlan) d.UserTaskVariablePlan
 	}
 }
 
+// fromDomainTenantContext maps resolved tenant evidence into the public options model, copying
+// tenant IDs and warnings.
 func fromDomainTenantContext(x d.TenantContext) options.TenantContext {
 	return options.TenantContext{
 		Mode: options.TenantContextMode(x.Mode), Filter: options.TenantContextFilter(x.Filter),
@@ -140,6 +166,8 @@ func fromDomainTenantContext(x d.TenantContext) options.TenantContext {
 	}
 }
 
+// toDomainTenantContext maps public tenant evidence back into the domain model, copying tenant IDs
+// and warnings.
 func toDomainTenantContext(x options.TenantContext) d.TenantContext {
 	return d.TenantContext{
 		Mode: d.TenantContextMode(x.Mode), Filter: d.TenantContextFilter(x.Filter),
@@ -152,6 +180,8 @@ func toDomainTenantContext(x options.TenantContext) d.TenantContext {
 	}
 }
 
+// fromDomainUserTaskVariableUpdatePlan copies the complete frozen plan into the public model while
+// preserving task order, shared targets, counts, and tenant evidence.
 func fromDomainUserTaskVariableUpdatePlan(x d.UserTaskVariableUpdatePlan) UserTaskVariableUpdatePlan {
 	return UserTaskVariableUpdatePlan{
 		RequestedKeys: slices.Clone(x.RequestedKeys), UserTasks: toolx.MapSlice(x.UserTasks, fromDomainUserTaskVariablePlan),
@@ -162,6 +192,8 @@ func fromDomainUserTaskVariableUpdatePlan(x d.UserTaskVariableUpdatePlan) UserTa
 	}
 }
 
+// toDomainUserTaskVariableUpdatePlan copies the public frozen plan back into the domain model for
+// execution without resolving new targets.
 func toDomainUserTaskVariableUpdatePlan(x UserTaskVariableUpdatePlan) d.UserTaskVariableUpdatePlan {
 	return d.UserTaskVariableUpdatePlan{
 		RequestedKeys: slices.Clone(x.RequestedKeys), UserTasks: toolx.MapSlice(x.UserTasks, toDomainUserTaskVariablePlan),
@@ -172,6 +204,8 @@ func toDomainUserTaskVariableUpdatePlan(x UserTaskVariableUpdatePlan) d.UserTask
 	}
 }
 
+// fromDomainScopeVariableUpdateOutcome maps scope submission facts and errors into the public
+// model with an independent variable-name slice.
 func fromDomainScopeVariableUpdateOutcome(x d.ScopeVariableUpdateOutcome) ScopeVariableUpdateOutcome {
 	return ScopeVariableUpdateOutcome{
 		ScopeKey: x.ScopeKey, Names: slices.Clone(x.Names), Status: ScopeVariableUpdateStatus(x.Status),
@@ -179,6 +213,8 @@ func fromDomainScopeVariableUpdateOutcome(x d.ScopeVariableUpdateOutcome) ScopeV
 	}
 }
 
+// fromDomainUserTaskVariableUpdateResult maps a task outcome into the public model, copying
+// variable data and preserving separate acceptance and confirmation facts.
 func fromDomainUserTaskVariableUpdateResult(x d.UserTaskVariableUpdateResult) UserTaskVariableUpdateResult {
 	return UserTaskVariableUpdateResult{
 		Key: x.Key, Status: UserTaskVariableUpdateStatus(x.Status), MutationAccepted: x.MutationAccepted,
@@ -187,6 +223,8 @@ func fromDomainUserTaskVariableUpdateResult(x d.UserTaskVariableUpdateResult) Us
 	}
 }
 
+// fromDomainUserTaskVariableUpdateResults maps task outcomes into the public collection in
+// service-provided order, retaining partial failures.
 func fromDomainUserTaskVariableUpdateResults(x d.UserTaskVariableUpdateResults) UserTaskVariableUpdateResults {
 	return UserTaskVariableUpdateResults{Items: toolx.MapSlice(x.Items, fromDomainUserTaskVariableUpdateResult)}
 }

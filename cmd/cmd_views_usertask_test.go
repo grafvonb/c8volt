@@ -79,6 +79,8 @@ var errUserTaskWriter = errors.New("writer failed")
 
 type failingUserTaskWriter struct{}
 
+// Write returns the fixture error without writing bytes so views can be checked for output failure
+// propagation.
 func (failingUserTaskWriter) Write([]byte) (int, error) { return 0, errUserTaskWriter }
 
 // resetGetUserTaskGlobalModes restores shared output flags after direct view tests.

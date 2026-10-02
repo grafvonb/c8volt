@@ -156,6 +156,8 @@ func TestVolumeGetFamilyUserTaskVariables(t *testing.T) {
 	}
 }
 
+// sameUserTaskKeySet compares task keys without regard to order and rejects duplicate keys in
+// either collection.
 func sameUserTaskKeySet(got, want []string) bool {
 	if len(got) != len(want) {
 		return false

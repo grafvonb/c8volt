@@ -25,15 +25,23 @@ type Service struct {
 	log *slog.Logger
 }
 
+// ClientCamunda returns the configured Camunda client used by the user-task adapter.
 func (s *Service) ClientCamunda() GenUserTaskClientCamunda { return s.cc }
+
+// ClientTasklist returns the optional Tasklist client used for legacy task lookup fallback.
 func (s *Service) ClientTasklist() GenUserTaskClientTasklist {
 	return s.ct
 }
+
+// Config returns the configuration used by the user-task service.
 func (s *Service) Config() *config.Config { return s.cfg }
-func (s *Service) Logger() *slog.Logger   { return s.log }
+
+// Logger returns the logger used by the user-task service.
+func (s *Service) Logger() *slog.Logger { return s.log }
 
 type Option func(*Service)
 
+// WithClientCamunda replaces the generated Camunda client when a non-nil override is supplied.
 func WithClientCamunda(c GenUserTaskClientCamunda) Option {
 	return func(s *Service) {
 		if c != nil {
@@ -51,6 +59,7 @@ func WithClientTasklist(c GenUserTaskClientTasklist) Option {
 	}
 }
 
+// WithLogger replaces the service logger when a non-nil override is supplied.
 func WithLogger(logger *slog.Logger) Option {
 	return func(s *Service) {
 		if logger != nil {
@@ -59,6 +68,8 @@ func WithLogger(logger *slog.Logger) Option {
 	}
 }
 
+// New creates the Camunda 8.9 user-task adapter with an optional Tasklist fallback and applies
+// dependency overrides.
 func New(cfg *config.Config, httpClient *http.Client, log *slog.Logger, opts ...Option) (*Service, error) {
 	deps, err := common.PrepareServiceDeps(cfg, httpClient, log)
 	if err != nil {
@@ -147,6 +158,8 @@ func nativeUserTaskNotFound(key string) error {
 	return fmt.Errorf("%w: native user task %s", d.ErrNotFound, key)
 }
 
+// searchPrimaryUserTask looks up a task through the tenant-filtered Camunda search and rejects
+// missing, duplicate, or incomplete results.
 func (s *Service) searchPrimaryUserTask(ctx context.Context, key string) (d.UserTask, error) {
 	s.log.Debug(fmt.Sprintf("searching user task %s", key))
 	body, err := searchUserTaskRequest(common.EffectiveTenant(s.cfg), key)
@@ -229,6 +242,8 @@ func requireSingleUserTask(items []camundav89.UserTaskResult, key string) (d.Use
 	}
 }
 
+// newStringEqFilterPtr builds a generated equality filter, omitting it when the supplied value is
+// empty.
 func newStringEqFilterPtr(v string) (*camundav89.StringFilterProperty, error) {
 	if v == "" {
 		return nil, nil

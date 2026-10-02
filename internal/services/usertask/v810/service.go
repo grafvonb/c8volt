@@ -23,12 +23,18 @@ type Service struct {
 	log *slog.Logger
 }
 
+// ClientCamunda returns the configured Camunda client used by the user-task adapter.
 func (s *Service) ClientCamunda() GenUserTaskClientCamunda { return s.cc }
-func (s *Service) Config() *config.Config                  { return s.cfg }
-func (s *Service) Logger() *slog.Logger                    { return s.log }
+
+// Config returns the configuration used by the user-task service.
+func (s *Service) Config() *config.Config { return s.cfg }
+
+// Logger returns the logger used by the user-task service.
+func (s *Service) Logger() *slog.Logger { return s.log }
 
 type Option func(*Service)
 
+// WithClientCamunda replaces the generated Camunda client when a non-nil override is supplied.
 func WithClientCamunda(c GenUserTaskClientCamunda) Option {
 	return func(s *Service) {
 		if c != nil {
@@ -37,6 +43,7 @@ func WithClientCamunda(c GenUserTaskClientCamunda) Option {
 	}
 }
 
+// WithLogger replaces the service logger when a non-nil override is supplied.
 func WithLogger(logger *slog.Logger) Option {
 	return func(s *Service) {
 		if logger != nil {
@@ -45,6 +52,8 @@ func WithLogger(logger *slog.Logger) Option {
 	}
 }
 
+// New creates the Camunda 8.10 user-task adapter, applies dependency overrides, and validates the
+// configured client.
 func New(cfg *config.Config, httpClient *http.Client, log *slog.Logger, opts ...Option) (*Service, error) {
 	deps, err := common.PrepareServiceDeps(cfg, httpClient, log)
 	if err != nil {
@@ -126,6 +135,7 @@ func (s *Service) GetNativeUserTask(ctx context.Context, key string, opts ...ser
 	return task, nil
 }
 
+// userTaskNotFound classifies a missing or tenant-invisible task as a domain not-found error.
 func userTaskNotFound(key string) error {
 	return fmt.Errorf("%w: user task %s was not found or is not visible to the configured tenant", d.ErrNotFound, key)
 }

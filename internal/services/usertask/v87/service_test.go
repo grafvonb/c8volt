@@ -17,6 +17,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestService_GetUserTask_ReturnsExplicitUnsupportedError verifies that Camunda 8.7 task lookup
+// returns no task and explains the minimum supported version.
 func TestService_GetUserTask_ReturnsExplicitUnsupportedError(t *testing.T) {
 	svc, err := v87.New(
 		&config.Config{

@@ -54,6 +54,8 @@ type stubTaskAPI struct {
 	executeUserTaskVariableUpdates          func(context.Context, task.UserTaskVariableUpdatePlan, int, ...options.FacadeOption) (task.UserTaskVariableUpdateResults, error)
 }
 
+// PlanUserTaskVariableUpdates delegates update planning to the configured command-test callback
+// and rejects unexpected calls.
 func (s stubTaskAPI) PlanUserTaskVariableUpdates(ctx context.Context, keys types.Keys, variables map[string]any, opts ...options.FacadeOption) (task.UserTaskVariableUpdatePlan, error) {
 	if s.planUserTaskVariableUpdates == nil {
 		panic("unexpected call")
@@ -61,6 +63,8 @@ func (s stubTaskAPI) PlanUserTaskVariableUpdates(ctx context.Context, keys types
 	return s.planUserTaskVariableUpdates(ctx, keys, variables, opts...)
 }
 
+// ExecuteUserTaskVariableUpdates delegates frozen-plan execution to the configured command-test
+// callback and rejects unexpected calls.
 func (s stubTaskAPI) ExecuteUserTaskVariableUpdates(ctx context.Context, plan task.UserTaskVariableUpdatePlan, wantedWorkers int, opts ...options.FacadeOption) (task.UserTaskVariableUpdateResults, error) {
 	if s.executeUserTaskVariableUpdates == nil {
 		panic("unexpected call")
@@ -116,6 +120,8 @@ func (s stubTaskAPI) EnrichUserTasksWithVariables(ctx context.Context, tasks tas
 	return s.enrichUserTasksWithVariables(ctx, tasks, opts...)
 }
 
+// ResolveProcessInstanceKeyFromUserTask delegates single-task resolution to the configured
+// command-test callback and rejects unexpected calls.
 func (s stubTaskAPI) ResolveProcessInstanceKeyFromUserTask(ctx context.Context, taskKey string, opts ...options.FacadeOption) (string, error) {
 	if s.resolveProcessInstanceKeyFromUserTask == nil {
 		panic("unexpected call")
@@ -123,6 +129,8 @@ func (s stubTaskAPI) ResolveProcessInstanceKeyFromUserTask(ctx context.Context, 
 	return s.resolveProcessInstanceKeyFromUserTask(ctx, taskKey, opts...)
 }
 
+// ResolveProcessInstanceKeysFromUserTasks uses the configured bulk resolver or falls back to
+// ordered single-task lookups, stopping on the first error.
 func (s stubTaskAPI) ResolveProcessInstanceKeysFromUserTasks(ctx context.Context, taskKeys types.Keys, opts ...options.FacadeOption) (types.Keys, error) {
 	if s.resolveProcessInstanceKeysFromUserTasks != nil {
 		return s.resolveProcessInstanceKeysFromUserTasks(ctx, taskKeys, opts...)

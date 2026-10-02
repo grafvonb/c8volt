@@ -105,6 +105,8 @@ Use --dry-run to inspect changes without mutation, or --auto-confirm for unatten
 	},
 }
 
+// init registers user-task update flags and declares mutation, automation, and output
+// capabilities.
 func init() {
 	updateCmd.AddCommand(updateUserTaskCmd)
 

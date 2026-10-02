@@ -17,6 +17,8 @@ import (
 	"github.com/grafvonb/c8volt/toolx"
 )
 
+// New selects the user-task adapter for the configured Camunda version and rejects unknown
+// versions.
 func New(cfg *config.Config, httpClient *http.Client, log *slog.Logger) (API, error) {
 	v := cfg.App.CamundaVersion
 	switch v {

@@ -26,6 +26,8 @@ type client struct {
 	log       *slog.Logger
 }
 
+// New creates a task facade for reads and process-instance resolution; variable updates require
+// NewWithVariableUpdates.
 func New(pdApi pdsvc.API, piApi pisvc.API, utApi utsvc.API, log *slog.Logger) API {
 	return NewWithVariableUpdates(pdApi, piApi, utApi, nil, log)
 }

@@ -30,6 +30,8 @@ type facadeVariableUpdateAPI struct {
 	executeCfg       *services.CallCfg
 }
 
+// PlanUserTaskVariableUpdates records planning inputs and call options before returning the
+// configured plan or error.
 func (a *facadeVariableUpdateAPI) PlanUserTaskVariableUpdates(_ context.Context, keys typex.Keys, variables map[string]any, opts ...services.CallOption) (d.UserTaskVariableUpdatePlan, error) {
 	a.plannedKeys = append(typex.Keys(nil), keys...)
 	a.plannedVariables = variables
@@ -37,6 +39,8 @@ func (a *facadeVariableUpdateAPI) PlanUserTaskVariableUpdates(_ context.Context,
 	return a.plan, a.planErr
 }
 
+// ExecuteUserTaskVariableUpdates records the frozen plan, worker count, and call options before
+// returning configured execution outcomes.
 func (a *facadeVariableUpdateAPI) ExecuteUserTaskVariableUpdates(_ context.Context, plan d.UserTaskVariableUpdatePlan, wantedWorkers int, opts ...services.CallOption) (d.UserTaskVariableUpdateResults, error) {
 	a.executedPlan = plan
 	a.wantedWorkers = wantedWorkers

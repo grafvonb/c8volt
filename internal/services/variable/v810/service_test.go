@@ -24,6 +24,8 @@ type mockVariableClient struct {
 	createElementInstanceVariablesResponse func(context.Context, camundav810.ElementInstanceKey, camundav810.CreateElementInstanceVariablesJSONRequestBody, ...camundav810.RequestEditorFn) (*camundav810.CreateElementInstanceVariablesResponse, error)
 }
 
+// SearchVariablesWithResponse delegates variable discovery to the configured test callback and
+// panics on an unexpected read.
 func (m *mockVariableClient) SearchVariablesWithResponse(ctx context.Context, params *camundav810.SearchVariablesParams, body camundav810.SearchVariablesJSONRequestBody, reqEditors ...camundav810.RequestEditorFn) (*camundav810.SearchVariablesResponse, error) {
 	if m.searchVariablesWithResponse == nil {
 		panic("unexpected SearchVariablesWithResponse call")
@@ -31,6 +33,8 @@ func (m *mockVariableClient) SearchVariablesWithResponse(ctx context.Context, pa
 	return m.searchVariablesWithResponse(ctx, params, body, reqEditors...)
 }
 
+// CreateElementInstanceVariablesWithResponse delegates scope writes to the configured test
+// callback and panics on an unexpected mutation.
 func (m *mockVariableClient) CreateElementInstanceVariablesWithResponse(ctx context.Context, elementInstanceKey camundav810.ElementInstanceKey, body camundav810.CreateElementInstanceVariablesJSONRequestBody, reqEditors ...camundav810.RequestEditorFn) (*camundav810.CreateElementInstanceVariablesResponse, error) {
 	if m.createElementInstanceVariablesResponse == nil {
 		panic("unexpected CreateElementInstanceVariablesWithResponse call")

@@ -35,6 +35,7 @@ func (m *mockUserTaskCamundaClient) GetUserTaskWithResponse(ctx context.Context,
 	return m.getUserTaskWithResponse(ctx, key, reqEditors...)
 }
 
+// SearchUserTasksWithResponse delegates the generated task search to the configured test callback.
 func (m *mockUserTaskCamundaClient) SearchUserTasksWithResponse(ctx context.Context, body camundav89.SearchUserTasksJSONRequestBody, reqEditors ...camundav89.RequestEditorFn) (*camundav89.SearchUserTasksResponse, error) {
 	return m.searchUserTasksWithResponse(ctx, body, reqEditors...)
 }
@@ -53,6 +54,7 @@ type mockUserTaskTasklistClient struct {
 	getTaskByIdWithResponse func(context.Context, string, ...tasklistv89.RequestEditorFn) (*tasklistv89.GetTaskByIdResponse, error)
 }
 
+// GetTaskByIdWithResponse delegates the legacy Tasklist lookup to the configured test callback.
 func (m *mockUserTaskTasklistClient) GetTaskByIdWithResponse(ctx context.Context, body string, reqEditors ...tasklistv89.RequestEditorFn) (*tasklistv89.GetTaskByIdResponse, error) {
 	return m.getTaskByIdWithResponse(ctx, body, reqEditors...)
 }
@@ -366,11 +368,15 @@ func TestService_GetUserTask_RejectsMissingProcessInstanceKey(t *testing.T) {
 	require.Contains(t, err.Error(), "user task 2251799815391233 has no process instance key")
 }
 
+// newTestService creates a test service with the supplied Camunda client and no injected Tasklist
+// fallback.
 func newTestService(t *testing.T, camundaClient *mockUserTaskCamundaClient, tenantID ...string) *v89.Service {
 	t.Helper()
 	return newTestServiceWithTasklist(t, camundaClient, nil, tenantID...)
 }
 
+// newTestServiceWithTasklist creates a quiet service with injected Camunda and optional Tasklist
+// clients and an optional tenant override.
 func newTestServiceWithTasklist(t *testing.T, camundaClient *mockUserTaskCamundaClient, tasklistClient *mockUserTaskTasklistClient, tenantID ...string) *v89.Service {
 	t.Helper()
 
@@ -392,6 +398,8 @@ func newTestServiceWithTasklist(t *testing.T, camundaClient *mockUserTaskCamunda
 	return svc
 }
 
+// requireUserTaskSearchBody checks the serialized task-key filter and requires the tenant filter
+// only when a tenant is supplied.
 func requireUserTaskSearchBody(t *testing.T, body camundav89.SearchUserTasksJSONRequestBody, taskKey, tenantID string) {
 	t.Helper()
 	raw, err := json.Marshal(body)
@@ -404,6 +412,7 @@ func requireUserTaskSearchBody(t *testing.T, body camundav89.SearchUserTasksJSON
 	require.Contains(t, string(raw), fmt.Sprintf(`"tenantId":"%s"`, tenantID))
 }
 
+// testConfig provides a Camunda base URL for constructing services with injected test clients.
 func testConfig() *config.Config {
 	return &config.Config{
 		APIs: config.APIs{
@@ -414,6 +423,8 @@ func testConfig() *config.Config {
 	}
 }
 
+// newHTTPResponse builds response status and request metadata for adapter tests and panics on an
+// invalid fixture URL.
 func newHTTPResponse(method, rawURL string, statusCode int, status string) *http.Response {
 	u, err := url.Parse(rawURL)
 	if err != nil {
@@ -429,6 +440,7 @@ func newHTTPResponse(method, rawURL string, statusCode int, status string) *http
 	}
 }
 
+// ptr returns a pointer to a fixture value for optional generated API fields.
 func ptr[T any](v T) *T {
 	return &v
 }
