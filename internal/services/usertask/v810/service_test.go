@@ -24,6 +24,7 @@ type mockUserTaskClient struct {
 	searchUserTaskEffectiveVariablesWithResponse func(context.Context, camundav810.UserTaskKey, *camundav810.SearchUserTaskEffectiveVariablesParams, camundav810.SearchUserTaskEffectiveVariablesJSONRequestBody, ...camundav810.RequestEditorFn) (*camundav810.SearchUserTaskEffectiveVariablesResponse, error)
 }
 
+// GetUserTaskWithResponse delegates the generated task lookup to the configured test callback.
 func (m *mockUserTaskClient) GetUserTaskWithResponse(ctx context.Context, key camundav810.UserTaskKey, reqEditors ...camundav810.RequestEditorFn) (*camundav810.GetUserTaskResponse, error) {
 	return m.getUserTaskWithResponse(ctx, key, reqEditors...)
 }
@@ -175,6 +176,8 @@ func TestService_GetUserTask_RejectsMissingProcessInstanceKey(t *testing.T) {
 	require.Contains(t, err.Error(), "user task 2251799815391233 has no process instance key")
 }
 
+// newTestService creates a quiet service with an injected Camunda client and an optional tenant
+// override.
 func newTestService(t *testing.T, client *mockUserTaskClient, tenantID ...string) *v810.Service {
 	t.Helper()
 
@@ -192,6 +195,7 @@ func newTestService(t *testing.T, client *mockUserTaskClient, tenantID ...string
 	return svc
 }
 
+// testConfig provides a Camunda base URL for constructing services with injected test clients.
 func testConfig() *config.Config {
 	return &config.Config{
 		APIs: config.APIs{
@@ -202,6 +206,8 @@ func testConfig() *config.Config {
 	}
 }
 
+// newHTTPResponse builds response status and request metadata for adapter tests and panics on an
+// invalid fixture URL.
 func newHTTPResponse(method, rawURL string, statusCode int, status string) *http.Response {
 	u, err := url.Parse(rawURL)
 	if err != nil {

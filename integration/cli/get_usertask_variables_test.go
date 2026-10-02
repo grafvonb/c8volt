@@ -456,6 +456,8 @@ func checkUserTaskVariableCommand(t *testing.T, profile integrationProfile, name
 	})
 }
 
+// assertUserTaskVariableDisplay checks that variable enrichment preserves task selection and
+// complete JSON values while human output applies the display limit.
 func assertUserTaskVariableDisplay(t *testing.T, profile integrationProfile, seed userTaskVariableSeed, localShadow bool, records *[]evidenceRecord) {
 	t.Helper()
 	args := []string{"get", "ut", "--pi-key", seed.ProcessInstance.Key}

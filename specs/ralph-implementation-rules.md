@@ -467,9 +467,11 @@ These rules are mandatory for CLI and ops workflow work. They capture the comman
 
 ## Ralph Iteration Discipline
 
+- Follow [Task Planning For Ralph](../AGENTS.md#task-planning-for-ralph) when creating or revising work units; keep implementation and its relevant validation together.
 - Start by reading the active feature's `tasks.md`, `plan.md`, `spec.md`, and `progress.md`.
 - If present, also read `research.md`, `data-model.md`, `quickstart.md`, and `contracts/`.
 - Identify the first incomplete work unit and implement only that unit.
+- A task count is not an iteration target. A work unit may include a coherent group of tasks within the permitted story scope when practical; do not stop merely because one checkbox is complete.
 - Before adding code, inspect nearby implementation and tests in the package that should own the behavior.
 - Before adding helpers, search `toolx`, `internal/services/common`, the current area package, and `testx`.
 - Before validation, inventory declarations added to touched command files and apply the command mode split gate from "File Organization And Naming Rules".

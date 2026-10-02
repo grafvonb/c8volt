@@ -4,6 +4,9 @@
 package task
 
 import (
+	"slices"
+
+	options "github.com/grafvonb/c8volt/c8volt/foptions"
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/toolx"
 )
@@ -25,6 +28,205 @@ func fromDomainUserTask(x d.UserTask) UserTask {
 		ProcessDefinitionVersion: x.ProcessDefinitionVersion,
 		TenantId:                 x.TenantId,
 	}
+}
+
+// copyUserTaskVariableValue recursively copies JSON maps and arrays so mutable values do not cross
+// the facade boundary by reference.
+func copyUserTaskVariableValue(value any) any {
+	switch value := value.(type) {
+	case map[string]any:
+		return copyUserTaskVariableMap(value)
+	case []any:
+		out := make([]any, len(value))
+		for i := range value {
+			out[i] = copyUserTaskVariableValue(value[i])
+		}
+		return out
+	default:
+		return value
+	}
+}
+
+// copyUserTaskVariableMap copies each variable value into an independently owned map while
+// preserving a nil input.
+func copyUserTaskVariableMap(values map[string]any) map[string]any {
+	if values == nil {
+		return nil
+	}
+	out := make(map[string]any, len(values))
+	for name, value := range values {
+		out[name] = copyUserTaskVariableValue(value)
+	}
+	return out
+}
+
+// fromDomainUserTaskVariablePlannedValue maps a planned value into the public model, copying
+// nested data and retaining scope and truncation evidence.
+func fromDomainUserTaskVariablePlannedValue(x d.UserTaskVariablePlannedValue) UserTaskVariablePlannedValue {
+	return UserTaskVariablePlannedValue{
+		Name: x.Name, ScopeKey: x.ScopeKey, Inherited: x.Inherited,
+		Value: copyUserTaskVariableValue(x.Value), APITruncated: x.APITruncated,
+	}
+}
+
+// toDomainUserTaskVariablePlannedValue maps a public planned value into the domain model without
+// sharing nested variable data.
+func toDomainUserTaskVariablePlannedValue(x UserTaskVariablePlannedValue) d.UserTaskVariablePlannedValue {
+	return d.UserTaskVariablePlannedValue{
+		Name: x.Name, ScopeKey: x.ScopeKey, Inherited: x.Inherited,
+		Value: copyUserTaskVariableValue(x.Value), APITruncated: x.APITruncated,
+	}
+}
+
+// fromDomainUserTaskVariablePlannedChange copies the before and after values into the public model
+// while retaining the planned scope and truncation evidence.
+func fromDomainUserTaskVariablePlannedChange(x d.UserTaskVariablePlannedChange) UserTaskVariablePlannedChange {
+	return UserTaskVariablePlannedChange{
+		Name: x.Name, ScopeKey: x.ScopeKey, Inherited: x.Inherited,
+		Before: copyUserTaskVariableValue(x.Before), After: copyUserTaskVariableValue(x.After), APITruncated: x.APITruncated,
+	}
+}
+
+// toDomainUserTaskVariablePlannedChange copies a public change into the domain model while
+// preserving its before and after values and target scope.
+func toDomainUserTaskVariablePlannedChange(x UserTaskVariablePlannedChange) d.UserTaskVariablePlannedChange {
+	return d.UserTaskVariablePlannedChange{
+		Name: x.Name, ScopeKey: x.ScopeKey, Inherited: x.Inherited,
+		Before: copyUserTaskVariableValue(x.Before), After: copyUserTaskVariableValue(x.After), APITruncated: x.APITruncated,
+	}
+}
+
+// fromDomainScopeVariableUpdateAssociation maps a shared scope association into the public model
+// with an independent variable-name slice.
+func fromDomainScopeVariableUpdateAssociation(x d.ScopeVariableUpdateAssociation) ScopeVariableUpdateAssociation {
+	return ScopeVariableUpdateAssociation{UserTaskKey: x.UserTaskKey, Names: slices.Clone(x.Names)}
+}
+
+// toDomainScopeVariableUpdateAssociation maps a public task association into the domain model with
+// an independent variable-name slice.
+func toDomainScopeVariableUpdateAssociation(x ScopeVariableUpdateAssociation) d.ScopeVariableUpdateAssociation {
+	return d.ScopeVariableUpdateAssociation{UserTaskKey: x.UserTaskKey, Names: slices.Clone(x.Names)}
+}
+
+// fromDomainScopeVariableUpdateTarget copies a planned scope payload and its task associations
+// into the public model.
+func fromDomainScopeVariableUpdateTarget(x d.ScopeVariableUpdateTarget) ScopeVariableUpdateTarget {
+	return ScopeVariableUpdateTarget{
+		ScopeKey: x.ScopeKey, TenantId: x.TenantId, Variables: copyUserTaskVariableMap(x.Variables),
+		Associations: toolx.MapSlice(x.Associations, fromDomainScopeVariableUpdateAssociation),
+	}
+}
+
+// toDomainScopeVariableUpdateTarget copies a public scope payload and its task associations into
+// the domain model without changing the target.
+func toDomainScopeVariableUpdateTarget(x ScopeVariableUpdateTarget) d.ScopeVariableUpdateTarget {
+	return d.ScopeVariableUpdateTarget{
+		ScopeKey: x.ScopeKey, TenantId: x.TenantId, Variables: copyUserTaskVariableMap(x.Variables),
+		Associations: toolx.MapSlice(x.Associations, toDomainScopeVariableUpdateAssociation),
+	}
+}
+
+// fromDomainUserTaskVariablePlan maps one task plan into the public model, copying each variable
+// category and the target scope keys.
+func fromDomainUserTaskVariablePlan(x d.UserTaskVariablePlan) UserTaskVariablePlan {
+	return UserTaskVariablePlan{
+		UserTaskKey: x.UserTaskKey, ElementInstanceKey: x.ElementInstanceKey, TenantId: x.TenantId,
+		Additions:          toolx.MapSlice(x.Additions, fromDomainUserTaskVariablePlannedValue),
+		Changes:            toolx.MapSlice(x.Changes, fromDomainUserTaskVariablePlannedChange),
+		UnchangedRequested: toolx.MapSlice(x.UnchangedRequested, fromDomainUserTaskVariablePlannedValue),
+		Untouched:          toolx.MapSlice(x.Untouched, fromDomainUserTaskVariablePlannedValue),
+		TargetScopeKeys:    slices.Clone(x.TargetScopeKeys),
+	}
+}
+
+// toDomainUserTaskVariablePlan copies one public task plan into the domain model while preserving
+// its variable categories and target scopes.
+func toDomainUserTaskVariablePlan(x UserTaskVariablePlan) d.UserTaskVariablePlan {
+	return d.UserTaskVariablePlan{
+		UserTaskKey: x.UserTaskKey, ElementInstanceKey: x.ElementInstanceKey, TenantId: x.TenantId,
+		Additions:          toolx.MapSlice(x.Additions, toDomainUserTaskVariablePlannedValue),
+		Changes:            toolx.MapSlice(x.Changes, toDomainUserTaskVariablePlannedChange),
+		UnchangedRequested: toolx.MapSlice(x.UnchangedRequested, toDomainUserTaskVariablePlannedValue),
+		Untouched:          toolx.MapSlice(x.Untouched, toDomainUserTaskVariablePlannedValue),
+		TargetScopeKeys:    slices.Clone(x.TargetScopeKeys),
+	}
+}
+
+// fromDomainTenantContext maps resolved tenant evidence into the public options model, copying
+// tenant IDs and warnings.
+func fromDomainTenantContext(x d.TenantContext) options.TenantContext {
+	return options.TenantContext{
+		Mode: options.TenantContextMode(x.Mode), Filter: options.TenantContextFilter(x.Filter),
+		ConfiguredTenantID: x.ConfiguredTenantID, TargetTenantID: x.TargetTenantID,
+		ResolvedTenantIDs: slices.Clone(x.ResolvedTenantIDs), UnknownTargetCount: x.UnknownTargetCount,
+		CrossTenant: x.CrossTenant,
+		Warnings: toolx.MapSlice(x.Warnings, func(w d.TenantContextWarning) options.TenantContextWarning {
+			return options.TenantContextWarning{Code: options.TenantContextWarningCode(w.Code), Message: w.Message}
+		}),
+	}
+}
+
+// toDomainTenantContext maps public tenant evidence back into the domain model, copying tenant IDs
+// and warnings.
+func toDomainTenantContext(x options.TenantContext) d.TenantContext {
+	return d.TenantContext{
+		Mode: d.TenantContextMode(x.Mode), Filter: d.TenantContextFilter(x.Filter),
+		ConfiguredTenantID: x.ConfiguredTenantID, TargetTenantID: x.TargetTenantID,
+		ResolvedTenantIDs: slices.Clone(x.ResolvedTenantIDs), UnknownTargetCount: x.UnknownTargetCount,
+		CrossTenant: x.CrossTenant,
+		Warnings: toolx.MapSlice(x.Warnings, func(w options.TenantContextWarning) d.TenantContextWarning {
+			return d.TenantContextWarning{Code: d.TenantContextWarningCode(w.Code), Message: w.Message}
+		}),
+	}
+}
+
+// fromDomainUserTaskVariableUpdatePlan copies the complete frozen plan into the public model while
+// preserving task order, shared targets, counts, and tenant evidence.
+func fromDomainUserTaskVariableUpdatePlan(x d.UserTaskVariableUpdatePlan) UserTaskVariableUpdatePlan {
+	return UserTaskVariableUpdatePlan{
+		RequestedKeys: slices.Clone(x.RequestedKeys), UserTasks: toolx.MapSlice(x.UserTasks, fromDomainUserTaskVariablePlan),
+		Targets: toolx.MapSlice(x.Targets, fromDomainScopeVariableUpdateTarget), RequestedCount: x.RequestedCount,
+		UpdateCount: x.UpdateCount, VariableAddCount: x.VariableAddCount, VariableChangeCount: x.VariableChangeCount,
+		VariableUnchangedCount: x.VariableUnchangedCount, VariableUntouchedCount: x.VariableUntouchedCount,
+		MutationSubmitted: x.MutationSubmitted, TenantContext: fromDomainTenantContext(x.TenantContext),
+	}
+}
+
+// toDomainUserTaskVariableUpdatePlan copies the public frozen plan back into the domain model for
+// execution without resolving new targets.
+func toDomainUserTaskVariableUpdatePlan(x UserTaskVariableUpdatePlan) d.UserTaskVariableUpdatePlan {
+	return d.UserTaskVariableUpdatePlan{
+		RequestedKeys: slices.Clone(x.RequestedKeys), UserTasks: toolx.MapSlice(x.UserTasks, toDomainUserTaskVariablePlan),
+		Targets: toolx.MapSlice(x.Targets, toDomainScopeVariableUpdateTarget), RequestedCount: x.RequestedCount,
+		UpdateCount: x.UpdateCount, VariableAddCount: x.VariableAddCount, VariableChangeCount: x.VariableChangeCount,
+		VariableUnchangedCount: x.VariableUnchangedCount, VariableUntouchedCount: x.VariableUntouchedCount,
+		MutationSubmitted: x.MutationSubmitted, TenantContext: toDomainTenantContext(x.TenantContext),
+	}
+}
+
+// fromDomainScopeVariableUpdateOutcome maps scope submission facts and errors into the public
+// model with an independent variable-name slice.
+func fromDomainScopeVariableUpdateOutcome(x d.ScopeVariableUpdateOutcome) ScopeVariableUpdateOutcome {
+	return ScopeVariableUpdateOutcome{
+		ScopeKey: x.ScopeKey, Names: slices.Clone(x.Names), Status: ScopeVariableUpdateStatus(x.Status),
+		Accepted: x.Accepted, StatusCode: x.StatusCode, Message: x.Message, Error: x.Error,
+	}
+}
+
+// fromDomainUserTaskVariableUpdateResult maps a task outcome into the public model, copying
+// variable data and preserving separate acceptance and confirmation facts.
+func fromDomainUserTaskVariableUpdateResult(x d.UserTaskVariableUpdateResult) UserTaskVariableUpdateResult {
+	return UserTaskVariableUpdateResult{
+		Key: x.Key, Status: UserTaskVariableUpdateStatus(x.Status), MutationAccepted: x.MutationAccepted,
+		ConfirmationStatus: x.ConfirmationStatus, Message: x.Message, Error: x.Error,
+		Variables: copyUserTaskVariableMap(x.Variables), Scopes: toolx.MapSlice(x.Scopes, fromDomainScopeVariableUpdateOutcome),
+	}
+}
+
+// fromDomainUserTaskVariableUpdateResults maps task outcomes into the public collection in
+// service-provided order, retaining partial failures.
+func fromDomainUserTaskVariableUpdateResults(x d.UserTaskVariableUpdateResults) UserTaskVariableUpdateResults {
+	return UserTaskVariableUpdateResults{Items: toolx.MapSlice(x.Items, fromDomainUserTaskVariableUpdateResult)}
 }
 
 // toDomainUserTask maps a selected public task into an independently owned

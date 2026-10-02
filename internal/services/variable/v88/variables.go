@@ -116,4 +116,47 @@ func (s *Service) UpdateProcessInstanceVariables(ctx context.Context, key string
 	return result, nil
 }
 
+// UpdateScopeVariables writes variables strictly to the requested element scope without confirmation reads.
+func (s *Service) UpdateScopeVariables(ctx context.Context, scopeKey string, variables map[string]any, opts ...services.CallOption) (d.ScopeVariableUpdateResponse, error) {
+	_ = services.ApplyCallOptions(opts)
+	result := d.ScopeVariableUpdateResponse{ScopeKey: scopeKey}
+	if strings.TrimSpace(scopeKey) == "" {
+		return result, fmt.Errorf("%w: scope key must not be blank", d.ErrValidation)
+	}
+	if len(variables) == 0 {
+		return result, fmt.Errorf("%w: scope variables must not be empty", d.ErrValidation)
+	}
+	if _, err := common.NewScopeKeyEqFilterPtr(scopeKey); err != nil {
+		return result, err
+	}
+	local := true
+	body := camundav88.CreateElementInstanceVariablesJSONRequestBody{
+		Local:     &local,
+		Variables: variables,
+	}
+	resp, err := services.RetryCamundaMutation(ctx, s.log, "update scope variables", func(ctx context.Context) (*camundav88.CreateElementInstanceVariablesResponse, *http.Response, []byte, error) {
+		resp, err := s.cc.CreateElementInstanceVariablesWithResponse(ctx, camundav88.ElementInstanceKey(scopeKey), body)
+		if resp == nil {
+			return resp, nil, nil, err
+		}
+		return resp, resp.HTTPResponse, resp.Body, err
+	})
+	if err != nil {
+		return result, err
+	}
+	if resp == nil {
+		return result, fmt.Errorf("%w: empty scope variable update response", d.ErrMalformedResponse)
+	}
+	result.StatusCode = resp.StatusCode()
+	result.Status = resp.Status()
+	if err := httpc.HttpStatusErr(resp.HTTPResponse, resp.Body); err != nil {
+		return result, err
+	}
+	result.Accepted = true
+	if result.Status == "" {
+		result.Status = http.StatusText(result.StatusCode)
+	}
+	return result, nil
+}
+
 var _ waiter.VariableWaiter = (*Service)(nil)

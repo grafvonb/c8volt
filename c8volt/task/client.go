@@ -5,10 +5,12 @@ package task
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 
 	ferr "github.com/grafvonb/c8volt/c8volt/ferrors"
 	options "github.com/grafvonb/c8volt/c8volt/foptions"
+	d "github.com/grafvonb/c8volt/internal/domain"
 	pdsvc "github.com/grafvonb/c8volt/internal/services/processdefinition"
 	pisvc "github.com/grafvonb/c8volt/internal/services/processinstance"
 	utsvc "github.com/grafvonb/c8volt/internal/services/usertask"
@@ -17,18 +19,28 @@ import (
 )
 
 type client struct {
-	pdApi pdsvc.API
-	piApi pisvc.API
-	utApi utsvc.API
-	log   *slog.Logger
+	pdApi     pdsvc.API
+	piApi     pisvc.API
+	utApi     utsvc.API
+	updateApi utsvc.VariableUpdateAPI
+	log       *slog.Logger
 }
 
+// New creates a task facade for reads and process-instance resolution; variable updates require
+// NewWithVariableUpdates.
 func New(pdApi pdsvc.API, piApi pisvc.API, utApi utsvc.API, log *slog.Logger) API {
+	return NewWithVariableUpdates(pdApi, piApi, utApi, nil, log)
+}
+
+// NewWithVariableUpdates creates a task facade with the composed variable
+// update workflow while preserving New for read-only consumers.
+func NewWithVariableUpdates(pdApi pdsvc.API, piApi pisvc.API, utApi utsvc.API, updateApi utsvc.VariableUpdateAPI, log *slog.Logger) API {
 	return &client{
-		pdApi: pdApi,
-		piApi: piApi,
-		utApi: utApi,
-		log:   log,
+		pdApi:     pdApi,
+		piApi:     piApi,
+		utApi:     utApi,
+		updateApi: updateApi,
+		log:       log,
 	}
 }
 
@@ -107,4 +119,31 @@ func (c *client) ResolveProcessInstanceKeysFromUserTasks(ctx context.Context, ta
 		return nil, ferr.FromDomain(err)
 	}
 	return keys, nil
+}
+
+// PlanUserTaskVariableUpdates delegates complete discovery and planning to the
+// composed service and copies all mutable values across the public boundary.
+func (c *client) PlanUserTaskVariableUpdates(ctx context.Context, keys types.Keys, variables map[string]any, opts ...options.FacadeOption) (UserTaskVariableUpdatePlan, error) {
+	if c.updateApi == nil {
+		return UserTaskVariableUpdatePlan{}, ferr.FromDomain(fmt.Errorf("%w: user-task variable planning requires a variable update service", d.ErrPrecondition))
+	}
+	got, err := c.updateApi.PlanUserTaskVariableUpdates(ctx, append(types.Keys(nil), keys...), copyUserTaskVariableMap(variables), options.MapFacadeOptionsToCallOptions(opts)...)
+	if err != nil {
+		return UserTaskVariableUpdatePlan{}, ferr.FromDomain(err)
+	}
+	return fromDomainUserTaskVariableUpdatePlan(got), nil
+}
+
+// ExecuteUserTaskVariableUpdates submits the caller's frozen plan through the
+// composed service and preserves partial results alongside normalized errors.
+func (c *client) ExecuteUserTaskVariableUpdates(ctx context.Context, plan UserTaskVariableUpdatePlan, wantedWorkers int, opts ...options.FacadeOption) (UserTaskVariableUpdateResults, error) {
+	if c.updateApi == nil {
+		return UserTaskVariableUpdateResults{}, ferr.FromDomain(fmt.Errorf("%w: user-task variable execution requires a variable update service", d.ErrPrecondition))
+	}
+	got, err := c.updateApi.ExecuteUserTaskVariableUpdates(ctx, toDomainUserTaskVariableUpdatePlan(plan), wantedWorkers, options.MapFacadeOptionsToCallOptions(opts)...)
+	out := fromDomainUserTaskVariableUpdateResults(got)
+	if err != nil {
+		return out, ferr.FromDomain(err)
+	}
+	return out, nil
 }

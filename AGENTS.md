@@ -109,6 +109,21 @@
 - For generated Camunda clients, prefer updating the OpenAPI mutation or refresh workflow under `api/` and regenerating clients.
 - Speckit memory under `.speckit/memory` and feature artifacts under `specs/` are project context and should be preserved.
 
+## Task Planning For Ralph
+
+- Apply these rules when creating or revising feature plans and `tasks.md`, before Ralph starts.
+- Treat each implementation task as a cohesive work unit that leaves the project compiling and passes relevant checks.
+- Include implementation, necessary fixtures, tests, formatting, and targeted validation in the same task.
+- Treat context reading, branch checks, routine review, and progress tracking as work-unit responsibilities, not standalone tasks.
+- Keep interface changes, affected implementations, and required test-double updates together when separating them would break compilation.
+- Build shared behavior once. Do not implement a single-item workflow and later rebuild it for collection input when both are already required.
+- Use user stories for acceptance coverage; avoid story boundaries that require repeated changes to the same underlying behavior. Respect Ralph's permitted story scope when grouping work for execution.
+- Split tasks only when each part has a distinct, independently verifiable result or when the combined work would exceed a practical iteration. Do not consolidate tasks into oversized units merely to reduce the count.
+- Do not create tasks solely to enable hypothetical parallel execution.
+- Before finalizing `tasks.md`, review adjacent tasks for consolidation and explain any deliberate separation of tightly coupled work.
+- Preserve all requirements and meaningful tests when consolidating. Fewer tasks must not mean reduced coverage.
+- For a feature extending existing command patterns, more than ten tasks triggers a consolidation review, not an automatic rejection or request for approval.
+
 ## Git And Commit Rules
 - Reuse existing issue or feature branches when they already exist.
 - For GitHub issue-backed Spec Kit work, the GitHub issue number is authoritative for the `specs/<number>-<slug>/` prefix and feature branch label. This overrides `.specify/extensions/git/git-config.yml` `branch_numbering: sequential`; pass the issue number explicitly with `--number <issue>` or correct the generated folder and references before planning or implementation continues.
@@ -120,5 +135,5 @@
 
 ## Active Speckit Plan
 <!-- SPECKIT START -->
-- Active Speckit implementation plan: `specs/309-user-task-variables/plan.md`
+- Active Speckit implementation plan: `specs/326-update-user-task-vars/plan.md`
 <!-- SPECKIT END -->

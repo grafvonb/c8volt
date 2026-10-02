@@ -134,6 +134,8 @@ Use --json for one collection envelope or --keys-only for one task key per line.
 	},
 }
 
+// init registers user-task discovery and display flags and declares command output and automation
+// capabilities.
 func init() {
 	getCmd.AddCommand(getUserTaskCmd)
 

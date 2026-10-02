@@ -20,10 +20,14 @@ type stubVariableWaiter struct {
 	search func(context.Context, string, ...services.CallOption) ([]d.ProcessInstanceVariable, error)
 }
 
+// SearchProcessInstanceVariables delegates variable reads to the test callback so confirmation
+// attempts can return changing observations.
 func (s stubVariableWaiter) SearchProcessInstanceVariables(ctx context.Context, key string, opts ...services.CallOption) ([]d.ProcessInstanceVariable, error) {
 	return s.search(ctx, key, opts...)
 }
 
+// TestWaitForProcessInstanceVariables_WaitsUntilRequestedValuesAreVisible verifies that
+// confirmation retries a stale value and completes once the requested value is observed.
 func TestWaitForProcessInstanceVariables_WaitsUntilRequestedValuesAreVisible(t *testing.T) {
 	t.Parallel()
 
@@ -53,6 +57,8 @@ func TestWaitForProcessInstanceVariables_WaitsUntilRequestedValuesAreVisible(t *
 	require.Equal(t, int32(2), attempts.Load())
 }
 
+// TestMissingRequestedVariables_NormalizedJSONAndScopeFiltering verifies that normalized JSON
+// values match and observations at other scopes do not override the requested scope.
 func TestMissingRequestedVariables_NormalizedJSONAndScopeFiltering(t *testing.T) {
 	t.Parallel()
 

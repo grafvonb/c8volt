@@ -20,8 +20,13 @@ type Service struct {
 	log *slog.Logger
 }
 
+// Config returns the configuration used by the user-task service.
 func (s *Service) Config() *config.Config { return s.cfg }
-func (s *Service) Logger() *slog.Logger   { return s.log }
+
+// Logger returns the logger used by the user-task service.
+func (s *Service) Logger() *slog.Logger { return s.log }
+
+// GetUserTask returns an explicit unsupported error for Camunda 8.7 without issuing a request.
 func (s *Service) GetUserTask(context.Context, string, ...services.CallOption) (d.UserTask, error) {
 	return d.UserTask{}, fmt.Errorf("%w: has-user-tasks lookup is unsupported in Camunda 8.7; requires Camunda 8.8 or newer", d.ErrUnsupported)
 }
@@ -38,6 +43,7 @@ func (s *Service) SearchUserTasksPage(context.Context, d.UserTaskSearchQuery, d.
 
 type Option func(*Service)
 
+// WithLogger replaces the service logger when a non-nil override is supplied.
 func WithLogger(logger *slog.Logger) Option {
 	return func(s *Service) {
 		if logger != nil {
@@ -46,6 +52,8 @@ func WithLogger(logger *slog.Logger) Option {
 	}
 }
 
+// New prepares configuration and logging for the adapter that reports unsupported Camunda 8.7
+// user-task operations.
 func New(cfg *config.Config, httpClient *http.Client, log *slog.Logger, opts ...Option) (*Service, error) {
 	deps, err := common.PrepareServiceDeps(cfg, httpClient, log)
 	if err != nil {

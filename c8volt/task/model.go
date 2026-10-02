@@ -3,7 +3,10 @@
 
 package task
 
-import "github.com/grafvonb/c8volt/c8volt/process"
+import (
+	options "github.com/grafvonb/c8volt/c8volt/foptions"
+	"github.com/grafvonb/c8volt/c8volt/process"
+)
 
 // UserTask is the stable public representation of one native user task.
 type UserTask struct {
@@ -178,4 +181,117 @@ type SearchPagesResult struct {
 	Total      int64                       `json:"total"`
 	Pages      int32                       `json:"pages"`
 	Completion SearchCompletionDisposition `json:"completion"`
+}
+
+// UserTaskVariablePlannedValue describes an addition, unchanged request, or
+// untouched effective variable in a frozen update plan.
+type UserTaskVariablePlannedValue struct {
+	Name         string `json:"name"`
+	ScopeKey     string `json:"scopeKey"`
+	Inherited    bool   `json:"inherited"`
+	Value        any    `json:"value"`
+	APITruncated bool   `json:"apiTruncated,omitempty"`
+}
+
+// UserTaskVariablePlannedChange preserves the observed and requested values
+// at the scope selected during planning.
+type UserTaskVariablePlannedChange struct {
+	Name         string `json:"name"`
+	ScopeKey     string `json:"scopeKey"`
+	Inherited    bool   `json:"inherited"`
+	Before       any    `json:"before"`
+	After        any    `json:"after"`
+	APITruncated bool   `json:"apiTruncated,omitempty"`
+}
+
+// ScopeVariableUpdateAssociation records which names on one selected task
+// depend on a unique scope write.
+type ScopeVariableUpdateAssociation struct {
+	UserTaskKey string   `json:"userTaskKey"`
+	Names       []string `json:"names"`
+}
+
+// ScopeVariableUpdateTarget is one frozen local write grouped by scope.
+type ScopeVariableUpdateTarget struct {
+	ScopeKey     string                           `json:"scopeKey"`
+	TenantId     string                           `json:"tenantId,omitempty"`
+	Variables    map[string]any                   `json:"variables"`
+	Associations []ScopeVariableUpdateAssociation `json:"associations"`
+}
+
+// UserTaskVariablePlan classifies the effective-variable view for one task.
+type UserTaskVariablePlan struct {
+	UserTaskKey        string                          `json:"userTaskKey"`
+	ElementInstanceKey string                          `json:"elementInstanceKey"`
+	TenantId           string                          `json:"tenantId,omitempty"`
+	Additions          []UserTaskVariablePlannedValue  `json:"additions"`
+	Changes            []UserTaskVariablePlannedChange `json:"changes"`
+	UnchangedRequested []UserTaskVariablePlannedValue  `json:"unchangedRequested"`
+	Untouched          []UserTaskVariablePlannedValue  `json:"untouched"`
+	TargetScopeKeys    []string                        `json:"targetScopeKeys"`
+}
+
+// UserTaskVariableUpdatePlan is a complete frozen plan suitable for preview
+// and later execution without recomputing variable scopes.
+type UserTaskVariableUpdatePlan struct {
+	RequestedKeys          []string                    `json:"requestedKeys"`
+	UserTasks              []UserTaskVariablePlan      `json:"userTasks"`
+	Targets                []ScopeVariableUpdateTarget `json:"targets"`
+	RequestedCount         int                         `json:"requestedCount"`
+	UpdateCount            int                         `json:"updateCount"`
+	VariableAddCount       int                         `json:"variableAddCount"`
+	VariableChangeCount    int                         `json:"variableChangeCount"`
+	VariableUnchangedCount int                         `json:"variableUnchangedCount"`
+	VariableUntouchedCount int                         `json:"variableUntouchedCount"`
+	MutationSubmitted      bool                        `json:"mutationSubmitted"`
+	TenantContext          options.TenantContext       `json:"tenantContext"`
+}
+
+// ScopeVariableUpdateStatus identifies submission state for one frozen scope.
+type ScopeVariableUpdateStatus string
+
+const (
+	ScopeVariableUpdateStatusSubmitted      ScopeVariableUpdateStatus = "submitted"
+	ScopeVariableUpdateStatusMutationFailed ScopeVariableUpdateStatus = "mutation_failed"
+	ScopeVariableUpdateStatusSkipped        ScopeVariableUpdateStatus = "skipped"
+)
+
+// ScopeVariableUpdateOutcome retains submission facts for one frozen target.
+type ScopeVariableUpdateOutcome struct {
+	ScopeKey   string                    `json:"scopeKey"`
+	Names      []string                  `json:"names"`
+	Status     ScopeVariableUpdateStatus `json:"status"`
+	Accepted   bool                      `json:"accepted"`
+	StatusCode int                       `json:"statusCode,omitempty"`
+	Message    string                    `json:"message,omitempty"`
+	Error      string                    `json:"error,omitempty"`
+}
+
+// UserTaskVariableUpdateStatus names task-level execution states.
+type UserTaskVariableUpdateStatus string
+
+const (
+	UserTaskVariableUpdateStatusConfirmed          UserTaskVariableUpdateStatus = "confirmed"
+	UserTaskVariableUpdateStatusSubmitted          UserTaskVariableUpdateStatus = "submitted"
+	UserTaskVariableUpdateStatusMutationFailed     UserTaskVariableUpdateStatus = "mutation_failed"
+	UserTaskVariableUpdateStatusConfirmationFailed UserTaskVariableUpdateStatus = "confirmation_failed"
+	UserTaskVariableUpdateStatusUnchanged          UserTaskVariableUpdateStatus = "unchanged"
+	UserTaskVariableUpdateStatusSkipped            UserTaskVariableUpdateStatus = "skipped"
+)
+
+// UserTaskVariableUpdateResult retains task-level status and dependent scope outcomes.
+type UserTaskVariableUpdateResult struct {
+	Key                string                       `json:"key"`
+	Status             UserTaskVariableUpdateStatus `json:"status"`
+	MutationAccepted   bool                         `json:"mutationAccepted"`
+	ConfirmationStatus string                       `json:"confirmationStatus,omitempty"`
+	Message            string                       `json:"message,omitempty"`
+	Error              string                       `json:"error,omitempty"`
+	Variables          map[string]any               `json:"variables"`
+	Scopes             []ScopeVariableUpdateOutcome `json:"scopes,omitempty"`
+}
+
+// UserTaskVariableUpdateResults preserves unique requested task order.
+type UserTaskVariableUpdateResults struct {
+	Items []UserTaskVariableUpdateResult `json:"items,omitempty"`
 }

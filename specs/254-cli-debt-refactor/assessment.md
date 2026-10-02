@@ -9,7 +9,7 @@ Created: 2026-07-24
 
 - Reviewed `specs/ralph-implementation-rules.md` against `specs/254-cli-debt-refactor/spec.md`; no conflict found.
 - Binding ownership boundary for this feature: `cmd` owns flags, validation, prompts, render-mode selection, stdout/stderr rendering, command metadata, and help; facades map public inputs and errors; internal services own backend paging, traversal, frozen discovery, mutation planning, polling, retries, and worker execution.
-- The feature's first deliverable is a checked-in assessment. Refactor tasks must not start until the full assessment structure and all 56 command-node classifications are complete.
+- The feature's first deliverable is a checked-in assessment. Refactor tasks must not start until the full assessment structure and all 57 command-node classifications are complete.
 
 ### Basic Paging Implementations
 
@@ -110,6 +110,7 @@ Required columns: path, aliases, family, mutation, contract support, automation 
 | `update` | u | grouping mutation | state_changing | limited | unsupported | one-line | none | routes update workflows | no direct remote work | none | child commands own machine contracts | cmd owns grouping and routing | serial dispatch | low |
 | `update job` | - | basic mutation | state_changing | full | full | one-line, json | none | updates job retries, timeout, or worker outcome | shared activity through facade and HTTP context | dry-run and accepted-result summaries | JSON requires dry-run, auto-confirm, or automation and must stay one document | cmd owns flags, confirmation gates, rendering; facade/service own mutation execution | serial remote submit | medium |
 | `update process-instance` | pi | basic mutation | state_changing | full | full | one-line | keyed batch only | updates variables | shared activity through facade and HTTP context | dry-run and result summaries | no JSON or keys-only contract currently advertised | cmd owns flags and rendering; facade/service own variable lookup and mutation | bounded worker mutation | medium |
+| `update user-task` | user-tasks, ut, uts | basic mutation | state_changing | full | full | one-line, json, keys-only | complete effective-variable traversal owned by service | updates variables at frozen local or inherited scopes | shared activity through facade and HTTP context | dry-run, confirmation, and result summaries | JSON requires dry-run, auto-confirm, or automation; keys-only emits changed task keys only | cmd owns flags, confirmation, and rendering; facade/service own discovery, scope planning, deduplication, mutation, and confirmation | serial planning plus bounded unique-scope mutation | high |
 | `version` | - | compatibility read | read_only | full | unsupported | one-line | none | no | no | none | one-line contract only | cmd owns local build info rendering | serial local render | low |
 | `walk` | w, traverse | grouping read | read_only | limited | unsupported | one-line | none | no | no direct remote work | none | child command owns machine contract | cmd owns grouping and routing | serial dispatch | low |
 | `walk process-instance` | pi, pis | read traversal workflow | read_only | full | unsupported | one-line | keyed ancestry/descendant traversal and optional enrichment | no | shared activity through facade and HTTP context | traversal and enrichment summaries | automation unsupported; output must remain stable one-line/tree style | cmd owns flags and rendering; facade/service own traversal and enrichment | mixed traversal plus optional detail lookups | high |
@@ -165,7 +166,7 @@ Accepted retained serial paths:
 
 | Criterion | Evidence |
 | --- | --- |
-| SC-001 | The command node assessment table contains all 56 command nodes and is guarded by `cmd/command_contract_test.go` plus docsgen assessment artifact validation. |
+| SC-001 | The command node assessment table contains all 57 command nodes and is guarded by `cmd/command_contract_test.go` plus docsgen assessment artifact validation. |
 | SC-002 | US1 and US4 command tests cover clean JSON, keys-only, quiet, automation, prompt, and no-indicator behavior for changed command families; validation commands are recorded in `quickstart.md`. |
 | SC-003 | The US3 performance characterization results table covers process-instance search/enrichment, cancel/delete planning, ops repair, ops purge, retention policy, slow-process analysis, and job/element/incident search. |
 | SC-004 | US3 fake-latency and worker-control validation showed bounded-worker improvements or retained serial page traversal with documented safety reasons; no changed high-volume workflow has an undocumented slowdown. |

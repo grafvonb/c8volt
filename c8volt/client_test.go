@@ -121,6 +121,11 @@ func TestNew_V810WiresCompleteNativeRuntime(t *testing.T) {
 	require.Empty(t, gotVariables)
 	require.NotErrorIs(t, err, ferrors.ErrUnsupported)
 
+	_, err = cli.PlanUserTaskVariableUpdates(context.Background(), []string{"2251799813685250"}, map[string]any{"approved": true})
+	require.Error(t, err)
+	require.NotErrorIs(t, err, ferrors.ErrLocalPrecondition)
+	require.NotErrorIs(t, err, ferrors.ErrUnsupported)
+
 	gotIncidents, err := cli.SearchIncidents(context.Background(), incident.Filter{}, 1)
 	require.Error(t, err)
 	require.Empty(t, gotIncidents.Items)
