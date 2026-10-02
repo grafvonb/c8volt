@@ -135,5 +135,5 @@
 
 ## Active Speckit Plan
 <!-- SPECKIT START -->
-- Active Speckit implementation plan: `specs/326-update-user-task-vars/plan.md`
+- Active Speckit implementation plan: `specs/331-simplify-version-support/plan.md`
 <!-- SPECKIT END -->
