@@ -3,21 +3,18 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 # Purpose:
-#   Guard repository-level Camunda v8.10 boundaries. The feature may add the
-#   isolated v810 generated client, but stable generated clients and live
-#   integration assets must remain unchanged and free of v810-specific coverage.
+#   Guard repository-level Camunda v8.10 generation boundaries. Stable generated
+#   clients and live integration assets must remain unchanged.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 PROTECTED_CLIENT_DIRS=(
-  "internal/clients/camunda/v87"
   "internal/clients/camunda/v88"
   "internal/clients/camunda/v89"
 )
 INTEGRATION_DIR="integration"
-V810_INTEGRATION_PATTERN='v810|v8\.10|8\.10|c810|camunda[[:space:]-]*8\.10'
 
 fail() {
   echo "FAIL: $*" >&2
@@ -46,26 +43,6 @@ assert_git_clean_for_path() {
   fi
 }
 
-assert_integration_has_no_v810_paths() {
-  local matches
-
-  matches="$(git ls-files --others --cached --exclude-standard -- "$INTEGRATION_DIR" | grep -Ei "$V810_INTEGRATION_PATTERN" || true)"
-  if [ -n "$matches" ]; then
-    printf '%s\n' "$matches" >&2
-    fail "integration contains v810-specific paths"
-  fi
-}
-
-assert_integration_has_no_v810_content() {
-  local matches
-
-  matches="$(rg -n -i "$V810_INTEGRATION_PATTERN" "$INTEGRATION_DIR" || true)"
-  if [ -n "$matches" ]; then
-    printf '%s\n' "$matches" >&2
-    fail "integration contains v810-specific content"
-  fi
-}
-
 main() {
   cd "$REPO_ROOT"
 
@@ -75,8 +52,6 @@ main() {
   done
 
   assert_git_clean_for_path "$INTEGRATION_DIR" "$INTEGRATION_DIR"
-  assert_integration_has_no_v810_paths
-  assert_integration_has_no_v810_content
 
   echo "ok api/tests/v810_repository_boundary_test.sh"
 }

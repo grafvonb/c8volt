@@ -65,7 +65,7 @@ remain separate release checks.
 
 | Target | Coverage intent |
 | --- | --- |
-| C87/C88/C89 selected profiles | Validate profile connectivity and expected minor before destructive scenarios. |
+| C88/C89/C810 selected profiles | Validate profile connectivity and expected minor before destructive scenarios. |
 | command-family manifest | Records version-sensitive expectations and proposal gaps where embedded fixtures or commands cannot currently create required state. |
 
 ## Evidence

@@ -20,10 +20,6 @@ packages:
     config:
       all: true
       dir: 'internal/services/auth/mocks'              # unique per package
-  github.com/grafvonb/c8volt/internal/services/cluster/v87:
-    config:
-      all: true
-      dir: 'internal/services/cluster/v87/mocks'      # include version
   github.com/grafvonb/c8volt/internal/services/cluster/v88:
     config:
       all: true

@@ -17,6 +17,7 @@ Started: 2026-10-05T06:30:28Z
 
 - The v8.8 facade diagnostics deletion path reads the root and descendants through Camunda before issuing the Operate deletion, so its fixture must return a valid keyed process instance and empty search page.
 - `go test ./cmd -count=1` is comparatively slow. T001's required command regex is the primary repeatable gate; the broader package run found one v8.8 license-rendering expectation, which was corrected and rechecked directly.
+- The v8.10 repository-boundary guard now protects retained v8.8/v8.9 clients and integration cleanliness without banning v8.10 integration content; v8.10 is a retained runtime and already has version-matched fixtures.
 
 ## Reusable Commands
 
@@ -24,6 +25,7 @@ Started: 2026-10-05T06:30:28Z
 - `go test ./internal/services/... -run 'Factory|SourceBoundary|DryRun|PlanProcessInstanceMutationPages' -count=1`
 - `go test ./cmd -run 'Bootstrap|Config|Root|Version|Tenant|GetProcessInstance|CancelProcessInstance|DeleteProcessInstance|UpdateUserTask|BuildRunProcessInstanceDatasFromDeployments|Deploy|Embed' -count=1`
 - `make docs-content && go test ./docsgen -count=1 && git diff --check`
+- `bash api/tests/v810_generation_test.sh && python3 api/tests/v810_provenance_test.py`
 
 ## Do Not Repeat
 
@@ -31,4 +33,4 @@ Started: 2026-10-05T06:30:28Z
 - Do not remove the generic deployment identifier/BPMN parsing fallback in `cmd/cmd_deploy_run_data.go`; retained versions use it independently of the removed adapter.
 
 ## Current Handoff
-- Continue with T002 / US2: remove the retired generated client, generation targets, mockery/protection entries, fixtures, and integration assets. Follow `integration/AGENTS.md`, run the T002 generation and compile-only checks, then the one full executable validation and temporary-snapshot boundary check from `quickstart.md`.
+- Continue with T003 / US3: build one tracked path/content candidate inventory, remove obsolete support claims from historical specifications, tasks, guidance, and examples while preserving provenance/incidental numeric matches, then run the document/link/final-audit checks from `quickstart.md`. Reuse T002's passing executable evidence; do not rerun runtime, build, generation, or boundary checks for prose-only edits.

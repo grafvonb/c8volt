@@ -60,10 +60,6 @@ GENERATED_FILES=(
   "internal/clients/camunda/v88/camunda/client.gen.go"
   "internal/clients/camunda/v88/operate/client.gen.go"
   "internal/clients/camunda/v88/tasklist/client.gen.go"
-  "internal/clients/camunda/v87/administrationsm/client.gen.go"
-  "internal/clients/camunda/v87/camunda/client.gen.go"
-  "internal/clients/camunda/v87/operate/client.gen.go"
-  "internal/clients/camunda/v87/tasklist/client.gen.go"
   "internal/clients/camunda/v86/administrationsm/client.gen.go"
   "internal/clients/camunda/v86/camunda/client.gen.go"
   "internal/clients/camunda/v86/operate/client.gen.go"
@@ -185,18 +181,6 @@ python3 ./mutations/mutate-remove-v1-prefix.py ./camunda-docs/api/operate/operat
 
 python3 ./mutations/mutate-remove-v1-prefix.py ./camunda-docs/api/tasklist/tasklist-openapi.yaml
 ./generate-go-client.sh ./camunda-docs/api/tasklist/tasklist-openapi-v1-prefix-removed.yaml ../internal/clients/camunda/v88/tasklist/client.gen.go tasklist
-
-# v87
-./generate-go-client.sh ./camunda-docs/api/administration-sm/version-8.7/administration-sm-openapi.yaml ../internal/clients/camunda/v87/administrationsm/client.gen.go administrationsm
-./generate-go-client.sh ./camunda-docs/api/camunda/version-8.7/camunda-openapi.yaml ../internal/clients/camunda/v87/camunda/client.gen.go camunda
-
-python3 ./mutations/mutate-operation-ids.py ./camunda-docs/api/operate/version-8.7/operate-openapi.yaml
-python3 ./mutations/mutate-remove-sort-values.py ./camunda-docs/api/operate/version-8.7/operate-openapi-oids-updated.yaml
-python3 ./mutations/mutate-remove-v1-prefix.py ./camunda-docs/api/operate/version-8.7/operate-openapi-oids-updated-sortvalues-removed.yaml
-./generate-go-client.sh ./camunda-docs/api/operate/version-8.7/operate-openapi-oids-updated-sortvalues-removed-v1-prefix-removed.yaml ../internal/clients/camunda/v87/operate/client.gen.go operate
-
-python3 ./mutations/mutate-remove-v1-prefix.py ./camunda-docs/api/tasklist/version-8.7/tasklist-openapi.yaml
-./generate-go-client.sh ./camunda-docs/api/tasklist/version-8.7/tasklist-openapi-v1-prefix-removed.yaml ../internal/clients/camunda/v87/tasklist/client.gen.go tasklist
 
 # v86
 ./generate-go-client.sh ./camunda-docs/api/administration-sm/version-8.6/administration-sm-openapi.yaml ../internal/clients/camunda/v86/administrationsm/client.gen.go administrationsm

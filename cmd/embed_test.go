@@ -36,7 +36,6 @@ func TestEmbedListCommand_FiltersFilesForConfiguredCamundaVersion(t *testing.T) 
 
 	require.Contains(t, output, "C88_SimpleUserTask.bpmn")
 	require.Contains(t, output, "C88_MultipleSubProcessesParent.bpmn")
-	require.NotContains(t, output, "C87_")
 	require.NotContains(t, output, "C89_")
 	require.NotContains(t, output, "processdefinitions/")
 }
@@ -49,7 +48,6 @@ func TestEmbedListCommand_DetailsFiltersFilesForConfiguredCamundaVersion(t *test
 
 	require.Contains(t, output, "processdefinitions/C89_SimpleUserTask.bpmn")
 	require.Contains(t, output, "processdefinitions/C89_MultipleSubProcessesParent.bpmn")
-	require.NotContains(t, output, "processdefinitions/C87_")
 	require.NotContains(t, output, "processdefinitions/C88_")
 }
 
@@ -70,7 +68,6 @@ func TestEmbedListCommand_V810UsesNativeProductionFixtures(t *testing.T) {
 		"processdefinitions/C810_SimpleUserTask.bpmn",
 		"processdefinitions/C810_SimpleUserTaskWithIncident.bpmn",
 	}, "\n"), strings.TrimSpace(output))
-	require.NotContains(t, output, "processdefinitions/C87_")
 	require.NotContains(t, output, "processdefinitions/C88_")
 	require.NotContains(t, output, "processdefinitions/C89_")
 }
@@ -104,7 +101,6 @@ func TestEmbedExportCommand_AllFiltersFilesForConfiguredCamundaVersion(t *testin
 	require.Contains(t, output, "exported")
 	require.FileExists(t, filepath.Join(outDir, "processdefinitions", "C88_SimpleUserTask.bpmn"))
 	require.FileExists(t, filepath.Join(outDir, "processdefinitions", "C88_MultipleSubProcessesParent.bpmn"))
-	require.NoFileExists(t, filepath.Join(outDir, "processdefinitions", "C87_SimpleUserTask.bpmn"))
 	require.NoFileExists(t, filepath.Join(outDir, "processdefinitions", "C89_SimpleUserTask.bpmn"))
 }
 

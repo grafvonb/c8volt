@@ -388,7 +388,6 @@ func TestEmbeddedFixturePrefix(t *testing.T) {
 		version string
 		want    string
 	}{
-		{version: "8.7", want: "C87_"},
 		{version: "8.8", want: "C88_"},
 		{version: "8.9", want: "C89_"},
 		{version: "8.10", want: "C810_"},
@@ -410,8 +409,6 @@ func TestEmbeddedFixturePrefix(t *testing.T) {
 // embeddedFixturePrefix converts a Camunda minor version into the embedded fixture filename prefix.
 func embeddedFixturePrefix(expectedVersion string) (string, error) {
 	switch {
-	case strings.Contains(expectedVersion, "8.7"):
-		return "C87_", nil
 	case strings.Contains(expectedVersion, "8.8"):
 		return "C88_", nil
 	case strings.Contains(expectedVersion, "8.9"):

@@ -146,7 +146,7 @@ func TestEmbeddedBPMNProposalRegistrationRecordsMissingFixtureNeed(t *testing.T)
 		"workflow that raises a catchable BPMN error",
 		"update job --throw-bpmn-error",
 		[]string{"update job"},
-		[]string{"8.7", "8.8", "8.9"},
+		[]string{"8.8", "8.9", "8.10"},
 		"Maintainers can cover BPMN error scenarios without importing one-off models.",
 	)
 
@@ -849,7 +849,7 @@ func proposalRecordsOrEmpty(proposals []proposalRecord) []proposalRecord {
 
 // supportedProposalVersions returns the Camunda minor versions covered by the proposal records.
 func supportedProposalVersions() []string {
-	return []string{"8.7", "8.8", "8.9"}
+	return []string{"8.8", "8.9", "8.10"}
 }
 
 // allCommandSetupGapProposals collects direct setup fallback proposals from command-family slices.

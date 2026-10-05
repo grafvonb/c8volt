@@ -24,7 +24,7 @@ At the time this rule set was written, that inventory contains 55 command nodes,
 - Do not pass `--config` from the suite.
 - Do not generate a private test config.
 - Do not override auth mode in test helpers.
-- It is acceptable to select a profile that already exists in the default local config, for example through a suite variable such as `C8VOLT_IT_PROFILES=dev87,dev88,dev89`.
+- It is acceptable to select a profile that already exists in the default local config, for example through a suite variable such as `C8VOLT_IT_PROFILES=dev88,dev89,dev810`.
 - Profile selection must only name profiles from the default local config. It must not point to an alternate config file.
 - The suite should fail early with a clear message when selected version profiles are not available or do not connect.
 
@@ -76,7 +76,7 @@ Every command node must have an explicit integration coverage entry. For each le
 - local validation failures
 - remote failure or not-found behavior where practical
 - destructive confirmation or automation behavior where applicable
-- version support for Camunda 8.7, 8.8, and 8.9 where selected local profiles and command behavior make that practical
+- version support for Camunda 8.8, 8.9, and 8.10 where selected local profiles and command behavior make that practical
 
 Parent and grouping commands must at least cover help/discovery behavior and no-argument behavior.
 

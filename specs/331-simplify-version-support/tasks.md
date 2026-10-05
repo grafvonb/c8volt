@@ -36,7 +36,7 @@ Run the T001 checks in `quickstart.md` once after related edits and formatting. 
 
 ## User Story 2 — Maintain Necessary Support Only (P2)
 
-- [ ] T002 [US2] Remove the remaining retired generated output, generation targets and validation assets together in `internal/clients/camunda/`, `api/`, `.mockery.yml`, `embedded/processdefinitions/`, `testx/` and `integration/`; validate the final executable repository once as described below.
+- [x] T002 [US2] Remove the remaining retired generated output, generation targets and validation assets together in `internal/clients/camunda/`, `api/`, `.mockery.yml`, `embedded/processdefinitions/`, `testx/` and `integration/`; validate the final executable repository once as described below.
 
 **Implementation scope**:
 
