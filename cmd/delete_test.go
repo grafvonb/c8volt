@@ -346,7 +346,7 @@ func TestDeleteProcessDefinitionCommand_DashStdinSatisfiesTargetSelector(t *test
 // TestDeleteProcessDefinitionCommand_RejectsUnsupportedFullHistoryVersionsBeforeMutation keeps
 // unsupported process-definition history delete capability failures before any remote request.
 func TestDeleteProcessDefinitionCommand_RejectsUnsupportedFullHistoryVersionsBeforeMutation(t *testing.T) {
-	for _, version := range []toolx.CamundaVersion{toolx.V87, toolx.V88} {
+	for _, version := range []toolx.CamundaVersion{toolx.V88} {
 		t.Run(version.String(), func(t *testing.T) {
 			var called bool
 			srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

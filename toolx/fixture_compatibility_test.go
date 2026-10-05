@@ -19,11 +19,6 @@ func TestProductionFixturePrefixMapsSupportedVersions(t *testing.T) {
 		want    string
 	}{
 		{
-			name:    "v87",
-			version: V87,
-			want:    "C87_",
-		},
-		{
 			name:    "v88",
 			version: V88,
 			want:    "C88_",

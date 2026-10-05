@@ -539,7 +539,7 @@ func TestGetUserTaskCommand_TotalUsesExactAndCappedTraversal(t *testing.T) {
 }
 
 // TestGetUserTaskCommand_SearchSupportsEveryNativeVersion verifies command
-// dispatch reaches each supported adapter and V87 rejects without a request.
+// dispatch reaches each supported adapter.
 func TestGetUserTaskCommand_SearchSupportsEveryNativeVersion(t *testing.T) {
 	server, requests := newGetUserTaskSearchServer(t, func(_ int, _ map[string]any) string {
 		return userTaskSearchResponse(1, false, "", "2251799815391233")
@@ -554,13 +554,7 @@ func TestGetUserTaskCommand_SearchSupportsEveryNativeVersion(t *testing.T) {
 		require.Empty(t, stderr)
 		require.Equal(t, "2251799815391233\n", stdout)
 	}
-	before := len(requests.Snapshot())
-	configPath := testx.WriteTestConfigForVersion(t, server.URL, "8.7")
-	stdout, stderr, err := runGetUserTaskCommand(t, configPath, "", "get", "ut")
-	require.Error(t, err)
-	require.Empty(t, stdout)
-	require.Contains(t, stderr, "unsupported")
-	require.Len(t, requests.Snapshot(), before)
+	require.Len(t, requests.Snapshot(), 3)
 }
 
 // TestGetUserTaskCommand_SearchUsesEffectiveTenant verifies configured,

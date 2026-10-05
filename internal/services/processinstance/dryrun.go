@@ -16,15 +16,7 @@ import (
 	"github.com/grafvonb/c8volt/typex"
 )
 
-type legacyDryRunTraversalOnly interface {
-	LegacyDryRunTraversalOnly() bool
-}
-
 func DryRunCancelOrDeletePlan(ctx context.Context, api API, keys typex.Keys, wantedWorkers int, opts ...services.CallOption) (d.DryRunPIKeyExpansion, error) {
-	if legacyOnly, ok := api.(legacyDryRunTraversalOnly); ok && legacyOnly.LegacyDryRunTraversalOnly() {
-		return dryRunCancelOrDeletePlanLegacy(ctx, api, keys, wantedWorkers, opts...)
-	}
-
 	var roots typex.Keys
 	var collected typex.Keys
 	cfg := services.ApplyCallOptions(opts)
@@ -86,46 +78,6 @@ func DryRunCancelOrDeletePlan(ctx context.Context, api API, keys typex.Keys, wan
 		Outcome:                    outcome,
 	}
 	return plan, validateDryRunPIKeyExpansion(plan)
-}
-
-func dryRunCancelOrDeletePlanLegacy(ctx context.Context, api API, keys typex.Keys, wantedWorkers int, opts ...services.CallOption) (d.DryRunPIKeyExpansion, error) {
-	var roots typex.Keys
-	var collected typex.Keys
-	cfg := services.ApplyCallOptions(opts)
-	ukeys := keys.Unique()
-	ancestryWorkers := toolx.DetermineNoOfWorkers(len(ukeys), wantedWorkers, cfg.NoWorkerLimit)
-	legacyRoots, err := pool.ExecuteSlice[string, string](ctx, ukeys, ancestryWorkers, cfg.FailFast, func(ctx context.Context, key string, _ int) (string, error) {
-		rootKey, _, _, err := api.Ancestry(ctx, key, opts...)
-		return rootKey, err
-	})
-	if err != nil {
-		return d.DryRunPIKeyExpansion{}, err
-	}
-	for _, rootKey := range legacyRoots {
-		if rootKey != "" {
-			roots = append(roots, rootKey)
-		}
-	}
-	roots = roots.Unique()
-
-	descendantWorkers := toolx.DetermineNoOfWorkers(len(roots), wantedWorkers, cfg.NoWorkerLimit)
-	descendantLists, err := pool.ExecuteSlice[string, typex.Keys](ctx, roots, descendantWorkers, cfg.FailFast, func(ctx context.Context, root string, _ int) (typex.Keys, error) {
-		desc, _, _, err := api.Descendants(ctx, root, opts...)
-		return desc, err
-	})
-	if err != nil {
-		return d.DryRunPIKeyExpansion{}, err
-	}
-	for _, desc := range descendantLists {
-		collected = append(collected, desc...)
-	}
-	collected = collected.Unique()
-	return d.DryRunPIKeyExpansion{
-		Roots:          roots,
-		Collected:      collected,
-		TenantEvidence: tenantEvidenceFromKeys(collected),
-		Outcome:        d.TraversalOutcomeComplete,
-	}, nil
 }
 
 // PlanProcessInstanceMutationPages owns search-selected cancel/delete paging
@@ -379,19 +331,6 @@ func mergeTraversalTenantEvidence(tenantByKey map[string]string, chain map[strin
 		}
 		tenantByKey[key] = pi.TenantId
 	}
-}
-
-// tenantEvidenceFromKeys marks key-only legacy dry-run targets as unknown without enrichment.
-func tenantEvidenceFromKeys(keys typex.Keys) d.TenantEvidence {
-	acc := common.NewTenantEvidenceAccumulator()
-	targets := make([]d.TenantEvidenceTarget, 0, len(keys.Unique()))
-	for _, key := range keys.Unique() {
-		acc.Add(key, "")
-		targets = append(targets, d.TenantEvidenceTarget{Key: key})
-	}
-	evidence := domainTenantEvidence(acc.Snapshot())
-	evidence.Targets = targets
-	return evidence
 }
 
 // domainTenantEvidence converts service accumulator output into a domain plan value.

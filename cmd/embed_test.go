@@ -5,7 +5,6 @@ package cmd
 
 import (
 	"bytes"
-	"encoding/json"
 	"mime"
 	"net/http"
 	"os"
@@ -206,44 +205,6 @@ func TestEmbedDeployCommand_AllTenantsRejectsBeforeEmbeddedOrRequestWork(t *test
 	}
 }
 
-func TestEmbedDeployCommand_AllRunFallsBackToBPMNIDForV87(t *testing.T) {
-	resetEmbedCommandStateForTest()
-	var sawDeploy bool
-	var sawRun bool
-
-	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch {
-		case r.Method == http.MethodPost && r.URL.Path == "/v2/deployments":
-			sawDeploy = true
-			w.Header().Set("Content-Type", "application/json")
-			_, _ = w.Write([]byte(`{"tenantId":"<default>"}`))
-		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances":
-			sawRun = true
-			defer r.Body.Close()
-
-			var body map[string]any
-			require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
-			require.NotEmpty(t, body["processDefinitionId"])
-			require.Equal(t, "<default>", body["tenantId"])
-
-			w.Header().Set("Content-Type", "application/json")
-			_, _ = w.Write([]byte(`{"processDefinitionId":"order-process","processDefinitionVersion":1,"tenantId":"<default>","variables":{}}`))
-		default:
-			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
-		}
-	}))
-	t.Cleanup(srv.Close)
-
-	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.7")
-
-	output, err := testx.RunCmdSubprocess(t, "TestEmbedDeployCommand_AllRunFallsBackToBPMNIDForV87Helper", map[string]string{
-		"C8VOLT_TEST_CONFIG": cfgPath,
-	})
-	require.NoError(t, err, string(output))
-	require.True(t, sawDeploy)
-	require.True(t, sawRun)
-}
-
 func TestEmbedDeployCommand_CreationContextPrecedesDeploymentRequest(t *testing.T) {
 	resetEmbedCommandStateForTest()
 	stdout := &bytes.Buffer{}
@@ -321,23 +282,6 @@ func TestEmbedExportCommand_FileSelectionCanStillExportOtherVersionsHelper(t *te
 		"embed", "export",
 		"--file", "processdefinitions/C89_SimpleUserTask.bpmn",
 		"--out", os.Getenv("C8VOLT_TEST_EXPORT_OUT"),
-	})
-	root.SetOut(os.Stdout)
-	root.SetErr(os.Stderr)
-	_ = root.Execute()
-}
-
-func TestEmbedDeployCommand_AllRunFallsBackToBPMNIDForV87Helper(t *testing.T) {
-	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
-		return
-	}
-
-	root := Root()
-	root.SetArgs([]string{
-		"--config", os.Getenv("C8VOLT_TEST_CONFIG"),
-		"embed", "deploy",
-		"--all",
-		"--run",
 	})
 	root.SetOut(os.Stdout)
 	root.SetErr(os.Stderr)

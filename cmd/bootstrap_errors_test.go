@@ -28,7 +28,7 @@ func TestRootCommand_V89SupportMessagingIsUpdated(t *testing.T) {
 
 	root := Root()
 
-	require.Contains(t, root.Long, "Camunda 8.7, 8.8, 8.9, and 8.10")
+	require.Contains(t, root.Long, "Camunda 8.8, 8.9, and 8.10")
 	require.Contains(t, root.Long, "Camunda 8.10 baseline: 8.10.0-alpha4 (prerelease)")
 	require.Contains(t, root.Long, "Default: 8.9")
 	require.NotContains(t, root.Long, "version 8.9 is recognized by config normalization")

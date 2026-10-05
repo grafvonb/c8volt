@@ -13,7 +13,6 @@ import (
 	incsvc "github.com/grafvonb/c8volt/internal/services/incident"
 	pitraversal "github.com/grafvonb/c8volt/internal/services/processinstance/traversal"
 	v810 "github.com/grafvonb/c8volt/internal/services/processinstance/v810"
-	v87 "github.com/grafvonb/c8volt/internal/services/processinstance/v87"
 	v88 "github.com/grafvonb/c8volt/internal/services/processinstance/v88"
 	v89 "github.com/grafvonb/c8volt/internal/services/processinstance/v89"
 	"github.com/grafvonb/c8volt/typex"
@@ -84,11 +83,9 @@ func LookupProcessInstanceStateByKey(ctx context.Context, api TenantSafeLookupSe
 
 // Both supported versioned services must continue to satisfy the shared
 // processinstance service surface while the internals are refactored.
-var _ API = (*v87.Service)(nil)
 var _ API = (*v88.Service)(nil)
 var _ API = (*v89.Service)(nil)
 var _ API = (*v810.Service)(nil)
-var _ API = (v87.API)(nil)
 var _ API = (v88.API)(nil)
 var _ API = (v89.API)(nil)
 var _ API = (v810.API)(nil)

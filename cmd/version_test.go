@@ -54,7 +54,7 @@ func TestVersionCommandSeparatesBaselineMetadataFromVersionIdentity(t *testing.T
 	supportedVersions := envelope.Payload["supportedCamundaVersions"]
 	baselineTag := envelope.Payload["camunda810Baseline"]
 	baselineStatus := envelope.Payload["camunda810BaselineStatus"]
-	require.Equal(t, "8.7, 8.8, 8.9, 8.10", supportedVersions)
+	require.Equal(t, "8.8, 8.9, 8.10", supportedVersions)
 	require.Equal(t, toolx.V810Baseline().Tag, baselineTag)
 	require.Equal(t, toolx.V810Baseline().Status, baselineStatus)
 	require.NotContains(t, supportedVersions, baselineTag)

@@ -9,15 +9,11 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"os"
-	"os/exec"
 	"strconv"
 	"strings"
 	"testing"
 
 	"github.com/grafvonb/c8volt/c8volt/job"
-	"github.com/grafvonb/c8volt/internal/exitcode"
-	"github.com/grafvonb/c8volt/testx"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 )
@@ -307,36 +303,6 @@ func TestUpdateJobCommand_NoWaitStillRequiresInteractiveConfirmationForMaterialU
 	require.NotContains(t, output, "pending confirmation")
 	require.Contains(t, output, "updated job 2251799813711967: submitted retries=3")
 	require.NotContains(t, output, "confirmed retries")
-}
-
-// TestUpdateJobCommand_UnsupportedV87FailsBeforeMutation verifies the update job command wiring behavior covered by this scenario.
-func TestUpdateJobCommand_UnsupportedV87FailsBeforeMutation(t *testing.T) {
-	cfgPath := writeTestConfigForVersion(t, "http://127.0.0.1:1", "8.7")
-
-	output, err := testx.RunCmdSubprocess(t, "TestUpdateJobCommand_UnsupportedV87FailsBeforeMutationHelper", map[string]string{
-		"C8VOLT_TEST_CONFIG": cfgPath,
-	})
-	require.Error(t, err)
-
-	exitErr, ok := err.(*exec.ExitError)
-	require.True(t, ok)
-	require.Equal(t, exitcode.Error, exitErr.ExitCode())
-	require.Contains(t, string(output), "get job")
-	require.Contains(t, string(output), "Camunda 8.8")
-	require.NotContains(t, string(output), "updated job")
-}
-
-// TestUpdateJobCommand_UnsupportedV87FailsBeforeMutationHelper verifies the update job command wiring behavior covered by this scenario.
-func TestUpdateJobCommand_UnsupportedV87FailsBeforeMutationHelper(t *testing.T) {
-	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
-		return
-	}
-
-	prevArgs := os.Args
-	t.Cleanup(func() { os.Args = prevArgs })
-	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "update", "job", "--key", "2251799813711967", "--retries", "3", "--auto-confirm"}
-
-	Execute()
 }
 
 // newJobUpdateServer returns a fake update endpoint that records retry and timeout mutation requests.

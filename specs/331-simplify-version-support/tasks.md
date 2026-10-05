@@ -18,7 +18,7 @@ Already available: issue branch, specification, design and validation guide. Eac
 
 ## User Story 1 — Operate with Retained Versions (P1)
 
-- [ ] T001 [US1] Remove the retired runtime and its exclusive shared behavior atomically across `toolx/version.go`, `config/app.go`, `cmd/get_processinstance_validation.go`, `internal/services/<area>/`, `internal/services/processinstance/dryrun.go`, affected tests and support metadata; deliver the verified runtime contract described below.
+- [x] T001 [US1] Remove the retired runtime and its exclusive shared behavior atomically across `toolx/version.go`, `config/app.go`, `cmd/get_processinstance_validation.go`, `internal/services/<area>/`, `internal/services/processinstance/dryrun.go`, affected tests and support metadata; deliver the verified runtime contract described below.
 
 **Implementation scope**:
 

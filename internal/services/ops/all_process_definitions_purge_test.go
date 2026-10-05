@@ -134,7 +134,7 @@ func TestPurgeAllProcessDefinitionsValidatesServiceDependencies(t *testing.T) {
 func TestPurgeAllProcessDefinitionsRejectsUnsupportedFullHistoryVersionsBeforeDiscovery(t *testing.T) {
 	t.Parallel()
 
-	for _, version := range []toolx.CamundaVersion{toolx.V87, toolx.V88} {
+	for _, version := range []toolx.CamundaVersion{toolx.V88} {
 		t.Run(version.String(), func(t *testing.T) {
 			t.Parallel()
 

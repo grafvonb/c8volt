@@ -180,11 +180,6 @@ func TestExecuteSmokeTestSelectsVersionMatchedFixtures(t *testing.T) {
 		process string
 	}{
 		{
-			version: toolx.V87,
-			file:    "embedded/processdefinitions/C87_MultipleSubProcessesParent.bpmn",
-			process: "C87_MultipleSubProcessesParent",
-		},
-		{
 			version: toolx.V88,
 			file:    "embedded/processdefinitions/C88_MultipleSubProcessesParent.bpmn",
 			process: "C88_MultipleSubProcessesParent",

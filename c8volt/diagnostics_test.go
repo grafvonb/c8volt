@@ -22,11 +22,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestAPIDiagnosticsTopLevelClientUsesSuppliedInstrumentedClient verifies every supported factory and legacy component path keeps the shared transport.
+// TestAPIDiagnosticsTopLevelClientUsesSuppliedInstrumentedClient verifies every supported factory and retained component path keeps the shared transport.
 func TestAPIDiagnosticsTopLevelClientUsesSuppliedInstrumentedClient(t *testing.T) {
 	t.Parallel()
 
-	versions := []toolx.CamundaVersion{toolx.V87, toolx.V88, toolx.V89, toolx.V810}
+	versions := []toolx.CamundaVersion{toolx.V88, toolx.V89, toolx.V810}
 	for _, version := range versions {
 		version := version
 		t.Run(string(version), func(t *testing.T) {
@@ -35,7 +35,12 @@ func TestAPIDiagnosticsTopLevelClientUsesSuppliedInstrumentedClient(t *testing.T
 			var output bytes.Buffer
 			var camundaCalls, operateCalls, tasklistCalls atomic.Int32
 			camunda := newDiagnosticWiringServer(t, &camundaCalls, func(w http.ResponseWriter, req *http.Request) {
-				if strings.Contains(req.URL.Path, "user-tasks") {
+				if req.Method == http.MethodGet && strings.Contains(req.URL.Path, "process-instances/") {
+					w.Header().Set("Content-Type", "application/json")
+					_, _ = io.WriteString(w, `{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionVersion":1,"processInstanceKey":"2251799813685249","startDate":"2026-01-01T00:00:00Z","state":"COMPLETED","tags":[],"tenantId":"<default>"}`)
+					return
+				}
+				if strings.Contains(req.URL.Path, "user-tasks") || strings.Contains(req.URL.Path, "process-instances/search") {
 					w.Header().Set("Content-Type", "application/json")
 					_, _ = io.WriteString(w, `{"items":[],"page":{"totalItems":0}}`)
 					return
@@ -67,12 +72,13 @@ func TestAPIDiagnosticsTopLevelClientUsesSuppliedInstrumentedClient(t *testing.T
 
 			_, err = cli.SearchProcessDefinitions(context.Background(), process.ProcessDefinitionFilter{})
 			require.Error(t, err)
-			if version == toolx.V87 {
+			require.Equal(t, int32(0), operateCalls.Load())
+			require.Equal(t, int32(2), camundaCalls.Load())
+
+			if version == toolx.V88 {
+				_, err = cli.DeleteProcessInstance(context.Background(), "2251799813685249")
+				require.Error(t, err)
 				require.Equal(t, int32(1), operateCalls.Load())
-				require.Equal(t, int32(1), camundaCalls.Load())
-			} else {
-				require.Equal(t, int32(0), operateCalls.Load())
-				require.Equal(t, int32(2), camundaCalls.Load())
 			}
 
 			if version == toolx.V88 || version == toolx.V89 {

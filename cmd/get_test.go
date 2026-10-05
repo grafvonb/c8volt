@@ -173,7 +173,7 @@ func TestGetClusterCommand_MachineModeSuppressesFallbackActivity(t *testing.T) {
 func TestRootHelp_V89SupportMessaging(t *testing.T) {
 	output := executeRootForTest(t, "--help")
 
-	require.Contains(t, output, "Camunda 8.7, 8.8, 8.9, and 8.10")
+	require.Contains(t, output, "Camunda 8.8, 8.9, and 8.10")
 	require.Contains(t, output, "Camunda 8.10 baseline: 8.10.0-alpha4 (prerelease)")
 	require.Contains(t, output, "capabilities")
 	require.NotContains(t, output, "version 8.9 is recognized by config normalization")
@@ -316,7 +316,7 @@ func TestGetProcessDefinitionHelp_DocumentsJSONAndXMLModes(t *testing.T) {
 	require.Contains(t, output, "Use --xml only with --key")
 	require.Contains(t, output, "--stat includes exact-version statistics and requires Camunda 8.8 or newer")
 	require.Contains(t, output, "exact-version statistics")
-	require.Contains(t, output, "Camunda 8.7 selects within its 1000 visible-definition compatibility window")
+	require.Contains(t, output, "--latest selects the newest definition per exact tenant ID and BPMN process ID")
 	require.Contains(t, output, "tenant")
 	require.Contains(t, output, "--tenant limits list and selector discovery")
 	require.Contains(t, output, "Explicit --key and XML lookups use backend authorization without tenant filtering")
@@ -640,14 +640,14 @@ func TestGetClusterLicenseNestedCommand_Success(t *testing.T) {
 	}))
 	t.Cleanup(srv.Close)
 
-	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.7")
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
 
 	output := executeRootForTest(t, "--config", cfgPath, "get", "cluster", "license")
 
 	require.Contains(t, output, "ValidLicense: true")
 	require.Contains(t, output, "LicenseType: SaaS")
 	require.NotContains(t, output, "ExpiresAt:")
-	require.NotContains(t, output, "IsCommercial:")
+	require.Contains(t, output, "IsCommercial: false")
 	require.NotContains(t, output, `"ValidLicense"`)
 	require.NotContains(t, output, `"LicenseType"`)
 }
@@ -712,7 +712,7 @@ func TestGetClusterLicenceAliasNestedCommand_Success(t *testing.T) {
 	}))
 	t.Cleanup(srv.Close)
 
-	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.7")
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
 
 	output := executeRootForTest(t, "--config", cfgPath, "get", "cluster", "licence")
 
@@ -1237,14 +1237,6 @@ func TestOneLinePD_IncidentCountRenderingByVersionBoundary(t *testing.T) {
 			expectedSegment:   "[ac:4 cp:9 cx:2 inc:-]",
 			unexpectedSegment: "inc:0",
 		},
-		{
-			name:              "v8.7 omits unsupported incident count",
-			versionLabel:      "8.7",
-			incidents:         7,
-			supported:         false,
-			expectedSegment:   "[ac:4 cp:9 cx:2]",
-			unexpectedSegment: " inc:",
-		},
 	}
 
 	for _, tt := range tests {
@@ -1621,44 +1613,6 @@ apis:
 	require.NotContains(t, string(output), "parent process instances were not found")
 }
 
-func TestGetProcessInstanceKeyLookup_V87ReportsUnsupported(t *testing.T) {
-	cfgPath := writeRawTestConfig(t, `app:
-  camunda_version: 8.7
-apis:
-  camunda_api:
-    base_url: http://127.0.0.1:1
-`)
-
-	output, err := testx.RunCmdSubprocess(t, "TestGetProcessInstanceKeyLookupUnsupportedV87Helper", map[string]string{
-		"C8VOLT_TEST_CONFIG": cfgPath,
-	})
-	require.Error(t, err)
-	exitErr, ok := err.(*exec.ExitError)
-	require.True(t, ok)
-	require.Equal(t, exitcode.Error, exitErr.ExitCode())
-	require.Contains(t, string(output), "unsupported capability")
-	require.Contains(t, string(output), "not tenant-safe in Camunda 8.7")
-}
-
-func TestGetProcessInstanceOrphanChildrenOnly_V87ReportsUnsupported(t *testing.T) {
-	cfgPath := writeRawTestConfig(t, `app:
-  camunda_version: 8.7
-apis:
-  camunda_api:
-    base_url: http://127.0.0.1:1
-`)
-
-	output, err := testx.RunCmdSubprocess(t, "TestGetProcessInstanceOrphanChildrenOnlyUnsupportedV87Helper", map[string]string{
-		"C8VOLT_TEST_CONFIG": cfgPath,
-	})
-	require.Error(t, err)
-	exitErr, ok := err.(*exec.ExitError)
-	require.True(t, ok)
-	require.Equal(t, exitcode.Error, exitErr.ExitCode())
-	require.Contains(t, string(output), "unsupported capability")
-	require.Contains(t, string(output), "--orphan-children-only is not supported in Camunda 8.7")
-}
-
 // Verifies whitespace-only `--id` failures exit through invalid-args handling.
 func TestGetResourceCommand_RejectsWhitespaceID_UsesInvalidArgsExit(t *testing.T) {
 	cfgPath := writeTestConfig(t, "http://127.0.0.1:1")
@@ -1968,32 +1922,6 @@ func TestGetProcessInstanceKeyLookupWrongTenantHelper(t *testing.T) {
 	prevArgs := os.Args
 	t.Cleanup(func() { os.Args = prevArgs })
 	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "--tenant", "tenant-a", "get", "process-instance", "--key", "123"}
-
-	Execute()
-}
-
-// Helper-process entrypoint for unsupported v8.7 keyed process-instance lookup coverage.
-func TestGetProcessInstanceKeyLookupUnsupportedV87Helper(t *testing.T) {
-	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
-		return
-	}
-
-	prevArgs := os.Args
-	t.Cleanup(func() { os.Args = prevArgs })
-	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "process-instance", "--key", "123"}
-
-	Execute()
-}
-
-// Helper-process entrypoint for unsupported v8.7 orphan-child process-instance filtering coverage.
-func TestGetProcessInstanceOrphanChildrenOnlyUnsupportedV87Helper(t *testing.T) {
-	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
-		return
-	}
-
-	prevArgs := os.Args
-	t.Cleanup(func() { os.Args = prevArgs })
-	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "process-instance", "--orphan-children-only"}
 
 	Execute()
 }

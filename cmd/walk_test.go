@@ -7,7 +7,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/grafvonb/c8volt/c8volt/incident"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -16,6 +15,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/grafvonb/c8volt/c8volt/incident"
 
 	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/grafvonb/c8volt/internal/exitcode"
@@ -925,41 +926,6 @@ func TestWalkProcessInstanceCommand_WithListenersValidation(t *testing.T) {
 	}
 }
 
-// TestWalkProcessInstanceCommand_WithListenersUnsupportedV87 verifies listener lookup failures surface through the normal command error path.
-func TestWalkProcessInstanceCommand_WithListenersUnsupportedV87(t *testing.T) {
-	searchCalls := 0
-	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, http.MethodPost, r.Method)
-		require.Equal(t, "/v1/process-instances/search", r.URL.Path)
-		w.Header().Set("Content-Type", "application/json")
-		switch searchCalls {
-		case 0:
-			searchCalls++
-			_, _ = w.Write([]byte(`{"items":[{"key":123,"bpmnProcessId":"demo","processVersion":3,"state":"ACTIVE","startDate":"2026-03-23T18:00:00Z","tenantId":"tenant"}],"total":1}`))
-		default:
-			searchCalls++
-			_, _ = w.Write([]byte(`{"items":[],"total":0}`))
-		}
-	}))
-	t.Cleanup(srv.Close)
-
-	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.7")
-
-	output, err := testx.RunCmdSubprocess(t, "TestWalkProcessInstanceCommand_WithListenersUnsupportedV87Helper", map[string]string{
-		"C8VOLT_TEST_CONFIG": cfgPath,
-	})
-	require.Error(t, err)
-
-	exitErr, ok := err.(*exec.ExitError)
-	require.True(t, ok)
-	require.Equal(t, exitcode.Error, exitErr.ExitCode())
-	require.Equal(t, 2, searchCalls)
-	require.Contains(t, string(output), "unsupported capability")
-	require.Contains(t, string(output), "element search requires Camunda 8.8 or newer")
-	require.NotContains(t, string(output), "tenant demo v3")
-	require.NotContains(t, string(output), "└─ elements:")
-}
-
 // TestWalkProcessInstanceCommand_WithVarsIncidentsAndElementsOutputShowsGroupedSections verifies combined enrichment uses stable section and JSON fields.
 func TestWalkProcessInstanceCommand_WithVarsIncidentsAndElementsOutputShowsGroupedSections(t *testing.T) {
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -1036,50 +1002,6 @@ func TestWalkProcessInstanceCommand_RejectsKeysOnlyWithElements(t *testing.T) {
 	require.Contains(t, string(output), "invalid input")
 	require.Contains(t, string(output), "--with-elements cannot be combined with --keys-only")
 	require.NotContains(t, string(output), "127.0.0.1:1")
-}
-
-// TestWalkProcessInstanceCommand_WithElementsUnsupportedV87 preserves the reused element-service unsupported-version boundary.
-func TestWalkProcessInstanceCommand_WithElementsUnsupportedV87(t *testing.T) {
-	searchCalls := 0
-	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, http.MethodPost, r.Method)
-		require.Equal(t, "/v1/process-instances/search", r.URL.Path)
-
-		body, err := io.ReadAll(r.Body)
-		require.NoError(t, err)
-		request := decodeCapturedPISearchRequest(t, string(body))
-		filter, _ := request["filter"].(map[string]any)
-
-		w.Header().Set("Content-Type", "application/json")
-		switch {
-		case searchCalls == 0:
-			require.NotContains(t, filter, "parentKey")
-			searchCalls++
-			_, _ = w.Write([]byte(`{"items":[{"key":123,"bpmnProcessId":"demo","processVersion":3,"state":"ACTIVE","startDate":"2026-03-23T18:00:00Z","tenantId":"tenant"}],"total":1}`))
-		case filter["parentKey"] == float64(123):
-			searchCalls++
-			_, _ = w.Write([]byte(`{"items":[],"total":0}`))
-		default:
-			t.Fatalf("unexpected search body: %s", string(body))
-		}
-	}))
-	t.Cleanup(srv.Close)
-
-	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.7")
-
-	output, err := testx.RunCmdSubprocess(t, "TestWalkProcessInstanceCommand_WithElementsUnsupportedV87Helper", map[string]string{
-		"C8VOLT_TEST_CONFIG": cfgPath,
-	})
-	require.Error(t, err)
-
-	exitErr, ok := err.(*exec.ExitError)
-	require.True(t, ok)
-	require.Equal(t, exitcode.Error, exitErr.ExitCode())
-	require.Equal(t, 2, searchCalls)
-	require.Contains(t, string(output), "unsupported capability")
-	require.Contains(t, string(output), "element search requires Camunda 8.8 or newer")
-	require.NotContains(t, string(output), "tenant demo v3")
-	require.NotContains(t, string(output), "└─ elements:")
 }
 
 // TestWalkProcessInstanceCommand_WithElementsLookupFailureDoesNotRenderPartialTraversal fails before showing partial enriched output.
@@ -2149,49 +2071,6 @@ apis:
 	require.NotContains(t, filter, "processInstanceKey")
 }
 
-// TestWalkProcessInstanceCommand_WithIncidentsUnsupportedV87 preserves the tenant-safe version boundary.
-func TestWalkProcessInstanceCommand_WithIncidentsUnsupportedV87(t *testing.T) {
-	searchCalls := 0
-	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, http.MethodPost, r.Method)
-		require.Equal(t, "/v1/process-instances/search", r.URL.Path)
-
-		body, err := io.ReadAll(r.Body)
-		require.NoError(t, err)
-		request := decodeCapturedPISearchRequest(t, string(body))
-		filter, _ := request["filter"].(map[string]any)
-
-		w.Header().Set("Content-Type", "application/json")
-		switch {
-		case searchCalls == 0:
-			require.NotContains(t, filter, "parentKey")
-			searchCalls++
-			_, _ = w.Write([]byte(`{"items":[{"key":123,"bpmnProcessId":"demo","processVersion":3,"state":"ACTIVE","startDate":"2026-03-23T18:00:00Z","tenantId":"tenant"}],"total":1}`))
-		case filter["parentKey"] == float64(123):
-			searchCalls++
-			_, _ = w.Write([]byte(`{"items":[],"total":0}`))
-		default:
-			t.Fatalf("unexpected search body: %s", string(body))
-		}
-	}))
-	t.Cleanup(srv.Close)
-
-	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.7")
-
-	output, err := testx.RunCmdSubprocess(t, "TestWalkProcessInstanceCommand_WithIncidentsUnsupportedV87Helper", map[string]string{
-		"C8VOLT_TEST_CONFIG": cfgPath,
-	})
-	require.Error(t, err)
-
-	exitErr, ok := err.(*exec.ExitError)
-	require.True(t, ok)
-	require.Equal(t, exitcode.Error, exitErr.ExitCode())
-	require.Equal(t, 2, searchCalls)
-	require.Contains(t, string(output), "unsupported capability")
-	require.Contains(t, string(output), "process-instance incident lookup is not tenant-safe in Camunda 8.7")
-	require.NotContains(t, string(output), "  inc ")
-}
-
 func TestWalkProcessInstanceCommand_FailureKeepsSingleRootDetail(t *testing.T) {
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodGet, r.Method)
@@ -2362,34 +2241,6 @@ func TestWalkProcessInstanceCommand_WithElementsLookupFailureDoesNotRenderPartia
 	_ = root.Execute()
 }
 
-// TestWalkProcessInstanceCommand_WithIncidentsUnsupportedV87Helper exercises unsupported v8.7 enrichment in a subprocess.
-func TestWalkProcessInstanceCommand_WithIncidentsUnsupportedV87Helper(t *testing.T) {
-	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
-		return
-	}
-
-	root := Root()
-	resetCommandTreeFlags(root)
-	root.SetArgs([]string{"--config", os.Getenv("C8VOLT_TEST_CONFIG"), "--tenant", "tenant", "walk", "process-instance", "--key", "123", "--children", "--with-incidents"})
-	root.SetOut(os.Stdout)
-	root.SetErr(os.Stderr)
-	_ = root.Execute()
-}
-
-// TestWalkProcessInstanceCommand_WithElementsUnsupportedV87Helper exercises unsupported v8.7 element enrichment in a subprocess.
-func TestWalkProcessInstanceCommand_WithElementsUnsupportedV87Helper(t *testing.T) {
-	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
-		return
-	}
-
-	root := Root()
-	resetCommandTreeFlags(root)
-	root.SetArgs([]string{"--config", os.Getenv("C8VOLT_TEST_CONFIG"), "--tenant", "tenant", "walk", "process-instance", "--key", "123", "--children", "--with-elements"})
-	root.SetOut(os.Stdout)
-	root.SetErr(os.Stderr)
-	_ = root.Execute()
-}
-
 // TestWalkProcessInstanceCommand_WithListenersWithoutElementsHelper exercises missing listener element context in a subprocess.
 func TestWalkProcessInstanceCommand_WithListenersWithoutElementsHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
@@ -2413,20 +2264,6 @@ func TestWalkProcessInstanceCommand_WithListenersWithKeysOnlyHelper(t *testing.T
 	root := Root()
 	resetCommandTreeFlags(root)
 	root.SetArgs([]string{"--config", os.Getenv("C8VOLT_TEST_CONFIG"), "--keys-only", "walk", "process-instance", "--key", "123", "--with-elements", "--with-listeners"})
-	root.SetOut(os.Stdout)
-	root.SetErr(os.Stderr)
-	_ = root.Execute()
-}
-
-// TestWalkProcessInstanceCommand_WithListenersUnsupportedV87Helper exercises unsupported listener enrichment in a subprocess.
-func TestWalkProcessInstanceCommand_WithListenersUnsupportedV87Helper(t *testing.T) {
-	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
-		return
-	}
-
-	root := Root()
-	resetCommandTreeFlags(root)
-	root.SetArgs([]string{"--config", os.Getenv("C8VOLT_TEST_CONFIG"), "--tenant", "tenant", "walk", "process-instance", "--key", "123", "--children", "--with-elements", "--with-listeners"})
 	root.SetOut(os.Stdout)
 	root.SetErr(os.Stderr)
 	_ = root.Execute()

@@ -94,7 +94,7 @@ func TestGetProcessInstanceHelp_DocumentsPagingAndAutomationSurface(t *testing.T
 func TestGetProcessInstanceHelp_DocumentsVariableSearchContract(t *testing.T) {
 	output := executeRootForProcessInstanceTest(t, "get", "process-instance", "--help")
 
-	require.Contains(t, output, "Use variable-search flags to narrow list/search results natively on Camunda 8.8 or newer; Camunda 8.7 returns an unsupported-version error for those flags.")
+	require.Contains(t, output, "Use variable-search flags to narrow list/search results natively.")
 	require.Contains(t, output, "--var-exists requires every listed variable name to exist.")
 	require.Contains(t, output, "--var accepts name=value equality shorthand plus advanced name.$operator=value clauses for $eq, $neq, $exists, $in, $notIn, and $like; $notin is accepted as $notIn.")
 	require.Contains(t, output, "--var-like uses native wildcard patterns: * matches zero or more characters, ? matches one character, and escaped wildcards remain literal.")
@@ -123,7 +123,6 @@ func TestGetProcessInstanceHelp_DocumentsHasUserTasksLookup(t *testing.T) {
 	require.Contains(t, output, "Use --has-user-tasks to fetch process instances by their owning user-task keys.")
 	require.NotContains(t, output, "Camunda v2 user-task search first")
 	require.NotContains(t, output, "Tasklist V1 lookup for legacy user-task compatibility")
-	require.NotContains(t, output, "Camunda 8.7 remains unsupported")
 	require.NotContains(t, output, "There is no Tasklist or Operate fallback")
 }
 
@@ -2168,27 +2167,6 @@ func TestGetProcessInstanceListWithElements_JSONOutputPreservesProcessInstanceLi
 	require.NotContains(t, output, `"key": "125"`)
 }
 
-// TestGetProcessInstanceListWithElements_V87ReportsUnsupported preserves the reused element-service unsupported-version boundary for list/search.
-func TestGetProcessInstanceListWithElements_V87ReportsUnsupported(t *testing.T) {
-	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, http.MethodPost, r.Method)
-		require.Equal(t, "/v1/process-instances/search", r.URL.Path)
-		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"items":[{"key":123,"bpmnProcessId":"demo","processVersion":3,"state":"ACTIVE","startDate":"2026-07-15T10:12:00Z","tenantId":"tenant"}]}`))
-	}))
-	t.Cleanup(srv.Close)
-
-	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.7")
-
-	output, err := testx.RunCmdSubprocess(t, "TestGetProcessInstanceListWithElementsUnsupportedV87Helper", map[string]string{
-		"C8VOLT_TEST_CONFIG": cfgPath,
-	})
-
-	require.Error(t, err)
-	require.Contains(t, string(output), "unsupported capability")
-	require.Contains(t, string(output), "element search requires Camunda 8.8 or newer")
-}
-
 func TestGetProcessInstanceWithVarsAndIncidents_HumanOutputShowsGroupedSections(t *testing.T) {
 	var requests testx.SafeSlice[string]
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -2431,27 +2409,6 @@ func TestGetProcessInstanceWithElementsWithoutListeners_SkipsListenerLookup(t *t
 		"POST /v2/element-instances/search",
 	}, requests.Snapshot())
 	require.NotContains(t, output, `"listeners"`)
-}
-
-// TestGetProcessInstanceWithElementsAndListeners_V87ReportsUnsupported verifies unsupported environments fail through the normal command error path.
-func TestGetProcessInstanceWithElementsAndListeners_V87ReportsUnsupported(t *testing.T) {
-	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, http.MethodPost, r.Method)
-		require.Equal(t, "/v1/process-instances/search", r.URL.Path)
-		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"items":[{"key":123,"bpmnProcessId":"demo","processVersion":3,"state":"ACTIVE","startDate":"2026-07-15T10:12:00Z","tenantId":"tenant"}]}`))
-	}))
-	t.Cleanup(srv.Close)
-
-	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.7")
-
-	output, err := testx.RunCmdSubprocess(t, "TestGetProcessInstanceListWithElementsAndListenersUnsupportedV87Helper", map[string]string{
-		"C8VOLT_TEST_CONFIG": cfgPath,
-	})
-
-	require.Error(t, err)
-	require.Contains(t, string(output), "unsupported capability")
-	require.Contains(t, string(output), "element search requires Camunda 8.8 or newer")
 }
 
 // TestGetProcessInstanceWithVarsIncidentsAndElements_JSONOutputShowsCombinedPayload verifies keyed JSON includes all enrichment fields.
@@ -2936,34 +2893,6 @@ func TestGetProcessInstanceJSONWithIncidents_KeyedLookupShapeRemainsUnchanged(t 
 	require.Equal(t, "No retries left", incident["errorMessage"])
 }
 
-// TestGetProcessInstanceWithIncidents_V87ReportsUnsupported preserves the tenant-safe version boundary.
-func TestGetProcessInstanceWithIncidents_V87ReportsUnsupported(t *testing.T) {
-	cfgPath := writeTestConfigForVersion(t, "http://127.0.0.1:1", "8.7")
-
-	output, err := testx.RunCmdSubprocess(t, "TestGetProcessInstanceWithIncidentsUnsupportedV87Helper", map[string]string{
-		"C8VOLT_TEST_CONFIG": cfgPath,
-	})
-
-	require.Error(t, err)
-	exitErr, ok := err.(*exec.ExitError)
-	require.True(t, ok)
-	require.Equal(t, exitcode.Error, exitErr.ExitCode())
-	require.Contains(t, string(output), "unsupported capability")
-	require.Contains(t, string(output), "not tenant-safe in Camunda 8.7")
-}
-
-func TestGetProcessInstanceWithElements_V87ReportsUnsupported(t *testing.T) {
-	cfgPath := writeTestConfigForVersion(t, "http://127.0.0.1:1", "8.7")
-
-	output, err := testx.RunCmdSubprocess(t, "TestGetProcessInstanceWithElementsUnsupportedV87Helper", map[string]string{
-		"C8VOLT_TEST_CONFIG": cfgPath,
-	})
-
-	require.Error(t, err)
-	require.Contains(t, string(output), "unsupported capability")
-	require.Contains(t, string(output), "process-instance direct lookup by key is not tenant-safe in Camunda 8.7")
-}
-
 // TestGetProcessInstanceWithoutIncidents_HumanOutputPreservesDefault keeps default keyed output free of enrichment lines.
 func TestGetProcessInstanceWithoutIncidents_HumanOutputPreservesDefault(t *testing.T) {
 	var requests []string
@@ -3127,37 +3056,6 @@ func TestGetProcessInstanceSearchIncidentFilters_PreserveDefaultSearchMode(t *te
 	}
 }
 
-// TestGetProcessInstanceSearch_V87StillSupportsTenantScopedSearch verifies v8.7 search keeps tenant scoping available.
-func TestGetProcessInstanceSearch_V87StillSupportsTenantScopedSearch(t *testing.T) {
-	var requests []string
-	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, http.MethodPost, r.Method)
-		require.Equal(t, "/v1/process-instances/search", r.URL.Path)
-
-		body, err := io.ReadAll(r.Body)
-		require.NoError(t, err)
-		requests = append(requests, string(body))
-
-		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"items":[{"key":123,"bpmnProcessId":"demo","processVersion":3,"state":"ACTIVE","startDate":"2026-03-23T18:00:00Z","tenantId":"<default>"}]}`))
-	}))
-	t.Cleanup(srv.Close)
-
-	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.7")
-
-	output := executeRootForProcessInstanceTest(t,
-		"--config", cfgPath,
-		"--json",
-		"get", "process-instance",
-		"--state", "active",
-	)
-
-	filter := decodeCapturedPISearchFilter(t, requests)
-	require.Equal(t, "<default>", filter["tenantId"])
-	require.Equal(t, "ACTIVE", filter["state"])
-	require.Contains(t, output, `"tenantId": "<default>"`)
-}
-
 // TestGetProcessInstanceSearch_AllTenantsOmitsTenantFilterAcrossVersions proves
 // the root override clears configured tenants before every supported PI search
 // adapter builds its request body.
@@ -3169,13 +3067,6 @@ func TestGetProcessInstanceSearch_AllTenantsOmitsTenantFilterAcrossVersions(t *t
 		response   string
 		wantOutput string
 	}{
-		{
-			name:       "v87",
-			version:    "8.7",
-			path:       "/v1/process-instances/search",
-			response:   `{"items":[{"key":123,"bpmnProcessId":"demo","processVersion":3,"state":"ACTIVE","startDate":"2026-03-23T18:00:00Z","tenantId":"tenant-visible"}]}`,
-			wantOutput: `"tenantId": "tenant-visible"`,
-		},
 		{
 			name:       "v88",
 			version:    "8.8",
@@ -3295,35 +3186,6 @@ apis:
 			require.Contains(t, stdout, tt.wantStdout)
 			require.NotContains(t, stdout, "--all-tenants overrides")
 			require.NotContains(t, stderr, "--all-tenants overrides")
-		})
-	}
-}
-
-// TestGetProcessInstanceCommand_VariableFiltersUnsupportedOnV87 verifies native variable filters fail before any 8.7 fallback path.
-func TestGetProcessInstanceCommand_VariableFiltersUnsupportedOnV87(t *testing.T) {
-	cfgPath := writeTestConfigForVersion(t, "http://127.0.0.1:1", "8.7")
-
-	tests := []struct {
-		name string
-		mode string
-	}{
-		{name: "var-exists", mode: "var-exists"},
-		{name: "var", mode: "var"},
-		{name: "var-like", mode: "var-like"},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			output, code := executeProcessInstanceFailureHelperWithEnv(t,
-				"TestGetProcessInstanceVariableFiltersUnsupportedV87Helper",
-				cfgPath,
-				map[string]string{"C8VOLT_TEST_PI_VARIABLE_FILTER_MODE": tt.mode},
-			)
-
-			require.Equal(t, exitcode.Error, code)
-			require.Contains(t, output, "unsupported capability")
-			require.Contains(t, output, "process-instance variable search is unsupported in Camunda 8.7")
-			require.Contains(t, output, "requires Camunda 8.8 or newer")
 		})
 	}
 }
@@ -3897,18 +3759,6 @@ func TestGetProcessInstanceCommand_RejectsHasUserTasksConflictsBeforeLookup(t *t
 			require.Equal(t, before, atomic.LoadInt32(&requestCount))
 		})
 	}
-}
-
-// Verifies Camunda 8.7 reports has-user-tasks as unsupported instead of falling back to another API.
-func TestGetProcessInstanceCommand_HasUserTasksUnsupportedOnV87(t *testing.T) {
-	cfgPath := writeTestConfigForVersion(t, "http://127.0.0.1:1", "8.7")
-
-	output, code := executeProcessInstanceFailureHelper(t, "TestGetProcessInstanceCommand_HasUserTasksUnsupportedOnV87Helper", cfgPath)
-
-	require.Equal(t, exitcode.Error, code)
-	require.Contains(t, output, "unsupported capability")
-	require.Contains(t, output, "has-user-tasks lookup is unsupported in Camunda 8.7")
-	require.Contains(t, output, "requires Camunda 8.8 or newer")
 }
 
 // requireUserTaskSearchRequest validates the native user-task search request and returns its decoded body for scenario-specific assertions.
@@ -4666,44 +4516,6 @@ func TestGetProcessInstanceCommand_RejectsHasUserTasksConflictHelper(t *testing.
 	Execute()
 }
 
-// TestGetProcessInstanceCommand_HasUserTasksUnsupportedOnV87Helper drives the unsupported-version path in a helper process.
-func TestGetProcessInstanceCommand_HasUserTasksUnsupportedOnV87Helper(t *testing.T) {
-	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
-		return
-	}
-
-	prevArgs := os.Args
-	t.Cleanup(func() { os.Args = prevArgs })
-	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "process-instance", "--has-user-tasks", "2251799815391233"}
-
-	Execute()
-}
-
-// TestGetProcessInstanceVariableFiltersUnsupportedV87Helper drives unsupported variable-search validation in a helper process.
-func TestGetProcessInstanceVariableFiltersUnsupportedV87Helper(t *testing.T) {
-	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
-		return
-	}
-
-	prevArgs := os.Args
-	t.Cleanup(func() { os.Args = prevArgs })
-
-	args := []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "process-instance"}
-	switch os.Getenv("C8VOLT_TEST_PI_VARIABLE_FILTER_MODE") {
-	case "var-exists":
-		args = append(args, "--var-exists", "customerId")
-	case "var":
-		args = append(args, "--var", `status="approved"`)
-	case "var-like":
-		args = append(args, "--var-like", "email=*@example.com")
-	default:
-		t.Fatalf("unknown variable filter mode %q", os.Getenv("C8VOLT_TEST_PI_VARIABLE_FILTER_MODE"))
-	}
-	os.Args = args
-
-	Execute()
-}
-
 // TestGetProcessInstanceCommand_HasUserTasksResolvedProcessInstanceNotFoundHelper preserves process exit behavior for resolved-key not-found.
 func TestGetProcessInstanceCommand_HasUserTasksResolvedProcessInstanceNotFoundHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
@@ -4996,20 +4808,6 @@ func TestGetProcessInstanceWithListenersWithKeysOnlyHelper(t *testing.T) {
 	Execute()
 }
 
-// TestGetProcessInstanceListWithElementsAndListenersUnsupportedV87Helper drives unsupported v8.7 listener coverage through list/search mode.
-func TestGetProcessInstanceListWithElementsAndListenersUnsupportedV87Helper(t *testing.T) {
-	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
-		return
-	}
-	applyRelativeDayNowOverrideFromEnv(t)
-
-	prevArgs := os.Args
-	t.Cleanup(func() { os.Args = prevArgs })
-	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "process-instance", "--state", "active", "--with-elements", "--with-listeners"}
-
-	Execute()
-}
-
 // Helper-process entrypoint for mutually exclusive direct and marker incident filter validation.
 func TestGetProcessInstanceDirectIncidentsOnlyWithIncidentsOnlyHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
@@ -5132,48 +4930,6 @@ func TestGetProcessInstanceIncidentErrorTypeInvalidHelper(t *testing.T) {
 	prevArgs := os.Args
 	t.Cleanup(func() { os.Args = prevArgs })
 	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "process-instance", "--key", "123", "--with-incidents", "--incident-error-type", "retry_error"}
-
-	Execute()
-}
-
-// Helper-process entrypoint for unsupported v8.7 --with-incidents coverage.
-func TestGetProcessInstanceWithIncidentsUnsupportedV87Helper(t *testing.T) {
-	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
-		return
-	}
-	applyRelativeDayNowOverrideFromEnv(t)
-
-	prevArgs := os.Args
-	t.Cleanup(func() { os.Args = prevArgs })
-	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "process-instance", "--key", "123", "--with-incidents"}
-
-	Execute()
-}
-
-// Helper-process entrypoint for unsupported v8.7 --with-elements coverage.
-func TestGetProcessInstanceWithElementsUnsupportedV87Helper(t *testing.T) {
-	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
-		return
-	}
-	applyRelativeDayNowOverrideFromEnv(t)
-
-	prevArgs := os.Args
-	t.Cleanup(func() { os.Args = prevArgs })
-	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "process-instance", "--key", "123", "--with-elements"}
-
-	Execute()
-}
-
-// Helper-process entrypoint for unsupported v8.7 list/search --with-elements coverage.
-func TestGetProcessInstanceListWithElementsUnsupportedV87Helper(t *testing.T) {
-	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
-		return
-	}
-	applyRelativeDayNowOverrideFromEnv(t)
-
-	prevArgs := os.Args
-	t.Cleanup(func() { os.Args = prevArgs })
-	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "process-instance", "--state", "active", "--with-elements"}
 
 	Execute()
 }

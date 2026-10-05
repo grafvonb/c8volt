@@ -10,7 +10,7 @@ Update user-task variables by key
 
 ### Synopsis
 
-Update effective user-task variables on Camunda 8.8, 8.9, or 8.10. Camunda 8.7 returns an unsupported-version error without mutation.
+Update effective user-task variables on supported Camunda versions.
 
 Provide repeated --key values or newline-separated keys from stdin with '-'. Supply exactly one payload source: --vars with a JSON object or --vars-file with its file path. The same variable map is applied to every unique key. Explicit keys use backend authorization without tenant filtering.
 

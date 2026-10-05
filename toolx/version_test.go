@@ -14,8 +14,8 @@ import (
 func TestSupportedCamundaVersionsIncludeV810(t *testing.T) {
 	t.Parallel()
 
-	require.Equal(t, []CamundaVersion{V87, V88, V89, V810}, SupportedCamundaVersions())
-	require.Equal(t, "8.7, 8.8, 8.9, 8.10", SupportedCamundaVersionsString())
+	require.Equal(t, []CamundaVersion{V88, V89, V810}, SupportedCamundaVersions())
+	require.Equal(t, "8.8, 8.9, 8.10", SupportedCamundaVersionsString())
 }
 
 // TestNormalizeCamundaVersionAcceptsV810Aliases verifies the single canonical
@@ -83,6 +83,6 @@ func TestCurrentCamundaVersionIsV89(t *testing.T) {
 func TestImplementedCamundaVersionsIncludeCompleteV810Runtime(t *testing.T) {
 	t.Parallel()
 
-	require.Equal(t, []CamundaVersion{V87, V88, V89, V810}, ImplementedCamundaVersions())
-	require.Equal(t, "8.7, 8.8, 8.9, 8.10", ImplementedCamundaVersionsString())
+	require.Equal(t, []CamundaVersion{V88, V89, V810}, ImplementedCamundaVersions())
+	require.Equal(t, "8.8, 8.9, 8.10", ImplementedCamundaVersionsString())
 }
