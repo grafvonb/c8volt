@@ -42,8 +42,16 @@
 
 ## 6. Work-unit and validation discipline
 
-**Decision**: Five implementation units: one runtime cutover, three maintenance units, one remaining documentation/audit unit. Relevant tests stay inside each unit. Full tests/build run after the final executable unit, and documentation-only work receives lightweight validation unless it reveals executable changes.
+**Decision**: Three units: runtime plus exclusive shared behavior; generation plus fixtures/integration; remaining support documentation and final audit. Each check has one owner in quickstart. Reuse existing generic validation tests and avoid new broad matrices.
 
-**Rationale**: This follows the constitution and Ralph's one-story-per-iteration boundary. The issue's explicit scope authorizes replacing historical version inventories; it does not relax architecture or operator UX rules.
+**Rationale**: Ralph permits multiple tasks within a story but never starts a second story in the same iteration. Reducing five checkboxes alone would not lower its three-story minimum. Removing repeated inspection, commands and artificial cleanup boundaries reduces actual work. The old dry-run task revisited deploy/embed coverage already required by runtime deletion. Generation and fixture removal can share one executable completion check. Historical content remains separate: 419 specification files and six PRDs had candidate references during review, so combining that work with runtime changes would be impractical.
 
-**Alternatives considered**: Separate test-only tasks and hypothetical parallel tasks repeat work or leave regressions between revisions. A single giant removal task obscures distinct generation and integration risks.
+**Alternatives considered**: One giant task removes the useful validation boundary and exceeds a practical iteration. Keeping five tasks increases handoff opportunities without guaranteeing smaller logical work. Splitting historical content per document would create hundreds of unnecessary iterations.
+
+## 7. Validation execution traps
+
+**Decision**: Compile tagged integration packages with `go test -c`; run the Git-cleanliness boundary check once in a temporary clean snapshot of reviewed changes before task completion.
+
+**Rationale**: `integration/cli/harness_test.go` defines `TestMain`, which builds a binary and writes reports even with `-run '^$'`. The prior compile-only instructions therefore performed unnecessary work. The repository-boundary shell check rejects intended dirty integration edits; waiting for a commit conflicts with validating a unit before marking it complete. A temporary snapshot resolves that ordering without resetting the checkout or relaxing the guard.
+
+**Alternatives considered**: Repeated post-commit checks and follow-up evidence commits add loop overhead. Disabling the guard would lose useful protection.
