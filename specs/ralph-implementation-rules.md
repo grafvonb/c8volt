@@ -478,7 +478,7 @@ These rules are mandatory for CLI and ops workflow work. They capture the comman
 - Record reusable discoveries in the feature `progress.md` under codebase patterns.
 - Mark tasks complete only after implementation and relevant validation pass.
 - When the work unit is complete, include task/progress updates in the same work-unit commit.
-- Use Conventional Commits and append the issue suffix when feature artifacts persist an issue number.
+- Use Conventional Commits. Every issue-associated commit MUST end its subject with a space followed by the bare issue number, such as `#331`, without parentheses or brackets. Use the issue number persisted in the feature artifacts. Example: `refactor(services): remove obsolete adapters #331`.
 
 ## Quick Search Checklist
 
