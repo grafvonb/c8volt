@@ -4,7 +4,6 @@
 
 - A c8volt configuration for a Camunda 8.8 or 8.9 environment with process instances that have runtime element instances.
 - A known process-instance key suitable for family, children, parent, and flat walk validation.
-- For unsupported-version validation, a Camunda 8.7 test configuration.
 
 ## Targeted Validation
 
@@ -24,7 +23,6 @@ Add or update targeted cases covering:
 - `walk pi --key <key> --with-vars --with-incidents --with-elements` renders sections as `vars:`, `incidents:`, `elements:`.
 - `--json walk pi --key <key> --with-elements` preserves traversal metadata and includes per-item `elements`.
 - `--keys-only --with-elements` fails before element enrichment.
-- Camunda 8.7 returns the existing unsupported element-search capability error.
 - Default walk output without `--with-elements` remains unchanged.
 
 ## Manual Smoke Scenarios

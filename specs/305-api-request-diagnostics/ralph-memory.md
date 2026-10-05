@@ -20,7 +20,6 @@ Started: 2026-09-12T17:35:53Z
 - Request-body reads establish explicit incomplete upload evidence until EOF or a successful `WriterTo`; request-body Close preserves the delegate result without claiming upload completion.
 - Trace phase queues retain completed zero-duration samples, match overlapping TCP attempts by network/address, order output by start time, and freeze before logger emission; the shared logging writer keeps concurrently completed records indivisible.
 - Read-retry closes discarded response bodies without draining them, so the diagnostic response wrapper emits one attempt record with observed zero bytes and `response-complete=false`; the eventual response remains a separate sequence.
-- A single `httpc.Service` client supplied to the top-level `c8volt.New` factory reaches Camunda clients for 8.7-8.10, the v8.7 Operate adapter and v8.8/v8.9 Tasklist fallback without generated-client changes.
 - Pre-header failure phase resolution prefers typed DNS/TLS/connect evidence, retains a phase only when trace failures or active setup identify one phase, and uses a successful `WroteRequest` as response-header evidence; conflicting phases are omitted.
 - Client timeout finalization must compare the terminal observation with the request context deadline in addition to checking `Context.Err()`, because cancellation state can lag the transport return under race-suite load.
 - Separate command invocations should be tested in subprocesses: each owns a fresh Cobra singleton, diagnostic collector, stderr destination and sequence beginning at 1.

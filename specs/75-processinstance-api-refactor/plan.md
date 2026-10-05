@@ -25,7 +25,7 @@ Refactor the internal processinstance service to reduce duplication across suppo
 
 - `Operational proof`: Pass. Current processinstance workflows already verify creation, cancellation, deletion, and expectation behavior through returned state, polling, and tree traversal. The refactor preserves those observable completion semantics, and any added capability must define equally clear success, failure, or unsupported-version outcomes.
 - `CLI compatibility`: Pass. No command names, flags, Cobra wiring, output format, or exit-code changes are planned unless a bounded processinstance capability is intentionally surfaced beyond the current internal service surface. If the work stays internal-only, CLI behavior remains unchanged.
-- `Validation`: Pass. Update `internal/services/processinstance/factory_test.go`, add or expand versioned service tests for v87 and v88, add helper-level coverage for waiter or walker behavior if refactored, keep adjacent command or integration coverage aligned where processinstance semantics are already exercised, and finish with `make test`.
+- `Validation`: Pass. Update `internal/services/processinstance/factory_test.go`, add or expand versioned service tests for v88, add helper-level coverage for waiter or walker behavior if refactored, keep adjacent command or integration coverage aligned where processinstance semantics are already exercised, and finish with `make test`.
 - `Documentation parity`: Pass with conditional update. If the feature remains internal-only, `README.md` and generated CLI docs do not change. If a new user-visible processinstance workflow, output, or unsupported-version contract appears, update `README.md` and regenerate CLI docs with `make docs`.
 - `Complexity control`: Pass. Reuse the repository-native service/factory/contract/helper layout, generated clients, and `internal/services/common` helpers where they fit. Do not add dependencies. Prefer localized helper extraction, type aliases, and shared response-validation patterns over new cross-package abstraction layers.
 
@@ -33,7 +33,7 @@ Refactor the internal processinstance service to reduce duplication across suppo
 
 Research findings are captured in [research.md](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/75-processinstance-api-refactor/research.md).
 
-- Confirm the lowest-risk refactor shape for duplicated v87 and v88 processinstance services while keeping waiter and walker responsibilities readable.
+- Confirm the lowest-risk refactor shape for duplicated v88 processinstance services while keeping waiter and walker responsibilities readable.
 - Review generated processinstance client capabilities for both supported versions and decide whether one missing capability is worth exposing, including how unsupported-version behavior should work if only one version supports it cleanly.
 - Confirm the required validation and documentation surface based on whether the final change stays internal-only or introduces a user-visible capability.
 
@@ -95,11 +95,6 @@ internal/services/processinstance/
 │   └── waiter.go
 ├── walker/
 │   └── walker.go
-├── v87/
-│   ├── bulk.go
-│   ├── contract.go
-│   ├── convert.go
-│   └── service.go
 └── v88/
     ├── bulk.go
     ├── contract.go
@@ -110,8 +105,6 @@ internal/services/common/
 └── *.go
 
 internal/clients/camunda/
-├── v87/camunda/client.gen.go
-├── v87/operate/client.gen.go
 ├── v88/camunda/client.gen.go
 └── v88/operate/client.gen.go
 
@@ -128,7 +121,7 @@ docs/cli/
 
 - `Operational proof`: Still passes. The design preserves current create, wait, cancel, delete, and traversal verification semantics, including polling-backed confirmation and family-tree handling.
 - `CLI compatibility`: Still passes. No command-tree or flag changes are planned unless a bounded processinstance capability is intentionally exposed beyond the internal service layer.
-- `Validation`: Still passes. The design maps directly to factory tests, new or expanded v87 and v88 service tests, helper-level waiter or walker coverage if touched, and repository-wide `make test`.
+- `Validation`: Still passes. The design maps directly to factory tests, new or expanded v88 service tests, helper-level waiter or walker coverage if touched, and repository-wide `make test`.
 - `Documentation parity`: Still passes. Documentation remains unchanged unless the generated-client review results in a user-visible processinstance addition or output change.
 - `Complexity control`: Still passes. No new dependencies, no package moves, and no non-native abstraction layers are introduced by the design.
 

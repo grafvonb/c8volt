@@ -44,7 +44,7 @@ Started: 2026-08-17 16:08:19
 ## Iteration 3 - 2026-08-17 16:19
 **Work Unit**: US1 Use Native 8.10 Embedded Definitions
 **Tasks Completed**:
-- [x] T003: Updated V810 production-prefix expectations to `C810_` while retaining V87/V88/V89 and unknown-version coverage.
+- [x] T003: Updated V810 production-prefix expectations to `C810_` while retaining V88/V89 and unknown-version coverage.
 - [x] T004: Replaced the V810 embed-list fallback assertion with an exact eight-file C810 family assertion and explicit C89 exclusion.
 - [x] T005: Updated V810 smoke fixture selection and added C810 three-resource deployment-closure coverage.
 - [x] T006: Added a V810 smoke command JSON case that preserves the output envelope while reporting the C810 fixture identity.

@@ -16,8 +16,6 @@ Extend the existing job command surface from keyed lookup and retry/timeout upda
 **Target Platform**: Multi-platform CLI binary
 **Project Type**: Go CLI
 **Performance Goals**: Keyed lookup remains one bounded job search; list/search uses explicit limits and repository pagination patterns; dry-run and confirmation perform only the required lookup/mutation calls; worker outcome mutations avoid confirmation claims that cannot be reliably observed
-**Constraints**: Preserve current job retry/timeout behavior; keep state-changing UX consistent with existing `update job`; support Camunda 8.8 and 8.9; fail before unsupported new mutation paths on 8.7; use `elementId` and `elementInstanceKey` terminology; do not introduce `flowNode` or `fni` job aliases; keep generated-client details below command/facade boundaries; update README and generated CLI docs with behavior changes; apply `specs/ralph-implementation-rules.md` during planning, task generation, and every Ralph iteration
-**Scale/Scope**: One existing get command extended into keyed or list/search modes; one existing update command extended with three worker outcome modes; domain/facade/service request/result model expansion; v8.8/v8.9 generated-client adapter work; v8.7 unsupported behavior; command rendering, metadata, docs, and tests
 
 ## Constitution Check
 
@@ -75,7 +73,6 @@ internal/
         ├── waiter/
         │   ├── waiter.go
         │   └── waiter_test.go
-        ├── v87/
         ├── v88/
         └── v89/
 
@@ -84,7 +81,6 @@ docs/cli/
 docsgen/
 ```
 
-**Structure Decision**: Reuse the existing job boundary created for keyed lookup and retry/timeout updates. `cmd/get_job.go` owns flag grammar, keyed-vs-search validation, automation support, and render selection. `cmd/update_job.go` owns mutually exclusive mutation-mode flag grammar, JSON/confirmation guardrails, and dry-run planning. `c8volt/job` remains the public facade surface for command-facing models. `internal/services/job` owns version-neutral service contracts, generated-client request construction, pagination/search behavior, worker outcome submission, and 8.7 unsupported paths. Versioned `v88` and `v89` services call generated `SearchJobsWithResponse`, `UpdateJobWithResponse`, `CompleteJobWithResponse`, `ThrowJobErrorWithResponse`, and `FailJobWithResponse`. Command views and contract metadata remain in `cmd`.
 
 ## Architecture Grounding
 

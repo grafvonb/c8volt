@@ -30,7 +30,6 @@ Started: 2026-04-19 13:07:21
 - The feature should reuse the live `capabilities --json` traversal as the public-command inventory source because it already applies the discoverable-command boundary.
 - The current public scope is root plus 28 discoverable command paths: 10 group nodes and 18 executable leaves.
 - Validation needs two layers: focused `go test ./cmd -count=1` during metadata edits and `make test` before a commit, with docs regeneration only when the corresponding sources change.
-- Full `make test` currently fails in this environment before reaching code-specific assertions because existing tests in `cmd`, `internal/services/auth/cookie`, and `internal/services/cluster/v87`/`v88` cannot bind local `httptest` listeners.
 ---
 
 ## Iteration 2 - 2026-04-19 13:16:12 CEST

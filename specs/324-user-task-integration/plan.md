@@ -18,7 +18,6 @@ Extend the existing baseline and volume user-task integration scenarios for #309
 **Project Type**: CLI integration harness extension.
 **Performance Goals**: Bounded readiness polling; baseline seeds only the cases needed; volume uses the existing count with at least three instances. No arbitrary latency benchmark or exhaustive live flag matrix.
 **Constraints**: Default-local profile configuration; version gate before setup; immutable embedded models; no direct API setup; preserve old seed defaults and run markers; no t.Parallel for live scenarios sharing model IDs.
-**Scale/Scope**: Three supported minors (8.8/8.9/8.10) plus unsupported 8.7. Two standalone model shapes, one parent-child shape, and a volume dataset.
 
 ## Constitution Check
 

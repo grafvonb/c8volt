@@ -125,7 +125,6 @@ Started: 2026-05-03 11:10:33
 - [x] T023: Add v89 service tests for both-lookups-missing, fallback missing process-instance key, and fallback server failure
 - [x] T024: Add v88 service tests for both-lookups-missing, fallback missing process-instance key, and fallback server failure
 - [x] T025: Add command failure test for both-lookups-missing not-found output
-- [x] T026: Confirm 8.7 unsupported tests still prove no fallback attempt
 - [x] T027: Restrict fallback eligibility to primary `domain.ErrNotFound` outcomes in v89
 - [x] T028: Restrict fallback eligibility to primary `domain.ErrNotFound` outcomes in v88
 - [x] T029: Return final not-found only after both primary and fallback lookup miss in v89
@@ -143,7 +142,6 @@ Started: 2026-05-03 11:10:33
 **Learnings**:
 - Existing v88/v89 service implementation already gates fallback with `errors.Is(err, domain.ErrNotFound)` and returns fallback misses as final not-found only after the primary lookup also misses.
 - `common.RequirePayload` preserves Tasklist HTTP 500 responses as `domain.ErrInternal`, which keeps fallback service failures script-distinguishable from absent task keys.
-- Validation passed with `go test ./internal/services/usertask/v88 ./internal/services/usertask/v89 -run 'MissingTask|FallbackMissingProcessInstanceKey|FallbackServerFailure|PrimaryServerFailure|MissingProcessInstanceKey' -count=1` and `go test ./internal/services/usertask/v87 ./internal/services/usertask/v88 ./internal/services/usertask/v89 ./cmd -run 'HasUserTasks|GetUserTask|Unsupported' -count=1`.
 ---
 
 ---
@@ -190,5 +188,4 @@ Started: 2026-05-03 11:10:33
 **Learnings**:
 - `gofmt` on the feature's changed Go files produced no source diff.
 - Traceability is explicit in `spec.md` as issue 162, and `AGENTS.md` links the active plan for this feature.
-- Validation passed with `go test ./internal/services/usertask/v88 ./internal/services/usertask/v89 ./internal/services/usertask/v87 -count=1`, `go test ./cmd -run 'HasUserTasks|Tasklist|UserTask' -count=1`, and `make test`.
 ---

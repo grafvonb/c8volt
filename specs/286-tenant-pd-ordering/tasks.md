@@ -51,14 +51,12 @@ description: "Dependency-ordered implementation tasks for stable tenant-aware pr
 - [x] T004 [P] [US1] Add page-arrival independence and final canonical collection-order tests to `internal/services/processdefinition/search_test.go`
 - [x] T005 [P] [US1] Add public ordinary-search and paged-search order-preservation tests to `c8volt/process/client_test.go`
 - [x] T006 [P] [US1] Add command-level filtered and `--all-tenants` canonical ordering tests to `cmd/get_processdefinition_test.go`
-- [x] T007 [P] [US1] Add Camunda 8.7 request-sort and returned-order assertions for tenant/BPMN/version/key to `internal/services/processdefinition/v87/service_test.go`
 - [x] T008 [P] [US1] Add Camunda 8.8 ordinary request-sort and returned-order assertions to `internal/services/processdefinition/v88/service_test.go`
 - [x] T009 [P] [US1] Add Camunda 8.9 ordinary request-sort and returned-order assertions to `internal/services/processdefinition/v89/service_test.go`
 - [x] T010 [P] [US1] Add Camunda 8.10 ordinary request-sort and returned-order assertions to `internal/services/processdefinition/v810/service_test.go`
 
 ### Implementation for User Story 1
 
-- [x] T011 [P] [US1] Encode Operate 8.7 backend sorting as tenant ID ASC, BPMN process ID ASC, version DESC, and key ASC, then use the domain canonical sort for returned collections in `internal/services/processdefinition/v87/service.go`
 - [x] T012 [P] [US1] Encode Camunda 8.8 ordinary backend sorting as tenant ID ASC, process definition ID ASC, version DESC, and process definition key ASC, then use the domain canonical sort for returned collections in `internal/services/processdefinition/v88/service.go`
 - [x] T013 [P] [US1] Encode Camunda 8.9 ordinary backend sorting as tenant ID ASC, process definition ID ASC, version DESC, and process definition key ASC, then use the domain canonical sort for returned collections in `internal/services/processdefinition/v89/service.go`
 - [x] T014 [P] [US1] Encode Camunda 8.10 ordinary backend sorting as tenant ID ASC, process definition ID ASC, version DESC, and process definition key ASC, then use the domain canonical sort for returned collections in `internal/services/processdefinition/v810/service.go`
@@ -93,15 +91,13 @@ description: "Dependency-ordered implementation tasks for stable tenant-aware pr
 
 ## Phase 5: User Story 3 - Preserve Complete and Compatible Discovery (Priority: P3)
 
-**Goal**: Make paging and tenant-aware latest selection complete and deterministic across Camunda 8.7-8.10 without regressing direct-key or XML retrieval.
+**Goal**: Make paging and tenant-aware latest selection complete and deterministic across Camunda 8.8–8.10 without regressing direct-key or XML retrieval.
 
-**Independent Test**: Retrieve one controlled population with page sizes 1, 2, and 1000 and with `--latest`; verify identical exact-once canonical keys, one newest definition per exact tenant/BPMN group, cross-version parity, the documented 8.7 ceiling, and unchanged direct-key/XML behavior.
 
 ### Tests for User Story 3
 
 - [x] T023 [P] [US3] Add service tests for complete cursor/offset traversal, page sizes 1/2/1000, exact tenant/BPMN latest grouping, tied-version lexical key choice, post-reduction limiting, and latest watch paging in `internal/services/processdefinition/search_test.go`
 - [x] T024 [P] [US3] Add facade tests for mapping `Latest`, complete latest results, ordered conversion, visitor behavior, and domain-error conversion in `c8volt/process/client_test.go`
-- [x] T025 [P] [US3] Add Camunda 8.7 tests for canonical Operate paging, tenant-aware local latest selection, lexical key ties, and the retained 1000-definition compatibility ceiling in `internal/services/processdefinition/v87/service_test.go`
 - [x] T026 [P] [US3] Add Camunda 8.8 tests for native `isLatestVersion`, tenant-then-process latest sort, continuation metadata, and multi-page latest requests in `internal/services/processdefinition/v88/service_test.go`
 - [x] T027 [P] [US3] Add Camunda 8.9 tests for native `isLatestVersion`, tenant-then-process latest sort, continuation metadata, and multi-page latest requests in `internal/services/processdefinition/v89/service_test.go`
 - [x] T028 [P] [US3] Add Camunda 8.10 tests for native `isLatestVersion`, tenant-then-process latest sort, continuation metadata, and multi-page latest requests in `internal/services/processdefinition/v810/service_test.go`
@@ -112,7 +108,6 @@ description: "Dependency-ordered implementation tasks for stable tenant-aware pr
 - [x] T030 [US3] Add the `Latest` intent to domain/public search requests and map it without changing serialized response contracts in `internal/domain/processdefinition.go`, `c8volt/process/model.go`, and `c8volt/process/convert.go`
 - [x] T031 [US3] Extend service-owned traversal to collect complete latest candidates, reduce by exact `(tenantId, bpmnProcessId)` with version/key tie rules, sort canonically, apply latest limits after reduction, and route latest watch snapshots through the same path in `internal/services/processdefinition/search.go`
 - [x] T032 [US3] Route `SearchProcessDefinitionsLatest` through the shared paged service request with `Latest: true`, preserving facade error conversion and result order in `c8volt/process/client.go`
-- [x] T033 [P] [US3] Make the Camunda 8.7 compatibility latest wrapper group by exact tenant and BPMN IDs, resolve equal-version keys lexically, and retain its documented 1000-item bound in `internal/services/processdefinition/v87/service.go`
 - [x] T034 [P] [US3] Make Camunda 8.8 latest pages use native filtering with tenant ID ASC then process definition ID ASC while leaving final normalization to the shared service in `internal/services/processdefinition/v88/service.go`
 - [x] T035 [P] [US3] Make Camunda 8.9 latest pages use native filtering with tenant ID ASC then process definition ID ASC while leaving final normalization to the shared service in `internal/services/processdefinition/v89/service.go`
 - [x] T036 [P] [US3] Make Camunda 8.10 latest pages use native filtering with tenant ID ASC then process definition ID ASC while leaving final normalization to the shared service in `internal/services/processdefinition/v810/service.go`
@@ -126,7 +121,6 @@ description: "Dependency-ordered implementation tasks for stable tenant-aware pr
 
 **Purpose**: Align documentation, generated artifacts, formatting, and repository-wide validation with the completed contract.
 
-- [x] T038 Update canonical-order wording, latest grouping, exact comparison rules, and the Camunda 8.7 compatibility note in `cmd/get_processdefinition.go` and `README.md`
 - [x] T039 Regenerate and review process-definition CLI documentation with `make docs-content`, accepting generated changes in `docs/cli/c8volt_get_process-definition.md`
 - [x] T040 Run `gofmt` on all touched Go files and execute the focused commands from `specs/286-tenant-pd-ordering/quickstart.md`
 - [x] T041 Run the repository static validation target `make vet` against the implementation described by `specs/286-tenant-pd-ordering/plan.md`
@@ -155,7 +149,6 @@ description: "Dependency-ordered implementation tasks for stable tenant-aware pr
 ### Within Each User Story
 
 - Add the story's tests before its production changes.
-- Keep backend request differences in the matching `v87`, `v88`, `v89`, or `v810` service.
 - Keep traversal, latest reduction, final sorting, and limit trimming in `internal/services/processdefinition/search.go`.
 - Keep the public facade thin and order-preserving.
 - Keep command work limited to dispatch, validation, progress, help, and presentation wiring.
@@ -177,7 +170,6 @@ description: "Dependency-ordered implementation tasks for stable tenant-aware pr
 Task T004: Add service collection-order tests in internal/services/processdefinition/search_test.go
 Task T005: Add facade order-preservation tests in c8volt/process/client_test.go
 Task T006: Add CLI ordering tests in cmd/get_processdefinition_test.go
-Task T007-T010: Add version-adapter request-sort tests in each v87-v810 service_test.go
 
 After the adapter tests exist:
 Task T011-T014: Implement each version adapter in parallel
@@ -235,5 +227,4 @@ Task T033-T036: Implement version-specific latest behavior in parallel
 - `[P]` means parallelizable only after the dependencies above are satisfied.
 - Existing order-preserving code may need only regression coverage; do not refactor it without a failing contract test.
 - Do not add a user-selectable sort flag, new output fields, a new dependency, or generated-client edits.
-- Keep the Camunda 8.7 1000-definition ceiling explicit in code comments, tests, and documentation.
 - Stop at each checkpoint and run the closest tests before proceeding.

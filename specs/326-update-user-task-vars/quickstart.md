@@ -87,7 +87,6 @@ Expected: both tasks refer to the shared parent target, one logical scope/name w
 
 ## 6. Failure and version checks
 
-Use controlled HTTP fixtures for transport/HTTP errors, malformed pages, truncated values, authorization loss, task disappearance, partial acceptance, shared scope failure, fail-fast, and cancellation. Verify unsupported v8.7 produces no mutation. Exercise all three supported adapters; a live test on one version does not prove all version paths.
 
 For normal-wait execution, test mismatched scope despite matching value, incomplete observed values, and confirmation timeout. Each must preserve submission facts and avoid confirmed success.
 

@@ -149,5 +149,4 @@ Represents explicit pre-mutation failure for unsupported Camunda versions or mis
 
 **Validation Rules**:
 
-- v8.7 unsupported paths must fail before mutation.
 - unsupported errors must preserve machine-readable error behavior through the shared command contract.

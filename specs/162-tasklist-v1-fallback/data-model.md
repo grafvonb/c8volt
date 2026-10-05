@@ -60,7 +60,6 @@
   - `not-found`: both lookup paths missed.
   - `resolution-error`: a lookup result lacked a usable process-instance key or returned ambiguous data.
   - `terminal-error`: auth, config, malformed response, network, or server error that must not be masked.
-  - `unsupported-version`: Camunda 8.7 rejected the lookup before any lookup path was attempted.
 - **Validation**:
   - Only `primary-resolved` and `fallback-resolved` may proceed to process-instance rendering.
   - `not-found`, `resolution-error`, `terminal-error`, and `unsupported-version` must fail clearly.

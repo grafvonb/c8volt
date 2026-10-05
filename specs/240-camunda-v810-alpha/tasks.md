@@ -19,7 +19,7 @@
 **Purpose**: Capture the pre-feature state, repository rules, and pinned upstream prerequisites before generation or runtime changes begin.
 
 - [ ] T001 Read `AGENTS.md`, `specs/ralph-implementation-rules.md`, `specs/240-camunda-v810-alpha/spec.md`, `specs/240-camunda-v810-alpha/plan.md`, `specs/240-camunda-v810-alpha/research.md`, `specs/240-camunda-v810-alpha/data-model.md`, `specs/240-camunda-v810-alpha/quickstart.md`, `specs/240-camunda-v810-alpha/contracts/generation-contract.md`, `specs/240-camunda-v810-alpha/contracts/service-compatibility.md`, and `specs/240-camunda-v810-alpha/contracts/version-selection.md`, then record any conflict or the no-conflict result in `specs/240-camunda-v810-alpha/progress.md`
-- [ ] T002 Record the current default version, supported-version output, stable factory coverage, and fingerprints of `internal/clients/camunda/v87/`, `internal/clients/camunda/v88/`, and `internal/clients/camunda/v89/` in `specs/240-camunda-v810-alpha/progress.md`
+- [ ] T002 Record the current default version, supported-version output, stable factory coverage, and fingerprints of `internal/clients/camunda/v88/`, and `internal/clients/camunda/v89/` in `specs/240-camunda-v810-alpha/progress.md`
 - [ ] T003 Verify Go, Redocly, Python/PyYAML, and oapi-codegen prerequisites plus the `8.10.0-alpha4` tag-to-commit resolution, then record exact tool versions and commit `4a76f06c9df8ad0a6c64fe88b92c618c2ebf2ef6` in `specs/240-camunda-v810-alpha/progress.md`
 
 ---
@@ -34,9 +34,7 @@
 - [ ] T005 [P] Add failing provenance schema, exact-tag/commit, ordered-mutation, generator-version, canonical-command, and deterministic-regeneration tests in `api/provenance_test.go`
 - [ ] T006 Add `--target all|v810alpha` parsing and alpha-only orchestration that skips docs/auth/stable generation while preserving no-target behavior in `api/refresh-clients.sh`
 - [ ] T007 Extend pinned product-spec fetching to accept an isolated temporary destination and emit resolved tag/commit metadata without relying on retained nested Git state in `api/1-fetch-camunda-product-v2-spec.sh`
-- [ ] T008 Implement alpha-only bundle/mutation/generation through temporary files, validate the required tuple, fingerprint v8.7-v8.9 generated trees, and atomically publish only alpha outputs in `api/3-generate-clients-from-fetched-specs.sh`
 - [ ] T009 Generate `internal/clients/camunda/v810alpha/camunda/client.gen.go` and `internal/clients/camunda/v810alpha/camunda/provenance.json` from the exact pinned source using the canonical command in `specs/240-camunda-v810-alpha/contracts/generation-contract.md`
-- [ ] T010 Run `go test ./api -count=1`, compile the generated alpha package, regenerate a second time, verify no second-run diff or v8.7-v8.9 fingerprint change, and record evidence in `specs/240-camunda-v810-alpha/progress.md`
 
 **Checkpoint**: The alpha client is reproducible, isolated, provenance-complete, and safe for version-specific adapters.
 
@@ -84,23 +82,19 @@
 
 ## Phase 4: User Story 2 - Preserve Stable Runtime Behavior (Priority: P1)
 
-**Goal**: Adding the alpha target leaves Camunda 8.7, 8.8, and 8.9 behavior, generated clients, fixture selection, defaults, and stable documentation claims unchanged.
+**Goal**: Adding the alpha target leaves Camunda 8.8 and 8.9 behavior, generated clients, fixture selection, defaults, and stable documentation claims unchanged.
 
 **Independent Test**: Re-run stable version, factory, fixture, command, and documentation tests; compare generated-tree fingerprints with the Phase 1 baseline; and verify stable and experimental support are displayed separately.
 
 ### Tests for User Story 2
 
-- [ ] T033 [P] [US2] Strengthen stable-order, stable-alias, default-version, and v8.7-v8.9 factory regression assertions alongside alpha cases in `toolx/version_test.go`, `config/app_test.go`, `internal/services/batchoperation/factory_test.go`, `internal/services/cluster/factory_test.go`, `internal/services/element/factory_test.go`, `internal/services/incident/factory_test.go`, `internal/services/job/factory_test.go`, `internal/services/processdefinition/factory_test.go`, `internal/services/processinstance/factory_test.go`, `internal/services/resource/factory_test.go`, `internal/services/tenant/factory_test.go`, `internal/services/usertask/factory_test.go`, and `internal/services/variable/factory_test.go`
-- [ ] T034 [P] [US2] Add production and integration fixture-selection tests proving v8.7-v8.9 retain their prefixes and alpha deliberately resolves to C89 fixtures in `cmd/embed_test.go`, `integration/cli/deploy_embed_run_test.go`, and `integration/cli/harness_test.go`
 - [ ] T035 [P] [US2] Add documentation metadata tests that prohibit undifferentiated stable/alpha claims and preserve stable-version wording in `cmd/root_test.go`, `cmd/version_test.go`, `cmd/command_contract_test.go`, and `docsgen/main_test.go`
 
 ### Implementation for User Story 2
 
 - [ ] T036 [US2] Extend integration profile/version and embedded-fixture selection for the experimental target without changing stable profile lists in `integration/cli/harness_test.go` and `integration/cli/deploy_embed_run_test.go`
-- [ ] T037 [US2] Compare current v8.7-v8.9 generated-tree fingerprints and diffs with the Phase 1 baseline, fail on collateral changes, and record the result in `specs/240-camunda-v810-alpha/progress.md`
 - [ ] T038 [US2] Update authored stable/experimental support wording and existing command descriptions that currently stop at v8.9 in `README.md`, `cmd/root.go`, `cmd/get_processinstance.go`, `cmd/get_job.go`, `cmd/update.go`, `cmd/update_job.go`, and `cmd/update_processinstance.go`
 - [ ] T039 [US2] Regenerate docs with `make docs-content`, then verify `docs/index.md`, `docs/cli/c8volt.md`, `docs/cli/c8volt_version.md`, `docs/cli/c8volt_get_process-instance.md`, `docs/cli/c8volt_get_job.md`, `docs/cli/c8volt_update.md`, `docs/cli/c8volt_update_job.md`, `docs/cli/c8volt_update_process-instance.md`, `docs/cli/c8volt_delete_process-definition.md`, and `docs/cli/c8volt_ops_purge_all-process-definitions.md` label `8.10-alpha` as experimental and pinned to `8.10.0-alpha4`
-- [ ] T040 [US2] Run stable-version service, command, embed, config, and docs regression suites plus `git diff -- internal/clients/camunda/v87 internal/clients/camunda/v88 internal/clients/camunda/v89`, then record results in `specs/240-camunda-v810-alpha/progress.md`
 
 **Checkpoint**: Stable runtime behavior and artifacts are unchanged, while alpha is visibly and explicitly experimental.
 
@@ -114,8 +108,8 @@
 
 ### Tests for User Story 3
 
-- [ ] T041 [P] [US3] Add named history-safe process-definition deletion capability tests for v8.7, v8.8, v8.9, alpha, unknown, and future stable-looking values in `toolx/camunda_capabilities_test.go`
-- [ ] T042 [P] [US3] Add direct process-definition deletion and all-process-definitions purge tests proving v8.9 and alpha are accepted while v8.7/v8.8 fail before mutation in `cmd/delete_test.go`, `cmd/ops_purge_all_processdefinitions_test.go`, and `internal/services/ops/all_process_definitions_purge_test.go`
+- [ ] T041 [P] [US3] Add named history-safe process-definition deletion capability tests for v8.8, v8.9, alpha, unknown, and future stable-looking values in `toolx/camunda_capabilities_test.go`
+- [ ] T042 [P] [US3] Add direct process-definition deletion and all-process-definitions purge tests proving v8.9 and alpha are accepted while v8.8 fail before mutation in `cmd/delete_test.go`, `cmd/ops_purge_all_processdefinitions_test.go`, and `internal/services/ops/all_process_definitions_purge_test.go`
 - [ ] T043 [P] [US3] Add a source-boundary regression test rejecting older Camunda generated-client imports and all Operate, Tasklist, or Administration SM imports under alpha adapters in `internal/services/version_client_boundary_test.go`
 - [ ] T044 [P] [US3] Add alpha resource eventual-consistency tests for transient not-found retry, bounded failure, deployment visibility confirmation, and unchanged stable behavior in `internal/services/resource/v810alpha/service_test.go`
 - [ ] T045 [P] [US3] Add representative alpha command execution tests across cluster, batch operations, elements, incidents, jobs, definitions, instances, resources, tenants, user tasks, and variables in `cmd/root_services_test.go`, `cmd/get_test.go`, `cmd/get_element_test.go`, `cmd/get_incident_test.go`, `cmd/get_job_test.go`, `cmd/get_processdefinition_test.go`, `cmd/get_processinstance_test.go`, `cmd/deploy_test.go`, `cmd/get_tenant_test.go`, and `cmd/capabilities_test.go` using `testx` fake servers
@@ -164,7 +158,7 @@
 - [ ] T060 Run `make docs-content`, verify only generated documentation changes expected from authored metadata, and record the docs result in `specs/240-camunda-v810-alpha/progress.md`
 - [ ] T061 Run the focused validation sequence from `specs/240-camunda-v810-alpha/quickstart.md` and record every pass, failure, and skipped external check in `specs/240-camunda-v810-alpha/progress.md`
 - [ ] T062 Run the repository gate `make test` and record the race-enabled result in `specs/240-camunda-v810-alpha/progress.md`
-- [ ] T063 Recompute fingerprints for `internal/clients/camunda/v87/`, `internal/clients/camunda/v88/`, and `internal/clients/camunda/v89/`, run the alpha import audit in `internal/services/version_client_boundary_test.go`, and record proof of no stable generated-client changes in `specs/240-camunda-v810-alpha/progress.md`
+- [ ] T063 Recompute fingerprints for `internal/clients/camunda/v88/`, and `internal/clients/camunda/v89/`, run the alpha import audit in `internal/services/version_client_boundary_test.go`, and record proof of no stable generated-client changes in `specs/240-camunda-v810-alpha/progress.md`
 - [ ] T064 Map FR-001 through FR-022 and SC-001 through SC-010 to final automated/live evidence, document any unresolved blocker, and complete the handoff in `specs/240-camunda-v810-alpha/progress.md`
 
 ---
@@ -268,8 +262,6 @@ After the generated client is stable, service adapters in T020-T030 can be split
 
 - Generated code in `internal/clients/camunda/v810alpha/camunda/client.gen.go` must come only from the guarded generation workflow.
 - Do not hand-edit generated CLI documentation under `docs/cli/`; regenerate with `make docs-content`.
-- Do not modify v8.7-v8.9 generated clients while producing alpha support.
 - Keep `CurrentCamundaVersion` on `V88`.
-- Keep alpha adapters free of v8.7-v8.9 generated imports and removed Operate, Tasklist, or Administration SM clients.
 - A missing live alpha environment is an explicit release blocker, not a silent skip.
 - Commit only after the current task or cohesive task group passes its closest validation.

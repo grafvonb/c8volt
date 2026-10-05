@@ -72,8 +72,6 @@ The setup audit confirmed that the feature should only touch wrapper seams that 
 
 | Pattern family | Owner layer | Confirmed wrapper seams |
 |--------|-------------|-------------------------|
-| Process-instance lookup and traversal | `internal/services/processinstance/walker` and versioned process-instance services | `walker.go` wrappers `get %s`, `list children of %s`, `ancestry fetch`; `v88`/`v89` `GetProcessInstance` wrappers `fetching process instance with key %s`; the equivalent ancestry/family wrappers in `v87` |
-| Process-instance mutation and wait follow-up | Versioned process-instance services and waiter-backed follow-up paths | `CancelProcessInstance`, `DeleteProcessInstance`, `GetProcessInstanceStateByKey`, and `waiting for ... failed` wrappers across `v87`, `v88`, and `v89` |
 | Single-resource command fetch wrappers | `cmd/` command handlers | `error fetching resource by id %s`, `error fetching topology`, `error fetching cluster license`, `error fetching process definition...`, and process-instance list/fetch command wrappers |
 | Resource/client orchestration wrappers | `c8volt/resource` helpers that bubble into CLI output | `waiting for process definition %s removal failed` in `c8volt/resource/client.go` and adjacent orchestration wrappers that forward lower-layer failures |
 
@@ -112,7 +110,6 @@ This audit did not justify changes inside `c8volt/ferrors`, transport clients, o
 - [`cmd/walk_test.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/walk_test.go) is the primary anchor for the originally reported traversal case.
 - [`cmd/cancel_test.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cancel_test.go) and [`cmd/delete_test.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/delete_test.go) are the best anchors for mutation and wait follow-up pattern families.
 - [`cmd/get_test.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_test.go) and specific `get_*` command tests are the best anchors for single-resource fetch wrapper cleanup.
-- [`internal/services/processinstance/walker/walker_test.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/walker/walker_test.go) and `v87`/`v88`/`v89` service tests are the tightest helper-level seams for breadcrumb and root-detail composition.
 - [`c8volt/ferrors/errors_test.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/c8volt/ferrors/errors_test.go) should continue proving that classification and exit-code behavior are unchanged while the upstream wrappers become less repetitive.
 
 ### Regression Anchor Confirmation
@@ -120,6 +117,6 @@ This audit did not justify changes inside `c8volt/ferrors`, transport clients, o
 | Family | Confirmed anchors | Current evidence from the audit |
 |--------|-------------------|---------------------------------|
 | Lookup and traversal | `cmd/walk_test.go`, `internal/services/processinstance/walker/walker_test.go` | `walk` already exercises traversal composition, and walker tests remain the narrow seam for breadcrumb ordering and root-detail ownership |
-| Mutation and wait follow-up | `cmd/cancel_test.go`, `cmd/delete_test.go`, `internal/services/processinstance/v87/service_test.go`, `internal/services/processinstance/v88/service_test.go` | command tests already cover cancel/delete orchestration while service tests assert current duplicated wrapper text such as `fetching process instance with key 123` |
+| Mutation and wait follow-up | `cmd/cancel_test.go`, `cmd/delete_test.go`, `internal/services/processinstance/v88/service_test.go` | command tests already cover cancel/delete orchestration while service tests assert current duplicated wrapper text such as `fetching process instance with key 123` |
 | Single-resource fetch wrappers | `cmd/get_test.go` and targeted `get_*` command tests | `get` tests already assert top-level wrapper text for cluster, resource, and process-definition fetch failures |
 | Shared class/exit behavior | `c8volt/ferrors/errors_test.go`, `cmd/bootstrap_errors_test.go` | these tests protect normalization and bootstrap mapping, which must stay fixed while wrapper text is deduplicated |

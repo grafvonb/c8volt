@@ -68,7 +68,6 @@
 ## Decision 9: Build native alpha adapters for all eleven versioned families
 
 - **Decision**: Add `v810alpha` implementations for batch operations, cluster, elements, incidents, jobs, process definitions, process instances, resources, tenants, user tasks, and variables. Each imports only the alpha generated client.
-- **Rationale**: All eleven factories currently select v8.7-v8.9 implementations, and all unified methods required by their v8.9 contracts exist in the generated alpha client. Explicit adapters keep type differences local and avoid silently routing alpha through a v8.9 generated contract.
 - **Alternatives considered**:
   - Return unsupported for all but a minimal smoke subset: rejected because the available unified contract supports the existing command surface and would make the advertised runtime of little use.
   - Route alpha factory cases to v8.9 services: rejected by the strict client boundary.

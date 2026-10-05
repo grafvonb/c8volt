@@ -24,7 +24,6 @@ Started: 2026-07-23T09:30:41Z
 - Public facades are thin: process facade methods map public models to domain, delegate to `internal/services/processinstance`, convert with existing helpers, and wrap errors with `ferrors.FromDomain`.
 - `internal/services/element/enrichment.go` owns element-command listener enrichment. It performs one listener job lookup per returned process-instance key, attaches by `ElementInstanceKey`, omits unmatched jobs, and sets every returned element's listener slice to a non-nil empty slice when listener enrichment was requested but no jobs matched.
 - `internal/services/ops/slow_process_analysis.go` switches slow-analysis element enrichment to `processinstance.EnrichProcessInstancesWithElementListeners` when `WithListeners` is requested, then copies element listener pointers onto element timeline rows. Default analysis still uses element-only enrichment and does not call the job service.
-- `internal/services/job.API` already exposes `SearchJobs` and `SearchJobsPage`; v8.8 and v8.9 build generated filters for process instance key, element instance key, kind, listener event type, job type, element ID, worker, retries, and state. v8.7 returns `ErrUnsupported` with messages like `search jobs requires Camunda 8.8 or newer`.
 - Domain `Job` already carries the operator-relevant listener fields needed by the feature: key, kind, listener event type, type, state, retries, worker, deadline, process instance key, element instance key, element ID, tenant, error code, and error message.
 - Domain/public listener fields use `*[]RuntimeListenerJob`: nil means listeners were not requested; a non-nil empty slice means listener enrichment was requested and no matched listener jobs were found.
 
@@ -39,8 +38,6 @@ Started: 2026-07-23T09:30:41Z
 - `get element --with-listeners` rejects `--keys-only` and `--total` before client creation. `get pi --with-listeners` and `walk pi --with-listeners` reject missing `--with-elements` and `--keys-only`; slow-analysis still needs listener-specific validation in a later story.
 - `get element --with-listeners` rejects `--keys-only` and `--total` before client creation. `get pi --with-listeners` and `walk pi --with-listeners` reject missing `--with-elements` and `--keys-only`; slow-analysis rejects `--keys-only --with-listeners`.
 - Process and walk listener enrichment must preserve explicit-key admin input behavior by passing the same option sets currently used for element enrichment.
-- v8.8/v8.9 job search can return listener jobs, but v8.7 unsupported behavior must be allowed to flow through the normal facade/domain error conversion path.
-- `EnrichProcessInstancesWithElementListeners` performs listener job lookup even when a selected process instance has zero returned elements, so requested listener lookup errors such as v8.7 unsupported still surface.
 - `get element --with-listeners` search uses the internal service's collected `SearchElements` path rather than incremental page rendering; this is intentional so listener lookup and JSON/human output happen after the bounded element set is known.
 
 ## Reusable Commands

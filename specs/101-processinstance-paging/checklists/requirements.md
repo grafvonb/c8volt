@@ -32,4 +32,4 @@
 ## Notes
 
 - Validated against GitHub issue #101 and aligned with the existing issue-backed process-instance specs in `specs/090-process-instance-date-filters` and `specs/095-processinstance-day-filters`.
-- The spec keeps version-aware overflow handling explicit for `8.7` and `8.8` while leaving `8.9` outside the supported scope, matching the issue statement.
+- The spec keeps version-aware overflow handling explicit for `8.8` while leaving `8.9` outside the supported scope, matching the issue statement.

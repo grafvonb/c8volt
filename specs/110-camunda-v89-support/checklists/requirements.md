@@ -33,5 +33,5 @@
 
 - Validation completed on 2026-04-17.
 - The spec includes explicit GitHub issue traceability for downstream planning and implementation.
-- The spec keeps the feature scope bounded to v8.8 command parity on v8.9 while preserving v8.7 and v8.8 behavior.
+- The spec keeps the feature scope bounded to v8.8 command parity on v8.9 while preserving v8.8 behavior.
 - Commit subjects for downstream implementation work must keep Conventional Commits formatting and append `#110` as the final token.

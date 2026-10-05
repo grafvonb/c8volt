@@ -57,13 +57,11 @@ As a CLI user, I want the new management-command date filters to fail clearly fo
 
 **Why this priority**: Clear validation and version handling prevents unsafe bulk-management actions and preserves the behavioral contract already introduced in issue #90.
 
-**Independent Test**: Can be fully tested by running the cancel and delete commands with malformed dates, inverted ranges, and date flags on v8.7, then verifying that both commands fail through the existing error path before any management action occurs.
 
 **Acceptance Scenarios**:
 
 1. **Given** a user provides an invalid date-only value to any of the new flags, **When** either search-based management command is executed, **Then** the command fails before searching with a clear validation error.
 2. **Given** a user provides both `after` and `before` for the same field and the lower bound is later than the upper bound, **When** either command is executed, **Then** the command fails before searching with a clear invalid-range error.
-3. **Given** the configured Camunda version is v8.7, **When** the user supplies any of the new date flags to `cancel process-instance` or `delete process-instance`, **Then** the command returns a clear not-implemented result through the existing error model and does not perform a date-filtered search.
 
 ### Edge Cases
 
@@ -73,7 +71,6 @@ As a CLI user, I want the new management-command date filters to fail clearly fo
 - Search-based selection must continue to combine existing filters and new date filters as narrowing constraints rather than replacing current filter behavior.
 - Direct key-based invocation must reject any combination of explicit `--key` values with `--start-date-*` or `--end-date-*` flags so users do not assume the date filters narrowed the keyed selection.
 - If search-based filters match no process instances, the command must fail without attempting cancellation or deletion.
-- On v8.7, any one of the four new date flags must trigger the unsupported-version response even if the remaining command arguments are otherwise valid.
 - Commands that are not already search-based process-instance management flows, such as `expect`, `walk`, and `run`, remain out of scope for this feature.
 
 ## Requirements *(mandatory)*
@@ -94,11 +91,9 @@ As a CLI user, I want the new management-command date filters to fail clearly fo
 - **FR-012**: On v8.8, the system MUST apply the requested date filters to process-instance search results for both cancel and delete command flows using the same inclusive semantics defined in issue #90.
 - **FR-013**: On v8.8, the system MUST exclude process instances with no `endDate` whenever one or more `--end-date-*` filters are supplied during search-based selection.
 - **FR-014**: On v8.8, the system MUST combine date filters with existing process-instance filters, including state and process-definition filters, as additional narrowing constraints without changing current filter behavior.
-- **FR-015**: On v8.7, the system MUST return a clear not-implemented result through the existing error path whenever any of the new date flags is used with `cancel process-instance` or `delete process-instance`.
 - **FR-016**: The system MUST preserve current command behavior when none of the new date flags is provided.
 - **FR-017**: The system MUST update command help and examples for the affected management commands to show the new filter-based selection behavior.
 - **FR-018**: The system MUST keep `c8volt expect process-instance`, `c8volt walk process-instance`, and `c8volt run process-instance` out of scope for this feature.
-- **FR-019**: The system MUST include automated coverage for v8.8 success paths, inclusive boundary behavior, empty search results, invalid date formats, invalid ranges, invalid `--key` plus date-filter combinations, and v8.7 not-implemented responses for both affected commands.
 
 ### Key Entities *(include if feature involves data)*
 
@@ -106,7 +101,6 @@ As a CLI user, I want the new management-command date filters to fail clearly fo
 - **Date Filter Bound**: A single date-only boundary that narrows the process-instance start date or end date using inclusive semantics.
 - **Selected Process Instance Set**: The collection of process instances returned by the search flow after all existing filters and new date bounds are applied.
 - **Management Command Mode**: The distinction between search-based selection and direct key-based targeting, which determines when the new date filters affect behavior.
-- **Version Capability Rule**: The version-specific rule that allows the new date filters on v8.8 and rejects them as not implemented on v8.7.
 
 ## Success Criteria *(mandatory)*
 
@@ -116,8 +110,6 @@ As a CLI user, I want the new management-command date filters to fail clearly fo
 - **SC-002**: Users can delete process instances on v8.8 by combining existing search filters with inclusive start-date and end-date bounds, and only matching instances are selected.
 - **SC-003**: Any attempt to combine explicit process-instance keys with one or more date filters is rejected before any search, cancellation, or deletion occurs.
 - **SC-004**: Every invalid date format or inverted date range submitted through the new flags is rejected before any search, cancellation, or deletion occurs.
-- **SC-005**: Every use of the new date flags on v8.7 through the affected commands returns a clear not-implemented result through the existing error path.
-- **SC-006**: Automated tests cover the new cancel and delete command success paths, validation failures, no-match behavior, inclusive boundary cases, and v8.7 unsupported-version handling.
 
 ## Assumptions
 

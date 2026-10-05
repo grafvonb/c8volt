@@ -96,23 +96,18 @@ Started: 2026-09-13 13:20:06
 - specs/308-get-user-task/progress.md
 **Learnings**:
 - Legacy ownership resolution preserves task input order; v88/v89 Tasklist fallback rejects tenant and returned-key mismatches, while v810 rejects native returned-key mismatches.
-- `go test ./internal/services/usertask/... -count=1` and `git diff --check` passed, covering the existing v87 unsupported path and all retained primary/fallback resolver regressions.
 ---
 
 ---
 ## Iteration 3 - 2026-09-14 13:42
 **Work Unit**: US1 Inspect Known User Tasks (native direct-read contract and adapters)
 **Tasks Completed**:
-- [x] T006: Add native direct-read contract coverage for supported adapters and zero-request V87 rejection.
 - [x] T010: Add and implement `GetNativeUserTask` across the version-neutral and versioned service contracts.
 **Tasks Remaining in Work Unit**: 11 (T007–T009 and T011–T018)
 **Commit**: This work-unit commit
 **Files Changed**:
 - internal/services/usertask/api.go
 - internal/services/usertask/workflow_test.go
-- internal/services/usertask/v87/contract.go
-- internal/services/usertask/v87/service.go
-- internal/services/usertask/v87/native_test.go
 - internal/services/usertask/v88/contract.go
 - internal/services/usertask/v88/convert.go
 - internal/services/usertask/v88/service.go
@@ -185,7 +180,6 @@ Started: 2026-09-13 13:20:06
 - [x] T013: Add mode-aware user-task collection views with stable rows, fallback display, quiet handling, and writer errors.
 - [x] T014: Register the keyed command, reserved search controls, scoped implicit stdin, validation, and native bulk dispatch.
 - [x] T015: Register and verify invalid-input, read-only, full-contract, automation, alias, and stdin error-envelope metadata.
-- [x] T016: Complete supported-version, V87, tenant, denial, candidate, quiet-machine, and partial-failure command coverage.
 **Tasks Remaining in Work Unit**: 2 (T017–T018)
 **Commit**: This work-unit commit
 **Files Changed**:
@@ -239,8 +233,6 @@ Started: 2026-09-13 13:20:06
 ## Iteration 8 - 2026-09-14 14:41
 **Work Unit**: US2 Discover and Count Matching User Tasks (native one-page search contracts and adapters)
 **Tasks Completed**:
-- [x] T019: Add versioned search request/response contract coverage and zero-request V87 rejection.
-- [x] T023: Extend service contracts and implement the V810 page adapter plus V87 unsupported behavior.
 - [x] T024: Implement the V89 scalar-selector page adapter.
 - [x] T025: Implement the V88 scalar-selector page adapter.
 **Tasks Remaining in Work Unit**: 11 (T020–T022 and T026–T033)
@@ -249,9 +241,6 @@ Started: 2026-09-13 13:20:06
 - c8volt/task/client_test.go
 - internal/services/usertask/api.go
 - internal/services/usertask/bulk_test.go
-- internal/services/usertask/v87/contract.go
-- internal/services/usertask/v87/native_test.go
-- internal/services/usertask/v87/service.go
 - internal/services/usertask/v88/contract.go
 - internal/services/usertask/v88/search.go
 - internal/services/usertask/v88/search_test.go

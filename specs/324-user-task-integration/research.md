@@ -22,7 +22,6 @@
 
 **Decision**: Poll boundedly for the owned task, process variable `incident=99`, effective local `incident=1`, and expected process-only values/scopes. Fail on timeout with the last observations. Then check positive and negative filters. Discover child PI ownership with the existing walk/PI commands, using public output models or existing decoding patterns.
 
-**Rationale**: Waiting only for a task or only for an empty negative search can hide index lag. Called-process variables are copied; parent updates are not live inheritance. Native search and display adapters exist in v88/v89/v810; v87 rejects the feature.
 
 **Alternatives considered**: Hard sleeps, unchecked first-child selection and a C89-only helper dependency are insufficient or unnecessarily restrictive.
 

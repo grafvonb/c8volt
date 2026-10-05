@@ -6,7 +6,6 @@ This guide is for validation after implementation. The planning phase does not a
 
 - Go/toolchain matching `go.mod` (Go 1.26, toolchain go1.26.2) and the existing project dependencies.
 - For deterministic automated checks, use fake HTTP backends through existing `testx` helpers; no live Camunda installation is required for those tests.
-- For optional live reads, prepare existing c8volt configuration files for 8.8, 8.9, and 8.10 and a separate 8.7 configuration for unsupported-version checks. Select a stable set of already-existing native user tasks; this guide does not create or mutate tasks.
 - Use Linux or macOS for the repository's real-terminal test runner. Do not substitute pipe-only stdin or a mocked terminal predicate for terminal acceptance.
 
 See [CLI contract](contracts/cli.md), [facade/service contract](contracts/facade-service.md), and [data model](data-model.md) for exact inputs, output fields, and state rules.
@@ -41,7 +40,6 @@ Required fixture matrix:
 | Empty human/JSON/keys/quiet and combinations | `found: 0` plus newline, one envelope with empty array, zero keys bytes, quiet human zero bytes |
 | Automation/auto-confirm/JSON | No interactive prompt; valid output contract |
 | Explicit limit with terminal stdin | Eligible prompts may occur before the boundary; reaching the limit stops without another prompt |
-| 8.7 native reads and existing has-user-tasks workflows | New methods unsupported; previous resolver outcomes and fallback unchanged |
 
 Capture stdout and stderr separately. For JSON, decode one envelope and require EOF after whitespace. For keys and empty output, compare exact bytes. Assert request counts, no mutation calls, and no added reads caused by rendering.
 
@@ -67,7 +65,6 @@ printf '%s\n' "$C8VOLT_TASK_KEY" | ./bin/c8volt --config "$C8VOLT_TASK_CONFIG" g
 ./bin/c8volt --config "$C8VOLT_TASK_CONFIG" get ut --candidate-group accounting --total
 ```
 
-Expect compact task rows for human commands, a single collection envelope for JSON, and a numeric count for total. Run equivalent reads with the 8.8 and 8.9 configs. A valid new read with the 8.7 config must clearly fail as unsupported.
 
 Choose a filter known to match nothing in your environment and compare modes:
 

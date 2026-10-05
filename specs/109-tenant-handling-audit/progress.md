@@ -7,7 +7,6 @@ Started: 2026-04-17 03:50:08
 
 - Tenant-safe behavior is centralized below `cmd/`: `cmd/root.go` resolves the effective tenant, `c8volt/process/client.go` forwards without adding tenant logic, and the real enforcement seams live in the versioned process-instance services plus shared walker/waiter helpers.
 - The process-instance command surface splits into five audit families with different risk profiles: keyed/search `get`, walker-based `walk`, search-plus-preflight `cancel`, search-plus-preflight `delete`, and create-plus-confirmation `run`.
-- Repository support for process-instance services currently stops at `v8.8`: `toolx` normalizes `8.9`, but `internal/services/processinstance/factory.go` and `factory_test.go` only admit `v87` and `v88`.
 - Existing regression anchors are already in place for this feature: versioned service tests for request-shape and behavior seams, walker/waiter helper tests for mixed-flow composition, `cmd/*_test.go` for command-family coverage, and `config/config_test.go` for tenant-source precedence.
 - Tenant-safe keyed lookup now resolves through the versioned search endpoint rather than unscoped direct-get endpoints, so command and service fixtures that used to stub `GET /v2/process-instances/<key>` need search responses for `processInstanceKey` filters as well.
 
@@ -81,7 +80,6 @@ Started: 2026-04-17 03:50:08
 **User Story**: Partial progress on User Story 1 - Keep Tenant-Scoped Lookups Safe
 **Tasks Completed**:
 - [x] T008: Add `v88` service tests for tenant-safe direct lookup and supported wrong-tenant `not found` behavior
-- [x] T009: Add `v87` service tests for explicit unsupported direct/state lookup outcomes
 - [x] T010: Add direct process-instance command regression tests for flag/env/profile/base-config tenant sources plus wrong-tenant `not found`
 **Tasks Remaining in Story**: 3
 **Commit**: No commit - partial progress
@@ -90,9 +88,6 @@ Started: 2026-04-17 03:50:08
 - cmd/cancel_test.go
 - cmd/get_processinstance_test.go
 - cmd/get_test.go
-- internal/services/processinstance/v87/contract.go
-- internal/services/processinstance/v87/service.go
-- internal/services/processinstance/v87/service_test.go
 - internal/services/processinstance/v88/contract.go
 - internal/services/processinstance/v88/service.go
 - internal/services/processinstance/v88/service_test.go
@@ -100,7 +95,6 @@ Started: 2026-04-17 03:50:08
 - specs/109-tenant-handling-audit/progress.md
 **Learnings**:
 - `v88` direct key lookup and keyed state checks can be hardened without new infrastructure by routing them through the existing search path plus `RequireSingleProcessInstance`.
-- Narrowing `v87` keyed lookup/state lookup to explicit unsupported outcomes immediately propagates into cancel/delete preflight behavior, so the remaining US1 implementation work needs coordinated fixture updates in `cmd/` before the whole story is clean.
 - Reused root command instances in `cmd/get_processinstance_test.go` need targeted persistent-flag resets; full tree resets can corrupt `StringSlice` defaults and create phantom keyed lookups.
 ---
 
@@ -108,7 +102,6 @@ Started: 2026-04-17 03:50:08
 **User Story**: User Story 1 - Keep Tenant-Scoped Lookups Safe
 **Tasks Completed**:
 - [x] T011: Implement tenant-safe direct lookup and state lookup behavior in `v88`
-- [x] T012: Narrow `v87` direct/state lookup to exact unsupported tenant-unsafe seams
 - [x] T013: Normalize facade and command handling for tenant-safe `not found` and unsupported outcomes
 **Tasks Remaining in Story**: None - story complete
 **Commit**: Recorded in Git history for this iteration
@@ -119,9 +112,6 @@ Started: 2026-04-17 03:50:08
 - cmd/delete_test.go
 - cmd/get_processinstance_test.go
 - cmd/get_test.go
-- internal/services/processinstance/v87/contract.go
-- internal/services/processinstance/v87/service.go
-- internal/services/processinstance/v87/service_test.go
 - internal/services/processinstance/v88/contract.go
 - internal/services/processinstance/v88/service.go
 - internal/services/processinstance/v88/service_test.go
@@ -129,7 +119,6 @@ Started: 2026-04-17 03:50:08
 - specs/109-tenant-handling-audit/tasks.md
 **Learnings**:
 - Search-backed keyed lookup is now the single tenant-safe authority for `v88`, so direct-key command tests must mock `processInstanceKey` search requests instead of `/v2/process-instances/<key>` GETs.
-- `v87` direct get and keyed state checks now fail at the exact unsupported seam, and command regressions that previously depended on those preflight calls need to assert the narrower unsupported outcome rather than broad command-family success.
 - Paging assertions must ignore per-key tenant-safe lookups and count only the actual top-level search requests; otherwise prompt/continuation tests overcount the new preflight traffic.
 ---
 
@@ -149,7 +138,6 @@ Started: 2026-04-17 03:50:08
 - specs/109-tenant-handling-audit/progress.md
 **Learnings**:
 - The mixed-flow contract is now coherent across layers: walker traversal and waiter polling inherit tenant safety entirely from `GetProcessInstance`, `GetDirectChildrenOfProcessInstance`, and `GetProcessInstanceStateByKey`, so command code can stay thin.
-- `v88` remains fully tenant-safe for mixed flows because every follow-up step reduces to tenant-filtered search-backed lookups, while `v87` now fails only when a keyed direct/state seam would otherwise become the authority.
 - US2 verification is already anchored in repository-native tests: `walker` and `waiter` unit tests for helper composition, versioned service tests for preflight behavior, and command-family subprocess tests for tenant propagation and unsupported-surface handling.
 ---
 
@@ -157,7 +145,6 @@ Started: 2026-04-17 03:50:08
 **User Story**: User Story 3 - Make Version Behavior Explicit and Predictable
 **Tasks Completed**:
 - [x] T020: Add factory/app version-matrix coverage for supported runtime versions and unsupported `8.9` process-instance runtime behavior
-- [x] T021: Add regression coverage that proves `v87` unsupported outcomes stay scoped to keyed direct/state seams while search-backed behavior remains available
 - [x] T022: Update feature research, data model, quickstart, and tenant contract docs for the settled version boundary
 - [x] T023: Update README and root Cobra help text with the explicit tenant-aware runtime support notes
 - [x] T024: Regenerate CLI reference output from the updated Cobra metadata
@@ -171,7 +158,6 @@ Started: 2026-04-17 03:50:08
 - docs/cli/
 - docs/index.md
 - internal/services/processinstance/factory_test.go
-- internal/services/processinstance/v87/service_test.go
 - specs/109-tenant-handling-audit/contracts/tenant-handling.md
 - specs/109-tenant-handling-audit/data-model.md
 - specs/109-tenant-handling-audit/progress.md
@@ -179,8 +165,6 @@ Started: 2026-04-17 03:50:08
 - specs/109-tenant-handling-audit/research.md
 - specs/109-tenant-handling-audit/tasks.md
 **Learnings**:
-- The honest runtime matrix now has explicit proof at both config and factory layers: `8.9` is a normalized config value, but process-instance runtime support still stops at `v87` and `v88`.
-- `v87` safe behavior is narrower than the command-family surface but not empty: search-backed reads such as filtered search and direct-child lookup remain tenant-safe even while keyed direct lookup and keyed state checks stay unsupported.
 - Regenerating CLI docs inside the sandbox required redirecting `GOCACHE` into a writable path; the generated output itself remains the normal `make docs-content` result.
 ---
 

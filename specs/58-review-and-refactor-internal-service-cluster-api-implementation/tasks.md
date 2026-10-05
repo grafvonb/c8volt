@@ -29,7 +29,6 @@
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
 - [ ] T003 Expand baseline factory coverage in `internal/services/cluster/factory_test.go` to lock supported-version selection and unknown-version failure behavior before refactoring
-- [ ] T004 [P] Align the reviewed cluster service surface in `internal/services/cluster/api.go`, `internal/services/cluster/v87/contract.go`, and `internal/services/cluster/v88/contract.go`
 
 **Checkpoint**: Factory behavior and shared service surface are fixed, so story work can proceed safely
 
@@ -43,15 +42,12 @@
 
 ### Tests for User Story 1
 
-- [ ] T005 [P] [US1] Extend topology success and error coverage in `internal/services/cluster/v87/service_test.go`
 - [ ] T006 [P] [US1] Extend topology success and error coverage in `internal/services/cluster/v88/service_test.go`
 
 ### Implementation for User Story 1
 
 - [ ] T007 [US1] Refactor shared cluster service entry-point behavior in `internal/services/cluster/api.go` and `internal/services/cluster/factory.go`
-- [ ] T008 [P] [US1] Refactor v87 cluster topology construction and response handling in `internal/services/cluster/v87/service.go` and `internal/services/cluster/v87/convert.go`
 - [ ] T009 [P] [US1] Refactor v88 cluster topology construction and response handling in `internal/services/cluster/v88/service.go` and `internal/services/cluster/v88/convert.go`
-- [ ] T010 [US1] Reconcile shared error handling and remove avoidable duplication across `internal/services/cluster/factory.go`, `internal/services/cluster/v87/service.go`, and `internal/services/cluster/v88/service.go`
 
 **Checkpoint**: User Story 1 is complete when topology behavior is preserved and the cluster service is measurably easier to follow
 
@@ -65,14 +61,13 @@
 
 ### Tests for User Story 2
 
-- [ ] T011 [P] [US2] Add reviewed service-surface coverage assertions in `internal/services/cluster/v87/service_test.go` and `internal/services/cluster/v88/service_test.go`
+- [ ] T011 [P] [US2] Add reviewed service-surface coverage assertions in `internal/services/cluster/v88/service_test.go`
 - [ ] T012 [P] [US2] Add shared service-surface regression coverage in `internal/services/cluster/factory_test.go`
 
 ### Implementation for User Story 2
 
 - [ ] T013 [US2] Record the final supported-cluster-capability review and add-or-defer rationale in `specs/058-review-and-refactor-internal-service-cluster-api-implementation/research.md`
-- [ ] T014 [US2] Update the shared cluster service surface for any approved capability in `internal/services/cluster/api.go`, `internal/services/cluster/v87/contract.go`, and `internal/services/cluster/v88/contract.go`
-- [ ] T015 [P] [US2] Implement the approved capability or codify the no-addition decision in `internal/services/cluster/v87/service.go` and `internal/services/cluster/v88/service.go`
+- [ ] T015 [P] [US2] Implement the approved capability or codify the no-addition decision in `internal/services/cluster/v88/service.go`
 
 **Checkpoint**: User Story 2 is complete when the supported-version capability review is explicit and any accepted addition is fully covered without changing module boundaries
 
@@ -86,7 +81,6 @@
 
 ### Tests for User Story 3
 
-- [ ] T016 [P] [US3] Update fake-server integration coverage in `testx/integration87/cluster_test.go` and `testx/integration88/cluster_test.go`
 
 ### Implementation for User Story 3
 
@@ -145,11 +139,9 @@
 
 ```bash
 # Launch User Story 1 test updates together:
-Task: "Extend topology success and error coverage in internal/services/cluster/v87/service_test.go"
 Task: "Extend topology success and error coverage in internal/services/cluster/v88/service_test.go"
 
 # Launch version-specific refactors together after the shared entry-point update:
-Task: "Refactor v87 cluster topology construction and response handling in internal/services/cluster/v87/service.go and internal/services/cluster/v87/convert.go"
 Task: "Refactor v88 cluster topology construction and response handling in internal/services/cluster/v88/service.go and internal/services/cluster/v88/convert.go"
 ```
 
@@ -159,7 +151,6 @@ Task: "Refactor v88 cluster topology construction and response handling in inter
 
 ```bash
 # Launch service-surface regression tests together:
-Task: "Add reviewed service-surface coverage assertions in internal/services/cluster/v87/service_test.go and internal/services/cluster/v88/service_test.go"
 Task: "Add shared service-surface regression coverage in internal/services/cluster/factory_test.go"
 ```
 

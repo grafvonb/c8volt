@@ -66,7 +66,6 @@ internal/
 └── services/
     └── processinstance/
         ├── api.go
-        ├── v87/
         ├── v88/
         └── v89/
 

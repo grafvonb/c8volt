@@ -65,7 +65,6 @@ As an operator or automation author, I want predictable task output and paging b
 4. **Given** quiet human output or automation mode, **When** the command executes, **Then** established result suppression and unattended execution rules apply; explicitly requested machine output remains available and automation requires no interactive response.
 5. **Given** paging is eligible under existing get-command rules, **When** another page is offered, **Then** the plain prompt uses the configured or inherited stderr destination, while stdout contains only results. Accepting, declining, and end-of-input follow the established paging behavior.
 6. **Given** terminal stdin with redirected or piped stdout, **When** paging eligibility is evaluated, **Then** the established get-command eligibility rules still apply; terminal stdin alone does not change them.
-7. **Given** Camunda 8.8, 8.9, or 8.10, **When** the command reads tasks, **Then** the supported workflows work; Camunda 8.7 produces a clear unsupported-version error.
 8. **Given** a backend failure, denied access, or failure after an earlier page, **When** the command cannot complete the requested read, **Then** it follows established error and exit behavior and does not report successful empty or complete results.
 9. **Given** an existing `get pi --has-user-tasks` workflow, **When** the new command is introduced, **Then** existing process-instance resolution, tenant scoping, and Tasklist fallback behavior remain unchanged.
 
@@ -99,7 +98,6 @@ As an operator or automation author, I want predictable task output and paging b
 - **FR-012**: JSON lookup and search output MUST use stable public task fields in exactly one shared command envelope. Keys-only MUST print one task key per line and no other text. Shared output precedence MUST be preserved.
 - **FR-013**: A completed empty search MUST succeed through mode-aware rendering: one successful JSON envelope with the established empty payload conventions, zero-byte keys-only output, and the established human empty-result style. Quiet MUST suppress informational human summaries without suppressing explicitly requested machine results.
 - **FR-014**: Reuse inherited verbosity, output, quiet, and automation behavior. Paging eligibility, prompt wording, default answers, EOF handling, and stop behavior MUST match existing get commands. All interactive control text MUST use configured or inherited stderr; stdout MUST contain only command results.
-- **FR-015**: Support task reads on Camunda 8.8, 8.9, and 8.10 and return a clear unsupported-version error on 8.7. Preserve established invalid-input, not-found, authorization, backend-failure, and exit-code conventions.
 - **FR-016**: Preserve all existing `get pi --has-user-tasks` resolution, tenant scoping, and Tasklist fallback behavior. The new task-read workflow MUST use native task reads without expanding that fallback to this command.
 - **FR-017**: Acceptance validation MUST exercise command execution for key forms, filters, conflicts, tenants, paging, limits, exact totals, all output modes and supported combinations, empty results, errors, and supported versions. Interactive checks MUST use real terminal stdin and separately captured stdout/stderr, including configured and inherited stderr destinations. Existing task-to-process resolution MUST retain regression coverage.
 - **FR-018**: Help, aliases, command metadata, examples, README, and generated CLI documentation MUST describe the supported behavior and limitations consistently, including input forms, version support, tenant handling, output, paging, and count-mode conflicts.
@@ -121,7 +119,6 @@ As an operator or automation author, I want predictable task output and paging b
 - **SC-003**: Every completed count equals the known matching population, including zero matches and populations larger than the reported total cap.
 - **SC-004**: All output-mode acceptance cases produce the expected result content: exactly one successful JSON envelope, one key per keys-only line, zero keys-only bytes for empty results, and zero control-text contamination on stdout.
 - **SC-005**: All eligible paging cases allow continuation or stopping with the established interaction behavior, and all automation cases complete without interactive input.
-- **SC-006**: The full acceptance matrix passes for all three supported versions; all 8.7 cases clearly report unsupported operation, and existing task-to-process lookup scenarios retain their outcomes.
 - **SC-007**: Every documented command example corresponds to a supported, validated workflow, allowing operators to perform keyed inspection, filtered discovery, and exact counting directly from help.
 
 ## Assumptions

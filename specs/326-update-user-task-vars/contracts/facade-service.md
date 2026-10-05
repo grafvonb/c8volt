@@ -34,7 +34,6 @@ UpdateScopeVariables(ctx context.Context, scopeKey string, variables map[string]
 The response contains scope key, acceptance/status facts, and transport detail; it has no PI identity or confirmation claim. Extend matching adapter interfaces/assertions and mocks where necessary.
 
 - v8.10, v8.9, v8.8: validate target and payload, use generated `CreateElementInstanceVariablesWithResponse`, explicitly set `Local=true`, and use the existing mutation retry and HTTP error normalization. Expect the documented 204 success. Handle nil/malformed responses without panic. This operation never calls a PI waiter or PI variable search.
-- v8.7: explicit unsupported domain error, zero transport calls.
 - Unknown configured version: existing factory error.
 - Existing `UpdateProcessInstanceVariables` behavior is preserved, including its current target and wait behavior.
 

@@ -21,7 +21,6 @@ c8volt get pi --key <process-instance-key> --with-elements
 - Fetches the selected process instance using existing keyed lookup behavior.
 - Attaches runtime element instances whose `processInstanceKey` matches the selected process instance key.
 - Keyed mode rejects process-instance search filters when `--with-elements` is present.
-- Camunda 8.7 returns a clear unsupported-version error.
 
 ## List/Search Lookup
 
@@ -120,6 +119,5 @@ Combined enrichment payloads may include `variables`, `incidents`, and `elements
 ## Error Contract
 
 - Validation errors fail before remote lookup where possible.
-- Unsupported Camunda 8.7 behavior returns a non-success unsupported-version result.
 - Element enrichment lookup failures fail the command instead of rendering partially enriched process instances as success.
 - `--json` errors use the existing shared command error envelope for full-contract commands.

@@ -38,7 +38,6 @@ Use actual focused test names once introduced; keep failures local before broade
 | Named base config plus all-tenants | Effective tenant empty; exact warning in human output. |
 | Named active profile plus all-tenants | Effective tenant empty; configured profile tenant shown as provenance. |
 | Named environment override plus all-tenants | Effective tenant empty; configured environment tenant shown as provenance. |
-| Camunda 8.7 omitted/default tenant plus all-tenants | Effective tenant empty after normalization. |
 | Already-empty configured tenant plus all-tenants | Effective tenant empty; no override warning chatter. |
 | `--all-tenants=false` | Existing configured/explicit tenant behavior. |
 | Flag absent | All existing behavior and output unchanged. |

@@ -17,8 +17,6 @@
 
 **Purpose**: Prepare the existing process-definition command, facade, and test surface for the XML extension
 
-- [ ] T001 Inspect the current process-definition command, facade wiring, and XML-capable services in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processdefinition.go, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/c8volt/process/api.go, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/c8volt/process/client.go, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processdefinition/api.go, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processdefinition/v87/service.go, and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processdefinition/v88/service.go
-- [ ] T002 Inspect baseline command and processdefinition regression coverage in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_test.go, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processdefinition/v87/service_test.go, and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processdefinition/v88/service_test.go
 
 ---
 
@@ -45,7 +43,6 @@
 ### Tests for User Story 1
 
 - [ ] T006 [P] [US1] Add command tests for XML success and retrieval failure behavior in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_test.go
-- [ ] T007 [P] [US1] Add versioned service regression tests for XML payload retrieval in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processdefinition/v87/service_test.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processdefinition/v88/service_test.go
 
 ### Implementation for User Story 1
 
@@ -147,7 +144,6 @@
 ```bash
 # Launch User Story 1 XML regression coverage together:
 Task: "Add command tests for XML success and retrieval failure behavior in cmd/get_test.go"
-Task: "Add versioned service regression tests for XML payload retrieval in internal/services/processdefinition/v87/service_test.go and internal/services/processdefinition/v88/service_test.go"
 ```
 
 ---

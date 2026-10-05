@@ -3,13 +3,11 @@
 ## Codebase Patterns
 
 - Final polish validation for this feature runs `gofmt` across changed Go surfaces, targeted package tests, `make docs-content`, `make test`, and `git diff --check` before marking the feature complete.
-- Process-instance parent context is now canonical end-to-end as `ParentElementInstanceKey` / `parentElementInstanceKey`; only generated clients or v8.7 adapter reads may keep `ParentFlowNodeInstanceKey`.
 - Ops incident workflows register canonical `--element-id` and `--element-instance-key` filters directly; legacy `--flow-node-id` and `--fni-key` remain unregistered and fail as unknown flags.
 - `make docs-content` regenerates `docs/cli/` and syncs `docs/index.md` from README after command metadata or README examples change.
 - `cmd/get_processinstance_test.go` and `cmd/walk_test.go` are suitable focused command contract surfaces for asserting `parentFlowNodeInstanceKey` is absent from public JSON output.
 - Shared incident human rows are rendered only through `flatRowProcessInstanceIncidentWithTimezone` and `flatRowIncidentWithTimezone`; canonical compact labels are now `e:` and `ei:`.
 - Public incident facade/domain fields are now `ElementId` and `ElementInstanceKey`; public JSON tags are `elementId` and `elementInstanceKey`.
-- Public process facade/domain parent context is now `ParentElementInstanceKey`; the v8.7 process-instance adapter still reads generated `ParentFlowNodeInstanceKey` at the adapter boundary.
 - Command code must reference canonical facade fields after the foundational rename, even where later user stories still own public flag/help and compact-label behavior changes.
 - `cmd/get_incident.go` owns incident search flag grammar; `get incident` now exposes canonical `--element-id` and `--element-instance-key` flags and leaves legacy `--flow-node-id`/`--fni-key` unregistered so Cobra rejects them as unknown.
 - `cmd/cmd_views_processinstance_incidents.go` currently renders incident context labels with `fn` and `fni`.
@@ -65,10 +63,10 @@
 **Tasks Completed**:
 - [x] T009: Add failing model/converter tests for canonical incident fields in `c8volt/incident/client_test.go`
 - [x] T010: Add failing model/converter tests for canonical process parent fields in `c8volt/process/client_test.go`
-- [x] T011: Add failing domain/service conversion tests for canonical incident fields in `internal/services/incident/v87/`, `internal/services/incident/v88/`, and `internal/services/incident/v89/`
+- [x] T011: Add failing domain/service conversion tests for canonical incident fields in `internal/services/incident/v88/`, and `internal/services/incident/v89/`
 - [x] T012: Rename public incident filter/result fields from flow-node terms to element terms in `c8volt/incident/model.go`, `c8volt/incident/convert.go`, and `internal/domain/incident.go`
 - [x] T013: Rename public process parent fields from flow-node terms to element terms in `c8volt/process/model.go`, `c8volt/process/convert.go`, `c8volt/ops/convert.go`, and `c8volt/resource/convert.go`
-- [x] T014: Update incident service adapter conversions while keeping generated legacy names adapter-only in `internal/services/incident/v87/`, `internal/services/incident/v88/`, and `internal/services/incident/v89/`
+- [x] T014: Update incident service adapter conversions while keeping generated legacy names adapter-only in `internal/services/incident/v88/`, and `internal/services/incident/v89/`
 - [x] T015: Run targeted compile validation for shared model changes in `c8volt/incident`, `c8volt/process`, `c8volt/ops`, `c8volt/resource`, and `internal/services/incident`
 **Tasks Remaining in Story**: None - story complete
 **Commit**: Recorded in Git history for this iteration
@@ -90,7 +88,6 @@
 - specs/233-element-terminology/progress.md
 **Learnings**:
 - The public facade rename forces command code to reference canonical struct fields immediately, even before later stories rename flags and compact human labels.
-- The v8.7 process-instance generated client still uses `ParentFlowNodeInstanceKey`, so only the adapter input side keeps that legacy name while domain output is canonical.
 - Validation passed with `go test ./c8volt/incident ./c8volt/process ./c8volt/ops ./c8volt/resource ./internal/services/incident/... ./internal/services/processinstance/... ./cmd`.
 ---
 ---
@@ -106,7 +103,6 @@
 - [x] T022: Update incident command validation, filter assembly, examples, and reset logic in `cmd/get_incident.go`
 - [x] T023: Update command metadata expectations for canonical incident filter flags in `cmd/command_contract_test.go`
 - [x] T024: Update incident facade and service filter field names used by `get incident` in `c8volt/incident/` and `internal/domain/incident.go`
-- [x] T025: Update v8.8/v8.9 incident filter mapping and v8.7 compatibility mapping in `internal/services/incident/`
 - [x] T026: Verify US1 with targeted tests for `cmd/get_incident_test.go`, `cmd/command_contract_test.go`, `c8volt/incident/client_test.go`, and `internal/services/incident/...`
 **Tasks Remaining in Story**: None - story complete
 **Commit**: Recorded in Git history for this iteration
@@ -186,7 +182,7 @@
 - [x] T047: Add ops repair incident flag contract tests for canonical filters in `cmd/ops_repair_incident_test.go`
 - [x] T048: Add ops purge incident flag contract tests for canonical filters in `cmd/ops_purge_processinstances_with_incidents_test.go`
 - [x] T049: Add static regression checks for forbidden public strings in `cmd/command_contract_test.go`
-- [x] T050: Add adapter-boundary tests documenting canonical element mapping in `internal/services/incident/v87/`, `internal/services/incident/v88/`, and `internal/services/incident/v89/`
+- [x] T050: Add adapter-boundary tests documenting canonical element mapping in `internal/services/incident/v88/`, and `internal/services/incident/v89/`
 - [x] T051: Add docs regression checks in `docsgen/main_test.go`
 - [x] T052: Update ops repair incident filter flags, help, and request assembly in `cmd/ops_repair_incident*.go`
 - [x] T053: Update ops purge process-instances-with-incidents filter flags, help, and request assembly in `cmd/ops_purge_processinstances_with_incidents*.go`
@@ -211,7 +207,6 @@
 - docs/index.md
 - docs/ops/repair-incident.md
 - docsgen/main_test.go
-- internal/services/incident/v87/incidents_test.go
 - internal/services/incident/v88/incidents_test.go
 - internal/services/incident/v89/incidents_test.go
 - specs/233-element-terminology/tasks.md

@@ -90,7 +90,6 @@
 
 ## Decision 12: Local Proof, Stable Regression, No Integration Expansion
 
-**Decision**: Validate with generation guards, factory/interface tests, adapter and command fake servers, source scans, docs tests, and `make test`. Require zero new diff under `integration/` and protected v8.7-v8.9 clients.
 
 **Rationale**: The issue defers live 8.10 integration. Controlled local servers provide operational proof without expanding destructive real-cluster coverage.
 

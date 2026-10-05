@@ -18,15 +18,6 @@
 - Add resolution to process-instance services: rejected by the issue and by the existing boundary.
 - Call generated clients directly from commands: rejected because commands should use facade/service abstractions and tests can then cover version behavior cleanly.
 
-## Decision: Support v8.8 and v8.9 resolution through generated incident endpoints, reject v8.7 before mutation
-
-**Rationale**: Generated v8.8 and v8.9 clients expose `ResolveIncidentWithResponse` and process-instance incident search endpoints. The v8.7 incident service already rejects tenant-safe incident lookup as unsupported, so resolution should use the same unsupported-version discipline before mutation.
-
-**Alternatives considered**:
-
-- Try a best-effort v8.7 mutation path: rejected because unsupported versions must fail before mutation and the current incident service does not provide tenant-safe lookup.
-- Use process-instance batch incident-resolution endpoints for `resolve pi`: rejected for the first iteration because the requirement says discover the active incidents at command start and resolve/report attempted incident keys.
-
 ## Decision: Confirm default waits by polling the same lookup paths used for planning and display
 
 **Rationale**: The existing `update pi --vars` mutation path submits the mutation in the versioned service and, unless `--no-wait` is set, polls the same lookup path used for planning/display until the requested state is visible. Resolve commands should follow that pattern exactly: `resolve incident` polls incident lookup for each supplied incident key until it is no longer active, and `resolve pi` polls process-instance incident lookup until the initially discovered incident keys are no longer active for that process instance. Accepted mutation response alone is not confirmation. `--no-wait` remains the opt-out and returns submitted/accepted output without lookup polling.

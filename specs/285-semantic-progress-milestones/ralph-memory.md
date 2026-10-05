@@ -74,7 +74,6 @@ Started: 2026-08-31T17:14:26Z
 - In `cmd/cancel_processinstance_selector.go`, close the per-page semantic reporter immediately after each page mutation call; using `defer` inside the visitor would keep prior page activities alive until traversal completes.
 - Process-definition deletion uses a serial first delete before the worker pool to catch Camunda delete-history request-shape errors; emit a failed completion for that first attempted key and no facts for the unscheduled remainder.
 - APD force cleanup progress includes nested process-instance cancel/delete completion facts plus process-definition deletion facts; filter by phase `delete process definitions` in APD service tests that only care about the process-definition completion scope.
-- v8.7 deployment responses do not expose process-definition keys, so resource progress tests intentionally require no completion facts rather than inventing identities from submitted filenames.
 - `resourcepayload.ReportDeploymentProcessDefinitionCompletion` carries the full deployment scope total for each visible key; do not call the slice wrapper with a singleton key when the original deployment returned multiple process definitions.
 - `internal/services/ops` test files can reuse `opsCompletionProgressByPhase` from `all_process_definitions_purge_test.go`; `opsIntPtr` is a package test helper for expected completion affected counts.
 - Smoke-test stage completion tests should filter by the smoke-test phase name because nested process-instance/process-definition services still forward their lower-level completion facts to request-owned progress.
@@ -82,7 +81,6 @@ Started: 2026-08-31T17:14:26Z
 - Expect command JSON for successful state reports omits default-valued `key`, `ok`, and `total`; tests should assert the existing envelope contract without requiring those omitted fields.
 - Process-definition deletion completion reporters intentionally omit affected counts because the service facts do not provide trustworthy per-definition affected deltas.
 - `cmd/delete_processdefinition_progress.go` owns process-definition deletion reporter vocabulary and both facade-level and ops-level completion callback adapters; keep discovery page formatting in APD command progress, not in that helper.
-- Deployment command progress must ignore non-`deploy process definitions` completion phases before constructing the lazy reporter; otherwise v8.7 `--run` follow-up process-instance creation could open a misleading deployment activity.
 - `cmd/ops_processinstance_purge_progress.go` intentionally suppresses the shared bulk-delete frozen-scope `deleting process instances` line because retention/orphan/incident purge deletion progress is now completion-driven; discovery and planning frozen scopes still render through the existing verbose path.
 - Repair commands now use `cmd/ops_repair_progress.go` to route `repairing incidents` completion facts into a lazy semantic reporter; discovery, planning, and legacy frozen counters remain on the existing progress renderer.
 - Smoke-test commands now use `cmd/ops_execute_smoketest_progress.go` for high-level stage completion reporters covering deploy/start/walk/cleanup; nested phases such as `create`, `delete`, `delete process definitions`, and `deploy process definitions` are intentionally ignored by the smoke-test command reporter.
@@ -116,7 +114,6 @@ Started: 2026-08-31T17:14:26Z
 - `go test ./internal/services/processdefinition ./internal/services/ops -run 'DeleteProcessDefinitionResources.*Completion|DeleteProcessDefinitionResourcesStopsOnDeleteHistoryRequestShapeError|PurgeAllProcessDefinitionsForceCleanupDeduplicatesProcessInstanceRoots' -race -count=1`
 - `go test ./internal/services/processdefinition ./internal/services/ops -run 'Progress|Delete|PurgeAllProcessDefinitions' -race -count=1`
 - `go test ./internal/services/processdefinition/... ./internal/services/ops/... -race -count=1`
-- `go test ./internal/services/resource/payload ./internal/services/resource/v87 ./internal/services/resource/v88 ./internal/services/resource/v89 ./internal/services/resource/v810 -run 'Deploy|Visibility|Completion' -race -count=1`
 - `go test ./internal/services/resource/... -race -count=1`
 - `go test ./internal/services/ops -run 'TestRepairIncidentsEmitsWorkerCompletionFactsAtReturnPoints|TestRepairIncidentsCompletionFactsCaptureFailureDetail|TestExecuteSmokeTestEmitsStageCompletionFacts' -race -count=1`
 - `go test ./internal/services/ops/... -run 'Progress|Purge|Repair|Smoke' -race -count=1`

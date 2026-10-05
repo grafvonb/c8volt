@@ -26,7 +26,6 @@ Add a read-only `c8volt ops analyse slow-process-instances` command, with Americ
 
 **Performance Goals**: Preserve bounded process-instance discovery controls; `--limit` and `--batch-size` apply only to process-instance discovery; explicit keys and selected timeline details are never truncated by discovery limits; duration and comparison calculations are based on one frozen selection and complete unfiltered timelines
 
-**Constraints**: Read-only command; supports Camunda 8.8 and 8.9; Camunda 8.7 returns unsupported-version errors; no generated-client or versioned-service calls from `cmd`; no listener/job analysis, BPMN path reconstruction, mutation, repair, report-file generation, or unrelated filters; keys-only output remains one key per line and nothing else
 
 **Scale/Scope**: One new ops analysis command plus facade/domain/internal ops service models and renderers; reuses existing process-instance search/key lookup and element search capabilities; adds command metadata, README/docs updates, CLI contracts, and focused tests for validation, timing, filtering, output modes, unsupported versions, and empty results
 

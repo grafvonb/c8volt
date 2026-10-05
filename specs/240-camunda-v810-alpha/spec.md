@@ -33,15 +33,15 @@ As a c8volt operator evaluating an upcoming Camunda release, I want to select th
 
 ### User Story 2 - Preserve Stable Runtime Behavior (Priority: P1)
 
-As an operator using Camunda 8.7, 8.8, or 8.9, I want the experimental target to be purely additive so that preparing for Camunda 8.10 does not alter my existing commands, defaults, fixtures, or documented stability guarantees.
+As an operator using Camunda 8.8, or 8.9, I want the experimental target to be purely additive so that preparing for Camunda 8.10 does not alter my existing commands, defaults, fixtures, or documented stability guarantees.
 
 **Why this priority**: Experimental support must not create regressions for operators relying on stable runtime targets.
 
-**Independent Test**: Run the existing supported-version, command, fixture, and documentation checks for Camunda 8.7, 8.8, and 8.9 before and after adding the alpha target, and confirm identical stable-version behavior.
+**Independent Test**: Run the existing supported-version, command, fixture, and documentation checks for Camunda 8.8 and 8.9 before and after adding the alpha target, and confirm identical stable-version behavior.
 
 **Acceptance Scenarios**:
 
-1. **Given** an existing Camunda 8.7, 8.8, or 8.9 configuration, **When** an operator runs an existing command, **Then** selection, execution, output, and failure behavior remain unchanged.
+1. **Given** an existing Camunda 8.8, or 8.9 configuration, **When** an operator runs an existing command, **Then** selection, execution, output, and failure behavior remain unchanged.
 2. **Given** existing version-specific runtime artifacts, **When** maintainers prepare the 8.10 alpha target, **Then** artifacts belonging to stable versions are not overwritten or modified.
 3. **Given** bundled examples or deployment fixtures are selected for a stable runtime, **When** the alpha target is added, **Then** the existing fixture selection remains unchanged.
 4. **Given** user-facing documentation lists stable Camunda versions, **When** alpha support is documented, **Then** Camunda 8.10 alpha appears separately as experimental support.
@@ -88,7 +88,7 @@ As a c8volt maintainer, I want the alpha support baseline and preparation inputs
 - The pinned alpha baseline supports a read operation but not the corresponding mutation.
 - A command previously guarded by an exact Camunda 8.9 comparison is valid for the pinned alpha baseline.
 - Alpha fixture content is identical to the latest stable fixture content, but fixture selection still needs an explicit and testable outcome.
-- Alpha preparation succeeds but changes artifacts or documentation owned by Camunda 8.7, 8.8, or 8.9.
+- Alpha preparation succeeds but changes artifacts or documentation owned by Camunda 8.8, or 8.9.
 - The upstream alpha release is unavailable, moved, or superseded after the feature has been prepared.
 - Runtime authentication succeeds while one or more command capabilities remain unavailable.
 
@@ -100,11 +100,11 @@ As a c8volt maintainer, I want the alpha support baseline and preparation inputs
 - **FR-002**: The system MUST reject plain `8.10` until stable Camunda 8.10 support is declared by separate work.
 - **FR-003**: The system MUST reject unrecognized Camunda 8.10 prerelease identifiers rather than treating them as the pinned alpha target.
 - **FR-004**: The system MUST keep the existing default Camunda runtime unchanged.
-- **FR-005**: The system MUST preserve existing selection, execution, output, failure, fixture, and documentation behavior for Camunda 8.7, 8.8, and 8.9.
+- **FR-005**: The system MUST preserve existing selection, execution, output, failure, fixture, and documentation behavior for Camunda 8.8 and 8.9.
 - **FR-006**: The experimental target MUST be bound to the exact Camunda `8.10.0-alpha4` baseline.
 - **FR-007**: Preparation of alpha support MUST use an explicitly selected prerelease baseline and MUST NOT rely on automatic stable-release discovery.
 - **FR-008**: Preparation MUST stop before writing artifacts when the requested runtime target, selected upstream baseline, and intended alpha destination are inconsistent.
-- **FR-009**: Preparation of alpha support MUST NOT overwrite, regenerate, reformat, or otherwise modify runtime artifacts belonging to Camunda 8.7, 8.8, or 8.9.
+- **FR-009**: Preparation of alpha support MUST NOT overwrite, regenerate, reformat, or otherwise modify runtime artifacts belonging to Camunda 8.8, or 8.9.
 - **FR-010**: The project MUST retain enough provenance to identify the upstream source, exact release tag, resolved revision, source definition, applied transformations, preparation tool version, and reproduction procedure.
 - **FR-011**: Every command family with version-dependent behavior MUST define an explicit outcome for `8.10-alpha`: verified support, deliberate reuse of version-neutral behavior, or an unsupported-capability result.
 - **FR-012**: The system MUST NOT silently execute an `8.10-alpha` workflow through a runtime contract tied to an older Camunda version.
@@ -112,7 +112,7 @@ As a c8volt maintainer, I want the alpha support baseline and preparation inputs
 - **FR-014**: A command whose required capability is unavailable or unverified on the pinned alpha baseline MUST report that limitation before attempting an external mutation.
 - **FR-015**: Existing dependencies on legacy Camunda services MUST be reviewed individually and MUST NOT be claimed as alpha-compatible without a pinned, verified source contract.
 - **FR-016**: Bundled examples and deployment fixtures MUST remain selectable under `8.10-alpha` through an explicit, documented, and tested compatibility decision.
-- **FR-017**: User-facing help and documentation MUST distinguish stable support for Camunda 8.7, 8.8, and 8.9 from experimental support for Camunda 8.10 alpha.
+- **FR-017**: User-facing help and documentation MUST distinguish stable support for Camunda 8.8 and 8.9 from experimental support for Camunda 8.10 alpha.
 - **FR-018**: User-facing help and documentation MUST identify `8.10.0-alpha4` as the pinned experimental baseline and MUST state that the default runtime is unchanged.
 - **FR-019**: The feature MUST NOT imply complete c8volt coverage for capabilities newly introduced by Camunda 8.10.
 - **FR-020**: The project MUST provide automated verification for alpha identifier handling, stable-version regression protection, explicit command-family outcomes, preparation isolation, provenance completeness, fixture selection, capability behavior, and documentation wording.
@@ -126,7 +126,7 @@ As a c8volt maintainer, I want the alpha support baseline and preparation inputs
 - **Command Capability**: An operator-visible operation whose availability depends on the selected Camunda runtime and must have an explicit alpha outcome.
 - **Command-Family Compatibility Outcome**: The recorded result for a version-aware command family: verified alpha support, verified version-neutral behavior, or explicit unsupported capability.
 - **Support Provenance**: The auditable record connecting alpha support to its upstream source, revision, source definition, transformations, preparation tooling, and reproduction procedure.
-- **Stable Runtime Artifact**: Any version-specific behavior, fixture, generated contract, or documentation owned by Camunda 8.7, 8.8, or 8.9 and protected from alpha preparation changes.
+- **Stable Runtime Artifact**: Any version-specific behavior, fixture, generated contract, or documentation owned by Camunda 8.8, or 8.9 and protected from alpha preparation changes.
 
 ## Success Criteria *(mandatory)*
 
@@ -134,10 +134,10 @@ As a c8volt maintainer, I want the alpha support baseline and preparation inputs
 
 - **SC-001**: All tested canonical `8.10-alpha` selections resolve to the pinned experimental target, while 100% of tested plain `8.10`, unknown alias, and mismatched prerelease selections are rejected.
 - **SC-002**: The runtime used when no version is selected is identical before and after the feature is added.
-- **SC-003**: 100% of existing automated checks for Camunda 8.7, 8.8, and 8.9 continue to pass without changed expected behavior.
+- **SC-003**: 100% of existing automated checks for Camunda 8.8 and 8.9 continue to pass without changed expected behavior.
 - **SC-004**: Every currently version-aware command family has at least one verified alpha outcome, with no family silently routed through a runtime contract tied to an older Camunda version.
 - **SC-005**: 100% of unsupported or unverified mutating capabilities tested under `8.10-alpha` stop before an external mutation is attempted and return a clear capability error.
-- **SC-006**: Reproducing alpha support from its recorded inputs results in zero changes to runtime artifacts owned by Camunda 8.7, 8.8, or 8.9.
+- **SC-006**: Reproducing alpha support from its recorded inputs results in zero changes to runtime artifacts owned by Camunda 8.8, or 8.9.
 - **SC-007**: The provenance record contains all seven required elements: upstream source, exact tag, resolved revision, source definition, transformations, preparation tool version, and reproduction procedure.
 - **SC-008**: The pinned-baseline smoke evaluation completes all five required checks: authentication, runtime discovery, one read workflow, one supported mutation, and one unsupported-operation result.
 - **SC-009**: Every user-facing location that describes supported Camunda versions identifies Camunda 8.10 alpha as experimental, names the pinned baseline, and leaves the existing default unchanged.

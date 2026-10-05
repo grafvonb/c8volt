@@ -56,7 +56,6 @@ Rules:
 
 - Camunda 8.8: supports native variable-search behavior for the new flags.
 - Camunda 8.9: supports native variable-search behavior for the new flags.
-- Camunda 8.7: rejects the new flags with an explicit unsupported-version error.
 
 ## Variable Scope
 

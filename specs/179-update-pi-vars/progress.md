@@ -23,9 +23,7 @@ Started: 2026-05-07 17:46:04
 - Process-instance commands use `validateOptionalDashArg(args)`, `readKeysIfDash(args)`, `mergeAndValidateKeys(...)`, and `typex.Keys.Unique()` for repeated `--key` plus stdin `-` target handling.
 - Worker controls are shared through global flags `flagWorkers`, `flagFailFast`, and `flagNoWorkerLimit`; `collectOptions()` maps fail-fast/no-worker-limit/no-wait into facade call options.
 - `get process-instance --with-vars` confirms process-scope variables through `EnrichProcessInstancesWithVariables` -> `SearchProcessInstanceVariables`, filters returned variables where `ProcessInstanceKey == key && ScopeKey == key`, sorts by name, and renders via `cmd_views_processinstance_activity.go` / `cmd_views_processinstance_vars.go`.
-- Process facade/service additions should extend `c8volt/process.API`, `internal/services/processinstance.API`, and all versioned `v87`/`v88`/`v89` service contracts with compile-time assertions preserved.
 - v8.8 and v8.9 generated clients expose `CreateElementInstanceVariablesWithResponse(ctx, elementInstanceKey, body, ...)` for `PUT /element-instances/{elementInstanceKey}/variables`; responses have status/status-code helpers and no success JSON payload.
-- Camunda 8.7 unsupported behavior is represented by errors wrapping `domain.ErrUnsupported`, with message text naming the unsupported operation before mutation.
 - CLI docs are generated from Cobra metadata by `go run -ldflags "$(LDFLAGS)" ./docsgen -out ./docs/cli -format markdown`; `make docs-content` also syncs `docs/index.md` from `README.md`.
 - Generated element-instance variable update responses should be validated with `httpc.HttpStatusErr`; successful calls can return `204 No Content` with an empty body.
 - Single-key update confirmation can reuse `SearchProcessInstanceVariables` and the existing process-scope filter helper, then compare only requested variable names after normalizing JSON values.
@@ -41,7 +39,6 @@ Started: 2026-05-07 17:46:04
 - [x] T002: Inspect process-instance key/stdin, worker, fail-fast, and no-worker-limit behavior
 - [x] T003: Inspect process-instance variable lookup and rendering paths
 - [x] T004: Inspect process facade models and service interface patterns
-- [x] T005: Inspect generated v8.8/v8.9 update client methods and v8.7 unsupported patterns
 - [x] T006: Inspect README, generated docs, and docs generation workflow
 **Tasks Remaining in Story**: None - story complete
 **Commit**: No commit - sandbox cannot write `.git/index.lock`
@@ -62,7 +59,6 @@ Started: 2026-05-07 17:46:04
 - [x] T009: Add facade-level process-instance variable update request/result models
 - [x] T010: Extend process facade interface and client stubs for update/confirmation orchestration
 - [x] T011: Extend process-instance service API and compile-time implementation assertions for variable update support
-- [x] T012: Add unsupported Camunda 8.7 update method behavior
 - [x] T013: Add command contract discovery tests for the new update root and process-instance metadata
 - [x] T014: Run foundational targeted validation and fix regressions
 **Tasks Remaining in Story**: None - story complete
@@ -80,8 +76,6 @@ Started: 2026-05-07 17:46:04
 - c8volt/process/model.go
 - internal/domain/processinstance.go
 - internal/services/processinstance/api.go
-- internal/services/processinstance/v87/contract.go
-- internal/services/processinstance/v87/service.go
 - internal/services/processinstance/v88/contract.go
 - internal/services/processinstance/v88/variables.go
 - internal/services/processinstance/v89/contract.go
@@ -91,7 +85,6 @@ Started: 2026-05-07 17:46:04
 **Learnings**:
 - The foundational leaf command is metadata-only in this iteration; US1 still owns request parsing, service mutation calls, confirmation lookup, and output rendering.
 - Interface expansion surfaced strict test stubs immediately, which is useful for keeping command and facade tests explicit about unexpected update calls.
-- `GOCACHE=/tmp/c8volt-gocache go test ./cmd ./c8volt/process ./internal/services/processinstance/v87 -run 'Test(CommandCapability|Update|Unsupported)' -count=1` passed.
 - `GOCACHE=/tmp/c8volt-gocache go test ./internal/services/processinstance/v88 ./internal/services/processinstance/v89 -run 'Test(Update|Unsupported)' -count=1` passed for compile coverage on touched versioned services.
 ---
 ---
@@ -187,12 +180,10 @@ Started: 2026-05-07 17:46:04
 **Tasks Completed**:
 - [x] T042: Add command validation tests for missing `--vars`, malformed JSON, and non-object JSON
 - [x] T043: Add command validation tests for missing `--key` and missing stdin input via `-`
-- [x] T044: Add v8.7 unsupported-version service test proving mutation is not attempted
 - [x] T045: Add facade timeout confirmation failure test
 - [x] T046: Add regression coverage for `run --vars` and reuse existing `get process-instance --with-vars` coverage
 - [x] T047: Reject missing `--vars`, malformed JSON, and non-object JSON through command-owned validation
 - [x] T048: Reject missing target keys through existing key target validation behavior
-- [x] T049: Ensure v8.7 returns unsupported-version errors before mutation
 - [x] T050: Report confirmation timeout as per-key confirmation failure
 - [x] T051: Run US4 targeted validation and fix regressions
 **Tasks Remaining in Story**: None - story complete
@@ -203,13 +194,11 @@ Started: 2026-05-07 17:46:04
 - cmd/get_processinstance_test.go
 - cmd/run_test.go
 - c8volt/process/client_test.go
-- internal/services/processinstance/v87/service_test.go
 - specs/179-update-pi-vars/tasks.md
 - specs/179-update-pi-vars/progress.md
 **Learnings**:
 - Missing `--vars` should be handled by `parseUpdateProcessInstanceVariables` so it is classified as invalid input consistently with malformed and non-object JSON.
 - Resetting command tree flags alone is not enough for new bound `StringSlice` globals; the process-instance global reset helper must include update command flags.
-- `GOCACHE=/tmp/c8volt-gocache go test ./cmd ./c8volt/process ./internal/services/processinstance/v87 -run 'Test(UpdateProcessInstance.*(Invalid|Missing|Unsupported|Timeout)|RunProcessInstance.*Vars|GetProcessInstance.*WithVars)' -count=1` passed.
 ---
 ---
 ## Iteration 7 - 2026-05-07 18:31:49 CEST
@@ -262,7 +251,6 @@ Started: 2026-05-07 17:46:04
 - Resource facade tests need strict panic methods for both singular and bulk process variable update methods after the process facade interface expansion.
 - Multi-key command tests can issue concurrent handler calls under worker fan-out; `make test` catches unsynchronized request counters with the race detector.
 - `quickstart.md` already matched the implemented update, no-wait, JSON, validation, unsupported-version, docs, and final validation workflows.
-- `GOCACHE=/tmp/c8volt-gocache go test ./cmd ./c8volt/process ./internal/services/processinstance/v87 ./internal/services/processinstance/v88 ./internal/services/processinstance/v89 -count=1` passed.
 - `GOCACHE=/tmp/c8volt-gocache go test ./cmd ./c8volt/resource -race -count=1` passed after the repository-wide validation fixes.
 - `make docs-content` and `make test` passed.
 ---

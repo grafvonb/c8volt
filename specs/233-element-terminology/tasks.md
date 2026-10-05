@@ -38,10 +38,10 @@
 
 - [x] T009 Add failing model/converter tests for canonical incident fields in `c8volt/incident/client_test.go`
 - [x] T010 [P] Add failing model/converter tests for canonical process parent fields in `c8volt/process/client_test.go` or nearest existing process facade tests
-- [x] T011 [P] Add failing domain/service conversion tests for canonical incident fields in `internal/services/incident/v87/`, `internal/services/incident/v88/`, and `internal/services/incident/v89/`
+- [x] T011 [P] Add failing domain/service conversion tests for canonical incident fields in `internal/services/incident/v88/`, and `internal/services/incident/v89/`
 - [x] T012 Rename public incident filter/result fields from flow-node terms to element terms in `c8volt/incident/model.go`, `c8volt/incident/convert.go`, and `internal/domain/incident.go`
 - [x] T013 Rename public process parent fields from flow-node terms to element terms in `c8volt/process/model.go`, `c8volt/process/convert.go`, `c8volt/ops/convert.go`, and `c8volt/resource/convert.go`
-- [x] T014 Update incident service adapter conversions while keeping generated legacy names adapter-only in `internal/services/incident/v87/`, `internal/services/incident/v88/`, and `internal/services/incident/v89/`
+- [x] T014 Update incident service adapter conversions while keeping generated legacy names adapter-only in `internal/services/incident/v88/`, and `internal/services/incident/v89/`
 - [x] T015 Run targeted compile validation for shared model changes in `c8volt/incident`, `c8volt/process`, `c8volt/ops`, `c8volt/resource`, and `internal/services/incident`
 
 **Checkpoint**: Shared public and domain terminology is canonical, and generated-client legacy names are contained below adapter boundaries.
@@ -68,7 +68,6 @@
 - [x] T022 [US1] Update incident command validation, filter assembly, examples, and reset logic in `cmd/get_incident.go`
 - [x] T023 [US1] Update command metadata expectations for canonical incident filter flags in `cmd/command_contract_test.go`
 - [x] T024 [US1] Update incident facade and service filter field names used by `get incident` in `c8volt/incident/` and `internal/domain/incident.go`
-- [x] T025 [US1] Update v8.8/v8.9 incident filter mapping and v8.7 compatibility mapping in `internal/services/incident/`
 - [x] T026 [US1] Verify US1 with targeted tests for `cmd/get_incident_test.go`, `cmd/command_contract_test.go`, `c8volt/incident/client_test.go`, and `internal/services/incident/...`
 
 **Checkpoint**: User Story 1 is complete when canonical incident filters work and old public flags are gone.
@@ -138,7 +137,7 @@
 - [x] T047 [P] [US4] Add ops repair incident flag contract tests for canonical filters in `cmd/ops_repair_incident_test.go`
 - [x] T048 [P] [US4] Add ops purge incident flag contract tests for canonical filters in `cmd/ops_purge_processinstances_with_incidents_test.go`
 - [x] T049 [P] [US4] Add static regression checks for forbidden public strings in `cmd/command_contract_test.go` or a focused repository contract test file
-- [x] T050 [P] [US4] Add adapter-boundary tests documenting allowed generated legacy mapping in `internal/services/incident/v87/`, `internal/services/incident/v88/`, and `internal/services/incident/v89/`
+- [x] T050 [P] [US4] Add adapter-boundary tests documenting allowed generated legacy mapping in `internal/services/incident/v88/`, and `internal/services/incident/v89/`
 - [x] T051 [P] [US4] Add docs regression checks or update existing generated-doc assertions in `docsgen/` or `cmd/command_contract_test.go`
 
 ### Implementation for User Story 4

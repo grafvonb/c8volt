@@ -89,7 +89,6 @@ internal/services/cluster/
 ├── api.go
 ├── factory.go
 ├── common/
-├── v87/
 └── v88/
 
 docs/cli/

@@ -33,7 +33,6 @@ If both primary lookup and Tasklist V1 fallback cannot find the task, the comman
 ./c8volt get pi --has-user-tasks=2251799815391233
 ```
 
-On Camunda 8.7, the command fails with an explicit unsupported-version error for `--has-user-tasks`. It must not call either the primary lookup or Tasklist V1 fallback.
 
 ## Terminal Error Behavior
 
@@ -59,5 +58,4 @@ printf '2251799813711967\n' | ./c8volt get pi --has-user-tasks=2251799815391233 
 ## Documentation Contract
 
 - Command help includes `--has-user-tasks` and describes primary lookup followed by Tasklist V1 fallback for Camunda 8.8 and 8.9.
-- README and generated CLI docs mention Camunda 8.8/8.9 support, Camunda 8.7 unsupported behavior, and Tasklist V1 fallback for legacy user-task compatibility.
 - Documentation must mention that Tasklist V1 fallback is transitional compatibility for deprecated upstream behavior.

@@ -58,7 +58,6 @@ The feature must not change these behaviors:
 
 | Version | Traversal expectation |
 |---------|-----------------------|
-| `v8.7` | Shared walker partial-result behavior applies to traversal/preflight; existing strict direct lookup/state constraints remain unchanged |
 | `v8.8` | Shared walker partial-result behavior applies to traversal/preflight |
 | `v8.9` | Shared walker partial-result behavior applies to traversal/preflight |
 
@@ -96,4 +95,3 @@ The feature is incomplete unless tests prove:
 - cancel/delete preflight remains actionable with orphan children when some keys resolve
 - direct key lookup remains strict
 - waiter absent/deleted behavior remains unchanged
-- `v87`, `v88`, and `v89` all honor the shared traversal contract

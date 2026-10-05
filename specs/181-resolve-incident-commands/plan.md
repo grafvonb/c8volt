@@ -71,7 +71,6 @@ internal/services/incident/
 ├── api.go
 ├── factory.go
 ├── factory_test.go
-├── v87/
 ├── v88/
 └── v89/
 
@@ -88,7 +87,6 @@ Research output is captured in [research.md](./research.md). Key decisions:
 
 - Add `resolve` as a distinct root command because the issue defines incident resolution as an operator recovery action rather than a field update.
 - Add lookup-backed `--dry-run` plans that render affected incidents without submitting mutations.
-- Use generated v8.8 and v8.9 incident resolution endpoints through `internal/services/incident`; v8.7 returns an unsupported-version error before mutation.
 - Confirm resolution through incident lookup for process-instance-scoped waits and a direct incident state lookup or resolution response check for incident-key waits, depending on the generated client surface.
 - Model pre-mutation plans and per-target command results in the process facade so human and JSON output share one data contract.
 

@@ -107,7 +107,6 @@ Started: 2026-08-12 18:38:49
 - specs/273-camunda-v810-support/ralph-memory.md
 - specs/273-camunda-v810-support/progress.md
 **Learnings**:
-- V810 is now selectable and listed as supported, while implemented-version discovery remains staged on V87-V89 until native V810 factories are complete.
 ---
 ---
 ## Iteration 8 - 2026-08-12 19:28
@@ -345,7 +344,7 @@ Started: 2026-08-12 18:38:49
 ## Iteration 17 - 2026-08-12 20:30
 **Work Unit**: US2 full process-definition history capability gate
 **Tasks Completed**:
-- [x] T025: Add named full-process-definition-history capability tests for V87/V88 rejection and V89/V810 acceptance before discovery/mutation
+- [x] T025: Add named full-process-definition-history capability tests for V88 rejection and V89/V810 acceptance before discovery/mutation
 - [x] T033: Implement the named full-process-definition-history capability and consume it in both mutation gates
 **Tasks Remaining in Work Unit**: T034-T038 remain in User Story 2
 **Commit**: This work-unit commit
@@ -470,7 +469,6 @@ Started: 2026-08-12 18:38:49
 ## Iteration 23 - 2026-08-12 21:03
 **Work Unit**: US3 stable service factory selection regressions
 **Tasks Completed**:
-- [x] T040: Extend current-default and V87-V89 selection regressions across all eleven service factory test files
 **Tasks Remaining in Work Unit**: T041 and T043 remain in User Story 3
 **Commit**: This work-unit commit
 **Files Changed**:
@@ -495,8 +493,6 @@ Started: 2026-08-12 18:38:49
 ## Iteration 24 - 2026-08-12 21:07
 **Work Unit**: US3 repository boundary guard and stable regression validation
 **Tasks Completed**:
-- [x] T041: Add repository allowlist assertions for unchanged v87-v89 generated trees and zero V810 integration assets
-- [x] T043: Run stable V87-V89 package/command regressions and repository boundary checks
 **Tasks Remaining in Work Unit**: 0; User Story 3 complete
 **Commit**: This work-unit commit
 **Files Changed**:
@@ -662,7 +658,6 @@ Started: 2026-08-12 18:38:49
 ## Iteration 4 - 2026-08-12 22:01
 **Work Unit**: Phase 7 T053 final boundary and deterministic generation audit
 **Tasks Completed**:
-- [x] T053: Verify `git diff --check`, deterministic V810 regeneration, unchanged `internal/clients/camunda/v87`, `v88`, `v89`, and zero feature changes under `integration/`
 **Tasks Remaining in Work Unit**: 0; feature complete
 **Commit**: This work-unit commit
 **Files Changed**:
@@ -670,5 +665,4 @@ Started: 2026-08-12 18:38:49
 - specs/273-camunda-v810-support/ralph-memory.md
 - specs/273-camunda-v810-support/progress.md
 **Learnings**:
-- Final audit passed whitespace checks, repository boundary guard, two pinned V810 regenerations, no V810 generated-client/provenance diff, and no protected v87-v89 or integration diff.
 ---

@@ -7,12 +7,9 @@ Started: 2026-04-19 18:38:11
 
 - `get process-instance` intentionally keeps CLI flag parsing in `populatePISearchFilterOpts()` and post-fetch narrowing in `applyPISearchResultFilters(...)`; request pushdown work should preserve that command-to-shared-filter flow instead of adding version branches in `cmd/`.
 - Shared process-instance filter semantics must stay mirrored between `c8volt/process/model.go`, `internal/domain/processinstance.go`, and `c8volt/process/convert.go`; client regression coverage belongs in `c8volt/process/client_test.go`.
-- Version-specific request-shape assertions already live in `internal/services/processinstance/v87/service_test.go`, `v88/service_test.go`, and `v89/service_test.go`; command paging/request helpers live in `cmd/cmd_processinstance_test.go`.
 - Shared optional filter semantics should be represented as `*bool` fields so unset callers preserve current request shapes while later request builders can distinguish explicit `true` and `false` pushdown intent.
 - Supported parent-presence pushdown should continue to prefer explicit `ParentKey` equality when present and otherwise encode `HasParent` through the generated `parentProcessInstanceKey` `"$exists"` filter; incident presence remains a plain `hasIncident` boolean on `v8.8` and `v8.9`.
-- `v8.7` request construction should keep ignoring `HasParent` and `HasIncident`; fallback proof belongs in `internal/services/processinstance/v87/service_test.go` rather than command-local version branching.
 - `--orphan-children-only` stays on the follow-up lookup seam: command tests should show a broad top-level search plus per-parent lookup requests, while service tests can prove the lookup path with a mocked `404`.
-- The audited `get process-definition --latest` seam follows the same version split through service-level tests: `v8.8` and `v8.9` assert request-side `isLatestVersion`, while `v8.7` should prove a broad search request plus local latest-selection fallback instead of inventing a new command-layer branch.
 - Final polish for a completed feature should record the exact validation commands that passed in `plan.md` and `quickstart.md`, so the handoff artifacts reflect verified state rather than only intended behavior.
 
 ---
@@ -30,7 +27,6 @@ Started: 2026-04-19 18:38:11
 - specs/116-server-search-filters/research.md
 - specs/116-server-search-filters/tasks.md
 **Learnings**:
-- `v8.7` request construction is still equality-only around `searchProcessInstancesRequest(...)`, so parent/incident presence semantics must stay on fallback there.
 - `v8.8` and `v8.9` already have request-capture seams that can absorb the new pushdown assertions without introducing new test scaffolding.
 - The command paging regressions should extend existing helpers in `cmd/cmd_processinstance_test.go` and `cmd/get_processinstance_test.go` rather than duplicating capture servers.
 ---
@@ -94,11 +90,8 @@ Started: 2026-04-19 18:38:11
 ## Iteration 4 - 2026-04-19 20:44 CEST
 **User Story**: User Story 2 - Preserve behavior on unsupported versions
 **Tasks Completed**:
-- [x] T015: Add `v8.7` service tests proving unsupported pushdown predicates stay out of the request shape
-- [x] T016: Add command regressions proving `v8.7` fallback still returns the correct final filtered results
 - [x] T017: Add cross-version regressions proving `--orphan-children-only` remains client-side
 - [x] T018: Preserve version-aware fallback behavior for unsupported pushdown semantics
-- [x] T019: Keep `v8.7` request construction limited to supported equality filters while documenting the fallback boundary
 - [x] T020: Keep orphan-child detection on the existing follow-up lookup path
 **Tasks Remaining in Story**: None - story complete
 **Commit**: Recorded in Git history for this iteration
@@ -106,14 +99,11 @@ Started: 2026-04-19 18:38:11
 - c8volt/process/client.go
 - cmd/get_processinstance.go
 - cmd/get_processinstance_test.go
-- internal/services/processinstance/v87/service.go
-- internal/services/processinstance/v87/service_test.go
 - internal/services/processinstance/v88/service_test.go
 - specs/116-server-search-filters/progress.md
 - specs/116-server-search-filters/research.md
 - specs/116-server-search-filters/tasks.md
 **Learnings**:
-- `v8.7` already preserved the fallback behavior by omission; the missing work was regression proof plus making the request-boundary explicit in code and research notes.
 - Orphan-child filtering remains intentionally multi-step even on supported versions, so the right regression shape is one broad page fetch followed by parent lookups rather than another top-level request predicate.
 - Keeping `applyPISearchResultFilters(...)` active across versions lets supported pushdown and unsupported fallback share one command path without drifting semantics.
 ---
@@ -126,7 +116,6 @@ Started: 2026-04-19 18:38:11
 **Tasks Remaining in Story**: None - story complete
 **Commit**: Recorded in Git history for this iteration
 **Files Changed**:
-- internal/services/processdefinition/v87/service_test.go
 - specs/116-server-search-filters/plan.md
 - specs/116-server-search-filters/progress.md
 - specs/116-server-search-filters/quickstart.md
@@ -134,7 +123,6 @@ Started: 2026-04-19 18:38:11
 - specs/116-server-search-filters/tasks.md
 **Learnings**:
 - `get process-definition --latest` is the only additional audited `get` seam that matches this feature's request-pushdown-versus-client-fallback pattern; the rest of the audited `get` surface is direct lookup/fetch behavior rather than late post-fetch narrowing.
-- The repository already had supported-version request-side coverage for `isLatestVersion` in `v8.8` and `v8.9`; the missing audit proof was the complementary `v8.7` fallback assertion plus explicit artifact traceability.
 - Documenting already-adopted qualifying seams separately from true no-addition cases keeps the audit honest without inventing extra implementation scope.
 ---
 ## Iteration 6 - 2026-04-19 20:54 CEST

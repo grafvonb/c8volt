@@ -17,7 +17,7 @@ Source/release identifiers such as `8.10-alpha4`, `8.10.0-alpha4`, release-candi
 
 ## Supported and Implemented Discovery
 
-- Supported versions: `8.7, 8.8, 8.9, 8.10`.
+- Supported versions: `8.8, 8.9, 8.10`.
 - Implemented versions use the same set only after all eleven V810 factories exist.
 - V810 display/report identity is always `8.10`.
 - Baseline tag/status is separate metadata and never changes configuration identity.
@@ -39,7 +39,7 @@ Mismatch/unrecognizable values are never accepted as compatibility matches. They
 Human output stays compact and adds one disclosure line:
 
 ```text
-Supported Camunda versions: 8.7, 8.8, 8.9, 8.10
+Supported Camunda versions: 8.8, 8.9, 8.10
 Camunda 8.10 baseline: 8.10.0-alpha4 (prerelease)
 ```
 
@@ -52,7 +52,7 @@ The shared command envelope and existing string fields remain unchanged. Payload
   "version": "<c8volt version>",
   "commit": "<commit>",
   "date": "<date>",
-  "supportedCamundaVersions": "8.7, 8.8, 8.9, 8.10",
+  "supportedCamundaVersions": "8.8, 8.9, 8.10",
   "camunda810Baseline": "8.10.0-alpha4",
   "camunda810BaselineStatus": "prerelease"
 }

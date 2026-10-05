@@ -20,7 +20,6 @@ No task-attribute mutations, search selection, scope flags, new dependencies, cl
 
 **Testing**: Existing Go/testify, HTTP fixtures, command subprocess helpers, and real-terminal runners. Targeted suites, then the issue-required `make test` race suite for the completed cross-package runtime change.
 
-**Target Platform**: Existing supported CLI platforms and Camunda 8.8, 8.9, 8.10. Explicit unsupported operation on 8.7; unchanged default runtime version.
 
 **Project Type**: Existing CLI and public Go facade library.
 
@@ -80,7 +79,6 @@ internal/
     update_wait.go                       # scope-aware confirmation
   services/variable/
     api.go
-    v87/variables.go                     # explicit unsupported write
     v88/variables.go
     v89/variables.go
     v810/variables.go                     # local scope writes
@@ -94,7 +92,6 @@ Tests live next to the changed owners, using focused `update_*_test.go` files wh
 
 ## Design and Delivery
 
-1. Add domain plan/results and the scoped variable-write operation; implement v8.10 first, then explicit v8.9/v8.8 mappings and v8.7 unsupported behavior. Existing PI write semantics remain unchanged.
 2. Implement the usertask plan/execution service with complete discovery, scope/name deduplication, frozen targets, worker scheduling, and scope-aware confirmation. Expose thin facade methods and wire the composed dependency through `c8volt.New`.
 3. Add the command and focused views. Reuse PI input parsing by extracting only the genuinely shared payload functions into a concrete variable-payload file with unchanged PI behavior; no generic command framework. Match PI JSON/confirmation restrictions with task-specific wording.
 4. Add end-to-end command coverage for the full output/no-op/failure/terminal matrix, metadata, and PI regressions. Update help and README, regenerate docs, then run the completed runtime validation.

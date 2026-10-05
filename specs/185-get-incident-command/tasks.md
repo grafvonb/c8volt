@@ -16,7 +16,7 @@
 **Purpose**: Confirm existing generated client, incident service, facade, and renderer surfaces before implementation.
 
 - [x] T001 Inspect top-level incident generated client search and lookup methods in `internal/clients/camunda/v88/camunda/client.gen.go` and `internal/clients/camunda/v89/camunda/client.gen.go`
-- [x] T002 Inspect current incident service methods and version behavior in `internal/services/incident/api.go`, `internal/services/incident/v87/incidents.go`, `internal/services/incident/v88/incidents.go`, and `internal/services/incident/v89/incidents.go`
+- [x] T002 Inspect current incident service methods and version behavior in `internal/services/incident/api.go`, `internal/services/incident/v88/incidents.go`, and `internal/services/incident/v89/incidents.go`
 - [x] T003 Inspect existing process-instance incident validation and rendering in `cmd/get_processinstance_validation.go`, `cmd/cmd_views_processinstance_incidents.go`, and `cmd/get_processinstance_test.go`
 - [x] T004 Inspect existing list, paging, limit, keys-only, total, and JSON conventions in `cmd/get_processinstance.go`, `cmd/get_processinstance_paging.go`, `cmd/get_processinstance_total.go`, and `cmd/cmd_views_get.go`
 
@@ -32,10 +32,8 @@
 - [x] T006 Extend the process facade API for keyed incident lookup and incident search/list in `c8volt/process/api.go`
 - [x] T007 Extend conversion helpers for incident query/filter/result values in `c8volt/process/convert.go`
 - [x] T008 Extend the incident service API with top-level incident search/list support in `internal/services/incident/api.go`
-- [x] T009 [P] Add v8.7 unsupported incident search/list tests in `internal/services/incident/v87/incidents_test.go`
 - [x] T010 [P] Add v8.8 incident search/list compatibility tests in `internal/services/incident/v88/incidents_test.go`
 - [x] T011 [P] Add v8.9 incident search/list server-filter tests in `internal/services/incident/v89/incidents_test.go`
-- [x] T012 Implement v8.7 unsupported incident search/list behavior in `internal/services/incident/v87/incidents.go` and `internal/services/incident/v87/contract.go`
 - [x] T013 Implement v8.8 incident search/list compatibility path in `internal/services/incident/v88/incidents.go`, `internal/services/incident/v88/convert.go`, and `internal/services/incident/v88/contract.go`
 - [x] T014 Implement v8.9 incident search/list server-side filters in `internal/services/incident/v89/incidents.go`, `internal/services/incident/v89/convert.go`, and `internal/services/incident/v89/contract.go`
 - [x] T015 Add factory/API compile and version selection tests for incident search/list in `internal/services/incident/factory_test.go`
@@ -173,7 +171,6 @@
 
 - [x] T055 [P] [US6] Add regression tests proving `get pi --with-incidents`, `--incidents-only`, `--direct-incidents-only`, and `--no-incidents-only` behavior is unchanged in `cmd/get_processinstance_test.go`
 - [x] T056 [P] [US6] Add docs generation tests or update expectations for `get incident` docs in `docsgen/main_test.go`
-- [x] T057 [P] [US6] Add unsupported-version behavior tests for `get incident` in `cmd/get_incident_test.go` and `internal/services/incident/v87/incidents_test.go`
 
 ### Implementation for User Story 6
 

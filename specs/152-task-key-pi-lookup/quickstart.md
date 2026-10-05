@@ -20,7 +20,6 @@
 
 5. Confirm the JSON shape matches direct keyed lookup for the resolved key.
 6. Repeat the successful lookup on Camunda 8.8.
-7. Configure Camunda 8.7 and confirm:
 
    ```bash
    ./c8volt get pi --has-user-tasks=2251799815391233

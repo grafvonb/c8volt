@@ -46,14 +46,13 @@ Validation rules:
 
 The selected BPMN fixture.
 
-- `camundaVersion`: 8.7, 8.8, or 8.9
+- `camundaVersion`: 8.8, or 8.9
 - `file`: embedded fixture file path
 - `bpmnProcessID`: BPMN process ID, e.g. `C89_MultipleSubProcessesParent`
 - `available`: whether the embedded asset exists
 
 Validation rules:
 
-- Camunda 8.7 maps to `C87_MultipleSubProcessesParent.bpmn`.
 - Camunda 8.8 maps to `C88_MultipleSubProcessesParent.bpmn`.
 - Camunda 8.9 maps to `C89_MultipleSubProcessesParent.bpmn`.
 

@@ -7,10 +7,8 @@ Started: 2026-04-22 11:13:42
 
 - Shared traversal behavior is centralized in `internal/services/processinstance/walker/walker.go`; `walk`, dry-run expansion, and versioned services consume that seam rather than reimplementing ancestry/family logic.
 - Direct single-resource semantics remain intentionally separate: `cmd/get_processinstance.go`, `internal/services/common/response.go`, and `internal/services/processinstance/waiter/waiter.go` preserve strict not-found and absent/deleted waiter behavior.
-- Supported Camunda versions are selected in `internal/services/processinstance/factory.go`, and `v87`, `v88`, and `v89` all delegate traversal methods through the shared walker while keeping version-specific direct lookup behavior local to each service.
 - Shared process-instance traversal contracts need a leaf package when both the parent `processinstance` package and versioned services consume them; `internal/services/processinstance/traversal` keeps result types and builders reusable without import cycles.
 - Backward-compatible facade upgrades follow the existing pattern of adding structured result methods beside legacy tuple methods first, then switching command callers story by story once the shared contract is validated.
-- Story-scoped behavior changes that would otherwise leak into later destructive flows should stay behind version- or caller-specific adapters first; `v87` now uses a traversal-only search adapter for walk results while dry-run expansion remains on the legacy path until the preflight story is implemented.
 - Destructive preflight flows should consume `DryRunCancelOrDeletePlan` and print orphan warnings on stderr or logs, which keeps JSON stdout/report payloads stable while still surfacing missing ancestor keys to operators.
 - Strict single-resource seams should document their contract where they live: `cmd/get_processinstance.go`, `internal/services/common/response.go`, and `internal/services/processinstance/waiter/waiter.go` are the canonical places to state that not-found stays strict outside traversal/preflight flows.
 - CLI markdown under `docs/cli/` is generated from the current Cobra help text via `make docs-content`, so README/help wording changes should be regenerated in the same polish pass instead of hand-editing derived docs.
@@ -22,7 +20,6 @@ Started: 2026-04-22 11:13:42
 **Tasks Completed**:
 - [x] T001: Inventory the current orphan-parent failure path across walker, dry-run, and walk/cancel/delete command flows
 - [x] T002: Confirm current strict lookup and waiter boundaries in get-process-instance, waiter, and common response helpers
-- [x] T003: Confirm shared version support and traversal delegation across the process-instance factory and `v87`/`v88`/`v89` services
 **Tasks Remaining in Story**: None - story complete
 **Commit**: No commit - sandbox blocked git index writes
 **Files Changed**:
@@ -53,8 +50,6 @@ Started: 2026-04-22 11:13:42
 - internal/services/common/response.go
 - internal/services/processinstance/api.go
 - internal/services/processinstance/traversal/result.go
-- internal/services/processinstance/v87/contract.go
-- internal/services/processinstance/v87/service.go
 - internal/services/processinstance/v88/contract.go
 - internal/services/processinstance/v88/service.go
 - internal/services/processinstance/v89/contract.go
@@ -70,7 +65,6 @@ Started: 2026-04-22 11:13:42
 - specs/129-orphan-parent-warning/tasks.md
 **Learnings**:
 - The tuple-based ancestry API already carries enough orphan boundary information to seed a structured result seam once the walker preserves the partial path on orphan errors.
-- A leaf `traversal` package is the repository-native way to share result contracts between `processinstance` and `v87`/`v88`/`v89` without reintroducing package cycles.
 - `DryRunCancelOrDeleteGetPIKeys` can stay source-compatible while the new `DryRunCancelOrDeletePlan` carries missing-ancestor metadata for later command adoption.
 ---
 
@@ -79,7 +73,6 @@ Started: 2026-04-22 11:13:42
 **User Story**: US1 - Inspect Partial Trees Safely
 **Tasks Completed**:
 - [x] T008: Add shared walker regression tests for partial ancestry, partial family traversal, and fully unresolved failure behavior
-- [x] T009: Add version-aware traversal regression coverage for `v87`, `v88`, and `v89` services
 - [x] T010: Add command rendering regressions for partial parent/family/tree output
 - [x] T011: Implement shared partial ancestry and family result handling
 - [x] T012: Thread the new traversal result contract through the process facade
@@ -91,8 +84,6 @@ Started: 2026-04-22 11:13:42
 - cmd/cmd_views_walk.go
 - cmd/walk_processinstance.go
 - cmd/walk_test.go
-- internal/services/processinstance/v87/service.go
-- internal/services/processinstance/v87/service_test.go
 - internal/services/processinstance/v88/service_test.go
 - internal/services/processinstance/v89/service_test.go
 - internal/services/processinstance/walker/walker_test.go
@@ -100,7 +91,6 @@ Started: 2026-04-22 11:13:42
 - specs/129-orphan-parent-warning/progress.md
 **Learnings**:
 - `walk process-instance` can adopt the structured traversal contract without changing the default human-readable list/tree views by wrapping the existing renderers and appending warnings only when the result is partial.
-- Camunda `8.7` needs a traversal-only adapter that resolves process instances through tenant-safe search for result-based walk flows, while dry-run preflight must stay on the legacy path until US2 lands.
 - The broader command suite is the right guardrail for story-scoped traversal work because `cancel` and `delete` still share process-instance expansion seams that must not change early.
 ---
 
@@ -155,7 +145,6 @@ Started: 2026-04-22 11:13:42
 - cmd/walk_processinstance.go
 - cmd/walk_test.go
 - internal/services/common/response.go
-- internal/services/processinstance/v87/service_test.go
 - internal/services/processinstance/v88/service_test.go
 - internal/services/processinstance/v89/service_test.go
 - internal/services/processinstance/waiter/waiter.go

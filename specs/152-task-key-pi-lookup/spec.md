@@ -41,11 +41,9 @@ As a CLI user or script author, I want unsupported versions and conflicting sele
 
 **Why this priority**: The issue explicitly forbids Tasklist and Operate fallbacks and defines `--has-user-tasks` as a lookup selector, so safe rejection behavior is required before the feature can be trusted.
 
-**Independent Test**: Run the command on 8.7 and with every invalid selector combination, then verify each invocation fails before process-instance lookup or fallback API usage occurs.
 
 **Acceptance Scenarios**:
 
-1. **Given** the active Camunda version is 8.7, **When** the operator runs `c8volt get pi --has-user-tasks=<task-key>`, **Then** the command fails with an explicit unsupported-version error.
 2. **Given** the operator supplies `--has-user-tasks` and `--key`, **When** validation runs, **Then** the command rejects the invocation as a selector conflict.
 3. **Given** the operator supplies `--has-user-tasks` and stdin key input via `-`, **When** validation runs, **Then** the command rejects the invocation as a selector conflict.
 4. **Given** the operator supplies `--has-user-tasks` with search filters, `--total`, or `--limit`, **When** validation runs, **Then** the command rejects the invocation because has-user-tasks lookup is not a search mode.
@@ -74,7 +72,6 @@ As a CLI user reading command help or documentation, I want concrete has-user-ta
 
 **Why this priority**: This is a user-facing command contract change and the project constitution requires documentation to match behavior.
 
-**Independent Test**: Inspect help text, README examples, and generated CLI docs to verify has-user-tasks usage, selector conflicts, and 8.7 unsupported behavior are accurately documented.
 
 **Acceptance Scenarios**:
 
@@ -84,7 +81,6 @@ As a CLI user reading command help or documentation, I want concrete has-user-ta
 
 ### Edge Cases
 
-- Camunda 8.7 must fail explicitly when `--has-user-tasks` is present before any fallback API call is attempted.
 - A missing user task must return a clear not-found style error consistent with existing command behavior.
 - A user task response without a usable owning process-instance key must return a clear resolution error.
 - After task ownership is resolved, process-instance not-found and process-instance API errors must behave like direct keyed lookup for the resolved process-instance key.
@@ -101,7 +97,6 @@ As a CLI user reading command help or documentation, I want concrete has-user-ta
 - **FR-002**: `--has-user-tasks` MUST identify one or more Camunda user task keys whose owning process instances should be fetched.
 - **FR-003**: On Camunda 8.9, the system MUST resolve user tasks through tenant-aware native Camunda v2 user-task search available to the generated client.
 - **FR-004**: On Camunda 8.8, the system MUST resolve user tasks through tenant-aware native Camunda v2 user-task search available to the generated client.
-- **FR-005**: On Camunda 8.7, the system MUST fail explicitly as unsupported whenever `--has-user-tasks` is used.
 - **FR-006**: The system MUST NOT use Tasklist API calls to resolve has-user-tasks lookup.
 - **FR-007**: The system MUST NOT use Operate API calls to resolve has-user-tasks lookup.
 - **FR-008**: The system MUST extract the owning process-instance key from the resolved user task result.
@@ -123,7 +118,6 @@ As a CLI user reading command help or documentation, I want concrete has-user-ta
 - **FR-023**: README or user-facing documentation MUST describe has-user-tasks lookup, version support, and forbidden Tasklist/Operate fallback behavior.
 - **FR-024**: Automated tests MUST cover successful user-task resolution on Camunda 8.9.
 - **FR-025**: Automated tests MUST cover successful user-task resolution on Camunda 8.8.
-- **FR-026**: Automated tests MUST cover the Camunda 8.7 unsupported error path.
 - **FR-027**: Automated tests MUST cover missing user task handling.
 - **FR-028**: Automated tests MUST cover user task responses without a usable process-instance key.
 - **FR-029**: Automated tests MUST cover `--has-user-tasks` with `--json`.
@@ -136,7 +130,6 @@ As a CLI user reading command help or documentation, I want concrete has-user-ta
 - **Resolved User Task**: The native Camunda v2 user-task lookup result that contains the owning process-instance key.
 - **Owning Process Instance Key**: The process-instance identifier extracted from the resolved user task and passed into the existing process-instance lookup path.
 - **Task-Key Lookup Request**: A process-instance lookup invocation that starts from one or more `--has-user-tasks` values rather than `--key`.
-- **Unsupported Version Error**: The explicit failure returned when `--has-user-tasks` is used against Camunda 8.7.
 - **Selector Conflict**: Any invocation that combines `--has-user-tasks` with another lookup or search selector.
 
 ## Success Criteria *(mandatory)*
@@ -145,7 +138,6 @@ As a CLI user reading command help or documentation, I want concrete has-user-ta
 
 - **SC-001**: Automated tests show `get pi --has-user-tasks=<task-key>` on Camunda 8.9 returns the owning process instance.
 - **SC-002**: Automated tests show `get pi --has-user-tasks=<task-key>` on Camunda 8.8 returns the owning process instance.
-- **SC-003**: Automated tests show `get pi --has-user-tasks=<task-key>` on Camunda 8.7 fails with an explicit unsupported-version message.
 - **SC-004**: Automated tests show has-user-tasks lookup calls no Tasklist or Operate fallback path.
 - **SC-005**: Automated tests show task-key human output matches direct keyed process-instance lookup for the resolved key.
 - **SC-006**: Automated tests show task-key JSON output matches direct keyed process-instance lookup for the resolved key.
@@ -158,7 +150,6 @@ As a CLI user reading command help or documentation, I want concrete has-user-ta
 
 - The affected command surface is `get process-instance` and its `get pi` alias.
 - Camunda 8.8 and 8.9 generated clients expose native user-task search in a way that can return the owning process-instance key while filtering by tenant.
-- Camunda 8.7 cannot support `--has-user-tasks` through the allowed native API path and must not be patched through Tasklist or Operate.
 - Existing single process-instance lookup remains the source of truth for rendering, tenant handling, not-found behavior, and API error behavior after resolution.
 - Existing command validation patterns are sufficient for mutual-exclusion failures as long as the resulting errors are clear and test-covered.
 - Documentation generated from Cobra command metadata should be regenerated rather than edited by hand when command metadata changes.

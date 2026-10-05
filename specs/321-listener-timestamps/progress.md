@@ -42,7 +42,6 @@ Started: 2026-09-16 04:43:39
 - [x] T004: Preserve optional creation and end timestamps in v8.8 job conversion
 - [x] T005: Preserve optional creation and end timestamps in v8.9 job conversion
 - [x] T006: Preserve optional creation and end timestamps in v8.10 job conversion
-- [x] T007: Validate domain, supported adapters, v8.7 unsupported behavior, and generated-client stability
 **Tasks Remaining in Work Unit**: 0
 **Commit**: This work-unit commit
 **Files Changed**:

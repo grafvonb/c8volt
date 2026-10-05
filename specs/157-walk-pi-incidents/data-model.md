@@ -120,5 +120,4 @@ Represents the explicit unsupported result for versions where tenant-safe incide
 
 **Validation rules**:
 
-- Camunda 8.7 must fail with the existing unsupported-capability style.
 - Unsupported behavior must occur only when enrichment is requested.

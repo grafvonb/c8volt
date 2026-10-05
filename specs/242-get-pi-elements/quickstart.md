@@ -5,7 +5,6 @@
 - c8volt configured for a Camunda 8.8 or 8.9 environment.
 - The standalone runtime element command from issue #241 is available.
 - A process instance with runtime element instances.
-- For unsupported-version validation, a c8volt config targeting Camunda 8.7.
 
 ## Build
 
@@ -96,17 +95,6 @@ Expected:
 - One valid shared JSON result envelope is printed.
 - The payload item includes an `elements` array.
 - Each element preserves fields listed in [data-model.md](data-model.md).
-
-### 8. Unsupported Camunda 8.7
-
-```bash
-/tmp/c8volt-get-pi-elements --config <camunda-87-config> get pi --key <process-instance-key> --with-elements
-```
-
-Expected:
-
-- Command fails with a clear unsupported-version error.
-- No success output is printed.
 
 ## Targeted Automated Validation
 

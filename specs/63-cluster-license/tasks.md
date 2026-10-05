@@ -18,7 +18,6 @@
 **Purpose**: Confirm the shared touch points and validation surface before editing user-visible command behavior
 
 - [ ] T001 Review cluster command entry points and help surfaces in `/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get.go`, `/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_cluster.go`, and `/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_test.go`
-- [ ] T002 [P] Review existing cluster license service behavior and regression coverage in `/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/cluster/api.go`, `/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/cluster/v87/service_test.go`, and `/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/cluster/v88/service_test.go`
 
 ---
 

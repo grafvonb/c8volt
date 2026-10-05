@@ -34,7 +34,6 @@ Membership examples deliberately match existing PI syntax; do not reinterpret th
 - Combine predicates with existing task selectors and tenant restrictions. Never discard contradictory predicates or silently change AND to OR.
 - Keep existing `--total`, `--limit`, and output-mode conflicts; no new display dependency.
 - Native search/count uses all predicates on every page, including sparse pages and capped-total traversal.
-- Camunda 8.8/8.9/8.10 use existing native task search. Version 8.7 remains unsupported. Invalid/unsupported filters and backend failures cannot produce unfiltered fallback.
 
 ## Output and display
 

@@ -58,8 +58,7 @@
 
 ## Decision 8: Stay version-neutral across Camunda adapters
 
-**Decision**: Implement aggregation above generated/versioned clients. Exercise shared logic and representative command paths across the 8.7–8.10 support matrix; make no adapter changes unless implementation discovers a version-specific missing tenant field.
+**Decision**: Implement aggregation above generated/versioned clients. Exercise shared logic and representative command paths across the 8.8–8.10 support matrix; make no adapter changes unless implementation discovers a version-specific missing tenant field.
 
-**Rationale**: Existing domain models already carry tenant IDs. Camunda 8.7 configuration normalization maps absent tenant to its default-only semantics, while later versions retain empty discovery as unfiltered.
 
 **Alternatives considered**: Generated-client edits are unnecessary. Duplicating aggregation in every versioned service creates avoidable divergence.

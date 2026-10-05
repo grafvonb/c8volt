@@ -15,7 +15,6 @@
 
 ## 2. Generated clients already cover the feature
 
-**Decision**: Use native `GetUserTaskWithResponse` and `SearchUserTasksWithResponse` in v88, v89, and v810. v87 implements the new methods with the established unsupported domain error. Keep the factory and default Camunda version unchanged.
 
 **Rationale**: All three generated clients already contain the endpoints and the requested fields. v88/v89 process-instance key, process-definition key, and BPMN process ID filters use scalar pointers; v810 uses generated filter unions. Assignment, candidate, and tenant equality are represented through the matching generated string-filter types. BPMN process ID maps to the backend `processDefinitionId` property.
 

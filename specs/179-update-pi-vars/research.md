@@ -24,7 +24,6 @@ Use the repository's existing key parsing, stdin `-`, deduplication, worker, fai
 
 ## Decision: Implement Variable Mutation At The Process-Instance Service Layer
 
-Add a shared process-instance service API method for updating element-instance variables, implement it in v8.8 and v8.9 using generated Camunda client methods for `/element-instances/{elementInstanceKey}/variables`, and make v8.7 return an unsupported-version error before mutation.
 
 **Rationale**: Existing process-instance variable lookup already lives in versioned process-instance services. Keeping mutation there preserves version-specific API ownership and lets the facade/command stay version-neutral.
 

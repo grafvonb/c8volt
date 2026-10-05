@@ -2,7 +2,6 @@
 
 ## Decision: Reuse `c8volt/element` and `internal/services/element` for runtime element lookup
 
-**Rationale**: The standalone runtime element command from issue #241 is present in the repository and already owns Camunda 8.8/8.9 lookup/search behavior plus Camunda 8.7 unsupported-version behavior. Reusing it keeps element search, paging, conversion, and version-specific behavior below the command layer as required by the repository layering rules.
 
 **Alternatives considered**:
 
@@ -53,12 +52,3 @@
 
 - Let element count affect `--limit`: rejected because it would change existing process-instance paging semantics.
 - Add element-specific enrichment filters or limits: rejected as out of scope; direct element filtering belongs to `get element` / `get ei`.
-
-## Decision: Treat Camunda 8.7 unsupported behavior as an enrichment failure
-
-**Rationale**: The element service already returns unsupported errors for 8.7. `get pi --with-elements` should surface that error clearly rather than render process instances without requested details.
-
-**Alternatives considered**:
-
-- Render process instances and omit `elements:` on 8.7: rejected because it would claim success while failing the requested enrichment.
-- Hide the flag for 8.7: rejected because command availability is stable and runtime capability errors are the repository pattern.

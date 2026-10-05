@@ -33,4 +33,3 @@
 
 - Specification includes explicit GitHub issue traceability for issue #156.
 - Specification records the mandatory Ralph implementation context gate: `--implementation-context specs/ralph-implementation-rules.md`.
-- Camunda 8.7 is explicitly out of scope.

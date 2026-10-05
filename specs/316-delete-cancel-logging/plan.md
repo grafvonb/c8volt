@@ -15,7 +15,6 @@ The measurable budget remains 36 observations plus 36 HTTP diagnostics for 36 su
 ## Approach
 
 1. **Reproduce first.** One command test file exercises the actual child-conflict/root-cancel/ACTIVE/timeout path using short fixed wait settings. Reuse existing fixture and subprocess helpers. Add success and mode cases to that fixture rather than building new test infrastructure.
-2. **Consolidate polling locally.** Replace waiter pre-fetch/result chatter with one observation. Keep one last observation per key and at most one pending record until the existing continuation/stop decision is known. Preserve lookup-completion elapsed time; omit next delay on stop. Gate nested adapter messages narrowly while retaining direct lookup diagnostics. Keep all timers, retries, state matching, activity and requests intact, including v87 traversal search.
 3. **Remove the OAuth cache pair.** Delete routine cache lookup/hit logging; leave token behavior and useful diagnostics intact.
 4. **Repair verbose suppression selectively.** Use existing service transition sites and verbose logging helpers. Ensure effective verbose options honor command human/quiet/automation/machine-mode policy. Keep broad lifecycle suppression and existing semantic progress; restore only prerequisite, escalation, accepted submission, wait policy/scope, and actual resumption explanations. Each explanation has one owner. Do not add a workflow event kind, callback DTO or stage ledger.
 5. **Keep failure handling small.** Retain last-state details from existing reads and annotate failure branches with the phase/root and known submission facts. Use a small wrapped error carrying a concise summary or necessary facts plus its original cause only where current errors cannot convey both. Keep original Error() text for machine results. Preserve inspectable causes through the narrow affected ferrors conversion path and freeze existing class selection. Use existing completion FailureDetail for concise warning presentation without changing serialized reports; human formatting belongs in command views. The command error boundary emits the full chain once at DEBUG and uses the original error for JSON and exit status. No public projection model or new completion payload is planned.
@@ -24,7 +23,6 @@ The measurable budget remains 36 observations plus 36 HTTP diagnostics for 36 su
 ## File Ownership
 
 - `internal/services/processinstance/waiter/waiter.go`: observations and locally retained timeout evidence.
-- `internal/services/processinstance/v87/service.go`, `v88/service.go`, `v89/service.go`, `v810/service.go`: targeted log gates and existing mutation transition sites.
 - `internal/services/auth/oauth2/service.go`: routine cache logging removal.
 - `internal/services/common/logging.go`: existing verbose helper; a small shared helper may live in this package if genuinely reused. Adapters must not import their parent factory package.
 - `internal/services/processinstance/bulk.go`: existing completion detail path.

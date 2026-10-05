@@ -12,7 +12,6 @@
 Inspect the active maintainer and architecture sources:
 
 ```bash
-rg -n 'v87|v88|v89|v810|V87|V88|V89|V810|newest supported|CurrentCamundaVersion' \
   AGENTS.md \
   specs/ralph-implementation-rules.md \
   .specify/memory/architecture.md \
@@ -35,7 +34,7 @@ go test ./cmd -run '^TestConfigShowCommand_TemplatePreservesBlankTemplateOutput$
 
 Expected:
 
-- The supported values include 8.7, 8.8, 8.9, and 8.10.
+- The supported values include 8.8, 8.9, and 8.10.
 - The comment identifies 8.9 as the default.
 - The rendered template exposes the same guidance.
 
@@ -116,7 +115,6 @@ Review generated diffs and retain only source-driven changes. Do not hand-edit `
 rg -n '8\.7|8\.8|8\.9|8\.10|V810|C810' integration
 ```
 
-Expected: integration guidance and assets remain limited to the established stable V87–V89 profiles. Their omission of V810 is intentional and must not be treated as stale product-support guidance.
 
 ## 7. Verify Protected Scope
 

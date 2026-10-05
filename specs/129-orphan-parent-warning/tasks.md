@@ -3,7 +3,6 @@
 **Input**: Design documents from `/specs/129-orphan-parent-warning/`
 **Prerequisites**: [plan.md](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/129-orphan-parent-warning/plan.md) (required), [spec.md](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/129-orphan-parent-warning/spec.md) (required for user stories), [research.md](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/129-orphan-parent-warning/research.md), [data-model.md](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/129-orphan-parent-warning/data-model.md), [quickstart.md](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/129-orphan-parent-warning/quickstart.md), [contracts/orphan-parent-traversal.md](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/129-orphan-parent-warning/contracts/orphan-parent-traversal.md)
 
-**Tests**: Automated tests are REQUIRED for this feature because the specification explicitly requires regression coverage for partial traversal behavior, strict direct-lookup non-regression, unchanged waiter semantics, and support across `v87`, `v88`, and `v89`.
 
 **Organization**: Tasks are grouped by user story to enable independent implementation and testing of each story.
 
@@ -19,7 +18,6 @@
 
 - [x] T001 Inventory the current orphan-parent failure path across /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/walker/walker.go, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/c8volt/process/dryrun.go, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/walk_processinstance.go, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cancel_processinstance.go, and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/delete_processinstance.go
 - [x] T002 [P] Confirm current strict lookup and waiter boundaries in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance.go, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/waiter/waiter.go, and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/common/response.go
-- [x] T003 [P] Confirm shared version support and traversal delegation across /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/factory.go, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v87/service.go, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v88/service.go, and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v89/service.go
 
 ---
 
@@ -47,7 +45,6 @@
 ### Tests for User Story 1
 
 - [x] T008 [P] [US1] Add shared walker regression tests for partial ancestry, partial family traversal, and fully unresolved failure behavior in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/walker/walker_test.go
-- [x] T009 [P] [US1] Add version-aware traversal regression coverage for `v87`, `v88`, and `v89` services in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v87/service_test.go, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v88/service_test.go, and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v89/service_test.go
 - [x] T010 [P] [US1] Add command rendering regressions for partial parent/family/tree output in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/walk_test.go
 
 ### Implementation for User Story 1
@@ -90,7 +87,6 @@
 
 ### Tests for User Story 3
 
-- [x] T020 [P] [US3] Add strict direct-lookup non-regression coverage in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance_test.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v87/service_test.go, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v88/service_test.go, and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v89/service_test.go
 - [x] T021 [P] [US3] Add waiter non-regression coverage for absent/deleted semantics in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/waiter/waiter_test.go
 - [x] T022 [P] [US3] Add command-level non-regression coverage for strict lookup vs traversal behavior in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_test.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/walk_test.go
 
@@ -154,7 +150,6 @@
 ```bash
 # Prepare partial traversal coverage in parallel:
 Task: "Add shared walker regression tests for partial ancestry, partial family traversal, and fully unresolved failure behavior in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/walker/walker_test.go"
-Task: "Add version-aware traversal regression coverage for `v87`, `v88`, and `v89` services in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v87/service_test.go, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v88/service_test.go, and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v89/service_test.go"
 Task: "Add command rendering regressions for partial parent/family/tree output in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/walk_test.go"
 ```
 
@@ -171,7 +166,6 @@ Task: "Add indirect cleanup regression coverage for process-resource expansion p
 
 ```bash
 # Prepare strict non-regression coverage in parallel:
-Task: "Add strict direct-lookup non-regression coverage in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance_test.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v87/service_test.go, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v88/service_test.go, and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v89/service_test.go"
 Task: "Add waiter non-regression coverage for absent/deleted semantics in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/waiter/waiter_test.go"
 Task: "Add command-level non-regression coverage for strict lookup vs traversal behavior in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_test.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/walk_test.go"
 ```

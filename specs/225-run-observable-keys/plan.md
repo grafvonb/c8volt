@@ -10,7 +10,7 @@
 
 ## Summary
 
-Run-style process-instance creation must confirm success when the created process instance is observable in a real lifecycle state, not only `ACTIVE`. The change belongs in the process-instance service/wait ownership boundary for v8.7, v8.8, and v8.9, then in the `run pi` command rendering path for keys-only and normal output. `deploy --run` and `embed deploy --run` should benefit from the shared creation confirmation behavior without gaining new expectation flags. User-facing examples and generated docs must show the pipeline pattern where `run pi --keys-only` feeds `expect pi --state <state> -`.
+Run-style process-instance creation must confirm success when the created process instance is observable in a real lifecycle state, not only `ACTIVE`. The change belongs in the process-instance service/wait ownership boundary for v8.8 and v8.9, then in the `run pi` command rendering path for keys-only and normal output. `deploy --run` and `embed deploy --run` should benefit from the shared creation confirmation behavior without gaining new expectation flags. User-facing examples and generated docs must show the pipeline pattern where `run pi --keys-only` feeds `expect pi --state <state> -`.
 
 ## Technical Context
 
@@ -20,7 +20,7 @@ Run-style process-instance creation must confirm success when the created proces
 
 **Storage**: N/A; process instance facts remain observed from Camunda
 
-**Testing**: Go tests with `testify`, command tests under `cmd`, service tests under `internal/services/processinstance/{v87,v88,v89}`, docs generator tests under `docsgen`
+**Testing**: Go tests with `testify`, command tests under `cmd`, service tests under `internal/services/processinstance/{v88,v89}`, docs generator tests under `docsgen`
 
 **Target Platform**: Local or CI CLI binary on supported release platforms
 
@@ -83,9 +83,6 @@ internal/domain/
 internal/services/processinstance/
 ├── waiter/
 │   └── waiter.go
-├── v87/
-│   ├── service.go
-│   └── service_test.go
 ├── v88/
 │   ├── service.go
 │   └── service_test.go

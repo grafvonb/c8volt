@@ -10,7 +10,7 @@ Standardize public incident and process-context contracts on Camunda v2 element 
 ## Technical Context
 
 **Language/Version**: Go, repository current module toolchain
-**Primary Dependencies**: Cobra command tree, command contract helpers, existing incident/process/ops facades, `internal/domain` incident and process models, `internal/services/incident` and process-instance adapters, generated Camunda v8.7/v8.8/v8.9 clients, shared render/error helpers, docs generator
+**Primary Dependencies**: Cobra command tree, command contract helpers, existing incident/process/ops facades, `internal/domain` incident and process models, `internal/services/incident` and process-instance adapters, generated Camunda v8.8/v8.9 clients, shared render/error helpers, docs generator
 **Storage**: N/A
 **Testing**: Targeted Go tests for `cmd`, `c8volt/incident`, `c8volt/process`, `c8volt/ops`, `c8volt/resource`, `internal/services/incident`, and process-instance consumers; generated docs refresh through `make docs-content`; broader validation with `make test` before commit readiness
 **Target Platform**: Multi-platform CLI binary

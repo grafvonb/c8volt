@@ -3,7 +3,6 @@
 ## Prerequisites
 
 - Implement this plan before expecting the new scenarios to execute.
-- Use disposable local clusters and existing profiles in the default c8volt configuration. Select 8.8, 8.9 and/or 8.10 profiles; select 8.7 separately or alongside them for unsupported checks.
 - Existing matching embedded models are sufficient. The suite deploys them, supplies variables, and discovers runtime keys; no BPMN editing or manual task-local setup.
 - Use the existing Make confirmation. These suites create real instances and may run existing destructive family scenarios.
 
@@ -20,7 +19,6 @@ go test -tags=integration ./integration/cli \
 
 The direct Go invocation does not provide Make's confirmation prompt. It must select the new test after implementation; a zero-test run is not validation.
 
-Expected: the standalone and called-process cases in [the contract](contracts/integration.md) pass for each ready supported profile. Selecting an 8.7 profile instead exercises explicit unsupported behavior. Review skips as well as failures.
 
 ## Existing family targets
 

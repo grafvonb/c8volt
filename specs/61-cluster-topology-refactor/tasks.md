@@ -45,7 +45,6 @@
 ### Tests for User Story 1
 
 - [ ] T006 [P] [US1] Add command tests for successful and failing `c8volt get cluster topology` execution in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_cluster_topology_test.go
-- [ ] T007 [P] [US1] Verify topology service regression coverage still applies to the nested path in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/cluster/factory_test.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/cluster/v87/service_test.go
 
 ### Implementation for User Story 1
 
@@ -144,7 +143,6 @@
 ```bash
 # Launch User Story 1 verification tasks together:
 Task: "Add command tests for successful and failing c8volt get cluster topology execution in cmd/get_cluster_topology_test.go"
-Task: "Verify topology service regression coverage still applies to the nested path in internal/services/cluster/factory_test.go and internal/services/cluster/v87/service_test.go"
 ```
 
 ---

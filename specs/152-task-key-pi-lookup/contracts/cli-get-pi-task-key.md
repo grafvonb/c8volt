@@ -23,7 +23,6 @@
 ./c8volt get pi --has-user-tasks=2251799815391233
 ```
 
-On Camunda 8.7, the command fails with an explicit unsupported-version error for `--has-user-tasks`. It must not call Tasklist or Operate.
 
 ## Invalid Combinations
 
@@ -49,4 +48,3 @@ printf '2251799813711967\n' | ./c8volt get pi --has-user-tasks=2251799815391233 
 
 - Command help includes `--has-user-tasks`.
 - Examples include human and JSON has-user-tasks lookup.
-- README and generated CLI docs mention Camunda 8.8/8.9 support, 8.7 unsupported behavior, and the no Tasklist/Operate fallback rule.

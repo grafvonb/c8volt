@@ -22,7 +22,7 @@
 
 **Alternatives considered**:
 - Poll through command-layer `LookupProcessInstance` calls. Rejected because it would duplicate wait behavior and risk drifting from existing state semantics.
-- Add version-specific wait loops. Rejected because v87/v88/v89 already delegate state waiting to the shared waiter.
+- Add version-specific wait loops. Rejected because v88/v89 already delegate state waiting to the shared waiter.
 
 ## Decision: Missing instances only satisfy state absence, never incident false
 

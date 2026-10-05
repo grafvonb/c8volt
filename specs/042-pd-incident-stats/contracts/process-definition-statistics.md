@@ -29,17 +29,14 @@ Raw incident totals are not a valid implementation of this contract.
 
 | Version | `ac/cp/cx` | `in:` behavior |
 |--------|-------------|----------------|
-| `v8.7` | Reject `--stat`; no equivalent native generated-client statistics endpoint is available | Omit `in:` entirely |
 | `v8.8` | Source `ac` from native process-definition instance-version statistics; preserve existing `cp/cx` behavior | Render incident-bearing active process-instance count from the same native statistics |
 | `v8.9` | Source `ac` from native process-definition instance-version statistics; preserve existing `cp/cx` behavior | Render incident-bearing active process-instance count from the same native statistics |
 
-The feature is incomplete if `v8.7` still shows `in:` or if `v8.8`/`v8.9` still show `in:-` for supported stats.
 
 ## Service Contract
 
 | Version | Planned stats source rule |
 |--------|----------------------------|
-| `v8.7` | Keep current unsupported boundary; do not synthesize counts through process-instance enumeration |
 | `v8.8` | Keep `cp/cx` from existing process-definition stats enrichment and source `ac/in` from native process-definition instance-version statistics by exact definition key |
 | `v8.9` | Keep `cp/cx` from existing process-definition stats enrichment and source `ac/in` from native process-definition instance-version statistics by exact definition key |
 

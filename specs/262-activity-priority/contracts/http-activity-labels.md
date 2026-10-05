@@ -55,7 +55,6 @@ Known Camunda request paths used by c8volt should produce resource-aware fallbac
 
 ## Legacy Path Equivalents
 
-These non-`/v2` paths are considered equivalent where c8volt uses legacy Camunda 8.7 or Operate clients:
 
 | Method | Path Pattern | Fallback Activity |
 |--------|--------------|-------------------|

@@ -52,7 +52,7 @@ Run T002 generation checks and integration compilation from `quickstart.md`; use
 
 ## User Story 3 — Read a Consistent Support Policy (P2)
 
-- [ ] T003 [US3] Remove remaining obsolete support content in `specs/`, `tasks/`, `AGENTS.md`, `README.md`, `docs/`, `api/README.md` and tracked configuration/examples, then complete the final tracked-path/content audit and record evidence in `specs/331-simplify-version-support/progress.md`.
+- [x] T003 [US3] Remove remaining obsolete support content in `specs/`, `tasks/`, `AGENTS.md`, `README.md`, `docs/`, `api/README.md` and tracked configuration/examples, then complete the final tracked-path/content audit and record evidence in `specs/331-simplify-version-support/progress.md`.
 
 **Implementation scope**:
 

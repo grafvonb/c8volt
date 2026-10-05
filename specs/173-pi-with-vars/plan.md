@@ -17,7 +17,6 @@ Add `c8volt get pi --key <key> --with-vars` for keyed process-instance inspectio
 **Project Type**: Go CLI  
 **Performance Goals**: Variable enrichment should run only for explicitly selected keyed process instances, avoid variable lookups when `--with-vars` is not set, request process-scope variables directly from the API, and preserve stable output ordering without excessive in-memory work  
 **Constraints**: Preserve default `get pi` behavior; limit `--with-vars` to keyed process-instance lookup in this iteration; fail clearly instead of rendering partial enrichment on lookup errors; use `--var-value-limit <chars>` only as an opt-in human display limit; keep JSON values as received; account for generated client gaps around value/truncation fields  
-**Scale/Scope**: One process-instance get command family, process facade and domain/service models, v8.8/v8.9 Camunda variable search support, explicit v8.7 handling if unsupported by the active generated API, command docs/help, and close tests for filtering, sorting, rendering, JSON, truncation labels, and validation
 
 ## Constitution Check
 
@@ -68,7 +67,6 @@ internal/
 └── services/
     └── processinstance/
         ├── api.go
-        ├── v87/
         ├── v88/
         └── v89/
 

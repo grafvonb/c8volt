@@ -21,7 +21,7 @@
 
 - [x] T001 Inspect current job command behavior in `cmd/get_job.go`, `cmd/update_job.go`, and `cmd/cmd_views_job.go`
 - [x] T002 [P] Inspect current job facade and domain models in `c8volt/job/model.go`, `c8volt/job/client.go`, and `internal/domain/job.go`
-- [x] T003 [P] Inspect current job service contracts and versioned implementations in `internal/services/job/api.go`, `internal/services/job/v87/`, `internal/services/job/v88/`, and `internal/services/job/v89/`
+- [x] T003 [P] Inspect current job service contracts and versioned implementations in `internal/services/job/api.go`, `internal/services/job/v88/`, and `internal/services/job/v89/`
 - [x] T004 [P] Inspect generated v8.8/v8.9 job APIs in `internal/clients/camunda/v88/camunda/client.gen.go` and `internal/clients/camunda/v89/camunda/client.gen.go`
 - [x] T005 [P] Inspect comparable search/list command patterns in `cmd/get_incident.go`, `cmd/get_processinstance.go`, and `internal/services/incident/`
 - [x] T006 [P] Inspect README and generated docs expectations in `README.md`, `docs/cli/c8volt_get_job.md`, and `docs/cli/c8volt_update_job.md`
@@ -37,7 +37,7 @@
 - [x] T007 Add job search query, worker outcome, and expanded job detail domain models in `internal/domain/job.go`
 - [x] T008 Add matching facade request/result models for job search, worker outcomes, and mutation plans in `c8volt/job/model.go`
 - [x] T009 Extend job facade and service interfaces for search and worker outcome operations in `c8volt/job/api.go` and `internal/services/job/api.go`
-- [x] T010 Add compile-time conformance updates for v8.7, v8.8, and v8.9 job services in `internal/services/job/api.go`, `internal/services/job/v87/contract.go`, `internal/services/job/v88/contract.go`, and `internal/services/job/v89/contract.go`
+- [x] T010 Add compile-time conformance updates for v8.8 and v8.9 job services in `internal/services/job/api.go`, `internal/services/job/v88/contract.go`, and `internal/services/job/v89/contract.go`
 - [x] T011 Extend command metadata tests for new get/update job flags and automation behavior in `cmd/command_contract_test.go`
 - [x] T012 Run targeted compile validation for foundational surfaces in `cmd/`, `c8volt/job/`, `internal/domain/`, and `internal/services/job/`
 
@@ -184,18 +184,14 @@
 
 ### Tests for User Story 6
 
-- [x] T064 [P] [US6] Add v8.7 unsupported tests for job search and worker outcomes in `internal/services/job/v87/service_test.go`
-- [x] T065 [P] [US6] Add command tests for unsupported 8.7 behavior before mutation in `cmd/update_job_test.go` and `cmd/get_job_test.go`
 - [x] T066 [P] [US6] Add command contract metadata tests for new flags, mutation modes, output modes, and automation support in `cmd/command_contract_test.go`
 - [x] T067 [P] [US6] Add regression tests proving process-instance and incident service APIs do not gain job behavior in `internal/services/processinstance/api.go`, `internal/services/incident/api.go`, or a focused static test file
 
 ### Implementation for User Story 6
 
-- [x] T068 [US6] Implement v8.7 unsupported behavior for job search and worker outcomes in `internal/services/job/v87/service.go`
 - [x] T069 [US6] Update command help and metadata for all new get/update job flags in `cmd/get_job.go`, `cmd/update_job.go`, and `cmd/command_contract.go`
 - [x] T070 [US6] Update README examples for job search and worker outcomes in `README.md`
 - [x] T071 [US6] Regenerate CLI documentation for changed commands in `docs/cli/c8volt_get_job.md` and `docs/cli/c8volt_update_job.md`
-- [x] T072 [US6] Verify US6 with targeted command contract, v8.7 unsupported, docs generation, and boundary tests in `cmd/`, `internal/services/job/v87/`, and `docs/cli/`
 
 **Checkpoint**: User Story 6 is complete when job primitives are documented, version-gated, and safe for scripts and future ops workflows.
 
@@ -206,7 +202,7 @@
 **Purpose**: Final cleanup, generated docs, and repository validation.
 
 - [x] T073 [P] Run gofmt for changed Go files under `cmd/`, `c8volt/job/`, `internal/domain/`, and `internal/services/job/`
-- [x] T074 Run targeted Go tests for changed packages in `cmd/`, `c8volt/job/`, `internal/domain/`, `internal/services/job/`, `internal/services/job/v87/`, `internal/services/job/v88/`, and `internal/services/job/v89/`
+- [x] T074 Run targeted Go tests for changed packages in `cmd/`, `c8volt/job/`, `internal/domain/`, `internal/services/job/`, `internal/services/job/v88/`, and `internal/services/job/v89/`
 - [x] T075 Run `make docs-content` for README/docs command metadata changes affecting `docs/cli/`
 - [x] T076 Run `make test` for repository validation from the repository root
 - [x] T077 [P] Review [quickstart.md](./quickstart.md) against implemented behavior and update examples if flags or validation commands changed

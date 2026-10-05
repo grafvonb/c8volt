@@ -58,7 +58,7 @@
 
 ## Decision 8: Require one explicit `v8.9` execution test per repository command family, plus factory coverage
 
-- **Decision**: The minimum regression bar is at least one explicit `v8.9` execution test for each repository command family already supported on `v8.8`, plus factory selection tests for the four versioned service families and preserved behavior coverage for `v8.7`/`v8.8`.
+- **Decision**: The minimum regression bar is at least one explicit `v8.9` execution test for each repository command family already supported on `v8.8`, plus factory selection tests for the four versioned service families and preserved behavior coverage for `v8.8`.
 - **Rationale**: The clarification session chose this as the test floor because it is concrete enough to prove parity without requiring exhaustive combinatorial command coverage.
 - **Alternatives considered**:
   - Only test factories and assume commands follow: rejected because command wiring and output contracts are part of the feature.
@@ -89,7 +89,7 @@
 
 ### Version source of truth
 
-- [`toolx/version.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/toolx/version.go) now normalizes `8.9` and advertises `8.7`, `8.8`, and `8.9` through `SupportedCamundaVersions()`.
+- [`toolx/version.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/toolx/version.go) now normalizes `8.9` and advertises `8.8` and `8.9` through `SupportedCamundaVersions()`.
 - [`cmd/root.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/root.go), [`README.md`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/README.md), `docs/index.md`, and generated `docs/cli/c8volt.md` now present `v8.9` as supported runtime coverage with the same repository command-family scope already available on `v8.8`.
 
 ### Repository-wide `v8.9` parity inventory
@@ -104,7 +104,7 @@
 
 ### Versioned factory boundary
 
-- [`internal/services/cluster/factory.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/cluster/factory.go), [`internal/services/processdefinition/factory.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processdefinition/factory.go), [`internal/services/processinstance/factory.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/factory.go), and [`internal/services/resource/factory.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/resource/factory.go) now route `v8.7`, `v8.8`, and `v8.9` to version-local implementations.
+- [`internal/services/cluster/factory.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/cluster/factory.go), [`internal/services/processdefinition/factory.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processdefinition/factory.go), [`internal/services/processinstance/factory.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/factory.go), and [`internal/services/resource/factory.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/resource/factory.go) now route `v8.8` and `v8.9` to version-local implementations.
 - Factory tests remain the primary seam proving `v89` selection plus preserved older-version behavior.
 
 ### Service-family client boundary
@@ -149,5 +149,5 @@ These command families are the user-facing proof surface for repository-wide `v8
   - `internal/services/processdefinition/factory_test.go`
   - `internal/services/processinstance/factory_test.go`
   - `internal/services/resource/factory_test.go`
-- Those tests all assert concrete returned service types for supported versions and `services.ErrUnknownAPIVersion` for unsupported ones, so they remain the right seam for keeping `v8.9` support and preserved `v8.7`/`v8.8` behavior honest over time.
+- Those tests all assert concrete returned service types for supported versions and `services.ErrUnknownAPIVersion` for unsupported ones, so they remain the right seam for keeping `v8.9` support and preserved `v8.8` behavior honest over time.
 - The command-layer regression seam remains the `cmd/*_test.go` suites identified in `tasks.md`; final implementation kept parity proof there rather than adding version-specific branching to command code.

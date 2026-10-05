@@ -123,7 +123,7 @@ go test ./internal/services/httpc ./internal/services/auth/... ./cmd -run 'APIDi
 go test ./internal/services/httpc -run '^$' -bench APIDiagnostics -benchmem
 ```
 
-Require no races, duplicate records or interleaved lines during reordered concurrent completions and read/close/trace overlap. Use independent collectors or subprocesses for separate-invocation tests; do not run the shared global Cobra root concurrently in-process. Cover representative v8.7–v8.10/Operate/Tasklist requests to prove all supported client factories retain the supplied transport.
+Require no races, duplicate records or interleaved lines during reordered concurrent completions and read/close/trace overlap. Use independent collectors or subprocesses for separate-invocation tests; do not run the shared global Cobra root concurrently in-process. Cover representative 8.8–8.10/Operate/Tasklist requests to prove all supported client factories retain the supplied transport.
 
 Benchmarks compare disabled/enabled diagnostics using the existing logger configured with a discard writer, small responses and streamed large bodies. Report allocations and runtime; metadata memory must not grow with payload size. Blocking stderr behavior is documented, not hidden behind an unbounded queue.
 

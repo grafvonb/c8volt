@@ -24,12 +24,6 @@
 
 **Alternatives considered**: Broad Tasklist paging was rejected because the user supplies an exact key. Accepting multiple fallback matches was rejected because a task key lookup must have lookup semantics, not search semantics.
 
-## Decision: Preserve 8.7 unsupported behavior
-
-**Rationale**: The original task-key lookup contract explicitly rejected Camunda 8.7 and the issue keeps that behavior unchanged. Leaving `internal/services/usertask/v87` unsupported avoids expanding scope and keeps version behavior predictable.
-
-**Alternatives considered**: Adding fallback to 8.7 was rejected because it is outside the issue scope and would change an already documented unsupported-version contract.
-
 ## Decision: Update command help, README, and generated CLI docs
 
 **Rationale**: The current user-facing command text says there is no Tasklist or Operate fallback. That statement becomes false once this feature ships. The constitution requires documentation to match user-visible command behavior.

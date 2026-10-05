@@ -11,7 +11,6 @@ GOCACHE=/tmp/c8volt-gocache go test ./cmd ./c8volt/process -count=1
 When touching versioned process-instance service code, include:
 
 ```bash
-GOCACHE=/tmp/c8volt-gocache go test ./internal/services/processinstance/v87 ./internal/services/processinstance/v88 ./internal/services/processinstance/v89 -count=1
 ```
 
 ## Manual CLI Smoke Scenarios

@@ -62,7 +62,6 @@ As an automation author, I want the task update command to behave like `update p
 3. **Given** JSON output in a permitted PI-equivalent flag combination, **When** execution returns a preview, no-op, result, or error, **Then** stdout contains exactly one shared envelope followed by EOF, with no human output mixed in.
 4. **Given** effective keys-only output, **When** results exist, **Then** stdout contains only user-task keys, one per line; successful no-work output contains zero bytes. Quiet mode suppresses human summaries while preserving explicitly requested machine output.
 5. **Given** real terminal stdin and redirected stdout, **When** confirmation is eligible under the existing PI rules, **Then** the unchanged confirmation interaction uses configured or inherited stderr and leaves stdout uncontaminated.
-6. **Given** Camunda 8.8, 8.9, or 8.10, **When** I execute a supported update, **Then** the same command contract applies; Camunda 8.7 reports an explicit unsupported error without mutation.
 
 ### Edge Cases
 
@@ -90,7 +89,6 @@ As an automation author, I want the task update command to behave like `update p
 - **FR-009**: Support the PI worker-limit and fail-fast controls, deterministic result ordering, cancellation, and established error classifications. Preserve meaningful partial outcomes; never label failed, unconfirmed, or unscheduled work as confirmed success.
 - **FR-010**: Follow existing human, JSON, keys-only, quiet, and verbose conventions and output precedence. JSON MUST emit exactly one shared envelope, including successful no-ops and errors. Effective keys-only output MUST contain only task keys and zero bytes for no work. Quiet MUST preserve explicitly requested machine results. Retain the PI command's JSON confirmation and JSON/verbose compatibility rules.
 - **FR-011**: Use explicit-key authorization without discovery-tenant filtering and report actual tenant context using existing conventions. Authorization and lookup failures MUST remain failures.
-- **FR-012**: Support Camunda 8.8, 8.9, and 8.10 with equivalent observable behavior; Camunda 8.7 MUST fail explicitly as unsupported without mutation.
 - **FR-013**: Keep scope resolution and behavior consistent with existing task reads and preserve existing PI behavior. The feature MUST follow repository governance and reuse existing conventions without introducing extra capabilities or unrelated refactoring.
 - **FR-014**: Keep command discovery metadata, help, examples, README guidance, and generated CLI documentation aligned with the delivered behavior, including inherited-scope effects, local creation, supported versions, and no-wait meaning.
 

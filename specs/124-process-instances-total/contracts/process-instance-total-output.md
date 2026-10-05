@@ -35,7 +35,6 @@ The shared process-instance page model must carry enough metadata for the comman
 
 | Version | Reported total behavior |
 |--------|--------------------------|
-| `v8.7` | Surface the best available backend-reported total from the current Operate search payload when present |
 | `v8.8` | Surface `totalItems` and whether it is capped |
 | `v8.9` | Surface `totalItems` and whether it is capped |
 

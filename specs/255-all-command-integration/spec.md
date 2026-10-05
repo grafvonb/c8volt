@@ -124,7 +124,7 @@ Maintainers can verify that command help and generated CLI examples remain execu
 - **FR-001**: The suite MUST derive or validate its command inventory from the live c8volt command contract.
 - **FR-002**: The suite MUST require explicit coverage entries for all 55 current command nodes and fail when live command inventory and coverage entries diverge.
 - **FR-003**: The suite MUST use the operator's default local c8volt configuration and MUST NOT rely on a generated private config file.
-- **FR-004**: The suite MUST support selecting existing local profiles for Camunda 8.7, 8.8, and 8.9 validation where those profiles are available.
+- **FR-004**: The suite MUST support selecting existing local profiles for Camunda 8.8 and 8.9 validation where those profiles are available.
 - **FR-005**: The suite MUST confirm profile connectivity and expected Camunda version before destructive scenarios run.
 - **FR-006**: The suite MUST tolerate both clean and dirty disposable cluster states.
 - **FR-007**: The suite MUST be allowed to mutate, cancel, delete, resolve, repair, or purge seeded and pre-existing data in the selected disposable cluster.

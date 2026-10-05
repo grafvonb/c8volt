@@ -12,7 +12,6 @@
 
 **Decision**: Extend `internal/services/variable.API` with `UpdateScopeVariables(ctx, scopeKey, variables, opts...)`, returning a scope-neutral acceptance response. Each supported adapter calls its existing generated `CreateElementInstanceVariablesWithResponse` with explicit `local=true`. This primitive submits only; it performs no PI lookup or PI confirmation.
 
-**Rationale**: Existing adapter contracts in v88/v89/v810 already expose this generated method. `internal/services/variable/v810/variables.go` currently omits `Local` and invokes a PI-specific waiter; passing task scope keys to that method would reuse incorrect semantics. `SetVariableRequest` in each supported generated client supports local scope writes. v87 remains explicitly unsupported for this feature.
 
 **Alternatives considered**: User-task attribute PATCH does not update variables. Copying generated transport behavior into the task command or facade breaks ownership. Changing the existing PI method globally adds unnecessary regression risk.
 

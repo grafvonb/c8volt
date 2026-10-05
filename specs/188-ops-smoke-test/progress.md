@@ -139,7 +139,7 @@
 ## Iteration 4 - 2026-05-17 08:40:58 CEST
 **User Story**: User Story 3 - Select And Deploy Version-Matched Fixture
 **Tasks Completed**:
-- [x] T028: Add fixture selection tests for Camunda 8.7, 8.8, and 8.9
+- [x] T028: Add fixture selection tests for Camunda 8.8 and 8.9
 - [x] T029: Add missing fixture failure-before-mutation tests
 - [x] T030: Add deployment result mapping tests
 - [x] T031: Add command deployment output tests

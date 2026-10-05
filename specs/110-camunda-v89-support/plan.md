@@ -5,18 +5,17 @@
 
 ## Summary
 
-Add full repository-wide Camunda `v8.9` runtime support with the same command-family scope currently supported on `v8.8`, while preserving existing `v8.7` and `v8.8` behavior. The design extends the current versioned service/facade architecture by adding native `v89` implementations for cluster, process-definition, process-instance, and resource services, wiring them through the existing factories and top-level client, requiring final native `v89` paths to depend only on the generated `internal/clients/camunda/v89/camunda/client.gen.go` client, and backing the change with explicit factory coverage, at least one `v8.9` execution test per repository command family, plus required README and generated CLI documentation updates.
+Add full repository-wide Camunda `v8.9` runtime support with the same command-family scope currently supported on `v8.8`, while preserving existing `v8.8` behavior. The design extends the current versioned service/facade architecture by adding native `v89` implementations for cluster, process-definition, process-instance, and resource services, wiring them through the existing factories and top-level client, requiring final native `v89` paths to depend only on the generated `internal/clients/camunda/v89/camunda/client.gen.go` client, and backing the change with explicit factory coverage, at least one `v8.9` execution test per repository command family, plus required README and generated CLI documentation updates.
 
 ## Technical Context
 
 **Language/Version**: Go 1.26  
 **Primary Dependencies**: standard library, `github.com/spf13/cobra`, `github.com/spf13/viper`, `github.com/stretchr/testify`, generated Camunda clients under `internal/clients/camunda/...`, existing helpers in `internal/services/common`, shared facades under `c8volt/...`  
 **Storage**: File-based YAML config plus environment variables; no persistent datastore changes  
-**Testing**: `go test`, `make test`, factory tests under `internal/services/*/factory_test.go`, versioned service tests under `internal/services/{cluster,processdefinition,processinstance,resource}/v87` and `v88`, command regression tests under `cmd/`, plus documentation regeneration via `make docs` and `make docs-content` when help text or README changes  
-**Target Platform**: Cross-platform CLI for local and CI use against Camunda 8.7, 8.8, and the new 8.9 runtime surface  
+**Target Platform**: Cross-platform CLI for local and CI use against Camunda 8.8, and the new 8.9 runtime surface
 **Project Type**: CLI  
 **Performance Goals**: No user-visible regression in command startup, search/paging behavior, or wait/poll flows; preserve current confirmation semantics; avoid new multi-hop fallback paths in the final native `v8.9` implementation  
-**Constraints**: Keep existing Cobra command surfaces and error contracts stable, reuse repository-native versioned service and facade patterns, preserve `v8.7` and `v8.8` behavior, require repository-wide `v8.8` command-family parity on `v8.9`, allow temporary fallback only as a documented transition, require final native `v8.9` paths to use only `internal/clients/camunda/v89/camunda/client.gen.go`, require at least one explicit `v8.9` execution test per repository command family, update user-facing docs before release readiness, and finish with `make test`  
+**Constraints**: Keep existing Cobra command surfaces and error contracts stable, reuse repository-native versioned service and facade patterns, preserve `v8.8` behavior, require repository-wide `v8.8` command-family parity on `v8.9`, allow temporary fallback only as a documented transition, require final native `v8.9` paths to use only `internal/clients/camunda/v89/camunda/client.gen.go`, require at least one explicit `v8.9` execution test per repository command family, update user-facing docs before release readiness, and finish with `make test`
 **Scale/Scope**: `toolx/version.go`, root/bootstrap version messaging in [`cmd/root.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/root.go), service factories under [`internal/services/cluster/factory.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/cluster/factory.go), [`internal/services/processdefinition/factory.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processdefinition/factory.go), [`internal/services/processinstance/factory.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/factory.go), [`internal/services/resource/factory.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/resource/factory.go), top-level client wiring in [`c8volt/client.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/c8volt/client.go), new `internal/services/*/v89` packages, command families under `cmd/` that already exercise the `v8.8` service surface, and the version-support docs in [`README.md`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/README.md), `docs/index.md`, and generated `docs/cli/`
 
 ## Constitution Check
@@ -25,9 +24,8 @@ Add full repository-wide Camunda `v8.9` runtime support with the same command-fa
 
 - **Operational Proof Over Intent**: Pass. The feature is about making `v8.9` genuinely usable, so the plan requires real factory wiring, native service implementations, command execution proof, and honest docs rather than a config-only version claim.
 - **CLI-First, Script-Safe Interfaces**: Pass. Existing commands, flags, output formats, and error contracts stay in place; only the supported version surface expands.
-- **Tests and Validation Are Mandatory**: Pass. The plan requires factory coverage, at least one explicit `v8.9` command execution test per repository command family, preserved `v8.7`/`v8.8` coverage, docs regeneration where needed, and final `make test`.
+- **Tests and Validation Are Mandatory**: Pass. The plan requires factory coverage, at least one explicit `v8.9` command execution test per repository command family, preserved `v8.8` coverage, docs regeneration where needed, and final `make test`.
 - **Documentation Matches User Behavior**: Pass. The clarified spec makes docs a release gate, so version-support messaging in README and generated CLI docs is part of completion, not follow-up polish.
-- **Small, Compatible, Repository-Native Changes**: Pass. The design extends the current `v87`/`v88` service and facade structure with parallel `v89` implementations instead of introducing a new runtime abstraction.
 
 ## Project Structure
 
@@ -82,14 +80,12 @@ internal/services/
 │   ├── api.go
 │   ├── factory.go
 │   ├── factory_test.go
-│   ├── v87/
 │   ├── v88/
 │   └── v89/
 ├── processdefinition/
 │   ├── api.go
 │   ├── factory.go
 │   ├── factory_test.go
-│   ├── v87/
 │   ├── v88/
 │   └── v89/
 ├── processinstance/
@@ -98,14 +94,12 @@ internal/services/
 │   ├── factory_test.go
 │   ├── walker/
 │   ├── waiter/
-│   ├── v87/
 │   ├── v88/
 │   └── v89/
 └── resource/
     ├── api.go
     ├── factory.go
     ├── factory_test.go
-    ├── v87/
     ├── v88/
     └── v89/
 
@@ -124,7 +118,7 @@ Research findings are captured in [research.md](/Users/adam.boczek/Development/W
 - Confirm which current service families already use only the generated Camunda client and which ones still mix in other generated clients.
 - Confirm whether the generated `internal/clients/camunda/v89/camunda/client.gen.go` surface contains the process-instance endpoints needed to remove the current `v88` Operate dependency from the final native `v89` path.
 - Confirm the factory, facade, and documentation seams that still cap user-visible runtime support at `v8.8`.
-- Confirm the best regression anchors for proving factory selection, preserved `v8.7`/`v8.8` behavior, and at least one explicit `v8.9` execution test per repository command family.
+- Confirm the best regression anchors for proving factory selection, preserved `v8.8` behavior, and at least one explicit `v8.9` execution test per repository command family.
 
 ## Phase 1: Design & Contracts
 
@@ -164,7 +158,7 @@ Task generation should break the work into dependency-ordered slices:
 2. Add native `v89` service implementations and factory coverage for `cluster`, `processdefinition`, and `resource`, mirroring the current `v88` structure and tests.
 3. Add the native `v89` process-instance service, including walker/waiter integration, using only the generated `v89` Camunda client surface and removing the need for final-path Operate usage.
 4. Wire the new `v89` services through `c8volt/client.go`, shared facades, and any preserved helper seams without introducing command-local version switching.
-5. Add or update tests for preserved `v8.7`/`v8.8` behavior, factory selection, and at least one explicit `v8.9` execution path per repository command family.
+5. Add or update tests for preserved `v8.8` behavior, factory selection, and at least one explicit `v8.9` execution path per repository command family.
 6. Update README, regenerate `docs/index.md` and `docs/cli/`, then finish with focused Go tests and final `make test`.
 
 ## Post-Design Constitution Check
@@ -173,7 +167,6 @@ Task generation should break the work into dependency-ordered slices:
 - **CLI-First, Script-Safe Interfaces**: Still passes. Commands remain stable and version selection continues to flow through config/bootstrap instead of ad hoc command changes.
 - **Tests and Validation Are Mandatory**: Still passes with explicit factory, service, command, and repo-gate validation requirements.
 - **Documentation Matches User Behavior**: Still passes. Version-support docs and examples are now explicitly part of release readiness.
-- **Small, Compatible, Repository-Native Changes**: Still passes. The work extends the established `v87`/`v88` service pattern into `v89` rather than introducing a parallel architecture.
 
 ## Final Implementation Notes
 

@@ -58,7 +58,6 @@ As a release operator, I want filtered paging and counts verified using existing
 2. **Given** more matches than the requested limit, **When** requesting a limit of two, **Then** exactly two distinct matching tasks are returned without requiring an unspecified ordering.
 3. **Given** an observed seeded dataset, **When** applying an unmatched filter, **Then** existing empty human and JSON output is preserved and keys-only output contains zero bytes.
 4. **Given** selected 8.8, 8.9, or 8.10 profiles, **When** running either get slice, **Then** the corresponding C88, C89, or C810 models are used and the applicable baseline or volume assertions execute for each selected supported version.
-5. **Given** a selected 8.7 profile, **When** checking native user-task search and effective-variable display, **Then** the established unsupported behavior is asserted instead of attempting supported-version scenarios.
 6. **Given** an unavailable version or missing prerequisite, **When** reporting the run, **Then** it is explicitly distinguished from verified coverage; failed required setup is not silently converted into a pass.
 
 ### Edge Cases
@@ -102,7 +101,6 @@ As a release operator, I want filtered paging and counts verified using existing
 - **SC-002**: Every called-process scenario identifies the expected child ownership and demonstrates the same local-versus-process distinction as the standalone scenario.
 - **SC-003**: A volume dataset of at least three matches is retrieved without missing or duplicated tasks; unrestricted result modes agree on the count and a limit of two returns exactly two matches.
 - **SC-004**: Every unmatched keys-only case emits zero bytes, and variable display changes zero selected task identities.
-- **SC-005**: Every selected version has an explicit result; zero skipped or unavailable scenarios are reported as verified, and 8.7 is recorded as expected unsupported when that assertion passes.
 - **SC-006**: Existing baseline, volume, and aggregate entry points include the new scenarios without additional operator setup conventions, new model artifacts, or product behavior changes.
 
 ## Assumptions

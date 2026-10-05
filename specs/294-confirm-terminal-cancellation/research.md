@@ -4,7 +4,6 @@
 
 **Decision**: Update the desired-state literals at the two cancellation-related wait sites in each versioned process-instance service to include `COMPLETED`, `CANCELED`, `TERMINATED`, and `ABSENT`. Keep the existing waiter functions and their matching rules unchanged.
 
-**Evidence**: `internal/services/processinstance/v87/service.go` (lines 411, 493), `v88/service.go` (538, 616), `v89/service.go` (526, 593), and `v810/service.go` (545, 614) each contain a two-state list. The first site confirms the cancellation family; the second confirms cancellation before retrying forced deletion. `internal/domain/state.go:40` already defines all four states as terminal. Line references describe the planning baseline.
 
 **Rationale**: Explicit desired states at the operation boundary prevent a cleanup-specific rule from weakening `expect process-instance --state canceled`. Eight small literal changes preserve version ownership and avoid new dependencies or abstractions.
 
@@ -14,7 +13,6 @@
 
 **Decision**: Set `Ok: true` on the existing terminal-state cancellation no-op response in all four adapters, retaining status code 200 and existing status text. In the cancellation precheck only, recognize `errors.Is(err, d.ErrNotFound)` as local `StateAbsent` and take that same no-op path. Propagate every other read error.
 
-**Evidence**: Each `CancelProcessInstance` precheck returns read errors before `IsTerminal()` and the terminal response omits `Ok`. `internal/services/processinstance/bulk.go` propagates `resp.Ok` into reports; `internal/services/processdefinition/delete.go` counts false reports as failures. In 8.7 the empty-result mapping is in `internal/services/common/response.go`; in newer adapters the HTTP not-found mapping is in `internal/services/httpc/httpmap.go`.
 
 **Rationale**: A nil error and HTTP 200 alone do not satisfy FR-004 through bulk cleanup. Missing-root acceptance must be local to cancellation so ordinary reads continue reporting not-found. This corrects existing outcome values without changing the public model.
 

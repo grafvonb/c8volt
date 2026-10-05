@@ -13,7 +13,6 @@ Run the closest tests first. Test names may be refined when tasks introduce the 
 ```bash
 go test ./internal/domain -run 'Test.*ProcessDefinition.*(Sort|Order|Latest)' -count=1
 go test ./internal/services/processdefinition -run 'Test.*(SearchProcessDefinitionsPages|Latest|WatchSnapshot|Order)' -count=1
-go test ./internal/services/processdefinition/v87 -run 'Test.*ProcessDefinition.*(Search|Latest|Order|Sort)' -count=1
 go test ./internal/services/processdefinition/v88 -run 'Test.*ProcessDefinition.*(Search|Latest|Order|Sort|Stat)' -count=1
 go test ./internal/services/processdefinition/v89 -run 'Test.*ProcessDefinition.*(Search|Latest|Order|Sort|Stat)' -count=1
 go test ./internal/services/processdefinition/v810 -run 'Test.*ProcessDefinition.*(Search|Latest|Order|Sort|Stat)' -count=1
@@ -29,7 +28,6 @@ The fixture set must include:
 - equal tenant/process/version rows with text keys such as `10` and `2`;
 - shuffled results split across pages of sizes 1, 2, and 1000;
 - statistics changes that do not change row order;
-- native latest behavior on 8.8-8.10 and local latest reduction on 8.7.
 
 ## Documentation Validation
 
@@ -77,4 +75,3 @@ Then verify:
 3. Human and JSON arrays follow the same key sequence as keys-only output.
 4. Watch rows do not move when only counts change.
 5. Direct retrieval by key and XML retrieval retain their prior content and behavior.
-6. Equivalent visible populations on 8.7, 8.8, 8.9, and 8.10 normalize to the same sequence, acknowledging the existing 8.7 1000-definition ceiling.

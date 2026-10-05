@@ -54,16 +54,15 @@ As a c8volt operator, I want the complete existing c8volt client and its version
 
 ### User Story 3 - Preserve Stable Version Behavior (Priority: P1)
 
-As an operator using Camunda 8.7, 8.8, or 8.9, I want Camunda 8.10 support to be additive so that my current commands, generated runtime contracts, and integration coverage remain unchanged. Issue #277 later supersedes only the original V88 default with V89.
+As an operator using Camunda 8.8, or 8.9, I want Camunda 8.10 support to be additive so that my current commands, generated runtime contracts, and integration coverage remain unchanged. Issue #277 later supersedes only the original V88 default with V89.
 
 **Why this priority**: A new compatibility line must not regress currently supported production environments.
 
-**Independent Test**: Run the stable-version regression suite and compare protected 8.7-8.9 runtime artifacts, command behavior, and integration assets before and after the feature; separately verify the current V89 default established by issue #277.
 
 **Acceptance Scenarios**:
 
-1. **Given** an existing Camunda 8.7, 8.8, or 8.9 configuration, **When** an operator runs an existing workflow, **Then** selection, execution, output, and failure behavior remain unchanged.
-2. **Given** the 8.10 compatibility line is added or updated, **When** maintainers inspect artifacts owned by Camunda 8.7, 8.8, and 8.9, **Then** those protected runtime contracts are unchanged.
+1. **Given** an existing Camunda 8.8, or 8.9 configuration, **When** an operator runs an existing workflow, **Then** selection, execution, output, and failure behavior remain unchanged.
+2. **Given** the 8.10 compatibility line is added or updated, **When** maintainers inspect artifacts owned by Camunda 8.8 and 8.9, **Then** those protected runtime contracts are unchanged.
 3. **Given** the repository's live integration coverage targets stable versions through 8.9, **When** Camunda 8.10 support is delivered, **Then** no integration profile, fixture, script, target, or real-state scenario is added or changed for 8.10.
 4. **Given** no Camunda version is configured, **When** c8volt resolves the active contract after issue #277, **Then** V89 is selected.
 
@@ -93,7 +92,7 @@ As a c8volt maintainer, I want a single reproducible Camunda 8.10 baseline that 
 - A newer 8.10 baseline removes or changes a contract used by an existing c8volt workflow.
 - An existing exact-8.9 capability check is valid for 8.10 but not for all versions newer than 8.9.
 - Production example selection uses native C810 content through an explicit, testable 8.10 mapping, while live integration coverage remains limited to stable versions through Camunda 8.9.
-- Preparation succeeds but unexpectedly changes protected Camunda 8.7, 8.8, or 8.9 artifacts.
+- Preparation succeeds but unexpectedly changes protected Camunda 8.8, or 8.9 artifacts.
 - The final 8.10.0 release introduces newly available capabilities that are not needed by an existing c8volt workflow.
 - Client construction succeeds while one of the eleven version-aware service families is missing or uses an older runtime contract.
 
@@ -111,7 +110,7 @@ As a c8volt maintainer, I want a single reproducible Camunda 8.10 baseline that 
 - **FR-008**: The complete c8volt client MUST construct successfully for Camunda 8.10 using native 8.10 behavior for every version-aware service family.
 - **FR-009**: All eleven existing version-aware service families MUST define and verify their Camunda 8.10 behavior.
 - **FR-010**: Camunda 8.10 behavior MUST preserve the existing version-neutral domain, facade, command, paging, polling, retry, confirmation, output, and error contracts unless the active upstream baseline makes a workflow unavailable.
-- **FR-011**: Camunda 8.10 workflows MUST NOT use generated runtime contracts belonging to Camunda 8.7, 8.8, or 8.9.
+- **FR-011**: Camunda 8.10 workflows MUST NOT use generated runtime contracts belonging to Camunda 8.8, or 8.9.
 - **FR-012**: Camunda 8.10 workflows MUST NOT depend on removed Operate, Tasklist, or Administration service contracts.
 - **FR-013**: Existing checks that express a capability shared by Camunda 8.9 and 8.10 MUST evaluate that named capability rather than treating 8.9 as the only qualifying version.
 - **FR-014**: An existing workflow that is unavailable on the active 8.10 baseline MUST return a clear unsupported result before any external mutation begins.
@@ -121,8 +120,8 @@ As a c8volt maintainer, I want a single reproducible Camunda 8.10 baseline that 
 - **FR-018**: The project MUST maintain exactly one active Camunda 8.10 baseline and MUST update that baseline in place when a newer alpha, release candidate, or final release is selected.
 - **FR-019**: Updating the active 8.10 baseline MUST NOT create another operator version, compatibility family, or parallel prerelease-specific identity.
 - **FR-020**: Moving to the final Camunda 8.10.0 baseline MUST preserve the existing 8.10 operator configuration and service-family identity.
-- **FR-021**: Adding or updating Camunda 8.10 support MUST NOT modify generated runtime contracts owned by Camunda 8.7, 8.8, or 8.9.
-- **FR-022**: Existing behavior for Camunda 8.7, 8.8, and 8.9 MUST remain unchanged and pass the stable-version regression suite.
+- **FR-021**: Adding or updating Camunda 8.10 support MUST NOT modify generated runtime contracts owned by Camunda 8.8, or 8.9.
+- **FR-022**: Existing behavior for Camunda 8.8 and 8.9 MUST remain unchanged and pass the stable-version regression suite.
 - **FR-023**: Native production fixtures for 8.10 MUST be selected through an explicit and testable C810 compatibility mapping.
 - **FR-024**: The feature MUST NOT add or change live integration profiles, fixtures, scripts, targets, or real-state scenarios for Camunda 8.10.
 - **FR-025**: Capabilities newly introduced by Camunda 8.10 MUST remain out of scope unless an existing c8volt workflow requires them.
@@ -136,7 +135,7 @@ As a c8volt maintainer, I want a single reproducible Camunda 8.10 baseline that 
 - **Baseline Provenance**: The machine-readable evidence connecting the active baseline to its exact source, transformations, preparation tooling, and reproduction procedure.
 - **Version-Aware Service Family**: One of the eleven existing behavior families that must select native 8.10 behavior while preserving its version-neutral contract.
 - **Capability Predicate**: A named statement that determines whether a workflow is available for a release without relying on an accidental exact-version comparison.
-- **Protected Stable Artifact**: A generated runtime contract or behavior owned by Camunda 8.7, 8.8, or 8.9 that must remain unchanged.
+- **Protected Stable Artifact**: A generated runtime contract or behavior owned by Camunda 8.8, or 8.9 that must remain unchanged.
 - **Fixture Compatibility Mapping**: An explicit decision that associates 8.10 with native C810 production fixtures while keeping live integration coverage out of scope.
 
 ## Success Criteria *(mandatory)*
@@ -148,7 +147,7 @@ As a c8volt maintainer, I want a single reproducible Camunda 8.10 baseline that 
 - **SC-003**: The complete c8volt client constructs for 8.10, and all eleven version-aware service families pass selection and compatibility-contract verification.
 - **SC-004**: Representative existing workflows for every version-aware service family complete with their established operator-visible output, failure, retry, paging, polling, and confirmation behavior where applicable.
 - **SC-005**: 100% of tested unavailable mutating workflows stop before an external mutation and return a clear unsupported outcome.
-- **SC-006**: 100% of tested Camunda 8.7, 8.8, and 8.9 explicit-version behaviors remain unchanged after 8.10 support is added, and missing configuration selects the V89 default established later by issue #277.
+- **SC-006**: 100% of tested Camunda 8.8 and 8.9 explicit-version behaviors remain unchanged after 8.10 support is added, and missing configuration selects the V89 default established later by issue #277.
 - **SC-007**: Comparing protected stable generated artifacts before and after 8.10 preparation shows zero modifications.
 - **SC-008**: The active baseline can be reproduced from a provenance record containing all seven required elements: upstream source, exact tag, exact revision, source definition, transformations, preparation tool version, and reproduction command.
 - **SC-009**: Advancing the active baseline through a simulated prerelease or final-release update produces exactly one 8.10 compatibility identity and requires zero operator-facing or service-family renames.

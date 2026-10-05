@@ -4,7 +4,6 @@ No production models, persisted schemas, or public envelopes change. Reuse exist
 
 | Entity | Required data | Rules and relationships |
 | --- | --- | --- |
-| Profile | name, expected/observed minor, readiness | Existing integrationProfile; prefix matches 8.8/C88, 8.9/C89, 8.10/C810; 8.7 unsupported |
 | Definition selection | embedded path, BPMN ID, deployed key/version | Existing fixture/deployment records; matching parent-child family |
 | Seed values | run marker, hasIncident=false, incident=99, customer string, structured/Unicode payload | Preserve typed JSON; marker cannot be overridden; no alteration of shared defaults |
 | Owned dataset | definition keys, root/child PI keys, discovered task and element-instance keys | Small scenario-local structure only if useful; all task ownership validated |

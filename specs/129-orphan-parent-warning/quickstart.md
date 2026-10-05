@@ -7,7 +7,7 @@
 - Fully unresolved traversal remains a normal failure.
 - Direct `get process-instance --key ...` remains strict.
 - Wait-for-absent / wait-for-deleted behavior remains unchanged.
-- The same partial-result contract applies across `v8.7`, `v8.8`, and `v8.9` because all three versioned services delegate traversal through the shared walker.
+- The same partial-result contract applies across `v8.8` and `v8.9` because all three versioned services delegate traversal through the shared walker.
 
 ## Implementation Notes
 
@@ -25,7 +25,6 @@
 4. Confirm cancel/delete preflight continues when orphan children are still actionable.
 5. Confirm direct `get process-instance --key` stays strict.
 6. Confirm waiter absent/deleted behavior remains unchanged.
-7. Confirm regression coverage exercises `v87`, `v88`, and `v89` traversal behavior.
 
 ## Completed Verification Commands
 

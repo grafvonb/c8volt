@@ -41,7 +41,6 @@ Started: 2026-08-29T12:20:03Z
 - Ops human preflight/confirmation tenant blocks are routed through durable stderr/log progress with `printOpsTenantContext`; dry-run/final summaries call `renderAttachedTenantContext`, so quiet and keys-only modes remain silent and shared envelopes pick up the attached context.
 - Ops Markdown reports render `Tenant Context`, resource tenant(s), unknown count, cross-tenant state, and tenant warnings through `writeMarkdownTenantContext`; JSON reports include the common root `tenantContext` while unfiltered discovery omits legacy `tenantId`.
 - Cross-family machine-contract assertions now live in the named T049 files: `cmd/cmd_json_assertions_test.go` has `requireSingleJSONObjectDocument` plus run JSON/quiet/keys-only tenant-context checks, `cmd/command_contract_test.go` guards root envelope placement without payload reshaping, and `cmd/ops_contract_test.go` guards root `tenantContext` placement in an ops JSON report.
-- Camunda-version tenant normalization is now guarded at the root/config/common-service boundary: omitted 8.7 tenant normalizes to `<default>`, explicitly empty 8.7 remains empty, and omitted 8.8/8.9/8.10 remains unfiltered for discovery/service request helpers.
 - Affected Cobra `Long` text and examples now document configuration, discovery, creation, explicit-key, cross-tenant, and unknown-tenant semantics in source metadata only; generated CLI docs are intentionally left for T054.
 - Operator-facing README and ops playbooks now explain operation-specific tenant context, non-blocking cross/unknown warnings, JSON `tenantContext`, and protected quiet/keys-only stdout behavior; generated CLI docs are intentionally left for T054.
 - Generated CLI docs now reflect the tenant-context command metadata across the T054 page set, and `docs/index.md` carries the README tenant-context guidance plus the current generated build banner.
@@ -161,7 +160,6 @@ Started: 2026-08-29T12:20:03Z
 - `git diff -U0 54fd03eba0849047f6cbd811ac1ee9b001c03b77..HEAD -- 'cmd/*.go' ':(exclude)cmd/*_test.go' | rg '^\\+(func|type|const|var) '`
 - `git diff -U0 54fd03eba0849047f6cbd811ac1ee9b001c03b77..HEAD -- cmd/cancel_processinstance.go cmd/delete_processinstance.go cmd/resolve_processinstance.go cmd/update_processinstance.go cmd/deploy_processdefinition.go cmd/embed_deploy.go cmd/run_processinstance.go cmd/delete_processdefinition.go cmd/update_job.go cmd/update_job_plan.go cmd/update_processinstance_variables.go | rg '^[-+].*(WithIgnoreTenant|IgnoreTenant|TargetTenant|newProcessInstanceSearchRequest|TenantId:|TenantID:|Tenant:|TenantId\\b|tenantId\\b)'`
 - `git diff --name-only 54fd03eba0849047f6cbd811ac1ee9b001c03b77..HEAD -- 'internal/clients/**' 'api/**' 'api/mutations/**'`
-- `git diff --name-only 54fd03eba0849047f6cbd811ac1ee9b001c03b77..HEAD -- 'internal/services/*/v87/**' 'internal/services/*/v88/**' 'internal/services/*/v89/**' 'internal/services/*/v810/**'`
 - `git diff --name-only 54fd03eba0849047f6cbd811ac1ee9b001c03b77..HEAD -- '*.go' | xargs gofmt -w`
 
 ## Do Not Repeat

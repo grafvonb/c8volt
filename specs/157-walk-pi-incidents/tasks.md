@@ -118,7 +118,6 @@
 
 ## Phase 6: User Story 4 - Respect Tenant and Version Boundaries (Priority: P4)
 
-**Goal**: Supported versions use tenant-aware incident search; v8.7 fails explicitly rather than falling back to tenant-unsafe behavior.
 
 **Independent Test**: Run facade/service/request-construction tests and command tests that prove tenant filtering and unsupported-version behavior flow through walk enrichment.
 
@@ -128,12 +127,10 @@
 - [x] T045 [P] [US4] Add command test proving tenant option reaches incident enrichment during walk in `cmd/walk_test.go`
 - [x] T046 [P] [US4] Add v8.8 tenant-filter request assertion for reused incident search behavior in `internal/services/processinstance/v88/service_test.go`
 - [x] T047 [P] [US4] Add v8.9 tenant-filter request assertion for reused incident search behavior in `internal/services/processinstance/v89/service_test.go`
-- [x] T048 [P] [US4] Add command unsupported-version test for `--with-incidents` on Camunda 8.7 walk in `cmd/walk_test.go`
 
 ### Implementation for User Story 4
 
 - [x] T049 [US4] Ensure walk enrichment uses existing facade options from `collectOptions()` in `cmd/walk_processinstance.go`
-- [x] T050 [US4] Ensure v8.7 unsupported incident lookup propagates through walk command handlers in `c8volt/process/client.go` and `cmd/walk_processinstance.go`
 - [x] T051 [US4] Confirm v8.8 and v8.9 incident request bodies remain process-instance-key scoped without redundant rejected filters in `internal/services/processinstance/v88/incidents.go` and `internal/services/processinstance/v89/incidents.go`
 
 **Checkpoint**: All user stories are independently functional.
@@ -148,7 +145,6 @@
 - [x] T053 Regenerate CLI documentation with `make docs-content` and verify `docs/cli/c8volt_walk_process-instance.md`
 - [x] T054 [P] Review README walk examples and update `README.md` only if the new flag belongs in existing examples
 - [x] T055 [P] Run `gofmt` on changed Go files in `cmd/`, `c8volt/process/`, and `internal/services/processinstance/`
-- [x] T056 Run targeted validation with `go test ./cmd ./c8volt/process ./internal/services/processinstance/v87 ./internal/services/processinstance/v88 ./internal/services/processinstance/v89 -count=1`
 - [x] T057 Run full repository validation with `make test` from repository root `.`
 - [x] T058 Confirm `specs/157-walk-pi-incidents/quickstart.md` scenarios match final command behavior
 

@@ -5,7 +5,6 @@
 Run focused command, facade, and versioned service tests while implementing:
 
 ```bash
-GOCACHE=/tmp/c8volt-gocache go test ./cmd ./c8volt/job ./internal/services/job ./internal/services/job/v87 ./internal/services/job/v88 ./internal/services/job/v89 -count=1
 ```
 
 When iterating on retry confirmation behavior, include:
@@ -91,7 +90,6 @@ Unsupported version:
 ./c8volt update job --key <job-key> --retries 3
 ```
 
-Run the unsupported-version scenario with a Camunda 8.7 configuration and verify it fails before mutation.
 
 ## Documentation Validation
 

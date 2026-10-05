@@ -120,7 +120,6 @@ c8volt update job --key <job-key> --complete \
 ## Version Contract
 
 - Camunda 8.8 and 8.9 support job search and worker outcomes through generated clients.
-- Camunda 8.7 fails before unsupported new search or worker outcome mutation paths.
 - Unsupported capability errors must be visible in human output and machine-readable JSON/error contracts.
 
 ## Documentation Contract

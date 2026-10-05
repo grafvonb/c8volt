@@ -42,7 +42,7 @@
 
 ### Tests for User Story 1
 
-- [x] T003 [P] [US1] Update the V810 expectation to `C810_` while retaining V87/V88/V89 mappings and unknown-version rejection in `toolx/fixture_compatibility_test.go`
+- [x] T003 [P] [US1] Update the V810 expectation to `C810_` while retaining V88/V89 mappings and unknown-version rejection in `toolx/fixture_compatibility_test.go`
 - [x] T004 [P] [US1] Replace the V810-to-C89 embed-list case with an exact eight-file C810 family assertion and explicit C89 exclusion in `cmd/embed_test.go`
 - [x] T005 [P] [US1] Update V810 fixture selection and add the three-resource C810 smoke deployment-closure assertion in `internal/services/ops/smoke_test_test.go`
 - [x] T006 [P] [US1] Add one V810 smoke command case whose unchanged output schema reports the C810 fixture identity in `cmd/ops_execute_smoke_test_test.go`

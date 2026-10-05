@@ -94,7 +94,6 @@ As an operator or automation author, I want familiar variable formatting and exp
 - **FR-009**: Retrieval MUST avoid backend value shortening where supported and explicitly report any remaining backend truncation in human and JSON results. Unlimited display MUST never silently present a shortened value as complete.
 - **FR-010**: Tasks without variables MUST remain successful results. Variable retrieval failures, including failures on later pages, MUST propagate through existing error and exit conventions and MUST NOT be substituted with empty variables or complete-success claims.
 - **FR-011**: Default output, empty-result rendering, quiet behavior, output precedence, count output, automation behavior, and paging contracts MUST be preserved. Stdout MUST contain only selected results; interactive control text MUST use configured or inherited stderr.
-- **FR-012**: Variable display MUST support the base command's supported Camunda versions, 8.8, 8.9, and 8.10, while preserving the clear unsupported-version behavior for 8.7.
 - **FR-013**: User-facing help, command metadata, examples, README, and generated CLI documentation MUST consistently describe both flags, default and unlimited limits, human-versus-JSON behavior, and excluded output modes.
 - **FR-014**: Scope MUST remain read-only variable display. Variable filtering (`--var`, `--var-exists`, `--var-like`), variable mutation, every-scope duplicate display, forms, audit logs, and task mutations are excluded.
 

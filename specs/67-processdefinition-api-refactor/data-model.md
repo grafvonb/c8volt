@@ -93,4 +93,3 @@
 ## State Notes
 
 - This feature does not add persistence or long-lived lifecycle states.
-- The relevant execution outcomes are: success, transport failure, HTTP failure, malformed success payload, unsupported version selection, unsupported statistics request in v8.7, and optional capability-not-exposed decisions from the coverage review.

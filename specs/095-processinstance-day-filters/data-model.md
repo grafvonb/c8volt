@@ -69,7 +69,6 @@
 - **Purpose**: Determines whether a search request using derived date bounds is executable for the configured Camunda version.
 - **States**:
   - `v8.8`: request proceeds using the existing native inclusive date filter mapping.
-  - `v8.7`: request fails with the repository-native not-implemented error when any derived date bound is present.
 - **Invariants**:
   - Requests without relative day flags keep current behavior on both versions.
   - Version-specific handling remains inside the existing versioned process-instance service split.

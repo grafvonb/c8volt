@@ -7,7 +7,6 @@ Started: 2026-05-02 09:54:51
 
 - `make docs-content` regenerates command markdown from Cobra metadata and syncs README content into `docs/index.md`, including generated build metadata changes.
 - Supported v8.8/v8.9 process-instance incident searches build tenant filters in the versioned `incidents.go` seams, using the same string filter helpers as process-instance search and omitting the field when no tenant is configured.
-- v8.7 process-instance incident enrichment stays explicitly unsupported in the versioned incident lookup seam; command-level failures rely on existing facade/domain error normalization to render `unsupported capability`.
 - Default keyed process-instance output without `--with-incidents` should perform only the generated key lookup, then flow through `listProcessInstancesView`/`oneLinePI`; default JSON remains the `ProcessInstances` payload rather than the enriched `item`/`incidents` wrapper.
 - Generated v8.8/v8.9 incident results expose BPMN flow-node metadata as `ElementId`/`ElementInstanceKey`; feature-facing models use `FlowNodeId`/`FlowNodeInstanceKey`, so conversion helpers should map element fields into flow-node fields.
 - Existing public process models use `omitempty` broadly, but the incident-enriched JSON wrapper keeps `total`, `items`, `item`, `incidents`, `processInstanceKey`, and `errorMessage` non-omitempty so requested enrichment can render empty incident collections and empty messages explicitly.
@@ -63,8 +62,6 @@ Started: 2026-05-02 09:54:51
 - cmd/get_processinstance_test.go
 - cmd/process_api_stub_test.go
 - internal/services/processinstance/api.go
-- internal/services/processinstance/v87/contract.go
-- internal/services/processinstance/v87/incidents.go
 - internal/services/processinstance/v88/contract.go
 - internal/services/processinstance/v88/incidents.go
 - internal/services/processinstance/v89/contract.go
@@ -74,7 +71,6 @@ Started: 2026-05-02 09:54:51
 **Learnings**:
 - `--with-incidents` validation should stay independent of the later render path so unsupported or unimplemented enrichment work is not reached for invalid flag combinations.
 - Versioned process-instance services now expose the incident lookup seam, with concrete supported-version request construction left to the US1 service tasks.
-- Validation passed with `go test ./c8volt/process ./cmd ./internal/services/processinstance/v87 ./internal/services/processinstance/v88 ./internal/services/processinstance/v89 -count=1` and adjacent API checks passed with `go test ./c8volt/resource ./c8volt/variable ./c8volt/task -count=1`.
 ---
 ---
 ## Iteration 3 - 2026-05-02 10:15:42 CEST
@@ -161,18 +157,13 @@ Started: 2026-05-02 09:54:51
 **Tasks Completed**:
 - [x] T035: Add `v88` tenant-filter request construction assertions in `internal/services/processinstance/v88/service_test.go`
 - [x] T036: Add `v89` tenant-filter request construction assertions in `internal/services/processinstance/v89/service_test.go`
-- [x] T037: Add `v87` unsupported incident lookup service test in `internal/services/processinstance/v87/service_test.go`
-- [x] T038: Add command unsupported-version test for `--with-incidents` on Camunda 8.7 in `cmd/get_processinstance_test.go`
 - [x] T039: Include configured tenant in `v88` incident search filters in `internal/services/processinstance/v88/service.go`
 - [x] T040: Include configured tenant in `v89` incident search filters in `internal/services/processinstance/v89/service.go`
-- [x] T041: Implement `v87` incident lookup as explicit unsupported in `internal/services/processinstance/v87/service.go`
 - [x] T042: Ensure unsupported errors map through existing facade and command handlers in `c8volt/process/client.go` and `cmd/get_processinstance.go`
 **Tasks Remaining in Story**: None - story complete
 **Commit**: Recorded in Git history for this iteration
 **Files Changed**:
 - cmd/get_processinstance_test.go
-- internal/services/processinstance/v87/incidents.go
-- internal/services/processinstance/v87/service_test.go
 - internal/services/processinstance/v88/incidents.go
 - internal/services/processinstance/v88/service_test.go
 - internal/services/processinstance/v89/incidents.go
@@ -181,8 +172,6 @@ Started: 2026-05-02 09:54:51
 - specs/154-get-pi-incidents/tasks.md
 **Learnings**:
 - Supported-version incident lookups should include the configured tenant in the incident search filter alongside the process-instance-key filter.
-- v8.7 `--with-incidents` fails through existing unsupported-capability handling before any tenant-unsafe incident lookup is attempted.
-- Focused validation passed with `GOCACHE=/tmp/codex-gocache go test ./internal/services/processinstance/v88 ./internal/services/processinstance/v89 ./internal/services/processinstance/v87 ./cmd -run 'TestService_SearchProcessInstanceIncidents|TestService_SearchProcessInstanceIncidentsUnsupported|TestGetProcessInstanceWithIncidents_V87ReportsUnsupported' -count=1`; broader validation passed with `GOCACHE=/tmp/codex-gocache go test ./cmd ./c8volt/process ./internal/services/processinstance/v87 ./internal/services/processinstance/v88 ./internal/services/processinstance/v89 -count=1`.
 ---
 ---
 ## Iteration 7 - 2026-05-02 10:32:20 CEST
@@ -192,7 +181,6 @@ Started: 2026-05-02 09:54:51
 - [x] T044: Regenerate CLI documentation with `make docs-content`
 - [x] T045: Review README process-instance examples and update `README.md` only if the new flag belongs in existing examples
 - [x] T046: Run `gofmt` on changed Go files in `cmd/`, `c8volt/process/`, `internal/domain/`, and `internal/services/processinstance/`
-- [x] T047: Run targeted validation with `go test ./cmd ./c8volt/process ./internal/services/processinstance/v87 ./internal/services/processinstance/v88 ./internal/services/processinstance/v89 -count=1`
 - [x] T048: Run full repository validation with `make test`
 - [x] T049: Confirm `specs/154-get-pi-incidents/quickstart.md` scenarios match final command behavior
 **Tasks Remaining in Story**: None - story complete
@@ -207,5 +195,4 @@ Started: 2026-05-02 09:54:51
 **Learnings**:
 - `--with-incidents` belongs in README's process-instance narrowing/diagnosis examples because it complements `--incidents-only` without changing search-filter behavior.
 - Quickstart scenarios already matched the final command behavior after help and generated docs were refreshed.
-- Targeted validation passed with `GOCACHE=/tmp/codex-gocache go test ./cmd ./c8volt/process ./internal/services/processinstance/v87 ./internal/services/processinstance/v88 ./internal/services/processinstance/v89 -count=1`; full validation passed with `GOCACHE=/tmp/codex-gocache make test`.
 ---

@@ -4,7 +4,6 @@
 
 | Configured Camunda version | Selected production family |
 |---|---|
-| 8.7 | `C87_` |
 | 8.8 | `C88_` |
 | 8.9 | `C89_` |
 | 8.10 | `C810_` |

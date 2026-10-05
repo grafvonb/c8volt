@@ -118,7 +118,6 @@ Started: 2026-09-19 12:56:01
 **Tasks Completed**:
 - [x] T013: Add command execution, request-construction, validation, alias, conflict, and request-count coverage
 - [x] T014: Register and parse task variable-filter flags and propagate request-construction errors
-- [x] T015: Validate parser, command, facade, supported adapters, PI regressions, and filtered v8.7 rejection
 **Tasks Remaining in Work Unit**: 0
 **Commit**: This work-unit commit
 **Files Changed**:
@@ -126,7 +125,6 @@ Started: 2026-09-19 12:56:01
 - cmd/get_usertask_variable_filter_test.go
 - cmd/get_usertask_search_test.go
 - cmd/get_usertask_test.go
-- internal/services/usertask/v87/native_test.go
 - specs/310-user-task-variable-filtering/tasks.md
 - specs/310-user-task-variable-filtering/ralph-memory.md
 - specs/310-user-task-variable-filtering/quickstart.md

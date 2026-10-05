@@ -94,19 +94,15 @@ Started: 2026-04-21 18:20:22
 ## Iteration 4 - 2026-04-21 18:39 CEST
 **User Story**: User Story 2 - Preserve Version-Specific Truthfulness
 **Tasks Completed**:
-- [x] T014: Add `v8.7` service tests proving incident-count support remains unavailable under `WithStat`
 - [x] T015: Add command rendering regressions proving unsupported versions omit `in:` entirely
-- [x] T016: Preserve the `v8.7` unsupported incident-count boundary
 - [x] T017: Update renderer behavior so unsupported stats omit `in:` without changing the other stat segments
 **Tasks Remaining in Story**: None - story complete
 **Commit**: Recorded in Git history for this iteration
 **Files Changed**:
 - cmd/get_test.go
-- internal/services/processdefinition/v87/service_test.go
 - specs/042-pd-incident-stats/tasks.md
 - specs/042-pd-incident-stats/progress.md
 **Learnings**:
-- `v8.7` already enforced the unsupported `WithStat` boundary in the versioned service, so the missing work in this slice was explicit regression coverage rather than new sourcing logic.
 - The renderer already honored `IncidentCountSupported=false`; a direct `oneLinePD(...)` regression is the lowest-cost guard against reintroducing `in:` on unsupported stats.
 - Running `make test` before the story commit is still worthwhile even for test-only iterations because the command and service packages share contracts with broader repository packages.
 ---
@@ -115,7 +111,6 @@ Started: 2026-04-21 18:20:22
 **User Story**: User Story 3 - Verify Version Coverage With Tests
 **Tasks Completed**:
 - [x] T018: Add shared facade/model coverage for unsupported incident-count passthrough in `c8volt/process/client_test.go`
-- [x] T019: Update command-layer rendering regressions to name the `8.8`, `8.9`, and `8.7` support boundary explicitly
 - [x] T020: Document `get process-definition --stat` incident-count semantics in command help and `README.md`
 - [x] T021: Regenerate the CLI reference with `make docs-content`
 **Tasks Remaining in Story**: None - story complete

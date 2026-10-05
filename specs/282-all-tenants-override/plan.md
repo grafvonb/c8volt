@@ -18,7 +18,7 @@ Add a root persistent `--all-tenants` boolean flag that deliberately clears the 
 
 **Testing**: Go `testing`, Testify 1.11.1, command/subprocess tests, mock-backed request assertions, integration example-contract tests, and the repository `make test` race-enabled suite
 
-**Target Platform**: Cross-platform Go CLI targeting Camunda 8.7, 8.8, 8.9, and 8.10
+**Target Platform**: Cross-platform Go CLI targeting Camunda 8.8, 8.9, and 8.10
 
 **Project Type**: Go CLI with public facade and versioned internal service adapters
 
@@ -111,7 +111,6 @@ Research is complete in [research.md](./research.md). It resolves configuration 
 
 - `--all-tenants=false` is inactive; absence of the flag leaves every command unchanged.
 - An explicitly changed `--tenant`, including `--tenant ""`, conflicts with active `--all-tenants` before configuration loading.
-- Override application occurs after normalization so Camunda 8.7 cannot restore `<default>`, but before config enters context or services.
 - The four destination commands reject through the same annotation advertised by capabilities, preventing documentation/runtime drift.
 - Direct resource-key commands keep existing backend authorization and never receive an authorization-bypass option.
 - Public tenant context and result envelopes remain unchanged; command capability gains only an additive field under document version `v1`.

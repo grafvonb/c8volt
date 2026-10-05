@@ -17,14 +17,6 @@
   - Make direct key lookup warning-based too: rejected because it would contradict the issue's must-keep behavior and weaken operator expectations for `get process-instance --key`.
   - Loosen waiter not-found handling beyond absent/deleted success: rejected because `internal/services/processinstance/waiter/waiter.go` intentionally treats absence as success only for the desired absent/deleted states.
 
-## Decision 3: Use one structured missing-ancestor contract across `v87`, `v88`, and `v89`
-
-- **Decision**: Keep the orphan-parent partial-result contract version-neutral because all three versioned services already delegate ancestry/family traversal through the shared walker.
-- **Rationale**: `internal/services/processinstance/factory.go` constructs `v87`, `v88`, and `v89`, and each service forwards `Ancestry`, `Descendants`, and `Family` to `walker.Ancestry`, `walker.Descendants`, and `walker.Family`. A version-specific fork would add unnecessary complexity unless tests prove a concrete adapter need.
-- **Alternatives considered**:
-  - Plan only for `v88`/`v89` and leave `v87` as-is: rejected because the shared walker already sits under all versions and the spec requires regression coverage for all three.
-  - Introduce separate walker logic per version: rejected because it would violate the repository-native layering and multiply maintenance cost without evidence of different upstream traversal semantics.
-
 ## Decision 4: Define success around actionable resolved results, not around whether any ancestor was missing
 
 - **Decision**: Affected traversal and preflight flows should succeed with warnings only when at least one actionable process-instance result was resolved; fully unresolved traversals should still fail normally.
@@ -73,8 +65,6 @@
 
 ## Audit Inventory: Version Support Surface
 
-- [`internal/services/processinstance/factory.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/factory.go) now constructs `v87`, `v88`, and `v89`, so the feature’s regression and contract scope must include all three.
-- `v87` still treats direct-key lookup and state-by-key lookup as tenant-unsafe unsupported operations, but its `Ancestry`, `Descendants`, and `Family` methods still delegate to the shared walker.
 - `v88` and `v89` both implement tenant-safe `GetProcessInstanceStateByKey` via `GetProcessInstance`, and they also route traversal through the shared walker.
 - Because traversal is shared across versions, the orphan-parent partial-result behavior should be driven by the walker contract rather than by per-version command branching.
 

@@ -26,7 +26,6 @@ New flags on both commands:
 | `after` and `before` can be combined per field | Treat them as inclusive range bounds |
 | `after > before` for the same field | Reject with validation error |
 | Any date flag combined with explicit `--key` | Reject with invalid-combination error |
-| Date flags used on v8.7 search path | Return not-implemented error through existing error path |
 
 ## Search-Based Selection Semantics
 

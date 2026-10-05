@@ -2,9 +2,7 @@
 
 ## 1. Timestamp availability and adapter ownership
 
-**Decision**: Copy `CreationTime` and `EndTime` directly from generated `JobSearchResult` into domain jobs in `internal/services/job/v88/convert.go`, `v89/convert.go`, and `v810/convert.go`, in `fromJobSearchResult`. Leave v87 unsupported.
 
-**Rationale**: The checked-in generated models in `internal/clients/camunda/{v88,v89,v810}/camunda/client.gen.go` already contain both optional `*time.Time` fields. All three service converters drop them today. The generated creation-time comment says it is present for jobs created after 8.9, so a field's presence in a client does not guarantee its availability in a response. Preserve whatever is actually supplied, rather than hard-coding a version cutoff. `internal/services/job/v87/service.go` explicitly rejects job retrieval/search as requiring 8.8 or newer.
 
 **Alternatives considered**: Regenerate clients (unnecessary); force timestamps on older jobs or infer from deadlines (incorrect); version-gate otherwise supplied values (would discard valid facts); add unsupported-version fallback (outside scope).
 

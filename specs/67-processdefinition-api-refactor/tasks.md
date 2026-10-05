@@ -17,8 +17,6 @@
 
 **Purpose**: Prepare the processdefinition service surface, generated-client review inputs, and current test coverage for the refactor
 
-- [ ] T001 Inspect the current processdefinition service flow and affected generated clients in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processdefinition/api.go, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processdefinition/factory.go, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processdefinition/v87/service.go, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processdefinition/v88/service.go, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/clients/camunda/v87/operate/client.gen.go, and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/clients/camunda/v88/camunda/client.gen.go
-- [ ] T002 Inspect baseline regression coverage in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processdefinition/factory_test.go, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processdefinition/v87/service_test.go, and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processdefinition/v88/service_test.go
 
 ---
 
@@ -29,7 +27,6 @@
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
 - [ ] T003 Define the preserved shared service surface and any candidate capability additions in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processdefinition/api.go
-- [ ] T004 [P] Prepare version-specific client contract updates needed for the refactor in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processdefinition/v87/contract.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processdefinition/v88/contract.go
 - [ ] T005 [P] Prepare shared factory and dependency wiring for the refactored service surface in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processdefinition/factory.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processdefinition/factory_test.go
 
 **Checkpoint**: Foundation ready - user story implementation can now begin in priority order or parallel where noted
@@ -45,14 +42,12 @@
 ### Tests for User Story 1
 
 - [ ] T006 [P] [US1] Add regression-focused factory assertions for preserved version selection and shared API wiring in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processdefinition/factory_test.go
-- [ ] T007 [P] [US1] Add v8.7 regression tests for preserved search, latest, get, and unsupported-statistics behavior in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processdefinition/v87/service_test.go
 - [ ] T008 [P] [US1] Add v8.8 regression tests for preserved search, latest, get, and statistics-enrichment behavior in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processdefinition/v88/service_test.go
 
 ### Implementation for User Story 1
 
 - [ ] T009 [US1] Refactor the shared processdefinition API declarations and common constants for clarity in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processdefinition/api.go
 - [ ] T010 [US1] Refactor version-selection and error-path clarity without changing behavior in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processdefinition/factory.go
-- [ ] T011 [US1] Simplify duplicated request construction, response validation, and latest-result handling in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processdefinition/v87/service.go
 - [ ] T012 [US1] Simplify duplicated request construction, response validation, and statistics retrieval flow in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processdefinition/v88/service.go
 
 **Checkpoint**: At this point, User Story 1 should be fully functional and testable independently
@@ -67,13 +62,11 @@
 
 ### Tests for User Story 2
 
-- [ ] T013 [P] [US2] Add v8.7 tests for the approved generated-client coverage decision in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processdefinition/v87/service_test.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processdefinition/v87/contract.go
 - [ ] T014 [P] [US2] Add v8.8 tests for the approved generated-client coverage decision in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processdefinition/v88/service_test.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processdefinition/v88/contract.go
 
 ### Implementation for User Story 2
 
 - [ ] T015 [US2] Update the shared service interface to either expose the approved missing capability or explicitly preserve the bounded current surface in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processdefinition/api.go
-- [ ] T016 [US2] Implement the approved generated-client coverage decision for v8.7 in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processdefinition/v87/service.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processdefinition/v87/contract.go
 - [ ] T017 [US2] Implement the approved generated-client coverage decision for v8.8 in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processdefinition/v88/service.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processdefinition/v88/contract.go
 - [ ] T018 [US2] Update processdefinition factory coverage for the final shared service surface in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processdefinition/factory_test.go
 
@@ -89,12 +82,10 @@
 
 ### Tests for User Story 3
 
-- [ ] T019 [P] [US3] Expand cross-version regression cases for ordering, malformed responses, and edge-case filtering in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processdefinition/v87/service_test.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processdefinition/v88/service_test.go
 - [ ] T020 [P] [US3] Add regression coverage for any new shared helper or service-surface edge case in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processdefinition/factory_test.go
 
 ### Implementation for User Story 3
 
-- [ ] T021 [US3] Tighten service test fixtures and helper builders for long-term maintainability in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processdefinition/v87/service_test.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processdefinition/v88/service_test.go
 - [ ] T022 [US3] Update feature notes to record the final generated-client coverage decision and validation scope in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/67-processdefinition-api-refactor/quickstart.md
 
 **Checkpoint**: All user stories should now be independently functional
@@ -150,7 +141,6 @@
 ```bash
 # Launch User Story 1 regression coverage tasks together:
 Task: "Add regression-focused factory assertions for preserved version selection and shared API wiring in internal/services/processdefinition/factory_test.go"
-Task: "Add v8.7 regression tests for preserved search, latest, get, and unsupported-statistics behavior in internal/services/processdefinition/v87/service_test.go"
 Task: "Add v8.8 regression tests for preserved search, latest, get, and statistics-enrichment behavior in internal/services/processdefinition/v88/service_test.go"
 ```
 
@@ -160,7 +150,6 @@ Task: "Add v8.8 regression tests for preserved search, latest, get, and statisti
 
 ```bash
 # Launch generated-client coverage tests for both supported versions together:
-Task: "Add v8.7 tests for the approved generated-client coverage decision in internal/services/processdefinition/v87/service_test.go and internal/services/processdefinition/v87/contract.go"
 Task: "Add v8.8 tests for the approved generated-client coverage decision in internal/services/processdefinition/v88/service_test.go and internal/services/processdefinition/v88/contract.go"
 ```
 
