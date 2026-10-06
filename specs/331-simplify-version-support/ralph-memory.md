@@ -17,7 +17,7 @@ Started: 2026-10-05T06:30:28Z
 
 - The v8.8 facade diagnostics deletion path reads the root and descendants through Camunda before issuing the Operate deletion, so its fixture must return a valid keyed process instance and empty search page.
 - `go test ./cmd -count=1` is comparatively slow. T001's required command regex is the primary repeatable gate; the broader package run found one v8.8 license-rendering expectation, which was corrected and rechecked directly.
-- The v8.10 repository-boundary guard now protects retained v8.8/v8.9 clients and integration cleanliness without banning v8.10 integration content; v8.10 is a retained runtime and already has version-matched fixtures.
+- Review restored the original v8.10 integration content/path guard. It fails on coverage that predates this feature, confirmed in a clean snapshot of `c9949f11`. Do not disable its checks or remove existing coverage to claim a passing cleanup.
 - Historical support cleanup must account for Markdown structure: remove obsolete table columns and their cells together, and remove version-specific file-tree branches with their children rather than leaving orphaned content.
 - Final tracked-content audits preserve upstream `x-added-in-version` metadata as provenance and classify apparent matches inside binary assets as incidental bytes.
 
@@ -36,4 +36,4 @@ Started: 2026-10-05T06:30:28Z
 - Do not remove the generic deployment identifier/BPMN parsing fallback in `cmd/cmd_deploy_run_data.go`; retained versions use it independently of the removed adapter.
 
 ## Current Handoff
-- Feature complete; no handoff required.
+- #331 is complete with the user-approved deferral of the pre-existing boundary-check conflict to the stable 8.10 upgrade. Keep the restored guard and existing integration coverage. No further Ralph iteration is needed for this feature. Original implementation commit subjects were not rewritten; the closeout commit uses the required bare issue suffix.

@@ -12,7 +12,6 @@ Date: 2026-09-25. Ralph remains stopped. No production or BPMN changes.
 | C89 existing basic user-task regression | Passed |
 | C89 filtered volume (3 seeds, batch 1) | JSON, keys, total, limit 2 and empty human/JSON/keys passed |
 | Profile gate | C89 ready; c88local and c810local both report 8.9.16 and fail expected-version checks |
-| C87 | Not selected; unsupported checks implemented but not live-validated |
 | Command inventory | User-task drift resolved; unrelated drift remains (listed below) |
 
 ## Commands and evidence

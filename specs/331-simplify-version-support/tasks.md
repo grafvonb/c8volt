@@ -98,6 +98,10 @@ The previous five tasks revisited deploy/embed tests, repeated generator/consume
 | FR-011 | T003 |
 | FR-012 | Targeted checks in T001; generation and full executable checks in T002; final audit in T003 |
 
+## Review validation status — 2026-10-06
+
+The completed implementation checkboxes above record the original iterations. Review corrected residual documentation and dead code. The restored boundary check fails on pre-existing experimental integration content, reproduced at the pre-implementation baseline; T002's original passing boundary evidence is superseded by `progress.md`. The user accepted deferring this pre-existing conflict to the separate stable 8.10 upgrade and closing #331. All three work units are complete with that explicit validation exception. Do not interpret the checkboxes as an all-checks-pass result or rerun Ralph to remove existing retained coverage.
+
 ## Ralph Handoff
 
 Complete one permitted story/work unit at a time. Store actual evidence, remaining scope and reusable discoveries in the existing coordinated progress/memory records. Do not repeat successful validation just to commit, and do not add a review-only follow-up task when the current unit can resolve the finding. Use Conventional Commits referencing #331 when the Ralph workflow reaches its commit step. This planning revision does not start implementation.

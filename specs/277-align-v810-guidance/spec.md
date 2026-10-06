@@ -160,6 +160,6 @@ As a c8volt operator, I want all operator-facing guidance to present one coheren
 - New Camunda compatibility identities or configuration aliases.
 - Updating the active Camunda 8.10 source baseline.
 - Restoring V810-to-C89 embedded-definition fallback.
-- Modifying C87, C88, C89, or C810 process definitions.
+- Modifying C88, C89, or C810 process definitions.
 - Adding live Camunda 8.10 integration environments, profiles, fixtures, scripts, targets, or real-state scenarios.
 - Rewriting completed task descriptions, progress logs, or implementation-memory records to conceal their historical state.

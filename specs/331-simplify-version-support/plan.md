@@ -97,3 +97,9 @@ Compile integration-tagged packages with `go test -c` so their `TestMain` does n
 ## Complexity Tracking
 
 No new complexity or constitution exception. The explicit support break is recorded above. No unresolved clarification remains.
+
+## Accepted closeout — 2026-10-06
+
+The user approved finishing #331 with the pre-existing repository-boundary conflict deferred to the separate stable Camunda 8.10 upgrade. Keep the restored guard and existing integration coverage. The guard's failure was reproduced at pre-implementation commit `c9949f11` and is not reported as passing. This accepted exception supersedes the all-boundary-checks-pass completion requirement for this feature only.
+
+No stable 8.10 client refresh, baseline/maturity change, integration expansion or guard redesign belongs to this closeout. Default remains 8.9. Runtime tests, build and generation evidence from the implementation are retained; review corrections received targeted command tests, integration compilation, shell syntax and whitespace checks. See `progress.md` for evidence and corrections to earlier completion claims.

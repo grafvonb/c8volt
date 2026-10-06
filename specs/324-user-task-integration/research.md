@@ -2,7 +2,7 @@
 
 ## Existing models and versions
 
-**Decision**: Select existing files with `embeddedFixturePrefix` and `selectEmbeddedFixtureBySuffix`. C88, C89 and C810 have both `SimpleUserTaskWithIncident` and `SimpleParentWithIncidentSubprocess`; C87 has the standalone incident model but native user-task features are unsupported.
+**Decision**: Select existing files with `embeddedFixturePrefix` and `selectEmbeddedFixtureBySuffix`. C88, C89 and C810 have both `SimpleUserTaskWithIncident` and `SimpleParentWithIncidentSubprocess`.
 
 **Rationale**: All supported incident models map `assert(1, not(hasIncident), ...)` to task-local `incident`; explicit `hasIncident=false` avoids the default incident. Parent models call the corresponding versioned child. Ordinary models lack task input mappings and provide process-only negative cases.
 

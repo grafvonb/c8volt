@@ -75,7 +75,7 @@ As a release operator, I want filtered paging and counts verified using existing
 ### Functional Requirements
 
 - **FR-001**: Coverage MUST exercise actual CLI commands against selected disposable profiles for features #309 and #310, using existing authentication, profile selection, and version readiness checks.
-- **FR-002**: Each supported profile MUST use its corresponding existing C88, C89, or C810 embedded models. No model identifier rewriting, cross-version definitions, new models, or model modifications are permitted. C87 coverage MUST assert unsupported native user-task behavior.
+- **FR-002**: Each supported profile MUST use its corresponding existing C88, C89, or C810 embedded models. No model identifier rewriting, cross-version definitions, new models, or model modifications are permitted.
 - **FR-003**: Baseline coverage MUST prove local matching, process-only exclusion, shadowing, display independence, and display shortening as specified in Story 1, including a compact table of five operators ($eq, $neq, $exists, $in, $like) using available local values.
 - **FR-004**: Called-process coverage MUST use the matching incident parent/child models and discovered child PI keys, proving local and effective scopes without assuming live caller-variable inheritance.
 - **FR-005**: Volume coverage MUST prove complete filtered traversal, duplicate-free identities, bounded results, consistent counts, and established empty output using multiple matching tasks.

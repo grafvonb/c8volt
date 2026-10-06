@@ -40,6 +40,6 @@ The V810 selection contains exactly:
 
 ## Compatibility guarantees
 
-- C87, C88, and C89 assets and selection remain unchanged.
+- C88 and C89 assets and selection remain unchanged.
 - C810 workflow behavior equals C89 after the permitted version-specific fields are normalized.
 - No live 8.10 integration profile or target is part of this contract.

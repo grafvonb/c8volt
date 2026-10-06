@@ -42,7 +42,7 @@
 
 ## Stable and integration boundaries
 
-**Decision**: Do not edit C87, C88, C89, `integration/`, or integration Make targets. Validate those boundaries with diffs against the #273 feature baseline and run repository tests without starting a live integration suite.
+**Decision**: Do not edit C88, C89, `integration/`, or integration Make targets. Validate those boundaries with diffs against the #273 feature baseline and run repository tests without starting a live integration suite.
 
 **Rationale**: Native C810 production resources are additive. The issue explicitly excludes live 8.10 certification and stable-fixture changes.
 

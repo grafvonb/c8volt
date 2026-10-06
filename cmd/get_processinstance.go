@@ -143,11 +143,6 @@ Use --has-user-tasks to fetch process instances by their owning user-task keys.`
 		if err := validatePIWithElementsUsage(lk, filterFlagsSet); err != nil {
 			fail(err)
 		}
-		if lk == 0 && ltk == 0 {
-			if err := validatePISearchVersionSupport(cfg); err != nil {
-				fail(err)
-			}
-		}
 
 		log.Debug(fmt.Sprintf("getting pi; mode %s", pickMode()))
 		var pis process.ProcessInstances

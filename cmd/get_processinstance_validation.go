@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/grafvonb/c8volt/c8volt/process"
-	"github.com/grafvonb/c8volt/config"
 	"github.com/grafvonb/c8volt/consts"
 	"github.com/grafvonb/c8volt/internal/services/incidentfilter"
 	"github.com/spf13/cobra"
@@ -296,12 +295,6 @@ func useInvalidInputFlagErrors(cmd *cobra.Command) {
 	cmd.SetFlagErrorFunc(func(cmd *cobra.Command, err error) error {
 		return silenceUsageForError(cmd, invalidInputError(err))
 	})
-}
-
-// validatePISearchVersionSupport preserves the validation hook for search
-// capabilities shared by every supported Camunda version.
-func validatePISearchVersionSupport(cfg *config.Config) error {
-	return nil
 }
 
 // validatePIMixedDateFilterInputs rejects using absolute dates and relative-day

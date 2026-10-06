@@ -4,7 +4,7 @@
 
 **Created**: 2026-10-02
 
-**Status**: Draft
+**Status**: Implemented — pre-existing boundary-check conflict deferred by user
 
 **Input**: User description: https://github.com/grafvonb/c8volt/issues/331
 

@@ -49,7 +49,7 @@ Use this map before searching from scratch.
 | Generated docs | `docs/cli/*`, `docs/index.md` | Generated through `make docs-content`. Do not hand-edit generated CLI docs when command metadata changed. |
 | Docs generator | `docsgen/main.go` | Uses Cobra command tree to regenerate CLI markdown. |
 | API client generation | `api/*`, `api/mutations/*` | Fetch, mutate, and regenerate OpenAPI clients. See `api/README.md`. |
-| Embedded BPMN fixtures | `embedded/processdefinitions/*` | Version-prefixed fixtures use `C87_`, `C88_`, `C89_`, and `C810_`. |
+| Embedded BPMN fixtures | `embedded/processdefinitions/*` | Version-prefixed fixtures use `C88_`, `C89_`, and `C810_`. |
 | Feature artifacts | `specs/<feature>/` | Speckit specs, plans, tasks, progress, research, data-models, and quickstarts. |
 
 ## Layering Rules

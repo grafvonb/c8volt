@@ -107,7 +107,7 @@
 - [x] T031 [US3] Add `validateWalkPIWithElementsUsage` for `--key` and `--keys-only` constraints in `cmd/walk_processinstance.go`
 - [x] T032 [US3] Use `activityTraversalPayload` for JSON whenever variables, incidents, or elements are combined in `cmd/walk_processinstance.go` and `cmd/cmd_views_walk_incidents.go`
 - [x] T033 [US3] Wrap element enrichment failures with command context and stop before rendering any success output in `cmd/walk_processinstance.go`
-- [x] T035 [US3] Run targeted US3 tests covering `cmd/walk_test.go` with `go test ./cmd -run 'TestWalkProcessInstanceCommand_.*Elements|TestWalkProcessInstanceCommand_RejectsKeysOnlyWithElements|TestWalkProcessInstanceCommand_WithElementsUnsupportedV87' -count=1`
+- [x] T035 [US3] Run targeted US3 tests covering `cmd/walk_test.go` with `go test ./cmd -run 'TestWalkProcessInstanceCommand_.*Elements|TestWalkProcessInstanceCommand_RejectsKeysOnlyWithElements' -count=1`
 
 **Checkpoint**: All user stories are independently functional.
 

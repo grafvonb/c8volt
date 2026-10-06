@@ -78,11 +78,6 @@ Use --dry-run to inspect planned repairs without mutation, --auto-confirm or --a
 		if err := validateOpsWorkflowReportPathForPlanning(flagOpsRepairProcessInstanceReportFile, OpsWorkflowReportPreserveExisting); err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}
-		if hasOpsRepairProcessInstanceSearchModeFlags(cmd) {
-			if err := validatePISearchVersionSupport(cfg); err != nil {
-				handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
-			}
-		}
 		stdinKeys, err := readKeysIfDash(args)
 		if err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)

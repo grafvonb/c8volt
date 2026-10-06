@@ -66,6 +66,6 @@ Except for the intentional omitted-version promotion from V88 to V89, the refine
 - explicit runtime service selection and version-specific behavior;
 - configuration normalization rules other than the V89 fallback;
 - generated Camunda clients and provenance;
-- C87, C88, C89, and C810 BPMN definitions;
+- C88, C89, and C810 BPMN definitions;
 - live integration profiles, scripts, targets, and scenarios;
 - the active Camunda 8.10 source baseline.
