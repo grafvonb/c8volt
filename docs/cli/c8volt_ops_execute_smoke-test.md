@@ -17,7 +17,7 @@ Unless --no-cleanup is set, cleanup removes created process instances and each d
 
 Creation uses the configured tenant, or the default tenant when none is configured. --all-tenants is not supported because creation requires one destination tenant.
 
-Use --dry-run to validate the plan without mutation.
+Use --dry-run to validate the plan without mutation. Use --json for machine-readable output; --keys-only is not supported because the workflow returns a structured audit result rather than a key stream.
 
 ```
 c8volt ops execute smoke-test [flags]

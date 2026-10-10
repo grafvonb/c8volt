@@ -122,6 +122,8 @@ const (
 	CompletionDispositionSubmitted CompletionDisposition = "submitted"
 	// CompletionDispositionConfirmed means the command's configured wait or proof contract completed.
 	CompletionDispositionConfirmed CompletionDisposition = "confirmed"
+	// CompletionDispositionSkipped means the tracked item completed without mutation because workflow controls or safety policy retained it.
+	CompletionDispositionSkipped CompletionDisposition = "skipped"
 	// CompletionDispositionFailed means the configured completion boundary was not reached.
 	CompletionDispositionFailed CompletionDisposition = "failed"
 )

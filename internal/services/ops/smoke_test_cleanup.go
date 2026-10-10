@@ -20,6 +20,11 @@ func (s *Service) cleanupSmokeTestResources(ctx context.Context, result d.SmokeT
 		NoCleanup:         result.Request.NoCleanup,
 		DefinitionResults: smokeTestInitialDefinitionResults(result.Deployment.ProcessDefinitions),
 	}
+	cfg := services.ApplyCallOptions(opts)
+	reportSmokeTestFrozenProgress(cfg.Progress, "cleaning up smoke-test process definitions", "process definition(s)", 0, len(cleanup.DefinitionResults))
+	defer func() {
+		reportSmokeTestDefinitionCleanupProgress(cfg.Progress, cleanup.DefinitionResults)
+	}()
 	if result.Request.NoCleanup {
 		cleanup.ProcessInstanceCleanup.Status = d.OpsWorkflowStepStatusSkipped
 		cleanup.ProcessDefinitionEligibility.Status = d.OpsWorkflowStepStatusSkipped
@@ -62,7 +67,6 @@ func (s *Service) cleanupSmokeTestResources(ctx context.Context, result d.SmokeT
 		return cleanup, err
 	}
 
-	cfg := services.ApplyCallOptions(opts)
 	var workflowErrs []error
 	var unattemptedReason string
 	for i := range cleanup.DefinitionResults {
@@ -141,6 +145,28 @@ func (s *Service) cleanupSmokeTestResources(ctx context.Context, result d.SmokeT
 		return cleanup, fmt.Errorf("cleanup smoke-test process definitions: %w", workflowErr)
 	}
 	return cleanup, nil
+}
+
+// reportSmokeTestDefinitionCleanupProgress emits one fixed collection scope and a truthful terminal fact for every tracked definition.
+func reportSmokeTestDefinitionCleanupProgress(progress func(d.OpsProgressEvent), items []d.SmokeTestDefinitionCleanupItem) {
+	total := len(items)
+	for i, item := range items {
+		disposition := d.OpsCompletionDispositionSkipped
+		switch item.Disposition {
+		case d.SmokeTestDefinitionCleanupDispositionConfirmed:
+			disposition = d.OpsCompletionDispositionConfirmed
+		case d.SmokeTestDefinitionCleanupDispositionSubmitted:
+			disposition = d.OpsCompletionDispositionSubmitted
+		case d.SmokeTestDefinitionCleanupDispositionFailed:
+			disposition = d.OpsCompletionDispositionFailed
+		}
+		identity := item.Definition.ProcessDefinitionKey
+		if identity == "" {
+			identity = item.Definition.BpmnProcessID
+		}
+		reportSmokeTestCompletion(progress, "cleaning up smoke-test process definitions", "process definition(s)", total, identity, disposition, item.Reason)
+		reportSmokeTestFrozenProgress(progress, "cleaning up smoke-test process definitions", "process definition(s)", i+1, total)
+	}
 }
 
 // smokeTestMarkUnattemptedDefinitionCleanup makes every known but unscheduled definition actionable.

@@ -70,3 +70,38 @@ Started: 2026-10-10 11:21:28
 - Known deployment identities now remain actionable through earlier-stage failures, fail-fast, and cancellation; accepted confirmation failures preserve submission evidence.
 - Targeted fault-path suites, the process-definition paging regression, complete affected package suites, formatting, and whitespace validation passed; command metadata did not change, so docs regeneration was unnecessary.
 ---
+
+## Iteration 4 - 2026-10-10 12:13
+**Work Unit**: US3 Preserve Existing Execution Controls (complete: T004)
+**Tasks Completed**:
+- [x] T004: Integrate collection progress, execution controls, output modes, terminal prompts, documentation, and regression coverage
+**Tasks Remaining in Work Unit**: 0; US3 and feature complete
+**Commit**: This work-unit commit
+**Files Changed**:
+- README.md
+- c8volt/foptions/options.go
+- c8volt/foptions/options_test.go
+- c8volt/ops/model_test.go
+- c8volt/ops/progress_model.go
+- cmd/command_contract_test.go
+- cmd/ops_execute_smoke_test_test.go
+- cmd/ops_execute_smoketest.go
+- cmd/ops_execute_smoketest_progress.go
+- cmd/ops_execute_smoketest_progress_test.go
+- cmd/ops_progress_render.go
+- cmd/ops_progress_test.go
+- cmd/ops_semantic_progress.go
+- docs/cli/c8volt_ops_execute_smoke-test.md
+- docs/index.md
+- internal/domain/ops_progress.go
+- internal/services/ops/smoke_test_cleanup.go
+- internal/services/ops/smoke_test_service.go
+- internal/services/ops/smoke_test_test.go
+- specs/333-fix-smoke-test-cleanup/quickstart.md
+- specs/333-fix-smoke-test-cleanup/tasks.md
+- specs/333-fix-smoke-test-cleanup/ralph-memory.md
+- specs/333-fix-smoke-test-cleanup/progress.md
+**Learnings**:
+- A collection-owned completion phase prevents repeated single-key totals and preserves skipped evidence for retained or unattempted definitions.
+- Explicit output-mode metadata and preflight validation keep structured smoke-test results out of keys-only workflows; real-terminal coverage confirms prompt routing through configured and inherited stderr.
+---

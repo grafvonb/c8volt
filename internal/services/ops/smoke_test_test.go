@@ -1341,10 +1341,40 @@ func TestExecuteSmokeTestEmitsStageCompletionFacts(t *testing.T) {
 		Disposition:  d.OpsCompletionDispositionConfirmed,
 	}}, opsCompletionProgressByPhase(snapshot, "cleaning up smoke-test process instances"))
 	require.Equal(t, []d.OpsCompletionProgress{
-		{Phase: "cleaning up smoke-test process definition", CoreResource: "process definition(s)", Total: 1, Identity: "pd-88-child", Disposition: d.OpsCompletionDispositionConfirmed},
-		{Phase: "cleaning up smoke-test process definition", CoreResource: "process definition(s)", Total: 1, Identity: "pd-88-middle", Disposition: d.OpsCompletionDispositionConfirmed},
-		{Phase: "cleaning up smoke-test process definition", CoreResource: "process definition(s)", Total: 1, Identity: "pd-88", Disposition: d.OpsCompletionDispositionConfirmed},
-	}, opsCompletionProgressByPhase(snapshot, "cleaning up smoke-test process definition"))
+		{Phase: "cleaning up smoke-test process definitions", CoreResource: "process definition(s)", Total: 3, Identity: "pd-88-child", Disposition: d.OpsCompletionDispositionConfirmed},
+		{Phase: "cleaning up smoke-test process definitions", CoreResource: "process definition(s)", Total: 3, Identity: "pd-88-middle", Disposition: d.OpsCompletionDispositionConfirmed},
+		{Phase: "cleaning up smoke-test process definitions", CoreResource: "process definition(s)", Total: 3, Identity: "pd-88", Disposition: d.OpsCompletionDispositionConfirmed},
+	}, opsCompletionProgressByPhase(snapshot, "cleaning up smoke-test process definitions"))
+	require.Empty(t, opsCompletionProgressByPhase(snapshot, "delete process definitions"))
+}
+
+// TestCleanupSmokeTestResourcesProgressAccountsForRetainedDefinitions verifies
+// no-cleanup freezes one collection total and reports each retained definition as skipped.
+func TestCleanupSmokeTestResourcesProgressAccountsForRetainedDefinitions(t *testing.T) {
+	fixture, err := smokeTestFixtureForVersion(toolx.V89)
+	require.NoError(t, err)
+	deployment := smokeTestDeploymentResult(fixture, completeSmokeTestDeploymentForFixture(fixture, "pd-main", "tenant-a"), d.OpsWorkflowStepStatusConfirmed)
+	var events []d.OpsProgressEvent
+	service := NewWithWorkflowDependencies(nil, nil, nil, nil, nil, toolx.V89).(*Service)
+
+	got, cleanupErr := service.cleanupSmokeTestResources(context.Background(), d.SmokeTestResult{
+		Request:    d.SmokeTestRequest{Count: 1, NoCleanup: true},
+		Deployment: deployment,
+	}, services.WithProgress(func(event d.OpsProgressEvent) {
+		events = append(events, event)
+	}))
+
+	require.NoError(t, cleanupErr)
+	require.Equal(t, &d.SmokeTestDefinitionCleanupSummary{Status: d.OpsWorkflowStepStatusSkipped, Total: 3, Retained: 3}, got.DefinitionSummary)
+	requireSmokeTestProgressContains(t, events, "cleaning up smoke-test process definitions", 0, 3)
+	requireSmokeTestProgressContains(t, events, "cleaning up smoke-test process definitions", 3, 3)
+	completions := opsCompletionProgressByPhase(events, "cleaning up smoke-test process definitions")
+	require.Len(t, completions, 3)
+	for _, completion := range completions {
+		require.Equal(t, 3, completion.Total)
+		require.Equal(t, d.OpsCompletionDispositionSkipped, completion.Disposition)
+		require.Equal(t, "cleanup disabled (--no-cleanup)", completion.FailureDetail)
+	}
 }
 
 // requireSmokeTestProgressContains asserts a stage counter appeared without depending on concurrent event ordering.

@@ -527,7 +527,7 @@ func smokeTestCleanupProcessDefinition(ctx context.Context, resourceAPI pdsvc.Re
 	if key == "" {
 		return out, nil
 	}
-	deleteOpts := smokeTestMirrorCompletionOptions(opts, "delete process definitions", "cleaning up smoke-test process definition", "process definition(s)")
+	deleteOpts := smokeTestNestedOptions(opts...)
 	responses, err := pdsvc.DeleteProcessDefinitions(ctx, resourceAPI, pdAPI, piAPI, log, typex.Keys{key}, wantedWorkers, deleteOpts...)
 	out.Submitted = anyResourceDeleteResponseAccepted(responses)
 	out.SubmittedProcessDefinitionKey = key

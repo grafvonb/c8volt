@@ -94,9 +94,9 @@ func TestOpsExecuteSmokeTestSemanticProgressRoutesStageCompletions(t *testing.T)
 	request.Progress(ops.ProgressEvent{
 		Kind: ops.ProgressEventKindCompletion,
 		Completion: &ops.CompletionProgress{
-			Phase:        "cleaning up smoke-test process definition",
+			Phase:        "cleaning up smoke-test process definitions",
 			CoreResource: "process definition(s)",
-			Total:        1,
+			Total:        3,
 			Identity:     "pd-88",
 			Disposition:  ops.CompletionDispositionConfirmed,
 		},
@@ -139,11 +139,11 @@ func TestOpsExecuteSmokeTestSemanticProgressRoutesStageCompletions(t *testing.T)
 		Importance: logging.ActivityImportanceWorkflow,
 	})
 	require.Contains(t, sink.Starts(), activitysink.Start{
-		Message:    "cleaning up smoke-test process definition, 0/1 process definition(s)",
+		Message:    "cleaning up smoke-test process definitions, 0/3 process definition(s)",
 		Importance: logging.ActivityImportanceWorkflow,
 	})
 	require.Contains(t, sink.PriorityUpdates(), activitysink.Update{
-		Message:    "cleaning up smoke-test process definition, 1/1 process definition(s)",
+		Message:    "cleaning up smoke-test process definitions, 1/3 process definition(s)",
 		Importance: logging.ActivityImportanceWorkflow,
 	})
 }

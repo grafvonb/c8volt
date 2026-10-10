@@ -24,6 +24,13 @@ import (
 	"github.com/grafvonb/c8volt/testx"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/term"
+)
+
+const (
+	opsSmokeTestTerminalConfigEnv  = "C8VOLT_SMOKE_TERMINAL_CONFIG"
+	opsSmokeTestTerminalStderrEnv  = "C8VOLT_SMOKE_TERMINAL_STDERR"
+	opsSmokeTestTerminalCaptureEnv = "C8VOLT_SMOKE_TERMINAL_CAPTURE"
 )
 
 // TestOpsExecuteSmokeTestTenantContextUsesCreationSemantics verifies smoke
@@ -123,6 +130,7 @@ func TestOpsExecuteSmokeTestHelpDocumentsCommand(t *testing.T) {
 		"--report-file string",
 		"--report-format string",
 		"--all-tenants is not supported because",
+		"--keys-only is not supported because the workflow returns a structured audit result",
 		"./c8volt ops execute smoke-test --dry-run",
 		"./c8volt ops execute smoke-test --report-file smoke-test.md",
 		"./c8volt ops execute smoke-test --count 5 --report-file smoke-test.md",
@@ -147,6 +155,7 @@ func TestOpsExecuteSmokeTestDefaultStageMilestonesAndPhaseIsolation(t *testing.T
 	reportOpsSmokeTestCompletionEvent(request.Progress, "delete", "nested-root", "process-instance tree(s)", 1, ops.CompletionDispositionConfirmed, "")
 	now = now.Add(opsDurableMilestoneMinimumElapsed)
 	reportOpsSmokeTestCompletionEvent(request.Progress, "deploying smoke-test fixture", "smoke-definition-2", "process definition(s)", 2, ops.CompletionDispositionConfirmed, "")
+	reportOpsSmokeTestCompletionEvent(request.Progress, "cleaning up smoke-test process definitions", "retained-definition", "process definition(s)", 3, ops.CompletionDispositionSkipped, "cleanup disabled (--no-cleanup)")
 	reportOpsSmokeTestCompletionEvent(request.Progress, "cleaning up smoke-test process instances", "smoke-root", "process-instance tree(s)", 1, ops.CompletionDispositionFailed, "cleanup rejected")
 	progress.Close()
 
@@ -231,6 +240,11 @@ func TestOpsExecuteSmokeTestInvalidLocalFlags(t *testing.T) {
 			name: "report format without report file",
 			args: []string{"ops", "execute", "smoke-test", "--report-format", "json"},
 			want: "--report-format requires --report-file",
+		},
+		{
+			name: "unsupported keys-only output",
+			args: []string{"--keys-only", "ops", "execute", "smoke-test", "--dry-run"},
+			want: "--keys-only is not supported for ops execute smoke-test",
 		},
 	}
 
@@ -596,6 +610,96 @@ func TestOpsExecuteSmokeTestAutomationJSONStdoutIsMachineOnly(t *testing.T) {
 	require.NotContains(t, strings.Join(requests.Snapshot(), "\n"), "/v2/resources/pd-88/deletion")
 }
 
+// TestOpsExecuteSmokeTestMachineOutputModesRemainExact verifies quiet JSON
+// emits exactly one envelope through EOF without stderr contamination.
+func TestOpsExecuteSmokeTestMachineOutputModesRemainExact(t *testing.T) {
+	var requests testx.SafeSlice[string]
+	srv := newOpsExecuteSmokeTestRunWalkServer(t, &requests, nil)
+	t.Cleanup(srv.Close)
+
+	stdout, stderr := executeRootForProcessInstanceWithSeparateOutputs(t,
+		"--config", writeTestConfigForVersion(t, srv.URL, "8.8"),
+		"--quiet", "--json",
+		"ops", "execute", "smoke-test", "--automation", "--no-cleanup",
+	)
+
+	require.Empty(t, stderr)
+	envelope := requireSingleJSONObjectDocument(t, stdout)
+	require.Equal(t, "ops execute smoke-test", envelope["command"])
+}
+
+// TestOpsExecuteSmokeTestConfirmationTerminal verifies the destructive prompt
+// uses real terminal stdin and the effective configured or inherited stderr.
+func TestOpsExecuteSmokeTestConfirmationTerminal(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") == "1" {
+		runOpsExecuteSmokeTestConfirmationTerminalHelper(t)
+		os.Exit(0)
+	}
+
+	for _, stderrMode := range []string{"configured", "inherited"} {
+		t.Run(stderrMode, func(t *testing.T) {
+			var requests testx.SafeSlice[string]
+			srv := newOpsExecuteSmokeTestRunWalkServer(t, &requests, nil)
+			t.Cleanup(srv.Close)
+			capturePath := filepath.Join(t.TempDir(), "configured-stderr.txt")
+			prompt := "smoke test: deploy fixture, start 1 process instance(s), walk process-instance families, then clean up created resources.\nDo you want to proceed? [y/N]: "
+
+			result := testx.NewCmdTerminalRunner().Run(t, testx.CmdTerminalRunRequest{
+				ScopeTestName: "TestOpsExecuteSmokeTestConfirmationTerminal",
+				Env: map[string]string{
+					opsSmokeTestTerminalConfigEnv:  writeTestConfigForVersion(t, srv.URL, "8.9"),
+					opsSmokeTestTerminalStderrEnv:  stderrMode,
+					opsSmokeTestTerminalCaptureEnv: capturePath,
+				},
+				Exchanges: []testx.CmdTerminalExchange{{Prompt: prompt, Response: "y"}},
+				Timeout:   5 * time.Second,
+			})
+
+			if !result.Supported {
+				t.Skip(result.UnsupportedReason)
+			}
+			require.NoError(t, result.Err, result.Stderr)
+			require.NotContains(t, result.Stdout, "Do you want to proceed?")
+			require.Equal(t, 1, strings.Count(result.Stderr, prompt))
+			requestLog := strings.Join(requests.Snapshot(), "\n")
+			require.Equal(t, 3, strings.Count(requestLog, "/v2/resources/"))
+			require.Equal(t, 1, strings.Count(requestLog, "/v2/process-instances/101/deletion"))
+			if stderrMode == "configured" {
+				captured, err := os.ReadFile(capturePath)
+				require.NoError(t, err)
+				require.Equal(t, result.Stderr, string(captured))
+			}
+		})
+	}
+}
+
+// runOpsExecuteSmokeTestConfirmationTerminalHelper executes the real smoke-test
+// command with terminal stdin and either configured or inherited stderr.
+func runOpsExecuteSmokeTestConfirmationTerminalHelper(t *testing.T) {
+	require.Equal(t, "TestOpsExecuteSmokeTestConfirmationTerminal", os.Getenv(testx.CmdSubprocessNameEnv))
+	require.True(t, term.IsTerminal(int(os.Stdin.Fd())))
+
+	root := Root()
+	resetCommandTreeFlags(root)
+	resetProcessInstanceCommandGlobals()
+	root.SetOut(os.Stdout)
+	if os.Getenv(opsSmokeTestTerminalStderrEnv) == "configured" {
+		capture, err := os.Create(os.Getenv(opsSmokeTestTerminalCaptureEnv))
+		require.NoError(t, err)
+		defer capture.Close()
+		root.SetErr(io.MultiWriter(os.Stderr, capture))
+	} else {
+		root.SetErr(nil)
+	}
+	root.SetArgs([]string{
+		"--config", os.Getenv(opsSmokeTestTerminalConfigEnv),
+		"--no-indicator",
+		"ops", "execute", "smoke-test",
+		"--no-wait",
+	})
+	_, _ = root.ExecuteC()
+}
+
 // TestOpsExecuteSmokeTestDeploysFixtureAndRendersDeploymentOutput verifies the
 // final smoke-test summary remains while duplicate legacy progress is hidden.
 func TestOpsExecuteSmokeTestDeploysFixtureAndRendersDeploymentOutput(t *testing.T) {
@@ -759,6 +863,8 @@ func TestOpsExecuteSmokeTestNoCleanupHumanOutputReportsRetainedResources(t *test
 	require.Contains(t, output, "process definition pd-88-child (C88_SimpleUserTask, version 4, tenant <default>): retained - cleanup disabled (--no-cleanup)")
 	require.Contains(t, output, "process definition pd-88-middle (C88_SimpleParent, version 4, tenant <default>): retained - cleanup disabled (--no-cleanup)")
 	require.Contains(t, output, "process definition pd-88 (C88_MultipleSubProcessesParent, version 4, tenant <default>): retained - cleanup disabled (--no-cleanup)")
+	require.Contains(t, output, "pd-88-child skipped: cleanup disabled (--no-cleanup) (cleaning up smoke-test process definitions, 1/3 process definition(s))")
+	require.Contains(t, output, "pd-88 skipped: cleanup disabled (--no-cleanup) (cleaning up smoke-test process definitions, 3/3 process definition(s))")
 	require.Contains(t, output, "outcome: passed_cleanup_skipped")
 	requestLog := strings.Join(requests.Snapshot(), "\n")
 	require.NotContains(t, requestLog, "DELETE /v1/process-instances/")

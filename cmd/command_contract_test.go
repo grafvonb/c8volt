@@ -2380,6 +2380,7 @@ func TestCommandCapabilityForCommand_OpsExecuteSmokeTestContract(t *testing.T) {
 		Supported:        true,
 		MachinePreferred: true,
 	})
+	require.NotContains(t, capability.OutputModes, OutputModeContract{Name: "keys-only", Supported: true})
 	require.Contains(t, capability.Flags, FlagContract{
 		Name:        "count",
 		Shorthand:   "n",

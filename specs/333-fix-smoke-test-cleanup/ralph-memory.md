@@ -19,6 +19,8 @@ Started: 2026-10-10T09:21:28Z
 - CLI cleanup wording derives definition counts and mixed-state evidence from `DefinitionSummary`; JSON remains the shared envelope over the public model.
 - Once deployment evidence exists, failures before or during cleanup preserve every known definition as an actionable result: completed items remain unchanged and unscheduled items carry an explicit reason.
 - Rejected deletion responses retain their returned status, while accepted requests that fail confirmation remain submitted evidence inside a failed per-definition result.
+- Definition cleanup progress owns one plural phase with the frozen distinct-definition total; nested single-key deletion progress is suppressed and each tracked result emits confirmed, submitted, failed, or skipped lifecycle evidence.
+- Smoke-test machine output explicitly supports JSON but rejects keys-only before client creation because the workflow result is structured rather than a key stream.
 
 ## Gotchas
 
@@ -39,4 +41,4 @@ Started: 2026-10-10T09:21:28Z
 - Do not batch the three definition deletions through one aggregate call because accepted/wait-error evidence must remain attributable per key.
 
 ## Current Handoff
-- Start US3 with T004: integrate collection-level progress and execution-control coverage without changing the validated cleanup state machine.
+- Feature complete; no handoff required.

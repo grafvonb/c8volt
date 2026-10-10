@@ -33,7 +33,7 @@ Unless --no-cleanup is set, cleanup removes created process instances and each d
 
 Creation uses the configured tenant, or the default tenant when none is configured. --all-tenants is not supported because creation requires one destination tenant.
 
-Use --dry-run to validate the plan without mutation.`,
+Use --dry-run to validate the plan without mutation. Use --json for machine-readable output; --keys-only is not supported because the workflow returns a structured audit result rather than a key stream.`,
 	Example: `  ./c8volt ops execute smoke-test --dry-run
   ./c8volt --tenant tenant-a ops execute smoke-test --dry-run
   ./c8volt ops execute smoke-test --report-file smoke-test.md
@@ -119,10 +119,17 @@ func init() {
 	setCommandMutation(opsExecuteSmokeTestCmd, CommandMutationStateChanging)
 	setContractSupport(opsExecuteSmokeTestCmd, ContractSupportFull)
 	setAutomationSupport(opsExecuteSmokeTestCmd, AutomationSupportFull, "supports unattended dry-run previews and implicitly confirmed smoke-test cleanup with shared machine output")
+	setOutputModes(opsExecuteSmokeTestCmd,
+		OutputModeContract{Name: RenderModeOneLine.String(), Supported: true},
+		OutputModeContract{Name: RenderModeJSON.String(), Supported: true, MachinePreferred: true},
+	)
 	setAllTenantsSupport(opsExecuteSmokeTestCmd, AllTenantsSupportRejectedConcreteDestination)
 }
 
 func validateOpsExecuteSmokeTestFlags(cmd *cobra.Command) error {
+	if flagViewKeysOnly {
+		return invalidFlagValuef("--keys-only is not supported for ops execute smoke-test")
+	}
 	if flagOpsExecuteSmokeTestCount < 1 {
 		return invalidFlagValuef("invalid value for --count: %d, expected positive integer", flagOpsExecuteSmokeTestCount)
 	}

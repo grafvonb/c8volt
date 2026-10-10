@@ -29,6 +29,7 @@ Format touched Go files with gofmt. Include relevant command-contract tests when
 - Repeat with fail-fast and cancellation; unscheduled entries remain unattempted. Default behavior attempts independent eligible siblings.
 - Cover duplicate keys, conflicting metadata, missing keys/main identity, unrelated versions/tenants, and safety discovery through sparse pages.
 - Cover no-cleanup, no-wait, dry-run, automation/auto-confirm, human/verbose/JSON/quiet and supported mode combinations. Check request counts, output streams, reports, progress totals, and EOF after one JSON envelope.
+- Verify `--keys-only` is rejected before preflight or mutation because smoke-test output is a structured workflow result rather than a key stream.
 
 ## Live default cleanup
 

@@ -334,6 +334,12 @@ func TestProgressConversions_MapCompletionDispositionLifecycle(t *testing.T) {
 			publicName: "confirmed",
 		},
 		{
+			name:       "retained work is skipped",
+			domain:     d.OpsCompletionDispositionSkipped,
+			public:     CompletionDispositionSkipped,
+			publicName: "skipped",
+		},
+		{
 			name:       "failed work stays failed",
 			domain:     d.OpsCompletionDispositionFailed,
 			public:     CompletionDispositionFailed,
