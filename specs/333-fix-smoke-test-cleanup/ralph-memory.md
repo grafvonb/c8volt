@@ -17,11 +17,14 @@ Started: 2026-10-10T09:21:28Z
 - Collection cleanup is sequential for deterministic per-key attribution. Default execution continues after independent errors; fail-fast and cancellation leave later entries explicitly unattempted.
 - Aggregate status precedence is failed/unattempted, retained/skipped, submitted, then confirmed. Accepted no-wait responses are submitted, never confirmed.
 - CLI cleanup wording derives definition counts and mixed-state evidence from `DefinitionSummary`; JSON remains the shared envelope over the public model.
+- Once deployment evidence exists, failures before or during cleanup preserve every known definition as an actionable result: completed items remain unchanged and unscheduled items carry an explicit reason.
+- Rejected deletion responses retain their returned status, while accepted requests that fail confirmation remain submitted evidence inside a failed per-definition result.
 
 ## Gotchas
 
 - Command fake-server request sequences now include eligibility and deletion calls for the two dependency definitions before the main definition.
 - Deployment tenant fallback remains on the legacy main projection; collection entries keep unknown tenant evidence unknown.
+- Dependency safety coverage can exercise the real paged eligibility helper with an owned-only first page and a blocker on a later page; filtering occurs after traversal.
 
 ## Reusable Commands
 
@@ -36,4 +39,4 @@ Started: 2026-10-10T09:21:28Z
 - Do not batch the three definition deletions through one aggregate call because accepted/wait-error evidence must remain attributable per key.
 
 ## Current Handoff
-- Start US2 with T003: complete fault-path evidence and actionable mixed-result reporting across service, facade, and command tests without rebuilding the collection loop.
+- Start US3 with T004: integrate collection-level progress and execution-control coverage without changing the validated cleanup state machine.

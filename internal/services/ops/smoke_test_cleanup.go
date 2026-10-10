@@ -45,6 +45,7 @@ func (s *Service) cleanupSmokeTestResources(ctx context.Context, result d.SmokeT
 		cleanup.ProcessDefinitionCleanup.Status = d.OpsWorkflowStepStatusSkipped
 		cleanup.Errors = append(cleanup.Errors, err.Error())
 		cleanup.Errors = append(cleanup.Errors, result.Deployment.Errors...)
+		smokeTestMarkUnattemptedDefinitionCleanup(&cleanup, "process-instance cleanup failed: "+err.Error())
 		cleanup.DefinitionSummary = smokeTestDefinitionCleanupSummary(cleanup.DefinitionResults, result.Deployment.DefinitionScopeComplete, cleanup.Errors)
 		return cleanup, fmt.Errorf("cleanup smoke-test process instances: %w", err)
 	}
@@ -56,16 +57,19 @@ func (s *Service) cleanupSmokeTestResources(ctx context.Context, result d.SmokeT
 		cleanup.ProcessDefinitionCleanup.Status = d.OpsWorkflowStepStatusSkipped
 		cleanup.Errors = append(cleanup.Errors, err.Error())
 		cleanup.Errors = append(cleanup.Errors, result.Deployment.Errors...)
+		smokeTestMarkUnattemptedDefinitionCleanup(&cleanup, err.Error())
 		cleanup.DefinitionSummary = smokeTestDefinitionCleanupSummary(cleanup.DefinitionResults, result.Deployment.DefinitionScopeComplete, cleanup.Errors)
 		return cleanup, err
 	}
 
 	cfg := services.ApplyCallOptions(opts)
 	var workflowErrs []error
+	var unattemptedReason string
 	for i := range cleanup.DefinitionResults {
 		item := &cleanup.DefinitionResults[i]
 		if ctxErr := ctx.Err(); ctxErr != nil {
 			item.Reason = ctxErr.Error()
+			unattemptedReason = "cleanup stopped: " + ctxErr.Error()
 			workflowErrs = append(workflowErrs, ctxErr)
 			break
 		}
@@ -76,6 +80,7 @@ func (s *Service) cleanupSmokeTestResources(ctx context.Context, result d.SmokeT
 			item.Eligibility.Errors = []string{item.Reason}
 			workflowErrs = append(workflowErrs, errors.New(item.Reason))
 			if cfg.FailFast {
+				unattemptedReason = "cleanup stopped after process-definition identity failure (--fail-fast)"
 				break
 			}
 			continue
@@ -88,6 +93,7 @@ func (s *Service) cleanupSmokeTestResources(ctx context.Context, result d.SmokeT
 			item.Reason = eligibilityErr.Error()
 			workflowErrs = append(workflowErrs, fmt.Errorf("process definition %s eligibility: %w", item.Definition.ProcessDefinitionKey, eligibilityErr))
 			if cfg.FailFast {
+				unattemptedReason = "cleanup stopped after process-definition eligibility failure (--fail-fast)"
 				break
 			}
 			continue
@@ -102,7 +108,7 @@ func (s *Service) cleanupSmokeTestResources(ctx context.Context, result d.SmokeT
 		switch {
 		case cleanupErr != nil:
 			item.Disposition = d.SmokeTestDefinitionCleanupDispositionFailed
-			item.Reason = cleanupErr.Error()
+			item.Reason = smokeTestDefinitionCleanupFailureReason(definitionCleanup, cleanupErr)
 			workflowErrs = append(workflowErrs, fmt.Errorf("process definition %s cleanup: %w", item.Definition.ProcessDefinitionKey, cleanupErr))
 		case definitionCleanup.Confirmed:
 			item.Disposition = d.SmokeTestDefinitionCleanupDispositionConfirmed
@@ -110,12 +116,16 @@ func (s *Service) cleanupSmokeTestResources(ctx context.Context, result d.SmokeT
 			item.Disposition = d.SmokeTestDefinitionCleanupDispositionSubmitted
 		default:
 			item.Disposition = d.SmokeTestDefinitionCleanupDispositionFailed
-			item.Reason = "cleanup returned no accepted deletion response"
+			item.Reason = smokeTestDefinitionCleanupFailureReason(definitionCleanup, nil)
 			workflowErrs = append(workflowErrs, errors.New(item.Reason))
 		}
 		if cleanupErr != nil && cfg.FailFast {
+			unattemptedReason = "cleanup stopped after process-definition deletion failure (--fail-fast)"
 			break
 		}
+	}
+	if unattemptedReason != "" {
+		smokeTestMarkUnattemptedDefinitionCleanup(&cleanup, unattemptedReason)
 	}
 
 	for _, scopeErr := range result.Deployment.Errors {
@@ -131,6 +141,32 @@ func (s *Service) cleanupSmokeTestResources(ctx context.Context, result d.SmokeT
 		return cleanup, fmt.Errorf("cleanup smoke-test process definitions: %w", workflowErr)
 	}
 	return cleanup, nil
+}
+
+// smokeTestMarkUnattemptedDefinitionCleanup makes every known but unscheduled definition actionable.
+func smokeTestMarkUnattemptedDefinitionCleanup(cleanup *d.SmokeTestCleanupResult, reason string) {
+	for i := range cleanup.DefinitionResults {
+		item := &cleanup.DefinitionResults[i]
+		if item.Disposition == d.SmokeTestDefinitionCleanupDispositionUnattempted && item.Reason == "" {
+			item.Reason = reason
+		}
+	}
+}
+
+// smokeTestDefinitionCleanupFailureReason preserves rejection evidence when no helper error was returned.
+func smokeTestDefinitionCleanupFailureReason(cleanup d.SmokeTestProcessDefinitionCleanupResult, err error) string {
+	if err != nil {
+		return err.Error()
+	}
+	for _, item := range cleanup.Items {
+		if item.Ok {
+			continue
+		}
+		if item.Status != "" {
+			return "cleanup rejected: " + item.Status
+		}
+	}
+	return "cleanup returned no accepted deletion response"
 }
 
 // smokeTestInitialDefinitionResults preserves deployment order before any cleanup can return early.

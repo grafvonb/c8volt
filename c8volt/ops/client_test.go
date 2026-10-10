@@ -761,6 +761,45 @@ func TestClientExecuteSmokeTestMapsDeploymentResult(t *testing.T) {
 	}, got.Deployment.ProcessDefinitions)
 }
 
+// TestClientExecuteSmokeTestMapsPartialCleanupEvidenceWithError verifies fault details survive facade conversion alongside the normalized error.
+func TestClientExecuteSmokeTestMapsPartialCleanupEvidenceWithError(t *testing.T) {
+	t.Parallel()
+
+	api := stubOpsService{smokeTest: func(_ context.Context, request d.SmokeTestRequest, _ ...services.CallOption) (d.SmokeTestResult, error) {
+		return d.SmokeTestResult{
+			Request: request,
+			Cleanup: d.SmokeTestCleanupResult{
+				DefinitionResults: []d.SmokeTestDefinitionCleanupItem{
+					{
+						Definition:  d.SmokeTestDeployedDefinition{ProcessDefinitionKey: "pd-child", BpmnProcessID: "C89_SimpleUserTask"},
+						Disposition: d.SmokeTestDefinitionCleanupDispositionFailed,
+						Reason:      "confirmation unavailable",
+						Cleanup: d.SmokeTestProcessDefinitionCleanupResult{
+							Status: d.OpsWorkflowStepStatusFailed, Submitted: true, Errors: []string{"confirmation unavailable"},
+						},
+					},
+					{
+						Definition:  d.SmokeTestDeployedDefinition{ProcessDefinitionKey: "pd-main", BpmnProcessID: "C89_MultipleSubProcessesParent"},
+						Disposition: d.SmokeTestDefinitionCleanupDispositionConfirmed,
+					},
+				},
+				DefinitionSummary: &d.SmokeTestDefinitionCleanupSummary{Status: d.OpsWorkflowStepStatusFailed, Total: 2, Confirmed: 1, Failed: 1},
+			},
+			Outcome: d.SmokeTestOutcomePartiallyFailed,
+		}, fmt.Errorf("%w: cleanup incomplete", d.ErrConflict)
+	}}
+
+	got, err := New(api, slog.Default()).ExecuteSmokeTest(context.Background(), SmokeTestRequest{CommandName: "ops execute smoke-test", Count: 1})
+
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "cleanup incomplete")
+	require.Equal(t, SmokeTestOutcomePartiallyFailed, got.Outcome)
+	require.Equal(t, SmokeTestDefinitionCleanupDispositionFailed, got.Cleanup.DefinitionResults[0].Disposition)
+	require.Equal(t, "confirmation unavailable", got.Cleanup.DefinitionResults[0].Reason)
+	require.True(t, got.Cleanup.DefinitionResults[0].Cleanup.Submitted)
+	require.Equal(t, &SmokeTestDefinitionCleanupSummary{Status: WorkflowStepStatusFailed, Total: 2, Confirmed: 1, Failed: 1}, got.Cleanup.DefinitionSummary)
+}
+
 func TestClientExecuteRetentionPolicyMapsServiceBoundary(t *testing.T) {
 	t.Parallel()
 

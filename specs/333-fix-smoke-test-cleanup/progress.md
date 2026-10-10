@@ -50,3 +50,23 @@ Started: 2026-10-10 11:21:28
 - The collection summary is sufficient for compact truthful output; verbose and audit renderers can enumerate complete identity/outcome evidence without backend discovery.
 - Targeted smoke-test and metadata tests, the full command package suite, generated docs, formatting, and whitespace validation passed.
 ---
+
+## Iteration 3 - 2026-10-10 12:00
+**Work Unit**: US2 Preserve Unsafe Definitions and Explain Partial Cleanup (complete: T003)
+**Tasks Completed**:
+- [x] T003: Complete fault-path evidence and actionable mixed-result reporting across service, facade, and command layers
+**Tasks Remaining in Work Unit**: 0; US2 complete
+**Commit**: This work-unit commit
+**Files Changed**:
+- internal/services/ops/smoke_test_cleanup.go
+- internal/services/ops/smoke_test_service.go
+- internal/services/ops/smoke_test_test.go
+- c8volt/ops/client_test.go
+- cmd/ops_execute_smoke_test_test.go
+- specs/333-fix-smoke-test-cleanup/tasks.md
+- specs/333-fix-smoke-test-cleanup/ralph-memory.md
+- specs/333-fix-smoke-test-cleanup/progress.md
+**Learnings**:
+- Known deployment identities now remain actionable through earlier-stage failures, fail-fast, and cancellation; accepted confirmation failures preserve submission evidence.
+- Targeted fault-path suites, the process-definition paging regression, complete affected package suites, formatting, and whitespace validation passed; command metadata did not change, so docs regeneration was unnecessary.
+---

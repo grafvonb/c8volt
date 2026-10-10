@@ -388,7 +388,283 @@ func TestCleanupSmokeTestResourcesCancellationPreservesUnattemptedDefinitions(t 
 	require.Equal(t, &d.SmokeTestDefinitionCleanupSummary{Status: d.OpsWorkflowStepStatusFailed, Total: 3, Unattempted: 3}, got.DefinitionSummary)
 	for _, item := range got.DefinitionResults {
 		require.Equal(t, d.SmokeTestDefinitionCleanupDispositionUnattempted, item.Disposition)
+		require.Contains(t, item.Reason, "context canceled")
 	}
+}
+
+// TestCleanupSmokeTestResourcesFaultsPreserveSiblingEvidence verifies independent definition faults do not erase or stop safe sibling submissions.
+func TestCleanupSmokeTestResourcesFaultsPreserveSiblingEvidence(t *testing.T) {
+	fixture, err := smokeTestFixtureForVersion(toolx.V89)
+	require.NoError(t, err)
+	deployment := smokeTestDeploymentResult(fixture, completeSmokeTestDeploymentForFixture(fixture, "pd-main", "tenant-a"), d.OpsWorkflowStepStatusConfirmed)
+
+	tests := []struct {
+		name        string
+		eligibility func(string) error
+		lookup      func(string) error
+		delete      func(string) d.ResourceDeleteResponse
+		wantReason  string
+	}{
+		{
+			name: "eligibility error",
+			eligibility: func(key string) error {
+				if key == "pd-main-child" {
+					return errors.New("eligibility unavailable")
+				}
+				return nil
+			},
+			wantReason: "eligibility unavailable",
+		},
+		{
+			name: "rejected submission",
+			delete: func(key string) d.ResourceDeleteResponse {
+				if key == "pd-main-child" {
+					return d.ResourceDeleteResponse{Ok: false, StatusCode: http.StatusConflict, Status: "409 Conflict"}
+				}
+				return d.ResourceDeleteResponse{Ok: true, StatusCode: http.StatusAccepted, Status: "202 Accepted"}
+			},
+			wantReason: "cleanup rejected: 409 Conflict",
+		},
+		{
+			name: "empty response",
+			delete: func(key string) d.ResourceDeleteResponse {
+				if key == "pd-main-child" {
+					return d.ResourceDeleteResponse{}
+				}
+				return d.ResourceDeleteResponse{Ok: true, StatusCode: http.StatusAccepted, Status: "202 Accepted"}
+			},
+			wantReason: "cleanup returned no accepted deletion response",
+		},
+		{
+			name: "pre-delete not found",
+			lookup: func(key string) error {
+				if key == "pd-main-child" {
+					return d.ErrNotFound
+				}
+				return nil
+			},
+			wantReason: "not found",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var deleted []string
+			piAPI := stubProcessInstanceAPI{search: func(_ context.Context, filter d.ProcessInstanceFilter, _ int32, _ ...services.CallOption) ([]d.ProcessInstance, error) {
+				if tt.eligibility != nil {
+					if err := tt.eligibility(filter.ProcessDefinitionKey); err != nil {
+						return nil, err
+					}
+				}
+				return nil, nil
+			}}
+			pdAPI := stubProcessDefinitionAPI{getProcessDefinition: func(_ context.Context, key string, _ ...services.CallOption) (d.ProcessDefinition, error) {
+				if tt.lookup != nil {
+					if err := tt.lookup(key); err != nil {
+						return d.ProcessDefinition{}, err
+					}
+				}
+				return d.ProcessDefinition{Key: key, Statistics: &d.ProcessDefinitionStatistics{}}, nil
+			}}
+			resource := &stubSmokeTestResourceAPI{delete: func(_ context.Context, key string, _ ...services.CallOption) (d.ResourceDeleteResponse, error) {
+				deleted = append(deleted, key)
+				if tt.delete != nil {
+					return tt.delete(key), nil
+				}
+				return d.ResourceDeleteResponse{Ok: true, StatusCode: http.StatusAccepted, Status: "202 Accepted"}, nil
+			}}
+			service := NewWithWorkflowDependencies(nil, piAPI, nil, pdAPI, resource, toolx.V89).(*Service)
+
+			got, cleanupErr := service.cleanupSmokeTestResources(context.Background(), d.SmokeTestResult{
+				Request: d.SmokeTestRequest{Count: 1, NoWait: true}, Deployment: deployment,
+			}, services.WithNoWait())
+
+			require.Error(t, cleanupErr)
+			require.Equal(t, d.SmokeTestDefinitionCleanupDispositionFailed, got.DefinitionResults[0].Disposition)
+			require.Contains(t, got.DefinitionResults[0].Reason, tt.wantReason)
+			require.Equal(t, d.SmokeTestDefinitionCleanupDispositionSubmitted, got.DefinitionResults[1].Disposition)
+			require.Equal(t, d.SmokeTestDefinitionCleanupDispositionSubmitted, got.DefinitionResults[2].Disposition)
+			require.Equal(t, &d.SmokeTestDefinitionCleanupSummary{Status: d.OpsWorkflowStepStatusFailed, Total: 3, Submitted: 2, Failed: 1}, got.DefinitionSummary)
+			require.NotContains(t, deleted, "")
+		})
+	}
+}
+
+// TestCleanupSmokeTestResourcesWaitErrorRetainsAcceptedEvidence verifies a confirmation failure remains submitted while later siblings complete.
+func TestCleanupSmokeTestResourcesWaitErrorRetainsAcceptedEvidence(t *testing.T) {
+	fixture, err := smokeTestFixtureForVersion(toolx.V89)
+	require.NoError(t, err)
+	deployment := smokeTestDeploymentResult(fixture, completeSmokeTestDeploymentForFixture(fixture, "pd-main", "tenant-a"), d.OpsWorkflowStepStatusConfirmed)
+	piAPI := stubProcessInstanceAPI{search: func(context.Context, d.ProcessInstanceFilter, int32, ...services.CallOption) ([]d.ProcessInstance, error) {
+		return nil, nil
+	}}
+	pdAPI := stubProcessDefinitionAPI{getProcessDefinition: func(_ context.Context, key string, opts ...services.CallOption) (d.ProcessDefinition, error) {
+		if services.ApplyCallOptions(opts).WithStat {
+			return d.ProcessDefinition{Key: key, Statistics: &d.ProcessDefinitionStatistics{}}, nil
+		}
+		if key == "pd-main-child" {
+			return d.ProcessDefinition{}, errors.New("confirmation unavailable")
+		}
+		return d.ProcessDefinition{}, d.ErrNotFound
+	}}
+	resource := &stubSmokeTestResourceAPI{delete: func(_ context.Context, key string, _ ...services.CallOption) (d.ResourceDeleteResponse, error) {
+		return d.ResourceDeleteResponse{Key: key, Ok: true, StatusCode: http.StatusAccepted, Status: "202 Accepted"}, nil
+	}}
+	service := NewWithWorkflowDependencies(nil, piAPI, nil, pdAPI, resource, toolx.V89).(*Service)
+
+	got, cleanupErr := service.cleanupSmokeTestResources(context.Background(), d.SmokeTestResult{Request: d.SmokeTestRequest{Count: 1}, Deployment: deployment})
+
+	require.Error(t, cleanupErr)
+	require.True(t, got.DefinitionResults[0].Cleanup.Submitted)
+	require.False(t, got.DefinitionResults[0].Cleanup.Confirmed)
+	require.Equal(t, d.SmokeTestDefinitionCleanupDispositionFailed, got.DefinitionResults[0].Disposition)
+	require.Contains(t, got.DefinitionResults[0].Reason, "confirmation unavailable")
+	require.Equal(t, d.SmokeTestDefinitionCleanupDispositionConfirmed, got.DefinitionResults[1].Disposition)
+	require.Equal(t, d.SmokeTestDefinitionCleanupDispositionConfirmed, got.DefinitionResults[2].Disposition)
+	require.Equal(t, &d.SmokeTestDefinitionCleanupSummary{Status: d.OpsWorkflowStepStatusFailed, Total: 3, Confirmed: 2, Failed: 1}, got.DefinitionSummary)
+}
+
+// TestCleanupSmokeTestResourcesFailFastPreservesPriorResults verifies fail-fast leaves completed evidence unchanged and explains later unscheduled work.
+func TestCleanupSmokeTestResourcesFailFastPreservesPriorResults(t *testing.T) {
+	fixture, err := smokeTestFixtureForVersion(toolx.V89)
+	require.NoError(t, err)
+	deployment := smokeTestDeploymentResult(fixture, completeSmokeTestDeploymentForFixture(fixture, "pd-main", "tenant-a"), d.OpsWorkflowStepStatusConfirmed)
+	piAPI := stubProcessInstanceAPI{search: func(_ context.Context, filter d.ProcessInstanceFilter, _ int32, _ ...services.CallOption) ([]d.ProcessInstance, error) {
+		if filter.ProcessDefinitionKey == "pd-main-middle" {
+			return nil, errors.New("eligibility unavailable")
+		}
+		return nil, nil
+	}}
+	pdAPI := stubProcessDefinitionAPI{getProcessDefinition: func(_ context.Context, key string, _ ...services.CallOption) (d.ProcessDefinition, error) {
+		return d.ProcessDefinition{Key: key, Statistics: &d.ProcessDefinitionStatistics{}}, nil
+	}}
+	resource := &stubSmokeTestResourceAPI{delete: func(_ context.Context, key string, _ ...services.CallOption) (d.ResourceDeleteResponse, error) {
+		return d.ResourceDeleteResponse{Key: key, Ok: true, StatusCode: http.StatusAccepted, Status: "202 Accepted"}, nil
+	}}
+	service := NewWithWorkflowDependencies(nil, piAPI, nil, pdAPI, resource, toolx.V89).(*Service)
+
+	got, cleanupErr := service.cleanupSmokeTestResources(context.Background(), d.SmokeTestResult{
+		Request: d.SmokeTestRequest{Count: 1, NoWait: true, FailFast: true}, Deployment: deployment,
+	}, services.WithNoWait(), services.WithFailFast())
+
+	require.Error(t, cleanupErr)
+	require.Equal(t, d.SmokeTestDefinitionCleanupDispositionSubmitted, got.DefinitionResults[0].Disposition)
+	require.Equal(t, d.SmokeTestDefinitionCleanupDispositionFailed, got.DefinitionResults[1].Disposition)
+	require.Equal(t, d.SmokeTestDefinitionCleanupDispositionUnattempted, got.DefinitionResults[2].Disposition)
+	require.Contains(t, got.DefinitionResults[2].Reason, "--fail-fast")
+	require.Equal(t, &d.SmokeTestDefinitionCleanupSummary{Status: d.OpsWorkflowStepStatusFailed, Total: 3, Submitted: 1, Failed: 1, Unattempted: 1}, got.DefinitionSummary)
+	require.Equal(t, 1, resource.deleteCalls)
+}
+
+// TestCleanupSmokeTestResourcesCancellationPreservesPriorResults verifies cancellation stops scheduling without overwriting an accepted sibling.
+func TestCleanupSmokeTestResourcesCancellationPreservesPriorResults(t *testing.T) {
+	fixture, err := smokeTestFixtureForVersion(toolx.V89)
+	require.NoError(t, err)
+	deployment := smokeTestDeploymentResult(fixture, completeSmokeTestDeploymentForFixture(fixture, "pd-main", "tenant-a"), d.OpsWorkflowStepStatusConfirmed)
+	ctx, cancel := context.WithCancel(context.Background())
+	piAPI := stubProcessInstanceAPI{search: func(context.Context, d.ProcessInstanceFilter, int32, ...services.CallOption) ([]d.ProcessInstance, error) {
+		return nil, nil
+	}}
+	pdAPI := stubProcessDefinitionAPI{getProcessDefinition: func(_ context.Context, key string, _ ...services.CallOption) (d.ProcessDefinition, error) {
+		return d.ProcessDefinition{Key: key, Statistics: &d.ProcessDefinitionStatistics{}}, nil
+	}}
+	resource := &stubSmokeTestResourceAPI{delete: func(_ context.Context, key string, _ ...services.CallOption) (d.ResourceDeleteResponse, error) {
+		cancel()
+		return d.ResourceDeleteResponse{Key: key, Ok: true, StatusCode: http.StatusAccepted, Status: "202 Accepted"}, nil
+	}}
+	service := NewWithWorkflowDependencies(nil, piAPI, nil, pdAPI, resource, toolx.V89).(*Service)
+
+	got, cleanupErr := service.cleanupSmokeTestResources(ctx, d.SmokeTestResult{
+		Request: d.SmokeTestRequest{Count: 1, NoWait: true}, Deployment: deployment,
+	}, services.WithNoWait())
+
+	require.ErrorIs(t, cleanupErr, context.Canceled)
+	require.Equal(t, d.SmokeTestDefinitionCleanupDispositionSubmitted, got.DefinitionResults[0].Disposition)
+	require.Equal(t, d.SmokeTestDefinitionCleanupDispositionUnattempted, got.DefinitionResults[1].Disposition)
+	require.Equal(t, d.SmokeTestDefinitionCleanupDispositionUnattempted, got.DefinitionResults[2].Disposition)
+	require.Contains(t, got.DefinitionResults[1].Reason, "context canceled")
+	require.Equal(t, &d.SmokeTestDefinitionCleanupSummary{Status: d.OpsWorkflowStepStatusFailed, Total: 3, Submitted: 1, Unattempted: 2}, got.DefinitionSummary)
+	require.Equal(t, 1, resource.deleteCalls)
+}
+
+// TestCleanupSmokeTestResourcesInvalidIdentityNeverMutatesWithoutExactKey verifies incomplete/conflicting evidence is reported without name fallback.
+func TestCleanupSmokeTestResourcesInvalidIdentityNeverMutatesWithoutExactKey(t *testing.T) {
+	fixture, err := smokeTestFixtureForVersion(toolx.V89)
+	require.NoError(t, err)
+	deploymentEvidence := completeSmokeTestDeploymentForFixture(fixture, "pd-main", "tenant-a")
+	deploymentEvidence.Units = append(deploymentEvidence.Units,
+		d.DeploymentUnit{ProcessDefinition: d.ProcessDefinitionDeployment{ProcessDefinitionId: "C89_Other", ProcessDefinitionKey: "pd-main-child", TenantId: "tenant-b"}},
+		d.DeploymentUnit{ProcessDefinition: d.ProcessDefinitionDeployment{ProcessDefinitionId: "C89_Unkeyed", ResourceName: "unkeyed.bpmn"}},
+	)
+	deployment := smokeTestDeploymentResult(fixture, deploymentEvidence, d.OpsWorkflowStepStatusConfirmed)
+	piAPI := stubProcessInstanceAPI{search: func(context.Context, d.ProcessInstanceFilter, int32, ...services.CallOption) ([]d.ProcessInstance, error) {
+		return nil, nil
+	}}
+	pdAPI := stubProcessDefinitionAPI{getProcessDefinition: func(_ context.Context, key string, _ ...services.CallOption) (d.ProcessDefinition, error) {
+		return d.ProcessDefinition{Key: key, Statistics: &d.ProcessDefinitionStatistics{}}, nil
+	}}
+	var deleted []string
+	resource := &stubSmokeTestResourceAPI{delete: func(_ context.Context, key string, _ ...services.CallOption) (d.ResourceDeleteResponse, error) {
+		deleted = append(deleted, key)
+		return d.ResourceDeleteResponse{Key: key, Ok: true, StatusCode: http.StatusAccepted, Status: "202 Accepted"}, nil
+	}}
+	service := NewWithWorkflowDependencies(nil, piAPI, nil, pdAPI, resource, toolx.V89).(*Service)
+
+	got, cleanupErr := service.cleanupSmokeTestResources(context.Background(), d.SmokeTestResult{
+		Request: d.SmokeTestRequest{Count: 1, NoWait: true}, Deployment: deployment,
+	}, services.WithNoWait())
+
+	require.Error(t, cleanupErr)
+	require.False(t, deployment.DefinitionScopeComplete)
+	require.Equal(t, []string{"pd-main-child", "pd-main-middle", "pd-main"}, deleted)
+	require.Equal(t, d.SmokeTestDefinitionCleanupDispositionFailed, got.DefinitionResults[3].Disposition)
+	require.Equal(t, "missing process-definition key", got.DefinitionResults[3].Reason)
+	require.Equal(t, &d.SmokeTestDefinitionCleanupSummary{Status: d.OpsWorkflowStepStatusFailed, Total: 4, Submitted: 3, Failed: 1}, got.DefinitionSummary)
+	require.Contains(t, strings.Join(got.Errors, "\n"), "conflicting deployment identity evidence")
+}
+
+// TestSmokeTestDefinitionEligibilityPagesPastOwnedEvidence proves the real paged safety helper reaches a later blocker page.
+func TestSmokeTestDefinitionEligibilityPagesPastOwnedEvidence(t *testing.T) {
+	var pages []d.ProcessInstancePageRequest
+	piAPI := stubProcessInstanceAPI{searchPage: func(_ context.Context, filter d.ProcessInstanceFilter, page d.ProcessInstancePageRequest, _ ...services.CallOption) (d.ProcessInstancePage, error) {
+		pages = append(pages, page)
+		require.Equal(t, "pd-child", filter.ProcessDefinitionKey)
+		if page.After == "" {
+			return d.ProcessInstancePage{Items: []d.ProcessInstance{{Key: "owned-1"}}, EndCursor: "next", OverflowState: d.ProcessInstanceOverflowStateHasMore}, nil
+		}
+		return d.ProcessInstancePage{Items: []d.ProcessInstance{{Key: "unrelated-1"}}, OverflowState: d.ProcessInstanceOverflowStateNoMore}, nil
+	}}
+
+	got, err := smokeTestProcessDefinitionCleanupEligibility(context.Background(), piAPI, d.SmokeTestDeploymentResult{
+		ProcessDefinitionKey: "pd-child", BpmnProcessID: "C89_SimpleUserTask",
+	}, typexKeys("owned-1"))
+
+	require.NoError(t, err)
+	require.False(t, got.Eligible)
+	require.Equal(t, []string{"unrelated-1"}, got.Blockers)
+	require.Len(t, pages, 2)
+	require.Equal(t, "next", pages[1].After)
+}
+
+// TestExecuteSmokeTestStartFailureAccountsForKnownDefinitions verifies earlier-stage failures retain an actionable unattempted collection.
+func TestExecuteSmokeTestStartFailureAccountsForKnownDefinitions(t *testing.T) {
+	resource := &stubSmokeTestResourceAPI{deploy: func(context.Context, []d.DeploymentUnitData, ...services.CallOption) (d.Deployment, error) {
+		return completeSmokeTestDeployment("pd-88", ""), nil
+	}}
+	piAPI := stubProcessInstanceAPI{createProcessInstance: func(context.Context, d.ProcessInstanceData, ...services.CallOption) (d.ProcessInstanceCreation, error) {
+		return d.ProcessInstanceCreation{}, errors.New("start unavailable")
+	}}
+
+	got, err := NewWithWorkflowDependencies(nil, piAPI, nil, nil, resource, toolx.V88).ExecuteSmokeTest(context.Background(), d.SmokeTestRequest{CommandName: "ops execute smoke-test", Count: 1})
+
+	require.Error(t, err)
+	require.Equal(t, d.SmokeTestOutcomePartiallyFailed, got.Outcome)
+	require.Equal(t, &d.SmokeTestDefinitionCleanupSummary{Status: d.OpsWorkflowStepStatusFailed, Total: 3, Unattempted: 3}, got.Cleanup.DefinitionSummary)
+	for _, item := range got.Cleanup.DefinitionResults {
+		require.Equal(t, d.SmokeTestDefinitionCleanupDispositionUnattempted, item.Disposition)
+		require.Contains(t, item.Reason, "process-instance creation failed")
+	}
+	require.Equal(t, got.Cleanup, got.Report.Cleanup)
 }
 
 func TestExecuteSmokeTestMissingFixtureFailsBeforeMutation(t *testing.T) {

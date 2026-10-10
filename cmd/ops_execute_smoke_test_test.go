@@ -904,6 +904,42 @@ func TestOpsExecuteSmokeTestDirtyClusterSkipsProcessDefinitionCleanup(t *testing
 	require.NotContains(t, strings.Join(requests.Snapshot(), "\n"), "/v2/resources/pd-88/deletion")
 }
 
+// TestOpsExecuteSmokeTestBlockedDependencyReportsMixedEvidence verifies eligible siblings proceed while verbose and audit output explain the retained dependency.
+func TestOpsExecuteSmokeTestBlockedDependencyReportsMixedEvidence(t *testing.T) {
+	var requests testx.SafeSlice[string]
+	srv := newOpsExecuteSmokeTestRunWalkServerWithBlockedDefinition(t, &requests, nil, "pd-89-child", "999")
+	t.Cleanup(srv.Close)
+	reportPath := filepath.Join(t.TempDir(), "smoke-test.md")
+
+	outputBytes, err := testx.RunCmdSubprocess(t, "TestOpsExecuteSmokeTestInvalidLocalFlagsHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG": writeTestConfigForVersion(t, srv.URL, "8.9"),
+		"C8VOLT_TEST_SMOKE_ARGS": marshalSmokeTestArgsForEnv(t, []string{
+			"--verbose",
+			"ops", "execute", "smoke-test",
+			"--auto-confirm",
+			"--no-wait",
+			"--report-file", reportPath,
+			"--report-format", "markdown",
+		}),
+	})
+	require.NoError(t, err)
+	output := string(outputBytes)
+
+	require.Contains(t, output, "cleanup: skipped (1 process instance; process definitions: 2 submitted, 1 retained)")
+	require.Contains(t, output, "process definition pd-89-child (C89_SimpleUserTask, version 4, tenant <default>): retained - unrelated process instances: 999")
+	require.Contains(t, output, "process definition pd-89-middle (C89_SimpleParent, version 4, tenant <default>): submitted")
+	require.Contains(t, output, "process definition pd-89 (C89_MultipleSubProcessesParent, version 4, tenant <default>): submitted")
+	requestLog := strings.Join(requests.Snapshot(), "\n")
+	require.NotContains(t, requestLog, "/v2/resources/pd-89-child/deletion")
+	require.Contains(t, requestLog, "/v2/resources/pd-89-middle/deletion")
+	require.Contains(t, requestLog, "/v2/resources/pd-89/deletion")
+	report, err := os.ReadFile(reportPath)
+	require.NoError(t, err)
+	require.Contains(t, string(report), "| pd-89-child | C89_SimpleUserTask | <default> | retained | unrelated process instances: 999 |")
+	require.Contains(t, string(report), "- Submitted: 2")
+	require.Contains(t, string(report), "- Retained: 1")
+}
+
 func newOpsExecuteSmokeTestDryRunServer(t *testing.T, requests *testx.SafeSlice[string]) *httptest.Server {
 	t.Helper()
 
@@ -927,7 +963,13 @@ func newOpsExecuteSmokeTestRunWalkServer(t *testing.T, requests *testx.SafeSlice
 	return newOpsExecuteSmokeTestRunWalkServerWithCleanupBlocker(t, requests, createBodies, "")
 }
 
+// newOpsExecuteSmokeTestRunWalkServerWithCleanupBlocker preserves the legacy fixture that blocks every deployed definition.
 func newOpsExecuteSmokeTestRunWalkServerWithCleanupBlocker(t *testing.T, requests *testx.SafeSlice[string], createBodies *testx.SafeSlice[string], cleanupBlocker string) *httptest.Server {
+	return newOpsExecuteSmokeTestRunWalkServerWithBlockedDefinition(t, requests, createBodies, "", cleanupBlocker)
+}
+
+// newOpsExecuteSmokeTestRunWalkServerWithBlockedDefinition can retain one exact deployed definition while allowing sibling cleanup.
+func newOpsExecuteSmokeTestRunWalkServerWithBlockedDefinition(t *testing.T, requests *testx.SafeSlice[string], createBodies *testx.SafeSlice[string], blockedDefinitionKey string, cleanupBlocker string) *httptest.Server {
 	t.Helper()
 
 	var created int
@@ -1021,7 +1063,8 @@ func newOpsExecuteSmokeTestRunWalkServerWithCleanupBlocker(t *testing.T, request
 			body, err := io.ReadAll(r.Body)
 			require.NoError(t, err)
 			w.Header().Set("Content-Type", "application/json")
-			if cleanupBlocker != "" && strings.Contains(string(body), "processDefinitionKey") && !strings.Contains(string(body), `"state"`) {
+			definitionMatches := blockedDefinitionKey == "" || strings.Contains(string(body), blockedDefinitionKey)
+			if cleanupBlocker != "" && definitionMatches && strings.Contains(string(body), "processDefinitionKey") && !strings.Contains(string(body), `"state"`) {
 				_, _ = w.Write([]byte(fmt.Sprintf(`{"items":[%s],"page":{"totalItems":1,"hasMoreTotalItems":false}}`, processInstanceJSON(cleanupBlocker))))
 				return
 			}

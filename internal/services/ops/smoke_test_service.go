@@ -164,6 +164,7 @@ func (s *Service) executeSmokeTestDeployment(ctx context.Context, result d.Smoke
 		result.Cleanup.ProcessInstanceCleanup.Status = d.OpsWorkflowStepStatusSkipped
 		result.Cleanup.ProcessDefinitionEligibility.Status = d.OpsWorkflowStepStatusSkipped
 		result.Cleanup.ProcessDefinitionCleanup.Status = d.OpsWorkflowStepStatusSkipped
+		result.Cleanup = smokeTestEarlierStageFailureCleanup(result, "cleanup not attempted because deployment identity validation failed")
 		return finishSmokeTestResult(result, d.SmokeTestOutcomePartiallyFailed, err)
 	}
 	if s.piAPI == nil {
@@ -176,6 +177,7 @@ func (s *Service) executeSmokeTestDeployment(ctx context.Context, result d.Smoke
 		result.Cleanup.ProcessInstanceCleanup.Status = d.OpsWorkflowStepStatusSkipped
 		result.Cleanup.ProcessDefinitionEligibility.Status = d.OpsWorkflowStepStatusSkipped
 		result.Cleanup.ProcessDefinitionCleanup.Status = d.OpsWorkflowStepStatusSkipped
+		result.Cleanup = smokeTestEarlierStageFailureCleanup(result, "cleanup not attempted because the process-instance service is unavailable")
 		return finishSmokeTestResult(result, d.SmokeTestOutcomePartiallyFailed, err)
 	}
 
@@ -187,6 +189,7 @@ func (s *Service) executeSmokeTestDeployment(ctx context.Context, result d.Smoke
 		result.Cleanup.ProcessInstanceCleanup.Status = d.OpsWorkflowStepStatusSkipped
 		result.Cleanup.ProcessDefinitionEligibility.Status = d.OpsWorkflowStepStatusSkipped
 		result.Cleanup.ProcessDefinitionCleanup.Status = d.OpsWorkflowStepStatusSkipped
+		result.Cleanup = smokeTestEarlierStageFailureCleanup(result, "cleanup not attempted because process-instance creation failed: "+err.Error())
 		return finishSmokeTestResult(result, d.SmokeTestOutcomePartiallyFailed, fmt.Errorf("start smoke-test process instances: %w", err))
 	}
 
@@ -198,6 +201,7 @@ func (s *Service) executeSmokeTestDeployment(ctx context.Context, result d.Smoke
 		result.Cleanup.ProcessInstanceCleanup.Status = d.OpsWorkflowStepStatusSkipped
 		result.Cleanup.ProcessDefinitionEligibility.Status = d.OpsWorkflowStepStatusSkipped
 		result.Cleanup.ProcessDefinitionCleanup.Status = d.OpsWorkflowStepStatusSkipped
+		result.Cleanup = smokeTestEarlierStageFailureCleanup(result, "cleanup not attempted because process-instance family traversal failed: "+err.Error())
 		return finishSmokeTestResult(result, d.SmokeTestOutcomePartiallyFailed, fmt.Errorf("walk smoke-test process-instance families: %w", err))
 	}
 
@@ -228,6 +232,16 @@ func (s *Service) executeSmokeTestDeployment(ctx context.Context, result d.Smoke
 		return finishSmokeTestResult(result, d.SmokeTestOutcomePassedCleanupSkipped, nil)
 	}
 	return finishSmokeTestResult(result, d.SmokeTestOutcomePassed, nil)
+}
+
+// smokeTestEarlierStageFailureCleanup accounts for deployed definitions when execution stops before cleanup.
+func smokeTestEarlierStageFailureCleanup(result d.SmokeTestResult, reason string) d.SmokeTestCleanupResult {
+	cleanup := result.Cleanup
+	cleanup.DefinitionResults = smokeTestInitialDefinitionResults(result.Deployment.ProcessDefinitions)
+	smokeTestMarkUnattemptedDefinitionCleanup(&cleanup, reason)
+	smokeTestApplyMainDefinitionProjection(&cleanup, result.Deployment)
+	cleanup.DefinitionSummary = smokeTestDefinitionCleanupSummary(cleanup.DefinitionResults, result.Deployment.DefinitionScopeComplete, result.Deployment.Errors)
+	return cleanup
 }
 
 func smokeTestProgressf(log *slog.Logger, request d.SmokeTestRequest, format string, args ...any) {
