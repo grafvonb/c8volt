@@ -53,6 +53,51 @@ func TestOpsExecuteSmokeTestTenantContextUsesCreationSemantics(t *testing.T) {
 	require.Equal(t, config.DefaultTenant, got.Report.TenantID)
 }
 
+// TestSmokeTestCleanupSummaryPrefersDeploymentWideEvidence verifies new results
+// report the complete definition collection while nil summaries retain legacy wording.
+func TestSmokeTestCleanupSummaryPrefersDeploymentWideEvidence(t *testing.T) {
+	collection := ops.SmokeTestCleanupResult{
+		ProcessInstanceCleanup: ops.SmokeTestProcessInstanceCleanupResult{
+			SubmittedKeys: []string{"pi-1"},
+		},
+		DefinitionSummary: &ops.SmokeTestDefinitionCleanupSummary{
+			Status:    ops.WorkflowStepStatusConfirmed,
+			Total:     3,
+			Confirmed: 3,
+		},
+	}
+	require.Equal(t, "removed 1 process instance and 3 process definitions", smokeTestCleanupSummary(collection, ops.WorkflowStepStatusConfirmed))
+
+	legacy := ops.SmokeTestCleanupResult{
+		ProcessInstanceCleanup: ops.SmokeTestProcessInstanceCleanupResult{
+			SubmittedKeys: []string{"pi-1"},
+		},
+		ProcessDefinitionCleanup: ops.SmokeTestProcessDefinitionCleanupResult{
+			Status: ops.WorkflowStepStatusConfirmed,
+		},
+	}
+	require.Equal(t, "removed 1 process instance and fixture process definition", smokeTestCleanupSummary(legacy, ops.WorkflowStepStatusConfirmed))
+}
+
+// TestSmokeTestCleanupSummaryReportsMixedDefinitionStates verifies compact
+// human output does not collapse retained or failed resources into success.
+func TestSmokeTestCleanupSummaryReportsMixedDefinitionStates(t *testing.T) {
+	cleanup := ops.SmokeTestCleanupResult{
+		ProcessInstanceCleanup: ops.SmokeTestProcessInstanceCleanupResult{
+			SubmittedKeys: []string{"pi-1"},
+		},
+		DefinitionSummary: &ops.SmokeTestDefinitionCleanupSummary{
+			Status:    ops.WorkflowStepStatusFailed,
+			Total:     3,
+			Confirmed: 1,
+			Retained:  1,
+			Failed:    1,
+		},
+	}
+	require.Equal(t, "failed (1 process instance; process definitions: 1 confirmed, 1 retained, 1 failed)", smokeTestCleanupSummary(cleanup, ops.WorkflowStepStatusFailed))
+}
+
+// TestOpsExecuteSmokeTestHelpDocumentsCommand verifies help describes deployment-wide cleanup and supported controls.
 func TestOpsExecuteSmokeTestHelpDocumentsCommand(t *testing.T) {
 	output := executeRootForProcessInstanceTest(t, "ops", "execute", "--help")
 
@@ -66,6 +111,7 @@ func TestOpsExecuteSmokeTestHelpDocumentsCommand(t *testing.T) {
 
 	assertHelpOutputContainsAll(t, commandOutput,
 		"Verify a configured Camunda environment",
+		"each deployed fixture definition that has no unrelated instances",
 		"--count int",
 		"-n, --count int",
 		"--workers int",
@@ -387,6 +433,7 @@ func TestOpsExecuteSmokeTestDryRunExistingReportFailsBeforePreflight(t *testing.
 	require.Empty(t, requests.Snapshot())
 }
 
+// TestOpsExecuteSmokeTestWritesMarkdownAuditReport verifies every deployed definition and cleanup outcome reaches Markdown.
 func TestOpsExecuteSmokeTestWritesMarkdownAuditReport(t *testing.T) {
 	var requests testx.SafeSlice[string]
 	srv := newOpsExecuteSmokeTestRunWalkServer(t, &requests, nil)
@@ -419,6 +466,14 @@ func TestOpsExecuteSmokeTestWritesMarkdownAuditReport(t *testing.T) {
 	require.Contains(t, report, "root 101")
 	require.Contains(t, report, "- No Cleanup: true")
 	require.Contains(t, report, "- Retained Process Definition Key: pd-88")
+	require.Contains(t, report, "### Deployed Process Definitions")
+	require.Contains(t, report, "| pd-88-child | C88_SimpleUserTask | 4 | <default> | processdefinitions/C88_SimpleUserTask.bpmn |")
+	require.Contains(t, report, "| pd-88-middle | C88_SimpleParent | 4 | <default> | processdefinitions/C88_SimpleParent.bpmn |")
+	require.Contains(t, report, "| pd-88 | C88_MultipleSubProcessesParent | 4 | <default> | processdefinitions/C88_MultipleSubProcessesParent.bpmn |")
+	require.Contains(t, report, "### Process Definition Cleanup Summary")
+	require.Contains(t, report, "- Retained: 3")
+	require.Contains(t, report, "### Process Definition Cleanup Results")
+	require.Contains(t, report, "| pd-88-child | C88_SimpleUserTask | <default> | retained | cleanup disabled (--no-cleanup) |")
 	require.Contains(t, report, "- Outcome: passed_cleanup_skipped")
 	require.NotContains(t, strings.Join(requests.Snapshot(), "\n"), "/v2/resources/pd-88/deletion")
 }
@@ -559,7 +614,7 @@ func TestOpsExecuteSmokeTestDeploysFixtureAndRendersDeploymentOutput(t *testing.
 	require.Contains(t, output, "deployment: confirmed")
 	require.Contains(t, output, "created process instances: 1/1")
 	require.Contains(t, output, "walk: confirmed (process instances: 1)")
-	require.Contains(t, output, "cleanup: submitted 1 process instance and fixture process definition (--no-wait)")
+	require.Contains(t, output, "cleanup: submitted 1 process instance and 3 process definitions (--no-wait)")
 	require.NotContains(t, output, "cleanup confirmation:")
 	require.NotContains(t, output, "deploy: fixture embedded/processdefinitions/C89_MultipleSubProcessesParent.bpmn")
 	require.NotContains(t, output, "deploy: confirmed process definition pd-89")
@@ -685,6 +740,7 @@ func TestOpsExecuteSmokeTestVerboseProgressRendersStageCounters(t *testing.T) {
 	require.Contains(t, stderr, "walking process-instance families 2/2 process instance(s)")
 }
 
+// TestOpsExecuteSmokeTestNoCleanupHumanOutputReportsRetainedResources verifies verbose output accounts for all retained definitions.
 func TestOpsExecuteSmokeTestNoCleanupHumanOutputReportsRetainedResources(t *testing.T) {
 	var requests testx.SafeSlice[string]
 	srv := newOpsExecuteSmokeTestRunWalkServer(t, &requests, nil)
@@ -699,13 +755,17 @@ func TestOpsExecuteSmokeTestNoCleanupHumanOutputReportsRetainedResources(t *test
 
 	require.Contains(t, output, "cleanup: skipped (--no-cleanup)")
 	require.Contains(t, output, "retained process instances: 101")
-	require.Contains(t, output, "retained process definition: pd-88 (C88_MultipleSubProcessesParent)")
+	require.Contains(t, output, "deployed process definition: pd-88-child (C88_SimpleUserTask, version 4, tenant <default>)")
+	require.Contains(t, output, "process definition pd-88-child (C88_SimpleUserTask, version 4, tenant <default>): retained - cleanup disabled (--no-cleanup)")
+	require.Contains(t, output, "process definition pd-88-middle (C88_SimpleParent, version 4, tenant <default>): retained - cleanup disabled (--no-cleanup)")
+	require.Contains(t, output, "process definition pd-88 (C88_MultipleSubProcessesParent, version 4, tenant <default>): retained - cleanup disabled (--no-cleanup)")
 	require.Contains(t, output, "outcome: passed_cleanup_skipped")
 	requestLog := strings.Join(requests.Snapshot(), "\n")
 	require.NotContains(t, requestLog, "DELETE /v1/process-instances/")
 	require.NotContains(t, requestLog, "/v2/resources/pd-88/deletion")
 }
 
+// TestOpsExecuteSmokeTestNoCleanupJSONOutputReportsRetainedResources verifies the shared envelope carries the complete scope.
 func TestOpsExecuteSmokeTestNoCleanupJSONOutputReportsRetainedResources(t *testing.T) {
 	var requests testx.SafeSlice[string]
 	srv := newOpsExecuteSmokeTestRunWalkServer(t, &requests, nil)
@@ -728,6 +788,21 @@ func TestOpsExecuteSmokeTestNoCleanupJSONOutputReportsRetainedResources(t *testi
 	require.Equal(t, []any{"101"}, cleanup["retainedProcessInstanceKeys"])
 	require.Equal(t, "pd-88", cleanup["retainedProcessDefinitionKey"])
 	require.Equal(t, "C88_MultipleSubProcessesParent", cleanup["retainedBpmnProcessId"])
+	deployment := requireJSONObject(t, payload["deployment"])
+	require.Equal(t, true, deployment["definitionScopeComplete"])
+	require.Len(t, deployment["processDefinitions"].([]any), 3)
+	definitionSummary := requireJSONObject(t, cleanup["definitionSummary"])
+	require.Equal(t, "skipped", definitionSummary["status"])
+	require.Equal(t, float64(3), definitionSummary["total"])
+	require.Equal(t, float64(3), definitionSummary["retained"])
+	definitionResults := cleanup["definitionResults"].([]any)
+	require.Len(t, definitionResults, 3)
+	wantDefinitionKeys := []string{"pd-88-child", "pd-88-middle", "pd-88"}
+	for i, wantKey := range wantDefinitionKeys {
+		item := requireJSONObject(t, definitionResults[i])
+		require.Equal(t, wantKey, requireJSONObject(t, item["definition"])["processDefinitionKey"])
+		require.Equal(t, "retained", item["disposition"])
+	}
 	require.NotContains(t, strings.Join(requests.Snapshot(), "\n"), "/v2/resources/pd-88/deletion")
 }
 
@@ -761,6 +836,7 @@ func TestOpsExecuteSmokeTestMapsWorkerControlsToJSONRequest(t *testing.T) {
 	require.Equal(t, float64(4), run["requestedCount"])
 }
 
+// TestOpsExecuteSmokeTestUsesImplicitConfirmationForCleanup verifies no-wait output counts every accepted definition request.
 func TestOpsExecuteSmokeTestUsesImplicitConfirmationForCleanup(t *testing.T) {
 	var requests testx.SafeSlice[string]
 	srv := newOpsExecuteSmokeTestRunWalkServer(t, &requests, nil)
@@ -780,7 +856,7 @@ func TestOpsExecuteSmokeTestUsesImplicitConfirmationForCleanup(t *testing.T) {
 		"--no-wait",
 	)
 
-	require.Contains(t, output, "cleanup: submitted 1 process instance and fixture process definition (--no-wait)")
+	require.Contains(t, output, "cleanup: submitted 1 process instance and 3 process definitions (--no-wait)")
 	require.NotContains(t, output, "cleanup confirmation:")
 	require.Len(t, prompts, 1)
 	require.Contains(t, prompts[0], "smoke test: deploy fixture, start 1 process instance(s), walk process-instance families, then clean up created resources")

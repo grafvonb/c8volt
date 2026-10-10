@@ -28,3 +28,25 @@ Started: 2026-10-10 11:21:28
 - Complete response evidence is available at deploy time; exact-key collection cleanup can reuse existing paged eligibility and single-key deletion helpers without widening their APIs.
 - Targeted smoke-test suites and the complete affected package suites passed; no live cluster validation was performed.
 ---
+
+## Iteration 2 - 2026-10-10 11:48
+**Work Unit**: US1 Clean Up the Complete Deployment (complete: T002)
+**Tasks Completed**:
+- [x] T002: Integrate deployment-wide human and audit output, metadata, documentation, tests, and generated CLI docs
+**Tasks Remaining in Work Unit**: 0; US1 complete
+**Commit**: This work-unit commit
+**Files Changed**:
+- README.md
+- cmd/cmd_views_ops_execute_smoketest.go
+- cmd/command_contract_test.go
+- cmd/ops_execute_smoke_test_test.go
+- cmd/ops_execute_smoketest.go
+- docs/cli/c8volt_ops_execute_smoke-test.md
+- docs/index.md
+- specs/333-fix-smoke-test-cleanup/tasks.md
+- specs/333-fix-smoke-test-cleanup/ralph-memory.md
+- specs/333-fix-smoke-test-cleanup/progress.md
+**Learnings**:
+- The collection summary is sufficient for compact truthful output; verbose and audit renderers can enumerate complete identity/outcome evidence without backend discovery.
+- Targeted smoke-test and metadata tests, the full command package suite, generated docs, formatting, and whitespace validation passed.
+---

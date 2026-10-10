@@ -13,7 +13,7 @@ Verify a configured Camunda environment through deployment, execution, and clean
 
 The workflow validates the profile, deploys the bundled multiple-subprocess fixture for the configured Camunda version, starts instances, and walks their families.
 
-Unless --no-cleanup is set, cleanup removes created process instances. It deletes the fixture definition only when no unrelated instances use it; otherwise the definition is retained.
+Unless --no-cleanup is set, cleanup removes created process instances and each deployed fixture definition that has no unrelated instances. Definitions that fail this safety check are retained and reported individually.
 
 Creation uses the configured tenant, or the default tenant when none is configured. --all-tenants is not supported because creation requires one destination tenant.
 
@@ -40,7 +40,7 @@ c8volt ops execute smoke-test [flags]
       --dry-run                validate the smoke-test plan without submitting mutation requests
       --fail-fast              stop scheduling smoke-test work after the first error
   -h, --help                   help for smoke-test
-      --no-cleanup             retain created process instances and the deployed process definition
+      --no-cleanup             retain created process instances and all deployed fixture process definitions
       --no-wait                return after cleanup requests are accepted without deletion confirmation
       --no-worker-limit        use all queued smoke-test jobs as workers when --workers is unset
       --report-file string     write an audit report to the given path

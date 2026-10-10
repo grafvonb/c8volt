@@ -6,7 +6,7 @@ nav_exclude: true
 has_toc: true
 ---
 
-> Generated from build `c8volt v4.3.4-91-gc9949f11-dirty`, commit `c9949f11`, built `2026-10-05T13:55:12Z` | Supported Camunda 8 versions: 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.0-alpha4 (prerelease)
+> Generated from build `c8volt v4.3.4-98-g6642cf93-dirty`, commit `6642cf93`, built `2026-10-10T09:45:40Z` | Supported Camunda 8 versions: 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.0-alpha4 (prerelease)
 
 <img src="./logo/c8volt_logo_transparent_w_shadow_400x244.png" alt="c8volt logo" />
 
@@ -38,6 +38,8 @@ Start repair, purge, and retention workflows with `--dry-run` to review the affe
 | `c8volt ops purge orphan-process-instances` | Finds and deletes orphan child process instances. | [Purge Orphan Process Instances](./ops/purge-orphan-process-instances/) |
 | `c8volt ops purge all-process-definitions` | Deletes selected process-definition versions after impact planning. | [Purge All Process Definitions](./ops/purge-all-process-definitions/) |
 | `c8volt ops execute smoke-test` | Proves connectivity, deployment, runtime, traversal, and cleanup. | [Execute Smoke Test](./ops/execute-smoke-test/) |
+
+Smoke-test cleanup tracks every process definition returned by the fixture deployment, including dependency definitions. Default execution removes each definition only after its exact key passes the existing unrelated-instance safety check; retained, failed, submitted, and confirmed outcomes remain distinct in verbose output and audit reports. `--no-cleanup` retains the complete deployed scope, while `--no-wait` reports accepted deletion requests without claiming confirmed removal.
 
 ## c8volt in Action
 
