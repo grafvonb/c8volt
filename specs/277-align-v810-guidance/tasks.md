@@ -40,7 +40,7 @@
 
 **Goal**: Make every current maintainer and architecture inventory include V810 while identifying V89 as the default and retaining version-neutral layering rules.
 
-**Independent Test**: Review all supported-runtime inventories in the four active guidance sources and confirm they include V87, V88, V89, and V810, name V810 as newest where applicable, and identify V89 as default.
+**Independent Test**: Review all supported-runtime inventories in the four active guidance sources and confirm they include V88, V89, and V810, name V810 as newest where applicable, and identify V89 as default.
 
 ### Implementation for User Story 1
 
@@ -99,7 +99,7 @@
 
 ### Tests for User Story 4
 
-- [x] T018 [US4] Add a rendered-template assertion for the V89 default in `cmd/config_test.go`, and verify the authored supported-version comment lists `8.7, 8.8, 8.9, 8.10`
+- [x] T018 [US4] Add a rendered-template assertion for the V89 default in `cmd/config_test.go`, and verify the authored supported-version comment lists `8.8, 8.9, 8.10`
 
 ### Implementation for User Story 4
 
@@ -231,6 +231,5 @@ After Foundation:
 - `[P]` tasks operate on different paths and have no dependency on another incomplete task.
 - Story labels map directly to the four independently testable scenarios in `spec.md`.
 - Historical #273 tasks, progress, and Ralph memory must not be rewritten.
-- Integration-only V87–V89 matrices are intentional because live V810 integration remains out of scope.
 - Generated documentation must be regenerated from source and never hand-edited.
 - Commit after each task or coherent task group using Conventional Commits and issue #277 when implementation begins.

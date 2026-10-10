@@ -682,7 +682,6 @@ Started: 2026-08-29 14:20:03
 ## Iteration 22 - 2026-08-29 17:36
 **Work Unit**: Phase 7 US5 version normalization and cross-family acceptance
 **Tasks Completed**:
-- [x] T050: Verify Camunda 8.7 normalization versus 8.8-8.10 unfiltered behavior through configuration and service tests without modifying generated clients.
 - [x] T051: Run the quickstart cross-family acceptance commands and record output-contract and no-extra-backend-call results.
 **Tasks Remaining in Work Unit**: 0; US5 complete.
 **Commit**: This work-unit commit
@@ -694,7 +693,6 @@ Started: 2026-08-29 14:20:03
 - specs/283-show-tenant-context/ralph-memory.md
 - specs/283-show-tenant-context/progress.md
 **Learnings**:
-- Root/config/common-service tests now pin the tenant semantics split: omitted Camunda 8.7 tenant normalizes to `<default>`, explicitly empty 8.7 remains empty, and omitted 8.8/8.9/8.10 remains unfiltered.
 - Generated clients were not modified; the service request boundary continues to consume the normalized effective tenant directly through common helpers.
 - Passed: `go test ./cmd -run 'TestRetrieveAndNormalizeConfig_VersionSpecificEmptyTenantSemantics' -count=1`.
 - Passed: `go test ./config -run 'TestResolveEffectiveConfig_VersionSpecificEmptyTenantSemantics|TestConfig_ToSanitizedYAMLWithTenantContext' -count=1`.
@@ -822,7 +820,6 @@ Started: 2026-08-29 14:20:03
 - Passed: `git diff --name-only 54fd03eba0849047f6cbd811ac1ee9b001c03b77..HEAD -- 'cmd/*.go' | rg -v '_test\\.go$'`.
 - Passed: `git diff -U0 54fd03eba0849047f6cbd811ac1ee9b001c03b77..HEAD -- 'cmd/*.go' ':(exclude)cmd/*_test.go' | rg '^\\+(func|type|const|var) '`.
 - Passed: `git diff --name-only 54fd03eba0849047f6cbd811ac1ee9b001c03b77..HEAD -- 'internal/clients/**' 'api/**' 'api/mutations/**'`.
-- Passed: `git diff --name-only 54fd03eba0849047f6cbd811ac1ee9b001c03b77..HEAD -- 'internal/services/*/v87/**' 'internal/services/*/v88/**' 'internal/services/*/v89/**' 'internal/services/*/v810/**'`.
 - Passed: `git diff --name-only 54fd03eba0849047f6cbd811ac1ee9b001c03b77..HEAD -- '*.go' | xargs gofmt -w`.
 - Passed: `git diff --check`.
 ---

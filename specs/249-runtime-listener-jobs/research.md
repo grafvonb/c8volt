@@ -15,7 +15,6 @@ Extend the existing process-instance element enrichment path so requested listen
 
 Use the existing job service search capability with `processInstanceKey` and listener job kind filters for `EXECUTION_LISTENER` and `TASK_LISTENER`.
 
-**Rationale**: The current domain and public job models already expose job key, state, retries, type, worker, kind, listener event type, process instance key, element instance key, element ID, tenant, and error details. The generated v8.8/v8.9 clients already support job search filters for process instance, element instance, kind, and listener event type. Camunda 8.7 job search already returns the repository's established unsupported-version style error.
 
 **Alternatives considered**:
 

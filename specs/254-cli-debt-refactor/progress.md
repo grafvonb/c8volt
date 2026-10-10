@@ -173,8 +173,6 @@ Started: 2026-07-24 06:28:25
 - c8volt/process/client_test.go
 - internal/domain/job.go
 - internal/services/job/api.go
-- internal/services/job/v87/contract.go
-- internal/services/job/v87/service.go
 - internal/services/job/v88/contract.go
 - internal/services/job/v88/service.go
 - internal/services/job/v88/service_test.go
@@ -205,8 +203,6 @@ Started: 2026-07-24 06:28:25
 - c8volt/process/client_test.go
 - internal/domain/element.go
 - internal/services/element/api.go
-- internal/services/element/v87/contract.go
-- internal/services/element/v87/service.go
 - internal/services/element/v88/contract.go
 - internal/services/element/v88/service.go
 - internal/services/element/v88/service_test.go
@@ -239,8 +235,6 @@ Started: 2026-07-24 06:28:25
 - internal/domain/incident.go
 - internal/services/incident/api.go
 - internal/services/incident/lookup.go
-- internal/services/incident/v87/contract.go
-- internal/services/incident/v87/incidents.go
 - internal/services/incident/v88/contract.go
 - internal/services/incident/v88/incidents.go
 - internal/services/incident/v89/contract.go

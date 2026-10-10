@@ -10,15 +10,6 @@
 - Tasklist lookup: rejected because the issue explicitly forbids Tasklist.
 - Operate lookup: rejected because the issue explicitly forbids Operate.
 
-## Decision: Return explicit unsupported behavior on Camunda 8.7
-
-**Rationale**: 8.7 must not fall back to Tasklist or Operate, and the repository already has unsupported-error patterns for version-specific CLI behavior.
-
-**Alternatives considered**:
-
-- Hidden compatibility fallback: rejected because it violates the issue and makes behavior harder to reason about.
-- Treat `--has-user-tasks` as an unknown flag on 8.7: rejected because the flag should be discoverable while the runtime version explains the unsupported condition.
-
 ## Decision: Reuse direct process-instance lookup after resolution
 
 **Rationale**: Existing keyed lookup already owns strict not-found behavior, tenant-aware lookup semantics, output modes, default age output, `--keys-only`, and JSON rendering. Reusing it avoids parallel formatting and preserves user-visible behavior. Multiple user task keys resolve to multiple process-instance keys and then reuse the same multi-key process-instance lookup path.

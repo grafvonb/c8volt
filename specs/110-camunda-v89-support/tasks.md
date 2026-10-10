@@ -3,7 +3,7 @@
 **Input**: Design documents from `/specs/110-camunda-v89-support/`
 **Prerequisites**: [plan.md](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/110-camunda-v89-support/plan.md) (required), [spec.md](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/110-camunda-v89-support/spec.md) (required for user stories), [research.md](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/110-camunda-v89-support/research.md), [data-model.md](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/110-camunda-v89-support/data-model.md), [quickstart.md](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/110-camunda-v89-support/quickstart.md), [contracts/v89-support.md](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/110-camunda-v89-support/contracts/v89-support.md)
 
-**Tests**: Automated tests are REQUIRED for this feature because the specification explicitly requires factory-selection coverage, preserved `v8.7`/`v8.8` behavior coverage, and at least one explicit `v8.9` execution test for each repository command family.
+**Tests**: Automated tests are REQUIRED for this feature because the specification explicitly requires factory-selection coverage, preserved `v8.8` behavior coverage, and at least one explicit `v8.9` execution test for each repository command family.
 
 **Organization**: Tasks are grouped by user story to enable independent implementation and testing of each story.
 
@@ -65,13 +65,13 @@
 
 ## Phase 4: User Story 2 - Keep Version Selection Predictable (Priority: P2)
 
-**Goal**: Make `v8.9` selection explicit and reliable while preserving current `v8.7` and `v8.8` behavior and keeping temporary fallback narrow and honest.
+**Goal**: Make `v8.9` selection explicit and reliable while preserving current `v8.8` behavior and keeping temporary fallback narrow and honest.
 
-**Independent Test**: Exercise supported, missing, invalid, and unsupported version selection paths and verify `v8.9` routes to native services while `v8.7`/`v8.8` continue behaving as before.
+**Independent Test**: Exercise supported, missing, invalid, and unsupported version selection paths and verify `v8.9` routes to native services while `v8.8` continue behaving as before.
 
 ### Tests for User Story 2
 
-- [x] T017 [P] [US2] Add regression coverage for supported-version selection and preserved `v8.7`/`v8.8` behavior in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/cluster/factory_test.go, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processdefinition/factory_test.go, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/factory_test.go, and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/resource/factory_test.go
+- [x] T017 [P] [US2] Add regression coverage for supported-version selection and preserved `v8.8` behavior in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/cluster/factory_test.go, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processdefinition/factory_test.go, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/factory_test.go, and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/resource/factory_test.go
 - [x] T018 [P] [US2] Add bootstrap and config regression coverage for `v8.9` support messaging and unsupported-version failures in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/config/app_test.go, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/bootstrap_errors_test.go, and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/c8volt/ferrors/errors_test.go
 - [x] T019 [P] [US2] Add process-instance-specific regression coverage that proves final native `v8.9` paths stay on the `v89` Camunda client boundary and any temporary fallback stays documented/non-final in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v89/service_test.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/110-camunda-v89-support/contracts/v89-support.md
 
@@ -165,7 +165,7 @@ Task: "Add native `v89` service tests for process-instance create/get/search/can
 
 ```bash
 # Prepare User Story 2 version-selection proof in parallel:
-Task: "Add regression coverage for supported-version selection and preserved `v8.7`/`v8.8` behavior in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/cluster/factory_test.go, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processdefinition/factory_test.go, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/factory_test.go, and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/resource/factory_test.go"
+Task: "Add regression coverage for supported-version selection and preserved `v8.8` behavior in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/cluster/factory_test.go, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processdefinition/factory_test.go, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/factory_test.go, and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/resource/factory_test.go"
 Task: "Add bootstrap and config regression coverage for `v8.9` support messaging and unsupported-version failures in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/config/app_test.go, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/bootstrap_errors_test.go, and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/c8volt/ferrors/errors_test.go"
 Task: "Add process-instance-specific regression coverage that proves final native `v8.9` paths stay on the `v89` Camunda client boundary and any temporary fallback stays documented/non-final in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v89/service_test.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/110-camunda-v89-support/contracts/v89-support.md"
 ```

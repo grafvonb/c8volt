@@ -5,18 +5,15 @@
 
 ## Summary
 
-Add a new `c8volt update` command family with `update process-instance` / `update pi` for setting process-instance-scope variables on existing process instances. Reuse existing process-instance key parsing, worker/fail-fast/no-worker-limit controls, command activity, output rendering, and waiter/backoff conventions; add a facade/service update path backed by the generated Camunda 8.8/8.9 element-instance variable endpoint; reject 8.7 before mutation; and confirm requested variable values through the existing `get pi --with-vars` lookup path unless `--no-wait` is supplied.
 
 ## Technical Context
 
 **Language/Version**: Go, repository current module toolchain  
 **Primary Dependencies**: Cobra command tree, existing command metadata helpers, process facade, process-instance service API, generated Camunda v8.8/v8.9 clients, process-instance variable lookup/enrichment, waiter/backoff and bulk worker helpers, shared rendering/error helpers  
 **Storage**: N/A  
-**Testing**: Go tests through targeted `go test ./cmd ./c8volt/process ./internal/services/processinstance/v87 ./internal/services/processinstance/v88 ./internal/services/processinstance/v89 -count=1`, docs generation checks, and final `make test`  
 **Target Platform**: CLI on the repository's supported platforms  
 **Project Type**: Go CLI  
 **Performance Goals**: Update and confirmation work should fan out through existing worker controls for multi-key updates, avoid duplicate work for duplicate keys, and poll only requested variable names during confirmation  
-**Constraints**: Preserve existing `run --vars` and `get process-instance --with-vars` behavior; require JSON object `--vars`; reject Camunda 8.7 before mutation; use process instance key as `elementInstanceKey`; compare normalized JSON values; support `--no-wait`; keep output script-safe in human and JSON modes  
 **Scale/Scope**: One new root command family, one process-instance update leaf command and alias, facade/domain/service additions for update results and variable update calls, tests for command validation/output/service behavior, README/help/generated docs updates, and Speckit/Ralph artifacts
 
 ## Constitution Check
@@ -77,10 +74,6 @@ internal/
         ├── waiter/
         │   ├── waiter.go
         │   └── waiter_test.go
-        ├── v87/
-        │   ├── contract.go
-        │   ├── service.go
-        │   └── service_test.go
         ├── v88/
         │   ├── contract.go
         │   ├── variables.go
@@ -95,7 +88,6 @@ docs/
 docsgen/
 ```
 
-**Structure Decision**: Add `cmd/update.go` as the root command and `cmd/update_processinstance.go` as the process-instance leaf, mirroring existing `run` and `delete` command registration. Extend `c8volt/process` for facade-level variable update and confirmation result models. Extend `internal/services/processinstance` for the update API, with v8.8/v8.9 implemented via generated `CreateElementInstanceVariables...` methods and v8.7 returning the shared unsupported-version error. Reuse existing command rendering and docs generation paths rather than creating new output or docs infrastructure.
 
 ## Phase 0: Research
 

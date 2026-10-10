@@ -58,7 +58,6 @@ Paths cannot escape the target; all fields are deterministic; timestamps, host p
 | syntaxValid | boolean | true before publication |
 | requiredSymbolsPresent | boolean | true for adapters |
 
-No V810 Operate, Tasklist, or Administration SM sibling exists. Target generation cannot alter v87-v89 and is diff-free on repeat.
 
 ## ServiceCompatibility
 

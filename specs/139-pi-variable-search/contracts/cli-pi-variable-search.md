@@ -73,8 +73,6 @@ Contract:
 ## Version Behavior
 
 - Camunda 8.8 and 8.9 must execute variable filters through native Camunda variable-search semantics.
-- Camunda 8.7 must return an explicit unsupported-version error when any new variable-search flag is supplied.
-- Searches without the new variable-search flags must preserve existing 8.7 behavior.
 - No variable-search path may silently fall back to Operate-backed filtering.
 
 ## Output And Metadata

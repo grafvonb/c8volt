@@ -5,7 +5,6 @@
 Run service tests around creation confirmation:
 
 ```sh
-go test ./internal/services/processinstance/v87 ./internal/services/processinstance/v88 ./internal/services/processinstance/v89 -run 'CreateProcessInstance|WaitForProcessInstance' -count=1
 ```
 
 Run command tests around `run pi`, keys-only output, command contract, and documentation examples:

@@ -21,10 +21,6 @@ func TestGetFamilyUserTask(t *testing.T) {
 	for _, profile := range requireSelectedProfiles(t) {
 		t.Run(profile.Name, func(t *testing.T) {
 			require.NoError(t, requireProfilesReady(t, []integrationProfile{profile}))
-			if profile.ExpectedVersion == "8.7" {
-				runGetUserTaskScenarios(t, profile, "", nil, false)
-				return
-			}
 			seed, records, cleanup, err := seedProfileData(t, profile)
 			writeJSON(t, "user-task-seed-"+profile.Name+".json", seededDataReport{Profiles: []seededProfileData{seed}, Records: records, Cleanup: cleanup})
 			require.NoError(t, err)
@@ -38,20 +34,6 @@ func runGetUserTaskScenarios(t *testing.T, profile integrationProfile, pdKey str
 	t.Helper()
 	var records []evidenceRecord
 	defer func() { writeJSON(t, fmt.Sprintf("user-task-%s-volume-%t.json", profile.Name, volume), records) }()
-	if profile.ExpectedVersion == "8.7" {
-		result := runC8VoltForProfile(t, profile.Name, "user-task-unsupported", "get", "ut", "--json", "--limit", "1")
-		record := commandEvidence("get user-task", "user-task-unsupported", result, "pass")
-		record.Profile = profile.Name
-		defer func() {
-			if t.Failed() {
-				record.Outcome = "fail"
-			}
-			records = append(records, record)
-		}()
-		require.Error(t, result.Err)
-		require.Contains(t, strings.ToLower(result.Stdout+result.Stderr), "unsupported")
-		return
-	}
 	var expectedKeys []string
 	var sample task.UserTask
 	for _, piKey := range piKeys {

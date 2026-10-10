@@ -20,7 +20,7 @@ Correct false cancellation-confirmation timeouts by accepting completed, cancell
 
 **Testing**: Go testing with existing strict client doubles, short configured confirmation deadlines, targeted package tests, and `make test` (`go test ./... -race -count=1`).
 
-**Target Platform**: Existing c8volt CLI environments connected to Camunda 8.7, 8.8, 8.9, or 8.10.
+**Target Platform**: Existing c8volt CLI environments connected to Camunda 8.8, 8.9, or 8.10.
 
 **Project Type**: CLI and public Go facade over versioned internal services.
 
@@ -63,7 +63,6 @@ specs/294-confirm-terminal-cancellation/
 ```text
 internal/domain/state.go                         # Existing terminal definition; unchanged
 internal/services/processinstance/
-├── v87/service.go, service_test.go              # Cancellation and force-delete waits, no-ops
 ├── v88/service.go, service_test.go
 ├── v89/service.go, service_test.go
 ├── v810/service.go, service_test.go

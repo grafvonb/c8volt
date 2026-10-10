@@ -11,7 +11,6 @@ Started: 2026-05-24 12:31:13
 - Ops renderers route machine-readable modes through `renderSucceededResult` and keep compact human output in view helpers; current bounded-scope notices are rendered only when notice code is `bounded_search_scope`.
 - Ops Markdown reports use shared `writeMarkdownReportField` and `writeMarkdownReportList` helpers, so future discovery status output should be added from facade/domain result fields rather than inferred from renderer counts.
 - Process-definition v8.8/v8.9 search already uses native `SearchQueryPageRequest` and `SearchQueryPageResponse`; page continuation should prefer `EndCursor` when a previous cursor is available and otherwise use offset/total metadata.
-- Process-definition v8.7 Operate search has no response cursor, so page support follows the existing v8.7 process-instance pattern: over-fetch up to `consts.MaxPISearchSize`, then trim a local offset window and classify overflow from `total`.
 - Incident purge confirmation should pass the planned discovery status alongside frozen process-instance keys; otherwise the final mutation run can avoid rediscovery but lose whether the approved scope was complete or user-limited.
 - Repair search-mode discovery records completeness on `OpsRepairFrozenSet`, and repair human/Markdown output should render from that frozen-set status rather than infer completeness from counts.
 - Repair confirmation already converts search preflight plans into keyed follow-up requests; command regression tests should assert the search endpoint is called once so mutation reuses the frozen scope.
@@ -53,10 +52,8 @@ Started: 2026-05-24 12:31:13
 - [x] T008: Add process-definition page request/response domain types if needed in `internal/domain/processdefinition.go`
 - [x] T009: Implement v8.9 process-definition page search request and conversion in `internal/services/processdefinition/v89/service.go`
 - [x] T010: Implement v8.8 process-definition page search request and conversion in `internal/services/processdefinition/v88/service.go`
-- [x] T011: Implement v8.7 process-definition page search request and conversion in `internal/services/processdefinition/v87/service.go`
 - [x] T012: Add process-definition page service tests in `internal/services/processdefinition/v89/service_test.go`
 - [x] T013: Add process-definition page service tests in `internal/services/processdefinition/v88/service_test.go`
-- [x] T014: Add process-definition page service tests in `internal/services/processdefinition/v87/service_test.go`
 **Tasks Remaining in Story**: None - story complete
 **Commit**: Recorded in Git history for this iteration
 **Files Changed**:
@@ -67,9 +64,6 @@ Started: 2026-05-24 12:31:13
 - internal/domain/ops_repair.go
 - internal/domain/processdefinition.go
 - internal/services/processdefinition/api.go
-- internal/services/processdefinition/v87/contract.go
-- internal/services/processdefinition/v87/service.go
-- internal/services/processdefinition/v87/service_test.go
 - internal/services/processdefinition/v88/contract.go
 - internal/services/processdefinition/v88/service.go
 - internal/services/processdefinition/v88/service_test.go

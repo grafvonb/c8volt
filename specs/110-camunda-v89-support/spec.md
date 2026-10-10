@@ -47,12 +47,10 @@ As a maintainer, I want version-based service selection to recognize v8.9 as a f
 
 **Why this priority**: Even if individual services exist, the feature is incomplete if the application cannot consistently route command execution to the correct v8.9 behavior.
 
-**Independent Test**: Exercise version-driven selection paths with v8.9, v8.8, v8.7, missing version configuration, and unsupported versions, then verify that supported versions are routed correctly and unsupported inputs still fail clearly.
 
 **Acceptance Scenarios**:
 
 1. **Given** a supported v8.9 configuration, **When** the application resolves version-specific services, **Then** it selects the v8.9 implementations for the relevant command path.
-2. **Given** an existing v8.7 or v8.8 configuration, **When** the same selection logic runs, **Then** their current behavior remains unchanged.
 3. **Given** version configuration is missing, invalid, or unsupported, **When** the operator runs an affected command, **Then** the application reports the version problem through the existing failure contract instead of silently falling back to the wrong runtime path.
 4. **Given** a v8.9 runtime path is incomplete for a command family, **When** the application uses temporary fallback behavior, **Then** the fallback must preserve the same user-facing command contract rather than introducing a visible behavior difference.
 
@@ -78,7 +76,7 @@ As a maintainer, I want regression coverage and documentation to describe the ne
 - Missing or unsupported version configuration must not silently route execution through a different supported version.
 - A partially added v8.9 runtime path must not leave some command families using older-version behavior while others use v8.9 behavior without explicit documentation.
 - If parity cannot be achieved for a command family already supported on v8.8, that gap must be called out explicitly instead of being hidden behind partial success.
-- Existing v8.7 and v8.8 behavior must remain stable while v8.9 support is introduced.
+- Existing v8.8 behavior must remain stable while v8.9 support is introduced.
 - Any temporary fallback from v8.9 to v8.8 behavior must remain invisible to operators at the command-contract level and be documented for maintainers.
 
 ## Requirements *(mandatory)*
@@ -90,12 +88,10 @@ As a maintainer, I want regression coverage and documentation to describe the ne
 - **FR-003**: The system MUST preserve the existing user-facing contract for commands already supported on v8.8 when those commands run against v8.9.
 - **FR-004**: The system MUST route version-specific command execution to v8.9 behavior for affected command paths when the configured version is v8.9.
 - **FR-004a**: When full native v8.9 parity is not yet available for a command family, the system MAY temporarily fall back to v8.8 behavior if the same user-facing command contract is preserved.
-- **FR-005**: The system MUST preserve existing behavior for v8.7 and v8.8 while adding v8.9 support.
+- **FR-005**: The system MUST preserve existing behavior for v8.8 while adding v8.9 support.
 - **FR-006**: The system MUST keep version-specific service behavior aligned with the repository's existing versioned service and facade patterns rather than introducing a parallel runtime structure.
 - **FR-006a**: For repository command families that already use versioned services, final acceptance MUST include native v8.9 service implementations rather than indefinite fallback to older-version behavior.
-- **FR-006b**: Any final native v8.9 service path MUST depend only on v8.9 generated clients and contracts rather than mixing in v8.7 or v8.8 generated clients.
 - **FR-007**: The system MUST ensure each command family already supported on v8.8 across the repository has a corresponding v8.9 runtime path before the feature is considered complete.
-- **FR-008**: The system MUST verify supported-version selection behavior for v8.9, v8.8, and v8.7 through automated coverage in the affected areas.
 - **FR-009**: The system MUST verify at least one explicit command execution path under v8.9 for each repository command family currently supported on v8.8.
 - **FR-010**: The system MUST continue to report missing, invalid, or unsupported version configuration through the existing command/bootstrap failure contract.
 - **FR-011**: The system MUST update user-facing documentation and examples anywhere supported Camunda versions or version-specific command expectations are described.
@@ -123,7 +119,7 @@ As a maintainer, I want regression coverage and documentation to describe the ne
 - **SC-001a**: Automated coverage and implementation review confirm that final native v8.9 service paths depend only on v8.9 generated clients and contracts.
 - **SC-002**: Automated coverage demonstrates that at least one explicit v8.9 execution test for every v8.8-supported command family across the repository executes successfully under v8.9 without changing the command contract.
 - **SC-002a**: Automated coverage demonstrates that any temporary fallback path used under v8.9 preserves the same user-facing command contract as the corresponding v8.8 behavior.
-- **SC-003**: Automated coverage confirms that existing v8.7 and v8.8 selection and execution behavior remain unchanged after the feature is added.
+- **SC-003**: Automated coverage confirms that existing v8.8 selection and execution behavior remain unchanged after the feature is added.
 - **SC-004**: Unsupported, missing, or invalid version configuration paths remain covered and continue to produce the expected failure behavior.
 - **SC-005**: Documentation and examples that describe supported Camunda versions explicitly include v8.9 support by the time the feature is complete.
 - **SC-005a**: Release readiness is blocked until user-facing version-support documentation and examples have been updated to reflect v8.9 support.
@@ -136,7 +132,7 @@ As a maintainer, I want regression coverage and documentation to describe the ne
 - The intended scope is full repository-wide parity with the existing v8.8 command surface, not expansion into brand-new command families.
 - The repository's current versioned service and facade patterns remain the preferred way to extend support to another Camunda version.
 - Users should be able to adopt v8.9 by changing supported configuration rather than relearning command syntax or workflows.
-- Existing v8.7 and v8.8 support must remain stable throughout this feature.
+- Existing v8.8 support must remain stable throughout this feature.
 - If parity work reveals an upstream limitation, the limitation should be documented clearly instead of being hidden by partial fallback behavior.
 - Temporary fallback to v8.8 behavior is acceptable during rollout when it preserves the command contract and the remaining gap is explicitly documented.
 - Command families that already participate in the repository's versioned-service architecture are expected to end on native v8.9 services, not permanent fallback behavior.

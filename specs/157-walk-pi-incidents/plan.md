@@ -12,8 +12,6 @@ Add `--with-incidents` to `c8volt walk process-instance` / `walk pi` for keyed t
 **Language/Version**: Go 1.26  
 **Primary Dependencies**: standard library, `github.com/spf13/cobra`, existing process facade/service packages, generated Camunda clients under `internal/clients/camunda/v88/camunda` and `internal/clients/camunda/v89/camunda`, existing rendering helpers in `cmd/`  
 **Storage**: No persistent storage changes; reads existing config/profile/root flag tenant through command bootstrap  
-**Testing**: `go test`, `make test`, command tests under `cmd/`, facade tests under `c8volt/process/`, traversal tests under `internal/services/processinstance/walker` and `internal/services/processinstance/traversal`, versioned service tests under `internal/services/processinstance/v87`, `v88`, and `v89`  
-**Target Platform**: Cross-platform CLI for local and CI use against supported Camunda versions; incident enrichment supported through existing v8.8 and v8.9 incident search paths, unsupported explicitly for v8.7 where tenant-safe keyed enrichment is unavailable  
 **Project Type**: CLI  
 **Performance Goals**: Walk command performs no incident searches when `--with-incidents` is omitted; when enabled, it performs incident searches only for process instances returned by the selected traversal mode  
 **Constraints**: Preserve current walk traversal behavior, preserve default human/key-only/tree/JSON output when the flag is omitted, fail instead of rendering partially enriched output when incident lookup fails, keep incident lookups tenant-aware, avoid tenant-unsafe direct incident fallback, update generated CLI docs, finish with targeted tests and `make test`  
@@ -66,9 +64,6 @@ internal/services/processinstance/
 ├── api.go
 ├── traversal/
 │   └── result.go
-├── v87/
-│   ├── incidents.go
-│   └── service_test.go
 ├── v88/
 │   ├── incidents.go
 │   └── service_test.go
@@ -91,7 +86,6 @@ Research findings are captured in [research.md](research.md).
 - Confirmed existing walk JSON payload includes traversal metadata and item lists; enriched JSON should preserve those fields and add incidents per item.
 - Confirmed human walk output uses `oneLinePI` rows joined by mode-specific separators or rendered through ASCII tree output.
 - Confirmed v8.8 and v8.9 incident search paths already avoid redundant process-instance-key filter values and include configured tenant filters where supported.
-- Confirmed v8.7 incident lookup is already explicit unsupported, which should surface through walk enrichment when requested.
 - Confirmed incident lookup failure is all-or-nothing for requested enrichment: traversal must not render partially enriched output after a failed incident lookup.
 
 ## Phase 1: Design & Contracts
@@ -116,7 +110,6 @@ Design artifacts are captured in:
 
 | Version | Incident enrichment | Planned behavior |
 |---------|---------------------|------------------|
-| v8.7 | Unsupported | Return existing unsupported-capability style for `--with-incidents` because tenant-safe keyed enrichment is unavailable |
 | v8.8 | Supported | Reuse generated `SearchProcessInstanceIncidentsWithResponse` path and configured tenant filtering from issue #154 |
 | v8.9 | Supported | Match v8.8 behavior with v89 generated client types |
 

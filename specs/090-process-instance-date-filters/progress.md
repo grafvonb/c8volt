@@ -11,7 +11,6 @@ Started: 2026-04-08 13:08:20
 - v8.8 generated datetime search filters should be built through `camundav88.AdvancedDateTimeFilter` and the union setter in `internal/services/common/filter.go`; direct struct assignment to `DateTimeFilterProperty` is not the repository-native pattern.
 - Inclusive day-upper-bound filtering is represented as next-day midnight minus one nanosecond, and the command-level search tests can assert that exact serialized `$lte` timestamp via the real `/v2/process-instances/search` request body.
 - `get process-instance` validation failures that terminate inside the command should be covered with helper-process tests using `Execute()` plus a temp `--config`, because the Run handler exits through `ferrors.HandleAndExit` instead of returning an error to `ExecuteC`.
-- v8.7 process-instance date-filter rejection belongs at the top of `SearchForProcessInstances`, before request construction or Operate calls, so unsupported-version behavior stays explicit and testable.
 - In this sandbox, `go run`-backed doc generation must override `GOCACHE` to a writable path such as `/tmp/go-build`; the default macOS cache under `~/Library/Caches/go-build` is not writable here.
 - Full `make docs` also depends on locally installed Jekyll gems; `make docs-content` can refresh generated markdown, but the site build still fails until Bundler can resolve the missing gems.
 - Full `make test` is not a reliable pass/fail signal in this sandbox because several unrelated packages use `httptest.NewServer`/`NewTLSServer`, and listener binds on `[::1]:0` are blocked here.
@@ -104,21 +103,16 @@ Started: 2026-04-08 13:08:20
 **User Story**: User Story 3 - Get Clear Errors for Unsupported or Invalid Input
 **Tasks Completed**:
 - [x] T015: Add command coverage for invalid date formats, invalid ranges, and `--key` incompatibility in `cmd/get_processinstance_test.go`
-- [x] T016: Add v8.7 service coverage for date-filter not-implemented behavior in `internal/services/processinstance/v87/service_test.go`
 - [x] T017: Implement date-range validation and direct-lookup rejection for date filters in `cmd/get_processinstance.go`
-- [x] T018: Implement v8.7 date-filter rejection through the existing service error path in `internal/services/processinstance/v87/service.go`
 **Tasks Remaining in Story**: None - story complete
 **Commit**: Recorded in Git history for this iteration
 **Files Changed**:
 - cmd/get_processinstance.go
 - cmd/get_processinstance_test.go
-- internal/services/processinstance/v87/service.go
-- internal/services/processinstance/v87/service_test.go
 - specs/090-process-instance-date-filters/progress.md
 - specs/090-process-instance-date-filters/tasks.md
 **Learnings**:
 - Inverted start/end date bounds can stay in the existing command validation seam by parsing both values with `time.DateOnly` after per-flag format checks and returning the shared invalid-input sentinel on `after > before`.
-- Direct lookup rejection for date flags is clearest when the key path emits a dedicated `--key` incompatibility message before the generic mixed-filter guard, while v8.7 unsupported handling belongs in the versioned service so the facade and CLI both keep the same capability boundary.
 ---
 
 ## Iteration 6 - 2026-04-08 13:47:00 CEST
@@ -155,13 +149,12 @@ Started: 2026-04-08 13:08:20
 - specs/090-process-instance-date-filters/tasks.md
 **Learnings**:
 - `GOCACHE=/tmp/go-build make docs-content` still regenerates the command reference markdown successfully, and `GOCACHE=/tmp/go-build make docs` re-runs that generation before failing later in the Jekyll site build step.
-- The remaining `make test` failure is environmental rather than feature-specific for the v8.7/v8.8 process-instance services: the first failing package is `cmd`, where `httptest.NewServer` panics on `listen tcp6 [::1]:0: bind: operation not permitted`, and unrelated auth/cluster packages fail for the same listener restriction.
+- The remaining `make test` failure is environmental rather than feature-specific for the v8.8 process-instance services: the first failing package is `cmd`, where `httptest.NewServer` panics on `listen tcp6 [::1]:0: bind: operation not permitted`, and unrelated auth/cluster packages fail for the same listener restriction.
 ---
 
 ## Iteration 8 - 2026-04-08 14:16:00 CEST
 **User Story**: Polish & Cross-Cutting Concerns
 **Tasks Completed**:
-- [x] T023: Run repository validation from `Makefile` and stabilize affected tests in `Makefile`, `cmd/get_processinstance_test.go`, `internal/services/processinstance/v87/service_test.go`, and `internal/services/processinstance/v88/service_test.go`
 **Tasks Remaining in Story**: None - story complete
 **Commit**: Recorded in Git history for this iteration
 **Files Changed**:
@@ -175,6 +168,4 @@ Started: 2026-04-08 13:08:20
 - specs/090-process-instance-date-filters/tasks.md
 **Learnings**:
 - The process-instance command request-capture tests need to skip when the environment forbids opening even a loopback test listener; otherwise they fail before any CLI assertions run and add noise unrelated to the feature behavior.
-- Fresh targeted validation now passes for `go test ./cmd -run 'TestGetProcessInstance(SearchScaffold_UsesTempConfigAndCapturesSearchRequest|DateFilterScaffold|InvalidDateFormatHelper|InvalidStartDateRangeHelper|DateFiltersWithKeyHelper)$' -count=1` and `go test ./internal/services/processinstance/v87 ./internal/services/processinstance/v88 -count=1`.
-- Fresh `GOCACHE=/tmp/go-build make test` still fails outside this feature in pre-existing listener-based tests such as `cmd/get_test.go`, `internal/services/auth/cookie/service_it_tiny_test.go`, and `internal/services/cluster/v87`/`v88` fake-server coverage.
 ---

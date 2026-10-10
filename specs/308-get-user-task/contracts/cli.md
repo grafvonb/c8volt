@@ -34,7 +34,6 @@ Validate all flag and stdin keys, including process-selector keys. Default state
 - No keys selects backend search with AND-combined filters and effective discovery tenant scope. No filters means all visible tasks in that scope.
 - Keys conflict with every explicitly supplied search filter, `--limit`, and `--total`. Inherited `--tenant` is not a key conflict. Batch size is validated but does not change direct lookup behavior.
 - `--total` conflicts with `--limit`, `--json`, and `--keys-only`, even when another output mode would otherwise take precedence. It never prompts and emits no list summary.
-- State names are listed in [data-model.md](../data-model.md). `assigned` is invalid. Unknown versions follow existing configuration errors; selected 8.7 yields unsupported operation for new native reads.
 - Command validation failures produce established invalid-input errors before task retrieval. Version validation uses the resolved configuration and existing error machinery.
 
 ## Results

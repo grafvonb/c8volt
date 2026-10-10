@@ -208,4 +208,3 @@ Task: "T020 [P] [US2] Add delete pi --key --dry-run selected-tenant mismatch tes
 - Commit subjects must use Conventional Commits format and append `#156` as the final token.
 - Do not stage or commit unless the Ralph workflow explicitly reaches its commit step and validation passes.
 - Generated CLI docs must be regenerated with `make docs-content`; do not hand-edit generated docs under `docs/cli/`.
-- Do not rewrite Camunda 8.7 tenant behavior as part of this feature.

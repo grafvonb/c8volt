@@ -18,7 +18,6 @@ func TestSupportsFullProcessDefinitionHistoryDeletion(t *testing.T) {
 		version CamundaVersion
 		want    bool
 	}{
-		{version: V87, want: false},
 		{version: V88, want: false},
 		{version: V89, want: true},
 		{version: V810, want: true},

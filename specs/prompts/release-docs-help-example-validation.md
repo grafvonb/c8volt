@@ -51,7 +51,7 @@ and ops matrix requirements below apply to the full audit, not README-only mode.
 Report-only remains the default.
 
 Scope and example rules:
-1. Public executable examples target Camunda 8.9. Flag 8.7/8.8-specific examples
+1. Public executable examples target Camunda 8.9. Flag 8.8-specific examples
    for removal or rewriting; perform those changes only in repair mode. Do not
    remove older-version support documentation merely because executable
    examples now target 8.9. Identify 8.10-specific examples as outside this pass

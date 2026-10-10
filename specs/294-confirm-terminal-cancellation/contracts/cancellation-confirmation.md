@@ -16,7 +16,7 @@ This contract applies to existing `cancel process-instance`, cancellation inside
 
 ## Acceptance matrix
 
-Apply rows A–I to Camunda 8.7, 8.8, 8.9, and 8.10 using real versioned service methods and controlled client responses.
+Apply rows A–I to Camunda 8.8, 8.9, and 8.10 using real versioned service methods and controlled client responses.
 
 | Case | Setup/action | Required observation |
 | --- | --- | --- |

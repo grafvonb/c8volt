@@ -10,7 +10,6 @@ Started: 2026-05-05 08:05:19
 - Command invalid-input tests use helper subprocess entrypoints in `cmd/expect_test.go` with `testx.RunCmdSubprocess`, then assert exit codes and envelope fields for JSON mode.
 - Facade waits map public `process.States` to domain `d.States`, pass facade options through `options.MapFacadeOptionsToCallOptions`, and convert domain `StateResponse` values to public reports in `c8volt/process/client.go` and `bulk.go`.
 - Shared process-instance waiting lives in `internal/services/processinstance/waiter`; it owns polling, backoff, max-retry, activity logging, `--state absent` not-found handling, and canceled/terminated compatibility.
-- Versioned process-instance services expose the same API surface and delegate state waits to the shared waiter; v8.7 maps incident through the Operate `Incident` pointer, while v8.8/v8.9 map `HasIncident`.
 - Process-instance expectation docs are driven by command examples/help and generated CLI docs; README and `docs/index.md` currently list only state-based `expect pi` examples.
 - Public process facade expansion requires matching methods on command and facade test stubs (`cmd/process_api_stub_test.go`, `c8volt/process/client_test.go`) because both assert full API conformance.
 - Combined process-instance expectation contracts now use public request/report types in `c8volt/process` and mirrored domain request/response types in `internal/domain` because internal service APIs cannot import the public facade package.
@@ -74,8 +73,6 @@ Started: 2026-05-05 08:05:19
 - internal/domain/processinstance.go
 - internal/services/processinstance/api.go
 - internal/services/processinstance/waiter/waiter.go
-- internal/services/processinstance/v87/contract.go
-- internal/services/processinstance/v87/service.go
 - internal/services/processinstance/v88/contract.go
 - internal/services/processinstance/v88/service.go
 - internal/services/processinstance/v89/contract.go
@@ -113,9 +110,8 @@ Started: 2026-05-05 08:05:19
 - specs/170-process-incident-expect/progress.md
 **Learnings**:
 - Full process-instance polling is required for incident expectations; state-only polling cannot observe the incident marker directly.
-- Versioned v8.7/v8.8/v8.9 services already delegate combined expectation waits to the shared waiter, so US1 needed the shared waiter behavior rather than version-specific loops.
+- Versioned v8.8/v8.9 services already delegate combined expectation waits to the shared waiter, so US1 needed the shared waiter behavior rather than version-specific loops.
 - Validation run: `GOCACHE=/tmp/c8volt-go-build-cache go test ./cmd ./c8volt/process ./internal/services/processinstance/waiter -run 'TestExpect|TestClient_.*Incident|TestWait.*Incident' -count=1`.
-- Additional compile proof: `GOCACHE=/tmp/c8volt-go-build-cache go test ./internal/services/processinstance/v87 ./internal/services/processinstance/v88 ./internal/services/processinstance/v89 -count=1`.
 ---
 
 ---
@@ -241,7 +237,6 @@ Started: 2026-05-05 08:05:19
 - specs/170-process-incident-expect/progress.md
 **Learnings**:
 - Full `make test` found one remaining compile-only API conformance stub in `c8volt/resource/client_test.go`; adding panic-only expectation wait methods kept the resource tests aligned with the expanded public process facade.
-- Validation run: `GOCACHE=/tmp/c8volt-go-build-cache go test ./cmd ./c8volt/process ./internal/services/processinstance/waiter ./internal/services/processinstance/v87 ./internal/services/processinstance/v88 ./internal/services/processinstance/v89 -count=1`.
 - Repository validation run: `GOCACHE=/tmp/c8volt-go-build-cache make test`.
 - Documentation run: `GOCACHE=/tmp/c8volt-go-build-cache make docs-content`.
 ---

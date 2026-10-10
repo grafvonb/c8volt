@@ -561,25 +561,6 @@ func TestSlowProcessAnalysisExplicitKeysPropagatesLookupFailures(t *testing.T) {
 	}
 }
 
-// TestSlowProcessAnalysisCamunda87Unsupported verifies version compatibility fails before remote lookup.
-func TestSlowProcessAnalysisCamunda87Unsupported(t *testing.T) {
-	piAPI := stubProcessInstanceAPI{
-		search: func(context.Context, d.ProcessInstanceFilter, int32, ...services.CallOption) ([]d.ProcessInstance, error) {
-			t.Fatal("lookup should not run for unsupported Camunda 8.7")
-			return nil, nil
-		},
-	}
-
-	got, err := NewWithAnalysisDependencies(nil, piAPI, nil, nil, nil, nil, stubSlowProcessAnalysisElementAPI{}, toolx.V87).AnalyseSlowProcessInstances(context.Background(), d.SlowProcessAnalysisRequest{
-		SelectionMode: d.SlowProcessAnalysisSelectionModeExplicitKeys,
-		InputKeys:     typex.Keys{"2251799813685249"},
-	})
-
-	require.ErrorIs(t, err, d.ErrUnsupported)
-	require.Empty(t, got.Items)
-	require.True(t, got.Empty)
-}
-
 // TestSlowProcessAnalysisProcessDefinitionSearchDiscoversFrozenSelection verifies search filters page into one frozen root set.
 func TestSlowProcessAnalysisProcessDefinitionSearchDiscoversFrozenSelection(t *testing.T) {
 	captured := slowProcessAnalysisFixtureTime(t, "2026-07-18T10:30:00Z")

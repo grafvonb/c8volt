@@ -21,7 +21,6 @@
 - [x] T002 [P] Inspect process-instance key/stdin, worker, fail-fast, and no-worker-limit behavior in `cmd/delete_processinstance.go`, `cmd/expect_processinstance.go`, and related tests in `cmd/delete_test.go` and `cmd/expect_test.go`
 - [x] T003 [P] Inspect process-instance variable lookup and rendering paths in `cmd/get_processinstance.go`, `cmd/get_processinstance_enrichment.go`, `cmd/cmd_views_processinstance_activity.go`, `cmd/cmd_views_processinstance_vars.go`, and `cmd/get_processinstance_test.go`
 - [x] T004 [P] Inspect process facade models and service interface patterns in `c8volt/process/api.go`, `c8volt/process/client.go`, `c8volt/process/model.go`, and `internal/services/processinstance/api.go`
-- [x] T005 [P] Inspect generated v8.8/v8.9 element-instance variable update client methods and v8.7 unsupported patterns in `internal/clients/camunda/v88/camunda/client.gen.go`, `internal/clients/camunda/v89/camunda/client.gen.go`, and `internal/services/processinstance/v87/service.go`
 - [x] T006 [P] Inspect README, generated docs, and docs generation workflow in `README.md`, `docs/`, and `docsgen/`
 
 ---
@@ -37,9 +36,7 @@
 - [x] T009 Add facade-level process-instance variable update request/result models in `c8volt/process/model.go`
 - [x] T010 Extend process facade interface and client stubs for update/confirmation orchestration in `c8volt/process/api.go` and `c8volt/process/client.go`
 - [x] T011 Extend process-instance service API and compile-time implementation assertions for variable update support in `internal/services/processinstance/api.go`
-- [x] T012 Add unsupported Camunda 8.7 update method behavior to `internal/services/processinstance/v87/contract.go` and `internal/services/processinstance/v87/service.go`
 - [x] T013 Add command contract discovery tests for the new update root and process-instance metadata in `cmd/command_contract_test.go`
-- [x] T014 Run `GOCACHE=/tmp/c8volt-gocache go test ./cmd ./c8volt/process ./internal/services/processinstance/v87 -run 'Test(CommandCapability|Update|Unsupported)' -count=1` and fix foundational regressions
 
 **Checkpoint**: The command family, shared data types, and service/facade surface compile before story behavior is implemented.
 
@@ -122,15 +119,12 @@
 
 ## Phase 6: User Story 4 - Reject Invalid Or Unsupported Updates (Priority: P4)
 
-**Goal**: Invalid payloads, missing targets, unsupported Camunda 8.7, and confirmation timeouts fail clearly before unsafe or misleading success.
 
-**Independent Test**: Run malformed JSON, non-object JSON, missing `--vars`, missing key/stdin, Camunda 8.7, and forced confirmation-timeout scenarios and verify clear failures.
 
 ### Tests for User Story 4
 
 - [x] T042 [P] [US4] Add command validation tests for missing `--vars`, malformed JSON, and non-object JSON in `cmd/update_processinstance_test.go`
 - [x] T043 [P] [US4] Add command validation tests for missing `--key` and missing stdin input via `-` in `cmd/update_processinstance_test.go`
-- [x] T044 [P] [US4] Add v8.7 unsupported-version command or service test proving mutation is not attempted in `cmd/update_processinstance_test.go` or `internal/services/processinstance/v87/service_test.go`
 - [x] T045 [P] [US4] Add facade or command test for confirmation timeout/retry exhaustion reporting confirmation failure for the affected key in `c8volt/process/client_test.go` or `cmd/update_processinstance_test.go`
 - [x] T046 [P] [US4] Add regression tests proving existing `run --vars` and `get process-instance --with-vars` behavior remains unchanged in `cmd/run_test.go` and `cmd/get_processinstance_test.go`
 
@@ -138,9 +132,7 @@
 
 - [x] T047 [US4] Reject missing `--vars`, malformed JSON, and non-object JSON before creating a CLI client mutation request in `cmd/update_processinstance.go`
 - [x] T048 [US4] Reject missing target keys through existing key target validation behavior in `cmd/update_processinstance.go`
-- [x] T049 [US4] Ensure v8.7 returns unsupported-version errors before mutation through `internal/services/processinstance/v87/service.go` and facade error mapping in `c8volt/process/client.go`
 - [x] T050 [US4] Report confirmation timeout or retry exhaustion as per-key confirmation failure in `c8volt/process/client.go`
-- [x] T051 [US4] Run `GOCACHE=/tmp/c8volt-gocache go test ./cmd ./c8volt/process ./internal/services/processinstance/v87 -run 'Test(UpdateProcessInstance.*(Invalid|Missing|Unsupported|Timeout)|RunProcessInstance.*Vars|GetProcessInstance.*WithVars)' -count=1` and fix regressions
 
 **Checkpoint**: User Story 4 is independently complete when invalid/unsupported/timeout paths fail clearly and existing variable commands still pass.
 
@@ -162,8 +154,6 @@
 
 **Purpose**: Final cleanup, formatting, and repository-wide proof.
 
-- [x] T057 [P] Run `gofmt -w cmd/update.go cmd/update_processinstance.go cmd/update_processinstance_test.go cmd/command_contract_test.go cmd/run_test.go cmd/get_processinstance_test.go c8volt/process/api.go c8volt/process/client.go c8volt/process/client_test.go c8volt/process/model.go internal/domain/processinstance.go internal/domain/processinstance_test.go internal/services/processinstance/api.go internal/services/processinstance/v87/contract.go internal/services/processinstance/v87/service.go internal/services/processinstance/v87/service_test.go internal/services/processinstance/v88/contract.go internal/services/processinstance/v88/variables.go internal/services/processinstance/v88/service_test.go internal/services/processinstance/v89/contract.go internal/services/processinstance/v89/variables.go internal/services/processinstance/v89/service_test.go`
-- [x] T058 Run `GOCACHE=/tmp/c8volt-gocache go test ./cmd ./c8volt/process ./internal/services/processinstance/v87 ./internal/services/processinstance/v88 ./internal/services/processinstance/v89 -count=1` and fix regressions
 - [x] T059 Run `make docs-content` and fix documentation generation issues
 - [x] T060 Run `make test` and fix repository validation failures
 - [x] T061 [P] Review [quickstart.md](./quickstart.md) against implemented behavior and update if command examples or validation commands changed

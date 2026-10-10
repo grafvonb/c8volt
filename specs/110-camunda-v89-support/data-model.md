@@ -4,7 +4,7 @@
 
 - **Purpose**: Captures the repository’s declared runtime support state for a Camunda version.
 - **Key attributes**:
-  - Version identifier: `8.7`, `8.8`, or `8.9`
+  - Version identifier: `8.8`, or `8.9`
   - Normalization support
   - Advertised runtime support
   - Factory support status
@@ -17,7 +17,6 @@
 
 | Version | Normalized | Advertised runtime support | Factory support | Documentation status |
 |---------|------------|----------------------------|-----------------|----------------------|
-| `8.7` | Yes | Supported with existing version-specific limits | Native `v87` implementations | Synced |
 | `8.8` | Yes | Supported | Native `v88` implementations | Synced |
 | `8.9` | Yes | Supported with `v8.8` command-family parity | Native `v89` implementations | Synced |
 
@@ -106,7 +105,6 @@
 - **Final boundary**:
   - `internal/clients/camunda/v89/camunda/client.gen.go`
 - **Invariants**:
-  - Final native `v8.9` paths must not mix `v87` or `v88` generated clients.
   - Final native `v8.9` paths must not rely on `v89` Operate, Tasklist, or Administration SM clients unless the design contract changes explicitly.
 
 ### Final feature state

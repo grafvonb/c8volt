@@ -61,5 +61,4 @@ README tenant guidance and generated CLI docs must explain:
 ## Compatibility Contract
 
 - Behavior changes are limited to Camunda 8.8 and 8.9.
-- Camunda 8.7 behavior remains unchanged.
 - Existing `<default>` tenant behavior for create, deploy, and run flows remains unchanged.

@@ -24,7 +24,6 @@ c8volt get ei --key <element-instance-key>
 
 - Fetches exactly one runtime element instance when the key exists.
 - `--key` is mutually exclusive with all search filters.
-- Camunda 8.7 returns a clear unsupported-version error.
 
 ## Search
 
@@ -126,7 +125,6 @@ Direct lookup JSON may render the same item shape using the existing single-item
 
 ## Error Contract
 
-- Unsupported Camunda 8.7 behavior returns an unsupported-version error and a non-success exit.
 - Invalid key-shaped flags fail before contacting Camunda.
 - `--key` combined with search filters fails before contacting Camunda.
 - Invalid paging controls fail before contacting Camunda.

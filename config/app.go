@@ -48,9 +48,6 @@ func (a *App) Normalize() error {
 	if err := a.Backoff.Normalize(); err != nil {
 		errs = append(errs, fmt.Errorf("backoff: %w", err))
 	}
-	if a.Tenant == "" && a.CamundaVersion == toolx.V87 {
-		a.Tenant = DefaultTenant
-	}
 	if a.ProcessInstancePageSize <= 0 {
 		a.ProcessInstancePageSize = consts.MaxPISearchSize
 	}
@@ -64,9 +61,6 @@ func (a *App) normalizeWithConfiguredKeys(isConfigured func(string) bool) error 
 	}
 	if err := a.Backoff.normalizeWithConfiguredKeys(isConfigured); err != nil {
 		errs = append(errs, fmt.Errorf("backoff: %w", err))
-	}
-	if a.Tenant == "" && a.CamundaVersion == toolx.V87 && !isConfigured("app.tenant") {
-		a.Tenant = DefaultTenant
 	}
 	if a.ProcessInstancePageSize <= 0 && !isConfigured("app.process_instance_page_size") {
 		a.ProcessInstancePageSize = consts.MaxPISearchSize

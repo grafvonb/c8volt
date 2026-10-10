@@ -36,7 +36,7 @@ func TestRootHelp_PreservesHumanTaxonomyAndDiscoveryCommand(t *testing.T) {
 		"version",
 		"capabilities",
 		"Use capabilities to discover supported commands and automation options",
-		"Camunda 8.7, 8.8, 8.9, and 8.10",
+		"Camunda 8.8, 8.9, and 8.10",
 		"Camunda 8.10 baseline: 8.10.0-alpha4 (prerelease)",
 		"--debug emits redacted request diagnostics at DEBUG",
 		"alongside other configured logs",
@@ -71,7 +71,7 @@ func TestRootHelpAndGeneratedMarkdownShareDiscoveryAnchors(t *testing.T) {
 
 	for _, anchor := range []string{
 		"Use capabilities to discover supported commands and automation options",
-		"Camunda 8.7, 8.8, 8.9, and 8.10",
+		"Camunda 8.8, 8.9, and 8.10",
 		"Camunda 8.10 baseline: 8.10.0-alpha4 (prerelease)",
 		"--debug emits redacted request diagnostics at DEBUG",
 		"./c8volt --config ./config.yaml --debug get process-definition --latest",

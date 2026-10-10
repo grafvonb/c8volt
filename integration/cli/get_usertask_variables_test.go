@@ -74,16 +74,6 @@ func TestGetFamilyUserTaskVariables(t *testing.T) {
 
 			require.NoError(t, requireProfilesReady(t, []integrationProfile{profile}))
 
-			if profile.ExpectedVersion == "8.7" {
-				records, err := assertUserTaskVariablesUnsupported(t, profile)
-				report.Records = append(report.Records, records...)
-				if err != nil {
-					report.Failure = err.Error()
-				}
-				require.NoError(t, err)
-				return
-			}
-
 			fixtures, records, err := discoverUserTaskVariableFixtures(t, profile)
 			report.Records = append(report.Records, records...)
 			if err != nil {
@@ -344,33 +334,6 @@ func assertUserTaskVariableFilterTable(t *testing.T, profile integrationProfile,
 		records = append(records, record)
 	}
 	return records, errors.Join(failures...)
-}
-
-// assertUserTaskVariablesUnsupported verifies both native filtering and effective display reject Camunda 8.7.
-func assertUserTaskVariablesUnsupported(t *testing.T, profile integrationProfile) ([]evidenceRecord, error) {
-	t.Helper()
-	cases := []struct {
-		name string
-		args []string
-	}{
-		{name: "filter", args: []string{"get", "ut", "--var", "incident=1", "--json"}},
-		{name: "effective-display", args: []string{"get", "ut", "--with-vars", "--limit", "1", "--json"}},
-	}
-	var records []evidenceRecord
-	for _, tc := range cases {
-		scenario := "user-task-vars-" + profile.Name + "-unsupported-" + tc.name
-		result := runC8VoltForProfile(t, profile.Name, scenario, tc.args...)
-		record := userTaskVariableEvidence(profile, "get user-task", scenario, result)
-		record.VersionBehavior = "expected-unsupported"
-		if result.Err == nil || !strings.Contains(strings.ToLower(result.Stdout+result.Stderr), "unsupported") {
-			record.Outcome = "fail"
-			record.FailureClass = "product"
-			records = append(records, record)
-			return records, fmt.Errorf("8.7 %s returned err=%v without an unsupported result; stdout=%q stderr=%q", tc.name, result.Err, result.Stdout, result.Stderr)
-		}
-		records = append(records, record)
-	}
-	return records, nil
 }
 
 // decodeSuccessfulResult combines command failure and payload decoding for readiness and assertion paths.

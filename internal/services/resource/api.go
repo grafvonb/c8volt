@@ -9,7 +9,6 @@ import (
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/services"
 	v810 "github.com/grafvonb/c8volt/internal/services/resource/v810"
-	v87 "github.com/grafvonb/c8volt/internal/services/resource/v87"
 	v88 "github.com/grafvonb/c8volt/internal/services/resource/v88"
 	v89 "github.com/grafvonb/c8volt/internal/services/resource/v89"
 )
@@ -22,11 +21,9 @@ type API interface {
 
 // Both supported versioned services must continue to satisfy the shared
 // resource service surface while the internals are refactored.
-var _ API = (*v87.Service)(nil)
 var _ API = (*v88.Service)(nil)
 var _ API = (*v89.Service)(nil)
 var _ API = (*v810.Service)(nil)
-var _ API = (v87.API)(nil)
 var _ API = (v88.API)(nil)
 var _ API = (v89.API)(nil)
 var _ API = (v810.API)(nil)

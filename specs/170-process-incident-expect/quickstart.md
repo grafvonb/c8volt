@@ -58,7 +58,6 @@ Run focused tests while implementing:
 go test ./cmd -run 'TestExpect|TestCommandContract' -count=1
 go test ./c8volt/process -run 'TestClient_.*Incident|TestClient_.*Wait' -count=1
 go test ./internal/services/processinstance/waiter -count=1
-go test ./internal/services/processinstance/v87 ./internal/services/processinstance/v88 ./internal/services/processinstance/v89 -count=1
 ```
 
 Run final validation before commit:

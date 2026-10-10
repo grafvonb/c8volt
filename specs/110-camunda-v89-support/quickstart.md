@@ -6,7 +6,7 @@
 - Repository command families already supported on `v8.8` remain available on `v8.9`.
 - `cluster`, `processdefinition`, `processinstance`, and `resource` factories select native `v89` implementations.
 - Final native `v8.9` paths use only the generated `internal/clients/camunda/v89/camunda/client.gen.go` client surface.
-- Existing `v8.7` and `v8.8` behavior remains unchanged.
+- Existing `v8.8` behavior remains unchanged.
 - README and generated CLI documentation reflect `v8.9` support before release readiness is claimed.
 
 ## Implementation Notes
@@ -27,7 +27,7 @@
 2. Confirm the foundational checkpoint creates compile-safe `v89` service packages and shared API assertions before any factory starts selecting them.
 3. Confirm each versioned service factory selects a native `v89` implementation when `v8.9` is configured.
 4. Confirm native `v89` cluster, process-definition, resource, and process-instance paths depend only on the generated `v89` Camunda client.
-5. Confirm `v8.7` and `v8.8` behavior remains unchanged.
+5. Confirm `v8.8` behavior remains unchanged.
 6. Confirm at least one explicit `v8.9` command execution path succeeds for each repository command family.
 7. Confirm README, docs homepage content, and generated CLI docs all describe `v8.9` as a supported runtime with `v8.8` command parity.
 
@@ -56,7 +56,6 @@ Run the focused service and command suites first to isolate factory/runtime regr
 ## Final Verification Notes
 
 - Treat `README.md` and root help text as the authored source for user-facing version messaging; regenerate `docs/index.md` and `docs/cli/*` instead of hand-editing them.
-- Final release-ready wording must say that `8.9` is supported, that the repository command families already covered on `8.8` are also covered on `8.9`, and that `8.7` keeps its existing version-specific limitations.
 - The release gate for this story is not satisfied until `go test ./cmd -count=1`, `make docs-content`, and `make test` all pass against the updated wording.
 
 ## Manual Smoke Ideas

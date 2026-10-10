@@ -80,7 +80,6 @@ As a maintainer, I want other relevant `get` commands and flags reviewed for the
 - **FR-002**: The system MUST preserve current command semantics while moving supported filters from late client-side narrowing to request-side filtering.
 - **FR-003**: `get process-instance` MUST use request-side filtering for `--roots-only`, `--children-only`, `--incidents-only`, and `--no-incidents-only` on supported runtime versions.
 - **FR-004**: The system MUST keep client-side filtering for any command filter that lacks a reliable request-side equivalent on the active runtime version, even when other versions support request-side pushdown for that same filter.
-- **FR-005**: Unsupported versions such as v8.7 MUST preserve the current client-side fallback behavior where request-side filter support is unavailable, incomplete, or not reliable enough for that version.
 - **FR-006**: `--orphan-children-only` MUST remain client-side unless downstream work confirms a reliable request-side equivalent.
 - **FR-007**: The system MUST improve paging accuracy for request-side filters so fetched-page counts and continuation prompts reflect the matching server-filtered result set.
 - **FR-008**: The system MUST audit other relevant `get` commands and filter flags for the same late-filtering pattern rather than limiting the change to the reported example only.

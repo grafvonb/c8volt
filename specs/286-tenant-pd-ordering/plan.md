@@ -12,19 +12,18 @@ Make every process-definition collection use one deterministic order: exact tena
 
 **Language/Version**: Go 1.26 with toolchain Go 1.26.2
 
-**Primary Dependencies**: Go standard library (`slices`), Cobra 1.10.2, the existing public `c8volt/process` facade, version-neutral process-definition service, and generated Camunda 8.7-8.10 clients
+**Primary Dependencies**: Go standard library (`slices`), Cobra 1.10.2, the existing public `c8volt/process` facade, version-neutral process-definition service, and generated Camunda 8.8–8.10 clients
 
 **Storage**: N/A; this feature reads Camunda APIs and holds a bounded result collection in memory for normalization
 
 **Testing**: Go `testing`, Testify 1.11.1, focused package tests, command contract tests, and repository-wide `make test` race validation
 
-**Target Platform**: Cross-platform Go CLI against Camunda 8.7, 8.8, 8.9, and 8.10 clusters
+**Target Platform**: Cross-platform Go CLI against Camunda 8.8, 8.9, and 8.10 clusters
 
 **Project Type**: Go CLI plus public facade and internal service/adapters
 
 **Performance Goals**: Preserve existing request/page sizes and produce deterministic output in O(n log n) time over collected definitions; page sizes 1, 2, and 1000 must produce the same ordered keys
 
-**Constraints**: Keep backend mechanics out of `cmd` and the facade; do not hand-edit generated clients; preserve exact case-sensitive identifiers; keep statistics out of the comparator; retain compact output and existing schemas; preserve the Camunda 8.7 compatibility cap of 1000 visible definitions
 
 **Scale/Scope**: One domain comparator, one version-neutral collection path, four version adapters, public process facade, process-definition CLI/watch render paths, README/help/generated CLI docs, and their focused tests
 
@@ -66,7 +65,6 @@ internal/domain/
 
 internal/services/processdefinition/
 ├── search.go                        # Complete traversal, latest reduction, final ordering
-├── v87/service.go                   # Camunda 8.7 compatible backend sort/traversal
 ├── v88/service.go                   # Camunda 8.8 native latest and sort fields
 ├── v89/service.go                   # Camunda 8.9 native latest and sort fields
 └── v810/service.go                  # Camunda 8.10 native latest and sort fields
@@ -100,7 +98,6 @@ Research decisions and rejected alternatives are recorded in [research.md](resea
 
 1. Replace the current partial process-definition sort with a shared domain comparator over tenant ID, BPMN process ID, numeric version, and opaque key.
 2. Request the strongest compatible backend order in every adapter: tenant/process/version/key for ordinary searches, and tenant/process for native latest queries where the API restricts sort fields.
-3. Extend the existing search request with an additive `Latest` intent. Traverse all available pages through the shared service, use native latest filtering on Camunda 8.8-8.10, and reduce all visible versions locally on 8.7.
 4. After page accumulation, select at most one definition per exact `(tenantID, BPMNProcessID)` group when latest is requested, apply the canonical comparator, and then apply any latest-result limit. Ordinary searches keep existing limit semantics and do not deduplicate.
 5. Route public latest search, broad CLI `--latest`, selector validation, and watch snapshots through the shared collection path. Keep direct-key and XML paths separate and unchanged.
 6. Update source help and README descriptions, regenerate CLI docs with `make docs-content`, and preserve all existing human, JSON, keys-only, and watch schemas.
@@ -110,8 +107,6 @@ Research decisions and rejected alternatives are recorded in [research.md](resea
 
 - Exact values drive identity and ordering; there is no case folding, locale collation, numeric key parsing, or special placement for `<default>`.
 - Backend sorting stabilizes page boundaries; the final local sort makes the result independent of backend and page arrival order.
-- Native `isLatestVersion` is retained for Camunda 8.8-8.10, but complete paging and final normalization are service-owned. Camunda 8.7 reduces locally within its existing 1000-definition compatibility window.
-- Statistics enrichment stays in its existing version-capable path and cannot affect the comparator or row position. Unsupported Camunda 8.7 statistics behavior remains unchanged.
 - Each ordinary matching definition is emitted once as received across the traversal; only explicit latest reduction removes older group members.
 - Direct-key and XML retrieval, filters, authorization, errors, envelopes, and output field schemas remain unchanged.
 - Ordinary `Limit` semantics remain unchanged. When `Latest` and a limit are combined internally, the limit applies after latest reduction and canonical sorting so group selection is complete and deterministic.
@@ -119,7 +114,6 @@ Research decisions and rejected alternatives are recorded in [research.md](resea
 ## Validation Plan
 
 1. Run focused domain and shared-service tests for comparator transitivity, exact-text behavior, latest grouping, complete paging, and page-size invariance.
-2. Run focused adapter tests for emitted backend sort requests, native/latest behavior, and Camunda 8.7 local compatibility.
 3. Run facade and command tests for broad listing, selector validation, statistics parity, human/JSON/keys parity, watch stability, and unchanged direct-key/XML behavior.
 4. Regenerate documentation with `make docs-content` and inspect the generated diff for a single consistent contract.
 5. Run `make vet`, `make test`, and `git diff --check`; optionally perform the cluster-backed commands in [quickstart.md](quickstart.md).

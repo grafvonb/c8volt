@@ -912,28 +912,6 @@ func TestDeleteProcessInstanceCommand_RejectsInvalidDateValue(t *testing.T) {
 	require.Contains(t, output, `invalid value for --start-date-after: "2026-02-30", expected YYYY-MM-DD`)
 }
 
-// Verifies process-instance date filters are rejected for Camunda 8.7 where the capability is unsupported.
-func TestDeleteProcessInstanceCommand_RejectsDateFiltersOnV87(t *testing.T) {
-	cfgPath := writeTestConfigForVersion(t, "http://127.0.0.1:1", "8.7")
-
-	output, code := executeDeleteProcessInstanceFailureHelper(t, "TestDeleteProcessInstanceCommand_RejectsDateFiltersOnV87Helper", cfgPath)
-
-	require.Equal(t, exitcode.Error, code)
-	require.Contains(t, output, "unsupported capability")
-	require.Contains(t, output, "process-instance date filters require Camunda 8.8")
-}
-
-// Verifies relative-day process-instance filters are also rejected for Camunda 8.7.
-func TestDeleteProcessInstanceCommand_RejectsRelativeDayFiltersOnV87(t *testing.T) {
-	cfgPath := writeTestConfigForVersion(t, "http://127.0.0.1:1", "8.7")
-
-	output, code := executeDeleteProcessInstanceFailureHelper(t, "TestDeleteProcessInstanceCommand_RejectsRelativeDayFiltersOnV87Helper", cfgPath)
-
-	require.Equal(t, exitcode.Error, code)
-	require.Contains(t, output, "unsupported capability")
-	require.Contains(t, output, "process-instance date filters require Camunda 8.8")
-}
-
 // Verifies date-filtered search selection deletes matched instances and preserves descendant lookup behavior.
 func TestDeleteProcessInstanceCommand_SearchSelectionUsesDateFiltersAndDeletesMatches(t *testing.T) {
 	var requests []string
@@ -1465,72 +1443,6 @@ func TestDeleteProcessInstanceCommand_SearchPagingPromptFlow(t *testing.T) {
 	require.Contains(t, output, "page size: 2, current page: 2, total so far: 2, more matches: yes, next step: prompt")
 	require.Contains(t, output, "page size: 2, current page: 1, total so far: 3, more matches: no, next step: complete")
 	require.NotContains(t, output, "next step: auto-continue")
-}
-
-// Verifies v8.7 paged delete search fails once keyed tenant-safe impact checking reaches the unsupported direct-lookup seam.
-func TestDeleteProcessInstanceCommand_SearchPagingPromptFlowV87IncludesDependencyTotals(t *testing.T) {
-	var requests testx.SafeSlice[string]
-	var deleted testx.SafeSlice[string]
-	searchPage := 0
-	var searchMu sync.Mutex
-
-	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch {
-		case r.Method == http.MethodPost && r.URL.Path == "/v1/process-instances/search":
-			body, err := io.ReadAll(r.Body)
-			require.NoError(t, err)
-			requests.Append(string(body))
-
-			searchBody := decodeCapturedPISearchRequest(t, string(body))
-			filter, _ := searchBody["filter"].(map[string]any)
-			if filter != nil {
-				if parentKey, ok := filter["parentKey"]; ok && parentKey != nil {
-					parent := int64(parentKey.(float64))
-					if parent != 901 && parent != 902 {
-						w.Header().Set("Content-Type", "application/json")
-						_, _ = w.Write([]byte(`{"items":[]}`))
-						return
-					}
-					childKey := "1901"
-					if parent == 902 {
-						childKey = "1902"
-					}
-					w.Header().Set("Content-Type", "application/json")
-					_, _ = w.Write([]byte(`{"items":[{"key":` + childKey + `,"parentKey":` + fmt.Sprintf("%d", parent) + `,"bpmnProcessId":"demo","processVersion":3,"state":"COMPLETED","startDate":"2026-03-23T18:00:00Z","endDate":"2026-03-24T18:00:00Z","tenantId":"tenant"}]}`))
-					return
-				}
-			}
-
-			w.Header().Set("Content-Type", "application/json")
-			searchMu.Lock()
-			defer searchMu.Unlock()
-			switch searchPage {
-			case 0:
-				_, _ = w.Write([]byte(`{"items":[{"key":901,"bpmnProcessId":"demo","processVersion":3,"state":"COMPLETED","startDate":"2026-03-23T18:00:00Z","endDate":"2026-03-24T18:00:00Z","tenantId":"tenant"},{"key":902,"bpmnProcessId":"demo","processVersion":3,"state":"COMPLETED","startDate":"2026-03-23T18:00:00Z","endDate":"2026-03-24T18:00:00Z","tenantId":"tenant"}],"total":3}`))
-			case 1:
-				_, _ = w.Write([]byte(`{"items":[{"key":901,"bpmnProcessId":"demo","processVersion":3,"state":"COMPLETED","startDate":"2026-03-23T18:00:00Z","endDate":"2026-03-24T18:00:00Z","tenantId":"tenant"},{"key":902,"bpmnProcessId":"demo","processVersion":3,"state":"COMPLETED","startDate":"2026-03-23T18:00:00Z","endDate":"2026-03-24T18:00:00Z","tenantId":"tenant"},{"key":903,"bpmnProcessId":"demo","processVersion":3,"state":"COMPLETED","startDate":"2026-03-23T18:00:00Z","endDate":"2026-03-24T18:00:00Z","tenantId":"tenant"}],"total":3}`))
-			default:
-				t.Fatalf("unexpected top-level search request %d", searchPage)
-			}
-			searchPage++
-		case r.Method == http.MethodDelete && (r.URL.Path == "/v1/process-instances/901" || r.URL.Path == "/v1/process-instances/902" || r.URL.Path == "/v1/process-instances/903" || r.URL.Path == "/v1/process-instances/1901" || r.URL.Path == "/v1/process-instances/1902"):
-			deleted.Append(r.URL.Path)
-			w.WriteHeader(http.StatusNoContent)
-		default:
-			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
-		}
-	}))
-	t.Cleanup(srv.Close)
-
-	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.7")
-	output, code := executeDeleteProcessInstanceFailureHelper(t, "TestDeleteProcessInstanceCommand_SearchPagingPromptFlowV87IncludesDependencyTotalsHelper", cfgPath)
-
-	sizes := decodeCapturedTopLevelPISearchSizes(t, requests.Snapshot())
-	require.Equal(t, exitcode.Error, code)
-	require.Equal(t, []float64{2}, sizes)
-	require.Empty(t, deleted.Snapshot())
-	require.Contains(t, output, "unsupported capability")
-	require.Contains(t, output, "process-instance direct lookup by key is not tenant-safe in Camunda 8.7")
 }
 
 // Verifies paged delete search auto-continues without continuation prompts when --auto-confirm is set.
@@ -2071,20 +1983,6 @@ func TestDeleteProcessInstanceBpmnSelectorMissingAutomationHelper(t *testing.T) 
 	Execute()
 }
 
-// TestDeleteProcessInstanceCommand_SearchPagingPromptFlowV87IncludesDependencyTotalsHelper is the helper-process entrypoint for v8.7 paging.
-func TestDeleteProcessInstanceCommand_SearchPagingPromptFlowV87IncludesDependencyTotalsHelper(t *testing.T) {
-	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
-		return
-	}
-	applyRelativeDayNowOverrideFromEnv(t)
-
-	prevArgs := os.Args
-	t.Cleanup(func() { os.Args = prevArgs })
-	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "--tenant", "tenant", "--verbose", "delete", "process-instance", "--state", "completed", "--no-wait", "--batch-size", "2"}
-
-	Execute()
-}
-
 // Helper-process entrypoint for invalid date range validation.
 func TestDeleteProcessInstanceCommand_RejectsInvalidDateFilterHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
@@ -2109,34 +2007,6 @@ func TestDeleteProcessInstanceCommand_RejectsInvalidDateValueHelper(t *testing.T
 	prevArgs := os.Args
 	t.Cleanup(func() { os.Args = prevArgs })
 	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "delete", "process-instance", "--start-date-after", "2026-02-30"}
-
-	Execute()
-}
-
-// Helper-process entrypoint for version capability validation on Camunda 8.7.
-func TestDeleteProcessInstanceCommand_RejectsDateFiltersOnV87Helper(t *testing.T) {
-	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
-		return
-	}
-	applyRelativeDayNowOverrideFromEnv(t)
-
-	prevArgs := os.Args
-	t.Cleanup(func() { os.Args = prevArgs })
-	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "delete", "process-instance", "--state", "completed", "--bpmn-process-id", "order-process", "--start-date-after", "2026-01-01", "--auto-confirm"}
-
-	Execute()
-}
-
-// Helper-process entrypoint for relative-day version capability validation on Camunda 8.7.
-func TestDeleteProcessInstanceCommand_RejectsRelativeDayFiltersOnV87Helper(t *testing.T) {
-	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
-		return
-	}
-	applyRelativeDayNowOverrideFromEnv(t)
-
-	prevArgs := os.Args
-	t.Cleanup(func() { os.Args = prevArgs })
-	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "delete", "process-instance", "--state", "completed", "--bpmn-process-id", "order-process", "--end-date-newer-days", "7", "--auto-confirm"}
 
 	Execute()
 }

@@ -4,7 +4,6 @@
 
 | Configured Camunda version | Selected production family |
 |---|---|
-| 8.7 | `C87_` |
 | 8.8 | `C88_` |
 | 8.9 | `C89_` |
 | 8.10 | `C810_` |
@@ -41,6 +40,6 @@ The V810 selection contains exactly:
 
 ## Compatibility guarantees
 
-- C87, C88, and C89 assets and selection remain unchanged.
+- C88 and C89 assets and selection remain unchanged.
 - C810 workflow behavior equals C89 after the permitted version-specific fields are normalized.
 - No live 8.10 integration profile or target is part of this contract.

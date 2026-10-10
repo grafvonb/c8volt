@@ -4,7 +4,6 @@
 
 Use the existing public process facade path for element enrichment: `process.API.EnrichProcessInstancesWithElements`, backed by internal process-instance enrichment that searches elements by owning process-instance key and preserves selected process-instance order.
 
-**Rationale**: The feature extends `walk pi` with the same runtime element details already used by `get pi --with-elements`. Reusing the facade keeps command code version-neutral, preserves the unsupported Camunda 8.7 boundary, and avoids direct command-layer calls to generated clients.
 
 **Alternatives considered**:
 

@@ -12,7 +12,7 @@ Add human-output-only `--watch` support to `get process-definition` / `get pd` /
 
 ## Technical Context
 
-**Language/Version**: Go 1.26 with the repository's existing Cobra CLI and generated Camunda 8.7/8.8/8.9 clients
+**Language/Version**: Go 1.26 with the repository's existing Cobra CLI and generated Camunda 8.8/8.9 clients
 
 **Primary Dependencies**: Cobra command wiring, Viper-backed config, existing root `--timeout` and command-local backoff config, existing `toolx/logging` activity writer/sink, public `c8volt/process` facade, internal `processdefinition` services, generated docs tooling
 
@@ -74,7 +74,6 @@ internal/services/processdefinition/
 ├── api.go
 ├── search.go
 ├── search_test.go
-├── v87/
 ├── v88/
 └── v89/
 

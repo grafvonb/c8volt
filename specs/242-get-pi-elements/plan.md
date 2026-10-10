@@ -24,7 +24,6 @@ Add `--with-elements` to `c8volt get process-instance` and aliases `pi`/`pis` so
 
 **Performance Goals**: Preserve process-instance paging behavior; `--limit` caps selected process instances only; enrichment performs one runtime element search per selected process instance and must not make element count affect process-instance paging
 
-**Constraints**: No mutation; no element-specific process-instance filter flags; no standalone element command work; `--with-elements` rejects `--total` and `--keys-only`; keyed mode rejects incompatible search filters; Camunda 8.7 returns unsupported-version errors from the reused element service path; command layer must not call generated clients or versioned services directly
 
 **Scale/Scope**: One existing get command extended with one enrichment flag; process facade and internal enrichment model expansion; renderer and JSON payload expansion; command metadata, README, generated docs, and tests
 
@@ -124,7 +123,6 @@ See [research.md](research.md). All planning unknowns are resolved.
 
 ## Post-Design Constitution Check
 
-- **Operational Proof Over Intent**: PASS. The contract defines observable outcomes for keyed enrichment, list/search enrichment, combined sections, validation failures, JSON payloads, and unsupported Camunda 8.7 behavior.
 - **CLI-First, Script-Safe Interfaces**: PASS. The CLI contract defines valid commands, invalid combinations, output modes, section order, and machine-readable payload shape.
 - **Tests and Validation Are Mandatory**: PASS. The quickstart names targeted command, facade, service, docs, and full validation commands.
 - **Documentation Matches User Behavior**: PASS. Documentation updates and `make docs-content` are part of the validation path.

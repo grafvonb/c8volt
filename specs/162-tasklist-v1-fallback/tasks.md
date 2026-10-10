@@ -79,14 +79,12 @@
 
 **Goal**: Missing task keys and fallback failures produce clear, script-safe errors without masking operational failures.
 
-**Independent Test**: Tests cover both-lookups-missing, fallback missing process-instance key, fallback server/config/auth-like failures, and 8.7 unsupported behavior.
 
 ### Tests for User Story 3
 
 - [x] T023 [P] [US3] Add v89 service tests for both-lookups-missing, fallback missing process-instance key, and fallback server failure in `internal/services/usertask/v89/service_test.go`
 - [x] T024 [P] [US3] Add v88 service tests for both-lookups-missing, fallback missing process-instance key, and fallback server failure in `internal/services/usertask/v88/service_test.go`
 - [x] T025 [US3] Add command failure test for both-lookups-missing not-found output in `cmd/get_processinstance_test.go`
-- [x] T026 [US3] Confirm 8.7 unsupported tests still prove no fallback attempt in `internal/services/usertask/v87/service_test.go` and `cmd/get_processinstance_test.go`
 
 ### Implementation for User Story 3
 
@@ -96,9 +94,7 @@
 - [x] T030 [US3] Return final not-found only after both primary and fallback lookup miss in `internal/services/usertask/v88/service.go`
 - [x] T031 [US3] Surface fallback malformed response and server failures distinctly from not found in `internal/services/usertask/v89/service.go`
 - [x] T032 [US3] Surface fallback malformed response and server failures distinctly from not found in `internal/services/usertask/v88/service.go`
-- [x] T033 [US3] Verify failure behavior with `go test ./internal/services/usertask/v87 ./internal/services/usertask/v88 ./internal/services/usertask/v89 ./cmd -run 'HasUserTasks|GetUserTask|Unsupported' -count=1`
 
-**Checkpoint**: Missing tasks and operational failures are distinguishable and 8.7 remains unsupported.
 
 ---
 

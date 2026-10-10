@@ -26,7 +26,6 @@ Started: 2026-07-16T15:20:23Z
 
 ## Gotchas
 - `plan.md` records GitHub issue #242, and the issue-aligned folder name now keeps branch-prefix inference on `242-get-pi-elements` consistent under `commit.issue: auto`.
-- Direct keyed lookup on Camunda 8.7 currently fails at the existing process-instance direct-lookup unsupported boundary before element lookup; command coverage asserts a clear unsupported capability result for `--with-elements` on 8.7.
 - Do not assert tenant filters on keyed `--with-elements` element searches: explicit `--key` admin input uses `collectExplicitPIAdminInputOptions`, so the element search is owner-key scoped without a tenant filter.
 - When changing activity JSON, preserve the distinction between unrequested sections and requested empty sections. Existing automation tests expect requested empty `incidents`, `variables`, or `elements` arrays to remain present rather than omitted.
 - `c8volt/resource/client_test.go` has its own `stubProcessAPI`; future additions to `process.API` must update both the command stub and this resource facade test stub or `make test` will fail at compile time.

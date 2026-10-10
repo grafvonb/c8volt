@@ -25,7 +25,7 @@ Refactor the internal processdefinition service to reduce duplication between su
 
 - `Operational proof`: Pass. The existing processdefinition flows already return concrete lookup results to callers; the refactor preserves the same observable success and failure semantics. Any added capability must define equivalent observable completion behavior or remain internal-only.
 - `CLI compatibility`: Pass. No command names, flags, Cobra wiring, output format, or exit-code changes are planned unless a narrow new processdefinition capability is intentionally surfaced. If the work stays internal-only, CLI behavior remains unchanged.
-- `Validation`: Pass. Update `internal/services/processdefinition/v87/service_test.go`, `internal/services/processdefinition/v88/service_test.go`, and `internal/services/processdefinition/factory_test.go`, then finish with `make test`.
+- `Validation`: Pass. Update `internal/services/processdefinition/v88/service_test.go`, and `internal/services/processdefinition/factory_test.go`, then finish with `make test`.
 - `Documentation parity`: Pass with conditional update. If the feature remains internal-only, `README.md` and generated CLI docs do not change. If a new user-visible processdefinition capability is added, update `README.md` and regenerate CLI docs with `make docs`.
 - `Complexity control`: Pass. Reuse the repository-native service/factory/contract layout and generated clients. Do not add dependencies. Prefer localized helper extraction or interface expansion over new cross-package abstraction layers.
 
@@ -33,7 +33,7 @@ Refactor the internal processdefinition service to reduce duplication between su
 
 Research findings are captured in [research.md](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/67-processdefinition-api-refactor/research.md).
 
-- Confirm the lowest-risk refactor shape for duplicated v87/v88 processdefinition services.
+- Confirm the lowest-risk refactor shape for duplicated v88 processdefinition services.
 - Review generated processdefinition client capabilities for both supported versions and decide whether XML retrieval is the right bounded missing capability to expose, or whether the review should remain informational only.
 - Confirm the required validation and documentation surface based on whether the final change stays internal-only or introduces a user-visible capability.
 
@@ -52,7 +52,7 @@ Task generation should break the work into dependency-ordered slices:
 
 1. Review the supported generated processdefinition clients and confirm the exact shared service surface to preserve or extend.
 2. Refactor shared service construction, response validation, and latest-result handling with no behavioral change.
-3. Add one approved low-risk missing capability only if it is supported across v87 and v88 and fits the current API shape.
+3. Add one approved low-risk missing capability only if it is supported across v88 and fits the current API shape.
 4. Update focused unit tests for both supported versions and factory behavior.
 5. Update documentation only if a new user-visible workflow or output path is introduced.
 6. Run targeted Go tests, regenerate docs if needed, and finish with `make test`.
@@ -86,11 +86,6 @@ internal/services/processdefinition/
 ├── api.go
 ├── factory.go
 ├── factory_test.go
-├── v87/
-│   ├── contract.go
-│   ├── convert.go
-│   ├── service.go
-│   └── service_test.go
 └── v88/
     ├── contract.go
     ├── convert.go
@@ -98,7 +93,6 @@ internal/services/processdefinition/
     └── service_test.go
 
 internal/clients/camunda/
-├── v87/operate/client.gen.go
 └── v88/camunda/client.gen.go
 
 README.md

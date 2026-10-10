@@ -51,23 +51,6 @@ func TestUpdateUserTaskSupportedVersions(t *testing.T) {
 	}
 }
 
-// TestUpdateUserTaskUnsupportedVersion performs no HTTP work on Camunda 8.7
-// and returns the normalized unsupported error envelope and exit code.
-func TestUpdateUserTaskUnsupportedVersion(t *testing.T) {
-	server, capture := newUpdateUserTaskErrorServer(t, "success")
-	stdout, _, err := runUpdateUserTaskCommand(t, writeTestConfigForVersion(t, server.URL, "8.7"), "",
-		"--automation", "--json", "update", "ut", "--key", "101", "--vars", `{"approved":true}`,
-	)
-	requireCommandExitCode(t, err, exitcode.Error)
-	envelope := decodeSingleUserTaskUpdateEnvelope(t, stdout)
-	require.Equal(t, "unsupported", envelope["class"])
-
-	capture.mu.Lock()
-	defer capture.mu.Unlock()
-	require.Zero(t, capture.requests)
-	require.Zero(t, capture.mutations)
-}
-
 // TestUpdateUserTaskDiscoveryErrors verifies authorization, absence, and
 // malformed effective values retain their error classes without mutation.
 func TestUpdateUserTaskDiscoveryErrors(t *testing.T) {

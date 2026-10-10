@@ -51,7 +51,6 @@ For every represented tenant/process group:
 3. Emit at most one definition for the group.
 4. Canonically sort all selected definitions.
 
-Camunda 8.8-8.10 may perform the version filtering natively, but the returned collection still receives final canonical sorting. Camunda 8.7 performs selection locally over the visible compatibility window.
 
 ## Search Request
 
@@ -62,7 +61,6 @@ The existing version-neutral and public request models retain their current filt
 | Existing filters | Tenant, BPMN ID, version, version tag, and current selectors | Narrow membership only; they do not change the comparator. |
 | Existing page/cursor fields | Traverse backend pages | Backend sort stabilizes traversal; final order ignores arrival order. |
 | Existing limit | Bound requested results | Ordinary semantics remain unchanged. With latest intent, apply after complete latest reduction and sorting. |
-| `Latest bool` | Request one newest definition per exact tenant/process group | Selects native latest on 8.8-8.10 and local reduction on 8.7. |
 
 ## Page Metadata
 
@@ -97,7 +95,6 @@ For ordinary non-latest searches, existing limit behavior is retained and the la
 
 ## Process-Definition Statistics
 
-Existing volatile values such as active instances and incidents are attached to a process definition without changing identity or collection position. Camunda 8.7 keeps its current unsupported-statistics behavior.
 
 ## Watch Snapshot
 

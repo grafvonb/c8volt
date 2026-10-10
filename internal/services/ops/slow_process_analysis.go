@@ -38,10 +38,6 @@ func (s *Service) AnalyseSlowProcessInstances(ctx context.Context, request d.Slo
 	if s == nil || s.piAPI == nil {
 		return result, fmt.Errorf("%w: process-instance service is required for slow process analysis", d.ErrPrecondition)
 	}
-	if s.version == toolx.V87 {
-		return result, fmt.Errorf("%w: slow process analysis requires Camunda 8.8 or newer", d.ErrUnsupported)
-	}
-
 	var instances []d.ProcessInstance
 	switch request.SelectionMode {
 	case d.SlowProcessAnalysisSelectionModeExplicitKeys:

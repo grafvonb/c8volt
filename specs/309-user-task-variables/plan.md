@@ -24,7 +24,6 @@ Add opt-in `--with-vars` and `--var-value-limit` to the existing user-task comma
 
 **Performance Goals**: Zero variable requests for excluded tasks, absent enrichment, effective keys-only/count, and empty results. Retrieve each selected task's variable pages once. Preserve task order. Use fixed internal variable pages of 1000 and sequential enrichment matching the process-variable workflow; no new latency SLA or concurrency policy.
 
-**Constraints**: Native effective-variable search on 8.8, 8.9, and 8.10; explicit unsupported behavior on 8.7. Generated response records omit values/truncation, requiring adapter-local raw decoding. Endpoint paging is offset-only. Always request `truncateValues=false` and mark any remaining truncation. Preserve tenant/authentication/error/interactive contracts and legacy task resolver behavior. No generated-client edits, generic enrichment framework, variable filters, mutations, forms, or audit logs.
 
 **Scale/Scope**: Two CLI flags, one new public facade operation, one new adapter page operation across the version contracts, and task-specific wrappers. Memory grows with selected tasks and their variables; page requests are bounded, but complete JSON is not constant-memory. Existing task search and keyed worker controls remain unchanged. Backend reads are eventually consistent and do not provide a new snapshot guarantee.
 
@@ -84,7 +83,6 @@ internal/services/usertask/
 ├── api.go                           # Effective-variable page contract
 ├── variables.go                     # Complete pagination and sequential enrichment
 ├── variables_test.go                # Completion, scope/name integrity, errors, cancellation
-├── v87/                             # Unsupported operation and tests
 └── v88/, v89/, v810/
     ├── contract.go                  # Extend native generated interface and adapter API
     ├── variables.go                 # Effective-variable request and raw conversion
@@ -122,7 +120,6 @@ Human output uses existing task rows plus a `vars:` subtree; the narrow shared f
 | FR-001–003 | Single/multiple/repeated/comma/stdin keys and aliases; effective scope values; multi-page reads; names unique per task; stable ordering; exact/capped totals and sparse variable pages |
 | FR-004–005 | Task limit inside a page; declined paging; filtered tenants; explicit authorized cross-discovery-tenant keys; no variable requests for omitted flag, empty tasks, effective keys-only, count, or excluded tasks |
 | FR-006–009 | Exact tree and summary; JSON decode plus EOF; empty `items`/`variables`; Unicode boundaries; compaction; default/zero/positive/negative and dangling limit; JSON unaffected by human limit; both raw truncation fields; request `truncateValues=false`; PI formatter regression |
-| FR-010–012 | Later-page/task failures; malformed/missing raw payload fields; duplicate conflict; cancellation/overflow; 401/403/404/upstream errors; writer errors; no successful completion after failure; v88/v89/v810 parity and v87 unsupported |
 | FR-011 | Quiet and quiet+machine; JSON+keys precedence; count conflicts; auto-confirm/automation; real-terminal stdin; configured/inherited stderr; continue/decline/EOF; redirected stdout; empty prompt-free completion |
 | FR-013–014 | Source metadata/help no longer excludes variables; all four issue examples; README and generated docs; no filtering/mutation scope expansion; zero mutation requests |
 
@@ -131,7 +128,6 @@ Use existing task test helpers and stub servers. Command execution tests must pr
 ### Delivery sequence
 
 1. Introduce domain paging/enriched records, public record alias, and adapter contracts with corresponding stubs.
-2. Implement and test native v810 page requests/raw decoding, explicitly mirror/validate v89 and v88, and implement no-request v87 unsupported behavior.
 3. Add complete offset traversal and selected-task enrichment with focused service tests; preserve task traversal/resolver regressions.
 4. Add the thin facade operation and conversions, proving options, error categories, initialized empties, and unchanged task metadata.
 5. Add flags, selected-page/final-result dispatch, explicit-limit formatter, and task views; cover keyed/search/output/terminal paths and process formatter compatibility.

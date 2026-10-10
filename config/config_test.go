@@ -347,9 +347,8 @@ profiles:
 	require.Equal(t, "http://profile.example.test/v2", cfg.APIs.Camunda.BaseURL)
 }
 
-// TestResolveEffectiveConfig_VersionSpecificEmptyTenantSemantics documents the
-// configuration boundary between Camunda 8.7 default-only tenant normalization
-// and the unfiltered discovery semantics retained by newer runtimes.
+// TestResolveEffectiveConfig_EmptyTenantSemantics documents the unfiltered
+// discovery semantics shared by supported runtimes.
 func TestResolveEffectiveConfig_VersionSpecificEmptyTenantSemantics(t *testing.T) {
 	tests := []struct {
 		name        string
@@ -357,20 +356,6 @@ func TestResolveEffectiveConfig_VersionSpecificEmptyTenantSemantics(t *testing.T
 		wantTenant  string
 		wantVersion toolx.CamundaVersion
 	}{
-		{
-			name: "v87 omitted tenant normalizes to default",
-			appYAML: `
-  camunda_version: "8.7"`,
-			wantTenant:  DefaultTenant,
-			wantVersion: toolx.V87,
-		},
-		{
-			name: "v87 explicit empty tenant remains empty",
-			appYAML: `
-  camunda_version: "8.7"
-  tenant: ""`,
-			wantVersion: toolx.V87,
-		},
 		{
 			name: "v88 omitted tenant remains empty",
 			appYAML: `

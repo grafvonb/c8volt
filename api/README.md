@@ -122,7 +122,6 @@ stages replacement files next to the target directory, backs up the previous
 
 The following protected paths must remain unchanged during V810 generation:
 
-- `internal/clients/camunda/v87`
 - `internal/clients/camunda/v88`
 - `internal/clients/camunda/v89`
 - `integration`

@@ -22,7 +22,6 @@
 
 ## 3. Native mapping and supported versions
 
-**Decision**: Map clauses to `UserTaskFilter.LocalVariables` in each existing v88/v89/v810 task adapter. Use the matching generated `VariableValueFilterProperty` and `StringFilterProperty` types. Add small adapter-local mapping helpers following existing PI mappers. Retain v87's unsupported native-task behavior. Omit `localVariables` entirely for an empty set.
 
 **Rationale**: All three checked-in generated clients expose the same local-variable value-filter structure and six operators: eq, neq, exists, in, notIn, like. Their types are version-specific even where shapes match. Existing PI mapping provides the exact serialized-value conventions. No new generated client or endpoint is needed.
 

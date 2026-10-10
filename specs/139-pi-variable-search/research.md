@@ -24,12 +24,6 @@
 
 **Alternatives considered**: Create a shared request builder using generated types from one version. Rejected because generated type ownership must remain isolated and version-specific differences should stay explicit.
 
-## Decision: Fail 8.7 Variable Search Explicitly
-
-**Rationale**: The issue makes 8.7 out of scope for variable-search flags and forbids silent Operate fallback. The command or service path must detect variable filters and return a clear unsupported error before implying a valid empty result.
-
-**Alternatives considered**: Filter locally by retrieving variables for each process instance. Rejected because it would not be native variable search, could be expensive, and would violate the no-Operate/no-fallback constraint.
-
 ## Decision: Preserve Native Serialized Value Semantics
 
 **Rationale**: Users need access to native equality, existence, array, and pattern matching behavior. The CLI should validate expression shape and operator names, preserve arrays and quoted strings, and avoid rewriting values beyond documented shorthand and `$notin` normalization.

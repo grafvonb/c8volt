@@ -520,36 +520,6 @@ func TestDryRunCancelOrDeletePlan_MarksMissingTraversalTenantMetadataUnknown(t *
 	}, got.TenantEvidence)
 }
 
-// TestDryRunCancelOrDeletePlan_LegacyKeyOnlyTenantEvidenceUnknown proves the
-// v8.7 key-only traversal path does not perform enrichment requests for tenants.
-func TestDryRunCancelOrDeletePlan_LegacyKeyOnlyTenantEvidenceUnknown(t *testing.T) {
-	ctx := context.Background()
-
-	api := legacyDryRunProcessInstanceAPI{
-		ancestry: func(_ context.Context, key string, _ ...services.CallOption) (string, []string, map[string]d.ProcessInstance, error) {
-			require.Equal(t, "child-1", key)
-			return "root-1", []string{"child-1", "root-1"}, nil, nil
-		},
-		descendants: func(_ context.Context, root string, _ ...services.CallOption) ([]string, map[string][]string, map[string]d.ProcessInstance, error) {
-			require.Equal(t, "root-1", root)
-			return []string{"root-1", "child-1"}, nil, nil, nil
-		},
-	}
-
-	got, err := DryRunCancelOrDeletePlan(ctx, api, typex.Keys{"child-1"}, 1, services.WithIgnoreTenant())
-
-	require.NoError(t, err)
-	require.Equal(t, d.TenantEvidence{
-		ResolvedTenantIDs:  []string{},
-		UnknownTargetCount: 2,
-		TargetCount:        2,
-		Targets: []d.TenantEvidenceTarget{
-			{Key: "root-1"},
-			{Key: "child-1"},
-		},
-	}, got.TenantEvidence)
-}
-
 func waitForDryRunOverlap(t *testing.T, active, max *atomic.Int32, released *atomic.Bool, release chan struct{}, phase string) func() {
 	t.Helper()
 	current := active.Add(1)
@@ -686,32 +656,4 @@ func (stubDryRunIncidentAPI) SearchIncidentsPage(context.Context, d.IncidentFilt
 
 func (stubDryRunIncidentAPI) SearchProcessInstanceIncidents(context.Context, string, ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error) {
 	return nil, errors.New("unexpected process instance incident search")
-}
-
-// legacyDryRunProcessInstanceAPI opts into key-only traversal for legacy dry-run coverage.
-type legacyDryRunProcessInstanceAPI struct {
-	stubDryRunProcessInstanceAPI
-	ancestry    func(context.Context, string, ...services.CallOption) (string, []string, map[string]d.ProcessInstance, error)
-	descendants func(context.Context, string, ...services.CallOption) ([]string, map[string][]string, map[string]d.ProcessInstance, error)
-}
-
-// LegacyDryRunTraversalOnly routes the test double through the v8.7 key-only dry-run path.
-func (s legacyDryRunProcessInstanceAPI) LegacyDryRunTraversalOnly() bool {
-	return true
-}
-
-// Ancestry returns the configured legacy ancestry response without tenant evidence.
-func (s legacyDryRunProcessInstanceAPI) Ancestry(ctx context.Context, key string, opts ...services.CallOption) (string, []string, map[string]d.ProcessInstance, error) {
-	if s.ancestry == nil {
-		return "", nil, nil, errors.New("unexpected legacy ancestry")
-	}
-	return s.ancestry(ctx, key, opts...)
-}
-
-// Descendants returns the configured legacy descendants response without tenant evidence.
-func (s legacyDryRunProcessInstanceAPI) Descendants(ctx context.Context, root string, opts ...services.CallOption) ([]string, map[string][]string, map[string]d.ProcessInstance, error) {
-	if s.descendants == nil {
-		return nil, nil, nil, errors.New("unexpected legacy descendants")
-	}
-	return s.descendants(ctx, root, opts...)
 }

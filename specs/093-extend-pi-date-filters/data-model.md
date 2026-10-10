@@ -49,7 +49,6 @@
   - Bounds follow the configured Camunda environment’s local calendar day semantics established in issue `#90`.
 - **Version behavior**:
   - v8.8 uses the existing native search mapping.
-  - v8.7 rejects any search request containing one or more date bounds as not implemented.
 
 ## Selected Process Instance Set
 
@@ -79,4 +78,3 @@
   - Inverted start-date range.
   - Inverted end-date range.
   - Explicit `--key` combined with one or more date-filter flags.
-  - Unsupported version behavior returned for a date-filtered search on v8.7.

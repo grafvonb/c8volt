@@ -6,7 +6,7 @@
 
 ## Summary
 
-Extend the existing baseline and volume user-task integration scenarios for #309/#310 using unchanged C88/C89/C810 embedded models. Use `SimpleUserTaskWithIncident` with `hasIncident=false` to obtain local `incident=1`, contrasted with process `incident=99`. Verify standalone and called-process scope behavior, independent effective display, and filtered paging. Keep C87 as an expected-unsupported check. No product changes, BPMN changes, new runner, or dependencies.
+Extend the existing baseline and volume user-task integration scenarios for #309/#310 using unchanged C88/C89/C810 embedded models. Use `SimpleUserTaskWithIncident` with `hasIncident=false` to obtain local `incident=1`, contrasted with process `incident=99`. Verify standalone and called-process scope behavior, independent effective display, and filtered paging. No product changes, BPMN changes, new runner, or dependencies.
 
 ## Technical Context
 
@@ -18,7 +18,6 @@ Extend the existing baseline and volume user-task integration scenarios for #309
 **Project Type**: CLI integration harness extension.
 **Performance Goals**: Bounded readiness polling; baseline seeds only the cases needed; volume uses the existing count with at least three instances. No arbitrary latency benchmark or exhaustive live flag matrix.
 **Constraints**: Default-local profile configuration; version gate before setup; immutable embedded models; no direct API setup; preserve old seed defaults and run markers; no t.Parallel for live scenarios sharing model IDs.
-**Scale/Scope**: Three supported minors (8.8/8.9/8.10) plus unsupported 8.7. Two standalone model shapes, one parent-child shape, and a volume dataset.
 
 ## Constitution Check
 
@@ -60,7 +59,7 @@ integration/cli/
   volume_get_test.go               invoke focused filtered-volume scenarios
   all_commands_test.go             update user-task flag manifest
 integration/README.md              focused usage/coverage notes
-embedded/processdefinitions/      read-only C87/C88/C89/C810 models
+embedded/processdefinitions/      read-only C88/C89/C810 models
 Makefile                          reuse unchanged selectors and aggregate targets
 ```
 

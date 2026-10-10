@@ -16,8 +16,6 @@
 3. Extend `validatePISearchFlags()` to parse non-negative integer day inputs, reject mixed absolute-plus-relative filters for the same field, reject invalid derived ranges, and preserve the explicit `--key` incompatibility for search-only filters.
 4. Update `populatePISearchFilterOpts()` so relative day flags are converted into the existing absolute date fields on `process.ProcessInstanceFilter` before the facade call path is used.
 5. Reuse the existing search helper calls already present in [`cmd/cancel_processinstance.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cancel_processinstance.go) and [`cmd/delete_processinstance.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/delete_processinstance.go) so search-based management commands inherit the same derived-bound logic automatically.
-6. Add or update command tests in [`cmd/get_processinstance_test.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance_test.go), [`cmd/cancel_test.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cancel_test.go), and [`cmd/delete_test.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/delete_test.go) to cover valid conversions, invalid values, absolute-plus-relative conflicts, invalid ranges, explicit `--key` conflicts, and v8.7 behavior, while keeping shared request-shape assertions in the common test helpers so later relative-day cases only need to vary CLI inputs and expected derived bounds.
-7. Extend lower-level regression coverage only where needed to prove derived bounds still reach the existing canonical absolute date filter path in [`c8volt/process/client.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/c8volt/process/client.go), [`internal/services/processinstance/v87/service.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v87/service.go), and [`internal/services/processinstance/v88/service.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v88/service.go).
 8. Update `README.md`, regenerate CLI docs with `make docs-content` and `make docs`, then run `make test`.
 
 ## Suggested Verification Commands
@@ -47,5 +45,4 @@ make test
 ./c8volt delete process-instance --end-date-older-days 60 --end-date-newer-days 7 --auto-confirm --config /tmp/c8volt-v88.yaml
 ./c8volt cancel process-instance --key 2251799813711967 --start-date-older-days 7 --config /tmp/c8volt-v88.yaml
 ./c8volt get process-instance --start-date-older-days -1 --config /tmp/c8volt-v88.yaml
-./c8volt get process-instance --end-date-newer-days 14 --config /tmp/c8volt-v87.yaml
 ```

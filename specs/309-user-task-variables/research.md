@@ -6,13 +6,11 @@ Research resolves the implementation questions in [spec.md](spec.md) against the
 
 ## 1. Retrieve backend-selected effective variables
 
-**Decision**: Add `SearchUserTaskEffectiveVariablesPage` to the usertask adapter API. Call the matching generated `SearchUserTaskEffectiveVariablesWithResponse` on v88, v89, and v810; v87 returns the established unsupported-operation error. A service-owned loop retrieves the complete collection, and a service enrichment function attaches it to selected tasks.
 
 **Rationale**: The checked-in generated clients expose the operation on all three supported versions. Their effective-variable request/result shapes are identical: a task key, offset pagination, optional name sorting, and optional `truncateValues`. The backend owns scope resolution. The legacy task-to-process resolver and its Tasklist fallback must remain untouched.
 
 **Alternatives considered**: Searching process variables and resolving scopes locally would change semantics; extending Tasklist fallback would expand scope; generated-client changes are unnecessary.
 
-**Evidence**: `internal/clients/camunda/{v88,v89,v810}/camunda/client.gen.go`, `internal/services/usertask/{api.go,v88/contract.go,v89/contract.go,v810/contract.go,v87/service.go}`.
 
 ## 2. Offset pagination, complete reads, and effective-name integrity
 

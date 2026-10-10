@@ -24,9 +24,7 @@ Add `c8volt get user-task` and aliases for strict keyed reads, backend-filtered 
 
 **Performance Goals**: Honor page-size and overall limits without extra rendering requests; use exact totals without full traversal when trustworthy; capped count traversal retains only the current page and metadata. Bulk reads use bounded existing worker policy and deterministic input order. No new latency SLA.
 
-**Constraints**: Camunda 8.7 explicitly unsupported for new native reads, without breaking its existing resolver behavior. Keep generated clients unmodified. Reuse HTTP authentication, retries, cancellation, tenant options, errors, and output contract. Explicit-key reads bypass discovery tenant filtering. Do not expose forms, variables, dates, sorting, watch, or mutations.
 
-**Scale/Scope**: One command with three aliases, nine filters, page-size/limit/count controls, three supported adapters and v87 unsupported stubs. Default/max page size follows `consts.MaxPISearchSize` (1000); count uses int64. Collected JSON/search memory grows with returned tasks; count memory is bounded by page size. No snapshot guarantee under concurrent backend changes.
 
 ## Constitution Check
 
@@ -85,7 +83,6 @@ internal/services/usertask/
 ├── bulk.go                        # New strict ordered native bulk workflow
 ├── search.go                      # New collection, visitor traversal, exact count
 ├── bulk_test.go, search_test.go    # New cross-version-independent mechanics tests
-├── v87/                           # New-method unsupported stubs and tests
 └── v88/, v89/, v810/               # Extend contracts, request/response mapping, tests
 README.md
 docs/cli/                          # Generated through make docs-content
@@ -121,14 +118,12 @@ Paging eligibility mirrors the existing get behavior: JSON, automation, and auto
 | FR-004–FR-009 | Each filter and combinations serialized correctly on all supported versions; nine states/all/case normalization; no `assigned`; tenant defaults/override/all-tenant options; page bounds; partial/empty intermediate pages; advancing cursor; offset fallback; limits mid-page; exact vs capped counts; repeated cursor and overflow errors |
 | FR-011–FR-014 | Exact human rows/summary; technical IDs and final assignee with explicit unassigned marker; JSON decode plus EOF; keys exact bytes; empty payload; quiet+JSON/keys; JSON precedence; numeric total including quiet; automation/auto-confirm; separate stdout/stderr and activity suppression |
 | FR-014, FR-017 | Real-terminal yes/no/EOF paging; configured and inherited stderr; redirected stdout; keys one per line; prompt-free empty completion; request counts and no mutation calls |
-| FR-015–FR-016 | v88/v89/v810 direct/search results and errors; v87 unsupported with no new native requests; existing resolver's tenant and Tasklist fallback tests unchanged; failure after an earlier streamed page returns failure without complete-success claims |
 | FR-018–FR-019 | Help/capability snapshots, runnable examples, README and generated docs; no out-of-scope flags or operations |
 
 Tests must cover actual command paths, not only view helpers. Use fake HTTP servers for capped totals, sparse pages, malformed payloads, authorization failures, and request-count assertions. Do not run tests mutating global command state in parallel. New/touched test functions and declarations receive the comments required by repository rules.
 
 ### Delivery order
 
-Start with domain and native contracts, implement v810 first and compare v89/v88 explicitly, then add v87 unsupported stubs. Preserve resolver regression tests throughout. Next deliver shared service workflows and facade mappings, then CLI keyed lookup, search/count interaction, output matrix, and documentation. Each slice gets its closest tests before broader integration validation. This ordering guides task generation without creating tasks in the planning phase.
 
 ### Validation gates
 

@@ -27,7 +27,6 @@ c8volt update pi --key <process-instance-key>
 c8volt update pi --key <process-instance-key> --vars 'not-json'
 c8volt update pi --key <process-instance-key> --vars '["not","object"]'
 c8volt update pi --vars '{"customerTier":"gold"}'
-c8volt update pi --key <process-instance-key> --vars '{"customerTier":"gold"}' # with Camunda 8.7 config
 ```
 
 Expected behavior:
@@ -36,7 +35,6 @@ Expected behavior:
 - Malformed JSON fails before mutation.
 - JSON whose top-level value is not an object fails before mutation.
 - Missing keys from both `--key` and stdin `-` fails through existing target-selector validation.
-- Camunda 8.7 fails with an unsupported-version error before mutation.
 
 ## Mutation Behavior
 

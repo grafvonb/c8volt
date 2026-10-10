@@ -33,10 +33,8 @@
 - [x] T008 [P] Add process-definition page request/response domain types if needed in `internal/domain/processdefinition.go`
 - [x] T009 Implement v8.9 process-definition page search request and conversion in `internal/services/processdefinition/v89/service.go`
 - [x] T010 Implement v8.8 process-definition page search request and conversion in `internal/services/processdefinition/v88/service.go`
-- [x] T011 Implement v8.7 process-definition page search request and conversion in `internal/services/processdefinition/v87/service.go`
 - [x] T012 [P] Add process-definition page service tests in `internal/services/processdefinition/v89/service_test.go`
 - [x] T013 [P] Add process-definition page service tests in `internal/services/processdefinition/v88/service_test.go`
-- [x] T014 [P] Add process-definition page service tests in `internal/services/processdefinition/v87/service_test.go`
 
 **Checkpoint**: Discovery status and process-definition paging are available to service workflows.
 
@@ -220,4 +218,4 @@ Task: "T028 [P] [US2] Add frozen-scope reuse or no-second-discovery command test
 - Commit subjects must use Conventional Commits format and append `#228` as the final token.
 - Do not stage or commit unless the Ralph workflow explicitly reaches its commit step and validation passes.
 - Generated CLI docs must be regenerated with `make docs-content`; do not hand-edit generated docs under `docs/cli/`.
-- Preserve existing Camunda 8.7, 8.8, and 8.9 compatibility behavior unless an affected command already gates a narrower version.
+- Preserve existing Camunda 8.8 and 8.9 compatibility behavior unless an affected command already gates a narrower version.

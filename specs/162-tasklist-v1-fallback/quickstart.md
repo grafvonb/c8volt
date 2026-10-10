@@ -40,7 +40,6 @@ Verify that `get pi --has-user-tasks=<task-key>` preserves v2-first behavior and
 
    Expected: the command returns the existing not-found style task lookup error after both lookup paths miss.
 
-6. Run against Camunda 8.7:
 
    ```bash
    ./c8volt get pi --has-user-tasks=<task-key>
@@ -53,7 +52,6 @@ Verify that `get pi --has-user-tasks=<task-key>` preserves v2-first behavior and
 Run focused tests while implementing:
 
 ```bash
-go test ./internal/services/usertask/v88 ./internal/services/usertask/v89 ./internal/services/usertask/v87 -count=1
 go test ./cmd -run 'HasUserTasks|Tasklist|UserTask' -count=1
 ```
 

@@ -5,7 +5,6 @@ The earlier design was heavier than this issue needs. This revision follows the 
 | Decision | Repository evidence and rationale | Alternative rejected |
 | --- | --- | --- |
 | Waiter owns one observation | Shared waiter and adapter checking/fetching/result logs overlap. Gate only nested lookup diagnostics. | Removing direct-lookup diagnostics or replacing the logger. |
-| Keep existing wait mechanics | Family confirmation and later single-key checks are separate real operations; v87 uses tenant-safe search. | Collapsing waits or changing v87 retrieval. |
 | Delete routine OAuth cache logs | RetrieveTokenForAPI emits lookup/hit pairs for cached requests. | A polling-specific authentication subsystem. |
 | Restore selected existing verbose messages | Adapter transition sites already contain useful explanation text; command compact options suppress them. Existing common.VerboseLog and option gating can expose only required explanations. | New workflow event kind, public DTOs, and callback mapping. |
 | Small error wrapper only where needed | Waiter timeout loses last-state evidence; ferrors.wrap stringifies the original cause. Keep necessary evidence and original text/class with focused tests. | Stage ledger, generic evidence hierarchy, or broad normalization rewrite. |

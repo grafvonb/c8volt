@@ -22,7 +22,7 @@ The following review-only setup items provide implementation context and are not
 
 - Review existing element, job, process activity, walk, and slow-analysis patterns in `cmd/get_element.go`, `cmd/get_job.go`, `cmd/get_processinstance_enrichment.go`, `cmd/cmd_views_processinstance_activity.go`, `cmd/walk_processinstance.go`, and `cmd/ops_analyse_slow_process_instances.go`.
 - Review facade and service boundaries for listener data in `c8volt/element/api.go`, `c8volt/process/api.go`, `c8volt/job/api.go`, `c8volt/ops/api.go`, `internal/services/processinstance/enrichment.go`, and `internal/services/job/api.go`.
-- Review generated job search capability and unsupported-version behavior in `internal/services/job/v87/service.go`, `internal/services/job/v88/service.go`, `internal/services/job/v88/convert.go`, `internal/services/job/v89/service.go`, and `internal/services/job/v89/convert.go`.
+- Review generated job search capability and unsupported-version behavior in `internal/services/job/v88/service.go`, `internal/services/job/v88/convert.go`, `internal/services/job/v89/service.go`, and `internal/services/job/v89/convert.go`.
 
 ---
 

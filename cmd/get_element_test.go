@@ -709,30 +709,6 @@ func TestGetElementCommand_SearchWithListenersJSONOutput(t *testing.T) {
 	require.Empty(t, second["listeners"].([]any))
 }
 
-func TestGetElementCommand_KeyedLookupUnsupportedV87(t *testing.T) {
-	cfgPath := testx.WriteTestConfigForVersion(t, "http://camunda.example.test", "8.7")
-
-	output, err := testx.RunCmdSubprocess(t, "TestGetElementCommand_KeyedLookupUnsupportedV87Helper", map[string]string{
-		"C8VOLT_TEST_CONFIG": cfgPath,
-	})
-
-	require.Error(t, err)
-	require.Contains(t, string(output), "unsupported")
-	require.Contains(t, string(output), "element lookup requires Camunda 8.8 or newer")
-}
-
-func TestGetElementCommand_KeyedLookupUnsupportedV87Helper(t *testing.T) {
-	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
-		return
-	}
-
-	prevArgs := os.Args
-	t.Cleanup(func() { os.Args = prevArgs })
-	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "element", "--key", "2251799813689002"}
-
-	Execute()
-}
-
 func newElementLookupServer(t *testing.T, requests *[]string, status int, response string) *httptest.Server {
 	t.Helper()
 	return newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

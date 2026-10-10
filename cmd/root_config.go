@@ -13,7 +13,6 @@ import (
 
 	"github.com/grafvonb/c8volt/config"
 	"github.com/grafvonb/c8volt/consts"
-	"github.com/grafvonb/c8volt/toolx"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
@@ -190,9 +189,6 @@ func tenantBeforeExplicitFlag(v *viper.Viper, cfg *config.Config) string {
 	}
 	if value, ok := tenantFromConfigFile(v, activeProfile); ok {
 		return value
-	}
-	if cfg != nil && cfg.App.CamundaVersion == toolx.V87 {
-		return config.DefaultTenant
 	}
 	return ""
 }

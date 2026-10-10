@@ -11,7 +11,6 @@
 
 ## Decision: Reuse process-instance and runtime element services for data access
 
-**Rationale**: Existing process-instance services own keyed lookup, tenant-safe search, paging, and process filters. Existing element services own runtime element lookup/search and Camunda 8.7 unsupported behavior. Reusing those services avoids duplicate generated-client access and keeps version-specific API differences in their existing adapters.
 
 **Alternatives considered**:
 
@@ -80,12 +79,3 @@
 
 - Make human output label every indicator: rejected because the spec requires label-free compact comparison placement.
 - Mirror compact human tokens in JSON: rejected because structured output should expose stable named fields.
-
-## Decision: Treat Camunda 8.7 as an unsupported-version analysis failure
-
-**Rationale**: Runtime element inspection is supported through the existing element service for Camunda 8.8 and 8.9; 8.7 should surface the established unsupported-version error rather than rendering incomplete analysis.
-
-**Alternatives considered**:
-
-- Render only process-instance roots on 8.7: rejected because it would claim success while omitting required timeline analysis.
-- Hide the command for 8.7 configs: rejected because command availability is stable and runtime capability errors are the repository pattern.

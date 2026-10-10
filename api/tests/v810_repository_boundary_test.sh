@@ -12,7 +12,6 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 PROTECTED_CLIENT_DIRS=(
-  "internal/clients/camunda/v87"
   "internal/clients/camunda/v88"
   "internal/clients/camunda/v89"
 )

@@ -3,7 +3,6 @@
 ## Decision 1: Reuse the existing absolute date-filter model as the canonical backend path
 
 - **Decision**: Treat the new `*-days` flags as command-layer convenience inputs that are converted into the existing absolute date filter fields already introduced by issues `#90` and `#93`.
-- **Rationale**: The repository already has typed `StartDateAfter`, `StartDateBefore`, `EndDateAfter`, and `EndDateBefore` fields in shared process-instance filter models plus existing v8.8/v8.7 handling in the versioned services. Reusing that model avoids duplicating filter semantics in a second pipeline.
 - **Alternatives considered**:
   - Add parallel relative-day fields all the way through the facade and service layers: rejected because it would duplicate logic and diverge from the already-shipped date-filter model.
   - Convert relative-day values only inside versioned services: rejected because command-layer validation already owns user input constraints and cross-command consistency.

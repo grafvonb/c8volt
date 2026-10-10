@@ -16,7 +16,7 @@ Select by key, BPMN process ID, version, or version tag. Use --xml only with --k
 
 --tenant limits list and selector discovery. Explicit --key and XML lookups use backend authorization without tenant filtering.
 
---latest selects the newest definition per exact tenant ID and BPMN process ID, breaking version ties by the lowest exact-text key. Camunda 8.7 selects within its 1000 visible-definition compatibility window; Camunda 8.8 or newer uses native latest filtering.
+--latest selects the newest definition per exact tenant ID and BPMN process ID using native latest filtering, breaking version ties by the lowest exact-text key.
 
 --stat includes exact-version statistics and requires Camunda 8.8 or newer.
 
@@ -47,7 +47,7 @@ c8volt get process-definition [flags]
       --latest                    only include the latest matching process-definition version per exact tenant/BPMN process group
       --pd-version int32          process definition version
       --pd-version-tag string     process definition version tag
-      --stat                      include process definition statistics; 8.8 or newer includes incident counts, 8.7 unsupported
+      --stat                      include process definition statistics and incident counts
       --watch                     repeat the process-definition lookup until interrupted, timed out, or retries are exhausted
       --watch-interval duration   interval between process-definition watch refreshes after the immediate first refresh (default 1s)
       --xml                       output the selected process definition as raw XML (requires --key and no other filters)

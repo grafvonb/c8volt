@@ -21,9 +21,6 @@ func runDeleteProcessInstanceSearch(cmd *cobra.Command, cli process.API, cfg *co
 	if !hasPISearchFilterFlags() {
 		handleCommandError(cmd, log, cfg.App.NoErrCodes, missingDependentFlagsf("either at least one --key is required, or sufficient filtering options to search for process instances to delete"))
 	}
-	if err := validatePISearchVersionSupport(cfg); err != nil {
-		handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
-	}
 	if flagGetPIBpmnProcessID != "" {
 		result, err := validateProcessDefinitionSelectorsForCommand(cmd.Context(), cmd, cli, newPIProcessDefinitionSelectorValidationRequest(), collectOptions()...)
 		if err != nil {

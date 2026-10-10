@@ -19,7 +19,6 @@
 
 - [x] T001 Inventory the current `get process-definition --stat` flow in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processdefinition.go, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cmd_views_get.go, and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/042-pd-incident-stats/research.md
 - [x] T002 [P] Confirm the supported-version generated-client seams for incident-bearing process-instance counts in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/clients/camunda/v88/camunda/client.gen.go, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/clients/camunda/v89/camunda/client.gen.go, and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/042-pd-incident-stats/research.md
-- [x] T003 [P] Confirm the existing process-definition stats model and regression anchors in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/c8volt/process/model.go, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/domain/processdefinition.go, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/c8volt/process/client_test.go, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processdefinition/v87/service_test.go, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processdefinition/v88/service_test.go, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processdefinition/v89/service_test.go, and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_test.go
 
 ---
 
@@ -64,16 +63,13 @@
 
 **Goal**: Keep unsupported versions truthful by omitting `in:` entirely while preserving the rest of the `--stat` output.
 
-**Independent Test**: Run `get pd --stat` on `v8.7` and verify the output omits `in:` while keeping the surrounding output stable and not implying incident-count support.
 
 ### Tests for User Story 2
 
-- [x] T014 [P] [US2] Add `v8.7` service tests proving incident-count support remains unavailable under `WithStat` in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processdefinition/v87/service_test.go
 - [x] T015 [P] [US2] Add command rendering regressions proving unsupported versions omit `in:` entirely in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_test.go
 
 ### Implementation for User Story 2
 
-- [x] T016 [US2] Preserve the `v8.7` unsupported incident-count boundary in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processdefinition/v87/service.go
 - [x] T017 [US2] Update renderer behavior so unsupported stats omit `in:` without changing the other stat segments in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cmd_views_get.go
 
 **Checkpoint**: User Story 2 is independently testable: unsupported versions omit `in:` entirely and do not regress the rest of the stats output.
@@ -159,7 +155,6 @@ Task: "Add command rendering regressions for supported non-zero and supported ze
 
 ```bash
 # Prepare unsupported-version truthfulness coverage in parallel:
-Task: "Add `v8.7` service tests proving incident-count support remains unavailable under `WithStat` in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processdefinition/v87/service_test.go"
 Task: "Add command rendering regressions proving unsupported versions omit `in:` entirely in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_test.go"
 ```
 

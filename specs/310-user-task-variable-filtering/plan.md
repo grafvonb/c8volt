@@ -24,7 +24,6 @@ Add the three existing variable-search flags to `get user-task`, reusing `get pi
 
 **Performance Goals**: No additional requests for filtering beyond ordinary native task search/count. No per-task variable reads for filtering; optional display retains its existing selected-task bounds.
 
-**Constraints**: Identical PI grammar, aliases, errors, and serialized-value conventions. Local-variable scope only. Preserve 8.7 unsupported behavior, 8.8–8.10 native support, version-local mappings, pipeline output, and established empty results. No generated-client edits or broad parser refactoring.
 
 **Scale/Scope**: Three flags, additive filter inputs, one small parser orchestration extraction, three adapter mappings, targeted tests, and documentation. Existing pagination and count algorithms remain authoritative.
 
@@ -78,7 +77,6 @@ c8volt/task/
 internal/domain/usertask.go               # Add existing domain filter-set field
 internal/services/usertask/
 ├── search_test.go                        # Predicates survive existing traversal/counting
-├── v87/native_test.go                    # Retained unsupported behavior
 └── v88/, v89/, v810/
     ├── search.go                         # Attach localVariables
     ├── variable_filter.go                # Small matching-version mapper
@@ -116,7 +114,6 @@ Full input and output behavior is defined in [contracts/cli.md](contracts/cli.md
 | --- | --- |
 | FR-001–002 | Same fixtures through PI/task wrappers; all operators and alias; quoting, commas, arrays, wildcard escapes, invalid clauses, command-global isolation |
 | FR-003–005 | Exact native localVariables requests across versions; ordinary/tenant predicates retained; zero filter-triggered variable/name discovery; optional live local/parent/shadowed checks |
-| FR-006/012 | Explicit/stdin key conflicts, malformed CLI and direct-facade operands, no requests on validation failure, retained v87 unsupported errors |
 | FR-007 | Same filters on cursor/offset/sparse pages, within-page limits, exact/capped counts, visitor stop, cancellation, errors |
 | FR-008–009 | Execute human/JSON/keys/quiet/total and supported combinations; exact empty text/zero-byte keys/JSON EOF; real-terminal stdin and separate inherited/configured stderr |
 | FR-010–011 | Filtered optional display with selected-task bounds, no duplicate reads, excluded modes, truncation/value-limit and failure preservation |

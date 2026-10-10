@@ -69,17 +69,6 @@ func TestAppNormalize_PreservesPositiveProcessInstancePageSize(t *testing.T) {
 	require.Equal(t, int32(250), app.ProcessInstancePageSize)
 }
 
-func TestAppNormalize_DefaultTenantForV87(t *testing.T) {
-	t.Parallel()
-
-	app := &App{CamundaVersion: toolx.V87}
-
-	err := app.Normalize()
-
-	require.NoError(t, err)
-	require.Equal(t, DefaultTenant, app.Tenant)
-}
-
 func TestAppNormalize_DoesNotForceDefaultTenantForV88(t *testing.T) {
 	t.Parallel()
 
@@ -176,17 +165,6 @@ func TestAppTargetTenant_PreservesConfiguredTenant(t *testing.T) {
 	require.Equal(t, "tenant-a", app.TargetTenant())
 }
 
-func TestAppNormalize_PreservesExplicitTenantForV87(t *testing.T) {
-	t.Parallel()
-
-	app := &App{CamundaVersion: toolx.V87, Tenant: "tenant-a"}
-
-	err := app.Normalize()
-
-	require.NoError(t, err)
-	require.Equal(t, "tenant-a", app.Tenant)
-}
-
 func TestAppNormalize_RejectsUnsupportedCamundaVersion(t *testing.T) {
 	t.Parallel()
 
@@ -195,19 +173,6 @@ func TestAppNormalize_RejectsUnsupportedCamundaVersion(t *testing.T) {
 	err := app.Normalize()
 
 	require.ErrorContains(t, err, "version: unknown Camunda version: 9.9")
-}
-
-func TestAppNormalizeWithConfiguredKeys_PreservesExplicitEmptyTenantForV87(t *testing.T) {
-	t.Parallel()
-
-	app := &App{CamundaVersion: toolx.V87}
-
-	err := app.normalizeWithConfiguredKeys(func(key string) bool {
-		return key == "app.tenant"
-	})
-
-	require.NoError(t, err)
-	require.Empty(t, app.Tenant)
 }
 
 func TestAppNormalizeWithConfiguredKeys_PreservesExplicitEmptyTenantForV89(t *testing.T) {

@@ -4,7 +4,6 @@
 
 - c8volt configured for a Camunda 8.8 or 8.9 environment with runtime element instances available.
 - A known `processInstanceKey` and at least one known `elementInstanceKey`.
-- For unsupported-version validation, a c8volt config targeting Camunda 8.7.
 
 ## Build
 
@@ -104,17 +103,6 @@ Expected when matching elements have incidents:
 - Rows with incidents include `inc!` when no incident key is available.
 - Rows include `inc!:<incidentKey>` when an incident key is available.
 - Rows never include both incident markers for the same element instance.
-
-### 9. Unsupported Camunda 8.7
-
-```bash
-/tmp/c8volt-get-element --config <camunda-87-config> get ei -k <element-instance-key>
-```
-
-Expected:
-
-- Command fails with a clear unsupported-version error.
-- No success output is printed.
 
 ## Targeted Automated Validation
 

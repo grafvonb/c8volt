@@ -20,7 +20,6 @@ Add to the shared usertask API and matching version APIs:
 SearchUserTaskEffectiveVariablesPage(ctx context.Context, key string, page domain.UserTaskVariablePageRequest, opts ...services.CallOption) (domain.UserTaskVariablePage, error)
 ```
 
-v88, v89, and v810 extend their generated client interfaces with `SearchUserTaskEffectiveVariablesWithResponse`. v87 implements a no-request unsupported-operation result. All implementations retain configured HTTP policy, context, shared payload/status validation, and domain error mapping. Discovery tenant filters are not added to this keyed effective-variable operation; backend authorization applies. Do not call the legacy task resolver or Tasklist.
 
 ### Native request
 

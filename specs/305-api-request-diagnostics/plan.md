@@ -26,7 +26,7 @@ Extend the existing `--debug` behavior to log compact technical evidence for act
 
 **Constraints**: Current invocation only; stderr-only DEBUG records subject to quiet and configured level filtering; no generated-client or individual command observation; original transport/body errors and ownership preserved; no secret/body dumps. Synchronous stderr backpressure can add output latency, as with existing logging; it is not included in reported exchange duration.
 
-**Scale/Scope**: Existing API-backed commands and current Camunda 8.7–8.10, Operate and Tasklist clients; authentication exchanges included. One record per observable RoundTrip invocation, including explicit retries and redirects. Internal network-transport retransmissions are not separate observable exchanges. No new analysis command or result-envelope schema.
+**Scale/Scope**: Existing API-backed commands and current Camunda 8.8–8.10, Operate and Tasklist clients; authentication exchanges included. One record per observable RoundTrip invocation, including explicit retries and redirects. Internal network-transport retransmissions are not separate observable exchanges. No new analysis command or result-envelope schema.
 
 ## Constitution Check
 

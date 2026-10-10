@@ -22,7 +22,7 @@
 - [x] T001 Inspect current `get pi` search flags, validation, and filter population in `cmd/get_processinstance.go` and adjacent `cmd/get_processinstance_*.go`
 - [x] T002 [P] Inspect process facade filter mapping in `c8volt/process/api.go`, `c8volt/process/model.go`, `c8volt/process/convert.go`, and `c8volt/process/client.go`
 - [x] T003 [P] Inspect current domain process-instance filters in `internal/domain/processinstance.go`
-- [x] T004 [P] Inspect process-instance service interfaces and versioned search request construction in `internal/services/processinstance/api.go`, `internal/services/processinstance/v87/`, `internal/services/processinstance/v88/`, and `internal/services/processinstance/v89/`
+- [x] T004 [P] Inspect process-instance service interfaces and versioned search request construction in `internal/services/processinstance/api.go`, `internal/services/processinstance/v88/`, and `internal/services/processinstance/v89/`
 - [x] T005 [P] Inspect generated Camunda variable/process-instance search request types in `internal/clients/camunda/v88/` and `internal/clients/camunda/v89/`
 - [x] T006 [P] Inspect existing variable display and update parsing patterns in `cmd/get_processinstance*.go`, `cmd/update_processinstance*.go`, and `internal/services/processinstance/variables.go`
 - [x] T007 [P] Inspect command contract and docs generation expectations in `cmd/command_contract_test.go`, `README.md`, `docsgen/`, and `docs/cli/`
@@ -158,23 +158,16 @@
 
 ## Phase 7: User Story 5 - Preserve Version And Tenant Contracts (Priority: P5)
 
-**Goal**: Variable-search flags are native and supported on 8.8/8.9, explicitly unsupported on 8.7, and compatible with existing tenant-aware process-instance searches.
 
-**Independent Test**: The same variable-search command succeeds through native request paths on 8.8/8.9, fails explicitly on 8.7, and preserves tenant filter behavior.
 
 ### Tests for User Story 5
 
-- [x] T060 [P] [US5] Add 8.7 unsupported command tests for each new variable-search flag in `cmd/get_processinstance_test.go`
-- [x] T061 [P] [US5] Add v8.7 service unsupported tests for variable filters in `internal/services/processinstance/v87/service_test.go`
 - [x] T062 [P] [US5] Add tenant preservation tests for variable filters in `cmd/get_processinstance_test.go` or `internal/services/processinstance/v88/service_test.go`
-- [x] T063 [P] [US5] Add regression tests proving existing 8.7 `get pi` searches without variable filters still behave as before in `cmd/get_processinstance_test.go`
 
 ### Implementation for User Story 5
 
 - [x] T064 [US5] Add local version support validation for variable-search flags in `cmd/get_processinstance*.go`
-- [x] T065 [US5] Add explicit 8.7 unsupported handling for domain filters with variable clauses in `internal/services/processinstance/v87/`
 - [x] T066 [US5] Preserve tenant filter composition with variable filters in `internal/services/processinstance/v88/` and `internal/services/processinstance/v89/`
-- [x] T067 [US5] Ensure no Operate fallback is used for variable-search paths in `internal/services/processinstance/v87/`, `v88/`, and `v89/`
 - [x] T068 [US5] Verify US5 with targeted command and versioned service tests
 
 **Checkpoint**: User Story 5 is complete when version and tenant behavior is explicit, tested, and free of Operate-backed variable-search fallback.

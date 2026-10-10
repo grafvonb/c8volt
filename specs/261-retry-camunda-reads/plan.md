@@ -12,7 +12,7 @@ Add a narrow, central retry layer for transient Camunda GET/HEAD read failures s
 
 ## Technical Context
 
-**Language/Version**: Go, using the repository's current Go module and generated Camunda 8.7/8.8/8.9 clients
+**Language/Version**: Go, using the repository's current Go module and generated Camunda 8.8/8.9 clients
 
 **Primary Dependencies**: Standard `net/http` client/transport stack, existing `internal/services/httpc` service and transports, existing `internal/services` retry/backoff patterns, Cobra CLI bootstrap, existing `toolx/logging` logger/activity paths
 
@@ -77,7 +77,6 @@ internal/services/
     └── http_read_retry_test.go     # planned focused tests for this feature
 
 internal/services/processinstance/
-├── v87/
 ├── v88/
 └── v89/                            # proof path uses GET parent lookup through generated clients
 

@@ -67,7 +67,7 @@ func TestV810BaselineReplacementKeepsSingleCompatibilityIdentity(t *testing.T) {
 			require.Equal(t, V810, baseline.Version)
 			require.Equal(t, "8.10", baseline.Version.String())
 			require.ErrorIs(t, err, ErrUnknownCamundaVersion)
-			require.Equal(t, "8.7, 8.8, 8.9, 8.10", SupportedCamundaVersionsString())
+			require.Equal(t, "8.8, 8.9, 8.10", SupportedCamundaVersionsString())
 			require.Equal(t, SupportedCamundaVersionsString(), ImplementedCamundaVersionsString())
 		})
 	}

@@ -6,7 +6,7 @@ nav_exclude: true
 has_toc: true
 ---
 
-> Generated from build `c8volt v4.3.4-85-g90d8a943-dirty`, commit `90d8a943`, built `2026-09-29T17:02:38Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.0-alpha4 (prerelease)
+> Generated from build `c8volt v4.3.4-91-gc9949f11-dirty`, commit `c9949f11`, built `2026-10-05T13:55:12Z` | Supported Camunda 8 versions: 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.0-alpha4 (prerelease)
 
 <img src="./logo/c8volt_logo_transparent_w_shadow_400x244.png" alt="c8volt logo" />
 
@@ -135,7 +135,7 @@ Then look around at the latest process definitions visible in the cluster:
 ./c8volt get process-definition --latest
 ```
 
-`--latest` selects the newest definition for each exact tenant ID and BPMN process ID pair. On Camunda 8.7, selection is limited to the existing 1000 visible-definition compatibility window; Camunda 8.8 or newer uses native latest filtering.
+`--latest` selects the newest definition for each exact tenant ID and BPMN process ID pair using native latest filtering.
 
 To monitor deployment visibility, add `--watch`. It checks immediately and repeats every second by default; use `--watch-interval` to change the interval.
 
@@ -231,13 +231,13 @@ Documentation examples use full command, resource, and flag names so they match 
 
 ## Supported Camunda Versions
 
-`c8volt` supports Camunda `8.7`, `8.8`, and `8.9`, with experimental `8.10` support introduced in [c8volt v4.3.0](https://github.com/grafvonb/c8volt/releases/tag/v4.3.0).
+`c8volt` supports Camunda `8.8` and `8.9`, with experimental `8.10` support introduced in [c8volt v4.3.0](https://github.com/grafvonb/c8volt/releases/tag/v4.3.0).
 
 Set `app.camunda_version` to `"8.10"` for Camunda 8.10. Use `c8volt version` to check the bundled API baseline.
 
 `8.9` is the default when no Camunda version is configured. `8.9` and `8.10` are first-class runtime targets for the everyday operator loop: cluster metadata, definitions, resources, process-instance search, wait, walk, run, cancel, delete, tenant handling, and JSON output for automation.
 
-Process-instance and user-task variable updates, incident resolution, and `get job`/`update job` commands are supported on Camunda `8.8` or newer; Camunda `8.7` returns an unsupported-version error for those state-changing job, variable update, and incident resolution commands. `8.7` remains supported with known upstream limitations where tenant-safe direct keyed process-instance behavior is not available.
+Process-instance and user-task variable updates, incident resolution, and `get job`/`update job` commands are supported on all supported Camunda versions.
 
 ## Core Workflows
 
@@ -272,7 +272,7 @@ Generated reference: [get process-instance](./cli/c8volt_get_process-instance).
 
 Find human work waiting in your processes, inspect assignments, and count matching tasks directly from your terminal.
 
-Use `get user-task` to fetch known native user tasks or search visible work on Camunda 8.8, 8.9, and 8.10; Camunda 8.7 is unsupported. Repeat or comma-separate `--key`, or pipe newline-separated keys with or without the optional `-`. Every requested key must resolve; keyed reads rely on backend authorization, do not filter by the selected discovery tenant, and preserve each task's actual tenant metadata.
+Use `get user-task` to fetch known native user tasks or search visible work. Repeat or comma-separate `--key`, or pipe newline-separated keys with or without the optional `-`. Every requested key must resolve; keyed reads rely on backend authorization, do not filter by the selected discovery tenant, and preserve each task's actual tenant metadata.
 
 Without keys, combine process, element, state, assignment, candidate, local-variable, and effective tenant filters. States are `ASSIGNING`, `CANCELED`, `CANCELING`, `COMPLETED`, `COMPLETING`, `CREATED`, `CREATING`, `FAILED`, and `UPDATING` (case-insensitive); `all` applies no state predicate. `--batch-size` controls page size, `--limit` bounds the returned collection, and `--total` prints the exact matching count. Interactive searches offer additional pages on stderr; use `--auto-confirm` or `--automation` for unattended paging. `--quiet` suppresses human results while preserving explicitly requested JSON, keys-only, and numeric total output. Keys conflict with search filters, `--limit`, and `--total`; total mode also conflicts with `--limit`, `--json`, and `--keys-only`.
 

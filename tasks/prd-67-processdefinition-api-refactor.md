@@ -63,7 +63,7 @@ As a contributor, I want focused automated coverage around the refactored proces
 - The processdefinition service remains in the current API-plus-factory-plus-versioned-service shape.
 - Shared responsibilities are clearer and duplication is reduced without hiding necessary version-specific differences.
 - The shared service surface is explicitly reviewed against supported generated processdefinition capabilities.
-- Any adopted missing capability is small, supported across v8.7 and v8.8, and covered by automated tests.
+- Any adopted missing capability is small, supported across v8.8, and covered by automated tests.
 - Reviewers can confirm completion through focused service and factory tests, the documented capability decision, and `make test`.
 
 ## Requirements
@@ -75,7 +75,6 @@ As a contributor, I want focused automated coverage around the refactored proces
 - **AC-003**: Avoidable duplication between supported-version implementations must be reduced where that reduction stays low risk and easy to understand.
 - **AC-004**: Existing processdefinition workflows must preserve observable behavior, including search ordering, latest-selection behavior, result mapping, and current error handling, unless a small intentional capability addition is documented.
 - **AC-005**: Supported-version response handling must remain correct for both generated-client variants.
-- **AC-006**: Existing version-specific behavior differences, including v8.7 rejecting statistics requests and v8.8 enriching results with statistics, must be preserved unless an intentional change is explicitly approved and tested.
 - **AC-007**: Supported generated processdefinition capabilities must be reviewed against the service surface, with an explicit add-or-defer decision.
 - **AC-008**: Any added missing capability must fit the current service boundaries, exist across supported versions, preserve compatibility expectations, and be covered by automated tests.
 - **AC-009**: The final work must define the effect on user-visible command behavior and explicitly state when no CLI behavior changes occur.
@@ -96,7 +95,7 @@ As a contributor, I want focused automated coverage around the refactored proces
 - Prefer small shared helpers or localized normalization improvements over a new abstraction layer.
 - Treat the generated-client coverage review as mandatory, but treat a new capability as conditional.
 - Use the cluster service refactor as the structural reference for acceptable cleanup patterns.
-- Keep validation centered on `internal/services/processdefinition/factory_test.go`, `internal/services/processdefinition/v87/service_test.go`, `internal/services/processdefinition/v88/service_test.go`, and `make test`.
+- Keep validation centered on `internal/services/processdefinition/factory_test.go`, `internal/services/processdefinition/v88/service_test.go`, and `make test`.
 - If the approved generated-client coverage decision becomes user-visible, align it with current `get` command and Cobra patterns, then update `README.md` and generated CLI docs.
 - Preserve the existing convention that generated-adjacent changes should be driven from the source surface and regenerated where the repository already supports that workflow.
 
@@ -149,7 +148,6 @@ As a contributor, I want focused automated coverage around the refactored proces
 ## Validation
 
 - Update `internal/services/processdefinition/factory_test.go`.
-- Update `internal/services/processdefinition/v87/service_test.go`.
 - Update `internal/services/processdefinition/v88/service_test.go`.
 - Run `go test ./internal/services/processdefinition/... -race -count=1`.
 - Run `make test`.

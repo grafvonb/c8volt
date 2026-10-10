@@ -21,12 +21,10 @@ Started: 2026-09-29T15:39:19Z
 - User-task result views count confirmed/submitted, unchanged, failed, and skipped states separately; only confirmed/submitted changed tasks appear in keys-only output.
 - Shared envelope and user-task key writers propagate destination failures. User-task dispatch reports those failures on stderr without attempting a second result envelope.
 - Real-terminal update coverage must use `testx.NewCmdTerminalRunner` with redirected stdout and separate stderr; the command preserves the exact default-no prompt for yes/no/default/EOF and skips prompting for dry-run, no-op, automation, and auto-confirm paths.
-- The command contract is equivalent across 8.8, 8.9, and 8.10; 8.7 rejects during native task planning before transport. Scope-level functional outcomes remain verbose-only, while HTTP exchange diagnostics remain DEBUG-only.
 
 ## Decisions
 
 - `domain.ScopeVariableUpdateResponse` is intentionally scope-neutral and records `ScopeKey`, `Accepted`, `StatusCode`, and `Status`; user-task confirmation remains owned by the later composed workflow.
-- Blank scope keys and empty variable maps fail with `domain.ErrValidation` before transport. Camunda 8.7 always returns the explicit unsupported capability error without transport.
 - Planning treats `(ScopeKey, Name)` as the logical identity, uses complete normalized JSON values for equality, always treats truncated values as changes, and uses the task element-instance scope only for absent names.
 - The composed `usertask.VariableUpdateAPI` now publishes planning and execution; execution returns partial results alongside aggregate errors and treats acceptance as historical fact rather than success.
 - Fully unchanged plans return no synthetic execution items. In mixed results, unchanged tasks use `unchanged`, skipped confirmation, and false acceptance while changed tasks retain their independent scope outcomes.

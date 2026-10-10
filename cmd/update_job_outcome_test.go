@@ -6,13 +6,9 @@ package cmd
 import (
 	"encoding/json"
 	"net/http"
-	"os"
-	"os/exec"
 	"strings"
 	"testing"
 
-	"github.com/grafvonb/c8volt/internal/exitcode"
-	"github.com/grafvonb/c8volt/testx"
 	"github.com/stretchr/testify/require"
 )
 
@@ -242,46 +238,4 @@ func TestUpdateJobCommand_JSONDryRunCompletionPlanPayload(t *testing.T) {
 	require.Equal(t, true, payload["materialChange"])
 	require.Equal(t, false, payload["mutationSubmitted"])
 	require.Equal(t, map[string]any{"approved": true}, payload["variables"])
-}
-
-// TestUpdateJobCommand_WorkerOutcomeUnsupportedV87FailsBeforeMutation verifies the update job worker outcome behavior covered by this scenario.
-func TestUpdateJobCommand_WorkerOutcomeUnsupportedV87FailsBeforeMutation(t *testing.T) {
-	cfgPath := writeTestConfigForVersion(t, "http://127.0.0.1:1", "8.7")
-
-	for _, mode := range []string{"fail", "bpmn-error", "completion"} {
-		t.Run(mode, func(t *testing.T) {
-			output, err := testx.RunCmdSubprocess(t, "TestUpdateJobCommand_WorkerOutcomeUnsupportedV87FailsBeforeMutationHelper", map[string]string{
-				"C8VOLT_TEST_CONFIG":             cfgPath,
-				"C8VOLT_TEST_JOB_WORKER_OUTCOME": mode,
-			})
-			require.Error(t, err)
-
-			exitErr, ok := err.(*exec.ExitError)
-			require.True(t, ok)
-			require.Equal(t, exitcode.Error, exitErr.ExitCode())
-			require.Contains(t, string(output), "Camunda 8.8")
-			require.NotContains(t, string(output), "updated job")
-		})
-	}
-}
-
-// TestUpdateJobCommand_WorkerOutcomeUnsupportedV87FailsBeforeMutationHelper verifies the update job worker outcome behavior covered by this scenario.
-func TestUpdateJobCommand_WorkerOutcomeUnsupportedV87FailsBeforeMutationHelper(t *testing.T) {
-	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
-		return
-	}
-
-	prevArgs := os.Args
-	t.Cleanup(func() { os.Args = prevArgs })
-	base := []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "update", "job", "--key", "2251799813711967"}
-	switch os.Getenv("C8VOLT_TEST_JOB_WORKER_OUTCOME") {
-	case "fail":
-		os.Args = append(base, "--fail", "--retries", "0", "--message", "worker unavailable", "--auto-confirm")
-	case "bpmn-error":
-		os.Args = append(base, "--throw-bpmn-error", "PAYMENT_DECLINED", "--message", "card declined", "--auto-confirm")
-	default:
-		os.Args = append(base, "--complete", "--auto-confirm")
-	}
-
-	Execute()
 }

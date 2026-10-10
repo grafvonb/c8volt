@@ -42,7 +42,6 @@ Each completed page must clearly report:
 | Camunda version | Required behavior |
 |----------------|-------------------|
 | `8.8` | Use native search page metadata from the generated client as the preferred overflow signal |
-| `8.7` | Use the repository-native fallback strategy because the current Operate response type does not expose equivalent page metadata |
 | Any supported version where fallback still cannot prove exhaustion | Stop and warn instead of silently continuing or silently finishing |
 | `8.9` | Remains out of scope for this feature |
 

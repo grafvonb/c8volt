@@ -17,9 +17,7 @@
 
 **Purpose**: Lock in the exact request-pushdown boundary, version matrix, and regression seams before shared filter changes begin.
 
-- [x] T001 Inventory the current late-filtering seam and supported-version request capabilities in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance.go, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v87/service.go, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v88/service.go, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v89/service.go, and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/116-server-search-filters/research.md
 - [x] T002 [P] Confirm the shared filter-model seams and existing mapping coverage in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/c8volt/process/model.go, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/domain/processinstance.go, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/c8volt/process/convert.go, and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/c8volt/process/client_test.go
-- [x] T003 [P] Inspect the existing request-capture and paging regression anchors in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v87/service_test.go, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v88/service_test.go, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v89/service_test.go, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cmd_processinstance_test.go, and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance_test.go
 
 ---
 
@@ -63,21 +61,15 @@
 
 ## Phase 4: User Story 2 - Preserve behavior on unsupported versions (Priority: P2)
 
-**Goal**: Keep `v8.7` and all unsupported filter/version combinations on the existing client-side fallback path while preserving exact current command semantics.
 
-**Independent Test**: Exercise the same flags on `v8.7` and verify unsupported predicates are omitted from the request, the final visible results still honor the flags through local filtering, and `--orphan-children-only` remains client-side on every version.
 
 ### Tests for User Story 2
 
-- [x] T015 [P] [US2] Add `v8.7` service tests proving unsupported pushdown predicates stay out of the request shape in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v87/service_test.go
-- [x] T016 [P] [US2] Add command regressions proving `v8.7` fallback still returns the correct final filtered results in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance_test.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cmd_processinstance_test.go
 - [x] T017 [P] [US2] Add cross-version regressions proving `--orphan-children-only` remains client-side in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance_test.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v88/service_test.go
 
 ### Implementation for User Story 2
 
 - [x] T018 [US2] Preserve version-aware fallback behavior for unsupported pushdown semantics in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/c8volt/process/filter.go
-- [x] T019 [US2] Keep `v8.7` request construction limited to supported equality filters while documenting the fallback boundary in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v87/service.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/116-server-search-filters/research.md
-- [x] T020 [US2] Keep orphan-child detection on the existing follow-up lookup path in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/c8volt/process/client.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v87/service.go
 
 **Checkpoint**: User Story 2 is independently testable: unsupported versions and semantics preserve current results through client-side fallback, and `--orphan-children-only` still uses the follow-up lookup flow.
 
@@ -161,8 +153,6 @@ Task: "Add command paging regressions for supported-version filtered page behavi
 
 ```bash
 # Prepare unsupported-version fallback coverage in parallel:
-Task: "Add `v8.7` service tests proving unsupported pushdown predicates stay out of the request shape in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v87/service_test.go"
-Task: "Add command regressions proving `v8.7` fallback still returns the correct final filtered results in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance_test.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cmd_processinstance_test.go"
 Task: "Add cross-version regressions proving `--orphan-children-only` remains client-side in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance_test.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v88/service_test.go"
 ```
 

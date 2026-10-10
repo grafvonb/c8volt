@@ -27,7 +27,7 @@
 - Process-instance traversal already exists under `internal/services/processinstance/walker` and related facade/command paths.
 - Process-instance delete planning and deletion behavior should remain the source of truth for cleanup.
 - Process-definition deletion behavior lives under `internal/services/processdefinition`.
-- Embedded multiple-subprocess fixtures already exist for C87, C88, and C89 under `embedded/processdefinitions/`.
+- Embedded multiple-subprocess fixtures already exist for C88 and C89 under `embedded/processdefinitions/`.
 - Static command-shape validation should run before `NewCli` with `failBeforeCli`, while Cobra flag parse failures use `useInvalidInputFlagErrors` for invalid-input exit behavior.
 - Ops workflow report flag validation should reuse `validateOpsWorkflowReportFlags` so missing `--report-file` dependencies and unsupported formats share error text across ops commands.
 - Command subprocess tests cover `os.Exit` paths with `testx.RunCmdSubprocess`, a JSON-encoded args env var, and a helper test that calls `handleBootstrapError` on `root.Execute`.
@@ -139,7 +139,7 @@
 ## Iteration 4 - 2026-05-17 08:40:58 CEST
 **User Story**: User Story 3 - Select And Deploy Version-Matched Fixture
 **Tasks Completed**:
-- [x] T028: Add fixture selection tests for Camunda 8.7, 8.8, and 8.9
+- [x] T028: Add fixture selection tests for Camunda 8.8 and 8.9
 - [x] T029: Add missing fixture failure-before-mutation tests
 - [x] T030: Add deployment result mapping tests
 - [x] T031: Add command deployment output tests

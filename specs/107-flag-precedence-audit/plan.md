@@ -13,7 +13,7 @@ Audit and harden the full CLI configuration-resolution path so every config-back
 **Primary Dependencies**: standard library, `github.com/spf13/cobra`, `github.com/spf13/viper`, `github.com/stretchr/testify`, existing config types under `config/`, shared command bootstrap/helpers under `cmd/`, existing environment-binding helpers under `internal/services/common`  
 **Storage**: File-based YAML config plus environment variables; no persistent datastore changes  
 **Testing**: `go test`, `make test`, config normalization tests under `config/`, command regression and subprocess tests under `cmd/`, targeted bootstrap/config-precedence tests for root persistent and command-local flags  
-**Target Platform**: Cross-platform CLI for local and CI use against supported Camunda 8.7 and 8.8 environments  
+**Target Platform**: Cross-platform CLI for local and CI use against supported Camunda 8.8 environments
 **Project Type**: CLI  
 **Performance Goals**: No user-visible startup regression, no additional network calls in bootstrap, deterministic precedence resolution on every invocation, and no silent fallback to lower-precedence sources when a higher-precedence value is explicitly provided  
 **Constraints**: Preserve existing Cobra command surfaces and shared bootstrap error handling, reuse repository-native config and command patterns, audit every config-backed command path, fail explicitly when ambiguous precedence cannot be resolved safely, update relevant CLI/config docs together with implementation, and finish with `make test`  

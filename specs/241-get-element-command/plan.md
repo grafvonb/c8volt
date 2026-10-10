@@ -8,7 +8,6 @@
 
 ## Summary
 
-Add a read-only `c8volt get element` command that fetches or searches Camunda runtime element instances for Camunda 8.8 and 8.9, returns a clear unsupported-version error for Camunda 8.7, and follows existing `get` command contracts for paging, totals, JSON, keys-only, compact human rows, and documentation. The implementation should mirror the repository's `get job` and `get incident` slices: command validation/rendering in `cmd`, thin public facade in `c8volt/element`, version-neutral domain and service contracts in `internal/domain` and `internal/services/element`, and version-specific adapters under `internal/services/element/v87`, `v88`, and `v89`.
 
 ## Technical Context
 
@@ -26,7 +25,6 @@ Add a read-only `c8volt get element` command that fetches or searches Camunda ru
 
 **Performance Goals**: Preserve existing `get` paging behavior; `--limit` caps returned rows across pages and JSON aggregates only bounded results
 
-**Constraints**: No mutation; no custom `--all`; `--key` is mutually exclusive with search filters; multiple search filters combine with AND semantics; Camunda 8.7 must fail clearly
 
 **Scale/Scope**: One new standalone command plus reusable service/facade capability for a future `get pi --with-elements` story; no listener/job enrichment, summary output, metrics, or loop aggregation
 
@@ -76,8 +74,6 @@ internal/
     └── element/
         ├── api.go       # Internal service contract and version assertions
         ├── factory.go   # Version-specific factory
-        ├── v87/
-        │   └── service.go
         ├── v88/
         │   ├── contract.go
         │   ├── convert.go
@@ -102,7 +98,6 @@ docsgen/
 └── main_test.go         # If generated docs expectations need coverage
 ```
 
-**Structure Decision**: Use the established single-project CLI layout. The new `element` area mirrors `job` more closely than `incident`: direct lookup and paged search are first-class, 8.7 returns unsupported errors, 8.8/8.9 use generated runtime endpoints, and command rendering remains in `cmd`.
 
 ## Complexity Tracking
 

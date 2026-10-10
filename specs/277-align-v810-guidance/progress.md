@@ -11,7 +11,7 @@
 
 ## Contract Baseline
 
-- Supported and implemented compatibility lines are V87, V88, V89, and V810.
+- Supported and implemented compatibility lines are V88, V89, and V810.
 - V810 is the newest supported line; V89 is the omitted-configuration default.
 - V810 uses one `8.10` identity with aliases `8.10`, `810`, `v810`, and `v8.10`.
 - The active V810 source baseline is `8.10.0-alpha4` and remains prerelease provenance rather than a selectable identity.

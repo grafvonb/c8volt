@@ -31,7 +31,6 @@ Each existing version contract and compile-time assertion must remain satisfied.
 
 | Version | Native new methods | Filter differences | Legacy resolver |
 | --- | --- | --- | --- |
-| 8.7 | Explicit existing unsupported domain error; no new HTTP task call | None | Preserve current behavior |
 | 8.8 | Generated native GET/search | Process selectors use scalar pointers; assignment/candidate/tenant equality uses generated filter properties | Tenant-scoped search plus Tasklist fallback preserved |
 | 8.9 | Generated native GET/search | Same relevant selector shape as 8.8 | Tenant-scoped search plus Tasklist fallback preserved |
 | 8.10 | Generated native GET/search | PI/PD keys and processDefinitionId use generated filter unions | Native getter's existing tenant/identity checks preserved for resolver |

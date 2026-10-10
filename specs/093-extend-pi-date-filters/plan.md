@@ -13,10 +13,9 @@ Extend the day-based start/end date filters from `c8volt get process-instance` i
 **Primary Dependencies**: standard library, `github.com/spf13/cobra`, `github.com/spf13/viper`, `github.com/stretchr/testify`, generated Camunda clients under `internal/clients/camunda/...`, existing helpers in `internal/services/common`  
 **Storage**: N/A  
 **Testing**: `go test`, `make test`, command tests under `cmd/`, service/facade regression tests in existing process-instance packages  
-**Target Platform**: CLI for local and CI use against Camunda 8.7 and 8.8 environments  
+**Target Platform**: CLI for local and CI use against Camunda 8.8 environments
 **Project Type**: CLI  
 **Performance Goals**: Preserve existing search-based cancel/delete behavior and continue to use server-side process-instance filtering so matching sets up to the existing search limit do not require client-side overfetching  
-**Constraints**: Reuse the issue `#90` date-filter semantics unchanged, reject explicit `--key` combined with date filters, keep v8.7 behavior as not implemented through the shared error model, preserve existing confirmation and bulk-management flows, update README and generated CLI docs for new user-visible flags  
 **Scale/Scope**: Two existing commands (`cancel process-instance`, `delete process-instance`), shared command-layer process-instance search helpers, existing typed filter models and versioned services, targeted command/facade/service tests, and user-facing docs
 
 ## Constitution Check
@@ -66,9 +65,6 @@ internal/domain/
 
 internal/services/processinstance/
 ├── api.go
-├── v87/
-│   ├── service.go
-│   └── service_test.go
 └── v88/
     ├── service.go
     └── service_test.go
@@ -82,7 +78,6 @@ docs/index.md
 
 ## Phase 0: Research
 
-- Confirm that issue `#90` already landed the shared process-instance filter fields, v8.8 mapping, and v8.7 rejection so `#93` can remain command-surface work rather than duplicating service logic.
 - Confirm where cancel/delete currently reuse shared search helpers and where their missing flag registration and validation create the current behavior gap.
 - Confirm the safest repository-native behavior for explicit `--key` combined with date filters and encode the clarified invalid-combination rule.
 - Confirm documentation regeneration obligations for new cancel/delete flags and examples.
@@ -100,7 +95,7 @@ docs/index.md
 
 - Start with command-surface changes in `cmd/` because the shared filter and service support already exist and the user-visible gap is there.
 - Add validation and invalid-combination coverage next so unsafe command invocations fail before any bulk-management action.
-- Reuse existing v8.7/v8.8 service behavior through targeted regression tests rather than reopening the service design unless command tests reveal a gap.
+- Reuse existing v8.8 service behavior through targeted regression tests rather than reopening the service design unless command tests reveal a gap.
 - Finish with README and generated CLI doc updates so user-facing help stays synchronized with the new flags.
 
 ## Post-Design Constitution Check

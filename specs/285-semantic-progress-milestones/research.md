@@ -83,7 +83,6 @@
 | Process-instance cancel/delete | One root-tree worker returns after acceptance or configured wait | Direct, stdin, and search use the same reporter; force cleanup remains nested/lower priority. |
 | Basic process-definition delete | Each definition deletion worker returns; include the serial first capability probe | Do not sum overlapping cleanup impact unless per-item values are proven. |
 | All-process-definition purge | Each frozen candidate definition finishes deletion | Discovery pages remain separate; confirmed mutation starts a fresh scope. |
-| Deployment | A returned process definition becomes visible, or acceptance in no-wait mode | Multipart file upload is one request, not per-file completion; v8.7 uses only facts its response can prove. |
 | Retention/orphan/incident purge | Each planned process-instance root-tree deletion returns | Orphan parent checks remain discovery progress until an exact frozen total exists. |
 | Incident/process-instance repair | Each repair worker returns, not a loop after the entire pool | Preserve step details and report schemas. |
 | Smoke test | Deploy, start, walk, and cleanup stage/item boundaries | Remove or gate legacy human stage logging that bypasses automation policy. |

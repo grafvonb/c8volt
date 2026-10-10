@@ -5,7 +5,6 @@
 - A c8volt configuration for a Camunda 8.8 or 8.9 environment with process instances that have runtime element instances and listener jobs.
 - A known element instance key with at least one `EXECUTION_LISTENER` or `TASK_LISTENER` job.
 - A known process-instance key with runtime elements and at least one element-owned listener job.
-- For unsupported-version validation, a Camunda 8.7 test configuration.
 
 ## Targeted Validation
 
@@ -34,7 +33,6 @@ Add or update targeted cases covering:
 - Unmatched listener jobs are omitted from enriched output.
 - `--with-listeners` without element context fails before remote listener lookup.
 - `--keys-only --with-listeners` fails before remote listener lookup.
-- Camunda 8.7 returns the existing unsupported job-search or listener-lookup error style.
 - Existing output without `--with-listeners` remains unchanged.
 
 ## Validation Log

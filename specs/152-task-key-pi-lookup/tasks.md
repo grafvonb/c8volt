@@ -3,7 +3,6 @@
 **Input**: Design documents from `/specs/152-task-key-pi-lookup/`
 **Prerequisites**: plan.md, spec.md, research.md, data-model.md, contracts/cli-get-pi-task-key.md, quickstart.md
 
-**Tests**: Required by the feature specification for 8.8/8.9 success, 8.7 unsupported behavior, missing task handling, missing process-instance key handling, JSON output, flag conflicts, help, README, and generated CLI docs.
 
 **Organization**: Tasks are grouped by user story to enable independent implementation and testing. Each story is intentionally scoped small enough for one Ralph iteration.
 
@@ -67,20 +66,16 @@
 
 ## Phase 4: User Story 2 - Reject Unsupported Or Ambiguous Task-Key Requests (Priority: P2)
 
-**Goal**: Fail clearly for 8.7 and for all conflicting selector/search combinations.
 
-**Independent Test**: Run `--has-user-tasks` on 8.7 and with each invalid combination; verify failure happens before task or process-instance lookup.
 
 ### Tests for User Story 2
 
-- [x] T019 [P] [US2] Add 8.7 unsupported user-task service test in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/usertask/v87/service_test.go
 - [x] T020 [P] [US2] Add command validation tests for `--has-user-tasks` with `--key` and stdin key input in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance_test.go
 - [x] T021 [P] [US2] Add command validation tests for `--has-user-tasks` with process-instance search filters in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance_test.go
 - [x] T022 [P] [US2] Add command validation tests for `--has-user-tasks` with `--total` and `--limit` in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance_test.go
 
 ### Implementation for User Story 2
 
-- [x] T023 [US2] Implement explicit 8.7 unsupported behavior for has-user-tasks lookup in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/usertask/v87/service.go
 - [x] T024 [US2] Add has-user-tasks mutual-exclusion validation for `--key`, stdin `-`, filters, `--total`, and `--limit` in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance.go
 - [x] T025 [US2] Ensure validation rejects conflicts before native user-task or process-instance lookup calls in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance_test.go
 - [x] T026 [US2] Run focused US2 validation with `go test ./cmd ./c8volt/task ./internal/services/usertask/... -count=1`
@@ -120,7 +115,6 @@
 
 ### Tests for User Story 4
 
-- [x] T034 [P] [US4] Add help-output assertions for `--has-user-tasks`, human example, JSON example, and 8.7 unsupported wording in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance_test.go
 - [x] T035 [P] [US4] Add docs contract check for generated `get process-instance` docs in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/docsgen/main_test.go
 
 ### Implementation for User Story 4

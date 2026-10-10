@@ -21,7 +21,7 @@
 ## Suggested Verification Commands
 
 ```bash
-go test ./cmd -run 'TestCancelProcessInstanceCommand_SearchSelectionUsesDateFiltersAndCancelsMatches|TestCancelProcessInstanceCommand_FailsWhenDateFilteredSearchFindsNoMatches|TestCancelProcessInstanceCommand_RejectsKeyAndDateFilters|TestCancelProcessInstanceCommand_RejectsDateFiltersOnV87|TestDeleteProcessInstanceCommand_SearchSelectionUsesDateFiltersAndDeletesMatches|TestDeleteProcessInstanceCommand_FailsWhenDateFilteredSearchFindsNoMatches|TestDeleteProcessInstanceCommand_RejectsKeyAndDateFilters|TestDeleteProcessInstanceCommand_RejectsDateFiltersOnV87' -count=1
+go test ./cmd -run 'TestCancelProcessInstanceCommand_SearchSelectionUsesDateFiltersAndCancelsMatches|TestCancelProcessInstanceCommand_FailsWhenDateFilteredSearchFindsNoMatches|TestCancelProcessInstanceCommand_RejectsKeyAndDateFilters|TestDeleteProcessInstanceCommand_SearchSelectionUsesDateFiltersAndDeletesMatches|TestDeleteProcessInstanceCommand_FailsWhenDateFilteredSearchFindsNoMatches|TestDeleteProcessInstanceCommand_RejectsKeyAndDateFilters' -count=1
 go test ./cmd ./c8volt/process ./internal/services/processinstance/... -count=1
 make docs-content
 make docs
@@ -35,5 +35,4 @@ make test
 ./c8volt delete process-instance --state completed --end-date-after 2026-01-01 --end-date-before 2026-01-31 --auto-confirm --config /tmp/c8volt-v88.yaml
 ./c8volt cancel process-instance --key 2251799813711967 --start-date-after 2026-01-01 --config /tmp/c8volt-v88.yaml
 ./c8volt delete process-instance --start-date-after 2026-02-30 --config /tmp/c8volt-v88.yaml
-./c8volt cancel process-instance --end-date-before 2026-03-31 --config /tmp/c8volt-v87.yaml
 ```

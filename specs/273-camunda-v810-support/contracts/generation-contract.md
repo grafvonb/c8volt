@@ -24,7 +24,6 @@ Later 8.10 alpha, RC, and final tags use the same target and replace output in p
 ## Ordered Preparation
 
 1. Validate target, tag, commit policy, and target path before writes.
-2. Fingerprint protected v87-v89 generated trees.
 3. Resolve the peeled tag commit and verify the initial pin.
 4. Sparse-fetch product v2 source into a `mktemp` directory with cleanup trap.
 5. Bundle the v2 spec in temporary storage.

@@ -4,7 +4,7 @@
 
 # Purpose:
 #   Generate the isolated Camunda v8.10 unified Go client from a pinned product
-#   repository source tag without touching protected v8.7-v8.9 clients.
+#   repository source tag without touching protected v8.8-v8.9 clients.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -182,7 +182,7 @@ PY
 }
 
 fingerprint_protected_trees() {
-  for version in v87 v88 v89; do
+  for version in v88 v89; do
     printf '%s %s\n' "$version" "$(checksum_tree "$REPO_ROOT/internal/clients/camunda/$version")"
   done
 }

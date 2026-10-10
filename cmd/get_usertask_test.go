@@ -74,7 +74,7 @@ func TestGetUserTaskCommand_MachineOutput(t *testing.T) {
 }
 
 // TestGetUserTaskCommand_VersionTenantDenialAndQuietMatrix verifies the keyed
-// execution boundary across supported versions, V87 rejection, backend denial,
+// execution boundary across supported versions, backend denial,
 // authorized foreign-tenant metadata, and quiet machine modes.
 func TestGetUserTaskCommand_VersionTenantDenialAndQuietMatrix(t *testing.T) {
 	server, requests := newGetUserTaskCommandServer(t)
@@ -102,13 +102,7 @@ func TestGetUserTaskCommand_VersionTenantDenialAndQuietMatrix(t *testing.T) {
 	require.Empty(t, stdout)
 	require.Contains(t, stderr, "forbidden")
 
-	before := requests.Load()
-	v87ConfigPath := testx.WriteTestConfigForVersion(t, server.URL, "8.7")
-	stdout, stderr, err = runGetUserTaskCommand(t, v87ConfigPath, "", "get", "ut", "-k", "2251799815391233")
-	require.Error(t, err)
-	require.Empty(t, stdout)
-	require.Contains(t, stderr, "unsupported")
-	require.Equal(t, before, requests.Load(), "V87 native rejection must not issue a task request")
+	require.Positive(t, requests.Load())
 }
 
 // TestGetUserTaskCommand_RejectsInvalidInputBeforeReads covers malformed flag

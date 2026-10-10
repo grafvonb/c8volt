@@ -94,7 +94,7 @@
 
 ### Tests for User Story 3
 
-- [x] T028 [P] [US3] Add fixture selection tests for Camunda 8.7, 8.8, and 8.9 in `internal/services/ops/smoke_test_test.go`
+- [x] T028 [P] [US3] Add fixture selection tests for Camunda 8.8 and 8.9 in `internal/services/ops/smoke_test_test.go`
 - [x] T029 [P] [US3] Add missing fixture failure-before-mutation tests in `internal/services/ops/smoke_test_test.go`
 - [x] T030 [P] [US3] Add deployment result mapping tests in `c8volt/ops/client_test.go`
 - [x] T031 [P] [US3] Add command deployment output tests in `cmd/ops_execute_smoke_test_test.go`

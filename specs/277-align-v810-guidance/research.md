@@ -14,7 +14,6 @@
 
 **Rationale**: A text search alone cannot distinguish an active C89 fallback from an accurate record that C89 was once implemented, nor can it distinguish a stale product-support list from an intentional live-integration matrix that ends at 8.9.
 
-**Alternatives considered**: Replacing every 8.7–8.9 or C89 reference globally was rejected because it would falsify history and expand live-integration scope. Ignoring historical records entirely was rejected because reviewers need a clear rule for interpreting them.
 
 ## Decision 3: Include Current Architecture Memory in the Maintainer Sweep
 
@@ -44,7 +43,6 @@
 
 **Decision**: Extend the supported-version comment in `config/templates/config.example.yaml` to include 8.10 and identify 8.9 as the default, while retaining the example's explicit configured value. Assert the rendered V89 selection close to existing config command tests and verify the source-only supported-version comment with a content scan because YAML rendering strips comments.
 
-**Rationale**: The template is operator-facing and currently lists only 8.7–8.9. It is rendered through existing config commands, so correcting the source and protecting the rendered result covers both file users and CLI users without changing configuration behavior.
 
 **Alternatives considered**: Changing the example value from 8.9 was rejected as unnecessary because an explicit example selection is not a statement of the default. Updating only README was rejected because README is already correct and does not repair the shipped template.
 

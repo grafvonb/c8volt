@@ -28,7 +28,6 @@ New flags on all three commands:
 | Derived lower bound is later than derived upper bound | Reject with validation error |
 | Relative flag mixed with absolute date flag for the same field | Reject with validation error |
 | Any relative day flag combined with explicit `--key` on cancel/delete | Reject with invalid-combination error |
-| Relative day flags used on v8.7 | Return not-implemented error through the existing error path |
 
 ## Derivation Semantics
 

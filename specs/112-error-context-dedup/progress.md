@@ -61,9 +61,8 @@ Started: 2026-04-17 15:38:09
 **User Story**: User Story 1 - Keep CLI failures readable
 **Tasks Completed**:
 - [x] T007 Add traversal-family regression tests in `cmd/walk_test.go` and `internal/services/processinstance/walker/walker_test.go`
-- [x] T008 Add mutation-family regression tests in `cmd/cancel_test.go`, `cmd/delete_test.go`, `internal/services/processinstance/v87/service_test.go`, and `internal/services/processinstance/v88/service_test.go`
 - [x] T009 Add single-resource fetch regression tests in `cmd/get_test.go` and related `get_*` command tests
-- [x] T010 Refactor lookup and traversal wrappers in `internal/services/processinstance/walker/walker.go`, `internal/services/processinstance/v87/service.go`, `internal/services/processinstance/v88/service.go`, and `internal/services/processinstance/v89/service.go`
+- [x] T010 Refactor lookup and traversal wrappers in `internal/services/processinstance/walker/walker.go`, `internal/services/processinstance/v88/service.go`, and `internal/services/processinstance/v89/service.go`
 - [x] T011 Refactor mutation and wait follow-up wrappers in the versioned process-instance services and aligned wait-facing seams
 - [x] T012 Sweep representative CLI fetch and orchestration wrappers in `cmd/get_*` commands and `c8volt/resource/client.go`
 **Tasks Remaining in Story**: None - story complete
@@ -79,8 +78,6 @@ Started: 2026-04-17 15:38:09
 - cmd/get_resource.go
 - cmd/get_test.go
 - cmd/walk_test.go
-- internal/services/processinstance/v87/service.go
-- internal/services/processinstance/v87/service_test.go
 - internal/services/processinstance/v88/service.go
 - internal/services/processinstance/v88/service_test.go
 - internal/services/processinstance/v89/service.go
@@ -96,9 +93,8 @@ Started: 2026-04-17 15:38:09
 ## Iteration 4 - 2026-04-17 16:01 CEST
 **User Story**: User Story 2 - Preserve where the failure happened
 **Tasks Completed**:
-- [x] T013 Add helper-level tests for ordered and equivalent breadcrumb preservation in `internal/services/processinstance/walker/walker_test.go` and `internal/services/processinstance/v87/service_test.go`
 - [x] T014 Add command-level regression tests for recognizable breadcrumb stages after shortening in `cmd/walk_test.go`, `cmd/cancel_test.go`, and `cmd/delete_test.go`
-- [x] T015 Adjust breadcrumb wording in shared traversal and process-instance wrappers to preserve equivalent stage meaning with less noise in `internal/services/processinstance/walker/walker.go`, `internal/services/processinstance/v87/service.go`, `internal/services/processinstance/v88/service.go`, and `internal/services/processinstance/v89/service.go`
+- [x] T015 Adjust breadcrumb wording in shared traversal and process-instance wrappers to preserve equivalent stage meaning with less noise in `internal/services/processinstance/walker/walker.go`, `internal/services/processinstance/v88/service.go`, and `internal/services/processinstance/v89/service.go`
 - [x] T016 Align command-surface wrappers with the equivalent-breadcrumb contract in `cmd/get_processinstance.go`, `cmd/walk_processinstance.go`, `cmd/cancel_processinstance.go`, and `cmd/delete_processinstance.go`
 **Tasks Remaining in Story**: None - story complete
 **Commit**: Recorded in Git history for this iteration
@@ -110,8 +106,6 @@ Started: 2026-04-17 15:38:09
 - cmd/get_processinstance.go
 - cmd/get_test.go
 - cmd/walk_test.go
-- internal/services/processinstance/v87/service.go
-- internal/services/processinstance/v87/service_test.go
 - internal/services/processinstance/v88/service.go
 - internal/services/processinstance/v88/service_test.go
 - internal/services/processinstance/v89/service.go

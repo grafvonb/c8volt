@@ -5,7 +5,6 @@
 - c8volt configured for a Camunda 8.8 or 8.9 environment.
 - Runtime process instances with associated runtime element instances.
 - For process-definition search scenarios, a known BPMN process ID or process-definition key.
-- For unsupported-version validation, a c8volt config targeting Camunda 8.7.
 
 ## Build
 
@@ -180,18 +179,6 @@ Expected:
 
 - Command fails before remote lookup where validation can detect the combination.
 - Error explains that explicit-key mode and process-definition search mode are mutually exclusive.
-
-### 12. Unsupported Camunda 8.7
-
-```bash
-/tmp/c8volt-slow-pi-analysis --config <camunda-87-config> \
-  ops analyse slow-process-instances --key <process-instance-key>
-```
-
-Expected:
-
-- Command fails with the established unsupported-version error.
-- No partial success output is printed.
 
 ## Targeted Automated Validation
 

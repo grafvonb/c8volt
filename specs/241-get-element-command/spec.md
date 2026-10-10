@@ -27,7 +27,6 @@ As a c8volt operator, I want to fetch a runtime element instance by its element 
 **Acceptance Scenarios**:
 
 1. **Given** a Camunda 8.8 or 8.9 environment with an existing element instance, **When** the operator runs `c8volt get element --key <element-instance-key>`, **Then** the command returns exactly that runtime element instance.
-2. **Given** a Camunda 8.7 environment, **When** the operator runs `c8volt get element --key <element-instance-key>`, **Then** the command returns a clear unsupported-version error and does not claim success.
 
 ---
 
@@ -66,7 +65,6 @@ As a c8volt operator or automation author, I want runtime element results in the
 
 ### Edge Cases
 
-- Camunda 8.7 does not support runtime element instance inspection and must return a clear unsupported-version error.
 - Direct lookup by `--key` must not be combined with search filters.
 - Searches with no matches must return empty output appropriate to the selected mode and must not be reported as failures.
 - Active element instances without an end date must omit the end-time marker in compact human output.
@@ -83,7 +81,6 @@ As a c8volt operator or automation author, I want runtime element results in the
 - **FR-001**: The system MUST provide a read-only `c8volt get element` command for inspecting Camunda runtime element instances.
 - **FR-002**: The command MUST represent runtime element instances entered during execution, not static BPMN diagram elements.
 - **FR-003**: The command MUST support Camunda 8.8 and Camunda 8.9 runtime element instance inspection.
-- **FR-004**: The command MUST return a clear unsupported-version error for Camunda 8.7.
 - **FR-005**: Operators MUST be able to fetch one element instance with `--key <element-instance-key>`.
 - **FR-006**: Operators MUST be able to search element instances by process instance key using `--pi-key <process-instance-key>`.
 - **FR-007**: Operators MUST be able to search element instances by BPMN element identifier using `--element-id <bpmn-element-id>`.
@@ -123,9 +120,7 @@ As a c8volt operator or automation author, I want runtime element results in the
 - **SC-001**: Operators can fetch a known element instance by key in one command and see the matching runtime element details with no additional lookup steps.
 - **SC-002**: Operators can list all element instances for a process instance with standard paging controls and verify looped BPMN elements as distinct runtime rows.
 - **SC-003**: 100% of supported output modes for this command match the documented mode contract: human list, JSON, keys-only, and total.
-- **SC-004**: 100% of unsupported Camunda 8.7 attempts return a clear unsupported-version result without mutating operational state.
 - **SC-005**: For element instances with incidents, human output makes incident presence visible in the compact row in every applicable list result.
-- **SC-006**: The feature is considered complete only when tests cover supported Camunda 8.8 and 8.9 behavior, unsupported Camunda 8.7 behavior, command validation, human output, JSON output, keys-only output, totals, paging, and incident markers.
 
 ## Assumptions
 

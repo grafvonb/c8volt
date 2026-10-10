@@ -28,12 +28,6 @@ func TestVolumeGetFamilyUserTaskVariables(t *testing.T) {
 				writeVolumeFamilyReport(t, report)
 			}()
 			require.NoError(t, requireProfilesReady(t, []integrationProfile{profile}))
-			if profile.ExpectedVersion == "8.7" {
-				records, err := assertUserTaskVariablesUnsupported(t, profile)
-				report.Records = append(report.Records, records...)
-				require.NoError(t, err)
-				return
-			}
 			fixtures, records, err := discoverUserTaskVariableFixtures(t, profile)
 			report.Records = append(report.Records, records...)
 			require.NoError(t, err)

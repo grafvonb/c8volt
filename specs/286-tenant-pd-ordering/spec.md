@@ -73,7 +73,7 @@ As an operator, I want stable ordering to remain correct for paged and latest-on
 
 1. **Given** matching definitions span multiple discovery pages, **When** the collection is returned, **Then** every matching definition appears exactly once in canonical order regardless of page boundaries or selected page size.
 2. **Given** multiple tenants contain the same BPMN process ID, **When** the operator requests `--latest`, **Then** the newest matching version is selected independently for each tenant and BPMN process ID group.
-3. **Given** equivalent definition populations on Camunda 8.7, 8.8, 8.9, and 8.10, **When** they are listed, **Then** they follow the same canonical ordering contract.
+3. **Given** equivalent definition populations on Camunda 8.8, 8.9, and 8.10, **When** they are listed, **Then** they follow the same canonical ordering contract.
 4. **Given** an operator retrieves a definition by key or requests its XML, **When** the request completes, **Then** the existing single-resource content, validation, and output behavior are unchanged.
 
 ### Edge Cases
@@ -104,7 +104,7 @@ As an operator, I want stable ordering to remain correct for paged and latest-on
 - **FR-010**: Watch snapshots MUST use canonical ordering, and changing statistics alone MUST NOT move rows between snapshots.
 - **FR-011**: `--latest` MUST identify groups by the combination of exact, case-sensitive tenant ID and exact, case-sensitive BPMN process ID, selecting the newest matching version independently within each group.
 - **FR-012**: Results spanning multiple discovery pages MUST be returned exactly once per matching definition and in canonical order, independent of page size, page boundaries, or arrival order.
-- **FR-013**: The canonical ordering contract MUST be consistent across Camunda 8.7, 8.8, 8.9, and 8.10 for the process-definition data available on each version.
+- **FR-013**: The canonical ordering contract MUST be consistent across Camunda 8.8, 8.9, and 8.10 for the process-definition data available on each version.
 - **FR-014**: Single-key process-definition retrieval and XML retrieval MUST retain their existing content, validation, authorization, output, and error behavior.
 - **FR-015**: Existing process-definition filters and selectors MUST retain their meaning; this feature changes only collection ordering and tenant-aware latest grouping.
 - **FR-016**: Default human output MUST remain compact and MUST NOT add endpoint, request, cursor, page-lifecycle, or per-key ordering diagnostics.
@@ -128,7 +128,7 @@ As an operator, I want stable ordering to remain correct for paged and latest-on
 - **SC-003**: For every statistics-capable test environment, ordered process-definition key sequences match exactly with and without `--stat`.
 - **SC-004**: Across page sizes of 1, 2, and a size larger than the result set, 100% of tested searches return the same ordered keys with zero skipped or duplicated definitions.
 - **SC-005**: In every tested `--latest` result, exactly one newest matching definition is selected per represented tenant and BPMN process ID group.
-- **SC-006**: Across Camunda 8.7, 8.8, 8.9, and 8.10 compatibility tests, equivalent input populations produce the same canonical process-definition sequence.
+- **SC-006**: Across Camunda 8.8, 8.9, and 8.10 compatibility tests, equivalent input populations produce the same canonical process-definition sequence.
 - **SC-007**: In watch tests where only statistics change across at least 10 consecutive refreshes, zero process-definition rows move position.
 - **SC-008**: All existing single-key and XML retrieval regression scenarios pass without changes to returned content or user-visible behavior.
 - **SC-009**: In an operator review using a mixed-tenant result set, at least 90% of participants correctly identify tenant groups, process groups, and newest versions on their first scan.
@@ -139,7 +139,6 @@ As an operator, I want stable ordering to remain correct for paged and latest-on
 - Tenant IDs and BPMN process IDs use exact, case-sensitive identity and ascending text comparison; values that differ only by letter case remain distinct groups. Process-definition keys are opaque identifiers compared as exact text in ascending order, without numeric interpretation.
 - The default tenant is represented as `<default>` in process-definition results and participates in exact tenant-ID ascending order without a special first-or-last grouping rule.
 - Process-definition versions are numeric and are compared numerically rather than as text.
-- Statistics parity applies where statistics are supported; Camunda 8.7 retains its existing behavior of rejecting or not providing native statistics.
 - Existing authenticated visibility remains authoritative; stable ordering does not broaden which tenants or definitions an operator may see.
 - Each watch refresh represents a complete current collection, so rows may move when definitions are added, removed, or their canonical sort fields genuinely differ.
 

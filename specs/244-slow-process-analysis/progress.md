@@ -69,7 +69,6 @@ Started: 2026-07-18 12:01:26
 - [x] T018: Add keyed human rendering tests for root rows, durations, unavailable durations, and count
 - [x] T019: Implement explicit-key command validation and stdin key merging
 - [x] T020: Validate public ops facade delegation for keyed slow analysis
-- [x] T021: Implement explicit-key selection, tenant-safe lookup, unsupported 8.7, captured time, and duration ordering
 - [x] T022: Validate command registration, alias, key flags, read-only metadata, help text, and examples
 - [x] T023: Render keyed analysis root rows and final process-instance count
 **Tasks Remaining in Work Unit**: 0

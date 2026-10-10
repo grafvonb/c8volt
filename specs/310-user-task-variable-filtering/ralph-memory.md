@@ -29,7 +29,6 @@ Started: 2026-09-19T10:56:01Z
 
 ## Decisions
 
-- Filtering is native and local-task scoped for Camunda 8.8, 8.9, and 8.10; Camunda 8.7 retains its explicit unsupported behavior.
 - Existing task traversal, total counting, output rendering, prompt routing, and optional effective-variable enrichment remain authoritative.
 
 ## Gotchas

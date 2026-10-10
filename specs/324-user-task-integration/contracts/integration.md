@@ -5,7 +5,6 @@
 - `make integration-cli-get`: existing reads plus `TestGetFamilyUserTaskVariables` standalone and called-process scenarios.
 - `make integration-cli-get-volume`: existing get volume coverage plus filtered variable paging cases.
 - `make integration-test-all`: includes both through existing dependencies; no runner change.
-- Select existing default-local profiles through `C8VOLT_IT_PROFILES`. Each supported selected profile runs matching model cases. 8.7 runs explicit unsupported assertions for search and effective display.
 - No new config source, authentication override, dependencies, direct setup API, model edits or public flags.
 
 ## Baseline filter table

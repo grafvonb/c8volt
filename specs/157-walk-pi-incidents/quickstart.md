@@ -63,7 +63,6 @@ Expected behavior when traversal succeeds but an incident lookup fails:
 ## Version Boundary
 
 ```bash
-c8volt --camunda-version 8.7 walk pi --key 2251799813711967 --with-incidents
 ```
 
 Expected behavior:
@@ -74,6 +73,5 @@ Expected behavior:
 ## Validation Commands
 
 ```bash
-go test ./cmd ./c8volt/process ./internal/services/processinstance/v87 ./internal/services/processinstance/v88 ./internal/services/processinstance/v89 -count=1
 make test
 ```

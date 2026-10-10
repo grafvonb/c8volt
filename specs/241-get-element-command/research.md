@@ -2,7 +2,6 @@
 
 ## Decision: Model `get element` after `get job` for direct lookup plus paged search
 
-**Rationale**: `get job` already has the closest shape: a singular runtime object, Camunda 8.8/8.9 support, Camunda 8.7 unsupported behavior, direct lookup by key, search filters, paging, totals, JSON, and compact rows. Reusing that shape minimizes command surprises and keeps validation local to `cmd`.
 
 **Alternatives considered**:
 - `get incident`: strong paging and selector-validation precedent, but incident has extra process-instance-key output and incident-message behavior that would add unrelated concepts to element output.
@@ -20,19 +19,10 @@
 
 **Rationale**: The generated clients already expose `SearchElementInstancesWithResponse` and `GetElementInstanceWithResponse` for v8.8 and v8.9. Using them avoids hand-written HTTP calls and keeps version-specific request/response differences in adapter packages.
 
-**Verification**: Confirmed on 2026-07-16 that `internal/clients/camunda/v88/camunda/client.gen.go` and `internal/clients/camunda/v89/camunda/client.gen.go` both expose `SearchElementInstancesWithResponse` and `GetElementInstanceWithResponse`. No generated-client edits are needed for Phase 1. The v8.7 generated client does not expose matching runtime element instance operations, so the planned unsupported-version adapter remains required.
 
 **Alternatives considered**:
 - Hand-edit generated clients: rejected because the required operations already exist.
 - Search by key only: rejected because the spec requires direct lookup and search filters.
-
-## Decision: Return unsupported-operation errors for all element operations on Camunda 8.7
-
-**Rationale**: The generated v8.7 client lacks runtime element instance lookup/search operations. The existing job service pattern returns domain unsupported errors with clear wording for 8.7, which maps cleanly through `c8volt/ferrors`.
-
-**Alternatives considered**:
-- Hide the command for v8.7: rejected because c8volt command availability is generally stable across configured versions, with runtime unsupported errors where necessary.
-- Attempt partial behavior using older endpoints: rejected because it would not satisfy runtime element instance inspection and risks confusing static/variable element operations with runtime element records.
 
 ## Decision: Search filters use AND semantics and `--key` is exclusive
 

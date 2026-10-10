@@ -5,15 +5,14 @@
 
 ## Summary
 
-Add a `--total` flag to `get process-instance` so search/list usage can return only the numeric count of matching process instances without printing instance details. The design keeps the existing Cobra command and shared process-instance search path, adds a count-only branch on the `get pi` command instead of inventing a new render mode, carries backend-reported total metadata through the shared process-instance page model so `v8.8` and `v8.9` can preserve capped lower-bound totals exactly as clarified, falls back safely on `v8.7`, and updates README plus generated CLI docs to match the new user-visible flag.
 
 ## Technical Context
 
 **Language/Version**: Go 1.26  
-**Primary Dependencies**: standard library, `github.com/spf13/cobra`, `github.com/spf13/pflag`, `github.com/spf13/viper`, `github.com/stretchr/testify`, shared process facade under `c8volt/process`, process-instance domain/service layers under `internal/domain` and `internal/services/processinstance/{v87,v88,v89}`, generated Camunda clients under `internal/clients/camunda/v88/camunda` and `internal/clients/camunda/v89/camunda`  
+**Primary Dependencies**: standard library, `github.com/spf13/cobra`, `github.com/spf13/pflag`, `github.com/spf13/viper`, `github.com/stretchr/testify`, shared process facade under `c8volt/process`, process-instance domain/service layers under `internal/domain` and `internal/services/processinstance/{v88,v89}`, generated Camunda clients under `internal/clients/camunda/v88/camunda` and `internal/clients/camunda/v89/camunda`
 **Storage**: File-based YAML config plus environment variables; no persistent datastore changes  
 **Testing**: focused `go test ./cmd -count=1`, `go test ./c8volt/process -count=1`, `go test ./internal/services/processinstance/... -count=1`, documentation refresh with `make docs-content`, final repository validation with `make test`  
-**Target Platform**: Cross-platform CLI for local and CI use against supported Camunda `8.7`, `8.8`, and `8.9` environments  
+**Target Platform**: Cross-platform CLI for local and CI use against supported Camunda `8.8` and `8.9` environments
 **Project Type**: CLI  
 **Performance Goals**: Keep `--total` machine-friendly and fast for search/list workflows, avoid unnecessary detail rendering, preserve current search paging behavior unless the active version already exposes a backend-reported total, and avoid forcing full page traversal on versions that already expose an authoritative or lower-bound total  
 **Constraints**: Preserve strict keyed lookup behavior, keep `--total` on the list/search path rather than direct `--key` fetches, preserve the clarified rule that capped totals remain numeric lower bounds instead of triggering recounts or failures, avoid introducing a new global render mode, keep command contract and output-mode metadata coherent, update README and generated CLI docs because this is user-visible behavior, and finish with `make test`  
@@ -66,9 +65,6 @@ internal/domain/
 
 internal/services/processinstance/
 ├── api.go
-├── v87/
-│   ├── service.go
-│   └── service_test.go
 ├── v88/
 │   ├── service.go
 │   └── service_test.go
@@ -89,7 +85,6 @@ Research findings are captured in [research.md](/Users/adam.boczek/Development/W
 
 - Confirm whether `--total` should be implemented as a command-specific flag instead of a new global render mode.
 - Confirm how the current `get pi` flow renders one-line, JSON, and keys-only output so count-only behavior can remain small and compatible.
-- Confirm where backend-reported totals and capped-total signals already exist in `v87`, `v88`, and `v89`, and identify the shared model gap that prevents the command from using them today.
 - Confirm the correct contract boundary for `--total` versus `--key`, `--json`, and `--keys-only`.
 - Confirm the documentation regeneration path for CLI reference output after flag additions.
 
@@ -104,7 +99,6 @@ Design artifacts are captured in:
 - Add `--total` to `get process-instance` as a command-specific count-only flag, not as a new shared render mode.
 - Keep `--total` limited to search/list workflows; direct `--key` lookups remain on the strict single-resource path and should reject `--total`.
 - Treat `--total` as mutually exclusive with detail-oriented output modifiers such as `--json` and `--keys-only` so the command can keep the spec’s numeric-only contract without weakening the shared output-mode model.
-- Extend the shared domain/public page model with reported-total metadata so `v8.8` and `v8.9` can pass through `totalItems` plus capped/lower-bound state, and `v8.7` can surface the best available total signal from its current response payload.
 - Normalize the shared page metadata as an optional `ReportedTotal{Count, Kind}` value on `ProcessInstancePage`; absence means unavailable, `Kind=exact` is authoritative, and `Kind=lower_bound` preserves capped totals without reinterpretation.
 - Keep count-only logic centralized in the existing `get pi` command/search flow, using backend-reported totals when available and preserving the clarified lower-bound contract instead of forcing recounts.
 - Update README and regenerate `docs/cli/c8volt_get_process-instance.md` through `make docs-content`.
@@ -129,7 +123,6 @@ Task generation should break the work into dependency-ordered slices:
 
 1. Add the new `--total` flag and validation rules in `cmd/get_processinstance.go`, including explicit incompatibility handling with direct `--key` lookups and conflicting output modifiers.
 2. Extend shared page/domain/public process-instance page models and conversion seams to carry reported total metadata plus capped/lower-bound state without changing existing detail output behavior.
-3. Update `v87`, `v88`, and `v89` process-instance page services/tests so page results expose the correct reported total semantics for count-only mode, including lower-bound behavior on versions that surface capped totals.
 4. Add the count-only command path and focused command regressions proving numeric-only output, zero-match behavior, invalid flag combinations, and preserved default detail rendering.
 5. Update README and regenerate CLI docs with `make docs-content`, then finish with focused Go tests and final `make test`.
 
@@ -149,7 +142,6 @@ Task generation should break the work into dependency-ordered slices:
 
 ## Implementation Status
 
-- Shared reported-total page metadata is implemented across the public/domain process-instance page models and versioned `v87`, `v88`, and `v89` search services.
 - `get process-instance --total` is implemented as a command-local count-only branch that preserves default non-`--total` rendering behavior.
 - Validation rejects incompatible `--total` combinations with `--key`, `--json`, and `--keys-only`.
 - README help text and generated CLI docs now describe `--total` consistently for operators and automation users.

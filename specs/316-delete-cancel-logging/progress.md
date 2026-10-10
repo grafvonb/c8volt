@@ -38,8 +38,6 @@ Started: 2026-09-13 15:39:33
 - internal/services/calloption.go
 - internal/services/processinstance/waiter/waiter.go
 - internal/services/processinstance/waiter/waiter_test.go
-- internal/services/processinstance/v87/service.go
-- internal/services/processinstance/v87/service_test.go
 - internal/services/processinstance/v88/service.go
 - internal/services/processinstance/v88/service_test.go
 - internal/services/processinstance/v89/service.go
@@ -85,7 +83,6 @@ Started: 2026-09-13 15:39:33
 - cmd/processinstance_mutation_progress.go
 - cmd/processinstance_mutation_progress_test.go
 - internal/services/common/logging.go
-- internal/services/processinstance/v87/service.go
 - internal/services/processinstance/v88/service.go
 - internal/services/processinstance/v89/service.go
 - internal/services/processinstance/v810/service.go
@@ -114,7 +111,6 @@ Started: 2026-09-13 15:39:33
 - internal/services/common/processinstance_failure.go
 - internal/services/processinstance/bulk.go
 - internal/services/processinstance/bulk_test.go
-- internal/services/processinstance/v87/service.go
 - internal/services/processinstance/v88/service.go
 - internal/services/processinstance/v89/service.go
 - internal/services/processinstance/v810/service.go

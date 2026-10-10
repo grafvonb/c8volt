@@ -22,7 +22,7 @@ Started: 2026-08-17T14:08:19Z
 
 ## Reusable Commands
 - `git merge-base --is-ancestor f2658425 HEAD`
-- `git diff --exit-code f2658425 -- ':(glob)embedded/processdefinitions/C87_*.bpmn' ':(glob)embedded/processdefinitions/C88_*.bpmn' ':(glob)embedded/processdefinitions/C89_*.bpmn'`
+- `git diff --exit-code f2658425 -- ':(glob)embedded/processdefinitions/C88_*.bpmn' ':(glob)embedded/processdefinitions/C89_*.bpmn'`
 - `git diff --exit-code f2658425 -- integration Makefile`
 - `for src in embedded/processdefinitions/C89_*.bpmn; do dest=${src/C89_/C810_}; diff -u <(perl -0pe 's/C89/C810/g; s/8\\.9\\.0/8.10.0/g' "$src") "$dest" >/dev/null; done`
 - `go test ./toolx -run 'TestProductionFixturePrefix' -count=1`

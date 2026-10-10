@@ -326,7 +326,7 @@ C8VOLT_IT_PROFILES=c89local go test -tags=integration ./integration/cli -run '^T
 C8VOLT_IT_PROFILES=c89local C8VOLT_IT_VOLUME_COUNT=3 go test -tags=integration ./integration/cli -run '^TestVolumeGetFamilyUserTaskVariables$' -count=1 -v -timeout=10m
 ```
 
-Replace the profile name with your default-local configured profile. Direct Go runs do not ask Make's confirmation question. Supported profiles use their existing C88/C89/C810 models; 8.7 asserts unsupported behavior. Wrong-version profiles fail readiness before setup.
+Replace the profile name with your default-local configured profile. Direct Go runs do not ask Make's confirmation question. Supported profiles use their existing C88/C89/C810 models. Wrong-version profiles fail readiness before setup.
 
 These scenarios use the incident model with `hasIncident=false` to create local `incident=1`, contrasted with process `incident=99`. Operator failures are retained and do not prevent subsequent operator/display/called-process checks. Volume comparisons include a recorded preexisting definition-scoped baseline; no global count or exclusive model ownership is assumed. Evidence uses the existing record format in `user-task-variables-<profile>.json` and `volume-get-user-task-variables-<profile>.json`. Use separate evidence directories for separate invocations. Failed or unavailable version coverage is never reported as passing.
 

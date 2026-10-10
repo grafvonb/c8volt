@@ -16,7 +16,6 @@ Implement the resource service refactor in small, verifiable steps while preserv
 2. Refactor duplicated setup, multipart request creation, payload validation, and delete-path handling only where the resulting code is clearer and lower risk than the current version-specific copies.
 3. Preserve current factory behavior and all existing user-visible resource behavior, including the v88 deployment confirmation poll and the current consistent-delete behavior.
 4. Add one bounded missing capability only if it exists across both supported versions and fits the current API shape without broadening the feature unnecessarily.
-5. Update focused unit tests for both supported versions and factory behavior, adding missing v87 service coverage as needed.
 6. Update `README.md` and regenerate CLI docs only if a user-visible resource workflow changes.
 
 ## Validation Commands

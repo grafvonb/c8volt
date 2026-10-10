@@ -4,16 +4,12 @@
 package cmd
 
 import (
-	"fmt"
 	"strings"
 	"time"
 
-	"github.com/grafvonb/c8volt/c8volt/ferrors"
 	"github.com/grafvonb/c8volt/c8volt/process"
-	"github.com/grafvonb/c8volt/config"
 	"github.com/grafvonb/c8volt/consts"
 	"github.com/grafvonb/c8volt/internal/services/incidentfilter"
-	"github.com/grafvonb/c8volt/toolx"
 	"github.com/spf13/cobra"
 )
 
@@ -299,27 +295,6 @@ func useInvalidInputFlagErrors(cmd *cobra.Command) {
 	cmd.SetFlagErrorFunc(func(cmd *cobra.Command, err error) error {
 		return silenceUsageForError(cmd, invalidInputError(err))
 	})
-}
-
-// validatePISearchVersionSupport rejects search filters whose behavior is not
-// available or tenant-safe on the configured Camunda version.
-func validatePISearchVersionSupport(cfg *config.Config) error {
-	if cfg == nil {
-		return nil
-	}
-	if (hasPIDateFilterFlags() || hasPIRelativeDayFilterFlags()) && cfg.App.CamundaVersion == toolx.V87 {
-		return ferrors.WrapClass(ferrors.ErrUnsupported,
-			fmt.Errorf("process-instance date filters require Camunda 8.8"))
-	}
-	if hasPIVariableFilterFlags() && cfg.App.CamundaVersion == toolx.V87 {
-		return ferrors.WrapClass(ferrors.ErrUnsupported,
-			fmt.Errorf("process-instance variable search is unsupported in Camunda 8.7; requires Camunda 8.8 or newer"))
-	}
-	if flagGetPIOrphanChildrenOnly && cfg.App.CamundaVersion == toolx.V87 {
-		return ferrors.WrapClass(ferrors.ErrUnsupported,
-			fmt.Errorf("--orphan-children-only is not supported in Camunda 8.7 because orphan-parent follow-up lookup is not tenant-safe"))
-	}
-	return nil
 }
 
 // validatePIMixedDateFilterInputs rejects using absolute dates and relative-day
