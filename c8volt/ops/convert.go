@@ -769,7 +769,20 @@ func fromDomainSmokeTestDeploymentResult(x d.SmokeTestDeploymentResult) SmokeTes
 		ProcessDefinitionVersion: x.ProcessDefinitionVersion,
 		TenantID:                 x.TenantID,
 		TenantEvidence:           fromDomainOpsTenantEvidence(x.TenantEvidence),
+		ProcessDefinitions:       toolx.MapSlice(x.ProcessDefinitions, fromDomainSmokeTestDeployedDefinition),
+		DefinitionScopeComplete:  x.DefinitionScopeComplete,
 		Errors:                   append([]string(nil), x.Errors...),
+	}
+}
+
+// fromDomainSmokeTestDeployedDefinition mechanically maps deployment identity evidence.
+func fromDomainSmokeTestDeployedDefinition(x d.SmokeTestDeployedDefinition) SmokeTestDeployedDefinition {
+	return SmokeTestDeployedDefinition{
+		ProcessDefinitionKey:     x.ProcessDefinitionKey,
+		BpmnProcessID:            x.BpmnProcessID,
+		ProcessDefinitionVersion: x.ProcessDefinitionVersion,
+		TenantID:                 x.TenantID,
+		ResourceName:             x.ResourceName,
 	}
 }
 
@@ -855,6 +868,33 @@ func fromDomainSmokeTestProcessDefinitionCleanupResult(x d.SmokeTestProcessDefin
 	}
 }
 
+// fromDomainSmokeTestDefinitionCleanupItem preserves per-definition cleanup facts at the public boundary.
+func fromDomainSmokeTestDefinitionCleanupItem(x d.SmokeTestDefinitionCleanupItem) SmokeTestDefinitionCleanupItem {
+	return SmokeTestDefinitionCleanupItem{
+		Definition:  fromDomainSmokeTestDeployedDefinition(x.Definition),
+		Eligibility: fromDomainSmokeTestCleanupEligibility(x.Eligibility),
+		Cleanup:     fromDomainSmokeTestProcessDefinitionCleanupResult(x.Cleanup),
+		Disposition: SmokeTestDefinitionCleanupDisposition(x.Disposition),
+		Reason:      x.Reason,
+	}
+}
+
+// fromDomainSmokeTestDefinitionCleanupSummary maps the optional authoritative collection aggregate.
+func fromDomainSmokeTestDefinitionCleanupSummary(x *d.SmokeTestDefinitionCleanupSummary) *SmokeTestDefinitionCleanupSummary {
+	if x == nil {
+		return nil
+	}
+	return &SmokeTestDefinitionCleanupSummary{
+		Status:      WorkflowStepStatus(x.Status),
+		Total:       x.Total,
+		Confirmed:   x.Confirmed,
+		Submitted:   x.Submitted,
+		Retained:    x.Retained,
+		Failed:      x.Failed,
+		Unattempted: x.Unattempted,
+	}
+}
+
 func fromDomainSmokeTestCleanupResult(x d.SmokeTestCleanupResult) SmokeTestCleanupResult {
 	return SmokeTestCleanupResult{
 		ProcessInstanceCleanup:       fromDomainSmokeTestProcessInstanceCleanupResult(x.ProcessInstanceCleanup),
@@ -865,6 +905,8 @@ func fromDomainSmokeTestCleanupResult(x d.SmokeTestCleanupResult) SmokeTestClean
 		RetainedProcessDefinitionKey: x.RetainedProcessDefinitionKey,
 		RetainedBpmnProcessID:        x.RetainedBpmnProcessID,
 		RetainedTenantID:             x.RetainedTenantID,
+		DefinitionResults:            toolx.MapSlice(x.DefinitionResults, fromDomainSmokeTestDefinitionCleanupItem),
+		DefinitionSummary:            fromDomainSmokeTestDefinitionCleanupSummary(x.DefinitionSummary),
 		Errors:                       append([]string(nil), x.Errors...),
 	}
 }

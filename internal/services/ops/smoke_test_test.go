@@ -232,6 +232,165 @@ func TestSmokeTestDeploymentUnitsUsesV810Closure(t *testing.T) {
 	}
 }
 
+// TestSmokeTestDeploymentResultCapturesEverySupportedFixtureDefinition verifies collection evidence and exact main selection for each compatibility family.
+func TestSmokeTestDeploymentResultCapturesEverySupportedFixtureDefinition(t *testing.T) {
+	t.Parallel()
+
+	for _, version := range []toolx.CamundaVersion{toolx.V88, toolx.V89, toolx.V810} {
+		version := version
+		t.Run(version.String(), func(t *testing.T) {
+			t.Parallel()
+			fixture, err := smokeTestFixtureForVersion(version)
+			require.NoError(t, err)
+			deployment := completeSmokeTestDeploymentForFixture(fixture, "pd-main", "tenant-a")
+			deployment.Units = append(deployment.Units, deployment.Units[0])
+
+			got := smokeTestDeploymentResult(fixture, deployment, d.OpsWorkflowStepStatusConfirmed)
+
+			require.True(t, got.DefinitionScopeComplete)
+			require.Empty(t, got.Errors)
+			require.Len(t, got.ProcessDefinitions, 3)
+			require.Equal(t, []string{"pd-main-child", "pd-main-middle", "pd-main"}, []string{
+				got.ProcessDefinitions[0].ProcessDefinitionKey,
+				got.ProcessDefinitions[1].ProcessDefinitionKey,
+				got.ProcessDefinitions[2].ProcessDefinitionKey,
+			})
+			require.Equal(t, fixture.BpmnProcessID, got.BpmnProcessID)
+			require.Equal(t, "pd-main", got.ProcessDefinitionKey)
+		})
+	}
+}
+
+// TestSmokeTestDeploymentResultRejectsConflictingAndMissingIdentityEvidence preserves evidence without authorizing unsafe keys.
+func TestSmokeTestDeploymentResultRejectsConflictingAndMissingIdentityEvidence(t *testing.T) {
+	t.Parallel()
+
+	fixture, err := smokeTestFixtureForVersion(toolx.V89)
+	require.NoError(t, err)
+	deployment := completeSmokeTestDeploymentForFixture(fixture, "pd-main", "tenant-a")
+	deployment.Units = append(deployment.Units,
+		d.DeploymentUnit{ProcessDefinition: d.ProcessDefinitionDeployment{ProcessDefinitionId: "C89_Other", ProcessDefinitionKey: "pd-main-child", TenantId: "tenant-b"}},
+		d.DeploymentUnit{ProcessDefinition: d.ProcessDefinitionDeployment{ProcessDefinitionId: "C89_Unkeyed"}},
+	)
+
+	got := smokeTestDeploymentResult(fixture, deployment, d.OpsWorkflowStepStatusConfirmed)
+
+	require.False(t, got.DefinitionScopeComplete)
+	require.Len(t, got.ProcessDefinitions, 4)
+	require.Contains(t, strings.Join(got.Errors, "\n"), "conflicting deployment identity evidence")
+	require.Contains(t, strings.Join(got.Errors, "\n"), "missing a process-definition key")
+	require.Equal(t, "pd-main", got.ProcessDefinitionKey)
+}
+
+// TestCleanupSmokeTestResourcesDeletesAllDefinitionsForEveryFixtureFamily proves each distinct returned key is deleted once in deployment order.
+func TestCleanupSmokeTestResourcesDeletesAllDefinitionsForEveryFixtureFamily(t *testing.T) {
+	for _, version := range []toolx.CamundaVersion{toolx.V88, toolx.V89, toolx.V810} {
+		version := version
+		t.Run(version.String(), func(t *testing.T) {
+			fixture, err := smokeTestFixtureForVersion(version)
+			require.NoError(t, err)
+			deployment := smokeTestDeploymentResult(fixture, completeSmokeTestDeploymentForFixture(fixture, "pd-main", "tenant-a"), d.OpsWorkflowStepStatusConfirmed)
+			var deleted []string
+			resource := &stubSmokeTestResourceAPI{delete: func(_ context.Context, key string, _ ...services.CallOption) (d.ResourceDeleteResponse, error) {
+				deleted = append(deleted, key)
+				return d.ResourceDeleteResponse{Key: key, Ok: true, StatusCode: http.StatusOK, Status: "200 OK"}, nil
+			}}
+			piAPI := stubProcessInstanceAPI{search: func(context.Context, d.ProcessInstanceFilter, int32, ...services.CallOption) ([]d.ProcessInstance, error) {
+				return nil, nil
+			}}
+			pdAPI := stubProcessDefinitionAPI{getProcessDefinition: func(_ context.Context, key string, opts ...services.CallOption) (d.ProcessDefinition, error) {
+				if !services.ApplyCallOptions(opts).WithStat {
+					return d.ProcessDefinition{}, d.ErrNotFound
+				}
+				return d.ProcessDefinition{Key: key, Statistics: &d.ProcessDefinitionStatistics{}}, nil
+			}}
+			service := NewWithWorkflowDependencies(nil, piAPI, nil, pdAPI, resource, version).(*Service)
+
+			got, err := service.cleanupSmokeTestResources(context.Background(), d.SmokeTestResult{
+				Request:    d.SmokeTestRequest{Count: 1},
+				Deployment: deployment,
+			})
+
+			require.NoError(t, err)
+			require.Equal(t, []string{"pd-main-child", "pd-main-middle", "pd-main"}, deleted)
+			require.Equal(t, &d.SmokeTestDefinitionCleanupSummary{Status: d.OpsWorkflowStepStatusConfirmed, Total: 3, Confirmed: 3}, got.DefinitionSummary)
+			for _, item := range got.DefinitionResults {
+				require.Equal(t, d.SmokeTestDefinitionCleanupDispositionConfirmed, item.Disposition)
+			}
+		})
+	}
+}
+
+// TestCleanupSmokeTestResourcesNoWaitRecordsSubmittedDefinitions verifies accepted requests are never labeled confirmed.
+func TestCleanupSmokeTestResourcesNoWaitRecordsSubmittedDefinitions(t *testing.T) {
+	fixture, err := smokeTestFixtureForVersion(toolx.V89)
+	require.NoError(t, err)
+	deployment := smokeTestDeploymentResult(fixture, completeSmokeTestDeploymentForFixture(fixture, "pd-main", "tenant-a"), d.OpsWorkflowStepStatusConfirmed)
+	resource := &stubSmokeTestResourceAPI{delete: func(_ context.Context, key string, opts ...services.CallOption) (d.ResourceDeleteResponse, error) {
+		require.True(t, services.ApplyCallOptions(opts).NoWait)
+		return d.ResourceDeleteResponse{Key: key, Ok: true, StatusCode: http.StatusAccepted, Status: "202 Accepted"}, nil
+	}}
+	piAPI := stubProcessInstanceAPI{search: func(context.Context, d.ProcessInstanceFilter, int32, ...services.CallOption) ([]d.ProcessInstance, error) {
+		return nil, nil
+	}}
+	pdAPI := stubProcessDefinitionAPI{getProcessDefinition: func(_ context.Context, key string, opts ...services.CallOption) (d.ProcessDefinition, error) {
+		require.True(t, services.ApplyCallOptions(opts).WithStat)
+		return d.ProcessDefinition{Key: key, Statistics: &d.ProcessDefinitionStatistics{}}, nil
+	}}
+	service := NewWithWorkflowDependencies(nil, piAPI, nil, pdAPI, resource, toolx.V89).(*Service)
+
+	got, err := service.cleanupSmokeTestResources(context.Background(), d.SmokeTestResult{Request: d.SmokeTestRequest{Count: 1, NoWait: true}, Deployment: deployment}, services.WithNoWait())
+
+	require.NoError(t, err)
+	require.Equal(t, &d.SmokeTestDefinitionCleanupSummary{Status: d.OpsWorkflowStepStatusSubmitted, Total: 3, Submitted: 3}, got.DefinitionSummary)
+	for _, item := range got.DefinitionResults {
+		require.Equal(t, d.SmokeTestDefinitionCleanupDispositionSubmitted, item.Disposition)
+		require.True(t, item.Cleanup.Submitted)
+		require.False(t, item.Cleanup.Confirmed)
+	}
+}
+
+// TestCleanupSmokeTestResourcesFailFastPreservesUnattemptedDefinitions verifies collection accounting after the first eligibility error.
+func TestCleanupSmokeTestResourcesFailFastPreservesUnattemptedDefinitions(t *testing.T) {
+	fixture, err := smokeTestFixtureForVersion(toolx.V89)
+	require.NoError(t, err)
+	deployment := smokeTestDeploymentResult(fixture, completeSmokeTestDeploymentForFixture(fixture, "pd-main", "tenant-a"), d.OpsWorkflowStepStatusConfirmed)
+	piAPI := stubProcessInstanceAPI{search: func(context.Context, d.ProcessInstanceFilter, int32, ...services.CallOption) ([]d.ProcessInstance, error) {
+		return nil, errors.New("eligibility unavailable")
+	}}
+	resource := &stubSmokeTestResourceAPI{delete: func(context.Context, string, ...services.CallOption) (d.ResourceDeleteResponse, error) {
+		return d.ResourceDeleteResponse{}, errors.New("unexpected delete")
+	}}
+	service := NewWithWorkflowDependencies(nil, piAPI, nil, stubProcessDefinitionAPI{}, resource, toolx.V89).(*Service)
+
+	got, err := service.cleanupSmokeTestResources(context.Background(), d.SmokeTestResult{Request: d.SmokeTestRequest{Count: 1, FailFast: true}, Deployment: deployment}, services.WithFailFast())
+
+	require.Error(t, err)
+	require.Equal(t, d.SmokeTestDefinitionCleanupDispositionFailed, got.DefinitionResults[0].Disposition)
+	require.Equal(t, d.SmokeTestDefinitionCleanupDispositionUnattempted, got.DefinitionResults[1].Disposition)
+	require.Equal(t, d.SmokeTestDefinitionCleanupDispositionUnattempted, got.DefinitionResults[2].Disposition)
+	require.Equal(t, &d.SmokeTestDefinitionCleanupSummary{Status: d.OpsWorkflowStepStatusFailed, Total: 3, Failed: 1, Unattempted: 2}, got.DefinitionSummary)
+	require.Zero(t, resource.deleteCalls)
+}
+
+// TestCleanupSmokeTestResourcesCancellationPreservesUnattemptedDefinitions verifies cancellation does not erase known deployment resources.
+func TestCleanupSmokeTestResourcesCancellationPreservesUnattemptedDefinitions(t *testing.T) {
+	fixture, err := smokeTestFixtureForVersion(toolx.V89)
+	require.NoError(t, err)
+	deployment := smokeTestDeploymentResult(fixture, completeSmokeTestDeploymentForFixture(fixture, "pd-main", "tenant-a"), d.OpsWorkflowStepStatusConfirmed)
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	service := NewWithWorkflowDependencies(nil, stubProcessInstanceAPI{}, nil, stubProcessDefinitionAPI{}, &stubSmokeTestResourceAPI{}, toolx.V89).(*Service)
+
+	got, err := service.cleanupSmokeTestResources(ctx, d.SmokeTestResult{Request: d.SmokeTestRequest{Count: 1}, Deployment: deployment})
+
+	require.ErrorIs(t, err, context.Canceled)
+	require.Equal(t, &d.SmokeTestDefinitionCleanupSummary{Status: d.OpsWorkflowStepStatusFailed, Total: 3, Unattempted: 3}, got.DefinitionSummary)
+	for _, item := range got.DefinitionResults {
+		require.Equal(t, d.SmokeTestDefinitionCleanupDispositionUnattempted, item.Disposition)
+	}
+}
+
 func TestExecuteSmokeTestMissingFixtureFailsBeforeMutation(t *testing.T) {
 	t.Parallel()
 
@@ -358,13 +517,7 @@ func TestExecuteSmokeTestAggregatesTenantEvidenceFromCreatedResources(t *testing
 
 	resource := &stubSmokeTestResourceAPI{
 		deploy: func(_ context.Context, _ []d.DeploymentUnitData, _ ...services.CallOption) (d.Deployment, error) {
-			return d.Deployment{Units: []d.DeploymentUnit{{
-				ProcessDefinition: d.ProcessDefinitionDeployment{
-					ProcessDefinitionId:  "C88_MultipleSubProcessesParent",
-					ProcessDefinitionKey: "pd-smoke",
-					TenantId:             "tenant-b",
-				},
-			}}}, nil
+			return completeSmokeTestDeployment("pd-smoke", "tenant-b"), nil
 		},
 	}
 	created := 0
@@ -422,18 +575,13 @@ func TestExecuteSmokeTestAggregatesTenantEvidenceFromCreatedResources(t *testing
 	require.Equal(t, got.Run.TenantEvidence, got.Report.Run.TenantEvidence)
 }
 
+// TestExecuteSmokeTestStartsCreatedInstancesByDeployedProcessDefinitionKey keeps the runnable main fixture as the singular projection.
 func TestExecuteSmokeTestStartsCreatedInstancesByDeployedProcessDefinitionKey(t *testing.T) {
 	t.Parallel()
 
 	resource := &stubSmokeTestResourceAPI{
 		deploy: func(_ context.Context, _ []d.DeploymentUnitData, _ ...services.CallOption) (d.Deployment, error) {
-			return d.Deployment{Units: []d.DeploymentUnit{{
-				ProcessDefinition: d.ProcessDefinitionDeployment{
-					ProcessDefinitionId:  "C88_MultipleSubProcessesParent",
-					ProcessDefinitionKey: "pd-exact",
-					TenantId:             "tenant-a",
-				},
-			}}}, nil
+			return completeSmokeTestDeployment("pd-exact", "tenant-a"), nil
 		},
 	}
 	var created []d.ProcessInstanceData
@@ -485,7 +633,8 @@ func TestExecuteSmokeTestStartsCreatedInstancesByDeployedProcessDefinitionKey(t 
 	require.Equal(t, d.SmokeTestOutcomePassedCleanupSkipped, got.Outcome)
 }
 
-func TestExecuteSmokeTestFallsBackToBPMNProcessIDWhenDeploymentKeyMissing(t *testing.T) {
+// TestExecuteSmokeTestRejectsMissingMainDeploymentIdentity prevents a name fallback from authorizing a run or cleanup.
+func TestExecuteSmokeTestRejectsMissingMainDeploymentIdentity(t *testing.T) {
 	t.Parallel()
 
 	resource := &stubSmokeTestResourceAPI{
@@ -493,34 +642,25 @@ func TestExecuteSmokeTestFallsBackToBPMNProcessIDWhenDeploymentKeyMissing(t *tes
 			return d.Deployment{}, nil
 		},
 	}
-	piAPI := stubProcessInstanceAPI{
-		createProcessInstance: func(_ context.Context, data d.ProcessInstanceData, _ ...services.CallOption) (d.ProcessInstanceCreation, error) {
-			require.Empty(t, data.ProcessDefinitionSpecificId)
-			require.Equal(t, "C88_MultipleSubProcessesParent", data.BpmnProcessId)
-			return d.ProcessInstanceCreation{Key: "pi-fallback", BpmnProcessId: data.BpmnProcessId}, nil
-		},
-		familyResult: func(_ context.Context, startKey string, _ ...services.CallOption) (pitraversal.Result, error) {
-			return pitraversal.Result{Mode: pitraversal.ModeFamily, StartKey: startKey, RootKey: startKey, Keys: []string{startKey}, Outcome: pitraversal.OutcomeComplete}, nil
-		},
-	}
-
-	got, err := NewWithWorkflowDependencies(nil, piAPI, nil, nil, resource, toolx.V88).ExecuteSmokeTest(context.Background(), d.SmokeTestRequest{
+	got, err := NewWithWorkflowDependencies(nil, nil, nil, nil, resource, toolx.V88).ExecuteSmokeTest(context.Background(), d.SmokeTestRequest{
 		CommandName: "ops execute smoke-test",
 		Count:       1,
 		NoCleanup:   true,
 	})
 
-	require.NoError(t, err)
-	require.Equal(t, typexKeys("pi-fallback"), got.Run.ProcessInstanceKeys)
-	require.Equal(t, d.OpsWorkflowStepStatusConfirmed, got.Walk.Status)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "does not contain a usable main fixture definition")
+	require.Equal(t, d.SmokeTestOutcomePartiallyFailed, got.Outcome)
+	require.Empty(t, got.Run.ProcessInstanceKeys)
 }
 
+// TestExecuteSmokeTestTraversalSummariesCapturePartialFamilyWalks preserves traversal evidence with complete deployment fixtures.
 func TestExecuteSmokeTestTraversalSummariesCapturePartialFamilyWalks(t *testing.T) {
 	t.Parallel()
 
 	resource := &stubSmokeTestResourceAPI{
 		deploy: func(_ context.Context, _ []d.DeploymentUnitData, _ ...services.CallOption) (d.Deployment, error) {
-			return d.Deployment{Units: []d.DeploymentUnit{{ProcessDefinition: d.ProcessDefinitionDeployment{ProcessDefinitionKey: "pd-88"}}}}, nil
+			return completeSmokeTestDeployment("pd-88", ""), nil
 		},
 	}
 	piAPI := stubProcessInstanceAPI{
@@ -557,20 +697,17 @@ func TestExecuteSmokeTestTraversalSummariesCapturePartialFamilyWalks(t *testing.
 	require.Equal(t, d.TraversalOutcomePartial, summary.Outcome)
 }
 
+// TestExecuteSmokeTestCleansUpCreatedResources verifies all three exact deployment keys are confirmed once.
 func TestExecuteSmokeTestCleansUpCreatedResources(t *testing.T) {
 	t.Parallel()
 
 	resource := &stubSmokeTestResourceAPI{
 		deploy: func(_ context.Context, _ []d.DeploymentUnitData, _ ...services.CallOption) (d.Deployment, error) {
-			return d.Deployment{Units: []d.DeploymentUnit{{ProcessDefinition: d.ProcessDefinitionDeployment{
-				ProcessDefinitionId:  "C88_MultipleSubProcessesParent",
-				ProcessDefinitionKey: "pd-88",
-			}}}}, nil
+			return completeSmokeTestDeployment("pd-88", ""), nil
 		},
 		delete: func(_ context.Context, key string, opts ...services.CallOption) (d.ResourceDeleteResponse, error) {
-			require.Equal(t, "pd-88", key)
 			require.False(t, services.ApplyCallOptions(opts).NoWait)
-			return d.ResourceDeleteResponse{Key: key, Ok: true, StatusCode: 200, Status: "200 OK", DeleteHistory: true, BatchOperationKey: "batch-1", BatchState: "COMPLETED"}, nil
+			return d.ResourceDeleteResponse{Key: key, Ok: true, StatusCode: 200, Status: "200 OK", DeleteHistory: true, BatchOperationKey: "batch-" + key, BatchState: "COMPLETED"}, nil
 		},
 	}
 	piAPI := stubProcessInstanceAPI{
@@ -596,20 +733,19 @@ func TestExecuteSmokeTestCleansUpCreatedResources(t *testing.T) {
 			return d.DeleteResponse{Ok: true, StatusCode: 200, Status: "200 OK"}, nil
 		},
 		search: func(_ context.Context, filter d.ProcessInstanceFilter, size int32, _ ...services.CallOption) ([]d.ProcessInstance, error) {
-			require.Equal(t, "pd-88", filter.ProcessDefinitionKey)
+			require.Contains(t, []string{"pd-88-child", "pd-88-middle", "pd-88"}, filter.ProcessDefinitionKey)
 			require.Equal(t, int32(1000), size)
 			return nil, nil
 		},
 	}
 	pdAPI := stubProcessDefinitionAPI{
 		getProcessDefinition: func(_ context.Context, key string, opts ...services.CallOption) (d.ProcessDefinition, error) {
-			require.Equal(t, "pd-88", key)
 			cfg := services.ApplyCallOptions(opts)
 			if !cfg.WithStat {
 				return d.ProcessDefinition{}, d.ErrNotFound
 			}
 			require.True(t, cfg.WithStat)
-			return d.ProcessDefinition{Key: key, BpmnProcessId: "C88_MultipleSubProcessesParent", Statistics: &d.ProcessDefinitionStatistics{}}, nil
+			return d.ProcessDefinition{Key: key, BpmnProcessId: smokeTestBPMNIDForKey(key), Statistics: &d.ProcessDefinitionStatistics{}}, nil
 		},
 	}
 
@@ -630,22 +766,22 @@ func TestExecuteSmokeTestCleansUpCreatedResources(t *testing.T) {
 	require.Equal(t, "pd-88", got.Cleanup.ProcessDefinitionCleanup.SubmittedProcessDefinitionKey)
 	require.True(t, got.Cleanup.ProcessDefinitionCleanup.Submitted)
 	require.True(t, got.Cleanup.ProcessDefinitionCleanup.Confirmed)
-	require.Equal(t, 1, resource.deleteCalls)
+	require.Equal(t, 3, resource.deleteCalls)
+	require.Equal(t, &d.SmokeTestDefinitionCleanupSummary{Status: d.OpsWorkflowStepStatusConfirmed, Total: 3, Confirmed: 3}, got.Cleanup.DefinitionSummary)
+	require.Len(t, got.Cleanup.DefinitionResults, 3)
 	require.Equal(t, got.Cleanup, got.Report.Cleanup)
 }
 
+// TestExecuteSmokeTestSkipsProcessDefinitionCleanupForUnrelatedInstances retains a blocked definition while removing eligible siblings.
 func TestExecuteSmokeTestSkipsProcessDefinitionCleanupForUnrelatedInstances(t *testing.T) {
 	t.Parallel()
 
 	resource := &stubSmokeTestResourceAPI{
 		deploy: func(_ context.Context, _ []d.DeploymentUnitData, _ ...services.CallOption) (d.Deployment, error) {
-			return d.Deployment{Units: []d.DeploymentUnit{{ProcessDefinition: d.ProcessDefinitionDeployment{
-				ProcessDefinitionId:  "C88_MultipleSubProcessesParent",
-				ProcessDefinitionKey: "pd-88",
-			}}}}, nil
+			return completeSmokeTestDeployment("pd-88", ""), nil
 		},
-		delete: func(context.Context, string, ...services.CallOption) (d.ResourceDeleteResponse, error) {
-			return d.ResourceDeleteResponse{}, errors.New("unexpected process-definition delete")
+		delete: func(_ context.Context, key string, _ ...services.CallOption) (d.ResourceDeleteResponse, error) {
+			return d.ResourceDeleteResponse{Key: key, Ok: true, StatusCode: http.StatusOK, Status: "200 OK"}, nil
 		},
 	}
 	piAPI := stubProcessInstanceAPI{
@@ -670,12 +806,20 @@ func TestExecuteSmokeTestSkipsProcessDefinitionCleanupForUnrelatedInstances(t *t
 			return d.DeleteResponse{Ok: true, StatusCode: 200, Status: "200 OK"}, nil
 		},
 		search: func(_ context.Context, filter d.ProcessInstanceFilter, _ int32, _ ...services.CallOption) ([]d.ProcessInstance, error) {
-			require.Equal(t, "pd-88", filter.ProcessDefinitionKey)
-			return []d.ProcessInstance{{Key: "unrelated-1", ProcessDefinitionKey: "pd-88"}}, nil
+			if filter.ProcessDefinitionKey == "pd-88" {
+				return []d.ProcessInstance{{Key: "unrelated-1", ProcessDefinitionKey: "pd-88"}}, nil
+			}
+			return nil, nil
 		},
 	}
 
-	got, err := NewWithWorkflowDependencies(nil, piAPI, nil, stubProcessDefinitionAPI{}, resource, toolx.V88).ExecuteSmokeTest(context.Background(), d.SmokeTestRequest{
+	pdAPI := stubProcessDefinitionAPI{getProcessDefinition: func(_ context.Context, key string, opts ...services.CallOption) (d.ProcessDefinition, error) {
+		if !services.ApplyCallOptions(opts).WithStat {
+			return d.ProcessDefinition{}, d.ErrNotFound
+		}
+		return d.ProcessDefinition{Key: key, BpmnProcessId: smokeTestBPMNIDForKey(key), Statistics: &d.ProcessDefinitionStatistics{}}, nil
+	}}
+	got, err := NewWithWorkflowDependencies(nil, piAPI, nil, pdAPI, resource, toolx.V88).ExecuteSmokeTest(context.Background(), d.SmokeTestRequest{
 		CommandName: "ops execute smoke-test",
 		Count:       1,
 	})
@@ -688,19 +832,17 @@ func TestExecuteSmokeTestSkipsProcessDefinitionCleanupForUnrelatedInstances(t *t
 	require.Equal(t, d.OpsWorkflowStepStatusSkipped, got.Cleanup.ProcessDefinitionCleanup.Status)
 	require.Equal(t, "pd-88", got.Cleanup.RetainedProcessDefinitionKey)
 	require.Equal(t, "C88_MultipleSubProcessesParent", got.Cleanup.RetainedBpmnProcessID)
-	require.Zero(t, resource.deleteCalls)
+	require.Equal(t, 2, resource.deleteCalls)
+	require.Equal(t, &d.SmokeTestDefinitionCleanupSummary{Status: d.OpsWorkflowStepStatusSkipped, Total: 3, Confirmed: 2, Retained: 1}, got.Cleanup.DefinitionSummary)
 }
 
+// TestExecuteSmokeTestNoCleanupRetainsCreatedResources accounts for every deployed definition without mutation.
 func TestExecuteSmokeTestNoCleanupRetainsCreatedResources(t *testing.T) {
 	t.Parallel()
 
 	resource := &stubSmokeTestResourceAPI{
 		deploy: func(_ context.Context, _ []d.DeploymentUnitData, _ ...services.CallOption) (d.Deployment, error) {
-			return d.Deployment{Units: []d.DeploymentUnit{{ProcessDefinition: d.ProcessDefinitionDeployment{
-				ProcessDefinitionId:  "C88_MultipleSubProcessesParent",
-				ProcessDefinitionKey: "pd-retained",
-				TenantId:             "tenant-a",
-			}}}}, nil
+			return completeSmokeTestDeployment("pd-retained", "tenant-a"), nil
 		},
 		delete: func(context.Context, string, ...services.CallOption) (d.ResourceDeleteResponse, error) {
 			return d.ResourceDeleteResponse{}, errors.New("unexpected process-definition delete")
@@ -731,6 +873,7 @@ func TestExecuteSmokeTestNoCleanupRetainsCreatedResources(t *testing.T) {
 	require.Equal(t, "pd-retained", got.Cleanup.RetainedProcessDefinitionKey)
 	require.Equal(t, "C88_MultipleSubProcessesParent", got.Cleanup.RetainedBpmnProcessID)
 	require.Equal(t, "tenant-a", got.Cleanup.RetainedTenantID)
+	require.Equal(t, &d.SmokeTestDefinitionCleanupSummary{Status: d.OpsWorkflowStepStatusSkipped, Total: 3, Retained: 3}, got.Cleanup.DefinitionSummary)
 	require.Equal(t, got.Cleanup, got.Report.Cleanup)
 	require.Equal(t, d.OpsWorkflowStepStatusSkipped, got.Plan.PlannedSteps[5].Status)
 	require.Zero(t, resource.deleteCalls)
@@ -741,11 +884,7 @@ func TestExecuteSmokeTestEmitsExplicitWorkProgress(t *testing.T) {
 	var events []d.OpsProgressEvent
 	resource := &stubSmokeTestResourceAPI{
 		deploy: func(_ context.Context, _ []d.DeploymentUnitData, _ ...services.CallOption) (d.Deployment, error) {
-			return d.Deployment{Units: []d.DeploymentUnit{{ProcessDefinition: d.ProcessDefinitionDeployment{
-				ProcessDefinitionId:      "C88_MultipleSubProcessesParent",
-				ProcessDefinitionKey:     "pd-88",
-				ProcessDefinitionVersion: 4,
-			}}}}, nil
+			return completeSmokeTestDeployment("pd-88", ""), nil
 		},
 	}
 	created := 0
@@ -792,10 +931,7 @@ func TestExecuteSmokeTestSuppressesLegacyProgressLogsWithStructuredProgress(t *t
 		var events []d.OpsProgressEvent
 		resource := &stubSmokeTestResourceAPI{
 			deploy: func(_ context.Context, _ []d.DeploymentUnitData, _ ...services.CallOption) (d.Deployment, error) {
-				return d.Deployment{Units: []d.DeploymentUnit{{ProcessDefinition: d.ProcessDefinitionDeployment{
-					ProcessDefinitionId:  "C88_MultipleSubProcessesParent",
-					ProcessDefinitionKey: "pd-88",
-				}}}}, nil
+				return completeSmokeTestDeployment("pd-88", ""), nil
 			},
 		}
 		piAPI := stubProcessInstanceAPI{
@@ -848,13 +984,9 @@ func TestExecuteSmokeTestEmitsStageCompletionFacts(t *testing.T) {
 	var events testx.SafeSlice[d.OpsProgressEvent]
 	resource := &stubSmokeTestResourceAPI{
 		deploy: func(_ context.Context, _ []d.DeploymentUnitData, _ ...services.CallOption) (d.Deployment, error) {
-			return d.Deployment{Units: []d.DeploymentUnit{{ProcessDefinition: d.ProcessDefinitionDeployment{
-				ProcessDefinitionId:  "C88_MultipleSubProcessesParent",
-				ProcessDefinitionKey: "pd-88",
-			}}}}, nil
+			return completeSmokeTestDeployment("pd-88", ""), nil
 		},
 		delete: func(_ context.Context, key string, _ ...services.CallOption) (d.ResourceDeleteResponse, error) {
-			require.Equal(t, "pd-88", key)
 			return d.ResourceDeleteResponse{Key: key, Ok: true, StatusCode: http.StatusOK, Status: "200 OK"}, nil
 		},
 	}
@@ -882,17 +1014,16 @@ func TestExecuteSmokeTestEmitsStageCompletionFacts(t *testing.T) {
 			return d.DeleteResponse{Ok: true, StatusCode: http.StatusOK, Status: "200 OK"}, nil
 		},
 		search: func(_ context.Context, filter d.ProcessInstanceFilter, _ int32, _ ...services.CallOption) ([]d.ProcessInstance, error) {
-			require.Equal(t, "pd-88", filter.ProcessDefinitionKey)
+			require.Contains(t, []string{"pd-88-child", "pd-88-middle", "pd-88"}, filter.ProcessDefinitionKey)
 			return nil, nil
 		},
 	}
 	pdAPI := stubProcessDefinitionAPI{
 		getProcessDefinition: func(_ context.Context, key string, opts ...services.CallOption) (d.ProcessDefinition, error) {
-			require.Equal(t, "pd-88", key)
 			if !services.ApplyCallOptions(opts).WithStat {
 				return d.ProcessDefinition{}, d.ErrNotFound
 			}
-			return d.ProcessDefinition{Key: key, BpmnProcessId: "C88_MultipleSubProcessesParent", Statistics: &d.ProcessDefinitionStatistics{}}, nil
+			return d.ProcessDefinition{Key: key, BpmnProcessId: smokeTestBPMNIDForKey(key), Statistics: &d.ProcessDefinitionStatistics{}}, nil
 		},
 	}
 
@@ -933,13 +1064,11 @@ func TestExecuteSmokeTestEmitsStageCompletionFacts(t *testing.T) {
 		Identity:     "pi-1",
 		Disposition:  d.OpsCompletionDispositionConfirmed,
 	}}, opsCompletionProgressByPhase(snapshot, "cleaning up smoke-test process instances"))
-	require.Equal(t, []d.OpsCompletionProgress{{
-		Phase:        "cleaning up smoke-test process definition",
-		CoreResource: "process definition(s)",
-		Total:        1,
-		Identity:     "pd-88",
-		Disposition:  d.OpsCompletionDispositionConfirmed,
-	}}, opsCompletionProgressByPhase(snapshot, "cleaning up smoke-test process definition"))
+	require.Equal(t, []d.OpsCompletionProgress{
+		{Phase: "cleaning up smoke-test process definition", CoreResource: "process definition(s)", Total: 1, Identity: "pd-88-child", Disposition: d.OpsCompletionDispositionConfirmed},
+		{Phase: "cleaning up smoke-test process definition", CoreResource: "process definition(s)", Total: 1, Identity: "pd-88-middle", Disposition: d.OpsCompletionDispositionConfirmed},
+		{Phase: "cleaning up smoke-test process definition", CoreResource: "process definition(s)", Total: 1, Identity: "pd-88", Disposition: d.OpsCompletionDispositionConfirmed},
+	}, opsCompletionProgressByPhase(snapshot, "cleaning up smoke-test process definition"))
 }
 
 // requireSmokeTestProgressContains asserts a stage counter appeared without depending on concurrent event ordering.
@@ -1023,4 +1152,32 @@ func (s *stubSmokeTestResourceAPI) Delete(ctx context.Context, key string, opts 
 
 func (*stubSmokeTestResourceAPI) Get(context.Context, string, ...services.CallOption) (d.Resource, error) {
 	return d.Resource{}, errors.New("unexpected get call")
+}
+
+// completeSmokeTestDeployment returns realistic three-definition evidence for the 8.8 fixture family.
+func completeSmokeTestDeployment(mainKey string, tenantID string) d.Deployment {
+	fixture, _ := smokeTestFixtureForVersion(toolx.V88)
+	return completeSmokeTestDeploymentForFixture(fixture, mainKey, tenantID)
+}
+
+// completeSmokeTestDeploymentForFixture builds exact three-definition response evidence for one supported fixture family.
+func completeSmokeTestDeploymentForFixture(fixture d.EmbeddedSmokeTestFixture, mainKey string, tenantID string) d.Deployment {
+	expected := smokeTestExpectedDefinitionIDs(fixture)
+	return d.Deployment{TenantId: tenantID, Units: []d.DeploymentUnit{
+		{ProcessDefinition: d.ProcessDefinitionDeployment{ProcessDefinitionId: expected[0], ProcessDefinitionKey: mainKey + "-child", ProcessDefinitionVersion: 4, ResourceName: "processdefinitions/" + expected[0] + ".bpmn", TenantId: tenantID}},
+		{ProcessDefinition: d.ProcessDefinitionDeployment{ProcessDefinitionId: expected[1], ProcessDefinitionKey: mainKey + "-middle", ProcessDefinitionVersion: 4, ResourceName: "processdefinitions/" + expected[1] + ".bpmn", TenantId: tenantID}},
+		{ProcessDefinition: d.ProcessDefinitionDeployment{ProcessDefinitionId: expected[2], ProcessDefinitionKey: mainKey, ProcessDefinitionVersion: 4, ResourceName: "processdefinitions/" + expected[2] + ".bpmn", TenantId: tenantID}},
+	}}
+}
+
+// smokeTestBPMNIDForKey maps deterministic fixture keys back to their exact deployed identities.
+func smokeTestBPMNIDForKey(key string) string {
+	switch {
+	case strings.HasSuffix(key, "-child"):
+		return "C88_SimpleUserTask"
+	case strings.HasSuffix(key, "-middle"):
+		return "C88_SimpleParent"
+	default:
+		return "C88_MultipleSubProcessesParent"
+	}
 }

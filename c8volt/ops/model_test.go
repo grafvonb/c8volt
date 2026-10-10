@@ -89,6 +89,41 @@ func TestAuditReports_KeepTruthfulLegacyTenantID(t *testing.T) {
 	require.Equal(t, []any{"tenant-a"}, tenantContext["resolvedTenantIds"])
 }
 
+// TestSmokeTestCollectionJSONContract verifies additive collection fields preserve the v1 optional-field contract.
+func TestSmokeTestCollectionJSONContract(t *testing.T) {
+	t.Parallel()
+
+	report := SmokeTestAuditReport{
+		SchemaVersion: "ops.smoke-test.v1",
+		Deployment: SmokeTestDeploymentResult{
+			ProcessDefinitions:      []SmokeTestDeployedDefinition{{ProcessDefinitionKey: "pd-1", BpmnProcessID: "C89_SimpleUserTask"}},
+			DefinitionScopeComplete: true,
+		},
+		Cleanup: SmokeTestCleanupResult{
+			DefinitionResults: []SmokeTestDefinitionCleanupItem{{
+				Definition:  SmokeTestDeployedDefinition{ProcessDefinitionKey: "pd-1", BpmnProcessID: "C89_SimpleUserTask"},
+				Disposition: SmokeTestDefinitionCleanupDispositionConfirmed,
+			}},
+			DefinitionSummary: &SmokeTestDefinitionCleanupSummary{Status: WorkflowStepStatusConfirmed, Total: 1, Confirmed: 1},
+		},
+	}
+
+	raw, err := json.Marshal(report)
+	require.NoError(t, err)
+	require.Contains(t, string(raw), `"schemaVersion":"ops.smoke-test.v1"`)
+	require.Contains(t, string(raw), `"processDefinitions"`)
+	require.Contains(t, string(raw), `"definitionScopeComplete":true`)
+	require.Contains(t, string(raw), `"definitionResults"`)
+	require.Contains(t, string(raw), `"definitionSummary"`)
+
+	empty, err := json.Marshal(SmokeTestAuditReport{})
+	require.NoError(t, err)
+	require.NotContains(t, string(empty), "processDefinitions")
+	require.NotContains(t, string(empty), "definitionScopeComplete")
+	require.NotContains(t, string(empty), "definitionResults")
+	require.NotContains(t, string(empty), "definitionSummary")
+}
+
 // TestFromDomainAuditReports_CopyTenantContext verifies every ops report
 // converter uses the common nested object and copies mutable evidence slices.
 func TestFromDomainAuditReports_CopyTenantContext(t *testing.T) {

@@ -433,14 +433,25 @@ type SmokeTestPlan struct {
 
 // SmokeTestDeploymentResult captures deployment step output.
 type SmokeTestDeploymentResult struct {
-	Status                   WorkflowStepStatus     `json:"status,omitempty"`
-	FixtureFile              string                 `json:"fixtureFile,omitempty"`
-	BpmnProcessID            string                 `json:"bpmnProcessId,omitempty"`
-	ProcessDefinitionKey     string                 `json:"processDefinitionKey,omitempty"`
-	ProcessDefinitionVersion int32                  `json:"processDefinitionVersion,omitempty"`
-	TenantID                 string                 `json:"tenantId,omitempty"`
-	TenantEvidence           process.TenantEvidence `json:"tenantEvidence,omitempty"`
-	Errors                   []string               `json:"errors,omitempty"`
+	Status                   WorkflowStepStatus            `json:"status,omitempty"`
+	FixtureFile              string                        `json:"fixtureFile,omitempty"`
+	BpmnProcessID            string                        `json:"bpmnProcessId,omitempty"`
+	ProcessDefinitionKey     string                        `json:"processDefinitionKey,omitempty"`
+	ProcessDefinitionVersion int32                         `json:"processDefinitionVersion,omitempty"`
+	TenantID                 string                        `json:"tenantId,omitempty"`
+	TenantEvidence           process.TenantEvidence        `json:"tenantEvidence,omitempty"`
+	ProcessDefinitions       []SmokeTestDeployedDefinition `json:"processDefinitions,omitempty"`
+	DefinitionScopeComplete  bool                          `json:"definitionScopeComplete,omitempty"`
+	Errors                   []string                      `json:"errors,omitempty"`
+}
+
+// SmokeTestDeployedDefinition captures the identity evidence returned for one deployed definition.
+type SmokeTestDeployedDefinition struct {
+	ProcessDefinitionKey     string `json:"processDefinitionKey,omitempty"`
+	BpmnProcessID            string `json:"bpmnProcessId,omitempty"`
+	ProcessDefinitionVersion int32  `json:"processDefinitionVersion,omitempty"`
+	TenantID                 string `json:"tenantId,omitempty"`
+	ResourceName             string `json:"resourceName,omitempty"`
 }
 
 // SmokeTestRunItem captures one process-instance creation attempt.
@@ -517,6 +528,42 @@ type SmokeTestProcessDefinitionCleanupResult struct {
 	Errors                        []string                `json:"errors,omitempty"`
 }
 
+// SmokeTestDefinitionCleanupDisposition identifies the terminal cleanup state of one deployed definition.
+type SmokeTestDefinitionCleanupDisposition string
+
+const (
+	// SmokeTestDefinitionCleanupDispositionConfirmed means deletion was positively confirmed.
+	SmokeTestDefinitionCleanupDispositionConfirmed SmokeTestDefinitionCleanupDisposition = "confirmed"
+	// SmokeTestDefinitionCleanupDispositionSubmitted means deletion was accepted without confirmation.
+	SmokeTestDefinitionCleanupDispositionSubmitted SmokeTestDefinitionCleanupDisposition = "submitted"
+	// SmokeTestDefinitionCleanupDispositionRetained means cleanup intentionally or safely preserved the definition.
+	SmokeTestDefinitionCleanupDispositionRetained SmokeTestDefinitionCleanupDisposition = "retained"
+	// SmokeTestDefinitionCleanupDispositionFailed means identity, eligibility, submission, or confirmation failed.
+	SmokeTestDefinitionCleanupDispositionFailed SmokeTestDefinitionCleanupDisposition = "failed"
+	// SmokeTestDefinitionCleanupDispositionUnattempted means an earlier failure or cancellation prevented evaluation.
+	SmokeTestDefinitionCleanupDispositionUnattempted SmokeTestDefinitionCleanupDisposition = "unattempted"
+)
+
+// SmokeTestDefinitionCleanupItem records cleanup evidence for one deployed definition.
+type SmokeTestDefinitionCleanupItem struct {
+	Definition  SmokeTestDeployedDefinition             `json:"definition,omitempty"`
+	Eligibility SmokeTestCleanupEligibility             `json:"eligibility,omitempty"`
+	Cleanup     SmokeTestProcessDefinitionCleanupResult `json:"cleanup,omitempty"`
+	Disposition SmokeTestDefinitionCleanupDisposition   `json:"disposition,omitempty"`
+	Reason      string                                  `json:"reason,omitempty"`
+}
+
+// SmokeTestDefinitionCleanupSummary aggregates mutually exclusive definition dispositions.
+type SmokeTestDefinitionCleanupSummary struct {
+	Status      WorkflowStepStatus `json:"status,omitempty"`
+	Total       int                `json:"total"`
+	Confirmed   int                `json:"confirmed"`
+	Submitted   int                `json:"submitted"`
+	Retained    int                `json:"retained"`
+	Failed      int                `json:"failed"`
+	Unattempted int                `json:"unattempted"`
+}
+
 // SmokeTestCleanupResult captures process-instance and process-definition cleanup output.
 type SmokeTestCleanupResult struct {
 	ProcessInstanceCleanup       SmokeTestProcessInstanceCleanupResult   `json:"processInstanceCleanup,omitempty"`
@@ -527,6 +574,8 @@ type SmokeTestCleanupResult struct {
 	RetainedProcessDefinitionKey string                                  `json:"retainedProcessDefinitionKey,omitempty"`
 	RetainedBpmnProcessID        string                                  `json:"retainedBpmnProcessId,omitempty"`
 	RetainedTenantID             string                                  `json:"retainedTenantId,omitempty"`
+	DefinitionResults            []SmokeTestDefinitionCleanupItem        `json:"definitionResults,omitempty"`
+	DefinitionSummary            *SmokeTestDefinitionCleanupSummary      `json:"definitionSummary,omitempty"`
 	Errors                       []string                                `json:"errors,omitempty"`
 }
 

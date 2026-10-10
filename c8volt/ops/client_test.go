@@ -192,6 +192,11 @@ func TestClientExecuteSmokeTestMapsServiceBoundary(t *testing.T) {
 					ProcessDefinitionKey:     "pd-1",
 					ProcessDefinitionVersion: 7,
 					TenantID:                 "tenant-a",
+					ProcessDefinitions: []d.SmokeTestDeployedDefinition{
+						{ProcessDefinitionKey: "pd-child", BpmnProcessID: "C88_SimpleUserTask", TenantID: "tenant-a"},
+						{ProcessDefinitionKey: "pd-88", BpmnProcessID: "C88_MultipleSubProcessesParent", ProcessDefinitionVersion: 4, TenantID: "tenant-a"},
+					},
+					DefinitionScopeComplete: true,
 				},
 				Run: d.SmokeTestRunResult{
 					Status:              d.OpsWorkflowStepStatusConfirmed,
@@ -244,6 +249,18 @@ func TestClientExecuteSmokeTestMapsServiceBoundary(t *testing.T) {
 						}},
 						NoWait: true,
 					},
+					DefinitionResults: []d.SmokeTestDefinitionCleanupItem{
+						{
+							Definition:  d.SmokeTestDeployedDefinition{ProcessDefinitionKey: "pd-child", BpmnProcessID: "C89_SimpleUserTask"},
+							Disposition: d.SmokeTestDefinitionCleanupDispositionRetained,
+							Reason:      "cleanup disabled (--no-cleanup)",
+						},
+						{
+							Definition:  d.SmokeTestDeployedDefinition{ProcessDefinitionKey: "pd-1", BpmnProcessID: "C89_MultipleSubProcessesParent"},
+							Disposition: d.SmokeTestDefinitionCleanupDispositionSubmitted,
+						},
+					},
+					DefinitionSummary: &d.SmokeTestDefinitionCleanupSummary{Status: d.OpsWorkflowStepStatusSkipped, Total: 2, Submitted: 1, Retained: 1},
 				},
 				Report: d.SmokeTestAuditReport{
 					SchemaVersion:    "ops.smoke-test.v1",
@@ -295,6 +312,9 @@ func TestClientExecuteSmokeTestMapsServiceBoundary(t *testing.T) {
 	require.Equal(t, "pd-1", got.Cleanup.RetainedProcessDefinitionKey)
 	require.Equal(t, "C89_MultipleSubProcessesParent", got.Cleanup.RetainedBpmnProcessID)
 	require.Equal(t, "tenant-a", got.Cleanup.RetainedTenantID)
+	require.Equal(t, SmokeTestDefinitionCleanupDispositionRetained, got.Cleanup.DefinitionResults[0].Disposition)
+	require.Equal(t, "cleanup disabled (--no-cleanup)", got.Cleanup.DefinitionResults[0].Reason)
+	require.Equal(t, &SmokeTestDefinitionCleanupSummary{Status: WorkflowStepStatusSkipped, Total: 2, Submitted: 1, Retained: 1}, got.Cleanup.DefinitionSummary)
 	require.Equal(t, "profile-a", got.Report.ProfileIdentity)
 	require.True(t, got.Report.NoCleanup)
 }
@@ -696,6 +716,7 @@ func TestClientAnalyseSlowProcessInstancesCopiesKeysAndMapsErrors(t *testing.T) 
 	require.Equal(t, SlowProcessAnalysisTimelineEntryKindElement, got.Items[0].Timeline[0].Kind)
 }
 
+// TestClientExecuteSmokeTestMapsDeploymentResult verifies deployment collections cross the facade unchanged.
 func TestClientExecuteSmokeTestMapsDeploymentResult(t *testing.T) {
 	t.Parallel()
 
@@ -710,6 +731,11 @@ func TestClientExecuteSmokeTestMapsDeploymentResult(t *testing.T) {
 					ProcessDefinitionKey:     "pd-88",
 					ProcessDefinitionVersion: 4,
 					TenantID:                 "tenant-a",
+					ProcessDefinitions: []d.SmokeTestDeployedDefinition{
+						{ProcessDefinitionKey: "pd-child", BpmnProcessID: "C88_SimpleUserTask", TenantID: "tenant-a"},
+						{ProcessDefinitionKey: "pd-88", BpmnProcessID: "C88_MultipleSubProcessesParent", ProcessDefinitionVersion: 4, TenantID: "tenant-a"},
+					},
+					DefinitionScopeComplete: true,
 				},
 				Outcome: d.SmokeTestOutcomePassedCleanupSkipped,
 			}, nil
@@ -728,6 +754,11 @@ func TestClientExecuteSmokeTestMapsDeploymentResult(t *testing.T) {
 	require.Equal(t, "pd-88", got.Deployment.ProcessDefinitionKey)
 	require.Equal(t, int32(4), got.Deployment.ProcessDefinitionVersion)
 	require.Equal(t, "tenant-a", got.Deployment.TenantID)
+	require.True(t, got.Deployment.DefinitionScopeComplete)
+	require.Equal(t, []SmokeTestDeployedDefinition{
+		{ProcessDefinitionKey: "pd-child", BpmnProcessID: "C88_SimpleUserTask", TenantID: "tenant-a"},
+		{ProcessDefinitionKey: "pd-88", BpmnProcessID: "C88_MultipleSubProcessesParent", ProcessDefinitionVersion: 4, TenantID: "tenant-a"},
+	}, got.Deployment.ProcessDefinitions)
 }
 
 func TestClientExecuteRetentionPolicyMapsServiceBoundary(t *testing.T) {

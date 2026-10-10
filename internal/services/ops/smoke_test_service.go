@@ -55,6 +55,7 @@ func (s *Service) ExecuteSmokeTest(ctx context.Context, request d.SmokeTestReque
 	return s.executeSmokeTestDeployment(ctx, result, opts...)
 }
 
+// executeSmokeTestDeployment runs the mutating workflow while retaining all returned deployment evidence.
 func (s *Service) executeSmokeTestDeployment(ctx context.Context, result d.SmokeTestResult, opts ...services.CallOption) (d.SmokeTestResult, error) {
 	version := s.version
 	if version == "" {
@@ -155,6 +156,16 @@ func (s *Service) executeSmokeTestDeployment(ctx context.Context, result d.Smoke
 	reportSmokeTestFrozenProgress(result.Request.Progress, "deploying smoke-test fixture", "deployment(s)", 1, 1)
 	reportSmokeTestCompletion(result.Request.Progress, "deploying smoke-test fixture", "deployment(s)", 1, smokeTestDeploymentIdentity(result.Deployment), d.OpsCompletionDispositionConfirmed, "")
 	smokeTestProgressf(s.log, result.Request, "deploy: confirmed process definition %s", smokeTestDeploymentIdentity(result.Deployment))
+	if result.Deployment.ProcessDefinitionKey == "" {
+		err := fmt.Errorf("%w: %s", d.ErrValidation, strings.Join(result.Deployment.Errors, "; "))
+		result.Deployment.Status = d.OpsWorkflowStepStatusFailed
+		result.Run.Status = d.OpsWorkflowStepStatusSkipped
+		result.Walk.Status = d.OpsWorkflowStepStatusSkipped
+		result.Cleanup.ProcessInstanceCleanup.Status = d.OpsWorkflowStepStatusSkipped
+		result.Cleanup.ProcessDefinitionEligibility.Status = d.OpsWorkflowStepStatusSkipped
+		result.Cleanup.ProcessDefinitionCleanup.Status = d.OpsWorkflowStepStatusSkipped
+		return finishSmokeTestResult(result, d.SmokeTestOutcomePartiallyFailed, err)
+	}
 	if s.piAPI == nil {
 		err := fmt.Errorf("%w: smoke-test run requires process-instance service", d.ErrValidation)
 		result.Plan.PlannedSteps = smokeTestPlannedStepsWithStatuses(result.Request, connectivityStatus, connectivityMessage, nil, d.OpsWorkflowStepStatusConfirmed, result.Deployment.Status, d.OpsWorkflowStepStatusSkipped, d.OpsWorkflowStepStatusSkipped, d.OpsWorkflowStepStatusSkipped)
@@ -201,6 +212,17 @@ func (s *Service) executeSmokeTestDeployment(ctx context.Context, result d.Smoke
 	result.Plan.PlannedSteps = smokeTestPlannedStepsWithStatuses(result.Request, connectivityStatus, connectivityMessage, nil, d.OpsWorkflowStepStatusConfirmed, result.Deployment.Status, result.Run.Status, result.Walk.Status, smokeTestCleanupStepStatus(result.Cleanup))
 	if err != nil {
 		return finishSmokeTestResult(result, d.SmokeTestOutcomePartiallyFailed, err)
+	}
+	if result.Cleanup.DefinitionSummary != nil {
+		switch result.Cleanup.DefinitionSummary.Status {
+		case d.OpsWorkflowStepStatusSkipped:
+			return finishSmokeTestResult(result, d.SmokeTestOutcomePassedCleanupSkipped, nil)
+		case d.OpsWorkflowStepStatusFailed, d.OpsWorkflowStepStatusBlocked:
+			err := fmt.Errorf("smoke-test definition cleanup did not complete")
+			return finishSmokeTestResult(result, d.SmokeTestOutcomePartiallyFailed, err)
+		default:
+			return finishSmokeTestResult(result, d.SmokeTestOutcomePassed, nil)
+		}
 	}
 	if result.Request.NoCleanup || result.Cleanup.ProcessDefinitionCleanup.Status == d.OpsWorkflowStepStatusSkipped {
 		return finishSmokeTestResult(result, d.SmokeTestOutcomePassedCleanupSkipped, nil)
@@ -421,58 +443,6 @@ func smokeTestNestedOptions(opts ...services.CallOption) []services.CallOption {
 	return out
 }
 
-func (s *Service) cleanupSmokeTestResources(ctx context.Context, result d.SmokeTestResult, opts ...services.CallOption) (d.SmokeTestCleanupResult, error) {
-	cleanup := d.SmokeTestCleanupResult{NoCleanup: result.Request.NoCleanup}
-	if result.Request.NoCleanup {
-		cleanup.ProcessInstanceCleanup.Status = d.OpsWorkflowStepStatusSkipped
-		cleanup.ProcessDefinitionEligibility.Status = d.OpsWorkflowStepStatusSkipped
-		cleanup.ProcessDefinitionCleanup.Status = d.OpsWorkflowStepStatusSkipped
-		cleanup.RetainedProcessInstanceKeys = append(typex.Keys(nil), result.Run.ProcessInstanceKeys...)
-		cleanup.RetainedProcessDefinitionKey = result.Deployment.ProcessDefinitionKey
-		cleanup.RetainedBpmnProcessID = result.Deployment.BpmnProcessID
-		cleanup.RetainedTenantID = result.Deployment.TenantID
-		return cleanup, nil
-	}
-	piCleanup, cleanupScope, err := smokeTestCleanupProcessInstances(ctx, s.piAPI, s.log, result.Run.ProcessInstanceKeys, result.Request.Workers, opts...)
-	cleanup.ProcessInstanceCleanup = piCleanup
-	if err != nil {
-		cleanup.ProcessDefinitionEligibility.Status = d.OpsWorkflowStepStatusSkipped
-		cleanup.ProcessDefinitionCleanup.Status = d.OpsWorkflowStepStatusSkipped
-		cleanup.Errors = []string{err.Error()}
-		return cleanup, fmt.Errorf("cleanup smoke-test process instances: %w", err)
-	}
-	if result.Deployment.ProcessDefinitionKey != "" && (s.pdAPI == nil || s.resourceAPI == nil) {
-		err := fmt.Errorf("%w: smoke-test process-definition cleanup requires process-definition and resource services", d.ErrValidation)
-		cleanup.ProcessDefinitionEligibility.Status = d.OpsWorkflowStepStatusFailed
-		cleanup.ProcessDefinitionEligibility.Errors = []string{err.Error()}
-		cleanup.ProcessDefinitionCleanup.Status = d.OpsWorkflowStepStatusSkipped
-		cleanup.Errors = []string{err.Error()}
-		return cleanup, err
-	}
-
-	eligibility, err := smokeTestProcessDefinitionCleanupEligibility(ctx, s.piAPI, result.Deployment, cleanupScope, opts...)
-	cleanup.ProcessDefinitionEligibility = eligibility
-	if err != nil {
-		cleanup.ProcessDefinitionCleanup.Status = d.OpsWorkflowStepStatusSkipped
-		cleanup.Errors = []string{err.Error()}
-		return cleanup, err
-	}
-	if !eligibility.Eligible {
-		cleanup.ProcessDefinitionCleanup.Status = d.OpsWorkflowStepStatusSkipped
-		cleanup.RetainedProcessDefinitionKey = result.Deployment.ProcessDefinitionKey
-		cleanup.RetainedBpmnProcessID = result.Deployment.BpmnProcessID
-		cleanup.RetainedTenantID = result.Deployment.TenantID
-		return cleanup, nil
-	}
-	pdCleanup, err := smokeTestCleanupProcessDefinition(ctx, s.resourceAPI, s.pdAPI, s.piAPI, s.log, result.Deployment.ProcessDefinitionKey, result.Request.Workers, opts...)
-	cleanup.ProcessDefinitionCleanup = pdCleanup
-	if err != nil {
-		cleanup.Errors = []string{err.Error()}
-		return cleanup, fmt.Errorf("cleanup smoke-test process definition: %w", err)
-	}
-	return cleanup, nil
-}
-
 func smokeTestCleanupProcessInstances(ctx context.Context, api pisvc.API, log *slog.Logger, keys typex.Keys, wantedWorkers int, opts ...services.CallOption) (d.SmokeTestProcessInstanceCleanupResult, typex.Keys, error) {
 	out := d.SmokeTestProcessInstanceCleanupResult{Status: d.OpsWorkflowStepStatusSkipped, NoWait: services.ApplyCallOptions(opts).NoWait}
 	if len(keys) == 0 {
@@ -537,6 +507,7 @@ func smokeTestCleanupBlockers(items []d.ProcessInstance) []string {
 	return out
 }
 
+// smokeTestCleanupProcessDefinition preserves accepted-response evidence for one exact deployed key.
 func smokeTestCleanupProcessDefinition(ctx context.Context, resourceAPI pdsvc.ResourceDeleteAPI, pdAPI pdsvc.API, piAPI pisvc.API, log *slog.Logger, key string, wantedWorkers int, opts ...services.CallOption) (d.SmokeTestProcessDefinitionCleanupResult, error) {
 	out := d.SmokeTestProcessDefinitionCleanupResult{Status: d.OpsWorkflowStepStatusSkipped, NoWait: services.ApplyCallOptions(opts).NoWait}
 	if key == "" {
@@ -544,7 +515,7 @@ func smokeTestCleanupProcessDefinition(ctx context.Context, resourceAPI pdsvc.Re
 	}
 	deleteOpts := smokeTestMirrorCompletionOptions(opts, "delete process definitions", "cleaning up smoke-test process definition", "process definition(s)")
 	responses, err := pdsvc.DeleteProcessDefinitions(ctx, resourceAPI, pdAPI, piAPI, log, typex.Keys{key}, wantedWorkers, deleteOpts...)
-	out.Submitted = len(responses) > 0
+	out.Submitted = anyResourceDeleteResponseAccepted(responses)
 	out.SubmittedProcessDefinitionKey = key
 	out.Items = append([]d.ResourceDeleteResponse(nil), responses...)
 	out.Status = smokeTestProcessDefinitionCleanupStatus(responses, out.NoWait, err)
@@ -554,6 +525,16 @@ func smokeTestCleanupProcessDefinition(ctx context.Context, resourceAPI pdsvc.Re
 		return out, err
 	}
 	return out, nil
+}
+
+// anyResourceDeleteResponseAccepted distinguishes an accepted mutation from an empty or rejected response.
+func anyResourceDeleteResponseAccepted(items []d.ResourceDeleteResponse) bool {
+	for _, item := range items {
+		if item.Ok {
+			return true
+		}
+	}
+	return false
 }
 
 func smokeTestProcessDefinitionCleanupStatus(items []d.ResourceDeleteResponse, noWait bool, err error) d.OpsWorkflowStepStatus {
@@ -566,7 +547,14 @@ func smokeTestProcessDefinitionCleanupStatus(items []d.ResourceDeleteResponse, n
 	return d.OpsWorkflowStepStatusConfirmed
 }
 
+// smokeTestCleanupStepStatus prefers the authoritative definition aggregate for newly executed workflows.
 func smokeTestCleanupStepStatus(cleanup d.SmokeTestCleanupResult) d.OpsWorkflowStepStatus {
+	if cleanup.DefinitionSummary != nil {
+		if cleanup.ProcessInstanceCleanup.Status == d.OpsWorkflowStepStatusFailed {
+			return d.OpsWorkflowStepStatusFailed
+		}
+		return cleanup.DefinitionSummary.Status
+	}
 	for _, status := range []d.OpsWorkflowStepStatus{
 		cleanup.ProcessInstanceCleanup.Status,
 		cleanup.ProcessDefinitionEligibility.Status,
@@ -719,30 +707,88 @@ func smokeTestDeploymentUnits(fixture d.EmbeddedSmokeTestFixture) ([]d.Deploymen
 	return units, nil
 }
 
+// smokeTestDeploymentResult retains distinct-key evidence and selects the runnable fixture by exact BPMN ID.
 func smokeTestDeploymentResult(fixture d.EmbeddedSmokeTestFixture, deployment d.Deployment, status d.OpsWorkflowStepStatus) d.SmokeTestDeploymentResult {
 	out := d.SmokeTestDeploymentResult{
-		Status:        status,
-		FixtureFile:   fixture.File,
-		BpmnProcessID: fixture.BpmnProcessID,
-		TenantID:      deployment.TenantId,
+		Status:                  status,
+		FixtureFile:             fixture.File,
+		BpmnProcessID:           fixture.BpmnProcessID,
+		TenantID:                deployment.TenantId,
+		DefinitionScopeComplete: true,
 	}
+	seen := make(map[string]int, len(deployment.Units))
 	for _, unit := range deployment.Units {
 		pd := unit.ProcessDefinition
-		if pd.ProcessDefinitionId != "" && pd.ProcessDefinitionId != fixture.BpmnProcessID {
-			continue
+		definition := d.SmokeTestDeployedDefinition{
+			ProcessDefinitionKey:     pd.ProcessDefinitionKey,
+			BpmnProcessID:            pd.ProcessDefinitionId,
+			ProcessDefinitionVersion: pd.ProcessDefinitionVersion,
+			TenantID:                 pd.TenantId,
+			ResourceName:             pd.ResourceName,
 		}
-		if pd.ProcessDefinitionId != "" {
+		if definition.ProcessDefinitionKey == "" {
+			out.ProcessDefinitions = append(out.ProcessDefinitions, definition)
+			out.Errors = append(out.Errors, fmt.Sprintf("deployed definition %q is missing a process-definition key", definition.BpmnProcessID))
+			out.DefinitionScopeComplete = false
+		} else if index, ok := seen[definition.ProcessDefinitionKey]; ok {
+			if smokeTestDefinitionIdentityConflicts(out.ProcessDefinitions[index], definition) {
+				out.Errors = append(out.Errors, fmt.Sprintf("conflicting deployment identity evidence for process-definition key %s", definition.ProcessDefinitionKey))
+				out.DefinitionScopeComplete = false
+			}
+		} else {
+			seen[definition.ProcessDefinitionKey] = len(out.ProcessDefinitions)
+			out.ProcessDefinitions = append(out.ProcessDefinitions, definition)
+		}
+		if pd.ProcessDefinitionId == fixture.BpmnProcessID {
 			out.BpmnProcessID = pd.ProcessDefinitionId
+			out.ProcessDefinitionKey = pd.ProcessDefinitionKey
+			out.ProcessDefinitionVersion = pd.ProcessDefinitionVersion
+			if pd.TenantId != "" {
+				out.TenantID = pd.TenantId
+			}
 		}
-		out.ProcessDefinitionKey = pd.ProcessDefinitionKey
-		out.ProcessDefinitionVersion = pd.ProcessDefinitionVersion
-		if pd.TenantId != "" {
-			out.TenantID = pd.TenantId
+	}
+	for _, expected := range smokeTestExpectedDefinitionIDs(fixture) {
+		if !smokeTestDeploymentContainsBPMNID(out.ProcessDefinitions, expected) {
+			out.Errors = append(out.Errors, fmt.Sprintf("deployment response is missing expected fixture definition %s", expected))
+			out.DefinitionScopeComplete = false
 		}
-		break
+	}
+	if out.ProcessDefinitionKey == "" {
+		out.Errors = append(out.Errors, fmt.Sprintf("deployment response does not contain a usable main fixture definition %s", fixture.BpmnProcessID))
+		out.DefinitionScopeComplete = false
 	}
 	out.TenantEvidence = opsTenantEvidenceFromDeployment(out)
 	return out
+}
+
+// smokeTestDefinitionIdentityConflicts rejects contradictory nonempty evidence for a duplicate exact key.
+func smokeTestDefinitionIdentityConflicts(a d.SmokeTestDeployedDefinition, b d.SmokeTestDeployedDefinition) bool {
+	return smokeTestNonemptyIdentityConflict(a.BpmnProcessID, b.BpmnProcessID) ||
+		smokeTestNonemptyIdentityConflict(a.TenantID, b.TenantID) ||
+		smokeTestNonemptyIdentityConflict(a.ResourceName, b.ResourceName) ||
+		(a.ProcessDefinitionVersion != 0 && b.ProcessDefinitionVersion != 0 && a.ProcessDefinitionVersion != b.ProcessDefinitionVersion)
+}
+
+// smokeTestNonemptyIdentityConflict reports a conflict without treating missing evidence as fabricated data.
+func smokeTestNonemptyIdentityConflict(a string, b string) bool {
+	return a != "" && b != "" && a != b
+}
+
+// smokeTestExpectedDefinitionIDs returns the exact fixture inventory used for deployment validation.
+func smokeTestExpectedDefinitionIDs(fixture d.EmbeddedSmokeTestFixture) []string {
+	prefix := strings.TrimSuffix(fixture.BpmnProcessID, "MultipleSubProcessesParent")
+	return []string{prefix + "SimpleUserTask", prefix + "SimpleParent", fixture.BpmnProcessID}
+}
+
+// smokeTestDeploymentContainsBPMNID checks fixture representation without inventing mutation keys.
+func smokeTestDeploymentContainsBPMNID(definitions []d.SmokeTestDeployedDefinition, expected string) bool {
+	for _, definition := range definitions {
+		if definition.BpmnProcessID == expected {
+			return true
+		}
+	}
+	return false
 }
 
 func smokeTestPlannedSteps(request d.SmokeTestRequest, connectivityStatus d.OpsWorkflowStepStatus, connectivityMessage string, connectivityErrors []string) []d.WorkflowStepResult {
