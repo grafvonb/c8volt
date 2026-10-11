@@ -49,7 +49,7 @@
 
 **Independent test**: Preview a changed value plus an addition for one PI through normal confirmation and dry-run; repeat with multiple PIs and verbose output. Each detail identifies the correct selected root, while ordinary bulk summaries and machine results remain unchanged.
 
-- [ ] T002 [US2] Annotate PI additions/changes in `cmd/cmd_views_processinstance_update.go`; extend `cmd/update_processinstance_test.go` and add focused real-terminal coverage in `cmd/update_processinstance_terminal_test.go`; update `cmd/update_processinstance.go` and `README.md`, regenerate `docs/cli/c8volt_update_process-instance.md` and `docs/index.md`, and pass formatting and targeted validation; schedule after T001 to avoid shared documentation and command-test churn.
+- [x] T002 [US2] Annotate PI additions/changes in `cmd/cmd_views_processinstance_update.go`; extend `cmd/update_processinstance_test.go` and add focused real-terminal coverage in `cmd/update_processinstance_terminal_test.go`; update `cmd/update_processinstance.go` and `README.md`, regenerate `docs/cli/c8volt_update_process-instance.md` and `docs/index.md`, and pass formatting and targeted validation; schedule after T001 to avoid shared documentation and command-test churn.
 
 **Implementation and acceptance**:
 

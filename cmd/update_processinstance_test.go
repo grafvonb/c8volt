@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -499,6 +500,7 @@ func TestUpdateProcessInstanceVariablePlan_ClassifiesRequestedAndUntouchedVariab
 	}, plan.Untouched)
 }
 
+// TestUpdateProcessInstanceVariableDryRun_HumanOutputUsesCompactPlanSyntax verifies planned writes name their selected root without changing other detail syntax.
 func TestUpdateProcessInstanceVariableDryRun_HumanOutputUsesCompactPlanSyntax(t *testing.T) {
 	prevVerbose := flagVerbose
 	flagVerbose = false
@@ -521,11 +523,143 @@ func TestUpdateProcessInstanceVariableDryRun_HumanOutputUsesCompactPlanSyntax(t 
 
 	output := buf.String()
 	require.Contains(t, output, "dry run: update process-instance variables: 1 process instance(s), 1 change(s), 1 addition(s), 0 unchanged, 2 untouched; no changes applied")
-	require.Contains(t, output, `2251799813687231: ~ isActive: true -> false; + message: "hello"; = businessId: 1334283, canRun: true`)
+	require.Contains(t, output, `2251799813687231: ~ isActive (pi:2251799813687231): true -> false; + message (pi:2251799813687231): "hello"; = businessId: 1334283, canRun: true`)
 	require.NotContains(t, output, "selected process instances")
 	require.NotContains(t, output, "variables to add")
 	require.NotContains(t, output, "variables to change")
 	require.NotContains(t, output, "\n\n")
+}
+
+// TestUpdateProcessInstanceVariableDryRun_VerboseBulkLabelsEachRoot verifies
+// equal variable names retain the destination of each selected process instance.
+func TestUpdateProcessInstanceVariableDryRun_VerboseBulkLabelsEachRoot(t *testing.T) {
+	prevVerbose := flagVerbose
+	flagVerbose = false
+	t.Cleanup(func() { flagVerbose = prevVerbose })
+
+	cmd := &cobra.Command{Use: "process-instance"}
+	buf := &bytes.Buffer{}
+	cmd.SetOut(buf)
+	preview := newProcessInstanceVariableUpdatePreview(types.Keys{"101", "202"}, []processInstanceVariableUpdatePlan{
+		{
+			ProcessInstanceKey: "101",
+			Changes:            []processInstanceVariablePlannedChange{{Name: "approved", Before: false, After: true}},
+		},
+		{
+			ProcessInstanceKey: "202",
+			Changes:            []processInstanceVariablePlannedChange{{Name: "approved", Before: false, After: true}},
+		},
+	})
+
+	require.NoError(t, renderUpdateProcessInstanceVariablePreview(cmd, preview))
+	require.Contains(t, buf.String(), "2 process instance(s), 2 change(s)")
+	require.NotContains(t, buf.String(), "~ approved")
+
+	buf.Reset()
+	flagVerbose = true
+	require.NoError(t, renderUpdateProcessInstanceVariablePreview(cmd, preview))
+	output := buf.String()
+	require.Contains(t, output, "101: ~ approved (pi:101): false -> true")
+	require.Contains(t, output, "202: ~ approved (pi:202): false -> true")
+}
+
+// TestUpdateProcessInstanceCommand_DryRunDestinationsAddNoRequests proves
+// verbose root annotations use the two existing planning reads and no mutation.
+func TestUpdateProcessInstanceCommand_DryRunDestinationsAddNoRequests(t *testing.T) {
+	var requests []string
+	searchCalls := 0
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests = append(requests, r.Method+" "+r.URL.Path)
+		require.Equal(t, http.MethodPost, r.Method)
+		require.Equal(t, "/v2/variables/search", r.URL.Path)
+		searchCalls++
+		key := "101"
+		if searchCalls == 2 {
+			key = "202"
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(variableSearchResponse(fmt.Sprintf(`{"name":"approved","value":"false","variableKey":"9%s","processInstanceKey":%q,"scopeKey":%q,"tenantId":"tenant-a"}`, key, key, key))))
+	}))
+	t.Cleanup(srv.Close)
+
+	stdout, stderr := executeRootForProcessInstanceWithSeparateOutputs(t,
+		"--config", writeTestConfigForVersion(t, srv.URL, "8.10"),
+		"--verbose",
+		"update", "pi",
+		"--key", "101",
+		"--key", "202",
+		"--vars", `{"approved":true}`,
+		"--dry-run",
+	)
+
+	require.Empty(t, stdout)
+	require.Contains(t, stderr, "101: ~ approved (pi:101): false -> true")
+	require.Contains(t, stderr, "202: ~ approved (pi:202): false -> true")
+	require.Equal(t, []string{"POST /v2/variables/search", "POST /v2/variables/search"}, requests)
+}
+
+// TestUpdateProcessInstanceCommand_OutputModesPreserveContracts verifies
+// human annotations do not alter JSON, keys-only, quiet, or no-op output.
+func TestUpdateProcessInstanceCommand_OutputModesPreserveContracts(t *testing.T) {
+	tests := []struct {
+		name         string
+		initialValue bool
+		args         []string
+		wantStdout   string
+		jsonMode     bool
+	}{
+		{
+			name:       "dry run keys retains selected key",
+			args:       []string{"--keys-only", "update", "pi", "--key", "101", "--vars", `{"approved":true}`, "--dry-run"},
+			wantStdout: "101\n",
+		},
+		{
+			name:     "quiet json wins over keys",
+			args:     []string{"--quiet", "--keys-only", "--json", "update", "pi", "--key", "101", "--vars", `{"approved":true}`, "--dry-run", "--no-wait"},
+			jsonMode: true,
+		},
+		{
+			name: "quiet human suppresses dry run",
+			args: []string{"--quiet", "update", "pi", "--key", "101", "--vars", `{"approved":true}`, "--dry-run"},
+		},
+		{
+			name:         "no-op keys emits zero bytes",
+			initialValue: true,
+			args:         []string{"--keys-only", "update", "pi", "--key", "101", "--vars", `{"approved":true}`},
+		},
+		{
+			name:         "no-op quiet json emits one success envelope",
+			initialValue: true,
+			args:         []string{"--quiet", "--json", "--automation", "update", "pi", "--key", "101", "--vars", `{"approved":true}`, "--no-wait"},
+			jsonMode:     true,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			server, capture := newUpdateProcessInstanceOutputServer(t, test.initialValue)
+			stdout, stderr := executeRootForProcessInstanceWithSeparateOutputs(t,
+				append([]string{"--config", writeTestConfigForVersion(t, server.URL, "8.10")}, test.args...)...,
+			)
+
+			require.Empty(t, stderr)
+			if test.jsonMode {
+				decoder := json.NewDecoder(strings.NewReader(stdout))
+				var envelope map[string]any
+				require.NoError(t, decoder.Decode(&envelope))
+				require.ErrorIs(t, decoder.Decode(&struct{}{}), io.EOF)
+				require.Equal(t, string(OutcomeSucceeded), envelope["outcome"])
+			} else {
+				require.Equal(t, test.wantStdout, stdout)
+			}
+
+			capture.mu.Lock()
+			defer capture.mu.Unlock()
+			require.Equal(t, 1, capture.variableReads)
+			require.Zero(t, capture.mutations)
+			require.Equal(t, 1, capture.totalRequests)
+		})
+	}
 }
 
 // TestUpdateProcessInstanceVariableDryRun_ExplicitKeyRendersVariableTenant
@@ -568,6 +702,8 @@ func TestUpdateProcessInstanceVariableDryRun_ExplicitKeyRendersVariableTenant(t 
 	require.NotContains(t, output, "selection scope: "+tenantAdminKeysSelectedTenant)
 }
 
+// TestUpdateProcessInstanceVariableDryRun_JSONIgnoresVerboseForStableShape
+// verifies destination labels remain human-only and the envelope ends at EOF.
 func TestUpdateProcessInstanceVariableDryRun_JSONIgnoresVerboseForStableShape(t *testing.T) {
 	prevJSON := flagViewAsJson
 	prevVerbose := flagVerbose
@@ -584,15 +720,26 @@ func TestUpdateProcessInstanceVariableDryRun_JSONIgnoresVerboseForStableShape(t 
 	cmd.SetOut(buf)
 	preview := newProcessInstanceVariableUpdatePreview(types.Keys{"2251799813687231"}, []processInstanceVariableUpdatePlan{{
 		ProcessInstanceKey: "2251799813687231",
+		Additions:          []processInstanceVariablePlannedValue{{Name: "new", Value: "value"}},
 		Changes:            []processInstanceVariablePlannedChange{{Name: "buba", Before: "was here 3", After: "was here 2"}},
 	}})
 
 	require.NoError(t, renderUpdateProcessInstanceVariablePreview(cmd, preview))
-	payload := requireDryRunEnvelopePayload(t, buf.String())
+	decoder := json.NewDecoder(strings.NewReader(buf.String()))
+	var envelope map[string]any
+	require.NoError(t, decoder.Decode(&envelope))
+	require.ErrorIs(t, decoder.Decode(&struct{}{}), io.EOF)
+	require.Equal(t, string(OutcomeSucceeded), envelope["outcome"])
+	payload := requireJSONObject(t, envelope["payload"])
 	items := requireJSONItems(t, payload["processInstances"], 1)
 	item := requireJSONObject(t, items[0])
 	require.Equal(t, "2251799813687231", item["processInstanceKey"])
+	require.Equal(t, float64(1), payload["variableAddCount"])
 	require.Equal(t, float64(1), payload["variableChangeCount"])
+	addition := requireJSONObject(t, requireJSONItems(t, item["additions"], 1)[0])
+	require.Equal(t, map[string]any{"name": "new", "value": "value"}, addition)
+	change := requireJSONObject(t, requireJSONItems(t, item["changes"], 1)[0])
+	require.Equal(t, map[string]any{"name": "buba", "before": "was here 3", "after": "was here 2"}, change)
 
 	defaultOutput := buf.String()
 	buf.Reset()

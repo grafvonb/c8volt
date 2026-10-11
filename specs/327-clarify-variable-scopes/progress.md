@@ -33,3 +33,26 @@ Started: 2026-10-11 11:17:03
 - Existing task identity supplies typed preview destinations without new backend calls; legacy plans remain executable and retain untyped inherited fallback labels.
 - Focused service/facade tests, race-enabled command tests, docs generation, and whitespace validation passed.
 ---
+---
+## Iteration 2 - 2026-10-11 11:31
+**Work Unit**: US2 Process-Instance Destination Previews
+**Tasks Completed**:
+- [x] T002: Annotate PI additions and changes, preserve output contracts, add terminal coverage, and update generated documentation
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- README.md
+- cmd/cmd_views_processinstance_update.go
+- cmd/update_processinstance.go
+- cmd/update_processinstance_test.go
+- cmd/update_processinstance_terminal_test.go
+- docs/cli/c8volt_update_process-instance.md
+- docs/index.md
+- specs/327-clarify-variable-scopes/tasks.md
+- specs/327-clarify-variable-scopes/ralph-memory.md
+- specs/327-clarify-variable-scopes/progress.md
+**Learnings**:
+- Existing PI plan keys provide complete destination labels without service changes or additional backend requests.
+- Mode-aware no-op rendering preserves one-envelope JSON results and zero-byte keys-only output while human plans remain unchanged.
+- Focused command tests, race-enabled coverage, docs generation, and whitespace validation passed.
+---
