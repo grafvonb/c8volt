@@ -35,17 +35,21 @@ func TestUpdateUserTaskTerminal(t *testing.T) {
 	}
 
 	tests := []struct {
-		name         string
-		args         []string
-		initialValue bool
-		configured   bool
-		prompt       bool
-		preview      bool
-		response     string
-		endOfInput   bool
-		wantExitCode int
-		wantMutates  int
-		wantReads    int
+		name          string
+		args          []string
+		initialValue  bool
+		configured    bool
+		prompt        bool
+		preview       bool
+		promptText    string
+		wantPreview   []string
+		absentPreview []string
+		response      string
+		endOfInput    bool
+		wantExitCode  int
+		wantMutates   int
+		wantReads     int
+		wantTaskReads int
 	}{
 		{name: "configured stderr accepts", args: []string{"update", "ut", "--key", "101", "--vars", `{"approved":true}`}, configured: true, prompt: true, preview: true, response: "yes", wantMutates: 1, wantReads: 2},
 		{name: "inherited stderr declines", args: []string{"update", "ut", "--key", "101", "--vars", `{"approved":true}`}, prompt: true, preview: true, response: "no", wantExitCode: exitcode.Error, wantReads: 1},
@@ -55,10 +59,58 @@ func TestUpdateUserTaskTerminal(t *testing.T) {
 		{name: "no-op is prompt free", args: []string{"update", "ut", "--key", "101", "--vars", `{"approved":true}`}, initialValue: true, wantReads: 1},
 		{name: "automation no-wait is prompt free", args: []string{"--automation", "update", "ut", "--key", "101", "--vars", `{"approved":true}`, "--no-wait"}, wantMutates: 1, wantReads: 1},
 		{name: "auto-confirm is prompt free", args: []string{"--auto-confirm", "update", "ut", "--key", "101", "--vars", `{"approved":true}`}, wantMutates: 1, wantReads: 2},
+		{
+			name:         "mixed destinations normal preview declines without writes",
+			args:         []string{"update", "ut", "--key", "103", "--vars", `{"approved":true,"middle":2,"local":true,"new":"value"}`},
+			prompt:       true,
+			promptText:   "You are about to update 4 requested variable value(s) on 1 user task(s).\nDo you want to proceed? [y/N]: ",
+			response:     "no",
+			wantExitCode: exitcode.Error,
+			wantReads:    1,
+			wantPreview: []string{
+				"~ approved (inherited, pi:301): false -> true",
+				"~ middle (inherited, element:203): 1 -> 2",
+				"~ local (local, element:501103): false -> true",
+				`+ new (local, element:501103): "value"`,
+			},
+		},
+		{
+			name:          "compact bulk normal preview stays summarized",
+			args:          []string{"update", "ut", "--key", "103,104", "--vars", `{"approved":true,"middle":2,"local":true,"new":"value"}`},
+			prompt:        true,
+			promptText:    "You are about to update 8 requested variable value(s) on 2 user task(s).\nDo you want to proceed? [y/N]: ",
+			response:      "no",
+			wantExitCode:  exitcode.Error,
+			wantReads:     2,
+			wantTaskReads: 2,
+			wantPreview: []string{
+				"plan: update user-task variables: 2 user task(s), 6 change(s), 2 addition(s), 0 unchanged, 0 untouched",
+				"inherited target scopes: pi:301, element:203",
+			},
+			absentPreview: []string{"103: ~ approved", "104: ~ approved"},
+		},
+		{
+			name:          "verbose bulk normal preview labels every write",
+			args:          []string{"--verbose", "update", "ut", "--key", "103,104", "--vars", `{"approved":true,"middle":2,"local":true,"new":"value"}`},
+			prompt:        true,
+			promptText:    "You are about to update 8 requested variable value(s) on 2 user task(s).\nDo you want to proceed? [y/N]: ",
+			response:      "no",
+			wantExitCode:  exitcode.Error,
+			wantReads:     2,
+			wantTaskReads: 2,
+			wantPreview: []string{
+				"103: ~ approved (inherited, pi:301): false -> true; ~ local (local, element:501103): false -> true; ~ middle (inherited, element:203): 1 -> 2; + new (local, element:501103): \"value\"",
+				"104: ~ approved (inherited, pi:301): false -> true; ~ local (local, element:501104): false -> true; ~ middle (inherited, element:203): 1 -> 2; + new (local, element:501104): \"value\"",
+			},
+		},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
+			wantTaskReads := test.wantTaskReads
+			if wantTaskReads == 0 {
+				wantTaskReads = 1
+			}
 			server, capture := newUpdateUserTaskOutputServer(t, test.initialValue, "")
 			encodedArgs, err := json.Marshal(test.args)
 			require.NoError(t, err)
@@ -69,8 +121,12 @@ func TestUpdateUserTaskTerminal(t *testing.T) {
 			}
 			exchanges := []testx.CmdTerminalExchange(nil)
 			if test.prompt {
+				promptText := test.promptText
+				if promptText == "" {
+					promptText = updateUserTaskTerminalPrompt
+				}
 				exchanges = []testx.CmdTerminalExchange{{
-					Prompt:     updateUserTaskTerminalPrompt,
+					Prompt:     promptText,
 					Response:   test.response,
 					EndOfInput: test.endOfInput,
 				}}
@@ -99,12 +155,22 @@ func TestUpdateUserTaskTerminal(t *testing.T) {
 			}
 			require.Empty(t, result.Stdout, "terminal control and human results must stay off redirected stdout")
 			if test.prompt {
-				require.Equal(t, 1, strings.Count(result.Stderr, updateUserTaskTerminalPrompt))
+				promptText := test.promptText
+				if promptText == "" {
+					promptText = updateUserTaskTerminalPrompt
+				}
+				require.Equal(t, 1, strings.Count(result.Stderr, promptText))
 			} else {
 				require.NotContains(t, result.Stderr, "Do you want to proceed?")
 			}
 			if test.preview {
 				require.Contains(t, result.Stderr, "~ approved (inherited, element:201): false -> true")
+			}
+			for _, preview := range test.wantPreview {
+				require.Contains(t, result.Stderr, preview)
+			}
+			for _, preview := range test.absentPreview {
+				require.NotContains(t, result.Stderr, preview)
 			}
 			if test.configured {
 				configuredOutput, readErr := os.ReadFile(capturePath)
@@ -115,9 +181,9 @@ func TestUpdateUserTaskTerminal(t *testing.T) {
 			capture.mu.Lock()
 			defer capture.mu.Unlock()
 			require.Equal(t, test.wantMutates, capture.mutations)
-			require.Equal(t, 1, capture.taskReads)
+			require.Equal(t, wantTaskReads, capture.taskReads)
 			require.Equal(t, test.wantReads, capture.variableReads)
-			require.Equal(t, 1+test.wantReads+test.wantMutates, capture.totalRequests)
+			require.Equal(t, wantTaskReads+test.wantReads+test.wantMutates, capture.totalRequests)
 		})
 	}
 }

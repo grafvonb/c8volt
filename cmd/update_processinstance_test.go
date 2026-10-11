@@ -564,38 +564,57 @@ func TestUpdateProcessInstanceVariableDryRun_VerboseBulkLabelsEachRoot(t *testin
 }
 
 // TestUpdateProcessInstanceCommand_DryRunDestinationsAddNoRequests proves
-// verbose root annotations use the two existing planning reads and no mutation.
+// compact and verbose bulk previews use only the two existing planning reads.
 func TestUpdateProcessInstanceCommand_DryRunDestinationsAddNoRequests(t *testing.T) {
-	var requests []string
-	searchCalls := 0
-	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		requests = append(requests, r.Method+" "+r.URL.Path)
-		require.Equal(t, http.MethodPost, r.Method)
-		require.Equal(t, "/v2/variables/search", r.URL.Path)
-		searchCalls++
-		key := "101"
-		if searchCalls == 2 {
-			key = "202"
-		}
-		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(variableSearchResponse(fmt.Sprintf(`{"name":"approved","value":"false","variableKey":"9%s","processInstanceKey":%q,"scopeKey":%q,"tenantId":"tenant-a"}`, key, key, key))))
-	}))
-	t.Cleanup(srv.Close)
+	for _, test := range []struct {
+		name    string
+		verbose bool
+	}{
+		{name: "compact"},
+		{name: "verbose", verbose: true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			var requests []string
+			searchCalls := 0
+			srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				requests = append(requests, r.Method+" "+r.URL.Path)
+				require.Equal(t, http.MethodPost, r.Method)
+				require.Equal(t, "/v2/variables/search", r.URL.Path)
+				searchCalls++
+				key := "101"
+				if searchCalls == 2 {
+					key = "202"
+				}
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = w.Write([]byte(variableSearchResponse(fmt.Sprintf(`{"name":"approved","value":"false","variableKey":"9%s","processInstanceKey":%q,"scopeKey":%q,"tenantId":"tenant-a"}`, key, key, key))))
+			}))
+			t.Cleanup(srv.Close)
 
-	stdout, stderr := executeRootForProcessInstanceWithSeparateOutputs(t,
-		"--config", writeTestConfigForVersion(t, srv.URL, "8.10"),
-		"--verbose",
-		"update", "pi",
-		"--key", "101",
-		"--key", "202",
-		"--vars", `{"approved":true}`,
-		"--dry-run",
-	)
+			args := []string{
+				"--config", writeTestConfigForVersion(t, srv.URL, "8.10"),
+				"update", "pi",
+				"--key", "101",
+				"--key", "202",
+				"--vars", `{"approved":true,"new":"value"}`,
+				"--dry-run",
+			}
+			if test.verbose {
+				args = append([]string{"--verbose"}, args...)
+			}
+			stdout, stderr := executeRootForProcessInstanceWithSeparateOutputs(t, args...)
 
-	require.Empty(t, stdout)
-	require.Contains(t, stderr, "101: ~ approved (pi:101): false -> true")
-	require.Contains(t, stderr, "202: ~ approved (pi:202): false -> true")
-	require.Equal(t, []string{"POST /v2/variables/search", "POST /v2/variables/search"}, requests)
+			require.Empty(t, stdout)
+			require.Contains(t, stderr, "dry run: update process-instance variables: 2 process instance(s), 2 change(s), 2 addition(s), 0 unchanged, 0 untouched; no changes applied")
+			if test.verbose {
+				require.Contains(t, stderr, `101: ~ approved (pi:101): false -> true; + new (pi:101): "value"`)
+				require.Contains(t, stderr, `202: ~ approved (pi:202): false -> true; + new (pi:202): "value"`)
+			} else {
+				require.NotContains(t, stderr, "101: ~ approved")
+				require.NotContains(t, stderr, "202: ~ approved")
+			}
+			require.Equal(t, []string{"POST /v2/variables/search", "POST /v2/variables/search"}, requests)
+		})
+	}
 }
 
 // TestUpdateProcessInstanceCommand_OutputModesPreserveContracts verifies

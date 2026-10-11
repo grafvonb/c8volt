@@ -35,7 +35,7 @@ const updateProcessInstanceTerminalPrompt = "You are about to update 2 requested
 type updateProcessInstanceOutputCapture struct {
 	mu            sync.Mutex
 	initialValue  bool
-	mutated       bool
+	mutatedScopes map[string]bool
 	mutations     int
 	variableReads int
 	totalRequests int
@@ -50,17 +50,20 @@ func TestUpdateProcessInstanceTerminal(t *testing.T) {
 	}
 
 	tests := []struct {
-		name         string
-		args         []string
-		initialValue bool
-		configured   bool
-		prompt       bool
-		preview      bool
-		response     string
-		endOfInput   bool
-		wantExitCode int
-		wantMutates  int
-		wantReads    int
+		name          string
+		args          []string
+		initialValue  bool
+		configured    bool
+		prompt        bool
+		preview       bool
+		promptText    string
+		wantPreview   []string
+		absentPreview []string
+		response      string
+		endOfInput    bool
+		wantExitCode  int
+		wantMutates   int
+		wantReads     int
 	}{
 		{name: "configured stderr accepts", args: []string{"update", "pi", "--key", "101", "--vars", `{"approved":true,"new":"value"}`}, configured: true, prompt: true, preview: true, response: "yes", wantMutates: 1, wantReads: 3},
 		{name: "inherited stderr declines", args: []string{"update", "pi", "--key", "101", "--vars", `{"approved":true,"new":"value"}`}, prompt: true, preview: true, response: "no", wantExitCode: exitcode.Error, wantReads: 1},
@@ -70,6 +73,32 @@ func TestUpdateProcessInstanceTerminal(t *testing.T) {
 		{name: "no-op is prompt free", args: []string{"update", "pi", "--key", "101", "--vars", `{"approved":true}`}, initialValue: true, wantReads: 1},
 		{name: "automation no-wait is prompt free", args: []string{"--automation", "update", "pi", "--key", "101", "--vars", `{"approved":true,"new":"value"}`, "--no-wait"}, wantMutates: 1, wantReads: 1},
 		{name: "auto-confirm is prompt free", args: []string{"--auto-confirm", "update", "pi", "--key", "101", "--vars", `{"approved":true,"new":"value"}`}, wantMutates: 1, wantReads: 3},
+		{
+			name:         "compact bulk normal preview stays summarized",
+			args:         []string{"update", "pi", "--key", "101", "--key", "202", "--vars", `{"approved":true,"new":"value"}`},
+			prompt:       true,
+			promptText:   "You are about to update 4 requested variable value(s) on 2 process instance(s).\nDo you want to proceed? [y/N]: ",
+			response:     "no",
+			wantExitCode: exitcode.Error,
+			wantReads:    2,
+			wantPreview: []string{
+				"plan: update process-instance variables: 2 process instance(s), 2 change(s), 2 addition(s), 0 unchanged, 0 untouched",
+			},
+			absentPreview: []string{"101: ~ approved", "202: ~ approved"},
+		},
+		{
+			name:         "verbose bulk normal preview labels both selected roots",
+			args:         []string{"--verbose", "update", "pi", "--key", "101", "--key", "202", "--vars", `{"approved":true,"new":"value"}`},
+			prompt:       true,
+			promptText:   "You are about to update 4 requested variable value(s) on 2 process instance(s).\nDo you want to proceed? [y/N]: ",
+			response:     "no",
+			wantExitCode: exitcode.Error,
+			wantReads:    2,
+			wantPreview: []string{
+				`101: ~ approved (pi:101): false -> true; + new (pi:101): "value"`,
+				`202: ~ approved (pi:202): false -> true; + new (pi:202): "value"`,
+			},
+		},
 	}
 
 	for _, test := range tests {
@@ -84,8 +113,12 @@ func TestUpdateProcessInstanceTerminal(t *testing.T) {
 			}
 			exchanges := []testx.CmdTerminalExchange(nil)
 			if test.prompt {
+				promptText := test.promptText
+				if promptText == "" {
+					promptText = updateProcessInstanceTerminalPrompt
+				}
 				exchanges = []testx.CmdTerminalExchange{{
-					Prompt:     updateProcessInstanceTerminalPrompt,
+					Prompt:     promptText,
 					Response:   test.response,
 					EndOfInput: test.endOfInput,
 				}}
@@ -114,7 +147,11 @@ func TestUpdateProcessInstanceTerminal(t *testing.T) {
 			}
 			require.Empty(t, result.Stdout, "terminal control and human results must stay off redirected stdout")
 			if test.prompt {
-				require.Equal(t, 1, strings.Count(result.Stderr, updateProcessInstanceTerminalPrompt))
+				promptText := test.promptText
+				if promptText == "" {
+					promptText = updateProcessInstanceTerminalPrompt
+				}
+				require.Equal(t, 1, strings.Count(result.Stderr, promptText))
 			} else {
 				require.NotContains(t, result.Stderr, "Do you want to proceed?")
 			}
@@ -123,6 +160,12 @@ func TestUpdateProcessInstanceTerminal(t *testing.T) {
 				if !test.initialValue {
 					require.Contains(t, result.Stderr, "+ new (pi:101): \"value\"")
 				}
+			}
+			for _, preview := range test.wantPreview {
+				require.Contains(t, result.Stderr, preview)
+			}
+			for _, preview := range test.absentPreview {
+				require.NotContains(t, result.Stderr, preview)
 			}
 			if test.configured {
 				configuredOutput, readErr := os.ReadFile(capturePath)
@@ -143,28 +186,40 @@ func TestUpdateProcessInstanceTerminal(t *testing.T) {
 // every unexpected endpoint so preview labels cannot hide added requests.
 func newUpdateProcessInstanceOutputServer(t *testing.T, initialValue bool) (*httptest.Server, *updateProcessInstanceOutputCapture) {
 	t.Helper()
-	capture := &updateProcessInstanceOutputCapture{initialValue: initialValue}
+	capture := &updateProcessInstanceOutputCapture{
+		initialValue:  initialValue,
+		mutatedScopes: make(map[string]bool),
+	}
 	server := testx.NewIPv4Server(t, http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		capture.mu.Lock()
 		capture.totalRequests++
 		capture.mu.Unlock()
 		switch {
 		case request.Method == http.MethodPost && request.URL.Path == "/v2/variables/search":
+			var body struct {
+				Filter struct {
+					ProcessInstanceKey string `json:"processInstanceKey"`
+				} `json:"filter"`
+			}
+			require.NoError(t, json.NewDecoder(request.Body).Decode(&body))
+			key := body.Filter.ProcessInstanceKey
+			require.NotEmpty(t, key)
 			capture.mu.Lock()
 			capture.variableReads++
-			value := capture.initialValue || capture.mutated
-			mutated := capture.mutated
+			mutated := capture.mutatedScopes[key]
+			value := capture.initialValue || mutated
 			capture.mu.Unlock()
 			writer.Header().Set("Content-Type", "application/json")
 			if mutated {
-				_, _ = fmt.Fprintf(writer, `{"items":[{"name":"approved","value":%q,"variableKey":"901","processInstanceKey":"101","scopeKey":"101","tenantId":"tenant-a"},{"name":"new","value":"\"value\"","variableKey":"902","processInstanceKey":"101","scopeKey":"101","tenantId":"tenant-a"}],"page":{"totalItems":2,"hasMoreTotalItems":false}}`, fmt.Sprint(value))
+				_, _ = fmt.Fprintf(writer, `{"items":[{"name":"approved","value":%q,"variableKey":%q,"processInstanceKey":%q,"scopeKey":%q,"tenantId":"tenant-a"},{"name":"new","value":"\"value\"","variableKey":%q,"processInstanceKey":%q,"scopeKey":%q,"tenantId":"tenant-a"}],"page":{"totalItems":2,"hasMoreTotalItems":false}}`, fmt.Sprint(value), "901"+key, key, key, "902"+key, key, key)
 				return
 			}
-			_, _ = fmt.Fprintf(writer, `{"items":[{"name":"approved","value":%q,"variableKey":"901","processInstanceKey":"101","scopeKey":"101","tenantId":"tenant-a"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`, fmt.Sprint(value))
-		case request.Method == http.MethodPut && request.URL.Path == "/v2/element-instances/101/variables":
+			_, _ = fmt.Fprintf(writer, `{"items":[{"name":"approved","value":%q,"variableKey":%q,"processInstanceKey":%q,"scopeKey":%q,"tenantId":"tenant-a"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`, fmt.Sprint(value), "901"+key, key, key)
+		case request.Method == http.MethodPut && strings.HasPrefix(request.URL.Path, "/v2/element-instances/") && strings.HasSuffix(request.URL.Path, "/variables"):
+			key := strings.TrimSuffix(strings.TrimPrefix(request.URL.Path, "/v2/element-instances/"), "/variables")
 			capture.mu.Lock()
 			capture.mutations++
-			capture.mutated = true
+			capture.mutatedScopes[key] = true
 			capture.mu.Unlock()
 			writer.WriteHeader(http.StatusNoContent)
 		default:

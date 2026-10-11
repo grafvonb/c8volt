@@ -56,3 +56,22 @@ Started: 2026-10-11 11:17:03
 - Mode-aware no-op rendering preserves one-envelope JSON results and zero-byte keys-only output while human plans remain unchanged.
 - Focused command tests, race-enabled coverage, docs generation, and whitespace validation passed.
 ---
+---
+## Iteration 1 - 2026-10-11 12:32
+**Work Unit**: US3 Bulk and Compatibility Acceptance
+**Tasks Completed**:
+- [x] T003: Complete command-level destination-preview regression coverage
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/update_usertask_output_test.go
+- cmd/update_usertask_terminal_test.go
+- cmd/update_processinstance_test.go
+- cmd/update_processinstance_terminal_test.go
+- specs/327-clarify-variable-scopes/tasks.md
+- specs/327-clarify-variable-scopes/ralph-memory.md
+- specs/327-clarify-variable-scopes/progress.md
+**Learnings**:
+- Shared inherited UT fixtures require one stable variable identity per owner and name to exercise deduplication through a valid frozen plan.
+- Focused and race-enabled command suites passed with exact bulk compact, verbose, terminal, request-count, and no-mutation assertions.
+---

@@ -181,6 +181,89 @@ func TestUpdateUserTaskDestinationMetadataFlowsThroughCommand(t *testing.T) {
 	require.Equal(t, 2, capture.totalRequests)
 }
 
+// TestUpdateUserTaskBulkDestinationPreviewsThroughCommand proves compact and
+// verbose dry-run previews preserve typed destination order without extra work.
+func TestUpdateUserTaskBulkDestinationPreviewsThroughCommand(t *testing.T) {
+	tests := []struct {
+		name             string
+		keys             string
+		variables        string
+		verbose          bool
+		wantSummary      string
+		wantScopes       string
+		wantDetails      []string
+		unwantedDetails  []string
+		wantTaskReads    int
+		wantVariableRead int
+	}{
+		{
+			name:             "compact mixed scopes deduplicate inherited destinations",
+			keys:             "103,104",
+			variables:        `{"approved":true,"middle":2,"local":true,"new":"value"}`,
+			wantSummary:      "INFO dry run: update user-task variables: 2 user task(s), 6 change(s), 2 addition(s), 0 unchanged, 0 untouched; no changes applied\n",
+			wantScopes:       "INFO inherited target scopes: pi:301, element:203\n",
+			unwantedDetails:  []string{"INFO 103:", "INFO 104:"},
+			wantTaskReads:    2,
+			wantVariableRead: 2,
+		},
+		{
+			name:        "verbose mixed scopes render every planned write",
+			keys:        "103,104",
+			variables:   `{"approved":true,"middle":2,"local":true,"new":"value"}`,
+			verbose:     true,
+			wantSummary: "INFO dry run: update user-task variables: 2 user task(s), 6 change(s), 2 addition(s), 0 unchanged, 0 untouched; no changes applied\n",
+			wantScopes:  "INFO inherited target scopes: pi:301, element:203\n",
+			wantDetails: []string{
+				`INFO 103: ~ approved (inherited, pi:301): false -> true; ~ local (local, element:501103): false -> true; ~ middle (inherited, element:203): 1 -> 2; + new (local, element:501103): "value"`,
+				`INFO 104: ~ approved (inherited, pi:301): false -> true; ~ local (local, element:501104): false -> true; ~ middle (inherited, element:203): 1 -> 2; + new (local, element:501104): "value"`,
+			},
+			wantTaskReads:    2,
+			wantVariableRead: 2,
+		},
+		{
+			name:             "compact local-only bulk omits inherited targets",
+			keys:             "105,106",
+			variables:        `{"local":true,"new":"value"}`,
+			wantSummary:      "INFO dry run: update user-task variables: 2 user task(s), 2 change(s), 2 addition(s), 0 unchanged, 0 untouched; no changes applied\n",
+			unwantedDetails:  []string{"inherited target scopes:", "INFO 105:", "INFO 106:"},
+			wantTaskReads:    2,
+			wantVariableRead: 2,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			server, capture := newUpdateUserTaskOutputServer(t, false, "")
+			configPath := writeTestConfigForVersion(t, server.URL, "8.10")
+			args := []string{"update", "ut", "--key", test.keys, "--vars", test.variables, "--dry-run"}
+			if test.verbose {
+				args = append([]string{"--verbose"}, args...)
+			}
+			stdout, stderr, err := runUpdateUserTaskCommand(t, configPath, "", args...)
+			require.NoError(t, err)
+			require.Empty(t, stdout)
+			normalized := normalizeUpdateUserTaskHumanOutput(stderr)
+			require.Contains(t, normalized, test.wantSummary)
+			if test.wantScopes != "" {
+				require.Contains(t, normalized, test.wantScopes)
+			}
+			for _, detail := range test.wantDetails {
+				require.Contains(t, normalized, detail)
+			}
+			for _, detail := range test.unwantedDetails {
+				require.NotContains(t, normalized, detail)
+			}
+
+			capture.mu.Lock()
+			defer capture.mu.Unlock()
+			require.Equal(t, test.wantTaskReads, capture.taskReads)
+			require.Equal(t, test.wantVariableRead, capture.variableReads)
+			require.Zero(t, capture.mutations)
+			require.Equal(t, test.wantTaskReads+test.wantVariableRead, capture.totalRequests)
+		})
+	}
+}
+
 // normalizeUpdateUserTaskHumanOutput removes logger timestamps while retaining
 // severity, wording, ordering, and stream-routing assertions.
 func normalizeUpdateUserTaskHumanOutput(output string) string {
@@ -253,8 +336,12 @@ func newUpdateUserTaskOutputServer(t *testing.T, initialValue bool, failingScope
 			value := capture.initialValue || capture.mutatedScopes[scope]
 			capture.mu.Unlock()
 			writer.Header().Set("Content-Type", "application/json")
-			if key == "103" {
-				_, _ = fmt.Fprintf(writer, `{"items":[{"name":"approved","value":"false","variableKey":"601103","processInstanceKey":"301","scopeKey":"301","tenantId":"tenant-a"},{"name":"middle","value":"1","variableKey":"602103","processInstanceKey":"301","scopeKey":"203","tenantId":"tenant-a"},{"name":"local","value":"false","variableKey":"603103","processInstanceKey":"301","scopeKey":"501103","tenantId":"tenant-a"}],"page":{"totalItems":3,"hasMoreTotalItems":false}}`)
+			if key == "103" || key == "104" {
+				_, _ = fmt.Fprintf(writer, `{"items":[{"name":"approved","value":"false","variableKey":"601301","processInstanceKey":"301","scopeKey":"301","tenantId":"tenant-a"},{"name":"middle","value":"1","variableKey":"602203","processInstanceKey":"301","scopeKey":"203","tenantId":"tenant-a"},{"name":"local","value":"false","variableKey":%q,"processInstanceKey":"301","scopeKey":%q,"tenantId":"tenant-a"}],"page":{"totalItems":3,"hasMoreTotalItems":false}}`, "603"+key, "501"+key)
+				return
+			}
+			if key == "105" || key == "106" {
+				_, _ = fmt.Fprintf(writer, `{"items":[{"name":"local","value":"false","variableKey":%q,"processInstanceKey":"301","scopeKey":%q,"tenantId":"tenant-a"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`, "603"+key, "501"+key)
 				return
 			}
 			_, _ = fmt.Fprintf(writer, `{"items":[{"name":"approved","value":%q,"variableKey":%q,"processInstanceKey":"301","scopeKey":%q,"tenantId":"tenant-a"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`, fmt.Sprint(value), "601"+key, scope)
