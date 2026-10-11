@@ -125,11 +125,14 @@
 - For a feature extending existing command patterns, more than ten tasks triggers a consolidation review, not an automatic rejection or request for approval.
 
 ## Git And Commit Rules
-- Reuse existing issue or feature branches when they already exist.
+- Never use the `codex/` prefix for new branches.
+- Name new issue-backed branches `<issue-number>-<slug>`.
+- Reuse existing issue or feature branches when they already exist; do not rename them without explicit instruction.
 - For GitHub issue-backed Spec Kit work, the GitHub issue number is authoritative for the `specs/<number>-<slug>/` prefix and feature branch label. This overrides `.specify/extensions/git/git-config.yml` `branch_numbering: sequential`; pass the issue number explicitly with `--number <issue>` or correct the generated folder and references before planning or implementation continues.
 - Commit messages must follow Conventional Commits format.
 - Add a scope in parentheses when a clear scope exists.
 - Every issue-associated commit MUST end its subject with a space followed by the bare issue number, such as `#331`. Do not wrap the issue reference in parentheses or brackets. Example: `docs(specs): refine implementation tasks #331`.
+- Before committing issue-associated work, verify the subject ends with ` #<issue-number>`.
 - Prefer small commits grouped by purpose.
 - Run the closest relevant checks before committing when the repository provides them.
 
