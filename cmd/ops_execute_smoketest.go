@@ -29,11 +29,11 @@ var opsExecuteSmokeTestCmd = &cobra.Command{
 
 The workflow validates the profile, deploys the bundled multiple-subprocess fixture for the configured Camunda version, starts instances, and walks their families.
 
-Unless --no-cleanup is set, cleanup removes created process instances. It deletes the fixture definition only when no unrelated instances use it; otherwise the definition is retained.
+Unless --no-cleanup is set, cleanup removes created process instances and each deployed fixture definition that has no unrelated instances. Definitions that fail this safety check are retained and reported individually.
 
 Creation uses the configured tenant, or the default tenant when none is configured. --all-tenants is not supported because creation requires one destination tenant.
 
-Use --dry-run to validate the plan without mutation.`,
+Use --dry-run to validate the plan without mutation. Use --json for machine-readable output; --keys-only is not supported because the workflow returns a structured audit result rather than a key stream.`,
 	Example: `  ./c8volt ops execute smoke-test --dry-run
   ./c8volt --tenant tenant-a ops execute smoke-test --dry-run
   ./c8volt ops execute smoke-test --report-file smoke-test.md
@@ -110,7 +110,7 @@ func init() {
 	fs.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers when creating, walking, or cleaning smoke-test resources (default: min(count, 2*GOMAXPROCS, 32))")
 	fs.BoolVar(&flagNoWorkerLimit, "no-worker-limit", false, "use all queued smoke-test jobs as workers when --workers is unset")
 	fs.BoolVar(&flagFailFast, "fail-fast", false, "stop scheduling smoke-test work after the first error")
-	fs.BoolVar(&flagOpsExecuteSmokeTestNoCleanup, "no-cleanup", false, "retain created process instances and the deployed process definition")
+	fs.BoolVar(&flagOpsExecuteSmokeTestNoCleanup, "no-cleanup", false, "retain created process instances and all deployed fixture process definitions")
 	fs.BoolVar(&flagDryRun, "dry-run", false, "validate the smoke-test plan without submitting mutation requests")
 	fs.BoolVar(&flagNoWait, "no-wait", false, "return after cleanup requests are accepted without deletion confirmation")
 	fs.StringVar(&flagOpsExecuteSmokeTestReportFile, "report-file", "", "write an audit report to the given path")
@@ -119,10 +119,17 @@ func init() {
 	setCommandMutation(opsExecuteSmokeTestCmd, CommandMutationStateChanging)
 	setContractSupport(opsExecuteSmokeTestCmd, ContractSupportFull)
 	setAutomationSupport(opsExecuteSmokeTestCmd, AutomationSupportFull, "supports unattended dry-run previews and implicitly confirmed smoke-test cleanup with shared machine output")
+	setOutputModes(opsExecuteSmokeTestCmd,
+		OutputModeContract{Name: RenderModeOneLine.String(), Supported: true},
+		OutputModeContract{Name: RenderModeJSON.String(), Supported: true, MachinePreferred: true},
+	)
 	setAllTenantsSupport(opsExecuteSmokeTestCmd, AllTenantsSupportRejectedConcreteDestination)
 }
 
 func validateOpsExecuteSmokeTestFlags(cmd *cobra.Command) error {
+	if flagViewKeysOnly {
+		return invalidFlagValuef("--keys-only is not supported for ops execute smoke-test")
+	}
 	if flagOpsExecuteSmokeTestCount < 1 {
 		return invalidFlagValuef("invalid value for --count: %d, expected positive integer", flagOpsExecuteSmokeTestCount)
 	}

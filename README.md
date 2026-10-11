@@ -33,6 +33,8 @@ Start repair, purge, and retention workflows with `--dry-run` to review the affe
 | `c8volt ops purge all-process-definitions` | Deletes selected process-definition versions after impact planning. | [Purge All Process Definitions](docs/ops/purge-all-process-definitions.md) |
 | `c8volt ops execute smoke-test` | Proves connectivity, deployment, runtime, traversal, and cleanup. | [Execute Smoke Test](docs/ops/execute-smoke-test.md) |
 
+Smoke-test cleanup tracks every process definition returned by the fixture deployment, including dependency definitions. Default execution removes each definition only after its exact key passes the existing unrelated-instance safety check; retained, failed, submitted, and confirmed outcomes remain distinct in verbose output and audit reports. `--no-cleanup` retains the complete deployed scope, while `--no-wait` reports accepted deletion requests without claiming confirmed removal. Use `--json` for the structured machine contract; the workflow rejects `--keys-only` because it does not return a key stream.
+
 ## c8volt in Action
 
 The fast-start recording walks through the everyday c8volt loop: verify the connection, inspect and deploy bundled BPMN, start process instances, inspect them, walk their execution tree, and clean everything up. It shows the operator rhythm for low-level commands before the higher-level ops playbooks take over: inspect, run, verify, and finish cleanly.

@@ -67,12 +67,19 @@ func renderOpsExecuteSmokeTestPlan(cmd *cobra.Command, result ops.SmokeTestResul
 	}
 }
 
+// renderOpsExecuteSmokeTestDeployment keeps default output compact and exposes the full returned scope in verbose mode.
 func renderOpsExecuteSmokeTestDeployment(cmd *cobra.Command, result ops.SmokeTestResult) {
 	if result.Deployment.Status == "" || result.Deployment.Status == ops.WorkflowStepStatusPlanned || result.Deployment.Status == ops.WorkflowStepStatusSkipped {
 		return
 	}
 	renderHumanLine(cmd, "deployment: %s", result.Deployment.Status)
 	if !flagVerbose {
+		return
+	}
+	if len(result.Deployment.ProcessDefinitions) > 0 {
+		for _, definition := range result.Deployment.ProcessDefinitions {
+			renderHumanLine(cmd, "deployed process definition: %s", smokeTestDefinitionIdentity(definition))
+		}
 		return
 	}
 	if result.Deployment.ProcessDefinitionKey != "" {
@@ -120,17 +127,24 @@ func renderOpsExecuteSmokeTestWalk(cmd *cobra.Command, result ops.SmokeTestResul
 	}
 }
 
+// renderOpsExecuteSmokeTestCleanup renders aggregate collection evidence without performing discovery.
 func renderOpsExecuteSmokeTestCleanup(cmd *cobra.Command, result ops.SmokeTestResult) {
 	if result.Request.DryRun {
 		return
 	}
 	cleanup := result.Cleanup
 	if cleanup.NoCleanup {
-		renderHumanLine(cmd, "cleanup: skipped (--no-cleanup)")
+		if cleanup.DefinitionSummary != nil {
+			renderHumanLine(cmd, "cleanup: %s (--no-cleanup); process definitions: %s", cleanup.DefinitionSummary.Status, smokeTestDefinitionDispositionSummary(*cleanup.DefinitionSummary))
+		} else {
+			renderHumanLine(cmd, "cleanup: skipped (--no-cleanup)")
+		}
 		if flagVerbose && len(cleanup.RetainedProcessInstanceKeys) > 0 {
 			renderHumanLine(cmd, "retained process instances: %s", strings.Join(cleanup.RetainedProcessInstanceKeys, ", "))
 		}
-		if flagVerbose && cleanup.RetainedProcessDefinitionKey != "" {
+		if flagVerbose && len(cleanup.DefinitionResults) > 0 {
+			renderOpsExecuteSmokeTestDefinitionResults(cmd, cleanup.DefinitionResults)
+		} else if flagVerbose && cleanup.RetainedProcessDefinitionKey != "" {
 			if cleanup.RetainedBpmnProcessID != "" {
 				renderHumanLine(cmd, "retained process definition: %s (%s)", cleanup.RetainedProcessDefinitionKey, cleanup.RetainedBpmnProcessID)
 			} else {
@@ -142,7 +156,7 @@ func renderOpsExecuteSmokeTestCleanup(cmd *cobra.Command, result ops.SmokeTestRe
 		return
 	}
 	status := smokeTestCleanupStatus(cleanup)
-	if status != "" && status != ops.WorkflowStepStatusSkipped {
+	if status != "" {
 		renderHumanLine(cmd, "cleanup: %s", smokeTestCleanupSummary(cleanup, status))
 	}
 	if !flagVerbose {
@@ -169,6 +183,9 @@ func renderOpsExecuteSmokeTestCleanup(cmd *cobra.Command, result ops.SmokeTestRe
 			renderHumanLine(cmd, "cleanup process definition: %s", cleanup.ProcessDefinitionCleanup.SubmittedProcessDefinitionKey)
 		}
 	}
+	if len(cleanup.DefinitionResults) > 0 {
+		renderOpsExecuteSmokeTestDefinitionResults(cmd, cleanup.DefinitionResults)
+	}
 }
 
 func renderOpsExecuteSmokeTestOutcome(cmd *cobra.Command, result ops.SmokeTestResult) {
@@ -192,7 +209,20 @@ func renderOpsExecuteSmokeTestOutcome(cmd *cobra.Command, result ops.SmokeTestRe
 	renderHumanLine(cmd, "outcome: %s%s", result.Outcome, elapsed)
 }
 
+// smokeTestCleanupStatus prefers the authoritative definition aggregate while retaining legacy fallback behavior.
 func smokeTestCleanupStatus(cleanup ops.SmokeTestCleanupResult) ops.WorkflowStepStatus {
+	if cleanup.DefinitionSummary != nil {
+		if cleanup.ProcessInstanceCleanup.Status == ops.WorkflowStepStatusFailed || cleanup.ProcessInstanceCleanup.Status == ops.WorkflowStepStatusBlocked {
+			return cleanup.ProcessInstanceCleanup.Status
+		}
+		if cleanup.DefinitionSummary.Status == ops.WorkflowStepStatusFailed || cleanup.DefinitionSummary.Status == ops.WorkflowStepStatusBlocked || cleanup.DefinitionSummary.Status == ops.WorkflowStepStatusSkipped {
+			return cleanup.DefinitionSummary.Status
+		}
+		if cleanup.ProcessInstanceCleanup.Status == ops.WorkflowStepStatusSubmitted || cleanup.DefinitionSummary.Status == ops.WorkflowStepStatusSubmitted {
+			return ops.WorkflowStepStatusSubmitted
+		}
+		return cleanup.DefinitionSummary.Status
+	}
 	for _, status := range []ops.WorkflowStepStatus{
 		cleanup.ProcessInstanceCleanup.Status,
 		cleanup.ProcessDefinitionEligibility.Status,
@@ -225,6 +255,7 @@ func smokeTestProcessDefinitionCleanupStatus(cleanup ops.SmokeTestCleanupResult)
 	return cleanup.ProcessDefinitionCleanup.Status
 }
 
+// smokeTestCleanupSummary describes collection-wide cleanup without claiming unconfirmed removal.
 func smokeTestCleanupSummary(cleanup ops.SmokeTestCleanupResult, status ops.WorkflowStepStatus) string {
 	resources := smokeTestCleanupResourceSummary(cleanup)
 	switch status {
@@ -236,16 +267,26 @@ func smokeTestCleanupSummary(cleanup ops.SmokeTestCleanupResult, status ops.Work
 		}
 		return "submitted " + resources
 	case ops.WorkflowStepStatusBlocked, ops.WorkflowStepStatusFailed:
+		if cleanup.DefinitionSummary != nil {
+			return fmt.Sprintf("%s (%s; process definitions: %s)", status, smokeTestProcessInstanceCountLabel(len(cleanup.ProcessInstanceCleanup.SubmittedKeys)), smokeTestDefinitionDispositionSummary(*cleanup.DefinitionSummary))
+		}
 		pdStatus := smokeTestProcessDefinitionCleanupStatus(cleanup)
 		if pdStatus != "" && pdStatus != ops.WorkflowStepStatusSkipped {
 			return fmt.Sprintf("%s (%s, process definition: %s)", status, smokeTestProcessInstanceCountLabel(len(cleanup.ProcessInstanceCleanup.SubmittedKeys)), pdStatus)
 		}
 	}
+	if cleanup.DefinitionSummary != nil {
+		return fmt.Sprintf("%s (%s; process definitions: %s)", status, smokeTestProcessInstanceCountLabel(len(cleanup.ProcessInstanceCleanup.SubmittedKeys)), smokeTestDefinitionDispositionSummary(*cleanup.DefinitionSummary))
+	}
 	return fmt.Sprintf("%s (%s)", status, resources)
 }
 
+// smokeTestCleanupResourceSummary uses collection totals when present and singular legacy evidence otherwise.
 func smokeTestCleanupResourceSummary(cleanup ops.SmokeTestCleanupResult) string {
 	pi := smokeTestProcessInstanceCountLabel(len(cleanup.ProcessInstanceCleanup.SubmittedKeys))
+	if cleanup.DefinitionSummary != nil {
+		return pi + " and " + smokeTestProcessDefinitionCountLabel(cleanup.DefinitionSummary.Total)
+	}
 	pdStatus := smokeTestProcessDefinitionCleanupStatus(cleanup)
 	switch pdStatus {
 	case ops.WorkflowStepStatusConfirmed, ops.WorkflowStepStatusSubmitted:
@@ -255,6 +296,71 @@ func smokeTestCleanupResourceSummary(cleanup ops.SmokeTestCleanupResult) string 
 	default:
 		return fmt.Sprintf("%s, fixture process definition: %s", pi, pdStatus)
 	}
+}
+
+// renderOpsExecuteSmokeTestDefinitionResults exposes deployment-wide cleanup evidence only in verbose human output.
+func renderOpsExecuteSmokeTestDefinitionResults(cmd *cobra.Command, results []ops.SmokeTestDefinitionCleanupItem) {
+	for _, item := range results {
+		line := fmt.Sprintf("process definition %s: %s", smokeTestDefinitionIdentity(item.Definition), item.Disposition)
+		if item.Reason != "" {
+			line += " - " + item.Reason
+		}
+		renderHumanLine(cmd, "%s", line)
+	}
+}
+
+// smokeTestDefinitionIdentity formats the available exact-key identity without inventing missing evidence.
+func smokeTestDefinitionIdentity(definition ops.SmokeTestDeployedDefinition) string {
+	identity := definition.ProcessDefinitionKey
+	if identity == "" {
+		identity = "unknown key"
+	}
+	var details []string
+	if definition.BpmnProcessID != "" {
+		details = append(details, definition.BpmnProcessID)
+	}
+	if definition.ProcessDefinitionVersion > 0 {
+		details = append(details, fmt.Sprintf("version %d", definition.ProcessDefinitionVersion))
+	}
+	if definition.TenantID != "" {
+		details = append(details, "tenant "+definition.TenantID)
+	}
+	if len(details) == 0 {
+		return identity
+	}
+	return fmt.Sprintf("%s (%s)", identity, strings.Join(details, ", "))
+}
+
+// smokeTestDefinitionDispositionSummary reports only nonzero mutually exclusive collection counts.
+func smokeTestDefinitionDispositionSummary(summary ops.SmokeTestDefinitionCleanupSummary) string {
+	counts := []struct {
+		value int
+		label string
+	}{
+		{summary.Confirmed, "confirmed"},
+		{summary.Submitted, "submitted"},
+		{summary.Retained, "retained"},
+		{summary.Failed, "failed"},
+		{summary.Unattempted, "unattempted"},
+	}
+	parts := make([]string, 0, len(counts))
+	for _, count := range counts {
+		if count.value > 0 {
+			parts = append(parts, fmt.Sprintf("%d %s", count.value, count.label))
+		}
+	}
+	if len(parts) == 0 {
+		return "0 accounted"
+	}
+	return strings.Join(parts, ", ")
+}
+
+// smokeTestProcessDefinitionCountLabel renders stable singular and plural resource wording.
+func smokeTestProcessDefinitionCountLabel(count int) string {
+	if count == 1 {
+		return "1 process definition"
+	}
+	return fmt.Sprintf("%d process definitions", count)
 }
 
 func smokeTestProcessInstanceCountLabel(count int) string {
@@ -270,15 +376,18 @@ func smokeTestHasHiddenKeys(result ops.SmokeTestResult) bool {
 		len(result.Cleanup.ProcessDefinitionEligibility.Blockers) > 0
 }
 
+// smokeTestHasHiddenRetainedResources detects evidence intentionally omitted from compact output.
 func smokeTestHasHiddenRetainedResources(result ops.SmokeTestResult) bool {
 	return len(result.Cleanup.RetainedProcessInstanceKeys) > 0 ||
+		len(result.Cleanup.DefinitionResults) > 0 ||
 		result.Cleanup.RetainedProcessDefinitionKey != "" ||
 		result.Cleanup.RetainedBpmnProcessID != ""
 }
 
+// smokeTestCleanupIntent describes the complete fixture deployment scope in dry-run output.
 func smokeTestCleanupIntent(cleanupRequested bool) string {
 	if cleanupRequested {
-		return "included (will remove created process instances and fixture process definition)"
+		return "included (will remove created process instances and deployed fixture process definitions)"
 	}
 	return "skipped (--no-cleanup)"
 }
@@ -369,6 +478,7 @@ func renderOpsExecuteSmokeTestJSONReport(report ops.SmokeTestAuditReport) ([]byt
 	return buf.Bytes(), nil
 }
 
+// renderOpsExecuteSmokeTestMarkdownReport writes report-owned evidence without backend lookups.
 func renderOpsExecuteSmokeTestMarkdownReport(report ops.SmokeTestAuditReport, cfg *config.Config) ([]byte, error) {
 	var out strings.Builder
 	out.WriteString("# Execute Smoke Test Audit Report\n\n")
@@ -419,6 +529,8 @@ func renderOpsExecuteSmokeTestMarkdownReport(report ops.SmokeTestAuditReport, cf
 		writeMarkdownReportField(&out, "Process Definition Version", fmt.Sprintf("%d", report.Deployment.ProcessDefinitionVersion))
 	}
 	writeMarkdownReportField(&out, "Tenant", report.Deployment.TenantID)
+	writeMarkdownReportField(&out, "Definition Scope Complete", fmt.Sprintf("%t", report.Deployment.DefinitionScopeComplete))
+	writeSmokeTestDeploymentDefinitionsTable(&out, report.Deployment.ProcessDefinitions)
 
 	out.WriteString("\n## Run\n\n")
 	writeMarkdownReportField(&out, "Status", string(report.Run.Status))
@@ -453,7 +565,73 @@ func renderOpsExecuteSmokeTestMarkdownReport(report ops.SmokeTestAuditReport, cf
 	writeMarkdownReportList(&out, "Retained Process Instance Keys", report.Cleanup.RetainedProcessInstanceKeys)
 	writeMarkdownReportField(&out, "Retained Process Definition Key", report.Cleanup.RetainedProcessDefinitionKey)
 	writeMarkdownReportField(&out, "Retained BPMN Process ID", report.Cleanup.RetainedBpmnProcessID)
+	writeSmokeTestDefinitionSummary(&out, report.Cleanup.DefinitionSummary)
+	writeSmokeTestDefinitionResultsTable(&out, report.Cleanup.DefinitionResults)
 	writeMarkdownReportList(&out, "Run Errors", report.Errors)
 
 	return []byte(out.String()), nil
+}
+
+// writeSmokeTestDeploymentDefinitionsTable records every returned deployment identity in audit order.
+func writeSmokeTestDeploymentDefinitionsTable(out *strings.Builder, definitions []ops.SmokeTestDeployedDefinition) {
+	if len(definitions) == 0 {
+		return
+	}
+	out.WriteString("\n### Deployed Process Definitions\n\n")
+	out.WriteString("| Key | BPMN Process ID | Version | Tenant | Resource |\n")
+	out.WriteString("| --- | --- | ---: | --- | --- |\n")
+	for _, definition := range definitions {
+		version := ""
+		if definition.ProcessDefinitionVersion > 0 {
+			version = fmt.Sprintf("%d", definition.ProcessDefinitionVersion)
+		}
+		out.WriteString(fmt.Sprintf("| %s | %s | %s | %s | %s |\n",
+			smokeTestMarkdownCell(definition.ProcessDefinitionKey),
+			smokeTestMarkdownCell(definition.BpmnProcessID),
+			version,
+			smokeTestMarkdownCell(definition.TenantID),
+			smokeTestMarkdownCell(definition.ResourceName),
+		))
+	}
+}
+
+// writeSmokeTestDefinitionSummary records the authoritative aggregate when collection evidence is available.
+func writeSmokeTestDefinitionSummary(out *strings.Builder, summary *ops.SmokeTestDefinitionCleanupSummary) {
+	if summary == nil {
+		return
+	}
+	out.WriteString("\n### Process Definition Cleanup Summary\n\n")
+	writeMarkdownReportField(out, "Status", string(summary.Status))
+	writeMarkdownReportField(out, "Total", fmt.Sprintf("%d", summary.Total))
+	writeMarkdownReportField(out, "Confirmed", fmt.Sprintf("%d", summary.Confirmed))
+	writeMarkdownReportField(out, "Submitted", fmt.Sprintf("%d", summary.Submitted))
+	writeMarkdownReportField(out, "Retained", fmt.Sprintf("%d", summary.Retained))
+	writeMarkdownReportField(out, "Failed", fmt.Sprintf("%d", summary.Failed))
+	writeMarkdownReportField(out, "Unattempted", fmt.Sprintf("%d", summary.Unattempted))
+}
+
+// writeSmokeTestDefinitionResultsTable records each cleanup outcome without rediscovering backend state.
+func writeSmokeTestDefinitionResultsTable(out *strings.Builder, results []ops.SmokeTestDefinitionCleanupItem) {
+	if len(results) == 0 {
+		return
+	}
+	out.WriteString("\n### Process Definition Cleanup Results\n\n")
+	out.WriteString("| Key | BPMN Process ID | Tenant | Disposition | Reason |\n")
+	out.WriteString("| --- | --- | --- | --- | --- |\n")
+	for _, item := range results {
+		out.WriteString(fmt.Sprintf("| %s | %s | %s | %s | %s |\n",
+			smokeTestMarkdownCell(item.Definition.ProcessDefinitionKey),
+			smokeTestMarkdownCell(item.Definition.BpmnProcessID),
+			smokeTestMarkdownCell(item.Definition.TenantID),
+			smokeTestMarkdownCell(string(item.Disposition)),
+			smokeTestMarkdownCell(item.Reason),
+		))
+	}
+}
+
+// smokeTestMarkdownCell keeps dynamic report evidence inside one Markdown table cell.
+func smokeTestMarkdownCell(value string) string {
+	value = strings.ReplaceAll(value, "|", "\\|")
+	value = strings.ReplaceAll(value, "\r", " ")
+	return strings.ReplaceAll(value, "\n", " ")
 }

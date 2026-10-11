@@ -135,5 +135,5 @@
 
 ## Active Speckit Plan
 <!-- SPECKIT START -->
-- Active Speckit implementation plan: `specs/331-simplify-version-support/plan.md`
+- Active Speckit implementation plan: `specs/333-fix-smoke-test-cleanup/plan.md`
 <!-- SPECKIT END -->

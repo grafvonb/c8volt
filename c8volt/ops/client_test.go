@@ -192,6 +192,11 @@ func TestClientExecuteSmokeTestMapsServiceBoundary(t *testing.T) {
 					ProcessDefinitionKey:     "pd-1",
 					ProcessDefinitionVersion: 7,
 					TenantID:                 "tenant-a",
+					ProcessDefinitions: []d.SmokeTestDeployedDefinition{
+						{ProcessDefinitionKey: "pd-child", BpmnProcessID: "C88_SimpleUserTask", TenantID: "tenant-a"},
+						{ProcessDefinitionKey: "pd-88", BpmnProcessID: "C88_MultipleSubProcessesParent", ProcessDefinitionVersion: 4, TenantID: "tenant-a"},
+					},
+					DefinitionScopeComplete: true,
 				},
 				Run: d.SmokeTestRunResult{
 					Status:              d.OpsWorkflowStepStatusConfirmed,
@@ -244,6 +249,18 @@ func TestClientExecuteSmokeTestMapsServiceBoundary(t *testing.T) {
 						}},
 						NoWait: true,
 					},
+					DefinitionResults: []d.SmokeTestDefinitionCleanupItem{
+						{
+							Definition:  d.SmokeTestDeployedDefinition{ProcessDefinitionKey: "pd-child", BpmnProcessID: "C89_SimpleUserTask"},
+							Disposition: d.SmokeTestDefinitionCleanupDispositionRetained,
+							Reason:      "cleanup disabled (--no-cleanup)",
+						},
+						{
+							Definition:  d.SmokeTestDeployedDefinition{ProcessDefinitionKey: "pd-1", BpmnProcessID: "C89_MultipleSubProcessesParent"},
+							Disposition: d.SmokeTestDefinitionCleanupDispositionSubmitted,
+						},
+					},
+					DefinitionSummary: &d.SmokeTestDefinitionCleanupSummary{Status: d.OpsWorkflowStepStatusSkipped, Total: 2, Submitted: 1, Retained: 1},
 				},
 				Report: d.SmokeTestAuditReport{
 					SchemaVersion:    "ops.smoke-test.v1",
@@ -295,6 +312,9 @@ func TestClientExecuteSmokeTestMapsServiceBoundary(t *testing.T) {
 	require.Equal(t, "pd-1", got.Cleanup.RetainedProcessDefinitionKey)
 	require.Equal(t, "C89_MultipleSubProcessesParent", got.Cleanup.RetainedBpmnProcessID)
 	require.Equal(t, "tenant-a", got.Cleanup.RetainedTenantID)
+	require.Equal(t, SmokeTestDefinitionCleanupDispositionRetained, got.Cleanup.DefinitionResults[0].Disposition)
+	require.Equal(t, "cleanup disabled (--no-cleanup)", got.Cleanup.DefinitionResults[0].Reason)
+	require.Equal(t, &SmokeTestDefinitionCleanupSummary{Status: WorkflowStepStatusSkipped, Total: 2, Submitted: 1, Retained: 1}, got.Cleanup.DefinitionSummary)
 	require.Equal(t, "profile-a", got.Report.ProfileIdentity)
 	require.True(t, got.Report.NoCleanup)
 }
@@ -696,6 +716,7 @@ func TestClientAnalyseSlowProcessInstancesCopiesKeysAndMapsErrors(t *testing.T) 
 	require.Equal(t, SlowProcessAnalysisTimelineEntryKindElement, got.Items[0].Timeline[0].Kind)
 }
 
+// TestClientExecuteSmokeTestMapsDeploymentResult verifies deployment collections cross the facade unchanged.
 func TestClientExecuteSmokeTestMapsDeploymentResult(t *testing.T) {
 	t.Parallel()
 
@@ -710,6 +731,11 @@ func TestClientExecuteSmokeTestMapsDeploymentResult(t *testing.T) {
 					ProcessDefinitionKey:     "pd-88",
 					ProcessDefinitionVersion: 4,
 					TenantID:                 "tenant-a",
+					ProcessDefinitions: []d.SmokeTestDeployedDefinition{
+						{ProcessDefinitionKey: "pd-child", BpmnProcessID: "C88_SimpleUserTask", TenantID: "tenant-a"},
+						{ProcessDefinitionKey: "pd-88", BpmnProcessID: "C88_MultipleSubProcessesParent", ProcessDefinitionVersion: 4, TenantID: "tenant-a"},
+					},
+					DefinitionScopeComplete: true,
 				},
 				Outcome: d.SmokeTestOutcomePassedCleanupSkipped,
 			}, nil
@@ -728,6 +754,50 @@ func TestClientExecuteSmokeTestMapsDeploymentResult(t *testing.T) {
 	require.Equal(t, "pd-88", got.Deployment.ProcessDefinitionKey)
 	require.Equal(t, int32(4), got.Deployment.ProcessDefinitionVersion)
 	require.Equal(t, "tenant-a", got.Deployment.TenantID)
+	require.True(t, got.Deployment.DefinitionScopeComplete)
+	require.Equal(t, []SmokeTestDeployedDefinition{
+		{ProcessDefinitionKey: "pd-child", BpmnProcessID: "C88_SimpleUserTask", TenantID: "tenant-a"},
+		{ProcessDefinitionKey: "pd-88", BpmnProcessID: "C88_MultipleSubProcessesParent", ProcessDefinitionVersion: 4, TenantID: "tenant-a"},
+	}, got.Deployment.ProcessDefinitions)
+}
+
+// TestClientExecuteSmokeTestMapsPartialCleanupEvidenceWithError verifies fault details survive facade conversion alongside the normalized error.
+func TestClientExecuteSmokeTestMapsPartialCleanupEvidenceWithError(t *testing.T) {
+	t.Parallel()
+
+	api := stubOpsService{smokeTest: func(_ context.Context, request d.SmokeTestRequest, _ ...services.CallOption) (d.SmokeTestResult, error) {
+		return d.SmokeTestResult{
+			Request: request,
+			Cleanup: d.SmokeTestCleanupResult{
+				DefinitionResults: []d.SmokeTestDefinitionCleanupItem{
+					{
+						Definition:  d.SmokeTestDeployedDefinition{ProcessDefinitionKey: "pd-child", BpmnProcessID: "C89_SimpleUserTask"},
+						Disposition: d.SmokeTestDefinitionCleanupDispositionFailed,
+						Reason:      "confirmation unavailable",
+						Cleanup: d.SmokeTestProcessDefinitionCleanupResult{
+							Status: d.OpsWorkflowStepStatusFailed, Submitted: true, Errors: []string{"confirmation unavailable"},
+						},
+					},
+					{
+						Definition:  d.SmokeTestDeployedDefinition{ProcessDefinitionKey: "pd-main", BpmnProcessID: "C89_MultipleSubProcessesParent"},
+						Disposition: d.SmokeTestDefinitionCleanupDispositionConfirmed,
+					},
+				},
+				DefinitionSummary: &d.SmokeTestDefinitionCleanupSummary{Status: d.OpsWorkflowStepStatusFailed, Total: 2, Confirmed: 1, Failed: 1},
+			},
+			Outcome: d.SmokeTestOutcomePartiallyFailed,
+		}, fmt.Errorf("%w: cleanup incomplete", d.ErrConflict)
+	}}
+
+	got, err := New(api, slog.Default()).ExecuteSmokeTest(context.Background(), SmokeTestRequest{CommandName: "ops execute smoke-test", Count: 1})
+
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "cleanup incomplete")
+	require.Equal(t, SmokeTestOutcomePartiallyFailed, got.Outcome)
+	require.Equal(t, SmokeTestDefinitionCleanupDispositionFailed, got.Cleanup.DefinitionResults[0].Disposition)
+	require.Equal(t, "confirmation unavailable", got.Cleanup.DefinitionResults[0].Reason)
+	require.True(t, got.Cleanup.DefinitionResults[0].Cleanup.Submitted)
+	require.Equal(t, &SmokeTestDefinitionCleanupSummary{Status: WorkflowStepStatusFailed, Total: 2, Confirmed: 1, Failed: 1}, got.Cleanup.DefinitionSummary)
 }
 
 func TestClientExecuteRetentionPolicyMapsServiceBoundary(t *testing.T) {

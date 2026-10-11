@@ -79,7 +79,18 @@ type SmokeTestDeploymentResult struct {
 	ProcessDefinitionVersion int32
 	TenantID                 string
 	TenantEvidence           TenantEvidence
+	ProcessDefinitions       []SmokeTestDeployedDefinition
+	DefinitionScopeComplete  bool
 	Errors                   []string
+}
+
+// SmokeTestDeployedDefinition captures the identity evidence returned for one deployed definition.
+type SmokeTestDeployedDefinition struct {
+	ProcessDefinitionKey     string
+	BpmnProcessID            string
+	ProcessDefinitionVersion int32
+	TenantID                 string
+	ResourceName             string
 }
 
 // SmokeTestRunItem captures one process-instance creation attempt.
@@ -156,6 +167,42 @@ type SmokeTestProcessDefinitionCleanupResult struct {
 	Errors                        []string
 }
 
+// SmokeTestDefinitionCleanupDisposition identifies the terminal cleanup state of one deployed definition.
+type SmokeTestDefinitionCleanupDisposition string
+
+const (
+	// SmokeTestDefinitionCleanupDispositionConfirmed means deletion was positively confirmed.
+	SmokeTestDefinitionCleanupDispositionConfirmed SmokeTestDefinitionCleanupDisposition = "confirmed"
+	// SmokeTestDefinitionCleanupDispositionSubmitted means deletion was accepted without confirmation.
+	SmokeTestDefinitionCleanupDispositionSubmitted SmokeTestDefinitionCleanupDisposition = "submitted"
+	// SmokeTestDefinitionCleanupDispositionRetained means cleanup intentionally or safely preserved the definition.
+	SmokeTestDefinitionCleanupDispositionRetained SmokeTestDefinitionCleanupDisposition = "retained"
+	// SmokeTestDefinitionCleanupDispositionFailed means identity, eligibility, submission, or confirmation failed.
+	SmokeTestDefinitionCleanupDispositionFailed SmokeTestDefinitionCleanupDisposition = "failed"
+	// SmokeTestDefinitionCleanupDispositionUnattempted means an earlier failure or cancellation prevented evaluation.
+	SmokeTestDefinitionCleanupDispositionUnattempted SmokeTestDefinitionCleanupDisposition = "unattempted"
+)
+
+// SmokeTestDefinitionCleanupItem records cleanup evidence for one deployed definition.
+type SmokeTestDefinitionCleanupItem struct {
+	Definition  SmokeTestDeployedDefinition
+	Eligibility SmokeTestCleanupEligibility
+	Cleanup     SmokeTestProcessDefinitionCleanupResult
+	Disposition SmokeTestDefinitionCleanupDisposition
+	Reason      string
+}
+
+// SmokeTestDefinitionCleanupSummary aggregates mutually exclusive definition dispositions.
+type SmokeTestDefinitionCleanupSummary struct {
+	Status      OpsWorkflowStepStatus
+	Total       int
+	Confirmed   int
+	Submitted   int
+	Retained    int
+	Failed      int
+	Unattempted int
+}
+
 // SmokeTestCleanupResult captures process-instance and process-definition cleanup output.
 type SmokeTestCleanupResult struct {
 	ProcessInstanceCleanup       SmokeTestProcessInstanceCleanupResult
@@ -166,6 +213,8 @@ type SmokeTestCleanupResult struct {
 	RetainedProcessDefinitionKey string
 	RetainedBpmnProcessID        string
 	RetainedTenantID             string
+	DefinitionResults            []SmokeTestDefinitionCleanupItem
+	DefinitionSummary            *SmokeTestDefinitionCleanupSummary
 	Errors                       []string
 }
 

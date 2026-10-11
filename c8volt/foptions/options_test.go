@@ -122,6 +122,11 @@ func TestProgressCompletionDispositionMapsFromServiceOptions(t *testing.T) {
 			want: CompletionDispositionConfirmed,
 		},
 		{
+			name: "retained work is skipped",
+			in:   d.OpsCompletionDispositionSkipped,
+			want: CompletionDispositionSkipped,
+		},
+		{
 			name: "failed work stays failed",
 			in:   d.OpsCompletionDispositionFailed,
 			want: CompletionDispositionFailed,

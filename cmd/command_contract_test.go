@@ -2361,6 +2361,7 @@ func TestCommandCapabilityForCommand_OpsExecuteRetentionPolicyContract(t *testin
 	})
 }
 
+// TestCommandCapabilityForCommand_OpsExecuteSmokeTestContract verifies discoverable smoke-test metadata stays automation-safe and deployment-wide.
 func TestCommandCapabilityForCommand_OpsExecuteSmokeTestContract(t *testing.T) {
 	root := Root()
 	resetCommandTreeFlags(root)
@@ -2379,6 +2380,7 @@ func TestCommandCapabilityForCommand_OpsExecuteSmokeTestContract(t *testing.T) {
 		Supported:        true,
 		MachinePreferred: true,
 	})
+	require.NotContains(t, capability.OutputModes, OutputModeContract{Name: "keys-only", Supported: true})
 	require.Contains(t, capability.Flags, FlagContract{
 		Name:        "count",
 		Shorthand:   "n",
@@ -2403,18 +2405,18 @@ func TestCommandCapabilityForCommand_OpsExecuteSmokeTestContract(t *testing.T) {
 		Description: "use all queued smoke-test jobs as workers when --workers is unset",
 	})
 	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "no-cleanup",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "retain created process instances and all deployed fixture process definitions",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
 		Name:        "fail-fast",
 		Type:        "bool",
 		Required:    false,
 		Repeated:    false,
 		Description: "stop scheduling smoke-test work after the first error",
-	})
-	require.Contains(t, capability.Flags, FlagContract{
-		Name:        "no-cleanup",
-		Type:        "bool",
-		Required:    false,
-		Repeated:    false,
-		Description: "retain created process instances and the deployed process definition",
 	})
 	require.Contains(t, capability.Flags, FlagContract{
 		Name:        "dry-run",
