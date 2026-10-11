@@ -102,8 +102,14 @@ func renderUpdateProcessInstanceVariablePreview(cmd *cobra.Command, preview proc
 	return nil
 }
 
-// renderUpdateProcessInstanceVariablePlan renders the pre-mutation confirmation plan.
+// renderUpdateProcessInstanceVariablePlan renders the confirmation or successful no-op plan.
 func renderUpdateProcessInstanceVariablePlan(cmd *cobra.Command, preview processInstanceVariableUpdatePreview) error {
+	if commandUsesSharedEnvelope(cmd, pickMode()) {
+		return renderSucceededResult(cmd, preview)
+	}
+	if pickMode() == RenderModeKeysOnly {
+		return nil
+	}
 	renderProcessInstanceVariableUpdatePlanHuman(cmd, preview, "plan")
 	return nil
 }
@@ -168,13 +174,15 @@ func renderUpdateProcessInstanceVariableResults(cmd *cobra.Command, results proc
 	return nil
 }
 
+// formatProcessInstanceVariableUpdatePlan labels only planned writes with their
+// selected root while preserving unchanged and untouched value syntax.
 func formatProcessInstanceVariableUpdatePlan(plan processInstanceVariableUpdatePlan) string {
 	parts := make([]string, 0, len(plan.Additions)+len(plan.Changes)+len(plan.UnchangedRequested)+1)
 	for _, item := range plan.Changes {
-		parts = append(parts, fmt.Sprintf("~ %s: %s -> %s", item.Name, formatProcessInstanceVariablePlanValue(item.Before), formatProcessInstanceVariablePlanValue(item.After)))
+		parts = append(parts, fmt.Sprintf("~ %s (pi:%s): %s -> %s", item.Name, plan.ProcessInstanceKey, formatProcessInstanceVariablePlanValue(item.Before), formatProcessInstanceVariablePlanValue(item.After)))
 	}
 	for _, item := range plan.Additions {
-		parts = append(parts, fmt.Sprintf("+ %s: %s", item.Name, formatProcessInstanceVariablePlanValue(item.Value)))
+		parts = append(parts, fmt.Sprintf("+ %s (pi:%s): %s", item.Name, plan.ProcessInstanceKey, formatProcessInstanceVariablePlanValue(item.Value)))
 	}
 	for _, item := range plan.UnchangedRequested {
 		parts = append(parts, fmt.Sprintf("~ %s: %s (unchanged)", item.Name, formatProcessInstanceVariablePlanValue(item.Value)))

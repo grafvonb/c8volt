@@ -119,7 +119,7 @@ func inheritedUserTaskVariableScopes(plan task.UserTaskVariableUpdatePlan) []str
 				continue
 			}
 			seen[change.ScopeKey] = struct{}{}
-			scopes = append(scopes, change.ScopeKey)
+			scopes = append(scopes, formatInheritedUserTaskVariableDestination(item.ProcessInstanceKey, change.ScopeKey))
 		}
 	}
 	return scopes
@@ -226,10 +226,10 @@ func writeUserTaskVariableUpdateKey(cmd *cobra.Command, key string) error {
 func formatUserTaskVariablePlan(plan task.UserTaskVariablePlan) string {
 	parts := make([]string, 0, len(plan.Additions)+len(plan.Changes)+len(plan.UnchangedRequested)+1)
 	for _, item := range plan.Changes {
-		parts = append(parts, fmt.Sprintf("~ %s%s: %s -> %s", item.Name, formatUserTaskVariableScope(item.ScopeKey, item.Inherited), formatProcessInstanceVariablePlanValue(item.Before), formatProcessInstanceVariablePlanValue(item.After)))
+		parts = append(parts, fmt.Sprintf("~ %s%s: %s -> %s", item.Name, formatUserTaskVariableWriteDestination(plan, item.ScopeKey, item.Inherited), formatProcessInstanceVariablePlanValue(item.Before), formatProcessInstanceVariablePlanValue(item.After)))
 	}
 	for _, item := range plan.Additions {
-		parts = append(parts, fmt.Sprintf("+ %s%s: %s", item.Name, formatUserTaskVariableScope(item.ScopeKey, item.Inherited), formatProcessInstanceVariablePlanValue(item.Value)))
+		parts = append(parts, fmt.Sprintf("+ %s%s: %s", item.Name, formatUserTaskVariableWriteDestination(plan, item.ScopeKey, item.Inherited), formatProcessInstanceVariablePlanValue(item.Value)))
 	}
 	for _, item := range plan.UnchangedRequested {
 		parts = append(parts, fmt.Sprintf("~ %s%s: %s (unchanged)", item.Name, formatUserTaskVariableScope(item.ScopeKey, item.Inherited), formatProcessInstanceVariablePlanValue(item.Value)))
@@ -245,6 +245,30 @@ func formatUserTaskVariablePlan(plan task.UserTaskVariablePlan) string {
 		return "no variable changes"
 	}
 	return strings.Join(parts, "; ")
+}
+
+// formatUserTaskVariableWriteDestination identifies a planned write without
+// changing the legacy formatting used for unchanged requested variables.
+func formatUserTaskVariableWriteDestination(plan task.UserTaskVariablePlan, scopeKey string, inherited bool) string {
+	if !inherited {
+		return " (local, element:" + scopeKey + ")"
+	}
+	if plan.ProcessInstanceKey == "" {
+		return formatUserTaskVariableScope(scopeKey, true)
+	}
+	return " (inherited, " + formatInheritedUserTaskVariableDestination(plan.ProcessInstanceKey, scopeKey) + ")"
+}
+
+// formatInheritedUserTaskVariableDestination classifies known inherited
+// owners and preserves the untyped legacy key when owner metadata is absent.
+func formatInheritedUserTaskVariableDestination(processInstanceKey, scopeKey string) string {
+	if processInstanceKey == "" {
+		return scopeKey
+	}
+	if scopeKey == processInstanceKey {
+		return "pi:" + scopeKey
+	}
+	return "element:" + scopeKey
 }
 
 // formatUserTaskVariableScope labels only inherited effects in compact output.

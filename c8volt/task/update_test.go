@@ -5,6 +5,7 @@ package task
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"testing"
@@ -49,7 +50,8 @@ func (a *facadeVariableUpdateAPI) ExecuteUserTaskVariableUpdates(_ context.Conte
 }
 
 // TestVariableUpdateFacadeDelegatesAndCopiesNestedValues verifies both facade
-// directions own JSON-like mutable values and preserve option configuration.
+// directions own mutable values, preserve non-serialized owner metadata, and
+// keep legacy plans executable.
 func TestVariableUpdateFacadeDelegatesAndCopiesNestedValues(t *testing.T) {
 	t.Parallel()
 
@@ -57,7 +59,7 @@ func TestVariableUpdateFacadeDelegatesAndCopiesNestedValues(t *testing.T) {
 	api := &facadeVariableUpdateAPI{plan: d.UserTaskVariableUpdatePlan{
 		RequestedKeys: []string{"task-a"},
 		UserTasks: []d.UserTaskVariablePlan{{
-			UserTaskKey: "task-a", ElementInstanceKey: "element-a", TenantId: "tenant-a",
+			UserTaskKey: "task-a", ProcessInstanceKey: "root-a", ElementInstanceKey: "element-a", TenantId: "tenant-a",
 			Additions:       []d.UserTaskVariablePlannedValue{{Name: "payload", ScopeKey: "element-a", Value: serviceValue}},
 			TargetScopeKeys: []string{"element-a"},
 		}},
@@ -86,6 +88,16 @@ func TestVariableUpdateFacadeDelegatesAndCopiesNestedValues(t *testing.T) {
 	serviceValue["nested"].([]any)[0].(map[string]any)["enabled"] = false
 	require.Equal(t, true, plan.UserTasks[0].Additions[0].Value.(map[string]any)["nested"].([]any)[0].(map[string]any)["enabled"])
 	require.Equal(t, true, plan.Targets[0].Variables["payload"].(map[string]any)["nested"].([]any)[0].(map[string]any)["enabled"])
+	require.Equal(t, "root-a", plan.UserTasks[0].ProcessInstanceKey)
+
+	withoutOwner := plan
+	withoutOwner.UserTasks = append([]UserTaskVariablePlan(nil), plan.UserTasks...)
+	withoutOwner.UserTasks[0].ProcessInstanceKey = ""
+	withOwnerJSON, err := json.Marshal(plan)
+	require.NoError(t, err)
+	withoutOwnerJSON, err := json.Marshal(withoutOwner)
+	require.NoError(t, err)
+	require.JSONEq(t, string(withOwnerJSON), string(withoutOwnerJSON), "display metadata must not alter public plan JSON")
 
 	plan.Targets[0].Variables["payload"].(map[string]any)["nested"].([]any)[0].(map[string]any)["enabled"] = "public-change"
 	_, err = client.ExecuteUserTaskVariableUpdates(context.Background(), plan, 3, options.WithNoWait(), options.WithNoWorkerLimit())
@@ -93,11 +105,16 @@ func TestVariableUpdateFacadeDelegatesAndCopiesNestedValues(t *testing.T) {
 	require.Equal(t, 3, api.wantedWorkers)
 	require.True(t, api.executeCfg.NoWait)
 	require.True(t, api.executeCfg.NoWorkerLimit)
+	require.Equal(t, "root-a", api.executedPlan.UserTasks[0].ProcessInstanceKey)
 
 	plan.Targets[0].Variables["payload"].(map[string]any)["nested"].([]any)[0].(map[string]any)["enabled"] = "changed-after-call"
 	require.Equal(t, "public-change", api.executedPlan.Targets[0].Variables["payload"].(map[string]any)["nested"].([]any)[0].(map[string]any)["enabled"])
 	require.Equal(t, []string{"tenant-a"}, plan.TenantContext.ResolvedTenantIDs)
 	require.Equal(t, "warning", plan.TenantContext.Warnings[0].Message)
+
+	_, err = client.ExecuteUserTaskVariableUpdates(context.Background(), withoutOwner, 1, options.WithNoWait())
+	require.NoError(t, err)
+	require.Empty(t, api.executedPlan.UserTasks[0].ProcessInstanceKey, "legacy JSON plans remain executable without display metadata")
 }
 
 // TestVariableUpdateFacadePreservesPartialResultsAndNormalizesErrors verifies

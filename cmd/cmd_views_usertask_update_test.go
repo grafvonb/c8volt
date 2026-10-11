@@ -46,6 +46,7 @@ func TestUserTaskVariableUpdatePreviewJSONContract(t *testing.T) {
 	require.NotContains(t, payload, "tenantContext")
 	items := requireJSONItems(t, payload["userTasks"], 1)
 	item := requireJSONObject(t, items[0])
+	require.NotContains(t, item, "processInstanceKey")
 	require.Nil(t, item["additions"], "nil plan categories remain JSON null")
 	require.Equal(t, []any{}, item["unchangedRequested"])
 }
@@ -61,7 +62,7 @@ func TestUserTaskVariableUpdateHumanPlanContract(t *testing.T) {
 		require.NoError(t, renderUpdateUserTaskVariablePreview(cmd, userTaskUpdateViewPlan()))
 		require.Equal(t,
 			"dry run: update user-task variables: 1 user task(s), 1 change(s), 0 addition(s), 0 unchanged, 1 untouched; no changes applied\n"+
-				"task-a: ~ approved (inherited scope scope-root): false -> true; = note: \"keep\"\n",
+				"task-a: ~ approved (inherited, pi:scope-root): false -> true; = note: \"keep\"\n",
 			output.String(),
 		)
 	})
@@ -79,9 +80,54 @@ func TestUserTaskVariableUpdateHumanPlanContract(t *testing.T) {
 		require.NoError(t, renderUpdateUserTaskVariablePreview(cmd, plan))
 		require.Equal(t,
 			"dry run: update user-task variables: 2 user task(s), 2 change(s), 0 addition(s), 0 unchanged, 1 untouched; no changes applied\n"+
-				"inherited target scopes: scope-root\n",
+				"inherited target scopes: pi:scope-root\n",
 			output.String(),
 		)
+	})
+
+	t.Run("all destination kinds and legacy fallback", func(t *testing.T) {
+		plan := task.UserTaskVariablePlan{
+			UserTaskKey: "task-a", ProcessInstanceKey: "root-a", ElementInstanceKey: "task-scope",
+			Changes: []task.UserTaskVariablePlannedChange{
+				{Name: "root", ScopeKey: "root-a", Inherited: true, Before: 1, After: 2},
+				{Name: "middle", ScopeKey: "middle-a", Inherited: true, Before: 3, After: 4},
+				{Name: "local", ScopeKey: "task-scope", Before: false, After: true},
+			},
+			Additions:          []task.UserTaskVariablePlannedValue{{Name: "new", ScopeKey: "task-scope", Value: "value"}},
+			UnchangedRequested: []task.UserTaskVariablePlannedValue{{Name: "same", ScopeKey: "root-a", Inherited: true, Value: 5}},
+		}
+		require.Equal(t,
+			"~ root (inherited, pi:root-a): 1 -> 2; ~ middle (inherited, element:middle-a): 3 -> 4; ~ local (local, element:task-scope): false -> true; + new (local, element:task-scope): \"value\"; ~ same (inherited scope root-a): 5 (unchanged)",
+			formatUserTaskVariablePlan(plan),
+		)
+
+		plan.ProcessInstanceKey = ""
+		require.Contains(t, formatUserTaskVariablePlan(plan), "~ root (inherited scope root-a): 1 -> 2")
+		require.Equal(t, []string{"root-a", "middle-a"}, inheritedUserTaskVariableScopes(task.UserTaskVariableUpdatePlan{UserTasks: []task.UserTaskVariablePlan{plan}}))
+	})
+
+	t.Run("verbose bulk keeps per-task owners", func(t *testing.T) {
+		flagVerbose = true
+		defer func() { flagVerbose = false }()
+		cmd, output := newUserTaskUpdateViewCommand()
+		first := userTaskUpdateViewPlan().UserTasks[0]
+		second := first
+		second.UserTaskKey = "task-b"
+		second.ProcessInstanceKey = "root-b"
+		second.Changes = []task.UserTaskVariablePlannedChange{{Name: "approved", ScopeKey: "middle-b", Inherited: true, Before: false, After: true}}
+		second.TargetScopeKeys = []string{"middle-b"}
+		plan := task.UserTaskVariableUpdatePlan{
+			RequestedKeys: []string{"task-a", "task-b"}, RequestedCount: 2, UpdateCount: 2, VariableChangeCount: 2,
+			UserTasks: []task.UserTaskVariablePlan{first, second},
+			Targets: []task.ScopeVariableUpdateTarget{
+				{ScopeKey: "scope-root", Variables: map[string]any{"approved": true}},
+				{ScopeKey: "middle-b", Variables: map[string]any{"approved": true}},
+			},
+		}
+		require.NoError(t, renderUpdateUserTaskVariablePreview(cmd, plan))
+		require.Contains(t, output.String(), "inherited target scopes: pi:scope-root, element:middle-b\n")
+		require.Contains(t, output.String(), "task-a: ~ approved (inherited, pi:scope-root): false -> true")
+		require.Contains(t, output.String(), "task-b: ~ approved (inherited, element:middle-b): false -> true")
 	})
 }
 
@@ -226,7 +272,7 @@ func userTaskUpdateViewPlan() task.UserTaskVariableUpdatePlan {
 		VariableChangeCount:    1,
 		VariableUntouchedCount: 1,
 		UserTasks: []task.UserTaskVariablePlan{{
-			UserTaskKey: "task-a",
+			UserTaskKey: "task-a", ProcessInstanceKey: "scope-root",
 			Changes: []task.UserTaskVariablePlannedChange{{
 				Name: "approved", ScopeKey: "scope-root", Inherited: true, Before: false, After: true,
 			}},

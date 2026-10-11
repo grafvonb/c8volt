@@ -6,7 +6,7 @@ nav_exclude: true
 has_toc: true
 ---
 
-> Generated from build `c8volt v4.3.4-100-g6fef7e63-dirty`, commit `6fef7e63`, built `2026-10-10T10:13:49Z` | Supported Camunda 8 versions: 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.0-alpha4 (prerelease)
+> Generated from build `c8volt v4.3.4-104-g3e991b1f-dirty`, commit `3e991b1f`, built `2026-10-11T09:31:27Z` | Supported Camunda 8 versions: 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.0-alpha4 (prerelease)
 
 <img src="./logo/c8volt_logo_transparent_w_shadow_400x244.png" alt="c8volt logo" />
 
@@ -355,7 +355,7 @@ Generated references: [get incident](./cli/c8volt_get_incident), [get job](./cli
 
 Use dry-run first for runtime mutations, then confirm explicitly or run under automation.
 
-`update user-task` accepts explicit task keys only. It updates existing variables at the local or inherited scopes returned by `get user-task --with-vars`, creates missing names at the task's element scope, and deduplicates shared inherited writes across selected tasks. Ordinary execution confirms the requested values at those frozen scopes; `--no-wait` reports accepted writes without confirmation. The command is supported on Camunda 8.8, 8.9, and 8.10.
+`update process-instance` accepts explicit process-instance keys and writes at each selected root. Its single-instance and verbose bulk previews label every planned addition and change as `pi:<key>`. `update user-task` accepts explicit task keys only. It updates existing variables at the local or inherited scopes returned by `get user-task --with-vars`, creates missing names at the task's element scope, and deduplicates shared inherited writes across selected tasks. Detailed previews identify local destinations as `element:<key>` and inherited destinations as either `pi:<key>` or `element:<key>` according to the owning scope. Ordinary execution confirms the requested values at those frozen scopes; `--no-wait` reports accepted writes without confirmation. Both commands are supported on Camunda 8.8, 8.9, and 8.10.
 
 ```bash
 ./c8volt update process-instance --key <process-instance-key> --vars '{"customerTier":"gold"}' --dry-run

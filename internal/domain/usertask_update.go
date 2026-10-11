@@ -41,9 +41,11 @@ type ScopeVariableUpdateTarget struct {
 }
 
 // UserTaskVariablePlan classifies the complete effective-variable view for one
-// selected user task and references its frozen mutation targets by scope.
+// selected user task, retains its owner identity for presentation, and
+// references its frozen mutation targets by scope.
 type UserTaskVariablePlan struct {
 	UserTaskKey        string
+	ProcessInstanceKey string
 	ElementInstanceKey string
 	TenantId           string
 	Additions          []UserTaskVariablePlannedValue

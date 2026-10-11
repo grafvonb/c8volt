@@ -220,8 +220,11 @@ type ScopeVariableUpdateTarget struct {
 }
 
 // UserTaskVariablePlan classifies the effective-variable view for one task.
+// ProcessInstanceKey is non-serialized display metadata and never selects a
+// mutation target.
 type UserTaskVariablePlan struct {
 	UserTaskKey        string                          `json:"userTaskKey"`
+	ProcessInstanceKey string                          `json:"-"`
 	ElementInstanceKey string                          `json:"elementInstanceKey"`
 	TenantId           string                          `json:"tenantId,omitempty"`
 	Additions          []UserTaskVariablePlannedValue  `json:"additions"`
