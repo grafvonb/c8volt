@@ -14,7 +14,7 @@
 
 **Independent test**: For one task with root/intermediate/local changes and a local addition, normal confirmation and dry-run show matching typed destinations. With several tasks, compact output lists stable unique inherited destinations and verbose output shows every planned write. Requests and mutation targets remain unchanged.
 
-- [ ] T001 [US1] Deliver complete UT destination previews: add and map owner metadata in `internal/domain/usertask_update.go`, `internal/services/usertask/update.go`, `c8volt/task/model.go`, and `c8volt/task/convert.go`; render detailed and compact scope labels in `cmd/cmd_views_usertask_update.go`; extend the service, facade, view, output, terminal, and error tests listed below; update `cmd/update_usertask.go` and `README.md`, regenerate `docs/cli/c8volt_update_user-task.md` and `docs/index.md`, and pass formatting and targeted validation.
+- [x] T001 [US1] Deliver complete UT destination previews: add and map owner metadata in `internal/domain/usertask_update.go`, `internal/services/usertask/update.go`, `c8volt/task/model.go`, and `c8volt/task/convert.go`; render detailed and compact scope labels in `cmd/cmd_views_usertask_update.go`; extend the service, facade, view, output, terminal, and error tests listed below; update `cmd/update_usertask.go` and `README.md`, regenerate `docs/cli/c8volt_update_user-task.md` and `docs/index.md`, and pass formatting and targeted validation.
 
 **Metadata and its tests** — `internal/services/usertask/update_test.go` and `c8volt/task/update_test.go`:
 

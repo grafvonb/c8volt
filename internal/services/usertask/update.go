@@ -332,6 +332,7 @@ func (p *userTaskVariablePlanner) addTask(task d.UserTask, variables []d.Process
 
 	taskPlan := d.UserTaskVariablePlan{
 		UserTaskKey:        task.Key,
+		ProcessInstanceKey: task.ProcessInstanceKey,
 		ElementInstanceKey: task.ElementInstanceKey,
 		TenantId:           tenantID,
 	}

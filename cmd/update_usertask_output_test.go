@@ -26,7 +26,9 @@ type updateUserTaskOutputCapture struct {
 	failingScope  string
 	mutatedScopes map[string]bool
 	mutations     int
+	taskReads     int
 	variableReads int
+	totalRequests int
 }
 
 // TestUpdateUserTaskOutputModes exercises dry-run, no-op, confirmed, and
@@ -51,7 +53,7 @@ func TestUpdateUserTaskOutputModes(t *testing.T) {
 			wantOutput: "INFO selection scope: explicit resource keys; tenant filter not applied\n" +
 				"INFO affected tenants: tenant-a\n" +
 				"INFO dry run: update user-task variables: 1 user task(s), 1 change(s), 0 addition(s), 0 unchanged, 0 untouched; no changes applied\n" +
-				"INFO 101: ~ approved (inherited scope 201): false -> true\n",
+				"INFO 101: ~ approved (inherited, element:201): false -> true\n",
 			wantReads: 1,
 		},
 		{
@@ -148,9 +150,35 @@ func TestUpdateUserTaskOutputModes(t *testing.T) {
 			capture.mu.Lock()
 			defer capture.mu.Unlock()
 			require.Equal(t, test.wantMutates, capture.mutations)
+			require.Equal(t, 1, capture.taskReads)
 			require.Equal(t, test.wantReads, capture.variableReads)
+			require.Equal(t, 1+test.wantReads+test.wantMutates, capture.totalRequests)
 		})
 	}
+}
+
+// TestUpdateUserTaskDestinationMetadataFlowsThroughCommand proves planning
+// supplies every destination kind without adding preview requests or writes.
+func TestUpdateUserTaskDestinationMetadataFlowsThroughCommand(t *testing.T) {
+	server, capture := newUpdateUserTaskOutputServer(t, false, "")
+	configPath := writeTestConfigForVersion(t, server.URL, "8.10")
+	stdout, stderr, err := runUpdateUserTaskCommand(t, configPath, "",
+		"update", "ut", "--key", "103", "--vars", `{"approved":true,"middle":2,"local":true,"new":"value"}`, "--dry-run",
+	)
+	require.NoError(t, err)
+	require.Empty(t, stdout)
+	normalized := normalizeUpdateUserTaskHumanOutput(stderr)
+	require.Contains(t, normalized, "~ approved (inherited, pi:301): false -> true")
+	require.Contains(t, normalized, "~ middle (inherited, element:203): 1 -> 2")
+	require.Contains(t, normalized, "~ local (local, element:501103): false -> true")
+	require.Contains(t, normalized, "+ new (local, element:501103): \"value\"")
+
+	capture.mu.Lock()
+	defer capture.mu.Unlock()
+	require.Equal(t, 1, capture.taskReads)
+	require.Equal(t, 1, capture.variableReads)
+	require.Zero(t, capture.mutations)
+	require.Equal(t, 2, capture.totalRequests)
 }
 
 // normalizeUpdateUserTaskHumanOutput removes logger timestamps while retaining
@@ -181,7 +209,9 @@ func TestUpdateUserTaskPartialFailureJSON(t *testing.T) {
 	capture.mu.Lock()
 	defer capture.mu.Unlock()
 	require.Equal(t, 2, capture.mutations)
+	require.Equal(t, 2, capture.taskReads)
 	require.Equal(t, 2, capture.variableReads, "no-wait performs planning reads only")
+	require.Equal(t, 6, capture.totalRequests)
 }
 
 // decodeSingleUserTaskUpdateEnvelope requires exactly one JSON value and EOF.
@@ -204,9 +234,15 @@ func newUpdateUserTaskOutputServer(t *testing.T, initialValue bool, failingScope
 		mutatedScopes: make(map[string]bool),
 	}
 	server := testx.NewIPv4Server(t, http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		capture.mu.Lock()
+		capture.totalRequests++
+		capture.mu.Unlock()
 		switch {
 		case request.Method == http.MethodGet && strings.HasPrefix(request.URL.Path, "/v2/user-tasks/"):
 			key := strings.TrimPrefix(request.URL.Path, "/v2/user-tasks/")
+			capture.mu.Lock()
+			capture.taskReads++
+			capture.mu.Unlock()
 			writer.Header().Set("Content-Type", "application/json")
 			_, _ = fmt.Fprintf(writer, `{"userTaskKey":%q,"state":"CREATED","elementId":"approve","processInstanceKey":"301","elementInstanceKey":%q,"processDefinitionKey":"401","tenantId":"tenant-a"}`, key, "501"+key)
 		case request.Method == http.MethodPost && strings.HasSuffix(request.URL.Path, "/effective-variables/search"):
@@ -217,6 +253,10 @@ func newUpdateUserTaskOutputServer(t *testing.T, initialValue bool, failingScope
 			value := capture.initialValue || capture.mutatedScopes[scope]
 			capture.mu.Unlock()
 			writer.Header().Set("Content-Type", "application/json")
+			if key == "103" {
+				_, _ = fmt.Fprintf(writer, `{"items":[{"name":"approved","value":"false","variableKey":"601103","processInstanceKey":"301","scopeKey":"301","tenantId":"tenant-a"},{"name":"middle","value":"1","variableKey":"602103","processInstanceKey":"301","scopeKey":"203","tenantId":"tenant-a"},{"name":"local","value":"false","variableKey":"603103","processInstanceKey":"301","scopeKey":"501103","tenantId":"tenant-a"}],"page":{"totalItems":3,"hasMoreTotalItems":false}}`)
+				return
+			}
 			_, _ = fmt.Fprintf(writer, `{"items":[{"name":"approved","value":%q,"variableKey":%q,"processInstanceKey":"301","scopeKey":%q,"tenantId":"tenant-a"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`, fmt.Sprint(value), "601"+key, scope)
 		case request.Method == http.MethodPut && strings.HasPrefix(request.URL.Path, "/v2/element-instances/"):
 			scope := strings.TrimSuffix(strings.TrimPrefix(request.URL.Path, "/v2/element-instances/"), "/variables")

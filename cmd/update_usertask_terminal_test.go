@@ -40,17 +40,18 @@ func TestUpdateUserTaskTerminal(t *testing.T) {
 		initialValue bool
 		configured   bool
 		prompt       bool
+		preview      bool
 		response     string
 		endOfInput   bool
 		wantExitCode int
 		wantMutates  int
 		wantReads    int
 	}{
-		{name: "configured stderr accepts", args: []string{"update", "ut", "--key", "101", "--vars", `{"approved":true}`}, configured: true, prompt: true, response: "yes", wantMutates: 1, wantReads: 2},
-		{name: "inherited stderr declines", args: []string{"update", "ut", "--key", "101", "--vars", `{"approved":true}`}, prompt: true, response: "no", wantExitCode: exitcode.Error, wantReads: 1},
-		{name: "default answer declines", args: []string{"update", "ut", "--key", "101", "--vars", `{"approved":true}`}, prompt: true, wantExitCode: exitcode.Error, wantReads: 1},
-		{name: "terminal eof aborts", args: []string{"update", "ut", "--key", "101", "--vars", `{"approved":true}`}, prompt: true, endOfInput: true, wantExitCode: exitcode.Error, wantReads: 1},
-		{name: "dry run is prompt free", args: []string{"update", "ut", "--key", "101", "--vars", `{"approved":true}`, "--dry-run"}, wantReads: 1},
+		{name: "configured stderr accepts", args: []string{"update", "ut", "--key", "101", "--vars", `{"approved":true}`}, configured: true, prompt: true, preview: true, response: "yes", wantMutates: 1, wantReads: 2},
+		{name: "inherited stderr declines", args: []string{"update", "ut", "--key", "101", "--vars", `{"approved":true}`}, prompt: true, preview: true, response: "no", wantExitCode: exitcode.Error, wantReads: 1},
+		{name: "default answer declines", args: []string{"update", "ut", "--key", "101", "--vars", `{"approved":true}`}, prompt: true, preview: true, wantExitCode: exitcode.Error, wantReads: 1},
+		{name: "terminal eof aborts", args: []string{"update", "ut", "--key", "101", "--vars", `{"approved":true}`}, prompt: true, preview: true, endOfInput: true, wantExitCode: exitcode.Error, wantReads: 1},
+		{name: "dry run is prompt free", args: []string{"update", "ut", "--key", "101", "--vars", `{"approved":true}`, "--dry-run"}, preview: true, wantReads: 1},
 		{name: "no-op is prompt free", args: []string{"update", "ut", "--key", "101", "--vars", `{"approved":true}`}, initialValue: true, wantReads: 1},
 		{name: "automation no-wait is prompt free", args: []string{"--automation", "update", "ut", "--key", "101", "--vars", `{"approved":true}`, "--no-wait"}, wantMutates: 1, wantReads: 1},
 		{name: "auto-confirm is prompt free", args: []string{"--auto-confirm", "update", "ut", "--key", "101", "--vars", `{"approved":true}`}, wantMutates: 1, wantReads: 2},
@@ -102,6 +103,9 @@ func TestUpdateUserTaskTerminal(t *testing.T) {
 			} else {
 				require.NotContains(t, result.Stderr, "Do you want to proceed?")
 			}
+			if test.preview {
+				require.Contains(t, result.Stderr, "~ approved (inherited, element:201): false -> true")
+			}
 			if test.configured {
 				configuredOutput, readErr := os.ReadFile(capturePath)
 				require.NoError(t, readErr)
@@ -111,7 +115,9 @@ func TestUpdateUserTaskTerminal(t *testing.T) {
 			capture.mu.Lock()
 			defer capture.mu.Unlock()
 			require.Equal(t, test.wantMutates, capture.mutations)
+			require.Equal(t, 1, capture.taskReads)
 			require.Equal(t, test.wantReads, capture.variableReads)
+			require.Equal(t, 1+test.wantReads+test.wantMutates, capture.totalRequests)
 		})
 	}
 }

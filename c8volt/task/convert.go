@@ -126,11 +126,11 @@ func toDomainScopeVariableUpdateTarget(x ScopeVariableUpdateTarget) d.ScopeVaria
 	}
 }
 
-// fromDomainUserTaskVariablePlan maps one task plan into the public model, copying each variable
-// category and the target scope keys.
+// fromDomainUserTaskVariablePlan maps one task plan into the public model, copying its owner
+// metadata, each variable category, and the target scope keys.
 func fromDomainUserTaskVariablePlan(x d.UserTaskVariablePlan) UserTaskVariablePlan {
 	return UserTaskVariablePlan{
-		UserTaskKey: x.UserTaskKey, ElementInstanceKey: x.ElementInstanceKey, TenantId: x.TenantId,
+		UserTaskKey: x.UserTaskKey, ProcessInstanceKey: x.ProcessInstanceKey, ElementInstanceKey: x.ElementInstanceKey, TenantId: x.TenantId,
 		Additions:          toolx.MapSlice(x.Additions, fromDomainUserTaskVariablePlannedValue),
 		Changes:            toolx.MapSlice(x.Changes, fromDomainUserTaskVariablePlannedChange),
 		UnchangedRequested: toolx.MapSlice(x.UnchangedRequested, fromDomainUserTaskVariablePlannedValue),
@@ -140,10 +140,10 @@ func fromDomainUserTaskVariablePlan(x d.UserTaskVariablePlan) UserTaskVariablePl
 }
 
 // toDomainUserTaskVariablePlan copies one public task plan into the domain model while preserving
-// its variable categories and target scopes.
+// its owner metadata, variable categories, and target scopes.
 func toDomainUserTaskVariablePlan(x UserTaskVariablePlan) d.UserTaskVariablePlan {
 	return d.UserTaskVariablePlan{
-		UserTaskKey: x.UserTaskKey, ElementInstanceKey: x.ElementInstanceKey, TenantId: x.TenantId,
+		UserTaskKey: x.UserTaskKey, ProcessInstanceKey: x.ProcessInstanceKey, ElementInstanceKey: x.ElementInstanceKey, TenantId: x.TenantId,
 		Additions:          toolx.MapSlice(x.Additions, toDomainUserTaskVariablePlannedValue),
 		Changes:            toolx.MapSlice(x.Changes, toDomainUserTaskVariablePlannedChange),
 		UnchangedRequested: toolx.MapSlice(x.UnchangedRequested, toDomainUserTaskVariablePlannedValue),

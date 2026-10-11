@@ -6,6 +6,7 @@ package usertask
 import (
 	"context"
 	"errors"
+	"sync"
 	"testing"
 
 	"github.com/grafvonb/c8volt/config"
@@ -21,6 +22,8 @@ type updatePlanningUserTaskAPI struct {
 	getErr    map[string]error
 	pageErr   map[string]map[int]error
 	pageCalls map[string]int
+	getMu     sync.Mutex
+	getCalls  map[string]int
 }
 
 // GetUserTask rejects use of the tenant-scoped legacy resolver during explicit-key planning.
@@ -30,6 +33,12 @@ func (a *updatePlanningUserTaskAPI) GetUserTask(context.Context, string, ...serv
 
 // GetNativeUserTask returns the task fixture while recording explicit-key order.
 func (a *updatePlanningUserTaskAPI) GetNativeUserTask(_ context.Context, key string, _ ...services.CallOption) (d.UserTask, error) {
+	a.getMu.Lock()
+	if a.getCalls == nil {
+		a.getCalls = make(map[string]int)
+	}
+	a.getCalls[key]++
+	a.getMu.Unlock()
 	if err := a.getErr[key]; err != nil {
 		return d.UserTask{}, err
 	}
@@ -66,8 +75,8 @@ func (w *updatePlanningScopeWriter) UpdateScopeVariables(context.Context, string
 	return d.ScopeVariableUpdateResponse{}, errors.New("planning must not write")
 }
 
-// TestPlanUserTaskVariableUpdatesBuildsCompleteScopeSafePlan verifies local,
-// inherited, missing, unchanged, truncated, untouched, tenant, and sparse-page facts.
+// TestPlanUserTaskVariableUpdatesBuildsCompleteScopeSafePlan verifies owner,
+// local, inherited, missing, unchanged, truncated, tenant, and sparse-page facts.
 func TestPlanUserTaskVariableUpdatesBuildsCompleteScopeSafePlan(t *testing.T) {
 	t.Parallel()
 
@@ -114,6 +123,7 @@ func TestPlanUserTaskVariableUpdatesBuildsCompleteScopeSafePlan(t *testing.T) {
 
 	require.Len(t, plan.UserTasks, 1)
 	task := plan.UserTasks[0]
+	require.Equal(t, "root-a", task.ProcessInstanceKey)
 	require.Equal(t, []string{"newNull"}, plannedValueNames(task.Additions))
 	require.Equal(t, []string{"localChange", "rootChange", "truncated"}, plannedChangeNames(task.Changes))
 	require.Equal(t, []string{"middleEqual"}, plannedValueNames(task.UnchangedRequested))
@@ -132,11 +142,12 @@ func TestPlanUserTaskVariableUpdatesBuildsCompleteScopeSafePlan(t *testing.T) {
 	require.Equal(t, "middle-a", plan.Targets[2].ScopeKey)
 	require.Equal(t, map[string]any{"truncated": map[string]any{"large": true}}, plan.Targets[2].Variables)
 	require.Equal(t, 2, api.pageCalls["task-a"])
+	require.Equal(t, map[string]int{"task-a": 1}, api.getCalls)
 	require.Zero(t, writer.calls)
 }
 
 // TestPlanUserTaskVariableUpdatesDeduplicatesSharedTargets verifies one scope
-// payload serves several tasks while same-name variables at other scopes remain distinct.
+// payload serves several owner-preserving task plans while local scopes remain distinct.
 func TestPlanUserTaskVariableUpdatesDeduplicatesSharedTargets(t *testing.T) {
 	t.Parallel()
 
@@ -163,6 +174,7 @@ func TestPlanUserTaskVariableUpdatesDeduplicatesSharedTargets(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, []string{"task-b", "task-a"}, plan.RequestedKeys)
 	require.Equal(t, []string{"task-b", "task-a"}, []string{plan.UserTasks[0].UserTaskKey, plan.UserTasks[1].UserTaskKey})
+	require.Equal(t, []string{"root-shared", "root-shared"}, []string{plan.UserTasks[0].ProcessInstanceKey, plan.UserTasks[1].ProcessInstanceKey})
 	require.Len(t, plan.Targets, 3)
 	require.Equal(t, "element-b", plan.Targets[0].ScopeKey)
 	require.Equal(t, "root-shared", plan.Targets[1].ScopeKey)
@@ -174,6 +186,9 @@ func TestPlanUserTaskVariableUpdatesDeduplicatesSharedTargets(t *testing.T) {
 	require.Equal(t, "element-a", plan.Targets[2].ScopeKey)
 	require.Equal(t, 4, plan.VariableChangeCount)
 	require.Equal(t, 2, plan.UpdateCount)
+	require.Equal(t, map[string]int{"task-a": 1, "task-b": 1}, api.getCalls)
+	require.Equal(t, 1, api.pageCalls["task-b"])
+	require.Equal(t, 1, api.pageCalls["task-a"])
 }
 
 // TestPlanUserTaskVariableUpdatesHandlesEmptyInputs verifies service-level no

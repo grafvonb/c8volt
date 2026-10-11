@@ -349,7 +349,7 @@ Generated references: [get incident](docs/cli/c8volt_get_incident.md), [get job]
 
 Use dry-run first for runtime mutations, then confirm explicitly or run under automation.
 
-`update user-task` accepts explicit task keys only. It updates existing variables at the local or inherited scopes returned by `get user-task --with-vars`, creates missing names at the task's element scope, and deduplicates shared inherited writes across selected tasks. Ordinary execution confirms the requested values at those frozen scopes; `--no-wait` reports accepted writes without confirmation. The command is supported on Camunda 8.8, 8.9, and 8.10.
+`update user-task` accepts explicit task keys only. It updates existing variables at the local or inherited scopes returned by `get user-task --with-vars`, creates missing names at the task's element scope, and deduplicates shared inherited writes across selected tasks. Detailed previews identify local destinations as `element:<key>` and inherited destinations as either `pi:<key>` or `element:<key>` according to the owning scope. Ordinary execution confirms the requested values at those frozen scopes; `--no-wait` reports accepted writes without confirmation. The command is supported on Camunda 8.8, 8.9, and 8.10.
 
 ```bash
 ./c8volt update process-instance --key <process-instance-key> --vars '{"customerTier":"gold"}' --dry-run
