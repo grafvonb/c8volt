@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -878,40 +879,87 @@ func TestUpdateProcessInstanceCommand_PlanningFailurePreventsAllWrites(t *testin
 	require.Zero(t, mutations)
 }
 
-// TestUpdateProcessInstanceCommand_OutputModesPreserveContracts verifies
-// human annotations do not alter JSON, keys-only, quiet, or no-op output.
+// TestUpdateProcessInstanceCommand_OutputModesPreserveContracts verifies the
+// complete dry-run and executed no-op mode matrix without writes or waits.
 func TestUpdateProcessInstanceCommand_OutputModesPreserveContracts(t *testing.T) {
+	humanLogPrefix := regexp.MustCompile(`(?m)^\d{2}:\d{2}:\d{2}\.\d{3} INFO `)
 	tests := []struct {
 		name         string
 		initialValue bool
 		args         []string
 		wantStdout   string
+		wantStderr   string
 		jsonMode     bool
+		dryRun       bool
 	}{
 		{
-			name:       "dry run keys retains selected key",
-			args:       []string{"--keys-only", "update", "pi", "--key", "101", "--vars", `{"approved":true}`, "--dry-run"},
-			wantStdout: "101\n",
+			name:       "dry run human",
+			args:       []string{"--automation", "update", "pi", "--key", "101", "--vars", `{"approved":true}`, "--dry-run"},
+			dryRun:     true,
+			wantStderr: "dry run: update process-instance variables: 1 process instance(s), 1 change(s), 0 addition(s), 0 unchanged, 0 untouched; no changes applied\n101: ~ approved (pi:101): false -> true\n",
 		},
 		{
-			name:     "quiet json wins over keys",
-			args:     []string{"--quiet", "--keys-only", "--json", "update", "pi", "--key", "101", "--vars", `{"approved":true}`, "--dry-run", "--no-wait"},
+			name:     "dry run json",
+			args:     []string{"--json", "update", "pi", "--key", "101", "--vars", `{"approved":true}`, "--dry-run", "--no-wait"},
 			jsonMode: true,
+			dryRun:   true,
 		},
 		{
-			name: "quiet human suppresses dry run",
-			args: []string{"--quiet", "update", "pi", "--key", "101", "--vars", `{"approved":true}`, "--dry-run"},
+			name:         "dry run keys retains unchanged selected key",
+			initialValue: true,
+			args:         []string{"--keys-only", "--auto-confirm", "update", "pi", "--key", "101", "--vars", `{"approved":true}`, "--dry-run"},
+			wantStdout:   "101\n",
+			dryRun:       true,
+		},
+		{
+			name:   "dry run quiet human",
+			args:   []string{"--quiet", "update", "pi", "--key", "101", "--vars", `{"approved":true}`, "--dry-run"},
+			dryRun: true,
+		},
+		{
+			name:     "dry run quiet json wins over keys",
+			args:     []string{"--quiet", "--keys-only", "--json", "--automation", "update", "pi", "--key", "101", "--vars", `{"approved":true}`, "--dry-run", "--no-wait"},
+			jsonMode: true,
+			dryRun:   true,
+		},
+		{
+			name:       "dry run quiet keys retains selected key",
+			args:       []string{"--quiet", "--keys-only", "update", "pi", "--key", "101", "--vars", `{"approved":true}`, "--dry-run", "--no-wait"},
+			wantStdout: "101\n",
+			dryRun:     true,
+		},
+		{
+			name:         "no-op human",
+			initialValue: true,
+			args:         []string{"--automation", "update", "pi", "--key", "101", "--vars", `{"approved":true}`},
+			wantStderr:   "plan: update process-instance variables: nothing to update (1 requested value(s) already match visible variables); no confirmation required\n",
+		},
+		{
+			name:         "no-op json",
+			initialValue: true,
+			args:         []string{"--json", "--auto-confirm", "update", "pi", "--key", "101", "--vars", `{"approved":true}`},
+			jsonMode:     true,
 		},
 		{
 			name:         "no-op keys emits zero bytes",
 			initialValue: true,
-			args:         []string{"--keys-only", "update", "pi", "--key", "101", "--vars", `{"approved":true}`},
+			args:         []string{"--keys-only", "--auto-confirm", "update", "pi", "--key", "101", "--vars", `{"approved":true}`, "--no-wait"},
+		},
+		{
+			name:         "no-op quiet human",
+			initialValue: true,
+			args:         []string{"--quiet", "--automation", "update", "pi", "--key", "101", "--vars", `{"approved":true}`, "--no-wait"},
 		},
 		{
 			name:         "no-op quiet json emits one success envelope",
 			initialValue: true,
-			args:         []string{"--quiet", "--json", "--automation", "update", "pi", "--key", "101", "--vars", `{"approved":true}`, "--no-wait"},
+			args:         []string{"--quiet", "--keys-only", "--json", "--automation", "update", "pi", "--key", "101", "--vars", `{"approved":true}`, "--no-wait"},
 			jsonMode:     true,
+		},
+		{
+			name:         "no-op quiet keys emits zero bytes",
+			initialValue: true,
+			args:         []string{"--quiet", "--keys-only", "--automation", "update", "pi", "--key", "101", "--vars", `{"approved":true}`},
 		},
 	}
 
@@ -922,13 +970,28 @@ func TestUpdateProcessInstanceCommand_OutputModesPreserveContracts(t *testing.T)
 				append([]string{"--config", writeTestConfigForVersion(t, server.URL, "8.10")}, test.args...)...,
 			)
 
-			require.Empty(t, stderr)
+			require.Equal(t, test.wantStderr, humanLogPrefix.ReplaceAllString(stderr, ""))
 			if test.jsonMode {
 				decoder := json.NewDecoder(strings.NewReader(stdout))
 				var envelope map[string]any
 				require.NoError(t, decoder.Decode(&envelope))
 				require.ErrorIs(t, decoder.Decode(&struct{}{}), io.EOF)
 				require.Equal(t, string(OutcomeSucceeded), envelope["outcome"])
+				payload := requireJSONObject(t, envelope["payload"])
+				require.Equal(t, false, payload["mutationSubmitted"])
+				require.Equal(t, float64(1), payload["requestedCount"])
+				if test.dryRun {
+					require.Equal(t, float64(1), payload["updateCount"])
+					require.Equal(t, float64(1), payload["variableChangeCount"])
+					require.Equal(t, float64(0), payload["variableUnchangedCount"])
+				} else {
+					require.Equal(t, float64(0), payload["updateCount"])
+					require.Equal(t, float64(0), payload["variableChangeCount"])
+					require.Equal(t, float64(1), payload["variableUnchangedCount"])
+				}
+				item := requireJSONObject(t, requireJSONItems(t, payload["processInstances"], 1)[0])
+				require.Nil(t, item["additions"])
+				require.Nil(t, item["untouched"])
 			} else {
 				require.Equal(t, test.wantStdout, stdout)
 			}
@@ -941,6 +1004,49 @@ func TestUpdateProcessInstanceCommand_OutputModesPreserveContracts(t *testing.T)
 			require.Equal(t, 2, capture.totalRequests)
 		})
 	}
+}
+
+// TestUpdateProcessInstanceCommand_SparseCompleteReadCanEstablishNoOp proves a
+// locally empty continued page cannot trigger an early prompt or mutation.
+func TestUpdateProcessInstanceCommand_SparseCompleteReadCanEstablishNoOp(t *testing.T) {
+	var variableReads int
+	server := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if handleUpdateProcessInstancePlanningIdentity(w, r) {
+			return
+		}
+		switch {
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/variables/search":
+			variableReads++
+			w.Header().Set("Content-Type", "application/json")
+			if variableReads == 1 {
+				_, _ = w.Write([]byte(`{"items":[{"name":"approved","value":"false","variableKey":"nested","processInstanceKey":"101","scopeKey":"child","tenantId":"tenant-a"}],"page":{"totalItems":1,"hasMoreTotalItems":true,"endCursor":"next"}}`))
+				return
+			}
+			_, _ = w.Write([]byte(`{"items":[{"name":"approved","value":"true","variableKey":"root","processInstanceKey":"101","scopeKey":"101","tenantId":"tenant-a"}],"page":{"totalItems":2,"hasMoreTotalItems":false,"endCursor":"done"}}`))
+		case r.Method == http.MethodPut:
+			t.Fatalf("completed no-op planning must not mutate: %s", r.URL.Path)
+		default:
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
+	}))
+	t.Cleanup(server.Close)
+
+	previousConfirm := confirmCmdOrAbortFn
+	confirmCmdOrAbortFn = func(_ io.Writer, _ bool, _ string) error {
+		t.Fatal("completed no-op planning must not prompt")
+		return nil
+	}
+	t.Cleanup(func() { confirmCmdOrAbortFn = previousConfirm })
+
+	stdout, stderr := executeRootForProcessInstanceWithSeparateOutputs(t,
+		"--config", writeTestConfigForVersion(t, server.URL, "8.10"),
+		"--automation", "update", "pi", "--key", "101", "--vars", `{"approved":true}`,
+	)
+
+	require.Empty(t, stdout)
+	humanLogPrefix := regexp.MustCompile(`(?m)^\d{2}:\d{2}:\d{2}\.\d{3} INFO `)
+	require.Equal(t, "plan: update process-instance variables: nothing to update (1 requested value(s) already match visible variables); no confirmation required\n", humanLogPrefix.ReplaceAllString(stderr, ""))
+	require.Equal(t, 2, variableReads)
 }
 
 // TestRenderUpdateProcessInstanceVariableResults_KeysOnlyUsesAcceptance proves

@@ -25,7 +25,7 @@ Provide repeated --key values or newline-separated keys from stdin with '-'. Sup
 
 c8volt reads every selected process instance's complete root-variable scope before planning additions and changes. Nested-scope variables are excluded, and truncated values remain planned changes because they cannot prove equality. After confirmation, the command writes only the prepared additions and changes locally to their recorded roots, then waits until all requested variables are visible through the same lookup as get process-instance --with-vars. Detailed previews label every planned write with its selected process-instance root as pi:<key>.
 
-Use --dry-run to inspect changes without mutation, or --auto-confirm for unattended updates. Use --no-wait to return after accepted root writes without confirmation. Partial failures retain accepted, failed, and skipped outcomes while returning a nonzero exit status.`,
+Use --dry-run to inspect changes without mutation, or --auto-confirm for unattended updates. A completed plan with no additions or changes finishes without confirmation, mutation, or verification. Use --no-wait to return after accepted root writes without confirmation. Partial failures retain accepted, failed, and skipped outcomes while returning a nonzero exit status.`,
 	Example: `  ./c8volt update process-instance --key <process-instance-key> --vars '{"customerTier":"gold"}' --dry-run
   ./c8volt update process-instance --key <process-instance-key> --vars-file ./vars.json --dry-run
   ./c8volt --tenant tenant-a update process-instance --key <process-instance-key> --vars '{"customerTier":"gold"}' --dry-run

@@ -116,3 +116,19 @@ Started: 2026-10-12 06:49:41
 - Partial PI outcomes can share the UT failure-rendering pattern while keeping accepted-key and aggregate mutation evidence based on `MutationAccepted`.
 - Required outcome, command, UT regression, generated-doc, diff, and full command-package checks passed.
 ---
+---
+## Iteration 7 - 2026-10-12 07:37
+**Work Unit**: T007 US4 safe previews and successful no-ops
+**Tasks Completed**:
+- [x] T007: Complete the no-op/output/terminal acceptance matrix and final shared-consumer validation
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/{update_processinstance.go,update_processinstance_test.go,update_processinstance_terminal_test.go}
+- README.md
+- docs/{index.md,cli/c8volt_update_process-instance.md}
+- specs/328-align-pi-variable-updates/{tasks.md,ralph-memory.md,progress.md}
+**Learnings**:
+- Mode-aware early returns preserve explicit JSON and keys output under quiet while all-unchanged execution remains prompt-, write-, and verification-free after complete sparse-page traversal.
+- Targeted command, terminal, user-task, facade, generated-doc, diff, and full race-enabled repository validation passed with no platform coverage gaps.
+---

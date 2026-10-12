@@ -71,7 +71,7 @@ func TestUpdateProcessInstanceTerminal(t *testing.T) {
 		{name: "default answer declines", args: []string{"update", "pi", "--key", "101", "--vars", `{"approved":true,"new":"value"}`}, prompt: true, preview: true, wantExitCode: exitcode.Error, wantReads: 1},
 		{name: "terminal eof aborts", args: []string{"update", "pi", "--key", "101", "--vars", `{"approved":true,"new":"value"}`}, prompt: true, preview: true, endOfInput: true, wantExitCode: exitcode.Error, wantReads: 1},
 		{name: "dry run is prompt free", args: []string{"update", "pi", "--key", "101", "--vars", `{"approved":true,"new":"value"}`, "--dry-run"}, preview: true, wantReads: 1},
-		{name: "no-op is prompt free", args: []string{"update", "pi", "--key", "101", "--vars", `{"approved":true}`}, initialValue: true, wantReads: 1},
+		{name: "configured stderr no-op is prompt free", args: []string{"update", "pi", "--key", "101", "--vars", `{"approved":true}`}, initialValue: true, configured: true, wantReads: 1},
 		{name: "automation no-wait is prompt free", args: []string{"--automation", "update", "pi", "--key", "101", "--vars", `{"approved":true,"new":"value"}`, "--no-wait"}, wantMutates: 1, wantReads: 1},
 		{name: "auto-confirm is prompt free", args: []string{"--auto-confirm", "update", "pi", "--key", "101", "--vars", `{"approved":true,"new":"value"}`}, wantMutates: 1, wantReads: 2},
 		{
