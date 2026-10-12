@@ -99,3 +99,20 @@ Started: 2026-10-12 06:49:41
 - Passing the retained facade plan directly into execution removes the legacy extra confirmation read and prevents unchanged requested values from broadening mutation payloads.
 - Required targeted checks, generated docs, diff validation, and the full command package suite passed.
 ---
+---
+## Iteration 6 - 2026-10-12 07:31
+**Work Unit**: T006 US3 retained process-instance variable update outcomes
+**Tasks Completed**:
+- [x] T006: Retain partial execution results, accepted keys, one failure envelope, and nonzero exit behavior
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/{update_processinstance.go,cmd_views_processinstance_update.go}
+- cmd/{update_processinstance_test.go,update_processinstance_outcomes_test.go}
+- README.md
+- docs/{index.md,cli/c8volt_update_process-instance.md}
+- specs/328-align-pi-variable-updates/{tasks.md,ralph-memory.md,progress.md}
+**Learnings**:
+- Partial PI outcomes can share the UT failure-rendering pattern while keeping accepted-key and aggregate mutation evidence based on `MutationAccepted`.
+- Required outcome, command, UT regression, generated-doc, diff, and full command-package checks passed.
+---

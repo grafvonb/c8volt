@@ -186,7 +186,7 @@ func TestUpdatePICommand_RegressionVarsUsesVariableMutationAndConfirmation(t *te
 		"POST /v2/variables/search",
 	}, requests)
 	require.Contains(t, output, "updated process-instance 2251799813711967: confirmed")
-	require.Contains(t, output, "updated: 1 (confirmed/submitted: 1, failed: 0)")
+	require.Contains(t, output, "updated: 1 (mutation accepted: 1, unchanged: 0, failed: 0, skipped: 0)")
 }
 
 func TestUpdatePICommand_VarsFileSubmitsAndConfirmsVariables(t *testing.T) {
@@ -496,7 +496,7 @@ func TestUpdateProcessInstanceCommand_NoWaitReturnsSubmittedAfterImpactCheckOnly
 	require.True(t, sawUpdate)
 	require.Equal(t, 1, searchCalls)
 	require.Contains(t, output, "updated process-instance 2251799813711967: submitted")
-	require.Contains(t, output, "updated: 1 (confirmed/submitted: 1, failed: 0)")
+	require.Contains(t, output, "updated: 1 (mutation accepted: 1, unchanged: 0, failed: 0, skipped: 0)")
 }
 
 func TestUpdateProcessInstanceCommand_NoWaitJSONReportsSubmittedResultsAfterImpactCheckOnly(t *testing.T) {

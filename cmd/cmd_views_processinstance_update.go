@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/grafvonb/c8volt/c8volt/ferrors"
 	"github.com/grafvonb/c8volt/c8volt/process"
 	types "github.com/grafvonb/c8volt/typex"
 	"github.com/spf13/cobra"
@@ -152,6 +153,29 @@ func renderUpdateProcessInstanceVariableResults(cmd *cobra.Command, results proc
 	if commandUsesSharedEnvelope(cmd, pickMode()) {
 		return renderCommandResult(cmd, results)
 	}
+	return renderUpdateProcessInstanceVariableResultsHumanOrKeys(cmd, results)
+}
+
+// renderUpdateProcessInstanceVariableFailure preserves partial outcomes in the
+// selected result surface while the command retains its nonzero exit behavior.
+func renderUpdateProcessInstanceVariableFailure(cmd *cobra.Command, results process.ProcessInstanceVariableUpdateResults, operationErr error) error {
+	if commandUsesSharedEnvelope(cmd, pickMode()) {
+		normalized := ferrors.Normalize(operationErr)
+		class := string(ferrors.Classify(normalized))
+		return renderResultEnvelope(cmd, ResultEnvelope[process.ProcessInstanceVariableUpdateResults]{
+			Outcome: outcomeForError(normalized),
+			Class:   class,
+			Command: commandPath(cmd),
+			Payload: results,
+			Detail:  &ResultDetail{Message: strings.TrimSpace(normalized.Error()), Class: class},
+		})
+	}
+	return renderUpdateProcessInstanceVariableResultsHumanOrKeys(cmd, results)
+}
+
+// renderUpdateProcessInstanceVariableResultsHumanOrKeys keeps keys-only output
+// acceptance-based and exposes every terminal state in compact human output.
+func renderUpdateProcessInstanceVariableResultsHumanOrKeys(cmd *cobra.Command, results process.ProcessInstanceVariableUpdateResults) error {
 	if pickMode() == RenderModeKeysOnly {
 		for _, item := range results.Items {
 			if item.MutationAccepted {
@@ -166,20 +190,40 @@ func renderUpdateProcessInstanceVariableResults(cmd *cobra.Command, results proc
 			renderHumanLine(cmd, "updated process-instance %s: confirmed", item.Key)
 		case process.ProcessInstanceVariableUpdateStatusSubmitted:
 			renderHumanLine(cmd, "updated process-instance %s: submitted", item.Key)
+		case process.ProcessInstanceVariableUpdateStatusUnchanged:
+			renderHumanLine(cmd, "updated process-instance %s: unchanged", item.Key)
 		case process.ProcessInstanceVariableUpdateStatusConfirmationFailed:
 			renderHumanLine(cmd, "updated process-instance %s: confirmation failed: %s", item.Key, item.Error)
 		case process.ProcessInstanceVariableUpdateStatusMutationFailed:
 			renderHumanLine(cmd, "updated process-instance %s: mutation failed: %s", item.Key, item.Error)
+		case process.ProcessInstanceVariableUpdateStatusSkipped:
+			renderHumanLine(cmd, "updated process-instance %s: skipped", item.Key)
 		default:
 			renderHumanLine(cmd, "updated process-instance %s: %s", item.Key, item.Status)
 		}
 	}
-	total, ok, failed := results.Totals()
-	renderHumanLine(cmd, "updated: %d (confirmed/submitted: %d, failed: %d)", total, ok, failed)
-	if failed > 0 {
-		return fmt.Errorf("one or more process-instance variable updates failed")
-	}
+	accepted, unchanged, failed, skipped := processInstanceVariableUpdateResultCounts(results)
+	renderHumanLine(cmd, "updated: %d (mutation accepted: %d, unchanged: %d, failed: %d, skipped: %d)", len(results.Items), accepted, unchanged, failed, skipped)
 	return nil
+}
+
+// processInstanceVariableUpdateResultCounts separates mutation acceptance from
+// workflow success so accepted confirmation failures remain visible.
+func processInstanceVariableUpdateResultCounts(results process.ProcessInstanceVariableUpdateResults) (accepted, unchanged, failed, skipped int) {
+	for _, item := range results.Items {
+		if item.MutationAccepted {
+			accepted++
+		}
+		switch item.Status {
+		case process.ProcessInstanceVariableUpdateStatusUnchanged:
+			unchanged++
+		case process.ProcessInstanceVariableUpdateStatusSkipped:
+			skipped++
+		case process.ProcessInstanceVariableUpdateStatusMutationFailed, process.ProcessInstanceVariableUpdateStatusConfirmationFailed:
+			failed++
+		}
+	}
+	return accepted, unchanged, failed, skipped
 }
 
 // formatProcessInstanceVariableUpdatePlan labels only planned writes with their
