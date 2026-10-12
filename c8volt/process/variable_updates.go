@@ -27,3 +27,15 @@ func (c *client) PlanProcessInstanceVariableUpdates(ctx context.Context, keys ty
 	}
 	return fromDomainProcessInstanceVariableUpdatePlan(plan), nil
 }
+
+// ExecuteProcessInstanceVariableUpdates delegates a frozen public plan to the
+// composed service and preserves any partial ordered results alongside errors.
+func (c *client) ExecuteProcessInstanceVariableUpdates(ctx context.Context, plan ProcessInstanceVariableUpdatePlan, wantedWorkers int, opts ...options.FacadeOption) (ProcessInstanceVariableUpdateResults, error) {
+	if c.updateApi == nil {
+		return ProcessInstanceVariableUpdateResults{}, ferr.FromDomain(fmt.Errorf("%w: process-instance variable execution requires a variable update service", d.ErrPrecondition))
+	}
+	results, err := c.updateApi.ExecuteProcessInstanceVariableUpdates(
+		ctx, toDomainProcessInstanceVariableUpdatePlan(plan), wantedWorkers, options.MapFacadeOptionsToCallOptions(opts)...,
+	)
+	return fromDomainProcessInstanceVariableUpdateResults(results), ferr.FromDomain(err)
+}

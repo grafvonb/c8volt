@@ -16,18 +16,22 @@ Started: 2026-10-12T04:49:40Z
 - Prepared PI updates use an additive composed `processinstance.VariableUpdateAPI`; legacy facade constructors inject nil and the new method returns a normalized precondition error.
 - Collection planning reads all selected-instance identities first, then complete root variables in stable key order, and returns the zero plan on any later target failure.
 - The PI command retains the public frozen plan beside a mechanically adapted legacy preview; tenant context now comes directly from the plan instead of command-side variable evidence reconstruction.
+- Prepared PI execution validates and deep-copies the entire plan before I/O, schedules only changed roots through the bounded pool, and reconstructs ordered unchanged/failed/skipped outcomes against selected-key order.
+- Accepted changed roots use the shared variable waiter exactly once with all frozen requested values; no-wait bypasses verification, and confirmation failure retains mutation acceptance.
 
 ## Gotchas
 
 - Camunda 8.10 cursor requests use `*EndCursor`; 8.8 and 8.9 use a value `EndCursor`.
 - `hasMoreTotalItems` describes a capped total, not by itself whether another result page exists.
 - Plan values must be copied independently into requested, mutation, verification, classification, and facade representations so caller or service mutation cannot broaden a later payload.
+- The planning dependency can remain a narrow complete-reader interface: `NewVariableUpdates` discovers the optional exact scope writer by interface assertion, preserving planning-only test doubles and legacy composition behavior.
 
 ## Reusable Commands
 
 - `go test ./internal/services/variable/... -count=1`
 - `go test ./internal/services/processinstance/... -run 'Variable|Enrich' -count=1`
 - `go test ./... -run '^$'`
+- `go test -race ./internal/services/processinstance ./internal/services/variable/waiter ./c8volt/process -run 'Variable' -count=1`
 - `git diff --check`
 
 ## Do Not Repeat
@@ -36,4 +40,4 @@ Started: 2026-10-12T04:49:40Z
 - Do not decode variable values through generated models; they omit raw value/truncation details needed by planning and verification.
 
 ## Current Handoff
-- Start US2 with T004: implement validated prepared-plan execution, exact local payload submission, truthful unchanged/skipped outcomes, and the single complete-read waiter workflow across service/facade boundaries.
+- Continue US2 with T005: route the command's retained prepared plan through approval into facade execution, remove legacy full-input submission, and filter keys-only results by `MutationAccepted`.

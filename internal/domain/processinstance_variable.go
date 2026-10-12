@@ -131,6 +131,10 @@ const (
 	ProcessInstanceVariableUpdateStatusConfirmed          ProcessInstanceVariableUpdateStatus = "confirmed"
 	ProcessInstanceVariableUpdateStatusMutationFailed     ProcessInstanceVariableUpdateStatus = "mutation_failed"
 	ProcessInstanceVariableUpdateStatusConfirmationFailed ProcessInstanceVariableUpdateStatus = "confirmation_failed"
+	// ProcessInstanceVariableUpdateStatusUnchanged means the frozen plan required no write.
+	ProcessInstanceVariableUpdateStatusUnchanged ProcessInstanceVariableUpdateStatus = "unchanged"
+	// ProcessInstanceVariableUpdateStatusSkipped means required work was not started.
+	ProcessInstanceVariableUpdateStatusSkipped ProcessInstanceVariableUpdateStatus = "skipped"
 )
 
 type ProcessInstanceVariableUpdateResult struct {

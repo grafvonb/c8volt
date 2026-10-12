@@ -38,6 +38,7 @@ type stubProcessAPI struct {
 	enrichProcessInstanceListeners   func(context.Context, process.ProcessInstances, ...options.FacadeOption) (process.ElementEnrichedProcessInstances, error)
 	searchProcessInstanceVariables   func(context.Context, string, ...options.FacadeOption) ([]process.ProcessInstanceVariable, error)
 	planProcessInstanceVariables     func(context.Context, types.Keys, map[string]any, ...options.FacadeOption) (process.ProcessInstanceVariableUpdatePlan, error)
+	executeProcessInstanceVariables  func(context.Context, process.ProcessInstanceVariableUpdatePlan, int, ...options.FacadeOption) (process.ProcessInstanceVariableUpdateResults, error)
 	updateProcessInstancesVars       func(context.Context, types.Keys, map[string]any, int, ...options.FacadeOption) (process.ProcessInstanceVariableUpdateResults, error)
 	resolveProcessInstancesIncidents func(context.Context, types.Keys, int, ...options.FacadeOption) (incident.ProcessInstanceResolutionResults, error)
 }
@@ -664,6 +665,14 @@ func (s stubProcessAPI) PlanProcessInstanceVariableUpdates(ctx context.Context, 
 		panic("unexpected call")
 	}
 	return s.planProcessInstanceVariables(ctx, keys, variables, opts...)
+}
+
+// ExecuteProcessInstanceVariableUpdates delegates frozen execution to the configured command-test callback.
+func (s stubProcessAPI) ExecuteProcessInstanceVariableUpdates(ctx context.Context, plan process.ProcessInstanceVariableUpdatePlan, workers int, opts ...options.FacadeOption) (process.ProcessInstanceVariableUpdateResults, error) {
+	if s.executeProcessInstanceVariables == nil {
+		panic("unexpected call")
+	}
+	return s.executeProcessInstanceVariables(ctx, plan, workers, opts...)
 }
 
 func (stubProcessAPI) CreateNProcessInstances(context.Context, process.ProcessInstanceData, int, int, ...options.FacadeOption) ([]process.ProcessInstance, error) {

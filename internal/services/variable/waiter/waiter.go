@@ -73,7 +73,7 @@ func MissingRequestedVariables(key string, requested map[string]any, observed []
 	out := missing[:0]
 	for _, name := range missing {
 		variable, ok := byName[name]
-		if !ok || !normalizedJSONValuesEqual(requested[name], variable.Value) {
+		if !ok || variable.APITruncated || !normalizedJSONValuesEqual(requested[name], variable.Value) {
 			out = append(out, name)
 		}
 	}

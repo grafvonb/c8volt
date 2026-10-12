@@ -353,7 +353,57 @@ func fromDomainProcessInstanceVariableUpdateResult(x d.ProcessInstanceVariableUp
 		StatusCode:         x.StatusCode,
 		Message:            x.Message,
 		Error:              x.Error,
-		Variables:          toolx.CopyMap(x.Variables),
+		Variables:          copyProcessInstancePlanVariableMap(x.Variables),
+	}
+}
+
+// toDomainProcessInstanceVariablePlannedValue copies one public classified value.
+func toDomainProcessInstanceVariablePlannedValue(x ProcessInstanceVariablePlannedValue) d.ProcessInstanceVariablePlannedValue {
+	return d.ProcessInstanceVariablePlannedValue{Name: x.Name, Value: copyProcessInstancePlanVariableValue(x.Value), APITruncated: x.APITruncated}
+}
+
+// toDomainProcessInstanceVariablePlannedChange copies one public classified change.
+func toDomainProcessInstanceVariablePlannedChange(x ProcessInstanceVariablePlannedChange) d.ProcessInstanceVariablePlannedChange {
+	return d.ProcessInstanceVariablePlannedChange{
+		Name: x.Name, Before: copyProcessInstancePlanVariableValue(x.Before),
+		After: copyProcessInstancePlanVariableValue(x.After), APITruncated: x.APITruncated,
+	}
+}
+
+// toDomainProcessInstanceVariablePlan copies one public root plan.
+func toDomainProcessInstanceVariablePlan(x ProcessInstanceVariablePlan) d.ProcessInstanceVariablePlan {
+	return d.ProcessInstanceVariablePlan{
+		ProcessInstanceKey: x.ProcessInstanceKey, ScopeKey: x.ScopeKey, TenantId: x.TenantId,
+		Additions:          toolx.MapSlice(x.Additions, toDomainProcessInstanceVariablePlannedValue),
+		Changes:            toolx.MapSlice(x.Changes, toDomainProcessInstanceVariablePlannedChange),
+		UnchangedRequested: toolx.MapSlice(x.UnchangedRequested, toDomainProcessInstanceVariablePlannedValue),
+		Untouched:          toolx.MapSlice(x.Untouched, toDomainProcessInstanceVariablePlannedValue),
+		MutationVariables:  copyProcessInstancePlanVariableMap(x.MutationVariables),
+		VerificationValues: copyProcessInstancePlanVariableMap(x.VerificationValues),
+	}
+}
+
+// toDomainProcessInstanceVariableTenantContext copies public tenant evidence.
+func toDomainProcessInstanceVariableTenantContext(x options.TenantContext) d.TenantContext {
+	return d.TenantContext{
+		Mode: d.TenantContextMode(x.Mode), Filter: d.TenantContextFilter(x.Filter),
+		ConfiguredTenantID: x.ConfiguredTenantID, TargetTenantID: x.TargetTenantID,
+		ResolvedTenantIDs: slices.Clone(x.ResolvedTenantIDs), UnknownTargetCount: x.UnknownTargetCount,
+		CrossTenant: x.CrossTenant,
+		Warnings: toolx.MapSlice(x.Warnings, func(w options.TenantContextWarning) d.TenantContextWarning {
+			return d.TenantContextWarning{Code: d.TenantContextWarningCode(w.Code), Message: w.Message}
+		}),
+	}
+}
+
+// toDomainProcessInstanceVariableUpdatePlan deeply copies an executable public plan.
+func toDomainProcessInstanceVariableUpdatePlan(x ProcessInstanceVariableUpdatePlan) d.ProcessInstanceVariableUpdatePlan {
+	return d.ProcessInstanceVariableUpdatePlan{
+		RequestedKeys: slices.Clone(x.RequestedKeys), RequestedValues: copyProcessInstancePlanVariableMap(x.RequestedValues),
+		Instances: toolx.MapSlice(x.Instances, toDomainProcessInstanceVariablePlan), RequestedCount: x.RequestedCount,
+		UpdateCount: x.UpdateCount, VariableAddCount: x.VariableAddCount, VariableChangeCount: x.VariableChangeCount,
+		VariableUnchangedCount: x.VariableUnchangedCount, VariableUntouchedCount: x.VariableUntouchedCount,
+		MutationSubmitted: x.MutationSubmitted, TenantContext: toDomainProcessInstanceVariableTenantContext(x.TenantContext),
 	}
 }
 

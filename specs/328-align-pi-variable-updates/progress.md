@@ -62,3 +62,23 @@ Started: 2026-10-12 06:49:41
 - The command can preserve its established preview schema by copying facade classifications and counts without re-decoding or comparing backend values.
 - Required targeted command tests, the full command package, repository compile-only coverage, generated docs, and diff validation passed.
 ---
+---
+## Iteration 4 - 2026-10-12 07:17
+**Work Unit**: T004 US2 prepared process-instance variable execution
+**Tasks Completed**:
+- [x] T004: Validate and execute frozen root-variable plans with selective local writes, truthful outcomes, and one complete-read waiter workflow
+**Tasks Remaining in Work Unit**: T005 remains in US2
+**Commit**: This work-unit commit
+**Files Changed**:
+- internal/domain/processinstance_variable.go
+- internal/services/processinstance/{update.go,update_validation.go,update_execution_test.go}
+- internal/services/variable/waiter/{waiter.go,waiter_test.go}
+- c8volt/process/{api.go,variable_updates.go,convert.go,model.go,client_test.go,model_test.go}
+- c8volt/resource/client_test.go
+- cmd/process_api_stub_test.go
+- README.md
+- specs/328-align-pi-variable-updates/{tasks.md,ralph-memory.md,progress.md}
+**Learnings**:
+- Frozen PI plans can retain planning-only reader composition while optionally exposing the exact local writer through the production variable service.
+- Required service, waiter, and facade suites passed; repository compile-only and targeted race validation also passed.
+---

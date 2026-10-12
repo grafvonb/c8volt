@@ -3519,9 +3519,12 @@ var _ pisvc.API = stubProcessInstanceAPI{}
 
 type facadeProcessInstanceVariableUpdateAPI struct {
 	plan       d.ProcessInstanceVariableUpdatePlan
+	results    d.ProcessInstanceVariableUpdateResults
 	err        error
 	keys       typex.Keys
 	variables  map[string]any
+	executed   d.ProcessInstanceVariableUpdatePlan
+	workers    int
 	callConfig *services.CallCfg
 }
 
@@ -3531,6 +3534,14 @@ func (a *facadeProcessInstanceVariableUpdateAPI) PlanProcessInstanceVariableUpda
 	a.variables = variables
 	a.callConfig = services.ApplyCallOptions(opts)
 	return a.plan, a.err
+}
+
+// ExecuteProcessInstanceVariableUpdates records facade conversion and returns controlled outcomes.
+func (a *facadeProcessInstanceVariableUpdateAPI) ExecuteProcessInstanceVariableUpdates(_ context.Context, plan d.ProcessInstanceVariableUpdatePlan, workers int, opts ...services.CallOption) (d.ProcessInstanceVariableUpdateResults, error) {
+	a.executed = plan
+	a.workers = workers
+	a.callConfig = services.ApplyCallOptions(opts)
+	return a.results, a.err
 }
 
 // TestClientPlanProcessInstanceVariableUpdatesCopiesAndDelegates verifies the
@@ -3578,4 +3589,52 @@ func TestClientPlanProcessInstanceVariableUpdatesConvertsErrorsAndPreservesConst
 	plan, err := cli.PlanProcessInstanceVariableUpdates(context.Background(), typex.Keys{"pi-a"}, map[string]any{"value": true})
 	require.ErrorIs(t, err, ferr.ErrUnavailable)
 	require.Equal(t, ProcessInstanceVariableUpdatePlan{}, plan)
+}
+
+// TestClientExecuteProcessInstanceVariableUpdatesCopiesAndReturnsPartialResults verifies
+// execution plan isolation, option delegation, status conversion, and error preservation.
+func TestClientExecuteProcessInstanceVariableUpdatesCopiesAndReturnsPartialResults(t *testing.T) {
+	t.Parallel()
+
+	serviceValue := map[string]any{"nested": []any{"service"}}
+	updateAPI := &facadeProcessInstanceVariableUpdateAPI{
+		results: d.ProcessInstanceVariableUpdateResults{Items: []d.ProcessInstanceVariableUpdateResult{{
+			Key: "pi-a", Status: d.ProcessInstanceVariableUpdateStatusSubmitted, MutationAccepted: true,
+			ConfirmationStatus: "skipped", Variables: map[string]any{"payload": serviceValue},
+		}}},
+		err: d.ErrUnavailable,
+	}
+	cli := NewWithVariableUpdates(&stubProcessDefinitionAPI{}, stubProcessInstanceAPI{}, stubIncidentAPI{}, nil, nil, updateAPI, slog.Default())
+	callerValue := map[string]any{"nested": []any{"caller"}}
+	plan := ProcessInstanceVariableUpdatePlan{
+		RequestedKeys: []string{"pi-a"}, RequestedValues: map[string]any{"payload": callerValue}, RequestedCount: 1, UpdateCount: 1, VariableAddCount: 1,
+		Instances: []ProcessInstanceVariablePlan{{
+			ProcessInstanceKey: "pi-a", ScopeKey: "pi-a",
+			Additions:         []ProcessInstanceVariablePlannedValue{{Name: "payload", Value: callerValue}},
+			MutationVariables: map[string]any{"payload": callerValue}, VerificationValues: map[string]any{"payload": callerValue},
+		}},
+	}
+
+	results, err := cli.ExecuteProcessInstanceVariableUpdates(context.Background(), plan, 3, options.WithNoWait(), options.WithFailFast())
+
+	require.ErrorIs(t, err, ferr.ErrUnavailable)
+	require.Equal(t, 3, updateAPI.workers)
+	require.True(t, updateAPI.callConfig.NoWait)
+	require.True(t, updateAPI.callConfig.FailFast)
+	callerValue["nested"].([]any)[0] = "mutated"
+	require.Equal(t, "caller", updateAPI.executed.RequestedValues["payload"].(map[string]any)["nested"].([]any)[0])
+	serviceValue["nested"].([]any)[0] = "changed-after-return"
+	require.Equal(t, "service", results.Items[0].Variables["payload"].(map[string]any)["nested"].([]any)[0])
+	require.Equal(t, ProcessInstanceVariableUpdateStatusSubmitted, results.Items[0].Status)
+	require.True(t, results.Items[0].MutationAccepted)
+}
+
+// TestClientExecuteProcessInstanceVariableUpdatesRequiresComposedDependency verifies
+// legacy facade constructors fail before attempting prepared execution.
+func TestClientExecuteProcessInstanceVariableUpdatesRequiresComposedDependency(t *testing.T) {
+	t.Parallel()
+
+	legacy := New(&stubProcessDefinitionAPI{}, stubProcessInstanceAPI{}, stubIncidentAPI{}, slog.Default())
+	_, err := legacy.ExecuteProcessInstanceVariableUpdates(context.Background(), ProcessInstanceVariableUpdatePlan{}, 1)
+	require.ErrorIs(t, err, ferr.ErrLocalPrecondition)
 }

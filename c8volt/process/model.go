@@ -220,6 +220,10 @@ const (
 	ProcessInstanceVariableUpdateStatusConfirmed          ProcessInstanceVariableUpdateStatus = "confirmed"
 	ProcessInstanceVariableUpdateStatusMutationFailed     ProcessInstanceVariableUpdateStatus = "mutation_failed"
 	ProcessInstanceVariableUpdateStatusConfirmationFailed ProcessInstanceVariableUpdateStatus = "confirmation_failed"
+	// ProcessInstanceVariableUpdateStatusUnchanged means planning found no required write.
+	ProcessInstanceVariableUpdateStatusUnchanged ProcessInstanceVariableUpdateStatus = "unchanged"
+	// ProcessInstanceVariableUpdateStatusSkipped means required work was not started.
+	ProcessInstanceVariableUpdateStatusSkipped ProcessInstanceVariableUpdateStatus = "skipped"
 )
 
 type ProcessInstanceVariableUpdateRequest struct {
@@ -239,7 +243,8 @@ type ProcessInstanceVariableUpdateResult struct {
 }
 
 func (r ProcessInstanceVariableUpdateResult) OK() bool {
-	return r.MutationAccepted && r.Status != ProcessInstanceVariableUpdateStatusMutationFailed && r.Status != ProcessInstanceVariableUpdateStatusConfirmationFailed
+	return r.Status == ProcessInstanceVariableUpdateStatusUnchanged ||
+		(r.MutationAccepted && r.Status != ProcessInstanceVariableUpdateStatusMutationFailed && r.Status != ProcessInstanceVariableUpdateStatusConfirmationFailed)
 }
 
 type ProcessInstanceVariableUpdateResults struct {

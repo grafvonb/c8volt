@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -17,6 +18,9 @@ import (
 	"github.com/grafvonb/c8volt/config"
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/services"
+	variablewaiter "github.com/grafvonb/c8volt/internal/services/variable/waiter"
+	"github.com/grafvonb/c8volt/toolx"
+	"github.com/grafvonb/c8volt/toolx/pool"
 	"github.com/grafvonb/c8volt/typex"
 )
 
@@ -31,9 +35,15 @@ type VariableUpdateRootVariableAPI interface {
 	SearchProcessInstanceVariables(ctx context.Context, key string, opts ...services.CallOption) ([]d.ProcessInstanceVariable, error)
 }
 
+// VariableUpdateScopeAPI supplies exact local-scope mutation submissions.
+type VariableUpdateScopeAPI interface {
+	UpdateScopeVariables(ctx context.Context, scopeKey string, variables map[string]any, opts ...services.CallOption) (d.ScopeVariableUpdateResponse, error)
+}
+
 // VariableUpdateAPI exposes collection-wide process-instance variable planning.
 type VariableUpdateAPI interface {
 	PlanProcessInstanceVariableUpdates(ctx context.Context, keys typex.Keys, variables map[string]any, opts ...services.CallOption) (d.ProcessInstanceVariableUpdatePlan, error)
+	ExecuteProcessInstanceVariableUpdates(ctx context.Context, plan d.ProcessInstanceVariableUpdatePlan, wantedWorkers int, opts ...services.CallOption) (d.ProcessInstanceVariableUpdateResults, error)
 }
 
 // VariableUpdateService composes process-instance identity reads with complete
@@ -41,6 +51,7 @@ type VariableUpdateAPI interface {
 type VariableUpdateService struct {
 	processInstances VariableUpdateProcessInstanceAPI
 	variables        VariableUpdateRootVariableAPI
+	writer           VariableUpdateScopeAPI
 	config           *config.Config
 	log              *slog.Logger
 }
@@ -50,7 +61,137 @@ func NewVariableUpdates(processInstances VariableUpdateProcessInstanceAPI, varia
 	if log == nil {
 		log = slog.Default()
 	}
-	return &VariableUpdateService{processInstances: processInstances, variables: variables, config: cfg, log: log}
+	writer, _ := variables.(VariableUpdateScopeAPI)
+	return &VariableUpdateService{processInstances: processInstances, variables: variables, writer: writer, config: cfg, log: log}
+}
+
+// ExecuteProcessInstanceVariableUpdates validates and freezes the complete
+// collection plan before submitting exact root payloads and optionally waiting once.
+func (s *VariableUpdateService) ExecuteProcessInstanceVariableUpdates(ctx context.Context, plan d.ProcessInstanceVariableUpdatePlan, wantedWorkers int, opts ...services.CallOption) (d.ProcessInstanceVariableUpdateResults, error) {
+	frozen, err := validateAndCopyProcessInstanceVariableUpdatePlan(plan)
+	if err != nil {
+		return d.ProcessInstanceVariableUpdateResults{}, err
+	}
+	cfg := services.ApplyCallOptions(opts)
+	if cfg.DryRun || len(frozen.Instances) == 0 {
+		return d.ProcessInstanceVariableUpdateResults{Items: make([]d.ProcessInstanceVariableUpdateResult, 0)}, nil
+	}
+
+	items := make([]d.ProcessInstanceVariableUpdateResult, len(frozen.Instances))
+	changedIndexes := make([]int, 0, frozen.UpdateCount)
+	for i, instance := range frozen.Instances {
+		items[i] = d.ProcessInstanceVariableUpdateResult{
+			Key: instance.ProcessInstanceKey, Variables: copyProcessInstanceVariableMap(instance.VerificationValues), ConfirmationStatus: "skipped",
+		}
+		if len(instance.MutationVariables) == 0 {
+			items[i].Status = d.ProcessInstanceVariableUpdateStatusUnchanged
+			continue
+		}
+		changedIndexes = append(changedIndexes, i)
+	}
+	if len(changedIndexes) == 0 {
+		return d.ProcessInstanceVariableUpdateResults{Items: items}, nil
+	}
+	if s.writer == nil {
+		return d.ProcessInstanceVariableUpdateResults{}, fmt.Errorf("%w: process-instance variable execution requires a scope variable service", d.ErrPrecondition)
+	}
+	if !cfg.NoWait && s.variables == nil {
+		return d.ProcessInstanceVariableUpdateResults{}, fmt.Errorf("%w: process-instance variable confirmation requires a variable service", d.ErrPrecondition)
+	}
+
+	workers := toolx.DetermineNoOfWorkers(len(changedIndexes), wantedWorkers, cfg.NoWorkerLimit)
+	mutations, mutationErr := pool.ExecuteSlice[int, processInstanceVariableExecution](ctx, changedIndexes, workers, cfg.FailFast,
+		func(ctx context.Context, instanceIndex int, _ int) (processInstanceVariableExecution, error) {
+			instance := frozen.Instances[instanceIndex]
+			response, err := s.writer.UpdateScopeVariables(ctx, instance.ScopeKey, copyProcessInstanceVariableMap(instance.MutationVariables), opts...)
+			result := items[instanceIndex]
+			result.MutationAccepted = response.Accepted
+			result.StatusCode = response.StatusCode
+			result.Message = response.Status
+			if err != nil {
+				result.Status = d.ProcessInstanceVariableUpdateStatusMutationFailed
+				result.Error = err.Error()
+				return processInstanceVariableExecution{attempted: true, result: result}, err
+			}
+			if !response.Accepted {
+				err = fmt.Errorf("%w: process-instance %s variable update was not accepted", d.ErrUpstream, instance.ProcessInstanceKey)
+				result.Status = d.ProcessInstanceVariableUpdateStatusMutationFailed
+				result.Error = err.Error()
+				return processInstanceVariableExecution{attempted: true, result: result}, err
+			}
+			result.Status = d.ProcessInstanceVariableUpdateStatusSubmitted
+			return processInstanceVariableExecution{attempted: true, result: result}, nil
+		})
+	mutationErr = joinProcessInstanceExecutionContextError(mutationErr, ctx.Err())
+	for i, instanceIndex := range changedIndexes {
+		if mutations[i].attempted {
+			items[instanceIndex] = mutations[i].result
+			continue
+		}
+		items[instanceIndex].Status = d.ProcessInstanceVariableUpdateStatusSkipped
+	}
+	results := d.ProcessInstanceVariableUpdateResults{Items: items}
+	if cfg.NoWait {
+		return results, mutationErr
+	}
+
+	confirmationIndexes := make([]int, 0, len(changedIndexes))
+	for _, instanceIndex := range changedIndexes {
+		if results.Items[instanceIndex].Status == d.ProcessInstanceVariableUpdateStatusSubmitted {
+			confirmationIndexes = append(confirmationIndexes, instanceIndex)
+		}
+	}
+	confirmationWorkers := toolx.DetermineNoOfWorkers(len(confirmationIndexes), wantedWorkers, cfg.NoWorkerLimit)
+	confirmations, confirmationErr := pool.ExecuteSlice[int, processInstanceVariableConfirmation](ctx, confirmationIndexes, confirmationWorkers, cfg.FailFast,
+		func(ctx context.Context, instanceIndex int, _ int) (processInstanceVariableConfirmation, error) {
+			instance := frozen.Instances[instanceIndex]
+			missing, err := variablewaiter.WaitForProcessInstanceVariables(ctx, s.variables, s.executionConfig(), instance.ScopeKey, copyProcessInstanceVariableMap(instance.VerificationValues), opts...)
+			if err == nil && len(missing) > 0 {
+				err = fmt.Errorf("%w: variables %s not confirmed on process-instance %s", d.ErrUpstream, strings.Join(missing, ", "), instance.ProcessInstanceKey)
+			}
+			return processInstanceVariableConfirmation{attempted: true, err: err}, err
+		})
+	confirmationErr = joinProcessInstanceExecutionContextError(confirmationErr, ctx.Err())
+	for i, instanceIndex := range confirmationIndexes {
+		if !confirmations[i].attempted {
+			continue
+		}
+		if confirmations[i].err != nil {
+			results.Items[instanceIndex].Status = d.ProcessInstanceVariableUpdateStatusConfirmationFailed
+			results.Items[instanceIndex].ConfirmationStatus = "failed"
+			results.Items[instanceIndex].Error = confirmations[i].err.Error()
+			continue
+		}
+		results.Items[instanceIndex].Status = d.ProcessInstanceVariableUpdateStatusConfirmed
+		results.Items[instanceIndex].ConfirmationStatus = "confirmed"
+	}
+	return results, errors.Join(mutationErr, confirmationErr)
+}
+
+type processInstanceVariableExecution struct {
+	attempted bool
+	result    d.ProcessInstanceVariableUpdateResult
+}
+
+type processInstanceVariableConfirmation struct {
+	attempted bool
+	err       error
+}
+
+// executionConfig guarantees waiter defaults even for manually composed services.
+func (s *VariableUpdateService) executionConfig() *config.Config {
+	if s.config == nil {
+		return config.New()
+	}
+	return s.config
+}
+
+// joinProcessInstanceExecutionContextError retains cancellation that stopped scheduling.
+func joinProcessInstanceExecutionContextError(err, contextErr error) error {
+	if contextErr == nil || errors.Is(err, contextErr) {
+		return err
+	}
+	return errors.Join(err, contextErr)
 }
 
 // PlanProcessInstanceVariableUpdates completes every selected-instance and

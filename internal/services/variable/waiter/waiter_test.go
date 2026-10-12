@@ -74,6 +74,18 @@ func TestMissingRequestedVariables_NormalizedJSONAndScopeFiltering(t *testing.T)
 	require.Empty(t, got)
 }
 
+// TestMissingRequestedVariablesRejectsTruncatedMatches verifies an incomplete
+// root observation cannot prove confirmation even when its visible JSON matches.
+func TestMissingRequestedVariablesRejectsTruncatedMatches(t *testing.T) {
+	t.Parallel()
+
+	got := MissingRequestedVariables("123", map[string]any{"foo": "bar"}, []d.ProcessInstanceVariable{
+		{Name: "foo", Value: `"bar"`, ProcessInstanceKey: "123", ScopeKey: "123", APITruncated: true},
+	})
+
+	require.Equal(t, []string{"foo"}, got)
+}
+
 // testConfig builds a variable waiter config with explicit retry timing.
 func testConfig(initialDelay time.Duration, maxRetries int, timeout time.Duration) *config.Config {
 	return &config.Config{App: config.App{
