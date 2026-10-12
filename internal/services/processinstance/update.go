@@ -440,8 +440,8 @@ func decodeNormalizedProcessInstanceJSON(raw []byte) (any, bool) {
 // decodeProcessInstanceObservedValue preserves truncated fragments while
 // decoding valid raw JSON for preview values.
 func decodeProcessInstanceObservedValue(raw string) any {
-	var value any
-	if err := json.Unmarshal([]byte(raw), &value); err != nil {
+	value, ok := normalizeProcessInstanceObservedValue(raw)
+	if !ok {
 		return raw
 	}
 	return value

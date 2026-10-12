@@ -5,6 +5,7 @@ package processinstance
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"sync"
 	"testing"
@@ -13,6 +14,7 @@ import (
 	"github.com/grafvonb/c8volt/config"
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/services"
+	"github.com/grafvonb/c8volt/typex"
 	"github.com/stretchr/testify/require"
 )
 
@@ -194,6 +196,43 @@ func TestExecuteProcessInstanceVariableUpdatesPreservesAcceptedConfirmationFailu
 	require.Equal(t, d.ProcessInstanceVariableUpdateStatusConfirmationFailed, results.Items[1].Status)
 	require.True(t, results.Items[1].MutationAccepted)
 	require.Equal(t, "failed", results.Items[1].ConfirmationStatus)
+}
+
+// TestExecuteProcessInstanceVariableUpdatesAcceptsPlannerNumericEvidence verifies
+// a mixed planner-produced plan retains precise unchanged and nested numeric values.
+func TestExecuteProcessInstanceVariableUpdatesAcceptsPlannerNumericEvidence(t *testing.T) {
+	t.Parallel()
+
+	const key = "pi-precise"
+	instances := &processInstanceVariablePlanningAPI{instances: []d.ProcessInstance{{Key: key}}}
+	api := &processInstanceVariableExecutionAPI{}
+	variables := &processInstanceRootVariablePlanningAPI{variables: map[string][]d.ProcessInstanceVariable{
+		key: {
+			{Name: "exact", Value: `9007199254740993`, ProcessInstanceKey: key, ScopeKey: key},
+			{Name: "mismatch", Value: `9007199254740993`, ProcessInstanceKey: key, ScopeKey: key},
+			{Name: "nested", Value: `{"value":9007199254740993}`, ProcessInstanceKey: key, ScopeKey: key},
+		},
+	}}
+	service := NewVariableUpdates(instances, variables, config.New(), nil)
+	plan, err := service.PlanProcessInstanceVariableUpdates(context.Background(), typex.Keys{key}, map[string]any{
+		"exact":    json.Number("9007199254740993"),
+		"mismatch": json.Number("9007199254740992"),
+		"nested":   map[string]any{"value": json.Number("9007199254740993")},
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, []string{"exact", "nested"}, processInstancePlannedValueNames(plan.Instances[0].UnchangedRequested))
+	require.Equal(t, []string{"mismatch"}, processInstancePlannedChangeNames(plan.Instances[0].Changes))
+	require.Equal(t, json.Number("9007199254740993"), plan.Instances[0].UnchangedRequested[0].Value)
+	require.Equal(t, json.Number("9007199254740993"), plan.Instances[0].UnchangedRequested[1].Value.(map[string]any)["value"])
+
+	executor := NewVariableUpdates(nil, api, config.New(), nil)
+	results, err := executor.ExecuteProcessInstanceVariableUpdates(context.Background(), plan, 1, services.WithNoWait())
+
+	require.NoError(t, err)
+	require.Len(t, api.writes, 1)
+	require.Equal(t, map[string]any{"mismatch": json.Number("9007199254740992")}, api.writes[0].variables)
+	require.Equal(t, d.ProcessInstanceVariableUpdateStatusSubmitted, results.Items[0].Status)
 }
 
 // processInstanceExecutionPlan builds one unchanged and one mixed changed root.

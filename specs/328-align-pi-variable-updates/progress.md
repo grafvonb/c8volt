@@ -4,7 +4,6 @@ Feature: 328-align-pi-variable-updates
 Started: 2026-10-12 06:49:41
 
 ---
-
 ## Iteration 1 - 2026-10-12 06:55
 **Work Unit**: T001 Complete variable reads
 **Tasks Completed**:
@@ -131,4 +130,19 @@ Started: 2026-10-12 06:49:41
 **Learnings**:
 - Mode-aware early returns preserve explicit JSON and keys output under quiet while all-unchanged execution remains prompt-, write-, and verification-free after complete sparse-page traversal.
 - Targeted command, terminal, user-task, facade, generated-doc, diff, and full race-enabled repository validation passed with no platform coverage gaps.
+---
+---
+## Iteration 1 - 2026-10-12 16:54
+**Work Unit**: T008 US3 precision-safe process-instance variable planning and confirmation
+**Tasks Completed**:
+- [x] T008: Preserve numeric precision through observed-value planning, plan validation, and confirmation
+**Tasks Remaining in Work Unit**: 0; T011 remains a later US3 convergence unit
+**Commit**: This work-unit commit
+**Files Changed**:
+- internal/services/processinstance/{update.go,update_execution_test.go}
+- internal/services/variable/waiter/{waiter.go,waiter_test.go}
+- specs/328-align-pi-variable-updates/{tasks.md,ralph-memory.md,progress.md}
+**Learnings**:
+- Decoding raw Camunda observations with `UseNumber` is required before normalization; a later precision-aware round trip cannot recover digits already rounded by `json.Unmarshal`.
+- Focused service, adapter, facade, command, user-task compatibility, diff, and full race-enabled repository checks passed.
 ---

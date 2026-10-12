@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"io"
 	"reflect"
 	"sort"
 	"time"
@@ -103,8 +104,8 @@ func requestedVariableNames(requested map[string]any) []string {
 
 // normalizedJSONValuesEqual compares requested values with raw Camunda JSON values.
 func normalizedJSONValuesEqual(requested any, observedRaw string) bool {
-	var observed any
-	if err := json.Unmarshal([]byte(observedRaw), &observed); err != nil {
+	observed, ok := decodeRawJSONValue(observedRaw)
+	if !ok {
 		if s, ok := requested.(string); ok {
 			return observedRaw == s
 		}
@@ -119,6 +120,20 @@ func normalizedJSONValuesEqual(requested any, observedRaw string) bool {
 		return false
 	}
 	return reflect.DeepEqual(requestedNormalized, observedNormalized)
+}
+
+// decodeRawJSONValue preserves backend number precision and rejects trailing data.
+func decodeRawJSONValue(raw string) (any, bool) {
+	decoder := json.NewDecoder(bytes.NewReader([]byte(raw)))
+	decoder.UseNumber()
+	var value any
+	if err := decoder.Decode(&value); err != nil {
+		return nil, false
+	}
+	if err := decoder.Decode(&struct{}{}); err != io.EOF {
+		return nil, false
+	}
+	return value, true
 }
 
 // normalizeJSONValue round-trips a value through JSON using stable numeric handling.
