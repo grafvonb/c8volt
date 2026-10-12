@@ -28,7 +28,7 @@ func (s *Service) SearchProcessInstanceVariablesPage(ctx context.Context, key st
 	if err := pageReq.Validate(); err != nil {
 		return d.ProcessInstanceVariablePage{}, fmt.Errorf("validate process-instance variable page: %w", err)
 	}
-	_ = services.ApplyCallOptions(opts)
+	callCfg := services.ApplyCallOptions(opts)
 	s.log.Debug(fmt.Sprintf("searching pi %s variables", key))
 	processInstanceKeyFilter, err := common.NewProcessInstanceKeyEqFilterPtr(key)
 	if err != nil {
@@ -39,7 +39,7 @@ func (s *Service) SearchProcessInstanceVariablesPage(ctx context.Context, key st
 		return d.ProcessInstanceVariablePage{}, fmt.Errorf("building process-instance variable scope filter: %w", err)
 	}
 	var tenantID *camundav88.TenantId
-	if s.cfg.App.Tenant != "" {
+	if !callCfg.IgnoreTenant && s.cfg.App.Tenant != "" {
 		tenant := camundav88.TenantId(s.cfg.App.Tenant)
 		tenantID = &tenant
 	}

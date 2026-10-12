@@ -23,6 +23,7 @@ Started: 2026-10-12T04:49:40Z
 - The PI command carries the same public prepared plan through approval into facade execution; successful keys-only output is derived from `MutationAccepted`, not success status.
 - PI partial execution errors use the UT-style retained-result renderer before `exitAfterRenderedResult`; JSON receives one failure envelope, while human and keys-only output retain available per-key outcomes without a second generic error render.
 - PI dry-runs and completed all-unchanged plans return before approval and execution; explicit machine modes survive quiet, JSON takes precedence over keys, and rendering adds no backend reads.
+- Explicit process-instance keys use backend authorization: `IgnoreTenant` must omit the configured tenant predicate from every root-variable page, while ordinary reads retain it.
 
 ## Gotchas
 
@@ -45,4 +46,4 @@ Started: 2026-10-12T04:49:40Z
 - Do not decode variable values through generated models; they omit raw value/truncation details needed by planning and verification.
 
 ## Current Handoff
-- Continue with T010 by resolving the explicit-key tenant-filter contract from authoritative feature and repository evidence before changing adapter behavior.
+- Continue with T011 concurrency and lifecycle coverage for the prepared executor; change behavior only if deterministic tests expose a defect.

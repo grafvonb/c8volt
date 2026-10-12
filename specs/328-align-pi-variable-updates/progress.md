@@ -161,3 +161,20 @@ Started: 2026-10-12 06:49:41
 - Exact interface maps and slices retain their existing representation, while typed JSON values can be isolated by a precision-safe round trip into the same concrete type and raw messages require an explicit byte clone.
 - Required targeted service/facade suites, full affected-package tests, targeted race validation, and diff checks passed.
 ---
+---
+## Iteration 3 - 2026-10-12 17:15
+**Work Unit**: T010 US1 explicit-key tenant contract
+**Tasks Completed**:
+- [x] T010: Resolve and enforce tenant-filter behavior for explicit process-instance variable reads
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- internal/services/variable/v88/{variables.go,service_test.go}
+- internal/services/variable/v89/{variables.go,service_test.go}
+- internal/services/variable/v810/{variables.go,service_test.go}
+- cmd/get_processinstance_test.go
+- specs/328-align-pi-variable-updates/{research.md,tasks.md,ralph-memory.md,progress.md}
+**Learnings**:
+- The established explicit-key contract makes backend authorization authoritative; `IgnoreTenant` removes only the configured discovery predicate while returned tenant metadata remains available as evidence.
+- Adapter, PI command, tenant, user-task, facade, targeted race, diff, and full race-enabled repository validation passed after aligning one stale keyed-get assertion.
+---

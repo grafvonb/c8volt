@@ -75,3 +75,11 @@ Research used the local implementation and issue #328 already read in this chat.
 **Alternatives considered:** Mocking terminal eligibility or checking only rendered text misses the regressions. Runtime tests during this documentation-only planning step provide no implementation evidence.
 
 All research questions are resolved. Remaining coding details are implementation choices within these contracts, not open scope decisions.
+
+## 8. Explicit process-instance keys bypass configured tenant discovery filters
+
+**Decision:** A root-variable read must omit the configured tenant predicate when its call options include `IgnoreTenant`. Reads without that option retain the configured tenant predicate on every page.
+
+**Evidence:** FR-014 preserves explicit-key selection compatibility. `update process-instance` documents that explicit keys use backend authorization without tenant filtering and passes `collectExplicitPIAdminInputOptions`, which includes `WithIgnoreTenant`, through planning and execution. The shared tenant-context contract renders explicit-key work as `tenant filter not applied`; README tenant guidance likewise says direct resource keys are not restricted by the discovery tenant filter. Process-instance direct-key adapters already honor `IgnoreTenant`, while the variable traversal forwards call options unchanged to every page.
+
+**Resolution of earlier wording:** Research decision 3 requires tenant behavior to remain compatible on every page; it does not require a configured discovery predicate when the caller explicitly requests direct-key semantics. The compatible behavior is therefore conditional: preserve tenant filtering for ordinary reads and omit it for `IgnoreTenant` reads. Backend authorization remains authoritative, and returned tenant metadata continues to supply plan and result evidence.

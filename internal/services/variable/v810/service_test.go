@@ -113,6 +113,47 @@ func TestSearchProcessInstanceVariablesCompletesCursorPages(t *testing.T) {
 	}, got)
 }
 
+// TestSearchProcessInstanceVariablesIgnoreTenantOmitsConfiguredTenant verifies
+// explicit-key reads rely on backend authorization across offset and cursor pages.
+func TestSearchProcessInstanceVariablesIgnoreTenantOmitsConfiguredTenant(t *testing.T) {
+	calls := 0
+	svc := newVariableTestService(t, &mockVariableClient{
+		searchVariablesWithResponse: func(_ context.Context, _ *camundav810.SearchVariablesParams, body camundav810.SearchVariablesJSONRequestBody, _ ...camundav810.RequestEditorFn) (*camundav810.SearchVariablesResponse, error) {
+			calls++
+			require.NotNil(t, body.Filter)
+			require.Nil(t, body.Filter.TenantId)
+			if calls == 1 {
+				offset, err := body.Page.AsOffsetPagination()
+				require.NoError(t, err)
+				require.Zero(t, *offset.From)
+				return &camundav810.SearchVariablesResponse{
+					HTTPResponse: variableHTTPResponse(http.MethodPost, "https://camunda.local/v2/variables/search", http.StatusOK, "200 OK"),
+					Body:         []byte(`{"items":[{"name":"alpha","value":"1","variableKey":"v1","processInstanceKey":"123","scopeKey":"123","tenantId":"tenant-b"}],"page":{"totalItems":2,"hasMoreTotalItems":true,"endCursor":"next"}}`),
+					JSON200:      &camundav810.VariableSearchQueryResult{},
+				}, nil
+			}
+			cursor, err := body.Page.AsCursorForwardPagination()
+			require.NoError(t, err)
+			require.NotNil(t, cursor.After)
+			require.Equal(t, camundav810.EndCursor("next"), *cursor.After)
+			return &camundav810.SearchVariablesResponse{
+				HTTPResponse: variableHTTPResponse(http.MethodPost, "https://camunda.local/v2/variables/search", http.StatusOK, "200 OK"),
+				Body:         []byte(`{"items":[{"name":"zeta","value":"2","variableKey":"v2","processInstanceKey":"123","scopeKey":"123","tenantId":"tenant-b"}],"page":{"totalItems":2,"hasMoreTotalItems":false}}`),
+				JSON200:      &camundav810.VariableSearchQueryResult{},
+			}, nil
+		},
+	})
+
+	got, err := svc.SearchProcessInstanceVariables(context.Background(), "123", services.WithIgnoreTenant())
+
+	require.NoError(t, err)
+	require.Equal(t, 2, calls)
+	require.Equal(t, []d.ProcessInstanceVariable{
+		{Name: "alpha", Value: "1", VariableKey: "v1", ProcessInstanceKey: "123", ScopeKey: "123", TenantId: "tenant-b"},
+		{Name: "zeta", Value: "2", VariableKey: "v2", ProcessInstanceKey: "123", ScopeKey: "123", TenantId: "tenant-b"},
+	}, got)
+}
+
 // TestSearchProcessInstanceVariables_Errors verifies transport and malformed response handling.
 func TestSearchProcessInstanceVariables_Errors(t *testing.T) {
 	transportErr := errors.New("transport failed")
