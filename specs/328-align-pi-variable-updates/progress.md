@@ -146,3 +146,18 @@ Started: 2026-10-12 06:49:41
 - Decoding raw Camunda observations with `UseNumber` is required before normalization; a later precision-aware round trip cannot recover digits already rounded by `json.Unmarshal`.
 - Focused service, adapter, facade, command, user-task compatibility, diff, and full race-enabled repository checks passed.
 ---
+---
+## Iteration 2 - 2026-10-12 17:01
+**Work Unit**: T009 US2 frozen JSON snapshot isolation
+**Tasks Completed**:
+- [x] T009: Snapshot typed maps, typed slices, and mutable raw JSON across planning, facade conversion, execution, and results
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- internal/services/processinstance/{update.go,update_test.go,update_execution_test.go}
+- c8volt/process/{convert.go,client_test.go}
+- specs/328-align-pi-variable-updates/{tasks.md,ralph-memory.md,progress.md}
+**Learnings**:
+- Exact interface maps and slices retain their existing representation, while typed JSON values can be isolated by a precision-safe round trip into the same concrete type and raw messages require an explicit byte clone.
+- Required targeted service/facade suites, full affected-package tests, targeted race validation, and diff checks passed.
+---

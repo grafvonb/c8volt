@@ -4,6 +4,10 @@
 package process
 
 import (
+	"bytes"
+	"encoding/json"
+	"io"
+	"reflect"
 	"slices"
 
 	options "github.com/grafvonb/c8volt/c8volt/foptions"
@@ -407,9 +411,12 @@ func toDomainProcessInstanceVariableUpdatePlan(x ProcessInstanceVariableUpdatePl
 	}
 }
 
-// copyProcessInstancePlanVariableValue recursively isolates mutable JSON data.
+// copyProcessInstancePlanVariableValue isolates mutable JSON storage while
+// retaining the established representation of ordinary interface collections.
 func copyProcessInstancePlanVariableValue(value any) any {
 	switch value := value.(type) {
+	case nil:
+		return nil
 	case map[string]any:
 		return copyProcessInstancePlanVariableMap(value)
 	case []any:
@@ -418,9 +425,30 @@ func copyProcessInstancePlanVariableValue(value any) any {
 			out[i] = copyProcessInstancePlanVariableValue(value[i])
 		}
 		return out
+	case json.RawMessage:
+		return append(json.RawMessage(nil), value...)
 	default:
+		return snapshotTypedProcessInstancePlanJSONValue(value)
+	}
+}
+
+// snapshotTypedProcessInstancePlanJSONValue round-trips typed JSON collections
+// into the same concrete type to sever their backing storage at the facade.
+func snapshotTypedProcessInstancePlanJSONValue(value any) any {
+	raw, err := json.Marshal(value)
+	if err != nil {
 		return value
 	}
+	target := reflect.New(reflect.TypeOf(value))
+	decoder := json.NewDecoder(bytes.NewReader(raw))
+	decoder.UseNumber()
+	if err := decoder.Decode(target.Interface()); err != nil {
+		return value
+	}
+	if err := decoder.Decode(&struct{}{}); err != io.EOF {
+		return value
+	}
+	return target.Elem().Interface()
 }
 
 // copyProcessInstancePlanVariableMap copies a variable map without sharing

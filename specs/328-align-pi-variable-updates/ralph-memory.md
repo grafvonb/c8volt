@@ -19,6 +19,7 @@ Started: 2026-10-12T04:49:40Z
 - Prepared PI execution validates and deep-copies the entire plan before I/O, schedules only changed roots through the bounded pool, and reconstructs ordered unchanged/failed/skipped outcomes against selected-key order.
 - Accepted changed roots use the shared variable waiter exactly once with all frozen requested values; no-wait bypasses verification, and confirmation failure retains mutation acceptance.
 - Raw observed JSON used by PI planning and confirmation must be decoded with `json.Decoder.UseNumber`; plain `json.Unmarshal` rounds integers beyond float64 precision and can both reject planner-produced plans and falsely confirm adjacent values.
+- PI plan snapshots preserve exact `map[string]any` and `[]any` behavior, clone `json.RawMessage`, and JSON-round-trip other accepted typed values into their original concrete type with `UseNumber` so mutable storage and large-number precision do not leak across service or facade boundaries.
 - The PI command carries the same public prepared plan through approval into facade execution; successful keys-only output is derived from `MutationAccepted`, not success status.
 - PI partial execution errors use the UT-style retained-result renderer before `exitAfterRenderedResult`; JSON receives one failure envelope, while human and keys-only output retain available per-key outcomes without a second generic error render.
 - PI dry-runs and completed all-unchanged plans return before approval and execution; explicit machine modes survive quiet, JSON takes precedence over keys, and rendering adds no backend reads.
@@ -44,4 +45,4 @@ Started: 2026-10-12T04:49:40Z
 - Do not decode variable values through generated models; they omit raw value/truncation details needed by planning and verification.
 
 ## Current Handoff
-- Continue with T009, preserving T008's `json.Number` precision while snapshotting typed maps, typed slices, and mutable `json.RawMessage` values.
+- Continue with T010 by resolving the explicit-key tenant-filter contract from authoritative feature and repository evidence before changing adapter behavior.

@@ -469,9 +469,12 @@ func copyProcessInstanceVariableMap(in map[string]any) map[string]any {
 	return out
 }
 
-// copyProcessInstanceVariableValue recursively copies mutable JSON values.
+// copyProcessInstanceVariableValue isolates mutable JSON storage while keeping
+// ordinary interface maps and slices in their established representation.
 func copyProcessInstanceVariableValue(value any) any {
 	switch value := value.(type) {
+	case nil:
+		return nil
 	case map[string]any:
 		return copyProcessInstanceVariableMap(value)
 	case []any:
@@ -480,9 +483,30 @@ func copyProcessInstanceVariableValue(value any) any {
 			out[i] = copyProcessInstanceVariableValue(value[i])
 		}
 		return out
+	case json.RawMessage:
+		return append(json.RawMessage(nil), value...)
 	default:
+		return snapshotTypedProcessInstanceJSONValue(value)
+	}
+}
+
+// snapshotTypedProcessInstanceJSONValue round-trips typed JSON collections
+// into the same concrete type so their backing storage is not caller-owned.
+func snapshotTypedProcessInstanceJSONValue(value any) any {
+	raw, err := json.Marshal(value)
+	if err != nil {
 		return value
 	}
+	target := reflect.New(reflect.TypeOf(value))
+	decoder := json.NewDecoder(bytes.NewReader(raw))
+	decoder.UseNumber()
+	if err := decoder.Decode(target.Interface()); err != nil {
+		return value
+	}
+	if err := decoder.Decode(&struct{}{}); err != io.EOF {
+		return value
+	}
+	return target.Elem().Interface()
 }
 
 // knownProcessInstanceStringsConflict treats missing optional evidence as unknown.

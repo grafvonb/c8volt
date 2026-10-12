@@ -85,6 +85,63 @@ func TestExecuteProcessInstanceVariableUpdatesSubmitsOnlyFrozenChanges(t *testin
 	require.Equal(t, plan.Instances[1].VerificationValues, results.Items[1].Variables)
 }
 
+// TestExecuteProcessInstanceVariableUpdatesIsolatesWriterMutations verifies a
+// writer cannot corrupt later payloads, verification values, or returned results.
+func TestExecuteProcessInstanceVariableUpdatesIsolatesWriterMutations(t *testing.T) {
+	t.Parallel()
+
+	typed := processInstanceTypedValues{"items": {"original"}}
+	raw := json.RawMessage(`{"raw":"original"}`)
+	requested := map[string]any{"raw": raw, "typed": typed}
+	plan := d.ProcessInstanceVariableUpdatePlan{
+		RequestedKeys: []string{"pi-first", "pi-second"}, RequestedValues: requested,
+		RequestedCount: 2, UpdateCount: 2, VariableAddCount: 4,
+		Instances: []d.ProcessInstanceVariablePlan{
+			{ProcessInstanceKey: "pi-first", ScopeKey: "pi-first",
+				Additions:         []d.ProcessInstanceVariablePlannedValue{{Name: "raw", Value: raw}, {Name: "typed", Value: typed}},
+				MutationVariables: requested, VerificationValues: requested},
+			{ProcessInstanceKey: "pi-second", ScopeKey: "pi-second",
+				Additions:         []d.ProcessInstanceVariablePlannedValue{{Name: "raw", Value: raw}, {Name: "typed", Value: typed}},
+				MutationVariables: requested, VerificationValues: requested},
+		},
+	}
+	writes := 0
+	var secondTyped string
+	var secondRaw json.RawMessage
+	api := &processInstanceVariableExecutionAPI{
+		write: func(_ context.Context, _ string, variables map[string]any, _ ...services.CallOption) (d.ScopeVariableUpdateResponse, error) {
+			writes++
+			if writes == 1 {
+				variables["typed"].(processInstanceTypedValues)["items"][0] = "writer-mutated"
+				variables["raw"].(json.RawMessage)[8] = 'X'
+			} else {
+				secondTyped = variables["typed"].(processInstanceTypedValues)["items"][0]
+				secondRaw = append(json.RawMessage(nil), variables["raw"].(json.RawMessage)...)
+			}
+			return d.ScopeVariableUpdateResponse{Accepted: true, StatusCode: 204, Status: "accepted"}, nil
+		},
+		search: func(_ context.Context, key string, _ ...services.CallOption) ([]d.ProcessInstanceVariable, error) {
+			return []d.ProcessInstanceVariable{
+				{Name: "raw", Value: `{"raw":"original"}`, ProcessInstanceKey: key, ScopeKey: key},
+				{Name: "typed", Value: `{"items":["original"]}`, ProcessInstanceKey: key, ScopeKey: key},
+			}, nil
+		},
+	}
+
+	results, err := NewVariableUpdates(nil, api, config.New(), nil).
+		ExecuteProcessInstanceVariableUpdates(context.Background(), plan, 1)
+
+	require.NoError(t, err)
+	require.Equal(t, 2, writes)
+	require.Equal(t, "original", secondTyped)
+	require.JSONEq(t, `{"raw":"original"}`, string(secondRaw))
+	for _, item := range results.Items {
+		require.Equal(t, d.ProcessInstanceVariableUpdateStatusConfirmed, item.Status)
+		require.Equal(t, "original", item.Variables["typed"].(processInstanceTypedValues)["items"][0])
+		require.JSONEq(t, `{"raw":"original"}`, string(item.Variables["raw"].(json.RawMessage)))
+	}
+}
+
 // TestExecuteProcessInstanceVariableUpdatesRejectsForgedPlansBeforeWrites verifies
 // classification, verification, payload, and destination inconsistencies are atomic failures.
 func TestExecuteProcessInstanceVariableUpdatesRejectsForgedPlansBeforeWrites(t *testing.T) {

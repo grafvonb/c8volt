@@ -5,6 +5,7 @@ package processinstance
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"testing"
 
@@ -14,6 +15,10 @@ import (
 	"github.com/grafvonb/c8volt/typex"
 	"github.com/stretchr/testify/require"
 )
+
+type processInstanceTypedValues map[string]processInstanceTypedList
+
+type processInstanceTypedList []string
 
 type processInstanceVariablePlanningAPI struct {
 	instances []d.ProcessInstance
@@ -117,6 +122,30 @@ func TestPlanProcessInstanceVariableUpdatesBuildsCompleteRootPlan(t *testing.T) 
 	require.Equal(t, float64(1), first.VerificationValues["addition"].(map[string]any)["nested"].([]any)[0])
 }
 
+// TestPlanProcessInstanceVariableUpdatesSnapshotsTypedAndRawJSON verifies
+// accepted typed collections and raw JSON cannot be changed through caller aliases.
+func TestPlanProcessInstanceVariableUpdatesSnapshotsTypedAndRawJSON(t *testing.T) {
+	t.Parallel()
+
+	const key = "pi-snapshot"
+	typed := processInstanceTypedValues{"items": {"original"}}
+	raw := json.RawMessage(`{"raw":"original"}`)
+	instances := &processInstanceVariablePlanningAPI{instances: []d.ProcessInstance{{Key: key}}}
+	variables := &processInstanceRootVariablePlanningAPI{variables: map[string][]d.ProcessInstanceVariable{key: {}}}
+
+	plan, err := NewVariableUpdates(instances, variables, config.New(), nil).
+		PlanProcessInstanceVariableUpdates(context.Background(), typex.Keys{key}, map[string]any{"typed": typed, "raw": raw})
+
+	require.NoError(t, err)
+	typed["items"][0] = "mutated"
+	raw[8] = 'X'
+	require.Equal(t, "original", plan.RequestedValues["typed"].(processInstanceTypedValues)["items"][0])
+	require.JSONEq(t, `{"raw":"original"}`, string(plan.RequestedValues["raw"].(json.RawMessage)))
+	require.Equal(t, "original", plan.Instances[0].Additions[1].Value.(processInstanceTypedValues)["items"][0])
+	require.JSONEq(t, `{"raw":"original"}`, string(plan.Instances[0].MutationVariables["raw"].(json.RawMessage)))
+	require.Equal(t, "original", plan.Instances[0].VerificationValues["typed"].(processInstanceTypedValues)["items"][0])
+}
+
 // TestPlanProcessInstanceVariableUpdatesReturnsInitializedEmptyPlan verifies
 // valid service-level no-work input does not require backend dependencies.
 func TestPlanProcessInstanceVariableUpdatesReturnsInitializedEmptyPlan(t *testing.T) {
@@ -144,6 +173,7 @@ func TestPlanProcessInstanceVariableUpdatesRejectsInvalidInputsBeforeReads(t *te
 		{name: "blank key", keys: typex.Keys{" "}, variables: map[string]any{"value": true}},
 		{name: "blank name", keys: typex.Keys{"pi-a"}, variables: map[string]any{" ": true}},
 		{name: "invalid value", keys: typex.Keys{"pi-a"}, variables: map[string]any{"value": make(chan int)}},
+		{name: "invalid raw JSON", keys: typex.Keys{"pi-a"}, variables: map[string]any{"value": json.RawMessage(`{"broken":`)}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
