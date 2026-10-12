@@ -90,7 +90,7 @@ func TestUpdateScopeVariablesErrors(t *testing.T) {
 // newScopeVariableTestService constructs the v8.9 adapter with a strict generated-client double.
 func newScopeVariableTestService(t *testing.T, client GenVariableClientCamunda) *Service {
 	t.Helper()
-	svc, err := New(&config.Config{APIs: config.APIs{Camunda: config.API{BaseURL: "https://camunda.local/v2"}}}, &http.Client{}, slog.Default(), WithClientCamunda(client))
+	svc, err := New(&config.Config{App: config.App{Tenant: "tenant-a"}, APIs: config.APIs{Camunda: config.API{BaseURL: "https://camunda.local/v2"}}}, &http.Client{}, slog.Default(), WithClientCamunda(client))
 	require.NoError(t, err)
 	return svc
 }

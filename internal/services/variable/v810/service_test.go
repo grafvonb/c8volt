@@ -71,6 +71,48 @@ func TestSearchProcessInstanceVariables(t *testing.T) {
 	}, variables)
 }
 
+// TestSearchProcessInstanceVariablesCompletesCursorPages verifies v8.10 keeps
+// root filtering, raw decoding, and untruncated reads on every page.
+func TestSearchProcessInstanceVariablesCompletesCursorPages(t *testing.T) {
+	calls := 0
+	svc := newVariableTestService(t, &mockVariableClient{
+		searchVariablesWithResponse: func(_ context.Context, params *camundav810.SearchVariablesParams, body camundav810.SearchVariablesJSONRequestBody, _ ...camundav810.RequestEditorFn) (*camundav810.SearchVariablesResponse, error) {
+			calls++
+			require.NotNil(t, params.TruncateValues)
+			require.False(t, *params.TruncateValues)
+			rawBody := variableJSON(t, body)
+			require.Contains(t, rawBody, `"processInstanceKey":"123"`)
+			require.Contains(t, rawBody, `"scopeKey":"123"`)
+			require.Contains(t, rawBody, `"tenantId":"tenant-a"`)
+			if calls == 1 {
+				return &camundav810.SearchVariablesResponse{
+					HTTPResponse: variableHTTPResponse(http.MethodPost, "https://camunda.local/v2/variables/search", http.StatusOK, "200 OK"),
+					Body:         []byte(`{"items":[{"name":"zeta","value":"2","variableKey":"v2","processInstanceKey":"123","scopeKey":"123","tenantId":"tenant-a","truncated":true},{"name":"nested","value":"0","variableKey":"vn","processInstanceKey":"123","scopeKey":"child","tenantId":"tenant-a"}],"page":{"totalItems":3,"hasMoreTotalItems":true,"endCursor":"next"}}`),
+					JSON200:      &camundav810.VariableSearchQueryResult{},
+				}, nil
+			}
+			cursor, err := body.Page.AsCursorForwardPagination()
+			require.NoError(t, err)
+			require.NotNil(t, cursor.After)
+			require.Equal(t, camundav810.EndCursor("next"), *cursor.After)
+			return &camundav810.SearchVariablesResponse{
+				HTTPResponse: variableHTTPResponse(http.MethodPost, "https://camunda.local/v2/variables/search", http.StatusOK, "200 OK"),
+				Body:         []byte(`{"items":[{"name":"alpha","value":"1","variableKey":"v1","processInstanceKey":"123","scopeKey":"123","tenantId":"tenant-a"}],"page":{"totalItems":3,"hasMoreTotalItems":false}}`),
+				JSON200:      &camundav810.VariableSearchQueryResult{},
+			}, nil
+		},
+	})
+
+	got, err := svc.SearchProcessInstanceVariables(context.Background(), "123")
+
+	require.NoError(t, err)
+	require.Equal(t, 2, calls)
+	require.Equal(t, []d.ProcessInstanceVariable{
+		{Name: "alpha", Value: "1", VariableKey: "v1", ProcessInstanceKey: "123", ScopeKey: "123", TenantId: "tenant-a"},
+		{Name: "zeta", Value: "2", VariableKey: "v2", ProcessInstanceKey: "123", ScopeKey: "123", TenantId: "tenant-a", APITruncated: true},
+	}, got)
+}
+
 // TestSearchProcessInstanceVariables_Errors verifies transport and malformed response handling.
 func TestSearchProcessInstanceVariables_Errors(t *testing.T) {
 	transportErr := errors.New("transport failed")
