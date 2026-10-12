@@ -66,14 +66,14 @@ func TestUpdateProcessInstanceTerminal(t *testing.T) {
 		wantMutates   int
 		wantReads     int
 	}{
-		{name: "configured stderr accepts", args: []string{"update", "pi", "--key", "101", "--vars", `{"approved":true,"new":"value"}`}, configured: true, prompt: true, preview: true, response: "yes", wantMutates: 1, wantReads: 3},
+		{name: "configured stderr accepts", args: []string{"update", "pi", "--key", "101", "--vars", `{"approved":true,"new":"value"}`}, configured: true, prompt: true, preview: true, response: "yes", wantMutates: 1, wantReads: 2},
 		{name: "inherited stderr declines", args: []string{"update", "pi", "--key", "101", "--vars", `{"approved":true,"new":"value"}`}, prompt: true, preview: true, response: "no", wantExitCode: exitcode.Error, wantReads: 1},
 		{name: "default answer declines", args: []string{"update", "pi", "--key", "101", "--vars", `{"approved":true,"new":"value"}`}, prompt: true, preview: true, wantExitCode: exitcode.Error, wantReads: 1},
 		{name: "terminal eof aborts", args: []string{"update", "pi", "--key", "101", "--vars", `{"approved":true,"new":"value"}`}, prompt: true, preview: true, endOfInput: true, wantExitCode: exitcode.Error, wantReads: 1},
 		{name: "dry run is prompt free", args: []string{"update", "pi", "--key", "101", "--vars", `{"approved":true,"new":"value"}`, "--dry-run"}, preview: true, wantReads: 1},
 		{name: "no-op is prompt free", args: []string{"update", "pi", "--key", "101", "--vars", `{"approved":true}`}, initialValue: true, wantReads: 1},
 		{name: "automation no-wait is prompt free", args: []string{"--automation", "update", "pi", "--key", "101", "--vars", `{"approved":true,"new":"value"}`, "--no-wait"}, wantMutates: 1, wantReads: 1},
-		{name: "auto-confirm is prompt free", args: []string{"--auto-confirm", "update", "pi", "--key", "101", "--vars", `{"approved":true,"new":"value"}`}, wantMutates: 1, wantReads: 3},
+		{name: "auto-confirm is prompt free", args: []string{"--auto-confirm", "update", "pi", "--key", "101", "--vars", `{"approved":true,"new":"value"}`}, wantMutates: 1, wantReads: 2},
 		{
 			name:         "compact bulk normal preview stays summarized",
 			args:         []string{"update", "pi", "--key", "101", "--key", "202", "--vars", `{"approved":true,"new":"value"}`},

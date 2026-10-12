@@ -82,3 +82,20 @@ Started: 2026-10-12 06:49:41
 - Frozen PI plans can retain planning-only reader composition while optionally exposing the exact local writer through the production variable service.
 - Required service, waiter, and facade suites passed; repository compile-only and targeted race validation also passed.
 ---
+---
+## Iteration 5 - 2026-10-12 07:23
+**Work Unit**: T005 US2 prepared command execution integration
+**Tasks Completed**:
+- [x] T005: Execute the approved frozen plan with selective local writes and accepted-only keys output
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/{update_processinstance.go,cmd_views_processinstance_update.go}
+- cmd/{update_processinstance_test.go,update_processinstance_terminal_test.go}
+- README.md
+- docs/{index.md,cli/c8volt_update_process-instance.md}
+- specs/328-align-pi-variable-updates/{tasks.md,ralph-memory.md,progress.md}
+**Learnings**:
+- Passing the retained facade plan directly into execution removes the legacy extra confirmation read and prevents unchanged requested values from broadening mutation payloads.
+- Required targeted checks, generated docs, diff validation, and the full command package suite passed.
+---

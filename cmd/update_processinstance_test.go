@@ -131,7 +131,6 @@ func TestUpdatePICommand_V810SubmitsAndConfirmsVariables(t *testing.T) {
 		"POST /v2/variables/search",
 		"PUT /v2/element-instances/2251799813711967/variables",
 		"POST /v2/variables/search",
-		"POST /v2/variables/search",
 	}, requests)
 	envelope := requireUpdateProcessInstanceEnvelope(t, stdout)
 	require.Equal(t, string(OutcomeSucceeded), envelope["outcome"])
@@ -184,7 +183,6 @@ func TestUpdatePICommand_RegressionVarsUsesVariableMutationAndConfirmation(t *te
 	require.Equal(t, []string{
 		"POST /v2/variables/search",
 		"PUT /v2/element-instances/2251799813711967/variables",
-		"POST /v2/variables/search",
 		"POST /v2/variables/search",
 	}, requests)
 	require.Contains(t, output, "updated process-instance 2251799813711967: confirmed")
@@ -307,10 +305,98 @@ func TestUpdateProcessInstanceCommand_MultipleRepeatedKeysApplyOneVarsPayloadToE
 		"2251799813711967": 1,
 		"2251799813711968": 1,
 	}, gotUpdates)
-	require.Equal(t, 6, gotConfirmations)
+	require.Equal(t, 4, gotConfirmations)
 	envelope := requireUpdateProcessInstanceEnvelope(t, stdout)
 	require.Equal(t, string(OutcomeSucceeded), envelope["outcome"])
 	requireUpdateResultKeys(t, envelope, "2251799813711967", "2251799813711968")
+}
+
+// TestUpdateProcessInstanceCommand_ExecutesOnlyFrozenChanges verifies approval
+// preserves the planned roots and submits neither unchanged nor nested values.
+func TestUpdateProcessInstanceCommand_ExecutesOnlyFrozenChanges(t *testing.T) {
+	var mu sync.Mutex
+	mutated := false
+	var mutationPaths []string
+	var mutationBodies []map[string]any
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if handleUpdateProcessInstancePlanningIdentity(w, r) {
+			return
+		}
+		switch r.URL.Path {
+		case "/v2/variables/search":
+			var body struct {
+				Filter struct {
+					ProcessInstanceKey string `json:"processInstanceKey"`
+				} `json:"filter"`
+			}
+			require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
+			w.Header().Set("Content-Type", "application/json")
+			mu.Lock()
+			key101Mutated := mutated
+			mu.Unlock()
+			switch body.Filter.ProcessInstanceKey {
+			case "101":
+				items := []string{
+					`{"name":"foo","value":"\"old\"","variableKey":"901","processInstanceKey":"101","scopeKey":"101","tenantId":"tenant-a"}`,
+					`{"name":"same","value":"\"keep\"","variableKey":"902","processInstanceKey":"101","scopeKey":"101","tenantId":"tenant-a"}`,
+					`{"name":"foo","value":"\"nested-shadow\"","variableKey":"903","processInstanceKey":"101","scopeKey":"999","tenantId":"tenant-a"}`,
+				}
+				if key101Mutated {
+					items[0] = `{"name":"foo","value":"\"new\"","variableKey":"901","processInstanceKey":"101","scopeKey":"101","tenantId":"tenant-a"}`
+					items = append(items, `{"name":"added","value":"{\"nested\":[1]}","variableKey":"904","processInstanceKey":"101","scopeKey":"101","tenantId":"tenant-a"}`)
+				}
+				_, _ = w.Write([]byte(variableSearchResponse(items...)))
+			case "202":
+				_, _ = w.Write([]byte(variableSearchResponse(
+					`{"name":"foo","value":"\"new\"","variableKey":"911","processInstanceKey":"202","scopeKey":"202","tenantId":"tenant-a"}`,
+					`{"name":"same","value":"\"keep\"","variableKey":"912","processInstanceKey":"202","scopeKey":"202","tenantId":"tenant-a"}`,
+					`{"name":"added","value":"{\"nested\":[1]}","variableKey":"913","processInstanceKey":"202","scopeKey":"202","tenantId":"tenant-a"}`,
+				)))
+			default:
+				t.Fatalf("unexpected variable search key: %s", body.Filter.ProcessInstanceKey)
+			}
+		case "/v2/element-instances/101/variables":
+			var body map[string]any
+			require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
+			mu.Lock()
+			mutationPaths = append(mutationPaths, r.URL.Path)
+			mutationBodies = append(mutationBodies, body)
+			mutated = true
+			mu.Unlock()
+			w.WriteHeader(http.StatusNoContent)
+		default:
+			t.Fatalf("unexpected request path: %s", r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	stdout, _ := executeRootForProcessInstanceWithSeparateOutputs(t,
+		"--config", writeTestConfigForVersion(t, srv.URL, "8.10"),
+		"--automation", "--json", "update", "pi",
+		"--key", "101", "--key", "202",
+		"--vars", `{"foo":"new","same":"keep","added":{"nested":[1]}}`,
+	)
+
+	mu.Lock()
+	defer mu.Unlock()
+	require.Equal(t, []string{"/v2/element-instances/101/variables"}, mutationPaths)
+	require.Len(t, mutationBodies, 1)
+	require.Equal(t, true, mutationBodies[0]["local"])
+	require.Equal(t, map[string]any{"foo": "new", "added": map[string]any{"nested": []any{float64(1)}}}, mutationBodies[0]["variables"])
+	envelope := requireUpdateProcessInstanceEnvelope(t, stdout)
+	payload, ok := envelope["payload"].(map[string]any)
+	require.True(t, ok)
+	items, ok := payload["items"].([]any)
+	require.True(t, ok)
+	require.Len(t, items, 2)
+	changed := items[0].(map[string]any)
+	unchanged := items[1].(map[string]any)
+	require.Equal(t, "101", changed["key"])
+	require.Equal(t, "confirmed", changed["status"])
+	require.Equal(t, true, changed["mutationAccepted"])
+	require.Equal(t, "202", unchanged["key"])
+	require.Equal(t, "unchanged", unchanged["status"])
+	require.Equal(t, false, unchanged["mutationAccepted"])
 }
 
 func TestUpdateProcessInstanceCommand_StdinKeysMergeAndDeduplicateWithFlagKeys(t *testing.T) {
@@ -457,6 +543,49 @@ func TestUpdateProcessInstanceCommand_NoWaitJSONReportsSubmittedResultsAfterImpa
 	require.Equal(t, "submitted", item["status"])
 	require.Equal(t, true, item["mutationAccepted"])
 	require.Equal(t, "skipped", item["confirmationStatus"])
+}
+
+// TestUpdateProcessInstanceCommand_PreparedExecutionVersionCoverage completes
+// the default/no-wait adapter matrix alongside the existing 8.8 and 8.10 cases.
+func TestUpdateProcessInstanceCommand_PreparedExecutionVersionCoverage(t *testing.T) {
+	tests := []struct {
+		name          string
+		version       string
+		noWait        bool
+		wantReads     int
+		wantStatus    string
+		wantOutcome   Outcome
+		wantConfirmed string
+	}{
+		{name: "8.9 waits", version: "8.9", wantReads: 2, wantStatus: "confirmed", wantOutcome: OutcomeSucceeded, wantConfirmed: "confirmed"},
+		{name: "8.9 no wait", version: "8.9", noWait: true, wantReads: 1, wantStatus: "submitted", wantOutcome: OutcomeAccepted, wantConfirmed: "skipped"},
+		{name: "8.10 no wait", version: "8.10", noWait: true, wantReads: 1, wantStatus: "submitted", wantOutcome: OutcomeAccepted, wantConfirmed: "skipped"},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			server, capture := newUpdateProcessInstanceOutputServer(t, false)
+			args := []string{
+				"--config", writeTestConfigForVersion(t, server.URL, test.version),
+				"--automation", "--json", "update", "pi", "--key", "101", "--vars", `{"approved":true,"new":"value"}`,
+			}
+			if test.noWait {
+				args = append(args, "--no-wait")
+			}
+			stdout, stderr := executeRootForProcessInstanceWithSeparateOutputs(t, args...)
+			require.Empty(t, stderr)
+			envelope := requireUpdateProcessInstanceEnvelope(t, stdout)
+			require.Equal(t, string(test.wantOutcome), envelope["outcome"])
+			item := firstUpdateResultItem(t, envelope)
+			require.Equal(t, test.wantStatus, item["status"])
+			require.Equal(t, test.wantConfirmed, item["confirmationStatus"])
+
+			capture.mu.Lock()
+			defer capture.mu.Unlock()
+			require.Equal(t, 1, capture.mutations)
+			require.Equal(t, test.wantReads, capture.variableReads)
+		})
+	}
 }
 
 func TestUpdateProcessInstanceCommand_FullNameAndAliasBehaveIdenticallyForSingleKey(t *testing.T) {
@@ -812,6 +941,26 @@ func TestUpdateProcessInstanceCommand_OutputModesPreserveContracts(t *testing.T)
 			require.Equal(t, 2, capture.totalRequests)
 		})
 	}
+}
+
+// TestRenderUpdateProcessInstanceVariableResults_KeysOnlyUsesAcceptance proves
+// successful key output excludes unchanged, skipped, and rejected outcomes.
+func TestRenderUpdateProcessInstanceVariableResults_KeysOnlyUsesAcceptance(t *testing.T) {
+	resetProcessInstanceCommandGlobals()
+	t.Cleanup(resetProcessInstanceCommandGlobals)
+	flagViewKeysOnly = true
+
+	cmd := &cobra.Command{Use: "process-instance"}
+	stdout := &bytes.Buffer{}
+	cmd.SetOut(stdout)
+	require.NoError(t, renderUpdateProcessInstanceVariableResults(cmd, process.ProcessInstanceVariableUpdateResults{Items: []process.ProcessInstanceVariableUpdateResult{
+		{Key: "101", Status: process.ProcessInstanceVariableUpdateStatusConfirmed, MutationAccepted: true},
+		{Key: "202", Status: process.ProcessInstanceVariableUpdateStatusUnchanged},
+		{Key: "303", Status: process.ProcessInstanceVariableUpdateStatusSkipped},
+		{Key: "404", Status: process.ProcessInstanceVariableUpdateStatusMutationFailed},
+		{Key: "505", Status: process.ProcessInstanceVariableUpdateStatusSubmitted, MutationAccepted: true},
+	}}))
+	require.Equal(t, "101\n505\n", stdout.String())
 }
 
 // TestUpdateProcessInstanceVariableDryRun_ExplicitKeyRendersVariableTenant

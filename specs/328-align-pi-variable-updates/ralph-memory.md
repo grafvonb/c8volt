@@ -18,6 +18,7 @@ Started: 2026-10-12T04:49:40Z
 - The PI command retains the public frozen plan beside a mechanically adapted legacy preview; tenant context now comes directly from the plan instead of command-side variable evidence reconstruction.
 - Prepared PI execution validates and deep-copies the entire plan before I/O, schedules only changed roots through the bounded pool, and reconstructs ordered unchanged/failed/skipped outcomes against selected-key order.
 - Accepted changed roots use the shared variable waiter exactly once with all frozen requested values; no-wait bypasses verification, and confirmation failure retains mutation acceptance.
+- The PI command carries the same public prepared plan through approval into facade execution; successful keys-only output is derived from `MutationAccepted`, not success status.
 
 ## Gotchas
 
@@ -40,4 +41,4 @@ Started: 2026-10-12T04:49:40Z
 - Do not decode variable values through generated models; they omit raw value/truncation details needed by planning and verification.
 
 ## Current Handoff
-- Continue US2 with T005: route the command's retained prepared plan through approval into facade execution, remove legacy full-input submission, and filter keys-only results by `MutationAccepted`.
+- Continue US3 with T006: retain and render partial execution results alongside command errors, including accepted keys whose later confirmation fails and one failure envelope.

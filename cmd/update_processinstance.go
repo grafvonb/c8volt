@@ -23,7 +23,7 @@ var updateProcessInstanceCmd = &cobra.Command{
 
 Provide repeated --key values or newline-separated keys from stdin with '-'. Supply exactly one payload source: --vars with a JSON object or --vars-file with its file path. The same variable map is applied to every unique key. Explicit keys use backend authorization without tenant filtering.
 
-c8volt reads every selected process instance's complete root-variable scope before planning additions and changes. Nested-scope variables are excluded, and truncated values remain planned changes because they cannot prove equality. The command then asks for confirmation and waits until the requested variables are visible through the same lookup as get process-instance --with-vars. Detailed previews label every planned write with its selected process-instance root as pi:<key>.
+c8volt reads every selected process instance's complete root-variable scope before planning additions and changes. Nested-scope variables are excluded, and truncated values remain planned changes because they cannot prove equality. After confirmation, the command writes only the prepared additions and changes locally to their recorded roots, then waits until all requested variables are visible through the same lookup as get process-instance --with-vars. Detailed previews label every planned write with its selected process-instance root as pi:<key>.
 
 Use --dry-run to inspect changes without mutation, or --auto-confirm for unattended updates.`,
 	Example: `  ./c8volt update process-instance --key <process-instance-key> --vars '{"customerTier":"gold"}' --dry-run
@@ -89,7 +89,7 @@ Use --dry-run to inspect changes without mutation, or --auto-confirm for unatten
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 			}
 		}
-		results, err := cli.UpdateProcessInstancesVariables(cmd.Context(), keys, variables, flagWorkers, collectExplicitPIAdminInputOptions()...)
+		results, err := cli.ExecuteProcessInstanceVariableUpdates(cmd.Context(), prepared.plan, flagWorkers, collectExplicitPIAdminInputOptions()...)
 		if err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("update process-instance variables: %w", err))
 		}

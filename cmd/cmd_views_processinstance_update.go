@@ -152,6 +152,14 @@ func renderUpdateProcessInstanceVariableResults(cmd *cobra.Command, results proc
 	if commandUsesSharedEnvelope(cmd, pickMode()) {
 		return renderCommandResult(cmd, results)
 	}
+	if pickMode() == RenderModeKeysOnly {
+		for _, item := range results.Items {
+			if item.MutationAccepted {
+				renderOutputLine(cmd, "%s", item.Key)
+			}
+		}
+		return nil
+	}
 	for _, item := range results.Items {
 		switch item.Status {
 		case process.ProcessInstanceVariableUpdateStatusConfirmed:
