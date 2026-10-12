@@ -1115,6 +1115,163 @@ func TestUpdateProcessInstanceVariableDryRun_ExplicitKeyRendersVariableTenant(t 
 	require.NotContains(t, output, "selection scope: "+tenantAdminKeysSelectedTenant)
 }
 
+// TestUpdateProcessInstanceCommand_ExplicitKeyCrossTenantExecution verifies the
+// complete command path leaves configured tenant filtering disabled for direct
+// keys while preserving tenant evidence through preview and execution.
+func TestUpdateProcessInstanceCommand_ExplicitKeyCrossTenantExecution(t *testing.T) {
+	tests := []struct {
+		name          string
+		args          []string
+		wantSearches  int
+		wantMutations int
+		wantStatus    string
+		wantUpdate    float64
+	}{
+		{
+			name:         "complete paged dry run",
+			args:         []string{"--json", "update", "pi", "--key", tenantAdminKeysProcessInstanceKey, "--vars", `{"foo":"after"}`, "--dry-run"},
+			wantSearches: 2,
+			wantUpdate:   1,
+		},
+		{
+			name:         "unchanged no op",
+			args:         []string{"--automation", "--json", "update", "pi", "--key", tenantAdminKeysProcessInstanceKey, "--vars", `{"foo":"after"}`},
+			wantSearches: 1,
+			wantUpdate:   0,
+		},
+		{
+			name:          "selective write with wait",
+			args:          []string{"--automation", "--json", "update", "pi", "--key", tenantAdminKeysProcessInstanceKey, "--vars", `{"foo":"after"}`},
+			wantSearches:  2,
+			wantMutations: 1,
+			wantStatus:    "confirmed",
+		},
+		{
+			name:          "selective write without wait",
+			args:          []string{"--automation", "--json", "update", "pi", "--key", tenantAdminKeysProcessInstanceKey, "--vars", `{"foo":"after"}`, "--no-wait"},
+			wantSearches:  1,
+			wantMutations: 1,
+			wantStatus:    "submitted",
+		},
+	}
+
+	for _, version := range []string{"8.8", "8.9", "8.10"} {
+		for _, test := range tests {
+			t.Run(version+" "+test.name, func(t *testing.T) {
+				var mu sync.Mutex
+				instanceReads := 0
+				searchReads := 0
+				mutations := 0
+				mutated := false
+				var mutationPath string
+				var mutationBody map[string]any
+
+				server := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					switch {
+					case r.Method == http.MethodGet && r.URL.Path == "/v2/process-instances/"+tenantAdminKeysProcessInstanceKey:
+						mu.Lock()
+						instanceReads++
+						mu.Unlock()
+						w.Header().Set("Content-Type", "application/json")
+						_, _ = w.Write([]byte(tenantAdminKeysMismatchProcessInstanceJSON()))
+					case r.Method == http.MethodPost && r.URL.Path == "/v2/variables/search":
+						var body map[string]any
+						require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
+						filter := requireJSONObject(t, body["filter"])
+						require.Equal(t, tenantAdminKeysProcessInstanceKey, filter["processInstanceKey"])
+						require.Equal(t, tenantAdminKeysProcessInstanceKey, filter["scopeKey"])
+						require.NotContains(t, filter, "tenantId", "explicit-key variable reads must not apply the configured tenant")
+						require.Equal(t, "false", r.URL.Query().Get("truncateValues"))
+
+						mu.Lock()
+						searchReads++
+						searchRead := searchReads
+						wasMutated := mutated
+						mu.Unlock()
+						w.Header().Set("Content-Type", "application/json")
+						if test.name == "complete paged dry run" && searchRead == 1 {
+							page := requireJSONObject(t, body["page"])
+							require.Equal(t, float64(0), page["from"])
+							_, _ = w.Write([]byte(`{"items":[{"name":"nested","value":"\"ignored\"","variableKey":"nested","processInstanceKey":"2251799813711967","scopeKey":"child","tenantId":"tenant-b"}],"page":{"totalItems":2,"hasMoreTotalItems":true,"endCursor":"tenant-b-next"}}`))
+							return
+						}
+						if test.name == "complete paged dry run" {
+							page := requireJSONObject(t, body["page"])
+							require.Equal(t, "tenant-b-next", page["after"])
+						}
+
+						value := "before"
+						if test.name == "unchanged no op" || wasMutated {
+							value = "after"
+						}
+						totalItems := 1
+						if test.name == "complete paged dry run" {
+							totalItems = 2
+						}
+						_, _ = fmt.Fprintf(w, `{"items":[{"name":"foo","value":%q,"variableKey":"root","processInstanceKey":%q,"scopeKey":%q,"tenantId":%q}],"page":{"totalItems":%d,"hasMoreTotalItems":false,"endCursor":"tenant-b-done"}}`, strconv.Quote(value), tenantAdminKeysProcessInstanceKey, tenantAdminKeysProcessInstanceKey, tenantAdminKeysReturnedTenant, totalItems)
+					case r.Method == http.MethodPut && r.URL.Path == "/v2/element-instances/"+tenantAdminKeysProcessInstanceKey+"/variables":
+						var body map[string]any
+						require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
+						mu.Lock()
+						mutations++
+						mutated = true
+						mutationPath = r.URL.Path
+						mutationBody = body
+						mu.Unlock()
+						w.WriteHeader(http.StatusNoContent)
+					default:
+						t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+					}
+				}))
+				t.Cleanup(server.Close)
+
+				cfgPath := writeRawTestConfig(t, fmt.Sprintf(`
+app:
+  camunda_version: %q
+  tenant: %q
+auth:
+  mode: none
+apis:
+  camunda_api:
+    base_url: %q
+`, version, tenantAdminKeysSelectedTenant, server.URL))
+				stdout, stderr := executeRootForProcessInstanceWithSeparateOutputs(t, append([]string{"--config", cfgPath}, test.args...)...)
+				require.Empty(t, stderr)
+
+				envelope := requireUpdateProcessInstanceEnvelope(t, stdout)
+				tenantContext := requireJSONObject(t, envelope["tenantContext"])
+				require.Equal(t, "explicit_keys", tenantContext["mode"])
+				require.Equal(t, "not_applied", tenantContext["filter"])
+				require.Equal(t, tenantAdminKeysSelectedTenant, tenantContext["configuredTenantId"])
+				require.Equal(t, []any{tenantAdminKeysReturnedTenant}, tenantContext["resolvedTenantIds"])
+
+				if test.wantStatus == "" {
+					payload := requireJSONObject(t, envelope["payload"])
+					require.Equal(t, false, payload["mutationSubmitted"])
+					require.Equal(t, test.wantUpdate, payload["updateCount"])
+				} else {
+					item := firstUpdateResultItem(t, envelope)
+					require.Equal(t, test.wantStatus, item["status"])
+				}
+
+				mu.Lock()
+				defer mu.Unlock()
+				require.Equal(t, 1, instanceReads)
+				require.Equal(t, test.wantSearches, searchReads)
+				require.Equal(t, test.wantMutations, mutations)
+				if test.wantMutations == 0 {
+					require.Empty(t, mutationPath)
+					require.Nil(t, mutationBody)
+				} else {
+					require.Equal(t, "/v2/element-instances/"+tenantAdminKeysProcessInstanceKey+"/variables", mutationPath)
+					require.Equal(t, true, mutationBody["local"])
+					require.Equal(t, map[string]any{"foo": "after"}, mutationBody["variables"])
+				}
+			})
+		}
+	}
+}
+
 // TestUpdateProcessInstanceVariableDryRun_JSONIgnoresVerboseForStableShape
 // verifies destination labels remain human-only and the envelope ends at EOF.
 func TestUpdateProcessInstanceVariableDryRun_JSONIgnoresVerboseForStableShape(t *testing.T) {

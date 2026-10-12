@@ -192,3 +192,17 @@ Started: 2026-10-12 06:49:41
 - The existing executor preserves ordered partial outcomes and accepted in-flight work under concurrency without a production correction.
 - Focused tests passed 20 repeated runs; targeted PI variable service tests passed with the race detector, and diff validation passed.
 ---
+---
+## Iteration 1 - 2026-10-12 17:27
+**Work Unit**: T012 US1 cross-tenant process-instance command execution coverage
+**Tasks Completed**:
+- [x] T012: Exercise explicit-key tenant bypass, evidence, paging, no-op, waiting, and no-wait through every supported command adapter
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/update_processinstance_test.go
+- specs/328-align-pi-variable-updates/{tasks.md,ralph-memory.md,progress.md}
+**Learnings**:
+- Real command-path fixtures across Camunda 8.8, 8.9, and 8.10 confirm configured tenant predicates stay absent while the returned tenant remains visible in the shared envelope.
+- The focused 12-case matrix, broader targeted PI command suite, convergence assessment, and diff validation passed without exposing a production defect.
+---
