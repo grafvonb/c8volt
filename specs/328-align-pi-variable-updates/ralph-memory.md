@@ -15,6 +15,7 @@ Started: 2026-10-12T04:49:40Z
 - Adapter-local root filtering retains only records whose process-instance and scope keys both match the selected root, while `RawItemCount` records all backend items.
 - Prepared PI updates use an additive composed `processinstance.VariableUpdateAPI`; legacy facade constructors inject nil and the new method returns a normalized precondition error.
 - Collection planning reads all selected-instance identities first, then complete root variables in stable key order, and returns the zero plan on any later target failure.
+- The PI command retains the public frozen plan beside a mechanically adapted legacy preview; tenant context now comes directly from the plan instead of command-side variable evidence reconstruction.
 
 ## Gotchas
 
@@ -35,4 +36,4 @@ Started: 2026-10-12T04:49:40Z
 - Do not decode variable values through generated models; they omit raw value/truncation details needed by planning and verification.
 
 ## Current Handoff
-- Continue US1 with T003: replace command-owned PI variable discovery/comparison with mechanical facade-plan adaptation, retain the prepared plan and tenant evidence for later execution, and update preview tests/docs without changing ordinary execution yet.
+- Start US2 with T004: implement validated prepared-plan execution, exact local payload submission, truthful unchanged/skipped outcomes, and the single complete-read waiter workflow across service/facade boundaries.

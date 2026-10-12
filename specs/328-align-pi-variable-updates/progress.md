@@ -44,3 +44,21 @@ Started: 2026-10-12 06:49:41
 - PI planning can reuse the complete root-variable contract through a narrow composed service while leaving legacy mutation entry points unchanged.
 - Targeted service, facade, root-client, repository compile-only, and diff validation all passed.
 ---
+
+---
+## Iteration 3 - 2026-10-12 07:09
+**Work Unit**: T003 US1 command preview integration
+**Tasks Completed**:
+- [x] T003: Replace command-owned PI variable planning with frozen facade-plan adaptation and complete preview coverage
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/{update_processinstance.go,update_processinstance_variables.go}
+- cmd/{update_processinstance_test.go,update_processinstance_terminal_test.go,process_api_stub_test.go,command_contract_test.go}
+- README.md
+- docs/{index.md,cli/c8volt_update_process-instance.md}
+- specs/328-align-pi-variable-updates/{tasks.md,ralph-memory.md,progress.md}
+**Learnings**:
+- The command can preserve its established preview schema by copying facade classifications and counts without re-decoding or comparing backend values.
+- Required targeted command tests, the full command package, repository compile-only coverage, generated docs, and diff validation passed.
+---

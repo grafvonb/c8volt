@@ -37,6 +37,7 @@ type stubProcessAPI struct {
 	enrichProcessInstanceElements    func(context.Context, process.ProcessInstances, ...options.FacadeOption) (process.ElementEnrichedProcessInstances, error)
 	enrichProcessInstanceListeners   func(context.Context, process.ProcessInstances, ...options.FacadeOption) (process.ElementEnrichedProcessInstances, error)
 	searchProcessInstanceVariables   func(context.Context, string, ...options.FacadeOption) ([]process.ProcessInstanceVariable, error)
+	planProcessInstanceVariables     func(context.Context, types.Keys, map[string]any, ...options.FacadeOption) (process.ProcessInstanceVariableUpdatePlan, error)
 	updateProcessInstancesVars       func(context.Context, types.Keys, map[string]any, int, ...options.FacadeOption) (process.ProcessInstanceVariableUpdateResults, error)
 	resolveProcessInstancesIncidents func(context.Context, types.Keys, int, ...options.FacadeOption) (incident.ProcessInstanceResolutionResults, error)
 }
@@ -657,9 +658,12 @@ func (stubProcessAPI) GetProcessInstances(context.Context, types.Keys, int, ...o
 	panic("unexpected call")
 }
 
-// PlanProcessInstanceVariableUpdates rejects accidental prepared planning until command integration owns it.
-func (stubProcessAPI) PlanProcessInstanceVariableUpdates(context.Context, types.Keys, map[string]any, ...options.FacadeOption) (process.ProcessInstanceVariableUpdatePlan, error) {
-	panic("unexpected call")
+// PlanProcessInstanceVariableUpdates delegates frozen planning to the configured command-test callback.
+func (s stubProcessAPI) PlanProcessInstanceVariableUpdates(ctx context.Context, keys types.Keys, variables map[string]any, opts ...options.FacadeOption) (process.ProcessInstanceVariableUpdatePlan, error) {
+	if s.planProcessInstanceVariables == nil {
+		panic("unexpected call")
+	}
+	return s.planProcessInstanceVariables(ctx, keys, variables, opts...)
 }
 
 func (stubProcessAPI) CreateNProcessInstances(context.Context, process.ProcessInstanceData, int, int, ...options.FacadeOption) ([]process.ProcessInstance, error) {

@@ -37,6 +37,7 @@ type updateProcessInstanceOutputCapture struct {
 	initialValue  bool
 	mutatedScopes map[string]bool
 	mutations     int
+	instanceReads int
 	variableReads int
 	totalRequests int
 }
@@ -175,9 +176,16 @@ func TestUpdateProcessInstanceTerminal(t *testing.T) {
 
 			capture.mu.Lock()
 			defer capture.mu.Unlock()
+			selectedKeys := 0
+			for _, arg := range test.args {
+				if arg == "--key" {
+					selectedKeys++
+				}
+			}
 			require.Equal(t, test.wantMutates, capture.mutations)
+			require.Equal(t, selectedKeys, capture.instanceReads)
 			require.Equal(t, test.wantReads, capture.variableReads)
-			require.Equal(t, test.wantReads+test.wantMutates, capture.totalRequests)
+			require.Equal(t, selectedKeys+test.wantReads+test.wantMutates, capture.totalRequests)
 		})
 	}
 }
@@ -195,6 +203,14 @@ func newUpdateProcessInstanceOutputServer(t *testing.T, initialValue bool) (*htt
 		capture.totalRequests++
 		capture.mu.Unlock()
 		switch {
+		case request.Method == http.MethodGet && strings.HasPrefix(request.URL.Path, "/v2/process-instances/"):
+			key := strings.TrimPrefix(request.URL.Path, "/v2/process-instances/")
+			require.NotEmpty(t, key)
+			capture.mu.Lock()
+			capture.instanceReads++
+			capture.mu.Unlock()
+			writer.Header().Set("Content-Type", "application/json")
+			_, _ = fmt.Fprintf(writer, `{"processInstanceKey":%q,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionVersion":1,"state":"ACTIVE"}`, key)
 		case request.Method == http.MethodPost && request.URL.Path == "/v2/variables/search":
 			var body struct {
 				Filter struct {
