@@ -138,5 +138,5 @@
 
 ## Active Speckit Plan
 <!-- SPECKIT START -->
-- Active Speckit implementation plan: `specs/327-clarify-variable-scopes/plan.md`
+- Active Speckit implementation plan: `specs/328-align-pi-variable-updates/plan.md`
 <!-- SPECKIT END -->
