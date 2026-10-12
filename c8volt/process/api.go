@@ -90,6 +90,7 @@ type API interface {
 	GetProcessInstance(ctx context.Context, key string, opts ...options.FacadeOption) (ProcessInstance, error)
 	LookupProcessInstance(ctx context.Context, key string, opts ...options.FacadeOption) (ProcessInstance, error)
 	SearchProcessInstanceVariables(ctx context.Context, key string, opts ...options.FacadeOption) ([]ProcessInstanceVariable, error)
+	PlanProcessInstanceVariableUpdates(ctx context.Context, keys types.Keys, variables map[string]any, opts ...options.FacadeOption) (ProcessInstanceVariableUpdatePlan, error)
 	UpdateProcessInstanceVariables(ctx context.Context, request ProcessInstanceVariableUpdateRequest, opts ...options.FacadeOption) (ProcessInstanceVariableUpdateResult, error)
 	EnrichProcessInstancesWithIncidents(ctx context.Context, pis ProcessInstances, opts ...options.FacadeOption) (IncidentEnrichedProcessInstances, error)
 	EnrichProcessInstancesWithVariables(ctx context.Context, pis ProcessInstances, opts ...options.FacadeOption) (VariableEnrichedProcessInstances, error)

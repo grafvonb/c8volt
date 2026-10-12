@@ -116,10 +116,11 @@ func New(opts ...Option) (API, error) {
 		return nil, err
 	}
 	utUpdateAPI := utsvc.NewVariableUpdates(utAPI, variableAPI, c.cfg, c.log)
+	piUpdateAPI := pisvc.NewVariableUpdates(piAPI, variableAPI, c.cfg, c.log)
 
 	cl := client{
 		ClusterAPI:        cluster.New(cAPI, c.log),
-		ProcessAPI:        process.NewWithElementListeners(pdAPI, piAPI, incAPI, eAPI, jAPI, c.log),
+		ProcessAPI:        process.NewWithVariableUpdates(pdAPI, piAPI, incAPI, eAPI, jAPI, piUpdateAPI, c.log),
 		IncidentAPI:       incident.New(incAPI, c.log),
 		TaskAPI:           task.NewWithVariableUpdates(pdAPI, piAPI, utAPI, utUpdateAPI, c.log),
 		JobAPI:            job.New(jAPI, c.log),

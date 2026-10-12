@@ -4,6 +4,9 @@
 package process
 
 import (
+	"slices"
+
+	options "github.com/grafvonb/c8volt/c8volt/foptions"
 	d "github.com/grafvonb/c8volt/internal/domain"
 	pisvc "github.com/grafvonb/c8volt/internal/services/processinstance"
 	pitraversal "github.com/grafvonb/c8volt/internal/services/processinstance/traversal"
@@ -351,6 +354,90 @@ func fromDomainProcessInstanceVariableUpdateResult(x d.ProcessInstanceVariableUp
 		Message:            x.Message,
 		Error:              x.Error,
 		Variables:          toolx.CopyMap(x.Variables),
+	}
+}
+
+// copyProcessInstancePlanVariableValue recursively isolates mutable JSON data.
+func copyProcessInstancePlanVariableValue(value any) any {
+	switch value := value.(type) {
+	case map[string]any:
+		return copyProcessInstancePlanVariableMap(value)
+	case []any:
+		out := make([]any, len(value))
+		for i := range value {
+			out[i] = copyProcessInstancePlanVariableValue(value[i])
+		}
+		return out
+	default:
+		return value
+	}
+}
+
+// copyProcessInstancePlanVariableMap copies a variable map without sharing
+// nested object or array values across the facade boundary.
+func copyProcessInstancePlanVariableMap(values map[string]any) map[string]any {
+	if values == nil {
+		return nil
+	}
+	out := make(map[string]any, len(values))
+	for name, value := range values {
+		out[name] = copyProcessInstancePlanVariableValue(value)
+	}
+	return out
+}
+
+// fromDomainProcessInstanceVariablePlannedValue maps one classified value and
+// copies its nested JSON data.
+func fromDomainProcessInstanceVariablePlannedValue(x d.ProcessInstanceVariablePlannedValue) ProcessInstanceVariablePlannedValue {
+	return ProcessInstanceVariablePlannedValue{Name: x.Name, Value: copyProcessInstancePlanVariableValue(x.Value), APITruncated: x.APITruncated}
+}
+
+// fromDomainProcessInstanceVariablePlannedChange maps one classified change
+// and copies both observed and requested values.
+func fromDomainProcessInstanceVariablePlannedChange(x d.ProcessInstanceVariablePlannedChange) ProcessInstanceVariablePlannedChange {
+	return ProcessInstanceVariablePlannedChange{
+		Name: x.Name, Before: copyProcessInstancePlanVariableValue(x.Before),
+		After: copyProcessInstancePlanVariableValue(x.After), APITruncated: x.APITruncated,
+	}
+}
+
+// fromDomainProcessInstanceVariablePlan maps one root plan without sharing its
+// classification or payload values.
+func fromDomainProcessInstanceVariablePlan(x d.ProcessInstanceVariablePlan) ProcessInstanceVariablePlan {
+	return ProcessInstanceVariablePlan{
+		ProcessInstanceKey: x.ProcessInstanceKey, ScopeKey: x.ScopeKey, TenantId: x.TenantId,
+		Additions:          toolx.MapSlice(x.Additions, fromDomainProcessInstanceVariablePlannedValue),
+		Changes:            toolx.MapSlice(x.Changes, fromDomainProcessInstanceVariablePlannedChange),
+		UnchangedRequested: toolx.MapSlice(x.UnchangedRequested, fromDomainProcessInstanceVariablePlannedValue),
+		Untouched:          toolx.MapSlice(x.Untouched, fromDomainProcessInstanceVariablePlannedValue),
+		MutationVariables:  copyProcessInstancePlanVariableMap(x.MutationVariables),
+		VerificationValues: copyProcessInstancePlanVariableMap(x.VerificationValues),
+	}
+}
+
+// fromDomainProcessInstanceVariableTenantContext maps frozen tenant evidence
+// into the public options model with independent slices.
+func fromDomainProcessInstanceVariableTenantContext(x d.TenantContext) options.TenantContext {
+	return options.TenantContext{
+		Mode: options.TenantContextMode(x.Mode), Filter: options.TenantContextFilter(x.Filter),
+		ConfiguredTenantID: x.ConfiguredTenantID, TargetTenantID: x.TargetTenantID,
+		ResolvedTenantIDs: slices.Clone(x.ResolvedTenantIDs), UnknownTargetCount: x.UnknownTargetCount,
+		CrossTenant: x.CrossTenant,
+		Warnings: toolx.MapSlice(x.Warnings, func(w d.TenantContextWarning) options.TenantContextWarning {
+			return options.TenantContextWarning{Code: options.TenantContextWarningCode(w.Code), Message: w.Message}
+		}),
+	}
+}
+
+// fromDomainProcessInstanceVariableUpdatePlan maps the complete frozen plan
+// while preserving stable order, counts, and tenant evidence.
+func fromDomainProcessInstanceVariableUpdatePlan(x d.ProcessInstanceVariableUpdatePlan) ProcessInstanceVariableUpdatePlan {
+	return ProcessInstanceVariableUpdatePlan{
+		RequestedKeys: slices.Clone(x.RequestedKeys), RequestedValues: copyProcessInstancePlanVariableMap(x.RequestedValues),
+		Instances: toolx.MapSlice(x.Instances, fromDomainProcessInstanceVariablePlan), RequestedCount: x.RequestedCount,
+		UpdateCount: x.UpdateCount, VariableAddCount: x.VariableAddCount, VariableChangeCount: x.VariableChangeCount,
+		VariableUnchangedCount: x.VariableUnchangedCount, VariableUntouchedCount: x.VariableUntouchedCount,
+		MutationSubmitted: x.MutationSubmitted, TenantContext: fromDomainProcessInstanceVariableTenantContext(x.TenantContext),
 	}
 }
 

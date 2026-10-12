@@ -657,6 +657,11 @@ func (stubProcessAPI) GetProcessInstances(context.Context, types.Keys, int, ...o
 	panic("unexpected call")
 }
 
+// PlanProcessInstanceVariableUpdates rejects accidental prepared planning until command integration owns it.
+func (stubProcessAPI) PlanProcessInstanceVariableUpdates(context.Context, types.Keys, map[string]any, ...options.FacadeOption) (process.ProcessInstanceVariableUpdatePlan, error) {
+	panic("unexpected call")
+}
+
 func (stubProcessAPI) CreateNProcessInstances(context.Context, process.ProcessInstanceData, int, int, ...options.FacadeOption) ([]process.ProcessInstance, error) {
 	panic("unexpected call")
 }

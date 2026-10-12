@@ -25,3 +25,22 @@ Started: 2026-10-12 06:49:41
 - Camunda page totals require separate certainty and presence tracking; capped totals do not directly prove continuation.
 - Targeted variable and process-instance checks passed, as did repository-wide compile-only coverage and diff validation.
 ---
+
+## Iteration 2 - 2026-10-12 07:02
+**Work Unit**: T002 US1 collection variable-update planning
+**Tasks Completed**:
+- [x] T002: Implement collection planning, frozen domain/public models, facade delegation, and additive dependency composition
+**Tasks Remaining in Work Unit**: T003 remains in US1
+**Commit**: This work-unit commit
+**Files Changed**:
+- internal/domain/processinstance_variable.go
+- internal/services/processinstance/{update.go,update_test.go}
+- c8volt/process/{api.go,client.go,client_test.go,convert.go,model.go,variable_updates.go}
+- c8volt/{client.go,client_test.go}
+- c8volt/resource/client_test.go
+- cmd/process_api_stub_test.go
+- specs/328-align-pi-variable-updates/{tasks.md,ralph-memory.md,progress.md}
+**Learnings**:
+- PI planning can reuse the complete root-variable contract through a narrow composed service while leaving legacy mutation entry points unchanged.
+- Targeted service, facade, root-client, repository compile-only, and diff validation all passed.
+---

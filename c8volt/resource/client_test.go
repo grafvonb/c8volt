@@ -1026,6 +1026,11 @@ func (stubProcessAPI) SearchProcessInstanceVariables(context.Context, string, ..
 	panic("unexpected call")
 }
 
+// PlanProcessInstanceVariableUpdates rejects accidental prepared planning in resource facade tests.
+func (stubProcessAPI) PlanProcessInstanceVariableUpdates(context.Context, typex.Keys, map[string]any, ...options.FacadeOption) (process.ProcessInstanceVariableUpdatePlan, error) {
+	panic("unexpected call")
+}
+
 func (stubProcessAPI) UpdateProcessInstanceVariables(context.Context, process.ProcessInstanceVariableUpdateRequest, ...options.FacadeOption) (process.ProcessInstanceVariableUpdateResult, error) {
 	panic("unexpected call")
 }

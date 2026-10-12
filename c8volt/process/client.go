@@ -20,12 +20,13 @@ import (
 )
 
 type client struct {
-	pdApi  pdsvc.API
-	piApi  pisvc.API
-	incApi incsvc.API
-	elApi  esvc.API
-	jobApi jsvc.API
-	log    *slog.Logger
+	pdApi     pdsvc.API
+	piApi     pisvc.API
+	incApi    incsvc.API
+	elApi     esvc.API
+	jobApi    jsvc.API
+	updateApi pisvc.VariableUpdateAPI
+	log       *slog.Logger
 }
 
 // New creates a process facade with incident lookup routed through the incident service layer.
@@ -42,13 +43,15 @@ func NewWithElements(pdApi pdsvc.API, piApi pisvc.API, incApi incsvc.API, elApi 
 // NewWithElementListeners creates a process facade with runtime-element and
 // listener-job lookup dependencies routed through their service layers.
 func NewWithElementListeners(pdApi pdsvc.API, piApi pisvc.API, incApi incsvc.API, elApi esvc.API, jobApi jsvc.API, log *slog.Logger) API {
+	return NewWithVariableUpdates(pdApi, piApi, incApi, elApi, jobApi, nil, log)
+}
+
+// NewWithVariableUpdates creates a process facade with the composed variable
+// planning workflow while preserving all earlier constructors.
+func NewWithVariableUpdates(pdApi pdsvc.API, piApi pisvc.API, incApi incsvc.API, elApi esvc.API, jobApi jsvc.API, updateApi pisvc.VariableUpdateAPI, log *slog.Logger) API {
 	return &client{
-		pdApi:  pdApi,
-		piApi:  piApi,
-		incApi: incApi,
-		elApi:  elApi,
-		jobApi: jobApi,
-		log:    log,
+		pdApi: pdApi, piApi: piApi, incApi: incApi, elApi: elApi, jobApi: jobApi,
+		updateApi: updateApi, log: log,
 	}
 }
 

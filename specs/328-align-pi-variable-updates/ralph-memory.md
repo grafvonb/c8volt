@@ -13,11 +13,14 @@ Started: 2026-10-12T04:49:40Z
 - Complete root-variable reads prefer an advancing `endCursor`; without one they advance the offset by the backend raw item count, not the locally retained root-only count.
 - Exact totals terminate at the observed raw count. Capped totals remain monotonic lower bounds. Missing totals remain genuinely absent and traversal probes until an empty page without a cursor.
 - Adapter-local root filtering retains only records whose process-instance and scope keys both match the selected root, while `RawItemCount` records all backend items.
+- Prepared PI updates use an additive composed `processinstance.VariableUpdateAPI`; legacy facade constructors inject nil and the new method returns a normalized precondition error.
+- Collection planning reads all selected-instance identities first, then complete root variables in stable key order, and returns the zero plan on any later target failure.
 
 ## Gotchas
 
 - Camunda 8.10 cursor requests use `*EndCursor`; 8.8 and 8.9 use a value `EndCursor`.
 - `hasMoreTotalItems` describes a capped total, not by itself whether another result page exists.
+- Plan values must be copied independently into requested, mutation, verification, classification, and facade representations so caller or service mutation cannot broaden a later payload.
 
 ## Reusable Commands
 
@@ -32,4 +35,4 @@ Started: 2026-10-12T04:49:40Z
 - Do not decode variable values through generated models; they omit raw value/truncation details needed by planning and verification.
 
 ## Current Handoff
-- Start T002 (US1): implement collection planning and thin facade models/conversions on top of the complete root-variable reader. Preserve the T001 page contract and return no executable partial plan after any target failure.
+- Continue US1 with T003: replace command-owned PI variable discovery/comparison with mechanical facade-plan adaptation, retain the prepared plan and tenant evidence for later execution, and update preview tests/docs without changing ordinary execution yet.

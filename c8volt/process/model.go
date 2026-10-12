@@ -9,6 +9,7 @@ import (
 	"time"
 
 	ferr "github.com/grafvonb/c8volt/c8volt/ferrors"
+	options "github.com/grafvonb/c8volt/c8volt/foptions"
 	"github.com/grafvonb/c8volt/c8volt/incident"
 	"github.com/grafvonb/c8volt/toolx"
 	"github.com/grafvonb/c8volt/typex"
@@ -163,6 +164,53 @@ type ProcessInstanceVariable struct {
 	ScopeKey           string `json:"scopeKey"`
 	TenantId           string `json:"tenantId,omitempty"`
 	APITruncated       bool   `json:"apiTruncated"`
+}
+
+// ProcessInstanceVariablePlannedValue describes an addition, unchanged
+// request, or untouched root variable in a frozen update plan.
+type ProcessInstanceVariablePlannedValue struct {
+	Name         string `json:"name"`
+	Value        any    `json:"value"`
+	APITruncated bool   `json:"apiTruncated,omitempty"`
+}
+
+// ProcessInstanceVariablePlannedChange preserves the observed and requested
+// values for a root variable that needs mutation.
+type ProcessInstanceVariablePlannedChange struct {
+	Name         string `json:"name"`
+	Before       any    `json:"before"`
+	After        any    `json:"after"`
+	APITruncated bool   `json:"apiTruncated,omitempty"`
+}
+
+// ProcessInstanceVariablePlan is the complete root-only classification and
+// frozen payload for one selected process instance.
+type ProcessInstanceVariablePlan struct {
+	ProcessInstanceKey string                                 `json:"processInstanceKey"`
+	ScopeKey           string                                 `json:"scopeKey"`
+	TenantId           string                                 `json:"tenantId,omitempty"`
+	Additions          []ProcessInstanceVariablePlannedValue  `json:"additions"`
+	Changes            []ProcessInstanceVariablePlannedChange `json:"changes"`
+	UnchangedRequested []ProcessInstanceVariablePlannedValue  `json:"unchangedRequested"`
+	Untouched          []ProcessInstanceVariablePlannedValue  `json:"untouched"`
+	MutationVariables  map[string]any                         `json:"mutationVariables,omitempty"`
+	VerificationValues map[string]any                         `json:"verificationValues"`
+}
+
+// ProcessInstanceVariableUpdatePlan is a complete frozen collection plan
+// suitable for preview and later execution without rediscovery.
+type ProcessInstanceVariableUpdatePlan struct {
+	RequestedKeys          []string                      `json:"requestedKeys"`
+	RequestedValues        map[string]any                `json:"requestedValues"`
+	Instances              []ProcessInstanceVariablePlan `json:"instances"`
+	RequestedCount         int                           `json:"requestedCount"`
+	UpdateCount            int                           `json:"updateCount"`
+	VariableAddCount       int                           `json:"variableAddCount"`
+	VariableChangeCount    int                           `json:"variableChangeCount"`
+	VariableUnchangedCount int                           `json:"variableUnchangedCount"`
+	VariableUntouchedCount int                           `json:"variableUntouchedCount"`
+	MutationSubmitted      bool                          `json:"mutationSubmitted"`
+	TenantContext          options.TenantContext         `json:"tenantContext"`
 }
 
 type ProcessInstanceVariableUpdateStatus string

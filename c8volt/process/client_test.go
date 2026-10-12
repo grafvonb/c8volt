@@ -3516,3 +3516,66 @@ func (s stubProcessInstanceAPI) WaitForProcessInstancesExpectation(ctx context.C
 }
 
 var _ pisvc.API = stubProcessInstanceAPI{}
+
+type facadeProcessInstanceVariableUpdateAPI struct {
+	plan       d.ProcessInstanceVariableUpdatePlan
+	err        error
+	keys       typex.Keys
+	variables  map[string]any
+	callConfig *services.CallCfg
+}
+
+// PlanProcessInstanceVariableUpdates records facade mapping and returns a controlled plan.
+func (a *facadeProcessInstanceVariableUpdateAPI) PlanProcessInstanceVariableUpdates(_ context.Context, keys typex.Keys, variables map[string]any, opts ...services.CallOption) (d.ProcessInstanceVariableUpdatePlan, error) {
+	a.keys = append(typex.Keys(nil), keys...)
+	a.variables = variables
+	a.callConfig = services.ApplyCallOptions(opts)
+	return a.plan, a.err
+}
+
+// TestClientPlanProcessInstanceVariableUpdatesCopiesAndDelegates verifies the
+// public facade maps options and deeply isolates mutable planning values.
+func TestClientPlanProcessInstanceVariableUpdatesCopiesAndDelegates(t *testing.T) {
+	t.Parallel()
+
+	serviceValue := map[string]any{"nested": []any{"service"}}
+	updateAPI := &facadeProcessInstanceVariableUpdateAPI{plan: d.ProcessInstanceVariableUpdatePlan{
+		RequestedKeys: []string{"pi-a"}, RequestedValues: map[string]any{"payload": serviceValue}, RequestedCount: 1, UpdateCount: 1,
+		Instances: []d.ProcessInstanceVariablePlan{{
+			ProcessInstanceKey: "pi-a", ScopeKey: "pi-a", TenantId: "tenant-a",
+			Additions:         []d.ProcessInstanceVariablePlannedValue{{Name: "payload", Value: serviceValue}},
+			MutationVariables: map[string]any{"payload": serviceValue}, VerificationValues: map[string]any{"payload": serviceValue},
+		}},
+		TenantContext: d.TenantContext{Mode: d.TenantContextModeExplicitKeys, Filter: d.TenantContextFilterNotApplied, ResolvedTenantIDs: []string{"tenant-a"}},
+	}}
+	cli := NewWithVariableUpdates(&stubProcessDefinitionAPI{}, stubProcessInstanceAPI{}, stubIncidentAPI{}, nil, nil, updateAPI, slog.Default())
+	input := map[string]any{"payload": map[string]any{"nested": []any{"caller"}}}
+
+	plan, err := cli.PlanProcessInstanceVariableUpdates(context.Background(), typex.Keys{"pi-a"}, input, options.WithFailFast())
+
+	require.NoError(t, err)
+	require.Equal(t, typex.Keys{"pi-a"}, updateAPI.keys)
+	require.True(t, updateAPI.callConfig.FailFast)
+	input["payload"].(map[string]any)["nested"].([]any)[0] = "mutated"
+	require.Equal(t, "caller", updateAPI.variables["payload"].(map[string]any)["nested"].([]any)[0])
+	serviceValue["nested"].([]any)[0] = "changed-after-return"
+	require.Equal(t, "service", plan.RequestedValues["payload"].(map[string]any)["nested"].([]any)[0])
+	require.Equal(t, "service", plan.Instances[0].MutationVariables["payload"].(map[string]any)["nested"].([]any)[0])
+	require.Equal(t, []string{"tenant-a"}, plan.TenantContext.ResolvedTenantIDs)
+}
+
+// TestClientPlanProcessInstanceVariableUpdatesConvertsErrorsAndPreservesConstructors
+// verifies legacy facade constructors remain usable and the new method fails clearly.
+func TestClientPlanProcessInstanceVariableUpdatesConvertsErrorsAndPreservesConstructors(t *testing.T) {
+	t.Parallel()
+
+	legacy := New(&stubProcessDefinitionAPI{}, stubProcessInstanceAPI{}, stubIncidentAPI{}, slog.Default())
+	_, err := legacy.PlanProcessInstanceVariableUpdates(context.Background(), typex.Keys{"pi-a"}, map[string]any{"value": true})
+	require.ErrorIs(t, err, ferr.ErrLocalPrecondition)
+
+	updateAPI := &facadeProcessInstanceVariableUpdateAPI{err: d.ErrUnavailable}
+	cli := NewWithVariableUpdates(&stubProcessDefinitionAPI{}, stubProcessInstanceAPI{}, stubIncidentAPI{}, nil, nil, updateAPI, slog.Default())
+	plan, err := cli.PlanProcessInstanceVariableUpdates(context.Background(), typex.Keys{"pi-a"}, map[string]any{"value": true})
+	require.ErrorIs(t, err, ferr.ErrUnavailable)
+	require.Equal(t, ProcessInstanceVariableUpdatePlan{}, plan)
+}

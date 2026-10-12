@@ -77,6 +77,53 @@ type ProcessInstanceVariablePage struct {
 	EndCursor     string
 }
 
+// ProcessInstanceVariablePlannedValue describes one requested or observed
+// root variable whose classification needs only one value.
+type ProcessInstanceVariablePlannedValue struct {
+	Name         string
+	Value        any
+	APITruncated bool
+}
+
+// ProcessInstanceVariablePlannedChange preserves the observed and requested
+// values for one root variable that requires mutation.
+type ProcessInstanceVariablePlannedChange struct {
+	Name         string
+	Before       any
+	After        any
+	APITruncated bool
+}
+
+// ProcessInstanceVariablePlan is the complete root-only classification and
+// frozen payload for one selected process instance.
+type ProcessInstanceVariablePlan struct {
+	ProcessInstanceKey string
+	ScopeKey           string
+	TenantId           string
+	Additions          []ProcessInstanceVariablePlannedValue
+	Changes            []ProcessInstanceVariablePlannedChange
+	UnchangedRequested []ProcessInstanceVariablePlannedValue
+	Untouched          []ProcessInstanceVariablePlannedValue
+	MutationVariables  map[string]any
+	VerificationValues map[string]any
+}
+
+// ProcessInstanceVariableUpdatePlan is the immutable-by-convention result of
+// successful collection-wide discovery and classification.
+type ProcessInstanceVariableUpdatePlan struct {
+	RequestedKeys          []string
+	RequestedValues        map[string]any
+	Instances              []ProcessInstanceVariablePlan
+	RequestedCount         int
+	UpdateCount            int
+	VariableAddCount       int
+	VariableChangeCount    int
+	VariableUnchangedCount int
+	VariableUntouchedCount int
+	MutationSubmitted      bool
+	TenantContext          TenantContext
+}
+
 type ProcessInstanceVariableUpdateStatus string
 
 const (
