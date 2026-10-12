@@ -178,3 +178,17 @@ Started: 2026-10-12 06:49:41
 - The established explicit-key contract makes backend authorization authoritative; `IgnoreTenant` removes only the configured discovery predicate while returned tenant metadata remains available as evidence.
 - Adapter, PI command, tenant, user-task, facade, targeted race, diff, and full race-enabled repository validation passed after aligning one stale keyed-get assertion.
 ---
+---
+## Iteration 4 - 2026-10-12 17:20
+**Work Unit**: T011 US3 prepared-executor concurrency and lifecycle coverage
+**Tasks Completed**:
+- [x] T011: Add deterministic coverage for ordered concurrent outcomes, in-flight fail-fast, cancellation, confirmation counts, and no-work plans
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- internal/services/processinstance/update_execution_test.go
+- specs/328-align-pi-variable-updates/{tasks.md,ralph-memory.md,progress.md}
+**Learnings**:
+- The existing executor preserves ordered partial outcomes and accepted in-flight work under concurrency without a production correction.
+- Focused tests passed 20 repeated runs; targeted PI variable service tests passed with the race detector, and diff validation passed.
+---

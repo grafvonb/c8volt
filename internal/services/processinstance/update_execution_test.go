@@ -198,6 +198,212 @@ func TestExecuteProcessInstanceVariableUpdatesWaitsOnceForAllRequestedValues(t *
 	require.Equal(t, "confirmed", results.Items[1].ConfirmationStatus)
 }
 
+// TestExecuteProcessInstanceVariableUpdatesRetainsSelectedOrderAfterOutOfOrderCompletion
+// verifies multiple changed roots keep selected-key order and receive one confirmation each.
+func TestExecuteProcessInstanceVariableUpdatesRetainsSelectedOrderAfterOutOfOrderCompletion(t *testing.T) {
+	t.Parallel()
+
+	plan := processInstanceChangedExecutionPlan("pi-first", "pi-second", "pi-third")
+	started := map[string]chan struct{}{}
+	release := map[string]chan struct{}{}
+	for _, key := range plan.RequestedKeys {
+		started[key] = make(chan struct{})
+		release[key] = make(chan struct{})
+	}
+	completed := make(chan string, len(plan.RequestedKeys))
+	api := &processInstanceVariableExecutionAPI{
+		write: func(_ context.Context, scope string, _ map[string]any, _ ...services.CallOption) (d.ScopeVariableUpdateResponse, error) {
+			close(started[scope])
+			<-release[scope]
+			completed <- scope
+			return d.ScopeVariableUpdateResponse{ScopeKey: scope, Accepted: true, StatusCode: 204, Status: "accepted"}, nil
+		},
+		search: func(_ context.Context, key string, _ ...services.CallOption) ([]d.ProcessInstanceVariable, error) {
+			return []d.ProcessInstanceVariable{{Name: "value", Value: `"after"`, ProcessInstanceKey: key, ScopeKey: key}}, nil
+		},
+	}
+	type executionOutcome struct {
+		results d.ProcessInstanceVariableUpdateResults
+		err     error
+	}
+	outcome := make(chan executionOutcome, 1)
+	go func() {
+		results, err := NewVariableUpdates(nil, api, config.New(), nil).
+			ExecuteProcessInstanceVariableUpdates(context.Background(), plan, 3)
+		outcome <- executionOutcome{results: results, err: err}
+	}()
+
+	for _, key := range plan.RequestedKeys {
+		receiveProcessInstanceExecutionSignal(t, started[key])
+	}
+	for _, key := range []string{"pi-third", "pi-second", "pi-first"} {
+		close(release[key])
+		require.Equal(t, key, receiveProcessInstanceExecutionValue(t, completed))
+	}
+	got := receiveProcessInstanceExecutionValue(t, outcome)
+
+	require.NoError(t, got.err)
+	require.Equal(t, plan.RequestedKeys, []string{got.results.Items[0].Key, got.results.Items[1].Key, got.results.Items[2].Key})
+	for _, item := range got.results.Items {
+		require.Equal(t, d.ProcessInstanceVariableUpdateStatusConfirmed, item.Status)
+		require.True(t, item.MutationAccepted)
+	}
+	require.ElementsMatch(t, plan.RequestedKeys, api.searches)
+	require.Len(t, api.searches, len(plan.RequestedKeys))
+}
+
+// TestExecuteProcessInstanceVariableUpdatesFailFastPreservesInflightAcceptance
+// verifies fail-fast skips only work that never started while retaining an in-flight success.
+func TestExecuteProcessInstanceVariableUpdatesFailFastPreservesInflightAcceptance(t *testing.T) {
+	t.Parallel()
+
+	secondStarted := make(chan struct{})
+	api := &processInstanceVariableExecutionAPI{write: func(ctx context.Context, scope string, _ map[string]any, _ ...services.CallOption) (d.ScopeVariableUpdateResponse, error) {
+		switch scope {
+		case "pi-first":
+			<-secondStarted
+			return d.ScopeVariableUpdateResponse{ScopeKey: scope, StatusCode: 500, Status: "rejected"}, d.ErrUnavailable
+		case "pi-second":
+			close(secondStarted)
+			<-ctx.Done()
+			return d.ScopeVariableUpdateResponse{ScopeKey: scope, Accepted: true, StatusCode: 204, Status: "accepted"}, nil
+		default:
+			return d.ScopeVariableUpdateResponse{ScopeKey: scope, Accepted: true}, nil
+		}
+	}}
+
+	results, err := NewVariableUpdates(nil, api, config.New(), nil).
+		ExecuteProcessInstanceVariableUpdates(context.Background(), processInstanceChangedExecutionPlan("pi-first", "pi-second", "pi-third"), 2,
+			services.WithFailFast(), services.WithNoWait())
+
+	require.ErrorIs(t, err, d.ErrUnavailable)
+	require.Equal(t, []string{"pi-first", "pi-second", "pi-third"}, []string{results.Items[0].Key, results.Items[1].Key, results.Items[2].Key})
+	require.Equal(t, d.ProcessInstanceVariableUpdateStatusMutationFailed, results.Items[0].Status)
+	require.ErrorContains(t, errors.New(results.Items[0].Error), d.ErrUnavailable.Error())
+	require.Equal(t, d.ProcessInstanceVariableUpdateStatusSubmitted, results.Items[1].Status)
+	require.True(t, results.Items[1].MutationAccepted)
+	require.Equal(t, d.ProcessInstanceVariableUpdateStatusSkipped, results.Items[2].Status)
+	require.False(t, results.Items[2].MutationAccepted)
+	require.ElementsMatch(t, []string{"pi-first", "pi-second"}, []string{api.writes[0].scope, api.writes[1].scope})
+	require.Empty(t, api.searches)
+}
+
+// TestExecuteProcessInstanceVariableUpdatesCancellationDuringScheduling verifies
+// cancellation stops new writes and marks only the started write as attempted.
+func TestExecuteProcessInstanceVariableUpdatesCancellationDuringScheduling(t *testing.T) {
+	t.Parallel()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	started := make(chan struct{})
+	api := &processInstanceVariableExecutionAPI{write: func(ctx context.Context, scope string, _ map[string]any, _ ...services.CallOption) (d.ScopeVariableUpdateResponse, error) {
+		close(started)
+		<-ctx.Done()
+		return d.ScopeVariableUpdateResponse{ScopeKey: scope}, ctx.Err()
+	}}
+	type executionOutcome struct {
+		results d.ProcessInstanceVariableUpdateResults
+		err     error
+	}
+	outcome := make(chan executionOutcome, 1)
+	go func() {
+		results, err := NewVariableUpdates(nil, api, config.New(), nil).
+			ExecuteProcessInstanceVariableUpdates(ctx, processInstanceChangedExecutionPlan("pi-first", "pi-second", "pi-third"), 1, services.WithNoWait())
+		outcome <- executionOutcome{results: results, err: err}
+	}()
+
+	receiveProcessInstanceExecutionSignal(t, started)
+	cancel()
+	got := receiveProcessInstanceExecutionValue(t, outcome)
+
+	require.ErrorIs(t, got.err, context.Canceled)
+	require.Len(t, api.writes, 1)
+	require.Equal(t, d.ProcessInstanceVariableUpdateStatusMutationFailed, got.results.Items[0].Status)
+	require.ErrorContains(t, errors.New(got.results.Items[0].Error), context.Canceled.Error())
+	require.Equal(t, d.ProcessInstanceVariableUpdateStatusSkipped, got.results.Items[1].Status)
+	require.Equal(t, d.ProcessInstanceVariableUpdateStatusSkipped, got.results.Items[2].Status)
+	require.Empty(t, api.searches)
+}
+
+// TestExecuteProcessInstanceVariableUpdatesCancellationDuringConfirmation verifies
+// accepted mutations survive cancellation and unstarted confirmation is not fabricated.
+func TestExecuteProcessInstanceVariableUpdatesCancellationDuringConfirmation(t *testing.T) {
+	t.Parallel()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	started := make(chan struct{})
+	var startOnce sync.Once
+	api := &processInstanceVariableExecutionAPI{search: func(ctx context.Context, _ string, _ ...services.CallOption) ([]d.ProcessInstanceVariable, error) {
+		startOnce.Do(func() { close(started) })
+		<-ctx.Done()
+		return nil, ctx.Err()
+	}}
+	type executionOutcome struct {
+		results d.ProcessInstanceVariableUpdateResults
+		err     error
+	}
+	outcome := make(chan executionOutcome, 1)
+	go func() {
+		results, err := NewVariableUpdates(nil, api, config.New(), nil).
+			ExecuteProcessInstanceVariableUpdates(ctx, processInstanceChangedExecutionPlan("pi-first", "pi-second"), 1)
+		outcome <- executionOutcome{results: results, err: err}
+	}()
+
+	receiveProcessInstanceExecutionSignal(t, started)
+	cancel()
+	got := receiveProcessInstanceExecutionValue(t, outcome)
+
+	require.ErrorIs(t, got.err, context.Canceled)
+	require.Len(t, api.writes, 2)
+	require.Equal(t, []string{"pi-first"}, api.searches)
+	require.Equal(t, d.ProcessInstanceVariableUpdateStatusConfirmationFailed, got.results.Items[0].Status)
+	require.True(t, got.results.Items[0].MutationAccepted)
+	require.ErrorContains(t, errors.New(got.results.Items[0].Error), context.Canceled.Error())
+	require.Equal(t, d.ProcessInstanceVariableUpdateStatusSubmitted, got.results.Items[1].Status)
+	require.True(t, got.results.Items[1].MutationAccepted)
+}
+
+// TestExecuteProcessInstanceVariableUpdatesNoWorkAvoidsLifecycleCalls verifies
+// empty and entirely unchanged plans do not invoke writer or waiter dependencies.
+func TestExecuteProcessInstanceVariableUpdatesNoWorkAvoidsLifecycleCalls(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name       string
+		plan       d.ProcessInstanceVariableUpdatePlan
+		wantItems  int
+		wantStatus d.ProcessInstanceVariableUpdateStatus
+	}{
+		{name: "empty", plan: d.ProcessInstanceVariableUpdatePlan{
+			RequestedKeys: []string{}, RequestedValues: map[string]any{}, Instances: []d.ProcessInstanceVariablePlan{},
+		}},
+		{name: "entirely unchanged", plan: d.ProcessInstanceVariableUpdatePlan{
+			RequestedKeys: []string{"pi-unchanged"}, RequestedValues: map[string]any{"value": "same"}, RequestedCount: 1,
+			VariableUnchangedCount: 1,
+			Instances: []d.ProcessInstanceVariablePlan{{
+				ProcessInstanceKey: "pi-unchanged", ScopeKey: "pi-unchanged",
+				UnchangedRequested: []d.ProcessInstanceVariablePlannedValue{{Name: "value", Value: "same"}},
+				VerificationValues: map[string]any{"value": "same"},
+			}},
+		}, wantItems: 1, wantStatus: d.ProcessInstanceVariableUpdateStatusUnchanged},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			api := &processInstanceVariableExecutionAPI{}
+
+			results, err := NewVariableUpdates(nil, api, config.New(), nil).
+				ExecuteProcessInstanceVariableUpdates(context.Background(), tt.plan, 4)
+
+			require.NoError(t, err)
+			require.Len(t, results.Items, tt.wantItems)
+			if tt.wantItems > 0 {
+				require.Equal(t, tt.wantStatus, results.Items[0].Status)
+			}
+			require.Empty(t, api.writes)
+			require.Empty(t, api.searches)
+		})
+	}
+}
+
 // TestExecuteProcessInstanceVariableUpdatesMarksUnstartedFailFastWorkSkipped verifies
 // failed, skipped, and already unchanged outcomes retain selected-key order.
 func TestExecuteProcessInstanceVariableUpdatesMarksUnstartedFailFastWorkSkipped(t *testing.T) {
@@ -308,5 +514,44 @@ func processInstanceExecutionPlan() d.ProcessInstanceVariableUpdatePlan {
 				UnchangedRequested: []d.ProcessInstanceVariablePlannedValue{{Name: "same", Value: true}},
 				MutationVariables:  map[string]any{"add": requested["add"], "change": "after"}, VerificationValues: copyProcessInstanceVariableMap(requested)},
 		},
+	}
+}
+
+// processInstanceChangedExecutionPlan builds changed-only roots in selected-key order.
+func processInstanceChangedExecutionPlan(keys ...string) d.ProcessInstanceVariableUpdatePlan {
+	requested := map[string]any{"value": "after"}
+	plan := d.ProcessInstanceVariableUpdatePlan{
+		RequestedKeys: keys, RequestedValues: requested, RequestedCount: len(keys), UpdateCount: len(keys), VariableAddCount: len(keys),
+		Instances: make([]d.ProcessInstanceVariablePlan, 0, len(keys)),
+	}
+	for _, key := range keys {
+		plan.Instances = append(plan.Instances, d.ProcessInstanceVariablePlan{
+			ProcessInstanceKey: key, ScopeKey: key,
+			Additions:          []d.ProcessInstanceVariablePlannedValue{{Name: "value", Value: "after"}},
+			MutationVariables:  map[string]any{"value": "after"},
+			VerificationValues: map[string]any{"value": "after"},
+		})
+	}
+	return plan
+}
+
+func receiveProcessInstanceExecutionSignal(t *testing.T, ch <-chan struct{}) {
+	t.Helper()
+	select {
+	case <-ch:
+	case <-time.After(5 * time.Second):
+		t.Fatal("timed out waiting for process-instance execution signal")
+	}
+}
+
+func receiveProcessInstanceExecutionValue[T any](t *testing.T, ch <-chan T) T {
+	t.Helper()
+	select {
+	case value := <-ch:
+		return value
+	case <-time.After(5 * time.Second):
+		t.Fatal("timed out waiting for process-instance execution value")
+		var zero T
+		return zero
 	}
 }

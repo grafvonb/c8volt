@@ -24,6 +24,7 @@ Started: 2026-10-12T04:49:40Z
 - PI partial execution errors use the UT-style retained-result renderer before `exitAfterRenderedResult`; JSON receives one failure envelope, while human and keys-only output retain available per-key outcomes without a second generic error render.
 - PI dry-runs and completed all-unchanged plans return before approval and execution; explicit machine modes survive quiet, JSON takes precedence over keys, and rendering adds no backend reads.
 - Explicit process-instance keys use backend authorization: `IgnoreTenant` must omit the configured tenant predicate from every root-variable page, while ordinary reads retain it.
+- The prepared executor's existing pool semantics preserve selected-key result order, retain accepted in-flight work after fail-fast, skip only unstarted mutations, and leave accepted-but-unconfirmed work submitted when cancellation stops confirmation scheduling.
 
 ## Gotchas
 
@@ -46,4 +47,4 @@ Started: 2026-10-12T04:49:40Z
 - Do not decode variable values through generated models; they omit raw value/truncation details needed by planning and verification.
 
 ## Current Handoff
-- Continue with T011 concurrency and lifecycle coverage for the prepared executor; change behavior only if deterministic tests expose a defect.
+- Feature complete; no handoff required.
