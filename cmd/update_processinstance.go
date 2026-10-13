@@ -23,9 +23,9 @@ var updateProcessInstanceCmd = &cobra.Command{
 
 Provide repeated --key values or newline-separated keys from stdin with '-'. Supply exactly one payload source: --vars with a JSON object or --vars-file with its file path. The same variable map is applied to every unique key. Explicit keys use backend authorization without tenant filtering.
 
-c8volt loads current variables, plans additions and changes, asks for confirmation, and waits until the requested variables are visible through the same lookup as get process-instance --with-vars. Detailed previews label every planned write with its selected process-instance root as pi:<key>.
+c8volt reads every selected process instance's complete root-variable scope before planning additions and changes. Nested-scope variables are excluded, and truncated values remain planned changes because they cannot prove equality. After confirmation, the command writes only the prepared additions and changes locally to their recorded roots, then waits until all requested variables are visible through the same lookup as get process-instance --with-vars. Detailed previews label every planned write with its selected process-instance root as pi:<key>.
 
-Use --dry-run to inspect changes without mutation, or --auto-confirm for unattended updates.`,
+Use --dry-run to inspect changes without mutation, or --auto-confirm for unattended updates. A completed plan with no additions or changes finishes without confirmation, mutation, or verification. Use --no-wait to return after accepted root writes without confirmation. Partial failures retain accepted, failed, and skipped outcomes while returning a nonzero exit status.`,
 	Example: `  ./c8volt update process-instance --key <process-instance-key> --vars '{"customerTier":"gold"}' --dry-run
   ./c8volt update process-instance --key <process-instance-key> --vars-file ./vars.json --dry-run
   ./c8volt --tenant tenant-a update process-instance --key <process-instance-key> --vars '{"customerTier":"gold"}' --dry-run
@@ -62,10 +62,11 @@ Use --dry-run to inspect changes without mutation, or --auto-confirm for unatten
 		if err := validateUpdateProcessInstanceJSONConfirmation(cmd); err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}
-		preview, err := planUpdateProcessInstanceVariables(cmd.Context(), cmd, cli, keys, variables)
+		prepared, err := planUpdateProcessInstanceVariables(cmd.Context(), cmd, cli, keys, variables)
 		if err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("plan process-instance variable update: %w", err))
 		}
+		preview := prepared.preview
 		if flagDryRun {
 			if err := renderUpdateProcessInstanceVariablePreview(cmd, preview); err != nil {
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("render update dry-run result: %w", err))
@@ -88,9 +89,15 @@ Use --dry-run to inspect changes without mutation, or --auto-confirm for unatten
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 			}
 		}
-		results, err := cli.UpdateProcessInstancesVariables(cmd.Context(), keys, variables, flagWorkers, collectExplicitPIAdminInputOptions()...)
-		if err != nil {
-			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("update process-instance variables: %w", err))
+		results, executeErr := cli.ExecuteProcessInstanceVariableUpdates(cmd.Context(), prepared.plan, flagWorkers, collectExplicitPIAdminInputOptions()...)
+		if executeErr != nil {
+			if len(results.Items) > 0 {
+				if err := renderUpdateProcessInstanceVariableFailure(cmd, results, executeErr); err != nil {
+					handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("render partial update result: %w", err))
+				}
+				exitAfterRenderedResult(cfg.App.NoErrCodes, executeErr)
+			}
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("update process-instance variables: %w", executeErr))
 		}
 		if err := renderUpdateProcessInstanceVariableResults(cmd, results); err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("render update result: %w", err))

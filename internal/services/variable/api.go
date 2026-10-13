@@ -12,6 +12,9 @@ import (
 
 // API exposes tenant-safe process-instance variable lookup and update operations.
 type API interface {
+	// SearchProcessInstanceVariablesPage reads one normalized root-variable page.
+	SearchProcessInstanceVariablesPage(ctx context.Context, key string, page d.ProcessInstanceVariablePageRequest, opts ...services.CallOption) (d.ProcessInstanceVariablePage, error)
+	// SearchProcessInstanceVariables reads the complete root-variable collection.
 	SearchProcessInstanceVariables(ctx context.Context, key string, opts ...services.CallOption) ([]d.ProcessInstanceVariable, error)
 	UpdateProcessInstanceVariables(ctx context.Context, key string, variables map[string]any, opts ...services.CallOption) (d.ProcessInstanceVariableUpdateResponse, error)
 	UpdateScopeVariables(ctx context.Context, scopeKey string, variables map[string]any, opts ...services.CallOption) (d.ScopeVariableUpdateResponse, error)

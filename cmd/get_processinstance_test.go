@@ -1820,7 +1820,8 @@ func TestGetProcessInstanceWithIncidents_HumanIncidentMessageLimitDefaultLeavesM
 	require.NotContains(t, output, fullMessage[:7]+"...")
 }
 
-// Keyed variable lookup is limited to process-scope variables and preserves the normal PI row.
+// Keyed variable lookup bypasses configured tenant discovery filters, keeps
+// backend-returned tenant evidence, and limits output to process-scope variables.
 func TestGetProcessInstanceWithVars_HumanOutputShowsSortedProcessScopeVariables(t *testing.T) {
 	var requests []string
 	var variableBodies []map[string]any
@@ -1830,14 +1831,14 @@ func TestGetProcessInstanceWithVars_HumanOutputShowsSortedProcessScopeVariables(
 		switch r.URL.Path {
 		case "/v2/process-instances/123":
 			require.Equal(t, http.MethodGet, r.Method)
-			_, _ = w.Write([]byte(`{"hasIncident":true,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"123","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}`))
+			_, _ = w.Write([]byte(`{"hasIncident":true,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"123","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant-b"}`))
 		case "/v2/variables/search":
 			require.Equal(t, http.MethodPost, r.Method)
 			require.Equal(t, "false", r.URL.Query().Get("truncateValues"))
 			var body map[string]any
 			require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
 			variableBodies = append(variableBodies, body)
-			_, _ = w.Write([]byte(`{"items":[{"name":"zeta","value":"2","variableKey":"902","processInstanceKey":"123","scopeKey":"123","tenantId":"tenant"},{"name":"localTask","value":"ignored","variableKey":"903","processInstanceKey":"123","scopeKey":"element-123","tenantId":"tenant"},{"name":"alpha","value":"1","variableKey":"901","processInstanceKey":"123","scopeKey":"123","tenantId":"tenant"}],"page":{"totalItems":3,"hasMoreTotalItems":false}}`))
+			_, _ = w.Write([]byte(`{"items":[{"name":"zeta","value":"2","variableKey":"902","processInstanceKey":"123","scopeKey":"123","tenantId":"tenant-b"},{"name":"localTask","value":"ignored","variableKey":"903","processInstanceKey":"123","scopeKey":"element-123","tenantId":"tenant-b"},{"name":"alpha","value":"1","variableKey":"901","processInstanceKey":"123","scopeKey":"123","tenantId":"tenant-b"}],"page":{"totalItems":3,"hasMoreTotalItems":false}}`))
 		default:
 			t.Fatalf("unexpected request path: %s", r.URL.Path)
 		}
@@ -1848,7 +1849,7 @@ func TestGetProcessInstanceWithVars_HumanOutputShowsSortedProcessScopeVariables(
 
 	output := executeRootForProcessInstanceTest(t,
 		"--config", cfgPath,
-		"--tenant", "tenant",
+		"--tenant", "tenant-a",
 		"get", "process-instance",
 		"--key", "123",
 		"--with-vars",
@@ -1859,8 +1860,8 @@ func TestGetProcessInstanceWithVars_HumanOutputShowsSortedProcessScopeVariables(
 	filter := variableBodies[0]["filter"].(map[string]any)
 	require.Equal(t, "123", filter["processInstanceKey"])
 	require.Equal(t, "123", filter["scopeKey"])
-	require.Equal(t, "tenant", filter["tenantId"])
-	require.Contains(t, output, "123 tenant demo v3 ACTIVE")
+	require.NotContains(t, filter, "tenantId")
+	require.Contains(t, output, "123 tenant-b demo v3 ACTIVE")
 	require.Contains(t, output, "└─ vars:")
 	require.Contains(t, output, "├─ alpha=1")
 	require.Contains(t, output, "└─ zeta=2")
@@ -1869,7 +1870,7 @@ func TestGetProcessInstanceWithVars_HumanOutputShowsSortedProcessScopeVariables(
 	require.NotContains(t, output, "incidents:")
 	require.NotContains(t, output, "process instance is marked as having incidents")
 	require.Contains(t, output, "found: 1")
-	require.Less(t, strings.Index(output, "123 tenant demo"), strings.Index(output, "└─ vars:"))
+	require.Less(t, strings.Index(output, "123 tenant-b demo"), strings.Index(output, "└─ vars:"))
 	require.Less(t, strings.Index(output, "alpha=1"), strings.Index(output, "zeta=2"))
 }
 

@@ -11,6 +11,26 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestProcessInstanceVariableUpdateResultOKTreatsUnchangedAsSuccess verifies
+// successful no-ops affect totals without implying mutation acceptance.
+func TestProcessInstanceVariableUpdateResultOKTreatsUnchangedAsSuccess(t *testing.T) {
+	t.Parallel()
+
+	unchanged := ProcessInstanceVariableUpdateResult{Status: ProcessInstanceVariableUpdateStatusUnchanged}
+	skipped := ProcessInstanceVariableUpdateResult{Status: ProcessInstanceVariableUpdateStatusSkipped}
+	results := ProcessInstanceVariableUpdateResults{Items: []ProcessInstanceVariableUpdateResult{unchanged, skipped}}
+
+	require.True(t, unchanged.OK())
+	require.False(t, unchanged.MutationAccepted)
+	require.False(t, skipped.OK())
+	require.Equal(t, []int{2, 1, 1}, totalsSlice(results.Totals()))
+}
+
+// totalsSlice makes the multi-value totals result convenient to compare.
+func totalsSlice(total, oks, noks int) []int {
+	return []int{total, oks, noks}
+}
+
 func TestProcessDefinitionFilterString_RendersOnlyActiveFields(t *testing.T) {
 	require.Equal(t, "none", fmt.Sprintf("%+v", ProcessDefinitionFilter{}))
 

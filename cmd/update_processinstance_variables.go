@@ -5,16 +5,19 @@ package cmd
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"reflect"
-	"sort"
 
 	"github.com/grafvonb/c8volt/c8volt/process"
-	"github.com/grafvonb/c8volt/config"
 	types "github.com/grafvonb/c8volt/typex"
 	"github.com/spf13/cobra"
 )
+
+// preparedProcessInstanceVariableUpdate retains the facade plan that supplied
+// the command preview so later execution can use the same frozen evidence.
+type preparedProcessInstanceVariableUpdate struct {
+	plan    process.ProcessInstanceVariableUpdatePlan
+	preview processInstanceVariableUpdatePreview
+}
 
 // parseUpdateProcessInstanceVariablesFromFlags selects exactly one variable payload source and decodes it.
 func parseUpdateProcessInstanceVariablesFromFlags(cmd *cobra.Command, raw string, filePath string) (map[string]any, error) {
@@ -37,116 +40,75 @@ func validateUpdateProcessInstanceJSONConfirmation(cmd *cobra.Command) error {
 	return missingDependentFlagsf("--json update process-instance requires --dry-run, --auto-confirm, or --automation")
 }
 
-// planUpdateProcessInstanceVariables loads current process-scope variables and computes the requested update preview.
-func planUpdateProcessInstanceVariables(ctx context.Context, cmd *cobra.Command, cli process.API, keys types.Keys, requested map[string]any) (processInstanceVariableUpdatePreview, error) {
+// planUpdateProcessInstanceVariables delegates complete collection planning
+// and mechanically adapts its frozen classifications to the existing preview.
+func planUpdateProcessInstanceVariables(ctx context.Context, cmd *cobra.Command, cli process.API, keys types.Keys, requested map[string]any) (preparedProcessInstanceVariableUpdate, error) {
 	uniqueKeys := keys.Unique()
 	stopActivity := startCommandActivity(cmd, fmt.Sprintf("preparing update variable plan for %d process instance(s)", len(uniqueKeys)))
 	defer stopActivity()
 
-	plans := make([]processInstanceVariableUpdatePlan, 0, len(uniqueKeys))
-	for _, key := range uniqueKeys {
-		existing, err := cli.SearchProcessInstanceVariables(ctx, key, collectExplicitPIAdminInputOptions()...)
-		if err != nil {
-			return processInstanceVariableUpdatePreview{}, fmt.Errorf("load variables for process-instance %s: %w", key, err)
-		}
-		plans = append(plans, newProcessInstanceVariableUpdatePlan(key, existing, requested))
+	plan, err := cli.PlanProcessInstanceVariableUpdates(ctx, uniqueKeys, requested, collectExplicitPIAdminInputOptions()...)
+	if err != nil {
+		return preparedProcessInstanceVariableUpdate{}, err
 	}
-	preview := newProcessInstanceVariableUpdatePreview(uniqueKeys, plans)
-	attachProcessInstanceVariableUpdateTenantContext(cmd, preview)
-	return preview, nil
+	attachTenantContext(cmd, userTaskUpdateTenantContext(plan.TenantContext))
+	return preparedProcessInstanceVariableUpdate{
+		plan:    plan,
+		preview: processInstanceVariableUpdatePreviewFromFacadePlan(plan),
+	}, nil
 }
 
-// newProcessInstanceVariableUpdatePlan compares existing process-scope variables with the requested payload.
-func newProcessInstanceVariableUpdatePlan(key string, existing []process.ProcessInstanceVariable, requested map[string]any) processInstanceVariableUpdatePlan {
-	currentByName := processScopeVariableValuesByName(key, existing)
-	requestedNames := sortedMapKeys(requested)
-
-	plan := processInstanceVariableUpdatePlan{
-		ProcessInstanceKey: key,
-		tenantID:           processInstanceVariableTenantIDForKey(key, existing),
-	}
-	for _, name := range requestedNames {
-		after := requested[name]
-		before, ok := currentByName[name]
-		switch {
-		case !ok:
-			plan.Additions = append(plan.Additions, processInstanceVariablePlannedValue{Name: name, Value: after})
-		case reflect.DeepEqual(before.Value, after):
-			plan.UnchangedRequested = append(plan.UnchangedRequested, processInstanceVariablePlannedValue{Name: name, Value: after, APITruncated: before.APITruncated})
-		default:
-			plan.Changes = append(plan.Changes, processInstanceVariablePlannedChange{Name: name, Before: before.Value, After: after, APITruncated: before.APITruncated})
-		}
-		delete(currentByName, name)
-	}
-
-	untouchedNames := sortedMapKeys(currentByName)
-	for _, name := range untouchedNames {
-		current := currentByName[name]
-		plan.Untouched = append(plan.Untouched, processInstanceVariablePlannedValue{Name: name, Value: current.Value, APITruncated: current.APITruncated})
-	}
-	return plan
-}
-
-// attachProcessInstanceVariableUpdateTenantContext records direct-key update
-// semantics using only variable tenant metadata loaded for the preview.
-func attachProcessInstanceVariableUpdateTenantContext(cmd *cobra.Command, preview processInstanceVariableUpdatePreview) {
-	cfg, _ := config.FromContext(commandContextOrBackground(cmd))
-	base := newExplicitKeysTenantContext(configuredTenantID(cfg))
-	attachTenantContext(cmd, withTenantContextEvidence(base, preview.tenantIDs, preview.unknownTenantCount))
-}
-
-// processInstanceVariableTenantIDForKey returns the first available tenant for
-// process-scope variables belonging to one explicit process-instance key.
-func processInstanceVariableTenantIDForKey(key string, variables []process.ProcessInstanceVariable) string {
-	for _, variable := range variables {
-		if variable.ProcessInstanceKey != "" && variable.ProcessInstanceKey != key {
-			continue
-		}
-		if variable.ScopeKey != "" && variable.ScopeKey != key {
-			continue
-		}
-		if variable.TenantId != "" {
-			return variable.TenantId
+// processInstanceVariableUpdatePreviewFromFacadePlan preserves the existing
+// command payload while discarding execution-only fields from the public plan.
+func processInstanceVariableUpdatePreviewFromFacadePlan(plan process.ProcessInstanceVariableUpdatePlan) processInstanceVariableUpdatePreview {
+	instances := make([]processInstanceVariableUpdatePlan, len(plan.Instances))
+	for i, instance := range plan.Instances {
+		instances[i] = processInstanceVariableUpdatePlan{
+			ProcessInstanceKey: instance.ProcessInstanceKey,
+			Additions:          processInstanceVariablePlannedValuesFromFacade(instance.Additions),
+			Changes:            processInstanceVariablePlannedChangesFromFacade(instance.Changes),
+			UnchangedRequested: processInstanceVariablePlannedValuesFromFacade(instance.UnchangedRequested),
+			Untouched:          processInstanceVariablePlannedValuesFromFacade(instance.Untouched),
 		}
 	}
-	return ""
+	return processInstanceVariableUpdatePreview{
+		Operation:              "update",
+		RequestedKeys:          append([]string(nil), plan.RequestedKeys...),
+		RequestedCount:         plan.RequestedCount,
+		UpdateCount:            plan.UpdateCount,
+		VariableAddCount:       plan.VariableAddCount,
+		VariableChangeCount:    plan.VariableChangeCount,
+		VariableUnchangedCount: plan.VariableUnchangedCount,
+		VariableUntouchedCount: plan.VariableUntouchedCount,
+		ProcessInstances:       instances,
+		MutationSubmitted:      false,
+	}
 }
 
-type processInstanceVariableCurrentValue struct {
-	Value        any
-	APITruncated bool
-}
-
-func processScopeVariableValuesByName(key string, variables []process.ProcessInstanceVariable) map[string]processInstanceVariableCurrentValue {
-	out := make(map[string]processInstanceVariableCurrentValue, len(variables))
-	for _, variable := range variables {
-		if variable.ProcessInstanceKey != "" && variable.ProcessInstanceKey != key {
-			continue
-		}
-		if variable.ScopeKey != "" && variable.ScopeKey != key {
-			continue
-		}
-		out[variable.Name] = processInstanceVariableCurrentValue{
-			Value:        decodeProcessInstanceVariableValue(variable.Value),
-			APITruncated: variable.APITruncated,
-		}
+// processInstanceVariablePlannedValuesFromFacade copies classified values
+// into the command-only preview representation without reclassification.
+func processInstanceVariablePlannedValuesFromFacade(values []process.ProcessInstanceVariablePlannedValue) []processInstanceVariablePlannedValue {
+	if values == nil {
+		return nil
+	}
+	out := make([]processInstanceVariablePlannedValue, len(values))
+	for i, value := range values {
+		out[i] = processInstanceVariablePlannedValue{Name: value.Name, Value: value.Value, APITruncated: value.APITruncated}
 	}
 	return out
 }
 
-func decodeProcessInstanceVariableValue(raw string) any {
-	var value any
-	if err := json.Unmarshal([]byte(raw), &value); err != nil {
-		return raw
+// processInstanceVariablePlannedChangesFromFacade copies classified changes
+// into the command-only preview representation without reclassification.
+func processInstanceVariablePlannedChangesFromFacade(changes []process.ProcessInstanceVariablePlannedChange) []processInstanceVariablePlannedChange {
+	if changes == nil {
+		return nil
 	}
-	return value
-}
-
-func sortedMapKeys[V any](items map[string]V) []string {
-	keys := make([]string, 0, len(items))
-	for key := range items {
-		keys = append(keys, key)
+	out := make([]processInstanceVariablePlannedChange, len(changes))
+	for i, change := range changes {
+		out[i] = processInstanceVariablePlannedChange{
+			Name: change.Name, Before: change.Before, After: change.After, APITruncated: change.APITruncated,
+		}
 	}
-	sort.Strings(keys)
-	return keys
+	return out
 }

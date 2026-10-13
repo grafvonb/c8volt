@@ -37,6 +37,7 @@ type updateProcessInstanceOutputCapture struct {
 	initialValue  bool
 	mutatedScopes map[string]bool
 	mutations     int
+	instanceReads int
 	variableReads int
 	totalRequests int
 }
@@ -65,14 +66,14 @@ func TestUpdateProcessInstanceTerminal(t *testing.T) {
 		wantMutates   int
 		wantReads     int
 	}{
-		{name: "configured stderr accepts", args: []string{"update", "pi", "--key", "101", "--vars", `{"approved":true,"new":"value"}`}, configured: true, prompt: true, preview: true, response: "yes", wantMutates: 1, wantReads: 3},
+		{name: "configured stderr accepts", args: []string{"update", "pi", "--key", "101", "--vars", `{"approved":true,"new":"value"}`}, configured: true, prompt: true, preview: true, response: "yes", wantMutates: 1, wantReads: 2},
 		{name: "inherited stderr declines", args: []string{"update", "pi", "--key", "101", "--vars", `{"approved":true,"new":"value"}`}, prompt: true, preview: true, response: "no", wantExitCode: exitcode.Error, wantReads: 1},
 		{name: "default answer declines", args: []string{"update", "pi", "--key", "101", "--vars", `{"approved":true,"new":"value"}`}, prompt: true, preview: true, wantExitCode: exitcode.Error, wantReads: 1},
 		{name: "terminal eof aborts", args: []string{"update", "pi", "--key", "101", "--vars", `{"approved":true,"new":"value"}`}, prompt: true, preview: true, endOfInput: true, wantExitCode: exitcode.Error, wantReads: 1},
 		{name: "dry run is prompt free", args: []string{"update", "pi", "--key", "101", "--vars", `{"approved":true,"new":"value"}`, "--dry-run"}, preview: true, wantReads: 1},
-		{name: "no-op is prompt free", args: []string{"update", "pi", "--key", "101", "--vars", `{"approved":true}`}, initialValue: true, wantReads: 1},
+		{name: "configured stderr no-op is prompt free", args: []string{"update", "pi", "--key", "101", "--vars", `{"approved":true}`}, initialValue: true, configured: true, wantReads: 1},
 		{name: "automation no-wait is prompt free", args: []string{"--automation", "update", "pi", "--key", "101", "--vars", `{"approved":true,"new":"value"}`, "--no-wait"}, wantMutates: 1, wantReads: 1},
-		{name: "auto-confirm is prompt free", args: []string{"--auto-confirm", "update", "pi", "--key", "101", "--vars", `{"approved":true,"new":"value"}`}, wantMutates: 1, wantReads: 3},
+		{name: "auto-confirm is prompt free", args: []string{"--auto-confirm", "update", "pi", "--key", "101", "--vars", `{"approved":true,"new":"value"}`}, wantMutates: 1, wantReads: 2},
 		{
 			name:         "compact bulk normal preview stays summarized",
 			args:         []string{"update", "pi", "--key", "101", "--key", "202", "--vars", `{"approved":true,"new":"value"}`},
@@ -175,9 +176,16 @@ func TestUpdateProcessInstanceTerminal(t *testing.T) {
 
 			capture.mu.Lock()
 			defer capture.mu.Unlock()
+			selectedKeys := 0
+			for _, arg := range test.args {
+				if arg == "--key" {
+					selectedKeys++
+				}
+			}
 			require.Equal(t, test.wantMutates, capture.mutations)
+			require.Equal(t, selectedKeys, capture.instanceReads)
 			require.Equal(t, test.wantReads, capture.variableReads)
-			require.Equal(t, test.wantReads+test.wantMutates, capture.totalRequests)
+			require.Equal(t, selectedKeys+test.wantReads+test.wantMutates, capture.totalRequests)
 		})
 	}
 }
@@ -195,6 +203,14 @@ func newUpdateProcessInstanceOutputServer(t *testing.T, initialValue bool) (*htt
 		capture.totalRequests++
 		capture.mu.Unlock()
 		switch {
+		case request.Method == http.MethodGet && strings.HasPrefix(request.URL.Path, "/v2/process-instances/"):
+			key := strings.TrimPrefix(request.URL.Path, "/v2/process-instances/")
+			require.NotEmpty(t, key)
+			capture.mu.Lock()
+			capture.instanceReads++
+			capture.mu.Unlock()
+			writer.Header().Set("Content-Type", "application/json")
+			_, _ = fmt.Fprintf(writer, `{"processInstanceKey":%q,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionVersion":1,"state":"ACTIVE"}`, key)
 		case request.Method == http.MethodPost && request.URL.Path == "/v2/variables/search":
 			var body struct {
 				Filter struct {

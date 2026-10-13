@@ -5,6 +5,7 @@ package waiter
 
 import (
 	"context"
+	"encoding/json"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -72,6 +73,39 @@ func TestMissingRequestedVariables_NormalizedJSONAndScopeFiltering(t *testing.T)
 	})
 
 	require.Empty(t, got)
+}
+
+// TestMissingRequestedVariablesRejectsTruncatedMatches verifies an incomplete
+// root observation cannot prove confirmation even when its visible JSON matches.
+func TestMissingRequestedVariablesRejectsTruncatedMatches(t *testing.T) {
+	t.Parallel()
+
+	got := MissingRequestedVariables("123", map[string]any{"foo": "bar"}, []d.ProcessInstanceVariable{
+		{Name: "foo", Value: `"bar"`, ProcessInstanceKey: "123", ScopeKey: "123", APITruncated: true},
+	})
+
+	require.Equal(t, []string{"foo"}, got)
+}
+
+// TestMissingRequestedVariablesPreservesNumericPrecision verifies confirmation
+// distinguishes adjacent integers beyond float64's exact range, including nested values.
+func TestMissingRequestedVariablesPreservesNumericPrecision(t *testing.T) {
+	t.Parallel()
+
+	got := MissingRequestedVariables("123", map[string]any{
+		"exact":    json.Number("9007199254740993"),
+		"mismatch": json.Number("9007199254740992"),
+		"nested": map[string]any{
+			"exact":    json.Number("9007199254740993"),
+			"mismatch": json.Number("9007199254740992"),
+		},
+	}, []d.ProcessInstanceVariable{
+		{Name: "exact", Value: `9007199254740993`, ProcessInstanceKey: "123", ScopeKey: "123"},
+		{Name: "mismatch", Value: `9007199254740993`, ProcessInstanceKey: "123", ScopeKey: "123"},
+		{Name: "nested", Value: `{"exact":9007199254740993,"mismatch":9007199254740993}`, ProcessInstanceKey: "123", ScopeKey: "123"},
+	})
+
+	require.Equal(t, []string{"mismatch", "nested"}, got)
 }
 
 // testConfig builds a variable waiter config with explicit retry timing.

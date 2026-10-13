@@ -7,7 +7,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"sort"
 	"strings"
 
 	camundav810 "github.com/grafvonb/c8volt/internal/clients/camunda/v810/camunda"
@@ -15,31 +14,42 @@ import (
 	"github.com/grafvonb/c8volt/internal/services"
 	"github.com/grafvonb/c8volt/internal/services/common"
 	"github.com/grafvonb/c8volt/internal/services/httpc"
+	variablesearch "github.com/grafvonb/c8volt/internal/services/variable/search"
 	"github.com/grafvonb/c8volt/internal/services/variable/waiter"
-	"github.com/grafvonb/c8volt/toolx"
 )
 
 // SearchProcessInstanceVariables returns untruncated process-scope variables for a v8.10 process instance.
 func (s *Service) SearchProcessInstanceVariables(ctx context.Context, key string, opts ...services.CallOption) ([]d.ProcessInstanceVariable, error) {
-	_ = services.ApplyCallOptions(opts)
+	return variablesearch.ProcessInstanceVariables(ctx, s, key, opts...)
+}
+
+// SearchProcessInstanceVariablesPage reads one normalized v8.10 variable page.
+func (s *Service) SearchProcessInstanceVariablesPage(ctx context.Context, key string, pageReq d.ProcessInstanceVariablePageRequest, opts ...services.CallOption) (d.ProcessInstanceVariablePage, error) {
+	if err := pageReq.Validate(); err != nil {
+		return d.ProcessInstanceVariablePage{}, fmt.Errorf("validate process-instance variable page: %w", err)
+	}
+	callCfg := services.ApplyCallOptions(opts)
 	s.log.Debug(fmt.Sprintf("searching pi %s variables", key))
 	processInstanceKeyFilter, err := newProcessInstanceKeyEqFilterPtr(key)
 	if err != nil {
-		return nil, fmt.Errorf("building process-instance variable filter: %w", err)
+		return d.ProcessInstanceVariablePage{}, fmt.Errorf("building process-instance variable filter: %w", err)
 	}
 	scopeKeyFilter, err := newScopeKeyEqFilterPtr(key)
 	if err != nil {
-		return nil, fmt.Errorf("building process-instance variable scope filter: %w", err)
+		return d.ProcessInstanceVariablePage{}, fmt.Errorf("building process-instance variable scope filter: %w", err)
 	}
 	var tenantID *camundav810.TenantId
-	if s.cfg.App.Tenant != "" {
+	if !callCfg.IgnoreTenant && s.cfg.App.Tenant != "" {
 		tenant := camundav810.TenantId(s.cfg.App.Tenant)
 		tenantID = &tenant
 	}
-	from := int32(0)
-	size := int32(1000)
 	page := camundav810.SearchQueryPageRequest{}
-	_ = page.FromOffsetPagination(camundav810.OffsetPagination{From: &from, Limit: &size})
+	if pageReq.After != "" {
+		after := camundav810.EndCursor(pageReq.After)
+		_ = page.FromCursorForwardPagination(camundav810.CursorForwardPagination{After: &after, Limit: &pageReq.Size})
+	} else {
+		_ = page.FromOffsetPagination(camundav810.OffsetPagination{From: &pageReq.From, Limit: &pageReq.Size})
+	}
 	order := camundav810.ASC
 	sortByName := []camundav810.VariableSearchQuerySortRequest{{
 		Field: camundav810.VariableSearchQuerySortRequestFieldName,
@@ -57,20 +67,16 @@ func (s *Service) SearchProcessInstanceVariables(ctx context.Context, key string
 	truncateValues := false
 	resp, err := s.cc.SearchVariablesWithResponse(ctx, &camundav810.SearchVariablesParams{TruncateValues: &truncateValues}, body)
 	if err != nil {
-		return nil, err
+		return d.ProcessInstanceVariablePage{}, err
 	}
 	if _, err := common.RequirePayload(resp.HTTPResponse, resp.Body, resp.JSON200); err != nil {
-		return nil, err
+		return d.ProcessInstanceVariablePage{}, err
 	}
-	payload, err := decodeSearchVariablesResponse(resp.Body, resp.JSON200)
+	payload, err := decodeSearchVariablesResponse(resp.Body, pageReq, key)
 	if err != nil {
-		return nil, fmt.Errorf("decode process-instance variables: %w", err)
+		return d.ProcessInstanceVariablePage{}, fmt.Errorf("decode process-instance variables: %w", err)
 	}
-	variables := toolx.MapSlice(payload.Items, fromVariableSearchResult)
-	sort.SliceStable(variables, func(i, j int) bool {
-		return variables[i].Name < variables[j].Name
-	})
-	return variables, nil
+	return payload, nil
 }
 
 // UpdateProcessInstanceVariables writes variables to the process instance element scope and confirms visibility unless no-wait is set.
