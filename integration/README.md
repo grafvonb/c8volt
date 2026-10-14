@@ -142,6 +142,33 @@ To run every baseline, volume, and real-state integration slice in sequence:
 make integration-test-all C8VOLT_IT_GO_TEST_FLAGS=-v C8VOLT_IT_VOLUME_TIMEOUT=90m C8VOLT_IT_REAL_STATE_TIMEOUT=90m
 ```
 
+## Release Coverage Policy
+
+The checked-in `assets/release-coverage.json` catalog defines stable scenario
+identities, version applicability, family minima, and minimum evidence levels.
+`assets/release-gaps.json` names additional prerequisite gaps; a gap cannot
+remove a required scenario or turn a product failure into success. The pure
+policy can be validated without building c8volt or contacting a cluster:
+
+```sh
+go test ./integration/internal/validation -race -count=1
+```
+
+Strict release evaluation freezes one requested minor and selected profiles
+before execution. Every applicable required scenario must have matching
+current-run evidence from an isolated successful child slice. Missing, skipped,
+blocked, duplicate, stale, foreign-minor, or weaker-than-required evidence is
+unsuccessful. `passed` is the only verdict with `coverageComplete=true`.
+`passed_with_gaps` means required checks passed while named nonrequired proof is
+still blocked; it is not complete release certification.
+
+Exploratory evaluation is intentionally partial: it evaluates the supplied
+scenario evidence without synthesizing every omitted release requirement. It
+still rejects malformed, duplicate, stale, unknown, unsafe-path, failed-child,
+and mismatched-target evidence, and it reports named gaps honestly. An
+exploratory `passed` verdict therefore describes only the selected scope and
+must not be presented as aggregate release certification.
+
 Make asks for confirmation before running integration slices because they may
 mutate real Camunda cluster state. A single `make` invocation asks once, even
 when an aggregate target expands to many slices. Automation can skip the prompt

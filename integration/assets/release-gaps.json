@@ -1,0 +1,66 @@
+{
+  "schemaVersion": 1,
+  "revision": "338.2026-10-14.1",
+  "gaps": [
+    {
+      "id": "job-timeout-mutation",
+      "scenarioIds": ["real-state-jobs-confirmed-timeout"],
+      "applicableMinors": ["8.9", "8.10"],
+      "missingPrerequisite": "An activated suite-owned service-task job with a controlled worker is unavailable.",
+      "blockedProof": "Confirmed timeout mutation followed by observable job post-state.",
+      "rationale": "The current suite can prove dry-run planning but cannot reliably mutate timeout without activation ownership.",
+      "owner": "follow-up from specs/257-c89-real-state-integration/gaps.md",
+      "reviewStatus": "accepted-additional-proof"
+    },
+    {
+      "id": "bpmn-error-mutation",
+      "scenarioIds": ["real-state-bpmn-error-confirmed-mutation"],
+      "applicableMinors": ["8.9", "8.10"],
+      "missingPrerequisite": "A catchable BPMN-error fixture and deterministic worker activation path are unavailable.",
+      "blockedProof": "Confirmed BPMN-error completion and resulting process state.",
+      "rationale": "Real-job preview and unchanged-state proof remain required; this gap covers only the additional confirmed mutation.",
+      "owner": "follow-up from specs/257-c89-real-state-integration/gaps.md",
+      "reviewStatus": "accepted-additional-proof"
+    },
+    {
+      "id": "listener-variants",
+      "scenarioIds": ["real-state-listeners-task-variants"],
+      "applicableMinors": ["8.9", "8.10"],
+      "missingPrerequisite": "A task-listener or richer listener fixture is unavailable.",
+      "blockedProof": "Listener proof beyond the existing execution-listener scenarios.",
+      "rationale": "Existing execution-listener evidence remains required and this does not waive that family.",
+      "owner": "follow-up from specs/257-c89-real-state-integration/gaps.md",
+      "reviewStatus": "accepted-additional-proof"
+    },
+    {
+      "id": "orphan-purge-candidates",
+      "scenarioIds": ["real-state-destructive-orphan-purge"],
+      "applicableMinors": ["8.9", "8.10"],
+      "missingPrerequisite": "A test-only direct API corruption setup for orphan candidates is unavailable.",
+      "blockedProof": "Confirmed orphan-purge post-state and missing-ancestor reporting.",
+      "rationale": "Normal c8volt deletion preserves cascade integrity and cannot create the required corrupt state.",
+      "owner": "follow-up from specs/257-c89-real-state-integration/gaps.md",
+      "reviewStatus": "accepted-additional-proof"
+    },
+    {
+      "id": "durable-standalone-resolve",
+      "scenarioIds": ["real-state-destructive-durable-resolve"],
+      "applicableMinors": ["8.9", "8.10"],
+      "missingPrerequisite": "A durable incident whose cause is cleared before standalone resolution is unavailable.",
+      "blockedProof": "Confirmed standalone resolve with no recreated active incident.",
+      "rationale": "The current incident fixture recreates until repaired; existing destructive post-state proof remains required.",
+      "owner": "follow-up from specs/257-c89-real-state-integration/gaps.md",
+      "reviewStatus": "accepted-additional-proof"
+    },
+    {
+      "id": "repair-partial-failures",
+      "scenarioIds": ["real-state-destructive-repair-partial-failures"],
+      "applicableMinors": ["8.9", "8.10"],
+      "missingPrerequisite": "Deterministic stale and externally mutated repair targets are unavailable.",
+      "blockedProof": "Real ops-repair fail-fast and partial-accounting report rows.",
+      "rationale": "Existing repair and destructive scenarios remain required; this gap covers additional dirty-state branches.",
+      "owner": "follow-up from specs/257-c89-real-state-integration/gaps.md",
+      "reviewStatus": "accepted-additional-proof"
+    }
+  ]
+}
