@@ -151,6 +151,9 @@ func buildReleaseScenarioEvidence(control releaseEvidenceControl, requirement va
 		ObservedVersion: control.observedVersion,
 		Outcome:         validation.OutcomePassed, EvidenceLevel: requirement.MinimumEvidence,
 	}
+	if len(requirement.ExpectedTargetRoles) == 1 {
+		record.RoleGroup = requirement.ExpectedTargetRoles[0]
+	}
 	switch {
 	case result.skipped:
 		record.Outcome = validation.OutcomeSkipped

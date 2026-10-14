@@ -27,6 +27,7 @@ const (
 	envReleaseVersion  = "C8VOLT_IT_RELEASE_VERSION"
 	envProfiles        = "C8VOLT_IT_PROFILES"
 	envRequireTenants  = "C8VOLT_IT_REQUIRE_TENANTS"
+	envTenantRoles     = "C8VOLT_IT_TENANT_ROLES"
 	envWorkdir         = "C8VOLT_IT_WORKDIR"
 	envBinary          = "C8VOLT_IT_BIN"
 	envBuild           = "C8VOLT_IT_BUILD"
@@ -76,17 +77,19 @@ type runnerManifest struct {
 // runnerConfig contains validated operator controls without retaining raw
 // configuration files, credentials, or URLs.
 type runnerConfig struct {
-	RepoRoot       string
-	EvidenceParent string
-	ReleaseVersion string
-	Profiles       []string
-	TenantCoverage validation.TenantCoverage
-	ExistingBinary string
-	BuildBinary    bool
-	GoTestFlags    []string
-	Timeout        time.Duration
-	VolumeTimeout  time.Duration
-	RealTimeout    time.Duration
+	RepoRoot        string
+	EvidenceParent  string
+	ReleaseVersion  string
+	Profiles        []string
+	TenantCoverage  validation.TenantCoverage
+	TenantRolesPath string
+	TenantRoles     *validation.TenantRoles
+	ExistingBinary  string
+	BuildBinary     bool
+	GoTestFlags     []string
+	Timeout         time.Duration
+	VolumeTimeout   time.Duration
+	RealTimeout     time.Duration
 }
 
 // commandKind lets fake executors distinguish safety gates from
@@ -206,7 +209,7 @@ func run(
 		SchemaVersion: validation.SchemaVersion,
 		State:         manifestRunning,
 		Request:       request,
-		Slices:        plannedSlices(request, catalog, startedAt),
+		Slices:        plannedSlices(request, catalog, startedAt, cfg.TenantRoles != nil),
 	}
 	manifestPath := filepath.Join(invocationRoot, manifestFileName)
 	if err := writeJSONAtomic(manifestPath, manifest); err != nil {
@@ -221,6 +224,8 @@ func run(
 	}
 
 	targets, preflightFailure := preflightAll(ctx, cfg, request, binaryPath, execer)
+	tenantPreflightFailure := preflightTenantRoleProfiles(ctx, cfg, request, binaryPath, execer)
+	preflightFailure = errors.Join(preflightFailure, tenantPreflightFailure)
 	manifest.Targets = targets
 	if preflightFailure != nil || ctx.Err() != nil {
 		interrupted := ctx.Err() != nil
@@ -231,6 +236,9 @@ func run(
 		summary, reduceErr := validation.Reduce(input)
 		if reduceErr != nil {
 			summary = failureSummary(request, validation.FailureHarness, reduceErr.Error())
+		}
+		if tenantPreflightFailure != nil {
+			summary = failureSummary(request, validation.FailureEnvironment, tenantPreflightFailure.Error())
 		}
 		if interrupted {
 			manifest.State = manifestInterrupted
@@ -300,6 +308,32 @@ func run(
 	return finalizeInvocation(manifestPath, invocationRoot, manifest, summary, exitFailed, reduceErr)
 }
 
+// preflightTenantRoleProfiles verifies every logical principal before any
+// mutation-capable slice starts, while keeping credentials and extra profile
+// identities out of the release target manifest.
+func preflightTenantRoleProfiles(
+	ctx context.Context,
+	cfg runnerConfig,
+	request validation.ValidationRequest,
+	binaryPath string,
+	execer executor,
+) error {
+	if cfg.TenantRoles == nil {
+		return nil
+	}
+	var failures []error
+	for _, profile := range cfg.TenantRoles.LogicalProfileNames() {
+		_, err := preflightTarget(ctx, cfg, request, binaryPath, profile, execer)
+		if err != nil {
+			failures = append(failures, fmt.Errorf("tenant role profile %q: %w", profile, err))
+		}
+		if ctx.Err() != nil {
+			break
+		}
+	}
+	return errors.Join(failures...)
+}
+
 // parseRunnerConfig accepts only the documented environment surface and
 // rejects test selection overrides before any build or remote preflight.
 func parseRunnerConfig(environ []string) (runnerConfig, error) {
@@ -348,6 +382,32 @@ func parseRunnerConfig(environ []string) (runnerConfig, error) {
 	default:
 		return runnerConfig{}, fmt.Errorf("unsupported %s value %q", envRequireTenants, tenantCoverage)
 	}
+	if tenantCoverage == validation.TenantCoveragePhysical {
+		return runnerConfig{}, errors.New("physical tenant coverage is not available until the physical role group is implemented")
+	}
+	tenantRolesPath := strings.TrimSpace(env[envTenantRoles])
+	var tenantRoles *validation.TenantRoles
+	if tenantRolesPath == "" {
+		if tenantCoverage != validation.TenantCoverageNone {
+			return runnerConfig{}, fmt.Errorf("%s is required when %s=%s", envTenantRoles, envRequireTenants, tenantCoverage)
+		}
+	} else {
+		if !filepath.IsAbs(tenantRolesPath) || filepath.Clean(tenantRolesPath) != tenantRolesPath {
+			return runnerConfig{}, fmt.Errorf("%s must be a clean absolute path", envTenantRoles)
+		}
+		roles, loadErr := validation.LoadTenantRoles(tenantRolesPath)
+		if loadErr != nil {
+			return runnerConfig{}, loadErr
+		}
+		profilesMetadata, metadataErr := loadDefaultTenantProfileMetadata(env)
+		if metadataErr != nil {
+			return runnerConfig{}, metadataErr
+		}
+		if validationErr := validation.ValidateTenantRoles(roles, profilesMetadata, releaseVersion); validationErr != nil {
+			return runnerConfig{}, fmt.Errorf("validate tenant roles: %w", validationErr)
+		}
+		tenantRoles = &roles
+	}
 
 	buildBinary := true
 	if raw, exists := env[envBuild]; exists && strings.TrimSpace(raw) != "" {
@@ -391,6 +451,7 @@ func parseRunnerConfig(environ []string) (runnerConfig, error) {
 	return runnerConfig{
 		RepoRoot: repoRoot, EvidenceParent: parent, ReleaseVersion: releaseVersion,
 		Profiles: profiles, TenantCoverage: tenantCoverage,
+		TenantRolesPath: tenantRolesPath, TenantRoles: tenantRoles,
 		ExistingBinary: existingBinary, BuildBinary: buildBinary, GoTestFlags: goTestFlags,
 		Timeout: timeout, VolumeTimeout: volumeTimeout, RealTimeout: realTimeout,
 	}, nil
@@ -449,10 +510,13 @@ func parseDurationControl(env map[string]string, name string, fallback time.Dura
 
 // plannedSlices freezes one child for every applicable catalog slice and
 // selected profile before any preflight runs.
-func plannedSlices(request validation.ValidationRequest, catalog validation.CoverageCatalog, startedAt time.Time) []validation.SliceExecution {
+func plannedSlices(request validation.ValidationRequest, catalog validation.CoverageCatalog, startedAt time.Time, tenantsEnabled bool) []validation.SliceExecution {
 	sliceTests := map[string][]string{}
 	for _, requirement := range catalog.Requirements {
 		if request.RequestedMinor != "" && !validation.Applicable(request.RequestedMinor, requirement.ApplicableMinors) {
+			continue
+		}
+		if containsString(requirement.ExpectedTargetRoles, validation.TenantRoleLogical) && !tenantsEnabled {
 			continue
 		}
 		if strings.HasPrefix(requirement.ScenarioID, "Test") {
@@ -603,6 +667,11 @@ func preflightTarget(
 		return target, fmt.Errorf("profile %q %s", profile, target.Reason)
 	}
 	target.Ready = true
+	if cfg.TenantRoles != nil && cfg.TenantRoles.Logical != nil {
+		target.ClusterID = cfg.TenantRoles.Logical.ClusterID
+		target.PhysicalTenantID = cfg.TenantRoles.Logical.PhysicalTenantID
+		target.Roles = []string{validation.TenantRoleLogical}
+	}
 	return target, nil
 }
 
@@ -642,6 +711,7 @@ func runSlice(
 		envWorkdir, slice.EvidenceDirectory,
 		envReleaseVersion, request.RequestedMinor,
 		envRequireTenants, string(request.RequiredTenantCoverage),
+		envTenantRoles, cfg.TenantRolesPath,
 		envVerbose, verbose,
 		envObservedVersion, observedVersion,
 		"C8VOLT_IT_RUN_ID", request.RunID,

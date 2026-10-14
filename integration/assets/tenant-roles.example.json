@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "logical": {
+    "clusterId": "replace-with-declared-cluster-id",
+    "physicalTenantId": "default",
+    "tenantAId": "tenant-a",
+    "tenantBId": "tenant-b",
+    "tenantAProfile": "dev810-tenant-a",
+    "tenantBProfile": "dev810-tenant-b",
+    "bothTenantsProfile": "dev810-tenant-both",
+    "restrictedAProfile": "dev810-tenant-a-restricted"
+  }
+}

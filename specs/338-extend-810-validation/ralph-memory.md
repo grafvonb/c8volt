@@ -19,6 +19,8 @@ Started: 2026-10-14T09:50:16Z
 - The focused `batch` slice is 8.10-only and owns `TestBatchFamily` plus held-instance `TestRealStateProcessDefinitionDraining`; batch cancellation/deletion evidence separates submission, terminal accounting, and independent post-state.
 - Tagged tests can classify a required failure as `product` through the normalized evidence override without accepting it as a gap; the current null deletion-batch rejection remains intentionally unsuccessful until a separate adapter fix lands.
 - Direct 8.10 compatibility scenarios reuse the default-local profile through the same HTTP/auth bootstrap while persisting only profile, observed version, keys, counts, states, and proof levels.
+- Logical tenant roles are strict credential-free JSON mapped to four distinct default-local profiles; runner validation reads only inherited minor/tenant metadata, preflights all role profiles before mutation, and never persists authentication fields.
+- Tenant catalog proof is optional through the named `logical-tenant-infrastructure` gap until requested; `C8VOLT_IT_REQUIRE_TENANTS=logical` dynamically promotes it to required, while physical requests fail closed until T007 supplies physical roles.
 
 ## Decisions
 
@@ -46,4 +48,4 @@ Started: 2026-10-14T09:50:16Z
 - Do not infer completeness from child exit code or discovered files; reduce the frozen catalog against normalized current-run evidence.
 
 ## Current Handoff
-- Start US4 with T006: implement credential-free logical tenant role validation and focused tenant scenarios, keeping required missing infrastructure unsuccessful and optional absence as a named gap.
+- Continue US4 with T007: extend the role schema and tenant slice for physical profile groups, path-preservation/client request checks, topology/shared-cluster controls, default-route equivalence, and physical evidence limits.

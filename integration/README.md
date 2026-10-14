@@ -162,6 +162,31 @@ runtime-present definition. That result is classified as a product failure,
 not an accepted gap. A successful submission is not release proof until the
 separate product fix lands and the definition's draining cleanup is observed.
 
+Logical tenant validation uses the credential-free role shape in
+`assets/tenant-roles.example.json`. Each role names an existing default-local
+profile; credentials and authorization configuration remain in the operator's
+config. The tenant-A, tenant-B, dual-authorized, and restricted-A profiles must
+all target Camunda 8.10 on the declared physical endpoint. The dual-authorized
+profile deliberately keeps tenant A as its configured filter so explicit and
+stdin tenant-B keys prove that filtering is not confused with authorization.
+
+```sh
+C8VOLT_IT_TENANT_ROLES=/absolute/path/to/tenant-roles.json \
+C8VOLT_IT_REQUIRE_TENANTS=logical \
+C8VOLT_IT_PROFILES=dev810 make integration-cli-tenants \
+  C8VOLT_IT_GO_TEST_FLAGS=-v C8VOLT_IT_REAL_STATE_TIMEOUT=90m
+```
+
+The slice establishes positive owned visibility before absence assertions,
+then verifies scoped cancellation leaves tenant B unchanged, restricted-A
+credentials cannot plan a proven tenant-B key, dual authorization accepts
+explicit/stdin tenant-B keys, and `--all-tenants` discovery and mutation remain
+inside the selected physical endpoint. It also covers conflicting selectors
+and single-destination restrictions. Missing roles are a named optional gap;
+setting `C8VOLT_IT_REQUIRE_TENANTS=logical` makes missing or invalid role
+infrastructure unsuccessful before the aggregate run starts. Physical tenant
+routing is a separate proof boundary and is not certified by this slice.
+
 For aggregate release validation, select one disposable profile and the
 requested minor. The sequential runner builds once, verifies the profile before
 mutation, and executes exact catalog-owned test identities in isolated child
@@ -297,6 +322,8 @@ Go suite variables:
 | --- | --- | --- |
 | `C8VOLT_IT_PROFILES` | active profile for direct slices; required for aggregate runs | Comma-separated profile names selected from the default local c8volt config. |
 | `C8VOLT_IT_RELEASE_VERSION` | empty | Set `8.9` or `8.10` for strict aggregate release validation. |
+| `C8VOLT_IT_TENANT_ROLES` | empty | Absolute path to credential-free logical role metadata naming default-local profiles. |
+| `C8VOLT_IT_REQUIRE_TENANTS` | `none` | Required tenant proof: `none`, `logical`, or `physical`; physical proof also requires logical proof. |
 | `C8VOLT_IT_BIN` | built into the workdir | Existing c8volt binary to test when `C8VOLT_IT_BUILD=0`. |
 | `C8VOLT_IT_BUILD` | build enabled | Set `0` with `C8VOLT_IT_BIN` to skip building the binary. |
 | `C8VOLT_IT_WORKDIR` | temp directory | Evidence directory for reruns and artifact review. |

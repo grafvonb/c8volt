@@ -62,6 +62,28 @@ func TestInvalidControlsExitTwoWithoutSubprocesses(t *testing.T) {
 	}
 }
 
+// TestRequiredTenantControlsFailBeforeSubprocesses verifies missing logical
+// roles and not-yet-implemented physical proof cannot start mutation work.
+func TestRequiredTenantControlsFailBeforeSubprocesses(t *testing.T) {
+	for _, value := range []string{"logical", "physical"} {
+		t.Run(value, func(t *testing.T) {
+			execer := &fakeExecutor{handler: func(context.Context, commandSpec) commandResult {
+				t.Fatal("invalid tenant controls must not execute a subprocess")
+				return commandResult{}
+			}}
+			exitCode, err := runFromEnvironment(context.Background(), []string{
+				envReleaseVersion + "=8.10", envProfiles + "=dev810", envRequireTenants + "=" + value,
+			}, execer)
+			if exitCode != exitInvalid || err == nil {
+				t.Fatalf("runFromEnvironment exit/error = %d/%v, want 2/non-nil", exitCode, err)
+			}
+			if len(execer.commands()) != 0 {
+				t.Fatalf("commands = %d, want 0", len(execer.commands()))
+			}
+		})
+	}
+}
+
 // TestPreflightMismatchBlocksEverySlice verifies all target gates complete and
 // a wrong minor produces zero mutation-capable child processes.
 func TestPreflightMismatchBlocksEverySlice(t *testing.T) {
@@ -170,7 +192,7 @@ func TestDefaultCatalogPlansEveryApplicableScenario(t *testing.T) {
 	request := validation.ValidationRequest{
 		RequestedMinor: "8.10", Profiles: []string{"dev810"}, EvidenceRoot: t.TempDir(),
 	}
-	slices := plannedSlices(request, catalog, time.Now())
+	slices := plannedSlices(request, catalog, time.Now(), false)
 	if len(slices) < 2 || slices[0].SliceID != "common-preflight" || slices[1].SliceID != "common-examples" {
 		t.Fatalf("first slices = %+v, want common-preflight then common-examples", slices[:min(len(slices), 2)])
 	}
@@ -185,8 +207,88 @@ func TestDefaultCatalogPlansEveryApplicableScenario(t *testing.T) {
 		if !validation.Applicable("8.10", requirement.ApplicableMinors) || !strings.HasPrefix(requirement.ScenarioID, "Test") {
 			continue
 		}
+		if containsString(requirement.ExpectedTargetRoles, validation.TenantRoleLogical) {
+			if planned[requirement.ScenarioID] != 0 {
+				t.Fatalf("optional tenant scenario %q planned without roles", requirement.ScenarioID)
+			}
+			continue
+		}
 		if planned[requirement.ScenarioID] != 1 {
 			t.Fatalf("scenario %q planned %d times, want once", requirement.ScenarioID, planned[requirement.ScenarioID])
+		}
+	}
+}
+
+// TestTenantRolesEnableFocusedSliceAndChildControl verifies validated role
+// metadata opts the tenant slice in without adding credential data to commands.
+func TestTenantRolesEnableFocusedSliceAndChildControl(t *testing.T) {
+	catalog, _, err := validation.LoadDefaultPolicy()
+	if err != nil {
+		t.Fatalf("load default policy: %v", err)
+	}
+	rolesPath := filepath.Join(t.TempDir(), "roles.json")
+	roles := validation.TenantRoles{SchemaVersion: validation.SchemaVersion, Logical: &validation.LogicalTenantRoles{
+		ClusterID: "cluster", PhysicalTenantID: "default", TenantAID: "tenant-a", TenantBID: "tenant-b",
+		TenantAProfile: "a", TenantBProfile: "b", BothTenantsProfile: "both", RestrictedAProfile: "restricted",
+	}}
+	request := validation.ValidationRequest{RequestedMinor: "8.10", Profiles: []string{"dev810"}, EvidenceRoot: t.TempDir()}
+	slices := plannedSlices(request, catalog, time.Now(), true)
+	var tenantSlice *validation.SliceExecution
+	for index := range slices {
+		if slices[index].SliceID == "tenants" {
+			tenantSlice = &slices[index]
+			break
+		}
+	}
+	if tenantSlice == nil || !containsString(tenantSlice.SelectedTests, "TestLogicalTenantFamily") {
+		t.Fatalf("tenant slice = %+v, want logical family", tenantSlice)
+	}
+
+	cfg := testRunnerConfig(t, []string{"dev810"})
+	cfg.TenantRolesPath = rolesPath
+	cfg.TenantRoles = &roles
+	target := validation.ValidationTarget{SchemaVersion: validation.SchemaVersion, Profile: "dev810", ExpectedMinor: "8.10", ObservedVersion: "8.10.3", Ready: true}
+	tenantSlice.EvidenceDirectory = t.TempDir()
+	writeEvidence := &fakeExecutor{handler: func(_ context.Context, spec commandSpec) commandResult {
+		env := environmentMap(spec.Env)
+		if env[envTenantRoles] != rolesPath {
+			t.Fatalf("child tenant roles = %q, want %q", env[envTenantRoles], rolesPath)
+		}
+		return commandResult{Stdout: goTestEvent("fail"), ExitCode: 1, Err: errors.New("expected test stop")}
+	}}
+	_, _ = runSlice(context.Background(), cfg, request, "/tmp/c8volt", target.ObservedVersion, tenantSlice, writeEvidence, fixedClock())
+}
+
+// TestTenantRoleProfilesPreflightBeforeSlices verifies all four principals are
+// version-checked by the runner before their focused child can mutate state.
+func TestTenantRoleProfilesPreflightBeforeSlices(t *testing.T) {
+	roles := validation.TenantRoles{SchemaVersion: validation.SchemaVersion, Logical: &validation.LogicalTenantRoles{
+		ClusterID: "cluster", PhysicalTenantID: "default", TenantAID: "tenant-a", TenantBID: "tenant-b",
+		TenantAProfile: "a", TenantBProfile: "b", BothTenantsProfile: "both", RestrictedAProfile: "restricted",
+	}}
+	cfg := testRunnerConfig(t, []string{"dev810"})
+	cfg.TenantRoles = &roles
+	request := validation.ValidationRequest{RequestedMinor: "8.10"}
+	execer := &fakeExecutor{handler: func(_ context.Context, spec commandSpec) commandResult {
+		if spec.Kind != commandPreflight {
+			t.Fatalf("unexpected command kind %q", spec.Kind)
+		}
+		return readinessResult("8.10.3")
+	}}
+	if err := preflightTenantRoleProfiles(context.Background(), cfg, request, "/tmp/c8volt", execer); err != nil {
+		t.Fatalf("preflight tenant roles: %v", err)
+	}
+	commands := execer.commands()
+	if len(commands) != 4 {
+		t.Fatalf("tenant preflight calls = %d, want 4", len(commands))
+	}
+	for _, profile := range roles.LogicalProfileNames() {
+		found := false
+		for _, command := range commands {
+			found = found || command.Profile == profile
+		}
+		if !found {
+			t.Fatalf("tenant role profile %q was not preflighted", profile)
 		}
 	}
 }

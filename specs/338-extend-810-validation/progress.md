@@ -138,3 +138,35 @@ Started: 2026-10-14 11:50:17
 - Camunda 8.10 batch cancellation/deletion can prove accepted submission, terminal counts, and resource post-state independently; process-definition DRAINING remains a separate lifecycle.
 - The valid null deletion batch still triggers the existing adapter failure and is retained as an unwaived product-class failure in the explicitly invoked tagged slice; no live cluster run was authorized this iteration.
 ---
+---
+## Iteration 6 - 2026-10-14 12:45
+**Work Unit**: T006 Partial US4 logical tenant boundary validation
+**Tasks Completed**:
+- [x] T006: Add credential-free logical roles, fail-closed runner/catalog controls, focused A/B authorization and mutation scenarios, Make wiring, and operator documentation
+**Tasks Remaining in Work Unit**: T007 physical tenant routing and separation proof
+**Commit**: This work-unit commit
+**Files Changed**:
+- Makefile
+- integration/README.md
+- integration/assets/release-coverage.json
+- integration/assets/release-gaps.json
+- integration/assets/tenant-roles.example.json
+- integration/cli/release_evidence_test.go
+- integration/cli/tenant_test.go
+- integration/internal/validation/catalog.go
+- integration/internal/validation/catalog_test.go
+- integration/internal/validation/reduce.go
+- integration/internal/validation/reduce_test.go
+- integration/internal/validation/tenant_roles.go
+- integration/internal/validation/tenant_roles_test.go
+- integration/runner/run.go
+- integration/runner/run_test.go
+- integration/runner/tenant_roles.go
+- integration/runner/tenant_roles_test.go
+- specs/338-extend-810-validation/tasks.md
+- specs/338-extend-810-validation/ralph-memory.md
+- specs/338-extend-810-validation/progress.md
+**Learnings**:
+- Role-profile readiness belongs in the aggregate pre-mutation gate even though only the selected release profile remains a reducer target.
+- Optional tenant absence is represented by target-role-aware catalog reduction; an explicit logical requirement promotes the same proof to mandatory without a parallel catalog.
+---

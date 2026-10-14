@@ -259,9 +259,10 @@ func reduceStrictRequirements(summary *ReleaseSummary, request ValidationRequest
 		if !Applicable(request.RequestedMinor, requirement.ApplicableMinors) {
 			continue
 		}
+		required := requirementRequired(request, requirement)
 		for _, target := range targets {
 			if !targetHasRoles(target, requirement.ExpectedTargetRoles) {
-				if requirement.Required {
+				if required {
 					addMissing(summary, requirement, target.Profile, "target lacks required role proof")
 				} else {
 					addAcceptedGap(summary, requirement, target.Profile, gaps, "target lacks optional role proof", true)
@@ -270,7 +271,7 @@ func reduceStrictRequirements(summary *ReleaseSummary, request ValidationRequest
 			}
 			record, exists := evidence[evidenceKey(requirement.ScenarioID, target.Profile)]
 			if !exists {
-				if requirement.Required {
+				if required {
 					addMissing(summary, requirement, target.Profile, "required current-run evidence is missing")
 				} else {
 					addAcceptedGap(summary, requirement, target.Profile, gaps, "optional proof is not available", true)
@@ -289,6 +290,18 @@ func reduceStrictRequirements(summary *ReleaseSummary, request ValidationRequest
 			countEvidence(summary, requirement, target.Profile, record, gaps)
 		}
 	}
+}
+
+// requirementRequired promotes logical tenant proof from an optional named
+// gap to mandatory coverage when the request explicitly requires tenants.
+func requirementRequired(request ValidationRequest, requirement CoverageRequirement) bool {
+	if requirement.Required {
+		return true
+	}
+	if contains(requirement.ExpectedTargetRoles, TenantRoleLogical) {
+		return request.RequiredTenantCoverage == TenantCoverageLogical || request.RequiredTenantCoverage == TenantCoveragePhysical
+	}
+	return false
 }
 
 // reduceExploratoryEvidence reports supplied results without synthesizing the

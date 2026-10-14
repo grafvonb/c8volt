@@ -156,6 +156,33 @@ func TestReduceExploratoryModeDoesNotInventMissingReleaseEvidence(t *testing.T) 
 	require.Empty(t, summary.MissingRequirements)
 }
 
+// TestReducePromotesRequestedLogicalTenantProof verifies optional tenant
+// absence is a named gap unless the operator explicitly requires it.
+func TestReducePromotesRequestedLogicalTenantProof(t *testing.T) {
+	t.Parallel()
+	input := completeTestInput(t)
+	input.Catalog.Requirements[1].ExpectedTargetRoles = []string{TenantRoleLogical}
+	optionalEvidence := input.Evidence[1]
+	input.Evidence = input.Evidence[:1]
+
+	summary, err := Reduce(input)
+	require.NoError(t, err)
+	require.Equal(t, VerdictPassedWithGaps, summary.Verdict)
+	require.Len(t, summary.Gaps, 1)
+
+	input.Request.RequiredTenantCoverage = TenantCoverageLogical
+	summary, err = Reduce(input)
+	require.NoError(t, err)
+	require.Equal(t, VerdictFailed, summary.Verdict)
+	require.Len(t, summary.MissingRequirements, 1)
+
+	input.Targets[0].Roles = []string{TenantRoleLogical}
+	input.Evidence = append(input.Evidence, optionalEvidence)
+	summary, err = Reduce(input)
+	require.NoError(t, err)
+	require.Equal(t, VerdictPassed, summary.Verdict)
+}
+
 // TestReduceRedactsSecretsFromPersistedFindings covers credential assignments,
 // bearer tokens, and credential-bearing URLs.
 func TestReduceRedactsSecretsFromPersistedFindings(t *testing.T) {

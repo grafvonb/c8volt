@@ -1,7 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "338.2026-10-14.3",
+  "revision": "338.2026-10-14.4",
   "gaps": [
+    {
+      "id": "logical-tenant-infrastructure",
+      "scenarioIds": ["TestLogicalTenantFamily"],
+      "applicableMinors": ["8.10"],
+      "missingPrerequisite": "Four default-local profiles for tenant A, tenant B, dual authorization, and restricted-A authorization are unavailable.",
+      "blockedProof": "Logical tenant discovery, scoped mutation, explicit-key authorization, and all-tenant post-state proof.",
+      "rationale": "Tenant infrastructure is operator-provisioned and optional unless C8VOLT_IT_REQUIRE_TENANTS requests it.",
+      "owner": "issue #338 operator prerequisite",
+      "reviewStatus": "accepted-additional-proof"
+    },
     {
       "id": "job-timeout-mutation",
       "scenarioIds": ["real-state-jobs-confirmed-timeout"],

@@ -72,7 +72,8 @@ INTEGRATION_CLI_COMMON_TARGETS := \
 	integration-cli-common-preflight \
 	integration-cli-common-examples
 INTEGRATION_CLI_FOCUSED_TARGETS := \
-	integration-cli-batch
+	integration-cli-batch \
+	integration-cli-tenants
 INTEGRATION_TEST_TARGETS := \
 	integration-cli-common \
 	$(INTEGRATION_CLI_FOCUSED_TARGETS) \
@@ -197,6 +198,9 @@ integration-cli-common-examples: integration-test-confirm ## Run example validat
 
 integration-cli-batch: integration-test-confirm ## Run focused Camunda 8.10 batch lifecycle and process-definition draining validation.
 	$(C8VOLT_IT_GO_TEST) $(C8VOLT_IT_GO_TEST_FLAGS) -run '^(TestBatchFamily|TestRealStateProcessDefinitionDraining)$$' -count=1 -timeout=$(C8VOLT_IT_REAL_STATE_TIMEOUT)
+
+integration-cli-tenants: integration-test-confirm ## Run focused logical tenant filtering and authorization validation.
+	$(C8VOLT_IT_GO_TEST) $(C8VOLT_IT_GO_TEST_FLAGS) -run '^TestLogicalTenantFamily$$' -count=1 -timeout=$(C8VOLT_IT_REAL_STATE_TIMEOUT)
 
 integration-cli-get: integration-test-confirm ## Run destructive CLI integration tests for get commands.
 	$(C8VOLT_IT_GO_TEST) $(C8VOLT_IT_GO_TEST_FLAGS) -run TestGetFamily -count=1 -timeout=$(C8VOLT_IT_TIMEOUT)

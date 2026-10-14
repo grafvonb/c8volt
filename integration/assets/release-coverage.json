@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "revision": "338.2026-10-14.3",
+  "revision": "338.2026-10-14.4",
   "families": [
     {"id":"common-inventory","slice":"common-preflight","applicableMinors":["8.9","8.10"],"minimumScenarios":1},
     {"id":"common-manifest","slice":"common-preflight","applicableMinors":["8.9","8.10"],"minimumScenarios":1},
@@ -30,6 +30,7 @@
     {"id":"volume-ops-purge","slice":"volume-ops-purge","applicableMinors":["8.8","8.9","8.10"],"minimumScenarios":1},
     {"id":"volume-ops-repair","slice":"volume-ops-repair","applicableMinors":["8.8","8.9","8.10"],"minimumScenarios":1},
     {"id":"batch","slice":"batch","applicableMinors":["8.10"],"minimumScenarios":2},
+    {"id":"tenant-logical","slice":"tenants","applicableMinors":["8.10"],"minimumScenarios":1},
     {"id":"real-state-jobs","slice":"real-state-jobs","applicableMinors":["8.9","8.10"],"minimumScenarios":1},
     {"id":"real-state-incidents","slice":"real-state-incidents","applicableMinors":["8.9","8.10"],"minimumScenarios":1},
     {"id":"real-state-listeners","slice":"real-state-listeners","applicableMinors":["8.9","8.10"],"minimumScenarios":1},
@@ -73,6 +74,8 @@
 
     {"scenarioId":"TestBatchFamily","slice":"batch","family":"batch","applicableMinors":["8.10"],"required":true,"minimumEvidence":"live-post-state"},
     {"scenarioId":"TestRealStateProcessDefinitionDraining","slice":"batch","family":"batch","applicableMinors":["8.10"],"required":true,"minimumEvidence":"live-post-state"},
+
+    {"scenarioId":"TestLogicalTenantFamily","slice":"tenants","family":"tenant-logical","applicableMinors":["8.10"],"required":false,"minimumEvidence":"live-post-state","expectedTargetRoles":["logical"],"acceptedGapId":"logical-tenant-infrastructure"},
 
     {"scenarioId":"TestRealStateJobsFamily","slice":"real-state-jobs","family":"real-state-jobs","applicableMinors":["8.9","8.10"],"required":true,"minimumEvidence":"live-post-state"},
     {"scenarioId":"TestRealStateIncidentsFamily","slice":"real-state-incidents","family":"real-state-incidents","applicableMinors":["8.9","8.10"],"required":true,"minimumEvidence":"live-post-state"},

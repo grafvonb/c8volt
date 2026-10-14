@@ -20,13 +20,14 @@ func TestLoadDefaultPolicyFromArbitraryWorkingDirectory(t *testing.T) {
 
 	catalog, gaps, err := LoadDefaultPolicy()
 	require.NoError(t, err)
-	require.Len(t, catalog.Families, 35)
-	require.Len(t, gaps.Gaps, 6)
+	require.Len(t, catalog.Families, 36)
+	require.Len(t, gaps.Gaps, 7)
 	require.Contains(t, scenarioIDs(catalog.Requirements), "TestGetFamilyUserTaskVariables")
 	require.Contains(t, scenarioIDs(catalog.Requirements), "TestVolumeGetFamilyUserTaskVariables")
 	for _, family := range []string{
 		"common-inventory", "common-manifest", "common-profile", "common-smoke", "common-examples",
 		"batch",
+		"tenant-logical",
 		"real-state-jobs", "real-state-incidents", "real-state-listeners",
 		"real-state-bpmn-error", "real-state-retention", "real-state-destructive",
 		"real-state-cascade",
