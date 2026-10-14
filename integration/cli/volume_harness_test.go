@@ -36,8 +36,11 @@ type volumeTarget struct {
 	ReservedNotImplemented bool     `json:"reservedNotImplemented,omitempty"`
 }
 
+// volumeDatasetCount registers the stable volume scenario before validating
+// its operator-controlled dataset size.
 func volumeDatasetCount(t *testing.T) int {
 	t.Helper()
+	registerReleaseScenario(t)
 	raw := strings.TrimSpace(os.Getenv(envITVolumeCount))
 	if raw == "" {
 		return defaultITVolumeCount

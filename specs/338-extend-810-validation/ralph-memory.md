@@ -9,7 +9,10 @@ Started: 2026-10-14T09:50:16Z
 - Checked-in policy JSON is embedded by `integration/assets/embed.go`, so `validation.LoadDefaultPolicy` works from arbitrary working directories.
 - Stable catalog scenario IDs use the existing integration test entry-point names, including `TestGetFamilyUserTask`, `TestGetFamilyUserTaskVariables`, and `TestVolumeGetFamilyUserTaskVariables` selected by the existing family regexes.
 - The sequential aggregate runner lives in the ordinary `integration/runner` package, builds once (or honors an absolute executable with `C8VOLT_IT_BUILD=0`), and invokes exact catalog-owned Go test names without shell parsing.
-- Runner child evidence is a strict JSON array at `C8VOLT_IT_EVIDENCE_FILE`; T003 must bind each record to `C8VOLT_IT_RUN_ID`, `C8VOLT_IT_SLICE_ID`, and the single child profile while preserving legacy reports additively.
+- Runner child evidence is a strict JSON array at `C8VOLT_IT_EVIDENCE_FILE`; the tagged harness binds every record to `C8VOLT_IT_RUN_ID`, `C8VOLT_IT_SLICE_ID`, and the single child profile while preserving legacy reports additively.
+- Tagged top-level scenarios register a cleanup callback before any skip/failure boundary; `TestMain` flushes their final outcomes to the runner-owned normalized evidence file after `m.Run`, while legacy reports remain unchanged.
+- The runner passes the version observed by its per-slice readiness recheck through `C8VOLT_IT_OBSERVED_VERSION`; normalized records never infer actual version from configured profile metadata.
+- Common release coverage is split into `common-preflight` (inventory, manifest, profile, smoke) and separately confirmed `common-examples`; the runner orders preflight first and Make preserves every legacy family target.
 
 ## Decisions
 
@@ -37,4 +40,4 @@ Started: 2026-10-14T09:50:16Z
 - Do not infer completeness from child exit code or discovered files; reduce the frozen catalog against normalized current-run evidence.
 
 ## Current Handoff
-- Continue US1 with T003: wire `integration/runner` through the existing Make confirmation boundary and emit normalized evidence from the tagged harness using the runner-provided run, slice, profile, and evidence-file controls.
+- Start US2 with T004: generalize the seven real-state families and version-aware cascade fixtures for both 8.9 and 8.10 without weakening the now-enforced catalog.

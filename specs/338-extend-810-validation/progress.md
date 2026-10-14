@@ -48,3 +48,36 @@ Started: 2026-10-14 11:50:17
 - Persisting the running slice before launch makes hard-killed invocations unambiguously incomplete, while per-slice readiness failures can leave later mutation slices planned.
 - The runner can remain independently testable by injecting shell-free subprocess execution and requiring normalized child evidence with frozen run/slice/profile provenance.
 ---
+---
+## Iteration 3 - 2026-10-14 12:21
+**Work Unit**: T003 Complete US1 aggregate runner and normalized harness evidence
+**Tasks Completed**:
+- [x] T003: Wire Make to the sequential runner, add common coverage slices, and emit normalized per-profile scenario evidence from tagged tests
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- Makefile
+- integration/README.md
+- integration/assets/release-coverage.json
+- integration/assets/release-gaps.json
+- integration/cli/all_commands_test.go
+- integration/cli/common_test.go
+- integration/cli/config_test.go
+- integration/cli/examples_test.go
+- integration/cli/get_usertask_test.go
+- integration/cli/get_usertask_variables_test.go
+- integration/cli/harness_test.go
+- integration/cli/real_state_harness_test.go
+- integration/cli/release_evidence_test.go
+- integration/cli/update_test.go
+- integration/cli/volume_harness_test.go
+- integration/internal/validation/catalog_test.go
+- integration/runner/run.go
+- integration/runner/run_test.go
+- specs/338-extend-810-validation/tasks.md
+- specs/338-extend-810-validation/ralph-memory.md
+- specs/338-extend-810-validation/progress.md
+**Learnings**:
+- Test cleanup callbacks preserve the final pass/skip/fail result before `TestMain` atomically hands one strict evidence array to the runner.
+- Making manifest parity mandatory exposed current inventory drift; the common gate now accounts for all 57 commands and current flags/output modes.
+---

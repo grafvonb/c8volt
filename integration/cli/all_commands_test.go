@@ -14,7 +14,7 @@ import (
 	"testing"
 )
 
-const expectedCommandInventoryCount = 56
+const expectedCommandInventoryCount = 57
 
 type capabilityDocument struct {
 	Command  string              `json:"command"`
@@ -74,7 +74,7 @@ type familyCoverageSummary struct {
 var commandCoverageManifest = map[string]coverageEntry{
 	"cancel":                             {Path: "cancel", Family: "cancel", ScenarioOwner: "integration/cli/cancel_test.go", Aliases: []string{"abort", "c", "cn", "stop"}, Flags: []string{}, OutputModes: []string{"one-line"}, Destructive: true},
 	"cancel process-instance":            {Path: "cancel process-instance", Family: "cancel", ScenarioOwner: "integration/cli/cancel_test.go", Aliases: []string{"pi"}, Flags: []string{"batch-size", "bpmn-process-id", "dry-run", "end-date-after", "end-date-before", "end-date-newer-days", "end-date-older-days", "fail-fast", "force", "key", "limit", "no-state-check", "no-wait", "no-worker-limit", "pd-version", "pd-version-tag", "start-date-after", "start-date-before", "start-date-newer-days", "start-date-older-days", "state", "workers"}, OutputModes: []string{"one-line"}, Destructive: true},
-	"capabilities":                       {Path: "capabilities", Family: "capabilities", ScenarioOwner: "integration/cli/all_commands_test.go", Aliases: []string{}, Flags: []string{"auto-confirm", "automation", "config", "debug", "help", "json", "keys-only", "log-level", "no-indicator", "profile", "quiet", "tenant", "timeout", "verbose"}, OutputModes: []string{"json", "one-line"}, Destructive: false},
+	"capabilities":                       {Path: "capabilities", Family: "capabilities", ScenarioOwner: "integration/cli/all_commands_test.go", Aliases: []string{}, Flags: []string{"all-tenants", "auto-confirm", "automation", "config", "debug", "help", "json", "keys-only", "log-level", "no-indicator", "profile", "quiet", "tenant", "timeout", "verbose"}, OutputModes: []string{"json", "one-line"}, Destructive: false},
 	"config":                             {Path: "config", Family: "config", ScenarioOwner: "integration/cli/config_test.go", Aliases: []string{"cfg"}, Flags: []string{}, OutputModes: []string{"one-line"}, Destructive: false},
 	"config show":                        {Path: "config show", Family: "config", ScenarioOwner: "integration/cli/config_test.go", Aliases: []string{}, Flags: []string{"template", "validate"}, OutputModes: []string{"one-line"}, Destructive: false},
 	"config template":                    {Path: "config template", Family: "config", ScenarioOwner: "integration/cli/config_test.go", Aliases: []string{}, Flags: []string{}, OutputModes: []string{"one-line"}, Destructive: false},
@@ -99,7 +99,7 @@ var commandCoverageManifest = map[string]coverageEntry{
 	"get element":                        {Path: "get element", Family: "get", ScenarioOwner: "integration/cli/get_test.go", Aliases: []string{"ei"}, Flags: []string{"batch-size", "bpmn-process-id", "element-id", "key", "limit", "pd-key", "pi-key", "state", "total", "type", "with-listeners"}, OutputModes: []string{"one-line"}, Destructive: false},
 	"get incident":                       {Path: "get incident", Family: "get", ScenarioOwner: "integration/cli/get_test.go", Aliases: []string{"inc", "incidents"}, Flags: []string{"batch-size", "bpmn-process-id", "creation-time-after", "creation-time-before", "creation-time-newer-days", "creation-time-older-days", "element-id", "element-instance-key", "error-message", "error-message-limit", "error-type", "fail-fast", "key", "limit", "no-worker-limit", "pd-key", "pi-key", "pi-keys-only", "root-key", "state", "total", "with-no-error-message", "workers"}, OutputModes: []string{"one-line"}, Destructive: false},
 	"get job":                            {Path: "get job", Family: "get", ScenarioOwner: "integration/cli/get_test.go", Aliases: []string{}, Flags: []string{"batch-size", "element-id", "element-instance-key", "error-message-limit", "key", "kind", "limit", "listener-event-type", "pi-key", "retries", "state", "total", "type", "worker"}, OutputModes: []string{"one-line"}, Destructive: false},
-	"get process-definition":             {Path: "get process-definition", Family: "get", ScenarioOwner: "integration/cli/get_test.go", Aliases: []string{"pd", "pds"}, Flags: []string{"bpmn-process-id", "key", "latest", "pd-version", "pd-version-tag", "stat", "xml"}, OutputModes: []string{"json"}, Destructive: false},
+	"get process-definition":             {Path: "get process-definition", Family: "get", ScenarioOwner: "integration/cli/get_test.go", Aliases: []string{"pd", "pds"}, Flags: []string{"batch-size", "bpmn-process-id", "key", "latest", "pd-version", "pd-version-tag", "stat", "watch", "watch-interval", "xml"}, OutputModes: []string{"json", "keys-only", "one-line"}, Destructive: false},
 	"get process-instance":               {Path: "get process-instance", Family: "get", ScenarioOwner: "integration/cli/get_test.go", Aliases: []string{"pi", "pis", "process-instances"}, Flags: []string{"batch-size", "bpmn-process-id", "children-only", "direct-incidents-only", "end-date-after", "end-date-before", "end-date-newer-days", "end-date-older-days", "fail-fast", "has-user-tasks", "incident-error-message", "incident-error-type", "incident-message-limit", "incident-state", "incidents-only", "key", "limit", "no-incidents-only", "no-worker-limit", "orphan-children-only", "parent-key", "pd-key", "pd-version", "pd-version-tag", "roots-only", "start-date-after", "start-date-before", "start-date-newer-days", "start-date-older-days", "state", "total", "var", "var-exists", "var-like", "var-value-limit", "with-elements", "with-incidents", "with-listeners", "with-vars", "workers"}, OutputModes: []string{"one-line"}, Destructive: false},
 	"get resource":                       {Path: "get resource", Family: "get", ScenarioOwner: "integration/cli/get_test.go", Aliases: []string{"r"}, Flags: []string{"id"}, OutputModes: []string{"one-line"}, Destructive: false},
 	"get user-task":                      {Path: "get user-task", Family: "get", ScenarioOwner: "integration/cli/get_usertask_test.go", Aliases: []string{"user-tasks", "ut", "uts"}, Flags: []string{"assignee", "batch-size", "bpmn-process-id", "candidate-group", "candidate-user", "element-id", "fail-fast", "key", "limit", "no-worker-limit", "pd-key", "pi-key", "state", "total", "var", "var-exists", "var-like", "var-value-limit", "with-vars", "workers"}, OutputModes: []string{"json", "keys-only", "one-line"}, Destructive: false},
@@ -108,11 +108,11 @@ var commandCoverageManifest = map[string]coverageEntry{
 	"ops analyse":                        {Path: "ops analyse", Family: "ops analyse", ScenarioOwner: "integration/cli/ops_analyse_test.go", Aliases: []string{"analyze"}, Flags: []string{}, OutputModes: []string{"one-line"}, Destructive: false},
 	"ops analyse slow-process-instances": {Path: "ops analyse slow-process-instances", Family: "ops analyse", ScenarioOwner: "integration/cli/ops_analyse_test.go", Aliases: []string{"slow-pi", "spi"}, Flags: []string{"batch-size", "bpmn-process-id", "dur-element-longer", "dur-longer", "element-id", "element-state", "end-date-after", "end-date-before", "key", "limit", "no-incidents-only", "pd-key", "start-date-after", "start-date-before", "state", "type", "with-full-timeline", "with-listeners"}, OutputModes: []string{"json", "keys-only", "one-line"}, Destructive: false},
 	"ops execute":                        {Path: "ops execute", Family: "ops execute", ScenarioOwner: "integration/cli/ops_execute_test.go", Aliases: []string{}, Flags: []string{}, OutputModes: []string{"one-line"}, Destructive: true},
-	"ops execute retention-policy":       {Path: "ops execute retention-policy", Family: "ops execute", ScenarioOwner: "integration/cli/ops_execute_test.go", Aliases: []string{"ret-pol", "rp"}, Flags: []string{"batch-size", "bpmn-process-id", "children-only", "dry-run", "fail-fast", "force", "incidents-only", "key", "limit", "no-incidents-only", "no-state-check", "no-wait", "no-worker-limit", "parent-key", "pd-key", "pd-version", "pd-version-tag", "report-file", "report-format", "retention-days", "roots-only", "state", "workers"}, OutputModes: []string{"one-line"}, Destructive: true},
-	"ops execute smoke-test":             {Path: "ops execute smoke-test", Family: "ops execute", ScenarioOwner: "integration/cli/ops_execute_test.go", Aliases: []string{"st"}, Flags: []string{"count", "dry-run", "fail-fast", "no-cleanup", "no-wait", "no-worker-limit", "report-file", "report-format", "workers"}, OutputModes: []string{"one-line"}, Destructive: true},
+	"ops execute retention-policy":       {Path: "ops execute retention-policy", Family: "ops execute", ScenarioOwner: "integration/cli/ops_execute_test.go", Aliases: []string{"ret-pol", "rp"}, Flags: []string{"batch-size", "bpmn-process-id", "children-only", "dry-run", "fail-fast", "force", "incidents-only", "key", "limit", "no-incidents-only", "no-state-check", "no-wait", "no-worker-limit", "parent-key", "pd-key", "pd-version", "pd-version-tag", "report-file", "report-format", "retention-days", "roots-only", "state", "workers"}, OutputModes: []string{"json", "one-line"}, Destructive: true},
+	"ops execute smoke-test":             {Path: "ops execute smoke-test", Family: "ops execute", ScenarioOwner: "integration/cli/ops_execute_test.go", Aliases: []string{"st"}, Flags: []string{"count", "dry-run", "fail-fast", "no-cleanup", "no-wait", "no-worker-limit", "report-file", "report-format", "workers"}, OutputModes: []string{"json", "one-line"}, Destructive: true},
 	"ops purge":                          {Path: "ops purge", Family: "ops purge", ScenarioOwner: "integration/cli/ops_purge_test.go", Aliases: []string{}, Flags: []string{}, OutputModes: []string{"one-line"}, Destructive: true},
 	"ops purge all-process-definitions":  {Path: "ops purge all-process-definitions", Family: "ops purge", ScenarioOwner: "integration/cli/ops_purge_test.go", Aliases: []string{"all-pds", "apd"}, Flags: []string{"batch-size", "bpmn-process-id", "dry-run", "fail-fast", "force", "key", "latest", "limit", "no-wait", "no-worker-limit", "pd-version", "pd-version-tag", "report-file", "report-format", "workers"}, OutputModes: []string{"json", "one-line"}, Destructive: true},
-	"ops purge orphan-process-instances": {Path: "ops purge orphan-process-instances", Family: "ops purge", ScenarioOwner: "integration/cli/ops_purge_test.go", Aliases: []string{"opi", "orphan-pi"}, Flags: []string{"batch-size", "bpmn-process-id", "dry-run", "end-date-after", "end-date-before", "end-date-newer-days", "end-date-older-days", "fail-fast", "force", "incidents-only", "limit", "no-incidents-only", "no-wait", "no-worker-limit", "parent-key", "pd-key", "pd-version", "pd-version-tag", "report-file", "report-format", "start-date-after", "start-date-before", "start-date-newer-days", "start-date-older-days", "state", "workers"}, OutputModes: []string{"one-line"}, Destructive: true},
+	"ops purge orphan-process-instances": {Path: "ops purge orphan-process-instances", Family: "ops purge", ScenarioOwner: "integration/cli/ops_purge_test.go", Aliases: []string{"opi", "orphan-pi"}, Flags: []string{"batch-size", "bpmn-process-id", "dry-run", "end-date-after", "end-date-before", "end-date-newer-days", "end-date-older-days", "fail-fast", "force", "incidents-only", "limit", "no-incidents-only", "no-wait", "no-worker-limit", "parent-key", "pd-key", "pd-version", "pd-version-tag", "report-file", "report-format", "start-date-after", "start-date-before", "start-date-newer-days", "start-date-older-days", "state", "workers"}, OutputModes: []string{"json", "keys-only", "one-line"}, Destructive: true},
 	"ops purge process-instances-with-incidents": {Path: "ops purge process-instances-with-incidents", Family: "ops purge", ScenarioOwner: "integration/cli/ops_purge_test.go", Aliases: []string{"pi-with-incidents", "piwi"}, Flags: []string{"batch-size", "bpmn-process-id", "creation-time-after", "creation-time-before", "creation-time-newer-days", "creation-time-older-days", "dry-run", "element-id", "element-instance-key", "error-message", "error-type", "fail-fast", "force", "inc-key", "limit", "no-wait", "no-worker-limit", "pd-key", "pi-key", "report-file", "report-format", "root-key", "state", "workers"}, OutputModes: []string{"json", "one-line"}, Destructive: true},
 	"ops repair":                  {Path: "ops repair", Family: "ops repair", ScenarioOwner: "integration/cli/ops_repair_test.go", Aliases: []string{}, Flags: []string{}, OutputModes: []string{"one-line"}, Destructive: true},
 	"ops repair incident":         {Path: "ops repair incident", Family: "ops repair", ScenarioOwner: "integration/cli/ops_repair_test.go", Aliases: []string{"inc"}, Flags: []string{"batch-size", "bpmn-process-id", "creation-time-after", "creation-time-before", "creation-time-newer-days", "creation-time-older-days", "dry-run", "element-id", "element-instance-key", "error-message", "error-type", "fail-fast", "job-timeout", "key", "limit", "no-wait", "no-worker-limit", "pd-key", "pi-key", "report-file", "report-format", "retries", "root-key", "state", "vars", "vars-file", "workers"}, OutputModes: []string{"json", "one-line"}, Destructive: true},
@@ -125,33 +125,37 @@ var commandCoverageManifest = map[string]coverageEntry{
 	"update":                      {Path: "update", Family: "update", ScenarioOwner: "integration/cli/update_test.go", Aliases: []string{"u"}, Flags: []string{}, OutputModes: []string{"one-line"}, Destructive: true},
 	"update job":                  {Path: "update job", Family: "update", ScenarioOwner: "integration/cli/update_test.go", Aliases: []string{}, Flags: []string{"complete", "dry-run", "fail", "key", "message", "no-wait", "retries", "retry-backoff", "throw-bpmn-error", "timeout", "vars"}, OutputModes: []string{"json", "one-line"}, Destructive: true},
 	"update process-instance":     {Path: "update process-instance", Family: "update", ScenarioOwner: "integration/cli/update_test.go", Aliases: []string{"pi"}, Flags: []string{"dry-run", "fail-fast", "key", "no-wait", "no-worker-limit", "vars", "vars-file", "workers"}, OutputModes: []string{"one-line"}, Destructive: true},
+	"update user-task":            {Path: "update user-task", Family: "update", ScenarioOwner: "integration/cli/update_test.go", Aliases: []string{"user-tasks", "ut", "uts"}, Flags: []string{"dry-run", "fail-fast", "key", "no-wait", "no-worker-limit", "vars", "vars-file", "workers"}, OutputModes: []string{"json", "keys-only", "one-line"}, Destructive: true},
 	"version":                     {Path: "version", Family: "version", ScenarioOwner: "integration/cli/config_test.go", Aliases: []string{}, Flags: []string{}, OutputModes: []string{"one-line"}, Destructive: false},
 	"walk":                        {Path: "walk", Family: "walk", ScenarioOwner: "integration/cli/walk_test.go", Aliases: []string{"traverse", "w"}, Flags: []string{}, OutputModes: []string{"one-line"}, Destructive: false},
 	"walk process-instance":       {Path: "walk process-instance", Family: "walk", ScenarioOwner: "integration/cli/walk_test.go", Aliases: []string{"pi", "pis"}, Flags: []string{"children", "flat", "incident-message-limit", "incident-state", "key", "parent", "var-value-limit", "with-elements", "with-incidents", "with-listeners", "with-vars"}, OutputModes: []string{"one-line"}, Destructive: false},
 }
 
+// TestCommandInventory records the complete live command inventory as a
+// distinct common release category.
 func TestCommandInventory(t *testing.T) {
-	result := runC8Volt(t, "command-inventory", "capabilities", "--json")
+	registerReleaseScenario(t)
+	doc := readCommandInventory(t, "command-inventory")
+	writeJSON(t, "inventory.json", doc)
+
+	if actual := len(flattenCapabilities(doc.Commands)); actual != expectedCommandInventoryCount {
+		t.Fatalf("command inventory count = %d, want %d", actual, expectedCommandInventoryCount)
+	}
+}
+
+// readCommandInventory captures and decodes the stable capabilities contract
+// used by the separate inventory and manifest release checks.
+func readCommandInventory(t *testing.T, scenario string) capabilityDocument {
+	t.Helper()
+	result := runC8Volt(t, scenario, "capabilities", "--json")
 	if result.Err != nil {
 		t.Fatalf("capabilities --json failed: %v\nstderr:\n%s", result.Err, result.Stderr)
 	}
-
 	var doc capabilityDocument
 	if err := json.Unmarshal([]byte(result.Stdout), &doc); err != nil {
 		t.Fatalf("unmarshal capabilities output: %v\nstdout:\n%s", err, result.Stdout)
 	}
-	writeJSON(t, "inventory.json", doc)
-
-	capabilities := flattenCapabilities(doc.Commands)
-	report := validateCoverageManifest(capabilities, commandCoverageManifest)
-	writeJSON(t, "coverage.json", report)
-
-	if report.ActualCount != expectedCommandInventoryCount {
-		t.Fatalf("command inventory count = %d, want %d", report.ActualCount, expectedCommandInventoryCount)
-	}
-	if len(report.MissingPaths) > 0 || len(report.StalePaths) > 0 || len(report.Mismatches) > 0 {
-		t.Fatalf("coverage manifest drift:\nmissing: %v\nstale: %v\nmismatches:\n%s", report.MissingPaths, report.StalePaths, strings.Join(report.Mismatches, "\n"))
-	}
+	return doc
 }
 
 // TestCoreBehavioralCoverage records real executable coverage for root-level read-only command families.

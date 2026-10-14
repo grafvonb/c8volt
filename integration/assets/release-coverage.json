@@ -1,7 +1,12 @@
 {
   "schemaVersion": 1,
-  "revision": "338.2026-10-14.1",
+  "revision": "338.2026-10-14.2",
   "families": [
+    {"id":"common-inventory","slice":"common-preflight","applicableMinors":["8.9","8.10"],"minimumScenarios":1},
+    {"id":"common-manifest","slice":"common-preflight","applicableMinors":["8.9","8.10"],"minimumScenarios":1},
+    {"id":"common-profile","slice":"common-preflight","applicableMinors":["8.9","8.10"],"minimumScenarios":1},
+    {"id":"common-smoke","slice":"common-preflight","applicableMinors":["8.9","8.10"],"minimumScenarios":1},
+    {"id":"common-examples","slice":"common-examples","applicableMinors":["8.9","8.10"],"minimumScenarios":1},
     {"id":"baseline-get","slice":"baseline-get","applicableMinors":["8.8","8.9","8.10"],"minimumScenarios":3},
     {"id":"baseline-walk","slice":"baseline-walk","applicableMinors":["8.8","8.9","8.10"],"minimumScenarios":1},
     {"id":"baseline-update","slice":"baseline-update","applicableMinors":["8.8","8.9","8.10"],"minimumScenarios":1},
@@ -33,6 +38,11 @@
     {"id":"real-state-cascade","slice":"real-state-cascade","applicableMinors":["8.9","8.10"],"minimumScenarios":1}
   ],
   "requirements": [
+    {"scenarioId":"TestCommandInventory","slice":"common-preflight","family":"common-inventory","applicableMinors":["8.9","8.10"],"required":true,"minimumEvidence":"controlled"},
+    {"scenarioId":"TestCoverageManifest","slice":"common-preflight","family":"common-manifest","applicableMinors":["8.9","8.10"],"required":true,"minimumEvidence":"controlled"},
+    {"scenarioId":"TestProfiles","slice":"common-preflight","family":"common-profile","applicableMinors":["8.9","8.10"],"required":true,"minimumEvidence":"read-only"},
+    {"scenarioId":"TestReadOnlySmoke","slice":"common-preflight","family":"common-smoke","applicableMinors":["8.9","8.10"],"required":true,"minimumEvidence":"read-only"},
+    {"scenarioId":"TestExamples","slice":"common-examples","family":"common-examples","applicableMinors":["8.9","8.10"],"required":true,"minimumEvidence":"controlled"},
     {"scenarioId":"TestGetFamily","slice":"baseline-get","family":"baseline-get","applicableMinors":["8.8","8.9","8.10"],"required":true,"minimumEvidence":"read-only"},
     {"scenarioId":"TestGetFamilyUserTask","slice":"baseline-get","family":"baseline-get","applicableMinors":["8.8","8.9","8.10"],"required":true,"minimumEvidence":"read-only"},
     {"scenarioId":"TestGetFamilyUserTaskVariables","slice":"baseline-get","family":"baseline-get","applicableMinors":["8.8","8.9","8.10"],"required":true,"minimumEvidence":"read-only"},

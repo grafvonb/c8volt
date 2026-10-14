@@ -68,13 +68,17 @@ INTEGRATION_CLI_REAL_STATE_TARGETS := \
 	integration-cli-real-state-retention \
 	integration-cli-real-state-destructive \
 	integration-cli-real-state-cascade
+INTEGRATION_CLI_COMMON_TARGETS := \
+	integration-cli-common-preflight \
+	integration-cli-common-examples
 INTEGRATION_TEST_TARGETS := \
+	integration-cli-common \
 	integration-test \
 	integration-test-volume \
 	integration-test-real-state \
 	integration-test-all
 
-.PHONY: help all tidy generate generate-clients build test licenses lint fmt vet clean install run cover cover.html release docs docs-content docs-site-install docs-site-serve demo-vhs-check integration-test-confirm $(DEMO_VHS_TARGETS) $(DEMO_VHS_ALIASES) $(INTEGRATION_CLI_TARGETS) $(INTEGRATION_CLI_VOLUME_TARGETS) $(INTEGRATION_CLI_REAL_STATE_TARGETS) $(INTEGRATION_TEST_TARGETS)
+.PHONY: help all tidy generate generate-clients build test licenses lint fmt vet clean install run cover cover.html release docs docs-content docs-site-install docs-site-serve demo-vhs-check integration-test-confirm $(DEMO_VHS_TARGETS) $(DEMO_VHS_ALIASES) $(INTEGRATION_CLI_TARGETS) $(INTEGRATION_CLI_VOLUME_TARGETS) $(INTEGRATION_CLI_REAL_STATE_TARGETS) $(INTEGRATION_CLI_COMMON_TARGETS) $(INTEGRATION_TEST_TARGETS)
 
 help: ## Show all available Make targets with a short description.
 	@awk 'BEGIN {FS = ":.*## "}; /^[a-zA-Z0-9_.-]+:.*## / {printf "%-55s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -177,7 +181,16 @@ integration-test-volume: $(INTEGRATION_CLI_VOLUME_TARGETS) ## Run all volume CLI
 
 integration-test-real-state: $(INTEGRATION_CLI_REAL_STATE_TARGETS) ## Run all C89 real-state integration test slices.
 
-integration-test-all: integration-test integration-test-volume integration-test-real-state ## Run baseline, volume, and real-state integration slices.
+integration-cli-common: $(INTEGRATION_CLI_COMMON_TARGETS) ## Run common inventory, manifest, profile, smoke, and example validation.
+
+integration-test-all: integration-test-confirm ## Run aggregate release validation through the sequential evidence runner.
+	go run ./integration/runner
+
+integration-cli-common-preflight: ## Run nonmutating inventory, manifest, profile, and smoke validation.
+	$(C8VOLT_IT_GO_TEST) $(C8VOLT_IT_GO_TEST_FLAGS) -run '^(TestCommandInventory|TestCoverageManifest|TestProfiles|TestReadOnlySmoke)$$' -count=1 -timeout=$(C8VOLT_IT_TIMEOUT)
+
+integration-cli-common-examples: integration-test-confirm ## Run example validation, including eligible disposable-target mutations.
+	$(C8VOLT_IT_GO_TEST) $(C8VOLT_IT_GO_TEST_FLAGS) -run '^TestExamples$$' -count=1 -timeout=$(C8VOLT_IT_TIMEOUT)
 
 integration-cli-get: integration-test-confirm ## Run destructive CLI integration tests for get commands.
 	$(C8VOLT_IT_GO_TEST) $(C8VOLT_IT_GO_TEST_FLAGS) -run TestGetFamily -count=1 -timeout=$(C8VOLT_IT_TIMEOUT)

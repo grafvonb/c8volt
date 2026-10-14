@@ -142,8 +142,8 @@ func TestSuccessfulRunBuildsOnceAndIsolatesEvidence(t *testing.T) {
 			continue
 		}
 		childEnv := environmentMap(spec.Env)
-		if childEnv[envReleaseVersion] != "8.10" || childEnv[envRequireTenants] != "none" || childEnv[envBuild] != "0" {
-			t.Fatalf("child release/tenant/build controls = %q/%q/%q, want 8.10/none/0", childEnv[envReleaseVersion], childEnv[envRequireTenants], childEnv[envBuild])
+		if childEnv[envReleaseVersion] != "8.10" || childEnv[envRequireTenants] != "none" || childEnv[envBuild] != "0" || childEnv[envObservedVersion] != "8.10.3" {
+			t.Fatalf("child release/tenant/build/observed controls = %q/%q/%q/%q, want 8.10/none/0/8.10.3", childEnv[envReleaseVersion], childEnv[envRequireTenants], childEnv[envBuild], childEnv[envObservedVersion])
 		}
 		if _, duplicate := paths[spec.EvidencePath]; duplicate {
 			t.Fatalf("duplicate evidence path %s", spec.EvidencePath)
@@ -156,6 +156,38 @@ func TestSuccessfulRunBuildsOnceAndIsolatesEvidence(t *testing.T) {
 	summary := readOnlyReleaseSummary(t, cfg.EvidenceParent)
 	if summary.Verdict != validation.VerdictPassed || !summary.CoverageComplete {
 		t.Fatalf("summary = %+v, want complete pass", summary)
+	}
+}
+
+// TestDefaultCatalogPlansEveryApplicableScenario verifies runner selection
+// stays in parity with the embedded catalog and gates examples after common
+// nonmutating validation.
+func TestDefaultCatalogPlansEveryApplicableScenario(t *testing.T) {
+	catalog, _, err := validation.LoadDefaultPolicy()
+	if err != nil {
+		t.Fatalf("load default policy: %v", err)
+	}
+	request := validation.ValidationRequest{
+		RequestedMinor: "8.10", Profiles: []string{"dev810"}, EvidenceRoot: t.TempDir(),
+	}
+	slices := plannedSlices(request, catalog, time.Now())
+	if len(slices) < 2 || slices[0].SliceID != "common-preflight" || slices[1].SliceID != "common-examples" {
+		t.Fatalf("first slices = %+v, want common-preflight then common-examples", slices[:min(len(slices), 2)])
+	}
+
+	planned := map[string]int{}
+	for _, slice := range slices {
+		for _, scenarioID := range slice.SelectedTests {
+			planned[scenarioID]++
+		}
+	}
+	for _, requirement := range catalog.Requirements {
+		if !validation.Applicable("8.10", requirement.ApplicableMinors) || !strings.HasPrefix(requirement.ScenarioID, "Test") {
+			continue
+		}
+		if planned[requirement.ScenarioID] != 1 {
+			t.Fatalf("scenario %q planned %d times, want once", requirement.ScenarioID, planned[requirement.ScenarioID])
+		}
 	}
 }
 

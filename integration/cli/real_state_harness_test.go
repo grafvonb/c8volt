@@ -46,6 +46,7 @@ func allRealStateTargets() []realStateTarget {
 // selectedRealStateC89Profiles returns reachable C89 profiles selected from the default local config.
 func selectedRealStateC89Profiles(t *testing.T) []integrationProfile {
 	t.Helper()
+	registerReleaseScenario(t)
 	profiles := requireSelectedProfiles(t)
 	var c89Profiles []integrationProfile
 	for _, profile := range profiles {

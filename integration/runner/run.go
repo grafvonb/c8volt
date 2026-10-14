@@ -24,17 +24,18 @@ import (
 )
 
 const (
-	envReleaseVersion = "C8VOLT_IT_RELEASE_VERSION"
-	envProfiles       = "C8VOLT_IT_PROFILES"
-	envRequireTenants = "C8VOLT_IT_REQUIRE_TENANTS"
-	envWorkdir        = "C8VOLT_IT_WORKDIR"
-	envBinary         = "C8VOLT_IT_BIN"
-	envBuild          = "C8VOLT_IT_BUILD"
-	envGoTestFlags    = "C8VOLT_IT_GO_TEST_FLAGS"
-	envVerbose        = "C8VOLT_IT_VERBOSE"
-	envTimeout        = "C8VOLT_IT_TIMEOUT"
-	envVolumeTimeout  = "C8VOLT_IT_VOLUME_TIMEOUT"
-	envRealTimeout    = "C8VOLT_IT_REAL_STATE_TIMEOUT"
+	envReleaseVersion  = "C8VOLT_IT_RELEASE_VERSION"
+	envProfiles        = "C8VOLT_IT_PROFILES"
+	envRequireTenants  = "C8VOLT_IT_REQUIRE_TENANTS"
+	envWorkdir         = "C8VOLT_IT_WORKDIR"
+	envBinary          = "C8VOLT_IT_BIN"
+	envBuild           = "C8VOLT_IT_BUILD"
+	envGoTestFlags     = "C8VOLT_IT_GO_TEST_FLAGS"
+	envVerbose         = "C8VOLT_IT_VERBOSE"
+	envTimeout         = "C8VOLT_IT_TIMEOUT"
+	envVolumeTimeout   = "C8VOLT_IT_VOLUME_TIMEOUT"
+	envRealTimeout     = "C8VOLT_IT_REAL_STATE_TIMEOUT"
+	envObservedVersion = "C8VOLT_IT_OBSERVED_VERSION"
 
 	manifestFileName = "manifest.json"
 	releaseFileName  = "release.json"
@@ -267,7 +268,7 @@ func run(
 		if err := writeJSONAtomic(manifestPath, manifest); err != nil {
 			return exitFailed, fmt.Errorf("persist running slice manifest: %w", err)
 		}
-		childEvidence, interrupted := runSlice(ctx, cfg, request, binaryPath, slice, execer, now)
+		childEvidence, interrupted := runSlice(ctx, cfg, request, binaryPath, target.ObservedVersion, slice, execer, now)
 		evidence = append(evidence, childEvidence...)
 		if err := writeJSONAtomic(manifestPath, manifest); err != nil {
 			return exitFailed, fmt.Errorf("persist slice manifest: %w", err)
@@ -463,7 +464,14 @@ func plannedSlices(request validation.ValidationRequest, catalog validation.Cove
 		sliceIDs = append(sliceIDs, sliceID)
 		sort.Strings(sliceTests[sliceID])
 	}
-	sort.Strings(sliceIDs)
+	sort.Slice(sliceIDs, func(i, j int) bool {
+		leftPriority := slicePriority(sliceIDs[i])
+		rightPriority := slicePriority(sliceIDs[j])
+		if leftPriority != rightPriority {
+			return leftPriority < rightPriority
+		}
+		return sliceIDs[i] < sliceIDs[j]
+	})
 
 	var slices []validation.SliceExecution
 	for _, sliceID := range sliceIDs {
@@ -478,6 +486,19 @@ func plannedSlices(request validation.ValidationRequest, catalog validation.Cove
 		}
 	}
 	return slices
+}
+
+// slicePriority keeps every nonmutating common gate ahead of examples and
+// mutation-capable family slices without coupling execution to Make recipes.
+func slicePriority(sliceID string) int {
+	switch sliceID {
+	case "common-preflight":
+		return 0
+	case "common-examples":
+		return 1
+	default:
+		return 2
+	}
 }
 
 // prepareBinary either honors a validated executable override or builds one
@@ -592,6 +613,7 @@ func runSlice(
 	cfg runnerConfig,
 	request validation.ValidationRequest,
 	binaryPath string,
+	observedVersion string,
 	slice *validation.SliceExecution,
 	execer executor,
 	now func() time.Time,
@@ -621,6 +643,7 @@ func runSlice(
 		envReleaseVersion, request.RequestedMinor,
 		envRequireTenants, string(request.RequiredTenantCoverage),
 		envVerbose, verbose,
+		envObservedVersion, observedVersion,
 		"C8VOLT_IT_RUN_ID", request.RunID,
 		"C8VOLT_IT_SLICE_ID", slice.SliceID,
 		"C8VOLT_IT_EVIDENCE_FILE", evidencePath,

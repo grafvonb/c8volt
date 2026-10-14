@@ -136,11 +136,28 @@ make integration-cli-real-state-destructive C8VOLT_IT_GO_TEST_FLAGS=-v C8VOLT_IT
 make integration-cli-real-state-cascade C8VOLT_IT_GO_TEST_FLAGS=-v C8VOLT_IT_REAL_STATE_TIMEOUT=90m
 ```
 
-To run every baseline, volume, and real-state integration slice in sequence:
+The common target keeps nonmutating inventory, manifest, profile, and smoke
+checks ahead of the separately confirmed example slice, whose eligible examples
+may mutate a disposable target:
 
 ```sh
-make integration-test-all C8VOLT_IT_GO_TEST_FLAGS=-v C8VOLT_IT_VOLUME_TIMEOUT=90m C8VOLT_IT_REAL_STATE_TIMEOUT=90m
+make integration-cli-common C8VOLT_IT_GO_TEST_FLAGS=-v
 ```
+
+For aggregate release validation, select one disposable profile and the
+requested minor. The sequential runner builds once, verifies the profile before
+mutation, and executes exact catalog-owned test identities in isolated child
+directories:
+
+```sh
+C8VOLT_IT_PROFILES=dev810 C8VOLT_IT_RELEASE_VERSION=8.10 \
+make integration-test-all C8VOLT_IT_GO_TEST_FLAGS=-v \
+  C8VOLT_IT_VOLUME_TIMEOUT=90m C8VOLT_IT_REAL_STATE_TIMEOUT=90m
+```
+
+The current real-state harness is still limited to 8.9, so an 8.10 aggregate
+run must fail with skipped/missing real-state proof until that version gate and
+its fixtures are extended. It must not weaken the catalog to report success.
 
 ## Release Coverage Policy
 
@@ -170,9 +187,9 @@ exploratory `passed` verdict therefore describes only the selected scope and
 must not be presented as aggregate release certification.
 
 Make asks for confirmation before running integration slices because they may
-mutate real Camunda cluster state. A single `make` invocation asks once, even
-when an aggregate target expands to many slices. Automation can skip the prompt
-with `C8VOLT_IT_AUTOMATION=1`:
+mutate real Camunda cluster state. The aggregate runner remains behind that
+same boundary and performs its own nonmutating target preflight before any
+child slice. Automation can skip the prompt with `C8VOLT_IT_AUTOMATION=1`:
 
 ```sh
 make integration-test-real-state C8VOLT_IT_AUTOMATION=1 C8VOLT_IT_GO_TEST_FLAGS=-v C8VOLT_IT_REAL_STATE_TIMEOUT=90m
@@ -256,7 +273,8 @@ Go suite variables:
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `C8VOLT_IT_PROFILES` | active profile from default local config | Comma-separated profile names selected from the default local c8volt config. |
+| `C8VOLT_IT_PROFILES` | active profile for direct slices; required for aggregate runs | Comma-separated profile names selected from the default local c8volt config. |
+| `C8VOLT_IT_RELEASE_VERSION` | empty | Set `8.9` or `8.10` for strict aggregate release validation. |
 | `C8VOLT_IT_BIN` | built into the workdir | Existing c8volt binary to test when `C8VOLT_IT_BUILD=0`. |
 | `C8VOLT_IT_BUILD` | build enabled | Set `0` with `C8VOLT_IT_BIN` to skip building the binary. |
 | `C8VOLT_IT_WORKDIR` | temp directory | Evidence directory for reruns and artifact review. |
@@ -299,6 +317,13 @@ directory:
   evidence.
 - `logs/`: per-command stdout and stderr evidence.
 - `data/`: seeded data, selected keys, resource IDs, and substitution evidence.
+
+The aggregate runner treats `C8VOLT_IT_WORKDIR` as a parent and creates a
+unique invocation directory containing `manifest.json`, `release.json`, and
+`summary.md`. Each slice/profile child contains separate stdout, stderr, Go test
+events, legacy harness reports, and one normalized `scenario-evidence.json`
+array. A zero runner exit with `passed_with_gaps` still has
+`coverageComplete=false`; only `passed` is complete certification.
 
 The suite exits non-zero when any required case fails or any expected failure
 does not fail in the expected way. It keeps running after individual failures so

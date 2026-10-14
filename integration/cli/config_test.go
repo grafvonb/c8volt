@@ -65,6 +65,7 @@ func TestProfileSelectionRequiresDefaultLocalProfile(t *testing.T) {
 
 // TestProfiles writes readiness evidence and fails early when selected local profiles are not reachable.
 func TestProfiles(t *testing.T) {
+	registerReleaseScenario(t)
 	profiles := requireSelectedProfiles(t)
 	records := make([]integrationProfile, 0, len(profiles))
 	var failures []string
@@ -85,6 +86,7 @@ func TestProfiles(t *testing.T) {
 
 // TestReadOnlySmoke records smoke evidence for read-only commands that must succeed before destructive stories.
 func TestReadOnlySmoke(t *testing.T) {
+	registerReleaseScenario(t)
 	profiles := requireSelectedProfiles(t)
 	records := make([]evidenceRecord, 0, 2+len(profiles)*2)
 	var failures []string

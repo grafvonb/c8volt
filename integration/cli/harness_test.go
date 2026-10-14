@@ -234,6 +234,8 @@ type defaultLocalConfigApp struct {
 	Tenant         string `yaml:"tenant"`
 }
 
+// TestMain prepares the tagged harness and flushes runner-normalized evidence
+// after all selected test cleanup callbacks have recorded their outcomes.
 func TestMain(m *testing.M) {
 	repoRoot, err := findRepoRoot()
 	if err != nil {
@@ -272,6 +274,10 @@ func TestMain(m *testing.M) {
 	_ = writeJSONFile(filepath.Join(workDir, "run.json"), metadata)
 
 	code := m.Run()
+	if err := writeNormalizedReleaseEvidence(); err != nil {
+		fmt.Fprintf(os.Stderr, "write normalized release evidence: %v\n", err)
+		code = 1
+	}
 	_ = writeSummaryFile(filepath.Join(workDir, "summary.md"), metadata, code)
 	os.Exit(code)
 }
@@ -982,8 +988,11 @@ func requireNoExactGlobalCountAssertion(t *testing.T, description string) {
 	}
 }
 
+// runFamilyCoverageScenarios registers the stable top-level release scenario
+// before executing the existing help and behavioral coverage writers.
 func runFamilyCoverageScenarios(t *testing.T, family string, paths []string) {
 	t.Helper()
+	registerReleaseScenario(t)
 	entries := requireFamilyManifestSatisfaction(t, family, paths)
 	records := make([]evidenceRecord, 0, len(entries)*2)
 	for _, entry := range entries {

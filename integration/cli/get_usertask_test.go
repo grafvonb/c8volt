@@ -18,6 +18,7 @@ import (
 
 // TestGetFamilyUserTask checks real user-task reads with the existing seeded fixture.
 func TestGetFamilyUserTask(t *testing.T) {
+	registerReleaseScenario(t)
 	for _, profile := range requireSelectedProfiles(t) {
 		t.Run(profile.Name, func(t *testing.T) {
 			require.NoError(t, requireProfilesReady(t, []integrationProfile{profile}))
