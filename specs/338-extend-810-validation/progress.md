@@ -4,7 +4,6 @@ Feature: 338-extend-810-validation
 Started: 2026-10-14 11:50:17
 
 ---
-
 ## Iteration 1 - 2026-10-14 12:01
 **Work Unit**: T001 Shared coverage policy
 **Tasks Completed**:
@@ -250,3 +249,1288 @@ Started: 2026-10-14 11:50:17
 - Gateway-only output can be parsed into an exact major/minor so `8.10` accepts `8.10.3` without falsely accepting `8.100.1`.
 - The fake CLI proves mismatched shell runs stop before fixture deployment or any auto-confirmed mutation while keeping shell evidence distinct from aggregate certification.
 ---
+---
+## Iteration 10 - 2026-10-14 13:09
+**Work Unit**: T010 blocked pending authorized live acceptance environment
+**Tasks Completed**:
+- None
+**Tasks Remaining in Work Unit**: T010 in full
+**Commit**: No commit - no completed work unit
+**Files Changed**:
+- specs/338-extend-810-validation/ralph-memory.md
+- specs/338-extend-810-validation/progress.md
+**Learnings**:
+- No release profile, requested version, evidence root, or tenant-role controls were configured, and no retained validation index exists; destructive acceptance cannot start without explicit target selection and authorization.
+- The unresolved null deletion-batch product defect still prevents a clean release certificate and must remain visible in eventual acceptance evidence.
+---
+---
+## Iteration 11 - 2026-10-14 13:10
+**Work Unit**: T010 blocked pending authorized live acceptance environment
+**Tasks Completed**:
+- None
+**Tasks Remaining in Work Unit**: T010 in full
+**Commit**: No commit - no completed work unit
+**Files Changed**:
+- specs/338-extend-810-validation/ralph-memory.md
+- specs/338-extend-810-validation/progress.md
+**Learnings**:
+- The release profile, requested version, evidence root/workdir, and tenant controls remain unset, and no retained validation index is available; no destructive acceptance work was authorized.
+- The existing null deletion-batch product defect remains an unwaived release blocker, so T010 cannot be marked complete even after an environment is supplied unless the defect is resolved and revalidated.
+---
+---
+## Iteration 12 - 2026-10-14 13:12
+**Work Unit**: T010 blocked pending authorized live acceptance environment
+**Tasks Completed**:
+- None
+**Tasks Remaining in Work Unit**: T010 in full
+**Commit**: No commit - no completed work unit
+**Files Changed**:
+- specs/338-extend-810-validation/ralph-memory.md
+- specs/338-extend-810-validation/progress.md
+**Learnings**:
+- All release profile, version, evidence root/workdir, tenant-role, binary, and build controls remain unset, `validation.md` remains absent, and no disposable 8.10.3 target was explicitly authorized; destructive acceptance did not run.
+- The null deletion-batch adapter defect remains an unwaived product-class release blocker, so T010 remains incomplete.
+---
+---
+## Iteration 13 - 2026-10-14 13:13
+**Work Unit**: T010 blocked pending authorized live acceptance environment
+**Tasks Completed**:
+- None
+**Tasks Remaining in Work Unit**: T010 in full
+**Commit**: No commit - no completed work unit
+**Files Changed**:
+- specs/338-extend-810-validation/ralph-memory.md
+- specs/338-extend-810-validation/progress.md
+**Learnings**:
+- Release profile, requested version, evidence root/workdir, tenant-role, binary, build, and reproducibility controls remain unset; `validation.md` is absent and no retained run directory was supplied.
+- No disposable Camunda 8.10.3 target was explicitly authorized, and the null deletion-batch adapter defect remains an unwaived product-class release blocker; T010 cannot be validated or committed.
+---
+---
+## Iteration 14 - 2026-10-14 13:15
+**Work Unit**: T010 blocked pending authorized live acceptance environment
+**Tasks Completed**:
+- None
+**Tasks Remaining in Work Unit**: T010 in full
+**Commit**: No commit - no completed work unit
+**Files Changed**:
+- specs/338-extend-810-validation/ralph-memory.md
+- specs/338-extend-810-validation/progress.md
+**Learnings**:
+- Release profile, requested version, evidence root/workdir, tenant-role, binary, build, and reproducibility controls remain unset; `validation.md` and retained release evidence remain absent.
+- No disposable Camunda 8.10.3 target was explicitly authorized, and the null deletion-batch adapter defect remains an unwaived product-class release blocker; T010 remains incomplete and no live or broadened offline validation was run.
+---
+---
+## Iteration 15 - 2026-10-14 13:16
+**Work Unit**: T010 blocked pending authorized live acceptance environment
+**Tasks Completed**:
+- None
+**Tasks Remaining in Work Unit**: T010 in full
+**Commit**: No commit - no completed work unit
+**Files Changed**:
+- specs/338-extend-810-validation/ralph-memory.md
+- specs/338-extend-810-validation/progress.md
+**Learnings**:
+- Release profile, requested version, evidence root/workdir, tenant-role, binary, build, and reproducibility controls remain unset; `validation.md` and retained release evidence remain absent.
+- No disposable Camunda 8.10.3 target was explicitly authorized, and the null deletion-batch adapter defect remains an unwaived product-class release blocker; T010 remains incomplete and no destructive or broadened offline validation was run.
+---
+---
+## Iteration 16 - 2026-10-14 13:17
+**Work Unit**: T010 blocked pending authorized live acceptance environment
+**Tasks Completed**:
+- None
+**Tasks Remaining in Work Unit**: T010 in full
+**Commit**: No commit - no completed work unit
+**Files Changed**:
+- specs/338-extend-810-validation/ralph-memory.md
+- specs/338-extend-810-validation/progress.md
+**Learnings**:
+- Release profile, requested version, evidence root/workdir, tenant-role, binary, build, and reproducibility controls remain unset; `validation.md` and retained release evidence remain absent.
+- No disposable Camunda 8.10.3 target was explicitly authorized, and the null deletion-batch adapter defect remains an unwaived product-class release blocker; T010 remains incomplete and no destructive or broadened offline validation was run.
+---
+---
+## Iteration 17 - 2026-10-14 13:18
+**Work Unit**: T010 blocked pending authorized live acceptance environment
+**Tasks Completed**:
+- None
+**Tasks Remaining in Work Unit**: T010 in full
+**Commit**: No commit - no completed work unit
+**Files Changed**:
+- specs/338-extend-810-validation/ralph-memory.md
+- specs/338-extend-810-validation/progress.md
+**Learnings**:
+- Release profile, requested version, evidence root/workdir, tenant-role, binary, and build controls remain unset; `validation.md` and retained release evidence remain absent.
+- No disposable Camunda 8.10.3 target was explicitly authorized, and the null deletion-batch adapter defect remains an unwaived product-class release blocker; T010 remains incomplete and no destructive or broadened offline validation was run.
+---
+---
+## Iteration 18 - 2026-10-14 13:19
+**Work Unit**: T010 blocked pending authorized live acceptance environment
+**Tasks Completed**:
+- None
+**Tasks Remaining in Work Unit**: T010 in full
+**Commit**: No commit - no completed work unit
+**Files Changed**:
+- specs/338-extend-810-validation/ralph-memory.md
+- specs/338-extend-810-validation/progress.md
+**Learnings**:
+- Release profile, requested version, evidence root/workdir, tenant-role, binary, build, and reproducibility controls remain unset; `validation.md` and retained release evidence remain absent.
+- No disposable Camunda 8.10.3 target was explicitly authorized, and the null deletion-batch adapter defect remains an unwaived product-class release blocker; T010 remains incomplete and no destructive or broadened offline validation was run.
+---
+---
+## Iteration 19 - 2026-10-14 13:20
+**Work Unit**: T010 blocked pending authorized live acceptance environment
+**Tasks Completed**:
+- None
+**Tasks Remaining in Work Unit**: T010 in full
+**Commit**: No commit - no completed work unit
+**Files Changed**:
+- specs/338-extend-810-validation/ralph-memory.md
+- specs/338-extend-810-validation/progress.md
+**Learnings**:
+- Release profile, requested version, evidence root/workdir, tenant-role, binary, build, and reproducibility controls remain unset; `validation.md` and retained release evidence remain absent.
+- No disposable Camunda 8.10.3 target was explicitly authorized, and the null deletion-batch adapter defect remains an unwaived product-class release blocker; T010 remains incomplete and no destructive or broadened offline validation was run.
+---
+---
+## Iteration 20 - 2026-10-14 13:21
+**Work Unit**: T010 blocked pending authorized live acceptance environment
+**Tasks Completed**:
+- None
+**Tasks Remaining in Work Unit**: T010 in full
+**Commit**: No commit - no completed work unit
+**Files Changed**:
+- specs/338-extend-810-validation/ralph-memory.md
+- specs/338-extend-810-validation/progress.md
+**Learnings**:
+- Release profile, requested version, evidence root/workdir, tenant-role, binary, build, and reproducibility controls remain unset; `validation.md` and retained release evidence remain absent.
+- No disposable Camunda 8.10.3 target was explicitly authorized, and the null deletion-batch adapter defect remains an unwaived product-class release blocker; T010 remains incomplete and no destructive or broadened offline validation was run.
+---
+---
+## Iteration 21 - 2026-10-14 13:22
+**Work Unit**: T010 blocked pending authorized live acceptance environment
+**Tasks Completed**:
+- None
+**Tasks Remaining in Work Unit**: T010 in full
+**Commit**: No commit - no completed work unit
+**Files Changed**:
+- specs/338-extend-810-validation/ralph-memory.md
+- specs/338-extend-810-validation/progress.md
+**Learnings**:
+- Release profile, requested version, evidence root/workdir, tenant-role, binary, build, and reproducibility controls remain unset; `validation.md` and retained release evidence remain absent.
+- No disposable Camunda 8.10.3 target was explicitly authorized, and the null deletion-batch adapter defect remains an unwaived product-class release blocker; T010 remains incomplete and no destructive or broadened offline validation was run.
+---
+---
+## Iteration 22 - 2026-10-14 13:23
+**Work Unit**: T010 blocked pending authorized live acceptance environment
+**Tasks Completed**:
+- None
+**Tasks Remaining in Work Unit**: T010 in full
+**Commit**: No commit - no completed work unit
+**Files Changed**:
+- specs/338-extend-810-validation/ralph-memory.md
+- specs/338-extend-810-validation/progress.md
+**Learnings**:
+- Release profile, requested version, evidence root/workdir, tenant-role, binary, build, and reproducibility controls remain unset; `validation.md` and retained release evidence remain absent.
+- No disposable Camunda 8.10.3 target was explicitly authorized, and the null deletion-batch adapter defect remains an unwaived product-class release blocker; T010 remains incomplete and no destructive or broadened offline validation was run.
+---
+---
+## Iteration 23 - 2026-10-14 13:24
+**Work Unit**: T010 blocked pending authorized live acceptance environment
+**Tasks Completed**:
+- None
+**Tasks Remaining in Work Unit**: T010 in full
+**Commit**: No commit - no completed work unit
+**Files Changed**:
+- specs/338-extend-810-validation/ralph-memory.md
+- specs/338-extend-810-validation/progress.md
+**Learnings**:
+- Release profile, requested version, evidence root/workdir, tenant-role, binary, build, and reproducibility controls remain unset; `validation.md` and retained release evidence remain absent.
+- No disposable Camunda 8.10.3 target was explicitly authorized, and the null deletion-batch adapter defect remains an unwaived product-class release blocker; T010 remains incomplete and no destructive or broadened offline validation was run.
+---
+---
+## Iteration 24 - 2026-10-14 13:25
+**Work Unit**: T010 blocked pending authorized live acceptance environment
+**Tasks Completed**:
+- None
+**Tasks Remaining in Work Unit**: T010 in full
+**Commit**: No commit - no completed work unit
+**Files Changed**:
+- specs/338-extend-810-validation/ralph-memory.md
+- specs/338-extend-810-validation/progress.md
+**Learnings**:
+- Release profile, requested version, evidence root/workdir, tenant-role, binary, and build controls remain unset; `validation.md` and retained release evidence remain absent.
+- No disposable Camunda 8.10.3 target was explicitly authorized, and the null deletion-batch adapter defect remains an unwaived product-class release blocker; T010 remains incomplete and no destructive or broadened offline validation was run.
+---
+---
+## Iteration 25 - 2026-10-14 13:26
+**Work Unit**: T010 blocked pending authorized live acceptance environment
+**Tasks Completed**:
+- None
+**Tasks Remaining in Work Unit**: T010 in full
+**Commit**: No commit - no completed work unit
+**Files Changed**:
+- specs/338-extend-810-validation/ralph-memory.md
+- specs/338-extend-810-validation/progress.md
+**Learnings**:
+- Release profile, requested version, evidence root/workdir, tenant-role, binary, build, and evidence-file controls remain unset; `validation.md` and retained release evidence remain absent.
+- No disposable Camunda 8.10.3 target was explicitly authorized, and the null deletion-batch adapter defect remains an unwaived product-class release blocker; T010 remains incomplete and no destructive or broadened offline validation was run.
+---
+---
+## Iteration 26 - 2026-10-14 13:27
+**Work Unit**: T010 blocked pending authorized live acceptance environment
+**Tasks Completed**:
+- None
+**Tasks Remaining in Work Unit**: T010 in full
+**Commit**: No commit - no completed work unit
+**Files Changed**:
+- specs/338-extend-810-validation/ralph-memory.md
+- specs/338-extend-810-validation/progress.md
+**Learnings**:
+- Release profile, requested version, evidence root/workdir, tenant-role, binary, build, and evidence-file controls remain unset; `validation.md`, the documented `/tmp/c8volt-release-evidence` root, and retained aggregate evidence remain absent.
+- No disposable Camunda 8.10.3 target was explicitly authorized, and the null deletion-batch adapter defect remains an unwaived product-class release blocker; T010 remains incomplete and no destructive or broadened offline validation was run.
+---
+---
+## Iteration 27 - 2026-10-14 13:29
+**Work Unit**: T010 blocked pending authorized live acceptance environment
+**Tasks Completed**:
+- None
+**Tasks Remaining in Work Unit**: T010 in full
+**Commit**: No commit - no completed work unit
+**Files Changed**:
+- specs/338-extend-810-validation/ralph-memory.md
+- specs/338-extend-810-validation/progress.md
+**Learnings**:
+- Release profile, requested version, evidence root/workdir, tenant-role, binary, build, and evidence-file controls remain unset; `validation.md`, the documented `/tmp/c8volt-release-evidence` root, and retained aggregate evidence remain absent.
+- No disposable Camunda 8.10.3 target was explicitly authorized, and the null deletion-batch adapter defect remains an unwaived product-class release blocker; T010 remains incomplete and no destructive or broadened offline validation was run.
+---
+---
+## Iteration 28 - 2026-10-14 13:30
+**Work Unit**: T010 blocked pending authorized live acceptance environment
+**Tasks Completed**:
+- None
+**Tasks Remaining in Work Unit**: T010 in full
+**Commit**: No commit - no completed work unit
+**Files Changed**:
+- specs/338-extend-810-validation/ralph-memory.md
+- specs/338-extend-810-validation/progress.md
+**Learnings**:
+- Release profile, requested version, evidence root/workdir, tenant-role, binary, build, and evidence-file controls remain unset; `validation.md`, the documented `/tmp/c8volt-release-evidence` root, and retained aggregate evidence remain absent.
+- No disposable Camunda 8.10.3 target was explicitly authorized, and the null deletion-batch adapter defect remains an unwaived product-class release blocker; T010 remains incomplete and no destructive or broadened offline validation was run.
+---
+---
+## Iteration 29 - 2026-10-14 13:31
+**Work Unit**: T010 blocked pending authorized live acceptance environment
+**Tasks Completed**:
+- None
+**Tasks Remaining in Work Unit**: T010 in full
+**Commit**: No commit - no completed work unit
+**Files Changed**:
+- specs/338-extend-810-validation/ralph-memory.md
+- specs/338-extend-810-validation/progress.md
+**Learnings**:
+- Release profile, requested version, evidence root/workdir, tenant-role, binary, build, and evidence-file controls remain unset; `validation.md`, the documented `/tmp/c8volt-release-evidence` root, and retained aggregate evidence remain absent.
+- No disposable Camunda 8.10.3 target was explicitly authorized, and the null deletion-batch adapter defect remains an unwaived product-class release blocker; T010 remains incomplete and no destructive or broadened offline validation was run.
+---
+---
+## Iteration 30 - 2026-10-14 13:31
+**Work Unit**: T010 blocked pending authorized live acceptance environment
+**Tasks Completed**:
+- None
+**Tasks Remaining in Work Unit**: T010 in full
+**Commit**: No commit - no completed work unit
+**Files Changed**:
+- specs/338-extend-810-validation/ralph-memory.md
+- specs/338-extend-810-validation/progress.md
+**Learnings**:
+- Release profile, requested version, evidence root/workdir, tenant-role, binary, build, evidence-file, and reproducibility controls remain unset; `validation.md`, the documented `/tmp/c8volt-release-evidence` root, and retained aggregate evidence remain absent.
+- No disposable Camunda 8.10.3 target was explicitly authorized, and the null deletion-batch adapter defect remains an unwaived product-class release blocker; T010 remains incomplete and no destructive or broadened offline validation was run.
+---
+---
+## Iteration 31 - 2026-10-14 13:33
+**Work Unit**: T010 blocked pending authorized live acceptance environment
+**Tasks Completed**:
+- None
+**Tasks Remaining in Work Unit**: T010 in full
+**Commit**: No commit - no completed work unit
+**Files Changed**:
+- specs/338-extend-810-validation/ralph-memory.md
+- specs/338-extend-810-validation/progress.md
+**Learnings**:
+- Release profile, requested version, evidence root/workdir, tenant-role, binary, build, evidence-file, and reproducibility controls remain unset; `validation.md`, the documented `/tmp/c8volt-release-evidence` root, and retained aggregate evidence remain absent.
+- No disposable Camunda 8.10.3 target was explicitly authorized, and the null deletion-batch adapter defect remains an unwaived product-class release blocker; T010 remains incomplete and no destructive or broadened offline validation was run.
+---
+---
+## Iteration 32 - 2026-10-14 13:33
+**Work Unit**: T010 blocked pending authorized live acceptance environment
+**Tasks Completed**:
+- None
+**Tasks Remaining in Work Unit**: T010 in full
+**Commit**: No commit - no completed work unit
+**Files Changed**:
+- specs/338-extend-810-validation/ralph-memory.md
+- specs/338-extend-810-validation/progress.md
+**Learnings**:
+- Release profile, requested version, evidence root/workdir, tenant-role, binary, build, evidence-file, and reproducibility controls remain unset; `validation.md`, the documented `/tmp/c8volt-release-evidence` root, and retained aggregate evidence remain absent.
+- No disposable Camunda 8.10.3 target was explicitly authorized, and the null deletion-batch adapter defect remains an unwaived product-class release blocker; T010 remains incomplete and no destructive or broadened offline validation was run.
+---
+---
+## Iteration 33 - 2026-10-14 13:34
+**Work Unit**: T010 blocked pending authorized live acceptance environment
+**Tasks Completed**:
+- None
+**Tasks Remaining in Work Unit**: T010 in full
+**Commit**: No commit - no completed work unit
+**Files Changed**:
+- specs/338-extend-810-validation/ralph-memory.md
+- specs/338-extend-810-validation/progress.md
+**Learnings**:
+- Release profile, requested version, evidence root/workdir, tenant-role, binary, build, evidence-file, and reproducibility controls remain unset; `validation.md`, the documented `/tmp/c8volt-release-evidence` root, and retained aggregate evidence remain absent.
+- No disposable Camunda 8.10.3 target was explicitly authorized, and the null deletion-batch adapter defect remains an unwaived product-class release blocker; T010 remains incomplete and no destructive or broadened offline validation was run.
+---
+---
+## Iteration 34 - 2026-10-14 13:36
+**Work Unit**: T010 blocked pending authorized live acceptance environment
+**Tasks Completed**:
+- None
+**Tasks Remaining in Work Unit**: T010 in full
+**Commit**: No commit - no completed work unit
+**Files Changed**:
+- specs/338-extend-810-validation/ralph-memory.md
+- specs/338-extend-810-validation/progress.md
+**Learnings**:
+- Release profile, requested version, evidence root/workdir, tenant-role, binary, build, and confirmation controls remain unset; `validation.md` and retained aggregate evidence remain absent.
+- No disposable Camunda 8.10.3 target was explicitly authorized, and the null deletion-batch adapter defect remains an unwaived product-class release blocker; T010 remains incomplete and no destructive or broadened offline validation was run.
+---
+---
+## Iteration 35 - 2026-10-14 13:37
+**Work Unit**: T010 blocked pending authorized live acceptance environment
+**Tasks Completed**:
+- None
+**Tasks Remaining in Work Unit**: T010 in full
+**Commit**: No commit - no completed work unit
+**Files Changed**:
+- specs/338-extend-810-validation/ralph-memory.md
+- specs/338-extend-810-validation/progress.md
+**Learnings**:
+- Release profile, requested version, evidence root/workdir, tenant-role, binary, build, and confirmation controls remain unset; `validation.md`, the documented `/tmp/c8volt-release-evidence` root, and retained aggregate evidence remain absent.
+- No disposable Camunda 8.10.3 target was explicitly authorized, and the null deletion-batch adapter defect remains an unwaived product-class release blocker; T010 remains incomplete and no destructive or broadened offline validation was run.
+---
+---
+## Iteration 36 - 2026-10-14 13:39
+**Work Unit**: T010 blocked pending authorized live acceptance environment
+**Tasks Completed**:
+- None
+**Tasks Remaining in Work Unit**: T010 in full
+**Commit**: No commit - no completed work unit
+**Files Changed**:
+- specs/338-extend-810-validation/ralph-memory.md
+- specs/338-extend-810-validation/progress.md
+**Learnings**:
+- Release profile, requested version, evidence root/workdir, tenant-role, binary, build, evidence-file, reproducibility, and confirmation controls remain unset; `validation.md`, the documented `/tmp/c8volt-release-evidence` root, and retained aggregate evidence remain absent.
+- No disposable Camunda 8.10.3 target was explicitly authorized, and the null deletion-batch adapter defect remains an unwaived product-class release blocker; T010 remains incomplete and no destructive or broadened offline validation was run.
+---
+## Iteration 37 - 2026-10-14 13:39
+**Work Unit**: T010 blocked pending authorized live acceptance environment
+**Tasks Completed**:
+- None
+**Tasks Remaining in Work Unit**: T010 in full
+**Commit**: No commit - no completed work unit
+**Files Changed**:
+- specs/338-extend-810-validation/ralph-memory.md
+- specs/338-extend-810-validation/progress.md
+**Learnings**:
+- Release profile, requested version, evidence root/workdir, tenant-role, binary, build, evidence-file, reproducibility, and confirmation controls remain unset; `validation.md`, the documented `/tmp/c8volt-release-evidence` root, and retained aggregate evidence remain absent.
+- No disposable Camunda 8.10.3 target was explicitly authorized, and the null deletion-batch adapter defect remains an unwaived product-class release blocker; T010 remains incomplete and no destructive or broadened offline validation was run.
+---
+---
+## Iteration 38 - 2026-10-14 13:40
+**Work Unit**: T010 blocked pending authorized live acceptance environment
+**Tasks Completed**:
+- None
+**Tasks Remaining in Work Unit**: T010 in full
+**Commit**: No commit - no completed work unit
+**Files Changed**:
+- specs/338-extend-810-validation/ralph-memory.md
+- specs/338-extend-810-validation/progress.md
+**Learnings**:
+- Release profile, requested version, evidence root/workdir, tenant-role, binary, build, evidence-file, reproducibility, and confirmation controls remain unset; `validation.md`, the documented `/tmp/c8volt-release-evidence` root, and retained aggregate evidence remain absent.
+- No disposable Camunda 8.10.3 target was explicitly authorized, and the null deletion-batch adapter defect remains an unwaived product-class release blocker; T010 remains incomplete and no destructive or broadened offline validation was run.
+---
+---
+## Iteration 39 - 2026-10-14 13:41
+**Work Unit**: T010 blocked pending authorized live acceptance environment
+**Tasks Completed**:
+- None
+**Tasks Remaining in Work Unit**: T010 in full
+**Commit**: No commit - no completed work unit
+**Files Changed**:
+- specs/338-extend-810-validation/ralph-memory.md
+- specs/338-extend-810-validation/progress.md
+**Learnings**:
+- Release profile, requested version, evidence root/workdir, tenant-role, binary, build, evidence-file, reproducibility, and confirmation controls remain unset; `validation.md`, the documented `/tmp/c8volt-release-evidence` root, and retained aggregate evidence remain absent.
+- No disposable Camunda 8.10.3 target was explicitly authorized, and the null deletion-batch adapter defect remains an unwaived product-class release blocker; T010 remains incomplete and no destructive or broadened offline validation was run.
+---
+---
+## Iteration 40 - 2026-10-14 13:42
+**Work Unit**: T010 blocked pending authorized live acceptance environment
+**Tasks Completed**:
+- None
+**Tasks Remaining in Work Unit**: T010 in full
+**Commit**: No commit - no completed work unit
+**Files Changed**:
+- specs/338-extend-810-validation/ralph-memory.md
+- specs/338-extend-810-validation/progress.md
+**Learnings**:
+- Release profile, requested version, evidence root/workdir, tenant-role, binary, build, evidence-file, reproducibility, and confirmation controls remain unset; `validation.md`, the documented `/tmp/c8volt-release-evidence` root, and retained aggregate evidence remain absent.
+- No disposable Camunda 8.10.3 target was explicitly authorized, and the null deletion-batch adapter defect remains an unwaived product-class release blocker; T010 remains incomplete and no destructive or broadened offline validation was run.
+---
+---
+## Iteration 41 - 2026-10-14 13:44
+**Work Unit**: T010 blocked pending authorized live acceptance environment
+**Tasks Completed**:
+- None
+**Tasks Remaining in Work Unit**: T010 in full
+**Commit**: No commit - no completed work unit
+**Files Changed**:
+- specs/338-extend-810-validation/ralph-memory.md
+- specs/338-extend-810-validation/progress.md
+**Learnings**:
+- Release profile, requested version, evidence root/workdir, tenant-role, binary, build, evidence-file, reproducibility, and confirmation controls remain unset; `validation.md`, the documented `/tmp/c8volt-release-evidence` root, and retained aggregate evidence remain absent.
+- No disposable Camunda 8.10.3 target was explicitly authorized, and the null deletion-batch adapter defect remains an unwaived product-class release blocker; T010 remains incomplete and no destructive or broadened offline validation was run.
+---
+---
+## Iteration 42 - 2026-10-14 13:45
+**Work Unit**: T010 blocked pending authorized live acceptance environment
+**Tasks Completed**:
+- None
+**Tasks Remaining in Work Unit**: T010 in full
+**Commit**: No commit - no completed work unit
+**Files Changed**:
+- specs/338-extend-810-validation/ralph-memory.md
+- specs/338-extend-810-validation/progress.md
+**Learnings**:
+- Release profile, requested version, evidence root/workdir, tenant-role, binary, build, evidence-file, reproducibility, and confirmation controls remain unset; `validation.md`, the documented `/tmp/c8volt-release-evidence` root, and retained aggregate evidence remain absent.
+- No disposable Camunda 8.10.3 target was explicitly authorized, and the null deletion-batch adapter defect remains an unwaived product-class release blocker; T010 remains incomplete and no destructive or broadened offline validation was run.
+---
+---
+## Iteration 43 - 2026-10-14 13:46
+**Work Unit**: T010 blocked pending authorized live acceptance environment
+**Tasks Completed**:
+- None
+**Tasks Remaining in Work Unit**: T010 in full
+**Commit**: No commit - no completed work unit
+**Files Changed**:
+- specs/338-extend-810-validation/ralph-memory.md
+- specs/338-extend-810-validation/progress.md
+**Learnings**:
+- Release profile, requested version, evidence root/workdir, tenant-role, binary, build, evidence-file, reproducibility, and confirmation controls remain unset; `validation.md`, the documented `/tmp/c8volt-release-evidence` root, and retained aggregate evidence remain absent.
+- No disposable Camunda 8.10.3 target was explicitly authorized, and the null deletion-batch adapter defect remains an unwaived product-class release blocker; T010 remains incomplete and no destructive or broadened offline validation was run.
+---
+---
+## Iteration 44 - 2026-10-14 13:47
+**Work Unit**: T010 blocked pending authorized live acceptance environment
+**Tasks Completed**:
+- None
+**Tasks Remaining in Work Unit**: T010 in full
+**Commit**: No commit - no completed work unit
+**Files Changed**:
+- specs/338-extend-810-validation/ralph-memory.md
+- specs/338-extend-810-validation/progress.md
+**Learnings**:
+- Release profile, requested version, evidence root/workdir, tenant-role, tenant requirement, binary, build, evidence-file, reproducibility, and confirmation controls remain unset; `validation.md`, the documented `/tmp/c8volt-release-evidence` root, and retained aggregate evidence remain absent.
+- No disposable Camunda 8.10.3 target was explicitly authorized, and the null deletion-batch adapter defect remains an unwaived product-class release blocker; T010 remains incomplete and no destructive or broadened offline validation was run.
+---
+---
+## Iteration 45 - 2026-10-14 13:48
+**Work Unit**: T010 blocked pending authorized live acceptance environment
+**Tasks Completed**:
+- None
+**Tasks Remaining in Work Unit**: T010 in full
+**Commit**: No commit - no completed work unit
+**Files Changed**:
+- specs/338-extend-810-validation/ralph-memory.md
+- specs/338-extend-810-validation/progress.md
+**Learnings**:
+- Release profile, requested version, evidence root/workdir, tenant-role, tenant requirement, binary, build, evidence-file, reproducibility, and confirmation controls remain unset; `validation.md`, the documented `/tmp/c8volt-release-evidence` root, and retained aggregate evidence remain absent.
+- No disposable Camunda 8.10.3 target was explicitly authorized, and the null deletion-batch adapter defect remains an unwaived product-class release blocker; T010 remains incomplete and no destructive or broadened offline validation was run.
+---
+---
+## Iteration 46 - 2026-10-14 13:49
+**Work Unit**: T010 blocked pending authorized live acceptance environment
+**Tasks Completed**:
+- None
+**Tasks Remaining in Work Unit**: T010 in full
+**Commit**: No commit - no completed work unit
+**Files Changed**:
+- specs/338-extend-810-validation/ralph-memory.md
+- specs/338-extend-810-validation/progress.md
+**Learnings**:
+- Release profile, requested version, evidence root/workdir, tenant-role, tenant requirement, binary, build, evidence-file, reproducibility, and confirmation controls remain unset; `validation.md`, the documented `/tmp/c8volt-release-evidence` root, and retained aggregate evidence remain absent.
+- No disposable Camunda 8.10.3 target was explicitly authorized, and the null deletion-batch adapter defect remains an unwaived product-class release blocker; T010 remains incomplete and no destructive or broadened offline validation was run.
+---
+---
+## Iteration 47 - 2026-10-14 13:50
+**Work Unit**: T010 blocked pending authorized live acceptance environment
+**Tasks Completed**:
+- None
+**Tasks Remaining in Work Unit**: T010 in full
+**Commit**: No commit - no completed work unit
+**Files Changed**:
+- specs/338-extend-810-validation/ralph-memory.md
+- specs/338-extend-810-validation/progress.md
+**Learnings**:
+- Release profile, requested version, evidence root/workdir, tenant-role, tenant requirement, binary, build, evidence-file, reproducibility, and confirmation controls remain unset; `validation.md`, the documented `/tmp/c8volt-release-evidence` root, and retained aggregate evidence remain absent.
+- No disposable Camunda 8.10.3 target was explicitly authorized, and the null deletion-batch adapter defect remains an unwaived product-class release blocker; T010 remains incomplete and no destructive or broadened offline validation was run.
+---
+---
+## Iteration 48 - 2026-10-14 13:51
+**Work Unit**: T010 blocked pending authorized live acceptance environment
+**Tasks Completed**:
+- None
+**Tasks Remaining in Work Unit**: T010 in full
+**Commit**: No commit - no completed work unit
+**Files Changed**:
+- specs/338-extend-810-validation/ralph-memory.md
+- specs/338-extend-810-validation/progress.md
+**Learnings**:
+- Release profile, requested version, evidence root/workdir, tenant-role, tenant requirement, binary, build, evidence-file, reproducibility, and confirmation controls remain unset; `validation.md`, the documented `/tmp/c8volt-release-evidence` root, and retained aggregate evidence remain absent.
+- No disposable Camunda 8.10.3 target was explicitly authorized, and the null deletion-batch adapter defect remains an unwaived product-class release blocker; T010 remains incomplete and no destructive or broadened offline validation was run.
+---
+---
+## Iteration 49 - 2026-10-14 13:52
+**Work Unit**: T010 blocked pending authorized live acceptance environment
+**Tasks Completed**:
+- None
+**Tasks Remaining in Work Unit**: T010 in full
+**Commit**: No commit - no completed work unit
+**Files Changed**:
+- specs/338-extend-810-validation/ralph-memory.md
+- specs/338-extend-810-validation/progress.md
+**Learnings**:
+- Release profile, requested version, evidence root/workdir, tenant-role, tenant requirement, binary, build, evidence-file, reproducibility, and confirmation controls remain unset; `validation.md`, the documented `/tmp/c8volt-release-evidence` root, and retained aggregate evidence remain absent.
+- No disposable Camunda 8.10.3 target was explicitly authorized, and the null deletion-batch adapter defect remains an unwaived product-class release blocker; T010 remains incomplete and no destructive or broadened offline validation was run.
+---
+---
+## Iteration 50 - 2026-10-14 13:53
+**Work Unit**: T010 blocked pending authorized live acceptance environment
+**Tasks Completed**:
+- None
+**Tasks Remaining in Work Unit**: T010 in full
+**Commit**: No commit - no completed work unit
+**Files Changed**:
+- specs/338-extend-810-validation/ralph-memory.md
+- specs/338-extend-810-validation/progress.md
+**Learnings**:
+- Release profile, requested version, evidence root/workdir, tenant-role, tenant requirement, binary, build, evidence-file, reproducibility, and confirmation controls remain unset; `validation.md`, the documented `/tmp/c8volt-release-evidence` root, and retained aggregate evidence remain absent.
+- No disposable Camunda 8.10.3 target was explicitly authorized, and the null deletion-batch adapter defect remains an unwaived product-class release blocker; T010 remains incomplete and no destructive or broadened offline validation was run.
+---
+---
+## Iteration 51 - 2026-10-14 13:54
+**Work Unit**: T010 blocked pending authorized live acceptance environment
+**Tasks Completed**:
+- None
+**Tasks Remaining in Work Unit**: T010 in full
+**Commit**: No commit - no completed work unit
+**Files Changed**:
+- specs/338-extend-810-validation/ralph-memory.md
+- specs/338-extend-810-validation/progress.md
+**Learnings**:
+- Release profile, requested version, evidence root/workdir, tenant-role, tenant requirement, binary, build, evidence-file, reproducibility, and confirmation controls remain unset; `validation.md`, the documented `/tmp/c8volt-release-evidence` root, and retained aggregate evidence remain absent.
+- No disposable Camunda 8.10.3 target was explicitly authorized, and the null deletion-batch adapter defect remains an unwaived product-class release blocker; T010 remains incomplete and no destructive or broadened offline validation was run.
+---
+---
+## Iteration 52 - 2026-10-14 14:05
+**Work Unit**: T010 blocked pending authorized live acceptance environment
+**Tasks Completed**:
+- None
+**Tasks Remaining in Work Unit**: T010 in full
+**Commit**: No commit - no completed work unit
+**Files Changed**:
+- specs/338-extend-810-validation/ralph-memory.md
+- specs/338-extend-810-validation/progress.md
+**Learnings**:
+- Release profile, requested version, evidence root/workdir, tenant-role, tenant requirement, binary, build, evidence-file, reproducibility, and confirmation controls remain unset; `validation.md`, the documented `/tmp/c8volt-release-evidence` root, and retained aggregate evidence remain absent.
+- No disposable Camunda 8.10.3 target was explicitly authorized, and the null deletion-batch adapter defect remains an unwaived product-class release blocker; T010 remains incomplete and no destructive or broadened offline validation was run.
+---
+---
+## Iteration 53 - 2026-10-14 13:57
+**Work Unit**: T010 blocked pending authorized live acceptance environment
+**Tasks Completed**:
+- None
+**Tasks Remaining in Work Unit**: T010 in full
+**Commit**: No commit - no completed work unit
+**Files Changed**:
+- specs/338-extend-810-validation/ralph-memory.md
+- specs/338-extend-810-validation/progress.md
+**Learnings**:
+- Release profile, requested version, evidence root/workdir, tenant-role, tenant requirement, binary, build, evidence-file, reproducibility, and confirmation controls remain unset; `validation.md`, the documented `/tmp/c8volt-release-evidence` root, and retained aggregate evidence remain absent.
+- No disposable Camunda 8.10.3 target was explicitly authorized, and the null deletion-batch adapter defect remains an unwaived product-class release blocker; T010 remains incomplete and no destructive or broadened offline validation was run.
+---
+---
+## Iteration 54 - 2026-10-14 13:58
+**Work Unit**: T010 blocked pending authorized live acceptance environment
+**Tasks Completed**:
+- None
+**Tasks Remaining in Work Unit**: T010 in full
+**Commit**: No commit - no completed work unit
+**Files Changed**:
+- specs/338-extend-810-validation/ralph-memory.md
+- specs/338-extend-810-validation/progress.md
+**Learnings**:
+- Release profile, requested version, evidence root/workdir, tenant-role, tenant requirement, binary, build, evidence-file, reproducibility, confirmation, and automation controls remain unset; `validation.md`, the documented `/tmp/c8volt-release-evidence` root, and retained aggregate evidence remain absent.
+- No disposable Camunda 8.10.3 target was explicitly authorized, and the null deletion-batch adapter defect remains an unwaived product-class release blocker; T010 remains incomplete and no destructive or broadened offline validation was run.
+---
+---
+## Iteration 55 - 2026-10-14 14:00
+**Work Unit**: T010 blocked pending authorized live acceptance environment
+**Tasks Completed**:
+- None
+**Tasks Remaining in Work Unit**: T010 in full
+**Commit**: No commit - no completed work unit
+**Files Changed**:
+- specs/338-extend-810-validation/ralph-memory.md
+- specs/338-extend-810-validation/progress.md
+**Learnings**:
+- Release profile, requested version, evidence root/workdir, tenant-role, tenant requirement, binary, build, evidence-file, reproducibility, confirmation, and automation controls remain unset; `validation.md`, the documented `/tmp/c8volt-release-evidence` root, and retained aggregate evidence remain absent.
+- No disposable Camunda 8.10.3 target was explicitly authorized, and the null deletion-batch adapter defect remains an unwaived product-class release blocker; T010 remains incomplete and no destructive or broadened offline validation was run.
+---
+---
+## Iteration 56 - 2026-10-14 14:01
+**Work Unit**: T010 blocked pending authorized live acceptance environment
+**Tasks Completed**:
+- None
+**Tasks Remaining in Work Unit**: T010 in full
+**Commit**: No commit - no completed work unit
+**Files Changed**:
+- specs/338-extend-810-validation/ralph-memory.md
+- specs/338-extend-810-validation/progress.md
+**Learnings**:
+- Release profile, requested version, evidence root/workdir, tenant-role, tenant requirement, binary, and build controls remain unset; `validation.md` and retained aggregate evidence remain absent.
+- No disposable Camunda 8.10.3 target was explicitly authorized, and the null deletion-batch adapter defect remains an unwaived product-class release blocker; T010 remains incomplete and no destructive or broadened offline validation was run.
+---
+---
+## Iteration 57 - 2026-10-14 14:02
+**Work Unit**: T010 blocked pending authorized live acceptance environment
+**Tasks Completed**:
+- None
+**Tasks Remaining in Work Unit**: T010 in full
+**Commit**: No commit - no completed work unit
+**Files Changed**:
+- specs/338-extend-810-validation/ralph-memory.md
+- specs/338-extend-810-validation/progress.md
+**Learnings**:
+- Release profile, requested version, evidence root/workdir, tenant-role, tenant requirement, binary, build, evidence-file, reproducibility, confirmation, and automation controls remain unset; `validation.md`, the documented `/tmp/c8volt-release-evidence` root, and retained aggregate evidence remain absent.
+- No disposable Camunda 8.10.3 target was explicitly authorized, and the null deletion-batch adapter defect remains an unwaived product-class release blocker; T010 remains incomplete and no destructive or broadened offline validation was run.
+---
+---
+## Iteration 58 - 2026-10-14 14:04
+**Work Unit**: T010 blocked pending authorized live acceptance environment
+**Tasks Completed**:
+- None
+**Tasks Remaining in Work Unit**: T010 in full
+**Commit**: No commit - no completed work unit
+**Files Changed**:
+- specs/338-extend-810-validation/ralph-memory.md
+- specs/338-extend-810-validation/progress.md
+**Learnings**:
+- Release profile, requested version, evidence root/workdir, tenant-role, tenant requirement, binary, build, evidence-file, reproducibility, confirmation, and automation controls remain unset; `validation.md`, the documented `/tmp/c8volt-release-evidence` root, and retained aggregate evidence remain absent.
+- No disposable Camunda 8.10.3 target was explicitly authorized, and the null deletion-batch adapter defect remains an unwaived product-class release blocker; T010 remains incomplete and no destructive or broadened offline validation was run.
+---
+---
+## Iteration 59 - 2026-10-14 14:06
+**Work Unit**: T010 blocked pending authorized live acceptance environment
+**Tasks Completed**:
+- None
+**Tasks Remaining in Work Unit**: T010 in full
+**Commit**: No commit - no completed work unit
+**Files Changed**:
+- specs/338-extend-810-validation/ralph-memory.md
+- specs/338-extend-810-validation/progress.md
+**Learnings**:
+- Release profile, requested version, evidence root/workdir, tenant-role, tenant requirement, binary, build, evidence-file, reproducibility, confirmation, automation, and CI controls remain unset; `validation.md`, the documented `/tmp/c8volt-release-evidence` root, and retained aggregate evidence remain absent.
+- No disposable Camunda 8.10.3 target was explicitly authorized, and the null deletion-batch adapter defect remains an unwaived product-class release blocker; T010 remains incomplete and no destructive or broadened offline validation was run.
+---
+---
+## Iteration 60 - 2026-10-14 14:07
+**Work Unit**: T010 blocked pending authorized live acceptance environment
+**Tasks Completed**:
+- None
+**Tasks Remaining in Work Unit**: T010 in full
+**Commit**: No commit - no completed work unit
+**Files Changed**:
+- specs/338-extend-810-validation/ralph-memory.md
+- specs/338-extend-810-validation/progress.md
+**Learnings**:
+- Release profile, requested version, evidence root/workdir, tenant-role, tenant requirement, binary, build, evidence-file, reproducibility, confirmation, automation, and CI controls remain unset; `validation.md`, the documented `/tmp/c8volt-release-evidence` root, and retained aggregate evidence remain absent.
+- No disposable Camunda 8.10.3 target was explicitly authorized, and the null deletion-batch adapter defect remains an unwaived product-class release blocker; T010 remains incomplete and no destructive or broadened offline validation was run.
+---
+---
+## Iteration 61 - 2026-10-14 14:08
+**Work Unit**: T010 blocked pending authorized live acceptance environment
+**Tasks Completed**:
+- None
+**Tasks Remaining in Work Unit**: T010 in full
+**Commit**: No commit - no completed work unit
+**Files Changed**:
+- specs/338-extend-810-validation/ralph-memory.md
+- specs/338-extend-810-validation/progress.md
+**Learnings**:
+- Release profile, requested version, evidence root/workdir, tenant-role, tenant requirement, binary, build, evidence-file, reproducibility, confirmation, automation, and CI controls remain unset; `validation.md`, the documented `/tmp/c8volt-release-evidence` root, and retained aggregate evidence remain absent.
+- No disposable Camunda 8.10.3 target was explicitly authorized, and the null deletion-batch adapter defect remains an unwaived product-class release blocker; T010 remains incomplete and no destructive or broadened offline validation was run.
+---
+---
+## Iteration 62 - 2026-10-14 14:09
+**Work Unit**: T010 blocked pending authorized live acceptance environment
+**Tasks Completed**:
+- None
+**Tasks Remaining in Work Unit**: T010 in full
+**Commit**: No commit - no completed work unit
+**Files Changed**:
+- specs/338-extend-810-validation/ralph-memory.md
+- specs/338-extend-810-validation/progress.md
+**Learnings**:
+- Release profile, requested version, evidence root/workdir, tenant-role, tenant requirement, binary, build, evidence-file, reproducibility, confirmation, automation, and CI controls remain unset; `validation.md`, the documented `/tmp/c8volt-release-evidence` root, and retained aggregate evidence remain absent.
+- No disposable Camunda 8.10.3 target was explicitly authorized, and the null deletion-batch adapter defect remains an unwaived product-class release blocker; T010 remains incomplete and no destructive or broadened offline validation was run.
+---
+---
+## Iteration 63 - 2026-10-14 14:11
+**Work Unit**: T010 blocked pending authorized live acceptance environment
+**Tasks Completed**:
+- None
+**Tasks Remaining in Work Unit**: T010 in full
+**Commit**: No commit - no completed work unit
+**Files Changed**:
+- specs/338-extend-810-validation/ralph-memory.md
+- specs/338-extend-810-validation/progress.md
+**Learnings**:
+- Release profile, requested version, evidence root/workdir, tenant-role, tenant requirement, binary, build, evidence-file, reproducibility, confirmation, automation, and CI controls remain unset; `validation.md`, the documented `/tmp/c8volt-release-evidence` root, and retained aggregate evidence remain absent.
+- No disposable Camunda 8.10.3 target was explicitly authorized, and the null deletion-batch adapter defect remains an unwaived product-class release blocker; T010 remains incomplete and no destructive or broadened offline validation was run.
+---
+---
+## Iteration 64 - 2026-10-14 14:12
+**Work Unit**: T010 blocked pending authorized live acceptance environment
+**Tasks Completed**:
+- None
+**Tasks Remaining in Work Unit**: T010 in full
+**Commit**: No commit - no completed work unit
+**Files Changed**:
+- specs/338-extend-810-validation/ralph-memory.md
+- specs/338-extend-810-validation/progress.md
+**Learnings**:
+- Release profile, requested version, evidence root/workdir, tenant-role, tenant requirement, binary, build, confirmation, and automation controls remain unset; `validation.md`, the documented `/tmp/c8volt-release-evidence` root, and retained aggregate evidence remain absent.
+- No disposable Camunda 8.10.3 target was explicitly authorized, and the null deletion-batch adapter defect remains an unwaived product-class release blocker; T010 remains incomplete and no destructive or broadened offline validation was run.
+---
+---
+## Iteration 65 - 2026-10-14 14:13
+**Work Unit**: T010 blocked pending authorized live acceptance environment
+**Tasks Completed**:
+- None
+**Tasks Remaining in Work Unit**: T010 in full
+**Commit**: No commit - no completed work unit
+**Files Changed**:
+- specs/338-extend-810-validation/ralph-memory.md
+- specs/338-extend-810-validation/progress.md
+**Learnings**:
+- Release profile, requested version, evidence root/workdir, tenant-role, tenant requirement, binary, build, confirmation, and automation controls remain unset; `validation.md`, the documented `/tmp/c8volt-release-evidence` root, and retained aggregate evidence remain absent.
+- No disposable Camunda 8.10.3 target was explicitly authorized, and the null deletion-batch adapter defect remains an unwaived product-class release blocker; T010 remains incomplete and no destructive or broadened offline validation was run.
+---
+---
+## Iteration 66 - 2026-10-14 14:16
+**Work Unit**: T010 blocked pending authorized live acceptance environment
+**Tasks Completed**:
+- None
+**Tasks Remaining in Work Unit**: T010 in full
+**Commit**: No commit - no completed work unit
+**Files Changed**:
+- specs/338-extend-810-validation/ralph-memory.md
+- specs/338-extend-810-validation/progress.md
+**Learnings**:
+- Release profile, requested version, evidence root/workdir, tenant-role, tenant requirement, binary, build, evidence-file, reproducibility, confirmation, automation, and CI controls remain unset; `validation.md`, the documented `/tmp/c8volt-release-evidence` root, and retained aggregate evidence remain absent.
+- No disposable Camunda 8.10.3 target was explicitly authorized, and the null deletion-batch adapter defect remains an unwaived product-class release blocker; T010 remains incomplete and no destructive or broadened offline validation was run.
+---
+---
+## Iteration 67 - 2026-10-14 14:17
+**Work Unit**: T010 blocked pending authorized live acceptance environment
+**Tasks Completed**:
+- None
+**Tasks Remaining in Work Unit**: T010 in full
+**Commit**: No commit - no completed work unit
+**Files Changed**:
+- specs/338-extend-810-validation/ralph-memory.md
+- specs/338-extend-810-validation/progress.md
+**Learnings**:
+- Release profile, requested version, evidence root/workdir, tenant-role, tenant requirement, binary, build, evidence-file, reproducibility, confirmation, automation, and CI controls remain unset; `validation.md`, the documented `/tmp/c8volt-release-evidence` root, and retained aggregate evidence remain absent.
+- No disposable Camunda 8.10.3 target was explicitly authorized, and the null deletion-batch adapter defect remains an unwaived product-class release blocker; T010 remains incomplete and no destructive or broadened offline validation was run.
+---
+---
+## Iteration 68 - 2026-10-14 14:19
+**Work Unit**: T010 blocked pending authorized live acceptance environment
+**Tasks Completed**:
+- None
+**Tasks Remaining in Work Unit**: T010 in full
+**Commit**: No commit - no completed work unit
+**Files Changed**:
+- specs/338-extend-810-validation/ralph-memory.md
+- specs/338-extend-810-validation/progress.md
+**Learnings**:
+- Release profile, requested version, evidence root/workdir, tenant-role, tenant requirement, binary, and build controls remain unset; `validation.md`, the documented `/tmp/c8volt-release-evidence` root, and retained aggregate evidence remain absent.
+- No disposable Camunda 8.10.3 target was explicitly authorized, and the null deletion-batch adapter defect remains an unwaived product-class release blocker; T010 remains incomplete and no destructive or broadened offline validation was run.
+---
+---
+## Iteration 69 - 2026-10-14 14:20
+**Work Unit**: T010 blocked pending authorized live acceptance environment
+**Tasks Completed**:
+- None
+**Tasks Remaining in Work Unit**: T010 in full
+**Commit**: No commit - no completed work unit
+**Files Changed**:
+- specs/338-extend-810-validation/ralph-memory.md
+- specs/338-extend-810-validation/progress.md
+**Learnings**:
+- Release profile, requested version, evidence root/workdir, tenant-role, tenant requirement, binary, build, evidence-file, reproducibility, confirmation, automation, and CI controls remain unset; `validation.md`, the documented `/tmp/c8volt-release-evidence` root, and retained aggregate evidence remain absent.
+- No disposable Camunda 8.10.3 target was explicitly authorized, and the null deletion-batch adapter defect remains an unwaived product-class release blocker; T010 remains incomplete and no destructive or broadened offline validation was run.
+---
+---
+## Iteration 70 - 2026-10-14 14:21
+**Work Unit**: T010 blocked pending authorized live acceptance environment
+**Tasks Completed**:
+- None
+**Tasks Remaining in Work Unit**: T010 in full
+**Commit**: No commit - no completed work unit
+**Files Changed**:
+- specs/338-extend-810-validation/ralph-memory.md
+- specs/338-extend-810-validation/progress.md
+**Learnings**:
+- Release profile, requested version, evidence root/workdir, tenant-role, tenant requirement, binary, build, evidence-file, reproducibility, confirmation, automation, and CI controls remain unset; `validation.md`, the documented `/tmp/c8volt-release-evidence` root, and retained aggregate evidence remain absent.
+- No disposable Camunda 8.10.3 target was explicitly authorized, and the null deletion-batch adapter defect remains an unwaived product-class release blocker; T010 remains incomplete and no destructive or broadened offline validation was run.
+---
+---
+## Iteration 71 - 2026-10-14 14:23
+**Work Unit**: T010 blocked pending authorized live acceptance environment
+**Tasks Completed**:
+- None
+**Tasks Remaining in Work Unit**: T010 in full
+**Commit**: No commit - no completed work unit
+**Files Changed**:
+- specs/338-extend-810-validation/ralph-memory.md
+- specs/338-extend-810-validation/progress.md
+**Learnings**:
+- Release profile, requested version, evidence root/workdir, tenant-role, tenant requirement, binary, build, evidence-file, reproducibility, confirmation, automation, and CI controls remain unset; `validation.md`, the documented `/tmp/c8volt-release-evidence` root, and retained aggregate evidence remain absent.
+- No disposable Camunda 8.10.3 target was explicitly authorized, and the null deletion-batch adapter defect remains an unwaived product-class release blocker; T010 remains incomplete and no destructive or broadened offline validation was run.
+---
+---
+## Iteration 72 - 2026-10-14 14:24
+**Work Unit**: T010 blocked pending authorized live acceptance environment
+**Tasks Completed**:
+- None
+**Tasks Remaining in Work Unit**: T010 in full
+**Commit**: No commit - no completed work unit
+**Files Changed**:
+- specs/338-extend-810-validation/ralph-memory.md
+- specs/338-extend-810-validation/progress.md
+**Learnings**:
+- Release profile, requested version, evidence root/workdir, tenant-role, tenant requirement, binary, build, evidence-file, reproducibility, confirmation, automation, and CI controls remain unset; `validation.md`, the documented `/tmp/c8volt-release-evidence` root, and retained aggregate evidence remain absent.
+- No disposable Camunda 8.10.3 target was explicitly authorized, and the null deletion-batch adapter defect remains an unwaived product-class release blocker; T010 remains incomplete and no destructive or broadened offline validation was run.
+---
+---
+## Iteration 73 - 2026-10-14 14:25
+**Work Unit**: T010 blocked pending authorized live acceptance environment
+**Tasks Completed**:
+- None
+**Tasks Remaining in Work Unit**: T010 in full
+**Commit**: No commit - no completed work unit
+**Files Changed**:
+- specs/338-extend-810-validation/ralph-memory.md
+- specs/338-extend-810-validation/progress.md
+**Learnings**:
+- Release profile, requested version, evidence root/workdir, tenant-role, tenant requirement, binary, build, evidence-file, reproducibility, confirmation, automation, and CI controls remain unset; `validation.md`, the documented `/tmp/c8volt-release-evidence` root, and retained aggregate evidence remain absent.
+- No disposable Camunda 8.10.3 target was explicitly authorized, and the v810 service still rejects history deletion when Camunda legitimately returns no batch operation; T010 remains incomplete and no destructive or broadened offline validation was run.
+---
+---
+## Iteration 74 - 2026-10-14 14:26
+**Work Unit**: T010 blocked pending authorized live acceptance environment
+**Tasks Completed**:
+- None
+**Tasks Remaining in Work Unit**: T010 in full
+**Commit**: No commit - no completed work unit
+**Files Changed**:
+- specs/338-extend-810-validation/ralph-memory.md
+- specs/338-extend-810-validation/progress.md
+**Learnings**:
+- Release profile, requested version, evidence root/workdir, tenant-role, tenant requirement, binary, build, evidence-file, and reproducibility controls remain unset; `validation.md`, the documented `/tmp/c8volt-release-evidence` root, and retained aggregate evidence remain absent.
+- No disposable Camunda 8.10.3 target was explicitly authorized, and the unresolved null deletion-batch product defect remains an unwaived release blocker; T010 remains incomplete and no destructive or broadened offline validation was run.
+---
+---
+## Iteration 75 - 2026-10-14 14:28
+**Work Unit**: T010 blocked pending authorized live acceptance environment
+**Tasks Completed**:
+- None
+**Tasks Remaining in Work Unit**: T010 in full
+**Commit**: No commit - no completed work unit
+**Files Changed**:
+- specs/338-extend-810-validation/ralph-memory.md
+- specs/338-extend-810-validation/progress.md
+**Learnings**:
+- Release profile, requested version, evidence root/workdir, tenant-role, tenant requirement, binary, build, evidence-file, and reproducibility controls remain unset; `validation.md`, the documented `/tmp/c8volt-release-evidence` root, and retained aggregate evidence remain absent.
+- No disposable Camunda 8.10.3 target was explicitly authorized, and the unresolved null deletion-batch product defect remains an unwaived release blocker; T010 remains incomplete and no destructive or broadened offline validation was run.
+---
+---
+## Iteration 76 - 2026-10-14 14:28
+**Work Unit**: T010 blocked pending authorized live acceptance environment
+**Tasks Completed**:
+- None
+**Tasks Remaining in Work Unit**: T010 in full
+**Commit**: No commit - no completed work unit
+**Files Changed**:
+- specs/338-extend-810-validation/ralph-memory.md
+- specs/338-extend-810-validation/progress.md
+**Learnings**:
+- Release profile, requested version, evidence root/workdir, tenant-role, tenant requirement, binary, build, evidence-file, reproducibility, confirmation, automation, and CI controls remain unset; `validation.md`, the documented `/tmp/c8volt-release-evidence` root, and retained aggregate evidence remain absent.
+- No disposable Camunda 8.10.3 target was explicitly authorized, and the unresolved null deletion-batch product defect remains an unwaived release blocker; T010 remains incomplete and no destructive or broadened offline validation was run.
+---
+---
+## Iteration 77 - 2026-10-14 14:30
+**Work Unit**: T010 blocked pending authorized live acceptance environment
+**Tasks Completed**:
+- None
+**Tasks Remaining in Work Unit**: T010 in full
+**Commit**: No commit - no completed work unit
+**Files Changed**:
+- specs/338-extend-810-validation/ralph-memory.md
+- specs/338-extend-810-validation/progress.md
+**Learnings**:
+- Release profile, requested version, evidence root/workdir, tenant-role, tenant requirement, binary, build, evidence-file, reproducibility, confirmation, automation, and CI controls remain unset; `validation.md`, the documented `/tmp/c8volt-release-evidence` root, and retained aggregate evidence remain absent.
+- No disposable Camunda 8.10.3 target was explicitly authorized, and the v810 resource service still rejects history deletion when Camunda legitimately returns no batch operation; T010 remains incomplete and no destructive or broadened offline validation was run.
+---
+---
+## Iteration 78 - 2026-10-14 14:31
+**Work Unit**: T010 blocked pending authorized live acceptance environment
+**Tasks Completed**:
+- None
+**Tasks Remaining in Work Unit**: T010 in full
+**Commit**: No commit - no completed work unit
+**Files Changed**:
+- specs/338-extend-810-validation/ralph-memory.md
+- specs/338-extend-810-validation/progress.md
+**Learnings**:
+- Release profile, requested version, evidence root/workdir, tenant-role, tenant requirement, binary, build, evidence-file, reproducibility, confirmation, automation, and CI controls remain unset; `validation.md`, the documented `/tmp/c8volt-release-evidence` root, and retained aggregate evidence remain absent.
+- No disposable Camunda 8.10.3 target was explicitly authorized, and the unresolved null deletion-batch product defect remains an unwaived release blocker; T010 remains incomplete and no destructive or broadened offline validation was run.
+---
+---
+## Iteration 79 - 2026-10-14 14:32
+**Work Unit**: T010 blocked pending authorized live acceptance environment
+**Tasks Completed**:
+- None
+**Tasks Remaining in Work Unit**: T010 in full
+**Commit**: No commit - no completed work unit
+**Files Changed**:
+- specs/338-extend-810-validation/ralph-memory.md
+- specs/338-extend-810-validation/progress.md
+**Learnings**:
+- Release profile, requested version, evidence root/workdir, tenant-role, tenant requirement, binary, build, evidence-file, reproducibility, confirmation, automation, and CI controls remain unset; `validation.md`, the documented `/tmp/c8volt-release-evidence` root, and retained aggregate evidence remain absent.
+- No disposable Camunda 8.10.3 target was explicitly authorized, and the unresolved null deletion-batch product defect remains an unwaived release blocker; T010 remains incomplete and no destructive or broadened offline validation was run.
+---
+---
+## Iteration 80 - 2026-10-14 14:34
+**Work Unit**: T010 blocked pending authorized live acceptance environment
+**Tasks Completed**:
+- None
+**Tasks Remaining in Work Unit**: T010 in full
+**Commit**: No commit - no completed work unit
+**Files Changed**:
+- specs/338-extend-810-validation/ralph-memory.md
+- specs/338-extend-810-validation/progress.md
+**Learnings**:
+- Release profile, requested version, evidence root/workdir, tenant-role, tenant requirement, binary, build, evidence-file, reproducibility, confirmation, automation, and CI controls remain unset; `validation.md`, the documented `/tmp/c8volt-release-evidence` root, and retained aggregate evidence remain absent.
+- No disposable Camunda 8.10.3 target was explicitly authorized, and the unresolved null deletion-batch product defect remains an unwaived release blocker; T010 remains incomplete and no destructive or broadened offline validation was run.
+---
+---
+## Iteration 81 - 2026-10-14 14:35
+**Work Unit**: T010 blocked pending authorized live acceptance environment
+**Tasks Completed**:
+- None
+**Tasks Remaining in Work Unit**: T010 in full
+**Commit**: No commit - no completed work unit
+**Files Changed**:
+- specs/338-extend-810-validation/ralph-memory.md
+- specs/338-extend-810-validation/progress.md
+**Learnings**:
+- Release profile, requested version, evidence root/workdir, tenant-role, tenant requirement, binary, build, evidence-file, reproducibility, confirmation, automation, and CI controls remain unset; `validation.md`, the documented `/tmp/c8volt-release-evidence` root, and retained aggregate evidence remain absent.
+- No disposable Camunda 8.10.3 target was explicitly authorized, and the unresolved null deletion-batch product defect remains an unwaived release blocker; T010 remains incomplete and no destructive or broadened offline validation was run.
+---
+---
+## Iteration 82 - 2026-10-14 14:36
+**Work Unit**: T010 blocked pending authorized live acceptance environment
+**Tasks Completed**:
+- None
+**Tasks Remaining in Work Unit**: T010 in full
+**Commit**: No commit - no completed work unit
+**Files Changed**:
+- specs/338-extend-810-validation/ralph-memory.md
+- specs/338-extend-810-validation/progress.md
+**Learnings**:
+- Release profile, requested version, evidence root/workdir, tenant-role, tenant requirement, binary, build, evidence-file, reproducibility, confirmation, automation, and CI controls remain unset; `validation.md`, the documented `/tmp/c8volt-release-evidence` root, and retained aggregate evidence remain absent.
+- No disposable Camunda 8.10.3 target was explicitly authorized, and the v810 resource service still rejects history deletion when Camunda legitimately returns no batch operation; T010 remains incomplete and no destructive or broadened offline validation was run.
+---
+---
+## Iteration 83 - 2026-10-14 14:37
+**Work Unit**: T010 blocked pending authorized live acceptance environment
+**Tasks Completed**:
+- None
+**Tasks Remaining in Work Unit**: T010 in full
+**Commit**: No commit - no completed work unit
+**Files Changed**:
+- specs/338-extend-810-validation/ralph-memory.md
+- specs/338-extend-810-validation/progress.md
+**Learnings**:
+- Release profile, requested version, evidence root/workdir, tenant-role, tenant requirement, binary, and build controls remain unset; `validation.md` and retained aggregate evidence remain absent.
+- No disposable Camunda 8.10.3 target was explicitly authorized, and the unresolved null deletion-batch product defect remains an unwaived release blocker; T010 remains incomplete and no destructive or broadened offline validation was run.
+---
+---
+## Iteration 84 - 2026-10-14 14:39
+**Work Unit**: T010 blocked pending authorized live acceptance environment
+**Tasks Completed**:
+- None
+**Tasks Remaining in Work Unit**: T010 in full
+**Commit**: No commit - no completed work unit
+**Files Changed**:
+- specs/338-extend-810-validation/ralph-memory.md
+- specs/338-extend-810-validation/progress.md
+**Learnings**:
+- Release profile, requested version, evidence root/workdir, tenant-role, tenant requirement, binary, build, evidence-file, reproducibility, confirmation, automation, and CI controls remain unset; `validation.md`, the documented `/tmp/c8volt-release-evidence` root, and retained aggregate evidence remain absent.
+- No disposable Camunda 8.10.3 target was explicitly authorized, and the unresolved null deletion-batch product defect remains an unwaived release blocker; T010 remains incomplete and no destructive or broadened offline validation was run.
+---
+---
+## Iteration 85 - 2026-10-14 14:40
+**Work Unit**: T010 blocked pending authorized live acceptance environment
+**Tasks Completed**:
+- None
+**Tasks Remaining in Work Unit**: T010 in full
+**Commit**: No commit - no completed work unit
+**Files Changed**:
+- specs/338-extend-810-validation/ralph-memory.md
+- specs/338-extend-810-validation/progress.md
+**Learnings**:
+- Release profile, requested version, evidence root/workdir, tenant-role, tenant requirement, binary, build, evidence-file, reproducibility, confirmation, automation, and CI controls remain unset; `validation.md`, the documented `/tmp/c8volt-release-evidence` root, and retained aggregate evidence remain absent.
+- No disposable Camunda 8.10.3 target was explicitly authorized, and the unresolved null deletion-batch product defect remains an unwaived release blocker; T010 remains incomplete and no destructive or broadened offline validation was run.
+---
+---
+## Iteration 86 - 2026-10-14 14:41
+**Work Unit**: T010 blocked pending authorized live acceptance environment
+**Tasks Completed**:
+- None
+**Tasks Remaining in Work Unit**: T010 in full
+**Commit**: No commit - no completed work unit
+**Files Changed**:
+- specs/338-extend-810-validation/ralph-memory.md
+- specs/338-extend-810-validation/progress.md
+**Learnings**:
+- Release profile, requested version, evidence root/workdir, tenant-role, tenant requirement, binary, build, confirmation, and automation controls remain unset; `validation.md` and retained aggregate evidence remain absent.
+- No disposable Camunda 8.10.3 target was explicitly authorized, and the unresolved null deletion-batch product defect remains an unwaived release blocker; T010 remains incomplete and no destructive or broadened offline validation was run.
+---
+---
+## Iteration 87 - 2026-10-14 14:42
+**Work Unit**: T010 blocked pending authorized live acceptance environment
+**Tasks Completed**:
+- None
+**Tasks Remaining in Work Unit**: T010 in full
+**Commit**: No commit - no completed work unit
+**Files Changed**:
+- specs/338-extend-810-validation/ralph-memory.md
+- specs/338-extend-810-validation/progress.md
+**Learnings**:
+- Release profile, requested version, evidence root/workdir, tenant-role, tenant requirement, binary, build, evidence-file, reproducibility, confirmation, automation, and CI controls remain unset; `validation.md`, the documented `/tmp/c8volt-release-evidence` root, and retained aggregate evidence remain absent.
+- No disposable Camunda 8.10.3 target was explicitly authorized, and the unresolved null deletion-batch product defect remains an unwaived release blocker; T010 remains incomplete and no destructive or broadened offline validation was run.
+---
+---
+## Iteration 88 - 2026-10-14 14:44
+**Work Unit**: T010 blocked pending authorized live acceptance environment
+**Tasks Completed**:
+- None
+**Tasks Remaining in Work Unit**: T010 in full
+**Commit**: No commit - no completed work unit
+**Files Changed**:
+- specs/338-extend-810-validation/ralph-memory.md
+- specs/338-extend-810-validation/progress.md
+**Learnings**:
+- Release profile, requested version, evidence root/workdir, tenant-role, tenant requirement, binary, build, evidence-file, reproducibility, confirmation, automation, and CI controls remain unset; `validation.md`, the documented `/tmp/c8volt-release-evidence` root, and retained aggregate evidence remain absent.
+- No disposable Camunda 8.10.3 target was explicitly authorized, and the unresolved null deletion-batch product defect remains an unwaived release blocker; T010 remains incomplete and no destructive or broadened offline validation was run.
+---
+---
+## Iteration 89 - 2026-10-14 14:45
+**Work Unit**: T010 blocked pending authorized live acceptance environment
+**Tasks Completed**:
+- None
+**Tasks Remaining in Work Unit**: T010 in full
+**Commit**: No commit - no completed work unit
+**Files Changed**:
+- specs/338-extend-810-validation/ralph-memory.md
+- specs/338-extend-810-validation/progress.md
+**Learnings**:
+- Release profile, requested version, evidence root/workdir, tenant-role, tenant requirement, binary, build, evidence-file, reproducibility, confirmation, automation, and CI controls remain unset; `validation.md`, the documented `/tmp/c8volt-release-evidence` root, and retained aggregate evidence remain absent.
+- No disposable Camunda 8.10.3 target was explicitly authorized, and the unresolved null deletion-batch product defect remains an unwaived release blocker; T010 remains incomplete and no destructive or broadened offline validation was run.
+---
+---
+## Iteration 90 - 2026-10-14 14:46
+**Work Unit**: T010 blocked pending authorized live acceptance environment
+**Tasks Completed**:
+- None
+**Tasks Remaining in Work Unit**: T010 in full
+**Commit**: No commit - no completed work unit
+**Files Changed**:
+- specs/338-extend-810-validation/ralph-memory.md
+- specs/338-extend-810-validation/progress.md
+**Learnings**:
+- Release profile, requested version, evidence root/workdir, tenant-role, tenant requirement, binary, build, evidence-file, reproducibility, confirmation, automation, and CI controls remain unset; `validation.md`, the documented `/tmp/c8volt-release-evidence` root, and retained aggregate evidence remain absent.
+- No disposable Camunda 8.10.3 target was explicitly authorized, and the unresolved null deletion-batch product defect remains an unwaived release blocker; T010 remains incomplete and no destructive or broadened offline validation was run.
+---
+---
+## Iteration 91 - 2026-10-14 14:47
+**Work Unit**: T010 blocked pending authorized live acceptance environment
+**Tasks Completed**:
+- None
+**Tasks Remaining in Work Unit**: T010 in full
+**Commit**: No commit - no completed work unit
+**Files Changed**:
+- specs/338-extend-810-validation/ralph-memory.md
+- specs/338-extend-810-validation/progress.md
+**Learnings**:
+- Release profile, requested version, evidence root/workdir, tenant-role, tenant requirement, binary, build, evidence-file, reproducibility, confirmation, automation, and CI controls remain unset; `validation.md`, the documented `/tmp/c8volt-release-evidence` root, and retained aggregate evidence remain absent.
+- A local c8volt configuration exists, but no disposable Camunda 8.10.3 profile from it was explicitly selected or authorized; the unresolved null deletion-batch product defect also remains an unwaived release blocker, so T010 remains incomplete and no destructive or broadened offline validation was run.
+---
+---
+## Iteration 92 - 2026-10-14 14:48
+**Work Unit**: T010 blocked pending authorized live acceptance environment
+**Tasks Completed**:
+- None
+**Tasks Remaining in Work Unit**: T010 in full
+**Commit**: No commit - no completed work unit
+**Files Changed**:
+- specs/338-extend-810-validation/ralph-memory.md
+- specs/338-extend-810-validation/progress.md
+**Learnings**:
+- Release profile, requested version, evidence root/workdir, tenant-role, tenant requirement, binary, build, evidence-file, reproducibility, confirmation, automation, and CI controls remain unset; `validation.md`, the documented `/tmp/c8volt-release-evidence` root, and retained aggregate evidence remain absent.
+- No disposable Camunda 8.10.3 target was explicitly selected or authorized, and the unresolved null deletion-batch product defect remains an unwaived release blocker; T010 remains incomplete and no destructive or broadened offline validation was run.
+---
+---
+## Iteration 93 - 2026-10-14 14:49
+**Work Unit**: T010 blocked pending authorized live acceptance environment
+**Tasks Completed**:
+- None
+**Tasks Remaining in Work Unit**: T010 in full
+**Commit**: No commit - no completed work unit
+**Files Changed**:
+- specs/338-extend-810-validation/ralph-memory.md
+- specs/338-extend-810-validation/progress.md
+**Learnings**:
+- Release profile, requested version, evidence root/workdir, tenant-role, tenant requirement, binary, build, evidence-file, reproducibility, confirmation, automation, and CI controls remain unset; `validation.md`, the documented `/tmp/c8volt-release-evidence` root, and retained aggregate evidence remain absent.
+- No disposable Camunda 8.10.3 target was explicitly selected or authorized, and the unresolved null deletion-batch product defect remains an unwaived release blocker; T010 remains incomplete and no destructive or broadened offline validation was run.
+---
+---
+## Iteration 94 - 2026-10-14 14:50
+**Work Unit**: T010 blocked pending authorized live acceptance environment
+**Tasks Completed**:
+- None
+**Tasks Remaining in Work Unit**: T010 in full
+**Commit**: No commit - no completed work unit
+**Files Changed**:
+- specs/338-extend-810-validation/ralph-memory.md
+- specs/338-extend-810-validation/progress.md
+**Learnings**:
+- Release profile, requested version, evidence root/workdir, tenant-role, tenant requirement, binary, build, evidence-file, reproducibility, confirmation, automation, and CI controls remain unset; `validation.md`, the documented `/tmp/c8volt-release-evidence` root, and retained aggregate evidence remain absent.
+- No disposable Camunda 8.10.3 target was explicitly selected or authorized, and the unresolved null deletion-batch product defect remains an unwaived release blocker; T010 remains incomplete and no destructive or broadened offline validation was run.
+---
+---
+## Iteration 95 - 2026-10-14 14:51
+**Work Unit**: T010 blocked pending authorized live acceptance environment
+**Tasks Completed**:
+- None
+**Tasks Remaining in Work Unit**: T010 in full
+**Commit**: No commit - no completed work unit
+**Files Changed**:
+- specs/338-extend-810-validation/ralph-memory.md
+- specs/338-extend-810-validation/progress.md
+**Learnings**:
+- Release profile, requested version, evidence root/workdir, tenant-role, tenant requirement, binary, build, evidence-file, reproducibility, confirmation, automation, and CI controls remain unset; `validation.md`, the documented `/tmp/c8volt-release-evidence` root, and retained aggregate evidence remain absent.
+- No disposable Camunda 8.10.3 target was explicitly selected or authorized, and the unresolved null deletion-batch product defect remains an unwaived release blocker; T010 remains incomplete and no destructive or broadened offline validation was run.
+---
+---
+## Iteration 96 - 2026-10-14 14:52
+**Work Unit**: T010 blocked pending authorized live acceptance environment
+**Tasks Completed**:
+- None
+**Tasks Remaining in Work Unit**: T010 in full
+**Commit**: No commit - no completed work unit
+**Files Changed**:
+- specs/338-extend-810-validation/ralph-memory.md
+- specs/338-extend-810-validation/progress.md
+**Learnings**:
+- Release profile, requested version, evidence root/workdir, tenant-role, tenant requirement, binary, build, evidence-file, reproducibility, confirmation, automation, and CI controls remain unset; `validation.md`, the documented `/tmp/c8volt-release-evidence` root, and retained aggregate evidence remain absent.
+- No disposable Camunda 8.10.3 target was explicitly selected or authorized, and the unresolved null deletion-batch product defect remains an unwaived release blocker; T010 remains incomplete and no destructive or broadened offline validation was run.
+---
+---
+## Iteration 97 - 2026-10-14 14:53
+**Work Unit**: T010 blocked pending authorized live acceptance environment
+**Tasks Completed**:
+- None
+**Tasks Remaining in Work Unit**: T010 in full
+**Commit**: No commit - no completed work unit
+**Files Changed**:
+- specs/338-extend-810-validation/ralph-memory.md
+- specs/338-extend-810-validation/progress.md
+**Learnings**:
+- Release profile, requested version, evidence root/workdir, tenant-role, tenant requirement, binary, and build controls remain unset; `validation.md` and retained aggregate evidence remain absent.
+- No disposable Camunda 8.10.3 target was explicitly selected or authorized, and the unresolved null deletion-batch product defect remains an unwaived release blocker; T010 remains incomplete and no destructive or broadened offline validation was run.
+---
+---
+## Iteration 98 - 2026-10-14 14:55
+**Work Unit**: T010 blocked pending authorized live acceptance environment
+**Tasks Completed**:
+- None
+**Tasks Remaining in Work Unit**: T010 in full
+**Commit**: No commit - no completed work unit
+**Files Changed**:
+- specs/338-extend-810-validation/ralph-memory.md
+- specs/338-extend-810-validation/progress.md
+**Learnings**:
+- Release profile, requested version, evidence root/workdir, tenant-role, tenant requirement, binary, build, evidence-file, reproducibility, confirmation, automation, and CI controls remain unset; `validation.md`, the documented `/tmp/c8volt-release-evidence` root, and retained aggregate evidence remain absent.
+- No disposable Camunda 8.10.3 target was explicitly selected or authorized, and the v810 resource service still rejects history deletion when Camunda legitimately returns no batch operation; T010 remains incomplete and no destructive or broadened offline validation was run.
+---
+---
+## Iteration 99 - 2026-10-14 14:57
+**Work Unit**: T010 blocked pending authorized live acceptance environment
+**Tasks Completed**:
+- None
+**Tasks Remaining in Work Unit**: T010 in full
+**Commit**: No commit - no completed work unit
+**Files Changed**:
+- specs/338-extend-810-validation/ralph-memory.md
+- specs/338-extend-810-validation/progress.md
+**Learnings**:
+- Release profile, requested version, evidence root/workdir, tenant-role, tenant requirement, binary, build, evidence-file, reproducibility, confirmation, automation, and CI controls remain unset; `validation.md`, the documented `/tmp/c8volt-release-evidence` root, and retained aggregate evidence remain absent.
+- No disposable Camunda 8.10.3 target was explicitly selected or authorized, and the v810 resource service still rejects history deletion when Camunda legitimately returns no batch operation; T010 remains incomplete and no destructive or broadened offline validation was run.
+---
+---
+## Iteration 100 - 2026-10-14 14:58
+**Work Unit**: T010 blocked pending authorized live acceptance environment
+**Tasks Completed**:
+- None
+**Tasks Remaining in Work Unit**: T010 in full
+**Commit**: No commit - no completed work unit
+**Files Changed**:
+- specs/338-extend-810-validation/ralph-memory.md
+- specs/338-extend-810-validation/progress.md
+**Learnings**:
+- Release profile, requested version, evidence root/workdir, tenant-role, tenant requirement, binary, build, evidence-file, reproducibility, confirmation, automation, and CI controls remain unset; `validation.md`, the documented `/tmp/c8volt-release-evidence` root, and retained aggregate evidence remain absent.
+- No disposable Camunda 8.10.3 target was explicitly selected or authorized, and the v810 resource service still rejects history deletion when Camunda legitimately returns no batch operation; T010 remains incomplete and no destructive or broadened offline validation was run.
+---
+
+## Direct acceptance follow-up — 2026-10-14
+
+The operator explicitly authorized disposable c810local (observed 8.10.3).
+Ralph was not restarted. Fixed the null-batch adapter, preflight gating, example
+substitutions/quoting/watch bounds, and isolated draining/batch fixtures.
+Full offline race tests passed; repaired examples and draining passed live.
+The aggregate completed 32 slices, with 31 passing and batch failing from shared
+fixture counts. The isolated batch follow-up then passed cancellation, deletion,
+exact eventual counters and resource post-state alongside draining (58.160s).
+T010 remains open pending a clean aggregate; see validation.md for all evidence
+roots, gaps, historical failures, and review limits. No failure was waived.

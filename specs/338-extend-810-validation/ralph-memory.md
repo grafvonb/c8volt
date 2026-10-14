@@ -17,7 +17,7 @@ Started: 2026-10-14T09:50:16Z
 - All seven real-state family consumers share `selectedRealStateProfiles`; readiness preserves the configured minor plus the full observed gateway version and rejects mismatched or unparseable observations before mutation.
 - Cascade scenarios derive exact C89/C810 parent, mid, and leaf process IDs and require all three deployed definitions before creating evidence; historical 8.9 matrix claims remain distinct from pending 8.10 live proof.
 - The focused `batch` slice is 8.10-only and owns `TestBatchFamily` plus held-instance `TestRealStateProcessDefinitionDraining`; batch cancellation/deletion evidence separates submission, terminal accounting, and independent post-state.
-- Tagged tests can classify a required failure as `product` through the normalized evidence override without accepting it as a gap; the current null deletion-batch rejection remains intentionally unsuccessful until a separate adapter fix lands.
+- Tagged tests can classify a required failure as `product` through the normalized evidence override without accepting it as a gap; the null deletion-batch rejection was fixed separately in 9fbf1ed5 and verified with a uniquely isolated live draining fixture.
 - Direct 8.10 compatibility scenarios reuse the default-local profile through the same HTTP/auth bootstrap while persisting only profile, observed version, keys, counts, states, and proof levels.
 - Logical tenant roles are strict credential-free JSON mapped to four distinct default-local profiles; runner validation reads only inherited minor/tenant metadata, preflights all role profiles before mutation, and never persists authentication fields.
 - Tenant catalog proof is role-specific: logical and physical absence remain named optional gaps, `physical` requires both groups, and every declared profile passes topology readiness before tenant mutations.
@@ -38,6 +38,7 @@ Started: 2026-10-14T09:50:16Z
 - Every persisted request, target, slice, scenario evidence, catalog, manifest, and summary uses schema version 1.
 - Runner manifests persist planned/running state before child completion; a hard kill therefore remains incomplete, and a readiness loss leaves later slices planned rather than submitting mutations.
 - Summary reasons are redacted; do not persist raw configuration, credentials, or credential-bearing route identities in manifests and child artifacts.
+- Iterations 10–100 were blocked without a selected target. The operator subsequently authorized disposable c810local; observed version is 8.10.3. Consult validation.md for retained runs and current acceptance status.
 
 ## Reusable Commands
 
@@ -57,4 +58,4 @@ Started: 2026-10-14T09:50:16Z
 - Do not infer completeness from child exit code or discovered files; reduce the frozen catalog against normalized current-run evidence.
 
 ## Current Handoff
-- Continue with T010 only after explicit disposable-environment selection and live execution authorization; retain blockers for unavailable required tenant infrastructure or the unresolved null deletion-batch product defect.
+- T010 live acceptance is now authorized on c810local (8.10.3). Adapter, examples, and isolated draining fixes passed focused validation; the aggregate completed 31/32 slices successfully. The batch failure was repaired and passed separately; a clean aggregate is still pending. Evidence is recorded in validation.md. Do not restart Ralph or treat missing tenant/older-version proof as completed coverage.
