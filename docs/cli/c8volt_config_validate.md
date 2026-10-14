@@ -24,7 +24,7 @@ c8volt config validate [flags]
   ./c8volt --config ./config.yaml config validate
   ./c8volt --profile <profile-name> config validate
   ./c8volt --tenant tenant-a config validate
-  ./c8volt --tenant "" config validate
+  ./c8volt --all-tenants config validate
 ```
 
 ### Options

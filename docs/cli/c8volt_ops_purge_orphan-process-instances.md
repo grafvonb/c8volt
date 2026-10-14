@@ -26,7 +26,7 @@ c8volt ops purge orphan-process-instances [flags]
 ```
   ./c8volt ops purge orphan-process-instances --dry-run
   ./c8volt --tenant tenant-a ops purge orphan-process-instances --dry-run
-  ./c8volt --tenant "" ops purge orphan-process-instances --dry-run
+  ./c8volt --all-tenants ops purge orphan-process-instances --dry-run
   ./c8volt ops purge orphan-process-instances --dry-run --bpmn-process-id <bpmn-process-id> --limit 25
   ./c8volt ops purge orphan-process-instances --state completed --limit 25
   ./c8volt --verbose ops purge orphan-process-instances --state completed --limit 25 --auto-confirm

@@ -57,7 +57,7 @@ The workflow fixes the incident target set, applies requested variables once per
 Use --dry-run to inspect planned repairs without mutation, --auto-confirm or --automation for unattended repair, and --report-file to save an audit report.`,
 	Example: `  ./c8volt ops repair incident --key <incident-key> --dry-run
   ./c8volt --tenant tenant-a ops repair incident --key <incident-key> --dry-run
-  ./c8volt --tenant "" ops repair incident --state active --limit 5 --dry-run
+  ./c8volt --all-tenants ops repair incident --state active --limit 5 --dry-run
   ./c8volt ops repair incident --state active --error-type io_mapping_error --limit 5 --dry-run
   ./c8volt ops repair incident --key <incident-key> --vars '{"hasIncident":false}' --dry-run
   ./c8volt --verbose ops repair incident --state active --error-type io_mapping_error --limit 5 --auto-confirm

@@ -36,7 +36,7 @@ Use --dry-run to preview impact without mutation, or --auto-confirm for unattend
   ./c8volt delete process-definition --key <process-definition-key> --dry-run
   ./c8volt --tenant tenant-a delete process-definition --key <process-definition-key> --dry-run
   ./c8volt --tenant tenant-a delete process-definition --bpmn-process-id <bpmn-process-id> --latest --dry-run
-  ./c8volt --tenant "" delete process-definition --bpmn-process-id <bpmn-process-id> --latest --dry-run
+  ./c8volt --all-tenants delete process-definition --bpmn-process-id <bpmn-process-id> --latest --dry-run
   ./c8volt delete process-definition --bpmn-process-id <bpmn-process-id> --latest --force
   ./c8volt delete process-definition --bpmn-process-id <bpmn-process-id> --latest --dry-run
   ./c8volt delete process-definition --bpmn-process-id <bpmn-process-id> --latest --auto-confirm

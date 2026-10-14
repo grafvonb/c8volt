@@ -22,7 +22,7 @@ Loads the effective configuration, validates it locally, and retrieves cluster t
   ./c8volt --config ./config.yaml config test-connection --json
   ./c8volt --profile <profile-name> config test-connection
   ./c8volt --tenant tenant-a config test-connection
-  ./c8volt --tenant "" config test-connection --json`,
+  ./c8volt --all-tenants config test-connection --json`,
 	Run: func(cmd *cobra.Command, args []string) {
 		log, _ := logging.FromContext(cmd.Context())
 		cfg, err := config.FromContext(cmd.Context())

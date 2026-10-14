@@ -29,7 +29,7 @@ Precedence: flag > env > profile > base config > default. A named tenant limits 
 	Example: `  ./c8volt config show
   ./c8volt --config ./config.yaml --profile <profile-name> config show
   ./c8volt --tenant tenant-a config show
-  ./c8volt --tenant "" config show
+  ./c8volt --all-tenants config show
   ./c8volt --config ./config.yaml config show --validate
   ./c8volt config show --template`,
 	Run: func(cmd *cobra.Command, args []string) {

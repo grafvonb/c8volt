@@ -40,7 +40,7 @@ Use --dry-run to preview the affected family without cancelling. Use --auto-conf
   ./c8volt cancel process-instance --key <process-instance-key> --force
   ./c8volt --tenant tenant-a cancel process-instance --key <process-instance-key> --dry-run
   ./c8volt --tenant tenant-a cancel process-instance --state active --limit 5 --dry-run
-  ./c8volt --tenant "" cancel process-instance --state active --limit 5 --dry-run
+  ./c8volt --all-tenants cancel process-instance --state active --limit 5 --dry-run
   ./c8volt cancel process-instance --state active --batch-size 250 --limit 5 --dry-run
   ./c8volt cancel process-instance --state active --json --dry-run
   ./c8volt cancel process-instance --state active --keys-only
