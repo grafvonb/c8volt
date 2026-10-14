@@ -11,6 +11,8 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -35,7 +37,7 @@ func TestRealStateProcessDefinitionDraining(t *testing.T) {
 	var evidence []batchScenarioEvidence
 	var productFailures []string
 	for _, profile := range profiles {
-		dataset, _, err := seedVolumeProcessInstanceDataset(t, profile, 1)
+		dataset, _, err := seedIsolatedDrainingDataset(t, profile)
 		if err != nil {
 			t.Errorf("seed draining dataset for profile %q: %v", profile.Name, err)
 			continue
@@ -819,4 +821,35 @@ func firstNRealStateIncidents(values []realStateIncident, count int) []realState
 		count = len(values)
 	}
 	return append([]realStateIncident(nil), values[:count]...)
+}
+
+// seedIsolatedDrainingDataset prevents old instances and call activities in a
+// dirty cluster from holding the tested definition in DRAINING.
+func seedIsolatedDrainingDataset(t *testing.T, profile integrationProfile) (volumeDataset, []evidenceRecord, error) {
+	t.Helper()
+	selection, _, err := discoverEmbeddedFixture(t, profile)
+	if err != nil {
+		return volumeDataset{}, nil, err
+	}
+	data, err := os.ReadFile(filepath.Join(suite.repoRoot, "embedded", selection.Path))
+	if err != nil {
+		return volumeDataset{}, nil, err
+	}
+	id := selection.BpmnProcessID + "_draining_" + sanitizeEvidenceName(suite.marker+"_"+profile.Name)
+	data = []byte(strings.ReplaceAll(string(data), selection.BpmnProcessID, id))
+	path := filepath.Join(suite.workDir, id+".bpmn")
+	if err := os.WriteFile(path, data, 0600); err != nil {
+		return volumeDataset{}, nil, err
+	}
+	result := runC8VoltForProfile(t, profile.Name, "draining-isolated-deploy", "--automation", "--json", "deploy", "pd", "--file", path)
+	if result.Err != nil {
+		return volumeDataset{}, nil, fmt.Errorf("deploy isolated draining fixture: %w; %s", result.Err, result.Stderr)
+	}
+	var deployments []seededDeployment
+	if err := decodeCommandPayload(result.Stdout, &deployments); err != nil {
+		return volumeDataset{}, nil, err
+	}
+	selection.BpmnProcessID = id
+	instances, record, err := runSeededProcessInstance(t, profile, selection, deployments)
+	return volumeDataset{PositiveBpmnProcessID: id, PositiveProcessDefinitionKeys: processDefinitionKeys(deployments), PositiveProcessInstanceKeys: processInstanceKeys(instances)}, []evidenceRecord{record}, err
 }

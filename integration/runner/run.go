@@ -278,6 +278,9 @@ func run(
 		}
 		childEvidence, interrupted := runSlice(ctx, cfg, request, binaryPath, target.ObservedVersion, slice, execer, now)
 		evidence = append(evidence, childEvidence...)
+		if slice.SliceID == "common-preflight" && slice.State != validation.SliceFinished {
+			unsafeProfiles[slice.Profile] = true
+		}
 		if err := writeJSONAtomic(manifestPath, manifest); err != nil {
 			return exitFailed, fmt.Errorf("persist slice manifest: %w", err)
 		}

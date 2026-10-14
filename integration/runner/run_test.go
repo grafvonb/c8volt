@@ -638,3 +638,25 @@ func readJSONFile(t *testing.T, path string, target any) {
 		t.Fatalf("decode trailing %s: %v", path, err)
 	}
 }
+
+func TestCommonPreflightFailureStopsProfileMutations(t *testing.T) {
+	cfg := testRunnerConfig(t, []string{"dev810"})
+	catalog, gaps := testPolicy("common-preflight", "common-examples", "baseline-get")
+	passing := passingExecutor(t, "8.10.3")
+	execer := &fakeExecutor{handler: func(ctx context.Context, spec commandSpec) commandResult {
+		if spec.Kind == commandSlice {
+			if spec.SliceID != "common-preflight" {
+				t.Fatalf("mutation-capable slice %s ran after common preflight failed", spec.SliceID)
+			}
+			return commandResult{ExitCode: 1, Stdout: goTestEvent("fail")}
+		}
+		return passing.handler(ctx, spec)
+	}}
+	exitCode, _ := run(context.Background(), cfg, catalog, gaps, execer, fixedClock())
+	if exitCode != exitFailed {
+		t.Fatalf("exit = %d, want failure", exitCode)
+	}
+	if countKind(execer.commands(), commandSlice) != 1 {
+		t.Fatal("expected only common preflight")
+	}
+}
