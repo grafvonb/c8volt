@@ -35,19 +35,19 @@ func Root() *cobra.Command { return rootCmd }
 var rootCmd = &cobra.Command{
 	Use:   "c8volt",
 	Short: "Operate Camunda 8 workflows from the command line",
-	Long: `c8volt: Camunda 8 Operations CLI.
+	Long: fmt.Sprintf(`c8volt: Camunda 8 Operations CLI.
 
 Deploy BPMN models, start process instances, inspect workflow state, wait for
 state changes, walk process trees, cancel, and delete.
 
 Supports Camunda 8.8, 8.9, and 8.10.
-Camunda 8.10 baseline: 8.10.0-alpha4 (prerelease).
+Camunda 8.10 baseline: %s (%s).
 Camunda 8.10 aliases: 8.10, 810, v810, v8.10. Default: 8.9.
 Use capabilities to discover supported commands and automation options.
 
 On API-backed commands, --debug emits redacted request diagnostics at DEBUG
 alongside other configured logs. --quiet and log-level filtering still apply;
-log format, timestamps, and source settings use the existing logger.`,
+log format, timestamps, and source settings use the existing logger.`, toolx.V810Baseline().Tag, toolx.V810Baseline().Status),
 	Example: `  ./c8volt config show --template
   ./c8volt --config ./config.yaml config show --validate
   ./c8volt get cluster topology

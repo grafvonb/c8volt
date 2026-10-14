@@ -174,7 +174,7 @@ func TestRootHelp_V89SupportMessaging(t *testing.T) {
 	output := executeRootForTest(t, "--help")
 
 	require.Contains(t, output, "Camunda 8.8, 8.9, and 8.10")
-	require.Contains(t, output, "Camunda 8.10 baseline: 8.10.0-alpha4 (prerelease)")
+	require.Contains(t, output, "Camunda 8.10 baseline: 8.10.3 (final)")
 	require.Contains(t, output, "capabilities")
 	require.NotContains(t, output, "version 8.9 is recognized by config normalization")
 	require.NotContains(t, output, "does not yet have a process-instance service implementation")

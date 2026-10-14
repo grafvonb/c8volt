@@ -66,13 +66,17 @@ Full workflow:
 
 Camunda 8.10 uses one c8volt compatibility identity, `8.10`, backed by one
 checked-in unified client under `internal/clients/camunda/v810/camunda`. The
-initial active source baseline is Camunda `8.10.0-alpha4` at peeled commit
-`4a76f06c9df8ad0a6c64fe88b92c618c2ebf2ef6`.
+active source baseline is Camunda `8.10.3` at peeled commit
+`3961b79c3fdaf43c48691ed77672d6db42d0abcc`.
 
 Reproduce the active baseline from the repository root with the command recorded
 in provenance:
 
-- `bash api/refresh-clients.sh --target v810 --camunda-tag 8.10.0-alpha4`
+- `bash api/refresh-clients.sh --target v810 --camunda-tag 8.10.3`
+
+After changing the baseline, align `toolx/camunda_baseline.go` with the tag,
+commit, and release status in provenance. CLI help and version output use this
+metadata. Regenerate CLI documentation with `make docs-content`.
 
 The command publishes only these V810 artifacts:
 
