@@ -11,21 +11,18 @@ import (
 	"strings"
 	"testing"
 	"time"
-)
 
-const (
-	realStateCascadeParentBPMN = "C89_MultipleSubProcessesParent"
-	realStateCascadeMidBPMN    = "C89_SimpleParent"
-	realStateCascadeLeafBPMN   = "C89_SimpleUserTask"
+	"github.com/grafvonb/c8volt/integration/internal/validation"
 )
 
 type realStateCascadeDataset struct {
-	Fixture                    realStateFixture `json:"fixture"`
-	ParentProcessDefinitionKey string           `json:"parentProcessDefinitionKey"`
-	RootProcessInstanceKey     string           `json:"rootProcessInstanceKey"`
-	MidProcessInstanceKey      string           `json:"midProcessInstanceKey"`
-	LeafProcessInstanceKeys    []string         `json:"leafProcessInstanceKeys,omitempty"`
-	FamilyProcessInstanceKeys  []string         `json:"familyProcessInstanceKeys"`
+	Fixture                    realStateFixture             `json:"fixture"`
+	ProcessIDs                 validation.CascadeProcessIDs `json:"processIds"`
+	ParentProcessDefinitionKey string                       `json:"parentProcessDefinitionKey"`
+	RootProcessInstanceKey     string                       `json:"rootProcessInstanceKey"`
+	MidProcessInstanceKey      string                       `json:"midProcessInstanceKey"`
+	LeafProcessInstanceKeys    []string                     `json:"leafProcessInstanceKeys,omitempty"`
+	FamilyProcessInstanceKeys  []string                     `json:"familyProcessInstanceKeys"`
 }
 
 type realStateCascadeWalkPayload struct {
@@ -41,8 +38,10 @@ type realStateCascadeDeleteItem struct {
 	Ok  bool   `json:"ok"`
 }
 
+// TestRealStateCascadeFamily exercises the version-matched parent/call-activity
+// closure for every selected supported real-state profile.
 func TestRealStateCascadeFamily(t *testing.T) {
-	profiles := selectedRealStateC89Profiles(t)
+	profiles := selectedRealStateProfiles(t)
 
 	report := realStateFamilyReport{
 		Family:   "cascade",
@@ -118,13 +117,20 @@ func TestRealStateCascadeFamily(t *testing.T) {
 	}
 }
 
+// seedRealStateCascadeDataset creates and identifies one complete
+// version-matched parent/mid/leaf family for a scenario.
 func seedRealStateCascadeDataset(t *testing.T, profile integrationProfile, label string) (realStateCascadeDataset, []evidenceRecord, error) {
 	t.Helper()
 	var records []evidenceRecord
+	processIDs, err := validation.RealStateCascadeProcessIDs(profile.ExpectedVersion)
+	if err != nil {
+		return realStateCascadeDataset{}, records, fmt.Errorf("resolve cascade fixtures for profile %q: %w", profile.Name, err)
+	}
 	dataset := realStateCascadeDataset{
+		ProcessIDs: processIDs,
 		Fixture: realStateFixture{
 			FixtureKind:          "embedded parent/call-activity BPMN dependency closure through c8volt commands",
-			BpmnProcessID:        realStateCascadeParentBPMN,
+			BpmnProcessID:        processIDs.Parent,
 			Marker:               suite.marker,
 			Profile:              profile.Name,
 			CamundaVersion:       profile.ExpectedVersion,
@@ -134,13 +140,13 @@ func seedRealStateCascadeDataset(t *testing.T, profile integrationProfile, label
 		},
 	}
 
-	deployments, record, err := deployRealStateCascadeDefinitions(t, profile, label)
+	deployments, record, err := deployRealStateCascadeDefinitions(t, profile, label, processIDs)
 	records = append(records, record)
 	if err != nil {
 		return dataset, records, err
 	}
 	dataset.Fixture.ProcessDefinitionKeys = processDefinitionKeys(deployments)
-	parentDeployment, ok := seededDeploymentByDefinitionID(deployments, realStateCascadeParentBPMN)
+	parentDeployment, ok := seededDeploymentByDefinitionID(deployments, processIDs.Parent)
 	if !ok || parentDeployment.DefinitionKey == "" {
 		return dataset, records, fmt.Errorf("cascade seed %q for profile %q did not return parent process-definition key", label, profile.Name)
 	}
@@ -156,7 +162,7 @@ func seedRealStateCascadeDataset(t *testing.T, profile integrationProfile, label
 		return dataset, records, fmt.Errorf("cascade seed %q for profile %q returned no root process-instance key", label, profile.Name)
 	}
 
-	walk, record, err := waitForRealStateCascadeFamily(t, profile, label, dataset.RootProcessInstanceKey)
+	walk, record, err := waitForRealStateCascadeFamily(t, profile, label, dataset.RootProcessInstanceKey, processIDs)
 	records = append(records, record)
 	if err != nil {
 		return dataset, records, err
@@ -164,11 +170,11 @@ func seedRealStateCascadeDataset(t *testing.T, profile integrationProfile, label
 	dataset.FamilyProcessInstanceKeys = append([]string(nil), walk.Keys...)
 	for _, item := range walk.Items {
 		switch item.BpmnProcessID {
-		case realStateCascadeMidBPMN:
+		case processIDs.Mid:
 			if dataset.MidProcessInstanceKey == "" {
 				dataset.MidProcessInstanceKey = item.Key
 			}
-		case realStateCascadeLeafBPMN:
+		case processIDs.Leaf:
 			dataset.LeafProcessInstanceKeys = append(dataset.LeafProcessInstanceKeys, item.Key)
 		}
 	}
@@ -180,7 +186,9 @@ func seedRealStateCascadeDataset(t *testing.T, profile integrationProfile, label
 	return dataset, records, nil
 }
 
-func deployRealStateCascadeDefinitions(t *testing.T, profile integrationProfile, label string) ([]seededDeployment, evidenceRecord, error) {
+// deployRealStateCascadeDefinitions requires every process in the selected
+// version's closure so a partial fixture set cannot produce misleading proof.
+func deployRealStateCascadeDefinitions(t *testing.T, profile integrationProfile, label string, processIDs validation.CascadeProcessIDs) ([]seededDeployment, evidenceRecord, error) {
 	t.Helper()
 	scenario := "real-state-cascade-" + label + "-embed-deploy-all"
 	result := runC8VoltForProfile(t, profile.Name, scenario, "--automation", "--json", "embed", "deploy", "--all")
@@ -198,10 +206,13 @@ func deployRealStateCascadeDefinitions(t *testing.T, profile integrationProfile,
 		return nil, record, fmt.Errorf("decode cascade embed deploy output for profile %q: %w", profile.Name, err)
 	}
 	record.ResourceKeys = processDefinitionKeys(deployments)
-	if _, ok := seededDeploymentByDefinitionID(deployments, realStateCascadeParentBPMN); !ok {
+	for _, processID := range []string{processIDs.Parent, processIDs.Mid, processIDs.Leaf} {
+		if _, ok := seededDeploymentByDefinitionID(deployments, processID); ok {
+			continue
+		}
 		record.Outcome = realStateOutcomeFailed
-		record.FailureClass = volumeFailureProduct
-		return nil, record, fmt.Errorf("cascade embed deploy --all did not deploy %s for profile %q", realStateCascadeParentBPMN, profile.Name)
+		record.FailureClass = "missing_fixture_support"
+		return nil, record, fmt.Errorf("cascade embed deploy --all did not deploy %s for profile %q", processID, profile.Name)
 	}
 	return deployments, record, nil
 }
@@ -227,7 +238,9 @@ func runRealStateCascadeParentInstance(t *testing.T, profile integrationProfile,
 	return instances, record, nil
 }
 
-func waitForRealStateCascadeFamily(t *testing.T, profile integrationProfile, label string, rootKey string) (realStateCascadeWalkPayload, evidenceRecord, error) {
+// waitForRealStateCascadeFamily polls until the selected version's complete
+// process identity shape is observable from the root.
+func waitForRealStateCascadeFamily(t *testing.T, profile integrationProfile, label string, rootKey string, processIDs validation.CascadeProcessIDs) (realStateCascadeWalkPayload, evidenceRecord, error) {
 	t.Helper()
 	var lastResult commandResult
 	var lastErr error
@@ -242,7 +255,7 @@ func waitForRealStateCascadeFamily(t *testing.T, profile integrationProfile, lab
 			var payload realStateCascadeWalkPayload
 			if err := decodeCommandPayload(result.Stdout, &payload); err != nil {
 				lastErr = err
-			} else if err := validateRealStateCascadeFamilyShape(payload, rootKey); err != nil {
+			} else if err := validateRealStateCascadeFamilyShape(payload, rootKey, processIDs); err != nil {
 				lastErr = err
 			} else {
 				record.ResourceKeys = append([]string(nil), payload.Keys...)
@@ -411,7 +424,9 @@ func realStateCascadeRecord(profile integrationProfile, dataset realStateCascade
 	return record
 }
 
-func validateRealStateCascadeFamilyShape(payload realStateCascadeWalkPayload, rootKey string) error {
+// validateRealStateCascadeFamilyShape rejects cross-version or incomplete
+// families even when the walk itself reports a complete traversal.
+func validateRealStateCascadeFamilyShape(payload realStateCascadeWalkPayload, rootKey string, processIDs validation.CascadeProcessIDs) error {
 	if payload.RootKey != rootKey {
 		return fmt.Errorf("cascade family rootKey = %q, want %q", payload.RootKey, rootKey)
 	}
@@ -428,7 +443,7 @@ func validateRealStateCascadeFamilyShape(payload realStateCascadeWalkPayload, ro
 	for _, item := range payload.Items {
 		counts[item.BpmnProcessID]++
 	}
-	if counts[realStateCascadeParentBPMN] != 1 || counts[realStateCascadeMidBPMN] < 1 || counts[realStateCascadeLeafBPMN] < 2 {
+	if counts[processIDs.Parent] != 1 || counts[processIDs.Mid] < 1 || counts[processIDs.Leaf] < 2 {
 		return fmt.Errorf("cascade family BPMN counts = %v, want parent=1 mid>=1 leaf>=2", counts)
 	}
 	return nil

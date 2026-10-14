@@ -81,3 +81,35 @@ Started: 2026-10-14 11:50:17
 - Test cleanup callbacks preserve the final pass/skip/fail result before `TestMain` atomically hands one strict evidence array to the runner.
 - Making manifest parity mandatory exposed current inventory drift; the common gate now accounts for all 57 commands and current flags/output modes.
 ---
+---
+## Iteration 4 - 2026-10-14 12:27
+**Work Unit**: T004 Complete US2 version-aware real-state coverage selection
+**Tasks Completed**:
+- [x] T004: Generalize all seven real-state families to canonical 8.9/8.10 selection with exact readiness and version-matched cascade fixtures
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- integration/README.md
+- integration/cli/config_test.go
+- integration/cli/deploy_embed_run_test.go
+- integration/cli/harness_test.go
+- integration/cli/real_state_bpmn_error_test.go
+- integration/cli/real_state_cascade_test.go
+- integration/cli/real_state_destructive_test.go
+- integration/cli/real_state_gap_validation_test.go
+- integration/cli/real_state_harness_test.go
+- integration/cli/real_state_incidents_test.go
+- integration/cli/real_state_jobs_test.go
+- integration/cli/real_state_listeners_test.go
+- integration/cli/real_state_retention_test.go
+- integration/internal/validation/fixtures.go
+- integration/internal/validation/fixtures_test.go
+- specs/257-c89-real-state-integration/coverage-matrix.md
+- specs/257-c89-real-state-integration/gaps.md
+- specs/338-extend-810-validation/tasks.md
+- specs/338-extend-810-validation/ralph-memory.md
+- specs/338-extend-810-validation/progress.md
+**Learnings**:
+- Exact minor parsing prevents an 8.1/8.10 substring match from passing readiness, while normalized evidence retains the observed full server version.
+- The same real-state scenarios can cover C89 and C810 safely when fixture identity derivation and historical live-evidence claims remain version-explicit.
+---

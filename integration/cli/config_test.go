@@ -10,6 +10,8 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+
+	"github.com/grafvonb/c8volt/integration/internal/validation"
 )
 
 type configTestConnectionPayload struct {
@@ -157,8 +159,18 @@ func checkProfileReadiness(t *testing.T, profile integrationProfile) (integratio
 		return record, fmt.Errorf("profile %q connection JSON invalid: %w", profile.Name, err)
 	}
 	record.ActualVersion = payload.Cluster.GatewayVersion
-	if profile.ExpectedVersion != "" && !strings.Contains(record.ActualVersion, profile.ExpectedVersion) {
-		return record, fmt.Errorf("profile %q gateway version %q does not contain expected version %q", profile.Name, record.ActualVersion, profile.ExpectedVersion)
+	if profile.ExpectedVersion != "" {
+		expectedMinor, expectedErr := validation.CanonicalMinor(profile.ExpectedVersion)
+		observedMinor, observedErr := validation.ObservedMinor(record.ActualVersion)
+		if expectedErr != nil {
+			return record, fmt.Errorf("profile %q expected version %q is invalid: %w", profile.Name, profile.ExpectedVersion, expectedErr)
+		}
+		if observedErr != nil {
+			return record, fmt.Errorf("profile %q gateway version %q is invalid: %w", profile.Name, record.ActualVersion, observedErr)
+		}
+		if observedMinor != expectedMinor {
+			return record, fmt.Errorf("profile %q gateway version %q resolves to %q, want %q", profile.Name, record.ActualVersion, observedMinor, expectedMinor)
+		}
 	}
 	return record, nil
 }

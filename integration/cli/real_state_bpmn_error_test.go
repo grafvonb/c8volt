@@ -13,7 +13,7 @@ import (
 )
 
 func TestRealStateBPMNErrorFamily(t *testing.T) {
-	profiles := selectedRealStateC89Profiles(t)
+	profiles := selectedRealStateProfiles(t)
 
 	report := realStateFamilyReport{
 		Family:   "bpmn-error",
@@ -149,8 +149,8 @@ func realStateBPMNErrorConfirmedSkippedRecord(profile integrationProfile, job re
 		OutputMode:        "skipped",
 		DataOwnership:     []string{volumeDataSeeded, volumeDataPreexisting, "retained"},
 		RequiredState:     "BPMN error-capable job with catchable ErrorTimerCode path",
-		ObservedState:     "current embedded C89 fixture provides a real job for dry-run planning but no catchable BPMN error path",
-		SkipReason:        "missing embedded C89 catchable BPMN error fixture and c8volt setup path for confirmed mutation",
+		ObservedState:     fmt.Sprintf("current embedded %s fixture provides a real job for dry-run planning but no catchable BPMN error path", profile.ExpectedVersion),
+		SkipReason:        fmt.Sprintf("missing embedded Camunda %s catchable BPMN error fixture and c8volt setup path for confirmed mutation", profile.ExpectedVersion),
 		Outcome:           realStateOutcomeSkippedPrereq,
 		FailureClass:      "",
 		Preview:           false,

@@ -13,7 +13,7 @@ before using this folder in an agent run.
 - The configured cluster is reachable and matches the expected Camunda minor.
 - c8volt can discover its own command contract, help tree, config, cluster
   version, topology, and capabilities.
-- Embedded C88/C89 fixtures can be deployed and used to generate disposable
+- Embedded C88/C89/C810 fixtures can be deployed and used to generate disposable
   run-owned data in an already dirty cluster.
 - Daily ops workflows work end to end:
   - process-definition discovery
@@ -117,7 +117,8 @@ Planned volume target names remain reserved for the other families. Until their
 matching `TestVolume*Family` scenarios are implemented, those Make targets exit
 with a clear not-implemented message instead of reporting a false pass.
 
-Real-state targets are a separate Camunda 8.9 foundation layer. They are more
+Real-state targets support Camunda 8.9 and 8.10 without duplicating the family
+suite. They are more
 specific than volume targets: they must prove actual jobs, incidents with
 related jobs, listener state, BPMN error jobs, retention candidates, destructive
 post-state, mixed failures, and gap-boundary tracking against real cluster state.
@@ -155,9 +156,13 @@ make integration-test-all C8VOLT_IT_GO_TEST_FLAGS=-v \
   C8VOLT_IT_VOLUME_TIMEOUT=90m C8VOLT_IT_REAL_STATE_TIMEOUT=90m
 ```
 
-The current real-state harness is still limited to 8.9, so an 8.10 aggregate
-run must fail with skipped/missing real-state proof until that version gate and
-its fixtures are extended. It must not weaken the catalog to report success.
+The real-state selector accepts only canonical 8.9 and 8.10 profile minors,
+then verifies the full observed gateway version before mutation. Cascade and
+other embedded setup select the matching C89 or C810 fixtures. Camunda 8.8
+remains available to baseline and volume slices but is intentionally excluded
+from real-state release coverage. This selection support is not live release
+evidence: required scenarios still need a retained run, and named prerequisite
+gaps keep `coverageComplete=false`.
 
 ## Release Coverage Policy
 
@@ -205,7 +210,7 @@ orphan purge, durable standalone resolve, and repair-specific mixed-failure
 branches stay visible in
 `specs/257-c89-real-state-integration/`.
 Except for `integration-cli-real-state-gaps`, real-state targets are
-destructive and must only be run against disposable Camunda 8.9 clusters
+destructive and must only be run against disposable Camunda 8.9 or 8.10 clusters
 selected from the default local c8volt configuration.
 
 Pass extra `go test` flags with `C8VOLT_IT_GO_TEST_FLAGS`. For example, use `-v`
@@ -313,7 +318,7 @@ directory:
   `volume-ops-reports-<family>.json`: opt-in volume-suite evidence.
 - `real-state-<family>.json`, `real-state-data-<family>.json`,
   `real-state-progress-<family>.json`, and
-  `real-state-ops-reports-<family>.json`: opt-in Camunda 8.9 real-state
+  `real-state-ops-reports-<family>.json`: opt-in Camunda 8.9/8.10 real-state
   evidence.
 - `logs/`: per-command stdout and stderr evidence.
 - `data/`: seeded data, selected keys, resource IDs, and substitution evidence.

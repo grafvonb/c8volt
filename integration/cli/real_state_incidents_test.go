@@ -25,7 +25,7 @@ type realStateIncident struct {
 }
 
 func TestRealStateIncidentsFamily(t *testing.T) {
-	profiles := selectedRealStateC89Profiles(t)
+	profiles := selectedRealStateProfiles(t)
 
 	report := realStateFamilyReport{
 		Family:   "incidents",

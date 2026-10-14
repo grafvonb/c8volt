@@ -18,7 +18,7 @@ type realStateRetentionDataset struct {
 }
 
 func TestRealStateRetentionFamily(t *testing.T) {
-	profiles := selectedRealStateC89Profiles(t)
+	profiles := selectedRealStateProfiles(t)
 
 	report := realStateFamilyReport{
 		Family:   "retention",
@@ -72,7 +72,7 @@ func seedRealStateCompletedProcessInstances(t *testing.T, profile integrationPro
 	selection, err := selectEmbeddedFixtureBySuffix(profile.ExpectedVersion, files, "NoOpCompletion.bpmn")
 	if err != nil {
 		fixture.CurrentEvidenceLevel = realStateOutcomeSkippedPrereq
-		fixture.SkipReason = "missing embedded NoOpCompletion BPMN fixture for Camunda 8.9 real-state retention setup"
+		fixture.SkipReason = fmt.Sprintf("missing embedded NoOpCompletion BPMN fixture for Camunda %s real-state retention setup", profile.ExpectedVersion)
 		return realStateRetentionDataset{Fixture: fixture}, records, err
 	}
 	selection.BpmnProcessID = embeddedFixtureBpmnProcessID(t, selection.Path)

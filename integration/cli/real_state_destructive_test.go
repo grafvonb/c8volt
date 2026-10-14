@@ -22,7 +22,7 @@ type realStateDestructiveDataset struct {
 }
 
 func TestRealStateDestructiveFamily(t *testing.T) {
-	profiles := selectedRealStateC89Profiles(t)
+	profiles := selectedRealStateProfiles(t)
 
 	report := realStateFamilyReport{
 		Family:   "destructive",

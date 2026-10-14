@@ -13,6 +13,9 @@ Started: 2026-10-14T09:50:16Z
 - Tagged top-level scenarios register a cleanup callback before any skip/failure boundary; `TestMain` flushes their final outcomes to the runner-owned normalized evidence file after `m.Run`, while legacy reports remain unchanged.
 - The runner passes the version observed by its per-slice readiness recheck through `C8VOLT_IT_OBSERVED_VERSION`; normalized records never infer actual version from configured profile metadata.
 - Common release coverage is split into `common-preflight` (inventory, manifest, profile, smoke) and separately confirmed `common-examples`; the runner orders preflight first and Make preserves every legacy family target.
+- Real-state fixture policy now lives in ordinary `integration/internal/validation/fixtures.go`: only canonical 8.9/8.10 minors enter real-state work, while shared embedded fixture selection still supports 8.8 baseline/volume use.
+- All seven real-state family consumers share `selectedRealStateProfiles`; readiness preserves the configured minor plus the full observed gateway version and rejects mismatched or unparseable observations before mutation.
+- Cascade scenarios derive exact C89/C810 parent, mid, and leaf process IDs and require all three deployed definitions before creating evidence; historical 8.9 matrix claims remain distinct from pending 8.10 live proof.
 
 ## Decisions
 
@@ -40,4 +43,4 @@ Started: 2026-10-14T09:50:16Z
 - Do not infer completeness from child exit code or discovered files; reduce the frozen catalog against normalized current-run evidence.
 
 ## Current Handoff
-- Start US2 with T004: generalize the seven real-state families and version-aware cascade fixtures for both 8.9 and 8.10 without weakening the now-enforced catalog.
+- Start US3 with T005: add focused batch lifecycle and process-definition draining evidence without changing production behavior or waiving the known null-batch product defect.

@@ -8,6 +8,8 @@ package cli_test
 import (
 	"strings"
 	"testing"
+
+	"github.com/grafvonb/c8volt/integration/internal/validation"
 )
 
 const (
@@ -17,10 +19,9 @@ const (
 	realStateOutcomeSkippedPrereq = "skipped-prerequisite"
 	realStateOutcomeUnsupported   = "unsupported"
 	realStateOutcomeFailed        = "failed"
-	realStateTargetVersion        = "8.9"
 )
 
-// realStateTarget describes one independently runnable C89 real-state Make target.
+// realStateTarget describes one independently runnable real-state Make target.
 type realStateTarget struct {
 	Name          string `json:"name"`
 	Topic         string `json:"topic"`
@@ -43,31 +44,40 @@ func allRealStateTargets() []realStateTarget {
 	}
 }
 
-// selectedRealStateC89Profiles returns reachable C89 profiles selected from the default local config.
-func selectedRealStateC89Profiles(t *testing.T) []integrationProfile {
+// selectedRealStateProfiles returns reachable 8.9/8.10 profiles selected from
+// the default local config while leaving 8.8 baseline/volume selection intact.
+func selectedRealStateProfiles(t *testing.T) []integrationProfile {
 	t.Helper()
 	registerReleaseScenario(t)
 	profiles := requireSelectedProfiles(t)
-	var c89Profiles []integrationProfile
+	var realStateProfiles []integrationProfile
 	for _, profile := range profiles {
-		if !realStateProfileTargetsC89(profile) {
+		if !realStateProfileSupported(profile) {
 			continue
 		}
 		ready, err := checkProfileReadiness(t, profile)
 		if err != nil {
-			t.Fatalf("C89 real-state profile %q is not ready: %v", profile.Name, err)
+			t.Fatalf("real-state profile %q is not ready: %v", profile.Name, err)
 		}
-		c89Profiles = append(c89Profiles, ready)
+		realStateProfiles = append(realStateProfiles, ready)
 	}
-	if len(c89Profiles) == 0 {
-		t.Skipf("no Camunda %s profiles selected; set %s to a disposable C89 profile", realStateTargetVersion, envITProfiles)
+	if len(realStateProfiles) == 0 {
+		t.Skipf("no Camunda 8.9 or 8.10 profiles selected; set %s to a supported disposable profile", envITProfiles)
 	}
-	return c89Profiles
+	return realStateProfiles
 }
 
-// realStateProfileTargetsC89 classifies profiles by configured expected version before mutation.
-func realStateProfileTargetsC89(profile integrationProfile) bool {
-	return strings.TrimSpace(profile.ExpectedVersion) == realStateTargetVersion
+// realStateProfileSupported classifies profiles by their canonical configured
+// minor before any readiness check or mutation is attempted.
+func realStateProfileSupported(profile integrationProfile) bool {
+	_, err := validation.RealStateMinor(profile.ExpectedVersion)
+	return err == nil
+}
+
+// supportedRealStateVersions is the shared explicit affected-version list for
+// gap artifacts and tests.
+func supportedRealStateVersions() []string {
+	return []string{"8.9", "8.10"}
 }
 
 // TestRealStateTargetCatalog verifies the reserved real-state targets stay explicit and family-addressable.
@@ -94,21 +104,24 @@ func TestRealStateTargetCatalog(t *testing.T) {
 	}
 }
 
-// TestRealStateC89ProfileClassification keeps live targets scoped to the C89 foundation.
-func TestRealStateC89ProfileClassification(t *testing.T) {
+// TestRealStateProfileClassification keeps live targets scoped to 8.9/8.10.
+func TestRealStateProfileClassification(t *testing.T) {
 	cases := []struct {
 		name    string
 		profile integrationProfile
 		want    bool
 	}{
 		{name: "c89", profile: integrationProfile{Name: "c89", ExpectedVersion: "8.9"}, want: true},
+		{name: "c810", profile: integrationProfile{Name: "c810", ExpectedVersion: "8.10"}, want: true},
 		{name: "c88", profile: integrationProfile{Name: "c88", ExpectedVersion: "8.8"}, want: false},
+		{name: "patch", profile: integrationProfile{Name: "patch", ExpectedVersion: "8.10.3"}, want: false},
+		{name: "unparseable", profile: integrationProfile{Name: "bad", ExpectedVersion: "unknown"}, want: false},
 		{name: "blank", profile: integrationProfile{Name: "default"}, want: false},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			if got := realStateProfileTargetsC89(tc.profile); got != tc.want {
-				t.Fatalf("realStateProfileTargetsC89(%+v) = %t, want %t", tc.profile, got, tc.want)
+			if got := realStateProfileSupported(tc.profile); got != tc.want {
+				t.Fatalf("realStateProfileSupported(%+v) = %t, want %t", tc.profile, got, tc.want)
 			}
 		})
 	}
