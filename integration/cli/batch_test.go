@@ -54,7 +54,11 @@ func TestBatchFamily(t *testing.T) {
 	for _, profile := range profiles {
 		profile := profile
 		t.Run(profile.Name, func(t *testing.T) {
-			dataset, _, err := seedVolumeProcessInstanceDataset(t, profile, 4)
+			dataset, _, err := seedIsolatedHeldDataset(t, profile, "batch-positive", 4)
+			require.NoError(t, err)
+			negative, _, err := seedIsolatedHeldDataset(t, profile, "batch-negative", 1)
+			dataset.NegativeProcessDefinitionKeys = negative.PositiveProcessDefinitionKeys
+			dataset.NegativeProcessInstanceKeys = negative.PositiveProcessInstanceKeys
 			require.NoError(t, err)
 			require.NotEmpty(t, dataset.PositiveProcessDefinitionKeys)
 			require.NotEmpty(t, dataset.NegativeProcessDefinitionKeys)
@@ -62,7 +66,7 @@ func TestBatchFamily(t *testing.T) {
 			client, err := newLiveBatchClient(profile.Name)
 			require.NoError(t, err)
 
-			completed, err := submitAndWaitForCancellationBatch(t, client, dataset.PositiveProcessDefinitionKeys[0])
+			completed, err := submitAndWaitForCancellationBatch(t, client, dataset.PositiveProcessDefinitionKeys[0], int32(len(dataset.PositiveProcessInstanceKeys)))
 			require.NoError(t, err)
 			require.Equal(t, int32(len(dataset.PositiveProcessInstanceKeys)), completed.OperationsTotalCount)
 			require.Equal(t, completed.OperationsTotalCount, completed.OperationsCompletedCount)
@@ -81,7 +85,7 @@ func TestBatchFamily(t *testing.T) {
 			require.Empty(t, accepted.State, "submission must not claim observed completion")
 			evidence = append(evidence, newBatchScenarioEvidence(profile, "no-wait-cancellation-accepted", accepted, "submission-only"))
 
-			observed, err := client.api.WaitBatchOperation(context.Background(), accepted.Key)
+			observed, err := waitForBatchAccounting(client, accepted.Key, int32(len(dataset.NegativeProcessInstanceKeys)))
 			require.NoError(t, err)
 			require.Equal(t, "COMPLETED", observed.State)
 			require.Equal(t, observed.OperationsTotalCount, observed.OperationsCompletedCount)
@@ -91,8 +95,8 @@ func TestBatchFamily(t *testing.T) {
 			}
 			evidence = append(evidence, newBatchScenarioEvidence(profile, "no-wait-cancellation-observed", observed, "live-post-state"))
 
-			for _, definitionKey := range append(append([]string(nil), dataset.PositiveProcessDefinitionKeys...), dataset.NegativeProcessDefinitionKeys...) {
-				deleted, err := submitAndWaitForDeletionBatch(t, client, definitionKey)
+			for definitionKey, count := range map[string]int32{dataset.PositiveProcessDefinitionKeys[0]: int32(len(dataset.PositiveProcessInstanceKeys)), dataset.NegativeProcessDefinitionKeys[0]: int32(len(dataset.NegativeProcessInstanceKeys))} {
+				deleted, err := submitAndWaitForDeletionBatch(t, client, definitionKey, count)
 				require.NoError(t, err)
 				require.Equal(t, deleted.OperationsTotalCount, deleted.OperationsCompletedCount)
 				require.Zero(t, deleted.OperationsFailedCount)
@@ -132,7 +136,7 @@ func selectedBatchProfiles(t *testing.T) []integrationProfile {
 
 // submitAndWaitForCancellationBatch submits a batch and returns only after
 // terminal accounting is available; post-state is asserted by the caller.
-func submitAndWaitForCancellationBatch(t *testing.T, client liveBatchClient, definitionKey string) (batchoperation.BatchOperation, error) {
+func submitAndWaitForCancellationBatch(t *testing.T, client liveBatchClient, definitionKey string, count int32) (batchoperation.BatchOperation, error) {
 	t.Helper()
 	accepted, err := client.api.CancelProcessInstancesBatch(context.Background(), process.ProcessInstanceFilter{
 		ProcessDefinitionKey: definitionKey,
@@ -144,12 +148,12 @@ func submitAndWaitForCancellationBatch(t *testing.T, client liveBatchClient, def
 	if accepted.Key == "" || accepted.State != "" {
 		return accepted, fmt.Errorf("cancellation submission returned invalid acceptance: %+v", accepted)
 	}
-	return client.api.WaitBatchOperation(context.Background(), accepted.Key)
+	return waitForBatchAccounting(client, accepted.Key, count)
 }
 
 // submitAndWaitForDeletionBatch invokes the pinned 8.10 deletion endpoint and
 // observes its batch through the public version-neutral waiting contract.
-func submitAndWaitForDeletionBatch(t *testing.T, client liveBatchClient, definitionKey string) (batchoperation.BatchOperation, error) {
+func submitAndWaitForDeletionBatch(t *testing.T, client liveBatchClient, definitionKey string, count int32) (batchoperation.BatchOperation, error) {
 	t.Helper()
 	filter, err := processDefinitionKeyBatchFilter(definitionKey)
 	if err != nil {
@@ -168,7 +172,7 @@ func submitAndWaitForDeletionBatch(t *testing.T, client liveBatchClient, definit
 	if resp.JSON200 == nil || strings.TrimSpace(resp.JSON200.BatchOperationKey) == "" {
 		return batchoperation.BatchOperation{}, errors.New("delete process-instances batch returned no operation key")
 	}
-	return client.api.WaitBatchOperation(context.Background(), resp.JSON200.BatchOperationKey)
+	return waitForBatchAccounting(client, resp.JSON200.BatchOperationKey, count)
 }
 
 // processDefinitionKeyBatchFilter uses generated union decoding so the live
@@ -264,4 +268,30 @@ func loadEffectiveIntegrationConfig(profile string) (*config.Config, error) {
 		return nil, err
 	}
 	return effective, nil
+}
+
+// waitForBatchAccounting observes eventual counter export separately from the
+// terminal state. Exact owned counts and zero failures remain mandatory.
+func waitForBatchAccounting(client liveBatchClient, key string, count int32) (batchoperation.BatchOperation, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	var last batchoperation.BatchOperation
+	for {
+		op, err := client.api.WaitBatchOperation(ctx, key)
+		if err != nil {
+			return last, err
+		}
+		last = op
+		if op.OperationsFailedCount != 0 {
+			return op, fmt.Errorf("batch %s has %d failed operations", key, op.OperationsFailedCount)
+		}
+		if op.State == "COMPLETED" && op.OperationsTotalCount == count && op.OperationsCompletedCount == count {
+			return op, nil
+		}
+		select {
+		case <-ctx.Done():
+			return last, fmt.Errorf("batch %s accounting did not converge to %d: total=%d completed=%d: %w", key, count, last.OperationsTotalCount, last.OperationsCompletedCount, ctx.Err())
+		case <-time.After(time.Second):
+		}
+	}
 }
