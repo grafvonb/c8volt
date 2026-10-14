@@ -24,7 +24,7 @@ before using this folder in an agent run.
 - Mutating workflows run preview first where supported, then real execution with
   full force/auto-confirm behavior.
 - Unsupported-version behavior is explicit, especially C88 process-definition
-  deletion and C89-only purge paths.
+  deletion and purge paths supported from C89 onward.
 - UX findings are collected: wording, grammar, aliases, confirmation behavior,
   verbosity, rhythm, bounded output, and automation friendliness.
 
@@ -36,10 +36,14 @@ before using this folder in an agent run.
   prompt.
 - `prompts/camunda-89-release-integration-suite.md`: C89 release validation
   prompt.
+- `prompts/camunda-810-release-integration-suite.md`: C810 release validation
+  prompt.
 - `scripts/run-c88-suite.sh`: wrapper for the C88 suite.
 - `scripts/run-c89-suite.sh`: wrapper for the C89 suite.
+- `scripts/run-c810-suite.sh`: wrapper for the C810 suite.
 - `scripts/run-suite.sh`: shared executable suite driver.
 - `scripts/lib/suite-lib.sh`: reporting, progress, and command helpers.
+- `scripts/tests/run-suite_test.sh`: offline fake-CLI version-gate coverage.
 - `cli/`: build-tagged Go all-command integration suite.
 - `assets/all-command-go-integration-rules.md`: context-only rules for a
   destructive Go suite that covers the complete command tree; not normal
@@ -311,20 +315,33 @@ Run C89 against the C89 profile in `config.yaml`:
 integration/scripts/run-c89-suite.sh
 ```
 
+Run C810 against the C810 profile in `config.yaml`:
+
+```sh
+integration/scripts/run-c810-suite.sh
+```
+
+These shell suites are broad operator-workflow checks with grouped Markdown
+evidence. Their exact gateway-minor gate runs before fixture deployment or any
+other mutation. A successful shell suite is not aggregate release
+certification: only `make integration-test-all` reduces the frozen release
+catalog and normalized scenario evidence into `release.json`.
+
 The wrappers use these defaults:
 
 | Suite | Target version | Fixture prefix | Default profile |
 | --- | --- | --- | --- |
 | C88 | `8.8` | `C88` | `kind-camunda-platform-local-c88` |
 | C89 | `8.9` | `C89` | `kind-camunda-platform-local-c89` |
+| C810 | `8.10` | `C810` | `kind-camunda-platform-local-c810` |
 
 Override configuration with environment variables:
 
 ```sh
 C8VOLT_IT_CONFIG=./config.yaml \
-C8VOLT_IT_PROFILE=kind-camunda-platform-local-c89 \
+C8VOLT_IT_PROFILE=kind-camunda-platform-local-c810 \
 C8VOLT_IT_VOLUME_COUNT=25 \
-integration/scripts/run-c89-suite.sh
+integration/scripts/run-c810-suite.sh
 ```
 
 Useful variables:
@@ -370,6 +387,14 @@ The shell suites write:
 - `logs/*.stdout` and `logs/*.stderr`: command evidence.
 - `data/*.keys`: generated process-instance keys and other dynamic data.
 - `reports/*`: command-generated reports, for example smoke-test reports.
+
+Validate the shell tooling without a cluster before a live run:
+
+```sh
+bash -n integration/scripts/run-suite.sh integration/scripts/run-c*-suite.sh \
+  integration/scripts/lib/suite-lib.sh integration/scripts/tests/run-suite_test.sh
+bash integration/scripts/tests/run-suite_test.sh
+```
 
 The Go all-command suite writes evidence under `C8VOLT_IT_WORKDIR` or a temp
 directory:

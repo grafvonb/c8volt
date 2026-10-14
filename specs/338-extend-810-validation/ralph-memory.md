@@ -24,6 +24,7 @@ Started: 2026-10-14T09:50:16Z
 - Physical roles require two distinct `/physical-tenants/<id>/v2` routes, one shared logical tenant ID and declared cluster ID, plus an explicit default `/v2` equivalence control; retained evidence is limited to observable API routing, authorization, and resource separation.
 - V810 provenance expectations independently pin 8.10.3 identity, commit, artifact hashes, ordered transformation hashes, tool versions, package identity, and canonical generation command.
 - Network reproducibility overlays current API edits into a detached disposable worktree; the repository-boundary guard wraps commands with before/after v88/v89 content fingerprints and intentionally ignores integration-harness edits.
+- The separate shell suite now supports C810 through the shared driver; its gate parses the gateway-only version into an exact major/minor before any fixture deployment or mutation, and its report is explicitly not aggregate certification.
 
 ## Decisions
 
@@ -47,6 +48,8 @@ Started: 2026-10-14T09:50:16Z
 - `python3 api/tests/v810_provenance_test.py`
 - `bash api/tests/v810_generation_test.sh`
 - `C8VOLT_V810_NETWORK_REPRODUCIBILITY=1 python3 api/tests/v810_provenance_test.py`
+- `bash -n integration/scripts/run-suite.sh integration/scripts/run-c*-suite.sh integration/scripts/lib/suite-lib.sh integration/scripts/tests/run-suite_test.sh`
+- `bash integration/scripts/tests/run-suite_test.sh`
 
 ## Do Not Repeat
 
@@ -54,4 +57,4 @@ Started: 2026-10-14T09:50:16Z
 - Do not infer completeness from child exit code or discovered files; reduce the frozen catalog against normalized current-run evidence.
 
 ## Current Handoff
-- Continue US5 with T009: add the version-gated C810 shell runner, offline fake-CLI coverage, and align integration documentation and quickstart scope.
+- Continue with T010 only after explicit disposable-environment selection and live execution authorization; retain blockers for unavailable required tenant infrastructure or the unresolved null deletion-batch product defect.

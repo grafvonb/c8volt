@@ -35,10 +35,10 @@ does not need to preserve existing resources.
    paths that matter for daily operations.
 6. Run preview before real mutation where supported.
 7. Verify post-conditions with c8volt commands.
-8. Treat C89-only process-definition deletion and related all-process-definition
-   purge behavior as expected unsupported C88 outcomes only when dry-run and
-   real/full-force command forms fail before mutation with a clear
-   unsupported-version diagnostic.
+8. Treat process-definition deletion and related all-process-definition purge
+   behavior supported from C89 onward as expected unsupported C88 outcomes only
+   when dry-run and real/full-force command forms fail before mutation with a
+   clear unsupported-version diagnostic.
 9. Use `--auto-confirm`, `--automation`, `--force`, and broad destructive
    scopes when needed; do not ask for confirmation during the suite.
 10. Keep running after individual failures and write a complete report.
@@ -72,3 +72,7 @@ Report:
 
 Do not edit product code while running this prompt unless the user explicitly
 turns the findings into implementation work.
+
+This shell suite is a broad workflow check. Its success does not replace the
+normalized evidence and frozen-catalog reduction performed by
+`make integration-test-all`.

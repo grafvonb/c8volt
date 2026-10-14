@@ -2,8 +2,9 @@
 
 This matrix describes the all-command Go integration suite coverage. The
 executable source of truth for this suite is the coverage manifest and tests
-under `integration/cli/`. The older shell suites under `integration/scripts/`
-remain separate release checks.
+under `integration/cli/`. The C88/C89/C810 shell suites under
+`integration/scripts/` remain separate operator-workflow checks; their success
+does not certify aggregate catalog completeness.
 
 ## Preflight
 
@@ -19,7 +20,7 @@ remain separate release checks.
 
 | Command family | Coverage intent |
 | --- | --- |
-| all 55 command nodes | Validate live command inventory against the explicit manifest. |
+| all cataloged command nodes | Validate live command inventory against the explicit manifest. |
 | parent commands | Cover help/discovery and no-argument behavior. |
 | leaf commands | Cover aliases, command-local flags, output modes, and destructive classification. |
 | generated CLI docs and command help | Extract examples and record executable, blocked, skipped, or failed validation evidence. |
@@ -65,8 +66,9 @@ remain separate release checks.
 
 | Target | Coverage intent |
 | --- | --- |
-| C88/C89/C810 selected profiles | Validate profile connectivity and expected minor before destructive scenarios. |
+| C88/C89/C810 selected profiles | Validate profile connectivity and the exact expected gateway minor before destructive scenarios. |
 | command-family manifest | Records version-sensitive expectations and proposal gaps where embedded fixtures or commands cannot currently create required state. |
+| separate shell suites | Exercise broad operator workflows with version-matched fixtures; they do not emit normalized aggregate release evidence. |
 
 ## Evidence
 

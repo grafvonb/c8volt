@@ -225,3 +225,28 @@ Started: 2026-10-14 11:50:17
 - Independent static provenance checks can stay fast while network regeneration remains an explicit disposable-worktree gate.
 - Before/after content fingerprints protect v88/v89 clients without banning intentional 8.10 integration coverage or requiring a clean tree.
 ---
+---
+## Iteration 9 - 2026-10-14 13:08
+**Work Unit**: T009 Complete US5 C810 shell runner and operator guidance
+**Tasks Completed**:
+- [x] T009: Add the C810 shell wrapper, exact pre-mutation version gate, offline fake-CLI coverage, and aligned integration/quickstart documentation
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- integration/README.md
+- integration/assets/command-matrix.md
+- integration/prompts/camunda-88-release-integration-suite.md
+- integration/prompts/camunda-89-release-integration-suite.md
+- integration/prompts/camunda-810-release-integration-suite.md
+- integration/scripts/lib/suite-lib.sh
+- integration/scripts/run-suite.sh
+- integration/scripts/run-c810-suite.sh
+- integration/scripts/tests/run-suite_test.sh
+- specs/338-extend-810-validation/quickstart.md
+- specs/338-extend-810-validation/tasks.md
+- specs/338-extend-810-validation/ralph-memory.md
+- specs/338-extend-810-validation/progress.md
+**Learnings**:
+- Gateway-only output can be parsed into an exact major/minor so `8.10` accepts `8.10.3` without falsely accepting `8.100.1`.
+- The fake CLI proves mismatched shell runs stop before fixture deployment or any auto-confirmed mutation while keeping shell evidence distinct from aggregate certification.
+---
