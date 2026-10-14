@@ -25,6 +25,26 @@ const (
 	BearerAuthScopes = "bearerAuth.Scopes"
 )
 
+// Defines values for AgentDefinitionSearchQuerySortRequestField.
+const (
+	AgentDefinitionSearchQuerySortRequestFieldAgentDefinitionKey          AgentDefinitionSearchQuerySortRequestField = "agentDefinitionKey"
+	AgentDefinitionSearchQuerySortRequestFieldAgentType                   AgentDefinitionSearchQuerySortRequestField = "agentType"
+	AgentDefinitionSearchQuerySortRequestFieldElementId                   AgentDefinitionSearchQuerySortRequestField = "elementId"
+	AgentDefinitionSearchQuerySortRequestFieldName                        AgentDefinitionSearchQuerySortRequestField = "name"
+	AgentDefinitionSearchQuerySortRequestFieldProcessDefinitionId         AgentDefinitionSearchQuerySortRequestField = "processDefinitionId"
+	AgentDefinitionSearchQuerySortRequestFieldProcessDefinitionKey        AgentDefinitionSearchQuerySortRequestField = "processDefinitionKey"
+	AgentDefinitionSearchQuerySortRequestFieldProcessDefinitionVersion    AgentDefinitionSearchQuerySortRequestField = "processDefinitionVersion"
+	AgentDefinitionSearchQuerySortRequestFieldProcessDefinitionVersionTag AgentDefinitionSearchQuerySortRequestField = "processDefinitionVersionTag"
+	AgentDefinitionSearchQuerySortRequestFieldTenantId                    AgentDefinitionSearchQuerySortRequestField = "tenantId"
+)
+
+// Defines values for AgentDefinitionTypeEnum.
+const (
+	AIAGENTSUBPROCESS AgentDefinitionTypeEnum = "AI_AGENT_SUB_PROCESS"
+	AIAGENTTASK       AgentDefinitionTypeEnum = "AI_AGENT_TASK"
+	EXTERNALAGENT     AgentDefinitionTypeEnum = "EXTERNAL_AGENT"
+)
+
 // Defines values for AgentInstanceHistoryCommitStatusEnum.
 const (
 	AgentInstanceHistoryCommitStatusEnumCOMMITTED AgentInstanceHistoryCommitStatusEnum = "COMMITTED"
@@ -34,9 +54,10 @@ const (
 
 // Defines values for AgentInstanceHistoryRoleEnum.
 const (
-	AgentInstanceHistoryRoleEnumASSISTANT  AgentInstanceHistoryRoleEnum = "ASSISTANT"
-	AgentInstanceHistoryRoleEnumTOOLRESULT AgentInstanceHistoryRoleEnum = "TOOL_RESULT"
-	AgentInstanceHistoryRoleEnumUSER       AgentInstanceHistoryRoleEnum = "USER"
+	AgentInstanceHistoryRoleEnumASSISTANT     AgentInstanceHistoryRoleEnum = "ASSISTANT"
+	AgentInstanceHistoryRoleEnumCONFIGURATION AgentInstanceHistoryRoleEnum = "CONFIGURATION"
+	AgentInstanceHistoryRoleEnumTOOLRESULT    AgentInstanceHistoryRoleEnum = "TOOL_RESULT"
+	AgentInstanceHistoryRoleEnumUSER          AgentInstanceHistoryRoleEnum = "USER"
 )
 
 // Defines values for AgentInstanceHistorySearchQuerySortRequestField.
@@ -48,6 +69,7 @@ const (
 
 // Defines values for AgentInstanceSearchQuerySortRequestField.
 const (
+	AgentInstanceSearchQuerySortRequestFieldAgentDefinitionKey     AgentInstanceSearchQuerySortRequestField = "agentDefinitionKey"
 	AgentInstanceSearchQuerySortRequestFieldAgentInstanceKey       AgentInstanceSearchQuerySortRequestField = "agentInstanceKey"
 	AgentInstanceSearchQuerySortRequestFieldCompletionDate         AgentInstanceSearchQuerySortRequestField = "completionDate"
 	AgentInstanceSearchQuerySortRequestFieldCreationDate           AgentInstanceSearchQuerySortRequestField = "creationDate"
@@ -264,6 +286,89 @@ const (
 	Dev  CloudStage = "dev"
 	Int  CloudStage = "int"
 	Prod CloudStage = "prod"
+)
+
+// Defines values for ClusterBalanceResponseState.
+const (
+	ClusterBalanceResponseStateBALANCED   ClusterBalanceResponseState = "BALANCED"
+	ClusterBalanceResponseStateBALANCING  ClusterBalanceResponseState = "BALANCING"
+	ClusterBalanceResponseStateUNBALANCED ClusterBalanceResponseState = "UNBALANCED"
+)
+
+// Defines values for ClusterCompletedRebalanceResult.
+const (
+	ClusterCompletedRebalanceResultCANCELLED ClusterCompletedRebalanceResult = "CANCELLED"
+	ClusterCompletedRebalanceResultCOMPLETED ClusterCompletedRebalanceResult = "COMPLETED"
+	ClusterCompletedRebalanceResultFAILED    ClusterCompletedRebalanceResult = "FAILED"
+)
+
+// Defines values for ClusterHistoryBackupTenantState.
+const (
+	ClusterHistoryBackupTenantStateCOMPLETED    ClusterHistoryBackupTenantState = "COMPLETED"
+	ClusterHistoryBackupTenantStateFAILED       ClusterHistoryBackupTenantState = "FAILED"
+	ClusterHistoryBackupTenantStateINCOMPATIBLE ClusterHistoryBackupTenantState = "INCOMPATIBLE"
+	ClusterHistoryBackupTenantStateINCOMPLETE   ClusterHistoryBackupTenantState = "INCOMPLETE"
+	ClusterHistoryBackupTenantStateINPROGRESS   ClusterHistoryBackupTenantState = "IN_PROGRESS"
+	ClusterHistoryBackupTenantStateNOTFOUND     ClusterHistoryBackupTenantState = "NOT_FOUND"
+)
+
+// Defines values for ClusterRebalanceOperationPartitionProgress.
+const (
+	ClusterRebalanceOperationPartitionProgressCOMPLETED    ClusterRebalanceOperationPartitionProgress = "COMPLETED"
+	ClusterRebalanceOperationPartitionProgressPENDING      ClusterRebalanceOperationPartitionProgress = "PENDING"
+	ClusterRebalanceOperationPartitionProgressTRANSFERRING ClusterRebalanceOperationPartitionProgress = "TRANSFERRING"
+)
+
+// Defines values for ClusterRebalanceOperationPartitionResult.
+const (
+	ClusterRebalanceOperationPartitionResultALREADYLEADER                 ClusterRebalanceOperationPartitionResult = "ALREADY_LEADER"
+	ClusterRebalanceOperationPartitionResultCANCELLED                     ClusterRebalanceOperationPartitionResult = "CANCELLED"
+	ClusterRebalanceOperationPartitionResultCONFIGURATIONCHANGEINPROGRESS ClusterRebalanceOperationPartitionResult = "CONFIGURATION_CHANGE_IN_PROGRESS"
+	ClusterRebalanceOperationPartitionResultLAGTOOHIGH                    ClusterRebalanceOperationPartitionResult = "LAG_TOO_HIGH"
+	ClusterRebalanceOperationPartitionResultLEADERCHANGED                 ClusterRebalanceOperationPartitionResult = "LEADER_CHANGED"
+	ClusterRebalanceOperationPartitionResultLEADERINITIALIZING            ClusterRebalanceOperationPartitionResult = "LEADER_INITIALIZING"
+	ClusterRebalanceOperationPartitionResultNOLEADER                      ClusterRebalanceOperationPartitionResult = "NO_LEADER"
+	ClusterRebalanceOperationPartitionResultNORESPONSE                    ClusterRebalanceOperationPartitionResult = "NO_RESPONSE"
+	ClusterRebalanceOperationPartitionResultNOTCOORDINATOR                ClusterRebalanceOperationPartitionResult = "NOT_COORDINATOR"
+	ClusterRebalanceOperationPartitionResultNOTMEMBER                     ClusterRebalanceOperationPartitionResult = "NOT_MEMBER"
+	ClusterRebalanceOperationPartitionResultNOTREPLICATING                ClusterRebalanceOperationPartitionResult = "NOT_REPLICATING"
+	ClusterRebalanceOperationPartitionResultPAUSEFAILED                   ClusterRebalanceOperationPartitionResult = "PAUSE_FAILED"
+	ClusterRebalanceOperationPartitionResultPHYSICALTENANTDISABLED        ClusterRebalanceOperationPartitionResult = "PHYSICAL_TENANT_DISABLED"
+	ClusterRebalanceOperationPartitionResultPHYSICALTENANTRECOVERING      ClusterRebalanceOperationPartitionResult = "PHYSICAL_TENANT_RECOVERING"
+	ClusterRebalanceOperationPartitionResultREPLICATIONTIMEDOUT           ClusterRebalanceOperationPartitionResult = "REPLICATION_TIMED_OUT"
+	ClusterRebalanceOperationPartitionResultSTALECONFIGURATION            ClusterRebalanceOperationPartitionResult = "STALE_CONFIGURATION"
+	ClusterRebalanceOperationPartitionResultTIMEOUTNOWEXHAUSTED           ClusterRebalanceOperationPartitionResult = "TIMEOUT_NOW_EXHAUSTED"
+	ClusterRebalanceOperationPartitionResultTRANSFERINPROGRESS            ClusterRebalanceOperationPartitionResult = "TRANSFER_IN_PROGRESS"
+	ClusterRebalanceOperationPartitionResultTRANSFERRED                   ClusterRebalanceOperationPartitionResult = "TRANSFERRED"
+	ClusterRebalanceOperationPartitionResultUNREACHABLE                   ClusterRebalanceOperationPartitionResult = "UNREACHABLE"
+)
+
+// Defines values for ClusterRebalancePartitionState.
+const (
+	ClusterRebalancePartitionStateBALANCED     ClusterRebalancePartitionState = "BALANCED"
+	ClusterRebalancePartitionStateTRANSFERRING ClusterRebalancePartitionState = "TRANSFERRING"
+	ClusterRebalancePartitionStateUNBALANCED   ClusterRebalancePartitionState = "UNBALANCED"
+)
+
+// Defines values for ClusterRuntimeBackupTakeOutcome.
+const (
+	ClusterRuntimeBackupTakeOutcomeFAILED    ClusterRuntimeBackupTakeOutcome = "FAILED"
+	ClusterRuntimeBackupTakeOutcomeTRIGGERED ClusterRuntimeBackupTakeOutcome = "TRIGGERED"
+	ClusterRuntimeBackupTakeOutcomeUNKNOWN   ClusterRuntimeBackupTakeOutcome = "UNKNOWN"
+)
+
+// Defines values for ClusterStatusResponseStatus.
+const (
+	DEGRADED ClusterStatusResponseStatus = "DEGRADED"
+	DOWN     ClusterStatusResponseStatus = "DOWN"
+	HEALTHY  ClusterStatusResponseStatus = "HEALTHY"
+)
+
+// Defines values for ClusterUpgradeStatusResponseStatus.
+const (
+	ClusterUpgradeStatusResponseStatusMIGRATED            ClusterUpgradeStatusResponseStatus = "MIGRATED"
+	ClusterUpgradeStatusResponseStatusMIGRATIONINPROGRESS ClusterUpgradeStatusResponseStatus = "MIGRATION_IN_PROGRESS"
+	ClusterUpgradeStatusResponseStatusUNKNOWN             ClusterUpgradeStatusResponseStatus = "UNKNOWN"
 )
 
 // Defines values for ClusterVariableKindEnum.
@@ -490,6 +595,14 @@ const (
 	ElementInstanceWaitStateQuerySortRequestFieldRootProcessInstanceKey ElementInstanceWaitStateQuerySortRequestField = "rootProcessInstanceKey"
 )
 
+// Defines values for ExportingStatusCode.
+const (
+	EXPORTING  ExportingStatusCode = "EXPORTING"
+	MIXED      ExportingStatusCode = "MIXED"
+	PAUSED     ExportingStatusCode = "PAUSED"
+	SOFTPAUSED ExportingStatusCode = "SOFT_PAUSED"
+)
+
 // Defines values for GlobalListenerSourceEnum.
 const (
 	API           GlobalListenerSourceEnum = "API"
@@ -529,6 +642,15 @@ const (
 // Defines values for GroupUserSearchQuerySortRequestField.
 const (
 	GroupUserSearchQuerySortRequestFieldUsername GroupUserSearchQuerySortRequestField = "username"
+)
+
+// Defines values for HistoryBackupStateCode.
+const (
+	HistoryBackupStateCodeCOMPLETED    HistoryBackupStateCode = "COMPLETED"
+	HistoryBackupStateCodeFAILED       HistoryBackupStateCode = "FAILED"
+	HistoryBackupStateCodeINCOMPATIBLE HistoryBackupStateCode = "INCOMPATIBLE"
+	HistoryBackupStateCodeINCOMPLETE   HistoryBackupStateCode = "INCOMPLETE"
+	HistoryBackupStateCodeINPROGRESS   HistoryBackupStateCode = "IN_PROGRESS"
 )
 
 // Defines values for IncidentErrorTypeEnum.
@@ -623,6 +745,7 @@ const (
 
 // Defines values for JobSearchQuerySortRequestField.
 const (
+	JobSearchQuerySortRequestFieldCreationTime             JobSearchQuerySortRequestField = "creationTime"
 	JobSearchQuerySortRequestFieldDeadline                 JobSearchQuerySortRequestField = "deadline"
 	JobSearchQuerySortRequestFieldDeniedReason             JobSearchQuerySortRequestField = "deniedReason"
 	JobSearchQuerySortRequestFieldElementId                JobSearchQuerySortRequestField = "elementId"
@@ -670,6 +793,7 @@ const (
 
 // Defines values for MessageSubscriptionSearchQuerySortRequestField.
 const (
+	MessageSubscriptionSearchQuerySortRequestFieldBusinessId               MessageSubscriptionSearchQuerySortRequestField = "businessId"
 	MessageSubscriptionSearchQuerySortRequestFieldCorrelationKey           MessageSubscriptionSearchQuerySortRequestField = "correlationKey"
 	MessageSubscriptionSearchQuerySortRequestFieldElementId                MessageSubscriptionSearchQuerySortRequestField = "elementId"
 	MessageSubscriptionSearchQuerySortRequestFieldElementInstanceKey       MessageSubscriptionSearchQuerySortRequestField = "elementInstanceKey"
@@ -701,6 +825,12 @@ const (
 	STARTEVENT   MessageSubscriptionTypeEnum = "START_EVENT"
 )
 
+// Defines values for Mode.
+const (
+	PROCESSING Mode = "PROCESSING"
+	RECOVERING Mode = "RECOVERING"
+)
+
 // Defines values for OwnerTypeEnum.
 const (
 	OwnerTypeEnumCLIENT      OwnerTypeEnum = "CLIENT"
@@ -729,6 +859,7 @@ const (
 const (
 	Active     PartitionState = "active"
 	Joining    PartitionState = "joining"
+	Learner    PartitionState = "learner"
 	Leaving    PartitionState = "leaving"
 	Recovering PartitionState = "recovering"
 	Unknown    PartitionState = "unknown"
@@ -787,8 +918,9 @@ const (
 
 // Defines values for ProcessDefinitionFilterState.
 const (
-	ProcessDefinitionFilterStateACTIVE  ProcessDefinitionFilterState = "ACTIVE"
-	ProcessDefinitionFilterStateDELETED ProcessDefinitionFilterState = "DELETED"
+	ProcessDefinitionFilterStateACTIVE   ProcessDefinitionFilterState = "ACTIVE"
+	ProcessDefinitionFilterStateDELETED  ProcessDefinitionFilterState = "DELETED"
+	ProcessDefinitionFilterStateDRAINING ProcessDefinitionFilterState = "DRAINING"
 )
 
 // Defines values for ProcessDefinitionInstanceStatisticsQuerySortRequestField.
@@ -810,8 +942,9 @@ const (
 
 // Defines values for ProcessDefinitionResultState.
 const (
-	ProcessDefinitionResultStateACTIVE  ProcessDefinitionResultState = "ACTIVE"
-	ProcessDefinitionResultStateDELETED ProcessDefinitionResultState = "DELETED"
+	ProcessDefinitionResultStateACTIVE   ProcessDefinitionResultState = "ACTIVE"
+	ProcessDefinitionResultStateDELETED  ProcessDefinitionResultState = "DELETED"
+	ProcessDefinitionResultStateDRAINING ProcessDefinitionResultState = "DRAINING"
 )
 
 // Defines values for ProcessDefinitionSearchQuerySortRequestField.
@@ -895,6 +1028,21 @@ const (
 	ResourceTypeEnumUSERTASK                       ResourceTypeEnum = "USER_TASK"
 )
 
+// Defines values for RestorePartitionStatusState.
+const (
+	PENDING   RestorePartitionStatusState = "PENDING"
+	RESTORED  RestorePartitionStatusState = "RESTORED"
+	RESTORING RestorePartitionStatusState = "RESTORING"
+)
+
+// Defines values for RestoreStatusResponseStatus.
+const (
+	RestoreStatusResponseStatusCANCELLED  RestoreStatusResponseStatus = "CANCELLED"
+	RestoreStatusResponseStatusCOMPLETED  RestoreStatusResponseStatus = "COMPLETED"
+	RestoreStatusResponseStatusFAILED     RestoreStatusResponseStatus = "FAILED"
+	RestoreStatusResponseStatusINPROGRESS RestoreStatusResponseStatus = "IN_PROGRESS"
+)
+
 // Defines values for RoleClientSearchQuerySortRequestField.
 const (
 	RoleClientSearchQuerySortRequestFieldClientId RoleClientSearchQuerySortRequestField = "clientId"
@@ -921,6 +1069,7 @@ const (
 	ACCESSDENIED     SecretErrorCode = "ACCESS_DENIED"
 	INVALIDREFERENCE SecretErrorCode = "INVALID_REFERENCE"
 	NOTFOUND         SecretErrorCode = "NOT_FOUND"
+	UNREADABLE       SecretErrorCode = "UNREADABLE"
 )
 
 // Defines values for SortOrderEnum.
@@ -1066,12 +1215,6 @@ const (
 	Tasklist WebappComponent = "tasklist"
 )
 
-// Defines values for ChangeClusterModeParamsMode.
-const (
-	PROCESSING ChangeClusterModeParamsMode = "PROCESSING"
-	RECOVERING ChangeClusterModeParamsMode = "RECOVERING"
-)
-
 // ActivatedJobResult defines model for ActivatedJobResult.
 type ActivatedJobResult struct {
 	// BusinessId The business ID of the owning process instance, inherited when the job was created.
@@ -1094,11 +1237,11 @@ type ActivatedJobResult struct {
 	// JobKey The key, a unique identifier for the job.
 	JobKey JobKey `json:"jobKey"`
 
+	// JobLeaseToken The lease token identifying this activation. This is `null` when the job was activated without a lease.
+	JobLeaseToken *JobLeaseToken `json:"jobLeaseToken"`
+
 	// Kind The job kind.
 	Kind JobKindEnum `json:"kind"`
-
-	// LeaseToken The lease token identifying this activation. This is `null` when the job was activated without a lease.
-	LeaseToken *string `json:"leaseToken"`
 
 	// ListenerEventType The listener event type of the job.
 	ListenerEventType JobListenerEventTypeEnum `json:"listenerEventType"`
@@ -1191,6 +1334,52 @@ type AdvancedActorTypeFilter struct {
 
 	// Neq Checks for inequality with the provided value.
 	Neq *AuditLogActorTypeEnum `json:"$neq,omitempty"`
+}
+
+// AdvancedAgentDefinitionKeyFilter Advanced AgentDefinitionKey filter.
+type AdvancedAgentDefinitionKeyFilter struct {
+	// Eq Checks for equality with the provided value.
+	Eq *AgentDefinitionKey `json:"$eq,omitempty"`
+
+	// Exists Checks if the current property exists.
+	Exists *bool `json:"$exists,omitempty"`
+
+	// In Checks if the property matches any of the provided values.
+	In *[]AgentDefinitionKey `json:"$in,omitempty"`
+
+	// Neq Checks for inequality with the provided value.
+	Neq *AgentDefinitionKey `json:"$neq,omitempty"`
+
+	// NotIn Checks if the property matches none of the provided values.
+	NotIn *[]AgentDefinitionKey `json:"$notIn,omitempty"`
+}
+
+// AdvancedAgentDefinitionTypeFilter Advanced AgentDefinitionTypeEnum filter.
+type AdvancedAgentDefinitionTypeFilter struct {
+	// Eq Checks for equality with the provided value.
+	Eq *AgentDefinitionTypeEnum `json:"$eq,omitempty"`
+
+	// Exists Checks if the current property exists.
+	Exists *bool `json:"$exists,omitempty"`
+
+	// In Checks if the property matches any of the provided values.
+	In *[]AgentDefinitionTypeEnum `json:"$in,omitempty"`
+
+	// Like Checks if the property matches the provided like value.
+	//
+	// Supported wildcard characters are:
+	//
+	// * `*`: matches zero, one, or multiple characters.
+	// * `?`: matches one, single character.
+	//
+	// Wildcard characters can be escaped with backslash, for instance: `\*`.
+	Like *LikeFilter `json:"$like,omitempty"`
+
+	// Neq Checks for inequality with the provided value.
+	Neq *AgentDefinitionTypeEnum `json:"$neq,omitempty"`
+
+	// NotIn Checks if the property matches none of the provided values.
+	NotIn *[]AgentDefinitionTypeEnum `json:"$notIn,omitempty"`
 }
 
 // AdvancedAgentHistoryItemKeyFilter Advanced AgentHistoryItemKey filter.
@@ -2389,6 +2578,122 @@ type AdvancedWaitStateTypeFilter struct {
 	Neq *WaitStateTypeEnum `json:"$neq,omitempty"`
 }
 
+// AgentDefinitionFilter Agent definition search filter.
+type AgentDefinitionFilter struct {
+	// AgentDefinitionKey The unique key of the agent definition.
+	AgentDefinitionKey *AgentDefinitionKeyFilterProperty `json:"agentDefinitionKey,omitempty"`
+
+	// AgentType The kind of agent this agent definition describes.
+	AgentType *AgentDefinitionTypeFilterProperty `json:"agentType,omitempty"`
+
+	// ElementId The BPMN element ID of the process element that owns the agent definition.
+	ElementId *ElementIdFilterProperty `json:"elementId,omitempty"`
+
+	// Name The human-readable name of the process element that owns the agent definition.
+	Name *StringFilterProperty `json:"name,omitempty"`
+
+	// ProcessDefinitionId The BPMN process ID of the process definition that owns the agent definition.
+	ProcessDefinitionId *ProcessDefinitionIdFilterProperty `json:"processDefinitionId,omitempty"`
+
+	// ProcessDefinitionKey The key of the process definition that owns the agent definition.
+	ProcessDefinitionKey *ProcessDefinitionKeyFilterProperty `json:"processDefinitionKey,omitempty"`
+
+	// ProcessDefinitionVersion The version of the process definition that owns the agent definition.
+	ProcessDefinitionVersion *IntegerFilterProperty `json:"processDefinitionVersion,omitempty"`
+
+	// ProcessDefinitionVersionTag The version tag of the process definition that owns the agent definition.
+	ProcessDefinitionVersionTag *StringFilterProperty `json:"processDefinitionVersionTag,omitempty"`
+
+	// TenantId The tenant ID of the agent definition.
+	TenantId *StringFilterProperty `json:"tenantId,omitempty"`
+}
+
+// AgentDefinitionKey Zeebe Engine resource key (Java long serialized as string)
+type AgentDefinitionKey = LongKey
+
+// AgentDefinitionKeyFilterProperty AgentDefinitionKey property with full advanced search capabilities.
+type AgentDefinitionKeyFilterProperty struct {
+	union json.RawMessage
+}
+
+// AgentDefinitionKeyFilterProperty0 System-generated key for an agent definition.
+type AgentDefinitionKeyFilterProperty0 = AgentDefinitionKey
+
+// AgentDefinitionResult An agent definition, created at deploy time for the process element it belongs to.
+type AgentDefinitionResult struct {
+	// AgentDefinitionKey The unique key for this agent definition. Unique across process definition versions.
+	AgentDefinitionKey AgentDefinitionKey `json:"agentDefinitionKey"`
+
+	// AgentType The kind of agent an agent definition describes.
+	AgentType AgentDefinitionTypeEnum `json:"agentType"`
+
+	// ElementId The BPMN element ID of the process element that owns the agent definition.
+	ElementId ElementId `json:"elementId"`
+
+	// Name The human-readable name of the process element that owns the agent definition. Falls
+	// back to elementId when the element has no BPMN name configured.
+	Name string `json:"name"`
+
+	// ProcessDefinitionId The BPMN process ID of the process definition that owns the agent definition.
+	ProcessDefinitionId ProcessDefinitionId `json:"processDefinitionId"`
+
+	// ProcessDefinitionKey The key of the process definition that owns the agent definition.
+	ProcessDefinitionKey ProcessDefinitionKey `json:"processDefinitionKey"`
+
+	// ProcessDefinitionVersion The version of the process definition that owns the agent definition.
+	ProcessDefinitionVersion int32 `json:"processDefinitionVersion"`
+
+	// ProcessDefinitionVersionTag The version tag of the process definition that owns the agent definition.
+	ProcessDefinitionVersionTag *string `json:"processDefinitionVersionTag"`
+
+	// TenantId The tenant ID of this agent definition.
+	TenantId TenantId `json:"tenantId"`
+}
+
+// AgentDefinitionSearchQuery defines model for AgentDefinitionSearchQuery.
+type AgentDefinitionSearchQuery struct {
+	// Filter Agent definition search filter.
+	Filter *AgentDefinitionFilter `json:"filter,omitempty"`
+
+	// Page Pagination criteria.
+	Page *SearchQueryPageRequest `json:"page,omitempty"`
+
+	// Sort Sort field criteria.
+	Sort *[]AgentDefinitionSearchQuerySortRequest `json:"sort,omitempty"`
+}
+
+// AgentDefinitionSearchQueryResult defines model for AgentDefinitionSearchQueryResult.
+type AgentDefinitionSearchQueryResult struct {
+	// Items The matching agent definitions.
+	Items []AgentDefinitionResult `json:"items"`
+
+	// Page Pagination information about the search results.
+	Page SearchQueryPageResponse `json:"page"`
+}
+
+// AgentDefinitionSearchQuerySortRequest defines model for AgentDefinitionSearchQuerySortRequest.
+type AgentDefinitionSearchQuerySortRequest struct {
+	// Field The field to sort by.
+	Field AgentDefinitionSearchQuerySortRequestField `json:"field"`
+
+	// Order The order in which to sort the related field.
+	Order *SortOrderEnum `json:"order,omitempty"`
+}
+
+// AgentDefinitionSearchQuerySortRequestField The field to sort by.
+type AgentDefinitionSearchQuerySortRequestField string
+
+// AgentDefinitionTypeEnum The kind of agent an agent definition describes.
+type AgentDefinitionTypeEnum string
+
+// AgentDefinitionTypeFilterProperty AgentDefinitionTypeEnum property with full advanced search capabilities.
+type AgentDefinitionTypeFilterProperty struct {
+	union json.RawMessage
+}
+
+// AgentDefinitionTypeFilterProperty0 The kind of agent an agent definition describes.
+type AgentDefinitionTypeFilterProperty0 = AgentDefinitionTypeEnum
+
 // AgentHistoryItemKey Zeebe Engine resource key (Java long serialized as string)
 type AgentHistoryItemKey = LongKey
 
@@ -2400,37 +2705,70 @@ type AgentHistoryItemKeyFilterProperty struct {
 // AgentHistoryItemKeyFilterProperty0 System-generated key for an agent history item.
 type AgentHistoryItemKeyFilterProperty0 = AgentHistoryItemKey
 
+// AgentInstanceCreatedHistoryItem The outcome of appending a single history item from an update request's
+// history batch.
+type AgentInstanceCreatedHistoryItem struct {
+	// HistoryItemId The historyItemId of the corresponding item in the request, echoed back
+	// so callers can correlate response entries with request items by id.
+	HistoryItemId HistoryItemId `json:"historyItemId"`
+
+	// HistoryItemKey The system-generated key for the history item. When isDuplicate is true,
+	// this is the key of the original entry, not a new one.
+	HistoryItemKey AgentHistoryItemKey `json:"historyItemKey"`
+
+	// IsDuplicate True if this item had already been recorded and no new AGENT_HISTORY event
+	// was created for it; false if a new event was created.
+	IsDuplicate bool `json:"isDuplicate"`
+}
+
 // AgentInstanceCreationRequest Request to create a new agent instance.
 type AgentInstanceCreationRequest struct {
-	// Definition Static definition set once at creation.
-	Definition AgentInstanceDefinition `json:"definition"`
-
 	// ElementInstanceKey The key of the AI Agent Sub-process or AI Agent Task element instance.
 	// The engine uses this key to infer processInstanceKey, elementId,
 	// processDefinitionKey, and tenantId.
 	ElementInstanceKey ElementInstanceKey `json:"elementInstanceKey"`
 
-	// Limits Limits for the agent execution. When omitted, all limits default to -1
-	// (no limit).
-	Limits *AgentInstanceLimits `json:"limits,omitempty"`
+	// History A batch of history items to append to the agent instance's conversation
+	// history, in request order. Each created item is echoed back in the
+	// response's createdHistory, positionally correlated. Must include a
+	// CONFIGURATION item establishing model, provider, and systemPrompt (and,
+	// if needed, limits). Every item's role must be CONFIGURATION or USER, and
+	// no item may carry non-zero usage-token metrics (inputTokens, outputTokens,
+	// reasoningTokenCount, cacheCreationTokenCount, cacheReadTokenCount);
+	// durationMs is exempt and may be non-zero.
+	History []AgentInstanceHistoryItem `json:"history"`
+
+	// JobKey The key of the job activation during which this creation is being made.
+	// A creation must always be attributed to the active job that produced it.
+	JobKey JobKey `json:"jobKey"`
+
+	// JobLeaseToken Opaque lease token received from the job activation response. Disambiguates
+	// this activation from any other activation of the same job: if the job is
+	// later retried, history items submitted under a superseded lease are discarded
+	// rather than committed.
+	JobLeaseToken JobLeaseToken `json:"jobLeaseToken"`
 }
 
 // AgentInstanceCreationResult Response returned after successfully creating an agent instance.
 type AgentInstanceCreationResult struct {
 	// AgentInstanceKey The system-generated key for the created agent instance.
 	AgentInstanceKey AgentInstanceKey `json:"agentInstanceKey"`
+
+	// CreatedHistory One entry per history item submitted in the request, in request order.
+	CreatedHistory []AgentInstanceCreatedHistoryItem `json:"createdHistory"`
 }
 
-// AgentInstanceDefinition The static definition of an agent instance, set once at creation.
-type AgentInstanceDefinition struct {
+// AgentInstanceDefinitionResult The definition of an agent instance. Set at creation, but can change later via a
+// CONFIGURATION history item.
+type AgentInstanceDefinitionResult struct {
 	// Model The LLM model identifier (for example, gpt-4o).
 	Model string `json:"model"`
 
 	// Provider The LLM provider (for example, openai or anthropic).
 	Provider string `json:"provider"`
 
-	// SystemPrompt The system prompt configured for this agent instance.
-	SystemPrompt string `json:"systemPrompt"`
+	// SystemPrompt The system prompt configured for this agent instance, as content blocks.
+	SystemPrompt []AgentInstanceMessageContent `json:"systemPrompt"`
 }
 
 // AgentInstanceDocumentContent A Camunda Document Store reference content block.
@@ -2444,6 +2782,9 @@ type AgentInstanceDocumentContent struct {
 
 // AgentInstanceFilter Agent instance search filter.
 type AgentInstanceFilter struct {
+	// AgentDefinitionKey The key of the agent definition this agent instance is an instance of.
+	AgentDefinitionKey *AgentDefinitionKeyFilterProperty `json:"agentDefinitionKey,omitempty"`
+
 	// AgentInstanceKey The unique key of the agent instance.
 	AgentInstanceKey *AgentInstanceKeyFilterProperty `json:"agentInstanceKey,omitempty"`
 
@@ -2522,7 +2863,7 @@ type AgentInstanceHistoryFilter struct {
 	// JobKey The key of the job activation that produced the history item.
 	JobKey *JobKeyFilterProperty `json:"jobKey,omitempty"`
 
-	// LoopIteration Filter by loopIteration number. A loopIteration is one pass through the agent feedback loop (one LLM call, its tool dispatches, and their results).
+	// LoopIteration Filter by loop iteration number.
 	LoopIteration *IntegerFilterProperty `json:"loopIteration,omitempty"`
 
 	// ProducedAt The timestamp when the history item was produced.
@@ -2532,14 +2873,66 @@ type AgentInstanceHistoryFilter struct {
 	Role *AgentInstanceHistoryRoleFilterProperty `json:"role,omitempty"`
 }
 
-// AgentInstanceHistoryItemCreationResult Response returned after successfully appending a history item.
-type AgentInstanceHistoryItemCreationResult struct {
-	// HistoryItemKey The system-generated key for the created history item.
-	HistoryItemKey AgentHistoryItemKey `json:"historyItemKey"`
+// AgentInstanceHistoryItem A single history item to append to the agent instance's conversation history,
+// submitted as part of the batch on an agent instance update request.
+type AgentInstanceHistoryItem struct {
+	// Content The content blocks of this history item.
+	Content []AgentInstanceMessageContent `json:"content"`
+
+	// HistoryItemId Caller-assigned identifier used to detect and dedupe retries of the same
+	// item. For example, when a retried job activation resubmits history items
+	// it already sent in an earlier attempt, those items are not rejected; they
+	// are flagged via isDuplicate in the response instead. Must be non-blank.
+	HistoryItemId HistoryItemId `json:"historyItemId"`
+
+	// Limits The operational limits as of this entry. CONFIGURATION items only; omit for other
+	// roles.
+	Limits *AgentInstanceLimits `json:"limits,omitempty"`
+
+	// LoopIteration The loop iteration this item belongs to.
+	LoopIteration LoopIterationId `json:"loopIteration"`
+
+	// Metrics Per-call token and latency metrics. Present on ASSISTANT items only.
+	Metrics *AgentInstanceHistoryItemMetricsRequest `json:"metrics"`
+
+	// Model The LLM model identifier as of this entry. CONFIGURATION items only; omit for other
+	// roles.
+	Model *string `json:"model,omitempty"`
+
+	// ProducedAt The agent-side timestamp of when this message was produced.
+	ProducedAt time.Time `json:"producedAt"`
+
+	// Provider The LLM provider as of this entry. CONFIGURATION items only; omit for other roles.
+	Provider *string `json:"provider,omitempty"`
+
+	// Role The role of this history item in the conversation.
+	Role AgentInstanceHistoryRoleEnum `json:"role"`
+
+	// SystemPrompt The system prompt, as content blocks, as of this entry. CONFIGURATION items only;
+	// omit for other roles. Omit to leave the system prompt unchanged; when present, must
+	// be non-empty.
+	SystemPrompt *[]AgentInstanceMessageContent `json:"systemPrompt"`
+
+	// ToolCalls Tool calls associated with this history item.
+	// For ASSISTANT items: tool calls dispatched by this LLM response.
+	// For TOOL_RESULT items: single-entry array referencing the originating tool call.
+	// Omit for USER items.
+	ToolCalls *[]AgentInstanceToolCall `json:"toolCalls"`
+
+	// Tools The complete list of tools available to the agent as of this entry. CONFIGURATION
+	// items only; omit for other roles. Omit to leave the tool list unchanged; send an
+	// empty array to clear it.
+	Tools *[]AgentTool `json:"tools"`
 }
 
 // AgentInstanceHistoryItemMetrics Per-call token and latency metrics for an ASSISTANT history item.
 type AgentInstanceHistoryItemMetrics struct {
+	// CacheCreationTokenCount Cache-creation tokens consumed by this LLM call. Null when not provided.
+	CacheCreationTokenCount *int64 `json:"cacheCreationTokenCount"`
+
+	// CacheReadTokenCount Cache-read tokens consumed by this LLM call. Null when not provided.
+	CacheReadTokenCount *int64 `json:"cacheReadTokenCount"`
+
 	// DurationMs Wall-clock duration of the LLM call in milliseconds. Null when not provided.
 	DurationMs *int64 `json:"durationMs"`
 
@@ -2548,41 +2941,32 @@ type AgentInstanceHistoryItemMetrics struct {
 
 	// OutputTokens Output tokens produced by this LLM call. Null when not provided.
 	OutputTokens *int64 `json:"outputTokens"`
+
+	// ReasoningTokenCount Reasoning tokens consumed by this LLM call. Null when not provided.
+	ReasoningTokenCount *int64 `json:"reasoningTokenCount"`
 }
 
-// AgentInstanceHistoryItemRequest Request to append a single history item to an agent instance's conversation history.
-type AgentInstanceHistoryItemRequest struct {
-	// Content The content blocks of this history item.
-	Content []AgentInstanceMessageContent `json:"content"`
+// AgentInstanceHistoryItemMetricsRequest Per-call token and latency metrics for an ASSISTANT history item, as submitted on a
+// create/update request. All fields are optional: omit a field the caller has no value
+// for rather than sending it as an explicit null.
+type AgentInstanceHistoryItemMetricsRequest struct {
+	// CacheCreationTokenCount Cache-creation tokens consumed by this LLM call. Null when not provided.
+	CacheCreationTokenCount *int64 `json:"cacheCreationTokenCount"`
 
-	// ElementInstanceKey The key of the currently-active element instance.
-	ElementInstanceKey ElementInstanceKey `json:"elementInstanceKey"`
+	// CacheReadTokenCount Cache-read tokens consumed by this LLM call. Null when not provided.
+	CacheReadTokenCount *int64 `json:"cacheReadTokenCount"`
 
-	// JobKey The key of the current job activation during which this history item was produced.
-	JobKey JobKey `json:"jobKey"`
+	// DurationMs Wall-clock duration of the LLM call in milliseconds. Null when not provided.
+	DurationMs *int64 `json:"durationMs"`
 
-	// JobLease Opaque lease token received from the job activation response.
-	JobLease string `json:"jobLease"`
+	// InputTokens Input tokens consumed by this LLM call. Null when not provided.
+	InputTokens *int64 `json:"inputTokens"`
 
-	// LoopIteration The loopIteration this item belongs to. A loopIteration is one pass through the agent
-	// feedback loop: one LLM call, its tool dispatches, and their results. Omit if not grouping
-	// items by loopIteration.
-	LoopIteration *LoopIterationId `json:"loopIteration"`
+	// OutputTokens Output tokens produced by this LLM call. Null when not provided.
+	OutputTokens *int64 `json:"outputTokens"`
 
-	// Metrics Per-call token and latency metrics. Present on ASSISTANT items only.
-	Metrics *AgentInstanceHistoryItemMetrics `json:"metrics"`
-
-	// ProducedAt The connector-side timestamp of when this message was produced.
-	ProducedAt time.Time `json:"producedAt"`
-
-	// Role The role of this history item in the conversation.
-	Role AgentInstanceHistoryRoleEnum `json:"role"`
-
-	// ToolCalls Tool calls associated with this history item.
-	// For ASSISTANT items: tool calls dispatched by this LLM response, with arguments populated.
-	// For TOOL_RESULT items: single-entry array referencing the originating tool call, with arguments null.
-	// Omit for USER items.
-	ToolCalls *[]AgentInstanceToolCall `json:"toolCalls"`
+	// ReasoningTokenCount Reasoning tokens consumed by this LLM call. Null when not provided.
+	ReasoningTokenCount *int64 `json:"reasoningTokenCount"`
 }
 
 // AgentInstanceHistoryItemResult A single conversation history item belonging to an agent instance.
@@ -2599,33 +2983,57 @@ type AgentInstanceHistoryItemResult struct {
 	// ElementInstanceKey The key of the AI Agent Task or ad-hoc sub-process element instance under which this item was produced.
 	ElementInstanceKey ElementInstanceKey `json:"elementInstanceKey"`
 
+	// HistoryItemId The client-supplied identifier this item was created with. Empty for items that don't
+	// carry one. Not unique: a job can be re-activated under a superseded lease any number
+	// of times before it completes, so one historyItemId can have zero or more DISCARDED
+	// records and at most one COMMITTED record, since only historyItemKey is guaranteed
+	// unique. Filter by commitStatus rather than assuming one record per historyItemId.
+	HistoryItemId HistoryItemId `json:"historyItemId"`
+
 	// HistoryItemKey The unique key for this history item. Stable and sortable by creation order.
 	HistoryItemKey AgentHistoryItemKey `json:"historyItemKey"`
 
 	// JobKey The key of the job activation during which this item was produced.
 	JobKey JobKey `json:"jobKey"`
 
-	// JobLease The lease token of the activation that produced this item.
-	JobLease string `json:"jobLease"`
+	// JobLeaseToken The lease token of the activation that produced this item.
+	JobLeaseToken JobLeaseToken `json:"jobLeaseToken"`
 
-	// LoopIteration The loopIteration this item belongs to. A loopIteration is one pass through the agent
-	// feedback loop: one LLM call, its tool dispatches, and their results. Null if not provided
-	// by the connector.
-	LoopIteration *LoopIterationId `json:"loopIteration"`
+	// Limits The operational limits as of this entry. CONFIGURATION items only; -1 on any field
+	// means "no limit configured" for other roles.
+	Limits AgentInstanceLimits `json:"limits"`
+
+	// LoopIteration The loop iteration this item belongs to.
+	LoopIteration LoopIterationId `json:"loopIteration"`
 
 	// Metrics Per-call token and latency metrics. Null when metrics were not provided at creation time.
 	Metrics *AgentInstanceHistoryItemMetrics `json:"metrics"`
 
-	// ProducedAt The connector-side timestamp of when this message was produced.
+	// Model The LLM model identifier as of this entry. CONFIGURATION items only; null for other
+	// roles.
+	Model *string `json:"model"`
+
+	// ProducedAt The agent-side timestamp of when this message was produced.
 	ProducedAt time.Time `json:"producedAt"`
+
+	// Provider The LLM provider as of this entry. CONFIGURATION items only; null for other roles.
+	Provider *string `json:"provider"`
 
 	// Role The role of this history item in the conversation.
 	Role AgentInstanceHistoryRoleEnum `json:"role"`
 
+	// SystemPrompt The system prompt, as content blocks, as of this entry. CONFIGURATION items only;
+	// empty for other roles.
+	SystemPrompt []AgentInstanceMessageContent `json:"systemPrompt"`
+
 	// ToolCalls Tool calls for this item. Empty for USER items and ASSISTANT items with no tool dispatches.
-	// ASSISTANT items: dispatched tool calls with arguments populated.
-	// TOOL_RESULT items: single-entry array referencing the originating tool call (arguments null).
+	// ASSISTANT items: dispatched tool calls.
+	// TOOL_RESULT items: single-entry array referencing the originating tool call.
 	ToolCalls []AgentInstanceToolCall `json:"toolCalls"`
+
+	// Tools The complete list of tools available to the agent as of this entry. CONFIGURATION
+	// items only; empty for other roles.
+	Tools []AgentTool `json:"tools"`
 }
 
 // AgentInstanceHistoryRoleEnum The role of a history item in the agent conversation.
@@ -2702,6 +3110,12 @@ type AgentInstanceMessageContent struct {
 
 // AgentInstanceMetrics Aggregated metrics for an agent instance across all model calls.
 type AgentInstanceMetrics struct {
+	// CacheCreationTokenCount Total tokens used to create prompt cache entries across all model calls.
+	CacheCreationTokenCount int64 `json:"cacheCreationTokenCount"`
+
+	// CacheReadTokenCount Total tokens read from prompt cache across all model calls.
+	CacheReadTokenCount int64 `json:"cacheReadTokenCount"`
+
 	// InputTokens Total input tokens consumed across all model calls.
 	InputTokens int64 `json:"inputTokens"`
 
@@ -2711,25 +3125,11 @@ type AgentInstanceMetrics struct {
 	// OutputTokens Total output tokens produced across all model calls.
 	OutputTokens int64 `json:"outputTokens"`
 
+	// ReasoningTokenCount Total reasoning tokens consumed across all model calls.
+	ReasoningTokenCount int64 `json:"reasoningTokenCount"`
+
 	// ToolCalls Total number of tool calls made.
 	ToolCalls int32 `json:"toolCalls"`
-}
-
-// AgentInstanceMetricsDelta Metric increments to apply to the agent instance aggregate counters. The engine
-// accumulates these deltas into running totals on each UPDATED event. All fields
-// are optional; omit a field to leave the corresponding counter unchanged.
-type AgentInstanceMetricsDelta struct {
-	// InputTokens Increment to apply to the total input token counter.
-	InputTokens *int64 `json:"inputTokens,omitempty"`
-
-	// ModelCalls Increment to apply to the total model call counter.
-	ModelCalls *int32 `json:"modelCalls,omitempty"`
-
-	// OutputTokens Increment to apply to the total output token counter.
-	OutputTokens *int64 `json:"outputTokens,omitempty"`
-
-	// ToolCalls Increment to apply to the total tool call counter.
-	ToolCalls *int32 `json:"toolCalls,omitempty"`
 }
 
 // AgentInstanceObjectContent An arbitrary structured content block. Accepts any valid JSON value:
@@ -2746,6 +3146,9 @@ type AgentInstanceObjectContent struct {
 
 // AgentInstanceResult defines model for AgentInstanceResult.
 type AgentInstanceResult struct {
+	// AgentDefinitionKey The key of the agent definition this agent instance is an instance of.
+	AgentDefinitionKey AgentDefinitionKey `json:"agentDefinitionKey"`
+
 	// AgentInstanceKey The unique key for this agent instance.
 	AgentInstanceKey AgentInstanceKey `json:"agentInstanceKey"`
 
@@ -2755,8 +3158,9 @@ type AgentInstanceResult struct {
 	// CreationDate The date when this agent instance was created.
 	CreationDate time.Time `json:"creationDate"`
 
-	// Definition The static definition of the agent, including model, provider, and system prompt.
-	Definition AgentInstanceDefinition `json:"definition"`
+	// Definition The definition of the agent, including model, provider, and system prompt. Set at
+	// creation, but can change later via a CONFIGURATION history item.
+	Definition AgentInstanceDefinitionResult `json:"definition"`
 
 	// ElementId The BPMN element ID of the ad-hoc sub-process or AI agent task that owns this agent instance.
 	ElementId ElementId `json:"elementId"`
@@ -2770,7 +3174,9 @@ type AgentInstanceResult struct {
 	// Limits The configured limits for this agent instance, set once at creation.
 	Limits AgentInstanceLimits `json:"limits"`
 
-	// Metrics Aggregated metrics across all loopIterations of this agent instance.
+	// Metrics Aggregated metrics across all loopIterations of this agent instance. Includes
+	// history items later discarded: metrics are counted when an item is accepted,
+	// not when it's committed.
 	Metrics AgentInstanceMetrics `json:"metrics"`
 
 	// ProcessDefinitionId The BPMN process ID of the process definition associated with this agent instance.
@@ -2856,13 +3262,13 @@ type AgentInstanceTextContent struct {
 }
 
 // AgentInstanceToolCall A tool call associated with a history item. Used in both ASSISTANT and TOOL_RESULT items.
-// ASSISTANT items carry arguments; TOOL_RESULT items carry arguments as null.
 type AgentInstanceToolCall struct {
-	// Arguments The tool call arguments as provided by the LLM. Null on TOOL_RESULT items.
+	// Arguments The tool call arguments as provided by the LLM. May be null or populated on
+	// any item, including TOOL_RESULT.
 	Arguments *map[string]interface{} `json:"arguments"`
 
 	// ElementId The BPMN element ID handling this tool.
-	ElementId *string `json:"elementId"`
+	ElementId *ElementId `json:"elementId"`
 
 	// ToolCallId The LLM-assigned tool call ID. Correlates ASSISTANT items to their matching TOOL_RESULT items.
 	ToolCallId string `json:"toolCallId"`
@@ -2877,19 +3283,36 @@ type AgentInstanceUpdateRequest struct {
 	// Used for ownership/equality validation against the stored agent instance
 	// and, when the supplied key differs from the previous association (re-entry
 	// of an ad-hoc sub-process or AI Agent task), appended to elementInstanceKeys
-	// with the reverse link updated on the supplied element instance.
+	// with the reverse link updated on the supplied element instance. Only one
+	// element instance may hold this write claim at a time: any update from a
+	// different element instance is rejected while the current writer's job is
+	// still active.
 	ElementInstanceKey ElementInstanceKey `json:"elementInstanceKey"`
 
-	// Metrics Metric increments to apply to the aggregate counters.
-	Metrics *AgentInstanceMetricsDelta `json:"metrics,omitempty"`
+	// History A batch of history items to append to the agent instance's conversation
+	// history, in request order. Each created item is echoed back in the
+	// response's createdHistory, positionally correlated.
+	History *[]AgentInstanceHistoryItem `json:"history"`
+
+	// JobKey The key of the job activation during which this update is being made.
+	// An update must always be attributed to the active job that produced it.
+	JobKey JobKey `json:"jobKey"`
+
+	// JobLeaseToken Opaque lease token received from the job activation response. Disambiguates
+	// this activation from any other activation of the same job: if the job is
+	// later retried, history items submitted under a superseded lease are discarded
+	// rather than committed.
+	JobLeaseToken JobLeaseToken `json:"jobLeaseToken"`
 
 	// Status The new status of the agent instance.
 	Status *AgentInstanceUpdateStatusEnum `json:"status,omitempty"`
+}
 
-	// Tools The complete list of tools available to the agent, replacing any previously
-	// stored tools. When provided, the engine replaces the existing tool list with
-	// this value.
-	Tools *[]AgentTool `json:"tools"`
+// AgentInstanceUpdateResult Response returned after successfully updating an agent instance.
+type AgentInstanceUpdateResult struct {
+	// CreatedHistory One entry per history item submitted in the request, in request order.
+	// Empty when no history items were submitted.
+	CreatedHistory []AgentInstanceCreatedHistoryItem `json:"createdHistory"`
 }
 
 // AgentInstanceUpdateStatusEnum The status values that can be set on an agent instance via an update request.
@@ -2901,7 +3324,7 @@ type AgentTool struct {
 	Description *string `json:"description"`
 
 	// ElementId The BPMN element ID of the tool element within the ad-hoc sub-process.
-	ElementId *string `json:"elementId"`
+	ElementId *ElementId `json:"elementId"`
 
 	// Name The tool name as visible to the LLM.
 	Name string `json:"name"`
@@ -3624,7 +4047,9 @@ type BatchOperationResponse struct {
 	BatchOperationKey BatchOperationKey `json:"batchOperationKey"`
 
 	// BatchOperationType The type of the batch operation.
-	BatchOperationType BatchOperationTypeEnum `json:"batchOperationType"`
+	// This is `null` for batch operations whose type was never recorded in
+	// secondary storage, such as legacy Operate batch operations.
+	BatchOperationType *BatchOperationTypeEnum `json:"batchOperationType"`
 
 	// EndDate The end date of the batch operation.
 	// This is `null` if the batch operation is still running.
@@ -3736,7 +4161,7 @@ type BusinessId = string
 
 // CamundaUserResult defines model for CamundaUserResult.
 type CamundaUserResult struct {
-	// AuthorizedComponents The web components the user is authorized to use.
+	// AuthorizedComponents The web components the user is authorized to use. When authorizations are disabled for the cluster, this always returns `["*"]`, regardless of the user's actual permissions, since access is not restricted in that case.
 	AuthorizedComponents []string `json:"authorizedComponents"`
 
 	// C8Links The links to the components in the C8 stack.
@@ -3846,6 +4271,96 @@ type CloudConfigurationResponse struct {
 // CloudStage The cloud deployment stage.
 type CloudStage string
 
+// ClusterBalanceResponse The cluster's current per-partition balance state, the running rebalance, and the last completed rebalance.
+type ClusterBalanceResponse struct {
+	// LastCompletedRebalance The last completed non-dry-run rebalance this coordinator finished.
+	LastCompletedRebalance *ClusterCompletedRebalance `json:"lastCompletedRebalance"`
+
+	// Partitions The balance state of each partition as of the time of the request.
+	Partitions []ClusterRebalancePartition `json:"partitions"`
+
+	// RunningRebalance Normally the rebalance currently running, or absent if no rebalance is running. For a dry-run response, this is instead the unexecuted plan of that dry run.
+	RunningRebalance *ClusterRunningRebalance `json:"runningRebalance"`
+
+	// State The cluster's aggregate balance state as of the time of the request.
+	State ClusterBalanceResponseState `json:"state"`
+}
+
+// ClusterBalanceResponseState The cluster's aggregate balance state as of the time of the request.
+type ClusterBalanceResponseState string
+
+// ClusterBrokerInfo Provides information on a broker node, independent of any physical tenant.
+type ClusterBrokerInfo struct {
+	// BrokerId The unique (within a cluster) broker identifier. When the cluster is not zoned, then it's a string that represents the nodeId (an integer). When the cluster is zoned, instead, it's of the form "$zoneName_$nodeId", providing uniqueness even across zones.
+	BrokerId string `json:"brokerId"`
+
+	// Host The hostname for reaching the broker.
+	Host string `json:"host"`
+
+	// Port The port for reaching the broker.
+	Port int32 `json:"port"`
+
+	// Version The broker version.
+	Version string `json:"version"`
+}
+
+// ClusterCompletedRebalance defines model for ClusterCompletedRebalance.
+type ClusterCompletedRebalance struct {
+	// FinishedAt When this rebalance finished.
+	FinishedAt time.Time `json:"finishedAt"`
+
+	// Partitions Every partition in the rebalance plan and its progress within this rebalance.
+	Partitions []ClusterRebalanceOperationPartition `json:"partitions"`
+
+	// RebalanceId The ID of this rebalance.
+	RebalanceId int64 `json:"rebalanceId"`
+
+	// Result How the rebalance ended.
+	Result ClusterCompletedRebalanceResult `json:"result"`
+
+	// StartedAt When this rebalance was created.
+	StartedAt time.Time `json:"startedAt"`
+}
+
+// ClusterCompletedRebalanceResult How the rebalance ended.
+type ClusterCompletedRebalanceResult string
+
+// ClusterHistoryBackupInfo A history backup id and what each physical tenant reports for it. No cluster-level state is aggregated from the per-tenant states.
+type ClusterHistoryBackupInfo struct {
+	// BackupId The id of the backup.
+	BackupId BackupId `json:"backupId"`
+
+	// PhysicalTenants What each physical tenant reports for this backup id, ordered by physical tenant id. When looking a backup id up directly, every targeted tenant is listed, including the ones reporting `NOT_FOUND`. Within a listing, only the tenants that hold the id are listed.
+	PhysicalTenants []ClusterHistoryBackupTenantInfo `json:"physicalTenants"`
+}
+
+// ClusterHistoryBackupTakeResult The snapshots scheduled on a single physical tenant. Only successfully scheduled tenants are reported: the request fails as a whole if any targeted tenant could not schedule the backup.
+type ClusterHistoryBackupTakeResult struct {
+	// PhysicalTenantId The id of the physical tenant.
+	PhysicalTenantId string `json:"physicalTenantId"`
+
+	// ScheduledSnapshots The names of the snapshots scheduled on this physical tenant.
+	ScheduledSnapshots []string `json:"scheduledSnapshots"`
+}
+
+// ClusterHistoryBackupTenantInfo What a single physical tenant reports for a history backup id.
+type ClusterHistoryBackupTenantInfo struct {
+	// Details Detailed status of the backup per snapshot on this physical tenant. Empty when the tenant does not hold the backup.
+	Details []HistoryBackupSnapshotInfo `json:"details"`
+
+	// FailureReason Reason for failure if the state is 'FAILED'.
+	FailureReason *string `json:"failureReason"`
+
+	// PhysicalTenantId The id of the physical tenant.
+	PhysicalTenantId string `json:"physicalTenantId"`
+
+	// State The state of the backup on this physical tenant.
+	State ClusterHistoryBackupTenantState `json:"state"`
+}
+
+// ClusterHistoryBackupTenantState What a physical tenant reports for a history backup id: the per-tenant `HistoryBackupStateCode` extended with `NOT_FOUND` for a tenant that was read and does not hold the backup. `NOT_FOUND` is a successful observation, not a failure — a backup that only some physical tenants hold is a supported outcome. There is no state for a tenant that could not be read at all, because such a tenant fails the whole request.
+type ClusterHistoryBackupTenantState string
+
 // ClusterModeChangeOperation A single operation that is part of a cluster mode change.
 type ClusterModeChangeOperation struct {
 	// Mode The target mode of the operation, if applicable.
@@ -3855,14 +4370,316 @@ type ClusterModeChangeOperation struct {
 	Operation string `json:"operation"`
 }
 
+// ClusterModeChangePlannedChange The operations of a cluster mode change that apply to one physical tenant.
+type ClusterModeChangePlannedChange struct {
+	// Operations The ordered list of operations that will be applied to the physical tenant.
+	Operations []ClusterModeChangeOperation `json:"operations"`
+
+	// PhysicalTenantId The physical tenant the operations apply to; null for operations that are not scoped to a single physical tenant, such as broker lifecycle operations.
+	PhysicalTenantId *string `json:"physicalTenantId"`
+}
+
 // ClusterModeChangeResponse The planned changes resulting from a cluster mode transition request.
 type ClusterModeChangeResponse struct {
 	// ChangeId The ID of the cluster change that was triggered by the request.
 	ChangeId string `json:"changeId"`
 
-	// PlannedChanges The ordered list of operations that will be applied to complete the change.
-	PlannedChanges []ClusterModeChangeOperation `json:"plannedChanges"`
+	// PlannedChanges The operations that will be applied to complete the change, grouped by the physical tenant they belong to. Groups are transitioned in parallel; the operations within a group are applied in the given order.
+	PlannedChanges []ClusterModeChangePlannedChange `json:"plannedChanges"`
 }
+
+// ClusterRebalance The fields common to a running and a completed rebalance.
+type ClusterRebalance struct {
+	// Partitions Every partition in the rebalance plan and its progress within this rebalance.
+	Partitions []ClusterRebalanceOperationPartition `json:"partitions"`
+
+	// RebalanceId The ID of this rebalance.
+	RebalanceId int64 `json:"rebalanceId"`
+
+	// StartedAt When this rebalance was created.
+	StartedAt time.Time `json:"startedAt"`
+}
+
+// ClusterRebalanceOperationPartition One partition's plan, progress, and outcome within a rebalance.
+type ClusterRebalanceOperationPartition struct {
+	// CurrentLeader The leader last observed by this rebalance, or absent if there was no leader.
+	CurrentLeader *string `json:"currentLeader"`
+
+	// DesiredLeader The leader selected when this rebalance was planned.
+	DesiredLeader string `json:"desiredLeader"`
+
+	// PartitionId The unique ID of this partition, within its physical tenant.
+	PartitionId int32 `json:"partitionId"`
+
+	// PhysicalTenantId The partition group this partition belongs to.
+	PhysicalTenantId string `json:"physicalTenantId"`
+
+	// Progress Where this rebalance has reached for the partition.
+	Progress ClusterRebalanceOperationPartitionProgress `json:"progress"`
+
+	// Result The terminal outcome, present only when progress is COMPLETED.
+	Result *ClusterRebalanceOperationPartitionResult `json:"result"`
+}
+
+// ClusterRebalanceOperationPartitionProgress Where this rebalance has reached for the partition.
+type ClusterRebalanceOperationPartitionProgress string
+
+// ClusterRebalanceOperationPartitionResult The terminal outcome, present only when progress is COMPLETED.
+type ClusterRebalanceOperationPartitionResult string
+
+// ClusterRebalancePartition One partition's leadership/balance status - its current leader, its desired leader, and whether a rebalance is currently moving it.
+type ClusterRebalancePartition struct {
+	// CurrentLeader The broker ID currently leading this partition, or absent if it has no leader.
+	CurrentLeader *string `json:"currentLeader"`
+
+	// DesiredLeader The broker ID the current configuration wants to lead this partition.
+	DesiredLeader string `json:"desiredLeader"`
+
+	// PartitionId The unique ID of this partition, within its physical tenant.
+	PartitionId int32 `json:"partitionId"`
+
+	// PhysicalTenantId The partition group this partition belongs to. Partition IDs are unique only within a group, so this is needed to identify the partition.
+	PhysicalTenantId string `json:"physicalTenantId"`
+
+	// State Whether this partition is being actively transferred, unbalanced, or balanced.
+	State ClusterRebalancePartitionState `json:"state"`
+}
+
+// ClusterRebalancePartitionState Whether this partition is being actively transferred, unbalanced, or balanced.
+type ClusterRebalancePartitionState string
+
+// ClusterRebalanceRequest The settings to run a given rebalance with. Every setting is optional; an absent request body is equivalent to a body with every field absent, and means "use the configured settings".
+type ClusterRebalanceRequest struct {
+	// LeaderWaitTimeout How long the coordinator waits for a partition without a leader to acquire one before reporting `NO_LEADER` and moving on (as a positive ISO-8601 duration).
+	LeaderWaitTimeout *string `json:"leaderWaitTimeout,omitempty"`
+
+	// MaxTransferAttempts How many times a current leader may prompt the desired leader to take over leadership before giving up.
+	MaxTransferAttempts *int32 `json:"maxTransferAttempts,omitempty"`
+
+	// ReplicationLagThreshold The highest replication lag (in bytes) that a desired leader may have for its transfer to be accepted.
+	ReplicationLagThreshold *int64 `json:"replicationLagThreshold,omitempty"`
+
+	// ReplicationTimeout How long a partition may stay frozen waiting for its desired leader to catch up (as a positive ISO-8601 duration).
+	ReplicationTimeout *string `json:"replicationTimeout,omitempty"`
+}
+
+// ClusterRestoreAwaitModeChangeOperation The operation that awaits the transition of a broker to a mode.
+type ClusterRestoreAwaitModeChangeOperation struct {
+	// BrokerId The ID of the broker that applies the operation, including its zone if it belongs to one.
+	BrokerId string `json:"brokerId"`
+
+	// Mode The mode the broker is awaited to have transitioned to.
+	Mode string `json:"mode"`
+
+	// Operation The type of the operation.
+	Operation string `json:"operation"`
+}
+
+// ClusterRestoreBrokerOperation A restore operation that applies to a broker as a whole, such as the one that updates its incarnation number.
+type ClusterRestoreBrokerOperation struct {
+	// BrokerId The ID of the broker that applies the operation, including its zone if it belongs to one.
+	BrokerId string `json:"brokerId"`
+
+	// Operation The type of the operation.
+	Operation string `json:"operation"`
+}
+
+// ClusterRestoreModeChangeOperation The operation that transitions a broker to a mode once its partitions are restored.
+type ClusterRestoreModeChangeOperation struct {
+	// BrokerId The ID of the broker that applies the operation, including its zone if it belongs to one.
+	BrokerId string `json:"brokerId"`
+
+	// Mode The mode the broker is transitioned to.
+	Mode string `json:"mode"`
+
+	// Operation The type of the operation.
+	Operation string `json:"operation"`
+}
+
+// ClusterRestoreOperation A single operation that is part of a restore. Every operation names the broker that applies it; the rest of its properties depend on what the operation does, so it is reported as one of the variants below, distinguished by `operation`. A property a variant does not declare is absent from the response rather than reported as null.
+type ClusterRestoreOperation struct {
+	union json.RawMessage
+}
+
+// ClusterRestorePartitionOperation A restore operation that targets a single partition without restoring it, such as the one that prepares the partition for its restore.
+type ClusterRestorePartitionOperation struct {
+	// BrokerId The ID of the broker that applies the operation, including its zone if it belongs to one.
+	BrokerId string `json:"brokerId"`
+
+	// Operation The type of the operation.
+	Operation string `json:"operation"`
+
+	// PartitionId The partition the operation applies to.
+	PartitionId int32 `json:"partitionId"`
+}
+
+// ClusterRestorePartitionRestoreOperation The operation that restores a single partition from the backups resolved for it.
+type ClusterRestorePartitionRestoreOperation struct {
+	// BackupIds The IDs of the backups the partition is restored from.
+	BackupIds []int64 `json:"backupIds"`
+
+	// BrokerId The ID of the broker that applies the operation, including its zone if it belongs to one.
+	BrokerId string `json:"brokerId"`
+
+	// Operation The type of the operation.
+	Operation string `json:"operation"`
+
+	// PartitionId The partition the operation restores.
+	PartitionId int32 `json:"partitionId"`
+}
+
+// ClusterRestorePlannedChange The operations of a restore that apply to one physical tenant.
+type ClusterRestorePlannedChange struct {
+	// Operations The ordered list of operations that will be applied to the physical tenant.
+	Operations []ClusterRestoreOperation `json:"operations"`
+
+	// PhysicalTenantId The physical tenant the operations apply to; null for operations that are not scoped to a single physical tenant, such as broker lifecycle operations.
+	PhysicalTenantId *string `json:"physicalTenantId"`
+}
+
+// ClusterRestoreRequest Describes a restore request. Provide either a list of backup IDs or a time range (`from`/`to`) that selects the backups to restore; the two are mutually exclusive.
+type ClusterRestoreRequest = RestoreRequest
+
+// ClusterRestoreResponse The planned changes resulting from a restore request.
+type ClusterRestoreResponse struct {
+	// ChangeId The ID of the cluster change that was triggered by the request.
+	ChangeId string `json:"changeId"`
+
+	// PlannedChanges The operations that will be applied to complete the restore, grouped by the physical tenant they belong to. Groups are restored in parallel; the operations within a group are applied in the given order.
+	PlannedChanges []ClusterRestorePlannedChange `json:"plannedChanges"`
+}
+
+// ClusterRunningRebalance defines model for ClusterRunningRebalance.
+type ClusterRunningRebalance struct {
+	// CancelRequested Whether cancellation has been requested.
+	CancelRequested bool `json:"cancelRequested"`
+
+	// DryRun Whether this rebalance is a dry run.
+	DryRun bool `json:"dryRun"`
+
+	// Partitions Every partition in the rebalance plan and its progress within this rebalance.
+	Partitions []ClusterRebalanceOperationPartition `json:"partitions"`
+
+	// RebalanceId The ID of this rebalance.
+	RebalanceId int64 `json:"rebalanceId"`
+
+	// StartedAt When this rebalance was created.
+	StartedAt time.Time `json:"startedAt"`
+}
+
+// ClusterRuntimeBackupInfo A runtime backup id, what each physical tenant reports for it, and the state aggregated over every targeted tenant — folded from the per-tenant states by the same rules a per-tenant state is folded from its partitions.
+type ClusterRuntimeBackupInfo struct {
+	// BackupId The id of the backup.
+	BackupId BackupId `json:"backupId"`
+
+	// FailureReason Reason for failure if the aggregated state is 'FAILED'.
+	FailureReason *string `json:"failureReason"`
+
+	// PhysicalTenants What each physical tenant reports for this backup id, ordered by physical tenant id. Every targeted tenant is listed, including the ones reporting `DOES_NOT_EXIST`.
+	PhysicalTenants []ClusterRuntimeBackupTenantInfo `json:"physicalTenants"`
+
+	// State The state aggregated over every targeted physical tenant, whether the backup id was looked up directly or listed. A tenant holding nothing for this id counts as `DOES_NOT_EXIST`, so the aggregate is `INCOMPLETE` unless every targeted tenant holds the backup.
+	State StateCode `json:"state"`
+}
+
+// ClusterRuntimeBackupState The checkpoint and backup state of each physical tenant. Nothing is aggregated across tenants: checkpoint ids and log positions only mean anything within one tenant's partitions.
+type ClusterRuntimeBackupState struct {
+	// PhysicalTenants The runtime backup state of each targeted physical tenant, ordered by physical tenant id.
+	PhysicalTenants []ClusterRuntimeBackupTenantState `json:"physicalTenants"`
+}
+
+// ClusterRuntimeBackupTakeOutcome What a physical tenant did with the trigger. `TRIGGERED` says the backup is running, not that it completed — poll `GET /cluster/v2/backups/runtime/{backupId}` for that. A `FAILED` tenant is running no backup for this request and needs no cleanup. `UNKNOWN` means the broker may or may not have accepted the request — the connection was cut mid-flight, or the gateway timed out waiting — so that tenant's backups have to be checked before retrying; it is reported separately from `FAILED` precisely because calling it failed would claim nothing is running there. Tenants that were triggered are never rolled back.
+type ClusterRuntimeBackupTakeOutcome string
+
+// ClusterRuntimeBackupTakeResult Whether one physical tenant's runtime backup was triggered, and under which id it can be monitored and deleted.
+type ClusterRuntimeBackupTakeResult struct {
+	// BackupId The id to monitor or delete this physical tenant's backup by: the id it is running under when `TRIGGERED` — the requested one, or the one the tenant generated when ids are generated — and the requested id to check when `UNKNOWN`. Null when the tenant is known to be running no backup, and also when an `UNKNOWN` tenant generates its own ids, because the id it may be running under was never reported; list that tenant's backups to find it.
+	BackupId *BackupId `json:"backupId"`
+
+	// Outcome What this physical tenant did with the trigger.
+	Outcome ClusterRuntimeBackupTakeOutcome `json:"outcome"`
+
+	// PhysicalTenantId The id of the physical tenant.
+	PhysicalTenantId string `json:"physicalTenantId"`
+
+	// Reason Why this physical tenant reported no triggered backup. Null when it was triggered.
+	Reason *string `json:"reason"`
+}
+
+// ClusterRuntimeBackupTenantInfo What a single physical tenant reports for a runtime backup id.
+type ClusterRuntimeBackupTenantInfo struct {
+	// Details Detailed status of the backup per partition of this physical tenant. Contains every partition of the tenant when the backup id was looked up directly, including for a tenant that holds no such backup. Empty for a tenant that holds nothing for a listed id: a listing asks each tenant for the backups it has, so there is nothing to report per partition for one it does not.
+	Details []PartitionBackupInfo `json:"details"`
+
+	// FailureReason Reason for failure if the state is 'FAILED'.
+	FailureReason *string `json:"failureReason"`
+
+	// PhysicalTenantId The id of the physical tenant.
+	PhysicalTenantId string `json:"physicalTenantId"`
+
+	// State The state of the backup on this physical tenant, aggregated over its partitions.
+	State StateCode `json:"state"`
+}
+
+// ClusterRuntimeBackupTenantState The checkpoint and backup state of one physical tenant.
+type ClusterRuntimeBackupTenantState struct {
+	// PhysicalTenantId The id of the physical tenant.
+	PhysicalTenantId string `json:"physicalTenantId"`
+
+	// State The checkpoint and backup state of this physical tenant's partitions.
+	State RuntimeBackupState `json:"state"`
+}
+
+// ClusterStatusResponse The aggregated status of the whole cluster.
+type ClusterStatusResponse struct {
+	// Status `HEALTHY` when every physical tenant is healthy, `DOWN` when no physical tenant can process work, `DEGRADED` in every other case.
+	Status ClusterStatusResponseStatus `json:"status"`
+}
+
+// ClusterStatusResponseStatus `HEALTHY` when every physical tenant is healthy, `DOWN` when no physical tenant can process work, `DEGRADED` in every other case.
+type ClusterStatusResponseStatus string
+
+// ClusterTakeHistoryBackupResponse The snapshots scheduled on every targeted physical tenant. No cluster-level state is aggregated from the per-tenant outcomes.
+type ClusterTakeHistoryBackupResponse struct {
+	// BackupId The id requested for the backup on every targeted physical tenant.
+	BackupId BackupId `json:"backupId"`
+
+	// PhysicalTenants The outcome for each targeted physical tenant, ordered by physical tenant id.
+	PhysicalTenants []ClusterHistoryBackupTakeResult `json:"physicalTenants"`
+}
+
+// ClusterTakeRuntimeBackupResponse The outcome of triggering a runtime backup on every targeted physical tenant. Returned both when every tenant was triggered and when only some were, so a partial trigger is never silent: the status code says whether the request succeeded, the body says what is running.
+type ClusterTakeRuntimeBackupResponse struct {
+	// PhysicalTenants The outcome for each targeted physical tenant, ordered by physical tenant id. Carries no cluster-level backup id: in generated-id mode each tenant generates its own.
+	PhysicalTenants []ClusterRuntimeBackupTakeResult `json:"physicalTenants"`
+}
+
+// ClusterTopologyResponse The topology of the whole cluster, aggregated over all physical tenants.
+type ClusterTopologyResponse struct {
+	// Brokers The brokers that are part of this cluster, across all physical tenants.
+	Brokers []ClusterBrokerInfo `json:"brokers"`
+
+	// ClusterId The cluster Id.
+	ClusterId *string `json:"clusterId"`
+
+	// ClusterSize The number of brokers in the cluster.
+	ClusterSize int32 `json:"clusterSize"`
+
+	// GatewayVersion The version of the Orchestration Cluster Gateway.
+	GatewayVersion *string `json:"gatewayVersion"`
+
+	// PhysicalTenants The topology of each physical tenant of this cluster.
+	PhysicalTenants []PhysicalTenantTopology `json:"physicalTenants"`
+}
+
+// ClusterUpgradeStatusResponse The upgrade-readiness status of the whole cluster.
+type ClusterUpgradeStatusResponse struct {
+	// Status `MIGRATED` once every known upgrade-readiness condition is met for every known physical tenant; `MIGRATION_IN_PROGRESS` when at least one is confirmed not yet migrated; `UNKNOWN` otherwise.
+	Status ClusterUpgradeStatusResponseStatus `json:"status"`
+}
+
+// ClusterUpgradeStatusResponseStatus `MIGRATED` once every known upgrade-readiness condition is met for every known physical tenant; `MIGRATION_IN_PROGRESS` when at least one is confirmed not yet migrated; `UNKNOWN` otherwise.
+type ClusterUpgradeStatusResponseStatus string
 
 // ClusterVariableKindEnum The kind of a cluster variable. JSON is the default. SECRET_REFERENCE allows the value to contain camunda.secrets.X references that are resolved at job activation time.
 type ClusterVariableKindEnum string
@@ -4068,7 +4885,7 @@ type CorrelatedMessageSubscriptionResult struct {
 	CorrelationTime time.Time `json:"correlationTime"`
 
 	// ElementId The element ID that received the message.
-	ElementId string `json:"elementId"`
+	ElementId ElementId `json:"elementId"`
 
 	// ElementInstanceKey The element instance key that received the message.
 	// It is `null` for start event subscriptions.
@@ -4740,13 +5557,15 @@ type DeleteProcessInstanceRequest struct {
 
 // DeleteResourceRequest defines model for DeleteResourceRequest.
 type DeleteResourceRequest struct {
-	// DeleteHistory Indicates if the historic data of a process resource should be deleted via a
-	// batch operation asynchronously.
+	// DeleteHistory Indicates if the historic data associated with the resource should also be deleted
+	// asynchronously.
 	//
-	// This flag is only effective for process resources. For other resource types
-	// (decisions, forms, generic resources), this flag is ignored and no history
-	// will be deleted. In those cases, the `batchOperation` field in the response
-	// will not be populated.
+	// This flag is effective for process definitions and decision requirements definitions.
+	// For other resource types (forms, generic resources) it is ignored and no history is
+	// deleted. For a decision requirements definition the `batchOperation` field in the
+	// response carries the created batch operation. For a process definition the history is
+	// deleted as part of the definition's draining/deletion lifecycle and no batch operation is
+	// returned.
 	DeleteHistory *bool `json:"deleteHistory,omitempty"`
 
 	// OperationReference A reference key chosen by the user that will be part of all records resulting from this operation.
@@ -4758,9 +5577,14 @@ type DeleteResourceRequest struct {
 type DeleteResourceResponse struct {
 	// BatchOperation The batch operation created for asynchronously deleting the historic data.
 	//
-	// This field is only populated when the request `deleteHistory` is set to `true` and the resource
-	// is a process definition. For other resource types (decisions, forms, generic resources),
-	// this field will be `null`.
+	// Populated when `deleteHistory` is `true` and either the resource is a decision
+	// requirements definition, or the resource is a process definition that is already fully
+	// deleted from the runtime state (its history is purged directly by a batch operation).
+	//
+	// For a process definition that still exists in the runtime state, deletion first drains
+	// the definition and its history is removed asynchronously as part of that lifecycle, so no
+	// batch operation is returned and this field is `null`. It is also `null` for forms and
+	// generic resources.
 	BatchOperation *BatchOperationCreatedResult `json:"batchOperation"`
 
 	// ResourceKey The system-assigned key for this resource, requested to be deleted.
@@ -5489,6 +6313,20 @@ type EvaluatedDecisionResult struct {
 	TenantId TenantId `json:"tenantId"`
 }
 
+// ExportingStatusCode The exporting status of a physical tenant, aggregated over every replica of every one of
+// its partitions:
+// - `EXPORTING`: all replicas are exporting and committing their position.
+// - `PAUSED`: all replicas are paused, nothing is being exported.
+// - `SOFT_PAUSED`: all replicas keep exporting but do not commit their position.
+// - `MIXED`: replicas report different phases, so the tenant is in no single phase.
+type ExportingStatusCode string
+
+// ExportingStatusResponse Response body for the exporting status of a physical tenant.
+type ExportingStatusResponse struct {
+	// Status The aggregated exporting status of the physical tenant.
+	Status *ExportingStatusCode `json:"status,omitempty"`
+}
+
 // ExpressionEvaluationRequest defines model for ExpressionEvaluationRequest.
 type ExpressionEvaluationRequest struct {
 	// Expression The expression to evaluate (e.g., "=x + y")
@@ -5513,6 +6351,14 @@ type ExpressionEvaluationResult struct {
 	// Expression The evaluated expression
 	Expression string `json:"expression"`
 
+	// ReferencedSecrets The secret references resolved from trusted sources while evaluating the expression: a
+	// `camunda.secrets.<name>` reference used directly in the expression, or a reference
+	// carried by a `SECRET_REFERENCE`-kind cluster variable the expression read. References
+	// appearing only in request-body variables or plain cluster variables are excluded.
+	// Callers use this to know which `camunda.secrets.<name>` occurrences in the result they
+	// may safely resolve.
+	ReferencedSecrets []ExpressionSecretReferenceItem `json:"referencedSecrets"`
+
 	// Result The result value. Its type can vary.
 	Result interface{} `json:"result"`
 
@@ -5524,6 +6370,15 @@ type ExpressionEvaluationResult struct {
 type ExpressionEvaluationWarningItem struct {
 	// Message The warning message
 	Message string `json:"message"`
+}
+
+// ExpressionSecretReferenceItem defines model for ExpressionSecretReferenceItem.
+type ExpressionSecretReferenceItem struct {
+	// SecretName The secret name, e.g. "token" for "camunda.secrets.token"
+	SecretName string `json:"secretName"`
+
+	// StoreId The identifier of the secret store that holds the referenced secret
+	StoreId string `json:"storeId"`
 }
 
 // FormId The user-defined id for the form
@@ -5739,13 +6594,41 @@ type GroupCreateResult struct {
 	Name string `json:"name"`
 }
 
-// GroupFilter Group filter request
+// GroupFilter defines model for GroupFilter.
 type GroupFilter struct {
+	// Or Defines a list of alternative filter groups combined using OR logic. Each object in the array is evaluated independently, and the filter matches if any one of them is satisfied.
+	//
+	// Top-level fields and the `$or` clause are combined using AND logic — meaning: (top-level filters) AND (any of the `$or` filters) must match.
+	// <br>
+	// <em>Example:</em>
+	//
+	// ```json
+	// {
+	//   "$or": [
+	//     { "groupId": "group-1" },
+	//     { "groupId": "group-2" }
+	//   ]
+	// }
+	// ```
+	// This matches groups whose <code>groupId</code> is <em>group-1</em> or <em>group-2</em>.
+	// <br>
+	// <p>Note: Using complex <code>$or</code> conditions may impact performance, use with caution in high-volume environments.
+	Or *[]GroupFilterFields `json:"$or"`
+
 	// GroupId The group ID search filters.
 	GroupId *StringFilterProperty `json:"groupId,omitempty"`
 
 	// Name The group name search filters.
-	Name *string `json:"name,omitempty"`
+	Name *StringFilterProperty `json:"name,omitempty"`
+}
+
+// GroupFilterFields Group filter request
+type GroupFilterFields struct {
+	// GroupId The group ID search filters.
+	GroupId *StringFilterProperty `json:"groupId,omitempty"`
+
+	// Name The group name search filters.
+	Name *StringFilterProperty `json:"name,omitempty"`
 }
 
 // GroupId The unique identifier of a group.
@@ -5871,6 +6754,57 @@ type GroupUserSearchResult struct {
 	Page SearchQueryPageResponse `json:"page"`
 }
 
+// HistoryBackupInfo Detailed status of a history backup. The aggregated state is computed from the state of
+// each of its snapshots as:
+//   - If every expected snapshot exists and all are complete, the overall state is
+//     'COMPLETED'.
+//   - If one snapshot failed or is partial, the overall state is 'FAILED'.
+//   - Otherwise, if one snapshot is incompatible, the overall state is 'INCOMPATIBLE'.
+//   - Otherwise, if one snapshot is still running, the overall state is 'IN_PROGRESS'.
+//   - Otherwise, if snapshots are missing and the backup has not progressed within the
+//     configured timeout, the overall state is 'INCOMPLETE'.
+type HistoryBackupInfo struct {
+	// BackupId The id of the backup.
+	BackupId *BackupId `json:"backupId,omitempty"`
+
+	// Details Detailed status of the backup per snapshot. Always lists every snapshot found for
+	// the backup; when the backup was read without snapshot detail, each entry carries
+	// only its name.
+	Details *[]HistoryBackupSnapshotInfo `json:"details,omitempty"`
+
+	// FailureReason Reason for failure if the state is 'FAILED'.
+	FailureReason *string `json:"failureReason"`
+
+	// State The aggregated state of the backup.
+	State *HistoryBackupStateCode `json:"state,omitempty"`
+}
+
+// HistoryBackupSnapshotInfo Detailed info of a single snapshot making up a history backup.
+type HistoryBackupSnapshotInfo struct {
+	// Failures The failures reported for this snapshot. Empty if there were none.
+	Failures *[]string `json:"failures,omitempty"`
+
+	// SnapshotName The name of the snapshot.
+	SnapshotName *string `json:"snapshotName,omitempty"`
+
+	// StartTime The timestamp at which the snapshot was started. Not reported when the backup was
+	// listed without snapshot detail.
+	StartTime *time.Time `json:"startTime"`
+
+	// State The state of the snapshot, reported verbatim by the secondary storage (for example
+	// 'SUCCESS', 'IN_PROGRESS' or 'PARTIAL'). Deliberately not a closed set: Elasticsearch
+	// and OpenSearch report different vocabularies. Not reported when the backup was
+	// listed without snapshot detail.
+	State *string `json:"state"`
+}
+
+// HistoryBackupStateCode The aggregated state of a history backup, computed from the state of each of its
+// snapshots.
+type HistoryBackupStateCode string
+
+// HistoryItemId The client-supplied identifier this item was created with.
+type HistoryItemId = string
+
 // IncidentErrorTypeEnum Incident error type with a defined set of values.
 type IncidentErrorTypeEnum string
 
@@ -5893,7 +6827,7 @@ type IncidentFilter struct {
 	// ElementInstanceKey The element instance key associated to this incident.
 	ElementInstanceKey *ElementInstanceKeyFilterProperty `json:"elementInstanceKey,omitempty"`
 
-	// ErrorMessage The error message of this incident.
+	// ErrorMessage The error message of this incident. For `$eq`, `$neq`, `$in`, and `$notIn`, matching is case-insensitive and matches if the incident's error message contains the given value as a phrase, not necessarily the entire error message. `$like` matches on individual words of the error message and does not support multi-word patterns.
 	ErrorMessage *StringFilterProperty `json:"errorMessage,omitempty"`
 
 	// ErrorType Incident error type with a defined set of values.
@@ -6160,7 +7094,7 @@ type JobActivationRequest struct {
 	// Type The job type, as defined in the BPMN process (e.g. <zeebe:taskDefinition type="payment-service" />)
 	Type string `json:"type"`
 
-	// WithLease Whether to activate the jobs with a lease. When true, each activated job is assigned a distinct, opaque lease token, returned as ActivatedJobResult.leaseToken. The lease fences the complete, fail, and throw-error commands against a superseded activation of the same job (for example, after the job timed out or failed and was re-activated by another worker): a command carrying a stale lease token is rejected rather than racing with the newer activation. Once a job has been activated with a lease, it is served only to leasing workers of that job type; a homogeneous fleet per job type is recommended. Omit or set to false to activate jobs without a lease.
+	// WithLease Whether to activate the jobs with a lease. When true, each activated job is assigned a distinct, opaque lease token, returned as ActivatedJobResult.jobLeaseToken. The lease fences the complete, fail, and throw-error commands against a superseded activation of the same job (for example, after the job timed out or failed and was re-activated by another worker): a command carrying a stale lease token is rejected rather than racing with the newer activation. Once a job has been activated with a lease, it is served only to leasing workers of that job type; a homogeneous fleet per job type is recommended. Omit or set to false to activate jobs without a lease.
 	WithLease *bool `json:"withLease"`
 
 	// Worker The name of the worker activating the jobs, mostly used for logging purposes.
@@ -6204,10 +7138,10 @@ type JobCompletionRequest struct {
 	// The business id can only be assigned to a root process instance: if the job belongs to a child process instance (one started by a call activity), the completion is rejected. An empty business id is likewise rejected. The assignment is single and irreversible and is only accepted while business id uniqueness is disabled. Only artifacts created after the assignment carry the business id; already-existing ones are not enriched. Completing with a business id that differs from one already assigned rejects the whole completion, leaving the job open; re-sending the identical business id is an idempotent no-op.
 	BusinessId *BusinessId `json:"businessId"`
 
-	// LeaseToken The token identifying a leased job's activation, obtained from `ActivatedJobResult.leaseToken`.
+	// JobLeaseToken The token identifying a leased job's activation, obtained from `ActivatedJobResult.jobLeaseToken`.
 	// For a leased job, the matching token must be supplied to prove the command comes from the worker that holds the current lease; a command with no token is rejected. A command carrying a stale token is likewise rejected, fencing the job against a superseded activation (for example, after the job timed out or failed and was re-activated by another worker).
 	// A job that was activated without a lease requires no token.
-	LeaseToken *string `json:"leaseToken"`
+	JobLeaseToken *JobLeaseToken `json:"jobLeaseToken"`
 
 	// Result The result of the completed job as determined by the worker.
 	Result *JobResult `json:"result,omitempty"`
@@ -6224,10 +7158,10 @@ type JobErrorRequest struct {
 	// ErrorMessage An error message that provides additional context.
 	ErrorMessage *string `json:"errorMessage"`
 
-	// LeaseToken The token identifying a leased job's activation, obtained from `ActivatedJobResult.leaseToken`.
+	// JobLeaseToken The token identifying a leased job's activation, obtained from `ActivatedJobResult.jobLeaseToken`.
 	// For a leased job, the matching token must be supplied to prove the command comes from the worker that holds the current lease; a command with no token is rejected. A command carrying a stale token is likewise rejected, fencing the job against a superseded activation (for example, after the job timed out or failed and was re-activated by another worker).
 	// A job that was activated without a lease requires no token.
-	LeaseToken *string `json:"leaseToken"`
+	JobLeaseToken *JobLeaseToken `json:"jobLeaseToken"`
 
 	// Variables JSON object that will instantiate the variables at the local scope of the error catch event that catches the thrown error.
 	Variables *map[string]interface{} `json:"variables"`
@@ -6286,10 +7220,10 @@ type JobFailRequest struct {
 	// ErrorMessage An optional error message describing why the job failed; if not provided, an empty string is used.
 	ErrorMessage *string `json:"errorMessage,omitempty"`
 
-	// LeaseToken The token identifying a leased job's activation, obtained from `ActivatedJobResult.leaseToken`.
+	// JobLeaseToken The token identifying a leased job's activation, obtained from `ActivatedJobResult.jobLeaseToken`.
 	// For a leased job, the matching token must be supplied to prove the command comes from the worker that holds the current lease; a command with no token is rejected. A command carrying a stale token is likewise rejected, fencing the job against a superseded activation (for example, after the job timed out or failed and was re-activated by another worker).
 	// A job that was activated without a lease requires no token.
-	LeaseToken *string `json:"leaseToken"`
+	JobLeaseToken *JobLeaseToken `json:"jobLeaseToken"`
 
 	// Retries The amount of retries the job should have left
 	Retries *int32 `json:"retries,omitempty"`
@@ -6394,6 +7328,16 @@ type JobKindFilterProperty struct {
 
 // JobKindFilterProperty0 The job kind.
 type JobKindFilterProperty0 = JobKindEnum
+
+// JobLeaseToken An opaque, engine-minted fencing token identifying a single activation of a job.
+// Returned by Activate Jobs as `ActivatedJobResult.jobLeaseToken` when the job is
+// activated with a lease, and passed back under the same name on fenced job
+// commands and on agent-instance creation/updates, to prove the caller holds the
+// current lease. The token is opaque: clients may rely on its presence and equality
+// only, and must never construct, parse, or otherwise interpret it beyond equality
+// checks. It cannot be minted client-side; only the engine produces it, exactly once
+// per leased activation, and clients must not depend on any particular internal format.
+type JobLeaseToken = string
 
 // JobListenerEventTypeEnum The listener event type of the job.
 type JobListenerEventTypeEnum string
@@ -6755,11 +7699,11 @@ type JobUpdateRequest struct {
 	// Changeset JSON object with changed job attribute values. The job cannot be completed or failed with this endpoint, use the complete job or fail job endpoints instead.
 	Changeset JobChangeset `json:"changeset"`
 
-	// LeaseToken The token identifying a leased job's activation, obtained from `ActivatedJobResult.leaseToken`.
+	// JobLeaseToken The token identifying a leased job's activation, obtained from `ActivatedJobResult.jobLeaseToken`.
 	// For a leased job, a supplied token is validated to prove the command comes from the worker that holds the current lease; a command carrying a stale token is rejected, fencing the job against a superseded activation (for example, after the job timed out or failed and was re-activated by another worker).
 	// An update without a token always applies to support operator and bulk updates of leased jobs. Note that this is different from lifecycle requests like complete, fail, and throw-error that always require a token for leased jobs.
 	// A job that was activated without a lease requires no token.
-	LeaseToken *string `json:"leaseToken"`
+	JobLeaseToken *JobLeaseToken `json:"jobLeaseToken"`
 
 	// OperationReference A reference key chosen by the user that will be part of all records resulting from this operation.
 	// Must be > 0 if provided.
@@ -6848,9 +7792,12 @@ type LimitPagination struct {
 // LongKey Zeebe Engine resource key (Java long serialized as string)
 type LongKey = string
 
-// LoopIterationId A client-provided sequential integer identifying one pass through the agent
-// feedback loop: one LLM call, its tool dispatches, and their results. Must be
-// a positive integer, increasing with each loopIteration. Established by the
+// LoopIterationId A client-provided sequential integer identifying a loop iteration: one pass
+// through an AI agent's loop, during which the model reasons, selects tools,
+// evaluates the result, and decides whether to continue. One iteration covers
+// the input for the LLM call, the call itself, and the tools it dispatches;
+// the results of those tool calls are input to the next iteration. Must be a
+// positive integer, increasing with each loopIteration. Established by the
 // connector when appending the first history item of a loopIteration.
 type LoopIterationId = int32
 
@@ -6887,8 +7834,27 @@ type MappingRuleCreateUpdateResult struct {
 	Name string `json:"name"`
 }
 
-// MappingRuleFilter Mapping rule search filter.
+// MappingRuleFilter defines model for MappingRuleFilter.
 type MappingRuleFilter struct {
+	// Or Defines a list of alternative filter groups combined using OR logic. Each object in the array is evaluated independently, and the filter matches if any one of them is satisfied.
+	//
+	// Top-level fields and the `$or` clause are combined using AND logic — meaning: (top-level filters) AND (any of the `$or` filters) must match.
+	// <br>
+	// <em>Example:</em>
+	//
+	// ```json
+	// {
+	//   "$or": [
+	//     { "mappingRuleId": "rule-1" },
+	//     { "mappingRuleId": "rule-2" }
+	//   ]
+	// }
+	// ```
+	// This matches mapping rules whose <code>mappingRuleId</code> is <em>rule-1</em> or <em>rule-2</em>.
+	// <br>
+	// <p>Note: Using complex <code>$or</code> conditions may impact performance, use with caution in high-volume environments.
+	Or *[]MappingRuleFilterFields `json:"$or"`
+
 	// ClaimName The claim name to match against a token.
 	ClaimName *string `json:"claimName,omitempty"`
 
@@ -6896,10 +7862,25 @@ type MappingRuleFilter struct {
 	ClaimValue *string `json:"claimValue,omitempty"`
 
 	// MappingRuleId The ID of the mapping rule.
-	MappingRuleId *MappingRuleId `json:"mappingRuleId,omitempty"`
+	MappingRuleId *StringFilterProperty `json:"mappingRuleId,omitempty"`
 
 	// Name The name of the mapping rule.
-	Name *string `json:"name,omitempty"`
+	Name *StringFilterProperty `json:"name,omitempty"`
+}
+
+// MappingRuleFilterFields Mapping rule search filter fields.
+type MappingRuleFilterFields struct {
+	// ClaimName The claim name to match against a token.
+	ClaimName *string `json:"claimName,omitempty"`
+
+	// ClaimValue The value of the claim to match.
+	ClaimValue *string `json:"claimValue,omitempty"`
+
+	// MappingRuleId The ID of the mapping rule.
+	MappingRuleId *StringFilterProperty `json:"mappingRuleId,omitempty"`
+
+	// Name The name of the mapping rule.
+	Name *StringFilterProperty `json:"name,omitempty"`
 }
 
 // MappingRuleId The unique identifier of a mapping rule.
@@ -7049,6 +8030,11 @@ type MessagePublicationResult struct {
 
 // MessageSubscriptionFilter Message subscription search filter.
 type MessageSubscriptionFilter struct {
+	// BusinessId Filter by the business id inherited from the subscribing process instance when the
+	// subscription was opened. Supports advanced string filtering, including `$like` with
+	// `*`/`?` wildcards.
+	BusinessId *StringFilterProperty `json:"businessId,omitempty"`
+
 	// CorrelationKey The correlation key of the message subscription.
 	CorrelationKey *StringFilterProperty `json:"correlationKey,omitempty"`
 
@@ -7113,6 +8099,11 @@ type MessageSubscriptionKeyFilterProperty0 = MessageSubscriptionKey
 
 // MessageSubscriptionResult defines model for MessageSubscriptionResult.
 type MessageSubscriptionResult struct {
+	// BusinessId The business id inherited from the subscribing process instance when this message
+	// subscription was opened. It is `null` when the process instance has no business id, and
+	// for message start event subscriptions, which are not tied to a process instance.
+	BusinessId *BusinessId `json:"businessId"`
+
 	// CorrelationKey The correlation key of the message subscription.
 	CorrelationKey *string `json:"correlationKey"`
 
@@ -7267,6 +8258,9 @@ type MigrateProcessInstanceMappingInstruction struct {
 	TargetElementId ElementId `json:"targetElementId"`
 }
 
+// Mode The operating mode of a cluster's partitions.
+type Mode string
+
 // ModifyProcessInstanceVariableInstruction Instruction describing which variables to create or update.
 type ModifyProcessInstanceVariableInstruction struct {
 	// ScopeId The id of the element in which scope the variables should be created.
@@ -7298,6 +8292,9 @@ type OperationTypeFilterProperty struct {
 
 // OperationTypeFilterProperty0 The type of operation performed.
 type OperationTypeFilterProperty0 = AuditLogOperationTypeEnum
+
+// OwnAuthorizationSearchResult defines model for OwnAuthorizationSearchResult.
+type OwnAuthorizationSearchResult = AuthorizationSearchResult
 
 // OwnerTypeEnum The type of the owner of permissions.
 type OwnerTypeEnum string
@@ -7418,6 +8415,33 @@ type PartitionId = int32
 // PermissionTypeEnum Specifies the type of permissions.
 type PermissionTypeEnum string
 
+// PhysicalTenantBrokerTopology The partitions of one physical tenant that one broker manages or replicates.
+type PhysicalTenantBrokerTopology struct {
+	// BrokerId The unique (within a cluster) identifier of the broker, as reported in the cluster-level broker list.
+	BrokerId string `json:"brokerId"`
+
+	// Partitions The partitions of this physical tenant managed or replicated on this broker.
+	Partitions []Partition `json:"partitions"`
+}
+
+// PhysicalTenantTopology The topology of a single physical tenant.
+type PhysicalTenantTopology struct {
+	// Brokers The brokers holding partitions of this physical tenant.
+	Brokers []PhysicalTenantBrokerTopology `json:"brokers"`
+
+	// LastCompletedChangeId ID of the last completed change of this physical tenant.
+	LastCompletedChangeId string `json:"lastCompletedChangeId"`
+
+	// PartitionsCount The number of partitions spread across this physical tenant.
+	PartitionsCount int32 `json:"partitionsCount"`
+
+	// PhysicalTenantId The id of the physical tenant.
+	PhysicalTenantId string `json:"physicalTenantId"`
+
+	// ReplicationFactor The configured replication factor for this physical tenant.
+	ReplicationFactor int32 `json:"replicationFactor"`
+}
+
 // ProblemDetail A Problem detail object as described in [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457). There may be additional properties specific to the problem type.
 type ProblemDetail struct {
 	// Detail An explanation of the problem in more detail.
@@ -7473,7 +8497,9 @@ type ProcessDefinitionFilter struct {
 
 	// State Filter by the process definition's state.
 	// When not set, process definitions in any state are returned.
-	// Set to `ACTIVE` to exclude deleted definitions (recommended for most use cases).
+	// Set to `ACTIVE` to exclude draining and deleted definitions (recommended for most use cases).
+	// Set to `DRAINING` to return only definitions that are being deleted but still have
+	// active process instances draining.
 	// Set to `DELETED` to return only definitions that have been deleted but are still
 	// retained in secondary storage.
 	State *ProcessDefinitionFilterState `json:"state,omitempty"`
@@ -7490,7 +8516,9 @@ type ProcessDefinitionFilter struct {
 
 // ProcessDefinitionFilterState Filter by the process definition's state.
 // When not set, process definitions in any state are returned.
-// Set to `ACTIVE` to exclude deleted definitions (recommended for most use cases).
+// Set to `ACTIVE` to exclude draining and deleted definitions (recommended for most use cases).
+// Set to `DRAINING` to return only definitions that are being deleted but still have
+// active process instances draining.
 // Set to `DELETED` to return only definitions that have been deleted but are still
 // retained in secondary storage.
 type ProcessDefinitionFilterState string
@@ -7688,6 +8716,8 @@ type ProcessDefinitionResult struct {
 	ResourceName string `json:"resourceName"`
 
 	// State The state of this process definition.
+	// `DRAINING` indicates the definition is being deleted but still has active process
+	// instances draining before it is removed.
 	State ProcessDefinitionResultState `json:"state"`
 
 	// TenantId Tenant ID of this process definition.
@@ -7701,6 +8731,8 @@ type ProcessDefinitionResult struct {
 }
 
 // ProcessDefinitionResultState The state of this process definition.
+// `DRAINING` indicates the definition is being deleted but still has active process
+// instances draining before it is removed.
 type ProcessDefinitionResultState string
 
 // ProcessDefinitionSearchQuery defines model for ProcessDefinitionSearchQuery.
@@ -7946,7 +8978,7 @@ type ProcessInstanceCreationInstructionById struct {
 	// ProcessDefinitionId The BPMN process id of the process definition to start an instance of.
 	ProcessDefinitionId ProcessDefinitionId `json:"processDefinitionId"`
 
-	// ProcessDefinitionVersion The version of the process. By default, the latest version of the process is used.
+	// ProcessDefinitionVersion The version of the process. If omitted, the latest active version is used.
 	ProcessDefinitionVersion *int32 `json:"processDefinitionVersion,omitempty"`
 
 	// RequestTimeout Timeout (in ms) the request waits for the process to complete. By default or
@@ -8602,6 +9634,12 @@ type ProcessInstanceWaitStateStatisticsResult struct {
 	WaitingCount int64 `json:"waitingCount"`
 }
 
+// RebalanceCancellationResponse Response to a rebalance cancellation request.
+type RebalanceCancellationResponse struct {
+	// WasRunning Whether there was a rebalance to stop.
+	WasRunning bool `json:"wasRunning"`
+}
+
 // ResolvedSecret defines model for ResolvedSecret.
 type ResolvedSecret struct {
 	// Reference The resolved secret reference of the form `camunda.secrets.<name>`.
@@ -8703,6 +9741,39 @@ type ResourceSearchQuerySortRequestField string
 // ResourceTypeEnum The type of resource to add/remove permissions to/from.
 type ResourceTypeEnum string
 
+// RestoreBrokerStatus The restore status of a single broker.
+type RestoreBrokerStatus struct {
+	// BrokerId The ID of the broker, including its zone if it belongs to one.
+	BrokerId string `json:"brokerId"`
+
+	// Partitions The per-partition restore status for this broker.
+	Partitions []RestorePartitionStatus `json:"partitions"`
+
+	// PartitionsRestored The number of the broker's partitions that have been restored so far.
+	PartitionsRestored int32 `json:"partitionsRestored"`
+
+	// PartitionsToRestore The total number of the broker's partitions to restore.
+	PartitionsToRestore int32 `json:"partitionsToRestore"`
+}
+
+// RestorePartitionStatus The restore status of a single partition on a broker.
+type RestorePartitionStatus struct {
+	// BackupIds The IDs of the backups this partition is restored from.
+	BackupIds []int64 `json:"backupIds"`
+
+	// CompletedAt The time the partition was restored, as an ISO 8601 timestamp; null unless the partition state is `RESTORED`.
+	CompletedAt *time.Time `json:"completedAt"`
+
+	// PartitionId The ID of the partition.
+	PartitionId int32 `json:"partitionId"`
+
+	// State The restore state of the partition.
+	State RestorePartitionStatusState `json:"state"`
+}
+
+// RestorePartitionStatusState The restore state of the partition.
+type RestorePartitionStatusState string
+
 // RestoreRequest Describes a restore request. Provide either a list of backup IDs or a time range (`from`/`to`) that selects the backups to restore; the two are mutually exclusive.
 type RestoreRequest struct {
 	// BackupIds The IDs of the backups to restore from, one per partition.
@@ -8714,6 +9785,24 @@ type RestoreRequest struct {
 	// To The end of the time range to restore from, as an ISO 8601 timestamp.
 	To *time.Time `json:"to"`
 }
+
+// RestoreStatusResponse The status of the restore that is currently in progress.
+type RestoreStatusResponse struct {
+	// Brokers The per-broker restore status.
+	Brokers []RestoreBrokerStatus `json:"brokers"`
+
+	// ChangeId The ID of the cluster change that performs the restore.
+	ChangeId string `json:"changeId"`
+
+	// StartedAt The time the restore started, as an ISO 8601 timestamp.
+	StartedAt *time.Time `json:"startedAt"`
+
+	// Status The overall status of the restore.
+	Status RestoreStatusResponseStatus `json:"status"`
+}
+
+// RestoreStatusResponseStatus The overall status of the restore.
+type RestoreStatusResponseStatus string
 
 // ResumeProcessInstanceRequest defines model for ResumeProcessInstanceRequest.
 type ResumeProcessInstanceRequest struct {
@@ -8782,13 +9871,52 @@ type RoleCreateResult struct {
 	RoleId RoleId `json:"roleId"`
 }
 
-// RoleFilter Role filter request
+// RoleFilter defines model for RoleFilter.
 type RoleFilter struct {
+	// Or Defines a list of alternative filter groups combined using OR logic. Each object in the array is evaluated independently, and the filter matches if any one of them is satisfied.
+	//
+	// Top-level fields and the `$or` clause are combined using AND logic — meaning: (top-level filters) AND (any of the `$or` filters) must match.
+	// <br>
+	// <em>Example:</em>
+	//
+	// ```json
+	// {
+	//   "name": "Admin",
+	//   "$or": [
+	//     { "roleId": "role-1" },
+	//     { "roleId": "role-2" }
+	//   ]
+	// }
+	// ```
+	// This matches roles that:
+	//
+	// <ul style="padding-left: 20px; margin-left: 20px;">
+	//   <li style="list-style-type: disc;">have name equal to <em>Admin</em></li>
+	//   <li style="list-style-type: disc;">and match either:
+	//     <ul style="padding-left: 20px; margin-left: 20px;">
+	//       <li style="list-style-type: circle;"><code>roleId</code> is <em>role-1</em>, or</li>
+	//       <li style="list-style-type: circle;"><code>roleId</code> is <em>role-2</em></li>
+	//     </ul>
+	//   </li>
+	// </ul>
+	// <br>
+	// <p>Note: Using complex <code>$or</code> conditions may impact performance, use with caution in high-volume environments.
+	Or *[]RoleFilterFields `json:"$or"`
+
 	// Name The role name search filters.
-	Name *string `json:"name,omitempty"`
+	Name *StringFilterProperty `json:"name,omitempty"`
 
 	// RoleId The role ID search filters.
-	RoleId *RoleId `json:"roleId,omitempty"`
+	RoleId *StringFilterProperty `json:"roleId,omitempty"`
+}
+
+// RoleFilterFields Role filter request
+type RoleFilterFields struct {
+	// Name The role name search filters.
+	Name *StringFilterProperty `json:"name,omitempty"`
+
+	// RoleId The role ID search filters.
+	RoleId *StringFilterProperty `json:"roleId,omitempty"`
 }
 
 // RoleGroupResult defines model for RoleGroupResult.
@@ -9001,10 +10129,27 @@ type SearchQueryResponse struct {
 
 // SecretErrorCode The typed reason a reference could not be resolved.
 //
-// - `NOT_FOUND`: no secret exists for the reference.
-// - `ACCESS_DENIED`: the caller lacks `SECRET:REVEAL` on the reference.
-// - `INVALID_REFERENCE`: the reference is malformed.
+//   - `NOT_FOUND`: no secret exists for the reference.
+//   - `ACCESS_DENIED`: the caller lacks `SECRET:REVEAL` on the reference.
+//   - `INVALID_REFERENCE`: the reference is malformed, or the configured store rejected it as
+//     an invalid secret identifier.
+//   - `UNREADABLE`: the configured store could not return a value for the reference, for
+//     example because it rejected the cluster's own store credentials or the stored value could
+//     not be read. Whether the secret exists is not implied.
 type SecretErrorCode string
+
+// SecretListRequest Reserved for future filtering options. Currently takes no properties. The request body is
+// optional: omitting it (or sending an empty object) applies no filters.
+type SecretListRequest = map[string]interface{}
+
+// SecretListResult The secret references the caller is authorized to see.
+//
+// Unbounded: the response carries the configured stores' full enumeration for the physical
+// tenant.
+type SecretListResult struct {
+	// References The secret references, each of the form `camunda.secrets.<name>`.
+	References []string `json:"references"`
+}
 
 // SecretResolutionError defines model for SecretResolutionError.
 type SecretResolutionError struct {
@@ -9012,7 +10157,11 @@ type SecretResolutionError struct {
 	//
 	// - `NOT_FOUND`: no secret exists for the reference.
 	// - `ACCESS_DENIED`: the caller lacks `SECRET:REVEAL` on the reference.
-	// - `INVALID_REFERENCE`: the reference is malformed.
+	// - `INVALID_REFERENCE`: the reference is malformed, or the configured store rejected it as
+	//   an invalid secret identifier.
+	// - `UNREADABLE`: the configured store could not return a value for the reference, for
+	//   example because it rejected the cluster's own store credentials or the stored value could
+	//   not be read. Whether the secret exists is not implied.
 	Code SecretErrorCode `json:"code"`
 
 	// Message A human-readable description of the failure. Never contains the secret value;
@@ -9176,6 +10325,21 @@ type Tag = string
 
 // TagSet List of tags. Tags need to start with a letter; then alphanumerics, `_`, `-`, `:`, or `.`; length ≤ 100.
 type TagSet = []Tag
+
+// TakeHistoryBackupRequest Request body for taking a history backup.
+type TakeHistoryBackupRequest struct {
+	// BackupId The id of the backup to take.
+	BackupId BackupId `json:"backupId"`
+}
+
+// TakeHistoryBackupResponse Response body for taking a history backup.
+type TakeHistoryBackupResponse struct {
+	// BackupId The id of the backup that has been scheduled.
+	BackupId BackupId `json:"backupId"`
+
+	// ScheduledSnapshots The names of the snapshots that have been scheduled for this backup.
+	ScheduledSnapshots []string `json:"scheduledSnapshots"`
+}
 
 // TakeRuntimeBackupRequest Request body for taking a runtime backup.
 type TakeRuntimeBackupRequest struct {
@@ -9506,8 +10670,39 @@ type UserCreateResult struct {
 	Username Username `json:"username"`
 }
 
-// UserFilter User search filter.
+// UserFilter defines model for UserFilter.
 type UserFilter struct {
+	// Or Defines a list of alternative filter groups combined using OR logic. Each object in the array is evaluated independently, and the filter matches if any one of them is satisfied.
+	//
+	// Top-level fields and the `$or` clause are combined using AND logic — meaning: (top-level filters) AND (any of the `$or` filters) must match.
+	// <br>
+	// <em>Example:</em>
+	//
+	// ```json
+	// {
+	//   "$or": [
+	//     { "username": "user-1" },
+	//     { "username": "user-2" }
+	//   ]
+	// }
+	// ```
+	// This matches users whose <code>username</code> is <em>user-1</em> or <em>user-2</em>.
+	// <br>
+	// <p>Note: Using complex <code>$or</code> conditions may impact performance, use with caution in high-volume environments.
+	Or *[]UserFilterFields `json:"$or"`
+
+	// Email The email of the user.
+	Email *StringFilterProperty `json:"email,omitempty"`
+
+	// Name The name of the user.
+	Name *StringFilterProperty `json:"name,omitempty"`
+
+	// Username The username of the user.
+	Username *StringFilterProperty `json:"username,omitempty"`
+}
+
+// UserFilterFields User search filter fields.
+type UserFilterFields struct {
 	// Email The email of the user.
 	Email *StringFilterProperty `json:"email,omitempty"`
 
@@ -9641,8 +10836,104 @@ type UserTaskEffectiveVariableSearchQueryRequest struct {
 	Sort *[]UserTaskVariableSearchQuerySortRequest `json:"sort,omitempty"`
 }
 
-// UserTaskFilter User task filter request.
+// UserTaskFilter defines model for UserTaskFilter.
 type UserTaskFilter struct {
+	// Or Defines a list of alternative filter groups combined using OR logic. Each object in the array is evaluated independently, and the filter matches if any one of them is satisfied.
+	//
+	// Top-level fields and the `$or` clause are combined using AND logic — meaning: (top-level filters) AND (any of the `$or` filters) must match.
+	// <br>
+	// <em>Example:</em>
+	//
+	// ```json
+	// {
+	//   "assignee": "user1",
+	//   "$or": [
+	//     { "candidateGroup": "groupA" },
+	//     { "candidateUser": "user2" }
+	//   ]
+	// }
+	// ```
+	// This matches user tasks that:
+	//
+	// <ul style="padding-left: 20px; margin-left: 20px;">
+	//   <li style="list-style-type: disc;">are assigned to <em>user1</em></li>
+	//   <li style="list-style-type: disc;">and match either:
+	//     <ul style="padding-left: 20px; margin-left: 20px;">
+	//       <li style="list-style-type: circle;"><code>candidateGroup</code> is <em>groupA</em>, or</li>
+	//       <li style="list-style-type: circle;"><code>candidateUser</code> is <em>user2</em></li>
+	//     </ul>
+	//   </li>
+	// </ul>
+	// <br>
+	// <p>Note: Using complex <code>$or</code> conditions may impact performance, use with caution in high-volume environments.
+	Or *[]UserTaskFilterFields `json:"$or,omitempty"`
+
+	// Assignee The assignee of the user task.
+	Assignee *StringFilterProperty `json:"assignee,omitempty"`
+
+	// BusinessId The business ID of the owning process instance the user task belongs to. This only works for user tasks created with 8.10 and onwards. Tasks from prior versions don't contain this data and cannot be found.
+	BusinessId *StringFilterProperty `json:"businessId,omitempty"`
+
+	// CandidateGroup The candidate group for this user task.
+	CandidateGroup *StringFilterProperty `json:"candidateGroup,omitempty"`
+
+	// CandidateUser The candidate user for this user task.
+	CandidateUser *StringFilterProperty `json:"candidateUser,omitempty"`
+
+	// CompletionDate The user task completion date.
+	CompletionDate *DateTimeFilterProperty `json:"completionDate,omitempty"`
+
+	// CreationDate The user task creation date.
+	CreationDate *DateTimeFilterProperty `json:"creationDate,omitempty"`
+
+	// DueDate The user task due date.
+	DueDate *DateTimeFilterProperty `json:"dueDate,omitempty"`
+
+	// ElementId The element ID of the user task.
+	ElementId *ElementId `json:"elementId,omitempty"`
+
+	// ElementInstanceKey The key of the element instance.
+	ElementInstanceKey *ElementInstanceKey `json:"elementInstanceKey,omitempty"`
+
+	// FollowUpDate The user task follow-up date.
+	FollowUpDate *DateTimeFilterProperty `json:"followUpDate,omitempty"`
+
+	// LocalVariables The local variables of the user task.
+	LocalVariables *[]VariableValueFilterProperty `json:"localVariables,omitempty"`
+
+	// Name The task name. This only works for data created with 8.8 and onwards. Instances from prior versions don't contain this data and cannot be found.
+	Name *StringFilterProperty `json:"name,omitempty"`
+
+	// Priority The priority of the user task.
+	Priority *IntegerFilterProperty `json:"priority,omitempty"`
+
+	// ProcessDefinitionId The ID of the process definition.
+	ProcessDefinitionId *ProcessDefinitionIdFilterProperty `json:"processDefinitionId,omitempty"`
+
+	// ProcessDefinitionKey The key of the process definition.
+	ProcessDefinitionKey *ProcessDefinitionKeyFilterProperty `json:"processDefinitionKey,omitempty"`
+
+	// ProcessInstanceKey The key of the process instance.
+	ProcessInstanceKey *ProcessInstanceKeyFilterProperty `json:"processInstanceKey,omitempty"`
+
+	// ProcessInstanceVariables The variables of the process instance.
+	ProcessInstanceVariables *[]VariableValueFilterProperty `json:"processInstanceVariables,omitempty"`
+
+	// State The user task state.
+	State *UserTaskStateFilterProperty `json:"state,omitempty"`
+
+	// Tags List of tags. Tags need to start with a letter; then alphanumerics, `_`, `-`, `:`, or `.`; length ≤ 100.
+	Tags *TagSet `json:"tags,omitempty"`
+
+	// TenantId Tenant ID of this user task.
+	TenantId *StringFilterProperty `json:"tenantId,omitempty"`
+
+	// UserTaskKey The key for this user task.
+	UserTaskKey *UserTaskKey `json:"userTaskKey,omitempty"`
+}
+
+// UserTaskFilterFields User task filter fields.
+type UserTaskFilterFields struct {
 	// Assignee The assignee of the user task.
 	Assignee *StringFilterProperty `json:"assignee,omitempty"`
 
@@ -10106,11 +11397,26 @@ type WaitStateTypeFilterProperty0 = WaitStateTypeEnum
 // WebappComponent A Camunda webapp component name.
 type WebappComponent string
 
+// DryRunParameter defines model for DryRunParameter.
+type DryRunParameter = bool
+
+// ModeParameter The operating mode of a cluster's partitions.
+type ModeParameter = Mode
+
+// PhysicalTenantIdParameter defines model for PhysicalTenantIdParameter.
+type PhysicalTenantIdParameter = string
+
+// ClusterHistoryBackupForbidden A Problem detail object as described in [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457). There may be additional properties specific to the problem type.
+type ClusterHistoryBackupForbidden = ProblemDetail
+
 // Forbidden A Problem detail object as described in [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457). There may be additional properties specific to the problem type.
 type Forbidden = ProblemDetail
 
 // GatewayTimeoutTaskListenerBlocking A Problem detail object as described in [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457). There may be additional properties specific to the problem type.
 type GatewayTimeoutTaskListenerBlocking = ProblemDetail
+
+// HistoryBackupForbidden A Problem detail object as described in [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457). There may be additional properties specific to the problem type.
+type HistoryBackupForbidden = ProblemDetail
 
 // InternalServerError A Problem detail object as described in [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457). There may be additional properties specific to the problem type.
 type InternalServerError = ProblemDetail
@@ -10126,6 +11432,19 @@ type Unauthorized = ProblemDetail
 
 // UnsupportedMediaType A Problem detail object as described in [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457). There may be additional properties specific to the problem type.
 type UnsupportedMediaType = ProblemDetail
+
+// ListHistoryBackupsParams defines parameters for ListHistoryBackups.
+type ListHistoryBackupsParams struct {
+	// Prefix A prefix that backup ids must match, ending in a single '*'. If omitted, all
+	// backups are returned.
+	Prefix *BackupIdPrefix `form:"prefix,omitempty" json:"prefix,omitempty"`
+
+	// Verbose Whether to ask the secondary storage for snapshot-level detail. Setting this to
+	// `false` makes the query cheaper, but the store then reports neither snapshot state
+	// nor start time, so both the per-snapshot `details` and the aggregated `state` are
+	// incomplete and the listing order is unspecified.
+	Verbose *bool `form:"verbose,omitempty" json:"verbose,omitempty"`
+}
 
 // ListRuntimeBackupsParams defines parameters for ListRuntimeBackups.
 type ListRuntimeBackupsParams struct {
@@ -10147,6 +11466,119 @@ type SuspendBatchOperationJSONBody interface{}
 type SearchClusterVariablesParams struct {
 	// TruncateValues When true (default), long variable values in the response are truncated. When false, full variable values are returned.
 	TruncateValues *bool `form:"truncateValues,omitempty" json:"truncateValues,omitempty"`
+}
+
+// ListHistoryBackupsAsClusterAdminParams defines parameters for ListHistoryBackupsAsClusterAdmin.
+type ListHistoryBackupsAsClusterAdminParams struct {
+	// PhysicalTenantId The physical tenant to apply the change to. When omitted, or when passed with an empty value, the change is applied to every physical tenant of the cluster.
+	PhysicalTenantId *PhysicalTenantIdParameter `form:"physicalTenantId,omitempty" json:"physicalTenantId,omitempty"`
+
+	// Prefix A prefix that backup ids must match, ending in a single '*'. If omitted, all
+	// backups are returned.
+	Prefix *BackupIdPrefix `form:"prefix,omitempty" json:"prefix,omitempty"`
+
+	// Verbose Whether to ask the secondary storage for snapshot-level detail. Setting this to
+	// `false` makes the query cheaper, but the store then reports neither snapshot state
+	// nor start time, so both the per-snapshot `details` and the per-tenant `state` are
+	// incomplete and the listing order is unspecified.
+	Verbose *bool `form:"verbose,omitempty" json:"verbose,omitempty"`
+}
+
+// TakeHistoryBackupAsClusterAdminParams defines parameters for TakeHistoryBackupAsClusterAdmin.
+type TakeHistoryBackupAsClusterAdminParams struct {
+	// PhysicalTenantId The physical tenant to apply the change to. When omitted, or when passed with an empty value, the change is applied to every physical tenant of the cluster.
+	PhysicalTenantId *PhysicalTenantIdParameter `form:"physicalTenantId,omitempty" json:"physicalTenantId,omitempty"`
+}
+
+// DeleteHistoryBackupAsClusterAdminParams defines parameters for DeleteHistoryBackupAsClusterAdmin.
+type DeleteHistoryBackupAsClusterAdminParams struct {
+	// PhysicalTenantId The physical tenant to apply the change to. When omitted, or when passed with an empty value, the change is applied to every physical tenant of the cluster.
+	PhysicalTenantId *PhysicalTenantIdParameter `form:"physicalTenantId,omitempty" json:"physicalTenantId,omitempty"`
+}
+
+// GetHistoryBackupAsClusterAdminParams defines parameters for GetHistoryBackupAsClusterAdmin.
+type GetHistoryBackupAsClusterAdminParams struct {
+	// PhysicalTenantId The physical tenant to apply the change to. When omitted, or when passed with an empty value, the change is applied to every physical tenant of the cluster.
+	PhysicalTenantId *PhysicalTenantIdParameter `form:"physicalTenantId,omitempty" json:"physicalTenantId,omitempty"`
+}
+
+// ListRuntimeBackupsAsClusterAdminParams defines parameters for ListRuntimeBackupsAsClusterAdmin.
+type ListRuntimeBackupsAsClusterAdminParams struct {
+	// PhysicalTenantId The physical tenant to apply the change to. When omitted, or when passed with an empty value, the change is applied to every physical tenant of the cluster.
+	PhysicalTenantId *PhysicalTenantIdParameter `form:"physicalTenantId,omitempty" json:"physicalTenantId,omitempty"`
+
+	// Prefix A prefix that backup ids must match, ending in a single '*'. If omitted, all
+	// backups are returned.
+	Prefix *BackupIdPrefix `form:"prefix,omitempty" json:"prefix,omitempty"`
+}
+
+// TakeRuntimeBackupAsClusterAdminParams defines parameters for TakeRuntimeBackupAsClusterAdmin.
+type TakeRuntimeBackupAsClusterAdminParams struct {
+	// PhysicalTenantId The physical tenant to apply the change to. When omitted, or when passed with an empty value, the change is applied to every physical tenant of the cluster.
+	PhysicalTenantId *PhysicalTenantIdParameter `form:"physicalTenantId,omitempty" json:"physicalTenantId,omitempty"`
+}
+
+// DeleteRuntimeBackupStateAsClusterAdminParams defines parameters for DeleteRuntimeBackupStateAsClusterAdmin.
+type DeleteRuntimeBackupStateAsClusterAdminParams struct {
+	// PhysicalTenantId The physical tenant to apply the change to. When omitted, or when passed with an empty value, the change is applied to every physical tenant of the cluster.
+	PhysicalTenantId *PhysicalTenantIdParameter `form:"physicalTenantId,omitempty" json:"physicalTenantId,omitempty"`
+}
+
+// GetRuntimeBackupStateAsClusterAdminParams defines parameters for GetRuntimeBackupStateAsClusterAdmin.
+type GetRuntimeBackupStateAsClusterAdminParams struct {
+	// PhysicalTenantId The physical tenant to apply the change to. When omitted, or when passed with an empty value, the change is applied to every physical tenant of the cluster.
+	PhysicalTenantId *PhysicalTenantIdParameter `form:"physicalTenantId,omitempty" json:"physicalTenantId,omitempty"`
+}
+
+// SyncRuntimeBackupStateAsClusterAdminParams defines parameters for SyncRuntimeBackupStateAsClusterAdmin.
+type SyncRuntimeBackupStateAsClusterAdminParams struct {
+	// PhysicalTenantId The physical tenant to apply the change to. When omitted, or when passed with an empty value, the change is applied to every physical tenant of the cluster.
+	PhysicalTenantId *PhysicalTenantIdParameter `form:"physicalTenantId,omitempty" json:"physicalTenantId,omitempty"`
+}
+
+// DeleteRuntimeBackupAsClusterAdminParams defines parameters for DeleteRuntimeBackupAsClusterAdmin.
+type DeleteRuntimeBackupAsClusterAdminParams struct {
+	// PhysicalTenantId The physical tenant to apply the change to. When omitted, or when passed with an empty value, the change is applied to every physical tenant of the cluster.
+	PhysicalTenantId *PhysicalTenantIdParameter `form:"physicalTenantId,omitempty" json:"physicalTenantId,omitempty"`
+}
+
+// GetRuntimeBackupAsClusterAdminParams defines parameters for GetRuntimeBackupAsClusterAdmin.
+type GetRuntimeBackupAsClusterAdminParams struct {
+	// PhysicalTenantId The physical tenant to apply the change to. When omitted, or when passed with an empty value, the change is applied to every physical tenant of the cluster.
+	PhysicalTenantId *PhysicalTenantIdParameter `form:"physicalTenantId,omitempty" json:"physicalTenantId,omitempty"`
+}
+
+// PauseClusterExportingParams defines parameters for PauseClusterExporting.
+type PauseClusterExportingParams struct {
+	// Soft If true, soft-pauses exporting instead of a hard pause.
+	Soft *bool `form:"soft,omitempty" json:"soft,omitempty"`
+}
+
+// ChangeClusterModeAsClusterAdminParams defines parameters for ChangeClusterModeAsClusterAdmin.
+type ChangeClusterModeAsClusterAdminParams struct {
+	// Mode The target cluster mode.
+	Mode ModeParameter `form:"mode" json:"mode"`
+
+	// PhysicalTenantId The physical tenant to apply the change to. When omitted, or when passed with an empty value, the change is applied to every physical tenant of the cluster.
+	PhysicalTenantId *PhysicalTenantIdParameter `form:"physicalTenantId,omitempty" json:"physicalTenantId,omitempty"`
+
+	// DryRun If true, the requested change is only validated and the resulting plan is returned, without applying it to the cluster.
+	DryRun *DryRunParameter `form:"dryRun,omitempty" json:"dryRun,omitempty"`
+}
+
+// TriggerClusterRebalanceParams defines parameters for TriggerClusterRebalance.
+type TriggerClusterRebalanceParams struct {
+	// DryRun If true, report the plan the rebalance would carry out without pausing any partition or transferring any leadership.
+	DryRun *bool `form:"dryRun,omitempty" json:"dryRun,omitempty"`
+}
+
+// RestoreAsClusterAdminParams defines parameters for RestoreAsClusterAdmin.
+type RestoreAsClusterAdminParams struct {
+	// PhysicalTenantId The physical tenant to apply the change to. When omitted, or when passed with an empty value, the change is applied to every physical tenant of the cluster.
+	PhysicalTenantId *PhysicalTenantIdParameter `form:"physicalTenantId,omitempty" json:"physicalTenantId,omitempty"`
+
+	// DryRun If true, the requested change is only validated and the resulting plan is returned, without applying it to the cluster.
+	DryRun *DryRunParameter `form:"dryRun,omitempty" json:"dryRun,omitempty"`
 }
 
 // CreateDeploymentMultipartBody defines parameters for CreateDeployment.
@@ -10235,14 +11667,17 @@ type GetGlobalJobStatisticsParams struct {
 // ChangeClusterModeParams defines parameters for ChangeClusterMode.
 type ChangeClusterModeParams struct {
 	// Mode The target cluster mode.
-	Mode ChangeClusterModeParamsMode `form:"mode" json:"mode"`
+	Mode ModeParameter `form:"mode" json:"mode"`
 
 	// DryRun If true, the requested change is only validated and the resulting plan is returned, without applying it to the cluster.
-	DryRun *bool `form:"dryRun,omitempty" json:"dryRun,omitempty"`
+	DryRun *DryRunParameter `form:"dryRun,omitempty" json:"dryRun,omitempty"`
 }
 
-// ChangeClusterModeParamsMode defines parameters for ChangeClusterMode.
-type ChangeClusterModeParamsMode string
+// RestoreParams defines parameters for Restore.
+type RestoreParams struct {
+	// DryRun If true, the requested change is only validated and the resulting plan is returned, without applying it to the cluster.
+	DryRun *DryRunParameter `form:"dryRun,omitempty" json:"dryRun,omitempty"`
+}
 
 // GetUsageMetricsParams defines parameters for GetUsageMetrics.
 type GetUsageMetricsParams struct {
@@ -10277,6 +11712,9 @@ type SearchVariablesParams struct {
 	TruncateValues *bool `form:"truncateValues,omitempty" json:"truncateValues,omitempty"`
 }
 
+// SearchAgentDefinitionsJSONRequestBody defines body for SearchAgentDefinitions for application/json ContentType.
+type SearchAgentDefinitionsJSONRequestBody = AgentDefinitionSearchQuery
+
 // CreateAgentInstanceJSONRequestBody defines body for CreateAgentInstance for application/json ContentType.
 type CreateAgentInstanceJSONRequestBody = AgentInstanceCreationRequest
 
@@ -10286,14 +11724,14 @@ type SearchAgentInstancesJSONRequestBody = AgentInstanceSearchQuery
 // UpdateAgentInstanceJSONRequestBody defines body for UpdateAgentInstance for application/json ContentType.
 type UpdateAgentInstanceJSONRequestBody = AgentInstanceUpdateRequest
 
-// CreateAgentInstanceHistoryItemJSONRequestBody defines body for CreateAgentInstanceHistoryItem for application/json ContentType.
-type CreateAgentInstanceHistoryItemJSONRequestBody = AgentInstanceHistoryItemRequest
-
 // SearchAgentInstanceHistoryJSONRequestBody defines body for SearchAgentInstanceHistory for application/json ContentType.
 type SearchAgentInstanceHistoryJSONRequestBody = AgentInstanceHistorySearchQuery
 
 // SearchAuditLogsJSONRequestBody defines body for SearchAuditLogs for application/json ContentType.
 type SearchAuditLogsJSONRequestBody = AuditLogSearchQueryRequest
+
+// SearchOwnAuthorizationsJSONRequestBody defines body for SearchOwnAuthorizations for application/json ContentType.
+type SearchOwnAuthorizationsJSONRequestBody = AuthorizationSearchQuery
 
 // CreateAuthorizationJSONRequestBody defines body for CreateAuthorization for application/json ContentType.
 type CreateAuthorizationJSONRequestBody = AuthorizationRequest
@@ -10303,6 +11741,9 @@ type SearchAuthorizationsJSONRequestBody = AuthorizationSearchQuery
 
 // UpdateAuthorizationJSONRequestBody defines body for UpdateAuthorization for application/json ContentType.
 type UpdateAuthorizationJSONRequestBody = AuthorizationRequest
+
+// TakeHistoryBackupOpJSONRequestBody defines body for TakeHistoryBackupOp for application/json ContentType.
+type TakeHistoryBackupOpJSONRequestBody = TakeHistoryBackupRequest
 
 // TakeRuntimeBackupOpJSONRequestBody defines body for TakeRuntimeBackupOp for application/json ContentType.
 type TakeRuntimeBackupOpJSONRequestBody = TakeRuntimeBackupRequest
@@ -10339,6 +11780,18 @@ type CreateTenantClusterVariableJSONRequestBody = CreateClusterVariableRequest
 
 // UpdateTenantClusterVariableJSONRequestBody defines body for UpdateTenantClusterVariable for application/json ContentType.
 type UpdateTenantClusterVariableJSONRequestBody = UpdateClusterVariableRequest
+
+// TakeHistoryBackupAsClusterAdminJSONRequestBody defines body for TakeHistoryBackupAsClusterAdmin for application/json ContentType.
+type TakeHistoryBackupAsClusterAdminJSONRequestBody = TakeHistoryBackupRequest
+
+// TakeRuntimeBackupAsClusterAdminJSONRequestBody defines body for TakeRuntimeBackupAsClusterAdmin for application/json ContentType.
+type TakeRuntimeBackupAsClusterAdminJSONRequestBody = TakeRuntimeBackupRequest
+
+// TriggerClusterRebalanceJSONRequestBody defines body for TriggerClusterRebalance for application/json ContentType.
+type TriggerClusterRebalanceJSONRequestBody = ClusterRebalanceRequest
+
+// RestoreAsClusterAdminJSONRequestBody defines body for RestoreAsClusterAdmin for application/json ContentType.
+type RestoreAsClusterAdminJSONRequestBody = ClusterRestoreRequest
 
 // EvaluateConditionalsJSONRequestBody defines body for EvaluateConditionals for application/json ContentType.
 type EvaluateConditionalsJSONRequestBody = ConditionalEvaluationInstruction
@@ -10585,6 +12038,9 @@ type SearchMappingRulesForRoleJSONRequestBody = MappingRuleSearchQueryRequest
 
 // SearchUsersForRoleJSONRequestBody defines body for SearchUsersForRole for application/json ContentType.
 type SearchUsersForRoleJSONRequestBody = RoleUserSearchQueryRequest
+
+// ListSecretsJSONRequestBody defines body for ListSecrets for application/json ContentType.
+type ListSecretsJSONRequestBody = SecretListRequest
 
 // ResolveSecretsJSONRequestBody defines body for ResolveSecrets for application/json ContentType.
 type ResolveSecretsJSONRequestBody = SecretResolveRequest
@@ -10962,6 +12418,130 @@ func (t AdvancedMetadataValueFilter_Neq) MarshalJSON() ([]byte, error) {
 }
 
 func (t *AdvancedMetadataValueFilter_Neq) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsAgentDefinitionKeyFilterProperty0 returns the union data inside the AgentDefinitionKeyFilterProperty as a AgentDefinitionKeyFilterProperty0
+func (t AgentDefinitionKeyFilterProperty) AsAgentDefinitionKeyFilterProperty0() (AgentDefinitionKeyFilterProperty0, error) {
+	var body AgentDefinitionKeyFilterProperty0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromAgentDefinitionKeyFilterProperty0 overwrites any union data inside the AgentDefinitionKeyFilterProperty as the provided AgentDefinitionKeyFilterProperty0
+func (t *AgentDefinitionKeyFilterProperty) FromAgentDefinitionKeyFilterProperty0(v AgentDefinitionKeyFilterProperty0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeAgentDefinitionKeyFilterProperty0 performs a merge with any union data inside the AgentDefinitionKeyFilterProperty, using the provided AgentDefinitionKeyFilterProperty0
+func (t *AgentDefinitionKeyFilterProperty) MergeAgentDefinitionKeyFilterProperty0(v AgentDefinitionKeyFilterProperty0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsAdvancedAgentDefinitionKeyFilter returns the union data inside the AgentDefinitionKeyFilterProperty as a AdvancedAgentDefinitionKeyFilter
+func (t AgentDefinitionKeyFilterProperty) AsAdvancedAgentDefinitionKeyFilter() (AdvancedAgentDefinitionKeyFilter, error) {
+	var body AdvancedAgentDefinitionKeyFilter
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromAdvancedAgentDefinitionKeyFilter overwrites any union data inside the AgentDefinitionKeyFilterProperty as the provided AdvancedAgentDefinitionKeyFilter
+func (t *AgentDefinitionKeyFilterProperty) FromAdvancedAgentDefinitionKeyFilter(v AdvancedAgentDefinitionKeyFilter) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeAdvancedAgentDefinitionKeyFilter performs a merge with any union data inside the AgentDefinitionKeyFilterProperty, using the provided AdvancedAgentDefinitionKeyFilter
+func (t *AgentDefinitionKeyFilterProperty) MergeAdvancedAgentDefinitionKeyFilter(v AdvancedAgentDefinitionKeyFilter) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t AgentDefinitionKeyFilterProperty) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *AgentDefinitionKeyFilterProperty) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsAgentDefinitionTypeFilterProperty0 returns the union data inside the AgentDefinitionTypeFilterProperty as a AgentDefinitionTypeFilterProperty0
+func (t AgentDefinitionTypeFilterProperty) AsAgentDefinitionTypeFilterProperty0() (AgentDefinitionTypeFilterProperty0, error) {
+	var body AgentDefinitionTypeFilterProperty0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromAgentDefinitionTypeFilterProperty0 overwrites any union data inside the AgentDefinitionTypeFilterProperty as the provided AgentDefinitionTypeFilterProperty0
+func (t *AgentDefinitionTypeFilterProperty) FromAgentDefinitionTypeFilterProperty0(v AgentDefinitionTypeFilterProperty0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeAgentDefinitionTypeFilterProperty0 performs a merge with any union data inside the AgentDefinitionTypeFilterProperty, using the provided AgentDefinitionTypeFilterProperty0
+func (t *AgentDefinitionTypeFilterProperty) MergeAgentDefinitionTypeFilterProperty0(v AgentDefinitionTypeFilterProperty0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsAdvancedAgentDefinitionTypeFilter returns the union data inside the AgentDefinitionTypeFilterProperty as a AdvancedAgentDefinitionTypeFilter
+func (t AgentDefinitionTypeFilterProperty) AsAdvancedAgentDefinitionTypeFilter() (AdvancedAgentDefinitionTypeFilter, error) {
+	var body AdvancedAgentDefinitionTypeFilter
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromAdvancedAgentDefinitionTypeFilter overwrites any union data inside the AgentDefinitionTypeFilterProperty as the provided AdvancedAgentDefinitionTypeFilter
+func (t *AgentDefinitionTypeFilterProperty) FromAdvancedAgentDefinitionTypeFilter(v AdvancedAgentDefinitionTypeFilter) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeAdvancedAgentDefinitionTypeFilter performs a merge with any union data inside the AgentDefinitionTypeFilterProperty, using the provided AdvancedAgentDefinitionTypeFilter
+func (t *AgentDefinitionTypeFilterProperty) MergeAdvancedAgentDefinitionTypeFilter(v AdvancedAgentDefinitionTypeFilter) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t AgentDefinitionTypeFilterProperty) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *AgentDefinitionTypeFilterProperty) UnmarshalJSON(b []byte) error {
 	err := t.union.UnmarshalJSON(b)
 	return err
 }
@@ -12130,6 +13710,185 @@ func (t CategoryFilterProperty) MarshalJSON() ([]byte, error) {
 }
 
 func (t *CategoryFilterProperty) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsClusterRestoreBrokerOperation returns the union data inside the ClusterRestoreOperation as a ClusterRestoreBrokerOperation
+func (t ClusterRestoreOperation) AsClusterRestoreBrokerOperation() (ClusterRestoreBrokerOperation, error) {
+	var body ClusterRestoreBrokerOperation
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromClusterRestoreBrokerOperation overwrites any union data inside the ClusterRestoreOperation as the provided ClusterRestoreBrokerOperation
+func (t *ClusterRestoreOperation) FromClusterRestoreBrokerOperation(v ClusterRestoreBrokerOperation) error {
+	v.Operation = "UpdateIncarnationNumberOperation"
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeClusterRestoreBrokerOperation performs a merge with any union data inside the ClusterRestoreOperation, using the provided ClusterRestoreBrokerOperation
+func (t *ClusterRestoreOperation) MergeClusterRestoreBrokerOperation(v ClusterRestoreBrokerOperation) error {
+	v.Operation = "UpdateIncarnationNumberOperation"
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsClusterRestorePartitionOperation returns the union data inside the ClusterRestoreOperation as a ClusterRestorePartitionOperation
+func (t ClusterRestoreOperation) AsClusterRestorePartitionOperation() (ClusterRestorePartitionOperation, error) {
+	var body ClusterRestorePartitionOperation
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromClusterRestorePartitionOperation overwrites any union data inside the ClusterRestoreOperation as the provided ClusterRestorePartitionOperation
+func (t *ClusterRestoreOperation) FromClusterRestorePartitionOperation(v ClusterRestorePartitionOperation) error {
+	v.Operation = "PartitionPreRestoreOperation"
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeClusterRestorePartitionOperation performs a merge with any union data inside the ClusterRestoreOperation, using the provided ClusterRestorePartitionOperation
+func (t *ClusterRestoreOperation) MergeClusterRestorePartitionOperation(v ClusterRestorePartitionOperation) error {
+	v.Operation = "PartitionPreRestoreOperation"
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsClusterRestorePartitionRestoreOperation returns the union data inside the ClusterRestoreOperation as a ClusterRestorePartitionRestoreOperation
+func (t ClusterRestoreOperation) AsClusterRestorePartitionRestoreOperation() (ClusterRestorePartitionRestoreOperation, error) {
+	var body ClusterRestorePartitionRestoreOperation
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromClusterRestorePartitionRestoreOperation overwrites any union data inside the ClusterRestoreOperation as the provided ClusterRestorePartitionRestoreOperation
+func (t *ClusterRestoreOperation) FromClusterRestorePartitionRestoreOperation(v ClusterRestorePartitionRestoreOperation) error {
+	v.Operation = "PartitionRestoreOperation"
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeClusterRestorePartitionRestoreOperation performs a merge with any union data inside the ClusterRestoreOperation, using the provided ClusterRestorePartitionRestoreOperation
+func (t *ClusterRestoreOperation) MergeClusterRestorePartitionRestoreOperation(v ClusterRestorePartitionRestoreOperation) error {
+	v.Operation = "PartitionRestoreOperation"
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsClusterRestoreModeChangeOperation returns the union data inside the ClusterRestoreOperation as a ClusterRestoreModeChangeOperation
+func (t ClusterRestoreOperation) AsClusterRestoreModeChangeOperation() (ClusterRestoreModeChangeOperation, error) {
+	var body ClusterRestoreModeChangeOperation
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromClusterRestoreModeChangeOperation overwrites any union data inside the ClusterRestoreOperation as the provided ClusterRestoreModeChangeOperation
+func (t *ClusterRestoreOperation) FromClusterRestoreModeChangeOperation(v ClusterRestoreModeChangeOperation) error {
+	v.Operation = "ModeChangeOperation"
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeClusterRestoreModeChangeOperation performs a merge with any union data inside the ClusterRestoreOperation, using the provided ClusterRestoreModeChangeOperation
+func (t *ClusterRestoreOperation) MergeClusterRestoreModeChangeOperation(v ClusterRestoreModeChangeOperation) error {
+	v.Operation = "ModeChangeOperation"
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsClusterRestoreAwaitModeChangeOperation returns the union data inside the ClusterRestoreOperation as a ClusterRestoreAwaitModeChangeOperation
+func (t ClusterRestoreOperation) AsClusterRestoreAwaitModeChangeOperation() (ClusterRestoreAwaitModeChangeOperation, error) {
+	var body ClusterRestoreAwaitModeChangeOperation
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromClusterRestoreAwaitModeChangeOperation overwrites any union data inside the ClusterRestoreOperation as the provided ClusterRestoreAwaitModeChangeOperation
+func (t *ClusterRestoreOperation) FromClusterRestoreAwaitModeChangeOperation(v ClusterRestoreAwaitModeChangeOperation) error {
+	v.Operation = "AwaitModeChangeOperation"
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeClusterRestoreAwaitModeChangeOperation performs a merge with any union data inside the ClusterRestoreOperation, using the provided ClusterRestoreAwaitModeChangeOperation
+func (t *ClusterRestoreOperation) MergeClusterRestoreAwaitModeChangeOperation(v ClusterRestoreAwaitModeChangeOperation) error {
+	v.Operation = "AwaitModeChangeOperation"
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t ClusterRestoreOperation) Discriminator() (string, error) {
+	var discriminator struct {
+		Discriminator string `json:"operation"`
+	}
+	err := json.Unmarshal(t.union, &discriminator)
+	return discriminator.Discriminator, err
+}
+
+func (t ClusterRestoreOperation) ValueByDiscriminator() (interface{}, error) {
+	discriminator, err := t.Discriminator()
+	if err != nil {
+		return nil, err
+	}
+	switch discriminator {
+	case "AwaitModeChangeOperation":
+		return t.AsClusterRestoreAwaitModeChangeOperation()
+	case "ModeChangeOperation":
+		return t.AsClusterRestoreModeChangeOperation()
+	case "PartitionPreRestoreOperation":
+		return t.AsClusterRestorePartitionOperation()
+	case "PartitionRestoreOperation":
+		return t.AsClusterRestorePartitionRestoreOperation()
+	case "UpdateIncarnationNumberOperation":
+		return t.AsClusterRestoreBrokerOperation()
+	default:
+		return nil, errors.New("unknown discriminator value: " + discriminator)
+	}
+}
+
+func (t ClusterRestoreOperation) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *ClusterRestoreOperation) UnmarshalJSON(b []byte) error {
 	err := t.union.UnmarshalJSON(b)
 	return err
 }
@@ -15495,6 +17254,14 @@ func WithRequestEditorFn(fn RequestEditorFn) ClientOption {
 
 // The interface specification for the client above.
 type ClientInterface interface {
+	// SearchAgentDefinitionsWithBody request with any body
+	SearchAgentDefinitionsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	SearchAgentDefinitions(ctx context.Context, body SearchAgentDefinitionsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetAgentDefinition request
+	GetAgentDefinition(ctx context.Context, agentDefinitionKey AgentDefinitionKey, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// CreateAgentInstanceWithBody request with any body
 	CreateAgentInstanceWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -15513,11 +17280,6 @@ type ClientInterface interface {
 
 	UpdateAgentInstance(ctx context.Context, agentInstanceKey AgentInstanceKey, body UpdateAgentInstanceJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// CreateAgentInstanceHistoryItemWithBody request with any body
-	CreateAgentInstanceHistoryItemWithBody(ctx context.Context, agentInstanceKey AgentInstanceKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	CreateAgentInstanceHistoryItem(ctx context.Context, agentInstanceKey AgentInstanceKey, body CreateAgentInstanceHistoryItemJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
-
 	// SearchAgentInstanceHistoryWithBody request with any body
 	SearchAgentInstanceHistoryWithBody(ctx context.Context, agentInstanceKey AgentInstanceKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -15533,6 +17295,11 @@ type ClientInterface interface {
 
 	// GetAuthentication request
 	GetAuthentication(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SearchOwnAuthorizationsWithBody request with any body
+	SearchOwnAuthorizationsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	SearchOwnAuthorizations(ctx context.Context, body SearchOwnAuthorizationsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateAuthorizationWithBody request with any body
 	CreateAuthorizationWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -15554,6 +17321,20 @@ type ClientInterface interface {
 	UpdateAuthorizationWithBody(ctx context.Context, authorizationKey AuthorizationKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	UpdateAuthorization(ctx context.Context, authorizationKey AuthorizationKey, body UpdateAuthorizationJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListHistoryBackups request
+	ListHistoryBackups(ctx context.Context, params *ListHistoryBackupsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// TakeHistoryBackupOpWithBody request with any body
+	TakeHistoryBackupOpWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	TakeHistoryBackupOp(ctx context.Context, body TakeHistoryBackupOpJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeleteHistoryBackup request
+	DeleteHistoryBackup(ctx context.Context, backupId BackupId, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetHistoryBackup request
+	GetHistoryBackup(ctx context.Context, backupId BackupId, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListRuntimeBackups request
 	ListRuntimeBackups(ctx context.Context, params *ListRuntimeBackupsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -15650,6 +17431,80 @@ type ClientInterface interface {
 	UpdateTenantClusterVariableWithBody(ctx context.Context, tenantId TenantId, name ClusterVariableName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	UpdateTenantClusterVariable(ctx context.Context, tenantId TenantId, name ClusterVariableName, body UpdateTenantClusterVariableJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListHistoryBackupsAsClusterAdmin request
+	ListHistoryBackupsAsClusterAdmin(ctx context.Context, params *ListHistoryBackupsAsClusterAdminParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// TakeHistoryBackupAsClusterAdminWithBody request with any body
+	TakeHistoryBackupAsClusterAdminWithBody(ctx context.Context, params *TakeHistoryBackupAsClusterAdminParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	TakeHistoryBackupAsClusterAdmin(ctx context.Context, params *TakeHistoryBackupAsClusterAdminParams, body TakeHistoryBackupAsClusterAdminJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeleteHistoryBackupAsClusterAdmin request
+	DeleteHistoryBackupAsClusterAdmin(ctx context.Context, backupId BackupId, params *DeleteHistoryBackupAsClusterAdminParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetHistoryBackupAsClusterAdmin request
+	GetHistoryBackupAsClusterAdmin(ctx context.Context, backupId BackupId, params *GetHistoryBackupAsClusterAdminParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListRuntimeBackupsAsClusterAdmin request
+	ListRuntimeBackupsAsClusterAdmin(ctx context.Context, params *ListRuntimeBackupsAsClusterAdminParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// TakeRuntimeBackupAsClusterAdminWithBody request with any body
+	TakeRuntimeBackupAsClusterAdminWithBody(ctx context.Context, params *TakeRuntimeBackupAsClusterAdminParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	TakeRuntimeBackupAsClusterAdmin(ctx context.Context, params *TakeRuntimeBackupAsClusterAdminParams, body TakeRuntimeBackupAsClusterAdminJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeleteRuntimeBackupStateAsClusterAdmin request
+	DeleteRuntimeBackupStateAsClusterAdmin(ctx context.Context, params *DeleteRuntimeBackupStateAsClusterAdminParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetRuntimeBackupStateAsClusterAdmin request
+	GetRuntimeBackupStateAsClusterAdmin(ctx context.Context, params *GetRuntimeBackupStateAsClusterAdminParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SyncRuntimeBackupStateAsClusterAdmin request
+	SyncRuntimeBackupStateAsClusterAdmin(ctx context.Context, params *SyncRuntimeBackupStateAsClusterAdminParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeleteRuntimeBackupAsClusterAdmin request
+	DeleteRuntimeBackupAsClusterAdmin(ctx context.Context, backupId BackupId, params *DeleteRuntimeBackupAsClusterAdminParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetRuntimeBackupAsClusterAdmin request
+	GetRuntimeBackupAsClusterAdmin(ctx context.Context, backupId BackupId, params *GetRuntimeBackupAsClusterAdminParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetClusterExportingStatus request
+	GetClusterExportingStatus(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PauseClusterExporting request
+	PauseClusterExporting(ctx context.Context, params *PauseClusterExportingParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ResumeClusterExporting request
+	ResumeClusterExporting(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ChangeClusterModeAsClusterAdmin request
+	ChangeClusterModeAsClusterAdmin(ctx context.Context, params *ChangeClusterModeAsClusterAdminParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CancelClusterRebalance request
+	CancelClusterRebalance(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetClusterRebalance request
+	GetClusterRebalance(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// TriggerClusterRebalanceWithBody request with any body
+	TriggerClusterRebalanceWithBody(ctx context.Context, params *TriggerClusterRebalanceParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	TriggerClusterRebalance(ctx context.Context, params *TriggerClusterRebalanceParams, body TriggerClusterRebalanceJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RestoreAsClusterAdminWithBody request with any body
+	RestoreAsClusterAdminWithBody(ctx context.Context, params *RestoreAsClusterAdminParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	RestoreAsClusterAdmin(ctx context.Context, params *RestoreAsClusterAdminParams, body RestoreAsClusterAdminJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetClusterStatus request
+	GetClusterStatus(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetClusterUpgradeStatus request
+	GetClusterUpgradeStatus(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetClusterTopology request
+	GetClusterTopology(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// EvaluateConditionalsWithBody request with any body
 	EvaluateConditionalsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -15753,6 +17608,9 @@ type ClientInterface interface {
 	CreateElementInstanceVariablesWithBody(ctx context.Context, elementInstanceKey ElementInstanceKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	CreateElementInstanceVariables(ctx context.Context, elementInstanceKey ElementInstanceKey, body CreateElementInstanceVariablesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetExportingStatus request
+	GetExportingStatus(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// PauseExporting request
 	PauseExporting(ctx context.Context, params *PauseExportingParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -16132,10 +17990,13 @@ type ClientInterface interface {
 
 	DeleteResourceOp(ctx context.Context, resourceKey ResourceKey, body DeleteResourceOpJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// RestoreWithBody request with any body
-	RestoreWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// GetRestoreStatus request
+	GetRestoreStatus(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	Restore(ctx context.Context, body RestoreJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// RestoreWithBody request with any body
+	RestoreWithBody(ctx context.Context, params *RestoreParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	Restore(ctx context.Context, params *RestoreParams, body RestoreJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateRoleWithBody request with any body
 	CreateRoleWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -16201,6 +18062,11 @@ type ClientInterface interface {
 
 	// AssignRoleToUser request
 	AssignRoleToUser(ctx context.Context, roleId RoleId, username Username, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListSecretsWithBody request with any body
+	ListSecretsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	ListSecrets(ctx context.Context, body ListSecretsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ResolveSecretsWithBody request with any body
 	ResolveSecretsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -16379,6 +18245,42 @@ type ClientInterface interface {
 	GetVariable(ctx context.Context, variableKey VariableKey, reqEditors ...RequestEditorFn) (*http.Response, error)
 }
 
+func (c *Client) SearchAgentDefinitionsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSearchAgentDefinitionsRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) SearchAgentDefinitions(ctx context.Context, body SearchAgentDefinitionsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSearchAgentDefinitionsRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetAgentDefinition(ctx context.Context, agentDefinitionKey AgentDefinitionKey, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetAgentDefinitionRequest(c.Server, agentDefinitionKey)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 func (c *Client) CreateAgentInstanceWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewCreateAgentInstanceRequestWithBody(c.Server, contentType, body)
 	if err != nil {
@@ -16463,30 +18365,6 @@ func (c *Client) UpdateAgentInstance(ctx context.Context, agentInstanceKey Agent
 	return c.Client.Do(req)
 }
 
-func (c *Client) CreateAgentInstanceHistoryItemWithBody(ctx context.Context, agentInstanceKey AgentInstanceKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewCreateAgentInstanceHistoryItemRequestWithBody(c.Server, agentInstanceKey, contentType, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) CreateAgentInstanceHistoryItem(ctx context.Context, agentInstanceKey AgentInstanceKey, body CreateAgentInstanceHistoryItemJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewCreateAgentInstanceHistoryItemRequest(c.Server, agentInstanceKey, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
 func (c *Client) SearchAgentInstanceHistoryWithBody(ctx context.Context, agentInstanceKey AgentInstanceKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewSearchAgentInstanceHistoryRequestWithBody(c.Server, agentInstanceKey, contentType, body)
 	if err != nil {
@@ -16549,6 +18427,30 @@ func (c *Client) GetAuditLog(ctx context.Context, auditLogKey AuditLogKey, reqEd
 
 func (c *Client) GetAuthentication(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetAuthenticationRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) SearchOwnAuthorizationsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSearchOwnAuthorizationsRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) SearchOwnAuthorizations(ctx context.Context, body SearchOwnAuthorizationsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSearchOwnAuthorizationsRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -16645,6 +18547,66 @@ func (c *Client) UpdateAuthorizationWithBody(ctx context.Context, authorizationK
 
 func (c *Client) UpdateAuthorization(ctx context.Context, authorizationKey AuthorizationKey, body UpdateAuthorizationJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewUpdateAuthorizationRequest(c.Server, authorizationKey, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) ListHistoryBackups(ctx context.Context, params *ListHistoryBackupsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListHistoryBackupsRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) TakeHistoryBackupOpWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewTakeHistoryBackupOpRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) TakeHistoryBackupOp(ctx context.Context, body TakeHistoryBackupOpJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewTakeHistoryBackupOpRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) DeleteHistoryBackup(ctx context.Context, backupId BackupId, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteHistoryBackupRequest(c.Server, backupId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetHistoryBackup(ctx context.Context, backupId BackupId, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetHistoryBackupRequest(c.Server, backupId)
 	if err != nil {
 		return nil, err
 	}
@@ -17077,6 +19039,318 @@ func (c *Client) UpdateTenantClusterVariableWithBody(ctx context.Context, tenant
 
 func (c *Client) UpdateTenantClusterVariable(ctx context.Context, tenantId TenantId, name ClusterVariableName, body UpdateTenantClusterVariableJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewUpdateTenantClusterVariableRequest(c.Server, tenantId, name, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) ListHistoryBackupsAsClusterAdmin(ctx context.Context, params *ListHistoryBackupsAsClusterAdminParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListHistoryBackupsAsClusterAdminRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) TakeHistoryBackupAsClusterAdminWithBody(ctx context.Context, params *TakeHistoryBackupAsClusterAdminParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewTakeHistoryBackupAsClusterAdminRequestWithBody(c.Server, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) TakeHistoryBackupAsClusterAdmin(ctx context.Context, params *TakeHistoryBackupAsClusterAdminParams, body TakeHistoryBackupAsClusterAdminJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewTakeHistoryBackupAsClusterAdminRequest(c.Server, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) DeleteHistoryBackupAsClusterAdmin(ctx context.Context, backupId BackupId, params *DeleteHistoryBackupAsClusterAdminParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteHistoryBackupAsClusterAdminRequest(c.Server, backupId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetHistoryBackupAsClusterAdmin(ctx context.Context, backupId BackupId, params *GetHistoryBackupAsClusterAdminParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetHistoryBackupAsClusterAdminRequest(c.Server, backupId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) ListRuntimeBackupsAsClusterAdmin(ctx context.Context, params *ListRuntimeBackupsAsClusterAdminParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListRuntimeBackupsAsClusterAdminRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) TakeRuntimeBackupAsClusterAdminWithBody(ctx context.Context, params *TakeRuntimeBackupAsClusterAdminParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewTakeRuntimeBackupAsClusterAdminRequestWithBody(c.Server, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) TakeRuntimeBackupAsClusterAdmin(ctx context.Context, params *TakeRuntimeBackupAsClusterAdminParams, body TakeRuntimeBackupAsClusterAdminJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewTakeRuntimeBackupAsClusterAdminRequest(c.Server, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) DeleteRuntimeBackupStateAsClusterAdmin(ctx context.Context, params *DeleteRuntimeBackupStateAsClusterAdminParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteRuntimeBackupStateAsClusterAdminRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetRuntimeBackupStateAsClusterAdmin(ctx context.Context, params *GetRuntimeBackupStateAsClusterAdminParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetRuntimeBackupStateAsClusterAdminRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) SyncRuntimeBackupStateAsClusterAdmin(ctx context.Context, params *SyncRuntimeBackupStateAsClusterAdminParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSyncRuntimeBackupStateAsClusterAdminRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) DeleteRuntimeBackupAsClusterAdmin(ctx context.Context, backupId BackupId, params *DeleteRuntimeBackupAsClusterAdminParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteRuntimeBackupAsClusterAdminRequest(c.Server, backupId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetRuntimeBackupAsClusterAdmin(ctx context.Context, backupId BackupId, params *GetRuntimeBackupAsClusterAdminParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetRuntimeBackupAsClusterAdminRequest(c.Server, backupId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetClusterExportingStatus(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetClusterExportingStatusRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PauseClusterExporting(ctx context.Context, params *PauseClusterExportingParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPauseClusterExportingRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) ResumeClusterExporting(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewResumeClusterExportingRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) ChangeClusterModeAsClusterAdmin(ctx context.Context, params *ChangeClusterModeAsClusterAdminParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewChangeClusterModeAsClusterAdminRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) CancelClusterRebalance(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCancelClusterRebalanceRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetClusterRebalance(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetClusterRebalanceRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) TriggerClusterRebalanceWithBody(ctx context.Context, params *TriggerClusterRebalanceParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewTriggerClusterRebalanceRequestWithBody(c.Server, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) TriggerClusterRebalance(ctx context.Context, params *TriggerClusterRebalanceParams, body TriggerClusterRebalanceJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewTriggerClusterRebalanceRequest(c.Server, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) RestoreAsClusterAdminWithBody(ctx context.Context, params *RestoreAsClusterAdminParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRestoreAsClusterAdminRequestWithBody(c.Server, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) RestoreAsClusterAdmin(ctx context.Context, params *RestoreAsClusterAdminParams, body RestoreAsClusterAdminJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRestoreAsClusterAdminRequest(c.Server, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetClusterStatus(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetClusterStatusRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetClusterUpgradeStatus(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetClusterUpgradeStatusRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetClusterTopology(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetClusterTopologyRequest(c.Server)
 	if err != nil {
 		return nil, err
 	}
@@ -17545,6 +19819,18 @@ func (c *Client) CreateElementInstanceVariablesWithBody(ctx context.Context, ele
 
 func (c *Client) CreateElementInstanceVariables(ctx context.Context, elementInstanceKey ElementInstanceKey, body CreateElementInstanceVariablesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewCreateElementInstanceVariablesRequest(c.Server, elementInstanceKey, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetExportingStatus(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetExportingStatusRequest(c.Server)
 	if err != nil {
 		return nil, err
 	}
@@ -19295,8 +21581,8 @@ func (c *Client) DeleteResourceOp(ctx context.Context, resourceKey ResourceKey, 
 	return c.Client.Do(req)
 }
 
-func (c *Client) RestoreWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewRestoreRequestWithBody(c.Server, contentType, body)
+func (c *Client) GetRestoreStatus(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetRestoreStatusRequest(c.Server)
 	if err != nil {
 		return nil, err
 	}
@@ -19307,8 +21593,20 @@ func (c *Client) RestoreWithBody(ctx context.Context, contentType string, body i
 	return c.Client.Do(req)
 }
 
-func (c *Client) Restore(ctx context.Context, body RestoreJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewRestoreRequest(c.Server, body)
+func (c *Client) RestoreWithBody(ctx context.Context, params *RestoreParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRestoreRequestWithBody(c.Server, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) Restore(ctx context.Context, params *RestoreParams, body RestoreJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRestoreRequest(c.Server, params, body)
 	if err != nil {
 		return nil, err
 	}
@@ -19597,6 +21895,30 @@ func (c *Client) UnassignRoleFromUser(ctx context.Context, roleId RoleId, userna
 
 func (c *Client) AssignRoleToUser(ctx context.Context, roleId RoleId, username Username, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewAssignRoleToUserRequest(c.Server, roleId, username)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) ListSecretsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListSecretsRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) ListSecrets(ctx context.Context, body ListSecretsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListSecretsRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -20399,6 +22721,80 @@ func (c *Client) GetVariable(ctx context.Context, variableKey VariableKey, reqEd
 	return c.Client.Do(req)
 }
 
+// NewSearchAgentDefinitionsRequest calls the generic SearchAgentDefinitions builder with application/json body
+func NewSearchAgentDefinitionsRequest(server string, body SearchAgentDefinitionsJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewSearchAgentDefinitionsRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewSearchAgentDefinitionsRequestWithBody generates requests for SearchAgentDefinitions with any type of body
+func NewSearchAgentDefinitionsRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/agent-definitions/search")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewGetAgentDefinitionRequest generates requests for GetAgentDefinition
+func NewGetAgentDefinitionRequest(server string, agentDefinitionKey AgentDefinitionKey) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "agentDefinitionKey", runtime.ParamLocationPath, agentDefinitionKey)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/agent-definitions/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewCreateAgentInstanceRequest calls the generic CreateAgentInstance builder with application/json body
 func NewCreateAgentInstanceRequest(server string, body CreateAgentInstanceJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -20560,53 +22956,6 @@ func NewUpdateAgentInstanceRequestWithBody(server string, agentInstanceKey Agent
 	return req, nil
 }
 
-// NewCreateAgentInstanceHistoryItemRequest calls the generic CreateAgentInstanceHistoryItem builder with application/json body
-func NewCreateAgentInstanceHistoryItemRequest(server string, agentInstanceKey AgentInstanceKey, body CreateAgentInstanceHistoryItemJSONRequestBody) (*http.Request, error) {
-	var bodyReader io.Reader
-	buf, err := json.Marshal(body)
-	if err != nil {
-		return nil, err
-	}
-	bodyReader = bytes.NewReader(buf)
-	return NewCreateAgentInstanceHistoryItemRequestWithBody(server, agentInstanceKey, "application/json", bodyReader)
-}
-
-// NewCreateAgentInstanceHistoryItemRequestWithBody generates requests for CreateAgentInstanceHistoryItem with any type of body
-func NewCreateAgentInstanceHistoryItemRequestWithBody(server string, agentInstanceKey AgentInstanceKey, contentType string, body io.Reader) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "agentInstanceKey", runtime.ParamLocationPath, agentInstanceKey)
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/agent-instances/%s/history", pathParam0)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("POST", queryURL.String(), body)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Add("Content-Type", contentType)
-
-	return req, nil
-}
-
 // NewSearchAgentInstanceHistoryRequest calls the generic SearchAgentInstanceHistory builder with application/json body
 func NewSearchAgentInstanceHistoryRequest(server string, agentInstanceKey AgentInstanceKey, body SearchAgentInstanceHistoryJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -20751,6 +23100,46 @@ func NewGetAuthenticationRequest(server string) (*http.Request, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	return req, nil
+}
+
+// NewSearchOwnAuthorizationsRequest calls the generic SearchOwnAuthorizations builder with application/json body
+func NewSearchOwnAuthorizationsRequest(server string, body SearchOwnAuthorizationsJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewSearchOwnAuthorizationsRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewSearchOwnAuthorizationsRequestWithBody generates requests for SearchOwnAuthorizations with any type of body
+func NewSearchOwnAuthorizationsRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/authentication/me/authorizations/search")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
 
 	return req, nil
 }
@@ -20946,6 +23335,179 @@ func NewUpdateAuthorizationRequestWithBody(server string, authorizationKey Autho
 	}
 
 	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewListHistoryBackupsRequest generates requests for ListHistoryBackups
+func NewListHistoryBackupsRequest(server string, params *ListHistoryBackupsParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/backups/history")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Prefix != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "prefix", runtime.ParamLocationQuery, *params.Prefix); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Verbose != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "verbose", runtime.ParamLocationQuery, *params.Verbose); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewTakeHistoryBackupOpRequest calls the generic TakeHistoryBackupOp builder with application/json body
+func NewTakeHistoryBackupOpRequest(server string, body TakeHistoryBackupOpJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewTakeHistoryBackupOpRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewTakeHistoryBackupOpRequestWithBody generates requests for TakeHistoryBackupOp with any type of body
+func NewTakeHistoryBackupOpRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/backups/history")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewDeleteHistoryBackupRequest generates requests for DeleteHistoryBackup
+func NewDeleteHistoryBackupRequest(server string, backupId BackupId) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "backupId", runtime.ParamLocationPath, backupId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/backups/history/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("DELETE", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetHistoryBackupRequest generates requests for GetHistoryBackup
+func NewGetHistoryBackupRequest(server string, backupId BackupId) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "backupId", runtime.ParamLocationPath, backupId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/backups/history/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
 
 	return req, nil
 }
@@ -21906,6 +24468,1102 @@ func NewUpdateTenantClusterVariableRequestWithBody(server string, tenantId Tenan
 	}
 
 	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewListHistoryBackupsAsClusterAdminRequest generates requests for ListHistoryBackupsAsClusterAdmin
+func NewListHistoryBackupsAsClusterAdminRequest(server string, params *ListHistoryBackupsAsClusterAdminParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/cluster/v2/backups/history")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.PhysicalTenantId != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "physicalTenantId", runtime.ParamLocationQuery, *params.PhysicalTenantId); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Prefix != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "prefix", runtime.ParamLocationQuery, *params.Prefix); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Verbose != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "verbose", runtime.ParamLocationQuery, *params.Verbose); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewTakeHistoryBackupAsClusterAdminRequest calls the generic TakeHistoryBackupAsClusterAdmin builder with application/json body
+func NewTakeHistoryBackupAsClusterAdminRequest(server string, params *TakeHistoryBackupAsClusterAdminParams, body TakeHistoryBackupAsClusterAdminJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewTakeHistoryBackupAsClusterAdminRequestWithBody(server, params, "application/json", bodyReader)
+}
+
+// NewTakeHistoryBackupAsClusterAdminRequestWithBody generates requests for TakeHistoryBackupAsClusterAdmin with any type of body
+func NewTakeHistoryBackupAsClusterAdminRequestWithBody(server string, params *TakeHistoryBackupAsClusterAdminParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/cluster/v2/backups/history")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.PhysicalTenantId != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "physicalTenantId", runtime.ParamLocationQuery, *params.PhysicalTenantId); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewDeleteHistoryBackupAsClusterAdminRequest generates requests for DeleteHistoryBackupAsClusterAdmin
+func NewDeleteHistoryBackupAsClusterAdminRequest(server string, backupId BackupId, params *DeleteHistoryBackupAsClusterAdminParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "backupId", runtime.ParamLocationPath, backupId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/cluster/v2/backups/history/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.PhysicalTenantId != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "physicalTenantId", runtime.ParamLocationQuery, *params.PhysicalTenantId); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("DELETE", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetHistoryBackupAsClusterAdminRequest generates requests for GetHistoryBackupAsClusterAdmin
+func NewGetHistoryBackupAsClusterAdminRequest(server string, backupId BackupId, params *GetHistoryBackupAsClusterAdminParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "backupId", runtime.ParamLocationPath, backupId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/cluster/v2/backups/history/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.PhysicalTenantId != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "physicalTenantId", runtime.ParamLocationQuery, *params.PhysicalTenantId); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewListRuntimeBackupsAsClusterAdminRequest generates requests for ListRuntimeBackupsAsClusterAdmin
+func NewListRuntimeBackupsAsClusterAdminRequest(server string, params *ListRuntimeBackupsAsClusterAdminParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/cluster/v2/backups/runtime")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.PhysicalTenantId != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "physicalTenantId", runtime.ParamLocationQuery, *params.PhysicalTenantId); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Prefix != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "prefix", runtime.ParamLocationQuery, *params.Prefix); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewTakeRuntimeBackupAsClusterAdminRequest calls the generic TakeRuntimeBackupAsClusterAdmin builder with application/json body
+func NewTakeRuntimeBackupAsClusterAdminRequest(server string, params *TakeRuntimeBackupAsClusterAdminParams, body TakeRuntimeBackupAsClusterAdminJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewTakeRuntimeBackupAsClusterAdminRequestWithBody(server, params, "application/json", bodyReader)
+}
+
+// NewTakeRuntimeBackupAsClusterAdminRequestWithBody generates requests for TakeRuntimeBackupAsClusterAdmin with any type of body
+func NewTakeRuntimeBackupAsClusterAdminRequestWithBody(server string, params *TakeRuntimeBackupAsClusterAdminParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/cluster/v2/backups/runtime")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.PhysicalTenantId != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "physicalTenantId", runtime.ParamLocationQuery, *params.PhysicalTenantId); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewDeleteRuntimeBackupStateAsClusterAdminRequest generates requests for DeleteRuntimeBackupStateAsClusterAdmin
+func NewDeleteRuntimeBackupStateAsClusterAdminRequest(server string, params *DeleteRuntimeBackupStateAsClusterAdminParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/cluster/v2/backups/runtime/state")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.PhysicalTenantId != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "physicalTenantId", runtime.ParamLocationQuery, *params.PhysicalTenantId); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("DELETE", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetRuntimeBackupStateAsClusterAdminRequest generates requests for GetRuntimeBackupStateAsClusterAdmin
+func NewGetRuntimeBackupStateAsClusterAdminRequest(server string, params *GetRuntimeBackupStateAsClusterAdminParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/cluster/v2/backups/runtime/state")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.PhysicalTenantId != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "physicalTenantId", runtime.ParamLocationQuery, *params.PhysicalTenantId); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewSyncRuntimeBackupStateAsClusterAdminRequest generates requests for SyncRuntimeBackupStateAsClusterAdmin
+func NewSyncRuntimeBackupStateAsClusterAdminRequest(server string, params *SyncRuntimeBackupStateAsClusterAdminParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/cluster/v2/backups/runtime/state/sync")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.PhysicalTenantId != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "physicalTenantId", runtime.ParamLocationQuery, *params.PhysicalTenantId); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewDeleteRuntimeBackupAsClusterAdminRequest generates requests for DeleteRuntimeBackupAsClusterAdmin
+func NewDeleteRuntimeBackupAsClusterAdminRequest(server string, backupId BackupId, params *DeleteRuntimeBackupAsClusterAdminParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "backupId", runtime.ParamLocationPath, backupId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/cluster/v2/backups/runtime/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.PhysicalTenantId != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "physicalTenantId", runtime.ParamLocationQuery, *params.PhysicalTenantId); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("DELETE", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetRuntimeBackupAsClusterAdminRequest generates requests for GetRuntimeBackupAsClusterAdmin
+func NewGetRuntimeBackupAsClusterAdminRequest(server string, backupId BackupId, params *GetRuntimeBackupAsClusterAdminParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "backupId", runtime.ParamLocationPath, backupId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/cluster/v2/backups/runtime/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.PhysicalTenantId != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "physicalTenantId", runtime.ParamLocationQuery, *params.PhysicalTenantId); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetClusterExportingStatusRequest generates requests for GetClusterExportingStatus
+func NewGetClusterExportingStatusRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/cluster/v2/exporting")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewPauseClusterExportingRequest generates requests for PauseClusterExporting
+func NewPauseClusterExportingRequest(server string, params *PauseClusterExportingParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/cluster/v2/exporting/pause")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Soft != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "soft", runtime.ParamLocationQuery, *params.Soft); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewResumeClusterExportingRequest generates requests for ResumeClusterExporting
+func NewResumeClusterExportingRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/cluster/v2/exporting/resume")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewChangeClusterModeAsClusterAdminRequest generates requests for ChangeClusterModeAsClusterAdmin
+func NewChangeClusterModeAsClusterAdminRequest(server string, params *ChangeClusterModeAsClusterAdminParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/cluster/v2/mode")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "mode", runtime.ParamLocationQuery, params.Mode); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+		if params.PhysicalTenantId != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "physicalTenantId", runtime.ParamLocationQuery, *params.PhysicalTenantId); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.DryRun != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "dryRun", runtime.ParamLocationQuery, *params.DryRun); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("PATCH", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewCancelClusterRebalanceRequest generates requests for CancelClusterRebalance
+func NewCancelClusterRebalanceRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/cluster/v2/rebalance")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("DELETE", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetClusterRebalanceRequest generates requests for GetClusterRebalance
+func NewGetClusterRebalanceRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/cluster/v2/rebalance")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewTriggerClusterRebalanceRequest calls the generic TriggerClusterRebalance builder with application/json body
+func NewTriggerClusterRebalanceRequest(server string, params *TriggerClusterRebalanceParams, body TriggerClusterRebalanceJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewTriggerClusterRebalanceRequestWithBody(server, params, "application/json", bodyReader)
+}
+
+// NewTriggerClusterRebalanceRequestWithBody generates requests for TriggerClusterRebalance with any type of body
+func NewTriggerClusterRebalanceRequestWithBody(server string, params *TriggerClusterRebalanceParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/cluster/v2/rebalance")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.DryRun != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "dryRun", runtime.ParamLocationQuery, *params.DryRun); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewRestoreAsClusterAdminRequest calls the generic RestoreAsClusterAdmin builder with application/json body
+func NewRestoreAsClusterAdminRequest(server string, params *RestoreAsClusterAdminParams, body RestoreAsClusterAdminJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewRestoreAsClusterAdminRequestWithBody(server, params, "application/json", bodyReader)
+}
+
+// NewRestoreAsClusterAdminRequestWithBody generates requests for RestoreAsClusterAdmin with any type of body
+func NewRestoreAsClusterAdminRequestWithBody(server string, params *RestoreAsClusterAdminParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/cluster/v2/restore")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.PhysicalTenantId != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "physicalTenantId", runtime.ParamLocationQuery, *params.PhysicalTenantId); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.DryRun != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "dryRun", runtime.ParamLocationQuery, *params.DryRun); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewGetClusterStatusRequest generates requests for GetClusterStatus
+func NewGetClusterStatusRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/cluster/v2/status")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetClusterUpgradeStatusRequest generates requests for GetClusterUpgradeStatus
+func NewGetClusterUpgradeStatusRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/cluster/v2/status/upgrade")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetClusterTopologyRequest generates requests for GetClusterTopology
+func NewGetClusterTopologyRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/cluster/v2/topology")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
 
 	return req, nil
 }
@@ -23018,6 +26676,33 @@ func NewCreateElementInstanceVariablesRequestWithBody(server string, elementInst
 	}
 
 	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewGetExportingStatusRequest generates requests for GetExportingStatus
+func NewGetExportingStatusRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/exporting")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
 
 	return req, nil
 }
@@ -26626,19 +30311,8 @@ func NewDeleteResourceOpRequestWithBody(server string, resourceKey ResourceKey, 
 	return req, nil
 }
 
-// NewRestoreRequest calls the generic Restore builder with application/json body
-func NewRestoreRequest(server string, body RestoreJSONRequestBody) (*http.Request, error) {
-	var bodyReader io.Reader
-	buf, err := json.Marshal(body)
-	if err != nil {
-		return nil, err
-	}
-	bodyReader = bytes.NewReader(buf)
-	return NewRestoreRequestWithBody(server, "application/json", bodyReader)
-}
-
-// NewRestoreRequestWithBody generates requests for Restore with any type of body
-func NewRestoreRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+// NewGetRestoreStatusRequest generates requests for GetRestoreStatus
+func NewGetRestoreStatusRequest(server string) (*http.Request, error) {
 	var err error
 
 	serverURL, err := url.Parse(server)
@@ -26654,6 +30328,66 @@ func NewRestoreRequestWithBody(server string, contentType string, body io.Reader
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewRestoreRequest calls the generic Restore builder with application/json body
+func NewRestoreRequest(server string, params *RestoreParams, body RestoreJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewRestoreRequestWithBody(server, params, "application/json", bodyReader)
+}
+
+// NewRestoreRequestWithBody generates requests for Restore with any type of body
+func NewRestoreRequestWithBody(server string, params *RestoreParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/restore")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.DryRun != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "dryRun", runtime.ParamLocationQuery, *params.DryRun); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
 	}
 
 	req, err := http.NewRequest("POST", queryURL.String(), body)
@@ -27373,6 +31107,46 @@ func NewAssignRoleToUserRequest(server string, roleId RoleId, username Username)
 	if err != nil {
 		return nil, err
 	}
+
+	return req, nil
+}
+
+// NewListSecretsRequest calls the generic ListSecrets builder with application/json body
+func NewListSecretsRequest(server string, body ListSecretsJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewListSecretsRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewListSecretsRequestWithBody generates requests for ListSecrets with any type of body
+func NewListSecretsRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/secrets/list")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
 
 	return req, nil
 }
@@ -29309,6 +33083,14 @@ func WithBaseURL(baseURL string) ClientOption {
 
 // ClientWithResponsesInterface is the interface specification for the client with responses above.
 type ClientWithResponsesInterface interface {
+	// SearchAgentDefinitionsWithBodyWithResponse request with any body
+	SearchAgentDefinitionsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchAgentDefinitionsResponse, error)
+
+	SearchAgentDefinitionsWithResponse(ctx context.Context, body SearchAgentDefinitionsJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchAgentDefinitionsResponse, error)
+
+	// GetAgentDefinitionWithResponse request
+	GetAgentDefinitionWithResponse(ctx context.Context, agentDefinitionKey AgentDefinitionKey, reqEditors ...RequestEditorFn) (*GetAgentDefinitionResponse, error)
+
 	// CreateAgentInstanceWithBodyWithResponse request with any body
 	CreateAgentInstanceWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateAgentInstanceResponse, error)
 
@@ -29327,11 +33109,6 @@ type ClientWithResponsesInterface interface {
 
 	UpdateAgentInstanceWithResponse(ctx context.Context, agentInstanceKey AgentInstanceKey, body UpdateAgentInstanceJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateAgentInstanceResponse, error)
 
-	// CreateAgentInstanceHistoryItemWithBodyWithResponse request with any body
-	CreateAgentInstanceHistoryItemWithBodyWithResponse(ctx context.Context, agentInstanceKey AgentInstanceKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateAgentInstanceHistoryItemResponse, error)
-
-	CreateAgentInstanceHistoryItemWithResponse(ctx context.Context, agentInstanceKey AgentInstanceKey, body CreateAgentInstanceHistoryItemJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateAgentInstanceHistoryItemResponse, error)
-
 	// SearchAgentInstanceHistoryWithBodyWithResponse request with any body
 	SearchAgentInstanceHistoryWithBodyWithResponse(ctx context.Context, agentInstanceKey AgentInstanceKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchAgentInstanceHistoryResponse, error)
 
@@ -29347,6 +33124,11 @@ type ClientWithResponsesInterface interface {
 
 	// GetAuthenticationWithResponse request
 	GetAuthenticationWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetAuthenticationResponse, error)
+
+	// SearchOwnAuthorizationsWithBodyWithResponse request with any body
+	SearchOwnAuthorizationsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchOwnAuthorizationsResponse, error)
+
+	SearchOwnAuthorizationsWithResponse(ctx context.Context, body SearchOwnAuthorizationsJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchOwnAuthorizationsResponse, error)
 
 	// CreateAuthorizationWithBodyWithResponse request with any body
 	CreateAuthorizationWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateAuthorizationResponse, error)
@@ -29368,6 +33150,20 @@ type ClientWithResponsesInterface interface {
 	UpdateAuthorizationWithBodyWithResponse(ctx context.Context, authorizationKey AuthorizationKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateAuthorizationResponse, error)
 
 	UpdateAuthorizationWithResponse(ctx context.Context, authorizationKey AuthorizationKey, body UpdateAuthorizationJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateAuthorizationResponse, error)
+
+	// ListHistoryBackupsWithResponse request
+	ListHistoryBackupsWithResponse(ctx context.Context, params *ListHistoryBackupsParams, reqEditors ...RequestEditorFn) (*ListHistoryBackupsResponse, error)
+
+	// TakeHistoryBackupOpWithBodyWithResponse request with any body
+	TakeHistoryBackupOpWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*TakeHistoryBackupOpResponse, error)
+
+	TakeHistoryBackupOpWithResponse(ctx context.Context, body TakeHistoryBackupOpJSONRequestBody, reqEditors ...RequestEditorFn) (*TakeHistoryBackupOpResponse, error)
+
+	// DeleteHistoryBackupWithResponse request
+	DeleteHistoryBackupWithResponse(ctx context.Context, backupId BackupId, reqEditors ...RequestEditorFn) (*DeleteHistoryBackupResponse, error)
+
+	// GetHistoryBackupWithResponse request
+	GetHistoryBackupWithResponse(ctx context.Context, backupId BackupId, reqEditors ...RequestEditorFn) (*GetHistoryBackupResponse, error)
 
 	// ListRuntimeBackupsWithResponse request
 	ListRuntimeBackupsWithResponse(ctx context.Context, params *ListRuntimeBackupsParams, reqEditors ...RequestEditorFn) (*ListRuntimeBackupsResponse, error)
@@ -29464,6 +33260,80 @@ type ClientWithResponsesInterface interface {
 	UpdateTenantClusterVariableWithBodyWithResponse(ctx context.Context, tenantId TenantId, name ClusterVariableName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateTenantClusterVariableResponse, error)
 
 	UpdateTenantClusterVariableWithResponse(ctx context.Context, tenantId TenantId, name ClusterVariableName, body UpdateTenantClusterVariableJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateTenantClusterVariableResponse, error)
+
+	// ListHistoryBackupsAsClusterAdminWithResponse request
+	ListHistoryBackupsAsClusterAdminWithResponse(ctx context.Context, params *ListHistoryBackupsAsClusterAdminParams, reqEditors ...RequestEditorFn) (*ListHistoryBackupsAsClusterAdminResponse, error)
+
+	// TakeHistoryBackupAsClusterAdminWithBodyWithResponse request with any body
+	TakeHistoryBackupAsClusterAdminWithBodyWithResponse(ctx context.Context, params *TakeHistoryBackupAsClusterAdminParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*TakeHistoryBackupAsClusterAdminResponse, error)
+
+	TakeHistoryBackupAsClusterAdminWithResponse(ctx context.Context, params *TakeHistoryBackupAsClusterAdminParams, body TakeHistoryBackupAsClusterAdminJSONRequestBody, reqEditors ...RequestEditorFn) (*TakeHistoryBackupAsClusterAdminResponse, error)
+
+	// DeleteHistoryBackupAsClusterAdminWithResponse request
+	DeleteHistoryBackupAsClusterAdminWithResponse(ctx context.Context, backupId BackupId, params *DeleteHistoryBackupAsClusterAdminParams, reqEditors ...RequestEditorFn) (*DeleteHistoryBackupAsClusterAdminResponse, error)
+
+	// GetHistoryBackupAsClusterAdminWithResponse request
+	GetHistoryBackupAsClusterAdminWithResponse(ctx context.Context, backupId BackupId, params *GetHistoryBackupAsClusterAdminParams, reqEditors ...RequestEditorFn) (*GetHistoryBackupAsClusterAdminResponse, error)
+
+	// ListRuntimeBackupsAsClusterAdminWithResponse request
+	ListRuntimeBackupsAsClusterAdminWithResponse(ctx context.Context, params *ListRuntimeBackupsAsClusterAdminParams, reqEditors ...RequestEditorFn) (*ListRuntimeBackupsAsClusterAdminResponse, error)
+
+	// TakeRuntimeBackupAsClusterAdminWithBodyWithResponse request with any body
+	TakeRuntimeBackupAsClusterAdminWithBodyWithResponse(ctx context.Context, params *TakeRuntimeBackupAsClusterAdminParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*TakeRuntimeBackupAsClusterAdminResponse, error)
+
+	TakeRuntimeBackupAsClusterAdminWithResponse(ctx context.Context, params *TakeRuntimeBackupAsClusterAdminParams, body TakeRuntimeBackupAsClusterAdminJSONRequestBody, reqEditors ...RequestEditorFn) (*TakeRuntimeBackupAsClusterAdminResponse, error)
+
+	// DeleteRuntimeBackupStateAsClusterAdminWithResponse request
+	DeleteRuntimeBackupStateAsClusterAdminWithResponse(ctx context.Context, params *DeleteRuntimeBackupStateAsClusterAdminParams, reqEditors ...RequestEditorFn) (*DeleteRuntimeBackupStateAsClusterAdminResponse, error)
+
+	// GetRuntimeBackupStateAsClusterAdminWithResponse request
+	GetRuntimeBackupStateAsClusterAdminWithResponse(ctx context.Context, params *GetRuntimeBackupStateAsClusterAdminParams, reqEditors ...RequestEditorFn) (*GetRuntimeBackupStateAsClusterAdminResponse, error)
+
+	// SyncRuntimeBackupStateAsClusterAdminWithResponse request
+	SyncRuntimeBackupStateAsClusterAdminWithResponse(ctx context.Context, params *SyncRuntimeBackupStateAsClusterAdminParams, reqEditors ...RequestEditorFn) (*SyncRuntimeBackupStateAsClusterAdminResponse, error)
+
+	// DeleteRuntimeBackupAsClusterAdminWithResponse request
+	DeleteRuntimeBackupAsClusterAdminWithResponse(ctx context.Context, backupId BackupId, params *DeleteRuntimeBackupAsClusterAdminParams, reqEditors ...RequestEditorFn) (*DeleteRuntimeBackupAsClusterAdminResponse, error)
+
+	// GetRuntimeBackupAsClusterAdminWithResponse request
+	GetRuntimeBackupAsClusterAdminWithResponse(ctx context.Context, backupId BackupId, params *GetRuntimeBackupAsClusterAdminParams, reqEditors ...RequestEditorFn) (*GetRuntimeBackupAsClusterAdminResponse, error)
+
+	// GetClusterExportingStatusWithResponse request
+	GetClusterExportingStatusWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetClusterExportingStatusResponse, error)
+
+	// PauseClusterExportingWithResponse request
+	PauseClusterExportingWithResponse(ctx context.Context, params *PauseClusterExportingParams, reqEditors ...RequestEditorFn) (*PauseClusterExportingResponse, error)
+
+	// ResumeClusterExportingWithResponse request
+	ResumeClusterExportingWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ResumeClusterExportingResponse, error)
+
+	// ChangeClusterModeAsClusterAdminWithResponse request
+	ChangeClusterModeAsClusterAdminWithResponse(ctx context.Context, params *ChangeClusterModeAsClusterAdminParams, reqEditors ...RequestEditorFn) (*ChangeClusterModeAsClusterAdminResponse, error)
+
+	// CancelClusterRebalanceWithResponse request
+	CancelClusterRebalanceWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*CancelClusterRebalanceResponse, error)
+
+	// GetClusterRebalanceWithResponse request
+	GetClusterRebalanceWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetClusterRebalanceResponse, error)
+
+	// TriggerClusterRebalanceWithBodyWithResponse request with any body
+	TriggerClusterRebalanceWithBodyWithResponse(ctx context.Context, params *TriggerClusterRebalanceParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*TriggerClusterRebalanceResponse, error)
+
+	TriggerClusterRebalanceWithResponse(ctx context.Context, params *TriggerClusterRebalanceParams, body TriggerClusterRebalanceJSONRequestBody, reqEditors ...RequestEditorFn) (*TriggerClusterRebalanceResponse, error)
+
+	// RestoreAsClusterAdminWithBodyWithResponse request with any body
+	RestoreAsClusterAdminWithBodyWithResponse(ctx context.Context, params *RestoreAsClusterAdminParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RestoreAsClusterAdminResponse, error)
+
+	RestoreAsClusterAdminWithResponse(ctx context.Context, params *RestoreAsClusterAdminParams, body RestoreAsClusterAdminJSONRequestBody, reqEditors ...RequestEditorFn) (*RestoreAsClusterAdminResponse, error)
+
+	// GetClusterStatusWithResponse request
+	GetClusterStatusWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetClusterStatusResponse, error)
+
+	// GetClusterUpgradeStatusWithResponse request
+	GetClusterUpgradeStatusWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetClusterUpgradeStatusResponse, error)
+
+	// GetClusterTopologyWithResponse request
+	GetClusterTopologyWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetClusterTopologyResponse, error)
 
 	// EvaluateConditionalsWithBodyWithResponse request with any body
 	EvaluateConditionalsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*EvaluateConditionalsResponse, error)
@@ -29567,6 +33437,9 @@ type ClientWithResponsesInterface interface {
 	CreateElementInstanceVariablesWithBodyWithResponse(ctx context.Context, elementInstanceKey ElementInstanceKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateElementInstanceVariablesResponse, error)
 
 	CreateElementInstanceVariablesWithResponse(ctx context.Context, elementInstanceKey ElementInstanceKey, body CreateElementInstanceVariablesJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateElementInstanceVariablesResponse, error)
+
+	// GetExportingStatusWithResponse request
+	GetExportingStatusWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetExportingStatusResponse, error)
 
 	// PauseExportingWithResponse request
 	PauseExportingWithResponse(ctx context.Context, params *PauseExportingParams, reqEditors ...RequestEditorFn) (*PauseExportingResponse, error)
@@ -29946,10 +33819,13 @@ type ClientWithResponsesInterface interface {
 
 	DeleteResourceOpWithResponse(ctx context.Context, resourceKey ResourceKey, body DeleteResourceOpJSONRequestBody, reqEditors ...RequestEditorFn) (*DeleteResourceOpResponse, error)
 
-	// RestoreWithBodyWithResponse request with any body
-	RestoreWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RestoreResponse, error)
+	// GetRestoreStatusWithResponse request
+	GetRestoreStatusWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetRestoreStatusResponse, error)
 
-	RestoreWithResponse(ctx context.Context, body RestoreJSONRequestBody, reqEditors ...RequestEditorFn) (*RestoreResponse, error)
+	// RestoreWithBodyWithResponse request with any body
+	RestoreWithBodyWithResponse(ctx context.Context, params *RestoreParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RestoreResponse, error)
+
+	RestoreWithResponse(ctx context.Context, params *RestoreParams, body RestoreJSONRequestBody, reqEditors ...RequestEditorFn) (*RestoreResponse, error)
 
 	// CreateRoleWithBodyWithResponse request with any body
 	CreateRoleWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateRoleResponse, error)
@@ -30015,6 +33891,11 @@ type ClientWithResponsesInterface interface {
 
 	// AssignRoleToUserWithResponse request
 	AssignRoleToUserWithResponse(ctx context.Context, roleId RoleId, username Username, reqEditors ...RequestEditorFn) (*AssignRoleToUserResponse, error)
+
+	// ListSecretsWithBodyWithResponse request with any body
+	ListSecretsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ListSecretsResponse, error)
+
+	ListSecretsWithResponse(ctx context.Context, body ListSecretsJSONRequestBody, reqEditors ...RequestEditorFn) (*ListSecretsResponse, error)
 
 	// ResolveSecretsWithBodyWithResponse request with any body
 	ResolveSecretsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ResolveSecretsResponse, error)
@@ -30193,6 +34074,59 @@ type ClientWithResponsesInterface interface {
 	GetVariableWithResponse(ctx context.Context, variableKey VariableKey, reqEditors ...RequestEditorFn) (*GetVariableResponse, error)
 }
 
+type SearchAgentDefinitionsResponse struct {
+	Body                      []byte
+	HTTPResponse              *http.Response
+	JSON200                   *AgentDefinitionSearchQueryResult
+	ApplicationproblemJSON400 *InvalidData
+	ApplicationproblemJSON401 *Unauthorized
+	ApplicationproblemJSON403 *Forbidden
+	ApplicationproblemJSON500 *InternalServerError
+}
+
+// Status returns HTTPResponse.Status
+func (r SearchAgentDefinitionsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r SearchAgentDefinitionsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetAgentDefinitionResponse struct {
+	Body                      []byte
+	HTTPResponse              *http.Response
+	JSON200                   *AgentDefinitionResult
+	ApplicationproblemJSON400 *InvalidData
+	ApplicationproblemJSON401 *Unauthorized
+	ApplicationproblemJSON403 *Forbidden
+	ApplicationproblemJSON404 *ProblemDetail
+	ApplicationproblemJSON500 *InternalServerError
+}
+
+// Status returns HTTPResponse.Status
+func (r GetAgentDefinitionResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetAgentDefinitionResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
 type CreateAgentInstanceResponse struct {
 	Body                      []byte
 	HTTPResponse              *http.Response
@@ -30279,6 +34213,7 @@ func (r GetAgentInstanceResponse) StatusCode() int {
 type UpdateAgentInstanceResponse struct {
 	Body                      []byte
 	HTTPResponse              *http.Response
+	JSON200                   *AgentInstanceUpdateResult
 	ApplicationproblemJSON400 *InvalidData
 	ApplicationproblemJSON401 *Unauthorized
 	ApplicationproblemJSON403 *Forbidden
@@ -30296,34 +34231,6 @@ func (r UpdateAgentInstanceResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r UpdateAgentInstanceResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-type CreateAgentInstanceHistoryItemResponse struct {
-	Body                      []byte
-	HTTPResponse              *http.Response
-	JSON201                   *AgentInstanceHistoryItemCreationResult
-	ApplicationproblemJSON400 *InvalidData
-	ApplicationproblemJSON401 *Unauthorized
-	ApplicationproblemJSON403 *Forbidden
-	ApplicationproblemJSON404 *ProblemDetail
-	ApplicationproblemJSON500 *InternalServerError
-	ApplicationproblemJSON503 *ServiceUnavailable
-}
-
-// Status returns HTTPResponse.Status
-func (r CreateAgentInstanceHistoryItemResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r CreateAgentInstanceHistoryItemResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -30427,6 +34334,31 @@ func (r GetAuthenticationResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r GetAuthenticationResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type SearchOwnAuthorizationsResponse struct {
+	Body                      []byte
+	HTTPResponse              *http.Response
+	JSON200                   *OwnAuthorizationSearchResult
+	ApplicationproblemJSON400 *InvalidData
+	ApplicationproblemJSON401 *Unauthorized
+	ApplicationproblemJSON500 *InternalServerError
+}
+
+// Status returns HTTPResponse.Status
+func (r SearchOwnAuthorizationsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r SearchOwnAuthorizationsResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -30557,6 +34489,114 @@ func (r UpdateAuthorizationResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r UpdateAuthorizationResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type ListHistoryBackupsResponse struct {
+	Body                      []byte
+	HTTPResponse              *http.Response
+	JSON200                   *[]HistoryBackupInfo
+	ApplicationproblemJSON400 *InvalidData
+	ApplicationproblemJSON401 *Unauthorized
+	ApplicationproblemJSON403 *HistoryBackupForbidden
+	ApplicationproblemJSON500 *InternalServerError
+	ApplicationproblemJSON503 *ServiceUnavailable
+}
+
+// Status returns HTTPResponse.Status
+func (r ListHistoryBackupsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListHistoryBackupsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type TakeHistoryBackupOpResponse struct {
+	Body                      []byte
+	HTTPResponse              *http.Response
+	JSON202                   *TakeHistoryBackupResponse
+	ApplicationproblemJSON400 *InvalidData
+	ApplicationproblemJSON401 *Unauthorized
+	ApplicationproblemJSON403 *HistoryBackupForbidden
+	ApplicationproblemJSON409 *ProblemDetail
+	ApplicationproblemJSON500 *InternalServerError
+	ApplicationproblemJSON503 *ServiceUnavailable
+}
+
+// Status returns HTTPResponse.Status
+func (r TakeHistoryBackupOpResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r TakeHistoryBackupOpResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type DeleteHistoryBackupResponse struct {
+	Body                      []byte
+	HTTPResponse              *http.Response
+	ApplicationproblemJSON401 *Unauthorized
+	ApplicationproblemJSON403 *HistoryBackupForbidden
+	ApplicationproblemJSON404 *ProblemDetail
+	ApplicationproblemJSON500 *InternalServerError
+	ApplicationproblemJSON503 *ServiceUnavailable
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteHistoryBackupResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteHistoryBackupResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetHistoryBackupResponse struct {
+	Body                      []byte
+	HTTPResponse              *http.Response
+	JSON200                   *HistoryBackupInfo
+	ApplicationproblemJSON401 *Unauthorized
+	ApplicationproblemJSON403 *HistoryBackupForbidden
+	ApplicationproblemJSON404 *ProblemDetail
+	ApplicationproblemJSON500 *InternalServerError
+	ApplicationproblemJSON503 *ServiceUnavailable
+}
+
+// Status returns HTTPResponse.Status
+func (r GetHistoryBackupResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetHistoryBackupResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -31181,6 +35221,589 @@ func (r UpdateTenantClusterVariableResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r UpdateTenantClusterVariableResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type ListHistoryBackupsAsClusterAdminResponse struct {
+	Body                      []byte
+	HTTPResponse              *http.Response
+	JSON200                   *[]ClusterHistoryBackupInfo
+	ApplicationproblemJSON400 *InvalidData
+	ApplicationproblemJSON401 *Unauthorized
+	ApplicationproblemJSON403 *ClusterHistoryBackupForbidden
+	ApplicationproblemJSON404 *ProblemDetail
+	ApplicationproblemJSON500 *InternalServerError
+	ApplicationproblemJSON503 *ServiceUnavailable
+}
+
+// Status returns HTTPResponse.Status
+func (r ListHistoryBackupsAsClusterAdminResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListHistoryBackupsAsClusterAdminResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type TakeHistoryBackupAsClusterAdminResponse struct {
+	Body                      []byte
+	HTTPResponse              *http.Response
+	JSON202                   *ClusterTakeHistoryBackupResponse
+	ApplicationproblemJSON400 *InvalidData
+	ApplicationproblemJSON401 *Unauthorized
+	ApplicationproblemJSON403 *ClusterHistoryBackupForbidden
+	ApplicationproblemJSON404 *ProblemDetail
+	ApplicationproblemJSON409 *ProblemDetail
+	ApplicationproblemJSON500 *ProblemDetail
+	ApplicationproblemJSON503 *ServiceUnavailable
+}
+
+// Status returns HTTPResponse.Status
+func (r TakeHistoryBackupAsClusterAdminResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r TakeHistoryBackupAsClusterAdminResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type DeleteHistoryBackupAsClusterAdminResponse struct {
+	Body                      []byte
+	HTTPResponse              *http.Response
+	ApplicationproblemJSON400 *InvalidData
+	ApplicationproblemJSON401 *Unauthorized
+	ApplicationproblemJSON403 *ProblemDetail
+	ApplicationproblemJSON404 *ProblemDetail
+	ApplicationproblemJSON500 *ProblemDetail
+	ApplicationproblemJSON503 *ServiceUnavailable
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteHistoryBackupAsClusterAdminResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteHistoryBackupAsClusterAdminResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetHistoryBackupAsClusterAdminResponse struct {
+	Body                      []byte
+	HTTPResponse              *http.Response
+	JSON200                   *ClusterHistoryBackupInfo
+	ApplicationproblemJSON400 *InvalidData
+	ApplicationproblemJSON401 *Unauthorized
+	ApplicationproblemJSON403 *ClusterHistoryBackupForbidden
+	ApplicationproblemJSON404 *ProblemDetail
+	ApplicationproblemJSON500 *InternalServerError
+	ApplicationproblemJSON503 *ServiceUnavailable
+}
+
+// Status returns HTTPResponse.Status
+func (r GetHistoryBackupAsClusterAdminResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetHistoryBackupAsClusterAdminResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type ListRuntimeBackupsAsClusterAdminResponse struct {
+	Body                      []byte
+	HTTPResponse              *http.Response
+	JSON200                   *[]ClusterRuntimeBackupInfo
+	ApplicationproblemJSON400 *InvalidData
+	ApplicationproblemJSON401 *Unauthorized
+	ApplicationproblemJSON404 *ProblemDetail
+	ApplicationproblemJSON500 *InternalServerError
+	ApplicationproblemJSON503 *ServiceUnavailable
+}
+
+// Status returns HTTPResponse.Status
+func (r ListRuntimeBackupsAsClusterAdminResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListRuntimeBackupsAsClusterAdminResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type TakeRuntimeBackupAsClusterAdminResponse struct {
+	Body                      []byte
+	HTTPResponse              *http.Response
+	JSON202                   *ClusterTakeRuntimeBackupResponse
+	JSON400                   *ClusterTakeRuntimeBackupResponse
+	ApplicationproblemJSON400 *ProblemDetail
+	ApplicationproblemJSON401 *Unauthorized
+	ApplicationproblemJSON404 *ProblemDetail
+	JSON409                   *ClusterTakeRuntimeBackupResponse
+	JSON500                   *ClusterTakeRuntimeBackupResponse
+	ApplicationproblemJSON500 *ProblemDetail
+	JSON502                   *ClusterTakeRuntimeBackupResponse
+	JSON503                   *ClusterTakeRuntimeBackupResponse
+	JSON504                   *ClusterTakeRuntimeBackupResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r TakeRuntimeBackupAsClusterAdminResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r TakeRuntimeBackupAsClusterAdminResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type DeleteRuntimeBackupStateAsClusterAdminResponse struct {
+	Body                      []byte
+	HTTPResponse              *http.Response
+	ApplicationproblemJSON401 *Unauthorized
+	ApplicationproblemJSON404 *ProblemDetail
+	ApplicationproblemJSON500 *ProblemDetail
+	ApplicationproblemJSON503 *ServiceUnavailable
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteRuntimeBackupStateAsClusterAdminResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteRuntimeBackupStateAsClusterAdminResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetRuntimeBackupStateAsClusterAdminResponse struct {
+	Body                      []byte
+	HTTPResponse              *http.Response
+	JSON200                   *ClusterRuntimeBackupState
+	ApplicationproblemJSON401 *Unauthorized
+	ApplicationproblemJSON404 *ProblemDetail
+	ApplicationproblemJSON500 *InternalServerError
+	ApplicationproblemJSON503 *ServiceUnavailable
+}
+
+// Status returns HTTPResponse.Status
+func (r GetRuntimeBackupStateAsClusterAdminResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetRuntimeBackupStateAsClusterAdminResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type SyncRuntimeBackupStateAsClusterAdminResponse struct {
+	Body                      []byte
+	HTTPResponse              *http.Response
+	JSON200                   *ClusterRuntimeBackupState
+	ApplicationproblemJSON401 *Unauthorized
+	ApplicationproblemJSON404 *ProblemDetail
+	ApplicationproblemJSON500 *InternalServerError
+	ApplicationproblemJSON503 *ServiceUnavailable
+	ApplicationproblemJSON504 *ProblemDetail
+}
+
+// Status returns HTTPResponse.Status
+func (r SyncRuntimeBackupStateAsClusterAdminResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r SyncRuntimeBackupStateAsClusterAdminResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type DeleteRuntimeBackupAsClusterAdminResponse struct {
+	Body                      []byte
+	HTTPResponse              *http.Response
+	ApplicationproblemJSON400 *InvalidData
+	ApplicationproblemJSON401 *Unauthorized
+	ApplicationproblemJSON404 *ProblemDetail
+	ApplicationproblemJSON500 *ProblemDetail
+	ApplicationproblemJSON503 *ServiceUnavailable
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteRuntimeBackupAsClusterAdminResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteRuntimeBackupAsClusterAdminResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetRuntimeBackupAsClusterAdminResponse struct {
+	Body                      []byte
+	HTTPResponse              *http.Response
+	JSON200                   *ClusterRuntimeBackupInfo
+	ApplicationproblemJSON400 *InvalidData
+	ApplicationproblemJSON401 *Unauthorized
+	ApplicationproblemJSON404 *ProblemDetail
+	ApplicationproblemJSON500 *InternalServerError
+	ApplicationproblemJSON503 *ServiceUnavailable
+}
+
+// Status returns HTTPResponse.Status
+func (r GetRuntimeBackupAsClusterAdminResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetRuntimeBackupAsClusterAdminResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetClusterExportingStatusResponse struct {
+	Body                      []byte
+	HTTPResponse              *http.Response
+	JSON200                   *ExportingStatusResponse
+	ApplicationproblemJSON401 *Unauthorized
+	ApplicationproblemJSON403 *Forbidden
+	ApplicationproblemJSON500 *InternalServerError
+	ApplicationproblemJSON503 *ServiceUnavailable
+}
+
+// Status returns HTTPResponse.Status
+func (r GetClusterExportingStatusResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetClusterExportingStatusResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type PauseClusterExportingResponse struct {
+	Body                      []byte
+	HTTPResponse              *http.Response
+	ApplicationproblemJSON401 *Unauthorized
+	ApplicationproblemJSON403 *Forbidden
+	ApplicationproblemJSON500 *InternalServerError
+	ApplicationproblemJSON503 *ServiceUnavailable
+}
+
+// Status returns HTTPResponse.Status
+func (r PauseClusterExportingResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PauseClusterExportingResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type ResumeClusterExportingResponse struct {
+	Body                      []byte
+	HTTPResponse              *http.Response
+	ApplicationproblemJSON401 *Unauthorized
+	ApplicationproblemJSON403 *Forbidden
+	ApplicationproblemJSON500 *InternalServerError
+	ApplicationproblemJSON503 *ServiceUnavailable
+}
+
+// Status returns HTTPResponse.Status
+func (r ResumeClusterExportingResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ResumeClusterExportingResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type ChangeClusterModeAsClusterAdminResponse struct {
+	Body                      []byte
+	HTTPResponse              *http.Response
+	JSON200                   *ClusterModeChangeResponse
+	ApplicationproblemJSON400 *InvalidData
+	ApplicationproblemJSON401 *Unauthorized
+	ApplicationproblemJSON404 *ProblemDetail
+	ApplicationproblemJSON500 *InternalServerError
+}
+
+// Status returns HTTPResponse.Status
+func (r ChangeClusterModeAsClusterAdminResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ChangeClusterModeAsClusterAdminResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type CancelClusterRebalanceResponse struct {
+	Body                      []byte
+	HTTPResponse              *http.Response
+	JSON200                   *RebalanceCancellationResponse
+	ApplicationproblemJSON401 *Unauthorized
+	ApplicationproblemJSON500 *InternalServerError
+	ApplicationproblemJSON502 *ProblemDetail
+	ApplicationproblemJSON503 *ProblemDetail
+	ApplicationproblemJSON504 *ProblemDetail
+}
+
+// Status returns HTTPResponse.Status
+func (r CancelClusterRebalanceResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CancelClusterRebalanceResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetClusterRebalanceResponse struct {
+	Body                      []byte
+	HTTPResponse              *http.Response
+	JSON200                   *ClusterBalanceResponse
+	ApplicationproblemJSON401 *Unauthorized
+	ApplicationproblemJSON500 *InternalServerError
+	ApplicationproblemJSON502 *ProblemDetail
+	ApplicationproblemJSON503 *ProblemDetail
+	ApplicationproblemJSON504 *ProblemDetail
+}
+
+// Status returns HTTPResponse.Status
+func (r GetClusterRebalanceResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetClusterRebalanceResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type TriggerClusterRebalanceResponse struct {
+	Body                      []byte
+	HTTPResponse              *http.Response
+	JSON202                   *ClusterBalanceResponse
+	ApplicationproblemJSON400 *InvalidData
+	ApplicationproblemJSON401 *Unauthorized
+	ApplicationproblemJSON409 *ProblemDetail
+	ApplicationproblemJSON500 *InternalServerError
+	ApplicationproblemJSON502 *ProblemDetail
+	ApplicationproblemJSON503 *ProblemDetail
+	ApplicationproblemJSON504 *ProblemDetail
+}
+
+// Status returns HTTPResponse.Status
+func (r TriggerClusterRebalanceResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r TriggerClusterRebalanceResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type RestoreAsClusterAdminResponse struct {
+	Body                      []byte
+	HTTPResponse              *http.Response
+	JSON202                   *ClusterRestoreResponse
+	ApplicationproblemJSON400 *InvalidData
+	ApplicationproblemJSON401 *Unauthorized
+	ApplicationproblemJSON404 *ProblemDetail
+	ApplicationproblemJSON500 *InternalServerError
+}
+
+// Status returns HTTPResponse.Status
+func (r RestoreAsClusterAdminResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r RestoreAsClusterAdminResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetClusterStatusResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *ClusterStatusResponse
+	JSON503      *ClusterStatusResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r GetClusterStatusResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetClusterStatusResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetClusterUpgradeStatusResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *ClusterUpgradeStatusResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r GetClusterUpgradeStatusResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetClusterUpgradeStatusResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetClusterTopologyResponse struct {
+	Body                      []byte
+	HTTPResponse              *http.Response
+	JSON200                   *ClusterTopologyResponse
+	ApplicationproblemJSON401 *Unauthorized
+	ApplicationproblemJSON403 *Forbidden
+	ApplicationproblemJSON500 *InternalServerError
+}
+
+// Status returns HTTPResponse.Status
+func (r GetClusterTopologyResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetClusterTopologyResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -31825,6 +36448,32 @@ func (r CreateElementInstanceVariablesResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r CreateElementInstanceVariablesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetExportingStatusResponse struct {
+	Body                      []byte
+	HTTPResponse              *http.Response
+	JSON200                   *ExportingStatusResponse
+	ApplicationproblemJSON401 *Unauthorized
+	ApplicationproblemJSON403 *Forbidden
+	ApplicationproblemJSON500 *InternalServerError
+	ApplicationproblemJSON503 *ServiceUnavailable
+}
+
+// Status returns HTTPResponse.Status
+func (r GetExportingStatusResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetExportingStatusResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -33148,6 +37797,7 @@ type ChangeClusterModeResponse struct {
 	JSON200                   *ClusterModeChangeResponse
 	ApplicationproblemJSON400 *InvalidData
 	ApplicationproblemJSON401 *Unauthorized
+	ApplicationproblemJSON403 *Forbidden
 	ApplicationproblemJSON500 *InternalServerError
 }
 
@@ -33724,6 +38374,7 @@ type CancelProcessInstanceResponse struct {
 	HTTPResponse              *http.Response
 	ApplicationproblemJSON400 *InvalidData
 	ApplicationproblemJSON404 *ProblemDetail
+	ApplicationproblemJSON409 *ProblemDetail
 	ApplicationproblemJSON500 *InternalServerError
 	ApplicationproblemJSON503 *ServiceUnavailable
 	ApplicationproblemJSON504 *GatewayTimeoutTaskListenerBlocking
@@ -34131,12 +38782,38 @@ func (r DeleteResourceOpResponse) StatusCode() int {
 	return 0
 }
 
+type GetRestoreStatusResponse struct {
+	Body                      []byte
+	HTTPResponse              *http.Response
+	JSON200                   *RestoreStatusResponse
+	ApplicationproblemJSON401 *Unauthorized
+	ApplicationproblemJSON403 *Forbidden
+	ApplicationproblemJSON500 *InternalServerError
+}
+
+// Status returns HTTPResponse.Status
+func (r GetRestoreStatusResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetRestoreStatusResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
 type RestoreResponse struct {
 	Body                      []byte
 	HTTPResponse              *http.Response
-	JSON202                   *ClusterModeChangeResponse
+	JSON202                   *ClusterRestoreResponse
 	ApplicationproblemJSON400 *InvalidData
 	ApplicationproblemJSON401 *Unauthorized
+	ApplicationproblemJSON403 *Forbidden
 	ApplicationproblemJSON500 *InternalServerError
 }
 
@@ -34602,6 +39279,32 @@ func (r AssignRoleToUserResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r AssignRoleToUserResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type ListSecretsResponse struct {
+	Body                      []byte
+	HTTPResponse              *http.Response
+	JSON200                   *SecretListResult
+	ApplicationproblemJSON400 *InvalidData
+	ApplicationproblemJSON401 *Unauthorized
+	ApplicationproblemJSON500 *InternalServerError
+	ApplicationproblemJSON503 *ServiceUnavailable
+}
+
+// Status returns HTTPResponse.Status
+func (r ListSecretsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListSecretsResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -35732,6 +40435,32 @@ func (r GetVariableResponse) StatusCode() int {
 	return 0
 }
 
+// SearchAgentDefinitionsWithBodyWithResponse request with arbitrary body returning *SearchAgentDefinitionsResponse
+func (c *ClientWithResponses) SearchAgentDefinitionsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchAgentDefinitionsResponse, error) {
+	rsp, err := c.SearchAgentDefinitionsWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSearchAgentDefinitionsResponse(rsp)
+}
+
+func (c *ClientWithResponses) SearchAgentDefinitionsWithResponse(ctx context.Context, body SearchAgentDefinitionsJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchAgentDefinitionsResponse, error) {
+	rsp, err := c.SearchAgentDefinitions(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSearchAgentDefinitionsResponse(rsp)
+}
+
+// GetAgentDefinitionWithResponse request returning *GetAgentDefinitionResponse
+func (c *ClientWithResponses) GetAgentDefinitionWithResponse(ctx context.Context, agentDefinitionKey AgentDefinitionKey, reqEditors ...RequestEditorFn) (*GetAgentDefinitionResponse, error) {
+	rsp, err := c.GetAgentDefinition(ctx, agentDefinitionKey, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetAgentDefinitionResponse(rsp)
+}
+
 // CreateAgentInstanceWithBodyWithResponse request with arbitrary body returning *CreateAgentInstanceResponse
 func (c *ClientWithResponses) CreateAgentInstanceWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateAgentInstanceResponse, error) {
 	rsp, err := c.CreateAgentInstanceWithBody(ctx, contentType, body, reqEditors...)
@@ -35792,23 +40521,6 @@ func (c *ClientWithResponses) UpdateAgentInstanceWithResponse(ctx context.Contex
 	return ParseUpdateAgentInstanceResponse(rsp)
 }
 
-// CreateAgentInstanceHistoryItemWithBodyWithResponse request with arbitrary body returning *CreateAgentInstanceHistoryItemResponse
-func (c *ClientWithResponses) CreateAgentInstanceHistoryItemWithBodyWithResponse(ctx context.Context, agentInstanceKey AgentInstanceKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateAgentInstanceHistoryItemResponse, error) {
-	rsp, err := c.CreateAgentInstanceHistoryItemWithBody(ctx, agentInstanceKey, contentType, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseCreateAgentInstanceHistoryItemResponse(rsp)
-}
-
-func (c *ClientWithResponses) CreateAgentInstanceHistoryItemWithResponse(ctx context.Context, agentInstanceKey AgentInstanceKey, body CreateAgentInstanceHistoryItemJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateAgentInstanceHistoryItemResponse, error) {
-	rsp, err := c.CreateAgentInstanceHistoryItem(ctx, agentInstanceKey, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseCreateAgentInstanceHistoryItemResponse(rsp)
-}
-
 // SearchAgentInstanceHistoryWithBodyWithResponse request with arbitrary body returning *SearchAgentInstanceHistoryResponse
 func (c *ClientWithResponses) SearchAgentInstanceHistoryWithBodyWithResponse(ctx context.Context, agentInstanceKey AgentInstanceKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchAgentInstanceHistoryResponse, error) {
 	rsp, err := c.SearchAgentInstanceHistoryWithBody(ctx, agentInstanceKey, contentType, body, reqEditors...)
@@ -35859,6 +40571,23 @@ func (c *ClientWithResponses) GetAuthenticationWithResponse(ctx context.Context,
 		return nil, err
 	}
 	return ParseGetAuthenticationResponse(rsp)
+}
+
+// SearchOwnAuthorizationsWithBodyWithResponse request with arbitrary body returning *SearchOwnAuthorizationsResponse
+func (c *ClientWithResponses) SearchOwnAuthorizationsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchOwnAuthorizationsResponse, error) {
+	rsp, err := c.SearchOwnAuthorizationsWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSearchOwnAuthorizationsResponse(rsp)
+}
+
+func (c *ClientWithResponses) SearchOwnAuthorizationsWithResponse(ctx context.Context, body SearchOwnAuthorizationsJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchOwnAuthorizationsResponse, error) {
+	rsp, err := c.SearchOwnAuthorizations(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSearchOwnAuthorizationsResponse(rsp)
 }
 
 // CreateAuthorizationWithBodyWithResponse request with arbitrary body returning *CreateAuthorizationResponse
@@ -35928,6 +40657,50 @@ func (c *ClientWithResponses) UpdateAuthorizationWithResponse(ctx context.Contex
 		return nil, err
 	}
 	return ParseUpdateAuthorizationResponse(rsp)
+}
+
+// ListHistoryBackupsWithResponse request returning *ListHistoryBackupsResponse
+func (c *ClientWithResponses) ListHistoryBackupsWithResponse(ctx context.Context, params *ListHistoryBackupsParams, reqEditors ...RequestEditorFn) (*ListHistoryBackupsResponse, error) {
+	rsp, err := c.ListHistoryBackups(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListHistoryBackupsResponse(rsp)
+}
+
+// TakeHistoryBackupOpWithBodyWithResponse request with arbitrary body returning *TakeHistoryBackupOpResponse
+func (c *ClientWithResponses) TakeHistoryBackupOpWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*TakeHistoryBackupOpResponse, error) {
+	rsp, err := c.TakeHistoryBackupOpWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseTakeHistoryBackupOpResponse(rsp)
+}
+
+func (c *ClientWithResponses) TakeHistoryBackupOpWithResponse(ctx context.Context, body TakeHistoryBackupOpJSONRequestBody, reqEditors ...RequestEditorFn) (*TakeHistoryBackupOpResponse, error) {
+	rsp, err := c.TakeHistoryBackupOp(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseTakeHistoryBackupOpResponse(rsp)
+}
+
+// DeleteHistoryBackupWithResponse request returning *DeleteHistoryBackupResponse
+func (c *ClientWithResponses) DeleteHistoryBackupWithResponse(ctx context.Context, backupId BackupId, reqEditors ...RequestEditorFn) (*DeleteHistoryBackupResponse, error) {
+	rsp, err := c.DeleteHistoryBackup(ctx, backupId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteHistoryBackupResponse(rsp)
+}
+
+// GetHistoryBackupWithResponse request returning *GetHistoryBackupResponse
+func (c *ClientWithResponses) GetHistoryBackupWithResponse(ctx context.Context, backupId BackupId, reqEditors ...RequestEditorFn) (*GetHistoryBackupResponse, error) {
+	rsp, err := c.GetHistoryBackup(ctx, backupId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetHistoryBackupResponse(rsp)
 }
 
 // ListRuntimeBackupsWithResponse request returning *ListRuntimeBackupsResponse
@@ -36240,6 +41013,236 @@ func (c *ClientWithResponses) UpdateTenantClusterVariableWithResponse(ctx contex
 		return nil, err
 	}
 	return ParseUpdateTenantClusterVariableResponse(rsp)
+}
+
+// ListHistoryBackupsAsClusterAdminWithResponse request returning *ListHistoryBackupsAsClusterAdminResponse
+func (c *ClientWithResponses) ListHistoryBackupsAsClusterAdminWithResponse(ctx context.Context, params *ListHistoryBackupsAsClusterAdminParams, reqEditors ...RequestEditorFn) (*ListHistoryBackupsAsClusterAdminResponse, error) {
+	rsp, err := c.ListHistoryBackupsAsClusterAdmin(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListHistoryBackupsAsClusterAdminResponse(rsp)
+}
+
+// TakeHistoryBackupAsClusterAdminWithBodyWithResponse request with arbitrary body returning *TakeHistoryBackupAsClusterAdminResponse
+func (c *ClientWithResponses) TakeHistoryBackupAsClusterAdminWithBodyWithResponse(ctx context.Context, params *TakeHistoryBackupAsClusterAdminParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*TakeHistoryBackupAsClusterAdminResponse, error) {
+	rsp, err := c.TakeHistoryBackupAsClusterAdminWithBody(ctx, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseTakeHistoryBackupAsClusterAdminResponse(rsp)
+}
+
+func (c *ClientWithResponses) TakeHistoryBackupAsClusterAdminWithResponse(ctx context.Context, params *TakeHistoryBackupAsClusterAdminParams, body TakeHistoryBackupAsClusterAdminJSONRequestBody, reqEditors ...RequestEditorFn) (*TakeHistoryBackupAsClusterAdminResponse, error) {
+	rsp, err := c.TakeHistoryBackupAsClusterAdmin(ctx, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseTakeHistoryBackupAsClusterAdminResponse(rsp)
+}
+
+// DeleteHistoryBackupAsClusterAdminWithResponse request returning *DeleteHistoryBackupAsClusterAdminResponse
+func (c *ClientWithResponses) DeleteHistoryBackupAsClusterAdminWithResponse(ctx context.Context, backupId BackupId, params *DeleteHistoryBackupAsClusterAdminParams, reqEditors ...RequestEditorFn) (*DeleteHistoryBackupAsClusterAdminResponse, error) {
+	rsp, err := c.DeleteHistoryBackupAsClusterAdmin(ctx, backupId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteHistoryBackupAsClusterAdminResponse(rsp)
+}
+
+// GetHistoryBackupAsClusterAdminWithResponse request returning *GetHistoryBackupAsClusterAdminResponse
+func (c *ClientWithResponses) GetHistoryBackupAsClusterAdminWithResponse(ctx context.Context, backupId BackupId, params *GetHistoryBackupAsClusterAdminParams, reqEditors ...RequestEditorFn) (*GetHistoryBackupAsClusterAdminResponse, error) {
+	rsp, err := c.GetHistoryBackupAsClusterAdmin(ctx, backupId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetHistoryBackupAsClusterAdminResponse(rsp)
+}
+
+// ListRuntimeBackupsAsClusterAdminWithResponse request returning *ListRuntimeBackupsAsClusterAdminResponse
+func (c *ClientWithResponses) ListRuntimeBackupsAsClusterAdminWithResponse(ctx context.Context, params *ListRuntimeBackupsAsClusterAdminParams, reqEditors ...RequestEditorFn) (*ListRuntimeBackupsAsClusterAdminResponse, error) {
+	rsp, err := c.ListRuntimeBackupsAsClusterAdmin(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListRuntimeBackupsAsClusterAdminResponse(rsp)
+}
+
+// TakeRuntimeBackupAsClusterAdminWithBodyWithResponse request with arbitrary body returning *TakeRuntimeBackupAsClusterAdminResponse
+func (c *ClientWithResponses) TakeRuntimeBackupAsClusterAdminWithBodyWithResponse(ctx context.Context, params *TakeRuntimeBackupAsClusterAdminParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*TakeRuntimeBackupAsClusterAdminResponse, error) {
+	rsp, err := c.TakeRuntimeBackupAsClusterAdminWithBody(ctx, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseTakeRuntimeBackupAsClusterAdminResponse(rsp)
+}
+
+func (c *ClientWithResponses) TakeRuntimeBackupAsClusterAdminWithResponse(ctx context.Context, params *TakeRuntimeBackupAsClusterAdminParams, body TakeRuntimeBackupAsClusterAdminJSONRequestBody, reqEditors ...RequestEditorFn) (*TakeRuntimeBackupAsClusterAdminResponse, error) {
+	rsp, err := c.TakeRuntimeBackupAsClusterAdmin(ctx, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseTakeRuntimeBackupAsClusterAdminResponse(rsp)
+}
+
+// DeleteRuntimeBackupStateAsClusterAdminWithResponse request returning *DeleteRuntimeBackupStateAsClusterAdminResponse
+func (c *ClientWithResponses) DeleteRuntimeBackupStateAsClusterAdminWithResponse(ctx context.Context, params *DeleteRuntimeBackupStateAsClusterAdminParams, reqEditors ...RequestEditorFn) (*DeleteRuntimeBackupStateAsClusterAdminResponse, error) {
+	rsp, err := c.DeleteRuntimeBackupStateAsClusterAdmin(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteRuntimeBackupStateAsClusterAdminResponse(rsp)
+}
+
+// GetRuntimeBackupStateAsClusterAdminWithResponse request returning *GetRuntimeBackupStateAsClusterAdminResponse
+func (c *ClientWithResponses) GetRuntimeBackupStateAsClusterAdminWithResponse(ctx context.Context, params *GetRuntimeBackupStateAsClusterAdminParams, reqEditors ...RequestEditorFn) (*GetRuntimeBackupStateAsClusterAdminResponse, error) {
+	rsp, err := c.GetRuntimeBackupStateAsClusterAdmin(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetRuntimeBackupStateAsClusterAdminResponse(rsp)
+}
+
+// SyncRuntimeBackupStateAsClusterAdminWithResponse request returning *SyncRuntimeBackupStateAsClusterAdminResponse
+func (c *ClientWithResponses) SyncRuntimeBackupStateAsClusterAdminWithResponse(ctx context.Context, params *SyncRuntimeBackupStateAsClusterAdminParams, reqEditors ...RequestEditorFn) (*SyncRuntimeBackupStateAsClusterAdminResponse, error) {
+	rsp, err := c.SyncRuntimeBackupStateAsClusterAdmin(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSyncRuntimeBackupStateAsClusterAdminResponse(rsp)
+}
+
+// DeleteRuntimeBackupAsClusterAdminWithResponse request returning *DeleteRuntimeBackupAsClusterAdminResponse
+func (c *ClientWithResponses) DeleteRuntimeBackupAsClusterAdminWithResponse(ctx context.Context, backupId BackupId, params *DeleteRuntimeBackupAsClusterAdminParams, reqEditors ...RequestEditorFn) (*DeleteRuntimeBackupAsClusterAdminResponse, error) {
+	rsp, err := c.DeleteRuntimeBackupAsClusterAdmin(ctx, backupId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteRuntimeBackupAsClusterAdminResponse(rsp)
+}
+
+// GetRuntimeBackupAsClusterAdminWithResponse request returning *GetRuntimeBackupAsClusterAdminResponse
+func (c *ClientWithResponses) GetRuntimeBackupAsClusterAdminWithResponse(ctx context.Context, backupId BackupId, params *GetRuntimeBackupAsClusterAdminParams, reqEditors ...RequestEditorFn) (*GetRuntimeBackupAsClusterAdminResponse, error) {
+	rsp, err := c.GetRuntimeBackupAsClusterAdmin(ctx, backupId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetRuntimeBackupAsClusterAdminResponse(rsp)
+}
+
+// GetClusterExportingStatusWithResponse request returning *GetClusterExportingStatusResponse
+func (c *ClientWithResponses) GetClusterExportingStatusWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetClusterExportingStatusResponse, error) {
+	rsp, err := c.GetClusterExportingStatus(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetClusterExportingStatusResponse(rsp)
+}
+
+// PauseClusterExportingWithResponse request returning *PauseClusterExportingResponse
+func (c *ClientWithResponses) PauseClusterExportingWithResponse(ctx context.Context, params *PauseClusterExportingParams, reqEditors ...RequestEditorFn) (*PauseClusterExportingResponse, error) {
+	rsp, err := c.PauseClusterExporting(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePauseClusterExportingResponse(rsp)
+}
+
+// ResumeClusterExportingWithResponse request returning *ResumeClusterExportingResponse
+func (c *ClientWithResponses) ResumeClusterExportingWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ResumeClusterExportingResponse, error) {
+	rsp, err := c.ResumeClusterExporting(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseResumeClusterExportingResponse(rsp)
+}
+
+// ChangeClusterModeAsClusterAdminWithResponse request returning *ChangeClusterModeAsClusterAdminResponse
+func (c *ClientWithResponses) ChangeClusterModeAsClusterAdminWithResponse(ctx context.Context, params *ChangeClusterModeAsClusterAdminParams, reqEditors ...RequestEditorFn) (*ChangeClusterModeAsClusterAdminResponse, error) {
+	rsp, err := c.ChangeClusterModeAsClusterAdmin(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseChangeClusterModeAsClusterAdminResponse(rsp)
+}
+
+// CancelClusterRebalanceWithResponse request returning *CancelClusterRebalanceResponse
+func (c *ClientWithResponses) CancelClusterRebalanceWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*CancelClusterRebalanceResponse, error) {
+	rsp, err := c.CancelClusterRebalance(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCancelClusterRebalanceResponse(rsp)
+}
+
+// GetClusterRebalanceWithResponse request returning *GetClusterRebalanceResponse
+func (c *ClientWithResponses) GetClusterRebalanceWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetClusterRebalanceResponse, error) {
+	rsp, err := c.GetClusterRebalance(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetClusterRebalanceResponse(rsp)
+}
+
+// TriggerClusterRebalanceWithBodyWithResponse request with arbitrary body returning *TriggerClusterRebalanceResponse
+func (c *ClientWithResponses) TriggerClusterRebalanceWithBodyWithResponse(ctx context.Context, params *TriggerClusterRebalanceParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*TriggerClusterRebalanceResponse, error) {
+	rsp, err := c.TriggerClusterRebalanceWithBody(ctx, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseTriggerClusterRebalanceResponse(rsp)
+}
+
+func (c *ClientWithResponses) TriggerClusterRebalanceWithResponse(ctx context.Context, params *TriggerClusterRebalanceParams, body TriggerClusterRebalanceJSONRequestBody, reqEditors ...RequestEditorFn) (*TriggerClusterRebalanceResponse, error) {
+	rsp, err := c.TriggerClusterRebalance(ctx, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseTriggerClusterRebalanceResponse(rsp)
+}
+
+// RestoreAsClusterAdminWithBodyWithResponse request with arbitrary body returning *RestoreAsClusterAdminResponse
+func (c *ClientWithResponses) RestoreAsClusterAdminWithBodyWithResponse(ctx context.Context, params *RestoreAsClusterAdminParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RestoreAsClusterAdminResponse, error) {
+	rsp, err := c.RestoreAsClusterAdminWithBody(ctx, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRestoreAsClusterAdminResponse(rsp)
+}
+
+func (c *ClientWithResponses) RestoreAsClusterAdminWithResponse(ctx context.Context, params *RestoreAsClusterAdminParams, body RestoreAsClusterAdminJSONRequestBody, reqEditors ...RequestEditorFn) (*RestoreAsClusterAdminResponse, error) {
+	rsp, err := c.RestoreAsClusterAdmin(ctx, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRestoreAsClusterAdminResponse(rsp)
+}
+
+// GetClusterStatusWithResponse request returning *GetClusterStatusResponse
+func (c *ClientWithResponses) GetClusterStatusWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetClusterStatusResponse, error) {
+	rsp, err := c.GetClusterStatus(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetClusterStatusResponse(rsp)
+}
+
+// GetClusterUpgradeStatusWithResponse request returning *GetClusterUpgradeStatusResponse
+func (c *ClientWithResponses) GetClusterUpgradeStatusWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetClusterUpgradeStatusResponse, error) {
+	rsp, err := c.GetClusterUpgradeStatus(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetClusterUpgradeStatusResponse(rsp)
+}
+
+// GetClusterTopologyWithResponse request returning *GetClusterTopologyResponse
+func (c *ClientWithResponses) GetClusterTopologyWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetClusterTopologyResponse, error) {
+	rsp, err := c.GetClusterTopology(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetClusterTopologyResponse(rsp)
 }
 
 // EvaluateConditionalsWithBodyWithResponse request with arbitrary body returning *EvaluateConditionalsResponse
@@ -36577,6 +41580,15 @@ func (c *ClientWithResponses) CreateElementInstanceVariablesWithResponse(ctx con
 		return nil, err
 	}
 	return ParseCreateElementInstanceVariablesResponse(rsp)
+}
+
+// GetExportingStatusWithResponse request returning *GetExportingStatusResponse
+func (c *ClientWithResponses) GetExportingStatusWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetExportingStatusResponse, error) {
+	rsp, err := c.GetExportingStatus(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetExportingStatusResponse(rsp)
 }
 
 // PauseExportingWithResponse request returning *PauseExportingResponse
@@ -37827,17 +42839,26 @@ func (c *ClientWithResponses) DeleteResourceOpWithResponse(ctx context.Context, 
 	return ParseDeleteResourceOpResponse(rsp)
 }
 
+// GetRestoreStatusWithResponse request returning *GetRestoreStatusResponse
+func (c *ClientWithResponses) GetRestoreStatusWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetRestoreStatusResponse, error) {
+	rsp, err := c.GetRestoreStatus(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetRestoreStatusResponse(rsp)
+}
+
 // RestoreWithBodyWithResponse request with arbitrary body returning *RestoreResponse
-func (c *ClientWithResponses) RestoreWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RestoreResponse, error) {
-	rsp, err := c.RestoreWithBody(ctx, contentType, body, reqEditors...)
+func (c *ClientWithResponses) RestoreWithBodyWithResponse(ctx context.Context, params *RestoreParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RestoreResponse, error) {
+	rsp, err := c.RestoreWithBody(ctx, params, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
 	return ParseRestoreResponse(rsp)
 }
 
-func (c *ClientWithResponses) RestoreWithResponse(ctx context.Context, body RestoreJSONRequestBody, reqEditors ...RequestEditorFn) (*RestoreResponse, error) {
-	rsp, err := c.Restore(ctx, body, reqEditors...)
+func (c *ClientWithResponses) RestoreWithResponse(ctx context.Context, params *RestoreParams, body RestoreJSONRequestBody, reqEditors ...RequestEditorFn) (*RestoreResponse, error) {
+	rsp, err := c.Restore(ctx, params, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -38051,6 +43072,23 @@ func (c *ClientWithResponses) AssignRoleToUserWithResponse(ctx context.Context, 
 		return nil, err
 	}
 	return ParseAssignRoleToUserResponse(rsp)
+}
+
+// ListSecretsWithBodyWithResponse request with arbitrary body returning *ListSecretsResponse
+func (c *ClientWithResponses) ListSecretsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ListSecretsResponse, error) {
+	rsp, err := c.ListSecretsWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListSecretsResponse(rsp)
+}
+
+func (c *ClientWithResponses) ListSecretsWithResponse(ctx context.Context, body ListSecretsJSONRequestBody, reqEditors ...RequestEditorFn) (*ListSecretsResponse, error) {
+	rsp, err := c.ListSecrets(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListSecretsResponse(rsp)
 }
 
 // ResolveSecretsWithBodyWithResponse request with arbitrary body returning *ResolveSecretsResponse
@@ -38625,6 +43663,121 @@ func (c *ClientWithResponses) GetVariableWithResponse(ctx context.Context, varia
 	return ParseGetVariableResponse(rsp)
 }
 
+// ParseSearchAgentDefinitionsResponse parses an HTTP response from a SearchAgentDefinitionsWithResponse call
+func ParseSearchAgentDefinitionsResponse(rsp *http.Response) (*SearchAgentDefinitionsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &SearchAgentDefinitionsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AgentDefinitionSearchQueryResult
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest InvalidData
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetAgentDefinitionResponse parses an HTTP response from a GetAgentDefinitionWithResponse call
+func ParseGetAgentDefinitionResponse(rsp *http.Response) (*GetAgentDefinitionResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetAgentDefinitionResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AgentDefinitionResult
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest InvalidData
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ProblemDetail
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseCreateAgentInstanceResponse parses an HTTP response from a CreateAgentInstanceWithResponse call
 func ParseCreateAgentInstanceResponse(rsp *http.Response) (*CreateAgentInstanceResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -38836,66 +43989,12 @@ func ParseUpdateAgentInstanceResponse(rsp *http.Response) (*UpdateAgentInstanceR
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest InvalidData
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AgentInstanceUpdateResult
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
-		response.ApplicationproblemJSON400 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest Unauthorized
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.ApplicationproblemJSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest Forbidden
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.ApplicationproblemJSON403 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest ProblemDetail
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.ApplicationproblemJSON404 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest InternalServerError
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.ApplicationproblemJSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParseCreateAgentInstanceHistoryItemResponse parses an HTTP response from a CreateAgentInstanceHistoryItemWithResponse call
-func ParseCreateAgentInstanceHistoryItemResponse(rsp *http.Response) (*CreateAgentInstanceHistoryItemResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &CreateAgentInstanceHistoryItemResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
-		var dest AgentInstanceHistoryItemCreationResult
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON201 = &dest
+		response.JSON200 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
 		var dest InvalidData
@@ -38931,13 +44030,6 @@ func ParseCreateAgentInstanceHistoryItemResponse(rsp *http.Response) (*CreateAge
 			return nil, err
 		}
 		response.ApplicationproblemJSON500 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
-		var dest ServiceUnavailable
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.ApplicationproblemJSON503 = &dest
 
 	}
 
@@ -39140,6 +44232,53 @@ func ParseGetAuthenticationResponse(rsp *http.Response) (*GetAuthenticationRespo
 			return nil, err
 		}
 		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseSearchOwnAuthorizationsResponse parses an HTTP response from a SearchOwnAuthorizationsWithResponse call
+func ParseSearchOwnAuthorizationsResponse(rsp *http.Response) (*SearchOwnAuthorizationsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &SearchOwnAuthorizationsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest OwnAuthorizationSearchResult
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest InvalidData
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest InternalServerError
@@ -39396,6 +44535,250 @@ func ParseUpdateAuthorizationResponse(rsp *http.Response) (*UpdateAuthorizationR
 			return nil, err
 		}
 		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ProblemDetail
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ServiceUnavailable
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListHistoryBackupsResponse parses an HTTP response from a ListHistoryBackupsWithResponse call
+func ParseListHistoryBackupsResponse(rsp *http.Response) (*ListHistoryBackupsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListHistoryBackupsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest []HistoryBackupInfo
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest InvalidData
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest HistoryBackupForbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ServiceUnavailable
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseTakeHistoryBackupOpResponse parses an HTTP response from a TakeHistoryBackupOpWithResponse call
+func ParseTakeHistoryBackupOpResponse(rsp *http.Response) (*TakeHistoryBackupOpResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &TakeHistoryBackupOpResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
+		var dest TakeHistoryBackupResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON202 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest InvalidData
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest HistoryBackupForbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest ProblemDetail
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ServiceUnavailable
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDeleteHistoryBackupResponse parses an HTTP response from a DeleteHistoryBackupWithResponse call
+func ParseDeleteHistoryBackupResponse(rsp *http.Response) (*DeleteHistoryBackupResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteHistoryBackupResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest HistoryBackupForbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ProblemDetail
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ServiceUnavailable
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetHistoryBackupResponse parses an HTTP response from a GetHistoryBackupWithResponse call
+func ParseGetHistoryBackupResponse(rsp *http.Response) (*GetHistoryBackupResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetHistoryBackupResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest HistoryBackupInfo
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest HistoryBackupForbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
 		var dest ProblemDetail
@@ -40719,6 +46102,1271 @@ func ParseUpdateTenantClusterVariableResponse(rsp *http.Response) (*UpdateTenant
 	return response, nil
 }
 
+// ParseListHistoryBackupsAsClusterAdminResponse parses an HTTP response from a ListHistoryBackupsAsClusterAdminWithResponse call
+func ParseListHistoryBackupsAsClusterAdminResponse(rsp *http.Response) (*ListHistoryBackupsAsClusterAdminResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListHistoryBackupsAsClusterAdminResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest []ClusterHistoryBackupInfo
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest InvalidData
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ClusterHistoryBackupForbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ProblemDetail
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ServiceUnavailable
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseTakeHistoryBackupAsClusterAdminResponse parses an HTTP response from a TakeHistoryBackupAsClusterAdminWithResponse call
+func ParseTakeHistoryBackupAsClusterAdminResponse(rsp *http.Response) (*TakeHistoryBackupAsClusterAdminResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &TakeHistoryBackupAsClusterAdminResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
+		var dest ClusterTakeHistoryBackupResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON202 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest InvalidData
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ClusterHistoryBackupForbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ProblemDetail
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest ProblemDetail
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest ProblemDetail
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ServiceUnavailable
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDeleteHistoryBackupAsClusterAdminResponse parses an HTTP response from a DeleteHistoryBackupAsClusterAdminWithResponse call
+func ParseDeleteHistoryBackupAsClusterAdminResponse(rsp *http.Response) (*DeleteHistoryBackupAsClusterAdminResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteHistoryBackupAsClusterAdminResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest InvalidData
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ProblemDetail
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ProblemDetail
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest ProblemDetail
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ServiceUnavailable
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetHistoryBackupAsClusterAdminResponse parses an HTTP response from a GetHistoryBackupAsClusterAdminWithResponse call
+func ParseGetHistoryBackupAsClusterAdminResponse(rsp *http.Response) (*GetHistoryBackupAsClusterAdminResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetHistoryBackupAsClusterAdminResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ClusterHistoryBackupInfo
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest InvalidData
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ClusterHistoryBackupForbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ProblemDetail
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ServiceUnavailable
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListRuntimeBackupsAsClusterAdminResponse parses an HTTP response from a ListRuntimeBackupsAsClusterAdminWithResponse call
+func ParseListRuntimeBackupsAsClusterAdminResponse(rsp *http.Response) (*ListRuntimeBackupsAsClusterAdminResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListRuntimeBackupsAsClusterAdminResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest []ClusterRuntimeBackupInfo
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest InvalidData
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ProblemDetail
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ServiceUnavailable
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseTakeRuntimeBackupAsClusterAdminResponse parses an HTTP response from a TakeRuntimeBackupAsClusterAdminWithResponse call
+func ParseTakeRuntimeBackupAsClusterAdminResponse(rsp *http.Response) (*TakeRuntimeBackupAsClusterAdminResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &TakeRuntimeBackupAsClusterAdminResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.Header.Get("Content-Type") == "application/json" && rsp.StatusCode == 400:
+		var dest ClusterTakeRuntimeBackupResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case rsp.Header.Get("Content-Type") == "application/json" && rsp.StatusCode == 500:
+		var dest ClusterTakeRuntimeBackupResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	case rsp.Header.Get("Content-Type") == "application/problem+json" && rsp.StatusCode == 400:
+		var dest ProblemDetail
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case rsp.Header.Get("Content-Type") == "application/problem+json" && rsp.StatusCode == 500:
+		var dest ProblemDetail
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
+		var dest ClusterTakeRuntimeBackupResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON202 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ProblemDetail
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest ClusterTakeRuntimeBackupResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 502:
+		var dest ClusterTakeRuntimeBackupResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON502 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ClusterTakeRuntimeBackupResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 504:
+		var dest ClusterTakeRuntimeBackupResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON504 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDeleteRuntimeBackupStateAsClusterAdminResponse parses an HTTP response from a DeleteRuntimeBackupStateAsClusterAdminWithResponse call
+func ParseDeleteRuntimeBackupStateAsClusterAdminResponse(rsp *http.Response) (*DeleteRuntimeBackupStateAsClusterAdminResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteRuntimeBackupStateAsClusterAdminResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ProblemDetail
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest ProblemDetail
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ServiceUnavailable
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetRuntimeBackupStateAsClusterAdminResponse parses an HTTP response from a GetRuntimeBackupStateAsClusterAdminWithResponse call
+func ParseGetRuntimeBackupStateAsClusterAdminResponse(rsp *http.Response) (*GetRuntimeBackupStateAsClusterAdminResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetRuntimeBackupStateAsClusterAdminResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ClusterRuntimeBackupState
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ProblemDetail
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ServiceUnavailable
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseSyncRuntimeBackupStateAsClusterAdminResponse parses an HTTP response from a SyncRuntimeBackupStateAsClusterAdminWithResponse call
+func ParseSyncRuntimeBackupStateAsClusterAdminResponse(rsp *http.Response) (*SyncRuntimeBackupStateAsClusterAdminResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &SyncRuntimeBackupStateAsClusterAdminResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ClusterRuntimeBackupState
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ProblemDetail
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ServiceUnavailable
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 504:
+		var dest ProblemDetail
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON504 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDeleteRuntimeBackupAsClusterAdminResponse parses an HTTP response from a DeleteRuntimeBackupAsClusterAdminWithResponse call
+func ParseDeleteRuntimeBackupAsClusterAdminResponse(rsp *http.Response) (*DeleteRuntimeBackupAsClusterAdminResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteRuntimeBackupAsClusterAdminResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest InvalidData
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ProblemDetail
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest ProblemDetail
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ServiceUnavailable
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetRuntimeBackupAsClusterAdminResponse parses an HTTP response from a GetRuntimeBackupAsClusterAdminWithResponse call
+func ParseGetRuntimeBackupAsClusterAdminResponse(rsp *http.Response) (*GetRuntimeBackupAsClusterAdminResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetRuntimeBackupAsClusterAdminResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ClusterRuntimeBackupInfo
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest InvalidData
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ProblemDetail
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ServiceUnavailable
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetClusterExportingStatusResponse parses an HTTP response from a GetClusterExportingStatusWithResponse call
+func ParseGetClusterExportingStatusResponse(rsp *http.Response) (*GetClusterExportingStatusResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetClusterExportingStatusResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ExportingStatusResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ServiceUnavailable
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePauseClusterExportingResponse parses an HTTP response from a PauseClusterExportingWithResponse call
+func ParsePauseClusterExportingResponse(rsp *http.Response) (*PauseClusterExportingResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PauseClusterExportingResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ServiceUnavailable
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseResumeClusterExportingResponse parses an HTTP response from a ResumeClusterExportingWithResponse call
+func ParseResumeClusterExportingResponse(rsp *http.Response) (*ResumeClusterExportingResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ResumeClusterExportingResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ServiceUnavailable
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseChangeClusterModeAsClusterAdminResponse parses an HTTP response from a ChangeClusterModeAsClusterAdminWithResponse call
+func ParseChangeClusterModeAsClusterAdminResponse(rsp *http.Response) (*ChangeClusterModeAsClusterAdminResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ChangeClusterModeAsClusterAdminResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ClusterModeChangeResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest InvalidData
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ProblemDetail
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCancelClusterRebalanceResponse parses an HTTP response from a CancelClusterRebalanceWithResponse call
+func ParseCancelClusterRebalanceResponse(rsp *http.Response) (*CancelClusterRebalanceResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CancelClusterRebalanceResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest RebalanceCancellationResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 502:
+		var dest ProblemDetail
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON502 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ProblemDetail
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 504:
+		var dest ProblemDetail
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON504 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetClusterRebalanceResponse parses an HTTP response from a GetClusterRebalanceWithResponse call
+func ParseGetClusterRebalanceResponse(rsp *http.Response) (*GetClusterRebalanceResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetClusterRebalanceResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ClusterBalanceResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 502:
+		var dest ProblemDetail
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON502 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ProblemDetail
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 504:
+		var dest ProblemDetail
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON504 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseTriggerClusterRebalanceResponse parses an HTTP response from a TriggerClusterRebalanceWithResponse call
+func ParseTriggerClusterRebalanceResponse(rsp *http.Response) (*TriggerClusterRebalanceResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &TriggerClusterRebalanceResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
+		var dest ClusterBalanceResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON202 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest InvalidData
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest ProblemDetail
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 502:
+		var dest ProblemDetail
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON502 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ProblemDetail
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 504:
+		var dest ProblemDetail
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON504 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseRestoreAsClusterAdminResponse parses an HTTP response from a RestoreAsClusterAdminWithResponse call
+func ParseRestoreAsClusterAdminResponse(rsp *http.Response) (*RestoreAsClusterAdminResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &RestoreAsClusterAdminResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
+		var dest ClusterRestoreResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON202 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest InvalidData
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ProblemDetail
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetClusterStatusResponse parses an HTTP response from a GetClusterStatusWithResponse call
+func ParseGetClusterStatusResponse(rsp *http.Response) (*GetClusterStatusResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetClusterStatusResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ClusterStatusResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ClusterStatusResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON503 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetClusterUpgradeStatusResponse parses an HTTP response from a GetClusterUpgradeStatusWithResponse call
+func ParseGetClusterUpgradeStatusResponse(rsp *http.Response) (*GetClusterUpgradeStatusResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetClusterUpgradeStatusResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ClusterUpgradeStatusResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetClusterTopologyResponse parses an HTTP response from a GetClusterTopologyWithResponse call
+func ParseGetClusterTopologyResponse(rsp *http.Response) (*GetClusterTopologyResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetClusterTopologyResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ClusterTopologyResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseEvaluateConditionalsResponse parses an HTTP response from a EvaluateConditionalsWithResponse call
 func ParseEvaluateConditionalsResponse(rsp *http.Response) (*EvaluateConditionalsResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -42021,6 +48669,60 @@ func ParseCreateElementInstanceVariablesResponse(rsp *http.Response) (*CreateEle
 			return nil, err
 		}
 		response.ApplicationproblemJSON504 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetExportingStatusResponse parses an HTTP response from a GetExportingStatusWithResponse call
+func ParseGetExportingStatusResponse(rsp *http.Response) (*GetExportingStatusResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetExportingStatusResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ExportingStatusResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ServiceUnavailable
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
 
 	}
 
@@ -44839,6 +51541,13 @@ func ParseChangeClusterModeResponse(rsp *http.Response) (*ChangeClusterModeRespo
 		}
 		response.ApplicationproblemJSON401 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest InternalServerError
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -46055,6 +52764,13 @@ func ParseCancelProcessInstanceResponse(rsp *http.Response) (*CancelProcessInsta
 		}
 		response.ApplicationproblemJSON404 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest ProblemDetail
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest InternalServerError
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -46863,6 +53579,53 @@ func ParseDeleteResourceOpResponse(rsp *http.Response) (*DeleteResourceOpRespons
 	return response, nil
 }
 
+// ParseGetRestoreStatusResponse parses an HTTP response from a GetRestoreStatusWithResponse call
+func ParseGetRestoreStatusResponse(rsp *http.Response) (*GetRestoreStatusResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetRestoreStatusResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest RestoreStatusResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseRestoreResponse parses an HTTP response from a RestoreWithResponse call
 func ParseRestoreResponse(rsp *http.Response) (*RestoreResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -46878,7 +53641,7 @@ func ParseRestoreResponse(rsp *http.Response) (*RestoreResponse, error) {
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
-		var dest ClusterModeChangeResponse
+		var dest ClusterRestoreResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -46897,6 +53660,13 @@ func ParseRestoreResponse(rsp *http.Response) (*RestoreResponse, error) {
 			return nil, err
 		}
 		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest InternalServerError
@@ -47878,6 +54648,60 @@ func ParseAssignRoleToUserResponse(rsp *http.Response) (*AssignRoleToUserRespons
 			return nil, err
 		}
 		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ServiceUnavailable
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListSecretsResponse parses an HTTP response from a ListSecretsWithResponse call
+func ParseListSecretsResponse(rsp *http.Response) (*ListSecretsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListSecretsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest SecretListResult
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest InvalidData
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest InternalServerError

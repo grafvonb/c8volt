@@ -37,8 +37,8 @@ func TestVersionCommandJSONIncludesSupportedCamundaVersions(t *testing.T) {
 	require.Equal(t, "version", envelope.Command)
 	payload := envelope.Payload
 	require.Equal(t, toolx.SupportedCamundaVersionsString(), payload["supportedCamundaVersions"])
-	require.Equal(t, "8.10.0-alpha4", payload["camunda810Baseline"])
-	require.Equal(t, "prerelease", payload["camunda810BaselineStatus"])
+	require.Equal(t, "8.10.3", payload["camunda810Baseline"])
+	require.Equal(t, "final", payload["camunda810BaselineStatus"])
 }
 
 // TestVersionCommandSeparatesBaselineMetadataFromVersionIdentity verifies
@@ -77,7 +77,7 @@ func TestVersionCommand_DefaultOutputRemainsCompactPlainText(t *testing.T) {
 
 	require.Contains(t, output, "c8volt ")
 	require.Contains(t, output, "Supported Camunda versions: "+toolx.SupportedCamundaVersionsString())
-	require.Contains(t, output, "Camunda 8.10 baseline: 8.10.0-alpha4 (prerelease)")
+	require.Contains(t, output, "Camunda 8.10 baseline: 8.10.3 (final)")
 	require.NotContains(t, output, `"outcome"`)
 	require.NotContains(t, output, `"command"`)
 }

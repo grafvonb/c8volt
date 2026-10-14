@@ -154,9 +154,13 @@ func batchOperationFromPayload(payload *camundav810.BatchOperationResponse, stat
 	if payload == nil {
 		return d.BatchOperation{}
 	}
+	operationType := ""
+	if payload.BatchOperationType != nil {
+		operationType = string(*payload.BatchOperationType)
+	}
 	return d.BatchOperation{
 		Key:                      payload.BatchOperationKey,
-		Type:                     string(payload.BatchOperationType),
+		Type:                     operationType,
 		State:                    string(payload.State),
 		OperationsTotalCount:     payload.OperationsTotalCount,
 		OperationsCompletedCount: payload.OperationsCompletedCount,

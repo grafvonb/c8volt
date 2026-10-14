@@ -339,6 +339,7 @@ func TestService_Deploy_DefaultsEmptyTenantToDefaultTenant(t *testing.T) {
 // service always asks Camunda to delete history through the unified API.
 func TestService_Delete(t *testing.T) {
 	ctx := context.Background()
+	operationType := camundav810.BatchOperationTypeEnumDELETEPROCESSDEFINITION
 
 	t.Run("DefaultDeletesHistoryAndWaitsForBatchCompletion", func(t *testing.T) {
 		svc := newTestService(t, "tenant", &mockResourceClient{
@@ -367,7 +368,7 @@ func TestService_Delete(t *testing.T) {
 					HTTPResponse: newHTTPResponse(http.MethodGet, "https://camunda.local/v2/batch-operations/batch-1", http.StatusOK, "200 OK"),
 					JSON200: &camundav810.BatchOperationResponse{
 						BatchOperationKey:  "batch-1",
-						BatchOperationType: camundav810.BatchOperationTypeEnumDELETEPROCESSDEFINITION,
+						BatchOperationType: &operationType,
 						State:              camundav810.BatchOperationStateEnumCOMPLETED,
 					},
 				}, nil
@@ -427,7 +428,7 @@ func TestService_Delete(t *testing.T) {
 					HTTPResponse: newHTTPResponse(http.MethodGet, "https://camunda.local/v2/batch-operations/batch-1", http.StatusOK, "200 OK"),
 					JSON200: &camundav810.BatchOperationResponse{
 						BatchOperationKey:  "batch-1",
-						BatchOperationType: camundav810.BatchOperationTypeEnumDELETEPROCESSDEFINITION,
+						BatchOperationType: &operationType,
 						State:              camundav810.BatchOperationStateEnumCOMPLETED,
 					},
 				}, nil
