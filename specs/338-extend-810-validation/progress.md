@@ -113,3 +113,28 @@ Started: 2026-10-14 11:50:17
 - Exact minor parsing prevents an 8.1/8.10 substring match from passing readiness, while normalized evidence retains the observed full server version.
 - The same real-state scenarios can cover C89 and C810 safely when fixture identity derivation and historical live-evidence claims remain version-explicit.
 ---
+---
+## Iteration 5 - 2026-10-14 12:36
+**Work Unit**: T005 Complete US3 batch mutation outcome validation
+**Tasks Completed**:
+- [x] T005: Add focused 8.10 batch cancellation/deletion, process-definition DRAINING, controlled lifecycle, failure classification, target wiring, catalog, and documentation coverage
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- Makefile
+- integration/README.md
+- integration/assets/release-coverage.json
+- integration/assets/release-gaps.json
+- integration/cli/batch_test.go
+- integration/cli/real_state_destructive_test.go
+- integration/cli/release_evidence_test.go
+- integration/internal/validation/catalog_test.go
+- integration/runner/run.go
+- internal/services/batchoperation/v810/service_test.go
+- specs/338-extend-810-validation/tasks.md
+- specs/338-extend-810-validation/ralph-memory.md
+- specs/338-extend-810-validation/progress.md
+**Learnings**:
+- Camunda 8.10 batch cancellation/deletion can prove accepted submission, terminal counts, and resource post-state independently; process-definition DRAINING remains a separate lifecycle.
+- The valid null deletion batch still triggers the existing adapter failure and is retained as an unwaived product-class failure in the explicitly invoked tagged slice; no live cluster run was authorized this iteration.
+---

@@ -145,6 +145,23 @@ may mutate a disposable target:
 make integration-cli-common C8VOLT_IT_GO_TEST_FLAGS=-v
 ```
 
+Camunda 8.10 batch compatibility has a focused destructive slice. It records
+submission-only cancellation separately from later terminal observation,
+checks cancellation and deletion accounting against independent process-instance
+post-state, and holds an owned instance while observing process-definition
+`DRAINING` before bounded cleanup:
+
+```sh
+C8VOLT_IT_PROFILES=dev810 make integration-cli-batch \
+  C8VOLT_IT_GO_TEST_FLAGS=-v C8VOLT_IT_REAL_STATE_TIMEOUT=90m
+```
+
+The process-definition scenario intentionally remains unsuccessful while the
+v8.10 resource adapter rejects the valid null `batchOperation` returned for a
+runtime-present definition. That result is classified as a product failure,
+not an accepted gap. A successful submission is not release proof until the
+separate product fix lands and the definition's draining cleanup is observed.
+
 For aggregate release validation, select one disposable profile and the
 requested minor. The sequential runner builds once, verifies the profile before
 mutation, and executes exact catalog-owned test identities in isolated child
@@ -289,7 +306,7 @@ Go suite variables:
 | `C8VOLT_IT_VERBOSE` | derived from `C8VOLT_IT_GO_TEST_FLAGS` | Set to `1` when verbose harness logging is required without Make flag derivation. |
 | `C8VOLT_IT_TIMEOUT` | `60m` | Make-level timeout used by baseline `integration-cli-*` targets. |
 | `C8VOLT_IT_VOLUME_TIMEOUT` | `90m` | Make-level timeout used by `integration-cli-*-volume` targets. |
-| `C8VOLT_IT_REAL_STATE_TIMEOUT` | `90m` | Make-level timeout used by `integration-cli-real-state-*` targets. |
+| `C8VOLT_IT_REAL_STATE_TIMEOUT` | `90m` | Make-level timeout used by `integration-cli-real-state-*` and `integration-cli-batch` targets. |
 | `C8VOLT_IT_AUTOMATION` | `0` | Set `1` to skip the Make-level mutation confirmation prompt. |
 
 ## Outputs
@@ -320,6 +337,8 @@ directory:
   `real-state-progress-<family>.json`, and
   `real-state-ops-reports-<family>.json`: opt-in Camunda 8.9/8.10 real-state
   evidence.
+- `batch-evidence.json` and `process-definition-draining-evidence.json`:
+  focused 8.10 submission, terminal accounting, DRAINING, and post-state proof.
 - `logs/`: per-command stdout and stderr evidence.
 - `data/`: seeded data, selected keys, resource IDs, and substitution evidence.
 

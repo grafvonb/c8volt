@@ -16,6 +16,9 @@ Started: 2026-10-14T09:50:16Z
 - Real-state fixture policy now lives in ordinary `integration/internal/validation/fixtures.go`: only canonical 8.9/8.10 minors enter real-state work, while shared embedded fixture selection still supports 8.8 baseline/volume use.
 - All seven real-state family consumers share `selectedRealStateProfiles`; readiness preserves the configured minor plus the full observed gateway version and rejects mismatched or unparseable observations before mutation.
 - Cascade scenarios derive exact C89/C810 parent, mid, and leaf process IDs and require all three deployed definitions before creating evidence; historical 8.9 matrix claims remain distinct from pending 8.10 live proof.
+- The focused `batch` slice is 8.10-only and owns `TestBatchFamily` plus held-instance `TestRealStateProcessDefinitionDraining`; batch cancellation/deletion evidence separates submission, terminal accounting, and independent post-state.
+- Tagged tests can classify a required failure as `product` through the normalized evidence override without accepting it as a gap; the current null deletion-batch rejection remains intentionally unsuccessful until a separate adapter fix lands.
+- Direct 8.10 compatibility scenarios reuse the default-local profile through the same HTTP/auth bootstrap while persisting only profile, observed version, keys, counts, states, and proof levels.
 
 ## Decisions
 
@@ -43,4 +46,4 @@ Started: 2026-10-14T09:50:16Z
 - Do not infer completeness from child exit code or discovered files; reduce the frozen catalog against normalized current-run evidence.
 
 ## Current Handoff
-- Start US3 with T005: add focused batch lifecycle and process-definition draining evidence without changing production behavior or waiving the known null-batch product defect.
+- Start US4 with T006: implement credential-free logical tenant role validation and focused tenant scenarios, keeping required missing infrastructure unsuccessful and optional absence as a named gap.

@@ -789,7 +789,7 @@ func sliceTimeout(cfg runnerConfig, sliceID string) time.Duration {
 	switch {
 	case strings.HasPrefix(sliceID, "volume-"):
 		return cfg.VolumeTimeout
-	case strings.HasPrefix(sliceID, "real-state-"):
+	case sliceID == "batch", strings.HasPrefix(sliceID, "real-state-"):
 		return cfg.RealTimeout
 	default:
 		return cfg.Timeout

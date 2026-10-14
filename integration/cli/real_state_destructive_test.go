@@ -6,12 +6,18 @@
 package cli_test
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/grafvonb/c8volt/c8volt/process"
+	"github.com/grafvonb/c8volt/integration/internal/validation"
+	"github.com/grafvonb/c8volt/internal/services/httpc"
 )
 
 type realStateDestructiveDataset struct {
@@ -19,6 +25,133 @@ type realStateDestructiveDataset struct {
 	Volume    volumeDataset         `json:"volumeDataset"`
 	Incident  volumeIncidentDataset `json:"incidentDataset"`
 	Incidents []realStateIncident   `json:"incidents,omitempty"`
+}
+
+// TestRealStateProcessDefinitionDraining proves DRAINING belongs to process
+// definitions, keeps one owned instance active while observing it, and retains
+// the current null-batch adapter rejection as a required product failure.
+func TestRealStateProcessDefinitionDraining(t *testing.T) {
+	profiles := selectedBatchProfiles(t)
+	var evidence []batchScenarioEvidence
+	var productFailures []string
+	for _, profile := range profiles {
+		dataset, _, err := seedVolumeProcessInstanceDataset(t, profile, 1)
+		if err != nil {
+			t.Errorf("seed draining dataset for profile %q: %v", profile.Name, err)
+			continue
+		}
+		if len(dataset.PositiveProcessDefinitionKeys) == 0 || len(dataset.PositiveProcessInstanceKeys) == 0 {
+			t.Errorf("draining dataset for profile %q is missing owned definition or instance keys", profile.Name)
+			continue
+		}
+
+		definitionKey := dataset.PositiveProcessDefinitionKeys[0]
+		instanceKey := dataset.PositiveProcessInstanceKeys[0]
+		client, err := newLiveBatchClient(profile.Name)
+		if err != nil {
+			t.Errorf("create draining client for profile %q: %v", profile.Name, err)
+			continue
+		}
+		result := runC8VoltForProfile(t, profile.Name, "real-state-process-definition-draining-submit", "--automation", "--json", "delete", "pd", "--key", definitionKey, "--no-state-check", "--no-wait")
+		combined := result.Stdout + "\n" + result.Stderr
+		knownNullBatchFailure := result.Err != nil && strings.Contains(combined, "history deletion requested but Camunda did not return a batch operation")
+		if result.Err != nil && !knownNullBatchFailure {
+			t.Errorf("submit draining deletion for profile %q: %v; %s", profile.Name, result.Err, compactLogSnippet(combined, 500))
+			continue
+		}
+
+		state, err := requireProcessDefinitionStateEventually(client, definitionKey, "DRAINING", time.Minute)
+		if err != nil {
+			t.Errorf("observe draining definition for profile %q: %v", profile.Name, err)
+			continue
+		}
+		evidence = append(evidence, batchScenarioEvidence{
+			Profile: profile.Name, ObservedVersion: profile.ActualVersion,
+			Scenario: "process-definition-draining", State: state, Proof: "live-post-state",
+		})
+
+		accepted, err := client.api.CancelProcessInstancesBatch(context.Background(), process.ProcessInstanceFilter{
+			ProcessDefinitionKey: definitionKey,
+			State:                process.StateActive,
+		})
+		if err == nil {
+			_, err = client.api.WaitBatchOperation(context.Background(), accepted.Key)
+		}
+		if err != nil {
+			t.Errorf("release held draining instance %s for profile %q: %v", instanceKey, profile.Name, err)
+			continue
+		}
+		if err := requireProcessDefinitionGoneFromAPI(client, definitionKey, 2*time.Minute); err != nil {
+			t.Errorf("draining cleanup for profile %q: %v", profile.Name, err)
+			continue
+		}
+		if knownNullBatchFailure {
+			productFailures = append(productFailures, fmt.Sprintf("profile %s rejected a valid null deletion batch after observing %s", profile.Name, state))
+		}
+	}
+	writeJSON(t, "process-definition-draining-evidence.json", evidence)
+	if len(productFailures) > 0 {
+		reason := strings.Join(productFailures, "; ")
+		classifyReleaseScenarioFailure(t, validation.FailureProduct, reason)
+		t.Fatalf("process-definition draining exposed the unwaived v8.10 adapter defect: %s", reason)
+	}
+}
+
+// requireProcessDefinitionStateEventually waits for the pinned generated API
+// to expose a specific lifecycle state while the owned instance holds it stable.
+func requireProcessDefinitionStateEventually(client liveBatchClient, key string, wanted string, timeout time.Duration) (string, error) {
+	deadline := time.Now().Add(timeout)
+	var last string
+	for {
+		resp, err := client.generated.GetProcessDefinitionWithResponse(context.Background(), key)
+		if err == nil && resp != nil {
+			if statusErr := httpc.HttpStatusErr(resp.HTTPResponse, resp.Body); statusErr == nil && resp.JSON200 != nil {
+				last = string(resp.JSON200.State)
+				if last == wanted {
+					return last, nil
+				}
+			} else if statusErr != nil {
+				last = statusErr.Error()
+			}
+		} else if err != nil {
+			last = err.Error()
+		}
+		if time.Now().After(deadline) {
+			return last, fmt.Errorf("process definition %s state = %q, want %q", key, last, wanted)
+		}
+		time.Sleep(2 * time.Second)
+	}
+}
+
+// requireProcessDefinitionGoneFromAPI bounds draining cleanup independently
+// of command rendering and treats only an authoritative 404 as absence.
+func requireProcessDefinitionGoneFromAPI(client liveBatchClient, key string, timeout time.Duration) error {
+	deadline := time.Now().Add(timeout)
+	var last error
+	for {
+		resp, err := client.generated.GetProcessDefinitionWithResponse(context.Background(), key)
+		switch {
+		case err != nil:
+			last = err
+		case resp == nil:
+			last = errors.New("process-definition lookup returned no response")
+		case resp.StatusCode() == http.StatusNotFound:
+			return nil
+		default:
+			last = httpc.HttpStatusErr(resp.HTTPResponse, resp.Body)
+			if last == nil {
+				state := "unknown"
+				if resp.JSON200 != nil {
+					state = string(resp.JSON200.State)
+				}
+				last = fmt.Errorf("process definition %s remains visible in state %s", key, state)
+			}
+		}
+		if time.Now().After(deadline) {
+			return last
+		}
+		time.Sleep(2 * time.Second)
+	}
 }
 
 func TestRealStateDestructiveFamily(t *testing.T) {

@@ -32,15 +32,18 @@ type releaseEvidenceControl struct {
 }
 
 type releaseScenarioResult struct {
-	failed  bool
-	skipped bool
+	failed       bool
+	skipped      bool
+	failureClass validation.FailureClass
+	reason       string
 }
 
 var normalizedReleaseEvidence = struct {
 	sync.Mutex
 	records    []validation.ScenarioEvidence
 	registered map[string]struct{}
-}{registered: map[string]struct{}{}}
+	overrides  map[string]releaseScenarioResult
+}{registered: map[string]struct{}{}, overrides: map[string]releaseScenarioResult{}}
 
 // registerReleaseScenario binds one catalog-owned top-level test to runner
 // provenance and records its final testing outcome during cleanup.
@@ -68,13 +71,32 @@ func registerReleaseScenario(t *testing.T) {
 	normalizedReleaseEvidence.Unlock()
 
 	t.Cleanup(func() {
-		record := buildReleaseScenarioEvidence(control, requirement, releaseScenarioResult{
+		result := releaseScenarioResult{
 			failed: t.Failed(), skipped: t.Skipped(),
-		})
+		}
+		normalizedReleaseEvidence.Lock()
+		if override, ok := normalizedReleaseEvidence.overrides[scenarioID]; ok {
+			result.failureClass = override.failureClass
+			result.reason = override.reason
+		}
+		normalizedReleaseEvidence.Unlock()
+		record := buildReleaseScenarioEvidence(control, requirement, result)
 		normalizedReleaseEvidence.Lock()
 		normalizedReleaseEvidence.records = append(normalizedReleaseEvidence.records, record)
 		normalizedReleaseEvidence.Unlock()
 	})
+}
+
+// classifyReleaseScenarioFailure records an expected failure boundary such as
+// a product defect without converting the failing required scenario to a gap.
+func classifyReleaseScenarioFailure(t *testing.T, failureClass validation.FailureClass, reason string) {
+	t.Helper()
+	scenarioID := strings.SplitN(t.Name(), "/", 2)[0]
+	normalizedReleaseEvidence.Lock()
+	normalizedReleaseEvidence.overrides[scenarioID] = releaseScenarioResult{
+		failed: true, failureClass: failureClass, reason: strings.TrimSpace(reason),
+	}
+	normalizedReleaseEvidence.Unlock()
 }
 
 // releaseEvidenceControlFromEnvironment validates the runner-owned child
@@ -136,8 +158,14 @@ func buildReleaseScenarioEvidence(control releaseEvidenceControl, requirement va
 		record.Reason = "catalog-owned test skipped"
 	case result.failed:
 		record.Outcome = validation.OutcomeFailed
-		record.FailureClass = validation.FailureHarness
-		record.Reason = "catalog-owned test failed; inspect retained child events and legacy reports"
+		record.FailureClass = result.failureClass
+		if record.FailureClass == "" {
+			record.FailureClass = validation.FailureHarness
+		}
+		record.Reason = strings.TrimSpace(result.reason)
+		if record.Reason == "" {
+			record.Reason = "catalog-owned test failed; inspect retained child events and legacy reports"
+		}
 	}
 	return record
 }
@@ -178,6 +206,7 @@ func TestBuildReleaseScenarioEvidencePreservesResults(t *testing.T) {
 		{name: "passed", want: validation.OutcomePassed},
 		{name: "skipped", result: releaseScenarioResult{skipped: true}, want: validation.OutcomeSkipped, wantClass: validation.FailureIncompleteEvidence},
 		{name: "failed", result: releaseScenarioResult{failed: true}, want: validation.OutcomeFailed, wantClass: validation.FailureHarness},
+		{name: "product failure", result: releaseScenarioResult{failed: true, failureClass: validation.FailureProduct, reason: "known compatibility defect"}, want: validation.OutcomeFailed, wantClass: validation.FailureProduct},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
