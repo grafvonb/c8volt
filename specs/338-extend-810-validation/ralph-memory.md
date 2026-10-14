@@ -20,7 +20,8 @@ Started: 2026-10-14T09:50:16Z
 - Tagged tests can classify a required failure as `product` through the normalized evidence override without accepting it as a gap; the current null deletion-batch rejection remains intentionally unsuccessful until a separate adapter fix lands.
 - Direct 8.10 compatibility scenarios reuse the default-local profile through the same HTTP/auth bootstrap while persisting only profile, observed version, keys, counts, states, and proof levels.
 - Logical tenant roles are strict credential-free JSON mapped to four distinct default-local profiles; runner validation reads only inherited minor/tenant metadata, preflights all role profiles before mutation, and never persists authentication fields.
-- Tenant catalog proof is optional through the named `logical-tenant-infrastructure` gap until requested; `C8VOLT_IT_REQUIRE_TENANTS=logical` dynamically promotes it to required, while physical requests fail closed until T007 supplies physical roles.
+- Tenant catalog proof is role-specific: logical and physical absence remain named optional gaps, `physical` requires both groups, and every declared profile passes topology readiness before tenant mutations.
+- Physical roles require two distinct `/physical-tenants/<id>/v2` routes, one shared logical tenant ID and declared cluster ID, plus an explicit default `/v2` equivalence control; retained evidence is limited to observable API routing, authorization, and resource separation.
 
 ## Decisions
 
@@ -48,4 +49,4 @@ Started: 2026-10-14T09:50:16Z
 - Do not infer completeness from child exit code or discovered files; reduce the frozen catalog against normalized current-run evidence.
 
 ## Current Handoff
-- Continue US4 with T007: extend the role schema and tenant slice for physical profile groups, path-preservation/client request checks, topology/shared-cluster controls, default-route equivalence, and physical evidence limits.
+- Start US5 with T008: align the pinned 8.10.3 provenance and repository-boundary guards, using disposable-checkout regeneration and before/after older-client fingerprints.

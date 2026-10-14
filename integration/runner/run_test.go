@@ -62,8 +62,8 @@ func TestInvalidControlsExitTwoWithoutSubprocesses(t *testing.T) {
 	}
 }
 
-// TestRequiredTenantControlsFailBeforeSubprocesses verifies missing logical
-// roles and not-yet-implemented physical proof cannot start mutation work.
+// TestRequiredTenantControlsFailBeforeSubprocesses verifies every explicitly
+// required tenant mode rejects a missing role file before mutation work.
 func TestRequiredTenantControlsFailBeforeSubprocesses(t *testing.T) {
 	for _, value := range []string{"logical", "physical"} {
 		t.Run(value, func(t *testing.T) {
@@ -192,7 +192,7 @@ func TestDefaultCatalogPlansEveryApplicableScenario(t *testing.T) {
 	request := validation.ValidationRequest{
 		RequestedMinor: "8.10", Profiles: []string{"dev810"}, EvidenceRoot: t.TempDir(),
 	}
-	slices := plannedSlices(request, catalog, time.Now(), false)
+	slices := plannedSlices(request, catalog, time.Now(), nil)
 	if len(slices) < 2 || slices[0].SliceID != "common-preflight" || slices[1].SliceID != "common-examples" {
 		t.Fatalf("first slices = %+v, want common-preflight then common-examples", slices[:min(len(slices), 2)])
 	}
@@ -207,7 +207,7 @@ func TestDefaultCatalogPlansEveryApplicableScenario(t *testing.T) {
 		if !validation.Applicable("8.10", requirement.ApplicableMinors) || !strings.HasPrefix(requirement.ScenarioID, "Test") {
 			continue
 		}
-		if containsString(requirement.ExpectedTargetRoles, validation.TenantRoleLogical) {
+		if containsString(requirement.ExpectedTargetRoles, validation.TenantRoleLogical) || containsString(requirement.ExpectedTargetRoles, validation.TenantRolePhysical) {
 			if planned[requirement.ScenarioID] != 0 {
 				t.Fatalf("optional tenant scenario %q planned without roles", requirement.ScenarioID)
 			}
@@ -230,9 +230,12 @@ func TestTenantRolesEnableFocusedSliceAndChildControl(t *testing.T) {
 	roles := validation.TenantRoles{SchemaVersion: validation.SchemaVersion, Logical: &validation.LogicalTenantRoles{
 		ClusterID: "cluster", PhysicalTenantID: "default", TenantAID: "tenant-a", TenantBID: "tenant-b",
 		TenantAProfile: "a", TenantBProfile: "b", BothTenantsProfile: "both", RestrictedAProfile: "restricted",
+	}, Physical: &validation.PhysicalTenantRoles{
+		ClusterID: "cluster", PhysicalTenantAID: "physical-a", PhysicalTenantBID: "physical-b", LogicalTenantID: "shared",
+		TenantAProfile: "pa", TenantBProfile: "pb", DefaultRouteProfile: "default", DefaultRoutePhysicalTenantID: "physical-a",
 	}}
 	request := validation.ValidationRequest{RequestedMinor: "8.10", Profiles: []string{"dev810"}, EvidenceRoot: t.TempDir()}
-	slices := plannedSlices(request, catalog, time.Now(), true)
+	slices := plannedSlices(request, catalog, time.Now(), &roles)
 	var tenantSlice *validation.SliceExecution
 	for index := range slices {
 		if slices[index].SliceID == "tenants" {
@@ -240,8 +243,8 @@ func TestTenantRolesEnableFocusedSliceAndChildControl(t *testing.T) {
 			break
 		}
 	}
-	if tenantSlice == nil || !containsString(tenantSlice.SelectedTests, "TestLogicalTenantFamily") {
-		t.Fatalf("tenant slice = %+v, want logical family", tenantSlice)
+	if tenantSlice == nil || !containsString(tenantSlice.SelectedTests, "TestLogicalTenantFamily") || !containsString(tenantSlice.SelectedTests, "TestPhysicalTenantFamily") {
+		t.Fatalf("tenant slice = %+v, want logical and physical families", tenantSlice)
 	}
 
 	cfg := testRunnerConfig(t, []string{"dev810"})
@@ -265,6 +268,9 @@ func TestTenantRoleProfilesPreflightBeforeSlices(t *testing.T) {
 	roles := validation.TenantRoles{SchemaVersion: validation.SchemaVersion, Logical: &validation.LogicalTenantRoles{
 		ClusterID: "cluster", PhysicalTenantID: "default", TenantAID: "tenant-a", TenantBID: "tenant-b",
 		TenantAProfile: "a", TenantBProfile: "b", BothTenantsProfile: "both", RestrictedAProfile: "restricted",
+	}, Physical: &validation.PhysicalTenantRoles{
+		ClusterID: "cluster", PhysicalTenantAID: "physical-a", PhysicalTenantBID: "physical-b", LogicalTenantID: "shared",
+		TenantAProfile: "pa", TenantBProfile: "pb", DefaultRouteProfile: "default", DefaultRoutePhysicalTenantID: "physical-a",
 	}}
 	cfg := testRunnerConfig(t, []string{"dev810"})
 	cfg.TenantRoles = &roles
@@ -279,10 +285,10 @@ func TestTenantRoleProfilesPreflightBeforeSlices(t *testing.T) {
 		t.Fatalf("preflight tenant roles: %v", err)
 	}
 	commands := execer.commands()
-	if len(commands) != 4 {
-		t.Fatalf("tenant preflight calls = %d, want 4", len(commands))
+	if len(commands) != 7 {
+		t.Fatalf("tenant preflight calls = %d, want 7", len(commands))
 	}
-	for _, profile := range roles.LogicalProfileNames() {
+	for _, profile := range roles.ProfileNames() {
 		found := false
 		for _, command := range commands {
 			found = found || command.Profile == profile

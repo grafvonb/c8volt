@@ -292,14 +292,17 @@ func reduceStrictRequirements(summary *ReleaseSummary, request ValidationRequest
 	}
 }
 
-// requirementRequired promotes logical tenant proof from an optional named
-// gap to mandatory coverage when the request explicitly requires tenants.
+// requirementRequired promotes optional tenant proof only to the boundary the
+// operator explicitly requested; physical mode includes logical proof.
 func requirementRequired(request ValidationRequest, requirement CoverageRequirement) bool {
 	if requirement.Required {
 		return true
 	}
 	if contains(requirement.ExpectedTargetRoles, TenantRoleLogical) {
 		return request.RequiredTenantCoverage == TenantCoverageLogical || request.RequiredTenantCoverage == TenantCoveragePhysical
+	}
+	if contains(requirement.ExpectedTargetRoles, TenantRolePhysical) {
+		return request.RequiredTenantCoverage == TenantCoveragePhysical
 	}
 	return false
 }

@@ -170,3 +170,37 @@ Started: 2026-10-14 11:50:17
 - Role-profile readiness belongs in the aggregate pre-mutation gate even though only the selected release profile remains a reducer target.
 - Optional tenant absence is represented by target-role-aware catalog reduction; an explicit logical requirement promotes the same proof to mandatory without a parallel catalog.
 ---
+---
+## Iteration 7 - 2026-10-14 12:52
+**Work Unit**: T007 Complete US4 physical tenant routing and separation validation
+**Tasks Completed**:
+- [x] T007: Add explicit physical role groups, route/client preservation tests, runner gating, live endpoint-boundary scenarios, default-route controls, and evidence-limit documentation
+**Tasks Remaining in Work Unit**: 0
+**Commit**: This work-unit commit
+**Files Changed**:
+- Makefile
+- config/api_test.go
+- integration/README.md
+- integration/assets/release-coverage.json
+- integration/assets/release-gaps.json
+- integration/assets/tenant-roles.example.json
+- integration/cli/harness_test.go
+- integration/cli/tenant_test.go
+- integration/internal/validation/catalog.go
+- integration/internal/validation/catalog_test.go
+- integration/internal/validation/physical_route_test.go
+- integration/internal/validation/reduce.go
+- integration/internal/validation/reduce_test.go
+- integration/internal/validation/tenant_roles.go
+- integration/internal/validation/tenant_roles_test.go
+- integration/runner/run.go
+- integration/runner/run_test.go
+- integration/runner/tenant_roles.go
+- integration/runner/tenant_roles_test.go
+- specs/338-extend-810-validation/tasks.md
+- specs/338-extend-810-validation/ralph-memory.md
+- specs/338-extend-810-validation/progress.md
+**Learnings**:
+- Physical proof needs explicit route identity plus a declared cluster; URL similarity is never cluster evidence.
+- A default `/v2` profile can prove equivalence to one declared physical endpoint without persisting URLs or credentials.
+---

@@ -209,7 +209,7 @@ func run(
 		SchemaVersion: validation.SchemaVersion,
 		State:         manifestRunning,
 		Request:       request,
-		Slices:        plannedSlices(request, catalog, startedAt, cfg.TenantRoles != nil),
+		Slices:        plannedSlices(request, catalog, startedAt, cfg.TenantRoles),
 	}
 	manifestPath := filepath.Join(invocationRoot, manifestFileName)
 	if err := writeJSONAtomic(manifestPath, manifest); err != nil {
@@ -308,9 +308,9 @@ func run(
 	return finalizeInvocation(manifestPath, invocationRoot, manifest, summary, exitFailed, reduceErr)
 }
 
-// preflightTenantRoleProfiles verifies every logical principal before any
-// mutation-capable slice starts, while keeping credentials and extra profile
-// identities out of the release target manifest.
+// preflightTenantRoleProfiles verifies every logical and physical principal
+// before mutation while keeping credentials and role profiles out of the
+// release target manifest.
 func preflightTenantRoleProfiles(
 	ctx context.Context,
 	cfg runnerConfig,
@@ -322,7 +322,7 @@ func preflightTenantRoleProfiles(
 		return nil
 	}
 	var failures []error
-	for _, profile := range cfg.TenantRoles.LogicalProfileNames() {
+	for _, profile := range cfg.TenantRoles.ProfileNames() {
 		_, err := preflightTarget(ctx, cfg, request, binaryPath, profile, execer)
 		if err != nil {
 			failures = append(failures, fmt.Errorf("tenant role profile %q: %w", profile, err))
@@ -382,9 +382,6 @@ func parseRunnerConfig(environ []string) (runnerConfig, error) {
 	default:
 		return runnerConfig{}, fmt.Errorf("unsupported %s value %q", envRequireTenants, tenantCoverage)
 	}
-	if tenantCoverage == validation.TenantCoveragePhysical {
-		return runnerConfig{}, errors.New("physical tenant coverage is not available until the physical role group is implemented")
-	}
 	tenantRolesPath := strings.TrimSpace(env[envTenantRoles])
 	var tenantRoles *validation.TenantRoles
 	if tenantRolesPath == "" {
@@ -405,6 +402,9 @@ func parseRunnerConfig(environ []string) (runnerConfig, error) {
 		}
 		if validationErr := validation.ValidateTenantRoles(roles, profilesMetadata, releaseVersion); validationErr != nil {
 			return runnerConfig{}, fmt.Errorf("validate tenant roles: %w", validationErr)
+		}
+		if coverageErr := validation.ValidateRequiredTenantCoverage(roles, tenantCoverage); coverageErr != nil {
+			return runnerConfig{}, fmt.Errorf("validate required tenant coverage: %w", coverageErr)
 		}
 		tenantRoles = &roles
 	}
@@ -510,13 +510,16 @@ func parseDurationControl(env map[string]string, name string, fallback time.Dura
 
 // plannedSlices freezes one child for every applicable catalog slice and
 // selected profile before any preflight runs.
-func plannedSlices(request validation.ValidationRequest, catalog validation.CoverageCatalog, startedAt time.Time, tenantsEnabled bool) []validation.SliceExecution {
+func plannedSlices(request validation.ValidationRequest, catalog validation.CoverageCatalog, startedAt time.Time, roles *validation.TenantRoles) []validation.SliceExecution {
 	sliceTests := map[string][]string{}
 	for _, requirement := range catalog.Requirements {
 		if request.RequestedMinor != "" && !validation.Applicable(request.RequestedMinor, requirement.ApplicableMinors) {
 			continue
 		}
-		if containsString(requirement.ExpectedTargetRoles, validation.TenantRoleLogical) && !tenantsEnabled {
+		if containsString(requirement.ExpectedTargetRoles, validation.TenantRoleLogical) && (roles == nil || roles.Logical == nil) {
+			continue
+		}
+		if containsString(requirement.ExpectedTargetRoles, validation.TenantRolePhysical) && (roles == nil || roles.Physical == nil) {
 			continue
 		}
 		if strings.HasPrefix(requirement.ScenarioID, "Test") {
@@ -671,6 +674,9 @@ func preflightTarget(
 		target.ClusterID = cfg.TenantRoles.Logical.ClusterID
 		target.PhysicalTenantID = cfg.TenantRoles.Logical.PhysicalTenantID
 		target.Roles = []string{validation.TenantRoleLogical}
+		if cfg.TenantRoles.Physical != nil {
+			target.Roles = append(target.Roles, validation.TenantRolePhysical)
+		}
 	}
 	return target, nil
 }

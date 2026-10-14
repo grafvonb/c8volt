@@ -184,8 +184,32 @@ explicit/stdin tenant-B keys, and `--all-tenants` discovery and mutation remain
 inside the selected physical endpoint. It also covers conflicting selectors
 and single-destination restrictions. Missing roles are a named optional gap;
 setting `C8VOLT_IT_REQUIRE_TENANTS=logical` makes missing or invalid role
-infrastructure unsuccessful before the aggregate run starts. Physical tenant
-routing is a separate proof boundary and is not certified by this slice.
+infrastructure unsuccessful before the aggregate run starts.
+
+Physical proof uses the optional `physical` group in the same role file. Its
+two profiles must use normalized Camunda base URLs ending in
+`/physical-tenants/<declared-id>/v2`, target the same logical tenant ID, and
+name distinct physical IDs in the same operator-declared `clusterId`. A third
+profile must use the default `/v2` route and explicitly declare which physical
+tenant it is expected to equal. URL similarity does not establish shared
+cluster identity; the declaration and topology readiness are separate gates.
+
+```sh
+C8VOLT_IT_TENANT_ROLES=/absolute/path/to/tenant-roles.json \
+C8VOLT_IT_REQUIRE_TENANTS=physical \
+C8VOLT_IT_PROFILES=dev810 make integration-cli-tenants \
+  C8VOLT_IT_GO_TEST_FLAGS=-v C8VOLT_IT_REAL_STATE_TIMEOUT=90m
+```
+
+The physical scenario proves positive local visibility, absence of the other
+endpoint's owned fixtures, unchanged control resources after scoped mutation,
+`--all-tenants` confinement to the selected endpoint, and default-route
+equivalence. It uses topology for readiness and does not treat a nondefault
+status endpoint response as a gate. This is observable API routing,
+authorization, and resource-separation evidence only; it does not certify
+storage, backup, provisioning, or compute isolation. Missing physical roles
+remain a named optional gap unless `physical` coverage is explicitly required;
+physical mode also requires the complete logical proof group.
 
 For aggregate release validation, select one disposable profile and the
 requested minor. The sequential runner builds once, verifies the profile before

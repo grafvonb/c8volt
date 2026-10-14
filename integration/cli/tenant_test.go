@@ -29,6 +29,22 @@ type logicalTenantEvidence struct {
 	Proofs           map[string][]string `json:"proofs"`
 }
 
+// physicalTenantEvidence records only sanitized observable routing proof and
+// explicitly states the infrastructure properties it cannot certify.
+type physicalTenantEvidence struct {
+	ClusterID                    string              `json:"clusterId"`
+	PhysicalTenantAID            string              `json:"physicalTenantAId"`
+	PhysicalTenantBID            string              `json:"physicalTenantBId"`
+	LogicalTenantID              string              `json:"logicalTenantId"`
+	DefaultRoutePhysicalTenantID string              `json:"defaultRoutePhysicalTenantId"`
+	ObservedVersions             map[string]string   `json:"observedVersions"`
+	Profiles                     map[string]string   `json:"profiles"`
+	TenantAKeys                  []string            `json:"tenantAKeys"`
+	TenantBKeys                  []string            `json:"tenantBKeys"`
+	Proofs                       map[string][]string `json:"proofs"`
+	EvidenceLimits               []string            `json:"evidenceLimits"`
+}
+
 // TestLogicalTenantFamily proves filtering and backend authorization with
 // distinct owned resources before making any negative tenant assertion.
 func TestLogicalTenantFamily(t *testing.T) {
@@ -108,35 +124,123 @@ func TestLogicalTenantFamily(t *testing.T) {
 	})
 }
 
+// TestPhysicalTenantFamily proves routing and observable resource separation
+// across two provisioned endpoints in one operator-declared cluster.
+func TestPhysicalTenantFamily(t *testing.T) {
+	registerReleaseScenario(t)
+	roles, allProfiles := requireTenantRoles(t)
+	physical := roles.Physical
+	if physical == nil {
+		t.Skip("physical tenant roles unavailable; add the physical role group to opt into physical coverage")
+	}
+	profiles := map[string]integrationProfile{
+		"tenantA":      allProfiles[physical.TenantAProfile],
+		"tenantB":      allProfiles[physical.TenantBProfile],
+		"defaultRoute": allProfiles[physical.DefaultRouteProfile],
+	}
+	for _, role := range []string{"tenantA", "tenantB", "defaultRoute"} {
+		ready, err := checkProfileReadiness(t, profiles[role])
+		require.NoErrorf(t, err, "physical tenant role %s topology readiness", role)
+		profiles[role] = ready
+	}
+
+	datasetA, _, err := seedVolumeProcessInstanceDataset(t, profiles["tenantA"], 2)
+	require.NoError(t, err)
+	datasetB, _, err := seedVolumeProcessInstanceDataset(t, profiles["tenantB"], 2)
+	require.NoError(t, err)
+	require.Equal(t, datasetA.PositiveBpmnProcessID, datasetB.PositiveBpmnProcessID)
+
+	markerFilter := fmt.Sprintf("c8voltITRunId=%q", suite.marker)
+	keysA := datasetA.allProcessInstanceKeys()
+	keysB := datasetB.allProcessInstanceKeys()
+	requireTenantVisibility(t, profiles["tenantA"], false, markerFilter, keysA, keysB)
+	requireTenantVisibility(t, profiles["tenantB"], false, markerFilter, keysB, keysA)
+	requireTenantVisibility(t, profiles["tenantA"], true, markerFilter, keysA, keysB)
+
+	defaultPresent, defaultAbsent := keysA, keysB
+	if physical.DefaultRoutePhysicalTenantID == physical.PhysicalTenantBID {
+		defaultPresent, defaultAbsent = keysB, keysA
+	}
+	requireTenantVisibility(t, profiles["defaultRoute"], false, markerFilter, defaultPresent, defaultAbsent)
+
+	mutation := runC8VoltForProfile(t, profiles["tenantA"].Name, "physical-tenant-a-scoped-cancel",
+		"--automation", "--json", "cancel", "pi", "--bpmn-process-id", datasetA.PositiveBpmnProcessID, "--state", "active")
+	require.NoErrorf(t, mutation.Err, "physical tenant A scoped cancellation: %s", mutation.Stderr)
+	for _, key := range datasetA.PositiveProcessInstanceKeys {
+		require.NoError(t, requireProcessInstanceStateOneOf(t, profiles["tenantA"], key, "CANCELED", "TERMINATED"))
+	}
+	for _, key := range datasetB.PositiveProcessInstanceKeys {
+		require.NoError(t, requireProcessInstanceState(t, profiles["tenantB"], key, "ACTIVE"))
+	}
+
+	writeJSON(t, "tenant-physical-evidence.json", physicalTenantEvidence{
+		ClusterID: physical.ClusterID, PhysicalTenantAID: physical.PhysicalTenantAID,
+		PhysicalTenantBID: physical.PhysicalTenantBID, LogicalTenantID: physical.LogicalTenantID,
+		DefaultRoutePhysicalTenantID: physical.DefaultRoutePhysicalTenantID,
+		ObservedVersions: map[string]string{
+			"tenantA": profiles["tenantA"].ActualVersion, "tenantB": profiles["tenantB"].ActualVersion,
+			"defaultRoute": profiles["defaultRoute"].ActualVersion,
+		},
+		Profiles: map[string]string{
+			"tenantA": profiles["tenantA"].Name, "tenantB": profiles["tenantB"].Name,
+			"defaultRoute": profiles["defaultRoute"].Name,
+		},
+		TenantAKeys: keysA, TenantBKeys: keysB,
+		Proofs: map[string][]string{
+			"read-only":       {"topology-readiness", "positive-local-visibility", "foreign-fixture-absence", "all-tenants-endpoint-confinement", "default-route-equivalence"},
+			"live-post-state": {"tenant-a-scoped-cancel", "tenant-b-control-unchanged"},
+		},
+		EvidenceLimits: []string{"observable API routing and resource separation only", "no storage, backup, provisioning, or compute-isolation claim"},
+	})
+}
+
 // requireLogicalTenantRoles loads the credential-free role file and verifies
 // every referenced profile against default-local tenant/version metadata.
 func requireLogicalTenantRoles(t *testing.T) (validation.TenantRoles, map[string]integrationProfile) {
 	t.Helper()
-	path := strings.TrimSpace(os.Getenv(envITTenantRoles))
-	if path == "" {
-		t.Skipf("logical tenant roles unavailable; set %s to opt into tenant coverage", envITTenantRoles)
-	}
-	roles, err := validation.LoadTenantRoles(path)
-	require.NoError(t, err)
+	roles, byName := requireTenantRoles(t)
 	logical := roles.Logical
-	require.NotNil(t, logical)
-	names := []string{logical.TenantAProfile, logical.TenantBProfile, logical.BothTenantsProfile, logical.RestrictedAProfile}
-	configFile, err := readDefaultLocalConfig()
-	require.NoError(t, err)
-	resolved, err := profilesFromDefaultConfig(configFile, names)
-	require.NoError(t, err)
-	metadata := make(map[string]validation.TenantProfileMetadata, len(resolved))
-	byName := make(map[string]integrationProfile, len(resolved))
-	for _, profile := range resolved {
-		metadata[profile.Name] = validation.TenantProfileMetadata{Name: profile.Name, ExpectedMinor: profile.ExpectedVersion, LogicalTenantID: profile.Tenant}
-		byName[profile.Name] = profile
-	}
-	requestedMinor := strings.TrimSpace(os.Getenv("C8VOLT_IT_RELEASE_VERSION"))
-	require.NoError(t, validation.ValidateTenantRoles(roles, metadata, requestedMinor))
 	return roles, map[string]integrationProfile{
 		"tenantA": byName[logical.TenantAProfile], "tenantB": byName[logical.TenantBProfile],
 		"bothTenants": byName[logical.BothTenantsProfile], "restrictedA": byName[logical.RestrictedAProfile],
 	}
+}
+
+// requireTenantRoles loads and validates every declared logical and physical
+// profile against the default local configuration without retaining secrets.
+func requireTenantRoles(t *testing.T) (validation.TenantRoles, map[string]integrationProfile) {
+	t.Helper()
+	path := strings.TrimSpace(os.Getenv(envITTenantRoles))
+	if path == "" {
+		if required := strings.TrimSpace(os.Getenv("C8VOLT_IT_REQUIRE_TENANTS")); required != "" && required != string(validation.TenantCoverageNone) {
+			t.Fatalf("%s is required when C8VOLT_IT_REQUIRE_TENANTS=%s", envITTenantRoles, required)
+		}
+		t.Skipf("logical tenant roles unavailable; set %s to opt into tenant coverage", envITTenantRoles)
+	}
+	roles, err := validation.LoadTenantRoles(path)
+	require.NoError(t, err)
+	require.NotNil(t, roles.Logical)
+	configFile, err := readDefaultLocalConfig()
+	require.NoError(t, err)
+	resolved, err := profilesFromDefaultConfig(configFile, roles.ProfileNames())
+	require.NoError(t, err)
+	metadata := make(map[string]validation.TenantProfileMetadata, len(resolved))
+	byName := make(map[string]integrationProfile, len(resolved))
+	for _, profile := range resolved {
+		metadata[profile.Name] = validation.TenantProfileMetadata{
+			Name: profile.Name, ExpectedMinor: profile.ExpectedVersion,
+			LogicalTenantID: profile.Tenant, CamundaBaseURL: profile.CamundaBaseURL,
+		}
+		byName[profile.Name] = profile
+	}
+	requestedMinor := strings.TrimSpace(os.Getenv("C8VOLT_IT_RELEASE_VERSION"))
+	require.NoError(t, validation.ValidateTenantRoles(roles, metadata, requestedMinor))
+	requiredCoverage := validation.TenantCoverage(strings.TrimSpace(os.Getenv("C8VOLT_IT_REQUIRE_TENANTS")))
+	if requiredCoverage == "" {
+		requiredCoverage = validation.TenantCoverageNone
+	}
+	require.NoError(t, validation.ValidateRequiredTenantCoverage(roles, requiredCoverage))
+	return roles, byName
 }
 
 // requireTenantVisibility checks owned keys first, then absence of foreign

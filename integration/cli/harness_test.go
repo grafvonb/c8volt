@@ -19,6 +19,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/grafvonb/c8volt/config"
 	"github.com/grafvonb/c8volt/toolx"
 	"gopkg.in/yaml.v3"
 )
@@ -71,6 +72,7 @@ type integrationProfile struct {
 	ActualVersion   string `json:"actualVersion,omitempty"`
 	Reachable       bool   `json:"reachable"`
 	Tenant          string `json:"tenant,omitempty"`
+	CamundaBaseURL  string `json:"-"`
 }
 
 type runMetadata struct {
@@ -221,12 +223,14 @@ func TestProposalReports(t *testing.T) {
 type defaultLocalConfig struct {
 	ActiveProfile string                         `yaml:"active_profile"`
 	App           defaultLocalConfigApp          `yaml:"app"`
+	APIs          config.APIs                    `yaml:"apis"`
 	Profiles      map[string]defaultLocalProfile `yaml:"profiles"`
 	sourcePath    string
 }
 
 type defaultLocalProfile struct {
-	App defaultLocalConfigApp `yaml:"app"`
+	App  defaultLocalConfigApp `yaml:"app"`
+	APIs config.APIs           `yaml:"apis"`
 }
 
 type defaultLocalConfigApp struct {
@@ -587,11 +591,26 @@ func profilesFromDefaultConfig(cfg defaultLocalConfig, names []string) ([]integr
 		if expectedVersion == "" {
 			expectedVersion = toolx.CurrentCamundaVersion.String()
 		}
+		apis := cfg.APIs
+		if rawProfile.APIs.Camunda.BaseURL != "" {
+			apis.Camunda.BaseURL = rawProfile.APIs.Camunda.BaseURL
+		}
+		if rawProfile.APIs.Camunda.Version != "" {
+			apis.Camunda.Version = rawProfile.APIs.Camunda.Version
+		}
+		if err := apis.Normalize(); err != nil {
+			return nil, fmt.Errorf("selected profile %q Camunda API: %w", name, err)
+		}
+		tenant := rawProfile.App.Tenant
+		if tenant == "" {
+			tenant = cfg.App.Tenant
+		}
 
 		profiles = append(profiles, integrationProfile{
 			Name:            name,
 			ExpectedVersion: expectedVersion,
-			Tenant:          rawProfile.App.Tenant,
+			Tenant:          tenant,
+			CamundaBaseURL:  apis.Camunda.BaseURL,
 		})
 	}
 	return profiles, nil

@@ -183,6 +183,27 @@ func TestReducePromotesRequestedLogicalTenantProof(t *testing.T) {
 	require.Equal(t, VerdictPassed, summary.Verdict)
 }
 
+// TestReducePromotesPhysicalTenantProofOnlyForPhysicalRequests verifies
+// logical requirements cannot silently certify physical routing coverage.
+func TestReducePromotesPhysicalTenantProofOnlyForPhysicalRequests(t *testing.T) {
+	t.Parallel()
+	input := completeTestInput(t)
+	input.Catalog.Requirements[1].ExpectedTargetRoles = []string{TenantRolePhysical}
+	input.Evidence = input.Evidence[:1]
+
+	input.Request.RequiredTenantCoverage = TenantCoverageLogical
+	summary, err := Reduce(input)
+	require.NoError(t, err)
+	require.Equal(t, VerdictPassedWithGaps, summary.Verdict)
+	require.Len(t, summary.Gaps, 1)
+
+	input.Request.RequiredTenantCoverage = TenantCoveragePhysical
+	summary, err = Reduce(input)
+	require.NoError(t, err)
+	require.Equal(t, VerdictFailed, summary.Verdict)
+	require.Len(t, summary.MissingRequirements, 1)
+}
+
 // TestReduceRedactsSecretsFromPersistedFindings covers credential assignments,
 // bearer tokens, and credential-bearing URLs.
 func TestReduceRedactsSecretsFromPersistedFindings(t *testing.T) {

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "revision": "338.2026-10-14.4",
+  "revision": "338.2026-10-14.5",
   "gaps": [
     {
       "id": "logical-tenant-infrastructure",
@@ -9,6 +9,16 @@
       "missingPrerequisite": "Four default-local profiles for tenant A, tenant B, dual authorization, and restricted-A authorization are unavailable.",
       "blockedProof": "Logical tenant discovery, scoped mutation, explicit-key authorization, and all-tenant post-state proof.",
       "rationale": "Tenant infrastructure is operator-provisioned and optional unless C8VOLT_IT_REQUIRE_TENANTS requests it.",
+      "owner": "issue #338 operator prerequisite",
+      "reviewStatus": "accepted-additional-proof"
+    },
+    {
+      "id": "physical-tenant-infrastructure",
+      "scenarioIds": ["TestPhysicalTenantFamily"],
+      "applicableMinors": ["8.10"],
+      "missingPrerequisite": "Two provisioned physical endpoints, one common logical tenant, and an explicit default-route control profile are unavailable.",
+      "blockedProof": "Physical route readiness, positive local visibility, foreign-fixture absence, unchanged control state, endpoint-confined all-tenant behavior, and default-route equivalence.",
+      "rationale": "Physical infrastructure is operator-provisioned and optional unless C8VOLT_IT_REQUIRE_TENANTS=physical requests it.",
       "owner": "issue #338 operator prerequisite",
       "reviewStatus": "accepted-additional-proof"
     },

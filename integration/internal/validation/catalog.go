@@ -86,7 +86,7 @@ func ValidatePolicy(catalog CoverageCatalog, gaps GapCatalog) error {
 			if exists && !Applicable(minor, family.ApplicableMinors) {
 				problems = append(problems, fmt.Errorf("scenario %q applies to %s outside family %q applicability", requirement.ScenarioID, minor, requirement.Family))
 			}
-			if requirement.Required || contains(requirement.ExpectedTargetRoles, TenantRoleLogical) {
+			if requirement.Required || contains(requirement.ExpectedTargetRoles, TenantRoleLogical) || contains(requirement.ExpectedTargetRoles, TenantRolePhysical) {
 				if counts[requirement.Family] == nil {
 					counts[requirement.Family] = map[string]int{}
 				}

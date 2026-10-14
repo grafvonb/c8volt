@@ -10,17 +10,20 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/grafvonb/c8volt/config"
 	"github.com/grafvonb/c8volt/integration/internal/validation"
 	"gopkg.in/yaml.v3"
 )
 
 type tenantConfigFile struct {
 	App      tenantConfigApp                `yaml:"app"`
+	APIs     config.APIs                    `yaml:"apis"`
 	Profiles map[string]tenantConfigProfile `yaml:"profiles"`
 }
 
 type tenantConfigProfile struct {
-	App tenantConfigApp `yaml:"app"`
+	App  tenantConfigApp `yaml:"app"`
+	APIs config.APIs     `yaml:"apis"`
 }
 
 type tenantConfigApp struct {
@@ -90,7 +93,19 @@ func tenantProfileMetadata(raw tenantConfigFile) (map[string]validation.TenantPr
 		if tenant == "" {
 			tenant = raw.App.Tenant
 		}
-		result[name] = validation.TenantProfileMetadata{Name: name, ExpectedMinor: minor, LogicalTenantID: tenant}
+		apis := raw.APIs
+		if profile.APIs.Camunda.BaseURL != "" {
+			apis.Camunda.BaseURL = profile.APIs.Camunda.BaseURL
+		}
+		if profile.APIs.Camunda.Version != "" {
+			apis.Camunda.Version = profile.APIs.Camunda.Version
+		}
+		if err := apis.Normalize(); err != nil {
+			return nil, fmt.Errorf("profile %q Camunda API: %w", name, err)
+		}
+		result[name] = validation.TenantProfileMetadata{
+			Name: name, ExpectedMinor: minor, LogicalTenantID: tenant, CamundaBaseURL: apis.Camunda.BaseURL,
+		}
 	}
 	return result, nil
 }
