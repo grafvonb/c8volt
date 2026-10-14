@@ -453,7 +453,7 @@ func TestService_Delete(t *testing.T) {
 		assert.Equal(t, string(camundav810.BatchOperationStateEnumCOMPLETED), resp.BatchState)
 	})
 
-	t.Run("DefaultFailsWhenHistoryBatchIsMissing", func(t *testing.T) {
+	t.Run("AcceptsDrainingWithoutHistoryBatch", func(t *testing.T) {
 		svc := newTestService(t, "tenant", &mockResourceClient{
 			createDeploymentWithBodyWithResponse: func(ctx context.Context, contentType string, body io.Reader, reqEditors ...camundav810.RequestEditorFn) (*camundav810.CreateDeploymentResponse, error) {
 				t.Fatalf("unexpected deploy call")
@@ -486,11 +486,34 @@ func TestService_Delete(t *testing.T) {
 
 		resp, err := svc.Delete(ctx, "resource-1")
 
-		require.Error(t, err)
-		assert.ErrorIs(t, err, d.ErrMalformedResponse)
+		require.NoError(t, err)
+		assert.True(t, resp.Ok)
+		assert.Contains(t, resp.Status, "deletion accepted")
 		assert.True(t, resp.DeleteHistory)
 		assert.Empty(t, resp.BatchOperationKey)
 	})
+}
+
+func TestService_DeleteRejectsMalformedPayload(t *testing.T) {
+	for name, payload := range map[string]*camundav810.DeleteResourceResponse{
+		"missing":        nil,
+		"empty":          {},
+		"wrong resource": {ResourceKey: "other"},
+		"empty batch":    {ResourceKey: "resource-1", BatchOperation: &camundav810.BatchOperationCreatedResult{}},
+	} {
+		t.Run(name, func(t *testing.T) {
+			svc := newTestService(t, "tenant", &mockResourceClient{
+				deleteResourceWithResponse: func(context.Context, string, camundav810.DeleteResourceOpJSONRequestBody, ...camundav810.RequestEditorFn) (*camundav810.DeleteResourceOpResponse, error) {
+					return &camundav810.DeleteResourceOpResponse{
+						HTTPResponse: newHTTPResponse(http.MethodPost, "https://camunda.local/v2/resources/resource-1/deletion", http.StatusOK, "200 OK"),
+						JSON200:      payload,
+					}, nil
+				},
+			}, &mockProcessDefinitionClient{})
+			_, err := svc.Delete(context.Background(), "resource-1")
+			require.ErrorIs(t, err, d.ErrMalformedResponse)
+		})
+	}
 }
 
 // TestService_Get verifies v8.10 resource mapping and decoded-empty protection.
