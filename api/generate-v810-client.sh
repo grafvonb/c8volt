@@ -11,8 +11,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 CAMUNDA_REPOSITORY="https://github.com/camunda/camunda.git"
-INITIAL_TAG="8.10.0-alpha4"
-INITIAL_COMMIT="4a76f06c9df8ad0a6c64fe88b92c618c2ebf2ef6"
+PINNED_TAG="8.10.3"
+PINNED_COMMIT="3961b79c3fdaf43c48691ed77672d6db42d0abcc"
 SOURCE_SPEC="zeebe/gateway-protocol/src/main/proto/v2/rest-api.yaml"
 SOURCE_SPEC_DIR="${SOURCE_SPEC%/*}"
 OUTPUT_DIR="$REPO_ROOT/internal/clients/camunda/v810/camunda"
@@ -249,8 +249,8 @@ verify_commit_policy() {
   local tag="$1"
   local commit="$2"
 
-  if [ "$tag" = "$INITIAL_TAG" ] && [ "$commit" != "$INITIAL_COMMIT" ]; then
-    echo "Commit mismatch for v810 tag $tag: expected $INITIAL_COMMIT, got $commit" >&2
+  if [ "$tag" = "$PINNED_TAG" ] && [ "$commit" != "$PINNED_COMMIT" ]; then
+    echo "Commit mismatch for v810 tag $tag: expected $PINNED_COMMIT, got $commit" >&2
     exit 1
   fi
 }

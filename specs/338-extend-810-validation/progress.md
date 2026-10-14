@@ -204,3 +204,24 @@ Started: 2026-10-14 11:50:17
 - Physical proof needs explicit route identity plus a declared cluster; URL similarity is never cluster evidence.
 - A default `/v2` profile can prove equivalence to one declared physical endpoint without persisting URLs or credentials.
 ---
+---
+## Iteration 8 - 2026-10-14 13:03
+**Work Unit**: T008 Partial US5 pinned 8.10.3 generation and repository guards
+**Tasks Completed**:
+- [x] T008: Align independent 8.10.3 provenance expectations, isolated reproducibility, older-client fingerprints, guard fixtures, and API generation documentation
+**Tasks Remaining in Work Unit**: T009 C810 shell runner and integration documentation alignment
+**Commit**: This work-unit commit
+**Files Changed**:
+- api/README.md
+- api/generate-v810-client.sh
+- api/refresh-clients.sh
+- api/tests/v810_generation_test.sh
+- api/tests/v810_provenance_test.py
+- api/tests/v810_repository_boundary_test.sh
+- specs/338-extend-810-validation/tasks.md
+- specs/338-extend-810-validation/ralph-memory.md
+- specs/338-extend-810-validation/progress.md
+**Learnings**:
+- Independent static provenance checks can stay fast while network regeneration remains an explicit disposable-worktree gate.
+- Before/after content fingerprints protect v88/v89 clients without banning intentional 8.10 integration coverage or requiring a clean tree.
+---

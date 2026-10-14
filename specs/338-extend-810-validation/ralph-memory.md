@@ -22,6 +22,8 @@ Started: 2026-10-14T09:50:16Z
 - Logical tenant roles are strict credential-free JSON mapped to four distinct default-local profiles; runner validation reads only inherited minor/tenant metadata, preflights all role profiles before mutation, and never persists authentication fields.
 - Tenant catalog proof is role-specific: logical and physical absence remain named optional gaps, `physical` requires both groups, and every declared profile passes topology readiness before tenant mutations.
 - Physical roles require two distinct `/physical-tenants/<id>/v2` routes, one shared logical tenant ID and declared cluster ID, plus an explicit default `/v2` equivalence control; retained evidence is limited to observable API routing, authorization, and resource separation.
+- V810 provenance expectations independently pin 8.10.3 identity, commit, artifact hashes, ordered transformation hashes, tool versions, package identity, and canonical generation command.
+- Network reproducibility overlays current API edits into a detached disposable worktree; the repository-boundary guard wraps commands with before/after v88/v89 content fingerprints and intentionally ignores integration-harness edits.
 
 ## Decisions
 
@@ -42,6 +44,9 @@ Started: 2026-10-14T09:50:16Z
 - `go test ./integration/internal/validation ./integration/runner -race -count=1`
 - `go test ./integration/... -race -count=1`
 - `go vet ./integration/internal/validation ./integration/runner`
+- `python3 api/tests/v810_provenance_test.py`
+- `bash api/tests/v810_generation_test.sh`
+- `C8VOLT_V810_NETWORK_REPRODUCIBILITY=1 python3 api/tests/v810_provenance_test.py`
 
 ## Do Not Repeat
 
@@ -49,4 +54,4 @@ Started: 2026-10-14T09:50:16Z
 - Do not infer completeness from child exit code or discovered files; reduce the frozen catalog against normalized current-run evidence.
 
 ## Current Handoff
-- Start US5 with T008: align the pinned 8.10.3 provenance and repository-boundary guards, using disposable-checkout regeneration and before/after older-client fingerprints.
+- Continue US5 with T009: add the version-gated C810 shell runner, offline fake-CLI coverage, and align integration documentation and quickstart scope.
