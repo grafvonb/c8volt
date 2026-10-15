@@ -45,15 +45,18 @@ func TestVolumeOpsRepairFamily(t *testing.T) {
 			failures = append(failures, err.Error())
 			continue
 		}
-		incidentKeys, incidentDiscoveryRecords, err := discoverVolumeRepairIncidentKeys(t, profile, incidentDataset)
+		incidentTargets, incidentDiscoveryRecords, err := discoverVolumeRepairIncidentTargets(t, profile, incidentDataset)
 		report.Records = append(report.Records, incidentDiscoveryRecords...)
 		if err != nil {
 			failures = append(failures, err.Error())
 			continue
 		}
-		incidentDataset.IncidentKeys = incidentKeys
+		for _, target := range incidentTargets {
+			incidentDataset.IncidentKeys = append(incidentDataset.IncidentKeys, target.IncidentKey)
+		}
+		incidentDataset.IncidentKeys = uniqueSortedStrings(incidentDataset.IncidentKeys)
 
-		records, err := runVolumeOpsRepairScenarios(t, profile, dataset, incidentDataset)
+		records, err := runVolumeOpsRepairScenarios(t, profile, dataset, incidentDataset, incidentTargets)
 		report.Records = append(report.Records, records...)
 		if err != nil {
 			failures = append(failures, err.Error())
@@ -72,15 +75,18 @@ func TestVolumeOpsRepairFamily(t *testing.T) {
 	}
 }
 
-func runVolumeOpsRepairScenarios(t *testing.T, profile integrationProfile, dataset volumeDataset, incidentDataset volumeIncidentDataset) ([]evidenceRecord, error) {
+func runVolumeOpsRepairScenarios(t *testing.T, profile integrationProfile, dataset volumeDataset, incidentDataset volumeIncidentDataset, incidentTargets []volumeRepairTarget) ([]evidenceRecord, error) {
 	t.Helper()
 	var records []evidenceRecord
 	var failures []string
-	incidentKeys := firstNStrings(incidentDataset.IncidentKeys, 3)
-	incidentPIKeys := firstNStrings(incidentDataset.ProcessInstanceKeys, 3)
+	targets, err := selectVolumeRepairTargets(incidentTargets)
+	if err != nil {
+		return records, fmt.Errorf("ops repair volume fixture for profile %q: %w", profile.Name, err)
+	}
+	writeJSON(t, "volume-ops-repair-targets-"+profile.Name+".json", targets)
 	pdKey := firstString(incidentDataset.ProcessDefinitionKeys)
-	if len(incidentKeys) < 3 || len(incidentPIKeys) < 3 || pdKey == "" {
-		return records, fmt.Errorf("ops repair volume incident dataset for profile %q has incidents=%d processInstances=%d pdKey=%q, want at least 3/3/non-empty", profile.Name, len(incidentKeys), len(incidentPIKeys), pdKey)
+	if pdKey == "" {
+		return records, fmt.Errorf("ops repair volume fixture for profile %q has no definition key", profile.Name)
 	}
 
 	incidentDryRunReport := volumeOpsRepairReportPath(t, "volume-ops-repair-incident-dry-run", profile, "json")
@@ -94,7 +100,7 @@ func runVolumeOpsRepairScenarios(t *testing.T, profile integrationProfile, datas
 	records = append(records, incidentDryRunRecord)
 
 	incidentFilterReport := volumeOpsRepairReportPath(t, "volume-ops-repair-incident-filter-no-match", profile, "json")
-	incidentFilterResult := runC8VoltForProfile(t, profile.Name, "volume-ops-repair-incident-filter-no-match", "ops", "repair", "incident", "--bpmn-process-id", incidentDataset.BpmnProcessID, "--pd-key", pdKey, "--pi-key", incidentPIKeys[0], "--root-key", incidentPIKeys[0], "--element-id", "c8volt_it_no_match", "--element-instance-key", incidentPIKeys[0], "--error-message", "c8volt-it-no-match", "--creation-time-after", "2000-01-01", "--creation-time-before", "2999-01-01", "--dry-run", "--report-file", incidentFilterReport, "--report-format", "json")
+	incidentFilterResult := runC8VoltForProfile(t, profile.Name, "volume-ops-repair-incident-filter-no-match", "ops", "repair", "incident", "--bpmn-process-id", incidentDataset.BpmnProcessID, "--pd-key", pdKey, "--pi-key", targets[0].ProcessInstanceKey, "--root-key", targets[0].ProcessInstanceKey, "--element-id", "c8volt_it_no_match", "--element-instance-key", targets[0].ProcessInstanceKey, "--error-message", "c8volt-it-no-match", "--creation-time-after", "2000-01-01", "--creation-time-before", "2999-01-01", "--dry-run", "--report-file", incidentFilterReport, "--report-format", "json")
 	incidentFilterRecord := volumeOpsRepairRecord(profile, incidentDataset, incidentFilterResult, "ops repair incident", "volume-ops-repair-incident-filter-no-match", "one-line", []string{"bpmn-process-id", "pd-key", "pi-key", "root-key", "element-id", "element-instance-key", "error-message", "creation-time-after", "creation-time-before", "dry-run", "report-file", "report-format"}, true, false)
 	if err := validateVolumeOpsRepairIncidentDryRun(incidentFilterResult, incidentFilterReport); err != nil {
 		incidentFilterRecord.Outcome = volumeOutcomeFail
@@ -105,9 +111,9 @@ func runVolumeOpsRepairScenarios(t *testing.T, profile integrationProfile, datas
 
 	incidentVarsFile := volumeOpsRepairVarsFile(t, "volume-ops-repair-incident-stdin-nowait", profile)
 	incidentConfirmedReport := volumeOpsRepairReportPath(t, "volume-ops-repair-incident-stdin-nowait", profile, "json")
-	incidentConfirmedResult := runC8VoltWithInput(t, "volume-ops-repair-incident-stdin-nowait", incidentKeys[1]+"\n", argsForProfile(profile.Name, "--automation", "--json", "ops", "repair", "incident", "-", "--vars-file", incidentVarsFile, "--retries", "1", "--job-timeout", "30s", "--no-wait", "--no-worker-limit", "--report-file", incidentConfirmedReport, "--report-format", "json")...)
+	incidentConfirmedResult := runC8VoltWithInput(t, "volume-ops-repair-incident-stdin-nowait", targets[1].IncidentKey+"\n", argsForProfile(profile.Name, "--automation", "--json", "ops", "repair", "incident", "-", "--vars-file", incidentVarsFile, "--retries", "1", "--job-timeout", "30s", "--no-wait", "--no-worker-limit", "--report-file", incidentConfirmedReport, "--report-format", "json")...)
 	incidentConfirmedRecord := volumeOpsRepairRecord(profile, incidentDataset, incidentConfirmedResult, "ops repair incident", "volume-ops-repair-incident-stdin-nowait", "json", []string{"stdin", "automation", "json", "vars-file", "retries", "job-timeout", "no-wait", "no-worker-limit", "report-file", "report-format"}, false, true)
-	incidentConfirmedRecord.StdinPath = writeVolumeStdinKeys(t, "volume-ops-repair-incident-stdin-nowait", []string{incidentKeys[1]})
+	incidentConfirmedRecord.StdinPath = writeVolumeStdinKeys(t, "volume-ops-repair-incident-stdin-nowait", []string{targets[1].IncidentKey})
 	if err := validateVolumeOpsRepairConfirmed(incidentConfirmedResult, incidentConfirmedReport, "incident"); err != nil {
 		incidentConfirmedRecord.Outcome = volumeOutcomeFail
 		incidentConfirmedRecord.FailureClass = volumeFailureProduct
@@ -116,7 +122,7 @@ func runVolumeOpsRepairScenarios(t *testing.T, profile integrationProfile, datas
 	records = append(records, incidentConfirmedRecord)
 
 	piDryRunReport := volumeOpsRepairReportPath(t, "volume-ops-repair-pi-dry-run", profile, "json")
-	piDryRunResult := runC8VoltForProfile(t, profile.Name, "volume-ops-repair-pi-dry-run", "ops", "repair", "process-instance", "--key", incidentPIKeys[2], "--vars", `{"c8voltRepair":"pi-preview"}`, "--retries", "2", "--job-timeout", "1m", "--workers", "1", "--dry-run", "--report-file", piDryRunReport, "--report-format", "json")
+	piDryRunResult := runC8VoltForProfile(t, profile.Name, "volume-ops-repair-pi-dry-run", "ops", "repair", "process-instance", "--key", targets[2].ProcessInstanceKey, "--vars", `{"c8voltRepair":"pi-preview"}`, "--retries", "2", "--job-timeout", "1m", "--workers", "1", "--dry-run", "--report-file", piDryRunReport, "--report-format", "json")
 	piDryRunRecord := volumeOpsRepairRecord(profile, incidentDataset, piDryRunResult, "ops repair process-instance", "volume-ops-repair-pi-dry-run", "one-line", []string{"key", "vars", "retries", "job-timeout", "workers", "dry-run", "report-file", "report-format"}, true, false)
 	if err := validateVolumeOpsRepairPIDryRun(piDryRunResult, piDryRunReport); err != nil {
 		piDryRunRecord.Outcome = volumeOutcomeFail
@@ -137,7 +143,7 @@ func runVolumeOpsRepairScenarios(t *testing.T, profile integrationProfile, datas
 
 	piVarsFile := volumeOpsRepairVarsFile(t, "volume-ops-repair-pi-nowait", profile)
 	piConfirmedReport := volumeOpsRepairReportPath(t, "volume-ops-repair-pi-nowait", profile, "json")
-	piConfirmedResult := runC8VoltForProfile(t, profile.Name, "volume-ops-repair-pi-nowait", "--automation", "--json", "ops", "repair", "process-instance", "--key", incidentPIKeys[2], "--vars-file", piVarsFile, "--retries", "1", "--job-timeout", "30s", "--no-wait", "--report-file", piConfirmedReport, "--report-format", "json")
+	piConfirmedResult := runC8VoltForProfile(t, profile.Name, "volume-ops-repair-pi-nowait", "--automation", "--json", "ops", "repair", "process-instance", "--key", targets[2].ProcessInstanceKey, "--vars-file", piVarsFile, "--retries", "1", "--job-timeout", "30s", "--no-wait", "--report-file", piConfirmedReport, "--report-format", "json")
 	piConfirmedRecord := volumeOpsRepairRecord(profile, incidentDataset, piConfirmedResult, "ops repair process-instance", "volume-ops-repair-pi-nowait", "json", []string{"automation", "json", "key", "vars-file", "retries", "job-timeout", "no-wait", "report-file", "report-format"}, false, true)
 	if err := validateVolumeOpsRepairConfirmed(piConfirmedResult, piConfirmedReport, "process-instance"); err != nil {
 		piConfirmedRecord.Outcome = volumeOutcomeFail
@@ -152,10 +158,10 @@ func runVolumeOpsRepairScenarios(t *testing.T, profile integrationProfile, datas
 	return records, nil
 }
 
-func discoverVolumeRepairIncidentKeys(t *testing.T, profile integrationProfile, dataset volumeIncidentDataset) ([]string, []evidenceRecord, error) {
+func discoverVolumeRepairIncidentTargets(t *testing.T, profile integrationProfile, dataset volumeIncidentDataset) ([]volumeRepairTarget, []evidenceRecord, error) {
 	t.Helper()
 	var records []evidenceRecord
-	var incidentKeys []string
+	var targets []volumeRepairTarget
 	var failures []string
 	for i, piKey := range dataset.ProcessInstanceKeys {
 		scenario := fmt.Sprintf("volume-ops-repair-get-incident-%d", i+1)
@@ -184,15 +190,16 @@ func discoverVolumeRepairIncidentKeys(t *testing.T, profile integrationProfile, 
 			records = append(records, record)
 			continue
 		}
-		incidentKeys = append(incidentKeys, found...)
-		record.ResourceKeys = append(record.ResourceKeys, incidentKeys...)
+		for _, incidentKey := range found {
+			targets = append(targets, volumeRepairTarget{IncidentKey: incidentKey, ProcessInstanceKey: piKey})
+		}
+		record.ResourceKeys = append(record.ResourceKeys, found...)
 		records = append(records, record)
 	}
-	incidentKeys = uniqueSortedStrings(incidentKeys)
 	if len(failures) > 0 {
-		return incidentKeys, records, errors.New(strings.Join(failures, "\n"))
+		return targets, records, errors.New(strings.Join(failures, "\n"))
 	}
-	return incidentKeys, records, nil
+	return targets, records, nil
 }
 
 func volumeRepairIncidentKeysFromResult(t *testing.T, result commandResult, piKey string) []string {
@@ -360,4 +367,58 @@ func appendOpsRepairEmbeddedBPMNGapProposals(proposals []proposalRecord) []propo
 		supportedProposalVersions(),
 		"Repair volume tests can cover retries, timeouts, variables, and failure reports without external setup.",
 	)
+}
+
+// volumeRepairTarget retains the observed ownership instead of correlating
+// independently sorted incident and process-instance keys by position.
+type volumeRepairTarget struct {
+	IncidentKey        string `json:"incidentKey"`
+	ProcessInstanceKey string `json:"processInstanceKey"`
+}
+
+// selectVolumeRepairTargets reserves one distinct instance per scenario. Multiple
+// incidents on one instance must never consume multiple scenario slots.
+func selectVolumeRepairTargets(observed []volumeRepairTarget) ([]volumeRepairTarget, error) {
+	owners := map[string]string{}
+	seenInstances := map[string]bool{}
+	var targets []volumeRepairTarget
+	for _, target := range observed {
+		if target.IncidentKey == "" || target.ProcessInstanceKey == "" {
+			return nil, errors.New("incident target is missing its identity or owner")
+		}
+		if owner, exists := owners[target.IncidentKey]; exists && owner != target.ProcessInstanceKey {
+			return nil, fmt.Errorf("incident %s has conflicting process-instance owners", target.IncidentKey)
+		}
+		owners[target.IncidentKey] = target.ProcessInstanceKey
+		if !seenInstances[target.ProcessInstanceKey] {
+			targets = append(targets, target)
+			seenInstances[target.ProcessInstanceKey] = true
+		}
+	}
+	if len(targets) < 3 {
+		return nil, fmt.Errorf("need incidents on three distinct process instances; found %d", len(targets))
+	}
+	return targets[:3], nil
+}
+
+func TestVolumeRepairTargetSelection(t *testing.T) {
+	// Incident order intentionally differs from process-instance order. The two
+	// incidents for pi-a must not cause the mutation scenarios to share pi-a.
+	observed := []volumeRepairTarget{{"900", "pi-a"}, {"100", "pi-a"}, {"700", "pi-b"}, {"200", "pi-c"}}
+	targets, err := selectVolumeRepairTargets(observed)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if targets[1] != (volumeRepairTarget{"700", "pi-b"}) || targets[2] != (volumeRepairTarget{"200", "pi-c"}) {
+		t.Fatalf("wrong mutation targets: %+v", targets)
+	}
+	for _, input := range [][]volumeRepairTarget{
+		{{"900", "pi-a"}, {"100", "pi-a"}, {"700", "pi-b"}},
+		{{"900", "pi-a"}, {"900", "pi-b"}, {"200", "pi-c"}},
+		{{"", "pi-a"}, {"700", "pi-b"}, {"200", "pi-c"}},
+	} {
+		if _, err := selectVolumeRepairTargets(input); err == nil {
+			t.Fatalf("accepted invalid ownership: %+v", input)
+		}
+	}
 }
