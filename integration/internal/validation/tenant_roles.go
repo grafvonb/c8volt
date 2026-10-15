@@ -11,14 +11,8 @@ import (
 	"io"
 	"net/url"
 	"os"
+	"sort"
 	"strings"
-)
-
-const (
-	// TenantRoleLogical identifies the logical-tenant proof group in catalog and target records.
-	TenantRoleLogical = "logical"
-	// TenantRolePhysical identifies physical-route proof within one declared cluster.
-	TenantRolePhysical = "physical"
 )
 
 // TenantRoles is credential-free metadata that maps validation roles to
@@ -278,4 +272,31 @@ func requireTenantRolesEOF(decoder *json.Decoder) error {
 		return err
 	}
 	return nil
+}
+
+// SchemaVersion identifies tenant role metadata.
+const SchemaVersion = 1
+
+type TenantCoverage string
+
+const (
+	TenantCoverageNone     TenantCoverage = "none"
+	TenantCoverageLogical  TenantCoverage = "logical"
+	TenantCoveragePhysical TenantCoverage = "physical"
+)
+
+// UniqueSorted returns a deterministic copy without blank or duplicate values.
+func UniqueSorted(values []string) []string {
+	seen := map[string]struct{}{}
+	for _, value := range values {
+		if value = strings.TrimSpace(value); value != "" {
+			seen[value] = struct{}{}
+		}
+	}
+	result := make([]string, 0, len(seen))
+	for value := range seen {
+		result = append(result, value)
+	}
+	sort.Strings(result)
+	return result
 }

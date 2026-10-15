@@ -188,7 +188,7 @@ explicit/stdin tenant-B keys, and `--all-tenants` discovery and mutation remain
 inside the selected physical endpoint. It also covers conflicting selectors
 and single-destination restrictions. Missing roles are a named optional gap;
 setting `C8VOLT_IT_REQUIRE_TENANTS=logical` makes missing or invalid role
-infrastructure unsuccessful before the aggregate run starts.
+infrastructure unsuccessful when the tenant group is checked.
 
 Physical proof uses the optional `physical` group in the same role file. Its
 two profiles must use normalized Camunda base URLs ending in
@@ -215,60 +215,44 @@ storage, backup, provisioning, or compute isolation. Missing physical roles
 remain a named optional gap unless `physical` coverage is explicitly required;
 physical mode also requires the complete logical proof group.
 
-For aggregate release validation, select one disposable profile and the
-requested minor. The sequential runner builds once, verifies the profile before
-mutation, and executes exact catalog-owned test identities in isolated child
-directories:
+`make integration-test-all` uses the existing Make targets directly, in order:
+common preflight/examples, focused batch and tenant checks, baseline, volume,
+and real-state groups. Output goes straight to the terminal, including each
+Go test command and group result. Make stops on the first failing group.
+The nested Make invocation uses `-j1` so destructive groups do not overlap,
+even when the outer invocation uses parallel Make.
+
+Defaults are profile `c810local` and requested Camunda minor `8.10`:
 
 ```sh
-C8VOLT_IT_PROFILES=dev810 C8VOLT_IT_RELEASE_VERSION=8.10 \
-make integration-test-all C8VOLT_IT_GO_TEST_FLAGS=-v \
-  C8VOLT_IT_VOLUME_TIMEOUT=90m C8VOLT_IT_REAL_STATE_TIMEOUT=90m
+make integration-test-all
+
+# Override the selected environment:
+make integration-test-all C8VOLT_IT_PROFILES=dev89 C8VOLT_IT_RELEASE_VERSION=8.9
 ```
 
-The real-state selector accepts only canonical 8.9 and 8.10 profile minors,
-then verifies the full observed gateway version before mutation. Cascade and
-other embedded setup select the matching C89 or C810 fixtures. Camunda 8.8
-remains available to baseline and volume slices but is intentionally excluded
-from real-state release coverage. This selection support is not live release
-evidence: required scenarios still need a retained run, and named prerequisite
-gaps keep `coverageComplete=false`.
+Before confirmation, Make prints profiles, requested Camunda version, evidence
+location, tenant requirements, build setting, and slice timeouts. Common
+preflight verifies selected profiles before mutation; each family's existing
+readiness checks also verify the configured and requested minor against the
+observed gateway version. Baseline/volume support 8.8, 8.9 and 8.10; real-state
+coverage supports 8.9 and 8.10 with version-matched fixtures.
 
-## Release Coverage Policy
-
-The checked-in `assets/release-coverage.json` catalog defines stable scenario
-identities, version applicability, family minima, and minimum evidence levels.
-`assets/release-gaps.json` names additional prerequisite gaps; a gap cannot
-remove a required scenario or turn a product failure into success. The pure
-policy can be validated without building c8volt or contacting a cluster:
+The aggregate confirms once. For unattended execution:
 
 ```sh
-go test ./integration/internal/validation -race -count=1
+make integration-test-all C8VOLT_IT_AUTOMATION=1 C8VOLT_IT_GO_TEST_FLAGS=-v
 ```
 
-Strict release evaluation freezes one requested minor and selected profiles
-before execution. Every applicable required scenario must have matching
-current-run evidence from an isolated successful child slice. Missing, skipped,
-blocked, duplicate, stale, foreign-minor, or weaker-than-required evidence is
-unsuccessful. `passed` is the only verdict with `coverageComplete=true`.
-`passed_with_gaps` means required checks passed while named nonrequired proof is
-still blocked; it is not complete release certification.
+## Results and coverage limits
 
-Exploratory evaluation is intentionally partial: it evaluates the supplied
-scenario evidence without synthesizing every omitted release requirement. It
-still rejects malformed, duplicate, stale, unknown, unsafe-path, failed-child,
-and mismatched-target evidence, and it reports named gaps honestly. An
-exploratory `passed` verdict therefore describes only the selected scope and
-must not be presented as aggregate release certification.
-
-Make asks for confirmation before running integration slices because they may
-mutate real Camunda cluster state. The aggregate runner remains behind that
-same boundary and performs its own nonmutating target preflight before any
-child slice. Automation can skip the prompt with `C8VOLT_IT_AUTOMATION=1`:
-
-```sh
-make integration-test-real-state C8VOLT_IT_AUTOMATION=1 C8VOLT_IT_GO_TEST_FLAGS=-v C8VOLT_IT_REAL_STATE_TIMEOUT=90m
-```
+There is no separate runner, frozen coverage catalog, or aggregate release
+verdict. Use normal Make/Go exit status and the existing per-group reports.
+A successful invocation means its executed tests passed; skipped optional
+scenarios and missing tenant infrastructure do not constitute coverage.
+Tenant roles remain optional unless explicitly required with
+`C8VOLT_IT_REQUIRE_TENANTS`. Existing real-state prerequisite-gap documentation
+and focused scenario reports remain available.
 
 The gaps target is non-destructive and validates that `gaps.md` plus the
 coverage matrix keep missing setup and fixture prerequisites in spec-owned
@@ -323,9 +307,8 @@ integration/scripts/run-c810-suite.sh
 
 These shell suites are broad operator-workflow checks with grouped Markdown
 evidence. Their exact gateway-minor gate runs before fixture deployment or any
-other mutation. A successful shell suite is not aggregate release
-certification: only `make integration-test-all` reduces the frozen release
-catalog and normalized scenario evidence into `release.json`.
+other mutation. Their success covers the scenarios executed by that shell suite;
+it does not certify omitted scenarios or unavailable infrastructure.
 
 The wrappers use these defaults:
 
@@ -361,8 +344,8 @@ Go suite variables:
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `C8VOLT_IT_PROFILES` | active profile for direct slices; required for aggregate runs | Comma-separated profile names selected from the default local c8volt config. |
-| `C8VOLT_IT_RELEASE_VERSION` | empty | Set `8.9` or `8.10` for strict aggregate release validation. |
+| `C8VOLT_IT_PROFILES` | `c810local` for `make integration-test-all`; active profile for direct slices | Comma-separated profile names selected from the default local c8volt config. |
+| `C8VOLT_IT_RELEASE_VERSION` | `8.10` for `make integration-test-all`; otherwise empty | Require the observed gateway minor to match this value before mutation. |
 | `C8VOLT_IT_TENANT_ROLES` | empty | Absolute path to credential-free logical role metadata naming default-local profiles. |
 | `C8VOLT_IT_REQUIRE_TENANTS` | `none` | Required tenant proof: `none`, `logical`, or `physical`; physical proof also requires logical proof. |
 | `C8VOLT_IT_BIN` | built into the workdir | Existing c8volt binary to test when `C8VOLT_IT_BUILD=0`. |
@@ -418,12 +401,13 @@ directory:
 - `logs/`: per-command stdout and stderr evidence.
 - `data/`: seeded data, selected keys, resource IDs, and substitution evidence.
 
-The aggregate runner treats `C8VOLT_IT_WORKDIR` as a parent and creates a
-unique invocation directory containing `manifest.json`, `release.json`, and
-`summary.md`. Each slice/profile child contains separate stdout, stderr, Go test
-events, legacy harness reports, and one normalized `scenario-evidence.json`
-array. A zero runner exit with `passed_with_gaps` still has
-`coverageComplete=false`; only `passed` is complete certification.
+Each direct Go test group uses the existing harness work directory. By default
+it creates and retains a separate temporary directory. `C8VOLT_IT_WORKDIR` still
+selects an exact directory, not an aggregate parent; use it for individual-group
+reruns because reusing it across groups can overwrite shared report filenames.
+No `release.json` or runner manifest is generated. The CLI binary is built by
+each group's existing harness unless `C8VOLT_IT_BUILD=0` and `C8VOLT_IT_BIN` name
+an existing binary.
 
 The suite exits non-zero when any required case fails or any expected failure
 does not fail in the expected way. It keeps running after individual failures so

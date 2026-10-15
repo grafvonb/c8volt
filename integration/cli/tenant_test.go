@@ -48,7 +48,6 @@ type physicalTenantEvidence struct {
 // TestLogicalTenantFamily proves filtering and backend authorization with
 // distinct owned resources before making any negative tenant assertion.
 func TestLogicalTenantFamily(t *testing.T) {
-	registerReleaseScenario(t)
 	roles, profiles := requireLogicalTenantRoles(t)
 	logical := roles.Logical
 
@@ -127,7 +126,6 @@ func TestLogicalTenantFamily(t *testing.T) {
 // TestPhysicalTenantFamily proves routing and observable resource separation
 // across two provisioned endpoints in one operator-declared cluster.
 func TestPhysicalTenantFamily(t *testing.T) {
-	registerReleaseScenario(t)
 	roles, allProfiles := requireTenantRoles(t)
 	physical := roles.Physical
 	if physical == nil {

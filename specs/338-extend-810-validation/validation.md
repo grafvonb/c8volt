@@ -1,3 +1,8 @@
+> Current architecture (2026-10-15): the Go runner and aggregate policy were
+> removed at the operator's request. Direct serial Make execution is restored.
+> Runner references below are historical, not current instructions. No tests
+> were run for the removal; see the revised plan/tasks/quickstart.
+
 # Acceptance validation — issue #338
 
 Date: 2026-10-14. T010 remains open: the aggregate failed before the final batch harness repair; the repaired batch slice passes separately. No clean aggregate result is claimed.
@@ -154,3 +159,22 @@ TestRealStateProcessDefinitionDraining. Evidence:
 with isolated fixtures and exact eventual accounting. It does not replace or
 rewrite the failed aggregate evidence. A clean aggregate rerun is still needed
 before closing T010; tenant and older-version limitations remain explicit.
+
+## Volume repair ownership fix — 2026-10-15
+
+The operator's later aggregate run `release-20261014T175929Z-8dff5a4c0d88`
+passed 31/32 slices, with only volume-ops-repair failing. Independent sorting
+of incident keys lost ownership: the incident repair and subsequent instance
+repair selected the same incident, producing a 404 on the second resolution.
+
+Discovery now retains incident/instance pairs. Scenario selection requires three
+distinct instance owners, rejects conflicting/missing ownership, and saves the
+selected pairs as evidence. Independent mutations use different owners; HTTP
+errors and existing success assertions remain strict.
+
+`TestVolumeRepairTargetSelection` passed with shuffled incident ordering,
+multiple incidents per instance, insufficient distinct owners, and conflicting
+ownership cases. The affected live `integration-cli-ops-repair-volume` slice
+passed on c810local in 6.50 seconds. Evidence: `/tmp/c8volt-338-repair-ownership`;
+console log: `/tmp/c8volt-338-repair-ownership-test.log`.
+No full aggregate rerun was performed for this fix; T010 remains open.

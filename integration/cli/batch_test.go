@@ -114,7 +114,6 @@ func TestBatchFamily(t *testing.T) {
 // older minors retain their existing baseline and real-state coverage.
 func selectedBatchProfiles(t *testing.T) []integrationProfile {
 	t.Helper()
-	registerReleaseScenario(t)
 	profiles := requireSelectedProfiles(t)
 	selected := make([]integrationProfile, 0, len(profiles))
 	for _, profile := range profiles {

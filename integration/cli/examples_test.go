@@ -174,7 +174,6 @@ func TestAllTenantsExampleRootFlagRecognition(t *testing.T) {
 // TestExamples validates help and generated-documentation examples in the
 // separately gated common slice because eligible examples may mutate state.
 func TestExamples(t *testing.T) {
-	registerReleaseScenario(t)
 	helpExamples := extractLiveHelpExamples(t)
 	docExamples, err := extractGeneratedDocExamples(filepath.Join(suite.repoRoot, "docs", "cli"))
 	if err != nil {

@@ -171,6 +171,16 @@ test: ## Run the full Go test suite with the race detector enabled.
 	GORACE="$(GORACE) atexit_sleep_ms=0" go test $(PKG) -race -count=1
 
 integration-test-confirm:
+	@if [ "$(C8VOLT_IT_SHOW_SETTINGS)" = "1" ]; then \
+		printf '\nIntegration release validation\n'; \
+		printf '  Profile(s):          %s\n' "$${C8VOLT_IT_PROFILES:-<unset>}"; \
+		printf '  Requested Camunda:   %s\n' "$${C8VOLT_IT_RELEASE_VERSION:-<exploratory>}"; \
+		printf '  Evidence directory:  %s\n' "$${C8VOLT_IT_WORKDIR:-separate temporary directory per test group}"; \
+		printf '  Required tenants:    %s\n' "$${C8VOLT_IT_REQUIRE_TENANTS:-none}"; \
+		printf '  Build binary:        %s (1=yes, 0=reuse)\n' "$${C8VOLT_IT_BUILD:-1}"; \
+		printf '  Slice timeouts:      baseline=%s volume=%s real-state=%s\n' "$${C8VOLT_IT_TIMEOUT:-60m}" "$${C8VOLT_IT_VOLUME_TIMEOUT:-90m}" "$${C8VOLT_IT_REAL_STATE_TIMEOUT:-90m}"; \
+		printf '  Server version is verified before mutations.\n\n'; \
+	fi
 	@if [ "$(C8VOLT_IT_AUTOMATION)" = "1" ]; then \
 		echo "Skipping integration test confirmation."; \
 	else \
@@ -183,12 +193,16 @@ integration-test: $(INTEGRATION_CLI_TARGETS) ## Run all baseline CLI integration
 
 integration-test-volume: $(INTEGRATION_CLI_VOLUME_TARGETS) ## Run all volume CLI integration test slices.
 
-integration-test-real-state: $(INTEGRATION_CLI_REAL_STATE_TARGETS) ## Run all C89 real-state integration test slices.
+integration-test-real-state: $(INTEGRATION_CLI_REAL_STATE_TARGETS) ## Run all 8.9/8.10 real-state integration test slices.
 
 integration-cli-common: $(INTEGRATION_CLI_COMMON_TARGETS) ## Run common inventory, manifest, profile, smoke, and example validation.
 
-integration-test-all: integration-test-confirm ## Run aggregate release validation through the sequential evidence runner.
-	go run ./integration/runner
+# Aggregate defaults only; environment and make command-line values override them.
+integration-test-all: C8VOLT_IT_SHOW_SETTINGS := 1
+integration-test-all: export C8VOLT_IT_PROFILES ?= c810local
+integration-test-all: export C8VOLT_IT_RELEASE_VERSION ?= 8.10
+integration-test-all: integration-test-confirm ## Run all integration groups directly and sequentially with visible output.
+	$(MAKE) --no-print-directory -j1 C8VOLT_IT_AUTOMATION=1 C8VOLT_IT_SHOW_SETTINGS=0 integration-cli-common $(INTEGRATION_CLI_FOCUSED_TARGETS) integration-test integration-test-volume integration-test-real-state
 
 integration-cli-common-preflight: ## Run nonmutating inventory, manifest, profile, and smoke validation.
 	$(C8VOLT_IT_GO_TEST) $(C8VOLT_IT_GO_TEST_FLAGS) -run '^(TestCommandInventory|TestCoverageManifest|TestProfiles|TestReadOnlySmoke)$$' -count=1 -timeout=$(C8VOLT_IT_TIMEOUT)

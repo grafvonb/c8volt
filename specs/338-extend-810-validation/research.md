@@ -2,25 +2,13 @@
 
 Date: 2026-10-14. Scope: issue #338; read-only source inspection and official documentation. No live tests were run.
 
-## 1. Aggregate execution and evidence
+## Execution decision (supersedes earlier runner research)
 
-**Decision:** Add a small Go integration runner and a shared, standard-library-only validation package under `integration/`. The aggregate Make target delegates to the runner after its existing confirmation gate. Keep individual Make slices available. The runner executes existing tagged tests sequentially, records each subprocess result, and finalizes a version-aware manifest even after failure.
-
-**Rationale:** The existing Make target launches separate test processes, each with its own marker and work directory. Reusing a work directory directly overwrites reports and logs. Make prerequisite success and Go skip success cannot establish required coverage. A shared reducer needs deterministic unit tests without invoking the destructive tagged TestMain.
-
-**Alternatives considered:** A single broad test regex is smaller but does not solve scenario-level completeness or isolated reports. Shell JSON parsing adds dependencies and duplicated policy. A new production command would expose internal release tooling unnecessarily.
-
-Use one invocation directory, unique slice/profile child directories, and a parent manifest. Build the CLI once and pass its absolute path with the existing `C8VOLT_IT_BIN` / `C8VOLT_IT_BUILD=0` interface. Compile caching remains available. Separate child invocations per profile avoid existing scenario log-name collisions. No parallel destructive families on the same cluster.
-
-## 2. Required coverage and accepted gaps
-
-**Decision:** Versioned required-scenario catalogs and accepted-gap records are checked in before execution. Strict release intent is enabled by an explicit requested minor. Default exploratory behavior remains available. The reducer requires successful subprocess termination plus matching scenario evidence; process exit alone is insufficient.
-
-**Rationale:** Real-state BPMN error coverage currently proves a real job, a preview, and unchanged-job follow-up, not catchable error completion. A blanket requirement that every family demonstrate every mutation would silently broaden #338 into closing all older fixture gaps. Conversely, a blanket waiver would preserve false-green results.
-
-**Resolution:** Every required family must execute and satisfy its declared minimum evidence. Known additional blocked proofs may remain as named nonrequired gaps, producing `passed_with_gaps`, never `complete`. Required post-state assertions cannot be downgraded or waived at runtime. Unknown missing evidence fails. Inventory the actual scenario IDs and minimums during implementation and test catalog/evidence parity. A required family wholly skipped always fails.
-
-**Alternatives considered:** Treat all skips as successes (unsafe), require closure of all historical gaps (outside the issue), or offer runtime blanket waiver flags (undermines the gate).
+On 2026-10-15 the operator explicitly requested removal of the Go runner and
+restoration of direct Make execution. Keep the established per-group harness,
+serial targets, version checks, useful tests and fixture fixes. Do not retain
+aggregate policy/catalog/reducer infrastructure. Historical run evidence remains
+in validation.md; old release verdicts describe only those historical runs.
 
 ## 3. Version gate and fixtures
 

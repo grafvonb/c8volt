@@ -13,7 +13,6 @@ import (
 // TestCoverageManifest records manifest parity independently from inventory
 // evidence so both common release categories must complete.
 func TestCoverageManifest(t *testing.T) {
-	registerReleaseScenario(t)
 	doc := readCommandInventory(t, "coverage-manifest")
 	report := validateCoverageManifest(flattenCapabilities(doc.Commands), commandCoverageManifest)
 	writeJSON(t, "coverage.json", report)

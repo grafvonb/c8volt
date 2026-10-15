@@ -134,7 +134,6 @@ var commandCoverageManifest = map[string]coverageEntry{
 // TestCommandInventory records the complete live command inventory as a
 // distinct common release category.
 func TestCommandInventory(t *testing.T) {
-	registerReleaseScenario(t)
 	doc := readCommandInventory(t, "command-inventory")
 	writeJSON(t, "inventory.json", doc)
 

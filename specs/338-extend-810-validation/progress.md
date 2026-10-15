@@ -1,3 +1,8 @@
+> Current architecture (2026-10-15): the Go runner and aggregate policy were
+> removed at the operator's request. Direct serial Make execution is restored.
+> Runner references below are historical, not current instructions. No tests
+> were run for the removal; see the revised plan/tasks/quickstart.
+
 # Ralph Progress Log
 
 Feature: 338-extend-810-validation

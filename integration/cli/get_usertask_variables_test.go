@@ -62,7 +62,6 @@ type userTaskVariableReport struct {
 
 // TestGetFamilyUserTaskVariables proves native local-variable selection and scope behavior against selected real profiles.
 func TestGetFamilyUserTaskVariables(t *testing.T) {
-	registerReleaseScenario(t)
 	for _, profile := range requireSelectedProfiles(t) {
 		t.Run(profile.Name, func(t *testing.T) {
 			report := userTaskVariableReport{Profile: profile.Name, CamundaVersion: profile.ExpectedVersion, Outcome: "pass"}

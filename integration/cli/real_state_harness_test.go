@@ -48,7 +48,6 @@ func allRealStateTargets() []realStateTarget {
 // the default local config while leaving 8.8 baseline/volume selection intact.
 func selectedRealStateProfiles(t *testing.T) []integrationProfile {
 	t.Helper()
-	registerReleaseScenario(t)
 	profiles := requireSelectedProfiles(t)
 	var realStateProfiles []integrationProfile
 	for _, profile := range profiles {

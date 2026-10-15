@@ -40,7 +40,6 @@ type volumeTarget struct {
 // its operator-controlled dataset size.
 func volumeDatasetCount(t *testing.T) int {
 	t.Helper()
-	registerReleaseScenario(t)
 	raw := strings.TrimSpace(os.Getenv(envITVolumeCount))
 	if raw == "" {
 		return defaultITVolumeCount

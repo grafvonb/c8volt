@@ -16,7 +16,6 @@ import (
 	"time"
 
 	"github.com/grafvonb/c8volt/c8volt/process"
-	"github.com/grafvonb/c8volt/integration/internal/validation"
 	"github.com/grafvonb/c8volt/internal/services/httpc"
 )
 
@@ -92,7 +91,6 @@ func TestRealStateProcessDefinitionDraining(t *testing.T) {
 	writeJSON(t, "process-definition-draining-evidence.json", evidence)
 	if len(productFailures) > 0 {
 		reason := strings.Join(productFailures, "; ")
-		classifyReleaseScenarioFailure(t, validation.FailureProduct, reason)
 		t.Fatalf("process-definition draining exposed the unwaived v8.10 adapter defect: %s", reason)
 	}
 }
