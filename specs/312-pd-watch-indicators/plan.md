@@ -6,7 +6,7 @@
 
 ## Summary
 
-Add a fixed watch-only marker column, per-refresh change summary, and selective bold values to `get pd --watch`. Compare owned, unstyled displayed values by definition key against the last successfully displayed complete refresh. Keep session history in the existing watch mode and rendering in the PD view file; retain service-owned collection and canonical ordering. Failed collection or output does not advance history. Ordinary output and public APIs remain unchanged.
+Add a watch-only trailing row markers, per-refresh change summary, and selective bold values to `get pd --watch`. Compare owned, unstyled displayed values by definition key against the last successfully displayed complete refresh. Keep session history in the existing watch mode and rendering in the PD view file; retain service-owned collection and canonical ordering. Failed collection or output does not advance history. Ordinary output and public APIs remain unchanged.
 
 ## Technical Context
 
@@ -35,7 +35,7 @@ Pre-research and post-design gates both pass:
 | Principle | Design evidence | Result |
 | --- | --- | --- |
 | Operational proof | Only complete successful results generate comparisons; failed collection/output cannot advance the baseline. Counts describe watched-result changes, not backend mutation claims. | Pass |
-| CLI-first, script-safe | Explicit watch-only contract; normal human/JSON/keys/XML output preserved; diagnostics remain on stderr. Compatibility note: watch now adds a summary and marker prefix instead of matching ordinary list output exactly. | Pass |
+| CLI-first, script-safe | Explicit watch-only contract; normal human/JSON/keys/XML output preserved; diagnostics remain on stderr. Compatibility note: watch now adds a summary and marker suffix instead of matching ordinary list output exactly. | Pass |
 | Proportional validation | Planning uses artifact checks only. Implementation uses focused command tests and docs generation; full race suite only if scope expands into shared runtime behavior or failures justify it. | Pass |
 | Documentation matches behavior | README, command Long help, and output metadata updated in the same implementation delivery; `make docs-content` regenerates references. | Pass |
 | Small repository-native changes | Existing watch file, view file, width helpers, command harnesses, and terminal library reused; no generic diff/styling framework. | Pass |
@@ -84,7 +84,7 @@ See [research.md](research.md). Repository inspection resolved ownership, displa
 
 1. Project each complete snapshot into owned plain display values with individually identifiable statistics values. Preserve snapshot order and index prior values by key. The map is initialized separately from whether it contains rows.
 2. Build the candidate markers, changed-value masks, three counts, and next baseline without changing current history. New and updated categories are mutually exclusive; removed keys do not create rows.
-3. Render the exact summary, fixed two-character marker prefix, aligned existing fields, and existing footer. Compute widths from plain fields; bold only visible changed values of existing rows. Use error-returning writes within the watch view instead of shared helpers that discard write errors.
+3. Log the summary with the existing plain-time INFO handler to configured stderr after repaint and before stdout rows. Append markers only to changed/new rows after their last field; keep aligned fields and the existing footer. Compute widths from plain fields; bold only visible changed values of existing rows. Use error-returning writes within the watch view instead of shared helpers that discard write errors.
 4. Commit baseline only after successful repaint and view output. Preserve all retry, slow-warning, verbose, termination, and collector behavior. Do not persist state across invocations.
 5. Update watch-specific parity expectations to the new contract while retaining ordinary-output checks. Ship help, metadata, README, generated docs, and behavior validation together.
 

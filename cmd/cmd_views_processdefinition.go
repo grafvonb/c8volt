@@ -6,9 +6,12 @@ package cmd
 import (
 	"fmt"
 	"io"
+	"log/slog"
 	"strings"
+	"time"
 
 	"github.com/grafvonb/c8volt/c8volt/process"
+	"github.com/grafvonb/c8volt/toolx/logging"
 	"github.com/spf13/cobra"
 )
 
@@ -81,17 +84,23 @@ const (
 )
 
 // processDefinitionWatchView renders one complete refresh and returns the
-// first write failure so unseen candidates never become the baseline.
+// first write failure so unseen candidates never become the baseline. The INFO
+// summary uses configured stderr; row suffixes and results use stdout.
 func processDefinitionWatchView(cmd *cobra.Command, candidate processDefinitionWatchCandidate, bold bool) error {
 	if cmd == nil {
 		return nil
 	}
 	w := cmd.OutOrStdout()
-	if err := writeProcessDefinitionWatchLine(w, "Changes: %d updated, %d new, %d removed   (* changed, + new)", candidate.updated, candidate.new, candidate.removed); err != nil {
+	message := fmt.Sprintf("%d updated, %d new, %d removed", candidate.updated, candidate.new, candidate.removed)
+	handler := logging.NewPlainHandler(cmd.ErrOrStderr(), slog.LevelInfo).WithTimestampLayout(logging.PlainTimeTimestampLayout)
+	if err := handler.Handle(cmd.Context(), slog.NewRecord(time.Now(), slog.LevelInfo, message, 0)); err != nil {
 		return err
 	}
 	for i, line := range formatProcessDefinitionWatchRows(candidate.rows, bold) {
-		if err := writeProcessDefinitionWatchLine(w, "%c %s", candidate.rows[i].marker, line); err != nil {
+		if marker := candidate.rows[i].marker; marker != ' ' {
+			line += fmt.Sprintf(" %c", marker)
+		}
+		if err := writeProcessDefinitionWatchLine(w, "%s", line); err != nil {
 			return err
 		}
 	}

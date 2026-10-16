@@ -230,7 +230,7 @@ func TestCommandCapabilityForCommand_ProcessDefinitionWatchMetadata(t *testing.T
 	require.Contains(t, capability.OutputModes, OutputModeContract{
 		Name:      "one-line",
 		Supported: true,
-		Notes:     "watch refreshes add a change summary; fixed row markers; and selective bold on supported terminals; plain fallback remains available and --watch rejects JSON/keys-only/XML/quiet/automation combinations",
+		Notes:     "watch refreshes log a timestamped INFO summary; trailing row markers; and selective bold on supported terminals; plain fallback remains available and --watch rejects JSON/keys-only/XML/quiet/automation combinations",
 	})
 	require.Contains(t, capability.OutputModes, OutputModeContract{
 		Name:             "json",

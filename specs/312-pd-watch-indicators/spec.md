@@ -25,7 +25,7 @@ As an operator watching a long process-definition list, I want changed and newly
 3. **Given** a successful baseline, **When** a previously absent key appears, **Then** its row has `+` and contributes exactly one to the new count, without also counting as updated.
 4. **Given** a successful baseline, **When** a key disappears from the next successful result, **Then** its row is absent and the summary counts it as removed.
 5. **Given** unchanged definitions returned in a different order or with different alignment caused by another row, **When** the view refreshes, **Then** no false changes are marked and existing stable row ordering is preserved.
-6. **Given** one updated, one new, and no removed definitions, **When** the list is displayed, **Then** the summary above it reads `Changes: 1 updated, 1 new, 0 removed   (* changed, + new)`.
+6. **Given** one updated, one new, and no removed definitions, **When** the list is displayed, **Then** the summary above it reads `HH:MM:SS.mmm INFO 1 updated, 1 new, 0 removed`.
 7. **Given** rows marked on a previous refresh, **When** the next successful refresh has the same displayed values and keys, **Then** all markers clear and all change counts are zero.
 
 8. **Given** an established baseline, **When** one or more refreshes fail and a later refresh succeeds, **Then** markers and counts compare the recovered result with that baseline, ignoring failed or partial results.
@@ -43,7 +43,7 @@ As an operator, I want a compact, self-explanatory watch view that highlights ch
 **Acceptance Scenarios**:
 
 1. **Given** an existing row with changed displayed values and terminal styling available, **When** it is rendered, **Then** changed values are bold and the row retains its `*` marker; unchanged values are not newly highlighted.
-2. **Given** styling unavailable or disabled by existing behavior, **When** changes are rendered, **Then** the fixed marker column and summary convey the same classifications and counts without bold styling.
+2. **Given** styling unavailable or disabled by existing behavior, **When** changes are rendered, **Then** the trailing markers and timestamped summary convey the same classifications and counts without bold styling.
 3. **Given** ordinary `get pd` use, **When** any supported output mode is selected, **Then** its existing output is preserved without watch markers or the change summary.
 4. **Given** an operator consulting command documentation, **When** they read the watch guidance, **Then** it explains markers, bold values, summary counts, first-refresh behavior, and comparison with the previous successful refresh without requiring additional flags.
 
@@ -61,11 +61,11 @@ As an operator, I want a compact, self-explanatory watch view that highlights ch
 
 ### Functional Requirements
 
-- **FR-001**: Watch output MUST reserve a fixed marker column for every current definition: `*` for an existing key with changed displayed values, `+` for a key absent from the preceding successful refresh, and blank otherwise.
+- **FR-001**: Watch output MUST append a marker after the last displayed value: `*` for an existing key with changed displayed values, `+` for a key absent from the preceding successful refresh, and no suffix otherwise.
 - **FR-002**: The first successful refresh of each watch session MUST establish the baseline with blank markers and zero change counts, including when the result is empty.
 - **FR-003**: Comparisons MUST match definitions by key and compare displayed values independently of row position, padding, alignment, and styling. Changes to undisplayed information MUST NOT produce indicators.
 - **FR-004**: The watch view MUST preserve existing stable row ordering; change categories MUST NOT reorder rows.
-- **FR-005**: Each successful refresh MUST show a compact summary above the list in the form `Changes: <updated> updated, <new> new, <removed> removed   (* changed, + new)`. Counts MUST represent definitions, with new and updated categories mutually exclusive.
+- **FR-005**: Each successful refresh MUST log a timestamped INFO summary to configured stderr after repaint and before the rows on stdout in the form `HH:MM:SS.mmm INFO <updated> updated, <new> new, <removed> removed`. Counts MUST represent definitions, with new and updated categories mutually exclusive.
 - **FR-006**: Removed definitions MUST contribute to the summary but MUST NOT remain as stale rows in the current list.
 - **FR-007**: Markers, highlights, and counts MUST describe only changes since the preceding successful refresh. An unchanged successful refresh MUST clear prior indicators and report zero counts.
 - **FR-008**: Failed or incomplete refreshes MUST NOT replace the baseline or report changes derived from partial results. Existing failure handling and retry behavior MUST remain intact.
@@ -78,7 +78,7 @@ As an operator, I want a compact, self-explanatory watch view that highlights ch
 
 - **Displayed definition**: A process definition identified by its key and the values currently visible to the operator, including optional displayed statistics.
 - **Successful refresh baseline**: The most recent complete successful result in the current watch session, including an empty result, against which the next successful result is compared.
-- **Refresh change summary**: Counts of updated, new, and removed definitions for one comparison, accompanied by the marker legend.
+- **Refresh change summary**: Counts of updated, new, and removed definitions for one comparison, without an inline marker legend.
 
 ## Success Criteria *(mandatory)*
 
@@ -97,5 +97,5 @@ As an operator, I want a compact, self-explanatory watch view that highlights ch
 - Displayed values mean the information already shown in process-definition rows, including optional statistics. Adding new business fields is outside scope.
 - New rows use `+` as their indicator; bold value highlighting is reserved for changed values of keys present in both compared successful results.
 - A disappeared optional value is indicated by the row marker and updated count even when no replacement value exists to render in bold.
-- The zero-count summary and legend remain visible on baseline and unchanged successful refreshes, including empty results.
+- The zero-count summary remains visible on baseline and unchanged successful refreshes, including empty results.
 - Indicators represent changes in the watched result, not proof of deployment or deletion in the underlying environment. Persistent history, notifications, additional watch modes, and configurable highlight timing are outside scope.

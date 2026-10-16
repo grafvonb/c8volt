@@ -12,7 +12,7 @@ Started: 2026-10-16T14:34:26Z
 
 ## Decisions
 
-- Plain US1 output always renders the exact change summary, a fixed two-character marker prefix, existing aligned rows, and the existing `found: N` footer.
+- Watch output writes a timestamped plain-time INFO summary to configured stderr after repaint, then aligned rows with optional trailing markers and `found: N` to stdout. No `Changes:` label or leading marker column remains.
 - `processDefinitionChangedFields` already preserves individual visible-value identity for T002; new rows have no changed-field mask and must not be bolded.
 - Bold spans are watch-only and limited to replacement values on `*` rows; markers, labels, brackets, padding, new rows, summary, and footer remain unstyled.
 
@@ -32,7 +32,7 @@ Started: 2026-10-16T14:34:26Z
 
 ## Do Not Repeat
 
-- Do not restore watch/list byte parity: watch intentionally wraps unchanged ordinary row content with the summary and marker column.
+- Do not restore watch/list byte parity: watch intentionally wraps unchanged ordinary row content with the summary and trailing marker.
 - Do not retain `ProcessDefinition` or statistics pointers in the baseline; fixtures and callers may reuse and mutate them.
 
 ## Current Handoff
