@@ -16,7 +16,7 @@ Existing watch infrastructure and test harnesses are sufficient. No standalone s
 
 **Independent test**: Execute baseline → update/add → unchanged/reordered → partial failure(s) → recovery/removal → empty → unchanged empty → reappearance. Assert exact markers, counts, rows, footer, and preserved ordinary output.
 
-- [ ] T001 [US1] Implement complete plain watch indicators and baseline handling in `cmd/get_processdefinition_watch.go` and `cmd/cmd_views_processdefinition.go`, with lifecycle and view tests in `cmd/get_processdefinition_watch_test.go` and `cmd/cmd_views_processdefinition_test.go`; update `cmd/get_processdefinition.go` and `README.md`, regenerate docs with `make docs-content`, and complete the validation below.
+- [x] T001 [US1] Implement complete plain watch indicators and baseline handling in `cmd/get_processdefinition_watch.go` and `cmd/cmd_views_processdefinition.go`, with lifecycle and view tests in `cmd/get_processdefinition_watch_test.go` and `cmd/cmd_views_processdefinition_test.go`; update `cmd/get_processdefinition.go` and `README.md`, regenerate docs with `make docs-content`, and complete the validation below.
 
 Implementation:
 

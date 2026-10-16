@@ -149,33 +149,144 @@ func TestListProcessDefinitionsView_PreservesCanonicalKeyOrderAcrossRenderers(t 
 	t.Run("watch", func(t *testing.T) {
 		resetViewModeFlags(t)
 		cmd := newGetViewTestCommand("process-definition")
+		candidate := (processDefinitionWatchBaseline{}).candidate(resp.Items)
 
-		require.NoError(t, processDefinitionWatchView(cmd, process.ProcessDefinitionWatchSnapshot{
-			Items: resp.Items,
-			Total: resp.Total,
-		}))
+		require.NoError(t, processDefinitionWatchView(cmd, candidate))
 
 		require.Equal(t, want, processDefinitionKeysFromHumanOutput(cmd.OutOrStdout().(*bytes.Buffer).String()))
 	})
 }
 
-// TestProcessDefinitionWatchView_UsesListRenderingParity verifies watch refresh
-// bodies stay byte-for-byte aligned with ordinary process-definition lists.
-func TestProcessDefinitionWatchView_UsesListRenderingParity(t *testing.T) {
+// TestProcessDefinitionWatchView_AddsContractAroundOrdinaryRows verifies watch
+// markers and summary wrap unchanged aligned process-definition row content.
+func TestProcessDefinitionWatchView_AddsContractAroundOrdinaryRows(t *testing.T) {
 	resetViewModeFlags(t)
 	resp := processDefinitionRendererFixture()
 	watchCmd := newGetViewTestCommand("process-definition")
 	listCmd := newGetViewTestCommand("process-definition")
 
-	err := processDefinitionWatchView(watchCmd, process.ProcessDefinitionWatchSnapshot{
-		Items: resp.Items,
-		Total: resp.Total,
-	})
+	err := processDefinitionWatchView(watchCmd, (processDefinitionWatchBaseline{}).candidate(resp.Items))
 	require.NoError(t, err)
 	err = listProcessDefinitionsView(listCmd, resp)
 	require.NoError(t, err)
 
-	require.Equal(t, listCmd.OutOrStdout().(*bytes.Buffer).String(), watchCmd.OutOrStdout().(*bytes.Buffer).String())
+	watchOutput := watchCmd.OutOrStdout().(*bytes.Buffer).String()
+	listLines := strings.Split(strings.TrimSuffix(listCmd.OutOrStdout().(*bytes.Buffer).String(), "\n"), "\n")
+	expected := "Changes: 0 updated, 0 new, 0 removed   (* changed, + new)\n"
+	for _, line := range listLines[:len(listLines)-1] {
+		expected += "  " + line + "\n"
+	}
+	expected += listLines[len(listLines)-1] + "\n"
+	require.Equal(t, expected, watchOutput)
+}
+
+// TestProcessDefinitionWatchCandidate_ClassifiesDisplayedChanges verifies key
+// matching, exclusive categories, removals, ordering, and display-only identity.
+func TestProcessDefinitionWatchCandidate_ClassifiesDisplayedChanges(t *testing.T) {
+	baselineItems := []process.ProcessDefinition{
+		{Key: "a", TenantId: "tenant", BpmnProcessId: "invoice", ProcessVersion: 1, Statistics: &process.ProcessDefinitionStatistics{Active: 1}},
+		{Key: "b", TenantId: "tenant", BpmnProcessId: "order", ProcessVersion: 1},
+		{Key: "removed", TenantId: "tenant", BpmnProcessId: "gone", ProcessVersion: 1},
+	}
+	baseline := processDefinitionWatchBaseline{}
+	first := baseline.candidate(baselineItems)
+	baseline.commit(first)
+
+	current := []process.ProcessDefinition{
+		{Key: "b", TenantId: "tenant", BpmnProcessId: "order", ProcessVersion: 1},
+		{Key: "a", TenantId: "tenant", BpmnProcessId: "invoice", ProcessVersion: 1, Statistics: &process.ProcessDefinitionStatistics{Active: 2, Completed: 3}},
+		{Key: "new", TenantId: "tenant", BpmnProcessId: "wide-neighbor", ProcessVersion: 1},
+	}
+	candidate := baseline.candidate(current)
+
+	require.Equal(t, 1, candidate.updated)
+	require.Equal(t, 1, candidate.new)
+	require.Equal(t, 1, candidate.removed)
+	require.Equal(t, []byte{' ', '*', '+'}, []byte{candidate.rows[0].marker, candidate.rows[1].marker, candidate.rows[2].marker})
+	require.True(t, candidate.rows[1].changed.active)
+	require.True(t, candidate.rows[1].changed.completed)
+}
+
+// TestProcessDefinitionWatchCandidate_IgnoresUndisplayedAndOwnsBaselineValues
+// guards against whole-model comparison and mutable statistics pointer reuse.
+func TestProcessDefinitionWatchCandidate_IgnoresUndisplayedAndOwnsBaselineValues(t *testing.T) {
+	stats := &process.ProcessDefinitionStatistics{Active: 1, Incidents: 9, IncidentCountSupported: false}
+	item := process.ProcessDefinition{Key: "a", TenantId: "tenant", BpmnProcessId: "invoice", ProcessVersion: 1, Statistics: stats}
+	baseline := processDefinitionWatchBaseline{}
+	baseline.commit(baseline.candidate([]process.ProcessDefinition{item}))
+
+	stats.Active = 2
+	stats.Incidents = 10
+	candidate := baseline.candidate([]process.ProcessDefinition{item})
+	require.Equal(t, 1, candidate.updated, "owned active token must retain the prior value")
+	require.True(t, candidate.rows[0].changed.active)
+	require.False(t, candidate.rows[0].changed.incidents, "unsupported incident values are not displayed")
+}
+
+// TestProcessDefinitionWatchCandidate_TracksEmptyBaselines verifies successful
+// empty results remain initialized and make later definitions new.
+func TestProcessDefinitionWatchCandidate_TracksEmptyBaselines(t *testing.T) {
+	baseline := processDefinitionWatchBaseline{}
+	empty := baseline.candidate(nil)
+	baseline.commit(empty)
+
+	added := baseline.candidate([]process.ProcessDefinition{{Key: "a", TenantId: "tenant", BpmnProcessId: "invoice", ProcessVersion: 1}})
+	require.Equal(t, 1, added.new)
+	require.Equal(t, byte('+'), added.rows[0].marker)
+	baseline.commit(added)
+
+	removed := baseline.candidate(nil)
+	require.Equal(t, 1, removed.removed)
+	baseline.commit(removed)
+	require.Zero(t, baseline.candidate(nil).removed)
+}
+
+// TestProcessDefinitionWatchCandidate_TracksOptionalDisplayTransitions verifies
+// optional statistics and supported incident tokens participate in identity.
+func TestProcessDefinitionWatchCandidate_TracksOptionalDisplayTransitions(t *testing.T) {
+	base := process.ProcessDefinition{Key: "a", TenantId: "tenant", BpmnProcessId: "invoice", ProcessVersion: 1}
+	baseline := processDefinitionWatchBaseline{}
+	baseline.commit(baseline.candidate([]process.ProcessDefinition{base}))
+
+	withStats := base
+	withStats.Statistics = &process.ProcessDefinitionStatistics{}
+	appeared := baseline.candidate([]process.ProcessDefinition{withStats})
+	require.Equal(t, 1, appeared.updated)
+	require.True(t, appeared.rows[0].changed.statisticsPresent)
+	baseline.commit(appeared)
+
+	withActive := withStats
+	withActive.Statistics = &process.ProcessDefinitionStatistics{Active: 3}
+	zeroTransition := baseline.candidate([]process.ProcessDefinition{withActive})
+	require.Equal(t, 1, zeroTransition.updated)
+	require.True(t, zeroTransition.rows[0].changed.active)
+	baseline.commit(zeroTransition)
+
+	withIncident := withActive
+	withIncident.Statistics = &process.ProcessDefinitionStatistics{IncidentCountSupported: true}
+	supported := baseline.candidate([]process.ProcessDefinition{withIncident})
+	require.Equal(t, 1, supported.updated)
+	require.True(t, supported.rows[0].changed.incidentCountSupported)
+	baseline.commit(supported)
+
+	withoutStats := baseline.candidate([]process.ProcessDefinition{base})
+	require.Equal(t, 1, withoutStats.updated)
+	require.True(t, withoutStats.rows[0].changed.statisticsPresent)
+}
+
+// TestProcessDefinitionWatchCandidate_IgnoresUndisplayedNameAndResetsPerSession
+// proves metadata changes and another invocation's history cannot mark rows.
+func TestProcessDefinitionWatchCandidate_IgnoresUndisplayedNameAndResetsPerSession(t *testing.T) {
+	item := process.ProcessDefinition{Key: "a", Name: "old", TenantId: "tenant", BpmnProcessId: "invoice", ProcessVersion: 1}
+	firstSession := processDefinitionWatchBaseline{}
+	firstSession.commit(firstSession.candidate([]process.ProcessDefinition{item}))
+	item.Name = "new"
+	require.Zero(t, firstSession.candidate([]process.ProcessDefinition{item}).updated)
+
+	secondSession := processDefinitionWatchBaseline{}
+	firstRefresh := secondSession.candidate([]process.ProcessDefinition{item})
+	require.Zero(t, firstRefresh.updated)
+	require.Equal(t, byte(' '), firstRefresh.rows[0].marker)
 }
 
 // processDefinitionRendererFixture keeps renderer tests on one stable canonical
@@ -241,10 +352,13 @@ func processDefinitionRendererFixtureKeys(resp process.ProcessDefinitions) []str
 func processDefinitionKeysFromHumanOutput(output string) []string {
 	var keys []string
 	for _, line := range strings.Split(strings.TrimSpace(output), "\n") {
-		if line == "" || strings.HasPrefix(line, "found:") {
+		if line == "" || strings.HasPrefix(line, "found:") || strings.HasPrefix(line, "Changes:") {
 			continue
 		}
 		fields := strings.Fields(line)
+		if len(fields) > 1 && (fields[0] == "*" || fields[0] == "+") {
+			fields = fields[1:]
+		}
 		if len(fields) > 0 {
 			keys = append(keys, fields[0])
 		}
