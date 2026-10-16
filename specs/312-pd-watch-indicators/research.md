@@ -34,7 +34,7 @@
 
 **Evidence**: No general bold/color policy exists in `cmd` or `toolx`. `toolx/logging/activity.go` detects terminal capability on its actual writer. Watch repaint in `cmd/cmd_views_rendermode.go` currently emits ANSI unconditionally; it is separate from this feature's bold text.
 
-**Rationale**: Actual output-writer capability avoids assuming terminal stdin means terminal stdout. Conservative fallback preserves meaningful plain markers. Calculate widths and padding from plain cells, then decorate only changed visible tokens; keep padding and adjacent fields outside bold spans. Prefix each formatted row with a one-character marker plus one space, including two leading spaces for unchanged rows.
+**Rationale**: Actual output-writer capability avoids assuming terminal stdin means terminal stdout. Conservative fallback preserves meaningful plain markers. Calculate widths and padding from plain cells, then decorate only changed visible tokens; keep padding and adjacent fields outside bold spans. Append one space and the marker after each changed or new row; unchanged rows have no suffix.
 
 **Alternatives considered**: Unconditional bold contaminates captured output. Injecting escape sequences before `formatFlatRows` corrupts width calculations. Changing shared formatting to be ANSI-aware expands the regression surface unnecessarily.
 
@@ -55,3 +55,9 @@
 **Alternatives considered**: Live deployment/deletion tests are slow and unnecessary for deterministic presentation comparisons. Renderer-only tests cannot prove that failed refreshes retain the baseline.
 
 All planning questions are resolved; no external library or backend API changes are required.
+
+## Follow-up: Trailing markers and timestamped refresh log
+
+**Decision**: Apply the user-approved output revision: append ` *` or ` +` to rows, leave unchanged rows without suffixes, and send the summary without a `Changes:` label to configured stderr after repaint and before stdout rows. Emit it on every successful collection, including zero changes.
+
+**Rationale**: The key stays first and the existing plain-time log timestamp (`HH:MM:SS.mmm INFO`) makes refresh cadence visible. Reuse `logging.NewPlainHandler` directly with a timestamped record so logging retains error propagation; `slog.Logger.Info` alone would discard write errors. This presentation status always appears during watch regardless of application log-level filtering. Baseline commitment still waits for all writes to succeed.

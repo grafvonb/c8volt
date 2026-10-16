@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/grafvonb/c8volt/c8volt/process"
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 )
 
@@ -148,7 +149,7 @@ func TestListProcessDefinitionsView_PreservesCanonicalKeyOrderAcrossRenderers(t 
 
 	t.Run("watch", func(t *testing.T) {
 		resetViewModeFlags(t)
-		cmd := newGetViewTestCommand("process-definition")
+		cmd := newProcessDefinitionViewTestCommand("process-definition")
 		candidate := (processDefinitionWatchBaseline{}).candidate(resp.Items)
 
 		require.NoError(t, processDefinitionWatchView(cmd, candidate, false))
@@ -158,11 +159,11 @@ func TestListProcessDefinitionsView_PreservesCanonicalKeyOrderAcrossRenderers(t 
 }
 
 // TestProcessDefinitionWatchView_AddsContractAroundOrdinaryRows verifies watch
-// markers and summary wrap unchanged aligned process-definition row content.
+// unchanged rows retain ordinary output while the timestamped summary uses stderr.
 func TestProcessDefinitionWatchView_AddsContractAroundOrdinaryRows(t *testing.T) {
 	resetViewModeFlags(t)
 	resp := processDefinitionRendererFixture()
-	watchCmd := newGetViewTestCommand("process-definition")
+	watchCmd := newProcessDefinitionViewTestCommand("process-definition")
 	listCmd := newGetViewTestCommand("process-definition")
 
 	err := processDefinitionWatchView(watchCmd, (processDefinitionWatchBaseline{}).candidate(resp.Items), false)
@@ -171,13 +172,8 @@ func TestProcessDefinitionWatchView_AddsContractAroundOrdinaryRows(t *testing.T)
 	require.NoError(t, err)
 
 	watchOutput := watchCmd.OutOrStdout().(*bytes.Buffer).String()
-	listLines := strings.Split(strings.TrimSuffix(listCmd.OutOrStdout().(*bytes.Buffer).String(), "\n"), "\n")
-	expected := "Changes: 0 updated, 0 new, 0 removed   (* changed, + new)\n"
-	for _, line := range listLines[:len(listLines)-1] {
-		expected += "  " + line + "\n"
-	}
-	expected += listLines[len(listLines)-1] + "\n"
-	require.Equal(t, expected, watchOutput)
+	require.Equal(t, listCmd.OutOrStdout().(*bytes.Buffer).String(), watchOutput)
+	require.Regexp(t, `^\d{2}:\d{2}:\d{2}\.\d{3} INFO 0 updated, 0 new, 0 removed\n$`, watchCmd.ErrOrStderr().(*bytes.Buffer).String())
 }
 
 // TestProcessDefinitionWatchView_BoldsOnlyChangedVisibleValues verifies ANSI
@@ -222,17 +218,17 @@ func TestProcessDefinitionWatchView_BoldsOnlyChangedVisibleValues(t *testing.T) 
 	baseline.commit(baseline.candidate(baselineItems))
 	candidate := baseline.candidate(currentItems)
 
-	plainCmd := newGetViewTestCommand("process-definition")
-	styledCmd := newGetViewTestCommand("process-definition")
+	plainCmd := newProcessDefinitionViewTestCommand("process-definition")
+	styledCmd := newProcessDefinitionViewTestCommand("process-definition")
 	require.NoError(t, processDefinitionWatchView(plainCmd, candidate, false))
 	require.NoError(t, processDefinitionWatchView(styledCmd, candidate, true))
 
 	plain := plainCmd.OutOrStdout().(*bytes.Buffer).String()
 	styled := styledCmd.OutOrStdout().(*bytes.Buffer).String()
 	require.Equal(t, plain, strings.NewReplacer("\x1b[1m", "", "\x1b[0m", "").Replace(styled))
-	require.Contains(t, styled, "* 1 \x1b[1mnew\x1b[0m         \x1b[1minvoice-new\x1b[0m \x1b[1mv2/stable\x1b[0m [ac:\x1b[1m4\x1b[0m cp:2 cx:\x1b[1m-\x1b[0m inc:\x1b[1m1\x1b[0m]\n")
-	require.Contains(t, styled, "  2 tenant-wide order       v1\n")
-	require.Contains(t, styled, "+ 3 fresh       newbie      v1\n")
+	require.Contains(t, styled, "1 \x1b[1mnew\x1b[0m         \x1b[1minvoice-new\x1b[0m \x1b[1mv2/stable\x1b[0m [ac:\x1b[1m4\x1b[0m cp:2 cx:\x1b[1m-\x1b[0m inc:\x1b[1m1\x1b[0m] *\n")
+	require.Contains(t, styled, "2 tenant-wide order       v1\n")
+	require.Contains(t, styled, "3 fresh       newbie      v1 +\n")
 	require.NotContains(t, styled, "\x1b[1mcp:2")
 	require.NotContains(t, styled, "+ \x1b[1m")
 }
@@ -247,21 +243,21 @@ func TestProcessDefinitionWatchView_StylesOptionalTransitionsAndClears(t *testin
 	withStats := item
 	withStats.Statistics = &process.ProcessDefinitionStatistics{IncidentCountSupported: true}
 	appeared := baseline.candidate([]process.ProcessDefinition{withStats})
-	appearedCmd := newGetViewTestCommand("process-definition")
+	appearedCmd := newProcessDefinitionViewTestCommand("process-definition")
 	require.NoError(t, processDefinitionWatchView(appearedCmd, appeared, true))
 	require.Contains(t, appearedCmd.OutOrStdout().(*bytes.Buffer).String(), "[ac:\x1b[1m-\x1b[0m cp:\x1b[1m-\x1b[0m cx:\x1b[1m-\x1b[0m inc:\x1b[1m-\x1b[0m]")
 
 	baseline.commit(appeared)
 	cleared := baseline.candidate([]process.ProcessDefinition{withStats})
-	clearedCmd := newGetViewTestCommand("process-definition")
+	clearedCmd := newProcessDefinitionViewTestCommand("process-definition")
 	require.NoError(t, processDefinitionWatchView(clearedCmd, cleared, true))
 	require.NotContains(t, clearedCmd.OutOrStdout().(*bytes.Buffer).String(), "\x1b[")
 
 	baseline.commit(cleared)
 	removed := baseline.candidate([]process.ProcessDefinition{item})
-	removedCmd := newGetViewTestCommand("process-definition")
+	removedCmd := newProcessDefinitionViewTestCommand("process-definition")
 	require.NoError(t, processDefinitionWatchView(removedCmd, removed, true))
-	require.Contains(t, removedCmd.OutOrStdout().(*bytes.Buffer).String(), "* 1 tenant invoice v1\n")
+	require.Contains(t, removedCmd.OutOrStdout().(*bytes.Buffer).String(), "1 tenant invoice v1 *\n")
 	require.NotContains(t, removedCmd.OutOrStdout().(*bytes.Buffer).String(), "\x1b[")
 }
 
@@ -437,13 +433,10 @@ func processDefinitionRendererFixtureKeys(resp process.ProcessDefinitions) []str
 func processDefinitionKeysFromHumanOutput(output string) []string {
 	var keys []string
 	for _, line := range strings.Split(strings.TrimSpace(output), "\n") {
-		if line == "" || strings.HasPrefix(line, "found:") || strings.HasPrefix(line, "Changes:") {
+		if line == "" || strings.HasPrefix(line, "found:") {
 			continue
 		}
 		fields := strings.Fields(line)
-		if len(fields) > 1 && (fields[0] == "*" || fields[0] == "+") {
-			fields = fields[1:]
-		}
 		if len(fields) > 0 {
 			keys = append(keys, fields[0])
 		}
@@ -479,4 +472,11 @@ func processDefinitionKeysFromKeysOnlyOutput(output string) []string {
 		}
 	}
 	return keys
+}
+
+// newProcessDefinitionViewTestCommand captures result and log streams separately.
+func newProcessDefinitionViewTestCommand(use string) *cobra.Command {
+	cmd := newGetViewTestCommand(use)
+	cmd.SetErr(&bytes.Buffer{})
+	return cmd
 }

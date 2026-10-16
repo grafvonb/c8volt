@@ -4,21 +4,21 @@
 
 Existing aliases, selectors, refresh interval, retries, timeout, and termination behavior remain unchanged. No flag is added. Existing rejection of `--json`, `--keys-only`, `--xml`, `--quiet`, and `--automation` with watch remains unchanged. Ordinary `get pd` output is unchanged in all modes. This feature does not add terminal eligibility restrictions.
 
-## Successful refresh body on stdout
+## Successful refresh on the terminal
 
 After existing repaint controls, render:
 
 ```text
-Changes: 1 updated, 1 new, 0 removed   (* changed, + new)
-* <existing definition with changed values>
-+ <new definition>
-  <unchanged definition>
+16:42:08.123 INFO 1 updated, 1 new, 0 removed
+<existing definition with changed values> *
+<new definition> +
+<unchanged definition>
 found: 3
 ```
 
-Angle-bracket descriptions illustrate existing row content, not literal output. Each actual row starts with exactly one marker character and one separating space; unchanged rows start with two spaces. Retain the existing aligned PD fields, canonical order, and `found: N` footer. Do not sort by marker or show removed rows.
+Angle-bracket descriptions illustrate existing row content, not literal output. Each changed/new row ends with one separating space and its marker after the last displayed value. Unchanged rows have no suffix or added trailing spaces. Retain the existing aligned PD fields, canonical order, and `found: N` footer. Do not sort by marker or show removed rows.
 
-The summary is exactly one line above rows, including the legend and three spaces before `(* changed, + new)`. On the first successful refresh, all markers are blank and all change counts are zero. An empty successful refresh still prints the summary and `found: 0`.
+The summary is one timestamped INFO log line on configured stderr after repaint and before rows, using the existing `HH:MM:SS.mmm` plain-time logging format on every successful refresh. It ends after the removed count, with no marker legend or trailing spaces. Marker meanings remain documented in command help. On the first successful refresh, all markers are blank and all change counts are zero. An empty successful refresh still prints the summary and `found: 0`.
 
 ## Comparison semantics
 
@@ -32,7 +32,7 @@ With bold unavailable, no bold controls are emitted. Existing repaint controls a
 
 ## Streams and failures
 
-The summary, rows, and footer belong on configured stdout. Existing retries, slow-refresh warnings, verbose status, and stop diagnostics stay on configured stderr. No confirmation is introduced. Collection failure produces no candidate view; repaint/view failure is returned and does not commit the baseline. Partial collection results never imply removals.
+The timestamped INFO summary belongs on configured stderr; rows and footer belong on configured stdout. There is no `Changes:` label. Reuse the plain logging handler and propagate write errors so failed log output cannot advance the baseline. Existing retries, slow-refresh warnings, verbose status, and stop diagnostics stay on configured stderr. No confirmation is introduced. Collection failure produces no candidate view; repaint/view failure is returned and does not commit the baseline. Partial collection results never imply removals.
 
 ## Documentation
 

@@ -40,7 +40,7 @@ go build -o /tmp/c8volt-312 .
 /tmp/c8volt-312 get pd --watch --watch-interval 2s
 ```
 
-The first refresh shows zero counts, blank marker prefixes, and the existing footer. Stop with Ctrl-C. If normal environment activity changes displayed values during the session, verify `*` and bold on changed values, `+` for new keys, and removed counts without stale rows. An unchanged successful refresh clears indicators. Deterministic automated fixtures above remain the authoritative proof when the live environment is idle.
+The first refresh shows zero counts, no marker suffixes, and the existing footer. Stop with Ctrl-C. If normal environment activity changes displayed values during the session, verify `*` and bold on changed values, `+` for new keys, and removed counts without stale rows. An unchanged successful refresh clears indicators. Deterministic automated fixtures above remain the authoritative proof when the live environment is idle.
 
 Repeat with bold disabled:
 
@@ -48,7 +48,7 @@ Repeat with bold disabled:
 NO_COLOR=1 /tmp/c8volt-312 get pd --watch --watch-interval 2s
 ```
 
-Markers and counts remain readable without bold; existing repaint behavior remains. Compare ordinary `get pd`, `get pd --json`, and `get pd --keys-only` with their existing output contracts; no change summary or marker prefix is added.
+Markers and counts remain readable without bold; existing repaint behavior remains. Compare ordinary `get pd`, `get pd --json`, and `get pd --keys-only` with their existing output contracts; no change summary or marker suffix is added.
 
 ## Documentation and formatting
 
