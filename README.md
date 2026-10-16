@@ -140,6 +140,8 @@ To monitor deployment visibility, add `--watch`. It checks immediately and repea
 
 Watch runs until interrupted, timed out, or its retry budget is exhausted. It cannot be combined with `--json`, `--keys-only`, `--xml`, `--quiet`, or `--automation`.
 
+Each successful refresh starts with a summary such as `Changes: 1 updated, 1 new, 0 removed   (* changed, + new)`. A `*` marks an existing definition whose displayed values changed, while `+` marks a newly visible definition. The first successful refresh establishes an unmarked, zero-change baseline. Later refreshes compare with the previous successfully displayed result, so temporary failures do not consume changes; an unchanged success clears the markers. Removed definitions are counted in the summary and do not remain as stale rows.
+
 For scripts or CI, request JSON with `--json`:
 
 ```bash
