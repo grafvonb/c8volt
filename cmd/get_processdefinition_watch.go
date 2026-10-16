@@ -7,6 +7,8 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"os"
+	"strings"
 	"time"
 
 	"github.com/grafvonb/c8volt/c8volt"
@@ -14,6 +16,7 @@ import (
 	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/grafvonb/c8volt/toolx/watch"
 	"github.com/spf13/cobra"
+	"golang.org/x/term"
 )
 
 const defaultGetPDWatchInterval = time.Second
@@ -76,11 +79,25 @@ func renderProcessDefinitionWatchRefresh(cmd *cobra.Command, baseline *processDe
 	if err := renderTerminalRepaint(cmd); err != nil {
 		return err
 	}
-	if err := processDefinitionWatchView(cmd, candidate); err != nil {
+	if err := processDefinitionWatchView(cmd, candidate, processDefinitionWatchBoldEnabled(cmd)); err != nil {
 		return err
 	}
 	baseline.commit(candidate)
 	return nil
+}
+
+// processDefinitionWatchBoldEnabled applies the conservative watch styling
+// policy to the command's actual configured or inherited stdout destination.
+func processDefinitionWatchBoldEnabled(cmd *cobra.Command) bool {
+	if cmd == nil || os.Getenv("NO_COLOR") != "" {
+		return false
+	}
+	terminalName := strings.TrimSpace(os.Getenv("TERM"))
+	if terminalName == "" || strings.EqualFold(terminalName, "dumb") {
+		return false
+	}
+	writer, ok := cmd.OutOrStdout().(interface{ Fd() uintptr })
+	return ok && term.IsTerminal(int(writer.Fd()))
 }
 
 // processDefinitionWatchBaseline distinguishes an empty successful baseline
