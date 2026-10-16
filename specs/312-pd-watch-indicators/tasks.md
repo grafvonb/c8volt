@@ -46,7 +46,7 @@ Documentation and validation:
 
 **Independent test**: Compare styled and plain views for identical changes, verify individual changed spans and identical visible layout, and exercise actual configured terminal and nonterminal output writers.
 
-- [ ] T002 [US2] Add watch-only capability detection and selective bold rendering in `cmd/cmd_views_processdefinition.go`, with lifecycle wiring in `cmd/get_processdefinition_watch.go` only as needed; extend `cmd/cmd_views_processdefinition_test.go` and `cmd/get_processdefinition_watch_test.go` or a focused `cmd/get_processdefinition_watch_terminal_test.go`, complete guidance in `cmd/get_processdefinition.go` and `README.md`, regenerate docs with `make docs-content`, and complete the validation below.
+- [x] T002 [US2] Add watch-only capability detection and selective bold rendering in `cmd/cmd_views_processdefinition.go`, with lifecycle wiring in `cmd/get_processdefinition_watch.go` only as needed; extend `cmd/cmd_views_processdefinition_test.go` and `cmd/get_processdefinition_watch_test.go` or a focused `cmd/get_processdefinition_watch_terminal_test.go`, complete guidance in `cmd/get_processdefinition.go` and `README.md`, regenerate docs with `make docs-content`, and complete the validation below.
 
 Implementation and coverage:
 

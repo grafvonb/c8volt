@@ -151,7 +151,7 @@ func TestListProcessDefinitionsView_PreservesCanonicalKeyOrderAcrossRenderers(t 
 		cmd := newGetViewTestCommand("process-definition")
 		candidate := (processDefinitionWatchBaseline{}).candidate(resp.Items)
 
-		require.NoError(t, processDefinitionWatchView(cmd, candidate))
+		require.NoError(t, processDefinitionWatchView(cmd, candidate, false))
 
 		require.Equal(t, want, processDefinitionKeysFromHumanOutput(cmd.OutOrStdout().(*bytes.Buffer).String()))
 	})
@@ -165,7 +165,7 @@ func TestProcessDefinitionWatchView_AddsContractAroundOrdinaryRows(t *testing.T)
 	watchCmd := newGetViewTestCommand("process-definition")
 	listCmd := newGetViewTestCommand("process-definition")
 
-	err := processDefinitionWatchView(watchCmd, (processDefinitionWatchBaseline{}).candidate(resp.Items))
+	err := processDefinitionWatchView(watchCmd, (processDefinitionWatchBaseline{}).candidate(resp.Items), false)
 	require.NoError(t, err)
 	err = listProcessDefinitionsView(listCmd, resp)
 	require.NoError(t, err)
@@ -178,6 +178,91 @@ func TestProcessDefinitionWatchView_AddsContractAroundOrdinaryRows(t *testing.T)
 	}
 	expected += listLines[len(listLines)-1] + "\n"
 	require.Equal(t, expected, watchOutput)
+}
+
+// TestProcessDefinitionWatchView_BoldsOnlyChangedVisibleValues verifies ANSI
+// styling leaves alignment, labels, padding, unchanged values, and new rows intact.
+func TestProcessDefinitionWatchView_BoldsOnlyChangedVisibleValues(t *testing.T) {
+	baselineItems := []process.ProcessDefinition{
+		{
+			Key:               "1",
+			TenantId:          "old",
+			BpmnProcessId:     "invoice",
+			ProcessVersion:    1,
+			ProcessVersionTag: "draft",
+			Statistics: &process.ProcessDefinitionStatistics{
+				Active:                 0,
+				Completed:              2,
+				Canceled:               3,
+				Incidents:              0,
+				IncidentCountSupported: true,
+			},
+		},
+		{Key: "2", TenantId: "tenant-wide", BpmnProcessId: "order", ProcessVersion: 1},
+	}
+	currentItems := []process.ProcessDefinition{
+		{
+			Key:               "1",
+			TenantId:          "new",
+			BpmnProcessId:     "invoice-new",
+			ProcessVersion:    2,
+			ProcessVersionTag: "stable",
+			Statistics: &process.ProcessDefinitionStatistics{
+				Active:                 4,
+				Completed:              2,
+				Canceled:               0,
+				Incidents:              1,
+				IncidentCountSupported: true,
+			},
+		},
+		baselineItems[1],
+		{Key: "3", TenantId: "fresh", BpmnProcessId: "newbie", ProcessVersion: 1},
+	}
+	baseline := processDefinitionWatchBaseline{}
+	baseline.commit(baseline.candidate(baselineItems))
+	candidate := baseline.candidate(currentItems)
+
+	plainCmd := newGetViewTestCommand("process-definition")
+	styledCmd := newGetViewTestCommand("process-definition")
+	require.NoError(t, processDefinitionWatchView(plainCmd, candidate, false))
+	require.NoError(t, processDefinitionWatchView(styledCmd, candidate, true))
+
+	plain := plainCmd.OutOrStdout().(*bytes.Buffer).String()
+	styled := styledCmd.OutOrStdout().(*bytes.Buffer).String()
+	require.Equal(t, plain, strings.NewReplacer("\x1b[1m", "", "\x1b[0m", "").Replace(styled))
+	require.Contains(t, styled, "* 1 \x1b[1mnew\x1b[0m         \x1b[1minvoice-new\x1b[0m \x1b[1mv2/stable\x1b[0m [ac:\x1b[1m4\x1b[0m cp:2 cx:\x1b[1m-\x1b[0m inc:\x1b[1m1\x1b[0m]\n")
+	require.Contains(t, styled, "  2 tenant-wide order       v1\n")
+	require.Contains(t, styled, "+ 3 fresh       newbie      v1\n")
+	require.NotContains(t, styled, "\x1b[1mcp:2")
+	require.NotContains(t, styled, "+ \x1b[1m")
+}
+
+// TestProcessDefinitionWatchView_StylesOptionalTransitionsAndClears verifies
+// present replacement tokens are bold while removals and identical refreshes are not.
+func TestProcessDefinitionWatchView_StylesOptionalTransitionsAndClears(t *testing.T) {
+	item := process.ProcessDefinition{Key: "1", TenantId: "tenant", BpmnProcessId: "invoice", ProcessVersion: 1}
+	baseline := processDefinitionWatchBaseline{}
+	baseline.commit(baseline.candidate([]process.ProcessDefinition{item}))
+
+	withStats := item
+	withStats.Statistics = &process.ProcessDefinitionStatistics{IncidentCountSupported: true}
+	appeared := baseline.candidate([]process.ProcessDefinition{withStats})
+	appearedCmd := newGetViewTestCommand("process-definition")
+	require.NoError(t, processDefinitionWatchView(appearedCmd, appeared, true))
+	require.Contains(t, appearedCmd.OutOrStdout().(*bytes.Buffer).String(), "[ac:\x1b[1m-\x1b[0m cp:\x1b[1m-\x1b[0m cx:\x1b[1m-\x1b[0m inc:\x1b[1m-\x1b[0m]")
+
+	baseline.commit(appeared)
+	cleared := baseline.candidate([]process.ProcessDefinition{withStats})
+	clearedCmd := newGetViewTestCommand("process-definition")
+	require.NoError(t, processDefinitionWatchView(clearedCmd, cleared, true))
+	require.NotContains(t, clearedCmd.OutOrStdout().(*bytes.Buffer).String(), "\x1b[")
+
+	baseline.commit(cleared)
+	removed := baseline.candidate([]process.ProcessDefinition{item})
+	removedCmd := newGetViewTestCommand("process-definition")
+	require.NoError(t, processDefinitionWatchView(removedCmd, removed, true))
+	require.Contains(t, removedCmd.OutOrStdout().(*bytes.Buffer).String(), "* 1 tenant invoice v1\n")
+	require.NotContains(t, removedCmd.OutOrStdout().(*bytes.Buffer).String(), "\x1b[")
 }
 
 // TestProcessDefinitionWatchCandidate_ClassifiesDisplayedChanges verifies key

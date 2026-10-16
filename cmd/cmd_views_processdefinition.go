@@ -6,6 +6,7 @@ package cmd
 import (
 	"fmt"
 	"io"
+	"strings"
 
 	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/spf13/cobra"
@@ -74,9 +75,14 @@ type processDefinitionWatchCandidate struct {
 	nextByKey map[string]processDefinitionDisplay
 }
 
-// processDefinitionWatchView renders one complete plain refresh and returns
-// the first write failure so unseen candidates never become the baseline.
-func processDefinitionWatchView(cmd *cobra.Command, candidate processDefinitionWatchCandidate) error {
+const (
+	processDefinitionWatchBoldStart = "\x1b[1m"
+	processDefinitionWatchBoldReset = "\x1b[0m"
+)
+
+// processDefinitionWatchView renders one complete refresh and returns the
+// first write failure so unseen candidates never become the baseline.
+func processDefinitionWatchView(cmd *cobra.Command, candidate processDefinitionWatchCandidate, bold bool) error {
 	if cmd == nil {
 		return nil
 	}
@@ -84,16 +90,86 @@ func processDefinitionWatchView(cmd *cobra.Command, candidate processDefinitionW
 	if err := writeProcessDefinitionWatchLine(w, "Changes: %d updated, %d new, %d removed   (* changed, + new)", candidate.updated, candidate.new, candidate.removed); err != nil {
 		return err
 	}
-	plainRows := make([]flatRow, 0, len(candidate.rows))
-	for _, row := range candidate.rows {
-		plainRows = append(plainRows, row.display.flatRow())
-	}
-	for i, line := range formatFlatRows(plainRows) {
+	for i, line := range formatProcessDefinitionWatchRows(candidate.rows, bold) {
 		if err := writeProcessDefinitionWatchLine(w, "%c %s", candidate.rows[i].marker, line); err != nil {
 			return err
 		}
 	}
 	return writeProcessDefinitionWatchLine(w, "found: %d", len(candidate.rows))
+}
+
+// formatProcessDefinitionWatchRows computes alignment from plain values before
+// adding ANSI controls around the changed value spans of updated rows.
+func formatProcessDefinitionWatchRows(rows []processDefinitionWatchRow, bold bool) []string {
+	plainRows := make([]flatRow, 0, len(rows))
+	for _, row := range rows {
+		plainRows = append(plainRows, row.display.flatRow())
+	}
+	widths := flatColumnWidths(plainRows)
+	formatted := make([]string, 0, len(rows))
+	for rowIndex, row := range rows {
+		plainRow := plainRows[rowIndex]
+		parts := make([]string, 0, len(plainRow))
+		for columnIndex, plainColumn := range plainRow {
+			if widths[columnIndex] == 0 {
+				continue
+			}
+			part := formatProcessDefinitionWatchColumn(row, columnIndex, bold && row.marker == '*')
+			if hasVisibleColumnAfter(widths, columnIndex) {
+				part += strings.Repeat(" ", widths[columnIndex]-len(plainColumn))
+			}
+			parts = append(parts, part)
+		}
+		formatted = append(formatted, strings.TrimRight(strings.Join(parts, " "), " "))
+	}
+	return formatted
+}
+
+// formatProcessDefinitionWatchColumn decorates only semantic values; column
+// labels, brackets, separators, and alignment padding remain unstyled.
+func formatProcessDefinitionWatchColumn(row processDefinitionWatchRow, columnIndex int, bold bool) string {
+	display := row.display
+	switch columnIndex {
+	case 0:
+		return display.key
+	case 1:
+		return formatProcessDefinitionWatchValue(display.tenantID, bold && row.changed.tenantID)
+	case 2:
+		return formatProcessDefinitionWatchValue(display.bpmnProcessID, bold && row.changed.bpmnProcessID)
+	case 3:
+		return formatProcessDefinitionWatchValue(display.version, bold && row.changed.version)
+	case 4:
+		return formatProcessDefinitionWatchStatistics(display, row.changed, bold)
+	default:
+		return ""
+	}
+}
+
+// formatProcessDefinitionWatchStatistics keeps each statistic independently
+// stylable while leaving its compact labels and punctuation outside bold spans.
+func formatProcessDefinitionWatchStatistics(display processDefinitionDisplay, changed processDefinitionChangedFields, bold bool) string {
+	if !display.statisticsPresent {
+		return ""
+	}
+	incidentTag := ""
+	if display.incidentCountSupported {
+		incidentTag = fmt.Sprintf(" inc:%s", formatProcessDefinitionWatchValue(display.incidents, bold && changed.incidents))
+	}
+	return fmt.Sprintf("[ac:%s cp:%s cx:%s%s]",
+		formatProcessDefinitionWatchValue(display.active, bold && changed.active),
+		formatProcessDefinitionWatchValue(display.completed, bold && changed.completed),
+		formatProcessDefinitionWatchValue(display.canceled, bold && changed.canceled),
+		incidentTag,
+	)
+}
+
+// formatProcessDefinitionWatchValue wraps a nonempty changed value in the
+// minimal bold span so visible width and neighboring text remain unchanged.
+func formatProcessDefinitionWatchValue(value string, bold bool) string {
+	if !bold || value == "" {
+		return value
+	}
+	return processDefinitionWatchBoldStart + value + processDefinitionWatchBoldReset
 }
 
 // writeProcessDefinitionWatchLine keeps watch rendering fully error-aware.

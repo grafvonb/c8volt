@@ -6,7 +6,7 @@ nav_exclude: true
 has_toc: true
 ---
 
-> Generated from build `c8volt v4.3.4-142-g75597e97-dirty`, commit `75597e97`, built `2026-10-16T14:38:33Z` | Supported Camunda 8 versions: 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.3 (final)
+> Generated from build `c8volt v4.3.4-143-gc06bf517-dirty`, commit `c06bf517`, built `2026-10-16T14:47:34Z` | Supported Camunda 8 versions: 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.3 (final)
 
 <img src="./logo/c8volt_logo_transparent_w_shadow_400x244.png" alt="c8volt logo" />
 
@@ -148,7 +148,7 @@ To monitor deployment visibility, add `--watch`. It checks immediately and repea
 
 Watch runs until interrupted, timed out, or its retry budget is exhausted. It cannot be combined with `--json`, `--keys-only`, `--xml`, `--quiet`, or `--automation`.
 
-Each successful refresh starts with a summary such as `Changes: 1 updated, 1 new, 0 removed   (* changed, + new)`. A `*` marks an existing definition whose displayed values changed, while `+` marks a newly visible definition. The first successful refresh establishes an unmarked, zero-change baseline. Later refreshes compare with the previous successfully displayed result, so temporary failures do not consume changes; an unchanged success clears the markers. Removed definitions are counted in the summary and do not remain as stale rows.
+Each successful refresh starts with a summary such as `Changes: 1 updated, 1 new, 0 removed   (* changed, + new)`. A `*` marks an existing definition whose displayed values changed, while `+` marks a newly visible definition. When stdout is a terminal, `TERM` is neither empty nor `dumb`, and `NO_COLOR` is unset, the individual changed values on `*` rows are also bold; markers and counts provide the same information when output is redirected or styling is disabled. New rows are not bold. The first successful refresh establishes an unmarked, zero-change baseline. Later refreshes compare with the previous successfully displayed result, so temporary failures do not consume changes; an unchanged success clears the markers and bold. Removed definitions are counted in the summary and do not remain as stale rows.
 
 For scripts or CI, request JSON with `--json`:
 
