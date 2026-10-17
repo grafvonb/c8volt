@@ -16,7 +16,7 @@ Use a BPMN process ID for the latest version or a process-definition key for an 
 
 Creation uses the configured tenant, or the default tenant when none is configured. --all-tenants is not supported because creation requires one destination tenant.
 
-By default c8volt waits until created instances are observable as ACTIVE, COMPLETED, CANCELED, or TERMINATED.
+By default c8volt waits until created instances are observable as ACTIVE, SUSPENDED, COMPLETED, CANCELED, or TERMINATED. This confirms creation visibility, not execution completion. Use --no-wait to return after creation is accepted.
 
 ```
 c8volt run process-instance [flags]

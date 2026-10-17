@@ -37,10 +37,12 @@ func TestRunCommand_CommandLocalBackoffTimeoutFlagOverridesEnvProfileAndConfig(t
 	require.Equal(t, 44*time.Second, cfg.App.Backoff.Timeout)
 }
 
+// TestRunHelp_DocumentsWaitAndVerificationRouting distinguishes creation visibility from execution completion.
 func TestRunHelp_DocumentsWaitAndVerificationRouting(t *testing.T) {
 	output := assertCommandHelpOutput(t, []string{"run"}, []string{
 		"Start process instances",
-		"waits until created instances are observable",
+		"waits until created instances are observable as ACTIVE, SUSPENDED, COMPLETED, CANCELED, or TERMINATED",
+		"This confirms creation visibility, not execution completion",
 		"./c8volt run process-instance --bpmn-process-id <bpmn-process-id>",
 	}, nil)
 
@@ -48,7 +50,8 @@ func TestRunHelp_DocumentsWaitAndVerificationRouting(t *testing.T) {
 
 	output = assertCommandHelpOutput(t, []string{"run", "process-instance"}, []string{
 		"Use a BPMN process ID",
-		"waits until created instances are observable",
+		"waits until created instances are observable as ACTIVE, SUSPENDED, COMPLETED, CANCELED, or TERMINATED",
+		"This confirms creation visibility, not execution completion",
 		"--all-tenants is not supported because",
 		"./c8volt run process-instance --bpmn-process-id <bpmn-process-id> --count 3 --workers 2",
 		"./c8volt run process-instance --bpmn-process-id <bpmn-process-id> --keys-only | ./c8volt expect process-instance --state completed -",
@@ -1308,4 +1311,80 @@ func TestRunProcessInstanceCommand_ProfileFlagSelectsProfileTenantAndBaseURLHelp
 	root.SetOut(os.Stdout)
 	root.SetErr(os.Stderr)
 	_ = root.Execute()
+}
+
+// TestRunProcessInstanceCommand_SuspendedCreation confirms first-observed suspension through real adapters and keeps result streams truthful.
+func TestRunProcessInstanceCommand_SuspendedCreation(t *testing.T) {
+	for _, version := range []string{"8.8", "8.9", "8.10"} {
+		for _, mode := range []string{"human", "json", "keys", "no wait"} {
+			t.Run(version+"/"+mode, func(t *testing.T) {
+				var requests testx.SafeSlice[string]
+				srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					requests.Append(r.Method + " " + r.URL.Path)
+					w.Header().Set("Content-Type", "application/json")
+					switch {
+					case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances":
+						_, _ = io.WriteString(w, `{"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionVersion":1,"processInstanceKey":"123","tenantId":"<default>","variables":{}}`)
+					case r.Method == http.MethodGet && r.URL.Path == "/v2/process-instances/123":
+						_, _ = io.WriteString(w, `{"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionVersion":1,"processInstanceKey":"123","tenantId":"<default>","state":"SUSPENDED","startDate":"2026-10-17T10:00:00Z","hasIncident":false,"tags":[]}`)
+					default:
+						t.Errorf("unexpected request: %s %s", r.Method, r.URL.Path)
+						http.Error(w, "unexpected request", http.StatusBadRequest)
+					}
+				}))
+				t.Cleanup(srv.Close)
+				args := []string{"--config", writeTestConfigForVersion(t, srv.URL, version), "run", "process-instance", "--pd-key", "9001", "--backoff-max-retries", "1"}
+				switch mode {
+				case "json":
+					args = append(args, "--json", "--automation")
+				case "keys":
+					args = append(args, "--keys-only")
+				case "no wait":
+					args = append(args, "--json", "--no-wait")
+				}
+				stdout, stderr := executeRootForProcessInstanceWithSeparateOutputs(t, args...)
+				wantRequests := []string{"POST /v2/process-instances"}
+				if mode != "no wait" {
+					wantRequests = append(wantRequests, "GET /v2/process-instances/123")
+				}
+				require.Equal(t, wantRequests, requests.Snapshot())
+				require.NotContains(t, stdout, "COMPLETED")
+				require.NotContains(t, stderr, "state COMPLETED")
+				switch mode {
+				case "human":
+					require.Contains(t, stdout, "SUSPENDED")
+					require.Contains(t, stdout, "found: 1")
+					require.NotContains(t, stdout, "waiting for")
+				case "keys":
+					require.Equal(t, "123\n", stdout)
+				default:
+					decoder := json.NewDecoder(strings.NewReader(stdout))
+					var envelope map[string]any
+					require.NoError(t, decoder.Decode(&envelope))
+					var extra any
+					require.ErrorIs(t, decoder.Decode(&extra), io.EOF)
+					require.Equal(t, "run process-instance", envelope["command"])
+					wantOutcome := OutcomeSucceeded
+					if mode == "no wait" {
+						wantOutcome = OutcomeAccepted
+					}
+					require.Equal(t, string(wantOutcome), envelope["outcome"])
+					payload := requireJSONObject(t, envelope["payload"])
+					items, ok := payload["items"].([]any)
+					require.True(t, ok)
+					require.Len(t, items, 1)
+					item := requireJSONObject(t, items[0])
+					require.Equal(t, "123", item["key"])
+					require.NotContains(t, item, "endDate")
+					if mode == "no wait" {
+						require.NotContains(t, item, "state")
+						require.NotContains(t, item, "startConfirmedAt")
+					} else {
+						require.Equal(t, "SUSPENDED", item["state"])
+						require.Equal(t, "2026-10-17T10:00:00Z", item["startDate"])
+					}
+				}
+			})
+		}
+	}
 }

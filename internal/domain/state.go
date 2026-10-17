@@ -22,8 +22,10 @@ const (
 	StateUnknown    State = "UNKNOWN"
 )
 
+// observableProcessInstanceCreationStates proves presence, independently of execution completion.
 var observableProcessInstanceCreationStates = States{
 	StateActive,
+	StateSuspended,
 	StateCompleted,
 	StateCanceled,
 	StateTerminated,

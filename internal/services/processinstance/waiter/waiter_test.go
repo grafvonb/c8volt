@@ -1092,3 +1092,76 @@ func TestSuspendedStateWaits(t *testing.T) {
 		})
 	}
 }
+
+// TestWaitForProcessInstanceState_CreationVisibility separates proof of presence from completion and preserves bounded failures.
+func TestWaitForProcessInstanceState_CreationVisibility(t *testing.T) {
+	t.Parallel()
+	lookupErr := errors.New("lookup unavailable")
+	for _, tc := range []struct {
+		name         string
+		states       []d.State
+		lookupErr    error
+		terminalOnly bool
+		expired      bool
+		wantCalls    int
+		wantErr      string
+	}{
+		{name: "first suspended", states: []d.State{d.StateSuspended}, wantCalls: 1},
+		{name: "delayed suspended", states: []d.State{d.StateAbsent, d.StateSuspended}, wantCalls: 2},
+		{name: "unknown then suspended", states: []d.State{d.StateUnknown, d.StateSuspended}, wantCalls: 2},
+		{name: "terminal observation", states: []d.State{d.StateCompleted}, wantCalls: 1},
+		{name: "lookup error", lookupErr: lookupErr, wantCalls: 1, wantErr: "lookup unavailable"},
+		{name: "never visible", states: []d.State{d.StateAbsent}, wantCalls: 2, wantErr: "exceeded max_retries"},
+		{name: "suspended is not completion", states: []d.State{d.StateSuspended}, terminalOnly: true, wantCalls: 2, wantErr: "exceeded max_retries"},
+		{name: "expired deadline", expired: true, wantErr: "context deadline exceeded"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			calls := 0
+			lookup := stubPIWaiter{getStateByKey: func(_ context.Context, key string) (d.State, d.ProcessInstance, error) {
+				calls++
+				if tc.lookupErr != nil {
+					return d.StateUnknown, d.ProcessInstance{}, tc.lookupErr
+				}
+				state := tc.states[min(calls-1, len(tc.states)-1)]
+				if state == d.StateAbsent {
+					return d.StateUnknown, d.ProcessInstance{}, d.ErrNotFound
+				}
+				return state, d.ProcessInstance{Key: key, State: state}, nil
+			}}
+			ctx := context.Background()
+			if tc.expired {
+				var cancel context.CancelFunc
+				ctx, cancel = context.WithDeadline(ctx, time.Unix(1, 0))
+				defer cancel()
+			}
+			desired := d.ObservableProcessInstanceCreationStates()
+			if tc.terminalOnly {
+				desired = d.States{d.StateCompleted, d.StateCanceled, d.StateTerminated, d.StateAbsent}
+			}
+			// Zero delay and bounded attempts make responses, rather than elapsed time, drive this test.
+			got, pi, err := WaitForProcessInstanceState(ctx, lookup, testConfig(0, 2, 0), testLogger(), "123", desired)
+			require.Equal(t, tc.wantCalls, calls)
+			if tc.wantErr != "" {
+				require.ErrorContains(t, err, tc.wantErr)
+				require.False(t, got.Ok)
+				require.Equal(t, d.StateUnknown, got.State)
+				require.Empty(t, pi)
+				if tc.lookupErr != nil {
+					require.ErrorIs(t, err, lookupErr)
+				}
+				if tc.expired {
+					require.ErrorIs(t, err, context.DeadlineExceeded)
+				}
+				return
+			}
+			require.NoError(t, err)
+			require.True(t, got.Ok)
+			require.Equal(t, tc.states[len(tc.states)-1], got.State)
+			require.Equal(t, got.State, pi.State)
+			if got.State == d.StateSuspended {
+				require.False(t, pi.State.IsTerminal())
+			}
+		})
+	}
+}

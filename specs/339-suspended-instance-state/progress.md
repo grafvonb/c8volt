@@ -122,3 +122,39 @@ Started: 2026-10-17 13:26:30
 - Ran `GORACE=atexit_sleep_ms=0 go test ./cmd -race -count=1` to cover shared command flags, renderers, contracts and terminal helpers. It failed only on the stale slow-analysis help assertion in TestCommandContractOpsAnalyseSlowProcessInstances; all other tests passed with no reported races. Updated the assertion, then passed `GORACE=atexit_sleep_ms=0 go test ./cmd -race -run '^TestCommandContractOpsAnalyseSlowProcessInstances$' -count=1`. Successful unrelated tests were not repeated. No full repository runtime run was needed for this CLI-only unit; final integrated validation remains T006.
 - Passed `make docs-content`, touched-file gofmt verification, `git diff --check`, and Ralph record/structure checks. Reviewed generated references and README-derived homepage. Added no mode/lifecycle declarations; completion lives in a focused helper file. Generated clients and provenance are unchanged; live 8.10.4 validation was not attempted in this unit.
 ---
+
+---
+## Iteration 4 - 2026-10-17 13:59
+**Work Unit**: US3 — Confirm creation when execution is suspended
+**Tasks Completed**:
+- [x] T004: Include suspension in cloned creation-observable states; prove first and delayed visibility, nonterminal semantics, older-version defaults, bounded errors/retries/deadlines and no-wait behavior; update creation help and generated documentation.
+**Tasks Remaining in Work Unit**: 0 — US3 complete. T005–T006 remain outside this story.
+**Commit**: This work-unit commit
+**Files Changed**:
+- README.md
+- c8volt/process/client_test.go
+- cmd/run.go
+- cmd/run_processinstance.go
+- cmd/run_test.go
+- docs/cli/c8volt_run.md
+- docs/cli/c8volt_run_process-instance.md
+- docs/index.md
+- docsgen/main_test.go
+- internal/domain/state.go
+- internal/domain/state_test.go
+- internal/services/processinstance/v810/service_test.go
+- internal/services/processinstance/v88/service_test.go
+- internal/services/processinstance/v89/service_test.go
+- internal/services/processinstance/waiter/waiter_test.go
+- specs/339-suspended-instance-state/progress.md
+- specs/339-suspended-instance-state/ralph-memory.md
+- specs/339-suspended-instance-state/tasks.md
+**Learnings**:
+- The only runtime change is the shared creation-observable state list. All three adapters already call the generic waiter directly, so no facade/service orchestration or explicit-capability guard changes were needed. Suspension stays nonterminal and the returned state list stays cloned.
+- Regression-first domain and v88/v89/v810 creation tests failed as expected before implementation: first-observed suspension exhausted two attempts. After implementation, all adapters confirm it in one lookup and absence-to-suspension in two. Existing active, completed, canceled/terminated, never-visible and no-wait paths remain covered.
+- Added bounded waiter scenarios with controlled observations and zero delay for delayed visibility, lookup errors, retry exhaustion and suspension failing terminal expectations; an already-expired deadline verifies timeout classification without sleeps. Public facade tests preserve observed state/start date and no-wait option mapping. A 12-case actual CLI matrix covers three adapters with human/JSON/keys/no-wait output, separate streams, exact request counts, one envelope plus EOF, omitted completion metadata and accepted-versus-succeeded outcomes.
+- Initial test development caught two mistaken test assumptions: StartConfirmedAt is internal-only, and no-wait JSON uses accepted rather than succeeded. Corrected tests to preserve the existing schema/outcomes; no public field was added.
+- Passed `go test ./internal/domain ./internal/services/processinstance/... ./c8volt/process -run 'ObservableProcessInstanceCreation|CreateProcessInstance|State|Expectation|SuspendedUnsupported' -count=1` and `go test ./cmd -run 'RunHelp|RunProcessInstance|RunCommand' -count=1`. The shared traversal/walker packages had no targeted matches and were covered by the full race run. Explicit old-version rejected-state tests remain passing.
+- Ran `make test` because shared domain behavior affects creation across commands, facades and version adapters. Every package passed except docsgen's stale state-list assertion. Updated that assertion and passed `GORACE=atexit_sleep_ms=0 go test ./docsgen -race -count=1`; all packages now have passing race coverage. The initial full invocation is recorded as failed; successful unrelated packages were not repeated.
+- Passed `make docs-content`, touched-file gofmt verification, `git diff --check`, and coordinated record/memory structure checks. Reviewed generated run references and README-derived homepage. No command lifecycle declarations were added; generated clients/provenance remain unchanged. Live 8.10.4 validation was not attempted and remains T006.
+---

@@ -6,7 +6,7 @@ nav_exclude: true
 has_toc: true
 ---
 
-> Generated from build `c8volt v4.3.4-151-g1dea3fd8-dirty`, commit `1dea3fd8`, built `2026-10-17T11:49:05Z` | Supported Camunda 8 versions: 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.3 (final)
+> Generated from build `c8volt v4.3.4-152-g403f13c9-dirty`, commit `403f13c9`, built `2026-10-17T11:56:06Z` | Supported Camunda 8 versions: 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.3 (final)
 
 <img src="./logo/c8volt_logo_transparent_w_shadow_400x244.png" alt="c8volt logo" />
 
@@ -256,6 +256,8 @@ Deploy BPMN, start a process instance, and verify the process definition Camunda
 ./c8volt run process-instance --bpmn-process-id <bpmn-process-id>
 ./c8volt get process-definition --bpmn-process-id <bpmn-process-id> --latest --stat
 ```
+
+`run process-instance` confirms creation once an instance is observable as ACTIVE, SUSPENDED, COMPLETED, CANCELED, or TERMINATED. A first suspended observation succeeds immediately; it confirms visibility, not execution completion. Use `expect process-instance --state completed` to verify completion separately, or `run process-instance --no-wait` to return after creation is accepted without confirming visibility. Existing creation defaults on Camunda 8.8/8.9 remain supported.
 
 Generated references: [deploy process-definition](./cli/c8volt_deploy_process-definition), [run process-instance](./cli/c8volt_run_process-instance), [get process-definition](./cli/c8volt_get_process-definition).
 

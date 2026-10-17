@@ -3765,3 +3765,42 @@ func TestClient_ProcessInstanceStateReports(t *testing.T) {
 
 // ValidateProcessInstanceStates permits existing fixtures independently of version policy.
 func (s stubProcessInstanceAPI) ValidateProcessInstanceStates(d.States) error { return nil }
+
+// TestClient_CreateProcessInstance_SuspendedVisibility preserves observed state and start date without inventing execution completion.
+func TestClient_CreateProcessInstance_SuspendedVisibility(t *testing.T) {
+	t.Parallel()
+	for _, noWait := range []bool{false, true} {
+		t.Run(map[bool]string{false: "confirmed", true: "no wait"}[noWait], func(t *testing.T) {
+			t.Parallel()
+			calls := 0
+			api := stubProcessInstanceAPI{createProcessInstance: func(_ context.Context, data d.ProcessInstanceData, opts ...services.CallOption) (d.ProcessInstanceCreation, error) {
+				calls++
+				require.Equal(t, "demo", data.BpmnProcessId)
+				require.Equal(t, noWait, services.ApplyCallOptions(opts).NoWait)
+				result := d.ProcessInstanceCreation{Key: "123", BpmnProcessId: data.BpmnProcessId, StartDate: "2026-10-17T10:00:00Z"}
+				if !noWait {
+					result.State = d.StateSuspended
+					result.StartConfirmedAt = "2026-10-17T10:00:01Z"
+				}
+				return result, nil
+			}}
+			cli := New(&stubProcessDefinitionAPI{}, api, stubIncidentAPI{}, slog.Default())
+			var opts []options.FacadeOption
+			if noWait {
+				opts = append(opts, options.WithNoWait())
+			}
+			got, err := cli.CreateProcessInstance(context.Background(), ProcessInstanceData{BpmnProcessId: "demo"}, opts...)
+			require.NoError(t, err)
+			require.Equal(t, 1, calls)
+			require.Equal(t, "123", got.Key)
+			require.Equal(t, "2026-10-17T10:00:00Z", got.StartDate)
+			require.Empty(t, got.EndDate)
+			require.False(t, got.State.IsTerminal())
+			if noWait {
+				require.Empty(t, got.State)
+			} else {
+				require.Equal(t, StateSuspended, got.State)
+			}
+		})
+	}
+}
