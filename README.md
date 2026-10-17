@@ -264,6 +264,8 @@ Use `get process-instance` for direct lookup, scoped search, variables, incident
 ./c8volt get process-instance --key <process-instance-key> --with-elements --with-listeners
 ```
 
+Process-instance reads and state reports preserve `SUSPENDED` as a distinct, nonterminal state for paused execution. The public process state parser accepts case variations and surrounding whitespace. Compact human rows show `SUSPENDED` in the existing state column; JSON retains it in the existing state field.
+
 Generated reference: [get process-instance](docs/cli/c8volt_get_process-instance.md).
 
 ### Inspect And Search User Tasks

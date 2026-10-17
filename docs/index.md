@@ -6,7 +6,7 @@ nav_exclude: true
 has_toc: true
 ---
 
-> Generated from build `c8volt v4.3.4-144-g1e5c51dd-dirty`, commit `1e5c51dd`, built `2026-10-16T15:12:28Z` | Supported Camunda 8 versions: 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.3 (final)
+> Generated from build `c8volt v4.3.4-149-g1e8fd679-dirty`, commit `1e8fd679`, built `2026-10-17T11:28:57Z` | Supported Camunda 8 versions: 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.3 (final)
 
 <img src="./logo/c8volt_logo_transparent_w_shadow_400x244.png" alt="c8volt logo" />
 
@@ -269,6 +269,8 @@ Use `get process-instance` for direct lookup, scoped search, variables, incident
 ./c8volt get process-instance --key <process-instance-key> --with-vars --with-incidents
 ./c8volt get process-instance --key <process-instance-key> --with-elements --with-listeners
 ```
+
+Process-instance reads and state reports preserve `SUSPENDED` as a distinct, nonterminal state for paused execution. The public process state parser accepts case variations and surrounding whitespace. Compact human rows show `SUSPENDED` in the existing state column; JSON retains it in the existing state field.
 
 Generated reference: [get process-instance](./cli/c8volt_get_process-instance).
 

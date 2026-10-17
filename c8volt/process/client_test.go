@@ -3228,6 +3228,7 @@ func (s stubJobAPI) SubmitJobWorkerOutcome(context.Context, d.JobWorkerOutcomeRe
 var _ jsvc.API = stubJobAPI{}
 
 type stubProcessInstanceAPI struct {
+	waitForProcessInstanceState        func(context.Context, string, d.States, ...services.CallOption) (d.StateResponse, d.ProcessInstance, error)
 	createProcessInstance              func(context.Context, d.ProcessInstanceData, ...services.CallOption) (d.ProcessInstanceCreation, error)
 	getProcessInstance                 func(context.Context, string, ...services.CallOption) (d.ProcessInstance, error)
 	searchForProcessInstances          func(context.Context, d.ProcessInstanceFilter, int32, ...services.CallOption) ([]d.ProcessInstance, error)
@@ -3429,9 +3430,12 @@ func (s stubProcessInstanceAPI) GetProcessInstanceStateByKey(ctx context.Context
 	return s.getProcessInstanceStateByKey(ctx, key, opts...)
 }
 
-// WaitForProcessInstanceState panics when a facade test accidentally waits for one process instance.
-func (stubProcessInstanceAPI) WaitForProcessInstanceState(context.Context, string, d.States, ...services.CallOption) (d.StateResponse, d.ProcessInstance, error) {
-	panic("unexpected call")
+// WaitForProcessInstanceState delegates configured waits and rejects unexpected calls.
+func (s stubProcessInstanceAPI) WaitForProcessInstanceState(ctx context.Context, key string, states d.States, opts ...services.CallOption) (d.StateResponse, d.ProcessInstance, error) {
+	if s.waitForProcessInstanceState == nil {
+		panic("unexpected call")
+	}
+	return s.waitForProcessInstanceState(ctx, key, states, opts...)
 }
 
 // WaitForProcessInstanceExpectation delegates to the per-test callback and panics on unexpected single expectation waits.
@@ -3694,4 +3698,67 @@ func TestClientExecuteProcessInstanceVariableUpdatesRequiresComposedDependency(t
 	legacy := New(&stubProcessDefinitionAPI{}, stubProcessInstanceAPI{}, stubIncidentAPI{}, slog.Default())
 	_, err := legacy.ExecuteProcessInstanceVariableUpdates(context.Background(), ProcessInstanceVariableUpdatePlan{}, 1)
 	require.ErrorIs(t, err, ferr.ErrLocalPrecondition)
+}
+
+// TestClient_ProcessInstanceStateReports preserves observed states and the existing parsed-versus-raw report contracts.
+func TestClient_ProcessInstanceStateReports(t *testing.T) {
+	t.Parallel()
+	for _, tt := range []struct {
+		observed d.State
+		parsed   State
+	}{
+		{"SUSPENDED", StateSuspended},
+		{"suspended", StateSuspended},
+		{"SuSpEnDeD", StateSuspended},
+		{" suspended ", StateSuspended},
+		{d.StateCanceled, StateCanceled},
+		{"cancelled", StateCanceled},
+		{d.StateTerminated, StateTerminated},
+		{d.StateAbsent, StateAbsent},
+		{d.StateUnknown, StateUnknown},
+		{"FUTURE_STATE", StateUnknown},
+	} {
+		t.Run(string(tt.observed), func(t *testing.T) {
+			instance := d.ProcessInstance{Key: "123", State: tt.observed}
+			response := d.ProcessInstanceExpectationResponse{Key: "123", Ok: true, State: tt.observed, Status: "observed"}
+			api := stubProcessInstanceAPI{
+				getProcessInstance: func(context.Context, string, ...services.CallOption) (d.ProcessInstance, error) { return instance, nil },
+				getProcessInstanceStateByKey: func(context.Context, string, ...services.CallOption) (d.State, d.ProcessInstance, error) {
+					return tt.observed, instance, nil
+				},
+				waitForProcessInstanceState: func(context.Context, string, d.States, ...services.CallOption) (d.StateResponse, d.ProcessInstance, error) {
+					return d.StateResponse{State: tt.observed, Status: "observed"}, instance, nil
+				},
+				waitForProcessInstanceExpectation: func(context.Context, string, d.ProcessInstanceExpectationRequest, ...services.CallOption) (d.ProcessInstanceExpectationResponse, d.ProcessInstance, error) {
+					return response, instance, nil
+				},
+				waitForProcessInstancesExpectation: func(context.Context, typex.Keys, d.ProcessInstanceExpectationRequest, int, ...services.CallOption) (d.ProcessInstanceExpectationResponses, error) {
+					return d.ProcessInstanceExpectationResponses{Items: []d.ProcessInstanceExpectationResponse{response}}, nil
+				},
+			}
+			cli := New(&stubProcessDefinitionAPI{}, api, stubIncidentAPI{}, slog.Default())
+			ctx := context.Background()
+			got, err := cli.GetProcessInstance(ctx, "123")
+			require.NoError(t, err)
+			require.Equal(t, State(tt.observed), got.State)
+			lookup, got, err := cli.LookupProcessInstanceStateByKey(ctx, "123")
+			require.NoError(t, err)
+			require.Equal(t, StateReport{Key: "123", State: tt.parsed, Status: string(tt.observed)}, lookup)
+			require.Equal(t, State(tt.observed), got.State)
+			state, got, err := cli.WaitForProcessInstanceState(ctx, "123", States{tt.parsed})
+			require.NoError(t, err)
+			require.Equal(t, StateReport{Key: "123", State: tt.parsed, Status: "observed"}, state)
+			require.Equal(t, State(tt.observed), got.State)
+			request := ProcessInstanceExpectationRequest{States: States{tt.parsed}}
+			expectation, got, err := cli.WaitForProcessInstanceExpectation(ctx, "123", request)
+			require.NoError(t, err)
+			require.Equal(t, ProcessInstanceExpectationReport{Key: "123", Ok: true, State: State(tt.observed), Status: "observed"}, expectation)
+			require.Equal(t, State(tt.observed), got.State)
+			reports, err := cli.WaitForProcessInstancesExpectation(ctx, typex.Keys{"123"}, request, 1)
+			require.NoError(t, err)
+			require.Equal(t, []ProcessInstanceExpectationReport{expectation}, reports.Items)
+			stateReports := MapStateResponsesToReports(d.StateResponses{Items: []d.StateResponse{{State: tt.observed, Status: "observed"}}})
+			require.Equal(t, []StateReport{{State: State(tt.observed), Status: "observed"}}, stateReports.Items)
+		})
+	}
 }

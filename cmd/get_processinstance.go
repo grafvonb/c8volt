@@ -294,7 +294,7 @@ func init() {
 
 	// filtering options
 	fs.StringVar(&flagGetPIParentKey, "parent-key", "", "parent process instance key to filter process instances")
-	fs.StringVarP(&flagGetPIState, "state", "s", "all", "state to filter process instances: all, active, completed, canceled, terminated")
+	fs.StringVarP(&flagGetPIState, "state", "s", "all", "state to filter process instances: all, active, suspended (Camunda 8.10), completed, canceled, terminated")
 
 	fs.BoolVar(&flagGetPIRootsOnly, "roots-only", false, "show only root process instances")
 	fs.BoolVar(&flagGetPIChildrenOnly, "children-only", false, "show only child process instances")

@@ -28,6 +28,7 @@ func TestExpectCommand_CommandLocalBackoffTimeoutEnvOverridesProfileAndConfig(t 
 	require.Equal(t, 19*time.Second, cfg.App.Backoff.Timeout)
 }
 
+// TestExpectHelp_DocumentsWaitVerificationUsage keeps wait guidance and supported state syntax visible in help.
 func TestExpectHelp_DocumentsWaitVerificationUsage(t *testing.T) {
 	output := assertCommandHelpOutput(t, []string{"expect"}, []string{
 		"Wait for process instances to satisfy expectations",
@@ -40,7 +41,7 @@ func TestExpectHelp_DocumentsWaitVerificationUsage(t *testing.T) {
 	output = assertCommandHelpOutput(t, []string{"expect", "process-instance"}, []string{
 		"Use after `run`, `cancel`, or `delete`",
 		"final state or incident marker is visible",
-		"state expectation; valid values are: [active, completed, canceled, terminated, absent]",
+		"state expectation; valid values are: [active, suspended, completed, canceled, terminated, absent]; suspended requires Camunda 8.10",
 		"incident expectation; valid values are: [true, false]",
 		"./c8volt get process-instance --key <process-instance-key> --keys-only | ./c8volt expect process-instance --incident true -",
 	}, nil)

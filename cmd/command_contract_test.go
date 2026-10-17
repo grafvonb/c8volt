@@ -1235,6 +1235,7 @@ func TestCommandCapabilityForCommand_UpdateUserTaskContract(t *testing.T) {
 	}
 }
 
+// TestCommandCapabilityForCommand_ProcessInstanceExpectIncidentFlag preserves state and incident flag metadata for automation.
 func TestCommandCapabilityForCommand_ProcessInstanceExpectIncidentFlag(t *testing.T) {
 	root := Root()
 	resetCommandTreeFlags(root)
@@ -1248,7 +1249,7 @@ func TestCommandCapabilityForCommand_ProcessInstanceExpectIncidentFlag(t *testin
 		Type:        "stringSlice",
 		Required:    false,
 		Repeated:    true,
-		Description: "state expectation; valid values are: [active, completed, canceled, terminated, absent]",
+		Description: "state expectation; valid values are: [active, suspended, completed, canceled, terminated, absent]; suspended requires Camunda 8.10",
 	})
 	require.Contains(t, capability.Flags, FlagContract{
 		Name:        "incident",
