@@ -11,6 +11,7 @@ import (
 	"github.com/grafvonb/c8volt/toolx"
 )
 
+// ProcessInstance contains the current backend snapshot, including optional date metadata.
 type ProcessInstance struct {
 	BpmnProcessId            string
 	EndDate                  string
@@ -23,6 +24,7 @@ type ProcessInstance struct {
 	ProcessVersion           int32
 	ProcessVersionTag        string
 	StartDate                string
+	SuspendedDate            string
 	State                    State
 	TenantId                 string
 	Variables                map[string]any

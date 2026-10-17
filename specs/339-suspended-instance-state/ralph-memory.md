@@ -5,6 +5,7 @@ Started: 2026-10-17T11:26:30Z
 
 ## Codebase Patterns
 
+- `SuspendedDate` is an optional string in domain/public instances, mapped through v810 `formatTimePtr` and both facade directions. Fresh conversion clears absent metadata; nil/zero dates omit JSON without changing state. Existing nested incident/variable/element payloads inherit the field; human renderers need no change.
 - `c8volt/process/state.go` owns canonical parsing: trim whitespace, accept case variants and `cancelled`, and reject UNKNOWN/unrecognized inputs with the UNKNOWN fallback. `validStates` also supplies CLI invalid-value feedback.
 - `ValidateProcessInstanceStates` is mandatory on shared/versioned process-instance APIs. Shared page/total traversal validates before direct-incident discovery; adapters validate page search and single/bulk waits before requests/workers. v88/v89 reject trimmed case-insensitive suspension; v810 permits it. Generic waiters stay capability-neutral.
 - Lookup and single-state waits parse observed states; instance, combined-expectation and bulk-state report conversions preserve raw states. Extending the parser fixes suspended lookup reports without changing converters or facade orchestration.
@@ -19,6 +20,7 @@ Started: 2026-10-17T11:26:30Z
 
 ## Gotchas
 
+- Direct service-factory HTTP tests must include `/v2` in `config.APIs.Camunda.BaseURL`; CLI bootstrap supplies this path separately. Older adapters intentionally leave `SuspendedDate` empty, even if a response contains the unfamiliar field.
 - Creation help is asserted by `docsgen/TestGeneratedRunProcessInstanceDocsDocumentPipeline` as well as command help tests; keep its state list aligned.
 
 - `StartConfirmedAt` belongs to internal creation results; public ProcessInstance/JSON does not expose it. Keep confirmation timestamp checks at the adapter layer. CLI no-wait emits `accepted`, omits unobserved state and makes no lookup; confirmed creation emits `succeeded` without implying execution completion.
@@ -34,6 +36,8 @@ Started: 2026-10-17T11:26:30Z
 
 ## Reusable Commands
 
+- T005 broader validation passed: `GORACE=atexit_sleep_ms=0 go test ./internal/services/processinstance/... ./c8volt/process ./cmd ./docsgen -race -count=1`. Final repository-wide `make test` and live acceptance remain T006.
+- T005 targeted checks: `go test ./internal/services/processinstance/v810 ./c8volt/process -run 'Convert|ProcessInstance|Suspended' -count=1`; `go test ./cmd -run 'Suspended|ProcessInstance' -count=1`. `TestClient_SuspendedDateSnapshots` reuses real versioned adapters/facades for present-to-absent reads/searches; `TestSuspendedDateSnapshots` checks separate streams, one envelope plus EOF, unchanged rows/keys, and one request per snapshot.
 - T004 race validation: `make test` passed every package except a stale generated run-help assertion; after correcting it, `GORACE=atexit_sleep_ms=0 go test ./docsgen -race -count=1` passed. All packages now have passing race coverage; final integrated validation still belongs to T006.
 
 - T004 targeted checks: `go test ./internal/domain ./internal/services/processinstance/... ./c8volt/process -run 'ObservableProcessInstanceCreation|CreateProcessInstance|State|Expectation|SuspendedUnsupported' -count=1`; `go test ./cmd -run 'RunHelp|RunProcessInstance|RunCommand' -count=1`. Zero-delay, bounded-attempt creation fixtures cover delayed absence-to-suspension; an already-expired context covers deadline failure without sleeps.
@@ -54,6 +58,6 @@ Started: 2026-10-17T11:26:30Z
 
 ## Current Handoff
 
-- Next: T005 (US4), optional suspension timestamp mapping and fresh snapshots. Add domain/public SuspendedDate, map v810 through formatTimePtr and both facade directions, then verify present-to-absent reads/searches and structured output without changing human rows.
-- T004 creation visibility is implemented: a first suspended observation confirms creation in one lookup, separately from terminal completion; older-version defaults, explicit unsupported-state guards and no-wait semantics are preserved.
-- T006 remains the live 8.10.4 acceptance/evidence and final integrated validation task. It was not started; generated v810 clients/provenance remain unchanged at 8.10.3.
+- Next: T006, integration and final validation. T001–T005 are implemented; all four user stories now have deterministic coverage. Add the existing-harness `TestGetFamilySuspendedState` and reusable fixture helpers; do not start a new public mutation or watch workflow.
+- Verify observed server patch 8.10.4 before fixture mutations, using an explicitly designated disposable profile. Keep configured release at minor `8.10`; preserve generated client/provenance baseline 8.10.3. Resume owned instances before normal cleanup and record cleanup outcomes separately.
+- Record live evidence and tested revision/dirty status in `validation.md`, update integration guidance, prove test discovery, and run final `make test`. If infrastructure or permission is unavailable, record the concrete reason and leave T006 pending; a skip or different server patch is not acceptance.

@@ -139,6 +139,7 @@ func fromDomainProcessDefinitionWatchSnapshot(x d.ProcessDefinitionWatchSnapshot
 	}
 }
 
+// fromDomainProcessInstance preserves current instance metadata at the public boundary.
 func fromDomainProcessInstance(x d.ProcessInstance) ProcessInstance {
 	return ProcessInstance{
 		BpmnProcessId:            x.BpmnProcessId,
@@ -152,6 +153,7 @@ func fromDomainProcessInstance(x d.ProcessInstance) ProcessInstance {
 		ProcessVersion:           x.ProcessVersion,
 		ProcessVersionTag:        x.ProcessVersionTag,
 		StartDate:                x.StartDate,
+		SuspendedDate:            x.SuspendedDate,
 		State:                    State(x.State),
 		TenantId:                 x.TenantId,
 		Variables:                toolx.CopyMap(x.Variables),
@@ -754,6 +756,7 @@ func fromDomainIncidentExpectation(x *bool) *IncidentExpectation {
 	return &out
 }
 
+// toDomainProcessInstance preserves instance metadata when passing public results back to services.
 func toDomainProcessInstance(x ProcessInstance) d.ProcessInstance {
 	return d.ProcessInstance{
 		BpmnProcessId:            x.BpmnProcessId,
@@ -767,6 +770,7 @@ func toDomainProcessInstance(x ProcessInstance) d.ProcessInstance {
 		ProcessVersion:           x.ProcessVersion,
 		ProcessVersionTag:        x.ProcessVersionTag,
 		StartDate:                x.StartDate,
+		SuspendedDate:            x.SuspendedDate,
 		State:                    d.State(x.State),
 		TenantId:                 x.TenantId,
 		Variables:                toolx.CopyMap(x.Variables),

@@ -5,6 +5,7 @@ package process
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
@@ -22,6 +23,63 @@ import (
 	"github.com/grafvonb/c8volt/typex"
 	"github.com/stretchr/testify/require"
 )
+
+// TestClient_SuspendedDateSnapshots verifies real adapters and one reused facade
+// return fresh lookup/search snapshots; older adapters keep the new field empty.
+func TestClient_SuspendedDateSnapshots(t *testing.T) {
+	t.Parallel()
+	for _, version := range []toolx.CamundaVersion{toolx.V88, toolx.V89, toolx.V810} {
+		for _, search := range []bool{false, true} {
+			t.Run(fmt.Sprintf("%s/search=%t", version, search), func(t *testing.T) {
+				var calls atomic.Int32
+				server := testx.NewIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					n := calls.Add(1)
+					date := ""
+					if n == 1 {
+						date = `,"suspendedDate":"2026-10-17T10:30:00.123456789+02:00"`
+					}
+					body := `{"processInstanceKey":"123","state":"SUSPENDED"` + date + `}`
+					w.Header().Set("Content-Type", "application/json")
+					if search {
+						require.Equal(t, http.MethodPost, r.Method)
+						require.Equal(t, "/v2/process-instances/search", r.URL.Path)
+						fmt.Fprintf(w, `{"items":[%s],"page":{"totalItems":1,"hasMoreTotalItems":false}}`, body)
+					} else {
+						require.Equal(t, http.MethodGet, r.Method)
+						require.Equal(t, "/v2/process-instances/123", r.URL.Path)
+						io.WriteString(w, body)
+					}
+				}))
+				defer server.Close()
+				log := slog.New(slog.NewTextHandler(io.Discard, nil))
+				cfg := &config.Config{App: config.App{CamundaVersion: version}, APIs: config.APIs{Camunda: config.API{BaseURL: server.URL + "/v2"}, Operate: config.API{BaseURL: server.URL}}}
+				api, err := pisvc.New(cfg, server.Client(), log)
+				require.NoError(t, err)
+				client := New(nil, api, nil, log)
+				var got ProcessInstance
+				for i := range 2 {
+					if search {
+						// Unfiltered reads stay valid on older adapters, even with an unfamiliar field.
+						result, err := client.SearchProcessInstances(context.Background(), ProcessInstanceFilter{}, 10)
+						require.NoError(t, err)
+						require.Len(t, result.Items, 1)
+						got = result.Items[0]
+					} else {
+						got, err = client.LookupProcessInstance(context.Background(), "123")
+						require.NoError(t, err)
+					}
+					require.Equal(t, StateSuspended, got.State)
+					if i == 0 && version == toolx.V810 {
+						require.Equal(t, "2026-10-17T08:30:00.123456789Z", got.SuspendedDate)
+					} else {
+						require.Empty(t, got.SuspendedDate)
+					}
+					require.EqualValues(t, i+1, calls.Load())
+				}
+			})
+		}
+	}
+}
 
 // TestClient_SuspendedCapability verifies public errors retain unsupported
 // classification through real adapters, without any instance or incident I/O.

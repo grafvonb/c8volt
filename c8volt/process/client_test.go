@@ -31,6 +31,41 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestClient_SuspendedDateEnrichment preserves current metadata through both
+// facade conversion directions instead of retaining a prior enriched snapshot.
+func TestClient_SuspendedDateEnrichment(t *testing.T) {
+	t.Parallel()
+	var calls atomic.Int32
+	incAPI := stubIncidentAPI{
+		searchProcessInstanceIncidents: func(_ context.Context, key string, _ ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error) {
+			calls.Add(1)
+			require.Equal(t, "123", key)
+			return []d.ProcessInstanceIncidentDetail{{IncidentKey: "incident", ProcessInstanceKey: key}}, nil
+		},
+	}
+	client := New(nil, stubProcessInstanceAPI{}, incAPI, slog.Default())
+	var got IncidentEnrichedProcessInstances
+	for _, date := range []string{"2026-10-17T08:30:00.123456789Z", ""} {
+		var err error
+		got, err = client.EnrichProcessInstancesWithIncidents(context.Background(), ProcessInstances{
+			Total: 1, Items: []ProcessInstance{{Key: "123", State: StateSuspended, SuspendedDate: date}},
+		})
+		require.NoError(t, err)
+		require.Len(t, got.Items, 1)
+		require.Equal(t, date, got.Items[0].Item.SuspendedDate)
+		require.Equal(t, StateSuspended, got.Items[0].Item.State)
+		require.Len(t, got.Items[0].Incidents, 1)
+		raw, err := json.Marshal(got)
+		require.NoError(t, err)
+		if date == "" {
+			require.NotContains(t, string(raw), "suspendedDate")
+		} else {
+			require.Contains(t, string(raw), `"suspendedDate":"`+date+`"`)
+		}
+	}
+	require.EqualValues(t, 2, calls.Load())
+}
+
 // TestClient_GetProcessDefinitionXML verifies facade option translation for
 // XML retrieval. The key and call options must pass through unchanged because
 // the service layer owns the Camunda-specific request details.

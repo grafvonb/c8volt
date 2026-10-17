@@ -23,6 +23,78 @@ import (
 
 const suspendedInstanceFixture = `{"hasIncident":true,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionVersion":3,"processInstanceKey":"123","state":"SUSPENDED","tenantId":"tenant"}`
 
+// TestSuspendedDateSnapshots exercises fresh lookup/search output without adding
+// timestamp columns, key-stream noise, prompts, or extra backend requests.
+func TestSuspendedDateSnapshots(t *testing.T) {
+	for _, search := range []bool{false, true} {
+		for _, mode := range []string{"json", "human", "keys", "quiet-json"} {
+			t.Run(fmt.Sprintf("search=%t/%s", search, mode), func(t *testing.T) {
+				var requests atomic.Int32
+				// Each read returns a fresh snapshot of the same still-suspended instance.
+				dates := []string{`,"suspendedDate":"2026-10-17T10:30:00.123456789+02:00"`, "", `,"suspendedDate":null`, `,"suspendedDate":"0001-01-01T00:00:00Z"`}
+				srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					i := int(requests.Add(1)) - 1
+					if i >= len(dates) {
+						http.Error(w, "unexpected extra request", 500)
+						return
+					}
+					body := strings.TrimSuffix(suspendedInstanceFixture, "}") + dates[i] + "}"
+					w.Header().Set("Content-Type", "application/json")
+					if search {
+						require.Equal(t, http.MethodPost, r.Method)
+						require.Equal(t, "/v2/process-instances/search", r.URL.Path)
+						fmt.Fprintf(w, `{"items":[%s],"page":{"totalItems":1,"hasMoreTotalItems":false}}`, body)
+					} else {
+						require.Equal(t, http.MethodGet, r.Method)
+						require.Equal(t, "/v2/process-instances/123", r.URL.Path)
+						fmt.Fprint(w, body)
+					}
+				}))
+				t.Cleanup(srv.Close)
+				args := []string{"--config", writeTestConfigForVersion(t, srv.URL, "8.10"), "--tenant", "tenant", "get", "pi"}
+				if search {
+					args = append(args, "--state", "suspended")
+				} else {
+					args = append(args, "--key", "123")
+				}
+				switch mode {
+				case "json":
+					args = append(args, "--json")
+				case "quiet-json":
+					args = append(args, "--quiet", "--json")
+				case "keys":
+					args = append(args, "--keys-only")
+				}
+				for i := range dates {
+					stdout, stderr, err := testx.RunCmdSubprocessSeparate(t, "TestSuspendedCommandHelper", suspendedCommandEnv(t, args))
+					require.NoError(t, err, stderr)
+					require.Empty(t, stderr)
+					require.EqualValues(t, i+1, requests.Load())
+					switch mode {
+					case "json", "quiet-json":
+						envelope := decodeSuspendedEnvelope(t, stdout)
+						require.Equal(t, "succeeded", envelope["outcome"])
+						payload := envelope["payload"].(map[string]any)
+						items := payload["items"].([]any)
+						require.Len(t, items, 1)
+						item := items[0].(map[string]any)
+						require.Equal(t, "SUSPENDED", item["state"])
+						if i == 0 {
+							require.Equal(t, "2026-10-17T08:30:00.123456789Z", item["suspendedDate"])
+						} else {
+							require.NotContains(t, item, "suspendedDate")
+						}
+					case "keys":
+						require.Equal(t, "123\n", stdout)
+					default:
+						require.Equal(t, "123 tenant demo v3 SUSPENDED s: p:<root> inc!\nfound: 1\n", stdout)
+					}
+				}
+			})
+		}
+	}
+}
+
 // TestSuspendedCommandHelper isolates global Cobra flags and preserves real exit codes and streams.
 func TestSuspendedCommandHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {

@@ -158,3 +158,37 @@ Started: 2026-10-17 13:26:30
 - Ran `make test` because shared domain behavior affects creation across commands, facades and version adapters. Every package passed except docsgen's stale state-list assertion. Updated that assertion and passed `GORACE=atexit_sleep_ms=0 go test ./docsgen -race -count=1`; all packages now have passing race coverage. The initial full invocation is recorded as failed; successful unrelated packages were not repeated.
 - Passed `make docs-content`, touched-file gofmt verification, `git diff --check`, and coordinated record/memory structure checks. Reviewed generated run references and README-derived homepage. No command lifecycle declarations were added; generated clients/provenance remain unchanged. Live 8.10.4 validation was not attempted and remains T006.
 ---
+
+---
+## Iteration 5 - 2026-10-17 14:07
+**Work Unit**: US4 — Read current suspension metadata
+**Tasks Completed**:
+- [x] T005: Preserve optional suspension timestamps through domain/public models and v810/facade mappings; verify fresh snapshots and structured omission while retaining compact human and key output; update guidance and generated docs.
+**Tasks Remaining in Work Unit**: 0 — US4 complete. T006 remains outside this story.
+**Commit**: This work-unit commit
+**Files Changed**:
+- README.md
+- c8volt/process/client_test.go
+- c8volt/process/convert.go
+- c8volt/process/convert_test.go
+- c8volt/process/model.go
+- c8volt/process/suspended_test.go
+- cmd/get_processinstance.go
+- cmd/processinstance_suspended_test.go
+- docs/cli/c8volt_get_process-instance.md
+- docs/index.md
+- internal/domain/processinstance.go
+- internal/services/processinstance/v810/convert.go
+- internal/services/processinstance/v810/convert_test.go
+- specs/339-suspended-instance-state/progress.md
+- specs/339-suspended-instance-state/ralph-memory.md
+- specs/339-suspended-instance-state/tasks.md
+**Learnings**:
+- Production changes are additive model fields and mechanical mappings: v810 reuses `formatTimePtr`, and both facade directions retain the timestamp. No new orchestration, persistence, watch mode or human renderer change was needed. Older adapters leave the field empty.
+- Regression-first `go test ./cmd -run '^TestSuspendedDateSnapshots/search=true/json$' -count=1` failed as expected because JSON dropped the timestamp (the pattern also selected quiet-json). Added UTC/fractional, absent/null/zero, two-way mapping and nested incident/variable/element payload coverage. Sequential real-adapter lookups/searches reuse one facade and verify absence replaces the old timestamp without changing SUSPENDED state. Incident enrichment exercises both facade directions.
+- A 32-read CLI matrix covers direct-key/search paths, JSON/quiet+JSON/human/keys, and present/absent/null/zero snapshots, with separate stdout/stderr, one envelope followed by EOF, exact unchanged human/key output, and exactly one request per read. Existing empty-result, real-terminal, sparse-page, error and unsupported-version regressions remain passing.
+- Corrected a test fixture that omitted `/v2` from the direct service-factory base URL; CLI bootstrap supplies that path separately. This was test setup, not a production behavior change.
+- Passed initial `go test ./internal/services/processinstance/v810 ./c8volt/process ./cmd -run 'TestConvertProcessInstanceSuspendedDate|TestSuspendedDateSnapshots' -count=1`; after adding facade coverage and fixing the fixture, passed `go test ./internal/services/processinstance/v810 ./c8volt/process -run 'Convert|ProcessInstance|Suspended' -count=1` and `go test ./cmd -run 'Suspended|ProcessInstance' -count=1`.
+- Passed broader `GORACE=atexit_sleep_ms=0 go test ./internal/services/processinstance/... ./c8volt/process ./cmd ./docsgen -race -count=1` across every selected package, covering shared instance conversions, version adapters, enrichment, command contracts and generated documentation. Final repository-wide validation remains T006; no live 8.10.4 validation was attempted.
+- Passed `make docs-content`, touched-file gofmt verification, `git diff --check`, and coordinated record/memory structure checks. Reviewed generated get reference and README-derived homepage. No command lifecycle declarations were added; generated clients/provenance and definition watch are unchanged.
+---

@@ -136,6 +136,7 @@ type ProcessInstanceData struct {
 	TenantId                    string         `json:"tenantId,omitempty"`
 }
 
+// ProcessInstance exposes the current instance snapshot; unavailable dates are omitted from JSON.
 type ProcessInstance struct {
 	BpmnProcessId            string         `json:"bpmnProcessId,omitempty"`
 	EndDate                  string         `json:"endDate,omitempty"`
@@ -149,6 +150,7 @@ type ProcessInstance struct {
 	ProcessVersion           int32          `json:"processVersion,omitempty"`
 	ProcessVersionTag        string         `json:"processVersionTag,omitempty"`
 	StartDate                string         `json:"startDate,omitempty"`
+	SuspendedDate            string         `json:"suspendedDate,omitempty"`
 	State                    State          `json:"state,omitempty"`
 	TenantId                 string         `json:"tenantId,omitempty"`
 	Variables                map[string]any `json:"variables,omitempty"`

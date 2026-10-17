@@ -6,7 +6,7 @@ nav_exclude: true
 has_toc: true
 ---
 
-> Generated from build `c8volt v4.3.4-152-g403f13c9-dirty`, commit `403f13c9`, built `2026-10-17T11:56:06Z` | Supported Camunda 8 versions: 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.3 (final)
+> Generated from build `c8volt v4.3.4-153-g3d6b3581-dirty`, commit `3d6b3581`, built `2026-10-17T12:03:30Z` | Supported Camunda 8 versions: 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.3 (final)
 
 <img src="./logo/c8volt_logo_transparent_w_shadow_400x244.png" alt="c8volt logo" />
 
@@ -273,6 +273,8 @@ Use `get process-instance` for direct lookup, scoped search, variables, incident
 ```
 
 Process-instance reads and state reports preserve `SUSPENDED` as a distinct, nonterminal state for paused execution. The public process state parser accepts case variations and surrounding whitespace. Compact human rows show `SUSPENDED` in the existing state column; JSON retains it in the existing state field.
+
+On Camunda 8.10, process-instance JSON also includes `suspendedDate` when the current response provides it, including nested instance payloads with incidents, variables, or elements. The public `SuspendedDate` field uses UTC RFC3339Nano (for example, `2026-10-17T08:30:00.123456789Z`). Missing, null, or zero timestamps become an empty string and are omitted from JSON; each new read or search replaces the previous snapshot. A missing timestamp does not change `SUSPENDED` state, and the field does not represent suspension history or accumulated duration. Camunda 8.8/8.9 leave this metadata empty. Human rows and keys-only output remain unchanged.
 
 Explicit suspended-state filters and expectations require Camunda 8.10. On 8.8/8.9 they return an unsupported-capability error before discovery or polling, including mixed desired states and empty key sets. ACTIVE selection remains exact; unfiltered/ALL selection retains all matching states. A suspended instance satisfies a suspended expectation only when any requested incident condition also matches, and never satisfies a terminal-only expectation.
 
