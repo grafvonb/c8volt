@@ -18,6 +18,7 @@ import (
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/services"
 	"github.com/grafvonb/c8volt/testx/activitysink"
+	"github.com/grafvonb/c8volt/toolx"
 	"github.com/grafvonb/c8volt/toolx/logging"
 	"github.com/grafvonb/c8volt/typex"
 	"github.com/stretchr/testify/assert"
@@ -1050,6 +1051,44 @@ func TestWaitForProcessInstanceStateMutationOwnsLookupFailure(t *testing.T) {
 			require.ErrorIs(t, err, context.Canceled)
 			require.Equal(t, 1, strings.Count(output.String(), "pi state observation:"))
 			require.Equal(t, !suppressed, strings.Contains(output.String(), "level=ERROR"))
+		})
+	}
+}
+
+// TestSuspendedStateWaits keeps the generic waiter independent of version
+// capabilities and proves suspension never satisfies terminal or incident mismatches.
+func TestSuspendedStateWaits(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name    string
+		request d.ProcessInstanceExpectationRequest
+		success bool
+	}{
+		{"suspension", d.ProcessInstanceExpectationRequest{States: d.States{d.StateSuspended}}, true},
+		{"mixed case", d.ProcessInstanceExpectationRequest{States: d.States{d.StateActive, "sUsPeNdEd"}}, true},
+		{"completed", d.ProcessInstanceExpectationRequest{States: d.States{d.StateCompleted}}, false},
+		{"other terminal states", d.ProcessInstanceExpectationRequest{States: d.States{d.StateCanceled, d.StateTerminated, d.StateAbsent}}, false},
+		{"matching incident", d.ProcessInstanceExpectationRequest{States: d.States{d.StateSuspended}, Incident: toolx.Ptr(true)}, true},
+		{"incident mismatch", d.ProcessInstanceExpectationRequest{States: d.States{d.StateSuspended}, Incident: toolx.Ptr(false)}, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			calls := 0
+			pi := d.ProcessInstance{Key: "1", State: d.StateSuspended, Incident: true}
+			source := stubPIWaiter{
+				getStateByKey:      func(context.Context, string) (d.State, d.ProcessInstance, error) { calls++; return pi.State, pi, nil },
+				getProcessInstance: func(context.Context, string) (d.ProcessInstance, error) { calls++; return pi, nil },
+			}
+			cfg := testConfig(time.Nanosecond, 1, 0)
+			cfg.App.CamundaVersion = toolx.V88 // Generic observation is allowed even on older adapters.
+			got, _, err := WaitForProcessInstanceExpectation(context.Background(), source, cfg, testLogger(), "1", tc.request)
+			require.Equal(t, tc.success, got.Ok)
+			if tc.success {
+				require.NoError(t, err)
+				require.Equal(t, d.StateSuspended, got.State)
+			} else {
+				require.Error(t, err)
+			}
+			require.Equal(t, 1, calls)
 		})
 	}
 }

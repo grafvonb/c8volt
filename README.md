@@ -266,6 +266,8 @@ Use `get process-instance` for direct lookup, scoped search, variables, incident
 
 Process-instance reads and state reports preserve `SUSPENDED` as a distinct, nonterminal state for paused execution. The public process state parser accepts case variations and surrounding whitespace. Compact human rows show `SUSPENDED` in the existing state column; JSON retains it in the existing state field.
 
+Explicit suspended-state filters and expectations require Camunda 8.10. On 8.8/8.9 they return an unsupported-capability error before discovery or polling, including mixed desired states and empty key sets. ACTIVE selection remains exact; unfiltered/ALL selection retains all matching states. A suspended instance satisfies a suspended expectation only when any requested incident condition also matches, and never satisfies a terminal-only expectation.
+
 Generated reference: [get process-instance](docs/cli/c8volt_get_process-instance.md).
 
 ### Inspect And Search User Tasks

@@ -32,5 +32,8 @@ func (s *Service) GetProcessInstances(ctx context.Context, keys typex.Keys, want
 
 // WaitForProcessInstancesState waits for multiple process instances to reach a desired state.
 func (s *Service) WaitForProcessInstancesState(ctx context.Context, keys typex.Keys, desired d.States, wantedWorkers int, opts ...services.CallOption) (d.StateResponses, error) {
+	if err := s.ValidateProcessInstanceStates(desired); err != nil {
+		return d.StateResponses{}, err
+	}
 	return waiter.WaitForProcessInstancesState(ctx, s, s.cfg, s.log, keys, desired, wantedWorkers, opts...)
 }

@@ -3762,3 +3762,6 @@ func TestClient_ProcessInstanceStateReports(t *testing.T) {
 		})
 	}
 }
+
+// ValidateProcessInstanceStates permits existing fixtures independently of version policy.
+func (s stubProcessInstanceAPI) ValidateProcessInstanceStates(d.States) error { return nil }

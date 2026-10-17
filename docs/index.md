@@ -6,7 +6,7 @@ nav_exclude: true
 has_toc: true
 ---
 
-> Generated from build `c8volt v4.3.4-149-g1e8fd679-dirty`, commit `1e8fd679`, built `2026-10-17T11:28:57Z` | Supported Camunda 8 versions: 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.3 (final)
+> Generated from build `c8volt v4.3.4-150-g044ee219-dirty`, commit `044ee219`, built `2026-10-17T11:40:20Z` | Supported Camunda 8 versions: 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.3 (final)
 
 <img src="./logo/c8volt_logo_transparent_w_shadow_400x244.png" alt="c8volt logo" />
 
@@ -271,6 +271,8 @@ Use `get process-instance` for direct lookup, scoped search, variables, incident
 ```
 
 Process-instance reads and state reports preserve `SUSPENDED` as a distinct, nonterminal state for paused execution. The public process state parser accepts case variations and surrounding whitespace. Compact human rows show `SUSPENDED` in the existing state column; JSON retains it in the existing state field.
+
+Explicit suspended-state filters and expectations require Camunda 8.10. On 8.8/8.9 they return an unsupported-capability error before discovery or polling, including mixed desired states and empty key sets. ACTIVE selection remains exact; unfiltered/ALL selection retains all matching states. A suspended instance satisfies a suspended expectation only when any requested incident condition also matches, and never satisfies a terminal-only expectation.
 
 Generated reference: [get process-instance](./cli/c8volt_get_process-instance).
 

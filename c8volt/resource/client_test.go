@@ -1195,3 +1195,6 @@ func (stubProcessAPI) PlanProcessInstanceMutationPages(context.Context, process.
 }
 
 var _ process.API = stubProcessAPI{}
+
+// ValidateProcessInstanceStates permits the resource fixtures independently of version policy.
+func (s stubProcessInstanceService) ValidateProcessInstanceStates(d.States) error { return nil }

@@ -18,7 +18,10 @@ import (
 	"github.com/grafvonb/c8volt/typex"
 )
 
+// API defines the version-neutral process-instance service contract.
 type API interface {
+	// ValidateProcessInstanceStates checks explicit state capabilities without I/O.
+	ValidateProcessInstanceStates(states d.States) error
 	CreateProcessInstance(ctx context.Context, data d.ProcessInstanceData, opts ...services.CallOption) (d.ProcessInstanceCreation, error)
 	GetProcessInstance(ctx context.Context, key string, opts ...services.CallOption) (d.ProcessInstance, error)
 	SearchProcessInstanceVariables(ctx context.Context, key string, opts ...services.CallOption) ([]d.ProcessInstanceVariable, error)

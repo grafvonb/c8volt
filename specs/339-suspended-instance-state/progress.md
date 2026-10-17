@@ -41,3 +41,44 @@ Started: 2026-10-17 13:26:30
 - Passed `make docs-content`, gofmt checks on touched Go files, `git diff --check`, and memory structure checks. Reviewed generated docs; generated clients/provenance remain unchanged. No new command lifecycle/mode declarations were added.
 - Domain/public terminal sets retain their different ABSENT handling; creation-observable states remain unchanged until T004. Explicit version guards and command execution/completion coverage remain T002/T003. Live 8.10.4 acceptance belongs to T006 and was not attempted in this unit.
 ---
+
+---
+## Iteration 2 - 2026-10-17 13:43
+**Work Unit**: US2 — Select and wait for suspended instances (partial: T002 service capability contract)
+**Tasks Completed**:
+- [x] T002: Validate explicit suspended-state capability across shared traversal and all version adapters; cover public errors, search mapping, direct incidents, single/bulk waits, empty scopes and terminal non-success; update documentation and required test doubles.
+**Tasks Remaining in Work Unit**: 1 — T003 CLI selection/completion and execution-path output contracts. T004–T006 remain outside this story's current work unit.
+**Commit**: This work-unit commit
+**Files Changed**:
+- README.md
+- c8volt/process/client_test.go
+- c8volt/process/suspended_test.go
+- c8volt/resource/client_test.go
+- docs/index.md
+- internal/services/processinstance/api.go
+- internal/services/processinstance/dryrun_test.go
+- internal/services/processinstance/search.go
+- internal/services/processinstance/search_test.go
+- internal/services/processinstance/v810/bulk.go
+- internal/services/processinstance/v810/contract.go
+- internal/services/processinstance/v810/service.go
+- internal/services/processinstance/v88/bulk.go
+- internal/services/processinstance/v88/contract.go
+- internal/services/processinstance/v88/service.go
+- internal/services/processinstance/v89/bulk.go
+- internal/services/processinstance/v89/contract.go
+- internal/services/processinstance/v89/service.go
+- internal/services/processinstance/waiter/waiter_test.go
+- specs/339-suspended-instance-state/progress.md
+- specs/339-suspended-instance-state/ralph-memory.md
+- specs/339-suspended-instance-state/tasks.md
+**Learnings**:
+- v88/v89 reject trimmed case-insensitive suspended members, including mixed state sets, with wrapped domain.ErrUnsupported before requests or workers. Shared page/total traversal validates before direct-incident discovery, including empty incident scopes. v810 permits suspension; unset/ALL and other existing state handling remain unchanged.
+- Kept version policy below public facades, left generic waiters and implicit creation-observable states unchanged, and preserved existing CANCELED-to-TERMINATED request normalization. Tests confirm exact serialized SUSPENDED/ACTIVE selection, all-state populations, direct-incident filtering, combined incident conditions and bounded terminal non-success.
+- Centralized cross-version adapter HTTP regression coverage in internal/services/processinstance/search_test.go instead of duplicating equivalent fixtures in each version package. Real-adapter public error and wait coverage lives in c8volt/process/suspended_test.go; generic observation coverage lives beside the waiter tests.
+- A guard-disabled regression check failed as expected in TestSuspendedUnsupportedEntryPoints for unsupported errors and request counts. Guards were restored before final validation. Early test-development runs also caught fixture/signature mismatches; all were corrected before task completion.
+- Passed `go test ./internal/services/processinstance/... ./c8volt/process -run 'State|Expectation|Search|Suspended' -count=1`; new suspension tests ran in shared services, facade and waiter packages, alongside existing versioned search/wait regressions. Traversal/walker packages had no tests matching that targeted pattern and were covered by the later full race invocation.
+- Ran `make test` (`go test ./... -race -count=1` with Makefile race-exit-delay setting) because the new shared interface affects commands, facades and concurrent waits. Every package passed except c8volt/resource, which initially failed compilation because its test double lacked the new method. Added the method, then passed `go test ./c8volt/resource -count=1` and `go test ./c8volt/resource -race -count=1`. Together these runs validate every package; the initial make invocation remains recorded as failed, and successful unrelated package tests were not repeated.
+- Passed `make docs-content`, touched-file gofmt checks, `git diff --check`, and Ralph memory/record structure checks. README-derived docs/index.md includes the capability guidance and regenerated build provenance; command help from T001 needed no additional source changes in T002. Generated clients and their provenance remain unchanged. No command mode declarations were added.
+- T003 remains a separate independently verifiable CLI output/completion work unit. Live 8.10.4 validation remains T006 and was not attempted in this iteration.
+---

@@ -5,6 +5,8 @@ package v88
 
 import (
 	"context"
+	"fmt"
+	"strings"
 
 	camundav88 "github.com/grafvonb/c8volt/internal/clients/camunda/v88/camunda"
 	operatev88 "github.com/grafvonb/c8volt/internal/clients/camunda/v88/operate"
@@ -14,7 +16,10 @@ import (
 	"github.com/grafvonb/c8volt/typex"
 )
 
+// API describes the process-instance operations implemented by the v8.8 adapter.
 type API interface {
+	// ValidateProcessInstanceStates checks explicit state capabilities without I/O.
+	ValidateProcessInstanceStates(states d.States) error
 	CreateProcessInstance(ctx context.Context, data d.ProcessInstanceData, opts ...services.CallOption) (d.ProcessInstanceCreation, error)
 	GetProcessInstance(ctx context.Context, key string, opts ...services.CallOption) (d.ProcessInstance, error)
 	SearchProcessInstanceVariables(ctx context.Context, key string, opts ...services.CallOption) ([]d.ProcessInstanceVariable, error)
@@ -53,3 +58,14 @@ type GenProcessInstanceClientOperate interface {
 var _ API = (*Service)(nil)
 var _ GenProcessInstanceClientCamunda = (*camundav88.ClientWithResponses)(nil)
 var _ GenProcessInstanceClientOperate = (*operatev88.ClientWithResponses)(nil)
+
+// ValidateProcessInstanceStates rejects explicit suspension on this older adapter.
+// Implicit creation visibility uses the generic waiter and bypasses this guard.
+func (s *Service) ValidateProcessInstanceStates(states d.States) error {
+	for _, state := range states {
+		if strings.EqualFold(strings.TrimSpace(string(state)), string(d.StateSuspended)) {
+			return fmt.Errorf("%w: SUSPENDED process-instance state requires Camunda 8.10 (configured 8.8)", d.ErrUnsupported)
+		}
+	}
+	return nil
+}
