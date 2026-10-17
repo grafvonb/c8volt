@@ -12,7 +12,7 @@ var runCmd = &cobra.Command{
 	Short: "Start process instances",
 	Long: `Start process instances.
 
-The process-instance command waits until created instances are observable as ACTIVE, COMPLETED, CANCELED, or TERMINATED.`,
+The process-instance command waits until created instances are observable as ACTIVE, SUSPENDED, COMPLETED, CANCELED, or TERMINATED. This confirms creation visibility, not execution completion. Use --no-wait to return after creation is accepted.`,
 	Example: `  ./c8volt run process-instance --bpmn-process-id <bpmn-process-id>
   ./c8volt run process-instance --bpmn-process-id <bpmn-process-id> --vars '{"customerId":"1234"}'
   ./c8volt run process-instance --bpmn-process-id <bpmn-process-id> --count 3 --workers 2

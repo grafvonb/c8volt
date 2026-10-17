@@ -65,7 +65,9 @@ var getProcessInstanceCmd = &cobra.Command{
 
 Use a known key or search by process definition, tenant, state, incidents, variables, jobs, user tasks, and time ranges. Missing explicit keys return not-found.
 
---batch-size controls each discovery request; --limit caps instances across all pages; --total counts matching instances.
+On Camunda 8.10, JSON includes suspendedDate in UTC when the current instance response provides a nonzero timestamp. Missing timestamps are omitted on each read; this field does not represent suspension history. Human rows and keys-only output remain unchanged.
+
+--batch-size controls each discovery request; --limit caps instances across all pages; --total counts matching instances. Empty searches suppress the human summary under --quiet; explicit JSON and keys-only output keep their existing contracts.
 
 --tenant limits search and selector discovery. Explicit --key and stdin keys use backend authorization without tenant filtering. A --bpmn-process-id selector must match a visible process definition before discovery.
 
@@ -76,6 +78,7 @@ Use variable-search flags to narrow list/search results natively. --var-exists r
 Use --has-user-tasks to fetch process instances by their owning user-task keys.`,
 	Example: `  ./c8volt get process-instance --bpmn-process-id <bpmn-process-id> --state active --limit 5
   ./c8volt get process-instance --key <process-instance-key>
+  ./c8volt get process-instance --state suspended --json
   ./c8volt get process-instance --state active --total
   ./c8volt get process-instance --has-user-tasks <user-task-key>
   ./c8volt get process-instance --incidents-only --with-incidents --limit 5
@@ -294,7 +297,9 @@ func init() {
 
 	// filtering options
 	fs.StringVar(&flagGetPIParentKey, "parent-key", "", "parent process instance key to filter process instances")
-	fs.StringVarP(&flagGetPIState, "state", "s", "all", "state to filter process instances: all, active, completed, canceled, terminated")
+	fs.StringVarP(&flagGetPIState, "state", "s", "all", "state to filter process instances: all, active, suspended (Camunda 8.10), completed, canceled, terminated")
+
+	_ = getProcessInstanceCmd.RegisterFlagCompletionFunc("state", processInstanceStateCompletion(false))
 
 	fs.BoolVar(&flagGetPIRootsOnly, "roots-only", false, "show only root process instances")
 	fs.BoolVar(&flagGetPIChildrenOnly, "children-only", false, "show only child process instances")

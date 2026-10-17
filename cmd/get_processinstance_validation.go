@@ -44,7 +44,7 @@ func validatePISearchFlags(cmds ...*cobra.Command) error {
 	}
 	if flagGetPIState != "" && flagGetPIState != "all" {
 		if _, ok := process.ParseState(flagGetPIState); !ok {
-			return invalidFlagValuef("invalid value for --state: %q, valid values are: %s", flagGetPIState, process.ValidStateStrings())
+			return invalidFlagValuef("invalid value for --state: %q, valid values are: %s; suspended requires Camunda 8.10", flagGetPIState, process.ValidStateStrings())
 		}
 	}
 	if flagGetPITotal {

@@ -138,5 +138,5 @@
 
 ## Active Speckit Plan
 <!-- SPECKIT START -->
-- Active Speckit implementation plan: `specs/312-pd-watch-indicators/plan.md`
+- Active Speckit implementation plan: `specs/339-suspended-instance-state/plan.md`
 <!-- SPECKIT END -->

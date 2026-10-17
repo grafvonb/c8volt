@@ -657,3 +657,6 @@ func (stubDryRunIncidentAPI) SearchIncidentsPage(context.Context, d.IncidentFilt
 func (stubDryRunIncidentAPI) SearchProcessInstanceIncidents(context.Context, string, ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error) {
 	return nil, errors.New("unexpected process instance incident search")
 }
+
+// ValidateProcessInstanceStates permits existing fixtures independently of version policy.
+func (s stubDryRunProcessInstanceAPI) ValidateProcessInstanceStates(d.States) error { return nil }

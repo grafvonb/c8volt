@@ -14,6 +14,7 @@ import (
 	"github.com/grafvonb/c8volt/toolx"
 )
 
+// fromProcessInstanceResult maps a fresh backend snapshot, clearing absent date metadata.
 func fromProcessInstanceResult(r camundav810.ProcessInstanceResult) d.ProcessInstance {
 	return d.ProcessInstance{
 		BpmnProcessId:            r.ProcessDefinitionId,
@@ -27,6 +28,7 @@ func fromProcessInstanceResult(r camundav810.ProcessInstanceResult) d.ProcessIns
 		ProcessVersion:           r.ProcessDefinitionVersion,
 		ProcessVersionTag:        valueOrEmpty(r.ProcessDefinitionVersionTag),
 		StartDate:                formatTime(r.StartDate),
+		SuspendedDate:            formatTimePtr(r.SuspendedDate),
 		State:                    d.State(r.State),
 		TenantId:                 r.TenantId,
 	}

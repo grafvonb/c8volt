@@ -54,6 +54,30 @@ before using this folder in an agent run.
 
 ## Quick Start
 
+The existing `integration-cli-get` slice includes `TestGetFamilySuspendedState`
+for suspended process-instance reads. It uses an isolated held definition and
+checks the observed server patch is **8.10.4 before any fixture mutation**;
+the configured release remains `8.10`. Older-minor profiles skip this scenario,
+which does not count as suspension acceptance.
+
+For a focused run on the designated disposable profile:
+
+```sh
+go test -tags=integration ./integration/cli -list '^TestGetFamilySuspendedState$'
+C8VOLT_IT_PROFILES=c810local C8VOLT_IT_RELEASE_VERSION=8.10 \
+  go test -tags=integration ./integration/cli -run '^TestGetFamilySuspendedState$' -count=1 -v -timeout=20m
+```
+
+Require the named test to be listed before running it. The scenario compares
+suspended, active and terminal owned instances, exercises state and combined
+expectations, and verifies timestamp omission after resumption. Generated
+suspend/resume calls are fixture setup only. Cleanup resumes owned instances
+before ordinary deletion. Evidence includes `suspended-revision.json` (Git
+revision, dirty status and unchanged 8.10.3 client provenance), profile and
+command records, raw observations under `data/`, separate streams under `logs/`,
+and `suspended-cleanup-<profile>.json`. Cleanup failures are reported separately.
+Use a separate `C8VOLT_IT_WORKDIR` for each invocation.
+
 Run the Go all-command integration suite inventory slice:
 
 ```sh

@@ -406,3 +406,22 @@ func resetOpsSlowProcessAnalysisTestFlags(t *testing.T) *cobra.Command {
 	flags.BoolVar(&flagOpsAnalyseSlowProcessInstanceWithListeners, "with-listeners", false, "")
 	return cmd
 }
+
+// TestOpsSlowProcessSuspendedStateVocabulary retains the analysis-specific ABSENT
+// restriction while documenting its already-supported read-only suspended selector.
+func TestOpsSlowProcessSuspendedStateVocabulary(t *testing.T) {
+	previous := flagOpsAnalyseSlowProcessInstanceState
+	t.Cleanup(func() { flagOpsAnalyseSlowProcessInstanceState = previous })
+	flagOpsAnalyseSlowProcessInstanceState = "sUsPeNdEd"
+	state, err := parseOpsSlowProcessAnalysisState()
+	require.NoError(t, err)
+	require.Equal(t, process.StateSuspended, state)
+	flagOpsAnalyseSlowProcessInstanceState = "absent"
+	_, err = parseOpsSlowProcessAnalysisState()
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "suspended requires Camunda 8.10")
+	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Flags().Lookup("state").Usage, "suspended (Camunda 8.10)")
+	output := executeCompletionForTest(t, "ops", "analyse", "slow-process-instances", "--state", "")
+	require.Contains(t, output, "suspended\tRequires Camunda 8.10")
+	require.NotContains(t, output, "absent\n")
+}

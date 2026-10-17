@@ -222,6 +222,9 @@ func (s *Service) SearchForProcessInstances(ctx context.Context, filter d.Proces
 
 // SearchForProcessInstancesPage fetches and maps one v8.10 process-instance search page.
 func (s *Service) SearchForProcessInstancesPage(ctx context.Context, filter d.ProcessInstanceFilter, pageReq d.ProcessInstancePageRequest, opts ...services.CallOption) (d.ProcessInstancePage, error) {
+	if err := s.ValidateProcessInstanceStates(d.States{filter.State}); err != nil {
+		return d.ProcessInstancePage{}, err
+	}
 	cCfg := services.ApplyCallOptions(opts)
 	s.log.Debug(fmt.Sprintf("searching pi; filter %s", filter.String()))
 
@@ -676,16 +679,25 @@ func (s *Service) infoProcessInstanceDetail(cCfg *services.CallCfg, msg string) 
 
 // WaitForProcessInstanceState polls until a process instance reaches one of the desired states.
 func (s *Service) WaitForProcessInstanceState(ctx context.Context, key string, desired d.States, opts ...services.CallOption) (d.StateResponse, d.ProcessInstance, error) {
+	if err := s.ValidateProcessInstanceStates(desired); err != nil {
+		return d.StateResponse{}, d.ProcessInstance{}, err
+	}
 	return waiter.WaitForProcessInstanceState(ctx, s, s.cfg, s.log, key, desired, opts...)
 }
 
 // WaitForProcessInstanceExpectation polls one process instance until an expectation is met or exhausted.
 func (s *Service) WaitForProcessInstanceExpectation(ctx context.Context, key string, request d.ProcessInstanceExpectationRequest, opts ...services.CallOption) (d.ProcessInstanceExpectationResponse, d.ProcessInstance, error) {
+	if err := s.ValidateProcessInstanceStates(request.States); err != nil {
+		return d.ProcessInstanceExpectationResponse{}, d.ProcessInstance{}, err
+	}
 	return waiter.WaitForProcessInstanceExpectation(ctx, s, s.cfg, s.log, key, request, opts...)
 }
 
 // WaitForProcessInstancesExpectation polls multiple process instances with bounded worker execution.
 func (s *Service) WaitForProcessInstancesExpectation(ctx context.Context, keys typex.Keys, request d.ProcessInstanceExpectationRequest, wantedWorkers int, opts ...services.CallOption) (d.ProcessInstanceExpectationResponses, error) {
+	if err := s.ValidateProcessInstanceStates(request.States); err != nil {
+		return d.ProcessInstanceExpectationResponses{}, err
+	}
 	return waiter.WaitForProcessInstancesExpectation(ctx, s, s.cfg, s.log, keys, request, wantedWorkers, opts...)
 }
 

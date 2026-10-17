@@ -12,7 +12,7 @@ Start process instances
 
 Start process instances.
 
-The process-instance command waits until created instances are observable as ACTIVE, COMPLETED, CANCELED, or TERMINATED.
+The process-instance command waits until created instances are observable as ACTIVE, SUSPENDED, COMPLETED, CANCELED, or TERMINATED. This confirms creation visibility, not execution completion. Use --no-wait to return after creation is accepted.
 
 ```
 c8volt run [flags]

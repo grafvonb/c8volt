@@ -581,7 +581,8 @@ func TestGeneratedRunProcessInstanceDocsDocumentPipeline(t *testing.T) {
 	processInstanceDoc := readGeneratedDocForTest(t, out, "c8volt_run_process-instance.md")
 	for _, want := range []string{
 		"Start process instances and confirm creation",
-		"observable as ACTIVE, COMPLETED, CANCELED, or TERMINATED",
+		"observable as ACTIVE, SUSPENDED, COMPLETED, CANCELED, or TERMINATED",
+		"This confirms creation visibility, not execution completion",
 		"./c8volt run process-instance --bpmn-process-id <bpmn-process-id> --keys-only | ./c8volt expect process-instance --state completed -",
 		"./c8volt run process-instance --bpmn-process-id <long-running-bpmn-process-id> --keys-only | ./c8volt expect process-instance --state active -",
 	} {

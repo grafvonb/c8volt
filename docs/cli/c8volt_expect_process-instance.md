@@ -24,6 +24,7 @@ c8volt expect process-instance [flags]
 
 ```
   ./c8volt expect process-instance --key <process-instance-key> --state active
+  ./c8volt expect process-instance --key <process-instance-key> --state suspended
   ./c8volt expect process-instance --key <process-instance-key> --incident true
   ./c8volt expect process-instance --key <process-instance-key> --state active --incident false
   ./c8volt expect process-instance --key <process-instance-key> --state completed --state absent
@@ -39,7 +40,7 @@ c8volt expect process-instance [flags]
       --incident string   incident expectation; valid values are: [true, false]
   -k, --key strings       process instance key(s) to watch
       --no-worker-limit   use all queued jobs as workers when --workers is unset
-  -s, --state strings     state expectation; valid values are: [active, completed, canceled, terminated, absent]
+  -s, --state strings     state expectation; valid values are: [active, suspended, completed, canceled, terminated, absent]; suspended requires Camunda 8.10
   -w, --workers int       maximum concurrent workers when --count > 1 (default: min(count, 2*GOMAXPROCS, 32))
 ```
 

@@ -28,9 +28,13 @@ func processInstanceTotalView(cmd *cobra.Command, total int64) error {
 	return err
 }
 
+// listProcessInstancesView preserves explicit machine results and suppresses empty human summaries in quiet mode.
 func listProcessInstancesView(cmd *cobra.Command, resp process.ProcessInstances) error {
 	if pickMode() == RenderModeJSON {
 		return renderJSONPayload(cmd, RenderModeJSON, processInstancesWithAgeMeta(resp))
+	}
+	if flagQuiet && len(resp.Items) == 0 && pickMode() == RenderModeOneLine {
+		return nil
 	}
 	return listOrJSONFlat(cmd, resp, resp.Items, pickMode(), func(it process.ProcessInstance) flatRow {
 		return flatRowPIWithTimezone(it, commandShowTimezoneOffset(cmd))

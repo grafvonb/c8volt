@@ -14,8 +14,10 @@ import (
 type State string
 
 const (
-	StateAll        State = "ALL"
-	StateActive     State = "ACTIVE"
+	StateAll    State = "ALL"
+	StateActive State = "ACTIVE"
+	// StateSuspended identifies paused, nonterminal process execution.
+	StateSuspended  State = "SUSPENDED"
 	StateCompleted  State = "COMPLETED"
 	StateCanceled   State = "CANCELED"
 	StateTerminated State = "TERMINATED"
@@ -89,9 +91,11 @@ func ParseStates(in []string) (States, error) {
 	return out, nil
 }
 
+// validStates defines accepted public state inputs; UNKNOWN remains a fallback only.
 var validStates = States{
 	StateAll,
 	StateActive,
+	StateSuspended,
 	StateCompleted,
 	StateCanceled,
 	StateTerminated,

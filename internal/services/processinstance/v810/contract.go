@@ -16,6 +16,8 @@ import (
 
 // API describes the process-instance operations implemented by the native v8.10 adapter.
 type API interface {
+	// ValidateProcessInstanceStates checks explicit state capabilities without I/O.
+	ValidateProcessInstanceStates(states d.States) error
 	CreateProcessInstance(ctx context.Context, data d.ProcessInstanceData, opts ...services.CallOption) (d.ProcessInstanceCreation, error)
 	GetProcessInstance(ctx context.Context, key string, opts ...services.CallOption) (d.ProcessInstance, error)
 	SearchProcessInstanceVariables(ctx context.Context, key string, opts ...services.CallOption) ([]d.ProcessInstanceVariable, error)
@@ -50,3 +52,8 @@ type GenProcessInstanceClientCamunda interface {
 }
 
 var _ GenProcessInstanceClientCamunda = (*camundav810.ClientWithResponses)(nil)
+
+// ValidateProcessInstanceStates permits explicit suspension on Camunda 8.10.
+func (s *Service) ValidateProcessInstanceStates(states d.States) error {
+	return nil
+}

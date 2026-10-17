@@ -5,12 +5,37 @@ package cmd
 
 import (
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/grafvonb/c8volt/testx"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 )
+
+// TestProcessInstanceStateCompletion verifies local, command-specific candidates without bootstrap.
+func TestProcessInstanceStateCompletion(t *testing.T) {
+	for _, verb := range []string{"get", "expect"} {
+		t.Run(verb, func(t *testing.T) {
+			output := executeCompletionForTest(t, "--config", "/nonexistent/completion-config.yaml", verb, "process-instance", "--state", "")
+			require.Contains(t, output, "suspended\tRequires Camunda 8.10\n")
+			require.Contains(t, output, "active\n")
+			require.Contains(t, output, ":4\n")
+			require.NotContains(t, output, "UNKNOWN")
+			if verb == "get" {
+				require.Contains(t, output, "all\n")
+				require.NotContains(t, output, "absent\n")
+			} else {
+				require.Contains(t, output, "absent\n")
+				require.NotContains(t, output, "all\n")
+			}
+			partial := executeCompletionNoDescForTest(t, verb, "process-instance", "--state", "sUs")
+			require.Contains(t, strings.ToLower(partial), "suspended\n")
+			require.NotContains(t, partial, "active\n")
+			requireCompletionOutputStaysUserFacing(t, output)
+		})
+	}
+}
 
 // Protects bootstrap bypass from matching only by leaf command name; nested commands like
 // `get cluster version` still need the full service bootstrap.

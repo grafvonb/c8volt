@@ -114,6 +114,7 @@ type opsSlowProcessAnalysisCommandRequest struct {
 	WithFullTimeline bool
 }
 
+// init registers read-only analysis flags and local state completion.
 func init() {
 	opsCmd.AddCommand(opsAnalyseCmd)
 	opsAnalyseCmd.AddCommand(opsAnalyseSlowProcessInstancesCmd)
@@ -123,7 +124,7 @@ func init() {
 	fs.StringSliceVarP(&flagOpsAnalyseSlowProcessInstanceKeys, "key", "k", nil, "process-instance key(s) to analyse; repeat or combine with stdin '-'")
 	fs.StringVarP(&flagOpsAnalyseSlowProcessInstanceBpmnProcessID, "bpmn-process-id", "b", "", "BPMN process ID to discover process instances")
 	fs.StringVar(&flagOpsAnalyseSlowProcessInstancePDKey, "pd-key", "", "process definition key to discover process instances")
-	fs.StringVarP(&flagOpsAnalyseSlowProcessInstanceState, "state", "s", "all", "state to filter discovered process instances: all, active, completed, canceled, terminated")
+	fs.StringVarP(&flagOpsAnalyseSlowProcessInstanceState, "state", "s", "all", "state to filter discovered process instances: all, active, suspended (Camunda 8.10), completed, canceled, terminated")
 	fs.StringVar(&flagOpsAnalyseSlowProcessInstanceStartDateAfter, "start-date-after", "", "only include process instances with start date >= RFC3339 timestamp, c8volt timestamp, or YYYY-MM-DD")
 	fs.StringVar(&flagOpsAnalyseSlowProcessInstanceStartDateBefore, "start-date-before", "", "only include process instances with start date <= RFC3339 timestamp, c8volt timestamp, or YYYY-MM-DD")
 	fs.StringVar(&flagOpsAnalyseSlowProcessInstanceEndDateAfter, "end-date-after", "", "only include process instances with end date >= RFC3339 timestamp, c8volt timestamp, or YYYY-MM-DD")
@@ -133,6 +134,7 @@ func init() {
 	fs.Int32VarP(&flagOpsAnalyseSlowProcessInstanceLimit, "limit", "l", 0, "maximum number of matching process instances to freeze for analysis across all discovery pages; omit to discover all matches")
 	fs.StringVar(&flagOpsAnalyseSlowProcessInstanceElementID, "element-id", "", "BPMN element ID to include in the analysis")
 	fs.StringVar(&flagOpsAnalyseSlowProcessInstanceType, "type", "", "runtime element type to include in the analysis")
+	_ = opsAnalyseSlowProcessInstancesCmd.RegisterFlagCompletionFunc("state", processInstanceStateCompletion(false))
 	fs.StringVar(&flagOpsAnalyseSlowProcessInstanceElementState, "element-state", "", "runtime element state to include in the analysis")
 	fs.StringVar(&flagOpsAnalyseSlowProcessInstanceDurationLonger, "dur-longer", "", "only include process instances whose whole duration is longer than this duration, for example 5m or 1h30m")
 	fs.StringVar(&flagOpsAnalyseSlowProcessInstanceElementDurationLonger, "dur-element-longer", "", "only include process instances with elements or transitions longer than this duration, for example 30s or 2m")

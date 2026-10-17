@@ -17,6 +17,9 @@ import (
 // trimming, local compatibility filtering, and optional direct incident-index
 // lookup while callers retain rendering and prompt decisions.
 func SearchProcessInstancesPages(ctx context.Context, piAPI API, incAPI SearchProcessInstanceIncidentAPI, request d.ProcessInstanceSearchRequest, visitor d.ProcessInstanceSearchPageVisitor, opts ...services.CallOption) (d.ProcessInstanceSearchPagesResult, error) {
+	if err := piAPI.ValidateProcessInstanceStates(d.States{request.Filter.State}); err != nil {
+		return d.ProcessInstanceSearchPagesResult{}, err
+	}
 	_ = services.ApplyCallOptions(opts)
 	normalizeProcessInstanceSearchRequest(&request)
 	if request.DirectIncidentIndex {
@@ -74,6 +77,9 @@ func SearchProcessInstancesPages(ctx context.Context, piAPI API, incAPI SearchPr
 // SearchProcessInstancesTotal uses exact backend totals when compatible and
 // otherwise counts filtered pages through service-owned traversal.
 func SearchProcessInstancesTotal(ctx context.Context, piAPI API, incAPI SearchProcessInstanceIncidentAPI, request d.ProcessInstanceSearchRequest, visitor d.ProcessInstanceSearchTotalVisitor, opts ...services.CallOption) (int64, error) {
+	if err := piAPI.ValidateProcessInstanceStates(d.States{request.Filter.State}); err != nil {
+		return 0, err
+	}
 	_ = services.ApplyCallOptions(opts)
 	normalizeProcessInstanceSearchRequest(&request)
 	if request.DirectIncidentIndex {

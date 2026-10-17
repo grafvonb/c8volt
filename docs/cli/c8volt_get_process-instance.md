@@ -14,7 +14,9 @@ Get process instances by key or search criteria.
 
 Use a known key or search by process definition, tenant, state, incidents, variables, jobs, user tasks, and time ranges. Missing explicit keys return not-found.
 
---batch-size controls each discovery request; --limit caps instances across all pages; --total counts matching instances.
+On Camunda 8.10, JSON includes suspendedDate in UTC when the current instance response provides a nonzero timestamp. Missing timestamps are omitted on each read; this field does not represent suspension history. Human rows and keys-only output remain unchanged.
+
+--batch-size controls each discovery request; --limit caps instances across all pages; --total counts matching instances. Empty searches suppress the human summary under --quiet; explicit JSON and keys-only output keep their existing contracts.
 
 --tenant limits search and selector discovery. Explicit --key and stdin keys use backend authorization without tenant filtering. A --bpmn-process-id selector must match a visible process definition before discovery.
 
@@ -33,6 +35,7 @@ c8volt get process-instance [flags]
 ```
   ./c8volt get process-instance --bpmn-process-id <bpmn-process-id> --state active --limit 5
   ./c8volt get process-instance --key <process-instance-key>
+  ./c8volt get process-instance --state suspended --json
   ./c8volt get process-instance --state active --total
   ./c8volt get process-instance --has-user-tasks <user-task-key>
   ./c8volt get process-instance --incidents-only --with-incidents --limit 5
@@ -84,7 +87,7 @@ c8volt get process-instance [flags]
       --start-date-before string        only include process instances with start date <= YYYY-MM-DD
       --start-date-newer-days int       only include process instances N days old or newer (0 means today) (default -1)
       --start-date-older-days int       only include process instances N days old or older (default -1)
-  -s, --state string                    state to filter process instances: all, active, completed, canceled, terminated (default "all")
+  -s, --state string                    state to filter process instances: all, active, suspended (Camunda 8.10), completed, canceled, terminated (default "all")
       --total                           return only the numeric total of matching process instances; capped backend totals are counted by paging
       --var stringArray                 require variable equality or advanced clause(s); repeat or separate clauses with commas
       --var-exists stringArray          require variable name(s) to exist; repeat or separate names with commas

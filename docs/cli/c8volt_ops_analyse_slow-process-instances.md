@@ -52,7 +52,7 @@ c8volt ops analyse slow-process-instances [-] [flags]
       --pd-key string               process definition key to discover process instances
       --start-date-after string     only include process instances with start date >= RFC3339 timestamp, c8volt timestamp, or YYYY-MM-DD
       --start-date-before string    only include process instances with start date <= RFC3339 timestamp, c8volt timestamp, or YYYY-MM-DD
-  -s, --state string                state to filter discovered process instances: all, active, completed, canceled, terminated (default "all")
+  -s, --state string                state to filter discovered process instances: all, active, suspended (Camunda 8.10), completed, canceled, terminated (default "all")
       --type string                 runtime element type to include in the analysis
       --with-full-timeline          show complete chronological element and transition detail
       --with-listeners              include runtime listener jobs
