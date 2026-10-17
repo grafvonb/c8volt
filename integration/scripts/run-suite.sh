@@ -47,7 +47,7 @@ it_run_case "Preflight" "config-show-json" "read-only" "pass" c8 config show --j
 it_run_case "Preflight" "config-test-connection" "read-only" "pass" c8 config test-connection
 it_run_case "Preflight" "config-test-connection-json" "read-only" "pass" c8 config test-connection --json
 it_run_case "Preflight" "cluster-version" "read-only" "pass" c8 get cluster version
-if ! it_require_output_contains "Preflight" "cluster-version" "$IT_TARGET_VERSION"; then
+if ! it_require_exact_minor "Preflight" "cluster-version" "$IT_TARGET_VERSION"; then
   printf "Target version gate failed. See %s\n" "$IT_REPORT"
   it_finish_report
   exit 2
@@ -152,15 +152,15 @@ if [ "$IT_TARGET_VERSION" = "8.8" ]; then
   fi
 else
   pd_cleanup_report="$IT_WORKDIR/reports/all-pd-purge-${IT_RUN_ID}.md"
-  it_run_case "C89 Destructive Workflows" "purge-all-pd-dry-run-scoped" "dry-run" "pass" c8 ops purge all-process-definitions --bpmn-process-id "$simple_user_task" --latest --dry-run --report-file "$pd_cleanup_report"
+  it_run_case "$IT_FIXTURE_PREFIX Destructive Workflows" "purge-all-pd-dry-run-scoped" "dry-run" "pass" c8 ops purge all-process-definitions --bpmn-process-id "$simple_user_task" --latest --dry-run --report-file "$pd_cleanup_report"
   if [ "$IT_FULL_FORCE" = "1" ]; then
-    it_run_case "C89 Destructive Workflows" "purge-all-pd-real-scoped" "mutation" "optional" c8 --auto-confirm ops purge all-process-definitions --bpmn-process-id "$simple_user_task" --latest --force --report-file "$IT_WORKDIR/reports/all-pd-purge-real-${IT_RUN_ID}.md"
-    it_run_case "C89 Destructive Workflows" "purge-all-pd-dry-run-broad" "dry-run" "pass" c8 ops purge all-process-definitions --dry-run --report-file "$IT_WORKDIR/reports/all-pd-purge-broad-dry-run-${IT_RUN_ID}.md"
-    it_run_case "C89 Destructive Workflows" "purge-all-pd-real-broad-full-force" "mutation" "pass" c8 --auto-confirm ops purge all-process-definitions --force --report-file "$IT_WORKDIR/reports/all-pd-purge-broad-real-${IT_RUN_ID}.md"
+    it_run_case "$IT_FIXTURE_PREFIX Destructive Workflows" "purge-all-pd-real-scoped" "mutation" "optional" c8 --auto-confirm ops purge all-process-definitions --bpmn-process-id "$simple_user_task" --latest --force --report-file "$IT_WORKDIR/reports/all-pd-purge-real-${IT_RUN_ID}.md"
+    it_run_case "$IT_FIXTURE_PREFIX Destructive Workflows" "purge-all-pd-dry-run-broad" "dry-run" "pass" c8 ops purge all-process-definitions --dry-run --report-file "$IT_WORKDIR/reports/all-pd-purge-broad-dry-run-${IT_RUN_ID}.md"
+    it_run_case "$IT_FIXTURE_PREFIX Destructive Workflows" "purge-all-pd-real-broad-full-force" "mutation" "pass" c8 --auto-confirm ops purge all-process-definitions --force --report-file "$IT_WORKDIR/reports/all-pd-purge-broad-real-${IT_RUN_ID}.md"
   else
-    it_skip_case "C89 Destructive Workflows" "purge-all-pd-real-scoped" "mutation" "C8VOLT_IT_FULL_FORCE!=1"
-    it_skip_case "C89 Destructive Workflows" "purge-all-pd-dry-run-broad" "dry-run" "C8VOLT_IT_FULL_FORCE!=1"
-    it_skip_case "C89 Destructive Workflows" "purge-all-pd-real-broad-full-force" "mutation" "C8VOLT_IT_FULL_FORCE!=1"
+    it_skip_case "$IT_FIXTURE_PREFIX Destructive Workflows" "purge-all-pd-real-scoped" "mutation" "C8VOLT_IT_FULL_FORCE!=1"
+    it_skip_case "$IT_FIXTURE_PREFIX Destructive Workflows" "purge-all-pd-dry-run-broad" "dry-run" "C8VOLT_IT_FULL_FORCE!=1"
+    it_skip_case "$IT_FIXTURE_PREFIX Destructive Workflows" "purge-all-pd-real-broad-full-force" "mutation" "C8VOLT_IT_FULL_FORCE!=1"
   fi
 fi
 

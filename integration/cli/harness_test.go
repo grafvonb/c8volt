@@ -19,6 +19,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/grafvonb/c8volt/config"
 	"github.com/grafvonb/c8volt/toolx"
 	"gopkg.in/yaml.v3"
 )
@@ -71,6 +72,7 @@ type integrationProfile struct {
 	ActualVersion   string `json:"actualVersion,omitempty"`
 	Reachable       bool   `json:"reachable"`
 	Tenant          string `json:"tenant,omitempty"`
+	CamundaBaseURL  string `json:"-"`
 }
 
 type runMetadata struct {
@@ -124,7 +126,7 @@ func TestCommandProposalRegistrationRecordsDirectCamundaSetup(t *testing.T) {
 		"listener job attached to runtime element",
 		"walk process-instance --with-listeners",
 		[]string{"walk process-instance", "get element"},
-		[]string{"8.8", "8.9"},
+		[]string{"8.8", "8.9", "8.10"},
 		"Operators can inspect listener-oriented fixtures without direct API setup.",
 	)
 
@@ -146,7 +148,7 @@ func TestEmbeddedBPMNProposalRegistrationRecordsMissingFixtureNeed(t *testing.T)
 		"workflow that raises a catchable BPMN error",
 		"update job --throw-bpmn-error",
 		[]string{"update job"},
-		[]string{"8.8", "8.9"},
+		[]string{"8.8", "8.9", "8.10"},
 		"Maintainers can cover BPMN error scenarios without importing one-off models.",
 	)
 
@@ -221,12 +223,14 @@ func TestProposalReports(t *testing.T) {
 type defaultLocalConfig struct {
 	ActiveProfile string                         `yaml:"active_profile"`
 	App           defaultLocalConfigApp          `yaml:"app"`
+	APIs          config.APIs                    `yaml:"apis"`
 	Profiles      map[string]defaultLocalProfile `yaml:"profiles"`
 	sourcePath    string
 }
 
 type defaultLocalProfile struct {
-	App defaultLocalConfigApp `yaml:"app"`
+	App  defaultLocalConfigApp `yaml:"app"`
+	APIs config.APIs           `yaml:"apis"`
 }
 
 type defaultLocalConfigApp struct {
@@ -234,6 +238,7 @@ type defaultLocalConfigApp struct {
 	Tenant         string `yaml:"tenant"`
 }
 
+// TestMain prepares the tagged harness and writes the selected group summary.
 func TestMain(m *testing.M) {
 	repoRoot, err := findRepoRoot()
 	if err != nil {
@@ -581,11 +586,26 @@ func profilesFromDefaultConfig(cfg defaultLocalConfig, names []string) ([]integr
 		if expectedVersion == "" {
 			expectedVersion = toolx.CurrentCamundaVersion.String()
 		}
+		apis := cfg.APIs
+		if rawProfile.APIs.Camunda.BaseURL != "" {
+			apis.Camunda.BaseURL = rawProfile.APIs.Camunda.BaseURL
+		}
+		if rawProfile.APIs.Camunda.Version != "" {
+			apis.Camunda.Version = rawProfile.APIs.Camunda.Version
+		}
+		if err := apis.Normalize(); err != nil {
+			return nil, fmt.Errorf("selected profile %q Camunda API: %w", name, err)
+		}
+		tenant := rawProfile.App.Tenant
+		if tenant == "" {
+			tenant = cfg.App.Tenant
+		}
 
 		profiles = append(profiles, integrationProfile{
 			Name:            name,
 			ExpectedVersion: expectedVersion,
-			Tenant:          rawProfile.App.Tenant,
+			Tenant:          tenant,
+			CamundaBaseURL:  apis.Camunda.BaseURL,
 		})
 	}
 	return profiles, nil
@@ -849,7 +869,7 @@ func proposalRecordsOrEmpty(proposals []proposalRecord) []proposalRecord {
 
 // supportedProposalVersions returns the Camunda minor versions covered by the proposal records.
 func supportedProposalVersions() []string {
-	return []string{"8.8", "8.9"}
+	return []string{"8.8", "8.9", "8.10"}
 }
 
 // allCommandSetupGapProposals collects direct setup fallback proposals from command-family slices.
@@ -982,6 +1002,7 @@ func requireNoExactGlobalCountAssertion(t *testing.T, description string) {
 	}
 }
 
+// runFamilyCoverageScenarios records help and behavioral coverage for the selected family.
 func runFamilyCoverageScenarios(t *testing.T, family string, paths []string) {
 	t.Helper()
 	entries := requireFamilyManifestSatisfaction(t, family, paths)

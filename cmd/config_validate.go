@@ -21,7 +21,7 @@ Loads the effective configuration using the normal precedence rules and applies 
 	Example: `  ./c8volt --config ./config.yaml config validate
   ./c8volt --profile <profile-name> config validate
   ./c8volt --tenant tenant-a config validate
-  ./c8volt --tenant "" config validate`,
+  ./c8volt --all-tenants config validate`,
 	Run: func(cmd *cobra.Command, args []string) {
 		log, _ := logging.FromContext(cmd.Context())
 		cfg, err := config.FromContext(cmd.Context())

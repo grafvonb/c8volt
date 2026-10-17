@@ -230,7 +230,7 @@ func TestCommandCapabilityForCommand_ProcessDefinitionWatchMetadata(t *testing.T
 	require.Contains(t, capability.OutputModes, OutputModeContract{
 		Name:      "one-line",
 		Supported: true,
-		Notes:     "default watch refreshes repaint this normal list view; --watch rejects JSON/keys-only/XML/quiet/automation combinations",
+		Notes:     "watch refreshes log a timestamped INFO summary; trailing row markers; and selective bold on supported terminals; plain fallback remains available and --watch rejects JSON/keys-only/XML/quiet/automation combinations",
 	})
 	require.Contains(t, capability.OutputModes, OutputModeContract{
 		Name:             "json",
@@ -244,6 +244,8 @@ func TestCommandCapabilityForCommand_ProcessDefinitionWatchMetadata(t *testing.T
 		Notes:     "finite key stream for non-watch invocations; --watch rejects keys-only output",
 	})
 	require.Contains(t, getProcessDefinitionCmd.Long, "--watch cannot be combined with --json, --keys-only, --xml, --quiet, or --automation")
+	require.Contains(t, getProcessDefinitionCmd.Long, "changed displayed values are also bold")
+	require.Contains(t, getProcessDefinitionCmd.Long, "NO_COLOR")
 }
 
 // TestCommandContractFocusedModeFilesOwnLifecycleDeclarations guards the file

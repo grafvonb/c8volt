@@ -13,7 +13,7 @@ before using this folder in an agent run.
 - The configured cluster is reachable and matches the expected Camunda minor.
 - c8volt can discover its own command contract, help tree, config, cluster
   version, topology, and capabilities.
-- Embedded C88/C89 fixtures can be deployed and used to generate disposable
+- Embedded C88/C89/C810 fixtures can be deployed and used to generate disposable
   run-owned data in an already dirty cluster.
 - Daily ops workflows work end to end:
   - process-definition discovery
@@ -24,7 +24,7 @@ before using this folder in an agent run.
 - Mutating workflows run preview first where supported, then real execution with
   full force/auto-confirm behavior.
 - Unsupported-version behavior is explicit, especially C88 process-definition
-  deletion and C89-only purge paths.
+  deletion and purge paths supported from C89 onward.
 - UX findings are collected: wording, grammar, aliases, confirmation behavior,
   verbosity, rhythm, bounded output, and automation friendliness.
 
@@ -36,10 +36,14 @@ before using this folder in an agent run.
   prompt.
 - `prompts/camunda-89-release-integration-suite.md`: C89 release validation
   prompt.
+- `prompts/camunda-810-release-integration-suite.md`: C810 release validation
+  prompt.
 - `scripts/run-c88-suite.sh`: wrapper for the C88 suite.
 - `scripts/run-c89-suite.sh`: wrapper for the C89 suite.
+- `scripts/run-c810-suite.sh`: wrapper for the C810 suite.
 - `scripts/run-suite.sh`: shared executable suite driver.
 - `scripts/lib/suite-lib.sh`: reporting, progress, and command helpers.
+- `scripts/tests/run-suite_test.sh`: offline fake-CLI version-gate coverage.
 - `cli/`: build-tagged Go all-command integration suite.
 - `assets/all-command-go-integration-rules.md`: context-only rules for a
   destructive Go suite that covers the complete command tree; not normal
@@ -117,7 +121,8 @@ Planned volume target names remain reserved for the other families. Until their
 matching `TestVolume*Family` scenarios are implemented, those Make targets exit
 with a clear not-implemented message instead of reporting a false pass.
 
-Real-state targets are a separate Camunda 8.9 foundation layer. They are more
+Real-state targets support Camunda 8.9 and 8.10 without duplicating the family
+suite. They are more
 specific than volume targets: they must prove actual jobs, incidents with
 related jobs, listener state, BPMN error jobs, retention candidates, destructive
 post-state, mixed failures, and gap-boundary tracking against real cluster state.
@@ -136,20 +141,118 @@ make integration-cli-real-state-destructive C8VOLT_IT_GO_TEST_FLAGS=-v C8VOLT_IT
 make integration-cli-real-state-cascade C8VOLT_IT_GO_TEST_FLAGS=-v C8VOLT_IT_REAL_STATE_TIMEOUT=90m
 ```
 
-To run every baseline, volume, and real-state integration slice in sequence:
+The common target keeps nonmutating inventory, manifest, profile, and smoke
+checks ahead of the separately confirmed example slice, whose eligible examples
+may mutate a disposable target:
 
 ```sh
-make integration-test-all C8VOLT_IT_GO_TEST_FLAGS=-v C8VOLT_IT_VOLUME_TIMEOUT=90m C8VOLT_IT_REAL_STATE_TIMEOUT=90m
+make integration-cli-common C8VOLT_IT_GO_TEST_FLAGS=-v
 ```
 
-Make asks for confirmation before running integration slices because they may
-mutate real Camunda cluster state. A single `make` invocation asks once, even
-when an aggregate target expands to many slices. Automation can skip the prompt
-with `C8VOLT_IT_AUTOMATION=1`:
+Camunda 8.10 batch compatibility has a focused destructive slice. It records
+submission-only cancellation separately from later terminal observation,
+checks cancellation and deletion accounting against independent process-instance
+post-state, and holds an owned instance while observing process-definition
+`DRAINING` before bounded cleanup:
 
 ```sh
-make integration-test-real-state C8VOLT_IT_AUTOMATION=1 C8VOLT_IT_GO_TEST_FLAGS=-v C8VOLT_IT_REAL_STATE_TIMEOUT=90m
+C8VOLT_IT_PROFILES=dev810 make integration-cli-batch \
+  C8VOLT_IT_GO_TEST_FLAGS=-v C8VOLT_IT_REAL_STATE_TIMEOUT=90m
 ```
+
+The process-definition scenario intentionally remains unsuccessful while the
+v8.10 resource adapter rejects the valid null `batchOperation` returned for a
+runtime-present definition. That result is classified as a product failure,
+not an accepted gap. A successful submission is not release proof until the
+separate product fix lands and the definition's draining cleanup is observed.
+
+Logical tenant validation uses the credential-free role shape in
+`assets/tenant-roles.example.json`. Each role names an existing default-local
+profile; credentials and authorization configuration remain in the operator's
+config. The tenant-A, tenant-B, dual-authorized, and restricted-A profiles must
+all target Camunda 8.10 on the declared physical endpoint. The dual-authorized
+profile deliberately keeps tenant A as its configured filter so explicit and
+stdin tenant-B keys prove that filtering is not confused with authorization.
+
+```sh
+C8VOLT_IT_TENANT_ROLES=/absolute/path/to/tenant-roles.json \
+C8VOLT_IT_REQUIRE_TENANTS=logical \
+C8VOLT_IT_PROFILES=dev810 make integration-cli-tenants \
+  C8VOLT_IT_GO_TEST_FLAGS=-v C8VOLT_IT_REAL_STATE_TIMEOUT=90m
+```
+
+The slice establishes positive owned visibility before absence assertions,
+then verifies scoped cancellation leaves tenant B unchanged, restricted-A
+credentials cannot plan a proven tenant-B key, dual authorization accepts
+explicit/stdin tenant-B keys, and `--all-tenants` discovery and mutation remain
+inside the selected physical endpoint. It also covers conflicting selectors
+and single-destination restrictions. Missing roles are a named optional gap;
+setting `C8VOLT_IT_REQUIRE_TENANTS=logical` makes missing or invalid role
+infrastructure unsuccessful when the tenant group is checked.
+
+Physical proof uses the optional `physical` group in the same role file. Its
+two profiles must use normalized Camunda base URLs ending in
+`/physical-tenants/<declared-id>/v2`, target the same logical tenant ID, and
+name distinct physical IDs in the same operator-declared `clusterId`. A third
+profile must use the default `/v2` route and explicitly declare which physical
+tenant it is expected to equal. URL similarity does not establish shared
+cluster identity; the declaration and topology readiness are separate gates.
+
+```sh
+C8VOLT_IT_TENANT_ROLES=/absolute/path/to/tenant-roles.json \
+C8VOLT_IT_REQUIRE_TENANTS=physical \
+C8VOLT_IT_PROFILES=dev810 make integration-cli-tenants \
+  C8VOLT_IT_GO_TEST_FLAGS=-v C8VOLT_IT_REAL_STATE_TIMEOUT=90m
+```
+
+The physical scenario proves positive local visibility, absence of the other
+endpoint's owned fixtures, unchanged control resources after scoped mutation,
+`--all-tenants` confinement to the selected endpoint, and default-route
+equivalence. It uses topology for readiness and does not treat a nondefault
+status endpoint response as a gate. This is observable API routing,
+authorization, and resource-separation evidence only; it does not certify
+storage, backup, provisioning, or compute isolation. Missing physical roles
+remain a named optional gap unless `physical` coverage is explicitly required;
+physical mode also requires the complete logical proof group.
+
+`make integration-test-all` uses the existing Make targets directly, in order:
+common preflight/examples, focused batch and tenant checks, baseline, volume,
+and real-state groups. Output goes straight to the terminal, including each
+Go test command and group result. Make stops on the first failing group.
+The nested Make invocation uses `-j1` so destructive groups do not overlap,
+even when the outer invocation uses parallel Make.
+
+Defaults are profile `c810local` and requested Camunda minor `8.10`:
+
+```sh
+make integration-test-all
+
+# Override the selected environment:
+make integration-test-all C8VOLT_IT_PROFILES=dev89 C8VOLT_IT_RELEASE_VERSION=8.9
+```
+
+Before confirmation, Make prints profiles, requested Camunda version, evidence
+location, tenant requirements, build setting, and slice timeouts. Common
+preflight verifies selected profiles before mutation; each family's existing
+readiness checks also verify the configured and requested minor against the
+observed gateway version. Baseline/volume support 8.8, 8.9 and 8.10; real-state
+coverage supports 8.9 and 8.10 with version-matched fixtures.
+
+The aggregate confirms once. For unattended execution:
+
+```sh
+make integration-test-all C8VOLT_IT_AUTOMATION=1 C8VOLT_IT_GO_TEST_FLAGS=-v
+```
+
+## Results and coverage limits
+
+There is no separate runner, frozen coverage catalog, or aggregate release
+verdict. Use normal Make/Go exit status and the existing per-group reports.
+A successful invocation means its executed tests passed; skipped optional
+scenarios and missing tenant infrastructure do not constitute coverage.
+Tenant roles remain optional unless explicitly required with
+`C8VOLT_IT_REQUIRE_TENANTS`. Existing real-state prerequisite-gap documentation
+and focused scenario reports remain available.
 
 The gaps target is non-destructive and validates that `gaps.md` plus the
 coverage matrix keep missing setup and fixture prerequisites in spec-owned
@@ -161,7 +264,7 @@ orphan purge, durable standalone resolve, and repair-specific mixed-failure
 branches stay visible in
 `specs/257-c89-real-state-integration/`.
 Except for `integration-cli-real-state-gaps`, real-state targets are
-destructive and must only be run against disposable Camunda 8.9 clusters
+destructive and must only be run against disposable Camunda 8.9 or 8.10 clusters
 selected from the default local c8volt configuration.
 
 Pass extra `go test` flags with `C8VOLT_IT_GO_TEST_FLAGS`. For example, use `-v`
@@ -196,20 +299,32 @@ Run C89 against the C89 profile in `config.yaml`:
 integration/scripts/run-c89-suite.sh
 ```
 
+Run C810 against the C810 profile in `config.yaml`:
+
+```sh
+integration/scripts/run-c810-suite.sh
+```
+
+These shell suites are broad operator-workflow checks with grouped Markdown
+evidence. Their exact gateway-minor gate runs before fixture deployment or any
+other mutation. Their success covers the scenarios executed by that shell suite;
+it does not certify omitted scenarios or unavailable infrastructure.
+
 The wrappers use these defaults:
 
 | Suite | Target version | Fixture prefix | Default profile |
 | --- | --- | --- | --- |
 | C88 | `8.8` | `C88` | `kind-camunda-platform-local-c88` |
 | C89 | `8.9` | `C89` | `kind-camunda-platform-local-c89` |
+| C810 | `8.10` | `C810` | `kind-camunda-platform-local-c810` |
 
 Override configuration with environment variables:
 
 ```sh
 C8VOLT_IT_CONFIG=./config.yaml \
-C8VOLT_IT_PROFILE=kind-camunda-platform-local-c89 \
+C8VOLT_IT_PROFILE=kind-camunda-platform-local-c810 \
 C8VOLT_IT_VOLUME_COUNT=25 \
-integration/scripts/run-c89-suite.sh
+integration/scripts/run-c810-suite.sh
 ```
 
 Useful variables:
@@ -229,7 +344,10 @@ Go suite variables:
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `C8VOLT_IT_PROFILES` | active profile from default local config | Comma-separated profile names selected from the default local c8volt config. |
+| `C8VOLT_IT_PROFILES` | `c810local` for `make integration-test-all`; active profile for direct slices | Comma-separated profile names selected from the default local c8volt config. |
+| `C8VOLT_IT_RELEASE_VERSION` | `8.10` for `make integration-test-all`; otherwise empty | Require the observed gateway minor to match this value before mutation. |
+| `C8VOLT_IT_TENANT_ROLES` | empty | Absolute path to credential-free logical role metadata naming default-local profiles. |
+| `C8VOLT_IT_REQUIRE_TENANTS` | `none` | Required tenant proof: `none`, `logical`, or `physical`; physical proof also requires logical proof. |
 | `C8VOLT_IT_BIN` | built into the workdir | Existing c8volt binary to test when `C8VOLT_IT_BUILD=0`. |
 | `C8VOLT_IT_BUILD` | build enabled | Set `0` with `C8VOLT_IT_BIN` to skip building the binary. |
 | `C8VOLT_IT_WORKDIR` | temp directory | Evidence directory for reruns and artifact review. |
@@ -239,7 +357,7 @@ Go suite variables:
 | `C8VOLT_IT_VERBOSE` | derived from `C8VOLT_IT_GO_TEST_FLAGS` | Set to `1` when verbose harness logging is required without Make flag derivation. |
 | `C8VOLT_IT_TIMEOUT` | `60m` | Make-level timeout used by baseline `integration-cli-*` targets. |
 | `C8VOLT_IT_VOLUME_TIMEOUT` | `90m` | Make-level timeout used by `integration-cli-*-volume` targets. |
-| `C8VOLT_IT_REAL_STATE_TIMEOUT` | `90m` | Make-level timeout used by `integration-cli-real-state-*` targets. |
+| `C8VOLT_IT_REAL_STATE_TIMEOUT` | `90m` | Make-level timeout used by `integration-cli-real-state-*` and `integration-cli-batch` targets. |
 | `C8VOLT_IT_AUTOMATION` | `0` | Set `1` to skip the Make-level mutation confirmation prompt. |
 
 ## Outputs
@@ -252,6 +370,14 @@ The shell suites write:
 - `logs/*.stdout` and `logs/*.stderr`: command evidence.
 - `data/*.keys`: generated process-instance keys and other dynamic data.
 - `reports/*`: command-generated reports, for example smoke-test reports.
+
+Validate the shell tooling without a cluster before a live run:
+
+```sh
+bash -n integration/scripts/run-suite.sh integration/scripts/run-c*-suite.sh \
+  integration/scripts/lib/suite-lib.sh integration/scripts/tests/run-suite_test.sh
+bash integration/scripts/tests/run-suite_test.sh
+```
 
 The Go all-command suite writes evidence under `C8VOLT_IT_WORKDIR` or a temp
 directory:
@@ -268,10 +394,20 @@ directory:
   `volume-ops-reports-<family>.json`: opt-in volume-suite evidence.
 - `real-state-<family>.json`, `real-state-data-<family>.json`,
   `real-state-progress-<family>.json`, and
-  `real-state-ops-reports-<family>.json`: opt-in Camunda 8.9 real-state
+  `real-state-ops-reports-<family>.json`: opt-in Camunda 8.9/8.10 real-state
   evidence.
+- `batch-evidence.json` and `process-definition-draining-evidence.json`:
+  focused 8.10 submission, terminal accounting, DRAINING, and post-state proof.
 - `logs/`: per-command stdout and stderr evidence.
 - `data/`: seeded data, selected keys, resource IDs, and substitution evidence.
+
+Each direct Go test group uses the existing harness work directory. By default
+it creates and retains a separate temporary directory. `C8VOLT_IT_WORKDIR` still
+selects an exact directory, not an aggregate parent; use it for individual-group
+reruns because reusing it across groups can overwrite shared report filenames.
+No `release.json` or runner manifest is generated. The CLI binary is built by
+each group's existing harness unless `C8VOLT_IT_BUILD=0` and `C8VOLT_IT_BIN` name
+an existing binary.
 
 The suite exits non-zero when any required case fails or any expected failure
 does not fail in the expected way. It keeps running after individual failures so

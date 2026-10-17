@@ -13,6 +13,8 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+
+	"github.com/grafvonb/c8volt/integration/internal/validation"
 )
 
 type seededDataReport struct {
@@ -370,19 +372,15 @@ func assertSeededProcessInstancesObservable(t *testing.T, profile integrationPro
 
 // selectEmbeddedSeedFixture chooses the simple user-task fixture for the profile's Camunda minor version.
 func selectEmbeddedSeedFixture(expectedVersion string, files []string) (embeddedFixtureSelection, error) {
-	prefix, err := embeddedFixturePrefix(expectedVersion)
+	path, err := validation.SelectEmbeddedFixture(expectedVersion, "SimpleUserTask.bpmn", files)
 	if err != nil {
 		return embeddedFixtureSelection{}, err
 	}
-	wantSuffix := prefix + "SimpleUserTask.bpmn"
-	for _, file := range files {
-		if strings.HasSuffix(file, wantSuffix) {
-			return embeddedFixtureSelection{Path: file}, nil
-		}
-	}
-	return embeddedFixtureSelection{}, fmt.Errorf("no embedded SimpleUserTask fixture found for Camunda version %q", expectedVersion)
+	return embeddedFixtureSelection{Path: path}, nil
 }
 
+// TestEmbeddedFixturePrefix preserves version-specific fixture selection across
+// all baseline and release-validation minors.
 func TestEmbeddedFixturePrefix(t *testing.T) {
 	tests := []struct {
 		version string
@@ -408,16 +406,7 @@ func TestEmbeddedFixturePrefix(t *testing.T) {
 
 // embeddedFixturePrefix converts a Camunda minor version into the embedded fixture filename prefix.
 func embeddedFixturePrefix(expectedVersion string) (string, error) {
-	switch {
-	case strings.Contains(expectedVersion, "8.8"):
-		return "C88_", nil
-	case strings.Contains(expectedVersion, "8.9"):
-		return "C89_", nil
-	case strings.Contains(expectedVersion, "8.10"):
-		return "C810_", nil
-	default:
-		return "", fmt.Errorf("unsupported embedded fixture version %q", expectedVersion)
-	}
+	return validation.EmbeddedFixturePrefix(expectedVersion)
 }
 
 // embeddedFixtureBpmnProcessID reads the fixture's BPMN process id for fallback run selectors.

@@ -108,11 +108,10 @@ chain is:
 4. `api/mutations/mutate-fix-jobresult-discriminator.py`
 5. `api/mutations/mutate-fix-camunda-v2-operation-id-collisions.py`
 
-To advance the active baseline to a later Camunda 8.10 alpha, release candidate,
-or final tag, keep the same target and replace only the tag value:
+To advance the active baseline to a later Camunda 8.10 patch, keep the same
+target and replace only the tag value:
 
-- `bash api/refresh-clients.sh --target v810 --camunda-tag 8.10.0-rc1`
-- `bash api/refresh-clients.sh --target v810 --camunda-tag 8.10.0`
+- `bash api/refresh-clients.sh --target v810 --camunda-tag 8.10.4`
 
 Do not create `v810alpha`, `v810rc`, `v810final`, or another operator version
 identity. Later baselines replace the existing `v810/camunda` client and
@@ -128,13 +127,29 @@ The following protected paths must remain unchanged during V810 generation:
 
 - `internal/clients/camunda/v88`
 - `internal/clients/camunda/v89`
-- `integration`
+
+The boundary guard compares content fingerprints immediately before and after
+the command it wraps. It therefore detects generated changes to older clients
+without requiring an otherwise clean checkout, and it permits intentional
+integration-harness changes for 8.10 coverage:
+
+- `bash api/tests/v810_repository_boundary_test.sh -- <generation-command>`
 
 Run the V810 generation guards before accepting a baseline update:
 
 - `bash api/tests/v810_generation_test.sh`
 - `python3 api/tests/v810_provenance_test.py`
 - `bash api/tests/v810_repository_boundary_test.sh`
+
+The Python command runs static identity, hash, transformation, package, and
+canonical-command checks only. Networked reproducibility is an explicit,
+separate check because it fetches the pinned upstream tag and requires the
+recorded generator toolchain. It creates a detached disposable worktree, runs
+the 8.10.3 generation twice there, compares the published artifacts and v88/v89
+fingerprints, then removes the worktree without refreshing the developer
+checkout:
+
+- `C8VOLT_V810_NETWORK_REPRODUCIBILITY=1 python3 api/tests/v810_provenance_test.py`
 
 ## Commit mode
 

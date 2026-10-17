@@ -7,6 +7,8 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"os"
+	"strings"
 	"time"
 
 	"github.com/grafvonb/c8volt/c8volt"
@@ -14,6 +16,7 @@ import (
 	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/grafvonb/c8volt/toolx/watch"
 	"github.com/spf13/cobra"
+	"golang.org/x/term"
 )
 
 const defaultGetPDWatchInterval = time.Second
@@ -42,6 +45,7 @@ func executeGetProcessDefinitionWatch(cmd *cobra.Command, cli c8volt.API, filter
 		opts = collectExplicitAdminInputOptions()
 	}
 	var slowWarnings processDefinitionWatchSlowWarningState
+	var baseline processDefinitionWatchBaseline
 	result, err := watch.Run(cmd.Context(), watch.Options{
 		Interval:   interval,
 		Timeout:    timeout,
@@ -57,10 +61,7 @@ func executeGetProcessDefinitionWatch(cmd *cobra.Command, cli c8volt.API, filter
 		if err != nil {
 			return err
 		}
-		if err := renderTerminalRepaint(cmd); err != nil {
-			return err
-		}
-		if err := processDefinitionWatchView(cmd, snapshot); err != nil {
+		if err := renderProcessDefinitionWatchRefresh(cmd, &baseline, snapshot); err != nil {
 			return err
 		}
 		duration := processDefinitionWatchNow().Sub(startedAt)
@@ -69,6 +70,82 @@ func executeGetProcessDefinitionWatch(cmd *cobra.Command, cli c8volt.API, filter
 	})
 	renderGetProcessDefinitionWatchStopStatus(cmd, result)
 	return err
+}
+
+// renderProcessDefinitionWatchRefresh commits display history only after the
+// complete candidate body, including repaint, has reached the configured writer.
+func renderProcessDefinitionWatchRefresh(cmd *cobra.Command, baseline *processDefinitionWatchBaseline, snapshot process.ProcessDefinitionWatchSnapshot) error {
+	candidate := baseline.candidate(snapshot.Items)
+	if err := renderTerminalRepaint(cmd); err != nil {
+		return err
+	}
+	if err := processDefinitionWatchView(cmd, candidate, processDefinitionWatchBoldEnabled(cmd)); err != nil {
+		return err
+	}
+	baseline.commit(candidate)
+	return nil
+}
+
+// processDefinitionWatchBoldEnabled applies the conservative watch styling
+// policy to the command's actual configured or inherited stdout destination.
+func processDefinitionWatchBoldEnabled(cmd *cobra.Command) bool {
+	if cmd == nil || os.Getenv("NO_COLOR") != "" {
+		return false
+	}
+	terminalName := strings.TrimSpace(os.Getenv("TERM"))
+	if terminalName == "" || strings.EqualFold(terminalName, "dumb") {
+		return false
+	}
+	writer, ok := cmd.OutOrStdout().(interface{ Fd() uintptr })
+	return ok && term.IsTerminal(int(writer.Fd()))
+}
+
+// processDefinitionWatchBaseline distinguishes an empty successful baseline
+// from a session that has not displayed any successful refresh yet.
+type processDefinitionWatchBaseline struct {
+	initialized bool
+	byKey       map[string]processDefinitionDisplay
+}
+
+// candidate compares a complete snapshot without mutating acknowledged history.
+func (b processDefinitionWatchBaseline) candidate(items []process.ProcessDefinition) processDefinitionWatchCandidate {
+	candidate := processDefinitionWatchCandidate{
+		rows:      make([]processDefinitionWatchRow, 0, len(items)),
+		nextByKey: make(map[string]processDefinitionDisplay, len(items)),
+	}
+	for _, item := range items {
+		display := newProcessDefinitionDisplay(item)
+		candidate.nextByKey[display.key] = display
+		row := processDefinitionWatchRow{display: display, marker: ' '}
+		if b.initialized {
+			previous, found := b.byKey[display.key]
+			if !found {
+				row.marker = '+'
+				candidate.new++
+			} else {
+				row.changed = display.changedFields(previous)
+				if row.changed.any() {
+					row.marker = '*'
+					candidate.updated++
+				}
+			}
+		}
+		candidate.rows = append(candidate.rows, row)
+	}
+	if b.initialized {
+		for key := range b.byKey {
+			if _, found := candidate.nextByKey[key]; !found {
+				candidate.removed++
+			}
+		}
+	}
+	return candidate
+}
+
+// commit acknowledges a candidate only after repaint and view writes succeed.
+func (b *processDefinitionWatchBaseline) commit(candidate processDefinitionWatchCandidate) {
+	b.initialized = true
+	b.byKey = candidate.nextByKey
 }
 
 // processDefinitionWatchSlowWarningState suppresses repeated slow-refresh

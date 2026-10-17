@@ -31,7 +31,7 @@ type realStateJob struct {
 }
 
 func TestRealStateJobsFamily(t *testing.T) {
-	profiles := selectedRealStateC89Profiles(t)
+	profiles := selectedRealStateProfiles(t)
 
 	report := realStateFamilyReport{
 		Family:   "jobs",
@@ -84,7 +84,7 @@ func seedRealStateJobDataset(t *testing.T, profile integrationProfile, count int
 	selection, err := selectEmbeddedFixtureBySuffix(profile.ExpectedVersion, files, "SimpleServiceTask.bpmn")
 	if err != nil {
 		fixture.CurrentEvidenceLevel = realStateOutcomeSkippedPrereq
-		fixture.SkipReason = "missing embedded SimpleServiceTask BPMN fixture for Camunda 8.9 real-state job setup"
+		fixture.SkipReason = fmt.Sprintf("missing embedded SimpleServiceTask BPMN fixture for Camunda %s real-state job setup", profile.ExpectedVersion)
 		return realStateJobDataset{Fixture: fixture}, records, err
 	}
 	selection.BpmnProcessID = embeddedFixtureBpmnProcessID(t, selection.Path)

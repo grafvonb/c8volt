@@ -57,8 +57,10 @@ func validateRealStateGapArtifact(t *testing.T) {
 		requireNonEmptyMarkdownCell(t, topic, row, "Blocked Proof")
 		requireNonEmptyMarkdownCell(t, topic, row, "Affected Commands")
 		requireNonEmptyMarkdownCell(t, topic, row, "Runtime Behavior Until Closed")
-		if !strings.Contains(row["Affected Versions"], realStateTargetVersion) {
-			t.Fatalf("gaps.md topic %q affected versions = %q, want %q", topic, row["Affected Versions"], realStateTargetVersion)
+		for _, version := range supportedRealStateVersions() {
+			if !strings.Contains(row["Affected Versions"], version) {
+				t.Fatalf("gaps.md topic %q affected versions = %q, want %q", topic, row["Affected Versions"], version)
+			}
 		}
 	}
 	for _, topic := range requiredTopics {

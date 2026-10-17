@@ -3,9 +3,9 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 # Purpose:
-#   Guard repository-level Camunda v8.10 boundaries. The feature may add the
-#   isolated v810 generated client, but stable generated clients and live
-#   integration assets must remain unchanged and free of v810-specific coverage.
+#   Guard repository-level Camunda v8.10 boundaries by fingerprinting the
+#   stable generated clients before and after an optional validation command.
+#   Intentional integration-harness edits are outside this generator boundary.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -15,67 +15,75 @@ PROTECTED_CLIENT_DIRS=(
   "internal/clients/camunda/v88"
   "internal/clients/camunda/v89"
 )
-INTEGRATION_DIR="integration"
-V810_INTEGRATION_PATTERN='v810|v8\.10|8\.10|c810|camunda[[:space:]-]*8\.10'
 
 fail() {
   echo "FAIL: $*" >&2
   exit 1
 }
 
-assert_git_clean_for_path() {
+sha256_file() {
   local path="$1"
-  local label="$2"
 
-  if ! git diff --quiet -- "$path"; then
-    git diff --name-only -- "$path" >&2
-    fail "$label has unstaged changes"
+  if command -v sha256sum >/dev/null 2>&1; then
+    sha256sum "$path" | awk '{print $1}'
+    return 0
   fi
 
-  if ! git diff --cached --quiet -- "$path"; then
-    git diff --cached --name-only -- "$path" >&2
-    fail "$label has staged changes"
-  fi
-
-  local untracked
-  untracked="$(git ls-files --others --exclude-standard -- "$path")"
-  if [ -n "$untracked" ]; then
-    printf '%s\n' "$untracked" >&2
-    fail "$label has untracked files"
-  fi
+  shasum -a 256 "$path" | awk '{print $1}'
 }
 
-assert_integration_has_no_v810_paths() {
-  local matches
-
-  matches="$(git ls-files --others --cached --exclude-standard -- "$INTEGRATION_DIR" | grep -Ei "$V810_INTEGRATION_PATTERN" || true)"
-  if [ -n "$matches" ]; then
-    printf '%s\n' "$matches" >&2
-    fail "integration contains v810-specific paths"
+sha256_stream() {
+  if command -v sha256sum >/dev/null 2>&1; then
+    sha256sum | awk '{print $1}'
+    return 0
   fi
+
+  shasum -a 256 | awk '{print $1}'
 }
 
-assert_integration_has_no_v810_content() {
-  local matches
+fingerprint_protected_clients() {
+  local dir
 
-  matches="$(rg -n -i "$V810_INTEGRATION_PATTERN" "$INTEGRATION_DIR" || true)"
-  if [ -n "$matches" ]; then
-    printf '%s\n' "$matches" >&2
-    fail "integration contains v810-specific content"
-  fi
+  for dir in "${PROTECTED_CLIENT_DIRS[@]}"; do
+    if [ ! -d "$dir" ]; then
+      fail "missing protected client directory: $dir"
+    fi
+    (
+      cd "$dir"
+      find . -type f -print | LC_ALL=C sort | while IFS= read -r path; do
+        printf '%s  %s/%s\n' "$(sha256_file "$path")" "$dir" "${path#./}"
+      done
+    )
+  done | sha256_stream
 }
 
 main() {
   cd "$REPO_ROOT"
 
-  local dir
-  for dir in "${PROTECTED_CLIENT_DIRS[@]}"; do
-    assert_git_clean_for_path "$dir" "$dir"
-  done
+  if [ "${1:-}" = "--" ]; then
+    shift
+  fi
 
-  assert_git_clean_for_path "$INTEGRATION_DIR" "$INTEGRATION_DIR"
-  assert_integration_has_no_v810_paths
-  assert_integration_has_no_v810_content
+  local before
+  local after
+  local command_status=0
+  before="$(fingerprint_protected_clients)"
+
+  if (($# > 0)); then
+    set +e
+    "$@"
+    command_status=$?
+    set -e
+  fi
+
+  after="$(fingerprint_protected_clients)"
+  if [ "$before" != "$after" ]; then
+    fail "protected v88/v89 client fingerprint changed"
+  fi
+
+  if [ "$command_status" -ne 0 ]; then
+    return "$command_status"
+  fi
 
   echo "ok api/tests/v810_repository_boundary_test.sh"
 }

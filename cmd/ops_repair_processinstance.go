@@ -40,7 +40,7 @@ The workflow fixes the repairable instance and incident sets, applies requested 
 Use --dry-run to inspect planned repairs without mutation, --auto-confirm or --automation for unattended repair, and --report-file to save an audit report.`,
 	Example: `  ./c8volt ops repair process-instance --key <process-instance-key> --dry-run
   ./c8volt --tenant tenant-a ops repair process-instance --key <process-instance-key> --dry-run
-  ./c8volt --tenant "" ops repair process-instance --state active --limit 5 --dry-run
+  ./c8volt --all-tenants ops repair process-instance --state active --limit 5 --dry-run
   ./c8volt ops repair process-instance --state active --limit 5 --dry-run
   ./c8volt ops repair process-instance --direct-incidents-only --bpmn-process-id <bpmn-process-id> --limit 5 --dry-run
   ./c8volt --verbose ops repair process-instance --state active --limit 5 --auto-confirm

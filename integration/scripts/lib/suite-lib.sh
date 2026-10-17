@@ -193,6 +193,37 @@ it_require_output_contains() {
   return 1
 }
 
+# it_require_exact_minor verifies the gateway-only version output without
+# accepting another minor that merely contains the requested digits.
+it_require_exact_minor() {
+  local group="$1"
+  local case_id="$2"
+  local expected_minor="$3"
+  local slug stdout actual_version actual_minor
+  slug="$(it_slug "${group}_${case_id}")"
+  stdout="$IT_WORKDIR/logs/${slug}.stdout"
+  actual_version="$(awk 'NR > 2 && NF { gsub(/\r/, ""); print; exit }' "$stdout" 2>/dev/null)"
+
+  if [[ ! "$expected_minor" =~ ^[0-9]+\.[0-9]+$ ]]; then
+    actual_minor="invalid expected minor"
+  elif [[ "$actual_version" =~ ^([0-9]+)\.([0-9]+)(\.[0-9]+)?([+-][0-9A-Za-z.-]+)?$ ]]; then
+    actual_minor="${BASH_REMATCH[1]}.${BASH_REMATCH[2]}"
+  else
+    actual_minor="unparseable"
+  fi
+
+  if [ "$actual_minor" = "$expected_minor" ]; then
+    return 0
+  fi
+
+  {
+    printf "\n## Gate Failure\n\n"
+    printf -- 'Expected Camunda minor `%s`, observed gateway version `%s`. No mutation was submitted.\n' \
+      "$expected_minor" "${actual_version:-<empty>}"
+  } >> "$IT_REPORT"
+  return 1
+}
+
 it_first_key() {
   local file="$1"
   awk '/^[0-9]+$/ { print; exit }' "$file"

@@ -82,18 +82,30 @@ func (s *Service) Delete(ctx context.Context, resourceKey string, opts ...servic
 	if err = httpc.HttpStatusErr(resp.HTTPResponse, resp.Body); err != nil {
 		return d.ResourceDeleteResponse{}, err
 	}
+	payload, err := common.RequirePayload(resp.HTTPResponse, resp.Body, resp.JSON200)
+	if err != nil {
+		return d.ResourceDeleteResponse{}, err
+	}
+	if payload.ResourceKey == "" || payload.ResourceKey != resourceKey {
+		return d.ResourceDeleteResponse{}, fmt.Errorf("%w: deletion response resource key does not match request", d.ErrMalformedResponse)
+	}
 	result := d.ResourceDeleteResponse{
 		Ok:            true,
 		StatusCode:    resp.StatusCode(),
 		Status:        resp.Status(),
 		DeleteHistory: body.DeleteHistory != nil && *body.DeleteHistory,
 	}
-	if resp.JSON200 != nil && resp.JSON200.BatchOperation != nil {
+	if payload.BatchOperation != nil {
+		if payload.BatchOperation.BatchOperationKey == "" {
+			return result, fmt.Errorf("%w: deletion batch has no key", d.ErrMalformedResponse)
+		}
 		result.BatchOperationKey = resp.JSON200.BatchOperation.BatchOperationKey
 		result.Status = fmt.Sprintf("%s; history deletion batch %s submitted", result.Status, result.BatchOperationKey)
 	}
-	if result.DeleteHistory && result.BatchOperationKey == "" {
-		return result, fmt.Errorf("%w: history deletion requested but Camunda did not return a batch operation", d.ErrMalformedResponse)
+	// Runtime process definitions drain asynchronously without a batch in 8.10.
+	// The process-definition workflow observes disappearance when waiting.
+	if result.BatchOperationKey == "" {
+		result.Status = fmt.Sprintf("%s; deletion accepted", result.Status)
 	}
 	if !result.DeleteHistory || cCfg.NoWait || result.BatchOperationKey == "" {
 		return result, nil

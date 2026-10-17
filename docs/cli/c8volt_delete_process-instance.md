@@ -37,7 +37,7 @@ c8volt delete process-instance [flags]
   ./c8volt delete process-instance --key <process-instance-key> --dry-run
   ./c8volt --tenant tenant-a delete process-instance --key <process-instance-key> --dry-run
   ./c8volt --tenant tenant-a delete process-instance --state terminated --limit 5 --dry-run
-  ./c8volt --tenant "" delete process-instance --state terminated --limit 5 --dry-run
+  ./c8volt --all-tenants delete process-instance --state terminated --limit 5 --dry-run
   ./c8volt delete process-instance --state terminated --batch-size 250 --limit 5 --dry-run
   ./c8volt delete process-instance --state terminated --json --dry-run
   ./c8volt delete process-instance --state terminated --keys-only

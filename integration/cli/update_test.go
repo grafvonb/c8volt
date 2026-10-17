@@ -7,11 +7,14 @@ package cli_test
 
 import "testing"
 
+// TestUpdateFamily keeps every update command, including user-task updates,
+// represented in baseline help and behavioral coverage.
 func TestUpdateFamily(t *testing.T) {
 	runFamilyCoverageScenarios(t, "update", []string{
 		"update",
 		"update job",
 		"update process-instance",
+		"update user-task",
 	})
 	runBehavioralCoverageScenarios(t, "update")
 }

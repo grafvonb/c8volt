@@ -27,7 +27,7 @@ c8volt ops purge process-instances-with-incidents [flags]
   ./c8volt ops purge process-instances-with-incidents --dry-run
   ./c8volt ops purge process-instances-with-incidents --inc-key <incident-key> --dry-run
   ./c8volt --tenant tenant-a ops purge process-instances-with-incidents --inc-key <incident-key> --dry-run
-  ./c8volt --tenant "" ops purge process-instances-with-incidents --state active --limit 5 --dry-run
+  ./c8volt --all-tenants ops purge process-instances-with-incidents --state active --limit 5 --dry-run
   ./c8volt ops purge process-instances-with-incidents --state active --error-type io_mapping_error --dry-run
   ./c8volt ops purge process-instances-with-incidents --state active --error-type io_mapping_error --limit 5 --force
   ./c8volt --verbose ops purge process-instances-with-incidents --state active --error-type io_mapping_error --limit 5 --force --auto-confirm

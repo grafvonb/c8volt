@@ -16,8 +16,8 @@ implementation work.
 
 Run a comprehensive release integration pass against the configured local C89
 cluster. Validate daily operator workflows, especially mutating commands and
-C89-only resource deletion behavior, while collecting enough evidence to fix
-product issues after the run.
+resource deletion behavior supported from C89 onward, while collecting enough
+evidence to fix product issues after the run.
 
 The target cluster is a dirty, disposable local release-lab environment. It may
 already contain process definitions, process instances, incidents, jobs,
@@ -36,7 +36,7 @@ does not need to preserve existing resources.
    paths that matter for daily operations.
 6. Run preview before real mutation where supported.
 7. Verify post-conditions with c8volt commands.
-8. Exercise C89 process-definition deletion and all-process-definition purge
+8. Exercise supported process-definition deletion and all-process-definition purge
    with full-force behavior. Broad dirty-cluster purge is allowed and expected
    in a disposable local cluster.
 9. Use `--auto-confirm`, `--automation`, `--force`, and broad destructive
@@ -72,3 +72,7 @@ Report:
 
 Do not edit product code while running this prompt unless the user explicitly
 turns the findings into implementation work.
+
+This shell suite is a broad workflow check. Its success does not replace the
+normalized evidence and frozen-catalog reduction performed by
+`make integration-test-all`.

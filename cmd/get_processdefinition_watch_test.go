@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"regexp"
 	"strconv"
 	"strings"
 	"testing"
@@ -103,6 +104,7 @@ func TestGetProcessDefinitionWatchRepaintsBroadRefreshes(t *testing.T) {
 	require.NotContains(t, body, "snapshot 2:")
 	require.Contains(t, body, "2251799813685255 tenant invoice v1")
 	require.Contains(t, body, "2251799813685255 tenant invoice v2")
+	require.Contains(t, result.stderr, "INFO 0 updated, 0 new, 0 removed", "the first success after initial failure establishes an unmarked baseline")
 	require.Equal(t, 2, strings.Count(body, "found: 1"))
 }
 
@@ -146,7 +148,7 @@ func TestGetProcessDefinitionWatchRepeatedStatisticsRefreshesKeepRowOrder(t *tes
 
 	require.NoError(t, result.err)
 	require.Equal(t, 10, calls)
-	require.Empty(t, result.stderr)
+	require.Empty(t, watchDiagnosticsWithoutSummaries(result.stderr))
 	requireProcessDefinitionWatchRepaintCount(t, result, 10)
 	refreshes := strings.Split(result.stdout, processDefinitionWatchRepaintControlSequenceForTest)[1:]
 	require.Len(t, refreshes, 10)
@@ -156,6 +158,134 @@ func TestGetProcessDefinitionWatchRepeatedStatisticsRefreshesKeepRowOrder(t *tes
 		require.Contains(t, refresh, "30 tenantA   CaseSensitiveProcess v10 [ac:"+strconv.Itoa((i+1)*10+5)+" cp:9 cx:2 inc:3]")
 		require.Contains(t, refresh, "found: 5")
 	}
+}
+
+// TestGetProcessDefinitionWatchEightRefreshChangeSequence exercises the full
+// baseline, recovery, removal, empty, and reappearance contract end to end.
+func TestGetProcessDefinitionWatchEightRefreshChangeSequence(t *testing.T) {
+	resetGetProcessDefinitionCommandGlobals()
+	t.Cleanup(resetGetProcessDefinitionCommandGlobals)
+	transientErr := ferrors.WrapClass(ferrors.ErrUnavailable, errors.New("partial refresh"))
+	definition := func(key, processID string, active int64) process.ProcessDefinition {
+		return process.ProcessDefinition{
+			Key: key, TenantId: "tenant", BpmnProcessId: processID, ProcessVersion: 1,
+			Statistics: &process.ProcessDefinitionStatistics{Active: active},
+		}
+	}
+	a1 := definition("a", "invoice", 1)
+	a2 := definition("a", "invoice", 2)
+	b := definition("b", "order", 1)
+	c1 := definition("c", "case", 1)
+	c2 := definition("c", "case", 2)
+	calls := 0
+	cli := processDefinitionWatchTestAPI{
+		collect: func(_ context.Context, _ process.ProcessDefinitionWatchSnapshotRequest, _ ...options.FacadeOption) (process.ProcessDefinitionWatchSnapshot, error) {
+			calls++
+			switch calls {
+			case 1:
+				return process.ProcessDefinitionWatchSnapshot{Items: []process.ProcessDefinition{a1, b}, Total: 2}, nil
+			case 2:
+				return process.ProcessDefinitionWatchSnapshot{Items: []process.ProcessDefinition{a2, b, c1}, Total: 3}, nil
+			case 3:
+				return process.ProcessDefinitionWatchSnapshot{Items: []process.ProcessDefinition{c1, b, a2}, Total: 3}, nil
+			case 4:
+				return process.ProcessDefinitionWatchSnapshot{Items: []process.ProcessDefinition{a1}, Total: 1}, transientErr
+			case 5:
+				return process.ProcessDefinitionWatchSnapshot{Items: []process.ProcessDefinition{a2, c2}, Total: 2}, nil
+			case 6, 7:
+				return process.ProcessDefinitionWatchSnapshot{Empty: true}, nil
+			default:
+				return process.ProcessDefinitionWatchSnapshot{Items: []process.ProcessDefinition{a2}, Total: 1}, nil
+			}
+		},
+	}
+
+	result := executeGetProcessDefinitionWatchHarnessForTest(t, processDefinitionWatchHarness{
+		cli: cli, maxRetries: 2,
+		sleep: func(context.Context, time.Duration) error {
+			if calls >= 8 {
+				return context.Canceled
+			}
+			return nil
+		},
+	})
+
+	require.NoError(t, result.err)
+	require.Equal(t, 8, calls)
+	requireProcessDefinitionWatchRepaintCount(t, result, 7)
+	refreshes := strings.Split(result.stdout, processDefinitionWatchRepaintControlSequenceForTest)[1:]
+	require.Len(t, refreshes, 7)
+	require.Contains(t, result.stderr, "INFO 0 updated, 0 new, 0 removed")
+	require.Contains(t, refreshes[0], "a tenant invoice v1 [ac:1 cp:- cx:-]")
+	require.Contains(t, result.stderr, "INFO 1 updated, 1 new, 0 removed")
+	require.Contains(t, refreshes[1], "a tenant invoice v1 [ac:2 cp:- cx:-] *")
+	require.Contains(t, refreshes[1], "c tenant case    v1 [ac:1 cp:- cx:-] +")
+	require.Contains(t, result.stderr, "INFO 0 updated, 0 new, 0 removed")
+	require.Equal(t, []string{"c", "b", "a"}, processDefinitionKeysFromHumanOutput(refreshes[2]))
+	require.Contains(t, result.stderr, "partial refresh")
+	summaries := regexp.MustCompile(`(?m)^\d{2}:\d{2}:\d{2}\.\d{3} INFO (.*)$`).FindAllStringSubmatch(result.stderr, -1)
+	require.Len(t, summaries, 7)
+	for i, counts := range []string{"0 updated, 0 new, 0 removed", "1 updated, 1 new, 0 removed", "0 updated, 0 new, 0 removed", "1 updated, 0 new, 1 removed", "0 updated, 0 new, 2 removed", "0 updated, 0 new, 0 removed", "0 updated, 1 new, 0 removed"} {
+		require.Equal(t, counts, summaries[i][1])
+	}
+	require.NotContains(t, result.stdout, "INFO")
+	require.NotContains(t, result.stdout+result.stderr, "Changes:")
+	require.Contains(t, result.stderr, "INFO 1 updated, 0 new, 1 removed")
+	require.Contains(t, refreshes[3], "c tenant case    v1 [ac:2 cp:- cx:-] *")
+	require.Equal(t, "found: 0\n", refreshes[4])
+	require.Equal(t, "found: 0\n", refreshes[5])
+	require.Contains(t, result.stderr, "INFO 0 updated, 1 new, 0 removed")
+	require.Contains(t, refreshes[6], "a tenant invoice v1 [ac:2 cp:- cx:-] +")
+}
+
+// TestRenderProcessDefinitionWatchRefresh_WriteFailuresKeepBaseline verifies
+// repaint, row, and footer failures cannot consume a candidate.
+func TestRenderProcessDefinitionWatchRefresh_WriteFailuresKeepBaseline(t *testing.T) {
+	previous := process.ProcessDefinition{Key: "a", TenantId: "tenant", BpmnProcessId: "invoice", ProcessVersion: 1}
+	current := process.ProcessDefinition{Key: "a", TenantId: "tenant", BpmnProcessId: "invoice", ProcessVersion: 2}
+	rowLen := len("a tenant invoice v2 *\n")
+
+	for _, tt := range []struct {
+		name  string
+		limit int
+	}{
+		{name: "repaint", limit: 0},
+		{name: "row", limit: len(processDefinitionWatchRepaintControlSequenceForTest)},
+		{name: "footer", limit: len(processDefinitionWatchRepaintControlSequenceForTest) + rowLen},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			baseline := processDefinitionWatchBaseline{}
+			baseline.commit(baseline.candidate([]process.ProcessDefinition{previous}))
+			cmd := &cobra.Command{Use: "process-definition"}
+			cmd.SetOut(&processDefinitionWatchFailWriter{remaining: tt.limit})
+			cmd.SetErr(&bytes.Buffer{})
+
+			err := renderProcessDefinitionWatchRefresh(cmd, &baseline, process.ProcessDefinitionWatchSnapshot{Items: []process.ProcessDefinition{current}, Total: 1})
+
+			require.Error(t, err)
+			probe := baseline.candidate([]process.ProcessDefinition{current})
+			require.Equal(t, 1, probe.updated, "failed output must retain the prior baseline")
+		})
+	}
+}
+
+// processDefinitionWatchFailWriter injects a write failure after a fixed byte budget.
+type processDefinitionWatchFailWriter struct {
+	remaining int
+}
+
+// Write accepts bytes up to the configured budget and then fails permanently.
+func (w *processDefinitionWatchFailWriter) Write(p []byte) (int, error) {
+	if w.remaining <= 0 {
+		return 0, errors.New("injected watch output failure")
+	}
+	if len(p) <= w.remaining {
+		w.remaining -= len(p)
+		return len(p), nil
+	}
+	n := w.remaining
+	w.remaining = 0
+	return n, errors.New("injected watch output failure")
 }
 
 // TestGetProcessDefinitionWatchIntervalCadence verifies the watch runner still
@@ -207,7 +337,7 @@ func TestGetProcessDefinitionWatchIntervalCadence(t *testing.T) {
 			require.Equal(t, []time.Duration{tt.expected}, intervals)
 			requireProcessDefinitionWatchRepaintCount(t, result, 1)
 			require.Contains(t, result.stdoutWithoutRepaintControls(), "2251799813685255 tenant invoice v1")
-			require.Empty(t, result.stderr)
+			require.Empty(t, watchDiagnosticsWithoutSummaries(result.stderr))
 		})
 	}
 }
@@ -373,6 +503,38 @@ func TestGetProcessDefinitionWatchUsesDefaultRetryBudget(t *testing.T) {
 	require.Empty(t, stdout)
 	require.Contains(t, stderr, "retrying process-definition watch after refresh 1 failed")
 	require.Contains(t, stderr, "consecutive failures: 3")
+}
+
+// TestGetProcessDefinitionWatchRepeatedInitialFailuresLeaveFirstSuccessUnmarked
+// verifies no partial pre-baseline refresh can create additions or updates.
+func TestGetProcessDefinitionWatchRepeatedInitialFailuresLeaveFirstSuccessUnmarked(t *testing.T) {
+	resetGetProcessDefinitionCommandGlobals()
+	t.Cleanup(resetGetProcessDefinitionCommandGlobals)
+	transientErr := ferrors.WrapClass(ferrors.ErrUnavailable, errors.New("temporary Camunda outage"))
+	calls := 0
+	cli := processDefinitionWatchTestAPI{
+		collect: func(_ context.Context, _ process.ProcessDefinitionWatchSnapshotRequest, _ ...options.FacadeOption) (process.ProcessDefinitionWatchSnapshot, error) {
+			calls++
+			if calls <= 2 {
+				return process.ProcessDefinitionWatchSnapshot{Items: []process.ProcessDefinition{{Key: "partial"}}, Total: 1}, transientErr
+			}
+			return process.ProcessDefinitionWatchSnapshot{Items: []process.ProcessDefinition{{Key: "a", TenantId: "tenant", BpmnProcessId: "invoice", ProcessVersion: 1}}, Total: 1}, nil
+		},
+	}
+
+	result := executeGetProcessDefinitionWatchHarnessForTest(t, processDefinitionWatchHarness{
+		cli: cli, maxRetries: 2,
+		sleep: func(context.Context, time.Duration) error {
+			if calls >= 3 {
+				return context.Canceled
+			}
+			return nil
+		},
+	})
+
+	require.NoError(t, result.err)
+	requireProcessDefinitionWatchRepaintCount(t, result, 1)
+	require.Equal(t, "a tenant invoice v1\nfound: 1\n", result.stdoutWithoutRepaintControls())
 }
 
 // TestGetProcessDefinitionWatchRetryBudgetResetsAfterSuccess proves a completed
@@ -652,7 +814,7 @@ func TestGetProcessDefinitionWatchHumanModesUseNormalResultRows(t *testing.T) {
 			if tt.verbose {
 				require.Contains(t, result.stderr, "process-definition watch refresh 1 completed in 1ms")
 			} else {
-				require.Empty(t, result.stderr)
+				require.Empty(t, watchDiagnosticsWithoutSummaries(result.stderr))
 			}
 			requireProcessDefinitionWatchRepaintCount(t, result, 1)
 			require.Equal(t, "2251799813685255 tenant invoice v3\nfound: 1\n", result.stdoutWithoutRepaintControls())
@@ -660,9 +822,9 @@ func TestGetProcessDefinitionWatchHumanModesUseNormalResultRows(t *testing.T) {
 	}
 }
 
-// TestGetProcessDefinitionWatchRefreshBodyMatchesNonWatchListView guards the
-// contract that watch refresh content is the same as the equivalent list output.
-func TestGetProcessDefinitionWatchRefreshBodyMatchesNonWatchListView(t *testing.T) {
+// TestGetProcessDefinitionWatchRefreshBodyPreservesNonWatchRowContent verifies
+// unchanged watch rows retain ordinary list content with the summary on stderr.
+func TestGetProcessDefinitionWatchRefreshBodyPreservesNonWatchRowContent(t *testing.T) {
 	resetGetProcessDefinitionCommandGlobals()
 	t.Cleanup(resetGetProcessDefinitionCommandGlobals)
 
@@ -707,9 +869,13 @@ func TestGetProcessDefinitionWatchRefreshBodyMatchesNonWatchListView(t *testing.
 	})
 
 	require.NoError(t, result.err)
-	require.Empty(t, result.stderr)
+	require.Empty(t, watchDiagnosticsWithoutSummaries(result.stderr))
 	requireProcessDefinitionWatchRepaintCount(t, result, 1)
-	require.Equal(t, expected.String(), result.stdoutWithoutRepaintControls())
+	want := "2251799813685255 tenant-a invoice v3\n" +
+		"2251799813685256 tenant-b order   v12\n" +
+		"found: 2\n"
+	require.Equal(t, want, result.stdoutWithoutRepaintControls())
+	require.Contains(t, result.stdoutWithoutRepaintControls(), strings.TrimSuffix(strings.Split(expected.String(), "\n")[0], "\n"))
 	require.NotContains(t, result.stdoutWithoutRepaintControls(), "snapshot")
 }
 
@@ -811,6 +977,8 @@ func TestGetProcessDefinitionWatchExplicitLatestEmptyThenChangedRefresh(t *testi
 	body := result.stdoutWithoutRepaintControls()
 	require.NotContains(t, body, "snapshot")
 	require.Contains(t, body, "found: 0")
+	require.Contains(t, result.stderr, "INFO 0 updated, 1 new, 0 removed")
+	require.Contains(t, body, "2251799813685256 tenant invoice v7 +")
 	require.Contains(t, body, "2251799813685256 tenant invoice v7")
 	require.Contains(t, body, "found: 1")
 }
@@ -1162,7 +1330,7 @@ func TestGetProcessDefinitionWatchOutputParityAssertions(t *testing.T) {
 				requireProcessDefinitionWatchRepaintCount(t, result, 1)
 				require.Equal(t, "2251799813685255 tenant invoice v3\nfound: 1\n", result.stdoutWithoutRepaintControls())
 				require.NotContains(t, result.stdoutWithoutRepaintControls(), "snapshot")
-				require.Equal(t, tt.wantStderr, result.stderr)
+				require.Equal(t, tt.wantStderr, watchDiagnosticsWithoutSummaries(result.stderr))
 			})
 		}
 	})
@@ -1221,4 +1389,52 @@ func TestGetProcessDefinitionWatchOutputParityAssertions(t *testing.T) {
 			})
 		}
 	})
+}
+
+// watchDiagnosticsWithoutSummaries isolates lifecycle diagnostics while validating
+// that every refresh summary uses the project timestamped INFO format.
+func watchDiagnosticsWithoutSummaries(output string) string {
+	return regexp.MustCompile(`(?m)^\d{2}:\d{2}:\d{2}\.\d{3} INFO \d+ updated, \d+ new, \d+ removed\n`).ReplaceAllString(output, "")
+}
+
+// TestRenderProcessDefinitionWatchRefresh_SummaryFailureKeepsBaseline proves
+// configured and inherited stderr failures stop rendering before rows and commit.
+func TestRenderProcessDefinitionWatchRefresh_SummaryFailureKeepsBaseline(t *testing.T) {
+	for _, inherited := range []bool{false, true} {
+		t.Run(strconv.FormatBool(inherited), func(t *testing.T) {
+			cmd := &cobra.Command{Use: "pd"}
+			var stdout bytes.Buffer
+			cmd.SetOut(&stdout)
+			if inherited {
+				parent := &cobra.Command{Use: "get"}
+				parent.SetErr(&processDefinitionWatchFailWriter{})
+				parent.AddCommand(cmd)
+			} else {
+				cmd.SetErr(&processDefinitionWatchFailWriter{})
+			}
+			baseline := processDefinitionWatchBaseline{}
+			err := renderProcessDefinitionWatchRefresh(cmd, &baseline, process.ProcessDefinitionWatchSnapshot{})
+			require.ErrorContains(t, err, "injected watch output failure")
+			require.False(t, baseline.initialized)
+			require.Equal(t, processDefinitionWatchRepaintControlSequenceForTest, stdout.String())
+		})
+	}
+}
+
+// TestRenderProcessDefinitionWatchRefresh_SummaryFollowsRepaint verifies the
+// timestamped log precedes rows on a terminal where both streams are visible.
+func TestRenderProcessDefinitionWatchRefresh_SummaryFollowsRepaint(t *testing.T) {
+	cmd := &cobra.Command{Use: "pd"}
+	var terminal bytes.Buffer
+	cmd.SetOut(&terminal)
+	cmd.SetErr(&terminal)
+	baseline := processDefinitionWatchBaseline{}
+	for i := 0; i < 2; i++ {
+		require.NoError(t, renderProcessDefinitionWatchRefresh(cmd, &baseline, process.ProcessDefinitionWatchSnapshot{}))
+	}
+	frames := strings.Split(terminal.String(), processDefinitionWatchRepaintControlSequenceForTest)
+	require.Len(t, frames, 3)
+	for _, frame := range frames[1:] {
+		require.Regexp(t, `^\d{2}:\d{2}:\d{2}\.\d{3} INFO 0 updated, 0 new, 0 removed\nfound: 0\n$`, frame)
+	}
 }

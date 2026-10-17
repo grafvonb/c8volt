@@ -8,8 +8,11 @@ package cli_test
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"strings"
 	"testing"
+
+	"github.com/grafvonb/c8volt/integration/internal/validation"
 )
 
 type configTestConnectionPayload struct {
@@ -155,8 +158,23 @@ func checkProfileReadiness(t *testing.T, profile integrationProfile) (integratio
 		return record, fmt.Errorf("profile %q connection JSON invalid: %w", profile.Name, err)
 	}
 	record.ActualVersion = payload.Cluster.GatewayVersion
-	if profile.ExpectedVersion != "" && !strings.Contains(record.ActualVersion, profile.ExpectedVersion) {
-		return record, fmt.Errorf("profile %q gateway version %q does not contain expected version %q", profile.Name, record.ActualVersion, profile.ExpectedVersion)
+	if requested := strings.TrimSpace(os.Getenv("C8VOLT_IT_RELEASE_VERSION")); requested != "" {
+		if err := validateRequestedCamundaVersion(requested, record.ActualVersion); err != nil {
+			return record, fmt.Errorf("profile %q: %w", profile.Name, err)
+		}
+	}
+	if profile.ExpectedVersion != "" {
+		expectedMinor, expectedErr := validation.CanonicalMinor(profile.ExpectedVersion)
+		observedMinor, observedErr := validation.ObservedMinor(record.ActualVersion)
+		if expectedErr != nil {
+			return record, fmt.Errorf("profile %q expected version %q is invalid: %w", profile.Name, profile.ExpectedVersion, expectedErr)
+		}
+		if observedErr != nil {
+			return record, fmt.Errorf("profile %q gateway version %q is invalid: %w", profile.Name, record.ActualVersion, observedErr)
+		}
+		if observedMinor != expectedMinor {
+			return record, fmt.Errorf("profile %q gateway version %q resolves to %q, want %q", profile.Name, record.ActualVersion, observedMinor, expectedMinor)
+		}
 	}
 	return record, nil
 }
@@ -206,4 +224,35 @@ func parseConfigTestConnection(output string) (configTestConnectionPayload, erro
 		return payload, fmt.Errorf("connection payload missing gateway version")
 	}
 	return payload, nil
+}
+
+// validateRequestedCamundaVersion keeps the explicit Make version gate in the
+// existing readiness check, before any scenario mutation.
+func validateRequestedCamundaVersion(requested, observed string) error {
+	want, err := validation.CanonicalMinor(requested)
+	if err != nil {
+		return err
+	}
+	got, err := validation.ObservedMinor(observed)
+	if err != nil {
+		return err
+	}
+	if got != want {
+		return fmt.Errorf("gateway version %q resolves to %q, requested %q", observed, got, want)
+	}
+	return nil
+}
+
+func TestRequestedCamundaVersionGate(t *testing.T) {
+	for _, tc := range []struct {
+		requested, observed string
+		valid               bool
+	}{
+		{"8.10", "8.10.3", true}, {"8.9", "8.9.8", true},
+		{"8.10", "8.9.8", false}, {"8.10", "unknown", false}, {"bad", "8.10.3", false},
+	} {
+		if err := validateRequestedCamundaVersion(tc.requested, tc.observed); (err == nil) != tc.valid {
+			t.Errorf("requested=%s observed=%s: %v", tc.requested, tc.observed, err)
+		}
+	}
 }

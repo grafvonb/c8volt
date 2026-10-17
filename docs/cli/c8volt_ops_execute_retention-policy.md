@@ -26,7 +26,7 @@ c8volt ops execute retention-policy [flags]
 ```
   ./c8volt ops execute retention-policy --retention-days 90 --dry-run
   ./c8volt --tenant tenant-a ops execute retention-policy --retention-days 90 --dry-run
-  ./c8volt --tenant "" ops execute retention-policy --retention-days 90 --dry-run
+  ./c8volt --all-tenants ops execute retention-policy --retention-days 90 --dry-run
   ./c8volt ops execute retention-policy --retention-days 90 --state completed --bpmn-process-id <bpmn-process-id> --dry-run
   ./c8volt ops execute retention-policy --retention-days 90 --state completed --bpmn-process-id <bpmn-process-id> --limit 25
   ./c8volt --verbose ops execute retention-policy --retention-days 90 --state completed --limit 25 --auto-confirm
