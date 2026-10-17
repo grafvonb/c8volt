@@ -24,6 +24,7 @@ var expectProcessInstanceCmd = &cobra.Command{
 		"Tenant contract: explicit --key and stdin process-instance targets are backend-authorized admin input; returned tenant metadata may differ from the selected tenant.\n\n" +
 		"Use after `run`, `cancel`, or `delete` when a command returns before the final state or incident marker is visible.",
 	Example: `  ./c8volt expect process-instance --key <process-instance-key> --state active
+  ./c8volt expect process-instance --key <process-instance-key> --state suspended
   ./c8volt expect process-instance --key <process-instance-key> --incident true
   ./c8volt expect process-instance --key <process-instance-key> --state active --incident false
   ./c8volt expect process-instance --key <process-instance-key> --state completed --state absent
@@ -48,7 +49,7 @@ var expectProcessInstanceCmd = &cobra.Command{
 		if cmd.Flags().Changed("state") {
 			states, err = process.ParseStates(flagExpectPIStates)
 			if err != nil {
-				handleCommandError(cmd, log, cfg.App.NoErrCodes, invalidFlagValuef("error parsing states: %v; valid values are: %s", err, process.ValidStateStrings()))
+				handleCommandError(cmd, log, cfg.App.NoErrCodes, invalidFlagValuef("error parsing states: %v; valid values are: %s; suspended requires Camunda 8.10", err, process.ValidStateStrings()))
 			}
 		}
 		incident, incidentSet, err := parseExpectPIIncidentFlag(cmd)
@@ -131,12 +132,14 @@ var expectProcessInstanceCmd = &cobra.Command{
 	},
 }
 
+// init registers expectation flags and bootstrap-free state completion.
 func init() {
 	expectCmd.AddCommand(expectProcessInstanceCmd)
 
 	fs := expectProcessInstanceCmd.Flags()
 	fs.StringSliceVarP(&flagExpectPIKeys, "key", "k", nil, "process instance key(s) to watch")
 	fs.StringSliceVarP(&flagExpectPIStates, "state", "s", nil, "state expectation; valid values are: [active, suspended, completed, canceled, terminated, absent]; suspended requires Camunda 8.10")
+	_ = expectProcessInstanceCmd.RegisterFlagCompletionFunc("state", processInstanceStateCompletion(true))
 	fs.StringVar(&flagExpectPIIncident, "incident", "", "incident expectation; valid values are: [true, false]")
 
 	fs.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers when --count > 1 (default: min(count, 2*GOMAXPROCS, 32))")

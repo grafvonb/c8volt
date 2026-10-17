@@ -24,6 +24,7 @@ c8volt expect process-instance [flags]
 
 ```
   ./c8volt expect process-instance --key <process-instance-key> --state active
+  ./c8volt expect process-instance --key <process-instance-key> --state suspended
   ./c8volt expect process-instance --key <process-instance-key> --incident true
   ./c8volt expect process-instance --key <process-instance-key> --state active --incident false
   ./c8volt expect process-instance --key <process-instance-key> --state completed --state absent

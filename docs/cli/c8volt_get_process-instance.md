@@ -14,7 +14,7 @@ Get process instances by key or search criteria.
 
 Use a known key or search by process definition, tenant, state, incidents, variables, jobs, user tasks, and time ranges. Missing explicit keys return not-found.
 
---batch-size controls each discovery request; --limit caps instances across all pages; --total counts matching instances.
+--batch-size controls each discovery request; --limit caps instances across all pages; --total counts matching instances. Empty searches suppress the human summary under --quiet; explicit JSON and keys-only output keep their existing contracts.
 
 --tenant limits search and selector discovery. Explicit --key and stdin keys use backend authorization without tenant filtering. A --bpmn-process-id selector must match a visible process definition before discovery.
 
@@ -33,6 +33,7 @@ c8volt get process-instance [flags]
 ```
   ./c8volt get process-instance --bpmn-process-id <bpmn-process-id> --state active --limit 5
   ./c8volt get process-instance --key <process-instance-key>
+  ./c8volt get process-instance --state suspended --json
   ./c8volt get process-instance --state active --total
   ./c8volt get process-instance --has-user-tasks <user-task-key>
   ./c8volt get process-instance --incidents-only --with-incidents --limit 5

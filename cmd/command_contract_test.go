@@ -598,7 +598,7 @@ func TestCommandContractOpsAnalyseSlowProcessInstances(t *testing.T) {
 		Type:        "string",
 		Required:    false,
 		Repeated:    false,
-		Description: "state to filter discovered process instances: all, active, completed, canceled, terminated",
+		Description: "state to filter discovered process instances: all, active, suspended (Camunda 8.10), completed, canceled, terminated",
 	})
 	require.Contains(t, capability.Flags, FlagContract{
 		Name:        "no-incidents-only",

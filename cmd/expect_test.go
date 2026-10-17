@@ -693,3 +693,44 @@ func TestHelperExpectProcessInstanceCommand_StateMismatchRemainsStrict(t *testin
 	_ = root.Execute()
 	os.Exit(0)
 }
+
+// TestExpectSuspendedMismatch proves suspension cannot satisfy a terminal wait
+// or hide a mismatched incident condition; bounded retries retain failure output.
+func TestExpectSuspendedMismatch(t *testing.T) {
+	for _, flags := range [][]string{{"--state", "completed"}, {"--state", "suspended", "--incident", "false"}} {
+		t.Run(strings.Join(flags, " "), func(t *testing.T) {
+			var requests atomic.Int32
+			srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				requests.Add(1)
+				require.Equal(t, http.MethodGet, r.Method)
+				require.Equal(t, "/v2/process-instances/123", r.URL.Path)
+				w.Header().Set("Content-Type", "application/json")
+				fmt.Fprint(w, suspendedInstanceFixture)
+			}))
+			t.Cleanup(srv.Close)
+			cfg := writeRawTestConfig(t, `app:
+  camunda_version: "8.10"
+  backoff:
+    strategy: fixed
+    initial_delay: 1ms
+    max_retries: 2
+    timeout: 100ms
+auth:
+  mode: none
+apis:
+  camunda_api:
+    base_url: `+srv.URL+"\n")
+			args := append([]string{"--config", cfg, "--json", "expect", "pi", "--key", "123"}, flags...)
+			stdout, stderr, err := testx.RunCmdSubprocessSeparate(t, "TestSuspendedCommandHelper", suspendedCommandEnv(t, args))
+			var exitErr *exec.ExitError
+			require.ErrorAs(t, err, &exitErr)
+			require.Equal(t, exitcode.Error, exitErr.ExitCode())
+			envelope := decodeSuspendedEnvelope(t, stdout)
+			require.Equal(t, "failed", envelope["outcome"])
+			require.Nil(t, envelope["payload"])
+			require.Empty(t, stderr)
+			require.GreaterOrEqual(t, requests.Load(), int32(2))
+			require.LessOrEqual(t, requests.Load(), int32(3))
+		})
+	}
+}

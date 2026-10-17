@@ -82,3 +82,43 @@ Started: 2026-10-17 13:26:30
 - Passed `make docs-content`, touched-file gofmt checks, `git diff --check`, and Ralph memory/record structure checks. README-derived docs/index.md includes the capability guidance and regenerated build provenance; command help from T001 needed no additional source changes in T002. Generated clients and their provenance remain unchanged. No command mode declarations were added.
 - T003 remains a separate independently verifiable CLI output/completion work unit. Live 8.10.4 validation remains T006 and was not attempted in this iteration.
 ---
+
+---
+## Iteration 3 - 2026-10-17 13:52
+**Work Unit**: US2 — Select and wait for suspended instances (T003 CLI completion and output contracts)
+**Tasks Completed**:
+- [x] T003: Add bootstrap-free state completion and version guidance; audit read/expectation selectors; validate command execution, output modes, unsupported errors, sparse paging and expectations; regenerate documentation.
+**Tasks Remaining in Work Unit**: 0 — US2 complete. T004–T006 remain outside this story.
+**Commit**: This work-unit commit
+**Files Changed**:
+- README.md
+- cmd/cmd_views_processinstance.go
+- cmd/command_contract_test.go
+- cmd/completion_test.go
+- cmd/expect_processinstance.go
+- cmd/expect_test.go
+- cmd/get_processinstance.go
+- cmd/get_processinstance_paging_test.go
+- cmd/get_processinstance_search.go
+- cmd/get_processinstance_validation.go
+- cmd/ops_analyse_slow_process_instances.go
+- cmd/ops_analyse_slow_process_instances_test.go
+- cmd/ops_analyse_slow_process_instances_validation.go
+- cmd/processinstance_state_completion.go
+- cmd/processinstance_suspended_test.go
+- docs/cli/c8volt_expect_process-instance.md
+- docs/cli/c8volt_get_process-instance.md
+- docs/cli/c8volt_ops_analyse_slow-process-instances.md
+- docs/index.md
+- specs/339-suspended-instance-state/progress.md
+- specs/339-suspended-instance-state/ralph-memory.md
+- specs/339-suspended-instance-state/tasks.md
+**Learnings**:
+- Completion uses public state constants with command-appropriate ALL/ABSENT candidates, case-aware prefixes and an 8.10 description. Slow-process analysis already accepted suspension; updated its help, validation feedback and completion while retaining its ABSENT restriction. Audited mutation/purge/definition state lists without changing their eligibility or scopes.
+- Regression-first `go test ./cmd -run '^TestProcessInstanceStateCompletion$' -count=1` failed as expected before completion registration. Command execution tests also exposed quiet empty-summary output; fixed both incremental and collected paths. A broader regression established that nonempty quiet rows/summaries are existing behavior, so preserved them rather than broadening quiet semantics.
+- Added a 36-case real-terminal matrix (empty/nonempty × human/JSON/keys/quiet/quiet+JSON/quiet+keys × ordinary/auto-confirm/automation), with separate stdout/stderr, exact human and key results, one JSON envelope plus EOF, omitted empty fields, one discovery request and no prompts/mutations. Added suspended sparse-page continuation, explicit-key reads, case variants, exact ACTIVE/ALL selectors, 8.8/8.9 unsupported error/exit classification with zero requests, invalid-state version feedback, state-plus-incident success and bounded mismatch failure. Existing terminal decline/EOF and paging tests remain passing.
+- Test-development fixture corrections retained the real contracts: v810 state equality is a JSON string; ALL can omit the filter; empty payload total/items are omitted; human row formatting is unchanged; raw YAML 8.10 must be quoted. No production schema or backend mapping changes were needed.
+- Passed `go test ./cmd -run 'TestProcessInstanceStateCompletion|TestSuspended|TestExpectSuspendedMismatch|TestGetProcessInstanceSuspendedSparsePaging' -count=1`, then final targeted `go test ./cmd -run 'GetPI|GetProcessInstance|Expect|Completion|Suspended|OpsSlowProcess' -count=1` after all new tests were added and fixture/quiet compatibility corrections were made.
+- Ran `GORACE=atexit_sleep_ms=0 go test ./cmd -race -count=1` to cover shared command flags, renderers, contracts and terminal helpers. It failed only on the stale slow-analysis help assertion in TestCommandContractOpsAnalyseSlowProcessInstances; all other tests passed with no reported races. Updated the assertion, then passed `GORACE=atexit_sleep_ms=0 go test ./cmd -race -run '^TestCommandContractOpsAnalyseSlowProcessInstances$' -count=1`. Successful unrelated tests were not repeated. No full repository runtime run was needed for this CLI-only unit; final integrated validation remains T006.
+- Passed `make docs-content`, touched-file gofmt verification, `git diff --check`, and Ralph record/structure checks. Reviewed generated references and README-derived homepage. Added no mode/lifecycle declarations; completion lives in a focused helper file. Generated clients and provenance are unchanged; live 8.10.4 validation was not attempted in this unit.
+---

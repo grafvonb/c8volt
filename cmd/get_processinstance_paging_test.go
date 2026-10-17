@@ -5,6 +5,7 @@ package cmd
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -923,4 +924,46 @@ func TestPIContinuationProgress(t *testing.T) {
 
 		require.Equal(t, processInstanceContinuationWarningStop, summary.ContinuationState)
 	})
+}
+
+// TestGetProcessInstanceSuspendedSparsePaging keeps an empty locally filtered page
+// from ending discovery and keeps continuation text off the keys-only stream.
+func TestGetProcessInstanceSuspendedSparsePaging(t *testing.T) {
+	for _, machine := range []bool{false, true} {
+		t.Run(fmt.Sprint(machine), func(t *testing.T) {
+			var requests []string
+			child := strings.Replace(suspendedInstanceFixture, `"tenantId":"tenant"`, `"tenantId":"tenant","parentProcessInstanceKey":"999"`, 1)
+			srv := newProcessInstanceSearchCaptureServerWithResponses(t, &requests,
+				fmt.Sprintf(`{"items":[%s],"page":{"totalItems":2,"hasMoreTotalItems":false,"endCursor":"first"}}`, child),
+				fmt.Sprintf(`{"items":[%s],"page":{"totalItems":2,"hasMoreTotalItems":false}}`, suspendedInstanceFixture),
+			)
+			t.Cleanup(srv.Close)
+			args := []string{"--config", writeTestConfigForVersion(t, srv.URL, "8.10"), "get", "pi", "--state", "suspended", "--roots-only", "--batch-size", "1"}
+			prompt := "Fetched 0 process instance(s) on this page (0 loaded). More matching process instances remain.\nContinue? [y/N]: "
+			exchanges := []testx.CmdTerminalExchange{{Prompt: prompt, Response: "y"}}
+			if machine {
+				args = append(args, "--json")
+				exchanges = nil
+			} else {
+				args = append(args, "--keys-only")
+			}
+			env := suspendedCommandEnv(t, args)
+			env["C8VOLT_SUSPENDED_TERMINAL"] = "1"
+			result := testx.NewCmdTerminalRunner().Run(t, testx.CmdTerminalRunRequest{ScopeTestName: "TestSuspendedCommandHelper", Env: env, Exchanges: exchanges, Timeout: 5 * time.Second})
+			require.True(t, result.Supported, result.UnsupportedReason)
+			require.NoError(t, result.Err, result.Stderr)
+			require.Len(t, requests, 2)
+			pages := decodeCapturedPISearchPages(t, requests)
+			require.Equal(t, "first", pages[1]["after"])
+			if machine {
+				payload := decodeSuspendedEnvelope(t, result.Stdout)["payload"].(map[string]any)
+				require.EqualValues(t, 1, payload["total"])
+				require.Len(t, payload["items"], 1)
+				require.Empty(t, result.Stderr)
+			} else {
+				require.Equal(t, "123\n", result.Stdout)
+				require.Equal(t, prompt, result.Stderr)
+			}
+		})
+	}
 }

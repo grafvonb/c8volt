@@ -6,7 +6,7 @@ nav_exclude: true
 has_toc: true
 ---
 
-> Generated from build `c8volt v4.3.4-150-g044ee219-dirty`, commit `044ee219`, built `2026-10-17T11:40:20Z` | Supported Camunda 8 versions: 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.3 (final)
+> Generated from build `c8volt v4.3.4-151-g1dea3fd8-dirty`, commit `1dea3fd8`, built `2026-10-17T11:49:05Z` | Supported Camunda 8 versions: 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.3 (final)
 
 <img src="./logo/c8volt_logo_transparent_w_shadow_400x244.png" alt="c8volt logo" />
 
@@ -273,6 +273,8 @@ Use `get process-instance` for direct lookup, scoped search, variables, incident
 Process-instance reads and state reports preserve `SUSPENDED` as a distinct, nonterminal state for paused execution. The public process state parser accepts case variations and surrounding whitespace. Compact human rows show `SUSPENDED` in the existing state column; JSON retains it in the existing state field.
 
 Explicit suspended-state filters and expectations require Camunda 8.10. On 8.8/8.9 they return an unsupported-capability error before discovery or polling, including mixed desired states and empty key sets. ACTIVE selection remains exact; unfiltered/ALL selection retains all matching states. A suspended instance satisfies a suspended expectation only when any requested incident condition also matches, and never satisfies a terminal-only expectation.
+
+Use `get process-instance --state suspended` to find paused instances or `expect process-instance --key <key> --state suspended` to wait for suspension. State completion for get, expect, and slow-process analysis works without configuration or a connection and identifies the Camunda 8.10 requirement. Empty process-instance searches suppress the human summary under `--quiet`, while explicitly requested JSON and keys-only results retain their existing contracts.
 
 Generated reference: [get process-instance](./cli/c8volt_get_process-instance).
 

@@ -116,7 +116,7 @@ func hasOpsSlowProcessAnalysisSearchFilterFlags(cmd *cobra.Command) bool {
 func parseOpsSlowProcessAnalysisState() (process.State, error) {
 	state, ok := process.ParseState(flagOpsAnalyseSlowProcessInstanceState)
 	if !ok || state == process.StateAbsent {
-		return "", invalidFlagValuef("invalid value for --state: %q, expected active, completed, canceled, terminated, or all", flagOpsAnalyseSlowProcessInstanceState)
+		return "", invalidFlagValuef("invalid value for --state: %q, expected active, suspended, completed, canceled, terminated, or all; suspended requires Camunda 8.10", flagOpsAnalyseSlowProcessInstanceState)
 	}
 	if state == process.StateAll {
 		return "", nil

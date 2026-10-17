@@ -27,7 +27,7 @@ func searchProcessInstancesWithPaging(cmd *cobra.Command, cli process.API, cfg *
 	needsIndirectIncidentWarning := false
 	printFoundAndReturn := func() (process.ProcessInstances, bool, error) {
 		if incremental {
-			if pickMode() == RenderModeOneLine {
+			if pickMode() == RenderModeOneLine && !(flagQuiet && processedTotal == 0) {
 				if needsIndirectIncidentWarning {
 					renderHumanWarningLine(cmd, indirectProcessTreeIncidentWarning)
 				}
