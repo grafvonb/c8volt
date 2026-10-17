@@ -192,3 +192,28 @@ Started: 2026-10-17 13:26:30
 - Passed broader `GORACE=atexit_sleep_ms=0 go test ./internal/services/processinstance/... ./c8volt/process ./cmd ./docsgen -race -count=1` across every selected package, covering shared instance conversions, version adapters, enrichment, command contracts and generated documentation. Final repository-wide validation remains T006; no live 8.10.4 validation was attempted.
 - Passed `make docs-content`, touched-file gofmt verification, `git diff --check`, and coordinated record/memory structure checks. Reviewed generated get reference and README-derived homepage. No command lifecycle declarations were added; generated clients/provenance and definition watch are unchanged.
 ---
+
+---
+## Iteration 6 - 2026-10-17 14:14
+**Work Unit**: T006 — Integration and final validation
+**Tasks Completed**:
+- [x] T006: Add reusable suspension fixtures and the existing-get-slice live scenario, verify observed 8.10.4 before mutations, prove lookup/filter/expectation/metadata behavior and cleanup, update integration guidance and record final race validation.
+**Tasks Remaining in Work Unit**: 0 — all feature tasks complete.
+**Commit**: This work-unit commit
+**Files Changed**:
+- integration/cli/get_processinstance_suspended_test.go
+- integration/cli/suspended_fixture_test.go
+- integration/README.md
+- specs/339-suspended-instance-state/quickstart.md
+- specs/339-suspended-instance-state/validation.md
+- specs/339-suspended-instance-state/tasks.md
+- specs/339-suspended-instance-state/ralph-memory.md
+- specs/339-suspended-instance-state/progress.md
+**Learnings**:
+- The designated disposable c810local profile passed nonmutating preflight with configured minor 8.10 and observed gateway 8.10.4. The focused test checks the full patch before fixture deployment and keeps generated client/provenance at 8.10.3; the actual generated-client SHA-256 matches provenance.
+- Added TestGetFamilySuspendedState plus narrowly reusable isolated held-fixture helpers. Existing generated calls perform fixture-only suspension/resumption; independent generated reads establish backend state. The test proves public lookup, exact suspended/ACTIVE/all selection over suspended/active/terminal controls, state and combined expectations, bounded terminal non-success (exit 4/class timeout), and timestamp presence then omission in fresh public/CLI lookup/search results. JSON checks require one envelope and EOF with separate streams. No public mutation or watch workflow was added.
+- Passed discovery with `go test -tags=integration ./integration/cli -list '^TestGetFamilySuspendedState$'`; reviewed Makefile's existing `-run TestGetFamily` selector. Initial focused live run failed because the test used uppercase ALL; existing CLI sentinel is lowercase all. Corrected the fixture, strengthened timeout classification and resume tracking, then reran the entire scenario successfully. Both runs completed owned-fixture cleanup; no product change was needed.
+- Passed `C8VOLT_IT_PROFILES=c810local C8VOLT_IT_RELEASE_VERSION=8.10 C8VOLT_IT_WORKDIR=/tmp/c8volt-339-iteration6-live-2 go test -tags=integration ./integration/cli -run '^TestGetFamilySuspendedState$' -count=1 -v -timeout=20m` (no skips). The test took 27.15s; package run including build took 36.986s. Observed suspension timestamp 2026-10-17T12:12:04.23Z; resumption produced backend null and omitted CLI metadata. Cleanup resumed before ordinary owned-definition deletion and confirmed all three instances absent; recorded separately as cleaned.
+- Passed final repository-wide `make test` (race-enabled, exit 0); log /tmp/c8volt-339-iteration6-make-test.log. This completes integrated validation for the shared runtime/interface changes from earlier units. Tagged integration changes were validated by the live rerun; later edits are documentation/records only.
+- Recorded tested HEAD ed2b0df45d5264564708b321fc7ddc0b42c4b027 plus dirty source paths, exact client provenance, command stdout/stderr and exits, generated observations, failures and cleanup in existing harness evidence and validation.md. Reviewed generated docs against source/README; no command metadata changed in this unit, so no regeneration was needed. Passed gofmt verification, diff checks and coordinated-record/memory checks. Terminal handoff replaces the now-completed integration handoff.
+---

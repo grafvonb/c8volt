@@ -5,6 +5,8 @@ Started: 2026-10-17T11:26:30Z
 
 ## Codebase Patterns
 
+- `integration/cli/suspended_fixture_test.go` supplies owned held fixtures, exact pre-mutation 8.10.4 gating, generated suspend/resume setup and independent observations. Cleanup resumes tracked keys, deletes the owned definition, confirms instance absence and writes separate cleanup evidence. The focused `TestGetFamilySuspendedState` belongs to the existing get slice.
+
 - `SuspendedDate` is an optional string in domain/public instances, mapped through v810 `formatTimePtr` and both facade directions. Fresh conversion clears absent metadata; nil/zero dates omit JSON without changing state. Existing nested incident/variable/element payloads inherit the field; human renderers need no change.
 - `c8volt/process/state.go` owns canonical parsing: trim whitespace, accept case variants and `cancelled`, and reject UNKNOWN/unrecognized inputs with the UNKNOWN fallback. `validStates` also supplies CLI invalid-value feedback.
 - `ValidateProcessInstanceStates` is mandatory on shared/versioned process-instance APIs. Shared page/total traversal validates before direct-incident discovery; adapters validate page search and single/bulk waits before requests/workers. v88/v89 reject trimmed case-insensitive suspension; v810 permits it. Generic waiters stay capability-neutral.
@@ -19,6 +21,8 @@ Started: 2026-10-17T11:26:30Z
 - Update get/expect state flag descriptions with the 8.10 limitation because the parser expands exposed valid-value feedback. Regenerate CLI docs and the README-derived homepage with `make docs-content`.
 
 ## Gotchas
+
+- CLI all-state selection uses the existing lowercase `all` sentinel. Uppercase `ALL` is forwarded to the backend and rejected; preserve this existing behavior. The first T006 run exposed this test mistake; corrected live rerun passed and both runs cleaned up.
 
 - Direct service-factory HTTP tests must include `/v2` in `config.APIs.Camunda.BaseURL`; CLI bootstrap supplies this path separately. Older adapters intentionally leave `SuspendedDate` empty, even if a response contains the unfamiliar field.
 - Creation help is asserted by `docsgen/TestGeneratedRunProcessInstanceDocsDocumentPipeline` as well as command help tests; keep its state list aligned.
@@ -36,20 +40,15 @@ Started: 2026-10-17T11:26:30Z
 
 ## Reusable Commands
 
-- T005 broader validation passed: `GORACE=atexit_sleep_ms=0 go test ./internal/services/processinstance/... ./c8volt/process ./cmd ./docsgen -race -count=1`. Final repository-wide `make test` and live acceptance remain T006.
-- T005 targeted checks: `go test ./internal/services/processinstance/v810 ./c8volt/process -run 'Convert|ProcessInstance|Suspended' -count=1`; `go test ./cmd -run 'Suspended|ProcessInstance' -count=1`. `TestClient_SuspendedDateSnapshots` reuses real versioned adapters/facades for present-to-absent reads/searches; `TestSuspendedDateSnapshots` checks separate streams, one envelope plus EOF, unchanged rows/keys, and one request per snapshot.
-- T004 race validation: `make test` passed every package except a stale generated run-help assertion; after correcting it, `GORACE=atexit_sleep_ms=0 go test ./docsgen -race -count=1` passed. All packages now have passing race coverage; final integrated validation still belongs to T006.
-
-- T004 targeted checks: `go test ./internal/domain ./internal/services/processinstance/... ./c8volt/process -run 'ObservableProcessInstanceCreation|CreateProcessInstance|State|Expectation|SuspendedUnsupported' -count=1`; `go test ./cmd -run 'RunHelp|RunProcessInstance|RunCommand' -count=1`. Zero-delay, bounded-attempt creation fixtures cover delayed absence-to-suspension; an already-expired context covers deadline failure without sleeps.
-
-- `go test ./internal/domain -run 'State' -count=1`
-- `go test ./c8volt/process -run 'State|ProcessInstance|Expectation' -count=1`
-- `go test ./cmd -run 'TestOneLinePI|TestListProcessInstancesView|TestExpectHelp_DocumentsWaitVerificationUsage' -count=1`
+- Final integrated `make test` passed all packages with race detection in T006. See `validation.md` for commands, evidence, source revision/dirty status and exact client provenance.
+- `go test -tags=integration ./integration/cli -list '^TestGetFamilySuspendedState$'` proves discovery. `C8VOLT_IT_PROFILES=c810local C8VOLT_IT_RELEASE_VERSION=8.10 go test -tags=integration ./integration/cli -run '^TestGetFamilySuspendedState$' -count=1 -v -timeout=20m` passed against observed 8.10.4. Use a distinct `C8VOLT_IT_WORKDIR` per run. The release variable takes minor `8.10`, not patch `8.10.4`.
+- `go test ./internal/domain -run 'State|ObservableProcessInstanceCreation' -count=1`
+- `go test ./internal/services/processinstance/... ./c8volt/process -run 'State|Expectation|Search|Suspended|CreateProcessInstance' -count=1`
+- `go test ./cmd -run 'GetPI|GetProcessInstance|Expect|Completion|Suspended|RunProcessInstance|OpsSlowProcess' -count=1`
 - `make docs-content` regenerates CLI references and `docs/index.md` (including its build provenance line).
-- T002 targeted check: `go test ./internal/services/processinstance/... ./c8volt/process -run 'State|Expectation|Search|Suspended' -count=1`. Cross-version HTTP coverage is centralized in service `search_test.go`; public adapter coverage is in `c8volt/process/suspended_test.go`.
-- T002 race coverage: `make test` passed every package except an initially missing resource test-double method; after adding it, `go test ./c8volt/resource -race -count=1` passed. No runtime failures remain; successful unrelated packages were not rerun.
-- T003 targeted command check: `go test ./cmd -run 'GetPI|GetProcessInstance|Expect|Completion|Suspended|OpsSlowProcess' -count=1`. All passed. Full command race run passed except a stale slow-analysis contract assertion; after correcting it, `GORACE=atexit_sleep_ms=0 go test ./cmd -race -run '^TestCommandContractOpsAnalyseSlowProcessInstances$' -count=1` passed.
+- `TestClient_SuspendedDateSnapshots` reuses real versioned adapters/facades for present-to-absent reads/searches; `TestSuspendedDateSnapshots` checks separate streams, one envelope plus EOF, unchanged rows/keys and one request per snapshot.
 - `TestSuspendedCommandHelper` accepts JSON arguments through `suspendedCommandEnv`; reuse it for isolated exit/stream tests. `decodeSuspendedEnvelope` requires EOF. The real-terminal matrix covers empty/nonempty six output modes with ordinary, auto-confirm and automation policies.
+- Controlled zero-delay creation fixtures cover delayed absence-to-suspension; an already-expired context covers deadline failure without sleeps.
 
 ## Do Not Repeat
 
@@ -58,6 +57,4 @@ Started: 2026-10-17T11:26:30Z
 
 ## Current Handoff
 
-- Next: T006, integration and final validation. T001–T005 are implemented; all four user stories now have deterministic coverage. Add the existing-harness `TestGetFamilySuspendedState` and reusable fixture helpers; do not start a new public mutation or watch workflow.
-- Verify observed server patch 8.10.4 before fixture mutations, using an explicitly designated disposable profile. Keep configured release at minor `8.10`; preserve generated client/provenance baseline 8.10.3. Resume owned instances before normal cleanup and record cleanup outcomes separately.
-- Record live evidence and tested revision/dirty status in `validation.md`, update integration guidance, prove test discovery, and run final `make test`. If infrastructure or permission is unavailable, record the concrete reason and leave T006 pending; a skip or different server patch is not acceptance.
+- Feature complete; no handoff required.

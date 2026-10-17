@@ -1,6 +1,6 @@
 # Validation Guide: Suspended Process-Instance State
 
-This guide is for implementation validation. The planning phase has not changed runtime behavior or run these tests. See [contracts/process-instance-state.md](contracts/process-instance-state.md) for expected behavior and [data-model.md](data-model.md) for timestamp semantics.
+This guide is for implementation validation. See [validation.md](validation.md) for recorded results, [contracts/process-instance-state.md](contracts/process-instance-state.md) for expected behavior and [data-model.md](data-model.md) for timestamp semantics.
 
 ## Prerequisites
 
@@ -52,7 +52,7 @@ C8VOLT_IT_PROFILES=c810local C8VOLT_IT_RELEASE_VERSION=8.10 make integration-cli
 
 Use the actual designated profile if its name differs. The release variable accepts the minor line, not `8.10.4`. The focused scenario must additionally verify the full observed server version is 8.10.4 before setup mutations; the minor gate alone is insufficient.
 
-Implement a focused `TestGetFamilySuspendedState` in the existing `integration/cli` structure so `integration-cli-get` includes it. The following command is runnable **after that new test exists**; first list the test and require its presence to prevent a false pass:
+`TestGetFamilySuspendedState` is included in the existing `integration-cli-get` slice. First list the test and require its presence to prevent a false pass:
 
 ```sh
 go test -tags=integration ./integration/cli -list '^TestGetFamilySuspendedState$'
@@ -75,4 +75,4 @@ Replace the quoted key placeholder with an owned suspended fixture key. Restrict
 
 Record the tested Git revision and dirty status, actual server version, configured profile/minor, generated-client provenance (including tag/commit/hash), scenario results, command streams/exit codes, and fixture cleanup outcome in the existing evidence structure. Exclude credentials. Make helpers/fixtures reusable by #342.
 
-No live endpoint was used during planning. If 8.10.4 or required permissions are unavailable during implementation, report live validation as unavailable with the concrete reason. Do not relabel a skip, different server patch, no-tests run, or partial coverage as a passing live result.
+The scenario writes `suspended-revision.json`, `suspended-profile-<profile>.json`, `suspended-commands-<profile>.json`, raw observations under `data/`, separate streams under `logs/`, and `suspended-cleanup-<profile>.json`. Use a distinct `C8VOLT_IT_WORKDIR` for each run. If 8.10.4 or required permissions are unavailable, report live validation as unavailable with the concrete reason. Do not relabel a skip, different server patch, no-tests run, or partial coverage as a passing live result.
