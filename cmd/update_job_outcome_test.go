@@ -285,3 +285,27 @@ func TestUpdateJobCommand_WorkerOutcomeUnsupportedV87FailsBeforeMutationHelper(t
 
 	Execute()
 }
+
+// TestUpdateJobBulkCompletionSuppressionAndVersion keeps failure payloads under
+// explicit exit-code suppression and rejects unsupported versions before reads.
+func TestUpdateJobBulkCompletionSuppressionAndVersion(t *testing.T) {
+	for _, version := range []string{"8.7", "8.8"} {
+		t.Run(version, func(t *testing.T) {
+			fixture, server := newBulkCompletionFixture(t, "partial")
+			args := []string{"--config", writeTestConfigForVersion(t, server.URL, version), "--tenant", "tenant-a", "--json", "--no-err-codes", "update", "job", "--type", "cleanup", "--complete", "--auto-confirm", "--workers", "1"}
+			encoded, _ := json.Marshal(args)
+			stdout, stderr, err := testx.RunCmdSubprocessSeparate(t, "TestUpdateJobBulkCompletionHelper", map[string]string{"C8VOLT_BATCH_ARGS": string(encoded)})
+			require.NoError(t, err, stderr)
+			envelope := decodeBulkCompletionEnvelope(t, stdout)
+			require.Equal(t, "failed", envelope["outcome"])
+			payload := requireJSONObject(t, envelope["payload"])
+			if version == "8.7" {
+				require.Empty(t, fixture.calls)
+				require.Equal(t, "preparation_failed", payload["status"])
+			} else {
+				require.Len(t, fixture.writes, 1)
+				require.Len(t, payload["outcomes"], 2)
+			}
+		})
+	}
+}

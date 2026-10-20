@@ -163,3 +163,40 @@ Started: 2026-10-20 12:28:15
 - Command ownership gate: no command files changed. CLI docs regeneration is deferred with CLI implementation in T005; no user-facing CLI behavior or live recovery claim was introduced. Only T004 changed task state.
 - Commit policy confirmed conventional / ralph / automatic issue suffix `#345`; no local override exists. The coordinated commit includes this appended audit record, tasks and memory. Next iteration must recheck T005 dependencies.
 ---
+
+---
+## Iteration 5 - 2026-10-20 13:35
+**Work Unit**: US1 — T005 selector completion CLI (completed; US1 complete)
+**Tasks Completed**:
+- [x] T005: Enable selector completion with frozen preparation/confirmation, mode-aware complete reporting, validation, capability metadata and documentation.
+**Tasks Remaining in Work Unit**: 0 US1 tasks. Four feature tasks remain; T006 (US2 explicit collection/stdin CLI) is next dependency-ready.
+**Commit**: This work-unit commit
+**Files Changed**:
+- README.md
+- cmd/cmd_views_job.go
+- cmd/command_contract_test.go
+- cmd/get_job.go
+- cmd/update_job.go
+- cmd/update_job_batch.go
+- cmd/update_job_batch_test.go
+- cmd/update_job_outcome_test.go
+- cmd/update_job_request.go
+- cmd/update_job_request_test.go
+- cmd/update_job_test.go
+- docs/cli/c8volt_update.md
+- docs/cli/c8volt_update_job.md
+- docs/cli/command-tree.md
+- docs/index.md
+- specs/345-bulk-job-completion/progress.md
+- specs/345-bulk-job-completion/ralph-memory.md
+- specs/345-bulk-job-completion/tasks.md
+**Learnings**:
+- Added selector request regressions first; the initial run failed on the missing command dispatcher. Reused value-based get-job predicate validation without sharing mutable selector flags. All nine AND predicates and explicit zero retries reach the adapter; unqualified/control-only input, mixed selection, incompatible mutation modes and unsupported output are rejected.
+- The dedicated batch runner calls preparation and execution once, preserves the frozen plan/options/workers, confirms through configured stderr and renders exactly one envelope before exit-after-render. Scalar-key updates remain on the legacy path. Backend traversal, concurrency and reconciliation remain in services.
+- HTTP and command tests prove zero writes for dry-run, incomplete discovery, incompatible listener variables, declined/EOF confirmation and authoritative empty selection. Tests retain deterministic partial outcomes on nonzero exits, suppression of exit codes without dropping the failure payload, no-wait acceptance only after actual acceptance, completed no-ops, quiet JSON and unsupported v87 behavior.
+- Real terminal stdin with independently captured output proves one plain confirmation under redirected stdout and prompt-free empty normal/dry-run/no-wait/quiet/JSON execution. Human results use stdout, quiet explicitly suppresses prose, and existing tenant provenance lines are preserved. Deep scale/adapter/terminal acceptance stays in T007/T008.
+- Regression tests exposed inherited keys-only mode reaching discovery despite unsupported capability metadata; the batch parser now rejects it before HTTP. Initial full command race validation found two global metadata conventions: state shorthand must be -s, and action-focused help must omit stream implementation terminology. Corrected both and regenerated docs.
+- Passed test-family discovery, required `go test ./cmd -run 'Test.*(UpdateJob|BulkCompletion|CommandContract)' -count=1`, expanded read/capability/help checks, `go vet ./cmd`, and the full command race suite: `GORACE=atexit_sleep_ms=0 go test ./cmd -race -count=1` (127.879s; detection enabled, per-process exit delay disabled). Gofmt, `make docs-content`, generated-doc review and `git diff --check` passed.
+- Command ownership gate passed: base command contains flags/dispatch, shared predicate validation remains value-based, batch parsing/lifecycle/report construction is in update_job_batch.go, and output formatting is in cmd_views_job.go. No facade, service, generated client, dependency or unrelated workflow changed.
+- Commit policy confirmed from .specify/extensions/ralph/ralph-config.yml: conventional / ralph / automatic issue suffix #345; no local override exists. This coordinated commit includes substantive code, tests, docs, task state and durable memory. No live recovery claim or publication was made.
+---

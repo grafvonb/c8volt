@@ -524,4 +524,7 @@ func resetUpdateJobFlagState() {
 	flagUpdateJobBPMNError = ""
 	flagUpdateJobComplete = false
 	flagUpdateJobVariables = ""
+	flagWorkers = 0
+	flagFailFast = false
+	flagNoWorkerLimit = false
 }

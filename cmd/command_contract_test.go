@@ -1288,6 +1288,7 @@ func TestCommandCapabilityForCommand_UpdateProcessInstanceContract(t *testing.T)
 	})
 }
 
+// TestCommandCapabilityForCommand_GetAndUpdateJobContract keeps selector and legacy flag metadata aligned with execution.
 func TestCommandCapabilityForCommand_GetAndUpdateJobContract(t *testing.T) {
 	root := Root()
 	resetCommandTreeFlags(root)
@@ -1419,7 +1420,7 @@ func TestCommandCapabilityForCommand_GetAndUpdateJobContract(t *testing.T) {
 		Name:        "key",
 		Shorthand:   "k",
 		Type:        "string",
-		Required:    true,
+		Required:    false,
 		Repeated:    false,
 		Description: "job key to update",
 	})
@@ -1428,7 +1429,7 @@ func TestCommandCapabilityForCommand_GetAndUpdateJobContract(t *testing.T) {
 		Type:        "int32",
 		Required:    false,
 		Repeated:    false,
-		Description: "retry count to set, or remaining retries for --fail",
+		Description: "retry count to set, remaining retries for --fail, or exact selector with keyless --complete (including 0)",
 	})
 	require.Contains(t, updateCapability.Flags, FlagContract{
 		Name:        "timeout",
@@ -1491,7 +1492,7 @@ func TestCommandCapabilityForCommand_GetAndUpdateJobContract(t *testing.T) {
 		Type:        "bool",
 		Required:    false,
 		Repeated:    false,
-		Description: "return after the update request is accepted without retry confirmation",
+		Description: "skip retry confirmation; bulk completion permits one reconciliation read without polling",
 	})
 	require.Contains(t, updateCapability.Flags, FlagContract{
 		Name:        "auto-confirm",
@@ -2957,4 +2958,22 @@ func readGoTopLevelDeclarationsFromFile(path string) (map[string]struct{}, error
 		}
 	}
 	return declarations, nil
+}
+
+// TestCommandContractBulkCompletionSelectors advertises alternative selection without adding keys-only output.
+func TestCommandContractBulkCompletionSelectors(t *testing.T) {
+	capability := commandCapabilityForCommand(updateJobCmd)
+	for _, name := range []string{"state", "type", "pi-key", "element-instance-key", "element-id", "worker", "retries", "kind", "listener-event-type", "batch-size", "limit", "workers", "fail-fast", "no-worker-limit"} {
+		found := false
+		for _, flag := range capability.Flags {
+			if flag.Name == name {
+				found = true
+				require.False(t, flag.Required)
+			}
+		}
+		require.True(t, found, name)
+	}
+	require.Contains(t, updateJobCmd.Long, "without executing its business logic")
+	require.Contains(t, updateJobCmd.Long, "frozen")
+	require.Contains(t, updateJobCmd.Long, "partial failures")
 }

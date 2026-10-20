@@ -244,3 +244,103 @@ func derefInt32(value *int32) int32 {
 	}
 	return *value
 }
+
+// jobCompletionListenerConsequence is shared by preview and confirmation so the
+// operator sees the same consequence before either reviewing or approving work.
+const jobCompletionListenerConsequence = "Completing a listener job acknowledges its work without executing its business logic."
+
+// jobCompletionConfirmationPrompt describes the exact frozen count and scope.
+func jobCompletionConfirmationPrompt(batch job.PreparedCompletionBatch) string {
+	scope := tenantContextPrimaryHumanLine(newDiscoveryTenantContext(batch.DiscoveryTenant))
+	return fmt.Sprintf("You are about to complete %d selected job(s); %s; filters: %s. %s Do you want to proceed?", len(batch.Candidates), scope, jobCompletionFilterText(batch.Selection.Filter), jobCompletionListenerConsequence)
+}
+
+// jobCompletionFilterText renders normalized AND predicates in stable CLI order.
+func jobCompletionFilterText(filter job.CompletionFilter) string {
+	parts := []string{}
+	for _, pair := range [][2]string{{"state", filter.State}, {"type", filter.Type}, {"pi-key", filter.ProcessInstanceKey}, {"element-instance-key", filter.ElementInstanceKey}, {"element-id", filter.ElementId}, {"worker", filter.Worker}, {"kind", filter.Kind}, {"listener-event-type", filter.ListenerEventType}} {
+		if pair[1] != "" {
+			parts = append(parts, pair[0]+"="+pair[1])
+		}
+	}
+	if filter.Retries != nil {
+		parts = append(parts, fmt.Sprintf("retries=%d", *filter.Retries))
+	}
+	return strings.Join(parts, "; ")
+}
+
+// jobCompletionBatchView renders authoritative empty, preview and partial outcomes
+// through the same mode-aware path. No-wait acceptance requires actual acceptance.
+func jobCompletionBatchView(cmd *cobra.Command, report job.CompletionBatchReport, runErr error) error {
+	if pickMode() == RenderModeJSON {
+		envelope := ResultEnvelope[any]{Outcome: OutcomeSucceeded, Command: commandPath(cmd), Payload: report}
+		if runErr != nil {
+			envelope = resultEnvelopeForError(cmd, runErr)
+			envelope.Payload = report
+		} else if flagNoWait && report.Counts.Accepted > 0 {
+			envelope.Outcome = OutcomeAccepted
+		}
+		return renderResultEnvelope(cmd, envelope)
+	}
+	if runErr != nil {
+		cmd.PrintErrf("job completion: %s\n", runErr)
+	}
+	if flagQuiet {
+		return nil
+	}
+	label := "job completion"
+	if report.Status == job.CompletionBatchPreview {
+		label = "dry run: job completion"
+	}
+	renderOutputLine(cmd, "%s", label)
+	renderOutputLine(cmd, "filters: %s", jobCompletionFilterText(report.Selection.Filter))
+	if ctx, ok := attachedTenantContext(cmd); ok {
+		for _, line := range tenantContextHumanLines(cmd, *ctx) {
+			renderOutputLine(cmd, "%s", line.Text)
+		}
+	}
+	if report.Status == job.CompletionBatchPreparationFailed {
+		renderOutputLine(cmd, "preparation incomplete: %d observed candidate job(s); no changes applied", report.Counts.Selected)
+	} else {
+		renderOutputLine(cmd, "selected job(s): %d", report.Counts.Selected)
+	}
+	if report.Limited {
+		renderOutputLine(cmd, "discovery user-limited: limit %d; pages %d; batch size %d", report.Selection.Limit, report.PageCount, report.Selection.BatchSize)
+	} else if flagVerbose {
+		renderOutputLine(cmd, "discovery: pages %d; batch size %d", report.PageCount, report.Selection.BatchSize)
+	}
+	switch report.Status {
+	case job.CompletionBatchPreview:
+		renderOutputLine(cmd, "%s", jobCompletionListenerConsequence)
+		renderOutputLine(cmd, "outcome: preview; no changes applied")
+	case job.CompletionBatchPreparationFailed:
+		renderOutputLine(cmd, "outcome: preparation failed; no changes applied")
+	default:
+		if report.Counts.Selected == 0 && runErr == nil {
+			renderOutputLine(cmd, "outcome: no matching jobs; no changes applied")
+		} else {
+			status := string(report.Status)
+			if runErr != nil && report.Status == job.CompletionBatchFinished {
+				status = "failed"
+			}
+			renderOutputLine(cmd, "outcome: %s; accepted %d; observed completed %d; unsatisfied %d; not started %d", status, report.Counts.Accepted, report.Counts.Completed, report.Counts.Unsatisfied, report.Counts.NotStarted)
+			if report.Counts.Accepted > 0 {
+				renderOutputLine(cmd, "accepted completions: independent confirmation skipped; process termination not verified")
+			}
+		}
+	}
+	if flagVerbose {
+		for _, candidate := range report.Candidates {
+			renderOutputLine(cmd, "%s", jobCompletionCandidateRow(candidate))
+		}
+		for _, outcome := range report.Outcomes {
+			renderOutputLine(cmd, "%s disposition:%s submission:%s observation:%s reason:%s", jobCompletionCandidateRow(outcome.Candidate), outcome.Disposition, outcome.Submission.Status, outcome.Observation.Status, outcome.Reason)
+		}
+	}
+	return nil
+}
+
+// jobCompletionCandidateRow reuses ordinary job rows with only observed facts.
+func jobCompletionCandidateRow(candidate job.CompletionCandidate) string {
+	return oneLineJob(job.Job{Key: candidate.Key, ProcessInstanceKey: candidate.ProcessInstanceKey, ElementInstanceKey: candidate.ElementInstanceKey, ElementId: candidate.ElementId, TenantId: candidate.TenantId, Type: candidate.Type, Kind: candidate.Kind, ListenerEventType: candidate.ListenerEventType, State: candidate.State, Worker: candidate.Worker, Retries: candidate.Retries})
+}

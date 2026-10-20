@@ -82,3 +82,28 @@ func updateJobAutomationEnabled(cmd *cobra.Command) bool {
 	}
 	return automationModeEnabled(cmd)
 }
+
+// parseUpdateJobCommandRequest chooses the selector contract before the legacy parser.
+// A scalar key keeps its established request and payload shape.
+func parseUpdateJobCommandRequest(cmd *cobra.Command) (job.UpdateRequest, *job.CompletionRequest, error) {
+	selectorFlags := []string{"state", "type", "pi-key", "element-instance-key", "element-id", "worker", "kind", "listener-event-type", "batch-size", "limit"}
+	hasSelection := false
+	for _, name := range selectorFlags {
+		hasSelection = hasSelection || cmd.Flags().Changed(name)
+	}
+	keyed := cmd.Flags().Changed("key") || strings.TrimSpace(flagUpdateJobKey) != ""
+	if hasSelection && (keyed || !flagUpdateJobComplete) {
+		return job.UpdateRequest{}, nil, mutuallyExclusiveFlagsf("job search selectors and controls require --complete without --key")
+	}
+	if !keyed && flagUpdateJobComplete {
+		request, err := parseUpdateJobBatchRequest(cmd)
+		return job.UpdateRequest{}, &request, err
+	}
+	for _, name := range []string{"workers", "fail-fast", "no-worker-limit"} {
+		if cmd.Flags().Changed(name) {
+			return job.UpdateRequest{}, nil, invalidFlagValuef("--%s requires batch completion", name)
+		}
+	}
+	request, err := parseUpdateJobRequest(cmd)
+	return request, nil, err
+}

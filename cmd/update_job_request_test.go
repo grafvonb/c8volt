@@ -480,3 +480,62 @@ func TestParseUpdateJobRequestRequiresUpdateFlag(t *testing.T) {
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "update job requires --retries, --timeout, or both")
 }
+
+// TestUpdateJobBulkCompletionRequest validates selector routing without sharing get-job flag storage.
+func TestUpdateJobBulkCompletionRequest(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		args  []string
+		valid bool
+		batch bool
+	}{
+		{"all predicates", []string{"--complete", "--state", "created", "--type", "cleanup", "--pi-key", "2251799813711000", "--element-instance-key", "2251799813711001", "--element-id", "task", "--worker", "worker", "--retries", "0", "--kind", "task_listener", "--listener-event-type", "canceling", "--limit", "0"}, true, true},
+		{"retries alone", []string{"--complete", "--retries", "0"}, true, true},
+		{"scalar", []string{"--complete", "--key", "123"}, true, false},
+		{"unqualified", []string{"--complete"}, false, false},
+		{"controls only", []string{"--complete", "--batch-size", "10", "--workers", "1"}, false, false},
+		{"blank predicate", []string{"--complete", "--type", " "}, false, false},
+		{"key plus selector", []string{"--complete", "--key", "123", "--state", "created"}, false, false},
+		{"key plus retries", []string{"--complete", "--key", "123", "--retries", "0"}, false, false},
+		{"key plus controls", []string{"--complete", "--key", "123", "--limit", "1"}, false, false},
+		{"other mode", []string{"--fail", "--key", "123", "--retries", "0", "--state", "created"}, false, false},
+		{"timeout mode", []string{"--timeout", "1m", "--type", "cleanup"}, false, false},
+		{"disabled completion", []string{"--complete=false", "--type", "cleanup"}, false, false},
+		{"negative retries", []string{"--complete", "--retries", "-1"}, false, false},
+		{"negative limit", []string{"--complete", "--type", "cleanup", "--limit", "-1"}, false, false},
+		{"invalid state", []string{"--complete", "--state", "bogus"}, false, false},
+		{"invalid kind", []string{"--complete", "--kind", "bogus"}, false, false},
+		{"invalid event", []string{"--complete", "--listener-event-type", "bogus"}, false, false},
+		{"invalid key predicate", []string{"--complete", "--pi-key", "-1"}, false, false},
+		{"invalid workers", []string{"--complete", "--type", "cleanup", "--workers", "0"}, false, false},
+		{"invalid size", []string{"--complete", "--type", "cleanup", "--batch-size", "0"}, false, false},
+		{"completion timeout", []string{"--complete", "--type", "cleanup", "--timeout", "1m"}, false, false},
+		{"completion message", []string{"--complete", "--type", "cleanup", "--message", "oops"}, false, false},
+		{"completion failure", []string{"--complete", "--type", "cleanup", "--fail"}, false, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			resetCommandTreeFlags(Root())
+			resetUpdateJobFlagState()
+			t.Cleanup(func() { resetCommandTreeFlags(Root()); resetUpdateJobFlagState() })
+			require.NoError(t, updateJobCmd.ParseFlags(tc.args))
+			_, batch, err := parseUpdateJobCommandRequest(updateJobCmd)
+			if !tc.valid {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, tc.batch, batch != nil)
+			if tc.batch {
+				require.Equal(t, job.CompletionSelectionSearch, batch.Selection.Mode)
+				require.NotNil(t, batch.Selection.Filter.Retries)
+				require.Zero(t, *batch.Selection.Filter.Retries)
+			}
+			if tc.name == "all predicates" {
+				require.Equal(t, "CREATED", batch.Selection.Filter.State)
+				require.Equal(t, "TASK_LISTENER", batch.Selection.Filter.Kind)
+				require.Equal(t, "CANCELING", batch.Selection.Filter.ListenerEventType)
+				require.Equal(t, "2251799813711000", batch.Selection.Filter.ProcessInstanceKey)
+			}
+		})
+	}
+}

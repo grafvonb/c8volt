@@ -318,6 +318,22 @@ Use dry-run first for runtime mutations, then confirm explicitly or run under au
 ./c8volt expect process-instance --key <process-instance-key> --state completed
 ```
 
+Complete a selected job backlog with AND predicates. The same nine predicates as `get job` are available: `--state`, `--type`, `--pi-key`, `--element-instance-key`, `--element-id`, `--worker`, `--retries`, `--kind`, and `--listener-event-type`. Keyless `--complete --retries 0` selects zero-retry jobs; keyed completion still rejects `--retries`. Other update modes retain their single-key behavior.
+
+```bash
+./c8volt --tenant tenant-a update job --kind TASK_LISTENER --listener-event-type CANCELING \
+  --state CREATED --type removeTaskData --complete --dry-run --verbose
+./c8volt --tenant tenant-a update job --kind TASK_LISTENER --listener-event-type CANCELING \
+  --state CREATED --type removeTaskData --limit 1000 --batch-size 100 \
+  --complete --workers 4 --auto-confirm --json
+```
+
+Discovery honors the configured tenant, named overrides, and accessible scope under `--tenant ""` or `--all-tenants`. `--batch-size` controls pages; `--limit` caps unique selected jobs, with zero meaning uncapped. A key or predicate is required; controls alone never select jobs. Explicit keys and predicates cannot mix. Preparation freezes the entire selection before one eligible stderr confirmation; incomplete discovery, dry-run, declined confirmation and empty results submit nothing. A later invocation discovers a fresh selection, including any new sequential listeners.
+
+Completing a listener job acknowledges its work without executing its business logic. Nonempty variables are rejected when a batch contains task listeners. Accepted requests skip independent confirmation and do not establish process termination. Missing reads cannot prove completion; ambiguous submissions are not replayed and receive bounded observation (`--no-wait` permits one read). The command does not reset retries, repair incidents, cancel processes or delete history.
+
+Bulk output distinguishes accepted, observed completed, unsatisfied and not-started targets. `--verbose` lists context and outcomes; JSON emits one envelope with all candidates or ordered outcomes, retaining partial results on failure. `--quiet` keeps requested JSON. Empty selections succeed without prompts, including under `--no-wait`; unsatisfied or interrupted batches fail. `--workers` bounds execution and `--fail-fast` stops new scheduling. JSON mutations require `--auto-confirm` or `--automation`; JSON dry-run is also supported. No keys-only output is provided.
+
 Generated references: [update process-instance](docs/cli/c8volt_update_process-instance.md), [update job](docs/cli/c8volt_update_job.md), [expect process-instance](docs/cli/c8volt_expect_process-instance.md).
 
 ### Cancel And Delete Safely
