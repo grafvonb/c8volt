@@ -15,6 +15,8 @@ Started: 2026-10-20T10:28:15Z
 - `internal/services/job/completion.Prepare` accepts only `ReadPorts` (Get/Search), configured tenant and backoff. v88/v89/v810 delegate; v87 rejects even empty stdin. Facade, version API interfaces, and job/element/process test doubles are wired together.
 - Batch models are distinct public/domain types. `CompletionFilter` contains only the nine predicates; controls and input form live in `CompletionSelection`. Public `CompletionBatchReport.MarshalJSON` emits candidates for preview/preparation_failed and outcomes for execution, enforcing empty arrays and omitting the other collection.
 
+- `completion.Execute` owns execution through `ExecutionPorts` (key-only Get and one-shot Submit), with plan snapshot/invariant checks in `execution_plan.go` and bounded observation in `reconcile.go`. Adapters and all API/test doubles expose ExecuteJobCompletionBatch; facade conversions copy plans, reports, nested variables and optional HTTP status.
+
 ## Decisions
 
 - T001 enforces named discovery tenant both in generated request JSON and defensively on returned rows. Empty scope omits tenant equality. Explicit `GetJob` retains cross-tenant backend authorization.
@@ -30,6 +32,10 @@ Started: 2026-10-20T10:28:15Z
 - Explicit decimal keys and predicate keys are validated as positive signed 64-bit values, then canonicalized without floating-point conversion; normalized input order and duplicates remain in provenance, while unique candidate reads preserve first-input order. Discovery tenant is recorded for all plans but only constrains search membership. Actual selected tenant IDs retain first-seen order.
 - `toolx.CopyJSONMap` snapshots nested JSON containers at the request/prepared facade boundaries and in service preparation; numbers normalize to `json.Number` to preserve large integer precision. Invalid/cyclic/non-JSON payloads fail before reads.
 
+- T004 validates normalized selection, unique canonical keys, explicit input order, candidate scope/tenant evidence, preparation reason/count/limit consistency and unchanged configured discovery tenant before remote work. Direct `WithDryRun` returns a candidate preview without execution reads or writes. Force/no-state-check/ignore-tenant cannot bypass these invariants or current scope/payload checks.
+- T004 rechecks only frozen keys. COMPLETED is satisfied without submission; changed scope, incompatible payload, other terminal and unknown states remain unsatisfied. Known nonterminal states may submit with zero retries. Accepted submissions skip confirmation; only uncertain or 404/409 rejection evidence triggers bounded key-only reconciliation. Preserve submission evidence even when later reads are missing; observed completion clears the aggregate failure for that target without attributing who completed it.
+- T004 reuses `DetermineNoOfWorkers` and `pool.ExecuteSlice`. Callback results carry explicit started state and errors; overlay only started results onto preinitialized rows. Pool cancellation stops fail-fast scheduling, while started work uses the original caller context. Join callback errors and caller errors, excluding pool-internal fail-fast cancellation. Every execution retains the frozen order and disposition count partition.
+
 ## Gotchas
 
 - `testx.TestConfig` sets tenant to `tenant`, while many legacy job-search rows omit tenant. The version-local job test constructor now explicitly defaults to unscoped discovery; tenant tests set their intended scope.
@@ -43,6 +49,9 @@ Started: 2026-10-20T10:28:15Z
 
 - Generated equality filters serialize as scalar strings (`tenantId: "tenant"`, `jobKey: "..."`), not `$eq` objects in these adapters. Cross-version HTTP preparation fixtures assert the actual wire form and count all non-search calls as unexpected mutations.
 - Prepared candidate JSON contains only observed context (including worker and retries), with no synthetic lifecycle dates. The report does not embed the prepared plan, avoiding duplicate candidate collections on execution. Aggregate errors remain separate return values.
+
+- `pool.ExecuteSlice` cancels its derived context on fail-fast, including in-flight requests if that context is passed to adapters. Use its context only at dispatch admission; keep started requests on the caller context and an atomic stop flag to close the scheduling gap. Caller cancellation still stops started requests and marks the invocation interrupted even if every returned row was accepted.
+- Reconciliation normalizes a copy of existing backoff configuration and uses its timeout, delays and max retries. No-wait performs at most one bounded read. Preserve the last known state on missing/unreadable observations; reject lookup responses for another key. Internal reconciliation timeout is an unsatisfied finished batch; caller timeout/cancellation makes the batch interrupted.
 
 ## Reusable Commands
 
@@ -62,6 +71,11 @@ Started: 2026-10-20T10:28:15Z
 - `go test ./internal/services/job/... ./c8volt/job ./c8volt/element ./c8volt/process ./toolx -race -count=1`
 - `go vet ./internal/services/job/... ./c8volt/job ./internal/domain ./toolx`
 
+- `go test ./internal/services/job/... ./c8volt/job -run 'Test.*BulkCompletion' -count=1`
+- `go test ./internal/services/job/completion -race -count=1`
+- `go test ./internal/services/job/... ./c8volt/job ./c8volt/element ./c8volt/process -race -count=1`
+- `go vet ./internal/services/job/... ./c8volt/job ./c8volt/element ./c8volt/process`
+
 ## Do Not Repeat
 
 - Do not advance by filtered or deduplicated result count, use a truncated response's end cursor, or assume a short/empty page overrides contradictory totals.
@@ -70,7 +84,8 @@ Started: 2026-10-20T10:28:15Z
 
 ## Current Handoff
 
-- T003 is complete and validated. Recheck selection against `tasks.md`; T004 (US1 bounded execution/reconciliation) is the next dependency-ready task. T005 requires T004; T006–T009 remain blocked by their declared chain. No external blocker exists for T004.
-- Implement execution beside `completion/prepare.go`, reusing the complete public/domain models and scope matcher. Add ExecuteJobCompletionBatch to every API/adapter/test double together, inject each adapter's private one-shot port, and add mechanical prepared/report conversions in `c8volt/job/convert.go`.
-- Validate complete plan invariants and unchanged search tenant before execution, enforce dry-run for direct facade callers, and preserve original submission evidence during reconciliation. A missing later read cannot turn uncertainty into rejection or success. Recheck task-listener payload compatibility even after successful preparation.
-- Initialize all outcomes before scheduling, retain frozen order and unstarted rows, honor existing worker/options policy, and preserve caller cancellation even if the pool returns nil. T004 owns execution tests; T005 owns first CLI integration. No execution or CLI implementation was started in iteration 3.
+- T004 is complete and validated. Recheck selection against `tasks.md`; T005 (US1 selector CLI integration) is next dependency-ready. T006–T009 remain blocked by the declared chain. No external blocker exists for T005.
+- Wire the existing PrepareJobCompletionBatch and ExecuteJobCompletionBatch facade APIs into `cmd/update_job_batch.go`, with selector parsing in request/command files and final rendering in `cmd/cmd_views_job.go`. Keep one scalar key on the legacy path. All backend paging, rechecking, worker scheduling and reconciliation are implemented; do not recreate them in the CLI or facade.
+- T005 must implement the initial full safe CLI contract: all nine AND predicates (including explicit retries zero), frozen preview/confirmation, configured stderr prompts, mode-aware authoritative empty results, strict dry-run, compact/verbose/JSON/quiet/no-wait outcomes, and report-plus-error rendering followed by exit-after-render. Update command metadata/help, README and generated docs in that task.
+- Execution returns preview candidates for dry-run and all frozen outcomes for valid execution, preserving counts and submission/observation axes. Invalid plans return preparation_failed with diagnostic candidates and no invented outcomes. The CLI still owns declined-confirmation reports; no execution/CLI lifecycle should start after decline.
+- T004 validation passed targeted bulk tests, all-package interface compilation, race-enabled job services and job/element/process facade suites, and targeted vet. Cross-version public-facade HTTP tests prove 8.8/8.9/8.10 wiring and v87 unsupported behavior. No CLI behavior or live Camunda operation changed in iteration 4.

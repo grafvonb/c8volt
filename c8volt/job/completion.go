@@ -42,3 +42,13 @@ func (r CompletionBatchReport) MarshalJSON() ([]byte, error) {
 	}
 	return json.Marshal(out)
 }
+
+// ExecuteJobCompletionBatch delegates all execution mechanics and retains the report on service failure.
+func (c *client) ExecuteJobCompletionBatch(ctx context.Context, batch PreparedCompletionBatch, wantedWorkers int, opts ...foptions.FacadeOption) (CompletionBatchReport, error) {
+	input, err := toDomainPreparedCompletionBatch(batch)
+	if err != nil {
+		return CompletionBatchReport{Status: CompletionBatchPreparationFailed}, ferrors.FromDomain(err)
+	}
+	report, err := c.api.ExecuteJobCompletionBatch(ctx, input, wantedWorkers, foptions.MapFacadeOptionsToCallOptions(opts)...)
+	return fromDomainCompletionBatchReport(report), ferrors.FromDomain(err)
+}

@@ -36,3 +36,8 @@ func (s *Service) submitBulkCompletion(ctx context.Context, job d.Job, variables
 func (s *Service) PrepareJobCompletionBatch(ctx context.Context, request d.CompletionRequest, opts ...services.CallOption) (d.PreparedCompletionBatch, error) {
 	return completion.Prepare(ctx, request, common.EffectiveTenant(s.cfg), s.cfg.App.Backoff, completion.ReadPorts{Get: s.GetJob, Search: s.SearchJobsPage}, opts...)
 }
+
+// ExecuteJobCompletionBatch injects version-owned key reads and one-shot submission into the shared workflow.
+func (s *Service) ExecuteJobCompletionBatch(ctx context.Context, batch d.PreparedCompletionBatch, wantedWorkers int, opts ...services.CallOption) (d.CompletionBatchReport, error) {
+	return completion.Execute(ctx, batch, common.EffectiveTenant(s.cfg), s.cfg.App.Backoff, completion.ExecutionPorts{Get: s.GetJob, Submit: s.submitBulkCompletion}, wantedWorkers, opts...)
+}

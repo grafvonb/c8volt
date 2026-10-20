@@ -48,3 +48,28 @@ func fromDomainPreparedCompletionBatch(b d.PreparedCompletionBatch) (PreparedCom
 	}
 	return out, nil
 }
+
+// toDomainPreparedCompletionBatch snapshots the public in-memory plan before service validation.
+func toDomainPreparedCompletionBatch(b PreparedCompletionBatch) (d.PreparedCompletionBatch, error) {
+	variables, err := toolx.CopyJSONMap(b.Variables)
+	out := d.PreparedCompletionBatch{Selection: toDomainCompletionSelection(b.Selection), DiscoveryTenant: b.DiscoveryTenant, TenantIDs: slices.Clone(b.TenantIDs), Candidates: toolx.MapSlice(b.Candidates, toDomainCompletionCandidate), Status: d.CompletionPreparationStatus(b.Status), CompletionReason: d.CompletionReason(b.CompletionReason), PageCount: b.PageCount, ObservedCount: b.ObservedCount, Limited: b.Limited, Variables: variables}
+	if err != nil {
+		return out, fmt.Errorf("%w: invalid prepared completion variables: %v", d.ErrValidation, err)
+	}
+	return out, nil
+}
+
+// toDomainCompletionCandidate maps frozen facts without adding eligibility policy.
+func toDomainCompletionCandidate(c CompletionCandidate) d.CompletionCandidate {
+	return d.CompletionCandidate(c)
+}
+
+// fromDomainCompletionOutcome preserves independent evidence axes and copies optional HTTP status.
+func fromDomainCompletionOutcome(o d.CompletionOutcome) CompletionOutcome {
+	return CompletionOutcome{Candidate: fromDomainCompletionCandidate(o.Candidate), Disposition: CompletionDisposition(o.Disposition), Reason: CompletionOutcomeReason(o.Reason), Submission: CompletionSubmission{Status: CompletionSubmissionStatus(o.Submission.Status), HTTPStatus: toolx.CopyPtr(o.Submission.HTTPStatus), Diagnostic: o.Submission.Diagnostic}, Observation: CompletionObservation{Status: CompletionObservationStatus(o.Observation.Status), State: o.Observation.State, Phase: CompletionObservationPhase(o.Observation.Phase), Diagnostic: o.Observation.Diagnostic}}
+}
+
+// fromDomainCompletionBatchReport maps partial and successful reports without interpreting errors or counts.
+func fromDomainCompletionBatchReport(r d.CompletionBatchReport) CompletionBatchReport {
+	return CompletionBatchReport{Status: CompletionBatchStatus(r.Status), Selection: fromDomainCompletionSelection(r.Selection), DiscoveryTenant: r.DiscoveryTenant, TenantIDs: slices.Clone(r.TenantIDs), CompletionReason: CompletionReason(r.CompletionReason), PageCount: r.PageCount, ObservedCount: r.ObservedCount, Limited: r.Limited, Counts: CompletionCounts(r.Counts), Candidates: toolx.MapSlice(r.Candidates, fromDomainCompletionCandidate), Outcomes: toolx.MapSlice(r.Outcomes, fromDomainCompletionOutcome)}
+}

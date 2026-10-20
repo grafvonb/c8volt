@@ -119,3 +119,47 @@ Started: 2026-10-20 12:28:15
 - Command ownership gate: no command files changed. No CLI docs regeneration was needed for this API-only task. No live Camunda operations, execution workflow or CLI integration were performed.
 - Commit policy resolved from `.specify/extensions/ralph/ralph-config.yml`: conventional / ralph / automatic issue suffix `#345`; no local override exists. Next: recheck dependencies and implement T004; T004–T009 remain unchecked.
 ---
+
+---
+## Iteration 4 - 2026-10-20 13:14
+**Work Unit**: US1 — T004 bounded execution and reconciliation (completed; story partial)
+**Tasks Completed**:
+- [x] T004: Implement validated frozen execution, bounded workers, one-shot completion/reconciliation, complete deterministic outcomes, all version/API delegations and thin facade report mapping.
+**Tasks Remaining in Work Unit**: 1 US1 task (T005 selector CLI); T005 is next dependency-ready. Five feature tasks remain overall.
+**Commit**: This work-unit commit
+**Files Changed**:
+- c8volt/element/client_test.go
+- c8volt/job/api.go
+- c8volt/job/client_test.go
+- c8volt/job/completion.go
+- c8volt/job/completion_test.go
+- c8volt/job/convert.go
+- c8volt/process/client_test.go
+- internal/services/job/api.go
+- internal/services/job/completion/execute.go
+- internal/services/job/completion/execute_test.go
+- internal/services/job/completion/execution_plan.go
+- internal/services/job/completion/reconcile.go
+- internal/services/job/completion/reconcile_test.go
+- internal/services/job/completion_test.go
+- internal/services/job/v810/completion.go
+- internal/services/job/v810/contract.go
+- internal/services/job/v87/contract.go
+- internal/services/job/v87/service.go
+- internal/services/job/v88/completion.go
+- internal/services/job/v88/contract.go
+- internal/services/job/v89/completion.go
+- internal/services/job/v89/contract.go
+- specs/345-bulk-job-completion/progress.md
+- specs/345-bulk-job-completion/ralph-memory.md
+- specs/345-bulk-job-completion/tasks.md
+**Learnings**:
+- Added executor and facade regressions before implementation; initial tests failed on missing execution ports, methods and test-double wiring. Implemented the shared workflow with focused execution-plan validation and reconciliation files; no command, generated-client or shared pool implementation changed.
+- Plan validation rejects incomplete, inconsistent, nonnormalized, duplicate-key, changed-tenant and payload-incompatible plans before remote work. Direct facade dry-run makes no execution calls. All nine original predicates and tenant are rechecked, zero retries remain eligible, COMPLETED is a no-op, and current task-listener payload compatibility remains mandatory under bypass options.
+- Submission is never replayed. Accepted results explicitly skip independent confirmation; 404/409 and uncertainty permit only bounded reads. Tests retain rejection/uncertainty through missing, unreadable and terminal observations, prove eventual observed completion, and cover no-wait, retry bounds, internal timeout and caller interruption.
+- Pool fail-fast cancels its scheduling context. Started operations use the caller context so unrelated failures cannot cancel their evidence; explicit started results preserve every unstarted row and frozen order. Tests prove default continue, in-flight success after failure, configured/default/no-worker-limit bounds and invocation failure even when cancellation follows the last accepted response.
+- Passed test-family discovery, targeted service/facade bulk-completion tests, all-package interface compilation (`go test ./... -run '^$'`), coordinator race tests, and the broader race suite: `go test ./internal/services/job/... ./c8volt/job ./c8volt/element ./c8volt/process -race -count=1`. Targeted `go vet` for those services/facades, gofmt and `git diff --check` passed.
+- Public-facade HTTP execution tests cover all supported adapters, cross-tenant explicit authorization, strict dry-run/empty execution, accepted/skipped confirmation, 409 then observed completion, 502 then missing uncertainty, changed listener payload, completed/terminal rechecks, and v87 rejection. Unexpected endpoints fail tests; no hidden mutation or rediscovery is allowed.
+- Command ownership gate: no command files changed. CLI docs regeneration is deferred with CLI implementation in T005; no user-facing CLI behavior or live recovery claim was introduced. Only T004 changed task state.
+- Commit policy confirmed conventional / ralph / automatic issue suffix `#345`; no local override exists. The coordinated commit includes this appended audit record, tasks and memory. Next iteration must recheck T005 dependencies.
+---

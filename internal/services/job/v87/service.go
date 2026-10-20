@@ -112,3 +112,9 @@ func (s *Service) PrepareJobCompletionBatch(ctx context.Context, request d.Compl
 	_ = services.ApplyCallOptions(opts)
 	return d.PreparedCompletionBatch{Status: d.CompletionPreparationIncomplete}, unsupportedJobOperation("job batch completion")
 }
+
+// ExecuteJobCompletionBatch rejects unsupported execution, including empty batches and dry-run.
+func (s *Service) ExecuteJobCompletionBatch(ctx context.Context, batch d.PreparedCompletionBatch, wantedWorkers int, opts ...services.CallOption) (d.CompletionBatchReport, error) {
+	_ = services.ApplyCallOptions(opts)
+	return d.CompletionBatchReport{Status: d.CompletionBatchPreparationFailed}, unsupportedJobOperation("job batch completion")
+}

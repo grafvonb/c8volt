@@ -111,3 +111,70 @@ func TestBulkCompletionFacadeEmptyAndInvalidPayload(t *testing.T) {
 	require.Equal(t, CompletionPreparationIncomplete, batch.Status)
 	require.Equal(t, 1, calls)
 }
+
+// TestBulkCompletionFacadeExecution preserves reports on error and copies mutable values in both directions.
+func TestBulkCompletionFacadeExecution(t *testing.T) {
+	t.Parallel()
+	retries := int32(0)
+	batch := PreparedCompletionBatch{Selection: CompletionSelection{Mode: CompletionSelectionExplicit, InputForm: CompletionInputStdin, Keys: []string{"1"}, Filter: CompletionFilter{Retries: &retries}}, Status: CompletionPreparationComplete, CompletionReason: CompletionReasonExplicitInputsRead, DiscoveryTenant: "tenant", TenantIDs: []string{"other"}, Candidates: []CompletionCandidate{{Key: "1", State: "CREATED"}}, ObservedCount: 1, Variables: map[string]any{"nested": []any{"original"}}}
+	var returned d.CompletionBatchReport
+	api := New(fakeJobService{execute: func(ctx context.Context, input d.PreparedCompletionBatch, workers int, opts ...services.CallOption) (d.CompletionBatchReport, error) {
+		require.Equal(t, context.Background(), ctx)
+		require.Equal(t, 7, workers)
+		cfg := services.ApplyCallOptions(opts)
+		require.True(t, cfg.DryRun)
+		require.True(t, cfg.NoWait)
+		require.True(t, cfg.FailFast)
+		require.True(t, cfg.NoWorkerLimit)
+		require.True(t, cfg.Force)
+		require.True(t, cfg.NoStateCheck)
+		require.True(t, cfg.IgnoreTenant)
+		require.Equal(t, d.CompletionPreparationComplete, input.Status)
+		require.Equal(t, d.CompletionReasonExplicitInputsRead, input.CompletionReason)
+		require.Equal(t, "tenant", input.DiscoveryTenant)
+		require.Equal(t, int64(1), input.ObservedCount)
+		input.Selection.Keys[0] = "2"
+		*input.Selection.Filter.Retries = 4
+		input.TenantIDs[0] = "service"
+		input.Candidates[0].Key = "2"
+		input.Variables["nested"].([]any)[0] = "service"
+		status := 409
+		returned = d.CompletionBatchReport{Status: d.CompletionBatchFinished, Selection: input.Selection, DiscoveryTenant: input.DiscoveryTenant, TenantIDs: input.TenantIDs, CompletionReason: input.CompletionReason, PageCount: 2, ObservedCount: 3, Limited: true, Counts: d.CompletionCounts{Selected: 1, Unsatisfied: 1}, Outcomes: []d.CompletionOutcome{{Candidate: input.Candidates[0], Disposition: d.CompletionDispositionUnsatisfied, Submission: d.CompletionSubmission{Status: d.CompletionSubmissionRejected, HTTPStatus: &status, Diagnostic: "conflict"}, Observation: d.CompletionObservation{Status: d.CompletionObservationMissing, State: "CREATED", Phase: d.CompletionPhaseReconciliation, Diagnostic: "missing"}, Reason: d.CompletionOutcomeRejected}}}
+		return returned, d.ErrConflict
+	}}, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	report, err := api.ExecuteJobCompletionBatch(context.Background(), batch, 7, foptions.WithDryRun(), foptions.WithNoWait(), foptions.WithFailFast(), foptions.WithNoWorkerLimit(), foptions.WithForce(), foptions.WithNoStateCheck(), foptions.WithIgnoreTenant())
+	require.ErrorIs(t, err, ferrors.ErrConflict)
+	require.Equal(t, "1", batch.Selection.Keys[0])
+	require.Zero(t, retries)
+	require.Equal(t, "other", batch.TenantIDs[0])
+	require.Equal(t, "1", batch.Candidates[0].Key)
+	require.Equal(t, "original", batch.Variables["nested"].([]any)[0])
+	require.Equal(t, CompletionBatchFinished, report.Status)
+	require.Equal(t, CompletionCounts{Selected: 1, Unsatisfied: 1}, report.Counts)
+	require.Equal(t, int64(2), report.PageCount)
+	require.Equal(t, int64(3), report.ObservedCount)
+	require.True(t, report.Limited)
+	out := report.Outcomes[0]
+	require.Equal(t, CompletionDispositionUnsatisfied, out.Disposition)
+	require.Equal(t, CompletionOutcomeRejected, out.Reason)
+	require.Equal(t, CompletionObservationMissing, out.Observation.Status)
+	require.Equal(t, CompletionPhaseReconciliation, out.Observation.Phase)
+	require.Equal(t, "CREATED", out.Observation.State)
+	require.Equal(t, "missing", out.Observation.Diagnostic)
+	require.Equal(t, "conflict", out.Submission.Diagnostic)
+	require.Equal(t, 409, *out.Submission.HTTPStatus)
+	returned.Selection.Keys[0] = "changed"
+	*returned.Selection.Filter.Retries = 9
+	returned.TenantIDs[0] = "changed"
+	returned.Outcomes[0].Candidate.Key = "changed"
+	*returned.Outcomes[0].Submission.HTTPStatus = 500
+	require.Equal(t, "2", report.Selection.Keys[0])
+	require.Equal(t, int32(4), *report.Selection.Filter.Retries)
+	require.Equal(t, "service", report.TenantIDs[0])
+	require.Equal(t, "2", report.Outcomes[0].Candidate.Key)
+	require.Equal(t, 409, *report.Outcomes[0].Submission.HTTPStatus)
+	batch.Variables = map[string]any{"invalid": make(chan int)}
+	report, err = api.ExecuteJobCompletionBatch(context.Background(), batch, 1)
+	require.ErrorIs(t, err, ferrors.ErrInvalidInput)
+	require.Equal(t, CompletionBatchPreparationFailed, report.Status)
+}

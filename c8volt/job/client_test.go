@@ -19,6 +19,7 @@ import (
 )
 
 type fakeJobService struct {
+	execute func(context.Context, d.PreparedCompletionBatch, int, ...services.CallOption) (d.CompletionBatchReport, error)
 	prepare func(context.Context, d.CompletionRequest, ...services.CallOption) (d.PreparedCompletionBatch, error)
 	get     func(context.Context, string, ...services.CallOption) (d.Job, error)
 	search  func(context.Context, d.JobSearchQuery, ...services.CallOption) (d.JobSearchResult, error)
@@ -717,4 +718,12 @@ func (f fakeJobService) PrepareJobCompletionBatch(ctx context.Context, request d
 		return d.PreparedCompletionBatch{}, errors.New("unexpected completion preparation")
 	}
 	return f.prepare(ctx, request, opts...)
+}
+
+// ExecuteJobCompletionBatch delegates only to explicitly configured execution expectations.
+func (f fakeJobService) ExecuteJobCompletionBatch(ctx context.Context, batch d.PreparedCompletionBatch, workers int, opts ...services.CallOption) (d.CompletionBatchReport, error) {
+	if f.execute == nil {
+		return d.CompletionBatchReport{}, errors.New("unexpected completion execution")
+	}
+	return f.execute(ctx, batch, workers, opts...)
 }
