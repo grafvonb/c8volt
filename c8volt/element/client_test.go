@@ -502,3 +502,8 @@ func TestClient_SearchElementsPage_MapsPagingMetadata(t *testing.T) {
 	require.Len(t, page.Items, 1)
 	require.Equal(t, "2251799813689002", page.Items[0].ElementInstanceKey)
 }
+
+// PrepareJobCompletionBatch rejects unexpected batch calls in unrelated facade tests.
+func (f fakeJobService) PrepareJobCompletionBatch(context.Context, d.CompletionRequest, ...services.CallOption) (d.PreparedCompletionBatch, error) {
+	panic("unexpected completion preparation")
+}

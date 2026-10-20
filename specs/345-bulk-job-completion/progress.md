@@ -75,3 +75,47 @@ Started: 2026-10-20 12:28:15
 - Submission evidence does not incorporate later reads; reconciliation remains T004 work and must retain uncertainty after missing observations. No live Camunda mutations were performed. Command file ownership gate: no command files changed.
 - Commit policy resolved from `.specify/extensions/ralph/ralph-config.yml`: conventional / ralph / automatic issue suffix `#345`; no local override exists. Next: recheck dependencies and start T003; T003–T009 remain unchecked.
 ---
+
+---
+## Iteration 3 - 2026-10-20 13:03
+**Work Unit**: US1 — T003 read-only batch preparation and complete contracts (completed; story partial)
+**Tasks Completed**:
+- [x] T003: Implement search and explicit preparation, frozen context/provenance and report contracts, thin facade conversion, all version delegations and affected test doubles.
+**Tasks Remaining in Work Unit**: 2 US1 tasks (T004 execution/reconciliation and T005 selector CLI); T004 is next dependency-ready.
+**Commit**: This work-unit commit
+**Files Changed**:
+- c8volt/element/client_test.go
+- c8volt/job/api.go
+- c8volt/job/client_test.go
+- c8volt/job/completion.go
+- c8volt/job/completion_test.go
+- c8volt/job/convert.go
+- c8volt/job/model.go
+- c8volt/process/client_test.go
+- internal/domain/job_completion.go
+- internal/services/job/api.go
+- internal/services/job/completion/prepare.go
+- internal/services/job/completion/prepare_test.go
+- internal/services/job/completion_test.go
+- internal/services/job/v810/completion.go
+- internal/services/job/v810/contract.go
+- internal/services/job/v87/contract.go
+- internal/services/job/v87/service.go
+- internal/services/job/v88/completion.go
+- internal/services/job/v88/contract.go
+- internal/services/job/v89/completion.go
+- internal/services/job/v89/contract.go
+- specs/345-bulk-job-completion/progress.md
+- specs/345-bulk-job-completion/ralph-memory.md
+- specs/345-bulk-job-completion/tasks.md
+- toolx/json_copy.go
+- toolx/json_copy_test.go
+**Learnings**:
+- Added coordinator and facade regressions first; initial runs failed on missing APIs/models. Additional failing regressions exposed equivalent decimal keys and contradictory normalized raw-page evidence; canonicalization and validation now prevent duplicate targets and false completeness.
+- Search preparation verifies all nine AND predicates plus tenant, traverses sparse/empty advancing pages, detects cursor cycles and ambiguous timeout/deadline failures, and counts only unique matching candidates toward a positive cap. Explicit preparation validates all keys before reading and retains authorized cross-tenant context. Payload, read or cancellation errors retain incomplete evidence with no completion reason. Preparation has no mutation port.
+- Public/domain contracts preserve selection provenance, completion reason, preparation diagnostics, payload, tenant context, submission/observation axes, final disposition/reason, and aggregate counts. Public JSON explicitly emits empty candidate/outcome arrays by phase and omits the inapplicable collection. Nested maps/slices are isolated with precision-preserving JSON snapshots.
+- Cross-version HTTP tests prove supported factory wiring and zero mutation requests for search, explicit keys, empty results, incomplete discovery and incompatible listener payloads; v87 remains unsupported including empty stdin. Corrected initial fixture assumptions to match generated scalar equality JSON; no generated clients changed.
+- Passed required service bulk/search and facade bulk tests, test-family discovery, `go test ./... -run '^$'` for all interface consumers, and targeted JSON-copy tests. Final broader validation passed: `go test ./internal/services/job/... ./c8volt/job ./c8volt/element ./c8volt/process ./toolx -race -count=1`; `go vet ./internal/services/job/... ./c8volt/job ./internal/domain ./toolx`; gofmt and `git diff --check`.
+- Command ownership gate: no command files changed. No CLI docs regeneration was needed for this API-only task. No live Camunda operations, execution workflow or CLI integration were performed.
+- Commit policy resolved from `.specify/extensions/ralph/ralph-config.yml`: conventional / ralph / automatic issue suffix `#345`; no local override exists. Next: recheck dependencies and implement T004; T004–T009 remain unchecked.
+---

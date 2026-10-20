@@ -11,6 +11,8 @@ import (
 )
 
 type API interface {
+	// PrepareJobCompletionBatch freezes a complete read-only selection before execution.
+	PrepareJobCompletionBatch(ctx context.Context, request d.CompletionRequest, opts ...services.CallOption) (d.PreparedCompletionBatch, error)
 	GetJob(ctx context.Context, key string, opts ...services.CallOption) (d.Job, error)
 	SearchJobs(ctx context.Context, query d.JobSearchQuery, opts ...services.CallOption) (d.JobSearchResult, error)
 	SearchJobsPages(ctx context.Context, query d.JobSearchQuery, visitor d.JobSearchPageVisitor, opts ...services.CallOption) (d.JobSearchPagesResult, error)

@@ -19,6 +19,7 @@ import (
 )
 
 type fakeJobService struct {
+	prepare func(context.Context, d.CompletionRequest, ...services.CallOption) (d.PreparedCompletionBatch, error)
 	get     func(context.Context, string, ...services.CallOption) (d.Job, error)
 	search  func(context.Context, d.JobSearchQuery, ...services.CallOption) (d.JobSearchResult, error)
 	pages   func(context.Context, d.JobSearchQuery, d.JobSearchPageVisitor, ...services.CallOption) (d.JobSearchPagesResult, error)
@@ -708,4 +709,12 @@ func TestClient_SearchJobsPage_MapsRawEvidence(t *testing.T) {
 		RawItemCount: 2, NextFrom: 6, EndCursor: "cursor-b", OverflowState: OverflowStateHasMore,
 		ReportedTotal: &ReportedTotal{Count: 10, Kind: ReportedTotalKindLowerBound},
 	}, page)
+}
+
+// PrepareJobCompletionBatch delegates only to explicitly configured preparation expectations.
+func (f fakeJobService) PrepareJobCompletionBatch(ctx context.Context, request d.CompletionRequest, opts ...services.CallOption) (d.PreparedCompletionBatch, error) {
+	if f.prepare == nil {
+		return d.PreparedCompletionBatch{}, errors.New("unexpected completion preparation")
+	}
+	return f.prepare(ctx, request, opts...)
 }

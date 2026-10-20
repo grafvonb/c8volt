@@ -106,3 +106,9 @@ func (s *Service) SubmitJobWorkerOutcome(ctx context.Context, request d.JobWorke
 func unsupportedJobOperation(operation string) error {
 	return fmt.Errorf("%w: %s requires Camunda 8.8 or newer", d.ErrUnsupported, operation)
 }
+
+// PrepareJobCompletionBatch rejects unsupported versions even for an empty batch.
+func (s *Service) PrepareJobCompletionBatch(ctx context.Context, request d.CompletionRequest, opts ...services.CallOption) (d.PreparedCompletionBatch, error) {
+	_ = services.ApplyCallOptions(opts)
+	return d.PreparedCompletionBatch{Status: d.CompletionPreparationIncomplete}, unsupportedJobOperation("job batch completion")
+}

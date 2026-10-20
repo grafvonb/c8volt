@@ -8,7 +8,9 @@ import (
 
 	camunda "github.com/grafvonb/c8volt/internal/clients/camunda/v89/camunda"
 	d "github.com/grafvonb/c8volt/internal/domain"
+	"github.com/grafvonb/c8volt/internal/services"
 	"github.com/grafvonb/c8volt/internal/services/common"
+	"github.com/grafvonb/c8volt/internal/services/job/completion"
 )
 
 // submitBulkCompletion is the private coordinator port for a single intentional
@@ -27,4 +29,10 @@ func (s *Service) submitBulkCompletion(ctx context.Context, job d.Job, variables
 		return common.ClassifyJobCompletionSubmission(nil, nil, err)
 	}
 	return common.ClassifyJobCompletionSubmission(response.HTTPResponse, response.Body, err)
+}
+
+// PrepareJobCompletionBatch delegates read-only traversal to the shared coordinator
+// while retaining this adapter's key-only authorization and normalized page evidence.
+func (s *Service) PrepareJobCompletionBatch(ctx context.Context, request d.CompletionRequest, opts ...services.CallOption) (d.PreparedCompletionBatch, error) {
+	return completion.Prepare(ctx, request, common.EffectiveTenant(s.cfg), s.cfg.App.Backoff, completion.ReadPorts{Get: s.GetJob, Search: s.SearchJobsPage}, opts...)
 }

@@ -3516,3 +3516,8 @@ func (s stubProcessInstanceAPI) WaitForProcessInstancesExpectation(ctx context.C
 }
 
 var _ pisvc.API = stubProcessInstanceAPI{}
+
+// PrepareJobCompletionBatch rejects unexpected batch calls in unrelated facade tests.
+func (s stubJobAPI) PrepareJobCompletionBatch(context.Context, d.CompletionRequest, ...services.CallOption) (d.PreparedCompletionBatch, error) {
+	panic("unexpected completion preparation")
+}
