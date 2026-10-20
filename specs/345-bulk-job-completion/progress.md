@@ -232,3 +232,24 @@ Started: 2026-10-20 12:28:15
 - Command cohesion review passed: base command owns flags/dispatch; batch parsing and lifecycle remain in update_job_batch.go; final summaries and prompts remain in cmd_views_job.go. No facade/service/generated-client/dependency changes or second collection engine were introduced. T007/T008 acceptance depth remains unchecked.
 - Commit policy resolved from .specify/extensions/ralph/ralph-config.yml with no local override: conventional / ralph / automatic #345 suffix. This coordinated commit includes the completed task, durable handoff and appended audit record. No live recovery claim, push or publication occurred.
 ---
+
+---
+## Iteration 7 - 2026-10-20 13:56
+**Work Unit**: US3 — T007 HTTP/scale acceptance coverage (completed; US3 partial)
+**Tasks Completed**:
+- [x] T007: Add cross-layer HTTP acceptance for scale, preparation, execution races, concurrency, interruption and output contracts across supported adapters, retaining v87 rejection.
+**Tasks Remaining in Work Unit**: 1 US3 task: T008 genuine terminal acceptance is next dependency-ready. T009 remains blocked until T008 completes.
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/update_job_batch_acceptance_test.go
+- specs/345-bulk-job-completion/tasks.md
+- specs/345-bulk-job-completion/ralph-memory.md
+- specs/345-bulk-job-completion/progress.md
+**Learnings**:
+- All three supported adapters preview 1,000 candidates without mutation and execute a controlled mixed backlog of 1,102 raw rows over 12 pages: 1,300 key reads, 500 one-shot submissions, peak HTTP concurrency four. Every run retains the ordered 1,000-target partition: 200 accepted, 300 independently observed completed, 500 unsatisfied, zero unstarted. Sparse tenant pages, nonmatching types and duplicate observations do not consume targets or receive writes.
+- The fixture records discovery-before-write ordering and rejects all unrelated endpoints. Actual HTTP connection loss tests preserve uncertainty independently from completed/missing reconciliation observations; bounded polling and no-wait never replay mutations. A server handshake proves caller interruption during preparation and execution, while serial fail-fast retains every unstarted row. Sequential listeners created during submission remain outside the frozen selection.
+- The version-parameterized output matrix covers normal/dry-run, human/verbose/JSON/quiet, automation/auto-confirm/no-wait, empty search/stdin and incomplete preparation. Assertions require exact empty human output, numeric counts, empty arrays with correct omissions, one JSON envelope and EOF, and partial reports on real nonzero process exit. Terminal acceptance remains T008's separate task.
+- Added assertions before running the existing implementation. The first scale run failed only because generated key-only filters also encode nullable fields as null; corrected that fixture assumption and reran successfully. No production defect or new helper-sharing need was found, so the HTTP fixture stays local to its acceptance test file and no source/help/docs behavior changed.
+- Passed test-family discovery, `go test ./cmd -run 'Test.*BulkCompletionAcceptance' -count=1` (12.014s), `go vet ./cmd`, and full `GORACE=atexit_sleep_ms=0 go test ./cmd -race -count=1` (144.660s). A final added scale read-count assertion passed `GORACE=atexit_sleep_ms=0 go test ./cmd -run 'TestBulkCompletionAcceptanceScale' -race -count=1 -v` (2.563s). Gofmt and diff checks passed. Delivery-wide checks remain part of T009.
+- Commit policy confirmed as conventional / ralph / automatic #345, with no local override. This commit coordinates the test implementation with task completion, compact durable discoveries and the next handoff. No live Camunda mutation, push, release or publication occurred.
+---
