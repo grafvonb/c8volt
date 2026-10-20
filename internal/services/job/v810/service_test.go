@@ -40,9 +40,18 @@ func (m *mockJobClient) UpdateJobWithResponse(ctx context.Context, jobKey camund
 	return m.updateJobWithResponse(ctx, jobKey, body, reqEditors...)
 }
 
-func (m *mockJobClient) CompleteJobWithResponse(ctx context.Context, jobKey camundav810.JobKey, body camundav810.CompleteJobJSONRequestBody, reqEditors ...camundav810.RequestEditorFn) (*camundav810.CompleteJobResponse, error) {
+// CompleteJobWithBodyWithResponse decodes the adapter wire payload so existing
+// response/error fixtures continue exercising the same completion semantics.
+func (m *mockJobClient) CompleteJobWithBodyWithResponse(ctx context.Context, jobKey camundav810.JobKey, contentType string, reader io.Reader, reqEditors ...camundav810.RequestEditorFn) (*camundav810.CompleteJobResponse, error) {
 	if m.completeJobWithResponse == nil {
-		panic("unexpected CompleteJobWithResponse call")
+		panic("unexpected CompleteJobWithBodyWithResponse call")
+	}
+	if contentType != "application/json" {
+		return nil, fmt.Errorf("unexpected completion content type: %s", contentType)
+	}
+	var body camundav810.CompleteJobJSONRequestBody
+	if err := json.NewDecoder(reader).Decode(&body); err != nil {
+		return nil, err
 	}
 	return m.completeJobWithResponse(ctx, jobKey, body, reqEditors...)
 }

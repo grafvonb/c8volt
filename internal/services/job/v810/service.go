@@ -490,7 +490,7 @@ func (s *Service) submitJobCompletion(ctx context.Context, request d.JobWorkerOu
 	}
 	body := newCompleteJobRequestBody(request)
 	resp, err := services.RetryCamundaMutation(ctx, s.log, "complete job", func(ctx context.Context) (*camundav810.CompleteJobResponse, *http.Response, []byte, error) {
-		resp, err := s.c.CompleteJobWithResponse(ctx, camundav810.JobKey(request.Key), body)
+		resp, err := s.completeJobWithResponse(ctx, camundav810.JobKey(request.Key), body)
 		if resp == nil {
 			return resp, nil, nil, err
 		}
@@ -539,6 +539,8 @@ func newThrowJobErrorRequestBody(request d.JobWorkerOutcomeRequest) camundav810.
 	return body
 }
 
+// newCompleteJobRequestBody preserves the required variables object for both
+// completion paths; optional-field serialization belongs to completeJobWithResponse.
 func newCompleteJobRequestBody(request d.JobWorkerOutcomeRequest) camundav810.CompleteJobJSONRequestBody {
 	variables := request.Variables
 	if variables == nil {

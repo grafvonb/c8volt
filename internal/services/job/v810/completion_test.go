@@ -175,8 +175,8 @@ func TestBulkCompletionHTTP(t *testing.T) {
 				if err != nil {
 					t.Error(err)
 				}
-				// v8.10 retains its generated nullable fields alongside the shared variables object.
-				if string(payload) != `{"businessId":null,"leaseToken":null,"variables":{}}` {
+				// Unset optional fields must be absent, not serialized as null.
+				if string(payload) != `{"variables":{}}` {
 					t.Errorf("unexpected payload: %s", payload)
 				}
 				w.Header().Set("Content-Type", "application/problem+json")

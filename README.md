@@ -344,6 +344,8 @@ Completing a listener job acknowledges its work without executing its business l
 
 Bulk output distinguishes accepted, observed completed, unsatisfied and not-started targets. `--verbose` lists context and outcomes; JSON emits one envelope with all candidates or ordered outcomes, retaining partial results on failure. `--quiet` keeps requested JSON. Empty selections succeed without prompts, including under `--no-wait`; unsatisfied or interrupted batches fail. `--workers` bounds execution and `--fail-fast` stops new scheduling. JSON mutations require `--auto-confirm` or `--automation`; JSON dry-run is also supported. No keys-only output is provided.
 
+Human failures produce one compact logged error after the result summary, grouping repeated reasons. Quiet retains the error. HTTP diagnostics require `--debug` or configured debug logging; verbose alone shows per-job outcomes without raw HTTP errors. JSON retains the original failure evidence in its single result envelope.
+
 Generated references: [update process-instance](docs/cli/c8volt_update_process-instance.md), [update job](docs/cli/c8volt_update_job.md), [expect process-instance](docs/cli/c8volt_expect_process-instance.md).
 
 ### Cancel And Delete Safely

@@ -231,6 +231,12 @@ func (f *completionAcceptanceServer) serve(t *testing.T, w http.ResponseWriter, 
 		if variables, ok := payload["variables"].(map[string]any); !ok || len(variables) != 0 {
 			t.Errorf("listener payload: %v", payload)
 		}
+		if len(payload) != 1 {
+			t.Errorf("unexpected optional completion fields: %v", payload)
+			w.WriteHeader(http.StatusBadRequest)
+			io.WriteString(w, `{"detail":"unset optional completion fields must be omitted"}`)
+			return
+		}
 		if behavior == "interrupt" {
 			f.cancelOnce.Do(func() { close(f.cancelReady) })
 			<-r.Context().Done()

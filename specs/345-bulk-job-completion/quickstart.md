@@ -65,6 +65,8 @@ The fake server supplies three matching `TASK_LISTENER` / `CANCELING` jobs from 
 
 The test runs through all three adapters. It does not execute a BPMN engine or prove that a real process hierarchy terminates. That limitation is explicitly outside implementation acceptance.
 
+For bulk failure output, `TestBulkCompletionDiagnosticLogging` exercises repeated HTTP rejections through isolated command subprocesses on all three adapters. It verifies configured logger formats and destinations, compact normal/verbose/quiet errors, partial JSON evidence and exit codes, and HTTP diagnostics enabled independently by flag or configured debug level. `TestBulkCompletionFailureSummaryBounds` covers bounded mixed reasons and untrusted diagnostic text; the terminal stream suite covers logged aborts with unchanged plain prompts.
+
 ## Static reference fixtures
 
 [fixtures/README.md](fixtures/README.md) describes the retained BPMN examples. They are static references from the superseded live-validation plan, not deployment inputs for implementation. They may be parsed as local XML; no deployment, worker or environment cleanup is needed.

@@ -68,3 +68,32 @@ Both test runs cleared `GOFLAGS`, disabled Go environment-file overrides, depend
 No real environment was contacted during this corrected work unit. Prior passing full race-suite, vet and generated-documentation evidence remains applicable because production behavior is unchanged; this unit changes instructions, feature documentation and isolated tests only. The generated `docs/index.md` provenance from iteration 9 is retained.
 
 All nine implementation tasks are complete under the user-corrected scope. Real-engine listener execution and eventual process termination remain unverified by these tests; no live pass or external CI result is claimed. Historical progress is preserved, and the completion records and new checks belong to one final work-unit commit.
+
+## Follow-up: bulk failure logging
+
+The failure-path review found that the service correctly returned per-job evidence and joined errors, and the facade preserved classification, but the human renderer printed the joined transport text directly to stderr before the summary. The existing output tests did not check logger routing or forbid HTTP details on stderr.
+
+The corrected command renders the partial result first, then emits one compact ERROR through the configured command logger. The formatter uses bounded outcome reasons and HTTP status labels, groups repeated causes and limits distinct reasons. It never formats raw error or diagnostic text. Quiet retains the error; verbose retains per-job outcome facts. JSON still uses the original error and partial payload in one envelope, and the original error reaches exit-code resolution. HTTP diagnostics continue through the existing redacted DEBUG transport.
+
+- Before the fix, the new isolated regression failed on the direct stderr print containing the fake URL and response body (`/tmp/c8volt-output-red.log`).
+- `TestBulkCompletionDiagnosticLogging` covers 72 scenarios: three adapters, plain/structured log formats, normal/verbose/quiet modes, debug flag/configuration and quiet precedence, JSON partial failures, preparation failure and exit-code suppression. Real terminal subprocesses verify inherited/configured stderr destinations; both output streams are checked. Backend body markers remain absent from logs, including DEBUG, while JSON preserves existing evidence.
+- `TestBulkCompletionFailureSummaryBounds` checks mixed-reason grouping, bounded summaries, interruptions and exclusion of unknown/untrusted diagnostic strings. Terminal abort assertions now require one configured ERROR after the unchanged plain prompt.
+- The affected command suite passed with race detection: `go test ./cmd -run 'Test.*(BulkCompletion|UpdateJob|CommandContract|CommandCapability|AllCommandHelp)' -race -count=1` (23.630s). Log: `/tmp/c8volt-output-regressions.log`.
+- `make docs-content` passed after updating source help and README (`/tmp/c8volt-output-docs.log`). Go formatting and `git diff --check` passed.
+
+All tests used isolated fakes with the same sanitized, download-disabled environment described above. No real environment was contacted. That correction changed output only; the separately identified 8.10 `leaseToken: null` serialization issue was addressed in the subsequent adapter correction below.
+
+## Follow-up: v8.10 optional completion fields
+
+The pinned generated completion request serializes unset optional `leaseToken` and `businessId` pointers as null. An isolated strict server reproduced rejection of this payload for both scalar and bulk completion before the fix (`/tmp/c8volt-lease-red.log`).
+
+Both paths now use `internal/services/job/v810/completion_request.go`: it shadows only those two fields with `omitempty`, serializes the body and calls the generated custom-body endpoint. Generated client/provenance files, response parsing, error classification, scalar retry policy and bulk one-shot behavior are unchanged. This adapter correction does not refresh the upstream API baseline. Explicit values (including empty strings), result data and nulls inside variables are preserved; required variables still default to an empty object.
+
+Validation used only isolated fakes and the sanitized environment described above:
+
+- The focused completion suite passed with race detection (1.758s; `/tmp/c8volt-lease-focused.log`). New HTTP tests cover both entry points, nil/empty/nested-null variables, backend 400/401/500 failures and malformed responses. Encoding failures retain their errors and dispatch no HTTP requests. Explicit optional values and result data survive serialization. Backend rejections requiring a lease remain failures, with status/diagnostic evidence retained and no token-removal fallback.
+- All job services and the public job facade passed: `go test ./internal/services/job/... ./c8volt/job -race -count=1` (`/tmp/c8volt-lease-services.log`).
+- Affected CLI regressions passed with race detection (24.344s): `go test ./cmd -run 'Test.*(BulkCompletion|UpdateJob|CommandContract|CommandCapability|AllCommandHelp)' -race -count=1` (`/tmp/c8volt-lease-cli.log`). The shared acceptance server now rejects unexpected completion fields rather than accepting the defective null payload.
+- Go formatting and `git diff --check` passed. The v8.10 generated client still matches its recorded provenance checksum.
+
+No real environment was contacted or mutated. No assertion of successful live process cancellation follows from these tests.

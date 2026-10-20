@@ -78,16 +78,19 @@ func TestBulkCompletionTerminalStreams(t *testing.T) {
 				require.NoError(t, runErr, stderr)
 			}
 
-			// Exact stream comparison rejects extra paging prompts, duplicate
-			// confirmation, logger prefixes, and trailing JSON error rendering.
+			// Keep prompts plain and exact; a decline must then emit exactly
+			// one configured ERROR record, not a direct stderr print.
 			wantStderr := ""
 			if prompted {
 				wantStderr = bulkCompletionTerminalPrompt
 			}
 			if tt.decline {
-				wantStderr += "job completion: local precondition failed: aborted by user\n"
+				require.True(t, strings.HasPrefix(stderr, wantStderr), stderr)
+				records := bulkCompletionDiagnosticRecords(t, strings.TrimPrefix(stderr, wantStderr), "plain-time")
+				require.Equal(t, [][2]string{{"ERROR", "job completion: aborted by user; no changes applied"}}, records)
+			} else {
+				require.Equal(t, wantStderr, stderr)
 			}
-			require.Equal(t, wantStderr, stderr)
 			require.NotContains(t, stdout, "Do you want to proceed?")
 			require.NotContains(t, stdout, "Continue?")
 

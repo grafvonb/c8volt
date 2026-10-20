@@ -24,7 +24,7 @@ func (s *Service) submitBulkCompletion(ctx context.Context, job d.Job, variables
 		return d.CompletionSubmission{Status: d.CompletionSubmissionNotSubmitted, Diagnostic: err.Error()}, err
 	}
 	body := newCompleteJobRequestBody(d.JobWorkerOutcomeRequest{Key: job.Key, Variables: variables})
-	response, err := s.c.CompleteJobWithResponse(ctx, camunda.JobKey(job.Key), body)
+	response, err := s.completeJobWithResponse(ctx, camunda.JobKey(job.Key), body)
 	if response == nil {
 		return common.ClassifyJobCompletionSubmission(nil, nil, err)
 	}

@@ -154,10 +154,15 @@ func jobCompletionPreparationReport(batch job.PreparedCompletionBatch, status jo
 	return job.CompletionBatchReport{Status: status, Selection: batch.Selection, DiscoveryTenant: batch.DiscoveryTenant, TenantIDs: batch.TenantIDs, CompletionReason: batch.CompletionReason, PageCount: batch.PageCount, ObservedCount: batch.ObservedCount, Limited: batch.Limited, Counts: job.CompletionCounts{Selected: len(batch.Candidates)}, Candidates: batch.Candidates}
 }
 
-// finishUpdateJobBatch retains the operation error after rendering its partial payload.
+// finishUpdateJobBatch renders the partial payload before logging one compact
+// human failure, retaining the original error for classification and exit.
 func finishUpdateJobBatch(cmd *cobra.Command, report job.CompletionBatchReport, runErr error) error {
 	if err := jobCompletionBatchView(cmd, report, runErr); err != nil {
 		return fmt.Errorf("render job completion result: %w", err)
+	}
+	if runErr != nil && pickMode() != RenderModeJSON {
+		log, _ := bootstrapFailureContext(cmd)
+		log.Error(formatJobCompletionFailure(report, runErr))
 	}
 	return runErr
 }

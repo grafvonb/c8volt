@@ -126,6 +126,8 @@ Return report and error together. Batch views render one shared envelope includi
 
 Use compact aggregate-first human output. Dry-run exposes context rows through verbose preview and all structured preview candidates, with count/filter/tenant/limit and listener consequence visible in ordinary preview. No per-key lifecycle chatter by default. Prompts use `cmd.ErrOrStderr()` and existing eligibility rules. JSON/automation mutation restrictions remain consistent with existing commands.
 
+Human failures use the configured logger after result rendering. `cmd/cmd_views_job_logging.go` formats bounded report reasons and groups repeated failures; it never prints the raw joined error. HTTP diagnostics stay in the existing redacted DEBUG transport. Test both streams and configured log formats through isolated command execution, including partial rejection, preparation failure, quiet/verbose/JSON, debug flag/configuration, terminal aborts and exit-code suppression.
+
 Empty normal/dry-run results go through the same mode-aware renderer. JSON remains visible with quiet; no confirmation, mutation or accepted/pending claim is emitted for empty scope. `update job` keeps its existing supported output modes; this feature adds no keys-only mode.
 
 ## Validation and Delivery

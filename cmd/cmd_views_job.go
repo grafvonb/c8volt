@@ -289,9 +289,6 @@ func jobCompletionBatchView(cmd *cobra.Command, report job.CompletionBatchReport
 		}
 		return renderResultEnvelope(cmd, envelope)
 	}
-	if runErr != nil {
-		cmd.PrintErrf("job completion: %s\n", runErr)
-	}
 	if flagQuiet {
 		return nil
 	}

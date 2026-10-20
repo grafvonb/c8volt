@@ -59,4 +59,6 @@ Initialize all frozen outcomes before dispatch. Merge by original index, preserv
 
 The facade returns both partial report and error. The command uses one mode-aware renderer and an exit path that does not render again. Existing normalized error classes and explicit exit-code suppression remain authoritative.
 
+The v8.10 completion adapter must omit unset `leaseToken` and `businessId` fields instead of serializing them as JSON null. Both scalar and bulk completion use the same adapter-local serializer and the generated custom-body endpoint, retaining generated response parsing. Explicit optional values, result data and variable nulls are preserved. Do not invent or drop an explicit lease token, retry a rejected request without the token, or turn encoding/backend/transport/parsing errors into successful completion. Existing scalar retry policy and bulk one-shot semantics remain unchanged.
+
 Required tests cover prepared-plan rejection without writes, map/slice isolation, option propagation, deterministic ordering, no duplicate submissions, every unstarted target represented, adapter version parity, and accepted versus independently observed completion. See [quickstart.md](../quickstart.md) for end-to-end validation.

@@ -44,6 +44,8 @@ Predicates combine with AND and retain `get job` validation. `--retries 0 --comp
 
 Default preview shows workflow, normalized filters or explicit count, tenant scope, selected count, limit when reached and the listener consequence. Verbose preview lists candidate context using existing job row conventions. JSON preview contains all candidates. A real run is aggregate-first; verbose output may list final per-key outcomes. Low-level HTTP details remain DEBUG-only.
 
+Human failures render the result summary first, then emit exactly one ERROR through the configured command logger. The error uses bounded outcome reasons and HTTP status labels, groups repeated causes, and shows at most three distinct reasons plus an aggregate remainder. Preparation failures use the normalized error class; aborts and interruptions remain explicit. Raw joined errors, URLs and response bodies must not appear in normal or verbose diagnostic output. Quiet retains the compact error. Existing redacted HTTP diagnostics remain available at DEBUG through either flag or configuration. JSON keeps its original error evidence and partial payload in one envelope, without a duplicate human ERROR.
+
 Required listener explanation: completing a listener job acknowledges its work without executing its business logic. Do not describe this as guaranteed process cancellation.
 
 Bulk JSON uses exactly one existing `ResultEnvelope` with `command: "update job"`, existing outcome/class/detail/tenant fields and a typed bulk payload. Use existing naming and omission conventions; do not introduce a second envelope schema. The payload follows [data-model.md](../data-model.md).

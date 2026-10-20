@@ -286,10 +286,14 @@ Before adding helper code, search these locations.
 - Service and domain code must return domain errors from `internal/domain/errors.go` or transport errors normalized by `internal/services/httpc`.
 - Public facades must convert service/domain errors with `ferrors.FromDomain`.
 - CLI code must use `handleCommandError`, `handleNewCliError`, `localPreconditionError`, `invalidFlagValuef`, `mutuallyExclusiveFlagsf`, and related command helpers rather than printing and exiting directly.
+- The Mandatory Diagnostic Logging and Diagnostic Output Validation sections in `AGENTS.md` are completion gates for every error/output change, including batch and partial-result paths. Correct stderr routing does not replace use of the configured logger.
+- Never bypass the logger with `cmd.PrintErr*` or direct writes for human diagnostics. Plain interactive prompts and selected-format result rendering are the distinct exceptions; bootstrap errors use existing fallback helpers.
+- Do not pass raw joined/transport/generated-client error text to normal-level logging. Format a bounded aggregate human error, group repeated causes, and retain full transport detail only through existing redacted DEBUG diagnostics. A direct-print-to-`log.Error(err.Error())` substitution is not a sufficient fix.
 - Machine-readable error output must flow through `renderResultEnvelope` and `resultEnvelopeForError` when the command supports the shared contract.
-- Preserve wrapped error detail exactly once. Do not build nested duplicate messages.
+- Preserve wrapped error evidence and classification for machine results and diagnostic handling; this is not permission to dump the wrapped chain into normal human output. Do not build nested duplicate messages.
 - For unsupported version or missing API support, use explicit unsupported errors rather than silent fallbacks.
 - If a partial result is meaningful, return the partial report plus an error, following existing facade patterns for resolution, variable updates, and bulk operations.
+- An exit-after-render path must retain the report and original error class/exit status without bypassing human diagnostic logging or generating a second JSON envelope.
 
 ## CLI Command Rules
 
@@ -444,6 +448,9 @@ These rules are mandatory for CLI and ops workflow work. They capture the comman
 - Generated docs refresh is `make docs-content`.
 - Full local quality pipeline is `make all`, but prefer targeted checks first during Ralph iterations.
 - Do not mark tasks complete while targeted validation is failing.
+- For an error/output work unit, trace the failure path through service, facade, renderer, logger and exit before completion. Inspect changed direct-print calls and raw error formatting; record the routing review and relevant regression checks in the work-unit evidence.
+- Use the diagnostic test matrix in `AGENTS.md`: repeated multi-resource failures; separate stdout/stderr assertions; configured logger severity and destinations; compact normal/verbose/quiet errors; one JSON envelope and preserved failure exit; DEBUG enabled by flag and by configuration; plain and structured log formats. All dependencies must be isolated fakes.
+- Do not accept tests that merely find an error substring or keep stdout clean while allowing a raw HTTP dump on stderr. Assertions must fail for a logger bypass, normal-level transport disclosure, duplicate diagnostics, or loss of partial results. Passing tests that encode an existing output violation do not satisfy this gate.
 
 ## Comment Rules
 
