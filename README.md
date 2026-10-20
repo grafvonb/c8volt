@@ -304,6 +304,8 @@ Use incident and job reads for diagnosis; use repair playbooks when the workflow
 ./c8volt ops repair incident --key <incident-key> --dry-run
 ```
 
+Job searches and `get job --total` honor `app.tenant` or a named `--tenant` override. Use `--tenant ""` or `--all-tenants` to search all accessible tenants; explicit `get job --key` retains backend authorization without the discovery tenant filter. `--batch-size` controls each request and `--limit` caps selected jobs. Sparse pages continue when pagination supports it; contradictory or nonadvancing pagination returns an incomplete-search error instead of a successful empty result.
+
 Generated references: [get incident](docs/cli/c8volt_get_incident.md), [get job](docs/cli/c8volt_get_job.md), [ops repair incident](docs/cli/c8volt_ops_repair_incident.md).
 
 ### Update And Verify

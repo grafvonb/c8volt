@@ -13,6 +13,7 @@ import (
 	"os"
 	"os/exec"
 	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/grafvonb/c8volt/c8volt/foptions"
@@ -697,4 +698,105 @@ func resetGetJobFlagState() {
 	flagGetJobLimit = 0
 	flagGetJobTotal = false
 	flagGetErrorMessageLimit = 0
+}
+
+// TestGetJobCommand_SearchTenantScope verifies root tenant resolution reaches all supported search adapters.
+func TestGetJobCommand_SearchTenantScope(t *testing.T) {
+	for _, version := range []string{"8.8", "8.9", "8.10"} {
+		for _, tc := range []struct {
+			name       string
+			flags      []string
+			wantTenant string
+		}{
+			{name: "configured", wantTenant: "tenant-a"},
+			{name: "override", flags: []string{"--tenant", "tenant-b"}, wantTenant: "tenant-b"},
+			{name: "empty", flags: []string{"--tenant", ""}},
+			{name: "all", flags: []string{"--all-tenants"}},
+		} {
+			t.Run(version+"/"+tc.name, func(t *testing.T) {
+				var bodies []map[string]any
+				tenant := tc.wantTenant
+				if tenant == "" {
+					tenant = "tenant-c"
+				}
+				srv := newJobSearchServer(t, &bodies, `{"items":[{"jobKey":"1","tenantId":"`+tenant+`"}],"page":{"totalItems":1}}`)
+				t.Cleanup(srv.Close)
+				cfgPath := writeTestConfigForVersion(t, srv.URL, version)
+				cfg, err := os.ReadFile(cfgPath)
+				require.NoError(t, err)
+				require.NoError(t, os.WriteFile(cfgPath, []byte(strings.Replace(string(cfg), "app:\n", "app:\n  tenant: tenant-a\n", 1)), 0o600))
+				args := append([]string{"--config", cfgPath}, tc.flags...)
+				args = append(args, "get", "job", "--total")
+				stdout, stderr := executeRootForJobTestWithSeparateOutputs(t, args...)
+				require.Equal(t, "1\n", stdout)
+				require.Empty(t, stderr)
+				require.Len(t, bodies, 1)
+				filter := requireJSONObject(t, bodies[0]["filter"])
+				if tc.wantTenant == "" {
+					require.NotContains(t, filter, "tenantId")
+				} else {
+					require.Equal(t, tc.wantTenant, filter["tenantId"])
+				}
+			})
+		}
+	}
+}
+
+// TestGetJobCommand_SearchSparseCursor keeps machine results intact while traversing an empty backend page.
+func TestGetJobCommand_SearchSparseCursor(t *testing.T) {
+	for _, version := range []string{"8.8", "8.9", "8.10"} {
+		for _, mode := range []string{"--keys-only", "--json"} {
+			t.Run(version+"/"+mode, func(t *testing.T) {
+				var bodies []map[string]any
+				srv := newJobSearchServerResponses(t, &bodies,
+					`{"items":[],"page":{"totalItems":1,"endCursor":"next"}}`,
+					`{"items":[{"jobKey":"1","tenantId":"tenant-a"}],"page":{"totalItems":1}}`,
+				)
+				t.Cleanup(srv.Close)
+				cfgPath := writeTestConfigForVersion(t, srv.URL, version)
+				stdout, stderr := executeRootForJobTestWithSeparateOutputs(t, "--config", cfgPath, mode, "get", "job", "--batch-size", "2")
+				require.Empty(t, stderr)
+				require.Len(t, bodies, 2)
+				require.Equal(t, map[string]any{"after": "next", "limit": float64(2)}, requireJSONObject(t, bodies[1]["page"]))
+				if mode == "--keys-only" {
+					require.Equal(t, "1\n", stdout)
+				} else {
+					decoder := json.NewDecoder(strings.NewReader(stdout))
+					var envelope ResultEnvelope[job.SearchResult]
+					require.NoError(t, decoder.Decode(&envelope))
+					require.Equal(t, OutcomeSucceeded, envelope.Outcome)
+					require.Len(t, envelope.Payload.Items, 1)
+					require.ErrorIs(t, decoder.Decode(new(any)), io.EOF)
+				}
+			})
+		}
+	}
+}
+
+// TestGetJobCommand_IncompleteSearch rejects contradictory empty discovery instead of printing success.
+func TestGetJobCommand_IncompleteSearch(t *testing.T) {
+	var bodies []map[string]any
+	srv := newJobSearchServer(t, &bodies, `{"items":[],"page":{"totalItems":100,"hasMoreTotalItems":true}}`)
+	t.Cleanup(srv.Close)
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
+	output, err := testx.RunCmdSubprocess(t, "TestGetJobCommand_IncompleteSearchHelper", map[string]string{"C8VOLT_TEST_CONFIG": cfgPath})
+	require.Error(t, err)
+	require.Len(t, bodies, 1)
+	decoder := json.NewDecoder(bytes.NewReader(output))
+	var envelope map[string]any
+	require.NoError(t, decoder.Decode(&envelope))
+	require.Equal(t, string(OutcomeFailed), envelope["outcome"])
+	require.Contains(t, string(output), "incomplete job search")
+	require.ErrorIs(t, decoder.Decode(new(any)), io.EOF)
+}
+
+// TestGetJobCommand_IncompleteSearchHelper runs the real command exit path in a subprocess.
+func TestGetJobCommand_IncompleteSearchHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+	previous := os.Args
+	t.Cleanup(func() { os.Args = previous })
+	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "--json", "get", "job"}
+	Execute()
 }

@@ -72,9 +72,11 @@ const (
 	SearchPageActionStop SearchPageAction = "stop"
 )
 
+// PageRequest carries a raw offset and optional forward cursor.
 type PageRequest struct {
-	From int32 `json:"from,omitempty"`
-	Size int32 `json:"size,omitempty"`
+	From  int32  `json:"from,omitempty"`
+	Size  int32  `json:"size,omitempty"`
+	After string `json:"after,omitempty"`
 }
 
 type ReportedTotalKind string
@@ -96,11 +98,15 @@ const (
 	OverflowStateHasMore OverflowState = "has_more"
 )
 
+// Page preserves raw traversal evidence separately from selected job rows.
 type Page struct {
 	Items         []Job          `json:"items"`
 	Request       PageRequest    `json:"request,omitempty"`
 	OverflowState OverflowState  `json:"overflowState,omitempty"`
 	ReportedTotal *ReportedTotal `json:"reportedTotal,omitempty"`
+	RawItemCount  int32          `json:"rawItemCount"`
+	NextFrom      int32          `json:"nextFrom"`
+	EndCursor     string         `json:"endCursor,omitempty"`
 }
 
 // SearchPageStep exposes one selected job page plus traversal state while

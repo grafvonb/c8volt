@@ -37,7 +37,9 @@ var getJobCmd = &cobra.Command{
 
 Use --key for a known job. Otherwise search by state, type, process instance, element instance, BPMN element, worker, retries, job kind, or listener event type.
 
---batch-size controls each discovery request; --limit caps jobs across all pages; --total counts matching jobs.
+Search and --total use the configured tenant; --tenant overrides it. An empty --tenant or --all-tenants searches all accessible tenants. Explicit --key lookup uses backend authorization without the discovery tenant filter.
+
+--batch-size controls each discovery request; --limit caps jobs across all pages; --total counts matching jobs. Discovery follows raw page continuation and reports an incomplete-search error if pagination cannot establish completion.
 
 Requires Camunda 8.8 or newer.`,
 	Example: `  ./c8volt get job --key <job-key>

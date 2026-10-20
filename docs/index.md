@@ -6,7 +6,7 @@ nav_exclude: true
 has_toc: true
 ---
 
-> Generated from build `c8volt v4.3.3-5-gae81a8da-dirty`, commit `ae81a8da`, built `2026-09-16T03:08:26Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.0-alpha4 (prerelease)
+> Generated from build `c8volt v4.3.4-1-g859a62d5-dirty`, commit `859a62d5`, built `2026-10-20T10:36:07Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.0-alpha4 (prerelease)
 
 <img src="./logo/c8volt_logo_transparent_w_shadow_400x244.png" alt="c8volt logo" />
 
@@ -309,6 +309,8 @@ Use incident and job reads for diagnosis; use repair playbooks when the workflow
 ./c8volt get job --key <job-key>
 ./c8volt ops repair incident --key <incident-key> --dry-run
 ```
+
+Job searches and `get job --total` honor `app.tenant` or a named `--tenant` override. Use `--tenant ""` or `--all-tenants` to search all accessible tenants; explicit `get job --key` retains backend authorization without the discovery tenant filter. `--batch-size` controls each request and `--limit` caps selected jobs. Sparse pages continue when pagination supports it; contradictory or nonadvancing pagination returns an incomplete-search error instead of a successful empty result.
 
 Generated references: [get incident](./cli/c8volt_get_incident), [get job](./cli/c8volt_get_job), [ops repair incident](./cli/c8volt_ops_repair_incident).
 

@@ -689,3 +689,23 @@ func TestClient_SubmitJobCompletion_MutationFailureReturnsFailedResult(t *testin
 	require.False(t, result.MutationAccepted)
 	require.Equal(t, mutationErr.Error(), result.Error)
 }
+
+// TestClient_SearchJobsPage_MapsRawEvidence keeps cursor and raw offsets independent of selected rows.
+func TestClient_SearchJobsPage_MapsRawEvidence(t *testing.T) {
+	t.Parallel()
+	api := New(fakeJobService{page: func(_ context.Context, _ d.JobSearchQuery, page d.JobPageRequest, _ ...services.CallOption) (d.JobSearchPage, error) {
+		require.Equal(t, d.JobPageRequest{From: 4, Size: 2, After: "cursor-a"}, page)
+		return d.JobSearchPage{
+			Items: []d.Job{}, Request: page, RawItemCount: 2, NextFrom: 6, EndCursor: "cursor-b",
+			OverflowState: d.ProcessInstanceOverflowStateHasMore,
+			ReportedTotal: &d.JobReportedTotal{Count: 10, Kind: d.JobReportedTotalKindLowerBound},
+		}, nil
+	}}, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	page, err := api.SearchJobsPage(context.Background(), SearchRequest{}, PageRequest{From: 4, Size: 2, After: "cursor-a"})
+	require.NoError(t, err)
+	require.Equal(t, Page{
+		Items: []Job{}, Request: PageRequest{From: 4, Size: 2, After: "cursor-a"},
+		RawItemCount: 2, NextFrom: 6, EndCursor: "cursor-b", OverflowState: OverflowStateHasMore,
+		ReportedTotal: &ReportedTotal{Count: 10, Kind: ReportedTotalKindLowerBound},
+	}, page)
+}
