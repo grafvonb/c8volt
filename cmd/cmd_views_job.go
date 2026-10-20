@@ -296,57 +296,57 @@ func jobCompletionBatchView(cmd *cobra.Command, report job.CompletionBatchReport
 	if report.Status == job.CompletionBatchPreview {
 		label = "dry run: job completion"
 	}
-	renderOutputLine(cmd, "%s", label)
+	renderHumanLine(cmd, "%s", label)
 	if report.Selection.Mode == job.CompletionSelectionExplicit {
-		renderOutputLine(cmd, "selection: explicit keys")
+		renderHumanLine(cmd, "selection: explicit keys")
 	} else {
-		renderOutputLine(cmd, "filters: %s", jobCompletionFilterText(report.Selection.Filter))
+		renderHumanLine(cmd, "filters: %s", jobCompletionFilterText(report.Selection.Filter))
 	}
 	if ctx, ok := attachedTenantContext(cmd); ok {
 		for _, line := range tenantContextHumanLines(cmd, *ctx) {
-			renderOutputLine(cmd, "%s", line.Text)
+			renderHumanLine(cmd, "%s", line.Text)
 		}
 	}
 	if report.Status == job.CompletionBatchPreparationFailed {
-		renderOutputLine(cmd, "preparation incomplete: %d observed candidate job(s); no changes applied", report.Counts.Selected)
+		renderHumanLine(cmd, "preparation incomplete: %d observed candidate job(s); no changes applied", report.Counts.Selected)
 	} else {
-		renderOutputLine(cmd, "selected job(s): %d", report.Counts.Selected)
+		renderHumanLine(cmd, "selected job(s): %d", report.Counts.Selected)
 	}
 	if report.Limited {
-		renderOutputLine(cmd, "discovery user-limited: limit %d; pages %d; batch size %d", report.Selection.Limit, report.PageCount, report.Selection.BatchSize)
+		renderHumanLine(cmd, "discovery user-limited: limit %d; pages %d; batch size %d", report.Selection.Limit, report.PageCount, report.Selection.BatchSize)
 	} else if flagVerbose && report.Selection.Mode == job.CompletionSelectionSearch {
-		renderOutputLine(cmd, "discovery: pages %d; batch size %d", report.PageCount, report.Selection.BatchSize)
+		renderHumanLine(cmd, "discovery: pages %d; batch size %d", report.PageCount, report.Selection.BatchSize)
 	}
 	switch report.Status {
 	case job.CompletionBatchPreview:
-		renderOutputLine(cmd, "%s", jobCompletionListenerConsequence)
-		renderOutputLine(cmd, "outcome: preview; no changes applied")
+		renderHumanLine(cmd, "%s", jobCompletionListenerConsequence)
+		renderHumanLine(cmd, "outcome: preview; no changes applied")
 	case job.CompletionBatchPreparationFailed:
-		renderOutputLine(cmd, "outcome: preparation failed; no changes applied")
+		renderHumanLine(cmd, "outcome: preparation failed; no changes applied")
 	default:
 		if report.Counts.Selected == 0 && runErr == nil {
 			if report.Selection.Mode == job.CompletionSelectionExplicit {
-				renderOutputLine(cmd, "outcome: no selected jobs; no changes applied")
+				renderHumanLine(cmd, "outcome: no selected jobs; no changes applied")
 			} else {
-				renderOutputLine(cmd, "outcome: no matching jobs; no changes applied")
+				renderHumanLine(cmd, "outcome: no matching jobs; no changes applied")
 			}
 		} else {
 			status := string(report.Status)
 			if runErr != nil && report.Status == job.CompletionBatchFinished {
 				status = "failed"
 			}
-			renderOutputLine(cmd, "outcome: %s; accepted %d; observed completed %d; unsatisfied %d; not started %d", status, report.Counts.Accepted, report.Counts.Completed, report.Counts.Unsatisfied, report.Counts.NotStarted)
+			renderHumanLine(cmd, "outcome: %s; accepted %d; observed completed %d; unsatisfied %d; not started %d", status, report.Counts.Accepted, report.Counts.Completed, report.Counts.Unsatisfied, report.Counts.NotStarted)
 			if report.Counts.Accepted > 0 {
-				renderOutputLine(cmd, "accepted completions: independent confirmation skipped; process termination not verified")
+				renderHumanLine(cmd, "accepted completions: independent confirmation skipped; process termination not verified")
 			}
 		}
 	}
 	if flagVerbose {
 		for _, candidate := range report.Candidates {
-			renderOutputLine(cmd, "%s", jobCompletionCandidateRow(candidate))
+			renderHumanLine(cmd, "%s", jobCompletionCandidateRow(candidate))
 		}
 		for _, outcome := range report.Outcomes {
-			renderOutputLine(cmd, "%s disposition:%s submission:%s observation:%s reason:%s", jobCompletionCandidateRow(outcome.Candidate), outcome.Disposition, outcome.Submission.Status, outcome.Observation.Status, outcome.Reason)
+			renderHumanLine(cmd, "%s disposition:%s submission:%s observation:%s reason:%s", jobCompletionCandidateRow(outcome.Candidate), outcome.Disposition, outcome.Submission.Status, outcome.Observation.Status, outcome.Reason)
 		}
 	}
 	return nil

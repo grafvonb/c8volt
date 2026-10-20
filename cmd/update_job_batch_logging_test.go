@@ -147,18 +147,22 @@ func TestBulkCompletionDiagnosticLogging(t *testing.T) {
 					records := bulkCompletionDiagnosticRecords(t, stderr, format)
 					errors := []string{}
 					debugs := []string{}
+					infos := []string{}
 					for _, record := range records {
 						switch record[0] {
 						case "ERROR":
 							errors = append(errors, record[1])
 						case "DEBUG":
 							debugs = append(debugs, record[1])
+						case "INFO":
+							infos = append(infos, record[1])
 						default:
 							t.Errorf("unexpected log level: %s", record[0])
 						}
 					}
 					if tc.json {
 						require.Empty(t, errors)
+						require.Empty(t, infos)
 						envelope := decodeBulkCompletionEnvelope(t, stdout)
 						require.Equal(t, "invalid_input", envelope["class"])
 						require.Contains(t, requireJSONObject(t, envelope["detail"])["message"], "body-only-secret", "machine evidence must remain unchanged")
@@ -169,10 +173,14 @@ func TestBulkCompletionDiagnosticLogging(t *testing.T) {
 						}
 					} else {
 						require.Equal(t, []string{expected}, errors)
+						for _, key := range keys {
+							require.NotContains(t, strings.Join(errors, "\n"), key, "aggregate errors must not leak per-key diagnostics")
+						}
+						require.Empty(t, stdout)
 						if tc.quiet {
-							require.Empty(t, stdout)
+							require.Empty(t, infos)
 						} else if !tc.preparation {
-							require.Contains(t, stdout, fmt.Sprintf("outcome: failed; accepted %d; observed completed 0; unsatisfied %d; not started 0", accepted, failed))
+							require.Contains(t, strings.Join(infos, "\n"), fmt.Sprintf("outcome: failed; accepted %d; observed completed 0; unsatisfied %d; not started 0", accepted, failed))
 						}
 						for _, bad := range []string{server.URL, "/v2/jobs/", "POST", "body-only-secret", "leaseToken", "ERROR", "DEBUG"} {
 							require.NotContains(t, stdout, bad)
@@ -187,7 +195,7 @@ func TestBulkCompletionDiagnosticLogging(t *testing.T) {
 						require.Contains(t, strings.Join(debugs, "\n"), "status=400")
 					} else {
 						require.Empty(t, debugs)
-						for _, bad := range []string{server.URL, "/v2/jobs/", "POST", keys[0], keys[1]} {
+						for _, bad := range []string{server.URL, "/v2/jobs/", "POST"} {
 							require.NotContains(t, stderr, bad)
 						}
 					}
@@ -222,4 +230,77 @@ func bulkCompletionDiagnosticRecords(t *testing.T, output, format string) [][2]s
 		}
 	}
 	return records
+}
+
+// assertBulkCompletionHumanLogs first enforces the stream and logger contract,
+// then extracts INFO messages for the existing exact wording assertions. The
+// remaining stderr contains only the already-validated diagnostic records.
+func assertBulkCompletionHumanLogs(t *testing.T, stdout, stderr string) (string, string) {
+	t.Helper()
+	require.Empty(t, stdout, "human completion output must use the configured logger")
+	records := bulkCompletionDiagnosticRecords(t, stderr, "plain-time")
+	lines := strings.Split(strings.TrimSuffix(stderr, "\n"), "\n")
+	var messages, diagnostics strings.Builder
+	for i, record := range records {
+		if record[0] == "INFO" {
+			messages.WriteString(record[1] + "\n")
+		} else {
+			diagnostics.WriteString(lines[i] + "\n")
+		}
+	}
+	return messages.String(), diagnostics.String()
+}
+
+// Successful summaries must use the configured logger too, including preview
+// and verbose rows; logger format/level and destination cannot be bypassed.
+func TestBulkCompletionSummaryLogging(t *testing.T) {
+	for _, format := range []string{"plain-time", "json"} {
+		for _, level := range []string{"info", "warn"} {
+			for _, flags := range [][]string{nil, {"--dry-run"}, {"--verbose"}, {"--quiet"}, {"--json"}, {"--quiet", "--json"}} {
+				t.Run(format+"/"+level+"/"+strings.Join(flags, " "), func(t *testing.T) {
+					_, server := newBulkCompletionFixture(t, "normal")
+					cfg := writeTestConfigForVersion(t, server.URL, "8.10")
+					f, err := os.OpenFile(cfg, os.O_APPEND|os.O_WRONLY, 0600)
+					require.NoError(t, err)
+					_, err = fmt.Fprintf(f, "log:\n  level: %s\n  format: %s\n", level, format)
+					require.NoError(t, err)
+					require.NoError(t, f.Close())
+					args := []string{"--config", cfg, "--tenant", "tenant-a", "update", "job", "--complete", "--type", "cleanup", "--auto-confirm"}
+					args = append(args, flags...)
+					destination := "configured"
+					if format == "json" {
+						destination = "inherited"
+					}
+					stdout, stderr, err := runBulkCompletionTerminal(t, args, destination, true, false, nil)
+					require.NoError(t, err, stderr)
+					records := bulkCompletionDiagnosticRecords(t, stderr, format)
+					mode := strings.Join(flags, " ")
+					if strings.Contains(mode, "--json") {
+						decodeBulkCompletionEnvelope(t, stdout)
+						require.Empty(t, records)
+						return
+					}
+					require.Empty(t, stdout)
+					if level == "warn" || strings.Contains(mode, "--quiet") {
+						require.Empty(t, records)
+						return
+					}
+					messages := []string{}
+					for _, record := range records {
+						require.Equal(t, "INFO", record[0])
+						messages = append(messages, record[1])
+					}
+					require.Contains(t, messages, "selected job(s): 1")
+					if strings.Contains(mode, "--dry-run") {
+						require.Contains(t, messages, "outcome: preview; no changes applied")
+					} else {
+						require.Contains(t, messages, "outcome: finished; accepted 1; observed completed 0; unsatisfied 0; not started 0")
+					}
+					if strings.Contains(mode, "--verbose") {
+						require.Contains(t, strings.Join(messages, "\n"), "pi:2251799813711000")
+					}
+				})
+			}
+		}
+	}
 }

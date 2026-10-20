@@ -452,7 +452,7 @@ func TestService_Delete(t *testing.T) {
 		assert.Equal(t, string(camundav810.BatchOperationStateEnumCOMPLETED), resp.BatchState)
 	})
 
-	t.Run("DefaultFailsWhenHistoryBatchIsMissing", func(t *testing.T) {
+	t.Run("DefaultAcceptsDeferredHistoryWithoutBatch", func(t *testing.T) {
 		svc := newTestService(t, "tenant", &mockResourceClient{
 			createDeploymentWithBodyWithResponse: func(ctx context.Context, contentType string, body io.Reader, reqEditors ...camundav810.RequestEditorFn) (*camundav810.CreateDeploymentResponse, error) {
 				t.Fatalf("unexpected deploy call")
@@ -485,10 +485,11 @@ func TestService_Delete(t *testing.T) {
 
 		resp, err := svc.Delete(ctx, "resource-1")
 
-		require.Error(t, err)
-		assert.ErrorIs(t, err, d.ErrMalformedResponse)
+		require.NoError(t, err)
+		assert.True(t, resp.Ok)
 		assert.True(t, resp.DeleteHistory)
 		assert.Empty(t, resp.BatchOperationKey)
+		assert.Empty(t, resp.BatchState)
 	})
 }
 

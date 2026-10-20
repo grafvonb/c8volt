@@ -710,6 +710,9 @@ func TestBulkCompletionAcceptanceOutputMatrix(t *testing.T) {
 						f.expectedPages = 0
 					}
 					stdout, stderr, err := runCompletionAcceptance(t, server, version, append(flags, mode.flags...), "", false)
+					if !mode.json {
+						stdout, stderr = assertBulkCompletionHumanLogs(t, stdout, stderr)
+					}
 					if scenario == "incomplete" {
 						var exitErr *exec.ExitError
 						require.ErrorAs(t, err, &exitErr)

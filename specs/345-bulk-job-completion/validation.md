@@ -97,3 +97,34 @@ Validation used only isolated fakes and the sanitized environment described abov
 - Go formatting and `git diff --check` passed. The v8.10 generated client still matches its recorded provenance checksum.
 
 No real environment was contacted or mutated. No assertion of successful live process cancellation follows from these tests.
+
+## Follow-up: Camunda 8.10 definition deletion response (2026-10-20)
+
+The separately requested local validation exposed a cleanup response-handling error. This implementation follow-up used only mocks, test-owned HTTP servers and command subprocesses; it did not contact that cluster again.
+
+Camunda's [8.10 migration guide](https://github.com/camunda/camunda-docs/blob/main/docs/apis-tools/migration-manuals/migrate-to-810.md#deleting-a-process-definition-with-running-instances-defers-history-deletion-delete-draining) permits a null `batchOperation` when process-definition history deletion is deferred. The v810 adapter now accepts a decoded deletion response identifying the requested resource without requiring an immediate batch. Returned batches still follow the existing polling path; the definition workflow still verifies disappearance unless `--no-wait` is selected. No completed history-batch state is synthesized, and no fallback mutation is added. CLI help states the remaining history-verification limitation. The v89 adapter and generated clients are unchanged.
+
+Response validation rejects absent/empty payloads, a missing or mismatched resource identity, and a non-null batch without a usable key. HTTP errors, transport/parsing errors, failed/canceled/partially completed batches, polling read failures and caller cancellation retain their errors. Command subprocess tests verify nonzero failure exits and a single JSON envelope, along with default confirmation and no-wait acceptance.
+
+Validation evidence:
+
+- Before the fix, `TestDeleteResponseHTTP/wait/deferred_history` and its no-wait counterpart reproduced the original malformed-response error using the generated client and an isolated HTTP server.
+- `go test ./internal/services/resource/v810 -run 'Test(DeleteResponse|Service_Delete)' -race -count=1 -v` passed, including all 30 HTTP response cases and batch-failure/transport cases.
+- `go test ./internal/services/resource/... ./internal/services/processdefinition/... ./c8volt/resource -race -count=1` passed.
+- `go test ./cmd -run 'Test.*(DeleteProcessDefinition|CommandContract|AllCommandHelp)' -race -count=1` passed.
+- `make docs-content` passed; touched Go files were formatted and `git diff --check` passed.
+
+The first sandboxed server test was skipped because loopback binding was unavailable; it was not counted as coverage. Tests were rerun with permission for test-owned listeners. An initial command-helper run emitted Go testing's trailing `PASS`; the helper was corrected to exit after command execution, and the single-envelope assertions then passed. Documentation generation initially lacked build-cache access and succeeded after that access was granted. Inherited live-test/profile environment and Go flags were cleared; dependency fetching was disabled throughout.
+
+## Follow-up: human bulk summaries use the configured logger (2026-10-20)
+
+The user clarified that the remaining output defect was logger bypass, not wording. `jobCompletionBatchView` now uses the existing `renderHumanLine` helper for every human preview, scope/count summary, no-op, outcome and verbose row. With a command logger attached, these are INFO records honoring its format, destination and level. The existing configured ERROR handling, plain stderr prompts, shared JSON envelope, mutation behavior and wording are unchanged.
+
+Stream tests first assert empty human stdout and validate timestamp/severity or structured logger records before extracting messages for existing wording assertions. Real-terminal tests continue to verify exact plain prompts, configured/inherited destinations, redirected output, declines and empty scopes. The new summary matrix covers plain and JSON logger formats, info/warn levels, preview, execution, verbose, quiet and JSON output. Existing multi-error tests now validate both INFO summaries and the single aggregate ERROR, retaining DEBUG-only HTTP detail and nonzero exits.
+
+Only isolated validation was used:
+
+- `go test ./cmd -run 'Test.*(BulkCompletion|UpdateJob)' -race -count=1` passed (24.850s).
+- `go test ./cmd -run 'TestBulkCompletion(DiagnosticLogging|SummaryLogging)' -race -count=1` passed (4.683s), including the tightened aggregate-error assertion.
+- The help check initially rejected stream implementation terminology in command prose; that prose was removed while retaining detailed stream contracts in README and this feature's CLI contract.
+- Corrected help/command-contract checks passed (0.805s); `make docs-content` and `git diff --check` passed. No real cluster was contacted.

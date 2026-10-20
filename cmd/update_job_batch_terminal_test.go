@@ -70,6 +70,16 @@ func TestBulkCompletionTerminalStreams(t *testing.T) {
 				exchanges = []testx.CmdTerminalExchange{{Prompt: bulkCompletionTerminalPrompt, Response: tt.response, EndOfInput: tt.eof}}
 			}
 			stdout, stderr, runErr := runBulkCompletionTerminal(t, args, tt.destination, tt.redirect, false, exchanges)
+			if !jsonMode {
+				prefix := ""
+				if prompted {
+					prefix = bulkCompletionTerminalPrompt
+				}
+				require.True(t, strings.HasPrefix(stderr, prefix))
+				var diagnostics string
+				stdout, diagnostics = assertBulkCompletionHumanLogs(t, stdout, strings.TrimPrefix(stderr, prefix))
+				stderr = prefix + diagnostics
+			}
 			if tt.decline || tt.partial {
 				var exitErr *exec.ExitError
 				require.ErrorAs(t, runErr, &exitErr)
@@ -204,6 +214,12 @@ func TestBulkCompletionTerminalEmpty(t *testing.T) {
 						destination = "inherited"
 					}
 					stdout, stderr, runErr := runBulkCompletionTerminal(t, args, destination, jsonMode, stdin, exchanges)
+					if !jsonMode {
+						require.True(t, strings.HasPrefix(stderr, wantStderr))
+						var diagnostics string
+						stdout, diagnostics = assertBulkCompletionHumanLogs(t, stdout, strings.TrimPrefix(stderr, wantStderr))
+						stderr = wantStderr + diagnostics
+					}
 					require.NoError(t, runErr, stderr)
 					require.Equal(t, wantStderr, stderr)
 					if stdin {

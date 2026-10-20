@@ -194,6 +194,9 @@ func TestUpdateJobBulkCompletionHuman(t *testing.T) {
 			fixture, server := newBulkCompletionFixture(t, "normal")
 			args := []string{"--config", writeTestConfigForVersion(t, server.URL, "8.8"), "--tenant", "tenant-a", "update", "job", "--type", "cleanup", "--complete"}
 			stdout, stderr := executeRootForJobTestWithSeparateOutputs(t, append(args, flags...)...)
+			if !strings.Contains(strings.Join(flags, " "), "json") {
+				stdout, stderr = assertBulkCompletionHumanLogs(t, stdout, stderr)
+			}
 			require.Empty(t, stderr)
 			if strings.Contains(strings.Join(flags, " "), "quiet") {
 				require.Empty(t, stdout)
@@ -307,6 +310,15 @@ func TestUpdateJobBulkCompletionConfirmation(t *testing.T) {
 			result := testx.NewCmdTerminalRunner().Run(t, testx.CmdTerminalRunRequest{ScopeTestName: "TestUpdateJobBulkCompletionHelper", Env: map[string]string{"C8VOLT_BATCH_ARGS": string(encoded)}, Exchanges: exchanges})
 			if !result.Supported {
 				t.Skip(result.UnsupportedReason)
+			}
+			if !strings.Contains(strings.Join(tc.flags, " "), "json") {
+				prefix := ""
+				if strings.HasPrefix(result.Stderr, prompt) {
+					prefix = prompt
+				}
+				var diagnostics string
+				result.Stdout, diagnostics = assertBulkCompletionHumanLogs(t, result.Stdout, strings.TrimPrefix(result.Stderr, prefix))
+				result.Stderr = prefix + diagnostics
 			}
 			if tc.failed {
 				var exitErr *exec.ExitError
@@ -455,6 +467,7 @@ func TestUpdateJobBulkCompletionOptions(t *testing.T) {
 func TestUpdateJobBulkCompletionAllPredicatesAndLimit(t *testing.T) {
 	fixture, server := newBulkCompletionFixture(t, "predicates")
 	stdout, stderr := executeRootForJobTestWithSeparateOutputs(t, "--config", writeTestConfigForVersion(t, server.URL, "8.8"), "--tenant", "tenant-a", "update", "job", "--complete", "--dry-run", "--verbose", "--state", "created", "--type", "cleanup", "--pi-key", "2251799813711000", "--element-instance-key", "2251799813711001", "--element-id", "task", "--worker", "worker", "--retries", "0", "--kind", "task_listener", "--listener-event-type", "canceling", "--limit", "1", "--batch-size", "10")
+	stdout, stderr = assertBulkCompletionHumanLogs(t, stdout, stderr)
 	require.Empty(t, stderr)
 	require.Contains(t, stdout, "selected job(s): 1")
 	require.Contains(t, stdout, "discovery user-limited: limit 1; pages 1; batch size 10")
@@ -475,6 +488,9 @@ func TestUpdateJobBulkCompletionPartialHuman(t *testing.T) {
 			encoded, _ := json.Marshal(append(args, flags...))
 			stdout, stderr, err := testx.RunCmdSubprocessSeparate(t, "TestUpdateJobBulkCompletionHelper", map[string]string{"C8VOLT_BATCH_ARGS": string(encoded)})
 			require.Error(t, err)
+			if !strings.Contains(strings.Join(flags, " "), "json") {
+				stdout, stderr = assertBulkCompletionHumanLogs(t, stdout, stderr)
+			}
 			require.Len(t, fixture.writes, 1)
 			mode := strings.Join(flags, " ")
 			if strings.Contains(mode, "json") {
@@ -564,6 +580,9 @@ func TestUpdateJobBulkCompletionExplicitTenants(t *testing.T) {
 			fixture, server := newBulkCompletionFixture(t, "explicit")
 			args := []string{"--config", writeTestConfigForVersion(t, server.URL, "8.8"), "--tenant", "tenant-a", "update", "job", "--key", "1,2", "--complete", "--workers", "1"}
 			stdout, stderr := executeRootForJobTestWithSeparateOutputs(t, append(args, flags...)...)
+			if !strings.Contains(strings.Join(flags, " "), "json") {
+				stdout, stderr = assertBulkCompletionHumanLogs(t, stdout, stderr)
+			}
 			require.Empty(t, stderr)
 			require.Zero(t, fixture.discovery)
 			if strings.Contains(strings.Join(flags, " "), "json") {
@@ -642,6 +661,9 @@ func TestUpdateJobBulkCompletionEmptyStdin(t *testing.T) {
 			encoded, _ := json.Marshal(append(args, flags...))
 			stdout, stderr, err := testx.RunCmdSubprocessInDirWithSeparateOutputs(t, "TestUpdateJobBulkCompletionHelper", "", map[string]string{"C8VOLT_BATCH_ARGS": string(encoded)}, " \n\t\r\n")
 			require.NoError(t, err, stderr)
+			if !strings.Contains(strings.Join(flags, " "), "json") {
+				stdout, stderr = assertBulkCompletionHumanLogs(t, stdout, stderr)
+			}
 			require.Empty(t, stderr)
 			require.Empty(t, fixture.calls)
 			mode := strings.Join(flags, " ")
@@ -708,6 +730,15 @@ func TestUpdateJobBulkCompletionExplicitConfirmation(t *testing.T) {
 			if !result.Supported {
 				t.Skip(result.UnsupportedReason)
 			}
+			if true {
+				prefix := ""
+				if strings.HasPrefix(result.Stderr, prompt) {
+					prefix = prompt
+				}
+				var diagnostics string
+				result.Stdout, diagnostics = assertBulkCompletionHumanLogs(t, result.Stdout, strings.TrimPrefix(result.Stderr, prefix))
+				result.Stderr = prefix + diagnostics
+			}
 			require.NotContains(t, result.Stdout, "Do you want to proceed?")
 			require.Equal(t, 1, strings.Count(result.Stderr, prompt))
 			if answer == "y" {
@@ -734,6 +765,15 @@ func TestUpdateJobBulkCompletionEmptyStdinTerminal(t *testing.T) {
 			result := testx.NewCmdTerminalRunner().Run(t, testx.CmdTerminalRunRequest{ScopeTestName: "TestUpdateJobBulkCompletionHelper", Env: map[string]string{"C8VOLT_BATCH_ARGS": string(encoded), "C8VOLT_BATCH_INPUT_READY": "1"}, Exchanges: []testx.CmdTerminalExchange{{Prompt: "test input ready\n", EndOfInput: true}}})
 			if !result.Supported {
 				t.Skip(result.UnsupportedReason)
+			}
+			if !strings.Contains(strings.Join(flags, " "), "json") {
+				prefix := ""
+				if strings.HasPrefix(result.Stderr, "test input ready\n") {
+					prefix = "test input ready\n"
+				}
+				var diagnostics string
+				result.Stdout, diagnostics = assertBulkCompletionHumanLogs(t, result.Stdout, strings.TrimPrefix(result.Stderr, prefix))
+				result.Stderr = prefix + diagnostics
 			}
 			require.NoError(t, result.Err, result.Stderr)
 			require.Equal(t, "test input ready\n", result.Stderr)
