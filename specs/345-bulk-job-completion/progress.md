@@ -253,3 +253,25 @@ Started: 2026-10-20 12:28:15
 - Passed test-family discovery, `go test ./cmd -run 'Test.*BulkCompletionAcceptance' -count=1` (12.014s), `go vet ./cmd`, and full `GORACE=atexit_sleep_ms=0 go test ./cmd -race -count=1` (144.660s). A final added scale read-count assertion passed `GORACE=atexit_sleep_ms=0 go test ./cmd -run 'TestBulkCompletionAcceptanceScale' -race -count=1 -v` (2.563s). Gofmt and diff checks passed. Delivery-wide checks remain part of T009.
 - Commit policy confirmed as conventional / ralph / automatic #345, with no local override. This commit coordinates the test implementation with task completion, compact durable discoveries and the next handoff. No live Camunda mutation, push, release or publication occurred.
 ---
+
+
+---
+## Iteration 8 - 2026-10-20 14:03
+**Work Unit**: US3 — T008 genuine terminal acceptance coverage (completed; US3 complete)
+**Tasks Completed**:
+- [x] T008: Add genuine terminal acceptance for bulk completion prompts, stream destinations, redirected results, empty scopes and partial-failure envelopes.
+**Tasks Remaining in Work Unit**: 0 US3 tasks. T009 is the sole remaining task, in the separate dependency-ready Polish & Cross-Cutting phase.
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/update_job_batch_terminal_test.go
+- specs/345-bulk-job-completion/tasks.md
+- specs/345-bulk-job-completion/ralph-memory.md
+- specs/345-bulk-job-completion/progress.md
+**Learnings**:
+- Added 51 real-terminal scenarios with independently captured streams, including configured leaf stderr, inherited root stderr, default stderr, and stdout redirected to a file. The subprocess asserts terminal stdin and nonterminal stdout. Exact prompt comparison preserves candidate count, tenant scope and listener consequence, rejects logger-prefixed or paging control text, and verifies approve/decline/blank/EOF behavior.
+- Three-page preparation completes before execution; request sequences prove one submission per eligible frozen key and zero writes for preview/decline/empty cases. Ordinary, verbose, quiet, JSON and quiet+JSON modes retain their selected-format results. JSON mutation cases preserve existing auto-confirm/automation eligibility; partial-failure runs retain all three ordered outcomes, independent acceptance/observation evidence, one envelope with EOF and a real nonzero exit.
+- Empty search and canonical-EOF stdin cover normal/dry-run/no-wait across five output modes. Exact human strings, zero-valued counts, empty arrays and omitted inapplicable collections are asserted; no-wait empty results remain succeeded. Search performs exactly one discovery; empty stdin performs no HTTP calls. The readiness marker is test-only and is the entire stderr stream for empty stdin.
+- The first run found only incorrect test expectations: human abort errors retain the established local-precondition prefix, and explicit-key summaries omit discovery tenant override provenance. Corrected those expectations after checking the existing rendering contract; no production routing defect was found.
+- Passed test-family discovery and `go test ./cmd -run 'Test.*BulkCompletionTerminal' -count=1` (2.725s), `go vet ./cmd`, and `GORACE=atexit_sleep_ms=0 go test ./cmd -race -count=1` (147.175s). Gofmt and diff checks passed. All added declarations belong to the focused terminal acceptance file; no production API, shared helper, generated client, help or documentation behavior changed.
+- Commit policy confirmed from .specify/extensions/ralph/ralph-config.yml as conventional / ralph / automatic #345, with no local override. This coordinated commit includes task completion, compact durable discoveries and the T009 handoff. Delivery-wide checks and live recovery proof remain T009; no live Camunda mutation, push or publication occurred.
+---

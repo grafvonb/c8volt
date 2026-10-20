@@ -24,6 +24,8 @@ Started: 2026-10-20T10:28:15Z
 - T007 HTTP acceptance lives in `cmd/update_job_batch_acceptance_test.go`; its fixture is file-local and reuses existing listener row/envelope helpers. It records raw search offsets/cursors, key-only reads, one-shot writes and peak overlapping requests without serializing handlers. Subprocesses exercise real exit status and separate streams.
 - Cancellation acceptance uses a test-only server handshake to cancel the actual Cobra context during a known discovery or mutation request; avoid timing-based sleeps. A four-request barrier demonstrates real HTTP concurrency independently of scheduling speed.
 
+- T008 terminal acceptance lives in `cmd/update_job_batch_terminal_test.go`: use `testx.NewCmdTerminalRunner`, assert real terminal stdin/nonterminal stdout in the isolated child, and supply canonical EOF via a test-only readiness marker for empty stdin. A three-page fixture checks complete discovery and exact ordered reads/submissions. Root versus leaf `SetErr` plus an independent tee capture proves inherited/configured destinations; `SetOut` to a file proves redirected results remain prompt-free.
+
 ## Decisions
 
 - T001 enforces named discovery tenant both in generated request JSON and defensively on returned rows. Empty scope omits tenant equality. Explicit `GetJob` retains cross-tenant backend authorization.
@@ -47,6 +49,8 @@ Started: 2026-10-20T10:28:15Z
 
 - T006 validates all collection/stdin tokens as positive signed-int64 decimal strings before preparation, preserving duplicates and spellings for service-owned canonicalization. Blank stdin lines are ignored; intentional empty stdin remains a batch. Explicit inputs reject predicates/search controls and every unrelated mutation mode.
 - Explicit batch rendering attaches `explicit_keys` tenant context with actual tenant evidence, names explicit selection in summaries/prompts, and omits search-page detail. Empty explicit results say `no selected jobs`; scalar payloads and selector wording remain compatible.
+
+- T007 HTTP scale acceptance covers all three supported adapters: 1,000 selected jobs from 1,102 raw rows over 12 pages; 1,300 key reads, 500 single submissions, peak concurrency four, and 200 accepted / 300 observed completed / 500 unsatisfied / zero unstarted. T008 adds 51 genuine terminal scenarios without changing product behavior.
 
 ## Gotchas
 
@@ -77,7 +81,11 @@ Started: 2026-10-20T10:28:15Z
 
 - Generated key-only search filters may contain nullable `deadline` and `isDenied` fields encoded as null. These are not extra predicates; HTTP assertions should reject additional non-null predicates while permitting generated null fields.
 
+- Terminal JSON mutation tests must retain `--auto-confirm` or `--automation`; terminal stdin does not waive the existing JSON eligibility rule. Exact human abort diagnostics include `local precondition failed: aborted by user`. Explicit-key summaries omit discovery tenant override provenance because tenant filtering does not apply.
+
 ## Reusable Commands
+
+- `go test ./cmd -list 'Test.*BulkCompletionTerminal'` and `go test ./cmd -run 'Test.*BulkCompletionTerminal' -count=1`
 
 - `go test ./cmd -list 'Test.*BulkCompletionAcceptance'` and `go test ./cmd -run 'Test.*BulkCompletionAcceptance' -count=1`
 - `GORACE=atexit_sleep_ms=0 go test ./cmd -run 'TestBulkCompletionAcceptanceScale' -race -count=1 -v` records per-adapter counts and concurrency.
@@ -115,7 +123,6 @@ Started: 2026-10-20T10:28:15Z
 
 ## Current Handoff
 
-- T007 is complete and validated; US3 remains partial. Recheck `tasks.md`: T008 (genuine terminal acceptance) is the next dependency-ready task. T009 depends on T008 and remains blocked; its live SC-006 recovery proof is still required. No external blocker exists for T008.
-- T007 adds HTTP acceptance only, with no production or generated-document changes. Each supported adapter previews 1,000 candidates without key lookups or writes, then accounts for 1,000 mixed outcomes from 1,102 raw rows over 12 pages: 1,300 key reads, 500 single submissions, peak four concurrent HTTP requests, 200 accepted / 300 observed completed / 500 unsatisfied / zero unstarted. Wrong-tenant/type rows and duplicates are excluded.
-- Additional acceptance covers sparse cursor/offset traversal, unique limits, contradictory/cyclic/error pages, rejection and real lost-response reconciliation (completed versus missing), polling versus no-wait, fail-fast, interrupted preparation/execution, terminal/filter/tenant races, sequential-listener exclusion, listener-variable zero-write failure and v87 unsupported empty input. The output matrix verifies normal/dry-run human/verbose/JSON/quiet, automation/auto-confirm/no-wait, authoritative empty search/stdin, incomplete preparation, exact empty human output, array omission rules and one envelope with EOF on nonzero exits.
-- Passed acceptance test discovery and required targeted suite (12.014s), `go vet ./cmd`, full command race suite (`GORACE=atexit_sleep_ms=0 go test ./cmd -race -count=1`, 144.660s), and the final scale count assertion under race (2.563s); gofmt and diff checks passed. The first acceptance run exposed only an overly strict fixture assertion about generated null filter fields; no product defect was found. T008 owns the deeper terminal destination/interaction matrix; T009 owns delivery-wide tests and live recovery evidence. No live mutation, push or publication occurred.
+- T008 is complete and US3 is finished. Recheck `tasks.md`: T009 (Phase 6, Polish & Cross-Cutting Validation) is the sole remaining task and is dependency-ready. Live SC-006 hierarchy recovery evidence remains required; availability of an authorized disposable Camunda environment has not been established in this iteration.
+- T008 adds 51 terminal scenarios for ordinary/verbose/quiet/JSON output, root-inherited and leaf-configured stderr, redirected files, approve/decline/blank/EOF, auto-confirm/automation, partial failures, and empty search/stdin under normal/dry-run/no-wait. Exact stream and request assertions prove one confirmation after multipage discovery, no paging prompts, no writes on previews/declines/empty scope, and one JSON envelope with EOF on real nonzero exits. No production changes were needed.
+- Passed test discovery, required terminal suite (2.725s), `go vet ./cmd`, full command race suite (`GORACE=atexit_sleep_ms=0 go test ./cmd -race -count=1`, 147.175s), gofmt and diff checks. T009 retains delivery-wide tests, fixture creation, exact runnable guide, live observation and cleanup. No live mutation, push or publication occurred.
