@@ -120,5 +120,5 @@
 
 ## Active Speckit Plan
 <!-- SPECKIT START -->
-- Active Speckit implementation plan: `specs/321-listener-timestamps/plan.md`
+- Active Speckit implementation plan: `specs/345-bulk-job-completion/plan.md`
 <!-- SPECKIT END -->
