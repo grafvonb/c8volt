@@ -328,6 +328,16 @@ Complete a selected job backlog with AND predicates. The same nine predicates as
   --complete --workers 4 --auto-confirm --json
 ```
 
+For an explicit reviewed set, repeat `--key`, use comma-separated keys, or supply newline-separated keys with `-`. Flags precede stdin; duplicate numeric keys are completed once. Blank stdin lines are ignored; malformed, nonpositive, out-of-range keys and empty comma tokens reject the whole input before writes. Deliberate empty stdin succeeds. Explicit keys may span authorized tenants and report their actual tenant context. They cannot use search predicates, `--batch-size` or `--limit`.
+
+```bash
+./c8volt update job --key 2251799870796844,2251799870796848 \
+  --key 2251799870796849 --complete --dry-run
+./c8volt update job - --complete --auto-confirm --json < reviewed-job-keys.txt
+```
+
+One scalar key keeps the original single-job result. Repeated/comma/stdin forms always return the bulk result, even if duplicates reduce to one job. Collections are supported only for completion.
+
 Discovery honors the configured tenant, named overrides, and accessible scope under `--tenant ""` or `--all-tenants`. `--batch-size` controls pages; `--limit` caps unique selected jobs, with zero meaning uncapped. A key or predicate is required; controls alone never select jobs. Explicit keys and predicates cannot mix. Preparation freezes the entire selection before one eligible stderr confirmation; incomplete discovery, dry-run, declined confirmation and empty results submit nothing. A later invocation discovers a fresh selection, including any new sequential listeners.
 
 Completing a listener job acknowledges its work without executing its business logic. Nonempty variables are rejected when a batch contains task listeners. Accepted requests skip independent confirmation and do not establish process termination. Missing reads cannot prove completion; ambiguous submissions are not replayed and receive bounded observation (`--no-wait` permits one read). The command does not reset retries, repair incidents, cancel processes or delete history.

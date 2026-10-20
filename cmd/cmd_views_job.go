@@ -252,6 +252,13 @@ const jobCompletionListenerConsequence = "Completing a listener job acknowledges
 // jobCompletionConfirmationPrompt describes the exact frozen count and scope.
 func jobCompletionConfirmationPrompt(batch job.PreparedCompletionBatch) string {
 	scope := tenantContextPrimaryHumanLine(newDiscoveryTenantContext(batch.DiscoveryTenant))
+	if batch.Selection.Mode == job.CompletionSelectionExplicit {
+		scope = tenantContextPrimaryHumanLine(newExplicitKeysTenantContext(batch.DiscoveryTenant))
+		if len(batch.TenantIDs) > 0 {
+			scope += "; affected tenants: " + strings.Join(batch.TenantIDs, ", ")
+		}
+		return fmt.Sprintf("You are about to complete %d explicitly selected job(s); %s. %s Do you want to proceed?", len(batch.Candidates), scope, jobCompletionListenerConsequence)
+	}
 	return fmt.Sprintf("You are about to complete %d selected job(s); %s; filters: %s. %s Do you want to proceed?", len(batch.Candidates), scope, jobCompletionFilterText(batch.Selection.Filter), jobCompletionListenerConsequence)
 }
 
@@ -293,7 +300,11 @@ func jobCompletionBatchView(cmd *cobra.Command, report job.CompletionBatchReport
 		label = "dry run: job completion"
 	}
 	renderOutputLine(cmd, "%s", label)
-	renderOutputLine(cmd, "filters: %s", jobCompletionFilterText(report.Selection.Filter))
+	if report.Selection.Mode == job.CompletionSelectionExplicit {
+		renderOutputLine(cmd, "selection: explicit keys")
+	} else {
+		renderOutputLine(cmd, "filters: %s", jobCompletionFilterText(report.Selection.Filter))
+	}
 	if ctx, ok := attachedTenantContext(cmd); ok {
 		for _, line := range tenantContextHumanLines(cmd, *ctx) {
 			renderOutputLine(cmd, "%s", line.Text)
@@ -306,7 +317,7 @@ func jobCompletionBatchView(cmd *cobra.Command, report job.CompletionBatchReport
 	}
 	if report.Limited {
 		renderOutputLine(cmd, "discovery user-limited: limit %d; pages %d; batch size %d", report.Selection.Limit, report.PageCount, report.Selection.BatchSize)
-	} else if flagVerbose {
+	} else if flagVerbose && report.Selection.Mode == job.CompletionSelectionSearch {
 		renderOutputLine(cmd, "discovery: pages %d; batch size %d", report.PageCount, report.Selection.BatchSize)
 	}
 	switch report.Status {
@@ -317,7 +328,11 @@ func jobCompletionBatchView(cmd *cobra.Command, report job.CompletionBatchReport
 		renderOutputLine(cmd, "outcome: preparation failed; no changes applied")
 	default:
 		if report.Counts.Selected == 0 && runErr == nil {
-			renderOutputLine(cmd, "outcome: no matching jobs; no changes applied")
+			if report.Selection.Mode == job.CompletionSelectionExplicit {
+				renderOutputLine(cmd, "outcome: no selected jobs; no changes applied")
+			} else {
+				renderOutputLine(cmd, "outcome: no matching jobs; no changes applied")
+			}
 		} else {
 			status := string(report.Status)
 			if runErr != nil && report.Status == job.CompletionBatchFinished {

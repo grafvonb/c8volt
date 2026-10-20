@@ -4,7 +4,11 @@
 package cmd
 
 import (
+	"errors"
+	"io"
+	"strings"
 	"testing"
+	"testing/iotest"
 
 	"github.com/grafvonb/c8volt/c8volt/job"
 	"github.com/stretchr/testify/require"
@@ -537,5 +541,99 @@ func TestUpdateJobBulkCompletionRequest(t *testing.T) {
 				require.Equal(t, "2251799813711000", batch.Selection.Filter.ProcessInstanceKey)
 			}
 		})
+	}
+}
+
+// TestUpdateJobBulkCompletionCollectionRouting preserves collection provenance even
+// when duplicate inputs will later collapse to one service-owned candidate.
+func TestUpdateJobBulkCompletionCollectionRouting(t *testing.T) {
+	for _, keys := range [][]string{{"123", "123"}, {"123,123"}, {" 00123 , 9223372036854775807 "}} {
+		t.Run(keys[0], func(t *testing.T) {
+			resetCommandTreeFlags(Root())
+			resetUpdateJobFlagState()
+			t.Cleanup(func() { resetCommandTreeFlags(Root()); resetUpdateJobFlagState() })
+			require.NoError(t, updateJobCmd.Flags().Set("complete", "true"))
+			for _, key := range keys {
+				require.NoError(t, updateJobCmd.Flags().Set("key", key))
+			}
+			_, batch, err := parseUpdateJobCommandRequest(updateJobCmd)
+			require.NoError(t, err)
+			require.NotNil(t, batch)
+			require.Equal(t, job.CompletionSelectionExplicit, batch.Selection.Mode)
+			require.Equal(t, job.CompletionInputCollection, batch.Selection.InputForm)
+			require.Len(t, batch.Selection.Keys, 2)
+		})
+	}
+}
+
+// TestUpdateJobBulkCompletionExplicitInputValidation checks the full input grammar
+// without backend reads, including reader failures after valid input.
+func TestUpdateJobBulkCompletionExplicitInputValidation(t *testing.T) {
+	for _, tc := range []struct {
+		name        string
+		flags, args []string
+		input       io.Reader
+		want        []string
+		invalid     bool
+	}{
+		{name: "flags before stdin", flags: []string{"--key", " 002,3 ", "--key", "2"}, args: []string{"-"}, input: strings.NewReader("\n3\n 4 \r\n"), want: []string{"002", "3", "2", "3", "4"}},
+		{name: "empty stdin", args: []string{"-"}, input: strings.NewReader(" \n\t\r\n")},
+		{name: "stdin error", args: []string{"-"}, input: io.MultiReader(strings.NewReader("123\n"), iotest.ErrReader(errors.New("input failed"))), invalid: true},
+		{name: "stdin comma", args: []string{"-"}, input: strings.NewReader("1,2\n"), invalid: true},
+		{name: "stdin malformed", args: []string{"-"}, input: strings.NewReader("123\nnope\n"), invalid: true},
+		{name: "extra dash", args: []string{"-", "-"}, invalid: true},
+		{name: "positional key", args: []string{"123"}, invalid: true},
+		{name: "empty flag with stdin", flags: []string{"--key", ""}, args: []string{"-"}, input: strings.NewReader("1\n"), invalid: true},
+		{name: "comma empty", flags: []string{"--key", "1,,2"}, invalid: true},
+		{name: "comma trailing", flags: []string{"--key", "1,"}, invalid: true},
+		{name: "comma leading", flags: []string{"--key", ",1"}, invalid: true},
+		{name: "blank token", flags: []string{"--key", "1, "}, invalid: true},
+		{name: "zero", flags: []string{"--key", "1,0"}, invalid: true},
+		{name: "negative", flags: []string{"--key", "1,-2"}, invalid: true},
+		{name: "signed", flags: []string{"--key", "1,+2"}, invalid: true},
+		{name: "overflow", flags: []string{"--key", "1,9223372036854775808"}, invalid: true},
+		{name: "fraction", flags: []string{"--key", "1,2.0"}, invalid: true},
+		{name: "exponent", flags: []string{"--key", "1,2e3"}, invalid: true},
+		{name: "key selector", flags: []string{"--key", "1,2", "--state", "created"}, invalid: true},
+		{name: "stdin selector", flags: []string{"--type", "cleanup"}, args: []string{"-"}, invalid: true},
+		{name: "retries", flags: []string{"--key", "1,2", "--retries", "0"}, invalid: true},
+		{name: "stdin retries", flags: []string{"--retries", "0"}, args: []string{"-"}, invalid: true},
+		{name: "explicit zero limit", flags: []string{"--key", "1,2", "--limit", "0"}, invalid: true},
+		{name: "stdin batch size", flags: []string{"--batch-size", "10"}, args: []string{"-"}, invalid: true},
+		{name: "worker zero", flags: []string{"--key", "1,2", "--workers", "0"}, invalid: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			resetCommandTreeFlags(Root())
+			resetUpdateJobFlagState()
+			t.Cleanup(func() { updateJobCmd.SetIn(nil); resetCommandTreeFlags(Root()); resetUpdateJobFlagState() })
+			updateJobCmd.SetIn(tc.input)
+			require.NoError(t, updateJobCmd.ParseFlags(append([]string{"--complete"}, tc.flags...)))
+			_, batch, err := parseUpdateJobCommandRequest(updateJobCmd, tc.args...)
+			if tc.invalid {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			require.NotNil(t, batch)
+			require.Equal(t, job.CompletionInputStdin, batch.Selection.InputForm)
+			require.Equal(t, tc.want, batch.Selection.Keys)
+		})
+	}
+}
+
+// TestUpdateJobCollectionRejectsUnrelatedModes prevents silently widening any
+// legacy mutation mode, including repeated copies of the same key.
+func TestUpdateJobCollectionRejectsUnrelatedModes(t *testing.T) {
+	for _, mode := range [][]string{{"--retries", "1"}, {"--timeout", "1m"}, {"--fail", "--retries", "0"}, {"--throw-bpmn-error", "ERROR"}} {
+		for _, input := range [][]string{{"--key", "123,123"}, {"--key", "123", "--key", "123"}, {"-"}} {
+			t.Run(strings.Join(append(append([]string{}, mode...), input...), " "), func(t *testing.T) {
+				resetCommandTreeFlags(Root())
+				resetUpdateJobFlagState()
+				t.Cleanup(func() { resetCommandTreeFlags(Root()); resetUpdateJobFlagState() })
+				require.NoError(t, updateJobCmd.ParseFlags(append(append([]string{}, mode...), input...)))
+				_, _, err := parseUpdateJobCommandRequest(updateJobCmd, updateJobCmd.Flags().Args()...)
+				require.ErrorContains(t, err, "require --complete")
+			})
+		}
 	}
 }

@@ -9,6 +9,7 @@ import (
 
 	"github.com/grafvonb/c8volt/c8volt/job"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 )
 
 // parseUpdateJobRequest maps update job flags into the facade request while preserving local validation order.
@@ -83,20 +84,42 @@ func updateJobAutomationEnabled(cmd *cobra.Command) bool {
 	return automationModeEnabled(cmd)
 }
 
-// parseUpdateJobCommandRequest chooses the selector contract before the legacy parser.
+// parseUpdateJobCommandRequest chooses the input contract before deduplication.
 // A scalar key keeps its established request and payload shape.
-func parseUpdateJobCommandRequest(cmd *cobra.Command) (job.UpdateRequest, *job.CompletionRequest, error) {
+func parseUpdateJobCommandRequest(cmd *cobra.Command, args ...string) (job.UpdateRequest, *job.CompletionRequest, error) {
+	if err := validateOptionalDashArg(args); err != nil {
+		return job.UpdateRequest{}, nil, err
+	}
+	// GetStringArray round-trips through CSV and loses a single empty value.
+	// Read the stored slice so an explicit --key "" remains invalid.
+	keyInputs := cmd.Flags().Lookup("key").Value.(pflag.SliceValue).GetSlice()
+	stdin := len(args) == 1
+	collection := stdin || len(keyInputs) > 1 || (len(keyInputs) == 1 && strings.Contains(keyInputs[0], ","))
+	if collection && !flagUpdateJobComplete {
+		return job.UpdateRequest{}, nil, invalidFlagValuef("key collections and stdin require --complete")
+	}
+	flagUpdateJobKey = ""
+	if len(keyInputs) == 1 && !collection {
+		flagUpdateJobKey = keyInputs[0]
+	}
 	selectorFlags := []string{"state", "type", "pi-key", "element-instance-key", "element-id", "worker", "kind", "listener-event-type", "batch-size", "limit"}
 	hasSelection := false
 	for _, name := range selectorFlags {
 		hasSelection = hasSelection || cmd.Flags().Changed(name)
 	}
-	keyed := cmd.Flags().Changed("key") || strings.TrimSpace(flagUpdateJobKey) != ""
+	keyed := stdin || cmd.Flags().Changed("key")
 	if hasSelection && (keyed || !flagUpdateJobComplete) {
-		return job.UpdateRequest{}, nil, mutuallyExclusiveFlagsf("job search selectors and controls require --complete without --key")
+		return job.UpdateRequest{}, nil, mutuallyExclusiveFlagsf("job search selectors and controls require --complete without explicit keys or stdin")
+	}
+	if collection {
+		request, err := parseUpdateJobBatchRequest(cmd, &job.CompletionSelection{Mode: job.CompletionSelectionExplicit, InputForm: job.CompletionInputCollection})
+		if err == nil {
+			request.Selection, err = parseUpdateJobExplicitSelection(cmd, keyInputs, stdin)
+		}
+		return job.UpdateRequest{}, &request, err
 	}
 	if !keyed && flagUpdateJobComplete {
-		request, err := parseUpdateJobBatchRequest(cmd)
+		request, err := parseUpdateJobBatchRequest(cmd, nil)
 		return job.UpdateRequest{}, &request, err
 	}
 	for _, name := range []string{"workers", "fail-fast", "no-worker-limit"} {

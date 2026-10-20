@@ -200,3 +200,35 @@ Started: 2026-10-20 12:28:15
 - Command ownership gate passed: base command contains flags/dispatch, shared predicate validation remains value-based, batch parsing/lifecycle/report construction is in update_job_batch.go, and output formatting is in cmd_views_job.go. No facade, service, generated client, dependency or unrelated workflow changed.
 - Commit policy confirmed from .specify/extensions/ralph/ralph-config.yml: conventional / ralph / automatic issue suffix #345; no local override exists. This coordinated commit includes substantive code, tests, docs, task state and durable memory. No live recovery claim or publication was made.
 ---
+
+---
+## Iteration 6 - 2026-10-20 13:45
+**Work Unit**: US2 — T006 explicit collection and stdin completion CLI (completed; US2 complete)
+**Tasks Completed**:
+- [x] T006: Support repeated/comma-separated keys and deliberate stdin through the existing prepared batch API, preserving scalar updates, tenant context and output contracts.
+**Tasks Remaining in Work Unit**: 0 US2 tasks. Three feature tasks remain; T007 is next dependency-ready by document order, with T008 also ready in US3.
+**Commit**: This work-unit commit
+**Files Changed**:
+- README.md
+- cmd/cmd_views_job.go
+- cmd/command_contract_test.go
+- cmd/update_job.go
+- cmd/update_job_batch.go
+- cmd/update_job_batch_test.go
+- cmd/update_job_outcome_test.go
+- cmd/update_job_request.go
+- cmd/update_job_request_test.go
+- docs/cli/c8volt_update_job.md
+- docs/index.md
+- specs/345-bulk-job-completion/progress.md
+- specs/345-bulk-job-completion/ralph-memory.md
+- specs/345-bulk-job-completion/tasks.md
+**Learnings**:
+- Added collection routing regressions first and observed failure on the old scalar path. Collection mode is chosen before deduplication; flags precede stdin, all tokens/read errors are checked before preparation, and service-owned canonicalization preserves exact signed-int64 keys without floating-point conversion.
+- An empty-flag regression caught pflag GetStringArray losing a lone empty token through CSV conversion. Reading its stored SliceValue preserves the distinction between absent keys and explicitly invalid empty keys. Shared stdin helpers remain unchanged because they reject empty input and impose a different key grammar.
+- HTTP execution tests verify duplicate-to-one batch schema, preparation-before-mutation, cross-tenant key authorization and actual context, missing-target/read/input failures with zero writes, listener-variable rejection, quiet/JSON/automation/no-wait behavior, and scalar completion's unchanged payload. Existing tests retain retries, timeout, failure and BPMN-error behavior; new tests reject collections for all those modes.
+- Genuine terminal stdin proves one accurate cross-tenant confirmation on stderr with approve/decline handling, plus prompt-free empty stdin under normal/dry-run/no-wait/quiet+JSON execution. Empty human output is asserted exactly; JSON requires one envelope and EOF with the established empty arrays and omission rules.
+- Passed required targeted update/bulk/contract tests plus capability/help checks, go vet ./cmd, and GORACE=atexit_sleep_ms=0 go test ./cmd -race -count=1 (128.784s). Gofmt, make docs-content, generated-doc review and git diff --check passed. No full repository test rerun was needed for this CLI-only unit; T009 retains delivery-wide checks.
+- Command cohesion review passed: base command owns flags/dispatch; batch parsing and lifecycle remain in update_job_batch.go; final summaries and prompts remain in cmd_views_job.go. No facade/service/generated-client/dependency changes or second collection engine were introduced. T007/T008 acceptance depth remains unchecked.
+- Commit policy resolved from .specify/extensions/ralph/ralph-config.yml with no local override: conventional / ralph / automatic #345 suffix. This coordinated commit includes the completed task, durable handoff and appended audit record. No live recovery claim, push or publication occurred.
+---

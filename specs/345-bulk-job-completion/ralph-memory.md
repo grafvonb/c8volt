@@ -19,6 +19,8 @@ Started: 2026-10-20T10:28:15Z
 
 - Selector CLI routing is `parseUpdateJobCommandRequest` -> `parseUpdateJobBatchRequest` -> `runUpdateJobBatch`. New selector values use command-local pflags, with pure `validateJobSearchPredicates` shared with reads; never assign `flagGetJob*` to build an update request. Scalar requests still use the legacy parser/runner.
 
+- Explicit CLI collection parsing stays in `cmd/update_job_batch.go`; `--key` is a stringArray to preserve repeated occurrences and raw comma tokens. Dispatch chooses collection mode before deduplication, then passes flag-before-stdin order to the existing service. Scalar requests still use the legacy parser.
+
 ## Decisions
 
 - T001 enforces named discovery tenant both in generated request JSON and defensively on returned rows. Empty scope omits tenant equality. Explicit `GetJob` retains cross-tenant backend authorization.
@@ -39,6 +41,9 @@ Started: 2026-10-20T10:28:15Z
 - T004 reuses `DetermineNoOfWorkers` and `pool.ExecuteSlice`. Callback results carry explicit started state and errors; overlay only started results onto preinitialized rows. Pool cancellation stops fail-fast scheduling, while started work uses the original caller context. Join callback errors and caller errors, excluding pool-internal fail-fast cancellation. Every execution retains the frozen order and disposition count partition.
 
 - Batch command results use `renderOutputLine` and explicit quiet handling, preserving stdout for selected-format results. `jobCompletionBatchView` renders one shared envelope with report-plus-error; the caller uses `exitAfterRenderedResult` on errors, including suppressed exit codes. No-wait becomes accepted only when report accepted count is positive. Prompts use configured stderr and include frozen count, filters, scope and listener consequence.
+
+- T006 validates all collection/stdin tokens as positive signed-int64 decimal strings before preparation, preserving duplicates and spellings for service-owned canonicalization. Blank stdin lines are ignored; intentional empty stdin remains a batch. Explicit inputs reject predicates/search controls and every unrelated mutation mode.
+- Explicit batch rendering attaches `explicit_keys` tenant context with actual tenant evidence, names explicit selection in summaries/prompts, and omits search-page detail. Empty explicit results say `no selected jobs`; scalar payloads and selector wording remain compatible.
 
 ## Gotchas
 
@@ -62,6 +67,10 @@ Started: 2026-10-20T10:28:15Z
 - Existing CLI predicate-key validation requires 16 decimal digits. Reuse it for get/update selector consistency; internal batch APIs separately validate positive int64 keys. Zero `--limit` is explicitly valid for bulk selection even though `get job --limit 0` is rejected.
 
 - Global CLI metadata tests require recurring shorthand consistency (`--state` uses `-s`) and action-focused help without `stdout`/`stderr` wording. Include `TestCommandCapability` and `TestAllCommandHelp` in targeted metadata checks; `Test.*CommandContract` alone misses them.
+
+- pflag `GetStringArray` round-trips values through CSV and loses a lone empty string. Read `Lookup("key").Value.(pflag.SliceValue).GetSlice()` to reject `--key ''`, including combined stdin. The command dispatcher resets its legacy scalar value because it is no longer directly bound to the key flag.
+- Existing `readKeysIfDash` rejects empty stdin and `validateKeys` requires 16 digits, so they cannot implement the completion collection contract unchanged. The batch-local scanner uses `cmd.InOrStdin()` and the existing scanner buffer bound, retains reader errors, and leaves shared stdin behavior untouched.
+- Empty-stdin terminal tests use a test-only stderr readiness marker before command execution so `CmdTerminalRunner` can send real canonical EOF. Assert that marker is the entire stderr stream; no product prompt is added.
 
 ## Reusable Commands
 
@@ -98,8 +107,7 @@ Started: 2026-10-20T10:28:15Z
 
 ## Current Handoff
 
-- T005 is complete and validated, closing US1. Recheck selection against `tasks.md`; T006 (US2 explicit collections/stdin CLI) is next dependency-ready. T007/T008 depend on T006, and T009 depends on both acceptance tasks. No external blocker exists for T006.
-- Extend the existing scalar/batch dispatch before deduplication: repeated/comma keys and deliberate stdin must use the prepared batch API even when one unique key remains. Keep ordinary scalar updates on the legacy path. Explicit batch keys require positive signed-int64 validation, not the older 16-digit selector helper.
-- Reuse `runUpdateJobBatch` and its single-render/error-exit path. T006 must adapt tenant-context attachment, confirmation scope and final selection wording for explicit collections, reject search controls on explicit inputs, and preserve actual authorized tenant context. The current CLI runner and views intentionally describe search selection only.
-- T005 has basic real-terminal coverage in `cmd/update_job_batch_test.go` for approve/decline/EOF and empty normal/dry-run/no-wait/quiet/JSON. Reuse that evidence; T007/T008 still own scale, supported-adapter matrices, broader terminal destinations and explicit/stdin acceptance depth. Their tasks remain unchecked.
-- T005 passed the required targeted command tests, expanded read/metadata/help checks, `go vet ./cmd`, full command race suite with `GORACE=atexit_sleep_ms=0`, gofmt, docs regeneration and `git diff --check`. Initial full-suite metadata failures (missing `-s`, forbidden stream term in help) were corrected before the passing rerun. No live Camunda operations, release or publication occurred.
+- T006 is complete and validated, closing US2. Recheck selection against `tasks.md`: T007 (US3 HTTP/scale acceptance) is next by document order; T008 is also ready within US3. T009 depends on both and remains blocked by those tasks. No external blocker exists for T007/T008.
+- T006 tests cover repeated/comma/stdin order, canonical duplicates collapsing to one while retaining the batch schema, full int64 precision, invalid/empty input tokens, read errors, missing explicit targets, listener payload guards, actual cross-tenant context, empty output modes, scalar JSON compatibility and unrelated mode rejection. Real terminal tests cover explicit approve/decline and empty stdin normal/dry-run/no-wait/quiet+JSON. Reuse these; T007/T008 still own scale, broader adapter/race scenarios and deeper terminal destinations.
+- All T006 changes stay in CLI parsing/lifecycle/views, nearby tests, README and generated docs. No second collection engine or facade/service changes were needed. Passed targeted command/contract/capability/help tests, `go vet ./cmd`, full command race suite (`GORACE=atexit_sleep_ms=0 go test ./cmd -race -count=1`, 128.784s), gofmt, `make docs-content`, generated-doc review and `git diff --check`.
+- Initial routing regressions failed as expected; an additional empty-flag test exposed pflag CSV conversion loss and passed after switching to the stored slice. No live Camunda mutation, release or publication occurred. SC-006 remains reserved for T009's authorized disposable environment validation.

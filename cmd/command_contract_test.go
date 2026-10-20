@@ -1288,7 +1288,7 @@ func TestCommandCapabilityForCommand_UpdateProcessInstanceContract(t *testing.T)
 	})
 }
 
-// TestCommandCapabilityForCommand_GetAndUpdateJobContract keeps selector and legacy flag metadata aligned with execution.
+// TestCommandCapabilityForCommand_GetAndUpdateJobContract keeps collection, selector and legacy metadata aligned with execution.
 func TestCommandCapabilityForCommand_GetAndUpdateJobContract(t *testing.T) {
 	root := Root()
 	resetCommandTreeFlags(root)
@@ -1419,10 +1419,10 @@ func TestCommandCapabilityForCommand_GetAndUpdateJobContract(t *testing.T) {
 	require.Contains(t, updateCapability.Flags, FlagContract{
 		Name:        "key",
 		Shorthand:   "k",
-		Type:        "string",
+		Type:        "stringArray",
 		Required:    false,
-		Repeated:    false,
-		Description: "job key to update",
+		Repeated:    true,
+		Description: "job key to update; for --complete, repeat or use comma-separated keys and stdin '-'",
 	})
 	require.Contains(t, updateCapability.Flags, FlagContract{
 		Name:        "retries",

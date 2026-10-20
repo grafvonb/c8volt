@@ -19,6 +19,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"testing/iotest"
 
 	"github.com/grafvonb/c8volt/testx"
 	"github.com/stretchr/testify/require"
@@ -27,15 +28,17 @@ import (
 // bulkCompletionFixture records discovery, rechecks and writes independently, and
 // refuses any endpoint outside this command's completion workflow.
 type bulkCompletionFixture struct {
-	mu        sync.Mutex
-	calls     []string
-	scenario  string
-	discovery int
-	reads     int
-	writes    []string
+	mu         sync.Mutex
+	calls      []string
+	scenario   string
+	discovery  int
+	reads      int
+	lookupKeys []string
+	writes     []string
 }
 
-// newBulkCompletionFixture supplies deterministic listener rows through actual HTTP adapters.
+// newBulkCompletionFixture supplies listener rows and explicit tenant/missing-key
+// cases through actual HTTP adapters, recording the preparation-before-write boundary.
 func newBulkCompletionFixture(t *testing.T, scenario string) (*bulkCompletionFixture, *httptest.Server) {
 	t.Helper()
 	fixture := &bulkCompletionFixture{scenario: scenario}
@@ -51,6 +54,7 @@ func newBulkCompletionFixture(t *testing.T, scenario string) (*bulkCompletionFix
 			key, lookup := filter["jobKey"].(string)
 			if lookup {
 				fixture.reads++
+				fixture.lookupKeys = append(fixture.lookupKeys, key)
 				require.NotContains(t, filter, "tenantId")
 				state := "CREATED"
 				if scenario == "completed" {
@@ -59,7 +63,15 @@ func newBulkCompletionFixture(t *testing.T, scenario string) (*bulkCompletionFix
 				if scenario == "partial" && key == "2251799813711968" {
 					state = "CANCELED"
 				}
-				fmt.Fprintf(w, `{"items":[%s],"page":{"totalItems":1}}`, bulkCompletionRow(key, state))
+				if scenario == "explicit missing" && key == "2" {
+					io.WriteString(w, `{"items":[],"page":{"totalItems":0}}`)
+					return
+				}
+				row := bulkCompletionRow(key, state)
+				if strings.HasPrefix(scenario, "explicit") && key == "2" {
+					row = strings.ReplaceAll(row, `"tenant-a"`, `"tenant-b"`)
+				}
+				fmt.Fprintf(w, `{"items":[%s],"page":{"totalItems":1}}`, row)
 				return
 			}
 			fixture.discovery++
@@ -91,6 +103,10 @@ func newBulkCompletionFixture(t *testing.T, scenario string) (*bulkCompletionFix
 			return
 		}
 		if r.Method == "POST" && strings.HasSuffix(r.URL.Path, "/completion") {
+			if scenario == "explicit" {
+				require.GreaterOrEqual(t, fixture.reads, 3)
+				require.Equal(t, []string{"1", "2"}, fixture.lookupKeys[:2], "all explicit preparation reads must precede mutation")
+			}
 			fixture.writes = append(fixture.writes, r.URL.Path)
 			w.WriteHeader(http.StatusNoContent)
 			return
@@ -235,7 +251,8 @@ func TestUpdateJobBulkCompletionFailures(t *testing.T) {
 	}
 }
 
-// TestUpdateJobBulkCompletionHelper isolates os.Exit paths and terminal stdin while preserving configured streams.
+// TestUpdateJobBulkCompletionHelper isolates os.Exit paths and real stdin while
+// preserving configured streams; an injected reader error exercises preflight failure.
 func TestUpdateJobBulkCompletionHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" || os.Getenv(testx.CmdSubprocessNameEnv) != t.Name() {
 		return
@@ -246,6 +263,13 @@ func TestUpdateJobBulkCompletionHelper(t *testing.T) {
 	root.SetOut(os.Stdout)
 	root.SetErr(os.Stderr)
 	root.SetArgs(args)
+	// This test-only handshake lets the terminal driver send EOF before parsing.
+	if os.Getenv("C8VOLT_BATCH_INPUT_READY") == "1" {
+		fmt.Fprintln(os.Stderr, "test input ready")
+	}
+	if os.Getenv("C8VOLT_BATCH_STDIN_ERROR") == "1" {
+		root.SetIn(io.MultiReader(strings.NewReader("1\n"), iotest.ErrReader(fmt.Errorf("input failed"))))
+	}
 	if _, err := root.ExecuteC(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
@@ -469,6 +493,256 @@ func TestUpdateJobBulkCompletionPartialHuman(t *testing.T) {
 				require.Less(t, strings.Index(stdout, "2251799813711967"), strings.Index(stdout, "2251799813711968"))
 			} else {
 				require.NotContains(t, stdout, "2251799813711967")
+			}
+		})
+	}
+}
+
+// TestUpdateJobBulkCompletionExplicitCollections proves combined input order,
+// service-owned canonical deduplication, precision, and the stable bulk schema.
+func TestUpdateJobBulkCompletionExplicitCollections(t *testing.T) {
+	for _, tc := range []struct {
+		name, input, form string
+		keys, want        []string
+	}{
+		{"repeated duplicate", "", "collection", []string{"--key", "1", "--key", "1"}, []string{"1"}},
+		{"comma duplicate", "", "collection", []string{"--key", "1,01"}, []string{"1"}},
+		{"precision", "", "collection", []string{"--key", "9223372036854775807,9007199254740993"}, []string{"9223372036854775807", "9007199254740993"}},
+		{"stdin one", "1\n", "stdin", []string{"-"}, []string{"1"}},
+		{"flags before stdin", "\n 2 \r\n1\n", "stdin", []string{"-", "--key", "001,1", "--key", "2"}, []string{"1", "2"}},
+	} {
+		for _, preview := range []bool{true, false} {
+			t.Run(fmt.Sprintf("%s preview=%t", tc.name, preview), func(t *testing.T) {
+				fixture, server := newBulkCompletionFixture(t, "normal")
+				args := []string{"--config", writeTestConfigForVersion(t, server.URL, "8.8"), "update", "job", "--complete", "--auto-confirm", "--json", "--workers", "1"}
+				args = append(args, tc.keys...)
+				if preview {
+					args = append(args, "--dry-run")
+				}
+				encoded, _ := json.Marshal(args)
+				stdout, stderr, err := testx.RunCmdSubprocessInDirWithSeparateOutputs(t, "TestUpdateJobBulkCompletionHelper", "", map[string]string{"C8VOLT_BATCH_ARGS": string(encoded)}, tc.input)
+				require.NoError(t, err, stderr)
+				require.Empty(t, stderr)
+				envelope := decodeBulkCompletionEnvelope(t, stdout)
+				payload := requireJSONObject(t, envelope["payload"])
+				selection := requireJSONObject(t, payload["selection"])
+				require.Equal(t, "explicit", selection["mode"])
+				require.Equal(t, tc.form, selection["inputForm"])
+				require.Equal(t, "explicit_inputs_read", payload["completionReason"])
+				require.Zero(t, fixture.discovery)
+				require.Equal(t, float64(len(tc.want)), requireJSONObject(t, payload["counts"])["selected"])
+				field, omitted := "outcomes", "candidates"
+				if preview {
+					field, omitted = omitted, field
+				}
+				require.NotContains(t, payload, omitted)
+				rows := payload[field].([]any)
+				for i, row := range rows {
+					candidate := requireJSONObject(t, row)
+					if !preview {
+						candidate = requireJSONObject(t, candidate["candidate"])
+					}
+					require.Equal(t, tc.want[i], candidate["key"])
+				}
+				if preview {
+					require.Equal(t, tc.want, fixture.lookupKeys)
+					require.Empty(t, fixture.writes)
+				} else {
+					require.Equal(t, append(append([]string{}, tc.want...), tc.want...), fixture.lookupKeys)
+					require.Len(t, fixture.writes, len(tc.want))
+				}
+			})
+		}
+	}
+}
+
+// TestUpdateJobBulkCompletionExplicitTenants retains authorized keys outside the
+// discovery tenant and reports actual context without implying filtered selection.
+func TestUpdateJobBulkCompletionExplicitTenants(t *testing.T) {
+	for _, flags := range [][]string{{"--dry-run", "--verbose"}, {"--auto-confirm"}, {"--auto-confirm", "--json"}, {"--automation", "--json", "--quiet", "--no-wait"}} {
+		t.Run(strings.Join(flags, " "), func(t *testing.T) {
+			fixture, server := newBulkCompletionFixture(t, "explicit")
+			args := []string{"--config", writeTestConfigForVersion(t, server.URL, "8.8"), "--tenant", "tenant-a", "update", "job", "--key", "1,2", "--complete", "--workers", "1"}
+			stdout, stderr := executeRootForJobTestWithSeparateOutputs(t, append(args, flags...)...)
+			require.Empty(t, stderr)
+			require.Zero(t, fixture.discovery)
+			if strings.Contains(strings.Join(flags, " "), "json") {
+				envelope := decodeBulkCompletionEnvelope(t, stdout)
+				ctx := requireJSONObject(t, envelope["tenantContext"])
+				require.Equal(t, "explicit_keys", ctx["mode"])
+				require.Equal(t, "not_applied", ctx["filter"])
+				require.Equal(t, []any{"tenant-a", "tenant-b"}, ctx["resolvedTenantIds"])
+				require.Equal(t, true, ctx["crossTenant"])
+			} else {
+				require.Contains(t, stdout, "selection: explicit keys\n")
+				require.Contains(t, stdout, "affected tenants: tenant-a, tenant-b\n")
+				require.Contains(t, stdout, "selected job(s): 2\n")
+				require.NotContains(t, stdout, "filters:")
+				require.NotContains(t, stdout, "discovery:")
+				require.NotContains(t, stdout, "selection scope: tenant-a only")
+			}
+			if flags[0] == "--dry-run" {
+				require.Empty(t, fixture.writes)
+			} else {
+				require.Len(t, fixture.writes, 2)
+			}
+		})
+	}
+}
+
+// TestUpdateJobBulkCompletionExplicitFailures rejects incomplete input or a
+// missing explicit target before any mutation and retains preparation evidence.
+func TestUpdateJobBulkCompletionExplicitFailures(t *testing.T) {
+	for _, tc := range []struct {
+		name, scenario, stdin string
+		flags                 []string
+		readError, prepared   bool
+	}{
+		{name: "malformed late stdin", stdin: "1\n2\nbad\n", flags: []string{"-"}},
+		{name: "read failure", flags: []string{"-"}, readError: true},
+		{name: "empty comma", flags: []string{"--key", "1,"}},
+		{name: "empty scalar", flags: []string{"--key", ""}},
+		{name: "missing target", scenario: "explicit missing", flags: []string{"--key", "1,2"}, prepared: true},
+		{name: "listener variables", flags: []string{"--key", "1,2", "--vars", `{"x":1}`}, prepared: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			fixture, server := newBulkCompletionFixture(t, tc.scenario)
+			args := []string{"--config", writeTestConfigForVersion(t, server.URL, "8.8"), "update", "job", "--complete", "--auto-confirm", "--json"}
+			encoded, _ := json.Marshal(append(args, tc.flags...))
+			env := map[string]string{"C8VOLT_BATCH_ARGS": string(encoded)}
+			if tc.readError {
+				env["C8VOLT_BATCH_STDIN_ERROR"] = "1"
+			}
+			stdout, stderr, err := testx.RunCmdSubprocessInDirWithSeparateOutputs(t, "TestUpdateJobBulkCompletionHelper", "", env, tc.stdin)
+			require.Error(t, err)
+			envelope := decodeBulkCompletionEnvelope(t, stdout)
+			require.Contains(t, []string{"invalid", "failed"}, envelope["outcome"])
+			require.Empty(t, fixture.writes)
+			require.Zero(t, fixture.discovery)
+			require.NotContains(t, stderr, "Do you want to proceed?")
+			if tc.prepared {
+				payload := requireJSONObject(t, envelope["payload"])
+				require.Equal(t, "preparation_failed", payload["status"])
+				require.Contains(t, payload, "candidates")
+				require.NotContains(t, payload, "outcomes")
+			} else {
+				require.Empty(t, fixture.calls)
+			}
+		})
+	}
+}
+
+// TestUpdateJobBulkCompletionEmptyStdin proves deliberate empty input is an
+// authoritative no-op across result modes and never claims accepted work.
+func TestUpdateJobBulkCompletionEmptyStdin(t *testing.T) {
+	for _, flags := range [][]string{nil, {"--dry-run"}, {"--no-wait"}, {"--quiet"}, {"--json", "--auto-confirm"}, {"--json", "--quiet", "--automation", "--no-wait"}, {"--json", "--quiet", "--dry-run"}} {
+		t.Run(strings.Join(flags, " "), func(t *testing.T) {
+			fixture, server := newBulkCompletionFixture(t, "normal")
+			args := []string{"--config", writeTestConfigForVersion(t, server.URL, "8.8"), "update", "job", "-", "--complete"}
+			encoded, _ := json.Marshal(append(args, flags...))
+			stdout, stderr, err := testx.RunCmdSubprocessInDirWithSeparateOutputs(t, "TestUpdateJobBulkCompletionHelper", "", map[string]string{"C8VOLT_BATCH_ARGS": string(encoded)}, " \n\t\r\n")
+			require.NoError(t, err, stderr)
+			require.Empty(t, stderr)
+			require.Empty(t, fixture.calls)
+			mode := strings.Join(flags, " ")
+			if strings.Contains(mode, "json") {
+				envelope := decodeBulkCompletionEnvelope(t, stdout)
+				require.Equal(t, "succeeded", envelope["outcome"])
+				payload := requireJSONObject(t, envelope["payload"])
+				field, omitted := "outcomes", "candidates"
+				if strings.Contains(mode, "dry-run") {
+					field, omitted = omitted, field
+				}
+				require.Equal(t, []any{}, payload[field])
+				require.NotContains(t, payload, omitted)
+				for _, count := range requireJSONObject(t, payload["counts"]) {
+					require.Equal(t, float64(0), count)
+				}
+			} else if strings.Contains(mode, "quiet") {
+				require.Empty(t, stdout)
+			} else {
+				want := "job completion\nselection: explicit keys\nselection scope: explicit resource keys; tenant filter not applied\nselected job(s): 0\n"
+				if strings.Contains(mode, "dry-run") {
+					want = "dry run: " + want + jobCompletionListenerConsequence + "\noutcome: preview; no changes applied\n"
+				} else {
+					want += "outcome: no selected jobs; no changes applied\n"
+				}
+				require.Equal(t, want, stdout)
+			}
+		})
+	}
+}
+
+// TestUpdateJobBulkCompletionExplicitGuardrails rejects machine-output misuse and
+// input-mode conflicts before any lookup, including deliberately empty stdin.
+func TestUpdateJobBulkCompletionExplicitGuardrails(t *testing.T) {
+	for _, flags := range [][]string{
+		{"--key", "1,2", "--json"}, {"--key", "1,2", "--json", "--dry-run", "--verbose"},
+		{"--key", "1,2", "--keys-only"}, {"--key", "1,2", "--limit", "0"},
+		{"--key", "1,2", "--batch-size", "10"}, {"--key", "1,2", "--type", "cleanup"},
+		{"-", "--json"}, {"-", "--retries", "0"}, {"-", "--kind", "TASK_LISTENER"},
+		{"--key", "1,2", "--fail"}, {"--key", "1,2", "--timeout", "1m"},
+		{"--key", "1,2", "--throw-bpmn-error", "ERROR"},
+	} {
+		t.Run(strings.Join(flags, " "), func(t *testing.T) {
+			fixture, server := newBulkCompletionFixture(t, "normal")
+			args := []string{"--config", writeTestConfigForVersion(t, server.URL, "8.8"), "update", "job", "--complete"}
+			encoded, _ := json.Marshal(append(args, flags...))
+			_, _, err := testx.RunCmdSubprocessSeparate(t, "TestUpdateJobBulkCompletionHelper", map[string]string{"C8VOLT_BATCH_ARGS": string(encoded)})
+			require.Error(t, err)
+			require.Empty(t, fixture.calls)
+		})
+	}
+}
+
+// TestUpdateJobBulkCompletionExplicitConfirmation uses terminal stdin to prove a
+// frozen cross-tenant collection gets one accurate stderr confirmation decision.
+func TestUpdateJobBulkCompletionExplicitConfirmation(t *testing.T) {
+	for _, answer := range []string{"y", "n"} {
+		t.Run(answer, func(t *testing.T) {
+			fixture, server := newBulkCompletionFixture(t, "explicit")
+			args := []string{"--config", writeTestConfigForVersion(t, server.URL, "8.8"), "--tenant", "tenant-a", "update", "job", "--key", "1,2,1", "--complete", "--workers", "1"}
+			encoded, _ := json.Marshal(args)
+			prompt := "You are about to complete 2 explicitly selected job(s); selection scope: explicit resource keys; tenant filter not applied; affected tenants: tenant-a, tenant-b. " + jobCompletionListenerConsequence + "\nDo you want to proceed? [y/N]: "
+			result := testx.NewCmdTerminalRunner().Run(t, testx.CmdTerminalRunRequest{ScopeTestName: "TestUpdateJobBulkCompletionHelper", Env: map[string]string{"C8VOLT_BATCH_ARGS": string(encoded)}, Exchanges: []testx.CmdTerminalExchange{{Prompt: prompt, Response: answer}}})
+			if !result.Supported {
+				t.Skip(result.UnsupportedReason)
+			}
+			require.NotContains(t, result.Stdout, "Do you want to proceed?")
+			require.Equal(t, 1, strings.Count(result.Stderr, prompt))
+			if answer == "y" {
+				require.NoError(t, result.Err, result.Stderr)
+				require.Len(t, fixture.writes, 2)
+			} else {
+				require.Error(t, result.Err)
+				require.Empty(t, fixture.writes)
+				require.Equal(t, []string{"1", "2"}, fixture.lookupKeys)
+				require.Contains(t, result.Stdout, "not started 2")
+			}
+		})
+	}
+}
+
+// TestUpdateJobBulkCompletionEmptyStdinTerminal supplies genuine terminal EOF
+// before parsing and proves empty input does not request mutation confirmation.
+func TestUpdateJobBulkCompletionEmptyStdinTerminal(t *testing.T) {
+	for _, flags := range [][]string{nil, {"--dry-run"}, {"--no-wait"}, {"--quiet", "--json", "--auto-confirm"}} {
+		t.Run(strings.Join(flags, " "), func(t *testing.T) {
+			fixture, server := newBulkCompletionFixture(t, "normal")
+			args := []string{"--config", writeTestConfigForVersion(t, server.URL, "8.8"), "update", "job", "-", "--complete"}
+			encoded, _ := json.Marshal(append(args, flags...))
+			result := testx.NewCmdTerminalRunner().Run(t, testx.CmdTerminalRunRequest{ScopeTestName: "TestUpdateJobBulkCompletionHelper", Env: map[string]string{"C8VOLT_BATCH_ARGS": string(encoded), "C8VOLT_BATCH_INPUT_READY": "1"}, Exchanges: []testx.CmdTerminalExchange{{Prompt: "test input ready\n", EndOfInput: true}}})
+			if !result.Supported {
+				t.Skip(result.UnsupportedReason)
+			}
+			require.NoError(t, result.Err, result.Stderr)
+			require.Equal(t, "test input ready\n", result.Stderr)
+			require.NotContains(t, result.Stdout, "Do you want to proceed?")
+			require.Empty(t, fixture.calls)
+			if len(flags) > 0 && flags[0] == "--quiet" {
+				decodeBulkCompletionEnvelope(t, result.Stdout)
+			} else {
+				require.Contains(t, result.Stdout, "selected job(s): 0\n")
 			}
 		})
 	}

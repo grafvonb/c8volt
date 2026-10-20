@@ -309,3 +309,23 @@ func TestUpdateJobBulkCompletionSuppressionAndVersion(t *testing.T) {
 		})
 	}
 }
+
+// TestUpdateJobCommand_ScalarCompletionKeepsLegacyJSON proves the repeatable key
+// flag still dispatches one scalar through the original worker-outcome contract.
+func TestUpdateJobCommand_ScalarCompletionKeepsLegacyJSON(t *testing.T) {
+	var requests []string
+	var bodies []map[string]any
+	server := newJobCompleteServer(t, &requests, &bodies, []string{jobSearchResponse("2251799813711967", 1)}, http.StatusNoContent)
+	t.Cleanup(server.Close)
+	stdout, stderr := executeRootForJobTestWithSeparateOutputs(t, "--config", writeTestConfigForVersion(t, server.URL, "8.8"), "update", "job", "--key", "2251799813711967", "--complete", "--vars", `{"approved":true}`, "--auto-confirm", "--json")
+	require.Empty(t, stderr)
+	envelope := decodeBulkCompletionEnvelope(t, stdout)
+	payload := requireJSONObject(t, envelope["payload"])
+	require.Equal(t, "completion", payload["mode"])
+	require.NotContains(t, payload, "selection")
+	require.NotContains(t, payload, "outcomes")
+	require.NotContains(t, payload, "counts")
+	require.Equal(t, []string{"POST /v2/jobs/search", "POST /v2/jobs/2251799813711967/completion"}, requests)
+	require.Len(t, bodies, 1)
+	require.Equal(t, map[string]any{"approved": true}, bodies[0]["variables"])
+}
