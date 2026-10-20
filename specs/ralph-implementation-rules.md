@@ -17,6 +17,7 @@ The purpose of this file is to reduce repeated project lookup cost. Read it befo
 - Treat the operator UX rules in this file as strict requirements with precedence over feature text that proposes looser, noisier, or inconsistent command output. If a feature explicitly asks for conflicting UX, stop and surface the conflict before implementing.
 - If a feature artifact conflicts with these rules, stop and surface the conflict before implementing.
 - Complete only the current Ralph work unit. Do not start another user story or polish section in the same iteration.
+- The implementation testing boundary in `AGENTS.md` overrides any live-environment requirement in a work unit or prior handoff. Correct that requirement to isolated validation; do not treat it as a missing-environment blocker or seek permission to run live tests during implementation.
 - Preserve externally observable behavior unless the current feature explicitly requires a behavior change.
 - Before writing code, identify the owner layer for the behavior. If the owner is unclear, inspect the nearest existing command, facade, domain, service, and test files until the boundary is clear; do not place code in `cmd` or a facade merely because that is the fastest route.
 - A Ralph work unit is incomplete if it introduces a new layering shortcut, duplicates an existing service mechanic, or leaves a known regression test failing without an explicit user-approved characterization-only task.
@@ -427,6 +428,10 @@ These rules are mandatory for CLI and ops workflow work. They capture the comman
 
 ## Validation Rules
 
+- Never run validation against a real running Camunda environment during a Ralph iteration, including local, Docker/Kind/Kubernetes, development, shared test, staging, or production targets. Do not provision an environment, inspect Kubernetes state, probe connectivity/version, deploy fixtures, mutate resources, or perform live cleanup for implementation validation.
+- Use unit tests, generated-client mocks, test-owned HTTP fake servers, and isolated CLI/subprocess/terminal acceptance tests. Check test targets and inherited configuration before execution; do not run `make integration-test*`, `make integration-cli-*`, live-test build tags, or environment-backed helpers.
+- Do not add live-test gates to implementation tasks. If an existing task or handoff requires a disposable target, revise that requirement to permitted isolated checks, preserve prior evidence, and state the unverified real-engine behavior without claiming a live pass. Do not spend iterations requesting a target or waiting for designation.
+- A general implementation/test/Ralph request is not authorization for live tests. Only a separate user-requested workflow for a specific target may perform them; do not launch that workflow from a Ralph iteration.
 - Run the narrowest relevant tests first.
 - For command-only changes, prefer targeted `go test ./cmd -run '<TestNameOrPattern>' -count=1`.
 - For facade changes, prefer `go test ./c8volt/<area> -run '<TestNameOrPattern>' -count=1`.

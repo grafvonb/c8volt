@@ -48,6 +48,8 @@ type completionAcceptanceServer struct {
 	cancelOnce              sync.Once
 	interruptPreparation    bool
 	nextListener            string
+	processInstanceKeys     map[string]string
+	extraFilters            map[string]string
 }
 
 // newCompletionAcceptanceServer rejects every endpoint outside discovery, lookup
@@ -133,6 +135,9 @@ func (f *completionAcceptanceServer) serve(t *testing.T, w http.ResponseWriter, 
 					}
 				}
 			}
+			if processKey := f.processInstanceKeys[key]; processKey != "" {
+				row = strings.ReplaceAll(row, `"2251799813711000"`, strconv.Quote(processKey))
+			}
 			total := 1
 			if row == "" {
 				total = 0
@@ -142,6 +147,11 @@ func (f *completionAcceptanceServer) serve(t *testing.T, w http.ResponseWriter, 
 		}
 		if body.Filter["tenantId"] != "tenant-a" || body.Filter["type"] != "cleanup" {
 			t.Errorf("unexpected discovery filter: %v", body.Filter)
+		}
+		for name, want := range f.extraFilters {
+			if body.Filter[name] != want {
+				t.Errorf("unexpected %s filter: got %v, want %s", name, body.Filter[name], want)
+			}
 		}
 		if len(body.Sort) != 1 || body.Sort[0]["field"] != "jobKey" || body.Sort[0]["order"] != "ASC" {
 			t.Errorf("unstable discovery sort: %v", body.Sort)

@@ -28,6 +28,8 @@ Started: 2026-10-20T10:28:15Z
 
 ## Decisions
 
+- User correction on 2026-10-20 replaces the former SC-006/T009 live-recovery gate with isolated acceptance. T009 now passes nine listener scenarios across three adapters plus the affected acceptance/terminal race suite. Real-engine cancellation remains unverified; no real environment is required or permitted during implementation. Historical iterations 9–11 are retained in progress/validation, not current instructions.
+
 - T001 enforces named discovery tenant both in generated request JSON and defensively on returned rows. Empty scope omits tenant equality. Explicit `GetJob` retains cross-tenant backend authorization.
 - Prefer an advancing end cursor, otherwise advance with `NextFrom`. Overfull-response cursors are suppressed because they point beyond the consumed window; retain the existing full-response offset slicing behavior.
 - Exact totals below consumed rows, negative/overflowing offsets, contradictory empty offset pages, and nonadvancing/cyclic cursors fail as `ErrMalformedResponse` with `incomplete job search` detail. Do not turn these into successful exhaustion.
@@ -85,6 +87,11 @@ Started: 2026-10-20T10:28:15Z
 
 ## Reusable Commands
 
+- Follow `AGENTS.md` before every validation command: clear inherited integration flags/configuration and use only test-owned fakes. T009 ran with `GOFLAGS=`, `GOENV=off`, `GOPROXY=off`, `GOSUMDB=off`, `GOTOOLCHAIN=local`, inherited `C8VOLT_*`/helper-process/proxy variables removed, and `GORACE=atexit_sleep_ms=0`.
+- `go test ./cmd -run '^TestBulkCompletionAcceptanceListenerHierarchy$' -race -count=1 -v` exercises the three-listener/control scenario; `go test ./cmd -run '^TestBulkCompletion(Acceptance|Terminal)' -race -count=1 -v` covers its shared fake fixture and existing terminal regressions.
+
+- `GORACE=atexit_sleep_ms=0 make test` runs the complete race suite without per-helper exit sleeps; the default run reached the command package's ten-minute timeout in iteration 9. Preserve the failed-run evidence and do not disable race detection.
+
 - `go test ./cmd -list 'Test.*BulkCompletionTerminal'` and `go test ./cmd -run 'Test.*BulkCompletionTerminal' -count=1`
 
 - `go test ./cmd -list 'Test.*BulkCompletionAcceptance'` and `go test ./cmd -run 'Test.*BulkCompletionAcceptance' -count=1`
@@ -117,12 +124,12 @@ Started: 2026-10-20T10:28:15Z
 
 ## Do Not Repeat
 
+- Never infer authorization for real-environment tests from an implementation/Ralph request. `AGENTS.md` overrides obsolete live-test gates and handoffs; use isolated fakes only.
+
 - Do not advance by filtered or deduplicated result count, use a truncated response's end cursor, or assume a short/empty page overrides contradictory totals.
 - Do not reuse the legacy completion retry wrapper for the upcoming bulk-only one-shot primitive.
 - Do not import develop/#341, move release tags, or publish; the feature remains on the v4.3.4 baseline branch.
 
 ## Current Handoff
 
-- T008 is complete and US3 is finished. Recheck `tasks.md`: T009 (Phase 6, Polish & Cross-Cutting Validation) is the sole remaining task and is dependency-ready. Live SC-006 hierarchy recovery evidence remains required; availability of an authorized disposable Camunda environment has not been established in this iteration.
-- T008 adds 51 terminal scenarios for ordinary/verbose/quiet/JSON output, root-inherited and leaf-configured stderr, redirected files, approve/decline/blank/EOF, auto-confirm/automation, partial failures, and empty search/stdin under normal/dry-run/no-wait. Exact stream and request assertions prove one confirmation after multipage discovery, no paging prompts, no writes on previews/declines/empty scope, and one JSON envelope with EOF on real nonzero exits. No production changes were needed.
-- Passed test discovery, required terminal suite (2.725s), `go vet ./cmd`, full command race suite (`GORACE=atexit_sleep_ms=0 go test ./cmd -race -count=1`, 147.175s), gofmt and diff checks. T009 retains delivery-wide tests, fixture creation, exact runnable guide, live observation and cleanup. No live mutation, push or publication occurred.
+- Feature complete; no handoff required.

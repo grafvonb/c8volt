@@ -125,8 +125,12 @@ An operator or unattended script needs a bounded batch operation whose results r
 - **SC-003**: Every dry-run, declined confirmation, failed/incomplete discovery, and successful empty-selection case performs zero operational mutations.
 - **SC-004**: Every selected key has a reported outcome after mixed-success execution, fail-fast, and interruption. Unresolved failures yield a nonzero exit status, and no uncertain or merely accepted outcome is falsely described as confirmed completion.
 - **SC-005**: Interactive checks demonstrate at most one mutation confirmation; unattended checks require no user input; structured-output checks decode exactly one result envelope with no trailing control text.
-- **SC-006**: A representative multi-instance hierarchy with pending canceling listeners is recovered using bulk job completion, with the selected job outcomes and eventual process termination independently observed and recorded. Related process termination is not inferred from batch acceptance.
+- **SC-006**: An isolated fake-server acceptance scenario represents three pending canceling listener jobs owned by distinct process instances plus a nonmatching control. Across adapters 8.8/8.9/8.10, preview submits no mutations, execution completes only the frozen matching jobs once, preserves their process context, and reports accepted submission separately from observed completion. The test rejects process mutation/repair/history endpoints and makes no claim of real-engine cancellation or listener business execution.
 - **SC-007**: Existing single-job completion and unrelated job-update acceptance scenarios retain their behavior, and the supported completion scenarios pass for Camunda 8.8, 8.9, and 8.10 through appropriate version-specific coverage.
+
+## Validation Scope
+
+User correction, 2026-10-20: implementation validation is limited to isolated tests, mocks, test-owned HTTP servers and local subprocess/terminal checks. The earlier live-recovery requirement in SC-006 is superseded. No real Camunda environment, Kubernetes discovery, connectivity probe, deployment or cleanup is permitted or required to complete this feature. Real-engine cancellation behavior remains unverified and is outside implementation acceptance.
 
 ## Assumptions
 

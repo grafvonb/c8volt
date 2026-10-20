@@ -12,6 +12,8 @@
 
 ## Execution Rules
 
+**Scope correction (2026-10-20)**: The user prohibits real-environment tests during implementation. This supersedes the original SC-006/T009 live gate and old blocked handoffs. Use only isolated tests; do not request a disposable target. Earlier progress entries remain historical evidence, not current instructions.
+
 - Read the feature artifacts, repository guidance and `specs/ralph-implementation-rules.md` as part of each work unit. Keep branch checks, progress updates and ordinary review inside the task, not separate tasks.
 - Keep commands on public facades, facades as mechanical conversions, and paging/concurrency/reconciliation in internal services. Never hand-edit generated clients.
 - Preserve compilation whenever an interface changes: include every implementation and affected test double in the same task. Locate additional implementers before editing interfaces; do not defer them to a later task.
@@ -55,7 +57,7 @@ The repository, dependency stack, release branch and planning artifacts already 
 
 - [x] T005 [US1] Enable selector completion end to end in `cmd/update_job.go`, `cmd/update_job_request.go`, `cmd/update_job_batch.go` and `cmd/cmd_views_job.go`, reusing/factoring validation from `cmd/get_job.go` without mutable cross-command flag coupling. Add all nine documented AND predicates, search controls and existing execution options; interpret explicit `--retries 0` as a selector while retaining keyed completion rejection; reject unqualified completion, control-only selection, unsupported flags and selection for unrelated mutation modes. Keep a single scalar key on the legacy path. Plan once, preview/confirm the frozen selection once through configured stderr, execute once, and render one envelope with report-plus-error before the exit-after-render path. Implement all human/verbose/JSON/quiet/empty/no-wait and abort cases from the contracts from this first CLI increment; no keys-only mode or extra paging prompt. Add request/execution/view/exit assertions in `cmd/update_job_batch_test.go`, `cmd/update_job_request_test.go`, `cmd/update_job_outcome_test.go` and `cmd/command_contract_test.go`, covering option propagation, zero writes on dry-run/incomplete/decline/empty, listener consequence text, deterministic partial results and unchanged single-key modes. Update capability metadata, help and `README.md`, run `make docs-content`, and validate with `go test ./cmd -run 'Test.*(UpdateJob|BulkCompletion|CommandContract)' -count=1` and `git diff --check`. T007/T008 add scale and terminal acceptance depth; do not defer basic safe output to them.
 
-**Checkpoint / functional MVP**: Filter-based listener recovery is usable with frozen tenant scope, complete reporting and strict dry-run. Broader acceptance and live recovery evidence remain required before release.
+**Checkpoint / functional MVP**: Filter-based listener recovery is usable with frozen tenant scope, complete reporting and strict dry-run. The remaining isolated acceptance and delivery checks must pass before declaring implementation complete.
 
 ## Phase 4: User Story 2 — Complete an Explicit Set of Jobs (P2)
 
@@ -81,9 +83,9 @@ The repository, dependency stack, release branch and planning artifacts already 
 
 ## Phase 6: Polish & Cross-Cutting Validation
 
-**Goal**: Prove representative listener recovery separately from submission acceptance and record release-readiness evidence without publishing.
+**Goal**: Prove representative listener selection/completion through isolated acceptance tests, finalize delivery evidence and document the real-engine coverage limitation without contacting an environment.
 
-- [ ] T009 Build and validate the disposable cancellation-listener hierarchy using new feature-local fixtures `specs/345-bulk-job-completion/fixtures/canceling-listener-parent.bpmn` and `specs/345-bulk-job-completion/fixtures/canceling-listener-child.bpmn`; update `specs/345-bulk-job-completion/quickstart.md` with exact runnable deployment/start/cancel/read/cleanup commands for those fixtures and record evidence in `specs/345-bulk-job-completion/validation.md`. Use multiple child instances, a unique listener job type with no worker, and a nonmatching control; independently observe pending listeners, dry-run nonmutation, bulk results and eventual job/process terminal states on an authorized disposable environment. Record the exact live engine versions exercised; use automated v88/v89/v810 coverage for parity and do not claim unrun live checks passed. Cleanup only recorded fixture resources. If no live environment is available, record SC-006 as unresolved and leave this task incomplete rather than substituting mocked proof. In this same delivery-validation unit, confirm help/capabilities/README/generated CLI docs match shipped behavior, run remaining quickstart checks, `make test` and `make vet` once for the changed cross-package/concurrent behavior, and inspect `git diff --check`; do not rerun successful suites solely for subsequent prose edits. Record branch/main baseline and actual feature-branch CI evidence when available; no merge, push, release number choice or publication is implied.
+- [x] T009 Complete isolated delivery validation in `cmd/update_job_batch_listener_test.go`, using test-owned HTTP fakes to represent three canceling listener jobs from distinct process instances and a nonmatching control across adapters 8.8/8.9/8.10. Verify zero-write preview, exactly one completion per selected key, control exclusion, preserved process context, and accepted-versus-observed outcomes; reject all process/repair/history endpoints. Update `specs/345-bulk-job-completion/quickstart.md` and `specs/345-bulk-job-completion/validation.md` to contain only isolated implementation checks and accurately record their coverage. Preserve the existing BPMN fixtures as static reference artifacts only; do not deploy them. Remove all live-target designation, engine mutation and cleanup prerequisites from current feature documents/handoff, preserving historical progress. Reuse previously passing full race-suite, vet and documentation evidence for unchanged production code; run focused race-enabled tests for any new/changed test code plus artifact/link/syntax checks. If executable behavior changes, rerun the affected checks proportionately. Mark complete only after the revised SC-006 and permitted delivery checks pass. No real environment, Kubernetes inspection, connectivity probe, provisioning or live integration test is allowed, and no real-engine verification claim may be made.
 
 ## Dependencies & Execution Order
 
@@ -96,7 +98,7 @@ T001 -> T002 -> T003 -> T004 -> T005 -> T006 -> T007 -> T009
 - US1 is T003–T005, after foundations. Preparation and execution split at a real read-only boundary; each introduces complete interface wiring and tests, never noncompiling consumers or placeholder success implementations.
 - US2 is T006 and depends on the existing engine and selector command. Its input form and compatibility acceptance remain independently testable.
 - US3 is T007/T008 after T006. They are independently executable acceptance suites with distinct HTTP/scale versus terminal/process mechanics.
-- T009 follows all stories; it couples fixture creation, exact runnable guide, real observations and cleanup because those establish one recovery-validation outcome.
+- T009 follows all stories; it couples isolated listener acceptance, scope correction and delivery evidence as one verifiable outcome.
 
 ## Parallel Execution Examples
 
@@ -132,7 +134,7 @@ T001 -> T002 -> T003 -> T004 -> T005 -> T006 -> T007 -> T009
 | SC-003 | T003–T008 zero-write failure/preview/decline/empty paths |
 | SC-004 | T004, T007, T008 partial results and nonzero unsuccessful exit |
 | SC-005 | T005, T007, T008 one prompt/envelope and unattended behavior |
-| SC-006 | T009 independently observed live hierarchy recovery |
+| SC-006 | T009 isolated three-listener/control acceptance; no real-engine claim |
 | SC-007 | T001–T008 legacy modes and three supported adapters |
 
 ## Implementation Strategy and Consolidation Review
@@ -140,10 +142,10 @@ T001 -> T002 -> T003 -> T004 -> T005 -> T006 -> T007 -> T009
 1. Finish the two foundational primitives with existing behavior preserved.
 2. Complete US1's preparation, full safe executor and selector CLI. This is the functional MVP for the incident backlog; safeguards from US3 are implemented here from the start.
 3. Add US2's explicit reviewed-key input without rebuilding backend behavior.
-4. Complete US3's integrated acceptance evidence and T009's live recovery/release validation before claiming the feature complete or release-ready.
+4. Complete US3's integrated acceptance evidence and T009's isolated listener/delivery validation before claiming the feature complete or release-ready.
 
-No standalone branch checks, model-only scaffolding, failing test commits, per-version duplicate workflows or documentation catch-up tasks are included. Each implementation unit includes its relevant tests and documentation; final checks exist within the concrete recovery-validation outcome.
+No standalone branch checks, model-only scaffolding, failing test commits, per-version duplicate workflows or documentation catch-up tasks are included. Each implementation unit includes its relevant tests and documentation; final checks exist within the isolated delivery-validation outcome.
 
-Deliberate boundaries: T001/T002 address independent discovery versus submission contracts; T003/T004 separate read-only preparation from mutation/reconciliation; T005/T006 separate selector enablement from explicit input compatibility; T007/T008 exercise different I/O mechanisms; T009 needs real engine observations and owned fixtures. Combining these adjacent units would create larger cross-layer or environment-dependent iterations without removing duplicated implementation.
+Deliberate boundaries: T001/T002 address independent discovery versus submission contracts; T003/T004 separate read-only preparation from mutation/reconciliation; T005/T006 separate selector enablement from explicit input compatibility; T007/T008 exercise different I/O mechanisms; T009 adds representative isolated listener acceptance and final evidence; no engine environment is required. Combining these adjacent units would create larger cross-layer or environment-dependent iterations without removing duplicated implementation.
 
-Task count: **9** — setup **0**, foundational **2**, US1 **3**, US2 **1**, US3 **2**, cross-cutting **1**. No task has begun. Optional commit and Ralph execution hooks do not run automatically.
+Task count: **9** — setup **0**, foundational **2**, US1 **3**, US2 **1**, US3 **2**, cross-cutting **1**. T001–T009 are complete under the corrected isolated-validation scope. Optional commit and Ralph execution hooks do not run automatically.

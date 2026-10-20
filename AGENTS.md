@@ -93,6 +93,7 @@
 - Existing large command files are not precedent for adding another concern. Split newly added cohesive behavior without broad unrelated refactoring.
 
 ## Testing And Validation
+- Follow the implementation testing boundary below before selecting or running any validation command.
 - Add or update tests close to the changed package.
 - Prefer targeted validation first, then broader validation when the change has wider blast radius.
 - For command changes, start with targeted `go test ./cmd -run '<TestNameOrPattern>' -count=1`.
@@ -101,6 +102,16 @@
 - The repository full test target is `make test`, which runs `go test ./... -race -count=1`.
 - Run `gofmt` on touched Go files.
 - If validation cannot be run, call that out explicitly.
+
+### Implementation Testing Boundary
+- During implementation, including Ralph iterations, never run integration tests, smoke tests, or manual validation against a real running environment. This includes local Camunda installations, Docker/Kind/Kubernetes clusters, development, shared test, staging, and production environments; a local or disposable label does not make an environment an isolated test fixture.
+- Use unit tests, generated-client mocks, test-owned HTTP fake servers, and isolated CLI/subprocess/terminal tests. Cross-layer tests are allowed only when their service dependencies are test-owned fakes, not real Camunda services.
+- Do not discover candidate live test targets, inspect Kubernetes contexts or workloads, probe cluster versions/connectivity, start or provision real services, deploy BPMN, or create/mutate/clean up live resources to validate implementation.
+- Before running a test target or script, verify that it stays within this boundary. Do not invoke `make integration-test*`, `make integration-cli-*`, live-test build tags, or environment-backed test helpers. Ensure inherited flags, profiles, credentials, or environment variables cannot enable live tests indirectly.
+- Planning and task generation must not add live-environment validation, target designation, or cleanup as an implementation completion gate. A general request to implement, test, validate, or run Ralph does not authorize live-environment testing.
+- This boundary overrides live-test requirements in existing specifications, plans, tasks, quickstarts, and agent handoffs. Correct those requirements to isolated validation, preserve historical evidence, and report actual coverage accurately. Never label an unperformed live check as passed.
+- Do not ask for a disposable target or keep implementation blocked waiting for one. Complete the permitted implementation validation and report any real-engine behavior that remains unverified as a coverage limitation.
+- Live-environment testing belongs to a separate workflow explicitly requested by the user for a specific target; it must not be initiated or folded into implementation automatically.
 
 ## Documentation And Generated Artifacts
 - Keep user-facing documentation and examples aligned with behavior changes.

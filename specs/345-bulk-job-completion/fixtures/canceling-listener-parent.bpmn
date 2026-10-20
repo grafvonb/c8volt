@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                  xmlns:zeebe="http://camunda.org/schema/zeebe/1.0"
+                  id="Definitions_345_Parent" targetNamespace="https://github.com/grafvonb/c8volt/fixtures/345">
+  <!-- Static reference only; __RUN_ID__ links the parent and child examples. Do not deploy during implementation. -->
+  <bpmn:process id="C8volt345Parent___RUN_ID__" name="Disposable bulk completion parent" isExecutable="true">
+    <bpmn:startEvent id="ParentStart">
+      <bpmn:outgoing>ParentToChildren</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:sequenceFlow id="ParentToChildren" sourceRef="ParentStart" targetRef="Children" />
+    <bpmn:callActivity id="Children" name="Three parallel child instances">
+      <bpmn:extensionElements>
+        <zeebe:calledElement processId="C8volt345Child___RUN_ID__"
+                             propagateAllChildVariables="false" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>ParentToChildren</bpmn:incoming>
+      <bpmn:outgoing>ChildrenToEnd</bpmn:outgoing>
+      <bpmn:multiInstanceLoopCharacteristics isSequential="false">
+        <bpmn:extensionElements>
+          <zeebe:loopCharacteristics inputCollection="= [1, 2, 3]" inputElement="childNumber" />
+        </bpmn:extensionElements>
+      </bpmn:multiInstanceLoopCharacteristics>
+    </bpmn:callActivity>
+    <bpmn:sequenceFlow id="ChildrenToEnd" sourceRef="Children" targetRef="ParentEnd" />
+    <bpmn:endEvent id="ParentEnd">
+      <bpmn:incoming>ChildrenToEnd</bpmn:incoming>
+    </bpmn:endEvent>
+  </bpmn:process>
+</bpmn:definitions>

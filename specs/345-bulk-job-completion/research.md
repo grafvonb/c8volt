@@ -84,12 +84,12 @@ Nonempty variables with any task-listener candidate fail batch preparation befor
 
 ## 8. Validation and isolated release
 
-**Decision**: Use deterministic HTTP fixtures for 1,000-job paging/concurrency/error cases, existing real-terminal utilities for stream behavior, and a new narrowly scoped disposable cancellation-listener hierarchy for live proof.
+**Decision (corrected by the user, 2026-10-20)**: Use deterministic HTTP fixtures for 1,000-job paging/concurrency/error cases, existing real-terminal utilities for stream behavior, and an isolated fake-server scenario for three canceling listeners from distinct process instances plus a nonmatching control. The prior decision to require live hierarchy recovery is withdrawn.
 
 **Evidence**: Existing version service tests and `cmd/update_job_outcome_test.go` provide request tracking. `testx/cmd_terminal_runner.go` supplies terminal stdin. Embedded user-task/parent BPMN models provide model syntax references, but no matching cancellation-listener fixture was found on this baseline.
 
-**Rationale**: Scale proof should be reproducible without creating thousands of production instances. A separate small live scenario establishes actual listener/cancellation behavior. Integration harness internals are validation tooling, not a source of product requirements.
+**Rationale**: Scale proof should be reproducible without creating thousands of production instances. The isolated listener scenario establishes command/API behavior only; actual engine cancellation remains outside implementation validation. Integration harness internals are validation tooling, not a source of product requirements.
 
-**Alternatives considered**: Depending on #341 fixtures couples this release to develop. Running recovery against existing tenant data is not a fixture. Planning-only runtime tests would violate the proportional-validation constitution.
+**Alternatives considered**: Depending on #341 fixtures couples this release to develop. Using a real environment, including local or disposable Camunda, is prohibited during implementation; no environment designation is needed. Planning-only runtime tests would violate the proportional-validation constitution.
 
 `main` and `v4.3.4` resolved to the same pinned baseline during specification. Work stays on `345-bulk-job-completion`; choosing a later release number and publishing are outside this design.

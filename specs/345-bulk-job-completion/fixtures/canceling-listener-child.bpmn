@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                  xmlns:zeebe="http://camunda.org/schema/zeebe/1.0"
+                  id="Definitions_345_Child" targetNamespace="https://github.com/grafvonb/c8volt/fixtures/345">
+  <bpmn:process id="C8volt345Child___RUN_ID__" name="Disposable cancellation listener child" isExecutable="true">
+    <bpmn:startEvent id="ChildStart">
+      <bpmn:outgoing>ChildToTask</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:sequenceFlow id="ChildToTask" sourceRef="ChildStart" targetRef="DisposableTask" />
+    <bpmn:userTask id="DisposableTask" name="Wait for fixture cancellation">
+      <bpmn:extensionElements>
+        <zeebe:userTask />
+        <zeebe:taskListeners>
+          <!-- No worker subscribes; external business work is unnecessary for this fixture.
+               The parent passes listenerType; a standalone child uses a different control type. -->
+          <zeebe:taskListener eventType="canceling" type="= listenerType" retries="3" />
+        </zeebe:taskListeners>
+      </bpmn:extensionElements>
+      <bpmn:incoming>ChildToTask</bpmn:incoming>
+      <bpmn:outgoing>TaskToEnd</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:sequenceFlow id="TaskToEnd" sourceRef="DisposableTask" targetRef="ChildEnd" />
+    <bpmn:endEvent id="ChildEnd">
+      <bpmn:incoming>TaskToEnd</bpmn:incoming>
+    </bpmn:endEvent>
+  </bpmn:process>
+</bpmn:definitions>

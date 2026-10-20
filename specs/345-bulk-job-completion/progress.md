@@ -275,3 +275,97 @@ Started: 2026-10-20 12:28:15
 - Passed test-family discovery and `go test ./cmd -run 'Test.*BulkCompletionTerminal' -count=1` (2.725s), `go vet ./cmd`, and `GORACE=atexit_sleep_ms=0 go test ./cmd -race -count=1` (147.175s). Gofmt and diff checks passed. All added declarations belong to the focused terminal acceptance file; no production API, shared helper, generated client, help or documentation behavior changed.
 - Commit policy confirmed from .specify/extensions/ralph/ralph-config.yml as conventional / ralph / automatic #345, with no local override. This coordinated commit includes task completion, compact durable discoveries and the T009 handoff. Delivery-wide checks and live recovery proof remain T009; no live Camunda mutation, push or publication occurred.
 ---
+
+
+---
+## Iteration 9 - 2026-10-20 14:19
+**Work Unit**: Phase 6 — T009 delivery validation (incomplete; live SC-006 recovery blocked on designation of an authorized disposable environment)
+**Tasks Completed**:
+- None. T009 remains unchecked; preparatory artifacts and passing local checks do not satisfy the required live observations.
+**Tasks Remaining in Work Unit**: 1: T009, including live fixture deployment, pending-listener observations, preview nonmutation, bulk execution, independent job/process terminal states, control exclusion and recorded-resource cleanup.
+**Commit**: No commit - no completed work unit
+**Files Changed**:
+- specs/345-bulk-job-completion/fixtures/canceling-listener-parent.bpmn
+- specs/345-bulk-job-completion/fixtures/canceling-listener-child.bpmn
+- specs/345-bulk-job-completion/quickstart.md
+- specs/345-bulk-job-completion/validation.md
+- docs/index.md
+- specs/345-bulk-job-completion/ralph-memory.md
+- specs/345-bulk-job-completion/progress.md
+**Learnings**:
+- Prepared feature-local fixtures for three parallel called children with native user tasks and canceling listeners, plus a standalone child using a distinct control type. The guide uses unique run-specific process IDs, exact recorded resource keys, separate streams/status/command evidence, bounded reads, whole-file JSON validation and explicit cleanup. Static XML/reference/listener checks, Bash syntax and embedded Python compilation passed; engine deployment semantics and the live sequence remain unvalidated.
+- Read-only discovery found current local Kubernetes context kind-c8.10, namespace camunda, and the existing c810local profile. A successful get cluster version --with-brokers --json reports gateway and broker 8.10.4. The request identifying which environment is authorized disposable remains unanswered; connectivity is not a disposability designation. No live mutation was attempted and no resources require cleanup from this iteration. SC-006 remains unresolved.
+- Build, required test-family discovery, make vet, make docs-content, README/help/capability review and git diff --check passed. CLI documentation had no content drift; only the generated docs homepage build provenance changed. No production code, generated client or dependency changed.
+- Default make test reached Go's ten-minute command-package timeout (603.928s), while TestUpdateProcessInstanceCommand_MultipleRepeatedKeysApplyOneVarsPayloadToEachUniqueKey was running; no assertion failure or race report preceded the timeout. Re-ran because of that failure with GORACE=atexit_sleep_ms=0 make test: the full race suite passed, exit 0 (command package 150.346s). This removes cumulative subprocess exit sleeps without disabling the race detector. Both logs are referenced in validation.md; no passing suite was rerun for prose edits.
+- main, peeled v4.3.4 commit and merge-base remain the pinned 019e4c0bd865b9cf675422b4d8c97c489c36f694 baseline. Initial GitHub CI lookup returned 401 from the inherited token; retrying without GH_TOKEN/GITHUB_TOKEN used stored CLI authentication successfully and returned no feature-branch runs. No CI pass, live 8.8/8.9/8.10 recovery, release readiness or publication is claimed.
+- Commit policy remains conventional / ralph / automatic #345, but the commit step was not reached: no complete task was validated. tasks.md is byte-for-byte unchanged and HEAD remains 6ca82f4a47e502b097d0109b321a9002867e6cbd. Prepared artifacts and coordinated memory/audit evidence remain uncommitted for the next substantive work-unit transaction. No push, merge or ref movement occurred.
+---
+
+
+---
+## Iteration 10 - 2026-10-20 14:21
+**Work Unit**: Phase 6 — T009 delivery validation (blocked; designated disposable environment still missing)
+**Tasks Completed**:
+- None. Static revalidation does not satisfy T009's live SC-006 recovery requirement.
+**Tasks Remaining in Work Unit**: 1: T009; live deployment, pending listeners, preview nonmutation, bulk completion, independent terminal observations, control exclusion and exact-resource cleanup remain unvalidated.
+**Commit**: No commit - no completed work unit
+**Files Changed**:
+- specs/345-bulk-job-completion/ralph-memory.md
+- specs/345-bulk-job-completion/progress.md
+**Learnings**:
+- Re-ran prerequisites, read the primary memory and feature/project context, and confirmed T009 is the sole unfinished dependency-ready work unit. All predecessor tasks remain complete; no independent later task exists.
+- Asked explicitly whether local profile c810local (kind-c8.10, namespace camunda, previously observed engine 8.10.4) is the intended disposable test target. No response was received before this handoff. Existing connectivity is not evidence that the target was designated disposable. No environment was contacted or mutated in this iteration; prior preparatory files remain intact and uncommitted.
+- Rechecked the guide's Bash and embedded Python syntax and fixture XML identifiers, flow references, parent-child linkage, three-instance parallel structure, native user task and canceling listener attributes. These checks and git diff --check passed. Reviewed the prior adjusted full race-suite log and confirmed its passing package results; did not rerun successful runtime suites for unchanged code/prose.
+- tasks.md remains byte-for-byte equal to HEAD (SHA-256 b08b8e15af8c073e2db685dad956bdea23d725450e8cc187ac4c624ecd0d0172); HEAD remains 6ca82f4a47e502b097d0109b321a9002867e6cbd. No task expansion, staging, commit, push or publication occurred. Memory/audit updates remain uncommitted under the no-completed-work-unit rule.
+---
+
+
+---
+## Iteration 11 - 2026-10-20 14:23
+**Work Unit**: Phase 6 — T009 delivery validation (blocked; disposable test target remains undesignated)
+**Tasks Completed**:
+- None. Required live SC-006 recovery and cleanup evidence is still unavailable.
+**Tasks Remaining in Work Unit**: 1: T009; live deployment, pending listeners, preview nonmutation, bulk completion, independent job/process terminal observations, control exclusion and exact-resource cleanup.
+**Commit**: No commit - no completed work unit
+**Files Changed**:
+- specs/345-bulk-job-completion/ralph-memory.md
+- specs/345-bulk-job-completion/progress.md
+**Learnings**:
+- Re-ran prerequisites, read memory first and reviewed feature/project context, dependencies, prepared fixtures and live guide. All predecessor tasks are complete; T009 remains the only unfinished task and no independent later work exists.
+- Requested designation of the existing c810local profile (kind-c8.10, namespace camunda) as the disposable target. No response was received before this handoff. The task explicitly requires an authorized disposable environment; prior connectivity evidence does not establish designation. No live service was contacted, no resources were created or mutated, and all prior preparatory artifacts were preserved.
+- Reviewed recorded passing race-suite/vet/documentation evidence and did not repeat successful runtime suites for unchanged code/prose. git diff --check passed. No new live engine coverage or release-readiness claim is made.
+- This is the third consecutive iteration without a validated completed work unit. The orchestrator's no-progress stop rule applies; resumption needs the missing environment designation. No task expansion, staging or commit was used to manufacture progress.
+- tasks.md remains byte-for-byte equal to HEAD (SHA-256 b08b8e15af8c073e2db685dad956bdea23d725450e8cc187ac4c624ecd0d0172); HEAD remains 6ca82f4a47e502b097d0109b321a9002867e6cbd. Memory/audit records are retained uncommitted under the no-completed-work-unit rule. No push, merge or publication occurred.
+---
+
+---
+## Iteration 12 - 2026-10-20 14:39
+**Work Unit**: Phase 6 — T009 corrected isolated delivery validation (manual completion after the stopped loop)
+**Tasks Completed**:
+- [x] T009: Replace the erroneous live-recovery gate with isolated three-listener/control acceptance and complete delivery evidence.
+**Tasks Remaining in Work Unit**: 0; all nine implementation tasks are complete.
+**Commit**: This work-unit commit
+**Files Changed**:
+- AGENTS.md
+- specs/ralph-implementation-rules.md
+- cmd/update_job_batch_acceptance_test.go
+- cmd/update_job_batch_listener_test.go
+- docs/index.md (retained iteration 9 generated provenance)
+- specs/345-bulk-job-completion/spec.md
+- specs/345-bulk-job-completion/plan.md
+- specs/345-bulk-job-completion/research.md
+- specs/345-bulk-job-completion/tasks.md
+- specs/345-bulk-job-completion/quickstart.md
+- specs/345-bulk-job-completion/validation.md
+- specs/345-bulk-job-completion/fixtures/README.md
+- specs/345-bulk-job-completion/fixtures/canceling-listener-parent.bpmn
+- specs/345-bulk-job-completion/fixtures/canceling-listener-child.bpmn
+- specs/345-bulk-job-completion/ralph-memory.md
+- specs/345-bulk-job-completion/progress.md
+**Learnings**:
+- The user explicitly prohibited real-environment tests during implementation and directed correction of T009 and the feature documents. The former live SC-006 gate and target-designation blocker are superseded, with historical evidence preserved. The durable repository/Ralph instructions now forbid environment discovery, probes, provisioning, deployment and cleanup as implementation validation.
+- Added nine isolated listener scenarios (three supported adapters × preview/execution/no-wait). They verify frozen matching membership, three distinct process keys, zero-write preview, exactly one submission per selected job, untouched control and accepted-versus-observed reporting. The fake rejects unrelated endpoints; these checks do not run a BPMN engine or prove eventual process termination.
+- Focused listener acceptance passed with race detection (1.173s); the affected acceptance/terminal regression suite passed (17.096s). Test configuration used only test-owned fake servers, cleared integration flags/application/helper/proxy environment, and disabled dependency/toolchain downloads. The initial sandbox cache-access failure ran no tests; the permitted local-cache/loopback rerun passed. Logs are recorded in validation.md.
+- Seventeen relative Markdown links, three shell syntax blocks, two XML examples, requirement/criterion counts, Go formatting and git diff --check passed. Previously passing full race-suite/vet/docs evidence is reused for unchanged production behavior, including the recorded initial race-suite timeout and successful adjusted run. BPMN examples remain static references only.
+- No real environment was contacted, no live resources were created or mutated, and Ralph was not relaunched during this correction. No push, merge or publication occurred. All task, memory and audit state is included with the substantive test/documentation changes; the handoff is terminal.
+---

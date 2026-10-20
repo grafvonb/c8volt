@@ -22,7 +22,7 @@ Completing a listener acknowledges its work without running its business logic. 
 
 **Storage**: In-memory frozen candidates and outcomes; no persistent execution session or database.
 
-**Testing**: Package tests with generated-client mocks and HTTP test servers; genuine terminal stdin through `testx/cmd_terminal_runner.go`; race-enabled suite for the implemented concurrency changes; separately controlled live hierarchy validation.
+**Testing**: Package tests with generated-client mocks and HTTP test servers; genuine terminal stdin through `testx/cmd_terminal_runner.go`; race-enabled suite for the implemented concurrency changes; isolated representative cancellation-listener acceptance using a test-owned fake server.
 
 **Target Platform**: Existing supported CLI platforms; Camunda 8.8, 8.9, and 8.10. Preserve 8.7's existing unsupported job-operation result.
 
@@ -40,7 +40,7 @@ Completing a listener acknowledges its work without running its business logic. 
 |---|---|---|
 | Operational proof | Require separate submission and observation facts. | PASS: accepted responses explicitly skip independent confirmation; ambiguous submissions receive bounded observation; missing jobs do not prove completion. |
 | CLI-first, script-safe | Preserve single-key and unrelated modes. | PASS: collection forms have one aggregate envelope; prompts use configured stderr; empty and partial results have explicit contracts. |
-| Proportionate validation | Planning changes require lightweight checks only. | PASS: this run uses artifact checks; implementation starts with targeted tests, then race suite because shared APIs and concurrent execution change. Live proof remains a distinct release check. |
+| Proportionate validation | Planning changes require lightweight checks only. | PASS: this run uses artifact checks; implementation starts with targeted tests, then race suite because shared APIs and concurrent execution change. Real-environment testing is excluded from implementation; no target designation is required. |
 | Documentation matches behavior | Update command metadata and README with implementation. | PASS: help, capabilities, README, and `make docs-content` are part of the planned delivery. |
 | Small, compatible changes | Reuse native layers and helpers on v4.3.4. | PASS: one coordinator, existing pools/options/envelope, no new dependencies or unrelated develop changes. |
 
@@ -130,13 +130,15 @@ Empty normal/dry-run results go through the same mode-aware renderer. JSON remai
 
 ## Validation and Delivery
 
+The user corrected the validation scope on 2026-10-20. Follow the implementation testing boundary in `AGENTS.md`: no live environments, connectivity probes, Kubernetes discovery, deployment or cleanup. Replace the previous live-recovery gate with SC-006's isolated listener scenario. Preserve historical evidence without representing fake responses as real-engine verification.
+
 | Coverage | Requirements |
 |---|---|
 | Input forms, zero-valued retries, legacy mode and capability metadata | FR-001, FR-002, FR-012, FR-014 |
 | Version-specific tenant JSON, key-only reads, sparse pages, deduplication, limits, preparation failure | FR-003–FR-005, FR-016 |
 | Preview, empty/quiet/JSON/no-wait/automation, real terminal prompts | FR-006, FR-007, FR-012, FR-013 |
 | Recheck races, one-shot transport, uncertainty, cancellation, fail-fast, report conservation | FR-008–FR-011, FR-015 |
-| README/help generation and representative hierarchy recovery | FR-017, SC-006 |
+| README/help generation and isolated representative listener acceptance | FR-017, SC-006 |
 | Deterministic 1,000-job multipage HTTP scenario and bounded concurrency | SC-001–SC-005, SC-007 |
 
 Follow [quickstart.md](quickstart.md) for implementation validation. Keep interface additions, adapters and test doubles compiling within each work unit; implement one shared collection engine rather than rebuilding a single-item engine later. Group fixtures, tests, formatting and targeted checks with the behavior they verify. Do not make routine context reading or branch checks standalone implementation tasks.

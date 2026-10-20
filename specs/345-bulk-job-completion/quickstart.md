@@ -1,29 +1,27 @@
 # Quickstart and Validation: Bulk Job Completion
 
-This is a validation guide for the implementation to be built from [plan.md](plan.md). The commands below are not evidence that the feature already works. No Camunda mutation or runtime test was performed during planning.
+Implementation checks use only isolated mocks, test-owned HTTP fake servers and local subprocess/terminal tests. Follow `AGENTS.md`; do not contact an installed Camunda environment, discover Kubernetes targets, enable integration build tags, deploy BPMN or clean up real resources.
+
+The user corrected this scope on 2026-10-20. The previous live deployment/recovery instructions have been removed. Historical observations remain in [validation.md](validation.md) and `progress.md`; they are not commands to repeat or prerequisites for completion.
 
 ## Prerequisites
 
-- Checkout `345-bulk-job-completion`, based on `v4.3.4`, and complete implementation.
-- Use the repository Go toolchain and normal build dependencies.
-- For live validation, use a disposable, authorized Camunda 8.8/8.9/8.10 environment and explicit tenant configuration with permission to read and complete its fixture jobs.
-- Create a feature-specific BPMN fixture during implementation: a parent calling a child with a native user task and a CANCELING task listener of a unique type, with no worker subscribed to that type. Include multiple instances/children and a nonmatching control job. Do not rely on unreleased #341 fixtures or existing production instances.
-- Record the listener's external work as intentionally unnecessary for the disposable fixture. For real recovery, the operator must separately decide how that work is handled.
+Use the repository Go toolchain on `345-bulk-job-completion`. No Camunda profile, cluster, tenant credentials or live target is required. Test helpers generate temporary configuration pointing at their own fake servers. Clear inherited `GOFLAGS` so integration tags cannot be enabled indirectly; inspect any overridden test target before running it. Do not invoke `make integration-test*` or `make integration-cli-*`.
 
-All shell examples run from the repository root. See [CLI contract](contracts/cli.md) for exact selection and output semantics.
+These are validation commands, not a requirement to repeat passing suites after documentation-only changes. Review [validation.md](validation.md) for existing evidence and run only checks justified by changes.
 
 ## Targeted automated validation
 
-Test names below are required test-family names for implementation, not tests that already exist. Confirm discovery first so an empty `-run` match is not mistaken for passing coverage.
+Confirm test discovery first so an empty `-run` match is not mistaken for passing coverage. These families now exist; previous iteration evidence is in `progress.md`.
 
 ```sh
-go test ./internal/services/job/... -list 'Test.*(BulkCompletion|JobSearch)'
-go test ./c8volt/job -list 'Test.*BulkCompletion'
-go test ./cmd -list 'Test.*(UpdateJob|JobSearch|BulkCompletion)'
+env GOFLAGS= go test ./internal/services/job/... -list 'Test.*(BulkCompletion|JobSearch)'
+env GOFLAGS= go test ./c8volt/job -list 'Test.*BulkCompletion'
+env GOFLAGS= go test ./cmd -list 'Test.*(UpdateJob|JobSearch|BulkCompletion)'
 
-go test ./internal/services/job/... -run 'Test.*(BulkCompletion|JobSearch)' -count=1
-go test ./c8volt/job -run 'Test.*BulkCompletion' -count=1
-go test ./cmd -run 'Test.*(UpdateJob|JobSearch|BulkCompletion)' -count=1
+env GOFLAGS= go test ./internal/services/job/... -run 'Test.*(BulkCompletion|JobSearch)' -count=1
+env GOFLAGS= go test ./c8volt/job -run 'Test.*BulkCompletion' -count=1
+env GOFLAGS= go test ./cmd -run 'Test.*(UpdateJob|JobSearch|BulkCompletion)' -count=1
 ```
 
 The test matrix must cover:
@@ -43,76 +41,34 @@ Use matching existing test names in addition to the new families when nearby tes
 After targeted validation, run broader checks once because shared APIs and concurrent execution change:
 
 ```sh
-make test
-make vet
-make docs-content
+env GOFLAGS= make test
+env GOFLAGS= make vet
+env GOFLAGS= make docs-content
 git diff --check
 ```
 
 Run gofmt on touched Go files before testing. Review generated docs and README against the contract. Do not repeat runtime suites for subsequent prose-only changes.
 
-## Build and safe fixture preview
+The default race runtime sleeps before each helper subprocess exits. If the full
+command package reaches Go's ten-minute timeout from that cumulative delay, use
+`env GOFLAGS= GORACE=atexit_sleep_ms=0 make test`; this still runs the full suite with `-race`.
+Record both the timeout and the adjusted run, rather than labeling the initial
+run successful.
+
+## Representative listener scenario (SC-006)
 
 ```sh
-go build -o /tmp/c8volt-345 .
-/tmp/c8volt-345 update job --help
+env GOFLAGS= GORACE=atexit_sleep_ms=0 go test ./cmd -run '^TestBulkCompletionAcceptanceListenerHierarchy$' -race -count=1 -v
 ```
 
-Deploy/start the disposable fixture using the repository's existing deployment/start workflow and record its root/child/job keys. Initiate cancellation once to create the pending listeners. Configure the following variables from those recorded fixture facts:
+The fake server supplies three matching `TASK_LISTENER` / `CANCELING` jobs from distinct process-instance keys and a control with a different type. The CLI must preserve candidate context, preview without submissions, complete each matching job once and leave the control untouched. All requests go to a test-owned loopback server; unexpected process/repair/history endpoints fail the test. Accepted responses must show independent confirmation skipped rather than inferred process termination.
 
-```sh
-export C8VOLT_345_TENANT='replace-with-disposable-tenant'
-export C8VOLT_345_LISTENER_TYPE='replace-with-unique-fixture-listener-type'
-```
+The test runs through all three adapters. It does not execute a BPMN engine or prove that a real process hierarchy terminates. That limitation is explicitly outside implementation acceptance.
 
-Preview only that scope:
+## Static reference fixtures
 
-```sh
-/tmp/c8volt-345 update job --tenant "$C8VOLT_345_TENANT" \
-  --kind TASK_LISTENER --listener-event-type CANCELING --state CREATED \
-  --type "$C8VOLT_345_LISTENER_TYPE" --complete --dry-run --verbose
-```
+[fixtures/README.md](fixtures/README.md) describes the retained BPMN examples. They are static references from the superseded live-validation plan, not deployment inputs for implementation. They may be parsed as local XML; no deployment, worker or environment cleanup is needed.
 
-Expected: intended candidates and their tenant/process context; listener consequence; no mutations. Compare independent job/process reads before and after. Run the same preview with JSON and verify one envelope.
+## Completion evidence
 
-## Execute and independently observe
-
-After reviewing the fixture selection:
-
-```sh
-/tmp/c8volt-345 update job --tenant "$C8VOLT_345_TENANT" \
-  --kind TASK_LISTENER --listener-event-type CANCELING --state CREATED \
-  --type "$C8VOLT_345_LISTENER_TYPE" --batch-size 2 \
-  --complete --auto-confirm --json > /tmp/c8volt-345-result.json
-```
-
-Expected: one ordered outcome per selected fixture job. Accepted submissions have independent confirmation skipped; observed completed no-ops are distinguished. The control job remains untouched. Inspect the saved envelope and exit code separately; a partial failure still contains all frozen outcomes.
-
-Using recorded root keys, independently inspect the hierarchy:
-
-```sh
-/tmp/c8volt-345 walk pi --key "$C8VOLT_345_ROOT_KEY" --with-elements --with-listeners
-```
-
-Set `C8VOLT_345_ROOT_KEY` to a recorded fixture root before running that read. Observe job COMPLETED and process terminal states through normal reads after exporter delay; record those observations independently of batch acceptance. This proves SC-006 without changing the command into a process waiter. A 404 alone is not proof of termination.
-
-Repeat selection after recovery: if no new sequential listeners exist, it must succeed empty without confirmation or mutation, including with no-wait/JSON/quiet. If the fixture deliberately creates a later listener, it must be absent from the first report and selectable only on a later invocation.
-
-## Explicit reviewed selection
-
-Save fixture keys one per line in `/tmp/c8volt-345-reviewed-keys.txt`. Do not use production example keys from the incident report.
-
-```sh
-/tmp/c8volt-345 update job - --complete --dry-run --json \
-  < /tmp/c8volt-345-reviewed-keys.txt
-```
-
-Run execution on a fresh disposable fixture to test actual completion; otherwise already-completed outcomes are expected. Repeat one key in the file and flags to prove deduplication. A malformed key or an unreadable explicit job must block the entire batch before writes.
-
-A later selector command performs fresh discovery; dry-run does not persist a plan. An explicit saved key set preserves reviewed membership, with mandatory current-state rechecks.
-
-## Evidence and cleanup
-
-Record exact Camunda versions, tenant, fixture identifiers, command exit statuses, envelopes, per-key request counts in automated tests, and separate terminal hierarchy observations. Cover all three supported adapters automatically; record which engine versions were exercised live rather than claiming unrun live checks passed.
-
-Clean up only recorded disposable fixture resources using established commands after observing their states. Do not delete history as part of bulk completion. If no live environment is available, retain SC-006 as an explicit validation gap before release.
+Record the targeted test command/results, prior passing full race-suite/vet/docs evidence, and local artifact checks in [validation.md](validation.md). Keep the recorded original timeout as well as the successful adjusted race run. Distinguish simulated API responses from real-engine observations. Complete the revised T009 after these isolated checks pass; an unavailable live environment is not a blocker.
