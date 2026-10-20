@@ -195,7 +195,9 @@ func (s *Service) SearchJobsPages(ctx context.Context, query d.JobSearchQuery, v
 		}
 		if page.RawItemCount == 0 && cancelAmbiguity == nil {
 			// Advancing cursors can bridge empty pages, but cannot defer evidence forever.
-			pageCtx, cancelAmbiguity = context.WithTimeout(ctx, backoff.Timeout)
+			ambiguityCtx, cancel := context.WithTimeout(ctx, backoff.Timeout)
+			// Transfer cancellation to the deferred cleanup and raw-progress reset above.
+			pageCtx, cancelAmbiguity = ambiguityCtx, cancel
 		}
 		from, after = page.NextFrom, page.EndCursor
 	}
