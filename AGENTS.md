@@ -163,5 +163,5 @@
 
 ## Active Speckit Plan
 <!-- SPECKIT START -->
-- Active Speckit implementation plan: `specs/339-suspended-instance-state/plan.md`
+- Active Speckit implementation plan: `specs/341-suspended-instance-hierarchies/plan.md`
 <!-- SPECKIT END -->
