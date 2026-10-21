@@ -1,5 +1,24 @@
 # Feature Specification: Process Definition Watch Change Indicators
 
+## Watch lifetime follow-up (2026-10-21)
+
+User-authorized follow-up on `345-bulk-job-completion` supersedes the original
+no-new-flags and unchanged-timeout constraints for watch lifetime only:
+
+- `--watch` has no session deadline by default. `--watch-timeout` accepts a
+  nonnegative duration, defaults to `0` (unlimited), and requires `--watch`.
+- The session deadline is independent of HTTP request and retry-loop timeouts.
+  Caller cancellation/deadlines still end the session. Transient request deadlines
+  while the session is active follow the existing consecutive retry budget.
+- Failed refreshes retain the last displayed baseline; successful refreshes reset
+  the retry count. Fatal errors and exhausted retry budgets still fail.
+- Retry warnings and timeout-stop status use the configured command logger.
+  Human errors contain bounded classifications; raw HTTP evidence stays in the
+  existing redacted DEBUG path. Retry exhaustion emits one final error.
+- Validate with isolated runner, command, HTTP-fake and subprocess tests only.
+  No real-environment check is part of implementation validation.
+
+
 **Feature Branch**: `312-pd-watch-indicators`
 
 **Created**: 2026-10-16

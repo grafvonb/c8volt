@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-Use branch `312-pd-watch-indicators` and the repository Go toolchain. Automated command tests need no live Camunda cluster. Manual viewing requires an existing configured Camunda connection and permission to read process definitions; do not create or delete deployments solely for this check.
+Use the current feature branch and the repository Go toolchain. All implementation validation uses isolated fixtures; no live Camunda cluster is required or permitted.
 
 ## Automated behavior validation after implementation
 
@@ -31,24 +31,25 @@ Capture stdout and stderr separately. Assert exact summary/markers/footer and no
 
 Preserve existing non-watch human, JSON, keys-only, and XML regression tests. Retain watch rejection checks for incompatible modes. Update tests that previously equated the entire watch body with an ordinary list to assert the deliberate additions and unchanged field content instead.
 
-## Manual read-only viewing
+## Watch lifetime regression coverage
 
-Build the CLI and run against an already configured environment:
-
-```sh
-go build -o /tmp/c8volt-312 .
-/tmp/c8volt-312 get pd --watch --watch-interval 2s
-```
-
-The first refresh shows zero counts, no marker suffixes, and the existing footer. Stop with Ctrl-C. If normal environment activity changes displayed values during the session, verify `*` and bold on changed values, `+` for new keys, and removed counts without stale rows. An unchanged successful refresh clears indicators. Deterministic automated fixtures above remain the authoritative proof when the live environment is idle.
-
-Repeat with bold disabled:
+Run the runner tests and command timeout/diagnostic tests with isolated fakes:
 
 ```sh
-NO_COLOR=1 /tmp/c8volt-312 get pd --watch --watch-interval 2s
+go test ./toolx/watch -count=1
+go test ./cmd -run 'TestGetProcessDefinitionWatch' -count=1
 ```
 
-Markers and counts remain readable without bold; existing repaint behavior remains. Compare ordinary `get pd`, `get pd --json`, and `get pd --keys-only` with their existing output contracts; no change summary or marker suffix is added.
+Verify absent and explicit-zero session duration provide no deadline even with a
+short backoff timeout; positive duration expires during collection or interval
+wait; invalid durations and use without watch fail validation. Verify wrapped
+request timeouts retry, preserve the previous snapshot, reset after success, and
+honor finite retry budgets. Check plain and structured configured logger routing,
+compact normal/verbose errors, redacted DEBUG diagnostics, and original failure
+exit status. Existing cancellation and output-mode exclusion coverage remains.
+
+The original optional live viewing instructions are superseded by repository
+implementation validation rules; no live-engine behavior is claimed here.
 
 ## Documentation and formatting
 

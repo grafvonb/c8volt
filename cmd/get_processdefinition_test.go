@@ -757,6 +757,7 @@ func resetGetProcessDefinitionCommandGlobals() {
 	flagGetPDBatchSize = 0
 	flagGetPDWatch = false
 	flagGetPDWatchInterval = defaultGetPDWatchInterval.String()
+	flagGetPDWatchTimeout = 0
 	flagViewAsJson = false
 	flagViewKeysOnly = false
 	flagQuiet = false

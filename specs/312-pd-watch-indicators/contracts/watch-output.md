@@ -2,7 +2,7 @@
 
 ## Invocation and compatibility
 
-Existing aliases, selectors, refresh interval, retries, timeout, and termination behavior remain unchanged. No flag is added. Existing rejection of `--json`, `--keys-only`, `--xml`, `--quiet`, and `--automation` with watch remains unchanged. Ordinary `get pd` output is unchanged in all modes. This feature does not add terminal eligibility restrictions.
+Existing aliases, selectors, refresh interval and consecutive retry limits remain unchanged. Watch runs indefinitely by default; `--watch-timeout` optionally bounds the session (`0` means unlimited, negative values are invalid, and explicitly supplying it requires `--watch`). HTTP request and retry-loop timeouts do not bound the session. An individual request deadline is retryable while the session context remains active. Session expiry and Ctrl-C stop cleanly; fatal errors and retry exhaustion remain failures. Existing rejection of `--json`, `--keys-only`, `--xml`, `--quiet`, and `--automation` with watch remains unchanged. Ordinary `get pd` output is unchanged in all modes. This feature does not add terminal eligibility restrictions.
 
 ## Successful refresh on the terminal
 

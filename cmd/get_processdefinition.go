@@ -8,6 +8,7 @@ import (
 	"io"
 	"log/slog"
 	"strings"
+	"time"
 
 	"github.com/grafvonb/c8volt/c8volt"
 	"github.com/grafvonb/c8volt/c8volt/ferrors"
@@ -29,6 +30,7 @@ var (
 	flagGetPDBatchSize         int32
 	flagGetPDWatch             bool
 	flagGetPDWatchInterval     string
+	flagGetPDWatchTimeout      time.Duration
 )
 
 var getProcessDefinitionCmd = &cobra.Command{
@@ -44,11 +46,12 @@ Select by key, BPMN process ID, version, or version tag. Use --xml only with --k
 
 --stat includes exact-version statistics and requires Camunda 8.8 or newer.
 
---watch repeats the lookup until interrupted, timed out, or retries are exhausted. It starts immediately; --watch-interval controls subsequent checks. Without a selector it observes all visible definitions. Each successful refresh logs a timestamped INFO summary, including when nothing changed, compared with the previous successfully displayed refresh, for example: 16:42:08.123 INFO 1 updated, 1 new, 0 removed. Rows end with * for changed definitions and + for new definitions; unchanged rows have no suffix; on supported terminal output, changed displayed values are also bold. Bold falls back to plain markers when TERM is empty or dumb, NO_COLOR is set, or output is redirected. The first successful refresh establishes an unmarked baseline. Failed refreshes do not replace that baseline, and an unchanged success clears prior markers and bold. Removed definitions contribute to the summary without leaving stale rows. --watch cannot be combined with --json, --keys-only, --xml, --quiet, or --automation.`,
+--watch repeats the lookup indefinitely by default until interrupted or retries are exhausted. --watch-timeout sets an optional session limit (0 = unlimited), independently of --timeout for individual HTTP requests and the retry-loop backoff timeout. Individual request timeouts are retried while the session remains active. It starts immediately; --watch-interval controls subsequent checks. Without a selector it observes all visible definitions. Each successful refresh logs a timestamped INFO summary, including when nothing changed, compared with the previous successfully displayed refresh, for example: 16:42:08.123 INFO 1 updated, 1 new, 0 removed. Rows end with * for changed definitions and + for new definitions; unchanged rows have no suffix; on supported terminal output, changed displayed values are also bold. Bold falls back to plain markers when TERM is empty or dumb, NO_COLOR is set, or output is redirected. The first successful refresh establishes an unmarked baseline. Failed refreshes do not replace that baseline, and an unchanged success clears prior markers and bold. Removed definitions contribute to the summary without leaving stale rows. --watch cannot be combined with --json, --keys-only, --xml, --quiet, or --automation.`,
 	Example: `  ./c8volt get process-definition --latest
   ./c8volt get process-definition --bpmn-process-id <bpmn-process-id> --latest
   ./c8volt get process-definition --bpmn-process-id <bpmn-process-id> --latest --watch
   ./c8volt get process-definition --watch --watch-interval 2s
+  ./c8volt get process-definition --watch --watch-timeout 10m
   ./c8volt get process-definition --key <process-definition-key> --json
   ./c8volt get process-definition --key <process-definition-key> --xml`,
 	Aliases: []string{"pd", "pds"},
@@ -67,7 +70,7 @@ func runGetProcessDefinition(cmd *cobra.Command, args []string) {
 	log.Debug("getting pd")
 	filter := populatePDSearchFilterOpts()
 	if flagGetPDWatch {
-		runGetProcessDefinitionWatch(cmd, cli, log, cfg.App.NoErrCodes, filter, cfg.App.Backoff.Timeout, cfg.App.Backoff.MaxRetries)
+		runGetProcessDefinitionWatch(cmd, cli, log, cfg.App.NoErrCodes, filter, flagGetPDWatchTimeout, cfg.App.Backoff.MaxRetries)
 		return
 	}
 	if flagGetPDAsXML {
@@ -149,8 +152,9 @@ func init() {
 	fs.BoolVar(&flagGetPDWithStat, "stat", false, "include process definition statistics; 8.8 or newer includes incident counts, 8.7 unsupported")
 	fs.BoolVar(&flagGetPDAsXML, "xml", false, "output the selected process definition as raw XML (requires --key and no other filters)")
 	fs.Int32VarP(&flagGetPDBatchSize, "batch-size", "n", consts.MaxPISearchSize, fmt.Sprintf("number of process definitions to request per discovery page; does not cap total results (max limit %d enforced by server)", consts.MaxPISearchSize))
-	fs.BoolVar(&flagGetPDWatch, "watch", false, "repeat the process-definition lookup until interrupted, timed out, or retries are exhausted")
+	fs.BoolVar(&flagGetPDWatch, "watch", false, "repeat the process-definition lookup until interrupted, --watch-timeout is reached, or retries are exhausted")
 	fs.Var(toolx.NewDurationStringValue(defaultGetPDWatchInterval.String(), &flagGetPDWatchInterval), "watch-interval", "interval between process-definition watch refreshes after the immediate first refresh")
+	fs.DurationVar(&flagGetPDWatchTimeout, "watch-timeout", 0, "maximum watch session duration (0 = unlimited; requires --watch)")
 
 	setCommandMutation(getProcessDefinitionCmd, CommandMutationReadOnly)
 	setContractSupport(getProcessDefinitionCmd, ContractSupportFull)
@@ -175,6 +179,12 @@ func init() {
 }
 
 func validateGetProcessDefinitionFlags(cmd *cobra.Command) error {
+	if flagGetPDWatchTimeout < 0 {
+		return invalidFlagValuef("--watch-timeout must be a non-negative duration (0 = unlimited)")
+	}
+	if cmd != nil && cmd.Flags().Changed("watch-timeout") && !flagGetPDWatch {
+		return missingDependentFlagsf("--watch-timeout requires --watch")
+	}
 	if cmd != nil && cmd.Flags().Changed("batch-size") && (flagGetPDBatchSize <= 0 || flagGetPDBatchSize > consts.MaxPISearchSize) {
 		return invalidFlagValuef("invalid value for --batch-size: %d, expected positive integer up to %d", flagGetPDBatchSize, consts.MaxPISearchSize)
 	}

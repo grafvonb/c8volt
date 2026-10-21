@@ -218,7 +218,12 @@ func TestCommandCapabilityForCommand_ProcessDefinitionWatchMetadata(t *testing.T
 		Type:        "bool",
 		Required:    false,
 		Repeated:    false,
-		Description: "repeat the process-definition lookup until interrupted, timed out, or retries are exhausted",
+		Description: "repeat the process-definition lookup until interrupted, --watch-timeout is reached, or retries are exhausted",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "watch-timeout",
+		Type:        "duration",
+		Description: "maximum watch session duration (0 = unlimited; requires --watch)",
 	})
 	require.Contains(t, capability.Flags, FlagContract{
 		Name:        "watch-interval",
@@ -2809,7 +2814,7 @@ func TestProcessDefinitionSelectorValidationHelpContract(t *testing.T) {
 				"Without a selector",
 				"Without a selector it observes all visible definitions",
 				"--watch cannot be combined with --json, --keys-only, --xml, --quiet, or --automation",
-				"--watch repeats the lookup until interrupted, timed out, or retries are exhausted",
+				"--watch repeats the lookup indefinitely by default until interrupted or retries are exhausted",
 				"A --bpmn-process-id selector must match a visible definition",
 			},
 		},

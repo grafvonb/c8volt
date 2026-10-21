@@ -226,3 +226,62 @@ func TestWatchRunStopsWhenRetryBudgetIsExhausted(t *testing.T) {
 	require.EqualValues(t, 3, result.Ticks)
 	require.Equal(t, 3, result.ConsecutiveFailures)
 }
+
+// TestWatchRunRequestTimeoutsRetryWithoutSessionDeadline distinguishes a failed
+// request from the watch lifetime and preserves consecutive retry accounting.
+func TestWatchRunRequestTimeoutsRetryWithoutSessionDeadline(t *testing.T) {
+	t.Parallel()
+	for _, exhausted := range []bool{false, true} {
+		t.Run(fmt.Sprint(exhausted), func(t *testing.T) {
+			calls := 0
+			retries := 0
+			requestErr := fmt.Errorf("request deadline: %w", context.DeadlineExceeded)
+			result, err := Run(context.Background(), Options{
+				Interval: time.Second, MaxRetries: 1,
+				Retryable: func(err error) bool { return errors.Is(err, context.DeadlineExceeded) },
+				OnRetry:   func(RetryEvent) { retries++ },
+				Sleep: func(context.Context, time.Duration) error {
+					if calls == 4 {
+						return context.Canceled
+					}
+					return nil
+				},
+			}, func(ctx context.Context, tick Tick) error {
+				_, hasDeadline := ctx.Deadline()
+				require.False(t, hasDeadline)
+				calls++
+				if exhausted || calls%2 == 1 {
+					return requestErr
+				}
+				return nil
+			})
+			if exhausted {
+				require.ErrorIs(t, err, context.DeadlineExceeded)
+				require.Equal(t, TerminationReasonRetryExhausted, result.Reason)
+				require.Equal(t, 2, calls)
+				require.Equal(t, 1, retries)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, TerminationReasonCanceled, result.Reason)
+				require.EqualValues(t, 2, result.SuccessfulTicks)
+				require.Equal(t, 2, retries)
+			}
+		})
+	}
+}
+
+// TestWatchRunSessionDeadlineDuringRequest stops a blocked request only when
+// the session deadline itself expires, without starting a retry.
+func TestWatchRunSessionDeadlineDuringRequest(t *testing.T) {
+	t.Parallel()
+	result, err := Run(context.Background(), Options{
+		Interval: time.Second, Timeout: 5 * time.Millisecond,
+		OnRetry: func(RetryEvent) { t.Fatal("expired session must not retry") },
+	}, func(ctx context.Context, _ Tick) error {
+		<-ctx.Done()
+		return fmt.Errorf("request: %w", ctx.Err())
+	})
+	require.NoError(t, err)
+	require.Equal(t, TerminationReasonTimeout, result.Reason)
+	require.EqualValues(t, 1, result.Ticks)
+}

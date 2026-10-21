@@ -113,7 +113,9 @@ func Run(ctx context.Context, opts Options, tick TickFunc) (Result, error) {
 			if ctxErr := ctx.Err(); ctxErr != nil {
 				return terminateForContext(result, ctxErr)
 			}
-			if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+			// A request deadline does not end an otherwise active watch session.
+			// Let the caller's retry policy classify it like any other tick error.
+			if errors.Is(err, context.Canceled) {
 				return terminateForContext(result, err)
 			}
 			result.FailedTicks++
@@ -123,6 +125,10 @@ func Run(ctx context.Context, opts Options, tick TickFunc) (Result, error) {
 				return result, err
 			}
 			result.ConsecutiveFailures++
+			if opts.MaxRetries > 0 && result.ConsecutiveFailures > opts.MaxRetries {
+				result.Reason = TerminationReasonRetryExhausted
+				return result, fmt.Errorf("watch retry exhausted after %d consecutive failure(s): %w", result.ConsecutiveFailures, err)
+			}
 			if opts.OnRetry != nil {
 				opts.OnRetry(RetryEvent{
 					Tick:                result.Ticks,
@@ -130,10 +136,6 @@ func Run(ctx context.Context, opts Options, tick TickFunc) (Result, error) {
 					ConsecutiveFailures: result.ConsecutiveFailures,
 					MaxRetries:          opts.MaxRetries,
 				})
-			}
-			if opts.MaxRetries > 0 && result.ConsecutiveFailures > opts.MaxRetries {
-				result.Reason = TerminationReasonRetryExhausted
-				return result, fmt.Errorf("watch retry exhausted after %d consecutive failure(s): %w", result.ConsecutiveFailures, err)
 			}
 		} else {
 			result.SuccessfulTicks++
