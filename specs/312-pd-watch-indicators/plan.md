@@ -1,5 +1,13 @@
 # Implementation Plan: Process Definition Watch Change Indicators
 
+## Watch lifetime follow-up (2026-10-21)
+
+The user-authorized [watch lifetime follow-up](spec.md#watch-lifetime-follow-up-2026-10-21)
+on `345-bulk-job-completion` supersedes the original no-new-flags and unchanged-timeout
+constraints below. It adds an unlimited default, optional `--watch-timeout`, request
+timeout recovery, configured lifecycle logging, and isolated regression coverage.
+
+
 **Branch**: `312-pd-watch-indicators` | **Date**: 2026-10-16 | **Spec**: [spec.md](spec.md)
 
 **Input**: Feature specification from `specs/312-pd-watch-indicators/spec.md`, issue #312.

@@ -168,22 +168,29 @@ func toDomainSearchPageVisitor(visitor SearchPageVisitor) d.JobSearchPageVisitor
 	}
 }
 
+// toDomainPageRequest forwards raw traversal position without interpreting it.
 func toDomainPageRequest(request PageRequest) d.JobPageRequest {
 	return d.JobPageRequest{
-		From: request.From,
-		Size: request.Size,
+		From:  request.From,
+		Size:  request.Size,
+		After: request.After,
 	}
 }
 
+// fromDomainPage preserves selected rows and service-normalized page evidence.
 func fromDomainPage(result d.JobSearchPage) Page {
 	return Page{
 		Items: mapDomainJobs(result.Items),
 		Request: PageRequest{
-			From: result.Request.From,
-			Size: result.Request.Size,
+			From:  result.Request.From,
+			Size:  result.Request.Size,
+			After: result.Request.After,
 		},
 		OverflowState: fromDomainOverflowState(result.OverflowState),
 		ReportedTotal: fromDomainReportedTotal(result.ReportedTotal),
+		RawItemCount:  result.RawItemCount,
+		NextFrom:      result.NextFrom,
+		EndCursor:     result.EndCursor,
 	}
 }
 

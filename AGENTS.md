@@ -38,6 +38,20 @@
 - Do not add noisy endpoint, request, cursor, or per-key lifecycle detail to default human output; keep functional workflow details behind `--verbose` and low-level HTTP diagnostics at DEBUG (`--debug` or configured debug logging), independent of verbose.
 - When command output changes, update tests for the affected human, JSON, keys-only, error, prompt, and activity behavior where relevant.
 
+### Mandatory Diagnostic Logging
+- Human errors, warnings, and diagnostic messages MUST use the configured command-context logger through the established command/error helpers. Writing to the correct stderr stream alone is not compliance. Do not emit diagnostics with `cmd.PrintErr*`, `fmt.Fprint*`, `fmt.Print*`, builtin `print`/`println`, or direct stdout/stderr writes; do not create a separate logger or use a global/default logger to bypass command configuration. Bootstrap failures must use the existing bootstrap/error fallback helpers.
+- Keep the distinction explicit: selected-format results use the result renderers on stdout; interactive prompts use plain text on configured stderr; diagnostics use the configured logger. Do not move result payloads into the logger or add logger prefixes to prompts.
+- Classify output before implementing a new execution mode, including its failure path. Batch, partial-result, and exit-after-render paths are not exceptions to logger use. Preserve partial results and the original error class/exit code, render a shared JSON envelope exactly once, and do not invoke a second error renderer after that envelope.
+- Never print or log raw joined errors, transport errors, or generated-client errors at normal human levels. Replacing a direct print with `log.Error(err.Error())` does not satisfy this rule when the error contains HTTP diagnostics. Use one compact aggregate error for a failed batch, with counts and a useful bounded reason; group repeated causes instead of printing one transport failure per key.
+- Full URLs, HTTP methods, raw request/response bodies, cursors, and wrapped transport chains belong only in the existing DEBUG diagnostics path with its redaction rules. `--verbose` alone must not enable them. Keep useful per-resource outcome facts under verbose and preserve established machine-readable error evidence without changing its schema to fix human formatting.
+- Before declaring an output change complete, trace a failing execution from service error through facade conversion, rendering, logging and exit. Review every new or changed direct print and every use of `err.Error()`/`%s`/`%v` with an error at an output boundary. Existing violations are not precedent.
+
+### Diagnostic Output Validation
+- For changes to error/output paths, exercise failures through command execution with a configured logger and capture stdout and stderr separately. Assert logger routing, severity, configured/inherited destination, and no duplicate emission. A substring assertion such as `stderr contains "operation:"` is insufficient.
+- Include a multi-resource failure with repeated backend errors containing a distinctive URL, method, body and resource key. At normal level and with verbose alone, assert compact aggregate diagnostics and absence of raw HTTP details on **both** streams. Under quiet, retain the compact error while suppressing informational output. Under JSON, decode exactly one envelope with EOF and retain partial results and the original failure exit code.
+- Verify DEBUG visibility through both `--debug` and configured debug level, independently of verbose, using only isolated fakes. Verify diagnostic redaction and keep stdout free of diagnostic records. Check the active plain and structured logger formats; do not assume structured attributes appear in every handler. Account for existing flag precedence when combining modes.
+- Required checks must detect the violation: reverting logger routing to a direct stderr print or exposing the raw aggregate at normal level must fail the assertions. Passing happy-path, result-stdout-only, or renderer-only tests does not establish compliance.
+
 ### Empty Results And Successful No-Ops
 - Treat empty results and early returns as part of the command's output contract.
   Route them through a mode-aware view helper; do not print human summaries
@@ -93,6 +107,7 @@
 - Existing large command files are not precedent for adding another concern. Split newly added cohesive behavior without broad unrelated refactoring.
 
 ## Testing And Validation
+- Follow the implementation testing boundary below before selecting or running any validation command.
 - Add or update tests close to the changed package.
 - Prefer targeted validation first, then broader validation when the change has wider blast radius.
 - For command changes, start with targeted `go test ./cmd -run '<TestNameOrPattern>' -count=1`.
@@ -101,6 +116,16 @@
 - The repository full test target is `make test`, which runs `go test ./... -race -count=1`.
 - Run `gofmt` on touched Go files.
 - If validation cannot be run, call that out explicitly.
+
+### Implementation Testing Boundary
+- During implementation, including Ralph iterations, never run integration tests, smoke tests, or manual validation against a real running environment. This includes local Camunda installations, Docker/Kind/Kubernetes clusters, development, shared test, staging, and production environments; a local or disposable label does not make an environment an isolated test fixture.
+- Use unit tests, generated-client mocks, test-owned HTTP fake servers, and isolated CLI/subprocess/terminal tests. Cross-layer tests are allowed only when their service dependencies are test-owned fakes, not real Camunda services.
+- Do not discover candidate live test targets, inspect Kubernetes contexts or workloads, probe cluster versions/connectivity, start or provision real services, deploy BPMN, or create/mutate/clean up live resources to validate implementation.
+- Before running a test target or script, verify that it stays within this boundary. Do not invoke `make integration-test*`, `make integration-cli-*`, live-test build tags, or environment-backed test helpers. Ensure inherited flags, profiles, credentials, or environment variables cannot enable live tests indirectly.
+- Planning and task generation must not add live-environment validation, target designation, or cleanup as an implementation completion gate. A general request to implement, test, validate, or run Ralph does not authorize live-environment testing.
+- This boundary overrides live-test requirements in existing specifications, plans, tasks, quickstarts, and agent handoffs. Correct those requirements to isolated validation, preserve historical evidence, and report actual coverage accurately. Never label an unperformed live check as passed.
+- Do not ask for a disposable target or keep implementation blocked waiting for one. Complete the permitted implementation validation and report any real-engine behavior that remains unverified as a coverage limitation.
+- Live-environment testing belongs to a separate workflow explicitly requested by the user for a specific target; it must not be initiated or folded into implementation automatically.
 
 ## Documentation And Generated Artifacts
 - Keep user-facing documentation and examples aligned with behavior changes.

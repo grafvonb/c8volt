@@ -6,6 +6,7 @@ package v810
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
@@ -39,9 +40,18 @@ func (m *mockJobClient) UpdateJobWithResponse(ctx context.Context, jobKey camund
 	return m.updateJobWithResponse(ctx, jobKey, body, reqEditors...)
 }
 
-func (m *mockJobClient) CompleteJobWithResponse(ctx context.Context, jobKey camundav810.JobKey, body camundav810.CompleteJobJSONRequestBody, reqEditors ...camundav810.RequestEditorFn) (*camundav810.CompleteJobResponse, error) {
+// CompleteJobWithBodyWithResponse decodes the adapter wire payload so existing
+// response/error fixtures continue exercising the same completion semantics.
+func (m *mockJobClient) CompleteJobWithBodyWithResponse(ctx context.Context, jobKey camundav810.JobKey, contentType string, reader io.Reader, reqEditors ...camundav810.RequestEditorFn) (*camundav810.CompleteJobResponse, error) {
 	if m.completeJobWithResponse == nil {
-		panic("unexpected CompleteJobWithResponse call")
+		panic("unexpected CompleteJobWithBodyWithResponse call")
+	}
+	if contentType != "application/json" {
+		return nil, fmt.Errorf("unexpected completion content type: %s", contentType)
+	}
+	var body camundav810.CompleteJobJSONRequestBody
+	if err := json.NewDecoder(reader).Decode(&body); err != nil {
+		return nil, err
 	}
 	return m.completeJobWithResponse(ctx, jobKey, body, reqEditors...)
 }
@@ -148,6 +158,7 @@ func TestService_SearchJobs_ConstructsFiltersAndConvertsRows(t *testing.T) {
 			return &camundav810.SearchJobsResponse{
 				HTTPResponse: okHTTPResponse(),
 				JSON200: &camundav810.JobSearchQueryResult{
+					Page: camundav810.SearchQueryPageResponse{TotalItems: 4},
 					Items: []camundav810.JobSearchResult{{
 						JobKey:             "2251799813711967",
 						State:              camundav810.JobStateEnumFAILED,
@@ -555,9 +566,11 @@ func TestSubmitJobCompletionWithoutVariables(t *testing.T) {
 	require.Equal(t, "skipped", result.ConfirmationStatus)
 }
 
+// newJobServiceTest defaults to unscoped discovery; tenant tests set their scope explicitly.
 func newJobServiceTest(t *testing.T, client *mockJobClient) *Service {
 	t.Helper()
 	cfg := testx.TestConfig(t)
+	cfg.App.Tenant = ""
 	cfg.App.CamundaVersion = toolx.V810
 	svc, err := New(cfg, &http.Client{}, slog.New(slog.NewTextHandler(io.Discard, nil)), WithClient(client))
 	require.NoError(t, err)
@@ -657,4 +670,293 @@ func okJobCompleteHTTPResponse() *http.Response {
 
 func stringPtr(value string) *string {
 	return &value
+}
+
+// TestJobSearchTenantScope keeps discovery scoped while explicit keys retain backend authorization.
+func TestJobSearchTenantScope(t *testing.T) {
+	t.Parallel()
+	for _, tenant := range []string{"tenant-a", ""} {
+		t.Run(tenant, func(t *testing.T) {
+			keyed := false
+			svc := newJobServiceTest(t, &mockJobClient{searchJobsWithResponse: func(_ context.Context, body camundav810.SearchJobsJSONRequestBody, _ ...camundav810.RequestEditorFn) (*camundav810.SearchJobsResponse, error) {
+				raw, err := json.Marshal(body)
+				require.NoError(t, err)
+				var request map[string]any
+				require.NoError(t, json.Unmarshal(raw, &request))
+				filter := request["filter"].(map[string]any)
+				if tenant == "" || keyed {
+					require.NotContains(t, filter, "tenantId")
+				} else {
+					require.Equal(t, tenant, filter["tenantId"])
+				}
+				return &camundav810.SearchJobsResponse{HTTPResponse: okHTTPResponse(), JSON200: &camundav810.JobSearchQueryResult{
+					Items: []camundav810.JobSearchResult{{JobKey: "1", TenantId: "tenant-a"}},
+					Page:  camundav810.SearchQueryPageResponse{TotalItems: 1},
+				}}, nil
+			}})
+			svc.cfg.App.Tenant = tenant
+			_, err := svc.SearchJobs(context.Background(), d.JobSearchQuery{})
+			require.NoError(t, err)
+			total, err := svc.SearchJobsTotal(context.Background(), d.JobSearchQuery{})
+			require.NoError(t, err)
+			require.Equal(t, int64(1), total)
+			keyed = true
+			svc.cfg.App.Tenant = "different-tenant"
+			job, err := svc.GetJob(context.Background(), "1")
+			require.NoError(t, err)
+			require.Equal(t, "tenant-a", job.TenantId)
+		})
+	}
+}
+
+// TestJobSearchIncompleteMetadata rejects ambiguous exhaustion in every shared search entry point.
+func TestJobSearchIncompleteMetadata(t *testing.T) {
+	t.Parallel()
+	for _, test := range []struct {
+		name  string
+		page  camundav810.SearchQueryPageResponse
+		items []camundav810.JobSearchResult
+	}{
+		{name: "empty exact with more", page: camundav810.SearchQueryPageResponse{TotalItems: 3}},
+		{name: "empty lower bound", page: camundav810.SearchQueryPageResponse{TotalItems: 0, HasMoreTotalItems: true}},
+		{name: "negative total", page: camundav810.SearchQueryPageResponse{TotalItems: -1}},
+		{name: "rows contradict exact total", items: []camundav810.JobSearchResult{{JobKey: "1"}}},
+	} {
+		for _, mode := range []string{"page", "pages", "collected", "total"} {
+			t.Run(test.name+"/"+mode, func(t *testing.T) {
+				calls := 0
+				svc := newJobServiceTest(t, &mockJobClient{searchJobsWithResponse: func(context.Context, camundav810.SearchJobsJSONRequestBody, ...camundav810.RequestEditorFn) (*camundav810.SearchJobsResponse, error) {
+					calls++
+					require.LessOrEqual(t, calls, 1, "ambiguous offset pages must not loop")
+					return &camundav810.SearchJobsResponse{HTTPResponse: okHTTPResponse(), JSON200: &camundav810.JobSearchQueryResult{Items: test.items, Page: test.page}}, nil
+				}})
+				var err error
+				switch mode {
+				case "page":
+					_, err = svc.SearchJobsPage(context.Background(), d.JobSearchQuery{}, d.JobPageRequest{Size: 2})
+				case "pages":
+					_, err = svc.SearchJobsPages(context.Background(), d.JobSearchQuery{BatchSize: 2}, nil)
+				case "collected":
+					_, err = svc.SearchJobs(context.Background(), d.JobSearchQuery{BatchSize: 2})
+				case "total":
+					_, err = svc.SearchJobsTotal(context.Background(), d.JobSearchQuery{BatchSize: 2})
+				}
+				require.ErrorIs(t, err, d.ErrMalformedResponse)
+				require.ErrorContains(t, err, "incomplete job search")
+			})
+		}
+	}
+}
+
+// TestJobSearchSparseCursorPages follows credible empty-page continuation and fails repeated cursors.
+func TestJobSearchSparseCursorPages(t *testing.T) {
+	t.Parallel()
+	for _, repeated := range []bool{false, true} {
+		t.Run(fmt.Sprint(repeated), func(t *testing.T) {
+			calls := 0
+			svc := newJobServiceTest(t, &mockJobClient{searchJobsWithResponse: func(_ context.Context, body camundav810.SearchJobsJSONRequestBody, _ ...camundav810.RequestEditorFn) (*camundav810.SearchJobsResponse, error) {
+				calls++
+				require.LessOrEqual(t, calls, 2)
+				cursor := "next"
+				page := camundav810.SearchQueryPageResponse{TotalItems: 1, EndCursor: &cursor}
+				var items []camundav810.JobSearchResult
+				if calls == 2 {
+					raw, err := json.Marshal(body.Page)
+					require.NoError(t, err)
+					require.JSONEq(t, `{"after":"next","limit":2}`, string(raw))
+					if !repeated {
+						items = []camundav810.JobSearchResult{{JobKey: "1"}}
+						page.EndCursor = nil
+					}
+				}
+				return &camundav810.SearchJobsResponse{HTTPResponse: okHTTPResponse(), JSON200: &camundav810.JobSearchQueryResult{Items: items, Page: page}}, nil
+			}})
+			svc.cfg.App.Tenant = ""
+			result, err := svc.SearchJobs(context.Background(), d.JobSearchQuery{BatchSize: 2})
+			if repeated {
+				require.ErrorContains(t, err, "incomplete job search")
+			} else {
+				require.NoError(t, err)
+				require.Len(t, result.Items, 1)
+			}
+			require.Equal(t, 2, calls)
+		})
+	}
+}
+
+// TestJobSearchScopedRawOffsets counts selected rows but advances past every raw row.
+func TestJobSearchScopedRawOffsets(t *testing.T) {
+	t.Parallel()
+	for _, totalMode := range []bool{false, true} {
+		t.Run(fmt.Sprint(totalMode), func(t *testing.T) {
+			calls := 0
+			svc := newJobServiceTest(t, &mockJobClient{searchJobsWithResponse: func(_ context.Context, body camundav810.SearchJobsJSONRequestBody, _ ...camundav810.RequestEditorFn) (*camundav810.SearchJobsResponse, error) {
+				calls++
+				require.LessOrEqual(t, calls, 2)
+				requireJobSearchPageJSON(t, body, int32((calls-1)*2), 2)
+				items := []camundav810.JobSearchResult{{JobKey: "1", TenantId: "other"}, {JobKey: "2", TenantId: "other"}}
+				if calls == 2 {
+					items = []camundav810.JobSearchResult{{JobKey: "3", TenantId: "tenant-a"}}
+				}
+				return &camundav810.SearchJobsResponse{HTTPResponse: okHTTPResponse(), JSON200: &camundav810.JobSearchQueryResult{Items: items, Page: camundav810.SearchQueryPageResponse{TotalItems: 3}}}, nil
+			}})
+			svc.cfg.App.Tenant = "tenant-a"
+			if totalMode {
+				total, err := svc.SearchJobsTotal(context.Background(), d.JobSearchQuery{BatchSize: 2})
+				require.NoError(t, err)
+				require.Equal(t, int64(1), total)
+			} else {
+				result, err := svc.SearchJobs(context.Background(), d.JobSearchQuery{BatchSize: 2})
+				require.NoError(t, err)
+				require.Equal(t, []d.Job{{Key: "3", TenantId: "tenant-a"}}, result.Items)
+			}
+			require.Equal(t, 2, calls)
+		})
+	}
+}
+
+// TestJobSearchPageRawEvidence preserves raw counts, safe trimming and opt-in stable key ordering.
+func TestJobSearchPageRawEvidence(t *testing.T) {
+	t.Parallel()
+	for _, sorted := range []bool{false, true} {
+		t.Run(fmt.Sprint(sorted), func(t *testing.T) {
+			calls := 0
+			svc := newJobServiceTest(t, &mockJobClient{searchJobsWithResponse: func(_ context.Context, body camundav810.SearchJobsJSONRequestBody, _ ...camundav810.RequestEditorFn) (*camundav810.SearchJobsResponse, error) {
+				calls++
+				if sorted {
+					raw, err := json.Marshal(body.Sort)
+					require.NoError(t, err)
+					require.JSONEq(t, `[{"field":"jobKey","order":"ASC"}]`, string(raw))
+				} else {
+					require.Nil(t, body.Sort)
+				}
+				cursor := "past-all-three"
+				return &camundav810.SearchJobsResponse{HTTPResponse: okHTTPResponse(), JSON200: &camundav810.JobSearchQueryResult{
+					Items: []camundav810.JobSearchResult{{JobKey: "1", TenantId: "other"}, {JobKey: "2", TenantId: "tenant-a"}, {JobKey: "3", TenantId: "tenant-a"}},
+					Page:  camundav810.SearchQueryPageResponse{TotalItems: 3, EndCursor: &cursor},
+				}}, nil
+			}})
+			svc.cfg.App.Tenant = "tenant-a"
+			query := d.JobSearchQuery{SortByKey: sorted}
+			page, err := svc.SearchJobsPage(context.Background(), query, d.JobPageRequest{Size: 2})
+			require.NoError(t, err)
+			require.Equal(t, int32(3), page.RawItemCount)
+			require.Equal(t, int32(2), page.NextFrom)
+			require.Empty(t, page.EndCursor, "truncated response cursor would skip unconsumed rows")
+			require.Equal(t, d.ProcessInstanceOverflowStateHasMore, page.OverflowState)
+			require.Equal(t, []d.Job{{Key: "2", TenantId: "tenant-a"}}, page.Items)
+			page, err = svc.SearchJobsPage(context.Background(), query, d.JobPageRequest{From: 2, Size: 2})
+			require.NoError(t, err)
+			require.Equal(t, int32(3), page.NextFrom)
+			require.Equal(t, d.ProcessInstanceOverflowStateNoMore, page.OverflowState)
+			require.Equal(t, []d.Job{{Key: "3", TenantId: "tenant-a"}}, page.Items)
+			require.Equal(t, 2, calls)
+		})
+	}
+}
+
+// TestJobSearchTotalEvidence uses exact totals directly and traverses short lower-bound pages to proven exhaustion.
+func TestJobSearchTotalEvidence(t *testing.T) {
+	t.Parallel()
+	for _, exact := range []bool{false, true} {
+		t.Run(fmt.Sprint(exact), func(t *testing.T) {
+			calls := 0
+			svc := newJobServiceTest(t, &mockJobClient{searchJobsWithResponse: func(_ context.Context, body camundav810.SearchJobsJSONRequestBody, _ ...camundav810.RequestEditorFn) (*camundav810.SearchJobsResponse, error) {
+				calls++
+				require.LessOrEqual(t, calls, 3)
+				requireJobSearchPageJSON(t, body, int32(calls-1), 10)
+				items := []camundav810.JobSearchResult{{JobKey: camundav810.JobKey(fmt.Sprint(calls))}}
+				if calls == 3 {
+					items = nil
+				}
+				return &camundav810.SearchJobsResponse{HTTPResponse: okHTTPResponse(), JSON200: &camundav810.JobSearchQueryResult{
+					Items: items, Page: camundav810.SearchQueryPageResponse{TotalItems: 1, HasMoreTotalItems: !exact},
+				}}, nil
+			}})
+			total, err := svc.SearchJobsTotal(context.Background(), d.JobSearchQuery{BatchSize: 10})
+			require.NoError(t, err)
+			if exact {
+				require.Equal(t, int64(1), total)
+				require.Equal(t, 1, calls)
+			} else {
+				require.Equal(t, int64(2), total)
+				require.Equal(t, 3, calls)
+			}
+		})
+	}
+}
+
+// TestJobSearchCursorCycle rejects a cycle even when each cursor differs from its immediate predecessor.
+func TestJobSearchCursorCycle(t *testing.T) {
+	t.Parallel()
+	calls := 0
+	svc := newJobServiceTest(t, &mockJobClient{searchJobsWithResponse: func(context.Context, camundav810.SearchJobsJSONRequestBody, ...camundav810.RequestEditorFn) (*camundav810.SearchJobsResponse, error) {
+		calls++
+		require.LessOrEqual(t, calls, 3)
+		cursor := "a"
+		if calls == 2 {
+			cursor = "b"
+		}
+		return &camundav810.SearchJobsResponse{HTTPResponse: okHTTPResponse(), JSON200: &camundav810.JobSearchQueryResult{Page: camundav810.SearchQueryPageResponse{TotalItems: 1, EndCursor: &cursor}}}, nil
+	}})
+	_, err := svc.SearchJobs(context.Background(), d.JobSearchQuery{BatchSize: 2})
+	require.ErrorContains(t, err, "incomplete job search: repeated cursor")
+	require.Equal(t, 3, calls)
+}
+
+// TestJobSearchInvalidOffsets rejects negative and overflowing traversal positions without looping.
+func TestJobSearchInvalidOffsets(t *testing.T) {
+	t.Parallel()
+	for _, from := range []int32{-1, 2147483647} {
+		t.Run(fmt.Sprint(from), func(t *testing.T) {
+			calls := 0
+			svc := newJobServiceTest(t, &mockJobClient{searchJobsWithResponse: func(context.Context, camundav810.SearchJobsJSONRequestBody, ...camundav810.RequestEditorFn) (*camundav810.SearchJobsResponse, error) {
+				calls++
+				return &camundav810.SearchJobsResponse{HTTPResponse: okHTTPResponse(), JSON200: &camundav810.JobSearchQueryResult{Items: []camundav810.JobSearchResult{{JobKey: "1"}}, Page: camundav810.SearchQueryPageResponse{TotalItems: 2147483648}}}, nil
+			}})
+			_, err := svc.SearchJobsPage(context.Background(), d.JobSearchQuery{}, d.JobPageRequest{From: from, Size: 1})
+			require.ErrorContains(t, err, "incomplete job search")
+			if from < 0 {
+				require.Zero(t, calls)
+			} else {
+				require.Equal(t, 1, calls)
+			}
+		})
+	}
+}
+
+// TestJobSearchEmptyCursorDeadline bounds empty-page continuation by the configured budget or earlier caller deadline.
+func TestJobSearchEmptyCursorDeadline(t *testing.T) {
+	t.Parallel()
+	for _, callerDeadline := range []bool{false, true} {
+		t.Run(fmt.Sprint(callerDeadline), func(t *testing.T) {
+			calls := 0
+			ctx := context.Background()
+			var cancel context.CancelFunc
+			if callerDeadline {
+				ctx, cancel = context.WithTimeout(ctx, 100*time.Millisecond)
+				defer cancel()
+			}
+			svc := newJobServiceTest(t, &mockJobClient{searchJobsWithResponse: func(pageCtx context.Context, _ camundav810.SearchJobsJSONRequestBody, _ ...camundav810.RequestEditorFn) (*camundav810.SearchJobsResponse, error) {
+				calls++
+				if calls == 1 {
+					cursor := "next"
+					return &camundav810.SearchJobsResponse{HTTPResponse: okHTTPResponse(), JSON200: &camundav810.JobSearchQueryResult{Page: camundav810.SearchQueryPageResponse{TotalItems: 1, EndCursor: &cursor}}}, nil
+				}
+				deadline, ok := pageCtx.Deadline()
+				require.True(t, ok, "empty-page continuation must be bounded")
+				require.LessOrEqual(t, time.Until(deadline), 100*time.Millisecond)
+				<-pageCtx.Done()
+				return nil, pageCtx.Err()
+			}})
+			svc.cfg.App.Backoff.Timeout = 100 * time.Millisecond
+			if callerDeadline {
+				svc.cfg.App.Backoff.Timeout = time.Hour
+			}
+			_, err := svc.SearchJobs(ctx, d.JobSearchQuery{})
+			require.ErrorIs(t, err, context.DeadlineExceeded)
+			require.ErrorContains(t, err, "incomplete job search")
+			require.Equal(t, 2, calls)
+		})
+	}
 }

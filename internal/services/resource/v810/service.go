@@ -9,13 +9,13 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"strings"
 
 	"github.com/grafvonb/c8volt/config"
 	camundav810 "github.com/grafvonb/c8volt/internal/clients/camunda/v810/camunda"
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/services"
 	"github.com/grafvonb/c8volt/internal/services/common"
-	"github.com/grafvonb/c8volt/internal/services/httpc"
 	resourcepayload "github.com/grafvonb/c8volt/internal/services/resource/payload"
 	"github.com/grafvonb/c8volt/toolx/logging"
 	"github.com/grafvonb/c8volt/toolx/poller"
@@ -79,15 +79,18 @@ func (s *Service) Delete(ctx context.Context, resourceKey string, opts ...servic
 	if err != nil {
 		return d.ResourceDeleteResponse{}, err
 	}
-	if err = httpc.HttpStatusErr(resp.HTTPResponse, resp.Body); err != nil {
-		return d.ResourceDeleteResponse{}, err
+	if resp == nil {
+		return d.ResourceDeleteResponse{}, fmt.Errorf("%w: missing resource deletion response", d.ErrMalformedResponse)
 	}
 	payload, err := common.RequirePayload(resp.HTTPResponse, resp.Body, resp.JSON200)
 	if err != nil {
 		return d.ResourceDeleteResponse{}, err
 	}
 	if payload.ResourceKey == "" || payload.ResourceKey != resourceKey {
-		return d.ResourceDeleteResponse{}, fmt.Errorf("%w: deletion response resource key does not match request", d.ErrMalformedResponse)
+		return d.ResourceDeleteResponse{}, fmt.Errorf("%w: resource deletion response does not identify requested resource %s", d.ErrMalformedResponse, resourceKey)
+	}
+	if payload.BatchOperation != nil && strings.TrimSpace(payload.BatchOperation.BatchOperationKey) == "" {
+		return d.ResourceDeleteResponse{}, fmt.Errorf("%w: resource deletion response contains a batch operation without a key", d.ErrMalformedResponse)
 	}
 	result := d.ResourceDeleteResponse{
 		Ok:            true,
@@ -96,14 +99,13 @@ func (s *Service) Delete(ctx context.Context, resourceKey string, opts ...servic
 		DeleteHistory: body.DeleteHistory != nil && *body.DeleteHistory,
 	}
 	if payload.BatchOperation != nil {
-		if payload.BatchOperation.BatchOperationKey == "" {
-			return result, fmt.Errorf("%w: deletion batch has no key", d.ErrMalformedResponse)
-		}
-		result.BatchOperationKey = resp.JSON200.BatchOperation.BatchOperationKey
+		result.BatchOperationKey = payload.BatchOperation.BatchOperationKey
 		result.Status = fmt.Sprintf("%s; history deletion batch %s submitted", result.Status, result.BatchOperationKey)
 	}
-	// Runtime process definitions drain asynchronously without a batch in 8.10.
-	// The process-definition workflow observes disappearance when waiting.
+	// In 8.10 process-definition history deletion can be deferred until the
+	// definition finishes draining, with no batch returned. The definition
+	// workflow still confirms disappearance unless NoWait is set; do not
+	// invent a completed history batch or replay the mutation to obtain one.
 	if result.BatchOperationKey == "" {
 		result.Status = fmt.Sprintf("%s; deletion accepted", result.Status)
 	}

@@ -19,6 +19,8 @@ import (
 )
 
 type fakeJobService struct {
+	execute func(context.Context, d.PreparedCompletionBatch, int, ...services.CallOption) (d.CompletionBatchReport, error)
+	prepare func(context.Context, d.CompletionRequest, ...services.CallOption) (d.PreparedCompletionBatch, error)
 	get     func(context.Context, string, ...services.CallOption) (d.Job, error)
 	search  func(context.Context, d.JobSearchQuery, ...services.CallOption) (d.JobSearchResult, error)
 	pages   func(context.Context, d.JobSearchQuery, d.JobSearchPageVisitor, ...services.CallOption) (d.JobSearchPagesResult, error)
@@ -688,4 +690,40 @@ func TestClient_SubmitJobCompletion_MutationFailureReturnsFailedResult(t *testin
 	require.Equal(t, WorkerOutcomeCompletion, result.Mode)
 	require.False(t, result.MutationAccepted)
 	require.Equal(t, mutationErr.Error(), result.Error)
+}
+
+// TestClient_SearchJobsPage_MapsRawEvidence keeps cursor and raw offsets independent of selected rows.
+func TestClient_SearchJobsPage_MapsRawEvidence(t *testing.T) {
+	t.Parallel()
+	api := New(fakeJobService{page: func(_ context.Context, _ d.JobSearchQuery, page d.JobPageRequest, _ ...services.CallOption) (d.JobSearchPage, error) {
+		require.Equal(t, d.JobPageRequest{From: 4, Size: 2, After: "cursor-a"}, page)
+		return d.JobSearchPage{
+			Items: []d.Job{}, Request: page, RawItemCount: 2, NextFrom: 6, EndCursor: "cursor-b",
+			OverflowState: d.ProcessInstanceOverflowStateHasMore,
+			ReportedTotal: &d.JobReportedTotal{Count: 10, Kind: d.JobReportedTotalKindLowerBound},
+		}, nil
+	}}, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	page, err := api.SearchJobsPage(context.Background(), SearchRequest{}, PageRequest{From: 4, Size: 2, After: "cursor-a"})
+	require.NoError(t, err)
+	require.Equal(t, Page{
+		Items: []Job{}, Request: PageRequest{From: 4, Size: 2, After: "cursor-a"},
+		RawItemCount: 2, NextFrom: 6, EndCursor: "cursor-b", OverflowState: OverflowStateHasMore,
+		ReportedTotal: &ReportedTotal{Count: 10, Kind: ReportedTotalKindLowerBound},
+	}, page)
+}
+
+// PrepareJobCompletionBatch delegates only to explicitly configured preparation expectations.
+func (f fakeJobService) PrepareJobCompletionBatch(ctx context.Context, request d.CompletionRequest, opts ...services.CallOption) (d.PreparedCompletionBatch, error) {
+	if f.prepare == nil {
+		return d.PreparedCompletionBatch{}, errors.New("unexpected completion preparation")
+	}
+	return f.prepare(ctx, request, opts...)
+}
+
+// ExecuteJobCompletionBatch delegates only to explicitly configured execution expectations.
+func (f fakeJobService) ExecuteJobCompletionBatch(ctx context.Context, batch d.PreparedCompletionBatch, workers int, opts ...services.CallOption) (d.CompletionBatchReport, error) {
+	if f.execute == nil {
+		return d.CompletionBatchReport{}, errors.New("unexpected completion execution")
+	}
+	return f.execute(ctx, batch, workers, opts...)
 }

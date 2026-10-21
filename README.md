@@ -140,7 +140,7 @@ To monitor deployment visibility, add `--watch`. It checks immediately and repea
 ./c8volt get process-definition --bpmn-process-id <bpmn-process-id> --latest --watch --watch-interval 2s
 ```
 
-Watch runs until interrupted, timed out, or its retry budget is exhausted. It cannot be combined with `--json`, `--keys-only`, `--xml`, `--quiet`, or `--automation`.
+Watch runs indefinitely by default, until interrupted or its retry budget is exhausted. Use `--watch-timeout 10m` to bound the session; `--watch-timeout 0` explicitly selects unlimited duration. This limit is independent of the HTTP request timeout (`--timeout`) and retry-loop backoff timeout. Individual request timeouts are retried while the watch session remains active, retaining the last successfully displayed snapshot. It cannot be combined with `--json`, `--keys-only`, `--xml`, `--quiet`, or `--automation`.
 
 Each successful refresh starts with a timestamped INFO line on stderr, such as `16:42:08.123 INFO 1 updated, 1 new, 0 removed`, including when nothing changed. The timestamp shows when the refresh completed. Rows stay on stdout: a trailing `*` marks an existing definition whose displayed values changed, while a trailing `+` marks a newly visible definition. Unchanged rows have no suffix. When stdout is a terminal, `TERM` is neither empty nor `dumb`, and `NO_COLOR` is unset, the individual changed values on `*` rows are also bold; markers and counts provide the same information when output is redirected or styling is disabled. New rows are not bold. The first successful refresh establishes an unmarked, zero-change baseline. Later refreshes compare with the previous successfully displayed result, so temporary failures do not consume changes; an unchanged success clears the markers and bold. Removed definitions are counted in the summary and do not remain as stale rows.
 
@@ -355,6 +355,8 @@ Use incident and job reads for diagnosis; use repair playbooks when the workflow
 ./c8volt ops repair incident --key <incident-key> --dry-run
 ```
 
+Job searches and `get job --total` honor `app.tenant` or a named `--tenant` override. Use `--tenant ""` or `--all-tenants` to search all accessible tenants; explicit `get job --key` retains backend authorization without the discovery tenant filter. `--batch-size` controls each request and `--limit` caps selected jobs. Sparse pages continue when pagination supports it; contradictory or nonadvancing pagination returns an incomplete-search error instead of a successful empty result.
+
 Generated references: [get incident](docs/cli/c8volt_get_incident.md), [get job](docs/cli/c8volt_get_job.md), [ops repair incident](docs/cli/c8volt_ops_repair_incident.md).
 
 ### Update And Verify
@@ -369,6 +371,34 @@ Use dry-run first for runtime mutations, then confirm explicitly or run under au
 ./c8volt update job --key <job-key> --retries 3 --dry-run
 ./c8volt expect process-instance --key <process-instance-key> --state completed
 ```
+
+Complete a selected job backlog with AND predicates. The same nine predicates as `get job` are available: `--state`, `--type`, `--pi-key`, `--element-instance-key`, `--element-id`, `--worker`, `--retries`, `--kind`, and `--listener-event-type`. Keyless `--complete --retries 0` selects zero-retry jobs; keyed completion still rejects `--retries`. Other update modes retain their single-key behavior.
+
+```bash
+./c8volt --tenant tenant-a update job --kind TASK_LISTENER --listener-event-type CANCELING \
+  --state CREATED --type removeTaskData --complete --dry-run --verbose
+./c8volt --tenant tenant-a update job --kind TASK_LISTENER --listener-event-type CANCELING \
+  --state CREATED --type removeTaskData --limit 1000 --batch-size 100 \
+  --complete --workers 4 --auto-confirm --json
+```
+
+For an explicit reviewed set, repeat `--key`, use comma-separated keys, or supply newline-separated keys with `-`. Flags precede stdin; duplicate numeric keys are completed once. Blank stdin lines are ignored; malformed, nonpositive, out-of-range keys and empty comma tokens reject the whole input before writes. Deliberate empty stdin succeeds. Explicit keys may span authorized tenants and report their actual tenant context. They cannot use search predicates, `--batch-size` or `--limit`.
+
+```bash
+./c8volt update job --key 2251799870796844,2251799870796848 \
+  --key 2251799870796849 --complete --dry-run
+./c8volt update job - --complete --auto-confirm --json < reviewed-job-keys.txt
+```
+
+One scalar key keeps the original single-job result. Repeated/comma/stdin forms always return the bulk result, even if duplicates reduce to one job. Collections are supported only for completion.
+
+Discovery honors the configured tenant, named overrides, and accessible scope under `--tenant ""` or `--all-tenants`. `--batch-size` controls pages; `--limit` caps unique selected jobs, with zero meaning uncapped. A key or predicate is required; controls alone never select jobs. Explicit keys and predicates cannot mix. Preparation freezes the entire selection before one eligible stderr confirmation; incomplete discovery, dry-run, declined confirmation and empty results submit nothing. A later invocation discovers a fresh selection, including any new sequential listeners.
+
+Completing a listener job acknowledges its work without executing its business logic. Nonempty variables are rejected when a batch contains task listeners. Accepted requests skip independent confirmation and do not establish process termination. Missing reads cannot prove completion; ambiguous submissions are not replayed and receive bounded observation (`--no-wait` permits one read). The command does not reset retries, repair incidents, cancel processes or delete history.
+
+Bulk output distinguishes accepted, observed completed, unsatisfied and not-started targets. Human previews, summaries and verbose rows use the configured logger at INFO level and honor its format, destination and level; confirmation prompts remain plain stderr text and JSON results stay on stdout. `--verbose` lists context and outcomes; JSON emits one envelope with all candidates or ordered outcomes, retaining partial results on failure. `--quiet` keeps requested JSON. Empty selections succeed without prompts, including under `--no-wait`; unsatisfied or interrupted batches fail. `--workers` bounds execution and `--fail-fast` stops new scheduling. JSON mutations require `--auto-confirm` or `--automation`; JSON dry-run is also supported. No keys-only output is provided.
+
+Human failures produce one compact logged error after the result summary, grouping repeated reasons. Quiet retains the error. HTTP diagnostics require `--debug` or configured debug logging; verbose alone shows per-job outcomes without raw HTTP errors. JSON retains the original failure evidence in its single result envelope.
 
 Generated references: [update process-instance](docs/cli/c8volt_update_process-instance.md), [update user-task](docs/cli/c8volt_update_user-task.md), [update job](docs/cli/c8volt_update_job.md), [expect process-instance](docs/cli/c8volt_expect_process-instance.md).
 

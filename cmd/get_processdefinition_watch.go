@@ -5,6 +5,7 @@ package cmd
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -29,9 +30,28 @@ var processDefinitionWatchNow = time.Now
 func runGetProcessDefinitionWatch(cmd *cobra.Command, cli c8volt.API, log *slog.Logger, noErrCodes bool, filter process.ProcessDefinitionFilter, timeout time.Duration, maxRetries int) {
 	log.Debug(fmt.Sprintf("watching pd; filter %s", filter.String()))
 	if err := executeGetProcessDefinitionWatch(cmd, cli, filter, timeout, maxRetries); err != nil {
-		handleCommandError(cmd, log, noErrCodes, fmt.Errorf("watch process definitions: %w", err))
+		message := fmt.Sprintf("watch process definitions: stopped (%s)", strings.ReplaceAll(string(ferrors.Classify(err)), "_", " "))
+		var failure *processDefinitionWatchFailure
+		if errors.As(err, &failure) && failure.result.Reason == watch.TerminationReasonRetryExhausted {
+			message = fmt.Sprintf("watch process definitions: retry budget exhausted after %d consecutive failures (%s)", failure.result.ConsecutiveFailures, ferrors.Classify(err))
+		}
+		handleCommandError(cmd, log, noErrCodes, fmt.Errorf("watch process definitions: %w", err),
+			message)
 	}
 }
+
+// processDefinitionWatchFailure carries bounded session facts for human errors
+// while retaining the original error text and class for machine consumers.
+type processDefinitionWatchFailure struct {
+	result watch.Result
+	cause  error
+}
+
+// Error preserves the runner's evidence without adding another error prefix.
+func (e *processDefinitionWatchFailure) Error() string { return e.cause.Error() }
+
+// Unwrap preserves timeout, availability and other original error classes.
+func (e *processDefinitionWatchFailure) Unwrap() error { return e.cause }
 
 // executeGetProcessDefinitionWatch collects serial refreshes and repaints stdout after each successful collection.
 func executeGetProcessDefinitionWatch(cmd *cobra.Command, cli c8volt.API, filter process.ProcessDefinitionFilter, timeout time.Duration, maxRetries int) error {
@@ -69,6 +89,9 @@ func executeGetProcessDefinitionWatch(cmd *cobra.Command, cli c8volt.API, filter
 		return nil
 	})
 	renderGetProcessDefinitionWatchStopStatus(cmd, result)
+	if err != nil {
+		return &processDefinitionWatchFailure{result: result, cause: err}
+	}
 	return err
 }
 
@@ -206,10 +229,10 @@ func renderGetProcessDefinitionWatchRetryStatus(cmd *cobra.Command, event watch.
 		return
 	}
 	if event.MaxRetries > 0 {
-		fmt.Fprintf(cmd.ErrOrStderr(), "retrying process-definition watch after refresh %d failed (%d/%d consecutive failures): %v\n", event.Tick, event.ConsecutiveFailures, event.MaxRetries, event.Err)
+		renderHumanWarningLine(cmd, "retrying process-definition watch after refresh %d failed (%d/%d consecutive failures): %s", event.Tick, event.ConsecutiveFailures, event.MaxRetries, ferrors.Classify(event.Err))
 		return
 	}
-	fmt.Fprintf(cmd.ErrOrStderr(), "retrying process-definition watch after refresh %d failed (consecutive failures: %d): %v\n", event.Tick, event.ConsecutiveFailures, event.Err)
+	renderHumanWarningLine(cmd, "retrying process-definition watch after refresh %d failed (consecutive failures: %d): %s", event.Tick, event.ConsecutiveFailures, ferrors.Classify(event.Err))
 }
 
 // renderGetProcessDefinitionWatchStopStatus reports terminal watch stop reasons on stderr.
@@ -219,9 +242,7 @@ func renderGetProcessDefinitionWatchStopStatus(cmd *cobra.Command, result watch.
 	}
 	switch result.Reason {
 	case watch.TerminationReasonTimeout:
-		fmt.Fprintln(cmd.ErrOrStderr(), "watch stopped: timeout reached")
-	case watch.TerminationReasonRetryExhausted:
-		fmt.Fprintf(cmd.ErrOrStderr(), "watch stopped: retry budget exhausted after %d consecutive failure(s)\n", result.ConsecutiveFailures)
+		renderHumanLine(cmd, "watch stopped: timeout reached")
 	}
 }
 

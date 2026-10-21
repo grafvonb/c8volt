@@ -37,7 +37,9 @@ var getJobCmd = &cobra.Command{
 
 Use --key for a known job. Otherwise search by state, type, process instance, element instance, BPMN element, worker, retries, job kind, or listener event type.
 
---batch-size controls each discovery request; --limit caps jobs across all pages; --total counts matching jobs.
+Search and --total use the configured tenant; --tenant overrides it. An empty --tenant or --all-tenants searches all accessible tenants. Explicit --key lookup uses backend authorization without the discovery tenant filter.
+
+--batch-size controls each discovery request; --limit caps jobs across all pages; --total counts matching jobs. Discovery follows raw page continuation and reports an incomplete-search error if pagination cannot establish completion.
 
 Requires Camunda 8.8 or newer.`,
 	Example: `  ./c8volt get job --key <job-key>
@@ -155,27 +157,35 @@ func validateGetJobSearchFlags(cmd *cobra.Command) error {
 			return mutuallyExclusiveFlagsf("--total cannot be combined with --limit")
 		}
 	}
-	if cmd.Flags().Changed("retries") && flagGetJobRetries < 0 {
+	// Validate raw enum values before normalization can erase an invalid value.
+	req := newGetJobSearchRequest(cmd)
+	req.State, req.Kind, req.ListenerEventType = flagGetJobState, flagGetJobKind, flagGetJobListenerEvent
+	return validateJobSearchPredicates(req)
+}
+
+// validateJobSearchPredicates shares value validation without sharing mutable command flags.
+func validateJobSearchPredicates(req job.SearchRequest) error {
+	if req.Retries != nil && *req.Retries < 0 {
 		return invalidFlagValuef("--retries must be non-negative")
 	}
-	if flagGetJobProcessKey != "" {
-		if ok, firstBadKey, _ := validateKeys([]string{flagGetJobProcessKey}); !ok {
+	if req.ProcessInstanceKey != "" {
+		if ok, firstBadKey, _ := validateKeys([]string{req.ProcessInstanceKey}); !ok {
 			return invalidFlagValuef("--pi-key value %q is not a valid key", firstBadKey)
 		}
 	}
-	if flagGetJobElementKey != "" {
-		if ok, firstBadKey, _ := validateKeys([]string{flagGetJobElementKey}); !ok {
+	if req.ElementInstanceKey != "" {
+		if ok, firstBadKey, _ := validateKeys([]string{req.ElementInstanceKey}); !ok {
 			return invalidFlagValuef("--element-instance-key value %q is not a valid key", firstBadKey)
 		}
 	}
-	if flagGetJobState != "" && !validJobState(flagGetJobState) {
-		return invalidFlagValuef("invalid value for --state: %q, valid values are: %s", flagGetJobState, strings.Join(validJobStates, ", "))
+	if req.State != "" && !validJobState(req.State) {
+		return invalidFlagValuef("invalid value for --state: %q, valid values are: %s", req.State, strings.Join(validJobStates, ", "))
 	}
-	if flagGetJobKind != "" && !validJobKind(flagGetJobKind) {
-		return invalidFlagValuef("invalid value for --kind: %q, valid values are: %s", flagGetJobKind, strings.Join(validJobKinds, ", "))
+	if req.Kind != "" && !validJobKind(req.Kind) {
+		return invalidFlagValuef("invalid value for --kind: %q, valid values are: %s", req.Kind, strings.Join(validJobKinds, ", "))
 	}
-	if flagGetJobListenerEvent != "" && !validJobListenerEventType(flagGetJobListenerEvent) {
-		return invalidFlagValuef("invalid value for --listener-event-type: %q, valid values are: %s", flagGetJobListenerEvent, strings.Join(validJobListenerEventTypes, ", "))
+	if req.ListenerEventType != "" && !validJobListenerEventType(req.ListenerEventType) {
+		return invalidFlagValuef("invalid value for --listener-event-type: %q, valid values are: %s", req.ListenerEventType, strings.Join(validJobListenerEventTypes, ", "))
 	}
 	return nil
 }

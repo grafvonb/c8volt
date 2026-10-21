@@ -5,6 +5,7 @@ package v810
 
 import (
 	"context"
+	"io"
 
 	camundav810 "github.com/grafvonb/c8volt/internal/clients/camunda/v810/camunda"
 	d "github.com/grafvonb/c8volt/internal/domain"
@@ -13,6 +14,10 @@ import (
 
 // API describes the job operations implemented by the native v8.10 adapter.
 type API interface {
+	// PrepareJobCompletionBatch freezes a complete read-only selection before execution.
+	PrepareJobCompletionBatch(ctx context.Context, request d.CompletionRequest, opts ...services.CallOption) (d.PreparedCompletionBatch, error)
+	// ExecuteJobCompletionBatch executes validated frozen membership and retains partial results on error.
+	ExecuteJobCompletionBatch(ctx context.Context, batch d.PreparedCompletionBatch, wantedWorkers int, opts ...services.CallOption) (d.CompletionBatchReport, error)
 	GetJob(ctx context.Context, key string, opts ...services.CallOption) (d.Job, error)
 	SearchJobs(ctx context.Context, query d.JobSearchQuery, opts ...services.CallOption) (d.JobSearchResult, error)
 	SearchJobsPages(ctx context.Context, query d.JobSearchQuery, visitor d.JobSearchPageVisitor, opts ...services.CallOption) (d.JobSearchPagesResult, error)
@@ -26,7 +31,7 @@ type API interface {
 type GenJobClient interface {
 	SearchJobsWithResponse(ctx context.Context, body camundav810.SearchJobsJSONRequestBody, reqEditors ...camundav810.RequestEditorFn) (*camundav810.SearchJobsResponse, error)
 	UpdateJobWithResponse(ctx context.Context, jobKey camundav810.JobKey, body camundav810.UpdateJobJSONRequestBody, reqEditors ...camundav810.RequestEditorFn) (*camundav810.UpdateJobResponse, error)
-	CompleteJobWithResponse(ctx context.Context, jobKey camundav810.JobKey, body camundav810.CompleteJobJSONRequestBody, reqEditors ...camundav810.RequestEditorFn) (*camundav810.CompleteJobResponse, error)
+	CompleteJobWithBodyWithResponse(ctx context.Context, jobKey camundav810.JobKey, contentType string, body io.Reader, reqEditors ...camundav810.RequestEditorFn) (*camundav810.CompleteJobResponse, error)
 	ThrowJobErrorWithResponse(ctx context.Context, jobKey camundav810.JobKey, body camundav810.ThrowJobErrorJSONRequestBody, reqEditors ...camundav810.RequestEditorFn) (*camundav810.ThrowJobErrorResponse, error)
 	FailJobWithResponse(ctx context.Context, jobKey camundav810.JobKey, body camundav810.FailJobJSONRequestBody, reqEditors ...camundav810.RequestEditorFn) (*camundav810.FailJobResponse, error)
 }

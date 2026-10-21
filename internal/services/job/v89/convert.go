@@ -22,8 +22,8 @@ func newJobKeyEqFilterPtr(v string) (*camundav89.JobKeyFilterProperty, error) {
 }
 
 // newJobSearchFilter builds the generated v8.9 job search filter from the
-// version-neutral query while keeping zero retries as an explicit filter.
-func newJobSearchFilter(query d.JobSearchQuery) (*camundav89.JobFilter, error) {
+// version-neutral query and discovery tenant, preserving explicit zero retries.
+func newJobSearchFilter(query d.JobSearchQuery, tenant string) (*camundav89.JobFilter, error) {
 	state, err := newJobStateEqFilterPtr(query.State)
 	if err != nil {
 		return nil, err
@@ -60,7 +60,12 @@ func newJobSearchFilter(query d.JobSearchQuery) (*camundav89.JobFilter, error) {
 	if err != nil {
 		return nil, err
 	}
+	tenantID, err := newStringEqFilterPtr(tenant)
+	if err != nil {
+		return nil, err
+	}
 	return &camundav89.JobFilter{
+		TenantId:           tenantID,
 		State:              state,
 		Type:               jobType,
 		ProcessInstanceKey: processInstanceKey,

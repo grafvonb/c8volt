@@ -6,7 +6,7 @@ nav_exclude: true
 [CLI Reference]({{ "/cli/" | relative_url }})
 ## c8volt update job
 
-Update a job by key
+Update a job or complete selected jobs
 
 ### Synopsis
 
@@ -14,12 +14,26 @@ Update a Camunda job by key on Camunda 8.8 or newer.
 
 Supports retry and timeout updates and worker outcomes. Explicit --key uses backend authorization without tenant filtering.
 
+For bulk --complete, repeat --key, supply comma-separated keys, or use one positional '-' to read newline-separated keys. Flags precede stdin; blank lines are ignored, invalid or empty key tokens fail, and all input is validated before mutation. Duplicate keys are completed once. Empty stdin succeeds without mutation. Explicit keys retain backend authorization across tenants and show actual tenant context. One scalar key preserves the existing single-job result; every collection keeps the bulk result even after deduplication.
+
+For selector --complete, omit --key and supply one or more AND predicates: --state, --type, --pi-key, --element-instance-key, --element-id, --worker, --retries, --kind, or --listener-event-type. Explicit --retries 0 is an exact selector in this mode; keyed --complete still rejects --retries. Other update modes require one scalar key and reject collections and selectors.
+
+Selector discovery uses the configured tenant; --tenant overrides it, and empty --tenant or --all-tenants searches all accessible tenants. --batch-size controls each page; --limit caps unique selected jobs (0 means uncapped). Controls alone do not select jobs. Explicit keys cannot combine with predicates or search controls.
+
+The complete selection is frozen before one confirmation. Incomplete discovery submits nothing. Empty results succeed without confirmation or mutation. --workers bounds concurrency; --fail-fast stops new work after an unsatisfied result. New sequential listener jobs require another invocation.
+
+Completing a listener job acknowledges its work without executing its business logic. Accepted completion skips independent confirmation and does not verify process termination. Bulk requests are not automatically replayed; ambiguous outcomes use bounded observation, with at most one read under --no-wait. No retries, incidents or processes are repaired implicitly.
+
+Bulk dry-run previews show count, filters or explicit selection and tenant scope; --verbose lists candidate context. JSON retains all preview candidates or ordered execution outcomes, including partial failures. Quiet suppresses prose while preserving requested JSON. A later selector invocation discovers a fresh selection.
+
+Bulk previews, summaries and verbose rows use the configured logger at INFO level. Bulk failures produce one compact logged error after the result summary, grouping repeated reasons. Quiet retains that error. Use --verbose for per-job outcomes and --debug or configured debug logging for HTTP diagnostics. JSON preserves the original failure evidence and partial results in one envelope.
+
 c8volt plans the update and asks for confirmation before material interactive mutations. Retry updates are verified by reading the job; timeout updates and worker outcomes return after acceptance without waiting for confirmation.
 
 Use --dry-run to inspect the plan without mutation. With --json, mutations require --dry-run, --auto-confirm, or --automation; --json cannot be combined with --verbose.
 
 ```
-c8volt update job [flags]
+c8volt update job [-] [flags]
 ```
 
 ### Examples
@@ -33,23 +47,40 @@ c8volt update job [flags]
   ./c8volt update job --key <job-key> --throw-bpmn-error PAYMENT_DECLINED --message "card declined" --dry-run
   ./c8volt update job --key <job-key> --complete --vars '{"approved":true}' --dry-run
   ./c8volt --json update job --key <job-key> --retries 3 --dry-run
+  ./c8volt update job --kind TASK_LISTENER --listener-event-type CANCELING --state CREATED --type removeTaskData --complete --dry-run --verbose
+  ./c8volt update job --type removeTaskData --retries 0 --limit 1000 --batch-size 100 --complete --auto-confirm --json
+  ./c8volt update job --key 2251799870796844,2251799870796848 --key 2251799870796849 --complete --dry-run
+  ./c8volt update job - --complete --auto-confirm --json < reviewed-job-keys.txt
 ```
 
 ### Options
 
 ```
-      --complete                  complete the job through the worker outcome API
-      --dry-run                   preview job updates without submitting mutation
-      --fail                      report a technical job failure
-  -h, --help                      help for job
-  -k, --key string                job key to update
-      --message string            operator message for worker outcome modes
-      --no-wait                   return after the update request is accepted without retry confirmation
-      --retries int32             retry count to set, or remaining retries for --fail
-      --retry-backoff string      duration before a failed job becomes retryable, for example 60s, 5m, or 1h
-      --throw-bpmn-error string   BPMN error code to throw for the job
-      --timeout string            timeout duration to submit for the job, for example 60s, 5m, or 1h
-      --vars string               JSON object with variables for BPMN error or completion outcomes
+  -n, --batch-size int32              jobs per discovery page for selector completion (default 1000)
+      --complete                      complete the job through the worker outcome API
+      --dry-run                       preview job updates without submitting mutation
+      --element-id string             BPMN element ID selector for --complete
+      --element-instance-key string   element instance key selector for --complete
+      --fail                          report a technical job failure
+      --fail-fast                     stop scheduling new completions after the first unsatisfied outcome
+  -h, --help                          help for job
+  -k, --key stringArray               job key to update; for --complete, repeat or use comma-separated keys and stdin '-'
+      --kind string                   job kind selector for --complete; case-insensitive
+  -l, --limit int32                   maximum unique selector completion targets; 0 means uncapped
+      --listener-event-type string    listener event selector for --complete; case-insensitive
+      --message string                operator message for worker outcome modes
+      --no-wait                       skip retry confirmation; bulk completion permits one reconciliation read without polling
+      --no-worker-limit               use all queued jobs as workers when --workers is unset
+      --pi-key string                 process instance key selector for --complete
+      --retries int32                 retry count to set, remaining retries for --fail, or exact selector with keyless --complete (including 0)
+      --retry-backoff string          duration before a failed job becomes retryable, for example 60s, 5m, or 1h
+  -s, --state string                  job state selector for --complete; case-insensitive
+      --throw-bpmn-error string       BPMN error code to throw for the job
+      --timeout string                timeout duration to submit for the job, for example 60s, 5m, or 1h
+      --type string                   job type selector for --complete
+      --vars string                   JSON object with variables for BPMN error or completion outcomes
+      --worker string                 worker name selector for --complete
+  -w, --workers int                   maximum concurrent completion workers (default: min(count, 2*GOMAXPROCS, 32))
 ```
 
 ### Options inherited from parent commands

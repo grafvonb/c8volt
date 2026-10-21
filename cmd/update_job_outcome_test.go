@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/grafvonb/c8volt/testx"
 	"github.com/stretchr/testify/require"
 )
 
@@ -238,4 +239,43 @@ func TestUpdateJobCommand_JSONDryRunCompletionPlanPayload(t *testing.T) {
 	require.Equal(t, true, payload["materialChange"])
 	require.Equal(t, false, payload["mutationSubmitted"])
 	require.Equal(t, map[string]any{"approved": true}, payload["variables"])
+}
+
+// TestUpdateJobBulkCompletionSuppressionAndVersion keeps failure payloads under
+// explicit exit-code suppression across all supported versions.
+func TestUpdateJobBulkCompletionSuppressionAndVersion(t *testing.T) {
+	for _, version := range []string{"8.8", "8.9", "8.10"} {
+		t.Run(version, func(t *testing.T) {
+			fixture, server := newBulkCompletionFixture(t, "partial")
+			args := []string{"--config", writeTestConfigForVersion(t, server.URL, version), "--tenant", "tenant-a", "--json", "--no-err-codes", "update", "job", "--type", "cleanup", "--complete", "--auto-confirm", "--workers", "1"}
+			encoded, _ := json.Marshal(args)
+			stdout, stderr, err := testx.RunCmdSubprocessSeparate(t, "TestUpdateJobBulkCompletionHelper", map[string]string{"C8VOLT_BATCH_ARGS": string(encoded)})
+			require.NoError(t, err, stderr)
+			envelope := decodeBulkCompletionEnvelope(t, stdout)
+			require.Equal(t, "failed", envelope["outcome"])
+			payload := requireJSONObject(t, envelope["payload"])
+			require.Len(t, fixture.writes, 1)
+			require.Len(t, payload["outcomes"], 2)
+		})
+	}
+}
+
+// TestUpdateJobCommand_ScalarCompletionKeepsLegacyJSON proves the repeatable key
+// flag still dispatches one scalar through the original worker-outcome contract.
+func TestUpdateJobCommand_ScalarCompletionKeepsLegacyJSON(t *testing.T) {
+	var requests []string
+	var bodies []map[string]any
+	server := newJobCompleteServer(t, &requests, &bodies, []string{jobSearchResponse("2251799813711967", 1)}, http.StatusNoContent)
+	t.Cleanup(server.Close)
+	stdout, stderr := executeRootForJobTestWithSeparateOutputs(t, "--config", writeTestConfigForVersion(t, server.URL, "8.8"), "update", "job", "--key", "2251799813711967", "--complete", "--vars", `{"approved":true}`, "--auto-confirm", "--json")
+	require.Empty(t, stderr)
+	envelope := decodeBulkCompletionEnvelope(t, stdout)
+	payload := requireJSONObject(t, envelope["payload"])
+	require.Equal(t, "completion", payload["mode"])
+	require.NotContains(t, payload, "selection")
+	require.NotContains(t, payload, "outcomes")
+	require.NotContains(t, payload, "counts")
+	require.Equal(t, []string{"POST /v2/jobs/search", "POST /v2/jobs/2251799813711967/completion"}, requests)
+	require.Len(t, bodies, 1)
+	require.Equal(t, map[string]any{"approved": true}, bodies[0]["variables"])
 }

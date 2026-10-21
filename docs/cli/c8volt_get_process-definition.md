@@ -20,7 +20,7 @@ Select by key, BPMN process ID, version, or version tag. Use --xml only with --k
 
 --stat includes exact-version statistics and requires Camunda 8.8 or newer.
 
---watch repeats the lookup until interrupted, timed out, or retries are exhausted. It starts immediately; --watch-interval controls subsequent checks. Without a selector it observes all visible definitions. Each successful refresh logs a timestamped INFO summary, including when nothing changed, compared with the previous successfully displayed refresh, for example: 16:42:08.123 INFO 1 updated, 1 new, 0 removed. Rows end with * for changed definitions and + for new definitions; unchanged rows have no suffix; on supported terminal output, changed displayed values are also bold. Bold falls back to plain markers when TERM is empty or dumb, NO_COLOR is set, or output is redirected. The first successful refresh establishes an unmarked baseline. Failed refreshes do not replace that baseline, and an unchanged success clears prior markers and bold. Removed definitions contribute to the summary without leaving stale rows. --watch cannot be combined with --json, --keys-only, --xml, --quiet, or --automation.
+--watch repeats the lookup indefinitely by default until interrupted or retries are exhausted. --watch-timeout sets an optional session limit (0 = unlimited), independently of --timeout for individual HTTP requests and the retry-loop backoff timeout. Individual request timeouts are retried while the session remains active. It starts immediately; --watch-interval controls subsequent checks. Without a selector it observes all visible definitions. Each successful refresh logs a timestamped INFO summary, including when nothing changed, compared with the previous successfully displayed refresh, for example: 16:42:08.123 INFO 1 updated, 1 new, 0 removed. Rows end with * for changed definitions and + for new definitions; unchanged rows have no suffix; on supported terminal output, changed displayed values are also bold. Bold falls back to plain markers when TERM is empty or dumb, NO_COLOR is set, or output is redirected. The first successful refresh establishes an unmarked baseline. Failed refreshes do not replace that baseline, and an unchanged success clears prior markers and bold. Removed definitions contribute to the summary without leaving stale rows. --watch cannot be combined with --json, --keys-only, --xml, --quiet, or --automation.
 
 ```
 c8volt get process-definition [flags]
@@ -33,6 +33,7 @@ c8volt get process-definition [flags]
   ./c8volt get process-definition --bpmn-process-id <bpmn-process-id> --latest
   ./c8volt get process-definition --bpmn-process-id <bpmn-process-id> --latest --watch
   ./c8volt get process-definition --watch --watch-interval 2s
+  ./c8volt get process-definition --watch --watch-timeout 10m
   ./c8volt get process-definition --key <process-definition-key> --json
   ./c8volt get process-definition --key <process-definition-key> --xml
 ```
@@ -48,8 +49,9 @@ c8volt get process-definition [flags]
       --pd-version int32          process definition version
       --pd-version-tag string     process definition version tag
       --stat                      include process definition statistics and incident counts
-      --watch                     repeat the process-definition lookup until interrupted, timed out, or retries are exhausted
+      --watch                     repeat the process-definition lookup until interrupted, --watch-timeout is reached, or retries are exhausted
       --watch-interval duration   interval between process-definition watch refreshes after the immediate first refresh (default 1s)
+      --watch-timeout duration    maximum watch session duration (0 = unlimited; requires --watch)
       --xml                       output the selected process definition as raw XML (requires --key and no other filters)
 ```
 

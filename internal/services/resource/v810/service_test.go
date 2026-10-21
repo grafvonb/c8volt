@@ -491,6 +491,7 @@ func TestService_Delete(t *testing.T) {
 		assert.Contains(t, resp.Status, "deletion accepted")
 		assert.True(t, resp.DeleteHistory)
 		assert.Empty(t, resp.BatchOperationKey)
+		assert.Empty(t, resp.BatchState)
 	})
 }
 

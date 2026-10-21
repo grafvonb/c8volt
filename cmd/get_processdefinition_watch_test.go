@@ -8,6 +8,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/exec"
@@ -24,6 +25,7 @@ import (
 	"github.com/grafvonb/c8volt/consts"
 	"github.com/grafvonb/c8volt/internal/exitcode"
 	"github.com/grafvonb/c8volt/testx"
+	"github.com/grafvonb/c8volt/toolx/logging"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 )
@@ -222,7 +224,8 @@ func TestGetProcessDefinitionWatchEightRefreshChangeSequence(t *testing.T) {
 	require.Contains(t, refreshes[1], "c tenant case    v1 [ac:1 cp:- cx:-] +")
 	require.Contains(t, result.stderr, "INFO 0 updated, 0 new, 0 removed")
 	require.Equal(t, []string{"c", "b", "a"}, processDefinitionKeysFromHumanOutput(refreshes[2]))
-	require.Contains(t, result.stderr, "partial refresh")
+	require.Contains(t, result.stderr, "WARN retrying process-definition watch after refresh 4 failed (1/2 consecutive failures): unavailable")
+	require.NotContains(t, result.stderr, "partial refresh")
 	summaries := regexp.MustCompile(`(?m)^\d{2}:\d{2}:\d{2}\.\d{3} INFO (.*)$`).FindAllStringSubmatch(result.stderr, -1)
 	require.Len(t, summaries, 7)
 	for i, counts := range []string{"0 updated, 0 new, 0 removed", "1 updated, 1 new, 0 removed", "0 updated, 0 new, 0 removed", "1 updated, 0 new, 1 removed", "0 updated, 0 new, 2 removed", "0 updated, 0 new, 0 removed", "0 updated, 1 new, 0 removed"} {
@@ -612,7 +615,7 @@ func TestGetProcessDefinitionWatchRetryExhaustionReturnsErrorAndStderrStatus(t *
 	require.Empty(t, stdout)
 	require.Contains(t, err.Error(), "watch retry exhausted")
 	require.Contains(t, stderr, "retrying process-definition watch after refresh 1 failed")
-	require.Contains(t, stderr, "watch stopped: retry budget exhausted after 2 consecutive failure(s)")
+	require.NotContains(t, stderr, "watch stopped:") // The command error handler reports exhaustion once.
 }
 
 // TestGetProcessDefinitionWatchWarnsOncePerContinuousSlowRefreshStreak keeps
@@ -1172,7 +1175,7 @@ func executeGetProcessDefinitionWatchHarnessForTest(t *testing.T, h processDefin
 	var stderr bytes.Buffer
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stderr)
-	cmd.SetContext(context.Background())
+	cmd.SetContext(logging.ToContext(context.Background(), slog.New(logging.NewPlainHandler(&stderr, slog.LevelInfo))))
 
 	previousSleep := processDefinitionWatchSleep
 	previousNow := processDefinitionWatchNow

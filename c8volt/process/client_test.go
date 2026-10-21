@@ -3839,3 +3839,13 @@ func TestClient_CreateProcessInstance_SuspendedVisibility(t *testing.T) {
 		})
 	}
 }
+
+// PrepareJobCompletionBatch rejects unexpected batch calls in unrelated facade tests.
+func (s stubJobAPI) PrepareJobCompletionBatch(context.Context, d.CompletionRequest, ...services.CallOption) (d.PreparedCompletionBatch, error) {
+	panic("unexpected completion preparation")
+}
+
+// ExecuteJobCompletionBatch rejects unexpected batch calls in unrelated facade tests.
+func (s stubJobAPI) ExecuteJobCompletionBatch(context.Context, d.PreparedCompletionBatch, int, ...services.CallOption) (d.CompletionBatchReport, error) {
+	return d.CompletionBatchReport{}, errors.New("unexpected completion execution")
+}

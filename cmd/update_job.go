@@ -6,6 +6,7 @@ package cmd
 import (
 	"fmt"
 
+	"github.com/grafvonb/c8volt/consts"
 	"github.com/spf13/cobra"
 )
 
@@ -21,12 +22,27 @@ var (
 	flagUpdateJobVariables       string
 )
 
+// updateJobCmd retains scalar updates and routes collection completion to the frozen batch lifecycle.
 var updateJobCmd = &cobra.Command{
-	Use:   "job",
-	Short: "Update a job by key",
+	Use:   "job [-]",
+	Short: "Update a job or complete selected jobs",
 	Long: `Update a Camunda job by key on Camunda 8.8 or newer.
 
 Supports retry and timeout updates and worker outcomes. Explicit --key uses backend authorization without tenant filtering.
+
+For bulk --complete, repeat --key, supply comma-separated keys, or use one positional '-' to read newline-separated keys. Flags precede stdin; blank lines are ignored, invalid or empty key tokens fail, and all input is validated before mutation. Duplicate keys are completed once. Empty stdin succeeds without mutation. Explicit keys retain backend authorization across tenants and show actual tenant context. One scalar key preserves the existing single-job result; every collection keeps the bulk result even after deduplication.
+
+For selector --complete, omit --key and supply one or more AND predicates: --state, --type, --pi-key, --element-instance-key, --element-id, --worker, --retries, --kind, or --listener-event-type. Explicit --retries 0 is an exact selector in this mode; keyed --complete still rejects --retries. Other update modes require one scalar key and reject collections and selectors.
+
+Selector discovery uses the configured tenant; --tenant overrides it, and empty --tenant or --all-tenants searches all accessible tenants. --batch-size controls each page; --limit caps unique selected jobs (0 means uncapped). Controls alone do not select jobs. Explicit keys cannot combine with predicates or search controls.
+
+The complete selection is frozen before one confirmation. Incomplete discovery submits nothing. Empty results succeed without confirmation or mutation. --workers bounds concurrency; --fail-fast stops new work after an unsatisfied result. New sequential listener jobs require another invocation.
+
+Completing a listener job acknowledges its work without executing its business logic. Accepted completion skips independent confirmation and does not verify process termination. Bulk requests are not automatically replayed; ambiguous outcomes use bounded observation, with at most one read under --no-wait. No retries, incidents or processes are repaired implicitly.
+
+Bulk dry-run previews show count, filters or explicit selection and tenant scope; --verbose lists candidate context. JSON retains all preview candidates or ordered execution outcomes, including partial failures. Quiet suppresses prose while preserving requested JSON. A later selector invocation discovers a fresh selection.
+
+Bulk previews, summaries and verbose rows use the configured logger at INFO level. Bulk failures produce one compact logged error after the result summary, grouping repeated reasons. Quiet retains that error. Use --verbose for per-job outcomes and --debug or configured debug logging for HTTP diagnostics. JSON preserves the original failure evidence and partial results in one envelope.
 
 c8volt plans the update and asks for confirmation before material interactive mutations. Retry updates are verified by reading the job; timeout updates and worker outcomes return after acceptance without waiting for confirmation.
 
@@ -38,10 +54,14 @@ Use --dry-run to inspect the plan without mutation. With --json, mutations requi
   ./c8volt update job --key <job-key> --fail --retries 0 --message "worker unavailable" --dry-run
   ./c8volt update job --key <job-key> --throw-bpmn-error PAYMENT_DECLINED --message "card declined" --dry-run
   ./c8volt update job --key <job-key> --complete --vars '{"approved":true}' --dry-run
-  ./c8volt --json update job --key <job-key> --retries 3 --dry-run`,
-	Args: cobra.NoArgs,
+  ./c8volt --json update job --key <job-key> --retries 3 --dry-run
+  ./c8volt update job --kind TASK_LISTENER --listener-event-type CANCELING --state CREATED --type removeTaskData --complete --dry-run --verbose
+  ./c8volt update job --type removeTaskData --retries 0 --limit 1000 --batch-size 100 --complete --auto-confirm --json
+  ./c8volt update job --key 2251799870796844,2251799870796848 --key 2251799870796849 --complete --dry-run
+  ./c8volt update job - --complete --auto-confirm --json < reviewed-job-keys.txt`,
+	Args: func(cmd *cobra.Command, args []string) error { return validateOptionalDashArg(args) },
 	Run: func(cmd *cobra.Command, args []string) {
-		request, err := parseUpdateJobRequest(cmd)
+		request, batchRequest, err := parseUpdateJobCommandRequest(cmd, args...)
 		if err != nil {
 			failBeforeCli(cmd, err)
 		}
@@ -54,6 +74,13 @@ Use --dry-run to inspect the plan without mutation. With --json, mutations requi
 		}
 		if err := requireAutomationSupport(cmd); err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+		}
+		if batchRequest != nil {
+			err := runUpdateJobBatch(cmd, cli, cfg, *batchRequest)
+			if err != nil {
+				exitAfterRenderedResult(cfg.App.NoErrCodes, err)
+			}
+			return
 		}
 		plan, err := planUpdateJob(cmd.Context(), cli, request)
 		if err != nil {
@@ -103,12 +130,13 @@ Use --dry-run to inspect the plan without mutation. With --json, mutations requi
 	},
 }
 
+// init registers update flags and advertises alternative completion selection.
 func init() {
 	updateCmd.AddCommand(updateJobCmd)
 
 	fs := updateJobCmd.Flags()
-	fs.StringVarP(&flagUpdateJobKey, "key", "k", "", "job key to update")
-	fs.Int32Var(&flagUpdateJobRetries, "retries", 0, "retry count to set, or remaining retries for --fail")
+	fs.StringArrayP("key", "k", nil, "job key to update; for --complete, repeat or use comma-separated keys and stdin '-'")
+	fs.Int32Var(&flagUpdateJobRetries, "retries", 0, "retry count to set, remaining retries for --fail, or exact selector with keyless --complete (including 0)")
 	fs.StringVar(&flagUpdateJobTimeoutRaw, "timeout", "", "timeout duration to submit for the job, for example 60s, 5m, or 1h")
 	fs.BoolVar(&flagUpdateJobFail, "fail", false, "report a technical job failure")
 	fs.StringVar(&flagUpdateJobRetryBackoffRaw, "retry-backoff", "", "duration before a failed job becomes retryable, for example 60s, 5m, or 1h")
@@ -117,7 +145,21 @@ func init() {
 	fs.BoolVar(&flagUpdateJobComplete, "complete", false, "complete the job through the worker outcome API")
 	fs.StringVar(&flagUpdateJobVariables, "vars", "", "JSON object with variables for BPMN error or completion outcomes")
 	fs.BoolVar(&flagDryRun, "dry-run", false, "preview job updates without submitting mutation")
-	fs.BoolVar(&flagNoWait, "no-wait", false, "return after the update request is accepted without retry confirmation")
+	fs.BoolVar(&flagNoWait, "no-wait", false, "skip retry confirmation; bulk completion permits one reconciliation read without polling")
+
+	fs.StringP("state", "s", "", "job state selector for --complete; case-insensitive")
+	fs.String("type", "", "job type selector for --complete")
+	fs.String("pi-key", "", "process instance key selector for --complete")
+	fs.String("element-instance-key", "", "element instance key selector for --complete")
+	fs.String("element-id", "", "BPMN element ID selector for --complete")
+	fs.String("worker", "", "worker name selector for --complete")
+	fs.String("kind", "", "job kind selector for --complete; case-insensitive")
+	fs.String("listener-event-type", "", "listener event selector for --complete; case-insensitive")
+	fs.Int32P("batch-size", "n", consts.MaxPISearchSize, "jobs per discovery page for selector completion")
+	fs.Int32P("limit", "l", 0, "maximum unique selector completion targets; 0 means uncapped")
+	fs.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent completion workers (default: min(count, 2*GOMAXPROCS, 32))")
+	fs.BoolVar(&flagNoWorkerLimit, "no-worker-limit", false, "use all queued jobs as workers when --workers is unset")
+	fs.BoolVar(&flagFailFast, "fail-fast", false, "stop scheduling new completions after the first unsatisfied outcome")
 
 	useInvalidInputFlagErrors(updateJobCmd)
 	setCommandMutation(updateJobCmd, CommandMutationStateChanging)
@@ -127,5 +169,4 @@ func init() {
 		OutputModeContract{Name: RenderModeOneLine.String(), Supported: true},
 		OutputModeContract{Name: RenderModeJSON.String(), Supported: true, MachinePreferred: true},
 	)
-	setFlagContractRequired(updateJobCmd, "key")
 }

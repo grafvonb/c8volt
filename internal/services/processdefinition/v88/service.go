@@ -99,7 +99,7 @@ func (s *Service) SearchProcessDefinitionsPage(ctx context.Context, filter d.Pro
 	if err != nil {
 		return d.ProcessDefinitionPage{}, fmt.Errorf("building process definition search request: %w", err)
 	}
-	common.VerboseLog(ctx, cCfg, s.log, "searching process definitions", "baseURL", s.cfg.APIs.Camunda.BaseURL, "body", body)
+	common.VerboseLog(ctx, cCfg, s.log, "searching process definitions")
 	resp, err := s.cc.SearchProcessDefinitionsWithResponse(ctx, body)
 	if err != nil {
 		return d.ProcessDefinitionPage{}, err

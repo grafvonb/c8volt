@@ -73,6 +73,7 @@ func IsRuntimeListenerJobKind(kind string) bool {
 	return kind == JobKindExecutionListener || kind == JobKindTaskListener
 }
 
+// JobSearchQuery describes predicates and traversal controls for job discovery.
 type JobSearchQuery struct {
 	Key                string
 	State              string
@@ -86,6 +87,8 @@ type JobSearchQuery struct {
 	ListenerEventType  string
 	BatchSize          int32
 	Limit              int32
+	// SortByKey requests stable ascending key order for frozen bulk discovery.
+	SortByKey bool
 }
 
 func (q JobSearchQuery) HasKey() bool {
@@ -132,16 +135,24 @@ type JobReportedTotal struct {
 	Kind  JobReportedTotalKind
 }
 
+// JobPageRequest retains the raw offset even when a cursor drives the request.
 type JobPageRequest struct {
-	From int32
-	Size int32
+	From  int32
+	Size  int32
+	After string
 }
 
+// JobSearchPage preserves raw traversal evidence independently of selected rows.
 type JobSearchPage struct {
 	Items         []Job
 	Request       JobPageRequest
 	OverflowState ProcessInstanceOverflowState
 	ReportedTotal *JobReportedTotal
+	// RawItemCount is the response count before overfull trimming or local filtering.
+	RawItemCount int32
+	// NextFrom advances by the consumed raw window, before local filtering.
+	NextFrom  int32
+	EndCursor string
 }
 
 // JobSearchPageStep carries one selected page plus service-owned traversal

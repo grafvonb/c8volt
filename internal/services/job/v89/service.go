@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"math"
 	"net/http"
 
 	"github.com/grafvonb/c8volt/config"
@@ -108,7 +109,7 @@ func (s *Service) SearchJobs(ctx context.Context, query d.JobSearchQuery, opts .
 	}, nil
 }
 
-// SearchJobsPages owns offset advancement, per-page size capping, and user
+// SearchJobsPages owns raw cursor/offset advancement, per-page size capping, and user
 // limit trimming while allowing callers to render or prompt after each page.
 func (s *Service) SearchJobsPages(ctx context.Context, query d.JobSearchQuery, visitor d.JobSearchPageVisitor, opts ...services.CallOption) (d.JobSearchPagesResult, error) {
 	_ = services.ApplyCallOptions(opts)
@@ -119,15 +120,45 @@ func (s *Service) SearchJobsPages(ctx context.Context, query d.JobSearchQuery, v
 	limit := query.Limit
 	items := make([]d.Job, 0, minPositiveJobSearchSize(batchSize, limit))
 	from := int32(0)
+	after := ""
+	seenCursors := make(map[string]bool)
+	backoff := s.cfg.App.Backoff
+	_ = backoff.Normalize()
+	pageCtx := ctx
+	var cancelAmbiguity context.CancelFunc
+	defer func() {
+		if cancelAmbiguity != nil {
+			cancelAmbiguity()
+		}
+	}()
 	pages := int32(0)
 	for {
+		if err := ctx.Err(); err != nil {
+			return d.JobSearchPagesResult{}, err
+		}
 		pageLimit := nextJobSearchPageLimit(batchSize, limit, int32(len(items)))
 		if pageLimit <= 0 {
 			break
 		}
-		page, err := s.SearchJobsPage(ctx, query, d.JobPageRequest{From: from, Size: pageLimit}, opts...)
+		page, err := s.SearchJobsPage(pageCtx, query, d.JobPageRequest{From: from, Size: pageLimit, After: after}, opts...)
 		if err != nil {
+			if pageCtx.Err() != nil {
+				return d.JobSearchPagesResult{}, fmt.Errorf("%w: incomplete job search: %w", d.ErrMalformedResponse, pageCtx.Err())
+			}
 			return d.JobSearchPagesResult{}, err
+		}
+		if err := pageCtx.Err(); err != nil {
+			return d.JobSearchPagesResult{}, fmt.Errorf("%w: incomplete job search: %w", d.ErrMalformedResponse, err)
+		}
+		if page.RawItemCount > 0 && cancelAmbiguity != nil {
+			cancelAmbiguity()
+			cancelAmbiguity, pageCtx = nil, ctx
+		}
+		if page.EndCursor != "" {
+			if seenCursors[page.EndCursor] {
+				return d.JobSearchPagesResult{}, fmt.Errorf("%w: incomplete job search: repeated cursor", d.ErrMalformedResponse)
+			}
+			seenCursors[page.EndCursor] = true
 		}
 		items = append(items, page.Items...)
 		pages++
@@ -151,7 +182,13 @@ func (s *Service) SearchJobsPages(ctx context.Context, query d.JobSearchQuery, v
 		if page.OverflowState != d.ProcessInstanceOverflowStateHasMore {
 			break
 		}
-		from = nextJobSearchPageOffset(from, page)
+		if page.RawItemCount == 0 && cancelAmbiguity == nil {
+			// Advancing cursors can bridge empty pages, but cannot defer evidence forever.
+			ambiguityCtx, cancel := context.WithTimeout(ctx, backoff.Timeout)
+			// Transfer cancellation to the deferred cleanup and raw-progress reset above.
+			pageCtx, cancelAmbiguity = ambiguityCtx, cancel
+		}
+		from, after = page.NextFrom, page.EndCursor
 	}
 	return d.JobSearchPagesResult{
 		Items: items,
@@ -160,11 +197,12 @@ func (s *Service) SearchJobsPages(ctx context.Context, query d.JobSearchQuery, v
 	}, nil
 }
 
-// SearchJobsPage fetches and maps one Camunda job search page.
+// SearchJobsPage normalizes raw continuation before defensively filtering tenant rows.
+// Unsupported or contradictory continuation fails explicitly instead of claiming exhaustion.
 func (s *Service) SearchJobsPage(ctx context.Context, query d.JobSearchQuery, pageReq d.JobPageRequest, opts ...services.CallOption) (d.JobSearchPage, error) {
 	_ = services.ApplyCallOptions(opts)
 
-	filter, err := newJobSearchFilter(query)
+	filter, err := newJobSearchFilter(query, common.EffectiveTenant(s.cfg))
 	if err != nil {
 		return d.JobSearchPage{}, err
 	}
@@ -172,11 +210,21 @@ func (s *Service) SearchJobsPage(ctx context.Context, query d.JobSearchQuery, pa
 	if pageSize <= 0 {
 		pageSize = consts.MaxPISearchSize
 	}
+	if pageReq.From < 0 {
+		return d.JobSearchPage{}, fmt.Errorf("%w: incomplete job search: negative offset", d.ErrMalformedResponse)
+	}
 	page := newSearchQueryPageRequest(pageReq.From, pageSize)
-	resp, err := s.c.SearchJobsWithResponse(ctx, camundav89.SearchJobsJSONRequestBody{
-		Filter: filter,
-		Page:   &page,
-	})
+	if pageReq.After != "" {
+		if err := page.FromCursorForwardPagination(camundav89.CursorForwardPagination{After: pageReq.After, Limit: &pageSize}); err != nil {
+			return d.JobSearchPage{}, err
+		}
+	}
+	body := camundav89.SearchJobsJSONRequestBody{Filter: filter, Page: &page}
+	if query.SortByKey {
+		order := camundav89.SortOrderEnum("ASC")
+		body.Sort = &[]camundav89.JobSearchQuerySortRequest{{Field: "jobKey", Order: &order}}
+	}
+	resp, err := s.c.SearchJobsWithResponse(ctx, body)
 	if err != nil {
 		return d.JobSearchPage{}, err
 	}
@@ -185,20 +233,47 @@ func (s *Service) SearchJobsPage(ctx context.Context, query d.JobSearchQuery, pa
 		return d.JobSearchPage{}, err
 	}
 	items := trimJobSearchPageResults(payload.Items, payload.Page, pageReq.From, pageSize)
+	nextFrom := int64(pageReq.From) + int64(len(items))
+	if payload.Page.TotalItems < 0 || (!payload.Page.HasMoreTotalItems && nextFrom > payload.Page.TotalItems) || nextFrom > math.MaxInt32 {
+		return d.JobSearchPage{}, fmt.Errorf("%w: incomplete job search: inconsistent total or offset", d.ErrMalformedResponse)
+	}
+	overflow := pickJobSearchOverflowState(payload.Page, pageReq.From, len(items))
+	endCursor := stringPtrValue(payload.Page.EndCursor)
+	if len(payload.Items) > len(items) {
+		// An overfull response cursor points past rows we deliberately did not consume.
+		endCursor = ""
+	}
+	if (endCursor != "" && endCursor == pageReq.After) ||
+		(overflow == d.ProcessInstanceOverflowStateHasMore && endCursor == "" && len(items) == 0) {
+		return d.JobSearchPage{}, fmt.Errorf("%w: incomplete job search: nonadvancing continuation", d.ErrMalformedResponse)
+	}
+	selected := fromJobSearchResults(items)
+	if tenant := common.EffectiveTenant(s.cfg); tenant != "" {
+		scoped := make([]d.Job, 0, len(selected))
+		for _, item := range selected {
+			if item.TenantId == tenant {
+				scoped = append(scoped, item)
+			}
+		}
+		selected = scoped
+	}
 	return d.JobSearchPage{
-		Items:         fromJobSearchResults(items),
-		Request:       d.JobPageRequest{From: pageReq.From, Size: pageSize},
-		OverflowState: pickJobSearchOverflowState(payload.Page, pageReq.From, len(items), pageSize),
+		Items:         selected,
+		Request:       d.JobPageRequest{From: pageReq.From, Size: pageSize, After: pageReq.After},
+		OverflowState: overflow,
 		ReportedTotal: newJobReportedTotal(payload.Page.TotalItems, payload.Page.HasMoreTotalItems),
+		RawItemCount:  int32(len(payload.Items)),
+		NextFrom:      int32(nextFrom),
+		EndCursor:     endCursor,
 	}, nil
 }
 
-// SearchJobsTotal returns the exact backend total when available and otherwise
-// falls back to service-owned page counting.
+// SearchJobsTotal uses exact unfiltered totals, otherwise counting selected pages
+// so defensive tenant filtering cannot inflate a scoped count.
 func (s *Service) SearchJobsTotal(ctx context.Context, query d.JobSearchQuery, opts ...services.CallOption) (int64, error) {
 	var total int64
 	_, err := s.SearchJobsPages(ctx, query, func(step d.JobSearchPageStep) (d.JobSearchPageAction, error) {
-		if step.Page.ReportedTotal != nil && step.Page.ReportedTotal.Kind == d.JobReportedTotalKindExact {
+		if common.EffectiveTenant(s.cfg) == "" && step.Page.ReportedTotal != nil && step.Page.ReportedTotal.Kind == d.JobReportedTotalKindExact {
 			total = step.Page.ReportedTotal.Count
 			return d.JobSearchPageActionStop, nil
 		}
@@ -209,15 +284,6 @@ func (s *Service) SearchJobsTotal(ctx context.Context, query d.JobSearchQuery, o
 		return 0, err
 	}
 	return total, nil
-}
-
-// nextJobSearchPageOffset advances offset searches without looping forever on
-// empty pages that still advertise more data.
-func nextJobSearchPageOffset(from int32, page d.JobSearchPage) int32 {
-	if len(page.Items) == 0 {
-		return from + page.Request.Size
-	}
-	return from + int32(len(page.Items))
 }
 
 // minPositiveJobSearchSize sizes the initial result slice for bounded searches.
@@ -261,15 +327,14 @@ func trimJobSearchPageResults(items []camundav89.JobSearchResult, page camundav8
 
 // pickJobSearchOverflowState normalizes Camunda total metadata into the
 // version-neutral continuation state used by higher layers.
-func pickJobSearchOverflowState(page camundav89.SearchQueryPageResponse, from int32, itemCount int, pageSize int32) d.ProcessInstanceOverflowState {
-	if itemCount == 0 {
+func pickJobSearchOverflowState(page camundav89.SearchQueryPageResponse, from int32, itemCount int) d.ProcessInstanceOverflowState {
+	// A capped total still permits exhaustion after its lower bound has been passed.
+	// Empty pages below that bound (or with a cursor) need continuation evidence.
+	if itemCount == 0 && page.HasMoreTotalItems && int64(from) > page.TotalItems && stringPtrValue(page.EndCursor) == "" {
 		return d.ProcessInstanceOverflowStateNoMore
 	}
 	nextFrom := int64(from) + int64(itemCount)
-	if page.TotalItems > nextFrom {
-		return d.ProcessInstanceOverflowStateHasMore
-	}
-	if page.HasMoreTotalItems && itemCount >= int(pageSize) {
+	if page.TotalItems > nextFrom || page.HasMoreTotalItems {
 		return d.ProcessInstanceOverflowStateHasMore
 	}
 	return d.ProcessInstanceOverflowStateNoMore
