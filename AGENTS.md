@@ -134,6 +134,16 @@
 - For generated Camunda clients, prefer updating the OpenAPI mutation or refresh workflow under `api/` and regenerating clients.
 - Speckit memory under `.speckit/memory` and feature artifacts under `specs/` are project context and should be preserved.
 
+## Launching Ralph
+
+- On macOS, use Terminal.app via `osascript` and Terminal's `do script` command for Ralph launches unless the user requests another terminal. A request to launch Ralph authorizes this normal launch mechanism; computer-use UI automation is not a prerequisite.
+- Use the shell execution tool and its normal approval/escalation mechanism when required. A computer-use tool's inability to control Terminal.app does not establish that shell-based AppleScript is unavailable. Report the specific restriction; do not bypass an actual shell approval denial or a higher-priority prohibition.
+- Follow the `speckit-ralph-run` skill for prerequisite checks and configuration resolution. Launch the orchestrator only; do not implement tasks inline. Set the working directory to the repository root and quote every argument across shell and AppleScript boundaries.
+- Distinguish the launcher's arguments, the child agent's sandbox mode, and this chat's tool permissions. Inspect the orchestrator before making claims about `--sandbox danger-full-access`; when it already supplies that Codex option, no launcher flag or change to this chat's permissions is needed.
+- Keep the launch visible and interruptible with Ctrl+C. Capture output in a fresh temporary log outside the repository while displaying it in Terminal.app, and preserve the orchestrator's exit status. An opened window, echoed command, or hidden PTY alone does not prove launch success.
+- Verify fresh orchestrator startup output within the skill's bounded check: the selected feature header and iteration line, or its documented immediate completion/failure result. Then report the observed status, configuration, and terminal location and stop monitoring.
+- Once a command has been dispatched, never start another loop merely because verification failed. Inspect the existing launch output and report uncertainty or the concrete error; avoid duplicate runs. Do not ask the user to paste commands manually until the permitted launch mechanism has been attempted or a specific applicable restriction prevents it.
+
 ## Task Planning For Ralph
 
 - Apply these rules when creating or revising feature plans and `tasks.md`, before Ralph starts.
