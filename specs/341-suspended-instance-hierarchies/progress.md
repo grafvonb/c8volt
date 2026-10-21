@@ -50,3 +50,29 @@ Started: 2026-10-21 18:18:02
 - Existing suspended planner classification and terminal/absent/unknown, dry-run, force/worker and output controls were reused. Diff review confirms test/fixture declarations only: no runtime lifecycle, output/error boundary, schema, retry, authorization, retention, generated-client or older-adapter edits. No docs generation or full suite was required.
 - Validation used isolated injected clients and test-owned HTTP servers only. Real engine/listener/exporter behavior remains unverified. Handoff is T003; no second story was started.
 ---
+
+---
+## Iteration 2 - 2026-10-21 18:31
+**Work Unit**: US3 / T003 — Controls and Suspension Help; completed
+**Tasks Completed**:
+- [x] T003: Correct cancel/delete suspended selector help, add focused metadata regressions, document existing suspension/force recovery, and regenerate CLI references and homepage.
+**Tasks Remaining in Work Unit**: 0; all feature tasks complete.
+**Commit**: This work-unit commit
+**Files Changed**:
+- README.md
+- cmd/cancel_processinstance.go
+- cmd/delete_processinstance.go
+- cmd/command_help_focus_test.go
+- docs/cli/c8volt_cancel_process-instance.md
+- docs/cli/c8volt_delete_process-instance.md
+- docs/index.md
+- specs/341-suspended-instance-hierarchies/tasks.md
+- specs/341-suspended-instance-hierarchies/ralph-memory.md
+- specs/341-suspended-instance-hierarchies/progress.md
+**Learnings**:
+- New TestProcessInstanceMutationStateHelp failed for both commands against the old descriptions, then passed after adding suspended with Camunda 8.10 applicability. Existing selector default and shorthand are asserted.
+- Passed `go test ./cmd -run 'TestAllCommandHelpFocusesOnActions|TestProcessInstanceMutationStateHelp|TestSuspended(StateValidationFeedback|SearchStateSelection|UnsupportedCommands)' -count=1 -race -v` with GOENV=off, GOFLAGS empty, GOWORK=off and inherited C8VOLT/SPECKIT/helper overrides removed. All intended cases executed, including both new help cases and existing older-version rejection controls.
+- Inspected Makefile/docsgen before `make docs-content`; generation passed with inherited Make overrides removed. Reviewed both generated reference changes and README-derived homepage guidance/build provenance. Targeted gofmt and git diff --check passed.
+- FR-008 diff review: only two production help strings changed; one commented test declaration was added, with no production lifecycle declarations. No signature, schema, default, runtime selector, force/no-wait behavior, result/error boundary, prompt, authorization, retention, or older-adapter change. Prior T001/T002 dry-run and opt-out evidence remains valid; no full-suite run was warranted.
+- Isolated tests only; real engine/listener/exporter behavior remains unverified. Terminal handoff recorded; no further work unit started.
+---

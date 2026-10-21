@@ -6,7 +6,7 @@
 
 **Generated**: 2026-10-21
 
-**Status**: T001 / US1 and T002 / US2 completed with isolated regression validation; T003 / US3 remains open.
+**Status**: T001 / US1, T002 / US2, and T003 / US3 completed with isolated regression validation and regenerated help/documentation.
 
 **Tests**: Focused regressions are explicitly required. Each task includes its fixtures, any justified correction, formatting, and targeted checks. A regression may pass against current code: do not change passing behavior merely to manufacture a failing test.
 
@@ -103,7 +103,7 @@ Use `Delete`/`Force` prefixes for new service subtests or select their actual na
 
 **Independent test**: Both commands list suspended with Camunda 8.10 applicability; older-version unsupported-state behavior remains unchanged. Dry-run and opt-out evidence from T001/T002 remains valid.
 
-- [ ] T003 [US3] Correct state-selector help in `cmd/cancel_processinstance.go` and `cmd/delete_processinstance.go`, add focused assertions in `cmd/command_help_focus_test.go`, reuse relevant controls in `cmd/processinstance_suspended_test.go`, update relevant `README.md` guidance, and regenerate `docs/cli/*` and `docs/index.md` through `make docs-content`; complete the US3 checks below without changing flags, defaults, results, or workflow semantics.
+- [x] T003 [US3] Correct state-selector help in `cmd/cancel_processinstance.go` and `cmd/delete_processinstance.go`, add focused assertions in `cmd/command_help_focus_test.go`, reuse relevant controls in `cmd/processinstance_suspended_test.go`, update relevant `README.md` guidance, and regenerate `docs/cli/*` and `docs/index.md` through `make docs-content`; complete the US3 checks below without changing flags, defaults, results, or workflow semantics.
 
 **Acceptance and implementation**:
 

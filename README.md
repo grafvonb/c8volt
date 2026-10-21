@@ -406,6 +406,8 @@ Generated references: [update process-instance](docs/cli/c8volt_update_process-i
 
 Use dry-run to preview process-instance family scope before cancellation or historical deletion.
 
+On Camunda 8.10, both commands accept `--state suspended`. Suspended instances are unfinished and can be canceled without resuming them; selecting a child still requires `--force` to cancel its root. Deletion requires `--force` for unfinished scope and attempts children first. If deletion encounters an unfinished-instance conflict, force recovery cancels the root and waits for terminal confirmation before retrying deletion, including with `--no-wait`.
+
 Cancellation confirmation succeeds when every affected family member is completed, canceled, terminated, or no longer present. This terminal cleanup rule does not broaden explicit state checks: `expect process-instance --state canceled` continues to match only canceled or terminated instances, not completed or absent ones.
 
 When selectors match no process instances, cancel and delete complete successfully without confirmation or mutation. This also applies to `--dry-run`. A `--bpmn-process-id` selector must first match a visible process definition.

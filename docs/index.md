@@ -6,7 +6,7 @@ nav_exclude: true
 has_toc: true
 ---
 
-> Generated from build `c8volt v4.3.4-156-gaf42f0ea-dirty`, commit `af42f0ea`, built `2026-10-21T09:12:55Z` | Supported Camunda 8 versions: 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.3 (final)
+> Generated from build `c8volt v4.4.0-161-g92b43885-dirty`, commit `92b43885`, built `2026-10-21T16:31:05Z` | Supported Camunda 8 versions: 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.3 (final)
 
 <img src="./logo/c8volt_logo_transparent_w_shadow_400x244.png" alt="c8volt logo" />
 
@@ -411,6 +411,8 @@ Generated references: [update process-instance](./cli/c8volt_update_process-inst
 ### Cancel And Delete Safely
 
 Use dry-run to preview process-instance family scope before cancellation or historical deletion.
+
+On Camunda 8.10, both commands accept `--state suspended`. Suspended instances are unfinished and can be canceled without resuming them; selecting a child still requires `--force` to cancel its root. Deletion requires `--force` for unfinished scope and attempts children first. If deletion encounters an unfinished-instance conflict, force recovery cancels the root and waits for terminal confirmation before retrying deletion, including with `--no-wait`.
 
 Cancellation confirmation succeeds when every affected family member is completed, canceled, terminated, or no longer present. This terminal cleanup rule does not broaden explicit state checks: `expect process-instance --state canceled` continues to match only canceled or terminated instances, not completed or absent ones.
 
