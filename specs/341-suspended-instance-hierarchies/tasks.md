@@ -6,7 +6,7 @@
 
 **Generated**: 2026-10-21
 
-**Status**: Unstarted; task generation only. No implementation or runtime validation performed.
+**Status**: T001 / US1 completed with isolated regression validation; T002 / US2 and T003 / US3 remain open.
 
 **Tests**: Focused regressions are explicitly required. Each task includes its fixtures, any justified correction, formatting, and targeted checks. A regression may pass against current code: do not change passing behavior merely to manufacture a failing test.
 
@@ -43,7 +43,7 @@ No new shared infrastructure, dependency, model, or interface is required. Exten
 
 **Independent test**: A suspended root and both mixed-tree combinations use root cancellation without resume; persistent suspended observations cannot satisfy normal confirmation. Overlapping CLI root/child input produces one successful non-retried root submission.
 
-- [ ] T001 [US1] Add suspended cancellation and CLI root-deduplication regressions in `internal/services/processinstance/v810/service_test.go`, `internal/services/processinstance/dryrun_test.go`, and `cmd/cancel_processinstance_test.go`; reuse `internal/services/processinstance/waiter/waiter_test.go` coverage, include only a reproducer-backed local correction in the existing responsible owner if necessary, and complete the US1 acceptance and validation below with fixture comments and targeted formatting.
+- [x] T001 [US1] Add suspended cancellation and CLI root-deduplication regressions in `internal/services/processinstance/v810/service_test.go`, `internal/services/processinstance/dryrun_test.go`, and `cmd/cancel_processinstance_test.go`; reuse `internal/services/processinstance/waiter/waiter_test.go` coverage, include only a reproducer-backed local correction in the existing responsible owner if necessary, and complete the US1 acceptance and validation below with fixture comments and targeted formatting.
 
 **Acceptance and implementation**:
 
@@ -167,4 +167,4 @@ Deliver T001 as the MVP, T002 using the same fixtures, and T003 as the help/docu
 
 The plan suggests two broad work boundaries. Three tasks retain separate US1/US2 acceptance predicates and comply with Ralph's one-story-per-iteration rule. Shared fixture edits are sequential, not duplicated. Tests, any necessary fix, formatting, and targeted validation remain within each task. There are no standalone setup, model, fixture, verification, bookkeeping, or polish tasks.
 
-All tasks remain unstarted. Generation validates document format, coverage, links, and consolidation only; runtime evidence belongs to implementation.
+T001 is complete; T002 and T003 remain unstarted. Implementation evidence is recorded in progress.md and durable handoff guidance in ralph-memory.md.

@@ -699,6 +699,126 @@ func TestElementInstanceVariablesUpdate_UsesProcessInstanceKeyAsElementInstanceK
 func TestService_CancelAndDeleteProcessInstance(t *testing.T) {
 	ctx := context.Background()
 
+	// Suspension follows the ordinary root submission; terminal observations model engine cascade.
+	t.Run("CancelSuspendedFamily", func(t *testing.T) {
+		for _, tc := range []struct{ name, root, child string }{
+			{"SuspendedRoot", "SUSPENDED", ""},
+			{"ActiveRootSuspendedChild", "ACTIVE", "SUSPENDED"},
+			{"SuspendedRootActiveChild", "SUSPENDED", "ACTIVE"},
+		} {
+			t.Run(tc.name, func(t *testing.T) {
+				states := map[string][]string{"123": {tc.root, tc.root, tc.root, "CANCELED"}}
+				children := map[string][]cancellationChild{}
+				if tc.child != "" {
+					states["456"] = []string{tc.child, "TERMINATED"}
+					children["123"] = []cancellationChild{{key: "456", state: tc.child}}
+				}
+				fixture := newCancellationFixture(t, states, children)
+				resp, _, err := fixture.service(t).CancelProcessInstance(ctx, "123")
+				require.NoError(t, err)
+				require.True(t, resp.Ok)
+				require.Equal(t, []string{"123"}, fixture.cancellationKeys())
+				if tc.child != "" {
+					require.Equal(t, 2, fixture.readCount("456"), "unfinished child must be observed terminal before success")
+				}
+			})
+		}
+	})
+
+	// A terminal root cannot confirm a suspended child; both terminal and absent observations release the wait.
+	t.Run("CancelTerminalRootWaitsForSuspendedChild", func(t *testing.T) {
+		for _, terminal := range []string{"TERMINATED", ""} {
+			t.Run("ChildFinal="+terminal, func(t *testing.T) {
+				fixture := newCancellationFixture(t, map[string][]string{
+					"123": {"ACTIVE", "ACTIVE", "ACTIVE", "COMPLETED"},
+					"456": {"SUSPENDED", terminal},
+				}, map[string][]cancellationChild{"123": {{key: "456", state: "SUSPENDED"}}})
+				resp, _, err := fixture.service(t).CancelProcessInstance(ctx, "123")
+				require.NoError(t, err)
+				require.True(t, resp.Ok)
+				require.Equal(t, 2, fixture.readCount("456"))
+				require.Equal(t, []string{"123"}, fixture.cancellationKeys())
+			})
+		}
+	})
+
+	// Persistent suspension must preserve accepted-but-unconfirmed evidence on budget or context expiry.
+	t.Run("CancelPersistentSuspensionRemainsUnconfirmed", func(t *testing.T) {
+		for _, tc := range []struct {
+			name             string
+			child, interrupt bool
+		}{
+			{name: "RootBudget"}, {name: "ChildBudget", child: true}, {name: "RootContext", interrupt: true},
+		} {
+			t.Run(tc.name, func(t *testing.T) {
+				waitCtx, cancel := context.WithCancel(ctx)
+				defer cancel()
+				states := map[string][]string{"123": {"SUSPENDED"}}
+				children := map[string][]cancellationChild{}
+				if tc.child {
+					states["123"] = []string{"ACTIVE", "ACTIVE", "ACTIVE", "COMPLETED"}
+					states["456"] = []string{"SUSPENDED"}
+					children["123"] = []cancellationChild{{key: "456", state: "SUSPENDED"}}
+				}
+				fixture := newCancellationFixture(t, states, children)
+				if tc.interrupt {
+					fixture.cancelOnRead("123", 4, cancel)
+				}
+				resp, _, err := fixture.service(t).CancelProcessInstance(waitCtx, "123")
+				require.Error(t, err)
+				require.False(t, resp.Ok)
+				var failure *d.ProcessInstanceMutationFailure
+				require.ErrorAs(t, err, &failure)
+				require.Equal(t, "123", failure.RootKey)
+				require.Equal(t, "cancellation confirmation", failure.Phase)
+				suspendedKey := "123"
+				if tc.child {
+					suspendedKey = "456"
+				}
+				require.Contains(t, failure.Scope, suspendedKey)
+				require.Equal(t, d.StateSuspended, failure.LastStates[suspendedKey])
+				require.Equal(t, []string{"123"}, fixture.cancellationKeys())
+				require.NotContains(t, err.Error(), "listener")
+				if tc.interrupt {
+					require.ErrorIs(t, err, context.Canceled)
+				} else {
+					require.Contains(t, err.Error(), "exceeded max_retries")
+					if tc.child {
+						require.Equal(t, 2, fixture.readCount("456"))
+					} else {
+						require.Equal(t, 5, fixture.readCount("123"))
+					}
+				}
+			})
+		}
+	})
+
+	// Selecting a suspended child retains force escalation and never submits cancellation for the child.
+	t.Run("CancelSuspendedChildRequiresForce", func(t *testing.T) {
+		for _, force := range []bool{false, true} {
+			t.Run(fmt.Sprintf("Force=%t", force), func(t *testing.T) {
+				fixture := newCancellationFixture(t, map[string][]string{"123": {"SUSPENDED"}, "456": {"SUSPENDED"}},
+					map[string][]cancellationChild{"123": {{key: "456", state: "SUSPENDED"}}})
+				fixture.parents = map[string]string{"456": "123"}
+				opts := []services.CallOption{services.WithNoWait()}
+				if force {
+					opts = append(opts, services.WithForce())
+				}
+				resp, _, err := fixture.service(t).CancelProcessInstance(ctx, "456", opts...)
+				require.NoError(t, err)
+				if force {
+					require.True(t, resp.Ok)
+					require.Equal(t, http.StatusAccepted, resp.StatusCode)
+					require.Equal(t, []string{"123"}, fixture.cancellationKeys())
+				} else {
+					require.False(t, resp.Ok)
+					require.Equal(t, http.StatusConflict, resp.StatusCode)
+					require.Empty(t, fixture.cancellationKeys())
+				}
+			})
+		}
+	})
+
 	t.Run("CancelPreservesOptOutReadAndSubmissionBoundaries", func(t *testing.T) {
 		tests := []struct {
 			name          string
@@ -710,6 +830,8 @@ func TestService_CancelAndDeleteProcessInstance(t *testing.T) {
 			{name: "NoWait", opts: []services.CallOption{services.WithNoWait()}, states: []string{"ACTIVE"}, wantReads: 1},
 			{name: "NoStateCheck", opts: []services.CallOption{services.WithNoStateCheck()}, states: []string{"ACTIVE", "ACTIVE", "CANCELED"}, wantReads: 3, wantDiscovery: 1},
 			{name: "NoWaitAndNoStateCheck", opts: []services.CallOption{services.WithNoWait(), services.WithNoStateCheck()}, states: nil},
+			{name: "SuspendedNoWait", opts: []services.CallOption{services.WithNoWait()}, states: []string{"SUSPENDED"}, wantReads: 1},
+			{name: "SuspendedNoStateCheck", opts: []services.CallOption{services.WithNoStateCheck()}, states: []string{"SUSPENDED", "SUSPENDED", "CANCELED"}, wantReads: 3, wantDiscovery: 1},
 		}
 
 		for _, tt := range tests {
@@ -1499,6 +1621,8 @@ type cancellationFixture struct {
 	reads          map[string]int
 	discoveries    int
 	cancellations  int
+	cancelKeys     []string
+	parents        map[string]string
 	deleteResponse func(call int) *camundav810.DeleteProcessInstanceResponse
 	deletions      int
 	cancelReadKey  string
@@ -1523,6 +1647,7 @@ func (f *cancellationFixture) service(t *testing.T) *v810.Service {
 	camunda.cancelProcessInstanceWithResponse = func(ctx context.Context, key string, body camundav810.CancelProcessInstanceJSONRequestBody, reqEditors ...camundav810.RequestEditorFn) (*camundav810.CancelProcessInstanceResponse, error) {
 		f.mu.Lock()
 		f.cancellations++
+		f.cancelKeys = append(f.cancelKeys, key)
 		f.mu.Unlock()
 		return &camundav810.CancelProcessInstanceResponse{
 			HTTPResponse: newHTTPResponse(http.MethodPost, "https://camunda.local/v2/process-instances/"+key+"/cancellation", http.StatusAccepted, "202 Accepted"),
@@ -1548,7 +1673,7 @@ func (f *cancellationFixture) service(t *testing.T) *v810.Service {
 		}
 		return &camundav810.GetProcessInstanceResponse{
 			HTTPResponse: newHTTPResponse(http.MethodGet, "https://camunda.local/v2/process-instances/"+keyString, http.StatusOK, "200 OK"),
-			JSON200:      new(makeProcessInstanceResult(keyString, state, "")),
+			JSON200:      new(makeProcessInstanceResult(keyString, state, f.parents[keyString])),
 		}, nil
 	}
 	camunda.searchProcessInstancesWithResp = func(ctx context.Context, contentType string, body io.Reader, reqEditors ...camundav810.RequestEditorFn) (*camundav810.SearchProcessInstancesResponse, error) {
@@ -1594,6 +1719,13 @@ func (f *cancellationFixture) cancellationCount() int {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	return f.cancellations
+}
+
+// cancellationKeys snapshots submissions to detect retries or separate child cancellation.
+func (f *cancellationFixture) cancellationKeys() []string {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return append([]string(nil), f.cancelKeys...)
 }
 
 // deletionCount returns the synchronized deletion request count.
