@@ -6,7 +6,7 @@
 
 **Generated**: 2026-10-21
 
-**Status**: T001 / US1 completed with isolated regression validation; T002 / US2 and T003 / US3 remain open.
+**Status**: T001 / US1 and T002 / US2 completed with isolated regression validation; T003 / US3 remains open.
 
 **Tests**: Focused regressions are explicitly required. Each task includes its fixtures, any justified correction, formatting, and targeted checks. A regression may pass against current code: do not change passing behavior merely to manufacture a failing test.
 
@@ -74,7 +74,7 @@ Put new service subtests under the existing parent with `Cancel` prefixes or sel
 
 **Independent test**: Non-force suspended CLI scope submits no mutation. Forced deletion records descendant-first attempts, conflict, cancellation recovery, terminal confirmation, and retry. Failure or persistent suspension blocks the dependent retry, including with no-wait.
 
-- [ ] T002 [US2] Extend suspended deletion regressions in `internal/services/processinstance/v810/service_test.go` and `cmd/delete_processinstance_test.go`, adding suspended classification coverage in `internal/services/processinstance/dryrun_test.go` only if missing; preserve existing ordering and no-wait prerequisites, include only a demonstrated suspension-specific local correction in the existing responsible owner if necessary, and complete the US2 acceptance and validation below with fixture comments and targeted formatting.
+- [x] T002 [US2] Extend suspended deletion regressions in `internal/services/processinstance/v810/service_test.go` and `cmd/delete_processinstance_test.go`, adding suspended classification coverage in `internal/services/processinstance/dryrun_test.go` only if missing; preserve existing ordering and no-wait prerequisites, include only a demonstrated suspension-specific local correction in the existing responsible owner if necessary, and complete the US2 acceptance and validation below with fixture comments and targeted formatting.
 
 **Acceptance and implementation**:
 
@@ -167,4 +167,4 @@ Deliver T001 as the MVP, T002 using the same fixtures, and T003 as the help/docu
 
 The plan suggests two broad work boundaries. Three tasks retain separate US1/US2 acceptance predicates and comply with Ralph's one-story-per-iteration rule. Shared fixture edits are sequential, not duplicated. Tests, any necessary fix, formatting, and targeted validation remain within each task. There are no standalone setup, model, fixture, verification, bookkeeping, or polish tasks.
 
-T001 is complete; T002 and T003 remain unstarted. Implementation evidence is recorded in progress.md and durable handoff guidance in ralph-memory.md.
+T001 and T002 are complete; T003 remains unstarted. Implementation evidence is recorded in progress.md and durable handoff guidance in ralph-memory.md.
