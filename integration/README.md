@@ -41,6 +41,7 @@ before using this folder in an agent run.
 - `scripts/run-c88-suite.sh`: wrapper for the C88 suite.
 - `scripts/run-c89-suite.sh`: wrapper for the C89 suite.
 - `scripts/run-c810-suite.sh`: wrapper for the C810 suite.
+- `scripts/run-c810-suspended.sh`: focused Bash suspended cancellation/deletion checks.
 - `scripts/run-suite.sh`: shared executable suite driver.
 - `scripts/lib/suite-lib.sh`: reporting, progress, and command helpers.
 - `scripts/tests/run-suite_test.sh`: offline fake-CLI version-gate coverage.
@@ -77,36 +78,6 @@ revision, dirty status and unchanged 8.10.3 client provenance), profile and
 command records, raw observations under `data/`, separate streams under `logs/`,
 and `suspended-cleanup-<profile>.json`. Cleanup failures are reported separately.
 Use a separate `C8VOLT_IT_WORKDIR` for each invocation.
-
-The `integration-cli-cancel` and `integration-cli-delete` slices also include
-`TestCancelFamilySuspendedState` and `TestDeleteFamilySuspendedState`. These use
-the same 8.10.4 gate and suspension helpers, the existing isolated held model,
-and the embedded parent/mid/leaf cascade fixture. Each command covers:
-
-- a standalone suspended root;
-- an active root with a suspended child;
-- a suspended root with active children;
-- normal waiting and `--no-wait` for each shape.
-
-Tree scenarios select the mid-level child and require the command to report the
-resolved root. Deletion first verifies refusal without `--force` and unchanged
-family states, then exercises forced deletion. Normal waiting requires terminal
-states (cancellation) or absence (deletion) at return. `--no-wait` must report
-`accepted`; separate bounded observations then verify the whole family's final
-state. The scenarios never resume instances between setup and these assertions.
-They do not claim to trace internal request ordering or cancellation counts;
-isolated regression tests cover those details.
-
-For a later, explicitly requested live run, the focused test selector is
-`-run '^Test(Cancel|Delete)FamilySuspendedState$'`. Live acceptance requires
-recorded execution evidence; source coverage alone does not establish it.
-
-Scenario-specific fixture, pre/post-refusal state, command, postcondition and
-cleanup records use `suspended-...-<profile>-<operation>-<shape>-<mode>` names.
-Cleanup resumes only surviving suspended instances. Held fixtures delete their
-owned definitions; tree fixtures delete only their owned root/family, preserving
-the shared embedded definitions. Already canceled or deleted instances are not
-resumed, and cleanup failures remain separate from scenario evidence.
 
 Run the Go all-command integration suite inventory slice:
 
@@ -363,6 +334,53 @@ These shell suites are broad operator-workflow checks with grouped Markdown
 evidence. Their exact gateway-minor gate runs before fixture deployment or any
 other mutation. Their success covers the scenarios executed by that shell suite;
 it does not certify omitted scenarios or unavailable infrastructure.
+
+### Suspended cancellation and deletion (Bash)
+
+`scripts/run-c810-suspended.sh` is a focused shell suite using the existing
+`suite-lib.sh` report/progress helpers and the embedded `C810_SimpleUserTask`,
+`C810_SimpleParent`, and `C810_MultipleSubProcessesParent` fixtures. It builds the
+CLI with `go build` by default and executes CLI commands directly; it never
+invokes `go test`. It is a separate entry point from `make integration-test-all`,
+which still runs the existing Go suite.
+
+It covers cancellation and forced deletion of a standalone suspended root and
+both mixed active/suspended tree combinations, each with normal waiting and
+`--no-wait` (12 scenarios). Tree cases select a child and check the reported
+root. Deletion first checks refusal without force and unchanged family states.
+Waiting commands require completed postconditions at return; no-wait commands
+must report `accepted`, followed by separate bounded completion checks for every
+family member. No instance is resumed during these scenarios.
+
+For a separately requested live run against a disposable target:
+
+```sh
+C8VOLT_IT_CONFIG=./config.yaml \
+C8VOLT_IT_PROFILE='<profile-name>' \
+C8VOLT_IT_CAMUNDA_URL='https://<camunda-host>/v2' \
+integration/scripts/run-c810-suspended.sh
+```
+
+The script requires Bash, `jq`, `curl`, and either Go or an existing binary
+(`C8VOLT_IT_BUILD=0` with `C8VOLT_IT_BIN`). The API URL is also applied to the CLI
+through `C8VOLT_APIS_CAMUNDA_API_BASE_URL`, so fixture setup and CLI operations
+address the same server. The observed server must be **8.10.4 before mutations**.
+The config/profile defaults match the C810 shell wrapper.
+
+Only suspension setup uses the REST API, since there is no public suspend
+command. For authenticated targets, set `C8VOLT_IT_CURL_CONFIG` to a private curl
+configuration containing the required authentication (for example, a bearer
+header or session cookie). Use the same principal as the selected CLI profile;
+the CLI continues to use its configured authentication. Do not put secrets in
+the script or report directory. Without this variable, curl uses no credentials
+and ignores the user's default `.curlrc`.
+
+Evidence includes separate stdout/stderr, exit codes, JSON snapshots, owned
+keys, `report.md`, and `progress.tsv` under `C8VOLT_IT_WORKDIR` (a fresh temporary
+directory by default). Exit cleanup deletes only created roots/families and
+retains the shared embedded definitions. Cleanup failures are recorded
+separately. These checks establish CLI results and final engine state; isolated
+tests retain responsibility for exact internal request ordering/counts.
 
 The wrappers use these defaults:
 
