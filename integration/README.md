@@ -78,6 +78,36 @@ command records, raw observations under `data/`, separate streams under `logs/`,
 and `suspended-cleanup-<profile>.json`. Cleanup failures are reported separately.
 Use a separate `C8VOLT_IT_WORKDIR` for each invocation.
 
+The `integration-cli-cancel` and `integration-cli-delete` slices also include
+`TestCancelFamilySuspendedState` and `TestDeleteFamilySuspendedState`. These use
+the same 8.10.4 gate and suspension helpers, the existing isolated held model,
+and the embedded parent/mid/leaf cascade fixture. Each command covers:
+
+- a standalone suspended root;
+- an active root with a suspended child;
+- a suspended root with active children;
+- normal waiting and `--no-wait` for each shape.
+
+Tree scenarios select the mid-level child and require the command to report the
+resolved root. Deletion first verifies refusal without `--force` and unchanged
+family states, then exercises forced deletion. Normal waiting requires terminal
+states (cancellation) or absence (deletion) at return. `--no-wait` must report
+`accepted`; separate bounded observations then verify the whole family's final
+state. The scenarios never resume instances between setup and these assertions.
+They do not claim to trace internal request ordering or cancellation counts;
+isolated regression tests cover those details.
+
+For a later, explicitly requested live run, the focused test selector is
+`-run '^Test(Cancel|Delete)FamilySuspendedState$'`. Live acceptance requires
+recorded execution evidence; source coverage alone does not establish it.
+
+Scenario-specific fixture, pre/post-refusal state, command, postcondition and
+cleanup records use `suspended-...-<profile>-<operation>-<shape>-<mode>` names.
+Cleanup resumes only surviving suspended instances. Held fixtures delete their
+owned definitions; tree fixtures delete only their owned root/family, preserving
+the shared embedded definitions. Already canceled or deleted instances are not
+resumed, and cleanup failures remain separate from scenario evidence.
+
 Run the Go all-command integration suite inventory slice:
 
 ```sh

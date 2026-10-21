@@ -29,6 +29,9 @@ type suspendedFixture struct {
 	dataset    volumeDataset
 	resumeKeys map[string]bool
 	records    []evidenceRecord
+	name       string
+	// Cascade definitions are shared; only the run-owned root is cleaned up.
+	cleanupRootKey string
 }
 
 // requireSuspendedProfile checks the full observed patch before any setup mutation.
@@ -45,15 +48,26 @@ func requireSuspendedProfile(t *testing.T, profile integrationProfile) integrati
 // newSuspendedFixture registers cleanup before seeding so partial setup is auditable.
 func newSuspendedFixture(t *testing.T, profile integrationProfile) *suspendedFixture {
 	t.Helper()
+	return newSuspendedHeldFixture(t, profile, "", 3)
+}
+
+// newSuspendedHeldFixture reuses the held model with distinct scenario identities.
+func newSuspendedHeldFixture(t *testing.T, profile integrationProfile, label string, count int) *suspendedFixture {
+	t.Helper()
 	profile = requireSuspendedProfile(t, profile)
 	client, err := newLiveBatchClient(profile.Name)
 	require.NoError(t, err)
-	fixture := &suspendedFixture{profile: profile, client: client, resumeKeys: map[string]bool{}}
+	name, seedLabel := profile.Name, "suspended"
+	if label != "" {
+		name += "-" + label
+		seedLabel += "-" + label
+	}
+	fixture := &suspendedFixture{profile: profile, client: client, name: name, resumeKeys: map[string]bool{}}
 	t.Cleanup(func() { fixture.cleanup(t) })
-	fixture.dataset, fixture.records, err = seedIsolatedHeldDataset(t, profile, "suspended", 3)
-	writeDataEvidence(t, "suspended-fixture-"+profile.Name+".json", fixture.dataset)
+	fixture.dataset, fixture.records, err = seedIsolatedHeldDataset(t, profile, seedLabel, count)
+	writeDataEvidence(t, "suspended-fixture-"+fixture.name+".json", fixture.dataset)
 	require.NoError(t, err)
-	require.Len(t, fixture.dataset.PositiveProcessInstanceKeys, 3)
+	require.Len(t, fixture.dataset.PositiveProcessInstanceKeys, count)
 	require.Len(t, fixture.dataset.PositiveProcessDefinitionKeys, 1)
 	return fixture
 }
@@ -86,7 +100,7 @@ func (f *suspendedFixture) transition(t *testing.T, key string, suspend bool) er
 			status, body = response.StatusCode(), response.Body
 		}
 	}
-	writeDataEvidence(t, fmt.Sprintf("suspended-%s-%s-%s.json", f.profile.Name, operation, key), map[string]any{"operation": operation, "key": key, "status": status, "body": string(body), "transportFailed": err != nil})
+	writeDataEvidence(t, fmt.Sprintf("suspended-%s-%s-%s.json", f.name, operation, key), map[string]any{"operation": operation, "key": key, "status": status, "body": string(body), "transportFailed": err != nil})
 	if err != nil {
 		return err
 	}
@@ -115,7 +129,7 @@ func (f *suspendedFixture) observe(t *testing.T, key, state string, suspendedDat
 			if state == "ACTIVE" && !suspendedDate {
 				delete(f.resumeKeys, key)
 			}
-			writeDataEvidence(t, fmt.Sprintf("suspended-observation-%s-%s-%s.json", f.profile.Name, key, state), last)
+			writeDataEvidence(t, fmt.Sprintf("suspended-observation-%s-%s-%s.json", f.name, key, state), last)
 			return last, nil
 		}
 		select {
@@ -129,7 +143,7 @@ func (f *suspendedFixture) observe(t *testing.T, key, state string, suspendedDat
 // run retains separate command streams and exit codes even when an assertion fails.
 func (f *suspendedFixture) run(t *testing.T, name string, args ...string) commandResult {
 	t.Helper()
-	result := runC8VoltForProfile(t, f.profile.Name, "suspended-"+f.profile.Name+"-"+name, args...)
+	result := runC8VoltForProfile(t, f.profile.Name, "suspended-"+f.name+"-"+name, args...)
 	record := commandEvidence(strings.Join(args[:2], " "), name, result, "pass")
 	record.Profile, record.CamundaVersion = f.profile.Name, f.profile.ActualVersion
 	record.DataOwnership = []string{"seeded"}
@@ -140,13 +154,21 @@ func (f *suspendedFixture) run(t *testing.T, name string, args ...string) comman
 	return result
 }
 
-// cleanup resumes potentially suspended instances before ordinary owned-definition
-// deletion. Failed cleanup is recorded separately and never masks scenario evidence.
+// cleanup resumes only surviving suspended instances, then removes the owned
+// definition or cascade root. Cleanup remains separate from acceptance evidence.
 func (f *suspendedFixture) cleanup(t *testing.T) {
 	t.Helper()
 	cleanup := cleanupRecord{Profile: f.profile.Name, ProcessInstanceKeys: f.dataset.PositiveProcessInstanceKeys, Attempted: true, Status: "cleaned"}
 	var failures []string
 	for key := range f.resumeKeys {
+		state, _, err := f.cleanupState(t, key)
+		if err != nil {
+			failures = append(failures, err.Error())
+			continue
+		}
+		if state != "SUSPENDED" {
+			continue
+		}
 		if err := f.transition(t, key, false); err != nil {
 			failures = append(failures, err.Error())
 			continue
@@ -156,6 +178,17 @@ func (f *suspendedFixture) cleanup(t *testing.T) {
 		}
 	}
 	if len(failures) == 0 {
+		if f.cleanupRootKey != "" {
+			_, exists, err := f.cleanupState(t, f.cleanupRootKey)
+			if err != nil {
+				failures = append(failures, err.Error())
+			} else if exists {
+				result := f.run(t, "cleanup-root", "delete", "pi", "--key", f.cleanupRootKey, "--force", "--automation", "--json")
+				if result.Err != nil {
+					failures = append(failures, "delete owned root "+f.cleanupRootKey+": "+result.Stderr)
+				}
+			}
+		}
 		for _, key := range f.dataset.PositiveProcessDefinitionKeys {
 			result := f.run(t, "cleanup-"+key, "delete", "pd", "--key", key, "--force", "--automation", "--json")
 			if result.Err != nil {
@@ -172,12 +205,35 @@ func (f *suspendedFixture) cleanup(t *testing.T) {
 		cleanup.Status, cleanup.Reason = "cleanup_failed", strings.Join(failures, "; ")
 		t.Errorf("suspended fixture cleanup failed separately from acceptance: %s", cleanup.Reason)
 	}
-	writeJSON(t, "suspended-cleanup-"+f.profile.Name+".json", cleanup)
-	writeEvidenceRecords(t, "suspended-commands-"+f.profile.Name+".json", f.records)
+	writeJSON(t, "suspended-cleanup-"+f.name+".json", cleanup)
+	writeEvidenceRecords(t, "suspended-commands-"+f.name+".json", f.records)
+}
+
+// cleanupState distinguishes already canceled/deleted fixtures from instances
+// needing resumption without interpreting authorization or transport errors as absence.
+func (f *suspendedFixture) cleanupState(t *testing.T, key string) (string, bool, error) {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	response, err := f.client.generated.GetProcessInstanceWithResponse(ctx, key)
+	if err != nil {
+		return "", false, err
+	}
+	if response == nil {
+		return "", false, fmt.Errorf("cleanup observation %s returned no response", key)
+	}
+	writeDataEvidence(t, fmt.Sprintf("suspended-cleanup-observation-%s-%s.json", f.name, key), map[string]any{"key": key, "status": response.StatusCode(), "instance": response.JSON200})
+	if response.StatusCode() == 404 {
+		return "", false, nil
+	}
+	if response.StatusCode() != 200 || response.JSON200 == nil {
+		return "", false, fmt.Errorf("cleanup observation %s returned HTTP %d without an instance", key, response.StatusCode())
+	}
+	return string(response.JSON200.State), true, nil
 }
 
 // writeSuspendedRevisionEvidence captures source/provenance without configuration secrets.
-func writeSuspendedRevisionEvidence(t *testing.T) {
+func writeSuspendedRevisionEvidence(t *testing.T, commands ...string) {
 	t.Helper()
 	git := func(args ...string) string {
 		command := exec.Command("git", args...)
@@ -189,5 +245,8 @@ func writeSuspendedRevisionEvidence(t *testing.T) {
 	provenance, err := os.ReadFile(filepath.Join(suite.repoRoot, "internal/clients/camunda/v810/camunda/provenance.json"))
 	require.NoError(t, err)
 	writeJSON(t, "suspended-revision.json", map[string]any{"revision": git("rev-parse", "HEAD"), "dirtyStatus": git("status", "--short", "--untracked-files=all"), "clientProvenance": json.RawMessage(provenance)})
-	writeCommandProposals(t, registerDirectCamundaSetupFallback(nil, "SUSPENDED then resumed ACTIVE", "SuspendProcessInstance/ResumeProcessInstance generated calls create fixture state unavailable through the CLI", []string{"get process-instance", "expect process-instance"}, []string{"8.10"}, "Fixture setup only; public mutation workflows are outside #339"))
+	if len(commands) == 0 {
+		commands = []string{"get process-instance", "expect process-instance"}
+	}
+	writeCommandProposals(t, registerDirectCamundaSetupFallback(nil, "SUSPENDED with optional cleanup resumption", "SuspendProcessInstance/ResumeProcessInstance generated calls create fixture state unavailable through the CLI", commands, []string{"8.10"}, "Fixture setup and cleanup only; no public suspend/resume command is exercised"))
 }
