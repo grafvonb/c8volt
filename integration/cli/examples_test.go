@@ -389,7 +389,7 @@ func validateExample(t *testing.T, example cliExample, seed exampleSeedData, hav
 		record.FailureReason = "example selects a documentation profile that is not the suite-selected disposable profile"
 		return record
 	}
-	if hasHardCodedDemoSelector(normalized) {
+	if hasHardCodedDemoSelector(example.Raw) {
 		record.Outcome = "blocked"
 		record.FailureClass = "harness_setup"
 		record.FailureReason = "example uses hard-coded documentation selectors that are not suite-owned"
@@ -550,52 +550,6 @@ func exampleCommandArgs(command string) ([]string, error) {
 		return nil, fmt.Errorf("example does not start with c8volt: %s", command)
 	}
 	return append([]string(nil), fields[1:]...), nil
-}
-
-func shellFields(command string) ([]string, error) {
-	var fields []string
-	var b strings.Builder
-	var quote rune
-	escaped := false
-	tokenStarted := false
-	for _, r := range command {
-		switch {
-		case escaped:
-			b.WriteRune(r)
-			escaped = false
-		case r == '\\':
-			tokenStarted = true
-			escaped = true
-		case quote != 0:
-			if r == quote {
-				quote = 0
-			} else {
-				b.WriteRune(r)
-			}
-		case r == '\'' || r == '"':
-			tokenStarted = true
-			quote = r
-		case r == ' ' || r == '\t':
-			if tokenStarted {
-				fields = append(fields, b.String())
-				b.Reset()
-				tokenStarted = false
-			}
-		default:
-			tokenStarted = true
-			b.WriteRune(r)
-		}
-	}
-	if escaped {
-		b.WriteRune('\\')
-	}
-	if quote != 0 {
-		return nil, fmt.Errorf("unterminated quote in example: %s", command)
-	}
-	if tokenStarted {
-		fields = append(fields, b.String())
-	}
-	return fields, nil
 }
 
 func exampleExecutionMode(args []string, commandPath string, destructive bool, haveSeed bool) (string, bool) {
@@ -845,10 +799,6 @@ func hasArg(args []string, want string) bool {
 		}
 	}
 	return false
-}
-
-func hasHardCodedDemoSelector(command string) bool {
-	return strings.Contains(command, "OrderProcess") || strings.Contains(command, "225179981")
 }
 
 func unresolvedPlaceholders(command string) []string {
