@@ -412,9 +412,9 @@ func validateExample(t *testing.T, example cliExample, seed exampleSeedData, hav
 	if commandPath == "get process-definition" && hasArg(args, "--watch") {
 		// Watch examples intentionally stream forever. Bound the CLI lifecycle,
 		// rather than killing it at the harness command deadline.
-		args = append(args, "--backoff-timeout", "3s")
+		args = append(args, "--watch-timeout", "3s")
 		record.Arguments = args
-		record.Substitutions = append(record.Substitutions, "watch lifecycle bounded with --backoff-timeout 3s")
+		record.Substitutions = append(record.Substitutions, "watch lifecycle bounded with --watch-timeout 3s")
 	}
 	var result commandResult
 	if mode == "disposable-profile" || mode == "disposable-dry-run" {
