@@ -11,6 +11,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"os/exec"
 	"strings"
 	"testing"
 	"time"
@@ -1067,6 +1068,112 @@ func TestDeleteProcessInstancesWithPlan_RequiresForceBeforeAnyMutation(t *testin
 	require.Contains(t, err.Error(), "no delete request was submitted")
 	require.Empty(t, got.Reports)
 	require.NotContains(t, buf.String(), "waiting for process instance")
+}
+
+// TestDeleteProcessInstanceCommand_SuspendedScope plans real suspended scope before refusal or dry-run without prompting or mutation.
+func TestDeleteProcessInstanceCommand_SuspendedScope(t *testing.T) {
+	for _, shape := range []string{"SuspendedRoot", "TerminalRootSuspendedChild"} {
+		for _, mode := range []string{"refuse", "no-wait", "dry-run"} {
+			t.Run(shape+"/"+mode, func(t *testing.T) {
+				// Do not allow inherited endpoint, authentication or logging overrides into the subprocess.
+				for _, entry := range os.Environ() {
+					name, _, _ := strings.Cut(entry, "=")
+					if strings.HasPrefix(name, "C8VOLT_") {
+						t.Setenv(name, "")
+					}
+				}
+				var lookups, searches, unexpected testx.SafeSlice[string]
+				instance := func(key string) map[string]any {
+					state := "SUSPENDED"
+					if key == "123" && shape == "TerminalRootSuspendedChild" {
+						state = "COMPLETED"
+					}
+					row := map[string]any{"processInstanceKey": key, "state": state, "tenantId": "tenant", "processDefinitionId": "demo", "processDefinitionKey": "9001"}
+					if key == "456" {
+						row["parentProcessInstanceKey"] = "123"
+					}
+					return row
+				}
+				srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					w.Header().Set("Content-Type", "application/json")
+					switch {
+					case r.Method == http.MethodGet && r.URL.Path == "/v2/process-instances/123":
+						lookups.Append("123")
+						require.NoError(t, json.NewEncoder(w).Encode(instance("123")))
+					case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
+						var body struct {
+							Filter struct {
+								ParentKey string `json:"parentProcessInstanceKey"`
+							} `json:"filter"`
+						}
+						require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
+						require.Contains(t, []string{"123", "456"}, body.Filter.ParentKey)
+						searches.Append(body.Filter.ParentKey)
+						items := []map[string]any{}
+						if shape == "TerminalRootSuspendedChild" && body.Filter.ParentKey == "123" {
+							items = append(items, instance("456"))
+						}
+						require.NoError(t, json.NewEncoder(w).Encode(map[string]any{"items": items, "page": map[string]any{"totalItems": len(items), "hasMoreTotalItems": false}}))
+					default:
+						// Any cancellation, deletion, resume or unexpected lookup fails the test.
+						unexpected.Append(r.Method + " " + r.URL.Path)
+						w.WriteHeader(http.StatusBadRequest)
+					}
+				}))
+				t.Cleanup(srv.Close)
+				args := []string{"--config", writeTestConfigForVersion(t, srv.URL, "8.10"), "--tenant", "tenant", "--json", "delete", "process-instance", "--key", "123"}
+				if mode != "refuse" {
+					args = append(args, "--"+mode)
+				}
+				stdout, stderr, err := testx.RunCmdSubprocessSeparate(t, "TestDeleteProcessInstanceCommand_SuspendedScopeHelper", suspendedCommandEnv(t, args))
+				require.Empty(t, unexpected.Snapshot(), "refusal and preview must submit no mutations")
+				require.NotEmpty(t, lookups.Snapshot(), "real ancestry planning must run")
+				require.Contains(t, searches.Snapshot(), "123", "real descendant expansion must run")
+				require.Empty(t, stderr)
+				envelope := decodeSuspendedEnvelope(t, stdout)
+				require.Equal(t, "delete process-instance", envelope["command"])
+				if mode == "dry-run" {
+					require.NoError(t, err)
+					require.Equal(t, string(OutcomeSucceeded), envelope["outcome"])
+					payload := envelope["payload"].(map[string]any)
+					require.Equal(t, []any{"123"}, payload["resolvedRoots"])
+					keys := []any{"123"}
+					if shape == "TerminalRootSuspendedChild" {
+						keys = append(keys, "456")
+					}
+					require.ElementsMatch(t, keys, payload["affectedFamilyKeys"])
+				} else {
+					var exitErr *exec.ExitError
+					require.ErrorAs(t, err, &exitErr)
+					require.Equal(t, exitcode.Error, exitErr.ExitCode())
+					require.Equal(t, string(OutcomeFailed), envelope["outcome"])
+					require.Equal(t, "local_precondition", envelope["class"])
+					message := envelope["detail"].(map[string]any)["message"]
+					require.Contains(t, message, "1 affected process instance(s) are not in a final state")
+					require.Contains(t, message, "no delete request was submitted")
+				}
+			})
+		}
+	}
+}
+
+// TestDeleteProcessInstanceCommand_SuspendedScopeHelper fails if planning ever reaches the confirmation boundary.
+func TestDeleteProcessInstanceCommand_SuspendedScopeHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+	confirmCmdOrAbortFn = func(_ io.Writer, _ bool, _ string) error {
+		t.Fatal("unexpected confirmation for refused or dry-run suspended scope")
+		return nil
+	}
+	var args []string
+	require.NoError(t, json.Unmarshal([]byte(os.Getenv("C8VOLT_SUSPENDED_ARGS")), &args))
+	root := Root()
+	root.SetOut(os.Stdout)
+	root.SetErr(os.Stderr)
+	root.SetArgs(args)
+	require.NoError(t, root.Execute())
+	os.Exit(0)
 }
 
 // Verifies direct --key deletion bypasses top-level search pagination logic.

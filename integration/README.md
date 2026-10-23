@@ -41,6 +41,7 @@ before using this folder in an agent run.
 - `scripts/run-c88-suite.sh`: wrapper for the C88 suite.
 - `scripts/run-c89-suite.sh`: wrapper for the C89 suite.
 - `scripts/run-c810-suite.sh`: wrapper for the C810 suite.
+- `scripts/run-c810-suspended.sh`: focused Bash suspended cancellation/deletion checks.
 - `scripts/run-suite.sh`: shared executable suite driver.
 - `scripts/lib/suite-lib.sh`: reporting, progress, and command helpers.
 - `scripts/tests/run-suite_test.sh`: offline fake-CLI version-gate coverage.
@@ -184,11 +185,12 @@ C8VOLT_IT_PROFILES=dev810 make integration-cli-batch \
   C8VOLT_IT_GO_TEST_FLAGS=-v C8VOLT_IT_REAL_STATE_TIMEOUT=90m
 ```
 
-The process-definition scenario intentionally remains unsuccessful while the
-v8.10 resource adapter rejects the valid null `batchOperation` returned for a
-runtime-present definition. That result is classified as a product failure,
-not an accepted gap. A successful submission is not release proof until the
-separate product fix lands and the definition's draining cleanup is observed.
+The process-definition scenario accepts a valid null `batchOperation` when
+Camunda defers history deletion. It requires observing `DRAINING` while an owned
+instance is active, then cancels that instance and verifies the definition
+disappears. Rejecting the valid null batch remains a regression failure.
+Definition disappearance does not independently prove that all associated
+history deletion has completed.
 
 Logical tenant validation uses the credential-free role shape in
 `assets/tenant-roles.example.json`. Each role names an existing default-local
@@ -274,6 +276,17 @@ There is no separate runner, frozen coverage catalog, or aggregate release
 verdict. Use normal Make/Go exit status and the existing per-group reports.
 A successful invocation means its executed tests passed; skipped optional
 scenarios and missing tenant infrastructure do not constitute coverage.
+The job retry-update validation scenario covers only its supplied flags; it
+does not establish successful bulk job completion.
+Expectation examples run only when their requested state and incident conditions
+match the active, incident-free user-task fixture. Expectations requiring
+suspension, completion, cancellation, deletion, or an incident are recorded as
+blocked setup rather than executed as independent waits. Earlier documentation
+examples are not executed as prerequisite mutation steps.
+Resource lookup examples remain blocked because the BPMN fixture supplies no
+resource deployment key; process-definition keys and resource IDs are not used
+as substitutes. Examples using `--vars-file ./vars.json` receive a generated
+JSON file in their evidence directory, with its path recorded as a substitution.
 Tenant roles remain optional unless explicitly required with
 `C8VOLT_IT_REQUIRE_TENANTS`. Existing real-state prerequisite-gap documentation
 and focused scenario reports remain available.
@@ -333,6 +346,53 @@ These shell suites are broad operator-workflow checks with grouped Markdown
 evidence. Their exact gateway-minor gate runs before fixture deployment or any
 other mutation. Their success covers the scenarios executed by that shell suite;
 it does not certify omitted scenarios or unavailable infrastructure.
+
+### Suspended cancellation and deletion (Bash)
+
+`scripts/run-c810-suspended.sh` is a focused shell suite using the existing
+`suite-lib.sh` report/progress helpers and the embedded `C810_SimpleUserTask`,
+`C810_SimpleParent`, and `C810_MultipleSubProcessesParent` fixtures. It builds the
+CLI with `go build` by default and executes CLI commands directly; it never
+invokes `go test`. It is a separate entry point from `make integration-test-all`,
+which still runs the existing Go suite.
+
+It covers cancellation and forced deletion of a standalone suspended root and
+both mixed active/suspended tree combinations, each with normal waiting and
+`--no-wait` (12 scenarios). Tree cases select a child and check the reported
+root. Deletion first checks refusal without force and unchanged family states.
+Waiting commands require completed postconditions at return; no-wait commands
+must report `accepted`, followed by separate bounded completion checks for every
+family member. No instance is resumed during these scenarios.
+
+For a separately requested live run against a disposable target:
+
+```sh
+C8VOLT_IT_CONFIG=./config.yaml \
+C8VOLT_IT_PROFILE='<profile-name>' \
+C8VOLT_IT_CAMUNDA_URL='https://<camunda-host>/v2' \
+integration/scripts/run-c810-suspended.sh
+```
+
+The script requires Bash, `jq`, `curl`, and either Go or an existing binary
+(`C8VOLT_IT_BUILD=0` with `C8VOLT_IT_BIN`). The API URL is also applied to the CLI
+through `C8VOLT_APIS_CAMUNDA_API_BASE_URL`, so fixture setup and CLI operations
+address the same server. The observed server must be **8.10.4 before mutations**.
+The config/profile defaults match the C810 shell wrapper.
+
+Only suspension setup uses the REST API, since there is no public suspend
+command. For authenticated targets, set `C8VOLT_IT_CURL_CONFIG` to a private curl
+configuration containing the required authentication (for example, a bearer
+header or session cookie). Use the same principal as the selected CLI profile;
+the CLI continues to use its configured authentication. Do not put secrets in
+the script or report directory. Without this variable, curl uses no credentials
+and ignores the user's default `.curlrc`.
+
+Evidence includes separate stdout/stderr, exit codes, JSON snapshots, owned
+keys, `report.md`, and `progress.tsv` under `C8VOLT_IT_WORKDIR` (a fresh temporary
+directory by default). Exit cleanup deletes only created roots/families and
+retains the shared embedded definitions. Cleanup failures are recorded
+separately. These checks establish CLI results and final engine state; isolated
+tests retain responsibility for exact internal request ordering/counts.
 
 The wrappers use these defaults:
 

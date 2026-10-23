@@ -17,6 +17,39 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestDryRunCancelOrDeletePlan_SuspendedOverlap keeps suspended scope unfinished and collapses shared roots.
+func TestDryRunCancelOrDeletePlan_SuspendedOverlap(t *testing.T) {
+	t.Parallel()
+	chain := map[string]d.ProcessInstance{
+		"123": {Key: "123", State: d.StateSuspended},
+		"456": {Key: "456", ParentKey: "123", State: d.StateActive},
+	}
+	var expansions atomic.Int32
+	api := stubDryRunProcessInstanceAPI{
+		ancestryResult: func(_ context.Context, key string, _ ...services.CallOption) (pitraversal.Result, error) {
+			keys := []string{"123"}
+			if key == "456" {
+				keys = []string{"456", "123"}
+			}
+			return pitraversal.Result{Mode: pitraversal.ModeAncestry, StartKey: key, RootKey: "123", Keys: keys, Chain: chain, Outcome: pitraversal.OutcomeComplete}, nil
+		},
+		descendantsResult: func(_ context.Context, root string, _ ...services.CallOption) (pitraversal.Result, error) {
+			expansions.Add(1)
+			require.Equal(t, "123", root)
+			return pitraversal.Result{Mode: pitraversal.ModeDescendants, RootKey: root, Keys: []string{"123", "456"}, Chain: chain, Outcome: pitraversal.OutcomeComplete}, nil
+		},
+	}
+	got, err := DryRunCancelOrDeletePlan(context.Background(), api, typex.Keys{"123", "456"}, 2)
+	require.NoError(t, err)
+	require.Equal(t, typex.Keys{"123"}, got.Roots)
+	require.Equal(t, typex.Keys{"123"}, got.DuplicateRoots)
+	require.Equal(t, typex.Keys{"123", "456"}, got.Collected)
+	require.Empty(t, got.SelectedFinalState)
+	require.ElementsMatch(t, []d.ProcessInstance{chain["123"], chain["456"]}, got.RequiresCancelBeforeDelete)
+	require.Equal(t, d.TraversalOutcomeComplete, got.Outcome)
+	require.Equal(t, int32(1), expansions.Load())
+}
+
 // TestDryRunCancelOrDeletePlan_UsesBoundedWorkersForDependencyTraversal proves
 // independent ancestry and descendant expansion are not serialized during
 // high-volume cancel/delete impact planning.

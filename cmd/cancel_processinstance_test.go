@@ -845,6 +845,97 @@ func TestCancelProcessInstancesWithPlan_DefaultMilestoneFinalFlushAndNoTimerDupl
 	require.NotContains(t, output, "cancelling process instances 1/2 process instance(s)")
 }
 
+// TestCancelProcessInstanceCommand_SuspendedOverlap exercises real ancestry planning and dispatch with a strict HTTP backend.
+func TestCancelProcessInstanceCommand_SuspendedOverlap(t *testing.T) {
+	for _, mode := range []string{"wait", "no-wait", "dry-run"} {
+		t.Run(mode, func(t *testing.T) {
+			// Explicit local config and cleared overrides keep the real adapter on this test-owned server.
+			for _, entry := range os.Environ() {
+				name, _, _ := strings.Cut(entry, "=")
+				if strings.HasPrefix(name, "C8VOLT_") {
+					t.Setenv(name, "")
+				}
+			}
+			var mutations testx.SafeSlice[string]
+			var lookups testx.SafeSlice[string]
+			var searches testx.SafeSlice[string]
+			instance := func(key string) map[string]any {
+				state := "SUSPENDED"
+				if mode == "wait" && len(mutations.Snapshot()) > 0 {
+					state = "CANCELED"
+				}
+				row := map[string]any{"processInstanceKey": key, "state": state, "tenantId": "tenant", "processDefinitionId": "demo", "processDefinitionKey": "9001"}
+				if key == "456" {
+					row["parentProcessInstanceKey"] = "123"
+				}
+				return row
+			}
+			srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				switch {
+				case r.Method == http.MethodGet && (r.URL.Path == "/v2/process-instances/123" || r.URL.Path == "/v2/process-instances/456"):
+					key := strings.TrimPrefix(r.URL.Path, "/v2/process-instances/")
+					lookups.Append(key)
+					require.NoError(t, json.NewEncoder(w).Encode(instance(key)))
+				case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
+					var body struct {
+						Filter struct {
+							ParentKey string `json:"parentProcessInstanceKey"`
+						} `json:"filter"`
+					}
+					require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
+					require.Contains(t, []string{"123", "456"}, body.Filter.ParentKey, "only family discovery is expected")
+					searches.Append(body.Filter.ParentKey)
+					items := []map[string]any{}
+					if body.Filter.ParentKey == "123" {
+						items = append(items, instance("456"))
+					}
+					require.NoError(t, json.NewEncoder(w).Encode(map[string]any{"items": items, "page": map[string]any{"totalItems": len(items), "hasMoreTotalItems": false}}))
+				case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/123/cancellation" && mode != "dry-run":
+					mutations.Append(r.URL.Path)
+					w.WriteHeader(http.StatusAccepted)
+				default:
+					// Resume, child cancellation, deletion and dry-run mutations are all forbidden.
+					t.Errorf("unexpected request: %s %s", r.Method, r.URL.Path)
+					w.WriteHeader(http.StatusBadRequest)
+				}
+			}))
+			t.Cleanup(srv.Close)
+			cfgPath := writeTestConfigForVersion(t, srv.URL, "8.10")
+			prevConfirm := confirmCmdOrAbortFn
+			t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
+			confirmCmdOrAbortFn = func(_ io.Writer, _ bool, _ string) error {
+				require.NotEqual(t, "dry-run", mode, "dry-run must not prompt")
+				return nil
+			}
+			args := []string{"--config", cfgPath, "--tenant", "tenant", "--json", "cancel", "process-instance", "--key", "123,456", "--force"}
+			if mode != "wait" {
+				args = append(args, "--"+mode)
+			}
+			stdout, stderr := executeRootForProcessInstanceWithSeparateOutputs(t, args...)
+			envelope := decodeSuspendedEnvelope(t, stdout)
+			require.Equal(t, "cancel process-instance", envelope["command"])
+			require.Contains(t, lookups.Snapshot(), "123")
+			require.Contains(t, lookups.Snapshot(), "456")
+			require.Contains(t, searches.Snapshot(), "123")
+			require.NotContains(t, stderr, "ERROR")
+			if mode == "dry-run" {
+				require.Empty(t, mutations.Snapshot())
+				payload := envelope["payload"].(map[string]any)
+				require.Equal(t, []any{"123"}, payload["resolvedRoots"])
+				require.ElementsMatch(t, []any{"123", "456"}, payload["affectedFamilyKeys"])
+			} else {
+				require.Equal(t, []string{"/v2/process-instances/123/cancellation"}, mutations.Snapshot())
+				outcome := OutcomeSucceeded
+				if mode == "no-wait" {
+					outcome = OutcomeAccepted
+				}
+				require.Equal(t, string(outcome), envelope["outcome"])
+			}
+		})
+	}
+}
+
 // TestCancelProcessInstanceCommand_DirectKeyBypassesTopLevelSearchPaging verifies direct keys do not use search paging.
 func TestCancelProcessInstanceCommand_DirectKeyBypassesTopLevelSearchPaging(t *testing.T) {
 	var requests testx.SafeSlice[string]

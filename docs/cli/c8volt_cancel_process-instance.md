@@ -75,7 +75,7 @@ c8volt cancel process-instance [flags]
       --start-date-before string    only include process instances with start date <= YYYY-MM-DD
       --start-date-newer-days int   only include process instances N days old or newer (0 means today) (default -1)
       --start-date-older-days int   only include process instances N days old or older (default -1)
-  -s, --state string                state to filter process instances: all, active, completed, canceled, terminated (default "all")
+  -s, --state string                state to filter process instances: all, active, suspended (Camunda 8.10), completed, canceled, terminated (default "all")
   -w, --workers int                 maximum concurrent workers for queued work; mutation work uses root trees (default: min(queued work, 2*GOMAXPROCS, 32)); independent of discovery page size
 ```
 

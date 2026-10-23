@@ -41,7 +41,6 @@ type exampleSeedData struct {
 	ProcessInstanceKeys  []string
 	ProcessDefinitionKey string
 	UserTaskKeys         []string
-	ResourceID           string
 	EmbeddedFixturePath  string
 }
 
@@ -126,7 +125,6 @@ func TestPlaceholderSubstitution(t *testing.T) {
 		BpmnProcessID:        "C88_SimpleUserTask",
 		ProcessInstanceKeys:  []string{"2251799813685250", "2251799813685251"},
 		ProcessDefinitionKey: "2251799813685249",
-		ResourceID:           "processdefinitions/C88_SimpleUserTask.bpmn",
 		EmbeddedFixturePath:  "processdefinitions/C88_SimpleUserTask.bpmn",
 	}
 	normalized, substitutions := substituteExamplePlaceholders("./c8volt get pi --key <process-instance-key> --key <another-process-instance-key> --bpmn-process-id <bpmn-process-id>", seed)
@@ -389,7 +387,7 @@ func validateExample(t *testing.T, example cliExample, seed exampleSeedData, hav
 		record.FailureReason = "example selects a documentation profile that is not the suite-selected disposable profile"
 		return record
 	}
-	if hasHardCodedDemoSelector(normalized) {
+	if hasHardCodedDemoSelector(example.Raw) {
 		record.Outcome = "blocked"
 		record.FailureClass = "harness_setup"
 		record.FailureReason = "example uses hard-coded documentation selectors that are not suite-owned"
@@ -406,15 +404,30 @@ func validateExample(t *testing.T, example cliExample, seed exampleSeedData, hav
 	record.ExecutionMode = mode
 	if !runnable {
 		record.FailureReason = mode
+		if mode == exampleExpectationFixtureRequired {
+			record.Outcome = "blocked"
+			record.FailureClass = "harness_setup"
+		}
 		return record
 	}
+
+	fileArgs, fileSubstitutions, err := prepareExampleVarsFile(args, suite.workDir, suite.marker)
+	if err != nil {
+		record.Outcome = "fail"
+		record.FailureClass = "harness_setup"
+		record.FailureReason = fmt.Sprintf("prepare example variables file: %v", err)
+		return record
+	}
+	args = fileArgs
+	record.Arguments = args
+	record.Substitutions = append(record.Substitutions, fileSubstitutions...)
 
 	if commandPath == "get process-definition" && hasArg(args, "--watch") {
 		// Watch examples intentionally stream forever. Bound the CLI lifecycle,
 		// rather than killing it at the harness command deadline.
-		args = append(args, "--backoff-timeout", "3s")
+		args = append(args, "--watch-timeout", "3s")
 		record.Arguments = args
-		record.Substitutions = append(record.Substitutions, "watch lifecycle bounded with --backoff-timeout 3s")
+		record.Substitutions = append(record.Substitutions, "watch lifecycle bounded with --watch-timeout 3s")
 	}
 	var result commandResult
 	if mode == "disposable-profile" || mode == "disposable-dry-run" {
@@ -472,11 +485,8 @@ func prepareExampleSeedData(t *testing.T) (exampleSeedData, bool) {
 	if len(data.ProcessDefinitionKeys) > 0 {
 		seed.ProcessDefinitionKey = data.ProcessDefinitionKeys[0]
 	}
-	if resourceID := firstString(data.ResourceIDs); isNumericString(resourceID) {
-		seed.ResourceID = resourceID
-	} else {
-		seed.ResourceID = seed.ProcessDefinitionKey
-	}
+	// This BPMN fixture does not deploy a resource with a resourceKey.
+	// Leave resource placeholders unresolved instead of inventing a key.
 	for _, piKey := range seed.ProcessInstanceKeys {
 		var tasks task.UserTasks
 		require.Eventually(t, func() bool {
@@ -499,8 +509,6 @@ func substituteExamplePlaceholders(raw string, seed exampleSeedData) (string, []
 		"<process-instance-key-a>":       firstString(seed.ProcessInstanceKeys),
 		"<process-instance-key-b>":       stringAtOrFirst(seed.ProcessInstanceKeys, 1),
 		"<process-definition-key>":       seed.ProcessDefinitionKey,
-		"<resource-id>":                  seed.ResourceID,
-		"<resource-key>":                 seed.ResourceID,
 		"<profile-name>":                 seed.Profile.Name,
 		"<user-task-key>":                firstString(seed.UserTaskKeys),
 		"<another-user-task-key>":        stringAtOrFirst(seed.UserTaskKeys, 1),
@@ -550,104 +558,6 @@ func exampleCommandArgs(command string) ([]string, error) {
 		return nil, fmt.Errorf("example does not start with c8volt: %s", command)
 	}
 	return append([]string(nil), fields[1:]...), nil
-}
-
-func shellFields(command string) ([]string, error) {
-	var fields []string
-	var b strings.Builder
-	var quote rune
-	escaped := false
-	tokenStarted := false
-	for _, r := range command {
-		switch {
-		case escaped:
-			b.WriteRune(r)
-			escaped = false
-		case r == '\\':
-			tokenStarted = true
-			escaped = true
-		case quote != 0:
-			if r == quote {
-				quote = 0
-			} else {
-				b.WriteRune(r)
-			}
-		case r == '\'' || r == '"':
-			tokenStarted = true
-			quote = r
-		case r == ' ' || r == '\t':
-			if tokenStarted {
-				fields = append(fields, b.String())
-				b.Reset()
-				tokenStarted = false
-			}
-		default:
-			tokenStarted = true
-			b.WriteRune(r)
-		}
-	}
-	if escaped {
-		b.WriteRune('\\')
-	}
-	if quote != 0 {
-		return nil, fmt.Errorf("unterminated quote in example: %s", command)
-	}
-	if tokenStarted {
-		fields = append(fields, b.String())
-	}
-	return fields, nil
-}
-
-func exampleExecutionMode(args []string, commandPath string, destructive bool, haveSeed bool) (string, bool) {
-	if len(args) == 0 {
-		return "empty command", false
-	}
-	if isLocalOnlyExample(commandPath, args) {
-		return "local", true
-	}
-	if !haveSeed && requiresDisposableProfile(commandPath) {
-		return "requires selected disposable profile", false
-	}
-	if destructive {
-		if !haveSeed {
-			return "requires selected disposable profile", false
-		}
-		if hasArg(args, "--dry-run") || hasArg(args, "--help") {
-			return "disposable-dry-run", true
-		}
-		return "mutating example requires a dedicated disposable scenario before execution", false
-	}
-	if requiresDisposableProfile(commandPath) {
-		if !haveSeed {
-			return "requires selected disposable profile", false
-		}
-		return "disposable-profile", true
-	}
-	return "local", true
-}
-
-func isLocalOnlyExample(commandPath string, args []string) bool {
-	if hasArg(args, "--help") {
-		return true
-	}
-	switch commandPath {
-	case "version", "capabilities", "config template", "embed list":
-		return true
-	default:
-		return false
-	}
-}
-
-func requiresDisposableProfile(commandPath string) bool {
-	if commandPath == "" {
-		return true
-	}
-	switch commandPath {
-	case "version", "capabilities", "config template", "embed list":
-		return false
-	default:
-		return true
-	}
 }
 
 func resolveExampleCommandPath(args []string) string {
@@ -838,19 +748,6 @@ func hasExplicitProfileArg(args []string) bool {
 	return false
 }
 
-func hasArg(args []string, want string) bool {
-	for _, arg := range args {
-		if arg == want || strings.HasPrefix(arg, want+"=") {
-			return true
-		}
-	}
-	return false
-}
-
-func hasHardCodedDemoSelector(command string) bool {
-	return strings.Contains(command, "OrderProcess") || strings.Contains(command, "225179981")
-}
-
 func unresolvedPlaceholders(command string) []string {
 	matches := regexp.MustCompile(`<[^>]+>`).FindAllString(command, -1)
 	return copyNonEmptyStrings(matches)
@@ -910,6 +807,9 @@ func hasDisposableTargetExecution(records []exampleValidationRecord) bool {
 func exampleNonExecutionAllowed(record exampleValidationRecord) bool {
 	reason := strings.ToLower(record.FailureReason)
 	switch {
+	case record.CommandPath == "expect process-instance" && record.Outcome == "blocked" &&
+		record.FailureClass == "harness_setup" && record.FailureReason == exampleExpectationFixtureRequired:
+		return true
 	case strings.Contains(reason, "pipeline examples are recorded"):
 		return true
 	case strings.Contains(reason, "stdin-producing shell examples are recorded"):
@@ -929,26 +829,6 @@ func exampleNonExecutionAllowed(record exampleValidationRecord) bool {
 	default:
 		return false
 	}
-}
-
-// unresolvedPlaceholdersAllowed documents setup states this suite records as blocked until fixture proposals exist.
-func unresolvedPlaceholdersAllowed(placeholders []string) bool {
-	allowed := map[string]struct{}{
-		"<job-key>":              {},
-		"<incident-key>":         {},
-		"<another-incident-key>": {},
-		"<resource-id>":          {},
-		"<element-instance-key>": {},
-		"<element-id>":           {},
-		"<user-task-key>":        {},
-		"<tenant-id>":            {},
-	}
-	for _, placeholder := range placeholders {
-		if _, ok := allowed[placeholder]; !ok {
-			return false
-		}
-	}
-	return len(placeholders) > 0
 }
 
 func assertHasExampleFromSource(t *testing.T, examples []cliExample, sourceName string) {
@@ -973,7 +853,7 @@ func TestExampleShellFieldsPreserveEmptyArguments(t *testing.T) {
 }
 
 func TestExampleOwnedPlaceholderSubstitution(t *testing.T) {
-	seed := exampleSeedData{Profile: integrationProfile{Name: "selected"}, ResourceID: "42", UserTaskKeys: []string{"51", "52"}}
+	seed := exampleSeedData{Profile: integrationProfile{Name: "selected"}, UserTaskKeys: []string{"51", "52"}}
 	normalized, _ := substituteExamplePlaceholders("<profile-name> <resource-key> <user-task-key> <another-user-task-key> <user-task-key-a> <user-task-key-b>", seed)
-	require.Equal(t, "selected 42 51 52 51 52", normalized)
+	require.Equal(t, "selected <resource-key> 51 52 51 52", normalized)
 }

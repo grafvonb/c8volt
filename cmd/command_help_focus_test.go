@@ -33,3 +33,19 @@ func TestAllCommandHelpFocusesOnActions(t *testing.T) {
 	}
 	visit(Root())
 }
+
+// TestProcessInstanceMutationStateHelp keeps suspended selection discoverable
+// with its version requirement while preserving the existing selector default.
+func TestProcessInstanceMutationStateHelp(t *testing.T) {
+	for _, verb := range []string{"cancel", "delete"} {
+		t.Run(verb, func(t *testing.T) {
+			command, _, err := Root().Find([]string{verb, "process-instance"})
+			require.NoError(t, err)
+			state := command.Flags().Lookup("state")
+			require.NotNil(t, state)
+			require.Contains(t, state.Usage, "all, active, suspended (Camunda 8.10), completed, canceled, terminated")
+			require.Equal(t, "all", state.DefValue)
+			require.Equal(t, "s", state.Shorthand)
+		})
+	}
+}
