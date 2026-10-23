@@ -94,7 +94,7 @@ func TestDeleteCommands_RegressionPreservesCleanupContracts(t *testing.T) {
 		Type:        "bool",
 		Required:    false,
 		Repeated:    false,
-		Description: "force cancellation of the process instance(s), prior to deletion",
+		Description: "cancel unfinished process-instance roots before deleting history and definitions",
 	})
 }
 
@@ -127,31 +127,33 @@ func TestDeleteProcessDefinitionSemanticProgressDefaultMilestonesAndFinalFlush(t
 	require.NotContains(t, output, "pd-2 deleted")
 }
 
-// TestDeleteProcessDefinitionSemanticProgressModeGate verifies basic
-// process-definition deletion progress keeps machine modes silent while quiet
-// still reports failures on stderr.
+// TestDeleteProcessDefinitionSemanticProgressModeGate keeps machine/quiet progress
+// silent; the command's final aggregate owns failure diagnostics in every mode.
 func TestDeleteProcessDefinitionSemanticProgressModeGate(t *testing.T) {
-	assertOpsCompletionProgressModeGate(t, opsCompletionProgressModeGateCase{
-		Configure: func(cmd *cobra.Command) (func(ops.ProgressEvent), func()) {
+	for _, mode := range []string{"json", "keys", "quiet", "automation"} {
+		t.Run(mode, func(t *testing.T) {
+			resetSemanticProgressModeFlags(t)
+			switch mode {
+			case "json":
+				flagViewAsJson = true
+			case "keys":
+				flagViewKeysOnly = true
+			case "quiet":
+				flagQuiet = true
+			case "automation":
+				flagCmdAutomation = true
+			}
+			cmd, stderr := newSemanticProgressStderrCommand()
+			stdout := &bytes.Buffer{}
+			cmd.SetOut(stdout)
 			progress := newProcessDefinitionDeleteSemanticProgress(cmd, 1)
 			progress.Start(1)
-			return progress.Report, progress.Close
-		},
-		Event: func(disposition ops.CompletionDisposition, detail string) ops.ProgressEvent {
-			return ops.ProgressEvent{
-				Kind: ops.ProgressEventKindCompletion,
-				Completion: &ops.CompletionProgress{
-					Phase:         processDefinitionDeleteCompletionPhase,
-					CoreResource:  "process definition(s)",
-					Total:         1,
-					Identity:      "pd-1",
-					Disposition:   disposition,
-					FailureDetail: detail,
-				},
-			}
-		},
-		QuietWarning: "pd-1 failed: request rejected (deleting process definitions, 1/1 process definition(s), 1 failed)",
-	})
+			progress.Report(ops.ProgressEvent{Kind: ops.ProgressEventKindCompletion, Completion: &ops.CompletionProgress{Phase: processDefinitionDeleteCompletionPhase, Total: 1, Identity: "pd-1", Disposition: ops.CompletionDispositionFailed, FailureDetail: "raw backend failure"}})
+			progress.Close()
+			require.Empty(t, stdout.String())
+			require.Empty(t, stderr.String())
+		})
+	}
 }
 
 // TestDeleteProcessDefinitionHelp_DocumentsTenantContract verifies destructive
@@ -204,7 +206,7 @@ func TestDeleteHelp_DocumentsDestructiveConfirmationPaths(t *testing.T) {
 
 	output = assertCommandHelpOutput(t, []string{"delete", "process-definition"}, []string{
 		"Delete process definition resources from Camunda",
-		"Before mutation, c8volt checks active-instance impact",
+		"Before mutation, c8volt checks unfinished-instance impact",
 		"Camunda 8.9 or newer",
 		"associated history",
 		"delete process-instance --bpmn-process-id <bpmn-process-id>",
@@ -232,8 +234,9 @@ func TestDeleteProcessDefinitionImpact_RenderForceImpact(t *testing.T) {
 	renderDeleteProcessDefinitionImpact(cmd, resource.DeleteProcessDefinitionPlan{
 		Items: []resource.DeleteProcessDefinitionPlanItem{
 			{
-				Key:                        "pd-1",
-				ActiveProcessInstanceCount: 2,
+				Key:                            "pd-1",
+				ActiveProcessInstanceCount:     2,
+				UnfinishedProcessInstanceCount: 2,
 				CancellationPlan: process.DryRunPIKeyExpansion{
 					Roots:     typex.Keys{"root-1"},
 					Collected: typex.Keys{"root-1", "child-1"},
@@ -244,7 +247,7 @@ func TestDeleteProcessDefinitionImpact_RenderForceImpact(t *testing.T) {
 
 	output := buf.String()
 	require.Contains(t, output, "deletion is irreversible")
-	require.Contains(t, output, "delete impact check: 1 process definition(s); 2 active process instance(s) found; no changes made yet")
+	require.Contains(t, output, "delete impact check: 1 process definition(s); 2 unfinished process instance(s) found; no changes made yet")
 	require.Contains(t, output, "--force will cancel 1 root process instance(s), then delete 2 affected process instance(s), before deleting process definitions")
 	require.NotContains(t, output, "WARNING:")
 }
@@ -266,9 +269,10 @@ func TestDeleteProcessDefinitionImpact_RendersTenantWarningsBeforeImpact(t *test
 	renderDeleteProcessDefinitionImpact(cmd, resource.DeleteProcessDefinitionPlan{
 		Items: []resource.DeleteProcessDefinitionPlanItem{
 			{
-				Key:                        "pd-1",
-				TenantId:                   "tenant-b",
-				ActiveProcessInstanceCount: 2,
+				Key:                            "pd-1",
+				TenantId:                       "tenant-b",
+				ActiveProcessInstanceCount:     2,
+				UnfinishedProcessInstanceCount: 2,
 				CancellationPlan: process.DryRunPIKeyExpansion{
 					Roots:     typex.Keys{"root-1"},
 					Collected: typex.Keys{"root-1", "child-1"},
@@ -282,7 +286,7 @@ func TestDeleteProcessDefinitionImpact_RendersTenantWarningsBeforeImpact(t *test
 		"selection scope: unfiltered across accessible tenants",
 		"affected tenants: tenant-a, tenant-b",
 		"tenant metadata is unknown for 1 target",
-		"delete impact check: 1 process definition(s); 2 active process instance(s) found; no changes made yet",
+		"delete impact check: 1 process definition(s); 2 unfinished process instance(s) found; no changes made yet",
 		"--force will cancel 1 root process instance(s), then delete 2 affected process instance(s), before deleting process definitions",
 	)
 	require.Equal(t, 1, strings.Count(output, "affected tenants: tenant-a, tenant-b"))
@@ -636,7 +640,7 @@ func TestDeleteProcessDefinitionBpmnSelectorVisiblePreservesPreviewAndDeletion(t
 		"POST /v2/resources/2251799813685255/deletion",
 	}, requests.Snapshot())
 	require.Contains(t, string(output), "delete impact check: 1 process definition(s); process-instance state check skipped; no changes made yet")
-	require.Contains(t, string(output), "pd 2251799813685255; delete accepted; batch batch-2251799813685255")
+	require.Contains(t, string(output), "pd delete accepted; requested 1, ok 1, failed 0")
 }
 
 func TestDeleteProcessDefinitionDryRunStopsAfterImpactPreview(t *testing.T) {
@@ -670,6 +674,7 @@ func TestDeleteProcessDefinitionDryRunStopsAfterImpactPreview(t *testing.T) {
 	require.NotContains(t, string(output), "delete accepted")
 }
 
+// TestDeleteProcessDefinitionCommand_RegressionPreservesSelectorPreflightForceAndNoWait retains selector scope and accepted aggregate output.
 func TestDeleteProcessDefinitionCommand_RegressionPreservesSelectorPreflightForceAndNoWait(t *testing.T) {
 	var requests testx.SafeSlice[string]
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -705,8 +710,8 @@ func TestDeleteProcessDefinitionCommand_RegressionPreservesSelectorPreflightForc
 	})
 
 	require.NoError(t, err, string(output))
-	require.Contains(t, string(output), "delete impact check: 1 process definition(s); no active process instances found; no changes made yet")
-	require.Contains(t, string(output), "pd 2251799813685255 invoice v3/stable tenant; delete accepted; batch batch-2251799813685255")
+	require.Contains(t, string(output), "delete impact check: 1 process definition(s); no unfinished process instances found; no changes made yet")
+	require.NotContains(t, string(output), "delete accepted; batch", "default output hides per-key lifecycle detail")
 	require.NotContains(t, string(output), "pd delete done; requested")
 
 	got := requests.Snapshot()
@@ -964,6 +969,7 @@ func TestDeleteProcessDefinitionDryRunStopsAfterImpactPreviewHelper(t *testing.T
 	_ = root.Execute()
 }
 
+// TestDeleteProcessDefinitionCommand_RegressionPreservesSelectorPreflightForceAndNoWait retains selector scope and accepted aggregate output.
 func TestDeleteProcessDefinitionCommand_RegressionPreservesSelectorPreflightForceAndNoWaitHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return

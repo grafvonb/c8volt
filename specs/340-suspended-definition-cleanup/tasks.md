@@ -2,7 +2,7 @@
 
 **Input**: [spec.md](spec.md), [plan.md](plan.md), [research.md](research.md), [data-model.md](data-model.md), [contract](contracts/definition-cleanup.md), [quickstart.md](quickstart.md)
 **Branch / Issue**: `340-suspended-definition-cleanup` / #340
-**Status**: T001 and T002 implemented and validated with isolated tests. T003–T005 remain pending; no live-environment validation performed.
+**Status**: T001–T003 implemented and validated with isolated tests. T004–T005 remain pending; no live-environment validation performed.
 
 ## Format and execution rules
 
@@ -52,7 +52,7 @@ The repository, branch, toolchain, and fixtures already exist. No setup task is 
 
 **Independent test criteria**: Direct single/bulk definition deletion refuses suspended-only and mixed no-force scopes before their existing mutation boundary; terminal/empty controls remain eligible. Force requests use the same unfinished scope through planning and mandatory verification. US1's purge-entry acceptance is completed by T004, not claimed at this checkpoint.
 
-- [ ] T003 [US1] Deliver coherent unfinished-work planning and deletion in `internal/services/processdefinition/delete.go`, additive plan fields/accessors in `internal/domain/resource_workflow.go` and `c8volt/resource/model.go`, mechanical mappings in `c8volt/resource/convert.go` and `c8volt/ops/convert.go`, and affected delete-command preflight/views in `cmd/delete_processdefinition.go`; include adjacent service/facade/command regressions, updated help/README/generated docs, formatting and targeted isolated validation in this same unit.
+- [x] T003 [US1] Deliver coherent unfinished-work planning and deletion in `internal/services/processdefinition/delete.go`, additive plan fields/accessors in `internal/domain/resource_workflow.go` and `c8volt/resource/model.go`, mechanical mappings in `c8volt/resource/convert.go` and `c8volt/ops/convert.go`, and affected delete-command preflight/views in `cmd/delete_processdefinition.go`; include adjacent service/facade/command regressions, updated help/README/generated docs, formatting and targeted isolated validation in this same unit.
 
 **T003 acceptance and constraints**:
 
@@ -151,7 +151,7 @@ Only T001 and T002 are marked `[P]`: their production/test owners are different 
 
 SC-001 maps to T003/T004; SC-002 to T002/T003/T004; SC-003 and SC-004 to T003/T004; SC-005 to T001/T003/T004/T005; SC-006 to the affected compatibility/output checks in all units.
 
-**Total**: 5 tasks: 2 foundational, 1 US1, 1 US2, 1 US3; 0 artificial setup/polish tasks. T001 and T002 are complete; three tasks remain pending.
+**Total**: 5 tasks: 2 foundational, 1 US1, 1 US2, 1 US3; 0 artificial setup/polish tasks. T001–T003 are complete; two tasks remain pending.
 
 ## Implementation strategy and consolidation review
 

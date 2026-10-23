@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"log/slog"
 	"net/http"
 	"sync/atomic"
@@ -402,7 +403,7 @@ func TestClient_PreviewDeleteProcessDefinitions_ExpandsRootsForForce(t *testing.
 	assert.Equal(t, 1, started)
 	assert.Equal(t, 1, stopped)
 	assert.Equal(t, []string{
-		"checking active pi and roots for 1 pd; dry run",
+		"checking unfinished pi and roots for 1 pd; dry run",
 	}, msgs)
 }
 
@@ -1197,4 +1198,75 @@ func (stubProcessAPI) PlanProcessInstanceMutationPages(context.Context, process.
 var _ process.API = stubProcessAPI{}
 
 // ValidateProcessInstanceStates permits the resource fixtures independently of version policy.
-func (s stubProcessInstanceService) ValidateProcessInstanceStates(d.States) error { return nil }
+func (s stubProcessInstanceService) ValidateProcessInstanceStates(d.States) error {
+	return d.ErrUnsupported
+}
+
+// suspendedDefinitionService keeps authoritative union evidence inside the domain fixture.
+type suspendedDefinitionService struct {
+	pdsvc.API
+	statistics *d.ProcessDefinitionStatistics
+}
+
+// GetProcessDefinition supplies observed statistics without going through public statistics.
+func (s suspendedDefinitionService) GetProcessDefinition(_ context.Context, k string, o ...services.CallOption) (d.ProcessDefinition, error) {
+	return d.ProcessDefinition{Key: k, Statistics: s.statistics}, nil
+}
+
+// TestClient_PreviewDeleteProcessDefinitionsUnfinished preserves separate buckets,
+// authoritative union counts, unsupported evidence and read-free bypass plans.
+func TestClient_PreviewDeleteProcessDefinitionsUnfinished(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		stat  *d.ProcessDefinitionStatistics
+		count int64
+		bad   bool
+	}{
+		{"supported", &d.ProcessDefinitionStatistics{Active: 2, Suspended: 3, SuspendedCountSupported: true, Unfinished: new(int64(5))}, 5, false},
+		{"supported zero", &d.ProcessDefinitionStatistics{SuspendedCountSupported: true, Unfinished: new(int64(0))}, 0, false},
+		{"transition", &d.ProcessDefinitionStatistics{Active: 0, Suspended: 0, SuspendedCountSupported: true, Unfinished: new(int64(1))}, 1, false},
+		{"older", &d.ProcessDefinitionStatistics{Active: 2}, 2, false},
+		{"missing", &d.ProcessDefinitionStatistics{SuspendedCountSupported: true}, 0, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			cli := New(nil, suspendedDefinitionService{statistics: tc.stat}, nil, slog.New(slog.NewTextHandler(io.Discard, nil)))
+			plan, err := cli.PreviewDeleteProcessDefinitions(context.Background(), typex.Keys{"pd"})
+			if tc.bad {
+				require.ErrorIs(t, err, ferr.ErrMalformedResponse)
+				require.Empty(t, plan.Items)
+				return
+			}
+			require.NoError(t, err)
+			require.Len(t, plan.Items, 1)
+			require.Equal(t, tc.count, plan.Items[0].UnfinishedProcessInstances())
+			totals := plan.Totals()
+			require.Equal(t, tc.count, totals.UnfinishedProcessInstances)
+			require.Equal(t, tc.stat.Active, totals.ActiveProcessInstances)
+			require.Equal(t, tc.stat.Suspended, totals.SuspendedProcessInstances)
+			require.Equal(t, tc.stat.SuspendedCountSupported, totals.SuspendedCountSupported)
+		})
+	}
+	cli := New(nil, nil, nil, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	skipped, err := cli.PreviewDeleteProcessDefinitions(context.Background(), typex.Keys{"pd"}, options.WithNoStateCheck(), options.WithForce())
+	require.NoError(t, err)
+	require.True(t, skipped.StateCheckSkipped)
+	require.False(t, skipped.Totals().SuspendedCountSupported)
+}
+
+// TestConvertDeleteProcessDefinitionUnfinished verifies copied keys, additive JSON
+// tags and count fallback without redefining existing active-only semantics.
+func TestConvertDeleteProcessDefinitionUnfinished(t *testing.T) {
+	source := d.DeleteProcessDefinitionPlanItem{Key: "pd", ActiveProcessInstanceCount: 2, ActiveProcessInstanceKeys: []string{"a"}, SuspendedProcessInstanceCount: 3, SuspendedCountSupported: true, UnfinishedProcessInstanceCount: 1, UnfinishedProcessInstanceKeys: []string{"a", "s"}}
+	item := fromDomainDeleteProcessDefinitionPlanItem(source)
+	require.Equal(t, int64(2), item.UnfinishedProcessInstances())
+	require.Equal(t, int64(2), item.ActiveProcessInstances())
+	raw, err := json.Marshal(item)
+	require.NoError(t, err)
+	for _, field := range []string{`"suspendedProcessInstanceCount":3`, `"suspendedCountSupported":true`, `"unfinishedProcessInstanceCount":1`, `"unfinishedProcessInstanceKeys":["a","s"]`} {
+		require.Contains(t, string(raw), field)
+	}
+	item.UnfinishedProcessInstanceKeys[0] = "changed"
+	require.Equal(t, "a", source.UnfinishedProcessInstanceKeys[0])
+	totals := (DeleteProcessDefinitionPlan{Items: []DeleteProcessDefinitionPlanItem{item, {}}}).Totals()
+	require.False(t, totals.SuspendedCountSupported, "mixed unavailable evidence cannot claim complete support")
+}

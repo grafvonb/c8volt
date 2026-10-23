@@ -31,7 +31,7 @@ type ResourceDeleteCapabilityAPI interface {
 	SupportsProcessDefinitionHistoryDeletion() bool
 }
 
-// DeleteProcessDefinition deletes one process definition after optional active-instance cleanup.
+// DeleteProcessDefinition deletes one process definition after optional unfinished-instance cleanup.
 func DeleteProcessDefinition(ctx context.Context, api ResourceDeleteAPI, pdApi API, piApi pisvc.API, log *slog.Logger, key string, opts ...services.CallOption) (d.ResourceDeleteResponse, error) {
 	return deleteProcessDefinition(ctx, api, pdApi, piApi, log, key, 1, nil, opts...)
 }
@@ -69,17 +69,17 @@ func deleteProcessDefinition(ctx context.Context, api ResourceDeleteAPI, pdApi A
 		}
 	}
 	if !cfg.SuppressWorkflowDetailLogs {
-		log.Info(fmt.Sprintf("%s; delete impact checked; active pi %d", pdLabel, plan.ActiveProcessInstances()))
+		log.Info(fmt.Sprintf("%s; delete impact checked; unfinished pi %d", pdLabel, plan.UnfinishedProcessInstances()))
 	}
-	if !cfg.NoStateCheck && plan.ActiveProcessInstances() > 0 {
+	if !cfg.NoStateCheck && plan.UnfinishedProcessInstances() > 0 {
 		if !cfg.Force {
-			return d.ResourceDeleteResponse{}, fmt.Errorf("cannot delete process definition %s with %d active process instance(s); use --force to cancel them automatically", key, plan.ActiveProcessInstances())
+			return d.ResourceDeleteResponse{}, fmt.Errorf("cannot delete process definition %s with %s; use --force to cancel them automatically", key, processDefinitionUnfinishedImpact(plan))
 		}
-		if err := cancelProcessDefinitionActiveInstances(ctx, piApi, log, plan, 0, opts...); err != nil {
-			return d.ResourceDeleteResponse{}, fmt.Errorf("delete process definition cancel active instances: %w", err)
+		if err := cancelProcessDefinitionUnfinishedInstances(ctx, piApi, log, plan, 0, opts...); err != nil {
+			return d.ResourceDeleteResponse{}, fmt.Errorf("delete process definition cancel unfinished instances: %w", err)
 		}
-		if err := waitForActiveProcessDefinitionInstancesDrained(ctx, pdApi, log, plan, opts...); err != nil {
-			return d.ResourceDeleteResponse{}, fmt.Errorf("delete process definition wait for active instances to drain: %w", err)
+		if err := waitForUnfinishedProcessDefinitionInstancesDrained(ctx, pdApi, log, plan, opts...); err != nil {
+			return d.ResourceDeleteResponse{}, fmt.Errorf("delete process definition wait for unfinished instances to drain: %w", err)
 		}
 		if err := deleteProcessDefinitionProcessInstances(ctx, piApi, log, plan, 0, opts...); err != nil {
 			return d.ResourceDeleteResponse{}, fmt.Errorf("delete process definition process-instance history: %w", err)
@@ -167,9 +167,9 @@ func PreviewDeleteProcessDefinitionsWithWorkers(ctx context.Context, pdApi API, 
 		return plan, nil
 	}
 
-	activityMsg := fmt.Sprintf("checking active pi for %d pd; dry run", len(ukeys))
+	activityMsg := fmt.Sprintf("checking unfinished pi for %d pd; dry run", len(ukeys))
 	if cfg.Force {
-		activityMsg = fmt.Sprintf("checking active pi and roots for %d pd; dry run", len(ukeys))
+		activityMsg = fmt.Sprintf("checking unfinished pi and roots for %d pd; dry run", len(ukeys))
 	}
 	stopActivity := logging.StartActivityWithImportance(ctx, activityMsg, logging.ActivityImportanceBatch)
 	defer stopActivity()
@@ -447,7 +447,7 @@ func listProcessInstancesForDefinitionCleanupEligibility(ctx context.Context, pi
 	}
 }
 
-// previewDeleteProcessDefinitionImpact loads metadata and completes active-instance impact expansion for one process definition.
+// previewDeleteProcessDefinitionImpact loads metadata and completes unfinished-instance impact expansion for one process definition.
 func previewDeleteProcessDefinitionImpact(ctx context.Context, pdApi API, piApi pisvc.API, key string, force bool, verbose bool, wantedWorkers int, opts ...services.CallOption) (d.DeleteProcessDefinitionPlanItem, error) {
 	item, err := getProcessDefinitionDeletePlanBase(ctx, pdApi, key, opts...)
 	if err != nil {
@@ -458,17 +458,26 @@ func previewDeleteProcessDefinitionImpact(ctx context.Context, pdApi API, piApi 
 
 // completeProcessDefinitionDeleteImpact adds force-only process-instance roots and affected keys to a plan item.
 func completeProcessDefinitionDeleteImpact(ctx context.Context, piApi pisvc.API, item d.DeleteProcessDefinitionPlanItem, force bool, verbose bool, wantedWorkers int, opts ...services.CallOption) (d.DeleteProcessDefinitionPlanItem, error) {
-	if !force || item.ActiveProcessInstances() == 0 {
+	if !force || item.UnfinishedProcessInstances() == 0 {
 		return item, nil
 	}
-	activeInstances, err := listActiveProcessInstancesForDefinition(ctx, piApi, item.Key, opts...)
+	unfinishedInstances, err := listUnfinishedProcessInstancesForDefinition(ctx, piApi, item.Key, opts...)
 	if err != nil {
 		return item, err
 	}
-	activeKeys := processInstanceKeys(activeInstances)
-	item.ActiveProcessInstanceKeys = activeKeys
-	planKeys := activeKeys
-	if roots, ok := processInstanceRootKeys(activeInstances); ok {
+	unfinishedKeys := processInstanceKeys(unfinishedInstances)
+	item.UnfinishedProcessInstanceKeys = unfinishedKeys
+	for _, instance := range unfinishedInstances {
+		if instance.State == d.StateActive {
+			item.ActiveProcessInstanceKeys = append(item.ActiveProcessInstanceKeys, instance.Key)
+		}
+	}
+	item.ActiveProcessInstanceKeys = types.Keys(item.ActiveProcessInstanceKeys).Unique()
+	if len(unfinishedKeys) == 0 {
+		return item, fmt.Errorf("%w: unfinished discovery returned no keys after a positive observation", d.ErrMalformedResponse)
+	}
+	planKeys := unfinishedKeys
+	if roots, ok := processInstanceRootKeys(unfinishedInstances); ok {
 		planKeys = roots
 	}
 	cancellationPlan, err := pisvc.DryRunCancelOrDeletePlan(ctx, piApi, planKeys, wantedWorkers, opts...)
@@ -482,37 +491,65 @@ func completeProcessDefinitionDeleteImpact(ctx context.Context, piApi pisvc.API,
 	return item, nil
 }
 
-// listActiveProcessInstancesForDefinition pages through active instances for one process definition.
-func listActiveProcessInstancesForDefinition(ctx context.Context, piApi pisvc.API, key string, opts ...services.CallOption) ([]d.ProcessInstance, error) {
+// listUnfinishedProcessInstancesForDefinition requires authoritative completion and
+// advancing continuation before feeding a deduplicated scope into root planning.
+func listUnfinishedProcessInstancesForDefinition(ctx context.Context, piApi pisvc.API, key string, opts ...services.CallOption) ([]d.ProcessInstance, error) {
 	const pageSize int32 = 500
-	filter := d.ProcessInstanceFilter{ProcessDefinitionKey: key, State: d.StateActive}
+	if strings.TrimSpace(key) == "" {
+		return nil, fmt.Errorf("%w: unfinished discovery requires a definition key", d.ErrValidation)
+	}
+	filter := d.ProcessInstanceFilter{ProcessDefinitionKey: key}
+	err := piApi.ValidateProcessInstanceStates(d.States{d.StateSuspended})
+	switch {
+	case err == nil:
+		filter.States = d.States{d.StateActive, d.StateSuspended}
+	case errors.Is(err, d.ErrUnsupported):
+		filter.State = d.StateActive
+	default:
+		return nil, err
+	}
 	pageReq := d.ProcessInstancePageRequest{Size: pageSize}
 	var items []d.ProcessInstance
+	seenKeys := make(map[string]bool)
+	seenCursors := make(map[string]bool)
 	for {
 		page, err := piApi.SearchForProcessInstancesPage(ctx, filter, pageReq, opts...)
 		if err != nil {
-			return items, err
+			return nil, err
 		}
-		items = append(items, page.Items...)
-		if page.OverflowState != d.ProcessInstanceOverflowStateHasMore {
+		for _, item := range page.Items {
+			if item.Key == "" {
+				return nil, fmt.Errorf("%w: unfinished discovery returned an instance without a key", d.ErrMalformedResponse)
+			}
+			if !seenKeys[item.Key] {
+				items = append(items, item)
+				seenKeys[item.Key] = true
+			}
+		}
+		switch page.OverflowState {
+		case d.ProcessInstanceOverflowStateNoMore:
 			return items, nil
-		}
-		if len(page.Items) == 0 {
-			return items, fmt.Errorf("active process-instance search for process definition %s reported more pages but returned no items", key)
+		case d.ProcessInstanceOverflowStateHasMore:
+		default:
+			return nil, fmt.Errorf("%w: unfinished discovery completion is indeterminate", d.ErrMalformedResponse)
 		}
 		if page.EndCursor != "" {
+			if seenCursors[page.EndCursor] {
+				return nil, fmt.Errorf("%w: unfinished discovery cursor did not advance", d.ErrMalformedResponse)
+			}
+			seenCursors[page.EndCursor] = true
 			pageReq.After = page.EndCursor
-			pageReq.From += int32(len(page.Items))
-			continue
+		} else if pageReq.After != "" || len(page.Items) == 0 {
+			return nil, fmt.Errorf("%w: unfinished discovery cannot advance", d.ErrMalformedResponse)
 		}
 		pageReq.From += int32(len(page.Items))
 	}
 }
 
-// countActiveProcessInstancesForDefinition reloads the current active count from process-definition statistics.
-func countActiveProcessInstancesForDefinition(ctx context.Context, pdApi API, key string, opts ...services.CallOption) (int64, error) {
+// countUnfinishedProcessInstancesForDefinition reloads the current unfinished count from process-definition statistics.
+func countUnfinishedProcessInstancesForDefinition(ctx context.Context, pdApi API, key string, opts ...services.CallOption) (int64, error) {
 	item, err := getProcessDefinitionDeletePlanBase(ctx, pdApi, key, opts...)
-	return item.ActiveProcessInstanceCount, err
+	return item.UnfinishedProcessInstanceCount, err
 }
 
 // getProcessDefinitionDeletePlanBase loads process-definition metadata and statistics for delete planning.
@@ -529,14 +566,23 @@ func getProcessDefinitionDeletePlanBase(ctx context.Context, pdApi API, key stri
 	item.ProcessVersionTag = pd.ProcessVersionTag
 	item.TenantId = pd.TenantId
 	if pd.Statistics == nil {
-		return item, fmt.Errorf("active process-instance impact check for process definition %s did not return statistics", key)
+		return item, fmt.Errorf("%w: unfinished process-instance impact check did not return statistics", d.ErrMalformedResponse)
 	}
 	item.ActiveProcessInstanceCount = pd.Statistics.Active
+	item.SuspendedProcessInstanceCount = pd.Statistics.Suspended
+	item.SuspendedCountSupported = pd.Statistics.SuspendedCountSupported
+	item.UnfinishedProcessInstanceCount = pd.Statistics.Active
+	if pd.Statistics.SuspendedCountSupported {
+		if pd.Statistics.Unfinished == nil || *pd.Statistics.Unfinished < 0 {
+			return item, fmt.Errorf("%w: unfinished process-instance impact check did not return a valid union count", d.ErrMalformedResponse)
+		}
+		item.UnfinishedProcessInstanceCount = *pd.Statistics.Unfinished
+	}
 	return item, nil
 }
 
-// cancelProcessDefinitionActiveInstances cancels the root instances required before deleting one process definition.
-func cancelProcessDefinitionActiveInstances(ctx context.Context, piApi pisvc.API, log *slog.Logger, plan d.DeleteProcessDefinitionPlanItem, wantedWorkers int, opts ...services.CallOption) error {
+// cancelProcessDefinitionUnfinishedInstances cancels the root instances required before deleting one process definition.
+func cancelProcessDefinitionUnfinishedInstances(ctx context.Context, piApi pisvc.API, log *slog.Logger, plan d.DeleteProcessDefinitionPlanItem, wantedWorkers int, opts ...services.CallOption) error {
 	cfg := services.ApplyCallOptions(opts)
 	key := plan.Key
 	roots := plan.CancellationPlan.Roots.Unique()
@@ -545,10 +591,10 @@ func cancelProcessDefinitionActiveInstances(ctx context.Context, piApi pisvc.API
 	}
 	affected := len(plan.CancellationPlan.Collected.Unique())
 	if affected == 0 {
-		affected = len(plan.ActiveProcessInstanceKeys)
+		affected = len(plan.UnfinishedProcessInstanceKeys)
 	}
 	if !cfg.SuppressWorkflowDetailLogs {
-		log.Info(fmt.Sprintf("%s; force cancel active pi; roots %d, affected %d", processDefinitionDeleteLogSubject(plan), len(roots), affected))
+		log.Info(fmt.Sprintf("%s; force cancel unfinished pi; roots %d, affected %d", processDefinitionDeleteLogSubject(plan), len(roots), affected))
 	}
 	cancelOpts := append([]services.CallOption{}, opts...)
 	cancelOpts = append(cancelOpts,
@@ -577,7 +623,7 @@ func deleteProcessDefinitionProcessInstances(ctx context.Context, piApi pisvc.AP
 	}
 	affected := len(plan.CancellationPlan.Collected.Unique())
 	if affected == 0 {
-		affected = len(plan.ActiveProcessInstanceKeys)
+		affected = len(plan.UnfinishedProcessInstanceKeys)
 	}
 	if !cfg.SuppressWorkflowDetailLogs {
 		log.Info(fmt.Sprintf("%s; delete pi history; affected %d, roots %d", processDefinitionDeleteLogSubject(plan), affected, len(roots)))
@@ -619,7 +665,7 @@ func cleanupProcessDefinitionDeletePlanForceScope(ctx context.Context, pdApi API
 		affected = len(scope.Roots)
 	}
 	if !cfg.SuppressWorkflowDetailLogs {
-		log.Info(fmt.Sprintf("pd delete; force cancel active pi; roots %d, affected %d", len(scope.Roots), affected))
+		log.Info(fmt.Sprintf("pd delete; force cancel unfinished pi; roots %d, affected %d", len(scope.Roots), affected))
 	}
 	rootTotal := len(scope.Roots)
 	var plannedAffectedCount *int
@@ -643,7 +689,7 @@ func cleanupProcessDefinitionDeletePlanForceScope(ctx context.Context, pdApi API
 		return fmt.Errorf("cancelling root process instances for process-definition delete scope failed for %d root request(s)", failed)
 	}
 	reportProcessDefinitionDeleteStage(cfg.Progress, "drain process instances", "", nil, nil)
-	if err := waitForProcessDefinitionDeletePlanActiveInstancesDrained(ctx, pdApi, log, items, opts...); err != nil {
+	if err := waitForProcessDefinitionDeletePlanUnfinishedInstancesDrained(ctx, pdApi, log, items, opts...); err != nil {
 		return err
 	}
 	if !cfg.SuppressWorkflowDetailLogs {
@@ -675,7 +721,7 @@ func processDefinitionDeleteCleanupScopeForPlan(items []d.DeleteProcessDefinitio
 		roots = append(roots, item.CancellationPlan.Roots...)
 		affected = append(affected, item.CancellationPlan.Collected...)
 		if len(item.CancellationPlan.Collected) == 0 {
-			affected = append(affected, item.ActiveProcessInstanceKeys...)
+			affected = append(affected, item.UnfinishedProcessInstanceKeys...)
 		}
 	}
 	return processDefinitionDeleteCleanupScope{
@@ -684,73 +730,73 @@ func processDefinitionDeleteCleanupScopeForPlan(items []d.DeleteProcessDefinitio
 	}
 }
 
-// waitForProcessDefinitionDeletePlanActiveInstancesDrained waits until all planned process definitions report zero active instances.
-func waitForProcessDefinitionDeletePlanActiveInstancesDrained(ctx context.Context, pdApi API, log *slog.Logger, items []d.DeleteProcessDefinitionPlanItem, opts ...services.CallOption) error {
+// waitForProcessDefinitionDeletePlanUnfinishedInstancesDrained waits until all planned process definitions report zero unfinished instances.
+func waitForProcessDefinitionDeletePlanUnfinishedInstancesDrained(ctx context.Context, pdApi API, log *slog.Logger, items []d.DeleteProcessDefinitionPlanItem, opts ...services.CallOption) error {
 	cfg := services.ApplyCallOptions(opts)
 	if !cfg.SuppressWorkflowDetailLogs {
-		log.Info("pd delete; waiting until cancelled pi are no longer active")
+		log.Info("pd delete; waiting until no unfinished pi remain")
 	}
 	poll := func(ctx context.Context) (poller.JobPollStatus, error) {
-		active, err := activeProcessInstanceCountForCurrentProcessDefinitions(ctx, pdApi, items, opts...)
+		unfinished, err := unfinishedProcessInstanceCountForCurrentProcessDefinitions(ctx, pdApi, items, opts...)
 		if err != nil {
 			return poller.JobPollStatus{}, err
 		}
-		if active == 0 {
-			return poller.JobPollStatus{Success: true, Message: "process-definition delete scope has no active process instances"}, nil
+		if unfinished == 0 {
+			return poller.JobPollStatus{Success: true, Message: "process-definition delete scope has no unfinished process instances"}, nil
 		}
 		if !cfg.SuppressWorkflowDetailLogs {
-			log.Info(fmt.Sprintf("pd delete; active pi %d; waiting", active))
+			log.Info(fmt.Sprintf("pd delete; unfinished pi %d; waiting", unfinished))
 		}
-		return poller.JobPollStatus{Success: false, Message: fmt.Sprintf("pd delete; active pi %d", active)}, nil
+		return poller.JobPollStatus{Success: false, Message: fmt.Sprintf("pd delete; unfinished pi %d", unfinished)}, nil
 	}
 	if err := poller.WaitForCompletion(ctx, log, poller.DefaultCompletionTimeout, true, poll); err != nil {
 		return err
 	}
 	if !cfg.SuppressWorkflowDetailLogs {
-		log.Info("pd delete; cancelled pi no longer active")
+		log.Info("pd delete; no unfinished pi remain")
 	}
 	return nil
 }
 
-// activeProcessInstanceCountForCurrentProcessDefinitions sums current active counts for planned process definitions.
-func activeProcessInstanceCountForCurrentProcessDefinitions(ctx context.Context, pdApi API, items []d.DeleteProcessDefinitionPlanItem, opts ...services.CallOption) (int64, error) {
+// unfinishedProcessInstanceCountForCurrentProcessDefinitions sums current unfinished counts for planned process definitions.
+func unfinishedProcessInstanceCountForCurrentProcessDefinitions(ctx context.Context, pdApi API, items []d.DeleteProcessDefinitionPlanItem, opts ...services.CallOption) (int64, error) {
 	var total int64
 	for _, item := range items {
-		active, err := countActiveProcessInstancesForDefinition(ctx, pdApi, item.Key, opts...)
+		unfinished, err := countUnfinishedProcessInstancesForDefinition(ctx, pdApi, item.Key, opts...)
 		if err != nil {
 			return 0, err
 		}
-		total += active
+		total += unfinished
 	}
 	return total, nil
 }
 
-// waitForActiveProcessDefinitionInstancesDrained waits until one process definition reports zero active instances.
-func waitForActiveProcessDefinitionInstancesDrained(ctx context.Context, pdApi API, log *slog.Logger, plan d.DeleteProcessDefinitionPlanItem, opts ...services.CallOption) error {
+// waitForUnfinishedProcessDefinitionInstancesDrained waits until one process definition reports zero unfinished instances.
+func waitForUnfinishedProcessDefinitionInstancesDrained(ctx context.Context, pdApi API, log *slog.Logger, plan d.DeleteProcessDefinitionPlanItem, opts ...services.CallOption) error {
 	cfg := services.ApplyCallOptions(opts)
 	key := plan.Key
 	pdLabel := processDefinitionDeleteLogSubject(plan)
 	if !cfg.SuppressWorkflowDetailLogs {
-		log.Info(fmt.Sprintf("%s; waiting until cancelled pi are no longer active", pdLabel))
+		log.Info(fmt.Sprintf("%s; waiting until no unfinished pi remain", pdLabel))
 	}
 	poll := func(ctx context.Context) (poller.JobPollStatus, error) {
-		active, err := countActiveProcessInstancesForDefinition(ctx, pdApi, key, opts...)
+		unfinished, err := countUnfinishedProcessInstancesForDefinition(ctx, pdApi, key, opts...)
 		if err != nil {
 			return poller.JobPollStatus{}, err
 		}
-		if active == 0 {
-			return poller.JobPollStatus{Success: true, Message: fmt.Sprintf("process definition %s has no active process instances", key)}, nil
+		if unfinished == 0 {
+			return poller.JobPollStatus{Success: true, Message: fmt.Sprintf("process definition %s has no unfinished process instances", key)}, nil
 		}
 		if !cfg.SuppressWorkflowDetailLogs {
-			log.Info(fmt.Sprintf("%s; active pi %d; waiting", pdLabel, active))
+			log.Info(fmt.Sprintf("%s; unfinished pi %d; waiting", pdLabel, unfinished))
 		}
-		return poller.JobPollStatus{Success: false, Message: fmt.Sprintf("%s; active pi %d", pdLabel, active)}, nil
+		return poller.JobPollStatus{Success: false, Message: fmt.Sprintf("%s; unfinished pi %d", pdLabel, unfinished)}, nil
 	}
 	if err := poller.WaitForCompletion(ctx, log, poller.DefaultCompletionTimeout, true, poll); err != nil {
 		return err
 	}
 	if !cfg.SuppressWorkflowDetailLogs {
-		log.Info(fmt.Sprintf("%s; cancelled pi no longer active", pdLabel))
+		log.Info(fmt.Sprintf("%s; no unfinished pi remain", pdLabel))
 	}
 	return nil
 }
@@ -882,4 +928,13 @@ func resourceDeleteTotals(items []d.ResourceDeleteResponse) (total, oks, noks in
 	total = len(items)
 	noks = total - oks
 	return total, oks, noks
+}
+
+// processDefinitionUnfinishedImpact preserves independently observed bucket detail in a blocker.
+func processDefinitionUnfinishedImpact(plan d.DeleteProcessDefinitionPlanItem) string {
+	impact := fmt.Sprintf("%d unfinished process instance(s)", plan.UnfinishedProcessInstances())
+	if plan.SuspendedCountSupported {
+		impact += fmt.Sprintf(" (active %d, suspended %d)", plan.ActiveProcessInstances(), plan.SuspendedProcessInstanceCount)
+	}
+	return impact
 }

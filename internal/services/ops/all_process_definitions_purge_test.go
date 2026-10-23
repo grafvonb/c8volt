@@ -971,7 +971,7 @@ func TestPurgeAllProcessDefinitionsForceCleanupDeduplicatesProcessInstanceRoots(
 					"pd-a": {{Key: "pi-a", RootProcessInstanceKey: "pi-root", State: d.StateActive}},
 					"pd-b": {{Key: "pi-b", RootProcessInstanceKey: "pi-root", State: d.StateActive}},
 				}
-				return d.ProcessInstancePage{Items: items[filter.ProcessDefinitionKey]}, nil
+				return d.ProcessInstancePage{Items: items[filter.ProcessDefinitionKey], OverflowState: d.ProcessInstanceOverflowStateNoMore}, nil
 			},
 			ancestryResult: func(_ context.Context, startKey string, _ ...services.CallOption) (pitraversal.Result, error) {
 				require.Equal(t, "pi-root", startKey)

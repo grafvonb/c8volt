@@ -79,7 +79,7 @@ func (p *processDefinitionDeleteSemanticProgress) FacadeProgress(event foptions.
 			Total:            event.Completion.Total,
 			Identity:         event.Completion.Identity,
 			Disposition:      ops.CompletionDisposition(event.Completion.Disposition),
-			FailureDetail:    event.Completion.FailureDetail,
+			FailureDetail:    "", // Final aggregate diagnostics own failures; never pass raw backend text to progress.
 			AffectedResource: event.Completion.AffectedResource,
 			AffectedCount:    event.Completion.AffectedCount,
 		},
@@ -92,6 +92,10 @@ func (p *processDefinitionDeleteSemanticProgress) Report(event ops.ProgressEvent
 	if p == nil || event.Kind != ops.ProgressEventKindCompletion || event.Completion == nil {
 		return
 	}
+	// Copy before removing transport detail so caller-owned machine evidence stays intact.
+	completion := *event.Completion
+	completion.FailureDetail = ""
+	event.Completion = &completion
 	p.mu.Lock()
 	reporter := p.reporterLocked(event.Completion.Total)
 	p.mu.Unlock()
@@ -111,6 +115,8 @@ func (p *processDefinitionDeleteSemanticProgress) reporterLocked(total int) *ops
 	}
 	if p.reporter == nil {
 		channel := opsProgressChannelForMode(opsProgressModeForCommand(p.cmd, pickMode()))
+		policy := opsSemanticProgressOutputPolicyForChannel(channel)
+		policy.FailureWarnings = false // The final result emits one aggregate error.
 		p.reporter = newOpsSemanticProgressReporter(p.cmd, opsSemanticProgressConfig{
 			Scope: opsSemanticProgressScope{
 				Phase:         processDefinitionDeleteCompletionPhase,
@@ -121,7 +127,7 @@ func (p *processDefinitionDeleteSemanticProgress) reporterLocked(total int) *ops
 				ConfirmedVerb: "deleted",
 				FailedVerb:    "failed",
 			},
-			Policy: opsSemanticProgressOutputPolicyForChannel(channel),
+			Policy: policy,
 			Now:    processDefinitionDeleteSemanticProgressNow,
 		})
 	}

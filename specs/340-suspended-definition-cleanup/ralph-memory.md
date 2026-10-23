@@ -5,6 +5,9 @@ Started: 2026-10-23T08:10:21Z
 
 ## Codebase Patterns
 
+- Definition-delete presentation now lives in `cmd/cmd_views_resource.go`; command construction/dispatch remains in `cmd/delete_processdefinition.go`, and lifecycle/progress remains in its existing focused progress file. No new command mode or mutation engine was added.
+- `cmd/delete_processdefinition_unfinished_test.go` uses the existing terminal runner and HTTP fake conventions. Its configured/inherited writer matrix parses every plain/structured log record, checks error severity/cardinality and JSON EOF, and proves raw-error/direct-stderr regressions fail. The sparse suspended-force fixture exercises the full CLI → facade → v810 path without live services.
+
 - v810 definition statistics are acquired in `internal/services/processdefinition/v810/service.go` via exact-total requests (limit 1), then capped-total traversal when necessary. New suspended and union requests reuse definition/tenant scope, ordering, and paging; the union uses the generated advanced state filter's `$in`.
 - Public process statistics and ops discovery/report statistics have separate mechanical converters. Existing public active/completed/canceled/incidents JSON fields retain zero values; the new suspended fields use `omitempty`. Domain statistics omit zero values and never serialize `Unfinished`.
 - Adjacent versioned tests use strict generated-client mocks. Extend `expectedProcessDefinitionStats` and `mockProcessDefinitionStats` for v810; older mocks must receive no new queries.
@@ -13,21 +16,36 @@ Started: 2026-10-23T08:10:21Z
 
 ## Decisions
 
-- T001 is complete. v810 publishes statistics only after all six observations succeed. `SuspendedCountSupported` is true even for zero; internal `Unfinished` is a non-nil authoritative observation, independent of the separately sampled display buckets. Cleanup does not consume it until T003.
+- T003 is complete (US1 definition milestone). Checked plans carry separate active/suspended buckets/support and authoritative unfinished counts/unique keys. Active accessors retain their meaning; unfinished accessors use max(observed count, discovered key count). Both resource and ops item converters copy additions; resource totals require complete supported observations before claiming suspended support.
+- Definition deletion now uses unfinished evidence for no-force blockers, force expansion, root deduplication and required drain checks. Only `ErrUnsupported` from pure suspension capability validation selects the older ACTIVE filter. Cancellation/history operations are unchanged. No-wait retains mandatory drain; no-state-check retains read-free impact planning and its existing bypass. Newly observed work is never appended to cancellation.
+- T003 also owns its changed command diagnostics: impact/deletion failures use bounded class/count summaries through the configured logger, raw machine detail is preserved, partial deletion reports appear in exactly one failure envelope, and exit classification is retained. Failure counts do not reinterpret accepted resource responses as confirmed completion. Per-key failure detail is removed only from the command progress projection; the final aggregate owns diagnostics. HTTP DEBUG stays in the existing redacted transport path.
+
+- T001 is complete. v810 publishes statistics only after all six observations succeed. `SuspendedCountSupported` is true even for zero; internal `Unfinished` is a non-nil authoritative observation, independent of the separately sampled display buckets. T003 now consumes it for deletion planning and required verification.
 - The initial exact total remains the fast path. Capped counts enumerate completely; sparse empty pages advance only with known remaining items and a fresh cursor. Empty final pages can terminate despite a cursor or capped-total flag once consistent with observed counts. Stalled/cyclic/disappearing cursors and incomplete/indeterminate empty observations return `ErrMalformedResponse`, never a partial exact count. Offset fallback remains available while traversal stays in offset mode.
 - Human/watch suspended presentation remains T005. Iteration 1 documented the delivered structured statistics in README and command metadata and refreshed generated references through `make docs-content`.
-- T002 is complete. The internal union is available with tenant/definition/options preserved and no public filter/flag addition. Both foundational tasks are now ready for T003; mutation orchestration has not changed.
+- T002 is complete. The internal union is available with tenant/definition/options preserved and no public filter/flag addition. Both foundational tasks feed T003’s existing definition cleanup workflow.
 
 ## Gotchas
 
+- Purge’s own aggregate `RequiresForce`, fallback counts/keys, progress and reports are still active-only until T004. T003 updated only its duplicated item conversion and two old test-fixture details (pure capability, explicit NoMore). Do not claim purge acceptance complete yet.
+- Existing older resource/ops fixtures now explicitly return `ErrUnsupported` for suspension capability. New suspended tests use domain service stubs directly: public statistics intentionally cannot carry internal `Unfinished`, and the old resource test adapter must not fabricate it by summing buckets.
+- The CLI’s existing no-match definition selector remains an error, not a newly introduced successful empty scope. Empty *instance workload* still permits explicit definition deletion and its normal confirmation. Tests distinguish this from dry-run/no-work mutation claims; no selector/no-op contract was redesigned.
+
 - A capped-total flag is not a next-page flag, and an end cursor alone does not prove continuation. A legacy fixture claiming a lower bound of 10000 but returning three instances was corrected to consistent capped/exact observations.
 - A missing definition key must not produce an unscoped union count. The new request builder rejects it as malformed without an instance request.
-- Supported statistics with nil `Unfinished` must be rejected by the cleanup boundary in T003. Older versions intentionally keep support false and `Unfinished` nil; use their existing active observation at that boundary.
+- T003 rejects supported statistics with nil or negative `Unfinished` at the checked-plan boundary. Older versions intentionally keep support false and `Unfinished` nil; use their existing active observation at that boundary.
 - Error-path audit: ordinary non-watch definition-read failures already flow through `handleCommandError` to `ferrors.HandleAndExit`, which logs raw `err.Error()` for human output. No diagnostic/error renderer changed in T001. This pre-existing raw-transport disclosure is a separate hardening concern, not proven compliant by the passing legacy error-envelope tests. Watch has its own compact failure diagnostics. Preserve this finding for follow-up without silently widening the current task.
-- For T003, use the definition workflow's existing direct page loop and reject indeterminate completion, stalled/cyclic/disappearing cursors, and incomplete scope. `From` must reflect actual observed raw items, not requested page size after an empty cursor page. The general shared page/total helpers still have permissive completion/empty-stop rules and are not proof of authoritative cleanup discovery; T002 changes their selector validation, not their traversal framework.
+- T003’s definition discovery loop rejects indeterminate completion, stalled/cyclic/disappearing cursors, missing keys and positive-count discovery with no keys. `From` advances by raw observed items, including zero through advancing sparse pages; offset fallback remains available before cursor mode. The general shared page/total helpers still have permissive completion/empty-stop rules and are not proof of authoritative cleanup discovery; T002 changes their selector validation, not their traversal framework.
 - A capped total is strictly a lower bound. An empty response at that bound cannot prove completion; fresh continuation is retained, otherwise it is indeterminate. A final empty response beyond the bound can complete. The legacy v810 final-empty fixture now uses From=10001 for a capped total of 10000. Short nonempty capped pages beyond the bound remain indeterminate.
 
 ## Reusable Commands
+
+T003 final checks (all through `/tmp/c8volt-340-isolated-test.py`, with inherited application/live flags cleared):
+
+- `go test ./internal/services/processdefinition ./c8volt/resource -run 'DeleteProcessDefinition|CleanupProcessDefinition|Unfinished' -race -count=1`
+- `go test ./internal/services/ops ./c8volt/ops -run 'TestPurgeAllProcessDefinitions|DeleteProcessDefinition|ConvertDeleteProcessDefinitionUnfinished' -race -count=1`
+- `go test ./cmd -run 'TestDeleteProcessDefinition|TestDeleteCommands_RegressionPreservesCleanupContracts|TestDeleteHelp_DocumentsDestructiveConfirmationPaths|TestConfirmOrAbortTerminal' -count=1`
+- Deliberate temporary changes to direct stderr and raw aggregate logging were each rejected by `TestDeleteProcessDefinitionUnfinishedDiagnosticLogging/plain-time/normal`; both were restored before final checks. No mutation-testing changes remain.
 
 Use the environment-clearing `isolated_go_test` wrapper from `quickstart.md`; the actual iteration wrapper was `/tmp/c8volt-340-isolated-test.py` with the same environment rules.
 
@@ -49,4 +67,4 @@ Use the environment-clearing `isolated_go_test` wrapper from `quickstart.md`; th
 
 ## Current Handoff
 
-- Next dependency-ready work is T003 (US1, Phase 3): coherent unfinished planning, discovery, gates, force cleanup and required verification, including plan/facade/CLI projections and isolated regression evidence. T001 and T002 are complete; recheck selection against `tasks.md`. T004 depends on T003; T005 remains pending in the preferred order. No blocking prerequisite is known.
+- Next dependency-ready work is T004 (US2, Phase 4): adapt purge’s aggregate unfinished gates, counts/support, fallback keys, reports, progress and command preflight to the completed shared definition workflow. Recheck selection against `tasks.md`; T001–T003 are complete and no blocking prerequisite is known. T005 remains pending in the preferred order. Preserve isolated-only validation and the existing read-command diagnostic follow-up noted above.

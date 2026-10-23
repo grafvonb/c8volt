@@ -42,3 +42,17 @@ func TestConvertProcessDefinitionSuspendedStatistics(t *testing.T) {
 	}
 	require.Nil(t, fromDomainProcessDefinition(d.ProcessDefinition{Key: "123"}).Statistics)
 }
+
+// TestConvertDeleteProcessDefinitionUnfinished retains cleanup evidence in the
+// duplicated ops item projection without introducing purge aggregation behavior.
+func TestConvertDeleteProcessDefinitionUnfinished(t *testing.T) {
+	source := d.DeleteProcessDefinitionPlanItem{Key: "pd", ActiveProcessInstanceCount: 2, ActiveProcessInstanceKeys: []string{"a"}, SuspendedProcessInstanceCount: 3, SuspendedCountSupported: true, UnfinishedProcessInstanceCount: 5, UnfinishedProcessInstanceKeys: []string{"a", "s"}}
+	item := fromDomainDeleteProcessDefinitionPlanItem(source)
+	require.Equal(t, int64(2), item.ActiveProcessInstances())
+	require.Equal(t, int64(5), item.UnfinishedProcessInstances())
+	require.Equal(t, int64(3), item.SuspendedProcessInstanceCount)
+	require.True(t, item.SuspendedCountSupported)
+	require.Equal(t, source.UnfinishedProcessInstanceKeys, item.UnfinishedProcessInstanceKeys)
+	item.UnfinishedProcessInstanceKeys[0] = "changed"
+	require.Equal(t, "a", source.UnfinishedProcessInstanceKeys[0])
+}

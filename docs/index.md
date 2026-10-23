@@ -6,7 +6,7 @@ nav_exclude: true
 has_toc: true
 ---
 
-> Generated from build `c8volt v4.4.0-171-g34a564cf-dirty`, commit `34a564cf`, built `2026-10-23T08:19:31Z` | Supported Camunda 8 versions: 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.3 (final)
+> Generated from build `c8volt v4.4.0-173-ged5e7c97-dirty`, commit `ed5e7c97`, built `2026-10-23T08:54:55Z` | Supported Camunda 8 versions: 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.3 (final)
 
 <img src="./logo/c8volt_logo_transparent_w_shadow_400x244.png" alt="c8volt logo" />
 
@@ -42,6 +42,8 @@ Start repair, purge, and retention workflows with `--dry-run` to review the affe
 Smoke-test cleanup tracks every process definition returned by the fixture deployment, including dependency definitions. Default execution removes each definition only after its exact key passes the existing unrelated-instance safety check; retained, failed, submitted, and confirmed outcomes remain distinct in verbose output and audit reports. `--no-cleanup` retains the complete deployed scope, while `--no-wait` reports accepted deletion requests without claiming confirmed removal. Use `--json` for the structured machine contract; the workflow rejects `--keys-only` because it does not return a key stream.
 
 `get process-definition --stat --json` keeps active instances in `active` and, on Camunda 8.10, reports suspended instances separately in `suspended`. The additive `suspendedCountSupported` flag is true even when the suspended count is zero and omitted. Camunda 8.8/8.9 omit both suspended fields. Statistics are published only after all required observations succeed; independently sampled state buckets can differ during transitions. Requests without `--stat` do not acquire these counts.
+
+`delete process-definition` checks ACTIVE and SUSPENDED together on Camunda 8.10. Without `--force`, unfinished work blocks deletion. With `--force`, c8volt discovers the combined scope, cancels its existing roots, verifies that no unfinished instances remain, then deletes instance history and definitions. Active counts and keys remain active-only; previews add suspended counts/support and authoritative unfinished counts/keys. `--dry-run` submits no mutations. `--no-wait` skips final deletion confirmation but retains required drain checks; `--no-state-check` preserves the existing read/cancellation bypass. Camunda 8.9 retains active-only cleanup; full definition-history deletion remains unsupported on 8.8. These observations do not freeze new starts or eliminate exporter lag. Purge integration and human statistics/watch presentation are still pending in #340.
 
 ## c8volt in Action
 

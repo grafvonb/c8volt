@@ -666,3 +666,6 @@ func typexKeys(keys ...string) typex.Keys {
 func opsIntPtr(v int) *int {
 	return &v
 }
+
+// ValidateProcessInstanceStates preserves the older active-only capability of the shared fixture.
+func (stubProcessInstanceAPI) ValidateProcessInstanceStates(d.States) error { return d.ErrUnsupported }

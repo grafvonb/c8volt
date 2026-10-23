@@ -1961,17 +1961,22 @@ func fromDomainProcessDefinitionStatistics(x *d.ProcessDefinitionStatistics) *pr
 	}
 }
 
+// fromDomainDeleteProcessDefinitionPlanItem copies observed cleanup evidence across the public boundary.
 func fromDomainDeleteProcessDefinitionPlanItem(x d.DeleteProcessDefinitionPlanItem) resource.DeleteProcessDefinitionPlanItem {
 	return resource.DeleteProcessDefinitionPlanItem{
-		Key:                        x.Key,
-		BpmnProcessId:              x.BpmnProcessId,
-		ProcessVersion:             x.ProcessVersion,
-		ProcessVersionTag:          x.ProcessVersionTag,
-		TenantId:                   x.TenantId,
-		ActiveProcessInstanceCount: x.ActiveProcessInstanceCount,
-		ActiveProcessInstanceKeys:  append([]string(nil), x.ActiveProcessInstanceKeys...),
-		CancellationPlan:           fromDomainDryRunPIKeyExpansion(x.CancellationPlan),
-		Warnings:                   append([]string(nil), x.Warnings...),
+		Key:                            x.Key,
+		BpmnProcessId:                  x.BpmnProcessId,
+		ProcessVersion:                 x.ProcessVersion,
+		ProcessVersionTag:              x.ProcessVersionTag,
+		TenantId:                       x.TenantId,
+		ActiveProcessInstanceCount:     x.ActiveProcessInstanceCount,
+		ActiveProcessInstanceKeys:      append([]string(nil), x.ActiveProcessInstanceKeys...),
+		SuspendedProcessInstanceCount:  x.SuspendedProcessInstanceCount,
+		SuspendedCountSupported:        x.SuspendedCountSupported,
+		UnfinishedProcessInstanceCount: x.UnfinishedProcessInstanceCount,
+		UnfinishedProcessInstanceKeys:  append([]string(nil), x.UnfinishedProcessInstanceKeys...),
+		CancellationPlan:               fromDomainDryRunPIKeyExpansion(x.CancellationPlan),
+		Warnings:                       append([]string(nil), x.Warnings...),
 	}
 }
 

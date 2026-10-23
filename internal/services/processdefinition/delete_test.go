@@ -1543,7 +1543,7 @@ func (s workerPreviewProcessInstanceAPI) SearchForProcessInstancesPage(_ context
 		key := "root-" + strconv.Itoa(i)
 		items = append(items, d.ProcessInstance{Key: key, RootProcessInstanceKey: key, State: d.StateActive})
 	}
-	return d.ProcessInstancePage{Items: items}, nil
+	return d.ProcessInstancePage{Items: items, OverflowState: d.ProcessInstanceOverflowStateNoMore}, nil
 }
 
 // AncestryResult delegates ancestry expansion to the configured test callback.
@@ -1582,6 +1582,7 @@ func (tenantEvidenceProcessInstanceAPI) SearchForProcessInstancesPage(_ context.
 		return d.ProcessInstancePage{Items: []d.ProcessInstance{}}, nil
 	}
 	return d.ProcessInstancePage{
+		OverflowState: d.ProcessInstanceOverflowStateNoMore,
 		Items: []d.ProcessInstance{
 			{Key: "root-a", RootProcessInstanceKey: "root-a", TenantId: "tenant-a", State: d.StateActive},
 			{Key: "root-b", RootProcessInstanceKey: "root-b", TenantId: "tenant-b", State: d.StateActive},
@@ -1686,4 +1687,380 @@ func TestPreviewDeleteProcessDefinitionImpactUsesRequestedWorkers(t *testing.T) 
 	result := <-resultCh
 	require.NoError(t, result.err)
 	require.Len(t, result.item.CancellationPlan.Roots, roots)
+}
+
+// TestDeleteProcessDefinitionUnfinishedPreflight rejects suspended work and missing
+// union evidence before any mutation, while retaining older active-only checks.
+func TestDeleteProcessDefinitionUnfinishedPreflight(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		stats   *d.ProcessDefinitionStatistics
+		wantErr bool
+	}{
+		{"suspended", &d.ProcessDefinitionStatistics{Suspended: 3, SuspendedCountSupported: true, Unfinished: new(int64(3))}, true},
+		{"mixed", &d.ProcessDefinitionStatistics{Active: 2, Suspended: 3, SuspendedCountSupported: true, Unfinished: new(int64(5))}, true},
+		{"transition", &d.ProcessDefinitionStatistics{SuspendedCountSupported: true, Unfinished: new(int64(1))}, true},
+		{"missing union", &d.ProcessDefinitionStatistics{SuspendedCountSupported: true}, true},
+		{"missing statistics", nil, true},
+		{"older active", &d.ProcessDefinitionStatistics{Active: 1}, true},
+		{"terminal", &d.ProcessDefinitionStatistics{Completed: 2, Canceled: 3, SuspendedCountSupported: true, Unfinished: new(int64(0))}, false},
+		{"empty", &d.ProcessDefinitionStatistics{SuspendedCountSupported: true, Unfinished: new(int64(0))}, false},
+		{"older empty", &d.ProcessDefinitionStatistics{}, false},
+	} {
+		for _, bulk := range []bool{false, true} {
+			t.Run(fmt.Sprintf("%s/bulk=%t", tc.name, bulk), func(t *testing.T) {
+				var mutations atomic.Int32
+				api := testResourceDeleteAPI{delete: func(context.Context, string, ...services.CallOption) (d.ResourceDeleteResponse, error) {
+					mutations.Add(1)
+					return d.ResourceDeleteResponse{Ok: true}, nil
+				}}
+				pd := tenantEvidenceProcessDefinitionAPI{definitions: map[string]d.ProcessDefinition{"pd": {Key: "pd", Statistics: tc.stats}}}
+				var err error
+				if bulk {
+					pd.definitions["pd2"] = d.ProcessDefinition{Key: "pd2", Statistics: tc.stats}
+					_, err = DeleteProcessDefinitions(context.Background(), api, pd, nil, slog.New(slog.NewTextHandler(io.Discard, nil)), types.Keys{"pd", "pd2"}, 1, services.WithNoWait())
+				} else {
+					_, err = DeleteProcessDefinition(context.Background(), api, pd, nil, slog.New(slog.NewTextHandler(io.Discard, nil)), "pd", services.WithNoWait())
+				}
+				if tc.wantErr {
+					require.Error(t, err)
+					require.Zero(t, mutations.Load())
+				} else {
+					require.NoError(t, err)
+					want := int32(1)
+					if bulk {
+						want = 2
+					}
+					require.Equal(t, want, mutations.Load())
+				}
+			})
+		}
+	}
+}
+
+// ValidateProcessInstanceStates supplies a pure capability result for isolated discovery.
+func (s cleanupEligibilityProcessInstanceAPI) ValidateProcessInstanceStates(d.States) error {
+	return nil
+}
+
+// TestDeleteProcessDefinitionUnfinishedDiscovery tests sparse continuation and
+// rejects uncertainty instead of silently returning a partial destructive scope.
+func TestDeleteProcessDefinitionUnfinishedDiscovery(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		pages   []d.ProcessInstancePage
+		wantErr bool
+	}{
+		{"sparse", []d.ProcessInstancePage{
+			{OverflowState: d.ProcessInstanceOverflowStateHasMore, EndCursor: "one"},
+			{Items: []d.ProcessInstance{{Key: "paused", State: d.StateSuspended}}, OverflowState: d.ProcessInstanceOverflowStateNoMore},
+		}, false},
+		{"cycle", []d.ProcessInstancePage{{OverflowState: d.ProcessInstanceOverflowStateHasMore, EndCursor: "one"}, {OverflowState: d.ProcessInstanceOverflowStateHasMore, EndCursor: "two"}, {OverflowState: d.ProcessInstanceOverflowStateHasMore, EndCursor: "one"}}, true},
+		{"missing key", []d.ProcessInstancePage{{Items: []d.ProcessInstance{{State: d.StateSuspended}}, OverflowState: d.ProcessInstanceOverflowStateNoMore}}, true},
+		{"indeterminate", []d.ProcessInstancePage{{OverflowState: d.ProcessInstanceOverflowStateIndeterminate}}, true},
+		{"stalled", []d.ProcessInstancePage{{OverflowState: d.ProcessInstanceOverflowStateHasMore, EndCursor: "one"}, {OverflowState: d.ProcessInstanceOverflowStateHasMore, EndCursor: "one"}}, true},
+		{"disappearing", []d.ProcessInstancePage{{OverflowState: d.ProcessInstanceOverflowStateHasMore, EndCursor: "one"}, {Items: []d.ProcessInstance{{Key: "a"}}, OverflowState: d.ProcessInstanceOverflowStateHasMore}}, true},
+		{"empty without cursor", []d.ProcessInstancePage{{OverflowState: d.ProcessInstanceOverflowStateHasMore}}, true},
+		{"final empty", []d.ProcessInstancePage{{OverflowState: d.ProcessInstanceOverflowStateNoMore, EndCursor: "end"}}, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			calls := 0
+			api := cleanupEligibilityProcessInstanceAPI{searchPage: func(_ context.Context, f d.ProcessInstanceFilter, p d.ProcessInstancePageRequest, _ ...services.CallOption) (d.ProcessInstancePage, error) {
+				require.Equal(t, "pd", f.ProcessDefinitionKey)
+				require.Equal(t, d.States{d.StateActive, d.StateSuspended}, f.States)
+				require.Empty(t, f.State)
+				if calls == 1 {
+					require.Zero(t, p.From)
+					require.Equal(t, "one", p.After)
+				}
+				require.Less(t, calls, len(tc.pages), "discovery must not loop")
+				page := tc.pages[calls]
+				calls++
+				return page, nil
+			}}
+			_, err := listUnfinishedProcessInstancesForDefinition(context.Background(), api, "pd")
+			if tc.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
+// ValidateProcessInstanceStates retains the older active-only fixture capability.
+func (workerPreviewProcessInstanceAPI) ValidateProcessInstanceStates(d.States) error {
+	return d.ErrUnsupported
+}
+
+// ValidateProcessInstanceStates retains the older active-only fixture capability.
+func (tenantEvidenceProcessInstanceAPI) ValidateProcessInstanceStates(d.States) error {
+	return d.ErrUnsupported
+}
+
+// unfinishedDefinitionAPI supplies sequential observations without a backend.
+type unfinishedDefinitionAPI struct {
+	API
+	get func(context.Context, string, ...services.CallOption) (d.ProcessDefinition, error)
+}
+
+// GetProcessDefinition delegates statistics and visibility reads to the fixture.
+func (s unfinishedDefinitionAPI) GetProcessDefinition(ctx context.Context, key string, opts ...services.CallOption) (d.ProcessDefinition, error) {
+	return s.get(ctx, key, opts...)
+}
+
+// unfinishedInstanceAPI combines the existing cancellation/traversal fakes with union discovery.
+type unfinishedInstanceAPI struct {
+	cleanupProcessInstanceAPI
+	search     func(context.Context, d.ProcessInstanceFilter, d.ProcessInstancePageRequest, ...services.CallOption) (d.ProcessInstancePage, error)
+	tree       func(context.Context, string, ...services.CallOption) (pitraversal.Result, error)
+	capability error
+}
+
+// ValidateProcessInstanceStates checks capability without any reads.
+func (s unfinishedInstanceAPI) ValidateProcessInstanceStates(d.States) error { return s.capability }
+
+// SearchForProcessInstancesPage records the exact selector and continuation.
+func (s unfinishedInstanceAPI) SearchForProcessInstancesPage(ctx context.Context, f d.ProcessInstanceFilter, p d.ProcessInstancePageRequest, o ...services.CallOption) (d.ProcessInstancePage, error) {
+	return s.search(ctx, f, p, o...)
+}
+
+// AncestryResult reuses the established planner's root resolution entry point.
+func (s unfinishedInstanceAPI) AncestryResult(ctx context.Context, k string, o ...services.CallOption) (pitraversal.Result, error) {
+	return s.tree(ctx, k, o...)
+}
+
+// DescendantsResult supplies a complete expanded family to the established planner.
+func (s unfinishedInstanceAPI) DescendantsResult(ctx context.Context, k string, o ...services.CallOption) (pitraversal.Result, error) {
+	return s.tree(ctx, k, o...)
+}
+
+// TestDeleteProcessDefinitionUnfinishedForceScope verifies suspended roots, both
+// mixed tree directions, overlapping definitions, and mandatory drain ordering.
+func TestDeleteProcessDefinitionUnfinishedForceScope(t *testing.T) {
+	for _, bulk := range []bool{false, true} {
+		for _, noWait := range []bool{false, true} {
+			for _, scenario := range []string{"suspended root", "active parent", "suspended parent", "cancel error", "cancel rejected", "drain error", "missing union", "persistent suspension", "late active", "history error", "discovery error", "empty discovery", "bypass"} {
+				t.Run(fmt.Sprintf("bulk=%t/noWait=%t/%s", bulk, noWait, scenario), func(t *testing.T) {
+					seq := &processDefinitionStageSequence{}
+					canceled := false
+					deleted := map[string]bool{}
+					rootState, childState := d.StateSuspended, d.StateSuspended
+					if scenario == "active parent" {
+						rootState = d.StateActive
+					}
+					if scenario == "suspended parent" {
+						childState = d.StateActive
+					}
+					chain := map[string]d.ProcessInstance{"root": {Key: "root", State: rootState, TenantId: "tenant-a"}, "child": {Key: "child", ParentKey: "root", RootProcessInstanceKey: "root", State: childState, TenantId: "tenant-a"}}
+					pd := unfinishedDefinitionAPI{get: func(_ context.Context, k string, o ...services.CallOption) (d.ProcessDefinition, error) {
+						if deleted[k] {
+							seq.Append("absent:" + k)
+							return d.ProcessDefinition{}, d.ErrNotFound
+						}
+						require.True(t, services.ApplyCallOptions(o).WithStat)
+						seq.Append("observe:" + k)
+						if canceled && scenario == "drain error" {
+							return d.ProcessDefinition{}, d.ErrUnavailable
+						}
+						union := int64(1)
+						active, suspended := int64(0), int64(1)
+						if canceled {
+							union = 0
+							suspended = 0
+						}
+						if canceled && scenario == "persistent suspension" {
+							union = 1
+							suspended = 1
+						}
+						if canceled && scenario == "late active" {
+							union = 2
+							active = 2
+						}
+						stat := &d.ProcessDefinitionStatistics{Active: active, Suspended: suspended, SuspendedCountSupported: true, Unfinished: &union}
+						if canceled && scenario == "missing union" {
+							stat.Unfinished = nil
+						}
+						return d.ProcessDefinition{Key: k, TenantId: "tenant-a", Statistics: stat}, nil
+					}}
+					pi := unfinishedInstanceAPI{
+						search: func(_ context.Context, f d.ProcessInstanceFilter, p d.ProcessInstancePageRequest, o ...services.CallOption) (d.ProcessInstancePage, error) {
+							seq.Append("discover:" + f.ProcessDefinitionKey)
+							require.Equal(t, d.States{d.StateActive, d.StateSuspended}, f.States)
+							require.Empty(t, f.State)
+							require.True(t, services.ApplyCallOptions(o).Force)
+							require.Equal(t, noWait, services.ApplyCallOptions(o).NoWait)
+							if scenario == "empty discovery" {
+								return d.ProcessInstancePage{OverflowState: d.ProcessInstanceOverflowStateNoMore}, nil
+							}
+							if scenario == "discovery error" {
+								return d.ProcessInstancePage{}, d.ErrUnavailable
+							}
+							key := "child"
+							if f.ProcessDefinitionKey == "pd-a" || scenario == "suspended root" {
+								key = "root"
+							}
+							return d.ProcessInstancePage{Items: []d.ProcessInstance{chain[key], chain[key]}, OverflowState: d.ProcessInstanceOverflowStateNoMore}, nil
+						},
+						tree: func(_ context.Context, k string, _ ...services.CallOption) (pitraversal.Result, error) {
+							require.Equal(t, "root", k)
+							return pitraversal.Result{StartKey: k, RootKey: "root", Keys: []string{"root", "child"}, Chain: chain, Outcome: pitraversal.OutcomeComplete}, nil
+						},
+						cleanupProcessInstanceAPI: cleanupProcessInstanceAPI{
+							cancel: func(_ context.Context, k string, o ...services.CallOption) (d.CancelResponse, []d.ProcessInstance, error) {
+								require.Equal(t, "root", k)
+								require.False(t, canceled, "one cancellation per root")
+								canceled = true
+								seq.Append("cancel:" + k)
+								require.Equal(t, 2, services.ApplyCallOptions(o).AffectedProcessInstanceCount)
+								if scenario == "cancel error" {
+									return d.CancelResponse{}, nil, d.ErrUnavailable
+								}
+								return d.CancelResponse{Ok: scenario != "cancel rejected"}, nil, nil
+							},
+							delete: func(_ context.Context, k string, _ ...services.CallOption) (d.DeleteResponse, error) {
+								require.Equal(t, "root", k)
+								seq.Append("history:" + k)
+								if scenario == "history error" {
+									return d.DeleteResponse{}, d.ErrUnavailable
+								}
+								return d.DeleteResponse{Ok: true}, nil
+							},
+						},
+					}
+					api := testResourceDeleteAPI{delete: func(_ context.Context, k string, _ ...services.CallOption) (d.ResourceDeleteResponse, error) {
+						seq.Append("definition:" + k)
+						deleted[k] = true
+						return d.ResourceDeleteResponse{Ok: true}, nil
+					}}
+					opts := []services.CallOption{services.WithForce()}
+					if noWait {
+						opts = append(opts, services.WithNoWait())
+					}
+					if scenario == "bypass" {
+						opts = append(opts, services.WithNoStateCheck())
+					}
+					ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+					defer cancel()
+					log := slog.New(slog.NewTextHandler(io.Discard, nil))
+					var err error
+					if bulk {
+						_, err = DeleteProcessDefinitions(ctx, api, pd, pi, log, types.Keys{"pd-a", "pd-b"}, 1, opts...)
+					} else {
+						_, err = DeleteProcessDefinition(ctx, api, pd, pi, log, "pd-b", opts...)
+					}
+					success := scenario == "suspended root" || scenario == "active parent" || scenario == "suspended parent" || scenario == "bypass"
+					if success {
+						require.NoError(t, err)
+					} else {
+						require.Error(t, err)
+						require.Empty(t, deleted)
+					}
+					events := seq.Items()
+					if scenario == "bypass" {
+						require.False(t, canceled)
+						for _, e := range events {
+							require.False(t, strings.HasPrefix(e, "observe:") || strings.HasPrefix(e, "discover:"))
+						}
+						return
+					}
+					if !success && scenario != "history error" {
+						require.NotContains(t, events, "history:root")
+					}
+					if success {
+						cancelIndex, historyIndex := -1, -1
+						for i, e := range events {
+							if e == "cancel:root" {
+								cancelIndex = i
+							}
+							if e == "history:root" {
+								historyIndex = i
+							}
+						}
+						require.Greater(t, historyIndex, cancelIndex+1, "mandatory verification separates cancellation and history")
+						for _, e := range events[cancelIndex+1 : historyIndex] {
+							require.True(t, strings.HasPrefix(e, "observe:"))
+						}
+					}
+				})
+			}
+		}
+	}
+}
+
+// TestDeleteProcessDefinitionUnfinishedPlan preserves active-only keys, authoritative
+// transition counts, deduplication and capability/error boundaries without mutation.
+func TestDeleteProcessDefinitionUnfinishedPlan(t *testing.T) {
+	log := slog.New(slog.NewTextHandler(io.Discard, nil))
+	for _, capability := range []error{nil, d.ErrUnsupported, d.ErrUnavailable} {
+		calls := 0
+		pi := unfinishedInstanceAPI{capability: capability, search: func(_ context.Context, f d.ProcessInstanceFilter, _ d.ProcessInstancePageRequest, _ ...services.CallOption) (d.ProcessInstancePage, error) {
+			calls++
+			if capability == nil {
+				require.Equal(t, d.States{d.StateActive, d.StateSuspended}, f.States)
+			} else {
+				require.Equal(t, d.StateActive, f.State)
+				require.Empty(t, f.States)
+			}
+			items := []d.ProcessInstance{{Key: "a", State: d.StateActive}, {Key: "s", State: d.StateSuspended}, {Key: "a", State: d.StateActive}}
+			if capability == d.ErrUnsupported {
+				items = items[:1]
+			}
+			return d.ProcessInstancePage{Items: items, OverflowState: d.ProcessInstanceOverflowStateNoMore}, nil
+		}, tree: func(_ context.Context, k string, _ ...services.CallOption) (pitraversal.Result, error) {
+			return tenantEvidenceTraversalResult(k), nil
+		}}
+		pd := tenantEvidenceProcessDefinitionAPI{definitions: map[string]d.ProcessDefinition{"pd": {Key: "pd", Statistics: &d.ProcessDefinitionStatistics{Active: 0, Suspended: 0, SuspendedCountSupported: true, Unfinished: new(int64(1))}}}}
+		if capability == d.ErrUnsupported {
+			pd.definitions["pd"] = d.ProcessDefinition{Key: "pd", Statistics: &d.ProcessDefinitionStatistics{Active: 1}}
+		}
+		plan, err := PreviewDeleteProcessDefinitions(context.Background(), pd, pi, log, types.Keys{"pd"}, services.WithForce())
+		if capability == d.ErrUnavailable {
+			require.ErrorIs(t, err, capability)
+			require.Zero(t, calls)
+			continue
+		}
+		require.NoError(t, err)
+		require.Len(t, plan.Items, 1)
+		item := plan.Items[0]
+		require.Equal(t, int64(1), item.UnfinishedProcessInstanceCount)
+		expected := []string{"a", "s"}
+		if capability == d.ErrUnsupported {
+			expected = expected[:1]
+		}
+		require.Equal(t, int64(len(expected)), item.UnfinishedProcessInstances())
+		require.Equal(t, []string{"a"}, item.ActiveProcessInstanceKeys)
+		require.Equal(t, expected, item.UnfinishedProcessInstanceKeys)
+	}
+}
+
+// TestDeleteProcessDefinitionUnfinishedOffsetDiscovery preserves offset fallback,
+// deduplicates scope, and passes caller options through each page unchanged.
+func TestDeleteProcessDefinitionUnfinishedOffsetDiscovery(t *testing.T) {
+	calls := 0
+	api := unfinishedInstanceAPI{search: func(_ context.Context, f d.ProcessInstanceFilter, p d.ProcessInstancePageRequest, o ...services.CallOption) (d.ProcessInstancePage, error) {
+		require.Equal(t, "pd", f.ProcessDefinitionKey)
+		require.Equal(t, d.States{d.StateActive, d.StateSuspended}, f.States)
+		cfg := services.ApplyCallOptions(o)
+		require.True(t, cfg.IgnoreTenant)
+		require.True(t, cfg.NoWorkerLimit)
+		require.True(t, cfg.FailFast)
+		require.Empty(t, p.After)
+		calls++
+		switch calls {
+		case 1:
+			require.Zero(t, p.From)
+			return d.ProcessInstancePage{Items: []d.ProcessInstance{{Key: "a", State: d.StateActive}, {Key: "s", State: d.StateSuspended}}, OverflowState: d.ProcessInstanceOverflowStateHasMore}, nil
+		case 2:
+			require.Equal(t, int32(2), p.From)
+			return d.ProcessInstancePage{Items: []d.ProcessInstance{{Key: "s", State: d.StateSuspended}, {Key: "late", State: d.StateActive}}, OverflowState: d.ProcessInstanceOverflowStateNoMore}, nil
+		default:
+			t.Fatal("unexpected extra discovery")
+			return d.ProcessInstancePage{}, nil
+		}
+	}}
+	items, err := listUnfinishedProcessInstancesForDefinition(context.Background(), api, "pd", services.WithIgnoreTenant(), services.WithNoWorkerLimit(), services.WithFailFast())
+	require.NoError(t, err)
+	require.Equal(t, types.Keys{"a", "s", "late"}, processInstanceKeys(items))
+	require.Equal(t, 2, calls)
 }

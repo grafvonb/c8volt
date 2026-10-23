@@ -76,3 +76,43 @@ Started: 2026-10-23 10:10:21
 - Shared permissive traversal is not claimed as safe cleanup discovery. T003 must consume the normalized single-page facts in its own existing workflow loop, reject incomplete/indeterminate scope and track actual observed counts through sparse pages; this is recorded in memory.
 - No live validation ran; real-engine/exporter/snapshot behavior remains unverified. Cleanup orchestration and statistics presentation remain later tasks.
 ---
+
+---
+## Iteration 3 - 2026-10-23 10:59
+**Work Unit**: Phase 3 / US1, T003 — completed coherent unfinished definition planning, deletion and mandatory verification; purge acceptance remains T004
+**Tasks Completed**:
+- [x] T003: Additive cleanup plan models/converters/totals, union discovery and enabled gates, existing root cleanup and mandatory drain, command output/diagnostics, adjacent regression coverage and generated documentation.
+**Tasks Remaining in Work Unit**: None in Phase 3. T004 and T005 remain in their own stories.
+**Commit**: This work-unit commit
+**Files Changed**:
+- README.md
+- c8volt/ops/convert.go
+- c8volt/ops/convert_test.go
+- c8volt/resource/client_test.go
+- c8volt/resource/convert.go
+- c8volt/resource/model.go
+- cmd/cmd_views_resource.go
+- cmd/delete_processdefinition.go
+- cmd/delete_processdefinition_progress.go
+- cmd/delete_processdefinition_unfinished_test.go
+- cmd/delete_test.go
+- docs/cli/c8volt_delete_process-definition.md
+- docs/index.md
+- internal/domain/resource_workflow.go
+- internal/services/ops/all_process_definitions_purge_test.go
+- internal/services/ops/orphan_purge_test.go
+- internal/services/processdefinition/delete.go
+- internal/services/processdefinition/delete_test.go
+- specs/340-suspended-definition-cleanup/progress.md
+- specs/340-suspended-definition-cleanup/ralph-memory.md
+- specs/340-suspended-definition-cleanup/tasks.md
+**Learnings**:
+- Regressions first demonstrated false successful deletion for suspended-only and transition observations, missing internal union evidence, and an ACTIVE-only discovery request. The implemented combined predicate and fail-closed plan/discovery boundary now pass.
+- Isolated service coverage includes single/bulk suspended/mixed/active/terminal/empty eligibility; supported zero/missing observations; suspended roots and both mixed parent/child directions; overlapping-root dispatch; sparse/offset/deduplicated discovery and stalled/cyclic/disappearing/indeterminate continuation; late work/persistent suspension; read, cancellation, rejected cancellation and history failures; no-wait and no-state-check; existing worker/fail-fast, final visibility and older-version controls. No resume or extra child cancellation was added.
+- Final passed checks with the quickstart-equivalent environment-clearing wrapper: `go test ./internal/services/processdefinition ./c8volt/resource -run 'DeleteProcessDefinition|CleanupProcessDefinition|Unfinished' -race -count=1`; `go test ./internal/services/ops ./c8volt/ops -run 'TestPurgeAllProcessDefinitions|DeleteProcessDefinition|ConvertDeleteProcessDefinitionUnfinished' -race -count=1`; `go test ./cmd -run 'TestDeleteProcessDefinition|TestDeleteCommands_RegressionPreservesCleanupContracts|TestDeleteHelp_DocumentsDestructiveConfirmationPaths|TestConfirmOrAbortTerminal' -count=1`. Race/consumer coverage was selected because the shared workflow executes worker pools and is also called by purge; no unrelated full suite or live target ran.
+- CLI-to-v810 fake execution proves sparse suspended discovery, one root cancellation, mandatory union verification before history/definition deletion, and failure stops even with no-wait. Terminal tests verify configured/inherited destinations, prompt routing and aborts, human/JSON/keys/quiet and quiet+machine modes, auto-confirm/automation, read-free skipped previews, zero-mutation dry-runs, and successful explicit-key deletion with zero instance workload. A definition selection with no matches remains its existing error contract.
+- Traced errors from service through facade normalization, command progress/result projection, configured logger and exit. Repeated multi-resource HTTP failures retain partial reports and original error class/exit in one JSON envelope plus EOF. Normal/verbose/quiet diagnostics use one bounded aggregate; plain/structured logs and DEBUG by flag/config retain redaction and stdout separation. Actual temporary direct-stderr and raw-aggregate mutations failed the diagnostic regression; both were restored before final validation. Existing read-command raw-error hardening remains separate.
+- Corrected old service test doubles to explicitly advertise their older suspension capability and complete page metadata. Purge production aggregation remains untouched for T004. Public active fields/accessors are preserved; both resource and ops item mappings copy new fields and keys. No report schema version, generated client or public search filter was changed.
+- `make docs-content` passed after inspecting its docsgen-only target and clearing inherited Go/Make/application flags. Generated changes are limited to definition-delete help and the README-derived index/provenance. Touched Go files pass gofmt; new-file whitespace checks and `git diff --check` pass. Rendering moved to the existing resource view owner; progress remains in its dedicated file, with no new command-mode declarations.
+- No live checks ran. Engine cascading, exporter timing and snapshot consistency remain unverified. T003’s definition milestone is complete; the feature is not complete until T004 and T005 are delivered.
+---
