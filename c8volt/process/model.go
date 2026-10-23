@@ -25,12 +25,15 @@ type ProcessDefinition struct {
 	Statistics        *ProcessDefinitionStatistics `json:"statistics,omitempty"`
 }
 
+// ProcessDefinitionStatistics preserves separate observed state counts and their availability.
 type ProcessDefinitionStatistics struct {
-	Active                 int64 `json:"active"`
-	Canceled               int64 `json:"canceled"`
-	Completed              int64 `json:"completed"`
-	Incidents              int64 `json:"incidents"`
-	IncidentCountSupported bool  `json:"incidentCountSupported,omitempty"`
+	Active                  int64 `json:"active"`
+	Suspended               int64 `json:"suspended,omitempty"`
+	SuspendedCountSupported bool  `json:"suspendedCountSupported,omitempty"`
+	Canceled                int64 `json:"canceled"`
+	Completed               int64 `json:"completed"`
+	Incidents               int64 `json:"incidents"`
+	IncidentCountSupported  bool  `json:"incidentCountSupported,omitempty"`
 }
 
 type ProcessDefinitions struct {

@@ -69,6 +69,7 @@ func (m *mockProcessDefinitionClient) SearchProcessInstancesWithBodyWithResponse
 	return args.Get(0).(*camundav89.SearchProcessInstancesResponse), args.Error(1)
 }
 
+// TestService_SearchProcessDefinitions verifies search results, errors, and older-version statistics without suspension queries.
 func TestService_SearchProcessDefinitions(t *testing.T) {
 	ctx := context.Background()
 	mockErr := errors.New("search failed")
@@ -145,6 +146,9 @@ func TestService_SearchProcessDefinitions(t *testing.T) {
 				assert.Equal(t, int64(30), defs[0].Statistics.Canceled)
 				assert.Equal(t, int64(4), defs[0].Statistics.Incidents)
 				assert.True(t, defs[0].Statistics.IncidentCountSupported)
+				assert.False(t, defs[0].Statistics.SuspendedCountSupported)
+				assert.Zero(t, defs[0].Statistics.Suspended)
+				assert.Nil(t, defs[0].Statistics.Unfinished)
 			},
 		},
 		{
@@ -368,6 +372,7 @@ func TestService_SearchProcessDefinitionsWithStat_UsesActivityIndicator(t *testi
 	m.AssertExpectations(t)
 }
 
+// TestService_SearchProcessDefinitionsLatestForcesLatest preserves latest selection and unsupported suspended statistics.
 func TestService_SearchProcessDefinitionsLatestForcesLatest(t *testing.T) {
 	ctx := context.Background()
 	m := &mockProcessDefinitionClient{}
@@ -411,6 +416,9 @@ func TestService_SearchProcessDefinitionsLatestForcesLatest(t *testing.T) {
 	assert.Equal(t, int64(5), defs[0].Statistics.Canceled)
 	assert.Zero(t, defs[0].Statistics.Incidents)
 	assert.True(t, defs[0].Statistics.IncidentCountSupported)
+	assert.False(t, defs[0].Statistics.SuspendedCountSupported)
+	assert.Zero(t, defs[0].Statistics.Suspended)
+	assert.Nil(t, defs[0].Statistics.Unfinished)
 	m.AssertExpectations(t)
 }
 
@@ -473,6 +481,7 @@ func TestService_SearchProcessDefinitionsPage_LatestUsesNativeFilterSortAndCurso
 	m.AssertExpectations(t)
 }
 
+// TestService_SearchProcessDefinitions_IncidentSearchIncludesTenantFilterWhenConfigured preserves tenant-scoped counts without adding suspension queries.
 func TestService_SearchProcessDefinitions_IncidentSearchIncludesTenantFilterWhenConfigured(t *testing.T) {
 	ctx := context.Background()
 	m := &mockProcessDefinitionClient{}
@@ -499,6 +508,9 @@ func TestService_SearchProcessDefinitions_IncidentSearchIncludesTenantFilterWhen
 	require.NotNil(t, defs[0].Statistics)
 	assert.Equal(t, int64(3), defs[0].Statistics.Incidents)
 	assert.True(t, defs[0].Statistics.IncidentCountSupported)
+	assert.False(t, defs[0].Statistics.SuspendedCountSupported)
+	assert.Zero(t, defs[0].Statistics.Suspended)
+	assert.Nil(t, defs[0].Statistics.Unfinished)
 	m.AssertExpectations(t)
 }
 
@@ -597,6 +609,7 @@ func TestService_SearchProcessDefinitionsPage_TreatsExactCursorFinalPageAsNoMore
 	m.AssertExpectations(t)
 }
 
+// TestService_GetProcessDefinition verifies lookup results and older-version statistics availability.
 func TestService_GetProcessDefinition(t *testing.T) {
 	ctx := context.Background()
 	mockErr := errors.New("get failed")
@@ -663,6 +676,9 @@ func TestService_GetProcessDefinition(t *testing.T) {
 				assert.Equal(t, int64(25), pd.Statistics.Canceled)
 				assert.Equal(t, int64(9), pd.Statistics.Incidents)
 				assert.True(t, pd.Statistics.IncidentCountSupported)
+				assert.False(t, pd.Statistics.SuspendedCountSupported)
+				assert.Zero(t, pd.Statistics.Suspended)
+				assert.Nil(t, pd.Statistics.Unfinished)
 			},
 		},
 		{

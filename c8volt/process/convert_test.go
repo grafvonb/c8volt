@@ -49,3 +49,39 @@ func TestConvertProcessInstanceSuspendedDate(t *testing.T) {
 		}
 	}
 }
+
+// TestConvertProcessDefinitionSuspendedStatistics preserves active semantics and
+// distinguishes supported zero from unavailable data without leaking union evidence.
+func TestConvertProcessDefinitionSuspendedStatistics(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name      string
+		suspended int64
+		supported bool
+		want      string
+	}{
+		{"supported", 3, true, `{"canceled":0,"completed":0,"incidents":0,"active":2,"suspended":3,"suspendedCountSupported":true}`},
+		{"supported zero", 0, true, `{"canceled":0,"completed":0,"incidents":0,"active":2,"suspendedCountSupported":true}`},
+		{"unavailable", 0, false, `{"canceled":0,"completed":0,"incidents":0,"active":2}`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			unfinished := int64(5)
+			stats := d.ProcessDefinitionStatistics{Active: 2, Suspended: tc.suspended, SuspendedCountSupported: tc.supported, Unfinished: &unfinished}
+			source := d.ProcessDefinition{Key: "123", Statistics: &stats}
+			for _, converted := range []ProcessDefinition{fromDomainProcessDefinition(source), fromDomainProcessDefinitions([]d.ProcessDefinition{source}).Items[0]} {
+				require.NotNil(t, converted.Statistics)
+				require.Equal(t, int64(2), converted.Statistics.Active)
+				require.Equal(t, tc.suspended, converted.Statistics.Suspended)
+				require.Equal(t, tc.supported, converted.Statistics.SuspendedCountSupported)
+				raw, err := json.Marshal(converted.Statistics)
+				require.NoError(t, err)
+				require.JSONEq(t, tc.want, string(raw))
+			}
+			raw, err := json.Marshal(stats)
+			require.NoError(t, err)
+			require.NotContains(t, string(raw), "unfinished")
+			require.NotContains(t, string(raw), "Unfinished")
+		})
+	}
+	require.Nil(t, fromDomainProcessDefinition(d.ProcessDefinition{Key: "123"}).Statistics)
+}

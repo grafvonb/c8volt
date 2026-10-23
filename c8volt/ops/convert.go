@@ -1945,16 +1945,19 @@ func fromDomainProcessDefinition(x d.ProcessDefinition) process.ProcessDefinitio
 	}
 }
 
+// fromDomainProcessDefinitionStatistics maps public counts without exposing internal cleanup evidence.
 func fromDomainProcessDefinitionStatistics(x *d.ProcessDefinitionStatistics) *process.ProcessDefinitionStatistics {
 	if x == nil {
 		return nil
 	}
 	return &process.ProcessDefinitionStatistics{
-		Active:                 x.Active,
-		Canceled:               x.Canceled,
-		Completed:              x.Completed,
-		Incidents:              x.Incidents,
-		IncidentCountSupported: x.IncidentCountSupported,
+		Active:                  x.Active,
+		Suspended:               x.Suspended,
+		SuspendedCountSupported: x.SuspendedCountSupported,
+		Canceled:                x.Canceled,
+		Completed:               x.Completed,
+		Incidents:               x.Incidents,
+		IncidentCountSupported:  x.IncidentCountSupported,
 	}
 }
 

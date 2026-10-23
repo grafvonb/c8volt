@@ -225,11 +225,26 @@ func (s *Service) retrieveProcessDefinitionStats(ctx context.Context, pd *d.Proc
 		return err
 	}
 	logging.UpdateActivity(ctx, fmt.Sprintf("pd stats %s (%s): incidents %d", pd.BpmnProcessId, pd.Key, incidents))
+	suspended, err := s.countProcessInstancesForProcessDefinitionState(ctx, tenantID, *pd, "suspended", camundav810.ProcessInstanceStateEnumSUSPENDED)
+	if err != nil {
+		return err
+	}
+	unfinishedReq, err := searchUnfinishedProcessInstancesForDefinitionRequest(tenantID, pd.Key)
+	if err != nil {
+		return err
+	}
+	unfinished, err := s.countProcessInstancesForDefinitionSearch(ctx, *pd, "unfinished", unfinishedReq)
+	if err != nil {
+		return err
+	}
 	ret := d.ProcessDefinitionStatistics{
-		Active:    active,
-		Completed: completed,
-		Canceled:  canceled,
-		Incidents: incidents,
+		Active:                  active,
+		Suspended:               suspended,
+		SuspendedCountSupported: true,
+		Unfinished:              &unfinished,
+		Completed:               completed,
+		Canceled:                canceled,
+		Incidents:               incidents,
 	}
 	ret.IncidentCountSupported = true
 	pd.Statistics = &ret
@@ -271,33 +286,46 @@ func (s *Service) countProcessInstancesForDefinitionSearch(ctx context.Context, 
 		return resp.JSON200.Page.TotalItems, nil
 	}
 
-	total := int64(len(resp.JSON200.Items))
-	cursor := processDefinitionStatsEndCursor(resp.JSON200.Page)
-	offset := int32(total)
-	for len(resp.JSON200.Items) > 0 {
+	var total int64
+	var offset int32
+	var cursor string
+	seenCursors := make(map[string]struct{})
+	for {
+		page := resp.JSON200.Page
+		items := len(resp.JSON200.Items)
+		total += int64(items)
+		offset += int32(items)
+		next := processDefinitionStatsEndCursor(page)
+
+		// A cursor identifies a boundary, not the existence of another page.
+		// Empty pages are final only when they do not contradict known counts.
+		if items == 0 && page.TotalItems <= total {
+			if page.HasMoreTotalItems && page.TotalItems == total {
+				return 0, fmt.Errorf("%w: incomplete process-definition statistics", d.ErrMalformedResponse)
+			}
+			return total, nil
+		}
+		if !page.HasMoreTotalItems && page.TotalItems <= total {
+			return total, nil
+		}
+		if next != "" {
+			if _, seen := seenCursors[next]; seen {
+				return 0, fmt.Errorf("%w: stalled process-definition statistics", d.ErrMalformedResponse)
+			}
+			seenCursors[next] = struct{}{}
+		} else if cursor != "" || items == 0 {
+			// Offset fallback is safe only while enumeration has stayed in
+			// offset mode and the current page makes measurable progress.
+			return 0, fmt.Errorf("%w: incomplete process-definition statistics", d.ErrMalformedResponse)
+		}
+		cursor = next
 		req.Page = processDefinitionStatsNextPage(cursor, offset)
 		resp, err = s.searchProcessInstancesForDefinitionStatsPage(ctx, req)
 		if err != nil {
 			return 0, err
 		}
 		s.logProcessDefinitionStatsPage(ctx, pd, label, req, resp, total)
-		total += int64(len(resp.JSON200.Items))
-		if len(resp.JSON200.Items) == 0 {
-			return total, nil
-		}
-		if next := processDefinitionStatsEndCursor(resp.JSON200.Page); next != "" {
-			if next == cursor {
-				return total, nil
-			}
-			cursor = next
-			continue
-		}
-		if cursor != "" {
-			return total, nil
-		}
-		offset += int32(len(resp.JSON200.Items))
 	}
-	return total, nil
 }
 
 // logProcessDefinitionStatsPage records debug details for one stats-count page.
@@ -562,6 +590,23 @@ func searchProcessInstancesForDefinitionStateRequest(tenantID, processDefinition
 		Page: &page,
 		Sort: sort,
 	}, nil
+}
+
+// searchUnfinishedProcessInstancesForDefinitionRequest retains the scalar count
+// request's scope and paging, replacing only its state predicate with the union.
+func searchUnfinishedProcessInstancesForDefinitionRequest(tenantID, processDefinitionKey string) (camundav810.SearchProcessInstancesJSONRequestBody, error) {
+	if processDefinitionKey == "" {
+		return camundav810.SearchProcessInstancesJSONRequestBody{}, fmt.Errorf("%w: missing process-definition key for statistics", d.ErrMalformedResponse)
+	}
+	req, err := searchProcessInstancesForDefinitionStateRequest(tenantID, processDefinitionKey, camundav810.ProcessInstanceStateEnumACTIVE)
+	if err != nil {
+		return camundav810.SearchProcessInstancesJSONRequestBody{}, err
+	}
+	states := []camundav810.ProcessInstanceStateEnum{camundav810.ProcessInstanceStateEnumACTIVE, camundav810.ProcessInstanceStateEnumSUSPENDED}
+	if err := req.Filter.State.FromAdvancedProcessInstanceStateFilter(camundav810.AdvancedProcessInstanceStateFilter{In: &states}); err != nil {
+		return camundav810.SearchProcessInstancesJSONRequestBody{}, err
+	}
+	return req, nil
 }
 
 func processDefinitionStatsPISort() *[]camundav810.ProcessInstanceSearchQuerySortRequest {

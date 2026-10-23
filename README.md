@@ -35,6 +35,8 @@ Start repair, purge, and retention workflows with `--dry-run` to review the affe
 
 Smoke-test cleanup tracks every process definition returned by the fixture deployment, including dependency definitions. Default execution removes each definition only after its exact key passes the existing unrelated-instance safety check; retained, failed, submitted, and confirmed outcomes remain distinct in verbose output and audit reports. `--no-cleanup` retains the complete deployed scope, while `--no-wait` reports accepted deletion requests without claiming confirmed removal. Use `--json` for the structured machine contract; the workflow rejects `--keys-only` because it does not return a key stream.
 
+`get process-definition --stat --json` keeps active instances in `active` and, on Camunda 8.10, reports suspended instances separately in `suspended`. The additive `suspendedCountSupported` flag is true even when the suspended count is zero and omitted. Camunda 8.8/8.9 omit both suspended fields. Statistics are published only after all required observations succeed; independently sampled state buckets can differ during transitions. Requests without `--stat` do not acquire these counts.
+
 ## c8volt in Action
 
 The fast-start recording walks through the everyday c8volt loop: verify the connection, inspect and deploy bundled BPMN, start process instances, inspect them, walk their execution tree, and clean everything up. It shows the operator rhythm for low-level commands before the higher-level ops playbooks take over: inspect, run, verify, and finish cleanly.

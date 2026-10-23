@@ -2,7 +2,7 @@
 
 **Input**: [spec.md](spec.md), [plan.md](plan.md), [research.md](research.md), [data-model.md](data-model.md), [contract](contracts/definition-cleanup.md), [quickstart.md](quickstart.md)
 **Branch / Issue**: `340-suspended-definition-cleanup` / #340
-**Status**: Generated implementation backlog; all work is pending. No implementation or runtime validation performed.
+**Status**: T001 implemented and validated with isolated tests. T002–T005 remain pending; no live-environment validation performed.
 
 ## Format and execution rules
 
@@ -24,7 +24,7 @@ The repository, branch, toolchain, and fixtures already exist. No setup task is 
 
 **Goal**: Supply the two reusable capabilities required by cleanup without changing mutation orchestration.
 
-- [ ] T001 [P] Implement separate suspended statistics and authoritative unfinished observations in `internal/domain/processdefinition.go` and `internal/services/processdefinition/v810/service.go`, with public suspended/support fields and mechanical mappings in `c8volt/process/model.go`, `c8volt/process/convert.go`, and `c8volt/ops/convert.go`; extend adjacent service/facade tests and their existing statistics fixtures, preserve older adapters, format and run the targeted statistics/conversion checks described below.
+- [x] T001 [P] Implement separate suspended statistics and authoritative unfinished observations in `internal/domain/processdefinition.go` and `internal/services/processdefinition/v810/service.go`, with public suspended/support fields and mechanical mappings in `c8volt/process/model.go`, `c8volt/process/convert.go`, and `c8volt/ops/convert.go`; extend adjacent service/facade tests and their existing statistics fixtures, preserve older adapters, format and run the targeted statistics/conversion checks described below.
 
 **T001 acceptance and constraints**:
 
@@ -151,7 +151,7 @@ Only T001 and T002 are marked `[P]`: their production/test owners are different 
 
 SC-001 maps to T003/T004; SC-002 to T002/T003/T004; SC-003 and SC-004 to T003/T004; SC-005 to T001/T003/T004/T005; SC-006 to the affected compatibility/output checks in all units.
 
-**Total**: 5 tasks: 2 foundational, 1 US1, 1 US2, 1 US3; 0 artificial setup/polish tasks. All are pending.
+**Total**: 5 tasks: 2 foundational, 1 US1, 1 US2, 1 US3; 0 artificial setup/polish tasks. T001 is complete; four tasks remain pending.
 
 ## Implementation strategy and consolidation review
 

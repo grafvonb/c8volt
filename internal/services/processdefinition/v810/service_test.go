@@ -137,6 +137,8 @@ func TestService_SearchProcessDefinitions(t *testing.T) {
 				mockProcessInstanceStateCount(m, t, "123", "", camundav810.ProcessInstanceStateEnumCOMPLETED, 20)
 				mockProcessInstanceStateCount(m, t, "123", "", camundav810.ProcessInstanceStateEnum(domain.StateTerminated), 30)
 				mockProcessInstanceIncidentCount(m, t, "123", "", 4)
+				mockProcessInstanceStateCount(m, t, "123", "", camundav810.ProcessInstanceStateEnumSUSPENDED, 3)
+				mockUnfinishedProcessInstanceCount(m, t, "123", "", 13)
 			},
 			opts: []services.CallOption{services.WithStat()},
 			assertResult: func(t *testing.T, defs []domain.ProcessDefinition) {
@@ -161,6 +163,8 @@ func TestService_SearchProcessDefinitions(t *testing.T) {
 				mockProcessInstanceStateCount(m, t, "123", "", camundav810.ProcessInstanceStateEnumCOMPLETED, 20)
 				mockProcessInstanceStateCount(m, t, "123", "", camundav810.ProcessInstanceStateEnum(domain.StateTerminated), 30)
 				mockProcessInstanceIncidentCount(m, t, "123", "", 4)
+				mockProcessInstanceStateCount(m, t, "123", "", camundav810.ProcessInstanceStateEnumSUSPENDED, 3)
+				mockUnfinishedProcessInstanceCount(m, t, "123", "", 6)
 			},
 			opts: []services.CallOption{services.WithStat()},
 			assertResult: func(t *testing.T, defs []domain.ProcessDefinition) {
@@ -223,6 +227,9 @@ func TestService_SearchProcessDefinitions(t *testing.T) {
 				if tt.assertResult != nil {
 					tt.assertResult(t, defs)
 				}
+			}
+			if !services.ApplyCallOptions(tt.opts).WithStat {
+				m.AssertNumberOfCalls(t, "SearchProcessInstancesWithBodyWithResponse", 0)
 			}
 			m.AssertExpectations(t)
 		})
@@ -306,12 +313,12 @@ func TestService_SearchProcessDefinitionsWithStat_PreservesCanonicalOrderAndStat
 	mWithStat := &mockProcessDefinitionClient{}
 	mWithStat.On("SearchProcessDefinitionsWithBodyWithResponse", mock.Anything, "application/json", mock.Anything).Return(makeResp(), nil)
 	expectedStats := map[string]expectedProcessDefinitionStats{
-		"10":  {active: 10, completed: 11, canceled: 12, incidents: 13},
-		"2":   {active: 20, completed: 21, canceled: 22, incidents: 23},
-		"112": {active: 112, completed: 113, canceled: 114, incidents: 115},
-		"111": {active: 111, completed: 112, canceled: 113, incidents: 114},
-		"301": {active: 301, completed: 302, canceled: 303, incidents: 304},
-		"202": {active: 202, completed: 203, canceled: 204, incidents: 205},
+		"10":  {active: 10, suspended: 3, unfinished: 13, completed: 11, canceled: 12, incidents: 13},
+		"2":   {active: 20, suspended: 3, unfinished: 23, completed: 21, canceled: 22, incidents: 23},
+		"112": {active: 112, suspended: 3, unfinished: 115, completed: 113, canceled: 114, incidents: 115},
+		"111": {active: 111, suspended: 3, unfinished: 114, completed: 112, canceled: 113, incidents: 114},
+		"301": {active: 301, suspended: 3, unfinished: 304, completed: 302, canceled: 303, incidents: 304},
+		"202": {active: 202, suspended: 3, unfinished: 205, completed: 203, canceled: 204, incidents: 205},
 	}
 	for key, stats := range expectedStats {
 		mockProcessDefinitionStats(mWithStat, t, key, "", stats)
@@ -326,6 +333,10 @@ func TestService_SearchProcessDefinitionsWithStat_PreservesCanonicalOrderAndStat
 		stats := expectedStats[def.Key]
 		require.NotNil(t, def.Statistics, "missing statistics for key %s", def.Key)
 		assert.Equal(t, stats.active, def.Statistics.Active, "active count for key %s", def.Key)
+		assert.Equal(t, stats.suspended, def.Statistics.Suspended)
+		assert.True(t, def.Statistics.SuspendedCountSupported)
+		require.NotNil(t, def.Statistics.Unfinished)
+		assert.Equal(t, stats.unfinished, *def.Statistics.Unfinished)
 		assert.Equal(t, stats.completed, def.Statistics.Completed, "completed count for key %s", def.Key)
 		assert.Equal(t, stats.canceled, def.Statistics.Canceled, "canceled count for key %s", def.Key)
 		assert.Equal(t, stats.incidents, def.Statistics.Incidents, "incident count for key %s", def.Key)
@@ -349,6 +360,8 @@ func TestService_SearchProcessDefinitionsWithStat_UsesActivityIndicator(t *testi
 	mockProcessInstanceStateCount(m, t, "123", "", camundav810.ProcessInstanceStateEnumCOMPLETED, 20)
 	mockProcessInstanceStateCount(m, t, "123", "", camundav810.ProcessInstanceStateEnum(domain.StateTerminated), 30)
 	mockProcessInstanceIncidentCount(m, t, "123", "", 4)
+	mockProcessInstanceStateCount(m, t, "123", "", camundav810.ProcessInstanceStateEnumSUSPENDED, 3)
+	mockUnfinishedProcessInstanceCount(m, t, "123", "", 13)
 
 	svc, err := v810.New(testConfig(), &http.Client{}, slog.New(slog.NewTextHandler(io.Discard, nil)), v810.WithClientCamunda(m))
 	require.NoError(t, err)
@@ -401,6 +414,8 @@ func TestService_SearchProcessDefinitionsLatestForcesLatest(t *testing.T) {
 	mockProcessInstanceStateCount(m, t, "123", "", camundav810.ProcessInstanceStateEnumCOMPLETED, 4)
 	mockProcessInstanceStateCount(m, t, "123", "", camundav810.ProcessInstanceStateEnum(domain.StateTerminated), 5)
 	mockProcessInstanceIncidentCount(m, t, "123", "", 0)
+	mockProcessInstanceStateCount(m, t, "123", "", camundav810.ProcessInstanceStateEnumSUSPENDED, 3)
+	mockUnfinishedProcessInstanceCount(m, t, "123", "", 6)
 
 	svc, err := v810.New(testConfig(), &http.Client{}, slog.New(slog.NewTextHandler(io.Discard, nil)), v810.WithClientCamunda(m))
 	require.NoError(t, err)
@@ -491,6 +506,8 @@ func TestService_SearchProcessDefinitions_IncidentSearchIncludesTenantFilterWhen
 	mockProcessInstanceStateCount(m, t, "123", "tenant-a", camundav810.ProcessInstanceStateEnumCOMPLETED, 6)
 	mockProcessInstanceStateCount(m, t, "123", "tenant-a", camundav810.ProcessInstanceStateEnum(domain.StateTerminated), 7)
 	mockProcessInstanceIncidentCount(m, t, "123", "tenant-a", 3)
+	mockProcessInstanceStateCount(m, t, "123", "tenant-a", camundav810.ProcessInstanceStateEnumSUSPENDED, 3)
+	mockUnfinishedProcessInstanceCount(m, t, "123", "tenant-a", 8)
 
 	cfg := testConfig()
 	cfg.App.Tenant = "tenant-a"
@@ -661,6 +678,8 @@ func TestService_GetProcessDefinition(t *testing.T) {
 				mockProcessInstanceStateCount(m, t, "123", "", camundav810.ProcessInstanceStateEnumCOMPLETED, 15)
 				mockProcessInstanceStateCount(m, t, "123", "", camundav810.ProcessInstanceStateEnum(domain.StateTerminated), 25)
 				mockProcessInstanceIncidentCount(m, t, "123", "", 9)
+				mockProcessInstanceStateCount(m, t, "123", "", camundav810.ProcessInstanceStateEnumSUSPENDED, 3)
+				mockUnfinishedProcessInstanceCount(m, t, "123", "", 8)
 			},
 			opts: []services.CallOption{services.WithStat()},
 			assertResult: func(t *testing.T, pd domain.ProcessDefinition) {
@@ -722,6 +741,9 @@ func TestService_GetProcessDefinition(t *testing.T) {
 				if tt.assertResult != nil {
 					tt.assertResult(t, pd)
 				}
+			}
+			if !services.ApplyCallOptions(tt.opts).WithStat {
+				m.AssertNumberOfCalls(t, "SearchProcessInstancesWithBodyWithResponse", 0)
 			}
 			m.AssertExpectations(t)
 		})
@@ -881,13 +903,15 @@ type expectedV810Sort struct {
 	order string
 }
 
-// expectedProcessDefinitionStats groups the four count buckets attached during
+// expectedProcessDefinitionStats groups the display and authoritative count buckets attached during
 // process-definition statistics enrichment.
 type expectedProcessDefinitionStats struct {
-	active    int64
-	completed int64
-	canceled  int64
-	incidents int64
+	active     int64
+	suspended  int64
+	unfinished int64
+	completed  int64
+	canceled   int64
+	incidents  int64
 }
 
 // assertV810ProcessDefinitionSort checks the exact Camunda sort tuple used to
@@ -962,13 +986,14 @@ func mockProcessInstanceStateCount(m *mockProcessDefinitionClient, t *testing.T,
 	})).Return(makeSearchProcessInstancesResponse(total), nil).Once()
 }
 
+// mockCappedProcessInstanceStateCount enumerates until a later exact total confirms completion.
 func mockCappedProcessInstanceStateCount(m *mockProcessDefinitionClient, t *testing.T, processDefinitionKey, tenantID string, state camundav810.ProcessInstanceStateEnum) {
 	m.On("SearchProcessInstancesWithBodyWithResponse", mock.Anything, "application/json", mock.MatchedBy(func(raw string) bool {
 		return processInstanceSearchMatches(raw, processDefinitionKey, tenantID, state)
-	})).Return(makeSearchProcessInstancesPageResponse(10000, true, 1, "cursor-1"), nil).Once()
+	})).Return(makeSearchProcessInstancesPageResponse(1, true, 1, "cursor-1"), nil).Once()
 	m.On("SearchProcessInstancesWithBodyWithResponse", mock.Anything, "application/json", mock.MatchedBy(func(raw string) bool {
 		return processInstanceCursorSearchMatches(raw, processDefinitionKey, tenantID, state, "cursor-1")
-	})).Return(makeSearchProcessInstancesPageResponse(10000, true, 2, ""), nil).Once()
+	})).Return(makeSearchProcessInstancesPageResponse(3, false, 2, ""), nil).Once()
 }
 
 func mockProcessInstanceIncidentCount(m *mockProcessDefinitionClient, t *testing.T, processDefinitionKey, tenantID string, total int64) {
@@ -984,6 +1009,8 @@ func mockProcessDefinitionStats(m *mockProcessDefinitionClient, t *testing.T, pr
 	mockProcessInstanceStateCount(m, t, processDefinitionKey, tenantID, camundav810.ProcessInstanceStateEnumCOMPLETED, stats.completed)
 	mockProcessInstanceStateCount(m, t, processDefinitionKey, tenantID, camundav810.ProcessInstanceStateEnum(domain.StateTerminated), stats.canceled)
 	mockProcessInstanceIncidentCount(m, t, processDefinitionKey, tenantID, stats.incidents)
+	mockProcessInstanceStateCount(m, t, processDefinitionKey, tenantID, camundav810.ProcessInstanceStateEnumSUSPENDED, stats.suspended)
+	mockUnfinishedProcessInstanceCount(m, t, processDefinitionKey, tenantID, stats.unfinished)
 }
 
 func processInstanceSearchMatches(raw string, processDefinitionKey, tenantID string, expectedState camundav810.ProcessInstanceStateEnum) bool {
@@ -1129,4 +1156,275 @@ func newHTTPResponse(method, rawURL string, statusCode int, status string) *http
 			URL:    u,
 		},
 	}
+}
+
+// TestService_GetProcessDefinition_UnfinishedStatistics requires separate display
+// buckets and combined evidence, even when observations disagree during transitions.
+func TestService_GetProcessDefinition_UnfinishedStatistics(t *testing.T) {
+	for _, tc := range []struct {
+		name                          string
+		active, suspended, unfinished int64
+	}{
+		{"stable", 2, 3, 5},
+		{"supported zero", 0, 0, 0},
+		{"transition missed by separate reads", 0, 0, 1},
+		{"transition counted by both reads", 1, 1, 1},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			m := &mockProcessDefinitionClient{}
+			m.On("GetProcessDefinitionWithResponse", mock.Anything, "123").Return(&camundav810.GetProcessDefinitionResponse{
+				HTTPResponse: newHTTPResponse(http.MethodGet, "https://example.com/v2/process-definitions/123", http.StatusOK, "200"),
+				JSON200:      new(makeProcessDefinitionResult("proc", "123", 2)),
+			}, nil).Once()
+			mockProcessInstanceStateCount(m, t, "123", "tenant-a", camundav810.ProcessInstanceStateEnumACTIVE, tc.active)
+			mockProcessInstanceStateCount(m, t, "123", "tenant-a", camundav810.ProcessInstanceStateEnumCOMPLETED, 7)
+			mockProcessInstanceStateCount(m, t, "123", "tenant-a", camundav810.ProcessInstanceStateEnum(domain.StateTerminated), 9)
+			mockProcessInstanceIncidentCount(m, t, "123", "tenant-a", 1)
+			mockProcessInstanceStateCount(m, t, "123", "tenant-a", camundav810.ProcessInstanceStateEnumSUSPENDED, tc.suspended)
+			mockUnfinishedProcessInstanceCount(m, t, "123", "tenant-a", tc.unfinished)
+			cfg := testConfig()
+			cfg.App.Tenant = "tenant-a"
+			svc, err := v810.New(cfg, &http.Client{}, slog.New(slog.NewTextHandler(io.Discard, nil)), v810.WithClientCamunda(m))
+			require.NoError(t, err)
+			pd, err := svc.GetProcessDefinition(context.Background(), "123", services.WithStat())
+			require.NoError(t, err)
+			require.NotNil(t, pd.Statistics)
+			require.True(t, pd.Statistics.SuspendedCountSupported)
+			require.Equal(t, tc.active, pd.Statistics.Active)
+			require.Equal(t, tc.suspended, pd.Statistics.Suspended)
+			require.NotNil(t, pd.Statistics.Unfinished)
+			require.Equal(t, tc.unfinished, *pd.Statistics.Unfinished)
+			require.Equal(t, int64(7), pd.Statistics.Completed)
+			require.Equal(t, int64(9), pd.Statistics.Canceled)
+			require.Equal(t, int64(1), pd.Statistics.Incidents)
+			m.AssertNumberOfCalls(t, "SearchProcessInstancesWithBodyWithResponse", 6)
+			m.AssertExpectations(t)
+		})
+	}
+}
+
+// mockUnfinishedProcessInstanceCount requires one combined predicate with the
+// same definition, tenant and initial page shape as the scalar count requests.
+func mockUnfinishedProcessInstanceCount(m *mockProcessDefinitionClient, t *testing.T, key, tenant string, total int64) {
+	t.Helper()
+	m.On("SearchProcessInstancesWithBodyWithResponse", mock.Anything, "application/json", mock.MatchedBy(func(raw string) bool {
+		return unfinishedProcessInstanceSearchMatches(raw, key, tenant)
+	})).Return(makeSearchProcessInstancesResponse(total), nil).Once()
+}
+
+// unfinishedProcessInstanceSearchMatches checks the union without accepting a
+// broadened filter or silently dropping either unfinished state.
+func unfinishedProcessInstanceSearchMatches(raw, key, tenant string) bool {
+	var body map[string]any
+	if json.Unmarshal([]byte(raw), &body) != nil {
+		return false
+	}
+	filter, ok := body["filter"].(map[string]any)
+	if !ok {
+		return false
+	}
+	state, ok := filter["state"].(map[string]any)
+	if !ok {
+		return false
+	}
+	states, ok := state["$in"].([]any)
+	if !ok || len(states) != 2 || states[0] != "ACTIVE" || states[1] != "SUSPENDED" || len(state) != 1 {
+		return false
+	}
+	if filter["processDefinitionKey"] != key {
+		return false
+	}
+	if (tenant == "" && len(filter) != 2) || (tenant != "" && len(filter) != 3) {
+		return false
+	}
+	if tenant == "" {
+		return filter["tenantId"] == nil
+	}
+	return filter["tenantId"] == tenant
+}
+
+// TestService_GetProcessDefinition_UnfinishedPaging verifies exact totals and
+// complete capped enumeration, rejecting incomplete observations rather than
+// publishing a partial count usable by cleanup.
+func TestService_GetProcessDefinition_UnfinishedPaging(t *testing.T) {
+	type countPage struct {
+		total  int64
+		capped bool
+		items  int
+		cursor string
+		after  string
+		from   int32
+	}
+	for _, tc := range []struct {
+		name  string
+		pages []countPage
+		want  int64
+		fail  bool
+	}{
+		{name: "exact total avoids traversal", pages: []countPage{{total: 5, items: 1, cursor: "c1"}}, want: 5},
+		{name: "exact zero ignores cursor", pages: []countPage{{cursor: "c1"}}},
+		{name: "capped cursor then final empty", pages: []countPage{
+			{total: 1, capped: true, items: 1, cursor: "c1"},
+			{total: 1, capped: true, items: 2, cursor: "c2", after: "c1"},
+			{total: 1, capped: true, after: "c2"},
+		}, want: 3},
+		{name: "final empty cursor does not imply continuation", pages: []countPage{
+			{capped: true, items: 1, cursor: "c1"},
+			{capped: true, cursor: "c2", after: "c1"},
+		}, want: 1},
+		{name: "capped offset fallback", pages: []countPage{
+			{total: 1, capped: true, items: 1},
+			{total: 1, capped: true, items: 2, from: 1},
+			{total: 1, capped: true, from: 3},
+		}, want: 3},
+		{name: "sparse advancing page below known total", pages: []countPage{
+			{total: 2, capped: true, items: 1, cursor: "c1"},
+			{total: 2, capped: true, cursor: "c2", after: "c1"},
+			{total: 2, capped: true, items: 2, cursor: "c3", after: "c2"},
+			{total: 2, capped: true, after: "c3"},
+		}, want: 3},
+		{name: "repeated cursor", pages: []countPage{
+			{capped: true, items: 1, cursor: "c1"},
+			{capped: true, items: 1, cursor: "c1", after: "c1"},
+		}, fail: true},
+		{name: "cursor cycle", pages: []countPage{
+			{capped: true, items: 1, cursor: "c1"},
+			{capped: true, items: 1, cursor: "c2", after: "c1"},
+			{capped: true, items: 1, cursor: "c1", after: "c2"},
+		}, fail: true},
+		{name: "cursor disappears on nonempty page", pages: []countPage{
+			{capped: true, items: 1, cursor: "c1"},
+			{capped: true, items: 1, after: "c1"},
+		}, fail: true},
+		{name: "empty before lower bound without continuation", pages: []countPage{
+			{total: 3, capped: true, items: 1, cursor: "c1"},
+			{total: 3, capped: true, after: "c1"},
+		}, fail: true},
+		{name: "empty before lower bound stalled cursor", pages: []countPage{
+			{total: 3, capped: true, items: 1, cursor: "c1"},
+			{total: 3, capped: true, cursor: "c1", after: "c1"},
+		}, fail: true},
+		{name: "initial empty capped observation", pages: []countPage{{capped: true}}, fail: true},
+		{name: "capped flag and cursor alone are indeterminate", pages: []countPage{{capped: true, cursor: "c1"}}, fail: true},
+		{name: "sparse exact observation", pages: []countPage{
+			{total: 2, capped: true, items: 1, cursor: "c1"},
+			{total: 3, cursor: "c2", after: "c1"},
+			{total: 3, items: 2, after: "c2"},
+		}, want: 3},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			m := &mockProcessDefinitionClient{}
+			m.On("GetProcessDefinitionWithResponse", mock.Anything, "123").Return(&camundav810.GetProcessDefinitionResponse{
+				HTTPResponse: newHTTPResponse(http.MethodGet, "https://example.com/v2/process-definitions/123", http.StatusOK, "200"),
+				JSON200:      new(makeProcessDefinitionResult("proc", "123", 2)),
+			}, nil).Once()
+			mockProcessInstanceStateCount(m, t, "123", "", camundav810.ProcessInstanceStateEnumACTIVE, 2)
+			mockProcessInstanceStateCount(m, t, "123", "", camundav810.ProcessInstanceStateEnumCOMPLETED, 7)
+			mockProcessInstanceStateCount(m, t, "123", "", camundav810.ProcessInstanceStateEnum(domain.StateTerminated), 9)
+			mockProcessInstanceIncidentCount(m, t, "123", "", 1)
+			mockProcessInstanceStateCount(m, t, "123", "", camundav810.ProcessInstanceStateEnumSUSPENDED, 3)
+			for i, page := range tc.pages {
+				m.On("SearchProcessInstancesWithBodyWithResponse", mock.Anything, "application/json", mock.MatchedBy(func(raw string) bool {
+					return unfinishedProcessInstanceSearchMatches(raw, "123", "")
+				})).Run(func(args mock.Arguments) {
+					var body struct {
+						Page map[string]any `json:"page"`
+					}
+					require.NoError(t, json.Unmarshal([]byte(args.String(2)), &body))
+					limit := 1000
+					if i == 0 {
+						limit = 1
+					}
+					expected := map[string]any{"limit": float64(limit)}
+					if page.after != "" {
+						expected["after"] = page.after
+					} else {
+						expected["from"] = float64(page.from)
+					}
+					require.Equal(t, expected, body.Page)
+				}).Return(makeSearchProcessInstancesPageResponse(page.total, page.capped, page.items, page.cursor), nil).Once()
+			}
+			svc, err := v810.New(testConfig(), &http.Client{}, slog.New(slog.NewTextHandler(io.Discard, nil)), v810.WithClientCamunda(m))
+			require.NoError(t, err)
+			pd, err := svc.GetProcessDefinition(context.Background(), "123", services.WithStat())
+			if tc.fail {
+				require.ErrorIs(t, err, domain.ErrMalformedResponse)
+				require.Nil(t, pd.Statistics)
+			} else {
+				require.NoError(t, err)
+				require.NotNil(t, pd.Statistics)
+				require.NotNil(t, pd.Statistics.Unfinished)
+				require.Equal(t, tc.want, *pd.Statistics.Unfinished)
+			}
+			m.AssertExpectations(t)
+		})
+	}
+}
+
+// TestService_GetProcessDefinition_UnfinishedReadFailures ensures every required
+// observation fails atomically and retains the original error classification.
+func TestService_GetProcessDefinition_UnfinishedReadFailures(t *testing.T) {
+	for _, bucket := range []string{"suspended", "unfinished", "unfinished continuation"} {
+		for _, failure := range []string{"transport", "HTTP", "payload"} {
+			t.Run(bucket+"/"+failure, func(t *testing.T) {
+				m := &mockProcessDefinitionClient{}
+				m.On("GetProcessDefinitionWithResponse", mock.Anything, "123").Return(&camundav810.GetProcessDefinitionResponse{
+					HTTPResponse: newHTTPResponse(http.MethodGet, "https://example.com/v2/process-definitions/123", http.StatusOK, "200"),
+					JSON200:      new(makeProcessDefinitionResult("proc", "123", 2)),
+				}, nil).Once()
+				mockProcessInstanceStateCount(m, t, "123", "", camundav810.ProcessInstanceStateEnumACTIVE, 2)
+				mockProcessInstanceStateCount(m, t, "123", "", camundav810.ProcessInstanceStateEnumCOMPLETED, 7)
+				mockProcessInstanceStateCount(m, t, "123", "", camundav810.ProcessInstanceStateEnum(domain.StateTerminated), 9)
+				mockProcessInstanceIncidentCount(m, t, "123", "", 1)
+				matches := func(raw string) bool {
+					return processInstanceSearchMatches(raw, "123", "", camundav810.ProcessInstanceStateEnumSUSPENDED)
+				}
+				if bucket != "suspended" {
+					mockProcessInstanceStateCount(m, t, "123", "", camundav810.ProcessInstanceStateEnumSUSPENDED, 3)
+					matches = func(raw string) bool { return unfinishedProcessInstanceSearchMatches(raw, "123", "") }
+				}
+				if bucket == "unfinished continuation" {
+					m.On("SearchProcessInstancesWithBodyWithResponse", mock.Anything, "application/json", mock.MatchedBy(matches)).Return(makeSearchProcessInstancesPageResponse(1, true, 1, "c1"), nil).Once()
+				}
+				response := makeSearchProcessInstancesResponse(0)
+				var returnedErr error
+				expectedErr := domain.ErrMalformedResponse
+				switch failure {
+				case "transport":
+					returnedErr = errors.New("count unavailable")
+					expectedErr = returnedErr
+					response = nil
+				case "HTTP":
+					response.HTTPResponse = newHTTPResponse(http.MethodPost, "https://example.com/v2/process-instances/search", http.StatusInternalServerError, "500")
+					expectedErr = domain.ErrInternal
+				case "payload":
+					response.JSON200 = nil
+				}
+				m.On("SearchProcessInstancesWithBodyWithResponse", mock.Anything, "application/json", mock.MatchedBy(matches)).Return(response, returnedErr).Once()
+				svc, err := v810.New(testConfig(), &http.Client{}, slog.New(slog.NewTextHandler(io.Discard, nil)), v810.WithClientCamunda(m))
+				require.NoError(t, err)
+				pd, err := svc.GetProcessDefinition(context.Background(), "123", services.WithStat())
+				require.ErrorIs(t, err, expectedErr)
+				require.Nil(t, pd.Statistics)
+				m.AssertExpectations(t)
+			})
+		}
+	}
+}
+
+// TestService_GetProcessDefinition_UnfinishedMissingKey refuses an unscoped
+// count request when a malformed definition response lacks its identity.
+func TestService_GetProcessDefinition_UnfinishedMissingKey(t *testing.T) {
+	m := &mockProcessDefinitionClient{}
+	m.On("GetProcessDefinitionWithResponse", mock.Anything, "123").Return(&camundav810.GetProcessDefinitionResponse{
+		HTTPResponse: newHTTPResponse(http.MethodGet, "https://example.com/v2/process-definitions/123", http.StatusOK, "200"),
+		JSON200:      new(makeProcessDefinitionResult("proc", "", 2)),
+	}, nil).Once()
+	svc, err := v810.New(testConfig(), &http.Client{}, slog.New(slog.NewTextHandler(io.Discard, nil)), v810.WithClientCamunda(m))
+	require.NoError(t, err)
+	pd, err := svc.GetProcessDefinition(context.Background(), "123", services.WithStat())
+	require.ErrorIs(t, err, domain.ErrMalformedResponse)
+	require.Nil(t, pd.Statistics)
+	m.AssertNumberOfCalls(t, "SearchProcessInstancesWithBodyWithResponse", 0)
+	m.AssertExpectations(t)
 }
