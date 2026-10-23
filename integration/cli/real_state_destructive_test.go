@@ -26,9 +26,9 @@ type realStateDestructiveDataset struct {
 	Incidents []realStateIncident   `json:"incidents,omitempty"`
 }
 
-// TestRealStateProcessDefinitionDraining proves DRAINING belongs to process
-// definitions, keeps one owned instance active while observing it, and retains
-// the current null-batch adapter rejection as a required product failure.
+// TestRealStateProcessDefinitionDraining observes an owned definition draining,
+// then verifies disappearance after canceling its held instance. A valid null
+// deletion batch is accepted; rejecting it remains a regression failure.
 func TestRealStateProcessDefinitionDraining(t *testing.T) {
 	profiles := selectedBatchProfiles(t)
 	var evidence []batchScenarioEvidence

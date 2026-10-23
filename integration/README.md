@@ -185,11 +185,12 @@ C8VOLT_IT_PROFILES=dev810 make integration-cli-batch \
   C8VOLT_IT_GO_TEST_FLAGS=-v C8VOLT_IT_REAL_STATE_TIMEOUT=90m
 ```
 
-The process-definition scenario intentionally remains unsuccessful while the
-v8.10 resource adapter rejects the valid null `batchOperation` returned for a
-runtime-present definition. That result is classified as a product failure,
-not an accepted gap. A successful submission is not release proof until the
-separate product fix lands and the definition's draining cleanup is observed.
+The process-definition scenario accepts a valid null `batchOperation` when
+Camunda defers history deletion. It requires observing `DRAINING` while an owned
+instance is active, then cancels that instance and verifies the definition
+disappears. Rejecting the valid null batch remains a regression failure.
+Definition disappearance does not independently prove that all associated
+history deletion has completed.
 
 Logical tenant validation uses the credential-free role shape in
 `assets/tenant-roles.example.json`. Each role names an existing default-local
@@ -275,6 +276,8 @@ There is no separate runner, frozen coverage catalog, or aggregate release
 verdict. Use normal Make/Go exit status and the existing per-group reports.
 A successful invocation means its executed tests passed; skipped optional
 scenarios and missing tenant infrastructure do not constitute coverage.
+The job retry-update validation scenario covers only its supplied flags; it
+does not establish successful bulk job completion.
 Tenant roles remain optional unless explicitly required with
 `C8VOLT_IT_REQUIRE_TENANTS`. Existing real-state prerequisite-gap documentation
 and focused scenario reports remain available.
