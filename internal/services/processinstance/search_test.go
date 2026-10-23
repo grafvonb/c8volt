@@ -255,3 +255,123 @@ func TestSuspendedDirectIncidentSearch(t *testing.T) {
 		}
 	}
 }
+
+// TestCombinedStateFilterValidation rejects ambiguous, invalid and unsupported
+// plural selections before either instance requests or incident-index discovery.
+func TestCombinedStateFilterValidation(t *testing.T) {
+	t.Parallel()
+	for _, version := range []toolx.CamundaVersion{toolx.V88, toolx.V89, toolx.V810} {
+		t.Run(string(version), func(t *testing.T) {
+			var calls atomic.Int32
+			server := testx.NewIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				calls.Add(1)
+				w.Header().Set("Content-Type", "application/json")
+				io.WriteString(w, `{"items":[],"page":{"totalItems":0}}`)
+			}))
+			defer server.Close()
+			cfg := testConfig()
+			cfg.App.CamundaVersion = version
+			cfg.APIs.Camunda.BaseURL = server.URL
+			api, err := processinstance.New(cfg, server.Client(), slog.New(slog.NewTextHandler(io.Discard, nil)))
+			require.NoError(t, err)
+			cases := []struct {
+				name   string
+				filter d.ProcessInstanceFilter
+				want   error
+			}{
+				{"ambiguous", d.ProcessInstanceFilter{State: d.StateActive, States: d.States{d.StateSuspended}}, d.ErrValidation},
+			}
+			for _, invalid := range []d.State{"", " ", d.StateAll, d.StateAbsent, d.StateUnknown, "future-state"} {
+				cases = append(cases, struct {
+					name   string
+					filter d.ProcessInstanceFilter
+					want   error
+				}{"invalid-" + string(invalid), d.ProcessInstanceFilter{States: d.States{d.StateActive, invalid}}, d.ErrValidation})
+			}
+			if version != toolx.V810 {
+				for _, states := range []d.States{{d.StateActive}, {d.StateActive, d.StateCompleted}, {d.StateActive, d.StateSuspended}} {
+					cases = append(cases, struct {
+						name   string
+						filter d.ProcessInstanceFilter
+						want   error
+					}{"unsupported-" + states.String(), d.ProcessInstanceFilter{States: states}, d.ErrUnsupported})
+				}
+			}
+			for _, tc := range cases {
+				t.Run(tc.name, func(t *testing.T) {
+					_, err := api.SearchForProcessInstancesPage(context.Background(), tc.filter, d.ProcessInstancePageRequest{Size: 10})
+					require.ErrorIs(t, err, tc.want)
+					_, err = api.SearchForProcessInstances(context.Background(), tc.filter, 10)
+					require.ErrorIs(t, err, tc.want)
+					for _, direct := range []bool{false, true} {
+						inc := &suspendedIncidentIndex{}
+						request := d.ProcessInstanceSearchRequest{Filter: tc.filter, DirectIncidentIndex: direct}
+						_, err = processinstance.SearchProcessInstancesPages(context.Background(), api, inc, request, nil)
+						require.ErrorIs(t, err, tc.want)
+						_, err = processinstance.SearchProcessInstancesTotal(context.Background(), api, inc, request, nil)
+						require.ErrorIs(t, err, tc.want)
+						require.Zero(t, inc.calls)
+					}
+					require.Zero(t, calls.Load())
+				})
+			}
+		})
+	}
+}
+
+// TestCombinedStateSearchEntryPoints exercises both shared search helpers and
+// direct incident lookup so no path broadens or drops the plural predicate.
+func TestCombinedStateSearchEntryPoints(t *testing.T) {
+	t.Parallel()
+	for _, direct := range []bool{false, true} {
+		t.Run(fmt.Sprint(direct), func(t *testing.T) {
+			var calls atomic.Int32
+			server := testx.NewIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				calls.Add(1)
+				w.Header().Set("Content-Type", "application/json")
+				if r.Method == http.MethodGet {
+					key := r.URL.Path[strings.LastIndex(r.URL.Path, "/")+1:]
+					state := map[string]string{"1": "ACTIVE", "2": "SUSPENDED", "3": "COMPLETED"}[key]
+					fmt.Fprintf(w, `{"processInstanceKey":%q,"state":%q,"processDefinitionKey":"9001","processDefinitionId":"demo"}`, key, state)
+					return
+				}
+				var body struct {
+					Filter map[string]any `json:"filter"`
+				}
+				if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+					t.Error(err)
+					w.WriteHeader(500)
+					return
+				}
+				assert.Equal(t, map[string]any{"$in": []any{"ACTIVE", "SUSPENDED"}}, body.Filter["state"])
+				assert.Equal(t, "9001", body.Filter["processDefinitionKey"])
+				assert.Equal(t, "tenant", body.Filter["tenantId"])
+				io.WriteString(w, `{"items":[{"processInstanceKey":"1","state":"ACTIVE"},{"processInstanceKey":"2","state":"SUSPENDED"}],"page":{"totalItems":2}}`)
+			}))
+			defer server.Close()
+			cfg := testConfig()
+			cfg.App.CamundaVersion = toolx.V810
+			cfg.App.Tenant = "tenant"
+			cfg.APIs.Camunda.BaseURL = server.URL
+			api, err := processinstance.New(cfg, server.Client(), slog.New(slog.NewTextHandler(io.Discard, nil)))
+			require.NoError(t, err)
+			inc := &suspendedIncidentIndex{items: []d.ProcessInstanceIncidentDetail{{ProcessInstanceKey: "1"}, {ProcessInstanceKey: "2"}, {ProcessInstanceKey: "3"}}}
+			request := d.ProcessInstanceSearchRequest{Filter: d.ProcessInstanceFilter{States: d.States{" active ", "suspended", "ACTIVE"}, ProcessDefinitionKey: "9001", BpmnProcessId: "demo"}, DirectIncidentIndex: direct, ReportedTotalAllowed: true}
+			result, err := processinstance.SearchProcessInstancesPages(context.Background(), api, inc, request, nil)
+			require.NoError(t, err)
+			require.Len(t, result.Items, 2)
+			require.ElementsMatch(t, []string{"1", "2"}, []string{result.Items[0].Key, result.Items[1].Key})
+			total, err := processinstance.SearchProcessInstancesTotal(context.Background(), api, inc, request, nil)
+			require.NoError(t, err)
+			require.EqualValues(t, 2, total)
+			require.Equal(t, d.States{" active ", "suspended", "ACTIVE"}, request.Filter.States)
+			if direct {
+				require.EqualValues(t, 6, calls.Load())
+				require.Equal(t, 2, inc.calls)
+			} else {
+				require.EqualValues(t, 2, calls.Load())
+				require.Zero(t, inc.calls)
+			}
+		})
+	}
+}

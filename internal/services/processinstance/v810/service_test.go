@@ -361,7 +361,9 @@ func TestService_SearchAndLookup(t *testing.T) {
 			getProcessInstanceWithResponse:    unexpectedGetProcessInstance(t),
 		})
 
-		page, err := svc.SearchForProcessInstancesPage(ctx, d.ProcessInstanceFilter{}, d.ProcessInstancePageRequest{From: 10000, Size: 500})
+		// A capped 10000 means more than 10000; only an observation beyond
+		// that lower bound makes this empty page a consistent final page.
+		page, err := svc.SearchForProcessInstancesPage(ctx, d.ProcessInstanceFilter{}, d.ProcessInstancePageRequest{From: 10001, Size: 500})
 
 		require.NoError(t, err)
 		assert.Equal(t, d.ProcessInstanceOverflowStateNoMore, page.OverflowState)
@@ -2081,5 +2083,92 @@ func newHTTPResponseWithContentType(method, rawURL string, statusCode int, statu
 			Method: method,
 			URL:    u,
 		},
+	}
+}
+
+// TestService_CombinedStateSearch preserves definition, tenant and page options
+// while normalizing explicit union values without mutating the caller's slice.
+func TestService_CombinedStateSearch(t *testing.T) {
+	t.Parallel()
+	for _, ignoreTenant := range []bool{false, true} {
+		t.Run(fmt.Sprint(ignoreTenant), func(t *testing.T) {
+			calls := 0
+			svc := newTestService(t, testConfig(), &mockCamundaClient{
+				searchProcessInstancesWithResp: func(ctx context.Context, contentType string, body io.Reader, reqEditors ...camundav810.RequestEditorFn) (*camundav810.SearchProcessInstancesResponse, error) {
+					calls++
+					var payload struct {
+						Filter map[string]any `json:"filter"`
+						Page   map[string]any `json:"page"`
+					}
+					require.NoError(t, json.NewDecoder(body).Decode(&payload))
+					require.Equal(t, map[string]any{"$in": []any{"ACTIVE", "SUSPENDED", "TERMINATED"}}, payload.Filter["state"])
+					require.Equal(t, "9001", payload.Filter["processDefinitionKey"])
+					require.Equal(t, "demo", payload.Filter["processDefinitionId"])
+					if ignoreTenant {
+						require.NotContains(t, payload.Filter, "tenantId")
+					} else {
+						require.Equal(t, "tenant", payload.Filter["tenantId"])
+					}
+					require.Equal(t, map[string]any{"after": "cursor-prev", "limit": float64(10)}, payload.Page)
+					return searchResponse(t, http.StatusOK, searchProcessInstancesResult{Items: []camundav810.ProcessInstanceResult{makeProcessInstanceResult("1", "SUSPENDED", "")}, Page: camundav810.SearchQueryPageResponse{TotalItems: 2}}), nil
+				},
+			})
+			states := d.States{" active ", d.StateSuspended, "suspended", d.StateCanceled, d.StateTerminated}
+			before := slices.Clone(states)
+			var opts []services.CallOption
+			if ignoreTenant {
+				opts = append(opts, services.WithIgnoreTenant())
+			}
+			page, err := svc.SearchForProcessInstancesPage(context.Background(), d.ProcessInstanceFilter{States: states, ProcessDefinitionKey: "9001", BpmnProcessId: "demo"}, d.ProcessInstancePageRequest{From: 1, Size: 10, After: "cursor-prev"}, opts...)
+			require.NoError(t, err)
+			require.Equal(t, before, states)
+			require.Equal(t, 1, calls)
+			require.Equal(t, d.StateSuspended, page.Items[0].State)
+		})
+	}
+}
+
+// TestService_CombinedStatePageMetadata distinguishes completed empty pages
+// from sparse continuation and missing or contradictory completion evidence.
+func TestService_CombinedStatePageMetadata(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name, page string
+		from       int32
+		want       d.ProcessInstanceOverflowState
+		known      bool
+	}{
+		{"empty final", `{"totalItems":0}`, 0, d.ProcessInstanceOverflowStateNoMore, true},
+		{"empty cursor final", `{"totalItems":2,"endCursor":"next"}`, 2, d.ProcessInstanceOverflowStateNoMore, true},
+		{"empty capped final", `{"totalItems":1,"hasMoreTotalItems":true,"endCursor":"next"}`, 2, d.ProcessInstanceOverflowStateNoMore, true},
+		{"sparse exact", `{"totalItems":3,"endCursor":"next"}`, 1, d.ProcessInstanceOverflowStateHasMore, true},
+		{"capped boundary", `{"totalItems":1,"hasMoreTotalItems":true,"endCursor":"next"}`, 1, d.ProcessInstanceOverflowStateHasMore, true},
+		{"capped zero without progress", `{"totalItems":0,"hasMoreTotalItems":true}`, 0, d.ProcessInstanceOverflowStateIndeterminate, true},
+		{"sparse capped", `{"totalItems":3,"hasMoreTotalItems":true,"endCursor":"next"}`, 1, d.ProcessInstanceOverflowStateHasMore, true},
+		{"stalled sparse", `{"totalItems":3,"endCursor":"prev"}`, 1, d.ProcessInstanceOverflowStateIndeterminate, true},
+		{"missing sparse cursor", `{"totalItems":3}`, 1, d.ProcessInstanceOverflowStateIndeterminate, true},
+		{"cursor only", `{"endCursor":"next"}`, 1, d.ProcessInstanceOverflowStateIndeterminate, false},
+		{"capped only", `{"hasMoreTotalItems":true}`, 1, d.ProcessInstanceOverflowStateIndeterminate, false},
+		{"missing metadata", `{}`, 0, d.ProcessInstanceOverflowStateIndeterminate, false},
+		{"null metadata", `null`, 0, d.ProcessInstanceOverflowStateIndeterminate, false},
+		{"null total", `{"totalItems":null}`, 0, d.ProcessInstanceOverflowStateIndeterminate, false},
+		{"negative total", `{"totalItems":-1}`, 0, d.ProcessInstanceOverflowStateIndeterminate, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			svc := newTestService(t, testConfig(), &mockCamundaClient{searchProcessInstancesWithResp: func(ctx context.Context, contentType string, body io.Reader, reqEditors ...camundav810.RequestEditorFn) (*camundav810.SearchProcessInstancesResponse, error) {
+				raw := []byte(`{"items":[],"page":` + tc.page + `}`)
+				var payload camundav810.ProcessInstanceSearchQueryResult
+				require.NoError(t, json.Unmarshal(raw, &payload))
+				return &camundav810.SearchProcessInstancesResponse{HTTPResponse: newHTTPResponse(http.MethodPost, "https://camunda.local/v2/process-instances/search", http.StatusOK, "200 OK"), Body: raw, JSON200: &payload}, nil
+			}})
+			page, err := svc.SearchForProcessInstancesPage(context.Background(), d.ProcessInstanceFilter{States: d.States{d.StateActive, d.StateSuspended}}, d.ProcessInstancePageRequest{From: tc.from, Size: 2, After: "prev"})
+			require.NoError(t, err)
+			require.Equal(t, tc.want, page.OverflowState)
+			if tc.known {
+				require.NotNil(t, page.ReportedTotal)
+			} else {
+				require.Nil(t, page.ReportedTotal)
+			}
+		})
 	}
 }

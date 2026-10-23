@@ -208,7 +208,8 @@ func (s *Service) SearchForProcessInstances(ctx context.Context, filter d.Proces
 
 // SearchForProcessInstancesPage fetches one page after validating explicit state capabilities.
 func (s *Service) SearchForProcessInstancesPage(ctx context.Context, filter d.ProcessInstanceFilter, pageReq d.ProcessInstancePageRequest, opts ...services.CallOption) (d.ProcessInstancePage, error) {
-	if err := s.ValidateProcessInstanceStates(d.States{filter.State}); err != nil {
+	filter, err := common.NormalizeProcessInstanceSearchFilter(filter, s.ValidateProcessInstanceStates)
+	if err != nil {
 		return d.ProcessInstancePage{}, err
 	}
 	cCfg := services.ApplyCallOptions(opts)

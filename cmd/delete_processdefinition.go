@@ -27,9 +27,11 @@ var deleteProcessDefinitionCmd = &cobra.Command{
 	Short: "Delete process definition resources",
 	Long: `Delete process definition resources from Camunda 8.9 or newer.
 
-Before mutation, c8volt checks active-instance impact, required cancellation roots, affected instance families, and batch-operation read access. With --force, it cancels root instances, deletes affected instance history, then deletes the definition and remaining associated history.
+Before mutation, c8volt checks unfinished-instance impact (ACTIVE and SUSPENDED on Camunda 8.10; ACTIVE on older versions), required cancellation roots, affected instance families, and batch-operation read access. With --force, it cancels root instances, verifies that no unfinished instances remain, deletes affected instance history, then deletes the definition and remaining associated history.
 
 Camunda 8.10 can defer history deletion without returning a batch operation. Unless --no-wait is set, c8volt waits for a returned batch to complete and for the definition to disappear. Without a returned batch, definition disappearance is confirmed, but completion of all associated history deletion is not independently verified.
+
+--no-wait skips final deletion confirmation, but still verifies unfinished work has drained before dependent history deletion. --no-state-check skips impact reads and automatic cancellation, retaining the existing backend-enforced bypass.
 
 --tenant limits BPMN selector discovery. An empty tenant or --all-tenants leaves discovery unfiltered across accessible tenants. Explicit --key and stdin keys use backend authorization without tenant filtering. A --bpmn-process-id selector must match visible definitions before impact planning.
 
@@ -118,7 +120,7 @@ Use --dry-run to preview impact without mutation, or --auto-confirm for unattend
 
 		impactPlan, err := cli.PreviewDeleteProcessDefinitions(cmd.Context(), keys, callOpts...)
 		if err != nil {
-			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("checking process-definition delete impact: %w", err))
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("checking process-definition delete impact: %w", err), formatProcessDefinitionDeleteFailure("checking delete impact", len(keys), resource.DeleteReports{}, err))
 		}
 		tenantCtx := newDiscoveryTenantContext(configuredTenantID(cfg))
 		if explicitInput {
@@ -128,14 +130,15 @@ Use --dry-run to preview impact without mutation, or --auto-confirm for unattend
 		attachTenantContext(cmd, withTenantContextEvidence(tenantCtx, evidence.ResolvedTenantIDs, evidence.UnknownTargetCount))
 		if flagDryRun {
 			if err := renderDeleteProcessDefinitionDryRun(cmd, impactPlan); err != nil {
-				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("render delete dry-run result: %w", err))
+				log.Error("could not render process-definition delete preview")
+				exitAfterRenderedResult(cfg.App.NoErrCodes, err)
 			}
 			return
 		}
 		renderDeleteProcessDefinitionImpact(cmd, impactPlan)
 		totals := impactPlan.Totals()
-		if !flagNoStateCheck && !flagForce && totals.ActiveProcessInstances > 0 {
-			handleCommandError(cmd, log, cfg.App.NoErrCodes, localPreconditionError(fmt.Errorf("%d active process instance(s) block deletion; use --force to cancel them before deleting process definitions", totals.ActiveProcessInstances)))
+		if !flagNoStateCheck && !flagForce && totals.UnfinishedProcessInstances > 0 {
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, localPreconditionError(fmt.Errorf("%s block deletion; use --force to cancel them before deleting process definitions", processDefinitionUnfinishedSummary(totals))))
 		}
 		if !flagNoWait {
 			if err := cli.CheckBatchOperationReadAccess(cmd.Context(), callOpts...); err != nil {
@@ -150,13 +153,21 @@ Use --dry-run to preview impact without mutation, or --auto-confirm for unattend
 		deletionProgress.Start(len(keys))
 		deleteOpts := append([]foptions.FacadeOption{}, callOpts...)
 		deleteOpts = append(deleteOpts, foptions.WithProgress(deletionProgress.FacadeProgress))
+		if !flagVerbose {
+			deleteOpts = append(deleteOpts, foptions.WithSuppressWorkflowDetailLogs(), foptions.WithSuppressProcessInstanceDetailLogs())
+		}
 		reports, err := cli.DeleteProcessDefinitions(cmd.Context(), keys, flagWorkers, deleteOpts...)
 		deletionProgress.Close()
 		if err != nil {
-			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("deleting process definition(s): %w", err))
+			runErr := fmt.Errorf("deleting process definition(s): %w", err)
+			if renderErr := renderDeleteProcessDefinitionFailure(cmd, log, len(keys), reports, runErr); renderErr != nil {
+				log.Error("could not render process-definition delete result")
+			}
+			exitAfterRenderedResult(cfg.App.NoErrCodes, runErr)
 		}
-		if err := renderCommandResult(cmd, reports); err != nil {
-			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("render delete result: %w", err))
+		if err := renderDeleteProcessDefinitionResult(cmd, reports); err != nil {
+			log.Error("could not render process-definition delete result")
+			exitAfterRenderedResult(cfg.App.NoErrCodes, err)
 		}
 	},
 }
@@ -168,60 +179,11 @@ func validateDeleteProcessDefinitionSupportedVersion(version toolx.CamundaVersio
 	return fmt.Errorf("%w: process-definition deletion requires the full process-definition history deletion capability, currently Camunda 8.9 or newer; configured Camunda version is %s; to delete process instances for a process definition instead, use c8volt delete process-instance --bpmn-process-id <bpmn-process-id>", d.ErrUnsupported, version.String())
 }
 
-type deleteProcessDefinitionDryRunPreview struct {
-	Operation         string                                     `json:"operation"`
-	Plan              resource.DeleteProcessDefinitionPlan       `json:"plan"`
-	Totals            resource.DeleteProcessDefinitionPlanTotals `json:"totals"`
-	MutationSubmitted bool                                       `json:"mutationSubmitted"`
-}
-
-func renderDeleteProcessDefinitionDryRun(cmd *cobra.Command, plan resource.DeleteProcessDefinitionPlan) error {
-	preview := deleteProcessDefinitionDryRunPreview{
-		Operation:         "delete",
-		Plan:              plan,
-		Totals:            plan.Totals(),
-		MutationSubmitted: false,
-	}
-	if commandUsesSharedEnvelope(cmd, pickMode()) {
-		return renderSucceededResult(cmd, preview)
-	}
-	renderAttachedTenantContext(cmd)
-	renderHumanLine(cmd, "dry run: delete process-definition")
-	renderDeleteProcessDefinitionImpact(cmd, plan)
-	return nil
-}
-
-func renderDeleteProcessDefinitionImpact(cmd *cobra.Command, plan resource.DeleteProcessDefinitionPlan) {
-	renderAttachedTenantContext(cmd)
-	totals := plan.Totals()
-	if plan.StateCheckSkipped {
-		renderHumanLine(cmd, "delete impact check: %d process definition(s); process-instance state check skipped; no changes made yet", totals.ProcessDefinitions)
-		renderHumanWarningLine(cmd, "deletion is irreversible: process-definition resources and associated history will be removed.")
-		return
-	}
-	if totals.ActiveProcessInstances == 0 {
-		renderHumanLine(cmd, "delete impact check: %d process definition(s); no active process instances found; no changes made yet", totals.ProcessDefinitions)
-		renderHumanWarningLine(cmd, "deletion is irreversible: process-definition resources and associated history will be removed.")
-		return
-	}
-	if flagForce {
-		renderHumanLine(cmd, "delete impact check: %d process definition(s); %d active process instance(s) found; no changes made yet", totals.ProcessDefinitions, totals.ActiveProcessInstances)
-		renderHumanLine(cmd, "--force will cancel %d root process instance(s), then delete %d affected process instance(s), before deleting process definitions", totals.CancellationRoots, totals.CancellationAffected)
-	} else {
-		renderHumanLine(cmd, "delete impact check: %d process definition(s); %d active process instance(s) found; no changes made yet", totals.ProcessDefinitions, totals.ActiveProcessInstances)
-		return
-	}
-	for _, warning := range plan.Warnings {
-		renderHumanWarningLine(cmd, "%s", warning)
-	}
-	renderHumanWarningLine(cmd, "deletion is irreversible: process-definition resources and associated history will be removed.")
-}
-
 func init() {
 	deleteCmd.AddCommand(deleteProcessDefinitionCmd)
 
 	fs := deleteProcessDefinitionCmd.Flags()
-	fs.BoolVar(&flagNoWait, "no-wait", false, "return after deletion work is accepted")
+	fs.BoolVar(&flagNoWait, "no-wait", false, "skip final deletion confirmation; required unfinished-instance drain checks still run")
 	fs.BoolVar(&flagNoStateCheck, "no-state-check", false, "skip checking process-instance state before deleting")
 	fs.BoolVar(&flagDryRun, "dry-run", false, "preview process-definition delete impact without submitting deletion or cancellation requests")
 	fs.StringSliceVarP(&flagDeletePDKeys, "key", "k", nil, "process definition key(s) to delete")
@@ -230,7 +192,7 @@ func init() {
 	fs.StringVar(&flagDeletePDProcessVersionTag, "pd-version-tag", "", "process definition version tag")
 	fs.BoolVar(&flagDeletePDLatest, "latest", false, "fetch the latest version(s) of the given BPMN process(s)")
 
-	fs.BoolVar(&flagForce, "force", false, "force cancellation of the process instance(s), prior to deletion")
+	fs.BoolVar(&flagForce, "force", false, "cancel unfinished process-instance roots before deleting history and definitions")
 	fs.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers when --count > 1 (default: min(count, 2*GOMAXPROCS, 32))")
 	fs.BoolVar(&flagNoWorkerLimit, "no-worker-limit", false, "use all queued jobs as workers when --workers is unset")
 	fs.BoolVar(&flagFailFast, "fail-fast", false, "stop scheduling new instances after the first error")

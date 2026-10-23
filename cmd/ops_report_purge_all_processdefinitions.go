@@ -71,14 +71,24 @@ func renderOpsPurgeAllProcessDefinitionsMarkdownReport(report ops.AllProcessDefi
 	writeMarkdownReportField(&out, "Requires Force", fmt.Sprintf("%t", report.DeletePlan.RequiresForce))
 	writeMarkdownReportField(&out, "Affected Process Instances", fmt.Sprintf("%d", report.DeletePlan.AffectedProcessInstanceCount))
 	writeMarkdownReportField(&out, "Active Process Instances", fmt.Sprintf("%d", report.DeletePlan.ActiveProcessInstanceCount))
+	writeMarkdownReportField(&out, "Unfinished Process Instances", fmt.Sprintf("%d", report.DeletePlan.UnfinishedProcessInstanceCount))
+	writeMarkdownReportField(&out, "Suspended Count Supported", fmt.Sprintf("%t", report.DeletePlan.SuspendedCountSupported))
+	if report.DeletePlan.SuspendedCountSupported {
+		writeMarkdownReportField(&out, "Suspended Process Instances", fmt.Sprintf("%d", report.DeletePlan.SuspendedProcessInstanceCount))
+	}
 	writeMarkdownReportList(&out, "Candidate Process-Definition Keys", report.DeletePlan.CandidateProcessDefinitionKeys)
 	writeMarkdownReportList(&out, "Duplicate Candidate Process-Definition Keys", report.DeletePlan.DuplicateCandidateProcessDefinitionKeys)
 	writeMarkdownReportList(&out, "Affected Process-Instance Keys", allProcessDefinitionsPurgeAffectedProcessInstanceKeys(report.DeletePlan))
 	writeMarkdownReportList(&out, "Blocked Process-Instance Keys", allProcessDefinitionsPurgeBlockedProcessInstanceKeys(report.DeletePlan))
 	if len(report.DeletePlan.Items) > 0 {
 		out.WriteString("- Items:\n")
+		affectedByKey := allProcessDefinitionsPurgeAffectedCountByProcessDefinitionKey(report.DeletePlan)
 		for _, item := range report.DeletePlan.Items {
-			out.WriteString(fmt.Sprintf("  - key=%s activeProcessInstances=%d affectedProcessInstances=%d\n", item.Key, item.ActiveProcessInstances(), len(item.CancellationPlan.Collected)))
+			out.WriteString(fmt.Sprintf("  - key=%s activeProcessInstances=%d unfinishedProcessInstances=%d affectedProcessInstances=%d", item.Key, item.ActiveProcessInstances(), item.UnfinishedProcessInstances(), affectedByKey[item.Key]))
+			if item.SuspendedCountSupported {
+				out.WriteString(fmt.Sprintf(" suspendedProcessInstances=%d", item.SuspendedProcessInstanceCount))
+			}
+			out.WriteString("\n")
 		}
 	}
 	writeMarkdownReportList(&out, "Errors", report.DeletePlan.Errors)
@@ -106,20 +116,20 @@ func renderOpsPurgeAllProcessDefinitionsMarkdownReport(report ops.AllProcessDefi
 func allProcessDefinitionsPurgeAffectedProcessInstanceKeys(plan ops.AllProcessDefinitionsPurgeDeletePlan) []string {
 	var keys []string
 	for _, item := range plan.Items {
-		keys = append(keys, item.ActiveProcessInstanceKeys...)
+		keys = append(keys, item.UnfinishedProcessInstanceKeys...)
 		keys = append(keys, item.CancellationPlan.Collected...)
 	}
 	return toolx.UniqueSlice(keys)
 }
 
-// allProcessDefinitionsPurgeBlockedProcessInstanceKeys extracts active keys that require force before deletion.
+// allProcessDefinitionsPurgeBlockedProcessInstanceKeys extracts unfinished keys that require force before deletion.
 func allProcessDefinitionsPurgeBlockedProcessInstanceKeys(plan ops.AllProcessDefinitionsPurgeDeletePlan) []string {
 	if !plan.RequiresForce {
 		return nil
 	}
 	var keys []string
 	for _, item := range plan.Items {
-		keys = append(keys, item.ActiveProcessInstanceKeys...)
+		keys = append(keys, item.UnfinishedProcessInstanceKeys...)
 		for _, instance := range item.CancellationPlan.RequiresCancelBeforeDelete {
 			if instance.Key != "" {
 				keys = append(keys, instance.Key)

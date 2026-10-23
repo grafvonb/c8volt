@@ -44,7 +44,7 @@ Select by key, BPMN process ID, version, or version tag. Use --xml only with --k
 
 --latest selects the newest definition per exact tenant ID and BPMN process ID using native latest filtering, breaking version ties by the lowest exact-text key.
 
---stat includes exact-version statistics and requires Camunda 8.8 or newer.
+--stat includes exact-version statistics and requires Camunda 8.8 or newer. On Camunda 8.10, rows append su: for suspended instances, with a dash for an observed zero; active counts remain separate. JSON statistics include a suspended count and suspendedCountSupported availability flag; a supported zero omits the count. Camunda 8.8/8.9 omit the suspended token and fields because the count is unavailable. With --stat --watch, suspended count and availability changes update the row and clear stale values. Empty searches suppress the human summary under --quiet while preserving requested JSON and keys-only results.
 
 --watch repeats the lookup indefinitely by default until interrupted or retries are exhausted. --watch-timeout sets an optional session limit (0 = unlimited), independently of --timeout for individual HTTP requests and the retry-loop backoff timeout. Individual request timeouts are retried while the session remains active. It starts immediately; --watch-interval controls subsequent checks. Without a selector it observes all visible definitions. Each successful refresh logs a timestamped INFO summary, including when nothing changed, compared with the previous successfully displayed refresh, for example: 16:42:08.123 INFO 1 updated, 1 new, 0 removed. Rows end with * for changed definitions and + for new definitions; unchanged rows have no suffix; on supported terminal output, changed displayed values are also bold. Bold falls back to plain markers when TERM is empty or dumb, NO_COLOR is set, or output is redirected. The first successful refresh establishes an unmarked baseline. Failed refreshes do not replace that baseline, and an unchanged success clears prior markers and bold. Removed definitions contribute to the summary without leaving stale rows. --watch cannot be combined with --json, --keys-only, --xml, --quiet, or --automation.`,
 	Example: `  ./c8volt get process-definition --latest
@@ -149,7 +149,7 @@ func init() {
 	fs.BoolVar(&flagGetPDLatest, "latest", false, "only include the latest matching process-definition version per exact tenant/BPMN process group")
 	fs.Int32Var(&flagGetPDProcessVersion, "pd-version", 0, "process definition version")
 	fs.StringVar(&flagGetPDProcessVersionTag, "pd-version-tag", "", "process definition version tag")
-	fs.BoolVar(&flagGetPDWithStat, "stat", false, "include process definition statistics and incident counts")
+	fs.BoolVar(&flagGetPDWithStat, "stat", false, "include process definition statistics, incident counts, and suspended counts when supported")
 	fs.BoolVar(&flagGetPDAsXML, "xml", false, "output the selected process definition as raw XML (requires --key and no other filters)")
 	fs.Int32VarP(&flagGetPDBatchSize, "batch-size", "n", consts.MaxPISearchSize, fmt.Sprintf("number of process definitions to request per discovery page; does not cap total results (max limit %d enforced by server)", consts.MaxPISearchSize))
 	fs.BoolVar(&flagGetPDWatch, "watch", false, "repeat the process-definition lookup until interrupted, --watch-timeout is reached, or retries are exhausted")

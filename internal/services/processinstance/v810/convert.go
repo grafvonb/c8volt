@@ -136,11 +136,15 @@ func (f *processInstanceFilter) isEmpty() bool {
 		f.Variables == nil
 }
 
+// processInstanceSearchQueryResult retains missing total metadata separately from zero.
 type processInstanceSearchQueryResult struct {
-	Items []camundav810.ProcessInstanceResult `json:"items"`
-	Page  camundav810.SearchQueryPageResponse `json:"page"`
+	TotalItemsKnown bool                                `json:"-"`
+	Items           []camundav810.ProcessInstanceResult `json:"items"`
+	Page            camundav810.SearchQueryPageResponse `json:"page"`
 }
 
+// decodeSearchProcessInstancesResponse preserves absent or null totals as unknown
+// rather than allowing generated zero values to prove an empty search scope.
 func decodeSearchProcessInstancesResponse(body []byte, page *camundav810.ProcessInstanceSearchQueryResult) (processInstanceSearchQueryResult, error) {
 	if len(bytesTrimSpace(body)) == 0 {
 		return processInstanceSearchQueryResult{}, d.ErrMalformedResponse
@@ -149,6 +153,15 @@ func decodeSearchProcessInstancesResponse(body []byte, page *camundav810.Process
 	if err := json.Unmarshal(body, &result); err != nil {
 		return processInstanceSearchQueryResult{}, err
 	}
+	var metadata struct {
+		Page struct {
+			TotalItems *int64 `json:"totalItems"`
+		} `json:"page"`
+	}
+	if err := json.Unmarshal(body, &metadata); err != nil {
+		return processInstanceSearchQueryResult{}, err
+	}
+	result.TotalItemsKnown = metadata.Page.TotalItems != nil && *metadata.Page.TotalItems >= 0
 	result.Page = page.Page
 	return result, nil
 }
@@ -263,4 +276,20 @@ func valueOrEmpty[T ~string](v *T) T {
 
 func bytesTrimSpace(b []byte) []byte {
 	return bytes.TrimSpace(b)
+}
+
+// newProcessInstanceStateFilterPtr keeps scalar equality requests intact and
+// maps normalized plural values to the generated advanced union representation.
+func newProcessInstanceStateFilterPtr(filter d.ProcessInstanceFilter) (*camundav810.ProcessInstanceStateFilterProperty, error) {
+	if len(filter.States) == 0 {
+		return newProcessInstanceStateEqFilterPtr(string(normalizeSearchState(filter.State)))
+	}
+	states := toolx.MapSlice(filter.States, func(state d.State) camundav810.ProcessInstanceStateEnum {
+		return camundav810.ProcessInstanceStateEnum(state)
+	})
+	var result camundav810.ProcessInstanceStateFilterProperty
+	if err := result.FromAdvancedProcessInstanceStateFilter(camundav810.AdvancedProcessInstanceStateFilter{In: &states}); err != nil {
+		return nil, err
+	}
+	return &result, nil
 }

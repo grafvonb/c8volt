@@ -62,18 +62,29 @@ type DeleteProcessDefinitionPlan struct {
 	Warnings              []string                          `json:"warnings,omitempty"`
 }
 
+// DeleteProcessDefinitionPlanItem preserves separate display counts and authoritative cleanup evidence.
 type DeleteProcessDefinitionPlanItem struct {
-	Key                        string                       `json:"key,omitempty"`
-	BpmnProcessId              string                       `json:"bpmnProcessId,omitempty"`
-	ProcessVersion             int32                        `json:"processVersion,omitempty"`
-	ProcessVersionTag          string                       `json:"versionTag,omitempty"`
-	TenantId                   string                       `json:"tenantId,omitempty"`
-	ActiveProcessInstanceCount int64                        `json:"activeProcessInstanceCount,omitempty"`
-	ActiveProcessInstanceKeys  []string                     `json:"activeProcessInstanceKeys,omitempty"`
-	CancellationPlan           process.DryRunPIKeyExpansion `json:"cancellationPlan,omitempty"`
-	Warnings                   []string                     `json:"warnings,omitempty"`
+	Key                            string                       `json:"key,omitempty"`
+	BpmnProcessId                  string                       `json:"bpmnProcessId,omitempty"`
+	ProcessVersion                 int32                        `json:"processVersion,omitempty"`
+	ProcessVersionTag              string                       `json:"versionTag,omitempty"`
+	TenantId                       string                       `json:"tenantId,omitempty"`
+	ActiveProcessInstanceCount     int64                        `json:"activeProcessInstanceCount,omitempty"`
+	ActiveProcessInstanceKeys      []string                     `json:"activeProcessInstanceKeys,omitempty"`
+	SuspendedProcessInstanceCount  int64                        `json:"suspendedProcessInstanceCount,omitempty"`
+	SuspendedCountSupported        bool                         `json:"suspendedCountSupported,omitempty"`
+	UnfinishedProcessInstanceCount int64                        `json:"unfinishedProcessInstanceCount,omitempty"`
+	UnfinishedProcessInstanceKeys  []string                     `json:"unfinishedProcessInstanceKeys,omitempty"`
+	CancellationPlan               process.DryRunPIKeyExpansion `json:"cancellationPlan,omitempty"`
+	Warnings                       []string                     `json:"warnings,omitempty"`
 }
 
+// UnfinishedProcessInstances returns the observed count without understating discovered keys.
+func (i DeleteProcessDefinitionPlanItem) UnfinishedProcessInstances() int64 {
+	return max(i.UnfinishedProcessInstanceCount, int64(len(i.UnfinishedProcessInstanceKeys)))
+}
+
+// ActiveProcessInstances retains the active-only count/key fallback.
 func (i DeleteProcessDefinitionPlanItem) ActiveProcessInstances() int64 {
 	if i.ActiveProcessInstanceCount > 0 {
 		return i.ActiveProcessInstanceCount
@@ -81,10 +92,14 @@ func (i DeleteProcessDefinitionPlanItem) ActiveProcessInstances() int64 {
 	return int64(len(i.ActiveProcessInstanceKeys))
 }
 
+// Totals aggregates observed workload without presenting skipped or unavailable suspension as measured zero.
 func (p DeleteProcessDefinitionPlan) Totals() DeleteProcessDefinitionPlanTotals {
-	totals := DeleteProcessDefinitionPlanTotals{ProcessDefinitions: len(p.Items)}
+	totals := DeleteProcessDefinitionPlanTotals{ProcessDefinitions: len(p.Items), SuspendedCountSupported: !p.StateCheckSkipped && len(p.Items) > 0}
 	for _, item := range p.Items {
 		totals.ActiveProcessInstances += item.ActiveProcessInstances()
+		totals.SuspendedProcessInstances += item.SuspendedProcessInstanceCount
+		totals.UnfinishedProcessInstances += item.UnfinishedProcessInstances()
+		totals.SuspendedCountSupported = totals.SuspendedCountSupported && item.SuspendedCountSupported
 		totals.CancellationRoots += len(item.CancellationPlan.Roots)
 		totals.CancellationAffected += len(item.CancellationPlan.Collected)
 		totals.Warnings += len(item.Warnings)
@@ -186,10 +201,14 @@ func sortProcessDefinitionPlanTenantIDs(ids []string) []string {
 	return slices.Compact(ids)
 }
 
+// DeleteProcessDefinitionPlanTotals keeps direct workload distinct from expanded cancellation families.
 type DeleteProcessDefinitionPlanTotals struct {
-	ProcessDefinitions     int   `json:"processDefinitions"`
-	ActiveProcessInstances int64 `json:"activeProcessInstances"`
-	CancellationRoots      int   `json:"cancellationRoots"`
-	CancellationAffected   int   `json:"cancellationAffected"`
-	Warnings               int   `json:"warnings"`
+	SuspendedProcessInstances  int64 `json:"suspendedProcessInstances,omitempty"`
+	SuspendedCountSupported    bool  `json:"suspendedCountSupported,omitempty"`
+	UnfinishedProcessInstances int64 `json:"unfinishedProcessInstances,omitempty"`
+	ProcessDefinitions         int   `json:"processDefinitions"`
+	ActiveProcessInstances     int64 `json:"activeProcessInstances"`
+	CancellationRoots          int   `json:"cancellationRoots"`
+	CancellationAffected       int   `json:"cancellationAffected"`
+	Warnings                   int   `json:"warnings"`
 }

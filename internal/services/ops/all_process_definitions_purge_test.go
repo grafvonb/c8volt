@@ -6,6 +6,7 @@ package ops
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"testing"
 	"time"
@@ -844,7 +845,7 @@ func TestPurgeAllProcessDefinitionsBlocksUnsafeActiveInstancesWithoutForce(t *te
 
 	require.Error(t, err)
 	require.True(t, errors.Is(err, d.ErrPrecondition), "got %v", err)
-	require.Contains(t, err.Error(), "active process instance")
+	require.Contains(t, err.Error(), "unfinished process instance")
 	require.Equal(t, d.AllProcessDefinitionsPurgeOutcomeFailed, got.Outcome)
 	require.Equal(t, d.OpsWorkflowStepStatusPlanned, got.DeletePlan.Status)
 	require.EqualValues(t, 3, got.DeletePlan.ActiveProcessInstanceCount)
@@ -958,174 +959,198 @@ func TestPurgeAllProcessDefinitionsMapsExecutionControlsToDeletePath(t *testing.
 
 // TestPurgeAllProcessDefinitionsForceCleanupDeduplicatesProcessInstanceRoots verifies APD force cleanup cancels overlapping PI trees once.
 func TestPurgeAllProcessDefinitionsForceCleanupDeduplicatesProcessInstanceRoots(t *testing.T) {
-	var cancelled []string
-	var deletedPI []string
-	var deletedPD typex.Keys
-	var events []d.OpsProgressEvent
-	getCalls := map[string]int{}
+	for _, states := range [][2]d.State{{d.StateActive, d.StateActive}, {d.StateSuspended, d.StateSuspended}, {d.StateActive, d.StateSuspended}, {d.StateSuspended, d.StateActive}} {
+		t.Run(fmt.Sprint(states), func(t *testing.T) {
+			var cancelled []string
+			var deletedPI []string
+			var deletedPD typex.Keys
+			var events []d.OpsProgressEvent
+			getCalls := map[string]int{}
 
-	got, err := NewWithProcessDefinitionPurge(
-		stubProcessInstanceAPI{
-			searchPage: func(_ context.Context, filter d.ProcessInstanceFilter, _ d.ProcessInstancePageRequest, _ ...services.CallOption) (d.ProcessInstancePage, error) {
-				items := map[string][]d.ProcessInstance{
-					"pd-a": {{Key: "pi-a", RootProcessInstanceKey: "pi-root", State: d.StateActive}},
-					"pd-b": {{Key: "pi-b", RootProcessInstanceKey: "pi-root", State: d.StateActive}},
-				}
-				return d.ProcessInstancePage{Items: items[filter.ProcessDefinitionKey]}, nil
-			},
-			ancestryResult: func(_ context.Context, startKey string, _ ...services.CallOption) (pitraversal.Result, error) {
-				require.Equal(t, "pi-root", startKey)
-				return pitraversal.Result{
-					RootKey: "pi-root",
-					Keys:    []string{"pi-root"},
-					Outcome: pitraversal.OutcomeComplete,
-				}, nil
-			},
-			descendantsResult: func(_ context.Context, rootKey string, _ ...services.CallOption) (pitraversal.Result, error) {
-				require.Equal(t, "pi-root", rootKey)
-				return pitraversal.Result{
-					RootKey: rootKey,
-					Keys:    []string{"pi-root", "pi-a", "pi-b"},
-					Outcome: pitraversal.OutcomeComplete,
-				}, nil
-			},
-			cancelProcessInstance: func(_ context.Context, key string, opts ...services.CallOption) (d.CancelResponse, []d.ProcessInstance, error) {
-				cancelled = append(cancelled, key)
-				require.True(t, services.ApplyCallOptions(opts).SuppressProcessInstanceDetailLogs)
-				return d.CancelResponse{Ok: true, StatusCode: http.StatusOK, Status: "200 OK"}, nil, nil
-			},
-			deleteProcessInstance: func(_ context.Context, key string, opts ...services.CallOption) (d.DeleteResponse, error) {
-				deletedPI = append(deletedPI, key)
-				require.True(t, services.ApplyCallOptions(opts).SuppressProcessInstanceDetailLogs)
-				return d.DeleteResponse{Ok: true, StatusCode: http.StatusOK, Status: "200 OK"}, nil
-			},
-		},
-		nil,
-		stubProcessDefinitionAPI{
-			searchProcessDefinitions: func(_ context.Context, _ d.ProcessDefinitionFilter, _ int32, _ ...services.CallOption) ([]d.ProcessDefinition, error) {
-				return []d.ProcessDefinition{
-					{Key: "pd-a", BpmnProcessId: "parent", ProcessVersion: 1},
-					{Key: "pd-b", BpmnProcessId: "child", ProcessVersion: 1},
-				}, nil
-			},
-			getProcessDefinition: func(_ context.Context, key string, opts ...services.CallOption) (d.ProcessDefinition, error) {
-				cfg := services.ApplyCallOptions(opts)
-				if !cfg.WithStat && deletedPD.Contains(key) {
-					return d.ProcessDefinition{}, d.ErrNotFound
-				}
-				require.True(t, cfg.WithStat)
-				getCalls[key]++
-				active := int64(1)
-				if getCalls[key] > 2 {
-					active = 0
-				}
-				return d.ProcessDefinition{
-					Key:               key,
-					BpmnProcessId:     key,
-					ProcessVersion:    1,
-					ProcessVersionTag: "v1.0.0",
-					TenantId:          "<default>",
-					Statistics:        &d.ProcessDefinitionStatistics{Active: active},
-				}, nil
-			},
-		},
-		stubResourceAPI{
-			delete: func(_ context.Context, resourceKey string, opts ...services.CallOption) (d.ResourceDeleteResponse, error) {
-				deletedPD = append(deletedPD, resourceKey)
-				require.True(t, services.ApplyCallOptions(opts).SuppressProcessInstanceDetailLogs)
-				return d.ResourceDeleteResponse{Ok: true, StatusCode: http.StatusOK, Status: "200 OK", DeleteHistory: true}, nil
-			},
-		},
-	).PurgeAllProcessDefinitions(context.Background(), d.AllProcessDefinitionsPurgeRequest{
-		Force:   true,
-		Workers: 1,
-		Progress: func(event d.OpsProgressEvent) {
-			events = append(events, event)
-		},
-	})
+			got, err := NewWithProcessDefinitionPurge(
+				stubProcessInstanceAPI{validateStates: func(d.States) error { return nil },
+					searchPage: func(_ context.Context, filter d.ProcessInstanceFilter, _ d.ProcessInstancePageRequest, _ ...services.CallOption) (d.ProcessInstancePage, error) {
+						require.Equal(t, d.States{d.StateActive, d.StateSuspended}, filter.States)
+						items := map[string][]d.ProcessInstance{
+							"pd-a": {{Key: "pi-a", RootProcessInstanceKey: "pi-root", State: states[0]}},
+							"pd-b": {{Key: "pi-b", RootProcessInstanceKey: "pi-root", State: states[1]}},
+						}
+						return d.ProcessInstancePage{Items: items[filter.ProcessDefinitionKey], OverflowState: d.ProcessInstanceOverflowStateNoMore}, nil
+					},
+					ancestryResult: func(_ context.Context, startKey string, _ ...services.CallOption) (pitraversal.Result, error) {
+						require.Equal(t, "pi-root", startKey)
+						return pitraversal.Result{
+							RootKey: "pi-root",
+							Keys:    []string{"pi-root"},
+							Outcome: pitraversal.OutcomeComplete,
+						}, nil
+					},
+					descendantsResult: func(_ context.Context, rootKey string, _ ...services.CallOption) (pitraversal.Result, error) {
+						require.Equal(t, "pi-root", rootKey)
+						return pitraversal.Result{
+							RootKey: rootKey,
+							Keys:    []string{"pi-root", "pi-a", "pi-b"},
+							Outcome: pitraversal.OutcomeComplete,
+						}, nil
+					},
+					cancelProcessInstance: func(_ context.Context, key string, opts ...services.CallOption) (d.CancelResponse, []d.ProcessInstance, error) {
+						cancelled = append(cancelled, key)
+						require.True(t, services.ApplyCallOptions(opts).SuppressProcessInstanceDetailLogs)
+						return d.CancelResponse{Ok: true, StatusCode: http.StatusOK, Status: "200 OK"}, nil, nil
+					},
+					deleteProcessInstance: func(_ context.Context, key string, opts ...services.CallOption) (d.DeleteResponse, error) {
+						deletedPI = append(deletedPI, key)
+						require.True(t, services.ApplyCallOptions(opts).SuppressProcessInstanceDetailLogs)
+						return d.DeleteResponse{Ok: true, StatusCode: http.StatusOK, Status: "200 OK"}, nil
+					},
+				},
+				nil,
+				stubProcessDefinitionAPI{
+					searchProcessDefinitions: func(_ context.Context, _ d.ProcessDefinitionFilter, _ int32, _ ...services.CallOption) ([]d.ProcessDefinition, error) {
+						return []d.ProcessDefinition{
+							{Key: "pd-a", BpmnProcessId: "parent", ProcessVersion: 1},
+							{Key: "pd-b", BpmnProcessId: "child", ProcessVersion: 1},
+						}, nil
+					},
+					getProcessDefinition: func(_ context.Context, key string, opts ...services.CallOption) (d.ProcessDefinition, error) {
+						cfg := services.ApplyCallOptions(opts)
+						if !cfg.WithStat && deletedPD.Contains(key) {
+							return d.ProcessDefinition{}, d.ErrNotFound
+						}
+						require.True(t, cfg.WithStat)
+						getCalls[key]++
+						active := int64(1)
+						if getCalls[key] > 2 {
+							active = 0
+						}
+						unfinished := active
+						suspended := int64(0)
+						state := states[0]
+						if key == "pd-b" {
+							state = states[1]
+						}
+						if state == d.StateSuspended {
+							suspended = active
+							active = 0
+						}
+						return d.ProcessDefinition{
+							Key:               key,
+							BpmnProcessId:     key,
+							ProcessVersion:    1,
+							ProcessVersionTag: "v1.0.0",
+							TenantId:          "<default>",
+							Statistics:        &d.ProcessDefinitionStatistics{Active: active, Suspended: suspended, SuspendedCountSupported: true, Unfinished: &unfinished},
+						}, nil
+					},
+				},
+				stubResourceAPI{
+					delete: func(_ context.Context, resourceKey string, opts ...services.CallOption) (d.ResourceDeleteResponse, error) {
+						deletedPD = append(deletedPD, resourceKey)
+						require.True(t, services.ApplyCallOptions(opts).SuppressProcessInstanceDetailLogs)
+						return d.ResourceDeleteResponse{Ok: true, StatusCode: http.StatusOK, Status: "200 OK", DeleteHistory: true}, nil
+					},
+				},
+			).PurgeAllProcessDefinitions(context.Background(), d.AllProcessDefinitionsPurgeRequest{
+				Force:   true,
+				Workers: 1,
+				Progress: func(event d.OpsProgressEvent) {
+					events = append(events, event)
+				},
+			})
 
-	require.NoError(t, err)
-	require.Equal(t, []string{"pi-root"}, cancelled)
-	require.Equal(t, []string{"pi-root"}, deletedPI)
-	require.Equal(t, typex.Keys{"pd-a", "pd-b"}, deletedPD)
-	require.EqualValues(t, 2, got.DeletePlan.ActiveProcessInstanceCount)
-	require.EqualValues(t, 3, got.DeletePlan.AffectedProcessInstanceCount)
-	require.Equal(t, d.AllProcessDefinitionsPurgeOutcomeDeleted, got.Outcome)
-	require.Equal(t, []string{
-		"stage:cancel",
-		"completion:cancel:pi-root",
-		"stage:drain process instances",
-		"stage:delete",
-		"completion:delete:pi-root",
-		"stage:delete process definitions",
-		"completion:delete process definitions:pd-a",
-		"completion:delete process definitions:pd-b",
-	}, opsMutationProgressSequence(events))
-	require.Equal(t, []d.OpsStageProgress{
-		{
-			Phase:                "cancel",
-			CoreResource:         "process-instance tree(s)",
-			Total:                opsIntPtr(1),
-			PlannedAffectedCount: opsIntPtr(3),
-		},
-		{
-			Phase: "drain process instances",
-		},
-		{
-			Phase:        "delete",
-			CoreResource: "process-instance tree(s)",
-			Total:        opsIntPtr(1),
-		},
-		{
-			Phase:        "delete process definitions",
-			CoreResource: "process definition(s)",
-			Total:        opsIntPtr(2),
-		},
-	}, opsStageProgress(events))
-	require.Equal(t, []d.OpsCompletionProgress{
-		{
-			Phase:            "cancel",
-			CoreResource:     "process-instance tree(s)",
-			Total:            1,
-			Identity:         "pi-root",
-			Disposition:      d.OpsCompletionDispositionConfirmed,
-			AffectedResource: "affected process instances",
-			AffectedCount:    opsIntPtr(3),
-		},
-	}, opsCompletionProgressByPhase(events, "cancel"))
-	require.Equal(t, []d.OpsCompletionProgress{
-		{
-			Phase:            "delete",
-			CoreResource:     "process-instance tree(s)",
-			Total:            1,
-			Identity:         "pi-root",
-			Disposition:      d.OpsCompletionDispositionConfirmed,
-			AffectedResource: "affected process instances",
-			AffectedCount:    opsIntPtr(3),
-		},
-	}, opsCompletionProgressByPhase(events, "delete"))
-	require.Equal(t, []d.OpsCompletionProgress{
-		{
-			Phase:        "delete process definitions",
-			CoreResource: "process definition(s)",
-			Total:        2,
-			Identity:     "pd-a",
-			Disposition:  d.OpsCompletionDispositionConfirmed,
-		},
-		{
-			Phase:        "delete process definitions",
-			CoreResource: "process definition(s)",
-			Total:        2,
-			Identity:     "pd-b",
-			Disposition:  d.OpsCompletionDispositionConfirmed,
-		},
-	}, opsCompletionProgressByPhase(events, "delete process definitions"))
-	require.Equal(t, []d.OpsFrozenScopeProgress{
-		{Phase: "cancelling process instances", CoreResource: "process instance(s)", Done: 0, Total: 1},
-		{Phase: "cancelling process instances", CoreResource: "process instance(s)", Done: 1, Total: 1},
-		{Phase: "deleting process instances", CoreResource: "process instance(s)", Done: 0, Total: 1},
-		{Phase: "deleting process instances", CoreResource: "process instance(s)", Done: 1, Total: 1},
-	}, opsFrozenScopeProgress(events))
+			require.NoError(t, err)
+			require.Equal(t, []string{"pi-root"}, cancelled)
+			require.Equal(t, []string{"pi-root"}, deletedPI)
+			require.Equal(t, typex.Keys{"pd-a", "pd-b"}, deletedPD)
+			activeCount := int64(0)
+			for _, state := range states {
+				if state == d.StateActive {
+					activeCount++
+				}
+			}
+			require.Equal(t, activeCount, got.DeletePlan.ActiveProcessInstanceCount)
+			require.Equal(t, 2-activeCount, got.DeletePlan.SuspendedProcessInstanceCount)
+			require.EqualValues(t, 2, got.DeletePlan.UnfinishedProcessInstanceCount)
+			require.True(t, got.DeletePlan.SuspendedCountSupported)
+			require.EqualValues(t, 3, got.DeletePlan.AffectedProcessInstanceCount)
+			require.Equal(t, d.AllProcessDefinitionsPurgeOutcomeDeleted, got.Outcome)
+			require.Equal(t, []string{
+				"stage:cancel",
+				"completion:cancel:pi-root",
+				"stage:drain process instances",
+				"stage:delete",
+				"completion:delete:pi-root",
+				"stage:delete process definitions",
+				"completion:delete process definitions:pd-a",
+				"completion:delete process definitions:pd-b",
+			}, opsMutationProgressSequence(events))
+			require.Equal(t, []d.OpsStageProgress{
+				{
+					Phase:                "cancel",
+					CoreResource:         "process-instance tree(s)",
+					Total:                opsIntPtr(1),
+					PlannedAffectedCount: opsIntPtr(3),
+				},
+				{
+					Phase: "drain process instances",
+				},
+				{
+					Phase:        "delete",
+					CoreResource: "process-instance tree(s)",
+					Total:        opsIntPtr(1),
+				},
+				{
+					Phase:        "delete process definitions",
+					CoreResource: "process definition(s)",
+					Total:        opsIntPtr(2),
+				},
+			}, opsStageProgress(events))
+			require.Equal(t, []d.OpsCompletionProgress{
+				{
+					Phase:            "cancel",
+					CoreResource:     "process-instance tree(s)",
+					Total:            1,
+					Identity:         "pi-root",
+					Disposition:      d.OpsCompletionDispositionConfirmed,
+					AffectedResource: "affected process instances",
+					AffectedCount:    opsIntPtr(3),
+				},
+			}, opsCompletionProgressByPhase(events, "cancel"))
+			require.Equal(t, []d.OpsCompletionProgress{
+				{
+					Phase:            "delete",
+					CoreResource:     "process-instance tree(s)",
+					Total:            1,
+					Identity:         "pi-root",
+					Disposition:      d.OpsCompletionDispositionConfirmed,
+					AffectedResource: "affected process instances",
+					AffectedCount:    opsIntPtr(3),
+				},
+			}, opsCompletionProgressByPhase(events, "delete"))
+			require.Equal(t, []d.OpsCompletionProgress{
+				{
+					Phase:        "delete process definitions",
+					CoreResource: "process definition(s)",
+					Total:        2,
+					Identity:     "pd-a",
+					Disposition:  d.OpsCompletionDispositionConfirmed,
+				},
+				{
+					Phase:        "delete process definitions",
+					CoreResource: "process definition(s)",
+					Total:        2,
+					Identity:     "pd-b",
+					Disposition:  d.OpsCompletionDispositionConfirmed,
+				},
+			}, opsCompletionProgressByPhase(events, "delete process definitions"))
+			require.Equal(t, []d.OpsFrozenScopeProgress{
+				{Phase: "cancelling process instances", CoreResource: "process instance(s)", Done: 0, Total: 1},
+				{Phase: "cancelling process instances", CoreResource: "process instance(s)", Done: 1, Total: 1},
+				{Phase: "deleting process instances", CoreResource: "process instance(s)", Done: 0, Total: 1},
+				{Phase: "deleting process instances", CoreResource: "process instance(s)", Done: 1, Total: 1},
+			}, opsFrozenScopeProgress(events))
+		})
+	}
 }
 
 // TestPurgeAllProcessDefinitionsForceCleanupWithoutActiveInstancesEntersDefinitionStageOnly
@@ -1374,4 +1399,78 @@ func (s stubResourceAPI) Delete(ctx context.Context, resourceKey string, opts ..
 		panic("unexpected Delete call")
 	}
 	return s.delete(ctx, resourceKey, opts...)
+}
+
+// TestPurgeAllProcessDefinitionsUnfinishedPreflight proves that suspended and
+// transition observations block at purge preflight even when active is zero.
+func TestPurgeAllProcessDefinitionsUnfinishedPreflight(t *testing.T) {
+	for _, population := range []struct {
+		name                     string
+		active, suspended, union int64
+	}{
+		{"suspended", 0, 3, 3}, {"mixed", 2, 3, 5}, {"transition", 0, 0, 1},
+	} {
+		for _, dry := range []bool{false, true} {
+			t.Run(fmt.Sprintf("%s/dry=%t", population.name, dry), func(t *testing.T) {
+				got, err := NewWithProcessDefinitionPurge(stubProcessInstanceAPI{}, nil, stubProcessDefinitionAPI{
+					getProcessDefinition: func(_ context.Context, key string, opts ...services.CallOption) (d.ProcessDefinition, error) {
+						require.True(t, services.ApplyCallOptions(opts).WithStat)
+						return d.ProcessDefinition{Key: key, Statistics: &d.ProcessDefinitionStatistics{Active: population.active, Suspended: population.suspended, SuspendedCountSupported: true, Unfinished: &population.union}}, nil
+					},
+				}, stubResourceAPI{delete: func(context.Context, string, ...services.CallOption) (d.ResourceDeleteResponse, error) {
+					t.Fatal("preflight must not mutate")
+					return d.ResourceDeleteResponse{}, nil
+				}}).PurgeAllProcessDefinitions(context.Background(), d.AllProcessDefinitionsPurgeRequest{DryRun: dry, DiscoveredCandidateProcessDefinitionKeys: typex.Keys{"pd-a"}})
+				if dry {
+					require.NoError(t, err)
+				} else {
+					require.ErrorIs(t, err, d.ErrPrecondition)
+					require.Equal(t, d.OpsWorkflowStepStatusBlocked, got.Deletion.Status)
+				}
+				require.True(t, got.DeletePlan.RequiresForce)
+				require.Equal(t, population.union, got.DeletePlan.AffectedProcessInstanceCount)
+				require.Equal(t, population.active, got.DeletePlan.ActiveProcessInstanceCount)
+				require.Equal(t, population.union, got.DeletePlan.UnfinishedProcessInstanceCount)
+				require.Equal(t, population.suspended, got.DeletePlan.SuspendedProcessInstanceCount)
+				require.True(t, got.DeletePlan.SuspendedCountSupported)
+				require.Equal(t, got.DeletePlan, got.Report.DeletePlan)
+				require.False(t, got.Deletion.Submitted)
+			})
+		}
+	}
+}
+
+// TestPurgeAllProcessDefinitionsSuspendedSupport requires complete supported
+// observations, never an empty/skipped or partly unavailable aggregate.
+func TestPurgeAllProcessDefinitionsSuspendedSupport(t *testing.T) {
+	for _, scenario := range []string{"supported zero", "unsupported", "mixed support", "skipped", "failed read"} {
+		t.Run(scenario, func(t *testing.T) {
+			opts := []services.CallOption{}
+			if scenario == "skipped" {
+				opts = append(opts, services.WithNoStateCheck())
+			}
+			got, err := NewWithProcessDefinitionPurge(stubProcessInstanceAPI{}, nil, stubProcessDefinitionAPI{
+				getProcessDefinition: func(_ context.Context, key string, _ ...services.CallOption) (d.ProcessDefinition, error) {
+					require.NotEqual(t, "skipped", scenario)
+					if scenario == "failed read" && key == "pd-b" {
+						return d.ProcessDefinition{}, d.ErrUnavailable
+					}
+					zero := int64(0)
+					stats := &d.ProcessDefinitionStatistics{SuspendedCountSupported: true, Unfinished: &zero}
+					if scenario == "unsupported" || (scenario == "mixed support" && key == "pd-b") {
+						stats = &d.ProcessDefinitionStatistics{}
+					}
+					return d.ProcessDefinition{Key: key, Statistics: stats}, nil
+				},
+			}, stubResourceAPI{}).PurgeAllProcessDefinitions(context.Background(), d.AllProcessDefinitionsPurgeRequest{DryRun: true, Workers: 1, DiscoveredCandidateProcessDefinitionKeys: typex.Keys{"pd-a", "pd-b"}}, opts...)
+			if scenario == "failed read" {
+				require.ErrorIs(t, err, d.ErrUnavailable)
+			} else {
+				require.NoError(t, err)
+			}
+			require.Equal(t, scenario == "supported zero", got.DeletePlan.SuspendedCountSupported)
+			require.Zero(t, got.DeletePlan.UnfinishedProcessInstanceCount)
+			require.False(t, got.DeletePlan.RequiresForce)
+		})
+	}
 }

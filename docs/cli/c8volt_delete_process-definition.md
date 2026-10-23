@@ -12,9 +12,11 @@ Delete process definition resources
 
 Delete process definition resources from Camunda 8.9 or newer.
 
-Before mutation, c8volt checks active-instance impact, required cancellation roots, affected instance families, and batch-operation read access. With --force, it cancels root instances, deletes affected instance history, then deletes the definition and remaining associated history.
+Before mutation, c8volt checks unfinished-instance impact (ACTIVE and SUSPENDED on Camunda 8.10; ACTIVE on older versions), required cancellation roots, affected instance families, and batch-operation read access. With --force, it cancels root instances, verifies that no unfinished instances remain, deletes affected instance history, then deletes the definition and remaining associated history.
 
 Camunda 8.10 can defer history deletion without returning a batch operation. Unless --no-wait is set, c8volt waits for a returned batch to complete and for the definition to disappear. Without a returned batch, definition disappearance is confirmed, but completion of all associated history deletion is not independently verified.
+
+--no-wait skips final deletion confirmation, but still verifies unfinished work has drained before dependent history deletion. --no-state-check skips impact reads and automatic cancellation, retaining the existing backend-enforced bypass.
 
 --tenant limits BPMN selector discovery. An empty tenant or --all-tenants leaves discovery unfiltered across accessible tenants. Explicit --key and stdin keys use backend authorization without tenant filtering. A --bpmn-process-id selector must match visible definitions before impact planning.
 
@@ -46,12 +48,12 @@ c8volt delete process-definition [flags]
   -b, --bpmn-process-id string   BPMN process ID of the process definition (all versions) to delete
       --dry-run                  preview process-definition delete impact without submitting deletion or cancellation requests
       --fail-fast                stop scheduling new instances after the first error
-      --force                    force cancellation of the process instance(s), prior to deletion
+      --force                    cancel unfinished process-instance roots before deleting history and definitions
   -h, --help                     help for process-definition
   -k, --key strings              process definition key(s) to delete
       --latest                   fetch the latest version(s) of the given BPMN process(s)
       --no-state-check           skip checking process-instance state before deleting
-      --no-wait                  return after deletion work is accepted
+      --no-wait                  skip final deletion confirmation; required unfinished-instance drain checks still run
       --no-worker-limit          use all queued jobs as workers when --workers is unset
       --pd-version int32         process definition version
       --pd-version-tag string    process definition version tag

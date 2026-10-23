@@ -1042,9 +1042,15 @@ type AllProcessDefinitionsPurgeDeletePlan struct {
 	DuplicateCandidateProcessDefinitionKeys typex.Keys                                 `json:"duplicateCandidateProcessDefinitionKeys,omitempty"`
 	AffectedProcessInstanceCount            int64                                      `json:"affectedProcessInstanceCount,omitempty"`
 	ActiveProcessInstanceCount              int64                                      `json:"activeProcessInstanceCount,omitempty"`
-	RequiresConfirmation                    bool                                       `json:"requiresConfirmation,omitempty"`
-	RequiresForce                           bool                                       `json:"requiresForce,omitempty"`
-	Errors                                  []string                                   `json:"errors,omitempty"`
+	// SuspendedProcessInstanceCount is the separately observed suspended bucket.
+	SuspendedProcessInstanceCount int64 `json:"suspendedProcessInstanceCount,omitempty"`
+	// SuspendedCountSupported requires complete supported observations across the plan.
+	SuspendedCountSupported bool `json:"suspendedCountSupported,omitempty"`
+	// UnfinishedProcessInstanceCount is authoritative cleanup evidence, independent of display buckets.
+	UnfinishedProcessInstanceCount int64    `json:"unfinishedProcessInstanceCount,omitempty"`
+	RequiresConfirmation           bool     `json:"requiresConfirmation,omitempty"`
+	RequiresForce                  bool     `json:"requiresForce,omitempty"`
+	Errors                         []string `json:"errors,omitempty"`
 }
 
 // AllProcessDefinitionsPurgeDeletionResult captures mutation submission and confirmation output.

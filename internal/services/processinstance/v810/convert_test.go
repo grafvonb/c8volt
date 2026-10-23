@@ -42,3 +42,29 @@ func TestConvertProcessInstanceSuspendedDate(t *testing.T) {
 	require.Empty(t, got.SuspendedDate)
 	require.Equal(t, d.StateSuspended, got.State)
 }
+
+// TestCombinedStatePageOverflow retains capped lower-bound evidence even on a
+// short page; neither a boundary cursor nor a short capped page proves completion.
+func TestCombinedStatePageOverflow(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name   string
+		total  int64
+		capped bool
+		from   int32
+		count  int
+		want   d.ProcessInstanceOverflowState
+	}{
+		{"exact final", 3, false, 2, 1, d.ProcessInstanceOverflowStateNoMore},
+		{"exact remaining", 4, false, 2, 1, d.ProcessInstanceOverflowStateHasMore},
+		{"capped short at bound", 3, true, 2, 1, d.ProcessInstanceOverflowStateHasMore},
+		{"capped full past bound", 2, true, 2, 2, d.ProcessInstanceOverflowStateHasMore},
+		{"capped short past bound", 2, true, 2, 1, d.ProcessInstanceOverflowStateIndeterminate},
+		{"inconsistent zero", 0, false, 0, 1, d.ProcessInstanceOverflowStateIndeterminate},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			page := camundav810.SearchQueryPageResponse{TotalItems: tc.total, HasMoreTotalItems: tc.capped, EndCursor: new(camundav810.EndCursor("next"))}
+			require.Equal(t, tc.want, pickProcessInstanceOverflowState(page, d.ProcessInstancePageRequest{From: tc.from, Size: 2, After: "prev"}, tc.count))
+		})
+	}
+}

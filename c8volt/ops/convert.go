@@ -1701,6 +1701,9 @@ func fromDomainAllProcessDefinitionsPurgeDeletePlan(x d.AllProcessDefinitionsPur
 		DuplicateCandidateProcessDefinitionKeys: append(typex.Keys{}, x.DuplicateCandidateProcessDefinitionKeys...),
 		AffectedProcessInstanceCount:            x.AffectedProcessInstanceCount,
 		ActiveProcessInstanceCount:              x.ActiveProcessInstanceCount,
+		SuspendedProcessInstanceCount:           x.SuspendedProcessInstanceCount,
+		SuspendedCountSupported:                 x.SuspendedCountSupported,
+		UnfinishedProcessInstanceCount:          x.UnfinishedProcessInstanceCount,
 		RequiresConfirmation:                    x.RequiresConfirmation,
 		RequiresForce:                           x.RequiresForce,
 		Errors:                                  append([]string(nil), x.Errors...),
@@ -1945,30 +1948,38 @@ func fromDomainProcessDefinition(x d.ProcessDefinition) process.ProcessDefinitio
 	}
 }
 
+// fromDomainProcessDefinitionStatistics maps public counts without exposing internal cleanup evidence.
 func fromDomainProcessDefinitionStatistics(x *d.ProcessDefinitionStatistics) *process.ProcessDefinitionStatistics {
 	if x == nil {
 		return nil
 	}
 	return &process.ProcessDefinitionStatistics{
-		Active:                 x.Active,
-		Canceled:               x.Canceled,
-		Completed:              x.Completed,
-		Incidents:              x.Incidents,
-		IncidentCountSupported: x.IncidentCountSupported,
+		Active:                  x.Active,
+		Suspended:               x.Suspended,
+		SuspendedCountSupported: x.SuspendedCountSupported,
+		Canceled:                x.Canceled,
+		Completed:               x.Completed,
+		Incidents:               x.Incidents,
+		IncidentCountSupported:  x.IncidentCountSupported,
 	}
 }
 
+// fromDomainDeleteProcessDefinitionPlanItem copies observed cleanup evidence across the public boundary.
 func fromDomainDeleteProcessDefinitionPlanItem(x d.DeleteProcessDefinitionPlanItem) resource.DeleteProcessDefinitionPlanItem {
 	return resource.DeleteProcessDefinitionPlanItem{
-		Key:                        x.Key,
-		BpmnProcessId:              x.BpmnProcessId,
-		ProcessVersion:             x.ProcessVersion,
-		ProcessVersionTag:          x.ProcessVersionTag,
-		TenantId:                   x.TenantId,
-		ActiveProcessInstanceCount: x.ActiveProcessInstanceCount,
-		ActiveProcessInstanceKeys:  append([]string(nil), x.ActiveProcessInstanceKeys...),
-		CancellationPlan:           fromDomainDryRunPIKeyExpansion(x.CancellationPlan),
-		Warnings:                   append([]string(nil), x.Warnings...),
+		Key:                            x.Key,
+		BpmnProcessId:                  x.BpmnProcessId,
+		ProcessVersion:                 x.ProcessVersion,
+		ProcessVersionTag:              x.ProcessVersionTag,
+		TenantId:                       x.TenantId,
+		ActiveProcessInstanceCount:     x.ActiveProcessInstanceCount,
+		ActiveProcessInstanceKeys:      append([]string(nil), x.ActiveProcessInstanceKeys...),
+		SuspendedProcessInstanceCount:  x.SuspendedProcessInstanceCount,
+		SuspendedCountSupported:        x.SuspendedCountSupported,
+		UnfinishedProcessInstanceCount: x.UnfinishedProcessInstanceCount,
+		UnfinishedProcessInstanceKeys:  append([]string(nil), x.UnfinishedProcessInstanceKeys...),
+		CancellationPlan:               fromDomainDryRunPIKeyExpansion(x.CancellationPlan),
+		Warnings:                       append([]string(nil), x.Warnings...),
 	}
 }
 

@@ -13,7 +13,7 @@ Delete selected process definitions and their associated history on Camunda 8.9 
 
 Select definitions with the same filters as get process-definition, or provide explicit --key values. The workflow fixes the candidate set, validates delete impact, and requires confirmation before deletion.
 
-Active-instance impact blocks deletion unless --force is set. Forced cleanup cancels root instances, waits for active instances to drain, deletes instance history, then deletes the definitions.
+Unfinished instances block deletion unless --force is set: ACTIVE and SUSPENDED on Camunda 8.10, ACTIVE on older versions. Forced cleanup cancels root instances, waits for unfinished instances to drain, deletes instance history, then deletes the definitions. --no-wait skips final deletion confirmation, but preserves required cleanup checks.
 
 --tenant limits selector discovery; an empty tenant or --all-tenants searches across accessible tenants. Explicit keys use backend authorization without tenant filtering. --batch-size controls each discovery request; --limit caps the selected scope.
 
@@ -42,7 +42,7 @@ c8volt ops purge all-process-definitions [flags]
   -b, --bpmn-process-id string   BPMN process ID to filter candidate process definitions
       --dry-run                  discover and validate process-definition cleanup without submitting deletion requests
       --fail-fast                stop scheduling validation or deletion work after the first error
-      --force                    force cancellation of affected active process instances before deleting process definitions
+      --force                    force cancellation of affected unfinished process instances before deleting process definitions
   -h, --help                     help for all-process-definitions
   -k, --key string               process definition key to select for candidate discovery
       --latest                   only include the latest matching process-definition version(s)

@@ -173,5 +173,5 @@
 
 ## Active Speckit Plan
 <!-- SPECKIT START -->
-- Active Speckit implementation plan: `specs/341-suspended-instance-hierarchies/plan.md`
+- Active Speckit implementation plan: `specs/340-suspended-definition-cleanup/plan.md`
 <!-- SPECKIT END -->

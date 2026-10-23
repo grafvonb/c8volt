@@ -52,6 +52,7 @@ type ProcessInstanceVariableUpdateResponse struct {
 	Status     string
 }
 
+// ProcessInstanceFilter selects instances; singular and plural states are mutually exclusive.
 type ProcessInstanceFilter struct {
 	Key                  string
 	BpmnProcessId        string
@@ -63,14 +64,16 @@ type ProcessInstanceFilter struct {
 	EndDateAfter         string
 	EndDateBefore        string
 	State                State
+	States               States
 	ParentKey            string
 	HasParent            *bool
 	HasIncident          *bool
 	VariableFilters      ProcessInstanceVariableFilterSet
 }
 
+// String renders active search criteria for diagnostic logging.
 func (f ProcessInstanceFilter) String() string {
-	parts := make([]string, 0, 14)
+	parts := make([]string, 0, 15)
 	parts = toolx.AppendQuotedField(parts, "key", f.Key)
 	parts = toolx.AppendQuotedField(parts, "bpmnProcessId", f.BpmnProcessId)
 	parts = toolx.AppendInt32Field(parts, "processVersion", f.ProcessVersion)
@@ -81,6 +84,7 @@ func (f ProcessInstanceFilter) String() string {
 	parts = toolx.AppendQuotedField(parts, "endDateAfter", f.EndDateAfter)
 	parts = toolx.AppendQuotedField(parts, "endDateBefore", f.EndDateBefore)
 	parts = toolx.AppendRawField(parts, "state", f.State.String())
+	parts = toolx.AppendRawField(parts, "states", f.States.String())
 	parts = toolx.AppendQuotedField(parts, "parentKey", f.ParentKey)
 	parts = toolx.AppendBoolPtrField(parts, "hasParent", f.HasParent)
 	parts = toolx.AppendBoolPtrField(parts, "hasIncident", f.HasIncident)

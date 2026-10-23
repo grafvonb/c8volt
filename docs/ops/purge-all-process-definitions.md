@@ -10,7 +10,7 @@ has_toc: true
 
 ## Purpose
 
-Deleting process definitions is not just resource cleanup. `c8volt ops purge all-process-definitions` discovers candidate versions, plans process-instance impact, blocks active impact unless forced, then deletes selected definitions with an audit report.
+Deleting process definitions is not just resource cleanup. `c8volt ops purge all-process-definitions` discovers candidate versions, plans process-instance impact, blocks unfinished impact unless forced, then deletes selected definitions with an audit report.
 
 ## In Action
 
@@ -19,7 +19,7 @@ Deleting process definitions is not just resource cleanup. `c8volt ops purge all
 ## Use When
 
 - process-definition versions should be removed after impact planning
-- active process-instance impact must be visible before mutation
+- active and suspended process-instance impact must be visible before mutation
 - Camunda 8.9+ deletion behavior should be driven by one audited workflow
 
 ## Basic Usage
@@ -54,4 +54,9 @@ A named tenant limits discovery. An empty tenant or `--all-tenants` searches acr
 
 ## Forced Cleanup
 
-With `--force`, cleanup cancels root process instances, waits for active instances to drain, deletes process-instance histories, and then deletes process definitions.
+With `--force`, cleanup cancels root process instances, waits for unfinished instances to drain, deletes process-instance histories, and then deletes process definitions.
+On Camunda 8.10, unfinished work includes ACTIVE and SUSPENDED instances. Earlier supported versions retain ACTIVE-only cleanup. Counts for active instances keep their original meaning; previews and audit reports add suspended counts with availability and an authoritative unfinished count. Expanded affected families can include instances outside the selected definitions and are deduplicated by key.
+
+`--no-wait` skips final deletion confirmation, while required unfinished-work verification still runs before history and definition deletion. Failed cancellation or verification prevents dependent deletion. Additional unfinished work does not expand the confirmed cancellation scope. Purge has no state-check bypass flag. These observations do not prevent new starts or eliminate exporter lag.
+
+Failures retain partial results in a single JSON envelope or the audit report; normal and verbose diagnostics use a compact aggregate. HTTP diagnostics remain available only at DEBUG with existing redaction.
