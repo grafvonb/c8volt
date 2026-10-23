@@ -406,6 +406,10 @@ func validateExample(t *testing.T, example cliExample, seed exampleSeedData, hav
 	record.ExecutionMode = mode
 	if !runnable {
 		record.FailureReason = mode
+		if mode == exampleExpectationFixtureRequired {
+			record.Outcome = "blocked"
+			record.FailureClass = "harness_setup"
+		}
 		return record
 	}
 
@@ -550,58 +554,6 @@ func exampleCommandArgs(command string) ([]string, error) {
 		return nil, fmt.Errorf("example does not start with c8volt: %s", command)
 	}
 	return append([]string(nil), fields[1:]...), nil
-}
-
-func exampleExecutionMode(args []string, commandPath string, destructive bool, haveSeed bool) (string, bool) {
-	if len(args) == 0 {
-		return "empty command", false
-	}
-	if isLocalOnlyExample(commandPath, args) {
-		return "local", true
-	}
-	if !haveSeed && requiresDisposableProfile(commandPath) {
-		return "requires selected disposable profile", false
-	}
-	if destructive {
-		if !haveSeed {
-			return "requires selected disposable profile", false
-		}
-		if hasArg(args, "--dry-run") || hasArg(args, "--help") {
-			return "disposable-dry-run", true
-		}
-		return "mutating example requires a dedicated disposable scenario before execution", false
-	}
-	if requiresDisposableProfile(commandPath) {
-		if !haveSeed {
-			return "requires selected disposable profile", false
-		}
-		return "disposable-profile", true
-	}
-	return "local", true
-}
-
-func isLocalOnlyExample(commandPath string, args []string) bool {
-	if hasArg(args, "--help") {
-		return true
-	}
-	switch commandPath {
-	case "version", "capabilities", "config template", "embed list":
-		return true
-	default:
-		return false
-	}
-}
-
-func requiresDisposableProfile(commandPath string) bool {
-	if commandPath == "" {
-		return true
-	}
-	switch commandPath {
-	case "version", "capabilities", "config template", "embed list":
-		return false
-	default:
-		return true
-	}
 }
 
 func resolveExampleCommandPath(args []string) string {
@@ -792,15 +744,6 @@ func hasExplicitProfileArg(args []string) bool {
 	return false
 }
 
-func hasArg(args []string, want string) bool {
-	for _, arg := range args {
-		if arg == want || strings.HasPrefix(arg, want+"=") {
-			return true
-		}
-	}
-	return false
-}
-
 func unresolvedPlaceholders(command string) []string {
 	matches := regexp.MustCompile(`<[^>]+>`).FindAllString(command, -1)
 	return copyNonEmptyStrings(matches)
@@ -860,6 +803,9 @@ func hasDisposableTargetExecution(records []exampleValidationRecord) bool {
 func exampleNonExecutionAllowed(record exampleValidationRecord) bool {
 	reason := strings.ToLower(record.FailureReason)
 	switch {
+	case record.CommandPath == "expect process-instance" && record.Outcome == "blocked" &&
+		record.FailureClass == "harness_setup" && record.FailureReason == exampleExpectationFixtureRequired:
+		return true
 	case strings.Contains(reason, "pipeline examples are recorded"):
 		return true
 	case strings.Contains(reason, "stdin-producing shell examples are recorded"):

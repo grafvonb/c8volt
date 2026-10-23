@@ -278,6 +278,11 @@ A successful invocation means its executed tests passed; skipped optional
 scenarios and missing tenant infrastructure do not constitute coverage.
 The job retry-update validation scenario covers only its supplied flags; it
 does not establish successful bulk job completion.
+Expectation examples run only when their requested state and incident conditions
+match the active, incident-free user-task fixture. Expectations requiring
+suspension, completion, cancellation, deletion, or an incident are recorded as
+blocked setup rather than executed as independent waits. Earlier documentation
+examples are not executed as prerequisite mutation steps.
 Tenant roles remain optional unless explicitly required with
 `C8VOLT_IT_REQUIRE_TENANTS`. Existing real-state prerequisite-gap documentation
 and focused scenario reports remain available.
