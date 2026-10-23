@@ -5,6 +5,8 @@ Started: 2026-10-23T08:10:21Z
 
 ## Codebase Patterns
 
+- `cmd/ops_purge_all_processdefinitions_unfinished_test.go` reuses the definition-delete terminal runner, now selecting either command. All fixtures are test-owned HTTP servers. The matrix checks configured/inherited destinations, plain/JSON log formats, severity/cardinality, normal/verbose/quiet, DEBUG flag/configuration, JSON EOF/partial results, and exit codes. Sparse union discovery, late unfinished evidence, mandatory drain under no-wait, and actual terminal confirmation/abort are exercised through purge.
+
 - Definition-delete presentation now lives in `cmd/cmd_views_resource.go`; command construction/dispatch remains in `cmd/delete_processdefinition.go`, and lifecycle/progress remains in its existing focused progress file. No new command mode or mutation engine was added.
 - `cmd/delete_processdefinition_unfinished_test.go` uses the existing terminal runner and HTTP fake conventions. Its configured/inherited writer matrix parses every plain/structured log record, checks error severity/cardinality and JSON EOF, and proves raw-error/direct-stderr regressions fail. The sparse suspended-force fixture exercises the full CLI → facade → v810 path without live services.
 
@@ -15,6 +17,9 @@ Started: 2026-10-23T08:10:21Z
 - v810 search decoding retains whether `totalItems` was present and nonnegative; missing/null totals are not exact zero. The page mapper preserves advancing sparse continuation, distinguishes capped lower bounds from exact totals, and leaves unresolved metadata indeterminate.
 
 ## Decisions
+
+- T004 is complete. Purge reuses T003's definition workflow without new discovery/cancellation mechanics. Aggregate suspended/support/unfinished fields map mechanically through the facade and report, preserving schema v1. Known family/unfinished keys are deduplicated before fallback counting; direct unfinished counts remain distinct from expanded family scope.
+- Purge failures now render partial results in exactly one failure envelope and exit with the original error class. Human failures use one bounded aggregate through the configured logger, with a useful force blocker or confirmation/report failure reason. Progress counts failed completions but emits no per-key failure diagnostic; existing DEBUG transport logging/redaction stays authoritative. Report artifacts and machine errors retain backend evidence.
 
 - T003 is complete (US1 definition milestone). Checked plans carry separate active/suspended buckets/support and authoritative unfinished counts/unique keys. Active accessors retain their meaning; unfinished accessors use max(observed count, discovered key count). Both resource and ops item converters copy additions; resource totals require complete supported observations before claiming suspended support.
 - Definition deletion now uses unfinished evidence for no-force blockers, force expansion, root deduplication and required drain checks. Only `ErrUnsupported` from pure suspension capability validation selects the older ACTIVE filter. Cancellation/history operations are unchanged. No-wait retains mandatory drain; no-state-check retains read-free impact planning and its existing bypass. Newly observed work is never appended to cancellation.
@@ -27,7 +32,10 @@ Started: 2026-10-23T08:10:21Z
 
 ## Gotchas
 
-- Purge’s own aggregate `RequiresForce`, fallback counts/keys, progress and reports are still active-only until T004. T003 updated only its duplicated item conversion and two old test-fixture details (pure capability, explicit NoMore). Do not claim purge acceptance complete yet.
+- Terminal confirmation formatting splits the final question onto a new line. Match that actual plain-text prompt in terminal exchanges; the unformatted single-line construction string will time out.
+- Purge advertises human/JSON modes, not a keys payload. Its existing `--keys-only` behavior leaves stdout empty and suppresses progress but retains human result logs on stderr unless quiet. T004 preserves this behavior, checks zero-byte stdout and quiet/machine precedence, and does not introduce a new keys contract. Empty scope still skips confirmation/mutation and reports planned/no changes, including no-wait.
+
+- T004 completes purge integration. Its aggregate `RequiresForce`, fallback counts/keys, progress and reports now use unfinished evidence; active totals remain active-only. Unsupported, skipped, failed, or partial observations do not claim complete suspended support.
 - Existing older resource/ops fixtures now explicitly return `ErrUnsupported` for suspension capability. New suspended tests use domain service stubs directly: public statistics intentionally cannot carry internal `Unfinished`, and the old resource test adapter must not fabricate it by summing buckets.
 - The CLI’s existing no-match definition selector remains an error, not a newly introduced successful empty scope. Empty *instance workload* still permits explicit definition deletion and its normal confirmation. Tests distinguish this from dry-run/no-work mutation claims; no selector/no-op contract was redesigned.
 
@@ -39,6 +47,13 @@ Started: 2026-10-23T08:10:21Z
 - A capped total is strictly a lower bound. An empty response at that bound cannot prove completion; fresh continuation is retained, otherwise it is indeterminate. A final empty response beyond the bound can complete. The legacy v810 final-empty fixture now uses From=10001 for a capped total of 10000. Short nonempty capped pages beyond the bound remain indeterminate.
 
 ## Reusable Commands
+
+T004 final checks (via the existing `/tmp/c8volt-340-isolated-test.py` environment-clearing wrapper):
+
+- `go test ./internal/services/ops ./c8volt/ops -run 'TestPurgeAllProcessDefinitions|TestClientPurgeAllProcessDefinitions' -race -count=1`
+- `go test ./cmd -run '^TestOpsPurgeAllProcessDefinitions|^TestDeleteProcessDefinition(Unfinished|Suspended)|^TestOps.*SemanticProgressModeGate$' -count=1`
+- `make docs-content` with inherited application/test/Go/Make flags cleared, targeted gofmt, and `git diff --check`.
+- Temporary direct-stderr and raw-aggregate mutations each failed `TestOpsPurgeAllProcessDefinitionsUnfinishedDiagnosticLogging/plain-time/normal` behavior assertions and were restored. The raw mutation must retain existing imports/use to avoid confusing compile failure with behavioral detection.
 
 T003 final checks (all through `/tmp/c8volt-340-isolated-test.py`, with inherited application/live flags cleared):
 
@@ -67,4 +82,4 @@ Use the environment-clearing `isolated_go_test` wrapper from `quickstart.md`; th
 
 ## Current Handoff
 
-- Next dependency-ready work is T004 (US2, Phase 4): adapt purge’s aggregate unfinished gates, counts/support, fallback keys, reports, progress and command preflight to the completed shared definition workflow. Recheck selection against `tasks.md`; T001–T003 are complete and no blocking prerequisite is known. T005 remains pending in the preferred order. Preserve isolated-only validation and the existing read-command diagnostic follow-up noted above.
+- Next dependency-ready work is T005 (US3, Phase 5): complete compact suspended statistics and watch projection/change detection, including support transitions, tests and documentation. Recheck selection against `tasks.md`; T001–T004 are complete with no known blocking prerequisite. Preserve isolated-only validation and the pre-existing definition-read diagnostic follow-up above. No real-engine behavior was validated.

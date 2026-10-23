@@ -1135,6 +1135,9 @@ func TestClientPurgeAllProcessDefinitionsMapsServiceBoundary(t *testing.T) {
 				DuplicateCandidateProcessDefinitionKeys: typex.Keys{"pd-a"},
 				AffectedProcessInstanceCount:            2,
 				ActiveProcessInstanceCount:              2,
+				SuspendedProcessInstanceCount:           3,
+				SuspendedCountSupported:                 true,
+				UnfinishedProcessInstanceCount:          5,
 				RequiresConfirmation:                    true,
 				RequiresForce:                           true,
 			}
@@ -1245,6 +1248,10 @@ func TestClientPurgeAllProcessDefinitionsMapsServiceBoundary(t *testing.T) {
 	require.Equal(t, "pd-a", got.Discovery.Notices[0].Details["processDefinitionKey"])
 	require.Equal(t, []string{"pd-a"}, []string(got.DeletePlan.CandidateProcessDefinitionKeys))
 	require.EqualValues(t, 2, got.DeletePlan.ActiveProcessInstanceCount)
+	require.EqualValues(t, 3, got.DeletePlan.SuspendedProcessInstanceCount)
+	require.True(t, got.DeletePlan.SuspendedCountSupported)
+	require.EqualValues(t, 5, got.DeletePlan.UnfinishedProcessInstanceCount)
+	require.Equal(t, got.DeletePlan, got.Report.DeletePlan)
 	require.Equal(t, process.TenantEvidence{
 		ResolvedTenantIDs: []string{"tenant-a"},
 		TargetCount:       2,

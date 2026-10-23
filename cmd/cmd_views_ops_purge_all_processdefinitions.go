@@ -5,9 +5,11 @@ package cmd
 
 import (
 	"fmt"
+	"log/slog"
 	"sort"
 	"strings"
 
+	"github.com/grafvonb/c8volt/c8volt/ferrors"
 	"github.com/grafvonb/c8volt/c8volt/ops"
 	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/spf13/cobra"
@@ -82,14 +84,18 @@ func renderOpsPurgeAllProcessDefinitionsPlan(cmd *cobra.Command, result ops.AllP
 		len(result.DeletePlan.CandidateProcessDefinitionKeys),
 		result.DeletePlan.AffectedProcessInstanceCount,
 	)
+	if result.DeletePlan.SuspendedCountSupported || result.DeletePlan.UnfinishedProcessInstanceCount > 0 {
+		renderHumanLine(cmd, "unfinished workload: %s", opsPurgeAllProcessDefinitionsUnfinishedSummary(result.DeletePlan))
+	}
 	if result.DeletePlan.RequiresForce {
-		renderHumanLine(cmd, "active-instance blocker: %d active process instances require --force before deletion", result.DeletePlan.ActiveProcessInstanceCount)
+		renderHumanLine(cmd, "unfinished-instance blocker: %s require --force before deletion", opsPurgeAllProcessDefinitionsUnfinishedSummary(result.DeletePlan))
 	}
 	if flagVerbose {
 		renderOpsPurgeAllProcessDefinitionsKeys(cmd, "planned candidate process-definition keys", result.DeletePlan.CandidateProcessDefinitionKeys)
 	}
 }
 
+// renderOpsPurgeAllProcessDefinitionsDryRunDeletePreview describes scope without claiming submission.
 func renderOpsPurgeAllProcessDefinitionsDryRunDeletePreview(cmd *cobra.Command, result ops.AllProcessDefinitionsPurgeResult) {
 	if result.DeletePlan.Status == ops.WorkflowStepStatusSkipped {
 		renderHumanLine(cmd, "delete preview: skipped (no matching process definitions)")
@@ -99,8 +105,11 @@ func renderOpsPurgeAllProcessDefinitionsDryRunDeletePreview(cmd *cobra.Command, 
 		len(result.DeletePlan.CandidateProcessDefinitionKeys),
 		result.DeletePlan.AffectedProcessInstanceCount,
 	)
+	if result.DeletePlan.SuspendedCountSupported || result.DeletePlan.UnfinishedProcessInstanceCount > 0 {
+		renderHumanLine(cmd, "unfinished workload: %s", opsPurgeAllProcessDefinitionsUnfinishedSummary(result.DeletePlan))
+	}
 	if result.DeletePlan.RequiresForce {
-		renderHumanLine(cmd, "active-instance blocker: %d active process instances require --force before deletion", result.DeletePlan.ActiveProcessInstanceCount)
+		renderHumanLine(cmd, "unfinished-instance blocker: %s require --force before deletion", opsPurgeAllProcessDefinitionsUnfinishedSummary(result.DeletePlan))
 	}
 	if flagVerbose {
 		renderOpsPurgeAllProcessDefinitionsKeys(cmd, "planned candidate process-definition keys", result.DeletePlan.CandidateProcessDefinitionKeys)
@@ -249,14 +258,54 @@ func allProcessDefinitionsPurgeVersionText(definition process.ProcessDefinition)
 	return version
 }
 
+// allProcessDefinitionsPurgeAffectedCountByProcessDefinitionKey uses unfinished fallback when family evidence is absent.
 func allProcessDefinitionsPurgeAffectedCountByProcessDefinitionKey(plan ops.AllProcessDefinitionsPurgeDeletePlan) map[string]int64 {
 	impact := make(map[string]int64, len(plan.Items))
 	for _, item := range plan.Items {
 		affected := int64(len(item.CancellationPlan.Collected.Unique()))
-		if active := item.ActiveProcessInstances(); active > affected {
-			affected = active
+		if unfinished := item.UnfinishedProcessInstances(); unfinished > affected {
+			affected = unfinished
 		}
 		impact[item.Key] = affected
 	}
 	return impact
+}
+
+// opsPurgeAllProcessDefinitionsUnfinishedSummary preserves separate observed buckets.
+func opsPurgeAllProcessDefinitionsUnfinishedSummary(plan ops.AllProcessDefinitionsPurgeDeletePlan) string {
+	summary := fmt.Sprintf("%d unfinished process instance(s)", plan.UnfinishedProcessInstanceCount)
+	if plan.SuspendedCountSupported {
+		summary += fmt.Sprintf(" (active %d, suspended %d)", plan.ActiveProcessInstanceCount, plan.SuspendedProcessInstanceCount)
+	}
+	return summary
+}
+
+// renderOpsPurgeAllProcessDefinitionsFailure preserves partial machine evidence
+// while emitting a single bounded diagnostic through the configured logger.
+func renderOpsPurgeAllProcessDefinitionsFailure(cmd *cobra.Command, log *slog.Logger, result ops.AllProcessDefinitionsPurgeResult, err error, reportFailed bool) error {
+	if commandUsesSharedEnvelope(cmd, pickMode()) {
+		envelope := resultEnvelopeForError(cmd, err)
+		envelope.Payload = result
+		return renderResultEnvelope(cmd, envelope)
+	}
+	suffix := ""
+	if reportFailed {
+		suffix = "; audit report could not be written"
+	}
+	if result.Deletion.Status == ops.WorkflowStepStatusConfirmationFailed {
+		log.Error("process-definition purge confirmation declined or unavailable; no delete request was submitted" + suffix)
+		return nil
+	}
+	if result.DeletePlan.RequiresForce && result.Deletion.Status == ops.WorkflowStepStatusBlocked {
+		log.Error(fmt.Sprintf("refusing process-definition purge: %s require --force; no delete request was submitted", opsPurgeAllProcessDefinitionsUnfinishedSummary(result.DeletePlan)) + suffix)
+		return nil
+	}
+	accepted := 0
+	for _, item := range result.Deletion.Items {
+		if item.Ok {
+			accepted++
+		}
+	}
+	log.Error(fmt.Sprintf("process-definition purge: selected %d, accepted %d; outcome unconfirmed; %s", len(result.Discovery.CandidateProcessDefinitionKeys), accepted, strings.ReplaceAll(string(ferrors.Classify(err)), "_", " ")) + suffix)
+	return nil
 }

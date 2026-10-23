@@ -156,7 +156,10 @@ func (p *opsPurgeAllProcessDefinitionsProgress) Report(event ops.ProgressEvent) 
 		}
 	case ops.ProgressEventKindCompletion:
 		if event.Completion != nil {
-			p.ingestCompletionLocked(*event.Completion)
+			completion := *event.Completion
+			// The final aggregate owns failure diagnostics; raw per-key chains stay in machine evidence.
+			completion.FailureDetail = ""
+			p.ingestCompletionLocked(completion)
 		}
 	}
 }
@@ -288,18 +291,17 @@ func (p *opsPurgeAllProcessDefinitionsProgress) ingestCompletionLocked(completio
 	if p.currentPhase == phase {
 		p.updateActivityLocked(line)
 	}
+	// Failed completions feed counters only; the final result owns the diagnostic.
+	if completion.Disposition == ops.CompletionDispositionFailed {
+		return
+	}
 	if p.policy.VerboseItems {
-		p.printDurableLineLocked(formatOpsPurgeAllProcessDefinitionsStageCompletion(*record, completion), p.policy.FailureWarnings && completion.Disposition == ops.CompletionDispositionFailed)
+		p.printDurableLineLocked(formatOpsPurgeAllProcessDefinitionsStageCompletion(*record, completion), false)
 		p.durableActivated = true
 		record.Dirty = false
 		return
 	}
-	if p.policy.FailureWarnings && completion.Disposition == ops.CompletionDispositionFailed {
-		p.printDurableLineLocked(formatOpsPurgeAllProcessDefinitionsStageCompletion(*record, completion), true)
-		p.durableActivated = true
-		record.Dirty = false
-		return
-	}
+
 	if p.policy.PacedAggregate && record.Dirty {
 		p.startMutationClockLocked()
 		now := p.now()
@@ -322,13 +324,8 @@ func (p *opsPurgeAllProcessDefinitionsProgress) updateActivityLocked(line string
 	logging.UpdateActivityWithImportance(opsPurgeAllProcessDefinitionsProgressCommandContext(p.cmd), line, logging.ActivityImportanceWorkflow)
 }
 
-// printDurableLineLocked mirrors the shared semantic reporter's quiet failure
-// behavior while keeping stage rendering APD-specific.
+// printDurableLineLocked routes functional progress through the configured logger.
 func (p *opsPurgeAllProcessDefinitionsProgress) printDurableLineLocked(line string, warn bool) {
-	if p.policy.Channel.Mode == ops.ProgressModeQuiet && warn {
-		printOpsDurableLineDirect(p.cmd, line)
-		return
-	}
 	printOpsDurableLine(p.cmd, line, warn)
 }
 
@@ -348,7 +345,7 @@ func opsPurgeAllProcessDefinitionsStageScope(stage ops.StageProgress) (opsSemant
 			FailedVerb:                "failed",
 		}, "", true
 	case opsPurgeAllProcessDefinitionsDrainPhase:
-		return opsSemanticProgressScope{}, "waiting for active process instances to drain", true
+		return opsSemanticProgressScope{}, "waiting for unfinished process instances to drain", true
 	case opsPurgeAllProcessDefinitionsHistoryDeletePhase:
 		return opsSemanticProgressScope{
 			Phase:                     opsPurgeAllProcessDefinitionsHistoryDeletePhase,

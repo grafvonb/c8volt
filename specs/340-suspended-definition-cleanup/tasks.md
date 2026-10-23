@@ -2,7 +2,7 @@
 
 **Input**: [spec.md](spec.md), [plan.md](plan.md), [research.md](research.md), [data-model.md](data-model.md), [contract](contracts/definition-cleanup.md), [quickstart.md](quickstart.md)
 **Branch / Issue**: `340-suspended-definition-cleanup` / #340
-**Status**: T001–T003 implemented and validated with isolated tests. T004–T005 remain pending; no live-environment validation performed.
+**Status**: T001–T004 implemented and validated with isolated tests. T005 remains pending; no live-environment validation performed.
 
 ## Format and execution rules
 
@@ -72,7 +72,7 @@ The repository, branch, toolchain, and fixtures already exist. No setup task is 
 
 **Independent test criteria**: Purge refuses suspended-only/mixed no-force scopes without mutation, and force purge includes their existing root scope, preserves overlapping-root deduplication, and stops dependent work after failure/unconfirmed observations, including no-wait.
 
-- [ ] T004 [US2] Integrate unfinished workload through `internal/services/ops/all_process_definitions_purge.go`, `internal/domain/ops_all_process_definitions_purge.go`, `c8volt/ops/model.go` and `c8volt/ops/convert.go`, then update `cmd/ops_purge_all_processdefinitions.go`, `cmd/cmd_views_ops_purge_all_processdefinitions.go`, `cmd/ops_report_purge_all_processdefinitions.go` and `cmd/ops_purge_all_processdefinitions_progress.go`; include the corresponding isolated service/facade/command/report tests, source help/README/generated docs and formatting in the unit.
+- [x] T004 [US2] Integrate unfinished workload through `internal/services/ops/all_process_definitions_purge.go`, `internal/domain/ops_all_process_definitions_purge.go`, `c8volt/ops/model.go` and `c8volt/ops/convert.go`, then update `cmd/ops_purge_all_processdefinitions.go`, `cmd/cmd_views_ops_purge_all_processdefinitions.go`, `cmd/ops_report_purge_all_processdefinitions.go` and `cmd/ops_purge_all_processdefinitions_progress.go`; include the corresponding isolated service/facade/command/report tests, source help/README/generated docs and formatting in the unit.
 
 **T004 acceptance and constraints**:
 
@@ -151,7 +151,7 @@ Only T001 and T002 are marked `[P]`: their production/test owners are different 
 
 SC-001 maps to T003/T004; SC-002 to T002/T003/T004; SC-003 and SC-004 to T003/T004; SC-005 to T001/T003/T004/T005; SC-006 to the affected compatibility/output checks in all units.
 
-**Total**: 5 tasks: 2 foundational, 1 US1, 1 US2, 1 US3; 0 artificial setup/polish tasks. T001–T003 are complete; two tasks remain pending.
+**Total**: 5 tasks: 2 foundational, 1 US1, 1 US2, 1 US3; 0 artificial setup/polish tasks. T001–T004 are complete; one task remains pending.
 
 ## Implementation strategy and consolidation review
 

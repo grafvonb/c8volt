@@ -116,3 +116,42 @@ Started: 2026-10-23 10:10:21
 - `make docs-content` passed after inspecting its docsgen-only target and clearing inherited Go/Make/application flags. Generated changes are limited to definition-delete help and the README-derived index/provenance. Touched Go files pass gofmt; new-file whitespace checks and `git diff --check` pass. Rendering moved to the existing resource view owner; progress remains in its dedicated file, with no new command-mode declarations.
 - No live checks ran. Engine cascading, exporter timing and snapshot consistency remain unverified. T003’s definition milestone is complete; the feature is not complete until T004 and T005 are delivered.
 ---
+
+---
+## Iteration 4 - 2026-10-23 11:18
+**Work Unit**: US2 / Phase 4 — T004 completed: integrate unfinished workload into purge
+**Tasks Completed**:
+- [x] T004: Carry suspended/unfinished evidence through purge gates, counts, reports, progress, facade conversion, documentation and isolated acceptance checks.
+**Tasks Remaining in Work Unit**: 0; T005 (US3) remains for the next iteration.
+**Commit**: This work-unit commit
+**Files Changed**:
+- README.md
+- c8volt/ops/client_test.go
+- c8volt/ops/convert.go
+- c8volt/ops/model.go
+- cmd/cmd_views_ops_purge_all_processdefinitions.go
+- cmd/delete_processdefinition_unfinished_test.go
+- cmd/ops_execute_retention_policy_test.go
+- cmd/ops_purge_all_processdefinitions.go
+- cmd/ops_purge_all_processdefinitions_progress.go
+- cmd/ops_purge_all_processdefinitions_progress_test.go
+- cmd/ops_purge_all_processdefinitions_test.go
+- cmd/ops_purge_all_processdefinitions_unfinished_test.go
+- cmd/ops_report_purge_all_processdefinitions.go
+- docs/cli/c8volt_ops_purge_all-process-definitions.md
+- docs/index.md
+- docs/ops/purge-all-process-definitions.md
+- internal/domain/ops_all_process_definitions_purge.go
+- internal/services/ops/all_process_definitions_purge.go
+- internal/services/ops/all_process_definitions_purge_test.go
+- internal/services/ops/orphan_purge_test.go
+- specs/340-suspended-definition-cleanup/progress.md
+- specs/340-suspended-definition-cleanup/ralph-memory.md
+- specs/340-suspended-definition-cleanup/tasks.md
+**Learnings**:
+- Behavioral regression initially proved suspended-only scopes missed purge preflight and mixed previews undercounted affected work. Shared definition cleanup now supplies the authoritative unfinished evidence for both service and command gates.
+- Isolated service/facade race checks passed: `go test ./internal/services/ops ./c8volt/ops -run 'TestPurgeAllProcessDefinitions|TestClientPurgeAllProcessDefinitions' -race -count=1`. Coverage includes frozen limits, controls, older capabilities, supported zero/unavailable/skipped/read-failure support, and overlapping roots with active/suspended/mixed selections.
+- Final isolated command checks passed: `go test ./cmd -run '^TestOpsPurgeAllProcessDefinitions|^TestDeleteProcessDefinition(Unfinished|Suspended)|^TestOps.*SemanticProgressModeGate$' -count=1`. This includes real terminal prompt/abort and empty-scope mode/control matrices, suspended sparse discovery, additional unfinished work, required drain under no-wait, cancellation/drain/history failures, count/key/report agreement, and partial-result envelopes with EOF and retained exit class.
+- Traced service errors through facade conversion, partial result rendering, configured logger and exit. Per-key progress failure writes are removed; machine/report evidence is retained. Repeated HTTP failures stay compact at normal/verbose/quiet levels, and DEBUG flag/configuration retain redacted diagnostics in plain and structured formats. Temporary direct-stderr and raw-aggregate mutations were both rejected by behavioral assertions, then restored.
+- `make docs-content`, targeted gofmt and `git diff --check` passed. All checks used test-owned fakes with inherited application/live/Go flags cleared; no live environment was discovered, provisioned or tested. Real-engine/exporter timing remains unverified.
+---

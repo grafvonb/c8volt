@@ -557,6 +557,7 @@ func TestPurgeOrphanProcessInstancesSuppressesDefaultDeleteSummary(t *testing.T)
 
 type stubProcessInstanceAPI struct {
 	pisvc.API
+	validateStates        func(d.States) error
 	createProcessInstance func(context.Context, d.ProcessInstanceData, ...services.CallOption) (d.ProcessInstanceCreation, error)
 	getProcessInstances   func(context.Context, typex.Keys, int, ...services.CallOption) ([]d.ProcessInstance, error)
 	searchVariables       func(context.Context, string, ...services.CallOption) ([]d.ProcessInstanceVariable, error)
@@ -667,5 +668,10 @@ func opsIntPtr(v int) *int {
 	return &v
 }
 
-// ValidateProcessInstanceStates preserves the older active-only capability of the shared fixture.
-func (stubProcessInstanceAPI) ValidateProcessInstanceStates(d.States) error { return d.ErrUnsupported }
+// ValidateProcessInstanceStates defaults to older active-only capability unless a test opts into suspension.
+func (s stubProcessInstanceAPI) ValidateProcessInstanceStates(states d.States) error {
+	if s.validateStates != nil {
+		return s.validateStates(states)
+	}
+	return d.ErrUnsupported
+}

@@ -112,7 +112,7 @@ func TestOpsPurgeAllProcessDefinitionsDeletionMilestonesStaySeparateFromDiscover
 		Message:    "discovering process definitions, page 1, 1 seen",
 		Importance: logging.ActivityImportanceWorkflow,
 	})
-	require.Equal(t, 1, strings.Count(output, "pd-1 failed: delete rejected (deleting process definitions, 1/2 process definition(s), 1 failed)"))
+	require.NotContains(t, output, "pd-1 failed")
 	require.Equal(t, 1, strings.Count(output, "deleting process definitions, 2/2 process definition(s), 1 failed"))
 	require.NotContains(t, output, "discovering process definitions, 2/2")
 }
@@ -149,7 +149,7 @@ func TestOpsPurgeAllProcessDefinitionsSemanticProgressModeGate(t *testing.T) {
 				},
 			}
 		},
-		QuietWarning: "pd-1 failed: request rejected (deleting process definitions, 1/1 process definition(s), 1 failed)",
+		QuietWarning: "",
 	})
 }
 
@@ -164,7 +164,7 @@ func TestOpsPurgeAllProcessDefinitionsHelpDocumentsCommandShape(t *testing.T) {
 		"Delete selected process definitions and their associated history",
 		"Forced cleanup cancels root instances",
 		"cancels root instances",
-		"waits for active instances to drain",
+		"waits for unfinished instances to drain",
 		"deletes instance history",
 		"Aliases:",
 		"all-pds",
@@ -378,7 +378,7 @@ func TestOpsPurgeAllProcessDefinitionsDryRunPlanOutput(t *testing.T) {
 	require.Contains(t, output, "delete preview: 2 candidate process definition(s), 3 affected process instance(s) would be deleted")
 	require.NotContains(t, output, "\nprocess definitions:\n")
 	require.Contains(t, output, "invoice [v1: 3, v2/stable: 0]")
-	require.Contains(t, output, "active-instance blocker: 3 active process instances require --force before deletion")
+	require.Contains(t, output, "unfinished-instance blocker: 3 unfinished process instance(s) require --force before deletion")
 	require.Contains(t, output, "outcome: planned; no changes applied")
 	require.NotContains(t, output, "candidate process-definition keys:")
 	require.NotContains(t, output, "affected process-instance keys:")
@@ -777,7 +777,7 @@ func TestOpsPurgeAllProcessDefinitionsForceCleanupActivityFollowsNestedStages(t 
 			return false
 		}
 	}, 5*time.Second, 10*time.Millisecond, "requests: %v stderr: %s", requests.Snapshot(), stderr.String())
-	requireOpsPurgeAllProcessDefinitionsActivityContains(t, sink, "waiting for active process instances to drain")
+	requireOpsPurgeAllProcessDefinitionsActivityContains(t, sink, "waiting for unfinished process instances to drain")
 	state.releaseDrain.Do(func() { close(state.drainRelease) })
 
 	require.Eventually(t, func() bool {
@@ -811,10 +811,10 @@ func TestOpsPurgeAllProcessDefinitionsForceCleanupActivityFollowsNestedStages(t 
 	}, 5*time.Second, 10*time.Millisecond, "activity starts: %v stops: %d", sink.Starts(), sink.Stopped())
 }
 
-// TestOpsPurgeAllProcessDefinitionsForceCleanupDefaultWarningsUseEnteredStages
-// verifies nested force-cleanup failures produce one immediate warning with the
-// stage aggregate that owns the failed item.
-func TestOpsPurgeAllProcessDefinitionsForceCleanupDefaultWarningsUseEnteredStages(t *testing.T) {
+// TestOpsPurgeAllProcessDefinitionsForceCleanupFailuresUseAggregateDiagnostics
+// verifies nested force-cleanup failures produce one aggregate diagnostic
+// without per-key warnings or raw backend details.
+func TestOpsPurgeAllProcessDefinitionsForceCleanupFailuresUseAggregateDiagnostics(t *testing.T) {
 	tests := []struct {
 		name       string
 		configure  func(*opsPurgeAllProcessDefinitionsNestedState)
@@ -867,8 +867,9 @@ func TestOpsPurgeAllProcessDefinitionsForceCleanupDefaultWarningsUseEnteredStage
 				}),
 			})
 			require.Error(t, err, stderr)
-			require.Equal(t, 1, strings.Count(stderr, tt.wantFailed), stderr)
-			require.Contains(t, stderr, tt.wantStage)
+			require.NotContains(t, stderr, tt.wantFailed)
+			require.NotContains(t, stderr, tt.wantStage)
+			require.Equal(t, 1, strings.Count(stderr, "ERROR process-definition purge: selected 2,"))
 		})
 	}
 }
@@ -1025,7 +1026,7 @@ func TestOpsPurgeAllProcessDefinitionsForceCleanupMachineModeCompatibility(t *te
 }
 
 // TestOpsPurgeAllProcessDefinitionsQuietForceCleanupFailureCompatibility
-// verifies quiet mode still surfaces the immediate failed item warning without
+// verifies quiet mode surfaces one compact aggregate failure without
 // adding successful progress chatter.
 func TestOpsPurgeAllProcessDefinitionsQuietForceCleanupFailureCompatibility(t *testing.T) {
 	state := newOpsPurgeAllProcessDefinitionsNestedState()
@@ -1047,9 +1048,9 @@ func TestOpsPurgeAllProcessDefinitionsQuietForceCleanupFailureCompatibility(t *t
 	})
 	require.Error(t, err, stderr)
 	require.Empty(t, stdout)
-	require.Contains(t, stderr, opsAllProcessDefinitionsPurgeRootA+" failed:")
-	require.Contains(t, stderr, "cancelling process-instance root trees, 1/3 process-instance tree(s), 1 failed")
-	require.NotContains(t, stderr, "waiting for active process instances to drain")
+	require.NotContains(t, stderr, opsAllProcessDefinitionsPurgeRootA+" failed:")
+	require.Contains(t, stderr, "ERROR process-definition purge: selected 2, accepted 0; outcome unconfirmed; internal")
+	require.NotContains(t, stderr, "waiting for unfinished process instances to drain")
 	require.NotContains(t, stderr, "deleting process-instance histories")
 	require.NotContains(t, stderr, "deleting process definitions")
 	require.NotContains(t, stderr, "stage progress:")
@@ -1129,9 +1130,9 @@ func TestOpsPurgeAllProcessDefinitionsBlocksActiveInstancesBeforeMutation(t *tes
 	exitErr, ok := err.(*exec.ExitError)
 	require.True(t, ok)
 	require.Equal(t, exitcode.Error, exitErr.ExitCode())
-	require.Contains(t, string(output), "local precondition failed")
-	require.Contains(t, string(output), "refusing to delete all-process-definitions purge scope")
-	require.Contains(t, string(output), "active process instance")
+	require.Contains(t, string(output), "ERROR refusing process-definition purge:")
+	require.Contains(t, string(output), "no delete request was submitted")
+	require.Contains(t, string(output), "unfinished process instance")
 	require.Empty(t, deleted.Snapshot())
 	var report map[string]any
 	require.NoError(t, json.Unmarshal([]byte(readReportFile(t, reportPath)), &report))
@@ -1289,7 +1290,7 @@ func TestOpsPurgeAllProcessDefinitionsExistingReportPreservation(t *testing.T) {
 			name:         "locally blocked",
 			args:         []string{"ops", "purge", "all-process-definitions", "--auto-confirm"},
 			activeCount:  3,
-			want:         "write audit report: report file already exists:",
+			want:         "audit report could not be written",
 			wantRequests: true,
 		},
 	}
@@ -1349,8 +1350,8 @@ func TestOpsPurgeAllProcessDefinitionsRejectsUnsupportedFullHistoryVersionsBefor
 			exitErr, ok := err.(*exec.ExitError)
 			require.True(t, ok)
 			require.Equal(t, exitcode.Error, exitErr.ExitCode())
-			require.Contains(t, string(output), "unsupported capability")
-			require.Contains(t, string(output), "all-process-definitions purge requires the full process-definition history deletion capability, currently Camunda 8.9 or newer")
+			require.Contains(t, string(output), "outcome unconfirmed; unsupported")
+			require.NotContains(t, string(output), srv.URL)
 			require.Empty(t, requests.Snapshot())
 			require.Empty(t, deleted.Snapshot())
 		})
@@ -1520,6 +1521,7 @@ func sampleAllProcessDefinitionsPurgeDryRunPlanResult() ops.AllProcessDefinition
 		DuplicateCandidateProcessDefinitionKeys: typex.Keys{"pd-a"},
 		AffectedProcessInstanceCount:            3,
 		ActiveProcessInstanceCount:              3,
+		UnfinishedProcessInstanceCount:          3,
 		RequiresConfirmation:                    true,
 		RequiresForce:                           true,
 	}
@@ -1969,7 +1971,7 @@ func assertOpsPurgeAllProcessDefinitionsNoStageProgress(t *testing.T, output str
 
 	for _, disallowed := range []string{
 		"cancelling process-instance root trees",
-		"waiting for active process instances to drain",
+		"waiting for unfinished process instances to drain",
 		"deleting process-instance histories",
 		"deleting process definitions",
 		"affected scope:",

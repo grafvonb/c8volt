@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -37,7 +38,7 @@ func runDefinitionDeleteTerminal(t *testing.T, args []string, destination string
 	return result.Stdout, result.Stderr, result.Err
 }
 
-// TestDefinitionDeleteTerminalProcess runs arbitrary definition-delete arguments
+// TestDefinitionDeleteTerminalProcess runs definition-delete or purge arguments
 // only inside the test-owned terminal subprocess and asserts genuine terminal stdin.
 func TestDefinitionDeleteTerminalProcess(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" || os.Getenv(testx.CmdSubprocessNameEnv) != t.Name() {
@@ -51,7 +52,12 @@ func TestDefinitionDeleteTerminalProcess(t *testing.T) {
 	resetProcessInstanceCommandGlobals()
 	root.SetOut(os.Stdout)
 	root.SetErr(nil)
-	command, _, err := root.Find([]string{"delete", "process-definition"})
+	commandPath := []string{"delete", "process-definition"}
+	if slices.Contains(args, "all-process-definitions") {
+		commandPath = []string{"ops", "purge", "all-process-definitions"}
+		resetOpsPurgeAllProcessDefinitionsFlagState()
+	}
+	command, _, err := root.Find(commandPath)
 	require.NoError(t, err)
 	capture, err := os.Create(os.Getenv("C8VOLT_DEFINITION_STDERR"))
 	require.NoError(t, err)

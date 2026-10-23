@@ -1002,7 +1002,7 @@ func assertOpsCompletionProgressModeGate(t *testing.T, tc opsCompletionProgressM
 			closeProgress()
 
 			require.Empty(t, stdout.String())
-			if mode.wantQuietWarning {
+			if mode.wantQuietWarning && tc.QuietWarning != "" {
 				require.Equal(t, tc.QuietWarning+"\n", stderr.String())
 				return
 			}
