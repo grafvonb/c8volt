@@ -41,7 +41,6 @@ type exampleSeedData struct {
 	ProcessInstanceKeys  []string
 	ProcessDefinitionKey string
 	UserTaskKeys         []string
-	ResourceID           string
 	EmbeddedFixturePath  string
 }
 
@@ -126,7 +125,6 @@ func TestPlaceholderSubstitution(t *testing.T) {
 		BpmnProcessID:        "C88_SimpleUserTask",
 		ProcessInstanceKeys:  []string{"2251799813685250", "2251799813685251"},
 		ProcessDefinitionKey: "2251799813685249",
-		ResourceID:           "processdefinitions/C88_SimpleUserTask.bpmn",
 		EmbeddedFixturePath:  "processdefinitions/C88_SimpleUserTask.bpmn",
 	}
 	normalized, substitutions := substituteExamplePlaceholders("./c8volt get pi --key <process-instance-key> --key <another-process-instance-key> --bpmn-process-id <bpmn-process-id>", seed)
@@ -413,6 +411,17 @@ func validateExample(t *testing.T, example cliExample, seed exampleSeedData, hav
 		return record
 	}
 
+	fileArgs, fileSubstitutions, err := prepareExampleVarsFile(args, suite.workDir, suite.marker)
+	if err != nil {
+		record.Outcome = "fail"
+		record.FailureClass = "harness_setup"
+		record.FailureReason = fmt.Sprintf("prepare example variables file: %v", err)
+		return record
+	}
+	args = fileArgs
+	record.Arguments = args
+	record.Substitutions = append(record.Substitutions, fileSubstitutions...)
+
 	if commandPath == "get process-definition" && hasArg(args, "--watch") {
 		// Watch examples intentionally stream forever. Bound the CLI lifecycle,
 		// rather than killing it at the harness command deadline.
@@ -476,11 +485,8 @@ func prepareExampleSeedData(t *testing.T) (exampleSeedData, bool) {
 	if len(data.ProcessDefinitionKeys) > 0 {
 		seed.ProcessDefinitionKey = data.ProcessDefinitionKeys[0]
 	}
-	if resourceID := firstString(data.ResourceIDs); isNumericString(resourceID) {
-		seed.ResourceID = resourceID
-	} else {
-		seed.ResourceID = seed.ProcessDefinitionKey
-	}
+	// This BPMN fixture does not deploy a resource with a resourceKey.
+	// Leave resource placeholders unresolved instead of inventing a key.
 	for _, piKey := range seed.ProcessInstanceKeys {
 		var tasks task.UserTasks
 		require.Eventually(t, func() bool {
@@ -503,8 +509,6 @@ func substituteExamplePlaceholders(raw string, seed exampleSeedData) (string, []
 		"<process-instance-key-a>":       firstString(seed.ProcessInstanceKeys),
 		"<process-instance-key-b>":       stringAtOrFirst(seed.ProcessInstanceKeys, 1),
 		"<process-definition-key>":       seed.ProcessDefinitionKey,
-		"<resource-id>":                  seed.ResourceID,
-		"<resource-key>":                 seed.ResourceID,
 		"<profile-name>":                 seed.Profile.Name,
 		"<user-task-key>":                firstString(seed.UserTaskKeys),
 		"<another-user-task-key>":        stringAtOrFirst(seed.UserTaskKeys, 1),
@@ -827,26 +831,6 @@ func exampleNonExecutionAllowed(record exampleValidationRecord) bool {
 	}
 }
 
-// unresolvedPlaceholdersAllowed documents setup states this suite records as blocked until fixture proposals exist.
-func unresolvedPlaceholdersAllowed(placeholders []string) bool {
-	allowed := map[string]struct{}{
-		"<job-key>":              {},
-		"<incident-key>":         {},
-		"<another-incident-key>": {},
-		"<resource-id>":          {},
-		"<element-instance-key>": {},
-		"<element-id>":           {},
-		"<user-task-key>":        {},
-		"<tenant-id>":            {},
-	}
-	for _, placeholder := range placeholders {
-		if _, ok := allowed[placeholder]; !ok {
-			return false
-		}
-	}
-	return len(placeholders) > 0
-}
-
 func assertHasExampleFromSource(t *testing.T, examples []cliExample, sourceName string) {
 	t.Helper()
 	for _, example := range examples {
@@ -869,7 +853,7 @@ func TestExampleShellFieldsPreserveEmptyArguments(t *testing.T) {
 }
 
 func TestExampleOwnedPlaceholderSubstitution(t *testing.T) {
-	seed := exampleSeedData{Profile: integrationProfile{Name: "selected"}, ResourceID: "42", UserTaskKeys: []string{"51", "52"}}
+	seed := exampleSeedData{Profile: integrationProfile{Name: "selected"}, UserTaskKeys: []string{"51", "52"}}
 	normalized, _ := substituteExamplePlaceholders("<profile-name> <resource-key> <user-task-key> <another-user-task-key> <user-task-key-a> <user-task-key-b>", seed)
-	require.Equal(t, "selected 42 51 52 51 52", normalized)
+	require.Equal(t, "selected <resource-key> 51 52 51 52", normalized)
 }
