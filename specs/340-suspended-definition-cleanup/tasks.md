@@ -2,7 +2,7 @@
 
 **Input**: [spec.md](spec.md), [plan.md](plan.md), [research.md](research.md), [data-model.md](data-model.md), [contract](contracts/definition-cleanup.md), [quickstart.md](quickstart.md)
 **Branch / Issue**: `340-suspended-definition-cleanup` / #340
-**Status**: T001 implemented and validated with isolated tests. T002–T005 remain pending; no live-environment validation performed.
+**Status**: T001 and T002 implemented and validated with isolated tests. T003–T005 remain pending; no live-environment validation performed.
 
 ## Format and execution rules
 
@@ -34,7 +34,7 @@ The repository, branch, toolchain, and fixtures already exist. No setup task is 
 - Extend `internal/services/processdefinition/v810/service_test.go`, matching v88/v89 service tests, `c8volt/process/convert_test.go` and affected ops conversion/client tests. Cover stable active=2/suspended=3/unfinished=5, supported zero, unsupported omission, differing observations during state transitions, union/read failures, exact versus capped counts, cursor stalls and no-stat request counts. No public API signature or report schema version change.
 - Run the smallest matching statistics tests in `./internal/services/processdefinition/v810`, older adapter controls, and affected `./c8volt/process` / `./c8volt/ops` conversion tests with `-count=1`. Document additive structured statistics semantics in README. Human/watch presentation is T005; avoid claiming it is delivered here.
 
-- [ ] T002 [P] Implement the internal combined-state selector in `internal/domain/processinstance.go`, validation in `internal/services/processinstance/search.go` and existing v88/v89/v810 adapter search entry points, and v810 request mapping in `internal/services/processinstance/v810/convert.go`; include fake-backed filter/capability/page-normalization regressions in adjacent tests, preserve scalar queries, format and run targeted instance-search checks.
+- [x] T002 [P] Implement the internal combined-state selector in `internal/domain/processinstance.go`, validation in `internal/services/processinstance/search.go` and existing v88/v89/v810 adapter search entry points, and v810 request mapping in `internal/services/processinstance/v810/convert.go`; include fake-backed filter/capability/page-normalization regressions in adjacent tests, preserve scalar queries, format and run targeted instance-search checks.
 
 **T002 acceptance and constraints**:
 
@@ -151,7 +151,7 @@ Only T001 and T002 are marked `[P]`: their production/test owners are different 
 
 SC-001 maps to T003/T004; SC-002 to T002/T003/T004; SC-003 and SC-004 to T003/T004; SC-005 to T001/T003/T004/T005; SC-006 to the affected compatibility/output checks in all units.
 
-**Total**: 5 tasks: 2 foundational, 1 US1, 1 US2, 1 US3; 0 artificial setup/polish tasks. T001 is complete; four tasks remain pending.
+**Total**: 5 tasks: 2 foundational, 1 US1, 1 US2, 1 US3; 0 artificial setup/polish tasks. T001 and T002 are complete; three tasks remain pending.
 
 ## Implementation strategy and consolidation review
 

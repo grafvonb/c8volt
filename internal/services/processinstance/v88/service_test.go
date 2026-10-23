@@ -2142,3 +2142,16 @@ func newHTTPResponse(method, rawURL string, statusCode int, status string) *http
 		},
 	}
 }
+
+// TestService_CombinedStateFilterUnsupported keeps plural selection from being
+// silently discarded on older adapters; strict clients reject any backend call.
+func TestService_CombinedStateFilterUnsupported(t *testing.T) {
+	t.Parallel()
+	svc := newTestService(t, testConfig(), newStrictCamundaClient(t), newStrictOperateClient(t))
+	for _, states := range []d.States{{d.StateActive}, {d.StateActive, d.StateCompleted}, {d.StateActive, d.StateSuspended}} {
+		_, err := svc.SearchForProcessInstancesPage(context.Background(), d.ProcessInstanceFilter{States: states}, d.ProcessInstancePageRequest{Size: 10})
+		require.ErrorIs(t, err, d.ErrUnsupported)
+	}
+	_, err := svc.SearchForProcessInstancesPage(context.Background(), d.ProcessInstanceFilter{State: d.StateActive, States: d.States{d.StateSuspended}}, d.ProcessInstancePageRequest{Size: 10})
+	require.ErrorIs(t, err, d.ErrValidation)
+}

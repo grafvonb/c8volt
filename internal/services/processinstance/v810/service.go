@@ -222,7 +222,8 @@ func (s *Service) SearchForProcessInstances(ctx context.Context, filter d.Proces
 
 // SearchForProcessInstancesPage fetches and maps one v8.10 process-instance search page.
 func (s *Service) SearchForProcessInstancesPage(ctx context.Context, filter d.ProcessInstanceFilter, pageReq d.ProcessInstancePageRequest, opts ...services.CallOption) (d.ProcessInstancePage, error) {
-	if err := s.ValidateProcessInstanceStates(d.States{filter.State}); err != nil {
+	filter, err := common.NormalizeProcessInstanceSearchFilter(filter, s.ValidateProcessInstanceStates)
+	if err != nil {
 		return d.ProcessInstancePage{}, err
 	}
 	cCfg := services.ApplyCallOptions(opts)
@@ -280,7 +281,7 @@ func (s *Service) SearchForProcessInstancesPage(ctx context.Context, filter d.Pr
 	if err != nil {
 		return d.ProcessInstancePage{}, fmt.Errorf("building end-date filter: %w", err)
 	}
-	stateFilter, err := newProcessInstanceStateEqFilterPtr(string(normalizeSearchState(filter.State)))
+	stateFilter, err := newProcessInstanceStateFilterPtr(filter)
 	if err != nil {
 		return d.ProcessInstancePage{}, fmt.Errorf("building state filter: %w", err)
 	}
@@ -345,11 +346,17 @@ func (s *Service) SearchForProcessInstancesPage(ctx context.Context, filter d.Pr
 		return d.ProcessInstancePage{}, err
 	}
 
+	overflow := d.ProcessInstanceOverflowStateIndeterminate
+	var reportedTotal *d.ProcessInstanceReportedTotal
+	if result.TotalItemsKnown {
+		overflow = pickProcessInstanceOverflowState(result.Page, pageReq, len(result.Items))
+		reportedTotal = pickProcessInstanceReportedTotal(result.Page, len(result.Items))
+	}
 	return d.ProcessInstancePage{
 		Items:         toolx.MapSlice(result.Items, fromProcessInstanceResult),
 		Request:       pageReq,
-		OverflowState: pickProcessInstanceOverflowState(result.Page, pageReq, len(result.Items)),
-		ReportedTotal: pickProcessInstanceReportedTotal(result.Page, len(result.Items)),
+		OverflowState: overflow,
+		ReportedTotal: reportedTotal,
 		EndCursor:     processInstanceEndCursor(result.Page),
 	}, nil
 }
@@ -394,16 +401,30 @@ func normalizeSearchState(state d.State) d.State {
 	return state
 }
 
+// pickProcessInstanceOverflowState preserves sparse continuation without treating
+// a capped total or a cursor alone as proof of another page.
 func pickProcessInstanceOverflowState(page camundav810.SearchQueryPageResponse, req d.ProcessInstancePageRequest, itemCount int) d.ProcessInstanceOverflowState {
 	if itemCount == 0 {
+		if page.TotalItems > int64(req.From) || (page.HasMoreTotalItems && page.TotalItems == int64(req.From)) {
+			cursor := processInstanceEndCursor(page)
+			if cursor != "" && cursor != req.After {
+				return d.ProcessInstanceOverflowStateHasMore
+			}
+			return d.ProcessInstanceOverflowStateIndeterminate
+		}
+		// An empty page after the observed total can terminate even when the
+		// response retains a final cursor or a capped-total flag.
 		return d.ProcessInstanceOverflowStateNoMore
 	}
 	visibleCount := int64(req.From) + int64(itemCount)
-	if page.TotalItems > visibleCount {
+	if page.TotalItems > visibleCount || (page.HasMoreTotalItems && page.TotalItems == visibleCount) {
 		return d.ProcessInstanceOverflowStateHasMore
 	}
-	if page.HasMoreTotalItems && req.Size > 0 && itemCount >= int(req.Size) {
-		return d.ProcessInstanceOverflowStateHasMore
+	if page.HasMoreTotalItems {
+		if req.Size > 0 && itemCount >= int(req.Size) {
+			return d.ProcessInstanceOverflowStateHasMore
+		}
+		return d.ProcessInstanceOverflowStateIndeterminate
 	}
 	if page.TotalItems == 0 {
 		return d.ProcessInstanceOverflowStateIndeterminate
