@@ -5,6 +5,8 @@ Started: 2026-10-23T08:10:21Z
 
 ## Codebase Patterns
 
+- T005 keeps suspended value/support in the owned display projection, changed-field flags, ordinary flat rows and watch formatter in `cmd/cmd_views_processdefinition.go`. Unsupported values normalize to no token; supported zero uses `su:-`. Existing watch lifecycle/baseline commit rules are unchanged. `cmd/get_processdefinition_suspended_test.go` supplies exact-total HTTP fixtures reused by actual terminal watch/empty-result tests.
+
 - `cmd/ops_purge_all_processdefinitions_unfinished_test.go` reuses the definition-delete terminal runner, now selecting either command. All fixtures are test-owned HTTP servers. The matrix checks configured/inherited destinations, plain/JSON log formats, severity/cardinality, normal/verbose/quiet, DEBUG flag/configuration, JSON EOF/partial results, and exit codes. Sparse union discovery, late unfinished evidence, mandatory drain under no-wait, and actual terminal confirmation/abort are exercised through purge.
 
 - Definition-delete presentation now lives in `cmd/cmd_views_resource.go`; command construction/dispatch remains in `cmd/delete_processdefinition.go`, and lifecycle/progress remains in its existing focused progress file. No new command mode or mutation engine was added.
@@ -18,6 +20,8 @@ Started: 2026-10-23T08:10:21Z
 
 ## Decisions
 
+- T005 is complete. Human lookup/list/watch rows append `su:` only when supported; active remains separate. Watch detects suspended-only changes, ACTIVE-to-SUSPENDED transitions, zero/support transitions and removed statistics, preserves alignment/selective bold and commits only fully displayed baselines. The definition view now suppresses empty human summaries under quiet, matching the mandatory empty-result rule and adjacent instance view; explicit JSON/keys output keeps its existing precedence. No new timing, retry, query, lifecycle or schema behavior was introduced.
+
 - T004 is complete. Purge reuses T003's definition workflow without new discovery/cancellation mechanics. Aggregate suspended/support/unfinished fields map mechanically through the facade and report, preserving schema v1. Known family/unfinished keys are deduplicated before fallback counting; direct unfinished counts remain distinct from expanded family scope.
 - Purge failures now render partial results in exactly one failure envelope and exit with the original error class. Human failures use one bounded aggregate through the configured logger, with a useful force blocker or confirmation/report failure reason. Progress counts failed completions but emits no per-key failure diagnostic; existing DEBUG transport logging/redaction stays authoritative. Report artifacts and machine errors retain backend evidence.
 
@@ -27,10 +31,13 @@ Started: 2026-10-23T08:10:21Z
 
 - T001 is complete. v810 publishes statistics only after all six observations succeed. `SuspendedCountSupported` is true even for zero; internal `Unfinished` is a non-nil authoritative observation, independent of the separately sampled display buckets. T003 now consumes it for deletion planning and required verification.
 - The initial exact total remains the fast path. Capped counts enumerate completely; sparse empty pages advance only with known remaining items and a fresh cursor. Empty final pages can terminate despite a cursor or capped-total flag once consistent with observed counts. Stalled/cyclic/disappearing cursors and incomplete/indeterminate empty observations return `ErrMalformedResponse`, never a partial exact count. Offset fallback remains available while traversal stays in offset mode.
-- Human/watch suspended presentation remains T005. Iteration 1 documented the delivered structured statistics in README and command metadata and refreshed generated references through `make docs-content`.
+- T001 delivered structured statistics; T005 completed human/watch presentation and refreshed README, source metadata and generated references through `make docs-content`.
 - T002 is complete. The internal union is available with tenant/definition/options preserved and no public filter/flag addition. Both foundational tasks feed T003’s existing definition cleanup workflow.
 
 ## Gotchas
+
+- Empty definition JSON payloads are `{}` because both `total` and `items` use `omitempty`; do not assert a zero total or synthesize an array. Quiet still retains nonempty requested definition results. Empty terminal reads make one discovery request, no statistics/mutation requests and no prompts.
+- Separate pre-existing diagnostic follow-up: successful watch summaries in `processDefinitionWatchView` instantiate a plain handler on configured stderr instead of using the command-context logger. T005 leaves that summary path unchanged; terminal routing checks do not establish configured-format/level compliance for it. The existing non-watch raw-error issue below also remains outside this presentation work unit.
 
 - Terminal confirmation formatting splits the final question onto a new line. Match that actual plain-text prompt in terminal exchanges; the unformatted single-line construction string will time out.
 - Purge advertises human/JSON modes, not a keys payload. Its existing `--keys-only` behavior leaves stdout empty and suppresses progress but retains human result logs on stderr unless quiet. T004 preserves this behavior, checks zero-byte stdout and quiet/machine precedence, and does not introduce a new keys contract. Empty scope still skips confirmation/mutation and reports planned/no changes, including no-wait.
@@ -47,6 +54,13 @@ Started: 2026-10-23T08:10:21Z
 - A capped total is strictly a lower bound. An empty response at that bound cannot prove completion; fresh continuation is retained, otherwise it is indeterminate. A final empty response beyond the bound can complete. The legacy v810 final-empty fixture now uses From=10001 for a capped total of 10000. Short nonempty capped pages beyond the bound remain indeterminate.
 
 ## Reusable Commands
+
+T005 final checks (via `/tmp/c8volt-340-isolated-test.py`, clearing inherited application/live/Go flags):
+
+- `go test ./cmd -run 'TestGetProcessDefinition(Suspended|WatchSuspended)|TestProcessDefinition(View_Suspended|WatchCandidate_SuspendedTransitions)|TestRenderProcessDefinitionWatchRefresh_WriteFailuresKeepBaseline' -count=1`
+- Broader related command controls: `go test ./cmd -run '^Test(GetProcessDefinition|ProcessDefinition(View|Watch)|ListProcessDefinitionsView|RenderProcessDefinitionWatchRefresh|ValidateGetProcessDefinitionWatch|SearchProcessDefinitionsWithPagingStat|CommandCapabilityForCommand_ProcessDefinitionWatchMetadata)' -count=1`
+- `make docs-content` with inherited application/test/Go/Make flags cleared; targeted gofmt, tracked/untracked whitespace review, and `git diff --check`.
+- No service/cleanup reruns or full-suite/race gate were needed for this view-only change. Tests cover actual finite lookup/list and terminal watch commands against test-owned HTTP servers, plus view/lifecycle stubs; no live-engine coverage is claimed.
 
 T004 final checks (via the existing `/tmp/c8volt-340-isolated-test.py` environment-clearing wrapper):
 
@@ -82,4 +96,4 @@ Use the environment-clearing `isolated_go_test` wrapper from `quickstart.md`; th
 
 ## Current Handoff
 
-- Next dependency-ready work is T005 (US3, Phase 5): complete compact suspended statistics and watch projection/change detection, including support transitions, tests and documentation. Recheck selection against `tasks.md`; T001–T004 are complete with no known blocking prerequisite. Preserve isolated-only validation and the pre-existing definition-read diagnostic follow-up above. No real-engine behavior was validated.
+- Feature complete; no handoff required.

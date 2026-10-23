@@ -370,6 +370,73 @@ func TestProcessDefinitionWatchCandidate_IgnoresUndisplayedNameAndResetsPerSessi
 	require.Equal(t, byte(' '), firstRefresh.rows[0].marker)
 }
 
+// TestProcessDefinitionView_Suspended distinguishes measured zero from unavailable
+// counts and keeps the ordinary and watch projections byte-for-byte aligned.
+func TestProcessDefinitionView_Suspended(t *testing.T) {
+	for _, tt := range []struct {
+		name  string
+		stats *process.ProcessDefinitionStatistics
+		want  string
+	}{
+		{"mixed", &process.ProcessDefinitionStatistics{Active: 2, Suspended: 3, SuspendedCountSupported: true, IncidentCountSupported: true}, " [ac:2 cp:- cx:- inc:- su:3]"},
+		{"zero", &process.ProcessDefinitionStatistics{SuspendedCountSupported: true}, " [ac:- cp:- cx:- su:-]"},
+		{"unavailable", &process.ProcessDefinitionStatistics{Suspended: 99}, " [ac:- cp:- cx:-]"},
+		{"no statistics", nil, ""},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			item := process.ProcessDefinition{Key: "1", TenantId: "tenant", BpmnProcessId: "invoice", ProcessVersion: 1, Statistics: tt.stats}
+			want := "1 tenant invoice v1" + tt.want
+			require.Equal(t, want, oneLinePD(item))
+			rows := (processDefinitionWatchBaseline{}).candidate([]process.ProcessDefinition{item}).rows
+			require.Equal(t, []string{want}, formatProcessDefinitionWatchRows(rows, true))
+		})
+	}
+}
+
+// TestProcessDefinitionWatchCandidate_SuspendedTransitions verifies count and
+// availability identity, owned baselines, zero clearing and selective bold spans.
+func TestProcessDefinitionWatchCandidate_SuspendedTransitions(t *testing.T) {
+	stats := &process.ProcessDefinitionStatistics{Active: 2, Suspended: 3, SuspendedCountSupported: true}
+	item := process.ProcessDefinition{Key: "1", TenantId: "tenant", BpmnProcessId: "invoice", ProcessVersion: 1, Statistics: stats}
+	neighbor := process.ProcessDefinition{Key: "20", TenantId: "long-tenant", BpmnProcessId: "order", ProcessVersion: 2}
+	baseline := processDefinitionWatchBaseline{}
+	baseline.commit(baseline.candidate([]process.ProcessDefinition{item, neighbor}))
+	for _, tt := range []struct {
+		name              string
+		active, suspended int64
+		supported, remove bool
+		updated           int
+		want              string
+	}{
+		{"suspended only", 2, 4, true, false, 1, "[ac:2 cp:- cx:- su:\x1b[1m4\x1b[0m]"},
+		{"unchanged", 2, 4, true, false, 0, "[ac:2 cp:- cx:- su:4]"},
+		{"active to suspended", 1, 5, true, false, 1, "[ac:\x1b[1m1\x1b[0m cp:- cx:- su:\x1b[1m5\x1b[0m]"},
+		{"zero", 1, 0, true, false, 1, "[ac:1 cp:- cx:- su:\x1b[1m-\x1b[0m]"},
+		{"support removed", 1, 0, false, false, 1, "[ac:1 cp:- cx:-]"},
+		{"hidden count ignored", 1, 99, false, false, 0, "[ac:1 cp:- cx:-]"},
+		{"support restored at zero", 1, 0, true, false, 1, "[ac:1 cp:- cx:- su:\x1b[1m-\x1b[0m]"},
+		{"statistics removed", 1, 0, true, true, 1, "1  tenant      invoice v1"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			stats.Active, stats.Suspended, stats.SuspendedCountSupported = tt.active, tt.suspended, tt.supported
+			if tt.remove {
+				item.Statistics = nil
+			}
+			candidate := baseline.candidate([]process.ProcessDefinition{item, neighbor})
+			require.Equal(t, tt.updated, candidate.updated)
+			require.Equal(t, tt.updated == 1, candidate.rows[0].changed.any())
+			styled := formatProcessDefinitionWatchRows(candidate.rows, true)
+			plain := formatProcessDefinitionWatchRows(candidate.rows, false)
+			require.Contains(t, styled[0], tt.want)
+			for i := range styled {
+				require.Equal(t, plain[i], strings.NewReplacer("\x1b[1m", "", "\x1b[0m", "").Replace(styled[i]))
+			}
+			require.NotContains(t, styled[1], "\x1b[")
+			baseline.commit(candidate)
+		})
+	}
+}
+
 // processDefinitionRendererFixture keeps renderer tests on one stable canonical
 // payload with tenant, process, version, key, and statistics variation.
 func processDefinitionRendererFixture() process.ProcessDefinitions {

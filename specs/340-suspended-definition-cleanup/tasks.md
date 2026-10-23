@@ -2,7 +2,7 @@
 
 **Input**: [spec.md](spec.md), [plan.md](plan.md), [research.md](research.md), [data-model.md](data-model.md), [contract](contracts/definition-cleanup.md), [quickstart.md](quickstart.md)
 **Branch / Issue**: `340-suspended-definition-cleanup` / #340
-**Status**: T001–T004 implemented and validated with isolated tests. T005 remains pending; no live-environment validation performed.
+**Status**: T001–T005 implemented and validated with isolated tests. Feature complete; no live-environment validation performed.
 
 ## Format and execution rules
 
@@ -90,7 +90,7 @@ The repository, branch, toolchain, and fixtures already exist. No setup task is 
 
 **Independent test criteria**: Known active/suspended populations render accurately in human and structured results; suspended-only watch changes refresh; zero/unavailable transitions clear stale data. Existing non-stat, keys-only, quiet, empty and older-version output remains valid.
 
-- [ ] T005 [US3] Complete suspended statistics presentation in `cmd/cmd_views_processdefinition.go` and applicable metadata in `cmd/get_processdefinition.go`, with static/watch/terminal regressions in `cmd/cmd_views_processdefinition_test.go`, `cmd/get_processdefinition_watch_test.go` and existing adjacent terminal fixtures; update README and generated definition CLI documentation, format and run targeted isolated command checks.
+- [x] T005 [US3] Complete suspended statistics presentation in `cmd/cmd_views_processdefinition.go` and applicable metadata in `cmd/get_processdefinition.go`, with static/watch/terminal regressions in `cmd/cmd_views_processdefinition_test.go`, `cmd/get_processdefinition_watch_test.go` and existing adjacent terminal fixtures; update README and generated definition CLI documentation, format and run targeted isolated command checks.
 
 **T005 acceptance and constraints**:
 
@@ -151,7 +151,7 @@ Only T001 and T002 are marked `[P]`: their production/test owners are different 
 
 SC-001 maps to T003/T004; SC-002 to T002/T003/T004; SC-003 and SC-004 to T003/T004; SC-005 to T001/T003/T004/T005; SC-006 to the affected compatibility/output checks in all units.
 
-**Total**: 5 tasks: 2 foundational, 1 US1, 1 US2, 1 US3; 0 artificial setup/polish tasks. T001–T004 are complete; one task remains pending.
+**Total**: 5 tasks: 2 foundational, 1 US1, 1 US2, 1 US3; 0 artificial setup/polish tasks. T001–T005 are complete; no tasks remain pending.
 
 ## Implementation strategy and consolidation review
 

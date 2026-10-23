@@ -162,6 +162,53 @@ func TestGetProcessDefinitionWatchRepeatedStatisticsRefreshesKeepRowOrder(t *tes
 	}
 }
 
+// TestGetProcessDefinitionWatchSuspendedAvailability uses the existing watch
+// runner to prove support loss and missing statistics clear the displayed row.
+func TestGetProcessDefinitionWatchSuspendedAvailability(t *testing.T) {
+	resetGetProcessDefinitionCommandGlobals()
+	t.Cleanup(resetGetProcessDefinitionCommandGlobals)
+	flagGetPDWithStat = true
+	statistics := []*process.ProcessDefinitionStatistics{
+		{Active: 2, Suspended: 3, SuspendedCountSupported: true},
+		{Active: 2, Suspended: 4, SuspendedCountSupported: true},
+		{Active: 1, Suspended: 5, SuspendedCountSupported: true},
+		{Active: 1, SuspendedCountSupported: true},
+		{Active: 1},
+		{Active: 1, SuspendedCountSupported: true},
+		nil,
+		nil,
+	}
+	calls := 0
+	cli := processDefinitionWatchTestAPI{collect: func(_ context.Context, _ process.ProcessDefinitionWatchSnapshotRequest, _ ...options.FacadeOption) (process.ProcessDefinitionWatchSnapshot, error) {
+		item := process.ProcessDefinition{Key: "123", TenantId: "tenant", BpmnProcessId: "invoice", ProcessVersion: 1, Statistics: statistics[calls]}
+		calls++
+		return process.ProcessDefinitionWatchSnapshot{Items: []process.ProcessDefinition{item}, Total: 1}, nil
+	}}
+	result := executeGetProcessDefinitionWatchHarnessForTest(t, processDefinitionWatchHarness{
+		cli: cli,
+		sleep: func(context.Context, time.Duration) error {
+			if calls == len(statistics) {
+				return context.Canceled
+			}
+			return nil
+		},
+	})
+	require.NoError(t, result.err)
+	require.Equal(t, len(statistics), calls)
+	frames := strings.Split(result.stdout, processDefinitionWatchRepaintControlSequenceForTest)[1:]
+	require.Len(t, frames, len(statistics))
+	for i, tail := range []string{
+		" [ac:2 cp:- cx:- su:3]", " [ac:2 cp:- cx:- su:4] *",
+		" [ac:1 cp:- cx:- su:5] *", " [ac:1 cp:- cx:- su:-] *",
+		" [ac:1 cp:- cx:-] *", " [ac:1 cp:- cx:- su:-] *", " *", "",
+	} {
+		require.Equal(t, "123 tenant invoice v1"+tail+"\nfound: 1\n", frames[i])
+	}
+	require.Equal(t, 6, strings.Count(result.stderr, "INFO 1 updated, 0 new, 0 removed\n"))
+	require.Equal(t, 2, strings.Count(result.stderr, "INFO 0 updated, 0 new, 0 removed\n"))
+	require.Empty(t, watchDiagnosticsWithoutSummaries(result.stderr))
+}
+
 // TestGetProcessDefinitionWatchEightRefreshChangeSequence exercises the full
 // baseline, recovery, removal, empty, and reappearance contract end to end.
 func TestGetProcessDefinitionWatchEightRefreshChangeSequence(t *testing.T) {
@@ -242,11 +289,12 @@ func TestGetProcessDefinitionWatchEightRefreshChangeSequence(t *testing.T) {
 }
 
 // TestRenderProcessDefinitionWatchRefresh_WriteFailuresKeepBaseline verifies
-// repaint, row, and footer failures cannot consume a candidate.
+// repaint, row, and footer failures cannot consume a suspended-count change.
 func TestRenderProcessDefinitionWatchRefresh_WriteFailuresKeepBaseline(t *testing.T) {
-	previous := process.ProcessDefinition{Key: "a", TenantId: "tenant", BpmnProcessId: "invoice", ProcessVersion: 1}
-	current := process.ProcessDefinition{Key: "a", TenantId: "tenant", BpmnProcessId: "invoice", ProcessVersion: 2}
-	rowLen := len("a tenant invoice v2 *\n")
+	previous := process.ProcessDefinition{Key: "a", TenantId: "tenant", BpmnProcessId: "invoice", ProcessVersion: 1, Statistics: &process.ProcessDefinitionStatistics{Suspended: 1, SuspendedCountSupported: true}}
+	current := previous
+	current.Statistics = &process.ProcessDefinitionStatistics{Suspended: 2, SuspendedCountSupported: true}
+	rowLen := len("a tenant invoice v1 [ac:- cp:- cx:- su:2] *\n")
 
 	for _, tt := range []struct {
 		name  string

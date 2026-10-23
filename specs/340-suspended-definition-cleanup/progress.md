@@ -155,3 +155,34 @@ Started: 2026-10-23 10:10:21
 - Traced service errors through facade conversion, partial result rendering, configured logger and exit. Per-key progress failure writes are removed; machine/report evidence is retained. Repeated HTTP failures stay compact at normal/verbose/quiet levels, and DEBUG flag/configuration retain redacted diagnostics in plain and structured formats. Temporary direct-stderr and raw-aggregate mutations were both rejected by behavioral assertions, then restored.
 - `make docs-content`, targeted gofmt and `git diff --check` passed. All checks used test-owned fakes with inherited application/live/Go flags cleared; no live environment was discovered, provisioned or tested. Real-engine/exporter timing remains unverified.
 ---
+
+---
+## Iteration 5 - 2026-10-23 11:28
+**Work Unit**: US3 / Phase 5 — T005 completed: suspended statistics and watch presentation
+**Tasks Completed**:
+- [x] T005: Render compact suspended counts, refresh watch value/support identity, preserve output modes and baselines, and update documentation with isolated command/terminal coverage.
+**Tasks Remaining in Work Unit**: 0; all feature tasks are complete.
+**Commit**: This work-unit commit
+**Files Changed**:
+- README.md
+- cmd/cmd_views_processdefinition.go
+- cmd/cmd_views_processdefinition_test.go
+- cmd/get_processdefinition.go
+- cmd/get_processdefinition_suspended_test.go
+- cmd/get_processdefinition_watch_terminal_test.go
+- cmd/get_processdefinition_watch_test.go
+- docs/cli/c8volt_get_process-definition.md
+- docs/index.md
+- specs/340-suspended-definition-cleanup/tasks.md
+- specs/340-suspended-definition-cleanup/ralph-memory.md
+- specs/340-suspended-definition-cleanup/progress.md
+**Learnings**:
+- Initial behavioral regressions reproduced omitted supported `su:` tokens and missed suspended-only changes. The shared display projection now carries both suspended support and its owned display value; static/watch output uses supported zero as a dash and omits unavailable counts. Tests cover state transitions, support loss/restoration, removed statistics, unchanged snapshots, selective bold, alignment and baseline preservation after repaint/row/footer failures.
+- Actual lookup/list commands against HTTP fakes cover 8.8/8.9/8.10, nonzero/zero counts, human/JSON/keys/quiet and quiet+machine output. JSON decodes one successful envelope followed by EOF, retains active values, omits zero suspended counts but preserves support, and never exposes internal unfinished evidence. Older adapters make four count reads; 8.10 makes six; non-stat lookup/list/watch makes no statistics reads.
+- Real-terminal stdin tests pass with separately captured stdout/stderr and configured/inherited destinations. Both keyed and list watch commands perform five complete HTTP-backed refreshes, detect suspended-only and active-to-suspended changes, clear zero counts, and clear markers on unchanged snapshots. Redirected stdout remains plain despite terminal stdin. Empty searches are prompt-free with one discovery, no count/mutation calls, zero-byte keys, and one JSON envelope with the existing empty `{}` payload. Automation/auto-confirm controls retain their behavior.
+- Empty-result checks exposed the existing quiet `found: 0` summary. A failing terminal regression preceded a local mode-aware view fix, matching AGENTS.md and the adjacent instance view. Nonempty quiet results and explicit quiet+machine output remain unchanged.
+- Passed with the environment-clearing wrapper: `go test ./cmd -run 'TestGetProcessDefinition(Suspended|WatchSuspended)|TestProcessDefinition(View_Suspended|WatchCandidate_SuspendedTransitions)|TestRenderProcessDefinitionWatchRefresh_WriteFailuresKeepBaseline' -count=1`; then broader related controls `go test ./cmd -run '^Test(GetProcessDefinition|ProcessDefinition(View|Watch)|ListProcessDefinitionsView|RenderProcessDefinitionWatchRefresh|ValidateGetProcessDefinitionWatch|SearchProcessDefinitionsWithPagingStat|CommandCapabilityForCommand_ProcessDefinitionWatchMetadata)' -count=1`. The latter includes existing retry, timeout, output validation, logger-routed failure/DEBUG diagnostics and terminal capability tests. No unrelated cleanup or full-suite runs were needed.
+- Traced required-read failures through service error return, facade conversion, command handling and exit. This unit adds no diagnostic writes or raw error formatting and changes no failure handler. Existing ordinary-read raw human errors and the watch summary's independent plain handler are separate pre-existing hardening concerns, retained in memory; passing presentation tests do not establish their compliance.
+- Source metadata and README now document delivered human/watch behavior and unavailable versus zero counts. Inspected and ran docsgen-only `make docs-content` with inherited application/Go/Make flags cleared; reviewed the generated definition reference and README-derived index/provenance. Targeted gofmt and tracked/new-file whitespace checks passed. Presentation remains in its view owner; no new mode/lifecycle declarations or service changes.
+- Validation used isolated fakes only. Engine cascading, exporter visibility/timing and snapshot consistency remain unverified; no environment was discovered, provisioned, probed or mutated.
+---
