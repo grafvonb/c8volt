@@ -2116,7 +2116,7 @@ func TestCommandCapabilityForCommand_OpsPurgeAllProcessDefinitionsContract(t *te
 		Type:        "bool",
 		Required:    false,
 		Repeated:    false,
-		Description: "force cancellation of affected active process instances before deleting process definitions",
+		Description: "force cancellation of affected unfinished process instances before deleting process definitions",
 	})
 	require.Contains(t, capability.Flags, FlagContract{
 		Name:        "no-wait",
