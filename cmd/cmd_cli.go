@@ -67,6 +67,8 @@ func confirmCmdOrAbort(promptWriter io.Writer, autoConfirm bool, prompt string) 
 	if autoConfirm || !term.IsTerminal(int(os.Stdin.Fd())) {
 		return nil
 	}
+	resumeReporting := pauseInvocationRequestRateReporting()
+	defer resumeReporting()
 	if promptWriter == nil {
 		promptWriter = os.Stderr
 	}

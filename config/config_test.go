@@ -594,9 +594,9 @@ apis:
 }
 
 func TestHTTPValidate_RejectsInvalidAndNonPositiveTimeouts(t *testing.T) {
-	require.ErrorContains(t, (&HTTP{Timeout: "eventually"}).Validate(), "invalid duration")
-	require.ErrorContains(t, (&HTTP{Timeout: "0s"}).Validate(), "timeout must be a positive duration")
-	require.NoError(t, (&HTTP{Timeout: "30s"}).Validate())
+	require.ErrorContains(t, (&HTTP{RequestRateReportInterval: "5s", Timeout: "eventually"}).Validate(), "invalid duration")
+	require.ErrorContains(t, (&HTTP{RequestRateReportInterval: "5s", Timeout: "0s"}).Validate(), "timeout must be a positive duration")
+	require.NoError(t, (&HTTP{RequestRateReportInterval: "5s", Timeout: "30s"}).Validate())
 }
 
 func TestLogNormalize_DefaultsToPlainTimeFormat(t *testing.T) {
@@ -638,4 +638,123 @@ profiles:
 		},
 	)
 	require.ErrorIs(t, err, ErrProfileNotFound)
+}
+
+// TestResolveRequestRatePrecedence preserves explicit zero across flags, environment and profiles.
+func TestResolveRequestRatePrecedence(t *testing.T) {
+	for _, tc := range []struct {
+		name, base, profile, env, flag string
+		want                           float64
+	}{
+		{name: "default"},
+		{name: "base fraction", base: "0.5", want: 0.5},
+		{name: "profile zero", base: "8", profile: "0"},
+		{name: "profile fraction", base: "8", profile: "0.5", want: 0.5},
+		{name: "environment zero", base: "8", profile: "4", env: "0"},
+		{name: "environment fraction", base: "8", profile: "4", env: "0.5", want: 0.5},
+		{name: "flag zero", base: "8", profile: "4", env: "2", flag: "0"},
+		{name: "flag fraction", base: "8", profile: "4", env: "2", flag: "0.5", want: 0.5},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			v := viper.New()
+			v.SetConfigType("yaml")
+			input := "auth:\n  mode: none\n"
+			if tc.base != "" {
+				input += "http:\n  request_rate: " + tc.base + "\n"
+			}
+			if tc.profile != "" {
+				input += "active_profile: dev\nprofiles:\n  dev:\n    http:\n      request_rate: " + tc.profile + "\n"
+			}
+			require.NoError(t, v.ReadConfig(strings.NewReader(input)))
+			if tc.env != "" {
+				t.Setenv("C8VOLT_HTTP_REQUEST_RATE", tc.env)
+			}
+			flags := pflag.NewFlagSet("test", pflag.ContinueOnError)
+			flags.Float64("request-rate", 0, "")
+			if tc.flag != "" {
+				require.NoError(t, flags.Parse([]string{"--request-rate", tc.flag}))
+			}
+			require.NoError(t, v.BindPFlag("http.request_rate", flags.Lookup("request-rate")))
+			cfg, err := ResolveEffectiveConfig(v, func(key string) bool {
+				return key == "http.request_rate" && flags.Lookup("request-rate").Changed || HasEnvConfigByKey(key)
+			}, func(profile, key string) bool { return v.InConfig("profiles." + profile + "." + key) })
+			require.NoError(t, err)
+			require.NoError(t, cfg.HTTP.Validate())
+			require.Equal(t, tc.want, cfg.HTTP.RequestRate)
+		})
+	}
+}
+
+// TestResolveRequestRateInvalidSources prevents weak numeric decoding from turning malformed input into zero.
+func TestResolveRequestRateInvalidSources(t *testing.T) {
+	for _, value := range []string{"-1", ".nan", ".inf", "-.inf", "wrong", "''", "true", "[]"} {
+		for _, source := range []string{"file", "profile", "env"} {
+			t.Run(source+"/"+value, func(t *testing.T) {
+				v := viper.New()
+				v.SetConfigType("yaml")
+				input := "http:\n  request_rate: " + value + "\n"
+				if source == "profile" {
+					input = "active_profile: dev\nprofiles:\n  dev:\n    http:\n      request_rate: " + value + "\n"
+				}
+				if source == "env" {
+					input = "{}"
+					t.Setenv("C8VOLT_HTTP_REQUEST_RATE", strings.Trim(value, "'"))
+				}
+				require.NoError(t, v.ReadConfig(strings.NewReader(input)))
+				cfg, err := ResolveEffectiveConfig(v, HasEnvConfigByKey, func(profile, key string) bool { return v.InConfig("profiles." + profile + "." + key) })
+				if err == nil {
+					err = cfg.HTTP.Validate()
+				}
+				require.Error(t, err)
+				require.Contains(t, err.Error(), "request_rate")
+			})
+		}
+	}
+}
+
+// TestResolveRequestRateReportInterval preserves omitted, empty and zero across source overlays.
+func TestResolveRequestRateReportInterval(t *testing.T) {
+	for _, tc := range []struct {
+		name, base, profile, env, want string
+		setEnv, invalid                bool
+	}{
+		{name: "default", want: "5s"},
+		{name: "base", base: "10s", want: "10s"},
+		{name: "profile zero", base: "10s", profile: "0s", want: "0s"},
+		{name: "profile custom", base: "0s", profile: "250ms", want: "250ms"},
+		{name: "env zero", base: "10s", profile: "1s", env: "0s", setEnv: true, want: "0s"},
+		{name: "env custom", base: "10s", profile: "1s", env: "2s", setEnv: true, want: "2s"},
+		{name: "empty file", base: "''", invalid: true},
+		{name: "empty profile", base: "5s", profile: "''", invalid: true},
+		{name: "empty env", setEnv: true, invalid: true},
+		{name: "negative", base: "-1s", invalid: true},
+		{name: "malformed", profile: "nope", invalid: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			v := viper.New()
+			v.SetConfigType("yaml")
+			input := "auth:\n  mode: none\n"
+			if tc.base != "" {
+				input += "http:\n  request_rate_report_interval: " + tc.base + "\n"
+			}
+			if tc.profile != "" {
+				input += "active_profile: dev\nprofiles:\n  dev:\n    http:\n      request_rate_report_interval: " + tc.profile + "\n"
+			}
+			require.NoError(t, v.ReadConfig(strings.NewReader(input)))
+			if tc.setEnv {
+				t.Setenv("C8VOLT_HTTP_REQUEST_RATE_REPORT_INTERVAL", tc.env)
+			}
+			cfg, err := ResolveEffectiveConfig(v, HasEnvConfigByKey, func(profile, key string) bool { return v.InConfig("profiles." + profile + "." + key) })
+			require.NoError(t, err)
+			if tc.invalid {
+				require.ErrorContains(t, cfg.HTTP.Validate(), "http.request_rate_report_interval")
+				return
+			}
+			require.NoError(t, cfg.HTTP.Validate())
+			require.Equal(t, tc.want, cfg.HTTP.RequestRateReportInterval)
+			template, err := cfg.ToTemplateYAML()
+			require.NoError(t, err)
+			require.Contains(t, template, "request_rate_report_interval:")
+		})
+	}
 }

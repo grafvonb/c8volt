@@ -63,6 +63,7 @@ func TestAPIDiagnosticsTopLevelClientUsesSuppliedInstrumentedClient(t *testing.T
 			logger := logging.New(logging.LoggerConfig{Writer: &output, Level: "debug", Format: "plain"})
 			httpService, err := httpc.New(cfg, logger, httpc.WithDiagnostics())
 			require.NoError(t, err)
+			defer httpService.Close()
 			cli, err := New(WithConfig(cfg), WithHTTPClient(httpService.Client()), WithLogger(slog.Default()))
 			require.NoError(t, err)
 

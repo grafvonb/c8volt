@@ -18,12 +18,14 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// installRemoteCommandServices wires invocation-scoped HTTP diagnostics before authentication can issue bootstrap traffic.
+// installRemoteCommandServices owns request controls before authentication can issue bootstrap traffic.
 func installRemoteCommandServices(ctx context.Context, cfg *config.Config, log *slog.Logger) (context.Context, error) {
+	closeInvocationHTTPService()
 	activity := logging.ActivityFromContext(ctx)
 	httpSvc, err := httpc.New(
 		cfg,
 		log,
+		httpc.WithInvocationContext(ctx),
 		httpc.WithCookieJar(),
 		httpc.WithActivitySink(activity),
 		httpc.WithDiagnostics(),
@@ -31,6 +33,13 @@ func installRemoteCommandServices(ctx context.Context, cfg *config.Config, log *
 	if err != nil {
 		return ctx, bootstrapLocalPrecondition(fmt.Errorf("create http service: %w", err))
 	}
+	ownInvocationHTTPService(httpSvc)
+	initialized := false
+	defer func() {
+		if !initialized {
+			closeInvocationHTTPService()
+		}
+	}()
 	ator, err := auth.BuildAuthenticator(cfg, httpSvc.Client(), log)
 	if err != nil {
 		return ctx, bootstrapLocalPrecondition(fmt.Errorf("create authenticator: %w", err))
@@ -41,6 +50,7 @@ func installRemoteCommandServices(ctx context.Context, cfg *config.Config, log *
 	httpSvc.InstallAuthEditor(ator.Editor())
 	ctx = httpSvc.ToContext(ctx)
 	ctx = authenticator.ToContext(ctx, ator)
+	initialized = true
 	return ctx, nil
 }
 

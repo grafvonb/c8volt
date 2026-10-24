@@ -124,7 +124,11 @@ func isReadRetryMethod(method string) bool {
 	}
 }
 
+// shouldRetryReadResult excludes locally unsent requests before backend retry classification.
 func shouldRetryReadResult(ctx context.Context, resp *http.Response, err error) (bool, string) {
+	if IsRequestRateWaitError(err) {
+		return false, ""
+	}
 	if ctx != nil && ctx.Err() != nil {
 		return false, ""
 	}

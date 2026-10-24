@@ -21,11 +21,15 @@ var (
 	ErrInvalidServiceInContext = errors.New("invalid http service in context")
 )
 
+// Service owns the shared HTTP client and invocation-wide request controls.
 type Service struct {
-	c        *http.Client
-	cfg      *config.Config
-	log      *slog.Logger
-	activity logging.ActivitySink
+	requestRate       *RequestRateTransport
+	reporter          *requestRateReporter
+	invocationContext context.Context
+	c                 *http.Client
+	cfg               *config.Config
+	log               *slog.Logger
+	activity          logging.ActivitySink
 }
 
 type Option func(*Service)
@@ -100,19 +104,33 @@ func attachDiagnostics(base http.RoundTripper, collector *diagnosticCollector) h
 	return &DiagnosticsTransport{base: base, collector: collector}
 }
 
+// New builds shared pacing below read retries and above request diagnostics.
 func New(cfg *config.Config, log *slog.Logger, opts ...Option) (*Service, error) {
 	if cfg == nil {
 		return nil, errors.New("cfg is nil")
+	}
+	if err := cfg.HTTP.Validate(); err != nil {
+		return nil, err
 	}
 	d, err := time.ParseDuration(cfg.HTTP.Timeout)
 	if err != nil {
 		return nil, err
 	}
 	httpClient := &http.Client{Timeout: d}
-	s := &Service{c: httpClient, cfg: cfg, log: log}
+	s := &Service{c: httpClient, cfg: cfg, log: log, invocationContext: context.Background()}
 	s.c.Transport = &LogTransport{Log: log, WithBody: cfg.Log.WithRequestBody}
 	for _, opt := range opts {
 		opt(s)
+	}
+	interval, _ := time.ParseDuration(cfg.HTTP.RequestRateReportInterval)
+	reporting := interval > 0 && log != nil && log.Enabled(s.invocationContext, slog.LevelDebug)
+	if cfg.HTTP.RequestRate > 0 || reporting {
+		s.requestRate = newRequestRateTransport(s.c.Transport, cfg.HTTP.RequestRate)
+		s.c.Transport = s.requestRate
+	}
+	if reporting {
+		s.reporter = newRequestRateReporter(s.invocationContext, log, interval)
+		s.requestRate.counter = &s.reporter.starts
 	}
 	s.c.Transport = &ReadRetryTransport{base: s.c.Transport, policy: defaultReadRetryPolicy(), log: log}
 	return s, nil
@@ -138,6 +156,7 @@ func (s *Service) InstallAuthEditor(ed authenticator.RequestEditor) {
 	s.c.Transport = &AuthTransport{base: s.c.Transport, Editor: ed}
 }
 
+// unwrapLogTransport locates logging through all shared client wrappers.
 func unwrapLogTransport(rt http.RoundTripper) *LogTransport {
 	switch t := rt.(type) {
 	case *LogTransport:
@@ -146,6 +165,8 @@ func unwrapLogTransport(rt http.RoundTripper) *LogTransport {
 		return unwrapLogTransport(t.base)
 	case *ReadRetryTransport:
 		return unwrapLogTransport(t.base)
+	case *RequestRateTransport:
+		return unwrapLogTransport(t.base)
 	case *DiagnosticsTransport:
 		return unwrapLogTransport(t.base)
 	default:
@@ -153,6 +174,7 @@ func unwrapLogTransport(rt http.RoundTripper) *LogTransport {
 	}
 }
 
+// diagnosticCollectorFromTransport finds shared diagnostics without copying pacing state.
 func diagnosticCollectorFromTransport(rt http.RoundTripper) *diagnosticCollector {
 	switch transport := rt.(type) {
 	case *DiagnosticsTransport:
@@ -162,6 +184,8 @@ func diagnosticCollectorFromTransport(rt http.RoundTripper) *diagnosticCollector
 	case *AuthTransport:
 		return diagnosticCollectorFromTransport(transport.base)
 	case *ReadRetryTransport:
+		return diagnosticCollectorFromTransport(transport.base)
+	case *RequestRateTransport:
 		return diagnosticCollectorFromTransport(transport.base)
 	default:
 		return nil

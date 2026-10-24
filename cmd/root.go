@@ -45,12 +45,24 @@ Camunda 8.10 baseline: %s (%s).
 Camunda 8.10 aliases: 8.10, 810, v810, v8.10. Default: 8.9.
 Use capabilities to discover supported commands and automation options.
 
+Use --request-rate to pace shared request starts per second for this invocation
+(default 0, disabled; positive fractions allowed). It does not change worker
+concurrency or extend request/workflow deadlines. Explicit zero overrides config.
+Local wait failures identify an unsent request; earlier work may already be accepted.
+
+DEBUG request-rate summaries work with or without pacing. Configure
+http.request_rate_report_interval (default 5s; e.g. 10s; 0s disables summaries).
+They report actual starts, elapsed time and requests/second through the configured
+logger. Summaries pause during manual input and exclude that time from the reported
+duration and rate. Reporting stops with the invocation; short commands may emit no summary.
+
 On API-backed commands, --debug emits redacted request diagnostics at DEBUG
 alongside other configured logs. --quiet and log-level filtering still apply;
 log format, timestamps, and source settings use the existing logger.`, toolx.V810Baseline().Tag, toolx.V810Baseline().Status),
 	Example: `  ./c8volt config show --template
   ./c8volt --config ./config.yaml config show --validate
   ./c8volt get cluster topology
+  ./c8volt --request-rate 10 cancel process-instance --state active
   ./c8volt --config ./config.yaml --debug get process-definition --latest
   ./c8volt --all-tenants get process-instance --state active
   ./c8volt embed deploy --all --run
@@ -195,6 +207,7 @@ func Execute() {
 	}
 }
 
+// init registers root flags and command metadata once for the singleton tree.
 func init() {
 	useInvalidInputFlagErrors(rootCmd)
 
@@ -211,6 +224,7 @@ func init() {
 	pf.String("config", "", "path to config file")
 	pf.String("profile", "", "config active profile name to use (e.g. dev, prod)")
 	pf.Var(toolx.NewDurationStringValue("30s", &flagHTTPTimeout), "timeout", "HTTP request timeout")
+	pf.Float64("request-rate", 0, "maximum shared request starts per second (fractions allowed; 0 disables pacing)")
 
 	pf.String("log-level", "info", "log level (debug, info, warn, error)")
 	pf.String("log-format", "plain-time", "log format (plain-time, plain, json, text)")

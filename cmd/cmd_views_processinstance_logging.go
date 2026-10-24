@@ -9,7 +9,6 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/grafvonb/c8volt/c8volt/ferrors"
 	"github.com/grafvonb/c8volt/internal/domain"
 	"github.com/spf13/cobra"
 )
@@ -89,6 +88,13 @@ func handleProcessInstanceMutationError(cmd *cobra.Command, log *slog.Logger, no
 		handleCommandError(cmd, log, noErrCodes, err)
 		return
 	}
-	log.Debug("process-instance mutation failure", "error", ferrors.Normalize(err).Error())
-	handleCommandError(cmd, log, noErrCodes, err, formatProcessInstanceMutationCommandFailures(failures))
+	message := formatProcessInstanceMutationCommandFailures(failures)
+	reason := boundedCommandFailureReason(err)
+	if commandHasRequestRateWaitFailure(err) {
+		// Keep accepted cancellation facts and identify only the failed follow-up as
+		// unsent. Transport diagnostics already own redacted HTTP evidence.
+		message += "; " + reason
+	}
+	log.Debug("process-instance mutation failure", "reason", reason)
+	handleCommandError(cmd, log, noErrCodes, err, message)
 }

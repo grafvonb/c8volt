@@ -182,7 +182,7 @@ apis:
 			if tc.wantDebug {
 				require.Contains(t, modeStderr, "pi state observation:")
 				require.Contains(t, modeStderr, "api #")
-				require.Equal(t, 1, strings.Count(modeStderr, "process-instance mutation failure"), "full chain must be logged once at DEBUG\nstderr:\n%s", modeStderr)
+				require.Equal(t, 1, strings.Count(modeStderr, "process-instance mutation failure"), "failure diagnostic must be logged once at DEBUG\nstderr:\n%s", modeStderr)
 			} else {
 				require.NotContains(t, modeStderr, "pi state observation:")
 				require.NotContains(t, modeStderr, "api #")

@@ -156,6 +156,71 @@ For scripts or CI, request JSON with `--json`:
 
 For the full setup contract, see the generated [config reference](docs/cli/c8volt_config.md).
 
+### Request Pacing and Rate Reporting
+
+Use `--request-rate` to limit shared application-level request starts per second
+for one invocation. The default is `0` (disabled); positive fractions such as
+`0.5` are supported. The allowance is shared across discovery, preflight,
+mutations, confirmation reads and application retries, with a burst of one.
+Cookie login through the shared client also participates. Separate OAuth provider
+clients, invisible transport replays and other c8volt processes do not share it.
+
+```bash
+./c8volt --request-rate 10 cancel process-instance --state active
+./c8volt --request-rate 0 get process-definition --latest
+```
+
+Persist a rate in configuration, or set `C8VOLT_HTTP_REQUEST_RATE`:
+
+```yaml
+http:
+  request_rate: 10
+  request_rate_report_interval: 5s
+```
+
+Normal precedence applies: flag > environment > profile > base config > default.
+An explicit `--request-rate 0` overrides a positive configured rate. Rates must
+be finite and nonnegative; malformed values fail before authentication/API work.
+
+Pacing controls starts, not worker concurrency, selected resource counts or
+response completion. In-flight requests can overlap, and idle time does not
+accumulate a larger burst. Existing request and workflow deadlines include time
+spent waiting; low rates may exhaust them. A failed local wait identifies that
+attempt as not sent and does not trigger a retry. Earlier attempts or other
+resources may already have been submitted. Human errors group local wait failures
+into one compact diagnostic; JSON retains the existing error details and available
+partial results. Scope, ordering, dry runs, prompts
+and no-wait behavior are unchanged. Choose rates for your environment; pacing
+does not guarantee elimination of backend backpressure or GOAWAY failures.
+
+DEBUG rate summaries measure actual request starts, with or without pacing. The
+configuration-only `http.request_rate_report_interval` defaults to `5s`; set `10s`
+for a longer window or `0s` to disable summaries while retaining other DEBUG
+request diagnostics. `C8VOLT_HTTP_REQUEST_RATE_REPORT_INTERVAL` and profile values
+use normal configuration precedence. Durations must be parseable and nonnegative;
+an explicitly empty value is invalid and fails before authentication/API work.
+
+```bash
+# Measure without pacing; existing worker and timeout settings still apply.
+C8VOLT_HTTP_REQUEST_RATE_REPORT_INTERVAL=10s ./c8volt --debug --request-rate 0 get process-instance --state active
+# Pace starts while disabling rate summaries.
+C8VOLT_HTTP_REQUEST_RATE_REPORT_INTERVAL=0s ./c8volt --debug --request-rate 10 cancel process-instance --state active
+```
+
+Each compact summary includes dispatched attempts, elapsed time excluding manual
+input waits, and measured requests/second, including dispatched retries and failed responses.
+Queued or locally unsent requests do not count. For example:
+`HTTP request rate: 42 requests in 10s (4.20 requests/s)`. Empty windows report
+zero. Rate summaries pause while a manual confirmation or continuation prompt
+waits for input and resume when it returns. Counting and pacing continue unchanged;
+the next summary retains accumulated requests but excludes manual-input time from
+both the displayed duration and rate calculation. Ordinary polling waits still
+count as elapsed time. Summaries use the configured DEBUG logger and diagnostic
+destination, never result stdout. `--debug` or a configured DEBUG level enables them independently
+of `--verbose`; quiet keeps its existing precedence. Reporting adds no API calls
+or pacing waits, stops when the invocation ends, and does not require a final
+partial-window summary. A short command may finish without a summary.
+
 ### API Request Diagnostics
 
 Add the existing `--debug` flag to an API-backed command to emit one compact,

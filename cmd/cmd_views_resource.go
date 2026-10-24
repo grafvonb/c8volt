@@ -6,9 +6,7 @@ package cmd
 import (
 	"fmt"
 	"log/slog"
-	"strings"
 
-	"github.com/grafvonb/c8volt/c8volt/ferrors"
 	"github.com/grafvonb/c8volt/c8volt/resource"
 	"github.com/spf13/cobra"
 )
@@ -107,7 +105,7 @@ func processDefinitionUnfinishedSummary(t resource.DeleteProcessDefinitionPlanTo
 // formatProcessDefinitionDeleteFailure uses bounded facts, never backend text or per-key chains.
 func formatProcessDefinitionDeleteFailure(stage string, selected int, reports resource.DeleteReports, err error) string {
 	_, accepted, _ := reports.Totals()
-	return fmt.Sprintf("%s: selected %d, accepted %d; outcome unconfirmed; %s", stage, selected, accepted, strings.ReplaceAll(string(ferrors.Classify(err)), "_", " "))
+	return fmt.Sprintf("%s: selected %d, accepted %d; outcome unconfirmed; %s", stage, selected, accepted, boundedCommandFailureReason(err))
 }
 
 // renderDeleteProcessDefinitionFailure preserves partial machine results and logs one aggregate human error.

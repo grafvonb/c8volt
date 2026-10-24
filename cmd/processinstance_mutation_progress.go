@@ -197,9 +197,14 @@ func newProcessInstanceMutationProgressReporterWithState(cmd *cobra.Command, ope
 // completion scope for one process-instance cancel/delete mutation.
 func newProcessInstanceMutationSemanticReporter(cmd *cobra.Command, operation string, impact processInstancePageImpact) *opsSemanticProgressReporter {
 	channel := opsProgressChannelForMode(processInstanceMutationProgressModeForCommand(cmd))
+	policy := opsSemanticProgressOutputPolicyForChannel(channel)
+	if channel.Mode == ops.ProgressModeQuiet {
+		// Quiet retains the final configured ERROR, never direct per-tree warnings.
+		policy.FailureWarnings = false
+	}
 	return newOpsSemanticProgressReporter(cmd, opsSemanticProgressConfig{
 		Scope:  processInstanceMutationSemanticProgressScope(operation, impact.Roots, processInstanceMutationAffectedCoverageAvailable(impact)),
-		Policy: opsSemanticProgressOutputPolicyForChannel(channel),
+		Policy: policy,
 		Now:    processInstanceMutationSemanticProgressNow,
 	})
 }
