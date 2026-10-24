@@ -207,3 +207,8 @@ func TestClientSearchUserTasksTotalDelegatesExactCount(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, int64(1)<<40, total)
 }
+
+// CompleteUserTask rejects unintended mutation from this existing read/variable fixture.
+func (a facadeSearchUserTaskAPI) CompleteUserTask(context.Context, string, map[string]any, ...services.CallOption) (d.UserTaskCompletionResult, error) {
+	panic("unexpected CompleteUserTask call")
+}

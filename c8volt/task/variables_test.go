@@ -172,3 +172,8 @@ func TestClientEnrichUserTasksWithVariablesConvertsErrors(t *testing.T) {
 		})
 	}
 }
+
+// CompleteUserTask rejects unintended mutation from this existing read/variable fixture.
+func (a facadeVariableUserTaskAPI) CompleteUserTask(context.Context, string, map[string]any, ...services.CallOption) (d.UserTaskCompletionResult, error) {
+	panic("unexpected CompleteUserTask call")
+}

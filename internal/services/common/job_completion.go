@@ -59,7 +59,7 @@ func ClassifyJobCompletionSubmission(response *http.Response, body []byte, callE
 		http.StatusTooManyRequests:
 		result.Status = d.CompletionSubmissionRejected
 	case http.StatusServiceUnavailable:
-		if jobCompletionResourceExhausted(body) {
+		if completionResourceExhausted(body) {
 			result.Status = d.CompletionSubmissionRejected
 		}
 	}
@@ -67,9 +67,9 @@ func ClassifyJobCompletionSubmission(response *http.Response, body []byte, callE
 	return result, err
 }
 
-// jobCompletionResourceExhausted requires a structured backend problem, rather
+// completionResourceExhausted requires a structured backend problem, rather
 // than treating a generic 503 or a proxy page containing a marker as rejection.
-func jobCompletionResourceExhausted(body []byte) bool {
+func completionResourceExhausted(body []byte) bool {
 	var problem struct {
 		Title  string `json:"title"`
 		Detail string `json:"detail"`

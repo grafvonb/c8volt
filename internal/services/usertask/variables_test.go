@@ -391,3 +391,8 @@ func variableNames(items []d.ProcessInstanceVariable) []string {
 	}
 	return names
 }
+
+// CompleteUserTask rejects unintended mutation from this existing read/variable fixture.
+func (a *variableUserTaskAPI) CompleteUserTask(context.Context, string, map[string]any, ...services.CallOption) (d.UserTaskCompletionResult, error) {
+	panic("unexpected CompleteUserTask call")
+}

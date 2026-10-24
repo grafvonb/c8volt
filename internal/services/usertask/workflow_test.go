@@ -56,3 +56,8 @@ func TestResolveProcessInstanceKeys_PreservesInputOrder(t *testing.T) {
 	require.Equal(t, taskKeys, api.requested)
 	require.Equal(t, types.Keys{"process-3", "process-1", "process-2"}, processInstanceKeys)
 }
+
+// CompleteUserTask rejects unintended mutation from this existing read/variable fixture.
+func (a *orderedUserTaskAPI) CompleteUserTask(context.Context, string, map[string]any, ...services.CallOption) (d.UserTaskCompletionResult, error) {
+	panic("unexpected CompleteUserTask call")
+}
