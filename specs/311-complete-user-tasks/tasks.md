@@ -56,7 +56,7 @@ No initialization task is needed: the Go module, generated clients, pool, HTTP d
 **Goal**: Expose one completion workflow through the existing task facade and CLI, including mandatory safety, output and compatibility behavior shared with the other stories.
 **Independent test**: Run the actual command with isolated responses for every alias and key form; verify one logical completion per unique key, acceptance-only results, and zero mutation for invalid input or dry-run.
 
-- [ ] T003 [US1] Build the local completion request-to-report contract in new `cmd/update_usertask_complete_input.go`, `cmd/update_usertask_complete_input_test.go`, `cmd/cmd_views_usertask_complete.go`, and `cmd/cmd_views_usertask_complete_test.go`, without exposing a partially implemented completion flag.
+- [x] T003 [US1] Build the local completion request-to-report contract in new `cmd/update_usertask_complete_input.go`, `cmd/update_usertask_complete_input_test.go`, `cmd/cmd_views_usertask_complete.go`, and `cmd/cmd_views_usertask_complete_test.go`, without exposing a partially implemented completion flag.
 
   Implement a focused request parser for the future runner, using configured stdin only for positional `-`. Validate flag and stdin keys with “Nonempty selection; exactly 16 decimal digits per key under existing user-task conventions; stable first-occurrence uniqueness; flags precede stdin”. Ignore blank stdin lines, reject empty flag tokens and invalid late tokens, allow valid flag keys with empty stdin, and reject an empty combined selection. Do not alter shared variable-mode key parsing or add discovery.
 

@@ -14,6 +14,9 @@ Started: 2026-10-24T06:09:57Z
 - Coordinator uses `pool.ExecuteSlice`, atomic stop state and started/result/error slots. Pool context controls scheduling; original caller context reaches native calls. Real callback errors and caller cancellation are joined; synthetic fail-fast cancellation is ignored. Native adapters own status/submission evidence; the coordinator preserves it and stamps the selected key.
 - Public completion fields have explicit JSON tags; `items` is always initialized by conversion and never omitted. Native stubs for new tests embed nil API interfaces so forbidden reads/writes fail closed. The command's shared task stub now explicitly rejects unexpected collection completion.
 
+- Completion-local CLI input is `userTaskCompletionInput` from `parseUpdateUserTaskCompletionInput(cmd, args)`: owned stable unique Keys, optional snapshotted Variables, and WantedWorkers. It uses configured stdin only for `-`, validates every key, and reuses the existing variable parser/JSON confirmation guard without changing variable mode.
+- Views use `newUserTaskCompletionPreview(input)` locally and `newUserTaskCompletionReport(input, results)` for complete ordered service evidence. `renderUpdateUserTaskCompletion(cmd, report, operationErr)` writes selected-format results only: succeeded preview, explicit accepted execution, or one original-class failure envelope. The runner must log `formatUserTaskCompletionFailure` once for non-JSON errors and preserve the original error for exit.
+
 ## Decisions
 
 - Only a valid HTTP 204 proves acceptance. Unexpected success statuses and missing HTTP metadata are malformed/unknown. Transport errors override incomplete response evidence, including a partial 204.
@@ -25,6 +28,9 @@ Started: 2026-10-24T06:09:57Z
 - T002 validates exactly 16 ASCII digits, nonempty selection, nonnegative workers and no-wait rejection before submission. Zero workers uses existing defaults; explicit workers win over no-worker-limit. Canceled/expired valid requests preserve not-attempted slots, including canceled previews.
 - Facade payload copying uses `CopyJSONMap`, not the older recursive variable-map copier: invalid/cyclic inputs must return classified errors rather than recurse indefinitely. Service independently snapshots direct callers; workers share a private read-only map and native adapters snapshot their request bodies.
 
+- T003 keeps command registration and execution deferred to T004. Completion human/verbose results use configured stdout directly; quiet suppresses only human results, JSON wins over keys, execution keys include accepted items only. Preview counts never imply submission. Zero-accepted execution says no acceptance established.
+- Human reasons use allowlisted status/submission values and standard HTTP labels, with at most three first-seen reason groups plus other failures. Unknown acceptance remains unknown even when the last response was a rejection. Raw error evidence is preserved only in machine output.
+
 ## Gotchas
 
 - `RetryCamundaMutation` returns a zero result when cancellation interrupts backoff. Never derive completion evidence solely from its returned response. Pass original call errors into its callback; prematurely classifying a 429/503 as an error disables the existing HTTP retry branch.
@@ -34,6 +40,10 @@ Started: 2026-10-24T06:09:57Z
 
 - `ferrors.FromDomain` preserves the established facade class/text contract, not arbitrary original cause inspection. Tests compare facade classes/exit codes and retained item evidence; the service tests assert joined original causes.
 - Synchronization barriers/counters prove worker concurrency and reverse response order without sleeps. Separate fail-fast tests prove queued slots and original-context in-flight acceptance. Cancellation after an accepted native result keeps acceptance plus the caller error.
+
+- pflag StringSlice drops empty `--key=` occurrences, including repeated ones beside valid keys. T004 must call `trackUserTaskCompletionKeyInput(fs.Lookup("key"))` immediately after registering the key flag, including in re-registration test helpers. The wrapper delegates legacy values, implements SliceValue and clears occurrence evidence on Replace for existing reset helpers; only the completion parser rejects those empties. T003 installs it on private test commands only.
+- The shared variable parser decodes JSON numbers as float64; `CopyJSONMap` snapshots normalize them to json.Number. T003 tests preserve the existing parser contract while checking nil versus nonnil empty maps and nested values. No shared parser was changed.
+- The report builder consumes complete service outcomes, never fabricates missing evidence. Use existing local/bootstrap error handling before report rendering when no valid frozen selection exists. Do not call a second error renderer after a completion envelope.
 
 ## Reusable Commands
 
@@ -49,17 +59,22 @@ isolated env GORACE=atexit_sleep_ms=0 go test ./internal/services/usertask/... .
 isolated go test ./c8volt/task -run 'Complete|Completion' -count=1
 isolated go test ./cmd -run 'UpdateUserTask|GetUserTask|HasUserTasks|UserTaskHTTPFallback' -count=1
 isolated go test ./... -run '^$'
+isolated go test ./cmd -run 'TestUpdateUserTaskCompletionInput|TestUpdateUserTaskCompletionView' -count=1
+isolated go test ./cmd -run 'TestUpdateUserTask|TestUpdateProcessInstanceCommand_InvalidVarsFailBeforeMutation' -count=1
+isolated env GORACE=atexit_sleep_ms=0 go test ./cmd -run 'TestUpdateUserTaskCompletion' -race -count=1
 git diff --check
 ```
 
 The adapter/coordinator and facade focused checks, complete usertask/task race suites, affected CLI regressions and repository compilation passed in iteration 2. Iteration 1 also validated the common helper and job consumer. The final command compiling Go packages does not execute their tests. Untagged integration helpers skip live checks; no integration tags or live targets were used.
 
+Iteration 3 passed the focused input/view checks, existing user-task command/terminal/output regressions plus shared variable-input failures, and focused completion race checks. These are local completion preparation tests plus existing variable-mode execution regressions, not completion command acceptance. No live environment was contacted.
+
 ## Do Not Repeat
 
 - Do not add native polling, task/variable reads, assignment, tenant filtering, new retries, or generated-client edits. Acceptance is the only native success claim.
-- Do not log raw completion Error strings or joined backend errors. T002 preserves partial evidence and classified errors; T003/T004 own safe rendering and configured aggregate logging.
-- Do not claim command-level completion diagnostics or live-engine completion verification from T001/T002 tests. The full suite and CLI documentation gate remain part of T004 delivery.
+- Do not log raw completion Error strings or joined backend errors. T002 preserves partial evidence and classified errors; T003 provides safe rendering/aggregate formatting; T004 must wire configured logging and exits.
+- Do not claim command-level completion diagnostics or live-engine completion verification from T001–T003 tests. The full suite and CLI documentation gate remain part of T004 delivery.
 
 ## Current Handoff
 
-- Next dependency-ready work is Phase 3 / US1 T003: local completion input parsing and typed preview/result views without registering --complete. Recheck tasks.md before selecting it. T001 and T002 are complete; T004 depends on T003. No blocking dependency remains for T003. CLI integration, command-level diagnostics/terminal checks, docs generation and the final full race suite remain T004 work.
+- Next dependency-ready work is Phase 3 / US1 T004: register and execute completion, wire the existing input/report helpers and empty-key occurrence tracker, then deliver command-level diagnostics, terminal/exit/output coverage, metadata/docs generation, compatibility checks and the final isolated full race suite. Recheck tasks.md before selection. T001–T003 are complete; no blocking dependency remains. Do not duplicate local parsing or preview logic. No actual completion command flag or lifecycle has been exposed yet.

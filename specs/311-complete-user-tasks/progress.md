@@ -90,3 +90,29 @@ Started: 2026-10-24 08:09:58
 - Failure-path review: adapters return structured machine evidence; coordinator joins real native failures and caller cancellation; facade maps all items before ferrors.FromDomain. No new direct print, raw error logger call, renderer or exit path was added. CLI renderer/logger/exit integration remains T003/T004; these tests do not claim command-level completion diagnostic compliance.
 - Only a test-double field and rejecting method changed under cmd; no command mode or source metadata changed, so no CLI docs regeneration is due. No live environment was contacted; actual engine listener, assignment eligibility and eventual state remain unverified. Next work is T003, documented in Current Handoff.
 ---
+
+---
+## Iteration 3 - 2026-10-24 08:32
+**Work Unit**: Phase 3 / US1 T003 — local completion input and preview/result contract completed; US1 delivery remains partial
+**Tasks Completed**:
+- [x] T003: Freeze and validate local completion input, build typed preview/execution reports, and render safe selected-format results with bounded failure formatting.
+**Tasks Remaining in Work Unit**: T004 remains in US1; no additional task was started in this iteration.
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/update_usertask_complete_input.go
+- cmd/update_usertask_complete_input_test.go
+- cmd/cmd_views_usertask_complete.go
+- cmd/cmd_views_usertask_complete_test.go
+- specs/311-complete-user-tasks/tasks.md
+- specs/311-complete-user-tasks/ralph-memory.md
+- specs/311-complete-user-tasks/progress.md
+**Learnings**:
+- Prerequisite/context review selected T003 after completed T001/T002. T003/T004 separation remains deliberate: this work establishes local parsing/report behavior without registering a partially implemented flag. No CLI source metadata changed, so docs generation remains T004.
+- Red/green evidence: input tests initially failed compilation before the parser existed, and view tests initially failed before the report/render helpers existed. Final focused gate passed: `isolated go test ./cmd -run 'TestUpdateUserTaskCompletionInput|TestUpdateUserTaskCompletionView' -count=1`.
+- Regression gate passed: `isolated go test ./cmd -run 'TestUpdateUserTask|TestUpdateProcessInstanceCommand_InvalidVarsFailBeforeMutation' -count=1`. This includes existing variable-mode source validation, native-version command fixtures, scope/no-op/output behavior and real-terminal confirmation regressions using test-owned dependencies. New completion command execution/terminal assertions remain T004.
+- Focused race gate passed: `isolated env GORACE=atexit_sleep_ms=0 go test ./cmd -run 'TestUpdateUserTaskCompletion' -race -count=1`. All four new Go files were formatted. Tests ran with the quickstart clean environment and no integration build tags; selected existing subprocess/terminal fixtures use explicit fake configurations. No live test target was discovered or contacted.
+- Input tests cover flag/stdin merge order, duplicate collapse, whitespace/blank lines, empty combined selection, invalid late keys, ASCII digit length, read failures, opt-in configured stdin, omitted/empty/nested/file variables, conflicting/unreadable/empty/malformed/non-object/trailing sources, worker/no-wait validation, and JSON confirmation/verbose guardrails. pflag drops empty repeated --key occurrences: the tested wrapper records them while delegating legacy values/reset behavior. T004 must register that wrapper on the production flag and test re-registrations.
+- Parser-to-preview tests feed frozen inputs directly into the report/view without constructing a backend dependency; human/verbose/JSON/keys/quiet combinations preserve selection order, payload presence/count and preview-only intent. Execution tests cover accepted/failed/timed-out/canceled/not-attempted evidence, partial JSON with original class/detail, exact human and accepted-only keys output, zero-byte no-accepted keys, quiet machine modes, JSON precedence, initialized arrays/zero counts, evidence omission, defensive result copying and write failures. Single-envelope tests require EOF.
+- Failure-path review: native adapters retain typed submission/status and raw machine error evidence; the coordinator preserves ordered partial results and real errors; the facade maps before conversion. New views pass the original error only to resultEnvelopeForError, attach the report once, and never interpolate item Error or unknown enum text into human output. All three new direct print sites are selected-format results on configured stdout; aggregate failure formatting emits nothing itself and bounds reason groups to three plus other failures. Configured logger emission, original exit handling, DEBUG/redaction and diagnostic mutation-sensitivity tests are explicitly T004 work; renderer tests do not claim that compliance.
+- The source files keep input handling and final formatting separate, with no CLI-owned workers/retries/polling, no service changes, and no shared variable-parser change. Real-engine task-listener, assignment eligibility and eventual state remain unverified. Current Handoff points to T004.
+---
