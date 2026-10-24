@@ -179,3 +179,8 @@ func TestGetUserTasksEmptyInputReturnsInitializedCollection(t *testing.T) {
 	require.Empty(t, tasks)
 	require.Zero(t, calls.Load())
 }
+
+// CompleteUserTask rejects unintended mutation from this existing read/variable fixture.
+func (a *bulkUserTaskAPI) CompleteUserTask(context.Context, string, map[string]any, ...services.CallOption) (d.UserTaskCompletionResult, error) {
+	panic("unexpected CompleteUserTask call")
+}

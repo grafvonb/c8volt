@@ -48,6 +48,11 @@ func (m *mockUserTaskCamundaClient) SearchUserTaskEffectiveVariablesWithResponse
 	return m.searchUserTaskEffectiveVariablesWithResponse(ctx, key, params, body, reqEditors...)
 }
 
+// CompleteUserTaskWithResponse rejects mutation from existing read-only fixtures.
+func (m *mockUserTaskCamundaClient) CompleteUserTaskWithResponse(context.Context, camundav89.UserTaskKey, camundav89.CompleteUserTaskJSONRequestBody, ...camundav89.RequestEditorFn) (*camundav89.CompleteUserTaskResponse, error) {
+	panic("unexpected CompleteUserTaskWithResponse call")
+}
+
 var _ v89.GenUserTaskClientCamunda = (*mockUserTaskCamundaClient)(nil)
 
 type mockUserTaskTasklistClient struct {

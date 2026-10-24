@@ -65,7 +65,7 @@ This generated tree lists the root reference plus the 57 available c8volt comman
   - [`c8volt update`]({{ "/cli/c8volt_update" | relative_url }}) - Update existing resources
     - [`c8volt update job`]({{ "/cli/c8volt_update_job" | relative_url }}) - Update a job or complete selected jobs
     - [`c8volt update process-instance`]({{ "/cli/c8volt_update_process-instance" | relative_url }}) - Update process-instance variables by key
-    - [`c8volt update user-task`]({{ "/cli/c8volt_update_user-task" | relative_url }}) - Update user-task variables by key
+    - [`c8volt update user-task`]({{ "/cli/c8volt_update_user-task" | relative_url }}) - Update variables or complete user tasks by key
   - [`c8volt version`]({{ "/cli/c8volt_version" | relative_url }}) - Print version information
   - [`c8volt walk`]({{ "/cli/c8volt_walk" | relative_url }}) - Inspect process-instance relationships
     - [`c8volt walk process-instance`]({{ "/cli/c8volt_walk_process-instance" | relative_url }}) - Inspect the parent/child tree of process instances

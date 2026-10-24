@@ -13,22 +13,31 @@ import (
 // parseUpdateVariablesFromFlags selects exactly one variable payload source
 // for resource update commands and decodes it as a JSON object.
 func parseUpdateVariablesFromFlags(cmd *cobra.Command, raw string, filePath string) (map[string]any, error) {
+	raw, source, err := readUpdateVariablesFromFlags(cmd, raw, filePath)
+	if err != nil {
+		return nil, err
+	}
+	return parseUpdateVariables(raw, source)
+}
+
+// readUpdateVariablesFromFlags selects one source without choosing numeric decoding semantics.
+func readUpdateVariablesFromFlags(cmd *cobra.Command, raw string, filePath string) (string, string, error) {
 	varsChanged := cmd.Flags().Changed("vars")
 	varsFileChanged := cmd.Flags().Changed("vars-file")
 	if varsChanged && varsFileChanged {
-		return nil, mutuallyExclusiveFlagsf("--vars cannot be combined with --vars-file")
+		return "", "", mutuallyExclusiveFlagsf("--vars cannot be combined with --vars-file")
 	}
 	if varsFileChanged {
 		if filePath == "" {
-			return nil, invalidFlagValuef("--vars-file requires a file path")
+			return "", "", invalidFlagValuef("--vars-file requires a file path")
 		}
 		data, err := os.ReadFile(filePath)
 		if err != nil {
-			return nil, invalidFlagValuef("--vars-file could not be read: %v", err)
+			return "", "", invalidFlagValuef("--vars-file could not be read: %v", err)
 		}
-		return parseUpdateVariables(string(data), "--vars-file")
+		return string(data), "--vars-file", nil
 	}
-	return parseUpdateVariables(raw, "--vars")
+	return raw, "--vars", nil
 }
 
 // parseUpdateVariables enforces the shared non-null JSON-object payload contract.

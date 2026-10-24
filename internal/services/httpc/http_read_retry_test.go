@@ -362,3 +362,32 @@ func TestNewInstallsReadRetryTransport(t *testing.T) {
 	require.True(t, ok)
 	require.NotNil(t, unwrapLogTransport(svc.Client().Transport))
 }
+
+// TestReadRetryTransportSingleAttempt confines the opt-out to the marked advisory request.
+func TestReadRetryTransportSingleAttempt(t *testing.T) {
+	t.Parallel()
+	for _, first := range []readRetryRoundTripResult{
+		{resp: newReadRetryResponse(http.StatusServiceUnavailable, "unavailable")},
+		{err: temporaryReadRetryError{}},
+	} {
+		seq := &readRetrySequenceTransport{t: t, results: []readRetryRoundTripResult{
+			first,
+			{resp: newReadRetryResponse(http.StatusServiceUnavailable, "retry this ordinary read")},
+			{resp: newReadRetryResponse(http.StatusOK, "ok")},
+		}}
+		transport := &ReadRetryTransport{base: seq, policy: fastReadRetryPolicy()}
+		req := newReadRetryRequest(t, http.MethodGet)
+		resp, err := transport.RoundTrip(req.WithContext(WithoutReadRetry(req.Context())))
+		require.Equal(t, first.err, err)
+		require.Same(t, first.resp, resp)
+		require.Equal(t, 1, seq.Calls())
+		if resp != nil {
+			require.NoError(t, resp.Body.Close())
+		}
+		resp, err = transport.RoundTrip(req)
+		require.NoError(t, err)
+		require.Equal(t, http.StatusOK, resp.StatusCode)
+		require.Equal(t, 3, seq.Calls())
+		require.NoError(t, resp.Body.Close())
+	}
+}

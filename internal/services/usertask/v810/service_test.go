@@ -42,6 +42,11 @@ func (m *mockUserTaskClient) SearchUserTaskEffectiveVariablesWithResponse(ctx co
 	return m.searchUserTaskEffectiveVariablesWithResponse(ctx, key, params, body, reqEditors...)
 }
 
+// CompleteUserTaskWithResponse rejects mutation from existing read-only fixtures.
+func (m *mockUserTaskClient) CompleteUserTaskWithResponse(context.Context, camundav810.UserTaskKey, camundav810.CompleteUserTaskJSONRequestBody, ...camundav810.RequestEditorFn) (*camundav810.CompleteUserTaskResponse, error) {
+	panic("unexpected CompleteUserTaskWithResponse call")
+}
+
 var _ v810.GenUserTaskClientCamunda = (*mockUserTaskClient)(nil)
 
 // TestService_GetUserTask_ResolvesProcessInstanceKey verifies V810 resolves user tasks through the unified Camunda client only.

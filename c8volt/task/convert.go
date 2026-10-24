@@ -391,3 +391,17 @@ func fromDomainSearchPagesResult(x d.UserTaskSearchPagesResult) SearchPagesResul
 		Completion: SearchCompletionDisposition(x.Completion),
 	}
 }
+
+// fromDomainUserTaskCompletionResults preserves ordered evidence, copying the slice
+// and initializing an empty public array even when validation produced no items.
+func fromDomainUserTaskCompletionResults(x d.UserTaskCompletionResults) UserTaskCompletionResults {
+	out := UserTaskCompletionResults{Items: make([]UserTaskCompletionResult, len(x.Items))}
+	for i, item := range x.Items {
+		out.Items[i] = UserTaskCompletionResult{
+			Key: item.Key, Status: UserTaskCompletionStatus(item.Status),
+			Submission: UserTaskCompletionSubmission(item.Submission),
+			StatusCode: item.StatusCode, Error: item.Error,
+		}
+	}
+	return out
+}

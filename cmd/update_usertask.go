@@ -11,6 +11,7 @@ import (
 )
 
 var (
+	flagUpdateUserTaskComplete bool
 	flagUpdateUserTaskKeys     []string
 	flagUpdateUserTaskVars     string
 	flagUpdateUserTaskVarsFile string
@@ -18,15 +19,27 @@ var (
 
 var updateUserTaskCmd = &cobra.Command{
 	Use:   "user-task [-]",
-	Short: "Update user-task variables by key",
-	Long: `Update effective user-task variables on supported Camunda versions.
+	Short: "Update variables or complete user tasks by key",
+	Long: `Update effective user-task variables or complete explicitly selected user tasks on supported Camunda versions.
+
+Use --complete to submit native completion for each eligible unique key, with optional --vars or --vars-file data. Omitted variables and {} do not suppress completion. Completion preserves JSON numbers exactly, including large integers and precise decimals. The backend's successful response confirms completion, including blocking task listeners. c8volt performs no additional task-state polling or downstream waiting; no assignment is performed. --no-wait skips variable-update verification and cannot bypass the completion request or its listener processing, so it is incompatible with --complete. A configured tenant does not filter explicit keys.
+
+Before confirmation, c8volt reads each unique task once. Already completed tasks are skipped with a conflict result; any supplied variables are not applied. Human summaries omit zero counters; conflict errors explain that the task is already completed and no completion request was sent. Variables are mentioned only when supplied. Tasks with no assignee produce a warning and remain eligible. Lookup failures produce a warning and leave eligibility to the backend. There is no recheck after approval. Ordinary human approval shows selection scope, plan, warnings and confirmation in that order. A single-task prompt names the key; a bulk prompt names the eligible count. A single success says "updated user-task <key>: completion confirmed"; batches use "update user-task" with nonzero counts. Completion summaries and verbose details honor the configured log level; quiet suppresses them. Auto-confirm and automation skip the approval plan; quiet and machine output suppress its informational messages.
+
+Completion accepts repeated or comma-separated --key values and newline-separated keys with positional '-'. Keys must contain exactly 16 decimal digits. --dry-run previews the frozen selection locally without requests or prompts. Ordinary execution confirms the eligible selection once, with no prompt when none can be submitted; --auto-confirm and --automation allow unattended execution. --workers bounds concurrency and --fail-fast stops new scheduling after a failure while retaining in-flight outcomes. With --fail-fast, finding an already completed task during preparation prevents all completion submissions. Without --fail-fast, completed tasks are skipped and eligible tasks continue.
+
+Without --complete (or with --complete=false), variable-update behavior is unchanged.
 
 Provide repeated --key values or newline-separated keys from stdin with '-'. Supply exactly one payload source: --vars with a JSON object or --vars-file with its file path. The same variable map is applied to every unique key. Explicit keys use backend authorization without tenant filtering.
 
 c8volt reads each task's complete effective variables, preserves existing local or inherited scopes, creates absent names at the task's element scope, freezes one deduplicated plan, and waits for the requested values at those scopes. Detailed previews label local writes as element:<key> and inherited writes as pi:<key> or element:<key> according to their owning scope.
 
 Use --dry-run to inspect changes without mutation, or --auto-confirm for unattended updates. Use --no-wait to return after accepted scope writes without confirmation.`,
-	Example: `  ./c8volt update user-task --key <user-task-key> --vars '{"approved":true}' --dry-run
+	Example: `  ./c8volt update ut --key 2251799813685249 --complete
+  ./c8volt update ut --key 2251799813685249,2251799813685250 --complete --vars '{"approved":true}' --dry-run
+  ./c8volt update ut --key 2251799813685249 --complete --vars-file ./vars.json --auto-confirm
+  printf '%s\n' "$USER_TASK_KEY_A" "$USER_TASK_KEY_B" | ./c8volt update ut - --complete --workers 1 --auto-confirm
+  ./c8volt update user-task --key <user-task-key> --vars '{"approved":true}' --dry-run
   ./c8volt update ut --key <user-task-key> --vars-file ./vars.json --dry-run
   ./c8volt update uts --key <user-task-key-a> --key <user-task-key-b> --vars '{"approved":true}' --auto-confirm
   printf '%s\n' "$USER_TASK_KEY_A" "$USER_TASK_KEY_B" | ./c8volt update user-tasks - --vars '{"approved":true}' --dry-run
@@ -42,6 +55,10 @@ Use --dry-run to inspect changes without mutation, or --auto-confirm for unatten
 		}
 		if err := requireAutomationSupport(cmd); err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+		}
+		if flagUpdateUserTaskComplete {
+			runUpdateUserTaskCompletion(cmd, args, cli, log, cfg)
+			return
 		}
 		if cmd.Flags().Changed("workers") && flagWorkers < 1 {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, invalidFlagValuef("--workers must be positive integer"))
@@ -112,13 +129,15 @@ func init() {
 
 	fs := updateUserTaskCmd.Flags()
 	fs.StringSliceVarP(&flagUpdateUserTaskKeys, "key", "k", nil, "user task key(s) to update; repeat or combine with stdin '-'")
-	fs.StringVar(&flagUpdateUserTaskVars, "vars", "", "JSON object with variables to set for each user task")
-	fs.StringVar(&flagUpdateUserTaskVarsFile, "vars-file", "", "path to JSON object file with variables to set for each user task")
-	fs.BoolVar(&flagDryRun, "dry-run", false, "preview variable updates without submitting mutation")
-	fs.BoolVar(&flagNoWait, "no-wait", false, "return after scope update requests are accepted without variable confirmation")
-	fs.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers when updating multiple user-task scopes (default: min(count, 2*GOMAXPROCS, 32))")
-	fs.BoolVar(&flagNoWorkerLimit, "no-worker-limit", false, "use all queued scope updates as workers when --workers is unset")
-	fs.BoolVar(&flagFailFast, "fail-fast", false, "stop scheduling new scope updates after the first error")
+	trackUserTaskCompletionKeyInput(fs.Lookup("key"))
+	fs.BoolVar(&flagUpdateUserTaskComplete, "complete", false, "complete selected tasks with optional variables; report backend-confirmed completion without additional polling")
+	fs.StringVar(&flagUpdateUserTaskVars, "vars", "", "JSON object with variables to set or submit with each completion")
+	fs.StringVar(&flagUpdateUserTaskVarsFile, "vars-file", "", "path to JSON object file with variables to set or submit with each completion")
+	fs.BoolVar(&flagDryRun, "dry-run", false, "preview variable updates or task completions without submitting mutations")
+	fs.BoolVar(&flagNoWait, "no-wait", false, "skip variable-update verification after accepted scope writes; completion has no additional polling, so incompatible with --complete")
+	fs.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers for task completions or variable scope updates (default: min(count, 2*GOMAXPROCS, 32))")
+	fs.BoolVar(&flagNoWorkerLimit, "no-worker-limit", false, "use all queued completions or scope updates as workers when --workers is unset")
+	fs.BoolVar(&flagFailFast, "fail-fast", false, "stop scheduling new completions or scope updates after the first error")
 
 	useInvalidInputFlagErrors(updateUserTaskCmd)
 	setCommandMutation(updateUserTaskCmd, CommandMutationStateChanging)

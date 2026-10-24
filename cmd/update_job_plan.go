@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/grafvonb/c8volt/c8volt"
+	"github.com/grafvonb/c8volt/c8volt/ferrors"
 	"github.com/grafvonb/c8volt/c8volt/job"
 	"github.com/grafvonb/c8volt/config"
 	"github.com/spf13/cobra"
@@ -148,6 +149,9 @@ func buildWorkerOutcomeUpdatePlan(current job.Job, request job.UpdateRequest) jo
 // validateUpdateJobPlanPreconditions rejects planned updates that Camunda cannot accept for the current job state.
 func validateUpdateJobPlanPreconditions(plan job.UpdatePlan, request job.UpdateRequest) error {
 	if request.WorkerOutcome != nil {
+		if strings.EqualFold(plan.Current.State, "COMPLETED") {
+			return fmt.Errorf("%w: %s", ferrors.ErrConflict, formatCompletedJobGuard(*request.WorkerOutcome))
+		}
 		return nil
 	}
 	if request.TimeoutMillis == nil {

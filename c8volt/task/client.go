@@ -26,14 +26,14 @@ type client struct {
 	log       *slog.Logger
 }
 
-// New creates a task facade for reads and process-instance resolution; variable updates require
+// New creates a task facade for reads, native completion and process-instance resolution; variable updates require
 // NewWithVariableUpdates.
 func New(pdApi pdsvc.API, piApi pisvc.API, utApi utsvc.API, log *slog.Logger) API {
 	return NewWithVariableUpdates(pdApi, piApi, utApi, nil, log)
 }
 
 // NewWithVariableUpdates creates a task facade with the composed variable
-// update workflow while preserving New for read-only consumers.
+// update workflow while preserving New for read and native completion consumers.
 func NewWithVariableUpdates(pdApi pdsvc.API, piApi pisvc.API, utApi utsvc.API, updateApi utsvc.VariableUpdateAPI, log *slog.Logger) API {
 	return &client{
 		pdApi:     pdApi,

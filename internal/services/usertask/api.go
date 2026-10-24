@@ -13,8 +13,10 @@ import (
 	v89 "github.com/grafvonb/c8volt/internal/services/usertask/v89"
 )
 
-// API exposes legacy resolver lookup plus native task and effective-variable reads.
+// API exposes legacy resolver lookup, native reads and explicit-key task completion.
 type API interface {
+	// CompleteUserTask submits one native completion and retains acceptance evidence without polling.
+	CompleteUserTask(ctx context.Context, key string, variables map[string]any, opts ...services.CallOption) (d.UserTaskCompletionResult, error)
 	GetUserTask(ctx context.Context, key string, opts ...services.CallOption) (d.UserTask, error)
 	GetNativeUserTask(ctx context.Context, key string, opts ...services.CallOption) (d.UserTask, error)
 	SearchUserTasksPage(ctx context.Context, query d.UserTaskSearchQuery, page d.UserTaskPageRequest, opts ...services.CallOption) (d.UserTaskSearchPage, error)

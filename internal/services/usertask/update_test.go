@@ -337,3 +337,8 @@ func plannedChangeNames(values []d.UserTaskVariablePlannedChange) []string {
 	}
 	return names
 }
+
+// CompleteUserTask rejects unintended mutation from this existing read/variable fixture.
+func (a *updatePlanningUserTaskAPI) CompleteUserTask(context.Context, string, map[string]any, ...services.CallOption) (d.UserTaskCompletionResult, error) {
+	panic("unexpected CompleteUserTask call")
+}
