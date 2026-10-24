@@ -28,7 +28,7 @@ Use existing generated clients for Camunda 8.8, 8.9, and 8.10, shared mutation r
 
 **Constraints**: Explicit-key backend authorization; backend-confirmed completion without independent read-back; complete local validation before submission; no empty-input no-op; reject completion with no-wait; fail-fast stops scheduling without canceling already submitted work; configured logging; one JSON envelope; no live implementation validation.
 
-**Scale/Scope**: Single and multiple explicit tasks through the same workflow, same optional variables for every key, three supported adapters. No search, assignment/unassignment (#351), task-attribute updates, per-task payloads, downstream waiting, or changes to job completion.
+**Scale/Scope**: Single and multiple explicit tasks through the same workflow, same optional variables for every key, three supported adapters. Includes the FR-022 follow-up: a shared completed-job guard and compact human errors for scalar `update job --complete`, `--fail`, and `--throw-bpmn-error`, reusing the existing lookup and preserving JSON and backend exit codes. No search, assignment/unassignment (#351), task-attribute updates, per-task payloads, downstream waiting, polling, or other changes to job completion.
 
 ## Constitution Check
 
