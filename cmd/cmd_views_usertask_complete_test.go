@@ -5,6 +5,7 @@ package cmd
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -14,6 +15,7 @@ import (
 
 	"github.com/grafvonb/c8volt/c8volt/ferrors"
 	"github.com/grafvonb/c8volt/c8volt/task"
+	"github.com/grafvonb/c8volt/toolx/logging"
 	"github.com/grafvonb/c8volt/typex"
 	"github.com/stretchr/testify/require"
 )
@@ -69,8 +71,11 @@ func TestUpdateUserTaskCompletionViewParsedPreview(t *testing.T) {
 				var out, diagnostics bytes.Buffer
 				cmd.SetOut(&out)
 				cmd.SetErr(&diagnostics)
+				cmd.SetContext(logging.ToContext(context.Background(), logging.New(logging.LoggerConfig{Level: "info", Format: "json", Writer: &diagnostics})))
 				require.NoError(t, renderUpdateUserTaskCompletion(cmd, report, nil))
-				require.Empty(t, diagnostics.String())
+				if flagViewAsJson || flagViewKeysOnly || flagQuiet {
+					require.Empty(t, diagnostics.String())
+				}
 				require.NotContains(t, out.String(), "SECRET-VALUE")
 				if flagViewAsJson {
 					envelope := decodeCompletionEnvelope(t, out.String())
@@ -81,11 +86,18 @@ func TestUpdateUserTaskCompletionViewParsedPreview(t *testing.T) {
 				} else if flagQuiet {
 					require.Empty(t, out.String())
 				} else {
-					want := fmt.Sprintf("dry run: complete user-task: 2 user task(s), %d supplied variable(s); no requests submitted\n", wantVariables)
+					want := "dry run: update user-task completion: 2 requested; no requests submitted\n"
+					if source == "{}" {
+						want = "dry run: update user-task completion: 2 requested; variables: submit; no requests submitted\n"
+					}
+					if wantVariables > 0 {
+						want = "dry run: update user-task completion: 2 requested; variables: submit; no requests submitted\n"
+					}
 					if flagVerbose {
 						want += completionKeyB + ": preview; submission: not_submitted\n" + completionKeyA + ": preview; submission: not_submitted\n"
 					}
-					require.Equal(t, want, out.String())
+					require.Empty(t, out.String())
+					require.Equal(t, completionInfoRecords(want), bulkCompletionDiagnosticRecords(t, diagnostics.String(), "json"))
 					require.NotContains(t, out.String(), "accepted")
 				}
 			})
@@ -124,8 +136,11 @@ func TestUpdateUserTaskCompletionViewExecution(t *testing.T) {
 			var out, diagnostics bytes.Buffer
 			cmd.SetOut(&out)
 			cmd.SetErr(&diagnostics)
+			cmd.SetContext(logging.ToContext(context.Background(), logging.New(logging.LoggerConfig{Level: "info", Format: "json", Writer: &diagnostics})))
 			require.NoError(t, renderUpdateUserTaskCompletion(cmd, report, operationErr))
-			require.Empty(t, diagnostics.String(), "the runner owns logger emission")
+			if flagViewAsJson || flagViewKeysOnly || flagQuiet {
+				require.Empty(t, diagnostics.String())
+			}
 			if flagViewAsJson {
 				envelope := decodeCompletionEnvelope(t, out.String())
 				require.Equal(t, OutcomeFailed, envelope.Outcome)
@@ -140,13 +155,14 @@ func TestUpdateUserTaskCompletionViewExecution(t *testing.T) {
 				} else if flagQuiet {
 					require.Empty(t, out.String())
 				} else {
-					want := "complete user-task: 5 requested; 1 accepted, 1 failed, 1 timed out, 1 canceled, 1 not attempted; backend confirmed completion of accepted tasks; no additional state polling\n"
+					want := "update user-task: 5 requested; 1 completed, 1 failed, 1 timed out, 1 canceled, 1 not attempted\n"
 					if flagVerbose {
-						want += completionKeyA + ": accepted; submission: accepted; HTTP 204 No Content\n"
+						want += "updated user-task " + completionKeyA + ": completion confirmed; HTTP 204 No Content\n"
 						want += completionKeyB + ": failed; submission: rejected; HTTP 403 Forbidden\n"
 						want += "2251799813685251: timed_out; submission: unknown\n2251799813685252: canceled; submission: unknown\n2251799813685253: not_attempted; submission: not_submitted\n"
 					}
-					require.Equal(t, want, out.String())
+					require.Empty(t, out.String())
+					require.Equal(t, completionInfoRecords(want), bulkCompletionDiagnosticRecords(t, diagnostics.String(), "json"))
 				}
 			}
 		})
@@ -191,7 +207,7 @@ func TestUpdateUserTaskCompletionViewFailureReasons(t *testing.T) {
 		input.Keys[i] = completionKeyA
 	}
 	report := newUserTaskCompletionReport(input, task.UserTaskCompletionResults{Items: items})
-	require.Equal(t, "user-task completion: 0 accepted, 4 failed, 1 timed out, 1 canceled, 1 not attempted; forbidden (HTTP 403): 2; acceptance unknown: 1; timed out: 1; other failures: 2", formatUserTaskCompletionFailure(report, errors.New(completionRawError)))
+	require.Equal(t, "user-task completion: forbidden (HTTP 403): 2; acceptance unknown: 1; timed out: 1; other failures: 2", formatUserTaskCompletionFailure(report, errors.New(completionRawError)))
 	for _, tc := range []struct {
 		item task.UserTaskCompletionResult
 		want string
@@ -213,8 +229,8 @@ type completionFailWriter struct{}
 // Write fails every result write without writing a second diagnostic surface.
 func (completionFailWriter) Write([]byte) (int, error) { return 0, io.ErrClosedPipe }
 
-// TestUpdateUserTaskCompletionViewWriteFailure requires all render modes to
-// return destination errors instead of claiming a delivered result.
+// TestUpdateUserTaskCompletionViewWriteFailure preserves machine write errors;
+// human logging does not write to or depend on the stdout result destination.
 func TestUpdateUserTaskCompletionViewWriteFailure(t *testing.T) {
 	for _, mode := range []string{"human", "keys", "json"} {
 		t.Run(mode, func(t *testing.T) {
@@ -223,7 +239,16 @@ func TestUpdateUserTaskCompletionViewWriteFailure(t *testing.T) {
 			flagViewAsJson = mode == "json"
 			flagViewKeysOnly = mode == "keys"
 			report := newUserTaskCompletionPreview(userTaskCompletionInput{Keys: typex.Keys{completionKeyA}})
-			require.ErrorIs(t, renderUpdateUserTaskCompletion(cmd, report, nil), io.ErrClosedPipe)
+			var diagnostics bytes.Buffer
+			cmd.SetContext(logging.ToContext(context.Background(), logging.New(logging.LoggerConfig{Level: "info", Format: "json", Writer: &diagnostics})))
+			err := renderUpdateUserTaskCompletion(cmd, report, nil)
+			if mode == "human" {
+				require.NoError(t, err)
+				require.Equal(t, completionInfoRecords("dry run: update user-task "+completionKeyA+": completion: submit; no requests submitted\n"), bulkCompletionDiagnosticRecords(t, diagnostics.String(), "json"))
+			} else {
+				require.ErrorIs(t, err, io.ErrClosedPipe)
+				require.Empty(t, diagnostics.String())
+			}
 		})
 	}
 }
@@ -250,9 +275,13 @@ func TestUpdateUserTaskCompletionViewNoAcceptance(t *testing.T) {
 	var out, diagnostics bytes.Buffer
 	cmd.SetOut(&out)
 	cmd.SetErr(&diagnostics)
+	cmd.SetContext(logging.ToContext(context.Background(), logging.New(logging.LoggerConfig{Level: "info", Format: "json", Writer: &diagnostics})))
 	report := newUserTaskCompletionReport(userTaskCompletionInput{Keys: typex.Keys{completionKeyA}}, task.UserTaskCompletionResults{Items: []task.UserTaskCompletionResult{{Key: completionKeyA, Status: task.UserTaskCompletionStatusFailed, Submission: task.UserTaskCompletionSubmissionUnknown, Error: completionRawError}}})
 	require.NoError(t, renderUpdateUserTaskCompletion(cmd, report, errors.New(completionRawError)))
-	require.Equal(t, "complete user-task: 1 requested; 0 accepted, 1 failed, 0 timed out, 0 canceled, 0 not attempted; no successful completion response received\n", out.String())
-	require.Empty(t, diagnostics.String())
-	require.Equal(t, completionKeyA+": unknown; submission: unknown", formatUserTaskCompletionItem(task.UserTaskCompletionResult{Key: completionKeyA, Status: task.UserTaskCompletionStatus(completionRawError), Submission: task.UserTaskCompletionSubmission(completionRawError), Error: completionRawError, StatusCode: 499}))
+	require.Empty(t, out.String())
+	require.Equal(t, completionInfoRecords("update user-task: 1 requested; 1 failed\n"), bulkCompletionDiagnosticRecords(t, diagnostics.String(), "json"))
+	if flagViewAsJson || flagViewKeysOnly || flagQuiet {
+		require.Empty(t, diagnostics.String())
+	}
+	require.Equal(t, completionKeyA+": unknown; submission: unknown", formatUserTaskCompletionItem(task.UserTaskCompletionResult{Key: completionKeyA, Status: task.UserTaskCompletionStatus(completionRawError), Submission: task.UserTaskCompletionSubmission(completionRawError), Error: completionRawError, StatusCode: 499}, false))
 }

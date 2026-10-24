@@ -33,6 +33,14 @@ type readRetryPolicy struct {
 	logInterval time.Duration
 }
 
+type withoutReadRetryKey struct{}
+
+// WithoutReadRetry limits advisory reads to one transport attempt. Other requests
+// retain the default policy; the returned context must only wrap the intended read.
+func WithoutReadRetry(ctx context.Context) context.Context {
+	return context.WithValue(ctx, withoutReadRetryKey{}, true)
+}
+
 // ReadRetryTransport owns bounded retry mechanics for safe Camunda read requests.
 type ReadRetryTransport struct {
 	base       http.RoundTripper
@@ -44,7 +52,7 @@ type ReadRetryTransport struct {
 
 // RoundTrip retries safe Camunda read requests after transient transport or server failures.
 func (t *ReadRetryTransport) RoundTrip(req *http.Request) (*http.Response, error) {
-	if req == nil || !isReadRetryMethod(req.Method) {
+	if req == nil || !isReadRetryMethod(req.Method) || req.Context().Value(withoutReadRetryKey{}) == true {
 		return t.rt().RoundTrip(req)
 	}
 	policy := normalizeReadRetryPolicy(t.policy)

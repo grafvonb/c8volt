@@ -128,13 +128,11 @@ func TestUpdateUserTaskCompletionCommandOutput(t *testing.T) {
 						}
 					} else if !slices.Contains(flags, "--quiet") {
 						if phase == "preview" {
-							want = "dry run: complete user-task: 2 user task(s), 0 supplied variable(s); no requests submitted\n"
+							want = "dry run: update user-task completion: 2 requested; no requests submitted\n"
 						} else {
-							claim := "backend confirmed completion of accepted tasks; no additional state polling"
-							if accepted == 0 {
-								claim = "no successful completion response received"
-							}
-							want = fmt.Sprintf("complete user-task: 2 requested; %d accepted, %d failed, 0 timed out, 0 canceled, 0 not attempted; %s\n", accepted, failed, claim)
+							counts := map[string]string{"accepted": "2 completed", "partial": "1 completed, 1 failed", "rejected": "2 failed"}
+							want = "update user-task: 2 requested; " + counts[phase]
+							want += "\n"
 						}
 						if slices.Contains(flags, "--verbose") {
 							for i, key := range []string{completionKeyA, completionKeyB} {
@@ -144,17 +142,28 @@ func TestUpdateUserTaskCompletionCommandOutput(t *testing.T) {
 								} else if phase == "rejected" || (phase == "partial" && i == 1) {
 									status, submission, suffix = "failed", "rejected", "; HTTP 409 Conflict"
 								}
-								want += fmt.Sprintf("%s: %s; submission: %s%s\n", key, status, submission, suffix)
+								if status == "accepted" {
+									want += "updated user-task " + key + ": completion confirmed" + suffix + "\n"
+								} else {
+									want += fmt.Sprintf("%s: %s; submission: %s%s\n", key, status, submission, suffix)
+								}
 							}
 						}
 					}
-					require.Equal(t, want, stdout)
-					records := bulkCompletionDiagnosticRecords(t, stderr, "plain-time")
-					if failed == 0 {
-						require.Empty(t, records)
+					wantRecords := [][2]string{}
+					if slices.Contains(flags, "--keys-only") {
+						require.Equal(t, want, stdout)
 					} else {
-						require.Equal(t, [][2]string{{"ERROR", fmt.Sprintf("user-task completion: %d accepted, %d failed, 0 timed out, 0 canceled, 0 not attempted; conflict (HTTP 409): %d", accepted, failed, failed)}}, records)
+						require.Empty(t, stdout)
+						if phase == "preview" && !slices.Contains(flags, "--quiet") {
+							wantRecords = append(wantRecords, [2]string{"INFO", "selection scope: explicit resource keys; tenant filter not applied"})
+						}
+						wantRecords = append(wantRecords, completionInfoRecords(want)...)
 					}
+					if failed > 0 {
+						wantRecords = append(wantRecords, [2]string{"ERROR", fmt.Sprintf("user-task completion: conflict (HTTP 409): %d", failed)})
+					}
+					require.Equal(t, wantRecords, bulkCompletionDiagnosticRecords(t, stderr, "plain-time"))
 					require.NotContains(t, stdout+stderr, "body-only-secret")
 				}
 			})
@@ -172,12 +181,12 @@ func TestUpdateUserTaskCompletionCommandFailureClasses(t *testing.T) {
 		{400, 2, "invalid_input", "rejected"}, {401, 1, "local_precondition", "rejected"}, {403, 1, "local_precondition", "rejected"}, {404, 3, "not_found", "rejected"}, {409, 6, "conflict", "rejected"}, {500, 1, "internal", "unknown"}, {504, 4, "timeout", "unknown"},
 	} {
 		t.Run(fmt.Sprint(tc.status), func(t *testing.T) {
-			server, calls := newUserTaskCompletionServer(t, func(w http.ResponseWriter, r *http.Request, key string) {
-				w.Header().Set("Content-Type", "application/problem+json")
-				w.WriteHeader(tc.status)
-				fmt.Fprint(w, `{"detail":"distinctive backend failure"}`)
-			})
 			for _, override := range []bool{false, true} {
+				server, calls := newUserTaskCompletionServer(t, func(w http.ResponseWriter, r *http.Request, key string) {
+					w.Header().Set("Content-Type", "application/problem+json")
+					w.WriteHeader(tc.status)
+					fmt.Fprint(w, `{"detail":"distinctive backend failure"}`)
+				})
 				args := []string{"--json", "--auto-confirm", "update", "ut", "--complete", "--key", completionKeyA}
 				if override {
 					args = append(args, "--no-err-codes")
@@ -199,8 +208,8 @@ func TestUpdateUserTaskCompletionCommandFailureClasses(t *testing.T) {
 				}
 				require.Equal(t, status, row["status"])
 				require.Equal(t, float64(tc.status), row["statusCode"])
+				require.Len(t, calls.Snapshot(), 1)
 			}
-			require.Len(t, calls.Snapshot(), 2)
 		})
 	}
 }
@@ -268,4 +277,26 @@ func TestUpdateUserTaskCompletionRenderFailureProcess(t *testing.T) {
 	root.SetArgs(args)
 	require.NoError(t, root.Execute())
 	os.Exit(0)
+}
+
+// completionInfoRecords expresses exact INFO records, including order and multiplicity.
+func completionInfoRecords(text string) [][2]string {
+	records := [][2]string{}
+	for _, line := range strings.Split(strings.TrimSuffix(text, "\n"), "\n") {
+		if line != "" {
+			records = append(records, [2]string{"INFO", line})
+		}
+	}
+	return records
+}
+
+func completionInfoText(records [][2]string) string {
+	var text strings.Builder
+	for _, record := range records {
+		if record[0] == "INFO" {
+			text.WriteString(record[1])
+			text.WriteByte('\n')
+		}
+	}
+	return text.String()
 }

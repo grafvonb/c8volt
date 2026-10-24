@@ -730,3 +730,13 @@ func (s stubTaskAPI) CompleteUserTasks(ctx context.Context, keys types.Keys, var
 	}
 	return s.completeUserTasks(ctx, keys, variables, workers, opts...)
 }
+
+// PrepareUserTaskCompletions rejects unexpected completion preparation in unrelated command fixtures.
+func (s stubTaskAPI) PrepareUserTaskCompletions(context.Context, types.Keys, map[string]any, int, ...options.FacadeOption) (task.UserTaskCompletionPlan, error) {
+	panic("unexpected PrepareUserTaskCompletions call")
+}
+
+// ExecuteUserTaskCompletions rejects unexpected completion execution in unrelated command fixtures.
+func (s stubTaskAPI) ExecuteUserTaskCompletions(context.Context, task.UserTaskCompletionPlan) (task.UserTaskCompletionResults, error) {
+	panic("unexpected ExecuteUserTaskCompletions call")
+}

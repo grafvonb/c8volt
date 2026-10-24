@@ -20,10 +20,19 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// completionAPI exposes only submission; embedded nil methods panic on forbidden reads or writes.
+// completionAPI exposes native lookup and submission; other operations remain forbidden.
 type completionAPI struct {
 	API
+	lookup func(context.Context, string) (d.UserTask, error)
 	submit func(context.Context, string, map[string]any, ...services.CallOption) (d.UserTaskCompletionResult, error)
+}
+
+// GetNativeUserTask supplies one assigned, active task unless a case overrides the lookup.
+func (a *completionAPI) GetNativeUserTask(ctx context.Context, key string, _ ...services.CallOption) (d.UserTask, error) {
+	if a.lookup != nil {
+		return a.lookup(ctx, key)
+	}
+	return d.UserTask{Key: key, State: "CREATED", Assignee: "alice"}, nil
 }
 
 // CompleteUserTask delegates to the isolated, test-owned submission gate.
@@ -75,7 +84,11 @@ func TestCompleteUserTasksValidation(t *testing.T) {
 				if dry {
 					opts = append(opts, services.WithDryRun())
 				}
-				out, err := CompleteUserTasks(context.Background(), &completionAPI{}, tc.keys, tc.vars, tc.workers, opts...)
+				api := &completionAPI{lookup: func(context.Context, string) (d.UserTask, error) {
+					t.Error("invalid input must not be read")
+					return d.UserTask{}, nil
+				}}
+				out, err := CompleteUserTasks(context.Background(), api, tc.keys, tc.vars, tc.workers, opts...)
 				require.ErrorIs(t, err, d.ErrValidation)
 				require.NotNil(t, out.Items)
 				require.Empty(t, out.Items)
@@ -95,8 +108,11 @@ func TestCompleteUserTasksOrderedDedupAndPreview(t *testing.T) {
 	selection := typex.Keys{keys[2], keys[0], keys[2], keys[1], keys[0]}
 	for _, dry := range []bool{false, true} {
 		t.Run(fmt.Sprint(dry), func(t *testing.T) {
-			var calls []string
-			api := &completionAPI{submit: func(_ context.Context, key string, vars map[string]any, _ ...services.CallOption) (d.UserTaskCompletionResult, error) {
+			var calls, reads []string
+			api := &completionAPI{lookup: func(_ context.Context, key string) (d.UserTask, error) {
+				reads = append(reads, key)
+				return d.UserTask{Key: key, State: "CREATED", Assignee: "alice"}, nil
+			}, submit: func(_ context.Context, key string, vars map[string]any, _ ...services.CallOption) (d.UserTaskCompletionResult, error) {
 				calls = append(calls, key)
 				require.Nil(t, vars)
 				return acceptedCompletion(key), nil
@@ -117,7 +133,9 @@ func TestCompleteUserTasksOrderedDedupAndPreview(t *testing.T) {
 			}
 			if dry {
 				require.Empty(t, calls)
+				require.Empty(t, reads)
 			} else {
+				require.Equal(t, []string{keys[2], keys[0], keys[1]}, reads)
 				require.Equal(t, []string{keys[2], keys[0], keys[1]}, calls)
 			}
 		})
@@ -397,4 +415,123 @@ func TestCompleteUserTasksCallerErrorAfterResult(t *testing.T) {
 	out, err := CompleteUserTasks(ctx, &completionAPI{}, completionKeys(1), nil, 0)
 	require.ErrorIs(t, err, context.DeadlineExceeded)
 	require.Equal(t, []d.UserTaskCompletionResult{{Key: completionKeys(1)[0], Status: d.UserTaskCompletionStatusNotAttempted, Submission: d.UserTaskCompletionSubmissionNotSubmitted}}, out.Items)
+}
+
+// TestCompleteUserTasksPreflight checks each unique key once and never submits a known completed task.
+func TestCompleteUserTasksPreflight(t *testing.T) {
+	for _, failFast := range []bool{false, true} {
+		t.Run(fmt.Sprint(failFast), func(t *testing.T) {
+			keys := completionKeys(3)
+			reads := map[string]int{}
+			submissions := []string{}
+			api := &completionAPI{
+				lookup: func(_ context.Context, key string) (d.UserTask, error) {
+					reads[key]++
+					if key == keys[0] {
+						return d.UserTask{Key: key, State: "COMPLETED"}, nil
+					}
+					if key == keys[2] {
+						return d.UserTask{}, fmt.Errorf("GET https://secret.invalid body=secret")
+					}
+					return d.UserTask{Key: key, State: "CREATED"}, nil
+				},
+				submit: func(_ context.Context, key string, _ map[string]any, _ ...services.CallOption) (d.UserTaskCompletionResult, error) {
+					submissions = append(submissions, key)
+					return acceptedCompletion(key), nil
+				},
+			}
+			var opts []services.CallOption
+			if failFast {
+				opts = append(opts, services.WithFailFast())
+			}
+			out, err := CompleteUserTasks(context.Background(), api, append(keys, keys[0]), map[string]any{"value": 1}, 1, opts...)
+			require.ErrorIs(t, err, d.ErrConflict)
+			require.NotContains(t, err.Error(), "secret.invalid")
+			require.Equal(t, map[string]int{keys[0]: 1, keys[1]: 1, keys[2]: 1}, reads)
+			require.Len(t, out.Items, 3)
+			require.Equal(t, d.UserTaskCompletionStatusFailed, out.Items[0].Status)
+			require.Equal(t, d.UserTaskCompletionSubmissionNotSubmitted, out.Items[0].Submission)
+			require.Zero(t, out.Items[0].StatusCode)
+			require.Contains(t, out.Items[0].Error, "already completed")
+			require.Contains(t, out.Items[0].Error, "variables not applied")
+			if failFast {
+				require.Empty(t, submissions)
+				require.Equal(t, d.UserTaskCompletionStatusNotAttempted, out.Items[1].Status)
+			} else {
+				require.Equal(t, keys[1:], typex.Keys(submissions))
+				require.Equal(t, d.UserTaskCompletionStatusAccepted, out.Items[2].Status)
+			}
+		})
+	}
+}
+
+// TestPrepareUserTaskCompletionsFreezes checks advisory counts and prevents a second read after approval.
+func TestPrepareUserTaskCompletionsFreezes(t *testing.T) {
+	keys := completionKeys(3)
+	vars := map[string]any{"nested": map[string]any{"n": json.Number("9007199254740993")}}
+	reads, calls := 0, 0
+	api := &completionAPI{lookup: func(_ context.Context, key string) (d.UserTask, error) {
+		reads++
+		if key == keys[0] {
+			return d.UserTask{Key: key, State: "COMPLETED"}, nil
+		}
+		if key == keys[1] {
+			return d.UserTask{Key: key, State: "CREATED"}, nil
+		}
+		return d.UserTask{}, fmt.Errorf("unavailable")
+	}, submit: func(_ context.Context, key string, got map[string]any, _ ...services.CallOption) (d.UserTaskCompletionResult, error) {
+		calls++
+		require.Equal(t, json.Number("9007199254740993"), got["nested"].(map[string]any)["n"])
+		return acceptedCompletion(key), nil
+	}}
+	plan, err := PrepareUserTaskCompletions(context.Background(), api, keys, vars, 1)
+	require.NoError(t, err)
+	require.Equal(t, 2, plan.ReadyCount)
+	require.Equal(t, 1, plan.CompletedCount)
+	require.Equal(t, 1, plan.UnassignedCount)
+	require.Equal(t, 1, plan.UncheckedCount)
+	keys[1] = "changed"
+	vars["nested"].(map[string]any)["n"] = "changed"
+	out, err := ExecuteUserTaskCompletions(context.Background(), api, plan)
+	require.ErrorIs(t, err, d.ErrConflict)
+	require.Equal(t, 3, reads)
+	require.Equal(t, 2, calls)
+	require.Equal(t, completionKeys(3)[1], out.Items[1].Key)
+}
+
+// TestPrepareUserTaskCompletionsCancellation submits nothing when preparation is canceled.
+func TestPrepareUserTaskCompletionsCancellation(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	api := &completionAPI{lookup: func(_ context.Context, key string) (d.UserTask, error) {
+		cancel()
+		return d.UserTask{}, context.Canceled
+	}, submit: func(context.Context, string, map[string]any, ...services.CallOption) (d.UserTaskCompletionResult, error) {
+		t.Fatal("must not submit")
+		return d.UserTaskCompletionResult{}, nil
+	}}
+	_, err := CompleteUserTasks(ctx, api, completionKeys(2), nil, 1)
+	require.ErrorIs(t, err, context.Canceled)
+}
+
+// TestPrepareUserTaskCompletionsUnusableRead never treats missing or contradictory evidence as completed/unassigned.
+func TestPrepareUserTaskCompletionsUnusableRead(t *testing.T) {
+	for _, observed := range []d.UserTask{{}, {Key: "wrong", State: "COMPLETED"}, {Key: completionKeys(1)[0]}} {
+		api := &completionAPI{lookup: func(context.Context, string) (d.UserTask, error) { return observed, nil },
+			submit: func(_ context.Context, key string, _ map[string]any, _ ...services.CallOption) (d.UserTaskCompletionResult, error) {
+				return acceptedCompletion(key), nil
+			},
+		}
+		plan, err := PrepareUserTaskCompletions(context.Background(), api, completionKeys(1), nil, 1)
+		require.NoError(t, err)
+		require.Equal(t, 1, plan.ReadyCount)
+		require.Equal(t, 1, plan.UncheckedCount)
+		require.Zero(t, plan.UnassignedCount)
+		out, err := ExecuteUserTaskCompletions(context.Background(), api, plan)
+		require.NoError(t, err)
+		require.Equal(t, d.UserTaskCompletionStatusAccepted, out.Items[0].Status)
+	}
+	out, err := ExecuteUserTaskCompletions(context.Background(), &completionAPI{}, CompletionPlan{})
+	require.ErrorIs(t, err, d.ErrPrecondition)
+	require.Empty(t, out.Items)
 }

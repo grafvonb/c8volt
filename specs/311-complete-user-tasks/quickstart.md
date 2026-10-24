@@ -40,12 +40,13 @@ Use narrower named cases while implementing each owner; broaden to the full rele
 
 | Group | Fixture and execution | Required evidence |
 |---|---|---|
-| Keys and aliases | Each alias; single/repeated/comma/stdin/combined keys; duplicates; invalid token late in input | Stable unique order, one logical operation per unique key; flags before stdin; zero calls for invalid input |
+| Keys and aliases | Each alias; single/repeated/comma/stdin/combined keys; duplicates; invalid token late in input | Stable unique order, one lookup per unique key and one logical completion per eligible key; flags before stdin; zero calls for invalid input |
 | Empty selection | Missing keys; empty/blank stdin; valid flags plus empty stdin | First two fail before requests; valid flag selection succeeds; no discovery/no-op fallback |
 | Variables | Omitted, `{}`, nested typed values, equivalent file/inline data | Exact large integers and precise decimals in nested native payloads for both input sources and every task; nullable omission vs empty object; no variable reads/diff/scope writes/polling |
 | Invalid controls | Both sources, unreadable file, invalid/non-object/trailing JSON, invalid workers, complete+no-wait | Classified failure with zero completion requests; variable no-wait still supported |
 | Preview | Human/JSON/keys/quiet and supported automation combinations | Zero native mutation and read calls; no prompt; preview never claims acceptance |
-| Terminal | Real terminal stdin; accept, decline, default, EOF; inherited and configured stderr; redirected stdout | Exactly one whole-selection prompt on effective stderr; no logger prefix; no mutation on abort; stdout contains results only |
+| Terminal | Real terminal stdin; accept, decline, default, EOF; inherited and configured stderr; redirected stdout | Exactly one eligible-selection prompt, none when all tasks are completed or fail-fast blocks submission on effective stderr; no logger prefix; no mutation on abort; human stdout is empty; JSON and keys-only remain on stdout |
+| Preflight | Completed/unassigned/failed and malformed reads, duplicates, mixed batches, stale state, fail-fast | One GET per unique key including transient read failures, no reread; completed tasks fail/not_submitted with omitted statusCode and conflict exit; advisory warnings before eligible-count prompt; no implicit assignment; backend response decides submission result |
 | Worker policy | Synchronization-controlled fakes; workers one/two; automatic; explicit bound plus no-worker-limit | Sequential input order at one; actual peak active calls respects selected bound; deterministic result order |
 | Fail-fast | One rejecting task while another is already submitted; queued remainder | No new submission after observed failure; in-flight acceptance survives; queued tasks appear not_attempted; original error retained |
 | Interruption | Cancellation before submit/during request/during retry delay, timeout, ambiguous attempt then rejection | Accurate submission uncertainty, preserved earlier status evidence and accepted outcomes, no false rejection/completion |
@@ -53,7 +54,7 @@ Use narrower named cases while implementing each owner; broaden to the full rele
 | Supported adapters | v88/v89/v810 mock/native fake responses, foreign-tenant explicit keys, unsupported factory input | Native endpoint and body mapping, no content required for 204, no tenant filter/assignment/fallback, generic unsupported handling |
 | Compatibility | Existing variable planning/no-op/shared scopes/wait/no-wait and read/resolver tests | Existing schemas, acceptance-vs-confirmation and output behavior unchanged |
 
-For timing-sensitive scheduling, use gates/channels and counters instead of brittle wall-clock sleeps. Fixtures should fail on any unexpected task/variable/read/assignment/poll request, so “no forbidden workflow” assertions cannot pass accidentally.
+For timing-sensitive scheduling, use gates/channels and counters instead of brittle wall-clock sleeps. Fixtures should fail on any unexpected task/variable/assignment/poll request or repeated preflight read, so “no forbidden workflow” assertions cannot pass accidentally.
 
 ## Diagnostic regression matrix
 
@@ -62,7 +63,7 @@ Build actual command execution cases using the structural patterns in `cmd/updat
 1. Return repeated failures for multiple distinct keys containing distinctive HTTP method, URL, body and secret markers. Capture result stdout, configured logger destination, and stderr separately where appropriate.
 2. At normal and verbose-only levels, assert one compact aggregate ERROR with counts/grouped reasons and no raw transport markers on either stream. Verbose may add safe per-key statuses. Verify true logger framing/severity, not just a substring. Exercise configured and inherited writers plus the active plain and structured formats.
 3. Quiet keeps the compact ERROR and suppresses informational output. Quiet+JSON preserves the requested envelope. Confirm JSON error evidence is retained and that no second error renderer or human aggregate duplicates it.
-4. Enable DEBUG separately through `--debug` and configured DEBUG with verbose off; also test existing quiet precedence. Assert actual completion exchanges and permitted retries, redaction, no diagnostic records on stdout, and result bytes unchanged from the corresponding non-debug execution.
+4. Enable DEBUG separately through `--debug` and configured DEBUG with verbose off; also test existing quiet precedence. Assert actual completion exchanges and permitted retries, redaction, no diagnostic records on stdout, unchanged machine result bytes, and identical human INFO messages across DEBUG activation.
 5. Cover workers one and bounded concurrency. Use 429/RESOURCE_EXHAUSTED responses with controlled `Retry-After` and fake responses, plus interruption during backoff. Do not generate synthetic requests merely for measurement.
 6. Prove the assertions detect regressions: temporarily replace the new aggregate logger call with a direct stderr print, then temporarily expose a raw joined error at normal level; the relevant tests must fail. Restore the implementation immediately and rerun only affected cases. Record this evidence in implementation progress, never commit the intentional violations.
 
@@ -73,10 +74,10 @@ Do not require response bodies to appear in DEBUG: assert the existing diagnosti
 ```sh
 isolated go test ./cmd -run 'UpdateUserTask|GetUserTask|HasUserTasks|UserTaskHTTPFallback|APIDiagnostics' -count=1
 isolated go test ./c8volt/task ./internal/services/usertask/... -count=1
-isolated go test ./internal/services/httpc -run 'APIDiagnostics' -count=1
+isolated go test ./internal/services/httpc -run 'APIDiagnostics|ReadRetryTransport' -count=1
 ```
 
-Ensure the existing `get pi --has-user-tasks` cases are selected; inspect actual test names and broaden the pattern only if needed. Run changed interface consumers as compilation requires. Keep variable-mode output assertions unchanged; completion has its own stdout result contract.
+Ensure the existing `get pi --has-user-tasks` cases are selected; inspect actual test names and broaden the pattern only if needed. Run changed interface consumers as compilation requires. Keep variable-mode output assertions unchanged; completion human output now follows the existing configured INFO pattern while preserving machine stdout.
 
 Format touched Go files with targeted `gofmt -w` using their explicit paths. After source help, parent metadata, examples and README are updated:
 
@@ -99,3 +100,11 @@ isolated make test
 ## Recording results
 
 Record actual commands and results, covered matrix cases, unsupported terminal coverage, and relevant failure-path review. Distinguish implemented/passed cases from planned cases or skipped checks. Isolated fixtures verify the command/service contract; actual engine task-listener timing, assignment eligibility, and eventual task/process state remain unverified unless a separate target-specific live workflow is explicitly requested.
+
+Preflight execution coverage is in `TestUpdateUserTaskCompletionPreflightModes`, `TestUpdateUserTaskCompletionPreflightTerminal`, and `TestUpdateUserTaskCompletionPreflightDiagnostics`; service preparation tests cover snapshots and cancellation. The diagnostic matrix includes missing and transient read failures, completed tasks, backend conflicts, both logger formats/destinations, quiet/machine output and both DEBUG entry points. `TestReadRetryTransportSingleAttempt` verifies that disabling advisory-read retries does not alter ordinary reads.
+
+`TestUpdateUserTaskCompletionConflictWording` verifies exact singular/plural human and verbose wording, omitted/empty/nonempty payload handling, one lookup and no POST, conflict exit 6, and unchanged JSON item errors and all six counts. Existing output, diagnostic and terminal matrices verify zero-counter omission, reason-first aggregate diagnostics, logger routing, quiet/machine modes and preview wording.
+
+## Update rhythm regression coverage
+
+Run `TestUpdateUserTaskCompletionRhythm` with isolated fake HTTP and real terminal stdin. Assert scope → plan → warnings → prompt ordering, exact single-key/bulk grammar, configured/inherited logger destinations in plain and structured formats, empty human stdout and unchanged machine stdout, aborts, fail-fast, local previews, quiet/keys/JSON, auto-confirm and automation. Assert one lookup per unique execution key and zero preview lookups, no extra requests after confirmation, no variable value leakage or invented tenant evidence, unchanged JSON fields/counts and original exits. Existing diagnostic tests retain repeated backend-error redaction and both DEBUG activation paths.

@@ -12,7 +12,7 @@ Update existing resources
 
 Update process-instance or user-task variables, complete user tasks, or update job retries, timeouts, and worker outcomes.
 
-User-task --complete accepts explicit keys and optional variables and previews locally with --dry-run. The backend's successful response confirms completion; c8volt adds no task-state polling or downstream waiting. For user tasks, --no-wait skips variable-update verification and is incompatible with --complete, which has no additional waiter to skip.
+User-task --complete accepts explicit keys and optional variables and previews locally with --dry-run. One lookup per key detects already completed tasks (conflict) and warns about missing assignees before confirmation. The backend's successful response confirms completion; c8volt adds no task-state polling or downstream waiting. For user tasks, --no-wait skips variable-update verification and is incompatible with --complete, which has no additional waiter to skip.
 
 Requires Camunda 8.8 or newer. Use a resource subcommand to plan and confirm updates.
 

@@ -70,11 +70,13 @@ func TestUpdateUserTaskCompletionDiagnosticLogging(t *testing.T) {
 					assertUserTaskCompletionExit(t, err, 2)
 					require.Len(t, calls.Snapshot(), 3)
 					records := bulkCompletionDiagnosticRecords(t, stderr, format)
-					errors, debugs := []string{}, []string{}
+					errors, debugs, infos := []string{}, []string{}, []string{}
 					for _, record := range records {
 						switch record[0] {
 						case "ERROR":
 							errors = append(errors, record[1])
+						case "INFO":
+							infos = append(infos, record[1])
 						case "DEBUG":
 							debugs = append(debugs, record[1])
 						default:
@@ -82,6 +84,7 @@ func TestUpdateUserTaskCompletionDiagnosticLogging(t *testing.T) {
 						}
 					}
 					if tc.json {
+						require.Empty(t, infos)
 						require.Empty(t, errors)
 						envelope := decodeUserTaskCompletionEnvelope(t, stdout)
 						require.Equal(t, "invalid_input", envelope["class"])
@@ -90,18 +93,19 @@ func TestUpdateUserTaskCompletionDiagnosticLogging(t *testing.T) {
 						require.Len(t, requireJSONItems(t, payload["items"], 3), 3)
 						require.Equal(t, float64(1), requireJSONObject(t, payload["counts"])["accepted"])
 					} else {
-						require.Equal(t, []string{"user-task completion: 1 accepted, 2 failed, 0 timed out, 0 canceled, 0 not attempted; bad request (HTTP 400): 2"}, errors)
+						require.Equal(t, []string{"user-task completion: bad request (HTTP 400): 2"}, errors)
 						for _, key := range []string{completionKeyA, completionKeyB, "2251799813685251"} {
 							require.NotContains(t, strings.Join(errors, "\n"), key)
 						}
+						require.Empty(t, stdout)
 						if tc.quiet {
-							require.Empty(t, stdout)
+							require.Empty(t, infos)
 						} else {
-							expected := "complete user-task: 3 requested; 1 accepted, 2 failed, 0 timed out, 0 canceled, 0 not attempted; backend confirmed completion of accepted tasks; no additional state polling\n"
+							expected := "update user-task: 3 requested; 1 completed, 2 failed\n"
 							if tc.name == "verbose" {
-								expected += completionKeyA + ": accepted; submission: accepted; HTTP 204 No Content\n" + completionKeyB + ": failed; submission: rejected; HTTP 400 Bad Request\n2251799813685251: failed; submission: rejected; HTTP 400 Bad Request\n"
+								expected += "updated user-task " + completionKeyA + ": completion confirmed; HTTP 204 No Content\n" + completionKeyB + ": failed; submission: rejected; HTTP 400 Bad Request\n2251799813685251: failed; submission: rejected; HTTP 400 Bad Request\n"
 							}
-							require.Equal(t, expected, stdout)
+							require.Equal(t, strings.TrimSuffix(expected, "\n"), strings.Join(infos, "\n"))
 						}
 						for _, bad := range []string{server.URL, "/v2/user-tasks/", "POST", "body-only-secret", "private.invalid", "completion-token-secret", "completion-variable-secret", "ERROR", "DEBUG"} {
 							require.NotContains(t, stdout, bad)
@@ -111,15 +115,20 @@ func TestUpdateUserTaskCompletionDiagnosticLogging(t *testing.T) {
 						require.NotContains(t, stderr, bad)
 					}
 					if tc.debug {
-						exchanges := 0
+						exchanges, lookups := 0, 0
 						for _, message := range debugs {
 							if strings.Contains(message, "api #") {
+								if strings.Contains(message, "GET /v2/user-tasks/") {
+									lookups++
+									continue
+								}
 								exchanges++
 								require.Contains(t, message, "POST /v2/user-tasks/")
 								require.Contains(t, message, "/completion: status=")
 							}
 						}
 						require.Equal(t, 3, exchanges)
+						require.Equal(t, 3, lookups)
 					} else {
 						require.Empty(t, debugs)
 						for _, bad := range []string{server.URL, "/v2/user-tasks/", "POST"} {
@@ -134,7 +143,7 @@ func TestUpdateUserTaskCompletionDiagnosticLogging(t *testing.T) {
 
 // TestUpdateUserTaskCompletionDiagnosticRetries verifies real retry exchanges
 // for sequential and bounded workers, both DEBUG entry points and redaction,
-// while comparing result bytes with the identical non-debug execution.
+// while comparing INFO messages with the identical non-debug execution.
 func TestUpdateUserTaskCompletionDiagnosticRetries(t *testing.T) {
 	for _, workers := range []string{"1", "2"} {
 		for _, format := range []string{"plain-time", "json"} {
@@ -173,21 +182,32 @@ func TestUpdateUserTaskCompletionDiagnosticRetries(t *testing.T) {
 						mu.Lock()
 						require.Equal(t, map[string]int{completionKeyA: 2, completionKeyB: 2}, attempts)
 						mu.Unlock()
+						require.Empty(t, stdout)
+						records := bulkCompletionDiagnosticRecords(t, stderr, format)
+						info := completionInfoText(records)
+						require.Equal(t, "update user-task: 2 requested; 2 completed\n", info)
 						if mode == "normal" {
-							baseline = stdout
-							require.Empty(t, stderr)
+							baseline = info
+							require.Equal(t, completionInfoRecords(info), records)
 						} else {
-							require.Equal(t, baseline, stdout)
-							records := bulkCompletionDiagnosticRecords(t, stderr, format)
-							exchanges := 0
+							require.Equal(t, baseline, info)
+							exchanges, lookups := 0, 0
 							for _, record := range records {
+								if record[0] == "INFO" {
+									continue
+								}
 								require.Equal(t, "DEBUG", record[0])
 								if strings.Contains(record[1], "api #") {
+									if strings.Contains(record[1], "GET /v2/user-tasks/") {
+										lookups++
+										continue
+									}
 									exchanges++
 									require.Contains(t, record[1], "POST /v2/user-tasks/")
 								}
 							}
 							require.Equal(t, 4, exchanges)
+							require.Equal(t, 2, lookups)
 							require.Contains(t, stderr, fmt.Sprintf("status=%d", status))
 							require.Contains(t, stderr, "status=204")
 						}

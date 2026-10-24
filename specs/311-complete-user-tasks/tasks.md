@@ -146,10 +146,11 @@ US1–US5 are acceptance perspectives of the same feature. Their release checkpo
 | FR-008, FR-009 | T003, T004 | US4; SC-002 |
 | FR-010, FR-011 | T001, T002, T004 | US4; SC-004, SC-007 |
 | FR-012, FR-013 | T001, T002, T003, T004 | US1, US3, US4; SC-004, SC-006 |
-| FR-014, FR-015, FR-016 | T002, T003, T004 | US5; SC-005 |
+| FR-014, FR-015, FR-016 | T002, T003, T004, T009 | US5; SC-005 |
 | FR-017 | T001, T003, T004 | US5; SC-007 |
 | FR-018 | T001, T002, T004 | US3; SC-006 |
 | FR-019 | T004 | US3; SC-006 |
+| FR-021 | T008, T009 | US4, US5; scope/plan/warnings/confirmation/result rhythm |
 
 Every data-model field/invariant is assigned to T001–T003 and exercised through T004 where externally visible. No input, nullable/empty-array, status, omission, count, stream, tenant, or failure constraint is left to implementation-time discretion.
 
@@ -186,3 +187,35 @@ Every data-model field/invariant is assigned to T001–T003 and exercised throug
   Include failing-then-passing parser and actual-command regressions for both `--vars` and `--vars-file`, with large integers and precise decimals nested in objects/arrays and sent identically to multiple unique keys. Assert exact outbound numeric values using raw request bodies or a number-preserving decoder; float64-based equality or `JSONEq` alone is insufficient. Retain invalid/trailing-payload zero-request cases and variable-mode compatibility checks. Format touched Go files and run targeted isolated completion input/payload tests, then affected variable-parser/update regressions under the clean-environment rules in `quickstart.md`. No live validation is required or permitted by this task.
 
   Completed: completion now reads the shared source and decodes with `UseNumber` plus EOF validation; variable mode retains its original decoder. Exact parser and two-key native-request regressions for inline/file payloads failed before the fix and passed afterward. Redundant CLI/facade JSON copies were removed, with coordinator/native ownership tests retained. Shared adapter outcome tests moved to `internal/services/common/usertask_completion_test.go`; version wire, ownership, invalid-payload, logging and delegation coverage remains. Full isolated `make test` passed with the race detector (8,049 tests/subtests; 86 tested packages; no test skips). See `progress.md` for validation details.
+
+## Phase 10: Requested preflight checks
+
+- [x] T006 [US1] Prepare completion with one native lookup per unique key before approval; skip observed completed tasks with existing failed/not_submitted conflict evidence and omitted statusCode, warn on eligible unassigned tasks, and warn on unavailable checks while leaving eligibility to the backend. Keep backend preparation/execution in the service and thin facade, with frozen inputs reused after approval and no reread/polling. Suppress transport retries only for the advisory read. Prompt for the eligible count only; fail-fast preflight conflicts prevent all submissions. Preserve local dry-run, output schemas, counts, keys-only selection and original exits. Update spec, contracts, source help, README and generated docs. Verify duplicates, snapshots, cancellation, read failures, stale observations, mixed outcomes, all-completed/no-prompt, warnings before real-terminal approval/decline, logger routing/redaction, quiet and machine modes, supported adapters, and ordinary-read retry compatibility using isolated fixtures; finish with targeted checks and the race suite.
+
+T006 supersedes only the earlier execution zero-read constraints in T002/T004: preflight now makes one keyed native read per unique task. Existing no-read requirements still apply to local preview, validation and the scalar completion adapter. T001–T005 completion evidence remains historical; T006 extends FR-006, FR-008–FR-017 and FR-019 with FR-020 and US1/US4/US5 coverage. Dependency: T005. Current total: six tasks, one cohesive new work unit; no parallel-only or standalone test/documentation task.
+
+T006 completed: targeted checks and the final isolated race suite passed; generated docs, Go formatting, feature links and whitespace checks passed. See `progress.md` for red/green and diagnostic-regression evidence. No live validation or polling was added.
+
+## Phase 11: Human wording refinement
+
+- [x] T007 [US5] Lead completed-task errors with state and no-submission consequence, using singular/plural grammar. Omit zero counters from human results, avoid repeating them in errors, and mention variables only when supplied (including `{}`). Keep JSON fields, zero counts, item error evidence, keys-only behavior, logger routing and conflict exit code unchanged. Update source help, spec/contracts, README, generated docs and exact execution tests for omitted/empty/nonempty variables, single/multiple conflicts, verbose/preview/machine modes and safe aggregate diagnostics. Run isolated targeted completion, metadata and docs tests and record results. Dependency: T006; no service change or polling.
+
+Current total: seven cohesive tasks. T007 supersedes earlier human wording expectations only; historical implementation/test evidence and machine contracts remain intact.
+
+T007 completed: exact human/verbose/preview wording and unchanged machine evidence/conflict exits passed targeted checks and command/docsgen regressions. Diagnostic mutation checks detected direct printing and raw-error exposure; both mutations were restored. See progress.md for results.
+
+## Phase 12: Consistent update rhythm
+
+- [x] T008 [US5] Align completion with scope → plan → warnings → confirmation → result. Use configured INFO/WARN diagnostics, plain stderr prompts and stdout results. Name a single key; use eligible bulk counts and correct singular/plural grammar. Explain mixed fail-fast without prompting; retain the short all-completed conflict path. Preserve one lookup per key, zero-request preview, no polling, machine schemas, keys output and exits. Update source help, feature contracts, README and generated docs, plus real-terminal ordering/mode/logger tests and existing output regressions. Validate isolated targeted tests, diagnostic mutation sensitivity and the race suite. Dependency: T007; covers FR-021.
+
+Current total: eight cohesive tasks. T008 supersedes earlier human preview, prompt and result wording only; historical evidence and machine contracts remain intact.
+
+T008 completed: targeted completion/metadata/docs tests, diagnostic mutation checks and race validation passed after correcting action-focused help wording. See progress.md for exact commands and results. No live tests or polling were added.
+
+## Phase 13: INFO logging for human completion output
+
+- [x] T009 [US5] Route all completion human previews, summaries and verbose rows through the configured INFO helper; preserve JSON/keys-only stdout, plain prompts, existing exits, one lookup per key and no polling. Update FR-015/FR-021, contracts, operator docs and generated references. Verify configured/inherited destinations, plain/structured formats, logger levels and quiet suppression, success/failure/preview/verbose paths, real-terminal ordering, machine compatibility, safe aggregate failures and DEBUG redaction. Prove direct printing and raw-error regressions fail; run isolated targeted and affected command/docs regression tests. Dependency: T008.
+
+Current total: nine cohesive tasks. T009 supersedes all earlier human-stdout requirements in T003/T004/T008 and their historical evidence; machine-output and backend contracts are unchanged.
+
+T009 completed: targeted checks, diagnostic mutation checks, documentation regeneration and the affected command/docs race suite passed. See progress.md for evidence. No backend changes, polling or live validation were added.

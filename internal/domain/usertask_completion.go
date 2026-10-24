@@ -14,7 +14,7 @@ type UserTaskCompletionResult struct {
 	Status UserTaskCompletionStatus
 	// Submission: Backend acceptance evidence, independently defined below
 	Submission UserTaskCompletionSubmission
-	// StatusCode: Last observed HTTP status, omitted when none; not proof of an earlier attempt's outcome
+	// StatusCode: Last completion-submission HTTP status; omitted for preflight conflicts or absent responses
 	StatusCode int
 	// Error: Existing machine-readable failure evidence; never interpolate into human output
 	Error string
@@ -34,7 +34,7 @@ const (
 	UserTaskCompletionStatusTimedOut UserTaskCompletionStatus = "timed_out"
 	// UserTaskCompletionStatusCanceled records caller cancellation after an attempt, not rejection.
 	UserTaskCompletionStatusCanceled UserTaskCompletionStatus = "canceled"
-	// UserTaskCompletionStatusNotAttempted means no native operation began.
+	// UserTaskCompletionStatusNotAttempted means no completion submission began and no preflight conflict was observed.
 	UserTaskCompletionStatusNotAttempted UserTaskCompletionStatus = "not_attempted"
 )
 
@@ -42,7 +42,7 @@ const (
 type UserTaskCompletionSubmission string
 
 const (
-	// UserTaskCompletionSubmissionNotSubmitted accompanies preview and not-attempted results.
+	// UserTaskCompletionSubmissionNotSubmitted accompanies preview, not-attempted and preflight-conflict results.
 	UserTaskCompletionSubmissionNotSubmitted UserTaskCompletionSubmission = "not_submitted"
 	// UserTaskCompletionSubmissionAccepted means a documented successful response was observed.
 	UserTaskCompletionSubmissionAccepted UserTaskCompletionSubmission = "accepted"

@@ -86,8 +86,8 @@ func newUserTaskCompletionReport(input userTaskCompletionInput, results task.Use
 	return report
 }
 
-// renderUpdateUserTaskCompletion writes selected-format results only. The runner
-// owns configured diagnostic logging and exits with the original operation error.
+// renderUpdateUserTaskCompletion keeps machine results on stdout and routes human
+// summaries through the configured INFO logger. The runner owns warnings, errors and exits.
 func renderUpdateUserTaskCompletion(cmd *cobra.Command, report userTaskCompletionReport, operationErr error) error {
 	if pickMode() == RenderModeJSON {
 		if operationErr != nil {
@@ -116,37 +116,62 @@ func renderUpdateUserTaskCompletion(cmd *cobra.Command, report userTaskCompletio
 	}
 	var summary string
 	if report.Phase == "preview" {
-		summary = fmt.Sprintf("dry run: complete user-task: %d user task(s), %d supplied variable(s); no requests submitted", report.RequestedCount, report.VariableCount)
-	} else {
-		summary = fmt.Sprintf("complete user-task: %d requested; %s", report.RequestedCount, formatUserTaskCompletionCounts(report.Counts))
-		if report.Counts.Accepted > 0 {
-			summary += "; backend confirmed completion of accepted tasks; no additional state polling"
+		if report.RequestedCount == 1 {
+			summary = fmt.Sprintf("dry run: update user-task %s: completion: submit", report.RequestedKeys[0])
 		} else {
-			summary += "; no successful completion response received"
+			summary = fmt.Sprintf("dry run: update user-task completion: %d requested", report.RequestedCount)
 		}
+		if report.VariablesProvided {
+			summary += "; variables: submit"
+		}
+		summary += "; no requests submitted"
+	} else if report.RequestedCount == 1 && report.Counts.Accepted == 1 {
+		summary = fmt.Sprintf("updated user-task %s: completion confirmed", report.RequestedKeys[0])
+	} else {
+		summary = fmt.Sprintf("update user-task: %d requested; %s", report.RequestedCount, formatUserTaskCompletionCounts(report.Counts))
 	}
-	if _, err := fmt.Fprintln(cmd.OutOrStdout(), summary); err != nil {
-		return err
-	}
+	renderHumanLine(cmd, "%s", summary)
 	if flagVerbose {
 		for _, item := range report.Items {
-			if _, err := fmt.Fprintln(cmd.OutOrStdout(), formatUserTaskCompletionItem(item)); err != nil {
-				return err
-			}
+			renderHumanLine(cmd, "%s", formatUserTaskCompletionItem(item, report.VariablesProvided))
 		}
 	}
 	return nil
 }
 
-// formatUserTaskCompletionCounts is shared by results and diagnostics so the
-// same accepted, interrupted and unscheduled evidence remains visible in both.
+// formatUserTaskCompletionCounts omits zero counters from human summaries only.
 func formatUserTaskCompletionCounts(counts userTaskCompletionCounts) string {
-	return fmt.Sprintf("%d accepted, %d failed, %d timed out, %d canceled, %d not attempted", counts.Accepted, counts.Failed, counts.TimedOut, counts.Canceled, counts.NotAttempted)
+	parts := []string{}
+	for _, entry := range []struct {
+		count int
+		label string
+	}{
+		{counts.Accepted, "completed"}, {counts.Failed, "failed"},
+		{counts.TimedOut, "timed out"}, {counts.Canceled, "canceled"},
+		{counts.NotAttempted, "not attempted"},
+	} {
+		if entry.count > 0 {
+			parts = append(parts, fmt.Sprintf("%d %s", entry.count, entry.label))
+		}
+	}
+	return strings.Join(parts, ", ")
+}
+
+// formatUserTaskCompletionConflict explains the observed state before its consequence.
+func formatUserTaskCompletionConflict(count int, variablesProvided bool) string {
+	message := "task is already completed; completion request not sent"
+	if count > 1 {
+		message = fmt.Sprintf("%d tasks are already completed; their completion requests were not sent", count)
+	}
+	if variablesProvided {
+		message += "; supplied variables were not applied"
+	}
+	return message
 }
 
 // formatUserTaskCompletionItem allows only known status/submission labels into
 // verbose results. Error strings and unknown enum text remain machine evidence.
-func formatUserTaskCompletionItem(item task.UserTaskCompletionResult) string {
+func formatUserTaskCompletionItem(item task.UserTaskCompletionResult, variablesProvided bool) string {
 	status := "unknown"
 	switch item.Status {
 	case task.UserTaskCompletionStatusPreview, task.UserTaskCompletionStatusAccepted, task.UserTaskCompletionStatusFailed, task.UserTaskCompletionStatusTimedOut, task.UserTaskCompletionStatusCanceled, task.UserTaskCompletionStatusNotAttempted:
@@ -158,6 +183,12 @@ func formatUserTaskCompletionItem(item task.UserTaskCompletionResult) string {
 		submission = string(item.Submission)
 	}
 	line := fmt.Sprintf("%s: %s; submission: %s", item.Key, status, submission)
+	if item.Status == task.UserTaskCompletionStatusAccepted && item.Submission == task.UserTaskCompletionSubmissionAccepted {
+		line = fmt.Sprintf("updated user-task %s: completion confirmed", item.Key)
+	}
+	if item.Status == task.UserTaskCompletionStatusFailed && item.Submission == task.UserTaskCompletionSubmissionNotSubmitted {
+		line += "; " + formatUserTaskCompletionConflict(1, variablesProvided)
+	}
 	if label := http.StatusText(item.StatusCode); label != "" {
 		line += fmt.Sprintf("; HTTP %d %s", item.StatusCode, label)
 	}
@@ -167,7 +198,7 @@ func formatUserTaskCompletionItem(item task.UserTaskCompletionResult) string {
 // formatUserTaskCompletionFailure returns one bounded diagnostic for the runner
 // to emit through its configured logger. No raw item or joined error is formatted.
 func formatUserTaskCompletionFailure(report userTaskCompletionReport, operationErr error) string {
-	message := "user-task completion: " + formatUserTaskCompletionCounts(report.Counts)
+	parts := []string{}
 	counts := map[string]int{}
 	reasons := []string{}
 	for _, item := range report.Items {
@@ -182,25 +213,32 @@ func formatUserTaskCompletionFailure(report userTaskCompletionReport, operationE
 		counts[reason]++
 	}
 	if len(reasons) == 0 {
-		return message + "; " + strings.ReplaceAll(string(ferrors.Classify(operationErr)), "_", " ")
+		return "user-task completion: " + strings.ReplaceAll(string(ferrors.Classify(operationErr)), "_", " ")
 	}
 	other := 0
 	for i, reason := range reasons {
 		if i < 3 {
-			message += fmt.Sprintf("; %s: %d", reason, counts[reason])
+			if reason == "already completed" {
+				parts = append(parts, formatUserTaskCompletionConflict(counts[reason], report.VariablesProvided))
+			} else {
+				parts = append(parts, fmt.Sprintf("%s: %d", reason, counts[reason]))
+			}
 		} else {
 			other += counts[reason]
 		}
 	}
 	if other > 0 {
-		message += fmt.Sprintf("; other failures: %d", other)
+		parts = append(parts, fmt.Sprintf("other failures: %d", other))
 	}
-	return message
+	return "user-task completion: " + strings.Join(parts, "; ")
 }
 
 // userTaskCompletionFailureReason never promotes a last HTTP rejection into
 // certainty when an earlier attempt left acceptance unknown.
 func userTaskCompletionFailureReason(item task.UserTaskCompletionResult) string {
+	if item.Status == task.UserTaskCompletionStatusFailed && item.Submission == task.UserTaskCompletionSubmissionNotSubmitted {
+		return "already completed"
+	}
 	switch item.Status {
 	case task.UserTaskCompletionStatusTimedOut:
 		return "timed out"
@@ -220,4 +258,50 @@ func userTaskCompletionFailureReason(item task.UserTaskCompletionResult) string 
 	default:
 		return "completion failed"
 	}
+}
+
+// renderUserTaskCompletionPlan emits pre-confirmation information through the configured logger.
+// The supplied counts come from preparation; rendering never reads task state.
+func renderUserTaskCompletionPlan(cmd *cobra.Command, input userTaskCompletionInput, plan task.UserTaskCompletionPlan) {
+	if pickMode() != RenderModeOneLine || flagQuiet || automationModeEnabled(cmd) {
+		return
+	}
+	renderAttachedTenantContext(cmd)
+	line := ""
+	if len(input.Keys) == 1 && plan.ReadyCount == 1 {
+		line = fmt.Sprintf("plan: update user-task %s: completion: submit", input.Keys[0])
+	} else {
+		line = fmt.Sprintf("plan: update user-task completion: %d requested", len(input.Keys))
+		if plan.ReadyCount > 0 {
+			line += fmt.Sprintf("; %d eligible", plan.ReadyCount)
+		}
+		if plan.CompletedCount > 0 {
+			line += fmt.Sprintf("; %d already completed", plan.CompletedCount)
+		}
+	}
+	if plan.ReadyCount == 0 {
+		line += "; fail-fast: no completion requests will be sent"
+	} else if input.Variables != nil {
+		line += "; variables: submit"
+	}
+	renderHumanLine(cmd, "%s", line)
+}
+
+// formatUserTaskCompletionAssigneeWarning keeps singular and bulk warnings actionable.
+func formatUserTaskCompletionAssigneeWarning(requested, unassigned int) string {
+	if requested == 1 {
+		return "user-task completion: task has no assignee"
+	}
+	if unassigned == 1 {
+		return "user-task completion: 1 eligible task has no assignee"
+	}
+	return fmt.Sprintf("user-task completion: %d eligible tasks have no assignee", unassigned)
+}
+
+func formatUserTaskCompletionLookupWarning(count int) string {
+	noun := "user tasks"
+	if count == 1 {
+		noun = "user task"
+	}
+	return fmt.Sprintf("user-task completion: could not check state or assignee for %d %s; backend validation will determine eligibility", count, noun)
 }

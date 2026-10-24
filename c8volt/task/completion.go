@@ -22,3 +22,25 @@ func (c *client) CompleteUserTasks(ctx context.Context, keys typex.Keys, variabl
 	got, err := utsvc.CompleteUserTasks(ctx, c.utApi, keys, variables, wantedWorkers, options.MapFacadeOptionsToCallOptions(opts)...)
 	return fromDomainUserTaskCompletionResults(got), ferr.FromDomain(err)
 }
+
+// UserTaskCompletionPlan exposes only advisory counts; frozen execution data stays private.
+// It is an in-memory approval artifact and is never rendered as the command payload.
+type UserTaskCompletionPlan struct {
+	ReadyCount      int
+	CompletedCount  int
+	UnassignedCount int
+	UncheckedCount  int
+	plan            utsvc.CompletionPlan
+}
+
+// PrepareUserTaskCompletions performs a single advisory lookup per unique key before approval.
+func (c *client) PrepareUserTaskCompletions(ctx context.Context, keys typex.Keys, variables map[string]any, wantedWorkers int, opts ...options.FacadeOption) (UserTaskCompletionPlan, error) {
+	plan, err := utsvc.PrepareUserTaskCompletions(ctx, c.utApi, keys, variables, wantedWorkers, options.MapFacadeOptionsToCallOptions(opts)...)
+	return UserTaskCompletionPlan{ReadyCount: plan.ReadyCount, CompletedCount: plan.CompletedCount, UnassignedCount: plan.UnassignedCount, UncheckedCount: plan.UncheckedCount, plan: plan}, ferr.FromDomain(err)
+}
+
+// ExecuteUserTaskCompletions uses the prepared observations without any additional task lookup.
+func (c *client) ExecuteUserTaskCompletions(ctx context.Context, plan UserTaskCompletionPlan) (UserTaskCompletionResults, error) {
+	got, err := utsvc.ExecuteUserTaskCompletions(ctx, c.utApi, plan.plan)
+	return fromDomainUserTaskCompletionResults(got), ferr.FromDomain(err)
+}

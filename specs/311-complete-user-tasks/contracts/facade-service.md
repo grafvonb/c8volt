@@ -9,9 +9,12 @@ Add to `c8volt/task.API`:
 ```go
 CompleteUserTasks(ctx context.Context, keys typex.Keys, variables map[string]any,
     wantedWorkers int, opts ...foptions.FacadeOption) (UserTaskCompletionResults, error)
+PrepareUserTaskCompletions(ctx context.Context, keys typex.Keys, variables map[string]any,
+    wantedWorkers int, opts ...foptions.FacadeOption) (UserTaskCompletionPlan, error)
+ExecuteUserTaskCompletions(ctx context.Context, plan UserTaskCompletionPlan) (UserTaskCompletionResults, error)
 ```
 
-This collection method handles one or many keys. Public result models and enums are defined in the data model; public signatures expose no generated or internal types. Existing `New`, `NewWithVariableUpdates`, and root client composition remain usable without another constructor.
+The collection methods handle one or many keys. Prepare returns an opaque in-memory plan with advisory ready/completed/unassigned/unchecked counts for CLI approval. Execute consumes its private frozen inputs and observations without another lookup. Complete composes the same preparation and execution for direct callers. The plan is not a machine-output payload. Public result models and enums are defined in the data model; public signatures expose no generated or internal types. Existing `New`, `NewWithVariableUpdates`, and root client composition remain usable without another constructor.
 
 The facade maps options, delegates caller-owned inputs to the area coordinator, maps all returned items even when an error accompanies them, and converts the aggregate through `ferrors.FromDomain`. The coordinator snapshots keys and nested variables before scheduling, so the facade adds no redundant copy. Native adapters retain their own payload copy for direct callers and generated-client isolation. Do not discard partial evidence or add pools, retries, task reads, or verification in the facade.
 
@@ -25,7 +28,7 @@ func CompleteUserTasks(ctx context.Context, api API, keys typex.Keys,
     domain.UserTaskCompletionResults, error)
 ```
 
-The coordinator owns complete validation, stable uniqueness, JSON snapshotting, worker selection, scheduling/fail-fast, ordered outcomes and error aggregation. Empty selection and no-wait are errors. Negative wantedWorkers is invalid; zero requests existing automatic selection. DryRun returns preview/not_submitted items and performs no native calls.
+The coordinator owns complete validation, stable uniqueness, JSON snapshotting, worker selection, preparation, scheduling/fail-fast, ordered outcomes and error aggregation. Preparation performs one native GET per unique key using a request-scoped `httpc.WithoutReadRetry` context; ordinary reads retain their existing retry policy. Matching COMPLETED observations become failed/not_submitted conflicts with no statusCode. Eligible unassigned observations and failed/malformed/mismatched reads become advisory counts; failed reads do not block a backend completion attempt. Context cancellation aborts preparation. Any preflight conflict with fail-fast prevents every submission; otherwise skip those items and submit the remaining keys without rereading. Empty selection and no-wait are errors. Negative wantedWorkers is invalid; zero requests existing automatic selection. DryRun returns preview/not_submitted items and performs no native calls.
 
 Apply options at their owning layer and propagate relevant options to each native operation. Pass existing explicit-key options; never translate configured tenant into a task discovery filter. No variable service dependency or current-variable reads.
 
@@ -62,6 +65,7 @@ Track whether a native attempt began, the last response/status, and earlier ambi
 
 | Observed fact | Execution status / submission evidence |
 |---|---|
+| Preflight observes completed | failed / not_submitted; conflict error, no submission statusCode |
 | 204 success | accepted / accepted |
 | Definitive 4xx rejection, including exhausted 429, without earlier ambiguity | failed / rejected |
 | Exhausted explicit resource-exhaustion rejection without earlier ambiguity | failed / rejected |

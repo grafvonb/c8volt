@@ -21,10 +21,15 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// facadeCompletionAPI rejects every non-completion operation through its nil embedded interface.
+// facadeCompletionAPI rejects operations other than native lookup and completion.
 type facadeCompletionAPI struct {
 	utsvc.API
 	submit func(context.Context, string, map[string]any, ...services.CallOption) (d.UserTaskCompletionResult, error)
+}
+
+// GetNativeUserTask models one successful preflight lookup for facade wiring tests.
+func (a *facadeCompletionAPI) GetNativeUserTask(_ context.Context, key string, _ ...services.CallOption) (d.UserTask, error) {
+	return d.UserTask{Key: key, State: "CREATED", Assignee: "alice"}, nil
 }
 
 // CompleteUserTask delegates only the native operation exercised by the facade.

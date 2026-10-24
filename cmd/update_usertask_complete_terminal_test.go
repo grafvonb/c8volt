@@ -17,7 +17,7 @@ import (
 	"golang.org/x/term"
 )
 
-const userTaskCompletionPrompt = "You are about to complete 2 user task(s).\nDo you want to proceed? [y/N]: "
+const userTaskCompletionPrompt = "You are about to complete 2 user tasks.\nDo you want to proceed? [y/N]: "
 
 // TestUpdateUserTaskCompletionTerminal proves whole-selection confirmation with
 // real terminal stdin, redirected stdout and both effective stderr destinations.
@@ -57,23 +57,35 @@ func TestUpdateUserTaskCompletionTerminal(t *testing.T) {
 					require.Len(t, calls.Snapshot(), 2)
 				}
 				if prompted {
-					require.True(t, strings.HasPrefix(stderr, userTaskCompletionPrompt), stderr)
+					require.Contains(t, stderr, userTaskCompletionPrompt)
 					require.Equal(t, 1, strings.Count(stderr, userTaskCompletionPrompt))
-					stderr = strings.TrimPrefix(stderr, userTaskCompletionPrompt)
+					stderr = strings.Replace(stderr, userTaskCompletionPrompt, "", 1)
+				}
+				records := bulkCompletionDiagnosticRecords(t, stderr, "plain-time")
+				if prompted || (preview && !slices.Contains(tc.flags, "--json")) {
+					require.Equal(t, [2]string{"INFO", "selection scope: explicit resource keys; tenant filter not applied"}, records[0])
+					records = records[1:]
+				}
+				if prompted {
+					require.Equal(t, [2]string{"INFO", "plan: update user-task completion: 2 requested; 2 eligible"}, records[0])
+					records = records[1:]
 				}
 				if tc.decline {
 					require.Empty(t, stdout)
-					require.Equal(t, [][2]string{{"ERROR", "local precondition failed: aborted by user"}}, bulkCompletionDiagnosticRecords(t, stderr, "plain-time"))
+					require.Equal(t, [][2]string{{"ERROR", "local precondition failed: aborted by user"}}, records)
 				} else {
-					require.Empty(t, stderr)
 					if slices.Contains(tc.flags, "--json") {
+						require.Empty(t, records)
 						require.Equal(t, "succeeded", decodeUserTaskCompletionEnvelope(t, stdout)["outcome"])
 					} else if slices.Contains(tc.flags, "--keys-only") {
+						require.Empty(t, records)
 						require.Equal(t, completionKeyA+"\n"+completionKeyB+"\n", stdout)
 					} else if preview {
-						require.Equal(t, "dry run: complete user-task: 2 user task(s), 0 supplied variable(s); no requests submitted\n", stdout)
+						require.Empty(t, stdout)
+						require.Equal(t, completionInfoRecords("dry run: update user-task completion: 2 requested; no requests submitted\n"), records)
 					} else {
-						require.Equal(t, "complete user-task: 2 requested; 2 accepted, 0 failed, 0 timed out, 0 canceled, 0 not attempted; backend confirmed completion of accepted tasks; no additional state polling\n", stdout)
+						require.Empty(t, stdout)
+						require.Equal(t, completionInfoRecords("update user-task: 2 requested; 2 completed\n"), records)
 					}
 				}
 				require.NotContains(t, stdout, "Do you want to proceed?")

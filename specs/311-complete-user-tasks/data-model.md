@@ -24,7 +24,7 @@ Validate the entire input and JSON serializability before any native call. Snaps
 | Key | `key` | string | Selected task key; always present |
 | Status | `status` | UserTaskCompletionStatus | Local execution result, defined below |
 | Submission | `submission` | UserTaskCompletionSubmission | Backend acceptance evidence, independently defined below |
-| StatusCode | `statusCode,omitempty` | int | Last observed HTTP status, omitted when none; not proof of an earlier attempt's outcome |
+| StatusCode | `statusCode,omitempty` | int | Last completion-submission HTTP status, omitted for preflight conflicts and when none; not proof of an earlier attempt's outcome |
 | Error | `error,omitempty` | string | Existing machine-readable failure evidence; never interpolate into human output |
 
 Domain fields have the same meaning. Native adapters populate these facts before facade error conversion, since that conversion may no longer expose every original typed error cause.
@@ -35,16 +35,16 @@ Domain fields have the same meaning. Native adapters populate these facts before
 |---|---|
 | `preview` | Valid local selection, no submission requested |
 | `accepted` | Backend confirmed completion through the successful native response; no independent task-state read-back |
-| `failed` | Operation failed for a reason other than timeout/caller cancellation; submission evidence may be rejected or unknown |
+| `failed` | Operation failed for a reason other than timeout/caller cancellation; submission evidence may be not_submitted for a preflight completed-task conflict, rejected or unknown |
 | `timed_out` | An attempted operation timed out; backend acceptance may remain unknown |
 | `canceled` | An attempted operation was canceled by the caller; backend acceptance may remain unknown |
-| `not_attempted` | Native operation did not begin, including fail-fast or pre-submission cancellation |
+| `not_attempted` | No native submission or preflight conflict, including fail-fast or pre-submission cancellation |
 
 ### Submission evidence
 
 | Value | Meaning |
 |---|---|
-| `not_submitted` | No native submission attempt; valid for preview/not-attempted |
+| `not_submitted` | No native submission attempt; valid for preview/not-attempted and failed preflight conflicts |
 | `accepted` | A documented successful completion response was observed |
 | `rejected` | Observed rejection with no earlier ambiguous attempt |
 | `unknown` | At least one attempted submission lacks conclusive acceptance/rejection evidence |
@@ -77,8 +77,8 @@ The shared envelope retains existing `outcome`, `class`, `command`, optional `te
 ## Lifecycle
 
 1. Parse all keys and optional variables; reject invalid input without native requests.
-2. Freeze validated unique selection. Dry-run renders preview and ends; ordinary execution confirms once when required.
-3. Service snapshots and validates inputs, initializes all result slots as not_attempted/not_submitted, then schedules bounded work.
+2. Freeze validated unique selection. Dry-run renders preview and ends with no native calls.
+3. Service snapshots and validates inputs, initializes ordered result slots and reads every unique key once. Completed tasks become failed/not_submitted conflicts. Show known selection scope and plan for ordinary human approval, warn about unassigned or unchecked tasks, then confirm the single key or eligible bulk count when nonzero and required. Reuse the prepared plan for bounded execution without another read; fail-fast preflight conflicts prevent all submissions.
 4. A worker checks scheduling stop/caller cancellation before starting the native operation. Once started, the original caller context governs it.
 5. Adapter records each actual attempt, last response and ambiguity, including evidence lost by the retry helper's zero return on interrupted backoff.
 6. Accepted work becomes accepted/accepted. Rejected or uncertain work receives the accurate failure status/evidence. Fail-fast stops new scheduling; it does not overwrite existing accepted results or roll back submitted work.
@@ -91,3 +91,13 @@ The existing machine model retains accepted/accepted for a successful completion
 Use existing explicit-key tenant context from configuration; it is authorization context, not a filter. Native no-content responses provide no actual task tenant, so resolved tenant IDs must not be synthesized from configuration. Do not add reads to populate them.
 
 Normal/verbose failure reasons come only from known statuses, submission enums, known HTTP status labels, and aggregate class. Machine `error` evidence and original aggregate errors remain separate. Unknown backend text must never become a human reason label.
+
+## Prepared execution
+
+`UserTaskCompletionPlan` holds private frozen execution data with `ReadyCount`, `CompletedCount`, `UnassignedCount`, and `UncheckedCount` for approval. These counts are not added to the command payload. Every unique key remains in the final report; preflight completed tasks count as failed, carry a safe conflict explanation, omit `statusCode`, and never appear in accepted-only keys output. The plan is ephemeral, performs no read after approval, and introduces no persistent lifecycle.
+
+Human rendering filters zero counters and uses VariablesProvided for optional variable wording. It does not modify any serialized field, count, status, error string or envelope classification.
+
+## Human output routing
+
+Human previews, summaries and verbose rows are INFO records through the configured command logger. This changes no report fields, status/count evidence or serialization; JSON and keys-only remain stdout results. Prompts and exit classifications are unchanged.

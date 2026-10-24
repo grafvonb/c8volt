@@ -23,18 +23,41 @@ type completionRequest struct {
 	Body map[string]any
 }
 
-// newUserTaskCompletionServer rejects reads, writes, assignment and polling so
-// completion cannot accidentally succeed through an unrelated workflow.
+// newUserTaskCompletionServer permits one native preflight read and completion only.
 func newUserTaskCompletionServer(t *testing.T, respond func(http.ResponseWriter, *http.Request, string)) (*httptest.Server, *testx.SafeSlice[completionRequest]) {
 	t.Helper()
+	server, calls, _ := newUserTaskCompletionPreflightServer(t, nil, respond)
+	return server, calls
+}
+
+// newUserTaskCompletionPreflightServer rejects repeated lookups, polling and unrelated operations.
+func newUserTaskCompletionPreflightServer(t *testing.T, lookup, respond func(http.ResponseWriter, *http.Request, string)) (*httptest.Server, *testx.SafeSlice[completionRequest], *testx.SafeSlice[string]) {
+	t.Helper()
 	calls := &testx.SafeSlice[completionRequest]{}
+	reads := &testx.SafeSlice[string]{}
 	server := testx.NewIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		key := strings.TrimPrefix(r.URL.Path, "/v2/user-tasks/")
+		if r.Method == http.MethodGet && strings.HasPrefix(r.URL.Path, "/v2/user-tasks/") && !strings.Contains(key, "/") {
+			for _, previous := range reads.Snapshot() {
+				if previous == key {
+					t.Errorf("repeated task lookup: %s", key)
+				}
+			}
+			reads.Append(key)
+			if lookup != nil {
+				lookup(w, r, key)
+			} else {
+				writeCompletionTask(w, key, "CREATED", "alice")
+			}
+			return
+		}
 		if r.Method != http.MethodPost || !strings.HasPrefix(r.URL.Path, "/v2/user-tasks/") || !strings.HasSuffix(r.URL.Path, "/completion") {
 			t.Errorf("forbidden completion workflow request: %s %s", r.Method, r.URL.Path)
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		key := strings.TrimSuffix(strings.TrimPrefix(r.URL.Path, "/v2/user-tasks/"), "/completion")
+		key = strings.TrimSuffix(key, "/completion")
+		require.Contains(t, reads.Snapshot(), key, "completion must follow its preflight lookup")
 		var body map[string]any
 		decoder := json.NewDecoder(r.Body)
 		decoder.UseNumber()
@@ -51,7 +74,13 @@ func newUserTaskCompletionServer(t *testing.T, respond func(http.ResponseWriter,
 		}
 	}))
 	t.Cleanup(server.Close)
-	return server, calls
+	return server, calls, reads
+}
+
+// writeCompletionTask supplies the minimal native task state used by all supported adapters.
+func writeCompletionTask(w http.ResponseWriter, key, state, assignee string) {
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]any{"userTaskKey": key, "state": state, "assignee": assignee, "processInstanceKey": "2251799813685240"})
 }
 
 // decodeUserTaskCompletionEnvelope requires exactly one JSON value, including
