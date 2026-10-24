@@ -120,9 +120,9 @@ func renderUpdateUserTaskCompletion(cmd *cobra.Command, report userTaskCompletio
 	} else {
 		summary = fmt.Sprintf("complete user-task: %d requested; %s", report.RequestedCount, formatUserTaskCompletionCounts(report.Counts))
 		if report.Counts.Accepted > 0 {
-			summary += "; requests accepted without verification; confirmation skipped"
+			summary += "; backend confirmed completion of accepted tasks; no additional state polling"
 		} else {
-			summary += "; no acceptance established; confirmation skipped"
+			summary += "; no successful completion response received"
 		}
 	}
 	if _, err := fmt.Fprintln(cmd.OutOrStdout(), summary); err != nil {

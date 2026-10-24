@@ -73,7 +73,7 @@ func TestUpdateUserTaskCompletionTerminal(t *testing.T) {
 					} else if preview {
 						require.Equal(t, "dry run: complete user-task: 2 user task(s), 0 supplied variable(s); no requests submitted\n", stdout)
 					} else {
-						require.Equal(t, "complete user-task: 2 requested; 2 accepted, 0 failed, 0 timed out, 0 canceled, 0 not attempted; requests accepted without verification; confirmation skipped\n", stdout)
+						require.Equal(t, "complete user-task: 2 requested; 2 accepted, 0 failed, 0 timed out, 0 canceled, 0 not attempted; backend confirmed completion of accepted tasks; no additional state polling\n", stdout)
 					}
 				}
 				require.NotContains(t, stdout, "Do you want to proceed?")

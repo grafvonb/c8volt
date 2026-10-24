@@ -85,6 +85,19 @@ func TestUpdateUserTaskCompletionCommandOutput(t *testing.T) {
 					}
 					require.Equal(t, wantPhase, payload["phase"])
 					require.Equal(t, map[string]any{"preview": float64(preview), "accepted": float64(accepted), "failed": float64(failed), "timedOut": float64(0), "canceled": float64(0), "notAttempted": float64(0)}, payload["counts"])
+					if phase == "accepted" {
+						// Human clarification must not change the established machine payload.
+						require.Equal(t, map[string]any{
+							"operation": "complete", "phase": "execution",
+							"requestedKeys": []any{completionKeyA, completionKeyB}, "requestedCount": float64(2),
+							"variablesProvided": false, "variableCount": float64(0),
+							"items": []any{
+								map[string]any{"key": completionKeyA, "status": "accepted", "submission": "accepted", "statusCode": float64(204)},
+								map[string]any{"key": completionKeyB, "status": "accepted", "submission": "accepted", "statusCode": float64(204)},
+							},
+							"counts": map[string]any{"preview": float64(0), "accepted": float64(2), "failed": float64(0), "timedOut": float64(0), "canceled": float64(0), "notAttempted": float64(0)},
+						}, payload)
+					}
 					items := requireJSONItems(t, payload["items"], 2)
 					for i, key := range []string{completionKeyA, completionKeyB} {
 						row := requireJSONObject(t, items[i])
@@ -117,11 +130,11 @@ func TestUpdateUserTaskCompletionCommandOutput(t *testing.T) {
 						if phase == "preview" {
 							want = "dry run: complete user-task: 2 user task(s), 0 supplied variable(s); no requests submitted\n"
 						} else {
-							claim := "requests accepted without verification"
+							claim := "backend confirmed completion of accepted tasks; no additional state polling"
 							if accepted == 0 {
-								claim = "no acceptance established"
+								claim = "no successful completion response received"
 							}
-							want = fmt.Sprintf("complete user-task: 2 requested; %d accepted, %d failed, 0 timed out, 0 canceled, 0 not attempted; %s; confirmation skipped\n", accepted, failed, claim)
+							want = fmt.Sprintf("complete user-task: 2 requested; %d accepted, %d failed, 0 timed out, 0 canceled, 0 not attempted; %s\n", accepted, failed, claim)
 						}
 						if slices.Contains(flags, "--verbose") {
 							for i, key := range []string{completionKeyA, completionKeyB} {

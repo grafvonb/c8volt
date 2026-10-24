@@ -140,7 +140,7 @@ func TestUpdateUserTaskCompletionViewExecution(t *testing.T) {
 				} else if flagQuiet {
 					require.Empty(t, out.String())
 				} else {
-					want := "complete user-task: 5 requested; 1 accepted, 1 failed, 1 timed out, 1 canceled, 1 not attempted; requests accepted without verification; confirmation skipped\n"
+					want := "complete user-task: 5 requested; 1 accepted, 1 failed, 1 timed out, 1 canceled, 1 not attempted; backend confirmed completion of accepted tasks; no additional state polling\n"
 					if flagVerbose {
 						want += completionKeyA + ": accepted; submission: accepted; HTTP 204 No Content\n"
 						want += completionKeyB + ": failed; submission: rejected; HTTP 403 Forbidden\n"
@@ -252,7 +252,7 @@ func TestUpdateUserTaskCompletionViewNoAcceptance(t *testing.T) {
 	cmd.SetErr(&diagnostics)
 	report := newUserTaskCompletionReport(userTaskCompletionInput{Keys: typex.Keys{completionKeyA}}, task.UserTaskCompletionResults{Items: []task.UserTaskCompletionResult{{Key: completionKeyA, Status: task.UserTaskCompletionStatusFailed, Submission: task.UserTaskCompletionSubmissionUnknown, Error: completionRawError}}})
 	require.NoError(t, renderUpdateUserTaskCompletion(cmd, report, errors.New(completionRawError)))
-	require.Equal(t, "complete user-task: 1 requested; 0 accepted, 1 failed, 0 timed out, 0 canceled, 0 not attempted; no acceptance established; confirmation skipped\n", out.String())
+	require.Equal(t, "complete user-task: 1 requested; 0 accepted, 1 failed, 0 timed out, 0 canceled, 0 not attempted; no successful completion response received\n", out.String())
 	require.Empty(t, diagnostics.String())
 	require.Equal(t, completionKeyA+": unknown; submission: unknown", formatUserTaskCompletionItem(task.UserTaskCompletionResult{Key: completionKeyA, Status: task.UserTaskCompletionStatus(completionRawError), Submission: task.UserTaskCompletionSubmission(completionRawError), Error: completionRawError, StatusCode: 499}))
 }

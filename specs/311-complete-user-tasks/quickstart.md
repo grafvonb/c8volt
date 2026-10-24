@@ -30,7 +30,7 @@ Proposed new command tests use the prefix `TestUpdateUserTaskCompletion`; servic
 ```sh
 isolated go test ./cmd -list 'TestUpdateUserTaskCompletion'
 isolated go test ./cmd -run 'TestUpdateUserTaskCompletion' -count=1
-isolated go test ./internal/services/usertask/... -run 'Complete|Completion' -count=1
+isolated go test ./internal/services/common ./internal/services/usertask/... -run 'Complete|Completion' -count=1
 isolated go test ./c8volt/task -run 'Complete|Completion' -count=1
 ```
 
@@ -42,7 +42,7 @@ Use narrower named cases while implementing each owner; broaden to the full rele
 |---|---|---|
 | Keys and aliases | Each alias; single/repeated/comma/stdin/combined keys; duplicates; invalid token late in input | Stable unique order, one logical operation per unique key; flags before stdin; zero calls for invalid input |
 | Empty selection | Missing keys; empty/blank stdin; valid flags plus empty stdin | First two fail before requests; valid flag selection succeeds; no discovery/no-op fallback |
-| Variables | Omitted, `{}`, nested typed values, equivalent file/inline data | Correct native body for every task; nullable omission vs empty object; no variable reads/diff/scope writes/polling |
+| Variables | Omitted, `{}`, nested typed values, equivalent file/inline data | Exact large integers and precise decimals in nested native payloads for both input sources and every task; nullable omission vs empty object; no variable reads/diff/scope writes/polling |
 | Invalid controls | Both sources, unreadable file, invalid/non-object/trailing JSON, invalid workers, complete+no-wait | Classified failure with zero completion requests; variable no-wait still supported |
 | Preview | Human/JSON/keys/quiet and supported automation combinations | Zero native mutation and read calls; no prompt; preview never claims acceptance |
 | Terminal | Real terminal stdin; accept, decline, default, EOF; inherited and configured stderr; redirected stdout | Exactly one whole-selection prompt on effective stderr; no logger prefix; no mutation on abort; stdout contains results only |
@@ -86,7 +86,7 @@ isolated go test ./docsgen -count=1
 git diff --check
 ```
 
-`docs-content` generates references from command metadata; it does not run a user command against Camunda. Review generated changes for both modes, optional variables, explicit keys, acceptance-only semantics and no-wait rejection. Do not hand-edit generated CLI docs.
+`docs-content` generates references from command metadata; it does not run a user command against Camunda. Review generated changes for both modes, optional variables, explicit keys, backend-confirmed completion without additional polling, unchanged accepted machine evidence, and the reason for no-wait rejection. Do not hand-edit generated CLI docs.
 
 For the completed cross-package runtime change, run the repository race target once after targeted checks:
 

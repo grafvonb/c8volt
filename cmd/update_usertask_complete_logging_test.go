@@ -97,7 +97,7 @@ func TestUpdateUserTaskCompletionDiagnosticLogging(t *testing.T) {
 						if tc.quiet {
 							require.Empty(t, stdout)
 						} else {
-							expected := "complete user-task: 3 requested; 1 accepted, 2 failed, 0 timed out, 0 canceled, 0 not attempted; requests accepted without verification; confirmation skipped\n"
+							expected := "complete user-task: 3 requested; 1 accepted, 2 failed, 0 timed out, 0 canceled, 0 not attempted; backend confirmed completion of accepted tasks; no additional state polling\n"
 							if tc.name == "verbose" {
 								expected += completionKeyA + ": accepted; submission: accepted; HTTP 204 No Content\n" + completionKeyB + ": failed; submission: rejected; HTTP 400 Bad Request\n2251799813685251: failed; submission: rejected; HTTP 400 Bad Request\n"
 							}

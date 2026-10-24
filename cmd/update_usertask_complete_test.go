@@ -36,7 +36,9 @@ func newUserTaskCompletionServer(t *testing.T, respond func(http.ResponseWriter,
 		}
 		key := strings.TrimSuffix(strings.TrimPrefix(r.URL.Path, "/v2/user-tasks/"), "/completion")
 		var body map[string]any
-		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		decoder := json.NewDecoder(r.Body)
+		decoder.UseNumber()
+		if err := decoder.Decode(&body); err != nil {
 			t.Errorf("decode completion: %v", err)
 			w.WriteHeader(400)
 			return
@@ -116,7 +118,7 @@ func TestUpdateUserTaskCompletionCommandSelection(t *testing.T) {
 // TestUpdateUserTaskCompletionCommandVariables proves omitted, empty and matching
 // values still submit, with identical typed data on every native request.
 func TestUpdateUserTaskCompletionCommandVariables(t *testing.T) {
-	nested := `{"approved":true,"count":2,"nested":{"array":[null,"x",false]}}`
+	nested := `{"approved":true,"count":9007199254740993,"nested":{"array":[null,"x",false,0.123456789012345678901,{"negative":-9007199254740993}]}}`
 	file := filepath.Join(t.TempDir(), "variables.json")
 	require.NoError(t, os.WriteFile(file, []byte(nested), 0600))
 	for _, tc := range []struct {
@@ -126,8 +128,8 @@ func TestUpdateUserTaskCompletionCommandVariables(t *testing.T) {
 	}{
 		{"omitted", nil, nil}, {"empty", []string{"--vars", "{}"}, map[string]any{}},
 		{"matching", []string{"--vars", `{"approved":true}`}, map[string]any{"approved": true}},
-		{"inline", []string{"--vars", nested}, map[string]any{"approved": true, "count": float64(2), "nested": map[string]any{"array": []any{nil, "x", false}}}},
-		{"file", []string{"--vars-file", file}, map[string]any{"approved": true, "count": float64(2), "nested": map[string]any{"array": []any{nil, "x", false}}}},
+		{"inline", []string{"--vars", nested}, map[string]any{"approved": true, "count": json.Number("9007199254740993"), "nested": map[string]any{"array": []any{nil, "x", false, json.Number("0.123456789012345678901"), map[string]any{"negative": json.Number("-9007199254740993")}}}}},
+		{"file", []string{"--vars-file", file}, map[string]any{"approved": true, "count": json.Number("9007199254740993"), "nested": map[string]any{"array": []any{nil, "x", false, json.Number("0.123456789012345678901"), map[string]any{"negative": json.Number("-9007199254740993")}}}}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			server, calls := newUserTaskCompletionServer(t, nil)

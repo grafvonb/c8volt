@@ -5,9 +5,10 @@ package cmd
 
 import (
 	"bufio"
+	"encoding/json"
+	"io"
 	"strings"
 
-	"github.com/grafvonb/c8volt/toolx"
 	"github.com/grafvonb/c8volt/typex"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -108,14 +109,36 @@ func parseUpdateUserTaskCompletionInput(cmd *cobra.Command, args []string) (user
 
 	var variables map[string]any
 	if cmd.Flags().Changed("vars") || cmd.Flags().Changed("vars-file") {
-		parsed, err := parseUpdateVariablesFromFlags(cmd, flagUpdateUserTaskVars, flagUpdateUserTaskVarsFile)
+		raw, source, err := readUpdateVariablesFromFlags(cmd, flagUpdateUserTaskVars, flagUpdateUserTaskVarsFile)
 		if err != nil {
 			return userTaskCompletionInput{}, err
 		}
-		variables, err = toolx.CopyJSONMap(parsed)
+		variables, err = parseUserTaskCompletionVariables(raw, source)
 		if err != nil {
-			return userTaskCompletionInput{}, invalidFlagValuef("completion variables must be a valid JSON object")
+			return userTaskCompletionInput{}, err
 		}
 	}
 	return userTaskCompletionInput{Keys: typex.Keys(inputs).Unique(), Variables: variables, WantedWorkers: flagWorkers}, nil
+}
+
+// parseUserTaskCompletionVariables owns the decoded object and preserves JSON numbers
+// before any float conversion. Existing variable-update decoding remains unchanged.
+func parseUserTaskCompletionVariables(raw, source string) (map[string]any, error) {
+	if raw == "" {
+		return nil, invalidFlagValuef("--vars or --vars-file is required and must be a JSON object")
+	}
+	decoder := json.NewDecoder(strings.NewReader(raw))
+	decoder.UseNumber()
+	var variables map[string]any
+	if err := decoder.Decode(&variables); err != nil {
+		return nil, invalidFlagValuef("%s must be a valid JSON object: %v", source, err)
+	}
+	if variables == nil {
+		return nil, invalidFlagValuef("%s must be a JSON object", source)
+	}
+	var extra any
+	if err := decoder.Decode(&extra); err != io.EOF {
+		return nil, invalidFlagValuef("%s must contain exactly one JSON object", source)
+	}
+	return variables, nil
 }

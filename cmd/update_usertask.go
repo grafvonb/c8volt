@@ -22,7 +22,7 @@ var updateUserTaskCmd = &cobra.Command{
 	Short: "Update variables or complete user tasks by key",
 	Long: `Update effective user-task variables or complete explicitly selected user tasks on supported Camunda versions.
 
-Use --complete to submit native completion for every unique key, with optional --vars or --vars-file data. Omitted variables and {} still submit completion. Requests are accepted without independent task-state verification or downstream waiting; no assignment is performed. --complete cannot be combined with --no-wait. A configured tenant does not filter explicit keys.
+Use --complete to submit native completion for every unique key, with optional --vars or --vars-file data. Omitted variables and {} still submit completion. Completion preserves JSON numbers exactly, including large integers and precise decimals. The backend's successful response confirms completion, including blocking task listeners. c8volt performs no additional task-state polling or downstream waiting; no assignment is performed. --no-wait skips variable-update verification and cannot bypass the completion request or its listener processing, so it is incompatible with --complete. A configured tenant does not filter explicit keys.
 
 Completion accepts repeated or comma-separated --key values and newline-separated keys with positional '-'. Keys must contain exactly 16 decimal digits. --dry-run previews the frozen selection locally without requests or prompts. Ordinary execution confirms the entire selection once; --auto-confirm and --automation allow unattended execution. --workers bounds concurrency and --fail-fast stops new scheduling after a failure while retaining in-flight outcomes.
 
@@ -128,11 +128,11 @@ func init() {
 	fs := updateUserTaskCmd.Flags()
 	fs.StringSliceVarP(&flagUpdateUserTaskKeys, "key", "k", nil, "user task key(s) to update; repeat or combine with stdin '-'")
 	trackUserTaskCompletionKeyInput(fs.Lookup("key"))
-	fs.BoolVar(&flagUpdateUserTaskComplete, "complete", false, "complete selected tasks with optional variables; report acceptance without verification")
+	fs.BoolVar(&flagUpdateUserTaskComplete, "complete", false, "complete selected tasks with optional variables; report backend-confirmed completion without additional polling")
 	fs.StringVar(&flagUpdateUserTaskVars, "vars", "", "JSON object with variables to set or submit with each completion")
 	fs.StringVar(&flagUpdateUserTaskVarsFile, "vars-file", "", "path to JSON object file with variables to set or submit with each completion")
 	fs.BoolVar(&flagDryRun, "dry-run", false, "preview variable updates or task completions without submitting mutations")
-	fs.BoolVar(&flagNoWait, "no-wait", false, "variable mode only: return after scope writes are accepted without confirmation; incompatible with --complete")
+	fs.BoolVar(&flagNoWait, "no-wait", false, "skip variable-update verification after accepted scope writes; completion has no additional polling, so incompatible with --complete")
 	fs.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers for task completions or variable scope updates (default: min(count, 2*GOMAXPROCS, 32))")
 	fs.BoolVar(&flagNoWorkerLimit, "no-worker-limit", false, "use all queued completions or scope updates as workers when --workers is unset")
 	fs.BoolVar(&flagFailFast, "fail-fast", false, "stop scheduling new completions or scope updates after the first error")

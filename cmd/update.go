@@ -10,7 +10,7 @@ var updateCmd = &cobra.Command{
 	Short: "Update existing resources",
 	Long: `Update process-instance or user-task variables, complete user tasks, or update job retries, timeouts, and worker outcomes.
 
-User-task --complete accepts explicit keys and optional variables, previews locally with --dry-run, and reports acceptance without task-state verification. For user tasks, --no-wait is available only in variable-update mode.
+User-task --complete accepts explicit keys and optional variables and previews locally with --dry-run. The backend's successful response confirms completion; c8volt adds no task-state polling or downstream waiting. For user tasks, --no-wait skips variable-update verification and is incompatible with --complete, which has no additional waiter to skip.
 
 Requires Camunda 8.8 or newer. Use a resource subcommand to plan and confirm updates.`,
 	Example: `  ./c8volt update process-instance --key <process-instance-key> --vars '{"customerTier":"gold"}' --dry-run

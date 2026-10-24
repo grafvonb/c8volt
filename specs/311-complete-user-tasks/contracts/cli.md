@@ -34,7 +34,7 @@ c8volt update ut --key 2251799813685249 --vars-file ./vars.json --no-wait --auto
 - Empty final selection is invalid, including empty stdin alone. Valid flag keys plus empty stdin is valid. No input triggers discovery or a successful completion no-op.
 - At most one variable source; an object is required when supplied. Reject unreadable files, malformed JSON, trailing values, arrays, scalars and outer `null`. Omission and `{}` are valid and still complete every unique key.
 - Explicit `--workers` must be positive; an unset worker flag uses existing automatic selection. An explicit worker count wins over `--no-worker-limit` under existing semantics.
-- `--complete --no-wait` is invalid. Variable mode retains no-wait. No `--api-diagnostics` flag is added.
+- `--complete --no-wait` is invalid. Variable mode retains no-wait to skip its additional verification. Completion has no additional client waiter; no-wait cannot bypass the native request or blocking listener processing. No `--api-diagnostics` flag is added.
 - Preserve `validateUpdateUserTaskJSONConfirmation`: JSON requires dry-run, auto-confirm or automation; JSON+verbose is invalid. Preserve output and quiet/logger-level precedence.
 - Configuration and explicit-key authorization use existing mechanisms. A configured discovery tenant does not restrict native keyed completion. Do not fetch task data merely to populate tenant context.
 
@@ -51,7 +51,7 @@ The completion report uses the stable fields in the data model, with ordered ite
 | Mode/outcome | stdout | Diagnostic and control channels |
 |---|---|---|
 | Human preview | Compact completion preview with selected count, supplied-variable count and no-submission wording | No prompt; configured logger only for diagnostics |
-| Human execution | Compact counts and explicit acceptance-without-verification wording; verbose may list safe keyed statuses | One configured-logger ERROR on failure; plain prompt on configured stderr if eligible |
+| Human execution | Compact counts and backend-confirmed completion wording limited to accepted items, with no additional state polling; verbose may list safe keyed statuses | One configured-logger ERROR on failure; plain prompt on configured stderr if eligible |
 | JSON preview | One succeeded envelope with phase preview and preview/not_submitted items | No prompt; no human summary |
 | JSON all accepted | One accepted envelope with phase execution | No prompt; no independent completion claim |
 | JSON partial failure | One failure/invalid envelope per existing classification, with complete ordered report and original machine error evidence | No second error renderer or duplicate human aggregate |
@@ -62,7 +62,7 @@ The completion report uses the stable fields in the data model, with ordered ite
 | Quiet + JSON/keys | Preserve explicitly selected machine results | Honor existing quiet precedence for diagnostics |
 | JSON + keys-only | Existing JSON precedence | One envelope, never mixed output |
 
-Human accepted wording must say requests were accepted and confirmation was skipped, not “tasks completed.” Default output is aggregate-first and must not list each lifecycle step. Verbose details may include key, status, submission evidence and known HTTP status, never raw `Error`. Results go through the new stdout renderer, not `renderHumanLine` or the existing variable failure view.
+Human execution with accepted items must say `backend confirmed completion of accepted tasks; no additional state polling`. With zero accepted items, say `no successful completion response received`. A successful native response confirms completion, including blocking task listeners; do not imply independent read-back, downstream completion, or success for uncertain/failed/unattempted items. Do not say `confirmation skipped`, which confuses native completion evidence with an optional client waiter. Keep all machine fields, status/submission identifiers, counts, envelope outcomes, keys-only selection, and exit behavior unchanged. Default output is aggregate-first and must not list each lifecycle step. Verbose details may include key, status, submission evidence and known HTTP status, never raw `Error`. Results go through the new stdout renderer, not `renderHumanLine` or the existing variable failure view.
 
 Preview item illustration (inside the shared envelope payload):
 

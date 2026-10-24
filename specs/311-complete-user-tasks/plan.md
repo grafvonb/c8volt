@@ -26,7 +26,7 @@ Use existing generated clients for Camunda 8.8, 8.9, and 8.10, shared mutation r
 
 **Performance Goals**: One logical native completion per unique key; existing finite retries may produce additional HTTP attempts. Zero task/variable reads, scope writes, assignment calls, or polling. Automatic workers follow existing `min(count, 2*GOMAXPROCS, 32)` policy; explicit bounds and no-worker-limit precedence remain intact. Memory grows with unique keys and one immutable variable snapshot, plus ordered evidence. No new latency benchmark.
 
-**Constraints**: Explicit-key backend authorization; acceptance-only claims; complete local validation before submission; no empty-input no-op; reject completion with no-wait; fail-fast stops scheduling without canceling already submitted work; configured logging; one JSON envelope; no live implementation validation.
+**Constraints**: Explicit-key backend authorization; backend-confirmed completion without independent read-back; complete local validation before submission; no empty-input no-op; reject completion with no-wait; fail-fast stops scheduling without canceling already submitted work; configured logging; one JSON envelope; no live implementation validation.
 
 **Scale/Scope**: Single and multiple explicit tasks through the same workflow, same optional variables for every key, three supported adapters. No search, assignment/unassignment (#351), task-attribute updates, per-task payloads, downstream waiting, or changes to job completion.
 
@@ -34,7 +34,7 @@ Use existing generated clients for Camunda 8.8, 8.9, and 8.10, shared mutation r
 
 | Principle / gate | Before research | After design |
 |---|---|---|
-| Operational proof | Pass: completion promises backend acceptance only | Pass: HTTP 204 establishes acceptance; output explicitly skips independent confirmation, unknown submission remains uncertain, and no completed-task claim is made |
+| Operational proof | Pass: completion relies on the native successful response | Pass: documented HTTP 204 confirms backend completion; human output distinguishes this from additional polling, machine identifiers remain accepted, and unknown submission remains uncertain |
 | CLI-first, script-safe | Pass: extend existing command and aliases | Pass: mode-local validation, stderr prompts, stdout results, stable completion payload, one envelope, unchanged variable mode |
 | Proportionate validation | Pass: documents need lightweight checks now | Pass: targeted package/command tests first; final race suite justified by cross-package interfaces, adapters, and concurrent mutation execution |
 | Documentation matches behavior | Pass: both modes must be discoverable | Pass: source metadata, parent help, README and generated docs are part of implementation delivery |
@@ -42,7 +42,7 @@ Use existing generated clients for Camunda 8.8, 8.9, and 8.10, shared mutation r
 | Layering and cohesion | Pass: backend mechanics belong in services | Pass: completion mode file owns CLI lifecycle; views own formatting; service owns deduplication, snapshot, scheduling, retries and results |
 | Implementation test boundary | Pass: isolated dependencies only | Pass: fake-only guide, sanitized environment, real-terminal harness, no environment-backed gate |
 
-No gate exceptions. Acceptance is an explicitly disclosed worker-outcome contract, not a claim of independently observed task completion. Existing logger-backed variable-mode human output is preserved for compatibility; its raw-error rendering and shared parsing gaps are not copied into completion. Post-design review found no conflict with the [constitution](../../.specify/memory/constitution.md), [repository guidance](../../AGENTS.md), or [Ralph rules](../ralph-implementation-rules.md).
+No gate exceptions. The successful native response confirms backend completion, including blocking task listeners. The existing accepted machine contract remains unchanged and does not claim independent read-back or downstream completion. Existing logger-backed variable-mode human output is preserved for compatibility; its raw-error rendering and shared parsing gaps are not copied into completion. Post-design review found no conflict with the [constitution](../../.specify/memory/constitution.md), [repository guidance](../../AGENTS.md), or [Ralph rules](../ralph-implementation-rules.md).
 
 ## Project Structure
 
@@ -103,15 +103,15 @@ New filenames above describe intended additions; existing files and all affected
 
 Dispatch completion before the required-variable parser and variable workflow. Preserve `validateUpdateUserTaskJSONConfirmation` and existing bootstrap/error helpers. Completion validates all flag/stdin keys, optional variable input, worker values, and complete/no-wait incompatibility before any native mutation. The completion parser applies the existing 16-digit user-task stdin grammar to all sources, permits valid flag keys with empty stdin, and rejects an empty final selection. It must not silently reuse the shared helper that validates only stdin.
 
-Freeze ordered unique keys and a defensive payload snapshot before preview/confirmation. Preview is a local description, not a claim of task existence or eligibility. Attach existing explicit-key tenant context from configuration, with no filtering or fabricated resolved tenant evidence. Confirm once through `cmd.ErrOrStderr()`; honor auto-confirm, automation, EOF, abort, and output guardrails.
+Freeze ordered unique keys and decode the completion payload with `json.Decoder.UseNumber` before preview/confirmation, requiring one non-null JSON object followed by EOF. Reuse source selection only; retain the existing variable-update decoder. The newly decoded object is already owned by the CLI and needs no additional JSON copy. Preview is a local description, not a claim of task existence or eligibility. Attach existing explicit-key tenant context from configuration, with no filtering or fabricated resolved tenant evidence. Confirm once through `cmd.ErrOrStderr()`; honor auto-confirm, automation, EOF, abort, and output guardrails.
 
 ### Facade and service ownership
 
-Add `task.API.CompleteUserTasks(ctx, keys, variables, wantedWorkers, opts...)`. The facade copies/maps input, invokes `usertask.CompleteUserTasks`, maps every returned item even on failure, and normalizes the aggregate error through `ferrors.FromDomain`. No facade workers or retries.
+Add `task.API.CompleteUserTasks(ctx, keys, variables, wantedWorkers, opts...)`. The facade maps options and delegates input directly to `usertask.CompleteUserTasks`, which owns validation and snapshotting; it maps every returned item even on failure, and normalizes the aggregate error through `ferrors.FromDomain`. No facade workers or retries.
 
 The coordinator rejects invalid/empty input and no-wait, snapshots values, applies existing options once at the owning layer, and runs unique keys using `DetermineNoOfWorkers` and `pool.ExecuteSlice`. `DryRun` is safe for direct callers and returns preview outcomes without backend calls. Track started state and callback errors per index. Pool cancellation controls scheduling; original caller context controls already-started submissions. Join real failures and caller cancellation without substituting fail-fast's synthetic cancellation for the real error.
 
-Each version adapter calls generated `CompleteUserTaskWithResponse`, checks response validity and documented 204 acceptance, and uses existing HTTP/domain error conversion. No `RequirePayload` on a no-content success. Nil variables encode nullable `null`; supplied empty objects remain `{}`. No task reads, variable reads/writes, assignments, legacy fallback, or state reconciliation.
+Each version adapter calls generated `CompleteUserTaskWithResponse`, checks response validity and documented 204 successful completion, and uses existing HTTP/domain error conversion. No `RequirePayload` on a no-content success. Nil variables encode nullable `null`; supplied empty objects remain `{}`. No task reads, variable reads/writes, assignments, legacy fallback, or state reconciliation.
 
 ### Retry and uncertain submission
 
@@ -119,7 +119,7 @@ Use the existing finite `RetryCamundaMutation` policy. Keep last response/status
 
 ### Output, errors, and exit
 
-See [CLI contract](contracts/cli.md) for the stable completion payload and mode matrix. The new renderer writes selected-format results to stdout. Human default is aggregate-first; verbose may add safe per-task facts. Keys-only execution emits accepted keys only. Success uses accepted-envelope rendering explicitly; preview uses succeeded with a preview phase.
+See [CLI contract](contracts/cli.md) for the stable completion payload and mode matrix. The new renderer writes selected-format results to stdout. Human default is aggregate-first: accepted items have backend-confirmed completion with no additional state polling; zero accepted items means no successful completion response was received. Verbose may add safe per-task facts. This clarification changes no execution behavior, machine fields, statuses, or exit codes. Keys-only execution emits accepted keys only. Success uses accepted-envelope rendering explicitly; preview uses succeeded with a preview phase.
 
 Trace failure as: adapter structured evidence and error → coordinator ordered outcomes plus aggregate error → facade preserves outcomes and converts error → renderer writes result/one JSON envelope → non-JSON configured logger writes one bounded aggregate ERROR → exit using the original converted error. Validation uses existing pre-execution helpers. Never call a second error renderer after an execution envelope. Do not format raw `Error` fields in human or verbose rows. Known status/count facts drive grouped diagnostics, at most three named reasons plus an additional-failure count. Review every new print and raw error formatting site at this boundary.
 
@@ -131,7 +131,7 @@ Broaden worker/dry-run/fail-fast descriptions to explain both modes. Update `cmd
 
 ## Validation and Delivery Boundaries
 
-The [quickstart](quickstart.md) defines runnable isolated validation and the acceptance matrix. Required coverage includes three adapters, public mappings, collection concurrency/order/cancellation, complete local validation, no remote preview/read/poll paths, all output/automation combinations, real-terminal confirmation, one-envelope EOF, logger framing/severity/destinations, repeated backend failures, DEBUG redaction and original exit codes. Mutation-style checks must demonstrate that replacing logging with a direct print or rendering raw joined errors causes failure.
+The [quickstart](quickstart.md) defines runnable isolated validation and the acceptance matrix. Shared HTTP classification, retry and cancellation tests live once beside `common.CompleteUserTaskSubmission`; version adapters retain generated-wire, ownership, logging-option and response-delegation checks. Required coverage includes three adapters, public mappings, collection concurrency/order/cancellation, complete local validation, no remote preview/read/poll paths, all output/automation combinations, real-terminal confirmation, one-envelope EOF, logger framing/severity/destinations, repeated backend failures, DEBUG redaction and original exit codes. Mutation-style checks must demonstrate that replacing logging with a direct print or rendering raw joined errors causes failure.
 
 Build single and collection execution once. For task generation, keep native interface changes, all adapters, and required stubs compiling in one cohesive unit; keep coordinator behavior with its tests; keep CLI behavior and output/error/terminal checks with the relevant implementation; keep help/source metadata with regenerated docs. Tightly coupled portions may be combined when practical, but do not create separate “single task first” and “bulk later” rebuilds. Do not split tests, formatting, review, or reading into stand-alone implementation tasks. Cross-story acceptance coverage does not authorize a Ralph iteration to start unrelated stories.
 

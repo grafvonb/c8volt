@@ -114,7 +114,7 @@ func TestUpdateUserTaskCompletionInputSelection(t *testing.T) {
 // nested JSON values and every invalid source before any runner exists.
 func TestUpdateUserTaskCompletionInputVariables(t *testing.T) {
 	dir := t.TempDir()
-	payload := `{"nested":{"list":[true,2,"secret",null]}}`
+	payload := `{"nested":{"list":[true,9007199254740993,0.123456789012345678901,"secret",null]}}`
 	file := filepath.Join(dir, "vars.json")
 	empty := filepath.Join(dir, "empty.json")
 	require.NoError(t, os.WriteFile(file, []byte(payload), 0600))
@@ -127,8 +127,8 @@ func TestUpdateUserTaskCompletionInputVariables(t *testing.T) {
 	}{
 		{name: "omitted"},
 		{name: "empty object", flags: []string{"--vars", "{}"}, want: map[string]any{}},
-		{name: "nested", flags: []string{"--vars", payload}, want: map[string]any{"nested": map[string]any{"list": []any{true, json.Number("2"), "secret", nil}}}},
-		{name: "file", flags: []string{"--vars-file", file}, want: map[string]any{"nested": map[string]any{"list": []any{true, json.Number("2"), "secret", nil}}}},
+		{name: "nested", flags: []string{"--vars", payload}, want: map[string]any{"nested": map[string]any{"list": []any{true, json.Number("9007199254740993"), json.Number("0.123456789012345678901"), "secret", nil}}}},
+		{name: "file", flags: []string{"--vars-file", file}, want: map[string]any{"nested": map[string]any{"list": []any{true, json.Number("9007199254740993"), json.Number("0.123456789012345678901"), "secret", nil}}}},
 		{name: "both", flags: []string{"--vars", "{}", "--vars-file", file}, invalid: true},
 		{name: "empty explicit source", flags: []string{"--vars="}, invalid: true},
 		{name: "empty file path", flags: []string{"--vars-file="}, invalid: true},

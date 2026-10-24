@@ -1239,9 +1239,13 @@ func TestCommandCapabilityForCommand_UpdateUserTaskContract(t *testing.T) {
 	resetCommandTreeFlags(root)
 	require.False(t, flagUpdateUserTaskComplete)
 	require.False(t, updateUserTaskCmd.Flags().Lookup("key").Value.(*userTaskCompletionKeyValue).emptyOccurrence)
-	for _, text := range []string{"--complete", "--no-wait", "optional", "without independent task-state verification", "--workers", "--fail-fast"} {
+	for _, text := range []string{"--complete", "--no-wait", "optional", "successful response confirms completion", "no additional task-state polling", "cannot bypass the completion request", "--workers", "--fail-fast"} {
 		require.Contains(t, updateUserTaskCmd.Long, text)
 	}
+	require.Contains(t, updateUserTaskCmd.Flags().Lookup("complete").Usage, "backend-confirmed completion")
+	require.Contains(t, updateUserTaskCmd.Flags().Lookup("no-wait").Usage, "skip variable-update verification")
+	require.Contains(t, updateUserTaskCmd.Flags().Lookup("no-wait").Usage, "incompatible with --complete")
+	require.Contains(t, updateCmd.Long, "successful response confirms completion")
 	for _, alias := range capability.Aliases {
 		resolved, remaining, err := root.Find([]string{"update", alias})
 		require.NoError(t, err)

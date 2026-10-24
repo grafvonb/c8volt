@@ -12,7 +12,7 @@ Update variables or complete user tasks by key
 
 Update effective user-task variables or complete explicitly selected user tasks on supported Camunda versions.
 
-Use --complete to submit native completion for every unique key, with optional --vars or --vars-file data. Omitted variables and {} still submit completion. Requests are accepted without independent task-state verification or downstream waiting; no assignment is performed. --complete cannot be combined with --no-wait. A configured tenant does not filter explicit keys.
+Use --complete to submit native completion for every unique key, with optional --vars or --vars-file data. Omitted variables and {} still submit completion. Completion preserves JSON numbers exactly, including large integers and precise decimals. The backend's successful response confirms completion, including blocking task listeners. c8volt performs no additional task-state polling or downstream waiting; no assignment is performed. --no-wait skips variable-update verification and cannot bypass the completion request or its listener processing, so it is incompatible with --complete. A configured tenant does not filter explicit keys.
 
 Completion accepts repeated or comma-separated --key values and newline-separated keys with positional '-'. Keys must contain exactly 16 decimal digits. --dry-run previews the frozen selection locally without requests or prompts. Ordinary execution confirms the entire selection once; --auto-confirm and --automation allow unattended execution. --workers bounds concurrency and --fail-fast stops new scheduling after a failure while retaining in-flight outcomes.
 
@@ -45,12 +45,12 @@ c8volt update user-task [-] [flags]
 ### Options
 
 ```
-      --complete           complete selected tasks with optional variables; report acceptance without verification
+      --complete           complete selected tasks with optional variables; report backend-confirmed completion without additional polling
       --dry-run            preview variable updates or task completions without submitting mutations
       --fail-fast          stop scheduling new completions or scope updates after the first error
   -h, --help               help for user-task
   -k, --key strings        user task key(s) to update; repeat or combine with stdin '-' (default [])
-      --no-wait            variable mode only: return after scope writes are accepted without confirmation; incompatible with --complete
+      --no-wait            skip variable-update verification after accepted scope writes; completion has no additional polling, so incompatible with --complete
       --no-worker-limit    use all queued completions or scope updates as workers when --workers is unset
       --vars string        JSON object with variables to set or submit with each completion
       --vars-file string   path to JSON object file with variables to set or submit with each completion

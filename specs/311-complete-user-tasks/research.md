@@ -105,3 +105,15 @@ Research used the current repository, vendored API contract, and three read-only
 **Alternatives considered**: Pipe-only stdin cannot prove terminal prompt routing. Renderer-only tests cannot prove configured logger use or original exit classes. Live engine checks are a separate explicitly requested workflow.
 
 **Evidence**: `cmd/update_job_batch_logging_test.go`, `cmd/root_api_diagnostics_test.go`, `cmd/get_processdefinition_watch_timeout_test.go`, `testx/cmd_terminal_runner.go`, `testx/integration_env_require_stub.go`, `Makefile`, `docsgen/main.go`.
+
+## Human wording clarification within #311
+
+The vendored native completion contract (`api/camunda/zeebe/gateway-protocol/src/main/proto/v2/user-tasks.yaml`) declares the operation non-eventually-consistent and HTTP 204 as successful task completion. The request waits for blocking task listeners; delayed processing can return 504. This supersedes the earlier acceptance-only human wording rationale: successful responses are backend confirmation, while independent task-state reads and downstream waiting remain out of scope.
+
+Keep the existing `accepted` machine identifiers, fields, envelope outcomes, keys selection, and error/exit behavior for compatibility. Limit human success claims to accepted items and preserve uncertainty after timeout/cancellation. No polling or job-command changes are needed. `--no-wait` still skips variable verification only: completion has no additional client waiter, and the flag cannot bypass the native request or its listeners.
+
+## Pragmatic simplification and T005
+
+Completion reuses payload source selection but decodes its own object with `json.Decoder.UseNumber` and an EOF check; legacy variable updates retain their decoder. The fresh decoded map needs no parser copy, and the facade delegates snapshot ownership to the coordinator. Native adapters keep their copy for direct calls and generated-client isolation. This supersedes the earlier parser/copy recommendation in section 3.
+
+Shared HTTP classification, retry and cancellation tests now exercise `common.CompleteUserTaskSubmission` once. Each version retains generated-wire, payload-ownership, invalid-payload, logging-option and response-delegation checks. No machine schema, outcome identifiers, polling or scheduling behavior changes.

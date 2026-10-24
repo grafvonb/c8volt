@@ -13,7 +13,7 @@ CompleteUserTasks(ctx context.Context, keys typex.Keys, variables map[string]any
 
 This collection method handles one or many keys. Public result models and enums are defined in the data model; public signatures expose no generated or internal types. Existing `New`, `NewWithVariableUpdates`, and root client composition remain usable without another constructor.
 
-The facade only copies/maps values and options, delegates to the area coordinator, maps all returned items even when an error accompanies them, and converts the aggregate through `ferrors.FromDomain`. Do not discard partial evidence or add pools, retries, task reads, or verification in the facade.
+The facade maps options, delegates caller-owned inputs to the area coordinator, maps all returned items even when an error accompanies them, and converts the aggregate through `ferrors.FromDomain`. The coordinator snapshots keys and nested variables before scheduling, so the facade adds no redundant copy. Native adapters retain their own payload copy for direct callers and generated-client isolation. Do not discard partial evidence or add pools, retries, task reads, or verification in the facade.
 
 ## Shared coordinator
 
@@ -50,7 +50,7 @@ The native operation is `POST /user-tasks/{userTaskKey}/completion` under the ex
 | Empty object | `Action=nil`, pointer to empty map | `variables:{}`; still a completion |
 | Supplied object | `Action=nil`, pointer to copied object | Identical typed values for each key |
 
-Documented HTTP 204 means acceptance; it has no success JSON payload. Validate nil/malformed responses without panicking; do not require JSON content with `common.RequirePayload`. Use existing HTTP/domain classification for errors, preserving status/evidence. Generated-client mocks must populate request URL/method as required by `httpc.HttpStatusErr`.
+Documented HTTP 204 confirms task completion, including blocking task listeners; it has no success JSON payload. Retain accepted/accepted in the existing machine model and add no read-back or polling. Validate nil/malformed responses without panicking; do not require JSON content with `common.RequirePayload`. Use existing HTTP/domain classification for errors, preserving status/evidence. Generated-client mocks must populate request URL/method as required by `httpc.HttpStatusErr`.
 
 No search, GetUserTask, effective-variable retrieval, scope-variable mutation, assignment, legacy fallback, polling, or completion-state reconciliation is permitted in this operation or its dry-run path.
 
@@ -82,7 +82,7 @@ Existing variable methods, reads, resolution, public variable schemas, factories
 
 ## Contract verification
 
-- Every supported adapter: generated method/body, nil/empty/nested payloads, no-content success, rejected/uncertain/nil responses, cancellation and retry evidence, backend-authorized foreign-tenant keys.
+- Every supported adapter: generated method/body, nil/empty/nested payloads, no-content success, response/body/error delegation, payload ownership, logging-option forwarding, and backend-authorized foreign-tenant keys. Shared response classification, retry, cancellation and ambiguous-outcome cases live once in `internal/services/common/usertask_completion_test.go`.
 - Coordinator: all input validation before requests, nil API guard, no-wait, dry-run, stable deduplication, nested-copy ownership, selected worker bounds and precedence, out-of-order completion, fail-fast in-flight survival, ordered unattempted slots and original errors.
 - Facade: worker/options forwarding, defensive copying, public enum/JSON mapping, error class and partial-result preservation.
 - All dependencies are isolated mocks/fake servers. No live service is needed to satisfy these checks.

@@ -34,7 +34,7 @@ Domain fields have the same meaning. Native adapters populate these facts before
 | Value | Meaning |
 |---|---|
 | `preview` | Valid local selection, no submission requested |
-| `accepted` | Backend accepted completion; no independent task-state confirmation |
+| `accepted` | Backend confirmed completion through the successful native response; no independent task-state read-back |
 | `failed` | Operation failed for a reason other than timeout/caller cancellation; submission evidence may be rejected or unknown |
 | `timed_out` | An attempted operation timed out; backend acceptance may remain unknown |
 | `canceled` | An attempted operation was canceled by the caller; backend acceptance may remain unknown |
@@ -84,7 +84,7 @@ The shared envelope retains existing `outcome`, `class`, `command`, optional `te
 6. Accepted work becomes accepted/accepted. Rejected or uncertain work receives the accurate failure status/evidence. Fail-fast stops new scheduling; it does not overwrite existing accepted results or roll back submitted work.
 7. Return ordered results plus aggregate error, render once, and exit using existing error classification.
 
-Native completion never enters a completed/confirmed-task state in this model. No database schema, persistent plan, task-state polling, or reconciliation model is introduced.
+The existing machine model retains accepted/accepted for a successful completion response; the human wording clarification introduces no completed/confirmed enum or new fields. No database schema, persistent plan, task-state polling, or reconciliation model is introduced.
 
 ## Tenant and error facts
 
