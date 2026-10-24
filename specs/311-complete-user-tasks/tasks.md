@@ -219,3 +219,11 @@ T008 completed: targeted completion/metadata/docs tests, diagnostic mutation che
 Current total: nine cohesive tasks. T009 supersedes all earlier human-stdout requirements in T003/T004/T008 and their historical evidence; machine-output and backend contracts are unchanged.
 
 T009 completed: targeted checks, diagnostic mutation checks, documentation regeneration and the affected command/docs race suite passed. See progress.md for evidence. No backend changes, polling or live validation were added.
+
+## Phase 14: Shared scalar job guard and compact errors
+
+- [x] T010 [US5] Reuse the existing scalar job planning lookup to guard COMPLETED for `--complete`, `--fail` and `--throw-bpmn-error` before plan/prompt/submission (including dry-run), with conflict exit 6 and variables wording only when supplied. Keep other states backend-owned, no new reads/polling, and preserve backend exits/JSON, scalar success/prompts and bulk behavior. Bound lookup/submission human errors through the configured logger. Update spec/contracts, source help, README and generated docs. Verify three adapters, request counts, mode/payload matrix, real terminal behavior, logger destinations/formats/redaction, original JSON evidence/exits, repeated batch regressions, and diagnostic mutation checks; format and run targeted checks then command/docs race tests. Dependency: T009.
+
+Current total: ten cohesive tasks. T010 is one narrowly scoped follow-up; implementation, fixtures, docs and validation stay together. It extends the original job non-goal only as specified by FR-022.
+
+T010 completed: targeted regressions, real-terminal approval/decline checks, both diagnostic mutation checks, docs regeneration and the command/docs race suite passed (5,178 tests/subtests, zero skips). See `progress.md`. No new reads, polling, model changes or live validation.

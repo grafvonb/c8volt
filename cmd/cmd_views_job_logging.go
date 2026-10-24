@@ -12,6 +12,46 @@ import (
 	"github.com/grafvonb/c8volt/c8volt/job"
 )
 
+// jobWorkerOutcomeLabel supplies stable action wording without backend text.
+func jobWorkerOutcomeLabel(mode job.WorkerOutcomeMode) string {
+	switch mode {
+	case job.WorkerOutcomeCompletion:
+		return "completion"
+	case job.WorkerOutcomeTechnicalFailure:
+		return "failure"
+	case job.WorkerOutcomeBPMNError:
+		return "BPMN error"
+	default:
+		return "worker outcome"
+	}
+}
+
+// formatCompletedJobGuard describes only the locally observed no-submission case.
+func formatCompletedJobGuard(request job.WorkerOutcomeRequest) string {
+	message := "update job: job is already completed; " + jobWorkerOutcomeLabel(request.Mode) + " request not sent"
+	if request.Variables != nil {
+		message += "; supplied variables were not applied"
+	}
+	return message
+}
+
+// jobWorkerOutcomeErrorMessage overrides human diagnostics only. Original errors
+// retain their class and evidence for exit handling and the shared JSON envelope.
+// Non-worker updates retain their existing rendering path.
+func jobWorkerOutcomeErrorMessage(request job.UpdateRequest, err error, planning bool) []string {
+	if request.WorkerOutcome == nil {
+		return nil
+	}
+	reason := strings.ReplaceAll(string(ferrors.Classify(err)), "_", " ")
+	if ferrors.Classify(err) == ferrors.ClassNotFound {
+		reason = "job not found"
+	}
+	if planning {
+		return []string{"update job: could not read job: " + reason + "; " + jobWorkerOutcomeLabel(request.WorkerOutcome.Mode) + " request not sent"}
+	}
+	return []string{"update job: " + jobWorkerOutcomeLabel(request.WorkerOutcome.Mode) + " request failed: " + reason}
+}
+
 // formatJobCompletionFailure uses bounded report facts, never raw error text.
 // HTTP diagnostics remain owned by the redacted DEBUG transport; JSON retains
 // the original error and per-job evidence independently of this human summary.

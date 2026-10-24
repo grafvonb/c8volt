@@ -144,3 +144,7 @@ No constitutional violations or new framework. Separate execution status and sub
 ### Update command rhythm (FR-021)
 
 Reuse `renderAttachedTenantContext` and the configured INFO logger for known selection scope and the approval plan, then WARN diagnostics, a plain stderr prompt, and the INFO result. Single-key plans/prompts name the key; bulk plans use existing ready counts plus a completed count captured by the same preflight reads. CompletedCount is advisory, never added to JSON. Mixed fail-fast plans explain zero submissions; all-completed selections go directly to conflict results. Auto-confirm/automation skip the approval plan; quiet and machine modes suppress INFO. Local dry-run shows known scope and an intent preview with zero reads. Preserve all scheduling, request counts and machine contracts.
+
+## Scalar job outcome follow-up (FR-022)
+
+Extend `validateUpdateJobPlanPreconditions` with one shared COMPLETED guard for the three worker outcomes. Reuse `plan.Current` from `planUpdateJob`; keep read/retry policy and service/facade APIs unchanged. Format bounded human messages in `cmd/cmd_views_job_logging.go` and pass them as human-only overrides to `handleCommandError`. Preserve original backend errors for JSON and exit resolution. Do not add eligibility allowlists or route scalar operations through the bulk lifecycle. Update source help/README, regenerate docs, and validate command execution with isolated HTTP/terminal fixtures plus the affected command/docs race suite.

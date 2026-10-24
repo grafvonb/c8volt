@@ -101,3 +101,7 @@ Human rendering filters zero counters and uses VariablesProvided for optional va
 ## Human output routing
 
 Human previews, summaries and verbose rows are INFO records through the configured command logger. This changes no report fields, status/count evidence or serialization; JSON and keys-only remain stdout results. Prompts and exit classifications are unchanged.
+
+## Scalar job follow-up
+
+No new model or schema. Reuse existing `job.UpdatePlan.Current.State` and `WorkerOutcomeRequest.Mode`/`Variables`; preserve scalar worker-outcome results and shared error envelopes. The local completed guard uses the existing conflict class.

@@ -128,3 +128,9 @@ INFO updated user-task 2251799813685249: completion confirmed
 ```
 
 The warning appears only when observed. For bulk input, the plan uses `plan: update user-task completion: N requested; M eligible; C already completed`, omitting zero counts. Fail-fast with a mixed selection replaces eligibility with `fail-fast: no completion requests will be sent`; it does not prompt. All-completed selections skip the plan and prompt. No affected tenant is inferred or fetched solely for display. Auto-confirm and automation skip the approval plan; quiet and machine output suppress INFO. Dry-run shows known selection scope and an INFO preview such as `dry run: update user-task <key>: completion: submit; no requests submitted`, with no backend reads or prompt. These paths preserve existing warning suppression and result-mode precedence.
+
+## Scalar job worker outcomes (FR-022)
+
+Single-key `update job --complete`, `--fail` and `--throw-bpmn-error` share the existing planning read. Observed COMPLETED returns conflict (exit 6), before a plan or prompt, including dry-run. Human ERROR: `update job: job is already completed; completion request not sent` (use `failure` or `BPMN error` for the other modes). Append `; supplied variables were not applied` only for supplied variables, including `{}`.
+
+Lookup failures: `update job: could not read job: <bounded class>; <action> request not sent`. Submission failures: `update job: <action> request failed: <bounded class>`; not_found uses `job not found`. Human messages never interpolate raw errors. JSON keeps the original shared error envelope and backend detail; no new fields or payloads. Original backend exits and `--no-err-codes` remain authoritative. Other states remain backend-owned. Successful results, confirmation text, bulk behavior and retry/timeout modes are unchanged. No extra read or polling.

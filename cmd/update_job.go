@@ -46,6 +46,8 @@ Bulk previews, summaries and verbose rows use the configured logger at INFO leve
 
 c8volt plans the update and asks for confirmation before material interactive mutations. Retry updates are verified by reading the job; timeout updates and worker outcomes return after acceptance without waiting for confirmation.
 
+For a single job, --complete, --fail and --throw-bpmn-error reject an already completed job before confirmation or submission, including during dry-run. Other states remain subject to backend validation. Human failures use compact logged reasons; JSON preserves backend error evidence and exit codes. Use --debug for HTTP diagnostics.
+
 Use --dry-run to inspect the plan without mutation. With --json, mutations require --dry-run, --auto-confirm, or --automation; --json cannot be combined with --verbose.`,
 	Example: `  ./c8volt update job --key <job-key> --retries 3 --dry-run
   ./c8volt --tenant tenant-a update job --key <job-key> --retries 3 --dry-run
@@ -84,11 +86,14 @@ Use --dry-run to inspect the plan without mutation. With --json, mutations requi
 		}
 		plan, err := planUpdateJob(cmd.Context(), cli, request)
 		if err != nil {
-			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("plan job update: %w", err))
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("plan job update: %w", err), jobWorkerOutcomeErrorMessage(request, err, true)...)
 		}
 		attachUpdateJobExplicitTenantContext(cmd, cfg, plan)
 		request.UpdatePlan = &plan
 		if err := validateUpdateJobPlanPreconditions(plan, request); err != nil {
+			if request.WorkerOutcome != nil {
+				handleCommandError(cmd, log, cfg.App.NoErrCodes, err, formatCompletedJobGuard(*request.WorkerOutcome))
+			}
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}
 		if flagDryRun {
@@ -116,7 +121,7 @@ Use --dry-run to inspect the plan without mutation. With --json, mutations requi
 		}
 		if request.WorkerOutcome != nil {
 			if err := executeUpdateJobWorkerOutcome(cmd, cli, request, plan); err != nil {
-				handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+				handleCommandError(cmd, log, cfg.App.NoErrCodes, err, jobWorkerOutcomeErrorMessage(request, err, false)...)
 			}
 			return
 		}

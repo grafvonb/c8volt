@@ -108,3 +108,7 @@ Preflight execution coverage is in `TestUpdateUserTaskCompletionPreflightModes`,
 ## Update rhythm regression coverage
 
 Run `TestUpdateUserTaskCompletionRhythm` with isolated fake HTTP and real terminal stdin. Assert scope → plan → warnings → prompt ordering, exact single-key/bulk grammar, configured/inherited logger destinations in plain and structured formats, empty human stdout and unchanged machine stdout, aborts, fail-fast, local previews, quiet/keys/JSON, auto-confirm and automation. Assert one lookup per unique execution key and zero preview lookups, no extra requests after confirmation, no variable value leakage or invented tenant evidence, unchanged JSON fields/counts and original exits. Existing diagnostic tests retain repeated backend-error redaction and both DEBUG activation paths.
+
+## Scalar job follow-up validation
+
+Run `isolated go test ./cmd -run 'TestScalarJob|TestBulkCompletionDiagnosticLogging|TestUpdateJobCommand|TestGetJobAndUpdateJobHelp' -count=1`, followed by `isolated go test ./cmd ./docsgen -race -count=1`. The scalar fixture records every native request to detect extra lookups/polling. Real terminal tests check prompt-free completed rejection, logger destinations/severity, variables wording, quiet/JSON/automation/dry-run/no-wait, backend exits/evidence, accepted FAILED/CREATED states, and both DEBUG entry points with redaction. Existing bulk diagnostics cover repeated multi-resource backend failures and partial JSON evidence. These are isolated fixtures only; no live validation.

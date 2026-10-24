@@ -30,6 +30,8 @@ Bulk previews, summaries and verbose rows use the configured logger at INFO leve
 
 c8volt plans the update and asks for confirmation before material interactive mutations. Retry updates are verified by reading the job; timeout updates and worker outcomes return after acceptance without waiting for confirmation.
 
+For a single job, --complete, --fail and --throw-bpmn-error reject an already completed job before confirmation or submission, including during dry-run. Other states remain subject to backend validation. Human failures use compact logged reasons; JSON preserves backend error evidence and exit codes. Use --debug for HTTP diagnostics.
+
 Use --dry-run to inspect the plan without mutation. With --json, mutations require --dry-run, --auto-confirm, or --automation; --json cannot be combined with --verbose.
 
 ```
