@@ -1445,3 +1445,73 @@ func clearRequestRateTestEnvironment(t *testing.T) {
 		}
 	}
 }
+
+// TestRequestRateReportIntervalRootConfig verifies omission, profile/env zero and template export without an interval flag.
+func TestRequestRateReportIntervalRootConfig(t *testing.T) {
+	isolateRequestRateEnvironment(t)
+	for _, tc := range []struct {
+		name, input, env, want string
+		template               bool
+	}{
+		{name: "default", want: "5s"},
+		{name: "template", want: "5s", template: true},
+		{name: "base", input: "http:\n  request_rate_report_interval: 10s\n", want: "10s"},
+		{name: "profile", input: "active_profile: dev\nhttp:\n  request_rate_report_interval: 10s\nprofiles:\n  dev:\n    http:\n      request_rate_report_interval: 0s\n", want: "0s"},
+		{name: "environment", input: "http:\n  request_rate_report_interval: 10s\n", env: "0s", want: "0s"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if tc.env != "" {
+				t.Setenv("C8VOLT_HTTP_REQUEST_RATE_REPORT_INTERVAL", tc.env)
+			}
+			path := writeRawTestConfig(t, tc.input)
+			args := []string{"--config", path, "config", "show"}
+			if tc.template {
+				args = append(args, "--template")
+			}
+			stdout, _ := executeAPIDiagnosticsRoot(t, args...)
+			var cfg config.Config
+			require.NoError(t, yaml.Unmarshal([]byte(stdout), &cfg))
+			require.Equal(t, tc.want, cfg.HTTP.RequestRateReportInterval)
+			require.Nil(t, Root().PersistentFlags().Lookup("request-rate-report-interval"))
+		})
+	}
+}
+
+// TestRequestRateReportIntervalInvalidBeforeBootstrap rejects explicit empty and malformed durations from every source before login.
+func TestRequestRateReportIntervalInvalidBeforeBootstrap(t *testing.T) {
+	isolateRequestRateEnvironment(t)
+	var calls atomic.Int32
+	server := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { calls.Add(1); w.WriteHeader(500) }))
+	defer server.Close()
+	for _, source := range []string{"file", "profile", "env"} {
+		for _, value := range []string{"", " ", "-1s", "wrong", "NaN", "true"} {
+			t.Run(source+"/"+value, func(t *testing.T) {
+				path := writeAPIDiagnosticsCommandConfig(t, server.URL, "cookie")
+				if source == "env" {
+					t.Setenv("C8VOLT_HTTP_REQUEST_RATE_REPORT_INTERVAL", value)
+				} else if source == "file" {
+					appendRequestRateConfig(t, path, value)
+				} else {
+					file, err := os.OpenFile(path, os.O_APPEND|os.O_WRONLY, 0600)
+					require.NoError(t, err)
+					_, err = fmt.Fprintf(file, "active_profile: dev\nprofiles:\n  dev:\n    http:\n      request_rate_report_interval: %q\n", value)
+					require.NoError(t, err)
+					require.NoError(t, file.Close())
+				}
+				root := Root()
+				resetCommandTreeFlags(root)
+				resetRequestRateCommandContexts(root)
+				defer func() { resetCommandTreeFlags(root); resetRequestRateCommandContexts(root) }()
+				var stdout, stderr bytes.Buffer
+				root.SetOut(&stdout)
+				root.SetErr(&stderr)
+				root.SetArgs([]string{"--config", path, "get", "process-definition", "--key", apiDiagnosticsProcessDefinitionKey})
+				_, err := root.ExecuteC()
+				require.ErrorContains(t, err, "http.request_rate_report_interval")
+				require.Zero(t, calls.Load())
+				require.Empty(t, stdout.String())
+				require.Nil(t, currentHTTPServiceCleanup)
+			})
+		}
+	}
+}

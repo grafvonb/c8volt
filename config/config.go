@@ -33,6 +33,7 @@ var (
 	ErrInvalidLogFormat = errors.New("invalid log.format")
 )
 
+// New creates an empty configuration with the default reporting cadence.
 func New() *Config {
 	return &Config{
 		App: App{
@@ -49,7 +50,7 @@ func New() *Config {
 			Operate:  API{},
 			Tasklist: API{},
 		},
-		HTTP: HTTP{},
+		HTTP: HTTP{RequestRateReportInterval: "5s"},
 		Log:  Log{},
 	}
 }
@@ -327,6 +328,7 @@ func (c *Config) Normalize() error {
 	return c.normalizeWithConfiguredKeys(func(string) bool { return false })
 }
 
+// normalizeWithConfiguredKeys distinguishes omitted defaults from explicit invalid empty settings.
 func (c *Config) normalizeWithConfiguredKeys(isConfigured func(string) bool) error {
 	var errs []error
 	if err := c.App.normalizeWithConfiguredKeys(isConfigured); err != nil {
@@ -338,7 +340,7 @@ func (c *Config) normalizeWithConfiguredKeys(isConfigured func(string) bool) err
 	if err := c.APIs.normalizeWithConfiguredKeys(isConfigured); err != nil {
 		errs = append(errs, fmt.Errorf("apis: %w", err))
 	}
-	if err := c.HTTP.Normalize(); err != nil {
+	if err := c.HTTP.normalizeWithConfiguredKeys(isConfigured); err != nil {
 		errs = append(errs, fmt.Errorf("http: %w", err))
 	}
 	c.Log.Normalize()

@@ -355,7 +355,7 @@ func TestUnwrapLogTransportFindsLogTransportBehindReadRetry(t *testing.T) {
 func TestNewInstallsReadRetryTransport(t *testing.T) {
 	t.Parallel()
 
-	svc, err := New(&config.Config{HTTP: config.HTTP{Timeout: "30s"}}, nil)
+	svc, err := New(&config.Config{HTTP: config.HTTP{RequestRateReportInterval: "5s", Timeout: "30s"}}, nil)
 
 	require.NoError(t, err)
 	_, ok := svc.Client().Transport.(*ReadRetryTransport)

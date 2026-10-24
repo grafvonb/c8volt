@@ -40,13 +40,14 @@ func isolateRequestRateEnvironment(t *testing.T) {
 }
 
 // TestRequestRateMutationCompatibility reuses the established acceptance fixtures
-// unchanged at both rates: all their scope, prompt, ordering, output, partial
-// result, redaction and exit assertions must still hold with shared pacing.
+// across pacing/reporting settings: scope, prompts, ordering, partial results,
+// redaction and exits must retain their existing acceptance assertions.
 func TestRequestRateMutationCompatibility(t *testing.T) {
 	isolateRequestRateEnvironment(t)
-	for _, rate := range []string{"0", "100"} {
-		t.Run("rate="+rate, func(t *testing.T) {
-			t.Setenv("C8VOLT_HTTP_REQUEST_RATE", rate)
+	for _, mode := range []struct{ rate, interval string }{{"0", "2ms"}, {"100", "2ms"}, {"100", "0s"}} {
+		t.Run("rate="+mode.rate+"/interval="+mode.interval, func(t *testing.T) {
+			t.Setenv("C8VOLT_HTTP_REQUEST_RATE", mode.rate)
+			t.Setenv("C8VOLT_HTTP_REQUEST_RATE_REPORT_INTERVAL", mode.interval)
 			for _, tc := range []struct {
 				name string
 				run  func(*testing.T)
@@ -259,7 +260,9 @@ func TestRequestRateMutationInterruption(t *testing.T) {
 				io.WriteString(w, `{"resourceKey":"123","batchOperation":null}`)
 			}))
 			t.Cleanup(server.Close)
-			args := []string{"--config", definitionDeleteLogConfig(t, server.URL, "plain-time", false), "--request-rate", "1", "delete", "process-definition", "--key", "123,456", "--no-state-check", "--no-wait", "--auto-confirm", "--workers", "1"}
+			configPath := definitionDeleteLogConfig(t, server.URL, "plain-time", false)
+			appendRequestRateConfig(t, configPath, "10ms")
+			args := []string{"--config", configPath, "--debug", "--request-rate", "1", "delete", "process-definition", "--key", "123,456", "--no-state-check", "--no-wait", "--auto-confirm", "--workers", "1"}
 			if machine {
 				args = append(args, "--quiet", "--json")
 			}
@@ -276,6 +279,7 @@ func TestRequestRateMutationInterruption(t *testing.T) {
 				require.Empty(t, stderr)
 			} else {
 				require.Empty(t, stdout)
+				requireRequestRateSummaries(t, stderr, "plain-time")
 				var failures []string
 				for _, record := range bulkCompletionDiagnosticRecords(t, stderr, "plain-time") {
 					if record[0] == "ERROR" {
@@ -292,21 +296,25 @@ func TestRequestRateMutationInterruption(t *testing.T) {
 }
 
 // TestRequestRateMutationSharedStarts compares the same real command workflows
-// at zero/positive rates, recording starts across discovery, nested cleanup and
-// confirmation. The HTTP fake adds no request delays or independent rate state.
+// with reporting off/on at zero/positive rates, recording discovery, cleanup
+// and confirmation starts. A held first response guarantees a reporting window.
 func TestRequestRateMutationSharedStarts(t *testing.T) {
 	isolateRequestRateEnvironment(t)
 	for _, operation := range []string{"cancel", "delete", "definition", "purge"} {
 		for _, noWait := range []bool{false, true} {
 			t.Run(operation+"/no-wait="+strconv.FormatBool(noWait), func(t *testing.T) {
 				var baseline []string
-				for _, rate := range []string{"0", "40"} {
+				for _, mode := range []struct{ rate, interval string }{{"0", "0s"}, {"40", "0s"}, {"0", "2ms"}, {"40", "2ms"}} {
+					rate := mode.rate
 					var calls testx.SafeSlice[string]
 					var starts testx.SafeSlice[time.Time]
 					var canceled, deleted, definitionDeleted atomic.Bool
 					server := testx.NewIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 						starts.Append(time.Now())
 						calls.Append(r.Method + " " + r.URL.Path)
+						if len(calls.Snapshot()) == 1 && mode.interval != "0s" {
+							time.Sleep(30 * time.Millisecond)
+						}
 						w.Header().Set("Content-Type", "application/json")
 						state := "ACTIVE"
 						if canceled.Load() {
@@ -378,7 +386,9 @@ func TestRequestRateMutationSharedStarts(t *testing.T) {
 						}
 					}))
 					t.Cleanup(server.Close)
-					args := []string{"--config", definitionDeleteLogConfig(t, server.URL, "plain-time", false), "--request-rate", rate}
+					configPath := definitionDeleteLogConfig(t, server.URL, "plain-time", false)
+					appendRequestRateConfig(t, configPath, mode.interval)
+					args := []string{"--config", configPath, "--request-rate", rate, "--debug"}
 					switch operation {
 					case "cancel", "delete":
 						args = append(args, operation, "process-instance", "--state", "active")
@@ -393,6 +403,11 @@ func TestRequestRateMutationSharedStarts(t *testing.T) {
 					}
 					stdout, stderr, err := runRequestRateMutation(t, args, "inherited", 0)
 					require.NoError(t, err, stdout+stderr)
+					if mode.interval != "0s" {
+						requireRequestRateSummaries(t, stderr, "plain-time")
+					} else {
+						require.NotContains(t, stderr, "HTTP request rate:")
+					}
 					envelope := decodeRequestRateEnvelope(t, stdout)
 					require.Contains(t, []string{"succeeded", "accepted"}, envelope["outcome"])
 					require.NotContains(t, stderr, "Proceed")
@@ -406,10 +421,12 @@ func TestRequestRateMutationSharedStarts(t *testing.T) {
 						require.Less(t, indexOfString(got, "POST /v2/process-instances/2251799813685321/cancellation"), indexOfString(got, "POST /v2/process-instances/2251799813685321/deletion"))
 						require.Less(t, indexOfString(got, "POST /v2/process-instances/2251799813685321/deletion"), indexOfString(got, "POST /v2/resources/2251799813685123/deletion"))
 					}
-					if rate == "0" {
+					if baseline == nil {
 						baseline = got
 					} else {
-						require.Equal(t, baseline, got, "pacing must not add requests or reorder workflow phases")
+						require.Equal(t, baseline, got, "request controls must not add requests or reorder workflow phases")
+					}
+					if rate != "0" {
 						times := starts.Snapshot()
 						require.Greater(t, len(times), 3)
 						// Server arrivals include scheduling and local network jitter; 8ms is
@@ -507,4 +524,36 @@ apis:
 			require.NotContains(t, stderr, server.URL, "raw transport chains must not bypass DEBUG redaction")
 		})
 	}
+}
+
+// TestRequestRateReportingPartialFailure retains accepted JSON evidence and timeout exit
+// while the configured DEBUG reporter measures only the single dispatched mutation.
+func TestRequestRateReportingPartialFailure(t *testing.T) {
+	isolateRequestRateEnvironment(t)
+	var calls atomic.Int32
+	server := testx.NewIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls.Add(1)
+		require.Equal(t, "/v2/resources/123/deletion", r.URL.Path)
+		time.Sleep(30 * time.Millisecond)
+		w.Header().Set("Content-Type", "application/json")
+		io.WriteString(w, `{"resourceKey":"123","batchOperation":null}`)
+	}))
+	defer server.Close()
+	path := definitionDeleteLogConfig(t, server.URL, "json", false)
+	appendRequestRateConfig(t, path, "2ms")
+	args := []string{"--config", path, "--debug", "--json", "--timeout", "100ms", "--request-rate", "0.01", "delete", "process-definition", "--key", "123,456,789", "--no-state-check", "--no-wait", "--auto-confirm", "--workers", "1"}
+	stdout, stderr, err := runRequestRateMutation(t, args, "configured", 0)
+	var exitErr *exec.ExitError
+	require.ErrorAs(t, err, &exitErr)
+	require.Equal(t, exitcode.Timeout, exitErr.ExitCode())
+	require.Equal(t, int32(1), calls.Load())
+	envelope := decodeRequestRateEnvelope(t, stdout)
+	require.Equal(t, "timeout", envelope["class"])
+	items := requireJSONObject(t, envelope["payload"])["items"].([]any)
+	require.Len(t, items, 3)
+	require.Equal(t, true, requireJSONObject(t, items[0])["ok"])
+	requireRequestRateSummaries(t, stderr, "json")
+	require.Equal(t, 1, strings.Count(stderr, "1 requests in"), "unsent attempts must not be counted")
+	require.NotContains(t, stderr, "2 requests in")
+	require.NotContains(t, stderr, "3 requests in")
 }

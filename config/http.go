@@ -4,7 +4,6 @@
 package config
 
 import (
-	"errors"
 	"fmt"
 	"math"
 	"strconv"
@@ -12,13 +11,14 @@ import (
 	"time"
 )
 
-// HTTP configures shared request deadlines and optional invocation-wide pacing.
+// HTTP configures shared request deadlines, optional pacing and DEBUG reporting.
 type HTTP struct {
-	RequestRate float64 `mapstructure:"request_rate" json:"request_rate" yaml:"request_rate"`
-	Timeout     string  `mapstructure:"timeout" json:"timeout" yaml:"timeout"`
+	RequestRateReportInterval string  `mapstructure:"request_rate_report_interval" json:"request_rate_report_interval" yaml:"request_rate_report_interval"`
+	RequestRate               float64 `mapstructure:"request_rate" json:"request_rate" yaml:"request_rate"`
+	Timeout                   string  `mapstructure:"timeout" json:"timeout" yaml:"timeout"`
 }
 
-// Validate rejects invalid deadlines and rates before any remote work.
+// Validate rejects invalid deadlines, rates and report intervals before remote work.
 func (h *HTTP) Validate() error {
 	if math.IsNaN(h.RequestRate) || math.IsInf(h.RequestRate, 0) || h.RequestRate < 0 {
 		return fmt.Errorf("http.request_rate: must be finite and nonnegative")
@@ -33,16 +33,27 @@ func (h *HTTP) Validate() error {
 	if d <= 0 {
 		return fmt.Errorf("http.timeout: timeout must be a positive duration")
 	}
+	interval, err := time.ParseDuration(h.RequestRateReportInterval)
+	if err != nil || interval < 0 {
+		return fmt.Errorf("http.request_rate_report_interval: must be a parseable nonnegative duration")
+	}
 	return nil
 }
 
-// Normalize supplies the timeout default while preserving an explicit zero rate.
+// Normalize supplies omitted defaults while preserving explicit zero controls.
 func (h *HTTP) Normalize() error {
-	var errs []error
+	return h.normalizeWithConfiguredKeys(func(string) bool { return false })
+}
+
+// normalizeWithConfiguredKeys preserves explicit empty intervals for validation.
+func (h *HTTP) normalizeWithConfiguredKeys(isConfigured func(string) bool) error {
 	if h.Timeout == "" {
 		h.Timeout = "30s"
 	}
-	return errors.Join(errs...)
+	if h.RequestRateReportInterval == "" && !isConfigured("http.request_rate_report_interval") {
+		h.RequestRateReportInterval = "5s"
+	}
+	return nil
 }
 
 // validateRequestRateInput rejects malformed scalars before weak decoding can

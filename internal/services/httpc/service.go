@@ -23,11 +23,13 @@ var (
 
 // Service owns the shared HTTP client and invocation-wide request controls.
 type Service struct {
-	requestRate *RequestRateTransport
-	c           *http.Client
-	cfg         *config.Config
-	log         *slog.Logger
-	activity    logging.ActivitySink
+	requestRate       *RequestRateTransport
+	reporter          *requestRateReporter
+	invocationContext context.Context
+	c                 *http.Client
+	cfg               *config.Config
+	log               *slog.Logger
+	activity          logging.ActivitySink
 }
 
 type Option func(*Service)
@@ -115,14 +117,20 @@ func New(cfg *config.Config, log *slog.Logger, opts ...Option) (*Service, error)
 		return nil, err
 	}
 	httpClient := &http.Client{Timeout: d}
-	s := &Service{c: httpClient, cfg: cfg, log: log}
+	s := &Service{c: httpClient, cfg: cfg, log: log, invocationContext: context.Background()}
 	s.c.Transport = &LogTransport{Log: log, WithBody: cfg.Log.WithRequestBody}
 	for _, opt := range opts {
 		opt(s)
 	}
-	if cfg.HTTP.RequestRate > 0 {
+	interval, _ := time.ParseDuration(cfg.HTTP.RequestRateReportInterval)
+	reporting := interval > 0 && log != nil && log.Enabled(s.invocationContext, slog.LevelDebug)
+	if cfg.HTTP.RequestRate > 0 || reporting {
 		s.requestRate = newRequestRateTransport(s.c.Transport, cfg.HTTP.RequestRate)
 		s.c.Transport = s.requestRate
+	}
+	if reporting {
+		s.reporter = newRequestRateReporter(s.invocationContext, log, interval)
+		s.requestRate.counter = &s.reporter.starts
 	}
 	s.c.Transport = &ReadRetryTransport{base: s.c.Transport, policy: defaultReadRetryPolicy(), log: log}
 	return s, nil

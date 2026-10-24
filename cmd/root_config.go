@@ -91,6 +91,7 @@ func initViper(v *viper.Viper, cmd *cobra.Command) (*resolverBindings, error) {
 	v.SetDefault("log.with_request_body", false)
 	v.SetDefault("http.timeout", "30s")
 	v.SetDefault("http.request_rate", 0.0)
+	v.SetDefault("http.request_rate_report_interval", "5s")
 	v.SetDefault("app.process_instance_page_size", consts.MaxPISearchSize)
 	v.SetDefault("app.show_timezone_offset", false)
 

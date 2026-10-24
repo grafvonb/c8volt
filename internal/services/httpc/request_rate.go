@@ -6,6 +6,7 @@ package httpc
 import (
 	"context"
 	"net/http"
+	"sync/atomic"
 
 	"golang.org/x/time/rate"
 )
@@ -18,32 +19,45 @@ type requestRateWaiter interface{ Wait(context.Context) error }
 type RequestRateTransport struct {
 	base    http.RoundTripper
 	limiter requestRateWaiter
+	counter *atomic.Uint64
 }
 
-// newRequestRateTransport is used only for a validated positive rate.
+// newRequestRateTransport creates a limiter only for positive pacing.
 func newRequestRateTransport(base http.RoundTripper, perSecond float64) *RequestRateTransport {
-	return &RequestRateTransport{base: base, limiter: rate.NewLimiter(rate.Limit(perSecond), 1)}
+	t := &RequestRateTransport{base: base}
+	if perSecond > 0 {
+		t.limiter = rate.NewLimiter(rate.Limit(perSecond), 1)
+	}
+	return t
 }
 
 // RoundTrip includes local waiting in the existing request deadline. A rejected
 // admission is not a dispatched attempt and never enters HTTP diagnostics.
 func (t *RequestRateTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	ctx := req.Context()
-	if err := t.limiter.Wait(ctx); err != nil {
-		cause := ctx.Err()
-		if cause == nil {
-			// Burst is fixed at one, so a live context can only fail because its
-			// remaining deadline is insufficient for the next admission.
-			cause = context.DeadlineExceeded
+	if t.limiter != nil {
+		if err := t.limiter.Wait(ctx); err != nil {
+			cause := ctx.Err()
+			if cause == nil {
+				// Burst is fixed at one, so a live context can only fail because its
+				// remaining deadline is insufficient for the next admission.
+				cause = context.DeadlineExceeded
+			}
+			return nil, recordRequestRateFailure(ctx, cause)
 		}
-		return nil, recordRequestRateFailure(ctx, cause)
 	}
 	if err := ctx.Err(); err != nil {
-		return nil, recordRequestRateFailure(ctx, err)
+		if t.limiter != nil {
+			return nil, recordRequestRateFailure(ctx, err)
+		}
+		return nil, err
 	}
 	base := t.base
 	if base == nil {
 		base = http.DefaultTransport
+	}
+	if t.counter != nil {
+		t.counter.Add(1)
 	}
 	return base.RoundTrip(req)
 }

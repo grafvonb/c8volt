@@ -14,14 +14,30 @@ import (
 func TestHTTPRequestRateValidation(t *testing.T) {
 	t.Parallel()
 	for _, value := range []float64{0, 0.5, 10, math.SmallestNonzeroFloat64, math.MaxFloat64} {
-		h := HTTP{Timeout: "30s", RequestRate: value}
+		h := HTTP{RequestRateReportInterval: "5s", Timeout: "30s", RequestRate: value}
 		require.NoError(t, h.Validate())
 	}
 	for _, value := range []float64{-1, math.NaN(), math.Inf(1), math.Inf(-1)} {
-		h := HTTP{Timeout: "30s", RequestRate: value}
+		h := HTTP{RequestRateReportInterval: "5s", Timeout: "30s", RequestRate: value}
 		require.ErrorContains(t, h.Validate(), "http.request_rate")
 	}
 	h := HTTP{}
 	require.NoError(t, h.Normalize())
 	require.Zero(t, h.RequestRate)
+}
+
+// TestHTTPRequestRateReportInterval validates reporting independently of pacing.
+func TestHTTPRequestRateReportInterval(t *testing.T) {
+	t.Parallel()
+	for _, value := range []string{"5s", "10s", "0s", "500ms"} {
+		h := HTTP{Timeout: "30s", RequestRateReportInterval: value}
+		require.NoError(t, h.Validate())
+	}
+	for _, value := range []string{"", " ", "bad", "-1s"} {
+		h := HTTP{Timeout: "30s", RequestRateReportInterval: value}
+		require.ErrorContains(t, h.Validate(), "http.request_rate_report_interval")
+	}
+	h := HTTP{}
+	require.NoError(t, h.Normalize())
+	require.Equal(t, "5s", h.RequestRateReportInterval)
 }

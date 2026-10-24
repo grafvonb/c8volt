@@ -57,7 +57,8 @@ func TestNewCliConstructsSupportedV89Client(t *testing.T) {
 			},
 		},
 		HTTP: config.HTTP{
-			Timeout: "30s",
+			RequestRateReportInterval: "5s",
+			Timeout:                   "30s",
 		},
 	}
 	ctx := cfg.ToContext(context.Background())
@@ -86,7 +87,8 @@ func TestNewCliConstructsSupportedV810Client(t *testing.T) {
 			},
 		},
 		HTTP: config.HTTP{
-			Timeout: "30s",
+			RequestRateReportInterval: "5s",
+			Timeout:                   "30s",
 		},
 	}
 	ctx := cfg.ToContext(context.Background())

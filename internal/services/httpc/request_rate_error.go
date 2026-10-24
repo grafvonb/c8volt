@@ -39,7 +39,7 @@ type RequestRateObservation struct {
 // shared clients. Disabled pacing returns the original context without allocation.
 func BeginRequestRateAttempt(ctx context.Context) (context.Context, *RequestRateObservation) {
 	service, err := FromContext(ctx)
-	if err != nil || service.requestRate == nil {
+	if err != nil || service.requestRate == nil || service.requestRate.limiter == nil {
 		return ctx, nil
 	}
 	observation := &RequestRateObservation{}

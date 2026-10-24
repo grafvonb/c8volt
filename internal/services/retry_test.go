@@ -149,7 +149,7 @@ func TestRequestRateMutationLocalTimeoutNeverRetries(t *testing.T) {
 			var dispatched atomic.Int32
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { dispatched.Add(1); w.WriteHeader(http.StatusNoContent) }))
 			defer server.Close()
-			service, err := httpc.New(&config.Config{HTTP: config.HTTP{Timeout: "30ms", RequestRate: 0.5}}, slog.New(slog.NewTextHandler(io.Discard, nil)))
+			service, err := httpc.New(&config.Config{HTTP: config.HTTP{RequestRateReportInterval: "5s", Timeout: "30ms", RequestRate: 0.5}}, slog.New(slog.NewTextHandler(io.Discard, nil)))
 			require.NoError(t, err)
 			parent := service.ToContext(context.Background())
 			req, err := http.NewRequestWithContext(parent, http.MethodPost, server.URL, nil)
@@ -196,7 +196,7 @@ func TestRequestRateMutationBackendPolicy(t *testing.T) {
 	withFastCamundaMutationRetry(t)
 	for _, mode := range []string{"timeout", "429", "eligible 503", "other 503"} {
 		t.Run(mode, func(t *testing.T) {
-			service, err := httpc.New(&config.Config{HTTP: config.HTTP{Timeout: "30s", RequestRate: 100}}, slog.New(slog.NewTextHandler(io.Discard, nil)))
+			service, err := httpc.New(&config.Config{HTTP: config.HTTP{RequestRateReportInterval: "5s", Timeout: "30s", RequestRate: 100}}, slog.New(slog.NewTextHandler(io.Discard, nil)))
 			require.NoError(t, err)
 			calls := 0
 			var contexts []context.Context
@@ -233,7 +233,7 @@ func TestRequestRateMutationBackendPolicy(t *testing.T) {
 // TestRequestRateMutationZeroPassesOriginalContext ensures disabled pacing adds no attempt context.
 func TestRequestRateMutationZeroPassesOriginalContext(t *testing.T) {
 	withFastCamundaMutationRetry(t)
-	service, err := httpc.New(&config.Config{HTTP: config.HTTP{Timeout: "30s"}}, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	service, err := httpc.New(&config.Config{HTTP: config.HTTP{RequestRateReportInterval: "5s", Timeout: "30s"}}, slog.New(slog.NewTextHandler(io.Discard, nil)))
 	require.NoError(t, err)
 	parent := service.ToContext(context.Background())
 	_, err = RetryCamundaMutation(parent, nil, "mutate", func(ctx context.Context) (string, *http.Response, []byte, error) {
@@ -258,7 +258,7 @@ func TestRequestRateMutationDispatchedRetriesShareAllowance(t *testing.T) {
 		w.WriteHeader(http.StatusTooManyRequests)
 	}))
 	defer server.Close()
-	service, err := httpc.New(&config.Config{HTTP: config.HTTP{Timeout: "2s", RequestRate: 20}}, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	service, err := httpc.New(&config.Config{HTTP: config.HTTP{RequestRateReportInterval: "5s", Timeout: "2s", RequestRate: 20}}, slog.New(slog.NewTextHandler(io.Discard, nil)))
 	require.NoError(t, err)
 	ctx := service.ToContext(context.Background())
 	_, err = RetryCamundaMutation(ctx, nil, "cancel", func(ctx context.Context) (string, *http.Response, []byte, error) {

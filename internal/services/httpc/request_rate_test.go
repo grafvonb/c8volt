@@ -131,7 +131,7 @@ func TestRequestRateLocalFailures(t *testing.T) {
 // TestRequestRateClientTimeoutRetainsObservation exercises net/http's replacement of the typed transport error.
 func TestRequestRateClientTimeoutRetainsObservation(t *testing.T) {
 	t.Parallel()
-	service, err := New(&config.Config{HTTP: config.HTTP{Timeout: "20ms", RequestRate: 1}}, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	service, err := New(&config.Config{HTTP: config.HTTP{RequestRateReportInterval: "5s", Timeout: "20ms", RequestRate: 1}}, slog.New(slog.NewTextHandler(io.Discard, nil)))
 	require.NoError(t, err)
 	parent := service.ToContext(context.Background())
 	attempt, observation := BeginRequestRateAttempt(parent)
@@ -164,14 +164,15 @@ func TestRequestRateClientTimeoutRetainsObservation(t *testing.T) {
 	require.NoError(t, next.Failure(), "attempt evidence cannot leak")
 }
 
-// TestRequestRateServiceWiring keeps disabled pacing off the transport path and diagnostics traversable.
+// TestRequestRateServiceWiring keeps zero-rate reporting unpaced and diagnostics traversable.
 func TestRequestRateServiceWiring(t *testing.T) {
 	t.Parallel()
 	for _, value := range []float64{0, 0.5} {
-		cfg := &config.Config{HTTP: config.HTTP{Timeout: "30s", RequestRate: value}}
+		cfg := &config.Config{HTTP: config.HTTP{RequestRateReportInterval: "5s", Timeout: "30s", RequestRate: value}}
 		log := slog.New(slog.NewTextHandler(io.Discard, &slog.HandlerOptions{Level: slog.LevelDebug}))
 		service, err := New(cfg, log, WithDiagnostics())
 		require.NoError(t, err)
+		defer service.Close()
 		service.InstallAuthEditor(nil)
 		require.NotNil(t, unwrapLogTransport(service.Client().Transport))
 		collector := diagnosticCollectorFromTransport(service.Client().Transport)
@@ -183,7 +184,7 @@ func TestRequestRateServiceWiring(t *testing.T) {
 		ctx := service.ToContext(context.Background())
 		attempt, observation := BeginRequestRateAttempt(ctx)
 		if value == 0 {
-			require.Nil(t, service.requestRate)
+			require.Nil(t, service.requestRate.limiter)
 			require.Same(t, ctx, attempt)
 			require.Nil(t, observation)
 			require.NoError(t, observation.Failure())

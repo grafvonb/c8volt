@@ -83,3 +83,53 @@ Started: 2026-10-24 19:30:57
 - Fixture adjustments preserve existing contracts: purge takes a single valid key, failed reports omit false `ok`, and reused singleton command suites require fresh context. Environment isolation clears inherited C8VOLT configuration/credentials/helper controls and Go flags; all dependencies are isolated fakes, with no live-engine coverage claimed.
 - Effective commit policy remains conventional / ralph / issue auto with no local override; branch prefix resolves to #353. Reporting and benchmarks remain T003, with no task expansion or story mixing.
 ---
+
+---
+## Iteration 3 - 2026-10-24 20:21
+**Work Unit**: US2 / T003 completed — configurable DEBUG rate reporting and invocation lifecycle; feature complete
+**Tasks Completed**:
+- [x] T003: Deliver interval configuration, dispatch accounting, reporter lifetime, combined mutation acceptance, benchmarks and operator documentation.
+**Tasks Remaining in Work Unit**: 0; all feature tasks are complete.
+**Commit**: This work-unit commit
+**Files Changed**:
+- README.md
+- c8volt/diagnostics_test.go
+- c8volt/ferrors/request_rate_test.go
+- cmd/bootstrap_errors_test.go
+- cmd/config_test.go
+- cmd/request_rate_mutation_test.go
+- cmd/root.go
+- cmd/root_config.go
+- cmd/root_request_rate.go
+- cmd/root_request_rate_test.go
+- cmd/root_services.go
+- config/config.go
+- config/config_test.go
+- config/http.go
+- config/http_test.go
+- docs/cli/c8volt.md
+- docs/index.md
+- internal/services/httpc/diagnostics_transport_test.go
+- internal/services/httpc/http_read_retry_test.go
+- internal/services/httpc/request_rate.go
+- internal/services/httpc/request_rate_benchmark_test.go
+- internal/services/httpc/request_rate_error.go
+- internal/services/httpc/request_rate_reporter.go
+- internal/services/httpc/request_rate_reporter_test.go
+- internal/services/httpc/request_rate_test.go
+- internal/services/httpc/service.go
+- internal/services/retry_test.go
+- specs/353-request-rate-reporting/progress.md
+- specs/353-request-rate-reporting/ralph-memory.md
+- specs/353-request-rate-reporting/tasks.md
+**Learnings**:
+- Added configuration-only `http.request_rate_report_interval` (default `5s`, `0s` disables) with configured-key-aware normalization. File/profile/environment/root/template tests distinguish omission from explicit empty, preserve explicit zero and reject invalid input before authentication/API calls. No interval CLI flag was added.
+- One optional atomic counter records starts immediately before delegation after admission/context checks. Failed responses and dispatched retries count; unsent cancellations/deadlines do not. Zero-rate reporting creates no limiter or mutation retry observation; disabled controls retain the previous transport path. Virtual-clock cadence tests cover 5s/10s/custom windows, zero windows, elapsed-rate precision and shutdown; concurrent snapshots conserve every start. A stalled report sink does not block dispatch through the control boundary.
+- Reporter output uses the configured DEBUG logger with count, actual monotonic elapsed duration and measured rate in one compact message. Command execution verifies flag/configured DEBUG, verbose-only exclusion, quiet precedence, zero-interval suppression without suppressing existing DEBUG diagnostics, plain/structured formats, configured/inherited destinations, JSON EOF, no stdout diagnostics and one-start accounting without duplicates. Returned success/error, cookie initialization failure, cancellation, stale ownership, repeated invocations, double close and short commands are covered.
+- Reused T002 mutation suites at zero/positive rates with positive/disabled intervals. Extended all four shared-start workflows (cancel, instance delete, definition cleanup, purge), with/without no-wait, to require summaries under controlled response timing and preserve request sequences. Existing dry-run/empty/sparse/terminal controls, logger-routing/redaction matrices, partial results and exit classes pass. Additional combined interruption and partial-timeout cases preserve accepted work and count only dispatched requests.
+- Validation passed: nonempty RequestRate listings in config/httpc/services/cmd and benchmark listing; focused reporting/lifecycle/partial-failure checks; `go test ./config ./internal/services/httpc ./internal/services ./cmd -run 'RequestRate|ReadRetry|RetryCamundaMutation|APIDiagnostics|Config|Diagnostics' -count=1`; ten focused race repetitions after the fixture fix; final `GOFLAGS='' make test` (`go test ./... -race -count=1`, all packages); `make docs-content`; Go formatting and `git diff --check`. Full race validation followed all executable changes. The test launcher cleared inherited C8VOLT settings, helper controls, make flags and GOFLAGS; no integration tags or live-environment tests ran.
+- Benchmark on Darwin arm64 / Apple M3 Pro: pass-through 1.950 ns/op, zero/reporting-off 1.959 ns/op, zero/reporting-on 4.180 ns/op; each 0 B/op, 0 allocs/op. Measurements isolate the optional dispatch boundary with a fake transport and controlled discard logger. No universal throughput threshold or zero-overhead claim is made.
+- Expected initial red checks exposed missing reporting declarations; existing wrapper-shape fixtures were updated for measurement-only mode. The first full race suite found a bytes.Buffer race in the new virtual-clock cadence fixture (all command tests passed). Reused the existing synchronized diagnostic writer and added deferred reporter cleanup; focused repeated race checks and the final complete suite passed. No failing check remains.
+- Final output-path review: transport only increments the counter, reporter uses supplied logger.DebugContext with numeric/time values, and root owns cleanup only. No new direct diagnostic print or raw error formatting was introduced. Existing unsent errors still flow through retry evidence, facade classification, bounded command rendering/logging and original exits; combined JSON tests retain partial results in one envelope. CLI lifecycle declarations are isolated in root_request_rate.go; no facade API or mutation workflow change.
+- Reviewed the full quickstart coverage matrix and generated README/root CLI documentation. Only isolated fake transports, owned HTTP servers and CLI/terminal fixtures establish these results; real-engine behavior and production capacity remain unverified. Effective commit policy remains conventional / ralph / issue auto, resolving to #353. Final handoff contains only the required feature-complete entry.
+---

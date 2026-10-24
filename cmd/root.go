@@ -50,6 +50,11 @@ Use --request-rate to pace shared request starts per second for this invocation
 concurrency or extend request/workflow deadlines. Explicit zero overrides config.
 Local wait failures identify an unsent request; earlier work may already be accepted.
 
+DEBUG request-rate summaries work with or without pacing. Configure
+http.request_rate_report_interval (default 5s; e.g. 10s; 0s disables summaries).
+They report actual starts, elapsed time and requests/second through the configured
+logger. Reporting stops with the invocation; short commands may emit no summary.
+
 On API-backed commands, --debug emits redacted request diagnostics at DEBUG
 alongside other configured logs. --quiet and log-level filtering still apply;
 log format, timestamps, and source settings use the existing logger.`, toolx.V810Baseline().Tag, toolx.V810Baseline().Status),

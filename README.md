@@ -156,7 +156,7 @@ For scripts or CI, request JSON with `--json`:
 
 For the full setup contract, see the generated [config reference](docs/cli/c8volt_config.md).
 
-### Request Pacing
+### Request Pacing and Rate Reporting
 
 Use `--request-rate` to limit shared application-level request starts per second
 for one invocation. The default is `0` (disabled); positive fractions such as
@@ -175,6 +175,7 @@ Persist a rate in configuration, or set `C8VOLT_HTTP_REQUEST_RATE`:
 ```yaml
 http:
   request_rate: 10
+  request_rate_report_interval: 5s
 ```
 
 Normal precedence applies: flag > environment > profile > base config > default.
@@ -191,6 +192,30 @@ into one compact diagnostic; JSON retains the existing error details and availab
 partial results. Scope, ordering, dry runs, prompts
 and no-wait behavior are unchanged. Choose rates for your environment; pacing
 does not guarantee elimination of backend backpressure or GOAWAY failures.
+
+DEBUG rate summaries measure actual request starts, with or without pacing. The
+configuration-only `http.request_rate_report_interval` defaults to `5s`; set `10s`
+for a longer window or `0s` to disable summaries while retaining other DEBUG
+request diagnostics. `C8VOLT_HTTP_REQUEST_RATE_REPORT_INTERVAL` and profile values
+use normal configuration precedence. Durations must be parseable and nonnegative;
+an explicitly empty value is invalid and fails before authentication/API work.
+
+```bash
+# Measure without pacing; existing worker and timeout settings still apply.
+C8VOLT_HTTP_REQUEST_RATE_REPORT_INTERVAL=10s ./c8volt --debug --request-rate 0 get process-instance --state active
+# Pace starts while disabling rate summaries.
+C8VOLT_HTTP_REQUEST_RATE_REPORT_INTERVAL=0s ./c8volt --debug --request-rate 10 cancel process-instance --state active
+```
+
+Each compact summary includes dispatched attempts, actual elapsed time and the
+measured requests/second, including dispatched retries and failed responses.
+Queued or locally unsent requests do not count. For example:
+`HTTP request rate: 42 requests in 10s (4.20 requests/s)`. Empty windows report
+zero. Summaries use the configured DEBUG logger and diagnostic destination, never
+result stdout. `--debug` or a configured DEBUG level enables them independently
+of `--verbose`; quiet keeps its existing precedence. Reporting adds no API calls
+or pacing waits, stops when the invocation ends, and does not require a final
+partial-window summary. A short command may finish without a summary.
 
 ### API Request Diagnostics
 

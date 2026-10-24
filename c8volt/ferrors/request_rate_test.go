@@ -26,7 +26,7 @@ func TestRequestRateNormalization(t *testing.T) {
 	t.Parallel()
 	for _, canceled := range []bool{false, true} {
 		t.Run(fmt.Sprint(canceled), func(t *testing.T) {
-			service, err := httpc.New(&config.Config{HTTP: config.HTTP{RequestRate: 1, Timeout: "1s"}}, slog.New(slog.NewTextHandler(io.Discard, nil)))
+			service, err := httpc.New(&config.Config{HTTP: config.HTTP{RequestRateReportInterval: "5s", RequestRate: 1, Timeout: "1s"}}, slog.New(slog.NewTextHandler(io.Discard, nil)))
 			require.NoError(t, err)
 			ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(-time.Second))
 			wantCause, wantClass, wantExit := context.DeadlineExceeded, ClassTimeout, exitcode.Timeout
