@@ -639,3 +639,75 @@ profiles:
 	)
 	require.ErrorIs(t, err, ErrProfileNotFound)
 }
+
+// TestResolveRequestRatePrecedence preserves explicit zero across flags, environment and profiles.
+func TestResolveRequestRatePrecedence(t *testing.T) {
+	for _, tc := range []struct {
+		name, base, profile, env, flag string
+		want                           float64
+	}{
+		{name: "default"},
+		{name: "base fraction", base: "0.5", want: 0.5},
+		{name: "profile zero", base: "8", profile: "0"},
+		{name: "profile fraction", base: "8", profile: "0.5", want: 0.5},
+		{name: "environment zero", base: "8", profile: "4", env: "0"},
+		{name: "environment fraction", base: "8", profile: "4", env: "0.5", want: 0.5},
+		{name: "flag zero", base: "8", profile: "4", env: "2", flag: "0"},
+		{name: "flag fraction", base: "8", profile: "4", env: "2", flag: "0.5", want: 0.5},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			v := viper.New()
+			v.SetConfigType("yaml")
+			input := "auth:\n  mode: none\n"
+			if tc.base != "" {
+				input += "http:\n  request_rate: " + tc.base + "\n"
+			}
+			if tc.profile != "" {
+				input += "active_profile: dev\nprofiles:\n  dev:\n    http:\n      request_rate: " + tc.profile + "\n"
+			}
+			require.NoError(t, v.ReadConfig(strings.NewReader(input)))
+			if tc.env != "" {
+				t.Setenv("C8VOLT_HTTP_REQUEST_RATE", tc.env)
+			}
+			flags := pflag.NewFlagSet("test", pflag.ContinueOnError)
+			flags.Float64("request-rate", 0, "")
+			if tc.flag != "" {
+				require.NoError(t, flags.Parse([]string{"--request-rate", tc.flag}))
+			}
+			require.NoError(t, v.BindPFlag("http.request_rate", flags.Lookup("request-rate")))
+			cfg, err := ResolveEffectiveConfig(v, func(key string) bool {
+				return key == "http.request_rate" && flags.Lookup("request-rate").Changed || HasEnvConfigByKey(key)
+			}, func(profile, key string) bool { return v.InConfig("profiles." + profile + "." + key) })
+			require.NoError(t, err)
+			require.NoError(t, cfg.HTTP.Validate())
+			require.Equal(t, tc.want, cfg.HTTP.RequestRate)
+		})
+	}
+}
+
+// TestResolveRequestRateInvalidSources prevents weak numeric decoding from turning malformed input into zero.
+func TestResolveRequestRateInvalidSources(t *testing.T) {
+	for _, value := range []string{"-1", ".nan", ".inf", "-.inf", "wrong", "''", "true", "[]"} {
+		for _, source := range []string{"file", "profile", "env"} {
+			t.Run(source+"/"+value, func(t *testing.T) {
+				v := viper.New()
+				v.SetConfigType("yaml")
+				input := "http:\n  request_rate: " + value + "\n"
+				if source == "profile" {
+					input = "active_profile: dev\nprofiles:\n  dev:\n    http:\n      request_rate: " + value + "\n"
+				}
+				if source == "env" {
+					input = "{}"
+					t.Setenv("C8VOLT_HTTP_REQUEST_RATE", strings.Trim(value, "'"))
+				}
+				require.NoError(t, v.ReadConfig(strings.NewReader(input)))
+				cfg, err := ResolveEffectiveConfig(v, HasEnvConfigByKey, func(profile, key string) bool { return v.InConfig("profiles." + profile + "." + key) })
+				if err == nil {
+					err = cfg.HTTP.Validate()
+				}
+				require.Error(t, err)
+				require.Contains(t, err.Error(), "request_rate")
+			})
+		}
+	}
+}

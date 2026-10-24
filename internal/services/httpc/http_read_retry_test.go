@@ -391,3 +391,38 @@ func TestReadRetryTransportSingleAttempt(t *testing.T) {
 		require.NoError(t, resp.Body.Close())
 	}
 }
+
+// TestRequestRateReadRetriesShareAdmission proves safe-read retries re-enter the shared allowance.
+func TestRequestRateReadRetriesShareAdmission(t *testing.T) {
+	t.Parallel()
+	for _, first := range []readRetryRoundTripResult{
+		{resp: newReadRetryResponse(http.StatusTooManyRequests, "")},
+		{resp: newReadRetryResponse(http.StatusServiceUnavailable, "")},
+		{err: temporaryReadRetryError{}},
+	} {
+		seq := &readRetrySequenceTransport{t: t, results: []readRetryRoundTripResult{first, {resp: newReadRetryResponse(200, "")}}}
+		var starts []time.Time
+		paced := newRequestRateTransport(requestRateRoundTripFunc(func(req *http.Request) (*http.Response, error) {
+			starts = append(starts, time.Now())
+			return seq.RoundTrip(req)
+		}), 20)
+		transport := &ReadRetryTransport{base: paced, policy: fastReadRetryPolicy()}
+		response, err := transport.RoundTrip(newReadRetryRequest(t, http.MethodGet))
+		require.NoError(t, err)
+		_ = response.Body.Close()
+		require.Equal(t, 2, seq.Calls())
+		require.GreaterOrEqual(t, starts[1].Sub(starts[0]), 45*time.Millisecond)
+	}
+}
+
+// TestRequestRateReadLocalDeadlineIsNotRetried catches accidental retries of an early local deadline with a live parent.
+func TestRequestRateReadLocalDeadlineIsNotRetried(t *testing.T) {
+	t.Parallel()
+	calls := 0
+	local := &RequestRateWaitError{cause: context.DeadlineExceeded}
+	transport := &ReadRetryTransport{base: requestRateRoundTripFunc(func(*http.Request) (*http.Response, error) { calls++; return nil, local }), policy: fastReadRetryPolicy()}
+	_, err := transport.RoundTrip(newReadRetryRequest(t, http.MethodGet))
+	require.ErrorIs(t, err, context.DeadlineExceeded)
+	require.Same(t, local, err)
+	require.Equal(t, 1, calls)
+}

@@ -6,7 +6,7 @@ nav_exclude: true
 has_toc: true
 ---
 
-> Generated from build `c8volt v4.4.0-185-g550fdef4-dirty`, commit `550fdef4`, built `2026-10-24T13:01:01Z` | Supported Camunda 8 versions: 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.3 (final)
+> Generated from build `c8volt v4.4.0-188-gc6e7a6d3-dirty`, commit `c6e7a6d3`, built `2026-10-24T17:36:17Z` | Supported Camunda 8 versions: 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.3 (final)
 
 <img src="./logo/c8volt_logo_transparent_w_shadow_400x244.png" alt="c8volt logo" />
 
@@ -161,6 +161,40 @@ For scripts or CI, request JSON with `--json`:
 ```
 
 For the full setup contract, see the generated [config reference](./cli/c8volt_config).
+
+### Request Pacing
+
+Use `--request-rate` to limit shared application-level request starts per second
+for one invocation. The default is `0` (disabled); positive fractions such as
+`0.5` are supported. The allowance is shared across discovery, preflight,
+mutations, confirmation reads and application retries, with a burst of one.
+Cookie login through the shared client also participates. Separate OAuth provider
+clients, invisible transport replays and other c8volt processes do not share it.
+
+```bash
+./c8volt --request-rate 10 cancel process-instance --state active
+./c8volt --request-rate 0 get process-definition --latest
+```
+
+Persist a rate in configuration, or set `C8VOLT_HTTP_REQUEST_RATE`:
+
+```yaml
+http:
+  request_rate: 10
+```
+
+Normal precedence applies: flag > environment > profile > base config > default.
+An explicit `--request-rate 0` overrides a positive configured rate. Rates must
+be finite and nonnegative; malformed values fail before authentication/API work.
+
+Pacing controls starts, not worker concurrency, selected resource counts or
+response completion. In-flight requests can overlap, and idle time does not
+accumulate a larger burst. Existing request and workflow deadlines include time
+spent waiting; low rates may exhaust them. A failed local wait identifies that
+attempt as not sent and does not trigger a retry. Earlier attempts or other
+resources may already have been submitted. Scope, ordering, dry runs, prompts
+and no-wait behavior are unchanged. Choose rates for your environment; pacing
+does not guarantee elimination of backend backpressure or GOAWAY failures.
 
 ### API Request Diagnostics
 

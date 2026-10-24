@@ -109,6 +109,7 @@ func BindAllEnvVars(v *viper.Viper, prefix string, t reflect.Type, path []string
 	}
 }
 
+// ResolveEffectiveConfig overlays explicit sources and normalizes omitted defaults.
 func ResolveEffectiveConfig(
 	v *viper.Viper,
 	hasHigherPrecedenceSource func(string) bool,
@@ -117,6 +118,21 @@ func ResolveEffectiveConfig(
 	v.AllowEmptyEnv(true)
 	BindConfigEnvVars(v)
 
+	// Check raw rate inputs before Viper's weak numeric conversion. Profile
+	// overlay still decides precedence, including explicitly configured zero.
+	if v.IsSet("http.request_rate") {
+		if err := validateRequestRateInput(v.Get("http.request_rate")); err != nil {
+			return nil, err
+		}
+	}
+	if profile := v.GetString("active_profile"); profile != "" {
+		key := "profiles." + profile + ".http.request_rate"
+		if v.IsSet(key) {
+			if err := validateRequestRateInput(v.Get(key)); err != nil {
+				return nil, err
+			}
+		}
+	}
 	var base Config
 	if err := v.Unmarshal(&base); err != nil {
 		return nil, fmt.Errorf("unmarshal config: %w", err)

@@ -4,8 +4,10 @@
 package cmd
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"os"
 	"os/exec"
@@ -1308,4 +1310,138 @@ func resolveCommandConfigForTest(t *testing.T, cmd *cobra.Command, cfgPath strin
 	cfg, err := retrieveAndNormalizeConfig(v, bindings)
 	require.NoError(t, err)
 	return cfg
+}
+
+// TestRequestRateRootPrecedence exercises the persistent flag through normal command resolution, including explicit zero.
+func TestRequestRateRootPrecedence(t *testing.T) {
+	clearRequestRateTestEnvironment(t)
+	for _, tc := range []struct {
+		name, env, flag string
+		want            float64
+	}{
+		{name: "profile", want: 4},
+		{name: "env fraction", env: "0.5", want: 0.5},
+		{name: "env zero", env: "0"},
+		{name: "flag fraction", env: "3", flag: "0.5", want: 0.5},
+		{name: "flag zero", env: "3", flag: "0"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if tc.env != "" {
+				t.Setenv("C8VOLT_HTTP_REQUEST_RATE", tc.env)
+			}
+			cfgPath := writeRawTestConfig(t, "active_profile: dev\nhttp:\n  request_rate: 8\nprofiles:\n  dev:\n    http:\n      request_rate: 4\n")
+			args := []string{"--config", cfgPath, "config", "show"}
+			if tc.flag != "" {
+				args = append(args, "--request-rate", tc.flag)
+			}
+			stdout, _ := executeAPIDiagnosticsRoot(t, args...)
+			var cfg config.Config
+			require.NoError(t, yaml.Unmarshal([]byte(stdout), &cfg))
+			require.Equal(t, tc.want, cfg.HTTP.RequestRate)
+		})
+	}
+}
+
+// TestRequestRateInvalidBeforeBootstrap rejects every invalid source before authentication or API requests.
+func TestRequestRateInvalidBeforeBootstrap(t *testing.T) {
+	clearRequestRateTestEnvironment(t)
+	var calls atomic.Int32
+	server := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { calls.Add(1); w.WriteHeader(500) }))
+	t.Cleanup(server.Close)
+	for _, source := range []string{"flag", "file", "profile", "env"} {
+		for _, value := range []string{"-1", "NaN", "+Inf", "-Inf", "wrong", ""} {
+			t.Run(source+"/"+value, func(t *testing.T) {
+				configPath := writeAPIDiagnosticsCommandConfig(t, server.URL, "cookie")
+				if source == "file" || source == "profile" {
+					contents, err := os.ReadFile(configPath)
+					require.NoError(t, err)
+					fragment := fmt.Sprintf("http:\n  request_rate: %q\n", value)
+					if source == "profile" {
+						fragment = fmt.Sprintf("active_profile: dev\nprofiles:\n  dev:\n    http:\n      request_rate: %q\n", value)
+					}
+					require.NoError(t, os.WriteFile(configPath, append(contents, []byte(fragment)...), 0o600))
+				}
+				if source == "env" {
+					t.Setenv("C8VOLT_HTTP_REQUEST_RATE", value)
+				}
+				root := Root()
+				resetCommandTreeFlags(root)
+				resetGetProcessDefinitionCommandGlobals()
+				t.Cleanup(func() { resetCommandTreeFlags(root); resetGetProcessDefinitionCommandGlobals() })
+				stdout, stderr := &bytes.Buffer{}, &bytes.Buffer{}
+				root.SetOut(stdout)
+				root.SetErr(stderr)
+				args := []string{"--config", configPath, "get", "process-definition", "--key", apiDiagnosticsProcessDefinitionKey}
+				if source == "flag" {
+					args = append(args, "--request-rate="+value)
+				}
+				root.SetArgs(args)
+				_, err := root.ExecuteC()
+				require.Error(t, err)
+				require.Contains(t, strings.ReplaceAll(err.Error(), "-", "_"), "request_rate")
+				require.Zero(t, calls.Load())
+				require.NotContains(t, stdout.String(), "api #")
+				require.NotContains(t, stderr.String(), "api #")
+			})
+		}
+	}
+}
+
+// TestRequestRateRootCookieBootstrapSharesAllowance proves root wiring paces shared authentication and API requests together.
+func TestRequestRateRootCookieBootstrapSharesAllowance(t *testing.T) {
+	clearRequestRateTestEnvironment(t)
+	for _, value := range []string{"0", "20"} {
+		t.Run(value, func(t *testing.T) {
+			var starts testx.SafeSlice[time.Time]
+			var paths testx.SafeSlice[string]
+			server := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				starts.Append(time.Now())
+				paths.Append(r.URL.Path)
+				switch r.URL.Path {
+				case "/api/login":
+					http.SetCookie(w, &http.Cookie{Name: "SESSION", Value: "fake-cookie", Path: "/"})
+					_, _ = w.Write([]byte(`{}`))
+				case "/v2/process-definitions/" + apiDiagnosticsProcessDefinitionKey:
+					w.Header().Set("Content-Type", "application/json")
+					_, _ = w.Write([]byte(apiDiagnosticsProcessDefinitionFixture))
+				default:
+					http.NotFound(w, r)
+				}
+			}))
+			t.Cleanup(server.Close)
+			path := writeAPIDiagnosticsCommandConfig(t, server.URL, "cookie")
+			stdout, stderr := executeAPIDiagnosticsRoot(t, "--config", path, "--request-rate", value, "--debug", "--log-format", "plain", "get", "process-definition", "--key", apiDiagnosticsProcessDefinitionKey, "--json")
+			requireSingleJSONValue(t, stdout)
+			require.NotContains(t, stdout, "DEBUG")
+			require.Equal(t, []string{"/api/login", "/v2/process-definitions/" + apiDiagnosticsProcessDefinitionKey}, paths.Snapshot())
+			times := starts.Snapshot()
+			require.Len(t, times, 2)
+			if value != "0" {
+				require.GreaterOrEqual(t, times[1].Sub(times[0]), 45*time.Millisecond)
+			}
+			require.Equal(t, 2, strings.Count(stderr, "DEBUG api #"))
+			require.NotContains(t, stderr, "fake-cookie")
+		})
+	}
+}
+
+// TestRequestRateTemplateDefault makes the disabled default discoverable in generated configuration.
+func TestRequestRateTemplateDefault(t *testing.T) {
+	clearRequestRateTestEnvironment(t)
+	stdout, _ := executeAPIDiagnosticsRoot(t, "config", "template")
+	require.Contains(t, stdout, "request_rate: 0")
+	stdout, _ = executeAPIDiagnosticsRoot(t, "--help")
+	require.Contains(t, stdout, "--request-rate")
+}
+
+// clearRequestRateTestEnvironment isolates root fixtures from inherited profiles, endpoints and credentials.
+func clearRequestRateTestEnvironment(t *testing.T) {
+	t.Helper()
+	for _, entry := range os.Environ() {
+		key, _, _ := strings.Cut(entry, "=")
+		if strings.HasPrefix(key, "C8VOLT_") {
+			t.Setenv(key, os.Getenv(key))
+			require.NoError(t, os.Unsetenv(key))
+		}
+	}
 }

@@ -15,6 +15,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/grafvonb/c8volt/internal/services/httpc"
 )
 
 const (
@@ -46,7 +48,11 @@ func RetryCamundaMutation[T any](ctx context.Context, log *slog.Logger, operatio
 	}
 	var lastErr error
 	for attempt := 1; attempt <= attempts; attempt++ {
-		got, resp, body, err := fn(ctx)
+		attemptCtx, observation := httpc.BeginRequestRateAttempt(ctx)
+		got, resp, body, err := fn(attemptCtx)
+		if localErr := observation.Failure(); localErr != nil {
+			return got, localErr
+		}
 		retry, reason := shouldRetryCamundaMutation(resp, body, err)
 		if !retry {
 			return got, err
@@ -64,7 +70,11 @@ func RetryCamundaMutation[T any](ctx context.Context, log *slog.Logger, operatio
 	return zero, lastErr
 }
 
+// shouldRetryCamundaMutation preserves backend retry policy while excluding unsent local waits.
 func shouldRetryCamundaMutation(resp *http.Response, body []byte, err error) (bool, string) {
+	if httpc.IsRequestRateWaitError(err) {
+		return false, ""
+	}
 	if err != nil {
 		var netErr net.Error
 		if errors.As(err, &netErr) && (netErr.Timeout() || netErr.Temporary()) {

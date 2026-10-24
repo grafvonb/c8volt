@@ -64,6 +64,7 @@ func (r *resolverBindings) changedFlagValue(key string) (string, bool) {
 	return flag.Value.String(), true
 }
 
+// initViper binds explicit flags, environment and defaults before loading configuration.
 func initViper(v *viper.Viper, cmd *cobra.Command) (*resolverBindings, error) {
 	fs := cmd.Flags()
 	bindings := newResolverBindings()
@@ -71,6 +72,7 @@ func initViper(v *viper.Viper, cmd *cobra.Command) (*resolverBindings, error) {
 	bindings.bindPFlag(v, "config", fs.Lookup("config"))
 	bindings.bindPFlag(v, "active_profile", fs.Lookup("profile"))
 	bindings.bindPFlag(v, "http.timeout", fs.Lookup("timeout"))
+	bindings.bindPFlag(v, "http.request_rate", fs.Lookup("request-rate"))
 
 	bindings.bindPFlag(v, "log.level", fs.Lookup("log-level"))
 	bindings.bindPFlag(v, "log.format", fs.Lookup("log-format"))
@@ -88,6 +90,7 @@ func initViper(v *viper.Viper, cmd *cobra.Command) (*resolverBindings, error) {
 	v.SetDefault("log.with_source", false)
 	v.SetDefault("log.with_request_body", false)
 	v.SetDefault("http.timeout", "30s")
+	v.SetDefault("http.request_rate", 0.0)
 	v.SetDefault("app.process_instance_page_size", consts.MaxPISearchSize)
 	v.SetDefault("app.show_timezone_offset", false)
 
