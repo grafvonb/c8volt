@@ -44,6 +44,7 @@ type stubProcessAPI struct {
 }
 
 type stubTaskAPI struct {
+	completeUserTasks                       func(context.Context, types.Keys, map[string]any, int, ...options.FacadeOption) (task.UserTaskCompletionResults, error)
 	getUserTask                             func(context.Context, string, ...options.FacadeOption) (task.UserTask, error)
 	getUserTasks                            func(context.Context, types.Keys, int, ...options.FacadeOption) (task.UserTasks, error)
 	searchUserTasks                         func(context.Context, task.SearchRequest, ...options.FacadeOption) (task.UserTasks, error)
@@ -721,3 +722,11 @@ func (s stubProcessAPI) DryRunCancelOrDeletePlan(ctx context.Context, keys types
 
 var _ process.API = stubProcessAPI{}
 var _ task.API = stubTaskAPI{}
+
+// CompleteUserTasks fails closed unless the test explicitly supplies native completion behavior.
+func (s stubTaskAPI) CompleteUserTasks(ctx context.Context, keys types.Keys, variables map[string]any, workers int, opts ...options.FacadeOption) (task.UserTaskCompletionResults, error) {
+	if s.completeUserTasks == nil {
+		panic("unexpected CompleteUserTasks call")
+	}
+	return s.completeUserTasks(ctx, keys, variables, workers, opts...)
+}

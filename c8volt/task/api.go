@@ -10,7 +10,10 @@ import (
 	types "github.com/grafvonb/c8volt/typex"
 )
 
+// API exposes user-task reads, native completion and composed variable updates.
 type API interface {
+	// CompleteUserTasks submits unique explicit keys and preserves ordered partial acceptance evidence.
+	CompleteUserTasks(ctx context.Context, keys types.Keys, variables map[string]any, wantedWorkers int, opts ...options.FacadeOption) (UserTaskCompletionResults, error)
 	GetUserTask(ctx context.Context, taskKey string, opts ...options.FacadeOption) (UserTask, error)
 	GetUserTasks(ctx context.Context, taskKeys types.Keys, wantedWorkers int, opts ...options.FacadeOption) (UserTasks, error)
 	SearchUserTasks(ctx context.Context, request SearchRequest, opts ...options.FacadeOption) (UserTasks, error)
