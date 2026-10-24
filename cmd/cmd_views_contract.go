@@ -81,6 +81,10 @@ func handleCommandError(cmd *cobra.Command, log *slog.Logger, noErrCodes bool, e
 		log.Error(humanMessage[0])
 		os.Exit(ferrors.ResolveExitCode(noErrCodes, normalized))
 	}
+	if commandHasRequestRateWaitFailure(normalized) {
+		log.Error(boundedCommandFailureReason(normalized))
+		os.Exit(ferrors.ResolveExitCode(noErrCodes, normalized))
+	}
 	ferrors.HandleAndExit(log, noErrCodes, normalized)
 }
 
@@ -116,4 +120,14 @@ func outcomeForError(err error) Outcome {
 	default:
 		return OutcomeFailed
 	}
+}
+
+// boundedCommandFailureReason retains local unsent evidence without rendering
+// URLs, wrapped transport errors, or implying that earlier work was not sent.
+func boundedCommandFailureReason(err error) string {
+	reason := strings.ReplaceAll(string(ferrors.Classify(err)), "_", " ")
+	if commandHasRequestRateWaitFailure(err) {
+		reason += "; request not sent: request-rate wait (other attempts may have been submitted)"
+	}
+	return reason
 }

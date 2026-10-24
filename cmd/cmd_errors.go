@@ -8,6 +8,7 @@ import (
 	"fmt"
 
 	"github.com/grafvonb/c8volt/c8volt/ferrors"
+	"github.com/grafvonb/c8volt/internal/services/httpc"
 )
 
 var (
@@ -77,4 +78,10 @@ func normalizeCommandError(err error) error {
 
 func commandInputError(kind error, format string, args ...any) error {
 	return invalidInputError(fmt.Errorf("%w: %s", kind, fmt.Sprintf(format, args...)))
+}
+
+// commandHasRequestRateWaitFailure keeps transport cause classification in
+// command error support, so renderers consume facts without importing services.
+func commandHasRequestRateWaitFailure(err error) bool {
+	return httpc.IsRequestRateWaitError(err)
 }

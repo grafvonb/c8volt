@@ -48,6 +48,7 @@ Use capabilities to discover supported commands and automation options.
 Use --request-rate to pace shared request starts per second for this invocation
 (default 0, disabled; positive fractions allowed). It does not change worker
 concurrency or extend request/workflow deadlines. Explicit zero overrides config.
+Local wait failures identify an unsent request; earlier work may already be accepted.
 
 On API-backed commands, --debug emits redacted request diagnostics at DEBUG
 alongside other configured logs. --quiet and log-level filtering still apply;

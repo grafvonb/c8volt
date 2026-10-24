@@ -9,7 +9,6 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/grafvonb/c8volt/c8volt/ferrors"
 	"github.com/grafvonb/c8volt/c8volt/ops"
 	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/spf13/cobra"
@@ -306,6 +305,6 @@ func renderOpsPurgeAllProcessDefinitionsFailure(cmd *cobra.Command, log *slog.Lo
 			accepted++
 		}
 	}
-	log.Error(fmt.Sprintf("process-definition purge: selected %d, accepted %d; outcome unconfirmed; %s", len(result.Discovery.CandidateProcessDefinitionKeys), accepted, strings.ReplaceAll(string(ferrors.Classify(err)), "_", " ")) + suffix)
+	log.Error(fmt.Sprintf("process-definition purge: selected %d, accepted %d; outcome unconfirmed; %s", len(result.Discovery.CandidateProcessDefinitionKeys), accepted, boundedCommandFailureReason(err)) + suffix)
 	return nil
 }

@@ -46,3 +46,40 @@ Started: 2026-10-24 19:30:57
 - Error-path review: transport returns a typed local cause without printing; read retries exclude it and mutation retries recover it before backend classification; facade normalization retains deadline/cancellation identity. New Error() formatting uses only standard context causes, never transport payloads. No new direct diagnostic print or command mode lifecycle was added. T002 still owns the complete mutation/partial-result/exit/logger-routing matrix; T003 owns reporting and benchmarks.
 - Effective commit policy is conventional / ralph / issue auto, with no local override; branch prefix resolves to #353. Next handoff is T002 with no blocker.
 ---
+
+---
+## Iteration 2 - 2026-10-24 19:59
+**Work Unit**: US1 / T002 completed — paced mutation command compatibility and bounded local-wait diagnostics; US1 complete
+**Tasks Completed**:
+- [x] T002: Preserve mutation outcomes and compact local-wait diagnostics through command execution, with isolated acceptance and terminal coverage.
+**Tasks Remaining in Work Unit**: 0; T003 remains in US2 and is now dependency-ready.
+**Commit**: This work-unit commit
+**Files Changed**:
+- README.md
+- c8volt/ferrors/errors.go
+- c8volt/ferrors/request_rate_test.go
+- cmd/cmd_errors.go
+- cmd/cmd_views_contract.go
+- cmd/cmd_views_ops_purge_all_processdefinitions.go
+- cmd/cmd_views_processinstance_logging.go
+- cmd/cmd_views_resource.go
+- cmd/processinstance_mutation_progress.go
+- cmd/processinstance_logging_transcript_test.go
+- cmd/request_rate_mutation_test.go
+- cmd/root.go
+- docs/cli/c8volt.md
+- docs/index.md
+- specs/353-request-rate-reporting/tasks.md
+- specs/353-request-rate-reporting/ralph-memory.md
+- specs/353-request-rate-reporting/progress.md
+**Learnings**:
+- Reused the existing cancel/delete/definition-delete/purge acceptance suites at rates 0 and 100. They retain exact empty output, zero-byte keys output, JSON EOF, partial reports, exit classes, dry runs, automation/auto-confirm/no-wait controls, real-terminal prompt/abort behavior, sparse-page continuation and configured/inherited logger routing. Repeated multi-resource backend failures retain compact normal/verbose/quiet diagnostics and redacted DEBUG behavior under flag/config enablement and plain/structured handlers.
+- Added real-command HTTP-fake start traces at rates 0 and 40 for all four mutation paths, both with and without no-wait. Entire request sequences remain equal; nested cancellation/history/resource cleanup retains its ordering. Server-arrival timing allows 8ms scheduling/local-network tolerance; T001 retains the tighter transport-delegation proof. Worker options and resource scope are unchanged.
+- Local deadline tests dispatch exactly one request, reject later attempts without retries, keep timeout exit 4, and retain an earlier accepted resource deletion in the existing JSON payload. Invocation cancellation retains local-precondition exit 1 and accepted work. A short cancellation-confirmation deadline proves an unsent follow-up read does not erase earlier submitted cancellation.
+- Fixed facade loss of typed local-wait evidence using its existing inspectable wrapper, preserving context identity, outer class priority and machine error text. Command error support classifies that evidence; views format one bounded error. Quiet instance progress no longer directly prints per-tree warnings, and mutation DEBUG summaries no longer repeat raw transport chains. The final error preserves submitted/unconfirmed facts.
+- Error-boundary review traced transport admission through retry handling, facade conversion, human/JSON rendering, configured logger and exit. New human formatting uses only bounded classes/facts; selected-format payloads remain on stdout. New or changed output boundaries add no direct diagnostic print and no raw Error() formatting. Rendering stays in views; error classification stays in cmd/cmd_errors.go; no new command lifecycle or facade API was introduced.
+- Validation passed: nonempty RequestRate listings in cmd/ferrors; `go test ./cmd -run RequestRate -count=1`; `go test ./c8volt/ferrors -count=1`; focused confirmation/local-failure/architecture checks; race-enabled affected cancellation/semantic/quiet regressions; final `GOFLAGS='' make test` (all packages, race detector, count=1); `make docs-content`; gofmt and `git diff --check`. Final full suite includes all final executable changes.
+- Expected red checks exposed raw joined local-wait errors, missing unsent confirmation reasons and quiet direct progress output. A deliberate temporary direct-stderr substitution was rejected by the logger-framing assertions and restored. The first full suite found forbidden service imports in renderer files; moved the predicate to existing command-error support, then passed the focused boundary test and complete final suite. No failing check remains.
+- Fixture adjustments preserve existing contracts: purge takes a single valid key, failed reports omit false `ok`, and reused singleton command suites require fresh context. Environment isolation clears inherited C8VOLT configuration/credentials/helper controls and Go flags; all dependencies are isolated fakes, with no live-engine coverage claimed.
+- Effective commit policy remains conventional / ralph / issue auto with no local override; branch prefix resolves to #353. Reporting and benchmarks remain T003, with no task expansion or story mixing.
+---

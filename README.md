@@ -186,7 +186,9 @@ response completion. In-flight requests can overlap, and idle time does not
 accumulate a larger burst. Existing request and workflow deadlines include time
 spent waiting; low rates may exhaust them. A failed local wait identifies that
 attempt as not sent and does not trigger a retry. Earlier attempts or other
-resources may already have been submitted. Scope, ordering, dry runs, prompts
+resources may already have been submitted. Human errors group local wait failures
+into one compact diagnostic; JSON retains the existing error details and available
+partial results. Scope, ordering, dry runs, prompts
 and no-wait behavior are unchanged. Choose rates for your environment; pacing
 does not guarantee elimination of backend backpressure or GOAWAY failures.
 

@@ -6,7 +6,7 @@ nav_exclude: true
 has_toc: true
 ---
 
-> Generated from build `c8volt v4.4.0-188-gc6e7a6d3-dirty`, commit `c6e7a6d3`, built `2026-10-24T17:36:17Z` | Supported Camunda 8 versions: 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.3 (final)
+> Generated from build `c8volt v4.4.0-189-g0d5db0ff-dirty`, commit `0d5db0ff`, built `2026-10-24T17:48:23Z` | Supported Camunda 8 versions: 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.3 (final)
 
 <img src="./logo/c8volt_logo_transparent_w_shadow_400x244.png" alt="c8volt logo" />
 
@@ -192,7 +192,9 @@ response completion. In-flight requests can overlap, and idle time does not
 accumulate a larger burst. Existing request and workflow deadlines include time
 spent waiting; low rates may exhaust them. A failed local wait identifies that
 attempt as not sent and does not trigger a retry. Earlier attempts or other
-resources may already have been submitted. Scope, ordering, dry runs, prompts
+resources may already have been submitted. Human errors group local wait failures
+into one compact diagnostic; JSON retains the existing error details and available
+partial results. Scope, ordering, dry runs, prompts
 and no-wait behavior are unchanged. Choose rates for your environment; pacing
 does not guarantee elimination of backend backpressure or GOAWAY failures.
 
