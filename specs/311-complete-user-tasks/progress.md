@@ -116,3 +116,40 @@ Started: 2026-10-24 08:09:58
 - Failure-path review: native adapters retain typed submission/status and raw machine error evidence; the coordinator preserves ordered partial results and real errors; the facade maps before conversion. New views pass the original error only to resultEnvelopeForError, attach the report once, and never interpolate item Error or unknown enum text into human output. All three new direct print sites are selected-format results on configured stdout; aggregate failure formatting emits nothing itself and bounds reason groups to three plus other failures. Configured logger emission, original exit handling, DEBUG/redaction and diagnostic mutation-sensitivity tests are explicitly T004 work; renderer tests do not claim that compliance.
 - The source files keep input handling and final formatting separate, with no CLI-owned workers/retries/polling, no service changes, and no shared variable-parser change. Real-engine task-listener, assignment eligibility and eventual state remain unverified. Current Handoff points to T004.
 ---
+
+---
+## Iteration 4 - 2026-10-24 08:46
+**Work Unit**: Phase 3 / US1 T004 — complete command delivery, operator documentation and final isolated validation completed
+**Tasks Completed**:
+- [x] T004: Expose native user-task completion with command-level safety, output/diagnostics, real-terminal confirmation, compatibility coverage and generated documentation.
+**Tasks Remaining in Work Unit**: 0; all feature tasks are complete.
+**Commit**: This work-unit commit
+**Files Changed**:
+- README.md
+- cmd/command_contract_test.go
+- cmd/update.go
+- cmd/update_usertask.go
+- cmd/update_usertask_complete.go
+- cmd/update_usertask_complete_test.go
+- cmd/update_usertask_complete_execution_test.go
+- cmd/update_usertask_complete_output_test.go
+- cmd/update_usertask_complete_terminal_test.go
+- cmd/update_usertask_complete_logging_test.go
+- docs/cli/c8volt_update.md
+- docs/cli/c8volt_update_user-task.md
+- docs/cli/command-tree.md
+- docs/index.md
+- specs/311-complete-user-tasks/tasks.md
+- specs/311-complete-user-tasks/ralph-memory.md
+- specs/311-complete-user-tasks/progress.md
+**Learnings**:
+- Selection rechecked T001–T003 completion and their explicit dependency chain; only T004 was selected. No task expansion, second story, agent delegation or live-environment work occurred. Commit policy resolves to conventional / ralph / auto issue, with subject suffix #311.
+- The command registers --complete and the empty-key occurrence tracker, dispatches before mandatory variable parsing, freezes one request, previews locally or confirms once, and delegates to the existing collection facade. Explicit-key tenant context carries configured provenance without invented resolved tenants or reads. The dedicated completion mode file contains the lifecycle; the base command contains only flag/metadata/dispatch changes. Backend pools, retries and evidence remain in their established service owners.
+- Red/green evidence: the first actual selection test failed on the absent --complete flag. Final focused checks passed for completion selection/payload/validation/output, failure classes and no-error-code overrides, workers/fail-fast/cancellation, rendering failures, terminal execution, diagnostics and metadata. The complete focused gate was `isolated go test ./cmd -run 'TestUpdateUserTaskCompletion|TestCommandCapabilityForCommand_UpdateUserTaskContract' -count=1`; subsequently added output-write failure and strengthened tenant assertions passed their targeted command gate and the final full race suite.
+- Actual command coverage includes every alias and key source across 8.8/8.9/8.10; stable uniqueness; flags plus empty stdin; invalid late/empty input; optional/empty/matching/nested/file variables; invalid/conflicting sources; workers/no-wait/JSON guardrails; explicit false variable dispatch; unchanged unsupported-version bootstrap handling; exact preview/accepted/partial/all-rejected results in human/verbose/quiet/JSON/keys combinations; one envelope followed by EOF; original rejection/timeout classes; zero-byte no-accepted keys; and no forbidden read, scope-write, assignment or polling request. Barriers prove workers one/two and explicit-worker precedence, fail-fast retains in-flight acceptance and serial queued slots, and a separate test control handshake cancels a known native request while preserving accepted and unattempted outcomes.
+- Real-terminal checks passed on this macOS host using testx.NewCmdTerminalRunner: real terminal stdin, redirected output files, command-configured and inherited stderr, one exact plain whole-selection prompt, yes/no/default/EOF decisions, preview, auto-confirm, automation and quiet machine output. Abort/preview submitted no native requests. No terminal coverage was skipped.
+- Diagnostic matrix passed with repeated distinctive URL/method/body/key/secret failures, both logger formats and effective destinations, normal/verbose/quiet, JSON partial results, DEBUG flag/config independently of verbose, and quiet precedence. Assertions check actual logger framing, ERROR severity, exact single grouped diagnostic, no normal-level raw details on either stream, preserved machine evidence, redaction, actual request/retry counts and unchanged result stdout. Sequential/bounded retries cover 429 and RESOURCE_EXHAUSTED 503. Deliberately replacing the aggregate logger call with a direct stderr print failed the framing assertion; deliberately logging operationErr.Error() also failed. Both mutations were restored immediately and the real implementation passed subsequent checks.
+- Failure-path audit: native adapter evidence flows through the ordered coordinator and facade conversion into one completion report; results render on stdout, one safe non-JSON aggregate is logged through NewCli's configured logger, and exit uses the original converted error. Local validation/abort retain existing helpers. The new runner has no direct result/diagnostic print and never formats a raw operation error. Render failures emit one constant logger message, never invoke another renderer, and preserve an existing mutation failure code. Tests detect duplicate rendering and raw/error-routing regressions. --no-err-codes retains its existing zero-exit override; unsupported versions retain bootstrap local-precondition diagnostics.
+- Regression gates passed: `isolated go test ./cmd -run 'UpdateUserTask|GetUserTask|HasUserTasks|UserTaskHTTPFallback|APIDiagnostics|TestCommandCapabilityForCommand_UpdateUserTaskContract|TestGetJobAndUpdateJobHelp_DocumentsDiscoveryAndMutationGuards|TestUpdateProcessInstanceHelp_DocumentsVariableUpdateDiscovery' -count=1`; `isolated go test ./c8volt/task ./internal/services/usertask/... -count=1`; and `isolated go test ./internal/services/httpc -run 'APIDiagnostics' -count=1`. Patterns include existing variable scope/shared-target/no-op/wait/no-wait, task read/resolver and get-pi has-user-tasks cases.
+- Updated both command and parent help/examples, control wording, metadata and README; regenerated references/homepage using `isolated make docs-content` and passed `isolated go test ./docsgen -count=1`. All touched Go files were formatted. Final untagged `isolated make test` passed (`go test ./... -race -count=1`, cmd package 171.883s); git diff --check passed. Tests used the clean-environment wrapper, no integration build tags, test-owned configurations and isolated fakes. Real-engine listener timing, assignment eligibility and eventual task/process state remain unverified. Current Handoff is terminal.
+---

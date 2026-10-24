@@ -10,7 +10,9 @@ Update existing resources
 
 ### Synopsis
 
-Update process-instance or user-task variables, or update job retries, timeouts, and worker outcomes.
+Update process-instance or user-task variables, complete user tasks, or update job retries, timeouts, and worker outcomes.
+
+User-task --complete accepts explicit keys and optional variables, previews locally with --dry-run, and reports acceptance without task-state verification. For user tasks, --no-wait is available only in variable-update mode.
 
 Requires Camunda 8.8 or newer. Use a resource subcommand to plan and confirm updates.
 
@@ -25,6 +27,7 @@ c8volt update [flags]
   ./c8volt update process-instance --key <process-instance-key> --vars-file ./vars.json --dry-run
   ./c8volt update user-task --key <user-task-key> --vars '{"approved":true}' --dry-run
   ./c8volt update user-task --key <user-task-key> --vars-file ./vars.json --auto-confirm
+  ./c8volt update ut --key 2251799813685249 --complete --auto-confirm
   ./c8volt update job --key <job-key> --retries 3 --dry-run
   ./c8volt update job --key <job-key> --timeout 5m --auto-confirm
   printf '%s\n' "$PROCESS_INSTANCE_KEY_A" "$PROCESS_INSTANCE_KEY_B" | ./c8volt update process-instance - --vars '{"customerTier":"gold"}' --dry-run
@@ -62,5 +65,5 @@ c8volt update [flags]
 * [c8volt]({{ "/cli/c8volt/" | relative_url }})	 - Operate Camunda 8 workflows from the command line
 * [c8volt update job]({{ "/cli/c8volt_update_job" | relative_url }})	 - Update a job or complete selected jobs
 * [c8volt update process-instance]({{ "/cli/c8volt_update_process-instance" | relative_url }})	 - Update process-instance variables by key
-* [c8volt update user-task]({{ "/cli/c8volt_update_user-task" | relative_url }})	 - Update user-task variables by key
+* [c8volt update user-task]({{ "/cli/c8volt_update_user-task" | relative_url }})	 - Update variables or complete user tasks by key
 

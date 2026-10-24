@@ -6,11 +6,17 @@ nav_exclude: true
 [CLI Reference]({{ "/cli/" | relative_url }})
 ## c8volt update user-task
 
-Update user-task variables by key
+Update variables or complete user tasks by key
 
 ### Synopsis
 
-Update effective user-task variables on supported Camunda versions.
+Update effective user-task variables or complete explicitly selected user tasks on supported Camunda versions.
+
+Use --complete to submit native completion for every unique key, with optional --vars or --vars-file data. Omitted variables and {} still submit completion. Requests are accepted without independent task-state verification or downstream waiting; no assignment is performed. --complete cannot be combined with --no-wait. A configured tenant does not filter explicit keys.
+
+Completion accepts repeated or comma-separated --key values and newline-separated keys with positional '-'. Keys must contain exactly 16 decimal digits. --dry-run previews the frozen selection locally without requests or prompts. Ordinary execution confirms the entire selection once; --auto-confirm and --automation allow unattended execution. --workers bounds concurrency and --fail-fast stops new scheduling after a failure while retaining in-flight outcomes.
+
+Without --complete (or with --complete=false), variable-update behavior is unchanged.
 
 Provide repeated --key values or newline-separated keys from stdin with '-'. Supply exactly one payload source: --vars with a JSON object or --vars-file with its file path. The same variable map is applied to every unique key. Explicit keys use backend authorization without tenant filtering.
 
@@ -25,6 +31,10 @@ c8volt update user-task [-] [flags]
 ### Examples
 
 ```
+  ./c8volt update ut --key 2251799813685249 --complete
+  ./c8volt update ut --key 2251799813685249,2251799813685250 --complete --vars '{"approved":true}' --dry-run
+  ./c8volt update ut --key 2251799813685249 --complete --vars-file ./vars.json --auto-confirm
+  printf '%s\n' "$USER_TASK_KEY_A" "$USER_TASK_KEY_B" | ./c8volt update ut - --complete --workers 1 --auto-confirm
   ./c8volt update user-task --key <user-task-key> --vars '{"approved":true}' --dry-run
   ./c8volt update ut --key <user-task-key> --vars-file ./vars.json --dry-run
   ./c8volt update uts --key <user-task-key-a> --key <user-task-key-b> --vars '{"approved":true}' --auto-confirm
@@ -35,15 +45,16 @@ c8volt update user-task [-] [flags]
 ### Options
 
 ```
-      --dry-run            preview variable updates without submitting mutation
-      --fail-fast          stop scheduling new scope updates after the first error
+      --complete           complete selected tasks with optional variables; report acceptance without verification
+      --dry-run            preview variable updates or task completions without submitting mutations
+      --fail-fast          stop scheduling new completions or scope updates after the first error
   -h, --help               help for user-task
-  -k, --key strings        user task key(s) to update; repeat or combine with stdin '-'
-      --no-wait            return after scope update requests are accepted without variable confirmation
-      --no-worker-limit    use all queued scope updates as workers when --workers is unset
-      --vars string        JSON object with variables to set for each user task
-      --vars-file string   path to JSON object file with variables to set for each user task
-  -w, --workers int        maximum concurrent workers when updating multiple user-task scopes (default: min(count, 2*GOMAXPROCS, 32))
+  -k, --key strings        user task key(s) to update; repeat or combine with stdin '-' (default [])
+      --no-wait            variable mode only: return after scope writes are accepted without confirmation; incompatible with --complete
+      --no-worker-limit    use all queued completions or scope updates as workers when --workers is unset
+      --vars string        JSON object with variables to set or submit with each completion
+      --vars-file string   path to JSON object file with variables to set or submit with each completion
+  -w, --workers int        maximum concurrent workers for task completions or variable scope updates (default: min(count, 2*GOMAXPROCS, 32))
 ```
 
 ### Options inherited from parent commands

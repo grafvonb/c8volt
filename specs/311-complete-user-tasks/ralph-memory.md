@@ -15,7 +15,11 @@ Started: 2026-10-24T06:09:57Z
 - Public completion fields have explicit JSON tags; `items` is always initialized by conversion and never omitted. Native stubs for new tests embed nil API interfaces so forbidden reads/writes fail closed. The command's shared task stub now explicitly rejects unexpected collection completion.
 
 - Completion-local CLI input is `userTaskCompletionInput` from `parseUpdateUserTaskCompletionInput(cmd, args)`: owned stable unique Keys, optional snapshotted Variables, and WantedWorkers. It uses configured stdin only for `-`, validates every key, and reuses the existing variable parser/JSON confirmation guard without changing variable mode.
-- Views use `newUserTaskCompletionPreview(input)` locally and `newUserTaskCompletionReport(input, results)` for complete ordered service evidence. `renderUpdateUserTaskCompletion(cmd, report, operationErr)` writes selected-format results only: succeeded preview, explicit accepted execution, or one original-class failure envelope. The runner must log `formatUserTaskCompletionFailure` once for non-JSON errors and preserve the original error for exit.
+- Views use `newUserTaskCompletionPreview(input)` locally and `newUserTaskCompletionReport(input, results)` for complete ordered service evidence. `renderUpdateUserTaskCompletion(cmd, report, operationErr)` writes selected-format results only: succeeded preview, explicit accepted execution, or one original-class failure envelope. The runner logs `formatUserTaskCompletionFailure` once for non-JSON errors and preserves the original error for exit.
+
+- `runUpdateUserTaskCompletion` owns only local validation, preview/confirmation, facade delegation and final render/log/exit. It attaches explicit-key tenant context without resolved tenant evidence. Results use stdout, one plain prompt uses effective stderr, and diagnostics use the logger returned by `NewCli`.
+- Rendering failure never invokes another error renderer; it logs a constant safe message and retains the original operation exit class if present. The existing `--no-err-codes` override returns exit code zero even for failure envelopes.
+- Command tests use rejecting native-only HTTP fixtures and subprocesses. Terminal tests use `NewCmdTerminalRunner` with a real PTY input, a real output file, and independent captures of command-specific/inherited stderr. Cancellation uses a separate test-only control server handshake; production traffic remains native completion only.
 
 ## Decisions
 
@@ -28,7 +32,7 @@ Started: 2026-10-24T06:09:57Z
 - T002 validates exactly 16 ASCII digits, nonempty selection, nonnegative workers and no-wait rejection before submission. Zero workers uses existing defaults; explicit workers win over no-worker-limit. Canceled/expired valid requests preserve not-attempted slots, including canceled previews.
 - Facade payload copying uses `CopyJSONMap`, not the older recursive variable-map copier: invalid/cyclic inputs must return classified errors rather than recurse indefinitely. Service independently snapshots direct callers; workers share a private read-only map and native adapters snapshot their request bodies.
 
-- T003 keeps command registration and execution deferred to T004. Completion human/verbose results use configured stdout directly; quiet suppresses only human results, JSON wins over keys, execution keys include accepted items only. Preview counts never imply submission. Zero-accepted execution says no acceptance established.
+- T003 established local parsing/views; T004 exposes command registration and execution. Completion human/verbose results use configured stdout directly; quiet suppresses only human results, JSON wins over keys, execution keys include accepted items only. Preview counts never imply submission. Zero-accepted execution says no acceptance established.
 - Human reasons use allowlisted status/submission values and standard HTTP labels, with at most three first-seen reason groups plus other failures. Unknown acceptance remains unknown even when the last response was a rejection. Raw error evidence is preserved only in machine output.
 
 ## Gotchas
@@ -41,9 +45,12 @@ Started: 2026-10-24T06:09:57Z
 - `ferrors.FromDomain` preserves the established facade class/text contract, not arbitrary original cause inspection. Tests compare facade classes/exit codes and retained item evidence; the service tests assert joined original causes.
 - Synchronization barriers/counters prove worker concurrency and reverse response order without sleeps. Separate fail-fast tests prove queued slots and original-context in-flight acceptance. Cancellation after an accepted native result keeps acceptance plus the caller error.
 
-- pflag StringSlice drops empty `--key=` occurrences, including repeated ones beside valid keys. T004 must call `trackUserTaskCompletionKeyInput(fs.Lookup("key"))` immediately after registering the key flag, including in re-registration test helpers. The wrapper delegates legacy values, implements SliceValue and clears occurrence evidence on Replace for existing reset helpers; only the completion parser rejects those empties. T003 installs it on private test commands only.
+- pflag StringSlice drops empty `--key=` occurrences, including repeated ones beside valid keys. Production registration calls `trackUserTaskCompletionKeyInput(fs.Lookup("key"))` immediately after registering the key flag; preserve this in any re-registration helper. The wrapper delegates legacy values, implements SliceValue and clears occurrence evidence on Replace for existing reset helpers; only the completion parser rejects those empties. Command metadata tests also verify real flag reset clears completion mode and empty-occurrence evidence.
 - The shared variable parser decodes JSON numbers as float64; `CopyJSONMap` snapshots normalize them to json.Number. T003 tests preserve the existing parser contract while checking nil versus nonnil empty maps and nested values. No shared parser was changed.
 - The report builder consumes complete service outcomes, never fabricates missing evidence. Use existing local/bootstrap error handling before report rendering when no valid frozen selection exists. Do not call a second error renderer after a completion envelope.
+
+- Unsupported versions fail during the existing configuration/bootstrap normalization before selected output configuration; retain this generic logger-backed local-precondition behavior. Do not force it into a new completion-specific envelope.
+- `userTaskCompletionKeyValue` retains StringSlice semantics but pflag's concrete-type default detection now shows `(default [])` in generated key help. It is truthful metadata; no variable parsing semantics changed.
 
 ## Reusable Commands
 
@@ -62,6 +69,9 @@ isolated go test ./... -run '^$'
 isolated go test ./cmd -run 'TestUpdateUserTaskCompletionInput|TestUpdateUserTaskCompletionView' -count=1
 isolated go test ./cmd -run 'TestUpdateUserTask|TestUpdateProcessInstanceCommand_InvalidVarsFailBeforeMutation' -count=1
 isolated env GORACE=atexit_sleep_ms=0 go test ./cmd -run 'TestUpdateUserTaskCompletion' -race -count=1
+isolated make docs-content
+isolated go test ./docsgen -count=1
+isolated make test
 git diff --check
 ```
 
@@ -69,12 +79,14 @@ The adapter/coordinator and facade focused checks, complete usertask/task race s
 
 Iteration 3 passed the focused input/view checks, existing user-task command/terminal/output regressions plus shared variable-input failures, and focused completion race checks. These are local completion preparation tests plus existing variable-mode execution regressions, not completion command acceptance. No live environment was contacted.
 
+Iteration 4 passed the full completion command/input/view matrix, existing user-task/read/resolver/has-user-tasks/API-diagnostic regressions and both-mode metadata/help checks, task facade and all native service package suites, HTTP diagnostic checks, generated documentation checks, and the final untagged `isolated make test` race suite. Both deliberate diagnostic mutations failed as required and were restored before the successful checks. No live checks were performed; do not rerun the full suite merely for bookkeeping.
+
 ## Do Not Repeat
 
 - Do not add native polling, task/variable reads, assignment, tenant filtering, new retries, or generated-client edits. Acceptance is the only native success claim.
-- Do not log raw completion Error strings or joined backend errors. T002 preserves partial evidence and classified errors; T003 provides safe rendering/aggregate formatting; T004 must wire configured logging and exits.
-- Do not claim command-level completion diagnostics or live-engine completion verification from T001–T003 tests. The full suite and CLI documentation gate remain part of T004 delivery.
+- Do not log raw completion Error strings or joined backend errors. T002 preserves partial evidence/classes, T003 provides safe views, and T004 wires configured logging and exits. The command diagnostic matrix demonstrably rejects direct stderr writes and raw aggregate logging.
+- Do not infer real-engine verification from isolated tests. T004 now supplies command-level output, terminal, diagnostic and exit proof plus the full race suite; actual listener, assignment eligibility and eventual state behavior remains unverified.
 
 ## Current Handoff
 
-- Next dependency-ready work is Phase 3 / US1 T004: register and execute completion, wire the existing input/report helpers and empty-key occurrence tracker, then deliver command-level diagnostics, terminal/exit/output coverage, metadata/docs generation, compatibility checks and the final isolated full race suite. Recheck tasks.md before selection. T001–T003 are complete; no blocking dependency remains. Do not duplicate local parsing or preview logic. No actual completion command flag or lifecycle has been exposed yet.
+- Feature complete; no handoff required.

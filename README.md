@@ -376,6 +376,22 @@ Use dry-run first for runtime mutations, then confirm explicitly or run under au
 ./c8volt expect process-instance --key <process-instance-key> --state completed
 ```
 
+Complete native user tasks with `update user-task --complete` (aliases `user-tasks`, `ut`, and `uts`) on Camunda 8.8, 8.9, and 8.10. Supply one or more 16-digit keys through repeated/comma-separated `--key` (`-k`) or newline-separated stdin with positional `-`. Flag keys come first; duplicates are submitted once in first-input order. Empty selections, invalid keys, invalid JSON and conflicting controls fail before submission. Explicit keys rely on backend authorization without discovery tenant filtering; no task reads or implicit assignments occur.
+
+Variables are optional completion data: omit them, supply `{}`, or pass one JSON object through `--vars` or `--vars-file`. Every selected task receives the same object. Completion never plans variable differences, writes separate scopes, or skips a task because values already match. Without `--complete`, the existing variable-update workflow and its required variable source remain unchanged.
+
+```bash
+./c8volt update ut --key 2251799813685249 --complete
+./c8volt update ut --key 2251799813685249,2251799813685250 --complete --vars '{"approved":true}' --dry-run
+./c8volt update ut --key 2251799813685249 --complete --vars-file ./vars.json --auto-confirm
+printf '%s\n' "$USER_TASK_KEY_A" "$USER_TASK_KEY_B" | ./c8volt update ut - --complete --workers 1 --auto-confirm
+./c8volt --automation --json update ut --key 2251799813685249 --complete
+```
+
+Completion dry-run is a local preview with no requests or prompt. Interactive execution asks once for the frozen selection on stderr; `--auto-confirm` or `--automation` skips the prompt. `--workers 1` preserves sequential submission; positive worker bounds limit concurrency and take precedence over `--no-worker-limit`. `--fail-fast` stops new scheduling after failure while retaining in-flight outcomes. Completion reports accepted requests without independently verifying task state or downstream execution, so `--complete --no-wait` is invalid; variable updates still support `--no-wait`.
+
+Completion results go to stdout. JSON emits one envelope with ordered per-task status, submission evidence and counts, including partial failures and unattempted work; accepted requests use outcome `accepted`, while dry-run uses `succeeded` with phase `preview`. Timeout or cancellation may leave acceptance unknown. Keys-only preview lists selected keys; execution lists accepted keys only, producing no bytes when none were accepted. Quiet preserves requested JSON or keys output. JSON execution requires auto-confirm or automation, and JSON cannot be combined with verbose. Human failures emit one compact grouped ERROR through the configured logger. Verbose shows safe per-task outcomes; HTTP diagnostics require `--debug` or configured DEBUG independently of verbose, with existing redaction and quiet precedence.
+
 Complete a selected job backlog with AND predicates. The same nine predicates as `get job` are available: `--state`, `--type`, `--pi-key`, `--element-instance-key`, `--element-id`, `--worker`, `--retries`, `--kind`, and `--listener-event-type`. Keyless `--complete --retries 0` selects zero-retry jobs; keyed completion still rejects `--retries`. Other update modes retain their single-key behavior.
 
 ```bash
