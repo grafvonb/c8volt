@@ -207,12 +207,16 @@ C8VOLT_HTTP_REQUEST_RATE_REPORT_INTERVAL=10s ./c8volt --debug --request-rate 0 g
 C8VOLT_HTTP_REQUEST_RATE_REPORT_INTERVAL=0s ./c8volt --debug --request-rate 10 cancel process-instance --state active
 ```
 
-Each compact summary includes dispatched attempts, actual elapsed time and the
-measured requests/second, including dispatched retries and failed responses.
+Each compact summary includes dispatched attempts, elapsed time excluding manual
+input waits, and measured requests/second, including dispatched retries and failed responses.
 Queued or locally unsent requests do not count. For example:
 `HTTP request rate: 42 requests in 10s (4.20 requests/s)`. Empty windows report
-zero. Summaries use the configured DEBUG logger and diagnostic destination, never
-result stdout. `--debug` or a configured DEBUG level enables them independently
+zero. Rate summaries pause while a manual confirmation or continuation prompt
+waits for input and resume when it returns. Counting and pacing continue unchanged;
+the next summary retains accumulated requests but excludes manual-input time from
+both the displayed duration and rate calculation. Ordinary polling waits still
+count as elapsed time. Summaries use the configured DEBUG logger and diagnostic
+destination, never result stdout. `--debug` or a configured DEBUG level enables them independently
 of `--verbose`; quiet keeps its existing precedence. Reporting adds no API calls
 or pacing waits, stops when the invocation ends, and does not require a final
 partial-window summary. A short command may finish without a summary.

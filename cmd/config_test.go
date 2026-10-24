@@ -1510,7 +1510,7 @@ func TestRequestRateReportIntervalInvalidBeforeBootstrap(t *testing.T) {
 				require.ErrorContains(t, err, "http.request_rate_report_interval")
 				require.Zero(t, calls.Load())
 				require.Empty(t, stdout.String())
-				require.Nil(t, currentHTTPServiceCleanup)
+				require.Nil(t, currentHTTPService)
 			})
 		}
 	}

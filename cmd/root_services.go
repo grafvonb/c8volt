@@ -33,7 +33,7 @@ func installRemoteCommandServices(ctx context.Context, cfg *config.Config, log *
 	if err != nil {
 		return ctx, bootstrapLocalPrecondition(fmt.Errorf("create http service: %w", err))
 	}
-	ownInvocationHTTPService(httpSvc.Close)
+	ownInvocationHTTPService(httpSvc)
 	initialized := false
 	defer func() {
 		if !initialized {

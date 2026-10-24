@@ -24,6 +24,27 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// requestRateServiceStub verifies singleton ownership without starting a reporter.
+type requestRateServiceStub struct {
+	close func()
+	pause func() func()
+}
+
+// Close records consumption of the invocation's cleanup ownership.
+func (s *requestRateServiceStub) Close() {
+	if s.close != nil {
+		s.close()
+	}
+}
+
+// PauseRequestRateReporting records manual input boundaries when a test needs them.
+func (s *requestRateServiceStub) PauseRequestRateReporting() func() {
+	if s.pause != nil {
+		return s.pause()
+	}
+	return func() {}
+}
+
 // requestRateLogCapture synchronizes asynchronous logger output and test-controlled response release.
 type requestRateLogCapture struct {
 	mu     sync.Mutex
@@ -165,7 +186,7 @@ func TestRequestRateCommandReporting(t *testing.T) {
 			root.SetArgs(args)
 			_, err := root.ExecuteC()
 			require.NoError(t, err)
-			require.Nil(t, currentHTTPServiceCleanup, "finalizer must consume ownership")
+			require.Nil(t, currentHTTPService, "finalizer must consume ownership")
 			require.Equal(t, int32(1), calls.Load())
 			require.Empty(t, unused.String())
 			requireSingleJSONValue(t, stdout.String())
@@ -210,9 +231,9 @@ func TestRequestRateInvocationCleanup(t *testing.T) {
 			path := writeAPIDiagnosticsCommandConfig(t, server.URL, auth)
 			appendRequestRateConfig(t, path, "1h")
 			var staleClosed int
-			ownInvocationHTTPService(func() { staleClosed++ })
+			ownInvocationHTTPService(&requestRateServiceStub{close: func() { staleClosed++ }})
 			command.RunE = func(cmd *cobra.Command, _ []string) error {
-				require.NotNil(t, currentHTTPServiceCleanup)
+				require.NotNil(t, currentHTTPService)
 				if mode == "error" {
 					return sentinel
 				}
@@ -239,7 +260,7 @@ func TestRequestRateInvocationCleanup(t *testing.T) {
 				require.NoError(t, err)
 			}
 			require.Equal(t, 1, staleClosed)
-			require.Nil(t, currentHTTPServiceCleanup)
+			require.Nil(t, currentHTTPService)
 			closeInvocationHTTPService()
 			require.Equal(t, 1, staleClosed)
 			require.NotContains(t, capture.String(), "HTTP request rate:")

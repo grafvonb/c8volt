@@ -53,7 +53,8 @@ Local wait failures identify an unsent request; earlier work may already be acce
 DEBUG request-rate summaries work with or without pacing. Configure
 http.request_rate_report_interval (default 5s; e.g. 10s; 0s disables summaries).
 They report actual starts, elapsed time and requests/second through the configured
-logger. Reporting stops with the invocation; short commands may emit no summary.
+logger. Summaries pause during manual input and exclude that time from the reported
+duration and rate. Reporting stops with the invocation; short commands may emit no summary.
 
 On API-backed commands, --debug emits redacted request diagnostics at DEBUG
 alongside other configured logs. --quiet and log-level filtering still apply;

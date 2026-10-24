@@ -224,3 +224,148 @@ func TestRequestRateReporterCadence(t *testing.T) {
 		})
 	}
 }
+
+// TestRequestRateReportingPause suppresses all windows, preserves accounting and
+// supports nested/idempotent resume without resetting the existing limiter.
+func TestRequestRateReportingPause(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		var output diagnosticCallbackWriter
+		log := slog.New(slog.NewTextHandler(&output, &slog.HandlerOptions{Level: slog.LevelDebug}))
+		r := newRequestRateReporter(context.Background(), log, time.Second)
+		s := &Service{reporter: r}
+		defer s.Close()
+		r.starts.Add(2)
+		time.Sleep(250 * time.Millisecond)
+		resume := s.PauseRequestRateReporting()
+		time.Sleep(time.Second)
+		resumeNested := s.PauseRequestRateReporting()
+		time.Sleep(2 * time.Second)
+		synctest.Wait()
+		require.Empty(t, output.String(), "nonzero pending traffic must also remain silent")
+		resume()
+		resume()
+		time.Sleep(time.Second)
+		synctest.Wait()
+		require.Empty(t, output.String(), "the nested pause still owns the prompt")
+		r.starts.Add(1)
+		resumeNested()
+		time.Sleep(750 * time.Millisecond)
+		synctest.Wait()
+		require.Contains(t, output.String(), "3 requests in 1s (3.00 requests/s)", "retain pre-prompt starts and exclude the four-second overlapping pause exactly once")
+		time.Sleep(time.Second)
+		synctest.Wait()
+		require.Contains(t, output.String(), "0 requests in 1s (0.00 requests/s)")
+		resumeAfterClose := s.PauseRequestRateReporting()
+		s.Close()
+		before := output.String()
+		resumeAfterClose()
+		time.Sleep(2 * time.Second)
+		synctest.Wait()
+		require.Equal(t, before, output.String(), "resume must not restart a closed reporter")
+	})
+	var absent *Service
+	absent.PauseRequestRateReporting()()
+	(&Service{}).PauseRequestRateReporting()()
+}
+
+// TestRequestRateReportingRepeatedPauses excludes every manual-input pause but
+// retains ordinary elapsed time and does not subtract old pauses in later windows.
+func TestRequestRateReportingRepeatedPauses(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		var output diagnosticCallbackWriter
+		log := slog.New(slog.NewTextHandler(&output, &slog.HandlerOptions{Level: slog.LevelDebug}))
+		r := newRequestRateReporter(context.Background(), log, time.Second)
+		s := &Service{reporter: r}
+		defer s.Close()
+		r.starts.Add(2)
+		time.Sleep(250 * time.Millisecond)
+		resume := s.PauseRequestRateReporting()
+		time.Sleep(250 * time.Millisecond)
+		resume()
+		time.Sleep(250 * time.Millisecond)
+		resume = s.PauseRequestRateReporting()
+		time.Sleep(2 * time.Second)
+		synctest.Wait()
+		require.Empty(t, output.String())
+		resume()
+		time.Sleep(250 * time.Millisecond)
+		synctest.Wait()
+		require.Contains(t, output.String(), "2 requests in 750ms (2.67 requests/s)")
+		r.starts.Add(3)
+		time.Sleep(250 * time.Millisecond)
+		resume = s.PauseRequestRateReporting()
+		time.Sleep(time.Second)
+		resume()
+		time.Sleep(750 * time.Millisecond)
+		synctest.Wait()
+		require.Contains(t, output.String(), "3 requests in 1s (3.00 requests/s)")
+		time.Sleep(time.Second)
+		synctest.Wait()
+		require.Contains(t, output.String(), "0 requests in 1s (0.00 requests/s)", "ordinary idle or polling waits still belong to the window")
+		require.Equal(t, 3, strings.Count(output.String(), "HTTP request rate:"))
+	})
+}
+
+// TestRequestRateReportingZeroActiveTime retains counts until a positive duration
+// exists, even if the entire first window was spent waiting for manual input.
+func TestRequestRateReportingZeroActiveTime(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		var output diagnosticCallbackWriter
+		log := slog.New(slog.NewTextHandler(&output, &slog.HandlerOptions{Level: slog.LevelDebug}))
+		r := &requestRateReporter{}
+		s := &Service{reporter: r}
+		window := requestRateWindow{at: time.Now()}
+		r.starts.Add(4)
+		resume := s.PauseRequestRateReporting()
+		time.Sleep(3 * time.Second)
+		resume()
+		r.report(context.Background(), log, &window)
+		require.Empty(t, output.String())
+		time.Sleep(500 * time.Millisecond)
+		r.report(context.Background(), log, &window)
+		require.Contains(t, output.String(), "4 requests in 500ms (8.00 requests/s)")
+	})
+}
+
+// TestRequestRatePauseWaitsForEmission closes the check/write race: once pause
+// returns a previously admitted summary cannot appear after the prompt.
+func TestRequestRatePauseWaitsForEmission(t *testing.T) {
+	t.Parallel()
+	sink := &requestRateBlockingWriter{entered: make(chan string, 100), release: make(chan struct{})}
+	log := slog.New(slog.NewTextHandler(sink, &slog.HandlerOptions{Level: slog.LevelDebug}))
+	r := newRequestRateReporter(context.Background(), log, time.Millisecond)
+	s := &Service{reporter: r}
+	release := sync.OnceFunc(func() { close(sink.release) })
+	defer func() { release(); s.Close() }()
+	select {
+	case <-sink.entered:
+	case <-time.After(time.Second):
+		t.Fatal("reporter did not start a write")
+	}
+	paused := make(chan func(), 1)
+	go func() { paused <- s.PauseRequestRateReporting() }()
+	// A mutex wait is not durably blocked in synctest; use a bounded real wait
+	// while the controlled sink keeps the existing write demonstrably in flight.
+	select {
+	case <-paused:
+		t.Fatal("pause returned while a summary was still being written")
+	case <-time.After(20 * time.Millisecond):
+	}
+	release()
+	select {
+	case resume := <-paused:
+		defer resume()
+	case <-time.After(time.Second):
+		t.Fatal("pause did not finish after the write completed")
+	}
+	// An overdue tick may finish before pause takes ownership; only later writes
+	// violate the boundary, so discard records completed before pause returned.
+	for len(sink.entered) > 0 {
+		<-sink.entered
+	}
+	select {
+	case <-sink.entered:
+		t.Fatal("a summary crossed the paused prompt boundary")
+	case <-time.After(20 * time.Millisecond):
+	}
+}

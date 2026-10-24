@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"sync"
 	"sync/atomic"
 	"time"
 )
@@ -33,6 +34,11 @@ type requestRateReporter struct {
 	starts atomic.Uint64
 	cancel context.CancelFunc
 	done   chan struct{}
+	// emission protects pause timing and complete logger writes, never dispatch.
+	emission  sync.Mutex
+	pauses    int
+	pausedAt  time.Time
+	pausedFor time.Duration
 }
 
 // newRequestRateReporter starts one independently cancellable timer for an enabled logger.
@@ -52,15 +58,51 @@ func newRequestRateReporter(parent context.Context, log *slog.Logger, interval t
 				if ctx.Err() != nil {
 					return
 				}
-				// Read the current time, not the potentially stale timestamp buffered by the ticker.
-				count, elapsed, measured := window.snapshot(r.starts.Load(), time.Now())
-				if elapsed > 0 {
-					log.DebugContext(ctx, fmt.Sprintf("HTTP request rate: %d requests in %s (%.2f requests/s)", count, elapsed, measured))
-				}
+				r.report(ctx, log, &window)
 			}
 		}
 	}()
 	return r
+}
+
+// report keeps the window intact while paused, so the next emitted rate retains
+// every start while excluding time spent waiting for manual input.
+func (r *requestRateReporter) report(ctx context.Context, log *slog.Logger, window *requestRateWindow) {
+	r.emission.Lock()
+	defer r.emission.Unlock()
+	if r.pauses > 0 || ctx.Err() != nil {
+		return
+	}
+	// Shift each snapshot by cumulative paused time. Differences then exclude only
+	// pauses since the previous snapshot, retaining ordinary idle/polling time.
+	count, elapsed, measured := window.snapshot(r.starts.Load(), time.Now().Add(-r.pausedFor))
+	if elapsed > 0 {
+		log.DebugContext(ctx, fmt.Sprintf("HTTP request rate: %d requests in %s (%.2f requests/s)", count, elapsed, measured))
+	}
+}
+
+// PauseRequestRateReporting finishes any in-flight summary before returning.
+// Its idempotent resume restores periodic output without changing request pacing,
+// counting, or deadlines. Disabled reporting is a no-op; overlapping pauses nest.
+func (s *Service) PauseRequestRateReporting() func() {
+	if s == nil || s.reporter == nil {
+		return func() {}
+	}
+	r := s.reporter
+	r.emission.Lock()
+	if r.pauses == 0 {
+		r.pausedAt = time.Now()
+	}
+	r.pauses++
+	r.emission.Unlock()
+	return sync.OnceFunc(func() {
+		r.emission.Lock()
+		defer r.emission.Unlock()
+		r.pauses--
+		if r.pauses == 0 {
+			r.pausedFor += time.Since(r.pausedAt)
+		}
+	})
 }
 
 // WithInvocationContext ties reporting to the owning invocation's cancellation.
