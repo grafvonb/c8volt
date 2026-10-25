@@ -8,15 +8,19 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/grafvonb/c8volt/internal/services"
+	"io"
 	"log/slog"
 	"net/http"
 	"net/url"
+	"strings"
+	"sync/atomic"
 	"testing"
 
 	"github.com/grafvonb/c8volt/config"
 	camundav88 "github.com/grafvonb/c8volt/internal/clients/camunda/v88/camunda"
 	d "github.com/grafvonb/c8volt/internal/domain"
+	"github.com/grafvonb/c8volt/internal/services"
+	"github.com/grafvonb/c8volt/internal/services/httpc"
 	"github.com/stretchr/testify/require"
 )
 
@@ -47,7 +51,7 @@ func TestUpdateScopeVariables(t *testing.T) {
 	got, err := svc.UpdateScopeVariables(context.Background(), "456", map[string]any{"foo": "bar"})
 
 	require.NoError(t, err)
-	require.Equal(t, d.ScopeVariableUpdateResponse{ScopeKey: "456", Accepted: true, StatusCode: http.StatusNoContent, Status: "204 No Content"}, got)
+	require.Equal(t, d.ScopeVariableUpdateResponse{ScopeKey: "456", SubmissionStatus: d.ScopeVariableSubmissionAccepted, Accepted: true, StatusCode: http.StatusNoContent, Status: "204 No Content"}, got)
 }
 
 // TestUpdateScopeVariablesRejectsInvalidInput verifies invalid v8.8 scope writes fail before transport access.
@@ -58,10 +62,14 @@ func TestUpdateScopeVariablesRejectsInvalidInput(t *testing.T) {
 		return nil, nil
 	}})
 
-	_, err := svc.UpdateScopeVariables(context.Background(), "", map[string]any{"foo": "bar"})
+	got, err := svc.UpdateScopeVariables(context.Background(), "", map[string]any{"foo": "bar"})
 	require.ErrorIs(t, err, d.ErrValidation)
-	_, err = svc.UpdateScopeVariables(context.Background(), "456", map[string]any{})
+	require.Equal(t, d.ScopeVariableSubmissionNotSent, got.SubmissionStatus)
+	require.False(t, got.Accepted)
+	got, err = svc.UpdateScopeVariables(context.Background(), "456", map[string]any{})
 	require.ErrorIs(t, err, d.ErrValidation)
+	require.Equal(t, d.ScopeVariableSubmissionNotSent, got.SubmissionStatus)
+	require.False(t, got.Accepted)
 	require.Zero(t, calls)
 }
 
@@ -349,5 +357,205 @@ func TestProcessInstanceVariableRootCompatibility(t *testing.T) {
 			require.EqualError(t, err, "validate process-instance variable page: process-instance variable page request size must be positive")
 			require.Equal(t, 1, calls)
 		})
+	}
+}
+
+// TestUpdateScopeVariablesSubmissionEvidence keeps protocol evidence separate
+// from legacy HTTP acceptance/error mapping and never retries documented 400s.
+func TestUpdateScopeVariablesSubmissionEvidence(t *testing.T) {
+	t.Parallel()
+	transportErr := errors.New("interrupted response")
+	invalidData := `{"type":"about:blank","title":"Bad Request","status":400,"detail":"invalid variables","instance":"/v2/element-instances/456/variables"}`
+	for _, tc := range []struct {
+		name             string
+		code             int
+		body             string
+		callErr, wantErr error
+		evidence         d.ScopeVariableSubmissionStatus
+		legacyAccepted   bool
+	}{
+		{"accepted", 204, "", nil, nil, d.ScopeVariableSubmissionAccepted, true},
+		{"invalid data", 400, invalidData, nil, d.ErrBadRequest, d.ScopeVariableSubmissionRejected, false},
+		{"malformed invalid data", 400, `{`, nil, d.ErrBadRequest, d.ScopeVariableSubmissionUnknown, false},
+		{"incomplete invalid data", 400, `{}`, nil, d.ErrBadRequest, d.ScopeVariableSubmissionUnknown, false},
+		{"internal", 500, invalidData, nil, d.ErrInternal, d.ScopeVariableSubmissionUnknown, false},
+		{"unavailable", 503, invalidData, nil, d.ErrUnavailable, d.ScopeVariableSubmissionUnknown, false},
+		{"gateway timeout", 504, invalidData, nil, d.ErrGatewayTimeout, d.ScopeVariableSubmissionUnknown, false},
+		{"success plus transport error", 204, "", transportErr, transportErr, d.ScopeVariableSubmissionUnknown, false},
+		{"rejection plus transport error", 400, invalidData, transportErr, transportErr, d.ScopeVariableSubmissionUnknown, false},
+		{"no response", 0, "", nil, d.ErrMalformedResponse, d.ScopeVariableSubmissionUnknown, false},
+		{"transport", 0, "", transportErr, transportErr, d.ScopeVariableSubmissionUnknown, false},
+		{"generic cancellation", 0, "", context.Canceled, context.Canceled, d.ScopeVariableSubmissionUnknown, false},
+		// Preserve the pre-existing PI/UT HTTP mapping while element outcomes can
+		// reject undocumented acceptance using the stricter new evidence field.
+		{"legacy success code", 200, "", nil, nil, d.ScopeVariableSubmissionUnknown, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			calls := 0
+			svc := newScopeVariableTestService(t, &scopeVariableClient{update: func(_ context.Context, key camundav88.ElementInstanceKey, body camundav88.CreateElementInstanceVariablesJSONRequestBody, _ ...camundav88.RequestEditorFn) (*camundav88.CreateElementInstanceVariablesResponse, error) {
+				calls++
+				require.Equal(t, camundav88.ElementInstanceKey("456"), key)
+				require.True(t, *body.Local)
+				if tc.code == 0 {
+					return nil, tc.callErr
+				}
+				response := scopeVariableHTTPResponse(tc.code, "")
+				response.Header = http.Header{"Content-Type": []string{"application/problem+json"}}
+				return &camundav88.CreateElementInstanceVariablesResponse{HTTPResponse: response, Body: []byte(tc.body)}, tc.callErr
+			}})
+			got, err := svc.UpdateScopeVariables(context.Background(), "456", map[string]any{"value": true})
+			require.ErrorIs(t, err, tc.wantErr)
+			require.Equal(t, tc.evidence, got.SubmissionStatus)
+			require.Equal(t, tc.legacyAccepted, got.Accepted)
+			require.Equal(t, tc.code, got.StatusCode)
+			require.Equal(t, 1, calls)
+		})
+	}
+}
+
+// TestUpdateScopeVariablesRetryEvidence retains the last observed status when
+// cancellation makes RetryCamundaMutation return a zero response.
+func TestUpdateScopeVariablesRetryEvidence(t *testing.T) {
+	t.Parallel()
+	for _, mode := range []string{"canceled before", "backoff cancellation", "accepted after ambiguity", "rejected after ambiguity"} {
+		t.Run(mode, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			if mode == "canceled before" {
+				cancel()
+			}
+			calls := 0
+			svc := newScopeVariableTestService(t, &scopeVariableClient{update: func(context.Context, camundav88.ElementInstanceKey, camundav88.CreateElementInstanceVariablesJSONRequestBody, ...camundav88.RequestEditorFn) (*camundav88.CreateElementInstanceVariablesResponse, error) {
+				calls++
+				require.LessOrEqual(t, calls, 2)
+				code := 429
+				body := ""
+				if calls == 2 {
+					code = 204
+					if mode == "rejected after ambiguity" {
+						code = 400
+						body = `{"type":"about:blank","title":"Bad Request","status":400,"detail":"invalid variables","instance":"/"}`
+					}
+				}
+				response := scopeVariableHTTPResponse(code, "")
+				response.Header = http.Header{"Retry-After": []string{"0"}, "Content-Type": []string{"application/problem+json"}}
+				if mode == "backoff cancellation" {
+					response.Header.Set("Retry-After", "30")
+					cancel()
+				}
+				return &camundav88.CreateElementInstanceVariablesResponse{HTTPResponse: response, Body: []byte(body)}, nil
+			}})
+			got, err := svc.UpdateScopeVariables(ctx, "456", map[string]any{"value": true})
+			switch mode {
+			case "canceled before":
+				require.ErrorIs(t, err, context.Canceled)
+				require.Zero(t, calls)
+				require.Zero(t, got.StatusCode)
+				require.Equal(t, d.ScopeVariableSubmissionNotSent, got.SubmissionStatus)
+			case "backoff cancellation":
+				require.ErrorIs(t, err, context.Canceled)
+				require.Equal(t, 1, calls)
+				require.Equal(t, 429, got.StatusCode)
+				require.Equal(t, d.ScopeVariableSubmissionUnknown, got.SubmissionStatus)
+			case "accepted after ambiguity":
+				require.NoError(t, err)
+				require.Equal(t, 2, calls)
+				require.Equal(t, 204, got.StatusCode)
+				require.True(t, got.Accepted)
+				require.Equal(t, d.ScopeVariableSubmissionAccepted, got.SubmissionStatus)
+			case "rejected after ambiguity":
+				require.ErrorIs(t, err, d.ErrBadRequest)
+				require.Equal(t, 2, calls)
+				require.Equal(t, 400, got.StatusCode)
+				require.Equal(t, d.ScopeVariableSubmissionUnknown, got.SubmissionStatus)
+			}
+		})
+	}
+}
+
+// scopeSubmissionTransport isolates physical dispatch while retaining the real
+// shared request-rate transport, generated decoder and http.Client timeout.
+type scopeSubmissionTransport func(*http.Request) (*http.Response, error)
+
+// RoundTrip delegates only to the test-owned in-memory transport.
+func (f scopeSubmissionTransport) RoundTrip(req *http.Request) (*http.Response, error) { return f(req) }
+
+// TestUpdateScopeVariablesPacingEvidence proves every retry has fresh admission
+// evidence, including the actual net/http timeout substitution and prior ambiguity.
+func TestUpdateScopeVariablesPacingEvidence(t *testing.T) {
+	t.Parallel()
+	for _, prior := range []bool{false, true} {
+		for _, substituted := range []bool{false, true} {
+			t.Run(fmt.Sprintf("prior=%t substituted=%t", prior, substituted), func(t *testing.T) {
+				var dispatched atomic.Int32
+				shared, err := httpc.New(&config.Config{HTTP: config.HTTP{Timeout: "100ms", RequestRate: 0.01, RequestRateReportInterval: "5s"}}, slog.New(slog.NewTextHandler(io.Discard, nil)), func(s *httpc.Service) {
+					s.Client().Transport = scopeSubmissionTransport(func(req *http.Request) (*http.Response, error) {
+						dispatched.Add(1)
+						code := http.StatusNoContent
+						if prior {
+							code = http.StatusTooManyRequests
+						}
+						return &http.Response{StatusCode: code, Status: http.StatusText(code), Request: req, Header: http.Header{"Retry-After": []string{"0"}}, Body: io.NopCloser(strings.NewReader(""))}, nil
+					})
+				})
+				require.NoError(t, err)
+				defer shared.Close()
+				parent := shared.ToContext(context.Background())
+				if !prior {
+					req, err := http.NewRequestWithContext(parent, http.MethodPut, "https://fixture.invalid/prime", nil)
+					require.NoError(t, err)
+					response, err := shared.Client().Do(req)
+					require.NoError(t, err)
+					require.NoError(t, response.Body.Close())
+				}
+				base := shared.Client().Transport
+				var substitutedCalls atomic.Int32
+				if substituted {
+					shared.Client().Transport = scopeSubmissionTransport(func(req *http.Request) (*http.Response, error) {
+						response, err := base.RoundTrip(req)
+						if httpc.IsRequestRateWaitError(err) {
+							substitutedCalls.Add(1)
+							<-req.Cancel // Force Client.Timeout to replace the typed admission error.
+						}
+						return response, err
+					})
+				}
+				client, err := camundav88.NewClientWithResponses("https://fixture.invalid/v2", camundav88.WithHTTPClient(shared.Client()))
+				require.NoError(t, err)
+				calls := 0
+				svc := newScopeVariableTestService(t, &scopeVariableClient{update: func(ctx context.Context, key camundav88.ElementInstanceKey, body camundav88.CreateElementInstanceVariablesJSONRequestBody, opts ...camundav88.RequestEditorFn) (*camundav88.CreateElementInstanceVariablesResponse, error) {
+					calls++
+					response, callErr := client.CreateElementInstanceVariablesWithResponse(ctx, key, body, opts...)
+					if substituted && callErr != nil {
+						require.False(t, httpc.IsRequestRateWaitError(callErr), "actual Client.Timeout substituted the transport error")
+					}
+					return response, callErr
+				}})
+				got, err := svc.UpdateScopeVariables(parent, "456", map[string]any{"value": true})
+				require.ErrorIs(t, err, context.DeadlineExceeded)
+				require.True(t, httpc.IsRequestRateWaitError(err), "restore classification when client timeout replaces the typed error")
+				require.NoError(t, parent.Err())
+				require.Equal(t, int32(1), dispatched.Load(), "no physical dispatch after admission failure")
+				if prior {
+					require.Equal(t, 2, calls)
+				} else {
+					require.Equal(t, 1, calls)
+				}
+				require.False(t, got.Accepted)
+				if prior {
+					require.Equal(t, d.ScopeVariableSubmissionUnknown, got.SubmissionStatus)
+					require.Equal(t, 429, got.StatusCode)
+				} else {
+					require.Equal(t, d.ScopeVariableSubmissionNotSent, got.SubmissionStatus)
+					require.Zero(t, got.StatusCode)
+				}
+				if substituted {
+					require.Equal(t, int32(1), substitutedCalls.Load())
+				}
+				// A new invocation/attempt must not inherit the previous admission failure.
+				_, observation := httpc.BeginRequestRateAttempt(parent)
+				require.NoError(t, observation.Failure())
+			})
+		}
 	}
 }

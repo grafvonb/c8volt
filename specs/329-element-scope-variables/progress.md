@@ -158,3 +158,32 @@ Started: 2026-10-25 07:34:13
 - Updated README API availability, source-compatibility, local-scope and no-mutation guidance; regenerated `docs/index.md` through `make docs-content`. CLI command behavior and metadata did not change, and CLI reference files remained unchanged. New service/facade failures only return through existing error conversion; no result rendering, logger or prompt boundary changed. `gofmt` verification, source/diff review and `git diff --check` passed.
 - Preserved every prior progress byte, compacted durable discoveries in ralph-memory.md and handed off T005 with no blockers. Only T004 was marked complete.
 ---
+
+---
+## Iteration 5 - 2026-10-25 08:46
+**Work Unit**: Phase 5 US3 — T005 exact-local writer submission evidence (completed protocol work unit; story partial)
+**Tasks Completed**:
+- [x] T005: Added per-attempt submission evidence across the three exact-local writers, preserving retry/cancellation/pacing evidence and existing PI/UT mappings, with isolated accumulator and adapter regressions.
+**Tasks Remaining in Work Unit**: T005 complete; T006 remains in US3. T007 remains in US4. The documented T005/T006 protocol/concurrency boundary was retained; no executor or CLI work started.
+**Commit**: This work-unit commit
+**Files Changed**:
+- internal/domain/usertask_update.go
+- internal/services/common/scope_variable_submission.go
+- internal/services/common/scope_variable_submission_test.go
+- internal/services/variable/v810/scope_variables_test.go
+- internal/services/variable/v810/variables.go
+- internal/services/variable/v88/scope_variables_test.go
+- internal/services/variable/v88/variables.go
+- internal/services/variable/v89/scope_variables_test.go
+- internal/services/variable/v89/variables.go
+- specs/329-element-scope-variables/progress.md
+- specs/329-element-scope-variables/ralph-memory.md
+- specs/329-element-scope-variables/tasks.md
+**Learnings**:
+- Wrote evidence tests first; their initial compilation failed on the missing enum/helper. Implemented additive internal SubmissionStatus plus one shared accumulator, retaining evidence outside RetryCamundaMutation callback return values. All three adapters initialize not_sent, check cancellation before dispatch, observe fresh request-rate attempts and restore local admission error classification after actual Client.Timeout substitution. Requests retain their exact destination and local=true; retry policy and generated clients are unchanged.
+- Common tests cover documented acceptance/rejection, malformed/missing/null/contradictory problem details, generic proxy/server/status failures, response-plus-error ambiguity and sticky artificial sequences, including rejection followed by unsent work that the real policy would not retry. Adapter tests prove first-attempt unsent, earlier ambiguous dispatch followed by unsent retry, later acceptance/rejection, zero-response backoff cancellation, original error classes, retained observed status and zero post-submit reads. Actual generated-client/pacing fixtures verify physical and logical attempt counts, the client's loss of the typed error and its restoration from observation, using in-memory transports only.
+- Preserved the legacy Accepted boolean and existing successful-HTTP mapping for PI/UT compatibility. Strict element outcomes in T006 must use SubmissionStatus; an unexpected 200 remains unknown even when legacy mapping returns success. Existing public schemas/converters were not changed, and no status code is invented from an error.
+- Verified actual test names with -list. Passed focused pattern Test(ScopeVariableSubmission|UpdateScopeVariables) in common and variable packages, then Test(.*ProcessInstanceVariable|.*UserTaskVariable|CompleteUserTask) in common/processinstance/usertask and c8volt/task. Passed make test (go test ./... -race -count=1); shared writer runtime changes across consumers justified the full race suite. Inspected targets/build guards/helper settings and sanitized inherited GOFLAGS/C8VOLT/helper/make overrides. No live environment or integration-tag checks ran; real-engine behavior remains unverified.
+- Formatting and git diff --check passed. Changes remain in the domain model, shared service helper and version adapters/tests. No command output/logger/prompt boundary, facade, generated client, global retry policy or user-facing command contract changed. Per T005, no CLI documentation generation was required.
+- Preserved every prior progress byte, compacted durable memory, and handed off dependency-ready T006. Only T005 was marked complete.
+---

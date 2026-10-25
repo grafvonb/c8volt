@@ -146,7 +146,7 @@ func (s *Service) UpdateProcessInstanceVariables(ctx context.Context, key string
 // UpdateScopeVariables writes variables strictly to the requested element scope without confirmation reads.
 func (s *Service) UpdateScopeVariables(ctx context.Context, scopeKey string, variables map[string]any, opts ...services.CallOption) (d.ScopeVariableUpdateResponse, error) {
 	_ = services.ApplyCallOptions(opts)
-	result := d.ScopeVariableUpdateResponse{ScopeKey: scopeKey}
+	result := d.ScopeVariableUpdateResponse{ScopeKey: scopeKey, SubmissionStatus: d.ScopeVariableSubmissionNotSent}
 	if strings.TrimSpace(scopeKey) == "" {
 		return result, fmt.Errorf("%w: scope key must not be blank", d.ErrValidation)
 	}
@@ -162,11 +162,26 @@ func (s *Service) UpdateScopeVariables(ctx context.Context, scopeKey string, var
 		Variables: variables,
 	}
 	resp, err := services.RetryCamundaMutation(ctx, s.log, "update scope variables", func(ctx context.Context) (*camundav89.CreateElementInstanceVariablesResponse, *http.Response, []byte, error) {
-		resp, err := s.cc.CreateElementInstanceVariablesWithResponse(ctx, camundav89.ElementInstanceKey(scopeKey), body)
-		if resp == nil {
-			return resp, nil, nil, err
+		// Check before dispatch; a generic error returned after calling the client
+		// cannot by itself prove that the attempt was unsent.
+		if err := ctx.Err(); err != nil {
+			return nil, nil, nil, err
 		}
-		return resp, resp.HTTPResponse, resp.Body, err
+		attemptCtx, observation := httpc.BeginRequestRateAttempt(ctx)
+		resp, err := s.cc.CreateElementInstanceVariablesWithResponse(attemptCtx, camundav89.ElementInstanceKey(scopeKey), body)
+		var response *http.Response
+		var responseBody []byte
+		if resp != nil {
+			response, responseBody = resp.HTTPResponse, resp.Body
+		}
+		localErr := observation.Failure()
+		common.RecordScopeVariableSubmission(&result, response, responseBody, err, localErr)
+		// Restore local admission classification if Client.Timeout substituted
+		// its own error. Return it to the unchanged retry policy as well.
+		if localErr != nil {
+			err = localErr
+		}
+		return resp, response, responseBody, err
 	})
 	if err != nil {
 		return result, err

@@ -24,9 +24,12 @@ Started: 2026-10-25T06:34:13Z
 - `validateAndCopyElementVariableUpdatePlan` validates the whole frozen collection: key/order/scope/owner, all counts, disjoint complete classifications, mutation/verification equality, unsent state and canonical TenantContext derived from per-element evidence. T006 should call it before any workers. All classifications are allocated empty slices when appropriate; mutation maps contain only additions/changes, verification maps contain every requested value.
 - `element.NewWithVariableUpdates` adds the planning dependency without changing earlier constructor signatures. Root composition wires it to the same element/variable services; the facade only snapshots inputs, delegates, maps all plan fields and converts errors. Custom marshal-only JSON values fall back to independent decoded snapshots when the concrete type cannot round-trip faithfully; ordinary maps/slices, typed collections, RawMessage and number semantics remain covered.
 
+- `common.RecordScopeVariableSubmission` accumulates per-attempt `SubmissionStatus` and observed HTTP status outside retry return values. A fresh `httpc.BeginRequestRateAttempt` in each adapter callback distinguishes unsent local admission from dispatched uncertainty; its local error must be returned to the existing retry helper when Client.Timeout substitutes the error type. Pre-dispatch canceled contexts do not invoke the generated client.
+- Exact-local acceptance evidence requires a documented empty 204 response with valid HTTP metadata and no call error. Conclusive rejection requires a 400 `application/problem+json` body with all five non-null, correctly typed ProblemDetail fields and matching status. Other statuses, malformed/proxy responses and response-plus-error remain unknown; unknown survives later rejection/unsent attempts, and accepted supersedes uncertainty. No retry-policy changes were needed.
+
 ## Decisions
 
-- Iterations 1–4 completed T001–T004: shared scoped reading, service/facade enrichment and tenant correction, read-only CLI MVP, then the independently usable frozen planning API. Mutation execution and update CLI remain unexposed until T006/T007.
+- Iterations 1–5 completed T001–T005: shared scoped reading, service/facade enrichment and tenant correction, read-only CLI MVP, then the independently usable frozen planning API and exact-local writer submission evidence. Mutation execution and update CLI remain unexposed until T006/T007.
 - Version directories expose generated-client interfaces in `contract.go`, not the planned `api.go`. No generated-client interface additions were necessary. Existing consumer doubles use narrower root contracts; the widened variable API is implemented by all three concrete adapters.
 - Use explicit-key `WithIgnoreTenant()` with the actual observed expected tenant in later element enrichment/planning/confirmation. Do not derive expected identity from configured discovery tenant.
 
@@ -46,6 +49,10 @@ Started: 2026-10-25T06:34:13Z
 - JSON representability is checked before recursive facade copying, so cyclic/unsupported payloads fail instead of recursing. Existing variable-update comparison preserves number spelling through json.Number; backend `1.0` and a requested marshaled `1` remain different under the established PI/UT convention.
 - Facade cancellation remains `context.Canceled` through `FromDomain`; command normalization later assigns its local-precondition class. Unauthorized/forbidden already convert to `ferrors.ErrLocalPrecondition`.
 
+- The scope writer's legacy `Accepted` field and generic successful-HTTP mapping remain compatible for PI/UT callers. T006 MUST derive its new `MutationAccepted` and success decision from `SubmissionStatus == ScopeVariableSubmissionAccepted`, not that legacy boolean; an unexpected 200 can retain legacy Accepted=true while strict evidence stays unknown. Preserve an operation failure for nonaccepted strict evidence even if the legacy writer returns nil error.
+- Retry cancellation can return a zero generated response while an earlier response was observed. Keep the accumulated status/code on every error return. The generated decoder can discard the entire response on decode failure; do not invent a status code from the error.
+- `TestUpdateScopeVariablesPacingEvidence` uses an in-memory base RoundTripper below real shared pacing and the real generated client. Delaying local rejection until `req.Cancel` closes forces actual Client.Timeout type substitution; assertions verify both the substituted client error and restored local classification, with no network dispatch after admission failure.
+
 ## Reusable Commands
 
 - `GOFLAGS= go test ./internal/services/variable/... -list 'Test(ScopeVariable|ProcessInstanceVariable|SearchProcessInstanceVariable|UpdateScopeVariables)'`
@@ -64,6 +71,9 @@ Started: 2026-10-25T06:34:13Z
 - `GOFLAGS= go test ./internal/services/element ./c8volt/element ./c8volt -run '^TestElementVariableUpdatesPlan' -count=1`
 - `GOFLAGS= go test ./internal/services/element/... ./internal/services/processinstance ./internal/services/usertask -run 'Test(ElementVariableUpdatesPlan|PlanProcessInstanceVariableUpdates|PlanUserTaskVariableUpdates)' -count=1`
 
+- `GOFLAGS= go test ./internal/services/common ./internal/services/variable/... -run 'Test(ScopeVariableSubmission|UpdateScopeVariables)' -count=1`
+- `GOFLAGS= go test ./internal/services/common ./internal/services/processinstance ./internal/services/usertask ./c8volt/task -run 'Test(.*ProcessInstanceVariable|.*UserTaskVariable|CompleteUserTask)' -count=1`
+
 ## Do Not Repeat
 
 - Do not fork the traversal loop or tighten root compatibility semantics when extending scoped reads.
@@ -71,6 +81,6 @@ Started: 2026-10-25T06:34:13Z
 
 ## Current Handoff
 
-- T004 is complete: the frozen planning API and full plan validator are independently usable. Next dependency-ready work is T005 (US3 exact-local writer submission evidence), with T001 complete and no blockers. Recheck tasks.md before selection; T005–T007 remain unchecked (three feature tasks). T006 depends on both completed T004 and T005, and may follow only within the allowed US3 work-unit scope.
-- T004 targeted service/facade/root-adapter tests, PI/UT planning regressions, generated documentation, formatting/diff review and `make test` (full race suite) passed. Validation used only in-memory fakes, test-owned transports/servers and isolated subprocess/terminal tests; real-engine behavior remains unverified. No mutation executor, result statuses or update CLI was introduced.
-- For T006, reuse `validateAndCopyElementVariableUpdatePlan` before any workers and keep the frozen independent owner/scope plus tenant evidence. `NewVariableUpdates` currently has only reader/config dependencies and exposes planning only; add execution and its facade method together after T005. No stubs or execution API need removal. Existing public doubles embed the expanded interface, so no unrelated stubs were needed in T004.
+- T005 is complete. Next dependency-ready work is T006 (US3 frozen execution, exact-local confirmation and public result mapping), with T004/T005 satisfied and no blockers. Recheck tasks.md before selection; T006 and T007 remain unchecked. T007 depends on T006 and belongs to US4.
+- Reuse `validateAndCopyElementVariableUpdatePlan` before workers. Consume the new strict submission evidence from the exact-local writer, preserve frozen owner/scope/tenant identity, ordered partial outcomes and original errors, and never resubmit accepted writes after confirmation failure. New element acceptance must use SubmissionStatus, not the compatibility boolean described above.
+- T005 focused common/three-adapter tests, affected PI/UT/facade/task-completion regressions, formatting/diff review and `make test` (full race suite) passed. Validation used only mocks, in-memory transports, test-owned servers and isolated subprocess/terminal fixtures; no live checks or integration build tags ran. Real-engine behavior remains unverified. No execution API, result mapping or update CLI was introduced in this iteration.
