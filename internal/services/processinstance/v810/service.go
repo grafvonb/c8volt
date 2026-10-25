@@ -173,6 +173,9 @@ func (s *Service) GetProcessInstance(ctx context.Context, key string, opts ...se
 	if err != nil {
 		return d.ProcessInstance{}, fmt.Errorf("get process instance: %w", err)
 	}
+	if resp == nil {
+		return d.ProcessInstance{}, fmt.Errorf("%w: missing process-instance read response", d.ErrMalformedResponse)
+	}
 	payload, err := common.RequirePayload(resp.HTTPResponse, resp.Body, resp.JSON200)
 	if err != nil {
 		return d.ProcessInstance{}, fmt.Errorf("get process instance: %w", err)

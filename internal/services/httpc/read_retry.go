@@ -35,6 +35,15 @@ type readRetryPolicy struct {
 
 type withoutReadRetryKey struct{}
 
+// withoutReadRetryLogsKey scopes functional retry-log suppression to one workflow.
+type withoutReadRetryLogsKey struct{}
+
+// WithoutReadRetryLogs leaves retry policy and HTTP DEBUG diagnostics intact while
+// allowing an owning workflow to aggregate its human diagnostics exactly once.
+func WithoutReadRetryLogs(ctx context.Context) context.Context {
+	return context.WithValue(ctx, withoutReadRetryLogsKey{}, true)
+}
+
 // WithoutReadRetry limits advisory reads to one transport attempt. Other requests
 // retain the default policy; the returned context must only wrap the intended read.
 func WithoutReadRetry(ctx context.Context) context.Context {
@@ -246,8 +255,9 @@ func sleepReadRetry(ctx context.Context, delay time.Duration) error {
 	}
 }
 
+// logRetry emits functional retry detail unless the calling workflow owns diagnostics.
 func (t *ReadRetryTransport) logRetry(req *http.Request, reason string, delay time.Duration, policy readRetryPolicy) {
-	if t.log == nil {
+	if t.log == nil || req.Context().Value(withoutReadRetryLogsKey{}) == true {
 		return
 	}
 	operation := strings.TrimSpace(httpActivityMessage(req))

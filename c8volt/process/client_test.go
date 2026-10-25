@@ -3849,3 +3849,11 @@ func (s stubJobAPI) PrepareJobCompletionBatch(context.Context, d.CompletionReque
 func (s stubJobAPI) ExecuteJobCompletionBatch(context.Context, d.PreparedCompletionBatch, int, ...services.CallOption) (d.CompletionBatchReport, error) {
 	return d.CompletionBatchReport{}, errors.New("unexpected completion execution")
 }
+
+// ValidateProcessInstanceSuspension keeps unrelated legacy fixtures explicitly unsupported.
+func (stubProcessInstanceAPI) ValidateProcessInstanceSuspension() error { return d.ErrUnsupported }
+
+// SuspendProcessInstance prevents accidental mutation through unrelated legacy fixtures.
+func (stubProcessInstanceAPI) SuspendProcessInstance(context.Context, string, ...services.CallOption) (d.ProcessInstanceSuspensionResult, error) {
+	return d.ProcessInstanceSuspensionResult{}, d.ErrUnsupported
+}

@@ -65,7 +65,7 @@ The repository, Go toolchain, generated client, configuration, logger, and isola
 
 **Independent test**: Through factory-composed facades backed by isolated fake servers, suspend an ACTIVE target and confirm only after SUSPENDED; test parent-only, child-only, and simultaneous parent/child selection with zero hierarchy calls. On 8.8/8.9, all entry points reject capability before unsupported I/O. CLI realization of this story is completed by T003.
 
-- [ ] T002 [US1] Deliver complete single/collection suspension through `internal/services/processinstance/api.go`, `internal/services/processinstance/suspend.go`, `internal/services/processinstance/waiter/suspension.go`, the `v88/contract.go`, `v89/contract.go`, `v810/contract.go` and corresponding `suspend.go` adapters under `internal/services/processinstance/`, and `c8volt/process/api.go`, `model.go`, `convert.go`, and `suspend.go`; include all affected interface/test-double updates and service/waiter/facade tests in the same compiling unit, with bounded confirmation, no-wait, preview, partial-result evidence, formatting, and targeted validation.
+- [x] T002 [US1] Deliver complete single/collection suspension through `internal/services/processinstance/api.go`, `internal/services/processinstance/suspend.go`, `internal/services/processinstance/waiter/suspension.go`, the `v88/contract.go`, `v89/contract.go`, `v810/contract.go` and corresponding `suspend.go` adapters under `internal/services/processinstance/`, and `c8volt/process/api.go`, `model.go`, `convert.go`, and `suspend.go`; include all affected interface/test-double updates and service/waiter/facade tests in the same compiling unit, with bounded confirmation, no-wait, preview, partial-result evidence, formatting, and targeted validation.
 
 **T002 implementation and completion criteria**:
 
@@ -145,7 +145,7 @@ T002 cannot expose suspension until its waiter/default behavior is complete. T00
 | US4 (P2) | 0; deliberately co-delivered | T003 | Complete operational guidance and c8volt-based fixture setup with static verification. |
 | Foundation | 1: T001 | All stories | Tested protocol/submission evidence primitive without premature public exposure. |
 
-**Total**: 3 tasks; 1 completed; 0 in progress; no pre-existing task IDs/evidence were replaced.
+**Total**: 3 tasks; 2 completed; 0 in progress; no pre-existing task IDs/evidence were replaced.
 
 ## Parallel Opportunities and Examples by Story
 

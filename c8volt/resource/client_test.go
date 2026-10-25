@@ -1270,3 +1270,21 @@ func TestConvertDeleteProcessDefinitionUnfinished(t *testing.T) {
 	totals := (DeleteProcessDefinitionPlan{Items: []DeleteProcessDefinitionPlanItem{item, {}}}).Totals()
 	require.False(t, totals.SuspendedCountSupported, "mixed unavailable evidence cannot claim complete support")
 }
+
+// ValidateProcessInstanceSuspension keeps unrelated legacy fixtures explicitly unsupported.
+func (stubProcessInstanceService) ValidateProcessInstanceSuspension() error { return d.ErrUnsupported }
+
+// SuspendProcessInstance prevents accidental mutation through unrelated legacy fixtures.
+func (stubProcessInstanceService) SuspendProcessInstance(context.Context, string, ...services.CallOption) (d.ProcessInstanceSuspensionResult, error) {
+	return d.ProcessInstanceSuspensionResult{}, d.ErrUnsupported
+}
+
+// SuspendProcessInstance rejects suspension in unrelated resource fixtures.
+func (stubProcessAPI) SuspendProcessInstance(context.Context, string, ...options.FacadeOption) (process.SuspensionResult, error) {
+	return process.SuspensionResult{}, ferr.ErrUnsupported
+}
+
+// SuspendProcessInstances rejects suspension in unrelated resource fixtures.
+func (stubProcessAPI) SuspendProcessInstances(context.Context, typex.Keys, int, ...options.FacadeOption) (process.SuspensionResults, error) {
+	return process.SuspensionResults{Items: []process.SuspensionResult{}}, ferr.ErrUnsupported
+}

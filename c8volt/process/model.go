@@ -729,3 +729,73 @@ type ProcessInstanceExpectationReports struct {
 func (r ProcessInstanceExpectationReports) Totals() (total int, oks int, noks int) {
 	return TotalsOf(r.Items)
 }
+
+// SuspensionResult separates submission proof from observation of
+// the selected instance. Error is machine evidence, never human diagnostic text.
+type SuspensionResult struct {
+	Key          string                 `json:"key"`
+	Status       SuspensionStatus       `json:"status"`
+	Submission   SuspensionSubmission   `json:"submission"`
+	Confirmation SuspensionConfirmation `json:"confirmation"`
+	// StatusCode is the last valid submission status, never a read status.
+	StatusCode int `json:"statusCode,omitempty"`
+	// HasObservation distinguishes no observation from an observed UNKNOWN state.
+	HasObservation    bool  `json:"hasObservation"`
+	LastObservedState State `json:"lastObservedState,omitempty"`
+	// SuspendedDate comes only from the latest successful matching observation.
+	SuspendedDate string `json:"suspendedDate,omitempty"`
+	Error         string `json:"error,omitempty"`
+}
+
+// SuspensionStatus describes workflow disposition, not engine state.
+type SuspensionStatus string
+
+const (
+	// SuspensionStatusPreview records a local preview without I/O.
+	SuspensionStatusPreview SuspensionStatus = "preview"
+	// SuspensionStatusAccepted records acceptance without confirmation.
+	SuspensionStatusAccepted SuspensionStatus = "accepted"
+	// SuspensionStatusConfirmed requires accepted submission and observed SUSPENDED.
+	SuspensionStatusConfirmed SuspensionStatus = "confirmed"
+	// SuspensionStatusFailed records a failure other than timeout or interruption.
+	SuspensionStatusFailed SuspensionStatus = "failed"
+	// SuspensionStatusTimedOut retains evidence when a deadline or attempt bound ends work.
+	SuspensionStatusTimedOut SuspensionStatus = "timed_out"
+	// SuspensionStatusInterrupted records caller cancellation without inferring rejection.
+	SuspensionStatusInterrupted SuspensionStatus = "interrupted"
+	// SuspensionStatusNotAttempted identifies work that was not started.
+	SuspensionStatusNotAttempted SuspensionStatus = "not_attempted"
+)
+
+// SuspensionSubmission retains cumulative evidence across submission retries.
+type SuspensionSubmission string
+
+const (
+	// SuspensionSubmissionNotSubmitted means no request was dispatched.
+	SuspensionSubmissionNotSubmitted SuspensionSubmission = "not_submitted"
+	// SuspensionSubmissionAccepted requires a valid documented acceptance response.
+	SuspensionSubmissionAccepted SuspensionSubmission = "accepted"
+	// SuspensionSubmissionRejected requires explicit rejection and no earlier ambiguity.
+	SuspensionSubmissionRejected SuspensionSubmission = "rejected"
+	// SuspensionSubmissionUnknown retains ambiguity until a valid acceptance occurs.
+	SuspensionSubmissionUnknown SuspensionSubmission = "unknown"
+)
+
+// SuspensionConfirmation records observation independently of submission.
+type SuspensionConfirmation string
+
+const (
+	// SuspensionConfirmationNotRequested covers previews, no-wait, skipped and unaccepted work.
+	SuspensionConfirmationNotRequested SuspensionConfirmation = "not_requested"
+	// SuspensionConfirmationUnconfirmed means accepted work awaits proof of SUSPENDED.
+	SuspensionConfirmationUnconfirmed SuspensionConfirmation = "unconfirmed"
+	// SuspensionConfirmationConfirmed requires a matching SUSPENDED observation after acceptance.
+	SuspensionConfirmationConfirmed SuspensionConfirmation = "confirmed"
+)
+
+// SuspensionResults retains one item per normalized key in input
+// order, including skipped work and partial failures. Callers initialize Items
+// to an empty array when there are no selected keys.
+type SuspensionResults struct {
+	Items []SuspensionResult `json:"items"`
+}

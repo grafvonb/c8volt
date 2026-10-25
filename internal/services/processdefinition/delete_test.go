@@ -2064,3 +2064,41 @@ func TestDeleteProcessDefinitionUnfinishedOffsetDiscovery(t *testing.T) {
 	require.Equal(t, types.Keys{"a", "s", "late"}, processInstanceKeys(items))
 	require.Equal(t, 2, calls)
 }
+
+// ValidateProcessInstanceSuspension keeps unrelated legacy fixtures explicitly unsupported.
+func (cleanupEligibilityProcessInstanceAPI) ValidateProcessInstanceSuspension() error {
+	return d.ErrUnsupported
+}
+
+// SuspendProcessInstance prevents accidental mutation through unrelated legacy fixtures.
+func (cleanupEligibilityProcessInstanceAPI) SuspendProcessInstance(context.Context, string, ...services.CallOption) (d.ProcessInstanceSuspensionResult, error) {
+	return d.ProcessInstanceSuspensionResult{}, d.ErrUnsupported
+}
+
+// ValidateProcessInstanceSuspension keeps unrelated legacy fixtures explicitly unsupported.
+func (workerPreviewProcessInstanceAPI) ValidateProcessInstanceSuspension() error {
+	return d.ErrUnsupported
+}
+
+// SuspendProcessInstance prevents accidental mutation through unrelated legacy fixtures.
+func (workerPreviewProcessInstanceAPI) SuspendProcessInstance(context.Context, string, ...services.CallOption) (d.ProcessInstanceSuspensionResult, error) {
+	return d.ProcessInstanceSuspensionResult{}, d.ErrUnsupported
+}
+
+// ValidateProcessInstanceSuspension keeps unrelated legacy fixtures explicitly unsupported.
+func (tenantEvidenceProcessInstanceAPI) ValidateProcessInstanceSuspension() error {
+	return d.ErrUnsupported
+}
+
+// SuspendProcessInstance prevents accidental mutation through unrelated legacy fixtures.
+func (tenantEvidenceProcessInstanceAPI) SuspendProcessInstance(context.Context, string, ...services.CallOption) (d.ProcessInstanceSuspensionResult, error) {
+	return d.ProcessInstanceSuspensionResult{}, d.ErrUnsupported
+}
+
+// ValidateProcessInstanceSuspension keeps unrelated legacy fixtures explicitly unsupported.
+func (unfinishedInstanceAPI) ValidateProcessInstanceSuspension() error { return d.ErrUnsupported }
+
+// SuspendProcessInstance prevents accidental mutation through unrelated legacy fixtures.
+func (unfinishedInstanceAPI) SuspendProcessInstance(context.Context, string, ...services.CallOption) (d.ProcessInstanceSuspensionResult, error) {
+	return d.ProcessInstanceSuspensionResult{}, d.ErrUnsupported
+}
