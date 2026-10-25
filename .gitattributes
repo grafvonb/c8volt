@@ -1,0 +1,2 @@
+# Cobra emits a trailing blank line in generated command references.
+docs/cli/c8volt_*.md whitespace=-blank-at-eof

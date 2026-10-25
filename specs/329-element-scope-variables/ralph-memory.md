@@ -31,13 +31,19 @@ Started: 2026-10-25T06:34:13Z
 - `element/update_wait.go` owns complete local polling, validates observations with the planner's identity/duplicate checks, and compares every VerificationValue (including unchanged requested names). It reuses configured backoff timeout/delay/retry semantics and IgnoreTenant; it never writes. An interrupted started read is confirmation_failed; unscheduled read-back stays submitted/not_started.
 - Public `ExecuteElementVariableUpdates` only maps/copies/delegates/converts and returns partial results with the error. `ElementVariableUpdateResults.Items` uses JSON `items`; each result retains frozen owner/scope and mutation values. Public `VariableSubmissionStatus` constants mirror the internal writer evidence. `OK()` accepts unchanged, confirmed, or deliberate no-wait skipped confirmation only, never not_started or any result with Error.
 
+- `update_element.go` owns input/metadata; `update_element_variables.go` owns plan/approval/dispatch; `cmd_views_element_update.go` owns preview projection, results and bounded diagnostics. Reuse `parseUpdateVariablesFromFlags`, `readKeysIfDash`, `validateKeys`, explicit admin options and configured stderr confirmation. Validate flag keys as well as stdin keys, then trim/deduplicate in input order before planning.
+- Preview/no-op explicitly use `renderSucceededResult` with initialized classification arrays and no execution-only maps; keys preview prints changed destinations only. Normal results distinguish selected/accepted/confirmed/unchanged/failed/skipped counts; no-wait acceptance requires actual accepted results. Unknown enum text and raw Error/Message fields never reach human output.
+- `runElementScopeTerminal` now reuses the real-terminal harness for both get and update, selecting the appropriate command's configured stderr. `newElementUpdateFixture` records exact identities/reads/local PUTs on a test-owned server with serialized request evidence. The legacy-named `runUpdateUserTaskCommand` is a generic subprocess command runner and can execute element updates without another helper.
+
 ## Decisions
 
-- Iterations 1–6 implement T001–T006: shared scoped reading, service/facade enrichment and tenant correction, read-only CLI MVP, frozen planning, exact-local writer evidence, and frozen execution/confirmation with public results. The update CLI remains T007.
+- Iterations 1–6 implement T001–T006: shared scoped reading, enrichment/tenant correction, read-only CLI, frozen planning, exact-local writer evidence and frozen execution/confirmation. Iteration 7 integrates these through the update CLI in T007.
 - Version directories expose generated-client interfaces in `contract.go`, not the planned `api.go`. No generated-client interface additions were necessary. Existing consumer doubles use narrower root contracts; the widened variable API is implemented by all three concrete adapters.
 - Use explicit-key `WithIgnoreTenant()` with the actual observed expected tenant in later element enrichment/planning/confirmation. Do not derive expected identity from configured discovery tenant.
 
 ## Gotchas
+
+- Cobra-generated `docs/cli/c8volt_*.md` references intentionally end with a blank line; `.gitattributes` exempts only that EOF whitespace convention so new generated references pass staged checks without hand-editing generator output.
 
 - Missing optional tenant evidence is unknown, including an empty observed tenant; compare only nonempty expected and observed values. Missing/blank owner or scope is malformed evidence, never empty success.
 - Test HTTP responses must include request metadata: a bare `http.Response{StatusCode: 200}` fails existing HTTP normalization before decoding. Reuse existing adapter response helpers.
@@ -59,9 +65,12 @@ Started: 2026-10-25T06:34:13Z
 
 - Snapshot `ctx.Err()` once when joining mutation cancellation and deciding whether confirmation may begin; separate reads permit a cancellation race with a nil aggregate error. Pool cancellation can leave zero-value output slots even for queued jobs; attempted markers, not slot indexes, distinguish started work.
 - Existing `NewVariableUpdates` discovers the optional scope writer from the supplied variable reader, preserving its constructor signature and root wiring. Read-only custom compositions still plan but execution returns a precondition error. The root's generated adapters and shared HTTP limiter are reused without new clients.
-- Execution Error/Message strings are machine evidence only. T007 must derive bounded human reasons from known error classes/statuses, never log these fields or the raw joined error. Render accepted keys from MutationAccepted even for failed/not_started confirmation; select failure envelopes from the returned error before considering NoWait.
+- Execution Error/Message strings are machine evidence only. `formatElementVariableFailure` groups allowlisted lifecycle reasons into one configured ERROR; never log raw item fields or joined errors. Executed keys use MutationAccepted even after failed/not_started confirmation. Failure envelopes take precedence over NoWait.
 
 ## Reusable Commands
+
+- `GOFLAGS= go test ./cmd -run '^TestElementScopeVariablesUpdate' -count=1 -timeout=90s` covers all new command input/mode/terminal/logger/adapter cases. `TestElementScopeVariablesGetTerminal` verifies the shared terminal helper's original read behavior.
+- Command discovery has 58 non-root commands after adding update element. Keep `docsgen/main.go` command-tree prose and `TestCLICommandTreeDocumentsGeneratedCommandSurface` aligned; the historical 57-row assessment artifact is unchanged.
 
 - `GOFLAGS= go test ./internal/services/variable/... -list 'Test(ScopeVariable|ProcessInstanceVariable|SearchProcessInstanceVariable|UpdateScopeVariables)'`
 - `GOFLAGS= go test ./internal/services/variable/... -run 'Test(ScopeVariable|ProcessInstanceVariable|SearchProcessInstanceVariable|UpdateScopeVariables)' -count=1`
@@ -88,11 +97,11 @@ Started: 2026-10-25T06:34:13Z
 
 ## Do Not Repeat
 
+- T007 validation passed: the full `GOFLAGS= make test` race suite, focused command/terminal/logger/version checks, docsgen race checks, `make docs-content`, formatting and diff checks. The first full run found only two stale 57-command assertions; update element raises the current inventory to 58, while historical assessment evidence stays at 57. Both corrected assertions and the subsequent full race suite passed. Real-engine timing/authorization remains unverified.
+
 - Do not fork the traversal loop or tighten root compatibility semantics when extending scoped reads.
 - Do not run live Camunda/integration/smoke checks. Isolated tests do not establish real-engine consistency or authorization behavior.
 
 ## Current Handoff
 
-- T006 is complete. Next dependency-ready work is T007 (US4 update CLI, output/diagnostic/terminal acceptance and documentation), with T003/T004/T006 satisfied and no blockers. Recheck selection against tasks.md; only T007 remains unchecked.
-- Use the implemented planning/execution facade APIs and frozen results without introducing command-side loops, polling or replanning. Results use mutation values, preserve per-key identity and strict acceptance, and return partial outcomes alongside the original converted error. T007 must use MutationAccepted for executed keys, Error/Message only for machine evidence, and a bounded configured logger diagnostic for human failures. Interrupted not_started confirmation is failed execution, even though its write was accepted.
-- T006 targeted element service/facade/root tests, PI/UT/completion regressions, formatting/diff review, make docs-content and make test (full race suite) passed. Tests use mocks, in-memory transports with the actual limiter, test-owned servers and existing isolated subprocess/terminal fixtures. No live checks or integration build tags ran; real-engine behavior remains unverified. The update CLI is still unexposed and belongs entirely to T007.
+- Feature complete; no handoff required.

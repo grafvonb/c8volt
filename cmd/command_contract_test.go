@@ -1110,17 +1110,19 @@ func TestCapabilityDocumentForRoot_ConfigDiagnosticsContract(t *testing.T) {
 	}
 }
 
+// TestCapabilityDocumentForRoot_CoversCLIDebtAssessment preserves the historical baseline
+// and accounts explicitly for commands added after that assessment.
 func TestCapabilityDocumentForRoot_CoversCLIDebtAssessment(t *testing.T) {
 	root := Root()
 	resetCommandTreeFlags(root)
 
 	doc := capabilityDocumentForRoot(root)
 	paths := commandCapabilityPaths(doc.Commands)
-	require.Len(t, paths, 57)
+	require.Len(t, paths, 58)
 
 	assessmentPaths := readCLIDebtAssessmentCommandPaths(t)
 	require.Len(t, assessmentPaths, 57)
-	require.ElementsMatch(t, paths, assessmentPaths)
+	require.ElementsMatch(t, paths, append(assessmentPaths, "update element"))
 }
 
 // TestCommandCapabilityForCommand_UserTaskReadContract verifies every alias
@@ -2706,7 +2708,7 @@ func TestGetJobAndUpdateJobHelp_DocumentsDiscoveryAndMutationGuards(t *testing.T
 	}, nil)
 
 	output = assertCommandHelpOutput(t, []string{"update"}, []string{
-		"Update process-instance or user-task variables, complete user tasks, or update job retries, timeouts, and worker outcomes",
+		"Update element-local, process-instance or user-task variables, complete user tasks, or update job retries, timeouts, and worker outcomes",
 		"job retries, timeouts, and worker outcomes",
 		"plan and confirm updates",
 		"./c8volt update job --key <job-key> --retries 3 --dry-run",
@@ -2850,11 +2852,11 @@ func TestIncidentCommandHelpOmitsLegacyElementTerminology(t *testing.T) {
 	}
 }
 
-// TestUpdateProcessInstanceHelp_DocumentsVariableUpdateDiscovery preserves variable
-// workflow guidance when the parent group also advertises task completion.
+// TestUpdateProcessInstanceHelp_DocumentsVariableUpdateDiscovery preserves root-variable
+// guidance when the parent also advertises element-local updates and task completion.
 func TestUpdateProcessInstanceHelp_DocumentsVariableUpdateDiscovery(t *testing.T) {
 	output := assertCommandHelpOutput(t, []string{"update"}, []string{
-		"Update process-instance or user-task variables, complete user tasks, or update job retries, timeouts, and worker outcomes",
+		"Update element-local, process-instance or user-task variables, complete user tasks, or update job retries, timeouts, and worker outcomes",
 		"Camunda 8.8 or newer",
 		"Requires Camunda 8.8 or newer",
 		"./c8volt update process-instance --key <process-instance-key> --vars",

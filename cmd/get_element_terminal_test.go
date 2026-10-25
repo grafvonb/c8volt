@@ -42,7 +42,7 @@ func runElementScopeTerminal(t *testing.T, args []string, destination string, ex
 	return string(stdout), result.Stderr, result.Err
 }
 
-// TestElementScopeVariablesGetTerminalProcess executes only its explicitly selected isolated helper invocation.
+// TestElementScopeVariablesGetTerminalProcess executes the selected element read or update with real terminal stdin and separate configured streams.
 func TestElementScopeVariablesGetTerminalProcess(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" || os.Getenv(testx.CmdSubprocessNameEnv) != t.Name() {
 		return
@@ -60,10 +60,17 @@ func TestElementScopeVariablesGetTerminalProcess(t *testing.T) {
 	root := Root()
 	root.SetOut(stdout)
 	root.SetErr(nil)
-	getElementCmd.SetErr(nil)
+	target := getElementCmd
+	for _, arg := range args {
+		if arg == "update" {
+			target = updateElementCmd
+			break
+		}
+	}
+	target.SetErr(nil)
 	writer := io.MultiWriter(os.Stderr, stderr)
 	if os.Getenv("C8VOLT_ELEMENT_DESTINATION") == "configured" {
-		getElementCmd.SetErr(writer)
+		target.SetErr(writer)
 	} else {
 		root.SetErr(writer)
 	}

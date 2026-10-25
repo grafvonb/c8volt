@@ -97,6 +97,7 @@ nav_exclude: false
 	return prelude + "[CLI Reference]({{ \"/cli/\" | relative_url }})\n"
 }
 
+// syncCLICommandTree writes the command index from the registered public command tree.
 func syncCLICommandTree(root *cobra.Command, dst string) error {
 	body := strings.Builder{}
 	body.WriteString(`---
@@ -110,7 +111,7 @@ has_toc: true
 
 # CLI Command Tree
 
-This generated tree lists the root reference plus the 57 available c8volt commands. Each entry links to the generated reference page for the same command metadata used by the binary.
+This generated tree lists the root reference plus the 58 available c8volt commands. Each entry links to the generated reference page for the same command metadata used by the binary.
 
 `)
 	body.WriteString(commandTreeMarkdown(root, 0))

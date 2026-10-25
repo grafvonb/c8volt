@@ -223,3 +223,45 @@ Started: 2026-10-25 07:34:13
 - Updated README API availability, compatibility, acceptance/confirmation semantics and machine-evidence guidance; make docs-content regenerated only docs/index.md. Command source/output contracts are unchanged. Reviewed every new err.Error use: they populate machine evidence only, with no new service/facade prints or human diagnostics. CLI rendering/logger/exit acceptance remains T007. gofmt and git diff --check passed. No real Camunda behavior was validated.
 - Preserved all prior progress bytes, compacted durable discoveries in ralph-memory.md, and handed off T007 with no blockers. Only T006 was marked complete; this iteration creates one coordinated substantive commit.
 ---
+
+---
+## Iteration 7 - 2026-10-25 09:21
+**Work Unit**: Phase 6 US4 — T007 exact-local update CLI, output, diagnostics, terminal acceptance and documentation (completed)
+**Tasks Completed**:
+- [x] T007: Exposed update element/ei using frozen service planning/execution, with validated payload/key input, preview/no-op/approval handling, truthful partial outcomes, configured diagnostic routing, isolated acceptance tests and generated documentation.
+**Tasks Remaining in Work Unit**: None. All feature tasks are complete.
+**Commit**: This work-unit commit
+**Files Changed**:
+- .gitattributes
+- README.md
+- cmd/cmd_views_element_update.go
+- cmd/command_contract_test.go
+- cmd/get_element_terminal_test.go
+- cmd/update.go
+- cmd/update_element.go
+- cmd/update_element_logging_test.go
+- cmd/update_element_output_test.go
+- cmd/update_element_terminal_test.go
+- cmd/update_element_test.go
+- cmd/update_element_variables.go
+- docs/cli/c8volt_update.md
+- docs/cli/c8volt_update_element.md
+- docs/cli/command-tree.md
+- docs/index.md
+- docsgen/main.go
+- docsgen/main_test.go
+- specs/329-element-scope-variables/progress.md
+- specs/329-element-scope-variables/ralph-memory.md
+- specs/329-element-scope-variables/tasks.md
+**Learnings**:
+- Added command execution tests before implementation; the initial red run rejected the unregistered command flags. Reused the existing variable payload parser, stdin/key validation, explicit admin options, subprocess runner and real-terminal harness. Exact update requests use PUT, with local=true. Command construction/input, batch approval/dispatch and final views live in separate focused files; paging, planning, worker pools and confirmation remain in the existing services.
+- Verified deduplicated flag/comma/stdin selection, input failures before requests, inline/file non-null objects and null properties, cross-tenant exact reads, all-target planning before writes, frozen mutation-only values, all four preview classifications, parent-only additions, truncation evidence, and normal/no-wait execution through v88/v89/v810 fakes. Missing late targets prevent approval and writes; configured 8.7 preserves bootstrap exit 1 with zero requests.
+- Execution-path output matrices cover normal/dry-run, empty objects, all-unchanged and changed locals, human/JSON/keys/quiet, quiet+machine, auto-confirm/automation and no-wait. Preview/no-op envelopes explicitly succeed with mutationSubmitted=false and initialized arrays; no-op keys contain zero bytes. Executed keys use mutation acceptance even after failed or unstarted confirmation. Fail-fast tests preserve accepted, rejected and unscheduled outcomes and original exits. JSON decoding requires exactly one envelope plus EOF.
+- Actual terminal stdin with redirected stdout proves command-configured/inherited stderr routing, exact plain approval text, default-no/decline/EOF, approval after complete planning, auto-confirm/automation, prompt-free dry-run/no-op, and zero writes on abort or planning failure. The existing get-element paging terminal tests also pass after sharing the harness.
+- Traced failures from service-owned joined errors and machine outcome fields through facade conversion, selected-format rendering, configured logger and original classified exit. One bounded grouped ERROR survives quiet; verbose exposes only selected keys and allowlisted lifecycle labels. No new human output formats raw errors. The only new direct writes are selected-format key results; prompts use the shared explicit-writer helper. JSON failure renders once and exits without another error renderer.
+- Repeated multi-resource failures with distinctive method/URL/body/key markers pass plain-time/structured logger tests for severity, single emission, effective configured/inherited destination, quiet retention, safe verbose facts, accepted partial keys and JSON evidence. DEBUG works through flag and configured level independently of verbose; quiet precedence, redaction, stderr-only diagnostics and exact request counts are asserted. Strict record parsing rejects direct-print bypass; exact bounded error/INFO comparisons and both-stream marker checks reject raw aggregate disclosure, duplicate records and quiet error suppression.
+- Listed the focused test groups before treating results as evidence. Passed focused TestElementScopeVariablesUpdate, existing PI/UT/update and shared get-element terminal regressions, docsgen checks (including race), gofmt and git diff --check. The first integrated make test run found two stale command-count assertions; corrected the current inventory to 58 while preserving the historical 57-row assessment. Both corrected tests passed with -race and the subsequent GOFLAGS= make test passed fully (go test ./... -race -count=1). The full gate covers global command registration, shared flag/test interactions and all previously integrated services.
+- Staged whitespace review found Cobra's conventional trailing blank line on the newly added generated reference (existing references have the same ending). Added a scoped .gitattributes whitespace rule for generated c8volt_*.md references, retaining generator output and all other whitespace checks. Ordinary staged git diff --check then passes; no generated page was hand-edited.
+- Updated README, update parent/help/capability metadata and examples; make docs-content regenerated the new command reference, parent reference, command tree and homepage. Reviewed generated content and local links. Inspected Makefile, subprocess/config helpers, build guards and inherited override names; GOFLAGS was cleared and no C8VOLT/helper/make overrides were inherited. Tests used only isolated mocks, transports, HTTP fake servers and subprocess/terminal fixtures. No live Camunda, integration-tag or smoke workflow ran; real-engine consistency and authorization behavior remain unverified.
+- Preserved every historical progress byte, retained durable discoveries in ralph-memory.md and replaced Current Handoff with the exact feature-complete entry. T007 is the only task marked complete in this iteration; all implementation and coordinated records are committed together.
+---

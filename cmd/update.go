@@ -8,12 +8,15 @@ import "github.com/spf13/cobra"
 var updateCmd = &cobra.Command{
 	Use:   "update",
 	Short: "Update existing resources",
-	Long: `Update process-instance or user-task variables, complete user tasks, or update job retries, timeouts, and worker outcomes.
+	Long: `Update element-local, process-instance or user-task variables, complete user tasks, or update job retries, timeouts, and worker outcomes.
+
+Element updates freeze exact local destinations before approval and confirm requested values unless --no-wait is selected. Dry-run and completed no-op plans never submit mutations.
 
 User-task --complete accepts explicit keys and optional variables and previews locally with --dry-run. One lookup per key detects already completed tasks (conflict) and warns about missing assignees before confirmation. The backend's successful response confirms completion; c8volt adds no task-state polling or downstream waiting. For user tasks, --no-wait skips variable-update verification and is incompatible with --complete, which has no additional waiter to skip.
 
 Requires Camunda 8.8 or newer. Use a resource subcommand to plan and confirm updates.`,
-	Example: `  ./c8volt update process-instance --key <process-instance-key> --vars '{"customerTier":"gold"}' --dry-run
+	Example: `  ./c8volt update element --key <element-key> --vars '{"approved":true}' --dry-run
+  ./c8volt update process-instance --key <process-instance-key> --vars '{"customerTier":"gold"}' --dry-run
   ./c8volt update process-instance --key <process-instance-key> --vars-file ./vars.json --dry-run
   ./c8volt update user-task --key <user-task-key> --vars '{"approved":true}' --dry-run
   ./c8volt update user-task --key <user-task-key> --vars-file ./vars.json --auto-confirm
