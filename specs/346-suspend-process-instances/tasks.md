@@ -30,7 +30,7 @@ The repository, Go toolchain, generated client, configuration, logger, and isola
 
 **Goal**: Provide a tested internal primitive that submits an exact key and retains acceptance/rejection/uncertainty without exposing an incomplete public suspension workflow.
 
-- [ ] T001 Add suspension domain evidence models in `internal/domain/processinstance_suspension.go` and the private v810 submission primitive in `internal/services/processinstance/v810/suspension_submission.go`, extending `internal/services/processinstance/v810/contract.go` and its generated-client test double in `internal/services/processinstance/v810/service_test.go`; include protocol/retry/pacing tests in `internal/services/processinstance/v810/suspension_submission_test.go`, required comments, formatting, and targeted validation.
+- [x] T001 Add suspension domain evidence models in `internal/domain/processinstance_suspension.go` and the private v810 submission primitive in `internal/services/processinstance/v810/suspension_submission.go`, extending `internal/services/processinstance/v810/contract.go` and its generated-client test double in `internal/services/processinstance/v810/service_test.go`; include protocol/retry/pacing tests in `internal/services/processinstance/v810/suspension_submission_test.go`, required comments, formatting, and targeted validation.
 
 **T001 implementation and completion criteria**:
 
@@ -145,7 +145,7 @@ T002 cannot expose suspension until its waiter/default behavior is complete. T00
 | US4 (P2) | 0; deliberately co-delivered | T003 | Complete operational guidance and c8volt-based fixture setup with static verification. |
 | Foundation | 1: T001 | All stories | Tested protocol/submission evidence primitive without premature public exposure. |
 
-**Total**: 3 tasks; 0 completed; 0 in progress; no pre-existing task IDs/evidence were replaced.
+**Total**: 3 tasks; 1 completed; 0 in progress; no pre-existing task IDs/evidence were replaced.
 
 ## Parallel Opportunities and Examples by Story
 

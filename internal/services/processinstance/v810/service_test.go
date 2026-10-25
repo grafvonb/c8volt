@@ -29,17 +29,24 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// mockCamundaClient injects version-local generated responses without backend I/O.
 type mockCamundaClient struct {
-	createProcessInstanceWithResponse func(ctx context.Context, body camundav810.CreateProcessInstanceJSONRequestBody, reqEditors ...camundav810.RequestEditorFn) (*camundav810.CreateProcessInstanceResponse, error)
-	searchProcessInstancesWithResp    func(ctx context.Context, contentType string, body io.Reader, reqEditors ...camundav810.RequestEditorFn) (*camundav810.SearchProcessInstancesResponse, error)
-	searchVariablesWithResponse       func(ctx context.Context, params *camundav810.SearchVariablesParams, body camundav810.SearchVariablesJSONRequestBody, reqEditors ...camundav810.RequestEditorFn) (*camundav810.SearchVariablesResponse, error)
-	createElementInstanceVariables    func(ctx context.Context, elementInstanceKey camundav810.ElementInstanceKey, body camundav810.CreateElementInstanceVariablesJSONRequestBody, reqEditors ...camundav810.RequestEditorFn) (*camundav810.CreateElementInstanceVariablesResponse, error)
-	cancelProcessInstanceWithResponse func(ctx context.Context, key string, body camundav810.CancelProcessInstanceJSONRequestBody, reqEditors ...camundav810.RequestEditorFn) (*camundav810.CancelProcessInstanceResponse, error)
-	deleteProcessInstanceWithResponse func(ctx context.Context, key camundav810.ProcessInstanceKey, body camundav810.DeleteProcessInstanceJSONRequestBody, reqEditors ...camundav810.RequestEditorFn) (*camundav810.DeleteProcessInstanceResponse, error)
-	getProcessInstanceWithResponse    func(ctx context.Context, key camundav810.ProcessInstanceKey, reqEditors ...camundav810.RequestEditorFn) (*camundav810.GetProcessInstanceResponse, error)
+	suspendProcessInstanceWithResponse func(ctx context.Context, key camundav810.ProcessInstanceKey, body camundav810.SuspendProcessInstanceJSONRequestBody, reqEditors ...camundav810.RequestEditorFn) (*camundav810.SuspendProcessInstanceResponse, error)
+	createProcessInstanceWithResponse  func(ctx context.Context, body camundav810.CreateProcessInstanceJSONRequestBody, reqEditors ...camundav810.RequestEditorFn) (*camundav810.CreateProcessInstanceResponse, error)
+	searchProcessInstancesWithResp     func(ctx context.Context, contentType string, body io.Reader, reqEditors ...camundav810.RequestEditorFn) (*camundav810.SearchProcessInstancesResponse, error)
+	searchVariablesWithResponse        func(ctx context.Context, params *camundav810.SearchVariablesParams, body camundav810.SearchVariablesJSONRequestBody, reqEditors ...camundav810.RequestEditorFn) (*camundav810.SearchVariablesResponse, error)
+	createElementInstanceVariables     func(ctx context.Context, elementInstanceKey camundav810.ElementInstanceKey, body camundav810.CreateElementInstanceVariablesJSONRequestBody, reqEditors ...camundav810.RequestEditorFn) (*camundav810.CreateElementInstanceVariablesResponse, error)
+	cancelProcessInstanceWithResponse  func(ctx context.Context, key string, body camundav810.CancelProcessInstanceJSONRequestBody, reqEditors ...camundav810.RequestEditorFn) (*camundav810.CancelProcessInstanceResponse, error)
+	deleteProcessInstanceWithResponse  func(ctx context.Context, key camundav810.ProcessInstanceKey, body camundav810.DeleteProcessInstanceJSONRequestBody, reqEditors ...camundav810.RequestEditorFn) (*camundav810.DeleteProcessInstanceResponse, error)
+	getProcessInstanceWithResponse     func(ctx context.Context, key camundav810.ProcessInstanceKey, reqEditors ...camundav810.RequestEditorFn) (*camundav810.GetProcessInstanceResponse, error)
 }
 
 var _ v810.GenProcessInstanceClientCamunda = (*mockCamundaClient)(nil)
+
+// SuspendProcessInstanceWithResponse delegates exact-key suspension to the test callback.
+func (m *mockCamundaClient) SuspendProcessInstanceWithResponse(ctx context.Context, key camundav810.ProcessInstanceKey, body camundav810.SuspendProcessInstanceJSONRequestBody, reqEditors ...camundav810.RequestEditorFn) (*camundav810.SuspendProcessInstanceResponse, error) {
+	return m.suspendProcessInstanceWithResponse(ctx, key, body, reqEditors...)
+}
 
 func (m *mockCamundaClient) CreateProcessInstanceWithResponse(ctx context.Context, body camundav810.CreateProcessInstanceJSONRequestBody, reqEditors ...camundav810.RequestEditorFn) (*camundav810.CreateProcessInstanceResponse, error) {
 	return m.createProcessInstanceWithResponse(ctx, body, reqEditors...)
@@ -1936,6 +1943,10 @@ func TestService_GetProcessInstanceStateByKeyLoggingScope(t *testing.T) {
 func newStrictCamundaClient(t *testing.T) *mockCamundaClient {
 	t.Helper()
 	return &mockCamundaClient{
+		suspendProcessInstanceWithResponse: func(context.Context, camundav810.ProcessInstanceKey, camundav810.SuspendProcessInstanceJSONRequestBody, ...camundav810.RequestEditorFn) (*camundav810.SuspendProcessInstanceResponse, error) {
+			t.Fatal("unexpected suspension call")
+			return nil, nil
+		},
 		createProcessInstanceWithResponse: unexpectedCreateProcessInstance(t),
 		searchProcessInstancesWithResp:    unexpectedSearchProcessInstances(t),
 		searchVariablesWithResponse:       unexpectedSearchVariables(t),

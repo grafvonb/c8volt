@@ -44,6 +44,8 @@ type API interface {
 
 // GenProcessInstanceClientCamunda captures the generated Camunda calls used by the v8.10 process-instance service.
 type GenProcessInstanceClientCamunda interface {
+	// SuspendProcessInstanceWithResponse submits suspension for exactly one supplied key.
+	SuspendProcessInstanceWithResponse(ctx context.Context, processInstanceKey camundav810.ProcessInstanceKey, body camundav810.SuspendProcessInstanceJSONRequestBody, reqEditors ...camundav810.RequestEditorFn) (*camundav810.SuspendProcessInstanceResponse, error)
 	CancelProcessInstanceWithResponse(ctx context.Context, processInstanceKey string, body camundav810.CancelProcessInstanceJSONRequestBody, reqEditors ...camundav810.RequestEditorFn) (*camundav810.CancelProcessInstanceResponse, error)
 	CreateProcessInstanceWithResponse(ctx context.Context, body camundav810.CreateProcessInstanceJSONRequestBody, reqEditors ...camundav810.RequestEditorFn) (*camundav810.CreateProcessInstanceResponse, error)
 	DeleteProcessInstanceWithResponse(ctx context.Context, processInstanceKey camundav810.ProcessInstanceKey, body camundav810.DeleteProcessInstanceJSONRequestBody, reqEditors ...camundav810.RequestEditorFn) (*camundav810.DeleteProcessInstanceResponse, error)
