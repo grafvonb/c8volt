@@ -21,22 +21,17 @@ IT_REPORT="$IT_WORKDIR/report.md"
 IT_PROGRESS="$IT_WORKDIR/progress.tsv"
 IT_RUN_ID="c810-suspended-$(date -u +%Y%m%dT%H%M%SZ)-$$"
 IT_API_URL="${C8VOLT_IT_CAMUNDA_URL:-}"
-IT_CURL_CONFIG="${C8VOLT_IT_CURL_CONFIG:-}"
 
-# Both CLI and fixture HTTP calls must address the same explicitly selected API.
+# Keep all CLI calls on the same explicitly selected API.
 if [[ ! "$IT_API_URL" =~ ^https?://[^/?#@]+(/[^?#]*)?/v2/?$ ]]; then
   printf 'Set C8VOLT_IT_CAMUNDA_URL to the target Camunda REST URL ending in /v2.\n' >&2
   exit 2
 fi
 IT_API_URL="${IT_API_URL%/}"
 export C8VOLT_APIS_CAMUNDA_API_BASE_URL="$IT_API_URL"
-for dependency in curl jq; do
+for dependency in jq; do
   command -v "$dependency" >/dev/null || exit 2
 done
-if [ -n "$IT_CURL_CONFIG" ] && [ ! -r "$IT_CURL_CONFIG" ]; then
-  printf 'C8VOLT_IT_CURL_CONFIG must name a readable curl authentication config.\n' >&2
-  exit 2
-fi
 cd "$ROOT_DIR" || exit 2
 it_init_report
 owned_roots="$IT_WORKDIR/data/owned-roots.keys"
@@ -68,18 +63,17 @@ snapshot() {
   fi
 }
 
-# Only suspension setup needs direct HTTP. Authentication stays in a private
-# curl config, outside command arguments/evidence; cancellation/deletion use c8volt.
+# Suspension setup uses the public command and requires observed confirmation.
 suspend_fixture() {
-  local key="$1" status
-  local options=(--disable)
-  if [ -n "$IT_CURL_CONFIG" ]; then options+=(--config "$IT_CURL_CONFIG"); fi
-  status="$(curl "${options[@]}" --silent --show-error --connect-timeout 10 --max-time 30 \
-    --request POST --header 'Content-Type: application/json' --data '{}' \
-    --output "$IT_WORKDIR/data/suspend-${key}.json" --write-out '%{http_code}' \
-    --url "$IT_API_URL/process-instances/$key/suspension")" || return 1
-  printf 'suspend %s: HTTP %s\n' "$key" "$status"
-  [ "$status" = 204 ]
+  local key="$1"
+  local file="$IT_WORKDIR/data/suspend-${key}.json"
+  c8 suspend pi --key "$key" --auto-confirm --backoff-timeout 60s --json \
+    > "$file" 2> "$file.stderr" || return 1
+  jq -e -s --arg key "$key" 'length == 1 and (.[0] |
+    .outcome == "succeeded" and (.payload.items | length) == 1 and
+    (.payload.items[0] | .key == $key and .status == "confirmed" and
+      .submission == "accepted" and .confirmation == "confirmed" and
+      .hasObservation == true and .lastObservedState == "SUSPENDED"))' "$file"
 }
 
 # Cleanup is scoped to created roots, independent of scenario acceptance. Shared
@@ -203,7 +197,7 @@ it_run_capture Preflight cluster-version read-only pass "$IT_WORKDIR/data/versio
 it_require_exact_minor Preflight cluster-version "$IT_TARGET_VERSION" || exit 2
 it_run_case Preflight suspension-patch read-only pass \
   test "$(tr -d '\r\n' < "$IT_WORKDIR/data/version.txt")" = 8.10.4 || exit 2
-printf '\nSuspendProcessInstance via curl is fixture setup only; all tested mutations use c8volt.\n' >> "$IT_REPORT"
+printf '\nSuspension setup and tested mutations use c8volt; suspension requires observed confirmation.\n' >> "$IT_REPORT"
 for fixture in C810_SimpleUserTask C810_SimpleParent C810_MultipleSubProcessesParent; do
   it_run_case Setup "deploy-$fixture" mutation pass c8 embed deploy --file "processdefinitions/$fixture.bpmn" || exit 2
 done

@@ -9,7 +9,7 @@ has_toc: true
 
 # CLI Command Tree
 
-This generated tree lists the root reference plus the 58 available c8volt commands. Each entry links to the generated reference page for the same command metadata used by the binary.
+This generated tree lists the root reference plus the 60 available c8volt commands. Each entry links to the generated reference page for the same command metadata used by the binary.
 
 - [`c8volt`]({{ "/cli/c8volt/" | relative_url }}) - Operate Camunda 8 workflows from the command line
   - [`c8volt cancel`]({{ "/cli/c8volt_cancel" | relative_url }}) - Cancel running process instances
@@ -62,6 +62,8 @@ This generated tree lists the root reference plus the 58 available c8volt comman
     - [`c8volt resolve process-instance`]({{ "/cli/c8volt_resolve_process-instance" | relative_url }}) - Resolve process-instance incidents by key
   - [`c8volt run`]({{ "/cli/c8volt_run" | relative_url }}) - Start process instances
     - [`c8volt run process-instance`]({{ "/cli/c8volt_run_process-instance" | relative_url }}) - Start process instances and confirm creation
+  - [`c8volt suspend`]({{ "/cli/c8volt_suspend" | relative_url }}) - Suspend active process instances
+    - [`c8volt suspend process-instance`]({{ "/cli/c8volt_suspend_process-instance" | relative_url }}) - Suspend explicitly selected active process instances
   - [`c8volt update`]({{ "/cli/c8volt_update" | relative_url }}) - Update existing resources
     - [`c8volt update element`]({{ "/cli/c8volt_update_element" | relative_url }}) - Update variables at explicit element scopes
     - [`c8volt update job`]({{ "/cli/c8volt_update_job" | relative_url }}) - Update a job or complete selected jobs

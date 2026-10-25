@@ -11,9 +11,13 @@ Started: 2026-10-25T13:42:48Z
 - `waiter.WaitForProcessInstanceSuspension` takes only a keyed reader. It validates BackoffConfig, uses NextDelay and a timeout context bounded by the caller, and retains the last matching observation. Only SUSPENDED confirms; COMPLETED/CANCELED/TERMINATED stop with conflict. Typed not-found becomes ABSENT and clears the date; authorization wins over joined absence. Unknown states normalize to UNKNOWN. Failed/mismatched reads preserve prior evidence.
 - `httpc.WithoutReadRetryLogs` suppresses functional retry INFO only for the derived context. Suspension confirmation uses it to leave aggregate diagnostics to the caller, while read retry policy and configured redacted HTTP DEBUG exchanges remain intact. No service/facade human diagnostics are emitted by suspension.
 
+- CLI construction/input validation lives in `suspend_processinstance.go`, frozen preview/approval/execution in `suspend_processinstance_batch.go`, and selected-format views/grouped diagnostics in `cmd_views_processinstance_suspend.go`. Use `collectExplicitPIAdminInputOptions`; local preview performs no reads and never supplies tenant evidence. One collection path handles all sizes.
+- Suspension human results deliberately use configured stdout; plain prompts use configured stderr, and errors use the command-context logger. JSON errors attach complete results to one shared envelope before exiting. Keys-only execution means submission accepted, including unconfirmed failures; preview keys mean selection only. Quiet is orthogonal to machine results. The view explicitly succeeds for preview/empty payloads even with no-wait.
+- Safe human failure labels come only from typed status/submission/observation facts and group repeated causes in one bounded ERROR. Verbose allowlists submission/confirmation/state, omitting raw machine errors and dates. Writer failure emits one bounded diagnostic, never retries rendering, and preserves an existing operation error's exit.
+
 ## Decisions
 
-- T001 and T002 are complete. T003 remains the sole open task, with all CLI/output/terminal/docs/fixture requirements intact. No CLI command has been introduced yet, so README/generated CLI docs remain T003 work.
+- T001–T003 are complete. The CLI, public workflow, operational guidance, generated docs, and static suspension fixture adoption are delivered. No live validation was performed; real-engine behavior remains unverified.
 - Only complete HTTP metadata, valid status, empty 204 body, and no call error establish submission acceptance. Unexpected success, malformed metadata and partial responses with errors remain unknown. Preserve the last usable submission status; confirmation never overwrites it.
 - Relevant explicit 4xx and structured 503 RESOURCE_EXHAUSTED establish rejection only without earlier uncertainty. Later rejection/unsent attempts cannot erase uncertainty; a subsequent valid acceptance can. Rejected/uncertain submissions never enter observation.
 - Confirmation timing is validated before mutation, including default-mode preview. NoWait does not need confirmation timing or read permission. Supported empty collection calls remain no-I/O no-ops after capability/context checks.
@@ -28,13 +32,17 @@ Started: 2026-10-25T13:42:48Z
 - Existing read transport retries emit INFO independently of service call-option suppression. Use context-scoped `WithoutReadRetryLogs`; do not disable retries or DEBUG diagnostics to solve this. The added shared transport test proves unrelated requests retain normal logging.
 - Generated `suspendedDate` parses RFC3339 timestamps. Wire fixtures must use valid timestamps; arbitrary strings are suitable only for direct domain-reader fixtures. Synctest makes deadline/backoff/worker tests deterministic; wait on ctx.Done() to avoid deadline callback races.
 
+- `--no-err-codes` resolves failures to exit 0 (not generic exit 1); always preserve `ferrors.ResolveExitCode` rather than inventing a suspension exception.
+- The command count is pinned in `cmd/command_contract_test.go`, `docsgen/main.go`, and `docsgen/main_test.go`: suspend adds a verb and child, taking the current count from 58 to 60 while preserving the historical assessment at 57.
+- `addBackoffFlagsAndBindings` exposes hidden timeout/max-retries controls only; initial delay is configuration, not a CLI flag. Use test-owned YAML for short configured timing and test the flag override separately.
+
 ## Reusable Commands
 
-- Targeted: `env GOENV=off GOFLAGS= go test ./internal/services/processinstance/... -run ProcessInstanceSuspension -count=1` and the corresponding `./c8volt/process` command. Iteration 2 also ran both with `./internal/services/httpc` and pattern `ProcessInstanceSuspension|ReadRetryTransport`; passed.
-- Affected regressions/races: `env GOENV=off GOFLAGS= go test ./internal/services/processinstance/... ./internal/services/common ./internal/services/httpc ./c8volt/process ./c8volt/resource ./internal/services/processdefinition/... ./internal/services/ops -race -count=1`. All packages except the initially missing resource public-interface methods passed; after fixing those methods, resource tests passed with race enabled.
-- All repository test packages were compiled with `go test ./... -run '^$' -count=1`; two missing public-interface stubs were found in cmd/resource. After repair, both packages passed the same compile-only check; all other packages had passed. This was compilation, not a full suite pass.
-- Final scrubbed-environment race regression: `go test ./cmd ./c8volt/resource ./internal/services/processinstance -run 'Suspended|ProcessInstanceSuspension|Resource|Client' -race -count=1` passed with GOENV=off, empty GOFLAGS, C8VOLT_* and helper selectors removed, and GORACE=atexit_sleep_ms=0. Includes existing get/expect/suspended cancellation/deletion coverage and cancellation after preview before scheduling.
-- Gofmt and `git diff --check` passed. Test entry points use mocks, in-memory transports, test-owned HTTP servers and isolated command fixtures; no live validation occurred. Full `make test` remains the integrated T003 check, not claimed as performed here.
+- Targeted services/facades: `env GOENV=off GOFLAGS= go test ./internal/services/processinstance/... ./c8volt/process ./internal/services/httpc -run 'ProcessInstanceSuspension|ReadRetryTransport' -count=1` (iteration 2 passed). The waiter uses deterministic virtual-time tests.
+- CLI: `env GOENV=off GOFLAGS= go test ./cmd -run 'SuspendProcessInstance' -count=1` passed in iteration 3. Tests exercise fake-server execution, both logger formats/destinations, DEBUG/verbose/quiet modes, JSON EOF/partial payloads, worker barriers, cancellation, writer failure, timeout configuration, and real macOS terminal stdin with redirected stdout. No terminal-platform skip was needed on this host.
+- Affected regressions: `go test ./cmd ./docsgen -run 'SuspendProcessInstance|Cancel|DeleteProcessInstance|GetProcessInstance|ExpectProcessInstance|CommandContract|CommandCapability|CapabilityDocument|CLICommandTree|RootHelp' -count=1` found only the old capability count assertion; after updating it, its targeted check passed. All affected regressions subsequently passed in the full race run.
+- Final integrated `env GOENV=off GOFLAGS= make test` passed once in iteration 3 (`go test ./... -race -count=1`; cmd took 314.165s). Before running, inspect Make's ordinary target, remove inherited C8VOLT_* and helper selectors, Make/Go overrides, and isolate config directories. No integration build tags or live helpers were enabled; untagged integration-package checks are isolated/static tests.
+- `env GOENV=off GOFLAGS= make docs-content`, `bash -n integration/scripts/run-c810-suspended.sh`, touched-file gofmt, and `git diff --check` passed. Generated docs include both suspension commands and the updated command tree. Never source or execute the fixture during implementation.
 
 ## Do Not Repeat
 
@@ -45,4 +53,4 @@ Started: 2026-10-25T13:42:48Z
 
 ## Current Handoff
 
-- Next dependency-ready work is T003 (Phase 5 / US3): CLI collection lifecycle, safe mode-aware output and failure diagnostics, real-terminal tests, source help/metadata, README/generated docs, and static Bash suspension-fixture adoption. Recheck tasks.md before selection. T001/T002 are complete; there are no blocking dependencies. Reuse the completed facade collection API and keep all backend mechanics in services; all CLI diagnostic/exit/envelope/PTY requirements still apply.
+- Feature complete; no handoff required.

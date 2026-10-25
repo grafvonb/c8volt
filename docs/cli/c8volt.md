@@ -15,7 +15,7 @@ Operate Camunda 8 workflows from the command line
 c8volt: Camunda 8 Operations CLI.
 
 Deploy BPMN models, start process instances, inspect workflow state, wait for
-state changes, walk process trees, cancel, and delete.
+state changes, walk process trees, suspend, cancel, and delete.
 
 Supports Camunda 8.8, 8.9, and 8.10.
 Camunda 8.10 baseline: 8.10.3 (final).
@@ -90,6 +90,7 @@ c8volt [flags]
 * [c8volt ops]({{ "/cli/c8volt_ops" | relative_url }})	 - Run operational playbooks
 * [c8volt resolve]({{ "/cli/c8volt_resolve" | relative_url }})	 - Resolve operational incidents
 * [c8volt run]({{ "/cli/c8volt_run" | relative_url }})	 - Start process instances
+* [c8volt suspend]({{ "/cli/c8volt_suspend" | relative_url }})	 - Suspend active process instances
 * [c8volt update]({{ "/cli/c8volt_update" | relative_url }})	 - Update existing resources
 * [c8volt version]({{ "/cli/c8volt_version" | relative_url }})	 - Print version information
 * [c8volt walk]({{ "/cli/c8volt_walk" | relative_url }})	 - Inspect process-instance relationships

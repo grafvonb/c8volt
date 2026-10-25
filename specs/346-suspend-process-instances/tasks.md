@@ -96,7 +96,7 @@ The repository, Go toolchain, generated client, configuration, logger, and isola
 
 **Independent test**: Execute canonical/alias commands against isolated fakes with explicit/duplicate/stdin keys, preview, mixed outcomes, worker controls, and real terminal input. Assert exact outputs, one JSON envelope with EOF, accepted keys-only semantics, configured logger records and real failure exits, unchanged relative targets, and zero mutations/prompts for invalid or preview paths.
 
-- [ ] T003 [US3] Deliver the complete command and operator contract in new `cmd/suspend.go`, `cmd/suspend_processinstance.go`, `cmd/suspend_processinstance_batch.go`, and `cmd/cmd_views_processinstance_suspend.go`, with execution/output/logger/terminal tests in `cmd/suspend_processinstance_test.go`, `cmd/suspend_processinstance_output_test.go`, `cmd/suspend_processinstance_logging_test.go`, and `cmd/suspend_processinstance_terminal_test.go`; update metadata tests in `cmd/command_contract_test.go`, source help, `README.md`, generated `docs/cli/` and `docs/index.md`, and suspension setup in `integration/scripts/run-c810-suspended.sh`, including formatting, isolated targeted/regression/race checks, docs generation, and static Bash syntax validation.
+- [x] T003 [US3] Deliver the complete command and operator contract in new `cmd/suspend.go`, `cmd/suspend_processinstance.go`, `cmd/suspend_processinstance_batch.go`, and `cmd/cmd_views_processinstance_suspend.go`, with execution/output/logger/terminal tests in `cmd/suspend_processinstance_test.go`, `cmd/suspend_processinstance_output_test.go`, `cmd/suspend_processinstance_logging_test.go`, and `cmd/suspend_processinstance_terminal_test.go`; update metadata tests in `cmd/command_contract_test.go`, source help, `README.md`, generated `docs/cli/` and `docs/index.md`, and suspension setup in `integration/scripts/run-c810-suspended.sh`, including formatting, isolated targeted/regression/race checks, docs generation, and static Bash syntax validation.
 
 **T003 implementation and completion criteria**:
 
@@ -145,7 +145,7 @@ T002 cannot expose suspension until its waiter/default behavior is complete. T00
 | US4 (P2) | 0; deliberately co-delivered | T003 | Complete operational guidance and c8volt-based fixture setup with static verification. |
 | Foundation | 1: T001 | All stories | Tested protocol/submission evidence primitive without premature public exposure. |
 
-**Total**: 3 tasks; 2 completed; 0 in progress; no pre-existing task IDs/evidence were replaced.
+**Total**: 3 tasks; 3 completed; 0 in progress; no pre-existing task IDs/evidence were replaced.
 
 ## Parallel Opportunities and Examples by Story
 
