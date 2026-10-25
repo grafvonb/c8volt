@@ -6,7 +6,7 @@ nav_exclude: true
 has_toc: true
 ---
 
-> Generated from build `c8volt v4.4.0-196-g0a25888e-dirty`, commit `0a25888e`, built `2026-10-25T06:52:05Z` | Supported Camunda 8 versions: 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.3 (final)
+> Generated from build `c8volt v4.4.0-197-gdd8c3b06-dirty`, commit `dd8c3b06`, built `2026-10-25T07:09:05Z` | Supported Camunda 8 versions: 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.3 (final)
 
 <img src="./logo/c8volt_logo_transparent_w_shadow_400x244.png" alt="c8volt logo" />
 
@@ -405,6 +405,16 @@ The same timestamp grammar applies to listener rows from `get element`, `get pro
 ./c8volt get process-instance --key <process-instance-key> --with-elements --with-listeners
 ./c8volt get element --pi-key <process-instance-key> --element-id <element-id> --state active
 ```
+
+Use `get element/ei --with-vars` to inspect complete variables owned directly by an element, including an embedded subprocess or task. Parent, sibling, descendant and called-process scopes are excluded. Combine `--with-vars --with-listeners` to inspect both on the same selection. Human child rows compact JSON objects/arrays and mark backend-incomplete values as `[api-truncated]`; JSON retains received value strings and `apiTruncated`. An empty local scope keeps the element visible and has `variables: []`; without enrichment the field is omitted.
+
+```sh
+./c8volt get ei --key <element-instance-key> --with-vars
+./c8volt get element --pi-key <process-instance-key> --with-vars --limit 10
+./c8volt --json get element --key <element-instance-key> --with-vars --with-listeners
+```
+
+Element limits bound selection, while each selected element's local variables are read completely. Searches continue through empty intermediate pages when backend metadata reports more results. Variable-only searches preserve page continuation prompts on stderr, including when stdout is redirected; searches with listeners retain their collected-selection behavior. Use `--auto-confirm` or `--automation` for unattended paging. Effective keys-only and total output skip variable requests, and existing listener/output conflicts still apply. Empty searches print `found: 0`, or zero bytes in keys-only mode. Quiet suppresses human rows and summaries while retaining explicitly requested JSON, keys and totals. Failed or incomplete reads remain failures; human diagnostics use the configured logger without exposing raw HTTP details.
 
 Element searches and totals now apply the configured tenant on the server. This corrects previously unfiltered discovery and can narrow returned elements and counts. `IgnoreTenant` bypasses that discovery filter; native exact-key lookup continues to use backend authorization across tenants.
 

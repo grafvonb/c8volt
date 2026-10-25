@@ -264,9 +264,13 @@ func trimElementSearchPageResults(items []camundav89.ElementInstanceResult, page
 }
 
 // pickElementSearchOverflowState normalizes Camunda total metadata into the
-// version-neutral continuation state used by higher layers.
+// version-neutral continuation state used by higher layers. Empty pages are
+// complete only when their metadata no longer advertises remaining results.
 func pickElementSearchOverflowState(page camundav89.SearchQueryPageResponse, from int32, itemCount int, pageSize int32) d.ProcessInstanceOverflowState {
 	if itemCount == 0 {
+		if page.TotalItems > int64(from) || page.HasMoreTotalItems {
+			return d.ProcessInstanceOverflowStateHasMore
+		}
 		return d.ProcessInstanceOverflowStateNoMore
 	}
 	nextFrom := int64(from) + int64(itemCount)

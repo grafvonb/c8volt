@@ -6,6 +6,7 @@ package v89
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
@@ -333,7 +334,7 @@ func TestElementSearchTenant(t *testing.T) {
 					if page.From < len(selected) {
 						items = append(items, selected[page.From])
 					}
-					return &camundav89.SearchElementInstancesResponse{HTTPResponse: okHTTPResponse(), JSON200: &camundav89.ElementInstanceSearchQueryResult{Items: items, Page: camundav89.SearchQueryPageResponse{TotalItems: int64(len(selected)), HasMoreTotalItems: mode == "fallback total"}}}, nil
+					return &camundav89.SearchElementInstancesResponse{HTTPResponse: okHTTPResponse(), JSON200: &camundav89.ElementInstanceSearchQueryResult{Items: items, Page: camundav89.SearchQueryPageResponse{TotalItems: int64(len(selected)), HasMoreTotalItems: mode == "fallback total" && len(items) > 0}}}, nil
 				}})
 				svc.cfg.App.Tenant = tc.tenant
 				opts := []services.CallOption{}
@@ -409,4 +410,73 @@ func TestElementSearchTenantExplicitGet(t *testing.T) {
 		require.Equal(t, "other", got.TenantId)
 	}
 	require.Equal(t, 2, calls)
+}
+
+// TestElementScopeVariablesSparseSelection continues through empty pages with evidence of more data and preserves bounds and visitor stops.
+func TestElementScopeVariablesSparseSelection(t *testing.T) {
+	for _, mode := range []string{"pages", "collected", "total", "stop", "limit"} {
+		for _, lowerBound := range []bool{false, true} {
+			t.Run(fmt.Sprintf("%s/lower=%t", mode, lowerBound), func(t *testing.T) {
+				calls := 0
+				svc := newElementServiceTest(t, &mockElementClient{searchElementInstancesWithResponse: func(_ context.Context, body camundav89.SearchElementInstancesJSONRequestBody, _ ...camundav89.RequestEditorFn) (*camundav89.SearchElementInstancesResponse, error) {
+					calls++
+					require.LessOrEqual(t, calls, 4)
+					requireElementSearchPageJSON(t, body, int32(calls-1), 1)
+					var items []camundav89.ElementInstanceResult
+					if calls == 2 || calls == 4 {
+						items = []camundav89.ElementInstanceResult{{ElementInstanceKey: camundav89.ElementInstanceKey(fmt.Sprintf("%d", calls)), ProcessInstanceKey: "100"}}
+					}
+					total := int64(4)
+					more := lowerBound && calls < 4
+					if lowerBound {
+						total = 0
+						if calls == 4 {
+							total = 2
+						}
+					}
+					return &camundav89.SearchElementInstancesResponse{HTTPResponse: okHTTPResponse(), JSON200: &camundav89.ElementInstanceSearchQueryResult{Items: items, Page: camundav89.SearchQueryPageResponse{TotalItems: total, HasMoreTotalItems: more}}}, nil
+				}})
+				query := d.ElementSearchQuery{BatchSize: 1}
+				if mode == "limit" {
+					query.Limit = 1
+				}
+				switch mode {
+				case "total":
+					total, err := svc.SearchElementsTotal(context.Background(), query)
+					require.NoError(t, err)
+					if lowerBound {
+						require.Equal(t, int64(2), total)
+						require.Equal(t, 4, calls)
+					} else {
+						require.Equal(t, int64(4), total)
+						require.Equal(t, 1, calls)
+					}
+				case "collected":
+					result, err := svc.SearchElements(context.Background(), query)
+					require.NoError(t, err)
+					require.Len(t, result.Items, 2)
+					require.Equal(t, 4, calls)
+				default:
+					var steps []d.ElementSearchPageStep
+					result, err := svc.SearchElementsPages(context.Background(), query, func(step d.ElementSearchPageStep) (d.ElementSearchPageAction, error) {
+						steps = append(steps, step)
+						if mode == "stop" && len(step.Page.Items) > 0 {
+							return d.ElementSearchPageActionStop, nil
+						}
+						return d.ElementSearchPageActionContinue, nil
+					})
+					require.NoError(t, err)
+					require.Empty(t, steps[0].Page.Items)
+					require.Equal(t, d.ProcessInstanceOverflowStateHasMore, steps[0].Page.OverflowState)
+					if mode == "pages" {
+						require.Len(t, result.Items, 2)
+						require.Equal(t, 4, calls)
+					} else {
+						require.Len(t, result.Items, 1)
+						require.Equal(t, 2, calls)
+					}
+				}
+			})
+		}
+	}
 }

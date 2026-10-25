@@ -1659,6 +1659,8 @@ func TestCommandCapabilityForCommand_GetElementContract(t *testing.T) {
 	require.Contains(t, capability.OutputModes, OutputModeContract{Name: "json", Supported: true, MachinePreferred: true})
 	require.Contains(t, capability.OutputModes, OutputModeContract{Name: "keys-only", Supported: true})
 	require.Equal(t, []string{"ei"}, capability.Aliases)
+	require.Contains(t, capability.Flags, FlagContract{Name: "with-vars", Type: "bool", Description: "include complete element-local variables; skipped for keys-only and total output"})
+	require.Contains(t, getCmd.Example, "get ei --key <element-instance-key> --with-vars")
 	require.Contains(t, getElementCmd.Long, "Use --key for a known element instance")
 	require.Contains(t, getElementCmd.Long, "--with-listeners to include runtime listener jobs")
 	require.Contains(t, getElementCmd.Long, "job creation time as s: (not worker execution start)")
@@ -2755,6 +2757,9 @@ func TestGetElementHelp_DocumentsSearchAndOutputModes(t *testing.T) {
 		"--limit caps returned elements across all pages",
 		"--total to count matching elements",
 		"--with-listeners to include runtime listener jobs",
+		"--with-vars includes complete variables owned directly by each selected element",
+		"Keys-only and total output skip variable reads",
+		"./c8volt get ei --key <element-instance-key> --with-vars",
 		"job creation time as s: (not worker execution start)",
 		"job end time as e:",
 		"d: only for an ACTIVATED job with a deadline",

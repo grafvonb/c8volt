@@ -16,6 +16,8 @@ Use --key for a known element instance. Otherwise search by process instance, BP
 
 Searches and totals apply the configured tenant. Exact-key lookup uses backend authorization across tenants.
 
+--with-vars includes complete variables owned directly by each selected element, excluding parent, sibling, descendant and called-process scopes. Combine it with --with-listeners for both enrichments. Keys-only and total output skip variable reads. JSON preserves received values and backend truncation markers; an empty local scope has variables: [].
+
 --batch-size controls each discovery request; --limit caps returned elements across all pages. Use --total to count matching elements, or --with-listeners to include runtime listener jobs.
 
 Listener rows label job creation time as s: (not worker execution start) and job end time as e:. They show d: only for an ACTIVATED job with a deadline, and omit unavailable timestamps. Listener dur: measures time from job creation to its recorded end, or elapsed time for a pending job; it includes worker waiting time and is omitted when timestamps are unavailable or invalid. A completed listener can appear as:
@@ -32,12 +34,14 @@ c8volt get element [flags]
 
 ```
   ./c8volt get element --key <element-instance-key>
+  ./c8volt get ei --key <element-instance-key> --with-vars
   ./c8volt get element --key <element-instance-key> --with-listeners
   ./c8volt get element --pi-key <process-instance-key> --limit 10
+  ./c8volt get element --pi-key <process-instance-key> --with-vars --limit 10
   ./c8volt get element --pi-key <process-instance-key> --with-listeners
   ./c8volt get element --pi-key <process-instance-key> --total
   ./c8volt --json get element --pi-key <process-instance-key> --limit 5
-  ./c8volt --json get element --key <element-instance-key> --with-listeners
+  ./c8volt --json get element --key <element-instance-key> --with-listeners --with-vars
 ```
 
 ### Options
@@ -55,6 +59,7 @@ c8volt get element [flags]
       --total                    return only the numeric total of matching elements
       --type string              runtime element type to filter in search mode; case-insensitive
       --with-listeners           include runtime listener jobs
+      --with-vars                include complete element-local variables; skipped for keys-only and total output
 ```
 
 ### Options inherited from parent commands

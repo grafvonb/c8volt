@@ -81,3 +81,44 @@ Started: 2026-10-25 07:34:13
 - Updated README with the public-interface implementer impact and intentional tenant correction. Updated only tenant help in the command source and regenerated `docs/cli/c8volt_get_element.md` and `docs/index.md` with `make docs-content`; generated build metadata is expected. No new command mode declarations, flags, result renderers or diagnostic boundaries; new service/facade failures return through existing error conversion without emitting output.
 - `gofmt` verification and `git diff --check` passed. The original progress bytes are preserved before this appended record. Durable discoveries and the next T003 handoff are in ralph-memory.md; no later-story implementation occurred.
 ---
+
+---
+## Iteration 3 - 2026-10-25 08:15
+**Work Unit**: Phase 3 US1 — T003 element-local variable inspection CLI and output acceptance (completed; US1 complete)
+**Tasks Completed**:
+- [x] T003: Exposed `get element/ei --with-vars`, composed existing enrichment APIs, delivered mode-aware rows/envelopes/empty results, preserved interactive paging, bounded failed-read diagnostics, and updated help/README/generated docs.
+**Tasks Remaining in Work Unit**: None in US1; T004–T007 remain overall. No later story was started.
+**Commit**: This work-unit commit
+**Files Changed**:
+- README.md
+- cmd/cmd_views_element.go
+- cmd/command_contract_test.go
+- cmd/get.go
+- cmd/get_element.go
+- cmd/get_element_search.go
+- cmd/get_element_terminal_test.go
+- cmd/get_element_test.go
+- cmd/get_element_variables_logging_test.go
+- cmd/get_element_variables_test.go
+- docs/cli/c8volt_get.md
+- docs/cli/c8volt_get_element.md
+- docs/index.md
+- docsgen/main_test.go
+- internal/services/element/v810/service.go
+- internal/services/element/v810/service_test.go
+- internal/services/element/v88/service.go
+- internal/services/element/v88/service_test.go
+- internal/services/element/v89/service.go
+- internal/services/element/v89/service_test.go
+- specs/329-element-scope-variables/progress.md
+- specs/329-element-scope-variables/ralph-memory.md
+- specs/329-element-scope-variables/tasks.md
+**Learnings**:
+- The first exact-read behavior test failed on the missing flag before implementation. Command tests now exercise all three fake adapter versions, exact cross-tenant reads, sparse/empty variable pages with cursors, local-only filtering, raw/truncated values, empty scopes, variable omission, listener composition, selection limits/order, empty selections, quiet/machine precedence and zero enrichment requests for keys/total.
+- Execution-path sparse-selection tests exposed an existing adapter defect: an empty element page unconditionally ended traversal even when metadata advertised more results. Corrected overflow normalization in v88/v89/v810 as necessary to satisfy T003, leaving offset arithmetic, tenant selection, nonempty paging, limits and exact-total handling in the services. Adjacent page/collected/total/visitor-stop/limit tests pass; old terminal fake responses now provide authoritative completion metadata instead of contradictory perpetual continuation.
+- Actual-terminal stdin with redirected stdout verified configured and inherited stderr, continue/decline/default/EOF, exact prompt wording, keys-only paging, quiet keys, auto-confirm, automation, JSON and prompt-free empty scopes. The initial test fixture incorrectly appended an extra question; corrected the expected fixture without changing established prompt behavior.
+- Traced failed reads through scoped service errors, facade conversion, command error handling, configured logging and exit. Plain-time/structured logger tests verify destination and severity, exactly one bounded human ERROR, normal/verbose/quiet privacy, prior complete streamed rows, and one JSON failure envelope+EOF retaining the original class/detail. Reads stop on the first failure; repeated raw HTTP detail in a multi-element selection is never dumped. DEBUG via flag and config independently preserves redacted exchange visibility on stderr with no extra requests. Assertions reject direct-print bypass and raw normal-level error exposure. Configured 8.7 still exits 1 before any request.
+- Verified actual test names. Passed focused command pattern `Test(ElementScopeVariablesGet|GetElement|SearchElements|ElementFlat|ElementListener|RuntimeElement|CommandCapabilityForCommand_GetElement)`, adapter pattern `Test(ElementScopeVariablesSparseSelection|ElementSearchTenant|Service_SearchElements)`, and `TestGeneratedGetElementDocsDocumentLookupSearchAndOutput` with count=1. `make test` passed (`go test ./... -race -count=1`); full validation was warranted by the shared adapter continuation correction. Test targets/helpers/build guards were inspected and inherited GOFLAGS/C8VOLT/helper/make overrides cleared. No live environment or integration-tag validation ran; real-engine behavior remains unverified.
+- Updated get parent/element metadata, examples and README; regenerated CLI references/homepage via `make docs-content`. `gofmt` verification and `git diff --check` passed. File ownership review keeps selection/prompt lifecycle in get_element_search.go, final page/summary formatting in cmd_views_element.go and backend continuation in adapters. The base command adds only the flag and effective-enrichment predicate plus thin dispatch; no new standalone lifecycle requires a mode file.
+- Preserved every prior progress byte and updated durable memory with the next T004 handoff. Only T003 was marked complete.
+---
