@@ -17,9 +17,10 @@ import (
 
 // client delegates public element operations to the internal service boundary.
 type client struct {
-	api    esvc.API
-	jobAPI jsvc.API
-	log    *slog.Logger
+	api           esvc.API
+	enrichmentAPI esvc.EnrichmentAPI
+	jobAPI        jsvc.API
+	log           *slog.Logger
 }
 
 // New creates a public element facade over the internal element service.
@@ -29,7 +30,7 @@ func New(api esvc.API, log *slog.Logger) API {
 
 // NewWithListeners creates a public element facade with listener-job lookup support.
 func NewWithListeners(api esvc.API, jobAPI jsvc.API, log *slog.Logger) API {
-	return &client{api: api, jobAPI: jobAPI, log: log}
+	return NewWithEnrichment(api, jobAPI, esvc.NewEnrichment(api, jobAPI, nil), log)
 }
 
 // GetElement fetches one runtime element instance by element instance key.

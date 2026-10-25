@@ -41,6 +41,7 @@ type Element struct {
 	TenantId               string                `json:"tenantId,omitempty"`
 	HasIncident            bool                  `json:"hasIncident"`
 	IncidentKey            string                `json:"incidentKey,omitempty"`
+	Variables              *[]Variable           `json:"variables,omitempty"`
 	Listeners              *[]RuntimeListenerJob `json:"listeners,omitempty"`
 }
 
@@ -151,4 +152,21 @@ type SearchPagesResult struct {
 	Items []Element `json:"items"`
 	Total int32     `json:"total"`
 	Pages int32     `json:"pages"`
+}
+
+// Enrichment selects independent local-variable and listener inspection.
+type Enrichment struct {
+	Variables bool
+	Listeners bool
+}
+
+// Variable preserves the serialized local value and backend completeness evidence.
+type Variable struct {
+	Name               string `json:"name"`
+	Value              string `json:"value"`
+	VariableKey        string `json:"variableKey,omitempty"`
+	ProcessInstanceKey string `json:"processInstanceKey"`
+	ScopeKey           string `json:"scopeKey"`
+	TenantId           string `json:"tenantId,omitempty"`
+	APITruncated       bool   `json:"apiTruncated"`
 }

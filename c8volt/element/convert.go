@@ -26,6 +26,7 @@ func fromDomainElement(result d.Element) Element {
 		HasIncident:            result.HasIncident,
 		IncidentKey:            result.IncidentKey,
 		Listeners:              fromDomainRuntimeListenerJobsPtr(result.Listeners),
+		Variables:              fromDomainVariablesPtr(result.Variables),
 	}
 }
 
@@ -157,4 +158,26 @@ func mapDomainElements(items []d.Element) []Element {
 		out = append(out, fromDomainElement(item))
 	}
 	return out
+}
+
+// toDomainEnrichment maps the independent enrichment choices without adding policy.
+func toDomainEnrichment(e Enrichment) d.ElementEnrichment {
+	return d.ElementEnrichment{Variables: e.Variables, Listeners: e.Listeners}
+}
+
+// fromDomainVariable preserves raw serialized values and optional observation evidence.
+func fromDomainVariable(v d.ProcessInstanceVariable) Variable {
+	return Variable{Name: v.Name, Value: v.Value, VariableKey: v.VariableKey, ProcessInstanceKey: v.ProcessInstanceKey, ScopeKey: v.ScopeKey, TenantId: v.TenantId, APITruncated: v.APITruncated}
+}
+
+// fromDomainVariablesPtr distinguishes omitted enrichment from a successful empty read.
+func fromDomainVariablesPtr(values *[]d.ProcessInstanceVariable) *[]Variable {
+	if values == nil {
+		return nil
+	}
+	out := toolx.MapSlice(*values, fromDomainVariable)
+	if out == nil {
+		out = []Variable{}
+	}
+	return &out
 }

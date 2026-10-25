@@ -11,6 +11,12 @@ import (
 
 // API exposes runtime element lookup and search operations.
 type API interface {
+	// GetElementWithEnrichment reads optional local variables and listeners for one element.
+	GetElementWithEnrichment(ctx context.Context, key string, enrichment Enrichment, opts ...options.FacadeOption) (Element, error)
+	// SearchElementsWithEnrichment enriches the selected collection without rediscovery.
+	SearchElementsWithEnrichment(ctx context.Context, request SearchRequest, enrichment Enrichment, opts ...options.FacadeOption) (SearchResult, error)
+	// SearchElementsPagesWithEnrichment preserves page visitation and enriched aggregate items.
+	SearchElementsPagesWithEnrichment(ctx context.Context, request SearchRequest, enrichment Enrichment, visitor SearchPageVisitor, opts ...options.FacadeOption) (SearchPagesResult, error)
 	GetElement(ctx context.Context, key string, opts ...options.FacadeOption) (Element, error)
 	GetElementWithListeners(ctx context.Context, key string, opts ...options.FacadeOption) (Element, error)
 	SearchElements(ctx context.Context, request SearchRequest, opts ...options.FacadeOption) (SearchResult, error)

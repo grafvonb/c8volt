@@ -7,6 +7,7 @@ import (
 	"context"
 	"log/slog"
 	"net/http"
+	"strings"
 
 	"github.com/grafvonb/c8volt/config"
 	"github.com/grafvonb/c8volt/consts"
@@ -159,13 +160,17 @@ func (s *Service) SearchElementsPages(ctx context.Context, query d.ElementSearch
 	}, nil
 }
 
-// SearchElementsPage fetches one runtime element search page.
+// SearchElementsPage applies the configured discovery tenant unless explicitly ignored.
 func (s *Service) SearchElementsPage(ctx context.Context, query d.ElementSearchQuery, pageReq d.ElementPageRequest, opts ...services.CallOption) (d.ElementSearchPage, error) {
-	_ = services.ApplyCallOptions(opts)
+	callCfg := services.ApplyCallOptions(opts)
 
 	filter, err := newElementSearchFilter(query)
 	if err != nil {
 		return d.ElementSearchPage{}, err
+	}
+	if !callCfg.IgnoreTenant && strings.TrimSpace(s.cfg.App.Tenant) != "" {
+		tenant := camundav89.TenantId(s.cfg.App.Tenant)
+		filter.TenantId = &tenant
 	}
 	pageSize := pageReq.Size
 	if pageSize <= 0 {

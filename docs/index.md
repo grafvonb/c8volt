@@ -6,7 +6,7 @@ nav_exclude: true
 has_toc: true
 ---
 
-> Generated from build `c8volt v4.4.0-191-g90a69af9-dirty`, commit `90a69af9`, built `2026-10-24T19:42:15Z` | Supported Camunda 8 versions: 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.3 (final)
+> Generated from build `c8volt v4.4.0-196-g0a25888e-dirty`, commit `0a25888e`, built `2026-10-25T06:52:05Z` | Supported Camunda 8 versions: 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.3 (final)
 
 <img src="./logo/c8volt_logo_transparent_w_shadow_400x244.png" alt="c8volt logo" />
 
@@ -405,6 +405,12 @@ The same timestamp grammar applies to listener rows from `get element`, `get pro
 ./c8volt get process-instance --key <process-instance-key> --with-elements --with-listeners
 ./c8volt get element --pi-key <process-instance-key> --element-id <element-id> --state active
 ```
+
+Element searches and totals now apply the configured tenant on the server. This corrects previously unfiltered discovery and can narrow returned elements and counts. `IgnoreTenant` bypasses that discovery filter; native exact-key lookup continues to use backend authorization across tenants.
+
+Library callers can inspect complete element-local variables through `GetElementWithEnrichment`, `SearchElementsWithEnrichment`, and `SearchElementsPagesWithEnrichment`, using `element.Enrichment{Variables: true, Listeners: true}` to request both enrichments. The root `c8volt.New` client wires the shared services. Local reads use the element's owning process and its own runtime key as separate identities; they exclude parent, sibling and called-process scopes. Element limits bound selected elements, not their variable collections. JSON preserves raw serialized values and `apiTruncated`; variables are omitted without enrichment and serialize as `[]` after a successful empty local read. A failed or incomplete read returns an error.
+
+These three methods are additions to `element.API`: external implementations and test doubles must implement them. Existing methods and the `element.New`/`element.NewWithListeners` constructors remain available; requesting variables without the new composed dependency returns a local-precondition error. Custom service compositions can use `element.NewWithEnrichment`. Exact-key enriched reads bypass the configured discovery tenant and validate known observed tenant evidence.
 
 Guide: [Runtime Elements](./cli/runtime-elements). Generated references: [get process-instance](./cli/c8volt_get_process-instance), [get element](./cli/c8volt_get_element).
 

@@ -34,6 +34,8 @@ var getElementCmd = &cobra.Command{
 
 Use --key for a known element instance. Otherwise search by process instance, BPMN element ID, state, type, process definition, or BPMN process ID.
 
+Searches and totals apply the configured tenant. Exact-key lookup uses backend authorization across tenants.
+
 --batch-size controls each discovery request; --limit caps returned elements across all pages. Use --total to count matching elements, or --with-listeners to include runtime listener jobs.
 
 Listener rows label job creation time as s: (not worker execution start) and job end time as e:. They show d: only for an ACTIVATED job with a deadline, and omit unavailable timestamps. Listener dur: measures time from job creation to its recorded end, or elapsed time for a pending job; it includes worker waiting time and is omitted when timestamps are unavailable or invalid. A completed listener can appear as:

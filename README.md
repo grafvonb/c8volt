@@ -400,6 +400,12 @@ The same timestamp grammar applies to listener rows from `get element`, `get pro
 ./c8volt get element --pi-key <process-instance-key> --element-id <element-id> --state active
 ```
 
+Element searches and totals now apply the configured tenant on the server. This corrects previously unfiltered discovery and can narrow returned elements and counts. `IgnoreTenant` bypasses that discovery filter; native exact-key lookup continues to use backend authorization across tenants.
+
+Library callers can inspect complete element-local variables through `GetElementWithEnrichment`, `SearchElementsWithEnrichment`, and `SearchElementsPagesWithEnrichment`, using `element.Enrichment{Variables: true, Listeners: true}` to request both enrichments. The root `c8volt.New` client wires the shared services. Local reads use the element's owning process and its own runtime key as separate identities; they exclude parent, sibling and called-process scopes. Element limits bound selected elements, not their variable collections. JSON preserves raw serialized values and `apiTruncated`; variables are omitted without enrichment and serialize as `[]` after a successful empty local read. A failed or incomplete read returns an error.
+
+These three methods are additions to `element.API`: external implementations and test doubles must implement them. Existing methods and the `element.New`/`element.NewWithListeners` constructors remain available; requesting variables without the new composed dependency returns a local-precondition error. Custom service compositions can use `element.NewWithEnrichment`. Exact-key enriched reads bypass the configured discovery tenant and validate known observed tenant evidence.
+
 Guide: [Runtime Elements](docs/cli/runtime-elements.md). Generated references: [get process-instance](docs/cli/c8volt_get_process-instance.md), [get element](docs/cli/c8volt_get_element.md).
 
 ### Walk Before You Change
