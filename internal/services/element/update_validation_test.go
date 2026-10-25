@@ -32,7 +32,7 @@ func elementValidationPlan(t *testing.T) d.ElementVariableUpdatePlan {
 }
 
 // TestElementVariableUpdatesPlanValidation rejects independent tampering of every
-// destination, count, category, value map and tenant-context invariant.
+// destination, count, category, value map and tenant-context invariant before any write.
 func TestElementVariableUpdatesPlanValidation(t *testing.T) {
 	t.Parallel()
 	cases := map[string]func(*d.ElementVariableUpdatePlan){
@@ -97,6 +97,16 @@ func TestElementVariableUpdatesPlanValidation(t *testing.T) {
 			frozen, err := validateAndCopyElementVariableUpdatePlan(plan)
 			require.ErrorIs(t, err, d.ErrValidation)
 			require.Equal(t, d.ElementVariableUpdatePlan{}, frozen)
+			writes := 0
+			vars := elementExecutionVariables{write: func(context.Context, string, map[string]any, ...services.CallOption) (d.ScopeVariableUpdateResponse, error) {
+				writes++
+				return acceptedElementWrite(), nil
+			}}
+			result, executeErr := NewVariableUpdates(nil, vars, nil).ExecuteElementVariableUpdates(context.Background(), plan, 2)
+			require.ErrorIs(t, executeErr, d.ErrValidation)
+			require.Empty(t, result.Items)
+			require.Zero(t, writes)
+
 		})
 	}
 }

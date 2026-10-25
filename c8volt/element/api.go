@@ -10,8 +10,10 @@ import (
 	"github.com/grafvonb/c8volt/typex"
 )
 
-// API exposes runtime element lookup, search, enrichment and local variable planning.
+// API exposes runtime element lookup, search, enrichment and local variable planning and execution.
 type API interface {
+	// ExecuteElementVariableUpdates applies a validated frozen plan and preserves partial outcomes on failure.
+	ExecuteElementVariableUpdates(context.Context, ElementVariableUpdatePlan, int, ...options.FacadeOption) (ElementVariableUpdateResults, error)
 	// PlanElementVariableUpdates freezes complete local classifications for all selected keys.
 	PlanElementVariableUpdates(context.Context, typex.Keys, map[string]any, ...options.FacadeOption) (ElementVariableUpdatePlan, error)
 	// GetElementWithEnrichment reads optional local variables and listeners for one element.

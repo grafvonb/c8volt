@@ -168,3 +168,136 @@ func TestElementVariableUpdatesPlanFacadeTypedValues(t *testing.T) {
 	require.Equal(t, json.Number("9007199254740993"), plan.RequestedValues["number"])
 	require.Equal(t, []any{"original"}, plan.RequestedValues["custom"])
 }
+
+// ExecuteElementVariableUpdates keeps planning-only doubles explicit about unsupported execution.
+func (f elementPlannerFunc) ExecuteElementVariableUpdates(context.Context, d.ElementVariableUpdatePlan, int, ...services.CallOption) (d.ElementVariableUpdateResults, error) {
+	return d.ElementVariableUpdateResults{}, d.ErrPrecondition
+}
+
+// elementExecutorStub isolates execution mapping while retaining the planner interface.
+type elementExecutorStub struct {
+	elementPlannerFunc
+	execute func(context.Context, d.ElementVariableUpdatePlan, int, ...services.CallOption) (d.ElementVariableUpdateResults, error)
+}
+
+// ExecuteElementVariableUpdates captures one delegated frozen plan and returns partial evidence.
+func (s elementExecutorStub) ExecuteElementVariableUpdates(ctx context.Context, p d.ElementVariableUpdatePlan, w int, opts ...services.CallOption) (d.ElementVariableUpdateResults, error) {
+	return s.execute(ctx, p, w, opts...)
+}
+
+// TestElementVariableUpdatesExecuteFacade preserves every mapped plan/result field,
+// converts failures without dropping partial evidence, and isolates mutable storage.
+func TestElementVariableUpdatesExecuteFacade(t *testing.T) {
+	t.Parallel()
+	base, _ := d.NewExplicitKeysTenantContext("configured")
+	tenant, _ := d.WithTenantEvidence(base, []string{"actual", "other"}, 0)
+	domainPlan := d.ElementVariableUpdatePlan{RequestedKeys: []string{"E"}, RequestedValues: map[string]any{"x": []any{true}}, RequestedCount: 1, UpdateCount: 1, VariableAddCount: 1, VariableChangeCount: 2, VariableUnchangedCount: 3, VariableUntouchedCount: 4, TenantContext: tenant, Elements: []d.ElementVariablePlan{{ElementKey: "E", ProcessInstanceKey: "P", ScopeKey: "E", TenantId: "actual", Additions: []d.ElementVariablePlannedValue{{Name: "a", Value: []any{true}}}, Changes: []d.ElementVariablePlannedChange{{Name: "c", Before: []any{false}, After: []any{true}, APITruncated: true}}, UnchangedRequested: []d.ElementVariablePlannedValue{{Name: "u", Value: []any{true}}}, Untouched: []d.ElementVariablePlannedValue{{Name: "t", Value: []any{false}, APITruncated: true}}, MutationVariables: map[string]any{"x": []any{true}}, VerificationValues: map[string]any{"x": []any{true}}}}}
+	plan := fromDomainElementVariableUpdatePlan(domainPlan)
+	before, err := json.Marshal(plan)
+	require.NoError(t, err)
+	response := d.ElementVariableUpdateResults{Items: []d.ElementVariableUpdateResult{{Key: "E", ProcessInstanceKey: "P", ScopeKey: "E", Status: d.ElementVariableUpdateStatusConfirmationFailed, SubmissionStatus: d.ScopeVariableSubmissionAccepted, MutationAccepted: true, ConfirmationStatus: "failed", StatusCode: 204, Message: "accepted", Error: "read failed", Variables: map[string]any{"x": []any{true}}}}}
+	calls := 0
+	api := NewWithVariableUpdates(nil, nil, nil, elementExecutorStub{execute: func(_ context.Context, p d.ElementVariableUpdatePlan, workers int, opts ...services.CallOption) (d.ElementVariableUpdateResults, error) {
+		calls++
+		require.Equal(t, 7, workers)
+		require.Equal(t, domainPlan, p)
+		cfg := services.ApplyCallOptions(opts)
+		require.True(t, cfg.IgnoreTenant)
+		require.True(t, cfg.FailFast)
+		require.True(t, cfg.NoWorkerLimit)
+		require.True(t, cfg.NoWait)
+		p.RequestedKeys[0] = "changed"
+		p.RequestedValues["x"].([]any)[0] = false
+		p.TenantContext.ResolvedTenantIDs[0] = "changed"
+		p.TenantContext.Warnings[0].Message = "changed"
+		e := &p.Elements[0]
+		e.Additions[0].Value.([]any)[0] = false
+		e.Changes[0].Before.([]any)[0] = true
+		e.Changes[0].After.([]any)[0] = false
+		e.UnchangedRequested[0].Value.([]any)[0] = false
+		e.Untouched[0].Value.([]any)[0] = true
+		e.MutationVariables["x"].([]any)[0] = false
+		e.VerificationValues["x"].([]any)[0] = false
+		return response, d.ErrNotFound
+	}}, nil)
+	result, err := api.ExecuteElementVariableUpdates(context.Background(), plan, 7, foptions.WithIgnoreTenant(), foptions.WithFailFast(), foptions.WithNoWorkerLimit(), foptions.WithNoWait())
+	require.ErrorIs(t, err, ferrors.ErrNotFound)
+	require.Equal(t, 1, calls)
+	require.Len(t, result.Items, 1)
+	after, err := json.Marshal(plan)
+	require.NoError(t, err)
+	require.Equal(t, string(before), string(after))
+	item := result.Items[0]
+	require.Equal(t, "E", item.Key)
+	require.Equal(t, "P", item.ProcessInstanceKey)
+	require.Equal(t, "E", item.ScopeKey)
+	require.Equal(t, ElementVariableUpdateStatusConfirmationFailed, item.Status)
+	require.Equal(t, VariableSubmissionAccepted, item.SubmissionStatus)
+	require.True(t, item.MutationAccepted)
+	require.Equal(t, "failed", item.ConfirmationStatus)
+	require.Equal(t, 204, item.StatusCode)
+	require.Equal(t, "accepted", item.Message)
+	require.Equal(t, "read failed", item.Error)
+	require.False(t, item.OK())
+	response.Items[0].Variables["x"].([]any)[0] = false
+	require.Equal(t, []any{true}, item.Variables["x"])
+	raw, err := json.Marshal(result)
+	require.NoError(t, err)
+	require.JSONEq(t, `{"items":[{"key":"E","processInstanceKey":"P","scopeKey":"E","status":"confirmation_failed","submissionStatus":"accepted","mutationAccepted":true,"confirmationStatus":"failed","statusCode":204,"message":"accepted","error":"read failed","variables":{"x":[true]}}]}`, string(raw))
+}
+
+// TestElementVariableUpdatesExecuteFacadeErrors rejects unsupported compositions
+// and cyclic plans before copying, while preserving each service failure class.
+func TestElementVariableUpdatesExecuteFacadeErrors(t *testing.T) {
+	t.Parallel()
+	for _, api := range []API{New(nil, nil), NewWithListeners(nil, nil, nil), NewWithEnrichment(nil, nil, nil, nil)} {
+		result, err := api.ExecuteElementVariableUpdates(context.Background(), ElementVariableUpdatePlan{}, 1)
+		require.ErrorIs(t, err, ferrors.ErrLocalPrecondition)
+		require.Empty(t, result.Items)
+	}
+	for _, tc := range []struct{ internal, public error }{{d.ErrValidation, ferrors.ErrInvalidInput}, {d.ErrPrecondition, ferrors.ErrLocalPrecondition}, {d.ErrUnauthorized, ferrors.ErrLocalPrecondition}, {d.ErrUpstream, ferrors.ErrInternal}, {context.Canceled, context.Canceled}, {context.DeadlineExceeded, ferrors.ErrTimeout}} {
+		api := NewWithVariableUpdates(nil, nil, nil, elementExecutorStub{execute: func(context.Context, d.ElementVariableUpdatePlan, int, ...services.CallOption) (d.ElementVariableUpdateResults, error) {
+			return d.ElementVariableUpdateResults{Items: []d.ElementVariableUpdateResult{{Key: "E"}}}, tc.internal
+		}}, nil)
+		result, err := api.ExecuteElementVariableUpdates(context.Background(), ElementVariableUpdatePlan{}, 1)
+		require.ErrorIs(t, err, tc.public)
+		require.Len(t, result.Items, 1)
+	}
+	cycle := map[string]any{}
+	cycle["cycle"] = cycle
+	api := NewWithVariableUpdates(nil, nil, nil, elementExecutorStub{execute: func(context.Context, d.ElementVariableUpdatePlan, int, ...services.CallOption) (d.ElementVariableUpdateResults, error) {
+		t.Fatal("cyclic plan delegated")
+		return d.ElementVariableUpdateResults{}, nil
+	}}, nil)
+	_, err := api.ExecuteElementVariableUpdates(context.Background(), ElementVariableUpdatePlan{RequestedValues: cycle}, 1)
+	require.ErrorIs(t, err, ferrors.ErrInvalidInput)
+}
+
+// TestElementVariableUpdatesResultSuccess distinguishes deliberate no-wait from
+// accepted work whose confirmation was interrupted before starting.
+func TestElementVariableUpdatesResultSuccess(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		status       ElementVariableUpdateStatus
+		confirmation string
+		accepted     bool
+		success      bool
+	}{
+		{ElementVariableUpdateStatusUnchanged, "not_required", false, true},
+		{ElementVariableUpdateStatusSkipped, "not_required", false, false},
+		{ElementVariableUpdateStatusMutationFailed, "not_required", false, false},
+		{ElementVariableUpdateStatusSubmitted, "skipped", true, true},
+		{ElementVariableUpdateStatusSubmitted, "not_started", true, false},
+		{ElementVariableUpdateStatusConfirmed, "confirmed", true, true},
+		{ElementVariableUpdateStatusConfirmationFailed, "failed", true, false},
+	} {
+		evidence := VariableSubmissionNotSent
+		if tc.accepted {
+			evidence = VariableSubmissionAccepted
+		}
+		r := ElementVariableUpdateResult{Status: tc.status, SubmissionStatus: evidence, MutationAccepted: tc.accepted, ConfirmationStatus: tc.confirmation}
+		require.Equal(t, tc.success, r.OK())
+		r.Error = "failure"
+		require.False(t, r.OK())
+	}
+}

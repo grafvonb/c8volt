@@ -301,3 +301,71 @@ func fromDomainElementVariableUpdatePlan(x d.ElementVariableUpdatePlan) ElementV
 		MutationSubmitted: x.MutationSubmitted, TenantContext: fromDomainElementVariableTenantContext(x.TenantContext),
 	}
 }
+
+// toDomainElementVariablePlannedValue maps one classified value and
+// copies its nested JSON data.
+func toDomainElementVariablePlannedValue(x ElementVariablePlannedValue) d.ElementVariablePlannedValue {
+	return d.ElementVariablePlannedValue{Name: x.Name, Value: copyElementPlanVariableValue(x.Value), APITruncated: x.APITruncated}
+}
+
+// toDomainElementVariablePlannedChange maps one classified change
+// and copies both observed and requested values.
+func toDomainElementVariablePlannedChange(x ElementVariablePlannedChange) d.ElementVariablePlannedChange {
+	return d.ElementVariablePlannedChange{
+		Name: x.Name, Before: copyElementPlanVariableValue(x.Before),
+		After: copyElementPlanVariableValue(x.After), APITruncated: x.APITruncated,
+	}
+}
+
+// toDomainElementVariablePlan maps one local plan without sharing its
+// classification or payload values.
+func toDomainElementVariablePlan(x ElementVariablePlan) d.ElementVariablePlan {
+	return d.ElementVariablePlan{
+		ElementKey: x.ElementKey, ProcessInstanceKey: x.ProcessInstanceKey, ScopeKey: x.ScopeKey, TenantId: x.TenantId,
+		Additions:          toolx.MapSlice(x.Additions, toDomainElementVariablePlannedValue),
+		Changes:            toolx.MapSlice(x.Changes, toDomainElementVariablePlannedChange),
+		UnchangedRequested: toolx.MapSlice(x.UnchangedRequested, toDomainElementVariablePlannedValue),
+		Untouched:          toolx.MapSlice(x.Untouched, toDomainElementVariablePlannedValue),
+		MutationVariables:  copyElementPlanVariableMap(x.MutationVariables),
+		VerificationValues: copyElementPlanVariableMap(x.VerificationValues),
+	}
+}
+
+// toDomainElementVariableTenantContext maps public tenant evidence
+// into the service model with independent slices.
+func toDomainElementVariableTenantContext(x options.TenantContext) d.TenantContext {
+	return d.TenantContext{
+		Mode: d.TenantContextMode(x.Mode), Filter: d.TenantContextFilter(x.Filter),
+		ConfiguredTenantID: x.ConfiguredTenantID, TargetTenantID: x.TargetTenantID,
+		ResolvedTenantIDs: slices.Clone(x.ResolvedTenantIDs), UnknownTargetCount: x.UnknownTargetCount,
+		CrossTenant: x.CrossTenant,
+		Warnings: toolx.MapSlice(x.Warnings, func(w options.TenantContextWarning) d.TenantContextWarning {
+			return d.TenantContextWarning{Code: d.TenantContextWarningCode(w.Code), Message: w.Message}
+		}),
+	}
+}
+
+// toDomainElementVariableUpdatePlan maps the complete frozen plan
+// while preserving stable order, counts, and tenant evidence.
+func toDomainElementVariableUpdatePlan(x ElementVariableUpdatePlan) d.ElementVariableUpdatePlan {
+	return d.ElementVariableUpdatePlan{
+		RequestedKeys: slices.Clone(x.RequestedKeys), RequestedValues: copyElementPlanVariableMap(x.RequestedValues),
+		Elements: toolx.MapSlice(x.Elements, toDomainElementVariablePlan), RequestedCount: x.RequestedCount,
+		UpdateCount: x.UpdateCount, VariableAddCount: x.VariableAddCount, VariableChangeCount: x.VariableChangeCount,
+		VariableUnchangedCount: x.VariableUnchangedCount, VariableUntouchedCount: x.VariableUntouchedCount,
+		MutationSubmitted: x.MutationSubmitted, TenantContext: toDomainElementVariableTenantContext(x.TenantContext),
+	}
+}
+
+// fromDomainElementVariableUpdateResults preserves partial evidence and isolates mutation values.
+func fromDomainElementVariableUpdateResults(result d.ElementVariableUpdateResults) ElementVariableUpdateResults {
+	return ElementVariableUpdateResults{Items: toolx.MapSlice(result.Items, func(x d.ElementVariableUpdateResult) ElementVariableUpdateResult {
+		return ElementVariableUpdateResult{
+			Key: x.Key, ProcessInstanceKey: x.ProcessInstanceKey, ScopeKey: x.ScopeKey,
+			Status: ElementVariableUpdateStatus(x.Status), SubmissionStatus: VariableSubmissionStatus(x.SubmissionStatus),
+			MutationAccepted: x.MutationAccepted, ConfirmationStatus: x.ConfirmationStatus,
+			StatusCode: x.StatusCode, Message: x.Message, Error: x.Error,
+			Variables: copyElementPlanVariableMap(x.Variables),
+		}
+	})}
+}

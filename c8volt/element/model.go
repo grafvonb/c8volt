@@ -222,3 +222,58 @@ type ElementVariableUpdatePlan struct {
 	MutationSubmitted      bool                  `json:"mutationSubmitted"`
 	TenantContext          options.TenantContext `json:"tenantContext"`
 }
+
+// VariableSubmissionStatus describes the physical submission evidence for a logical local write.
+type VariableSubmissionStatus string
+
+// Submission evidence is independent of confirmation and is never inferred from a generic transport error.
+const (
+	VariableSubmissionNotSent  VariableSubmissionStatus = "not_sent"
+	VariableSubmissionRejected VariableSubmissionStatus = "rejected"
+	VariableSubmissionUnknown  VariableSubmissionStatus = "unknown"
+	VariableSubmissionAccepted VariableSubmissionStatus = "accepted"
+)
+
+// ElementVariableUpdateStatus describes progress without implying rollback.
+type ElementVariableUpdateStatus string
+
+// Element variable update statuses distinguish unchanged, unscheduled, and submitted work.
+const (
+	ElementVariableUpdateStatusUnchanged          ElementVariableUpdateStatus = "unchanged"
+	ElementVariableUpdateStatusSkipped            ElementVariableUpdateStatus = "skipped"
+	ElementVariableUpdateStatusMutationFailed     ElementVariableUpdateStatus = "mutation_failed"
+	ElementVariableUpdateStatusSubmitted          ElementVariableUpdateStatus = "submitted"
+	ElementVariableUpdateStatusConfirmed          ElementVariableUpdateStatus = "confirmed"
+	ElementVariableUpdateStatusConfirmationFailed ElementVariableUpdateStatus = "confirmation_failed"
+)
+
+// ElementVariableUpdateResult retains frozen identity and independent submission/confirmation evidence.
+type ElementVariableUpdateResult struct {
+	Key                string                      `json:"key"`
+	ProcessInstanceKey string                      `json:"processInstanceKey"`
+	ScopeKey           string                      `json:"scopeKey"`
+	Status             ElementVariableUpdateStatus `json:"status"`
+	SubmissionStatus   VariableSubmissionStatus    `json:"submissionStatus"`
+	MutationAccepted   bool                        `json:"mutationAccepted"`
+	ConfirmationStatus string                      `json:"confirmationStatus"`
+	StatusCode         int                         `json:"statusCode,omitempty"`
+	Message            string                      `json:"message,omitempty"`
+	Error              string                      `json:"error,omitempty"`
+	Variables          map[string]any              `json:"variables,omitempty"`
+}
+
+// OK accepts unchanged, confirmed, and deliberately unconfirmed no-wait results only.
+func (r ElementVariableUpdateResult) OK() bool {
+	if r.Error != "" {
+		return false
+	}
+	return r.Status == ElementVariableUpdateStatusUnchanged ||
+		(r.MutationAccepted && r.SubmissionStatus == VariableSubmissionAccepted &&
+			((r.Status == ElementVariableUpdateStatusConfirmed && r.ConfirmationStatus == "confirmed") ||
+				(r.Status == ElementVariableUpdateStatusSubmitted && r.ConfirmationStatus == "skipped")))
+}
+
+// ElementVariableUpdateResults preserves one outcome per planned element in selection order.
+type ElementVariableUpdateResults struct {
+	Items []ElementVariableUpdateResult `json:"items"`
+}

@@ -74,3 +74,45 @@ type ElementVariableUpdatePlan struct {
 	MutationSubmitted      bool
 	TenantContext          TenantContext
 }
+
+// ElementVariableUpdateStatus describes progress without implying rollback.
+type ElementVariableUpdateStatus string
+
+// Element variable update statuses distinguish unchanged, unscheduled, and submitted work.
+const (
+	ElementVariableUpdateStatusUnchanged          ElementVariableUpdateStatus = "unchanged"
+	ElementVariableUpdateStatusSkipped            ElementVariableUpdateStatus = "skipped"
+	ElementVariableUpdateStatusMutationFailed     ElementVariableUpdateStatus = "mutation_failed"
+	ElementVariableUpdateStatusSubmitted          ElementVariableUpdateStatus = "submitted"
+	ElementVariableUpdateStatusConfirmed          ElementVariableUpdateStatus = "confirmed"
+	ElementVariableUpdateStatusConfirmationFailed ElementVariableUpdateStatus = "confirmation_failed"
+)
+
+// ElementVariableUpdateResult retains frozen identity and independent submission/confirmation evidence.
+type ElementVariableUpdateResult struct {
+	Key                string
+	ProcessInstanceKey string
+	ScopeKey           string
+	Status             ElementVariableUpdateStatus
+	SubmissionStatus   ScopeVariableSubmissionStatus
+	MutationAccepted   bool
+	ConfirmationStatus string
+	StatusCode         int
+	Message            string
+	Error              string
+	Variables          map[string]any
+}
+
+// OK accepts unchanged, confirmed, and deliberately unconfirmed no-wait results only.
+func (r ElementVariableUpdateResult) OK() bool {
+	if r.Error != "" {
+		return false
+	}
+	return r.Status == ElementVariableUpdateStatusUnchanged ||
+		(r.MutationAccepted && r.SubmissionStatus == ScopeVariableSubmissionAccepted &&
+			((r.Status == ElementVariableUpdateStatusConfirmed && r.ConfirmationStatus == "confirmed") ||
+				(r.Status == ElementVariableUpdateStatusSubmitted && r.ConfirmationStatus == "skipped")))
+}
+
+// ElementVariableUpdateResults preserves one outcome per planned element in selection order.
+type ElementVariableUpdateResults struct{ Items []ElementVariableUpdateResult }

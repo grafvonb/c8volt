@@ -24,8 +24,9 @@ type VariableUpdateElementAPI interface {
 	GetElement(context.Context, string, ...services.CallOption) (d.Element, error)
 }
 
-// VariableUpdateAPI exposes complete collection-wide local planning.
+// VariableUpdateAPI exposes collection-wide local planning and frozen execution.
 type VariableUpdateAPI interface {
+	ExecuteElementVariableUpdates(context.Context, d.ElementVariableUpdatePlan, int, ...services.CallOption) (d.ElementVariableUpdateResults, error)
 	PlanElementVariableUpdates(context.Context, typex.Keys, map[string]any, ...services.CallOption) (d.ElementVariableUpdatePlan, error)
 }
 
@@ -34,11 +35,18 @@ type VariableUpdateService struct {
 	elements  VariableUpdateElementAPI
 	variables scopeVariableSearcher
 	config    *config.Config
+	writer    VariableUpdateScopeAPI
 }
 
-// NewVariableUpdates composes existing readers without creating clients or limiters.
+// VariableUpdateScopeAPI supplies exact-local submissions with retained attempt evidence.
+type VariableUpdateScopeAPI interface {
+	UpdateScopeVariables(context.Context, string, map[string]any, ...services.CallOption) (d.ScopeVariableUpdateResponse, error)
+}
+
+// NewVariableUpdates composes existing readers and an optional writer without new clients or limiters.
 func NewVariableUpdates(elements VariableUpdateElementAPI, variables scopeVariableSearcher, cfg *config.Config) VariableUpdateAPI {
-	return &VariableUpdateService{elements: elements, variables: variables, config: cfg}
+	writer, _ := variables.(VariableUpdateScopeAPI)
+	return &VariableUpdateService{elements: elements, variables: variables, config: cfg, writer: writer}
 }
 
 // PlanElementVariableUpdates completes all authorized exact-local reads before

@@ -17,8 +17,8 @@ import (
 	"github.com/grafvonb/c8volt/typex"
 )
 
-// NewWithVariableUpdates adds collection planning to the existing element facade.
-// Legacy constructors remain valid and report preconditions for unwired planning.
+// NewWithVariableUpdates adds collection planning and execution to the existing element facade.
+// Legacy constructors remain valid and report preconditions for unwired update operations.
 func NewWithVariableUpdates(api esvc.API, jobs jsvc.API, enrichment esvc.EnrichmentAPI, updates esvc.VariableUpdateAPI, log *slog.Logger) API {
 	if enrichment == nil {
 		enrichment = esvc.NewEnrichment(api, jobs, nil)
@@ -41,4 +41,17 @@ func (c *client) PlanElementVariableUpdates(ctx context.Context, keys typex.Keys
 		return ElementVariableUpdatePlan{}, ferrors.FromDomain(err)
 	}
 	return fromDomainElementVariableUpdatePlan(plan), nil
+}
+
+// ExecuteElementVariableUpdates only snapshots/maps inputs, delegates execution,
+// and converts results alongside the original failure classification.
+func (c *client) ExecuteElementVariableUpdates(ctx context.Context, plan ElementVariableUpdatePlan, wantedWorkers int, opts ...foptions.FacadeOption) (ElementVariableUpdateResults, error) {
+	if c.updateAPI == nil {
+		return ElementVariableUpdateResults{}, ferrors.FromDomain(fmt.Errorf("%w: element variable execution requires a variable update service", d.ErrPrecondition))
+	}
+	if _, err := json.Marshal(plan); err != nil {
+		return ElementVariableUpdateResults{}, ferrors.FromDomain(fmt.Errorf("%w: element variable plan is not JSON-compatible: %v", d.ErrValidation, err))
+	}
+	result, err := c.updateAPI.ExecuteElementVariableUpdates(ctx, toDomainElementVariableUpdatePlan(plan), wantedWorkers, foptions.MapFacadeOptionsToCallOptions(opts)...)
+	return fromDomainElementVariableUpdateResults(result), ferrors.FromDomain(err)
 }
