@@ -173,5 +173,5 @@
 
 ## Active Speckit Plan
 <!-- SPECKIT START -->
-- Active Speckit implementation plan: `specs/311-complete-user-tasks/plan.md`
+- Active Speckit implementation plan: `specs/346-suspend-process-instances/plan.md`
 <!-- SPECKIT END -->
