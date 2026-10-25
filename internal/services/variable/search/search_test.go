@@ -136,3 +136,92 @@ func names(items []d.ProcessInstanceVariable) []string {
 	}
 	return result
 }
+
+// scopePageReaderFunc adapts a callback without expanding legacy root-only doubles.
+type scopePageReaderFunc func(context.Context, d.ScopeVariableQuery, d.ProcessInstanceVariablePageRequest, ...services.CallOption) (d.ProcessInstanceVariablePage, error)
+
+// SearchScopeVariablesPage forwards the query and options for traversal assertions.
+func (f scopePageReaderFunc) SearchScopeVariablesPage(ctx context.Context, query d.ScopeVariableQuery, request d.ProcessInstanceVariablePageRequest, opts ...services.CallOption) (d.ProcessInstanceVariablePage, error) {
+	return f(ctx, query, request, opts...)
+}
+
+// TestScopeVariablesCollectorPreservesProgressChecks proves the callback collector
+// retains total, cursor, raw-count, request, and offset validation for local reads.
+func TestScopeVariablesCollectorPreservesProgressChecks(t *testing.T) {
+	t.Parallel()
+	exact := d.ProcessInstanceVariableReportedTotalKindExact
+	lower := d.ProcessInstanceVariableReportedTotalKindLowerBound
+	tests := []struct {
+		name  string
+		pages []d.ProcessInstanceVariablePage
+	}{
+		{"negative total", []d.ProcessInstanceVariablePage{{ReportedTotal: total(-1, exact)}}},
+		{"negative raw count", []d.ProcessInstanceVariablePage{{RawItemCount: -1}}},
+		{"more selected than raw", []d.ProcessInstanceVariablePage{{Items: []d.ProcessInstanceVariable{{Name: "v"}}}}},
+		{"unknown total kind", []d.ProcessInstanceVariablePage{{ReportedTotal: total(0, "other")}}},
+		{"total appears", []d.ProcessInstanceVariablePage{{RawItemCount: 1}, {ReportedTotal: total(1, exact)}}},
+		{"total disappears", []d.ProcessInstanceVariablePage{{RawItemCount: 1, ReportedTotal: total(2, exact)}, {}}},
+		{"exact changes", []d.ProcessInstanceVariablePage{{RawItemCount: 1, ReportedTotal: total(2, exact)}, {ReportedTotal: total(3, exact)}}},
+		{"exact becomes lower bound", []d.ProcessInstanceVariablePage{{RawItemCount: 1, ReportedTotal: total(2, exact)}, {ReportedTotal: total(2, lower)}}},
+		{"decreasing lower bound", []d.ProcessInstanceVariablePage{{RawItemCount: 1, ReportedTotal: total(3, lower)}, {ReportedTotal: total(2, lower)}}},
+		{"exact below retained bound", []d.ProcessInstanceVariablePage{{RawItemCount: 1, ReportedTotal: total(3, lower)}, {ReportedTotal: total(2, exact)}}},
+		{"exact below observed", []d.ProcessInstanceVariablePage{{RawItemCount: 2, ReportedTotal: total(1, exact)}}},
+		{"empty before exact completion", []d.ProcessInstanceVariablePage{{ReportedTotal: total(1, exact)}}},
+		{"empty before lower bound", []d.ProcessInstanceVariablePage{{ReportedTotal: total(1, lower)}}},
+		{"repeated cursor", []d.ProcessInstanceVariablePage{{EndCursor: "a"}, {EndCursor: "a"}}},
+		{"cursor cycle", []d.ProcessInstanceVariablePage{{EndCursor: "a"}, {EndCursor: "b"}, {EndCursor: "a"}}},
+		{"offset overflow", []d.ProcessInstanceVariablePage{{RawItemCount: math.MaxInt32}, {RawItemCount: 1}}},
+	}
+	query := d.ScopeVariableQuery{ProcessInstanceKey: "owner", ScopeKey: "scope"}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			calls := 0
+			reader := scopePageReaderFunc(func(_ context.Context, got d.ScopeVariableQuery, request d.ProcessInstanceVariablePageRequest, opts ...services.CallOption) (d.ProcessInstanceVariablePage, error) {
+				require.Equal(t, query, got)
+				require.True(t, services.ApplyCallOptions(opts).IgnoreTenant)
+				require.Less(t, calls, len(tt.pages))
+				p := tt.pages[calls]
+				calls++
+				p.Request = request
+				return p, nil
+			})
+			got, err := ScopeVariables(context.Background(), reader, query, services.WithIgnoreTenant())
+			require.ErrorIs(t, err, d.ErrMalformedResponse)
+			require.Nil(t, got)
+			require.Equal(t, len(tt.pages), calls)
+		})
+	}
+	t.Run("request mismatch", func(t *testing.T) {
+		got, err := ScopeVariables(context.Background(), scopePageReaderFunc(func(context.Context, d.ScopeVariableQuery, d.ProcessInstanceVariablePageRequest, ...services.CallOption) (d.ProcessInstanceVariablePage, error) {
+			return d.ProcessInstanceVariablePage{}, nil
+		}), query)
+		require.ErrorIs(t, err, d.ErrMalformedResponse)
+		require.Nil(t, got)
+	})
+}
+
+// TestScopeVariablesCollectorCursorToOffset retains cumulative raw advancement
+// after a cursor disappears, and permits an exhausted lower-bound collection.
+func TestScopeVariablesCollectorCursorToOffset(t *testing.T) {
+	t.Parallel()
+	calls := 0
+	reader := scopePageReaderFunc(func(_ context.Context, _ d.ScopeVariableQuery, request d.ProcessInstanceVariablePageRequest, _ ...services.CallOption) (d.ProcessInstanceVariablePage, error) {
+		calls++
+		require.LessOrEqual(t, calls, 3)
+		switch calls {
+		case 1:
+			return page(request, nil, 2, total(3, d.ProcessInstanceVariableReportedTotalKindLowerBound), "next"), nil
+		case 2:
+			require.Equal(t, "next", request.After)
+			return page(request, []d.ProcessInstanceVariable{{Name: "local"}}, 1, total(3, d.ProcessInstanceVariableReportedTotalKindLowerBound), ""), nil
+		default:
+			require.Empty(t, request.After)
+			require.Equal(t, int32(3), request.From)
+			return page(request, nil, 0, total(3, d.ProcessInstanceVariableReportedTotalKindLowerBound), ""), nil
+		}
+	})
+	got, err := ScopeVariables(context.Background(), reader, d.ScopeVariableQuery{ProcessInstanceKey: "owner", ScopeKey: "scope"})
+	require.NoError(t, err)
+	require.Equal(t, []string{"local"}, names(got))
+	require.Equal(t, 3, calls)
+}

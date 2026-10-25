@@ -5,7 +5,10 @@ package v810
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"fmt"
+	"github.com/grafvonb/c8volt/internal/services"
 	"net/http"
 	"testing"
 
@@ -74,6 +77,254 @@ func TestUpdateScopeVariablesErrors(t *testing.T) {
 
 			require.ErrorIs(t, err, tt.wantErr)
 			require.False(t, got.Accepted)
+		})
+	}
+}
+
+// TestScopeVariablesReadsCompleteLocalCollection proves independent identities,
+// sparse cursor continuation, raw counts, optional evidence, and stable ordering.
+func TestScopeVariablesReadsCompleteLocalCollection(t *testing.T) {
+	t.Parallel()
+	for _, ignore := range []bool{false, true} {
+		t.Run(fmt.Sprint("ignore tenant=", ignore), func(t *testing.T) {
+			calls := 0
+			tenant := "tenant-b"
+			query := d.ScopeVariableQuery{ProcessInstanceKey: "123", ScopeKey: "456", ExpectedTenantId: &tenant}
+			svc := scopeReadService(t, func(_ context.Context, params *camundav810.SearchVariablesParams, body camundav810.SearchVariablesJSONRequestBody, _ ...camundav810.RequestEditorFn) (*camundav810.SearchVariablesResponse, error) {
+				calls++
+				require.LessOrEqual(t, calls, 4)
+				require.NotNil(t, params.TruncateValues)
+				require.False(t, *params.TruncateValues)
+				raw, err := json.Marshal(body)
+				require.NoError(t, err)
+				require.Contains(t, string(raw), `"processInstanceKey":"123"`)
+				require.Contains(t, string(raw), `"scopeKey":"456"`)
+				require.Contains(t, string(raw), `"field":"name"`)
+				if ignore {
+					require.Nil(t, body.Filter.TenantId)
+				} else {
+					require.Equal(t, camundav810.TenantId("tenant-a"), *body.Filter.TenantId)
+				}
+				if calls > 1 {
+					require.Contains(t, string(raw), fmt.Sprintf(`"after":"c%d"`, calls-1))
+				}
+				bodies := []string{
+					`{"items":[{"name":"same","value":"2","variableKey":"b","processInstanceKey":"123","scopeKey":"456","tenantId":"tenant-b","truncated":true},{"name":"parent","value":"0","processInstanceKey":"123","scopeKey":"123"}],"page":{"totalItems":5,"hasMoreTotalItems":true,"endCursor":"c1"}}`,
+					`{"items":[],"page":{"totalItems":5,"hasMoreTotalItems":true,"endCursor":"c2"}}`,
+					`{"items":[{"name":"sibling","value":"0","processInstanceKey":"123","scopeKey":"789"},{"name":"called","value":"0","processInstanceKey":"999","scopeKey":"999"}],"page":{"totalItems":5,"hasMoreTotalItems":true,"endCursor":"c3"}}`,
+					`{"items":[{"name":"same","value":"1","variableKey":"a","processInstanceKey":"123","scopeKey":"456","isTruncated":true}],"page":{"totalItems":5,"hasMoreTotalItems":false}}`,
+				}
+				return scopeReadResponse(bodies[calls-1]), nil
+			})
+			var opts []services.CallOption
+			if ignore {
+				opts = append(opts, services.WithIgnoreTenant())
+			}
+			got, err := svc.SearchScopeVariables(context.Background(), query, opts...)
+			require.NoError(t, err)
+			require.Equal(t, 4, calls)
+			require.Equal(t, []d.ProcessInstanceVariable{
+				{Name: "same", Value: "1", VariableKey: "a", ProcessInstanceKey: "123", ScopeKey: "456", APITruncated: true},
+				{Name: "same", Value: "2", VariableKey: "b", ProcessInstanceKey: "123", ScopeKey: "456", TenantId: "tenant-b", APITruncated: true},
+			}, got)
+		})
+	}
+}
+
+// TestScopeVariablesIdentity rejects incomplete or contradictory scope evidence
+// while treating absent optional tenant/key fields as unknown.
+func TestScopeVariablesIdentity(t *testing.T) {
+	t.Parallel()
+	tenant := "tenant-b"
+	tests := []struct {
+		name, item string
+		wantErr    bool
+	}{
+		{"optional evidence", `{"name":"v","value":"null","processInstanceKey":"123","scopeKey":"456"}`, false},
+		{"empty tenant", `{"name":"v","value":"null","processInstanceKey":"123","scopeKey":"456","tenantId":""}`, false},
+		{"wrong owner", `{"name":"v","value":"1","processInstanceKey":"999","scopeKey":"456"}`, true},
+		{"wrong tenant", `{"name":"v","value":"1","processInstanceKey":"123","scopeKey":"456","tenantId":"tenant-c"}`, true},
+		{"missing owner", `{"name":"v","value":"1","scopeKey":"456"}`, true},
+		{"blank owner", `{"name":"v","value":"1","processInstanceKey":" ","scopeKey":"456"}`, true},
+		{"missing scope", `{"name":"v","value":"1","processInstanceKey":"123"}`, true},
+		{"blank scope", `{"name":"v","value":"1","processInstanceKey":"123","scopeKey":" "}`, true},
+		{"missing name", `{"value":"1","processInstanceKey":"123","scopeKey":"456"}`, true},
+		{"missing value", `{"name":"v","processInstanceKey":"123","scopeKey":"456"}`, true},
+		{"wrong identity type", `{"name":"v","value":"1","processInstanceKey":123,"scopeKey":"456"}`, true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			svc := scopeReadService(t, func(context.Context, *camundav810.SearchVariablesParams, camundav810.SearchVariablesJSONRequestBody, ...camundav810.RequestEditorFn) (*camundav810.SearchVariablesResponse, error) {
+				return scopeReadResponse(`{"items":[` + tt.item + `],"page":{"totalItems":1,"hasMoreTotalItems":false}}`), nil
+			})
+			got, err := svc.SearchScopeVariables(context.Background(), d.ScopeVariableQuery{ProcessInstanceKey: "123", ScopeKey: "456", ExpectedTenantId: &tenant}, services.WithIgnoreTenant())
+			if tt.wantErr {
+				require.ErrorIs(t, err, d.ErrMalformedResponse)
+				require.Nil(t, got)
+			} else {
+				require.NoError(t, err)
+				require.Len(t, got, 1)
+			}
+		})
+	}
+	// Without expected evidence, a returned tenant must never be compared with configured discovery tenant.
+	svc := scopeReadService(t, func(context.Context, *camundav810.SearchVariablesParams, camundav810.SearchVariablesJSONRequestBody, ...camundav810.RequestEditorFn) (*camundav810.SearchVariablesResponse, error) {
+		return scopeReadResponse(`{"items":[{"name":"v","value":"1","processInstanceKey":"123","scopeKey":"456","tenantId":"tenant-c"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`), nil
+	})
+	got, err := svc.SearchScopeVariables(context.Background(), d.ScopeVariableQuery{ProcessInstanceKey: "123", ScopeKey: "456"}, services.WithIgnoreTenant())
+	require.NoError(t, err)
+	require.Len(t, got, 1)
+}
+
+// TestScopeVariablesValidateBeforeRequests proves neither incomplete identities
+// nor invalid page positions can reach the generated client.
+func TestScopeVariablesValidateBeforeRequests(t *testing.T) {
+	t.Parallel()
+	calls := 0
+	svc := scopeReadService(t, func(context.Context, *camundav810.SearchVariablesParams, camundav810.SearchVariablesJSONRequestBody, ...camundav810.RequestEditorFn) (*camundav810.SearchVariablesResponse, error) {
+		calls++
+		return nil, errors.New("unexpected request")
+	})
+	for _, query := range []d.ScopeVariableQuery{{}, {ProcessInstanceKey: "123"}, {ScopeKey: "456"}, {ProcessInstanceKey: " ", ScopeKey: "456"}, {ProcessInstanceKey: "123", ScopeKey: " "}} {
+		_, err := svc.SearchScopeVariables(context.Background(), query)
+		require.ErrorIs(t, err, d.ErrValidation)
+		_, err = svc.SearchScopeVariablesPage(context.Background(), query, d.ProcessInstanceVariablePageRequest{Size: 10})
+		require.ErrorIs(t, err, d.ErrValidation)
+	}
+	for _, page := range []d.ProcessInstanceVariablePageRequest{{}, {Size: -1}, {Size: 1001}, {Size: 1, From: -1}, {Size: 1, From: 1, After: "c"}} {
+		_, err := svc.SearchScopeVariablesPage(context.Background(), d.ScopeVariableQuery{ProcessInstanceKey: "123", ScopeKey: "456"}, page)
+		require.Error(t, err)
+	}
+	require.Zero(t, calls)
+}
+
+// TestScopeVariablesCompletionAndFailures ensures incomplete traversal cannot
+// masquerade as successful emptiness, including cancellation after a response.
+func TestScopeVariablesCompletionAndFailures(t *testing.T) {
+	t.Parallel()
+	for _, mode := range []string{"empty", "offset", "repeated cursor", "changed total", "later error", "canceled before", "canceled after", "malformed metadata", "nil response"} {
+		t.Run(mode, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			if mode == "canceled before" {
+				cancel()
+			}
+			calls := 0
+			laterErr := errors.New("later page failed")
+			svc := scopeReadService(t, func(_ context.Context, _ *camundav810.SearchVariablesParams, body camundav810.SearchVariablesJSONRequestBody, _ ...camundav810.RequestEditorFn) (*camundav810.SearchVariablesResponse, error) {
+				calls++
+				require.LessOrEqual(t, calls, 3)
+				switch mode {
+				case "empty":
+					return scopeReadResponse(`{"items":[],"page":{"totalItems":0,"hasMoreTotalItems":false}}`), nil
+				case "offset":
+					if calls == 1 {
+						return scopeReadResponse(`{"items":[{"name":"other","value":"1","processInstanceKey":"123","scopeKey":"789"},{"name":"local","value":"2","processInstanceKey":"123","scopeKey":"456"}],"page":{}}`), nil
+					}
+					offset, err := body.Page.AsOffsetPagination()
+					require.NoError(t, err)
+					require.Equal(t, int32(2), *offset.From)
+					return scopeReadResponse(`{"items":[],"page":{}}`), nil
+				case "repeated cursor":
+					return scopeReadResponse(`{"items":[],"page":{"endCursor":"same"}}`), nil
+				case "changed total":
+					if calls > 1 {
+						return scopeReadResponse(`{"items":[],"page":{"totalItems":3,"hasMoreTotalItems":false}}`), nil
+					}
+				case "later error":
+					if calls > 1 {
+						return nil, laterErr
+					}
+				case "canceled after":
+					cancel()
+				case "malformed metadata":
+					return scopeReadResponse(`{"items":[],"page":{"totalItems":0}}`), nil
+				case "nil response":
+					return nil, nil
+				}
+				return scopeReadResponse(`{"items":[{"name":"v","value":"1","processInstanceKey":"123","scopeKey":"456"}],"page":{"totalItems":2,"hasMoreTotalItems":false,"endCursor":"next"}}`), nil
+			})
+			got, err := svc.SearchScopeVariables(ctx, d.ScopeVariableQuery{ProcessInstanceKey: "123", ScopeKey: "456"})
+			switch mode {
+			case "empty":
+				require.NoError(t, err)
+				require.NotNil(t, got)
+				require.Empty(t, got)
+				require.Equal(t, 1, calls)
+			case "offset":
+				require.NoError(t, err)
+				require.Len(t, got, 1)
+				require.Equal(t, 2, calls)
+			case "canceled before", "canceled after":
+				require.ErrorIs(t, err, context.Canceled)
+				require.Nil(t, got)
+			case "later error":
+				require.ErrorIs(t, err, laterErr)
+				require.Nil(t, got)
+				require.Equal(t, 2, calls)
+			default:
+				require.ErrorIs(t, err, d.ErrMalformedResponse)
+				require.Nil(t, got)
+			}
+			if mode == "canceled before" {
+				require.Zero(t, calls)
+			}
+		})
+	}
+}
+
+// scopeReadResponse preserves raw fields absent from generated variable models.
+func scopeReadResponse(body string) *camundav810.SearchVariablesResponse {
+	return &camundav810.SearchVariablesResponse{HTTPResponse: variableHTTPResponse(http.MethodPost, "https://camunda.local/v2/variables/search", http.StatusOK, "200 OK"), Body: []byte(body), JSON200: &camundav810.VariableSearchQueryResult{}}
+}
+
+// scopeReadService installs only a generated-client fake; no transport is used.
+func scopeReadService(t *testing.T, read func(context.Context, *camundav810.SearchVariablesParams, camundav810.SearchVariablesJSONRequestBody, ...camundav810.RequestEditorFn) (*camundav810.SearchVariablesResponse, error)) *Service {
+	t.Helper()
+	return newVariableTestService(t, &mockVariableClient{searchVariablesWithResponse: read})
+}
+
+// TestProcessInstanceVariableRootCompatibility keeps legacy filtering, required
+// raw fields and page errors even when the same adapter supports strict scopes.
+func TestProcessInstanceVariableRootCompatibility(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name, items string
+		wantErr     bool
+	}{
+		{"wrong owner filtered", `[{"name":"v","value":"1","variableKey":"a","processInstanceKey":"other","scopeKey":"123","tenantId":"tenant-a"}]`, false},
+		{"different tenant retained", `[{"name":"v","value":"1","variableKey":"a","processInstanceKey":"123","scopeKey":"123","tenantId":"tenant-b"}]`, false},
+		{"missing tenant still malformed", `[{"name":"v","value":"1","variableKey":"a","processInstanceKey":"123","scopeKey":"123"}]`, true},
+		{"missing variable key still malformed", `[{"name":"v","value":"1","processInstanceKey":"123","scopeKey":"123","tenantId":"tenant-a"}]`, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			calls := 0
+			svc := scopeReadService(t, func(_ context.Context, _ *camundav810.SearchVariablesParams, body camundav810.SearchVariablesJSONRequestBody, _ ...camundav810.RequestEditorFn) (*camundav810.SearchVariablesResponse, error) {
+				calls++
+				raw, err := json.Marshal(body)
+				require.NoError(t, err)
+				require.Contains(t, string(raw), `"processInstanceKey":"123"`)
+				require.Contains(t, string(raw), `"scopeKey":"123"`)
+				return scopeReadResponse(`{"items":` + tc.items + `,"page":{"totalItems":1,"hasMoreTotalItems":false}}`), nil
+			})
+			got, err := svc.SearchProcessInstanceVariables(context.Background(), "123", services.WithIgnoreTenant())
+			if tc.wantErr {
+				require.ErrorIs(t, err, d.ErrMalformedResponse)
+				require.EqualError(t, err, "decode process-instance variables: malformed response: variable item 0 is missing required fields")
+				require.Nil(t, got)
+			} else {
+				require.NoError(t, err)
+				if tc.name == "wrong owner filtered" {
+					require.Empty(t, got)
+				} else {
+					require.Len(t, got, 1)
+					require.Equal(t, "tenant-b", got[0].TenantId)
+				}
+			}
+			require.Equal(t, 1, calls)
+			_, err = svc.SearchProcessInstanceVariablesPage(context.Background(), "123", d.ProcessInstanceVariablePageRequest{})
+			require.EqualError(t, err, "validate process-instance variable page: process-instance variable page request size must be positive")
+			require.Equal(t, 1, calls)
 		})
 	}
 }
