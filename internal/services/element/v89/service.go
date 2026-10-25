@@ -7,6 +7,7 @@ import (
 	"context"
 	"log/slog"
 	"net/http"
+	"strings"
 
 	"github.com/grafvonb/c8volt/config"
 	"github.com/grafvonb/c8volt/consts"
@@ -159,13 +160,17 @@ func (s *Service) SearchElementsPages(ctx context.Context, query d.ElementSearch
 	}, nil
 }
 
-// SearchElementsPage fetches one runtime element search page.
+// SearchElementsPage applies the configured discovery tenant unless explicitly ignored.
 func (s *Service) SearchElementsPage(ctx context.Context, query d.ElementSearchQuery, pageReq d.ElementPageRequest, opts ...services.CallOption) (d.ElementSearchPage, error) {
-	_ = services.ApplyCallOptions(opts)
+	callCfg := services.ApplyCallOptions(opts)
 
 	filter, err := newElementSearchFilter(query)
 	if err != nil {
 		return d.ElementSearchPage{}, err
+	}
+	if !callCfg.IgnoreTenant && strings.TrimSpace(s.cfg.App.Tenant) != "" {
+		tenant := camundav89.TenantId(s.cfg.App.Tenant)
+		filter.TenantId = &tenant
 	}
 	pageSize := pageReq.Size
 	if pageSize <= 0 {
@@ -259,9 +264,13 @@ func trimElementSearchPageResults(items []camundav89.ElementInstanceResult, page
 }
 
 // pickElementSearchOverflowState normalizes Camunda total metadata into the
-// version-neutral continuation state used by higher layers.
+// version-neutral continuation state used by higher layers. Empty pages are
+// complete only when their metadata no longer advertises remaining results.
 func pickElementSearchOverflowState(page camundav89.SearchQueryPageResponse, from int32, itemCount int, pageSize int32) d.ProcessInstanceOverflowState {
 	if itemCount == 0 {
+		if page.TotalItems > int64(from) || page.HasMoreTotalItems {
+			return d.ProcessInstanceOverflowStateHasMore
+		}
 		return d.ProcessInstanceOverflowStateNoMore
 	}
 	nextFrom := int64(from) + int64(itemCount)

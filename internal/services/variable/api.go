@@ -10,8 +10,12 @@ import (
 	"github.com/grafvonb/c8volt/internal/services"
 )
 
-// API exposes tenant-safe process-instance variable lookup and update operations.
+// API exposes process-root and exact-local variable lookup and update operations.
 type API interface {
+	// SearchScopeVariablesPage reads one page bound to an independent owner and local scope.
+	SearchScopeVariablesPage(ctx context.Context, query d.ScopeVariableQuery, page d.ProcessInstanceVariablePageRequest, opts ...services.CallOption) (d.ProcessInstanceVariablePage, error)
+	// SearchScopeVariables returns all local observations or an error without partial results.
+	SearchScopeVariables(ctx context.Context, query d.ScopeVariableQuery, opts ...services.CallOption) ([]d.ProcessInstanceVariable, error)
 	// SearchProcessInstanceVariablesPage reads one normalized root-variable page.
 	SearchProcessInstanceVariablesPage(ctx context.Context, key string, page d.ProcessInstanceVariablePageRequest, opts ...services.CallOption) (d.ProcessInstanceVariablePage, error)
 	// SearchProcessInstanceVariables reads the complete root-variable collection.

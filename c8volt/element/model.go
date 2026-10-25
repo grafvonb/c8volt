@@ -3,7 +3,11 @@
 
 package element
 
-import "time"
+import (
+	"time"
+
+	options "github.com/grafvonb/c8volt/c8volt/foptions"
+)
 
 // RuntimeListenerJob exposes a listener job attached to a runtime element.
 type RuntimeListenerJob struct {
@@ -41,6 +45,7 @@ type Element struct {
 	TenantId               string                `json:"tenantId,omitempty"`
 	HasIncident            bool                  `json:"hasIncident"`
 	IncidentKey            string                `json:"incidentKey,omitempty"`
+	Variables              *[]Variable           `json:"variables,omitempty"`
 	Listeners              *[]RuntimeListenerJob `json:"listeners,omitempty"`
 }
 
@@ -151,4 +156,124 @@ type SearchPagesResult struct {
 	Items []Element `json:"items"`
 	Total int32     `json:"total"`
 	Pages int32     `json:"pages"`
+}
+
+// Enrichment selects independent local-variable and listener inspection.
+type Enrichment struct {
+	Variables bool
+	Listeners bool
+}
+
+// Variable preserves the serialized local value and backend completeness evidence.
+type Variable struct {
+	Name               string `json:"name"`
+	Value              string `json:"value"`
+	VariableKey        string `json:"variableKey,omitempty"`
+	ProcessInstanceKey string `json:"processInstanceKey"`
+	ScopeKey           string `json:"scopeKey"`
+	TenantId           string `json:"tenantId,omitempty"`
+	APITruncated       bool   `json:"apiTruncated"`
+}
+
+// ElementVariablePlannedValue describes an addition, unchanged
+// request, or untouched local variable in a frozen update plan.
+type ElementVariablePlannedValue struct {
+	Name         string `json:"name"`
+	Value        any    `json:"value"`
+	APITruncated bool   `json:"apiTruncated,omitempty"`
+}
+
+// ElementVariablePlannedChange preserves the observed and requested
+// values for a local variable that needs mutation.
+type ElementVariablePlannedChange struct {
+	Name         string `json:"name"`
+	Before       any    `json:"before"`
+	After        any    `json:"after"`
+	APITruncated bool   `json:"apiTruncated,omitempty"`
+}
+
+// ElementVariablePlan is the complete element-local classification and
+// frozen payload for one selected element.
+type ElementVariablePlan struct {
+	ElementKey         string                         `json:"elementKey"`
+	ProcessInstanceKey string                         `json:"processInstanceKey"`
+	ScopeKey           string                         `json:"scopeKey"`
+	TenantId           string                         `json:"tenantId,omitempty"`
+	Additions          []ElementVariablePlannedValue  `json:"additions"`
+	Changes            []ElementVariablePlannedChange `json:"changes"`
+	UnchangedRequested []ElementVariablePlannedValue  `json:"unchangedRequested"`
+	Untouched          []ElementVariablePlannedValue  `json:"untouched"`
+	MutationVariables  map[string]any                 `json:"mutationVariables,omitempty"`
+	VerificationValues map[string]any                 `json:"verificationValues"`
+}
+
+// ElementVariableUpdatePlan is a complete frozen collection plan
+// suitable for preview and later execution without rediscovery.
+type ElementVariableUpdatePlan struct {
+	RequestedKeys          []string              `json:"requestedKeys"`
+	RequestedValues        map[string]any        `json:"requestedValues"`
+	Elements               []ElementVariablePlan `json:"elements"`
+	RequestedCount         int                   `json:"requestedCount"`
+	UpdateCount            int                   `json:"updateCount"`
+	VariableAddCount       int                   `json:"variableAddCount"`
+	VariableChangeCount    int                   `json:"variableChangeCount"`
+	VariableUnchangedCount int                   `json:"variableUnchangedCount"`
+	VariableUntouchedCount int                   `json:"variableUntouchedCount"`
+	MutationSubmitted      bool                  `json:"mutationSubmitted"`
+	TenantContext          options.TenantContext `json:"tenantContext"`
+}
+
+// VariableSubmissionStatus describes the physical submission evidence for a logical local write.
+type VariableSubmissionStatus string
+
+// Submission evidence is independent of confirmation and is never inferred from a generic transport error.
+const (
+	VariableSubmissionNotSent  VariableSubmissionStatus = "not_sent"
+	VariableSubmissionRejected VariableSubmissionStatus = "rejected"
+	VariableSubmissionUnknown  VariableSubmissionStatus = "unknown"
+	VariableSubmissionAccepted VariableSubmissionStatus = "accepted"
+)
+
+// ElementVariableUpdateStatus describes progress without implying rollback.
+type ElementVariableUpdateStatus string
+
+// Element variable update statuses distinguish unchanged, unscheduled, and submitted work.
+const (
+	ElementVariableUpdateStatusUnchanged          ElementVariableUpdateStatus = "unchanged"
+	ElementVariableUpdateStatusSkipped            ElementVariableUpdateStatus = "skipped"
+	ElementVariableUpdateStatusMutationFailed     ElementVariableUpdateStatus = "mutation_failed"
+	ElementVariableUpdateStatusSubmitted          ElementVariableUpdateStatus = "submitted"
+	ElementVariableUpdateStatusConfirmed          ElementVariableUpdateStatus = "confirmed"
+	ElementVariableUpdateStatusConfirmationFailed ElementVariableUpdateStatus = "confirmation_failed"
+)
+
+// ElementVariableUpdateResult retains frozen identity and independent submission/confirmation evidence.
+type ElementVariableUpdateResult struct {
+	Key                string                      `json:"key"`
+	ProcessInstanceKey string                      `json:"processInstanceKey"`
+	ScopeKey           string                      `json:"scopeKey"`
+	Status             ElementVariableUpdateStatus `json:"status"`
+	SubmissionStatus   VariableSubmissionStatus    `json:"submissionStatus"`
+	MutationAccepted   bool                        `json:"mutationAccepted"`
+	ConfirmationStatus string                      `json:"confirmationStatus"`
+	StatusCode         int                         `json:"statusCode,omitempty"`
+	Message            string                      `json:"message,omitempty"`
+	Error              string                      `json:"error,omitempty"`
+	Variables          map[string]any              `json:"variables,omitempty"`
+}
+
+// OK accepts unchanged, confirmed, and deliberately unconfirmed no-wait results only.
+func (r ElementVariableUpdateResult) OK() bool {
+	if r.Error != "" {
+		return false
+	}
+	return r.Status == ElementVariableUpdateStatusUnchanged ||
+		(r.MutationAccepted && r.SubmissionStatus == VariableSubmissionAccepted &&
+			((r.Status == ElementVariableUpdateStatusConfirmed && r.ConfirmationStatus == "confirmed") ||
+				(r.Status == ElementVariableUpdateStatusSubmitted && r.ConfirmationStatus == "skipped")))
+}
+
+// ElementVariableUpdateResults preserves one outcome per planned element in selection order.
+type ElementVariableUpdateResults struct {
+	Items []ElementVariableUpdateResult `json:"items"`
 }

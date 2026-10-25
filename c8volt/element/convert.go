@@ -4,6 +4,12 @@
 package element
 
 import (
+	"bytes"
+	"encoding/json"
+	"reflect"
+	"slices"
+
+	options "github.com/grafvonb/c8volt/c8volt/foptions"
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/toolx"
 )
@@ -26,6 +32,7 @@ func fromDomainElement(result d.Element) Element {
 		HasIncident:            result.HasIncident,
 		IncidentKey:            result.IncidentKey,
 		Listeners:              fromDomainRuntimeListenerJobsPtr(result.Listeners),
+		Variables:              fromDomainVariablesPtr(result.Variables),
 	}
 }
 
@@ -157,4 +164,208 @@ func mapDomainElements(items []d.Element) []Element {
 		out = append(out, fromDomainElement(item))
 	}
 	return out
+}
+
+// toDomainEnrichment maps the independent enrichment choices without adding policy.
+func toDomainEnrichment(e Enrichment) d.ElementEnrichment {
+	return d.ElementEnrichment{Variables: e.Variables, Listeners: e.Listeners}
+}
+
+// fromDomainVariable preserves raw serialized values and optional observation evidence.
+func fromDomainVariable(v d.ProcessInstanceVariable) Variable {
+	return Variable{Name: v.Name, Value: v.Value, VariableKey: v.VariableKey, ProcessInstanceKey: v.ProcessInstanceKey, ScopeKey: v.ScopeKey, TenantId: v.TenantId, APITruncated: v.APITruncated}
+}
+
+// fromDomainVariablesPtr distinguishes omitted enrichment from a successful empty read.
+func fromDomainVariablesPtr(values *[]d.ProcessInstanceVariable) *[]Variable {
+	if values == nil {
+		return nil
+	}
+	out := toolx.MapSlice(*values, fromDomainVariable)
+	if out == nil {
+		out = []Variable{}
+	}
+	return &out
+}
+
+// copyElementPlanVariableValue isolates mutable JSON storage while
+// retaining the established representation of ordinary interface collections.
+func copyElementPlanVariableValue(value any) any {
+	switch value := value.(type) {
+	case nil:
+		return nil
+	case map[string]any:
+		return copyElementPlanVariableMap(value)
+	case []any:
+		out := make([]any, len(value))
+		for i := range value {
+			out[i] = copyElementPlanVariableValue(value[i])
+		}
+		return out
+	case json.RawMessage:
+		return append(json.RawMessage(nil), value...)
+	default:
+		return snapshotTypedElementPlanJSONValue(value)
+	}
+}
+
+// snapshotTypedElementPlanJSONValue retains concrete typed JSON values when they round-trip faithfully.
+// Marshal-only types fall back to their decoded JSON value so custom storage
+// cannot alias the caller or silently change the approved serialized payload.
+func snapshotTypedElementPlanJSONValue(value any) any {
+	raw, err := json.Marshal(value)
+	if err != nil {
+		// Invalid input is rejected before copying.
+		return value
+	}
+	target := reflect.New(reflect.TypeOf(value))
+	decoder := json.NewDecoder(bytes.NewReader(raw))
+	decoder.UseNumber()
+	if err := decoder.Decode(target.Interface()); err == nil {
+		snapshot := target.Elem().Interface()
+		if encoded, err := json.Marshal(snapshot); err == nil && bytes.Equal(raw, encoded) {
+			return snapshot
+		}
+	}
+	decoder = json.NewDecoder(bytes.NewReader(raw))
+	decoder.UseNumber()
+	var snapshot any
+	_ = decoder.Decode(&snapshot) // json.Marshal above guarantees one valid JSON value.
+	return snapshot
+}
+
+// copyElementPlanVariableMap copies a variable map without sharing
+// nested object or array values across the facade boundary.
+func copyElementPlanVariableMap(values map[string]any) map[string]any {
+	if values == nil {
+		return nil
+	}
+	out := make(map[string]any, len(values))
+	for name, value := range values {
+		out[name] = copyElementPlanVariableValue(value)
+	}
+	return out
+}
+
+// fromDomainElementVariablePlannedValue maps one classified value and
+// copies its nested JSON data.
+func fromDomainElementVariablePlannedValue(x d.ElementVariablePlannedValue) ElementVariablePlannedValue {
+	return ElementVariablePlannedValue{Name: x.Name, Value: copyElementPlanVariableValue(x.Value), APITruncated: x.APITruncated}
+}
+
+// fromDomainElementVariablePlannedChange maps one classified change
+// and copies both observed and requested values.
+func fromDomainElementVariablePlannedChange(x d.ElementVariablePlannedChange) ElementVariablePlannedChange {
+	return ElementVariablePlannedChange{
+		Name: x.Name, Before: copyElementPlanVariableValue(x.Before),
+		After: copyElementPlanVariableValue(x.After), APITruncated: x.APITruncated,
+	}
+}
+
+// fromDomainElementVariablePlan maps one local plan without sharing its
+// classification or payload values.
+func fromDomainElementVariablePlan(x d.ElementVariablePlan) ElementVariablePlan {
+	return ElementVariablePlan{
+		ElementKey: x.ElementKey, ProcessInstanceKey: x.ProcessInstanceKey, ScopeKey: x.ScopeKey, TenantId: x.TenantId,
+		Additions:          toolx.MapSlice(x.Additions, fromDomainElementVariablePlannedValue),
+		Changes:            toolx.MapSlice(x.Changes, fromDomainElementVariablePlannedChange),
+		UnchangedRequested: toolx.MapSlice(x.UnchangedRequested, fromDomainElementVariablePlannedValue),
+		Untouched:          toolx.MapSlice(x.Untouched, fromDomainElementVariablePlannedValue),
+		MutationVariables:  copyElementPlanVariableMap(x.MutationVariables),
+		VerificationValues: copyElementPlanVariableMap(x.VerificationValues),
+	}
+}
+
+// fromDomainElementVariableTenantContext maps frozen tenant evidence
+// into the public options model with independent slices.
+func fromDomainElementVariableTenantContext(x d.TenantContext) options.TenantContext {
+	return options.TenantContext{
+		Mode: options.TenantContextMode(x.Mode), Filter: options.TenantContextFilter(x.Filter),
+		ConfiguredTenantID: x.ConfiguredTenantID, TargetTenantID: x.TargetTenantID,
+		ResolvedTenantIDs: slices.Clone(x.ResolvedTenantIDs), UnknownTargetCount: x.UnknownTargetCount,
+		CrossTenant: x.CrossTenant,
+		Warnings: toolx.MapSlice(x.Warnings, func(w d.TenantContextWarning) options.TenantContextWarning {
+			return options.TenantContextWarning{Code: options.TenantContextWarningCode(w.Code), Message: w.Message}
+		}),
+	}
+}
+
+// fromDomainElementVariableUpdatePlan maps the complete frozen plan
+// while preserving stable order, counts, and tenant evidence.
+func fromDomainElementVariableUpdatePlan(x d.ElementVariableUpdatePlan) ElementVariableUpdatePlan {
+	return ElementVariableUpdatePlan{
+		RequestedKeys: slices.Clone(x.RequestedKeys), RequestedValues: copyElementPlanVariableMap(x.RequestedValues),
+		Elements: toolx.MapSlice(x.Elements, fromDomainElementVariablePlan), RequestedCount: x.RequestedCount,
+		UpdateCount: x.UpdateCount, VariableAddCount: x.VariableAddCount, VariableChangeCount: x.VariableChangeCount,
+		VariableUnchangedCount: x.VariableUnchangedCount, VariableUntouchedCount: x.VariableUntouchedCount,
+		MutationSubmitted: x.MutationSubmitted, TenantContext: fromDomainElementVariableTenantContext(x.TenantContext),
+	}
+}
+
+// toDomainElementVariablePlannedValue maps one classified value and
+// copies its nested JSON data.
+func toDomainElementVariablePlannedValue(x ElementVariablePlannedValue) d.ElementVariablePlannedValue {
+	return d.ElementVariablePlannedValue{Name: x.Name, Value: copyElementPlanVariableValue(x.Value), APITruncated: x.APITruncated}
+}
+
+// toDomainElementVariablePlannedChange maps one classified change
+// and copies both observed and requested values.
+func toDomainElementVariablePlannedChange(x ElementVariablePlannedChange) d.ElementVariablePlannedChange {
+	return d.ElementVariablePlannedChange{
+		Name: x.Name, Before: copyElementPlanVariableValue(x.Before),
+		After: copyElementPlanVariableValue(x.After), APITruncated: x.APITruncated,
+	}
+}
+
+// toDomainElementVariablePlan maps one local plan without sharing its
+// classification or payload values.
+func toDomainElementVariablePlan(x ElementVariablePlan) d.ElementVariablePlan {
+	return d.ElementVariablePlan{
+		ElementKey: x.ElementKey, ProcessInstanceKey: x.ProcessInstanceKey, ScopeKey: x.ScopeKey, TenantId: x.TenantId,
+		Additions:          toolx.MapSlice(x.Additions, toDomainElementVariablePlannedValue),
+		Changes:            toolx.MapSlice(x.Changes, toDomainElementVariablePlannedChange),
+		UnchangedRequested: toolx.MapSlice(x.UnchangedRequested, toDomainElementVariablePlannedValue),
+		Untouched:          toolx.MapSlice(x.Untouched, toDomainElementVariablePlannedValue),
+		MutationVariables:  copyElementPlanVariableMap(x.MutationVariables),
+		VerificationValues: copyElementPlanVariableMap(x.VerificationValues),
+	}
+}
+
+// toDomainElementVariableTenantContext maps public tenant evidence
+// into the service model with independent slices.
+func toDomainElementVariableTenantContext(x options.TenantContext) d.TenantContext {
+	return d.TenantContext{
+		Mode: d.TenantContextMode(x.Mode), Filter: d.TenantContextFilter(x.Filter),
+		ConfiguredTenantID: x.ConfiguredTenantID, TargetTenantID: x.TargetTenantID,
+		ResolvedTenantIDs: slices.Clone(x.ResolvedTenantIDs), UnknownTargetCount: x.UnknownTargetCount,
+		CrossTenant: x.CrossTenant,
+		Warnings: toolx.MapSlice(x.Warnings, func(w options.TenantContextWarning) d.TenantContextWarning {
+			return d.TenantContextWarning{Code: d.TenantContextWarningCode(w.Code), Message: w.Message}
+		}),
+	}
+}
+
+// toDomainElementVariableUpdatePlan maps the complete frozen plan
+// while preserving stable order, counts, and tenant evidence.
+func toDomainElementVariableUpdatePlan(x ElementVariableUpdatePlan) d.ElementVariableUpdatePlan {
+	return d.ElementVariableUpdatePlan{
+		RequestedKeys: slices.Clone(x.RequestedKeys), RequestedValues: copyElementPlanVariableMap(x.RequestedValues),
+		Elements: toolx.MapSlice(x.Elements, toDomainElementVariablePlan), RequestedCount: x.RequestedCount,
+		UpdateCount: x.UpdateCount, VariableAddCount: x.VariableAddCount, VariableChangeCount: x.VariableChangeCount,
+		VariableUnchangedCount: x.VariableUnchangedCount, VariableUntouchedCount: x.VariableUntouchedCount,
+		MutationSubmitted: x.MutationSubmitted, TenantContext: toDomainElementVariableTenantContext(x.TenantContext),
+	}
+}
+
+// fromDomainElementVariableUpdateResults preserves partial evidence and isolates mutation values.
+func fromDomainElementVariableUpdateResults(result d.ElementVariableUpdateResults) ElementVariableUpdateResults {
+	return ElementVariableUpdateResults{Items: toolx.MapSlice(result.Items, func(x d.ElementVariableUpdateResult) ElementVariableUpdateResult {
+		return ElementVariableUpdateResult{
+			Key: x.Key, ProcessInstanceKey: x.ProcessInstanceKey, ScopeKey: x.ScopeKey,
+			Status: ElementVariableUpdateStatus(x.Status), SubmissionStatus: VariableSubmissionStatus(x.SubmissionStatus),
+			MutationAccepted: x.MutationAccepted, ConfirmationStatus: x.ConfirmationStatus,
+			StatusCode: x.StatusCode, Message: x.Message, Error: x.Error,
+			Variables: copyElementPlanVariableMap(x.Variables),
+		}
+	})}
 }

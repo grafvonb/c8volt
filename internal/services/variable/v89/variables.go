@@ -25,16 +25,35 @@ func (s *Service) SearchProcessInstanceVariables(ctx context.Context, key string
 
 // SearchProcessInstanceVariablesPage reads one normalized v8.9 variable page.
 func (s *Service) SearchProcessInstanceVariablesPage(ctx context.Context, key string, pageReq d.ProcessInstanceVariablePageRequest, opts ...services.CallOption) (d.ProcessInstanceVariablePage, error) {
+	return s.searchVariablesPage(ctx, d.ScopeVariableQuery{ProcessInstanceKey: key, ScopeKey: key}, pageReq, false, opts...)
+}
+
+// SearchScopeVariables reads all variables owned directly by the selected scope.
+func (s *Service) SearchScopeVariables(ctx context.Context, query d.ScopeVariableQuery, opts ...services.CallOption) ([]d.ProcessInstanceVariable, error) {
+	return variablesearch.ScopeVariables(ctx, s, query, opts...)
+}
+
+// SearchScopeVariablesPage validates identity before requesting a local page.
+func (s *Service) SearchScopeVariablesPage(ctx context.Context, query d.ScopeVariableQuery, pageReq d.ProcessInstanceVariablePageRequest, opts ...services.CallOption) (d.ProcessInstanceVariablePage, error) {
+	if err := query.Validate(); err != nil {
+		return d.ProcessInstanceVariablePage{}, err
+	}
+	return s.searchVariablesPage(ctx, query, pageReq, true, opts...)
+}
+
+// searchVariablesPage shares wire requests while preserving legacy root errors
+// and filtering; only explicit local reads enforce selected-scope identity evidence.
+func (s *Service) searchVariablesPage(ctx context.Context, query d.ScopeVariableQuery, pageReq d.ProcessInstanceVariablePageRequest, strictScope bool, opts ...services.CallOption) (d.ProcessInstanceVariablePage, error) {
 	if err := pageReq.Validate(); err != nil {
 		return d.ProcessInstanceVariablePage{}, fmt.Errorf("validate process-instance variable page: %w", err)
 	}
 	callCfg := services.ApplyCallOptions(opts)
-	s.log.Debug(fmt.Sprintf("searching pi %s variables", key))
-	processInstanceKeyFilter, err := newProcessInstanceKeyEqFilterPtr(key)
+	s.log.Debug(fmt.Sprintf("searching pi %s scope %s variables", query.ProcessInstanceKey, query.ScopeKey))
+	processInstanceKeyFilter, err := newProcessInstanceKeyEqFilterPtr(query.ProcessInstanceKey)
 	if err != nil {
 		return d.ProcessInstanceVariablePage{}, fmt.Errorf("building process-instance variable filter: %w", err)
 	}
-	scopeKeyFilter, err := newScopeKeyEqFilterPtr(key)
+	scopeKeyFilter, err := newScopeKeyEqFilterPtr(query.ScopeKey)
 	if err != nil {
 		return d.ProcessInstanceVariablePage{}, fmt.Errorf("building process-instance variable scope filter: %w", err)
 	}
@@ -68,10 +87,13 @@ func (s *Service) SearchProcessInstanceVariablesPage(ctx context.Context, key st
 	if err != nil {
 		return d.ProcessInstanceVariablePage{}, err
 	}
+	if resp == nil {
+		return d.ProcessInstanceVariablePage{}, fmt.Errorf("%w: empty variable search response", d.ErrMalformedResponse)
+	}
 	if _, err := common.RequirePayload(resp.HTTPResponse, resp.Body, resp.JSON200); err != nil {
 		return d.ProcessInstanceVariablePage{}, err
 	}
-	payload, err := decodeSearchVariablesResponse(resp.Body, pageReq, key)
+	payload, err := decodeSearchVariablesResponse(resp.Body, pageReq, query, strictScope)
 	if err != nil {
 		return d.ProcessInstanceVariablePage{}, fmt.Errorf("decode process-instance variables: %w", err)
 	}
@@ -124,7 +146,7 @@ func (s *Service) UpdateProcessInstanceVariables(ctx context.Context, key string
 // UpdateScopeVariables writes variables strictly to the requested element scope without confirmation reads.
 func (s *Service) UpdateScopeVariables(ctx context.Context, scopeKey string, variables map[string]any, opts ...services.CallOption) (d.ScopeVariableUpdateResponse, error) {
 	_ = services.ApplyCallOptions(opts)
-	result := d.ScopeVariableUpdateResponse{ScopeKey: scopeKey}
+	result := d.ScopeVariableUpdateResponse{ScopeKey: scopeKey, SubmissionStatus: d.ScopeVariableSubmissionNotSent}
 	if strings.TrimSpace(scopeKey) == "" {
 		return result, fmt.Errorf("%w: scope key must not be blank", d.ErrValidation)
 	}
@@ -140,11 +162,26 @@ func (s *Service) UpdateScopeVariables(ctx context.Context, scopeKey string, var
 		Variables: variables,
 	}
 	resp, err := services.RetryCamundaMutation(ctx, s.log, "update scope variables", func(ctx context.Context) (*camundav89.CreateElementInstanceVariablesResponse, *http.Response, []byte, error) {
-		resp, err := s.cc.CreateElementInstanceVariablesWithResponse(ctx, camundav89.ElementInstanceKey(scopeKey), body)
-		if resp == nil {
-			return resp, nil, nil, err
+		// Check before dispatch; a generic error returned after calling the client
+		// cannot by itself prove that the attempt was unsent.
+		if err := ctx.Err(); err != nil {
+			return nil, nil, nil, err
 		}
-		return resp, resp.HTTPResponse, resp.Body, err
+		attemptCtx, observation := httpc.BeginRequestRateAttempt(ctx)
+		resp, err := s.cc.CreateElementInstanceVariablesWithResponse(attemptCtx, camundav89.ElementInstanceKey(scopeKey), body)
+		var response *http.Response
+		var responseBody []byte
+		if resp != nil {
+			response, responseBody = resp.HTTPResponse, resp.Body
+		}
+		localErr := observation.Failure()
+		common.RecordScopeVariableSubmission(&result, response, responseBody, err, localErr)
+		// Restore local admission classification if Client.Timeout substituted
+		// its own error. Return it to the unchanged retry policy as well.
+		if localErr != nil {
+			err = localErr
+		}
+		return resp, response, responseBody, err
 	})
 	if err != nil {
 		return result, err

@@ -1110,17 +1110,19 @@ func TestCapabilityDocumentForRoot_ConfigDiagnosticsContract(t *testing.T) {
 	}
 }
 
+// TestCapabilityDocumentForRoot_CoversCLIDebtAssessment preserves the historical baseline
+// and accounts explicitly for commands added after that assessment.
 func TestCapabilityDocumentForRoot_CoversCLIDebtAssessment(t *testing.T) {
 	root := Root()
 	resetCommandTreeFlags(root)
 
 	doc := capabilityDocumentForRoot(root)
 	paths := commandCapabilityPaths(doc.Commands)
-	require.Len(t, paths, 57)
+	require.Len(t, paths, 58)
 
 	assessmentPaths := readCLIDebtAssessmentCommandPaths(t)
 	require.Len(t, assessmentPaths, 57)
-	require.ElementsMatch(t, paths, assessmentPaths)
+	require.ElementsMatch(t, paths, append(assessmentPaths, "update element"))
 }
 
 // TestCommandCapabilityForCommand_UserTaskReadContract verifies every alias
@@ -1659,6 +1661,8 @@ func TestCommandCapabilityForCommand_GetElementContract(t *testing.T) {
 	require.Contains(t, capability.OutputModes, OutputModeContract{Name: "json", Supported: true, MachinePreferred: true})
 	require.Contains(t, capability.OutputModes, OutputModeContract{Name: "keys-only", Supported: true})
 	require.Equal(t, []string{"ei"}, capability.Aliases)
+	require.Contains(t, capability.Flags, FlagContract{Name: "with-vars", Type: "bool", Description: "include complete element-local variables; skipped for keys-only and total output"})
+	require.Contains(t, getCmd.Example, "get ei --key <element-instance-key> --with-vars")
 	require.Contains(t, getElementCmd.Long, "Use --key for a known element instance")
 	require.Contains(t, getElementCmd.Long, "--with-listeners to include runtime listener jobs")
 	require.Contains(t, getElementCmd.Long, "job creation time as s: (not worker execution start)")
@@ -2704,7 +2708,7 @@ func TestGetJobAndUpdateJobHelp_DocumentsDiscoveryAndMutationGuards(t *testing.T
 	}, nil)
 
 	output = assertCommandHelpOutput(t, []string{"update"}, []string{
-		"Update process-instance or user-task variables, complete user tasks, or update job retries, timeouts, and worker outcomes",
+		"Update element-local, process-instance or user-task variables, complete user tasks, or update job retries, timeouts, and worker outcomes",
 		"job retries, timeouts, and worker outcomes",
 		"plan and confirm updates",
 		"./c8volt update job --key <job-key> --retries 3 --dry-run",
@@ -2755,6 +2759,9 @@ func TestGetElementHelp_DocumentsSearchAndOutputModes(t *testing.T) {
 		"--limit caps returned elements across all pages",
 		"--total to count matching elements",
 		"--with-listeners to include runtime listener jobs",
+		"--with-vars includes complete variables owned directly by each selected element",
+		"Keys-only and total output skip variable reads",
+		"./c8volt get ei --key <element-instance-key> --with-vars",
 		"job creation time as s: (not worker execution start)",
 		"job end time as e:",
 		"d: only for an ACTIVATED job with a deadline",
@@ -2845,11 +2852,11 @@ func TestIncidentCommandHelpOmitsLegacyElementTerminology(t *testing.T) {
 	}
 }
 
-// TestUpdateProcessInstanceHelp_DocumentsVariableUpdateDiscovery preserves variable
-// workflow guidance when the parent group also advertises task completion.
+// TestUpdateProcessInstanceHelp_DocumentsVariableUpdateDiscovery preserves root-variable
+// guidance when the parent also advertises element-local updates and task completion.
 func TestUpdateProcessInstanceHelp_DocumentsVariableUpdateDiscovery(t *testing.T) {
 	output := assertCommandHelpOutput(t, []string{"update"}, []string{
-		"Update process-instance or user-task variables, complete user tasks, or update job retries, timeouts, and worker outcomes",
+		"Update element-local, process-instance or user-task variables, complete user tasks, or update job retries, timeouts, and worker outcomes",
 		"Camunda 8.8 or newer",
 		"Requires Camunda 8.8 or newer",
 		"./c8volt update process-instance --key <process-instance-key> --vars",

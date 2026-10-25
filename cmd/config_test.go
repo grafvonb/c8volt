@@ -18,6 +18,7 @@ import (
 
 	"github.com/grafvonb/c8volt/config"
 	"github.com/grafvonb/c8volt/internal/exitcode"
+	"github.com/grafvonb/c8volt/internal/services/httpc"
 	"github.com/grafvonb/c8volt/testx"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -1387,15 +1388,23 @@ func TestRequestRateInvalidBeforeBootstrap(t *testing.T) {
 	}
 }
 
-// TestRequestRateRootCookieBootstrapSharesAllowance proves root wiring paces shared authentication and API requests together.
+// TestRequestRateRootCookieBootstrapSharesAllowance proves login consumes the API's
+// shared allowance without relying on server-arrival gaps after client admission.
 func TestRequestRateRootCookieBootstrapSharesAllowance(t *testing.T) {
 	clearRequestRateTestEnvironment(t)
-	for _, value := range []string{"0", "20"} {
-		t.Run(value, func(t *testing.T) {
-			var starts testx.SafeSlice[time.Time]
+	for _, tc := range []struct {
+		rate    string
+		blocked bool
+	}{
+		{rate: "0"},
+		{rate: "20"},
+		// One token per 1,000 seconds leaves no second allowance within the
+		// API's one-second deadline, regardless of ordinary CI scheduling jitter.
+		{rate: "0.001", blocked: true},
+	} {
+		t.Run(tc.rate, func(t *testing.T) {
 			var paths testx.SafeSlice[string]
 			server := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				starts.Append(time.Now())
 				paths.Append(r.URL.Path)
 				switch r.URL.Path {
 				case "/api/login":
@@ -1410,17 +1419,54 @@ func TestRequestRateRootCookieBootstrapSharesAllowance(t *testing.T) {
 			}))
 			t.Cleanup(server.Close)
 			path := writeAPIDiagnosticsCommandConfig(t, server.URL, "cookie")
-			stdout, stderr := executeAPIDiagnosticsRoot(t, "--config", path, "--request-rate", value, "--debug", "--log-format", "plain", "get", "process-definition", "--key", apiDiagnosticsProcessDefinitionKey, "--json")
-			requireSingleJSONValue(t, stdout)
-			require.NotContains(t, stdout, "DEBUG")
-			require.Equal(t, []string{"/api/login", "/v2/process-definitions/" + apiDiagnosticsProcessDefinitionKey}, paths.Snapshot())
-			times := starts.Snapshot()
-			require.Len(t, times, 2)
-			if value != "0" {
-				require.GreaterOrEqual(t, times[1].Sub(times[0]), 45*time.Millisecond)
+			root := Root()
+			resetCommandTreeFlags(root)
+			resetRequestRateCommandContexts(root)
+			// Return the facade error instead of invoking the production command's
+			// os.Exit path, while retaining real root bootstrap and client wiring.
+			probe := &cobra.Command{Use: "request-rate-cookie-bootstrap-probe", SilenceUsage: true, SilenceErrors: true, RunE: func(cmd *cobra.Command, _ []string) error {
+				cli, _, _, err := NewCli(cmd)
+				if err != nil {
+					return err
+				}
+				ctx := cmd.Context()
+				if tc.blocked {
+					var cancel context.CancelFunc
+					ctx, cancel = context.WithTimeout(ctx, time.Second)
+					defer cancel()
+				}
+				item, err := cli.GetProcessDefinition(ctx, apiDiagnosticsProcessDefinitionKey)
+				if err != nil {
+					return err
+				}
+				return renderSucceededResult(cmd, item)
+			}}
+			root.AddCommand(probe)
+			t.Cleanup(func() {
+				root.RemoveCommand(probe)
+				resetCommandTreeFlags(root)
+				resetRequestRateCommandContexts(root)
+			})
+			stdout, stderr := &bytes.Buffer{}, &bytes.Buffer{}
+			root.SetOut(stdout)
+			root.SetErr(stderr)
+			root.SetArgs([]string{"--config", path, "--request-rate", tc.rate, "--debug", "--log-format", "plain", probe.Name(), "--json"})
+			_, err := root.ExecuteC()
+			if tc.blocked {
+				require.ErrorIs(t, err, context.DeadlineExceeded)
+				require.True(t, httpc.IsRequestRateWaitError(err), "the shared allowance must reject API admission locally")
+				require.Equal(t, []string{"/api/login"}, paths.Snapshot(), "the rejected API request must never reach the server")
+				require.Empty(t, stdout.String())
+				require.Equal(t, 1, strings.Count(stderr.String(), "DEBUG api #"))
+			} else {
+				require.NoError(t, err)
+				requireSingleJSONValue(t, stdout.String())
+				require.Equal(t, []string{"/api/login", "/v2/process-definitions/" + apiDiagnosticsProcessDefinitionKey}, paths.Snapshot())
+				require.Equal(t, 2, strings.Count(stderr.String(), "DEBUG api #"))
 			}
-			require.Equal(t, 2, strings.Count(stderr, "DEBUG api #"))
-			require.NotContains(t, stderr, "fake-cookie")
+			require.NotContains(t, stdout.String(), "DEBUG")
+			require.NotContains(t, stderr.String(), "fake-cookie")
+			require.Nil(t, currentHTTPService, "root finalization must release the shared service")
 		})
 	}
 }

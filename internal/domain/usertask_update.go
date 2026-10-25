@@ -132,11 +132,29 @@ type UserTaskVariableUpdateResults struct {
 	Items []UserTaskVariableUpdateResult
 }
 
-// ScopeVariableUpdateResponse records whether a scope-local variable write was accepted.
-// Confirmation belongs to the user-task update workflow and is intentionally absent here.
+// ScopeVariableSubmissionStatus records physical submission evidence independently
+// of legacy acceptance mapping and any later confirmation.
+type ScopeVariableSubmissionStatus string
+
+const (
+	// ScopeVariableSubmissionNotSent means no physical attempt was dispatched.
+	ScopeVariableSubmissionNotSent ScopeVariableSubmissionStatus = "not_sent"
+	// ScopeVariableSubmissionRejected means explicit rejection without earlier ambiguity.
+	ScopeVariableSubmissionRejected ScopeVariableSubmissionStatus = "rejected"
+	// ScopeVariableSubmissionUnknown means a dispatched attempt has no conclusive response.
+	ScopeVariableSubmissionUnknown ScopeVariableSubmissionStatus = "unknown"
+	// ScopeVariableSubmissionAccepted means a documented successful response was observed.
+	ScopeVariableSubmissionAccepted ScopeVariableSubmissionStatus = "accepted"
+)
+
+// ScopeVariableUpdateResponse retains local-write evidence across physical retries.
+// Accepted preserves legacy PI/UT HTTP mapping; new element workflows must use
+// SubmissionStatus, which requires documented endpoint evidence. Confirmation is
+// intentionally absent here and cannot erase submission evidence.
 type ScopeVariableUpdateResponse struct {
-	ScopeKey   string
-	Accepted   bool
-	StatusCode int
-	Status     string
+	SubmissionStatus ScopeVariableSubmissionStatus
+	ScopeKey         string
+	Accepted         bool
+	StatusCode       int
+	Status           string
 }

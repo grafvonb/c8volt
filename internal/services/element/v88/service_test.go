@@ -16,6 +16,7 @@ import (
 
 	camundav88 "github.com/grafvonb/c8volt/internal/clients/camunda/v88/camunda"
 	d "github.com/grafvonb/c8volt/internal/domain"
+	"github.com/grafvonb/c8volt/internal/services"
 	"github.com/grafvonb/c8volt/testx"
 	"github.com/stretchr/testify/require"
 )
@@ -362,16 +363,18 @@ func TestService_SearchElementsTotalFallsBackToPageCounting(t *testing.T) {
 				Type:               camundav88.ElementInstanceResultType("SERVICE_TASK"),
 				State:              camundav88.ElementInstanceStateEnumACTIVE,
 			}}
+			total, more := int64(100), true
 			if len(requests) == 3 {
 				items = nil
+				total, more = 2, false
 			}
 			return &camundav88.SearchElementInstancesResponse{
 				HTTPResponse: okHTTPResponse(),
 				JSON200: &camundav88.ElementInstanceSearchQueryResult{
 					Items: items,
 					Page: camundav88.SearchQueryPageResponse{
-						TotalItems:        100,
-						HasMoreTotalItems: true,
+						TotalItems:        total,
+						HasMoreTotalItems: more,
 					},
 				},
 			}, nil
@@ -464,4 +467,196 @@ func requireElementSearchPageJSON(t *testing.T, body camundav88.SearchElementIns
 	page := got["page"].(map[string]any)
 	require.Equal(t, float64(wantFrom), page["from"])
 	require.Equal(t, float64(wantLimit), page["limit"])
+}
+
+// TestElementSearchTenant applies configured tenant selection at the server for pages, collections and both total paths.
+func TestElementSearchTenant(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name, tenant string
+		ignore       bool
+		filtered     bool
+	}{
+		{name: "configured", tenant: "tenant-a", filtered: true},
+		{name: "ignored", tenant: "tenant-a", ignore: true},
+		{name: "absent"},
+		{name: "blank", tenant: "   "},
+	} {
+		for _, mode := range []string{"page", "collected", "pages", "total", "fallback total"} {
+			t.Run(tc.name+"/"+mode, func(t *testing.T) {
+				requests := 0
+				svc := newElementServiceTest(t, &mockElementClient{searchElementInstancesWithResponse: func(_ context.Context, body camundav88.SearchElementInstancesJSONRequestBody, _ ...camundav88.RequestEditorFn) (*camundav88.SearchElementInstancesResponse, error) {
+					requests++
+					require.NotNil(t, body.Filter)
+					if tc.filtered {
+						require.NotNil(t, body.Filter.TenantId)
+						require.Equal(t, "tenant-a", string(*body.Filter.TenantId))
+					} else {
+						require.Nil(t, body.Filter.TenantId)
+					}
+					// This fake acts like the server: filter before paging and reporting totals.
+					all := []camundav88.ElementInstanceResult{{ElementInstanceKey: "E1", TenantId: "tenant-a"}, {ElementInstanceKey: "E2", TenantId: "tenant-b"}, {ElementInstanceKey: "E3", TenantId: "tenant-a"}}
+					selected := []camundav88.ElementInstanceResult{}
+					for _, item := range all {
+						if body.Filter.TenantId == nil || item.TenantId == *body.Filter.TenantId {
+							selected = append(selected, item)
+						}
+					}
+					raw, err := json.Marshal(body.Page)
+					require.NoError(t, err)
+					var page struct {
+						From  int `json:"from"`
+						Limit int `json:"limit"`
+					}
+					require.NoError(t, json.Unmarshal(raw, &page))
+					require.Equal(t, 1, page.Limit)
+					items := []camundav88.ElementInstanceResult{}
+					if page.From < len(selected) {
+						items = append(items, selected[page.From])
+					}
+					return &camundav88.SearchElementInstancesResponse{HTTPResponse: okHTTPResponse(), JSON200: &camundav88.ElementInstanceSearchQueryResult{Items: items, Page: camundav88.SearchQueryPageResponse{TotalItems: int64(len(selected)), HasMoreTotalItems: mode == "fallback total" && len(items) > 0}}}, nil
+				}})
+				svc.cfg.App.Tenant = tc.tenant
+				opts := []services.CallOption{}
+				if tc.ignore {
+					opts = append(opts, services.WithIgnoreTenant())
+				}
+				query := d.ElementSearchQuery{BatchSize: 1}
+				want := 3
+				if tc.filtered {
+					want = 2
+				}
+				switch mode {
+				case "page":
+					got, err := svc.SearchElementsPage(context.Background(), query, d.ElementPageRequest{Size: 1}, opts...)
+					require.NoError(t, err)
+					require.Len(t, got.Items, 1)
+					require.Equal(t, int64(want), got.ReportedTotal.Count)
+					require.Equal(t, 1, requests)
+				case "collected":
+					got, err := svc.SearchElements(context.Background(), query, opts...)
+					require.NoError(t, err)
+					require.Len(t, got.Items, want)
+					require.Equal(t, int32(want), got.Total)
+					require.Equal(t, want, requests)
+					keys := []string{}
+					for _, item := range got.Items {
+						keys = append(keys, item.ElementInstanceKey)
+					}
+					if tc.filtered {
+						require.Equal(t, []string{"E1", "E3"}, keys)
+					} else {
+						require.Equal(t, []string{"E1", "E2", "E3"}, keys)
+					}
+				case "pages":
+					visits := 0
+					got, err := svc.SearchElementsPages(context.Background(), query, func(step d.ElementSearchPageStep) (d.ElementSearchPageAction, error) {
+						visits++
+						require.Equal(t, int32(visits), step.CumulativeCount)
+						return d.ElementSearchPageActionContinue, nil
+					}, opts...)
+					require.NoError(t, err)
+					require.Len(t, got.Items, want)
+					require.Equal(t, want, visits)
+					require.Equal(t, want, requests)
+				default:
+					got, err := svc.SearchElementsTotal(context.Background(), query, opts...)
+					require.NoError(t, err)
+					require.Equal(t, int64(want), got)
+					if mode == "total" {
+						require.Equal(t, 1, requests)
+					} else {
+						require.Equal(t, want+1, requests)
+					}
+				}
+			})
+		}
+	}
+}
+
+// TestElementSearchTenantExplicitGet preserves native cross-tenant exact-key lookup without a search.
+func TestElementSearchTenantExplicitGet(t *testing.T) {
+	t.Parallel()
+	calls := 0
+	svc := newElementServiceTest(t, &mockElementClient{getElementInstanceWithResponse: func(_ context.Context, key camundav88.ElementInstanceKey, _ ...camundav88.RequestEditorFn) (*camundav88.GetElementInstanceResponse, error) {
+		calls++
+		require.Equal(t, camundav88.ElementInstanceKey("E"), key)
+		return &camundav88.GetElementInstanceResponse{HTTPResponse: okHTTPResponse(), JSON200: &camundav88.ElementInstanceResult{ElementInstanceKey: key, ProcessInstanceKey: "P", TenantId: "other"}}, nil
+	}})
+	svc.cfg.App.Tenant = "configured"
+	for _, opts := range [][]services.CallOption{nil, {services.WithIgnoreTenant()}} {
+		got, err := svc.GetElement(context.Background(), "E", opts...)
+		require.NoError(t, err)
+		require.Equal(t, "other", got.TenantId)
+	}
+	require.Equal(t, 2, calls)
+}
+
+// TestElementScopeVariablesSparseSelection continues through empty pages with evidence of more data and preserves bounds and visitor stops.
+func TestElementScopeVariablesSparseSelection(t *testing.T) {
+	for _, mode := range []string{"pages", "collected", "total", "stop", "limit"} {
+		for _, lowerBound := range []bool{false, true} {
+			t.Run(fmt.Sprintf("%s/lower=%t", mode, lowerBound), func(t *testing.T) {
+				calls := 0
+				svc := newElementServiceTest(t, &mockElementClient{searchElementInstancesWithResponse: func(_ context.Context, body camundav88.SearchElementInstancesJSONRequestBody, _ ...camundav88.RequestEditorFn) (*camundav88.SearchElementInstancesResponse, error) {
+					calls++
+					require.LessOrEqual(t, calls, 4)
+					requireElementSearchPageJSON(t, body, int32(calls-1), 1)
+					var items []camundav88.ElementInstanceResult
+					if calls == 2 || calls == 4 {
+						items = []camundav88.ElementInstanceResult{{ElementInstanceKey: camundav88.ElementInstanceKey(fmt.Sprintf("%d", calls)), ProcessInstanceKey: "100"}}
+					}
+					total := int64(4)
+					more := lowerBound && calls < 4
+					if lowerBound {
+						total = 0
+						if calls == 4 {
+							total = 2
+						}
+					}
+					return &camundav88.SearchElementInstancesResponse{HTTPResponse: okHTTPResponse(), JSON200: &camundav88.ElementInstanceSearchQueryResult{Items: items, Page: camundav88.SearchQueryPageResponse{TotalItems: total, HasMoreTotalItems: more}}}, nil
+				}})
+				query := d.ElementSearchQuery{BatchSize: 1}
+				if mode == "limit" {
+					query.Limit = 1
+				}
+				switch mode {
+				case "total":
+					total, err := svc.SearchElementsTotal(context.Background(), query)
+					require.NoError(t, err)
+					if lowerBound {
+						require.Equal(t, int64(2), total)
+						require.Equal(t, 4, calls)
+					} else {
+						require.Equal(t, int64(4), total)
+						require.Equal(t, 1, calls)
+					}
+				case "collected":
+					result, err := svc.SearchElements(context.Background(), query)
+					require.NoError(t, err)
+					require.Len(t, result.Items, 2)
+					require.Equal(t, 4, calls)
+				default:
+					var steps []d.ElementSearchPageStep
+					result, err := svc.SearchElementsPages(context.Background(), query, func(step d.ElementSearchPageStep) (d.ElementSearchPageAction, error) {
+						steps = append(steps, step)
+						if mode == "stop" && len(step.Page.Items) > 0 {
+							return d.ElementSearchPageActionStop, nil
+						}
+						return d.ElementSearchPageActionContinue, nil
+					})
+					require.NoError(t, err)
+					require.Empty(t, steps[0].Page.Items)
+					require.Equal(t, d.ProcessInstanceOverflowStateHasMore, steps[0].Page.OverflowState)
+					if mode == "pages" {
+						require.Len(t, result.Items, 2)
+						require.Equal(t, 4, calls)
+					} else {
+						require.Len(t, result.Items, 1)
+						require.Equal(t, 2, calls)
+					}
+				}
+			})
+		}
+	}
 }

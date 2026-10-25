@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/toolx"
@@ -41,16 +42,17 @@ func fromVariableSearchResult(r variableSearchResult) d.ProcessInstanceVariable 
 	return d.ProcessInstanceVariable{
 		Name:               *r.Name,
 		Value:              *r.Value,
-		VariableKey:        *r.VariableKey,
+		VariableKey:        toolx.Deref(r.VariableKey, ""),
 		ProcessInstanceKey: *r.ProcessInstanceKey,
 		ScopeKey:           *r.ScopeKey,
-		TenantId:           *r.TenantId,
+		TenantId:           toolx.Deref(r.TenantId, ""),
 		APITruncated:       variableAPITruncated(r),
 	}
 }
 
-// decodeSearchVariablesResponse reads raw JSON because the generated v8.8 model drops value and truncation fields.
-func decodeSearchVariablesResponse(body []byte, request d.ProcessInstanceVariablePageRequest, key string) (d.ProcessInstanceVariablePage, error) {
+// decodeSearchVariablesResponse preserves raw metadata before filtering. Strict local reads
+// reject contradictory selected-scope evidence without tightening legacy root reads.
+func decodeSearchVariablesResponse(body []byte, request d.ProcessInstanceVariablePageRequest, query d.ScopeVariableQuery, strictScope bool) (d.ProcessInstanceVariablePage, error) {
 	if len(bytes.TrimSpace(body)) == 0 {
 		return d.ProcessInstanceVariablePage{}, d.ErrMalformedResponse
 	}
@@ -77,13 +79,30 @@ func decodeSearchVariablesResponse(body []byte, request d.ProcessInstanceVariabl
 	}
 	page.Items = make([]d.ProcessInstanceVariable, 0, len(*result.Items))
 	for i, item := range *result.Items {
-		if item.Name == nil || item.Value == nil || item.VariableKey == nil || item.ProcessInstanceKey == nil || item.ScopeKey == nil || item.TenantId == nil {
+		if item.Name == nil || item.Value == nil || item.ProcessInstanceKey == nil || item.ScopeKey == nil ||
+			(!strictScope && (item.VariableKey == nil || item.TenantId == nil)) {
 			return d.ProcessInstanceVariablePage{}, fmt.Errorf("%w: variable item %d is missing required fields", d.ErrMalformedResponse, i)
 		}
-		if *item.ProcessInstanceKey == key && *item.ScopeKey == key {
+		if strictScope {
+			if strings.TrimSpace(*item.ProcessInstanceKey) == "" || strings.TrimSpace(*item.ScopeKey) == "" {
+				return d.ProcessInstanceVariablePage{}, fmt.Errorf("%w: variable item %d has blank identity", d.ErrMalformedResponse, i)
+			}
+			if *item.ScopeKey != query.ScopeKey {
+				continue
+			}
+			if *item.ProcessInstanceKey != query.ProcessInstanceKey {
+				return d.ProcessInstanceVariablePage{}, fmt.Errorf("%w: variable item %d has inconsistent scope owner", d.ErrMalformedResponse, i)
+			}
+			expected, observed := toolx.Deref(query.ExpectedTenantId, ""), toolx.Deref(item.TenantId, "")
+			if expected != "" && observed != "" && expected != observed {
+				return d.ProcessInstanceVariablePage{}, fmt.Errorf("%w: variable item %d has inconsistent scope tenant", d.ErrMalformedResponse, i)
+			}
+		}
+		if *item.ProcessInstanceKey == query.ProcessInstanceKey && *item.ScopeKey == query.ScopeKey {
 			page.Items = append(page.Items, fromVariableSearchResult(item))
 		}
 	}
+
 	return page, nil
 }
 

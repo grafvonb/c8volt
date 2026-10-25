@@ -19,6 +19,7 @@ type Element struct {
 	TenantId               string
 	HasIncident            bool
 	IncidentKey            string
+	Variables              *[]ProcessInstanceVariable
 	Listeners              *[]RuntimeListenerJob
 }
 
@@ -119,4 +120,10 @@ type ElementSearchPagesResult struct {
 	Items []Element
 	Total int32
 	Pages int32
+}
+
+// ElementEnrichment selects independent variable and listener enrichment.
+type ElementEnrichment struct {
+	Variables bool
+	Listeners bool
 }

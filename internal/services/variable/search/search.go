@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Adam Bogdan Boczek
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-// Package search provides version-neutral complete root-variable traversal.
+// Package search provides version-neutral complete root and local variable traversal.
 package search
 
 import (
@@ -23,6 +23,30 @@ type PageReader interface {
 // ProcessInstanceVariables reads every authoritative page and returns a stable
 // name-ordered collection. An error never returns partial results.
 func ProcessInstanceVariables(ctx context.Context, reader PageReader, key string, opts ...services.CallOption) ([]d.ProcessInstanceVariable, error) {
+	return collect(ctx, func(ctx context.Context, request d.ProcessInstanceVariablePageRequest) (d.ProcessInstanceVariablePage, error) {
+		return reader.SearchProcessInstanceVariablesPage(ctx, key, request, opts...)
+	})
+}
+
+// ScopePageReader supplies normalized pages for an independently identified scope.
+type ScopePageReader interface {
+	SearchScopeVariablesPage(context.Context, d.ScopeVariableQuery, d.ProcessInstanceVariablePageRequest, ...services.CallOption) (d.ProcessInstanceVariablePage, error)
+}
+
+// ScopeVariables reads a complete local collection using the same progress rules
+// as root reads. Invalid identities fail even when no backend rows exist.
+func ScopeVariables(ctx context.Context, reader ScopePageReader, query d.ScopeVariableQuery, opts ...services.CallOption) ([]d.ProcessInstanceVariable, error) {
+	if err := query.Validate(); err != nil {
+		return nil, err
+	}
+	return collect(ctx, func(ctx context.Context, request d.ProcessInstanceVariablePageRequest) (d.ProcessInstanceVariablePage, error) {
+		return reader.SearchScopeVariablesPage(ctx, query, request, opts...)
+	})
+}
+
+// collect owns pagination and completeness checks for both root and local reads.
+// The callback retains each adapter's identity/filtering and error conventions.
+func collect(ctx context.Context, read func(context.Context, d.ProcessInstanceVariablePageRequest) (d.ProcessInstanceVariablePage, error)) ([]d.ProcessInstanceVariable, error) {
 	request := d.ProcessInstanceVariablePageRequest{Size: consts.MaxPISearchSize}
 	items := make([]d.ProcessInstanceVariable, 0)
 	seenCursors := make(map[string]struct{})
@@ -35,7 +59,7 @@ func ProcessInstanceVariables(ctx context.Context, reader PageReader, key string
 		if err := ctx.Err(); err != nil {
 			return nil, err
 		}
-		page, err := reader.SearchProcessInstanceVariablesPage(ctx, key, request, opts...)
+		page, err := read(ctx, request)
 		if err != nil {
 			return nil, err
 		}

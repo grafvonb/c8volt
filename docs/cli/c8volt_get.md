@@ -13,7 +13,7 @@ Inspect cluster, process, job, element, incident, tenant, and resource state
 Inspect cluster, process, job, element, incident, tenant, and resource state without changing it.
 
 Check cluster health, list deployed process definitions, inspect process
-instances, fetch or search native user tasks, inspect jobs, elements, and incidents by key or search, list visible tenants, or fetch a known resource.
+instances, fetch or search native user tasks, inspect jobs, elements, and incidents by key or search, list visible tenants, or fetch a known resource. Add get element --with-vars for complete element-local variables, optionally together with --with-listeners.
 
 ```
 c8volt get [flags]
@@ -30,6 +30,7 @@ c8volt get [flags]
   ./c8volt get user-task --candidate-group accounting --total
   ./c8volt get job --key <job-key>
   ./c8volt get element --pi-key <process-instance-key> --limit 10
+  ./c8volt get ei --key <element-instance-key> --with-vars
   ./c8volt get incident --key <incident-key>
   ./c8volt get incident --state active --error-type io_mapping_error --pi-keys-only
   ./c8volt get tenant

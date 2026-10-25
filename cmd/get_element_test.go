@@ -857,6 +857,7 @@ func executeRootForElementTestWithSeparateOutputs(t *testing.T, args ...string) 
 	return stdout.String(), stderr.String()
 }
 
+// resetGetElementFlagState prevents selection and enrichment flags leaking between command tests.
 func resetGetElementFlagState() {
 	flagGetElementKey = ""
 	flagGetElementProcessKey = ""
@@ -869,6 +870,7 @@ func resetGetElementFlagState() {
 	flagGetElementLimit = 0
 	flagGetElementTotal = false
 	flagGetElementWithListeners = false
+	flagGetElementWithVars = false
 	testx.ResetCommandTreeFlags(getElementCmd)
 }
 
