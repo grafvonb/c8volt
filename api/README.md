@@ -5,7 +5,7 @@ This directory contains the scripts and patch helpers used to generate Go client
 ## Upstream sources
 
 - `/v2` Camunda API: fetched from `camunda/camunda`
-- legacy component APIs such as Operate, Tasklist, and Administration SM: fetched from `camunda/camunda-docs`
+- legacy component APIs (Operate and Tasklist): fetched from `camunda/camunda-docs`
 
 The local fetch scripts pin to a fetched Git ref so generation stays reproducible.
 
@@ -16,15 +16,46 @@ The local fetch scripts pin to a fetched Git ref so generation stays reproducibl
 - `1-fetch-camunda-docs-api-specs.sh`
   Fetches the legacy component API specs from `camunda-docs`.
 - `2-bundle-camunda-docs-v2-spec.sh`
-  Bundles the legacy docs-repo `/v2` spec into a single YAML file.
+  Optional standalone helper for the legacy docs-repo `/v2` spec; the current refresh pipeline does not invoke it.
 - `3-generate-clients-from-fetched-specs.sh`
-  Regenerates the checked-in Go clients under `internal/clients/` from already fetched sources.
+  Regenerates OAuth2 and the retained Camunda 8.8/8.9 clients from already fetched sources.
 - `refresh-clients.sh`
-  Runs the full workflow: fetch upstream specs and regenerate the checked-in Go clients.
+  Fetches product and component specs and regenerates OAuth2 and the retained Camunda 8.8/8.9 clients by default. Use `--target v810` for the separate Camunda 8.10 flow below.
 - `generate-go-client.sh`
   Runs `oapi-codegen` for a single spec file and output path.
 
-These wrappers still point to the docs-backed fetch flow.
+## Retained client inventory
+
+Only Camunda 8.8, 8.9, and 8.10 are supported. Retain generated clients that have
+runtime consumers:
+
+| Version | Clients | Generation |
+|---|---|---|
+| 8.8 | Camunda unified API, Operate, Tasklist | Default refresh |
+| 8.9 | Camunda unified API, Tasklist | Default refresh |
+| 8.10 | Camunda unified API | `--target v810 --camunda-tag <8.10-tag>` |
+
+OAuth2 is generated separately from `api/auth/oauth2-openapi.json` by the default
+refresh. Administration SM, Operate 8.9, and all Camunda 8.6 clients were unused
+and have been removed along with their generation and commit-manifest entries.
+Operate 8.8 and Tasklist 8.8/8.9 remain runtime dependencies; their legacy API
+names do not imply support for retired Camunda versions.
+
+`internal/clients/camunda/inventory_test.go` checks the retained directory
+inventory, required generated files, default generation calls, and commit
+manifest in the ordinary Go test suite. Run the focused check without network
+access, generation tools, or Camunda services:
+
+```sh
+env -i PATH="$PATH" HOME="$HOME" TMPDIR="${TMPDIR:-/tmp}" \
+  GOENV=off GOFLAGS= GOWORK=off GOPROXY=off \
+  go test ./internal/clients/camunda -run '^TestCamundaClient' -count=1
+```
+
+Update the inventory deliberately when introducing a supported client with a
+runtime consumer. Upstream `x-added-in-version` annotations and negative tests
+for unsupported versions are historical metadata and rejection coverage, not
+client-generation targets.
 
 ## Mutation helpers
 

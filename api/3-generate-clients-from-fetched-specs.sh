@@ -3,8 +3,9 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 # Purpose:
-#   Generate all checked-in Go clients from the already fetched API specs under
-#   api/camunda and api/camunda-docs.
+#   Generate OAuth2 and the runtime-used Camunda 8.8/8.9 clients from fetched
+#   specs under api/camunda and api/camunda-docs. Camunda 8.10 uses its own
+#   isolated generator via refresh-clients.sh --target v810.
 #
 # Usage:
 #   bash api/3-generate-clients-from-fetched-specs.sh
@@ -52,19 +53,11 @@ done
 
 GENERATED_FILES=(
   "internal/clients/auth/oauth2/client.gen.go"
-  "internal/clients/camunda/v89/administrationsm/client.gen.go"
   "internal/clients/camunda/v89/camunda/client.gen.go"
-  "internal/clients/camunda/v89/operate/client.gen.go"
   "internal/clients/camunda/v89/tasklist/client.gen.go"
-  "internal/clients/camunda/v88/administrationsm/client.gen.go"
   "internal/clients/camunda/v88/camunda/client.gen.go"
   "internal/clients/camunda/v88/operate/client.gen.go"
   "internal/clients/camunda/v88/tasklist/client.gen.go"
-  "internal/clients/camunda/v86/administrationsm/client.gen.go"
-  "internal/clients/camunda/v86/camunda/client.gen.go"
-  "internal/clients/camunda/v86/operate/client.gen.go"
-  "internal/clients/camunda/v86/tasklist/client.gen.go"
-  "internal/clients/camunda/v86/zeebe/client.gen.go"
 )
 
 git_ref_or_unknown() {
@@ -138,7 +131,6 @@ CAMUNDA_V2_SPEC_DIR="$(dirname "$CAMUNDA_V2_WORKING_SPEC")"
 ./generate-go-client.sh ./auth/oauth2-openapi.json ../internal/clients/auth/oauth2/client.gen.go oauth2
 
 # v89
-./generate-go-client.sh ./camunda-docs/api/administration-sm/administration-sm-openapi.yaml ../internal/clients/camunda/v89/administrationsm/client.gen.go administrationsm
 python3 ./mutations/mutate-search-query-schemas.py "$CAMUNDA_V2_WORKING_SPEC"
 CAMUNDA_V2_V89_SEARCH_QUERY_PATCHED="${CAMUNDA_V2_SPEC_DIR}/$(basename "${CAMUNDA_V2_WORKING_SPEC%.yaml}")-search-query-patched.yaml"
 python3 ./mutations/mutate-search-result-schemas.py "$CAMUNDA_V2_V89_SEARCH_QUERY_PATCHED"
@@ -151,17 +143,10 @@ python3 ./mutations/mutate-fix-camunda-v2-operation-id-collisions.py "$CAMUNDA_V
 CAMUNDA_V2_V89_READY="${CAMUNDA_V2_SPEC_DIR}/$(basename "${CAMUNDA_V2_WORKING_SPEC%.yaml}")-search-query-patched-search-result-patched-process-instance-filter-fields-fixed-jobresult-fixed-opids-fixed.yaml"
 ./generate-go-client.sh "$CAMUNDA_V2_V89_READY" ../internal/clients/camunda/v89/camunda/client.gen.go camunda
 
-python3 ./mutations/mutate-operation-ids.py ./camunda-docs/api/operate/operate-openapi.yaml
-python3 ./mutations/mutate-remove-sort-values.py ./camunda-docs/api/operate/operate-openapi-oids-updated.yaml
-python3 ./mutations/mutate-remove-v1-prefix.py ./camunda-docs/api/operate/operate-openapi-oids-updated-sortvalues-removed.yaml
-./generate-go-client.sh ./camunda-docs/api/operate/operate-openapi-oids-updated-sortvalues-removed-v1-prefix-removed.yaml ../internal/clients/camunda/v89/operate/client.gen.go operate
-
 python3 ./mutations/mutate-remove-v1-prefix.py ./camunda-docs/api/tasklist/tasklist-openapi.yaml
 ./generate-go-client.sh ./camunda-docs/api/tasklist/tasklist-openapi-v1-prefix-removed.yaml ../internal/clients/camunda/v89/tasklist/client.gen.go tasklist
 
 # v88
-./generate-go-client.sh ./camunda-docs/api/administration-sm/administration-sm-openapi.yaml ../internal/clients/camunda/v88/administrationsm/client.gen.go administrationsm
-
 python3 ./mutations/mutate-search-query-schemas.py "$CAMUNDA_V2_WORKING_SPEC"
 CAMUNDA_V2_SEARCH_QUERY_PATCHED="${CAMUNDA_V2_SPEC_DIR}/$(basename "${CAMUNDA_V2_WORKING_SPEC%.yaml}")-search-query-patched.yaml"
 python3 ./mutations/mutate-search-result-schemas.py "$CAMUNDA_V2_SEARCH_QUERY_PATCHED"
@@ -181,15 +166,6 @@ python3 ./mutations/mutate-remove-v1-prefix.py ./camunda-docs/api/operate/operat
 
 python3 ./mutations/mutate-remove-v1-prefix.py ./camunda-docs/api/tasklist/tasklist-openapi.yaml
 ./generate-go-client.sh ./camunda-docs/api/tasklist/tasklist-openapi-v1-prefix-removed.yaml ../internal/clients/camunda/v88/tasklist/client.gen.go tasklist
-
-# v86
-./generate-go-client.sh ./camunda-docs/api/administration-sm/version-8.6/administration-sm-openapi.yaml ../internal/clients/camunda/v86/administrationsm/client.gen.go administrationsm
-./generate-go-client.sh ./camunda-docs/api/camunda/version-8.6/camunda-openapi.yaml ../internal/clients/camunda/v86/camunda/client.gen.go camunda
-python3 ./mutations/mutate-remove-v1-prefix.py ./camunda-docs/api/operate/version-8.6/operate-openapi.yaml
-./generate-go-client.sh ./camunda-docs/api/operate/version-8.6/operate-openapi-v1-prefix-removed.yaml ../internal/clients/camunda/v86/operate/client.gen.go operate
-python3 ./mutations/mutate-remove-v1-prefix.py ./camunda-docs/api/tasklist/version-8.6/tasklist-openapi.yaml
-./generate-go-client.sh ./camunda-docs/api/tasklist/version-8.6/tasklist-openapi-v1-prefix-removed.yaml ../internal/clients/camunda/v86/tasklist/client.gen.go tasklist
-./generate-go-client.sh ./camunda-docs/api/zeebe/version-8.6/zeebe-openapi.yaml ../internal/clients/camunda/v86/zeebe/client.gen.go zeebe
 
 if [ "$DO_COMMIT" = true ]; then
   camunda_tag="$(git_ref_or_unknown "$SCRIPT_DIR/camunda")"

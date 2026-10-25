@@ -11,7 +11,7 @@ ExecuteJobCompletionBatch(ctx, preparedBatch, wantedWorkers, options...) -> (rep
 
 Public signatures use public models and `foptions.FacadeOption`; internal signatures use domain models and service options. Facades only copy/map inputs, delegate, map outputs and convert errors through `ferrors`. A non-nil error must not discard a returned report.
 
-Keep existing `GetJob`, search, update and worker-outcome signatures compatible. All interface implementations and mocks must compile together. v87 returns the existing unsupported category, including empty batch requests; factory support is not removed.
+Keep existing `GetJob`, search, update and worker-outcome signatures compatible. All interface implementations and mocks must compile together. Only v88, v89, and v810 adapters are retained. Configuration normalization rejects unsupported versions, including 8.7, before preparation or execution; direct service factories reject unknown versions without a retired-version adapter.
 
 Preparation is read-only. Execution rejects incomplete/invalid plans and changes in configured discovery scope. The CLI passes the exact prepared value to the same client. Plans are not durable cross-client replay objects. Library callers must treat them as immutable; services validate unique keys, selection mode, completeness and scope before any writes.
 

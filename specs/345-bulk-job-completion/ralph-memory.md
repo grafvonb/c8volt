@@ -1,5 +1,7 @@
 # Ralph Memory
 
+> Current compatibility (2026-10-25): only Camunda 8.8, 8.9, and 8.10 have runtime adapters. Earlier v87 references below are historical implementation evidence, not instructions to restore that adapter. Unsupported versions are rejected by configuration normalization and service factories; retain the rejection tests.
+
 Feature: 345-bulk-job-completion
 Started: 2026-10-20T10:28:15Z
 

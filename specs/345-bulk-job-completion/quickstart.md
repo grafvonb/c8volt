@@ -36,7 +36,7 @@ The test matrix must cover:
 8. Genuine terminal stdin with stdout/stderr separately captured; use `testx/cmd_terminal_runner.go`. Check configured and inherited stderr, redirected stdout, one eligible confirmation, decline behavior, and prompt-free empty completion.
 9. Task-listener variable restrictions, frozen selection when completing one listener creates another, single-key legacy payload/behavior and shared capability metadata.
 
-Use matching existing test names in addition to the new families when nearby tests have different names. Include the unsupported v87 adapter and all interface test doubles in compilation checks.
+Use matching existing test names in addition to the new families when nearby tests have different names. Compile the v88/v89/v810 adapters and all interface test doubles. Keep command-level 8.7 rejection checks; there is no v87 adapter to compile or restore.
 
 After targeted validation, run broader checks once because shared APIs and concurrent execution change:
 

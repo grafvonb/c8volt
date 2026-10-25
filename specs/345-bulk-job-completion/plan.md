@@ -24,7 +24,7 @@ Completing a listener acknowledges its work without running its business logic. 
 
 **Testing**: Package tests with generated-client mocks and HTTP test servers; genuine terminal stdin through `testx/cmd_terminal_runner.go`; race-enabled suite for the implemented concurrency changes; isolated representative cancellation-listener acceptance using a test-owned fake server.
 
-**Target Platform**: Existing supported CLI platforms; Camunda 8.8, 8.9, and 8.10. Preserve 8.7's existing unsupported job-operation result.
+**Target Platform**: Existing supported CLI platforms; Camunda 8.8, 8.9, and 8.10. Reject unsupported versions, including 8.7, during configuration normalization; do not retain retired-version adapters.
 
 **Project Type**: Go CLI and public facade library.
 
@@ -83,7 +83,6 @@ internal/domain/
 internal/services/job/
 ├── api.go                           # Prepare/execute contract
 ├── completion/                      # Shared coordinator; domain-only transport ports
-├── v87/                             # Explicit unsupported implementations
 ├── v88/ / v89/ / v810/              # Tenant/page normalization and one-shot submission
 └── existing factory and tests       # Keep version routing intact
 README.md

@@ -71,8 +71,6 @@ toolx/
 
 internal/clients/camunda/v89/
 ├── camunda/
-├── operate/
-├── administrationsm/
 └── tasklist/
 
 internal/services/
