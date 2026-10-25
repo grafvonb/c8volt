@@ -122,3 +122,39 @@ Started: 2026-10-25 07:34:13
 - Updated get parent/element metadata, examples and README; regenerated CLI references/homepage via `make docs-content`. `gofmt` verification and `git diff --check` passed. File ownership review keeps selection/prompt lifecycle in get_element_search.go, final page/summary formatting in cmd_views_element.go and backend continuation in adapters. The base command adds only the flag and effective-enrichment predicate plus thin dispatch; no new standalone lifecycle requires a mode file.
 - Preserved every prior progress byte and updated durable memory with the next T004 handoff. Only T003 was marked complete.
 ---
+
+---
+## Iteration 4 - 2026-10-25 08:32
+**Work Unit**: Phase 4 US2 — T004 frozen element-variable planning and validation (completed library checkpoint)
+**Tasks Completed**:
+- [x] T004: Implemented complete exact-local collection planning, full frozen-plan validation, deep-copy isolation, public models/facade and root-client composition, with isolated service/facade/adapter coverage and API guidance.
+**Tasks Remaining in Work Unit**: None in Phase 4; full US2 repair acceptance still depends on T006/T007. T005–T007 remain overall; no later-story implementation started.
+**Commit**: This work-unit commit
+**Files Changed**:
+- README.md
+- c8volt/client.go
+- c8volt/element/api.go
+- c8volt/element/client.go
+- c8volt/element/convert.go
+- c8volt/element/model.go
+- c8volt/element/variable_updates.go
+- c8volt/element/variable_updates_test.go
+- c8volt/element_variable_updates_test.go
+- docs/index.md
+- internal/domain/element_variable.go
+- internal/services/element/update.go
+- internal/services/element/update_test.go
+- internal/services/element/update_validation.go
+- internal/services/element/update_validation_test.go
+- specs/329-element-scope-variables/progress.md
+- specs/329-element-scope-variables/ralph-memory.md
+- specs/329-element-scope-variables/tasks.md
+**Learnings**:
+- Behavior tests preceded implementation and initially failed on missing service/facade declarations. Planning coverage proves ordered deduplication, independent element/owner identities, local additions despite parent equality, deterministic four-way classification, truncated evidence, null assignments, complete empty-object/unchanged planning, known/unknown tenant evidence and no partial plan after late identity/authorization/read failures or cancellation.
+- The validator checks destinations/order/uniqueness, submission state, every aggregate count, complete disjoint classifications, exact mutation/verification maps and derived tenant context; table-driven tampering tests reject each invariant. Nested input/output/classification maps, slices, typed JSON collections and RawMessage values remain isolated, with existing numeric semantics. Cyclic/unsupported facade payloads fail before recursive copying. Custom marshal-only values retain their JSON meaning through a decoded snapshot if their concrete type cannot round-trip faithfully.
+- Duplicate observations now retain newly learned optional key/tenant evidence, preventing a third observation from hiding a contradiction behind an initially missing key. A dedicated regression covers this case. Exact-key IgnoreTenant is enforced inside the service and reaches every reader, while expected tenant comes from observed element evidence.
+- Root-facade tests exercise actual v88/v89/v810 adapters over an isolated transport, assert every lookup/page and independent owner/scope filter, exclude configured tenant filtering and writes, traverse a parent-only intermediate page, and reject a late-page forbidden response without returning a partial plan. Facade tests prove delegation, option/error conversion, legacy preconditions, all mapped fields and allocated empty classification arrays. Existing embedded public doubles compile against the added method without unrelated changes.
+- Verified targeted test names with `-list`. Passed `GOFLAGS= go test ./internal/services/element ./c8volt/element ./c8volt -run '^TestElementVariableUpdatesPlan' -count=1` and the service regression pattern `Test(ElementVariableUpdatesPlan|PlanProcessInstanceVariableUpdates|PlanUserTaskVariableUpdates)`. Passed `make test` (`go test ./... -race -count=1`); broader validation was warranted by the additive public interface and root-client composition across consumers. Inspected target/helpers/build guards and cleared inherited GOFLAGS/C8VOLT/helper/make overrides. No live environment or integration-tag validation ran; real-engine behavior remains unverified.
+- Updated README API availability, source-compatibility, local-scope and no-mutation guidance; regenerated `docs/index.md` through `make docs-content`. CLI command behavior and metadata did not change, and CLI reference files remained unchanged. New service/facade failures only return through existing error conversion; no result rendering, logger or prompt boundary changed. `gofmt` verification, source/diff review and `git diff --check` passed.
+- Preserved every prior progress byte, compacted durable discoveries in ralph-memory.md and handed off T005 with no blockers. Only T004 was marked complete.
+---

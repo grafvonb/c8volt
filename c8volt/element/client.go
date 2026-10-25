@@ -19,6 +19,7 @@ import (
 type client struct {
 	api           esvc.API
 	enrichmentAPI esvc.EnrichmentAPI
+	updateAPI     esvc.VariableUpdateAPI
 	jobAPI        jsvc.API
 	log           *slog.Logger
 }

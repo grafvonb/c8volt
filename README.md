@@ -416,6 +416,10 @@ Library callers can inspect complete element-local variables through `GetElement
 
 These three methods are additions to `element.API`: external implementations and test doubles must implement them. Existing methods and the `element.New`/`element.NewWithListeners` constructors remain available; requesting variables without the new composed dependency returns a local-precondition error. Custom service compositions can use `element.NewWithEnrichment`. Exact-key enriched reads bypass the configured discovery tenant and validate known observed tenant evidence.
 
+Library callers can also use `PlanElementVariableUpdates(ctx, keys, variables, opts...)` to prepare a complete collection-wide local update plan. The root client wires this additional `element.API` method; external implementations and test doubles must implement it. Custom compositions can use `element.NewWithVariableUpdates`, while older constructors return a local-precondition error for planning. Pass at least one runtime element key and a non-null variable object. Repeated keys are deduplicated in first-input order. `{}` still validates every selected element and reads its complete local variables; a null property assigns JSON null.
+
+Each plan freezes the owning process separately from the exact element-local destination, with additions, changes, unchanged requested values, untouched values, mutation values, verification values, and observed tenant context. Parent-only values are local additions; truncated observations cannot prove equality. Explicit planning reads bypass the configured discovery tenant while retaining backend authorization and known tenant evidence. Any failed or inconsistent lookup/read returns an error and no partial plan. Nested maps and arrays are copied, and planning submits no mutations (`mutationSubmitted: false`). Execution and an `update element` command are not yet exposed.
+
 Guide: [Runtime Elements](docs/cli/runtime-elements.md). Generated references: [get process-instance](docs/cli/c8volt_get_process-instance.md), [get element](docs/cli/c8volt_get_element.md).
 
 ### Walk Before You Change

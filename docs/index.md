@@ -6,7 +6,7 @@ nav_exclude: true
 has_toc: true
 ---
 
-> Generated from build `c8volt v4.4.0-197-gdd8c3b06-dirty`, commit `dd8c3b06`, built `2026-10-25T07:09:05Z` | Supported Camunda 8 versions: 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.3 (final)
+> Generated from build `c8volt v4.4.0-198-gb6dbdd88-dirty`, commit `b6dbdd88`, built `2026-10-25T07:26:37Z` | Supported Camunda 8 versions: 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.3 (final)
 
 <img src="./logo/c8volt_logo_transparent_w_shadow_400x244.png" alt="c8volt logo" />
 
@@ -421,6 +421,10 @@ Element searches and totals now apply the configured tenant on the server. This 
 Library callers can inspect complete element-local variables through `GetElementWithEnrichment`, `SearchElementsWithEnrichment`, and `SearchElementsPagesWithEnrichment`, using `element.Enrichment{Variables: true, Listeners: true}` to request both enrichments. The root `c8volt.New` client wires the shared services. Local reads use the element's owning process and its own runtime key as separate identities; they exclude parent, sibling and called-process scopes. Element limits bound selected elements, not their variable collections. JSON preserves raw serialized values and `apiTruncated`; variables are omitted without enrichment and serialize as `[]` after a successful empty local read. A failed or incomplete read returns an error.
 
 These three methods are additions to `element.API`: external implementations and test doubles must implement them. Existing methods and the `element.New`/`element.NewWithListeners` constructors remain available; requesting variables without the new composed dependency returns a local-precondition error. Custom service compositions can use `element.NewWithEnrichment`. Exact-key enriched reads bypass the configured discovery tenant and validate known observed tenant evidence.
+
+Library callers can also use `PlanElementVariableUpdates(ctx, keys, variables, opts...)` to prepare a complete collection-wide local update plan. The root client wires this additional `element.API` method; external implementations and test doubles must implement it. Custom compositions can use `element.NewWithVariableUpdates`, while older constructors return a local-precondition error for planning. Pass at least one runtime element key and a non-null variable object. Repeated keys are deduplicated in first-input order. `{}` still validates every selected element and reads its complete local variables; a null property assigns JSON null.
+
+Each plan freezes the owning process separately from the exact element-local destination, with additions, changes, unchanged requested values, untouched values, mutation values, verification values, and observed tenant context. Parent-only values are local additions; truncated observations cannot prove equality. Explicit planning reads bypass the configured discovery tenant while retaining backend authorization and known tenant evidence. Any failed or inconsistent lookup/read returns an error and no partial plan. Nested maps and arrays are copied, and planning submits no mutations (`mutationSubmitted: false`). Execution and an `update element` command are not yet exposed.
 
 Guide: [Runtime Elements](./cli/runtime-elements). Generated references: [get process-instance](./cli/c8volt_get_process-instance), [get element](./cli/c8volt_get_element).
 

@@ -20,9 +20,13 @@ Started: 2026-10-25T06:34:13Z
 - Element adapter overflow normalization must not treat an empty page as complete while `totalItems > from` or `hasMoreTotalItems` advertises continuation. Existing offset advancement by request size handles those sparse pages. Final empty fake pages must supply authoritative no-more metadata.
 - Element read failures pass a bounded human message to `handleCommandError`; the configured logger emits one ERROR and JSON retains the original error class/detail exactly once. Inspection stops at the first failed scope: already streamed complete rows survive, but a failed scope never becomes successful empty enrichment. DEBUG exchange logging/redaction stays in the existing HTTP path.
 
+- `element.NewVariableUpdates` owns collection-wide planning using a narrow exact element getter and the existing complete scoped reader. It appends IgnoreTenant itself, binds owner/scope plus known observed tenant, deduplicates keys in input order and discards partial plans on any lookup/read/identity failure. An empty object still reads each target; empty key selections and nil objects fail before remote work.
+- `validateAndCopyElementVariableUpdatePlan` validates the whole frozen collection: key/order/scope/owner, all counts, disjoint complete classifications, mutation/verification equality, unsent state and canonical TenantContext derived from per-element evidence. T006 should call it before any workers. All classifications are allocated empty slices when appropriate; mutation maps contain only additions/changes, verification maps contain every requested value.
+- `element.NewWithVariableUpdates` adds the planning dependency without changing earlier constructor signatures. Root composition wires it to the same element/variable services; the facade only snapshots inputs, delegates, maps all plan fields and converts errors. Custom marshal-only JSON values fall back to independent decoded snapshots when the concrete type cannot round-trip faithfully; ordinary maps/slices, typed collections, RawMessage and number semantics remain covered.
+
 ## Decisions
 
-- Iterations 1–3 completed T001–T003: shared scoped reading, service/facade enrichment and tenant correction, then the read-only CLI MVP. Update stories remain unexposed.
+- Iterations 1–4 completed T001–T004: shared scoped reading, service/facade enrichment and tenant correction, read-only CLI MVP, then the independently usable frozen planning API. Mutation execution and update CLI remain unexposed until T006/T007.
 - Version directories expose generated-client interfaces in `contract.go`, not the planned `api.go`. No generated-client interface additions were necessary. Existing consumer doubles use narrower root contracts; the widened variable API is implemented by all three concrete adapters.
 - Use explicit-key `WithIgnoreTenant()` with the actual observed expected tenant in later element enrichment/planning/confirmation. Do not derive expected identity from configured discovery tenant.
 
@@ -37,6 +41,10 @@ Started: 2026-10-25T06:34:13Z
 
 - `runElementScopeTerminal` in `cmd/get_element_terminal_test.go` uses actual terminal stdin and a redirected result file, comparing command-specific/inherited stderr with a capture file. The plain page prompt ends `More matching elements remain.\nContinue? [y/N]: `; it does not append a second confirmation question.
 - `newElementScopeFixture` records generated-adapter requests and bodies against a test-owned server. `truncateValues=false` is a query parameter, not a body field. Cursor-only empty variable pages need an advancing `endCursor`; every raw page still requires both total-semantic fields.
+
+- Duplicate variable observations can learn previously missing optional key/tenant evidence; retain that evidence when merging so a third row cannot hide a conflict behind the first row's missing metadata. Missing optional evidence stays unknown.
+- JSON representability is checked before recursive facade copying, so cyclic/unsupported payloads fail instead of recursing. Existing variable-update comparison preserves number spelling through json.Number; backend `1.0` and a requested marshaled `1` remain different under the established PI/UT convention.
+- Facade cancellation remains `context.Canceled` through `FromDomain`; command normalization later assigns its local-precondition class. Unauthorized/forbidden already convert to `ferrors.ErrLocalPrecondition`.
 
 ## Reusable Commands
 
@@ -53,6 +61,9 @@ Started: 2026-10-25T06:34:13Z
 - `GOFLAGS= go test ./internal/services/element/... -run 'Test(ElementScopeVariablesSparseSelection|ElementSearchTenant|Service_SearchElements)' -count=1 -timeout=60s`
 - `GOFLAGS= go test ./docsgen -run 'TestGeneratedGetElementDocsDocumentLookupSearchAndOutput' -count=1`
 
+- `GOFLAGS= go test ./internal/services/element ./c8volt/element ./c8volt -run '^TestElementVariableUpdatesPlan' -count=1`
+- `GOFLAGS= go test ./internal/services/element/... ./internal/services/processinstance ./internal/services/usertask -run 'Test(ElementVariableUpdatesPlan|PlanProcessInstanceVariableUpdates|PlanUserTaskVariableUpdates)' -count=1`
+
 ## Do Not Repeat
 
 - Do not fork the traversal loop or tighten root compatibility semantics when extending scoped reads.
@@ -60,6 +71,6 @@ Started: 2026-10-25T06:34:13Z
 
 ## Current Handoff
 
-- T003 is complete and US1's read-only MVP is delivered. Next dependency-ready work is T004 (US2 frozen element planning/validation API and facade), with T001/T002 prerequisites complete and no blockers. Recheck tasks.md before selection; T004–T007 remain unchecked (four feature tasks).
-- Targeted command/adapter/docs checks, actual-terminal and diagnostic matrices, generated documentation, formatting/diff review and `make test` (full race suite) passed. T003 also corrected empty element-page continuation in all three adapters after an execution-path test reproduced a false empty result; no later-story implementation started.
-- Reuse the complete scoped reader and independent owner/scope identities for T004. Preserve existing PI/UT planning conventions, explicit-key IgnoreTenant, known observed tenant evidence, immutable collection-wide plans and fake-only validation. T007 can reuse the terminal/output testing patterns without rebuilding inspection behavior.
+- T004 is complete: the frozen planning API and full plan validator are independently usable. Next dependency-ready work is T005 (US3 exact-local writer submission evidence), with T001 complete and no blockers. Recheck tasks.md before selection; T005–T007 remain unchecked (three feature tasks). T006 depends on both completed T004 and T005, and may follow only within the allowed US3 work-unit scope.
+- T004 targeted service/facade/root-adapter tests, PI/UT planning regressions, generated documentation, formatting/diff review and `make test` (full race suite) passed. Validation used only in-memory fakes, test-owned transports/servers and isolated subprocess/terminal tests; real-engine behavior remains unverified. No mutation executor, result statuses or update CLI was introduced.
+- For T006, reuse `validateAndCopyElementVariableUpdatePlan` before any workers and keep the frozen independent owner/scope plus tenant evidence. `NewVariableUpdates` currently has only reader/config dependencies and exposes planning only; add execution and its facade method together after T005. No stubs or execution API need removal. Existing public doubles embed the expanded interface, so no unrelated stubs were needed in T004.

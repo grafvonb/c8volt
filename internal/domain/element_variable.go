@@ -26,3 +26,51 @@ func (q ScopeVariableQuery) Validate() error {
 	}
 	return nil
 }
+
+// ElementVariablePlannedValue describes one requested or observed
+// local variable whose classification needs only one value.
+type ElementVariablePlannedValue struct {
+	Name         string
+	Value        any
+	APITruncated bool
+}
+
+// ElementVariablePlannedChange preserves the observed and requested
+// values for one local variable that requires mutation.
+type ElementVariablePlannedChange struct {
+	Name         string
+	Before       any
+	After        any
+	APITruncated bool
+}
+
+// ElementVariablePlan is the complete element-local classification and
+// frozen payload for one selected element.
+type ElementVariablePlan struct {
+	ElementKey         string
+	ProcessInstanceKey string
+	ScopeKey           string
+	TenantId           string
+	Additions          []ElementVariablePlannedValue
+	Changes            []ElementVariablePlannedChange
+	UnchangedRequested []ElementVariablePlannedValue
+	Untouched          []ElementVariablePlannedValue
+	MutationVariables  map[string]any
+	VerificationValues map[string]any
+}
+
+// ElementVariableUpdatePlan is the immutable-by-convention result of
+// successful collection-wide discovery and classification.
+type ElementVariableUpdatePlan struct {
+	RequestedKeys          []string
+	RequestedValues        map[string]any
+	Elements               []ElementVariablePlan
+	RequestedCount         int
+	UpdateCount            int
+	VariableAddCount       int
+	VariableChangeCount    int
+	VariableUnchangedCount int
+	VariableUntouchedCount int
+	MutationSubmitted      bool
+	TenantContext          TenantContext
+}

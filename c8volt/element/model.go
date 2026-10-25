@@ -3,7 +3,11 @@
 
 package element
 
-import "time"
+import (
+	"time"
+
+	options "github.com/grafvonb/c8volt/c8volt/foptions"
+)
 
 // RuntimeListenerJob exposes a listener job attached to a runtime element.
 type RuntimeListenerJob struct {
@@ -169,4 +173,52 @@ type Variable struct {
 	ScopeKey           string `json:"scopeKey"`
 	TenantId           string `json:"tenantId,omitempty"`
 	APITruncated       bool   `json:"apiTruncated"`
+}
+
+// ElementVariablePlannedValue describes an addition, unchanged
+// request, or untouched local variable in a frozen update plan.
+type ElementVariablePlannedValue struct {
+	Name         string `json:"name"`
+	Value        any    `json:"value"`
+	APITruncated bool   `json:"apiTruncated,omitempty"`
+}
+
+// ElementVariablePlannedChange preserves the observed and requested
+// values for a local variable that needs mutation.
+type ElementVariablePlannedChange struct {
+	Name         string `json:"name"`
+	Before       any    `json:"before"`
+	After        any    `json:"after"`
+	APITruncated bool   `json:"apiTruncated,omitempty"`
+}
+
+// ElementVariablePlan is the complete element-local classification and
+// frozen payload for one selected element.
+type ElementVariablePlan struct {
+	ElementKey         string                         `json:"elementKey"`
+	ProcessInstanceKey string                         `json:"processInstanceKey"`
+	ScopeKey           string                         `json:"scopeKey"`
+	TenantId           string                         `json:"tenantId,omitempty"`
+	Additions          []ElementVariablePlannedValue  `json:"additions"`
+	Changes            []ElementVariablePlannedChange `json:"changes"`
+	UnchangedRequested []ElementVariablePlannedValue  `json:"unchangedRequested"`
+	Untouched          []ElementVariablePlannedValue  `json:"untouched"`
+	MutationVariables  map[string]any                 `json:"mutationVariables,omitempty"`
+	VerificationValues map[string]any                 `json:"verificationValues"`
+}
+
+// ElementVariableUpdatePlan is a complete frozen collection plan
+// suitable for preview and later execution without rediscovery.
+type ElementVariableUpdatePlan struct {
+	RequestedKeys          []string              `json:"requestedKeys"`
+	RequestedValues        map[string]any        `json:"requestedValues"`
+	Elements               []ElementVariablePlan `json:"elements"`
+	RequestedCount         int                   `json:"requestedCount"`
+	UpdateCount            int                   `json:"updateCount"`
+	VariableAddCount       int                   `json:"variableAddCount"`
+	VariableChangeCount    int                   `json:"variableChangeCount"`
+	VariableUnchangedCount int                   `json:"variableUnchangedCount"`
+	VariableUntouchedCount int                   `json:"variableUntouchedCount"`
+	MutationSubmitted      bool                  `json:"mutationSubmitted"`
+	TenantContext          options.TenantContext `json:"tenantContext"`
 }

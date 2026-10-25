@@ -7,10 +7,13 @@ import (
 	"context"
 
 	options "github.com/grafvonb/c8volt/c8volt/foptions"
+	"github.com/grafvonb/c8volt/typex"
 )
 
-// API exposes runtime element lookup and search operations.
+// API exposes runtime element lookup, search, enrichment and local variable planning.
 type API interface {
+	// PlanElementVariableUpdates freezes complete local classifications for all selected keys.
+	PlanElementVariableUpdates(context.Context, typex.Keys, map[string]any, ...options.FacadeOption) (ElementVariableUpdatePlan, error)
 	// GetElementWithEnrichment reads optional local variables and listeners for one element.
 	GetElementWithEnrichment(ctx context.Context, key string, enrichment Enrichment, opts ...options.FacadeOption) (Element, error)
 	// SearchElementsWithEnrichment enriches the selected collection without rediscovery.
