@@ -751,3 +751,8 @@ func (stubProcessAPI) SuspendProcessInstance(context.Context, string, ...options
 func (stubProcessAPI) SuspendProcessInstances(context.Context, types.Keys, int, ...options.FacadeOption) (process.SuspensionResults, error) {
 	return process.SuspensionResults{Items: []process.SuspensionResult{}}, ferr.ErrUnsupported
 }
+
+// PlanProcessInstanceSuspension rejects planning in unrelated legacy fixtures.
+func (stubProcessAPI) PlanProcessInstanceSuspension(context.Context, types.Keys, ...options.FacadeOption) (process.ProcessInstanceSuspensionPlan, error) {
+	return process.ProcessInstanceSuspensionPlan{}, ferr.ErrUnsupported
+}

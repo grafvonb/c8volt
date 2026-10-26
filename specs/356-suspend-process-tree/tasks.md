@@ -41,7 +41,7 @@ The necessary domain/public models, planner surface, and concrete test-double up
 
 **Independent test**: With isolated nested/mixed-state/overlapping relationships, call the new planner and the existing collection executor. Assert the stable unique active target set, zero mutations during planning, no family/root lookup, no ineligible mutations, and unchanged exact-key behavior.
 
-- [ ] T001 [US1] Deliver the complete tree suspension planning contract in `internal/domain/processinstance_suspension_plan.go`, `internal/services/processinstance/suspend_plan.go`, `c8volt/process/api.go`, `c8volt/process/model.go`, `c8volt/process/suspend_plan.go`, and `c8volt/process/convert.go`, including concrete stub alignment and isolated service/facade tests.
+- [x] T001 [US1] Deliver the complete tree suspension planning contract in `internal/domain/processinstance_suspension_plan.go`, `internal/services/processinstance/suspend_plan.go`, `c8volt/process/api.go`, `c8volt/process/model.go`, `c8volt/process/suspend_plan.go`, and `c8volt/process/convert.go`, including concrete stub alignment and isolated service/facade tests.
 
   **Implementation and invariants**:
 

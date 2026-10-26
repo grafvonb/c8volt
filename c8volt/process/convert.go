@@ -1013,3 +1013,18 @@ func fromDomainSuspensionResults(r d.ProcessInstanceSuspensionResults) Suspensio
 	}
 	return out
 }
+
+// fromDomainProcessInstanceSuspensionPlan copies all slices, retaining non-nil
+// successful arrays and the zero plan on failure without interpreting observations.
+func fromDomainProcessInstanceSuspensionPlan(plan d.ProcessInstanceSuspensionPlan) ProcessInstanceSuspensionPlan {
+	return ProcessInstanceSuspensionPlan{
+		RequestedKeys: slices.Clone(plan.RequestedKeys),
+		Instances:     toolx.MapSlice(plan.Instances, fromDomainProcessInstanceSuspensionPlanItem),
+		TargetKeys:    slices.Clone(plan.TargetKeys),
+	}
+}
+
+// fromDomainProcessInstanceSuspensionPlanItem maps planning facts, never execution evidence.
+func fromDomainProcessInstanceSuspensionPlanItem(item d.ProcessInstanceSuspensionPlanItem) ProcessInstanceSuspensionPlanItem {
+	return ProcessInstanceSuspensionPlanItem{Key: item.Key, ObservedState: State(item.ObservedState), Classification: ProcessInstanceSuspensionPlanClassification(item.Classification)}
+}
