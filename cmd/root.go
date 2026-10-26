@@ -38,7 +38,7 @@ var rootCmd = &cobra.Command{
 	Long: fmt.Sprintf(`c8volt: Camunda 8 Operations CLI.
 
 Deploy BPMN models, start process instances, inspect workflow state, wait for
-state changes, walk process trees, cancel, and delete.
+state changes, walk process trees, suspend, cancel, and delete.
 
 Supports Camunda 8.8, 8.9, and 8.10.
 Camunda 8.10 baseline: %s (%s).

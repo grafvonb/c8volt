@@ -693,3 +693,13 @@ func (stubDryRunIncidentAPI) SearchProcessInstanceIncidents(context.Context, str
 
 // ValidateProcessInstanceStates permits existing fixtures independently of version policy.
 func (s stubDryRunProcessInstanceAPI) ValidateProcessInstanceStates(d.States) error { return nil }
+
+// ValidateProcessInstanceSuspension keeps unrelated legacy fixtures explicitly unsupported.
+func (stubDryRunProcessInstanceAPI) ValidateProcessInstanceSuspension() error {
+	return d.ErrUnsupported
+}
+
+// SuspendProcessInstance prevents accidental mutation through unrelated legacy fixtures.
+func (stubDryRunProcessInstanceAPI) SuspendProcessInstance(context.Context, string, ...services.CallOption) (d.ProcessInstanceSuspensionResult, error) {
+	return d.ProcessInstanceSuspensionResult{}, d.ErrUnsupported
+}

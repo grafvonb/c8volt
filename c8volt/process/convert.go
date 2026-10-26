@@ -994,3 +994,22 @@ func toProcessInstanceData(x ProcessInstanceData) d.ProcessInstanceData {
 		TenantId:                    x.TenantId,
 	}
 }
+
+// fromDomainSuspensionResult mechanically preserves submission and observation evidence.
+func fromDomainSuspensionResult(r d.ProcessInstanceSuspensionResult) SuspensionResult {
+	return SuspensionResult{
+		Key: r.Key, Status: SuspensionStatus(r.Status),
+		Submission: SuspensionSubmission(r.Submission), Confirmation: SuspensionConfirmation(r.Confirmation),
+		StatusCode: r.StatusCode, HasObservation: r.HasObservation,
+		LastObservedState: State(r.LastObservedState), SuspendedDate: r.SuspendedDate, Error: r.Error,
+	}
+}
+
+// fromDomainSuspensionResults copies items and preserves an empty JSON array.
+func fromDomainSuspensionResults(r d.ProcessInstanceSuspensionResults) SuspensionResults {
+	out := SuspensionResults{Items: make([]SuspensionResult, len(r.Items))}
+	for i, item := range r.Items {
+		out.Items[i] = fromDomainSuspensionResult(item)
+	}
+	return out
+}

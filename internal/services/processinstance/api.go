@@ -20,6 +20,10 @@ import (
 
 // API defines the version-neutral process-instance service contract.
 type API interface {
+	// ValidateProcessInstanceSuspension checks mutation capability without I/O.
+	ValidateProcessInstanceSuspension() error
+	// SuspendProcessInstance suspends exactly one key, confirming unless NoWait is set.
+	SuspendProcessInstance(ctx context.Context, key string, opts ...services.CallOption) (d.ProcessInstanceSuspensionResult, error)
 	// ValidateProcessInstanceStates checks explicit state capabilities without I/O.
 	ValidateProcessInstanceStates(states d.States) error
 	CreateProcessInstance(ctx context.Context, data d.ProcessInstanceData, opts ...services.CallOption) (d.ProcessInstanceCreation, error)

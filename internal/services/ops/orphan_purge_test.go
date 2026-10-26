@@ -675,3 +675,11 @@ func (s stubProcessInstanceAPI) ValidateProcessInstanceStates(states d.States) e
 	}
 	return d.ErrUnsupported
 }
+
+// ValidateProcessInstanceSuspension keeps unrelated legacy fixtures explicitly unsupported.
+func (stubProcessInstanceAPI) ValidateProcessInstanceSuspension() error { return d.ErrUnsupported }
+
+// SuspendProcessInstance prevents accidental mutation through unrelated legacy fixtures.
+func (stubProcessInstanceAPI) SuspendProcessInstance(context.Context, string, ...services.CallOption) (d.ProcessInstanceSuspensionResult, error) {
+	return d.ProcessInstanceSuspensionResult{}, d.ErrUnsupported
+}

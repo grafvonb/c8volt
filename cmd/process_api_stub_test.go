@@ -6,10 +6,11 @@ package cmd
 import (
 	"context"
 	"encoding/json"
-	"github.com/grafvonb/c8volt/c8volt/incident"
 	"testing"
 
+	ferr "github.com/grafvonb/c8volt/c8volt/ferrors"
 	options "github.com/grafvonb/c8volt/c8volt/foptions"
+	"github.com/grafvonb/c8volt/c8volt/incident"
 	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/grafvonb/c8volt/c8volt/task"
 	types "github.com/grafvonb/c8volt/typex"
@@ -739,4 +740,14 @@ func (s stubTaskAPI) PrepareUserTaskCompletions(context.Context, types.Keys, map
 // ExecuteUserTaskCompletions rejects unexpected completion execution in unrelated command fixtures.
 func (s stubTaskAPI) ExecuteUserTaskCompletions(context.Context, task.UserTaskCompletionPlan) (task.UserTaskCompletionResults, error) {
 	panic("unexpected ExecuteUserTaskCompletions call")
+}
+
+// SuspendProcessInstance rejects suspension in legacy command fixtures.
+func (stubProcessAPI) SuspendProcessInstance(context.Context, string, ...options.FacadeOption) (process.SuspensionResult, error) {
+	return process.SuspensionResult{}, ferr.ErrUnsupported
+}
+
+// SuspendProcessInstances rejects suspension in legacy command fixtures.
+func (stubProcessAPI) SuspendProcessInstances(context.Context, types.Keys, int, ...options.FacadeOption) (process.SuspensionResults, error) {
+	return process.SuspensionResults{Items: []process.SuspensionResult{}}, ferr.ErrUnsupported
 }

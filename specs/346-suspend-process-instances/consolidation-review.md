@@ -1,0 +1,22 @@
+# Consolidation Review: Suspend Process Instances
+
+**Tasks**: [tasks.md](tasks.md)
+
+**Record**: This preserves the review from the earlier consolidation run. Moving it out of the task list does not constitute a new consolidation run.
+
+Reviewed on 2026-10-25 by executing the mandatory `speckit-task-consolidation-consolidate` workflow. Result: **3 → 3 tasks**, no task/coverage/progress removed. This is a fresh, wholly unchecked list with no external task-ID references or existing feature progress records. The original hook saved this review in `tasks.md`; the review is now maintained separately in this file.
+
+| Boundary or plausible merge | Code-grounded decision |
+| --- | --- |
+| T001 + T002, strongest adjacent merge | Retain. `services.RetryCamundaMutation` in `internal/services/retry.go` can discard its callback value during backoff cancellation; `httpc.BeginRequestRateAttempt` records positively unsent attempts independently of transport wrapping. T001 must establish this submission protocol's evidence transitions first. T002 then adds a second deadline/state machine plus concurrent scheduling, including zero-valued skipped slots and pre-work cancellation in `toolx/pool/pool.go`. Combining all three temporal behaviors and their fault matrices would exceed a focused iteration; the stable result contract is the only handoff, and no incomplete public operation is exposed between units. |
+| T002 + T003 | Retain. T002 has useful complete public-library behavior with factory/version and concurrent waiter/facade validation. T003 must prove a different externally observable failure path through subprocess exit, configured logger destinations, one-envelope rendering, writer failure, and real PTY control text. `cmd/update_element_variables.go`, `cmd/cmd_views_contract.go`, `cmd/update_element_logging_test.go`, and `cmd/update_element_terminal_test.go` show why renderer-only or library tests cannot replace that execution matrix. Combining these with retry/pool/waiter integration would make the unit too large to validate reliably. |
+| Service + thin facade/mappings | Already consolidated in T002, following delegation in `c8volt/process/bulk.go`; there is no separate facade handoff. |
+| Interface + all adapters/test doubles | Already consolidated in T002; the narrower generated-client signature/mock prerequisite stays together in T001. Compile-time assertions in `internal/services/processinstance/api.go` and `v810/service_test.go` prevent temporarily broken interfaces. |
+| Single + collection behavior | Already consolidated in T002; no later rebuild of single-target behavior or CLI-owned pool. T003 consumes one collection path regardless of input size. |
+| Input + frozen preview + result/error rendering | Already consolidated in T003 using the existing stdin, envelope, and error/exit helpers. No intermediate command can ship with direct-print diagnostics or missing partial results. |
+| CLI + tests/docs/fixture | Already consolidated in T003. The small `suspend_fixture` change in `integration/scripts/run-c810-suspended.sh` depends directly on the final command/envelope and would otherwise repeat that contract review; documentation generation and static fixture validation remain with it. |
+| T001 + T003, nonadjacent shared result evidence | Do not combine or bypass T002. T003 must consume complete facade outcomes, not interpret transport responses or add its own confirmation behavior. Protocol results and command output share the model but have no independent direct dependency that removes the T002 state machine. |
+
+Oversize review retains the existing three-unit plan without subdividing safety obligations into later hardening tasks. T002 reuses the completed T001 protocol and existing worker/backoff infrastructure; T003 reuses existing subprocess, logger, PTY and envelope helpers. Reuse fixture scenarios and targeted assertions rather than create an exhaustive duplicate cross-product. The matrix remains complete for the distinct required behaviors. Separate packages or hypothetical parallelism were not used as the reason to retain boundaries.
+
+Coverage review assigned every FR-001–FR-021, SC-001–SC-008, story acceptance scenario, data-model field constraint, and output/terminal/diagnostic obligation to an executable task. IDs, task format, story ownership, dependency order, source references, local links, whitespace, and untouched progress were checked. No application tests were run for this task document.

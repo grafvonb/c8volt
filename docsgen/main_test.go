@@ -155,7 +155,7 @@ func TestCLIMarkdownPreludeOmitsOpsBreadcrumb(t *testing.T) {
 	}
 }
 
-// TestCLICommandTreeDocumentsGeneratedCommandSurface includes every public command, including exact-local element updates.
+// TestCLICommandTreeDocumentsGeneratedCommandSurface includes every public command, including exact-instance suspension.
 func TestCLICommandTreeDocumentsGeneratedCommandSurface(t *testing.T) {
 	root := cmd.Root()
 	root.DisableAutoGenTag = true
@@ -168,6 +168,8 @@ func TestCLICommandTreeDocumentsGeneratedCommandSurface(t *testing.T) {
 		"    - [`c8volt get process-instance`]({{ \"/cli/c8volt_get_process-instance\" | relative_url }})",
 		"    - [`c8volt get element`]({{ \"/cli/c8volt_get_element\" | relative_url }})",
 		"    - [`c8volt get user-task`]({{ \"/cli/c8volt_get_user-task\" | relative_url }})",
+		"  - [`c8volt suspend`]({{ \"/cli/c8volt_suspend\" | relative_url }})",
+		"    - [`c8volt suspend process-instance`]({{ \"/cli/c8volt_suspend_process-instance\" | relative_url }})",
 		"    - [`c8volt update element`]({{ \"/cli/c8volt_update_element\" | relative_url }})",
 		"    - [`c8volt update user-task`]({{ \"/cli/c8volt_update_user-task\" | relative_url }})",
 		"    - [`c8volt ops analyse`]({{ \"/cli/c8volt_ops_analyse\" | relative_url }})",
@@ -178,8 +180,8 @@ func TestCLICommandTreeDocumentsGeneratedCommandSurface(t *testing.T) {
 		}
 	}
 
-	if got := strings.Count(tree, "- [`") - 1; got != 58 {
-		t.Fatalf("expected command tree to contain 58 non-root commands, got %d", got)
+	if got := strings.Count(tree, "- [`") - 1; got != 60 {
+		t.Fatalf("expected command tree to contain 60 non-root commands, got %d", got)
 	}
 }
 

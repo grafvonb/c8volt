@@ -345,6 +345,24 @@ Use `get process-instance --state suspended` to find paused instances or `expect
 
 Generated reference: [get process-instance](docs/cli/c8volt_get_process-instance.md).
 
+### Suspend Explicit Process Instances
+
+Use [suspend process-instance](docs/cli/c8volt_suspend_process-instance.md) (`suspend pi`) on Camunda 8.10 to pause ACTIVE instances by explicit key. Repeated/comma-separated `--key` values and newline-separated stdin through `-` are merged in first-input order and deduplicated. Each selected parent or child remains independent; relatives are not discovered or suspended. Explicit keys use backend authorization without discovery tenant filtering.
+
+```bash
+./c8volt suspend pi --key <process-instance-key>
+./c8volt suspend pi --key <key-a>,<key-b> --dry-run --json
+printf '%s\n' "$INSTANCE_A" "$INSTANCE_B" | ./c8volt suspend pi --auto-confirm --no-wait --json -
+```
+
+When authorization is enabled, suspension requires `SUSPEND_PROCESS_INSTANCE` on `PROCESS_DEFINITION`; default confirmation also requires permission to read the instance. There is no mandatory preflight read. Only an accepted submission followed by an observed `SUSPENDED` state confirms suspension. Already-suspended, terminal, terminating, missing or unauthorized targets remain failures when rejected; a later state cannot override rejection or uncertain submission.
+
+Default confirmation is bounded by `--backoff-timeout` (two minutes by default, with configuration overrides); `--timeout` bounds each HTTP request. `--no-wait` skips confirmation reads and reports acceptance. `--dry-run` validates capability and explicit keys without reads, writes or prompts and does not establish eligibility, including with `--no-wait`. Missing keys and empty stdin are input errors. Use `--auto-confirm` or `--automation` for unattended execution. `--workers`, `--no-worker-limit` and `--fail-fast` use the existing collection controls; fail-fast cannot undo accepted work.
+
+Human summaries, dry-run summaries, and verbose outcome details use the configured INFO logger on stderr; logger level and format apply. Confirmed runs report suspended instances; no-wait runs report submitted requests without confirmation. Prompts use plain stderr and failures use one compact configured ERROR record. JSON and keys-only results use stdout. JSON emits one envelope retaining ordered per-key submission, confirmation, observation and error evidence, including partial failures and unstarted work. JSON execution requires auto-confirm or automation, and JSON cannot be combined with verbose. Keys-only preview lists selected keys; execution lists accepted keys, including accepted-but-unconfirmed failures, and retains the failure exit. Keys alone do not prove suspension. Quiet preserves requested JSON/keys and required errors. Verbose shows safe per-key facts; HTTP diagnostics require `--debug` or configured DEBUG independently of verbose.
+
+Suspension pauses engine execution while retaining runtime state and resources; it does not cancel the instance, interrupt already-running worker code or undo external effects. Job completion/failure attempts are rejected during suspension, and affected jobs may execute again after resumption. Backpressure can delay or reject suspension. It is not an instantaneous emergency stop. Use existing `get pi` and `expect pi --state suspended` to inspect the state; resumption is outside this command's scope. Camunda 8.8/8.9 reject suspension, including previews, before requests.
+
 ### Inspect And Search User Tasks
 
 Find human work waiting in your processes, inspect assignments, and count matching tasks directly from your terminal.

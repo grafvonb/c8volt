@@ -426,3 +426,31 @@ func TestRequestRateReadLocalDeadlineIsNotRetried(t *testing.T) {
 	require.Same(t, local, err)
 	require.Equal(t, 1, calls)
 }
+
+// TestReadRetryTransportScopedLogSuppression retains attempts and leaves unrelated
+// calls logging normally; workflow suppression never disables HTTP retry policy.
+func TestReadRetryTransportScopedLogSuppression(t *testing.T) {
+	t.Parallel()
+	for _, suppress := range []bool{false, true} {
+		t.Run(fmt.Sprint(suppress), func(t *testing.T) {
+			var output bytes.Buffer
+			sequence := &readRetrySequenceTransport{t: t, results: []readRetryRoundTripResult{{resp: newReadRetryResponse(503, "failure")}, {resp: newReadRetryResponse(200, "ok")}}}
+			transport := &ReadRetryTransport{base: sequence, policy: fastReadRetryPolicy(), log: slog.New(slog.NewTextHandler(&output, nil))}
+			req := newReadRetryRequest(t, http.MethodGet)
+			if suppress {
+				req = req.WithContext(WithoutReadRetryLogs(req.Context()))
+			}
+			response, err := transport.RoundTrip(req)
+			require.NoError(t, err)
+			defer response.Body.Close()
+			require.Equal(t, 200, response.StatusCode)
+			require.Equal(t, 2, sequence.Calls())
+			if suppress {
+				require.Empty(t, output.String())
+			} else {
+				require.Contains(t, output.String(), "level=INFO")
+				require.Contains(t, output.String(), "retrying")
+			}
+		})
+	}
+}
