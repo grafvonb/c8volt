@@ -151,6 +151,9 @@ func TestDeleteResponseBatchFailures(t *testing.T) {
 						_, _ = io.WriteString(w, `{"detail":"batch read forbidden"}`)
 					} else if state == "canceled_context" {
 						cancel()
+						// Observe transport cancellation before returning; otherwise the
+						// implicit empty 200 response can race cancellation and fail JSON decoding.
+						<-r.Context().Done()
 					} else {
 						_ = json.NewEncoder(w).Encode(map[string]string{"batchOperationKey": "456", "state": state})
 					}
