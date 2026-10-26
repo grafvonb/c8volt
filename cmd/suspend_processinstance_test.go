@@ -153,9 +153,15 @@ func TestSuspendProcessInstanceSelection(t *testing.T) {
 // TestSuspendProcessInstanceFailFast keeps accepted work and keyed unscheduled slots; the
 // command passes worker controls to the existing service rather than scheduling itself.
 func TestSuspendProcessInstanceFailFast(t *testing.T) {
-	f := newSuspensionFixture(t)
+	t.Run("exact", func(t *testing.T) { testSuspendProcessInstanceFailFast(t, false) })
+	t.Run("tree", func(t *testing.T) { testSuspendProcessInstanceFailFast(t, true) })
+}
+
+// testSuspendProcessInstanceFailFast applies the same execution assertions to both selection modes.
+func testSuspendProcessInstanceFailFast(t *testing.T, tree bool) {
+	f := newSuspensionModeFixture(t, tree)
 	f.reject[suspendKeyB] = 409
-	out, stderr, err := runUpdateUserTaskCommand(t, completionLogConfig(t, f.server.URL, "plain-time", "info"), "", "--json", "--automation", "suspend", "pi", "--key", suspendKeyA+","+suspendKeyB+","+suspendKeyC, "--workers", "1", "--no-worker-limit", "--fail-fast")
+	out, stderr, err := runUpdateUserTaskCommand(t, completionLogConfig(t, f.server.URL, "plain-time", "info"), "", suspensionModeArgs([]string{"--json", "--automation", "suspend", "pi", "--key", suspendKeyA + "," + suspendKeyB + "," + suspendKeyC, "--workers", "1", "--no-worker-limit", "--fail-fast"}, tree)...)
 	assertUserTaskCompletionExit(t, err, 6)
 	require.Empty(t, stderr)
 	items := requireJSONItems(t, requireJSONObject(t, requireSingleJSONObjectDocument(t, out)["payload"])["items"], 3)
@@ -198,6 +204,12 @@ func TestSuspendProcessInstanceRejectedKeysAndExitOverride(t *testing.T) {
 // TestSuspendProcessInstanceWorkers uses paired request barriers to verify the CLI forwards
 // explicit workers and no-worker-limit without overriding service scheduling policy.
 func TestSuspendProcessInstanceWorkers(t *testing.T) {
+	t.Run("exact", func(t *testing.T) { testSuspendProcessInstanceWorkers(t, false) })
+	t.Run("tree", func(t *testing.T) { testSuspendProcessInstanceWorkers(t, true) })
+}
+
+// testSuspendProcessInstanceWorkers reuses the execution barriers after optional flat tree discovery.
+func testSuspendProcessInstanceWorkers(t *testing.T, tree bool) {
 	keys := []string{suspendKeyA, suspendKeyB, suspendKeyC, "2251799813685252"}
 	for _, workers := range []int{1, 2, 0} {
 		t.Run(fmt.Sprint(workers), func(t *testing.T) {
@@ -208,7 +220,7 @@ func TestSuspendProcessInstanceWorkers(t *testing.T) {
 			var mu sync.Mutex
 			active, peak, started := 0, 0, 0
 			gates := []chan struct{}{make(chan struct{}), make(chan struct{}), make(chan struct{}), make(chan struct{})}
-			server := testx.NewIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			server := testx.NewIPv4Server(t, suspensionExecutionTestHandler(t, tree, keys, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				require.Equal(t, "POST", r.Method)
 				require.Contains(t, r.URL.Path, "/suspension")
 				mu.Lock()
@@ -233,13 +245,13 @@ func TestSuspendProcessInstanceWorkers(t *testing.T) {
 				active--
 				mu.Unlock()
 				w.WriteHeader(204)
-			}))
+			})))
 			defer server.Close()
 			args := []string{"--automation", "--json", "suspend", "pi", "--key", strings.Join(keys, ","), "--no-wait", "--no-worker-limit"}
 			if workers > 0 {
 				args = append(args, "--workers", fmt.Sprint(workers))
 			}
-			out, stderr, err := runUpdateUserTaskCommand(t, completionLogConfig(t, server.URL, "plain-time", "info"), "", args...)
+			out, stderr, err := runUpdateUserTaskCommand(t, completionLogConfig(t, server.URL, "plain-time", "info"), "", suspensionModeArgs(args, tree)...)
 			require.NoError(t, err, stderr)
 			require.Empty(t, stderr)
 			require.Equal(t, "accepted", requireSingleJSONObjectDocument(t, out)["outcome"])
@@ -255,11 +267,17 @@ func TestSuspendProcessInstanceWorkers(t *testing.T) {
 // TestSuspendProcessInstanceCancellation cancels a real command while an accepted target's
 // confirmation is in flight, preserving that evidence and the unscheduled target without resubmission.
 func TestSuspendProcessInstanceCancellation(t *testing.T) {
+	t.Run("exact", func(t *testing.T) { testSuspendProcessInstanceCancellation(t, false) })
+	t.Run("tree", func(t *testing.T) { testSuspendProcessInstanceCancellation(t, true) })
+}
+
+// testSuspendProcessInstanceCancellation reuses the execution barriers after optional flat tree discovery.
+func testSuspendProcessInstanceCancellation(t *testing.T, tree bool) {
 	ready := make(chan struct{})
 	var once sync.Once
 	var mu sync.Mutex
 	calls := []string{}
-	server := testx.NewIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := testx.NewIPv4Server(t, suspensionExecutionTestHandler(t, tree, []string{suspendKeyA, suspendKeyB}, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		mu.Lock()
 		calls = append(calls, r.Method+" "+r.URL.Path)
 		mu.Unlock()
@@ -274,7 +292,7 @@ func TestSuspendProcessInstanceCancellation(t *testing.T) {
 		case <-time.After(5 * time.Second):
 			t.Error("confirmation did not observe cancellation")
 		}
-	}))
+	})))
 	defer server.Close()
 	control := testx.NewIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		select {
@@ -286,14 +304,16 @@ func TestSuspendProcessInstanceCancellation(t *testing.T) {
 	defer control.Close()
 	for _, mode := range []string{"json"} {
 		args := []string{"--config", completionLogConfig(t, server.URL, "plain-time", "info"), "--auto-confirm", "--" + mode, "suspend", "pi", "--workers", "1", "--key", suspendKeyA + "," + suspendKeyB}
-		encoded, err := json.Marshal(args)
+		encoded, err := json.Marshal(suspensionModeArgs(args, tree))
 		require.NoError(t, err)
 		out, stderr, err := testx.RunCmdSubprocessInDirWithSeparateOutputs(t, "TestSuspendProcessInstanceCancellationProcess", "", map[string]string{"C8VOLT_SUSPEND_ARGS": string(encoded), "C8VOLT_SUSPEND_CANCEL_URL": control.URL}, "")
 		assertUserTaskCompletionExit(t, err, 1)
 		require.Empty(t, stderr)
 		env := requireSingleJSONObjectDocument(t, out)
 		require.Equal(t, "failed", env["outcome"])
-		items := requireJSONItems(t, requireJSONObject(t, env["payload"])["items"], 2)
+		payload := requireJSONObject(t, env["payload"])
+		requireSuspensionModePlan(t, payload, tree, []string{suspendKeyA, suspendKeyB})
+		items := requireJSONItems(t, payload["items"], 2)
 		first, last := requireJSONObject(t, items[0]), requireJSONObject(t, items[1])
 		require.Equal(t, "accepted", first["submission"])
 		require.Equal(t, "unconfirmed", first["confirmation"])
@@ -338,9 +358,15 @@ func TestSuspendProcessInstanceCancellationProcess(t *testing.T) {
 // TestSuspendProcessInstanceConfiguredBound proves configured confirmation timeout and its
 // flag override are effective even when the next poll would otherwise occur much later.
 func TestSuspendProcessInstanceConfiguredBound(t *testing.T) {
+	t.Run("exact", func(t *testing.T) { testSuspendProcessInstanceConfiguredBound(t, false) })
+	t.Run("tree", func(t *testing.T) { testSuspendProcessInstanceConfiguredBound(t, true) })
+}
+
+// testSuspendProcessInstanceConfiguredBound applies the same execution assertions to both selection modes.
+func testSuspendProcessInstanceConfiguredBound(t *testing.T, tree bool) {
 	for _, override := range []bool{false, true} {
 		t.Run(fmt.Sprint(override), func(t *testing.T) {
-			f := newSuspensionFixture(t)
+			f := newSuspensionModeFixture(t, tree)
 			f.states[suspendKeyA] = []string{"ACTIVE"}
 			path := completionLogConfig(t, f.server.URL, "plain-time", "info")
 			data, err := os.ReadFile(path)
@@ -356,7 +382,7 @@ func TestSuspendProcessInstanceConfiguredBound(t *testing.T) {
 			if override {
 				args = append(args, "--backoff-timeout", "40ms")
 			}
-			out, stderr, err := runUpdateUserTaskCommand(t, path, "", args...)
+			out, stderr, err := runUpdateUserTaskCommand(t, path, "", suspensionModeArgs(args, tree)...)
 			assertUserTaskCompletionExit(t, err, 4)
 			require.Empty(t, stderr)
 			env := requireSingleJSONObjectDocument(t, out)

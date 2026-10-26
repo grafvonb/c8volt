@@ -13,6 +13,12 @@ import (
 // TestSuspendProcessInstanceDiagnostics detects direct-stderr bypass, duplicate errors,
 // lost partial payloads and raw joined-error disclosure at the real command boundary.
 func TestSuspendProcessInstanceDiagnostics(t *testing.T) {
+	t.Run("exact", func(t *testing.T) { testSuspendProcessInstanceDiagnostics(t, false) })
+	t.Run("tree", func(t *testing.T) { testSuspendProcessInstanceDiagnostics(t, true) })
+}
+
+// testSuspendProcessInstanceDiagnostics applies the same execution assertions to both selection modes.
+func testSuspendProcessInstanceDiagnostics(t *testing.T, tree bool) {
 	for _, format := range []string{"plain-time", "json"} {
 		for _, destination := range []string{"configured", "inherited"} {
 			for _, tc := range []struct {
@@ -33,7 +39,7 @@ func TestSuspendProcessInstanceDiagnostics(t *testing.T) {
 				{name: "quiet keys", flags: []string{"--keys-only", "--quiet"}, keys: true, quiet: true},
 			} {
 				t.Run(format+"/"+destination+"/"+tc.name, func(t *testing.T) {
-					f := newSuspensionFixture(t)
+					f := newSuspensionModeFixture(t, tree)
 					f.reject[suspendKeyB] = 400
 					f.reject[suspendKeyC] = 400
 					level := "info"
@@ -45,6 +51,7 @@ func TestSuspendProcessInstanceDiagnostics(t *testing.T) {
 						workers = "2"
 					}
 					args := append([]string{"--config", completionLogConfig(t, f.server.URL, format, level), "--auto-confirm", "suspend", "pi", "--key", suspendKeyA + "," + suspendKeyB + "," + suspendKeyC, "--workers", workers, "--no-wait"}, tc.flags...)
+					args = suspensionModeArgs(args, tree)
 					out, stderr, err := runSuspensionTerminal(t, args, destination, nil)
 					assertUserTaskCompletionExit(t, err, 2)
 					calls, writes, reads := f.snapshot()
@@ -95,6 +102,14 @@ func TestSuspendProcessInstanceDiagnostics(t *testing.T) {
 						require.Empty(t, infos)
 					} else {
 						want := []string{"suspension: submitted 1/3 process instance(s); confirmation not requested; failed 2"}
+						if tree {
+							want = append([]string{suspensionTreeTestApproval(3), suspensionTreeTestScope(3)}, want...)
+							if tc.verbose {
+								for _, key := range []string{suspendKeyA, suspendKeyB, suspendKeyC} {
+									want = append(want, key+": observed state: ACTIVE; classification: eligible")
+								}
+							}
+						}
 						if tc.verbose {
 							want = append(want,
 								suspendKeyA+": submission: accepted; confirmation: not requested; last state: not observed",
@@ -109,7 +124,7 @@ func TestSuspendProcessInstanceDiagnostics(t *testing.T) {
 					if tc.debug {
 						mutations := 0
 						for _, msg := range debugs {
-							if strings.Contains(msg, "api #") && strings.Contains(msg, "POST /v2/process-instances/") {
+							if strings.Contains(msg, "api #") && strings.Contains(msg, "POST /v2/process-instances/") && strings.Contains(msg, "/suspension") {
 								mutations++
 							}
 						}
@@ -134,6 +149,12 @@ func TestSuspendProcessInstanceDiagnostics(t *testing.T) {
 // Success, preview and verbose output must obey the same logger destination,
 // severity and level controls as failures, including with redirected stdout.
 func TestSuspendProcessInstanceSummaryLogging(t *testing.T) {
+	t.Run("exact", func(t *testing.T) { testSuspendProcessInstanceSummaryLogging(t, false) })
+	t.Run("tree", func(t *testing.T) { testSuspendProcessInstanceSummaryLogging(t, true) })
+}
+
+// testSuspendProcessInstanceSummaryLogging applies the same execution assertions to both selection modes.
+func testSuspendProcessInstanceSummaryLogging(t *testing.T, tree bool) {
 	for _, format := range []string{"plain-time", "json"} {
 		for _, destination := range []string{"configured", "inherited"} {
 			for _, level := range []string{"info", "warn"} {
@@ -154,9 +175,10 @@ func TestSuspendProcessInstanceSummaryLogging(t *testing.T) {
 					{name: "keys", flags: []string{"--keys-only"}, machine: true},
 				} {
 					t.Run(format+"/"+destination+"/"+level+"/"+tc.name, func(t *testing.T) {
-						f := newSuspensionFixture(t)
+						f := newSuspensionModeFixture(t, tree)
 						args := []string{"--config", completionLogConfig(t, f.server.URL, format, level), "suspend", "pi", "--key", suspendKeyA, "--auto-confirm"}
 						args = append(args, tc.flags...)
+						args = suspensionModeArgs(args, tree)
 						stdout, stderr, err := runSuspensionTerminal(t, args, destination, nil)
 						require.NoError(t, err, stderr)
 						records := bulkCompletionDiagnosticRecords(t, stderr, format)
@@ -175,7 +197,16 @@ func TestSuspendProcessInstanceSummaryLogging(t *testing.T) {
 							return
 						}
 						want := [][2]string{{"INFO", tc.summary}}
-						if tc.verbose {
+						if tree {
+							want = [][2]string{{"INFO", suspensionTreeTestApproval(1)}, {"INFO", suspensionTreeTestScope(1)}, {"INFO", tc.summary}}
+							if strings.Contains(tc.name, "preview") {
+								want = [][2]string{{"INFO", "dry run: suspend process-instance tree"}, {"INFO", suspensionTreeTestScope(1)}, {"INFO", "outcome: preview; no changes applied"}}
+							}
+							if tc.verbose {
+								want = append(want, [2]string{"INFO", suspendKeyA + ": observed state: ACTIVE; classification: eligible"})
+							}
+						}
+						if tc.verbose && !(tree && strings.Contains(tc.name, "preview")) {
 							row := suspendKeyA + ": submission: accepted; confirmation: confirmed; last state: SUSPENDED"
 							if tc.name == "verbose preview" {
 								row = suspendKeyA + ": submission: not submitted; confirmation: not requested; last state: not observed"

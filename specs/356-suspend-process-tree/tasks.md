@@ -69,7 +69,7 @@ The necessary domain/public models, planner surface, and concrete test-double up
 
 **Independent test**: Use the real command path against test-owned tree responses. Change the hierarchy/state before answering a real PTY approval prompt and assert that execution targets only the frozen active keys; failed planning, dry-run, abort, and successful no-active planning submit nothing.
 
-- [ ] T002 [US2] Integrate and document the complete --tree command workflow in `cmd/suspend_processinstance.go`, `cmd/suspend_processinstance_tree.go`, and `cmd/cmd_views_processinstance_suspend_tree.go`, with output/activity/terminal regressions in `cmd/suspend_processinstance_*test.go`, metadata/help checks, `README.md`, and regenerated `docs/cli/` and `docs/index.md`.
+- [x] T002 [US2] Integrate and document the complete --tree command workflow in `cmd/suspend_processinstance.go`, `cmd/suspend_processinstance_tree.go`, and `cmd/cmd_views_processinstance_suspend_tree.go`, with output/activity/terminal regressions in `cmd/suspend_processinstance_*test.go`, metadata/help checks, `README.md`, and regenerated `docs/cli/` and `docs/index.md`.
 
   **Implementation and invariants**:
 
