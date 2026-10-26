@@ -5,7 +5,6 @@ package cmd
 
 import (
 	"encoding/json"
-	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -153,20 +152,24 @@ func TestSuspendProcessInstanceTerminal(t *testing.T) {
 					}
 					return
 				}
-				require.Empty(t, stderr)
+				if strings.Contains(flags, "--json") || strings.Contains(flags, "--keys-only") {
+					require.Empty(t, stderr)
+				}
 				switch {
 				case strings.Contains(flags, "--json"):
 					require.Equal(t, "succeeded", requireSingleJSONObjectDocument(t, out)["outcome"])
 				case strings.Contains(flags, "--keys-only"):
 					require.Equal(t, suspendKeyA+"\n", out)
 				case tc.dry:
-					require.Equal(t, "dry run: suspend process instances: 1 selected; no changes applied; eligibility not checked\n", out)
+					require.Empty(t, out)
+					require.Equal(t, [][2]string{{"INFO", "dry run: suspend process-instance; selected: 1; eligibility not checked; no changes applied"}}, bulkCompletionDiagnosticRecords(t, stderr, "plain-time"))
 				default:
-					confirmed := 1
+					summary := "suspension: suspended 1/1 process instance(s)"
 					if strings.Contains(flags, "--no-wait") {
-						confirmed = 0
+						summary = "suspension: submitted 1/1 process instance(s); confirmation not requested"
 					}
-					require.Equal(t, "suspend process instances: 1 selected; accepted: 1, confirmed: "+fmt.Sprint(confirmed)+", failed: 0, skipped: 0\n", out)
+					require.Empty(t, out)
+					require.Equal(t, [][2]string{{"INFO", summary}}, bulkCompletionDiagnosticRecords(t, stderr, "plain-time"))
 				}
 			})
 		}

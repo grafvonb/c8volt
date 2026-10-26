@@ -74,8 +74,8 @@ Run the actual command path with fake dependencies and capture stdout/stderr sep
 
 | Mode/scenario | Required evidence |
 | --- | --- |
-| Human normal/default waiting | Exact compact stdout result summary and no default per-key chatter; true success only after SUSPENDED. |
-| Human dry-run, with/without no-wait | Exact preview wording; no mutation or read requests and no prompt. |
+| Human normal/default waiting | Exact compact INFO summary on the configured logger destination, empty stdout and no default per-key chatter; true success only after SUSPENDED. |
+| Human dry-run, with/without no-wait | Exact INFO preview wording on the configured logger destination, empty stdout; no mutation or read requests and no prompt. |
 | JSON success, preview, accepted, partial failure | Decode exactly one shared envelope, then require EOF; validate per-key fields, payload and error class, and real subprocess exit. |
 | JSON+quiet | Same explicitly requested envelope; no informational logger records. |
 | Keys-only / keys-only+quiet | Exact selected preview or accepted execution keys in order, one per line; zero bytes for no qualifying keys. Failed confirmation still returns accepted keys and the failure exit. |
@@ -93,7 +93,8 @@ Start with `cmd/update_element_logging_test.go` and its configured logger/subpro
 - JSON errors have one envelope, partial results, expected failure exit, and no duplicate human failure diagnostic.
 - Both `--debug` and configured debug level independently expose the existing redacted HTTP diagnostic records with verbose disabled. Test actual existing quiet-over-debug precedence; do not expect quiet to be overridden.
 - Plain/time and structured logger formats both carry useful compact messages. Verify secrets remain redacted and diagnostic records never enter stdout, including under JSON output.
-- Writer failure does not trigger a second renderer or replace an existing operation failure exit.
+- Machine-result writer failure does not trigger a second renderer or replace an existing operation failure exit. Human summaries do not write to the result destination.
+- Success, preview, and verbose rows are INFO logger records, with empty human stdout. Verify plain/structured formats and configured/inherited destinations, plus suppression at configured WARN and under quiet. Direct writes to either stream must fail the assertions.
 
 The assertions must fail if the aggregate logger call is replaced with a direct stderr print, if raw joined errors are logged at normal level, or if partial payloads are discarded.
 

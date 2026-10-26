@@ -92,21 +92,26 @@ Preserve the shared helper's actual canonical command-path convention, optional 
 
 Keys-only preview prints every selected preview key, in order. Keys-only actual execution prints only keys with `submission=accepted`, including accepted-but-unconfirmed targets, and retains the failure exit when confirmation fails. It never prints rejected, unknown-acceptance, or unsubmitted targets. No qualifying keys means exactly zero stdout bytes. Help must explicitly say that execution keys indicate acceptance, not confirmed suspension; use JSON or the exit/result contract for confirmation evidence.
 
-Human result output uses configured stdout with compact wording, without logger prefixes. The preview summary is:
+Human mutation summaries and verbose outcome details use `renderHumanLine` and the configured command-context INFO logger. Human stdout is empty. Logger level, format, destination, and activity handling apply; do not embed timestamps or severity in message text. JSON envelopes and keys-only results remain on stdout; prompts remain plain configured stderr.
+
+The preview message is:
 
 ```text
-dry run: suspend process instances: N selected; no changes applied; eligibility not checked
+dry run: suspend process-instance; selected: N; eligibility not checked; no changes applied
 ```
 
-The final aggregate summary is:
+Default waiting and no-wait messages respectively use:
 
 ```text
-suspend process instances: N selected; accepted: A, confirmed: C, failed: F, skipped: S
+suspension: suspended C/N process instance(s)
+suspension: submitted A/N process instance(s); confirmation not requested
 ```
 
-A is all accepted submissions, including C and accepted-but-unconfirmed failures. Do not imply these counts are mutually exclusive. Quiet suppresses the human informational summary; explicitly selected JSON/keys output remains. In verbose human mode, per-key result facts may identify submission, confirmation, last state, and date, but never concatenate raw `error` or backend status strings. No routine endpoint, cursor, per-attempt lifecycle, or hierarchy count is shown in normal output.
+C counts confirmed suspension; A counts accepted submissions. Default waiting appends `; accepted but unconfirmed U` when A exceeds C. Both modes append nonzero `; failed F` and `; not attempted S` counts. Accepted-but-unconfirmed work may also be failed; these facts are not disjoint outcome buckets. Omit zero detail counters. An empty execution view says `suspension: no process instances selected; no changes applied`, even with no-wait; missing CLI selection remains an error.
 
-Optional workflow/progress messages are configured logger records, not stdout results. DEBUG HTTP diagnostics stay in the established transport with existing redaction; verbose alone does not enable them. Do not use `renderHumanLine` for the selected-format stdout result or copy its fallback behavior for diagnostics.
+Quiet or a configured WARN/ERROR level suppresses INFO summaries and verbose rows, while explicitly selected JSON/keys output remains. Verbose rows allowlist submission, confirmation, and last-state facts; translate enum underscores to words without changing machine fields. Never concatenate raw errors or backend status strings. Keep keys out of default summaries.
+
+Optional workflow/progress messages also use the configured logger. DEBUG HTTP diagnostics stay in the established transport with existing redaction; verbose alone does not enable them. Follow nearby mutation renderers and the mandatory human mutation summary rule in `AGENTS.md`.
 
 ## Failure path and exit
 

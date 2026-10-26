@@ -118,3 +118,19 @@ Started: 2026-10-25 14:42:48
 - Source help, README, metadata, docs generator count and generated references now document eligibility, permissions, exact scope, evidence, modes and operational limits. make docs-content, gofmt, Bash syntax, static fixture/doc review and whitespace checks passed. Fixture setup now requires one successful confirmed suspension envelope; its target behavior, subsequent expect scenario and owned-root cleanup are preserved. Real-engine behavior remains unverified.
 - Stopped at the selected work-unit boundary. No follow-up tasks were added; memory carries the terminal handoff.
 ---
+
+
+## 2026-10-26 — Human suspension logging correction
+
+The original planning contract classified human suspension summaries as stdout results and prohibited `renderHumanLine`. That decision conflicted with established mutation renderers and the repository operator UX rules. It is superseded: human summaries, previews, and verbose outcome rows use the configured INFO logger; JSON/keys remain stdout and prompts remain plain stderr. Historical iteration/test evidence above is retained and does not establish compliance with this corrected contract.
+
+The correction also adopts compact suspension/submission wording, preserves accepted-but-unconfirmed facts in partial failures, and clarifies the mandatory summary rule in AGENTS.md and the Ralph rules. Regression checks cover logger level, format, routing, partial failures, and terminal prompts using isolated fixtures. Validation results follow.
+
+Validation for this correction:
+
+- `go test ./cmd -run '^TestSuspendProcessInstance' -count=1 -v`: passed with 266 test/subtest results and zero skips before adding the fail-fast human-summary cases.
+- `go test ./cmd -run '^TestSuspendProcessInstance' -race -count=1 -v`: passed with 269 test/subtest results and zero skips, including the fail-fast cases. `GOENV=off`, empty `GOFLAGS`, and a restricted inherited environment kept profiles/credentials/live-test flags out; `GORACE=atexit_sleep_ms=0` removed only the race runtime's exit delay in subprocesses. All service dependencies were test-owned HTTP fakes.
+- Real PTY stdin tests verified configured/inherited stderr destinations and plain confirmation questions with separately captured stdout. Logger tests checked exact INFO/ERROR records, plain-time/JSON formats, WARN/quiet suppression, partial-result exits, one JSON envelope, keys-only output, and independent DEBUG redaction.
+- `make docs-content`, `go test ./docsgen -count=1`, `gofmt`, and `git diff --check`: passed.
+- Output-boundary review: the suspension view's only remaining direct output write emits keys-only results. Human summary/preview/verbose branches use `renderHumanLine`; runner failures continue to use its configured logger, preserving the original operation error for exit and rendering no second JSON envelope. No raw backend error text was added to human formatting.
+- The first sandboxed test run could skip fake listeners; it is not used as coverage evidence. The reported runs permitted loopback fixtures and PTY subprocesses and had no skips. No live-environment validation was performed.

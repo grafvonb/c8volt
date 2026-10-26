@@ -314,6 +314,7 @@ Before adding helper code, search these locations.
 
 ## Output And Rendering Rules
 
+- Follow the human mutation summary rule in `AGENTS.md`: summaries, dry-run summaries, and verbose outcome details use the established command-context INFO logger helpers, including configured level/format/destination and activity handling. Do not classify them as stdout result payloads to bypass the helper. Keep JSON, keys-only, and ordinary query rows on stdout and prompts on plain configured stderr. Validate successful summaries at INFO and WARN levels as well as failure paths.
 - Human output must be compact, scan-friendly, and use existing flat row helpers.
 - JSON output must use stable structs and shared envelopes when the command has full contract support.
 - Keys-only output must print one key per line and nothing else.

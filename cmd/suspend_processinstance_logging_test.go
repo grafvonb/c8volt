@@ -52,11 +52,13 @@ func TestSuspendProcessInstanceDiagnostics(t *testing.T) {
 					require.Len(t, writes, 3)
 					require.Empty(t, reads)
 					records := bulkCompletionDiagnosticRecords(t, stderr, format)
-					errors, debugs := []string{}, []string{}
+					errors, debugs, infos := []string{}, []string{}, []string{}
 					for _, record := range records {
 						switch record[0] {
 						case "ERROR":
 							errors = append(errors, record[1])
+						case "INFO":
+							infos = append(infos, record[1])
 						case "DEBUG":
 							debugs = append(debugs, record[1])
 						default:
@@ -81,18 +83,25 @@ func TestSuspendProcessInstanceDiagnostics(t *testing.T) {
 						require.Equal(t, []string{"suspend process instances: rejected: 2"}, errors)
 						if tc.keys {
 							require.Equal(t, suspendKeyA+"\n", out)
-						} else if tc.quiet {
-							require.Empty(t, out)
 						} else {
-							want := "suspend process instances: 3 selected; accepted: 1, confirmed: 0, failed: 2, skipped: 0\n"
-							if tc.verbose {
-								want += suspendKeyA + ": submission: accepted; confirmation: not_requested; last state: not observed\n" + suspendKeyB + ": submission: rejected; confirmation: not_requested; last state: not observed\n" + suspendKeyC + ": submission: rejected; confirmation: not_requested; last state: not observed\n"
-							}
-							require.Equal(t, want, out)
+							require.Empty(t, out)
 						}
 						for _, bad := range []string{"POST", f.server.URL, "/v2/", "private.invalid", "body-only-secret", "private-cursor", "suspension-token-secret", "ERROR", "DEBUG"} {
 							require.NotContains(t, out, bad)
 						}
+					}
+
+					if tc.json || tc.keys || tc.quiet {
+						require.Empty(t, infos)
+					} else {
+						want := []string{"suspension: submitted 1/3 process instance(s); confirmation not requested; failed 2"}
+						if tc.verbose {
+							want = append(want,
+								suspendKeyA+": submission: accepted; confirmation: not requested; last state: not observed",
+								suspendKeyB+": submission: rejected; confirmation: not requested; last state: not observed",
+								suspendKeyC+": submission: rejected; confirmation: not requested; last state: not observed")
+						}
+						require.Equal(t, want, infos)
 					}
 					for _, bad := range []string{"private.invalid", "body-only-secret", "private-cursor", "suspension-token-secret", "suspension-cookie-secret"} {
 						require.NotContains(t, stderr, bad)
@@ -107,11 +116,75 @@ func TestSuspendProcessInstanceDiagnostics(t *testing.T) {
 						require.Equal(t, 3, mutations)
 					} else {
 						require.Empty(t, debugs)
-						for _, bad := range []string{"POST", f.server.URL, "/v2/", suspendKeyA, suspendKeyB, suspendKeyC} {
+						if !tc.verbose || tc.keys || tc.quiet {
+							for _, key := range []string{suspendKeyA, suspendKeyB, suspendKeyC} {
+								require.NotContains(t, stderr, key)
+							}
+						}
+						for _, bad := range []string{"POST", f.server.URL, "/v2/"} {
 							require.NotContains(t, stderr, bad)
 						}
 					}
 				})
+			}
+		}
+	}
+}
+
+// Success, preview and verbose output must obey the same logger destination,
+// severity and level controls as failures, including with redirected stdout.
+func TestSuspendProcessInstanceSummaryLogging(t *testing.T) {
+	for _, format := range []string{"plain-time", "json"} {
+		for _, destination := range []string{"configured", "inherited"} {
+			for _, level := range []string{"info", "warn"} {
+				for _, tc := range []struct {
+					name                    string
+					flags                   []string
+					summary                 string
+					verbose, machine, quiet bool
+				}{
+					{name: "confirmed", summary: "suspension: suspended 1/1 process instance(s)"},
+					{name: "no-wait", flags: []string{"--no-wait"}, summary: "suspension: submitted 1/1 process instance(s); confirmation not requested"},
+					{name: "preview", flags: []string{"--dry-run"}, summary: "dry run: suspend process-instance; selected: 1; eligibility not checked; no changes applied"},
+					{name: "verbose", flags: []string{"--verbose"}, summary: "suspension: suspended 1/1 process instance(s)", verbose: true},
+					{name: "verbose preview", flags: []string{"--verbose", "--dry-run"}, summary: "dry run: suspend process-instance; selected: 1; eligibility not checked; no changes applied", verbose: true},
+					{name: "quiet", flags: []string{"--quiet"}, quiet: true},
+					{name: "json", flags: []string{"--json"}, machine: true},
+					{name: "quiet json", flags: []string{"--quiet", "--json"}, machine: true},
+					{name: "keys", flags: []string{"--keys-only"}, machine: true},
+				} {
+					t.Run(format+"/"+destination+"/"+level+"/"+tc.name, func(t *testing.T) {
+						f := newSuspensionFixture(t)
+						args := []string{"--config", completionLogConfig(t, f.server.URL, format, level), "suspend", "pi", "--key", suspendKeyA, "--auto-confirm"}
+						args = append(args, tc.flags...)
+						stdout, stderr, err := runSuspensionTerminal(t, args, destination, nil)
+						require.NoError(t, err, stderr)
+						records := bulkCompletionDiagnosticRecords(t, stderr, format)
+						if tc.machine {
+							require.Empty(t, records)
+							if tc.name == "keys" {
+								require.Equal(t, suspendKeyA+"\n", stdout)
+							} else {
+								requireSingleJSONObjectDocument(t, stdout)
+							}
+							return
+						}
+						require.Empty(t, stdout, "human summaries must use the configured logger")
+						if level == "warn" || tc.quiet {
+							require.Empty(t, records)
+							return
+						}
+						want := [][2]string{{"INFO", tc.summary}}
+						if tc.verbose {
+							row := suspendKeyA + ": submission: accepted; confirmation: confirmed; last state: SUSPENDED"
+							if tc.name == "verbose preview" {
+								row = suspendKeyA + ": submission: not submitted; confirmation: not requested; last state: not observed"
+							}
+							want = append(want, [2]string{"INFO", row})
+						}
+						require.Equal(t, want, records)
+					})
+				}
 			}
 		}
 	}

@@ -5,6 +5,7 @@ package cmd
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -13,6 +14,7 @@ import (
 
 	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/grafvonb/c8volt/testx"
+	"github.com/grafvonb/c8volt/toolx/logging"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 )
@@ -43,7 +45,9 @@ func TestSuspendProcessInstanceOutput(t *testing.T) {
 					}
 					out, stderr, err := runUpdateUserTaskCommand(t, completionLogConfig(t, f.server.URL, "plain-time", "info"), "", args...)
 					require.NoError(t, err, stderr)
-					require.Empty(t, stderr)
+					if mode != "human" {
+						require.Empty(t, stderr)
+					}
 					switch {
 					case strings.Contains(mode, "json"):
 						env := requireSingleJSONObjectDocument(t, out)
@@ -72,14 +76,15 @@ func TestSuspendProcessInstanceOutput(t *testing.T) {
 					case strings.Contains(mode, "quiet"):
 						require.Empty(t, out)
 					default:
-						want := "suspend process instances: 2 selected; accepted: 2, confirmed: 2, failed: 0, skipped: 0\n"
+						want := "suspension: suspended 2/2 process instance(s)"
 						if noWait {
-							want = "suspend process instances: 2 selected; accepted: 2, confirmed: 0, failed: 0, skipped: 0\n"
+							want = "suspension: submitted 2/2 process instance(s); confirmation not requested"
 						}
 						if dry {
-							want = "dry run: suspend process instances: 2 selected; no changes applied; eligibility not checked\n"
+							want = "dry run: suspend process-instance; selected: 2; eligibility not checked; no changes applied"
 						}
-						require.Equal(t, want, out)
+						require.Empty(t, out)
+						require.Equal(t, [][2]string{{"INFO", want}}, bulkCompletionDiagnosticRecords(t, stderr, "plain-time"))
 					}
 					calls, writes, reads := f.snapshot()
 					if dry {
@@ -250,13 +255,10 @@ func TestSuspendProcessInstancePartialEvidence(t *testing.T) {
 						require.NotContains(t, last, "suspendedDate")
 					}
 				} else {
-					require.Equal(t, [][2]string{{"ERROR", "suspend process instances: " + tc.reason + ": 1"}}, bulkCompletionDiagnosticRecords(t, stderr, "plain-time"))
-					accepted, confirmed := 1, 1
+					wantRecords := [][2]string{{"ERROR", "suspend process instances: " + tc.reason + ": 1"}}
+					accepted := 1
 					if tc.submission == "accepted" {
 						accepted = 2
-					}
-					if tc.noWait {
-						confirmed = 0
 					}
 					if mode == "keys" {
 						want := suspendKeyA + "\n"
@@ -265,8 +267,17 @@ func TestSuspendProcessInstancePartialEvidence(t *testing.T) {
 						}
 						require.Equal(t, want, out)
 					} else {
-						require.Equal(t, fmt.Sprintf("suspend process instances: 2 selected; accepted: %d, confirmed: %d, failed: 1, skipped: 0\n", accepted, confirmed), out)
+						require.Empty(t, out)
+						summary := "suspension: suspended 1/2 process instance(s)"
+						if tc.noWait {
+							summary = "suspension: submitted 1/2 process instance(s); confirmation not requested"
+						} else if accepted == 2 {
+							summary += "; accepted but unconfirmed 1"
+						}
+						summary += "; failed 1"
+						wantRecords = append([][2]string{{"INFO", summary}}, wantRecords...)
 					}
+					require.Equal(t, wantRecords, bulkCompletionDiagnosticRecords(t, stderr, "plain-time"))
 				}
 			})
 		}
@@ -284,25 +295,51 @@ func TestSuspendProcessInstanceEmptyView(t *testing.T) {
 			flagViewAsJson = mode == "json"
 			flagViewKeysOnly = mode == "keys"
 			flagQuiet = mode == "quiet"
-			var out bytes.Buffer
+			var out, diagnostics bytes.Buffer
 			c := &cobra.Command{Use: "process-instance"}
 			c.SetOut(&out)
+			c.SetContext(logging.ToContext(context.Background(), logging.New(logging.LoggerConfig{Level: "info", Format: "json", Writer: &diagnostics})))
 			require.NoError(t, renderProcessInstanceSuspension(c, process.SuspensionResults{}, preview, nil))
 			switch mode {
 			case "json":
+				require.Empty(t, diagnostics.String())
 				env := requireSingleJSONObjectDocument(t, out.String())
 				require.Equal(t, "succeeded", env["outcome"])
 				require.Equal(t, []any{}, requireJSONObject(t, env["payload"])["items"])
 			case "keys", "quiet":
 				require.Zero(t, out.Len())
+				require.Empty(t, diagnostics.String())
 			default:
+				require.Empty(t, out.String())
 				if preview {
-					require.Equal(t, "dry run: suspend process instances: 0 selected; no changes applied; eligibility not checked\n", out.String())
+					require.Equal(t, [][2]string{{"INFO", "dry run: suspend process-instance; selected: 0; eligibility not checked; no changes applied"}}, bulkCompletionDiagnosticRecords(t, diagnostics.String(), "json"))
 				} else {
-					require.Equal(t, "suspend process instances: 0 selected; accepted: 0, confirmed: 0, failed: 0, skipped: 0\n", out.String())
+					require.Equal(t, [][2]string{{"INFO", "suspension: no process instances selected; no changes applied"}}, bulkCompletionDiagnosticRecords(t, diagnostics.String(), "json"))
 				}
 			}
 		}
+	}
+}
+
+// A fail-fast human summary must retain unsubmitted scope as well as completed work.
+func TestSuspendProcessInstanceFailFastSummary(t *testing.T) {
+	for _, noWait := range []bool{false, true} {
+		t.Run(fmt.Sprint(noWait), func(t *testing.T) {
+			f := newSuspensionFixture(t)
+			f.reject[suspendKeyB] = 409
+			args := []string{"suspend", "pi", "--key", suspendKeyA + "," + suspendKeyB + "," + suspendKeyC, "--auto-confirm", "--workers", "1", "--fail-fast"}
+			summary := "suspension: suspended 1/3 process instance(s); failed 1; not attempted 1"
+			if noWait {
+				args = append(args, "--no-wait")
+				summary = "suspension: submitted 1/3 process instance(s); confirmation not requested; failed 1; not attempted 1"
+			}
+			out, stderr, err := runUpdateUserTaskCommand(t, completionLogConfig(t, f.server.URL, "plain-time", "info"), "", args...)
+			assertUserTaskCompletionExit(t, err, 6)
+			require.Empty(t, out)
+			require.Equal(t, [][2]string{{"INFO", summary}, {"ERROR", "suspend process instances: rejected: 1; not attempted: 1"}}, bulkCompletionDiagnosticRecords(t, stderr, "plain-time"))
+			_, writes, _ := f.snapshot()
+			require.Equal(t, map[string]int{suspendKeyA: 1, suspendKeyB: 1}, writes)
+		})
 	}
 }
 
@@ -310,7 +347,7 @@ func TestSuspendProcessInstanceEmptyView(t *testing.T) {
 // even when the configured result destination fails after partial output.
 func TestSuspendProcessInstanceWriterFailure(t *testing.T) {
 	for _, phase := range []string{"preview", "accepted", "rejected"} {
-		for _, mode := range []string{"json", "keys", "human"} {
+		for _, mode := range []string{"json", "keys"} {
 			t.Run(phase+"/"+mode, func(t *testing.T) {
 				f := newSuspensionFixture(t)
 				if phase == "rejected" {

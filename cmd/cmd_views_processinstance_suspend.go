@@ -29,7 +29,7 @@ func suspensionCounts(results process.SuspensionResults) (accepted, confirmed, f
 	return
 }
 
-// renderProcessInstanceSuspension writes selected-format results only. Errors precede no-wait,
+// renderProcessInstanceSuspension logs human summaries and writes machine results to stdout. Errors precede no-wait,
 // and neither previews nor empty collections can claim accepted submission.
 func renderProcessInstanceSuspension(cmd *cobra.Command, results process.SuspensionResults, preview bool, operationErr error) error {
 	if results.Items == nil {
@@ -59,24 +59,39 @@ func renderProcessInstanceSuspension(cmd *cobra.Command, results process.Suspens
 		if flagQuiet {
 			return nil
 		}
-		var err error
 		if preview {
-			_, err = fmt.Fprintf(cmd.OutOrStdout(), "dry run: suspend process instances: %d selected; no changes applied; eligibility not checked\n", len(results.Items))
+			renderHumanLine(cmd, "dry run: suspend process-instance; selected: %d; eligibility not checked; no changes applied", len(results.Items))
 		} else {
-			_, err = fmt.Fprintf(cmd.OutOrStdout(), "suspend process instances: %d selected; accepted: %d, confirmed: %d, failed: %d, skipped: %d\n", len(results.Items), accepted, confirmed, failed, skipped)
-		}
-		if err != nil {
-			return err
+			renderHumanLine(cmd, "%s", formatProcessInstanceSuspensionSummary(len(results.Items), accepted, confirmed, failed, skipped))
 		}
 		if flagVerbose {
 			for _, item := range results.Items {
-				if _, err := fmt.Fprintln(cmd.OutOrStdout(), formatProcessInstanceSuspensionOutcome(item)); err != nil {
-					return err
-				}
+				renderHumanLine(cmd, "%s", formatProcessInstanceSuspensionOutcome(item))
 			}
 		}
 	}
 	return nil
+}
+
+// formatProcessInstanceSuspensionSummary distinguishes submission from observation.
+// Accepted-but-unconfirmed work may also be failed; these are not disjoint buckets.
+func formatProcessInstanceSuspensionSummary(selected, accepted, confirmed, failed, skipped int) string {
+	if selected == 0 {
+		return "suspension: no process instances selected; no changes applied"
+	}
+	line := fmt.Sprintf("suspension: suspended %d/%d process instance(s)", confirmed, selected)
+	if flagNoWait {
+		line = fmt.Sprintf("suspension: submitted %d/%d process instance(s); confirmation not requested", accepted, selected)
+	} else if accepted > confirmed {
+		line += fmt.Sprintf("; accepted but unconfirmed %d", accepted-confirmed)
+	}
+	if failed > 0 {
+		line += fmt.Sprintf("; failed %d", failed)
+	}
+	if skipped > 0 {
+		line += fmt.Sprintf("; not attempted %d", skipped)
+	}
+	return line
 }
 
 // formatProcessInstanceSuspensionOutcome allowlists lifecycle facts; machine errors and arbitrary
@@ -85,11 +100,11 @@ func formatProcessInstanceSuspensionOutcome(item process.SuspensionResult) strin
 	submission, confirmation, state := "unknown", "unknown", "not observed"
 	switch item.Submission {
 	case process.SuspensionSubmissionNotSubmitted, process.SuspensionSubmissionAccepted, process.SuspensionSubmissionRejected, process.SuspensionSubmissionUnknown:
-		submission = string(item.Submission)
+		submission = strings.ReplaceAll(string(item.Submission), "_", " ")
 	}
 	switch item.Confirmation {
 	case process.SuspensionConfirmationNotRequested, process.SuspensionConfirmationUnconfirmed, process.SuspensionConfirmationConfirmed:
-		confirmation = string(item.Confirmation)
+		confirmation = strings.ReplaceAll(string(item.Confirmation), "_", " ")
 	}
 	if item.HasObservation {
 		state = "UNKNOWN"

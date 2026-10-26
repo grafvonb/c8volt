@@ -38,7 +38,13 @@ func runSuspendProcessInstances(cmd *cobra.Command, cli process.API, log *slog.L
 		handleCommandError(cmd, log, cfg.App.NoErrCodes, err, "suspend process instances: aborted by user")
 		return
 	}
-	results, operationErr := cli.SuspendProcessInstances(cmd.Context(), frozen, flagWorkers, collectExplicitPIAdminInputOptions()...)
+	results, operationErr := func() (process.SuspensionResults, error) {
+		if indicatorEnabled(cmd, cfg) {
+			stop := startCommandActivity(cmd, fmt.Sprintf("suspending %d process instance(s)", len(frozen)))
+			defer stop()
+		}
+		return cli.SuspendProcessInstances(cmd.Context(), frozen, flagWorkers, collectExplicitPIAdminInputOptions()...)
+	}()
 	if err := renderProcessInstanceSuspension(cmd, results, false, operationErr); err != nil {
 		// A partially written result must not cause a second envelope or hide an operation failure.
 		log.Error("suspend process instances: could not write result")

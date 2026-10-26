@@ -45,7 +45,7 @@ The initial gate passed before design: the requested behavior fits the existing 
 | Diagnostic/output rules | Pass | Failure trace and execution-path logger/PTY matrix in contracts and quickstart; no raw joined-error normal output or duplicate error renderer. |
 | Cohesive implementation units | Pass | Interface changes include adapters/test doubles; single and collection behavior share one implementation; each work unit includes relevant fixtures/tests/formatting/checks. |
 
-**Compatibility note**: Adding methods to public `process.API` requires external custom implementations of that interface to implement them. Existing library callers and existing command behavior remain unchanged. All repository implementations/stubs must be updated in the same compiling unit. New result types do not alter existing JSON schemas. Human suspension result summaries intentionally use stdout as selected-format output; nearby INFO-logger workflow summaries are not copied as result writers.
+**Compatibility note**: Adding methods to public `process.API` requires external custom implementations of that interface to implement them. Existing library callers and existing command behavior remain unchanged. All repository implementations/stubs must be updated in the same compiling unit. New result types do not alter existing JSON schemas. Human suspension summaries, previews, and verbose rows reuse the established command-context INFO logger helper; only machine results use stdout. Follow the operator UX rules over conflicting feature wording.
 
 ## Project Structure
 
