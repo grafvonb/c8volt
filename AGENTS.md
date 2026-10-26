@@ -175,5 +175,5 @@
 
 ## Active Speckit Plan
 <!-- SPECKIT START -->
-- Active Speckit implementation plan: `specs/346-suspend-process-instances/plan.md`
+- Active Speckit implementation plan: `specs/356-suspend-process-tree/plan.md`
 <!-- SPECKIT END -->
