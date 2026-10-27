@@ -3,35 +3,10 @@
 
 package common
 
-import (
-	"fmt"
-	"strings"
+import "github.com/grafvonb/c8volt/typex"
 
-	d "github.com/grafvonb/c8volt/internal/domain"
-	"github.com/grafvonb/c8volt/typex"
-)
-
-// NormalizeProcessInstanceSuspensionKeys validates all keys before work begins,
-// then deduplicates exact identities in first-input order without expanding relatives.
+// NormalizeProcessInstanceSuspensionKeys preserves the suspension normalization
+// entry point while sharing exact-key validation with other instance workflows.
 func NormalizeProcessInstanceSuspensionKeys(keys typex.Keys) (typex.Keys, error) {
-	result := make(typex.Keys, 0, len(keys))
-	seen := make(map[string]bool, len(keys))
-	for _, raw := range keys {
-		key := strings.TrimSpace(raw)
-		valid := len(key) == 16
-		for _, ch := range key {
-			if ch < '0' || ch > '9' {
-				valid = false
-				break
-			}
-		}
-		if !valid {
-			return nil, fmt.Errorf("%w: process-instance key must contain exactly 16 digits", d.ErrValidation)
-		}
-		if !seen[key] {
-			seen[key] = true
-			result = append(result, key)
-		}
-	}
-	return result, nil
+	return NormalizeProcessInstanceKeys(keys)
 }
