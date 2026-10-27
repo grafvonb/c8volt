@@ -5,11 +5,14 @@ package cmd
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
+	"log/slog"
 	"strings"
 	"testing"
 
 	"github.com/grafvonb/c8volt/c8volt/process"
+	"github.com/grafvonb/c8volt/toolx/logging"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 )
@@ -545,6 +548,7 @@ func processDefinitionKeysFromKeysOnlyOutput(output string) []string {
 func newProcessDefinitionViewTestCommand(use string) *cobra.Command {
 	cmd := newGetViewTestCommand(use)
 	cmd.SetErr(&bytes.Buffer{})
+	cmd.SetContext(logging.ToContext(context.Background(), slog.New(logging.NewPlainHandler(cmd.ErrOrStderr(), slog.LevelInfo).WithTimestampLayout(logging.PlainTimeTimestampLayout))))
 	return cmd
 }
 

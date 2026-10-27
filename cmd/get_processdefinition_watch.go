@@ -178,14 +178,14 @@ type processDefinitionWatchSlowWarningState struct {
 }
 
 // renderGetProcessDefinitionWatchRefreshStatus reports slow-refresh warnings
-// and verbose refresh duration diagnostics on stderr.
+// and verbose refresh duration diagnostics through the configured logger.
 func renderGetProcessDefinitionWatchRefreshStatus(cmd *cobra.Command, state *processDefinitionWatchSlowWarningState, refresh int64, duration, interval time.Duration) {
 	if cmd == nil {
 		return
 	}
 	slow := duration > interval
 	if slow && state != nil && !state.active {
-		fmt.Fprintf(cmd.ErrOrStderr(), "slow process-definition watch refresh %d: took %s, exceeding --watch-interval %s; suppressing repeated slow-refresh warnings until a refresh completes within the interval\n", refresh, duration, interval)
+		renderHumanWarningLine(cmd, "slow process-definition watch refresh %d: took %s, exceeding --watch-interval %s; suppressing repeated slow-refresh warnings until a refresh completes within the interval", refresh, duration, interval)
 	}
 	if state != nil {
 		state.active = slow
@@ -195,7 +195,7 @@ func renderGetProcessDefinitionWatchRefreshStatus(cmd *cobra.Command, state *pro
 		if slow {
 			status = "slow"
 		}
-		fmt.Fprintf(cmd.ErrOrStderr(), "process-definition watch refresh %d completed in %s (interval %s, status: %s)\n", refresh, duration, interval, status)
+		renderHumanLine(cmd, "process-definition watch refresh %d completed in %s (interval %s, status: %s)", refresh, duration, interval, status)
 	}
 }
 

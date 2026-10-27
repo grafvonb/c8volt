@@ -201,3 +201,91 @@ func runProcessDefinitionWatchBoldCapabilityTerminalHelper(t *testing.T) {
 
 	fmt.Fprintf(os.Stdout, "enabled=%t\n", processDefinitionWatchBoldEnabled(cmd))
 }
+
+// processDefinitionTerminalCaptureWriter forwards bytes to a real terminal and
+// separately captured stdout without hiding the terminal's capability descriptor.
+type processDefinitionTerminalCaptureWriter struct {
+	io.Writer
+	terminal *os.File
+}
+
+// Fd exposes the same terminal receiving every result write.
+func (w processDefinitionTerminalCaptureWriter) Fd() uintptr { return w.terminal.Fd() }
+
+// TestGetProcessDefinitionLifecycleWatchTerminal proves real-terminal styling
+// and mixed-row alignment through HTTP-backed command execution.
+func TestGetProcessDefinitionLifecycleWatchTerminal(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") == "1" && os.Getenv(testx.CmdSubprocessNameEnv) == t.Name() {
+		require.True(t, term.IsTerminal(int(os.Stdin.Fd())))
+		root := Root()
+		resetCommandTreeFlags(root)
+		resetGetProcessDefinitionCommandGlobals()
+		root.SetOut(processDefinitionTerminalCaptureWriter{Writer: io.MultiWriter(os.Stdin, os.Stdout), terminal: os.Stdin})
+		root.SetErr(os.Stderr)
+		sleeps := 0
+		processDefinitionWatchSleep = func(context.Context, time.Duration) error {
+			sleeps++
+			if sleeps == 5 {
+				return context.Canceled
+			}
+			return nil
+		}
+		root.SetArgs([]string{"--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "pd", "--watch", "--stat"})
+		require.NoError(t, root.Execute())
+		os.Exit(0)
+	}
+	for _, noColor := range []string{"", "1"} {
+		t.Run("NO_COLOR="+noColor, func(t *testing.T) {
+			fixture := &definitionStatisticsFixture{version: "8.10", keys: []string{"123", "456"}, lifecycle: func(read int32, key string) string {
+				if key == "456" {
+					return ""
+				}
+				return []string{"ACTIVE", "DRAINING", "DELETED", "", ""}[read-1]
+			}, population: func(read int32) (int, int) {
+				if read >= 3 {
+					return 1, 2
+				}
+				return 0, 2
+			}}
+			srv := fixture.server(t)
+			result := testx.NewCmdTerminalRunner().Run(t, testx.CmdTerminalRunRequest{ScopeTestName: "TestGetProcessDefinitionLifecycleWatchTerminal", Env: map[string]string{"C8VOLT_TEST_CONFIG": writeTestConfigForVersion(t, srv.URL, "8.10"), "TERM": "xterm-256color", "NO_COLOR": noColor}})
+			if !result.Supported {
+				t.Skip(result.UnsupportedReason)
+			}
+			require.NoError(t, result.Err, result.Stderr)
+			require.EqualValues(t, 5, fixture.definitions.Load())
+			require.EqualValues(t, 60, fixture.counts.Load())
+			frames := strings.Split(result.Stdout, processDefinitionWatchRepaintControlSequenceForTest)[1:]
+			require.Len(t, frames, 5)
+			for i, state := range []string{"ACTIVE", "DRAINING", "DELETED", "", ""} {
+				plain := strings.ReplaceAll(strings.ReplaceAll(frames[i], processDefinitionWatchBoldStart, ""), processDefinitionWatchBoldReset, "")
+				lines := strings.Split(strings.TrimSpace(plain), "\n")
+				require.Len(t, lines, 3)
+				require.Equal(t, "found: 2", lines[2])
+				require.Equal(t, strings.Index(lines[0], "[ac:"), strings.Index(lines[1], "[ac:"), "mixed state columns must align")
+				if state != "" {
+					require.Contains(t, lines[0], state)
+				} else {
+					require.NotContains(t, lines[0], "DELETED")
+				}
+				require.NotContains(t, frames[i], "\x1b[1m\x1b[0m")
+				if noColor != "" || i == 0 || i >= 3 {
+					require.NotContains(t, frames[i], processDefinitionWatchBoldStart)
+				} else {
+					require.Contains(t, frames[i], processDefinitionWatchBoldStart+state+processDefinitionWatchBoldReset)
+					require.NotContains(t, frames[i], "\x1b[1m2\x1b[0m", "unchanged suspended counts must stay plain")
+					if i == 2 {
+						require.Contains(t, frames[i], "ac:\x1b[1m1\x1b[0m")
+					} else {
+						require.NotContains(t, frames[i], "ac:\x1b")
+					}
+				}
+				if i == 4 {
+					require.NotContains(t, plain, " *")
+				}
+			}
+			require.Equal(t, 5, strings.Count(result.Stderr, " new, "))
+			require.NotContains(t, result.Stdout, "INFO")
+		})
+	}
+}

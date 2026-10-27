@@ -6,7 +6,7 @@ nav_exclude: true
 has_toc: true
 ---
 
-> Generated from build `c8volt v4.4.0-227-gd6826e88-dirty`, commit `d6826e88`, built `2026-10-27T17:13:00Z` | Supported Camunda 8 versions: 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.3 (final)
+> Generated from build `c8volt v4.4.0-228-gd6b70b20-dirty`, commit `d6b70b20`, built `2026-10-27T17:19:49Z` | Supported Camunda 8 versions: 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.3 (final)
 
 <img src="./logo/c8volt_logo_transparent_w_shadow_400x244.png" alt="c8volt logo" />
 
@@ -164,7 +164,7 @@ To monitor deployment visibility, add `--watch`. It checks immediately and repea
 
 Watch runs indefinitely by default, until interrupted or its retry budget is exhausted. Use `--watch-timeout 10m` to bound the session; `--watch-timeout 0` explicitly selects unlimited duration. This limit is independent of the HTTP request timeout (`--timeout`) and retry-loop backoff timeout. Individual request timeouts are retried while the watch session remains active, retaining the last successfully displayed snapshot. It cannot be combined with `--json`, `--keys-only`, `--xml`, `--quiet`, or `--automation`.
 
-Each successful refresh starts with a timestamped INFO line on stderr, such as `16:42:08.123 INFO 1 updated, 1 new, 0 removed`, including when nothing changed. The timestamp shows when the refresh completed. Rows stay on stdout: a trailing `*` marks an existing definition whose displayed values changed, while a trailing `+` marks a newly visible definition. Unchanged rows have no suffix. When stdout is a terminal, `TERM` is neither empty nor `dumb`, and `NO_COLOR` is unset, the individual changed values on `*` rows are also bold; markers and counts provide the same information when output is redirected or styling is disabled. New rows are not bold. The first successful refresh establishes an unmarked, zero-change baseline. Later refreshes compare with the previous successfully displayed result, so temporary failures do not consume changes; an unchanged success clears the markers and bold. Removed definitions are counted in the summary and do not remain as stale rows.
+Each successful refresh logs an INFO summary, such as `1 updated, 1 new, 0 removed`, through the configured logger, including when nothing changed. Summaries and verbose refresh timing honor the configured format, destination and INFO level; slow-refresh warnings use WARN. Filtering INFO suppresses summaries and timing while rows and successful baseline updates continue. Rows stay on stdout: a trailing `*` marks an existing definition whose displayed values changed, while a trailing `+` marks a newly visible definition. Unchanged rows have no suffix. When stdout is a terminal, `TERM` is neither empty nor `dumb`, and `NO_COLOR` is unset, the individual changed values on `*` rows are also bold; markers and counts provide the same information when output is redirected or styling is disabled. New rows are not bold. The first successful refresh establishes an unmarked, zero-change baseline. Later refreshes compare with the previous successfully displayed result, so temporary failures do not consume changes; an unchanged success clears the markers and bold. Lifecycle-only changes update a row independently of statistics; changing both counts once. Omitted state clears the prior value without an empty highlight. Returned `DELETED` definitions remain visible until actual disappearance, which is counted as removal. Skipped transitions and unfamiliar supplied states are valid observations.
 
 For scripts or CI, request JSON with `--json`:
 

@@ -70,7 +70,7 @@ No independent foundational work is needed. The model and converter work belongs
 
 **Independent test**: Deterministic successful/failed refreshes and real-PTY output against test-owned fakes prove independent value highlights, update counts, omission clearing, unchanged-marker clearing, DELETED versus absence, configured diagnostic routing, and baseline retention on failed writes.
 
-- [ ] T003 [US3] Complete lifecycle comparison/highlighting and configured watch diagnostics in `cmd/cmd_views_processdefinition.go` and `cmd/get_processdefinition_watch.go`, with regressions in `cmd/cmd_views_processdefinition_test.go`, `cmd/get_processdefinition_watch_test.go`, `cmd/get_processdefinition_watch_timeout_test.go`, and `cmd/get_processdefinition_watch_terminal_test.go`; update watch help in `cmd/get_processdefinition.go` and `README.md`, regenerate `docs/cli/`/`docs/index.md`, and run the targeted command checks in `quickstart.md`.
+- [x] T003 [US3] Complete lifecycle comparison/highlighting and configured watch diagnostics in `cmd/cmd_views_processdefinition.go` and `cmd/get_processdefinition_watch.go`, with regressions in `cmd/cmd_views_processdefinition_test.go`, `cmd/get_processdefinition_watch_test.go`, `cmd/get_processdefinition_watch_timeout_test.go`, and `cmd/get_processdefinition_watch_terminal_test.go`; update watch help in `cmd/get_processdefinition.go` and `README.md`, regenerate `docs/cli/`/`docs/index.md`, and run the targeted command checks in `quickstart.md`.
 
 **T003 acceptance and implementation**:
 

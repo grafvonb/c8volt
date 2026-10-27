@@ -72,3 +72,34 @@ Started: 2026-10-27 17:55:43
 - Passed clean-environment focused command, adapter and facade checks, then go test ./internal/services/processdefinition/... -run 'ProcessDefinition' -count=1, go test ./c8volt/process -run 'ProcessDefinition' -count=1, and go test ./cmd -run 'ProcessDefinition' -count=1. Also passed make docs-content, gofmt on touched Go files and git diff --check. No full make test was warranted: changes are acceptance fixtures/assertions and help/docs without shared runtime or concurrency changes.
 - Command cohesion review: no new production declarations or execution mode; tests stay in the existing statistics/view owners. No live tests, real service access or integration execution occurred. Actual engine suspension/resumption/draining transitions remain unverified.
 ---
+
+---
+## Iteration 3 - 2026-10-27 18:22
+**Work Unit**: US3 / T003 — lifecycle watch changes and configured diagnostics; completed
+**Tasks Completed**:
+- [x] T003: Compare and highlight lifecycle independently, preserve successful baselines through failures, honor configured watch logging, bound search/selector diagnostics, and update source help and generated docs.
+**Tasks Remaining in Work Unit**: 0; all feature tasks complete.
+**Commit**: This work-unit commit
+**Files Changed**:
+- README.md
+- cmd/cmd_views_processdefinition.go
+- cmd/cmd_views_processdefinition_test.go
+- cmd/get_processdefinition.go
+- cmd/get_processdefinition_error_envelope_test.go
+- cmd/get_processdefinition_lifecycle_watch_test.go
+- cmd/get_processdefinition_watch.go
+- cmd/get_processdefinition_watch_terminal_test.go
+- cmd/get_processdefinition_watch_test.go
+- cmd/get_processdefinition_watch_timeout_test.go
+- docs/cli/c8volt_get_process-definition.md
+- docs/index.md
+- specs/348-definition-lifecycle-state/progress.md
+- specs/348-definition-lifecycle-state/ralph-memory.md
+- specs/348-definition-lifecycle-state/tasks.md
+**Learnings**:
+- Lifecycle-only, statistics-only and simultaneous changes count each row once. Controlled sequences cover first/unchanged snapshots, unfamiliar states, supplied→omitted→supplied, failed partial reads, direct ACTIVE→DELETED and later absence. Real PTY command execution with test-owned HTTP services proves independent ANSI spans, no empty spans, mixed-column alignment, omission clearing, plain fallback and unchanged definition/statistics request counts. No terminal checks skipped.
+- Configured/inherited destinations, plain-time/plain/structured formats, INFO summaries and verbose timing, WARN slow-streak warnings and INFO filtering are covered. Missing logger context fails; configured attributes survive. Enabled plain/structured summary failures and repaint/row/footer failures retain the prior lifecycle baseline; filtered INFO and later recovered writes commit successfully. Existing timing, retry, timeout, rejection, quiet and output-mode regressions pass.
+- Error trace reviewed: generated HTTP response → RequirePayload/domain error → facade FromDomain → command bounded human override or original single JSON envelope → configured logger/original exit. Ordinary search and selector paths previously exposed raw backend chains; now they retain bounded human reasons and unchanged local missing-selector messages. Tests prove exactly one envelope with EOF, original unavailable exit/class and retained machine detail. These read APIs discard incomplete discovery/enrichment rather than exposing partial payloads; watch keeps previous successful rows and rejects failed partial snapshots. Repeated joined per-resource watch errors containing URL/method/body/key markers produce compact retry/final messages without disclosure. DEBUG flag and configured DEBUG tests retain redacted diagnostics on the configured destination; verbose alone does not expose HTTP evidence.
+- Validation passed in a minimal environment: go test ./cmd -run 'ProcessDefinition' -count=1 -json (831 passing events, zero failures/skips), targeted race checks for lifecycle/watch failure/write paths, final focused structured-summary failure check, make docs-content, gofmt and git diff --check. Initial regression failed before the state comparison existed; the search diagnostic regression caught raw output. Older timing assertions and a new direct-plain-handler timestamp assumption were corrected to explicit configured logging, then all checks passed.
+- Cohesion review: one small summary helper in the existing view owner; watch status changes remain in the existing mode file; ordinary diagnostic conversion remains in base command dispatch. No service mechanics, generated clients, polling, concurrency or shared runtime helpers changed, so no full make test was warranted. No live environment or integration execution occurred; earlier compile-only integration evidence is preserved, and actual engine transition timing remains unverified.
+---

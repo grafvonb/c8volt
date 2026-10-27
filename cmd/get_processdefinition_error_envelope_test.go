@@ -6,8 +6,12 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
 	"sync/atomic"
 	"testing"
 
@@ -44,6 +48,7 @@ func TestCommandErrorEnvelopeProcessDefinition(t *testing.T) {
 			},
 			{
 				name:         "selector",
+				humanMessage: "validate process definition selector: unavailable",
 				args:         []string{"get", "process-definition", "--bpmn-process-id", "order"},
 				method:       http.MethodPost,
 				requestPath:  "/v2/process-definitions/search",
@@ -54,6 +59,7 @@ func TestCommandErrorEnvelopeProcessDefinition(t *testing.T) {
 			},
 			{
 				name:         "paged-search",
+				humanMessage: "search process definitions: unavailable",
 				args:         []string{"get", "process-definition"},
 				method:       http.MethodPost,
 				requestPath:  "/v2/process-definitions/search",
@@ -206,4 +212,100 @@ func TestCommandErrorEnvelopeProcessDefinitionHelper(t *testing.T) {
 	}
 	os.Args = args
 	Execute()
+}
+
+// TestGetProcessDefinitionLifecycleSearchDiagnostics traces ordinary search and
+// selector HTTP failures through configured loggers and the unchanged JSON envelope.
+func TestGetProcessDefinitionLifecycleSearchDiagnostics(t *testing.T) {
+	for _, selector := range []bool{false, true} {
+		for _, format := range []string{"plain", "json"} {
+			for _, route := range []string{"configured", "inherited"} {
+				for _, mode := range []string{"normal", "verbose", "quiet", "json", "debug-flag", "debug-config"} {
+					t.Run(fmt.Sprintf("selector=%v/%s/%s/%s", selector, format, route, mode), func(t *testing.T) {
+						var requests atomic.Int32
+						server := testx.NewIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+							requests.Add(1)
+							require.Equal(t, "POST /v2/process-definitions/search", r.Method+" "+r.URL.Path)
+							w.Header().Set("Content-Type", "application/json")
+							w.WriteHeader(http.StatusServiceUnavailable)
+							_, _ = w.Write([]byte(`{"message":"repeated-backend-body POST https://search-secret.invalid/8675309","access_token":"search-token-secret"}`))
+						}))
+						t.Cleanup(server.Close)
+						level := "info"
+						if mode == "debug-config" {
+							level = "debug"
+						}
+						cfg := writeRawTestConfig(t, fmt.Sprintf("app:\n  camunda_version: \"8.10\"\nauth:\n  mode: none\napis:\n  camunda_api:\n    base_url: %s\nlog:\n  level: %s\n  format: %s\n", server.URL, level, format))
+						args := []string{"get", "pd"}
+						message := "search process definitions: unavailable"
+						if selector {
+							args = append(args, "--bpmn-process-id", "invoice")
+							message = "validate process definition selector: unavailable"
+						}
+						if mode == "quiet" || mode == "verbose" {
+							args = append(args, "--"+mode)
+						}
+						if mode == "debug-flag" {
+							args = append(args, "--debug")
+						}
+						capture := filepath.Join(t.TempDir(), "diagnostics")
+						stdout, stderr, runErr := testx.RunCmdSubprocessInDirWithSeparateOutputs(t, processDefinitionErrorEnvelopeHelper, "", map[string]string{
+							"C8VOLT_TEST_CONFIG": cfg, "C8VOLT_TEST_OUTPUT_MODE": mode, "C8VOLT_TEST_COMMAND_ARGS": marshalRootArgsForEnv(t, args), "C8VOLT_TEST_PD_LOG_DEST": capture, "C8VOLT_TEST_PD_LOG_ROUTE": route,
+						}, "")
+						var exitErr *exec.ExitError
+						require.ErrorAs(t, runErr, &exitErr)
+						require.Equal(t, exitcode.Unavailable, exitErr.ExitCode())
+						require.EqualValues(t, 1, requests.Load())
+						require.Empty(t, stderr)
+						diagnosticBytes, err := os.ReadFile(capture)
+						require.NoError(t, err)
+						diagnostics := string(diagnosticBytes)
+						if mode == "json" {
+							decoder := json.NewDecoder(strings.NewReader(stdout))
+							var envelope map[string]any
+							require.NoError(t, decoder.Decode(&envelope))
+							require.ErrorIs(t, decoder.Decode(new(any)), io.EOF)
+							require.Equal(t, "unavailable", envelope["class"])
+							require.Equal(t, "failed", envelope["outcome"])
+							require.Contains(t, requireJSONObject(t, envelope["detail"])["message"], "repeated-backend-body")
+							require.NotContains(t, envelope, "payload", "failed discovery has no authoritative partial result")
+							require.Empty(t, diagnostics)
+							return
+						}
+						require.Empty(t, stdout)
+						require.Equal(t, 1, strings.Count(diagnostics, message))
+						require.NotContains(t, diagnostics, "search-token-secret")
+						if strings.HasPrefix(mode, "debug-") {
+							require.Contains(t, diagnostics, "api #")
+							require.Contains(t, diagnostics, "/v2/process-definitions/search")
+						} else {
+							for _, secret := range []string{"POST", server.URL, "search-secret.invalid", "8675309", "repeated-backend-body"} {
+								require.NotContains(t, diagnostics, secret)
+							}
+						}
+						if format == "plain" {
+							require.Contains(t, diagnostics, " ERROR "+message+"\n")
+							require.Equal(t, 1, strings.Count(diagnostics, " ERROR "))
+						} else {
+							decoder := json.NewDecoder(strings.NewReader(diagnostics))
+							errors := 0
+							for {
+								var record map[string]any
+								err := decoder.Decode(&record)
+								if err == io.EOF {
+									break
+								}
+								require.NoError(t, err)
+								if record["level"] == "ERROR" {
+									errors++
+									require.Equal(t, message, record["msg"])
+								}
+							}
+							require.Equal(t, 1, errors)
+						}
+					})
+				}
+			}
+		}
+	}
 }
