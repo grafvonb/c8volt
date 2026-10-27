@@ -122,3 +122,38 @@ Started: 2026-10-27 10:01:24
 - `make docs-content`, gofmt, documentation-link review (including extensionless generated site links), and `git diff --check` passed. Updated command/help/capability inventory and docs generator count to 62. Generated exact-key docs describe permissions, independent relatives, buffered work, no rollback, bounded confirmation and acceptance-only no-wait without advertising tree mode.
 - Integration fixture changes were formatted and statically reviewed only: intended coverage calls resume pi and asserts accepted/confirmed evidence; owned-key checks and pre-mutation tracking remain, independent observation clears tracking, direct resumption is cleanup recovery only, and existing fresh state/date omission assertions remain. No integration tags, live services, deployment, smoke checks or cleanup were executed. Real Camunda buffering, timing and permission behavior remain unverified.
 ---
+
+---
+## Iteration 4 - 2026-10-27 10:36
+**Work Unit**: Phase 4 US2 — T004 complete: library tree planning and public mapping; story partially complete
+**Tasks Completed**:
+- [x] T004: Delivered complete resumption subtree planning, thin public API/model mapping, shared structural validation and isolated scope/identity/completeness coverage.
+**Tasks Remaining in Work Unit**: T004 is complete; 1 task remains in US2 (T005 tree command).
+**Commit**: This work-unit commit
+**Files Changed**:
+- c8volt/process/api.go
+- c8volt/process/convert.go
+- c8volt/process/model.go
+- c8volt/process/resume_plan.go
+- c8volt/process/resume_plan_test.go
+- c8volt/resource/client_test.go
+- cmd/process_api_stub_test.go
+- internal/domain/processinstance_resumption_plan.go
+- internal/services/processinstance/descendant_plan_validation.go
+- internal/services/processinstance/resume_plan.go
+- internal/services/processinstance/resume_plan_test.go
+- internal/services/processinstance/suspend_plan.go
+- internal/services/processinstance/suspend_plan_test.go
+- specs/347-resume-process-instances/progress.md
+- specs/347-resume-process-instances/ralph-memory.md
+- specs/347-resume-process-instances/tasks.md
+**Learnings**:
+- The planner owns capability-first input/timing validation, complete descendant discovery, overlap ordering and SUSPENDED-only eligibility. It retains explicit overlapping seeds while skipping already-covered subtree lookups. All returned observations are validated before overlap deduplication. Failures return a zero plan; only complete successful discovery can yield an empty target array.
+- Extracted identical structural validation from suspension without changing its error wording, classes or eligibility. Public facade changes are delegation, option mapping, copied arrays and ferrors.FromDomain only; affected command/resource API stubs compile together. No generated client, command lifecycle, output schema or traversal pagination change was made.
+- New service tests first failed to compile for the missing planner/types, then passed after implementation. Coverage includes mixed/nested scopes, first-observation/overlap order, malformed overlapping evidence, unknown states, all-seed failure after earlier eligible scope, missing/denied discovery, cancellation/deadline, partial/unresolved scopes, mode/identity/ancestry/key validation and owned input/options storage.
+- Public tests verify exact JSON fields and initialized arrays, zero failure plans, copied slice boundaries, option/context propagation and public error classes. Factory-backed HTTP fakes verify version guards without requests, timing validation before discovery, no-wait exemptions including dry-run, no tenant/state pruning, the unchanged 1,000-direct-children request limit, child-only scope, zero mutation during planning and collection execution without rediscovery. Resumption planning observations remain unchanged by later execution.
+- Matching tests were listed before execution. Sanitized targeted checks passed: `go test ./internal/services/processinstance -run 'PlanProcessInstanceResumption|ProcessInstanceSuspensionPlan' -count=1`; `go test ./c8volt/process -run 'ResumptionPlan|SuspensionPlan' -count=1`; final `go test ./c8volt/process -run 'ResumptionPlan' -count=1`; `go test ./c8volt/resource -run 'DeleteProcessDefinition' -count=1`; and `go test ./cmd -run '^Test(SuspendProcessInstanceTree|ResumeProcessInstance)' -count=1`.
+- Broader validation passed: `go test -race ./internal/services/processinstance ./internal/services/processinstance/traversal ./internal/services/processinstance/walker ./c8volt/process ./c8volt/resource -count=1` and untagged `go test ./... -run '^$'`. The latter is repository compilation evidence only, not behavioral coverage. All runs removed inherited C8VOLT/helper-process settings and disabled GOFLAGS, persisted GOENV and GOWORK. Tests use stubs/test-owned HTTP services; factory constructor tests perform no I/O.
+- Reviewed error flow from discovery/domain validation through zero plan and ferrors.FromDomain conversion. No new human output boundary or diagnostic emission exists in this library unit; T005 owns the new command planning-failure path. Command changes are one legacy fixture method, with no mode declarations. Existing resumption and suspension-tree command regressions passed.
+- gofmt and git diff --check passed. Exported Go documentation covers scope, permission, lookup bound, frozen targets, no rollback and error-first no-op handling. CLI documentation remains with T005. No live services, integration tags, deployment, smoke checks or live cleanup were used; real Camunda timing, buffering and permissions remain unverified.
+---

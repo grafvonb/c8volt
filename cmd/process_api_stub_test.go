@@ -766,3 +766,8 @@ func (stubProcessAPI) ResumeProcessInstance(context.Context, string, ...options.
 func (stubProcessAPI) ResumeProcessInstances(context.Context, types.Keys, int, ...options.FacadeOption) (process.ResumptionResults, error) {
 	return process.ResumptionResults{Items: []process.ResumptionResult{}}, ferr.ErrUnsupported
 }
+
+// PlanProcessInstanceResumption rejects planning in unrelated legacy fixtures.
+func (stubProcessAPI) PlanProcessInstanceResumption(context.Context, types.Keys, ...options.FacadeOption) (process.ProcessInstanceResumptionPlan, error) {
+	return process.ProcessInstanceResumptionPlan{}, ferr.ErrUnsupported
+}

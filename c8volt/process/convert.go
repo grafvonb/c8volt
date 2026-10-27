@@ -1047,3 +1047,18 @@ func fromDomainResumptionResults(r d.ProcessInstanceResumptionResults) Resumptio
 	}
 	return out
 }
+
+// fromDomainProcessInstanceResumptionPlan copies all slices, retaining non-nil
+// successful arrays and the zero plan on failure without interpreting observations.
+func fromDomainProcessInstanceResumptionPlan(plan d.ProcessInstanceResumptionPlan) ProcessInstanceResumptionPlan {
+	return ProcessInstanceResumptionPlan{
+		RequestedKeys: slices.Clone(plan.RequestedKeys),
+		Instances:     toolx.MapSlice(plan.Instances, fromDomainProcessInstanceResumptionPlanItem),
+		TargetKeys:    slices.Clone(plan.TargetKeys),
+	}
+}
+
+// fromDomainProcessInstanceResumptionPlanItem maps planning facts, never execution evidence.
+func fromDomainProcessInstanceResumptionPlanItem(item d.ProcessInstanceResumptionPlanItem) ProcessInstanceResumptionPlanItem {
+	return ProcessInstanceResumptionPlanItem{Key: item.Key, ObservedState: State(item.ObservedState), Classification: ProcessInstanceResumptionPlanClassification(item.Classification)}
+}

@@ -82,6 +82,8 @@ func (r DryRunPIKeyExpansion) HasActionableResults() bool {
 type API interface {
 	// PlanProcessInstanceSuspension freezes selected subtrees and active targets without mutation.
 	PlanProcessInstanceSuspension(ctx context.Context, keys types.Keys, opts ...options.FacadeOption) (ProcessInstanceSuspensionPlan, error)
+	// PlanProcessInstanceResumption freezes selected subtrees and suspended targets without mutation.
+	PlanProcessInstanceResumption(ctx context.Context, keys types.Keys, opts ...options.FacadeOption) (ProcessInstanceResumptionPlan, error)
 	// ResumeProcessInstance uses the collection workflow for one key; default confirmation requires ACTIVE or COMPLETED after acceptance.
 	ResumeProcessInstance(ctx context.Context, key string, opts ...options.FacadeOption) (ResumptionResult, error)
 	// ResumeProcessInstances returns ordered independent outcomes, including partial failures and unattempted keys.

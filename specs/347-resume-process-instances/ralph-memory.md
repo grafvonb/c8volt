@@ -16,13 +16,16 @@ Started: 2026-10-27T09:01:23Z
 - Resumption views use `renderHumanLine` for INFO, bounded grouped reasons for ERROR (including `cancellation observed`), and stdout only for JSON/accepted keys. Render one partial envelope before `exitAfterRenderedResult`; retain the operation error if the result writer also fails.
 - `resumptionFixture` rejects discovery/preflight reads; `runResumptionTerminal` uses real PTY stdin with redirected stdout and configured/inherited stderr. Activity fixtures additionally check rejection/interruption/writer failure and copied scope during approval. Reuse these for T005 without weakening the exact-key contracts.
 
+- `PlanProcessInstanceResumption` guards capability, all seeds and timing before discovery, then uses complete `DescendantsResult` snapshots with IgnoreTenant/detail suppression. It retains first-seen observations, skips seeds already covered by a complete earlier subtree, and preserves every explicit seed in RequestedKeys. Only SUSPENDED is eligible; unknown values normalize to UNKNOWN.
+- `descendant_plan_validation.go` shares only structural validation with suspension, preserving existing suspension error wording/classes. Validate every returned member before deduplicating overlaps. Any error returns a zero plan; successful empty targets remain initialized arrays. Public mapping clones all three arrays without interpreting scope.
+
 ## Decisions
 
 - Keep resumption types and lifecycle separate from suspension; reuse existing mutation retry/rate primitives without a generic mutation framework.
 - Submission accepts only valid empty 204. Unknown evidence survives later rejection; last valid submission status survives transport/malformed/admission failures. Only valid acceptance resolves ambiguity.
 - Every successful matching read replaces state/date evidence, including clearing an omitted date. Failed reads preserve prior evidence; typed not-found records ABSENT and clears the date. Late reads cannot confirm.
 - `resumptionFailure` centralizes disposition classification while returning original error classes and machine evidence. New service paths emit no human diagnostics; configured transport DEBUG remains independent and redacted.
-- T001/T002 delivered the lifecycle and collection/public APIs. Iteration 3 completed T003 exact-key CLI delivery; tree planning and the tree command remain T004/T005.
+- T001/T002 delivered the lifecycle and collection/public APIs; T003 delivered exact-key CLI; iteration 4 completed T004 library tree planning. T005 alone remains for CLI tree delivery.
 
 ## Gotchas
 
@@ -34,6 +37,8 @@ Started: 2026-10-27T09:01:23Z
 - The repository-wide `go test ./... -run '^$'` was compilation-only, without integration tags; it is not behavioral or live evidence. Race-enabled behavioral coverage was limited to the affected packages listed below.
 
 - Adding verbs changes the command inventory assertion in `cmd/command_contract_test.go` and the hard-coded count plus surface test in `docsgen/main.go`/`main_test.go` (now 62). Regenerate docs from command metadata; do not hand-edit generated pages.
+
+- The public API now also requires `PlanProcessInstanceResumption`; command/resource legacy stubs explicitly return unsupported. No new internal interface methods were needed for planning. Shared fixture `planTraversal` lives in the suspension planner tests and serves both planners.
 
 ## Reusable Commands
 
@@ -52,12 +57,16 @@ Run from the repository root through a sanitized Python subprocess environment: 
 - Iteration 3 passed `go test ./cmd -run 'Contract|Metadata|Help|SuspendProcessInstance|Confirmation' -count=1`, the full `go test ./cmd -count=1`, `go test ./docsgen -count=1`, and `make docs-content`. Command-package coverage used only isolated fixtures; no PTY skips occurred.
 - Iteration 3 focused race validation passed: `go test -race ./cmd -run '^TestResumeProcessInstance(Activity|Frozen|Workers|FailFast|Cancellation|Selection|FreshObservations)' -count=1`. The full repository race target was not repeated for this command-only work.
 
+- Iteration 4 passed service planner checks: `go test ./internal/services/processinstance -run 'PlanProcessInstanceResumption|ProcessInstanceSuspensionPlan' -count=1`; public planner checks: `go test ./c8volt/process -run 'ResumptionPlan|SuspensionPlan' -count=1`, followed by the final `ResumptionPlan` slice after added no-wait/empty JSON assertions.
+- Iteration 4 regressions passed: `go test ./c8volt/resource -run 'DeleteProcessDefinition' -count=1` and `go test ./cmd -run '^Test(SuspendProcessInstanceTree|ResumeProcessInstance)' -count=1`.
+- Iteration 4 broader checks passed: `go test -race ./internal/services/processinstance ./internal/services/processinstance/traversal ./internal/services/processinstance/walker ./c8volt/process ./c8volt/resource -count=1` and `go test ./... -run '^$'` (compilation only). The HTTP planner fixture verifies read/search requests, the 1,000 child limit, no tenant/state pruning, child-only scope, local timing/no-wait guards, zero planning mutations and execution without rediscovery.
+
 ## Do Not Repeat
 
 - Do not run integration tags, environment-backed helpers, live probes, or real Camunda validation. Real-engine buffering, timing, and permission behavior remain unverified.
-- Do not edit generated clients or expose `--tree` until T005 delivers its complete lifecycle. T003 regenerated exact-key docs; T004 is library planning only and T005 owns tree docs.
+- Do not edit generated clients or expose `--tree` until T005 delivers its complete lifecycle. T003 regenerated exact-key docs; T004 added library Go documentation only. T005 owns tree help, README and generated docs.
 - Do not rerun the completed broad checks solely for audit or commit edits. Revalidate when subsequent implementation changes justify it.
 
 ## Current Handoff
 
-- Next dependency-ready work is Phase 4 US2 T004: complete resumption tree planning, thin public mapping, and isolated scope/identity/completeness tests. T001–T003 are complete; no blockers. Recheck selection against tasks.md. T005 requires T003 and T004 and will add the tree command, frozen/empty-scope output and terminal coverage, plus tree documentation. The integration resumption scenario source now uses the CLI; it was not executed, and real-engine timing, buffering and permissions remain unverified.
+- Next dependency-ready work is Phase 4 US2 T005: expose the complete tree command using the new public plan API and existing collection executor. T001–T004 are complete; no blockers. Recheck tasks.md. Clone TargetKeys before one approval; complete empty plans return before approval/activity/submission. Add frozen/empty-scope output, configured logging, terminal/activity/failure coverage and tree documentation. Reuse T003 command fixtures and T004 planner fixtures. Integration source remains unexecuted; real-engine timing, buffering and permissions remain unverified.
