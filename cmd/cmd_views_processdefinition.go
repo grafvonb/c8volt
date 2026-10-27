@@ -36,6 +36,7 @@ type processDefinitionDisplay struct {
 	tenantID                string
 	bpmnProcessID           string
 	version                 string
+	state                   string
 	statisticsPresent       bool
 	active                  string
 	completed               string
@@ -157,6 +158,8 @@ func formatProcessDefinitionWatchColumn(row processDefinitionWatchRow, columnInd
 	case 3:
 		return formatProcessDefinitionWatchValue(display.version, bold && row.changed.version)
 	case 4:
+		return display.state
+	case 5:
 		return formatProcessDefinitionWatchStatistics(display, row.changed, bold)
 	default:
 		return ""
@@ -229,6 +232,7 @@ func newProcessDefinitionDisplay(it process.ProcessDefinition) processDefinition
 	}
 	display := processDefinitionDisplay{
 		key:           it.Key,
+		state:         it.State,
 		tenantID:      it.TenantId,
 		bpmnProcessID: it.BpmnProcessId,
 		version:       fmt.Sprintf("v%d%s", it.ProcessVersion, vTag),
@@ -253,7 +257,7 @@ func newProcessDefinitionDisplay(it process.ProcessDefinition) processDefinition
 
 // flatRow reconstructs the established ordinary row bytes from owned display values.
 func (d processDefinitionDisplay) flatRow() flatRow {
-	row := flatRow{d.key, d.tenantID, d.bpmnProcessID, d.version}
+	row := flatRow{d.key, d.tenantID, d.bpmnProcessID, d.version, d.state}
 	if d.statisticsPresent {
 		incidentTag := ""
 		if d.incidentCountSupported {

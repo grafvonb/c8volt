@@ -27,7 +27,7 @@ No independent foundational work is needed. The model and converter work belongs
 
 **Independent test**: Controlled 8.10 lookup/list responses with ACTIVE, DRAINING, DELETED, unfamiliar, omitted, and null state survive the public path and selected output; 8.8/8.9 remain unchanged. Empty, keys-only, quiet, XML, and not-found behavior stay intact.
 
-- [ ] T001 [US1] Deliver lifecycle through ordinary single/list reads: add `State` and shared mappings in `internal/domain/processdefinition.go`, `internal/services/processdefinition/v810/convert.go`, `c8volt/process/model.go`, and `c8volt/process/convert.go`; extend `cmd/cmd_views_processdefinition.go`, the existing tests named below, `integration/cli/real_state_destructive_test.go`, source help in `cmd/get_processdefinition.go`, `README.md`, and generated docs; validate service/facade/command paths and compile the integration package as specified in `quickstart.md`.
+- [x] T001 [US1] Deliver lifecycle through ordinary single/list reads: add `State` and shared mappings in `internal/domain/processdefinition.go`, `internal/services/processdefinition/v810/convert.go`, `c8volt/process/model.go`, and `c8volt/process/convert.go`; extend `cmd/cmd_views_processdefinition.go`, the existing tests named below, `integration/cli/real_state_destructive_test.go`, source help in `cmd/get_processdefinition.go`, `README.md`, and generated docs; validate service/facade/command paths and compile the integration package as specified in `quickstart.md`.
 
 **T001 data-path acceptance and implementation**:
 

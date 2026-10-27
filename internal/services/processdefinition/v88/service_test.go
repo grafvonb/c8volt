@@ -5,6 +5,7 @@ package v88_test
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"io"
 	"log/slog"
@@ -86,6 +87,10 @@ func TestService_SearchProcessDefinitions(t *testing.T) {
 			assertResult: func(t *testing.T, defs []domain.ProcessDefinition) {
 				require.Len(t, defs, 1)
 				assert.Equal(t, "proc", defs[0].BpmnProcessId)
+				assert.Empty(t, defs[0].State)
+				raw, err := json.Marshal(defs[0])
+				require.NoError(t, err)
+				assert.NotContains(t, string(raw), `"state"`)
 			},
 		},
 		{
@@ -658,6 +663,10 @@ func TestService_GetProcessDefinition(t *testing.T) {
 			},
 			assertResult: func(t *testing.T, pd domain.ProcessDefinition) {
 				assert.Equal(t, "proc", pd.BpmnProcessId)
+				assert.Empty(t, pd.State)
+				raw, err := json.Marshal(pd)
+				require.NoError(t, err)
+				assert.NotContains(t, string(raw), `"state"`)
 			},
 		},
 		{

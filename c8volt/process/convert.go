@@ -17,8 +17,10 @@ import (
 	"github.com/grafvonb/c8volt/toolx"
 )
 
+// fromDomainProcessDefinition preserves supplied lifecycle values without inference or normalization.
 func fromDomainProcessDefinition(x d.ProcessDefinition) ProcessDefinition {
 	return ProcessDefinition{
+		State:             x.State,
 		BpmnProcessId:     x.BpmnProcessId,
 		Key:               x.Key,
 		Name:              x.Name,

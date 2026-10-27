@@ -29,9 +29,11 @@ func TestCommandErrorEnvelopeProcessDefinition(t *testing.T) {
 			requestPath  string
 			requestCount int32
 			message      func(string) string
+			humanMessage string
 		}{
 			{
 				name:         "by-key",
+				humanMessage: "get process definition: unavailable",
 				args:         []string{"get", "process-definition", "--key", "123"},
 				method:       http.MethodGet,
 				requestPath:  "/v2/process-definitions/123",
@@ -74,7 +76,11 @@ func TestCommandErrorEnvelopeProcessDefinition(t *testing.T) {
 				t.Cleanup(server.Close)
 				cfgPath := testx.WriteTestConfig(t, server.URL)
 
-				assertProcessDefinitionErrorMatrix(t, cfgPath, tt.args, nil, exitcode.Unavailable, "failed", "unavailable", tt.message(server.URL), "", &requests, tt.requestCount)
+				var humanArgs []string
+				if tt.humanMessage != "" {
+					humanArgs = tt.args
+				}
+				assertProcessDefinitionErrorMatrix(t, cfgPath, tt.args, humanArgs, exitcode.Unavailable, "failed", "unavailable", tt.message(server.URL), tt.humanMessage, &requests, tt.requestCount)
 			})
 		}
 	})
@@ -180,6 +186,24 @@ func TestCommandErrorEnvelopeProcessDefinitionHelper(t *testing.T) {
 		args = append(args, "--no-err-codes")
 	}
 	args = append(args, commandArgs...)
+	if path := os.Getenv("C8VOLT_TEST_PD_LOG_DEST"); path != "" {
+		destination, err := os.Create(path)
+		require.NoError(t, err)
+		root := Root()
+		if os.Getenv("C8VOLT_TEST_PD_LOG_ROUTE") == "configured" {
+			command, _, err := root.Find([]string{"get", "process-definition"})
+			require.NoError(t, err)
+			command.SetErr(destination)
+		} else {
+			root.SetErr(destination)
+		}
+		// Execute installs process stderr; execute the same Cobra tree directly
+		// when exercising a caller-owned configured or inherited destination.
+		root.SetOut(os.Stdout)
+		root.SetArgs(args[1:])
+		require.NoError(t, root.Execute())
+		return
+	}
 	os.Args = args
 	Execute()
 }

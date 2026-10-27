@@ -85,3 +85,34 @@ func TestConvertProcessDefinitionSuspendedStatistics(t *testing.T) {
 	}
 	require.Nil(t, fromDomainProcessDefinition(d.ProcessDefinition{Key: "123"}).Statistics)
 }
+
+// TestConvertProcessDefinitionLifecycle verifies shared conversion preserves fresh
+// observations across all public result shapes, including omission after a value.
+func TestConvertProcessDefinitionLifecycle(t *testing.T) {
+	t.Parallel()
+	for _, state := range []string{"ACTIVE", "DRAINING", "DELETED", " future-State ", ""} {
+		t.Run(state, func(t *testing.T) {
+			source := d.ProcessDefinition{Key: "123", State: state}
+			page := d.ProcessDefinitionPage{Items: []d.ProcessDefinition{source}}
+			for _, got := range []ProcessDefinition{
+				fromDomainProcessDefinition(source),
+				fromDomainProcessDefinitions([]d.ProcessDefinition{source}).Items[0],
+				fromDomainProcessDefinitionPage(page).Items[0],
+				fromDomainProcessDefinitionSearchPageStep(d.ProcessDefinitionSearchPageStep{Page: page}).Page.Items[0],
+				fromDomainProcessDefinitionSearchPagesResult(d.ProcessDefinitionSearchPagesResult{Items: page.Items}).Items[0],
+				fromDomainProcessDefinitionWatchSnapshot(d.ProcessDefinitionWatchSnapshot{Items: page.Items}).Items[0],
+			} {
+				require.Equal(t, state, got.State)
+				raw, err := json.Marshal(got)
+				require.NoError(t, err)
+				var object map[string]any
+				require.NoError(t, json.Unmarshal(raw, &object))
+				if state == "" {
+					require.NotContains(t, object, "state")
+				} else {
+					require.Equal(t, state, object["state"])
+				}
+			}
+		})
+	}
+}

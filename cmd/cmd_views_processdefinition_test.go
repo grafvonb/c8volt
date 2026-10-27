@@ -547,3 +547,28 @@ func newProcessDefinitionViewTestCommand(use string) *cobra.Command {
 	cmd.SetErr(&bytes.Buffer{})
 	return cmd
 }
+
+// TestProcessDefinitionLifecycleColumns reserves state before statistics even
+// when rows omit it, while keeping legacy and single-row rendering compact.
+func TestProcessDefinitionLifecycleColumns(t *testing.T) {
+	t.Parallel()
+	items := []process.ProcessDefinition{
+		{Key: "1", BpmnProcessId: "orders", ProcessVersion: 3, State: "ACTIVE"},
+		{Key: "2", BpmnProcessId: "orders", ProcessVersion: 2, Statistics: &process.ProcessDefinitionStatistics{Active: 1}},
+		{Key: "3", BpmnProcessId: "orders", ProcessVersion: 1, State: "DRAINING", Statistics: &process.ProcessDefinitionStatistics{Completed: 2}},
+	}
+	require.Equal(t, "1 orders v3 ACTIVE", oneLinePD(items[0]))
+	require.Equal(t, "2 orders v2 [ac:1 cp:- cx:-]", oneLinePD(items[1]))
+	require.Equal(t, "3 orders v1 DRAINING [ac:- cp:2 cx:-]", oneLinePD(items[2]))
+	want := []string{"1 orders v3 ACTIVE", "2 orders v2          [ac:1 cp:- cx:-]", "3 orders v1 DRAINING [ac:- cp:2 cx:-]"}
+	require.Equal(t, want, formatProcessDefinitionFlatRows(items))
+	var rows []processDefinitionWatchRow
+	for _, item := range items {
+		row := flatRowPD(item)
+		require.Equal(t, item.State, row[4])
+		rows = append(rows, processDefinitionWatchRow{display: newProcessDefinitionDisplay(item)})
+	}
+	require.Equal(t, want, formatProcessDefinitionWatchRows(rows, false))
+	items[0].State, items[2].State = "", ""
+	require.Equal(t, []string{"1 orders v3", "2 orders v2 [ac:1 cp:- cx:-]", "3 orders v1 [ac:- cp:2 cx:-]"}, formatProcessDefinitionFlatRows(items))
+}

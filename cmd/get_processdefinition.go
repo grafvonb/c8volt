@@ -33,6 +33,7 @@ var (
 	flagGetPDWatchTimeout      time.Duration
 )
 
+// getProcessDefinitionCmd exposes definition reads and their existing output modes.
 var getProcessDefinitionCmd = &cobra.Command{
 	Use:   "process-definition",
 	Short: "List or fetch deployed process definitions",
@@ -43,6 +44,10 @@ Select by key, BPMN process ID, version, or version tag. Use --xml only with --k
 --tenant limits list and selector discovery. Explicit --key and XML lookups use backend authorization without tenant filtering.
 
 --latest selects the newest definition per exact tenant ID and BPMN process ID using native latest filtering, breaking version ties by the lowest exact-text key.
+
+Camunda 8.10 supplies optional lifecycle state in lookup/list rows and JSON (state). ACTIVE permits new instances; DRAINING blocks new instances while existing unfinished work remains; DELETED means runtime removal, not proof of historical-data removal. Returned DELETED definitions remain visible. Camunda 8.8/8.9 and responses without state omit it; unfamiliar supplied values are preserved. Lifecycle adds no requests and is separate from instance statistics.
+
+Backend definition deletion does not automatically cancel or resume unfinished instances. The existing delete pd --force workflow explicitly cancels unfinished instances first; displaying lifecycle does not change deletion or completion checks.
 
 --stat includes exact-version statistics and requires Camunda 8.8 or newer. On Camunda 8.10, rows append su: for suspended instances, with a dash for an observed zero; active counts remain separate. JSON statistics include a suspended count and suspendedCountSupported availability flag; a supported zero omits the count. Camunda 8.8/8.9 omit the suspended token and fields because the count is unavailable. With --stat --watch, suspended count and availability changes update the row and clear stale values. Empty searches suppress the human summary under --quiet while preserving requested JSON and keys-only results.
 
@@ -99,11 +104,13 @@ func runGetProcessDefinitionXML(cmd *cobra.Command, cli c8volt.API, log *slog.Lo
 	}
 }
 
+// runGetProcessDefinitionByKey preserves machine error evidence while bounding human diagnostics.
 func runGetProcessDefinitionByKey(cmd *cobra.Command, cli c8volt.API, log *slog.Logger, noErrCodes bool, key string) {
 	log.Debug(fmt.Sprintf("getting pd %s", key))
 	pd, err := cli.GetProcessDefinition(cmd.Context(), key, collectExplicitAdminInputOptions()...)
 	if err != nil {
-		handleCommandError(cmd, log, noErrCodes, fmt.Errorf("get process definition: %w", err))
+		handleCommandError(cmd, log, noErrCodes, fmt.Errorf("get process definition: %w", err),
+			"get process definition: "+boundedCommandFailureReason(err))
 	}
 	if err := processDefinitionView(cmd, pd); err != nil {
 		ferrors.HandleAndExit(log, noErrCodes, fmt.Errorf("error rendering key-only view: %w", err))

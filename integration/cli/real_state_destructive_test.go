@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"testing"
@@ -26,9 +27,9 @@ type realStateDestructiveDataset struct {
 	Incidents []realStateIncident   `json:"incidents,omitempty"`
 }
 
-// TestRealStateProcessDefinitionDraining observes an owned definition draining,
-// then verifies disappearance after canceling its held instance. A valid null
-// deletion batch is accepted; rejecting it remains a regression failure.
+// TestRealStateProcessDefinitionDraining observes an owned definition through
+// get pd JSON, then verifies disappearance after canceling its held instance.
+// A valid null deletion batch is accepted; rejecting it remains a regression failure.
 func TestRealStateProcessDefinitionDraining(t *testing.T) {
 	profiles := selectedBatchProfiles(t)
 	var evidence []batchScenarioEvidence
@@ -59,7 +60,7 @@ func TestRealStateProcessDefinitionDraining(t *testing.T) {
 			continue
 		}
 
-		state, err := requireProcessDefinitionStateEventually(client, definitionKey, "DRAINING", time.Minute)
+		state, err := requireProcessDefinitionStateEventually(t, profile.Name, definitionKey, "DRAINING", time.Minute)
 		if err != nil {
 			t.Errorf("observe draining definition for profile %q: %v", profile.Name, err)
 			continue
@@ -95,24 +96,36 @@ func TestRealStateProcessDefinitionDraining(t *testing.T) {
 	}
 }
 
-// requireProcessDefinitionStateEventually waits for the pinned generated API
-// to expose a specific lifecycle state while the owned instance holds it stable.
-func requireProcessDefinitionStateEventually(client liveBatchClient, key string, wanted string, timeout time.Duration) (string, error) {
+// requireProcessDefinitionStateEventually observes lifecycle through bounded CLI
+// executions and accepts only one successful envelope for the exact owned key.
+func requireProcessDefinitionStateEventually(t *testing.T, profile, key, wanted string, timeout time.Duration) (string, error) {
+	t.Helper()
 	deadline := time.Now().Add(timeout)
 	var last string
-	for {
-		resp, err := client.generated.GetProcessDefinitionWithResponse(context.Background(), key)
-		if err == nil && resp != nil {
-			if statusErr := httpc.HttpStatusErr(resp.HTTPResponse, resp.Body); statusErr == nil && resp.JSON200 != nil {
-				last = string(resp.JSON200.State)
-				if last == wanted {
-					return last, nil
-				}
-			} else if statusErr != nil {
-				last = statusErr.Error()
+	for attempt := 1; ; attempt++ {
+		result := runC8VoltForProfile(t, profile, fmt.Sprintf("real-state-definition-lifecycle-%d", attempt),
+			"--json", "--timeout", "10s", "--backoff-max-retries", "0", "get", "pd", "--key", key)
+		if result.Err != nil {
+			last = fmt.Sprintf("CLI exited %d: %s", result.ExitCode, compactLogSnippet(result.Stderr, 500))
+		} else {
+			var envelope struct {
+				Outcome string                    `json:"outcome"`
+				Payload process.ProcessDefinition `json:"payload"`
 			}
-		} else if err != nil {
-			last = err.Error()
+			decoder := json.NewDecoder(strings.NewReader(result.Stdout))
+			if err := decoder.Decode(&envelope); err != nil {
+				return last, fmt.Errorf("decode definition lifecycle envelope: %w", err)
+			}
+			if err := decoder.Decode(new(any)); err != io.EOF {
+				return last, fmt.Errorf("expected EOF after definition lifecycle envelope, got %v", err)
+			}
+			if envelope.Outcome != "succeeded" || envelope.Payload.Key != key {
+				return last, fmt.Errorf("definition lifecycle envelope outcome=%q key=%q, want succeeded for %s", envelope.Outcome, envelope.Payload.Key, key)
+			}
+			last = envelope.Payload.State
+			if last == wanted {
+				return last, nil
+			}
 		}
 		if time.Now().After(deadline) {
 			return last, fmt.Errorf("process definition %s state = %q, want %q", key, last, wanted)

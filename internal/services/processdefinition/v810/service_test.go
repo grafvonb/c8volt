@@ -1428,3 +1428,57 @@ func TestService_GetProcessDefinition_UnfinishedMissingKey(t *testing.T) {
 	m.AssertNumberOfCalls(t, "SearchProcessInstancesWithBodyWithResponse", 0)
 	m.AssertExpectations(t)
 }
+
+// TestService_ProcessDefinitionLifecycle preserves each supplied observation through
+// lookup and the serialized search decoder, without lifecycle-specific requests.
+func TestService_ProcessDefinitionLifecycle(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct{ name, field, want string }{
+		{"active", `,"state":"ACTIVE"`, "ACTIVE"},
+		{"draining", `,"state":"DRAINING"`, "DRAINING"},
+		{"deleted", `,"state":"DELETED"`, "DELETED"},
+		{"unfamiliar verbatim", `,"state":" future-State "`, " future-State "},
+		{"omitted", "", ""},
+		{"null", `,"state":null`, ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			body := []byte(`{"processDefinitionKey":"123","processDefinitionId":"proc","version":2,"tenantId":"tenant"` + tc.field + `}`)
+			var item camundav810.ProcessDefinitionResult
+			require.NoError(t, json.Unmarshal(body, &item))
+			searchBody := []byte(`{"items":[` + string(body) + `],"page":{"totalItems":1,"hasMoreTotalItems":false}}`)
+			var search camundav810.ProcessDefinitionSearchQueryResult
+			require.NoError(t, json.Unmarshal(searchBody, &search))
+			m := &mockProcessDefinitionClient{}
+			m.On("GetProcessDefinitionWithResponse", mock.Anything, "123").Return(&camundav810.GetProcessDefinitionResponse{
+				HTTPResponse: newHTTPResponse(http.MethodGet, "https://example.com/v2/process-definitions/123", http.StatusOK, "200"),
+				Body:         body, JSON200: &item,
+			}, nil).Once()
+			m.On("SearchProcessDefinitionsWithBodyWithResponse", mock.Anything, "application/json", mock.Anything).Return(&camundav810.SearchProcessDefinitionsResponse{
+				HTTPResponse: newHTTPResponse(http.MethodPost, "https://example.com/v2/process-definitions/search", http.StatusOK, "200"),
+				Body:         searchBody, JSON200: &search,
+			}, nil).Once()
+			svc, err := v810.New(testConfig(), &http.Client{}, slog.New(slog.NewTextHandler(io.Discard, nil)), v810.WithClientCamunda(m))
+			require.NoError(t, err)
+			lookup, err := svc.GetProcessDefinition(context.Background(), "123")
+			require.NoError(t, err)
+			items, err := svc.SearchProcessDefinitions(context.Background(), domain.ProcessDefinitionFilter{}, 10)
+			require.NoError(t, err)
+			require.Len(t, items, 1)
+			for _, got := range []domain.ProcessDefinition{lookup, items[0]} {
+				require.Equal(t, "123", got.Key)
+				require.Equal(t, tc.want, got.State)
+				raw, err := json.Marshal(got)
+				require.NoError(t, err)
+				var object map[string]any
+				require.NoError(t, json.Unmarshal(raw, &object))
+				if tc.want == "" {
+					require.NotContains(t, object, "state")
+				} else {
+					require.Equal(t, tc.want, object["state"])
+				}
+			}
+			m.AssertNumberOfCalls(t, "SearchProcessInstancesWithBodyWithResponse", 0)
+			m.AssertExpectations(t)
+		})
+	}
+}

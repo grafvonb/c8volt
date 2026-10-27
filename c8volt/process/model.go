@@ -15,7 +15,9 @@ import (
 	"github.com/grafvonb/c8volt/typex"
 )
 
+// ProcessDefinition preserves definition metadata and optional backend lifecycle observations.
 type ProcessDefinition struct {
+	State             string                       `json:"state,omitempty"`
 	BpmnProcessId     string                       `json:"bpmnProcessId,omitempty"`
 	Key               string                       `json:"key,omitempty"`
 	Name              string                       `json:"name,omitempty"`

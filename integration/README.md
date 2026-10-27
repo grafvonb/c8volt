@@ -218,9 +218,10 @@ C8VOLT_IT_PROFILES=dev810 make integration-cli-batch \
 ```
 
 The process-definition scenario accepts a valid null `batchOperation` when
-Camunda defers history deletion. It requires observing `DRAINING` while an owned
-instance is active, then cancels that instance and verifies the definition
-disappears. Rejecting the valid null batch remains a regression failure.
+Camunda defers history deletion. It observes `DRAINING` through bounded `get pd --key <owned-key> --json`
+executions while an owned instance is active. Each observation requires one
+successful envelope, EOF, and the exact owned key. It then cancels that instance
+and independently verifies through the generated API that the definition disappears. Rejecting the valid null batch remains a regression failure.
 Definition disappearance does not independently prove that all associated
 history deletion has completed.
 
