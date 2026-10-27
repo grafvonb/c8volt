@@ -3181,7 +3181,7 @@ func TestSuspendProcessInstanceMetadata(t *testing.T) {
 	}
 }
 
-// TestResumeProcessInstanceMetadata protects the exact-key surface and operator outcome contract.
+// TestResumeProcessInstanceMetadata protects the exact-key/tree surface and operator outcome contract.
 func TestResumeProcessInstanceMetadata(t *testing.T) {
 	root := Root()
 	resetCommandTreeFlags(root)
@@ -3196,10 +3196,10 @@ func TestResumeProcessInstanceMetadata(t *testing.T) {
 		{Name: RenderModeJSON.String(), Supported: true, MachinePreferred: true},
 		{Name: RenderModeKeysOnly.String(), Supported: true},
 	}, cap.OutputModes)
-	for _, name := range []string{"key", "dry-run", "no-wait", "workers", "no-worker-limit", "fail-fast"} {
+	for _, name := range []string{"key", "tree", "dry-run", "no-wait", "workers", "no-worker-limit", "fail-fast"} {
 		require.NotNil(t, resumeProcessInstanceCmd.Flags().Lookup(name))
 	}
-	for _, name := range []string{"tree", "force", "no-state-check", "state", "bpmn-process-id", "batch-size", "limit"} {
+	for _, name := range []string{"force", "no-state-check", "state", "bpmn-process-id", "batch-size", "limit"} {
 		require.Nil(t, resumeProcessInstanceCmd.Flags().Lookup(name))
 	}
 	for _, name := range []string{"backoff-timeout", "backoff-max-retries"} {
@@ -3211,7 +3211,15 @@ func TestResumeProcessInstanceMetadata(t *testing.T) {
 	for _, text := range []string{"SUSPENDED", "Camunda 8.10", "SUSPEND_PROCESS_INSTANCE", "PROCESS_DEFINITION", "permission to read", "no mandatory preflight read", "parent or child", "buffered work", "CANCELED or TERMINATED", "ACTIVE or immediate COMPLETED", "incident-free", "subscription readiness", "not atomic", "no automatic rollback", "--dry-run", "--auto-confirm", "--automation", "acceptance, not confirmed resumption", "--backoff-timeout"} {
 		require.Contains(t, resumeProcessInstanceCmd.Long, text)
 	}
-	require.NotContains(t, resumeProcessInstanceCmd.Long, "--tree")
+	treeFlag := resumeProcessInstanceCmd.Flags().Lookup("tree")
+	require.Equal(t, "false", treeFlag.DefValue)
+	require.Equal(t, "bool", treeFlag.Value.Type())
+	require.Empty(t, treeFlag.Shorthand)
+	for _, text := range []string{"--tree", "ancestors or siblings", "independently suspended descendants", "read/search permissions", "frozen scope", "1,000 direct children per parent lookup", "created after discovery", "no suspended targets", "state races"} {
+		require.Contains(t, resumeProcessInstanceCmd.Long, text)
+	}
+	require.Contains(t, resumeProcessInstanceCmd.Example, "--tree --dry-run")
+	require.Contains(t, resumeProcessInstanceCmd.Example, "--tree --auto-confirm")
 	for _, path := range []string{"resume", "resume process-instance"} {
 		_, ok := findCommandCapability(capabilityDocumentForRoot(root).Commands, path)
 		require.True(t, ok, path)

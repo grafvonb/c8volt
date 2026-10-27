@@ -158,21 +158,27 @@ func TestResumeProcessInstanceSelection(t *testing.T) {
 // TestResumeProcessInstanceFailFast keeps accepted work and keyed unscheduled slots; the
 // command passes worker controls to the existing service rather than scheduling itself.
 func TestResumeProcessInstanceFailFast(t *testing.T) {
-	f := newResumptionFixture(t)
-	f.reject[resumeKeyB] = 409
-	out, stderr, err := runUpdateUserTaskCommand(t, completionLogConfig(t, f.server.URL, "plain-time", "info"), "", "--json", "--automation", "resume", "pi", "--key", resumeKeyA+","+resumeKeyB+","+resumeKeyC, "--workers", "1", "--no-worker-limit", "--fail-fast")
-	assertUserTaskCompletionExit(t, err, 6)
-	require.Empty(t, stderr)
-	items := requireJSONItems(t, requireJSONObject(t, requireSingleJSONObjectDocument(t, out)["payload"])["items"], 3)
-	for i, want := range []string{"confirmed", "failed", "not_attempted"} {
-		require.Equal(t, want, requireJSONObject(t, items[i])["status"])
+	for _, tree := range []bool{false, true} {
+		t.Run(fmt.Sprintf("tree=%t", tree), func(t *testing.T) {
+
+			f := newResumptionModeFixture(t, tree)
+			f.reject[resumeKeyB] = 409
+			out, stderr, err := runUpdateUserTaskCommand(t, completionLogConfig(t, f.server.URL, "plain-time", "info"), "", resumptionModeArgs([]string{"--json", "--automation", "resume", "pi", "--key", resumeKeyA + "," + resumeKeyB + "," + resumeKeyC, "--workers", "1", "--no-worker-limit", "--fail-fast"}, tree)...)
+			assertUserTaskCompletionExit(t, err, 6)
+			require.Empty(t, stderr)
+			requireResumptionModePlan(t, requireJSONObject(t, requireSingleJSONObjectDocument(t, out)["payload"]), tree, []string{resumeKeyA, resumeKeyB, resumeKeyC})
+			items := requireJSONItems(t, requireJSONObject(t, requireSingleJSONObjectDocument(t, out)["payload"])["items"], 3)
+			for i, want := range []string{"confirmed", "failed", "not_attempted"} {
+				require.Equal(t, want, requireJSONObject(t, items[i])["status"])
+			}
+			require.Equal(t, resumeKeyC, requireJSONObject(t, items[2])["key"])
+			require.Equal(t, "not_submitted", requireJSONObject(t, items[2])["submission"])
+			calls, writes, reads := f.snapshot()
+			require.Len(t, calls, 3)
+			require.Equal(t, map[string]int{resumeKeyA: 1, resumeKeyB: 1}, writes)
+			require.Equal(t, map[string]int{resumeKeyA: 1}, reads)
+		})
 	}
-	require.Equal(t, resumeKeyC, requireJSONObject(t, items[2])["key"])
-	require.Equal(t, "not_submitted", requireJSONObject(t, items[2])["submission"])
-	calls, writes, reads := f.snapshot()
-	require.Len(t, calls, 3)
-	require.Equal(t, map[string]int{resumeKeyA: 1, resumeKeyB: 1}, writes)
-	require.Equal(t, map[string]int{resumeKeyA: 1}, reads)
 }
 
 // TestResumeProcessInstanceRejectedKeysAndExitOverride emits zero stdout bytes for wholly
@@ -203,56 +209,61 @@ func TestResumeProcessInstanceRejectedKeysAndExitOverride(t *testing.T) {
 // TestResumeProcessInstanceWorkers uses paired request barriers to verify the CLI forwards
 // explicit workers and no-worker-limit without overriding service scheduling policy.
 func TestResumeProcessInstanceWorkers(t *testing.T) {
-	keys := []string{resumeKeyA, resumeKeyB, resumeKeyC, "2251799813685252"}
-	for _, workers := range []int{1, 2, 0} {
-		t.Run(fmt.Sprint(workers), func(t *testing.T) {
-			want := workers
-			if want == 0 {
-				want = 4
+	for _, tree := range []bool{false, true} {
+		t.Run(fmt.Sprintf("tree=%t", tree), func(t *testing.T) {
+
+			keys := []string{resumeKeyA, resumeKeyB, resumeKeyC, "2251799813685252"}
+			for _, workers := range []int{1, 2, 0} {
+				t.Run(fmt.Sprint(workers), func(t *testing.T) {
+					want := workers
+					if want == 0 {
+						want = 4
+					}
+					var mu sync.Mutex
+					active, peak, started := 0, 0, 0
+					gates := []chan struct{}{make(chan struct{}), make(chan struct{}), make(chan struct{}), make(chan struct{})}
+					server := testx.NewIPv4Server(t, resumptionExecutionTestHandler(t, tree, keys, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+						require.Equal(t, "POST", r.Method)
+						require.Contains(t, r.URL.Path, "/resumption")
+						mu.Lock()
+						active++
+						started++
+						if active > peak {
+							peak = active
+						}
+						index := (started - 1) / want
+						if started%want == 0 {
+							close(gates[index])
+						}
+						mu.Unlock()
+						select {
+						case <-gates[index]:
+						case <-time.After(5 * time.Second):
+							t.Error("worker bound did not permit the required group")
+							w.WriteHeader(400)
+							return
+						}
+						mu.Lock()
+						active--
+						mu.Unlock()
+						w.WriteHeader(204)
+					})))
+					defer server.Close()
+					args := []string{"--automation", "--json", "resume", "pi", "--key", strings.Join(keys, ","), "--no-wait", "--no-worker-limit"}
+					if workers > 0 {
+						args = append(args, "--workers", fmt.Sprint(workers))
+					}
+					out, stderr, err := runUpdateUserTaskCommand(t, completionLogConfig(t, server.URL, "plain-time", "info"), "", resumptionModeArgs(args, tree)...)
+					require.NoError(t, err, stderr)
+					require.Empty(t, stderr)
+					require.Equal(t, "accepted", requireSingleJSONObjectDocument(t, out)["outcome"])
+					mu.Lock()
+					defer mu.Unlock()
+					require.Equal(t, want, peak)
+					require.Equal(t, 4, started)
+					require.Zero(t, active)
+				})
 			}
-			var mu sync.Mutex
-			active, peak, started := 0, 0, 0
-			gates := []chan struct{}{make(chan struct{}), make(chan struct{}), make(chan struct{}), make(chan struct{})}
-			server := testx.NewIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				require.Equal(t, "POST", r.Method)
-				require.Contains(t, r.URL.Path, "/resumption")
-				mu.Lock()
-				active++
-				started++
-				if active > peak {
-					peak = active
-				}
-				index := (started - 1) / want
-				if started%want == 0 {
-					close(gates[index])
-				}
-				mu.Unlock()
-				select {
-				case <-gates[index]:
-				case <-time.After(5 * time.Second):
-					t.Error("worker bound did not permit the required group")
-					w.WriteHeader(400)
-					return
-				}
-				mu.Lock()
-				active--
-				mu.Unlock()
-				w.WriteHeader(204)
-			}))
-			defer server.Close()
-			args := []string{"--automation", "--json", "resume", "pi", "--key", strings.Join(keys, ","), "--no-wait", "--no-worker-limit"}
-			if workers > 0 {
-				args = append(args, "--workers", fmt.Sprint(workers))
-			}
-			out, stderr, err := runUpdateUserTaskCommand(t, completionLogConfig(t, server.URL, "plain-time", "info"), "", args...)
-			require.NoError(t, err, stderr)
-			require.Empty(t, stderr)
-			require.Equal(t, "accepted", requireSingleJSONObjectDocument(t, out)["outcome"])
-			mu.Lock()
-			defer mu.Unlock()
-			require.Equal(t, want, peak)
-			require.Equal(t, 4, started)
-			require.Zero(t, active)
 		})
 	}
 }
@@ -260,58 +271,64 @@ func TestResumeProcessInstanceWorkers(t *testing.T) {
 // TestResumeProcessInstanceCancellation cancels a real command while an accepted target's
 // confirmation is in flight, preserving that evidence and the unscheduled target without resubmission.
 func TestResumeProcessInstanceCancellation(t *testing.T) {
-	ready := make(chan struct{})
-	var once sync.Once
-	var mu sync.Mutex
-	calls := []string{}
-	server := testx.NewIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		mu.Lock()
-		calls = append(calls, r.Method+" "+r.URL.Path)
-		mu.Unlock()
-		if r.Method == "POST" {
-			w.WriteHeader(204)
-			return
-		}
-		require.Equal(t, "/v2/process-instances/"+resumeKeyA, r.URL.Path)
-		once.Do(func() { close(ready) })
-		select {
-		case <-r.Context().Done():
-		case <-time.After(5 * time.Second):
-			t.Error("confirmation did not observe cancellation")
-		}
-	}))
-	defer server.Close()
-	control := testx.NewIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		select {
-		case <-ready:
-			w.WriteHeader(204)
-		case <-r.Context().Done():
-		}
-	}))
-	defer control.Close()
-	for _, mode := range []string{"json"} {
-		args := []string{"--config", completionLogConfig(t, server.URL, "plain-time", "info"), "--auto-confirm", "--" + mode, "resume", "pi", "--workers", "1", "--key", resumeKeyA + "," + resumeKeyB}
-		encoded, err := json.Marshal(args)
-		require.NoError(t, err)
-		out, stderr, err := testx.RunCmdSubprocessInDirWithSeparateOutputs(t, "TestResumeProcessInstanceCancellationProcess", "", map[string]string{"C8VOLT_RESUME_ARGS": string(encoded), "C8VOLT_RESUME_CANCEL_URL": control.URL}, "")
-		assertUserTaskCompletionExit(t, err, 1)
-		require.Empty(t, stderr)
-		env := requireSingleJSONObjectDocument(t, out)
-		require.Equal(t, "failed", env["outcome"])
-		items := requireJSONItems(t, requireJSONObject(t, env["payload"])["items"], 2)
-		first, last := requireJSONObject(t, items[0]), requireJSONObject(t, items[1])
-		require.Equal(t, "accepted", first["submission"])
-		require.Equal(t, "unconfirmed", first["confirmation"])
-		require.Equal(t, "interrupted", first["status"])
-		require.Equal(t, float64(204), first["statusCode"])
-		require.Equal(t, false, first["hasObservation"])
-		require.Equal(t, "not_attempted", last["status"])
-		require.Equal(t, "not_submitted", last["submission"])
-		require.Equal(t, resumeKeyB, last["key"])
+	for _, tree := range []bool{false, true} {
+		t.Run(fmt.Sprintf("tree=%t", tree), func(t *testing.T) {
+
+			ready := make(chan struct{})
+			var once sync.Once
+			var mu sync.Mutex
+			calls := []string{}
+			server := testx.NewIPv4Server(t, resumptionExecutionTestHandler(t, tree, []string{resumeKeyA, resumeKeyB}, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				mu.Lock()
+				calls = append(calls, r.Method+" "+r.URL.Path)
+				mu.Unlock()
+				if r.Method == "POST" {
+					w.WriteHeader(204)
+					return
+				}
+				require.Equal(t, "/v2/process-instances/"+resumeKeyA, r.URL.Path)
+				once.Do(func() { close(ready) })
+				select {
+				case <-r.Context().Done():
+				case <-time.After(5 * time.Second):
+					t.Error("confirmation did not observe cancellation")
+				}
+			})))
+			defer server.Close()
+			control := testx.NewIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				select {
+				case <-ready:
+					w.WriteHeader(204)
+				case <-r.Context().Done():
+				}
+			}))
+			defer control.Close()
+			for _, mode := range []string{"json"} {
+				args := []string{"--config", completionLogConfig(t, server.URL, "plain-time", "info"), "--auto-confirm", "--" + mode, "resume", "pi", "--workers", "1", "--key", resumeKeyA + "," + resumeKeyB}
+				encoded, err := json.Marshal(resumptionModeArgs(args, tree))
+				require.NoError(t, err)
+				out, stderr, err := testx.RunCmdSubprocessInDirWithSeparateOutputs(t, "TestResumeProcessInstanceCancellationProcess", "", map[string]string{"C8VOLT_RESUME_ARGS": string(encoded), "C8VOLT_RESUME_CANCEL_URL": control.URL}, "")
+				assertUserTaskCompletionExit(t, err, 1)
+				require.Empty(t, stderr)
+				env := requireSingleJSONObjectDocument(t, out)
+				require.Equal(t, "failed", env["outcome"])
+				requireResumptionModePlan(t, requireJSONObject(t, env["payload"]), tree, []string{resumeKeyA, resumeKeyB})
+				items := requireJSONItems(t, requireJSONObject(t, env["payload"])["items"], 2)
+				first, last := requireJSONObject(t, items[0]), requireJSONObject(t, items[1])
+				require.Equal(t, "accepted", first["submission"])
+				require.Equal(t, "unconfirmed", first["confirmation"])
+				require.Equal(t, "interrupted", first["status"])
+				require.Equal(t, float64(204), first["statusCode"])
+				require.Equal(t, false, first["hasObservation"])
+				require.Equal(t, "not_attempted", last["status"])
+				require.Equal(t, "not_submitted", last["submission"])
+				require.Equal(t, resumeKeyB, last["key"])
+			}
+			mu.Lock()
+			defer mu.Unlock()
+			require.Equal(t, []string{"POST /v2/process-instances/" + resumeKeyA + "/resumption", "GET /v2/process-instances/" + resumeKeyA}, calls)
+		})
 	}
-	mu.Lock()
-	defer mu.Unlock()
-	require.Equal(t, []string{"POST /v2/process-instances/" + resumeKeyA + "/resumption", "GET /v2/process-instances/" + resumeKeyA}, calls)
 }
 
 // TestResumeProcessInstanceCancellationProcess waits for a test-owned control handshake

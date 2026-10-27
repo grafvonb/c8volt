@@ -61,7 +61,7 @@ This generated tree lists the root reference plus the 62 available c8volt comman
     - [`c8volt resolve incident`]({{ "/cli/c8volt_resolve_incident" | relative_url }}) - Resolve incidents by key
     - [`c8volt resolve process-instance`]({{ "/cli/c8volt_resolve_process-instance" | relative_url }}) - Resolve process-instance incidents by key
   - [`c8volt resume`]({{ "/cli/c8volt_resume" | relative_url }}) - Resume suspended process instances
-    - [`c8volt resume process-instance`]({{ "/cli/c8volt_resume_process-instance" | relative_url }}) - Resume explicitly selected suspended process instances
+    - [`c8volt resume process-instance`]({{ "/cli/c8volt_resume_process-instance" | relative_url }}) - Resume suspended process instances by key or subtree
   - [`c8volt run`]({{ "/cli/c8volt_run" | relative_url }}) - Start process instances
     - [`c8volt run process-instance`]({{ "/cli/c8volt_run_process-instance" | relative_url }}) - Start process instances and confirm creation
   - [`c8volt suspend`]({{ "/cli/c8volt_suspend" | relative_url }}) - Suspend active process instances

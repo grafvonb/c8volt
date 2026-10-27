@@ -157,3 +157,42 @@ Started: 2026-10-27 10:01:24
 - Reviewed error flow from discovery/domain validation through zero plan and ferrors.FromDomain conversion. No new human output boundary or diagnostic emission exists in this library unit; T005 owns the new command planning-failure path. Command changes are one legacy fixture method, with no mode declarations. Existing resumption and suspension-tree command regressions passed.
 - gofmt and git diff --check passed. Exported Go documentation covers scope, permission, lookup bound, frozen targets, no rollback and error-first no-op handling. CLI documentation remains with T005. No live services, integration tags, deployment, smoke checks or live cleanup were used; real Camunda timing, buffering and permissions remain unverified.
 ---
+
+---
+## Iteration 5 - 2026-10-27 10:50
+**Work Unit**: Phase 4 US2 — T005 complete: tree command lifecycle, views, acceptance coverage and documentation; story and feature complete
+**Tasks Completed**:
+- [x] T005: Exposed frozen subtree resumption with safe preview/no-op handling, approval, partial evidence, logging, activity, isolated tests and regenerated documentation.
+**Tasks Remaining in Work Unit**: 0; no tasks remain in the feature.
+**Commit**: This work-unit commit
+**Files Changed**:
+- README.md
+- cmd/cmd_views_processinstance_resume_tree.go
+- cmd/command_contract_test.go
+- cmd/resume_processinstance.go
+- cmd/resume_processinstance_activity_test.go
+- cmd/resume_processinstance_logging_test.go
+- cmd/resume_processinstance_output_test.go
+- cmd/resume_processinstance_test.go
+- cmd/resume_processinstance_tree.go
+- cmd/resume_processinstance_tree_failure_test.go
+- cmd/resume_processinstance_tree_output_test.go
+- cmd/resume_processinstance_tree_terminal_test.go
+- cmd/resume_processinstance_tree_test.go
+- docs/cli/c8volt_resume.md
+- docs/cli/c8volt_resume_process-instance.md
+- docs/cli/command-tree.md
+- docs/index.md
+- specs/347-resume-process-instances/progress.md
+- specs/347-resume-process-instances/ralph-memory.md
+- specs/347-resume-process-instances/tasks.md
+**Learnings**:
+- The tree runner calls the existing public planner, handles errors first, rejects absent scope reports, and copies the complete report plus independent executor keys before approval. Preview and complete empty scopes never approve, start activity or call the collection. Nonempty execution reuses the collection exactly once, with no discovery during rendering or after approval. The base command contains only flag/help/dispatch changes; lifecycle and final formatting use focused mode/view files.
+- Added command acceptance for nested/overlapping/child-only scopes, traversal through active/terminal intermediates, SUSPENDED-only eligibility, frozen classifications, ACTIVE/immediate COMPLETED confirmation, later descendants and authoritative state-race rejection. Empty-scope matrices cover normal/dry-run/no-wait, human/JSON/keys/quiet and supported automation/approval combinations with exact INFO wording, initialized arrays, zero-byte keys and fixed discovery counts.
+- Shared exact/tree matrices cover workers, fail-fast/unattempted slots, cancellation, rejected/unknown/accepted-but-unconfirmed evidence, original exits, output writer failure and approval/activity cleanup. Failed/partial/unresolved/interrupted/absent planning never becomes a no-op or executable partial scope. Real terminal stdin with redirected stdout verifies configured/inherited stderr, one expanded plain prompt, decline/default/EOF, and prompt-free empty completion. Native Darwin PTY support was available; these scenarios were exercised.
+- Logging matrices verify configured/inherited destinations, INFO/ERROR severities, plain-time/structured formats, WARN/quiet suppression, repeated failures, DEBUG flag/config independently of verbose, redaction, raw machine evidence, one JSON envelope followed by EOF and no duplicate error. Temporary mutation checks each failed as intended for direct stderr ERROR, raw aggregate ERROR and direct stderr INFO; all mutations were restored before final validation.
+- Reviewed both failure paths: discovery/domain validation → zero/failed plan → facade ferrors conversion → bounded configured ERROR or single error envelope; submission/waiter → ordered partial collection → facade conversion → tree payload/allowlisted INFO + bounded ERROR → exitAfterRenderedResult. Original operation errors take precedence over result-writer failures. New production code has no direct print or raw err.Error() human boundary; keys reuse the existing result renderer and prompts use the existing configured writer.
+- Initial tree tests failed to compile for the absent runner. During shared-matrix expansion, assertions caught a copied activity-label typo and missing tree arguments in the test adapter; both were corrected. Final focused resumption tests passed: `go test ./cmd -run '^TestResumeProcessInstance' -count=1`. Tree-only checks also passed. Existing suspension-tree/confirmation/metadata/help/contract regressions passed with `go test ./cmd -run 'SuspendProcessInstanceTree|Confirmation|Contract|Metadata|Help' -count=1`; `go test ./docsgen -count=1` passed.
+- Final broader validation passed once with sanitized `make test` (`go test ./... -race -count=1`); the command package completed in 362.063s. All runs removed inherited C8VOLT/helper-process settings and disabled GOFLAGS, persisted GOENV and GOWORK; make runs also cleared inherited make overrides and used its race-exit policy. An initial inventory assertion was too broad about the integration package name and stopped before tests; inspection confirmed only local parsing/fixture/no-build-tag checks are selected there. Live-tagged scenarios and integration88 helpers were excluded. Other validation HTTP dependencies were test-owned fakes.
+- `make docs-content`, gofmt, source/generated-help/README agreement, local CLI-link checks and `git diff --check` passed. Documentation covers read/search permissions, independently suspended descendants, complete empty no-ops, the 1,000-direct-children bound, frozen/non-atomic scope, races, no rollback and acceptance versus confirmation. No live services, live targets, integration tags, deployments, smoke runs or cleanup were used; real Camunda timing, buffering and permission behavior remain unverified.
+---

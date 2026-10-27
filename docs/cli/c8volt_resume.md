@@ -45,5 +45,5 @@ c8volt resume [flags]
 ### SEE ALSO
 
 * [c8volt]({{ "/cli/c8volt/" | relative_url }})	 - Operate Camunda 8 workflows from the command line
-* [c8volt resume process-instance]({{ "/cli/c8volt_resume_process-instance" | relative_url }})	 - Resume explicitly selected suspended process instances
+* [c8volt resume process-instance]({{ "/cli/c8volt_resume_process-instance" | relative_url }})	 - Resume suspended process instances by key or subtree
 

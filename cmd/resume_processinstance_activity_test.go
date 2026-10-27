@@ -7,15 +7,15 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/grafvonb/c8volt/c8volt/ferrors"
-	"github.com/grafvonb/c8volt/testx"
 	"io"
 	"os"
 	"testing"
 
+	"github.com/grafvonb/c8volt/c8volt/ferrors"
 	"github.com/grafvonb/c8volt/c8volt/foptions"
 	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/grafvonb/c8volt/config"
+	"github.com/grafvonb/c8volt/testx"
 	"github.com/grafvonb/c8volt/testx/activitysink"
 	"github.com/grafvonb/c8volt/toolx/logging"
 	"github.com/grafvonb/c8volt/typex"
@@ -23,15 +23,21 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// resumptionActivityAPI isolates collection execution while retaining real command activity.
+// resumptionActivityAPI isolates planning and collection execution while retaining real command activity.
 type resumptionActivityAPI struct {
 	process.API
+	plan   func(context.Context, typex.Keys, ...foptions.FacadeOption) (process.ProcessInstanceResumptionPlan, error)
 	resume func(context.Context, typex.Keys, int, ...foptions.FacadeOption) (process.ResumptionResults, error)
 }
 
 // ResumeProcessInstances delegates the isolated collection callback.
 func (s resumptionActivityAPI) ResumeProcessInstances(ctx context.Context, keys typex.Keys, workers int, opts ...foptions.FacadeOption) (process.ResumptionResults, error) {
 	return s.resume(ctx, keys, workers, opts...)
+}
+
+// PlanProcessInstanceResumption delegates the isolated planning callback.
+func (s resumptionActivityAPI) PlanProcessInstanceResumption(ctx context.Context, keys typex.Keys, opts ...foptions.FacadeOption) (process.ProcessInstanceResumptionPlan, error) {
+	return s.plan(ctx, keys, opts...)
 }
 
 // resumptionActivityWriter checks activity cleanup at the configured logger destination.
@@ -43,12 +49,20 @@ func (w resumptionActivityWriter) Write(p []byte) (int, error) { return w(p) }
 // The command owns one activity across collection execution, after approval and
 // before final output. The shared writer still owns animation and terminal checks.
 func TestResumeProcessInstanceActivity(t *testing.T) {
+	t.Run("exact", func(t *testing.T) { testResumeProcessInstanceActivity(t, false) })
+	t.Run("tree", func(t *testing.T) { testResumeProcessInstanceActivity(t, true) })
+}
+
+// testResumeProcessInstanceActivity applies lifecycle checks to both runners.
+func testResumeProcessInstanceActivity(t *testing.T, tree bool) {
 	for _, tc := range []struct {
-		name                      string
-		setup                     func(*config.Config)
-		active, preview, panicRun bool
+		name                             string
+		setup                            func(*config.Config)
+		active, preview, panicRun, empty bool
 	}{
 		{name: "waiting", active: true},
+		{name: "no suspended targets", empty: true},
+		{name: "no suspended no-wait", empty: true, setup: func(*config.Config) { flagNoWait = true }},
 		{name: "no wait", active: true, setup: func(*config.Config) { flagNoWait = true }},
 		{name: "execution unwinds", active: true, panicRun: true},
 		{name: "dry run", preview: true, setup: func(*config.Config) { flagDryRun = true }},
@@ -61,6 +75,9 @@ func TestResumeProcessInstanceActivity(t *testing.T) {
 		{name: "structured logging", setup: func(cfg *config.Config) { cfg.Log.Format = "json" }},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			if tc.empty && !tree {
+				return
+			}
 			resetCommandTreeFlags(Root())
 			t.Cleanup(func() { resetCommandTreeFlags(Root()) })
 			cfg := config.New()
@@ -85,9 +102,31 @@ func TestResumeProcessInstanceActivity(t *testing.T) {
 				confirmed = true
 				return nil
 			}
-			calls := 0
-			api := resumptionActivityAPI{resume: func(ctx context.Context, keys typex.Keys, workers int, opts ...foptions.FacadeOption) (process.ResumptionResults, error) {
+			calls, plans := 0, 0
+			plan := process.ProcessInstanceResumptionPlan{
+				RequestedKeys: typex.Keys{resumeKeyA},
+				TargetKeys:    typex.Keys{resumeKeyA, resumeKeyB},
+				Instances: []process.ProcessInstanceResumptionPlanItem{
+					{Key: resumeKeyA, ObservedState: process.StateSuspended, Classification: process.ProcessInstanceResumptionPlanEligible},
+					{Key: resumeKeyB, ObservedState: process.StateSuspended, Classification: process.ProcessInstanceResumptionPlanEligible},
+				},
+			}
+			if tc.empty {
+				plan.TargetKeys = typex.Keys{}
+				for i := range plan.Instances {
+					plan.Instances[i].ObservedState = process.StateActive
+					plan.Instances[i].Classification = process.ProcessInstanceResumptionPlanExcluded
+				}
+			}
+			api := resumptionActivityAPI{plan: func(ctx context.Context, keys typex.Keys, opts ...foptions.FacadeOption) (process.ProcessInstanceResumptionPlan, error) {
+				plans++
+				require.Zero(t, sink.Started(), "planning has no execution activity")
+				require.False(t, confirmed)
+				require.True(t, foptions.ApplyFacadeOptions(opts).IgnoreTenant)
+				return plan, nil
+			}, resume: func(ctx context.Context, keys typex.Keys, workers int, opts ...foptions.FacadeOption) (process.ResumptionResults, error) {
 				calls++
+				require.False(t, tc.empty, "empty plans must not call the mutation facade")
 				preview := foptions.ApplyFacadeOptions(opts).DryRun
 				if preview {
 					require.Zero(t, sink.Started())
@@ -110,16 +149,36 @@ func TestResumeProcessInstanceActivity(t *testing.T) {
 						items[i].Status = process.ResumptionStatusPreview
 					}
 				}
+				if tree {
+					keys[0] = resumeKeyC
+				}
 				return process.ResumptionResults{Items: items}, nil
 			}}
-			run := func() { runResumeProcessInstances(cmd, api, log, cfg, typex.Keys{resumeKeyA, resumeKeyB}) }
+			run := func() {
+				if tree {
+					runResumeProcessInstanceTree(cmd, api, log, cfg, typex.Keys{resumeKeyA})
+					return
+				}
+				runResumeProcessInstances(cmd, api, log, cfg, typex.Keys{resumeKeyA, resumeKeyB})
+			}
 			if tc.panicRun {
 				require.PanicsWithValue(t, "execution interrupted", run)
 			} else {
 				run()
 			}
 			require.Equal(t, sink.Started(), sink.Stopped(), "activity must be closed before returning or unwinding")
-			if tc.preview {
+			if tree {
+				require.Equal(t, 1, plans)
+				want := 1
+				if tc.preview || tc.empty {
+					want = 0
+					require.False(t, confirmed)
+				}
+				require.Equal(t, want, calls)
+				if !tc.empty {
+					require.Equal(t, typex.Keys{resumeKeyA, resumeKeyB}, plan.TargetKeys, "executor cannot mutate frozen report")
+				}
+			} else if tc.preview {
 				require.Equal(t, 1, calls)
 				require.False(t, confirmed)
 			} else {
@@ -136,33 +195,38 @@ func TestResumeProcessInstanceActivity(t *testing.T) {
 // for rejection, interrupted confirmation and result-writer failure.
 func TestResumeProcessInstanceActivityFailure(t *testing.T) {
 	for _, scenario := range []string{"rejected", "interrupted", "writer", "empty preview", "empty preview json"} {
-		t.Run(scenario, func(t *testing.T) {
-			out, stderr, err := testx.RunCmdSubprocessInDirWithSeparateOutputs(t, "TestResumeProcessInstanceActivityFailureProcess", "", map[string]string{"C8VOLT_RESUME_ACTIVITY_SCENARIO": scenario}, "")
-			code := 6
-			if scenario != "rejected" {
-				code = 1
+		for _, tree := range []bool{false, true} {
+			if tree && (scenario == "empty preview" || scenario == "empty preview json") {
+				continue
 			}
-			assertUserTaskCompletionExit(t, err, code)
-			if scenario == "empty preview json" {
-				require.Empty(t, stderr)
-				env := requireSingleJSONObjectDocument(t, out)
-				require.Equal(t, "failed", env["outcome"])
-				require.Equal(t, "local_precondition", env["class"])
-				require.NotContains(t, env, "payload")
-				return
-			}
-			require.Empty(t, out)
-			records := bulkCompletionDiagnosticRecords(t, stderr, "plain-time")
-			require.Len(t, records, 1)
-			require.Equal(t, "ERROR", records[0][0])
-			if scenario == "empty preview" {
-				require.Equal(t, "resume process instances: preview returned no targets", records[0][1])
-			} else if scenario == "writer" {
-				require.Equal(t, "resume process instances: could not write result", records[0][1])
-			} else {
-				require.Equal(t, "resume process instances: "+scenario+": 1", records[0][1])
-			}
-		})
+			t.Run(fmt.Sprintf("%s/tree=%t", scenario, tree), func(t *testing.T) {
+				out, stderr, err := testx.RunCmdSubprocessInDirWithSeparateOutputs(t, "TestResumeProcessInstanceActivityFailureProcess", "", map[string]string{"C8VOLT_RESUME_ACTIVITY_SCENARIO": scenario, "C8VOLT_RESUME_ACTIVITY_TREE": fmt.Sprint(tree)}, "")
+				code := 6
+				if scenario != "rejected" {
+					code = 1
+				}
+				assertUserTaskCompletionExit(t, err, code)
+				if scenario == "empty preview json" {
+					require.Empty(t, stderr)
+					env := requireSingleJSONObjectDocument(t, out)
+					require.Equal(t, "failed", env["outcome"])
+					require.Equal(t, "local_precondition", env["class"])
+					require.NotContains(t, env, "payload")
+					return
+				}
+				require.Empty(t, out)
+				records := bulkCompletionDiagnosticRecords(t, stderr, "plain-time")
+				require.Len(t, records, 1)
+				require.Equal(t, "ERROR", records[0][0])
+				if scenario == "empty preview" {
+					require.Equal(t, "resume process instances: preview returned no targets", records[0][1])
+				} else if scenario == "writer" {
+					require.Equal(t, "resume process instances: could not write result", records[0][1])
+				} else {
+					require.Equal(t, "resume process instances: "+scenario+": 1", records[0][1])
+				}
+			})
+		}
 	}
 }
 
@@ -173,6 +237,7 @@ func TestResumeProcessInstanceActivityFailureProcess(t *testing.T) {
 		return
 	}
 	scenario := os.Getenv("C8VOLT_RESUME_ACTIVITY_SCENARIO")
+	tree := os.Getenv("C8VOLT_RESUME_ACTIVITY_TREE") == "true"
 	resetCommandTreeFlags(Root())
 	sink := &activitysink.Sink{}
 	wantActivity := 1
@@ -206,7 +271,10 @@ func TestResumeProcessInstanceActivityFailureProcess(t *testing.T) {
 		require.Zero(t, sink.Started())
 		return nil
 	}
-	api := resumptionActivityAPI{resume: func(ctx context.Context, keys typex.Keys, workers int, opts ...foptions.FacadeOption) (process.ResumptionResults, error) {
+	api := resumptionActivityAPI{plan: func(context.Context, typex.Keys, ...foptions.FacadeOption) (process.ProcessInstanceResumptionPlan, error) {
+		require.Zero(t, sink.Started())
+		return process.ProcessInstanceResumptionPlan{RequestedKeys: typex.Keys{resumeKeyA}, TargetKeys: typex.Keys{resumeKeyA}, Instances: []process.ProcessInstanceResumptionPlanItem{{Key: resumeKeyA, ObservedState: process.StateSuspended, Classification: process.ProcessInstanceResumptionPlanEligible}}}, nil
+	}, resume: func(ctx context.Context, keys typex.Keys, workers int, opts ...foptions.FacadeOption) (process.ResumptionResults, error) {
 		item := process.ResumptionResult{Key: resumeKeyA, Status: process.ResumptionStatusPreview}
 		if foptions.ApplyFacadeOptions(opts).DryRun {
 			require.Zero(t, sink.Started())
@@ -231,7 +299,11 @@ func TestResumeProcessInstanceActivityFailureProcess(t *testing.T) {
 		}
 		return process.ResumptionResults{Items: []process.ResumptionResult{item}}, operationErr
 	}}
-	runResumeProcessInstances(c, api, log, config.New(), typex.Keys{resumeKeyA})
+	if tree {
+		runResumeProcessInstanceTree(c, api, log, config.New(), typex.Keys{resumeKeyA})
+	} else {
+		runResumeProcessInstances(c, api, log, config.New(), typex.Keys{resumeKeyA})
+	}
 	t.Fatal("expected failure exit")
 }
 
@@ -266,4 +338,51 @@ func TestResumeProcessInstanceFrozenPreview(t *testing.T) {
 	c.SetErr(io.Discard)
 	runResumeProcessInstances(c, api, log, config.New(), keys)
 	require.Equal(t, 2, calls, "preview once, execute once, no discovery")
+}
+
+// TestResumeProcessInstanceTreeFrozenPlan owns approval/report storage across both
+// custom facade reuse during approval and mutation of the executor input slice.
+func TestResumeProcessInstanceTreeFrozenPlan(t *testing.T) {
+	resetCommandTreeFlags(Root())
+	t.Cleanup(func() { resetCommandTreeFlags(Root()) })
+	flagNoIndicator = true
+	plan := process.ProcessInstanceResumptionPlan{
+		RequestedKeys: typex.Keys{resumeKeyA}, TargetKeys: typex.Keys{resumeKeyA, resumeKeyB},
+		Instances: []process.ProcessInstanceResumptionPlanItem{
+			{Key: resumeKeyA, ObservedState: process.StateSuspended, Classification: process.ProcessInstanceResumptionPlanEligible},
+			{Key: resumeKeyB, ObservedState: process.StateSuspended, Classification: process.ProcessInstanceResumptionPlanEligible},
+		},
+	}
+	previous := confirmCmdOrAbortFn
+	t.Cleanup(func() { confirmCmdOrAbortFn = previous })
+	confirmCmdOrAbortFn = func(_ io.Writer, _ bool, prompt string) error {
+		require.Equal(t, "You are about to resume 2 process instance(s). Do you want to proceed?", prompt)
+		plan.RequestedKeys[0], plan.TargetKeys[0], plan.Instances[0].Key = resumeKeyC, resumeKeyC, resumeKeyC
+		flagViewAsJson = true // inspect the retained report after approval
+		return nil
+	}
+	plans, calls := 0, 0
+	api := resumptionActivityAPI{plan: func(context.Context, typex.Keys, ...foptions.FacadeOption) (process.ProcessInstanceResumptionPlan, error) {
+		plans++
+		return plan, nil
+	}, resume: func(_ context.Context, keys typex.Keys, _ int, _ ...foptions.FacadeOption) (process.ResumptionResults, error) {
+		calls++
+		require.Equal(t, typex.Keys{resumeKeyA, resumeKeyB}, keys)
+		keys[0] = resumeKeyC
+		return process.ResumptionResults{Items: []process.ResumptionResult{{Key: resumeKeyA}, {Key: resumeKeyB}}}, nil
+	}}
+	var out bytes.Buffer
+	log := logging.New(logging.LoggerConfig{Level: "warn", Writer: io.Discard})
+	c := &cobra.Command{Use: "process-instance"}
+	c.SetContext(logging.ToContext(context.Background(), log))
+	c.SetOut(&out)
+	c.SetErr(io.Discard)
+	runResumeProcessInstanceTree(c, api, log, config.New(), typex.Keys{resumeKeyA})
+	require.Equal(t, 1, plans)
+	require.Equal(t, 1, calls)
+	payload := requireJSONObject(t, requireSingleJSONObjectDocument(t, out.String())["payload"])
+	got := requireJSONObject(t, payload["plan"])
+	require.Equal(t, []any{resumeKeyA}, got["requestedKeys"])
+	require.Equal(t, []any{resumeKeyA, resumeKeyB}, got["targetKeys"])
+	require.Equal(t, resumeKeyA, requireJSONObject(t, requireJSONItems(t, got["instances"], 2)[0])["key"])
 }
