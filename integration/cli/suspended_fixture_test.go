@@ -22,7 +22,7 @@ import (
 )
 
 // suspendedFixture owns an isolated held dataset and its setup/cleanup evidence.
-// Generated mutation calls are fixture-only until public suspension workflows exist.
+// Generated mutations remain setup/cleanup controls; intended resumption coverage uses the CLI.
 type suspendedFixture struct {
 	profile    integrationProfile
 	client     liveBatchClient
@@ -94,6 +94,15 @@ func (f *suspendedFixture) transition(t *testing.T, key string, suspend bool) er
 		return fmt.Errorf("fixture %s %s returned HTTP %d: %s", operation, key, status, body)
 	}
 	return nil
+}
+
+// resumeWithCLI preserves ownership and cleanup tracking before exercising public resumption.
+// Only the independent observation clears tracking, even when command confirmation succeeds.
+func (f *suspendedFixture) resumeWithCLI(t *testing.T, key string) commandResult {
+	t.Helper()
+	require.Contains(t, f.dataset.PositiveProcessInstanceKeys, key, "refusing CLI resumption for unowned key")
+	f.resumeKeys[key] = true
+	return f.run(t, "resume-"+key, "resume", "pi", "--key", key, "--automation", "--json")
 }
 
 // observe polls the generated read independently of the facade under test.
@@ -189,5 +198,5 @@ func writeSuspendedRevisionEvidence(t *testing.T) {
 	provenance, err := os.ReadFile(filepath.Join(suite.repoRoot, "internal/clients/camunda/v810/camunda/provenance.json"))
 	require.NoError(t, err)
 	writeJSON(t, "suspended-revision.json", map[string]any{"revision": git("rev-parse", "HEAD"), "dirtyStatus": git("status", "--short", "--untracked-files=all"), "clientProvenance": json.RawMessage(provenance)})
-	writeCommandProposals(t, registerDirectCamundaSetupFallback(nil, "SUSPENDED then resumed ACTIVE", "SuspendProcessInstance/ResumeProcessInstance generated calls create fixture state unavailable through the CLI", []string{"get process-instance", "expect process-instance"}, []string{"8.10"}, "Fixture setup only; public mutation workflows are outside #339"))
+	writeCommandProposals(t, registerDirectCamundaSetupFallback(nil, "SUSPENDED setup and cleanup recovery", "Generated suspension prepares the held fixture; generated resumption is retained only for cleanup recovery independent of the CLI under test", []string{"get process-instance", "expect process-instance", "resume process-instance"}, []string{"8.10"}, "The scenario resumes through resume pi and asserts accepted/confirmed evidence; direct calls are setup/cleanup controls, not CLI acceptance"))
 }

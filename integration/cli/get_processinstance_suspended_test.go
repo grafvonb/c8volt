@@ -18,8 +18,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestGetFamilySuspendedState proves reads, exact selectors, expectations and fresh
-// timestamp snapshots on 8.10.4; the prefix includes it in integration-cli-get.
+// TestGetFamilySuspendedState covers reads, selectors, expectations, CLI resumption
+// and fresh timestamp snapshots on 8.10.4; integration-cli-get includes this prefix.
 func TestGetFamilySuspendedState(t *testing.T) {
 	writeSuspendedRevisionEvidence(t)
 	for _, profile := range requireSelectedProfiles(t) {
@@ -107,7 +107,21 @@ func TestGetFamilySuspendedState(t *testing.T) {
 			})
 
 			requireSuspendedLiveSnapshot(t, fixture, suspended, process.StateSuspended, instance.SuspendedDate)
-			require.NoError(t, fixture.transition(t, suspended, false))
+			resumeResult := fixture.resumeWithCLI(t, suspended)
+			require.NoError(t, resumeResult.Err, resumeResult.Stderr)
+			require.Empty(t, resumeResult.Stderr)
+			var resumed process.ResumptionResults
+			decodeSuspendedLiveEnvelope(t, resumeResult.Stdout, "succeeded", &resumed)
+			require.Len(t, resumed.Items, 1)
+			outcome := resumed.Items[0]
+			require.Equal(t, suspended, outcome.Key)
+			require.Equal(t, process.ResumptionStatusConfirmed, outcome.Status)
+			require.Equal(t, process.ResumptionSubmissionAccepted, outcome.Submission)
+			require.Equal(t, process.ResumptionConfirmationConfirmed, outcome.Confirmation)
+			require.Equal(t, 204, outcome.StatusCode)
+			require.True(t, outcome.HasObservation)
+			require.Equal(t, process.StateActive, outcome.LastObservedState)
+			require.Empty(t, outcome.SuspendedDate)
 			_, err = fixture.observe(t, suspended, "ACTIVE", false)
 			require.NoError(t, err)
 			fresh, err := fixture.client.api.GetProcessInstance(ctx, suspended)

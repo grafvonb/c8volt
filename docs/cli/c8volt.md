@@ -89,6 +89,7 @@ c8volt [flags]
 * [c8volt get]({{ "/cli/c8volt_get" | relative_url }})	 - Inspect cluster, process, job, element, incident, tenant, and resource state
 * [c8volt ops]({{ "/cli/c8volt_ops" | relative_url }})	 - Run operational playbooks
 * [c8volt resolve]({{ "/cli/c8volt_resolve" | relative_url }})	 - Resolve operational incidents
+* [c8volt resume]({{ "/cli/c8volt_resume" | relative_url }})	 - Resume suspended process instances
 * [c8volt run]({{ "/cli/c8volt_run" | relative_url }})	 - Start process instances
 * [c8volt suspend]({{ "/cli/c8volt_suspend" | relative_url }})	 - Suspend active process instances
 * [c8volt update]({{ "/cli/c8volt_update" | relative_url }})	 - Update existing resources

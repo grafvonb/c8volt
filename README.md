@@ -345,6 +345,24 @@ Use `get process-instance --state suspended` to find paused instances or `expect
 
 Generated reference: [get process-instance](docs/cli/c8volt_get_process-instance.md).
 
+### Resume Explicit Process Instances
+
+Use [resume process-instance](docs/cli/c8volt_resume_process-instance.md) (`resume pi`) on Camunda 8.10 to resume SUSPENDED instances. Repeated/comma-separated `--key` values and newline-separated stdin through `-` are deduplicated in first-input order. Each selected parent or child is independent; relatives are not discovered or resumed. Explicit keys use backend authorization without discovery tenant filtering. Camunda 8.8/8.9 reject resumption before requests, including previews.
+
+```bash
+./c8volt resume process-instance --key <process-instance-key>
+./c8volt resume process-instance --key <key-a>,<key-b> --dry-run --json
+printf '%s\n' "$INSTANCE_A" "$INSTANCE_B" | ./c8volt resume process-instance --auto-confirm --no-wait --json -
+```
+
+When authorization is enabled, resumption requires `SUSPEND_PROCESS_INSTANCE` on `PROCESS_DEFINITION`; default confirmation also requires permission to read the instance. Exact-key preview is local and checks no eligibility. Execution has no mandatory preflight read: only the submission response establishes acceptance. Active, terminal, terminating, missing or unauthorized targets remain failures when rejected; a later desired state cannot repair rejection or uncertain submission.
+
+Default execution confirms accepted submission only after observing ACTIVE or immediate COMPLETED, within `--backoff-timeout` (two minutes by default). `--timeout` bounds each HTTP request. CANCELED or TERMINATED is a distinct cancellation failure. Persistent suspension, absence, unknown state, timeout, interruption or failed reads retain acceptance without confirmation; missing `suspendedDate` alone is not proof. Fresh reads omit the date when the backend no longer supplies it. `--no-wait` reports acceptance without confirmation reads. `--dry-run` never mutates or prompts, even with no-wait.
+
+Nonempty execution asks once for the frozen selected count; use `--auto-confirm` or `--automation` for unattended approval. `--workers`, `--no-worker-limit` and `--fail-fast` follow existing collection controls. Multiple-key execution is not atomic: partial outcomes and unattempted targets remain visible, with no automatic rollback. Buffered work may drain on resumption, and failures can leave an instance suspended. Confirmed resumption does not guarantee incident-free execution, process completion, or immediate subscription readiness.
+
+Human summaries, previews and verbose per-key facts use configured INFO logging; quiet and WARN suppress them. Failures use one compact ERROR record, while prompts stay plain configured stderr. JSON emits one stdout envelope retaining ordered partial results, submission/confirmation evidence and original failure exits. JSON requires dry-run, auto-confirm or automation and excludes verbose. Keys-only previews list planned keys; execution lists accepted keys, including accepted-but-unconfirmed failures. Keys alone do not prove resumption. Quiet preserves requested machine output and errors; JSON takes precedence over keys-only. HTTP diagnostics use redacted DEBUG independently of verbose.
+
 ### Suspend Explicit Process Instances
 
 Use [suspend process-instance](docs/cli/c8volt_suspend_process-instance.md) (`suspend pi`) on Camunda 8.10 to pause ACTIVE instances by explicit key. Repeated/comma-separated `--key` values and newline-separated stdin through `-` are merged in first-input order and deduplicated. Without `--tree`, each selected parent or child remains independent; relatives are not discovered or suspended. Explicit keys use backend authorization without discovery tenant filtering.

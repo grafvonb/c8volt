@@ -1118,11 +1118,11 @@ func TestCapabilityDocumentForRoot_CoversCLIDebtAssessment(t *testing.T) {
 
 	doc := capabilityDocumentForRoot(root)
 	paths := commandCapabilityPaths(doc.Commands)
-	require.Len(t, paths, 60)
+	require.Len(t, paths, 62)
 
 	assessmentPaths := readCLIDebtAssessmentCommandPaths(t)
 	require.Len(t, assessmentPaths, 57)
-	require.ElementsMatch(t, paths, append(assessmentPaths, "update element", "suspend", "suspend process-instance"))
+	require.ElementsMatch(t, paths, append(assessmentPaths, "update element", "suspend", "suspend process-instance", "resume", "resume process-instance"))
 }
 
 // TestCommandCapabilityForCommand_UserTaskReadContract verifies every alias
@@ -3176,6 +3176,43 @@ func TestSuspendProcessInstanceMetadata(t *testing.T) {
 		require.Contains(t, suspendProcessInstanceCmd.Long, text)
 	}
 	for _, path := range []string{"suspend", "suspend process-instance"} {
+		_, ok := findCommandCapability(capabilityDocumentForRoot(root).Commands, path)
+		require.True(t, ok, path)
+	}
+}
+
+// TestResumeProcessInstanceMetadata protects the exact-key surface and operator outcome contract.
+func TestResumeProcessInstanceMetadata(t *testing.T) {
+	root := Root()
+	resetCommandTreeFlags(root)
+	cap := commandCapabilityForCommand(resumeProcessInstanceCmd)
+	require.Equal(t, "resume process-instance", cap.Path)
+	require.Equal(t, CommandMutationStateChanging, cap.Mutation)
+	require.Equal(t, ContractSupportFull, cap.ContractSupport)
+	require.Equal(t, AutomationSupportFull, cap.AutomationSupport)
+	require.Contains(t, cap.Aliases, "pi")
+	require.Equal(t, []OutputModeContract{
+		{Name: RenderModeOneLine.String(), Supported: true},
+		{Name: RenderModeJSON.String(), Supported: true, MachinePreferred: true},
+		{Name: RenderModeKeysOnly.String(), Supported: true},
+	}, cap.OutputModes)
+	for _, name := range []string{"key", "dry-run", "no-wait", "workers", "no-worker-limit", "fail-fast"} {
+		require.NotNil(t, resumeProcessInstanceCmd.Flags().Lookup(name))
+	}
+	for _, name := range []string{"tree", "force", "no-state-check", "state", "bpmn-process-id", "batch-size", "limit"} {
+		require.Nil(t, resumeProcessInstanceCmd.Flags().Lookup(name))
+	}
+	for _, name := range []string{"backoff-timeout", "backoff-max-retries"} {
+		flag := resumeCmd.PersistentFlags().Lookup(name)
+		require.NotNil(t, flag)
+		require.True(t, flag.Hidden)
+	}
+	require.Equal(t, "2m0s", resumeCmd.PersistentFlags().Lookup("backoff-timeout").DefValue)
+	for _, text := range []string{"SUSPENDED", "Camunda 8.10", "SUSPEND_PROCESS_INSTANCE", "PROCESS_DEFINITION", "permission to read", "no mandatory preflight read", "parent or child", "buffered work", "CANCELED or TERMINATED", "ACTIVE or immediate COMPLETED", "incident-free", "subscription readiness", "not atomic", "no automatic rollback", "--dry-run", "--auto-confirm", "--automation", "acceptance, not confirmed resumption", "--backoff-timeout"} {
+		require.Contains(t, resumeProcessInstanceCmd.Long, text)
+	}
+	require.NotContains(t, resumeProcessInstanceCmd.Long, "--tree")
+	for _, path := range []string{"resume", "resume process-instance"} {
 		_, ok := findCommandCapability(capabilityDocumentForRoot(root).Commands, path)
 		require.True(t, ok, path)
 	}
