@@ -72,7 +72,12 @@ C8VOLT_IT_PROFILES=c810local C8VOLT_IT_RELEASE_VERSION=8.10 \
 Require the named test to be listed before running it. The scenario compares
 suspended, active and terminal owned instances, exercises state and combined
 expectations, and verifies timestamp omission after resumption. Generated
-suspend/resume calls are fixture setup only. Cleanup resumes owned instances
+suspension calls prepare fixture state. The resumption scenario invokes
+`resume pi --automation --json`, requires one successful envelope with accepted
+submission and confirmed ACTIVE observation, then independently checks state and
+date omission. Owned keys are tracked before mutation and stay tracked until
+independent observation succeeds. Direct resumption calls remain only for cleanup
+recovery, independent of the CLI under test. Cleanup resumes owned instances
 before ordinary deletion. Evidence includes `suspended-revision.json` (Git
 revision, dirty status and unchanged 8.10.3 client provenance), profile and
 command records, raw observations under `data/`, separate streams under `logs/`,

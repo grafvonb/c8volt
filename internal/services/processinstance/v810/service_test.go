@@ -31,6 +31,7 @@ import (
 
 // mockCamundaClient injects version-local generated responses without backend I/O.
 type mockCamundaClient struct {
+	resumeProcessInstanceWithResponse  func(ctx context.Context, key camundav810.ProcessInstanceKey, body camundav810.ResumeProcessInstanceJSONRequestBody, reqEditors ...camundav810.RequestEditorFn) (*camundav810.ResumeProcessInstanceResponse, error)
 	suspendProcessInstanceWithResponse func(ctx context.Context, key camundav810.ProcessInstanceKey, body camundav810.SuspendProcessInstanceJSONRequestBody, reqEditors ...camundav810.RequestEditorFn) (*camundav810.SuspendProcessInstanceResponse, error)
 	createProcessInstanceWithResponse  func(ctx context.Context, body camundav810.CreateProcessInstanceJSONRequestBody, reqEditors ...camundav810.RequestEditorFn) (*camundav810.CreateProcessInstanceResponse, error)
 	searchProcessInstancesWithResp     func(ctx context.Context, contentType string, body io.Reader, reqEditors ...camundav810.RequestEditorFn) (*camundav810.SearchProcessInstancesResponse, error)
@@ -46,6 +47,11 @@ var _ v810.GenProcessInstanceClientCamunda = (*mockCamundaClient)(nil)
 // SuspendProcessInstanceWithResponse delegates exact-key suspension to the test callback.
 func (m *mockCamundaClient) SuspendProcessInstanceWithResponse(ctx context.Context, key camundav810.ProcessInstanceKey, body camundav810.SuspendProcessInstanceJSONRequestBody, reqEditors ...camundav810.RequestEditorFn) (*camundav810.SuspendProcessInstanceResponse, error) {
 	return m.suspendProcessInstanceWithResponse(ctx, key, body, reqEditors...)
+}
+
+// ResumeProcessInstanceWithResponse delegates exact-key resumption to the test callback.
+func (m *mockCamundaClient) ResumeProcessInstanceWithResponse(ctx context.Context, key camundav810.ProcessInstanceKey, body camundav810.ResumeProcessInstanceJSONRequestBody, reqEditors ...camundav810.RequestEditorFn) (*camundav810.ResumeProcessInstanceResponse, error) {
+	return m.resumeProcessInstanceWithResponse(ctx, key, body, reqEditors...)
 }
 
 func (m *mockCamundaClient) CreateProcessInstanceWithResponse(ctx context.Context, body camundav810.CreateProcessInstanceJSONRequestBody, reqEditors ...camundav810.RequestEditorFn) (*camundav810.CreateProcessInstanceResponse, error) {

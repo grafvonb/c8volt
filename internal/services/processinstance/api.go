@@ -20,6 +20,10 @@ import (
 
 // API defines the version-neutral process-instance service contract.
 type API interface {
+	// ValidateProcessInstanceResumption checks mutation capability without I/O.
+	ValidateProcessInstanceResumption() error
+	// ResumeProcessInstance resumes exactly one key, confirming unless NoWait is set.
+	ResumeProcessInstance(ctx context.Context, key string, opts ...services.CallOption) (d.ProcessInstanceResumptionResult, error)
 	// ValidateProcessInstanceSuspension checks mutation capability without I/O.
 	ValidateProcessInstanceSuspension() error
 	// SuspendProcessInstance suspends exactly one key, confirming unless NoWait is set.

@@ -1293,3 +1293,26 @@ func (stubProcessAPI) SuspendProcessInstances(context.Context, typex.Keys, int, 
 func (stubProcessAPI) PlanProcessInstanceSuspension(context.Context, typex.Keys, ...options.FacadeOption) (process.ProcessInstanceSuspensionPlan, error) {
 	return process.ProcessInstanceSuspensionPlan{}, ferr.ErrUnsupported
 }
+
+// ValidateProcessInstanceResumption keeps unrelated legacy fixtures explicitly unsupported.
+func (stubProcessInstanceService) ValidateProcessInstanceResumption() error { return d.ErrUnsupported }
+
+// ResumeProcessInstance prevents accidental mutation through unrelated legacy fixtures.
+func (stubProcessInstanceService) ResumeProcessInstance(context.Context, string, ...services.CallOption) (d.ProcessInstanceResumptionResult, error) {
+	return d.ProcessInstanceResumptionResult{}, d.ErrUnsupported
+}
+
+// ResumeProcessInstance rejects resumption in unrelated resource fixtures.
+func (stubProcessAPI) ResumeProcessInstance(context.Context, string, ...options.FacadeOption) (process.ResumptionResult, error) {
+	return process.ResumptionResult{}, ferr.ErrUnsupported
+}
+
+// ResumeProcessInstances rejects resumption in unrelated resource fixtures.
+func (stubProcessAPI) ResumeProcessInstances(context.Context, typex.Keys, int, ...options.FacadeOption) (process.ResumptionResults, error) {
+	return process.ResumptionResults{Items: []process.ResumptionResult{}}, ferr.ErrUnsupported
+}
+
+// PlanProcessInstanceResumption rejects planning in unrelated legacy fixtures.
+func (stubProcessAPI) PlanProcessInstanceResumption(context.Context, typex.Keys, ...options.FacadeOption) (process.ProcessInstanceResumptionPlan, error) {
+	return process.ProcessInstanceResumptionPlan{}, ferr.ErrUnsupported
+}

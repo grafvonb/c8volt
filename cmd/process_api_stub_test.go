@@ -756,3 +756,18 @@ func (stubProcessAPI) SuspendProcessInstances(context.Context, types.Keys, int, 
 func (stubProcessAPI) PlanProcessInstanceSuspension(context.Context, types.Keys, ...options.FacadeOption) (process.ProcessInstanceSuspensionPlan, error) {
 	return process.ProcessInstanceSuspensionPlan{}, ferr.ErrUnsupported
 }
+
+// ResumeProcessInstance rejects resumption in legacy command fixtures.
+func (stubProcessAPI) ResumeProcessInstance(context.Context, string, ...options.FacadeOption) (process.ResumptionResult, error) {
+	return process.ResumptionResult{}, ferr.ErrUnsupported
+}
+
+// ResumeProcessInstances rejects resumption in legacy command fixtures.
+func (stubProcessAPI) ResumeProcessInstances(context.Context, types.Keys, int, ...options.FacadeOption) (process.ResumptionResults, error) {
+	return process.ResumptionResults{Items: []process.ResumptionResult{}}, ferr.ErrUnsupported
+}
+
+// PlanProcessInstanceResumption rejects planning in unrelated legacy fixtures.
+func (stubProcessAPI) PlanProcessInstanceResumption(context.Context, types.Keys, ...options.FacadeOption) (process.ProcessInstanceResumptionPlan, error) {
+	return process.ProcessInstanceResumptionPlan{}, ferr.ErrUnsupported
+}

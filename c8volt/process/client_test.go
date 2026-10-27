@@ -3857,3 +3857,11 @@ func (stubProcessInstanceAPI) ValidateProcessInstanceSuspension() error { return
 func (stubProcessInstanceAPI) SuspendProcessInstance(context.Context, string, ...services.CallOption) (d.ProcessInstanceSuspensionResult, error) {
 	return d.ProcessInstanceSuspensionResult{}, d.ErrUnsupported
 }
+
+// ValidateProcessInstanceResumption keeps unrelated legacy fixtures explicitly unsupported.
+func (stubProcessInstanceAPI) ValidateProcessInstanceResumption() error { return d.ErrUnsupported }
+
+// ResumeProcessInstance prevents accidental mutation through unrelated legacy fixtures.
+func (stubProcessInstanceAPI) ResumeProcessInstance(context.Context, string, ...services.CallOption) (d.ProcessInstanceResumptionResult, error) {
+	return d.ProcessInstanceResumptionResult{}, d.ErrUnsupported
+}

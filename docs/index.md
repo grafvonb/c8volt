@@ -6,7 +6,7 @@ nav_exclude: true
 has_toc: true
 ---
 
-> Generated from build `c8volt v4.4.0-214-g97a86faa-dirty`, commit `97a86faa`, built `2026-10-26T18:48:00Z` | Supported Camunda 8 versions: 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.3 (final)
+> Generated from build `c8volt v4.4.0-222-g616c4a62-dirty`, commit `616c4a62`, built `2026-10-27T09:43:31Z` | Supported Camunda 8 versions: 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.3 (final)
 
 <img src="./logo/c8volt_logo_transparent_w_shadow_400x244.png" alt="c8volt logo" />
 
@@ -350,6 +350,36 @@ Explicit suspended-state filters and expectations require Camunda 8.10. On 8.8/8
 Use `get process-instance --state suspended` to find paused instances or `expect process-instance --key <key> --state suspended` to wait for suspension. State completion for get, expect, and slow-process analysis works without configuration or a connection and identifies the Camunda 8.10 requirement. Empty process-instance searches suppress the human summary under `--quiet`, while explicitly requested JSON and keys-only results retain their existing contracts.
 
 Generated reference: [get process-instance](./cli/c8volt_get_process-instance).
+
+### Resume Process Instances by Key or Subtree
+
+Use [resume process-instance](./cli/c8volt_resume_process-instance) (`resume pi`) on Camunda 8.10 to resume SUSPENDED instances. Repeated/comma-separated `--key` values and newline-separated stdin through `-` are deduplicated in first-input order. Without `--tree`, each selected parent or child is independent; relatives are not discovered or resumed. Explicit keys use backend authorization without discovery tenant filtering. Camunda 8.8/8.9 reject resumption before requests, including previews.
+
+```bash
+./c8volt resume process-instance --key <process-instance-key>
+./c8volt resume process-instance --key <key-a>,<key-b> --dry-run --json
+printf '%s\n' "$INSTANCE_A" "$INSTANCE_B" | ./c8volt resume process-instance --auto-confirm --no-wait --json -
+```
+
+When authorization is enabled, resumption requires `SUSPEND_PROCESS_INSTANCE` on `PROCESS_DEFINITION`; default confirmation also requires permission to read the instance. Exact-key preview is local and checks no eligibility. Execution has no mandatory preflight read: only the submission response establishes acceptance. Active, terminal, terminating, missing or unauthorized targets remain failures when rejected; a later desired state cannot repair rejection or uncertain submission.
+
+Default execution confirms accepted submission only after observing ACTIVE or immediate COMPLETED, within `--backoff-timeout` (two minutes by default). `--timeout` bounds each HTTP request. CANCELED or TERMINATED is a distinct cancellation failure. Persistent suspension, absence, unknown state, timeout, interruption or failed reads retain acceptance without confirmation; missing `suspendedDate` alone is not proof. Fresh reads omit the date when the backend no longer supplies it. `--no-wait` reports acceptance without confirmation reads. `--dry-run` never mutates or prompts, even with no-wait.
+
+Nonempty execution asks once for the frozen selected count; use `--auto-confirm` or `--automation` for unattended approval. `--workers`, `--no-worker-limit` and `--fail-fast` follow existing collection controls. Multiple-key execution is not atomic: partial outcomes and unattempted targets remain visible, with no automatic rollback. Buffered work may drain on resumption, and failures can leave an instance suspended. Confirmed resumption does not guarantee incident-free execution, process completion, or immediate subscription readiness.
+
+Human summaries, previews and verbose per-key facts use configured INFO logging; quiet and WARN suppress them. Failures use one compact ERROR record, while prompts stay plain configured stderr. JSON emits one stdout envelope retaining ordered partial results, submission/confirmation evidence and original failure exits. JSON requires dry-run, auto-confirm or automation and excludes verbose. Keys-only previews list planned keys; execution lists accepted keys, including accepted-but-unconfirmed failures. Keys alone do not prove resumption. Quiet preserves requested machine output and errors; JSON takes precedence over keys-only. HTTP diagnostics use redacted DEBUG independently of verbose.
+
+Add `--tree` to discover each selected instance and its descendants, merge overlaps, and resume only observed SUSPENDED members. Selecting a child includes its subtree without ancestors or siblings. Discovery traverses active and terminal parents before filtering; independently suspended descendants remain eligible. Every other state is recorded as excluded, without mutation or an already-resumed success claim.
+
+```bash
+./c8volt resume pi --key <process-instance-key> --tree --dry-run
+./c8volt resume pi --key <parent-key>,<child-key> --tree --auto-confirm --json
+printf '%s\n' "$PARENT" "$CHILD" | ./c8volt resume pi --tree --auto-confirm --no-wait -
+```
+
+Tree execution and preview require read/search permissions in addition to submission/confirmation permissions when those operations are used. Preview reports selected, discovered, suspended-target and excluded counts. Failed or incomplete discovery stops before approval or mutation. A complete plan with no eligible targets succeeds without prompts, activity or submission, including with no-wait: JSON contains `items: []` and `plan.targetKeys: []`, keys-only is zero bytes, and quiet suppresses informational summaries.
+
+For nonempty execution, one approval names the expanded eligible count. Execution uses those frozen keys without rediscovery, and JSON retains the original `plan.requestedKeys`, `plan.instances` classifications and `plan.targetKeys` alongside per-target outcomes. Discovery is advisory: state races can cause authoritative rejection. The scope is not atomic, and there is no rollback or parent-before-child execution guarantee. The existing limit is up to 1,000 direct children per parent lookup, not a whole-tree cap; coverage beyond that limit is not guaranteed, and descendants created after discovery may be omitted. No-wait skips confirmation reads, not discovery.
 
 ### Suspend Explicit Process Instances
 

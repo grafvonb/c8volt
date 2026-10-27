@@ -2102,3 +2102,41 @@ func (unfinishedInstanceAPI) ValidateProcessInstanceSuspension() error { return 
 func (unfinishedInstanceAPI) SuspendProcessInstance(context.Context, string, ...services.CallOption) (d.ProcessInstanceSuspensionResult, error) {
 	return d.ProcessInstanceSuspensionResult{}, d.ErrUnsupported
 }
+
+// ValidateProcessInstanceResumption keeps unrelated legacy fixtures explicitly unsupported.
+func (cleanupEligibilityProcessInstanceAPI) ValidateProcessInstanceResumption() error {
+	return d.ErrUnsupported
+}
+
+// ValidateProcessInstanceResumption keeps unrelated legacy fixtures explicitly unsupported.
+func (workerPreviewProcessInstanceAPI) ValidateProcessInstanceResumption() error {
+	return d.ErrUnsupported
+}
+
+// ValidateProcessInstanceResumption keeps unrelated legacy fixtures explicitly unsupported.
+func (tenantEvidenceProcessInstanceAPI) ValidateProcessInstanceResumption() error {
+	return d.ErrUnsupported
+}
+
+// ValidateProcessInstanceResumption keeps unrelated legacy fixtures explicitly unsupported.
+func (unfinishedInstanceAPI) ValidateProcessInstanceResumption() error { return d.ErrUnsupported }
+
+// ResumeProcessInstance prevents accidental mutation through unrelated legacy fixtures.
+func (unfinishedInstanceAPI) ResumeProcessInstance(context.Context, string, ...services.CallOption) (d.ProcessInstanceResumptionResult, error) {
+	return d.ProcessInstanceResumptionResult{}, d.ErrUnsupported
+}
+
+// ResumeProcessInstance prevents accidental mutation through unrelated legacy fixtures.
+func (cleanupEligibilityProcessInstanceAPI) ResumeProcessInstance(context.Context, string, ...services.CallOption) (d.ProcessInstanceResumptionResult, error) {
+	return d.ProcessInstanceResumptionResult{}, d.ErrUnsupported
+}
+
+// ResumeProcessInstance prevents accidental mutation through unrelated legacy fixtures.
+func (workerPreviewProcessInstanceAPI) ResumeProcessInstance(context.Context, string, ...services.CallOption) (d.ProcessInstanceResumptionResult, error) {
+	return d.ProcessInstanceResumptionResult{}, d.ErrUnsupported
+}
+
+// ResumeProcessInstance prevents accidental mutation through unrelated legacy fixtures.
+func (tenantEvidenceProcessInstanceAPI) ResumeProcessInstance(context.Context, string, ...services.CallOption) (d.ProcessInstanceResumptionResult, error) {
+	return d.ProcessInstanceResumptionResult{}, d.ErrUnsupported
+}

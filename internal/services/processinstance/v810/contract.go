@@ -16,6 +16,10 @@ import (
 
 // API describes the process-instance operations implemented by the native v8.10 adapter.
 type API interface {
+	// ValidateProcessInstanceResumption checks mutation capability without I/O.
+	ValidateProcessInstanceResumption() error
+	// ResumeProcessInstance resumes exactly one key, confirming unless NoWait is set.
+	ResumeProcessInstance(ctx context.Context, key string, opts ...services.CallOption) (d.ProcessInstanceResumptionResult, error)
 	// ValidateProcessInstanceSuspension checks mutation capability without I/O.
 	ValidateProcessInstanceSuspension() error
 	// SuspendProcessInstance suspends exactly one key, confirming unless NoWait is set.
@@ -48,6 +52,8 @@ type API interface {
 
 // GenProcessInstanceClientCamunda captures the generated Camunda calls used by the v8.10 process-instance service.
 type GenProcessInstanceClientCamunda interface {
+	// ResumeProcessInstanceWithResponse submits resumption for exactly one supplied key.
+	ResumeProcessInstanceWithResponse(ctx context.Context, processInstanceKey camundav810.ProcessInstanceKey, body camundav810.ResumeProcessInstanceJSONRequestBody, reqEditors ...camundav810.RequestEditorFn) (*camundav810.ResumeProcessInstanceResponse, error)
 	// SuspendProcessInstanceWithResponse submits suspension for exactly one supplied key.
 	SuspendProcessInstanceWithResponse(ctx context.Context, processInstanceKey camundav810.ProcessInstanceKey, body camundav810.SuspendProcessInstanceJSONRequestBody, reqEditors ...camundav810.RequestEditorFn) (*camundav810.SuspendProcessInstanceResponse, error)
 	CancelProcessInstanceWithResponse(ctx context.Context, processInstanceKey string, body camundav810.CancelProcessInstanceJSONRequestBody, reqEditors ...camundav810.RequestEditorFn) (*camundav810.CancelProcessInstanceResponse, error)

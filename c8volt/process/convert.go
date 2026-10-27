@@ -1028,3 +1028,37 @@ func fromDomainProcessInstanceSuspensionPlan(plan d.ProcessInstanceSuspensionPla
 func fromDomainProcessInstanceSuspensionPlanItem(item d.ProcessInstanceSuspensionPlanItem) ProcessInstanceSuspensionPlanItem {
 	return ProcessInstanceSuspensionPlanItem{Key: item.Key, ObservedState: State(item.ObservedState), Classification: ProcessInstanceSuspensionPlanClassification(item.Classification)}
 }
+
+// fromDomainResumptionResult mechanically preserves submission and observation evidence.
+func fromDomainResumptionResult(r d.ProcessInstanceResumptionResult) ResumptionResult {
+	return ResumptionResult{
+		Key: r.Key, Status: ResumptionStatus(r.Status),
+		Submission: ResumptionSubmission(r.Submission), Confirmation: ResumptionConfirmation(r.Confirmation),
+		StatusCode: r.StatusCode, HasObservation: r.HasObservation,
+		LastObservedState: State(r.LastObservedState), SuspendedDate: r.SuspendedDate, Error: r.Error,
+	}
+}
+
+// fromDomainResumptionResults copies items and preserves an empty JSON array.
+func fromDomainResumptionResults(r d.ProcessInstanceResumptionResults) ResumptionResults {
+	out := ResumptionResults{Items: make([]ResumptionResult, len(r.Items))}
+	for i, item := range r.Items {
+		out.Items[i] = fromDomainResumptionResult(item)
+	}
+	return out
+}
+
+// fromDomainProcessInstanceResumptionPlan copies all slices, retaining non-nil
+// successful arrays and the zero plan on failure without interpreting observations.
+func fromDomainProcessInstanceResumptionPlan(plan d.ProcessInstanceResumptionPlan) ProcessInstanceResumptionPlan {
+	return ProcessInstanceResumptionPlan{
+		RequestedKeys: slices.Clone(plan.RequestedKeys),
+		Instances:     toolx.MapSlice(plan.Instances, fromDomainProcessInstanceResumptionPlanItem),
+		TargetKeys:    slices.Clone(plan.TargetKeys),
+	}
+}
+
+// fromDomainProcessInstanceResumptionPlanItem maps planning facts, never execution evidence.
+func fromDomainProcessInstanceResumptionPlanItem(item d.ProcessInstanceResumptionPlanItem) ProcessInstanceResumptionPlanItem {
+	return ProcessInstanceResumptionPlanItem{Key: item.Key, ObservedState: State(item.ObservedState), Classification: ProcessInstanceResumptionPlanClassification(item.Classification)}
+}

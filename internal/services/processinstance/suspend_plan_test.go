@@ -26,8 +26,8 @@ func (s suspensionPlanStub) DescendantsResult(ctx context.Context, key string, o
 	return s.descendants(ctx, key, opts...)
 }
 
-// suspensionTraversal builds complete ordered observations without deriving state from preview.
-func suspensionTraversal(keys typex.Keys, states ...d.State) traversal.Result {
+// planTraversal builds complete ordered observations without deriving state from preview.
+func planTraversal(keys typex.Keys, states ...d.State) traversal.Result {
 	r := traversal.Result{Mode: traversal.ModeDescendants, StartKey: keys[0], RootKey: keys[0], Outcome: traversal.OutcomeComplete, Keys: append([]string(nil), keys...), Chain: map[string]d.ProcessInstance{}}
 	for i, key := range keys {
 		r.Chain[key] = d.ProcessInstance{Key: key, State: states[i]}
@@ -42,9 +42,9 @@ func TestProcessInstanceSuspensionPlanScope(t *testing.T) {
 	keys := suspensionKeys(5)
 	for _, childFirst := range []bool{false, true} {
 		t.Run(fmt.Sprint(childFirst), func(t *testing.T) {
-			parent := suspensionTraversal(keys, d.StateCompleted, d.StateActive, d.StateSuspended, d.StateActive, d.State("FUTURE"))
+			parent := planTraversal(keys, d.StateCompleted, d.StateActive, d.StateSuspended, d.StateActive, d.State("FUTURE"))
 			parent.Keys = append(parent.Keys, keys[1]) // Repeated traversal keys never duplicate targets.
-			child := suspensionTraversal(keys[1:4], d.StateSuspended, d.StateSuspended, d.StateActive)
+			child := planTraversal(keys[1:4], d.StateSuspended, d.StateSuspended, d.StateActive)
 			selected := typex.Keys{" " + keys[0] + "\n", keys[1], keys[0]}
 			wantSeeds, wantCalls, wantOrder := typex.Keys{keys[0], keys[1]}, typex.Keys{keys[0]}, keys
 			wantTargets := typex.Keys{keys[1], keys[3]}
@@ -191,9 +191,9 @@ func TestProcessInstanceSuspensionPlanFailedDiscovery(t *testing.T) {
 			}}, descendants: func(_ context.Context, key string, _ ...services.CallOption) (traversal.Result, error) {
 				calls++
 				if calls == 1 {
-					return suspensionTraversal(keys[:1], d.StateActive), nil
+					return planTraversal(keys[:1], d.StateActive), nil
 				}
-				r := suspensionTraversal(keys[1:], d.StateActive, d.StateSuspended)
+				r := planTraversal(keys[1:], d.StateActive, d.StateSuspended)
 				switch mode {
 				case "forbidden":
 					wantErr = d.ErrForbidden
@@ -254,7 +254,7 @@ func TestProcessInstanceSuspensionPlanIneligible(t *testing.T) {
 		require.True(t, services.ApplyCallOptions(opts).DryRun)
 		return suspensionItem(key, true), nil
 	}}, descendants: func(context.Context, string, ...services.CallOption) (traversal.Result, error) {
-		return suspensionTraversal(keys, states...), nil
+		return planTraversal(keys, states...), nil
 	}}
 	plan, err := PlanProcessInstanceSuspension(context.Background(), api, keys[:1], services.WithDryRun())
 	require.NoError(t, err)

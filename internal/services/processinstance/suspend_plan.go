@@ -10,7 +10,6 @@ import (
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/services"
 	"github.com/grafvonb/c8volt/internal/services/common"
-	"github.com/grafvonb/c8volt/internal/services/processinstance/traversal"
 	"github.com/grafvonb/c8volt/typex"
 )
 
@@ -54,7 +53,7 @@ func PlanProcessInstanceSuspension(ctx context.Context, api API, keys typex.Keys
 		if err != nil {
 			return d.ProcessInstanceSuspensionPlan{}, fmt.Errorf("plan process-instance suspension: %w", err)
 		}
-		if err := validateSuspensionTraversal(seed, result); err != nil {
+		if err := validateDescendantPlanTraversal(seed, result, "suspension"); err != nil {
 			return d.ProcessInstanceSuspensionPlan{}, err
 		}
 		for _, key := range result.Keys {
@@ -73,35 +72,6 @@ func PlanProcessInstanceSuspension(ctx context.Context, api API, keys typex.Keys
 		return d.ProcessInstanceSuspensionPlan{}, err
 	}
 	return plan, nil
-}
-
-// validateSuspensionTraversal rejects incomplete scope and missing or mismatched
-// observations, including duplicate members already observed by an earlier seed.
-func validateSuspensionTraversal(seed string, result traversal.Result) error {
-	if result.Outcome == traversal.OutcomePartial || result.Outcome == traversal.OutcomeUnresolved {
-		return fmt.Errorf("%w: suspension planning requires complete descendant discovery", d.ErrPrecondition)
-	}
-	if result.Outcome != traversal.OutcomeComplete || result.Mode != traversal.ModeDescendants || result.StartKey != seed || result.RootKey != seed || len(result.MissingAncestors) != 0 {
-		return fmt.Errorf("%w: invalid suspension descendant scope", d.ErrMalformedResponse)
-	}
-	foundSeed := false
-	for _, key := range result.Keys {
-		normalized, err := common.NormalizeProcessInstanceSuspensionKeys(typex.Keys{key})
-		if err != nil || normalized[0] != key {
-			return fmt.Errorf("%w: invalid discovered process-instance key", d.ErrMalformedResponse)
-		}
-		instance, ok := result.Chain[key]
-		if !ok || instance.Key != key {
-			return fmt.Errorf("%w: missing or mismatched process-instance observation", d.ErrMalformedResponse)
-		}
-		if key == seed {
-			foundSeed = true
-		}
-	}
-	if !foundSeed {
-		return fmt.Errorf("%w: descendant scope omits selected process instance", d.ErrMalformedResponse)
-	}
-	return nil
 }
 
 // classifySuspensionPlanItem keeps known observations and normalizes unknown states;
