@@ -72,6 +72,7 @@ INTEGRATION_CLI_COMMON_TARGETS := \
 	integration-cli-common-preflight \
 	integration-cli-common-examples
 INTEGRATION_CLI_FOCUSED_TARGETS := \
+	integration-cli-process-lifecycle \
 	integration-cli-batch \
 	integration-cli-tenants
 INTEGRATION_TEST_TARGETS := \
@@ -215,6 +216,9 @@ integration-cli-batch: integration-test-confirm ## Run focused Camunda 8.10 batc
 
 integration-cli-tenants: integration-test-confirm ## Run focused logical and physical tenant boundary validation.
 	$(C8VOLT_IT_GO_TEST) $(C8VOLT_IT_GO_TEST_FLAGS) -run '^(TestLogicalTenantFamily|TestPhysicalTenantFamily)$$' -count=1 -timeout=$(C8VOLT_IT_REAL_STATE_TIMEOUT)
+
+integration-cli-process-lifecycle: integration-test-confirm ## Run focused 8.10.4 suspend/resume lifecycle integration tests.
+	$(C8VOLT_IT_GO_TEST) $(C8VOLT_IT_GO_TEST_FLAGS) -run '^TestProcessInstanceLifecycle$$' -count=1 -timeout=$(C8VOLT_IT_TIMEOUT)
 
 integration-cli-get: integration-test-confirm ## Run destructive CLI integration tests for get commands.
 	$(C8VOLT_IT_GO_TEST) $(C8VOLT_IT_GO_TEST_FLAGS) -run TestGetFamily -count=1 -timeout=$(C8VOLT_IT_TIMEOUT)
