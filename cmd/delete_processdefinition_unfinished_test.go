@@ -28,14 +28,22 @@ func runDefinitionDeleteTerminal(t *testing.T, args []string, destination string
 	raw, err := json.Marshal(args)
 	require.NoError(t, err)
 	path := filepath.Join(t.TempDir(), "stderr")
-	result := testx.NewCmdTerminalRunner().Run(t, testx.CmdTerminalRunRequest{ScopeTestName: "TestDefinitionDeleteTerminalProcess", Env: map[string]string{"C8VOLT_DEFINITION_ARGS": string(raw), "C8VOLT_DEFINITION_DESTINATION": destination, "C8VOLT_DEFINITION_STDERR": path}, Exchanges: exchanges})
+	env := map[string]string{"C8VOLT_DEFINITION_ARGS": string(raw), "C8VOLT_DEFINITION_DESTINATION": destination, "C8VOLT_DEFINITION_STDERR": path}
+	if len(exchanges) > 0 {
+		env["C8VOLT_DEFINITION_MIRROR_STDERR"] = "1"
+	}
+	result := testx.NewCmdTerminalRunner().Run(t, testx.CmdTerminalRunRequest{ScopeTestName: "TestDefinitionDeleteTerminalProcess", Env: env, Exchanges: exchanges})
 	if !result.Supported {
 		t.Skip(result.UnsupportedReason)
 	}
 	captured, err := os.ReadFile(path)
 	require.NoError(t, err)
-	require.Equal(t, string(captured), result.Stderr, "diagnostics must use configured or inherited command writer")
-	return result.Stdout, result.Stderr, result.Err
+	if len(exchanges) > 0 {
+		require.Equal(t, string(captured), result.Stderr, "diagnostics must use configured or inherited command writer")
+	} else {
+		require.Empty(t, result.Stderr, "diagnostics must use configured or inherited command writer")
+	}
+	return result.Stdout, string(captured), result.Err
 }
 
 // TestDefinitionDeleteTerminalProcess runs definition-delete or purge arguments
@@ -61,7 +69,12 @@ func TestDefinitionDeleteTerminalProcess(t *testing.T) {
 	require.NoError(t, err)
 	capture, err := os.Create(os.Getenv("C8VOLT_DEFINITION_STDERR"))
 	require.NoError(t, err)
-	writer := io.MultiWriter(os.Stderr, capture)
+	// Only mirror prompts needed by the interactive runner. An asynchronous log
+	// can otherwise be interrupted by os.Exit between the two MultiWriter writes.
+	var writer io.Writer = capture
+	if os.Getenv("C8VOLT_DEFINITION_MIRROR_STDERR") == "1" {
+		writer = io.MultiWriter(os.Stderr, capture)
+	}
 	if os.Getenv("C8VOLT_DEFINITION_DESTINATION") == "configured" {
 		command.SetErr(writer)
 	} else {
