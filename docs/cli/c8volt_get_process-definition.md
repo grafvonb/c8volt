@@ -24,6 +24,8 @@ Backend definition deletion does not automatically cancel or resume unfinished i
 
 --stat includes exact-version statistics and requires Camunda 8.8 or newer. On Camunda 8.10, rows append su: for suspended instances, with a dash for an observed zero; active counts remain separate. JSON statistics include a suspended count and suspendedCountSupported availability flag; a supported zero omits the count. Camunda 8.8/8.9 omit the suspended token and fields because the count is unavailable. With --stat --watch, suspended count and availability changes update the row and clear stale values. Empty searches suppress the human summary under --quiet while preserving requested JSON and keys-only results.
 
+A DRAINING definition can show [ac:- cp:- cx:- inc:- su:2]: zero active instances does not mean draining is complete while two suspended instances remain. Resuming an instance does not itself finish draining or reverse the deletion request. Lifecycle and statistics are separate backend observations, not an atomic snapshot; zero or unavailable counts never determine lifecycle.
+
 --watch repeats the lookup indefinitely by default until interrupted or retries are exhausted. --watch-timeout sets an optional session limit (0 = unlimited), independently of --timeout for individual HTTP requests and the retry-loop backoff timeout. Individual request timeouts are retried while the session remains active. It starts immediately; --watch-interval controls subsequent checks. Without a selector it observes all visible definitions. Each successful refresh logs a timestamped INFO summary, including when nothing changed, compared with the previous successfully displayed refresh, for example: 16:42:08.123 INFO 1 updated, 1 new, 0 removed. Rows end with * for changed definitions and + for new definitions; unchanged rows have no suffix; on supported terminal output, changed displayed values are also bold. Bold falls back to plain markers when TERM is empty or dumb, NO_COLOR is set, or output is redirected. The first successful refresh establishes an unmarked baseline. Failed refreshes do not replace that baseline, and an unchanged success clears prior markers and bold. Removed definitions contribute to the summary without leaving stale rows. --watch cannot be combined with --json, --keys-only, --xml, --quiet, or --automation.
 
 ```
@@ -39,6 +41,8 @@ c8volt get process-definition [flags]
   ./c8volt get process-definition --watch --watch-interval 2s
   ./c8volt get process-definition --watch --watch-timeout 10m
   ./c8volt get process-definition --key <process-definition-key> --json
+  ./c8volt get process-definition --key <process-definition-key> --stat
+  ./c8volt get process-definition --stat --json
   ./c8volt get process-definition --key <process-definition-key> --xml
 ```
 

@@ -53,7 +53,7 @@ No independent foundational work is needed. The model and converter work belongs
 
 **Independent test**: Fake-backed lookup and listing with `--stat` in human and JSON modes preserve lifecycle, all counts and availability indicators, mixed-row alignment, and the exact existing request behavior.
 
-- [ ] T002 [US2] Complete lifecycle/statistics acceptance using `cmd/get_processdefinition_suspended_test.go`, `cmd/cmd_views_processdefinition_test.go`, `internal/services/processdefinition/v810/service_test.go`, and `c8volt/process/convert_test.go`; reuse the T001 renderer and extend `cmd/get_processdefinition.go`/`README.md` examples and regenerated `docs/cli/`/`docs/index.md` for draining with suspended work; run the affected targeted checks in `quickstart.md`.
+- [x] T002 [US2] Complete lifecycle/statistics acceptance using `cmd/get_processdefinition_suspended_test.go`, `cmd/cmd_views_processdefinition_test.go`, `internal/services/processdefinition/v810/service_test.go`, and `c8volt/process/convert_test.go`; reuse the T001 renderer and extend `cmd/get_processdefinition.go`/`README.md` examples and regenerated `docs/cli/`/`docs/index.md` for draining with suspended work; run the affected targeted checks in `quickstart.md`.
 
 **T002 acceptance and implementation**:
 

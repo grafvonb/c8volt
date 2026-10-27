@@ -572,3 +572,23 @@ func TestProcessDefinitionLifecycleColumns(t *testing.T) {
 	items[0].State, items[2].State = "", ""
 	require.Equal(t, []string{"1 orders v3", "2 orders v2 [ac:1 cp:- cx:-]", "3 orders v1 [ac:- cp:2 cx:-]"}, formatProcessDefinitionFlatRows(items))
 }
+
+// TestProcessDefinitionLifecycleStatisticsAvailability retains lifecycle with
+// missing statistics and omits unsupported counts without losing mixed alignment.
+func TestProcessDefinitionLifecycleStatisticsAvailability(t *testing.T) {
+	t.Parallel()
+	items := []process.ProcessDefinition{
+		{Key: "1", BpmnProcessId: "orders", ProcessVersion: 1, State: "DRAINING"},
+		{Key: "2", BpmnProcessId: "orders", ProcessVersion: 1, State: "DRAINING", Statistics: &process.ProcessDefinitionStatistics{}},
+		{Key: "3", BpmnProcessId: "orders", ProcessVersion: 1, State: "future-State", Statistics: &process.ProcessDefinitionStatistics{Suspended: 2, SuspendedCountSupported: true, IncidentCountSupported: true}},
+		{Key: "4", BpmnProcessId: "orders", ProcessVersion: 1, Statistics: &process.ProcessDefinitionStatistics{Suspended: 2, SuspendedCountSupported: true, IncidentCountSupported: true}},
+	}
+	require.Equal(t, []string{
+		"1 orders v1 DRAINING",
+		"2 orders v1 DRAINING     [ac:- cp:- cx:-]",
+		"3 orders v1 future-State [ac:- cp:- cx:- inc:- su:2]",
+		"4 orders v1              [ac:- cp:- cx:- inc:- su:2]",
+	}, formatProcessDefinitionFlatRows(items))
+	require.Equal(t, "1 orders v1 DRAINING", oneLinePD(items[0]))
+	require.Equal(t, "2 orders v1 DRAINING [ac:- cp:- cx:-]", oneLinePD(items[1]))
+}

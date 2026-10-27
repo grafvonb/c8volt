@@ -6,7 +6,7 @@ nav_exclude: true
 has_toc: true
 ---
 
-> Generated from build `c8volt v4.4.0-226-gf3d3efe4-dirty`, commit `f3d3efe4`, built `2026-10-27T17:02:14Z` | Supported Camunda 8 versions: 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.3 (final)
+> Generated from build `c8volt v4.4.0-227-gd6826e88-dirty`, commit `d6826e88`, built `2026-10-27T17:13:00Z` | Supported Camunda 8 versions: 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.3 (final)
 
 <img src="./logo/c8volt_logo_transparent_w_shadow_400x244.png" alt="c8volt logo" />
 
@@ -46,6 +46,14 @@ Smoke-test cleanup tracks every process definition returned by the fixture deplo
 Backend definition deletion does not automatically cancel or resume unfinished instances. This differs from the existing `delete pd --force` workflow, which explicitly cancels unfinished instances before deletion. Displaying lifecycle does not change deletion-completion checks.
 
 `get process-definition --stat --json` keeps active instances in `active` and, on Camunda 8.10, reports suspended instances separately in `suspended`. The additive `suspendedCountSupported` flag is true even when the suspended count is zero and omitted. Camunda 8.8/8.9 omit both suspended fields. Statistics are published only after all required observations succeed; independently sampled state buckets can differ during transitions. Requests without `--stat` do not acquire these counts. Human lookup/list rows and `--stat --watch` append `su:` on 8.10, using `su:-` for an observed zero; older versions omit the token because the count is unavailable. Watch detects suspended-only changes, ACTIVE-to-SUSPENDED transitions, and availability changes, clearing stale counts and highlighting changed values with the existing terminal rules. Empty definition searches suppress the human summary under `--quiet` while preserving explicitly requested JSON and keys-only results.
+
+To inspect a draining definition and its counts, use `get pd --key <process-definition-key> --stat`, or `get pd --stat --json` for structured results. For example, a Camunda 8.10 row can read:
+
+```text
+2251799813685250 tenant orders v2 DRAINING [ac:- cp:12 cx:- inc:- su:2]
+```
+
+Here zero active instances does not mean draining is complete: two suspended unfinished instances remain. Resuming an instance does not itself finish draining or reverse the deletion request. Lifecycle and statistics are separate backend observations, not an atomic snapshot. Zero or unavailable counts never determine lifecycle, and available counts do not fill in missing lifecycle state.
 
 `delete process-definition` checks ACTIVE and SUSPENDED together on Camunda 8.10. Without `--force`, unfinished work blocks deletion. With `--force`, c8volt discovers the combined scope, cancels its existing roots, verifies that no unfinished instances remain, then deletes instance history and definitions. Active counts and keys remain active-only; previews add suspended counts/support and authoritative unfinished counts/keys. `--dry-run` submits no mutations. `--no-wait` skips final deletion confirmation but retains required drain checks; `--no-state-check` preserves the existing read/cancellation bypass. Camunda 8.9 retains active-only cleanup; full definition-history deletion remains unsupported on 8.8. These observations do not freeze new starts or eliminate exporter lag. `ops purge all-process-definitions` uses the same unfinished preflight and forced cleanup, with frozen definition candidates, deduplicated roots, and additive suspended/unfinished report counts. Purge has no state-check bypass flag. Failed purge results retain partial evidence in one JSON envelope; human errors are compact aggregates.
 

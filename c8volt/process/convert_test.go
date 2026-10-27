@@ -116,3 +116,40 @@ func TestConvertProcessDefinitionLifecycle(t *testing.T) {
 		})
 	}
 }
+
+// TestConvertProcessDefinitionLifecycleStatistics preserves independent state
+// when statistics are absent or unavailable and never exports internal evidence.
+func TestConvertProcessDefinitionLifecycleStatistics(t *testing.T) {
+	t.Parallel()
+	for _, state := range []string{"DRAINING", " future-State ", ""} {
+		for _, stats := range []*d.ProcessDefinitionStatistics{
+			nil,
+			{},
+			{Active: 0, Suspended: 2, SuspendedCountSupported: true, Completed: 7, Canceled: 9, Incidents: 1, IncidentCountSupported: true, Unfinished: new(int64(2))},
+		} {
+			source := d.ProcessDefinition{Key: "123", State: state, Statistics: stats}
+			for _, got := range []ProcessDefinition{fromDomainProcessDefinition(source), fromDomainProcessDefinitions([]d.ProcessDefinition{source}).Items[0]} {
+				require.Equal(t, state, got.State)
+				raw, err := json.Marshal(got)
+				require.NoError(t, err)
+				var object map[string]any
+				require.NoError(t, json.Unmarshal(raw, &object))
+				if state == "" {
+					require.NotContains(t, object, "state")
+				} else {
+					require.Equal(t, state, object["state"])
+				}
+				if stats == nil {
+					require.Nil(t, got.Statistics)
+					require.NotContains(t, object, "statistics")
+					continue
+				}
+				require.Equal(t, &ProcessDefinitionStatistics{
+					Active: stats.Active, Completed: stats.Completed, Canceled: stats.Canceled, Incidents: stats.Incidents,
+					IncidentCountSupported: stats.IncidentCountSupported, Suspended: stats.Suspended, SuspendedCountSupported: stats.SuspendedCountSupported,
+				}, got.Statistics)
+				require.NotContains(t, string(raw), "unfinished")
+			}
+		}
+	}
+}
