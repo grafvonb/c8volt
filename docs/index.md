@@ -6,7 +6,7 @@ nav_exclude: true
 has_toc: true
 ---
 
-> Generated from build `c8volt v4.4.0-209-g67b4b237-dirty`, commit `67b4b237`, built `2026-10-26T16:12:47Z` | Supported Camunda 8 versions: 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.3 (final)
+> Generated from build `c8volt v4.4.0-214-g97a86faa-dirty`, commit `97a86faa`, built `2026-10-26T18:48:00Z` | Supported Camunda 8 versions: 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.3 (final)
 
 <img src="./logo/c8volt_logo_transparent_w_shadow_400x244.png" alt="c8volt logo" />
 
@@ -353,7 +353,7 @@ Generated reference: [get process-instance](./cli/c8volt_get_process-instance).
 
 ### Suspend Explicit Process Instances
 
-Use [suspend process-instance](./cli/c8volt_suspend_process-instance) (`suspend pi`) on Camunda 8.10 to pause ACTIVE instances by explicit key. Repeated/comma-separated `--key` values and newline-separated stdin through `-` are merged in first-input order and deduplicated. Each selected parent or child remains independent; relatives are not discovered or suspended. Explicit keys use backend authorization without discovery tenant filtering.
+Use [suspend process-instance](./cli/c8volt_suspend_process-instance) (`suspend pi`) on Camunda 8.10 to pause ACTIVE instances by explicit key. Repeated/comma-separated `--key` values and newline-separated stdin through `-` are merged in first-input order and deduplicated. Without `--tree`, each selected parent or child remains independent; relatives are not discovered or suspended. Explicit keys use backend authorization without discovery tenant filtering.
 
 ```bash
 ./c8volt suspend pi --key <process-instance-key>
@@ -361,11 +361,27 @@ Use [suspend process-instance](./cli/c8volt_suspend_process-instance) (`suspend 
 printf '%s\n' "$INSTANCE_A" "$INSTANCE_B" | ./c8volt suspend pi --auto-confirm --no-wait --json -
 ```
 
-When authorization is enabled, suspension requires `SUSPEND_PROCESS_INSTANCE` on `PROCESS_DEFINITION`; default confirmation also requires permission to read the instance. There is no mandatory preflight read. Only an accepted submission followed by an observed `SUSPENDED` state confirms suspension. Already-suspended, terminal, terminating, missing or unauthorized targets remain failures when rejected; a later state cannot override rejection or uncertain submission.
+When authorization is enabled, suspension requires `SUSPEND_PROCESS_INSTANCE` on `PROCESS_DEFINITION`; default confirmation also requires permission to read the instance. Exact-key mode has no mandatory preflight read. Only an accepted submission followed by an observed `SUSPENDED` state confirms suspension. Already-suspended, terminal, terminating, missing or unauthorized targets remain failures when rejected; a later state cannot override rejection or uncertain submission.
 
-Default confirmation is bounded by `--backoff-timeout` (two minutes by default, with configuration overrides); `--timeout` bounds each HTTP request. `--no-wait` skips confirmation reads and reports acceptance. `--dry-run` validates capability and explicit keys without reads, writes or prompts and does not establish eligibility, including with `--no-wait`. Missing keys and empty stdin are input errors. Use `--auto-confirm` or `--automation` for unattended execution. `--workers`, `--no-worker-limit` and `--fail-fast` use the existing collection controls; fail-fast cannot undo accepted work.
+Default confirmation is bounded by `--backoff-timeout` (two minutes by default, with configuration overrides); `--timeout` bounds each HTTP request. `--no-wait` skips confirmation reads and reports acceptance. Without `--tree`, `--dry-run` validates capability and explicit keys without reads, writes or prompts and does not establish eligibility, including with `--no-wait`. Missing keys and empty stdin are input errors. Use `--auto-confirm` or `--automation` for unattended execution. `--workers`, `--no-worker-limit` and `--fail-fast` use the existing collection controls; fail-fast cannot undo accepted work.
 
 Human summaries, dry-run summaries, and verbose outcome details use the configured INFO logger on stderr; logger level and format apply. Confirmed runs report suspended instances; no-wait runs report submitted requests without confirmation. Prompts use plain stderr and failures use one compact configured ERROR record. JSON and keys-only results use stdout. JSON emits one envelope retaining ordered per-key submission, confirmation, observation and error evidence, including partial failures and unstarted work. JSON execution requires auto-confirm or automation, and JSON cannot be combined with verbose. Keys-only preview lists selected keys; execution lists accepted keys, including accepted-but-unconfirmed failures, and retains the failure exit. Keys alone do not prove suspension. Quiet preserves requested JSON/keys and required errors. Verbose shows safe per-key facts; HTTP diagnostics require `--debug` or configured DEBUG independently of verbose.
+
+Add `--tree` to discover each selected instance and its descendants, merge overlapping subtrees, and suspend only observed ACTIVE members. Selecting a child includes its descendants without escalating to ancestors or siblings. Discovery continues through SUSPENDED and terminal parents. Already-suspended instances are counted separately; terminal, unknown, and other non-ACTIVE states are excluded without mutation or new acceptance/confirmation claims.
+
+```sh
+./c8volt suspend pi --key <process-instance-key> --tree --dry-run
+./c8volt suspend pi --key <parent-key>,<child-key> --tree --auto-confirm --json
+printf '%s\n' "$PARENT" "$CHILD" | ./c8volt suspend pi --tree --auto-confirm --no-wait -
+```
+
+Tree mode adds instance read/search permission requirements, including during dry-run and no-wait. Dry-run reads the hierarchy and previews eligible keys without writes or approval. A successfully discovered scope with no active targets succeeds without approval or mutation, even with `--no-wait`; JSON retains `items: []`, keys-only emits zero bytes, and quiet suppresses informational logs. A discovery failure prevents all mutations.
+
+Before approval, the compact plan reports selected seeds, discovered scope, active targets, already-suspended instances, and exclusions. The confirmation names the expanded active count. Execution uses only those frozen keys and final output retains the same planning counts. Tree JSON adds `plan` alongside `items`; exact-key JSON is unchanged. The plan contains `requestedKeys`, classified `instances` with their `observedState`, and ordered `targetKeys`. Only eligible targets have preview or mutation items. Keys-only preview emits eligible keys; actual execution still emits accepted keys, retaining failure exits for unconfirmed work.
+
+Tree discovery retains the existing limit of up to 1,000 direct children per parent lookup, not a whole-tree cap; coverage beyond that limit is not guaranteed. The frozen scope is not atomic: states may change before submission, and descendants created after discovery may be omitted. There is no second discovery, rollback, or parent-before-child execution guarantee. No-wait skips post-submission confirmation reads, not discovery reads.
+
+Go callers can use `process.API.PlanProcessInstanceSuspension` for the same read-only plan. Check its error before treating empty `TargetKeys` as a no-op; after any required approval, pass a copy of those keys to the existing `SuspendProcessInstances` collection method. Planning observations never establish mutation acceptance or confirmation. Custom implementations of the public `process.API` interface must implement the new planner method; existing mutation method signatures and exact-key result models are unchanged.
 
 Suspension pauses engine execution while retaining runtime state and resources; it does not cancel the instance, interrupt already-running worker code or undo external effects. Job completion/failure attempts are rejected during suspension, and affected jobs may execute again after resumption. Backpressure can delay or reject suspension. It is not an instantaneous emergency stop. Use existing `get pi` and `expect pi --state suspended` to inspect the state; resumption is outside this command's scope. Camunda 8.8/8.9 reject suspension, including previews, before requests.
 

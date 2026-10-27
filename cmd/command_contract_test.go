@@ -3151,9 +3151,18 @@ func TestSuspendProcessInstanceMetadata(t *testing.T) {
 		{Name: RenderModeJSON.String(), Supported: true, MachinePreferred: true},
 		{Name: RenderModeKeysOnly.String(), Supported: true},
 	}, cap.OutputModes)
-	for _, name := range []string{"key", "dry-run", "no-wait", "workers", "no-worker-limit", "fail-fast"} {
+	for _, name := range []string{"key", "tree", "dry-run", "no-wait", "workers", "no-worker-limit", "fail-fast"} {
 		require.NotNil(t, suspendProcessInstanceCmd.Flags().Lookup(name))
 	}
+	treeFlag := suspendProcessInstanceCmd.Flags().Lookup("tree")
+	require.Equal(t, "false", treeFlag.DefValue)
+	require.Equal(t, "bool", treeFlag.Value.Type())
+	require.Empty(t, treeFlag.Shorthand)
+	for _, text := range []string{"--tree", "descendants", "ancestors or siblings", "read/search permissions", "already-suspended and terminal parents", "frozen scope", "state races", "1,000 direct children per parent lookup", "not atomic", "created after discovery", "no active targets"} {
+		require.Contains(t, suspendProcessInstanceCmd.Long, text)
+	}
+	require.Contains(t, suspendProcessInstanceCmd.Example, "--tree --dry-run")
+	require.Contains(t, suspendProcessInstanceCmd.Example, "--tree --auto-confirm")
 	for _, name := range []string{"force", "no-state-check", "state", "bpmn-process-id", "batch-size", "limit"} {
 		require.Nil(t, suspendProcessInstanceCmd.Flags().Lookup(name))
 	}

@@ -59,7 +59,9 @@ func TestSuspendProcessInstanceOutput(t *testing.T) {
 							outcome, status, submission, confirmation = "succeeded", "preview", "not_submitted", "not_requested"
 						}
 						require.Equal(t, outcome, env["outcome"])
-						items := requireJSONItems(t, requireJSONObject(t, env["payload"])["items"], 2)
+						payload := requireJSONObject(t, env["payload"])
+						require.NotContains(t, payload, "plan", "tree metadata must remain opt-in")
+						items := requireJSONItems(t, payload["items"], 2)
 						for _, item := range items {
 							r := requireJSONObject(t, item)
 							require.Equal(t, status, r["status"])
@@ -108,6 +110,12 @@ func TestSuspendProcessInstanceOutput(t *testing.T) {
 // TestSuspendProcessInstanceInvalidInputAndCapability rejects selection/mode errors and old
 // adapters before requests; empty stdin remains an input error in every result mode.
 func TestSuspendProcessInstanceInvalidInputAndCapability(t *testing.T) {
+	t.Run("exact", func(t *testing.T) { testSuspendProcessInstanceInvalidInputAndCapability(t, false) })
+	t.Run("tree", func(t *testing.T) { testSuspendProcessInstanceInvalidInputAndCapability(t, true) })
+}
+
+// testSuspendProcessInstanceInvalidInputAndCapability applies the same execution assertions to both selection modes.
+func testSuspendProcessInstanceInvalidInputAndCapability(t *testing.T, tree bool) {
 	for _, tc := range []struct {
 		name, stdin, version string
 		flags                []string
@@ -132,7 +140,7 @@ func TestSuspendProcessInstanceInvalidInputAndCapability(t *testing.T) {
 			if v == "" {
 				v = "8.10"
 			}
-			out, stderr, err := runUpdateUserTaskCommand(t, writeTestConfigForVersion(t, f.server.URL, v), tc.stdin, append([]string{"suspend", "pi"}, tc.flags...)...)
+			out, stderr, err := runUpdateUserTaskCommand(t, writeTestConfigForVersion(t, f.server.URL, v), tc.stdin, suspensionModeArgs(append([]string{"suspend", "pi"}, tc.flags...), tree)...)
 			assertUserTaskCompletionExit(t, err, tc.code)
 			calls, _, _ := f.snapshot()
 			require.Empty(t, calls)
@@ -153,7 +161,7 @@ func TestSuspendProcessInstanceInvalidInputAndCapability(t *testing.T) {
 			t.Run(fmt.Sprintf("empty/%q/%v", stdin, mode), func(t *testing.T) {
 				f := newSuspensionFixture(t)
 				args := append([]string{"suspend", "pi", "-", "--auto-confirm", "--no-wait"}, mode...)
-				out, stderr, err := runUpdateUserTaskCommand(t, completionLogConfig(t, f.server.URL, "plain-time", "info"), stdin, args...)
+				out, stderr, err := runUpdateUserTaskCommand(t, completionLogConfig(t, f.server.URL, "plain-time", "info"), stdin, suspensionModeArgs(args, tree)...)
 				assertUserTaskCompletionExit(t, err, 2)
 				calls, _, _ := f.snapshot()
 				require.Empty(t, calls)
@@ -178,6 +186,12 @@ func TestSuspendProcessInstanceInvalidInputAndCapability(t *testing.T) {
 // TestSuspendProcessInstancePartialEvidence retains accepted-but-unconfirmed, rejected and
 // unknown submission evidence, original exits and keys through execution, never reconciling rejection.
 func TestSuspendProcessInstancePartialEvidence(t *testing.T) {
+	t.Run("exact", func(t *testing.T) { testSuspendProcessInstancePartialEvidence(t, false) })
+	t.Run("tree", func(t *testing.T) { testSuspendProcessInstancePartialEvidence(t, true) })
+}
+
+// testSuspendProcessInstancePartialEvidence applies the same execution assertions to both selection modes.
+func testSuspendProcessInstancePartialEvidence(t *testing.T, tree bool) {
 	for _, tc := range []struct {
 		name                       string
 		reject                     int
@@ -199,7 +213,7 @@ func TestSuspendProcessInstancePartialEvidence(t *testing.T) {
 	} {
 		for _, mode := range []string{"json", "keys", "human"} {
 			t.Run(tc.name+"/"+mode, func(t *testing.T) {
-				f := newSuspensionFixture(t)
+				f := newSuspensionModeFixture(t, tree)
 				f.reject[suspendKeyB] = tc.reject
 				f.readStatus[suspendKeyB] = tc.readStatus
 				if tc.state != "" {
@@ -215,7 +229,7 @@ func TestSuspendProcessInstancePartialEvidence(t *testing.T) {
 				if mode == "keys" {
 					args = append(args, "--keys-only")
 				}
-				out, stderr, err := runUpdateUserTaskCommand(t, completionLogConfig(t, f.server.URL, "plain-time", "info"), "", args...)
+				out, stderr, err := runUpdateUserTaskCommand(t, completionLogConfig(t, f.server.URL, "plain-time", "info"), "", suspensionModeArgs(args, tree)...)
 				assertUserTaskCompletionExit(t, err, tc.code)
 				_, writes, reads := f.snapshot()
 				require.Equal(t, map[string]int{suspendKeyA: 1, suspendKeyB: 1}, writes)
@@ -229,7 +243,9 @@ func TestSuspendProcessInstancePartialEvidence(t *testing.T) {
 					env := requireSingleJSONObjectDocument(t, out)
 					require.NotEqual(t, "succeeded", env["outcome"])
 					require.NotEqual(t, "accepted", env["outcome"])
-					items := requireJSONItems(t, requireJSONObject(t, env["payload"])["items"], 2)
+					payload := requireJSONObject(t, env["payload"])
+					requireSuspensionModePlan(t, payload, tree, []string{suspendKeyA, suspendKeyB})
+					items := requireJSONItems(t, payload["items"], 2)
 					first, last := requireJSONObject(t, items[0]), requireJSONObject(t, items[1])
 					require.Equal(t, "accepted", first["submission"])
 					require.Equal(t, tc.submission, last["submission"])
@@ -276,6 +292,9 @@ func TestSuspendProcessInstancePartialEvidence(t *testing.T) {
 						}
 						summary += "; failed 1"
 						wantRecords = append([][2]string{{"INFO", summary}}, wantRecords...)
+						if tree {
+							wantRecords = append([][2]string{{"INFO", suspensionTreeTestApproval(2)}, {"INFO", suspensionTreeTestScope(2)}}, wantRecords...)
+						}
 					}
 					require.Equal(t, wantRecords, bulkCompletionDiagnosticRecords(t, stderr, "plain-time"))
 				}
@@ -346,10 +365,16 @@ func TestSuspendProcessInstanceFailFastSummary(t *testing.T) {
 // TestSuspendProcessInstanceWriterFailure proves one write attempt and preserved operation exit
 // even when the configured result destination fails after partial output.
 func TestSuspendProcessInstanceWriterFailure(t *testing.T) {
+	t.Run("exact", func(t *testing.T) { testSuspendProcessInstanceWriterFailure(t, false) })
+	t.Run("tree", func(t *testing.T) { testSuspendProcessInstanceWriterFailure(t, true) })
+}
+
+// testSuspendProcessInstanceWriterFailure applies the same execution assertions to both selection modes.
+func testSuspendProcessInstanceWriterFailure(t *testing.T, tree bool) {
 	for _, phase := range []string{"preview", "accepted", "rejected"} {
 		for _, mode := range []string{"json", "keys"} {
 			t.Run(phase+"/"+mode, func(t *testing.T) {
-				f := newSuspensionFixture(t)
+				f := newSuspensionModeFixture(t, tree)
 				if phase == "rejected" {
 					f.reject[suspendKeyB] = 409
 				}
@@ -363,7 +388,7 @@ func TestSuspendProcessInstanceWriterFailure(t *testing.T) {
 				if mode == "keys" {
 					args = append(args, "--keys-only")
 				}
-				encoded, err := json.Marshal(args)
+				encoded, err := json.Marshal(suspensionModeArgs(args, tree))
 				require.NoError(t, err)
 				out, stderr, err := testx.RunCmdSubprocessInDirWithSeparateOutputs(t, "TestSuspendProcessInstanceWriterProcess", "", map[string]string{"C8VOLT_SUSPEND_ARGS": string(encoded)}, "")
 				code := 1

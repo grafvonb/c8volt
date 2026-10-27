@@ -77,9 +77,11 @@ func (r DryRunPIKeyExpansion) HasActionableResults() bool {
 	return len(r.Roots) > 0 || len(r.Collected) > 0
 }
 
-// API defines public process operations. Custom implementations must include both
-// single and collection suspension methods; existing callers remain compatible.
+// API defines public process operations. Custom implementations must include the
+// suspension planner and single/collection executors; existing callers remain compatible.
 type API interface {
+	// PlanProcessInstanceSuspension freezes selected subtrees and active targets without mutation.
+	PlanProcessInstanceSuspension(ctx context.Context, keys types.Keys, opts ...options.FacadeOption) (ProcessInstanceSuspensionPlan, error)
 	// SuspendProcessInstance targets one explicit key and confirms SUSPENDED unless NoWait is set.
 	SuspendProcessInstance(ctx context.Context, key string, opts ...options.FacadeOption) (SuspensionResult, error)
 	// SuspendProcessInstances returns ordered per-key evidence even when some workflows fail.
