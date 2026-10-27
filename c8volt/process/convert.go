@@ -1028,3 +1028,22 @@ func fromDomainProcessInstanceSuspensionPlan(plan d.ProcessInstanceSuspensionPla
 func fromDomainProcessInstanceSuspensionPlanItem(item d.ProcessInstanceSuspensionPlanItem) ProcessInstanceSuspensionPlanItem {
 	return ProcessInstanceSuspensionPlanItem{Key: item.Key, ObservedState: State(item.ObservedState), Classification: ProcessInstanceSuspensionPlanClassification(item.Classification)}
 }
+
+// fromDomainResumptionResult mechanically preserves submission and observation evidence.
+func fromDomainResumptionResult(r d.ProcessInstanceResumptionResult) ResumptionResult {
+	return ResumptionResult{
+		Key: r.Key, Status: ResumptionStatus(r.Status),
+		Submission: ResumptionSubmission(r.Submission), Confirmation: ResumptionConfirmation(r.Confirmation),
+		StatusCode: r.StatusCode, HasObservation: r.HasObservation,
+		LastObservedState: State(r.LastObservedState), SuspendedDate: r.SuspendedDate, Error: r.Error,
+	}
+}
+
+// fromDomainResumptionResults copies items and preserves an empty JSON array.
+func fromDomainResumptionResults(r d.ProcessInstanceResumptionResults) ResumptionResults {
+	out := ResumptionResults{Items: make([]ResumptionResult, len(r.Items))}
+	for i, item := range r.Items {
+		out.Items[i] = fromDomainResumptionResult(item)
+	}
+	return out
+}

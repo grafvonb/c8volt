@@ -835,3 +835,74 @@ const (
 	// ProcessInstanceSuspensionPlanExcluded identifies every other observed state.
 	ProcessInstanceSuspensionPlanExcluded ProcessInstanceSuspensionPlanClassification = "excluded"
 )
+
+// ResumptionResult separates submission proof from observation of
+// the selected instance. Error is machine evidence, never human diagnostic text.
+type ResumptionResult struct {
+	Key          string                 `json:"key"`
+	Status       ResumptionStatus       `json:"status"`
+	Submission   ResumptionSubmission   `json:"submission"`
+	Confirmation ResumptionConfirmation `json:"confirmation"`
+	// StatusCode is the last valid submission status, never a read status.
+	StatusCode int `json:"statusCode,omitempty"`
+	// HasObservation distinguishes no observation from an observed UNKNOWN state.
+	HasObservation    bool  `json:"hasObservation"`
+	LastObservedState State `json:"lastObservedState,omitempty"`
+	// SuspendedDate comes only from the latest successful matching observation.
+	SuspendedDate string `json:"suspendedDate,omitempty"`
+	Error         string `json:"error,omitempty"`
+}
+
+// ResumptionStatus describes workflow disposition, not engine state.
+type ResumptionStatus string
+
+const (
+	// ResumptionStatusPreview records a local preview without I/O.
+	ResumptionStatusPreview ResumptionStatus = "preview"
+	// ResumptionStatusAccepted records acceptance without confirmation.
+	ResumptionStatusAccepted ResumptionStatus = "accepted"
+	// ResumptionStatusConfirmed requires accepted submission and observed ACTIVE or COMPLETED.
+	ResumptionStatusConfirmed ResumptionStatus = "confirmed"
+	// ResumptionStatusFailed records a failure other than timeout or interruption.
+	ResumptionStatusFailed ResumptionStatus = "failed"
+	// ResumptionStatusTimedOut retains evidence when a deadline or attempt bound ends work.
+	ResumptionStatusTimedOut ResumptionStatus = "timed_out"
+	// ResumptionStatusInterrupted records caller cancellation without inferring rejection.
+	ResumptionStatusInterrupted ResumptionStatus = "interrupted"
+	// ResumptionStatusNotAttempted identifies work that was not started.
+	ResumptionStatusNotAttempted ResumptionStatus = "not_attempted"
+)
+
+// ResumptionSubmission retains cumulative evidence across submission retries.
+type ResumptionSubmission string
+
+const (
+	// ResumptionSubmissionNotSubmitted means no request was dispatched.
+	ResumptionSubmissionNotSubmitted ResumptionSubmission = "not_submitted"
+	// ResumptionSubmissionAccepted requires a valid documented acceptance response.
+	ResumptionSubmissionAccepted ResumptionSubmission = "accepted"
+	// ResumptionSubmissionRejected requires explicit rejection and no earlier ambiguity.
+	ResumptionSubmissionRejected ResumptionSubmission = "rejected"
+	// ResumptionSubmissionUnknown retains ambiguity until a valid acceptance occurs.
+	ResumptionSubmissionUnknown ResumptionSubmission = "unknown"
+)
+
+// ResumptionConfirmation records observation independently of submission.
+type ResumptionConfirmation string
+
+const (
+	// ResumptionConfirmationNotRequested covers previews, no-wait, skipped and unaccepted work.
+	ResumptionConfirmationNotRequested ResumptionConfirmation = "not_requested"
+	// ResumptionConfirmationUnconfirmed means accepted work awaits proof of ACTIVE or COMPLETED.
+	ResumptionConfirmationUnconfirmed ResumptionConfirmation = "unconfirmed"
+	// ResumptionConfirmationConfirmed requires a matching ACTIVE or COMPLETED observation after acceptance.
+	ResumptionConfirmationConfirmed ResumptionConfirmation = "confirmed"
+)
+
+// ResumptionResults retains one item per normalized key in input
+// order, including skipped work and partial failures. Callers initialize Items
+// to an empty array when there are no selected keys. Accepted-but-unconfirmed
+// failures count as both accepted and failed; those counts deliberately overlap.
+type ResumptionResults struct {
+	Items []ResumptionResult `json:"items"`
+}

@@ -1301,3 +1301,13 @@ func (stubProcessInstanceService) ValidateProcessInstanceResumption() error { re
 func (stubProcessInstanceService) ResumeProcessInstance(context.Context, string, ...services.CallOption) (d.ProcessInstanceResumptionResult, error) {
 	return d.ProcessInstanceResumptionResult{}, d.ErrUnsupported
 }
+
+// ResumeProcessInstance rejects resumption in unrelated resource fixtures.
+func (stubProcessAPI) ResumeProcessInstance(context.Context, string, ...options.FacadeOption) (process.ResumptionResult, error) {
+	return process.ResumptionResult{}, ferr.ErrUnsupported
+}
+
+// ResumeProcessInstances rejects resumption in unrelated resource fixtures.
+func (stubProcessAPI) ResumeProcessInstances(context.Context, typex.Keys, int, ...options.FacadeOption) (process.ResumptionResults, error) {
+	return process.ResumptionResults{Items: []process.ResumptionResult{}}, ferr.ErrUnsupported
+}
