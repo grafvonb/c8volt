@@ -116,3 +116,10 @@ User requested a smaller #348 while retaining human/JSON state, minimal watch be
 - Shortened source help/README and regenerated CLI docs/homepage. Condensed spec, plan, tasks and quickstart; retained all 18 requirement IDs, six success criteria and completed task IDs. Detailed contracts, research, consolidation history and Ralph records remain available.
 - Validation: clean-environment `go test ./c8volt/process -run 'ProcessDefinition' -count=1` passed. The first command run found two help-wording regressions; restored the existing concise phrases, then `go test ./cmd -run 'ProcessDefinition' -count=1` passed. `make docs-content` succeeded (macOS make emitted a temporary-directory warning and used `/tmp`). Applied `gofmt`; checked local feature links, coverage/task IDs and `git diff --check`.
 - Only command help changed in production Go; no executable behavior changed. No full suite, service rerun or integration compile was needed for this test/prose cleanup. No live tests, target discovery, provisioning or real Camunda access occurred. Previous real-engine coverage limitations remain.
+
+---
+## CI help-contract correction — 2026-10-28
+
+GitHub's `TestAllCommandHelpFocusesOnActions` rejected `stdout` in the process-definition help. The earlier `ProcessDefinition` test filter did not select this cross-command check. Removed the stream terminology from source help while retaining terminal highlighting and plain redirected-output guidance; regenerated CLI docs. No runtime behavior or test assertions changed.
+
+Passed the isolated help checks: `go test ./cmd -run 'TestAllCommandHelpFocusesOnActions|TestCommandCapabilityForCommand_ProcessDefinitionWatchMetadata|TestProcessDefinitionSelectorValidationHelpContract' -count=1` in a clean environment. `make docs-content`, `gofmt` and `git diff --check` passed. Added the missing help-check command to the quickstart. No live tests or full-suite rerun was needed for this prose correction.

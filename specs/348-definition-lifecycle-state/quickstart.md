@@ -33,6 +33,13 @@ After source help or README changes, regenerate CLI references and the docs home
 env -i PATH="$PATH" HOME="$HOME" GOENV=off GOFLAGS= make docs-content
 ```
 
+Help changes also need the cross-command prose and metadata checks, which the `ProcessDefinition` pattern alone does not select completely:
+
+```sh
+env -i PATH="$PATH" HOME="$HOME" GOENV=off GOFLAGS= \
+  go test ./cmd -run 'TestAllCommandHelpFocusesOnActions|TestCommandCapabilityForCommand_ProcessDefinitionWatchMetadata|TestProcessDefinitionSelectorValidationHelpContract' -count=1
+```
+
 Run `gofmt` on touched Go files and `git diff --check`; validate changed local links. Record actual results in [progress.md](progress.md). Do not rerun runtime tests for subsequent prose-only edits or commits. Broaden to `make test` only for wider runtime/concurrency impact or unresolved focused failures.
 
 The existing draining integration observer is unchanged by the simplification. If its source changes later, compile it with `go test -tags=integration -c ./integration/cli -o <temporary-path>/cli.test`; do not execute the binary, TestMain or integration Make targets. No new no-wait scenarios or live fixture matrix are needed. Original compile-only evidence is retained in progress; real-engine transition timing remains unverified.

@@ -26,7 +26,7 @@ Lifecycle and --stat counts are independent: suspended instances can keep a defi
 
 --watch repeats the lookup indefinitely by default until interrupted or retries are exhausted. It refreshes immediately, then at --watch-interval. --watch-timeout limits the session (0 = unlimited), independently of --timeout for HTTP requests and retry backoff. Request timeouts are retried while the session is active. Without a selector it observes all visible definitions.
 
-Rows stay on stdout. A trailing * marks changed definitions and + marks new ones; changed displayed values are also bold when stdout is a terminal, TERM is set and not dumb, and NO_COLOR is unset. Lifecycle and statistics changes count once per row. The first refresh is unmarked; later refreshes compare with the last successfully displayed result. Failures preserve that baseline, omitted values disappear, and unchanged refreshes clear markers. Returned DELETED rows remain visible until absent from a successful refresh.
+A trailing * marks changed definitions and + marks new ones; changed displayed values are also bold on supported terminals when TERM is set and not dumb, and NO_COLOR is unset. Redirected output uses plain markers. Lifecycle and statistics changes count once per row. The first refresh is unmarked; later refreshes compare with the last successfully displayed result. Failures preserve that baseline, omitted values disappear, and unchanged refreshes clear markers. Returned DELETED rows remain visible until absent from a successful refresh.
 
 Refresh summaries and verbose timing use the configured logger at INFO; slow-refresh warnings use WARN. Suppressing INFO does not suppress rows. --watch cannot be combined with --json, --keys-only, --xml, --quiet, or --automation.
 
