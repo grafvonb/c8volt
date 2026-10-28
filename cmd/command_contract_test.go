@@ -1215,7 +1215,7 @@ func TestCommandCapabilityForCommand_UserTaskReadContract(t *testing.T) {
 }
 
 // TestCommandCapabilityForCommand_UpdateUserTaskContract verifies aliases,
-// mutation metadata, automation, and both variable/completion controls.
+// mutation metadata, automation, and the four separate user-task operations.
 func TestCommandCapabilityForCommand_UpdateUserTaskContract(t *testing.T) {
 	root := Root()
 	resetCommandTreeFlags(root)
@@ -1231,7 +1231,7 @@ func TestCommandCapabilityForCommand_UpdateUserTaskContract(t *testing.T) {
 		{Name: RenderModeJSON.String(), Supported: true, MachinePreferred: true},
 		{Name: RenderModeKeysOnly.String(), Supported: true},
 	}, capability.OutputModes)
-	for _, name := range []string{"key", "complete", "vars", "vars-file", "dry-run", "no-wait", "workers", "no-worker-limit", "fail-fast"} {
+	for _, name := range []string{"key", "complete", "assign", "unassign", "allow-override", "vars", "vars-file", "dry-run", "no-wait", "workers", "no-worker-limit", "fail-fast"} {
 		require.True(t, hasFlagContractNamed(capability.Flags, name), "missing --%s", name)
 	}
 	require.False(t, flagUpdateUserTaskComplete)
@@ -1248,6 +1248,10 @@ func TestCommandCapabilityForCommand_UpdateUserTaskContract(t *testing.T) {
 	require.Contains(t, updateUserTaskCmd.Flags().Lookup("no-wait").Usage, "skip variable-update verification")
 	require.Contains(t, updateUserTaskCmd.Flags().Lookup("no-wait").Usage, "incompatible with --complete")
 	require.Contains(t, updateCmd.Long, "successful response confirms completion")
+	for _, text := range []string{"--assign", "--unassign", "--allow-override", "no task reads", "acceptance unknown", "zero requests"} {
+		require.Contains(t, updateUserTaskCmd.Long, text)
+	}
+	require.Contains(t, updateCmd.Long, "protects existing assignees")
 	for _, alias := range capability.Aliases {
 		resolved, remaining, err := root.Find([]string{"update", alias})
 		require.NoError(t, err)
@@ -2708,7 +2712,7 @@ func TestGetJobAndUpdateJobHelp_DocumentsDiscoveryAndMutationGuards(t *testing.T
 	}, nil)
 
 	output = assertCommandHelpOutput(t, []string{"update"}, []string{
-		"Update element-local, process-instance or user-task variables, complete user tasks, or update job retries, timeouts, and worker outcomes",
+		"Update element-local, process-instance or user-task variables, complete, assign or unassign user tasks, or update job retries, timeouts, and worker outcomes",
 		"job retries, timeouts, and worker outcomes",
 		"plan and confirm updates",
 		"./c8volt update job --key <job-key> --retries 3 --dry-run",
@@ -2853,10 +2857,10 @@ func TestIncidentCommandHelpOmitsLegacyElementTerminology(t *testing.T) {
 }
 
 // TestUpdateProcessInstanceHelp_DocumentsVariableUpdateDiscovery preserves root-variable
-// guidance when the parent also advertises element-local updates and task completion.
+// guidance when the parent also advertises element-local updates and all task mutations.
 func TestUpdateProcessInstanceHelp_DocumentsVariableUpdateDiscovery(t *testing.T) {
 	output := assertCommandHelpOutput(t, []string{"update"}, []string{
-		"Update element-local, process-instance or user-task variables, complete user tasks, or update job retries, timeouts, and worker outcomes",
+		"Update element-local, process-instance or user-task variables, complete, assign or unassign user tasks, or update job retries, timeouts, and worker outcomes",
 		"Camunda 8.8 or newer",
 		"Requires Camunda 8.8 or newer",
 		"./c8volt update process-instance --key <process-instance-key> --vars",

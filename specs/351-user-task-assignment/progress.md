@@ -124,3 +124,41 @@ Started: 2026-10-28 16:41:53
 - New mode/input declarations are isolated in focused input files and formatting in the view file; the base command has only the tracker rename. All touched Go files were formatted and `git diff --check` passed. No user-facing flags/help/output behavior changed, so CLI docs regeneration remains with T004.
 - Stopped at the independently verifiable T003 boundary. No full repository race run or real-engine validation is claimed; T004 retains final full-suite validation and real-engine listener/patch behavior remains unverified.
 ---
+
+---
+## Iteration 4 - 2026-10-28 17:36
+**Work Unit**: US1 — T004 completed: protected assignment/unassignment CLI delivery, execution/output/terminal coverage and documentation; feature complete
+**Tasks Completed**:
+- [x] T004: Register both modes and explicit override, freeze local intent, preview/approve once, delegate to the public APIs, preserve partial results and original exits, validate configured diagnostics and terminal behavior, and regenerate documentation.
+**Tasks Remaining in Work Unit**: 0; all feature tasks are complete.
+**Commit**: This work-unit commit
+**Files Changed**:
+- README.md
+- cmd/cmd_views_usertask_assignment.go
+- cmd/command_contract_test.go
+- cmd/update.go
+- cmd/update_usertask.go
+- cmd/update_usertask_assignment.go
+- cmd/update_usertask_assignment_command_test.go
+- cmd/update_usertask_assignment_execution_test.go
+- cmd/update_usertask_assignment_logging_test.go
+- cmd/update_usertask_assignment_output_test.go
+- cmd/update_usertask_assignment_terminal_test.go
+- docs/cli/c8volt_update.md
+- docs/cli/c8volt_update_user-task.md
+- docs/cli/command-tree.md
+- docs/index.md
+- specs/351-user-task-assignment/progress.md
+- specs/351-user-task-assignment/ralph-memory.md
+- specs/351-user-task-assignment/tasks.md
+**Learnings**:
+- Both native modes are exposed through the existing aliases with protected default-false override. The base command owns flags/dispatch; the focused assignment file owns approval/runner behavior; the view file owns plan/report formatting. Backend scheduling, retry, evidence and all three version adapters remain below the facade.
+- Mutation-only fakes reject all reads and unrelated operations. Actual command checks cover all aliases and key sources, supported versions, opaque identity/default/explicit override, tenant bypass, invalid/late inputs and flag presence/false semantics, JSON guardrails, nonterminal behavior, local preview, sequential/bounded workers, continue-on-error/fail-fast, caller cancellation, and waiting for native response.
+- Output checks cover both actions' success/preview/partial/all-failed reports, ordered successful keys and zero-byte keys output, quiet+machine precedence, one JSON envelope plus EOF, original error classes/no-error-code overrides and partial rendering failures. Machine error evidence is retained; normal human diagnostics never interpolate it.
+- Actual command logger tests assert exact INFO/ERROR records and ordering, empty human stdout, active plain-time/JSON formats, configured/inherited destinations through root activity-writer plumbing, WARN/quiet suppression, one bounded grouped error, DEBUG via flag/configuration and redaction. Replacing configured logging with a direct print or raw aggregate would fail framing/exact-record and leak assertions. Retry tests preserve the same INFO output with or without DEBUG.
+- Real Darwin terminal stdin tests separately capture results and configured/inherited prompt/logger destinations. Single and bulk prompts prove escaped identities, default-false and explicit-true replacement policy, one approval, yes/default-no/decline/EOF behavior, redirected stdout, and prompt-free invalid/preview/auto-confirm/automation paths. No new terminal coverage was skipped.
+- TDD selection tests initially failed on unknown assignment/unassignment flags, then passed after wiring. A terminal expectation was corrected to include the established invalid-flag-value prefix. Targeted assignment/metadata checks passed (9.428s); extra guardrail/response-wait checks passed (1.027s); broad user-task/read/variable/contract regressions passed (26.798s), all via the quickstart clean-environment helper.
+- The first isolated `make test` run exercised the full race suite and failed only three help assertions: two stale update-group descriptions and action-focused help's rejection of presentation wording. Runtime/race checks otherwise passed. Corrected source help/expectations, regenerated docs, and passed `go test ./cmd -run 'Test.*(Help|Contract|Capability)' -race -count=1` (16.415s). The final isolated `make test` passed; rerunning closed an actual failed quality gate, rather than repeating a successful suite for prose edits.
+- `make docs-content` regenerated the update-group and user-task references, command tree and README-derived homepage. All touched Go files are formatted; `git diff --check` passed. Changed output-boundary review found no direct human diagnostics or raw error interpolation: the only assignment direct result write is selected keys; approval uses the existing plain prompt helper; native errors flow through facade conversion into the shared envelope or bounded logger diagnostic and original exit exactly once.
+- Live integration tags, inherited application credentials/settings and subprocess helper activation were disabled. Reviewed untagged integration-path unit helpers use only local data and test-owned fakes. No live Camunda environment was discovered, provisioned or used; actual listener execution and patch-specific engine behavior remain unverified.
+---

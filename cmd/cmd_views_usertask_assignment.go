@@ -276,3 +276,18 @@ func userTaskAssignmentFailureReason(item task.UserTaskAssignmentResult) string 
 		return "request failed"
 	}
 }
+
+// renderUserTaskAssignmentPlan exposes the frozen local selection before approval
+// without claiming eligibility or submission. Machine and quiet modes omit it.
+func renderUserTaskAssignmentPlan(cmd *cobra.Command, input userTaskAssignmentInput) {
+	if flagQuiet || pickMode() == RenderModeJSON || pickMode() == RenderModeKeysOnly {
+		return
+	}
+	renderAttachedTenantContext(cmd)
+	renderHumanLine(cmd, "plan: %s", formatUserTaskAssignmentIntent(newUserTaskAssignmentPreview(input)))
+	if len(input.Keys) > 1 {
+		for _, key := range input.Keys {
+			renderHumanLine(cmd, "selected user-task %s", key)
+		}
+	}
+}
