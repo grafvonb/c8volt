@@ -36,6 +36,7 @@ type processDefinitionDisplay struct {
 	tenantID                string
 	bpmnProcessID           string
 	version                 string
+	state                   string
 	statisticsPresent       bool
 	active                  string
 	completed               string
@@ -52,6 +53,7 @@ type processDefinitionChangedFields struct {
 	tenantID                bool
 	bpmnProcessID           bool
 	version                 bool
+	state                   bool
 	statisticsPresent       bool
 	active                  bool
 	completed               bool
@@ -64,7 +66,7 @@ type processDefinitionChangedFields struct {
 
 // any reports whether an existing definition changed any displayed value.
 func (f processDefinitionChangedFields) any() bool {
-	return f.tenantID || f.bpmnProcessID || f.version || f.statisticsPresent ||
+	return f.tenantID || f.bpmnProcessID || f.version || f.state || f.statisticsPresent ||
 		f.active || f.completed || f.canceled || f.incidentCountSupported || f.incidents ||
 		f.suspendedCountSupported || f.suspended
 }
@@ -94,15 +96,14 @@ const (
 
 // processDefinitionWatchView renders one complete refresh and returns the
 // first write failure so unseen candidates never become the baseline. The INFO
-// summary uses configured stderr; row suffixes and results use stdout.
+// summary uses the configured logger; row suffixes and results use stdout.
 func processDefinitionWatchView(cmd *cobra.Command, candidate processDefinitionWatchCandidate, bold bool) error {
 	if cmd == nil {
 		return nil
 	}
 	w := cmd.OutOrStdout()
 	message := fmt.Sprintf("%d updated, %d new, %d removed", candidate.updated, candidate.new, candidate.removed)
-	handler := logging.NewPlainHandler(cmd.ErrOrStderr(), slog.LevelInfo).WithTimestampLayout(logging.PlainTimeTimestampLayout)
-	if err := handler.Handle(cmd.Context(), slog.NewRecord(time.Now(), slog.LevelInfo, message, 0)); err != nil {
+	if err := renderProcessDefinitionWatchSummary(cmd, message); err != nil {
 		return err
 	}
 	for i, line := range formatProcessDefinitionWatchRows(candidate.rows, bold) {
@@ -114,6 +115,20 @@ func processDefinitionWatchView(cmd *cobra.Command, candidate processDefinitionW
 		}
 	}
 	return writeProcessDefinitionWatchLine(w, "found: %d", len(candidate.rows))
+}
+
+// renderProcessDefinitionWatchSummary uses the configured handler directly so an
+// enabled write failure prevents baseline commit. Filtered INFO is a successful
+// no-op; missing logger context must not silently select a fallback destination.
+func renderProcessDefinitionWatchSummary(cmd *cobra.Command, message string) error {
+	log, err := logging.FromContext(cmd.Context())
+	if err != nil {
+		return err
+	}
+	if !log.Enabled(cmd.Context(), slog.LevelInfo) {
+		return nil
+	}
+	return log.Handler().Handle(cmd.Context(), slog.NewRecord(time.Now(), slog.LevelInfo, message, 0))
 }
 
 // formatProcessDefinitionWatchRows computes alignment from plain values before
@@ -157,6 +172,8 @@ func formatProcessDefinitionWatchColumn(row processDefinitionWatchRow, columnInd
 	case 3:
 		return formatProcessDefinitionWatchValue(display.version, bold && row.changed.version)
 	case 4:
+		return formatProcessDefinitionWatchValue(display.state, bold && row.changed.state)
+	case 5:
 		return formatProcessDefinitionWatchStatistics(display, row.changed, bold)
 	default:
 		return ""
@@ -229,6 +246,7 @@ func newProcessDefinitionDisplay(it process.ProcessDefinition) processDefinition
 	}
 	display := processDefinitionDisplay{
 		key:           it.Key,
+		state:         it.State,
 		tenantID:      it.TenantId,
 		bpmnProcessID: it.BpmnProcessId,
 		version:       fmt.Sprintf("v%d%s", it.ProcessVersion, vTag),
@@ -253,7 +271,7 @@ func newProcessDefinitionDisplay(it process.ProcessDefinition) processDefinition
 
 // flatRow reconstructs the established ordinary row bytes from owned display values.
 func (d processDefinitionDisplay) flatRow() flatRow {
-	row := flatRow{d.key, d.tenantID, d.bpmnProcessID, d.version}
+	row := flatRow{d.key, d.tenantID, d.bpmnProcessID, d.version, d.state}
 	if d.statisticsPresent {
 		incidentTag := ""
 		if d.incidentCountSupported {
@@ -274,6 +292,7 @@ func (d processDefinitionDisplay) changedFields(previous processDefinitionDispla
 		tenantID:                d.tenantID != previous.tenantID,
 		bpmnProcessID:           d.bpmnProcessID != previous.bpmnProcessID,
 		version:                 d.version != previous.version,
+		state:                   d.state != previous.state,
 		statisticsPresent:       d.statisticsPresent != previous.statisticsPresent,
 		active:                  d.active != previous.active,
 		completed:               d.completed != previous.completed,

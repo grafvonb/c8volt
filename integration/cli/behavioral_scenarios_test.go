@@ -65,7 +65,14 @@ type behaviorScenarioSummary struct {
 
 // TestBehavioralScenarioCatalogCoversConvergenceContract checks the scenario catalog before any cluster mutation.
 func TestBehavioralScenarioCatalogCoversConvergenceContract(t *testing.T) {
-	scenarios := allBehaviorScenarios()
+	// Lifecycle operations need ordered state preparation; their dedicated test
+	// owns preview and confirmed execution instead of the generic seeded runner.
+	scenarios := append(allBehaviorScenarios(), lifecycleBehaviorScenarios()...)
+	requireBehaviorScenarioCatalog(t, scenarios, commandCoverageManifest)
+}
+
+func requireBehaviorScenarioCatalog(t *testing.T, scenarios []behaviorScenario, manifest map[string]coverageEntry) {
+	t.Helper()
 	if len(scenarios) == 0 {
 		t.Fatal("expected behavioral scenarios")
 	}
@@ -90,7 +97,7 @@ func TestBehavioralScenarioCatalogCoversConvergenceContract(t *testing.T) {
 		byPath[scenario.CommandPath] = append(byPath[scenario.CommandPath], scenario)
 	}
 
-	for path, entry := range commandCoverageManifest {
+	for path, entry := range manifest {
 		pathScenarios := byPath[path]
 		if len(pathScenarios) == 0 {
 			t.Fatalf("manifest entry %q has no behavioral scenario", path)

@@ -24,11 +24,13 @@ import (
 // suspendedFixture owns an isolated held dataset and its setup/cleanup evidence.
 // Generated mutations remain setup/cleanup controls; intended resumption coverage uses the CLI.
 type suspendedFixture struct {
-	profile    integrationProfile
-	client     liveBatchClient
-	dataset    volumeDataset
-	resumeKeys map[string]bool
-	records    []evidenceRecord
+	name         string
+	observations int
+	profile      integrationProfile
+	client       liveBatchClient
+	dataset      volumeDataset
+	resumeKeys   map[string]bool
+	records      []evidenceRecord
 }
 
 // requireSuspendedProfile checks the full observed patch before any setup mutation.
@@ -45,16 +47,23 @@ func requireSuspendedProfile(t *testing.T, profile integrationProfile) integrati
 // newSuspendedFixture registers cleanup before seeding so partial setup is auditable.
 func newSuspendedFixture(t *testing.T, profile integrationProfile) *suspendedFixture {
 	t.Helper()
-	profile = requireSuspendedProfile(t, profile)
-	client, err := newLiveBatchClient(profile.Name)
-	require.NoError(t, err)
-	fixture := &suspendedFixture{profile: profile, client: client, resumeKeys: map[string]bool{}}
-	t.Cleanup(func() { fixture.cleanup(t) })
-	fixture.dataset, fixture.records, err = seedIsolatedHeldDataset(t, profile, "suspended", 3)
-	writeDataEvidence(t, "suspended-fixture-"+profile.Name+".json", fixture.dataset)
+	fixture := newSuspendedFixtureBase(t, profile)
+	var err error
+	fixture.dataset, fixture.records, err = seedIsolatedHeldDataset(t, fixture.profile, sanitizeEvidenceName(t.Name()), 3)
+	writeDataEvidence(t, "suspended-fixture-"+fixture.name+".json", fixture.dataset)
 	require.NoError(t, err)
 	require.Len(t, fixture.dataset.PositiveProcessInstanceKeys, 3)
 	require.Len(t, fixture.dataset.PositiveProcessDefinitionKeys, 1)
+	return fixture
+}
+
+func newSuspendedFixtureBase(t *testing.T, profile integrationProfile) *suspendedFixture {
+	t.Helper()
+	profile = requireSuspendedProfile(t, profile)
+	client, err := newLiveBatchClient(profile.Name)
+	require.NoError(t, err)
+	fixture := &suspendedFixture{name: sanitizeEvidenceName(t.Name()), profile: profile, client: client, resumeKeys: map[string]bool{}}
+	t.Cleanup(func() { fixture.cleanup(t) })
 	return fixture
 }
 
@@ -86,7 +95,7 @@ func (f *suspendedFixture) transition(t *testing.T, key string, suspend bool) er
 			status, body = response.StatusCode(), response.Body
 		}
 	}
-	writeDataEvidence(t, fmt.Sprintf("suspended-%s-%s-%s.json", f.profile.Name, operation, key), map[string]any{"operation": operation, "key": key, "status": status, "body": string(body), "transportFailed": err != nil})
+	writeDataEvidence(t, fmt.Sprintf("suspended-%s-%s-%s.json", f.name, operation, key), map[string]any{"operation": operation, "key": key, "status": status, "body": string(body), "transportFailed": err != nil})
 	if err != nil {
 		return err
 	}
@@ -124,7 +133,8 @@ func (f *suspendedFixture) observe(t *testing.T, key, state string, suspendedDat
 			if state == "ACTIVE" && !suspendedDate {
 				delete(f.resumeKeys, key)
 			}
-			writeDataEvidence(t, fmt.Sprintf("suspended-observation-%s-%s-%s.json", f.profile.Name, key, state), last)
+			f.observations++
+			writeDataEvidence(t, fmt.Sprintf("suspended-observation-%s-%03d-%s-%s.json", f.name, f.observations, key, state), last)
 			return last, nil
 		}
 		select {
@@ -138,10 +148,44 @@ func (f *suspendedFixture) observe(t *testing.T, key, state string, suspendedDat
 // run retains separate command streams and exit codes even when an assertion fails.
 func (f *suspendedFixture) run(t *testing.T, name string, args ...string) commandResult {
 	t.Helper()
-	result := runC8VoltForProfile(t, f.profile.Name, "suspended-"+f.profile.Name+"-"+name, args...)
+	result := runC8VoltForProfile(t, f.profile.Name, "suspended-"+f.name+"-"+name, args...)
 	record := commandEvidence(strings.Join(args[:2], " "), name, result, "pass")
 	record.Profile, record.CamundaVersion = f.profile.Name, f.profile.ActualVersion
 	record.DataOwnership = []string{"seeded"}
+	if args[0] == "suspend" || args[0] == "resume" {
+		record.CommandPath = args[0] + " process-instance"
+		record.OutputMode = "json"
+		for _, arg := range args {
+			if strings.HasPrefix(arg, "--") {
+				record.CoveredFlags = append(record.CoveredFlags, strings.SplitN(strings.TrimPrefix(arg, "--"), "=", 2)[0])
+			}
+		}
+		record.VersionBehavior = "observed-8.10.4-before-mutation"
+		record.Preview = slices.Contains(args, "--dry-run")
+		if record.Preview {
+			record.Behavior = behaviorPreview
+		} else if result.Err == nil {
+			// Empty tree success is not a confirmed mutation.
+			var envelope struct {
+				Payload struct {
+					Items []struct {
+						Confirmation string `json:"confirmation"`
+					} `json:"items"`
+				} `json:"payload"`
+			}
+			if json.Unmarshal([]byte(result.Stdout), &envelope) == nil {
+				for _, item := range envelope.Payload.Items {
+					if item.Confirmation == "confirmed" {
+						record.ConfirmedMutation = true
+					}
+				}
+			}
+			record.Behavior = behaviorSuccess
+			if record.ConfirmedMutation {
+				record.Behavior = behaviorConfirmedMutation
+			}
+		}
+	}
 	if result.Err != nil {
 		record.Outcome = "nonzero"
 	}
@@ -156,6 +200,23 @@ func (f *suspendedFixture) cleanup(t *testing.T) {
 	cleanup := cleanupRecord{Profile: f.profile.Name, ProcessInstanceKeys: f.dataset.PositiveProcessInstanceKeys, Attempted: true, Status: "cleaned"}
 	var failures []string
 	for key := range f.resumeKeys {
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		response, err := f.client.generated.GetProcessInstanceWithResponse(ctx, key)
+		cancel()
+		if err != nil || response == nil {
+			failures = append(failures, fmt.Sprintf("inspect owned instance %s before cleanup: %v", key, err))
+			continue
+		}
+		if response.StatusCode() == 404 {
+			continue
+		}
+		if response.JSON200 == nil {
+			failures = append(failures, fmt.Sprintf("inspect owned instance %s before cleanup: HTTP %d", key, response.StatusCode()))
+			continue
+		}
+		if string(response.JSON200.State) != "SUSPENDED" {
+			continue
+		}
 		if err := f.transition(t, key, false); err != nil {
 			failures = append(failures, err.Error())
 			continue
@@ -164,25 +225,26 @@ func (f *suspendedFixture) cleanup(t *testing.T) {
 			failures = append(failures, err.Error())
 		}
 	}
-	if len(failures) == 0 {
-		for _, key := range f.dataset.PositiveProcessDefinitionKeys {
-			result := f.run(t, "cleanup-"+key, "delete", "pd", "--key", key, "--force", "--automation", "--json")
-			if result.Err != nil {
-				failures = append(failures, "delete owned definition "+key+": "+result.Stderr)
-			}
+	// Always attempt owned deletion, even when recovery failed for another key.
+	// A cleanup failure remains evidence; it must not strand unrelated fixtures.
+	for i := len(f.dataset.PositiveProcessDefinitionKeys) - 1; i >= 0; i-- {
+		key := f.dataset.PositiveProcessDefinitionKeys[i]
+		result := f.run(t, "cleanup-"+key, "delete", "pd", "--key", key, "--force", "--automation", "--json")
+		if result.Err != nil {
+			failures = append(failures, "delete owned definition "+key+": "+result.Stderr)
 		}
-		for _, key := range f.dataset.PositiveProcessInstanceKeys {
-			if err := requireProcessInstanceAbsentEventually(t, f.profile, key, 30*time.Second); err != nil {
-				failures = append(failures, err.Error())
-			}
+	}
+	for _, key := range f.dataset.PositiveProcessInstanceKeys {
+		if err := requireProcessInstanceAbsentEventually(t, f.profile, key, 30*time.Second); err != nil {
+			failures = append(failures, err.Error())
 		}
 	}
 	if len(failures) > 0 {
 		cleanup.Status, cleanup.Reason = "cleanup_failed", strings.Join(failures, "; ")
 		t.Errorf("suspended fixture cleanup failed separately from acceptance: %s", cleanup.Reason)
 	}
-	writeJSON(t, "suspended-cleanup-"+f.profile.Name+".json", cleanup)
-	writeEvidenceRecords(t, "suspended-commands-"+f.profile.Name+".json", f.records)
+	writeJSON(t, "suspended-cleanup-"+f.name+".json", cleanup)
+	writeEvidenceRecords(t, "suspended-commands-"+f.name+".json", f.records)
 }
 
 // writeSuspendedRevisionEvidence captures source/provenance without configuration secrets.

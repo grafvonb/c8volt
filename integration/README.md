@@ -81,8 +81,35 @@ recovery, independent of the CLI under test. Cleanup resumes owned instances
 before ordinary deletion. Evidence includes `suspended-revision.json` (Git
 revision, dirty status and unchanged 8.10.3 client provenance), profile and
 command records, raw observations under `data/`, separate streams under `logs/`,
-and `suspended-cleanup-<profile>.json`. Cleanup failures are reported separately.
+and `suspended-cleanup-<test-and-profile>.json`. Cleanup failures are reported separately.
 Use a separate `C8VOLT_IT_WORKDIR` for each invocation.
+
+### Focused suspension/resumption lifecycle
+
+`TestProcessInstanceLifecycle` adds three scenarios on a selected **8.10.4**
+profile: explicit-key round trips with previews and an untouched control,
+exact-key versus mixed-state subtree boundaries with overlap and successful
+empty scopes, and partial backend rejection for both operations. All mutations
+use default waiting; this suite does not add explicit no-wait coverage.
+
+For a separately requested live run against a disposable target, select its
+profile through `C8VOLT_IT_PROFILES` and run `make integration-cli-process-lifecycle`.
+The target retains the integration confirmation gate. Older selected profiles
+are skipped, not counted as lifecycle acceptance; an observed patch other than
+8.10.4 fails before fixture mutation.
+
+The suite reuses held user tasks and deploys only three uniquely renamed BPMN
+models for the nested tree, including rewritten call references. Each scenario
+owns its definitions and instances. It decodes exactly one JSON envelope, checks
+per-key submission/confirmation evidence, and independently polls generated
+reads for state and timestamp presence. Ancestors, siblings and controls are
+checked after changes. Cleanup inspects owned state before resuming suspended
+instances and attempts owned-definition deletion even after a recovery failure.
+Scenario-specific logs and cleanup reports retain separate failures.
+
+Implementation validation must only compile the integration test package and
+run explicitly selected local inventory/catalog checks. Do not execute this
+lifecycle test or its Make target during implementation.
 
 Run the Go all-command integration suite inventory slice:
 
@@ -191,9 +218,10 @@ C8VOLT_IT_PROFILES=dev810 make integration-cli-batch \
 ```
 
 The process-definition scenario accepts a valid null `batchOperation` when
-Camunda defers history deletion. It requires observing `DRAINING` while an owned
-instance is active, then cancels that instance and verifies the definition
-disappears. Rejecting the valid null batch remains a regression failure.
+Camunda defers history deletion. It observes `DRAINING` through bounded `get pd --key <owned-key> --json`
+executions while an owned instance is active. Each observation requires one
+successful envelope, EOF, and the exact owned key. It then cancels that instance
+and independently verifies through the generated API that the definition disappears. Rejecting the valid null batch remains a regression failure.
 Definition disappearance does not independently prove that all associated
 history deletion has completed.
 
@@ -384,13 +412,8 @@ through `C8VOLT_APIS_CAMUNDA_API_BASE_URL`, so fixture setup and CLI operations
 address the same server. The observed server must be **8.10.4 before mutations**.
 The config/profile defaults match the C810 shell wrapper.
 
-Only suspension setup uses the REST API, since there is no public suspend
-command. For authenticated targets, set `C8VOLT_IT_CURL_CONFIG` to a private curl
-configuration containing the required authentication (for example, a bearer
-header or session cookie). Use the same principal as the selected CLI profile;
-the CLI continues to use its configured authentication. Do not put secrets in
-the script or report directory. Without this variable, curl uses no credentials
-and ignores the user's default `.curlrc`.
+Suspension setup uses `suspend pi --auto-confirm --json` and verifies confirmed
+SUSPENDED state. The CLI uses the selected profile's authentication.
 
 Evidence includes separate stdout/stderr, exit codes, JSON snapshots, owned
 keys, `report.md`, and `progress.tsv` under `C8VOLT_IT_WORKDIR` (a fresh temporary

@@ -4,6 +4,7 @@
 package process
 
 import (
+	"encoding/json"
 	"fmt"
 	"testing"
 
@@ -165,4 +166,20 @@ func TestDryRunPIKeyExpansionConversionCopiesTenantEvidence(t *testing.T) {
 		UnknownTargetCount: 1,
 		TargetCount:        3,
 	}, got.TenantEvidence)
+}
+
+// TestProcessDefinitionLifecycleJSON keeps the additive public field optional and open-ended.
+func TestProcessDefinitionLifecycleJSON(t *testing.T) {
+	t.Parallel()
+	for _, state := range []string{"ACTIVE", "DRAINING", "DELETED", " future-State ", ""} {
+		raw, err := json.Marshal(ProcessDefinition{Key: "123", State: state})
+		require.NoError(t, err)
+		var object map[string]any
+		require.NoError(t, json.Unmarshal(raw, &object))
+		if state == "" {
+			require.NotContains(t, object, "state")
+		} else {
+			require.Equal(t, state, object["state"])
+		}
+	}
 }

@@ -48,6 +48,7 @@ does not certify aggregate catalog completeness.
 | --- | --- |
 | `deploy`, `embed`, `run` | Cover aliases, required selectors, variables, count, no-wait, and output checks. |
 | `update process-instance` and `update job` | Cover dry-run, worker outcome, variables, and validation paths. |
+| `suspend process-instance` and `resume process-instance` | `TestProcessInstanceLifecycle`: default-wait round trips, previews, subtree boundaries, empty scopes, and partial rejection on 8.10.4; independently observed owned state. |
 | `cancel process-instance` | Cover key/filter selectors, dry-run, force, workers, no-wait, and validation paths. |
 | `delete process-instance` and `delete process-definition` | Cover key/filter selectors, dry-run, force, latest/version flags, and validation paths. |
 | `resolve incident` and `resolve process-instance` | Cover key/stdin selectors, dry-run, no-wait, and state checks. |

@@ -6,15 +6,21 @@ package cmd
 import (
 	"bytes"
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
 
+	"github.com/grafvonb/c8volt/c8volt/ferrors"
 	options "github.com/grafvonb/c8volt/c8volt/foptions"
 	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/grafvonb/c8volt/internal/exitcode"
@@ -97,7 +103,8 @@ func TestGetProcessDefinitionWatchTimeoutValidation(t *testing.T) {
 }
 
 // TestGetProcessDefinitionWatchRequestTimeoutRecovery uses separate configured
-// log and result destinations to catch direct stderr writes and raw errors.
+// log and result destinations to catch direct stderr writes and joined per-key
+// error leaks; failed partial snapshots must not replace lifecycle baselines.
 func TestGetProcessDefinitionWatchRequestTimeoutRecovery(t *testing.T) {
 	for _, format := range []string{"plain", "json"} {
 		for _, verbose := range []bool{false, true} {
@@ -119,12 +126,12 @@ func TestGetProcessDefinitionWatchRequestTimeoutRecovery(t *testing.T) {
 				calls := 0
 				cli := processDefinitionWatchTestAPI{collect: func(ctx context.Context, _ process.ProcessDefinitionWatchSnapshotRequest, _ ...options.FacadeOption) (process.ProcessDefinitionWatchSnapshot, error) {
 					calls++
-					item := process.ProcessDefinition{Key: "123", BpmnProcessId: "invoice", ProcessVersion: 1}
+					item := process.ProcessDefinition{Key: "123", BpmnProcessId: "invoice", ProcessVersion: 1, State: "ACTIVE"}
 					if calls == 2 || calls == 3 {
-						return process.ProcessDefinitionWatchSnapshot{Items: []process.ProcessDefinition{{Key: "partial"}}}, fmt.Errorf("POST https://watch-secret.invalid/123 body=secret-body: %w", context.DeadlineExceeded)
+						return process.ProcessDefinitionWatchSnapshot{Items: []process.ProcessDefinition{{Key: "partial"}}}, errors.Join(fmt.Errorf("POST https://watch-secret.invalid/8675309 body=secret-body: %w", context.DeadlineExceeded), fmt.Errorf("POST https://watch-secret.invalid/8675310 body=secret-body: %w", context.DeadlineExceeded))
 					}
 					if calls == 4 {
-						item.ProcessVersion = 2
+						item.State = "DRAINING"
 					}
 					return process.ProcessDefinitionWatchSnapshot{Items: []process.ProcessDefinition{item}, Total: 1}, nil
 				}}
@@ -139,7 +146,10 @@ func TestGetProcessDefinitionWatchRequestTimeoutRecovery(t *testing.T) {
 				require.NoError(t, executeGetProcessDefinitionWatch(cmd, cli, process.ProcessDefinitionFilter{}, 0, 2))
 				require.Equal(t, 4, calls)
 				require.Equal(t, 2, strings.Count(stdout.String(), "found: 1"))
-				require.Contains(t, stdout.String(), "v2 *")
+				require.Contains(t, stdout.String(), "v1 DRAINING *")
+				require.Empty(t, stderr.String())
+				require.Equal(t, 1, strings.Count(diagnostics.String(), "1 updated, 0 new, 0 removed"))
+				require.Equal(t, 1, strings.Count(diagnostics.String(), "0 updated, 0 new, 0 removed"))
 				require.NotContains(t, stdout.String(), "partial")
 				require.Equal(t, 2, strings.Count(diagnostics.String(), "retrying process-definition watch"))
 				if format == "plain" {
@@ -149,7 +159,7 @@ func TestGetProcessDefinitionWatchRequestTimeoutRecovery(t *testing.T) {
 				}
 				require.NotContains(t, stderr.String(), "retrying")
 				for _, output := range []string{stdout.String(), stderr.String(), diagnostics.String()} {
-					for _, secret := range []string{"POST", "watch-secret.invalid", "secret-body", "watch stopped"} {
+					for _, secret := range []string{"POST", "watch-secret.invalid", "secret-body", "8675309", "8675310", "watch stopped"} {
 						require.NotContains(t, output, secret)
 					}
 				}
@@ -314,4 +324,81 @@ func TestGetProcessDefinitionWatchRequestTimeoutExhaustion(t *testing.T) {
 	require.Equal(t, 1, strings.Count(stderr, "ERROR watch process definitions: retry budget exhausted after 2 consecutive failures (timeout)"))
 	require.NotContains(t, stderr, "watch stopped: timeout reached")
 	require.NotContains(t, stderr, server.URL)
+}
+
+// TestGetProcessDefinitionWatchJoinedFailureExit verifies repeated per-resource
+// failures produce one bounded final error, retain prior rows and preserve exit class.
+func TestGetProcessDefinitionWatchJoinedFailureExit(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") == "1" && os.Getenv(testx.CmdSubprocessNameEnv) == t.Name() {
+		resetGetProcessDefinitionCommandGlobals()
+		flagVerbose = os.Getenv("C8VOLT_TEST_VERBOSE") == "true"
+		destination, err := os.Create(os.Getenv("C8VOLT_TEST_LOG_DEST"))
+		require.NoError(t, err)
+		var handler slog.Handler = logging.NewPlainHandler(destination, slog.LevelInfo)
+		if os.Getenv("C8VOLT_TEST_LOG_FORMAT") == "json" {
+			handler = slog.NewJSONHandler(destination, nil)
+		}
+		log := slog.New(handler)
+		command := &cobra.Command{Use: "pd"}
+		command.SetOut(os.Stdout)
+		command.SetErr(os.Stderr)
+		command.SetContext(logging.ToContext(context.Background(), log))
+		calls := 0
+		cli := processDefinitionWatchTestAPI{collect: func(context.Context, process.ProcessDefinitionWatchSnapshotRequest, ...options.FacadeOption) (process.ProcessDefinitionWatchSnapshot, error) {
+			calls++
+			if calls == 1 {
+				return process.ProcessDefinitionWatchSnapshot{Items: []process.ProcessDefinition{{Key: "123", State: "ACTIVE"}}, Total: 1}, nil
+			}
+			err := ferrors.FromDomain(errors.Join(fmt.Errorf("POST https://joined-secret.invalid/8675309 body=joined-body: %w", context.DeadlineExceeded), fmt.Errorf("POST https://joined-secret.invalid/8675310 body=joined-body: %w", context.DeadlineExceeded)))
+			return process.ProcessDefinitionWatchSnapshot{Items: []process.ProcessDefinition{{Key: "partial", State: "DELETED"}}, Total: 1}, err
+		}}
+		processDefinitionWatchSleep = func(context.Context, time.Duration) error { return nil }
+		command.Run = func(cmd *cobra.Command, _ []string) {
+			runGetProcessDefinitionWatch(cmd, cli, log, false, process.ProcessDefinitionFilter{}, 0, 1)
+		}
+		require.NoError(t, command.Execute())
+		t.Fatal("failed watch must exit")
+	}
+	for _, format := range []string{"plain", "json"} {
+		for _, verbose := range []bool{false, true} {
+			t.Run(fmt.Sprintf("%s/verbose=%v", format, verbose), func(t *testing.T) {
+				capture := filepath.Join(t.TempDir(), "diagnostics")
+				stdout, stderr, err := testx.RunCmdSubprocessInDirWithSeparateOutputs(t, "TestGetProcessDefinitionWatchJoinedFailureExit", "", map[string]string{"C8VOLT_TEST_LOG_DEST": capture, "C8VOLT_TEST_LOG_FORMAT": format, "C8VOLT_TEST_VERBOSE": fmt.Sprint(verbose)}, "")
+				var exitErr *exec.ExitError
+				require.ErrorAs(t, err, &exitErr)
+				require.Equal(t, exitcode.Timeout, exitErr.ExitCode())
+				require.Empty(t, stderr)
+				require.Equal(t, processDefinitionWatchRepaintControlSequenceForTest+"123 v0 ACTIVE\nfound: 1\n", stdout)
+				raw, err := os.ReadFile(capture)
+				require.NoError(t, err)
+				diagnostics := string(raw)
+				message := "watch process definitions: retry budget exhausted after 2 consecutive failures (timeout)"
+				require.Equal(t, 1, strings.Count(diagnostics, message))
+				require.Equal(t, 1, strings.Count(diagnostics, "retrying process-definition watch"))
+				for _, secret := range []string{"POST", "joined-secret.invalid", "8675309", "8675310", "joined-body", "partial", "DELETED"} {
+					require.NotContains(t, stdout+stderr+diagnostics, secret)
+				}
+				if format == "plain" {
+					require.Contains(t, diagnostics, "ERROR "+message+"\n")
+					require.Equal(t, 1, strings.Count(diagnostics, "ERROR "))
+				} else {
+					decoder := json.NewDecoder(strings.NewReader(diagnostics))
+					count := 0
+					for {
+						var record map[string]any
+						err := decoder.Decode(&record)
+						if err == io.EOF {
+							break
+						}
+						require.NoError(t, err)
+						if record["level"] == "ERROR" {
+							count++
+							require.Equal(t, message, record["msg"])
+						}
+					}
+					require.Equal(t, 1, count)
+				}
+			})
+		}
+	}
 }

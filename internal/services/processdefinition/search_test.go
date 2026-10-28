@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestSearchProcessDefinitionsPagesUsesCursorTraversal preserves lifecycle and continuation through visitor and final results.
 func TestSearchProcessDefinitionsPagesUsesCursorTraversal(t *testing.T) {
 	t.Parallel()
 
@@ -27,8 +28,8 @@ func TestSearchProcessDefinitionsPagesUsesCursorTraversal(t *testing.T) {
 				return d.ProcessDefinitionPage{
 					Request: page,
 					Items: []d.ProcessDefinition{
-						{Key: "pd-a", BpmnProcessId: "invoice"},
-						{Key: "pd-b", BpmnProcessId: "invoice"},
+						{Key: "pd-a", BpmnProcessId: "invoice", State: "ACTIVE"},
+						{Key: "pd-b", BpmnProcessId: "invoice", State: "DELETED"},
 					},
 					OverflowState: d.ProcessInstanceOverflowStateHasMore,
 					EndCursor:     "cursor-2",
@@ -37,7 +38,7 @@ func TestSearchProcessDefinitionsPagesUsesCursorTraversal(t *testing.T) {
 				require.Equal(t, "cursor-2", page.After)
 				return d.ProcessDefinitionPage{
 					Request:       page,
-					Items:         []d.ProcessDefinition{{Key: "pd-c", BpmnProcessId: "invoice"}},
+					Items:         []d.ProcessDefinition{{Key: "pd-c", BpmnProcessId: "invoice", State: " future-State "}},
 					OverflowState: d.ProcessInstanceOverflowStateNoMore,
 				}, nil
 			default:
@@ -63,6 +64,11 @@ func TestSearchProcessDefinitionsPagesUsesCursorTraversal(t *testing.T) {
 	require.Len(t, steps, 2)
 	require.EqualValues(t, 2, steps[0].CumulativeCount)
 	require.EqualValues(t, 3, steps[1].CumulativeCount)
+	require.Equal(t, "ACTIVE", got.Items[0].State)
+	require.Equal(t, "DELETED", got.Items[1].State)
+	require.Equal(t, " future-State ", got.Items[2].State)
+	require.Equal(t, got.Items[:2], steps[0].Page.Items)
+	require.Equal(t, got.Items[2:], steps[1].Page.Items)
 }
 
 // TestSearchProcessDefinitionsPagesSortsFinalCollection verifies ordinary
@@ -129,6 +135,9 @@ func TestSearchProcessDefinitionsPagesSortsFinalCollection(t *testing.T) {
 		"tenant-a-payment-v1",
 		"tenant-b-invoice-v1",
 	}, processDefinitionSearchKeys(got.Items))
+	for _, item := range got.Items {
+		require.Equal(t, "state-"+item.Key, item.State)
+	}
 }
 
 // TestSearchProcessDefinitionsPagesTraversesCursorAndOffsetPagesAcrossPageSizes
@@ -360,6 +369,9 @@ func TestCollectProcessDefinitionWatchSnapshotSortsBroadPagedResults(t *testing.
 		"tenant-a-payment-v1",
 		"tenant-b-invoice-v1",
 	}, processDefinitionSearchKeys(got.Items))
+	for _, item := range got.Items {
+		require.Equal(t, "state-"+item.Key, item.State)
+	}
 }
 
 // TestCollectProcessDefinitionWatchSnapshotRetainsCanonicalPositionsWhenStatisticsChange
@@ -477,6 +489,9 @@ func TestCollectProcessDefinitionWatchSnapshotTraversesLatestPages(t *testing.T)
 	require.NotNil(t, got.ReportedTotal)
 	require.EqualValues(t, 3, got.ReportedTotal.Count)
 	require.Equal(t, []string{"10", "tenant-b-invoice-v1"}, processDefinitionSearchKeys(got.Items))
+	for _, item := range got.Items {
+		require.Equal(t, "state-"+item.Key, item.State)
+	}
 }
 
 // TestCollectProcessDefinitionWatchSnapshotDispatchesKey verifies direct key
@@ -545,6 +560,7 @@ func processDefinitionForSearchOrder(tenantID, bpmnProcessID string, version int
 		BpmnProcessId:  bpmnProcessID,
 		ProcessVersion: version,
 		Key:            key,
+		State:          "state-" + key,
 	}
 }
 

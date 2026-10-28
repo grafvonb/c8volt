@@ -195,7 +195,8 @@ func TestClient_GetProcessDefinition_MapsIncidentCountSupportState(t *testing.T)
 			assert.Equal(t, "2251799813685255", key)
 			assert.True(t, cfg.WithStat)
 			return d.ProcessDefinition{
-				Key: "2251799813685255",
+				State: "ACTIVE",
+				Key:   "2251799813685255",
 				Statistics: &d.ProcessDefinitionStatistics{
 					Active:                 7,
 					Canceled:               3,
@@ -215,6 +216,7 @@ func TestClient_GetProcessDefinition_MapsIncidentCountSupportState(t *testing.T)
 	assert.Equal(t, int64(7), pd.Statistics.Active)
 	assert.Equal(t, int64(0), pd.Statistics.Incidents)
 	assert.True(t, pd.Statistics.IncidentCountSupported)
+	require.Equal(t, "ACTIVE", pd.State)
 }
 
 // TestClient_GetProcessDefinition_TenantMismatchUsesExplicitAdminInput verifies
@@ -302,7 +304,7 @@ func TestClient_SearchProcessDefinitions_MapsProcessDefinitionSelectorFilter(t *
 			}, filter)
 			assert.Equal(t, pdsvc.MaxResultSize, size)
 			assert.True(t, services.ApplyCallOptions(opts).Verbose)
-			return []d.ProcessDefinition{{Key: "2251799813685255", BpmnProcessId: "order-process"}}, nil
+			return []d.ProcessDefinition{{Key: "2251799813685255", BpmnProcessId: "order-process", State: "DELETED"}}, nil
 		},
 	}
 
@@ -316,6 +318,7 @@ func TestClient_SearchProcessDefinitions_MapsProcessDefinitionSelectorFilter(t *
 	require.NoError(t, err)
 	require.Len(t, items.Items, 1)
 	assert.Equal(t, "order-process", items.Items[0].BpmnProcessId)
+	require.Equal(t, "DELETED", items.Items[0].State)
 }
 
 // TestClient_SearchProcessDefinitions_PreservesCanonicalServiceOrder verifies
@@ -449,7 +452,7 @@ func TestClient_SearchProcessDefinitionsLatest_MapsProcessDefinitionSelectorFilt
 			return d.ProcessDefinitionPage{
 				Request:       page,
 				OverflowState: d.ProcessInstanceOverflowStateNoMore,
-				Items:         []d.ProcessDefinition{{Key: "2251799813685255", BpmnProcessId: "order-process"}},
+				Items:         []d.ProcessDefinition{{Key: "2251799813685255", BpmnProcessId: "order-process", State: "DRAINING"}},
 			}, nil
 		},
 	}
@@ -463,6 +466,7 @@ func TestClient_SearchProcessDefinitionsLatest_MapsProcessDefinitionSelectorFilt
 	require.NoError(t, err)
 	require.Len(t, items.Items, 1)
 	assert.Equal(t, "order-process", items.Items[0].BpmnProcessId)
+	require.Equal(t, "DRAINING", items.Items[0].State)
 }
 
 // TestClient_SearchProcessDefinitionsLatest_UsesCompletePagedLatestTraversal
@@ -540,6 +544,7 @@ func TestClient_SearchProcessDefinitionsLatest_ConvertsDomainErrors(t *testing.T
 	require.ErrorIs(t, err, ferr.ErrUnsupported)
 }
 
+// TestClient_SearchProcessDefinitionsPages_MapsTraversalRequestAndVisitor preserves lifecycle, paging metadata, and options across the visitor and final result.
 func TestClient_SearchProcessDefinitionsPages_MapsTraversalRequestAndVisitor(t *testing.T) {
 	t.Parallel()
 
@@ -556,7 +561,7 @@ func TestClient_SearchProcessDefinitionsPages_MapsTraversalRequestAndVisitor(t *
 					Count: 1,
 					Kind:  d.ProcessDefinitionReportedTotalKindExact,
 				},
-				Items: []d.ProcessDefinition{{Key: "2251799813685255", BpmnProcessId: "order-process"}},
+				Items: []d.ProcessDefinition{{Key: "2251799813685255", BpmnProcessId: "order-process", State: " future-State "}},
 			}, nil
 		},
 	}
@@ -578,6 +583,8 @@ func TestClient_SearchProcessDefinitionsPages_MapsTraversalRequestAndVisitor(t *
 	assert.Equal(t, int64(1), steps[0].Page.ReportedTotal.Count)
 	assert.Equal(t, ProcessDefinitionReportedTotalKindExact, steps[0].Page.ReportedTotal.Kind)
 	assert.EqualValues(t, 1, steps[0].CumulativeCount)
+	require.Equal(t, " future-State ", result.Items[0].State)
+	require.Equal(t, " future-State ", steps[0].Page.Items[0].State)
 }
 
 // TestClient_SearchProcessDefinitionsPages_PreservesCanonicalTraversalOrder
@@ -728,6 +735,7 @@ func TestClient_CollectProcessDefinitionWatchSnapshot_DelegatesSnapshotCollectio
 					Kind:  d.ProcessDefinitionReportedTotalKindExact,
 				},
 				Items: []d.ProcessDefinition{{
+					State:             "DRAINING",
 					Key:               "2251799813685255",
 					BpmnProcessId:     "invoice",
 					ProcessVersionTag: "stable",
@@ -752,6 +760,7 @@ func TestClient_CollectProcessDefinitionWatchSnapshot_DelegatesSnapshotCollectio
 	assert.Equal(t, ProcessDefinitionReportedTotalKindExact, got.ReportedTotal.Kind)
 	require.Len(t, got.Items, 1)
 	assert.Equal(t, "invoice", got.Items[0].BpmnProcessId)
+	require.Equal(t, "DRAINING", got.Items[0].State)
 }
 
 // TestClient_CollectProcessDefinitionWatchSnapshot_ConvertsDomainErrors verifies

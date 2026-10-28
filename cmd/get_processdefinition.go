@@ -4,6 +4,7 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -33,6 +34,7 @@ var (
 	flagGetPDWatchTimeout      time.Duration
 )
 
+// getProcessDefinitionCmd exposes definition reads and their existing output modes.
 var getProcessDefinitionCmd = &cobra.Command{
 	Use:   "process-definition",
 	Short: "List or fetch deployed process definitions",
@@ -44,15 +46,25 @@ Select by key, BPMN process ID, version, or version tag. Use --xml only with --k
 
 --latest selects the newest definition per exact tenant ID and BPMN process ID using native latest filtering, breaking version ties by the lowest exact-text key.
 
+Camunda 8.10 supplies optional lifecycle state in human rows and JSON (state): ACTIVE allows new instances, DRAINING blocks new starts while unfinished instances remain, and DELETED means runtime removal, not removal of historical data. Missing state is omitted, including on 8.8/8.9; unfamiliar values are preserved.
+
+Lifecycle and --stat counts are independent: suspended instances can keep a definition DRAINING even with zero active instances. Backend deletion does not cancel or resume instances; delete pd --force explicitly cancels unfinished instances first. These reads do not change deletion behavior.
+
 --stat includes exact-version statistics and requires Camunda 8.8 or newer. On Camunda 8.10, rows append su: for suspended instances, with a dash for an observed zero; active counts remain separate. JSON statistics include a suspended count and suspendedCountSupported availability flag; a supported zero omits the count. Camunda 8.8/8.9 omit the suspended token and fields because the count is unavailable. With --stat --watch, suspended count and availability changes update the row and clear stale values. Empty searches suppress the human summary under --quiet while preserving requested JSON and keys-only results.
 
---watch repeats the lookup indefinitely by default until interrupted or retries are exhausted. --watch-timeout sets an optional session limit (0 = unlimited), independently of --timeout for individual HTTP requests and the retry-loop backoff timeout. Individual request timeouts are retried while the session remains active. It starts immediately; --watch-interval controls subsequent checks. Without a selector it observes all visible definitions. Each successful refresh logs a timestamped INFO summary, including when nothing changed, compared with the previous successfully displayed refresh, for example: 16:42:08.123 INFO 1 updated, 1 new, 0 removed. Rows end with * for changed definitions and + for new definitions; unchanged rows have no suffix; on supported terminal output, changed displayed values are also bold. Bold falls back to plain markers when TERM is empty or dumb, NO_COLOR is set, or output is redirected. The first successful refresh establishes an unmarked baseline. Failed refreshes do not replace that baseline, and an unchanged success clears prior markers and bold. Removed definitions contribute to the summary without leaving stale rows. --watch cannot be combined with --json, --keys-only, --xml, --quiet, or --automation.`,
+--watch repeats the lookup indefinitely by default until interrupted or retries are exhausted. It refreshes immediately, then at --watch-interval. --watch-timeout limits the session (0 = unlimited), independently of --timeout for HTTP requests and retry backoff. Request timeouts are retried while the session is active. Without a selector it observes all visible definitions.
+
+A trailing * marks changed definitions and + marks new ones; changed displayed values are also bold on supported terminals when TERM is set and not dumb, and NO_COLOR is unset. Redirected output uses plain markers. Lifecycle and statistics changes count once per row. The first refresh is unmarked; later refreshes compare with the last successfully displayed result. Failures preserve that baseline, omitted values disappear, and unchanged refreshes clear markers. Returned DELETED rows remain visible until absent from a successful refresh.
+
+Refresh summaries and verbose timing use the configured logger at INFO; slow-refresh warnings use WARN. Suppressing INFO does not suppress rows. --watch cannot be combined with --json, --keys-only, --xml, --quiet, or --automation.`,
 	Example: `  ./c8volt get process-definition --latest
   ./c8volt get process-definition --bpmn-process-id <bpmn-process-id> --latest
   ./c8volt get process-definition --bpmn-process-id <bpmn-process-id> --latest --watch
   ./c8volt get process-definition --watch --watch-interval 2s
   ./c8volt get process-definition --watch --watch-timeout 10m
   ./c8volt get process-definition --key <process-definition-key> --json
+  ./c8volt get process-definition --key <process-definition-key> --stat
+  ./c8volt get process-definition --stat --json
   ./c8volt get process-definition --key <process-definition-key> --xml`,
 	Aliases: []string{"pd", "pds"},
 	Run:     runGetProcessDefinition,
@@ -99,17 +111,21 @@ func runGetProcessDefinitionXML(cmd *cobra.Command, cli c8volt.API, log *slog.Lo
 	}
 }
 
+// runGetProcessDefinitionByKey preserves machine error evidence while bounding human diagnostics.
 func runGetProcessDefinitionByKey(cmd *cobra.Command, cli c8volt.API, log *slog.Logger, noErrCodes bool, key string) {
 	log.Debug(fmt.Sprintf("getting pd %s", key))
 	pd, err := cli.GetProcessDefinition(cmd.Context(), key, collectExplicitAdminInputOptions()...)
 	if err != nil {
-		handleCommandError(cmd, log, noErrCodes, fmt.Errorf("get process definition: %w", err))
+		handleCommandError(cmd, log, noErrCodes, fmt.Errorf("get process definition: %w", err),
+			"get process definition: "+boundedCommandFailureReason(err))
 	}
 	if err := processDefinitionView(cmd, pd); err != nil {
 		ferrors.HandleAndExit(log, noErrCodes, fmt.Errorf("error rendering key-only view: %w", err))
 	}
 }
 
+// runSearchProcessDefinitions preserves selector diagnostics while keeping backend
+// failure evidence in JSON and DEBUG rather than normal human logs.
 func runSearchProcessDefinitions(cmd *cobra.Command, cli c8volt.API, log *slog.Logger, noErrCodes bool, filter process.ProcessDefinitionFilter) {
 	log.Debug(fmt.Sprintf("searching pd; filter %s", filter.String()))
 
@@ -120,7 +136,11 @@ func runSearchProcessDefinitions(cmd *cobra.Command, cli c8volt.API, log *slog.L
 	if filter.BpmnProcessId != "" {
 		result, err := validateProcessDefinitionSelectorsForCommand(cmd.Context(), cmd, cli, newGetPDProcessDefinitionSelectorValidationRequest(), collectOptions()...)
 		if err != nil {
-			handleCommandError(cmd, log, noErrCodes, err)
+			var missing processDefinitionSelectorMissingError
+			if errors.As(err, &missing) {
+				handleCommandError(cmd, log, noErrCodes, err)
+			}
+			handleCommandError(cmd, log, noErrCodes, err, "validate process definition selector: "+boundedCommandFailureReason(err))
 		}
 		if !result.Valid() {
 			handleProcessDefinitionSelectorValidationError(cmd, log, noErrCodes, cli, result)
@@ -132,7 +152,8 @@ func runSearchProcessDefinitions(cmd *cobra.Command, cli c8volt.API, log *slog.L
 		pds, err = searchProcessDefinitionsWithPaging(cmd, cli, filter)
 	}
 	if err != nil {
-		handleCommandError(cmd, log, noErrCodes, fmt.Errorf("search process definitions: %w", err))
+		handleCommandError(cmd, log, noErrCodes, fmt.Errorf("search process definitions: %w", err),
+			"search process definitions: "+boundedCommandFailureReason(err))
 	}
 	if err := listProcessDefinitionsView(cmd, pds); err != nil {
 		ferrors.HandleAndExit(log, noErrCodes, fmt.Errorf("error rendering items view: %w", err))
