@@ -59,3 +59,37 @@ Started: 2026-10-28 16:41:53
 - Formatted touched Go files and passed `git diff --check`. No command files, generated clients or CLI docs changed. Error-boundary review: common errors remain returned machine evidence; adapters add no human failure emission, forward original transport errors, and use only existing configured safe retry progress. Command output/exit matrix remains T004's gate.
 - Real-engine listener execution and released patch behavior were not tested. No live endpoint was discovered or used. T002 is next; this iteration stops at the validated native work-unit boundary.
 ---
+
+---
+## Iteration 2 - 2026-10-28 17:01
+**Work Unit**: Foundational phase — T002 completed: shared collection assignment/unassignment coordinator and thin public facade
+**Tasks Completed**:
+- [x] T002: Validated collection execution, explicit override mapping, assignment-specific public models/conversion, API comments and fail-closed public-interface doubles.
+**Tasks Remaining in Work Unit**: 0; Foundational phase complete. T003 and T004 remain in US1.
+**Commit**: This work-unit commit
+**Files Changed**:
+- c8volt/foptions/options.go
+- c8volt/foptions/options_test.go
+- c8volt/task/api.go
+- c8volt/task/assignment.go
+- c8volt/task/assignment_test.go
+- c8volt/task/client.go
+- c8volt/task/convert.go
+- c8volt/task/model.go
+- cmd/process_api_stub_test.go
+- internal/services/usertask/assignment.go
+- internal/services/usertask/assignment_test.go
+- internal/services/usertask/completion.go
+- specs/351-user-task-assignment/progress.md
+- specs/351-user-task-assignment/ralph-memory.md
+- specs/351-user-task-assignment/tasks.md
+**Learnings**:
+- Both actions share full local validation, copied first-input-order keys and a value snapshot of evaluated options. Invalid input/dependency yields initialized empty items; direct dry-run returns ordered preview/not_submitted items with no backend calls.
+- Tests cover both actions' opaque identity/override policy, no-wait/override rejection, duplicate/single/multiple keys, retained config and closure mutation, sequential/automatic/bounded/unlimited worker precedence, reversed completion order, continue-on-error and fail-fast, pre-start/mid-flight cancellation, caller errors after native success/rejection, uncertainty and ordered partial facade conversion/exit classification.
+- A deterministic synctest barrier proves fail-fast retains accepted in-flight evidence and leaves queued items not_attempted/not_submitted. Mutation-only fakes fail closed on reads or unrelated operations. Existing constructors and root facade composition remain intact.
+- TDD baselines failed to compile for the missing collection entry points/public models/options, then passed after implementation. No validation failure remains.
+- Passed with the quickstart clean-environment helper: `go test ./internal/services/usertask -run 'Test(Assign|Unassign)UserTasks' -race -count=1`; `go test ./c8volt/task -run 'Test(Assign|Unassign|Complete)UserTasks|TestAssignmentPublicModels' -count=1`; `go test ./c8volt/foptions -run 'TestUserTaskAssignmentOverride' -count=1`; `go test ./internal/services/usertask/... -run 'Test(Assign|Unassign)UserTasks' -race -count=1` (the two collection test families matched in the neutral package; singular adapter tests were exercised by the broader run).
+- Broader affected-package validation passed: `go test ./internal/services/usertask/... ./c8volt/task ./c8volt/foptions -race -count=1`; root composition checks passed: `go test ./c8volt -run '^TestNew_' -count=1`. This includes existing native completion, read, resolver and variable regressions. `go test ./... -run '^$'` passed for repository-wide consumer compilation only; it is not a runtime/full-suite pass. Live build tags and inherited app/helper activation remained disabled.
+- Formatted all touched Go files; `git diff --check` passed. Error-path review: native evidence remains returned data; the coordinator joins actual operation errors with caller errors, never pool-only cancellation; facade conversion retains partial payloads before normalizing errors. No new direct-print or human error logging boundary was added. The only command changes are two fail-closed stub methods; no lifecycle/rendering mode or flags were exposed, so CLI docs regeneration is not applicable to T002.
+- Real-engine listener/patch behavior remains unverified. No live endpoint was discovered or used. Stop at this work-unit boundary; T003 is next and final repository race validation remains T004.
+---

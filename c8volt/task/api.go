@@ -10,8 +10,13 @@ import (
 	types "github.com/grafvonb/c8volt/typex"
 )
 
-// API exposes user-task reads, native completion and composed variable updates.
+// API exposes user-task reads, native assignment/removal/completion and composed variable updates.
 type API interface {
+	// AssignUserTasks assigns unique explicit keys with opt-in override and ordered partial response evidence.
+	AssignUserTasks(ctx context.Context, keys types.Keys, assignee string, wantedWorkers int, opts ...options.FacadeOption) (UserTaskAssignmentResults, error)
+	// UnassignUserTasks removes assignments for unique explicit keys and preserves ordered partial response evidence.
+	UnassignUserTasks(ctx context.Context, keys types.Keys, wantedWorkers int, opts ...options.FacadeOption) (UserTaskAssignmentResults, error)
+
 	// CompleteUserTasks submits unique explicit keys and preserves ordered partial acceptance evidence.
 	CompleteUserTasks(ctx context.Context, keys types.Keys, variables map[string]any, wantedWorkers int, opts ...options.FacadeOption) (UserTaskCompletionResults, error)
 	// PrepareUserTaskCompletions checks task state and assignment once before approval.

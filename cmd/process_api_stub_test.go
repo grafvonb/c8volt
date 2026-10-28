@@ -771,3 +771,13 @@ func (stubProcessAPI) ResumeProcessInstances(context.Context, types.Keys, int, .
 func (stubProcessAPI) PlanProcessInstanceResumption(context.Context, types.Keys, ...options.FacadeOption) (process.ProcessInstanceResumptionPlan, error) {
 	return process.ProcessInstanceResumptionPlan{}, ferr.ErrUnsupported
 }
+
+// AssignUserTasks fails closed on assignment in unrelated command fixtures.
+func (s stubTaskAPI) AssignUserTasks(context.Context, types.Keys, string, int, ...options.FacadeOption) (task.UserTaskAssignmentResults, error) {
+	panic("unexpected AssignUserTasks call")
+}
+
+// UnassignUserTasks fails closed on assignment removal in unrelated command fixtures.
+func (s stubTaskAPI) UnassignUserTasks(context.Context, types.Keys, int, ...options.FacadeOption) (task.UserTaskAssignmentResults, error) {
+	panic("unexpected UnassignUserTasks call")
+}

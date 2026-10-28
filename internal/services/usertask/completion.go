@@ -57,7 +57,7 @@ func PrepareUserTaskCompletions(ctx context.Context, api API, keys typex.Keys, v
 		return plan, fmt.Errorf("%w: user-task completion requires at least one key", d.ErrValidation)
 	}
 	for i, key := range keys {
-		if !validCompletionKey(key) {
+		if !validUserTaskKey(key) {
 			return plan, fmt.Errorf("%w: user-task completion key at index %d must contain exactly 16 decimal digits", d.ErrValidation, i)
 		}
 	}
@@ -171,8 +171,8 @@ func ExecuteUserTaskCompletions(ctx context.Context, api API, plan CompletionPla
 	return out, err
 }
 
-// validCompletionKey applies the existing user-task ASCII key grammar without trimming input.
-func validCompletionKey(key string) bool {
+// validUserTaskKey shares the exact ASCII key grammar across native task mutations without trimming input.
+func validUserTaskKey(key string) bool {
 	if len(key) != 16 {
 		return false
 	}
