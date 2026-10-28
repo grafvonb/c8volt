@@ -1237,10 +1237,10 @@ func TestCommandCapabilityForCommand_UpdateUserTaskContract(t *testing.T) {
 	require.False(t, flagUpdateUserTaskComplete)
 	require.NoError(t, updateUserTaskCmd.Flags().Set("complete", "true"))
 	require.NoError(t, updateUserTaskCmd.Flags().Set("key", ""))
-	require.True(t, updateUserTaskCmd.Flags().Lookup("key").Value.(*userTaskCompletionKeyValue).emptyOccurrence)
+	require.True(t, updateUserTaskCmd.Flags().Lookup("key").Value.(*userTaskKeyValue).emptyOccurrence)
 	resetCommandTreeFlags(root)
 	require.False(t, flagUpdateUserTaskComplete)
-	require.False(t, updateUserTaskCmd.Flags().Lookup("key").Value.(*userTaskCompletionKeyValue).emptyOccurrence)
+	require.False(t, updateUserTaskCmd.Flags().Lookup("key").Value.(*userTaskKeyValue).emptyOccurrence)
 	for _, text := range []string{"Completion summaries and verbose details honor the configured log level", "selection scope, plan, warnings and confirmation", "single-task prompt names the key", "reads each unique task once", "skipped with a conflict result", "Human summaries omit zero counters", "Variables are mentioned only when supplied", "no assignee", "--complete", "--no-wait", "optional", "successful response confirms completion", "no additional task-state polling", "cannot bypass the completion request", "--workers", "--fail-fast"} {
 		require.Contains(t, updateUserTaskCmd.Long, text)
 	}

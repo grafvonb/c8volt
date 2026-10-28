@@ -129,7 +129,7 @@ func init() {
 
 	fs := updateUserTaskCmd.Flags()
 	fs.StringSliceVarP(&flagUpdateUserTaskKeys, "key", "k", nil, "user task key(s) to update; repeat or combine with stdin '-'")
-	trackUserTaskCompletionKeyInput(fs.Lookup("key"))
+	trackUserTaskKeyInput(fs.Lookup("key"))
 	fs.BoolVar(&flagUpdateUserTaskComplete, "complete", false, "complete selected tasks with optional variables; report backend-confirmed completion without additional polling")
 	fs.StringVar(&flagUpdateUserTaskVars, "vars", "", "JSON object with variables to set or submit with each completion")
 	fs.StringVar(&flagUpdateUserTaskVarsFile, "vars-file", "", "path to JSON object file with variables to set or submit with each completion")
