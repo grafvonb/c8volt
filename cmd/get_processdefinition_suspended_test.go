@@ -217,67 +217,54 @@ func TestGetProcessDefinitionSuspendedNoStat(t *testing.T) {
 	}
 }
 
-// TestGetProcessDefinitionLifecycleStatisticsCommand keeps lifecycle independent
-// across separate observations, including resumed work and all-zero counts.
+// TestGetProcessDefinitionLifecycleStatisticsCommand covers draining with suspended
+// work through both read paths and output formats. Adapter tests cover other count
+// populations; mixed-row tests cover unfamiliar and omitted lifecycle values.
 func TestGetProcessDefinitionLifecycleStatisticsCommand(t *testing.T) {
 	for _, key := range []bool{false, true} {
 		for _, jsonOutput := range []bool{false, true} {
-			for _, state := range []string{"DRAINING", "future-State", ""} {
-				t.Run(fmt.Sprintf("key=%t/json=%t/state=%s", key, jsonOutput, state), func(t *testing.T) {
-					populations := [][2]int{{0, 2}, {2, 0}, {0, 0}}
-					fixture := &definitionStatisticsFixture{
-						version: "8.10", completed: 7, canceled: 9, incidents: 1,
-						lifecycle:  func(int32, string) string { return state },
-						population: func(read int32) (int, int) { return populations[read-1][0], populations[read-1][1] },
+			t.Run(fmt.Sprintf("key=%t/json=%t", key, jsonOutput), func(t *testing.T) {
+				fixture := &definitionStatisticsFixture{
+					version: "8.10", completed: 7, canceled: 9, incidents: 1,
+					lifecycle:  func(int32, string) string { return "DRAINING" },
+					population: func(int32) (int, int) { return 0, 2 },
+				}
+				srv := fixture.server(t)
+				args := []string{"--config", writeTestConfigForVersion(t, srv.URL, "8.10"), "get", "pd", "--stat"}
+				if key {
+					args = append(args, "--key", "123")
+				}
+				if jsonOutput {
+					args = append(args, "--json")
+				}
+				stdout, stderr := executeRootForProcessDefinitionTestWithSeparateOutputs(t, args...)
+				require.Empty(t, stderr)
+				require.EqualValues(t, 1, fixture.definitions.Load())
+				require.EqualValues(t, 6, fixture.counts.Load())
+				if !jsonOutput {
+					want := "123 tenant invoice v1 DRAINING [ac:- cp:7 cx:9 inc:1 su:2]\n"
+					if !key {
+						want += "found: 1\n"
 					}
-					srv := fixture.server(t)
-					args := []string{"--config", writeTestConfigForVersion(t, srv.URL, "8.10"), "get", "pd", "--stat"}
-					if key {
-						args = append(args, "--key", "123")
-					}
-					if jsonOutput {
-						args = append(args, "--json")
-					}
-					for read, population := range populations {
-						stdout, stderr := executeRootForProcessDefinitionTestWithSeparateOutputs(t, args...)
-						require.Empty(t, stderr)
-						require.EqualValues(t, read+1, fixture.definitions.Load())
-						require.EqualValues(t, 6*(read+1), fixture.counts.Load())
-						if jsonOutput {
-							decoder := json.NewDecoder(strings.NewReader(stdout))
-							var envelope map[string]any
-							require.NoError(t, decoder.Decode(&envelope))
-							require.ErrorIs(t, decoder.Decode(new(any)), io.EOF)
-							require.Equal(t, "succeeded", envelope["outcome"])
-							payload := requireJSONObject(t, envelope["payload"])
-							if !key {
-								payload = requireJSONObject(t, requireJSONItems(t, payload["items"], 1)[0])
-							}
-							if state == "" {
-								require.NotContains(t, payload, "state")
-							} else {
-								require.Equal(t, state, payload["state"])
-							}
-							stats := requireJSONObject(t, payload["statistics"])
-							want := map[string]any{"active": float64(population[0]), "completed": float64(7), "canceled": float64(9), "incidents": float64(1), "incidentCountSupported": true, "suspendedCountSupported": true}
-							if population[1] != 0 {
-								want["suspended"] = float64(population[1])
-							}
-							require.Equal(t, want, stats)
-						} else {
-							want := "123 tenant invoice v1 "
-							if state != "" {
-								want += state + " "
-							}
-							want += fmt.Sprintf("[ac:%s cp:7 cx:9 inc:1 su:%s]\n", zeroAsMinus(int64(population[0])), zeroAsMinus(int64(population[1])))
-							if !key {
-								want += "found: 1\n"
-							}
-							require.Equal(t, want, stdout)
-						}
-					}
-				})
-			}
+					require.Equal(t, want, stdout)
+					return
+				}
+				decoder := json.NewDecoder(strings.NewReader(stdout))
+				var envelope map[string]any
+				require.NoError(t, decoder.Decode(&envelope))
+				require.ErrorIs(t, decoder.Decode(new(any)), io.EOF)
+				require.Equal(t, "succeeded", envelope["outcome"])
+				payload := requireJSONObject(t, envelope["payload"])
+				if !key {
+					payload = requireJSONObject(t, requireJSONItems(t, payload["items"], 1)[0])
+				}
+				require.Equal(t, "DRAINING", payload["state"])
+				require.Equal(t, map[string]any{
+					"active": float64(0), "suspended": float64(2), "completed": float64(7),
+					"canceled": float64(9), "incidents": float64(1),
+					"incidentCountSupported": true, "suspendedCountSupported": true,
+				}, requireJSONObject(t, payload["statistics"]))
+			})
 		}
 	}
 }

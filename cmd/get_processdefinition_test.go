@@ -925,17 +925,15 @@ func countProcessDefinitionSearchRequests(items []string) int {
 
 // TestGetProcessDefinitionLifecycle exercises real command reads and output modes
 // against a single expected fake request, so lifecycle cannot add discovery or mutations.
+// Adapter tests cover the full value vocabulary; mixed-row and mode tests cover
+// unfamiliar/DELETED values, while this table checks both read paths and omission.
 func TestGetProcessDefinitionLifecycle(t *testing.T) {
 	for _, lookup := range []bool{true, false} {
-		for _, state := range []string{"ACTIVE", "DRAINING", "DELETED", " future-State ", "", "null"} {
+		for _, state := range []string{"DRAINING", ""} {
 			for _, mode := range []string{"human", "json"} {
 				t.Run(strconv.FormatBool(lookup)+"/"+state+"/"+mode, func(t *testing.T) {
 					item := map[string]any{"processDefinitionKey": "123", "processDefinitionId": "orders", "version": 2, "tenantId": "tenant"}
-					wantState := state
-					if state == "null" {
-						item["state"] = nil
-						wantState = ""
-					} else if state != "" {
+					if state != "" {
 						item["state"] = state
 					}
 					var payload any = item
@@ -974,15 +972,15 @@ func TestGetProcessDefinitionLifecycle(t *testing.T) {
 							got = requireJSONObject(t, requireJSONItems(t, got["items"], 1)[0])
 						}
 						require.Equal(t, "123", got["key"])
-						if wantState == "" {
+						if state == "" {
 							require.NotContains(t, got, "state")
 						} else {
-							require.Equal(t, wantState, got["state"])
+							require.Equal(t, state, got["state"])
 						}
 					} else {
 						want := "123 tenant orders v2"
-						if wantState != "" {
-							want += " " + wantState
+						if state != "" {
+							want += " " + state
 						}
 						// Existing human result renderers remove trailing row whitespace.
 						want = strings.TrimRight(want, " ")

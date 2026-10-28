@@ -51,7 +51,8 @@ func TestConvertProcessInstanceSuspendedDate(t *testing.T) {
 }
 
 // TestConvertProcessDefinitionSuspendedStatistics preserves active semantics and
-// distinguishes supported zero from unavailable data without leaking union evidence.
+// distinguishes supported zero from unavailable data without leaking union evidence
+// or changing the independently supplied definition lifecycle.
 func TestConvertProcessDefinitionSuspendedStatistics(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
@@ -67,8 +68,9 @@ func TestConvertProcessDefinitionSuspendedStatistics(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			unfinished := int64(5)
 			stats := d.ProcessDefinitionStatistics{Active: 2, Suspended: tc.suspended, SuspendedCountSupported: tc.supported, Unfinished: &unfinished}
-			source := d.ProcessDefinition{Key: "123", Statistics: &stats}
+			source := d.ProcessDefinition{Key: "123", State: "DRAINING", Statistics: &stats}
 			for _, converted := range []ProcessDefinition{fromDomainProcessDefinition(source), fromDomainProcessDefinitions([]d.ProcessDefinition{source}).Items[0]} {
+				require.Equal(t, "DRAINING", converted.State)
 				require.NotNil(t, converted.Statistics)
 				require.Equal(t, int64(2), converted.Statistics.Active)
 				require.Equal(t, tc.suspended, converted.Statistics.Suspended)
@@ -86,8 +88,8 @@ func TestConvertProcessDefinitionSuspendedStatistics(t *testing.T) {
 	require.Nil(t, fromDomainProcessDefinition(d.ProcessDefinition{Key: "123"}).Statistics)
 }
 
-// TestConvertProcessDefinitionLifecycle verifies shared conversion preserves fresh
-// observations across all public result shapes, including omission after a value.
+// TestConvertProcessDefinitionLifecycle checks propagation through each public
+// result shape; the model tests own JSON serialization and omission assertions.
 func TestConvertProcessDefinitionLifecycle(t *testing.T) {
 	t.Parallel()
 	for _, state := range []string{"ACTIVE", "DRAINING", "DELETED", " future-State ", ""} {
@@ -103,53 +105,8 @@ func TestConvertProcessDefinitionLifecycle(t *testing.T) {
 				fromDomainProcessDefinitionWatchSnapshot(d.ProcessDefinitionWatchSnapshot{Items: page.Items}).Items[0],
 			} {
 				require.Equal(t, state, got.State)
-				raw, err := json.Marshal(got)
-				require.NoError(t, err)
-				var object map[string]any
-				require.NoError(t, json.Unmarshal(raw, &object))
-				if state == "" {
-					require.NotContains(t, object, "state")
-				} else {
-					require.Equal(t, state, object["state"])
-				}
+				require.Nil(t, got.Statistics)
 			}
 		})
-	}
-}
-
-// TestConvertProcessDefinitionLifecycleStatistics preserves independent state
-// when statistics are absent or unavailable and never exports internal evidence.
-func TestConvertProcessDefinitionLifecycleStatistics(t *testing.T) {
-	t.Parallel()
-	for _, state := range []string{"DRAINING", " future-State ", ""} {
-		for _, stats := range []*d.ProcessDefinitionStatistics{
-			nil,
-			{},
-			{Active: 0, Suspended: 2, SuspendedCountSupported: true, Completed: 7, Canceled: 9, Incidents: 1, IncidentCountSupported: true, Unfinished: new(int64(2))},
-		} {
-			source := d.ProcessDefinition{Key: "123", State: state, Statistics: stats}
-			for _, got := range []ProcessDefinition{fromDomainProcessDefinition(source), fromDomainProcessDefinitions([]d.ProcessDefinition{source}).Items[0]} {
-				require.Equal(t, state, got.State)
-				raw, err := json.Marshal(got)
-				require.NoError(t, err)
-				var object map[string]any
-				require.NoError(t, json.Unmarshal(raw, &object))
-				if state == "" {
-					require.NotContains(t, object, "state")
-				} else {
-					require.Equal(t, state, object["state"])
-				}
-				if stats == nil {
-					require.Nil(t, got.Statistics)
-					require.NotContains(t, object, "statistics")
-					continue
-				}
-				require.Equal(t, &ProcessDefinitionStatistics{
-					Active: stats.Active, Completed: stats.Completed, Canceled: stats.Canceled, Incidents: stats.Incidents,
-					IncidentCountSupported: stats.IncidentCountSupported, Suspended: stats.Suspended, SuspendedCountSupported: stats.SuspendedCountSupported,
-				}, got.Statistics)
-				require.NotContains(t, string(raw), "unfinished")
-			}
-		}
 	}
 }

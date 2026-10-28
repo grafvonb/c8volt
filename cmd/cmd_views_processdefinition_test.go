@@ -552,47 +552,35 @@ func newProcessDefinitionViewTestCommand(use string) *cobra.Command {
 	return cmd
 }
 
-// TestProcessDefinitionLifecycleColumns reserves state before statistics even
-// when rows omit it, while keeping legacy and single-row rendering compact.
+// TestProcessDefinitionLifecycleColumns keeps ordinary and watch rows aligned
+// across missing state and missing/unsupported statistics, omitting empty columns.
 func TestProcessDefinitionLifecycleColumns(t *testing.T) {
 	t.Parallel()
 	items := []process.ProcessDefinition{
-		{Key: "1", BpmnProcessId: "orders", ProcessVersion: 3, State: "ACTIVE"},
-		{Key: "2", BpmnProcessId: "orders", ProcessVersion: 2, Statistics: &process.ProcessDefinitionStatistics{Active: 1}},
-		{Key: "3", BpmnProcessId: "orders", ProcessVersion: 1, State: "DRAINING", Statistics: &process.ProcessDefinitionStatistics{Completed: 2}},
-	}
-	require.Equal(t, "1 orders v3 ACTIVE", oneLinePD(items[0]))
-	require.Equal(t, "2 orders v2 [ac:1 cp:- cx:-]", oneLinePD(items[1]))
-	require.Equal(t, "3 orders v1 DRAINING [ac:- cp:2 cx:-]", oneLinePD(items[2]))
-	want := []string{"1 orders v3 ACTIVE", "2 orders v2          [ac:1 cp:- cx:-]", "3 orders v1 DRAINING [ac:- cp:2 cx:-]"}
-	require.Equal(t, want, formatProcessDefinitionFlatRows(items))
-	var rows []processDefinitionWatchRow
-	for _, item := range items {
-		row := flatRowPD(item)
-		require.Equal(t, item.State, row[4])
-		rows = append(rows, processDefinitionWatchRow{display: newProcessDefinitionDisplay(item)})
-	}
-	require.Equal(t, want, formatProcessDefinitionWatchRows(rows, false))
-	items[0].State, items[2].State = "", ""
-	require.Equal(t, []string{"1 orders v3", "2 orders v2 [ac:1 cp:- cx:-]", "3 orders v1 [ac:- cp:2 cx:-]"}, formatProcessDefinitionFlatRows(items))
-}
-
-// TestProcessDefinitionLifecycleStatisticsAvailability retains lifecycle with
-// missing statistics and omits unsupported counts without losing mixed alignment.
-func TestProcessDefinitionLifecycleStatisticsAvailability(t *testing.T) {
-	t.Parallel()
-	items := []process.ProcessDefinition{
-		{Key: "1", BpmnProcessId: "orders", ProcessVersion: 1, State: "DRAINING"},
+		{Key: "1", BpmnProcessId: "orders", ProcessVersion: 1, State: "ACTIVE"},
 		{Key: "2", BpmnProcessId: "orders", ProcessVersion: 1, State: "DRAINING", Statistics: &process.ProcessDefinitionStatistics{}},
 		{Key: "3", BpmnProcessId: "orders", ProcessVersion: 1, State: "future-State", Statistics: &process.ProcessDefinitionStatistics{Suspended: 2, SuspendedCountSupported: true, IncidentCountSupported: true}},
-		{Key: "4", BpmnProcessId: "orders", ProcessVersion: 1, Statistics: &process.ProcessDefinitionStatistics{Suspended: 2, SuspendedCountSupported: true, IncidentCountSupported: true}},
+		{Key: "4", BpmnProcessId: "orders", ProcessVersion: 1, Statistics: &process.ProcessDefinitionStatistics{Active: 1}},
 	}
-	require.Equal(t, []string{
-		"1 orders v1 DRAINING",
+	want := []string{
+		"1 orders v1 ACTIVE",
 		"2 orders v1 DRAINING     [ac:- cp:- cx:-]",
 		"3 orders v1 future-State [ac:- cp:- cx:- inc:- su:2]",
-		"4 orders v1              [ac:- cp:- cx:- inc:- su:2]",
+		"4 orders v1              [ac:1 cp:- cx:-]",
+	}
+	require.Equal(t, want, formatProcessDefinitionFlatRows(items))
+	var rows []processDefinitionWatchRow
+	for i, item := range items {
+		require.Equal(t, strings.Join(strings.Fields(want[i]), " "), oneLinePD(item))
+		require.Equal(t, item.State, flatRowPD(item)[4])
+		rows = append(rows, processDefinitionWatchRow{display: newProcessDefinitionDisplay(item)})
+		items[i].State = ""
+	}
+	require.Equal(t, want, formatProcessDefinitionWatchRows(rows, false))
+	require.Equal(t, []string{
+		"1 orders v1",
+		"2 orders v1 [ac:- cp:- cx:-]",
+		"3 orders v1 [ac:- cp:- cx:- inc:- su:2]",
+		"4 orders v1 [ac:1 cp:- cx:-]",
 	}, formatProcessDefinitionFlatRows(items))
-	require.Equal(t, "1 orders v1 DRAINING", oneLinePD(items[0]))
-	require.Equal(t, "2 orders v1 DRAINING [ac:- cp:- cx:-]", oneLinePD(items[1]))
 }
