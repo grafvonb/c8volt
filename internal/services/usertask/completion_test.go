@@ -535,3 +535,13 @@ func TestPrepareUserTaskCompletionsUnusableRead(t *testing.T) {
 	require.ErrorIs(t, err, d.ErrPrecondition)
 	require.Empty(t, out.Items)
 }
+
+// AssignUserTask fails closed when an unrelated fixture receives an assignment.
+func (a *completionAPI) AssignUserTask(context.Context, string, string, ...services.CallOption) (d.UserTaskAssignmentResult, error) {
+	panic("unexpected user-task assignment")
+}
+
+// UnassignUserTask fails closed when an unrelated fixture receives an unassignment.
+func (a *completionAPI) UnassignUserTask(context.Context, string, ...services.CallOption) (d.UserTaskAssignmentResult, error) {
+	panic("unexpected user-task unassignment")
+}

@@ -449,3 +449,13 @@ func newHTTPResponse(method, rawURL string, statusCode int, status string) *http
 func ptr[T any](v T) *T {
 	return &v
 }
+
+// AssignUserTaskWithResponse rejects unexpected assignment in this unrelated fixture.
+func (m *mockUserTaskCamundaClient) AssignUserTaskWithResponse(context.Context, camundav88.UserTaskKey, camundav88.AssignUserTaskJSONRequestBody, ...camundav88.RequestEditorFn) (*camundav88.AssignUserTaskResponse, error) {
+	panic("unexpected user-task assignment")
+}
+
+// UnassignUserTaskWithResponse rejects unexpected removal in this unrelated fixture.
+func (m *mockUserTaskCamundaClient) UnassignUserTaskWithResponse(context.Context, camundav88.UserTaskKey, ...camundav88.RequestEditorFn) (*camundav88.UnassignUserTaskResponse, error) {
+	panic("unexpected user-task unassignment")
+}

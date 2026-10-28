@@ -50,7 +50,10 @@ func WithProgress(progress func(d.OpsProgressEvent)) CallOption {
 
 type CallOption func(*CallCfg)
 
+// CallCfg holds the evaluated options for a service call.
 type CallCfg struct {
+	// UserTaskAssignmentOverride permits replacing an existing assignee only when explicitly enabled.
+	UserTaskAssignmentOverride        bool
 	NoStateCheck                      bool
 	Force                             bool
 	NoWait                            bool
@@ -78,4 +81,9 @@ func ApplyCallOptions(opts []CallOption) *CallCfg {
 		o(c)
 	}
 	return c
+}
+
+// WithUserTaskAssignmentOverride explicitly permits replacing an existing task assignee.
+func WithUserTaskAssignmentOverride() CallOption {
+	return func(c *CallCfg) { c.UserTaskAssignmentOverride = true }
 }

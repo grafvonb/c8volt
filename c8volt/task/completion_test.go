@@ -220,3 +220,13 @@ func TestCompletionPublicModels(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, `{"items":[]}`, string(b))
 }
+
+// AssignUserTask fails closed when an unrelated fixture receives an assignment.
+func (a *facadeCompletionAPI) AssignUserTask(context.Context, string, string, ...services.CallOption) (d.UserTaskAssignmentResult, error) {
+	panic("unexpected user-task assignment")
+}
+
+// UnassignUserTask fails closed when an unrelated fixture receives an unassignment.
+func (a *facadeCompletionAPI) UnassignUserTask(context.Context, string, ...services.CallOption) (d.UserTaskAssignmentResult, error) {
+	panic("unexpected user-task unassignment")
+}

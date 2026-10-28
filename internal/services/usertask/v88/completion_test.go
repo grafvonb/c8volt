@@ -231,3 +231,13 @@ func TestCompleteUserTaskDelegation(t *testing.T) {
 		})
 	}
 }
+
+// AssignUserTaskWithResponse rejects unexpected assignment in this unrelated fixture.
+func (c completionClient) AssignUserTaskWithResponse(context.Context, camunda.UserTaskKey, camunda.AssignUserTaskJSONRequestBody, ...camunda.RequestEditorFn) (*camunda.AssignUserTaskResponse, error) {
+	panic("unexpected user-task assignment")
+}
+
+// UnassignUserTaskWithResponse rejects unexpected removal in this unrelated fixture.
+func (c completionClient) UnassignUserTaskWithResponse(context.Context, camunda.UserTaskKey, ...camunda.RequestEditorFn) (*camunda.UnassignUserTaskResponse, error) {
+	panic("unexpected user-task unassignment")
+}
