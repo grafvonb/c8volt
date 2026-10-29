@@ -4,12 +4,14 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
 	"sync"
 	"testing"
 
+	"github.com/grafvonb/c8volt/testx"
 	"github.com/stretchr/testify/require"
 )
 
@@ -278,6 +280,91 @@ func TestUpdateUserTaskAssignmentSuccessLogging(t *testing.T) {
 						})
 					}
 				}
+			}
+		}
+	}
+}
+
+// TestUpdateUserTaskReassignmentDenied checks the complete adapter-to-exit path
+// with fake backend evidence and independently captured terminal output.
+func TestUpdateUserTaskReassignmentDenied(t *testing.T) {
+	for _, format := range []string{"plain-time", "json"} {
+		for _, destination := range []string{"configured", "inherited"} {
+			for _, mode := range []string{"normal", "verbose", "quiet", "warn", "json", "keys", "override", "other conflict", "unassign", "no-error-code", "interactive"} {
+				t.Run(format+"/"+destination+"/"+mode, func(t *testing.T) {
+					operation := "assign"
+					if mode == "unassign" {
+						operation = "unassign"
+					}
+					server, calls := newUserTaskAssignmentServer(t, operation, func(w http.ResponseWriter, r *http.Request, key string) {
+						detail := "Expected to claim user task with key '" + key + "', but it has already been assigned"
+						if mode == "other conflict" {
+							detail = "Task is in the wrong state"
+						}
+						w.Header().Set("Content-Type", "application/problem+json")
+						w.WriteHeader(409)
+						require.NoError(t, json.NewEncoder(w).Encode(map[string]string{"detail": detail, "instance": "https://private.invalid/secret", "title": "POST body-only-secret"}))
+					})
+					level := "info"
+					if mode == "warn" {
+						level = "warn"
+					}
+					args := []string{"--config", completionLogConfig(t, server.URL, format, level), "--auto-confirm", "update", "ut", assignmentModeFlag(operation), "--key", completionKeyA}
+					switch mode {
+					case "verbose", "quiet", "json":
+						args = append(args, "--"+mode)
+					case "keys":
+						args = append(args, "--keys-only")
+					case "override":
+						args = append(args, "--allow-override")
+					case "no-error-code":
+						args = append(args, "--no-err-codes")
+					}
+					var exchanges []testx.CmdTerminalExchange
+					prompt := "You are about to assign user-task " + completionKeyA + " to \"alice\" (reassignment: not allowed).\nDo you want to proceed? [y/N]: "
+					if mode == "interactive" {
+						args = append(args, "--auto-confirm=false")
+						exchanges = []testx.CmdTerminalExchange{{Prompt: prompt, Response: "y"}}
+					}
+					stdout, stderr, err := runUserTaskCompletionTerminal(t, args, destination, exchanges)
+					if mode == "interactive" {
+						require.True(t, strings.HasPrefix(stderr, prompt))
+						require.Equal(t, 1, strings.Count(stderr, prompt))
+						stderr = strings.TrimPrefix(stderr, prompt)
+					}
+					code := 6
+					if mode == "no-error-code" {
+						code = 0
+					}
+					assertUserTaskCompletionExit(t, err, code)
+					require.Len(t, calls.Snapshot(), 1)
+					records := bulkCompletionDiagnosticRecords(t, stderr, format)
+					if mode == "json" {
+						envelope := decodeUserTaskCompletionEnvelope(t, stdout)
+						require.Equal(t, "conflict", envelope["class"])
+						item := requireJSONObject(t, requireJSONItems(t, requireJSONObject(t, envelope["payload"])["items"], 1)[0])
+						require.Equal(t, "failed", item["status"])
+						require.Equal(t, "rejected", item["submission"])
+						require.Contains(t, item["error"], "already been assigned")
+						require.Len(t, item, 5)
+						require.Empty(t, records)
+						return
+					}
+					require.Empty(t, stdout)
+					require.NotContains(t, stderr, "private.invalid")
+					require.NotContains(t, stderr, "body-only-secret")
+					want := [][2]string{}
+					switch mode {
+					case "normal", "verbose", "no-error-code", "interactive":
+						want = append(want, [2]string{"INFO", "user-task " + completionKeyA + " was not assigned: reassignment is not allowed; use --allow-override to replace the current assignee."})
+					case "keys":
+						want = append(want, [2]string{"ERROR", "user-task assignment: conflict (HTTP 409): 1"})
+					case "override", "other conflict", "unassign":
+						label := assignmentOperationLabel(operation)
+						want = append(want, [2]string{"INFO", "update user-task " + label + ": 1 requested; 1 failed"}, [2]string{"ERROR", "user-task " + label + ": conflict (HTTP 409): 1"})
+					}
+					require.Equal(t, want, records)
+				})
 			}
 		}
 	}

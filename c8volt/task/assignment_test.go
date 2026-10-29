@@ -217,7 +217,9 @@ func TestAssignmentPublicModels(t *testing.T) {
 	for i := range rows {
 		rows[i].Key = fmt.Sprintf("%016d", i+1)
 	}
+	rows[2].ReassignmentDenied = true
 	out := fromDomainUserTaskAssignmentResults(d.UserTaskAssignmentResults{Items: rows})
+	require.True(t, out.Items[2].ReassignmentDenied)
 	for i, item := range out.Items {
 		require.Equal(t, statuses[i], item.Status)
 		require.Equal(t, submissions[i], item.Submission)

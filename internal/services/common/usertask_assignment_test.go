@@ -5,6 +5,7 @@ package common_test
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -164,5 +165,55 @@ func TestUnassignUserTaskRejections(t *testing.T) {
 				}
 			})
 		}
+	}
+}
+
+func TestAssignUserTaskReassignmentDenied(t *testing.T) {
+	const key = "2251799813685249"
+	detail := "Expected to claim user task with key '" + key + "', but it has already been assigned"
+	for _, tc := range []struct {
+		name, detail                                    string
+		code                                            int
+		malformed, ambiguous, callError, unassign, want bool
+	}{
+		{name: "confirmed", detail: detail, code: 409, want: true},
+		{name: "gateway prefix", detail: "Command rejected: " + detail, code: 409, want: true},
+		{name: "different key", detail: "Expected to claim user task with key '2251799813685250', but it has already been assigned", code: 409},
+		{name: "other state", detail: "Task is completing", code: 409},
+		{name: "listener rejection", detail: "Listener rejected assignment", code: 409},
+		{name: "malformed body", detail: detail, code: 409, malformed: true},
+		{name: "other status", detail: detail, code: 400},
+		{name: "ambiguous earlier attempt", detail: detail, code: 409, ambiguous: true},
+		{name: "call error", detail: detail, code: 409, callError: true},
+		{name: "unassign", detail: detail, code: 409, unassign: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			body, err := json.Marshal(map[string]string{"detail": tc.detail})
+			require.NoError(t, err)
+			if tc.malformed {
+				body = []byte(tc.detail)
+			}
+			calls := 0
+			submit := common.AssignUserTaskSubmission
+			if tc.unassign {
+				submit = common.UnassignUserTaskSubmission
+			}
+			result, err := submit(context.Background(), key, nil, func(context.Context) (*http.Response, []byte, error) {
+				calls++
+				if tc.ambiguous && calls == 1 {
+					return nil, nil, completionNetworkError{}
+				}
+				var callErr error
+				if tc.callError {
+					callErr = fmt.Errorf("transport failed")
+				}
+				return completionResponse(tc.code).HTTPResponse, body, callErr
+			})
+			require.Error(t, err)
+			require.Equal(t, tc.want, result.ReassignmentDenied)
+			if !tc.callError {
+				require.Contains(t, result.Error, tc.detail)
+			}
+		})
 	}
 }

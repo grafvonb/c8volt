@@ -52,6 +52,10 @@ func runUpdateUserTaskAssignment(cmd *cobra.Command, args []string, cli task.API
 		results, operationErr = cli.UnassignUserTasks(cmd.Context(), input.Keys, input.WantedWorkers, opts...)
 	}
 	report := newUserTaskAssignmentReport(input, results)
+	if operationErr != nil && renderUserTaskReassignmentDenied(cmd, report) {
+		exitAfterRenderedResult(cfg.App.NoErrCodes, operationErr)
+		return
+	}
 	if err := renderUpdateUserTaskAssignment(cmd, report, operationErr); err != nil {
 		// A partial write must never trigger another envelope. Preserve the mutation's
 		// original classification when rendering also fails.

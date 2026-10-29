@@ -294,3 +294,22 @@ func renderUserTaskAssignmentPlan(cmd *cobra.Command, input userTaskAssignmentIn
 		}
 	}
 }
+
+// renderUserTaskReassignmentDenied replaces the single human failure summary and
+// error with one actionable INFO record. Machine and bulk failure contracts stay intact.
+func renderUserTaskReassignmentDenied(cmd *cobra.Command, report userTaskAssignmentReport) bool {
+	if pickMode() == RenderModeJSON || pickMode() == RenderModeKeysOnly ||
+		report.Operation != "assign" || report.Phase != "execution" ||
+		report.AllowOverride == nil || *report.AllowOverride || report.RequestedCount != 1 || len(report.Items) != 1 {
+		return false
+	}
+	item := report.Items[0]
+	if !item.ReassignmentDenied || item.Status != task.UserTaskAssignmentStatusFailed ||
+		item.Submission != task.UserTaskAssignmentSubmissionRejected || item.StatusCode != http.StatusConflict {
+		return false
+	}
+	if !flagQuiet {
+		renderHumanLine(cmd, "user-task %s was not assigned: reassignment is not allowed; use --allow-override to replace the current assignee.", item.Key)
+	}
+	return true
+}

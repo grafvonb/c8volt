@@ -102,3 +102,7 @@ The report carries operation and intent once; items need not duplicate assignee/
 ## 7. Internal private submission evidence
 
 A small private record in `internal/services/common` may hold attempt-started, last status, ambiguity, accepted response and terminal error while the existing retry helper runs. It is not a facade type or a new shared envelope. Concrete completion/assignment wrappers map it to their established result types and action-specific labels. Its extraction must preserve completion semantics exactly and is covered by completion regressions plus the new assignment cases.
+
+## Reassignment diagnostic evidence
+
+`ReassignmentDenied` is non-serialized domain/facade metadata derived from a definite failed/rejected HTTP 409 response with Camunda's already-assigned claim reason for the selected key. It never replaces the original error or submission evidence. The command combines it with single-key assignment and disabled override to select the INFO hint; no machine fields or outcome enums change.

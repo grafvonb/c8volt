@@ -8,6 +8,9 @@ package domain
 // Timeout/cancellation alone never establishes rejection. Earlier ambiguity survives a later
 // rejection, while a later documented acceptance supersedes earlier uncertainty.
 type UserTaskAssignmentResult struct {
+	// ReassignmentDenied records a definite already-assigned rejection, not a generic conflict.
+	// It is diagnostic metadata only; machine result schemas remain unchanged.
+	ReassignmentDenied bool
 	// Key: Selected unique task key, always present
 	Key string
 	// Status: Local operation outcome

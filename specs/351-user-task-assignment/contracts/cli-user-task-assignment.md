@@ -115,7 +115,15 @@ Bulk summaries identify action and requested count and omit zero human counters.
 
 Keys-only emits each unique preview key during dry-run and only successful-response keys during execution, in selection order. It never prints failed, uncertain or unattempted keys as successful; no qualifying key means zero bytes, not a blank line. Partial failure preserves its non-success exit even with successful keys on stdout.
 
-Normal/verbose-only failure uses one bounded aggregate ERROR, grouping repeated safe reasons with counts. Keep at most three distinct groups plus a count for other failures. Preserve uncertain-outcome wording. Quiet retains the error. Do not emit a second error diagnostic for a JSON envelope that already carries the failure. DEBUG uses existing redacted diagnostics, independent of verbose, and never result stdout.
+For a single human assignment without override, a definite HTTP 409 rejection whose problem detail identifies that key as already assigned replaces the failure summary and ERROR with one INFO line:
+
+```text
+user-task <key> was not assigned: reassignment is not allowed; use --allow-override to replace the current assignee.
+```
+
+Retain the conflict exit code (including existing no-error-code configuration). Quiet and WARN suppress the INFO hint. Do not infer this cause from HTTP 409 alone, raw transport text, or an ambiguous submission. Unassignment, override-enabled requests, bulk results and machine output retain their existing contracts. Preserve the backend error evidence in JSON; internal diagnostic classification adds no JSON fields.
+
+Other normal/verbose-only failure uses one bounded aggregate ERROR, grouping repeated safe reasons with counts. Keep at most three distinct groups plus a count for other failures. Preserve uncertain-outcome wording. Quiet retains the error. Do not emit a second error diagnostic for a JSON envelope that already carries the failure. DEBUG uses existing redacted diagnostics, independent of verbose, and never result stdout.
 
 ## Errors and exits
 

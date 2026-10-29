@@ -414,7 +414,7 @@ func fromDomainUserTaskAssignmentResults(x d.UserTaskAssignmentResults) UserTask
 		out.Items[i] = UserTaskAssignmentResult{
 			Key: item.Key, Status: UserTaskAssignmentStatus(item.Status),
 			Submission: UserTaskAssignmentSubmission(item.Submission),
-			StatusCode: item.StatusCode, Error: item.Error,
+			StatusCode: item.StatusCode, Error: item.Error, ReassignmentDenied: item.ReassignmentDenied,
 		}
 	}
 	return out
