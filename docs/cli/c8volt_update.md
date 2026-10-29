@@ -16,7 +16,7 @@ Element updates freeze exact local destinations before approval and confirm requ
 
 User-task --complete accepts explicit keys and optional variables and previews locally with --dry-run. One lookup per key detects already completed tasks (conflict) and warns about missing assignees before confirmation. The backend's successful response confirms completion; c8volt adds no task-state polling or downstream waiting. For user tasks, --no-wait skips variable-update verification and is incompatible with --complete, which has no additional waiter to skip.
 
-User-task --assign <assignee> and --unassign change explicit task assignments without reads or polling. Assignment protects existing assignees unless --allow-override is enabled. Dry-run previews intent locally; ordinary execution approves once and awaits the native response, including blocking listeners. Partial and uncertain outcomes remain visible. These modes reject variable payloads, each other, --complete and enabled --no-wait.
+User-task --assign <assignee> checks ownership and asks before replacing existing assignees. Use --force to permit replacement without questions. Auto-confirm and automation do not grant replacement permission. --unassign removes explicit task assignments without preliminary reads. Neither mode polls. Dry-run previews intent locally; ordinary execution approves once and awaits the native response, including blocking listeners. Partial and uncertain outcomes remain visible. These modes reject variable payloads, each other, --complete and enabled --no-wait.
 
 Requires Camunda 8.8 or newer. Use a resource subcommand to plan and confirm updates.
 
@@ -33,7 +33,7 @@ c8volt update [flags]
   ./c8volt update user-task --key <user-task-key> --vars '{"approved":true}' --dry-run
   ./c8volt update user-task --key <user-task-key> --vars-file ./vars.json --auto-confirm
   ./c8volt update user-task --key 2251799813685249 --assign alice --dry-run
-  ./c8volt update user-task --key 2251799813685249 --assign alice --allow-override --auto-confirm
+  ./c8volt update user-task --key 2251799813685249 --assign alice --force
   ./c8volt update user-task --key 2251799813685249 --unassign --auto-confirm
   ./c8volt update ut --key 2251799813685249 --complete --auto-confirm
   ./c8volt update job --key <job-key> --retries 3 --dry-run

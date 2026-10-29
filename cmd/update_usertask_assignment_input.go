@@ -39,8 +39,8 @@ func resolveUpdateUserTaskAssignmentMode(cmd *cobra.Command) (string, error) {
 	if active > 1 {
 		return "", mutuallyExclusiveFlagsf("--assign, --unassign, and --complete are mutually exclusive")
 	}
-	if cmd.Flags().Changed("allow-override") && !assign {
-		return "", missingDependentFlagsf("--allow-override requires --assign")
+	if cmd.Flags().Changed("force") && !assign {
+		return "", missingDependentFlagsf("--force requires --assign")
 	}
 	if assign {
 		return "assign", nil
@@ -85,7 +85,7 @@ func parseUpdateUserTaskAssignmentInput(cmd *cobra.Command, args []string) (user
 		if strings.TrimSpace(input.Assignee) == "" {
 			return userTaskAssignmentInput{}, invalidFlagValuef("--assign requires a nonblank assignee")
 		}
-		input.AllowOverride, _ = cmd.Flags().GetBool("allow-override")
+		input.AllowOverride, _ = cmd.Flags().GetBool("force")
 	}
 	input.Keys, err = collectUserTaskMutationKeys(cmd, args, assignmentOperationLabel(operation))
 	if err != nil {

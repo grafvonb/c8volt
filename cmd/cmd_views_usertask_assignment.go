@@ -15,9 +15,10 @@ import (
 )
 
 // userTaskAssignmentCounts accounts for every selected key, including work that
-// never started. Zero counts remain present in the machine contract.
+// never started. Existing zero counts remain present; unchanged is omitted when zero.
 type userTaskAssignmentCounts struct {
 	Preview      int `json:"preview"`
+	Unchanged    int `json:"unchanged,omitempty"`
 	Accepted     int `json:"accepted"`
 	Failed       int `json:"failed"`
 	TimedOut     int `json:"timedOut"`
@@ -74,6 +75,8 @@ func newUserTaskAssignmentReport(input userTaskAssignmentInput, results task.Use
 		switch item.Status {
 		case task.UserTaskAssignmentStatusPreview:
 			report.Counts.Preview++
+		case task.UserTaskAssignmentStatusUnchanged:
+			report.Counts.Unchanged++
 		case task.UserTaskAssignmentStatusAccepted:
 			report.Counts.Accepted++
 		case task.UserTaskAssignmentStatusFailed:
@@ -98,7 +101,7 @@ func renderUpdateUserTaskAssignment(cmd *cobra.Command, report userTaskAssignmen
 			envelope.Payload = report
 			return renderResultEnvelope(cmd, envelope)
 		}
-		if report.Phase == "preview" {
+		if report.Phase == "preview" || (report.RequestedCount > 0 && report.Counts.Unchanged == report.RequestedCount) {
 			return renderSucceededResult(cmd, report)
 		}
 		return renderAcceptedResult(cmd, report)
@@ -125,6 +128,8 @@ func renderUpdateUserTaskAssignment(cmd *cobra.Command, report userTaskAssignmen
 	var summary string
 	if report.Phase == "preview" {
 		summary = "dry run: " + formatUserTaskAssignmentIntent(report) + "; no requests submitted"
+	} else if report.RequestedCount == 1 && report.Counts.Unchanged == 1 && report.Assignee != nil {
+		summary = fmt.Sprintf("user-task %s is already assigned to %q; no change needed.", report.RequestedKeys[0], *report.Assignee)
 	} else if report.RequestedCount == 1 && report.Counts.Accepted == 1 {
 		summary = fmt.Sprintf("updated user-task %s: %s confirmed", report.RequestedKeys[0], label)
 	} else {
@@ -137,7 +142,7 @@ func renderUpdateUserTaskAssignment(cmd *cobra.Command, report userTaskAssignmen
 			renderHumanLine(cmd, "selected user-task %s", key)
 		}
 	}
-	if flagVerbose {
+	if flagVerbose && !(report.RequestedCount == 1 && report.Counts.Unchanged == 1) {
 		for _, item := range report.Items {
 			renderHumanLine(cmd, "%s", formatUserTaskAssignmentItem(report.Operation, item))
 		}
@@ -178,7 +183,7 @@ func formatUserTaskAssignmentCounts(counts userTaskAssignmentCounts) string {
 		count int
 		label string
 	}{
-		{counts.Preview, "preview"}, {counts.Accepted, "confirmed"}, {counts.Failed, "failed"},
+		{counts.Preview, "preview"}, {counts.Unchanged, "unchanged"}, {counts.Accepted, "confirmed"}, {counts.Failed, "failed"},
 		{counts.TimedOut, "timed out"}, {counts.Canceled, "canceled"},
 		{counts.NotAttempted, "not attempted"},
 	} {
@@ -194,7 +199,7 @@ func formatUserTaskAssignmentCounts(counts userTaskAssignmentCounts) string {
 func formatUserTaskAssignmentItem(operation string, item task.UserTaskAssignmentResult) string {
 	status := "unknown"
 	switch item.Status {
-	case task.UserTaskAssignmentStatusPreview, task.UserTaskAssignmentStatusAccepted, task.UserTaskAssignmentStatusFailed, task.UserTaskAssignmentStatusTimedOut, task.UserTaskAssignmentStatusCanceled, task.UserTaskAssignmentStatusNotAttempted:
+	case task.UserTaskAssignmentStatusUnchanged, task.UserTaskAssignmentStatusPreview, task.UserTaskAssignmentStatusAccepted, task.UserTaskAssignmentStatusFailed, task.UserTaskAssignmentStatusTimedOut, task.UserTaskAssignmentStatusCanceled, task.UserTaskAssignmentStatusNotAttempted:
 		status = string(item.Status)
 	}
 	submission := "unknown"
@@ -220,7 +225,7 @@ func formatUserTaskAssignmentFailure(report userTaskAssignmentReport, operationE
 	reasons := []string{}
 	for _, item := range report.Items {
 		switch item.Status {
-		case task.UserTaskAssignmentStatusAccepted, task.UserTaskAssignmentStatusPreview, task.UserTaskAssignmentStatusNotAttempted:
+		case task.UserTaskAssignmentStatusUnchanged, task.UserTaskAssignmentStatusAccepted, task.UserTaskAssignmentStatusPreview, task.UserTaskAssignmentStatusNotAttempted:
 			continue
 		}
 		reason := userTaskAssignmentFailureReason(item)
@@ -249,6 +254,9 @@ func formatUserTaskAssignmentFailure(report userTaskAssignmentReport, operationE
 // userTaskAssignmentFailureReason never promotes a last HTTP rejection into
 // certainty when an earlier attempt left acceptance unknown.
 func userTaskAssignmentFailureReason(item task.UserTaskAssignmentResult) string {
+	if item.ReassignmentDenied && item.Submission == task.UserTaskAssignmentSubmissionNotSubmitted {
+		return "already assigned; use --force to replace the current assignee"
+	}
 	switch item.Status {
 	case task.UserTaskAssignmentStatusTimedOut, task.UserTaskAssignmentStatusCanceled:
 		reason := "timed out"
@@ -305,11 +313,23 @@ func renderUserTaskReassignmentDenied(cmd *cobra.Command, report userTaskAssignm
 	}
 	item := report.Items[0]
 	if !item.ReassignmentDenied || item.Status != task.UserTaskAssignmentStatusFailed ||
-		item.Submission != task.UserTaskAssignmentSubmissionRejected || item.StatusCode != http.StatusConflict {
+		!((item.Submission == task.UserTaskAssignmentSubmissionRejected && item.StatusCode == http.StatusConflict) ||
+			(item.Submission == task.UserTaskAssignmentSubmissionNotSubmitted && item.StatusCode == 0)) {
 		return false
 	}
 	if !flagQuiet {
-		renderHumanLine(cmd, "user-task %s was not assigned: reassignment is not allowed; use --allow-override to replace the current assignee.", item.Key)
+		if item.Submission == task.UserTaskAssignmentSubmissionNotSubmitted {
+			renderHumanLine(cmd, "user-task %s is already assigned; use --force to replace the current assignee.", item.Key)
+			return true
+		}
+		renderHumanLine(cmd, "user-task %s was not assigned: reassignment is not allowed; use --force to replace the current assignee.", item.Key)
 	}
 	return true
+}
+
+// renderUserTaskAssignmentBlockedPlan explains excluded keys before bulk approval.
+func renderUserTaskAssignmentBlockedPlan(cmd *cobra.Command, count int) {
+	if !flagQuiet && pickMode() != RenderModeJSON && pickMode() != RenderModeKeysOnly {
+		renderHumanLine(cmd, "%d user task(s) already assigned; skipped; use --force to replace their current assignees.", count)
+	}
 }

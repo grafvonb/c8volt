@@ -1,5 +1,11 @@
 # Validation Quickstart: User-Task Assignment and Unassignment
 
+## Assignment approval update (2026-10-29)
+
+The current CLI policy supersedes earlier no-read and skip-only approval requirements below. `--assign` checks ownership, warns about existing assignees, and asks once before replacing them. Yes authorizes replacement at execution time, including a newer owner; the API has no compare-and-set ownership condition. Only keys observed occupied receive override after approval; other keys retain backend protection. `--force` replaces `--allow-override`, permits replacement, skips reads and skips confirmation. Auto-confirm, automation and nonterminal input never imply replacement consent: occupied keys remain failed/not_submitted unless forced, with fail-fast preserved. Dry-run stays local, unassignment stays read-free, and failed lookups stop before approval. Prompt text names safely quoted identities, WARN records use the configured logger, and JSON/keys output stays on stdout.
+
+Same-assignee refinement: a completed lookup matching the requested identity produces `unchanged/not_submitted`, with no error or HTTP status, no assignment request and no confirmation for that key. Keep its ordered result and exclude it from approval counts. A single human result is `user-task <key> is already assigned to "<assignee>"; no change needed.` Different-owner warnings say `user-task <key> is already assigned to "<current>".` before the replacement question. All-unchanged JSON succeeds, keys-only emits zero bytes, and quiet suppresses INFO. The additive `counts.unchanged` field is omitted when zero. Force still skips reads and submits; dry-run stays a local preview. Validate through isolated service/facade tests and command tests with real terminal stdin, separate streams, configured/inherited plain and structured logging, mixed batches and machine-output precedence.
+
 **Feature**: [spec.md](spec.md) | **Plan**: [plan.md](plan.md)
 
 This guide is for validation after implementation. The commands below were not run during planning, and new test families are planned names, not existing passed tests. Planning itself requires document consistency, whitespace, links and feature-pointer checks only.

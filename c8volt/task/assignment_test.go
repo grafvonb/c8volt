@@ -211,9 +211,10 @@ func TestAssignmentPublicModels(t *testing.T) {
 		{Status: d.UserTaskAssignmentStatusTimedOut, Submission: d.UserTaskAssignmentSubmissionUnknown},
 		{Status: d.UserTaskAssignmentStatusCanceled, Submission: d.UserTaskAssignmentSubmissionUnknown},
 		{Status: d.UserTaskAssignmentStatusNotAttempted, Submission: d.UserTaskAssignmentSubmissionNotSubmitted},
+		{Status: d.UserTaskAssignmentStatusUnchanged, Submission: d.UserTaskAssignmentSubmissionNotSubmitted},
 	}
-	statuses := []UserTaskAssignmentStatus{UserTaskAssignmentStatusPreview, UserTaskAssignmentStatusAccepted, UserTaskAssignmentStatusFailed, UserTaskAssignmentStatusTimedOut, UserTaskAssignmentStatusCanceled, UserTaskAssignmentStatusNotAttempted}
-	submissions := []UserTaskAssignmentSubmission{UserTaskAssignmentSubmissionNotSubmitted, UserTaskAssignmentSubmissionAccepted, UserTaskAssignmentSubmissionRejected, UserTaskAssignmentSubmissionUnknown, UserTaskAssignmentSubmissionUnknown, UserTaskAssignmentSubmissionNotSubmitted}
+	statuses := []UserTaskAssignmentStatus{UserTaskAssignmentStatusPreview, UserTaskAssignmentStatusAccepted, UserTaskAssignmentStatusFailed, UserTaskAssignmentStatusTimedOut, UserTaskAssignmentStatusCanceled, UserTaskAssignmentStatusNotAttempted, UserTaskAssignmentStatusUnchanged}
+	submissions := []UserTaskAssignmentSubmission{UserTaskAssignmentSubmissionNotSubmitted, UserTaskAssignmentSubmissionAccepted, UserTaskAssignmentSubmissionRejected, UserTaskAssignmentSubmissionUnknown, UserTaskAssignmentSubmissionUnknown, UserTaskAssignmentSubmissionNotSubmitted, UserTaskAssignmentSubmissionNotSubmitted}
 	for i := range rows {
 		rows[i].Key = fmt.Sprintf("%016d", i+1)
 	}
@@ -236,4 +237,41 @@ func TestAssignmentPublicModels(t *testing.T) {
 	b, err = json.Marshal(fromDomainUserTaskAssignmentResults(d.UserTaskAssignmentResults{}))
 	require.NoError(t, err)
 	require.Equal(t, `{"items":[]}`, string(b))
+}
+
+type facadeAssignmentPlanAPI struct{ *facadeAssignmentAPI }
+
+func (a *facadeAssignmentPlanAPI) GetNativeUserTask(_ context.Context, key string, _ ...services.CallOption) (d.UserTask, error) {
+	return d.UserTask{Key: key, State: "CREATED", Assignee: "bob"}, nil
+}
+func TestPrepareUserTaskAssignmentsFacade(t *testing.T) {
+	api := &facadeAssignmentPlanAPI{&facadeAssignmentAPI{submit: func(context.Context, string, string, ...services.CallOption) (d.UserTaskAssignmentResult, error) {
+		t.Fatal("blocked task must not be assigned")
+		return d.UserTaskAssignmentResult{}, nil
+	}}}
+	c := New(nil, nil, api, nil)
+	plan, err := c.PrepareUserTaskAssignments(context.Background(), typex.Keys{"2251799813685249"}, "alice", 1)
+	require.NoError(t, err)
+	require.Equal(t, 1, plan.BlockedCount)
+	require.Empty(t, plan.ReadyKeys)
+	plan.ReadyKeys = typex.Keys{"2251799813685250"}
+	plan.BlockedCount = 0
+	result, err := c.ExecuteUserTaskAssignments(context.Background(), plan, false)
+	require.ErrorIs(t, err, ferr.ErrConflict)
+	require.Len(t, result.Items, 1)
+	require.Equal(t, "2251799813685249", result.Items[0].Key)
+	require.True(t, result.Items[0].ReassignmentDenied)
+	require.Equal(t, UserTaskAssignmentSubmissionNotSubmitted, result.Items[0].Submission)
+	require.Zero(t, result.Items[0].StatusCode)
+	_, err = c.ExecuteUserTaskAssignments(context.Background(), UserTaskAssignmentPlan{}, false)
+	require.ErrorIs(t, err, ferr.ErrLocalPrecondition)
+
+	plan, err = c.PrepareUserTaskAssignments(context.Background(), typex.Keys{"2251799813685249"}, "bob", 1)
+	require.NoError(t, err)
+	require.Empty(t, plan.ReadyKeys)
+	require.Zero(t, plan.BlockedCount)
+	require.Equal(t, 1, plan.UnchangedCount)
+	result, err = c.ExecuteUserTaskAssignments(context.Background(), plan, true)
+	require.NoError(t, err)
+	require.Equal(t, []UserTaskAssignmentResult{{Key: "2251799813685249", Status: UserTaskAssignmentStatusUnchanged, Submission: UserTaskAssignmentSubmissionNotSubmitted}}, result.Items)
 }

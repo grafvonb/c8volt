@@ -27,18 +27,18 @@ type assignmentExecution struct {
 // AssignUserTasks validates and freezes a protected assignment for every unique explicit key.
 // Zero workers chooses the automatic bound; dry-run is local and no-wait is rejected.
 func AssignUserTasks(ctx context.Context, api API, keys typex.Keys, assignee string, wantedWorkers int, opts ...services.CallOption) (d.UserTaskAssignmentResults, error) {
-	return executeUserTaskAssignments(ctx, api, keys, assignee, false, wantedWorkers, opts...)
+	return executeUserTaskAssignments(ctx, api, keys, assignee, false, wantedWorkers, nil, opts...)
 }
 
 // UnassignUserTasks removes assignments without reads, polling or implicit reassignment.
 // Enabled assignment override and no-wait are invalid; ordered partial evidence survives errors.
 func UnassignUserTasks(ctx context.Context, api API, keys typex.Keys, wantedWorkers int, opts ...services.CallOption) (d.UserTaskAssignmentResults, error) {
-	return executeUserTaskAssignments(ctx, api, keys, "", true, wantedWorkers, opts...)
+	return executeUserTaskAssignments(ctx, api, keys, "", true, wantedWorkers, nil, opts...)
 }
 
 // executeUserTaskAssignments owns both actions' validation, immutable intent and ordered scheduling.
 // Scheduling cancellation stops new work, while the original caller context controls submissions.
-func executeUserTaskAssignments(ctx context.Context, api API, keys typex.Keys, assignee string, unassign bool, wantedWorkers int, opts ...services.CallOption) (d.UserTaskAssignmentResults, error) {
+func executeUserTaskAssignments(ctx context.Context, api API, keys typex.Keys, assignee string, unassign bool, wantedWorkers int, overrideKeys map[string]bool, opts ...services.CallOption) (d.UserTaskAssignmentResults, error) {
 	out := d.UserTaskAssignmentResults{Items: make([]d.UserTaskAssignmentResult, 0)}
 	// Unique allocates independent storage before caller-provided options are evaluated.
 	keys = keys.Unique()
@@ -92,7 +92,11 @@ func executeUserTaskAssignments(ctx context.Context, api API, keys typex.Keys, a
 		if unassign {
 			result, err = api.UnassignUserTask(ctx, key, frozenOption)
 		} else {
-			result, err = api.AssignUserTask(ctx, key, assignee, frozenOption)
+			perKeyCfg := cfg
+			if overrideKeys[key] {
+				perKeyCfg.UserTaskAssignmentOverride = true
+			}
+			result, err = api.AssignUserTask(ctx, key, assignee, func(dst *services.CallCfg) { *dst = perKeyCfg })
 		}
 		if err != nil && cfg.FailFast {
 			stopped.Store(true)

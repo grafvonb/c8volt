@@ -34,17 +34,14 @@ func TestUpdateUserTaskAssignmentTerminal(t *testing.T) {
 				t.Run(operation+"/"+destination+"/"+tc.name, func(t *testing.T) {
 					server, calls := newUserTaskAssignmentServer(t, operation, nil)
 					args := append([]string{"--config", completionLogConfig(t, server.URL, "plain-time", "info"), "update", "ut", "--key", completionKeyA + "," + completionKeyB}, assignmentFlags(operation)...)
-					if operation == "assign" {
-						args = append(args, "--allow-override")
-					}
 					args = append(args, tc.flags...)
 					preview := slices.Contains(tc.flags, "--dry-run")
 					prompted := !preview && !tc.invalid && !slices.Contains(tc.flags, "--auto-confirm") && !slices.Contains(tc.flags, "--automation")
 					intent := "update user-task " + assignmentOperationLabel(operation) + ": 2 requested"
 					prompt := "You are about to " + operation + " 2 user tasks"
 					if operation == "assign" {
-						intent += ` to " alice\nopaque " (reassignment: allowed)`
-						prompt += ` to " alice\nopaque " (reassignment: allowed)`
+						intent += ` to " alice\nopaque " (reassignment: not allowed)`
+						prompt += ` to " alice\nopaque "`
 					}
 					prompt += ".\nDo you want to proceed? [y/N]: "
 					var exchanges []testx.CmdTerminalExchange
@@ -67,7 +64,7 @@ func TestUpdateUserTaskAssignmentTerminal(t *testing.T) {
 						if operation == "assign" {
 							for _, call := range calls.Snapshot() {
 								require.Equal(t, " alice\nopaque ", call.Body["assignee"])
-								require.Equal(t, true, call.Body["allowOverride"])
+								require.Equal(t, false, call.Body["allowOverride"])
 							}
 						}
 					}
@@ -122,7 +119,7 @@ func TestUpdateUserTaskAssignmentSingleTerminal(t *testing.T) {
 						prompt := "You are about to " + operation + " user-task " + completionKeyA
 						intent := "update user-task " + completionKeyA + ": " + assignmentOperationLabel(operation)
 						if operation == "assign" {
-							prompt += ` to "alice" (reassignment: not allowed)`
+							prompt += ` to "alice"`
 							intent += ` to "alice" (reassignment: not allowed)`
 						}
 						prompt += ".\nDo you want to proceed? [y/N]: "

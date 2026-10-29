@@ -13,7 +13,7 @@ AssignUserTasks(ctx context.Context, keys typex.Keys, assignee string, wantedWor
 UnassignUserTasks(ctx context.Context, keys typex.Keys, wantedWorkers int, opts ...foptions.FacadeOption) (UserTaskAssignmentResults, error)
 ```
 
-Both methods are collection-first; a single key uses the same execution. Facades map inputs/options, delegate, map all returned items and convert errors through `ferrors.FromDomain`, including when partial results accompany an error. No scheduling, retries, state reads or confirmation in the facade. No new prepare/execute pair or generated/internal types in public signatures.
+Both methods are collection-first; a single key uses the same execution. Facades map inputs/options, delegate, map all returned items and convert errors through `ferrors.FromDomain`, including when partial results accompany an error. No scheduling, retries, state reads or confirmation in the facade. The native collection API remains read-free. A separate `PrepareUserTaskAssignments` / `ExecuteUserTaskAssignments` pair provides CLI ownership preflight through a public plan exposing eligible keys, blocked and unchanged counts, and observed replacement identities; frozen inputs and observations stay private. Matching observed assignees produce ordered unchanged/not_submitted items, excluded from ready keys and never submitted even when replacement is approved. No generated/internal types appear in public signatures.
 
 Add `foptions.WithUserTaskAssignmentOverride()` with default false and the corresponding field/mapping to internal call options. It is the only new assignment-override control; generic force and automation do not set it. In assignment, the adapter always emits explicit false or true. Unassignment rejects enabled override rather than silently ignoring it.
 
@@ -60,3 +60,5 @@ Preserve the existing retry policy: temporary/timeout transport errors, 429 and 
 Extending `task.API` requires command stubs such as `cmd/process_api_stub_test.go` to implement the new methods. Internal contract extensions affect facade and service read/search/variable/completion doubles; generated-client extensions affect each adapter's mocks. Keep unrelated fixtures fail-closed on unexpected new calls.
 
 Test default false and explicit true option mapping, opaque identity fidelity, no-wait/override rejection, ordered partial conversion and original class preservation at the facade. Test all generated request mappings with test-owned HTTP servers, including zero extra reads/mutations. Keep completion submission/response regressions after helper extraction. No runtime claims are made by this contract document.
+
+Prepared execution takes an explicit `allowReassignment` approval boolean. True permits native override only for keys observed occupied in the private plan; it does not infer consent from public presentation fields. Unapproved execution retains skipped results and fail-fast behavior.

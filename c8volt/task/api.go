@@ -17,6 +17,11 @@ type API interface {
 	// UnassignUserTasks removes assignments for unique explicit keys and preserves ordered partial response evidence.
 	UnassignUserTasks(ctx context.Context, keys types.Keys, wantedWorkers int, opts ...options.FacadeOption) (UserTaskAssignmentResults, error)
 
+	// PrepareUserTaskAssignments checks protected assignment ownership before approval.
+	PrepareUserTaskAssignments(ctx context.Context, keys types.Keys, assignee string, wantedWorkers int, opts ...options.FacadeOption) (UserTaskAssignmentPlan, error)
+	// ExecuteUserTaskAssignments submits the frozen eligible selection.
+	ExecuteUserTaskAssignments(ctx context.Context, plan UserTaskAssignmentPlan, allowReassignment bool) (UserTaskAssignmentResults, error)
+
 	// CompleteUserTasks submits unique explicit keys and preserves ordered partial acceptance evidence.
 	CompleteUserTasks(ctx context.Context, keys types.Keys, variables map[string]any, wantedWorkers int, opts ...options.FacadeOption) (UserTaskCompletionResults, error)
 	// PrepareUserTaskCompletions checks task state and assignment once before approval.

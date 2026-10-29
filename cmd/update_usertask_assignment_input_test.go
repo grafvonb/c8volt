@@ -22,7 +22,7 @@ func newAssignmentInputCommand(t *testing.T, argv ...string) *cobra.Command {
 	cmd.Flags().String("assign", "", "")
 	cmd.Flags().Bool("unassign", false, "")
 	cmd.Flags().Bool("complete", false, "")
-	cmd.Flags().Bool("allow-override", false, "")
+	cmd.Flags().Bool("force", false, "")
 	require.NoError(t, cmd.Flags().Parse(argv))
 	return cmd
 }
@@ -111,8 +111,8 @@ func TestUpdateUserTaskAssignmentInputControls(t *testing.T) {
 			{flags: []string{"--vars-file", "not-read.json"}, invalid: true},
 			{flags: []string{"--complete"}, invalid: true},
 			{flags: []string{"--complete=false"}},
-			{flags: []string{"--allow-override"}, invalid: operation == "unassign"},
-			{flags: []string{"--allow-override=false"}, invalid: operation == "unassign"},
+			{flags: []string{"--force"}, invalid: operation == "unassign"},
+			{flags: []string{"--force=false"}, invalid: operation == "unassign"},
 			{flags: []string{"--json"}, invalid: true},
 			{flags: []string{"--json", "--dry-run"}},
 			{flags: []string{"--json", "--auto-confirm"}},
@@ -136,11 +136,11 @@ func TestUpdateUserTaskAssignmentInputControls(t *testing.T) {
 				} else {
 					require.Empty(t, input.Assignee)
 				}
-				override, err := cmd.Flags().GetBool("allow-override")
+				override, err := cmd.Flags().GetBool("force")
 				require.NoError(t, err)
 				require.Equal(t, override, input.AllowOverride)
 				require.NoError(t, cmd.Flags().Set("assign", "changed"))
-				require.NoError(t, cmd.Flags().Set("allow-override", "true"))
+				require.NoError(t, cmd.Flags().Set("force", "true"))
 				flagUpdateUserTaskKeys[0] = "changed"
 				require.Equal(t, completionKeyA, input.Keys[0])
 				require.Equal(t, override, input.AllowOverride)
@@ -173,9 +173,9 @@ func TestUpdateUserTaskAssignmentInputModes(t *testing.T) {
 		{flags: []string{"--unassign", "--complete=false"}, operation: "unassign"},
 		{flags: []string{"--unassign", "--complete"}, invalid: true},
 		{flags: []string{"--assign=alice", "--complete"}, invalid: true},
-		{flags: []string{"--allow-override=false"}, invalid: true},
-		{flags: []string{"--allow-override"}, invalid: true},
-		{flags: []string{"--complete", "--allow-override=false"}, invalid: true},
+		{flags: []string{"--force=false"}, invalid: true},
+		{flags: []string{"--force"}, invalid: true},
+		{flags: []string{"--complete", "--force=false"}, invalid: true},
 	} {
 		t.Run(strings.Join(tc.flags, " "), func(t *testing.T) {
 			cmd := newAssignmentInputCommand(t, tc.flags...)

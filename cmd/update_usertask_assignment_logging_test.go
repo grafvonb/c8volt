@@ -124,7 +124,11 @@ func TestUpdateUserTaskAssignmentDiagnosticLogging(t *testing.T) {
 									}
 								}
 								require.Equal(t, 3, exchanges)
-								require.Zero(t, lookups)
+								if operation == "assign" {
+									require.Equal(t, 3, lookups)
+								} else {
+									require.Zero(t, lookups)
+								}
 							} else {
 								require.Empty(t, debugs)
 								for _, bad := range []string{server.URL, "/v2/user-tasks/", "POST"} {
@@ -213,7 +217,11 @@ func TestUpdateUserTaskAssignmentDiagnosticRetries(t *testing.T) {
 										}
 									}
 									require.Equal(t, 4, exchanges)
-									require.Zero(t, lookups)
+									if operation == "assign" {
+										require.Equal(t, 2, lookups)
+									} else {
+										require.Zero(t, lookups)
+									}
 									require.Contains(t, stderr, fmt.Sprintf("status=%d", status))
 									require.Contains(t, stderr, "status=204")
 								}
@@ -316,12 +324,12 @@ func TestUpdateUserTaskReassignmentDenied(t *testing.T) {
 					case "keys":
 						args = append(args, "--keys-only")
 					case "override":
-						args = append(args, "--allow-override")
+						args = append(args, "--force")
 					case "no-error-code":
 						args = append(args, "--no-err-codes")
 					}
 					var exchanges []testx.CmdTerminalExchange
-					prompt := "You are about to assign user-task " + completionKeyA + " to \"alice\" (reassignment: not allowed).\nDo you want to proceed? [y/N]: "
+					prompt := "You are about to assign user-task " + completionKeyA + " to \"alice\".\nDo you want to proceed? [y/N]: "
 					if mode == "interactive" {
 						args = append(args, "--auto-confirm=false")
 						exchanges = []testx.CmdTerminalExchange{{Prompt: prompt, Response: "y"}}
@@ -356,7 +364,7 @@ func TestUpdateUserTaskReassignmentDenied(t *testing.T) {
 					want := [][2]string{}
 					switch mode {
 					case "normal", "verbose", "no-error-code", "interactive":
-						want = append(want, [2]string{"INFO", "user-task " + completionKeyA + " was not assigned: reassignment is not allowed; use --allow-override to replace the current assignee."})
+						want = append(want, [2]string{"INFO", "user-task " + completionKeyA + " was not assigned: reassignment is not allowed; use --force to replace the current assignee."})
 					case "keys":
 						want = append(want, [2]string{"ERROR", "user-task assignment: conflict (HTTP 409): 1"})
 					case "override", "other conflict", "unassign":

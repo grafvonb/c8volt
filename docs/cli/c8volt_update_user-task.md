@@ -12,11 +12,15 @@ Update variables, complete, assign or unassign user tasks by key
 
 Update variables, complete, assign or unassign explicitly selected user tasks on supported Camunda versions.
 
-Use --assign <assignee> to assign every selected task to the same opaque backend identity, or --unassign to remove its assignee. Assignment explicitly prohibits replacement unless --allow-override is enabled; --auto-confirm and --automation never grant that permission. Assignment, unassignment and completion are mutually exclusive. Assignment and unassignment reject --vars, --vars-file and enabled --no-wait. Without an active mode selector, the variable-update workflow applies.
+Use --assign <assignee> to assign every selected task to the same backend identity, or --unassign to remove its assignee. Assignment, unassignment and completion are mutually exclusive. Assignment and unassignment reject --vars, --vars-file and enabled --no-wait. Without an active mode selector, the variable-update workflow applies.
 
-Assignment and unassignment accept repeated/comma-separated --key values and newline-separated stdin with positional '-'. Selection must be nonempty and contain valid 16-digit keys; duplicates retain first-input order. They perform no task reads, discovery, completion preparation or polling. --dry-run previews the frozen keys, action, identity and replacement permission locally with zero requests. Eligible interactive execution shows one confirmation followed by the result; bulk confirmation also lists the selected keys. Plan and tenant-scope details require --verbose. Auto-confirm and automation skip approval. --workers bounds native requests; --fail-fast stops new scheduling while preserving in-flight results.
+Assignment accepts repeated/comma-separated --key values and newline-separated stdin with positional '-'. Keys must be valid 16-digit values; duplicates retain first-input order. Without --force, c8volt reads each unique task once before approval. If another user owns a task, c8volt warns and asks whether to replace the assignee. Answering Yes authorizes replacement at execution time. Tasks already assigned to the requested identity finish successfully without a prompt or assignment request; the message says no change is needed. Batches count them as unchanged and exclude them from confirmation. Tasks observed unassigned keep backend replacement protection. Failed lookups stop before approval or mutation; there is no reread after approval.
 
-Both operations await the documented native response, including blocking task listeners. Confirmed means that successful response was observed, without independent read-back or permanent ownership guarantees. Partial failures retain ordered per-key outcomes; timeouts or cancellation may leave acceptance unknown. Human plans, previews, summaries and verbose outcomes use the configured INFO logger. A single assignment blocked by a confirmed existing assignee reports one INFO hint to use --allow-override, while retaining the conflict exit code. Quiet or a WARN log level suppresses that hint. Other failures retain their error diagnostics. Quiet suppresses INFO but retains one compact ERROR for those failures. JSON emits one envelope, retaining partial evidence and original failure exits; keys-only prints preview keys or execution successes in selection order, omitting keys when none qualify. Quiet preserves machine output. JSON execution requires --auto-confirm or --automation and cannot combine with --verbose. HTTP diagnostics require DEBUG independently of verbose.
+Use --force with --assign to permit replacement without confirmation or preliminary reads. --force requires --assign. --auto-confirm, --automation and nonterminal input do not grant replacement permission: already-assigned tasks are skipped with a conflict and a hint to use --force. With --fail-fast, an unapproved ownership conflict prevents all assignment requests. Interactive approval covers the entire selected batch once, including any replacements shown in the warnings.
+
+--dry-run previews keys, action, identity and replacement policy locally with zero requests or prompts, including with --force. Unassignment performs no preliminary reads. --workers bounds lookups and native requests; --fail-fast stops new scheduling after failures while preserving in-flight results. Both operations await the native response, including blocking task listeners, with no polling or read-back. Partial failures retain ordered outcomes; timeouts and cancellation may leave acceptance unknown.
+
+Human summaries use the configured INFO logger; reassignment warnings use WARN and confirmation questions remain plain text. Plan and tenant-scope details require --verbose. Quiet and configured levels suppress informational messages as usual. JSON emits one envelope with partial evidence and original failure exits; keys-only prints preview keys or successfully submitted keys only. Entirely unchanged selections produce a succeeded JSON envelope with unchanged/not_submitted items and no keys-only output. Quiet preserves machine output. JSON assignment requires --force, --auto-confirm, --automation or --dry-run and cannot combine with --verbose. Other user-task modes retain their existing JSON confirmation rules. HTTP diagnostics require DEBUG independently of verbose.
 
 Use --complete to submit native completion for each eligible unique key, with optional --vars or --vars-file data. Omitted variables and {} do not suppress completion. Completion preserves JSON numbers exactly, including large integers and precise decimals. The backend's successful response confirms completion, including blocking task listeners. c8volt performs no additional task-state polling or downstream waiting; no assignment is performed. --no-wait skips variable-update verification and cannot bypass the completion request or its listener processing, so it is incompatible with --complete. A configured tenant does not filter explicit keys.
 
@@ -40,7 +44,7 @@ c8volt update user-task [-] [flags]
 
 ```
   ./c8volt update user-task --key 2251799813685249 --assign alice --dry-run
-  ./c8volt update user-task --key 2251799813685249,2251799813685250 --assign alice --allow-override --auto-confirm
+  ./c8volt update user-task --key 2251799813685249,2251799813685250 --assign alice --force
   ./c8volt update user-task --key 2251799813685249 --unassign --auto-confirm
   printf '%s\n' "$USER_TASK_KEY_A" "$USER_TASK_KEY_B" | ./c8volt update user-task - --assign alice --workers 1 --automation --json
   ./c8volt update ut --key 2251799813685249 --complete
@@ -57,11 +61,11 @@ c8volt update user-task [-] [flags]
 ### Options
 
 ```
-      --allow-override     allow replacing existing assignees; requires --assign
-      --assign string      assign selected tasks to this backend identity; replacement is prohibited unless --allow-override is enabled
+      --assign string      assign selected tasks to this backend identity; ask before replacement, or use --force
       --complete           complete selected tasks with optional variables; report backend-confirmed completion without additional polling
       --dry-run            preview variable updates, completions or assignment changes without submitting mutations
       --fail-fast          stop scheduling new task mutations or scope updates after the first error
+      --force              replace existing assignees without confirmation; requires --assign
   -h, --help               help for user-task
   -k, --key strings        user task key(s) to update; repeat or combine with stdin '-' (default [])
       --no-wait            skip variable-update verification after accepted scope writes; native task mutations have no additional polling, so incompatible with --complete, --assign or --unassign

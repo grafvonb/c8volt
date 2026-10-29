@@ -30,3 +30,37 @@ func (c *client) UnassignUserTasks(ctx context.Context, keys typex.Keys, wantedW
 	got, err := utsvc.UnassignUserTasks(ctx, c.utApi, keys, wantedWorkers, options.MapFacadeOptionsToCallOptions(opts)...)
 	return fromDomainUserTaskAssignmentResults(got), ferr.FromDomain(err)
 }
+
+// UserTaskAssignmentReplacement identifies ownership requiring explicit approval.
+type UserTaskAssignmentReplacement struct {
+	Key      string
+	Assignee string
+}
+
+// UserTaskAssignmentPlan exposes approval scope while retaining private frozen input.
+type UserTaskAssignmentPlan struct {
+	ReadyKeys      typex.Keys
+	BlockedCount   int
+	UnchangedCount int
+	Replacements   []UserTaskAssignmentReplacement
+	plan           utsvc.AssignmentPlan
+}
+
+// PrepareUserTaskAssignments checks current ownership before approval. Dry-run
+// and explicit override remain request-free; a failed lookup aborts preparation.
+func (c *client) PrepareUserTaskAssignments(ctx context.Context, keys typex.Keys, assignee string, workers int, opts ...options.FacadeOption) (UserTaskAssignmentPlan, error) {
+	plan, err := utsvc.PrepareUserTaskAssignments(ctx, c.utApi, keys, assignee, workers, options.MapFacadeOptionsToCallOptions(opts)...)
+	replacements := make([]UserTaskAssignmentReplacement, len(plan.Replacements))
+	for i, item := range plan.Replacements {
+		replacements[i] = UserTaskAssignmentReplacement{Key: item.Key, Assignee: item.Assignee}
+	}
+	return UserTaskAssignmentPlan{Replacements: replacements, ReadyKeys: append(typex.Keys{}, plan.ReadyKeys...), BlockedCount: plan.BlockedCount, UnchangedCount: plan.UnchangedCount, plan: plan}, ferr.FromDomain(err)
+}
+
+// ExecuteUserTaskAssignments submits the prepared selection without re-reading.
+// allowReassignment authorizes replacing observed occupied tasks, including a newer
+// owner at execution time; tasks observed unassigned retain non-overriding requests.
+func (c *client) ExecuteUserTaskAssignments(ctx context.Context, plan UserTaskAssignmentPlan, allowReassignment bool) (UserTaskAssignmentResults, error) {
+	results, err := utsvc.ExecuteUserTaskAssignments(ctx, c.utApi, plan.plan, allowReassignment)
+	return fromDomainUserTaskAssignmentResults(results), ferr.FromDomain(err)
+}

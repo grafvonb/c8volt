@@ -781,3 +781,10 @@ func (s stubTaskAPI) AssignUserTasks(context.Context, types.Keys, string, int, .
 func (s stubTaskAPI) UnassignUserTasks(context.Context, types.Keys, int, ...options.FacadeOption) (task.UserTaskAssignmentResults, error) {
 	panic("unexpected UnassignUserTasks call")
 }
+
+func (s stubTaskAPI) PrepareUserTaskAssignments(context.Context, types.Keys, string, int, ...options.FacadeOption) (task.UserTaskAssignmentPlan, error) {
+	panic("unexpected PrepareUserTaskAssignments call")
+}
+func (s stubTaskAPI) ExecuteUserTaskAssignments(context.Context, task.UserTaskAssignmentPlan, bool) (task.UserTaskAssignmentResults, error) {
+	panic("unexpected ExecuteUserTaskAssignments call")
+}

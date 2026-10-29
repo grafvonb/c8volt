@@ -21,8 +21,8 @@ type assignmentRequest struct {
 	Body map[string]any
 }
 
-// newUserTaskAssignmentServer rejects every read and unrelated mutation, including
-// completion preflight. Each fixture permits exactly the selected native action.
+// newUserTaskAssignmentServer supplies unassigned native lookup results for assignment
+// preparation and records only mutations. Dedicated preflight tests count every request.
 func newUserTaskAssignmentServer(t *testing.T, operation string, respond func(http.ResponseWriter, *http.Request, string)) (*httptest.Server, *testx.SafeSlice[assignmentRequest]) {
 	t.Helper()
 	calls := &testx.SafeSlice[assignmentRequest]{}
@@ -31,6 +31,18 @@ func newUserTaskAssignmentServer(t *testing.T, operation string, respond func(ht
 		method, suffix = http.MethodDelete, "/assignee"
 	}
 	server := testx.NewIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+		if operation == "assign" && r.Method == http.MethodGet {
+			key := strings.TrimPrefix(r.URL.Path, "/v2/user-tasks/")
+			if len(key) != 16 {
+				t.Errorf("unexpected assignment lookup: %s", r.URL.Path)
+				w.WriteHeader(400)
+				return
+			}
+			w.Header().Set("Content-Type", "application/json")
+			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{"userTaskKey": key, "processInstanceKey": completionKeyB, "state": "CREATED", "assignee": ""}))
+			return
+		}
 		key := strings.TrimSuffix(strings.TrimPrefix(r.URL.Path, "/v2/user-tasks/"), suffix)
 		if r.Method != method || r.URL.Path != "/v2/user-tasks/"+key+suffix || len(key) != 16 {
 			t.Errorf("forbidden assignment request: %s %s", r.Method, r.URL.Path)
@@ -91,9 +103,9 @@ func TestUpdateUserTaskAssignmentCommandSelection(t *testing.T) {
 					args := append([]string{"--automation", "--json", "--tenant", "different-tenant", "update", tc.alias, "--workers", "1", "--no-wait=false", "--complete=false"}, assignmentFlags(operation)...)
 					override := operation == "assign" && tc.alias == "uts"
 					if override {
-						args = append(args, "--allow-override")
+						args = append(args, "--force")
 					} else if operation == "assign" {
-						args = append(args, "--allow-override=false", "--unassign=false")
+						args = append(args, "--force=false", "--unassign=false")
 					}
 					args = append(args, tc.flags...)
 					stdout, stderr, err := runUpdateUserTaskCommand(t, writeTestConfigForVersion(t, server.URL, version), tc.stdin, args...)
@@ -171,7 +183,7 @@ func TestUpdateUserTaskAssignmentCommandInvalidInputs(t *testing.T) {
 			})
 		}
 	}
-	for _, flags := range [][]string{{"--assign="}, {"--assign", " \t "}, {"--assign", "alice", "--unassign"}, {"--unassign", "--allow-override=false"}, {"--allow-override=false"}, {"--unassign=false", "--complete=false"}} {
+	for _, flags := range [][]string{{"--assign="}, {"--assign", " \t "}, {"--assign", "alice", "--unassign"}, {"--unassign", "--force=false"}, {"--force=false"}, {"--unassign=false", "--complete=false"}} {
 		t.Run(strings.Join(flags, " "), func(t *testing.T) {
 			server, calls := newUserTaskAssignmentServer(t, "assign", nil)
 			args := append([]string{"--json", "--auto-confirm", "update", "ut", "--key", completionKeyA}, flags...)

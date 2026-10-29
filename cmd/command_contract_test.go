@@ -1231,7 +1231,7 @@ func TestCommandCapabilityForCommand_UpdateUserTaskContract(t *testing.T) {
 		{Name: RenderModeJSON.String(), Supported: true, MachinePreferred: true},
 		{Name: RenderModeKeysOnly.String(), Supported: true},
 	}, capability.OutputModes)
-	for _, name := range []string{"key", "complete", "assign", "unassign", "allow-override", "vars", "vars-file", "dry-run", "no-wait", "workers", "no-worker-limit", "fail-fast"} {
+	for _, name := range []string{"key", "complete", "assign", "unassign", "force", "vars", "vars-file", "dry-run", "no-wait", "workers", "no-worker-limit", "fail-fast"} {
 		require.True(t, hasFlagContractNamed(capability.Flags, name), "missing --%s", name)
 	}
 	require.False(t, flagUpdateUserTaskComplete)
@@ -1248,10 +1248,10 @@ func TestCommandCapabilityForCommand_UpdateUserTaskContract(t *testing.T) {
 	require.Contains(t, updateUserTaskCmd.Flags().Lookup("no-wait").Usage, "skip variable-update verification")
 	require.Contains(t, updateUserTaskCmd.Flags().Lookup("no-wait").Usage, "incompatible with --complete")
 	require.Contains(t, updateCmd.Long, "successful response confirms completion")
-	for _, text := range []string{"--assign", "--unassign", "--allow-override", "no task reads", "acceptance unknown", "zero requests"} {
+	for _, text := range []string{"--assign", "--unassign", "--force", "reads each unique task once before approval", "warns and asks whether to replace the assignee", "acceptance unknown", "zero requests"} {
 		require.Contains(t, updateUserTaskCmd.Long, text)
 	}
-	require.Contains(t, updateCmd.Long, "protects existing assignees")
+	require.Contains(t, updateCmd.Long, "asks before replacing existing assignees")
 	for _, alias := range capability.Aliases {
 		resolved, remaining, err := root.Find([]string{"update", alias})
 		require.NoError(t, err)

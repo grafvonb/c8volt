@@ -9,7 +9,7 @@ This is the intended new contract, not evidence of shipped implementation. Exist
 Canonical path: `update user-task`; aliases: `user-tasks`, `ut`, `uts`.
 
 ```text
-c8volt update user-task [-] --key <key>[,<key>...] --assign <assignee> [--allow-override]
+c8volt update user-task [-] --key <key>[,<key>...] --assign <assignee> [--force]
 c8volt update user-task [-] --key <key>[,<key>...] --unassign
 ```
 
@@ -20,7 +20,7 @@ c8volt update user-task [-] --key <key>[,<key>...] --unassign
 | `--assign <assignee>` | Presence selects assignment; empty/whitespace fails; preserve nonblank opaque identity |
 | `--unassign` | True selects unassignment; false is inactive |
 | `--complete` | True selects existing completion; false is inactive |
-| `--allow-override` | Presence allowed only with assignment, including explicit false; value controls policy |
+| `--force` | Presence allowed only with assignment, including explicit false; true permits replacement and skips confirmation |
 | `--vars`, `--vars-file` | Any presence is incompatible with assign/unassign, even empty |
 | `--no-wait` | Enabled value incompatible with assign/unassign; false does not enable it |
 | `--workers`/`-w` | Explicit value must be positive; unset uses existing automatic worker selection |
@@ -28,25 +28,26 @@ c8volt update user-task [-] --key <key>[,<key>...] --unassign
 | `--fail-fast` | Stop new scheduling after observed failure; retain submitted outcomes |
 | `--dry-run` | Local intent preview with no backend requests or confirmation |
 
-Multiple active mutation modes are invalid. With no active selector, existing variable mode remains unchanged. `--allow-override` alone is invalid; it does not select assignment. Auto-confirm, automation, generic force settings and tenant configuration never imply override.
+Multiple active mutation modes are invalid. With no active selector, existing variable mode remains unchanged. `--force` alone is invalid; it does not select assignment. Auto-confirm, automation, generic force settings and tenant configuration never imply override.
 
-Existing JSON execution confirmation guard applies: use dry-run, auto-confirm or automation. JSON plus verbose remains rejected. Output precedence stays JSON, then keys-only, then human; quiet does not suppress explicitly selected machine results. Existing timeout, authentication, tenant and no-error-code conventions remain applicable.
+Existing JSON execution confirmation guard applies: use dry-run, auto-confirm or automation; assignment also accepts --force. JSON plus verbose remains rejected. Output precedence stays JSON, then keys-only, then human; quiet does not suppress explicitly selected machine results. Existing timeout, authentication, tenant and no-error-code conventions remain applicable.
 
 ## Approval and request contract
 
-Locally freeze action, unique keys, assignee and override before one eligible confirmation. Do not read task state or perform discovery. Approval identifies assignment/unassignment and the selected scope; assignment also identifies the opaque assignee and whether reassignment is allowed. Identity text must be safely escaped for plain output rather than inserting control characters as interactive text; the backend identity value itself stays unchanged.
+Locally freeze action, unique keys, assignee and override before one eligible confirmation. Before approval without force, read each unique key once. Record tasks already owned by the requested identity as unchanged/not_submitted without mutation or confirmation; exclude them from approval counts. Warn about different assignees, then ask once for explicit replacement consent. Default-no, decline and EOF abort the whole invocation. Approved occupied keys get native override; other keys retain false. With auto-confirm, automation or nonterminal stdin, keep occupied keys blocked unless `--force` was provided. Fail-fast plus an unapproved block prevents all assignments. Lookup failure aborts preparation. Force, unassignment and dry-run skip reads. No reread or polling follows approval. Approval identifies assignment/unassignment and the selected scope; assignment identifies the opaque assignee, and replacement questions name the current and requested identities. Identity text must be safely escaped for plain output rather than inserting control characters as interactive text; the backend identity value itself stays unchanged.
 
 Examples of intended confirmation wording:
 
 ```text
-You are about to assign user-task 2251799813685249 to "alice" (reassignment: not allowed). Do you want to proceed?
-You are about to assign 2 user tasks to "alice" (reassignment: allowed). Do you want to proceed?
+You are about to assign user-task 2251799813685249 to "alice". Do you want to proceed?
+WARN user-task 2251799813685249 is already assigned to "bob".
+Replace assignee "bob" with "alice"?
 You are about to unassign user-task 2251799813685249. Do you want to proceed?
 ```
 
 Ordinary single-task execution shows the confirmation followed by the result, without a duplicate plan or tenant-scope log. Plan and tenant-scope details require `--verbose`, including tenant context for dry-run. For bulk approval/previews, identify every selected key using the existing detail conventions and list the unique selection; the compact prompt may use the count. Prompts use plain `cmd.ErrOrStderr()` and retain existing default-no, yes parsing, EOF, decline, nonterminal and stdout-redirection behavior. No prompt for dry-run, invalid input, auto-confirm or automation. Do not add completion advisory warnings.
 
-Assignment sends explicit false/true override in the same native operation as the assignee. Unassignment sends only the normal native unassignment operation. Await the documented response, including blocking task listeners. No read-then-unassign-then-assign, additional polling, read-back or downstream waiting. Missing/current/same-assignee state is decided by the backend, never by suppressed errors.
+Assignment sends explicit false/true override in the same native operation as the assignee. Unassignment sends only the normal native unassignment operation. Await the documented response, including blocking task listeners. No read-then-unassign-then-assign, additional polling, read-back or downstream waiting. A preflight ownership block produces failed/not_submitted evidence without a fabricated HTTP status and retains conflict exit 6. Other submitted outcomes remain backend-authoritative, including races after approval.
 
 ## Shared envelope
 
@@ -55,12 +56,12 @@ Use existing `ResultEnvelope` without adding/changing shared fields:
 - Required `outcome` and canonical `command: "update user-task"`.
 - Existing optional `class`, `tenantContext`, `payload`, `detail`.
 - Detail retains required `message` and optional `class`/`suggestion`.
-- Local preview: `outcome: "succeeded"`.
+- Local preview or all-unchanged execution: `outcome: "succeeded"`.
 - Successful execution: `outcome: "accepted"`, meaning a successful native response was observed.
 - Validation/operation error: existing classified `invalid`/`failed` envelope; attach operation payload only when meaningful execution evidence exists.
 - Emit exactly once and require EOF after decoding. Never call another error renderer after a partial-result envelope.
 
-For assignment reports, `assignee` and `allowOverride` are both present, even when override is false. For unassignment, both are omitted, not null or empty placeholders. Required report arrays are initialized. All count fields are present, including zero.
+For assignment reports, `assignee` and `allowOverride` are both present, even when override is false. For unassignment, both are omitted, not null or empty placeholders. Required report arrays are initialized. Existing count fields remain present, including zero; the additive `unchanged` count is omitted when zero.
 
 Example successful assignment payload within the unchanged envelope (optional tenant context omitted here):
 
@@ -111,14 +112,18 @@ updated user-task 2251799813685249: assignment confirmed
 updated user-task 2251799813685249: unassignment confirmed
 ```
 
+A single unchanged task logs `user-task <key> is already assigned to "<assignee>"; no change needed.` once at INFO, including under verbose, with no prompt or mutation. All-unchanged execution succeeds with unchanged/not_submitted items in one JSON envelope or zero bytes in keys-only mode.
+
 Bulk summaries identify action and requested count and omit zero human counters. Previews identify action/keys, assignment identity and permission, ending with `no requests submitted`; they never promise task existence, permission or success. Verbose rows describe safe per-resource outcomes, not raw HTTP chains.
 
-Keys-only emits each unique preview key during dry-run and only successful-response keys during execution, in selection order. It never prints failed, uncertain or unattempted keys as successful; no qualifying key means zero bytes, not a blank line. Partial failure preserves its non-success exit even with successful keys on stdout.
+Keys-only emits each unique preview key during dry-run and only successful-response keys during execution, in selection order. It never prints unchanged, failed, uncertain or unattempted keys as successful; no qualifying key means zero bytes, not a blank line. Partial failure preserves its non-success exit even with successful keys on stdout.
+
+For a single human assignment blocked in unattended execution without force, emit `user-task <key> is already assigned; use --force to replace the current assignee.` as one INFO line, without prompt or assignment request. Quiet and WARN suppress this hint; conflict exit status is preserved.
 
 For a single human assignment without override, a definite HTTP 409 rejection whose problem detail identifies that key as already assigned replaces the failure summary and ERROR with one INFO line:
 
 ```text
-user-task <key> was not assigned: reassignment is not allowed; use --allow-override to replace the current assignee.
+user-task <key> was not assigned: reassignment is not allowed; use --force to replace the current assignee.
 ```
 
 Retain the conflict exit code (including existing no-error-code configuration). Quiet and WARN suppress the INFO hint. Do not infer this cause from HTTP 409 alone, raw transport text, or an ambiguous submission. Unassignment, override-enabled requests, bulk results and machine output retain their existing contracts. Preserve the backend error evidence in JSON; internal diagnostic classification adds no JSON fields.

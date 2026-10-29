@@ -43,7 +43,7 @@ func TestUserTaskAssignmentReportPreview(t *testing.T) {
 			t.Run(fmt.Sprint(selector, override), func(t *testing.T) {
 				argv := []string{selector, "-k", completionKeyB + "," + completionKeyA, "--key", completionKeyB, "--dry-run"}
 				if override {
-					argv = append(argv, "--allow-override")
+					argv = append(argv, "--force")
 				}
 				cmd := newAssignmentInputCommand(t, argv...)
 				cmd.SetIn(strings.NewReader(completionKeyA + "\n"))

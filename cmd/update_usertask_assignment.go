@@ -6,11 +6,14 @@ package cmd
 import (
 	"fmt"
 	"log/slog"
+	"os"
 
+	"github.com/grafvonb/c8volt/c8volt/ferrors"
 	"github.com/grafvonb/c8volt/c8volt/foptions"
 	"github.com/grafvonb/c8volt/c8volt/task"
 	"github.com/grafvonb/c8volt/config"
 	"github.com/spf13/cobra"
+	"golang.org/x/term"
 )
 
 // runUpdateUserTaskAssignment freezes local intent and approves it once. Native
@@ -33,20 +36,51 @@ func runUpdateUserTaskAssignment(cmd *cobra.Command, args []string, cli task.API
 		}
 		return
 	}
-	if !shouldImplicitlyConfirm(cmd) {
-		renderUserTaskAssignmentPlan(cmd, input)
-		if err := confirmCmdOrAbortFn(cmd.ErrOrStderr(), false, userTaskAssignmentConfirmationPrompt(input)); err != nil {
-			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
-			return
-		}
-	}
 	opts := collectExplicitAdminInputOptions()
 	if input.AllowOverride {
 		opts = append(opts, foptions.WithUserTaskAssignmentOverride())
 	}
+	var plan task.UserTaskAssignmentPlan
+	protected := input.Operation == "assign" && !input.AllowOverride
+	approval := input
+	allowReassignment := false
+	reassignmentPrompted := false
+	if protected {
+		plan, err = cli.PrepareUserTaskAssignments(cmd.Context(), input.Keys, input.Assignee, input.WantedWorkers, opts...)
+		if err != nil {
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, err, "user-task assignment: could not check current assignees ("+string(ferrors.Classify(err))+")")
+			return
+		}
+		approval.Keys = plan.ReadyKeys
+		if plan.BlockedCount > 0 && !shouldImplicitlyConfirm(cmd) && term.IsTerminal(int(os.Stdin.Fd())) {
+			for _, replacement := range plan.Replacements {
+				log.Warn(fmt.Sprintf("user-task %s is already assigned to %q.", replacement.Key, replacement.Assignee))
+			}
+			if err := confirmCmdOrAbortFn(cmd.ErrOrStderr(), false, userTaskReassignmentConfirmationPrompt(input, plan)); err != nil {
+				handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+				return
+			}
+			allowReassignment = true
+			input.AllowOverride = true
+			reassignmentPrompted = true
+			approval.Keys = input.Keys
+		}
+		if !allowReassignment && len(approval.Keys) > 0 && plan.BlockedCount > 0 {
+			renderUserTaskAssignmentBlockedPlan(cmd, plan.BlockedCount)
+		}
+	}
+	if !reassignmentPrompted && len(approval.Keys) > 0 && !input.AllowOverride && !shouldImplicitlyConfirm(cmd) {
+		renderUserTaskAssignmentPlan(cmd, approval)
+		if err := confirmCmdOrAbortFn(cmd.ErrOrStderr(), false, userTaskAssignmentConfirmationPrompt(approval)); err != nil {
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+			return
+		}
+	}
 	var results task.UserTaskAssignmentResults
 	var operationErr error
-	if input.Operation == "assign" {
+	if protected {
+		results, operationErr = cli.ExecuteUserTaskAssignments(cmd.Context(), plan, allowReassignment)
+	} else if input.Operation == "assign" {
 		results, operationErr = cli.AssignUserTasks(cmd.Context(), input.Keys, input.Assignee, input.WantedWorkers, opts...)
 	} else {
 		results, operationErr = cli.UnassignUserTasks(cmd.Context(), input.Keys, input.WantedWorkers, opts...)
@@ -83,11 +117,17 @@ func userTaskAssignmentConfirmationPrompt(input userTaskAssignmentInput) string 
 	}
 	prompt := "You are about to " + input.Operation + " " + scope
 	if input.Operation == "assign" {
-		permission := "not allowed"
-		if input.AllowOverride {
-			permission = "allowed"
-		}
-		prompt += fmt.Sprintf(" to %q (reassignment: %s)", input.Assignee, permission)
+		prompt += fmt.Sprintf(" to %q", input.Assignee)
 	}
 	return prompt + ". Do you want to proceed?"
+}
+
+// userTaskReassignmentConfirmationPrompt replaces the ordinary approval question,
+// explicitly authorizing ownership replacement for the frozen selected tasks.
+func userTaskReassignmentConfirmationPrompt(input userTaskAssignmentInput, plan task.UserTaskAssignmentPlan) string {
+	changedCount := len(input.Keys) - plan.UnchangedCount
+	if changedCount == 1 && len(plan.Replacements) == 1 {
+		return fmt.Sprintf("Replace assignee %q with %q?", plan.Replacements[0].Assignee, input.Assignee)
+	}
+	return fmt.Sprintf("Assign %d user tasks to %q, replacing %d existing assignee(s)?", changedCount, input.Assignee, plan.BlockedCount)
 }

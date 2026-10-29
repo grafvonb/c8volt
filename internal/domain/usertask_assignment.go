@@ -4,11 +4,11 @@
 package domain
 
 // UserTaskAssignmentResult preserves execution and submission facts for one selected key.
-// Accepted status requires accepted submission; preview and not-attempted require not_submitted.
+// Accepted status requires accepted submission; preview, unchanged and not-attempted require not_submitted.
 // Timeout/cancellation alone never establishes rejection. Earlier ambiguity survives a later
 // rejection, while a later documented acceptance supersedes earlier uncertainty.
 type UserTaskAssignmentResult struct {
-	// ReassignmentDenied records a definite already-assigned rejection, not a generic conflict.
+	// ReassignmentDenied records an observed different assignee or a definite already-assigned rejection.
 	// It is diagnostic metadata only; machine result schemas remain unchanged.
 	ReassignmentDenied bool
 	// Key: Selected unique task key, always present
@@ -29,6 +29,8 @@ type UserTaskAssignmentStatus string
 const (
 	// UserTaskAssignmentStatusPreview is a valid local selection with no submission requested.
 	UserTaskAssignmentStatusPreview UserTaskAssignmentStatus = "preview"
+	// UserTaskAssignmentStatusUnchanged records the requested assignee already present; no mutation was submitted.
+	UserTaskAssignmentStatusUnchanged UserTaskAssignmentStatus = "unchanged"
 	// UserTaskAssignmentStatusAccepted records acceptance without independent task-state confirmation.
 	UserTaskAssignmentStatusAccepted UserTaskAssignmentStatus = "accepted"
 	// UserTaskAssignmentStatusFailed is a failure other than timeout or caller cancellation.
@@ -45,7 +47,7 @@ const (
 type UserTaskAssignmentSubmission string
 
 const (
-	// UserTaskAssignmentSubmissionNotSubmitted accompanies preview and not-attempted results.
+	// UserTaskAssignmentSubmissionNotSubmitted accompanies preview, unchanged and not-attempted results.
 	UserTaskAssignmentSubmissionNotSubmitted UserTaskAssignmentSubmission = "not_submitted"
 	// UserTaskAssignmentSubmissionAccepted means a documented successful response was observed.
 	UserTaskAssignmentSubmissionAccepted UserTaskAssignmentSubmission = "accepted"

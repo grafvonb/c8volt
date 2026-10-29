@@ -1,12 +1,18 @@
 # Implementation Plan: User-Task Assignment and Unassignment
 
+## Assignment approval update (2026-10-29)
+
+The current CLI policy supersedes earlier no-read and skip-only approval requirements below. `--assign` checks ownership, warns about existing assignees, and asks once before replacing them. Yes authorizes replacement at execution time, including a newer owner; the API has no compare-and-set ownership condition. Only keys observed occupied receive override after approval; other keys retain backend protection. `--force` replaces `--allow-override`, permits replacement, skips reads and skips confirmation. Auto-confirm, automation and nonterminal input never imply replacement consent: occupied keys remain failed/not_submitted unless forced, with fail-fast preserved. Dry-run stays local, unassignment stays read-free, and failed lookups stop before approval. Prompt text names safely quoted identities, WARN records use the configured logger, and JSON/keys output stays on stdout.
+
+Same-assignee refinement: a completed lookup matching the requested identity produces `unchanged/not_submitted`, with no error or HTTP status, no assignment request and no confirmation for that key. Keep its ordered result and exclude it from approval counts. A single human result is `user-task <key> is already assigned to "<assignee>"; no change needed.` Different-owner warnings say `user-task <key> is already assigned to "<current>".` before the replacement question. All-unchanged JSON succeeds, keys-only emits zero bytes, and quiet suppresses INFO. The additive `counts.unchanged` field is omitted when zero. Force still skips reads and submits; dry-run stays a local preview. Validate through isolated service/facade tests and command tests with real terminal stdin, separate streams, configured/inherited plain and structured logging, mixed batches and machine-output precedence.
+
 **Branch**: `351-user-task-assignment` | **Date**: 2026-10-28 | **Spec**: [spec.md](spec.md)
 
 **Input**: Feature specification from `specs/351-user-task-assignment/spec.md`
 
 ## Summary
 
-Extend `update user-task` with `--assign <assignee>`, `--unassign`, and assignment-only `--allow-override`. Support single and collection explicit keys through the same validated, ordered bulk workflow. Protect existing assignees by explicitly submitting false for override unless enabled. Await each documented native response, preserve uncertain and partial outcomes, and perform no preflight task reads or additional state polling.
+Extend `update user-task` with `--assign <assignee>`, `--unassign`, and assignment-only `--force`. Support single and collection explicit keys through the same validated, ordered bulk workflow. Protect existing assignees by explicitly submitting false for override unless enabled. Await each documented native response, preserve uncertain and partial outcomes, and use a single ownership lookup before protected CLI assignment approval, with no additional state polling.
 
 Use thin `c8volt/task` methods, a shared assignment-family coordinator in `internal/services/usertask`, and concrete mappings in v88/v89/v810 adapters. Reuse completion's key handling and narrowly extracted native submission-evidence mechanics while preserving its existing preflight, public types, messages and output. Retain configured logger routing, one JSON envelope, success-only execution keys, and all existing variable-update behavior. Research decisions are recorded in [research.md](research.md).
 
@@ -106,17 +112,17 @@ Completed in [research.md](research.md): supported-version routes and override s
 
 Resolve active modes before completion/variable dispatch: assignment by flag presence, unassignment/completion by true value. Reject conflicting modes; reject assignment-only override flag presence outside assignment, even false. Reject variable flag presence in either new mode, and true no-wait. Preserve false boolean semantics, existing JSON confirmation guards and JSON-plus-verbose rejection.
 
-Extract strict key parsing without changing legacy variable input behavior. Flag keys precede stdin lines under the existing contract. Freeze copied keys, opaque nonblank assignee, operation and boolean override before any plan/confirmation output. Preview is local with no facade or backend call; normal execution approves once then invokes the matching facade method. No completion preparation call or task lookup.
+Extract strict key parsing without changing legacy variable input behavior. Flag keys precede stdin lines under the existing contract. Freeze copied keys, opaque nonblank assignee, operation and boolean override before any plan/confirmation output. Preview is local with no facade or backend call; protected assignment uses its preparation facade before approval, confirms the eligible subset once, and executes the frozen plan. Override and unassignment use the native facade directly. No completion preparation is reused.
 
 Use known explicit-key tenant context without discovery. Plans and previews honor quiet/machine visibility and configured INFO logging. Confirmation names the action, selected scope, assignee and replacement policy; plain prompts use `cmd.ErrOrStderr()`, preserving terminal eligibility, nonterminal bypass, decline, EOF and redirected stdout behavior.
 
 ### Public and internal service boundaries
 
-Add two explicit public operations, defined in [facade contract](contracts/facade-user-task-assignment.md), returning `UserTaskAssignmentResults`. Add `foptions.WithUserTaskAssignmentOverride()` and its narrowly named internal mapping. The value defaults false and is neither derived from auto-confirm/automation nor from generic force flags. No public prepare/execute pair is needed.
+Add two explicit public operations, defined in [facade contract](contracts/facade-user-task-assignment.md), returning `UserTaskAssignmentResults`. Add `foptions.WithUserTaskAssignmentOverride()` and its narrowly named internal mapping. The value defaults false and is neither derived from auto-confirm/automation nor from generic force flags. The CLI uses `PrepareUserTaskAssignments` and `ExecuteUserTaskAssignments` for ownership-aware approval, with private frozen plan data.
 
 The facade delegates to assignment/unassignment wrappers around one internal coordinator. It maps inputs/options, converts all result items even on failure, and normalizes the original error with `ferrors.FromDomain`. The coordinator validates and snapshots inputs/options before scheduling, rejects no-wait and inappropriate override, handles public dry-run locally, preinitializes one item per unique key and merges per-index results. No backend reads.
 
-All adapter interfaces and affected doubles change in the same compiling unit. Existing read/completion doubles fail on unexpected assignment; new assignment fixtures fail on any read, completion or variable mutation. No generated types escape adapters.
+All adapter interfaces and affected doubles change in the same compiling unit. Existing read/completion doubles fail on unexpected assignment; native assignment fixtures fail on reads, completion or variable mutation; CLI preflight fixtures allow exactly one native lookup per protected key. No generated types escape adapters.
 
 ### Native submission and scheduling
 
