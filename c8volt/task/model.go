@@ -354,3 +354,63 @@ const (
 type UserTaskCompletionResults struct {
 	Items []UserTaskCompletionResult `json:"items"`
 }
+
+// UserTaskAssignmentResult preserves execution and submission facts for one selected key.
+// Accepted status requires accepted submission; preview, unchanged and not-attempted require not_submitted.
+// Timeout/cancellation alone never establishes rejection. Earlier ambiguity survives a later
+// rejection, while a later documented acceptance supersedes earlier uncertainty.
+type UserTaskAssignmentResult struct {
+	// ReassignmentDenied records an observed different assignee or a definite already-assigned rejection.
+	// It is diagnostic metadata only; machine result schemas remain unchanged.
+	ReassignmentDenied bool `json:"-"`
+	// Key: Selected unique task key, always present. Required in JSON.
+	Key string `json:"key"`
+	// Status: Local operation outcome. Required in JSON.
+	Status UserTaskAssignmentStatus `json:"status"`
+	// Submission: Evidence about backend acceptance. Required in JSON.
+	Submission UserTaskAssignmentSubmission `json:"submission"`
+	// StatusCode: Last observed submission response code; zero when none. Omit when zero.
+	StatusCode int `json:"statusCode,omitempty"`
+	// Error: Omit when empty; retain machine failure evidence. Not human display text.
+	Error string `json:"error,omitempty"`
+}
+
+// UserTaskAssignmentStatus describes local execution, independently of backend acceptance.
+type UserTaskAssignmentStatus string
+
+const (
+	// UserTaskAssignmentStatusPreview is a valid local selection with no submission requested.
+	UserTaskAssignmentStatusPreview UserTaskAssignmentStatus = "preview"
+	// UserTaskAssignmentStatusUnchanged records the requested assignee already present; no mutation was submitted.
+	UserTaskAssignmentStatusUnchanged UserTaskAssignmentStatus = "unchanged"
+	// UserTaskAssignmentStatusAccepted records acceptance without independent task-state confirmation.
+	UserTaskAssignmentStatusAccepted UserTaskAssignmentStatus = "accepted"
+	// UserTaskAssignmentStatusFailed is a failure other than timeout or caller cancellation.
+	UserTaskAssignmentStatusFailed UserTaskAssignmentStatus = "failed"
+	// UserTaskAssignmentStatusTimedOut records an attempted operation's timeout, not rejection.
+	UserTaskAssignmentStatusTimedOut UserTaskAssignmentStatus = "timed_out"
+	// UserTaskAssignmentStatusCanceled records caller cancellation after an attempt, not rejection.
+	UserTaskAssignmentStatusCanceled UserTaskAssignmentStatus = "canceled"
+	// UserTaskAssignmentStatusNotAttempted means no assignment-family submission began.
+	UserTaskAssignmentStatusNotAttempted UserTaskAssignmentStatus = "not_attempted"
+)
+
+// UserTaskAssignmentSubmission records backend acceptance evidence across all native attempts.
+type UserTaskAssignmentSubmission string
+
+const (
+	// UserTaskAssignmentSubmissionNotSubmitted accompanies preview, unchanged and not-attempted results.
+	UserTaskAssignmentSubmissionNotSubmitted UserTaskAssignmentSubmission = "not_submitted"
+	// UserTaskAssignmentSubmissionAccepted means a documented successful response was observed.
+	UserTaskAssignmentSubmissionAccepted UserTaskAssignmentSubmission = "accepted"
+	// UserTaskAssignmentSubmissionRejected means explicit rejection with no earlier ambiguous attempt.
+	UserTaskAssignmentSubmissionRejected UserTaskAssignmentSubmission = "rejected"
+	// UserTaskAssignmentSubmissionUnknown means at least one attempt lacks conclusive evidence.
+	UserTaskAssignmentSubmissionUnknown UserTaskAssignmentSubmission = "unknown"
+)
+
+// UserTaskAssignmentResults preserves ordered partial results for assignment or unassignment.
+type UserTaskAssignmentResults struct {
+	// Items: Initialized array, never null; one item per unique key, empty on validation failure.
+	Items []UserTaskAssignmentResult `json:"items"`
+}

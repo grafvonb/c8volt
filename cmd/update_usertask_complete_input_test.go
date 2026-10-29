@@ -38,7 +38,7 @@ func newCompletionInputCommand(t *testing.T, argv ...string) *cobra.Command {
 	cmd := &cobra.Command{Use: "user-task"}
 	fs := cmd.Flags()
 	fs.StringSliceVarP(&flagUpdateUserTaskKeys, "key", "k", nil, "")
-	trackUserTaskCompletionKeyInput(fs.Lookup("key"))
+	trackUserTaskKeyInput(fs.Lookup("key"))
 	fs.StringVar(&flagUpdateUserTaskVars, "vars", "", "")
 	fs.StringVar(&flagUpdateUserTaskVarsFile, "vars-file", "", "")
 	fs.IntVarP(&flagWorkers, "workers", "w", 0, "")

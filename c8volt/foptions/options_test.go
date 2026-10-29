@@ -190,3 +190,31 @@ func TestProgressCompletionFactPreservesUnknownAffectedCount(t *testing.T) {
 	require.Equal(t, CompletionDispositionSubmitted, got.Completion.Disposition)
 	require.Nil(t, got.Completion.AffectedCount)
 }
+
+// TestUserTaskAssignmentOverride requires explicit opt-in and snapshots the evaluated public policy.
+func TestUserTaskAssignmentOverride(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name string
+		opts []FacadeOption
+		want bool
+	}{
+		{name: "default"},
+		{name: "force is unrelated", opts: []FacadeOption{WithForce()}},
+		{name: "explicit", opts: []FacadeOption{WithUserTaskAssignmentOverride()}, want: true},
+		{name: "explicit false wins", opts: []FacadeOption{WithUserTaskAssignmentOverride(), func(cfg *FacadeCfg) { cfg.UserTaskAssignmentOverride = false }}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			require.Equal(t, tc.want, ApplyFacadeOptions(tc.opts).UserTaskAssignmentOverride)
+			require.Equal(t, tc.want, services.ApplyCallOptions(MapFacadeOptionsToCallOptions(tc.opts)).UserTaskAssignmentOverride)
+		})
+	}
+	var calls int
+	var retained *FacadeCfg
+	opts := MapFacadeOptionsToCallOptions([]FacadeOption{func(cfg *FacadeCfg) { calls++; cfg.UserTaskAssignmentOverride = true; retained = cfg }})
+	*retained = FacadeCfg{}
+	for range 2 {
+		require.True(t, services.ApplyCallOptions(opts).UserTaskAssignmentOverride)
+	}
+	require.Equal(t, 1, calls)
+}

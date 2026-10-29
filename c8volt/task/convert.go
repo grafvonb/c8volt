@@ -405,3 +405,17 @@ func fromDomainUserTaskCompletionResults(x d.UserTaskCompletionResults) UserTask
 	}
 	return out
 }
+
+// fromDomainUserTaskAssignmentResults preserves ordered evidence, copying the slice
+// and initializing an empty public array even when validation produced no items.
+func fromDomainUserTaskAssignmentResults(x d.UserTaskAssignmentResults) UserTaskAssignmentResults {
+	out := UserTaskAssignmentResults{Items: make([]UserTaskAssignmentResult, len(x.Items))}
+	for i, item := range x.Items {
+		out.Items[i] = UserTaskAssignmentResult{
+			Key: item.Key, Status: UserTaskAssignmentStatus(item.Status),
+			Submission: UserTaskAssignmentSubmission(item.Submission),
+			StatusCode: item.StatusCode, Error: item.Error, ReassignmentDenied: item.ReassignmentDenied,
+		}
+	}
+	return out
+}

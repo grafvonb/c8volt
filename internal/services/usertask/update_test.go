@@ -342,3 +342,13 @@ func plannedChangeNames(values []d.UserTaskVariablePlannedChange) []string {
 func (a *updatePlanningUserTaskAPI) CompleteUserTask(context.Context, string, map[string]any, ...services.CallOption) (d.UserTaskCompletionResult, error) {
 	panic("unexpected CompleteUserTask call")
 }
+
+// AssignUserTask fails closed when an unrelated fixture receives an assignment.
+func (a *updatePlanningUserTaskAPI) AssignUserTask(context.Context, string, string, ...services.CallOption) (d.UserTaskAssignmentResult, error) {
+	panic("unexpected user-task assignment")
+}
+
+// UnassignUserTask fails closed when an unrelated fixture receives an unassignment.
+func (a *updatePlanningUserTaskAPI) UnassignUserTask(context.Context, string, ...services.CallOption) (d.UserTaskAssignmentResult, error) {
+	panic("unexpected user-task unassignment")
+}

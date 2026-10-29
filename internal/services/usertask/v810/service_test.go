@@ -227,3 +227,13 @@ func newHTTPResponse(method, rawURL string, statusCode int, status string) *http
 		},
 	}
 }
+
+// AssignUserTaskWithResponse rejects unexpected assignment in this unrelated fixture.
+func (m *mockUserTaskClient) AssignUserTaskWithResponse(context.Context, camundav810.UserTaskKey, camundav810.AssignUserTaskJSONRequestBody, ...camundav810.RequestEditorFn) (*camundav810.AssignUserTaskResponse, error) {
+	panic("unexpected user-task assignment")
+}
+
+// UnassignUserTaskWithResponse rejects unexpected removal in this unrelated fixture.
+func (m *mockUserTaskClient) UnassignUserTaskWithResponse(context.Context, camundav810.UserTaskKey, ...camundav810.RequestEditorFn) (*camundav810.UnassignUserTaskResponse, error) {
+	panic("unexpected user-task unassignment")
+}

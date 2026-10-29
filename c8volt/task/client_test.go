@@ -191,3 +191,13 @@ func TestClientGetUserTaskErrorsUseFacadeClassification(t *testing.T) {
 func (a *facadeUserTaskAPI) CompleteUserTask(context.Context, string, map[string]any, ...services.CallOption) (d.UserTaskCompletionResult, error) {
 	panic("unexpected CompleteUserTask call")
 }
+
+// AssignUserTask fails closed when an unrelated fixture receives an assignment.
+func (a *facadeUserTaskAPI) AssignUserTask(context.Context, string, string, ...services.CallOption) (d.UserTaskAssignmentResult, error) {
+	panic("unexpected user-task assignment")
+}
+
+// UnassignUserTask fails closed when an unrelated fixture receives an unassignment.
+func (a *facadeUserTaskAPI) UnassignUserTask(context.Context, string, ...services.CallOption) (d.UserTaskAssignmentResult, error) {
+	panic("unexpected user-task unassignment")
+}
