@@ -265,7 +265,7 @@ func TestUpdateUserTaskAssignmentSuccessLogging(t *testing.T) {
 								expected += "updated user-task " + completionKeyA + ": " + label + " confirmed; HTTP 204 No Content\n"
 							}
 							if phase == "preview" {
-								expected = "selection scope: explicit resource keys; tenant filter not applied\ndry run: update user-task " + completionKeyA + ": " + label
+								expected = "dry run: update user-task " + completionKeyA + ": " + label
 								if operation == "assign" {
 									expected += ` to "alice" (reassignment: not allowed)`
 								}

@@ -157,7 +157,7 @@ func TestUpdateUserTaskAssignmentCommandOutput(t *testing.T) {
 								require.Equal(t, want, stdout)
 							} else {
 								require.Empty(t, stdout)
-								if phase == "preview" && !slices.Contains(flags, "--quiet") {
+								if phase == "preview" && slices.Contains(flags, "--verbose") && !slices.Contains(flags, "--quiet") {
 									wantRecords = append(wantRecords, [2]string{"INFO", "selection scope: explicit resource keys; tenant filter not applied"})
 								}
 								wantRecords = append(wantRecords, completionInfoRecords(want)...)

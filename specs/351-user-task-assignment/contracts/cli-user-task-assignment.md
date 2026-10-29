@@ -44,7 +44,7 @@ You are about to assign 2 user tasks to "alice" (reassignment: allowed). Do you 
 You are about to unassign user-task 2251799813685249. Do you want to proceed?
 ```
 
-For bulk plans/previews, identify every selected key using the existing plan/detail conventions and list the unique selection; the compact prompt may use the count. Prompts use plain `cmd.ErrOrStderr()` and retain existing default-no, yes parsing, EOF, decline, nonterminal and stdout-redirection behavior. No prompt for dry-run, invalid input, auto-confirm or automation. Do not add completion advisory warnings.
+Ordinary single-task execution shows the confirmation followed by the result, without a duplicate plan or tenant-scope log. Plan and tenant-scope details require `--verbose`, including tenant context for dry-run. For bulk approval/previews, identify every selected key using the existing detail conventions and list the unique selection; the compact prompt may use the count. Prompts use plain `cmd.ErrOrStderr()` and retain existing default-no, yes parsing, EOF, decline, nonterminal and stdout-redirection behavior. No prompt for dry-run, invalid input, auto-confirm or automation. Do not add completion advisory warnings.
 
 Assignment sends explicit false/true override in the same native operation as the assignee. Unassignment sends only the normal native unassignment operation. Await the documented response, including blocking task listeners. No read-then-unassign-then-assign, additional polling, read-back or downstream waiting. Missing/current/same-assignee state is decided by the backend, never by suppressed errors.
 

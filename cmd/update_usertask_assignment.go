@@ -24,7 +24,9 @@ func runUpdateUserTaskAssignment(cmd *cobra.Command, args []string, cli task.API
 	attachExplicitKeysTenantContext(cmd, cfg)
 	label := assignmentOperationLabel(input.Operation)
 	if flagDryRun {
-		renderAttachedTenantContext(cmd)
+		if flagVerbose {
+			renderAttachedTenantContext(cmd)
+		}
 		if err := renderUpdateUserTaskAssignment(cmd, newUserTaskAssignmentPreview(input), nil); err != nil {
 			log.Error("user-task " + label + ": could not write preview")
 			exitAfterRenderedResult(cfg.App.NoErrCodes, err)

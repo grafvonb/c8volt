@@ -85,11 +85,8 @@ func TestUpdateUserTaskAssignmentTerminal(t *testing.T) {
 						return
 					}
 					want := [][2]string{}
-					if prompted || (preview && !slices.Contains(tc.flags, "--json")) {
-						want = append(want, [2]string{"INFO", "selection scope: explicit resource keys; tenant filter not applied"})
-					}
 					if prompted {
-						want = append(want, completionInfoRecords("plan: "+intent+"\nselected user-task "+completionKeyA+"\nselected user-task "+completionKeyB+"\n")...)
+						want = append(want, completionInfoRecords("selected user-task "+completionKeyA+"\nselected user-task "+completionKeyB+"\n")...)
 					}
 					if tc.decline {
 						require.Empty(t, stdout)
@@ -117,24 +114,53 @@ func TestUpdateUserTaskAssignmentTerminal(t *testing.T) {
 // in approval, including automation/auto-confirm never enabling override.
 func TestUpdateUserTaskAssignmentSingleTerminal(t *testing.T) {
 	for _, operation := range []string{"assign", "unassign"} {
-		server, calls := newUserTaskAssignmentServer(t, operation, nil)
-		prompt := "You are about to " + operation + " user-task " + completionKeyA
-		if operation == "assign" {
-			prompt += ` to "alice" (reassignment: not allowed)`
+		for _, format := range []string{"plain-time", "json"} {
+			for _, destination := range []string{"configured", "inherited"} {
+				for _, mode := range []string{"normal", "verbose", "quiet", "warn"} {
+					t.Run(operation+"/"+format+"/"+destination+"/"+mode, func(t *testing.T) {
+						server, calls := newUserTaskAssignmentServer(t, operation, nil)
+						prompt := "You are about to " + operation + " user-task " + completionKeyA
+						intent := "update user-task " + completionKeyA + ": " + assignmentOperationLabel(operation)
+						if operation == "assign" {
+							prompt += ` to "alice" (reassignment: not allowed)`
+							intent += ` to "alice" (reassignment: not allowed)`
+						}
+						prompt += ".\nDo you want to proceed? [y/N]: "
+						level := "info"
+						if mode == "warn" {
+							level = "warn"
+						}
+						args := []string{"--config", completionLogConfig(t, server.URL, format, level), "update", "ut", assignmentModeFlag(operation), "--key", completionKeyA}
+						if mode == "verbose" || mode == "quiet" {
+							args = append(args, "--"+mode)
+						}
+						stdout, stderr, err := runUserTaskCompletionTerminal(t, args, destination, []testx.CmdTerminalExchange{{Prompt: prompt, Response: "y"}})
+						require.NoError(t, err)
+						require.Empty(t, stdout)
+						require.Len(t, calls.Snapshot(), 1)
+						require.Equal(t, 1, strings.Count(stderr, prompt))
+						if operation == "assign" {
+							require.Equal(t, false, calls.Snapshot()[0].Body["allowOverride"])
+						}
+						if mode != "verbose" {
+							require.True(t, strings.HasPrefix(stderr, prompt), "prompt should be the first output: %s", stderr)
+						}
+						stderr = strings.Replace(stderr, prompt, "", 1)
+						summary := fmt.Sprintf("updated user-task %s: %s confirmed", completionKeyA, assignmentOperationLabel(operation))
+						want := [][2]string{}
+						if mode == "verbose" {
+							want = append(want, [2]string{"INFO", "selection scope: explicit resource keys; tenant filter not applied"}, [2]string{"INFO", "plan: " + intent})
+						}
+						if mode == "normal" || mode == "verbose" {
+							want = append(want, [2]string{"INFO", summary})
+						}
+						if mode == "verbose" {
+							want = append(want, [2]string{"INFO", summary + "; HTTP 204 No Content"})
+						}
+						require.Equal(t, want, bulkCompletionDiagnosticRecords(t, stderr, format))
+					})
+				}
+			}
 		}
-		prompt += ".\nDo you want to proceed? [y/N]: "
-		args := []string{"--config", completionLogConfig(t, server.URL, "plain-time", "info"), "update", "ut", assignmentModeFlag(operation), "--key", completionKeyA}
-		stdout, stderr, err := runUserTaskCompletionTerminal(t, args, "configured", []testx.CmdTerminalExchange{{Prompt: prompt, Response: "y"}})
-		require.NoError(t, err)
-		require.Empty(t, stdout)
-		require.Len(t, calls.Snapshot(), 1)
-		require.Equal(t, 1, strings.Count(stderr, prompt))
-		if operation == "assign" {
-			require.Equal(t, false, calls.Snapshot()[0].Body["allowOverride"])
-		}
-		stderr = strings.Replace(stderr, prompt, "", 1)
-		records := bulkCompletionDiagnosticRecords(t, stderr, "plain-time")
-		require.Len(t, records, 3)
-		require.Equal(t, [2]string{"INFO", fmt.Sprintf("updated user-task %s: %s confirmed", completionKeyA, assignmentOperationLabel(operation))}, records[2])
 	}
 }
