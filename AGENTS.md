@@ -175,5 +175,5 @@
 
 ## Active Speckit Plan
 <!-- SPECKIT START -->
-- Active Speckit implementation plan: `specs/351-user-task-assignment/plan.md`
+- Active Speckit implementation plan: `specs/222-camunda-version-check/plan.md`
 <!-- SPECKIT END -->
