@@ -41,6 +41,7 @@ func WithClient(c GenResourceClientCamunda, pdc GenProcessDefinitionClientCamund
 	}
 }
 
+// New prepares the versioned adapter with lazy invocation preflight on generated requests.
 func New(cfg *config.Config, httpClient *http.Client, log *slog.Logger, opts ...Option) (*Service, error) {
 	deps, err := common.PrepareServiceDeps(cfg, httpClient, log)
 	if err != nil {
@@ -48,7 +49,7 @@ func New(cfg *config.Config, httpClient *http.Client, log *slog.Logger, opts ...
 	}
 	c, err := camundav810.NewClientWithResponses(
 		deps.Config.APIs.Camunda.BaseURL,
-		camundav810.WithHTTPClient(deps.HTTPClient),
+		camundav810.WithHTTPClient(deps.APIClient),
 	)
 	if err != nil {
 		return nil, err

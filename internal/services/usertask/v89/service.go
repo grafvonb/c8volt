@@ -77,7 +77,7 @@ func New(cfg *config.Config, httpClient *http.Client, log *slog.Logger, opts ...
 	}
 	c, err := camundav89.NewClientWithResponses(
 		deps.Config.APIs.Camunda.BaseURL,
-		camundav89.WithHTTPClient(deps.HTTPClient),
+		camundav89.WithHTTPClient(deps.APIClient),
 	)
 	if err != nil {
 		return nil, err
@@ -86,7 +86,7 @@ func New(cfg *config.Config, httpClient *http.Client, log *slog.Logger, opts ...
 	if deps.Config.APIs.Tasklist.BaseURL != "" {
 		t, err = tasklistv89.NewClientWithResponses(
 			deps.Config.APIs.Tasklist.BaseURL,
-			tasklistv89.WithHTTPClient(deps.HTTPClient),
+			tasklistv89.WithHTTPClient(deps.APIClient),
 		)
 		if err != nil {
 			return nil, err

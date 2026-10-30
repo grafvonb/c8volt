@@ -9,6 +9,7 @@ import (
 	"net/http"
 
 	"github.com/grafvonb/c8volt/config"
+	"github.com/grafvonb/c8volt/internal/services/httpc"
 )
 
 var (
@@ -18,10 +19,15 @@ var (
 	ErrNoClientConfigured = errors.New("client must not be nil")
 )
 
+// ServiceDeps retains the concrete client for nested services and exposes gated
+// Do only to generated operational clients; authentication remains ungated.
 type ServiceDeps struct {
 	Config     *config.Config
 	HTTPClient *http.Client
-	Logger     *slog.Logger
+	APIClient  interface {
+		Do(*http.Request) (*http.Response, error)
+	}
+	Logger *slog.Logger
 }
 
 // PrepareServiceDeps validates the common constructor inputs shared by versioned services.
@@ -39,7 +45,7 @@ func PrepareServiceDeps(cfg *config.Config, httpClient *http.Client, log *slog.L
 	if log == nil {
 		log = slog.Default()
 	}
-	return ServiceDeps{Config: cfg, HTTPClient: httpClient, Logger: log}, nil
+	return ServiceDeps{Config: cfg, HTTPClient: httpClient, APIClient: httpc.NewBeforeRequestClient(httpClient), Logger: log}, nil
 }
 
 // EffectiveTenant returns the configured tenant or an empty string for nil configs.

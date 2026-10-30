@@ -49,6 +49,7 @@ func WithLogger(logger *slog.Logger) Option {
 	}
 }
 
+// New prepares the versioned adapter with lazy invocation preflight on generated requests.
 func New(cfg *config.Config, httpClient *http.Client, log *slog.Logger, opts ...Option) (*Service, error) {
 	deps, err := common.PrepareServiceDeps(cfg, httpClient, log)
 	if err != nil {
@@ -56,7 +57,7 @@ func New(cfg *config.Config, httpClient *http.Client, log *slog.Logger, opts ...
 	}
 	c, err := camundav88.NewClientWithResponses(
 		deps.Config.APIs.Camunda.BaseURL,
-		camundav88.WithHTTPClient(deps.HTTPClient),
+		camundav88.WithHTTPClient(deps.APIClient),
 	)
 	if err != nil {
 		return nil, err

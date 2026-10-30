@@ -69,7 +69,7 @@ Use the following field constraints from the data model verbatim:
 
 **Independent test**: Construct real versioned services/facades with a gate-bearing context and test-owned HTTP transport/server. Let a short-budget probe fail, then require the ordinary operation to receive its own timeout and retain its response/exit-class evidence. Run the same service without a gate and verify unchanged behavior.
 
-- [ ] T002 [US2] Connect the completed pre-Do wrapper through an additive `APIClient` field in `internal/services/common/deps.go`, migrate all generated-client arguments in the 33 exact `service.go` files listed below, and add `internal/services/common/deps_test.go` plus `internal/services/cluster/version_check_wiring_test.go`; retain concrete client/facade signatures and nested constructors, update affected local doubles, and include focused adapter/timeout/auth/pacing/recursion tests, formatting, and validation in this unit (depends on T001).
+- [x] T002 [US2] Connect the completed pre-Do wrapper through an additive `APIClient` field in `internal/services/common/deps.go`, migrate all generated-client arguments in the 33 exact `service.go` files listed below, and add `internal/services/common/deps_test.go` plus `internal/services/cluster/version_check_wiring_test.go`; retain concrete client/facade signatures and nested constructors, update affected local doubles, and include focused adapter/timeout/auth/pacing/recursion tests, formatting, and validation in this unit (depends on T001).
 
 ### T002 constructor scope
 
