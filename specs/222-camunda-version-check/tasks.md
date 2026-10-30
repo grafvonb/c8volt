@@ -31,7 +31,7 @@ No standalone foundation task is needed. T001 owns its model, parser, gate contr
 
 **Independent test**: Invoke the checker and pre-Do wrapper with test-owned topology responses and recording callbacks. Prove a silent match, one mismatch outcome, one bounded attempt across concurrent/repeated callers, and safe continuation after every failure. The CLI is deliberately not activated until T003.
 
-- [ ] T001 [US1] Implement the complete bounded version-check primitive in `toolx/camunda_release.go`, `internal/domain/version_check.go`, `internal/services/httpc/before_request.go`, and `internal/services/cluster/version_check.go`, with `toolx/camunda_release_test.go`, `internal/services/httpc/before_request_test.go`, and `internal/services/cluster/version_check_test.go`; include all model/gate dependencies, failure policy shared with US2, fixtures, comments, formatting, and the focused validation below in this unit.
+- [x] T001 [US1] Implement the complete bounded version-check primitive in `toolx/camunda_release.go`, `internal/domain/version_check.go`, `internal/services/httpc/before_request.go`, and `internal/services/cluster/version_check.go`, with `toolx/camunda_release_test.go`, `internal/services/httpc/before_request_test.go`, and `internal/services/cluster/version_check_test.go`; include all model/gate dependencies, failure policy shared with US2, fixtures, comments, formatting, and the focused validation below in this unit.
 
 ### T001 model constraints and implementation
 
