@@ -855,9 +855,14 @@ func TestOpsRepairIncidentCommandHelper(t *testing.T) {
 	}
 }
 
+// newOpsRepairIncidentServer keeps fixture setup aligned with the invocation's advisory version check.
 func newOpsRepairIncidentServer(t *testing.T, requests *testx.SafeSlice[string]) *httptest.Server {
 	t.Helper()
 	return testx.NewIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		requests.Append(r.Method + " " + r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
@@ -887,6 +892,10 @@ func newOpsRepairIncidentServer(t *testing.T, requests *testx.SafeSlice[string])
 func newOpsRepairIncidentFailingResolutionServer(t *testing.T, requests *testx.SafeSlice[string]) *httptest.Server {
 	t.Helper()
 	return testx.NewIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		requests.Append(r.Method + " " + r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {

@@ -113,6 +113,10 @@ func TestGetProcessInstanceTotalOutput(t *testing.T) {
 				// Incident enrichment issues concurrent requests; capture them safely.
 				var requests testx.SafeSlice[string]
 				srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					if serveVersionCheckTopology(w, r, "8.8") {
+						return
+					}
+
 					requests.Append(r.Method + " " + r.URL.Path)
 					w.Header().Set("Content-Type", "application/json")
 					switch r.URL.Path {
@@ -798,6 +802,10 @@ func TestGetProcessInstancePagingFlow(t *testing.T) {
 				var getPaths []string
 				call := 0
 				srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					if serveVersionCheckTopology(w, r, version) {
+						return
+					}
+
 					call++
 					w.Header().Set("Content-Type", "application/json")
 					if call == 1 {
@@ -933,7 +941,7 @@ func TestGetProcessInstanceSuspendedSparsePaging(t *testing.T) {
 		t.Run(fmt.Sprint(machine), func(t *testing.T) {
 			var requests []string
 			child := strings.Replace(suspendedInstanceFixture, `"tenantId":"tenant"`, `"tenantId":"tenant","parentProcessInstanceKey":"999"`, 1)
-			srv := newProcessInstanceSearchCaptureServerWithResponses(t, &requests,
+			srv := newProcessInstanceSearchCaptureServerForVersion(t, "8.10", &requests,
 				fmt.Sprintf(`{"items":[%s],"page":{"totalItems":2,"hasMoreTotalItems":false,"endCursor":"first"}}`, child),
 				fmt.Sprintf(`{"items":[%s],"page":{"totalItems":2,"hasMoreTotalItems":false}}`, suspendedInstanceFixture),
 			)

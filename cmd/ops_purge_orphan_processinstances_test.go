@@ -716,10 +716,15 @@ func newOpsOrphanPurgeServer(t *testing.T, requests *testx.SafeSlice[string], wi
 	return newOpsOrphanPurgeServerWithState(t, requests, nil, withOrphan, "ACTIVE")
 }
 
+// newOpsOrphanPurgeServerWithState keeps fixture setup aligned with the invocation's advisory version check.
 func newOpsOrphanPurgeServerWithState(t *testing.T, requests *testx.SafeSlice[string], deleted *testx.SafeSlice[string], withOrphan bool, orphanState string) *httptest.Server {
 	t.Helper()
 
 	return newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		switch {
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
 			body, err := io.ReadAll(r.Body)

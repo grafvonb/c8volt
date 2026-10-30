@@ -22,7 +22,7 @@ const getUserTaskCommandHelper = "TestGetUserTaskCommandHelper"
 // TestGetUserTaskCommand_KeyInputsAndAliases verifies canonical and alias
 // dispatch, flag-before-stdin order, trimming, stable deduplication, and native GETs.
 func TestGetUserTaskCommand_KeyInputsAndAliases(t *testing.T) {
-	server, requests := newGetUserTaskCommandServer(t)
+	server, requests := newGetUserTaskCommandServer(t, "8.9")
 	configPath := testx.WriteTestConfigForVersion(t, server.URL, "8.9")
 
 	for _, name := range []string{"user-task", "user-tasks", "ut", "uts"} {
@@ -54,7 +54,7 @@ func TestGetUserTaskCommand_KeyInputsAndAliases(t *testing.T) {
 // TestGetUserTaskCommand_MachineOutput pins the one-collection JSON shape and
 // key-only stdout with stderr captured independently.
 func TestGetUserTaskCommand_MachineOutput(t *testing.T) {
-	server, _ := newGetUserTaskCommandServer(t)
+	server, _ := newGetUserTaskCommandServer(t, "8.9")
 	configPath := testx.WriteTestConfigForVersion(t, server.URL, "8.9")
 
 	stdout, stderr, err := runGetUserTaskCommand(t, configPath, "", "--json", "get", "ut", "-k", "2251799815391233")
@@ -77,7 +77,7 @@ func TestGetUserTaskCommand_MachineOutput(t *testing.T) {
 // execution boundary across supported versions, backend denial,
 // authorized foreign-tenant metadata, and quiet machine modes.
 func TestGetUserTaskCommand_VersionTenantDenialAndQuietMatrix(t *testing.T) {
-	server, requests := newGetUserTaskCommandServer(t)
+	server, requests := newGetUserTaskCommandServer(t, "8.9")
 	for _, version := range []string{"8.8", "8.9", "8.10"} {
 		t.Run(version, func(t *testing.T) {
 			configPath := testx.WriteTestConfigForVersion(t, server.URL, version)
@@ -108,7 +108,7 @@ func TestGetUserTaskCommand_VersionTenantDenialAndQuietMatrix(t *testing.T) {
 // TestGetUserTaskCommand_RejectsInvalidInputBeforeReads covers malformed flag
 // and stdin keys, explicit empty stdin, extra args, bounds, and every keyed conflict.
 func TestGetUserTaskCommand_RejectsInvalidInputBeforeReads(t *testing.T) {
-	server, requests := newGetUserTaskCommandServer(t)
+	server, requests := newGetUserTaskCommandServer(t, "8.9")
 	configPath := testx.WriteTestConfigForVersion(t, server.URL, "8.9")
 	longLine := strings.Repeat("1", 10*1024*1024+1) + "\n"
 
@@ -158,7 +158,7 @@ func TestGetUserTaskCommand_RejectsInvalidInputBeforeReads(t *testing.T) {
 // TestGetUserTaskCommand_MissingKeyFailsWithoutPartialSuccess ensures strict
 // bulk lookup does not render an earlier successful task when a later key is missing.
 func TestGetUserTaskCommand_MissingKeyFailsWithoutPartialSuccess(t *testing.T) {
-	server, _ := newGetUserTaskCommandServer(t)
+	server, _ := newGetUserTaskCommandServer(t, "8.9")
 	configPath := testx.WriteTestConfigForVersion(t, server.URL, "8.9")
 
 	stdout, stderr, err := runGetUserTaskCommand(t, configPath, "", "get", "ut", "-k", "2251799815391233,2251799815391299")
@@ -191,7 +191,7 @@ func TestGetUserTaskCommand_KeyedVariablesInputAndAliases(t *testing.T) {
 
 	for _, alias := range []string{"user-task", "user-tasks", "ut", "uts"} {
 		t.Run(alias, func(t *testing.T) {
-			server, requests := newGetUserTaskVariablesServer(t, getUserTaskVariablesFixture{
+			server, requests := newGetUserTaskVariablesServer(t, "8.9", getUserTaskVariablesFixture{
 				VariablePages: map[string][]userTaskVariablePageFixture{firstKey: onePage("amount", "120")},
 			})
 			configPath := testx.WriteTestConfigForVersion(t, server.URL, "8.9")
@@ -207,7 +207,7 @@ func TestGetUserTaskCommand_KeyedVariablesInputAndAliases(t *testing.T) {
 		})
 	}
 
-	server, requests := newGetUserTaskVariablesServer(t, getUserTaskVariablesFixture{
+	server, requests := newGetUserTaskVariablesServer(t, "8.9", getUserTaskVariablesFixture{
 		VariablePages: map[string][]userTaskVariablePageFixture{
 			firstKey:  onePage("amount", "120"),
 			secondKey: {{Total: 0, Items: []userTaskVariableFixtureValue{}}},
@@ -226,7 +226,7 @@ func TestGetUserTaskCommand_KeyedVariablesInputAndAliases(t *testing.T) {
 	require.Equal(t, 1, requests.variableRequestCount(firstKey))
 	require.Equal(t, 1, requests.variableRequestCount(secondKey))
 
-	implicitServer, implicitRequests := newGetUserTaskVariablesServer(t, getUserTaskVariablesFixture{
+	implicitServer, implicitRequests := newGetUserTaskVariablesServer(t, "8.9", getUserTaskVariablesFixture{
 		VariablePages: map[string][]userTaskVariablePageFixture{secondKey: onePage("status", `"done"`)},
 	})
 	implicitConfig := testx.WriteTestConfigForVersion(t, implicitServer.URL, "8.9")
@@ -242,7 +242,7 @@ func TestGetUserTaskCommand_KeyedVariablesInputAndAliases(t *testing.T) {
 // stable effective-name normalization, and a single enriched JSON envelope.
 func TestGetUserTaskCommand_KeyedVariablesJSONPreservesEffectiveMetadata(t *testing.T) {
 	const key = "2251799815391233"
-	server, requests := newGetUserTaskVariablesServer(t, getUserTaskVariablesFixture{
+	server, requests := newGetUserTaskVariablesServer(t, "8.9", getUserTaskVariablesFixture{
 		VariablePages: map[string][]userTaskVariablePageFixture{key: {
 			{Total: 4, Items: []userTaskVariableFixtureValue{
 				{Name: "shared", Value: `"local"`, VariableKey: "902", ProcessInstanceKey: "2251799813711967", ScopeKey: "2251799815391200", TenantID: "tenant-foreign"},
@@ -297,7 +297,7 @@ func TestGetUserTaskCommand_KeyedVariableFailuresDoNotRenderPartialSuccess(t *te
 		}}}, want: "internal server error", variableCalls: 2},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			server, requests := newGetUserTaskVariablesServer(t, test.fixture)
+			server, requests := newGetUserTaskVariablesServer(t, "8.9", test.fixture)
 			configPath := testx.WriteTestConfigForVersion(t, server.URL, "8.9")
 			stdout, stderr, err := runGetUserTaskCommand(t, configPath, "", "get", "ut", "--key", test.key, "--with-vars")
 			require.Error(t, err)
@@ -336,7 +336,7 @@ func TestGetUserTaskCommand_VariableModeGates(t *testing.T) {
 		{name: "json precedence", args: []string{"--json", "--keys-only", "get", "ut", "--key", key, "--with-vars"}, want: `"variables"`, variableCalls: 1},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			server, requests := newGetUserTaskVariablesServer(t, newFixture())
+			server, requests := newGetUserTaskVariablesServer(t, "8.9", newFixture())
 			configPath := testx.WriteTestConfigForVersion(t, server.URL, "8.9")
 			stdout, stderr, err := runGetUserTaskCommand(t, configPath, "", test.args...)
 			require.NoError(t, err, stderr)
@@ -381,10 +381,14 @@ func runGetUserTaskCommand(t *testing.T, configPath, stdin string, args ...strin
 
 // newGetUserTaskCommandServer returns native tasks and counts every request so
 // validation cases can prove they stop before backend access.
-func newGetUserTaskCommandServer(t *testing.T) (*httptest.Server, *testx.AtomicCounter) {
+func newGetUserTaskCommandServer(t *testing.T, version string) (*httptest.Server, *testx.AtomicCounter) {
 	t.Helper()
 	var requests testx.AtomicCounter
 	server := testx.NewIPv4Server(t, http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		if serveVersionCheckTopology(writer, request, version) {
+			return
+		}
+
 		requests.Inc()
 		key := strings.TrimPrefix(request.URL.Path, "/v2/user-tasks/")
 		if key == "2251799815391288" {

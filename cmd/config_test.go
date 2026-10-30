@@ -465,6 +465,7 @@ apis:
 	require.Contains(t, string(output), "auth.oauth2.token_url")
 }
 
+// TestConfigTestConnectionCommand_SuccessLogsAndPrintsTopology preserves the existing command contract with advisory-aware fixtures.
 func TestConfigTestConnectionCommand_SuccessLogsAndPrintsTopology(t *testing.T) {
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodGet, r.Method)
@@ -487,10 +488,11 @@ func TestConfigTestConnectionCommand_SuccessLogsAndPrintsTopology(t *testing.T) 
 		"└─ Broker 3: broker-c.internal:26503 version=8.8.0\n", stdout)
 	require.Contains(t, stderr, "INFO config loaded: "+cfgPath)
 	require.Contains(t, stderr, "INFO config profile default")
-	require.Contains(t, stderr, "INFO camunda connection ok; base URL "+srv.URL+"/v2")
+	require.Contains(t, stderr, "INFO camunda connection ok")
 	require.NotContains(t, stderr, "WARN")
 }
 
+// TestConfigTestConnectionCommand_JSONOutput preserves the existing command contract with advisory-aware fixtures.
 func TestConfigTestConnectionCommand_JSONOutput(t *testing.T) {
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodGet, r.Method)
@@ -538,9 +540,10 @@ profiles:
 	require.NotContains(t, stdout, "INFO")
 	require.Contains(t, stdout, `"ok": true`)
 	require.Contains(t, stdout, `"base_url": "`+srv.URL+`/v2"`)
-	require.Contains(t, stderr, "INFO camunda connection ok; base URL "+srv.URL+"/v2")
+	require.Contains(t, stderr, "INFO camunda connection ok")
 }
 
+// TestConfigTestConnectionCommand_HumanRendersConfigurationTenantContext preserves the existing command contract with advisory-aware fixtures.
 func TestConfigTestConnectionCommand_HumanRendersConfigurationTenantContext(t *testing.T) {
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodGet, r.Method)
@@ -564,8 +567,8 @@ apis:
 
 	require.Contains(t, stdout, "Cluster: GatewayVersion=8.8.2")
 	require.Contains(t, stderr, "INFO selection scope: tenant-a only")
-	require.Contains(t, stderr, "INFO camunda connection ok; base URL "+srv.URL+"/v2")
-	require.Less(t, strings.Index(stderr, "INFO selection scope: tenant-a only"), strings.Index(stderr, "INFO camunda connection ok; base URL "+srv.URL+"/v2"))
+	require.Contains(t, stderr, "INFO camunda connection ok")
+	require.Less(t, strings.Index(stderr, "INFO selection scope: tenant-a only"), strings.Index(stderr, "INFO camunda connection ok"))
 }
 
 // Verifies all-tenants human diagnostics report the private broadening
@@ -598,7 +601,7 @@ apis:
 	require.Contains(t, stderr, "INFO selection scope: unfiltered across accessible tenants")
 	require.Less(t, strings.Index(stderr, "INFO configured tenant: tenant-a"), strings.Index(stderr, "WARN --all-tenants overrides"))
 	require.Less(t, strings.Index(stderr, "WARN --all-tenants overrides"), strings.Index(stderr, "INFO selection scope: unfiltered across accessible tenants"))
-	require.Less(t, strings.Index(stderr, "INFO selection scope: unfiltered across accessible tenants"), strings.Index(stderr, "INFO camunda connection ok; base URL "+srv.URL+"/v2"))
+	require.Less(t, strings.Index(stderr, "INFO selection scope: unfiltered across accessible tenants"), strings.Index(stderr, "INFO camunda connection ok"))
 }
 
 func TestConfigTestConnectionCommand_JSONIncludesConfigurationTenantContext(t *testing.T) {
@@ -671,9 +674,10 @@ apis:
 	require.NotContains(t, stderr, "configured tenant:")
 	require.NotContains(t, stderr, "--all-tenants overrides")
 	require.NotContains(t, stderr, "selection scope:")
-	require.Contains(t, stderr, "INFO camunda connection ok; base URL "+srv.URL+"/v2")
+	require.Contains(t, stderr, "INFO camunda connection ok")
 }
 
+// TestConfigTestConnectionCommand_JSONIncludesVersionMismatchWarning preserves the existing command contract with advisory-aware fixtures.
 func TestConfigTestConnectionCommand_JSONIncludesVersionMismatchWarning(t *testing.T) {
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodGet, r.Method)
@@ -692,7 +696,7 @@ func TestConfigTestConnectionCommand_JSONIncludesVersionMismatchWarning(t *testi
 	require.Len(t, result.Warnings, 1)
 	require.Contains(t, result.Warnings[0], "configured Camunda version 8.8 differs from gateway version 8.9.0")
 	require.Contains(t, result.Warnings[0], "this can cause unexpected errors")
-	require.Contains(t, stderr, "WARN "+result.Warnings[0])
+	require.Contains(t, stderr, "WARN version mismatch: configured 8.8, gateway 8.9.0; using 8.8")
 	require.NotContains(t, stdout, "WARN")
 	require.NotContains(t, stdout, "Cluster:")
 }
@@ -761,6 +765,7 @@ func TestConfigTestConnectionCommand_RemoteFailureUsesStandardErrorPath(t *testi
 	require.NotContains(t, string(output), "configuration is invalid")
 }
 
+// TestConfigTestConnectionCommand_LogsConfigSource preserves the existing command contract with advisory-aware fixtures.
 func TestConfigTestConnectionCommand_LogsConfigSource(t *testing.T) {
 	t.Run("loaded config file", func(t *testing.T) {
 		srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -805,7 +810,7 @@ profiles:
 
 		require.Contains(t, stderr, "INFO config loaded: "+cfgPath)
 		require.Contains(t, stderr, "INFO config profile prod")
-		require.Contains(t, stderr, "INFO camunda connection ok; base URL "+srv.URL+"/v2")
+		require.Contains(t, stderr, "INFO camunda connection ok")
 	})
 
 	t.Run("no config file loaded", func(t *testing.T) {
@@ -828,6 +833,7 @@ profiles:
 	})
 }
 
+// TestConfigTestConnectionCommand_VersionComparisonWarnings preserves the existing command contract with advisory-aware fixtures.
 func TestConfigTestConnectionCommand_VersionComparisonWarnings(t *testing.T) {
 	testCases := []struct {
 		name              string
@@ -854,7 +860,7 @@ func TestConfigTestConnectionCommand_VersionComparisonWarnings(t *testing.T) {
 			_, stderr := executeRootWithSeparateOutputsForTest(t, "--config", cfgPath, "config", "test-connection")
 
 			if tc.wantWarning {
-				require.Contains(t, stderr, "WARN configured Camunda version "+tc.configuredVersion+" differs from gateway version "+tc.gatewayVersion+" by major/minor version; this can cause unexpected errors because Camunda APIs can differ between versions; correct the configured version unless there is a very good reason to keep this mismatch")
+				require.Contains(t, stderr, "WARN version mismatch: configured "+tc.configuredVersion+", gateway "+tc.gatewayVersion+"; using "+tc.configuredVersion)
 				return
 			}
 			require.NotContains(t, stderr, "differs from gateway version")
@@ -1406,6 +1412,9 @@ func TestRequestRateRootCookieBootstrapSharesAllowance(t *testing.T) {
 			var paths testx.SafeSlice[string]
 			server := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				paths.Append(r.URL.Path)
+				if serveVersionCheckTopology(w, r, "8.9") {
+					return
+				}
 				switch r.URL.Path {
 				case "/api/login":
 					http.SetCookie(w, &http.Cookie{Name: "SESSION", Value: "fake-cookie", Path: "/"})
@@ -1461,8 +1470,8 @@ func TestRequestRateRootCookieBootstrapSharesAllowance(t *testing.T) {
 			} else {
 				require.NoError(t, err)
 				requireSingleJSONValue(t, stdout.String())
-				require.Equal(t, []string{"/api/login", "/v2/process-definitions/" + apiDiagnosticsProcessDefinitionKey}, paths.Snapshot())
-				require.Equal(t, 2, strings.Count(stderr.String(), "DEBUG api #"))
+				require.Equal(t, []string{"/api/login", "/v2/topology", "/v2/process-definitions/" + apiDiagnosticsProcessDefinitionKey}, paths.Snapshot())
+				require.Equal(t, 3, strings.Count(stderr.String(), "DEBUG api #"))
 			}
 			require.NotContains(t, stdout.String(), "DEBUG")
 			require.NotContains(t, stderr.String(), "fake-cookie")

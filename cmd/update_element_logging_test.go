@@ -45,7 +45,7 @@ func TestElementScopeVariablesUpdateDiagnostics(t *testing.T) {
 				{name: "quiet keys", flags: []string{"--keys-only", "--quiet"}, keys: true, quiet: true},
 			} {
 				t.Run(format+"/"+destination+"/"+tc.name, func(t *testing.T) {
-					f := newElementUpdateFixture(t)
+					f := newElementUpdateFixture(t, "8.10")
 					f.mutationFailure = rejectElementUpdate
 					level := "info"
 					if tc.configDebug {

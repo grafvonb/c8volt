@@ -54,10 +54,15 @@ type completionAcceptanceServer struct {
 
 // newCompletionAcceptanceServer rejects every endpoint outside discovery, lookup
 // and completion, making hidden repair/history/process mutations test failures.
-func newCompletionAcceptanceServer(t *testing.T, pages []completionAcceptancePage, behavior map[string]string) (*completionAcceptanceServer, *httptest.Server) {
+func newCompletionAcceptanceServer(t *testing.T, version string, pages []completionAcceptancePage, behavior map[string]string) (*completionAcceptanceServer, *httptest.Server) {
 	t.Helper()
 	f := &completionAcceptanceServer{pages: pages, behavior: behavior, expectedPages: len(pages), reads: map[string]int{}, writes: map[string]int{}, cancelReady: make(chan struct{})}
-	server := testx.NewIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { f.serve(t, w, r) }))
+	server := testx.NewIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, version) {
+			return
+		}
+		f.serve(t, w, r)
+	}))
 	t.Cleanup(server.Close)
 	return f, server
 }
@@ -396,7 +401,7 @@ func TestBulkCompletionAcceptanceScale(t *testing.T) {
 				behaviors[key] = kinds[i%len(kinds)]
 			}
 			rows = append(rows, rows[101]) // Duplicate on a later page cannot replay completion.
-			previewFixture, previewServer := newCompletionAcceptanceServer(t, completionAcceptancePages(rows, 100), behaviors)
+			previewFixture, previewServer := newCompletionAcceptanceServer(t, version, completionAcceptancePages(rows, 100), behaviors)
 			preview, previewStderr, previewErr := runCompletionAcceptance(t, previewServer, version, []string{"--type", "cleanup", "--batch-size", "100", "--dry-run", "--json"}, "", false)
 			require.NoError(t, previewErr, previewStderr)
 			previewEnvelope := decodeBulkCompletionEnvelope(t, preview)
@@ -416,7 +421,7 @@ func TestBulkCompletionAcceptanceScale(t *testing.T) {
 			require.Empty(t, previewFixture.reads)
 			require.Empty(t, previewFixture.writes)
 			require.Empty(t, previewStderr)
-			f, server := newCompletionAcceptanceServer(t, completionAcceptancePages(rows, 100), behaviors)
+			f, server := newCompletionAcceptanceServer(t, version, completionAcceptancePages(rows, 100), behaviors)
 			f.gate = make(chan struct{})
 			f.gateSize = 4
 			stdout, stderr, err := runCompletionAcceptance(t, server, version, []string{"--type", "cleanup", "--batch-size", "100", "--auto-confirm", "--json", "--no-wait"}, "", false)
@@ -492,7 +497,7 @@ func TestBulkCompletionAcceptancePaging(t *testing.T) {
 			{name: "discovery error", pages: []completionAcceptancePage{{rows: []string{rowA, rowB}, total: 3}, {status: 400}}, failed: true, offsets: []int{0, 2}},
 		} {
 			t.Run(version+"/"+tc.name, func(t *testing.T) {
-				f, server := newCompletionAcceptanceServer(t, tc.pages, nil)
+				f, server := newCompletionAcceptanceServer(t, version, tc.pages, nil)
 				flags := []string{"--type", "cleanup", "--batch-size", "2", "--auto-confirm", "--json"}
 				if tc.limit > 0 {
 					flags = append(flags, "--limit", strconv.Itoa(tc.limit))
@@ -547,7 +552,7 @@ func TestBulkCompletionAcceptanceReconciliation(t *testing.T) {
 			{"rejected", "rejected", "not_completed", "unsatisfied", 1, false},
 		} {
 			t.Run(fmt.Sprintf("%s/%s/no-wait=%t", version, tc.behavior, tc.noWait), func(t *testing.T) {
-				f, server := newCompletionAcceptanceServer(t, completionAcceptancePages([]string{bulkCompletionRow(key, "CREATED")}, 2), map[string]string{key: tc.behavior})
+				f, server := newCompletionAcceptanceServer(t, version, completionAcceptancePages([]string{bulkCompletionRow(key, "CREATED")}, 2), map[string]string{key: tc.behavior})
 				flags := []string{"--type", "cleanup", "--auto-confirm", "--json"}
 				if tc.noWait {
 					flags = append(flags, "--no-wait")
@@ -602,7 +607,7 @@ func TestBulkCompletionAcceptanceStops(t *testing.T) {
 				if scenario == "interrupt execution" {
 					behavior[keys[1]] = "interrupt"
 				}
-				f, server := newCompletionAcceptanceServer(t, completionAcceptancePages(rows, 2), behavior)
+				f, server := newCompletionAcceptanceServer(t, version, completionAcceptancePages(rows, 2), behavior)
 				f.interruptPreparation = scenario == "interrupt preparation"
 				flags := []string{"--type", "cleanup", "--batch-size", "2", "--workers", "1", "--auto-confirm", "--json", "--no-wait"}
 				if scenario == "fail fast" {
@@ -653,7 +658,7 @@ func TestBulkCompletionAcceptanceGuards(t *testing.T) {
 			{behavior: "variables", variables: true},
 		} {
 			t.Run(version+"/"+tc.behavior, func(t *testing.T) {
-				f, server := newCompletionAcceptanceServer(t, completionAcceptancePages([]string{bulkCompletionRow(key, "CREATED")}, 2), map[string]string{key: tc.behavior})
+				f, server := newCompletionAcceptanceServer(t, version, completionAcceptancePages([]string{bulkCompletionRow(key, "CREATED")}, 2), map[string]string{key: tc.behavior})
 				flags := []string{"--type", "cleanup", "--auto-confirm", "--json"}
 				if tc.variables {
 					flags = append(flags, "--vars", `{"approved":true}`)
@@ -703,7 +708,7 @@ func TestBulkCompletionAcceptanceOutputMatrix(t *testing.T) {
 					if scenario == "incomplete" {
 						pages = []completionAcceptancePage{{rows: []string{bulkCompletionRow(key, "CREATED")}, total: 2}, {status: 400}}
 					}
-					f, server := newCompletionAcceptanceServer(t, pages, nil)
+					f, server := newCompletionAcceptanceServer(t, version, pages, nil)
 					flags := []string{"--type", "cleanup", "--batch-size", "1"}
 					if scenario == "empty stdin" {
 						flags = []string{"-"}
@@ -825,7 +830,7 @@ func TestBulkCompletionAcceptanceOutputMatrix(t *testing.T) {
 func TestBulkCompletionAcceptanceUnsupported(t *testing.T) {
 	for _, flags := range [][]string{{"--type", "cleanup", "--auto-confirm", "--json"}, {"-", "--auto-confirm", "--json"}, {"-", "--dry-run", "--json"}} {
 		t.Run(strings.Join(flags, " "), func(t *testing.T) {
-			f, server := newCompletionAcceptanceServer(t, nil, nil)
+			f, server := newCompletionAcceptanceServer(t, version, nil, nil)
 			stdout, stderr, err := runCompletionAcceptance(t, server, "8.7", flags, "", false)
 			require.Error(t, err)
 			require.Empty(t, stdout)
@@ -841,7 +846,7 @@ func TestBulkCompletionAcceptanceSequentialListener(t *testing.T) {
 	for _, version := range []string{"8.8", "8.9", "8.10"} {
 		t.Run(version, func(t *testing.T) {
 			key := completionAcceptanceKey(0)
-			f, server := newCompletionAcceptanceServer(t, completionAcceptancePages([]string{bulkCompletionRow(key, "CREATED")}, 1), map[string]string{key: "spawn listener"})
+			f, server := newCompletionAcceptanceServer(t, version, completionAcceptancePages([]string{bulkCompletionRow(key, "CREATED")}, 1), map[string]string{key: "spawn listener"})
 			stdout, stderr, err := runCompletionAcceptance(t, server, version, []string{"--type", "cleanup", "--auto-confirm", "--json"}, "", false)
 			require.NoError(t, err, stdout, stderr)
 			require.Empty(t, stderr)

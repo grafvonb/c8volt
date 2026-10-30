@@ -28,7 +28,7 @@ func TestUpdateUserTaskCompletionCommandWorkers(t *testing.T) {
 			var mu sync.Mutex
 			active, peak, started := 0, 0, 0
 			gates := []chan struct{}{make(chan struct{}), make(chan struct{})}
-			server, calls := newUserTaskCompletionServer(t, func(w http.ResponseWriter, r *http.Request, key string) {
+			server, calls := newUserTaskCompletionServer(t, "8.10", func(w http.ResponseWriter, r *http.Request, key string) {
 				mu.Lock()
 				active++
 				started++
@@ -82,7 +82,7 @@ func TestUpdateUserTaskCompletionCommandFailFast(t *testing.T) {
 		t.Run(fmt.Sprint(parallel), func(t *testing.T) {
 			bothStarted := make(chan struct{})
 			var started atomic.Int32
-			server, calls := newUserTaskCompletionServer(t, func(w http.ResponseWriter, r *http.Request, key string) {
+			server, calls := newUserTaskCompletionServer(t, "8.10", func(w http.ResponseWriter, r *http.Request, key string) {
 				if parallel {
 					if started.Add(1) == 2 {
 						close(bothStarted)
@@ -136,7 +136,7 @@ func TestUpdateUserTaskCompletionCommandFailFast(t *testing.T) {
 func TestUpdateUserTaskCompletionCommandCancellation(t *testing.T) {
 	ready := make(chan struct{})
 	var once sync.Once
-	server, calls := newUserTaskCompletionServer(t, func(w http.ResponseWriter, r *http.Request, key string) {
+	server, calls := newUserTaskCompletionServer(t, "8.10", func(w http.ResponseWriter, r *http.Request, key string) {
 		if key == completionKeyA {
 			w.WriteHeader(204)
 			return
@@ -149,6 +149,10 @@ func TestUpdateUserTaskCompletionCommandCancellation(t *testing.T) {
 		}
 	})
 	control := testx.NewIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.10") {
+			return
+		}
+
 		select {
 		case <-ready:
 			w.WriteHeader(204)

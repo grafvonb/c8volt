@@ -74,6 +74,10 @@ func TestCommandErrorEnvelopeProcessDefinition(t *testing.T) {
 			t.Run(tt.name, func(t *testing.T) {
 				var requests atomic.Int32
 				server := testx.NewIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					if serveVersionCheckTopology(w, r, "8.8") {
+						return
+					}
+
 					requests.Add(1)
 					require.Equal(t, tt.method, r.Method)
 					require.Equal(t, tt.requestPath, r.URL.Path)
@@ -224,6 +228,10 @@ func TestGetProcessDefinitionLifecycleSearchDiagnostics(t *testing.T) {
 					t.Run(fmt.Sprintf("selector=%v/%s/%s/%s", selector, format, route, mode), func(t *testing.T) {
 						var requests atomic.Int32
 						server := testx.NewIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+							if serveVersionCheckTopology(w, r, "8.10") {
+								return
+							}
+
 							requests.Add(1)
 							require.Equal(t, "POST /v2/process-definitions/search", r.Method+" "+r.URL.Path)
 							w.Header().Set("Content-Type", "application/json")

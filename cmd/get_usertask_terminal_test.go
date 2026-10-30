@@ -234,7 +234,7 @@ func TestGetUserTaskPagingTerminal(t *testing.T) {
 		for _, exactTotals := range []bool{false, true} {
 			for _, tt := range tests {
 				t.Run(fmt.Sprintf("%s/exact=%t/%s", version, exactTotals, tt.name), func(t *testing.T) {
-					server, requests := newGetUserTaskVariablesServer(t, getUserTaskVariablesFixture{
+					server, requests := newGetUserTaskVariablesServer(t, version, getUserTaskVariablesFixture{
 						SearchRespond: func(index int, _ map[string]any) string {
 							require.Less(t, index, len(tt.responses))
 							if exactTotals {

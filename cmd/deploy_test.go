@@ -109,11 +109,16 @@ func TestDeployProcessDefinitionSemanticProgressModeGate(t *testing.T) {
 	})
 }
 
+// TestDeployProcessDefinitionCommand_TenantFlagOverridesEnvProfileAndConfig preserves the existing command contract with advisory-aware fixtures.
 func TestDeployProcessDefinitionCommand_TenantFlagOverridesEnvProfileAndConfig(t *testing.T) {
 	t.Setenv("C8VOLT_APP_TENANT", "env-tenant")
 
 	var sawDeploy bool
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		switch {
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/deployments":
 			sawDeploy = true
@@ -196,9 +201,14 @@ func TestDeployProcessDefinitionCommand_AllTenantsRejectsBeforeInputOrRequest(t 
 	}
 }
 
+// TestDeployProcessDefinitionCommand_V89NoWait preserves the existing command contract with advisory-aware fixtures.
 func TestDeployProcessDefinitionCommand_V89NoWait(t *testing.T) {
 	var sawDeploy bool
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.9") {
+			return
+		}
+
 		switch {
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/deployments":
 			sawDeploy = true
@@ -236,6 +246,7 @@ func TestDeployProcessDefinitionCommand_V89NoWait(t *testing.T) {
 	require.Len(t, payload, 1)
 }
 
+// TestDeployProcessDefinitionCommand_CreationContextPrecedesDeploymentRequest preserves the existing command contract with advisory-aware fixtures.
 func TestDeployProcessDefinitionCommand_CreationContextPrecedesDeploymentRequest(t *testing.T) {
 	tests := []struct {
 		name       string
@@ -283,6 +294,10 @@ apis:
 			stderr := &bytes.Buffer{}
 			var sawDeploy bool
 			srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if serveVersionCheckTopology(w, r, "8.8") {
+					return
+				}
+
 				switch {
 				case r.Method == http.MethodPost && r.URL.Path == "/v2/deployments":
 					sawDeploy = true
@@ -319,10 +334,15 @@ apis:
 	}
 }
 
+// TestDeployProcessDefinitionCommand_JSONEnvelopeIncludesCreationContext preserves the existing command contract with advisory-aware fixtures.
 func TestDeployProcessDefinitionCommand_JSONEnvelopeIncludesCreationContext(t *testing.T) {
 	resetDeployCommandStateForTest()
 	var sawDeploy bool
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		switch {
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/deployments":
 			sawDeploy = true
@@ -376,10 +396,15 @@ apis:
 	require.Empty(t, tenantContext["warnings"])
 }
 
+// TestDeployProcessDefinitionCommand_QuietSuppressesCreationContext preserves the existing command contract with advisory-aware fixtures.
 func TestDeployProcessDefinitionCommand_QuietSuppressesCreationContext(t *testing.T) {
 	resetDeployCommandStateForTest()
 	var sawDeploy bool
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.9") {
+			return
+		}
+
 		switch {
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/deployments":
 			sawDeploy = true

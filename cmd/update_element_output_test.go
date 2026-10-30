@@ -20,7 +20,7 @@ func TestElementScopeVariablesUpdateModes(t *testing.T) {
 				for _, noWait := range []bool{false, true} {
 					for _, mode := range [][]string{nil, {"--json"}, {"--keys-only"}, {"--quiet"}, {"--quiet", "--json"}, {"--quiet", "--keys-only"}} {
 						t.Run(fmt.Sprintf("%s/dry=%t/%s/noWait=%t/%v", kind, dryRun, policy, noWait, mode), func(t *testing.T) {
-							f := newElementUpdateFixture(t)
+							f := newElementUpdateFixture(t, "8.10")
 							payload := `{"x":true}`
 							if kind == "empty object" {
 								payload = "{}"
@@ -145,7 +145,7 @@ func TestElementScopeVariablesUpdateModes(t *testing.T) {
 
 // TestElementScopeVariablesUpdatePreviewKeys excludes unchanged targets and preserves unique input order.
 func TestElementScopeVariablesUpdatePreviewKeys(t *testing.T) {
-	f := newElementUpdateFixture(t)
+	f := newElementUpdateFixture(t, "8.10")
 	f.local[scopeElementB] = []string{scopeVariableJSON("x", "true", scopeElementB, false)}
 	out, stderr, err := runUpdateUserTaskCommand(t, completionLogConfig(t, f.server.URL, "plain-time", "info"), "", "--keys-only", "update", "element", "--key", scopeElementA+","+scopeElementB+","+scopeElementC+","+scopeElementA, "--vars", `{"x":true}`, "--dry-run")
 	require.NoError(t, err, stderr)
@@ -162,7 +162,7 @@ func TestElementScopeVariablesUpdateConfirmationFailure(t *testing.T) {
 	for _, failFast := range []bool{false, true} {
 		for _, mode := range []string{"--json", "--keys-only", "--quiet", "--verbose"} {
 			t.Run(fmt.Sprintf("fast=%t/%s", failFast, mode), func(t *testing.T) {
-				f := newElementUpdateFixture(t)
+				f := newElementUpdateFixture(t, "8.10")
 				f.confirmationFailure = true
 				args := []string{"--auto-confirm", mode, "update", "element", "--key", scopeElementA + "," + scopeElementB, "--vars", `{"x":true}`, "--workers", "1"}
 				if failFast {
@@ -226,7 +226,7 @@ func TestElementScopeVariablesUpdateConfirmationFailure(t *testing.T) {
 // TestElementScopeVariablesUpdateClassifications preserves before/truncation evidence and all
 // four preview classes without mistaking parent values for local equality.
 func TestElementScopeVariablesUpdateClassifications(t *testing.T) {
-	f := newElementUpdateFixture(t)
+	f := newElementUpdateFixture(t, "8.10")
 	f.local[scopeElementA] = []string{
 		scopeVariableJSON("added", "true", scopeOwner, false),
 		scopeVariableJSON("change", "false", scopeElementA, false),
@@ -255,7 +255,7 @@ func TestElementScopeVariablesUpdateClassifications(t *testing.T) {
 // TestElementScopeVariablesUpdateMutationFailFast preserves accepted keys while distinguishing
 // failed and unscheduled destinations, without starting confirmation after the mutation failure.
 func TestElementScopeVariablesUpdateMutationFailFast(t *testing.T) {
-	f := newElementUpdateFixture(t)
+	f := newElementUpdateFixture(t, "8.10")
 	f.mutationFailure = rejectElementUpdate
 	out, stderr, err := runUpdateUserTaskCommand(t, completionLogConfig(t, f.server.URL, "plain-time", "info"), "", "--json", "--auto-confirm", "update", "element", "--key", scopeElementA+","+scopeElementB+","+scopeElementC, "--vars", `{"x":1}`, "--workers", "1", "--no-worker-limit", "--fail-fast")
 	assertUserTaskCompletionExit(t, err, 2)

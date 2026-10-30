@@ -105,7 +105,7 @@ Use the following field constraints from the data model verbatim:
 
 **Independent test**: Execute the real command paths against isolated fakes with separate output streams and configured/inherited diagnostic writers. Exercise match/failure, opt-out/local execution, repeated work, short timeout, partial failure, and explicit connection tests; verify results, request order/counts, warnings, and exits under the specified output/logging modes.
 
-- [ ] T003 [US3] Activate the checker and complete the operator contract in `cmd/root.go`, `cmd/cmd_flags.go`, `cmd/root_services.go`, new `cmd/root_version_check.go` and `cmd/cmd_views_version_check.go`, and `cmd/config_test_connection.go`/`cmd/config_diagnostics.go`; add command execution/logging tests in `cmd/root_version_check_test.go` and `cmd/root_version_check_logging_test.go`, update affected existing fixtures and metadata tests, update `README.md` and command help, regenerate CLI docs, and complete the full acceptance matrix and final validation below in the same unit (depends on T002).
+- [x] T003 [US3] Activate the checker and complete the operator contract in `cmd/root.go`, `cmd/cmd_flags.go`, `cmd/root_services.go`, new `cmd/root_version_check.go` and `cmd/cmd_views_version_check.go`, and `cmd/config_test_connection.go`/`cmd/config_diagnostics.go`; add command execution/logging tests in `cmd/root_version_check_test.go` and `cmd/root_version_check_logging_test.go`, update affected existing fixtures and metadata tests, update `README.md` and command help, regenerate CLI docs, and complete the full acceptance matrix and final validation below in the same unit (depends on T002).
 
 ### T003 implementation and compatibility
 

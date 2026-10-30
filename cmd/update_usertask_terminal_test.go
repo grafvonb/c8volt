@@ -111,7 +111,7 @@ func TestUpdateUserTaskTerminal(t *testing.T) {
 			if wantTaskReads == 0 {
 				wantTaskReads = 1
 			}
-			server, capture := newUpdateUserTaskOutputServer(t, test.initialValue, "")
+			server, capture := newUpdateUserTaskOutputServer(t, "8.10", test.initialValue, "")
 			encodedArgs, err := json.Marshal(test.args)
 			require.NoError(t, err)
 			capturePath := filepath.Join(t.TempDir(), "configured-stderr.txt")

@@ -3229,3 +3229,13 @@ func TestResumeProcessInstanceMetadata(t *testing.T) {
 		require.True(t, ok, path)
 	}
 }
+
+// TestCapabilityDocumentVersionCheck exposes the persistent invocation-only opt-out.
+func TestCapabilityDocumentVersionCheck(t *testing.T) {
+	resetCommandTreeFlags(Root())
+	for _, command := range []*cobra.Command{Root(), getProcessDefinitionCmd, configTestConnectionCmd} {
+		capability := commandCapabilityForCommand(command)
+		require.Contains(t, capability.Flags, FlagContract{Name: "no-version-check", Type: "bool", Description: "skip the automatic advisory gateway version check"})
+	}
+	require.Equal(t, "false", Root().PersistentFlags().Lookup("no-version-check").DefValue)
+}

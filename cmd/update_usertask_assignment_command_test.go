@@ -23,7 +23,7 @@ type assignmentRequest struct {
 
 // newUserTaskAssignmentServer supplies unassigned native lookup results for assignment
 // preparation and records only mutations. Dedicated preflight tests count every request.
-func newUserTaskAssignmentServer(t *testing.T, operation string, respond func(http.ResponseWriter, *http.Request, string)) (*httptest.Server, *testx.SafeSlice[assignmentRequest]) {
+func newUserTaskAssignmentServer(t *testing.T, version string, operation string, respond func(http.ResponseWriter, *http.Request, string)) (*httptest.Server, *testx.SafeSlice[assignmentRequest]) {
 	t.Helper()
 	calls := &testx.SafeSlice[assignmentRequest]{}
 	method, suffix := http.MethodPost, "/assignment"
@@ -31,6 +31,9 @@ func newUserTaskAssignmentServer(t *testing.T, operation string, respond func(ht
 		method, suffix = http.MethodDelete, "/assignee"
 	}
 	server := testx.NewIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, version) {
+			return
+		}
 
 		if operation == "assign" && r.Method == http.MethodGet {
 			key := strings.TrimPrefix(r.URL.Path, "/v2/user-tasks/")
@@ -99,7 +102,7 @@ func TestUpdateUserTaskAssignmentCommandSelection(t *testing.T) {
 				{"ut", []string{"-", "--key", completionKeyA}, "\n", []string{completionKeyA}},
 			} {
 				t.Run(operation+"/"+version+"/"+tc.alias+strings.Join(tc.flags, " "), func(t *testing.T) {
-					server, calls := newUserTaskAssignmentServer(t, operation, nil)
+					server, calls := newUserTaskAssignmentServer(t, version, operation, nil)
 					args := append([]string{"--automation", "--json", "--tenant", "different-tenant", "update", tc.alias, "--workers", "1", "--no-wait=false", "--complete=false"}, assignmentFlags(operation)...)
 					override := operation == "assign" && tc.alias == "uts"
 					if override {
@@ -170,7 +173,7 @@ func TestUpdateUserTaskAssignmentCommandInvalidInputs(t *testing.T) {
 			{"verbose json", []string{"--key", completionKeyA, "--verbose"}, ""},
 		} {
 			t.Run(operation+"/"+tc.name, func(t *testing.T) {
-				server, calls := newUserTaskAssignmentServer(t, operation, nil)
+				server, calls := newUserTaskAssignmentServer(t, "8.10", operation, nil)
 				args := append([]string{"--json", "--auto-confirm", "update", "ut"}, assignmentFlags(operation)...)
 				args = append(args, tc.flags...)
 				stdout, stderr, err := runUpdateUserTaskCommand(t, writeTestConfigForVersion(t, server.URL, "8.10"), tc.stdin, args...)
@@ -185,7 +188,7 @@ func TestUpdateUserTaskAssignmentCommandInvalidInputs(t *testing.T) {
 	}
 	for _, flags := range [][]string{{"--assign="}, {"--assign", " \t "}, {"--assign", "alice", "--unassign"}, {"--unassign", "--force=false"}, {"--force=false"}, {"--unassign=false", "--complete=false"}} {
 		t.Run(strings.Join(flags, " "), func(t *testing.T) {
-			server, calls := newUserTaskAssignmentServer(t, "assign", nil)
+			server, calls := newUserTaskAssignmentServer(t, "8.10", "assign", nil)
 			args := append([]string{"--json", "--auto-confirm", "update", "ut", "--key", completionKeyA}, flags...)
 			stdout, stderr, err := runUpdateUserTaskCommand(t, writeTestConfigForVersion(t, server.URL, "8.10"), "", args...)
 			assertUserTaskCompletionExit(t, err, 2)
@@ -209,7 +212,7 @@ func assignmentModeFlag(operation string) string {
 func TestUpdateUserTaskAssignmentCommandGuardrails(t *testing.T) {
 	for _, operation := range []string{"assign", "unassign"} {
 		t.Run(operation, func(t *testing.T) {
-			server, calls := newUserTaskAssignmentServer(t, operation, nil)
+			server, calls := newUserTaskAssignmentServer(t, "8.10", operation, nil)
 			path := writeTestConfigForVersion(t, server.URL, "8.10")
 			stdout, stderr, err := runUpdateUserTaskCommand(t, path, "", "--json", "update", "ut", assignmentModeFlag(operation), "--key", completionKeyA)
 			assertUserTaskCompletionExit(t, err, 2)
@@ -227,7 +230,7 @@ func TestUpdateUserTaskAssignmentCommandGuardrails(t *testing.T) {
 			}
 		})
 	}
-	server, capture := newUpdateUserTaskCommandServer(t)
+	server, capture := newUpdateUserTaskCommandServer(t, "8.10")
 	stdout, stderr, err := runUpdateUserTaskCommand(t, writeTestConfigForVersion(t, server.URL, "8.10"), "", "--automation", "--json", "update", "ut", "--unassign=false", "--complete=false", "--key", "2251799815391233", "--vars", `{"approved":true}`, "--no-wait")
 	require.NoError(t, err, stderr)
 	envelope := decodeUserTaskCompletionEnvelope(t, stdout)

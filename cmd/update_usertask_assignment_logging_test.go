@@ -43,7 +43,7 @@ func TestUpdateUserTaskAssignmentDiagnosticLogging(t *testing.T) {
 						{name: "quiet JSON", flags: []string{"--quiet", "--json"}, json: true, quiet: true},
 					} {
 						t.Run(format+"/"+destination+"/"+tc.name, func(t *testing.T) {
-							server, calls := newUserTaskAssignmentServer(t, operation, func(w http.ResponseWriter, r *http.Request, key string) {
+							server, calls := newUserTaskAssignmentServer(t, "8.10", operation, func(w http.ResponseWriter, r *http.Request, key string) {
 								if key == completionKeyA {
 									w.WriteHeader(204)
 									return
@@ -111,9 +111,14 @@ func TestUpdateUserTaskAssignmentDiagnosticLogging(t *testing.T) {
 								require.NotContains(t, stderr, bad)
 							}
 							if tc.debug {
-								exchanges, lookups := 0, 0
+								exchanges, lookups, probes := 0, 0, 0
 								for _, message := range debugs {
 									if strings.Contains(message, "api #") {
+										if strings.Contains(message, "GET /v2/topology") {
+											probes++
+											require.Contains(t, message, "status=200")
+											continue
+										}
 										if strings.Contains(message, "GET /v2/user-tasks/") {
 											lookups++
 											continue
@@ -123,6 +128,7 @@ func TestUpdateUserTaskAssignmentDiagnosticLogging(t *testing.T) {
 										require.Contains(t, message, suffix+": status=")
 									}
 								}
+								require.Equal(t, 1, probes)
 								require.Equal(t, 3, exchanges)
 								if operation == "assign" {
 									require.Equal(t, 3, lookups)
@@ -163,7 +169,7 @@ func TestUpdateUserTaskAssignmentDiagnosticRetries(t *testing.T) {
 							for _, mode := range []string{"normal", "flag", "configured"} {
 								var mu sync.Mutex
 								attempts := map[string]int{}
-								server, calls := newUserTaskAssignmentServer(t, operation, func(w http.ResponseWriter, r *http.Request, key string) {
+								server, calls := newUserTaskAssignmentServer(t, "8.10", operation, func(w http.ResponseWriter, r *http.Request, key string) {
 									mu.Lock()
 									attempts[key]++
 									attempt := attempts[key]
@@ -201,13 +207,18 @@ func TestUpdateUserTaskAssignmentDiagnosticRetries(t *testing.T) {
 									require.Equal(t, completionInfoRecords(info), records)
 								} else {
 									require.Equal(t, baseline, info)
-									exchanges, lookups := 0, 0
+									exchanges, lookups, probes := 0, 0, 0
 									for _, record := range records {
 										if record[0] == "INFO" {
 											continue
 										}
 										require.Equal(t, "DEBUG", record[0])
 										if strings.Contains(record[1], "api #") {
+											if strings.Contains(record[1], "GET /v2/topology") {
+												probes++
+												require.Contains(t, record[1], "status=200")
+												continue
+											}
 											if strings.Contains(record[1], "GET /v2/user-tasks/") {
 												lookups++
 												continue
@@ -216,6 +227,7 @@ func TestUpdateUserTaskAssignmentDiagnosticRetries(t *testing.T) {
 											require.Contains(t, record[1], method+" /v2/user-tasks/")
 										}
 									}
+									require.Equal(t, 1, probes)
 									require.Equal(t, 4, exchanges)
 									if operation == "assign" {
 										require.Equal(t, 2, lookups)
@@ -246,7 +258,7 @@ func TestUpdateUserTaskAssignmentSuccessLogging(t *testing.T) {
 				for _, phase := range []string{"success", "preview", "verbose"} {
 					for _, level := range []string{"info", "warn", "quiet"} {
 						t.Run(operation+"/"+format+"/"+destination+"/"+phase+"/"+level, func(t *testing.T) {
-							server, calls := newUserTaskAssignmentServer(t, operation, nil)
+							server, calls := newUserTaskAssignmentServer(t, "8.10", operation, nil)
 							configured := level
 							if level == "quiet" {
 								configured = "info"
@@ -304,7 +316,7 @@ func TestUpdateUserTaskReassignmentDenied(t *testing.T) {
 					if mode == "unassign" {
 						operation = "unassign"
 					}
-					server, calls := newUserTaskAssignmentServer(t, operation, func(w http.ResponseWriter, r *http.Request, key string) {
+					server, calls := newUserTaskAssignmentServer(t, "8.10", operation, func(w http.ResponseWriter, r *http.Request, key string) {
 						detail := "Expected to claim user task with key '" + key + "', but it has already been assigned"
 						if mode == "other conflict" {
 							detail = "Task is in the wrong state"

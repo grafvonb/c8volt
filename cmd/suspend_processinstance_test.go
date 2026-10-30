@@ -40,6 +40,10 @@ func newSuspensionFixture(t *testing.T) *suspensionFixture {
 	t.Helper()
 	f := &suspensionFixture{writes: map[string]int{}, reads: map[string]int{}, reject: map[string]int{}, states: map[string][]string{}, readStatus: map[string]int{}}
 	f.server = testx.NewIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.10") {
+			return
+		}
+
 		f.mu.Lock()
 		defer f.mu.Unlock()
 		f.calls = append(f.calls, r.Method+" "+r.URL.Path)
@@ -221,6 +225,10 @@ func testSuspendProcessInstanceWorkers(t *testing.T, tree bool) {
 			active, peak, started := 0, 0, 0
 			gates := []chan struct{}{make(chan struct{}), make(chan struct{}), make(chan struct{}), make(chan struct{})}
 			server := testx.NewIPv4Server(t, suspensionExecutionTestHandler(t, tree, keys, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if serveVersionCheckTopology(w, r, "8.10") {
+					return
+				}
+
 				require.Equal(t, "POST", r.Method)
 				require.Contains(t, r.URL.Path, "/suspension")
 				mu.Lock()
@@ -278,6 +286,10 @@ func testSuspendProcessInstanceCancellation(t *testing.T, tree bool) {
 	var mu sync.Mutex
 	calls := []string{}
 	server := testx.NewIPv4Server(t, suspensionExecutionTestHandler(t, tree, []string{suspendKeyA, suspendKeyB}, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.10") {
+			return
+		}
+
 		mu.Lock()
 		calls = append(calls, r.Method+" "+r.URL.Path)
 		mu.Unlock()
@@ -295,6 +307,10 @@ func testSuspendProcessInstanceCancellation(t *testing.T, tree bool) {
 	})))
 	defer server.Close()
 	control := testx.NewIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.10") {
+			return
+		}
+
 		select {
 		case <-ready:
 			w.WriteHeader(204)

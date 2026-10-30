@@ -34,6 +34,10 @@ func TestDeleteProcessDefinitionDeferredHistory(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			var deletes, lookups atomic.Int32
 			srv := testx.NewIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if serveVersionCheckTopology(w, r, "8.10") {
+					return
+				}
+
 				w.Header().Set("Content-Type", "application/json")
 				switch r.URL.Path {
 				case "/v2/batch-operations/search":

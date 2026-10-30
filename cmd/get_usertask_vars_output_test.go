@@ -183,7 +183,7 @@ func TestGetUserTaskVariableFilteredOutputModes(t *testing.T) {
 					return userTaskSearchResponse(0, false, "")
 				}
 			}
-			server, requests := newGetUserTaskVariablesServer(t, fixture)
+			server, requests := newGetUserTaskVariablesServer(t, "8.9", fixture)
 			configPath := testx.WriteTestConfigForVersion(t, server.URL, "8.9")
 
 			stdout, stderr, err := runGetUserTaskCommand(t, configPath, "", test.args...)
@@ -290,7 +290,7 @@ func TestGetUserTaskVariableLimitValidationAndQuietFailure(t *testing.T) {
 // output-mode case receives an independent effective-variable page sequence.
 func newUserTaskVariableOutputServer(t *testing.T, variableStatus int) (*httptest.Server, *capturedGetUserTaskVariableRequests) {
 	t.Helper()
-	return newGetUserTaskVariablesServer(t, userTaskVariableOutputFixture(variableStatus))
+	return newGetUserTaskVariablesServer(t, "8.9", userTaskVariableOutputFixture(variableStatus))
 }
 
 // userTaskVariableOutputFixture supplies structured, Unicode, and truncated
@@ -333,7 +333,7 @@ func TestGetUserTaskVariableScopeLabels(t *testing.T) {
 					Name: "team", Value: `"ops"`, VariableKey: "905",
 					ProcessInstanceKey: userTaskFixtureProcessScope, ScopeKey: "2251799815391199", TenantID: "tenant-a",
 				})
-				server, requests := newGetUserTaskVariablesServer(t, fixture)
+				server, requests := newGetUserTaskVariablesServer(t, "8.9", fixture)
 				configPath := testx.WriteTestConfigForVersion(t, server.URL, "8.9")
 				args := []string{"get", "ut", "--with-vars"}
 				if selection == "keyed" {

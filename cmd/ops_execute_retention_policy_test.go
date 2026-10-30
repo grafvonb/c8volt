@@ -1071,10 +1071,15 @@ func marshalRetentionArgsForEnv(t *testing.T, args []string) string {
 	return string(data)
 }
 
+// newOpsRetentionPolicySearchServer keeps fixture setup aligned with the invocation's advisory version check.
 func newOpsRetentionPolicySearchServer(t *testing.T, requests *testx.SafeSlice[string]) *httptest.Server {
 	t.Helper()
 
 	return newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		switch {
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
 			body, err := io.ReadAll(r.Body)
@@ -1095,10 +1100,15 @@ func newOpsRetentionPolicyServerWithSeed(t *testing.T, requests *testx.SafeSlice
 	return newOpsRetentionPolicyServerWithSeedState(t, requests, deleted, "COMPLETED")
 }
 
+// newOpsRetentionPolicyServerWithSeedState keeps fixture setup aligned with the invocation's advisory version check.
 func newOpsRetentionPolicyServerWithSeedState(t *testing.T, requests *testx.SafeSlice[string], deleted *testx.SafeSlice[string], state string) *httptest.Server {
 	t.Helper()
 
 	return newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		switch {
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
 			body, err := io.ReadAll(r.Body)
@@ -1127,10 +1137,15 @@ func newOpsRetentionPolicyServerWithSeedState(t *testing.T, requests *testx.Safe
 	}))
 }
 
+// newOpsRetentionPolicyServerWithFinalRootAndActiveChild keeps fixture setup aligned with the invocation's advisory version check.
 func newOpsRetentionPolicyServerWithFinalRootAndActiveChild(t *testing.T, requests *testx.SafeSlice[string], deleted *testx.SafeSlice[string]) *httptest.Server {
 	t.Helper()
 
 	return newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		switch {
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
 			body, err := io.ReadAll(r.Body)
@@ -1167,11 +1182,16 @@ func newOpsRetentionPolicyServerWithFinalRootAndActiveChild(t *testing.T, reques
 	}))
 }
 
+// newOpsRetentionPolicyChangingSeedServer keeps fixture setup aligned with the invocation's advisory version check.
 func newOpsRetentionPolicyChangingSeedServer(t *testing.T, requests *testx.SafeSlice[string], deleted *testx.SafeSlice[string]) *httptest.Server {
 	t.Helper()
 
 	discoverySearches := 0
 	return newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		switch {
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
 			body, err := io.ReadAll(r.Body)

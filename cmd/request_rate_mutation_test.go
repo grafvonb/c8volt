@@ -156,6 +156,7 @@ func decodeRequestRateEnvelope(t *testing.T, stdout string) map[string]any {
 
 // TestRequestRateMutationLocalFailure traces unsent admission through service,
 // facade, selected output, logger and exit, retaining an earlier accepted delete.
+// Opt out of advisory traffic to isolate the fixed operational admission slots.
 func TestRequestRateMutationLocalFailure(t *testing.T) {
 	isolateRequestRateEnvironment(t)
 	for _, operation := range []string{"cancel", "delete", "definition", "purge"} {
@@ -185,7 +186,7 @@ func TestRequestRateMutationLocalFailure(t *testing.T) {
 					_, err = io.WriteString(file, "http:\n  timeout: 100ms\n")
 					require.NoError(t, err)
 					require.NoError(t, file.Close())
-					args := []string{"--config", config, "--request-rate", "0.01"}
+					args := []string{"--no-version-check", "--config", config, "--request-rate", "0.01"}
 					switch operation {
 					case "cancel", "delete":
 						args = append(args, operation, "process-instance", "--key", "123,456,789")
@@ -248,6 +249,7 @@ func TestRequestRateMutationLocalFailure(t *testing.T) {
 
 // TestRequestRateMutationInterruption cancels a live invocation while its second
 // mutation is queued; the first accepted deletion must survive in JSON evidence.
+// Advisory opt-out isolates this existing operational cancellation budget.
 func TestRequestRateMutationInterruption(t *testing.T) {
 	isolateRequestRateEnvironment(t)
 	for _, machine := range []bool{false, true} {
@@ -262,7 +264,7 @@ func TestRequestRateMutationInterruption(t *testing.T) {
 			t.Cleanup(server.Close)
 			configPath := definitionDeleteLogConfig(t, server.URL, "plain-time", false)
 			appendRequestRateConfig(t, configPath, "10ms")
-			args := []string{"--config", configPath, "--debug", "--request-rate", "1", "delete", "process-definition", "--key", "123,456", "--no-state-check", "--no-wait", "--auto-confirm", "--workers", "1"}
+			args := []string{"--no-version-check", "--config", configPath, "--debug", "--request-rate", "1", "delete", "process-definition", "--key", "123,456", "--no-state-check", "--no-wait", "--auto-confirm", "--workers", "1"}
 			if machine {
 				args = append(args, "--quiet", "--json")
 			}
@@ -314,6 +316,9 @@ func TestRequestRateMutationSharedStarts(t *testing.T) {
 						calls.Append(r.Method + " " + r.URL.Path)
 						if len(calls.Snapshot()) == 1 && mode.interval != "0s" {
 							time.Sleep(30 * time.Millisecond)
+						}
+						if serveVersionCheckTopology(w, r, "8.10") {
+							return
 						}
 						w.Header().Set("Content-Type", "application/json")
 						state := "ACTIVE"
@@ -452,6 +457,7 @@ func resetRequestRateCommandContexts(command *cobra.Command) {
 
 // TestRequestRateCancellationConfirmation distinguishes a locally unsent read
 // from the cancellation already accepted before its short confirmation deadline.
+// Advisory opt-out keeps these operational admission slots deterministic.
 func TestRequestRateCancellationConfirmation(t *testing.T) {
 	isolateRequestRateEnvironment(t)
 	for _, flags := range [][]string{nil, {"--verbose"}, {"--quiet"}, {"--json"}, {"--debug", "--log-format", "json"}} {
@@ -493,7 +499,7 @@ apis:
   camunda_api:
     base_url: %q
 `, server.URL))
-			args := append([]string{"--config", cfg, "--request-rate", "20", "cancel", "process-instance", "--key", "123", "--auto-confirm"}, flags...)
+			args := append([]string{"--no-version-check", "--config", cfg, "--request-rate", "20", "cancel", "process-instance", "--key", "123", "--auto-confirm"}, flags...)
 			stdout, stderr, err := runRequestRateMutation(t, args, "configured", 0)
 			var exitErr *exec.ExitError
 			require.ErrorAs(t, err, &exitErr)
@@ -528,6 +534,7 @@ apis:
 
 // TestRequestRateReportingPartialFailure retains accepted JSON evidence and timeout exit
 // while the configured DEBUG reporter measures only the single dispatched mutation.
+// Advisory opt-out isolates the deliberately exhausted operational request budget.
 func TestRequestRateReportingPartialFailure(t *testing.T) {
 	isolateRequestRateEnvironment(t)
 	var calls atomic.Int32
@@ -541,7 +548,7 @@ func TestRequestRateReportingPartialFailure(t *testing.T) {
 	defer server.Close()
 	path := definitionDeleteLogConfig(t, server.URL, "json", false)
 	appendRequestRateConfig(t, path, "2ms")
-	args := []string{"--config", path, "--debug", "--json", "--timeout", "100ms", "--request-rate", "0.01", "delete", "process-definition", "--key", "123,456,789", "--no-state-check", "--no-wait", "--auto-confirm", "--workers", "1"}
+	args := []string{"--no-version-check", "--config", path, "--debug", "--json", "--timeout", "100ms", "--request-rate", "0.01", "delete", "process-definition", "--key", "123,456,789", "--no-state-check", "--no-wait", "--auto-confirm", "--workers", "1"}
 	stdout, stderr, err := runRequestRateMutation(t, args, "configured", 0)
 	var exitErr *exec.ExitError
 	require.ErrorAs(t, err, &exitErr)

@@ -24,18 +24,22 @@ type completionRequest struct {
 }
 
 // newUserTaskCompletionServer permits one native preflight read and completion only.
-func newUserTaskCompletionServer(t *testing.T, respond func(http.ResponseWriter, *http.Request, string)) (*httptest.Server, *testx.SafeSlice[completionRequest]) {
+func newUserTaskCompletionServer(t *testing.T, version string, respond func(http.ResponseWriter, *http.Request, string)) (*httptest.Server, *testx.SafeSlice[completionRequest]) {
 	t.Helper()
-	server, calls, _ := newUserTaskCompletionPreflightServer(t, nil, respond)
+	server, calls, _ := newUserTaskCompletionPreflightServer(t, version, nil, respond)
 	return server, calls
 }
 
 // newUserTaskCompletionPreflightServer rejects repeated lookups, polling and unrelated operations.
-func newUserTaskCompletionPreflightServer(t *testing.T, lookup, respond func(http.ResponseWriter, *http.Request, string)) (*httptest.Server, *testx.SafeSlice[completionRequest], *testx.SafeSlice[string]) {
+func newUserTaskCompletionPreflightServer(t *testing.T, version string, lookup, respond func(http.ResponseWriter, *http.Request, string)) (*httptest.Server, *testx.SafeSlice[completionRequest], *testx.SafeSlice[string]) {
 	t.Helper()
 	calls := &testx.SafeSlice[completionRequest]{}
 	reads := &testx.SafeSlice[string]{}
 	server := testx.NewIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, version) {
+			return
+		}
+
 		key := strings.TrimPrefix(r.URL.Path, "/v2/user-tasks/")
 		if r.Method == http.MethodGet && strings.HasPrefix(r.URL.Path, "/v2/user-tasks/") && !strings.Contains(key, "/") {
 			for _, previous := range reads.Snapshot() {
@@ -114,7 +118,7 @@ func TestUpdateUserTaskCompletionCommandSelection(t *testing.T) {
 			{"ut", []string{"-", "--key", completionKeyA}, "\n", []string{completionKeyA}},
 		} {
 			t.Run(version+"/"+tc.alias+"/"+strings.Join(tc.flags, " "), func(t *testing.T) {
-				server, calls := newUserTaskCompletionServer(t, nil)
+				server, calls := newUserTaskCompletionServer(t, version, nil)
 				args := append([]string{"--automation", "--json", "--tenant", "different-tenant", "update", tc.alias, "--complete", "--workers", "1"}, tc.flags...)
 				stdout, stderr, err := runUpdateUserTaskCommand(t, writeTestConfigForVersion(t, server.URL, version), tc.stdin, args...)
 				require.NoError(t, err, stderr)
@@ -161,7 +165,7 @@ func TestUpdateUserTaskCompletionCommandVariables(t *testing.T) {
 		{"file", []string{"--vars-file", file}, map[string]any{"approved": true, "count": json.Number("9007199254740993"), "nested": map[string]any{"array": []any{nil, "x", false, json.Number("0.123456789012345678901"), map[string]any{"negative": json.Number("-9007199254740993")}}}}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			server, calls := newUserTaskCompletionServer(t, nil)
+			server, calls := newUserTaskCompletionServer(t, "8.10", nil)
 			args := append([]string{"update", "ut", "--complete", "--key", completionKeyA + "," + completionKeyB, "--auto-confirm", "--json"}, tc.flags...)
 			stdout, stderr, err := runUpdateUserTaskCommand(t, writeTestConfigForVersion(t, server.URL, "8.10"), "", args...)
 			require.NoError(t, err, stderr)
@@ -215,7 +219,7 @@ func TestUpdateUserTaskCompletionCommandInvalidInputs(t *testing.T) {
 		{"verbose json", []string{"--key", completionKeyA, "--verbose"}, ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			server, calls := newUserTaskCompletionServer(t, nil)
+			server, calls := newUserTaskCompletionServer(t, "8.10", nil)
 			args := append([]string{"--json", "--auto-confirm", "update", "ut", "--complete"}, tc.flags...)
 			stdout, stderr, err := runUpdateUserTaskCommand(t, writeTestConfigForVersion(t, server.URL, "8.10"), tc.stdin, args...)
 			assertUserTaskCompletionExit(t, err, 2)
@@ -241,7 +245,7 @@ func TestUpdateUserTaskCompletionCommandGuardrails(t *testing.T) {
 		{"false requires variables", "8.10", "invalid_input", []string{"--complete=false", "--auto-confirm", "--json"}, 2},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			server, calls := newUserTaskCompletionServer(t, nil)
+			server, calls := newUserTaskCompletionServer(t, tc.version, nil)
 			args := append([]string{"update", "ut", "--key", completionKeyA}, tc.flags...)
 			stdout, stderr, err := runUpdateUserTaskCommand(t, writeTestConfigForVersion(t, server.URL, tc.version), "", args...)
 			assertUserTaskCompletionExit(t, err, tc.code)
@@ -251,13 +255,13 @@ func TestUpdateUserTaskCompletionCommandGuardrails(t *testing.T) {
 		})
 	}
 	// Unknown versions fail in the existing bootstrap before output configuration.
-	serverUnsupported, callsUnsupported := newUserTaskCompletionServer(t, nil)
+	serverUnsupported, callsUnsupported := newUserTaskCompletionServer(t, "8.10", nil)
 	unsupportedOut, unsupportedErr, runErr := runUpdateUserTaskCommand(t, writeTestConfigForVersion(t, serverUnsupported.URL, "8.7"), "", "update", "ut", "--complete", "--key", completionKeyA, "--auto-confirm")
 	assertUserTaskCompletionExit(t, runErr, 1)
 	require.Empty(t, unsupportedOut)
 	require.Regexp(t, `^\d{4}/\d{2}/\d{2} .* ERROR local precondition failed: normalize config: app: version: unknown Camunda version: 8.7\n$`, unsupportedErr)
 	require.Empty(t, callsUnsupported.Snapshot())
-	server, capture := newUpdateUserTaskCommandServer(t)
+	server, capture := newUpdateUserTaskCommandServer(t, "8.10")
 	stdout, stderr, err := runUpdateUserTaskCommand(t, writeTestConfigForVersion(t, server.URL, "8.10"), "", "--automation", "--json", "update", "ut", "--complete=false", "--key", "2251799815391233", "--vars", `{"approved":true}`, "--no-wait")
 	require.NoError(t, err, stderr)
 	envelope := decodeUserTaskCompletionEnvelope(t, stdout)

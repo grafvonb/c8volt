@@ -17,7 +17,7 @@ import (
 func TestUpdateJobCommand_TechnicalFailureDryRunLoadsCurrentJobAndSkipsMutation(t *testing.T) {
 	var requests []string
 	var failBodies []map[string]any
-	srv := newJobFailServer(t, &requests, &failBodies, []string{
+	srv := newJobFailServer(t, "8.8", &requests, &failBodies, []string{
 		jobSearchResponse("2251799813711967", 1),
 	}, http.StatusNoContent)
 	t.Cleanup(srv.Close)
@@ -35,7 +35,7 @@ func TestUpdateJobCommand_TechnicalFailureDryRunLoadsCurrentJobAndSkipsMutation(
 func TestUpdateJobCommand_TechnicalFailureDryRunRendersExplicitKeyTenantContext(t *testing.T) {
 	var requests []string
 	var failBodies []map[string]any
-	srv := newJobFailServer(t, &requests, &failBodies, []string{
+	srv := newJobFailServer(t, "8.8", &requests, &failBodies, []string{
 		jobSearchResponseWithTenant("2251799813711967", 1, "FAILED", tenantAdminKeysReturnedTenant),
 	}, http.StatusNoContent)
 	t.Cleanup(srv.Close)
@@ -58,7 +58,7 @@ func TestUpdateJobCommand_TechnicalFailureDryRunRendersExplicitKeyTenantContext(
 func TestUpdateJobCommand_TechnicalFailureSubmittedHumanOutput(t *testing.T) {
 	var requests []string
 	var failBodies []map[string]any
-	srv := newJobFailServer(t, &requests, &failBodies, []string{
+	srv := newJobFailServer(t, "8.8", &requests, &failBodies, []string{
 		jobSearchResponse("2251799813711967", 1),
 	}, http.StatusNoContent)
 	t.Cleanup(srv.Close)
@@ -78,7 +78,7 @@ func TestUpdateJobCommand_TechnicalFailureSubmittedHumanOutput(t *testing.T) {
 func TestUpdateJobCommand_JSONDryRunTechnicalFailurePlanPayload(t *testing.T) {
 	var requests []string
 	var failBodies []map[string]any
-	srv := newJobFailServer(t, &requests, &failBodies, []string{
+	srv := newJobFailServer(t, "8.8", &requests, &failBodies, []string{
 		jobSearchResponse("2251799813711967", 1),
 	}, http.StatusNoContent)
 	t.Cleanup(srv.Close)
@@ -105,7 +105,7 @@ func TestUpdateJobCommand_JSONDryRunTechnicalFailurePlanPayload(t *testing.T) {
 func TestUpdateJobCommand_BPMNErrorDryRunLoadsCurrentJobAndSkipsMutation(t *testing.T) {
 	var requests []string
 	var errorBodies []map[string]any
-	srv := newJobBPMNErrorServer(t, &requests, &errorBodies, []string{
+	srv := newJobBPMNErrorServer(t, "8.8", &requests, &errorBodies, []string{
 		jobSearchResponse("2251799813711967", 1),
 	}, http.StatusNoContent)
 	t.Cleanup(srv.Close)
@@ -122,7 +122,7 @@ func TestUpdateJobCommand_BPMNErrorDryRunLoadsCurrentJobAndSkipsMutation(t *test
 func TestUpdateJobCommand_BPMNErrorSubmittedHumanOutput(t *testing.T) {
 	var requests []string
 	var errorBodies []map[string]any
-	srv := newJobBPMNErrorServer(t, &requests, &errorBodies, []string{
+	srv := newJobBPMNErrorServer(t, "8.8", &requests, &errorBodies, []string{
 		jobSearchResponse("2251799813711967", 1),
 	}, http.StatusNoContent)
 	t.Cleanup(srv.Close)
@@ -142,7 +142,7 @@ func TestUpdateJobCommand_BPMNErrorSubmittedHumanOutput(t *testing.T) {
 func TestUpdateJobCommand_JSONDryRunBPMNErrorPlanPayload(t *testing.T) {
 	var requests []string
 	var errorBodies []map[string]any
-	srv := newJobBPMNErrorServer(t, &requests, &errorBodies, []string{
+	srv := newJobBPMNErrorServer(t, "8.8", &requests, &errorBodies, []string{
 		jobSearchResponse("2251799813711967", 1),
 	}, http.StatusNoContent)
 	t.Cleanup(srv.Close)
@@ -168,7 +168,7 @@ func TestUpdateJobCommand_JSONDryRunBPMNErrorPlanPayload(t *testing.T) {
 func TestUpdateJobCommand_CompletionDryRunLoadsCurrentJobAndSkipsMutation(t *testing.T) {
 	var requests []string
 	var completeBodies []map[string]any
-	srv := newJobCompleteServer(t, &requests, &completeBodies, []string{
+	srv := newJobCompleteServer(t, "8.8", &requests, &completeBodies, []string{
 		jobSearchResponse("2251799813711967", 1),
 	}, http.StatusNoContent)
 	t.Cleanup(srv.Close)
@@ -185,7 +185,7 @@ func TestUpdateJobCommand_CompletionDryRunLoadsCurrentJobAndSkipsMutation(t *tes
 func TestUpdateJobCommand_CompletionSubmittedHumanOutput(t *testing.T) {
 	var requests []string
 	var completeBodies []map[string]any
-	srv := newJobCompleteServer(t, &requests, &completeBodies, []string{
+	srv := newJobCompleteServer(t, "8.8", &requests, &completeBodies, []string{
 		jobSearchResponse("2251799813711967", 1),
 	}, http.StatusNoContent)
 	t.Cleanup(srv.Close)
@@ -203,7 +203,7 @@ func TestUpdateJobCommand_CompletionSubmittedHumanOutput(t *testing.T) {
 func TestUpdateJobCommand_CompletionSubmittedWithoutVariables(t *testing.T) {
 	var requests []string
 	var completeBodies []map[string]any
-	srv := newJobCompleteServer(t, &requests, &completeBodies, []string{
+	srv := newJobCompleteServer(t, "8.8", &requests, &completeBodies, []string{
 		jobSearchResponse("2251799813711967", 1),
 	}, http.StatusNoContent)
 	t.Cleanup(srv.Close)
@@ -221,7 +221,7 @@ func TestUpdateJobCommand_CompletionSubmittedWithoutVariables(t *testing.T) {
 func TestUpdateJobCommand_JSONDryRunCompletionPlanPayload(t *testing.T) {
 	var requests []string
 	var completeBodies []map[string]any
-	srv := newJobCompleteServer(t, &requests, &completeBodies, []string{
+	srv := newJobCompleteServer(t, "8.8", &requests, &completeBodies, []string{
 		jobSearchResponse("2251799813711967", 1),
 	}, http.StatusNoContent)
 	t.Cleanup(srv.Close)
@@ -246,7 +246,7 @@ func TestUpdateJobCommand_JSONDryRunCompletionPlanPayload(t *testing.T) {
 func TestUpdateJobBulkCompletionSuppressionAndVersion(t *testing.T) {
 	for _, version := range []string{"8.8", "8.9", "8.10"} {
 		t.Run(version, func(t *testing.T) {
-			fixture, server := newBulkCompletionFixture(t, "partial")
+			fixture, server := newBulkCompletionFixture(t, version, "partial")
 			args := []string{"--config", writeTestConfigForVersion(t, server.URL, version), "--tenant", "tenant-a", "--json", "--no-err-codes", "update", "job", "--type", "cleanup", "--complete", "--auto-confirm", "--workers", "1"}
 			encoded, _ := json.Marshal(args)
 			stdout, stderr, err := testx.RunCmdSubprocessSeparate(t, "TestUpdateJobBulkCompletionHelper", map[string]string{"C8VOLT_BATCH_ARGS": string(encoded)})
@@ -265,7 +265,7 @@ func TestUpdateJobBulkCompletionSuppressionAndVersion(t *testing.T) {
 func TestUpdateJobCommand_ScalarCompletionKeepsLegacyJSON(t *testing.T) {
 	var requests []string
 	var bodies []map[string]any
-	server := newJobCompleteServer(t, &requests, &bodies, []string{jobSearchResponse("2251799813711967", 1)}, http.StatusNoContent)
+	server := newJobCompleteServer(t, "8.8", &requests, &bodies, []string{jobSearchResponse("2251799813711967", 1)}, http.StatusNoContent)
 	t.Cleanup(server.Close)
 	stdout, stderr := executeRootForJobTestWithSeparateOutputs(t, "--config", writeTestConfigForVersion(t, server.URL, "8.8"), "update", "job", "--key", "2251799813711967", "--complete", "--vars", `{"approved":true}`, "--auto-confirm", "--json")
 	require.Empty(t, stderr)

@@ -22,7 +22,7 @@ func TestUpdateUserTaskCompletionPreflightModes(t *testing.T) {
 					continue
 				}
 				t.Run(version+"/"+scenario+"/"+mode, func(t *testing.T) {
-					server, calls, reads := newUserTaskCompletionPreflightServer(t, func(w http.ResponseWriter, r *http.Request, key string) {
+					server, calls, reads := newUserTaskCompletionPreflightServer(t, version, func(w http.ResponseWriter, r *http.Request, key string) {
 						if scenario == "lookup failed" {
 							w.Header().Set("Content-Type", "application/problem+json")
 							w.WriteHeader(403)
@@ -175,7 +175,7 @@ func TestUpdateUserTaskCompletionPreflightTerminal(t *testing.T) {
 		for _, format := range []string{"plain-time", "json"} {
 			for _, scenario := range []string{"completed", "mixed accept", "mixed decline", "unassigned accept", "unassigned decline", "preview", "invalid"} {
 				t.Run(destination+"/"+format+"/"+scenario, func(t *testing.T) {
-					server, calls, reads := newUserTaskCompletionPreflightServer(t, func(w http.ResponseWriter, r *http.Request, key string) {
+					server, calls, reads := newUserTaskCompletionPreflightServer(t, "8.10", func(w http.ResponseWriter, r *http.Request, key string) {
 						state, assignee := "CREATED", "alice"
 						if scenario == "completed" || (strings.HasPrefix(scenario, "mixed") && key == completionKeyA) {
 							state = "COMPLETED"
@@ -273,7 +273,7 @@ func TestUpdateUserTaskCompletionPreflightDiagnostics(t *testing.T) {
 		for _, destination := range []string{"configured", "inherited"} {
 			for _, mode := range []string{"normal", "verbose", "quiet", "json", "quiet json", "debug flag", "debug config"} {
 				t.Run(format+"/"+destination+"/"+mode, func(t *testing.T) {
-					server, calls, reads := newUserTaskCompletionPreflightServer(t, func(w http.ResponseWriter, r *http.Request, key string) {
+					server, calls, reads := newUserTaskCompletionPreflightServer(t, "8.10", func(w http.ResponseWriter, r *http.Request, key string) {
 						if key == completionKeyA {
 							writeCompletionTask(w, key, "COMPLETED", "")
 							return
@@ -328,6 +328,10 @@ func TestUpdateUserTaskCompletionPreflightDiagnostics(t *testing.T) {
 						case "DEBUG":
 							require.Contains(t, mode, "debug")
 							if strings.Contains(record[1], "api #") {
+								if strings.Contains(record[1], "GET /v2/topology") {
+									require.Contains(t, record[1], "status=200")
+									continue
+								}
 								if strings.Contains(record[1], "GET /v2/user-tasks/") {
 									gets++
 								} else {
@@ -387,7 +391,7 @@ func TestUpdateUserTaskCompletionConflictWording(t *testing.T) {
 		for _, source := range []string{"omitted", "{}", `{"approved":true}`} {
 			for _, mode := range []string{"human", "verbose", "json"} {
 				t.Run(fmt.Sprintf("%d/%s/%s", count, source, mode), func(t *testing.T) {
-					server, calls, reads := newUserTaskCompletionPreflightServer(t, func(w http.ResponseWriter, r *http.Request, key string) {
+					server, calls, reads := newUserTaskCompletionPreflightServer(t, "8.10", func(w http.ResponseWriter, r *http.Request, key string) {
 						writeCompletionTask(w, key, "COMPLETED", "alice")
 					}, func(http.ResponseWriter, *http.Request, string) { t.Error("completed task must not be submitted") })
 					keys := []string{completionKeyA}

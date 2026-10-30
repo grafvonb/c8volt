@@ -33,6 +33,10 @@ func TestListenerTimestampCommandsHonorTimezoneConfig(t *testing.T) {
 				var requests testx.SafeSlice[string]
 				process := `{"processInstanceKey":"2251799813685249","processDefinitionKey":"9001","processDefinitionId":"demo","processDefinitionVersion":1,"state":"ACTIVE","startDate":"2026-09-16T12:00:00Z","tenantId":"tenant","hasIncident":false}`
 				srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					if serveVersionCheckTopology(w, r, "8.8") {
+						return
+					}
+
 					requests.Append(r.Method + " " + r.URL.Path)
 					w.Header().Set("Content-Type", "application/json")
 					switch r.URL.Path {

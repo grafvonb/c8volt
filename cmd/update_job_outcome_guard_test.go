@@ -29,10 +29,14 @@ const scalarJobKey = "2251799813711967"
 
 // scalarJobOutcomeFixture records every request, making extra lookups and polling
 // failures visible while exercising the real facade and versioned adapter.
-func scalarJobOutcomeFixture(t *testing.T, state, path string, status int, planning bool) (string, *testx.SafeSlice[string]) {
+func scalarJobOutcomeFixture(t *testing.T, version string, state, path string, status int, planning bool) (string, *testx.SafeSlice[string]) {
 	t.Helper()
 	calls := &testx.SafeSlice[string]{}
 	server := testx.NewIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, version) {
+			return
+		}
+
 		calls.Append(r.Method + " " + r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
 		require.Equal(t, http.MethodPost, r.Method)
@@ -87,7 +91,7 @@ func TestScalarJobCompletedGuard(t *testing.T) {
 				{"suppressed exit", []string{"--no-err-codes"}, false, 0},
 			} {
 				t.Run(version+"/"+outcome.name+"/"+mode.name, func(t *testing.T) {
-					url, calls := scalarJobOutcomeFixture(t, "COMPLETED", outcome.path, 204, false)
+					url, calls := scalarJobOutcomeFixture(t, version, "COMPLETED", outcome.path, 204, false)
 					cfg := writeTestConfigForVersion(t, url, version)
 					args := append([]string{"--config", cfg, "update", "job", "--key", scalarJobKey}, outcome.flags...)
 					args = append(args, mode.flags...)
@@ -114,6 +118,7 @@ func TestScalarJobCompletedGuard(t *testing.T) {
 	}
 }
 
+// TestScalarJobCompletedGuardVariables preserves the existing command contract with advisory-aware fixtures.
 func TestScalarJobCompletedGuardVariables(t *testing.T) {
 	for _, outcome := range scalarJobOutcomes {
 		if outcome.name == "failure" {
@@ -121,7 +126,7 @@ func TestScalarJobCompletedGuardVariables(t *testing.T) {
 		}
 		for _, payload := range []string{"{}", `{"approved":true}`} {
 			t.Run(outcome.name+"/"+payload, func(t *testing.T) {
-				url, calls := scalarJobOutcomeFixture(t, "COMPLETED", outcome.path, 204, false)
+				url, calls := scalarJobOutcomeFixture(t, "8.10", "COMPLETED", outcome.path, 204, false)
 				args := append([]string{"--config", writeTestConfigForVersion(t, url, "8.10"), "update", "job", "--key", scalarJobKey}, outcome.flags...)
 				args = append(args, "--vars", payload)
 				stdout, stderr, err := runBulkCompletionTerminal(t, args, "configured", false, false, nil)
@@ -164,7 +169,7 @@ func TestScalarJobOutcomeErrors(t *testing.T) {
 				{name: "suppressed exit", status: 404, exit: 0, class: "not_found", reason: "job not found", flags: []string{"--no-err-codes"}},
 			} {
 				t.Run(outcome.name+"/"+format+"/"+tc.name, func(t *testing.T) {
-					url, calls := scalarJobOutcomeFixture(t, "CREATED", outcome.path, tc.status, tc.planning)
+					url, calls := scalarJobOutcomeFixture(t, "8.10", "CREATED", outcome.path, tc.status, tc.planning)
 					cfg := writeTestConfigForVersion(t, url, "8.10")
 					level := "info"
 					if tc.configuredDebug {
@@ -254,7 +259,7 @@ func TestScalarJobOtherStatesRemainBackendOwned(t *testing.T) {
 		for _, outcome := range scalarJobOutcomes {
 			for _, state := range []string{"FAILED", "CREATED"} {
 				t.Run(version+"/"+outcome.name+"/"+state, func(t *testing.T) {
-					url, calls := scalarJobOutcomeFixture(t, state, outcome.path, 204, false)
+					url, calls := scalarJobOutcomeFixture(t, version, state, outcome.path, 204, false)
 					args := append([]string{"--config", writeTestConfigForVersion(t, url, version), "update", "job", "--key", scalarJobKey, "--auto-confirm", "--json"}, outcome.flags...)
 					stdout, stderr, err := runBulkCompletionTerminal(t, args, "configured", false, false, nil)
 					require.NoError(t, err)
@@ -278,7 +283,7 @@ func TestScalarJobOutcomePrompt(t *testing.T) {
 	for _, outcome := range scalarJobOutcomes {
 		for _, response := range []string{"y", "n"} {
 			t.Run(outcome.name+"/"+response, func(t *testing.T) {
-				url, calls := scalarJobOutcomeFixture(t, "FAILED", outcome.path, 204, false)
+				url, calls := scalarJobOutcomeFixture(t, "8.10", "FAILED", outcome.path, 204, false)
 				args := append([]string{"--config", writeTestConfigForVersion(t, url, "8.10"), "update", "job", "--key", scalarJobKey}, outcome.flags...)
 				prompt := "You are about to update job " + scalarJobKey + ".\nDo you want to proceed? [y/N]: "
 				destination := "configured"

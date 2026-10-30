@@ -117,6 +117,10 @@ func TestDeleteProcessDefinitionUnfinishedCommand(t *testing.T) {
 			t.Run(population.name+"/"+strings.Join(flags, " "), func(t *testing.T) {
 				var reads, mutations atomic.Int32
 				srv := testx.NewIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					if serveVersionCheckTopology(w, r, "8.10") {
+						return
+					}
+
 					w.Header().Set("Content-Type", "application/json")
 					switch {
 					case r.URL.Path == "/v2/process-definitions/123":
@@ -223,6 +227,10 @@ func TestDeleteProcessDefinitionUnfinishedDiagnosticLogging(t *testing.T) {
 			t.Run(format+"/"+tc.name, func(t *testing.T) {
 				var mutations atomic.Int32
 				srv := testx.NewIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					if serveVersionCheckTopology(w, r, "8.10") {
+						return
+					}
+
 					w.Header().Set("Content-Type", "application/json")
 					if r.URL.Path == "/v2/process-instances/search" && !tc.preflight {
 						io.WriteString(w, `{"items":[],"page":{"totalItems":0}}`)
@@ -358,6 +366,10 @@ func TestDeleteProcessDefinitionUnfinishedEmptyWorkloadControls(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			var reads, mutations atomic.Int32
 			srv := testx.NewIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if serveVersionCheckTopology(w, r, "8.10") {
+					return
+				}
+
 				w.Header().Set("Content-Type", "application/json")
 				switch r.URL.Path {
 				case "/v2/process-definitions/123":
@@ -474,6 +486,10 @@ func TestDeleteProcessDefinitionSuspendedForceExecution(t *testing.T) {
 			var canceled, history, definitions atomic.Int32
 			var events testx.SafeSlice[string]
 			srv := testx.NewIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if serveVersionCheckTopology(w, r, "8.10") {
+					return
+				}
+
 				w.Header().Set("Content-Type", "application/json")
 				state := "SUSPENDED"
 				if canceled.Load() > 0 {

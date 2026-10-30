@@ -30,7 +30,7 @@ type updateUserTaskErrorCapture struct {
 func TestUpdateUserTaskSupportedVersions(t *testing.T) {
 	for _, version := range []string{"8.8", "8.9", "8.10"} {
 		t.Run(version, func(t *testing.T) {
-			server, capture := newUpdateUserTaskCommandServer(t)
+			server, capture := newUpdateUserTaskCommandServer(t, version)
 			stdout, stderr, err := runUpdateUserTaskCommand(t, writeTestConfigForVersion(t, server.URL, version), "",
 				"--automation", "--json", "update", "ut", "--key", "2251799815391233",
 				"--vars", `{"approved":true}`, "--no-wait",
@@ -66,7 +66,7 @@ func TestUpdateUserTaskDiscoveryErrors(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			server, capture := newUpdateUserTaskErrorServer(t, test.scenario)
+			server, capture := newUpdateUserTaskErrorServer(t, "8.10", test.scenario)
 			stdout, _, err := runUpdateUserTaskCommand(t, writeTestConfigForVersion(t, server.URL, "8.10"), "",
 				"--automation", "--json", "update", "ut", "--key", "101", "--vars", `{"approved":true}`,
 			)
@@ -85,7 +85,7 @@ func TestUpdateUserTaskDiscoveryErrors(t *testing.T) {
 // TestUpdateUserTaskTruncatedConfirmation preserves accepted mutation facts
 // while rejecting an incomplete post-write observation as confirmation.
 func TestUpdateUserTaskTruncatedConfirmation(t *testing.T) {
-	server, capture := newUpdateUserTaskErrorServer(t, "truncated-confirmation")
+	server, capture := newUpdateUserTaskErrorServer(t, "8.10", "truncated-confirmation")
 	stdout, _, err := runUpdateUserTaskCommand(t, writeTestConfigForVersion(t, server.URL, "8.10"), "",
 		"--backoff-max-retries", "1", "--automation", "--json", "update", "ut",
 		"--key", "101", "--vars", `{"approved":true}`,
@@ -107,7 +107,7 @@ func TestUpdateUserTaskTruncatedConfirmation(t *testing.T) {
 // TestUpdateUserTaskPartialAcceptanceExitCode proves a mixed shared command
 // result is rendered once and still exits unsuccessfully.
 func TestUpdateUserTaskPartialAcceptanceExitCode(t *testing.T) {
-	server, capture := newUpdateUserTaskOutputServer(t, false, "202")
+	server, capture := newUpdateUserTaskOutputServer(t, "8.10", false, "202")
 	stdout, _, err := runUpdateUserTaskCommand(t, writeTestConfigForVersion(t, server.URL, "8.10"), "",
 		"--automation", "--json", "update", "ut", "--key", "101,102",
 		"--vars", `{"approved":true}`, "--no-wait", "--workers", "1",
@@ -139,7 +139,7 @@ func TestUpdateUserTaskFunctionalAndHTTPDiagnostics(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			server, _ := newUpdateUserTaskOutputServer(t, false, "")
+			server, _ := newUpdateUserTaskOutputServer(t, "8.10", false, "")
 			args := []string{"--auto-confirm"}
 			if test.rootFlag != "" {
 				args = append(args, test.rootFlag)
@@ -165,10 +165,14 @@ func requireCommandExitCode(t *testing.T, err error, want int) {
 
 // newUpdateUserTaskErrorServer exposes controlled read and confirmation
 // failures while recording that rejected paths never mutate state.
-func newUpdateUserTaskErrorServer(t *testing.T, scenario string) (*httptest.Server, *updateUserTaskErrorCapture) {
+func newUpdateUserTaskErrorServer(t *testing.T, version string, scenario string) (*httptest.Server, *updateUserTaskErrorCapture) {
 	t.Helper()
 	capture := new(updateUserTaskErrorCapture)
 	server := testx.NewIPv4Server(t, http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		if serveVersionCheckTopology(writer, request, version) {
+			return
+		}
+
 		capture.mu.Lock()
 		capture.requests++
 		capture.mu.Unlock()

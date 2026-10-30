@@ -32,7 +32,7 @@ type updateUserTaskCommandCapture struct {
 // TestUpdateUserTaskCommand_PlansSubmitsAndConfirmsScopeLocalVariables proves
 // the command delegates its frozen scope plan through the composed workflow.
 func TestUpdateUserTaskCommand_PlansSubmitsAndConfirmsScopeLocalVariables(t *testing.T) {
-	server, capture := newUpdateUserTaskCommandServer(t)
+	server, capture := newUpdateUserTaskCommandServer(t, "8.10")
 	configPath := writeTestConfigForVersion(t, server.URL, "8.10")
 
 	stdout, stderr, err := runUpdateUserTaskCommand(t, configPath, "",
@@ -100,10 +100,14 @@ func runUpdateUserTaskCommand(t *testing.T, configPath, stdin string, args ...st
 
 // newUpdateUserTaskCommandServer exposes the exact task, effective-variable,
 // and scope-write routes used by the command workflow.
-func newUpdateUserTaskCommandServer(t *testing.T) (*httptest.Server, *updateUserTaskCommandCapture) {
+func newUpdateUserTaskCommandServer(t *testing.T, version string) (*httptest.Server, *updateUserTaskCommandCapture) {
 	t.Helper()
 	capture := new(updateUserTaskCommandCapture)
 	server := testx.NewIPv4Server(t, http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		if serveVersionCheckTopology(writer, request, version) {
+			return
+		}
+
 		capture.mu.Lock()
 		capture.requests++
 		capture.mu.Unlock()

@@ -103,6 +103,10 @@ func TestGetTenantCommand_MachineModeSuppressesFallbackActivity(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			resetTenantRenderFlags(t)
 			srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if serveVersionCheckTopology(w, r, "8.9") {
+					return
+				}
+
 				require.Equal(t, http.MethodPost, r.Method)
 				require.Equal(t, "/v2/tenants/search", r.URL.Path)
 				w.Header().Set("Content-Type", "application/json")

@@ -40,6 +40,10 @@ func TestOpsPurgeAllProcessDefinitionsUnfinishedDiagnosticLogging(t *testing.T) 
 			t.Run(format+"/"+tc.name, func(t *testing.T) {
 				var mutations atomic.Int32
 				srv := testx.NewIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					if serveVersionCheckTopology(w, r, "8.10") {
+						return
+					}
+
 					w.Header().Set("Content-Type", "application/json")
 					if r.URL.Path == "/v2/process-definitions/search" {
 						fmt.Fprintf(w, `{"items":[%s,%s,%s],"page":{"totalItems":3}}`, opsAllProcessDefinitionsPurgeDefinitionJSON("2251799813685123", "invoice", 1), opsAllProcessDefinitionsPurgeDefinitionJSON("2251799813685456", "invoice", 2), opsAllProcessDefinitionsPurgeDefinitionJSON("2251799813685789", "invoice", 3))
@@ -163,6 +167,10 @@ func TestOpsPurgeAllProcessDefinitionsSuspendedForceExecution(t *testing.T) {
 			var canceled, history, definitions, verifications atomic.Int32
 			var events testx.SafeSlice[string]
 			srv := testx.NewIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if serveVersionCheckTopology(w, r, "8.10") {
+					return
+				}
+
 				w.Header().Set("Content-Type", "application/json")
 				state := "SUSPENDED"
 				if canceled.Load() > 0 {
@@ -333,6 +341,10 @@ func TestOpsPurgeAllProcessDefinitionsUnfinishedCommand(t *testing.T) {
 			t.Run(population.name+"/"+strings.Join(flags, " "), func(t *testing.T) {
 				var reads, mutations atomic.Int32
 				srv := testx.NewIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					if serveVersionCheckTopology(w, r, "8.10") {
+						return
+					}
+
 					w.Header().Set("Content-Type", "application/json")
 					switch {
 					case r.URL.Path == "/v2/process-definitions/2251799813685123":
@@ -455,6 +467,10 @@ func TestOpsPurgeAllProcessDefinitionsEmptyTerminal(t *testing.T) {
 			t.Run(fmt.Sprint(dry)+strings.Join(flags, " "), func(t *testing.T) {
 				var reads atomic.Int32
 				srv := testx.NewIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					if serveVersionCheckTopology(w, r, "8.10") {
+						return
+					}
+
 					require.Equal(t, "/v2/process-definitions/search", r.URL.Path)
 					reads.Add(1)
 					w.Header().Set("Content-Type", "application/json")

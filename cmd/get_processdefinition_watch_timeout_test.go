@@ -38,6 +38,10 @@ func TestGetProcessDefinitionWatchSessionTimeoutDispatch(t *testing.T) {
 			resetGetProcessDefinitionCommandGlobals()
 			t.Cleanup(resetGetProcessDefinitionCommandGlobals)
 			server := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if serveVersionCheckTopology(w, r, "8.9") {
+					return
+				}
+
 				require.Equal(t, "/v2/process-definitions/search", r.URL.Path)
 				w.Header().Set("Content-Type", "application/json")
 				_, _ = w.Write([]byte(`{"items":[],"page":{"totalItems":0}}`))
@@ -176,6 +180,10 @@ func TestGetProcessDefinitionWatchHTTPRequestTimeoutRetries(t *testing.T) {
 	var requests atomic.Int32
 	releaseRequest := make(chan struct{})
 	server := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.9") {
+			return
+		}
+
 		require.Equal(t, "/v2/process-definitions/search", r.URL.Path)
 		if requests.Add(1) == 1 {
 			select {
@@ -237,6 +245,10 @@ func TestGetProcessDefinitionWatchFailureDiagnostics(t *testing.T) {
 			t.Run(format+"/"+mode, func(t *testing.T) {
 				var requests atomic.Int32
 				server := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					if serveVersionCheckTopology(w, r, "8.9") {
+						return
+					}
+
 					requests.Add(1)
 					w.Header().Set("Content-Type", "application/json")
 					w.WriteHeader(http.StatusServiceUnavailable)
@@ -302,6 +314,10 @@ func TestGetProcessDefinitionWatchRequestTimeoutExhaustion(t *testing.T) {
 	var requests atomic.Int32
 	releaseRequests := make(chan struct{})
 	server := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.9") {
+			return
+		}
+
 		requests.Add(1)
 		select {
 		case <-r.Context().Done():

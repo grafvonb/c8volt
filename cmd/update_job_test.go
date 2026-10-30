@@ -22,7 +22,7 @@ import (
 func TestUpdateJobCommand_RetriesConfirmedHumanOutput(t *testing.T) {
 	var requests []string
 	var patchBodies []map[string]any
-	srv := newJobUpdateServer(t, &requests, &patchBodies, []string{
+	srv := newJobUpdateServer(t, "8.8", &requests, &patchBodies, []string{
 		jobSearchResponse("2251799813711967", 1),
 		jobSearchResponse("2251799813711967", 3),
 	}, http.StatusNoContent)
@@ -42,7 +42,7 @@ func TestUpdateJobCommand_RetriesConfirmedHumanOutput(t *testing.T) {
 func TestUpdateJobCommand_RetriesConfirmedRendersExplicitKeyTenantContext(t *testing.T) {
 	var requests []string
 	var patchBodies []map[string]any
-	srv := newJobUpdateServer(t, &requests, &patchBodies, []string{
+	srv := newJobUpdateServer(t, "8.8", &requests, &patchBodies, []string{
 		jobSearchResponseWithTenant("2251799813711967", 1, "FAILED", tenantAdminKeysReturnedTenant),
 		jobSearchResponseWithTenant("2251799813711967", 3, "FAILED", tenantAdminKeysReturnedTenant),
 	}, http.StatusNoContent)
@@ -66,7 +66,7 @@ func TestUpdateJobCommand_RetriesConfirmedRendersExplicitKeyTenantContext(t *tes
 func TestUpdateJobCommand_RetriesConfirmedJSONOutput(t *testing.T) {
 	var requests []string
 	var patchBodies []map[string]any
-	srv := newJobUpdateServer(t, &requests, &patchBodies, []string{
+	srv := newJobUpdateServer(t, "8.8", &requests, &patchBodies, []string{
 		jobSearchResponse("2251799813711967", 1),
 		jobSearchResponse("2251799813711967", 3),
 	}, http.StatusNoContent)
@@ -103,7 +103,7 @@ func TestUpdateJobCommand_MaterialInteractiveRetriesUpdateRequiresConfirmation(t
 
 	var requests []string
 	var patchBodies []map[string]any
-	srv := newJobUpdateServer(t, &requests, &patchBodies, []string{
+	srv := newJobUpdateServer(t, "8.8", &requests, &patchBodies, []string{
 		jobSearchResponse("2251799813711967", 1),
 		jobSearchResponse("2251799813711967", 3),
 	}, http.StatusNoContent)
@@ -133,7 +133,7 @@ func TestUpdateJobCommand_V810PromptedRetriesUpdatePreservesConfirmationFlow(t *
 
 	var requests []string
 	var patchBodies []map[string]any
-	srv := newJobUpdateServer(t, &requests, &patchBodies, []string{
+	srv := newJobUpdateServer(t, "8.10", &requests, &patchBodies, []string{
 		jobSearchResponse("2251799813711967", 1),
 		jobSearchResponse("2251799813711967", 3),
 	}, http.StatusNoContent)
@@ -193,7 +193,7 @@ func TestUpdateJobRetriesAndTimeoutViewShowsRetriesConfirmedAndTimeoutSubmitted(
 func TestUpdateJobCommand_TimeoutSubmittedHumanOutputWithoutConfirmationPolling(t *testing.T) {
 	var requests []string
 	var patchBodies []map[string]any
-	srv := newJobUpdateServer(t, &requests, &patchBodies, []string{
+	srv := newJobUpdateServer(t, "8.8", &requests, &patchBodies, []string{
 		jobSearchResponseWithState("2251799813711967", 1, "CREATED"),
 	}, http.StatusNoContent)
 	t.Cleanup(srv.Close)
@@ -212,7 +212,7 @@ func TestUpdateJobCommand_TimeoutSubmittedHumanOutputWithoutConfirmationPolling(
 func TestUpdateJobCommand_RetriesAndTimeoutConfirmsRetriesOnly(t *testing.T) {
 	var requests []string
 	var patchBodies []map[string]any
-	srv := newJobUpdateServer(t, &requests, &patchBodies, []string{
+	srv := newJobUpdateServer(t, "8.8", &requests, &patchBodies, []string{
 		jobSearchResponseWithState("2251799813711967", 1, "CREATED"),
 		jobSearchResponse("2251799813711967", 3),
 	}, http.StatusNoContent)
@@ -233,7 +233,7 @@ func TestUpdateJobCommand_RetriesAndTimeoutConfirmsRetriesOnly(t *testing.T) {
 func TestUpdateJobCommand_NoWaitSkipsRetryConfirmation(t *testing.T) {
 	var requests []string
 	var patchBodies []map[string]any
-	srv := newJobUpdateServer(t, &requests, &patchBodies, []string{
+	srv := newJobUpdateServer(t, "8.8", &requests, &patchBodies, []string{
 		jobSearchResponse("2251799813711967", 1),
 	}, http.StatusNoContent)
 	t.Cleanup(srv.Close)
@@ -252,7 +252,7 @@ func TestUpdateJobCommand_NoWaitSkipsRetryConfirmation(t *testing.T) {
 func TestUpdateJobCommand_NoWaitJSONSubmittedResult(t *testing.T) {
 	var requests []string
 	var patchBodies []map[string]any
-	srv := newJobUpdateServer(t, &requests, &patchBodies, []string{
+	srv := newJobUpdateServer(t, "8.8", &requests, &patchBodies, []string{
 		jobSearchResponse("2251799813711967", 1),
 	}, http.StatusNoContent)
 	t.Cleanup(srv.Close)
@@ -288,7 +288,7 @@ func TestUpdateJobCommand_NoWaitStillRequiresInteractiveConfirmationForMaterialU
 
 	var requests []string
 	var patchBodies []map[string]any
-	srv := newJobUpdateServer(t, &requests, &patchBodies, []string{
+	srv := newJobUpdateServer(t, "8.8", &requests, &patchBodies, []string{
 		jobSearchResponse("2251799813711967", 1),
 	}, http.StatusNoContent)
 	t.Cleanup(srv.Close)
@@ -306,10 +306,14 @@ func TestUpdateJobCommand_NoWaitStillRequiresInteractiveConfirmationForMaterialU
 }
 
 // newJobUpdateServer returns a fake update endpoint that records retry and timeout mutation requests.
-func newJobUpdateServer(t *testing.T, requests *[]string, patchBodies *[]map[string]any, searchResponses []string, updateStatus int) *httptest.Server {
+func newJobUpdateServer(t *testing.T, version string, requests *[]string, patchBodies *[]map[string]any, searchResponses []string, updateStatus int) *httptest.Server {
 	t.Helper()
 	searchIndex := 0
 	return newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, version) {
+			return
+		}
+
 		*requests = append(*requests, r.Method+" "+r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
 		switch {
@@ -333,10 +337,14 @@ func newJobUpdateServer(t *testing.T, requests *[]string, patchBodies *[]map[str
 }
 
 // newJobFailServer returns a fake worker-failure endpoint that records submitted failure bodies.
-func newJobFailServer(t *testing.T, requests *[]string, failBodies *[]map[string]any, searchResponses []string, failStatus int) *httptest.Server {
+func newJobFailServer(t *testing.T, version string, requests *[]string, failBodies *[]map[string]any, searchResponses []string, failStatus int) *httptest.Server {
 	t.Helper()
 	searchIndex := 0
 	return newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, version) {
+			return
+		}
+
 		*requests = append(*requests, r.Method+" "+r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
 		switch {
@@ -360,10 +368,14 @@ func newJobFailServer(t *testing.T, requests *[]string, failBodies *[]map[string
 }
 
 // newJobBPMNErrorServer returns a fake BPMN error endpoint that records submitted error bodies.
-func newJobBPMNErrorServer(t *testing.T, requests *[]string, errorBodies *[]map[string]any, searchResponses []string, errorStatus int) *httptest.Server {
+func newJobBPMNErrorServer(t *testing.T, version string, requests *[]string, errorBodies *[]map[string]any, searchResponses []string, errorStatus int) *httptest.Server {
 	t.Helper()
 	searchIndex := 0
 	return newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, version) {
+			return
+		}
+
 		*requests = append(*requests, r.Method+" "+r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
 		switch {
@@ -387,10 +399,14 @@ func newJobBPMNErrorServer(t *testing.T, requests *[]string, errorBodies *[]map[
 }
 
 // newJobCompleteServer returns a fake completion endpoint that records submitted variable payloads.
-func newJobCompleteServer(t *testing.T, requests *[]string, completeBodies *[]map[string]any, searchResponses []string, completeStatus int) *httptest.Server {
+func newJobCompleteServer(t *testing.T, version string, requests *[]string, completeBodies *[]map[string]any, searchResponses []string, completeStatus int) *httptest.Server {
 	t.Helper()
 	searchIndex := 0
 	return newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, version) {
+			return
+		}
+
 		*requests = append(*requests, r.Method+" "+r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
 		switch {

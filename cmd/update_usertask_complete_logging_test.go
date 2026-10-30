@@ -47,7 +47,7 @@ func TestUpdateUserTaskCompletionDiagnosticLogging(t *testing.T) {
 				{name: "quiet JSON", flags: []string{"--quiet", "--json"}, json: true, quiet: true},
 			} {
 				t.Run(format+"/"+destination+"/"+tc.name, func(t *testing.T) {
-					server, calls := newUserTaskCompletionServer(t, func(w http.ResponseWriter, r *http.Request, key string) {
+					server, calls := newUserTaskCompletionServer(t, "8.10", func(w http.ResponseWriter, r *http.Request, key string) {
 						if key == completionKeyA {
 							w.WriteHeader(204)
 							return
@@ -115,9 +115,14 @@ func TestUpdateUserTaskCompletionDiagnosticLogging(t *testing.T) {
 						require.NotContains(t, stderr, bad)
 					}
 					if tc.debug {
-						exchanges, lookups := 0, 0
+						exchanges, lookups, probes := 0, 0, 0
 						for _, message := range debugs {
 							if strings.Contains(message, "api #") {
+								if strings.Contains(message, "GET /v2/topology") {
+									probes++
+									require.Contains(t, message, "status=200")
+									continue
+								}
 								if strings.Contains(message, "GET /v2/user-tasks/") {
 									lookups++
 									continue
@@ -127,6 +132,7 @@ func TestUpdateUserTaskCompletionDiagnosticLogging(t *testing.T) {
 								require.Contains(t, message, "/completion: status=")
 							}
 						}
+						require.Equal(t, 1, probes)
 						require.Equal(t, 3, exchanges)
 						require.Equal(t, 3, lookups)
 					} else {
@@ -153,7 +159,7 @@ func TestUpdateUserTaskCompletionDiagnosticRetries(t *testing.T) {
 					for _, mode := range []string{"normal", "flag", "configured"} {
 						var mu sync.Mutex
 						attempts := map[string]int{}
-						server, calls := newUserTaskCompletionServer(t, func(w http.ResponseWriter, r *http.Request, key string) {
+						server, calls := newUserTaskCompletionServer(t, "8.10", func(w http.ResponseWriter, r *http.Request, key string) {
 							mu.Lock()
 							attempts[key]++
 							attempt := attempts[key]
@@ -191,13 +197,18 @@ func TestUpdateUserTaskCompletionDiagnosticRetries(t *testing.T) {
 							require.Equal(t, completionInfoRecords(info), records)
 						} else {
 							require.Equal(t, baseline, info)
-							exchanges, lookups := 0, 0
+							exchanges, lookups, probes := 0, 0, 0
 							for _, record := range records {
 								if record[0] == "INFO" {
 									continue
 								}
 								require.Equal(t, "DEBUG", record[0])
 								if strings.Contains(record[1], "api #") {
+									if strings.Contains(record[1], "GET /v2/topology") {
+										probes++
+										require.Contains(t, record[1], "status=200")
+										continue
+									}
 									if strings.Contains(record[1], "GET /v2/user-tasks/") {
 										lookups++
 										continue
@@ -206,6 +217,7 @@ func TestUpdateUserTaskCompletionDiagnosticRetries(t *testing.T) {
 									require.Contains(t, record[1], "POST /v2/user-tasks/")
 								}
 							}
+							require.Equal(t, 1, probes)
 							require.Equal(t, 4, exchanges)
 							require.Equal(t, 2, lookups)
 							require.Contains(t, stderr, fmt.Sprintf("status=%d", status))

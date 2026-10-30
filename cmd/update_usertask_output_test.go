@@ -130,7 +130,7 @@ func TestUpdateUserTaskOutputModes(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			server, capture := newUpdateUserTaskOutputServer(t, test.initialValue, "")
+			server, capture := newUpdateUserTaskOutputServer(t, "8.10", test.initialValue, "")
 			configPath := writeTestConfigForVersion(t, server.URL, "8.10")
 			stdout, stderr, err := runUpdateUserTaskCommand(t, configPath, "", test.args...)
 			require.NoError(t, err)
@@ -160,7 +160,7 @@ func TestUpdateUserTaskOutputModes(t *testing.T) {
 // TestUpdateUserTaskDestinationMetadataFlowsThroughCommand proves planning
 // supplies every destination kind without adding preview requests or writes.
 func TestUpdateUserTaskDestinationMetadataFlowsThroughCommand(t *testing.T) {
-	server, capture := newUpdateUserTaskOutputServer(t, false, "")
+	server, capture := newUpdateUserTaskOutputServer(t, "8.10", false, "")
 	configPath := writeTestConfigForVersion(t, server.URL, "8.10")
 	stdout, stderr, err := runUpdateUserTaskCommand(t, configPath, "",
 		"update", "ut", "--key", "103", "--vars", `{"approved":true,"middle":2,"local":true,"new":"value"}`, "--dry-run",
@@ -233,7 +233,7 @@ func TestUpdateUserTaskBulkDestinationPreviewsThroughCommand(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			server, capture := newUpdateUserTaskOutputServer(t, false, "")
+			server, capture := newUpdateUserTaskOutputServer(t, "8.10", false, "")
 			configPath := writeTestConfigForVersion(t, server.URL, "8.10")
 			args := []string{"update", "ut", "--key", test.keys, "--vars", test.variables, "--dry-run"}
 			if test.verbose {
@@ -273,7 +273,7 @@ func normalizeUpdateUserTaskHumanOutput(output string) string {
 // TestUpdateUserTaskPartialFailureJSON renders accepted and failed task facts
 // once in the normalized error envelope and exits with a failure code.
 func TestUpdateUserTaskPartialFailureJSON(t *testing.T) {
-	server, capture := newUpdateUserTaskOutputServer(t, false, "202")
+	server, capture := newUpdateUserTaskOutputServer(t, "8.10", false, "202")
 	configPath := writeTestConfigForVersion(t, server.URL, "8.10")
 	stdout, _, err := runUpdateUserTaskCommand(t, configPath, "",
 		"--automation", "--json", "update", "ut",
@@ -309,7 +309,7 @@ func decodeSingleUserTaskUpdateEnvelope(t *testing.T, output string) map[string]
 
 // newUpdateUserTaskOutputServer provides deterministic independent scopes so
 // command output tests can observe no-op, acceptance, confirmation, and partial failure.
-func newUpdateUserTaskOutputServer(t *testing.T, initialValue bool, failingScope string) (*httptest.Server, *updateUserTaskOutputCapture) {
+func newUpdateUserTaskOutputServer(t *testing.T, version string, initialValue bool, failingScope string) (*httptest.Server, *updateUserTaskOutputCapture) {
 	t.Helper()
 	capture := &updateUserTaskOutputCapture{
 		initialValue:  initialValue,
@@ -317,6 +317,10 @@ func newUpdateUserTaskOutputServer(t *testing.T, initialValue bool, failingScope
 		mutatedScopes: make(map[string]bool),
 	}
 	server := testx.NewIPv4Server(t, http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		if serveVersionCheckTopology(writer, request, version) {
+			return
+		}
+
 		capture.mu.Lock()
 		capture.totalRequests++
 		capture.mu.Unlock()

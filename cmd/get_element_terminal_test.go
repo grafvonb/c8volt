@@ -107,7 +107,7 @@ func TestElementScopeVariablesGetTerminal(t *testing.T) {
 				if tc.empty {
 					elements = []string{scopePage(nil, 0, false)}
 				}
-				f := newElementScopeFixture(t, elements, []string{scopePage(nil, 0, false), scopePage(nil, 0, false)}, 0)
+				f := newElementScopeFixture(t, "8.8", elements, []string{scopePage(nil, 0, false), scopePage(nil, 0, false)}, 0)
 				args := append([]string{"--config", testx.WriteTestConfig(t, f.server.URL), "--no-indicator", "get", "element", "--batch-size", "1", "--with-vars"}, tc.flags...)
 				if tc.keys {
 					args = append(args, "--keys-only")

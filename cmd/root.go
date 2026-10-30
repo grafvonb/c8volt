@@ -43,6 +43,12 @@ state changes, walk process trees, suspend, cancel, and delete.
 Supports Camunda 8.8, 8.9, and 8.10.
 Camunda 8.10 baseline: %s (%s).
 Camunda 8.10 aliases: 8.10, 810, v810, v8.10. Default: 8.9.
+Before the first operational API request, check the gateway major/minor version once.
+Mismatch or lookup failure warns and retains the configured adapter. The check
+waits at most two seconds (or a shorter HTTP/workflow timeout), uses shared
+request pacing, and can add a pacing slot. Disable it with --no-version-check.
+Local commands perform no check. Explicit version and connection tests still run.
+
 Use capabilities to discover supported commands and automation options.
 
 Use --request-rate to pace shared request starts per second for this invocation
@@ -217,6 +223,7 @@ func init() {
 	pf.BoolVarP(&flagCmdAutoConfirm, "auto-confirm", "y", false, "auto-confirm prompts for non-interactive use")
 	pf.BoolVarP(&flagVerbose, "verbose", "v", false, "show additional output")
 	pf.BoolVar(&flagNoIndicator, "no-indicator", false, "disable transient terminal activity indicators")
+	pf.BoolVar(&flagNoVersionCheck, "no-version-check", false, "skip the automatic advisory gateway version check")
 	pf.BoolVar(&flagDebug, "debug", false, "enable debug logging")
 	pf.BoolVarP(&flagViewAsJson, "json", "j", false, "output as JSON (where applicable)")
 	pf.BoolVar(&flagViewKeysOnly, "keys-only", false, "output keys only (where applicable)")

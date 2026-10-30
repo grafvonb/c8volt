@@ -37,7 +37,7 @@ func TestUpdateUserTaskCompletionTerminal(t *testing.T) {
 			{name: "JSON preview", flags: []string{"--dry-run", "--json"}},
 		} {
 			t.Run(destination+"/"+tc.name, func(t *testing.T) {
-				server, calls := newUserTaskCompletionServer(t, nil)
+				server, calls := newUserTaskCompletionServer(t, "8.10", nil)
 				args := append([]string{"--config", writeTestConfigForVersion(t, server.URL, "8.10"), "--log-format", "plain-time", "update", "ut", "--complete", "--key", completionKeyA + "," + completionKeyB}, tc.flags...)
 				preview := slices.Contains(tc.flags, "--dry-run")
 				prompted := !preview && !slices.Contains(tc.flags, "--auto-confirm") && !slices.Contains(tc.flags, "--automation")

@@ -80,6 +80,10 @@ func TestGetProcessDefinitionNonWatchMachineModesStayCompatible(t *testing.T) {
 			serve: func(t *testing.T, requests *[]map[string]any) *httptest.Server {
 				t.Helper()
 				return newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					if serveVersionCheckTopology(w, r, "8.8") {
+						return
+					}
+
 					require.Equal(t, http.MethodGet, r.Method)
 					require.Equal(t, "/v2/process-definitions/2251799813685255/xml", r.URL.Path)
 					*requests = append(*requests, map[string]any{
@@ -110,7 +114,7 @@ func TestGetProcessDefinitionNonWatchMachineModesStayCompatible(t *testing.T) {
 			if serve == nil {
 				serve = func(t *testing.T, requests *[]map[string]any) *httptest.Server {
 					t.Helper()
-					return newProcessDefinitionSearchServerResponses(t, requests,
+					return newProcessDefinitionSearchServerResponses(t, "8.8", requests,
 						`{"items":[{"processDefinitionKey":"2251799813685255","processDefinitionId":"invoice","name":"invoice","version":3,"tenantId":"tenant","versionTag":"stable"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`,
 					)
 				}
@@ -180,6 +184,10 @@ func TestGetProcessDefinitionBaseDispatchSkipsWatchLifecycle(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			var requests []string
 			srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if serveVersionCheckTopology(w, r, "8.8") {
+					return
+				}
+
 				request := r.Method + " " + r.URL.Path
 				requests = append(requests, request)
 				require.Equal(t, tt.wantRequest, request)
@@ -202,9 +210,14 @@ func TestGetProcessDefinitionBaseDispatchSkipsWatchLifecycle(t *testing.T) {
 	}
 }
 
+// TestGetProcessDefinitionLatestSearchPreservesSelectionRequest preserves the existing command contract with advisory-aware fixtures.
 func TestGetProcessDefinitionLatestSearchPreservesSelectionRequest(t *testing.T) {
 	var requests []string
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		require.Equal(t, http.MethodPost, r.Method)
 		require.Equal(t, "/v2/process-definitions/search", r.URL.Path)
 		body, err := io.ReadAll(r.Body)
@@ -301,6 +314,10 @@ func TestGetProcessDefinitionLatestSearchPageSizeInvarianceAcrossTenants(t *test
 			var requests []map[string]any
 			servedItems := 0
 			srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if serveVersionCheckTopology(w, r, "8.9") {
+					return
+				}
+
 				require.Equal(t, http.MethodPost, r.Method)
 				require.Equal(t, "/v2/process-definitions/search", r.URL.Path)
 				var request map[string]any
@@ -357,9 +374,14 @@ apis:
 	}
 }
 
+// TestGetProcessDefinitionBpmnSelectorMissingFailsWithExplicitDiagnostic preserves the existing command contract with advisory-aware fixtures.
 func TestGetProcessDefinitionBpmnSelectorMissingFailsWithExplicitDiagnostic(t *testing.T) {
 	var requests []string
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		require.Equal(t, http.MethodPost, r.Method)
 		require.Equal(t, "/v2/process-definitions/search", r.URL.Path)
 		body, err := io.ReadAll(r.Body)
@@ -387,9 +409,14 @@ func TestGetProcessDefinitionBpmnSelectorMissingFailsWithExplicitDiagnostic(t *t
 	require.Contains(t, string(output), "[missing-process]")
 }
 
+// TestGetProcessDefinitionBpmnSelectorVisiblePreservesListing preserves the existing command contract with advisory-aware fixtures.
 func TestGetProcessDefinitionBpmnSelectorVisiblePreservesListing(t *testing.T) {
 	var requests []string
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		require.Equal(t, http.MethodPost, r.Method)
 		require.Equal(t, "/v2/process-definitions/search", r.URL.Path)
 		body, err := io.ReadAll(r.Body)
@@ -506,7 +533,7 @@ apis:
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var requests []map[string]any
-			srv := newProcessDefinitionSearchServerResponses(t, &requests, tt.responses...)
+			srv := newProcessDefinitionSearchServerResponses(t, "8.9", &requests, tt.responses...)
 			t.Cleanup(srv.Close)
 			cfgPath := tt.configPath(t, srv.URL)
 
@@ -523,7 +550,7 @@ apis:
 // TestGetProcessDefinitionSearchVerboseProgress defines the process-definition progress contract for broad listing.
 func TestGetProcessDefinitionSearchVerboseProgress(t *testing.T) {
 	var requests []map[string]any
-	srv := newProcessDefinitionSearchServerResponses(t, &requests,
+	srv := newProcessDefinitionSearchServerResponses(t, "8.9", &requests,
 		`{"items":[{"processDefinitionKey":"2251799813685255","processDefinitionId":"invoice","name":"invoice","version":3,"tenantId":"tenant","versionTag":"stable"},{"processDefinitionKey":"2251799813685256","processDefinitionId":"payment","name":"payment","version":2,"tenantId":"tenant","versionTag":"stable"}],"page":{"totalItems":3,"hasMoreTotalItems":true,"endCursor":"pd-page-2"}}`,
 		`{"items":[{"processDefinitionKey":"2251799813685257","processDefinitionId":"shipping","name":"shipping","version":1,"tenantId":"tenant","versionTag":"stable"}],"page":{"totalItems":3,"hasMoreTotalItems":false}}`,
 	)
@@ -557,7 +584,7 @@ func TestGetProcessDefinitionSearchVerboseProgress(t *testing.T) {
 func TestGetProcessDefinitionSearchMachineOutputStaysProgressFree(t *testing.T) {
 	t.Run("json", func(t *testing.T) {
 		var requests []map[string]any
-		srv := newProcessDefinitionSearchServerResponses(t, &requests,
+		srv := newProcessDefinitionSearchServerResponses(t, "8.9", &requests,
 			`{"items":[{"processDefinitionKey":"2251799813685255","processDefinitionId":"invoice","name":"invoice","version":3,"tenantId":"tenant","versionTag":"stable"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`,
 		)
 		t.Cleanup(srv.Close)
@@ -583,7 +610,7 @@ func TestGetProcessDefinitionSearchMachineOutputStaysProgressFree(t *testing.T) 
 
 	t.Run("keys only", func(t *testing.T) {
 		var requests []map[string]any
-		srv := newProcessDefinitionSearchServerResponses(t, &requests,
+		srv := newProcessDefinitionSearchServerResponses(t, "8.9", &requests,
 			`{"items":[{"processDefinitionKey":"2251799813685255","processDefinitionId":"invoice","name":"invoice","version":3,"tenantId":"tenant","versionTag":"stable"},{"processDefinitionKey":"2251799813685256","processDefinitionId":"payment","name":"payment","version":2,"tenantId":"tenant","versionTag":"stable"}],"page":{"totalItems":2,"hasMoreTotalItems":false}}`,
 		)
 		t.Cleanup(srv.Close)
@@ -893,11 +920,16 @@ func requireNoProcessDefinitionWatchLifecycleOutput(t *testing.T, stdout, stderr
 	require.Empty(t, stderr)
 }
 
-func newProcessDefinitionSearchServerResponses(t *testing.T, requests *[]map[string]any, responses ...string) *httptest.Server {
+// newProcessDefinitionSearchServerResponses keeps fixture setup aligned with the invocation's advisory version check.
+func newProcessDefinitionSearchServerResponses(t *testing.T, version string, requests *[]map[string]any, responses ...string) *httptest.Server {
 	t.Helper()
 
 	served := 0
 	return newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, version) {
+			return
+		}
+
 		require.Equal(t, http.MethodPost, r.Method)
 		require.Equal(t, "/v2/process-definitions/search", r.URL.Path)
 		body, err := io.ReadAll(r.Body)
@@ -950,6 +982,10 @@ func TestGetProcessDefinitionLifecycle(t *testing.T) {
 					}
 					var requests atomic.Int32
 					srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+						if serveVersionCheckTopology(w, r, "8.10") {
+							return
+						}
+
 						requests.Add(1)
 						require.Equal(t, method, r.Method)
 						require.Equal(t, path, r.URL.Path)
@@ -1020,7 +1056,7 @@ func TestGetProcessDefinitionLifecycleModes(t *testing.T) {
 					body = `{"items":[],"page":{"totalItems":0,"hasMoreTotalItems":false}}`
 				}
 				var requests []map[string]any
-				srv := newProcessDefinitionSearchServerResponses(t, &requests, body)
+				srv := newProcessDefinitionSearchServerResponses(t, "8.10", &requests, body)
 				t.Cleanup(srv.Close)
 				cfg := writeTestConfigForVersion(t, srv.URL, "8.10")
 				args := append([]string{"--config", cfg, "get", "pd"}, mode.flags...)
@@ -1065,7 +1101,7 @@ func TestGetProcessDefinitionLifecycleMixedRows(t *testing.T) {
 		for _, asJSON := range []bool{false, true} {
 			t.Run(version+"/"+strconv.FormatBool(asJSON), func(t *testing.T) {
 				var requests []map[string]any
-				srv := newProcessDefinitionSearchServerResponses(t, &requests,
+				srv := newProcessDefinitionSearchServerResponses(t, version, &requests,
 					`{"items":[{"processDefinitionKey":"1","processDefinitionId":"orders","version":3,"state":"ACTIVE"},{"processDefinitionKey":"2","processDefinitionId":"orders","version":2},{"processDefinitionKey":"3","processDefinitionId":"orders","version":1,"state":"FUTURE"}],"page":{"totalItems":3,"hasMoreTotalItems":false}}`)
 				t.Cleanup(srv.Close)
 				cfg := writeTestConfigForVersion(t, srv.URL, version)
@@ -1108,6 +1144,10 @@ func TestGetProcessDefinitionLifecycleNotFound(t *testing.T) {
 		t.Run(mode, func(t *testing.T) {
 			var requests atomic.Int32
 			srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if serveVersionCheckTopology(w, r, "8.10") {
+					return
+				}
+
 				requests.Add(1)
 				require.Equal(t, http.MethodGet, r.Method)
 				require.Equal(t, "/v2/process-definitions/123", r.URL.Path)
@@ -1153,6 +1193,10 @@ func TestGetProcessDefinitionLifecycleLookupDiagnostics(t *testing.T) {
 				t.Run(format+"/"+route+"/"+mode, func(t *testing.T) {
 					var requests atomic.Int32
 					srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+						if serveVersionCheckTopology(w, r, "8.10") {
+							return
+						}
+
 						requests.Add(1)
 						require.Equal(t, "GET /v2/process-definitions/8675309", r.Method+" "+r.URL.Path)
 						w.Header().Set("Content-Type", "application/json")

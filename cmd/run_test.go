@@ -148,11 +148,19 @@ func TestRunProcessInstanceCommand_AllTenantsRejectsBeforeInputValidationOrReque
 // Verifies run commands consume the profile selected by the root flag for tenant and API URL resolution.
 func TestRunProcessInstanceCommand_ProfileFlagSelectsProfileTenantAndBaseURL(t *testing.T) {
 	baseSrv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		t.Fatalf("base profile server should not be used: %s %s", r.Method, r.URL.Path)
 	}))
 	t.Cleanup(baseSrv.Close)
 
 	prodSrv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
 		case "/v2/process-definitions/search":
@@ -232,6 +240,10 @@ func TestRunProcessInstanceCommand_JSONInvalidInputUsesEnvelope(t *testing.T) {
 // Verifies run process-instance maps HTTP 409 responses to the conflict exit code.
 func TestRunProcessInstanceCommand_ConflictUsesConflictExitCode(t *testing.T) {
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		require.Equal(t, http.MethodPost, r.Method)
 		switch r.URL.Path {
 		case "/v2/process-definitions/search":
@@ -259,9 +271,14 @@ func TestRunProcessInstanceCommand_ConflictUsesConflictExitCode(t *testing.T) {
 	require.Contains(t, string(output), "running process instance(s)")
 }
 
+// TestRunProcessInstanceCommand_V89NoWait preserves the existing command contract with advisory-aware fixtures.
 func TestRunProcessInstanceCommand_V89NoWait(t *testing.T) {
 	var sawRun bool
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.9") {
+			return
+		}
+
 		require.Equal(t, http.MethodPost, r.Method)
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
@@ -307,6 +324,10 @@ func TestRunProcessInstanceCommand_V810NoWaitJSONUsesNativeCreation(t *testing.T
 	var requests []string
 	var createBody map[string]any
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.10") {
+			return
+		}
+
 		requests = append(requests, r.Method+" "+r.URL.Path)
 		require.Equal(t, http.MethodPost, r.Method)
 		w.Header().Set("Content-Type", "application/json")
@@ -344,9 +365,14 @@ func TestRunProcessInstanceCommand_V810NoWaitJSONUsesNativeCreation(t *testing.T
 	require.Contains(t, stderr, "INFO")
 }
 
+// TestRunProcessInstanceCommand_VarsPayloadRemainsCreationInput preserves the existing command contract with advisory-aware fixtures.
 func TestRunProcessInstanceCommand_VarsPayloadRemainsCreationInput(t *testing.T) {
 	var sawRun bool
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.9") {
+			return
+		}
+
 		require.Equal(t, http.MethodPost, r.Method)
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
@@ -434,6 +460,10 @@ apis:
 			stderr := &bytes.Buffer{}
 			var sawRun bool
 			srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if serveVersionCheckTopology(w, r, "8.8") {
+					return
+				}
+
 				require.Equal(t, http.MethodPost, r.Method)
 				require.Equal(t, "/v2/process-instances", r.URL.Path)
 				sawRun = true
@@ -472,6 +502,10 @@ func TestRunProcessInstanceCommand_JSONEnvelopeIncludesCreationContext(t *testin
 	t.Cleanup(resetProcessInstanceCommandGlobals)
 	var sawRun bool
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		require.Equal(t, http.MethodPost, r.Method)
 		require.Equal(t, "/v2/process-instances", r.URL.Path)
 		sawRun = true
@@ -553,6 +587,10 @@ func TestRunProcessInstanceCommand_ProtectedModesSuppressCreationContext(t *test
 			t.Cleanup(resetProcessInstanceCommandGlobals)
 			resetDeployCommandContextForTest(Root())
 			srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if serveVersionCheckTopology(w, r, "8.8") {
+					return
+				}
+
 				require.Equal(t, http.MethodPost, r.Method)
 				require.Equal(t, "/v2/process-instances", r.URL.Path)
 				w.Header().Set("Content-Type", "application/json")
@@ -638,8 +676,13 @@ func TestRunProcessInstanceCommand_JSONEnvelopeIncludesObservedState(t *testing.
 	require.Equal(t, "COMPLETED", item["state"])
 }
 
+// TestRunProcessInstanceCommand_JSONNoWaitOmitsUnobservedState preserves the existing command contract with advisory-aware fixtures.
 func TestRunProcessInstanceCommand_JSONNoWaitOmitsUnobservedState(t *testing.T) {
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.9") {
+			return
+		}
+
 		require.Equal(t, http.MethodPost, r.Method)
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
@@ -721,6 +764,10 @@ func TestRunProcessInstanceCommand_V810KeysOnlyKeepsActivityOffStdout(t *testing
 func TestRunProcessInstanceCommand_VerboseBulkProgressRendersCounters(t *testing.T) {
 	var created testx.SafeSlice[string]
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		switch r.URL.Path {
 		case "/v2/process-instances":
 			require.Equal(t, http.MethodPost, r.Method)
@@ -993,8 +1040,13 @@ func TestRunProcessInstanceResultSortsCountOutputByStartDateAndKey(t *testing.T)
 	}, items)
 }
 
+// TestRunProcessInstanceCommand_DefaultOutputDoesNotEmitMachineEnvelope preserves the existing command contract with advisory-aware fixtures.
 func TestRunProcessInstanceCommand_DefaultOutputDoesNotEmitMachineEnvelope(t *testing.T) {
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.9") {
+			return
+		}
+
 		require.Equal(t, http.MethodPost, r.Method)
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
@@ -1028,6 +1080,10 @@ func newRunProcessInstanceObservedStateServer(t *testing.T, observedState string
 	t.Helper()
 
 	return newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		switch {
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-definitions/search":
@@ -1042,9 +1098,14 @@ func newRunProcessInstanceObservedStateServer(t *testing.T, observedState string
 	}))
 }
 
+// TestRunProcessInstanceBpmnSelectorPartialMultiIDFailsBeforeCreate preserves the existing command contract with advisory-aware fixtures.
 func TestRunProcessInstanceBpmnSelectorPartialMultiIDFailsBeforeCreate(t *testing.T) {
 	var requests []string
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		requests = append(requests, r.Method+" "+r.URL.Path)
 		require.Equal(t, http.MethodPost, r.Method)
 		require.Equal(t, "/v2/process-definitions/search", r.URL.Path)
@@ -1079,9 +1140,14 @@ func TestRunProcessInstanceBpmnSelectorPartialMultiIDFailsBeforeCreate(t *testin
 	require.NotContains(t, string(output), "bpmnProcessId:")
 }
 
+// TestRunProcessInstanceBpmnSelectorMultipleMissingDiagnostics preserves the existing command contract with advisory-aware fixtures.
 func TestRunProcessInstanceBpmnSelectorMultipleMissingDiagnostics(t *testing.T) {
 	var requests []string
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		requests = append(requests, r.Method+" "+r.URL.Path)
 		require.Equal(t, http.MethodPost, r.Method)
 		require.Equal(t, "/v2/process-definitions/search", r.URL.Path)
@@ -1107,11 +1173,16 @@ func TestRunProcessInstanceBpmnSelectorMultipleMissingDiagnostics(t *testing.T) 
 	require.NotContains(t, string(output), "bpmnProcessId:")
 }
 
+// TestRunProcessInstanceBpmnSelectorAllVisiblePreservesCreate preserves the existing command contract with advisory-aware fixtures.
 func TestRunProcessInstanceBpmnSelectorAllVisiblePreservesCreate(t *testing.T) {
 	var requests []string
 	var pdSearchBodies []map[string]any
 	var createBodies []map[string]any
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.9") {
+			return
+		}
+
 		requests = append(requests, r.Method+" "+r.URL.Path)
 		require.Equal(t, http.MethodPost, r.Method)
 		w.Header().Set("Content-Type", "application/json")
@@ -1167,10 +1238,15 @@ func TestRunProcessInstanceBpmnSelectorAllVisiblePreservesCreate(t *testing.T) {
 	require.EqualValues(t, 2, payload["total"])
 }
 
+// TestRunProcessInstanceBpmnSelectorVersionUsesExactSearch preserves the existing command contract with advisory-aware fixtures.
 func TestRunProcessInstanceBpmnSelectorVersionUsesExactSearch(t *testing.T) {
 	var pdSearchBody map[string]any
 	var createBody map[string]any
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.9") {
+			return
+		}
+
 		require.Equal(t, http.MethodPost, r.Method)
 		w.Header().Set("Content-Type", "application/json")
 
@@ -1320,6 +1396,10 @@ func TestRunProcessInstanceCommand_SuspendedCreation(t *testing.T) {
 			t.Run(version+"/"+mode, func(t *testing.T) {
 				var requests testx.SafeSlice[string]
 				srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					if serveVersionCheckTopology(w, r, version) {
+						return
+					}
+
 					requests.Append(r.Method + " " + r.URL.Path)
 					w.Header().Set("Content-Type", "application/json")
 					switch {

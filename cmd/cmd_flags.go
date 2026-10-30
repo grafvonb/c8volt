@@ -4,9 +4,10 @@
 package cmd
 
 var (
-	flagNoWait       bool
-	flagForce        bool
-	flagNoStateCheck bool
+	flagNoVersionCheck bool
+	flagNoWait         bool
+	flagForce          bool
+	flagNoStateCheck   bool
 
 	flagWorkers       int
 	flagNoWorkerLimit bool

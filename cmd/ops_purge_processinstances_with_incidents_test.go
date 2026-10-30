@@ -366,7 +366,7 @@ func TestOpsPurgeProcessInstancesWithIncidentsJSONOutputsStayMachineReadable(t *
 	t.Cleanup(resetOpsPurgeProcessInstancesWithIncidentsFlagState)
 	var requests testx.SafeSlice[string]
 	var deleted testx.SafeSlice[string]
-	srv := newOpsIncidentPurgeServer(t, &requests, &deleted, false)
+	srv := newOpsIncidentPurgeServer(t, "8.9", &requests, &deleted, false)
 	t.Cleanup(srv.Close)
 
 	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
@@ -426,7 +426,7 @@ func TestOpsPurgeProcessInstancesWithIncidentsWritesMarkdownReport(t *testing.T)
 	t.Cleanup(resetOpsPurgeProcessInstancesWithIncidentsFlagState)
 	var requests testx.SafeSlice[string]
 	var deleted testx.SafeSlice[string]
-	srv := newOpsIncidentPurgeServer(t, &requests, &deleted, false)
+	srv := newOpsIncidentPurgeServer(t, "8.9", &requests, &deleted, false)
 	t.Cleanup(srv.Close)
 	reportPath := filepath.Join(t.TempDir(), "incident-purge.md")
 
@@ -468,7 +468,7 @@ func TestOpsPurgeProcessInstancesWithIncidentsWritesJSONReport(t *testing.T) {
 	t.Cleanup(resetOpsPurgeProcessInstancesWithIncidentsFlagState)
 	var requests testx.SafeSlice[string]
 	var deleted testx.SafeSlice[string]
-	srv := newOpsIncidentPurgeServer(t, &requests, &deleted, false)
+	srv := newOpsIncidentPurgeServer(t, "8.9", &requests, &deleted, false)
 	t.Cleanup(srv.Close)
 	reportPath := filepath.Join(t.TempDir(), "incident-purge.json")
 	require.NoError(t, os.WriteFile(reportPath, []byte("old report"), 0o600))
@@ -566,7 +566,7 @@ func TestOpsPurgeProcessInstancesWithIncidentsExistingReportPreservation(t *test
 		t.Run(tt.name, func(t *testing.T) {
 			var requests testx.SafeSlice[string]
 			var deleted testx.SafeSlice[string]
-			srv := newOpsIncidentPurgeServer(t, &requests, &deleted, tt.withActiveChild)
+			srv := newOpsIncidentPurgeServer(t, "8.9", &requests, &deleted, tt.withActiveChild)
 			t.Cleanup(srv.Close)
 			reportPath := filepath.Join(t.TempDir(), "incident-purge.md")
 			const existingReport = "existing report"
@@ -604,7 +604,7 @@ func TestOpsPurgeProcessInstancesWithIncidentsConfirmedDeletionUsesFrozenPlanRoo
 
 	var requests testx.SafeSlice[string]
 	var deleted testx.SafeSlice[string]
-	srv := newOpsIncidentPurgeServer(t, &requests, &deleted, false)
+	srv := newOpsIncidentPurgeServer(t, "8.9", &requests, &deleted, false)
 	t.Cleanup(srv.Close)
 	var prompt string
 	promptPath := filepath.Join(t.TempDir(), "prompt.txt")
@@ -642,7 +642,7 @@ func TestOpsPurgeProcessInstancesWithIncidentsInteractiveTenantContext(t *testin
 		t.Run(tt.name, func(t *testing.T) {
 			var requests testx.SafeSlice[string]
 			var deleted testx.SafeSlice[string]
-			srv := newOpsIncidentPurgeServer(t, &requests, &deleted, false)
+			srv := newOpsIncidentPurgeServer(t, "8.9", &requests, &deleted, false)
 			t.Cleanup(srv.Close)
 			promptPath := filepath.Join(t.TempDir(), "prompt.txt")
 			promptOutputPath := filepath.Join(t.TempDir(), "prompt-output.txt")
@@ -720,7 +720,7 @@ func TestOpsPurgeProcessInstancesWithIncidentsConfirmedDeletionReusesMultiPageFr
 func TestOpsPurgeProcessInstancesWithIncidentsAutoConfirmReportsTenantScopeBeforeWork(t *testing.T) {
 	var requests testx.SafeSlice[string]
 	var deleted testx.SafeSlice[string]
-	backend := newOpsIncidentPurgeServer(t, &requests, &deleted, false)
+	backend := newOpsIncidentPurgeServer(t, "8.9", &requests, &deleted, false)
 	t.Cleanup(backend.Close)
 	output := &opsTenantTimingOutput{}
 	proxy, observations := newOpsTenantTimingProxy(t, backend.URL, output, func(r *http.Request) bool {
@@ -757,7 +757,7 @@ func TestOpsPurgeProcessInstancesWithIncidentsAutomationJSONExecutesWithoutAutoC
 
 	var requests testx.SafeSlice[string]
 	var deleted testx.SafeSlice[string]
-	srv := newOpsIncidentPurgeServer(t, &requests, &deleted, false)
+	srv := newOpsIncidentPurgeServer(t, "8.9", &requests, &deleted, false)
 	t.Cleanup(srv.Close)
 
 	stdout, stderr, err := testx.RunCmdSubprocessSeparate(t, "TestOpsPurgeProcessInstancesWithIncidentsCommandHelper", map[string]string{
@@ -801,7 +801,7 @@ func TestOpsPurgeProcessInstancesWithIncidentsAutomationJSONExecutesWithoutAutoC
 func TestOpsPurgeProcessInstancesWithIncidentsBlocksNonFinalScopeBeforeMutation(t *testing.T) {
 	var requests testx.SafeSlice[string]
 	var deleted testx.SafeSlice[string]
-	srv := newOpsIncidentPurgeServer(t, &requests, &deleted, true)
+	srv := newOpsIncidentPurgeServer(t, "8.9", &requests, &deleted, true)
 	t.Cleanup(srv.Close)
 
 	output, err := testx.RunCmdSubprocess(t, "TestOpsPurgeProcessInstancesWithIncidentsCommandHelper", map[string]string{
@@ -1166,10 +1166,15 @@ const (
 	opsIncidentPurgeChildKey = "2251799813685302"
 )
 
-func newOpsIncidentPurgeServer(t *testing.T, requests *testx.SafeSlice[string], deleted *testx.SafeSlice[string], withActiveChild bool) *httptest.Server {
+// newOpsIncidentPurgeServer keeps fixture setup aligned with the invocation's advisory version check.
+func newOpsIncidentPurgeServer(t *testing.T, version string, requests *testx.SafeSlice[string], deleted *testx.SafeSlice[string], withActiveChild bool) *httptest.Server {
 	t.Helper()
 
 	return newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, version) {
+			return
+		}
+
 		switch {
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/incidents/search":
 			body, err := io.ReadAll(r.Body)
@@ -1208,11 +1213,16 @@ func newOpsIncidentPurgeServer(t *testing.T, requests *testx.SafeSlice[string], 
 	}))
 }
 
+// newOpsIncidentPurgeMultiPageServer keeps fixture setup aligned with the invocation's advisory version check.
 func newOpsIncidentPurgeMultiPageServer(t *testing.T, requests *testx.SafeSlice[string], deleted *testx.SafeSlice[string]) *httptest.Server {
 	t.Helper()
 
 	var incidentSearches testx.AtomicCounter
 	return newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		switch {
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/incidents/search":
 			body, err := io.ReadAll(r.Body)

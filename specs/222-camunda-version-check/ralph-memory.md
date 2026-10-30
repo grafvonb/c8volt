@@ -10,9 +10,12 @@ Started: 2026-10-30T15:23:14Z
 - Install with `httpc.WithBeforeRequestGate(ctx, checker)`. `PrepareServiceDeps` now exposes the wrapper through additive `APIClient`; all 36 generated-client arguments in 33 constructors use it. Concrete `HTTPClient` remains unchanged for nested service construction and auth. Without a gate, or with bypass, Do delegates directly. Only original context cancellation prevents gated operational dispatch.
 - The probe lazily calls the neutral cluster factory using a shallow client copy, refusing redirects and sharing transport/jar. Its child context has the two-second/shorter-client/parent deadline, `WithoutReadRetry`, bypass, and a fresh `BeginRequestRateAttempt` observation.
 
+- `cmd/installVersionCheck` installs the invocation checker after HTTP/auth initialization, preserving the HTTP service context and independent pacing evidence. The configured logger renders typed outcomes at WARN; completed warning facts drive connection-test deduplication independently of logger filtering.
+- Explicit connection tests retain the requested topology read and legacy JSON compatibility evidence, including permissive `8.9.garbage`. Human fallback validates display text separately. Actual connection failures use `handleCommandError` with a bounded reason and the original wrapped error for exit classification.
+
 ## Decisions
 
-- T001 (primitive) and T002 (all shared dependency/adapter wiring) are complete. T003 owns CLI activation, logging, command fixtures, and documentation. CLI defaults remain unchanged until T003.
+- T001 (primitive), T002 (shared adapter wiring), and T003 (CLI activation/operator contract) are complete. Checking is enabled by default; the persistent invocation-only `--no-version-check` flag skips it.
 - Checker callback runs outside locks, before outcome publication and waiter notification. It must not recursively call `BeforeRequest`; it may inspect `Outcome`. Callback receives values without raw errors.
 - Invalid configuration remains a bootstrap concern; lazy checker factory failures are retained as unavailable advisory outcomes. Effective version selection is never changed.
 
@@ -25,6 +28,11 @@ Started: 2026-10-30T15:23:14Z
 - Cookie bootstrap uses the shared concrete client and therefore the same limiter/activity/diagnostic sequence. OAuth token refresh uses its existing separate unauthenticated concrete client, sharing diagnostics but not API pacing. Both remain outside the gate even with a gate-bearing context.
 - The OAuth generated client appends `/token` to its configured base URL in fixtures. Variable-page JSON requires both `totalItems` and `hasMoreTotalItems`, even for empty results.
 - Pacing evidence fixture: rate 0.45 with HTTP timeout 3s makes the next slot exceed the probe's 2s cap but fit the operation's own budget. A 4s parent then rejects a later retry, preserving earlier ambiguous/503 evidence. Unadmitted probe/retry produce no diagnostic network start.
+
+- Existing command fake handlers serve a matching topology through `serveVersionCheckTopology`; version-sensitive helpers accept the configured release. Count the advisory in shared request/DEBUG sequences, while operation-only counters stay after the topology branch. Never globally opt out in reset helpers.
+- Only four fixed-budget request-rate mutation regressions and the explicit failing-topology envelope helper opt out to isolate their original operational slots/retries. Shared-start/auth/reporting tests keep default checking enabled.
+- A local process-definition terminal abort needs `--no-state-check --no-wait` to avoid the existing remote batch-capability preflight. Real-terminal abort and empty-discovery fixtures preserve prompt destinations and zero mutation calls.
+- Facade error conversion normalizes an expired parent to `ferrors.ErrTimeout`; assert that public class rather than a raw context error. Local Args validation still has its existing empty stdout contract, even with `--json`.
 
 ## Reusable Commands
 
@@ -42,12 +50,20 @@ Run validation with inherited `C8VOLT_*`, `GO_WANT_*`, GOFLAGS/build tags, make 
 - `go test ./internal/services/... ./c8volt/... -count=1`
 - `go vet ./internal/services/... ./c8volt/...`
 
+- `go test ./cmd -run 'Test(VersionCheck|APIDiagnostics|RequestRate|ConfigTestConnection|BulkCompletionDiagnosticLogging|CapabilityDocument|AllCommandHelp)' -count=1`
+- `go test ./internal/services/httpc/... -run 'Test(VersionCheck|ReadRetry|APIDiagnostics|RequestRate)' -race -count=1`
+- `go test ./cmd -run 'Test(VersionCheck|BulkCompletionSummaryLogging|ScalarJob|UpdateProcessInstance|UpdateUserTaskAssignmentDiagnostic|UpdateUserTaskAssignmentPreflight|UpdateUserTaskAssignmentUnchanged|UpdateUserTaskAssignmentMixed|UpdateUserTaskCompletionDiagnostic|UpdateUserTaskCompletionPreflightDiagnostics|WalkProcessInstanceCommand_WithListenersJSON)' -count=1`
+- `go test ./cmd -run 'Test(VersionCheckHelp|CapabilityDocumentVersionCheck|AllCommandHelp)' -count=1`
+- `make docs-content`
+- `make test PKG=./...` — final isolated race suite passed in iteration 3 (cmd: 405.968s).
+- `git diff --check`
+
 ## Do Not Repeat
 
 - Do not move the gate into RoundTrip: that consumes the original operation's HTTP timeout during the probe.
 - Do not reuse the probe context or pacing observation for the operation, mutate the shared client's redirect policy, retry failed checks, or substitute the strict parser for legacy connection-test machine warnings.
-- Do not enable CLI checking before T003 or validate against real Camunda services. Real-engine behavior remains unverified.
+- Do not validate implementation against real Camunda services. Real-engine reporting, deployed authentication, and external proxy/network behavior remain unverified.
 
 ## Current Handoff
 
-- Next dependency-ready work unit: T003 [US3], CLI activation and complete operator contract. T001 and T002 are complete; no blocking dependencies. Recheck tasks.md before selection. Install the lazy checker after auth, add the persistent opt-out and configured WARN renderer, preserve explicit connection-test JSON evidence while deduplicating human warnings, update execution/diagnostic/terminal fixtures and help/README, regenerate docs, and run the required isolated checks including the final full race suite. Preserve HTTP service context so the probe owns independent pacing evidence; do not globally disable the check in test resets.
+- Feature complete; no handoff required.

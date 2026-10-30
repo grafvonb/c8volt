@@ -33,6 +33,10 @@ func TestSuspendedDateSnapshots(t *testing.T) {
 				// Each read returns a fresh snapshot of the same still-suspended instance.
 				dates := []string{`,"suspendedDate":"2026-10-17T10:30:00.123456789+02:00"`, "", `,"suspendedDate":null`, `,"suspendedDate":"0001-01-01T00:00:00Z"`}
 				srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					if serveVersionCheckTopology(w, r, "8.10") {
+						return
+					}
+
 					i := int(requests.Add(1)) - 1
 					if i >= len(dates) {
 						http.Error(w, "unexpected extra request", 500)
@@ -151,6 +155,10 @@ func TestSuspendedGetOutputTerminal(t *testing.T) {
 				t.Run(fmt.Sprintf("empty=%t/%s/%s", empty, mode.name, policy), func(t *testing.T) {
 					var requests atomic.Int32
 					srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+						if serveVersionCheckTopology(w, r, "8.10") {
+							return
+						}
+
 						requests.Add(1)
 						require.Equal(t, http.MethodPost, r.Method)
 						require.Equal(t, "/v2/process-instances/search", r.URL.Path)
@@ -271,6 +279,10 @@ func TestSuspendedGetExplicitKeyAndExpectations(t *testing.T) {
 		t.Run(strings.Join(selection, " "), func(t *testing.T) {
 			var requests atomic.Int32
 			srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if serveVersionCheckTopology(w, r, "8.10") {
+					return
+				}
+
 				requests.Add(1)
 				require.Equal(t, http.MethodGet, r.Method)
 				require.Equal(t, "/v2/process-instances/123", r.URL.Path)
@@ -301,6 +313,10 @@ func TestSuspendedStateValidationFeedback(t *testing.T) {
 		t.Run(verb, func(t *testing.T) {
 			var requests atomic.Int32
 			srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if serveVersionCheckTopology(w, r, "8.10") {
+					return
+				}
+
 				requests.Add(1)
 				http.Error(w, "unexpected request", 500)
 			}))
@@ -329,6 +345,10 @@ func TestSuspendedSearchStateSelection(t *testing.T) {
 		t.Run(state, func(t *testing.T) {
 			var requests atomic.Int32
 			srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if serveVersionCheckTopology(w, r, "8.10") {
+					return
+				}
+
 				requests.Add(1)
 				require.Equal(t, http.MethodPost, r.Method)
 				require.Equal(t, "/v2/process-instances/search", r.URL.Path)

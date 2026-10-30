@@ -455,7 +455,7 @@ func TestOpsPurgeAllProcessDefinitionsConfirmedDeletionUsesFrozenCandidates(t *t
 
 	var requests testx.SafeSlice[string]
 	var deleted testx.SafeSlice[string]
-	srv := newOpsPurgeAllProcessDefinitionsServer(t, &requests, &deleted, 0)
+	srv := newOpsPurgeAllProcessDefinitionsServer(t, "8.9", &requests, &deleted, 0)
 	t.Cleanup(srv.Close)
 	promptPath := filepath.Join(t.TempDir(), "prompt.txt")
 
@@ -496,7 +496,7 @@ func TestOpsPurgeAllProcessDefinitionsInteractiveTenantContext(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			var requests testx.SafeSlice[string]
 			var deleted testx.SafeSlice[string]
-			srv := newOpsPurgeAllProcessDefinitionsServer(t, &requests, &deleted, 0)
+			srv := newOpsPurgeAllProcessDefinitionsServer(t, "8.9", &requests, &deleted, 0)
 			t.Cleanup(srv.Close)
 			promptPath := filepath.Join(t.TempDir(), "prompt.txt")
 			promptOutputPath := filepath.Join(t.TempDir(), "prompt-output.txt")
@@ -550,7 +550,7 @@ func TestOpsPurgeAllProcessDefinitionsAutoConfirmReportsTenantScopeBeforeWork(t 
 
 	var requests testx.SafeSlice[string]
 	var deleted testx.SafeSlice[string]
-	backend := newOpsPurgeAllProcessDefinitionsServer(t, &requests, &deleted, 0)
+	backend := newOpsPurgeAllProcessDefinitionsServer(t, "8.9", &requests, &deleted, 0)
 	t.Cleanup(backend.Close)
 	output := &opsTenantTimingOutput{}
 	proxy, observations := newOpsTenantTimingProxy(t, backend.URL, output, func(r *http.Request) bool {
@@ -584,7 +584,7 @@ func TestOpsPurgeAllProcessDefinitionsPagedConfirmationReusesFrozenCandidates(t 
 
 	var requests testx.SafeSlice[string]
 	var deleted testx.SafeSlice[string]
-	srv := newOpsPurgeAllProcessDefinitionsServer(t, &requests, &deleted, 0)
+	srv := newOpsPurgeAllProcessDefinitionsServer(t, "8.9", &requests, &deleted, 0)
 	t.Cleanup(srv.Close)
 	promptPath := filepath.Join(t.TempDir(), "prompt.txt")
 
@@ -614,7 +614,7 @@ func TestOpsPurgeAllProcessDefinitionsVerboseDiscoveryProgress(t *testing.T) {
 
 	var requests testx.SafeSlice[string]
 	var deleted testx.SafeSlice[string]
-	srv := newOpsPurgeAllProcessDefinitionsServer(t, &requests, &deleted, 0)
+	srv := newOpsPurgeAllProcessDefinitionsServer(t, "8.9", &requests, &deleted, 0)
 	t.Cleanup(srv.Close)
 
 	stdout, stderr, err := testx.RunCmdSubprocessSeparate(t, "TestOpsPurgeAllProcessDefinitionsCommandHelper", map[string]string{
@@ -647,7 +647,7 @@ func TestOpsPurgeAllProcessDefinitionsLimitJSONOutput(t *testing.T) {
 
 	var requests testx.SafeSlice[string]
 	var deleted testx.SafeSlice[string]
-	srv := newOpsPurgeAllProcessDefinitionsServer(t, &requests, &deleted, 0)
+	srv := newOpsPurgeAllProcessDefinitionsServer(t, "8.9", &requests, &deleted, 0)
 	t.Cleanup(srv.Close)
 
 	stdout, stderr, err := testx.RunCmdSubprocessSeparate(t, "TestOpsPurgeAllProcessDefinitionsCommandHelper", map[string]string{
@@ -687,7 +687,7 @@ func TestOpsPurgeAllProcessDefinitionsAutomationJSONExecutesWithoutAutoConfirm(t
 
 	var requests testx.SafeSlice[string]
 	var deleted testx.SafeSlice[string]
-	srv := newOpsPurgeAllProcessDefinitionsServer(t, &requests, &deleted, 0)
+	srv := newOpsPurgeAllProcessDefinitionsServer(t, "8.9", &requests, &deleted, 0)
 	t.Cleanup(srv.Close)
 
 	stdout, stderr, err := testx.RunCmdSubprocessSeparate(t, "TestOpsPurgeAllProcessDefinitionsCommandHelper", map[string]string{
@@ -740,7 +740,7 @@ func TestOpsPurgeAllProcessDefinitionsForceCleanupActivityFollowsNestedStages(t 
 
 	state := newOpsPurgeAllProcessDefinitionsNestedState()
 	var requests testx.SafeSlice[string]
-	srv := newOpsPurgeAllProcessDefinitionsNestedServer(t, state, &requests)
+	srv := newOpsPurgeAllProcessDefinitionsNestedServer(t, "8.8", state, &requests)
 	t.Cleanup(srv.Close)
 	t.Cleanup(func() {
 		state.releaseCancel.Do(func() { close(state.cancelRelease) })
@@ -853,7 +853,7 @@ func TestOpsPurgeAllProcessDefinitionsForceCleanupFailuresUseAggregateDiagnostic
 			tt.configure(state)
 			state.releaseDrain.Do(func() { close(state.drainRelease) })
 			var requests testx.SafeSlice[string]
-			srv := newOpsPurgeAllProcessDefinitionsNestedServer(t, state, &requests)
+			srv := newOpsPurgeAllProcessDefinitionsNestedServer(t, "8.9", state, &requests)
 			t.Cleanup(srv.Close)
 
 			_, stderr, err := testx.RunCmdSubprocessSeparate(t, "TestOpsPurgeAllProcessDefinitionsCommandHelper", map[string]string{
@@ -897,7 +897,7 @@ func TestOpsPurgeAllProcessDefinitionsForceCleanupVerboseAndDebugPrintOneOutcome
 			state := newOpsPurgeAllProcessDefinitionsNestedState()
 			state.releaseDrain.Do(func() { close(state.drainRelease) })
 			var requests testx.SafeSlice[string]
-			srv := newOpsPurgeAllProcessDefinitionsNestedServer(t, state, &requests)
+			srv := newOpsPurgeAllProcessDefinitionsNestedServer(t, "8.9", state, &requests)
 			t.Cleanup(srv.Close)
 
 			stdout, stderr, err := testx.RunCmdSubprocessSeparate(t, "TestOpsPurgeAllProcessDefinitionsCommandHelper", map[string]string{
@@ -990,7 +990,7 @@ func TestOpsPurgeAllProcessDefinitionsForceCleanupMachineModeCompatibility(t *te
 			state := newOpsPurgeAllProcessDefinitionsNestedState()
 			state.releaseDrain.Do(func() { close(state.drainRelease) })
 			var requests testx.SafeSlice[string]
-			srv := newOpsPurgeAllProcessDefinitionsNestedServer(t, state, &requests)
+			srv := newOpsPurgeAllProcessDefinitionsNestedServer(t, "8.9", state, &requests)
 			t.Cleanup(srv.Close)
 
 			stdout, stderr, err := testx.RunCmdSubprocessSeparate(t, "TestOpsPurgeAllProcessDefinitionsCommandHelper", map[string]string{
@@ -1032,7 +1032,7 @@ func TestOpsPurgeAllProcessDefinitionsQuietForceCleanupFailureCompatibility(t *t
 	state := newOpsPurgeAllProcessDefinitionsNestedState()
 	state.failCancelKey = opsAllProcessDefinitionsPurgeRootA
 	var requests testx.SafeSlice[string]
-	srv := newOpsPurgeAllProcessDefinitionsNestedServer(t, state, &requests)
+	srv := newOpsPurgeAllProcessDefinitionsNestedServer(t, "8.9", state, &requests)
 	t.Cleanup(srv.Close)
 
 	stdout, stderr, err := testx.RunCmdSubprocessSeparate(t, "TestOpsPurgeAllProcessDefinitionsCommandHelper", map[string]string{
@@ -1063,7 +1063,7 @@ func TestOpsPurgeAllProcessDefinitionsQuietForceCleanupFailureCompatibility(t *t
 func TestOpsPurgeAllProcessDefinitionsDeclinedConfirmationCompatibility(t *testing.T) {
 	var requests testx.SafeSlice[string]
 	var deleted testx.SafeSlice[string]
-	srv := newOpsPurgeAllProcessDefinitionsServer(t, &requests, &deleted, 0)
+	srv := newOpsPurgeAllProcessDefinitionsServer(t, "8.9", &requests, &deleted, 0)
 	t.Cleanup(srv.Close)
 	promptPath := filepath.Join(t.TempDir(), "prompt.txt")
 
@@ -1087,7 +1087,7 @@ func TestOpsPurgeAllProcessDefinitionsDeclinedConfirmationCompatibility(t *testi
 func TestOpsPurgeAllProcessDefinitionsEmptySelectionCompatibility(t *testing.T) {
 	var requests testx.SafeSlice[string]
 	var deleted testx.SafeSlice[string]
-	srv := newOpsPurgeAllProcessDefinitionsEmptyServer(t, &requests, &deleted)
+	srv := newOpsPurgeAllProcessDefinitionsEmptyServer(t, "8.9", &requests, &deleted)
 	t.Cleanup(srv.Close)
 
 	stdout, stderr, err := testx.RunCmdSubprocessSeparate(t, "TestOpsPurgeAllProcessDefinitionsCommandHelper", map[string]string{
@@ -1112,7 +1112,7 @@ func TestOpsPurgeAllProcessDefinitionsEmptySelectionCompatibility(t *testing.T) 
 func TestOpsPurgeAllProcessDefinitionsBlocksActiveInstancesBeforeMutation(t *testing.T) {
 	var requests testx.SafeSlice[string]
 	var deleted testx.SafeSlice[string]
-	srv := newOpsPurgeAllProcessDefinitionsServer(t, &requests, &deleted, 3)
+	srv := newOpsPurgeAllProcessDefinitionsServer(t, "8.9", &requests, &deleted, 3)
 	t.Cleanup(srv.Close)
 	reportPath := filepath.Join(t.TempDir(), "all-pd-purge-blocked.json")
 
@@ -1170,7 +1170,7 @@ func TestOpsPurgeAllProcessDefinitionsWritesMarkdownReport(t *testing.T) {
 	t.Cleanup(resetOpsPurgeAllProcessDefinitionsFlagState)
 	var requests testx.SafeSlice[string]
 	var deleted testx.SafeSlice[string]
-	srv := newOpsPurgeAllProcessDefinitionsServer(t, &requests, &deleted, 0)
+	srv := newOpsPurgeAllProcessDefinitionsServer(t, "8.9", &requests, &deleted, 0)
 	t.Cleanup(srv.Close)
 	reportPath := filepath.Join(t.TempDir(), "all-pd-purge.md")
 
@@ -1216,7 +1216,7 @@ func TestOpsPurgeAllProcessDefinitionsWritesJSONReport(t *testing.T) {
 	t.Cleanup(resetOpsPurgeAllProcessDefinitionsFlagState)
 	var requests testx.SafeSlice[string]
 	var deleted testx.SafeSlice[string]
-	srv := newOpsPurgeAllProcessDefinitionsServer(t, &requests, &deleted, 0)
+	srv := newOpsPurgeAllProcessDefinitionsServer(t, "8.9", &requests, &deleted, 0)
 	t.Cleanup(srv.Close)
 	reportPath := filepath.Join(t.TempDir(), "all-pd-purge.json")
 	require.NoError(t, os.WriteFile(reportPath, []byte("old report"), 0o600))
@@ -1299,7 +1299,7 @@ func TestOpsPurgeAllProcessDefinitionsExistingReportPreservation(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			var requests testx.SafeSlice[string]
 			var deleted testx.SafeSlice[string]
-			srv := newOpsPurgeAllProcessDefinitionsServer(t, &requests, &deleted, tt.activeCount)
+			srv := newOpsPurgeAllProcessDefinitionsServer(t, "8.9", &requests, &deleted, tt.activeCount)
 			t.Cleanup(srv.Close)
 			reportPath := filepath.Join(t.TempDir(), "all-pd-purge.md")
 			const existingReport = "existing report"
@@ -1335,7 +1335,7 @@ func TestOpsPurgeAllProcessDefinitionsRejectsUnsupportedFullHistoryVersionsBefor
 		t.Run(version.String(), func(t *testing.T) {
 			var requests testx.SafeSlice[string]
 			var deleted testx.SafeSlice[string]
-			srv := newOpsPurgeAllProcessDefinitionsServer(t, &requests, &deleted, 0)
+			srv := newOpsPurgeAllProcessDefinitionsServer(t, version.String(), &requests, &deleted, 0)
 			t.Cleanup(srv.Close)
 
 			output, err := testx.RunCmdSubprocess(t, "TestOpsPurgeAllProcessDefinitionsCommandHelper", map[string]string{
@@ -1365,7 +1365,7 @@ func TestOpsPurgeAllProcessDefinitionsAcceptsFullHistoryCapabilityVersionsBefore
 		t.Run(version.String(), func(t *testing.T) {
 			var requests testx.SafeSlice[string]
 			var deleted testx.SafeSlice[string]
-			srv := newOpsPurgeAllProcessDefinitionsServer(t, &requests, &deleted, 0)
+			srv := newOpsPurgeAllProcessDefinitionsServer(t, version.String(), &requests, &deleted, 0)
 			t.Cleanup(srv.Close)
 
 			output, err := testx.RunCmdSubprocess(t, "TestOpsPurgeAllProcessDefinitionsCommandHelper", map[string]string{
@@ -1697,10 +1697,15 @@ func requireOpsPurgeAllProcessDefinitionsActivityContains(t *testing.T, sink *ac
 	}, 5*time.Second, 10*time.Millisecond, "activity updates: %v", sink.PriorityUpdates())
 }
 
-func newOpsPurgeAllProcessDefinitionsServer(t *testing.T, requests *testx.SafeSlice[string], deleted *testx.SafeSlice[string], activeCount int64) *httptest.Server {
+// newOpsPurgeAllProcessDefinitionsServer keeps fixture setup aligned with the invocation's advisory version check.
+func newOpsPurgeAllProcessDefinitionsServer(t *testing.T, version string, requests *testx.SafeSlice[string], deleted *testx.SafeSlice[string], activeCount int64) *httptest.Server {
 	t.Helper()
 
 	return newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, version) {
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		switch {
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-definitions/search":
@@ -1740,10 +1745,14 @@ func newOpsPurgeAllProcessDefinitionsServer(t *testing.T, requests *testx.SafeSl
 
 // newOpsPurgeAllProcessDefinitionsEmptyServer returns an empty APD discovery
 // response and fails the test if mutation or cleanup requests are attempted.
-func newOpsPurgeAllProcessDefinitionsEmptyServer(t *testing.T, requests *testx.SafeSlice[string], deleted *testx.SafeSlice[string]) *httptest.Server {
+func newOpsPurgeAllProcessDefinitionsEmptyServer(t *testing.T, version string, requests *testx.SafeSlice[string], deleted *testx.SafeSlice[string]) *httptest.Server {
 	t.Helper()
 
 	return newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, version) {
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		switch {
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-definitions/search":
@@ -1764,10 +1773,14 @@ func newOpsPurgeAllProcessDefinitionsEmptyServer(t *testing.T, requests *testx.S
 
 // newOpsPurgeAllProcessDefinitionsNestedServer handles the real force-cleanup
 // command path with shared roots and blocking cleanup checkpoints.
-func newOpsPurgeAllProcessDefinitionsNestedServer(t *testing.T, state *opsPurgeAllProcessDefinitionsNestedState, requests *testx.SafeSlice[string]) *httptest.Server {
+func newOpsPurgeAllProcessDefinitionsNestedServer(t *testing.T, version string, state *opsPurgeAllProcessDefinitionsNestedState, requests *testx.SafeSlice[string]) *httptest.Server {
 	t.Helper()
 
 	return newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, version) {
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		switch {
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-definitions/search":

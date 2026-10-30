@@ -407,6 +407,10 @@ func TestDeleteProcessInstanceDryRun_SearchTenantScopedCandidatesAndDependencies
 	var fetched testx.SafeSlice[string]
 
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		switch {
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
@@ -608,9 +612,14 @@ func TestDeleteProcessInstanceSearchScaffold_UsesTempConfigAndCapturesSearchRequ
 	require.NotContains(t, output, "no process instance keys provided or found to delete")
 }
 
+// TestDeleteProcessInstanceBpmnSelectorMissingFailsBeforeSearch preserves the existing command contract with advisory-aware fixtures.
 func TestDeleteProcessInstanceBpmnSelectorMissingFailsBeforeSearch(t *testing.T) {
 	var requests []string
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		requests = append(requests, r.Method+" "+r.URL.Path)
 		require.Equal(t, http.MethodPost, r.Method)
 		switch r.URL.Path {
@@ -635,6 +644,7 @@ func TestDeleteProcessInstanceBpmnSelectorMissingFailsBeforeSearch(t *testing.T)
 	require.NotContains(t, output, "found: 0")
 }
 
+// TestDeleteProcessInstanceBpmnSelectorMissingMachineModesDoNotPrompt preserves the existing command contract with advisory-aware fixtures.
 func TestDeleteProcessInstanceBpmnSelectorMissingMachineModesDoNotPrompt(t *testing.T) {
 	tests := []struct {
 		name   string
@@ -648,6 +658,10 @@ func TestDeleteProcessInstanceBpmnSelectorMissingMachineModesDoNotPrompt(t *test
 		t.Run(tt.name, func(t *testing.T) {
 			var requests []string
 			srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if serveVersionCheckTopology(w, r, "8.8") {
+					return
+				}
+
 				requests = append(requests, r.Method+" "+r.URL.Path)
 				require.Equal(t, http.MethodPost, r.Method)
 				switch r.URL.Path {
@@ -673,9 +687,14 @@ func TestDeleteProcessInstanceBpmnSelectorMissingMachineModesDoNotPrompt(t *test
 	}
 }
 
+// TestDeleteProcessInstanceBpmnSelectorVisiblePreservesSearchNoOp preserves the existing command contract with advisory-aware fixtures.
 func TestDeleteProcessInstanceBpmnSelectorVisiblePreservesSearchNoOp(t *testing.T) {
 	var requests []string
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		requests = append(requests, r.Method+" "+r.URL.Path)
 		require.Equal(t, http.MethodPost, r.Method)
 		w.Header().Set("Content-Type", "application/json")
@@ -858,6 +877,10 @@ func TestDeleteProcessInstanceEmptySelectorPreservesDiscoveryRequests(t *testing
 			var paths []string
 			var bodies []string
 			srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if serveVersionCheckTopology(w, r, "8.8") {
+					return
+				}
+
 				paths = append(paths, r.Method+" "+r.URL.Path)
 				body, err := io.ReadAll(r.Body)
 				require.NoError(t, err)
@@ -918,6 +941,10 @@ func TestDeleteProcessInstanceCommand_SearchSelectionUsesDateFiltersAndDeletesMa
 	var deleted testx.SafeSlice[string]
 
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		switch {
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-definitions/search":
 			writeVisibleProcessDefinitionSearchResponse(w)
@@ -977,6 +1004,10 @@ func TestDeleteProcessInstanceCommand_SearchSelectionUsesRelativeDayFiltersAndDe
 	var deleted testx.SafeSlice[string]
 
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		switch {
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-definitions/search":
 			writeVisibleProcessDefinitionSearchResponse(w)
@@ -1359,6 +1390,10 @@ func TestDeleteProcessInstanceCommand_SearchPagingPromptFlow(t *testing.T) {
 	var searchMu sync.Mutex
 
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		switch {
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
 			body, err := io.ReadAll(r.Body)
@@ -1452,6 +1487,10 @@ func TestDeleteProcessInstanceCommand_SearchPagingAutoConfirmFlow(t *testing.T) 
 	searchPage := 0
 
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		switch {
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
 			body, err := io.ReadAll(r.Body)
@@ -1540,6 +1579,10 @@ func TestDeleteProcessInstanceCommand_SearchPagingLimitFlow(t *testing.T) {
 	searchPage := 0
 
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		switch {
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
 			body, err := io.ReadAll(r.Body)
@@ -1628,6 +1671,10 @@ func TestDeleteProcessInstanceCommand_SearchPagingBatchSizeLimitFlow(t *testing.
 	var deleted testx.SafeSlice[string]
 
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		switch {
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
 			body, err := io.ReadAll(r.Body)
@@ -1707,6 +1754,10 @@ func TestDeleteProcessInstanceCommand_SearchPagingAutomationFlow(t *testing.T) {
 	searchPage := 0
 
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		switch {
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
 			body, err := io.ReadAll(r.Body)
@@ -1794,6 +1845,10 @@ func TestDeleteProcessInstanceCommand_SearchPagingPartialCompletionSummary(t *te
 	var deleted testx.SafeSlice[string]
 
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		switch {
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
 			body, err := io.ReadAll(r.Body)
@@ -1866,6 +1921,10 @@ func TestDeleteProcessInstanceCommand_SearchPagingWarningStopSummary(t *testing.
 	var deleted testx.SafeSlice[string]
 
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		switch {
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
 			body, err := io.ReadAll(r.Body)

@@ -25,9 +25,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestGetJobCommand_HumanOutput preserves the existing command contract with advisory-aware fixtures.
 func TestGetJobCommand_HumanOutput(t *testing.T) {
 	var requests []string
-	srv := newJobLookupServer(t, &requests, `{"items":[{"jobKey":"2251799813711967","state":"FAILED","retries":2,"deadline":"2026-05-08T10:15:00Z","processInstanceKey":"2251799813711000","elementInstanceKey":"2251799813711001","errorCode":"PAYMENT_ERROR","errorMessage":"worker failed","tenantId":"tenant-a"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`)
+	srv := newJobLookupServer(t, "8.8", &requests, `{"items":[{"jobKey":"2251799813711967","state":"FAILED","retries":2,"deadline":"2026-05-08T10:15:00Z","processInstanceKey":"2251799813711000","elementInstanceKey":"2251799813711001","errorCode":"PAYMENT_ERROR","errorMessage":"worker failed","tenantId":"tenant-a"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`)
 	t.Cleanup(srv.Close)
 	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
 
@@ -50,11 +51,12 @@ func TestGetJobCommand_HTTPFallbackActivityUsesCommandContext(t *testing.T) {
 	requireHTTPFallbackActivityStarts(t, sink, "searching jobs")
 }
 
+// TestGetJobCommand_HumanOutputKeepsLongErrorMessageInlineByDefault preserves the existing command contract with advisory-aware fixtures.
 func TestGetJobCommand_HumanOutputKeepsLongErrorMessageInlineByDefault(t *testing.T) {
 	longMessage := "Process instance could not be deleted. Error: Failed DELETE to https://example.invalid/orchestration/v1/process-instances/6755399441384051, due to Unsuccessful response: Code 400, body: {\"status\":400,\"message\":\"Process instances needs to be in one of the states [COMPLETED, CANCELED]\"}"
 	var requests []string
 	response := `{"items":[{"jobKey":"2251799814014237","state":"FAILED","retries":0,"deadline":"2026-04-23T01:07:49Z","processInstanceKey":"2251799814014230","elementInstanceKey":"2251799814014236","errorMessage":` + strconv.Quote(longMessage) + `,"tenantId":"tenant-a"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`
-	srv := newJobLookupServer(t, &requests, response)
+	srv := newJobLookupServer(t, "8.9", &requests, response)
 	t.Cleanup(srv.Close)
 	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
 
@@ -64,10 +66,11 @@ func TestGetJobCommand_HumanOutputKeepsLongErrorMessageInlineByDefault(t *testin
 	require.Equal(t, "2251799814014237 tenant-a FAILED pi:2251799814014230 ei:2251799814014236 r:0 d:2026-04-23T01:07:49.000 err:"+longMessage+"\n", output)
 }
 
+// TestGetJobCommand_HumanOutputTruncatesErrorMessageWhenLimitIsSet preserves the existing command contract with advisory-aware fixtures.
 func TestGetJobCommand_HumanOutputTruncatesErrorMessageWhenLimitIsSet(t *testing.T) {
 	var requests []string
 	response := `{"items":[{"jobKey":"2251799814014237","state":"FAILED","retries":0,"errorMessage":"Process instance could not be deleted","tenantId":"tenant-a"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`
-	srv := newJobLookupServer(t, &requests, response)
+	srv := newJobLookupServer(t, "8.9", &requests, response)
 	t.Cleanup(srv.Close)
 	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
 
@@ -97,9 +100,10 @@ func TestGetJobCommand_RejectsJSONErrorMessageLimit(t *testing.T) {
 	require.Contains(t, err.Error(), "--error-message-limit cannot be combined with --json")
 }
 
+// TestGetJobCommand_JSONOutput preserves the existing command contract with advisory-aware fixtures.
 func TestGetJobCommand_JSONOutput(t *testing.T) {
 	var requests []string
-	srv := newJobLookupServer(t, &requests, `{"items":[{"jobKey":"2251799813711967","state":"FAILED","retries":2,"processInstanceKey":"2251799813711000","elementInstanceKey":"2251799813711001","tenantId":"tenant-a"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`)
+	srv := newJobLookupServer(t, "8.8", &requests, `{"items":[{"jobKey":"2251799813711967","state":"FAILED","retries":2,"processInstanceKey":"2251799813711000","elementInstanceKey":"2251799813711001","tenantId":"tenant-a"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`)
 	t.Cleanup(srv.Close)
 	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
 
@@ -142,7 +146,7 @@ func TestGetJobCommand_KeyedLookupRejectsSearchFiltersBeforeLookup(t *testing.T)
 // bounded list/search mode instead of the old keyed-only validation path.
 func TestGetJobCommand_SearchModeAcceptsNoKey(t *testing.T) {
 	var bodies []map[string]any
-	srv := newJobSearchServer(t, &bodies, `{"items":[{"jobKey":"2251799813711967","state":"FAILED","retries":0,"type":"payment-worker","worker":"worker-a","kind":"BPMN_ELEMENT","processInstanceKey":"2251799813711000","elementInstanceKey":"2251799813711001","elementId":"charge-card","tenantId":"tenant-a"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`)
+	srv := newJobSearchServer(t, "8.9", &bodies, `{"items":[{"jobKey":"2251799813711967","state":"FAILED","retries":0,"type":"payment-worker","worker":"worker-a","kind":"BPMN_ELEMENT","processInstanceKey":"2251799813711000","elementInstanceKey":"2251799813711001","elementId":"charge-card","tenantId":"tenant-a"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`)
 	t.Cleanup(srv.Close)
 	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
 
@@ -164,9 +168,10 @@ func TestGetJobCommand_SearchModeAcceptsNoKey(t *testing.T) {
 	require.Equal(t, float64(1), page["limit"])
 }
 
+// TestGetJobCommand_SearchModeBatchSizeShorthandPagesUntilComplete preserves the existing command contract with advisory-aware fixtures.
 func TestGetJobCommand_SearchModeBatchSizeShorthandPagesUntilComplete(t *testing.T) {
 	var bodies []map[string]any
-	srv := newJobSearchServerResponses(t, &bodies,
+	srv := newJobSearchServerResponses(t, "8.9", &bodies,
 		`{"items":[{"jobKey":"2251799813711967","state":"FAILED","retries":0}],"page":{"totalItems":2,"hasMoreTotalItems":false}}`,
 		`{"items":[{"jobKey":"2251799813711968","state":"FAILED","retries":1}],"page":{"totalItems":2,"hasMoreTotalItems":false}}`,
 	)
@@ -190,7 +195,7 @@ func TestGetJobCommand_SearchModeBatchSizeShorthandPagesUntilComplete(t *testing
 // TestGetJobCommand_DeclinedPagingUsesCommandStderr verifies the caller passes its stderr writer and stops before another job page.
 func TestGetJobCommand_DeclinedPagingUsesCommandStderr(t *testing.T) {
 	var bodies []map[string]any
-	srv := newJobSearchServerResponses(t, &bodies,
+	srv := newJobSearchServerResponses(t, "8.9", &bodies,
 		`{"items":[{"jobKey":"2251799813711967","state":"FAILED","retries":0}],"page":{"totalItems":2,"hasMoreTotalItems":true}}`,
 		`{"items":[{"jobKey":"2251799813711968","state":"FAILED","retries":1}],"page":{"totalItems":2,"hasMoreTotalItems":false}}`,
 	)
@@ -219,9 +224,10 @@ func TestGetJobCommand_DeclinedPagingUsesCommandStderr(t *testing.T) {
 	require.Equal(t, "job paging prompt writer\n", stderr)
 }
 
+// TestGetJobCommand_SearchModeLimitShorthandCapsPagedSearch preserves the existing command contract with advisory-aware fixtures.
 func TestGetJobCommand_SearchModeLimitShorthandCapsPagedSearch(t *testing.T) {
 	var bodies []map[string]any
-	srv := newJobSearchServerResponses(t, &bodies,
+	srv := newJobSearchServerResponses(t, "8.9", &bodies,
 		`{"items":[{"jobKey":"2251799813711967","state":"FAILED","retries":0}],"page":{"totalItems":2,"hasMoreTotalItems":false}}`,
 		`{"items":[{"jobKey":"2251799813711968","state":"FAILED","retries":1}],"page":{"totalItems":2,"hasMoreTotalItems":false}}`,
 	)
@@ -242,7 +248,7 @@ func TestGetJobCommand_SearchModeLimitShorthandCapsPagedSearch(t *testing.T) {
 // TestGetJobCommand_SearchVerboseProgress verifies paged job search reports durable progress away from stdout.
 func TestGetJobCommand_SearchVerboseProgress(t *testing.T) {
 	var bodies []map[string]any
-	srv := newJobSearchServerResponses(t, &bodies,
+	srv := newJobSearchServerResponses(t, "8.9", &bodies,
 		`{"items":[{"jobKey":"2251799813711967","state":"FAILED","retries":0},{"jobKey":"2251799813711968","state":"FAILED","retries":1}],"page":{"totalItems":3,"hasMoreTotalItems":true}}`,
 		`{"items":[{"jobKey":"2251799813711969","state":"FAILED","retries":2}],"page":{"totalItems":3,"hasMoreTotalItems":false}}`,
 	)
@@ -264,9 +270,10 @@ func TestGetJobCommand_SearchVerboseProgress(t *testing.T) {
 	require.Contains(t, output, "found: 3")
 }
 
+// TestGetJobCommand_SearchModeTotalUsesReportedCount preserves the existing command contract with advisory-aware fixtures.
 func TestGetJobCommand_SearchModeTotalUsesReportedCount(t *testing.T) {
 	var bodies []map[string]any
-	srv := newJobSearchServer(t, &bodies, `{"items":[{"jobKey":"2251799813711967","state":"FAILED","retries":0},{"jobKey":"2251799813711968","state":"FAILED","retries":1}],"page":{"totalItems":10,"hasMoreTotalItems":false}}`)
+	srv := newJobSearchServer(t, "8.8", &bodies, `{"items":[{"jobKey":"2251799813711967","state":"FAILED","retries":0},{"jobKey":"2251799813711968","state":"FAILED","retries":1}],"page":{"totalItems":10,"hasMoreTotalItems":false}}`)
 	t.Cleanup(srv.Close)
 	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
 
@@ -293,7 +300,7 @@ func TestGetJobCommand_SearchModeNormalizesEnumFilters(t *testing.T) {
 // stable result envelope for machine consumers.
 func TestGetJobCommand_SearchModeJSONOutput(t *testing.T) {
 	var bodies []map[string]any
-	srv := newJobSearchServer(t, &bodies, `{"items":[{"jobKey":"2251799813711967","state":"FAILED","retries":0,"tenantId":"tenant-a"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`)
+	srv := newJobSearchServer(t, "8.8", &bodies, `{"items":[{"jobKey":"2251799813711967","state":"FAILED","retries":0,"tenantId":"tenant-a"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`)
 	t.Cleanup(srv.Close)
 	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
 
@@ -337,7 +344,7 @@ func jobSearchRequestForTest(t *testing.T, state string, kind string, listenerEv
 // results explicit for machine consumers.
 func TestGetJobCommand_SearchModeJSONOutputIncludesEmptyItems(t *testing.T) {
 	var bodies []map[string]any
-	srv := newJobSearchServer(t, &bodies, `{"items":[],"page":{"totalItems":0,"hasMoreTotalItems":false}}`)
+	srv := newJobSearchServer(t, "8.8", &bodies, `{"items":[],"page":{"totalItems":0,"hasMoreTotalItems":false}}`)
 	t.Cleanup(srv.Close)
 	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
 
@@ -357,7 +364,7 @@ func TestGetJobCommand_SearchModeJSONOutputIncludesEmptyItems(t *testing.T) {
 // can feed later pipeline commands without row text.
 func TestGetJobCommand_SearchModeKeysOnlyOutput(t *testing.T) {
 	var bodies []map[string]any
-	srv := newJobSearchServer(t, &bodies, `{"items":[{"jobKey":"2251799813711967","state":"FAILED","retries":0},{"jobKey":"2251799813711968","state":"FAILED","retries":1}],"page":{"totalItems":2,"hasMoreTotalItems":false}}`)
+	srv := newJobSearchServer(t, "8.9", &bodies, `{"items":[{"jobKey":"2251799813711967","state":"FAILED","retries":0},{"jobKey":"2251799813711968","state":"FAILED","retries":1}],"page":{"totalItems":2,"hasMoreTotalItems":false}}`)
 	t.Cleanup(srv.Close)
 	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
 
@@ -371,7 +378,7 @@ func TestGetJobCommand_SearchModeKeysOnlyOutput(t *testing.T) {
 func TestGetJobCommand_SearchMachineOutputStaysProgressFree(t *testing.T) {
 	t.Run("json", func(t *testing.T) {
 		var bodies []map[string]any
-		srv := newJobSearchServerResponses(t, &bodies,
+		srv := newJobSearchServerResponses(t, "8.9", &bodies,
 			`{"items":[{"jobKey":"2251799813711967","state":"FAILED","retries":0,"tenantId":"tenant-a"}],"page":{"totalItems":2,"hasMoreTotalItems":true}}`,
 			`{"items":[{"jobKey":"2251799813711968","state":"FAILED","retries":1,"tenantId":"tenant-a"}],"page":{"totalItems":2,"hasMoreTotalItems":false}}`,
 		)
@@ -399,7 +406,7 @@ func TestGetJobCommand_SearchMachineOutputStaysProgressFree(t *testing.T) {
 
 	t.Run("keys only", func(t *testing.T) {
 		var bodies []map[string]any
-		srv := newJobSearchServer(t, &bodies, `{"items":[{"jobKey":"2251799813711967","state":"FAILED","retries":0},{"jobKey":"2251799813711968","state":"FAILED","retries":1}],"page":{"totalItems":2,"hasMoreTotalItems":false}}`)
+		srv := newJobSearchServer(t, "8.9", &bodies, `{"items":[{"jobKey":"2251799813711967","state":"FAILED","retries":0},{"jobKey":"2251799813711968","state":"FAILED","retries":1}],"page":{"totalItems":2,"hasMoreTotalItems":false}}`)
 		t.Cleanup(srv.Close)
 		cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
 
@@ -486,6 +493,7 @@ func TestGetJobCommand_DoesNotRegisterFlowNodeAliases(t *testing.T) {
 	}
 }
 
+// TestGetJobCommand_NotFoundExitsWithNotFound preserves the existing command contract with advisory-aware fixtures.
 func TestGetJobCommand_NotFoundExitsWithNotFound(t *testing.T) {
 	for _, tc := range []struct {
 		name string
@@ -496,7 +504,7 @@ func TestGetJobCommand_NotFoundExitsWithNotFound(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			var requests []string
-			srv := newJobLookupServer(t, &requests, `{"items":[],"page":{"totalItems":0,"hasMoreTotalItems":false}}`)
+			srv := newJobLookupServer(t, "8.8", &requests, `{"items":[],"page":{"totalItems":0,"hasMoreTotalItems":false}}`)
 			t.Cleanup(srv.Close)
 			cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
 
@@ -537,9 +545,14 @@ func TestGetJobCommand_NotFoundExitsWithNotFoundHelper(t *testing.T) {
 	Execute()
 }
 
-func newJobLookupServer(t *testing.T, requests *[]string, response string) *httptest.Server {
+// newJobLookupServer keeps fixture setup aligned with the invocation's advisory version check.
+func newJobLookupServer(t *testing.T, version string, requests *[]string, response string) *httptest.Server {
 	t.Helper()
 	return newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, version) {
+			return
+		}
+
 		require.Equal(t, http.MethodPost, r.Method)
 		require.Equal(t, "/v2/jobs/search", r.URL.Path)
 		*requests = append(*requests, r.Method+" "+r.URL.Path)
@@ -560,16 +573,20 @@ func newJobLookupServer(t *testing.T, requests *[]string, response string) *http
 
 // newJobSearchServer captures raw search request JSON for command-level search
 // assertions while returning a generated-client compatible response.
-func newJobSearchServer(t *testing.T, bodies *[]map[string]any, response string) *httptest.Server {
+func newJobSearchServer(t *testing.T, version string, bodies *[]map[string]any, response string) *httptest.Server {
 	t.Helper()
-	return newJobSearchServerResponses(t, bodies, response)
+	return newJobSearchServerResponses(t, version, bodies, response)
 }
 
 // newJobSearchServerResponses returns one response per request and keeps the
 // final response sticky when a test issues more calls than expected.
-func newJobSearchServerResponses(t *testing.T, bodies *[]map[string]any, responses ...string) *httptest.Server {
+func newJobSearchServerResponses(t *testing.T, version string, bodies *[]map[string]any, responses ...string) *httptest.Server {
 	t.Helper()
 	return newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, version) {
+			return
+		}
+
 		require.Equal(t, http.MethodPost, r.Method)
 		require.Equal(t, "/v2/jobs/search", r.URL.Path)
 		var body map[string]any
@@ -691,7 +708,7 @@ func TestGetJobCommand_SearchTenantScope(t *testing.T) {
 				if tenant == "" {
 					tenant = "tenant-c"
 				}
-				srv := newJobSearchServer(t, &bodies, `{"items":[{"jobKey":"1","tenantId":"`+tenant+`"}],"page":{"totalItems":1}}`)
+				srv := newJobSearchServer(t, version, &bodies, `{"items":[{"jobKey":"1","tenantId":"`+tenant+`"}],"page":{"totalItems":1}}`)
 				t.Cleanup(srv.Close)
 				cfgPath := writeTestConfigForVersion(t, srv.URL, version)
 				cfg, err := os.ReadFile(cfgPath)
@@ -720,7 +737,7 @@ func TestGetJobCommand_SearchSparseCursor(t *testing.T) {
 		for _, mode := range []string{"--keys-only", "--json"} {
 			t.Run(version+"/"+mode, func(t *testing.T) {
 				var bodies []map[string]any
-				srv := newJobSearchServerResponses(t, &bodies,
+				srv := newJobSearchServerResponses(t, version, &bodies,
 					`{"items":[],"page":{"totalItems":1,"endCursor":"next"}}`,
 					`{"items":[{"jobKey":"1","tenantId":"tenant-a"}],"page":{"totalItems":1}}`,
 				)
@@ -748,7 +765,7 @@ func TestGetJobCommand_SearchSparseCursor(t *testing.T) {
 // TestGetJobCommand_IncompleteSearch rejects contradictory empty discovery instead of printing success.
 func TestGetJobCommand_IncompleteSearch(t *testing.T) {
 	var bodies []map[string]any
-	srv := newJobSearchServer(t, &bodies, `{"items":[],"page":{"totalItems":100,"hasMoreTotalItems":true}}`)
+	srv := newJobSearchServer(t, "8.9", &bodies, `{"items":[],"page":{"totalItems":100,"hasMoreTotalItems":true}}`)
 	t.Cleanup(srv.Close)
 	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
 	output, err := testx.RunCmdSubprocess(t, "TestGetJobCommand_IncompleteSearchHelper", map[string]string{"C8VOLT_TEST_CONFIG": cfgPath})

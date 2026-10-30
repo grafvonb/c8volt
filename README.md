@@ -168,6 +168,27 @@ For scripts or CI, request JSON with `--json`:
 
 For the full setup contract, see the generated [config reference](docs/cli/c8volt_config.md).
 
+### Gateway Version Advisory
+
+Before the first operational API request, c8volt checks the gateway version once per invocation.
+It compares major/minor release lines; patch, prerelease, build, and broker-version
+differences do not cause a mismatch. A mismatch or unavailable check produces a
+warning and keeps your configured adapter. No version is selected automatically.
+
+The advisory waits at most two seconds, or a shorter HTTP timeout or workflow
+deadline. It does not retry or follow redirects. It shares authentication and
+request pacing, so its request consumes a pacing slot and the subsequent operation
+may also wait for its normal slot. The operation retains its own HTTP timeout,
+subject to the original workflow deadline. Local commands and local previews make
+no advisory request; remote discovery does, including when it finds no work.
+
+Use `--no-version-check` to skip the advisory (`--no-version-check=false` keeps it
+on). This is an invocation flag, not a persisted setting. Warnings follow the
+configured logger; quiet suppresses them, and JSON/keys-only results stay unchanged.
+Explicit `get cluster version`, `get cluster topology`, and `config test-connection`
+still perform their requested reads. Connection-test JSON compatibility warnings
+always describe that requested read, even when the automatic check is disabled.
+
 ### Request Pacing and Rate Reporting
 
 Use `--request-rate` to limit shared application-level request starts per second

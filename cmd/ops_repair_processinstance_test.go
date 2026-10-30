@@ -739,6 +739,10 @@ func TestOpsRepairProcessInstanceCommandHelper(t *testing.T) {
 func newOpsRepairProcessInstanceServer(t *testing.T, requests *testx.SafeSlice[string]) *httptest.Server {
 	t.Helper()
 	return testx.NewIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		requests.Append(r.Method + " " + r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {

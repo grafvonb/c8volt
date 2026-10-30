@@ -12,7 +12,7 @@ Test configured Camunda connection
 
 Validate configuration and test Camunda reachability.
 
-Loads the effective configuration, validates it locally, and retrieves cluster topology. Compatibility checks compare the configured and observed major/minor release lines; patch and prerelease differences on the same line are accepted. A version mismatch or unknown gateway version does not fail an otherwise successful connection test.
+Loads the effective configuration, validates it locally, and retrieves cluster topology. Compatibility checks compare the configured and observed major/minor release lines; patch and prerelease differences on the same line are accepted. A version mismatch or unknown gateway version does not fail an otherwise successful connection test. The automatic advisory runs separately before this requested topology read; --no-version-check disables only that advisory. JSON compatibility warnings always describe the requested read.
 
 ```
 c8volt config test-connection [flags]
@@ -46,6 +46,7 @@ c8volt config test-connection [flags]
       --keys-only            output keys only (where applicable)
       --log-level string     log level (debug, info, warn, error) (default "info")
       --no-indicator         disable transient terminal activity indicators
+      --no-version-check     skip the automatic advisory gateway version check
       --profile string       config active profile name to use (e.g. dev, prod)
   -q, --quiet                suppress output except errors
       --request-rate float   maximum shared request starts per second (fractions allowed; 0 disables pacing)

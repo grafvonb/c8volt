@@ -19,7 +19,7 @@ func TestGetUserTaskCommand_VariableFiltersBuildNativeRequests(t *testing.T) {
 	for _, version := range []string{"8.8", "8.9", "8.10"} {
 		for _, alias := range []string{"user-task", "user-tasks", "ut", "uts"} {
 			t.Run(fmt.Sprintf("%s/%s", version, alias), func(t *testing.T) {
-				server, requests := newGetUserTaskSearchServer(t, func(_ int, _ map[string]any) string {
+				server, requests := newGetUserTaskSearchServer(t, version, func(_ int, _ map[string]any) string {
 					return userTaskSearchResponse(1, false, "", "2251799815391233")
 				})
 				configPath := testx.WriteTestConfigForVersion(t, server.URL, version)
@@ -57,7 +57,7 @@ func TestGetUserTaskCommand_VariableFiltersBuildNativeRequests(t *testing.T) {
 // TestGetUserTaskCommand_VariableFiltersRejectMalformedInputBeforeRequests
 // protects parser diagnostics and prevents an unfiltered fallback.
 func TestGetUserTaskCommand_VariableFiltersRejectMalformedInputBeforeRequests(t *testing.T) {
-	server, requests := newGetUserTaskSearchServer(t, func(_ int, _ map[string]any) string {
+	server, requests := newGetUserTaskSearchServer(t, "8.9", func(_ int, _ map[string]any) string {
 		return userTaskSearchResponse(0, false, "")
 	})
 	configPath := testx.WriteTestConfigForVersion(t, server.URL, "8.9")

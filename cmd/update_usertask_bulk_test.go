@@ -14,7 +14,7 @@ import (
 // TestUpdateUserTaskCommand_SharedScopeWritesOnce verifies two selected tasks
 // fan out one accepted inherited-scope mutation without duplicate transport.
 func TestUpdateUserTaskCommand_SharedScopeWritesOnce(t *testing.T) {
-	server, capture := newUpdateUserTaskCommandServer(t)
+	server, capture := newUpdateUserTaskCommandServer(t, "8.10")
 	configPath := writeTestConfigForVersion(t, server.URL, "8.10")
 
 	stdout, stderr, err := runUpdateUserTaskCommand(t, configPath, "",
@@ -54,7 +54,7 @@ func TestUpdateUserTaskCommand_SharedScopeWritesOnce(t *testing.T) {
 // TestUpdateUserTaskCommand_DryRunMergesAndDeduplicatesExplicitKeys verifies
 // repeated, comma-separated, and stdin keys retain first-input order.
 func TestUpdateUserTaskCommand_DryRunMergesAndDeduplicatesExplicitKeys(t *testing.T) {
-	server, capture := newUpdateUserTaskCommandServer(t)
+	server, capture := newUpdateUserTaskCommandServer(t, "8.10")
 	configPath := writeTestConfigForVersion(t, server.URL, "8.10")
 
 	stdout, stderr, err := runUpdateUserTaskCommand(t, configPath, "2251799815391234\n2251799815391233\n",
@@ -82,7 +82,7 @@ func TestUpdateUserTaskCommand_DryRunMergesAndDeduplicatesExplicitKeys(t *testin
 // TestUpdateUserTaskCommand_VarsFileMatchesInlinePlanning verifies both payload
 // sources reach the same frozen command plan.
 func TestUpdateUserTaskCommand_VarsFileMatchesInlinePlanning(t *testing.T) {
-	server, _ := newUpdateUserTaskCommandServer(t)
+	server, _ := newUpdateUserTaskCommandServer(t, "8.10")
 	configPath := writeTestConfigForVersion(t, server.URL, "8.10")
 	path := t.TempDir() + "/vars.json"
 	require.NoError(t, os.WriteFile(path, []byte(`{"approved":true}`), 0o600))
@@ -108,7 +108,7 @@ func TestUpdateUserTaskCommand_LocalValidationStopsBeforeRequests(t *testing.T) 
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			server, capture := newUpdateUserTaskCommandServer(t)
+			server, capture := newUpdateUserTaskCommandServer(t, "8.10")
 			configPath := writeTestConfigForVersion(t, server.URL, "8.10")
 			_, stderr, err := runUpdateUserTaskCommand(t, configPath, "", test.args...)
 			require.Error(t, err)
