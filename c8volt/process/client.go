@@ -217,13 +217,10 @@ func (c *client) CreateProcessInstance(ctx context.Context, data ProcessInstance
 	return fromDomainProcessInstanceCreation(pic), nil
 }
 
-// CreateProcessInstances maps public creation input and delegates ordered creation to the process-instance service.
+// CreateProcessInstances delegates ordered creation and preserves successful predecessors alongside a later error.
 func (c *client) CreateProcessInstances(ctx context.Context, datas []ProcessInstanceData, opts ...options.FacadeOption) ([]ProcessInstance, error) {
 	pics, err := pisvc.CreateProcessInstances(ctx, c.piApi, toolx.MapSlice(datas, toProcessInstanceData), options.MapFacadeOptionsToCallOptions(opts)...)
-	if err != nil {
-		return nil, ferr.FromDomain(err)
-	}
-	return toolx.MapSlice(pics, fromDomainProcessInstanceCreation), nil
+	return toolx.MapSlice(pics, fromDomainProcessInstanceCreation), ferr.FromDomain(err)
 }
 
 func (c *client) SearchProcessInstances(ctx context.Context, filter ProcessInstanceFilter, size int32, opts ...options.FacadeOption) (ProcessInstances, error) {

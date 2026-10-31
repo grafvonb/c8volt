@@ -6,7 +6,7 @@ nav_exclude: true
 has_toc: true
 ---
 
-> Generated from build `c8volt v4.4.0-246-g62a9085f-dirty`, commit `62a9085f`, built `2026-10-31T07:34:40Z` | Supported Camunda 8 versions: 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.3 (final)
+> Generated from build `c8volt v4.4.0-250-g2a0d0e5d-dirty`, commit `2a0d0e5d`, built `2026-10-31T11:49:00Z` | Supported Camunda 8 versions: 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.3 (final)
 
 <img src="./logo/c8volt_logo_transparent_w_shadow_400x244.png" alt="c8volt logo" />
 
@@ -387,6 +387,10 @@ Deploy BPMN, start a process instance, and verify the process definition Camunda
 ```
 
 `run process-instance` confirms creation once an instance is observable as ACTIVE, SUSPENDED, COMPLETED, CANCELED, or TERMINATED. A first suspended observation succeeds immediately; it confirms visibility, not execution completion. Use `expect process-instance --state completed` to verify completion separately, or `run process-instance --no-wait` to return after creation is accepted without confirming visibility. Existing creation defaults on Camunda 8.8/8.9 remain supported.
+
+Library creation calls accept an optional `BusinessId *string` in `process.ProcessInstanceData` with either `BpmnProcessId` or `ProcessDefinitionSpecificId`. Camunda 8.10 supports this input; 8.8/8.9 reject any supplied value as unsupported before mutation. Nil omits the field. A supplied ID must be nonempty, valid UTF-8, and at most 256 UTF-16 code units (for example, 256 BMP characters or 128 supplementary emoji). Whitespace, commas, and case are preserved exactly.
+
+`CreateProcessInstance`, `CreateProcessInstances`, and `CreateNProcessInstances` return the backend's business ID on `process.ProcessInstance`. Ordinary waiting uses the observed value, including absence; `WithNoWait()` retains the native acceptance response. Counted creation repeats the exact input ID, so backend uniqueness enforcement can reject repeated creations. Both collection methods return successful items alongside an error if later work fails; callers must inspect both return values. Failed or unattempted items are excluded, successful results retain their input-slot order, and no rollback or alternate ID is generated. These optional fields preserve JSON omission when absent and support keyed Go literals; consumers using unkeyed literals may need source updates.
 
 Generated references: [deploy process-definition](./cli/c8volt_deploy_process-definition), [run process-instance](./cli/c8volt_run_process-instance), [get process-definition](./cli/c8volt_get_process-definition).
 

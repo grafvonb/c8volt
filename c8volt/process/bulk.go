@@ -14,13 +14,10 @@ import (
 	types "github.com/grafvonb/c8volt/typex"
 )
 
-// CreateNProcessInstances delegates same-data bulk creation to the process-instance service.
+// CreateNProcessInstances delegates counted creation and maps successful partial results even when other attempts fail.
 func (c *client) CreateNProcessInstances(ctx context.Context, data ProcessInstanceData, n int, wantedWorkers int, opts ...options.FacadeOption) ([]ProcessInstance, error) {
 	pics, err := pisvc.CreateNProcessInstances(ctx, c.piApi, c.log, toProcessInstanceData(data), n, wantedWorkers, options.MapFacadeOptionsToCallOptions(opts)...)
-	if err != nil {
-		return nil, ferr.FromDomain(err)
-	}
-	return toolx.MapSlice(pics, fromDomainProcessInstanceCreation), nil
+	return toolx.MapSlice(pics, fromDomainProcessInstanceCreation), ferr.FromDomain(err)
 }
 
 // CancelProcessInstances delegates bulk cancellation to the process-instance service.

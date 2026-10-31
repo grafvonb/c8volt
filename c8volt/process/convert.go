@@ -147,6 +147,7 @@ func fromDomainProcessDefinitionWatchSnapshot(x d.ProcessDefinitionWatchSnapshot
 // fromDomainProcessInstance preserves current instance metadata at the public boundary.
 func fromDomainProcessInstance(x d.ProcessInstance) ProcessInstance {
 	return ProcessInstance{
+		BusinessId:               toolx.CopyPtr(x.BusinessId),
 		BpmnProcessId:            x.BpmnProcessId,
 		EndDate:                  x.EndDate,
 		Incident:                 x.Incident,
@@ -165,8 +166,10 @@ func fromDomainProcessInstance(x d.ProcessInstance) ProcessInstance {
 	}
 }
 
+// fromDomainProcessInstanceCreation copies optional business identity without inferring an absent value.
 func fromDomainProcessInstanceCreation(x d.ProcessInstanceCreation) ProcessInstance {
 	return ProcessInstance{
+		BusinessId:           toolx.CopyPtr(x.BusinessId),
 		Key:                  x.Key,
 		BpmnProcessId:        x.BpmnProcessId,
 		ProcessDefinitionKey: x.ProcessDefinitionKey,
@@ -764,6 +767,7 @@ func fromDomainIncidentExpectation(x *bool) *IncidentExpectation {
 // toDomainProcessInstance preserves instance metadata when passing public results back to services.
 func toDomainProcessInstance(x ProcessInstance) d.ProcessInstance {
 	return d.ProcessInstance{
+		BusinessId:               toolx.CopyPtr(x.BusinessId),
 		BpmnProcessId:            x.BpmnProcessId,
 		EndDate:                  x.EndDate,
 		Incident:                 x.Incident,
@@ -987,8 +991,10 @@ func toDomainProcessInstanceSearchTotalVisitor(visitor ProcessInstanceSearchTota
 	}
 }
 
+// toProcessInstanceData copies optional business identity without inferring an absent value.
 func toProcessInstanceData(x ProcessInstanceData) d.ProcessInstanceData {
 	return d.ProcessInstanceData{
+		BusinessId:                  toolx.CopyPtr(x.BusinessId),
 		BpmnProcessId:               x.BpmnProcessId,
 		ProcessDefinitionSpecificId: x.ProcessDefinitionSpecificId,
 		ProcessDefinitionVersion:    x.ProcessDefinitionVersion,

@@ -13,6 +13,7 @@ import (
 
 // ProcessInstance contains the current backend snapshot, including optional date metadata.
 type ProcessInstance struct {
+	BusinessId               *string
 	BpmnProcessId            string
 	EndDate                  string
 	Incident                 bool
@@ -384,7 +385,9 @@ type ProcessInstanceExpectationResponses struct {
 	Items []ProcessInstanceExpectationResponse
 }
 
+// ProcessInstanceData describes creation intent; a nil BusinessId omits the optional reference.
 type ProcessInstanceData struct {
+	BusinessId                  *string
 	BpmnProcessId               string // ProcessDefinitionId in API
 	ProcessDefinitionSpecificId string // ProcessDefinitionKey in API
 	ProcessDefinitionVersion    int32
@@ -392,7 +395,9 @@ type ProcessInstanceData struct {
 	TenantId                    string
 }
 
+// ProcessInstanceCreation retains native acceptance or successfully observed creation facts.
 type ProcessInstanceCreation struct {
+	BusinessId               *string        `json:"businessId,omitempty"`
 	Key                      string         `json:"key,omitempty"`
 	BpmnProcessId            string         `json:"bpmnProcessId,omitempty"`        // ProcessDefinitionId in API
 	ProcessDefinitionKey     string         `json:"processDefinitionKey,omitempty"` // ProcessDefinitionKey in API

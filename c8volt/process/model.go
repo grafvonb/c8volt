@@ -133,7 +133,9 @@ func (f ProcessDefinitionFilter) String() string {
 	return toolx.FormatActiveFields(parts)
 }
 
+// ProcessInstanceData describes creation intent; a nil BusinessId omits the optional reference.
 type ProcessInstanceData struct {
+	BusinessId                  *string        `json:"businessId,omitempty"`
 	BpmnProcessId               string         `json:"bpmnProcessId,omitempty"`               // ProcessDefinitionId in API
 	ProcessDefinitionSpecificId string         `json:"processDefinitionSpecificId,omitempty"` // ProcessDefinitionKey in API
 	ProcessDefinitionVersion    int32          `json:"processDefinitionVersion,omitempty"`
@@ -143,6 +145,7 @@ type ProcessInstanceData struct {
 
 // ProcessInstance exposes the current instance snapshot; unavailable dates are omitted from JSON.
 type ProcessInstance struct {
+	BusinessId               *string        `json:"businessId,omitempty"`
 	BpmnProcessId            string         `json:"bpmnProcessId,omitempty"`
 	EndDate                  string         `json:"endDate,omitempty"`
 	Incident                 bool           `json:"incident,omitempty"`

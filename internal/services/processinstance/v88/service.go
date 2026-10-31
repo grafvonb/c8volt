@@ -121,7 +121,11 @@ func New(cfg *config.Config, httpClient *http.Client, log *slog.Logger, opts ...
 	return s, nil
 }
 
+// CreateProcessInstance rejects unsupported identity input before any mutation.
 func (s *Service) CreateProcessInstance(ctx context.Context, data d.ProcessInstanceData, opts ...services.CallOption) (d.ProcessInstanceCreation, error) {
+	if data.BusinessId != nil {
+		return d.ProcessInstanceCreation{}, fmt.Errorf("%w: business-ID creation requires Camunda 8.10", d.ErrUnsupported)
+	}
 	cCfg := services.ApplyCallOptions(opts)
 	if data.TenantId == "" {
 		data.TenantId = s.cfg.App.TargetTenant()

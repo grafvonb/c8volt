@@ -30,7 +30,9 @@ type processInstanceCreator interface {
 	CreateProcessInstance(ctx context.Context, data d.ProcessInstanceData, opts ...services.CallOption) (d.ProcessInstanceCreation, error)
 }
 
+// CreateNProcessInstances snapshots identity and retains only successful returns in pool index order.
 func CreateNProcessInstances(ctx context.Context, api API, log *slog.Logger, data d.ProcessInstanceData, n int, wantedWorkers int, opts ...services.CallOption) ([]d.ProcessInstanceCreation, error) {
+	data.BusinessId = toolx.CopyPtr(data.BusinessId)
 	cfg := services.ApplyCallOptions(opts)
 	nw := toolx.DetermineNoOfWorkers(n, wantedWorkers, cfg.NoWorkerLimit)
 	logging.InfoIfVerbose(fmt.Sprintf("creating pi: requested %d, workers %d", n, nw), log, cfg.Verbose)
@@ -45,14 +47,16 @@ func CreateNProcessInstances(ctx context.Context, api API, log *slog.Logger, dat
 	}
 	defer stopProgress()
 	reportProcessInstanceBulkFrozenProgress(cfg.Progress, "starting process instances", 0, n)
-	pics, err := pool.ExecuteNTimes[d.ProcessInstanceCreation](ctx, n, nw, cfg.FailFast, func(ctx context.Context, _ int) (d.ProcessInstanceCreation, error) {
+	slots, err := pool.ExecuteNTimes[*d.ProcessInstanceCreation](ctx, n, nw, cfg.FailFast, func(ctx context.Context, _ int) (*d.ProcessInstanceCreation, error) {
 		work := progress.Start(data.BpmnProcessId)
 		defer func() {
 			done := int(completed.Add(1))
 			reportProcessInstanceBulkFrozenProgress(cfg.Progress, "starting process instances", done, n)
 		}()
 		defer progress.Done(work)
-		pi, err := api.CreateProcessInstance(ctx, data, opts...)
+		input := data
+		input.BusinessId = toolx.CopyPtr(data.BusinessId)
+		pi, err := api.CreateProcessInstance(ctx, input, opts...)
 		if err == nil {
 			created.Add(1)
 		}
@@ -66,8 +70,25 @@ func CreateNProcessInstances(ctx context.Context, api API, log *slog.Logger, dat
 			AffectedResource: "process instances",
 			AffectedCount:    processInstanceCreationAffectedCount(err),
 		})
-		return pi, err
+		if err != nil {
+			return nil, err
+		}
+		return &pi, nil
 	})
+	// Nil slots represent failed or unattempted work, never successful resources.
+	var pics []d.ProcessInstanceCreation
+	if slots != nil {
+		pics = make([]d.ProcessInstanceCreation, 0, len(slots))
+	}
+	for _, pi := range slots {
+		if pi != nil {
+			pics = append(pics, *pi)
+		}
+	}
+	// The pool may skip canceled work without calling a worker or returning an error.
+	if err == nil && len(pics) < n {
+		err = ctx.Err()
+	}
 	if !cfg.NoWait && !cfg.SuppressWorkflowDetailLogs {
 		ok := int(created.Load())
 		log.Info(fmt.Sprintf("creating pi done; requested %d, created %d, failed %d", n, ok, n-ok))
@@ -75,13 +96,13 @@ func CreateNProcessInstances(ctx context.Context, api API, log *slog.Logger, dat
 	return pics, err
 }
 
-// CreateProcessInstances creates each requested process instance in input order and stops on the first error.
+// CreateProcessInstances returns successful predecessors in input order and stops on the first error.
 func CreateProcessInstances(ctx context.Context, api processInstanceCreator, datas []d.ProcessInstanceData, opts ...services.CallOption) ([]d.ProcessInstanceCreation, error) {
 	pics := make([]d.ProcessInstanceCreation, 0, len(datas))
 	for _, data := range datas {
 		pic, err := api.CreateProcessInstance(ctx, data, opts...)
 		if err != nil {
-			return nil, err
+			return pics, err
 		}
 		pics = append(pics, pic)
 	}

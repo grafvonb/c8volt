@@ -17,6 +17,7 @@ import (
 // fromProcessInstanceResult maps a fresh backend snapshot, clearing absent date metadata.
 func fromProcessInstanceResult(r camundav810.ProcessInstanceResult) d.ProcessInstance {
 	return d.ProcessInstance{
+		BusinessId:               toolx.CopyPtr(r.BusinessId),
 		BpmnProcessId:            r.ProcessDefinitionId,
 		EndDate:                  formatTimePtr(r.EndDate),
 		Incident:                 r.HasIncident,
@@ -48,12 +49,14 @@ func formatTimePtr(p *time.Time) string {
 	return formatTime(*p)
 }
 
+// toProcessInstanceCreationInstruction preserves exact optional identity for either selector.
 func toProcessInstanceCreationInstruction(in d.ProcessInstanceData) (camundav810.ProcessInstanceCreationInstruction, error) {
 	var instr camundav810.ProcessInstanceCreationInstruction
 	switch {
 	case in.BpmnProcessId != "":
 		err := instr.FromProcessInstanceCreationInstructionById(
 			camundav810.ProcessInstanceCreationInstructionById{
+				BusinessId:               toolx.CopyPtr(in.BusinessId),
 				ProcessDefinitionId:      in.BpmnProcessId,
 				ProcessDefinitionVersion: normalizeVersion(in.ProcessDefinitionVersion),
 				Variables:                toolx.PtrCopyMap(in.Variables),
@@ -64,6 +67,7 @@ func toProcessInstanceCreationInstruction(in d.ProcessInstanceData) (camundav810
 	case in.ProcessDefinitionSpecificId != "":
 		err := instr.FromProcessInstanceCreationInstructionByKey(
 			camundav810.ProcessInstanceCreationInstructionByKey{
+				BusinessId:           toolx.CopyPtr(in.BusinessId),
 				ProcessDefinitionKey: in.ProcessDefinitionSpecificId,
 				Variables:            toolx.PtrCopyMap(in.Variables),
 				TenantId:             toolx.PtrIf(in.TenantId, ""),
@@ -87,8 +91,10 @@ func normalizeVersion(v int32) *int32 {
 	}
 }
 
+// fromCreateProcessInstanceResult copies native acceptance evidence without input fallback.
 func fromCreateProcessInstanceResult(r camundav810.CreateProcessInstanceResult) d.ProcessInstanceCreation {
 	return d.ProcessInstanceCreation{
+		BusinessId:               toolx.CopyPtr(r.BusinessId),
 		Key:                      r.ProcessInstanceKey,
 		BpmnProcessId:            r.ProcessDefinitionId,
 		ProcessDefinitionKey:     r.ProcessDefinitionKey,

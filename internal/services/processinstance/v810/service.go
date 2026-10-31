@@ -114,6 +114,10 @@ func New(cfg *config.Config, httpClient *http.Client, log *slog.Logger, opts ...
 
 // CreateProcessInstance starts a process instance and optionally waits for an observable created state.
 func (s *Service) CreateProcessInstance(ctx context.Context, data d.ProcessInstanceData, opts ...services.CallOption) (d.ProcessInstanceCreation, error) {
+	data.BusinessId = toolx.CopyPtr(data.BusinessId)
+	if err := d.ValidateBusinessID(data.BusinessId); err != nil {
+		return d.ProcessInstanceCreation{}, err
+	}
 	cCfg := services.ApplyCallOptions(opts)
 	if data.TenantId == "" {
 		data.TenantId = s.cfg.App.TargetTenant()
@@ -148,6 +152,7 @@ func (s *Service) CreateProcessInstance(ctx context.Context, data d.ProcessInsta
 		if err != nil {
 			return d.ProcessInstanceCreation{}, fmt.Errorf("wait for observable state: %w", err)
 		}
+		pi.BusinessId = toolx.CopyPtr(created.BusinessId)
 		pi.StartDate = created.StartDate
 		pi.State = created.State
 		pi.StartConfirmedAt = time.Now().UTC().Format(time.RFC3339)

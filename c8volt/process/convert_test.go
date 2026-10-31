@@ -110,3 +110,43 @@ func TestConvertProcessDefinitionLifecycle(t *testing.T) {
 		})
 	}
 }
+
+// TestConvertBusinessID preserves absence, exact observations, and independent pointers in every base mapping.
+func TestConvertBusinessID(t *testing.T) {
+	t.Parallel()
+	for _, value := range []*string{nil, new(""), new("  old,AbC  ")} {
+		public := fromDomainProcessInstance(d.ProcessInstance{Key: "123", BusinessId: value})
+		inward := toDomainProcessInstance(public)
+		creation := fromDomainProcessInstanceCreation(d.ProcessInstanceCreation{Key: "123", BusinessId: value})
+		input := toProcessInstanceData(ProcessInstanceData{BusinessId: value})
+		for _, got := range []*string{public.BusinessId, inward.BusinessId, creation.BusinessId, input.BusinessId} {
+			require.Equal(t, value, got)
+			if value != nil {
+				require.NotSame(t, value, got)
+			}
+		}
+		if value != nil {
+			require.NotSame(t, public.BusinessId, inward.BusinessId)
+		}
+		for _, model := range []any{public, creation, ProcessInstanceData{BusinessId: value}} {
+			payload, err := json.Marshal(model)
+			require.NoError(t, err)
+			var fields map[string]any
+			require.NoError(t, json.Unmarshal(payload, &fields))
+			if value == nil {
+				require.NotContains(t, fields, "businessId")
+			} else {
+				require.Equal(t, *value, fields["businessId"])
+			}
+		}
+		if value != nil {
+			original := *value
+			*value = "changed"
+			for _, got := range []*string{public.BusinessId, inward.BusinessId, creation.BusinessId, input.BusinessId} {
+				require.Equal(t, original, *got)
+			}
+			*public.BusinessId = "changed again"
+			require.Equal(t, original, *inward.BusinessId)
+		}
+	}
+}
