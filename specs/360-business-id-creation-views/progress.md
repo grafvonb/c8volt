@@ -154,3 +154,55 @@ Started: 2026-10-31 12:43:38
 - Error/output review: no adapter/facade error classification, partial-result or exit path changed. New identity output uses observed data and configured INFO; empty paths remain mode-aware, shared envelopes decode once with EOF, and no raw error formatting/direct diagnostic print was added. Existing repeated-failure/DEBUG redaction matrices passed. New backend work is limited to copying observed fields; no new mode lifecycle, service calls in renderers, generated-client changes, or discovery requests were introduced.
 - Targeted gofmt, git diff --check, sanitized go build ./... and make docs-content passed. Reviewed eight generated CLI references plus the README-derived index. All validation used mocks/test-owned HTTP and terminal fixtures. No live engine was tested; full repository race validation remains T006.
 ---
+
+---
+## Iteration 4 - 2026-10-31 13:40
+**Work Unit**: US2 — T004 job/user-task observations and frozen completion candidates complete; US2 partial
+**Tasks Completed**:
+- [x] T004: Preserve observed job and user-task business IDs through native/facade mappings, ordinary/enriched views, scalar update plans and frozen completion candidates/outcomes, with isolated tests and regenerated documentation.
+**Tasks Remaining in Work Unit**: T004 complete; 2 tasks remain in US2 and overall (T005–T006).
+**Commit**: This work-unit commit
+**Files Changed**:
+- README.md
+- c8volt/job/business_id_test.go
+- c8volt/job/client.go
+- c8volt/job/convert.go
+- c8volt/job/model.go
+- c8volt/task/business_id_test.go
+- c8volt/task/convert.go
+- c8volt/task/model.go
+- cmd/cmd_views_job.go
+- cmd/cmd_views_usertask.go
+- cmd/get_job.go
+- cmd/get_job_search.go
+- cmd/get_usertask.go
+- cmd/job_task_business_id_test.go
+- cmd/update_job.go
+- cmd/update_job_plan.go
+- docs/cli/c8volt_get_job.md
+- docs/cli/c8volt_get_user-task.md
+- docs/cli/c8volt_update_job.md
+- docs/index.md
+- internal/domain/job.go
+- internal/domain/job_completion.go
+- internal/domain/usertask.go
+- internal/services/job/completion/business_id_test.go
+- internal/services/job/completion/execution_plan.go
+- internal/services/job/completion/prepare.go
+- internal/services/job/v810/business_id_test.go
+- internal/services/job/v810/convert.go
+- internal/services/usertask/v810/business_id_test.go
+- internal/services/usertask/v810/convert.go
+- specs/360-business-id-creation-views/progress.md
+- specs/360-business-id-creation-views/ralph-memory.md
+- specs/360-business-id-creation-views/tasks.md
+**Learnings**:
+- The first command regression reproduced missing job identity. Added optional domain/public observations and matching candidate fields, v810 native copies, explicit facade pointer copies, preparation/execution snapshots and quoted view columns. Older adapters retain absence, including when a fixture supplies a native field. No generated-client, version-default, service signature or completion-assignment change.
+- Command tests exposed an additional inward task mapper used by effective-variable enrichment and both incremental/nonincremental empty job summaries. Copied identity into `toDomainUserTask`; empty quiet queries now suppress `found: 0` through view-owned formatting. Nonempty query, keys, totals and machine payload contracts remain unchanged.
+- New native/facade/plan tests cover nil, observed empty and opaque values, mutation after preparation, both candidate conversion directions and newer execution observations without changing frozen identity. Command fixtures cover all three versions, single/list/enriched reads, scalar retry/no-op/completion previews, bulk previews, accepted/partial completion, one-envelope EOF and original conflict exits. Requests are counted, unrelated reads rejected, and completion bodies are checked for no business-ID assignment.
+- Real-terminal execution matrices cover configured/inherited destinations, plain-time/JSON loggers, INFO/WARN and quiet suppression, empty selections under automation/auto-confirm/no-wait, zero-byte empty keys, preserved quiet+machine output, no confirmation/mutation for empty work, and separately captured stdout/stderr. Existing sparse-page, totals, explicit-key, abort/EOF and failure regressions passed.
+- Full affected service/facade suites passed: `go test ./internal/services/job/... ./internal/services/usertask/... ./c8volt/job ./c8volt/task -count=1`. Nonzero BusinessID inventory verified in completion service, v810 job/task adapters, both facades and cmd. Targeted command tests passed; broader job/task/complete/scalar/help regression selection passed (38.726s).
+- Race selection covering all BusinessID tests plus existing bulk diagnostic/summary/terminal and scalar outcome-error tests passed in all six selected areas (cmd 37.791s). Existing diagnostic matrices exercise both DEBUG entry points and redaction independently of verbose. All validation used sanitized environments, mocks or owned HTTP/terminal fixtures; no live environment was accessed. Full repository race validation remains T006.
+- Negative checks used Go overlays only: direct stderr scalar summary output and raw joined completion-error logging each failed the new strict assertions. Production files were never substituted. Reviewed service error → facade conversion → partial envelope/logging → exit: error classes and machine evidence remain unchanged, human failures retain one bounded aggregate ERROR, and new identity output uses INFO. No new raw error formatting or direct diagnostic prints were introduced.
+- Command cohesion review found one new final-summary view helper and no new mode lifecycle; backend changes only copy observation data. Targeted gofmt, `git diff --check`, sanitized `go build ./...` and `make docs-content` passed. Reviewed generated job/task/update references and README-derived index. No follow-up task expansion was needed.
+---

@@ -10,7 +10,9 @@ const (
 	JobKindTaskListener      = "TASK_LISTENER"
 )
 
+// Job retains the backend observation, including its independently optional business identity.
 type Job struct {
+	BusinessId         *string    `json:"businessId,omitempty"`
 	Key                string     `json:"key,omitempty"`
 	State              string     `json:"state,omitempty"`
 	Retries            int32      `json:"retries"`

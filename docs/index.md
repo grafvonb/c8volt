@@ -6,7 +6,7 @@ nav_exclude: true
 has_toc: true
 ---
 
-> Generated from build `c8volt v4.4.0-252-g8e0b410e-dirty`, commit `8e0b410e`, built `2026-10-31T12:28:48Z` | Supported Camunda 8 versions: 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.3 (final)
+> Generated from build `c8volt v4.4.0-253-g11997183-dirty`, commit `11997183`, built `2026-10-31T12:37:33Z` | Supported Camunda 8 versions: 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.3 (final)
 
 <img src="./logo/c8volt_logo_transparent_w_shadow_400x244.png" alt="c8volt logo" />
 
@@ -406,6 +406,8 @@ Library creation calls accept an optional `BusinessId *string` in `process.Proce
 Process inspection (`get pi`, including age and activity enrichment) and family walks preserve each observed Camunda 8.10 instance's own optional `businessId`. A parent may show a newer ID while a child shows an older value or none. Human rows safely quote IDs, including control characters; JSON retains exact strings and omits absent values. Keys-only output remains one key per line, including supported enriched keyed inspection and family walks; totals remain counts.
 
 Observed deletion/cancellation previews, variable-update plans, suspension/resumption tree plans, and process-definition deletion impact also retain IDs. Use `--verbose` for detailed mutation observations or `--json` for structured plans. These observations use the configured INFO logger in human mode; quiet and WARN suppress them. Empty cancel/delete selections now report `found: 0` through that logger rather than result stdout. Local exact-key suspension/resumption previews and key/status-only outcomes remain read-free and do not invent IDs.
+
+Job and user-task inspection on Camunda 8.10 preserves each resource's own optional `businessId`, including variable-enriched tasks, scalar job-update previews, and frozen bulk-completion candidates/outcomes. A job or task may retain an older ID or no ID even when its parent has a newer one. Observed empty strings remain present. Human rows append a safely quoted `business-id:` field; JSON keeps exact values. Preview and verbose completion rows use the configured INFO logger; query results remain on stdout. Empty job searches suppress `found: 0` under quiet while JSON and keys-only retain their existing shapes. Completion does not assign business IDs, and no extra lookup is made solely to display them.
 
 Generated references: [deploy process-definition](./cli/c8volt_deploy_process-definition), [run process-instance](./cli/c8volt_run_process-instance), [get process-definition](./cli/c8volt_get_process-definition).
 

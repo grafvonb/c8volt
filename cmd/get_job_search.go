@@ -11,6 +11,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// searchJobsWithPaging renders service-selected pages and a mode-aware final summary.
 func searchJobsWithPaging(cmd *cobra.Command, cli job.API, request job.SearchRequest) (job.SearchResult, bool, error) {
 	incremental := shouldRenderJobSearchPageIncrementally(cmd)
 	autoContinue := shouldAutoContinueJobSearchPages(cmd)
@@ -18,9 +19,7 @@ func searchJobsWithPaging(cmd *cobra.Command, cli job.API, request job.SearchReq
 	pageNumber := 0
 	printFoundAndReturn := func() (job.SearchResult, bool, error) {
 		if incremental {
-			if pickMode() == RenderModeOneLine {
-				renderOutputLine(cmd, "found: %d", processedTotal)
-			}
+			jobSearchSummaryView(cmd, processedTotal)
 			return job.SearchResult{}, true, nil
 		}
 		return job.SearchResult{}, false, nil

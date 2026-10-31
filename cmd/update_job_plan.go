@@ -13,6 +13,7 @@ import (
 	"github.com/grafvonb/c8volt/c8volt/ferrors"
 	"github.com/grafvonb/c8volt/c8volt/job"
 	"github.com/grafvonb/c8volt/config"
+	"github.com/grafvonb/c8volt/toolx"
 	"github.com/spf13/cobra"
 )
 
@@ -27,6 +28,7 @@ func planUpdateJob(ctx context.Context, cli c8volt.API, request job.UpdateReques
 
 // buildUpdateJobPlan compares retry state and records timeout submission intent without mutating.
 func buildUpdateJobPlan(current job.Job, request job.UpdateRequest) job.UpdatePlan {
+	current.BusinessId = toolx.CopyPtr(current.BusinessId)
 	plan := job.UpdatePlan{
 		Key:               request.Key,
 		Current:           current,
@@ -87,6 +89,7 @@ func attachUpdateJobExplicitTenantContext(cmd *cobra.Command, cfg *config.Config
 
 // buildWorkerOutcomeUpdatePlan renders worker outcomes through the same dry-run and confirmation plan shape used by retry and timeout updates.
 func buildWorkerOutcomeUpdatePlan(current job.Job, request job.UpdateRequest) job.UpdatePlan {
+	current.BusinessId = toolx.CopyPtr(current.BusinessId)
 	outcome := request.WorkerOutcome
 	plan := job.UpdatePlan{
 		Key:               request.Key,

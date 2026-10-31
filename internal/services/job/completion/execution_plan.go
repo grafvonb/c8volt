@@ -17,7 +17,10 @@ import (
 func snapshotExecutionBatch(b d.PreparedCompletionBatch) (d.PreparedCompletionBatch, error) {
 	b.Selection.Keys = slices.Clone(b.Selection.Keys)
 	b.Selection.Filter.Retries = toolx.CopyPtr(b.Selection.Filter.Retries)
-	b.Candidates = slices.Clone(b.Candidates)
+	b.Candidates = toolx.MapSlice(b.Candidates, func(c d.CompletionCandidate) d.CompletionCandidate {
+		c.BusinessId = toolx.CopyPtr(c.BusinessId)
+		return c
+	})
 	b.TenantIDs = slices.Clone(b.TenantIDs)
 	variables, err := toolx.CopyJSONMap(b.Variables)
 	b.Variables = variables
@@ -59,7 +62,7 @@ func validateExecutionBatch(b d.PreparedCompletionBatch, tenant string) error {
 		}
 		seen[c.Key] = true
 		keys = append(keys, c.Key)
-		job := d.Job{Key: c.Key, State: c.State, Type: c.Type, ProcessInstanceKey: c.ProcessInstanceKey, ElementInstanceKey: c.ElementInstanceKey, ElementId: c.ElementId, Worker: c.Worker, Retries: c.Retries, Kind: c.Kind, ListenerEventType: c.ListenerEventType, TenantId: c.TenantId}
+		job := d.Job{BusinessId: toolx.CopyPtr(c.BusinessId), Key: c.Key, State: c.State, Type: c.Type, ProcessInstanceKey: c.ProcessInstanceKey, ElementInstanceKey: c.ElementInstanceKey, ElementId: c.ElementId, Worker: c.Worker, Retries: c.Retries, Kind: c.Kind, ListenerEventType: c.ListenerEventType, TenantId: c.TenantId}
 		if !Matches(job, b.Selection, b.DiscoveryTenant) {
 			return invalid("candidate outside prepared scope")
 		}

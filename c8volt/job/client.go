@@ -12,6 +12,7 @@ import (
 	"github.com/grafvonb/c8volt/c8volt/foptions"
 	d "github.com/grafvonb/c8volt/internal/domain"
 	jsvc "github.com/grafvonb/c8volt/internal/services/job"
+	"github.com/grafvonb/c8volt/toolx"
 )
 
 type client struct {
@@ -101,6 +102,7 @@ func (c *client) SubmitJobWorkerOutcome(ctx context.Context, request WorkerOutco
 // fromDomainJob preserves independently optional job facts at the public boundary.
 func fromDomainJob(result d.Job) Job {
 	return Job{
+		BusinessId:         toolx.CopyPtr(result.BusinessId),
 		Key:                result.Key,
 		State:              result.State,
 		Retries:            result.Retries,

@@ -18,6 +18,8 @@ Search and --total use the configured tenant; --tenant overrides it. An empty --
 
 --batch-size controls each discovery request; --limit caps jobs across all pages; --total counts matching jobs. Discovery follows raw page continuation and reports an incomplete-search error if pagination cannot establish completion.
 
+Camunda 8.10 observations include each job's own business ID when supplied by the backend. Related process IDs are never substituted. Empty searches respect --quiet while requested machine results remain available.
+
 Requires Camunda 8.8 or newer.
 
 ```

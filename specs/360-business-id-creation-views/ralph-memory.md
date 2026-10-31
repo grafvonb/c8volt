@@ -5,6 +5,11 @@ Started: 2026-10-31T11:43:38Z
 
 ## Codebase Patterns
 
+- Job/task native v810 converters and both task facade directions copy `BusinessId`. `toDomainUserTask` feeds effective-variable enrichment; omitting that copy loses IDs only with `--with-vars`.
+- Completion preparation copies job identity into candidates; public candidate casts copy the pointer afterward in both directions. `snapshotExecutionBatch` maps candidates with copied IDs before workers run, retaining frozen IDs even when rechecks return newer values. Scalar job plans also copy the pointer.
+- Job/task rows reuse `processInstanceBusinessIDColumn`; scalar job preview identity is appended to the INFO summary, and bulk candidate/outcome identity appears under verbose. Completion wire bodies never acquire business-ID assignment.
+- Empty quiet job searches have two rendering paths: `jobsView` and incremental `jobSearchSummaryView`. Both suppress the empty human summary while retaining JSON/keys modes and existing nonempty query behavior.
+
 - `processInstanceBusinessIDColumn` in `cmd/cmd_views_processinstance.go` uses `strconv.Quote` for optional observed IDs. Standard PI rows feed age/variable/incident/element/activity and family walk renderers; do not add parent fallback or rendering reads.
 - Both `c8volt/ops/convert.go` AND `c8volt/resource/convert.go` duplicate the process mapper. Both now copy IDs; resource mapping supplies definition-deletion impact.
 - Variable-update plans and suspension/resumption plan items reconstruct observed PI data, so domain/public plan models, service builders, facade converters and command previews now retain copied IDs. Exact-key local previews and mutation result statuses remain ID-free and read-free.
@@ -22,13 +27,16 @@ Started: 2026-10-31T11:43:38Z
 
 ## Decisions
 
-- T003 completes PI inspection and observed mutation plans only. T004 jobs/tasks, T005 listeners/slow analysis, and T006 operation reports/full-suite validation remain. Resource-specific IDs in existing ops JSON now flow through the duplicated mapper; that does not complete the custom report work.
+- T001–T004 are complete. T005 listeners/slow analysis and T006 operation reports/full-suite validation remain. Resource-specific IDs in existing ops JSON now flow through the duplicated mapper; that does not complete the custom report work.
 
 - T001 and the T002 CLI implementation form the US1 creation MVP. Resource inspection/report coverage remains scheduled as T003–T006 (US2); do not infer that creation views complete ordinary PI views.
 - `domain.ValidateBusinessID` is creation-only: nil allowed, empty/malformed UTF-8 rejected, maximum 256 UTF-16 units. v88/v89 reject any non-nil identity as unsupported at adapter entry before validation; bulk code must not preempt that precedence.
 - Creation reuses existing generated clients, service signatures and the shared pool; the default version is unchanged. README documents public compatibility and CLI streams; CLI docs are generated from source metadata.
 
 ## Gotchas
+
+- User-task command keys require the established long decimal format. Effective-variable requests use `/v2/user-tasks/<key>/effective-variables/search`.
+- Bulk completion conflicts retain existing bounded reconciliation even under no-wait: the three-item partial fixture uses one discovery, three prechecks, three submissions and two conflict rereads. Those are lifecycle reads, not identity enrichment. Failure envelope evidence is `class`/`detail`, not an `error` field.
 
 - Definition cancellation-plan JSON retains its established capitalized `RequiresCancelBeforeDelete` / `SelectedFinalState` names; do not change that schema while adding lowercase optional `businessId` inside observations.
 - Ancestry keys run child-to-parent. Family/descendant keys retain traversal order. Element/listener enrichment is incompatible with keys-only; incident/variable keyed inspection supports it.
@@ -44,6 +52,11 @@ Started: 2026-10-31T11:43:38Z
 
 ## Reusable Commands
 
+- T004 affected suites: `go test ./internal/services/job/... ./internal/services/usertask/... ./c8volt/job ./c8volt/task -count=1` passed.
+- T004 command regression: `go test ./cmd -run 'TestGetJob|TestGetUserTask|TestUpdateJob|TestBulkCompletion|TestScalarJob|TestJob(Task)?BusinessID|TestAllCommandHelpFocusesOnActions' -count=1` passed (38.726s).
+- T004 race: `env GORACE=atexit_sleep_ms=0 go test -race ./internal/services/job/completion ./internal/services/job/v810 ./internal/services/usertask/v810 ./c8volt/job ./c8volt/task ./cmd -run 'Test.*BusinessID|TestBulkCompletionDiagnosticLogging|TestBulkCompletionSummaryLogging|TestBulkCompletionTerminal|TestScalarJobOutcomeErrors' -count=1` passed (cmd 37.791s). BusinessID inventory is nonempty in all six selected areas.
+- Go `-overlay` supports isolated negative assertions without changing the working tree: direct stderr scalar preview output fails `TestJobBusinessIDPlans`; raw joined completion logging fails `TestJobBusinessIDCompletionOutcomes`. Temporary overlay files are not persistent dependencies.
+
 - T003 targeted observations: `go test ./cmd ./c8volt/process ./c8volt/ops ./c8volt/resource ./internal/services/processinstance ./internal/services/processdefinition -run 'Test.*BusinessID' -count=1`; all six areas have nonzero inventory.
 - T003 full affected non-command suites: `go test ./c8volt/process ./c8volt/ops ./c8volt/resource ./internal/services/processinstance/... ./internal/services/processdefinition/... -count=1` passed.
 - T003 final command race selection: `env GORACE=atexit_sleep_ms=0 go test -race ./cmd -run 'Test.*BusinessID|Test.*ProcessInstance.*(Logging|TreeOutput|TreeTerminal|TreeEmptyTerminal|SummaryLogging)|TestDeleteProcessDefinitionUnfinishedDiagnosticLogging|TestConfirmationEmptySelectorResults' -count=1` passed. The non-command BusinessID selection also passed with race.
@@ -58,6 +71,8 @@ Started: 2026-10-31T11:43:38Z
 
 ## Do Not Repeat
 
+- Do not restore shallow completion-candidate casts/slice cloning or omit `toDomainUserTask` identity. Snapshot and enriched command tests detect lost facts and shared pointers.
+
 - Do not preserve the old empty mutation stdout summary or human rows in keys-only inspection/walks. Terminal logger matrices reject these regressions. Negative substitutions for an empty stdout summary and direct stderr impact details both failed as intended; sources were restored.
 
 - Do not restore nil-on-error collection facade returns or return the fixed-length pool slots directly: regression tests demonstrated lost successful predecessors and fabricated zero-key slots.
@@ -67,4 +82,4 @@ Started: 2026-10-31T11:43:38Z
 
 ## Current Handoff
 
-- Next dependency-ready work is T004 [US2]: job/user-task observations and frozen completion candidates. Recheck tasks.md before selection; T001–T003 are complete, with no dependency blocking T004. T005 listeners/slow analysis and T006 operations reports remain afterward. Full repository race validation remains T006's gate; real-engine behavior is unverified.
+- Next dependency-ready work is T005 [US2]: independent listener and slow-analysis observations. Recheck tasks.md before selection; T001–T004 are complete, with no dependency blocking T005. T006 operations reports and full repository race validation remain afterward. No live engine behavior has been validated.

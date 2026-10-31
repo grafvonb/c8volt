@@ -401,6 +401,8 @@ Process inspection (`get pi`, including age and activity enrichment) and family 
 
 Observed deletion/cancellation previews, variable-update plans, suspension/resumption tree plans, and process-definition deletion impact also retain IDs. Use `--verbose` for detailed mutation observations or `--json` for structured plans. These observations use the configured INFO logger in human mode; quiet and WARN suppress them. Empty cancel/delete selections now report `found: 0` through that logger rather than result stdout. Local exact-key suspension/resumption previews and key/status-only outcomes remain read-free and do not invent IDs.
 
+Job and user-task inspection on Camunda 8.10 preserves each resource's own optional `businessId`, including variable-enriched tasks, scalar job-update previews, and frozen bulk-completion candidates/outcomes. A job or task may retain an older ID or no ID even when its parent has a newer one. Observed empty strings remain present. Human rows append a safely quoted `business-id:` field; JSON keeps exact values. Preview and verbose completion rows use the configured INFO logger; query results remain on stdout. Empty job searches suppress `found: 0` under quiet while JSON and keys-only retain their existing shapes. Completion does not assign business IDs, and no extra lookup is made solely to display them.
+
 Generated references: [deploy process-definition](docs/cli/c8volt_deploy_process-definition.md), [run process-instance](docs/cli/c8volt_run_process-instance.md), [get process-definition](docs/cli/c8volt_get_process-definition.md).
 
 ### Inspect Process Instances
