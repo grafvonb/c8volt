@@ -266,6 +266,7 @@ func (p *processInstanceVariablePlanner) addInstance(instance d.ProcessInstance,
 	}
 
 	instancePlan := d.ProcessInstanceVariablePlan{
+		BusinessId:         toolx.CopyPtr(instance.BusinessId),
 		ProcessInstanceKey: instance.Key,
 		ScopeKey:           instance.Key,
 		TenantId:           tenantID,

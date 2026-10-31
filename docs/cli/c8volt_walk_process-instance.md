@@ -12,6 +12,8 @@ Inspect the parent/child tree of process instances
 
 Inspect process-instance ancestry, descendants, or the full family.
 
+On Camunda 8.10, each observed family member retains its own business ID, including flat, tree, and enriched results. An absent child ID is never filled from its parent.
+
 Use --parent for ancestry or --children for descendants; the default scope is the full family. Explicit --key uses backend authorization without tenant filtering.
 
 Add --with-incidents, --with-vars, or --with-elements for incident details, process-instance-scope variables, or runtime elements. Add --with-listeners to --with-elements for runtime listener jobs. Listener rows use s: for job creation (not worker execution start), e: for job end, and d: for an available deadline only while the state is exactly ACTIVATED; missing times are omitted. Listener dur: measures time from job creation to its recorded end, or elapsed time for a pending job; it includes worker waiting time and is omitted when timestamps are unavailable or invalid.

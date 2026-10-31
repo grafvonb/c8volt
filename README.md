@@ -397,6 +397,10 @@ Library creation calls accept an optional `BusinessId *string` in `process.Proce
 
 `CreateProcessInstance`, `CreateProcessInstances`, and `CreateNProcessInstances` return the backend's business ID on `process.ProcessInstance`. Ordinary waiting uses the observed value, including absence; `WithNoWait()` retains the native acceptance response. Counted creation repeats the exact input ID, so backend uniqueness enforcement can reject repeated creations. Both collection methods return successful items alongside an error if later work fails; callers must inspect both return values. Failed or unattempted items are excluded, successful results retain their input-slot order, and no rollback or alternate ID is generated. These optional fields preserve JSON omission when absent and support keyed Go literals; consumers using unkeyed literals may need source updates.
 
+Process inspection (`get pi`, including age and activity enrichment) and family walks preserve each observed Camunda 8.10 instance's own optional `businessId`. A parent may show a newer ID while a child shows an older value or none. Human rows safely quote IDs, including control characters; JSON retains exact strings and omits absent values. Keys-only output remains one key per line, including supported enriched keyed inspection and family walks; totals remain counts.
+
+Observed deletion/cancellation previews, variable-update plans, suspension/resumption tree plans, and process-definition deletion impact also retain IDs. Use `--verbose` for detailed mutation observations or `--json` for structured plans. These observations use the configured INFO logger in human mode; quiet and WARN suppress them. Empty cancel/delete selections now report `found: 0` through that logger rather than result stdout. Local exact-key suspension/resumption previews and key/status-only outcomes remain read-free and do not invent IDs.
+
 Generated references: [deploy process-definition](docs/cli/c8volt_deploy_process-definition.md), [run process-instance](docs/cli/c8volt_run_process-instance.md), [get process-definition](docs/cli/c8volt_get_process-definition.md).
 
 ### Inspect Process Instances

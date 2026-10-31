@@ -37,13 +37,16 @@ func familyView(cmd *cobra.Command, path KeysPath, chain Chain) error {
 	return pathView(cmd, path, chain, pickMode(), " ⇄ \n")
 }
 
+// pathView retains selected-format output, including zero bytes for an empty key path.
 func pathView(cmd *cobra.Command, path KeysPath, chain Chain, mode RenderMode, sep string) error {
 	items := pathItems(path, chain)
 	switch mode {
 	case RenderModeJSON:
 		return renderJSONPayload(cmd, mode, items)
 	case RenderModeKeysOnly:
-		renderOutputLine(cmd, "%s", strings.Join(mapItems(items, func(it process.ProcessInstance) string { return it.Key }), "\n"))
+		for _, item := range items {
+			renderOutputLine(cmd, "%s", item.Key)
+		}
 	default: // RenderModeOneLine
 		showTimezoneOffset := commandShowTimezoneOffset(cmd)
 		renderOutputLine(cmd, "%s", strings.Join(mapItems(items, func(it process.ProcessInstance) string {

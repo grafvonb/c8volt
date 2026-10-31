@@ -8,6 +8,7 @@ import (
 	"fmt"
 
 	"github.com/grafvonb/c8volt/c8volt/process"
+	"github.com/grafvonb/c8volt/toolx"
 	types "github.com/grafvonb/c8volt/typex"
 	"github.com/spf13/cobra"
 )
@@ -64,6 +65,7 @@ func processInstanceVariableUpdatePreviewFromFacadePlan(plan process.ProcessInst
 	instances := make([]processInstanceVariableUpdatePlan, len(plan.Instances))
 	for i, instance := range plan.Instances {
 		instances[i] = processInstanceVariableUpdatePlan{
+			BusinessId:         toolx.CopyPtr(instance.BusinessId),
 			ProcessInstanceKey: instance.ProcessInstanceKey,
 			Additions:          processInstanceVariablePlannedValuesFromFacade(instance.Additions),
 			Changes:            processInstanceVariablePlannedChangesFromFacade(instance.Changes),

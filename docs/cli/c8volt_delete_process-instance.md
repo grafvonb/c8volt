@@ -12,6 +12,8 @@ Delete process instances by key or filters
 
 Delete process instances by key or search filters.
 
+Observed delete previews retain each instance's business ID when available. Use --verbose to inspect IDs alongside final-state and cancellation details; JSON preserves them exactly. Empty selections report found: 0 through the configured INFO logger.
+
 c8volt validates the affected tree before any deletion, asks for confirmation, and waits until deletion is observed. Nonterminal instances block deletion unless --force is set.
 
 --force allows cancellation when deletion encounters a nonterminal instance. Deletion traverses children first and retries after cancellation; the entire scope is not canceled before any deletion.

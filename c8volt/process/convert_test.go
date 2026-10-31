@@ -150,3 +150,35 @@ func TestConvertBusinessID(t *testing.T) {
 		}
 	}
 }
+
+// TestProcessInstanceBusinessIDPlans covers every observed plan projection and mutable boundary.
+func TestProcessInstanceBusinessIDPlans(t *testing.T) {
+	t.Parallel()
+	for _, value := range []*string{nil, new(string), func() *string { s := "old,ID"; return &s }()} {
+		instance := d.ProcessInstance{Key: "101", BusinessId: value}
+		for _, got := range []ProcessInstance{
+			fromDomainIncidentEnrichedProcessInstance(d.IncidentEnrichedProcessInstance{Item: instance}).Item,
+			fromDomainVariableEnrichedProcessInstance(d.VariableEnrichedProcessInstance{Item: instance}).Item,
+			fromDomainElementEnrichedProcessInstance(d.ElementEnrichedProcessInstance{Item: instance}).Item,
+		} {
+			require.Equal(t, value, got.BusinessId)
+			if value != nil {
+				require.NotSame(t, value, got.BusinessId)
+			}
+		}
+		plan := fromDomainProcessInstanceVariablePlan(d.ProcessInstanceVariablePlan{ProcessInstanceKey: "101", BusinessId: value})
+		back := toDomainProcessInstanceVariablePlan(plan)
+		suspension := fromDomainProcessInstanceSuspensionPlanItem(d.ProcessInstanceSuspensionPlanItem{Key: "101", BusinessId: value})
+		resumption := fromDomainProcessInstanceResumptionPlanItem(d.ProcessInstanceResumptionPlanItem{Key: "101", BusinessId: value})
+		for _, got := range []*string{plan.BusinessId, back.BusinessId, suspension.BusinessId, resumption.BusinessId} {
+			require.Equal(t, value, got)
+			if value != nil {
+				require.NotSame(t, value, got)
+			}
+		}
+		if value != nil {
+			*plan.BusinessId = "changed"
+			require.Equal(t, *value, *back.BusinessId)
+		}
+	}
+}

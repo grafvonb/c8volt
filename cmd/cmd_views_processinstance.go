@@ -5,6 +5,7 @@ package cmd
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -63,7 +64,7 @@ func renderEmptyProcessInstanceSelectorResult(cmd *cobra.Command, operation stri
 		if flagQuiet {
 			return nil
 		}
-		renderOutputLine(cmd, "found: %d", 0)
+		renderHumanLine(cmd, "found: %d", 0)
 		return nil
 	}
 }
@@ -102,6 +103,7 @@ func flatRowPI(it process.ProcessInstance) flatRow {
 	return flatRowPIWithTimezone(it, false)
 }
 
+// flatRowPIWithTimezone appends safely quoted identity without changing absent-value columns.
 func flatRowPIWithTimezone(it process.ProcessInstance, showTimezoneOffset bool) flatRow {
 	pTag := " p:<root>"
 	if it.ParentKey != "" {
@@ -138,6 +140,7 @@ func flatRowPIWithTimezone(it process.ProcessInstance, showTimezoneOffset bool) 
 		strings.TrimSpace(pTag),
 		strings.TrimSpace(incidentTag),
 		strings.TrimSpace(ageTag),
+		processInstanceBusinessIDColumn(it.BusinessId),
 	}
 }
 
@@ -234,4 +237,12 @@ func printMissingAncestorKeyWarning(print func(string, ...interface{}), keys []s
 		return
 	}
 	print("missing ancestor keys: %d (use --verbose to list keys)\n", len(keys))
+}
+
+// processInstanceBusinessIDColumn keeps opaque observed values on one line; nil adds no column.
+func processInstanceBusinessIDColumn(value *string) string {
+	if value == nil {
+		return ""
+	}
+	return "business-id:" + strconv.Quote(*value)
 }

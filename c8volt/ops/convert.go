@@ -1893,8 +1893,10 @@ func toDomainOpsTenantEvidence(x process.TenantEvidence) d.TenantEvidence {
 	}
 }
 
+// fromDomainProcessInstance copies each observed identity without borrowing related resource values.
 func fromDomainProcessInstance(x d.ProcessInstance) process.ProcessInstance {
 	return process.ProcessInstance{
+		BusinessId:               toolx.CopyPtr(x.BusinessId),
 		BpmnProcessId:            x.BpmnProcessId,
 		EndDate:                  x.EndDate,
 		Incident:                 x.Incident,

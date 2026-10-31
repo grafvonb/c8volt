@@ -22,6 +22,8 @@ type ProcessInstanceSuspensionPlan struct {
 
 // ProcessInstanceSuspensionPlanItem records one discovery observation and its eligibility.
 type ProcessInstanceSuspensionPlanItem struct {
+	// BusinessId is the optional identity observed during planning.
+	BusinessId *string `json:"businessId,omitempty"`
 	// Key: Discovered instance identity.
 	Key string `json:"key"`
 	// ObservedState: Planning observation; never post-submission confirmation evidence.

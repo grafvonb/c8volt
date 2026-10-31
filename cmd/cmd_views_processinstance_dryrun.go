@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/grafvonb/c8volt/c8volt/process"
+	"github.com/grafvonb/c8volt/toolx"
 	types "github.com/grafvonb/c8volt/typex"
 	"github.com/spf13/cobra"
 )
@@ -14,14 +15,18 @@ type processInstanceDryRunMissingAncestor struct {
 	StartKey string `json:"startKey"`
 }
 
+// processInstanceDryRunSelectedFinalState retains the selected resource observation.
 type processInstanceDryRunSelectedFinalState struct {
-	Key   string        `json:"key"`
-	State process.State `json:"state"`
+	BusinessId *string       `json:"businessId,omitempty"`
+	Key        string        `json:"key"`
+	State      process.State `json:"state"`
 }
 
+// processInstanceDryRunRequiresCancelBeforeDelete retains the selected resource observation.
 type processInstanceDryRunRequiresCancelBeforeDelete struct {
-	Key   string        `json:"key"`
-	State process.State `json:"state"`
+	BusinessId *string       `json:"businessId,omitempty"`
+	Key        string        `json:"key"`
+	State      process.State `json:"state"`
 }
 
 type processInstanceDryRunPreview struct {
@@ -96,7 +101,17 @@ func newProcessInstanceDryRunSummary(operation string, previews []processInstanc
 		Previews:          append([]processInstanceDryRunPreview(nil), previews...),
 		MutationSubmitted: false,
 	}
-	for _, preview := range previews {
+	for i := range summary.Previews {
+		summary.Previews[i].SelectedFinalState = toolx.MapSlice(previews[i].SelectedFinalState, func(item processInstanceDryRunSelectedFinalState) processInstanceDryRunSelectedFinalState {
+			item.BusinessId = toolx.CopyPtr(item.BusinessId)
+			return item
+		})
+		summary.Previews[i].RequiresCancelBeforeDelete = toolx.MapSlice(previews[i].RequiresCancelBeforeDelete, func(item processInstanceDryRunRequiresCancelBeforeDelete) processInstanceDryRunRequiresCancelBeforeDelete {
+			item.BusinessId = toolx.CopyPtr(item.BusinessId)
+			return item
+		})
+	}
+	for _, preview := range summary.Previews {
 		summary.RequestedCount += preview.RequestedCount
 		summary.ResolvedRootCount += preview.ResolvedRootCount
 		summary.AffectedCount += preview.AffectedCount
@@ -143,6 +158,7 @@ func appendUniqueProcessInstanceDryRunSelectedFinalState(dst []processInstanceDr
 			continue
 		}
 		seen[item.Key] = struct{}{}
+		item.BusinessId = toolx.CopyPtr(item.BusinessId)
 		dst = append(dst, item)
 	}
 	return dst
@@ -160,6 +176,7 @@ func appendUniqueProcessInstanceDryRunRequiresCancelBeforeDelete(dst []processIn
 			continue
 		}
 		seen[item.Key] = struct{}{}
+		item.BusinessId = toolx.CopyPtr(item.BusinessId)
 		dst = append(dst, item)
 	}
 	return dst
@@ -189,7 +206,7 @@ func newProcessInstanceDryRunMissingAncestors(items []process.MissingAncestor) [
 func newProcessInstanceDryRunSelectedFinalState(items []process.ProcessInstance) []processInstanceDryRunSelectedFinalState {
 	out := make([]processInstanceDryRunSelectedFinalState, 0, len(items))
 	for _, item := range items {
-		out = append(out, processInstanceDryRunSelectedFinalState{Key: item.Key, State: item.State})
+		out = append(out, processInstanceDryRunSelectedFinalState{Key: item.Key, State: item.State, BusinessId: toolx.CopyPtr(item.BusinessId)})
 	}
 	return out
 }
@@ -198,7 +215,7 @@ func newProcessInstanceDryRunSelectedFinalState(items []process.ProcessInstance)
 func newProcessInstanceDryRunRequiresCancelBeforeDelete(items []process.ProcessInstance) []processInstanceDryRunRequiresCancelBeforeDelete {
 	out := make([]processInstanceDryRunRequiresCancelBeforeDelete, 0, len(items))
 	for _, item := range items {
-		out = append(out, processInstanceDryRunRequiresCancelBeforeDelete{Key: item.Key, State: item.State})
+		out = append(out, processInstanceDryRunRequiresCancelBeforeDelete{Key: item.Key, State: item.State, BusinessId: toolx.CopyPtr(item.BusinessId)})
 	}
 	return out
 }
@@ -329,7 +346,7 @@ func formatProcessInstanceDryRunRequiresCancelBeforeDeleteStates(items []process
 func formatProcessInstanceDryRunRequiresCancelBeforeDelete(items []processInstanceDryRunRequiresCancelBeforeDelete) string {
 	out := make([]string, 0, len(items))
 	for _, item := range items {
-		out = append(out, fmt.Sprintf("%s=%s", item.Key, item.State))
+		out = append(out, strings.TrimSpace(fmt.Sprintf("%s=%s %s", item.Key, item.State, processInstanceBusinessIDColumn(item.BusinessId))))
 	}
 	return strings.Join(out, ", ")
 }
@@ -352,7 +369,7 @@ func formatProcessInstanceDryRunSelectedFinalStateStates(items []processInstance
 func formatProcessInstanceDryRunSelectedFinalState(items []processInstanceDryRunSelectedFinalState) string {
 	out := make([]string, 0, len(items))
 	for _, item := range items {
-		out = append(out, fmt.Sprintf("%s=%s", item.Key, item.State))
+		out = append(out, strings.TrimSpace(fmt.Sprintf("%s=%s %s", item.Key, item.State, processInstanceBusinessIDColumn(item.BusinessId))))
 	}
 	return strings.Join(out, ", ")
 }

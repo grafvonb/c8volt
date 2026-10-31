@@ -387,6 +387,7 @@ func toDomainProcessInstanceVariablePlannedChange(x ProcessInstanceVariablePlann
 // toDomainProcessInstanceVariablePlan copies one public root plan.
 func toDomainProcessInstanceVariablePlan(x ProcessInstanceVariablePlan) d.ProcessInstanceVariablePlan {
 	return d.ProcessInstanceVariablePlan{
+		BusinessId:         toolx.CopyPtr(x.BusinessId),
 		ProcessInstanceKey: x.ProcessInstanceKey, ScopeKey: x.ScopeKey, TenantId: x.TenantId,
 		Additions:          toolx.MapSlice(x.Additions, toDomainProcessInstanceVariablePlannedValue),
 		Changes:            toolx.MapSlice(x.Changes, toDomainProcessInstanceVariablePlannedChange),
@@ -493,6 +494,7 @@ func fromDomainProcessInstanceVariablePlannedChange(x d.ProcessInstanceVariableP
 // classification or payload values.
 func fromDomainProcessInstanceVariablePlan(x d.ProcessInstanceVariablePlan) ProcessInstanceVariablePlan {
 	return ProcessInstanceVariablePlan{
+		BusinessId:         toolx.CopyPtr(x.BusinessId),
 		ProcessInstanceKey: x.ProcessInstanceKey, ScopeKey: x.ScopeKey, TenantId: x.TenantId,
 		Additions:          toolx.MapSlice(x.Additions, fromDomainProcessInstanceVariablePlannedValue),
 		Changes:            toolx.MapSlice(x.Changes, fromDomainProcessInstanceVariablePlannedChange),
@@ -1034,7 +1036,7 @@ func fromDomainProcessInstanceSuspensionPlan(plan d.ProcessInstanceSuspensionPla
 
 // fromDomainProcessInstanceSuspensionPlanItem maps planning facts, never execution evidence.
 func fromDomainProcessInstanceSuspensionPlanItem(item d.ProcessInstanceSuspensionPlanItem) ProcessInstanceSuspensionPlanItem {
-	return ProcessInstanceSuspensionPlanItem{Key: item.Key, ObservedState: State(item.ObservedState), Classification: ProcessInstanceSuspensionPlanClassification(item.Classification)}
+	return ProcessInstanceSuspensionPlanItem{BusinessId: toolx.CopyPtr(item.BusinessId), Key: item.Key, ObservedState: State(item.ObservedState), Classification: ProcessInstanceSuspensionPlanClassification(item.Classification)}
 }
 
 // fromDomainResumptionResult mechanically preserves submission and observation evidence.
@@ -1068,5 +1070,5 @@ func fromDomainProcessInstanceResumptionPlan(plan d.ProcessInstanceResumptionPla
 
 // fromDomainProcessInstanceResumptionPlanItem maps planning facts, never execution evidence.
 func fromDomainProcessInstanceResumptionPlanItem(item d.ProcessInstanceResumptionPlanItem) ProcessInstanceResumptionPlanItem {
-	return ProcessInstanceResumptionPlanItem{Key: item.Key, ObservedState: State(item.ObservedState), Classification: ProcessInstanceResumptionPlanClassification(item.Classification)}
+	return ProcessInstanceResumptionPlanItem{BusinessId: toolx.CopyPtr(item.BusinessId), Key: item.Key, ObservedState: State(item.ObservedState), Classification: ProcessInstanceResumptionPlanClassification(item.Classification)}
 }

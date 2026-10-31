@@ -121,7 +121,9 @@ func TestRunProcessInstanceBusinessIDHelper(t *testing.T) {
 	}
 	writer := io.MultiWriter(os.Stderr, capture)
 	if os.Getenv("C8VOLT_BID_DEST") == "configured" {
-		runProcessInstanceCmd.SetErr(writer)
+		selected, _, findErr := root.Find(args)
+		require.NoError(t, findErr)
+		selected.SetErr(writer)
 	} else {
 		root.SetErr(writer)
 	}

@@ -10,6 +10,7 @@ import (
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/services"
 	"github.com/grafvonb/c8volt/internal/services/common"
+	"github.com/grafvonb/c8volt/toolx"
 	"github.com/grafvonb/c8volt/typex"
 )
 
@@ -77,7 +78,7 @@ func PlanProcessInstanceResumption(ctx context.Context, api API, keys typex.Keys
 // classifyResumptionPlanItem keeps known observations and normalizes unknown states;
 // only SUSPENDED is eligible, independently of any previous suspension operation.
 func classifyResumptionPlanItem(instance d.ProcessInstance) d.ProcessInstanceResumptionPlanItem {
-	item := d.ProcessInstanceResumptionPlanItem{Key: instance.Key, ObservedState: instance.State, Classification: d.ProcessInstanceResumptionPlanExcluded}
+	item := d.ProcessInstanceResumptionPlanItem{BusinessId: toolx.CopyPtr(instance.BusinessId), Key: instance.Key, ObservedState: instance.State, Classification: d.ProcessInstanceResumptionPlanExcluded}
 	switch instance.State {
 	case d.StateSuspended:
 		item.Classification = d.ProcessInstanceResumptionPlanEligible

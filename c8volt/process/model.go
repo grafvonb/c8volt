@@ -196,6 +196,8 @@ type ProcessInstanceVariablePlannedChange struct {
 // ProcessInstanceVariablePlan is the complete root-only classification and
 // frozen payload for one selected process instance.
 type ProcessInstanceVariablePlan struct {
+	// BusinessId is the optional identity observed during planning.
+	BusinessId         *string                                `json:"businessId,omitempty"`
 	ProcessInstanceKey string                                 `json:"processInstanceKey"`
 	ScopeKey           string                                 `json:"scopeKey"`
 	TenantId           string                                 `json:"tenantId,omitempty"`
@@ -822,6 +824,8 @@ type ProcessInstanceSuspensionPlan struct {
 
 // ProcessInstanceSuspensionPlanItem records one discovery observation and its eligibility.
 type ProcessInstanceSuspensionPlanItem struct {
+	// BusinessId is the optional identity observed during planning.
+	BusinessId *string `json:"businessId,omitempty"`
 	// Key: Discovered instance identity.
 	Key string `json:"key"`
 	// ObservedState: Planning observation; never post-submission confirmation evidence.
@@ -929,6 +933,8 @@ type ProcessInstanceResumptionPlan struct {
 
 // ProcessInstanceResumptionPlanItem records one discovery observation and its eligibility.
 type ProcessInstanceResumptionPlanItem struct {
+	// BusinessId is the optional identity observed during planning.
+	BusinessId *string `json:"businessId,omitempty"`
 	// Key: Discovered instance identity.
 	Key string `json:"key"`
 	// ObservedState: Planning observation; never post-submission confirmation evidence.

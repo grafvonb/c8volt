@@ -19,6 +19,7 @@ import (
 // rejection of unexpected requests. Its embedded mutex protects all observations.
 type suspensionTreeFixture struct {
 	*suspensionFixture
+	businessIDs     map[string]string
 	observed        map[string]string
 	children        map[string][]string
 	discovery       []string
@@ -70,12 +71,20 @@ func newSuspensionTreeFixture(t *testing.T) *suspensionTreeFixture {
 		state, ok := f.observed[key]
 		require.True(t, ok, "no ancestor or unrelated reads: %s", key)
 		if seed {
-			fmt.Fprintf(w, `{"processInstanceKey":%q,"parentProcessInstanceKey":"2251799813685248","state":%q}`, key, state)
+			item := map[string]string{"processInstanceKey": key, "parentProcessInstanceKey": "2251799813685248", "state": state}
+			if value, ok := f.businessIDs[key]; ok {
+				item["businessId"] = value
+			}
+			require.NoError(t, json.NewEncoder(w).Encode(item))
 			return
 		}
 		items := []map[string]string{}
 		for _, child := range f.children[key] {
-			items = append(items, map[string]string{"processInstanceKey": child, "parentProcessInstanceKey": key, "state": f.observed[child]})
+			item := map[string]string{"processInstanceKey": child, "parentProcessInstanceKey": key, "state": f.observed[child]}
+			if value, ok := f.businessIDs[child]; ok {
+				item["businessId"] = value
+			}
+			items = append(items, item)
 		}
 		require.NoError(t, json.NewEncoder(w).Encode(map[string]any{"items": items, "page": map[string]int{"totalItems": len(items)}}))
 	}))

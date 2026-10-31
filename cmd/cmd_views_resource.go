@@ -87,6 +87,16 @@ func renderDeleteProcessDefinitionImpact(cmd *cobra.Command, plan resource.Delet
 		renderHumanLine(cmd, "delete impact check: %d process definition(s); %s found; no changes made yet", totals.ProcessDefinitions, processDefinitionUnfinishedSummary(totals))
 		return
 	}
+	if flagVerbose {
+		for _, item := range plan.Items {
+			for _, observed := range item.CancellationPlan.RequiresCancelBeforeDelete {
+				renderHumanLine(cmd, "affected process instance: %s", oneLinePIWithTimezone(observed, commandShowTimezoneOffset(cmd)))
+			}
+			for _, observed := range item.CancellationPlan.SelectedFinalState {
+				renderHumanLine(cmd, "selected final process instance: %s", oneLinePIWithTimezone(observed, commandShowTimezoneOffset(cmd)))
+			}
+		}
+	}
 	for _, warning := range plan.Warnings {
 		renderHumanWarningLine(cmd, "%s", warning)
 	}

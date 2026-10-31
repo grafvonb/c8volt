@@ -6,7 +6,7 @@ nav_exclude: true
 has_toc: true
 ---
 
-> Generated from build `c8volt v4.4.0-251-g01fb7a7b-dirty`, commit `01fb7a7b`, built `2026-10-31T12:06:02Z` | Supported Camunda 8 versions: 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.3 (final)
+> Generated from build `c8volt v4.4.0-252-g8e0b410e-dirty`, commit `8e0b410e`, built `2026-10-31T12:28:48Z` | Supported Camunda 8 versions: 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.3 (final)
 
 <img src="./logo/c8volt_logo_transparent_w_shadow_400x244.png" alt="c8volt logo" />
 
@@ -402,6 +402,10 @@ Creation JSON retains successful items and their returned IDs in one failure env
 Library creation calls accept an optional `BusinessId *string` in `process.ProcessInstanceData` with either `BpmnProcessId` or `ProcessDefinitionSpecificId`. Camunda 8.10 supports this input; 8.8/8.9 reject any supplied value as unsupported before mutation. Nil omits the field. A supplied ID must be nonempty, valid UTF-8, and at most 256 UTF-16 code units (for example, 256 BMP characters or 128 supplementary emoji). Whitespace, commas, and case are preserved exactly.
 
 `CreateProcessInstance`, `CreateProcessInstances`, and `CreateNProcessInstances` return the backend's business ID on `process.ProcessInstance`. Ordinary waiting uses the observed value, including absence; `WithNoWait()` retains the native acceptance response. Counted creation repeats the exact input ID, so backend uniqueness enforcement can reject repeated creations. Both collection methods return successful items alongside an error if later work fails; callers must inspect both return values. Failed or unattempted items are excluded, successful results retain their input-slot order, and no rollback or alternate ID is generated. These optional fields preserve JSON omission when absent and support keyed Go literals; consumers using unkeyed literals may need source updates.
+
+Process inspection (`get pi`, including age and activity enrichment) and family walks preserve each observed Camunda 8.10 instance's own optional `businessId`. A parent may show a newer ID while a child shows an older value or none. Human rows safely quote IDs, including control characters; JSON retains exact strings and omits absent values. Keys-only output remains one key per line, including supported enriched keyed inspection and family walks; totals remain counts.
+
+Observed deletion/cancellation previews, variable-update plans, suspension/resumption tree plans, and process-definition deletion impact also retain IDs. Use `--verbose` for detailed mutation observations or `--json` for structured plans. These observations use the configured INFO logger in human mode; quiet and WARN suppress them. Empty cancel/delete selections now report `found: 0` through that logger rather than result stdout. Local exact-key suspension/resumption previews and key/status-only outcomes remain read-free and do not invent IDs.
 
 Generated references: [deploy process-definition](./cli/c8volt_deploy_process-definition), [run process-instance](./cli/c8volt_run_process-instance), [get process-definition](./cli/c8volt_get_process-definition).
 

@@ -22,6 +22,8 @@ var cancelProcessInstanceCmd = &cobra.Command{
 	Short: "Cancel process instances by key or filters",
 	Long: `Cancel process instances by key or search filters.
 
+Observed final-state preview entries retain their own business IDs when available. Use --verbose to inspect them; JSON preserves them exactly. Empty selections report found: 0 through the configured INFO logger.
+
 By default c8volt validates the affected root and descendant instances, asks for confirmation, and waits until cancellation is observed. Use --force when a selected child must be escalated to its root instance.
 
 Cancellation succeeds when every affected family member is completed, canceled, terminated, or absent. The explicit expect process-instance --state canceled check still requires canceled or terminated instances.
