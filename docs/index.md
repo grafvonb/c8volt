@@ -6,7 +6,7 @@ nav_exclude: true
 has_toc: true
 ---
 
-> Generated from build `c8volt v4.4.0-245-g335f1e44-dirty`, commit `335f1e44`, built `2026-10-31T07:06:52Z` | Supported Camunda 8 versions: 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.3 (final)
+> Generated from build `c8volt v4.4.0-246-g62a9085f-dirty`, commit `62a9085f`, built `2026-10-31T07:34:40Z` | Supported Camunda 8 versions: 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.3 (final)
 
 <img src="./logo/c8volt_logo_transparent_w_shadow_400x244.png" alt="c8volt logo" />
 
@@ -197,9 +197,27 @@ may also wait for its normal slot. The operation retains its own HTTP timeout,
 subject to the original workflow deadline. Local commands and local previews make
 no advisory request; remote discovery does, including when it finds no work.
 
-Use `--no-version-check` to skip the advisory (`--no-version-check=false` keeps it
-on). This is an invocation flag, not a persisted setting. Warnings follow the
-configured logger; quiet suppresses them, and JSON/keys-only results stay unchanged.
+Use `--no-version-check` to skip the advisory for one invocation. To persist that
+choice, set `app.no_version_check: true` in base configuration or a profile:
+
+```yaml
+app:
+  no_version_check: false  # default: perform the advisory check
+profiles:
+  intentional-mismatch:
+    app:
+      no_version_check: true
+```
+
+Select the profile with `--profile intentional-mismatch`. The environment variable
+`C8VOLT_APP_NO_VERSION_CHECK=true` disables the advisory; `false` enables it.
+Precedence is explicit CLI flag > environment > selected profile > base config >
+default (`false`). An explicit `--no-version-check=false` enables checking even
+when configuration or the environment disables it. `config show` displays the
+effective setting, and `config template` includes its default.
+
+Warnings follow the configured logger; quiet suppresses them, and JSON/keys-only
+results stay unchanged.
 Explicit `get cluster version`, `get cluster topology`, and `config test-connection`
 still perform their requested reads. Connection-test JSON compatibility warnings
 always describe that requested read, even when the automatic check is disabled.

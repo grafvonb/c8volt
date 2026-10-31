@@ -16,7 +16,7 @@ A pre-Do wrapper on generated service clients consults a context-scoped checker 
 
 **Primary Dependencies**: Existing Cobra 1.10.2, Viper 1.21.0, standard `context`/`net/http`/`sync`/`log/slog`, testify 1.11.1, generated Camunda v88/v89/v810 clients. No new dependencies.
 
-**Storage**: Invocation-memory state only; no persistent cache or new configuration field.
+**Storage**: Invocation-memory state only; no persistent cache. `app.no_version_check` is a persisted boolean in base/profile configuration, with environment and explicit CLI overrides.
 
 **Testing**: Go unit tests, existing generated-client doubles, test-owned HTTP servers, separate-stream command/subprocess tests, and existing real-terminal fixtures where prompt eligibility matters. No live environments.
 
@@ -98,7 +98,7 @@ New behavior has tests beside its owner. Existing HTTP, logging, request-rate, c
 
 ### Invocation and request flow
 
-1. Root configuration and logger resolution remain unchanged. Parse `--no-version-check` as an invocation flag; explicit false leaves checking enabled. Reset it in existing command-test cleanup alongside other flags.
+1. Root configuration and logger resolution remain unchanged. Bind `--no-version-check` to `app.no_version_check` through the existing resolver; explicit CLI values override environment, selected profile, base config and the false default. Explicit false enables checking. Reset it in existing command-test cleanup alongside other flags.
 2. `installRemoteCommandServices` constructs shared HTTP/auth and completes existing auth initialization. If enabled, attach a newly allocated cluster checker to the resulting invocation context through the focused command support helper. Construction performs no version request. Any lazy probe-construction failure becomes an advisory failure, not a new bootstrap rejection.
 3. `PrepareServiceDeps` supplies an `APIClient` Do wrapper in addition to the original concrete `HTTPClient`. All generated operational clients use `APIClient`; auth and nested service construction retain the concrete client as appropriate.
 4. At the first generated request's Do boundary, the wrapper checks context cancellation and the bypass marker, then joins/starts the checker. The winner performs one probe; other callers wait for completion or their own cancellation. All terminal outcomes consume the single attempt.
@@ -135,7 +135,7 @@ See [quickstart.md](quickstart.md) for safe runnable checks after implementation
 
 1. **Checker and release comparison**: bounded parser, typed outcome, required context gate/bypass contract and pre-Do wrapper, concurrency/cancellation policy, probe deadline/no-retry/pacing isolation, and isolated unit tests together. Keep required parser/checker tests in that unit so all dependencies compile together; do not replace legacy connection-test machine-warning classification.
 2. **Shared operational request wiring**: connect the completed pre-Do wrapper through additive `ServiceDeps.APIClient`, all 36 generated-client call-site changes, necessary doubles, and timeout/pass-through/adapter coverage together. Keep the public concrete-client signatures and nested construction working throughout.
-3. **CLI activation and complete operator contract**: flag, invocation install, configured WARN rendering, connection-test deduplication, fixture adjustments, execution/diagnostic/partial-output acceptance tests, help/README metadata, docs regeneration, formatting, and targeted plus final race validation together.
+3. **CLI activation and complete operator contract**: flag/config/environment precedence, invocation install, configured WARN rendering, connection-test deduplication, fixture adjustments, execution/diagnostic/partial-output acceptance tests, help/README metadata, docs regeneration, formatting, and targeted plus final race validation together.
 
 These are design outcomes, not a task checklist. Adjacent work was reviewed for consolidation: parser/checker policy can be tested independently; shared request wiring is a mechanical compiling unit; activation owns all observable behavior and its tests/docs. Do not split each adapter or user story into duplicate implementations, separate mandatory tests from their behavior, or add context-reading/branch checks as standalone tasks. If activation exceeds a practical iteration, subdivide only at independently verifiable behavior boundaries while retaining complete tests per unit.
 

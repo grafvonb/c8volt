@@ -25,6 +25,8 @@ Mismatch or lookup failure warns and retains the configured adapter. A mismatch
 may produce incorrect results; match config to gateway unless mismatch is intentional.
 The check waits at most two seconds (or a shorter HTTP/workflow timeout), uses shared
 request pacing, and can add a pacing slot. Disable it with --no-version-check.
+Set app.no_version_check in base/profile configuration or C8VOLT_APP_NO_VERSION_CHECK
+in the environment. Explicit --no-version-check=true/false overrides either setting.
 Local commands perform no check. Explicit version and connection tests still run.
 DEBUG logging adds one summary with gateway/broker versions, available cluster
 counts and a bounded failure reason, using the same lookup and configured logger.

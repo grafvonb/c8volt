@@ -80,6 +80,7 @@ func initViper(v *viper.Viper, cmd *cobra.Command) (*resolverBindings, error) {
 
 	bindings.bindPFlag(v, "app.tenant", fs.Lookup("tenant"))
 	bindings.bindPFlag(v, "app.camunda_version", fs.Lookup("camunda-version"))
+	bindings.bindPFlag(v, "app.no_version_check", fs.Lookup("no-version-check"))
 	bindings.bindPFlag(v, "app.automation", fs.Lookup("automation"))
 	bindings.bindPFlag(v, "app.no_err_codes", fs.Lookup("no-err-codes"))
 	bindings.bindPFlag(v, "app.auto-confirm", fs.Lookup("auto-confirm"))

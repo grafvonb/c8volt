@@ -13,6 +13,7 @@ import (
 
 type App struct {
 	CamundaVersion          toolx.CamundaVersion `mapstructure:"camunda_version" json:"camunda_version" yaml:"camunda_version"`
+	NoVersionCheck          bool                 `mapstructure:"no_version_check" json:"no_version_check" yaml:"no_version_check"`
 	Tenant                  string               `mapstructure:"tenant" json:"tenant" yaml:"tenant"`
 	ProcessInstancePageSize int32                `mapstructure:"process_instance_page_size" json:"process_instance_page_size" yaml:"process_instance_page_size"`
 	ShowTimezoneOffset      bool                 `mapstructure:"show_timezone_offset" json:"show_timezone_offset" yaml:"show_timezone_offset"`

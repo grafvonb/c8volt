@@ -1,6 +1,16 @@
 # Data Model: Advisory Camunda Version Check
 
-**Scope**: Transient invocation state and typed internal outcomes only. No persistent storage, public facade model, or command result schema is added.
+**Scope**: Advisory configuration, transient invocation state and typed internal outcomes. No persistent advisory cache, public facade model, or command result schema is added.
+
+## Configuration
+
+`config.App.NoVersionCheck` is a persisted boolean (`app.no_version_check` in
+YAML/JSON), also available within `profiles.<name>.app`. False is the default and
+enables the advisory. The existing reflection-based environment binding exposes
+`C8VOLT_APP_NO_VERSION_CHECK`; the root resolver binds `--no-version-check` to the
+same field. Only an explicitly supplied flag overrides environment/profile/base
+values, including explicit false. The invocation installer reads the resolved
+config value rather than the flag's raw default.
 
 ## Release line
 

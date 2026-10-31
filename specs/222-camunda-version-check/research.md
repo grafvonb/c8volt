@@ -48,6 +48,14 @@ Classify errors through typed causes: unauthorized/forbidden → `access denied`
 
 ## 5. CLI integration and duplicate diagnostics
 
+**Follow-up (2026-10-31)**: The CLI-only decision below is superseded by the
+requested persisted `app.no_version_check` setting. Existing `config.App` profile
+overlay and reflective environment binding already preserve explicitly configured
+false values through `ResolveEffectiveConfig`. Bind the existing flag to this
+field and read only the resolved value in the invocation installer; no separate
+precedence mechanism or profile schema is needed.
+
+
 **Decision**: Add persistent boolean `--no-version-check`, default false, without adding a persisted configuration key. Keep flag translation and checker installation in a focused `cmd/root_version_check.go`, called from `installRemoteCommandServices` after auth. Supply the configured command logger through a compact outcome renderer in `cmd/cmd_views_version_check.go`. The checker returns typed facts to that renderer exactly once; only ordinary parent cancellation can propagate to operational dispatch, never the advisory failure itself.
 
 `config test-connection` is remote despite being in `bypassRootBootstrap`: it calls `installRemoteCommandServices` explicitly. Its operational topology read remains separate. Preserve its actual-topology-derived JSON `warnings` values. Suppress its legacy WARN loop when the automatic checker already produced a warning outcome, regardless of logger filtering. If the advisory matched but the subsequent actual result differs, retain one explicit compatibility warning. When the new check is disabled, preserve explicit connection-test compatibility evaluation. Bound/sanitize any touched human fallback for unsafe actual-version values without changing existing machine warning evidence.

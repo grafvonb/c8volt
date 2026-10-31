@@ -20,7 +20,7 @@ type versionCheckContextKey struct{}
 // installVersionCheck composes the lazy service after authentication; no I/O is
 // performed until a generated operational client reaches its pre-request gate.
 func installVersionCheck(ctx context.Context, cfg *config.Config, client *http.Client, log *slog.Logger) context.Context {
-	if flagNoVersionCheck {
+	if cfg != nil && cfg.App.NoVersionCheck {
 		return ctx
 	}
 	checker := cluster.NewVersionCheck(cfg, client, log, func(outcome domain.VersionCheckOutcome) { renderVersionCheckOutcome(log, outcome) })

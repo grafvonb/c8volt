@@ -109,7 +109,7 @@ Use the following field constraints from the data model verbatim:
 
 ### T003 implementation and compatibility
 
-1. Add persistent `--no-version-check` default false, with normal placement and explicit true/false behavior. No new persisted configuration key. Keep focused flag translation/checker installation/outcome access outside root.go; install a fresh gate only after existing HTTP/auth initialization, using the configured command-context logger. Clear/reset the new flag in existing test cleanup without globally disabling default checking. Local validation, help, config-only execution, local preview, and pre-operation abort must not cause a version request.
+1. Add persistent `--no-version-check` default false, with normal placement and explicit true/false behavior. The later T006 follow-up adds persisted configuration and environment support. Keep focused flag translation/checker installation/outcome access outside root.go; install a fresh gate only after existing HTTP/auth initialization, using the configured command-context logger. Clear/reset the new flag in existing test cleanup without globally disabling default checking. Local validation, help, config-only execution, local preview, and pre-operation abort must not cause a version request.
 2. Render only typed bounded outcome facts through the existing configured WARN logger; do not use direct print, a separate/global logger, extra severity/timestamp text, raw error formatting, or result renderers. Preserve match silence. Current mismatch text and failure examples: `version mismatch: configured 8.9, gateway 8.10.3; results may be incorrect; match config to gateway unless mismatch is intentional`, `version check: access denied; using configured 8.9`, and `version check: timeout; using configured 8.9`. Other reasons follow the fixed [contract table](contracts/cli-version-check.md). Respect quiet/ERROR suppression, WARN visibility, format, destination, inheritance, activity routing, and existing quiet/debug precedence. Neither verbosity nor output mode independently disables the check.
 3. Preserve `config test-connection`'s real topology operation and legacy actual-result JSON warnings/parser behavior, including historically permissive `8.9.garbage`. Suppress its extra human compatibility warning only when the automatic checker produced a warning outcome, independent of log filtering. A matching advisory followed by a changed actual topology may still warn. With opt-out, explicit connection compatibility evaluation remains available. Safely bound touched human fallback messages without changing machine warning evidence. Explicit `get cluster version`/`get cluster topology` still perform their requested read separately.
 4. Keep results, prompts, existing failure conversion, partial submission evidence, and exits unchanged. Trace failed probe → typed advisory → WARN, then ordinary service failure → facade conversion → rendering/logger → original exit. Advisory failure must never trigger `ferrors`, replace an operation error, or produce an extra envelope. Do not change command schemas to solve human formatting.
@@ -210,3 +210,18 @@ The initial sandboxed attempts could not access the Go build cache; the permitte
 - [x] T005 Replace the mismatch warning with `version mismatch: configured <configured>, gateway <observed>; results may be incorrect; match config to gateway unless mismatch is intentional` Keep it a single configured WARN record, retain configured adapter selection, and leave failed-check and DEBUG messages unchanged. Update exact command/logging assertions, connection-test expectations, help and feature contract; regenerate CLI docs.
 
 Validation passed: `go test ./cmd -run 'Test(VersionCheck|ConfigTestConnection|BulkCompletionDiagnosticLogging|AllCommandHelp)' -count=1`, `make docs-content`, and `git diff --check`. Tests used isolated dependencies only.
+
+
+## Follow-up: Configurable advisory opt-out
+
+- [x] T006 Add `app.no_version_check` to base/profile configuration and `C8VOLT_APP_NO_VERSION_CHECK` through the existing resolver. Bind the CLI flag with explicit true/false precedence; use resolved config when installing the advisory. Test default/inheritance, true/false overrides at every boundary, inactive profiles, invalid booleans, effective config/template output, absent advisory requests/diagnostics when disabled, and preserved explicit version/connection reads. Update operator docs and feature artifacts and regenerate CLI documentation.
+
+
+T006 validation passed with isolated fixtures:
+
+- `go test ./cmd -run 'TestVersionCheckConfig' -count=1`
+- `go test ./config -count=1`
+- `go test ./cmd -run 'Test(VersionCheck|Config|RetrieveAndNormalizeConfig|AllCommandHelp|CapabilityDocument|APIDiagnostics|BulkCompletionDiagnosticLogging)' -count=1`
+- `make docs-content` and `git diff --check`
+
+No live-environment validation was performed.

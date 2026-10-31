@@ -6,12 +6,21 @@ This contract implements [spec.md](../spec.md). It adds no command result schema
 
 | Input | Automatic advisory |
 | --- | --- |
-| Flag omitted | Enabled for operational requests. |
+| Flag omitted | Use effective `app.no_version_check`; default false enables the advisory. |
 | `--no-version-check` / `--no-version-check=true` | Disabled; zero advisory requests and no automatic version warning. |
-| `--no-version-check=false` | Enabled. |
+| `--no-version-check=false` | Enabled, overriding configuration and environment. |
 | Quiet, verbose, JSON, keys-only, automation, auto-confirm, or no-wait | Existing precedence applies; none independently disables the check. |
 
 The flag is persistent and can appear before or after the selected subcommand under existing flag parsing. It does not persist configuration or change the selected adapter. Help/capabilities expose the flag. It is safe but has no network effect on local commands.
+
+`app.no_version_check` is a persisted boolean in base configuration and selected
+profiles. `C8VOLT_APP_NO_VERSION_CHECK` accepts true/false. Precedence is explicit
+CLI flag > environment > selected profile > base configuration > default false.
+An explicitly configured false overrides a lower-precedence true; an omitted
+profile field inherits. `config show` exposes the effective value, and
+`config template` includes false. Invalid boolean input fails normal configuration
+resolution before any request. Disabling the advisory suppresses its request,
+WARN and DEBUG summary, while leaving explicitly requested reads intact.
 
 Authentication bootstrap is not an operational request. A local validation failure, local preview, declined local-only operation, or local empty scope must not trigger the check. Remote discovery is operational even when it leads to an empty scope, dry-run, or later abort. No extra confirmation is added.
 
