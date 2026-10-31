@@ -99,9 +99,12 @@ func renderOpsPurgeProcessInstancesWithIncidentsPlan(cmd *cobra.Command, result 
 		renderOpsPurgeProcessInstancesWithIncidentsKeys(cmd, "resolved root keys", result.DeletePlan.ResolvedRootKeys)
 		renderOpsPurgeProcessInstancesWithIncidentsKeys(cmd, "affected process-instance keys", result.DeletePlan.AffectedKeys)
 		renderOpsPurgeProcessInstancesWithIncidentsKeys(cmd, "duplicate resolved root keys", result.DeletePlan.DuplicateResolvedRootKeys)
+		renderOpsObservedProcessInstances(cmd, "final state items", result.DeletePlan.FinalStateItems)
+		renderOpsObservedProcessInstances(cmd, "non-final affected items", result.DeletePlan.NonFinalAffectedItems)
 	}
 }
 
+// renderOpsPurgeProcessInstancesWithIncidentsDryRunDeletePreview preserves observed identity in verbose scope details.
 func renderOpsPurgeProcessInstancesWithIncidentsDryRunDeletePreview(cmd *cobra.Command, result ops.IncidentPurgeResult) {
 	if result.DeletePlan.Status == ops.WorkflowStepStatusSkipped {
 		renderHumanLine(cmd, "delete preview: skipped (no incident process-instance targets)")
@@ -121,6 +124,8 @@ func renderOpsPurgeProcessInstancesWithIncidentsDryRunDeletePreview(cmd *cobra.C
 		renderOpsPurgeProcessInstancesWithIncidentsKeys(cmd, "resolved root keys", result.DeletePlan.ResolvedRootKeys)
 		renderOpsPurgeProcessInstancesWithIncidentsKeys(cmd, "affected process-instance keys", result.DeletePlan.AffectedKeys)
 		renderOpsPurgeProcessInstancesWithIncidentsKeys(cmd, "duplicate resolved root keys", result.DeletePlan.DuplicateResolvedRootKeys)
+		renderOpsObservedProcessInstances(cmd, "final state items", result.DeletePlan.FinalStateItems)
+		renderOpsObservedProcessInstances(cmd, "non-final affected items", result.DeletePlan.NonFinalAffectedItems)
 	}
 }
 

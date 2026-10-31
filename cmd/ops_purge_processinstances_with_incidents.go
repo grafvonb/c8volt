@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/grafvonb/c8volt/c8volt/foptions"
 	"github.com/grafvonb/c8volt/c8volt/incident"
 	"github.com/grafvonb/c8volt/c8volt/ops"
 	"github.com/grafvonb/c8volt/c8volt/tenant"
@@ -51,7 +52,9 @@ Select incidents using filters or explicit --inc-key values. The workflow fixes 
 
 --tenant limits incident discovery; an empty tenant or --all-tenants searches across accessible tenants. Explicit incident keys use backend authorization without tenant filtering. --batch-size controls each discovery request; --limit caps the selected scope.
 
-Use --dry-run to inspect the plan without mutation, --auto-confirm or --automation for unattended deletion, and --report-file to save an audit report.`,
+Use --dry-run to inspect the plan without mutation, --auto-confirm or --automation for unattended deletion, and --report-file to save an audit report.
+
+Observed process-instance business IDs are retained in JSON and Markdown audit reports. Use --verbose to inspect each observed reference in the plan; key-only outcomes remain unchanged.`,
 	Example: `  ./c8volt ops purge process-instances-with-incidents --dry-run
   ./c8volt ops purge process-instances-with-incidents --inc-key <incident-key> --dry-run
   ./c8volt --tenant tenant-a ops purge process-instances-with-incidents --inc-key <incident-key> --dry-run
@@ -101,10 +104,15 @@ Use --dry-run to inspect the plan without mutation, --auto-confirm or --automati
 			planRequest := request
 			planRequest.DryRun = true
 			planned, err := purgeProcessInstancesWithIncidentsWithCommandActivity(cmd, planRequest, func() (ops.IncidentPurgeResult, error) {
-				return cli.PurgeProcessInstancesWithIncidents(cmd.Context(), planRequest, collectOptions()...)
+				return cli.PurgeProcessInstancesWithIncidents(cmd.Context(), planRequest, append(collectOptions(), foptions.WithSuppressWorkflowDetailLogs(), foptions.WithSuppressProcessInstanceDetailLogs())...)
 			})
 			if err != nil {
-				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("plan ops purge process-instances with incidents: %w", err))
+				progress.Close()
+				reportErr := writeOpsPurgeProcessInstancesWithIncidentsReport(planned, cfg, OpsWorkflowReportPreserveExisting)
+				if renderErr := renderOpsProcessInstancePurgeFailure(cmd, log, planned, "incident purge", len(planned.DeletePlan.CandidateProcessInstanceKeys), planned.Deletion.Items, err, reportErr); renderErr != nil {
+					log.Error("could not render process-instance purge result")
+				}
+				exitAfterRenderedResult(cfg.App.NoErrCodes, err)
 			}
 			if err := rejectOpsPurgeProcessInstancesWithIncidentsPlanRequiringForce(planned.DeletePlan); err != nil {
 				abortOpsPurgeProcessInstancesWithIncidentsAfterReport(cmd, log, cfg, markOpsPurgeProcessInstancesWithIncidentsLocalFailure(planned, ops.WorkflowStepStatusBlocked, err), err)
@@ -125,15 +133,16 @@ Use --dry-run to inspect the plan without mutation, --auto-confirm or --automati
 			request.DiscoveredScopeStatus = planned.Discovery.DiscoveryScopeStatus
 		}
 		result, err := purgeProcessInstancesWithIncidentsWithCommandActivity(cmd, request, func() (ops.IncidentPurgeResult, error) {
-			return cli.PurgeProcessInstancesWithIncidents(cmd.Context(), request, collectOptions()...)
+			return cli.PurgeProcessInstancesWithIncidents(cmd.Context(), request, append(collectOptions(), foptions.WithSuppressWorkflowDetailLogs(), foptions.WithSuppressProcessInstanceDetailLogs())...)
 		})
 		progress.Close()
 		result = attachOpsPurgeProcessInstancesWithIncidentsResultTenantContext(cmd, cfg, result)
 		if err != nil {
-			if reportErr := writeOpsPurgeProcessInstancesWithIncidentsReport(result, cfg, opsPurgeProcessInstancesWithIncidentsReportWriteMode(result)); reportErr != nil {
-				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("ops purge process-instances with incidents: %w; write audit report: %v", err, reportErr))
+			reportErr := writeOpsPurgeProcessInstancesWithIncidentsReport(result, cfg, opsPurgeProcessInstancesWithIncidentsReportWriteMode(result))
+			if renderErr := renderOpsProcessInstancePurgeFailure(cmd, log, result, "incident purge", len(result.DeletePlan.CandidateProcessInstanceKeys), result.Deletion.Items, err, reportErr); renderErr != nil {
+				log.Error("could not render process-instance purge result")
 			}
-			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("ops purge process-instances with incidents: %w", err))
+			exitAfterRenderedResult(cfg.App.NoErrCodes, err)
 		}
 		if err := writeOpsPurgeProcessInstancesWithIncidentsReport(result, cfg, opsPurgeProcessInstancesWithIncidentsReportWriteMode(result)); err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("write ops purge process-instances with incidents audit report: %w", err))

@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/grafvonb/c8volt/c8volt/foptions"
 	"github.com/grafvonb/c8volt/c8volt/ops"
 	"github.com/grafvonb/c8volt/c8volt/tenant"
 	"github.com/grafvonb/c8volt/config"
@@ -34,7 +35,9 @@ The workflow discovers candidates, fixes the target set, validates the delete pl
 
 --tenant limits discovery; an empty tenant or --all-tenants searches across accessible tenants. --batch-size controls each discovery request; --limit caps the selected scope. --workers, --fail-fast, and --no-worker-limit control planning and deletion.
 
-Use --dry-run to inspect the plan without mutation, --auto-confirm or --automation for unattended deletion, and --report-file to save an audit report.`,
+Use --dry-run to inspect the plan without mutation, --auto-confirm or --automation for unattended deletion, and --report-file to save an audit report.
+
+Observed process-instance business IDs are retained in JSON and Markdown audit reports. Use --verbose to inspect each observed reference in the plan; key-only outcomes remain unchanged.`,
 	Example: `  ./c8volt ops execute retention-policy --retention-days 90 --dry-run
   ./c8volt --tenant tenant-a ops execute retention-policy --retention-days 90 --dry-run
   ./c8volt --all-tenants ops execute retention-policy --retention-days 90 --dry-run
@@ -98,10 +101,15 @@ Use --dry-run to inspect the plan without mutation, --auto-confirm or --automati
 			planRequest := request
 			planRequest.DryRun = true
 			planned, err := executeRetentionPolicyWithCommandActivity(cmd, planRequest, func() (ops.RetentionPolicyResult, error) {
-				return cli.ExecuteRetentionPolicy(cmd.Context(), planRequest, collectOptions()...)
+				return cli.ExecuteRetentionPolicy(cmd.Context(), planRequest, append(collectOptions(), foptions.WithSuppressWorkflowDetailLogs(), foptions.WithSuppressProcessInstanceDetailLogs())...)
 			})
 			if err != nil {
-				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("plan ops execute retention-policy: %w", err))
+				progress.Close()
+				reportErr := writeOpsExecuteRetentionPolicyReport(planned, cfg, OpsWorkflowReportPreserveExisting)
+				if renderErr := renderOpsProcessInstancePurgeFailure(cmd, log, planned, "retention policy", len(planned.DeletePlan.SeedKeys), planned.Deletion.Items, err, reportErr); renderErr != nil {
+					log.Error("could not render process-instance purge result")
+				}
+				exitAfterRenderedResult(cfg.App.NoErrCodes, err)
 			}
 			if err := rejectOpsExecuteRetentionPolicyPlanRequiringForce(planned.DeletePlan); err != nil {
 				abortOpsExecuteRetentionPolicyAfterReport(cmd, log, cfg, markOpsExecuteRetentionPolicyLocalFailure(planned, ops.WorkflowStepStatusBlocked, err), err)
@@ -119,15 +127,16 @@ Use --dry-run to inspect the plan without mutation, --auto-confirm or --automati
 			request.DiscoveredKeys = append(typex.Keys{}, planned.Discovery.SeedKeys...)
 		}
 		result, err := executeRetentionPolicyWithCommandActivity(cmd, request, func() (ops.RetentionPolicyResult, error) {
-			return cli.ExecuteRetentionPolicy(cmd.Context(), request, collectOptions()...)
+			return cli.ExecuteRetentionPolicy(cmd.Context(), request, append(collectOptions(), foptions.WithSuppressWorkflowDetailLogs(), foptions.WithSuppressProcessInstanceDetailLogs())...)
 		})
 		progress.Close()
 		result = attachOpsExecuteRetentionPolicyResultTenantContext(cmd, cfg, result)
 		if err != nil {
-			if reportErr := writeOpsExecuteRetentionPolicyReport(result, cfg, opsExecuteRetentionPolicyReportWriteMode(result)); reportErr != nil {
-				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("ops execute retention-policy: %w; write audit report: %v", err, reportErr))
+			reportErr := writeOpsExecuteRetentionPolicyReport(result, cfg, opsExecuteRetentionPolicyReportWriteMode(result))
+			if renderErr := renderOpsProcessInstancePurgeFailure(cmd, log, result, "retention policy", len(result.DeletePlan.SeedKeys), result.Deletion.Items, err, reportErr); renderErr != nil {
+				log.Error("could not render process-instance purge result")
 			}
-			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("ops execute retention-policy: %w", err))
+			exitAfterRenderedResult(cfg.App.NoErrCodes, err)
 		}
 		if err := writeOpsExecuteRetentionPolicyReport(result, cfg, opsExecuteRetentionPolicyReportWriteMode(result)); err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("write ops execute retention-policy audit report: %w", err))

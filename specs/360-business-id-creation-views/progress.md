@@ -254,3 +254,51 @@ Started: 2026-10-31 12:43:38
 - Reviewed the output boundary: changed rows are query results using existing stdout renderers; no mutation summaries, diagnostics, prompts, empty-execution or error handling branches were changed. The existing slow failure path remains service error → facade error conversion → configured command error/envelope helper → classified exit. No new direct diagnostic print, raw error formatting, or logger bypass was introduced; existing query progress/error regressions remain in the selected suite.
 - Source metadata and README now describe independent listener/root identity; `make docs-content` regenerated four CLI references and the README-derived index. Reviewed generated differences, ran targeted gofmt and `git diff --check`, and confirmed no new production command declarations or secondary lifecycle were introduced. T006 remains separate because custom operation report representations and full-feature validation are its cohesive outcome; no task expansion was needed.
 ---
+
+---
+## Iteration 6 - 2026-10-31 14:08
+**Work Unit**: US2 T006 — complete observed operations previews and saved reports; completed
+**Tasks Completed**:
+- [x] T006: Preserve observed IDs in operations previews and JSON/Markdown reports, validate partial/empty/mutation output, regenerate documentation, and complete final cross-package validation.
+**Tasks Remaining in Work Unit**: 0; all feature tasks are complete.
+**Commit**: This work-unit commit
+**Files Changed**:
+- README.md
+- c8volt/ops/report_business_id_test.go
+- cmd/cmd_views_ops_execute_retention_policy.go
+- cmd/cmd_views_ops_processinstance.go
+- cmd/cmd_views_ops_purge_all_processdefinitions.go
+- cmd/cmd_views_ops_purge_orphan_processinstances.go
+- cmd/cmd_views_ops_purge_processinstances_with_incidents.go
+- cmd/ops_business_id_failure_test.go
+- cmd/ops_business_id_test.go
+- cmd/ops_execute_retention_policy.go
+- cmd/ops_execute_retention_policy_test.go
+- cmd/ops_processinstance_purge_progress.go
+- cmd/ops_purge_all_processdefinitions.go
+- cmd/ops_purge_orphan_processinstances.go
+- cmd/ops_purge_orphan_processinstances_test.go
+- cmd/ops_purge_processinstances_with_incidents.go
+- cmd/ops_purge_processinstances_with_incidents_test.go
+- cmd/ops_report_markdown.go
+- cmd/ops_report_purge_all_processdefinitions.go
+- cmd/ops_report_purge_processinstances_with_incidents.go
+- docs/cli/c8volt_ops_execute_retention-policy.md
+- docs/cli/c8volt_ops_purge_all-process-definitions.md
+- docs/cli/c8volt_ops_purge_orphan-process-instances.md
+- docs/cli/c8volt_ops_purge_process-instances-with-incidents.md
+- docs/index.md
+- specs/360-business-id-creation-views/progress.md
+- specs/360-business-id-creation-views/ralph-memory.md
+- specs/360-business-id-creation-views/tasks.md
+**Learnings**:
+- Initial tests reproduced missing IDs in custom report lists and missing orphan/definition observations. Shared human rows now quote optional IDs; Markdown escapes markup, HTML/entity characters, backslashes, controls and GFM tildes. Definition observations nest under the owning definition. Existing JSON conversions already preserved IDs; new report-conversion tests verify every nested pointer is independently owned. Nil and observed-empty remain distinct. Repair action plans and key/status-only outcomes remain ID-free and read-free.
+- Actual operations tests save and inspect both JSON and Markdown files, including partial reports, divergent resource IDs, absent/empty observations and adversarial markup. Supported 8.8/8.9 paths retain absence; definition history purge retains its existing 8.8 capability gate. Fixed request-count assertions prove no identity lookup or rendering request was added. Prior T001–T005 acceptance tests plus these report tests cover all specified resource surfaces.
+- Repeated-failure execution tests exposed raw joined HTTP diagnostics and missing partial error-envelope payloads in retention/incident/orphan workflows. Backend planning/execution failures now save existing report evidence, render one typed partial envelope or one bounded configured ERROR, and exit with the original class. Local blockers use structured evidence for useful force guidance. Existing report preservation and destructive preflight warnings remain intact; report-write failures use a bounded human suffix. No machine evidence is discarded.
+- Existing semantic progress clears raw FailureDetail, final rendering owns aggregate errors, and commands suppress lower-level workflow detail logs independently of verbose. Functional verbose completion facts remain INFO; existing redacted HTTP DEBUG works from both flag and configured level. Normal/verbose/quiet tests reject distinctive raw URL/method/body/key evidence on diagnostic streams, and JSON checks require exactly one envelope plus EOF with original failure exit and partial observations.
+- Real-terminal command fixtures capture result and diagnostic writers separately and exercise configured/inherited destinations, plain-time/JSON logger formats, INFO/WARN thresholds, quiet, automation/auto-confirm/no-wait and supported keys-only modes. Successful mutations, dry-run previews and verbose observations use INFO; authoritative empty scopes do one discovery read without a prompt or mutation. Requested machine output and zero-byte empty keys remain intact. Terminal fixtures executed on macOS; no new terminal-test platform skip was observed.
+- Targeted BusinessID tests and inventory passed in cmd and ops facade. Full affected ops service/facade suites passed. Broader operations/report regression testing caught old blocker/report-write expectations; actionable blocker wording was preserved, the bounded report-write expectation updated, and targeted reruns passed (7.596s). The once-per-feature sanitized `make test PKG=./...` passed: 87 packages, 18 packages without tests, cmd 452.007s. No live integration target, environment discovery or engine validation was performed.
+- Final Markdown review added a failing GFM strikethrough test while the full suite was running, then escaped tildes. The final source revision passed targeted race validation for every new operations BusinessID test, facade report-pointer test, and Markdown/report regressions (cmd 11.433s, ops 0.560s). The full suite was not rerun for this localized escape correction or subsequent prose-only changes.
+- Negative Go overlays proved assertions fail for direct stderr summaries, direct stderr aggregate errors and raw joined-error logging. Reviewed service error → facade conversion → report/envelope or configured logger → original classified exit; no new normal-level raw backend error formatting or direct diagnostic prints remain. New production declarations are rendering helpers, while progress remains in its existing focused file; no backend mechanics or new execution lifecycle was added to commands or facades.
+- README and four command metadata descriptions now explain observed operations identity; sanitized `make docs-content` regenerated their CLI references and the README-derived index. Reviewed generated differences, verified gofmt and `git diff --check`. No follow-up task expansion or second work unit was needed. Actual engine behavior remains unverified.
+---

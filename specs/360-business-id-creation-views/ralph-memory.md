@@ -5,6 +5,10 @@ Started: 2026-10-31T11:43:38Z
 
 ## Codebase Patterns
 
+- Ops JSON report observations already use the copied PI mapper. `retentionProcessInstanceItems` now retains quoted identity; `markdownProcessInstanceItems` separately escapes backslashes, Markdown delimiters, HTML/entity characters and GFM tildes. Orphan previews and definition cancellation observations are included only when present; definition observations nest under their owning definition. Repair plans remain key/action/status-only, with no new job or PI lookup.
+- `cmd/cmd_views_ops_processinstance.go` owns shared observed INFO rows and bounded failure rendering. Retention/incident/orphan backend failures preserve the typed partial result in one error envelope, save the report, and use the original error for exit. Structured blocked plans retain actionable force guidance; report-write failures add a bounded human suffix while preserving machine evidence.
+- Retention/incident/orphan commands suppress lower-level workflow/PI detail logging even under verbose. Their existing semantic progress adapter clears raw FailureDetail and suppresses per-item WARNs; verbose still shows functional completion facts. Final rendering owns the single aggregate ERROR. Existing destructive preflight WARNs remain independent of INFO result suppression.
+
 - Listener identity flows from `RuntimeListenerJobFromJob` into process/element/ops facade converters; each copies `BusinessId`. Listener collections retain nil-pointer, pointer-to-nil-slice, and pointer-to-empty-slice shapes. Three existing listener row builders reuse `processInstanceBusinessIDColumn`.
 - Slow analysis copies the root's own ID in `slowProcessAnalysisRootFromProcessInstance` and its facade converter; `formatOpsSlowProcessAnalysisRootRow` passes it into the standard PI row. Timeline listener IDs remain independent. Machine rendering already serializes these public models without reconstruction.
 
@@ -30,13 +34,16 @@ Started: 2026-10-31T11:43:38Z
 
 ## Decisions
 
-- T001–T005 are complete. T006 operation reports/full-suite validation remains. Resource-specific IDs in existing ops JSON now flow through the duplicated mapper and slow/listener models; that does not complete the custom report work.
+- T001–T006 are complete. All required resource surfaces have isolated command/report-file evidence. Final repository race validation passed; actual Camunda-engine behavior remains unverified.
 
 - T001 and the T002 CLI implementation form the US1 creation MVP. Resource inspection/report coverage remains scheduled as T003–T006 (US2); do not infer that creation views complete ordinary PI views.
 - `domain.ValidateBusinessID` is creation-only: nil allowed, empty/malformed UTF-8 rejected, maximum 256 UTF-16 units. v88/v89 reject any non-nil identity as unsupported at adapter entry before validation; bulk code must not preempt that precedence.
 - Creation reuses existing generated clients, service signatures and the shared pool; the default version is unchanged. README documents public compatibility and CLI streams; CLI docs are generated from source metadata.
 
 ## Gotchas
+
+- Ops report/command request counts exclude topology: four-seed retention preview=13, incident preview=5, orphan preview=6, definition preview=13 (8.9) / 15 (8.10), repair key/action preview=2. Three-root accepted/partial execution=16 reads for retention/incident and 22 for orphan. Empty discovery=1 read, no mutation or prompt. Definition history purge remains unsupported on 8.8 before discovery.
+- Only orphan purge supports keys-only among the three PI cleanup workflows; retention/incident declare human and JSON modes. Preserve existing flag precedence and preflight WARNs. `decodeJobTaskBusinessIDEnvelope` supports arbitrary success payloads; `decodeRunBusinessIDEnvelope` asserts the creation command path.
 
 - `listenerBusinessIDFixture` owns the root (`new`), listener (`old` with quotes/control characters), nil and observed-empty facts. Expected non-topology reads are element=3, keyed PI activity=4, family walk=6 (two established root reads), slow analysis=4. No-listener slow keys output makes 2 reads; `--with-listeners --keys-only` is an existing conflict.
 - Quiet preserves nonempty query rows in PI/walk/slow analysis but suppresses element human results; quiet+JSON retains all requested results. Tests preserve these existing command-specific policies.
@@ -57,6 +64,11 @@ Started: 2026-10-31T11:43:38Z
 - BusinessID test inventory is nonempty in domain, core process-instance service, all three adapters, and process facade. Traversal/waiter/walker have no new BusinessID tests; their full existing suites passed separately.
 
 ## Reusable Commands
+
+- T006 service/facade regression: `go test ./c8volt/ops ./internal/services/ops/... -count=1` passed. New BusinessID inventory is nonzero in cmd and ops facade; complete internal ops regressions ran even though no service implementation changed.
+- T006 command acceptance: `go test ./cmd -run 'TestOpsBusinessID|TestOpsExecuteRetentionPolicyWritesReportAfterPostDiscoveryFailure|TestOpsPurgeOrphanProcessInstancesWritesReportAfterPostDiscoveryFailure|TestOpsPurgeProcessInstancesWithIncidentsExistingReportPreservation|TestAllCommandHelpFocusesOnActions' -count=1` passed (7.596s). All other operations/report regressions passed in the full suite.
+- Final full validation: sanitized `make test PKG=./...` passed once: 87 packages passed, 18 without tests; cmd 452.007s. A final GFM-tilde escaping correction made during that run passed sanitized `env GORACE=atexit_sleep_ms=0 go test -race ./cmd ./c8volt/ops -run 'TestOpsBusinessID|TestReportBusinessID|Test.*Report.*Markdown|TestWriteMarkdownReport' -count=1` (cmd 11.433s, ops 0.560s). No live services were used.
+- T006 negative Go overlays independently proved new command assertions reject direct stderr result details, direct stderr aggregate errors, and raw joined error logging. Overlay files lived outside the repository; production sources were not substituted.
 
 - T005 full affected suites: `go test ./internal/domain ./internal/services/ops/... ./c8volt/process ./c8volt/element ./c8volt/ops -count=1` passed. Enrichment regression selection `Test.*(Listener|Enrich)` passed in base `internal/services/element` and `internal/services/processinstance`; nested adapters/traversal packages have no matching tests in that selection.
 - T005 command regressions: `go test ./cmd -run 'TestListenerBusinessID|TestSlowAnalysisBusinessID|TestListenerTimestamp|Test.*(Element|Activity|SlowProcessAnalysis|OpsAnalyseSlowProcessInstances)|TestWalkProcessInstanceCommand_WithListeners|TestAllCommandHelpFocusesOnActions' -count=1` passed (11.287s).
@@ -88,8 +100,8 @@ Started: 2026-10-31T11:43:38Z
 - Do not restore nil-on-error collection facade returns or return the fixed-length pool slots directly: regression tests demonstrated lost successful predecessors and fabricated zero-key slots.
 - Do not infer business IDs from creation inputs or related resources; do not normalize opaque values or validate observed empty strings as input.
 - Do not bypass configured logging or emit raw joined errors. Negative mutation checks on creation tests detected human direct stdout, direct stderr error printing, and `log.Error(runErr.Error())`; production sources were restored.
-- Do not run live validation, discovery, cluster inspection or cleanup. Creation checks use mocks/owned HTTP fixtures and real-terminal subprocesses. Actual engine behavior is unverified; the full repository race suite remains assigned to T006.
+- Do not run live validation, discovery, cluster inspection or cleanup. Creation checks use mocks/owned HTTP fixtures and real-terminal subprocesses. Actual engine behavior is unverified; T006 completed the full repository race suite.
 
 ## Current Handoff
 
-- Next dependency-ready work is T006 [US2]: operations previews and saved JSON/Markdown reports, followed by the once-per-feature full repository race suite. Recheck tasks.md before selection; T001–T005 are complete and no dependencies block T006. Preserve key/status-only absence and Markdown escaping without extra reads. No live engine behavior has been validated.
+- Feature complete; no handoff required.
