@@ -5,6 +5,9 @@ Started: 2026-10-31T11:43:38Z
 
 ## Codebase Patterns
 
+- Listener identity flows from `RuntimeListenerJobFromJob` into process/element/ops facade converters; each copies `BusinessId`. Listener collections retain nil-pointer, pointer-to-nil-slice, and pointer-to-empty-slice shapes. Three existing listener row builders reuse `processInstanceBusinessIDColumn`.
+- Slow analysis copies the root's own ID in `slowProcessAnalysisRootFromProcessInstance` and its facade converter; `formatOpsSlowProcessAnalysisRootRow` passes it into the standard PI row. Timeline listener IDs remain independent. Machine rendering already serializes these public models without reconstruction.
+
 - Job/task native v810 converters and both task facade directions copy `BusinessId`. `toDomainUserTask` feeds effective-variable enrichment; omitting that copy loses IDs only with `--with-vars`.
 - Completion preparation copies job identity into candidates; public candidate casts copy the pointer afterward in both directions. `snapshotExecutionBatch` maps candidates with copied IDs before workers run, retaining frozen IDs even when rechecks return newer values. Scalar job plans also copy the pointer.
 - Job/task rows reuse `processInstanceBusinessIDColumn`; scalar job preview identity is appended to the INFO summary, and bulk candidate/outcome identity appears under verbose. Completion wire bodies never acquire business-ID assignment.
@@ -27,13 +30,16 @@ Started: 2026-10-31T11:43:38Z
 
 ## Decisions
 
-- T001–T004 are complete. T005 listeners/slow analysis and T006 operation reports/full-suite validation remain. Resource-specific IDs in existing ops JSON now flow through the duplicated mapper; that does not complete the custom report work.
+- T001–T005 are complete. T006 operation reports/full-suite validation remains. Resource-specific IDs in existing ops JSON now flow through the duplicated mapper and slow/listener models; that does not complete the custom report work.
 
 - T001 and the T002 CLI implementation form the US1 creation MVP. Resource inspection/report coverage remains scheduled as T003–T006 (US2); do not infer that creation views complete ordinary PI views.
 - `domain.ValidateBusinessID` is creation-only: nil allowed, empty/malformed UTF-8 rejected, maximum 256 UTF-16 units. v88/v89 reject any non-nil identity as unsupported at adapter entry before validation; bulk code must not preempt that precedence.
 - Creation reuses existing generated clients, service signatures and the shared pool; the default version is unchanged. README documents public compatibility and CLI streams; CLI docs are generated from source metadata.
 
 ## Gotchas
+
+- `listenerBusinessIDFixture` owns the root (`new`), listener (`old` with quotes/control characters), nil and observed-empty facts. Expected non-topology reads are element=3, keyed PI activity=4, family walk=6 (two established root reads), slow analysis=4. No-listener slow keys output makes 2 reads; `--with-listeners --keys-only` is an existing conflict.
+- Quiet preserves nonempty query rows in PI/walk/slow analysis but suppresses element human results; quiet+JSON retains all requested results. Tests preserve these existing command-specific policies.
 
 - User-task command keys require the established long decimal format. Effective-variable requests use `/v2/user-tasks/<key>/effective-variables/search`.
 - Bulk completion conflicts retain existing bounded reconciliation even under no-wait: the three-item partial fixture uses one discovery, three prechecks, three submissions and two conflict rereads. Those are lifecycle reads, not identity enrichment. Failure envelope evidence is `class`/`detail`, not an `error` field.
@@ -51,6 +57,10 @@ Started: 2026-10-31T11:43:38Z
 - BusinessID test inventory is nonempty in domain, core process-instance service, all three adapters, and process facade. Traversal/waiter/walker have no new BusinessID tests; their full existing suites passed separately.
 
 ## Reusable Commands
+
+- T005 full affected suites: `go test ./internal/domain ./internal/services/ops/... ./c8volt/process ./c8volt/element ./c8volt/ops -count=1` passed. Enrichment regression selection `Test.*(Listener|Enrich)` passed in base `internal/services/element` and `internal/services/processinstance`; nested adapters/traversal packages have no matching tests in that selection.
+- T005 command regressions: `go test ./cmd -run 'TestListenerBusinessID|TestSlowAnalysisBusinessID|TestListenerTimestamp|Test.*(Element|Activity|SlowProcessAnalysis|OpsAnalyseSlowProcessInstances)|TestWalkProcessInstanceCommand_WithListeners|TestAllCommandHelpFocusesOnActions' -count=1` passed (11.287s).
+- T005 race: `env GORACE=atexit_sleep_ms=0 go test -race ./internal/domain ./internal/services/ops ./c8volt/process ./c8volt/element ./c8volt/ops ./cmd -run 'Test.*(ListenerBusinessID|SlowAnalysisBusinessID)|TestListenerTimestamp|TestOpsAnalyseSlowProcessInstances|TestSlowProcessAnalysis' -count=1` passed; new BusinessID inventory is nonzero in all six packages.
 
 - T004 affected suites: `go test ./internal/services/job/... ./internal/services/usertask/... ./c8volt/job ./c8volt/task -count=1` passed.
 - T004 command regression: `go test ./cmd -run 'TestGetJob|TestGetUserTask|TestUpdateJob|TestBulkCompletion|TestScalarJob|TestJob(Task)?BusinessID|TestAllCommandHelpFocusesOnActions' -count=1` passed (38.726s).
@@ -82,4 +92,4 @@ Started: 2026-10-31T11:43:38Z
 
 ## Current Handoff
 
-- Next dependency-ready work is T005 [US2]: independent listener and slow-analysis observations. Recheck tasks.md before selection; T001–T004 are complete, with no dependency blocking T005. T006 operations reports and full repository race validation remain afterward. No live engine behavior has been validated.
+- Next dependency-ready work is T006 [US2]: operations previews and saved JSON/Markdown reports, followed by the once-per-feature full repository race suite. Recheck tasks.md before selection; T001–T005 are complete and no dependencies block T006. Preserve key/status-only absence and Markdown escaping without extra reads. No live engine behavior has been validated.

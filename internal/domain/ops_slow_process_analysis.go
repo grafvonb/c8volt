@@ -73,6 +73,7 @@ type SlowProcessAnalysisDetailFilters struct {
 
 // SlowProcessAnalysisProcessInstance is the root result row for one selected process instance.
 type SlowProcessAnalysisProcessInstance struct {
+	BusinessId             *string                            `json:"businessId,omitempty"`
 	Key                    string                             `json:"key,omitempty"`
 	TenantID               string                             `json:"tenantId,omitempty"`
 	BpmnProcessID          string                             `json:"bpmnProcessId,omitempty"`

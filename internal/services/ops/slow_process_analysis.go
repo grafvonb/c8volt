@@ -540,6 +540,7 @@ func slowProcessAnalysisProcessDuration(pi d.ProcessInstance, capturedAt time.Ti
 // slowProcessAnalysisRootFromProcessInstance copies root process-instance fields into analysis output.
 func slowProcessAnalysisRootFromProcessInstance(pi d.ProcessInstance, duration string, millis int64, available bool) d.SlowProcessAnalysisProcessInstance {
 	return d.SlowProcessAnalysisProcessInstance{
+		BusinessId:             toolx.CopyPtr(pi.BusinessId),
 		Key:                    pi.Key,
 		TenantID:               pi.TenantId,
 		BpmnProcessID:          pi.BpmnProcessId,

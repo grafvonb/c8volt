@@ -206,3 +206,51 @@ Started: 2026-10-31 12:43:38
 - Negative checks used Go overlays only: direct stderr scalar summary output and raw joined completion-error logging each failed the new strict assertions. Production files were never substituted. Reviewed service error → facade conversion → partial envelope/logging → exit: error classes and machine evidence remain unchanged, human failures retain one bounded aggregate ERROR, and new identity output uses INFO. No new raw error formatting or direct diagnostic prints were introduced.
 - Command cohesion review found one new final-summary view helper and no new mode lifecycle; backend changes only copy observation data. Targeted gofmt, `git diff --check`, sanitized `go build ./...` and `make docs-content` passed. Reviewed generated job/task/update references and README-derived index. No follow-up task expansion was needed.
 ---
+
+---
+## Iteration 5 - 2026-10-31 13:46
+**Work Unit**: US2 T005 — independent listener and slow-analysis observations; completed
+**Tasks Completed**:
+- [x] T005: Preserve listener and slow-analysis business IDs through domain/facade copies, query views, command acceptance tests, and documentation.
+**Tasks Remaining in Work Unit**: 0; T006 remains in US2 for the next iteration.
+**Commit**: This work-unit commit
+**Files Changed**:
+- README.md
+- c8volt/element/convert.go
+- c8volt/element/listener_business_id_test.go
+- c8volt/element/model.go
+- c8volt/ops/convert.go
+- c8volt/ops/listener_business_id_test.go
+- c8volt/ops/model.go
+- c8volt/process/convert.go
+- c8volt/process/listener_business_id_test.go
+- c8volt/process/model.go
+- cmd/cmd_views_element.go
+- cmd/cmd_views_ops_slow_process_analysis.go
+- cmd/cmd_views_processinstance_activity.go
+- cmd/get_element.go
+- cmd/get_processinstance.go
+- cmd/listener_business_id_test.go
+- cmd/ops_analyse_slow_process_instances.go
+- cmd/walk_processinstance.go
+- docs/cli/c8volt_get_element.md
+- docs/cli/c8volt_get_process-instance.md
+- docs/cli/c8volt_ops_analyse_slow-process-instances.md
+- docs/cli/c8volt_walk_process-instance.md
+- docs/index.md
+- internal/domain/job.go
+- internal/domain/job_test.go
+- internal/domain/ops_slow_process_analysis.go
+- internal/services/ops/slow_process_analysis.go
+- internal/services/ops/slow_process_analysis_test.go
+- specs/360-business-id-creation-views/progress.md
+- specs/360-business-id-creation-views/ralph-memory.md
+- specs/360-business-id-creation-views/tasks.md
+**Learnings**:
+- The initial command regression reproduced a dropped listener ID on Camunda 8.10. Added optional listener IDs to domain and all three facade models with copied pointers, and copied slow-analysis root IDs at service/facade boundaries and the reconstructed human PI row. All three listener row builders reuse the existing safely quoted column. No generated-client or service signature change and no new backend requests.
+- Native-to-command matrices cover element, process activity, family walk, default slow summaries and full timelines on 8.8/8.9/8.10. Root `new` and independent opaque, nil, and empty listener IDs coexist. Tests assert exact values/absence, safe single-line quoting, separate streams, one JSON envelope plus EOF, requested-empty/unrequested sections, existing quiet behavior, keys-only and fixed request counts. Missing/empty slow roots remain independent of populated listeners.
+- Domain, service-root and facade tests mutate source pointers after conversion and preserve collection pointer semantics. Full affected domain/ops-service/process/element/ops-facade suites passed. The command regression selection recorded in ralph-memory.md passed (11.287s), including existing activity, element, slow-analysis, listener, progress, validation and help checks.
+- New BusinessID inventory is nonzero in all six changed areas. Targeted race checks passed in all six packages (cmd 2.147s). Listener/enrichment regressions passed in the two base element/process-instance service packages; nested packages reported no matching tests and are not counted as exercised by that selection. Repository `go build ./...` passed. All validation used the quickstart's sanitized environment and mocks/owned HTTP fixtures; no live environment was accessed. Final full repository race validation remains T006.
+- Reviewed the output boundary: changed rows are query results using existing stdout renderers; no mutation summaries, diagnostics, prompts, empty-execution or error handling branches were changed. The existing slow failure path remains service error → facade error conversion → configured command error/envelope helper → classified exit. No new direct diagnostic print, raw error formatting, or logger bypass was introduced; existing query progress/error regressions remain in the selected suite.
+- Source metadata and README now describe independent listener/root identity; `make docs-content` regenerated four CLI references and the README-derived index. Reviewed generated differences, ran targeted gofmt and `git diff --check`, and confirmed no new production command declarations or secondary lifecycle were introduced. T006 remains separate because custom operation report representations and full-feature validation are its cohesive outcome; no task expansion was needed.
+---

@@ -6,7 +6,7 @@ nav_exclude: true
 has_toc: true
 ---
 
-> Generated from build `c8volt v4.4.0-253-g11997183-dirty`, commit `11997183`, built `2026-10-31T12:37:33Z` | Supported Camunda 8 versions: 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.3 (final)
+> Generated from build `c8volt v4.4.0-254-g40d4ccad-dirty`, commit `40d4ccad`, built `2026-10-31T12:44:45Z` | Supported Camunda 8 versions: 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.3 (final)
 
 <img src="./logo/c8volt_logo_transparent_w_shadow_400x244.png" alt="c8volt logo" />
 
@@ -542,6 +542,8 @@ Listener rows use `s:` for the job creation time—not worker execution start—
 ```text
 job-1 TASK_LISTENER lsnr:CREATING COMPLETED tp:updateTaskData r:0 s:2026-09-16T13:07:16.359 e:2026-09-16T13:07:16.842 dur:483ms
 ```
+
+Camunda 8.10 listener rows also retain their own optional `businessId` across element inspection, process activity, family walks, and slow-process analysis. A listener may show an older value, an empty value, or no value while the process root has a newer ID. Slow-analysis roots retain their own observed IDs in default summaries, full timelines, and JSON. Human rows safely quote IDs; JSON preserves exact values and omits absent fields. Requested-empty listener sections remain empty arrays; unrequested sections remain omitted. These query rows stay on stdout and display adds no identity lookup.
 
 The same timestamp grammar applies to listener rows from `get element`, `get process-instance`, `walk process-instance`, and `ops analyse slow-process-instances`.
 

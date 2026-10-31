@@ -39,6 +39,7 @@ func fromDomainElement(result d.Element) Element {
 // fromDomainRuntimeListenerJob preserves optional listener lifecycle facts at the facade boundary.
 func fromDomainRuntimeListenerJob(result d.RuntimeListenerJob) RuntimeListenerJob {
 	return RuntimeListenerJob{
+		BusinessId:         toolx.CopyPtr(result.BusinessId),
 		JobKey:             result.JobKey,
 		Kind:               result.Kind,
 		ListenerEventType:  result.ListenerEventType,

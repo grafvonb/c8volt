@@ -280,8 +280,10 @@ func fromDomainProcessInstanceElement(x d.Element) ProcessInstanceElement {
 	}
 }
 
+// fromDomainRuntimeListenerJob copies optional listener identity across the facade boundary.
 func fromDomainRuntimeListenerJob(x d.RuntimeListenerJob) RuntimeListenerJob {
 	return RuntimeListenerJob{
+		BusinessId:         toolx.CopyPtr(x.BusinessId),
 		JobKey:             x.JobKey,
 		Kind:               x.Kind,
 		ListenerEventType:  x.ListenerEventType,

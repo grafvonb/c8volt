@@ -658,8 +658,10 @@ func toDomainProgressChannel(x ProgressChannel) d.OpsProgressChannel {
 	}
 }
 
+// fromDomainSlowProcessAnalysisProcessInstance copies root identity and independent timeline observations.
 func fromDomainSlowProcessAnalysisProcessInstance(x d.SlowProcessAnalysisProcessInstance) SlowProcessAnalysisProcessInstance {
 	return SlowProcessAnalysisProcessInstance{
+		BusinessId:             toolx.CopyPtr(x.BusinessId),
 		Key:                    x.Key,
 		TenantID:               x.TenantID,
 		BpmnProcessID:          x.BpmnProcessID,
@@ -711,8 +713,10 @@ func fromDomainSlowProcessAnalysisTimelineEntry(x d.SlowProcessAnalysisTimelineE
 	}
 }
 
+// fromDomainRuntimeListenerJob copies optional listener identity across the facade boundary.
 func fromDomainRuntimeListenerJob(x d.RuntimeListenerJob) RuntimeListenerJob {
 	return RuntimeListenerJob{
+		BusinessId:         toolx.CopyPtr(x.BusinessId),
 		JobKey:             x.JobKey,
 		Kind:               x.Kind,
 		ListenerEventType:  x.ListenerEventType,

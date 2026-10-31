@@ -388,6 +388,7 @@ func formatProcessInstanceElementListenerRows(listeners *[]process.RuntimeListen
 	return formatFlatRows(rows)
 }
 
+// flatRowProcessInstanceElementListenerWithTimezone preserves the listener’s own safely quoted identity.
 func flatRowProcessInstanceElementListenerWithTimezone(item process.RuntimeListenerJob, showTimezoneOffset bool, capturedNow time.Time) flatRow {
 	parts := flatRow{
 		item.JobKey,
@@ -409,7 +410,7 @@ func flatRowProcessInstanceElementListenerWithTimezone(item process.RuntimeListe
 	} else {
 		parts = append(parts, "")
 	}
-	parts = append(parts, prefixedElementField("dur", runtimeListenerDuration(item.CreationTime, item.EndTime, item.State, capturedNow)))
+	parts = append(parts, prefixedElementField("dur", runtimeListenerDuration(item.CreationTime, item.EndTime, item.State, capturedNow)), processInstanceBusinessIDColumn(item.BusinessId))
 	return parts
 }
 

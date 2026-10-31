@@ -171,7 +171,7 @@ func flatRowElementListenerWithTimezone(item element.RuntimeListenerJob, showTim
 	} else {
 		parts = append(parts, "")
 	}
-	parts = append(parts, prefixedElementField("dur", runtimeListenerDuration(item.CreationTime, item.EndTime, item.State, capturedNow)))
+	parts = append(parts, prefixedElementField("dur", runtimeListenerDuration(item.CreationTime, item.EndTime, item.State, capturedNow)), processInstanceBusinessIDColumn(item.BusinessId))
 	return parts
 }
 

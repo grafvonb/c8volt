@@ -138,3 +138,17 @@ func TestJobUpdateRequestHasUpdates(t *testing.T) {
 		})
 	}
 }
+
+// TestRuntimeListenerBusinessID snapshots independent job identity, retaining absent and observed-empty values.
+func TestRuntimeListenerBusinessID(t *testing.T) {
+	t.Parallel()
+	for _, value := range []*string{nil, new(""), new("old")} {
+		got := RuntimeListenerJobFromJob(Job{Key: "job", BusinessId: value})
+		require.Equal(t, value, got.BusinessId)
+		if value != nil {
+			before := *value
+			*value = "new"
+			require.Equal(t, before, *got.BusinessId)
+		}
+	}
+}
