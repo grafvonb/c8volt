@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/grafvonb/c8volt/internal/exitcode"
+	"github.com/grafvonb/c8volt/internal/services/httpc"
 	"github.com/grafvonb/c8volt/testx"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
@@ -108,6 +109,7 @@ func TestRequestRateMutationProcess(t *testing.T) {
 	cancelAfter, err := time.ParseDuration(os.Getenv("C8VOLT_RATE_CANCEL_AFTER"))
 	require.NoError(t, err)
 	destination := os.Getenv("C8VOLT_RATE_DESTINATION")
+	expireConfirmation := os.Getenv("C8VOLT_RATE_EXPIRE_CONFIRMATION") == "true"
 	isolateRequestRateEnvironment(t)
 	root := Root()
 	resetCommandTreeFlags(root)
@@ -128,6 +130,23 @@ func TestRequestRateMutationProcess(t *testing.T) {
 	}
 	command, _, err := root.Find(path)
 	require.NoError(t, err)
+	if expireConfirmation {
+		originalPreRun := command.PreRunE
+		command.PreRunE = func(cmd *cobra.Command, args []string) error {
+			if originalPreRun != nil {
+				if err := originalPreRun(cmd, args); err != nil {
+					return err
+				}
+			}
+			svc, err := httpc.FromContext(cmd.Context())
+			if err != nil {
+				return err
+			}
+			client := svc.Client()
+			client.Transport = &requestRateExpiredConfirmationTransport{base: client.Transport}
+			return nil
+		}
+	}
 	if destination == "configured" {
 		command.SetErr(capture)
 	} else {
@@ -142,6 +161,34 @@ func TestRequestRateMutationProcess(t *testing.T) {
 	root.SetArgs(args)
 	require.NoError(t, root.ExecuteContext(ctx))
 	os.Exit(0)
+}
+
+// requestRateExpiredConfirmationTransport expires only the confirmation lookup
+// after this fixture's accepted cancellation and completed family discovery.
+// The real request-rate transport still creates and records the unsent error.
+type requestRateExpiredConfirmationTransport struct {
+	base       http.RoundTripper
+	submitted  atomic.Bool
+	discovered atomic.Bool
+}
+
+// RoundTrip makes admission failure independent of token refill and scheduling.
+func (t *requestRateExpiredConfirmationTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	if t.discovered.Load() && req.Method == http.MethodGet && req.URL.Path == "/v2/process-instances/123" {
+		ctx, cancel := context.WithDeadline(req.Context(), time.Unix(0, 0))
+		defer cancel()
+		return t.base.RoundTrip(req.Clone(ctx))
+	}
+	resp, err := t.base.RoundTrip(req)
+	if err == nil && resp != nil {
+		if req.URL.Path == "/v2/process-instances/123/cancellation" && resp.StatusCode == http.StatusAccepted {
+			t.submitted.Store(true)
+		}
+		if t.submitted.Load() && req.URL.Path == "/v2/process-instances/search" && resp.StatusCode == http.StatusOK {
+			t.discovered.Store(true)
+		}
+	}
+	return resp, err
 }
 
 // decodeRequestRateEnvelope enforces exactly one result, with no trailing output.
@@ -456,12 +503,17 @@ func resetRequestRateCommandContexts(command *cobra.Command) {
 }
 
 // TestRequestRateCancellationConfirmation distinguishes a locally unsent read
-// from the cancellation already accepted before its short confirmation deadline.
-// Advisory opt-out keeps these operational admission slots deterministic.
+// from an accepted cancellation without relying on a short token-refill window.
+// Advisory opt-out isolates the operational requests under test.
 func TestRequestRateCancellationConfirmation(t *testing.T) {
 	isolateRequestRateEnvironment(t)
+	t.Setenv("C8VOLT_RATE_EXPIRE_CONFIRMATION", "true")
 	for _, flags := range [][]string{nil, {"--verbose"}, {"--quiet"}, {"--json"}, {"--debug", "--log-format", "json"}} {
-		t.Run(strings.Join(flags, " "), func(t *testing.T) {
+		name := strings.Join(flags, " ")
+		if name == "" {
+			name = "normal"
+		}
+		t.Run(name, func(t *testing.T) {
 			var canceled atomic.Bool
 			var calls testx.SafeSlice[string]
 			server := testx.NewIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -475,6 +527,11 @@ func TestRequestRateCancellationConfirmation(t *testing.T) {
 					}
 					io.WriteString(w, opsAllProcessDefinitionsPurgeProcessInstanceJSON("123", "123", "900", state))
 				case "/v2/process-instances/search":
+					if canceled.Load() {
+						// Refill the 50ms admission slot before confirmation: without
+						// controlled expiry, this reproduces the CI success/timeout race.
+						time.Sleep(75 * time.Millisecond)
+					}
 					io.WriteString(w, `{"items":[],"page":{"totalItems":0}}`)
 				case "/v2/process-instances/123/cancellation":
 					canceled.Store(true)
@@ -492,7 +549,7 @@ func TestRequestRateCancellationConfirmation(t *testing.T) {
     strategy: fixed
     initial_delay: 1ms
     max_retries: 0
-    timeout: 5ms
+    timeout: 30s
 auth:
   mode: none
 apis:
@@ -502,10 +559,12 @@ apis:
 			args := append([]string{"--no-version-check", "--config", cfg, "--request-rate", "20", "cancel", "process-instance", "--key", "123", "--auto-confirm"}, flags...)
 			stdout, stderr, err := runRequestRateMutation(t, args, "configured", 0)
 			var exitErr *exec.ExitError
-			require.ErrorAs(t, err, &exitErr)
+			require.ErrorAs(t, err, &exitErr, stdout+stderr)
 			require.Equal(t, exitcode.Timeout, exitErr.ExitCode(), stdout+stderr)
 			require.True(t, canceled.Load())
-			require.Equal(t, 1, strings.Count(strings.Join(calls.Snapshot(), "\n"), "/cancellation"))
+			gotCalls := calls.Snapshot()
+			require.Equal(t, 1, strings.Count(strings.Join(gotCalls, "\n"), "/cancellation"))
+			require.Equal(t, "POST /v2/process-instances/search", gotCalls[len(gotCalls)-1], "confirmation must not reach the server after family discovery")
 			format := "plain-time"
 			if slices.Contains(flags, "--log-format") {
 				format = "json"
