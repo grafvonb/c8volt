@@ -76,10 +76,16 @@ func TestBulkCompletionDiagnosticLogging(t *testing.T) {
 				{name: "suppressed exit", flags: []string{"--no-err-codes"}, suppressExit: true},
 			} {
 				t.Run(version+"/"+format+"/"+tc.name, func(t *testing.T) {
-					var writes atomic.Int32
+					var writes, probes atomic.Int32
 					keys := []string{completionAcceptanceKey(0), completionAcceptanceKey(1), completionAcceptanceKey(2), completionAcceptanceKey(3)}
 					server := testx.NewIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 						w.Header().Set("Content-Type", "application/json")
+						if r.URL.Path == "/v2/topology" {
+							probes.Add(1)
+							w.WriteHeader(403)
+							io.WriteString(w, `{"detail":"POST https://private.invalid/secret body-only-secret leaseToken"}`)
+							return
+						}
 						if r.Method == http.MethodPost && r.URL.Path == "/v2/jobs/search" && !tc.preparation {
 							var body struct {
 								Filter map[string]any `json:"filter"`
@@ -144,12 +150,16 @@ func TestBulkCompletionDiagnosticLogging(t *testing.T) {
 					} else {
 						require.Equal(t, int32(4), writes.Load())
 					}
+					require.Equal(t, int32(1), probes.Load())
 					records := bulkCompletionDiagnosticRecords(t, stderr, format)
+					warnings := []string{}
 					errors := []string{}
 					debugs := []string{}
 					infos := []string{}
 					for _, record := range records {
 						switch record[0] {
+						case "WARN":
+							warnings = append(warnings, record[1])
 						case "ERROR":
 							errors = append(errors, record[1])
 						case "DEBUG":
@@ -159,6 +169,11 @@ func TestBulkCompletionDiagnosticLogging(t *testing.T) {
 						default:
 							t.Errorf("unexpected log level: %s", record[0])
 						}
+					}
+					if tc.quiet {
+						require.Empty(t, warnings)
+					} else {
+						require.Equal(t, []string{"version check: access denied; using configured " + version}, warnings)
 					}
 					if tc.json {
 						require.Empty(t, errors)
@@ -258,7 +273,7 @@ func TestBulkCompletionSummaryLogging(t *testing.T) {
 		for _, level := range []string{"info", "warn"} {
 			for _, flags := range [][]string{nil, {"--dry-run"}, {"--verbose"}, {"--quiet"}, {"--json"}, {"--quiet", "--json"}} {
 				t.Run(format+"/"+level+"/"+strings.Join(flags, " "), func(t *testing.T) {
-					_, server := newBulkCompletionFixture(t, "normal")
+					_, server := newBulkCompletionFixture(t, "8.10", "normal")
 					cfg := writeTestConfigForVersion(t, server.URL, "8.10")
 					f, err := os.OpenFile(cfg, os.O_APPEND|os.O_WRONLY, 0600)
 					require.NoError(t, err)

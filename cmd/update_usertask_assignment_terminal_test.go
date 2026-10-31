@@ -32,7 +32,7 @@ func TestUpdateUserTaskAssignmentTerminal(t *testing.T) {
 				{name: "invalid", flags: []string{"--workers", "0"}, invalid: true},
 			} {
 				t.Run(operation+"/"+destination+"/"+tc.name, func(t *testing.T) {
-					server, calls := newUserTaskAssignmentServer(t, operation, nil)
+					server, calls := newUserTaskAssignmentServer(t, "8.10", operation, nil)
 					args := append([]string{"--config", completionLogConfig(t, server.URL, "plain-time", "info"), "update", "ut", "--key", completionKeyA + "," + completionKeyB}, assignmentFlags(operation)...)
 					args = append(args, tc.flags...)
 					preview := slices.Contains(tc.flags, "--dry-run")
@@ -115,7 +115,7 @@ func TestUpdateUserTaskAssignmentSingleTerminal(t *testing.T) {
 			for _, destination := range []string{"configured", "inherited"} {
 				for _, mode := range []string{"normal", "verbose", "quiet", "warn"} {
 					t.Run(operation+"/"+format+"/"+destination+"/"+mode, func(t *testing.T) {
-						server, calls := newUserTaskAssignmentServer(t, operation, nil)
+						server, calls := newUserTaskAssignmentServer(t, "8.10", operation, nil)
 						prompt := "You are about to " + operation + " user-task " + completionKeyA
 						intent := "update user-task " + completionKeyA + ": " + assignmentOperationLabel(operation)
 						if operation == "assign" {

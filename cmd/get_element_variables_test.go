@@ -28,11 +28,15 @@ type elementScopeFixture struct {
 }
 
 // newElementScopeFixture supplies independent element, variable and listener pages, failing unexpected requests.
-func newElementScopeFixture(t *testing.T, elements, variables []string, variableStatus int) elementScopeFixture {
+func newElementScopeFixture(t *testing.T, version string, elements, variables []string, variableStatus int) elementScopeFixture {
 	t.Helper()
 	f := elementScopeFixture{requests: &testx.SafeSlice[string]{}, bodies: &testx.SafeSlice[map[string]any]{}}
 	elementIndex, variableIndex := 0, 0
 	f.server = newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, version) {
+			return
+		}
+
 		f.requests.Append(r.Method + " " + r.URL.Path)
 		var body map[string]any
 		if r.Method == http.MethodPost {
@@ -84,7 +88,7 @@ func scopeVariableJSON(name, value, scope string, truncated bool) string {
 func TestElementScopeVariablesGetExact(t *testing.T) {
 	for _, version := range []string{"8.8", "8.9", "8.10"} {
 		t.Run(version, func(t *testing.T) {
-			f := newElementScopeFixture(t, []string{scopeElementJSON(scopeElementA)}, []string{
+			f := newElementScopeFixture(t, version, []string{scopeElementJSON(scopeElementA)}, []string{
 				strings.Replace(scopePage([]string{scopeVariableJSON("parent", "false", scopeOwner, false)}, 3, true), `"totalItems":`, `"endCursor":"first","totalItems":`, 1),
 				strings.Replace(scopePage(nil, 3, true), `"totalItems":`, `"endCursor":"second","totalItems":`, 1),
 				scopePage([]string{scopeVariableJSON("z", ` { "nested": [1, 2] } `, scopeElementA, true), scopeVariableJSON("a", `"full"`, scopeElementA, false)}, 3, false),
@@ -130,7 +134,7 @@ func TestElementScopeVariablesGetModes(t *testing.T) {
 					if empty {
 						items = nil
 					}
-					f := newElementScopeFixture(t, []string{scopePage(items, len(items), false)}, []string{scopePage(nil, 0, false)}, 0)
+					f := newElementScopeFixture(t, "8.8", []string{scopePage(items, len(items), false)}, []string{scopePage(nil, 0, false)}, 0)
 					args := []string{"--config", testx.WriteTestConfig(t, f.server.URL), "get", "element", "--with-vars"}
 					args = append(args, policy...)
 					args = append(args, mode...)
@@ -188,7 +192,7 @@ func TestElementScopeVariablesGetSearch(t *testing.T) {
 					if keyed {
 						elements = []string{scopeElementJSON(scopeElementA)}
 					}
-					f := newElementScopeFixture(t, elements, []string{
+					f := newElementScopeFixture(t, "8.8", elements, []string{
 						scopePage([]string{scopeVariableJSON("z", ` { "x": 1 } `, scopeElementA, true)}, 2, true),
 						scopePage([]string{scopeVariableJSON("a", `"whole"`, scopeElementA, false)}, 2, false),
 					}, 0)
@@ -256,7 +260,7 @@ func TestElementScopeVariablesGetSearch(t *testing.T) {
 func TestElementScopeVariablesGetUnrequested(t *testing.T) {
 	for _, args := range [][]string{{"--json"}, {"--keys-only", "--with-vars"}, {"--quiet", "--keys-only", "--with-vars"}, {"--quiet", "--with-vars"}} {
 		t.Run(strings.Join(args, " "), func(t *testing.T) {
-			f := newElementScopeFixture(t, []string{scopeElementJSON(scopeElementA)}, []string{scopePage(nil, 0, false)}, 0)
+			f := newElementScopeFixture(t, "8.8", []string{scopeElementJSON(scopeElementA)}, []string{scopePage(nil, 0, false)}, 0)
 			cmdArgs := append([]string{"--config", testx.WriteTestConfig(t, f.server.URL), "get", "element", "--key", scopeElementA}, args...)
 			stdout, stderr := executeRootForElementTestWithSeparateOutputs(t, cmdArgs...)
 			require.Empty(t, stderr)

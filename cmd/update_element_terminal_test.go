@@ -38,7 +38,7 @@ func TestElementScopeVariablesUpdateTerminal(t *testing.T) {
 			{name: "noop JSON", noop: true, flags: []string{"--json", "--auto-confirm"}},
 		} {
 			t.Run(destination+"/"+tc.name, func(t *testing.T) {
-				f := newElementUpdateFixture(t)
+				f := newElementUpdateFixture(t, "8.10")
 				if tc.noop {
 					f.local[scopeElementA] = []string{scopeVariableJSON("x", "true", scopeElementA, false)}
 				}
@@ -122,7 +122,7 @@ func TestElementScopeVariablesUpdateTerminal(t *testing.T) {
 
 // TestElementScopeVariablesUpdateTerminalPlanningFailure never offers approval for a partial plan.
 func TestElementScopeVariablesUpdateTerminalPlanningFailure(t *testing.T) {
-	f := newElementUpdateFixture(t)
+	f := newElementUpdateFixture(t, "8.10")
 	f.lookupFailure = scopeElementB
 	args := []string{"--config", completionLogConfig(t, f.server.URL, "plain-time", "info"), "--no-indicator", "update", "element", "--key", scopeElementA + "," + scopeElementB, "--vars", `{"x":true}`}
 	out, stderr, err := runElementScopeTerminal(t, args, "configured", nil)

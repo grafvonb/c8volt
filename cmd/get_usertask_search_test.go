@@ -61,7 +61,7 @@ func TestNewGetUserTaskSearchRequest_MapsVariableFiltersAndPropagatesErrors(t *t
 // TestGetUserTaskCommand_SearchBuildsAllPredicates verifies normalized state,
 // exact string predicates, selector keys, tenant scope, bounds, and AND composition.
 func TestGetUserTaskCommand_SearchBuildsAllPredicates(t *testing.T) {
-	server, requests := newGetUserTaskSearchServer(t, func(_ int, _ map[string]any) string {
+	server, requests := newGetUserTaskSearchServer(t, "8.9", func(_ int, _ map[string]any) string {
 		return userTaskSearchResponse(1, false, "", "2251799815391233")
 	})
 	configPath := testx.WriteTestConfigForVersion(t, server.URL, "8.9")
@@ -93,7 +93,7 @@ func TestGetUserTaskCommand_SearchBuildsAllPredicates(t *testing.T) {
 // TestGetUserTaskCommand_SearchDefaultsAndStates verifies empty implicit stdin
 // selects discovery, all omits the state predicate, and all nine states normalize.
 func TestGetUserTaskCommand_SearchDefaultsAndStates(t *testing.T) {
-	server, requests := newGetUserTaskSearchServer(t, func(_ int, _ map[string]any) string {
+	server, requests := newGetUserTaskSearchServer(t, "8.9", func(_ int, _ map[string]any) string {
 		return userTaskSearchResponse(0, false, "")
 	})
 	configPath := testx.WriteTestConfigForVersion(t, server.URL, "8.9")
@@ -123,7 +123,7 @@ func TestGetUserTaskCommand_SearchDefaultsAndStates(t *testing.T) {
 // TestGetUserTaskCommand_SearchEmptyModes verifies completed empty discovery
 // renders once without synthetic rows or extra requests in every output mode.
 func TestGetUserTaskCommand_SearchEmptyModes(t *testing.T) {
-	server, requests := newGetUserTaskSearchServer(t, func(_ int, _ map[string]any) string {
+	server, requests := newGetUserTaskSearchServer(t, "8.9", func(_ int, _ map[string]any) string {
 		return userTaskSearchResponse(0, false, "")
 	})
 	configPath := testx.WriteTestConfigForVersion(t, server.URL, "8.9")
@@ -172,7 +172,7 @@ func TestGetUserTaskCommand_SearchEmptyModes(t *testing.T) {
 // TestGetUserTaskCommand_SearchRejectsInvalidInputBeforeRequests verifies state,
 // selector, bound, and total-mode conflicts fail before backend discovery.
 func TestGetUserTaskCommand_SearchRejectsInvalidInputBeforeRequests(t *testing.T) {
-	server, requests := newGetUserTaskSearchServer(t, func(_ int, _ map[string]any) string {
+	server, requests := newGetUserTaskSearchServer(t, "8.9", func(_ int, _ map[string]any) string {
 		return userTaskSearchResponse(0, false, "")
 	})
 	configPath := testx.WriteTestConfigForVersion(t, server.URL, "8.9")
@@ -219,7 +219,7 @@ func TestGetUserTaskCommand_SearchTraversesSparsePagesAndHonorsLimit(t *testing.
 						if sparse {
 							responses = append(responses[:1], append([]string{userTaskSearchResponse(3, false, "cursor-sparse")}, responses[1:]...)...)
 						}
-						server, requests := newGetUserTaskSearchServer(t, func(index int, _ map[string]any) string {
+						server, requests := newGetUserTaskSearchServer(t, version, func(index int, _ map[string]any) string {
 							require.Less(t, index, len(responses))
 							return responses[index]
 						})
@@ -292,7 +292,7 @@ func TestGetUserTaskCommand_SearchVariablesEnrichOnlySelectedTasks(t *testing.T)
 		{name: "sparse collected pages", args: []string{"--json", "get", "ut", "--batch-size", "1", "--with-vars"}, wantSearch: 2, wantTotal: 1},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			server, requests := newGetUserTaskVariablesServer(t, getUserTaskVariablesFixture{
+			server, requests := newGetUserTaskVariablesServer(t, "8.9", getUserTaskVariablesFixture{
 				SearchRespond: func(index int, _ map[string]any) string {
 					if strings.Contains(test.name, "sparse") {
 						if index == 0 {
@@ -355,7 +355,7 @@ func TestGetUserTaskCommand_FilteredDisplayPreservesSelection(t *testing.T) {
 	t.Run("same selected identities with and without display", func(t *testing.T) {
 		for _, withVariables := range []bool{false, true} {
 			t.Run(fmt.Sprintf("with-vars=%t", withVariables), func(t *testing.T) {
-				server, requests := newGetUserTaskVariablesServer(t, filteredUserTaskVariablesFixture())
+				server, requests := newGetUserTaskVariablesServer(t, "8.9", filteredUserTaskVariablesFixture())
 				configPath := testx.WriteTestConfigForVersion(t, server.URL, "8.9")
 				args := []string{"get", "ut", "--var", `status="approved"`}
 				if withVariables {
@@ -391,7 +391,7 @@ func TestGetUserTaskCommand_FilteredDisplayPreservesSelection(t *testing.T) {
 		fixture.SearchRespond = func(_ int, _ map[string]any) string {
 			return userTaskSearchResponse(3, false, "", userTaskLocalMatchKey, userTaskShadowedMatchKey, userTaskParentOnlyKey)
 		}
-		server, requests := newGetUserTaskVariablesServer(t, fixture)
+		server, requests := newGetUserTaskVariablesServer(t, "8.9", fixture)
 		configPath := testx.WriteTestConfigForVersion(t, server.URL, "8.9")
 
 		stdout, stderr, err := runGetUserTaskCommand(t, configPath, "", "get", "ut", "--var", `status="approved"`, "--limit", "1", "--with-vars")
@@ -413,7 +413,7 @@ func TestGetUserTaskCommand_FilteredDisplayPreservesSelection(t *testing.T) {
 			}
 			return userTaskSearchResponse(1, false, "", userTaskLocalMatchKey)
 		}
-		server, requests := newGetUserTaskVariablesServer(t, fixture)
+		server, requests := newGetUserTaskVariablesServer(t, "8.9", fixture)
 		configPath := testx.WriteTestConfigForVersion(t, server.URL, "8.9")
 
 		stdout, stderr, err := runGetUserTaskCommand(t, configPath, "", "get", "ut", "--var", `status="approved"`, "--batch-size", "1", "--with-vars", "--auto-confirm")
@@ -443,7 +443,7 @@ func TestGetUserTaskCommand_FilteredDisplayStopsBeforeUnreadPages(t *testing.T) 
 		}
 		return userTaskSearchResponse(2, false, "", userTaskShadowedMatchKey)
 	}
-	server, requests := newGetUserTaskVariablesServer(t, fixture)
+	server, requests := newGetUserTaskVariablesServer(t, "8.9", fixture)
 	configPath := testx.WriteTestConfigForVersion(t, server.URL, "8.9")
 	args, err := json.Marshal([]string{
 		"--config", configPath, "--tenant", "tenant-a", "get", "ut", "--batch-size", "1",
@@ -492,7 +492,7 @@ func TestGetUserTaskCommand_SearchLimitBoundaries(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			server, requests := newGetUserTaskSearchServer(t, func(index int, _ map[string]any) string {
+			server, requests := newGetUserTaskSearchServer(t, "8.9", func(index int, _ map[string]any) string {
 				if index == 0 {
 					return userTaskSearchResponse(4, false, "cursor-a", "2251799815391233", "2251799815391234", "2251799815391235")
 				}
@@ -525,7 +525,7 @@ func TestGetUserTaskCommand_TotalUsesExactAndCappedTraversal(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			server, requests := newGetUserTaskSearchServer(t, func(index int, _ map[string]any) string {
+			server, requests := newGetUserTaskSearchServer(t, "8.9", func(index int, _ map[string]any) string {
 				return test.responses[index]
 			})
 			configPath := testx.WriteTestConfigForVersion(t, server.URL, "8.9")
@@ -541,10 +541,10 @@ func TestGetUserTaskCommand_TotalUsesExactAndCappedTraversal(t *testing.T) {
 // TestGetUserTaskCommand_SearchSupportsEveryNativeVersion verifies command
 // dispatch reaches each supported adapter.
 func TestGetUserTaskCommand_SearchSupportsEveryNativeVersion(t *testing.T) {
-	server, requests := newGetUserTaskSearchServer(t, func(_ int, _ map[string]any) string {
-		return userTaskSearchResponse(1, false, "", "2251799815391233")
-	})
 	for _, version := range []string{"8.8", "8.9", "8.10"} {
+		server, requests := newGetUserTaskSearchServer(t, version, func(_ int, _ map[string]any) string {
+			return userTaskSearchResponse(1, false, "", "2251799815391233")
+		})
 		configPath := testx.WriteTestConfigForVersion(t, server.URL, version)
 		stdout, stderr, err := runGetUserTaskCommand(t, configPath, "", "--tenant", "tenant-a", "--keys-only", "get", "ut", "--automation",
 			"--pi-key", "2251799813711967", "--pd-key", "2251799813689000",
@@ -553,14 +553,14 @@ func TestGetUserTaskCommand_SearchSupportsEveryNativeVersion(t *testing.T) {
 		require.NoError(t, err, stderr)
 		require.Empty(t, stderr)
 		require.Equal(t, "2251799815391233\n", stdout)
+		require.Len(t, requests.Snapshot(), 1)
 	}
-	require.Len(t, requests.Snapshot(), 3)
 }
 
 // TestGetUserTaskCommand_SearchUsesEffectiveTenant verifies configured,
 // explicit override, and all-tenant discovery scopes reach the backend filter.
 func TestGetUserTaskCommand_SearchUsesEffectiveTenant(t *testing.T) {
-	server, requests := newGetUserTaskSearchServer(t, func(_ int, _ map[string]any) string {
+	server, requests := newGetUserTaskSearchServer(t, "8.9", func(_ int, _ map[string]any) string {
 		return userTaskSearchResponse(0, false, "")
 	})
 	configPath := filepath.Join(t.TempDir(), "config.yaml")
@@ -586,7 +586,7 @@ func TestGetUserTaskCommand_SearchUsesEffectiveTenant(t *testing.T) {
 // TestGetUserTaskCommand_SearchRejectsMalformedBackendItems verifies a failed
 // traversal cannot be rendered as a successful empty or partial collection.
 func TestGetUserTaskCommand_SearchRejectsMalformedBackendItems(t *testing.T) {
-	server, requests := newGetUserTaskSearchServer(t, func(_ int, _ map[string]any) string {
+	server, requests := newGetUserTaskSearchServer(t, "8.9", func(_ int, _ map[string]any) string {
 		return `{"items":[{"state":"CREATED","processInstanceKey":"2251799813711967"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`
 	})
 	configPath := testx.WriteTestConfigForVersion(t, server.URL, "8.9")
@@ -603,6 +603,10 @@ func TestGetUserTaskCommand_SearchRejectsMalformedBackendItems(t *testing.T) {
 func TestGetUserTaskCommand_SearchReportsBackendFailure(t *testing.T) {
 	var requests testx.AtomicCounter
 	server := testx.NewIPv4Server(t, http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		if serveVersionCheckTopology(writer, request, "8.9") {
+			return
+		}
+
 		requests.Inc()
 		http.Error(writer, `{"message":"unavailable"}`, http.StatusServiceUnavailable)
 	}))
@@ -617,11 +621,15 @@ func TestGetUserTaskCommand_SearchReportsBackendFailure(t *testing.T) {
 
 // newGetUserTaskSearchServer captures generic generated-client request JSON and
 // delegates deterministic page responses to each command scenario.
-func newGetUserTaskSearchServer(t *testing.T, respond func(int, map[string]any) string) (*httptest.Server, *testx.SafeSlice[map[string]any]) {
+func newGetUserTaskSearchServer(t *testing.T, version string, respond func(int, map[string]any) string) (*httptest.Server, *testx.SafeSlice[map[string]any]) {
 	t.Helper()
 	requests := new(testx.SafeSlice[map[string]any])
 	var requestCount testx.AtomicCounter
 	server := testx.NewIPv4Server(t, http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		if serveVersionCheckTopology(writer, request, version) {
+			return
+		}
+
 		if request.Method != http.MethodPost || request.URL.Path != "/v2/user-tasks/search" {
 			http.NotFound(writer, request)
 			return

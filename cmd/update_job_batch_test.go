@@ -39,10 +39,14 @@ type bulkCompletionFixture struct {
 
 // newBulkCompletionFixture supplies listener rows and explicit tenant/missing-key
 // cases through actual HTTP adapters, recording the preparation-before-write boundary.
-func newBulkCompletionFixture(t *testing.T, scenario string) (*bulkCompletionFixture, *httptest.Server) {
+func newBulkCompletionFixture(t *testing.T, version string, scenario string) (*bulkCompletionFixture, *httptest.Server) {
 	t.Helper()
 	fixture := &bulkCompletionFixture{scenario: scenario}
 	server := testx.NewIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, version) {
+			return
+		}
+
 		fixture.mu.Lock()
 		defer fixture.mu.Unlock()
 		fixture.calls = append(fixture.calls, r.Method+" "+r.URL.Path)
@@ -142,7 +146,7 @@ func TestUpdateJobBulkCompletionModes(t *testing.T) {
 		{"empty preview", "empty", []string{"--dry-run", "--json"}, "preview", "succeeded", 0, 0},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			fixture, server := newBulkCompletionFixture(t, tc.scenario)
+			fixture, server := newBulkCompletionFixture(t, "8.8", tc.scenario)
 			args := []string{"--config", writeTestConfigForVersion(t, server.URL, "8.8"), "--tenant", "tenant-a", "update", "job", "--type", "cleanup", "--complete", "--workers", "1"}
 			args = append(args, tc.flags...)
 			stdout, stderr := executeRootForJobTestWithSeparateOutputs(t, args...)
@@ -191,7 +195,7 @@ func decodeBulkCompletionEnvelope(t *testing.T, stdout string) map[string]any {
 func TestUpdateJobBulkCompletionHuman(t *testing.T) {
 	for _, flags := range [][]string{{"--dry-run"}, {"--dry-run", "--verbose"}, {"--dry-run", "--quiet"}, {"--auto-confirm"}} {
 		t.Run(strings.Join(flags, " "), func(t *testing.T) {
-			fixture, server := newBulkCompletionFixture(t, "normal")
+			fixture, server := newBulkCompletionFixture(t, "8.8", "normal")
 			args := []string{"--config", writeTestConfigForVersion(t, server.URL, "8.8"), "--tenant", "tenant-a", "update", "job", "--type", "cleanup", "--complete"}
 			stdout, stderr := executeRootForJobTestWithSeparateOutputs(t, append(args, flags...)...)
 			if !strings.Contains(strings.Join(flags, " "), "json") {
@@ -227,7 +231,7 @@ func TestUpdateJobBulkCompletionHuman(t *testing.T) {
 func TestUpdateJobBulkCompletionFailures(t *testing.T) {
 	for _, scenario := range []string{"incomplete", "partial", "variables"} {
 		t.Run(scenario, func(t *testing.T) {
-			fixture, server := newBulkCompletionFixture(t, scenario)
+			fixture, server := newBulkCompletionFixture(t, "8.8", scenario)
 			args := []string{"--config", writeTestConfigForVersion(t, server.URL, "8.8"), "--tenant", "tenant-a", "--json", "update", "job", "--type", "cleanup", "--complete", "--auto-confirm", "--workers", "1", "--batch-size", "1"}
 			if scenario == "variables" {
 				args = append(args, "--vars", `{"x":1}`)
@@ -298,7 +302,7 @@ func TestUpdateJobBulkCompletionConfirmation(t *testing.T) {
 		{name: "empty JSON quiet", scenario: "empty", flags: []string{"--json", "--quiet", "--auto-confirm"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			fixture, server := newBulkCompletionFixture(t, tc.scenario)
+			fixture, server := newBulkCompletionFixture(t, "8.8", tc.scenario)
 			args := []string{"--config", writeTestConfigForVersion(t, server.URL, "8.8"), "--tenant", "tenant-a", "update", "job", "--type", "cleanup", "--complete"}
 			args = append(args, tc.flags...)
 			encoded, _ := json.Marshal(args)
@@ -361,7 +365,7 @@ func TestUpdateJobBulkCompletionConfirmation(t *testing.T) {
 func TestUpdateJobBulkCompletionInvalidInputs(t *testing.T) {
 	for _, flags := range [][]string{{"--total"}, {"--keys-only"}, {"--json"}, {"--json", "--dry-run", "--verbose"}, {"--key", "2251799813711967"}, {"--vars", "[]"}, {"--type", ""}, {"--limit", "-1"}, {"--complete=false"}} {
 		t.Run(strings.Join(flags, " "), func(t *testing.T) {
-			fixture, server := newBulkCompletionFixture(t, "normal")
+			fixture, server := newBulkCompletionFixture(t, "8.8", "normal")
 			args := []string{"--config", writeTestConfigForVersion(t, server.URL, "8.8"), "update", "job", "--type", "cleanup", "--complete"}
 			encoded, _ := json.Marshal(append(args, flags...))
 			_, _, err := testx.RunCmdSubprocessSeparate(t, "TestUpdateJobBulkCompletionHelper", map[string]string{"C8VOLT_BATCH_ARGS": string(encoded)})
@@ -465,7 +469,7 @@ func TestUpdateJobBulkCompletionOptions(t *testing.T) {
 // TestUpdateJobBulkCompletionAllPredicatesAndLimit verifies all nine AND predicates
 // reach the adapter, zero retries survive, and the unique cap stays visible in preview.
 func TestUpdateJobBulkCompletionAllPredicatesAndLimit(t *testing.T) {
-	fixture, server := newBulkCompletionFixture(t, "predicates")
+	fixture, server := newBulkCompletionFixture(t, "8.8", "predicates")
 	stdout, stderr := executeRootForJobTestWithSeparateOutputs(t, "--config", writeTestConfigForVersion(t, server.URL, "8.8"), "--tenant", "tenant-a", "update", "job", "--complete", "--dry-run", "--verbose", "--state", "created", "--type", "cleanup", "--pi-key", "2251799813711000", "--element-instance-key", "2251799813711001", "--element-id", "task", "--worker", "worker", "--retries", "0", "--kind", "task_listener", "--listener-event-type", "canceling", "--limit", "1", "--batch-size", "10")
 	stdout, stderr = assertBulkCompletionHumanLogs(t, stdout, stderr)
 	require.Empty(t, stderr)
@@ -483,7 +487,7 @@ func TestUpdateJobBulkCompletionAllPredicatesAndLimit(t *testing.T) {
 func TestUpdateJobBulkCompletionPartialHuman(t *testing.T) {
 	for _, flags := range [][]string{nil, {"--verbose"}, {"--quiet"}, {"--quiet", "--json"}} {
 		t.Run(strings.Join(flags, " "), func(t *testing.T) {
-			fixture, server := newBulkCompletionFixture(t, "partial")
+			fixture, server := newBulkCompletionFixture(t, "8.8", "partial")
 			args := []string{"--config", writeTestConfigForVersion(t, server.URL, "8.8"), "--tenant", "tenant-a", "update", "job", "--type", "cleanup", "--complete", "--auto-confirm", "--workers", "1"}
 			encoded, _ := json.Marshal(append(args, flags...))
 			stdout, stderr, err := testx.RunCmdSubprocessSeparate(t, "TestUpdateJobBulkCompletionHelper", map[string]string{"C8VOLT_BATCH_ARGS": string(encoded)})
@@ -529,7 +533,7 @@ func TestUpdateJobBulkCompletionExplicitCollections(t *testing.T) {
 	} {
 		for _, preview := range []bool{true, false} {
 			t.Run(fmt.Sprintf("%s preview=%t", tc.name, preview), func(t *testing.T) {
-				fixture, server := newBulkCompletionFixture(t, "normal")
+				fixture, server := newBulkCompletionFixture(t, "8.8", "normal")
 				args := []string{"--config", writeTestConfigForVersion(t, server.URL, "8.8"), "update", "job", "--complete", "--auto-confirm", "--json", "--workers", "1"}
 				args = append(args, tc.keys...)
 				if preview {
@@ -577,7 +581,7 @@ func TestUpdateJobBulkCompletionExplicitCollections(t *testing.T) {
 func TestUpdateJobBulkCompletionExplicitTenants(t *testing.T) {
 	for _, flags := range [][]string{{"--dry-run", "--verbose"}, {"--auto-confirm"}, {"--auto-confirm", "--json"}, {"--automation", "--json", "--quiet", "--no-wait"}} {
 		t.Run(strings.Join(flags, " "), func(t *testing.T) {
-			fixture, server := newBulkCompletionFixture(t, "explicit")
+			fixture, server := newBulkCompletionFixture(t, "8.8", "explicit")
 			args := []string{"--config", writeTestConfigForVersion(t, server.URL, "8.8"), "--tenant", "tenant-a", "update", "job", "--key", "1,2", "--complete", "--workers", "1"}
 			stdout, stderr := executeRootForJobTestWithSeparateOutputs(t, append(args, flags...)...)
 			if !strings.Contains(strings.Join(flags, " "), "json") {
@@ -625,7 +629,7 @@ func TestUpdateJobBulkCompletionExplicitFailures(t *testing.T) {
 		{name: "listener variables", flags: []string{"--key", "1,2", "--vars", `{"x":1}`}, prepared: true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			fixture, server := newBulkCompletionFixture(t, tc.scenario)
+			fixture, server := newBulkCompletionFixture(t, "8.8", tc.scenario)
 			args := []string{"--config", writeTestConfigForVersion(t, server.URL, "8.8"), "update", "job", "--complete", "--auto-confirm", "--json"}
 			encoded, _ := json.Marshal(append(args, tc.flags...))
 			env := map[string]string{"C8VOLT_BATCH_ARGS": string(encoded)}
@@ -656,7 +660,7 @@ func TestUpdateJobBulkCompletionExplicitFailures(t *testing.T) {
 func TestUpdateJobBulkCompletionEmptyStdin(t *testing.T) {
 	for _, flags := range [][]string{nil, {"--dry-run"}, {"--no-wait"}, {"--quiet"}, {"--json", "--auto-confirm"}, {"--json", "--quiet", "--automation", "--no-wait"}, {"--json", "--quiet", "--dry-run"}} {
 		t.Run(strings.Join(flags, " "), func(t *testing.T) {
-			fixture, server := newBulkCompletionFixture(t, "normal")
+			fixture, server := newBulkCompletionFixture(t, "8.8", "normal")
 			args := []string{"--config", writeTestConfigForVersion(t, server.URL, "8.8"), "update", "job", "-", "--complete"}
 			encoded, _ := json.Marshal(append(args, flags...))
 			stdout, stderr, err := testx.RunCmdSubprocessInDirWithSeparateOutputs(t, "TestUpdateJobBulkCompletionHelper", "", map[string]string{"C8VOLT_BATCH_ARGS": string(encoded)}, " \n\t\r\n")
@@ -707,7 +711,7 @@ func TestUpdateJobBulkCompletionExplicitGuardrails(t *testing.T) {
 		{"--key", "1,2", "--throw-bpmn-error", "ERROR"},
 	} {
 		t.Run(strings.Join(flags, " "), func(t *testing.T) {
-			fixture, server := newBulkCompletionFixture(t, "normal")
+			fixture, server := newBulkCompletionFixture(t, "8.8", "normal")
 			args := []string{"--config", writeTestConfigForVersion(t, server.URL, "8.8"), "update", "job", "--complete"}
 			encoded, _ := json.Marshal(append(args, flags...))
 			_, _, err := testx.RunCmdSubprocessSeparate(t, "TestUpdateJobBulkCompletionHelper", map[string]string{"C8VOLT_BATCH_ARGS": string(encoded)})
@@ -722,7 +726,7 @@ func TestUpdateJobBulkCompletionExplicitGuardrails(t *testing.T) {
 func TestUpdateJobBulkCompletionExplicitConfirmation(t *testing.T) {
 	for _, answer := range []string{"y", "n"} {
 		t.Run(answer, func(t *testing.T) {
-			fixture, server := newBulkCompletionFixture(t, "explicit")
+			fixture, server := newBulkCompletionFixture(t, "8.8", "explicit")
 			args := []string{"--config", writeTestConfigForVersion(t, server.URL, "8.8"), "--tenant", "tenant-a", "update", "job", "--key", "1,2,1", "--complete", "--workers", "1"}
 			encoded, _ := json.Marshal(args)
 			prompt := "You are about to complete 2 explicitly selected job(s); selection scope: explicit resource keys; tenant filter not applied; affected tenants: tenant-a, tenant-b. " + jobCompletionListenerConsequence + "\nDo you want to proceed? [y/N]: "
@@ -759,7 +763,7 @@ func TestUpdateJobBulkCompletionExplicitConfirmation(t *testing.T) {
 func TestUpdateJobBulkCompletionEmptyStdinTerminal(t *testing.T) {
 	for _, flags := range [][]string{nil, {"--dry-run"}, {"--no-wait"}, {"--quiet", "--json", "--auto-confirm"}} {
 		t.Run(strings.Join(flags, " "), func(t *testing.T) {
-			fixture, server := newBulkCompletionFixture(t, "normal")
+			fixture, server := newBulkCompletionFixture(t, "8.8", "normal")
 			args := []string{"--config", writeTestConfigForVersion(t, server.URL, "8.8"), "update", "job", "-", "--complete"}
 			encoded, _ := json.Marshal(append(args, flags...))
 			result := testx.NewCmdTerminalRunner().Run(t, testx.CmdTerminalRunRequest{ScopeTestName: "TestUpdateJobBulkCompletionHelper", Env: map[string]string{"C8VOLT_BATCH_ARGS": string(encoded), "C8VOLT_BATCH_INPUT_READY": "1"}, Exchanges: []testx.CmdTerminalExchange{{Prompt: "test input ready\n", EndOfInput: true}}})

@@ -104,7 +104,7 @@ func TestUpdateProcessInstanceTerminal(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			server, capture := newUpdateProcessInstanceOutputServer(t, test.initialValue)
+			server, capture := newUpdateProcessInstanceOutputServer(t, "8.10", test.initialValue)
 			encodedArgs, err := json.Marshal(test.args)
 			require.NoError(t, err)
 			capturePath := filepath.Join(t.TempDir(), "configured-stderr.txt")
@@ -192,13 +192,17 @@ func TestUpdateProcessInstanceTerminal(t *testing.T) {
 
 // newUpdateProcessInstanceOutputServer serves one selected root and fails
 // every unexpected endpoint so preview labels cannot hide added requests.
-func newUpdateProcessInstanceOutputServer(t *testing.T, initialValue bool) (*httptest.Server, *updateProcessInstanceOutputCapture) {
+func newUpdateProcessInstanceOutputServer(t *testing.T, version string, initialValue bool) (*httptest.Server, *updateProcessInstanceOutputCapture) {
 	t.Helper()
 	capture := &updateProcessInstanceOutputCapture{
 		initialValue:  initialValue,
 		mutatedScopes: make(map[string]bool),
 	}
 	server := testx.NewIPv4Server(t, http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		if serveVersionCheckTopology(writer, request, version) {
+			return
+		}
+
 		capture.mu.Lock()
 		capture.totalRequests++
 		capture.mu.Unlock()

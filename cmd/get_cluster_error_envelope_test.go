@@ -94,6 +94,7 @@ func TestCommandErrorEnvelopeCluster(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			var requests atomic.Int32
 			server := testx.NewIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
 				requests.Add(1)
 				require.Equal(t, http.MethodGet, r.Method)
 				require.Equal(t, tt.requestPath, r.URL.Path)
@@ -145,7 +146,8 @@ func TestCommandErrorEnvelopeCluster(t *testing.T) {
 }
 
 // TestCommandErrorEnvelopeClusterHelper executes the selected real cluster
-// command in the exact helper subprocess.
+// command in the exact helper subprocess. Advisory opt-out isolates the requested
+// topology failure and its historical retry/error envelope evidence.
 func TestCommandErrorEnvelopeClusterHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return
@@ -154,7 +156,7 @@ func TestCommandErrorEnvelopeClusterHelper(t *testing.T) {
 
 	var commandArgs []string
 	require.NoError(t, json.Unmarshal([]byte(os.Getenv("C8VOLT_TEST_COMMAND_ARGS")), &commandArgs))
-	args := []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "--backoff-max-retries", "0"}
+	args := []string{"c8volt", "--no-version-check", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "--backoff-max-retries", "0"}
 	if os.Getenv("C8VOLT_TEST_OUTPUT_MODE") == "json" {
 		args = append(args, "--json")
 	}

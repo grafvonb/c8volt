@@ -120,11 +120,16 @@ func TestEmbedExportCommand_FileSelectionCanStillExportOtherVersions(t *testing.
 	require.NoFileExists(t, filepath.Join(outDir, "processdefinitions", "C88_SimpleUserTask.bpmn"))
 }
 
+// TestEmbedDeployCommand_RegressionPreservesSelectedFixtureDeployOnly preserves the existing command contract with advisory-aware fixtures.
 func TestEmbedDeployCommand_RegressionPreservesSelectedFixtureDeployOnly(t *testing.T) {
 	resetEmbedCommandStateForTest()
 	var sawDeploy bool
 
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.9") {
+			return
+		}
+
 		switch {
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/deployments":
 			sawDeploy = true
@@ -201,6 +206,7 @@ func TestEmbedDeployCommand_AllTenantsRejectsBeforeEmbeddedOrRequestWork(t *test
 	}
 }
 
+// TestEmbedDeployCommand_CreationContextPrecedesDeploymentRequest preserves the existing command contract with advisory-aware fixtures.
 func TestEmbedDeployCommand_CreationContextPrecedesDeploymentRequest(t *testing.T) {
 	resetEmbedCommandStateForTest()
 	stdout := &bytes.Buffer{}
@@ -208,6 +214,10 @@ func TestEmbedDeployCommand_CreationContextPrecedesDeploymentRequest(t *testing.
 	var sawDeploy bool
 
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		switch {
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/deployments":
 			sawDeploy = true

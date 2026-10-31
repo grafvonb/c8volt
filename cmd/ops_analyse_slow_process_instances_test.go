@@ -153,6 +153,7 @@ func TestOpsAnalyseSlowProcessInstancesHelpDocumentsListenerTimestampGrammar(t *
 	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Long, "d: for an available deadline only while the state is exactly ACTIVATED")
 }
 
+// TestOpsAnalyseSlowProcessInstancesWithListenersCommandRendersLifecycleTimestamps preserves the existing command contract with advisory-aware fixtures.
 func TestOpsAnalyseSlowProcessInstancesWithListenersCommandRendersLifecycleTimestamps(t *testing.T) {
 	for _, tc := range []struct {
 		name string
@@ -165,6 +166,10 @@ func TestOpsAnalyseSlowProcessInstancesWithListenersCommandRendersLifecycleTimes
 			var requests testx.SafeSlice[string]
 			const key = "2251799813685249"
 			srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if serveVersionCheckTopology(w, r, "8.8") {
+					return
+				}
+
 				requests.Append(r.Method + " " + r.URL.Path)
 				w.Header().Set("Content-Type", "application/json")
 				switch r.URL.Path {
@@ -205,6 +210,10 @@ func TestOpsAnalyseSlowProcessInstancesWithListenersCommandJSONPreservesTimestam
 	var requests testx.SafeSlice[string]
 	const key = "2251799813685249"
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		requests.Append(r.Method + " " + r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {

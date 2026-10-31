@@ -281,6 +281,10 @@ func newBulkCompletionTerminalServer(t *testing.T, empty, partial bool) (*testx.
 	t.Helper()
 	calls := &testx.SafeSlice[string]{}
 	server := testx.NewIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		if r.Method == http.MethodPost && r.URL.Path == "/v2/jobs/search" {
 			var body struct {

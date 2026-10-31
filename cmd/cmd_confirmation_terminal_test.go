@@ -71,6 +71,10 @@ func TestAPIDiagnosticsTerminalCancellation(t *testing.T) {
 			capturePath := filepath.Join(t.TempDir(), "configured-stderr.txt")
 			var requests testx.SafeSlice[string]
 			srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if serveVersionCheckTopology(w, r, "8.8") {
+					return
+				}
+
 				requests.Append(r.Method + " " + r.URL.Path)
 				w.Header().Set("Content-Type", "application/json")
 				switch {
@@ -145,7 +149,7 @@ func TestAPIDiagnosticsTerminalCancellation(t *testing.T) {
 				require.Equal(t, 1, strings.Count(result.Stderr, prompt))
 			}
 			if tt.wantDiagnostic {
-				require.Equal(t, len(requests.Snapshot()), strings.Count(result.Stderr, "api #"))
+				require.Equal(t, len(requests.Snapshot())+1, strings.Count(result.Stderr, "api #"))
 			} else {
 				require.NotContains(t, result.Stderr, "api #")
 			}
@@ -209,6 +213,10 @@ func TestProcessInstanceConfirmationTerminal(t *testing.T) {
 			capturePath := filepath.Join(t.TempDir(), "configured-stderr.txt")
 			var requests testx.SafeSlice[string]
 			srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if serveVersionCheckTopology(w, r, "8.8") {
+					return
+				}
+
 				requests.Append(r.Method + " " + r.URL.Path)
 				w.Header().Set("Content-Type", "application/json")
 				switch {
@@ -536,6 +544,10 @@ func TestConfirmationEmptySelectorResults(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			var requests testx.SafeSlice[string]
 			srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if serveVersionCheckTopology(w, r, "8.8") {
+					return
+				}
+
 				requests.Append(r.Method + " " + r.URL.Path)
 				require.Equal(t, http.MethodPost, r.Method)
 				require.Equal(t, "/v2/process-instances/search", r.URL.Path)

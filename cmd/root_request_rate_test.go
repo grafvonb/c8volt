@@ -57,7 +57,7 @@ func (w *requestRateLogCapture) Write(p []byte) (int, error) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	n, err := w.output.Write(p)
-	if strings.Contains(string(p), "HTTP request rate: 1 requests in") && w.report != nil {
+	if strings.Contains(string(p), "HTTP request rate:") && w.report != nil {
 		select {
 		case w.report <- struct{}{}:
 		default:
@@ -150,6 +150,9 @@ func TestRequestRateCommandReporting(t *testing.T) {
 				} else {
 					time.Sleep(10 * time.Millisecond)
 				}
+				if serveVersionCheckTopology(w, r, "8.9") {
+					return
+				}
 				w.Header().Set("Content-Type", "application/json")
 				io.WriteString(w, apiDiagnosticsProcessDefinitionFixture)
 			}))
@@ -187,14 +190,14 @@ func TestRequestRateCommandReporting(t *testing.T) {
 			_, err := root.ExecuteC()
 			require.NoError(t, err)
 			require.Nil(t, currentHTTPService, "finalizer must consume ownership")
-			require.Equal(t, int32(1), calls.Load())
+			require.Equal(t, int32(2), calls.Load())
 			require.Empty(t, unused.String())
 			requireSingleJSONValue(t, stdout.String())
 			require.NotContains(t, stdout.String(), "HTTP request rate:")
 			output := capture.String()
 			if tc.enabled {
 				requireRequestRateSummaries(t, output, tc.format)
-				require.Equal(t, 1, strings.Count(output, "1 requests in"), "one actual start must be reported exactly once")
+				require.Equal(t, 2, strings.Count(output, "1 requests in"), "probe and operation must each be reported exactly once")
 			} else {
 				require.NotContains(t, output, "HTTP request rate:")
 			}

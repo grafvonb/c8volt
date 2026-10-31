@@ -40,6 +40,10 @@ func newResumptionFixture(t *testing.T) *resumptionFixture {
 	t.Helper()
 	f := &resumptionFixture{writes: map[string]int{}, reads: map[string]int{}, reject: map[string]int{}, states: map[string][]string{}, readStatus: map[string]int{}}
 	f.server = testx.NewIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.10") {
+			return
+		}
+
 		f.mu.Lock()
 		defer f.mu.Unlock()
 		f.calls = append(f.calls, r.Method+" "+r.URL.Path)
@@ -223,6 +227,10 @@ func TestResumeProcessInstanceWorkers(t *testing.T) {
 					active, peak, started := 0, 0, 0
 					gates := []chan struct{}{make(chan struct{}), make(chan struct{}), make(chan struct{}), make(chan struct{})}
 					server := testx.NewIPv4Server(t, resumptionExecutionTestHandler(t, tree, keys, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+						if serveVersionCheckTopology(w, r, "8.10") {
+							return
+						}
+
 						require.Equal(t, "POST", r.Method)
 						require.Contains(t, r.URL.Path, "/resumption")
 						mu.Lock()
@@ -279,6 +287,10 @@ func TestResumeProcessInstanceCancellation(t *testing.T) {
 			var mu sync.Mutex
 			calls := []string{}
 			server := testx.NewIPv4Server(t, resumptionExecutionTestHandler(t, tree, []string{resumeKeyA, resumeKeyB}, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if serveVersionCheckTopology(w, r, "8.10") {
+					return
+				}
+
 				mu.Lock()
 				calls = append(calls, r.Method+" "+r.URL.Path)
 				mu.Unlock()
@@ -296,6 +308,10 @@ func TestResumeProcessInstanceCancellation(t *testing.T) {
 			})))
 			defer server.Close()
 			control := testx.NewIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if serveVersionCheckTopology(w, r, "8.10") {
+					return
+				}
+
 				select {
 				case <-ready:
 					w.WriteHeader(204)
@@ -402,6 +418,10 @@ func TestResumeProcessInstanceFreshObservations(t *testing.T) {
 				var mu sync.Mutex
 				submitted, reads, writes := false, 0, 0
 				server := testx.NewIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					if serveVersionCheckTopology(w, r, "8.10") {
+						return
+					}
+
 					mu.Lock()
 					defer mu.Unlock()
 					w.Header().Set("Content-Type", "application/json")

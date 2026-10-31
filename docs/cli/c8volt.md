@@ -20,6 +20,17 @@ state changes, walk process trees, suspend, cancel, and delete.
 Supports Camunda 8.8, 8.9, and 8.10.
 Camunda 8.10 baseline: 8.10.3 (final).
 Camunda 8.10 aliases: 8.10, 810, v810, v8.10. Default: 8.9.
+Before the first operational API request, check the gateway major/minor version once.
+Mismatch or lookup failure warns and retains the configured adapter. A mismatch
+may produce incorrect results; match config to gateway unless mismatch is intentional.
+The check waits at most two seconds (or a shorter HTTP/workflow timeout), uses shared
+request pacing, and can add a pacing slot. Disable it with --no-version-check.
+Set app.no_version_check in base/profile configuration or C8VOLT_APP_NO_VERSION_CHECK
+in the environment. Explicit --no-version-check=true/false overrides either setting.
+Local commands perform no check. Explicit version and connection tests still run.
+DEBUG logging adds one summary with gateway/broker versions, available cluster
+counts and a bounded failure reason, using the same lookup and configured logger.
+
 Use capabilities to discover supported commands and automation options.
 
 Use --request-rate to pace shared request starts per second for this invocation
@@ -69,6 +80,7 @@ c8volt [flags]
       --keys-only            output keys only (where applicable)
       --log-level string     log level (debug, info, warn, error) (default "info")
       --no-indicator         disable transient terminal activity indicators
+      --no-version-check     skip the automatic advisory gateway version check
       --profile string       config active profile name to use (e.g. dev, prod)
   -q, --quiet                suppress output except errors
       --request-rate float   maximum shared request starts per second (fractions allowed; 0 disables pacing)

@@ -191,6 +191,10 @@ func TestExpectProcessInstanceCommand_DashDoesNotRequireKeyFlag(t *testing.T) {
 func TestExpectProcessInstanceCommand_IncidentDashReadsKeysFromStdin(t *testing.T) {
 	var attempts atomic.Int32
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		require.Equal(t, http.MethodGet, r.Method)
 		require.Equal(t, "/v2/process-instances/2251799813685255", r.URL.Path)
 
@@ -224,9 +228,14 @@ apis:
 	require.Contains(t, string(output), `"ok": true`)
 }
 
+// TestExpectProcessInstanceCommand_StateDashReadsKeysFromStdin preserves the existing command contract with advisory-aware fixtures.
 func TestExpectProcessInstanceCommand_StateDashReadsKeysFromStdin(t *testing.T) {
 	var attempts atomic.Int32
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		require.Equal(t, http.MethodGet, r.Method)
 		require.Equal(t, "/v2/process-instances/2251799813685255", r.URL.Path)
 
@@ -267,6 +276,10 @@ func TestExpectProcessInstanceCommand_StateMismatchRemainsStrict(t *testing.T) {
 			t.Run(strings.ToLower(state)+"/"+mode, func(t *testing.T) {
 				var attempts atomic.Int32
 				srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					if serveVersionCheckTopology(w, r, "8.8") {
+						return
+					}
+
 					require.Equal(t, http.MethodGet, r.Method)
 					require.Equal(t, "/v2/process-instances/2251799813685255", r.URL.Path)
 
@@ -343,6 +356,10 @@ apis:
 func TestExpectProcessInstanceCommand_IncidentTrueWaitsUntilMatched(t *testing.T) {
 	var attempts atomic.Int32
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		require.Equal(t, http.MethodGet, r.Method)
 		require.Equal(t, "/v2/process-instances/123", r.URL.Path)
 
@@ -384,6 +401,10 @@ apis:
 func TestExpectProcessInstanceCommand_KeyTenantMismatchUsesDirectStateLookup(t *testing.T) {
 	var requests []string
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		requests = append(requests, r.Method+" "+r.URL.Path)
 		require.Equal(t, http.MethodGet, r.Method)
 		require.Equal(t, "/v2/process-instances/"+tenantAdminKeysProcessInstanceKey, r.URL.Path)
@@ -424,6 +445,10 @@ apis:
 func TestExpectProcessInstanceCommand_IncidentFalseSucceedsForPresentIncidentFreeInstance(t *testing.T) {
 	var attempts atomic.Int32
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		require.Equal(t, http.MethodGet, r.Method)
 		require.Equal(t, "/v2/process-instances/123", r.URL.Path)
 
@@ -464,6 +489,10 @@ apis:
 func TestExpectProcessInstanceCommand_StateAndIncidentWaitUntilBothMatch(t *testing.T) {
 	var attempts atomic.Int32
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		require.Equal(t, http.MethodGet, r.Method)
 		require.Equal(t, "/v2/process-instances/123", r.URL.Path)
 
@@ -518,6 +547,10 @@ apis:
 func TestExpectProcessInstanceCommand_MultiKeyStateJSONRemainsProgressFree(t *testing.T) {
 	var requests testx.SafeSlice[string]
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		require.Equal(t, http.MethodGet, r.Method)
 		requests.Append(r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
@@ -701,6 +734,10 @@ func TestExpectSuspendedMismatch(t *testing.T) {
 		t.Run(strings.Join(flags, " "), func(t *testing.T) {
 			var requests atomic.Int32
 			srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if serveVersionCheckTopology(w, r, "8.10") {
+					return
+				}
+
 				requests.Add(1)
 				require.Equal(t, http.MethodGet, r.Method)
 				require.Equal(t, "/v2/process-instances/123", r.URL.Path)

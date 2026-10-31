@@ -168,6 +168,54 @@ For scripts or CI, request JSON with `--json`:
 
 For the full setup contract, see the generated [config reference](docs/cli/c8volt_config.md).
 
+### Gateway Version Advisory
+
+Before the first operational API request, c8volt checks the gateway version once per invocation.
+It compares major/minor release lines; patch, prerelease, build, and broker-version
+differences do not cause a mismatch. A mismatch or unavailable check produces a
+warning and keeps your configured adapter. No version is selected automatically.
+A mismatch warns that results may be incorrect and asks you to match the
+configuration to the gateway version unless the mismatch is intentional.
+With `--debug` or configured DEBUG logging, the same lookup also emits one summary
+with the comparison result, configured and gateway versions, sorted unique broker
+versions, reported broker count, cluster size, partition count, and replication
+factor when available. Failed checks include a bounded reason. Invalid or missing
+versions appear as `unknown`; unavailable or nonpositive counts are omitted.
+Broker versions are informational and do not affect the gateway comparison.
+The summary follows the configured logger and adds no requests or result output.
+
+The advisory waits at most two seconds, or a shorter HTTP timeout or workflow
+deadline. It does not retry or follow redirects. It shares authentication and
+request pacing, so its request consumes a pacing slot and the subsequent operation
+may also wait for its normal slot. The operation retains its own HTTP timeout,
+subject to the original workflow deadline. Local commands and local previews make
+no advisory request; remote discovery does, including when it finds no work.
+
+Use `--no-version-check` to skip the advisory for one invocation. To persist that
+choice, set `app.no_version_check: true` in base configuration or a profile:
+
+```yaml
+app:
+  no_version_check: false  # default: perform the advisory check
+profiles:
+  intentional-mismatch:
+    app:
+      no_version_check: true
+```
+
+Select the profile with `--profile intentional-mismatch`. The environment variable
+`C8VOLT_APP_NO_VERSION_CHECK=true` disables the advisory; `false` enables it.
+Precedence is explicit CLI flag > environment > selected profile > base config >
+default (`false`). An explicit `--no-version-check=false` enables checking even
+when configuration or the environment disables it. `config show` displays the
+effective setting, and `config template` includes its default.
+
+Warnings follow the configured logger; quiet suppresses them, and JSON/keys-only
+results stay unchanged.
+Explicit `get cluster version`, `get cluster topology`, and `config test-connection`
+still perform their requested reads. Connection-test JSON compatibility warnings
+always describe that requested read, even when the automatic check is disabled.
+
 ### Request Pacing and Rate Reporting
 
 Use `--request-rate` to limit shared application-level request starts per second

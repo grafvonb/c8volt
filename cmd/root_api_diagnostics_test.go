@@ -23,11 +23,14 @@ import (
 const apiDiagnosticsProcessDefinitionKey = "2251799813685255"
 const apiDiagnosticsInvocationHelper = "TestAPIDiagnosticsInvocationHelper"
 
-// TestAPIDiagnosticsCommandReadPreservesResultsAndRequests verifies inherited debug placement enables one diagnostic without changing command results or traffic.
+// TestAPIDiagnosticsCommandReadPreservesResultsAndRequests verifies inherited debug placement enables probe and operation diagnostics without changing command results or traffic.
 func TestAPIDiagnosticsCommandReadPreservesResultsAndRequests(t *testing.T) {
 	var requests atomic.Int32
 	server := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
 		requests.Add(1)
+		if serveVersionCheckTopology(w, request, "8.9") {
+			return
+		}
 		require.Equal(t, http.MethodGet, request.Method)
 		require.Equal(t, "/v2/process-definitions/"+apiDiagnosticsProcessDefinitionKey, request.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
@@ -50,13 +53,13 @@ func TestAPIDiagnosticsCommandReadPreservesResultsAndRequests(t *testing.T) {
 	} {
 		stdout, stderr := executeAPIDiagnosticsRoot(t, args...)
 		require.Equal(t, baselineStdout, stdout)
-		require.Equal(t, 1, strings.Count(stderr, "api #"))
-		require.Contains(t, stderr, "api #1 GET /v2/process-definitions/"+apiDiagnosticsProcessDefinitionKey+": status=200")
+		require.Equal(t, 2, strings.Count(stderr, "api #"))
+		require.Contains(t, stderr, "api #2 GET /v2/process-definitions/"+apiDiagnosticsProcessDefinitionKey+": status=200")
 		require.Contains(t, stderr, " headers=")
 		require.Contains(t, stderr, " body=")
 	}
 
-	require.Equal(t, int32(3), requests.Load(), "diagnostics must not add requests")
+	require.Equal(t, int32(6), requests.Load(), "diagnostics must not add requests")
 }
 
 // TestAPIDiagnosticsCommandAuthenticationBootstrap verifies token and cookie initialization traffic shares command diagnostics while auth-none adds no bootstrap exchange.
@@ -67,14 +70,17 @@ func TestAPIDiagnosticsCommandAuthenticationBootstrap(t *testing.T) {
 		wantRequests    int32
 		wantFirstTarget string
 	}{
-		{name: "none", authMode: "none", wantRequests: 1, wantFirstTarget: "GET /v2/process-definitions/"},
-		{name: "oauth2", authMode: "oauth2", wantRequests: 2, wantFirstTarget: "POST /oauth/token"},
-		{name: "cookie", authMode: "cookie", wantRequests: 2, wantFirstTarget: "POST /api/login"},
+		{name: "none", authMode: "none", wantRequests: 2, wantFirstTarget: "GET /v2/topology"},
+		{name: "oauth2", authMode: "oauth2", wantRequests: 3, wantFirstTarget: "POST /oauth/token"},
+		{name: "cookie", authMode: "cookie", wantRequests: 3, wantFirstTarget: "POST /api/login"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			var requests atomic.Int32
 			server := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
 				requests.Add(1)
+				if serveVersionCheckTopology(w, request, "8.9") {
+					return
+				}
 				switch request.URL.Path {
 				case "/oauth/token":
 					w.Header().Set("Content-Type", "application/json")
@@ -111,6 +117,9 @@ func TestAPIDiagnosticsCommandAuthenticationBootstrap(t *testing.T) {
 // TestAPIDiagnosticsCommandFiltering verifies DEBUG is sufficient without verbose, configured levels are honored and quiet wins.
 func TestAPIDiagnosticsCommandFiltering(t *testing.T) {
 	server := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
+		if serveVersionCheckTopology(w, request, "8.9") {
+			return
+		}
 		require.Equal(t, "/v2/process-definitions/"+apiDiagnosticsProcessDefinitionKey, request.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write([]byte(apiDiagnosticsProcessDefinitionFixture))
@@ -159,6 +168,9 @@ func TestAPIDiagnosticsCommandHelpPerformsNoExchange(t *testing.T) {
 // and never reuse a prior invocation's destination.
 func TestAPIDiagnosticsCommandEffectiveStderrRouting(t *testing.T) {
 	server := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
+		if serveVersionCheckTopology(w, request, "8.9") {
+			return
+		}
 		require.Equal(t, "/v2/process-definitions/"+apiDiagnosticsProcessDefinitionKey, request.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write([]byte(apiDiagnosticsProcessDefinitionFixture))
@@ -188,7 +200,7 @@ func TestAPIDiagnosticsCommandEffectiveStderrRouting(t *testing.T) {
 	_, err := root.ExecuteC()
 	require.NoError(t, err)
 	require.Empty(t, firstRootStderr.String())
-	require.Contains(t, firstChildStderr.String(), "api #1 GET /v2/process-definitions/"+apiDiagnosticsProcessDefinitionKey)
+	require.Contains(t, firstChildStderr.String(), "api #2 GET /v2/process-definitions/"+apiDiagnosticsProcessDefinitionKey)
 
 	getProcessDefinitionCmd.SetErr(nil)
 	resetCommandTreeFlags(root)
@@ -199,14 +211,17 @@ func TestAPIDiagnosticsCommandEffectiveStderrRouting(t *testing.T) {
 	root.SetArgs(args)
 	_, err = root.ExecuteC()
 	require.NoError(t, err)
-	require.Contains(t, secondRootStderr.String(), "api #1 GET /v2/process-definitions/"+apiDiagnosticsProcessDefinitionKey)
-	require.Equal(t, 1, strings.Count(firstChildStderr.String(), "api #"), "a later invocation must not reuse child stderr")
+	require.Contains(t, secondRootStderr.String(), "api #2 GET /v2/process-definitions/"+apiDiagnosticsProcessDefinitionKey)
+	require.Equal(t, 2, strings.Count(firstChildStderr.String(), "api #"), "a later invocation must not reuse child stderr")
 }
 
 // TestAPIDiagnosticsCommandSubprocessInvocationsStayIsolated verifies real
 // process invocations each own their stderr destination and sequence space.
 func TestAPIDiagnosticsCommandSubprocessInvocationsStayIsolated(t *testing.T) {
 	server := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
+		if serveVersionCheckTopology(w, request, "8.9") {
+			return
+		}
 		require.Equal(t, "/v2/process-definitions/"+apiDiagnosticsProcessDefinitionKey, request.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write([]byte(apiDiagnosticsProcessDefinitionFixture))
@@ -220,9 +235,9 @@ func TestAPIDiagnosticsCommandSubprocessInvocationsStayIsolated(t *testing.T) {
 			"C8VOLT_API_DIAGNOSTICS_CONFIG": configPath,
 		}, "")
 		require.NoError(t, err, "invocation %d: stdout=%q stderr=%q", invocation+1, stdout, stderr)
-		require.Equal(t, 1, strings.Count(stderr, "api #"))
-		require.Contains(t, stderr, "api #1 GET /v2/process-definitions/"+apiDiagnosticsProcessDefinitionKey)
-		require.NotContains(t, stderr, "api #2")
+		require.Equal(t, 2, strings.Count(stderr, "api #"))
+		require.Contains(t, stderr, "api #2 GET /v2/process-definitions/"+apiDiagnosticsProcessDefinitionKey)
+		require.NotContains(t, stderr, "api #3")
 		if invocation > 0 {
 			require.Equal(t, previousStdout, stdout)
 		}
@@ -253,6 +268,9 @@ func TestAPIDiagnosticsCommandReadOutputAndLogFormatMatrix(t *testing.T) {
 	var requests atomic.Int32
 	server := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
 		requests.Add(1)
+		if serveVersionCheckTopology(w, request, "8.9") {
+			return
+		}
 		require.Equal(t, http.MethodGet, request.Method)
 		require.Equal(t, "/v2/process-definitions/"+apiDiagnosticsProcessDefinitionKey, request.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
@@ -284,7 +302,7 @@ func TestAPIDiagnosticsCommandReadOutputAndLogFormatMatrix(t *testing.T) {
 			require.Equal(t, baselineStdout, enabledStdout)
 			require.NotContains(t, baselineStderr, "api #")
 			if test.wantDiagnostic {
-				require.Equal(t, 1, strings.Count(enabledStderr, "api #"))
+				require.Equal(t, 2, strings.Count(enabledStderr, "api #"))
 			} else {
 				require.NotContains(t, enabledStderr, "api #")
 			}
@@ -296,7 +314,7 @@ func TestAPIDiagnosticsCommandReadOutputAndLogFormatMatrix(t *testing.T) {
 			}
 		})
 	}
-	require.Equal(t, int32(10), requests.Load(), "diagnostics and result modes must not add requests")
+	require.Equal(t, int32(20), requests.Load(), "diagnostics and result modes must not add requests")
 
 	for _, format := range []string{"plain", "plain-time", "text", "json"} {
 		t.Run("log format "+format, func(t *testing.T) {
@@ -305,7 +323,7 @@ func TestAPIDiagnosticsCommandReadOutputAndLogFormatMatrix(t *testing.T) {
 				"get", "process-definition", "--key", apiDiagnosticsProcessDefinitionKey,
 			)
 			line := apiDiagnosticLine(t, stderr)
-			require.Contains(t, line, "api #1 GET /v2/process-definitions/"+apiDiagnosticsProcessDefinitionKey+": status=200")
+			require.Contains(t, line, "api #2 GET /v2/process-definitions/"+apiDiagnosticsProcessDefinitionKey+": status=200")
 			require.Contains(t, line, " total=")
 			require.Contains(t, line, " headers=")
 			require.Contains(t, line, " body=")
@@ -313,7 +331,7 @@ func TestAPIDiagnosticsCommandReadOutputAndLogFormatMatrix(t *testing.T) {
 				var record map[string]any
 				require.NoError(t, json.Unmarshal([]byte(line), &record))
 				require.Equal(t, "DEBUG", record["level"])
-				require.Contains(t, record["msg"], "api #1 GET")
+				require.Contains(t, record["msg"], "api #2 GET")
 				require.NotNil(t, record["source"], "source-enabled JSON framing must retain source metadata")
 			} else {
 				require.Contains(t, line, ".go:", "source-enabled framing must retain source metadata")
@@ -361,7 +379,7 @@ func TestAPIDiagnosticsCommandEmptyCancellationMatrix(t *testing.T) {
 			require.Equal(t, baselineStdout, enabledStdout)
 			require.NotContains(t, baselineStderr, "api #")
 			if test.wantDiagnostic {
-				require.Equal(t, 1, strings.Count(enabledStderr, "api #"))
+				require.Equal(t, 2, strings.Count(enabledStderr, "api #"))
 			} else {
 				require.NotContains(t, enabledStderr, "api #")
 			}
@@ -405,6 +423,9 @@ func runAPIDiagnosticsNoWaitCancellation(t *testing.T, debug bool) (string, stri
 		body, err := io.ReadAll(request.Body)
 		require.NoError(t, err)
 		requests.Append(request.Method + " " + request.URL.Path + " " + string(body))
+		if serveVersionCheckTopology(w, request, "8.8") {
+			return
+		}
 		w.Header().Set("Content-Type", "application/json")
 		switch {
 		case request.Method == http.MethodPost && request.URL.Path == "/v2/process-instances/search":
@@ -439,12 +460,12 @@ func requireSingleJSONValue(t *testing.T, output string) {
 	require.ErrorIs(t, decoder.Decode(&value), io.EOF)
 }
 
-// apiDiagnosticLine returns the one physical log line containing an API record.
+// apiDiagnosticLine returns the operational read record after the advisory record.
 func apiDiagnosticLine(t *testing.T, output string) string {
 	t.Helper()
 	var found string
 	for line := range strings.SplitSeq(strings.TrimSuffix(output, "\n"), "\n") {
-		if strings.Contains(line, "api #") {
+		if strings.Contains(line, "api #2") {
 			require.Empty(t, found, "expected exactly one API diagnostic line")
 			found = line
 		}

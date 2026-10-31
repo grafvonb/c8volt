@@ -34,7 +34,7 @@ const (
 // and confirmation timeout through the real command and HTTP adapter path.
 func TestProcessInstanceDeleteCancellationTimeoutTranscript(t *testing.T) {
 	requests := &testx.SafeSlice[string]{}
-	server := testx.NewIPv4Server(t, processInstanceLoggingTimeoutServer(t, requests))
+	server := testx.NewIPv4Server(t, processInstanceLoggingTimeoutServer(t, "8.9", requests))
 	t.Cleanup(server.Close)
 	cfgPath := writeRawTestConfig(t, `app:
   camunda_version: 8.9
@@ -256,7 +256,7 @@ func TestProcessInstanceDeleteCancellationTimeoutTranscriptHelper(t *testing.T) 
 // accepted cancellation through both confirmation waits and resumed deletion.
 func TestProcessInstanceDeleteCancellationSuccessTranscript(t *testing.T) {
 	requests := &testx.SafeSlice[string]{}
-	server := testx.NewIPv4Server(t, processInstanceLoggingSuccessServer(t, requests))
+	server := testx.NewIPv4Server(t, processInstanceLoggingSuccessServer(t, "8.9", requests))
 	t.Cleanup(server.Close)
 	cfgPath := writeRawTestConfig(t, `app:
   camunda_version: 8.9
@@ -340,6 +340,10 @@ func TestProcessInstancePollingRecordBudget(t *testing.T) {
 	var tokenRequests atomic.Int32
 	var pollingRequests atomic.Int32
 	server := testx.NewIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.9") {
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
 		case "/oauth/token":
@@ -425,9 +429,13 @@ func TestProcessInstancePollingRecordBudgetHelper(t *testing.T) {
 }
 
 // processInstanceLoggingTimeoutServer records requests and keeps the family ACTIVE after accepting root cancellation; child deletion conflicts.
-func processInstanceLoggingTimeoutServer(t *testing.T, requests *testx.SafeSlice[string]) http.Handler {
+func processInstanceLoggingTimeoutServer(t *testing.T, version string, requests *testx.SafeSlice[string]) http.Handler {
 	t.Helper()
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, version) {
+			return
+		}
+
 		body, err := io.ReadAll(r.Body)
 		require.NoError(t, err)
 		requests.Append(r.Method + " " + r.URL.Path)
@@ -462,13 +470,17 @@ func processInstanceLoggingTimeoutServer(t *testing.T, requests *testx.SafeSlice
 }
 
 // processInstanceLoggingSuccessServer records requests and models accepted cancellation, terminal confirmation and successful resumed deletion.
-func processInstanceLoggingSuccessServer(t *testing.T, requests *testx.SafeSlice[string]) http.Handler {
+func processInstanceLoggingSuccessServer(t *testing.T, version string, requests *testx.SafeSlice[string]) http.Handler {
 	t.Helper()
 	var mu sync.Mutex
 	cancellationSubmitted := false
 	deleted := map[string]bool{}
 	deleteAttempts := map[string]int{}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, version) {
+			return
+		}
+
 		body, err := io.ReadAll(r.Body)
 		require.NoError(t, err)
 		requests.Append(r.Method + " " + r.URL.Path)
@@ -546,7 +558,7 @@ func TestProcessInstanceCancellationFailureReasons(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			requests := &testx.SafeSlice[string]{}
-			base := processInstanceLoggingTimeoutServer(t, requests)
+			base := processInstanceLoggingTimeoutServer(t, "8.9", requests)
 			var submitted atomic.Bool
 			var rootReads atomic.Int32
 			var interrupted atomic.Bool

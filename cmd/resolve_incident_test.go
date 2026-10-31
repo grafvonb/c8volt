@@ -15,10 +15,15 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestResolveIncidentCommand_SubmitsResolutionAndWaitsForConfirmation preserves the existing command contract with advisory-aware fixtures.
 func TestResolveIncidentCommand_SubmitsResolutionAndWaitsForConfirmation(t *testing.T) {
 	var sawResolve bool
 	var sawWait bool
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		switch r.URL.Path {
 		case "/v2/incidents/2251799813685249":
 			require.Equal(t, http.MethodGet, r.Method)
@@ -54,9 +59,14 @@ func TestResolveIncidentCommand_SubmitsResolutionAndWaitsForConfirmation(t *test
 	require.Contains(t, stderr, "resolved: 1")
 }
 
+// TestResolveIncidentCommand_SkipsNonActiveIncidentBeforeMutation preserves the existing command contract with advisory-aware fixtures.
 func TestResolveIncidentCommand_SkipsNonActiveIncidentBeforeMutation(t *testing.T) {
 	var sawResolve bool
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		switch r.URL.Path {
 		case "/v2/incidents/2251799813685249":
 			require.Equal(t, http.MethodGet, r.Method)
@@ -84,10 +94,15 @@ func TestResolveIncidentCommand_SkipsNonActiveIncidentBeforeMutation(t *testing.
 	require.Contains(t, stderr, "resolved: 1 (confirmed/submitted/skipped: 1, failed: 0)")
 }
 
+// TestResolveIncidentCommand_AliasRepeatedKeysAndStdinDeduplicate preserves the existing command contract with advisory-aware fixtures.
 func TestResolveIncidentCommand_AliasRepeatedKeysAndStdinDeduplicate(t *testing.T) {
 	resolveCounts := map[string]int{}
 	getCounts := map[string]int{}
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		switch r.URL.Path {
 		case "/v2/incidents/2251799813685249/resolution",
 			"/v2/incidents/2251799813685250/resolution":
@@ -135,9 +150,14 @@ func TestResolveIncidentCommand_AliasRepeatedKeysAndStdinDeduplicate(t *testing.
 	require.Contains(t, output, "resolved: 2")
 }
 
+// TestResolveIncidentCommand_DryRunLoadsKeysAndDoesNotMutate preserves the existing command contract with advisory-aware fixtures.
 func TestResolveIncidentCommand_DryRunLoadsKeysAndDoesNotMutate(t *testing.T) {
 	getCounts := map[string]int{}
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		switch r.URL.Path {
 		case "/v2/incidents/2251799813685249",
 			"/v2/incidents/2251799813685250":
@@ -172,8 +192,13 @@ func TestResolveIncidentCommand_DryRunLoadsKeysAndDoesNotMutate(t *testing.T) {
 	require.Contains(t, output, "no changes applied")
 }
 
+// TestResolveIncidentCommand_JSONDryRunReturnsStablePlanPayload preserves the existing command contract with advisory-aware fixtures.
 func TestResolveIncidentCommand_JSONDryRunReturnsStablePlanPayload(t *testing.T) {
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		require.Equal(t, "/v2/incidents/2251799813685249", r.URL.Path)
 		require.Equal(t, http.MethodGet, r.Method)
 		w.Header().Set("Content-Type", "application/json")
@@ -247,10 +272,15 @@ func TestResolveIncidentCommand_JSONRejectsVerbose(t *testing.T) {
 	require.Contains(t, string(output), "--json cannot be combined with --verbose for resolve incident")
 }
 
+// TestResolveIncidentCommand_NoWaitPartialFailureRendersSuccessfulTargets preserves the existing command contract with advisory-aware fixtures.
 func TestResolveIncidentCommand_NoWaitPartialFailureRendersSuccessfulTargets(t *testing.T) {
 	var sawWait bool
 	resolveCounts := map[string]int{}
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		switch r.URL.Path {
 		case "/v2/incidents/2251799813685249",
 			"/v2/incidents/2251799813685250":
@@ -297,9 +327,14 @@ func TestResolveIncidentCommand_NoWaitPartialFailureRendersSuccessfulTargets(t *
 	require.Contains(t, string(output), "resolved: 2 (confirmed/submitted/skipped: 1, failed: 1)")
 }
 
+// TestResolveIncidentCommand_JSONPartialFailurePrintsSingleEnvelope preserves the existing command contract with advisory-aware fixtures.
 func TestResolveIncidentCommand_JSONPartialFailurePrintsSingleEnvelope(t *testing.T) {
 	resolveCounts := map[string]int{}
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		switch r.URL.Path {
 		case "/v2/incidents/2251799813685249",
 			"/v2/incidents/2251799813685250":
@@ -364,9 +399,14 @@ func TestResolveIncidentCommand_JSONPartialFailurePrintsSingleEnvelope(t *testin
 	require.Equal(t, "mutation_failed", envelope.Payload.Items[1].Status)
 }
 
+// TestResolveIncidentCommand_FailFastStopsAfterFirstMutationFailure preserves the existing command contract with advisory-aware fixtures.
 func TestResolveIncidentCommand_FailFastStopsAfterFirstMutationFailure(t *testing.T) {
 	var resolveCount int
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		switch r.URL.Path {
 		case "/v2/incidents/2251799813685249":
 			require.Equal(t, http.MethodGet, r.Method)
@@ -400,9 +440,14 @@ func TestResolveIncidentCommand_FailFastStopsAfterFirstMutationFailure(t *testin
 	require.NotContains(t, string(output), "2251799813685250")
 }
 
+// TestResolveIncidentCommand_RetryExhaustionReportsConfirmationFailure preserves the existing command contract with advisory-aware fixtures.
 func TestResolveIncidentCommand_RetryExhaustionReportsConfirmationFailure(t *testing.T) {
 	var getCount int
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		switch r.URL.Path {
 		case "/v2/incidents/2251799813685249/resolution":
 			require.Equal(t, http.MethodPost, r.Method)

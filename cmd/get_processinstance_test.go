@@ -131,6 +131,10 @@ func TestGetProcessInstanceHelp_DocumentsHasUserTasksLookup(t *testing.T) {
 func TestGetProcessInstanceKey_SelectedTenantMismatchUsesDirectBackendLookup(t *testing.T) {
 	var requests []string
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		requests = append(requests, r.Method+" "+r.URL.Path)
 		require.Equal(t, http.MethodGet, r.Method)
 		require.Equal(t, "/v2/process-instances/"+tenantAdminKeysProcessInstanceKey, r.URL.Path)
@@ -158,6 +162,10 @@ func TestGetProcessInstanceKey_SelectedTenantMismatchUsesDirectBackendLookup(t *
 func TestGetProcessInstanceBpmnSelectorMissingFailsBeforeSearch(t *testing.T) {
 	var requests []string
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		requests = append(requests, r.Method+" "+r.URL.Path)
 		require.Equal(t, http.MethodPost, r.Method)
 		require.Equal(t, "/v2/process-definitions/search", r.URL.Path)
@@ -187,6 +195,10 @@ func TestGetProcessInstanceBpmnSelectorMissingFailsBeforeSearch(t *testing.T) {
 func TestGetProcessInstanceBpmnSelectorMissingKeysOnlyPipelineFailsUpstream(t *testing.T) {
 	var requests []string
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		requests = append(requests, r.Method+" "+r.URL.Path)
 		require.Equal(t, http.MethodPost, r.Method)
 		require.Equal(t, "/v2/process-definitions/search", r.URL.Path)
@@ -216,6 +228,10 @@ func TestGetProcessInstanceBpmnSelectorMissingKeysOnlyPipelineFailsUpstream(t *t
 func TestGetProcessInstanceBpmnSelectorVisiblePreservesFoundZero(t *testing.T) {
 	var requests []string
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		requests = append(requests, r.Method+" "+r.URL.Path)
 		require.Equal(t, http.MethodPost, r.Method)
 		w.Header().Set("Content-Type", "application/json")
@@ -247,6 +263,10 @@ func TestGetProcessInstanceBpmnSelectorVisiblePreservesFoundZero(t *testing.T) {
 func TestGetProcessInstanceBpmnSelectorValidationIncludesVersionTagAndTenant(t *testing.T) {
 	var pdSearchBodies []map[string]any
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		require.Equal(t, http.MethodPost, r.Method)
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
@@ -444,10 +464,15 @@ func TestGetProcessInstanceWithListenersValidation(t *testing.T) {
 	}
 }
 
+// TestGetProcessInstanceDirectIncidentsOnly_FiltersByLoadedDirectIncidents preserves the existing command contract with advisory-aware fixtures.
 func TestGetProcessInstanceDirectIncidentsOnly_FiltersByLoadedDirectIncidents(t *testing.T) {
 	var requests testx.SafeSlice[string]
 	var searchBodies testx.SafeSlice[string]
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		requests.Append(r.Method + " " + r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
@@ -494,10 +519,15 @@ func TestGetProcessInstanceDirectIncidentsOnly_FiltersByLoadedDirectIncidents(t 
 	require.Contains(t, output, "found: 1")
 }
 
+// TestGetProcessInstanceDirectIncidentsOnlyWithLimitUsesIncidentSearch preserves the existing command contract with advisory-aware fixtures.
 func TestGetProcessInstanceDirectIncidentsOnlyWithLimitUsesIncidentSearch(t *testing.T) {
 	var requests testx.SafeSlice[string]
 	var incidentSearchBodies testx.SafeSlice[string]
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		requests.Append(r.Method + " " + r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
@@ -549,6 +579,7 @@ func TestGetProcessInstanceDirectIncidentsOnlyWithLimitUsesIncidentSearch(t *tes
 	require.Contains(t, output, "found: 2")
 }
 
+// TestGetProcessInstanceIncidentFlags_PreserveSearchAndEnrichmentContracts preserves the existing command contract with advisory-aware fixtures.
 func TestGetProcessInstanceIncidentFlags_PreserveSearchAndEnrichmentContracts(t *testing.T) {
 	tests := []struct {
 		name               string
@@ -620,6 +651,10 @@ func TestGetProcessInstanceIncidentFlags_PreserveSearchAndEnrichmentContracts(t 
 			var requests testx.SafeSlice[string]
 			var searchBodies testx.SafeSlice[string]
 			srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if serveVersionCheckTopology(w, r, "8.8") {
+					return
+				}
+
 				requests.Append(r.Method + " " + r.URL.Path)
 				w.Header().Set("Content-Type", "application/json")
 				switch r.URL.Path {
@@ -668,6 +703,10 @@ func TestGetProcessInstanceIncidentFlags_PreserveSearchAndEnrichmentContracts(t 
 func TestGetProcessInstanceWithIncidents_ListSearchWithoutKeyIsAccepted(t *testing.T) {
 	var requests []string
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		requests = append(requests, r.Method+" "+r.URL.Path)
 		require.Equal(t, http.MethodPost, r.Method)
 		require.Equal(t, "/v2/process-instances/search", r.URL.Path)
@@ -695,6 +734,10 @@ func TestGetProcessInstanceListWithVars_HumanOutputShowsProcessScopeVariables(t 
 	var requests testx.SafeSlice[string]
 	var variableFilters testx.SafeSlice[map[string]any]
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		requests.Append(r.Method + " " + r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
@@ -775,6 +818,10 @@ func TestGetProcessInstanceListWithVars_HumanOutputShowsProcessScopeVariables(t 
 func TestGetProcessInstanceListWithVarsAndIncidents_HumanOutputShowsGroupedSections(t *testing.T) {
 	var requests testx.SafeSlice[string]
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		requests.Append(r.Method + " " + r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
@@ -820,6 +867,10 @@ func TestGetProcessInstanceListWithVarsAndIncidents_HumanOutputShowsGroupedSecti
 func TestGetProcessInstanceListWithVarsIncidentsAndElements_HumanOutputShowsGroupedSections(t *testing.T) {
 	var requests testx.SafeSlice[string]
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		requests.Append(r.Method + " " + r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
@@ -875,6 +926,10 @@ func TestGetProcessInstanceListWithVarsIncidentsAndElements_HumanOutputShowsGrou
 func TestGetProcessInstanceListWithIncidents_HumanOutputShowsDirectIncidentLines(t *testing.T) {
 	var requests testx.SafeSlice[string]
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		requests.Append(r.Method + " " + r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
@@ -931,6 +986,10 @@ func TestGetProcessInstanceListWithIncidents_HumanOutputShowsDirectIncidentLines
 func TestGetProcessInstanceListWithIncidents_LooksUpOnlyLimitedRows(t *testing.T) {
 	var requests testx.SafeSlice[string]
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		requests.Append(r.Method + " " + r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
@@ -976,6 +1035,10 @@ func TestGetProcessInstanceListWithIncidents_LooksUpOnlyLimitedRows(t *testing.T
 func TestGetProcessInstanceListWithIncidents_HumanIndirectMarkerExplainsEmptyDirectIncidents(t *testing.T) {
 	var requests testx.SafeSlice[string]
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		requests.Append(r.Method + " " + r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
@@ -1243,10 +1306,15 @@ func TestApplyPISearchResultFilters_OrphanChildrenUseCommandActivity(t *testing.
 	require.Equal(t, []string{"checking orphan parents for 2 process instance(s)"}, msgs)
 }
 
+// TestGetProcessInstanceOrphanChildrenOnly_UsesRealFacadeDiscovery preserves the existing command contract with advisory-aware fixtures.
 func TestGetProcessInstanceOrphanChildrenOnly_UsesRealFacadeDiscovery(t *testing.T) {
 	var searchRequests []string
 	var getPaths []string
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		switch {
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
@@ -1467,6 +1535,10 @@ func TestGetProcessInstanceKeyLookup_UsesGeneratedLookupEndpoint(t *testing.T) {
 	t.Run("explicit flag tenant", func(t *testing.T) {
 		var requests []string
 		srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if serveVersionCheckTopology(w, r, "8.8") {
+				return
+			}
+
 			require.Equal(t, http.MethodGet, r.Method)
 			require.Equal(t, "/v2/process-instances/123", r.URL.Path)
 			requests = append(requests, r.URL.Path)
@@ -1498,6 +1570,10 @@ apis:
 	t.Run("environment tenant", func(t *testing.T) {
 		var requests []string
 		srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if serveVersionCheckTopology(w, r, "8.8") {
+				return
+			}
+
 			require.Equal(t, http.MethodGet, r.Method)
 			require.Equal(t, "/v2/process-instances/123", r.URL.Path)
 			requests = append(requests, r.URL.Path)
@@ -1528,6 +1604,10 @@ apis:
 	t.Run("profile tenant", func(t *testing.T) {
 		var requests []string
 		srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if serveVersionCheckTopology(w, r, "8.8") {
+				return
+			}
+
 			require.Equal(t, http.MethodGet, r.Method)
 			require.Equal(t, "/v2/process-instances/123", r.URL.Path)
 			requests = append(requests, r.URL.Path)
@@ -1567,6 +1647,10 @@ profiles:
 	t.Run("base config tenant", func(t *testing.T) {
 		var requests []string
 		srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if serveVersionCheckTopology(w, r, "8.8") {
+				return
+			}
+
 			require.Equal(t, http.MethodGet, r.Method)
 			require.Equal(t, "/v2/process-instances/123", r.URL.Path)
 			requests = append(requests, r.URL.Path)
@@ -1608,6 +1692,10 @@ func TestGetProcessInstanceWithIncidents_HumanOutputShowsOneIncident(t *testing.
 	var requests []string
 	var incidentBodies []string
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		requests = append(requests, r.Method+" "+r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
@@ -1646,8 +1734,13 @@ func TestGetProcessInstanceWithIncidents_HumanOutputShowsOneIncident(t *testing.
 	require.Contains(t, output, "found: 1")
 }
 
+// TestGetProcessInstanceWithIncidents_FiltersIncidentDetailsByTypeAndMessageCaseInsensitive preserves the existing command contract with advisory-aware fixtures.
 func TestGetProcessInstanceWithIncidents_FiltersIncidentDetailsByTypeAndMessageCaseInsensitive(t *testing.T) {
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
 		case "/v2/process-instances/123":
@@ -1682,9 +1775,14 @@ func TestGetProcessInstanceWithIncidents_FiltersIncidentDetailsByTypeAndMessageC
 	require.NotContains(t, output, "incident-message-miss")
 }
 
+// TestGetProcessInstanceWithIncidents_AllStateOmitsStateFilterAndShowsResolvedState preserves the existing command contract with advisory-aware fixtures.
 func TestGetProcessInstanceWithIncidents_AllStateOmitsStateFilterAndShowsResolvedState(t *testing.T) {
 	var incidentBodies []string
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
 		case "/v2/process-instances/123":
@@ -1722,6 +1820,10 @@ func TestGetProcessInstanceWithIncidents_AllStateOmitsStateFilterAndShowsResolve
 func TestGetPIWithIncidents_AliasPreservesIncidentLookupOutput(t *testing.T) {
 	var requests []string
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		requests = append(requests, r.Method+" "+r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
@@ -1756,9 +1858,14 @@ func TestGetPIWithIncidents_AliasPreservesIncidentLookupOutput(t *testing.T) {
 	require.Contains(t, output, "found: 1")
 }
 
+// TestGetProcessInstanceWithIncidents_HumanIncidentMessageLimitTruncatesMessageOnly preserves the existing command contract with advisory-aware fixtures.
 func TestGetProcessInstanceWithIncidents_HumanIncidentMessageLimitTruncatesMessageOnly(t *testing.T) {
 	var requests []string
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		requests = append(requests, r.Method+" "+r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
@@ -1790,9 +1897,14 @@ func TestGetProcessInstanceWithIncidents_HumanIncidentMessageLimitTruncatesMessa
 	require.NotContains(t, output, "No retries left after worker failure")
 }
 
+// TestGetProcessInstanceWithIncidents_HumanIncidentMessageLimitDefaultLeavesMessageUnchanged preserves the existing command contract with advisory-aware fixtures.
 func TestGetProcessInstanceWithIncidents_HumanIncidentMessageLimitDefaultLeavesMessageUnchanged(t *testing.T) {
 	fullMessage := "No retries left after worker failure"
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
 		case "/v2/process-instances/123":
@@ -1826,6 +1938,10 @@ func TestGetProcessInstanceWithVars_HumanOutputShowsSortedProcessScopeVariables(
 	var requests []string
 	var variableBodies []map[string]any
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		requests = append(requests, r.Method+" "+r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
@@ -1874,10 +1990,15 @@ func TestGetProcessInstanceWithVars_HumanOutputShowsSortedProcessScopeVariables(
 	require.Less(t, strings.Index(output, "alpha=1"), strings.Index(output, "zeta=2"))
 }
 
+// TestGetProcessInstanceWithElements_HumanOutputShowsRuntimeElements preserves the existing command contract with advisory-aware fixtures.
 func TestGetProcessInstanceWithElements_HumanOutputShowsRuntimeElements(t *testing.T) {
 	var requests []string
 	var elementFilters []map[string]any
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		requests = append(requests, r.Method+" "+r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
@@ -1936,6 +2057,10 @@ func TestGetProcessInstanceListWithElements_HumanOutputShowsRuntimeElements(t *t
 	var requests testx.SafeSlice[string]
 	var elementFilters testx.SafeSlice[map[string]any]
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		requests.Append(r.Method + " " + r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
@@ -2006,6 +2131,10 @@ func TestGetProcessInstanceListWithElements_BPMNSelectorPreservesProcessFilter(t
 	var piFilters []map[string]any
 	var elementFilters []map[string]any
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
 		case "/v2/process-definitions/search":
@@ -2062,6 +2191,10 @@ func TestGetProcessInstanceListWithElements_IncrementalPagingKeepsProcessInstanc
 
 	var requests []string
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		requests = append(requests, r.Method+" "+r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
@@ -2103,6 +2236,10 @@ func TestGetProcessInstanceListWithElements_IncrementalPagingKeepsProcessInstanc
 func TestGetProcessInstanceListWithElements_JSONOutputPreservesProcessInstanceLimit(t *testing.T) {
 	var elementFilters testx.SafeSlice[map[string]any]
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
 		case "/v2/process-instances/search":
@@ -2168,9 +2305,14 @@ func TestGetProcessInstanceListWithElements_JSONOutputPreservesProcessInstanceLi
 	require.NotContains(t, output, `"key": "125"`)
 }
 
+// TestGetProcessInstanceWithVarsAndIncidents_HumanOutputShowsGroupedSections preserves the existing command contract with advisory-aware fixtures.
 func TestGetProcessInstanceWithVarsAndIncidents_HumanOutputShowsGroupedSections(t *testing.T) {
 	var requests testx.SafeSlice[string]
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		requests.Append(r.Method + " " + r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
@@ -2215,6 +2357,10 @@ func TestGetProcessInstanceWithVarsAndIncidents_HumanOutputShowsGroupedSections(
 func TestGetProcessInstanceWithVarsIncidentsAndElements_HumanOutputShowsGroupedSections(t *testing.T) {
 	var requests testx.SafeSlice[string]
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		requests.Append(r.Method + " " + r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
@@ -2308,9 +2454,14 @@ func TestGetProcessInstanceWithElementsAndListeners_HumanOutputNestsListenerRows
 	require.Contains(t, output, "found: 1")
 }
 
+// TestGetProcessInstanceListWithElementsAndListeners_HumanOutputRendersLifecycleTimestamps preserves the existing command contract with advisory-aware fixtures.
 func TestGetProcessInstanceListWithElementsAndListeners_HumanOutputRendersLifecycleTimestamps(t *testing.T) {
 	var requests testx.SafeSlice[string]
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		requests.Append(r.Method + " " + r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
@@ -2415,6 +2566,10 @@ func TestGetProcessInstanceWithElementsWithoutListeners_SkipsListenerLookup(t *t
 // TestGetProcessInstanceWithVarsIncidentsAndElements_JSONOutputShowsCombinedPayload verifies keyed JSON includes all enrichment fields.
 func TestGetProcessInstanceWithVarsIncidentsAndElements_JSONOutputShowsCombinedPayload(t *testing.T) {
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
 		case "/v2/process-instances/123":
@@ -2461,6 +2616,10 @@ func TestGetProcessInstanceWithVarsIncidentsAndElements_JSONOutputShowsCombinedP
 // JSON enrichment keeps variable metadata stable for automation even when compact formatting changes.
 func TestGetProcessInstanceWithVars_JSONOutputShowsEnrichedPayloadShapeAndMetadata(t *testing.T) {
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
 		case "/v2/process-instances/123":
@@ -2516,6 +2675,10 @@ func TestGetProcessInstanceWithVars_JSONOutputShowsEnrichedPayloadShapeAndMetada
 func TestGetProcessInstanceWithVars_JSONOutputKeepsReceivedValuesWhenVarValueLimitSet(t *testing.T) {
 	fullValue := "abcdefghijklmnopqrstuvwxyz"
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
 		case "/v2/process-instances/123":
@@ -2587,6 +2750,10 @@ func TestGetProcessInstanceWithIncidents_HumanOutputShowsMultipleAndNoIncidents(
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if serveVersionCheckTopology(w, r, "8.8") {
+					return
+				}
+
 				w.Header().Set("Content-Type", "application/json")
 				switch r.URL.Path {
 				case "/v2/process-instances/123":
@@ -2627,6 +2794,10 @@ func TestGetProcessInstanceWithIncidents_HumanOutputShowsMultipleAndNoIncidents(
 // TestGetProcessInstanceWithIncidents_JSONOutputShowsIncidentDetails preserves the structured incident detail payload.
 func TestGetProcessInstanceWithIncidents_JSONOutputShowsIncidentDetails(t *testing.T) {
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
 		case "/v2/process-instances/123":
@@ -2671,6 +2842,10 @@ func TestGetProcessInstanceWithIncidents_JSONOutputShowsIncidentDetails(t *testi
 // TestGetProcessInstanceWithIncidents_JSONOutputAssociatesMultipleKeys prevents incident details from crossing keyed lookup boundaries.
 func TestGetProcessInstanceWithIncidents_JSONOutputAssociatesMultipleKeys(t *testing.T) {
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
 		case "/v2/process-instances/123":
@@ -2726,6 +2901,10 @@ func TestGetProcessInstanceWithIncidents_JSONOutputAssociatesMultipleKeys(t *tes
 // TestGetProcessInstanceWithIncidents_JSONOutputShowsEmptyIncidentCollection keeps empty enrichment explicit for automation.
 func TestGetProcessInstanceWithIncidents_JSONOutputShowsEmptyIncidentCollection(t *testing.T) {
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
 		case "/v2/process-instances/123":
@@ -2757,8 +2936,13 @@ func TestGetProcessInstanceWithIncidents_JSONOutputShowsEmptyIncidentCollection(
 	require.Empty(t, incidents)
 }
 
+// TestGetProcessInstanceJSONWithIncidents_ListSearchUsesEnrichedPayloadShape preserves the existing command contract with advisory-aware fixtures.
 func TestGetProcessInstanceJSONWithIncidents_ListSearchUsesEnrichedPayloadShape(t *testing.T) {
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
 		case "/v2/process-instances/search":
@@ -2814,9 +2998,14 @@ func TestGetProcessInstanceJSONWithIncidents_ListSearchUsesEnrichedPayloadShape(
 	require.Equal(t, "task-b", secondIncident["elementId"])
 }
 
+// TestGetProcessInstanceJSONWithIncidents_IncidentMessageLimitKeepsFullMessages preserves the existing command contract with advisory-aware fixtures.
 func TestGetProcessInstanceJSONWithIncidents_IncidentMessageLimitKeepsFullMessages(t *testing.T) {
 	fullMessage := "This long incident message must remain complete in JSON output"
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
 		case "/v2/process-instances/search":
@@ -2851,8 +3040,13 @@ func TestGetProcessInstanceJSONWithIncidents_IncidentMessageLimitKeepsFullMessag
 	require.NotEqual(t, "This ...", incident["errorMessage"])
 }
 
+// TestGetProcessInstanceJSONWithIncidents_KeyedLookupShapeRemainsUnchanged preserves the existing command contract with advisory-aware fixtures.
 func TestGetProcessInstanceJSONWithIncidents_KeyedLookupShapeRemainsUnchanged(t *testing.T) {
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
 		case "/v2/process-instances/123":
@@ -2898,6 +3092,10 @@ func TestGetProcessInstanceJSONWithIncidents_KeyedLookupShapeRemainsUnchanged(t 
 func TestGetProcessInstanceWithoutIncidents_HumanOutputPreservesDefault(t *testing.T) {
 	var requests []string
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		requests = append(requests, r.Method+" "+r.URL.Path)
 		require.Equal(t, http.MethodGet, r.Method)
 		require.Equal(t, "/v2/process-instances/123", r.URL.Path)
@@ -2933,6 +3131,10 @@ func TestGetProcessInstanceWithoutIncidents_HumanOutputPreservesDefault(t *testi
 func TestGetProcessInstanceWithoutIncidents_ListSearchPreservesDefaultAndSkipsIncidentLookup(t *testing.T) {
 	var requests []string
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		requests = append(requests, r.Method+" "+r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
@@ -2974,6 +3176,10 @@ func TestGetProcessInstanceWithoutIncidents_ListSearchPreservesDefaultAndSkipsIn
 func TestGetProcessInstanceWithoutIncidents_JSONOutputPreservesDefaultShape(t *testing.T) {
 	var requests []string
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		requests = append(requests, r.Method+" "+r.URL.Path)
 		require.Equal(t, http.MethodGet, r.Method)
 		require.Equal(t, "/v2/process-instances/123", r.URL.Path)
@@ -3095,6 +3301,10 @@ func TestGetProcessInstanceSearch_AllTenantsOmitsTenantFilterAcrossVersions(t *t
 		t.Run(tt.name, func(t *testing.T) {
 			var requests []string
 			srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if serveVersionCheckTopology(w, r, "8.8") {
+					return
+				}
+
 				require.Equal(t, http.MethodPost, r.Method)
 				require.Equal(t, tt.path, r.URL.Path)
 
@@ -3195,6 +3405,10 @@ apis:
 func TestGetProcessInstanceCommand_V89KeyLookupUsesNativeSearchPath(t *testing.T) {
 	var requests []string
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.9") {
+			return
+		}
+
 		require.Equal(t, http.MethodGet, r.Method)
 		require.Equal(t, "/v2/process-instances/2251799813711967", r.URL.Path)
 		requests = append(requests, r.URL.Path)
@@ -3236,6 +3450,10 @@ func TestGetProcessInstanceCommand_HasUserTasksLookupUsesNativeUserTaskAndKeyedP
 		t.Run(version, func(t *testing.T) {
 			var requests []string
 			srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if serveVersionCheckTopology(w, r, version) {
+					return
+				}
+
 				requests = append(requests, r.URL.Path)
 				w.Header().Set("Content-Type", "application/json")
 				switch r.URL.Path {
@@ -3275,6 +3493,10 @@ func TestGetProcessInstanceCommand_HasUserTasksFallbackUsesTasklistAndKeyedProce
 		t.Run(version, func(t *testing.T) {
 			var requests []string
 			srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if serveVersionCheckTopology(w, r, version) {
+					return
+				}
+
 				requests = append(requests, r.URL.Path)
 				w.Header().Set("Content-Type", "application/json")
 				switch r.URL.Path {
@@ -3315,6 +3537,10 @@ func TestGetProcessInstanceCommand_HasUserTasksFallbackUsesTasklistAndKeyedProce
 // Verifies has-user-tasks lookup applies the effective tenant while resolving the owning process instance.
 func TestGetProcessInstanceCommand_HasUserTasksLookupIncludesEffectiveTenant(t *testing.T) {
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
 		case "/v2/user-tasks/search":
@@ -3345,6 +3571,10 @@ func TestGetProcessInstanceCommand_HasUserTasksLookupIncludesEffectiveTenant(t *
 func TestGetProcessInstanceCommand_HasUserTasksLookupAcceptsMultipleKeys(t *testing.T) {
 	var requests []string
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		requests = append(requests, r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
@@ -3394,6 +3624,10 @@ func TestGetProcessInstanceCommand_HasUserTasksLookupAcceptsMultipleKeys(t *test
 func TestGetProcessInstanceCommand_HasUserTasksLookupMixesPrimaryAndFallbackKeys(t *testing.T) {
 	var requests []string
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.9") {
+			return
+		}
+
 		requests = append(requests, r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
@@ -3447,6 +3681,10 @@ func TestGetProcessInstanceCommand_HasUserTasksLookupMixesPrimaryAndFallbackKeys
 func TestGetProcessInstanceCommand_HasUserTasksJSONMatchesDirectKeyedJSON(t *testing.T) {
 	var requests []string
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		requests = append(requests, r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
@@ -3489,6 +3727,10 @@ func TestGetProcessInstanceCommand_HasUserTasksJSONMatchesDirectKeyedJSON(t *tes
 func TestGetProcessInstanceCommand_HasUserTasksFallbackJSONMatchesDirectKeyedJSON(t *testing.T) {
 	var requests []string
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.9") {
+			return
+		}
+
 		requests = append(requests, r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
@@ -3562,6 +3804,10 @@ func TestGetProcessInstanceCommand_HasUserTasksPreservesSingleLookupRenderFlags(
 		t.Run(tt.name, func(t *testing.T) {
 			var requests []string
 			srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if serveVersionCheckTopology(w, r, "8.8") {
+					return
+				}
+
 				requests = append(requests, r.URL.Path)
 				w.Header().Set("Content-Type", "application/json")
 				switch r.URL.Path {
@@ -3599,6 +3845,10 @@ func TestGetProcessInstanceCommand_HasUserTasksPreservesSingleLookupRenderFlags(
 func TestGetProcessInstanceCommand_HasUserTasksPreservesResolvedProcessInstanceNotFound(t *testing.T) {
 	var requests []string
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		requests = append(requests, r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
@@ -3633,6 +3883,10 @@ func TestGetProcessInstanceCommand_HasUserTasksPreservesResolvedProcessInstanceN
 func TestGetProcessInstanceCommand_HasUserTasksMissingTaskReturnsNotFoundForShortNumericKey(t *testing.T) {
 	var requests []string
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		requests = append(requests, r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
@@ -4407,6 +4661,7 @@ func resetProcessInstanceCommandGlobals() {
 	flagViewKeysOnly = false
 	flagQuiet = false
 	flagNoIndicator = false
+	flagNoVersionCheck = false
 	flagAllTenants = false
 	flagNoWait = false
 	flagForce = false

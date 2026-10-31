@@ -37,7 +37,7 @@ func TestElementScopeVariablesGetDiagnostics(t *testing.T) {
 					// a repeated transport cause must never be dumped or converted into a successful empty scope.
 					marker := fmt.Sprintf("POST https://scope-private.invalid/path?token=scope-token-secret body-only-secret resource=%s", scopeElementB)
 					failure := fmt.Sprintf(`{"detail":%q}`, marker+"; "+marker)
-					f := newElementScopeFixture(t, []string{
+					f := newElementScopeFixture(t, "8.10", []string{
 						scopePage([]string{scopeElementJSON(scopeElementA)}, 2, true), scopePage([]string{scopeElementJSON(scopeElementB)}, 2, false),
 					}, []string{scopePage(nil, 0, false), failure}, 400)
 					level := "info"
@@ -89,10 +89,14 @@ func TestElementScopeVariablesGetDiagnostics(t *testing.T) {
 						for _, message := range debugs {
 							if strings.Contains(message, "api #") {
 								exchanges++
-								require.Contains(t, message, "POST /v2/")
+								if exchanges == 1 {
+									require.Contains(t, message, "GET /v2/topology")
+								} else {
+									require.Contains(t, message, "POST /v2/")
+								}
 							}
 						}
-						require.Equal(t, 4, exchanges)
+						require.Equal(t, 5, exchanges)
 					} else {
 						require.Empty(t, debugs)
 						for _, bad := range []string{"POST", f.server.URL, "/v2/variables/search", scopeElementB} {
@@ -140,7 +144,7 @@ func TestElementScopeVariablesGetValidation(t *testing.T) {
 		{"invalid key", "8.8", []string{"--key", "bad-key"}, 2},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			f := newElementScopeFixture(t, nil, nil, 0)
+			f := newElementScopeFixture(t, tc.version, nil, nil, 0)
 			args := append([]string{"--config", testx.WriteTestConfigForVersion(t, f.server.URL, tc.version), "get", "element", "--with-vars"}, tc.flags...)
 			stdout, stderr, err := runElementScopeProcess(t, args...)
 			var exit *exec.ExitError
@@ -166,7 +170,7 @@ func TestElementScopeVariablesGetLaterVariableFailure(t *testing.T) {
 			if keyed {
 				elements = []string{scopeElementJSON(scopeElementA)}
 			}
-			f := newElementScopeFixture(t, elements, []string{
+			f := newElementScopeFixture(t, "8.8", elements, []string{
 				scopePage([]string{scopeVariableJSON("first", "1", scopeElementA, false)}, 2, true), `{"detail":"later-page-failure"}`,
 			}, 400)
 			args := []string{"--config", testx.WriteTestConfig(t, f.server.URL), "--json", "get", "element", "--with-vars"}

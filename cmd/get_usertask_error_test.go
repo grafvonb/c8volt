@@ -24,7 +24,7 @@ import (
 // remains plainly partial when a later backend read fails: no success summary
 // is emitted and the command exits with the backend error.
 func TestGetUserTaskError_FailureAfterStreamedPage(t *testing.T) {
-	server, requests := newFailingUserTaskPagingServer(t)
+	server, requests := newFailingUserTaskPagingServer(t, "8.9")
 	configPath := testx.WriteTestConfigForVersion(t, server.URL, "8.9")
 
 	stdout, stderr, err := runGetUserTaskCommand(t, configPath, "", "--keys-only", "get", "ut", "--batch-size", "1")
@@ -49,7 +49,7 @@ func TestGetUserTaskError_CollectedAndTotalFailuresHaveNoPartialSuccess(t *testi
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			server, requests := newFailingUserTaskPagingServer(t)
+			server, requests := newFailingUserTaskPagingServer(t, "8.9")
 			configPath := testx.WriteTestConfigForVersion(t, server.URL, "8.9")
 
 			stdout, stderr, err := runGetUserTaskCommand(t, configPath, "", test.args...)
@@ -95,7 +95,7 @@ func TestGetUserTaskError_FilteredSearchFailuresNeverClaimSuccess(t *testing.T) 
 		{name: "later page total", failAtRequest: 1, args: []string{"get", "ut", "--var", filter, "--total", "--batch-size", "1"}, wantTotal: true},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			server, requests := newFilteredFailingUserTaskSearchServer(t, test.failAtRequest)
+			server, requests := newFilteredFailingUserTaskSearchServer(t, "8.9", test.failAtRequest)
 			configPath := testx.WriteTestConfigForVersion(t, server.URL, "8.9")
 
 			stdout, stderr, err := runGetUserTaskCommand(t, configPath, "", test.args...)
@@ -139,7 +139,7 @@ func TestGetUserTaskError_FilteredSearchFailuresNeverClaimSuccess(t *testing.T) 
 // TestGetUserTaskError_FilteredTotalConflictsFailBeforeRequests verifies adding
 // a native variable predicate does not weaken established total-mode conflicts.
 func TestGetUserTaskError_FilteredTotalConflictsFailBeforeRequests(t *testing.T) {
-	server, requests := newGetUserTaskSearchServer(t, func(_ int, _ map[string]any) string {
+	server, requests := newGetUserTaskSearchServer(t, "8.9", func(_ int, _ map[string]any) string {
 		return userTaskSearchResponse(0, false, "")
 	})
 	configPath := testx.WriteTestConfigForVersion(t, server.URL, "8.9")
@@ -180,7 +180,7 @@ func TestGetUserTaskError_SearchVariableFailuresNeverClaimCompletion(t *testing.
 		{name: "collected json", args: []string{"--json", "get", "ut", "--batch-size", "1", "--with-vars"}, json: true},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			server, requests := newGetUserTaskVariablesServer(t, getUserTaskVariablesFixture{
+			server, requests := newGetUserTaskVariablesServer(t, "8.9", getUserTaskVariablesFixture{
 				SearchRespond: func(index int, _ map[string]any) string {
 					if index == 0 {
 						return userTaskSearchResponse(2, true, "cursor-a", firstKey)
@@ -295,6 +295,10 @@ func TestGetUserTaskError_LegacyResolverKeepsTenantAndTasklistFallback(t *testin
 		t.Run(test.name, func(t *testing.T) {
 			var requests testx.SafeSlice[string]
 			server := testx.NewIPv4Server(t, http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+				if serveVersionCheckTopology(writer, request, test.version) {
+					return
+				}
+
 				requests.Append(request.URL.Path)
 				writer.Header().Set("Content-Type", "application/json")
 				switch request.URL.Path {
@@ -332,10 +336,14 @@ func TestGetUserTaskError_LegacyResolverKeepsTenantAndTasklistFallback(t *testin
 
 // newFailingUserTaskPagingServer returns one lower-bound page followed by a
 // backend failure and records requests safely for visitor-driven or count runs.
-func newFailingUserTaskPagingServer(t *testing.T) (*httptest.Server, *testx.SafeSlice[string]) {
+func newFailingUserTaskPagingServer(t *testing.T, version string) (*httptest.Server, *testx.SafeSlice[string]) {
 	t.Helper()
 	var requests testx.SafeSlice[string]
 	server := testx.NewIPv4Server(t, http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		if serveVersionCheckTopology(writer, request, version) {
+			return
+		}
+
 		requests.Append(request.URL.Path)
 		if request.Method != http.MethodPost || request.URL.Path != "/v2/user-tasks/search" {
 			http.NotFound(writer, request)
@@ -354,11 +362,15 @@ func newFailingUserTaskPagingServer(t *testing.T) (*httptest.Server, *testx.Safe
 
 // newFilteredFailingUserTaskSearchServer fails at the requested zero-based
 // search call while capturing each native request for predicate assertions.
-func newFilteredFailingUserTaskSearchServer(t *testing.T, failAtRequest int) (*httptest.Server, *testx.SafeSlice[map[string]any]) {
+func newFilteredFailingUserTaskSearchServer(t *testing.T, version string, failAtRequest int) (*httptest.Server, *testx.SafeSlice[map[string]any]) {
 	t.Helper()
 	requests := new(testx.SafeSlice[map[string]any])
 	var requestCount testx.AtomicCounter
 	server := testx.NewIPv4Server(t, http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		if serveVersionCheckTopology(writer, request, version) {
+			return
+		}
+
 		if request.Method != http.MethodPost || request.URL.Path != "/v2/user-tasks/search" {
 			http.NotFound(writer, request)
 			return

@@ -29,11 +29,16 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestUpdatePICommand_SubmitsV88UpdateAndConfirmsVariables preserves the existing command contract with advisory-aware fixtures.
 func TestUpdatePICommand_SubmitsV88UpdateAndConfirmsVariables(t *testing.T) {
 	var sawUpdate bool
 	var sawConfirmation bool
 	searchCalls := 0
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		if handleUpdateProcessInstancePlanningIdentity(w, r) {
 			return
 		}
@@ -90,6 +95,10 @@ func TestUpdatePICommand_V810SubmitsAndConfirmsVariables(t *testing.T) {
 	var sawUpdate bool
 	searchCalls := 0
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.10") {
+			return
+		}
+
 		if handleUpdateProcessInstancePlanningIdentity(w, r) {
 			return
 		}
@@ -146,6 +155,10 @@ func TestUpdatePICommand_V810SubmitsAndConfirmsVariables(t *testing.T) {
 func TestUpdatePICommand_RegressionVarsUsesVariableMutationAndConfirmation(t *testing.T) {
 	var requests []string
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		if handleUpdateProcessInstancePlanningIdentity(w, r) {
 			return
 		}
@@ -190,11 +203,16 @@ func TestUpdatePICommand_RegressionVarsUsesVariableMutationAndConfirmation(t *te
 	require.Contains(t, output, "updated: 1 (mutation accepted: 1, unchanged: 0, failed: 0, skipped: 0)")
 }
 
+// TestUpdatePICommand_VarsFileSubmitsAndConfirmsVariables preserves the existing command contract with advisory-aware fixtures.
 func TestUpdatePICommand_VarsFileSubmitsAndConfirmsVariables(t *testing.T) {
 	var sawUpdate bool
 	var sawConfirmation bool
 	searchCalls := 0
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		if handleUpdateProcessInstancePlanningIdentity(w, r) {
 			return
 		}
@@ -244,11 +262,16 @@ func TestUpdatePICommand_VarsFileSubmitsAndConfirmsVariables(t *testing.T) {
 	require.Equal(t, "confirmed", item["confirmationStatus"])
 }
 
+// TestUpdateProcessInstanceCommand_MultipleRepeatedKeysApplyOneVarsPayloadToEachUniqueKey preserves the existing command contract with advisory-aware fixtures.
 func TestUpdateProcessInstanceCommand_MultipleRepeatedKeysApplyOneVarsPayloadToEachUniqueKey(t *testing.T) {
 	var mu sync.Mutex
 	updates := map[string]int{}
 	confirmations := 0
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		if handleUpdateProcessInstancePlanningIdentity(w, r) {
 			return
 		}
@@ -320,6 +343,10 @@ func TestUpdateProcessInstanceCommand_ExecutesOnlyFrozenChanges(t *testing.T) {
 	var mutationPaths []string
 	var mutationBodies []map[string]any
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.10") {
+			return
+		}
+
 		if handleUpdateProcessInstancePlanningIdentity(w, r) {
 			return
 		}
@@ -400,11 +427,16 @@ func TestUpdateProcessInstanceCommand_ExecutesOnlyFrozenChanges(t *testing.T) {
 	require.Equal(t, false, unchanged["mutationAccepted"])
 }
 
+// TestUpdateProcessInstanceCommand_StdinKeysMergeAndDeduplicateWithFlagKeys preserves the existing command contract with advisory-aware fixtures.
 func TestUpdateProcessInstanceCommand_StdinKeysMergeAndDeduplicateWithFlagKeys(t *testing.T) {
 	var mu sync.Mutex
 	updates := map[string]int{}
 	searchCalls := 0
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		if handleUpdateProcessInstancePlanningIdentity(w, r) {
 			return
 		}
@@ -459,10 +491,15 @@ func TestUpdateProcessInstanceCommand_StdinKeysMergeAndDeduplicateWithFlagKeys(t
 	require.Contains(t, stdout, "updated: 2")
 }
 
+// TestUpdateProcessInstanceCommand_NoWaitReturnsSubmittedAfterImpactCheckOnly preserves the existing command contract with advisory-aware fixtures.
 func TestUpdateProcessInstanceCommand_NoWaitReturnsSubmittedAfterImpactCheckOnly(t *testing.T) {
 	var sawUpdate bool
 	searchCalls := 0
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		if handleUpdateProcessInstancePlanningIdentity(w, r) {
 			return
 		}
@@ -500,10 +537,15 @@ func TestUpdateProcessInstanceCommand_NoWaitReturnsSubmittedAfterImpactCheckOnly
 	require.Contains(t, output, "updated: 1 (mutation accepted: 1, unchanged: 0, failed: 0, skipped: 0)")
 }
 
+// TestUpdateProcessInstanceCommand_NoWaitJSONReportsSubmittedResultsAfterImpactCheckOnly preserves the existing command contract with advisory-aware fixtures.
 func TestUpdateProcessInstanceCommand_NoWaitJSONReportsSubmittedResultsAfterImpactCheckOnly(t *testing.T) {
 	var sawUpdate bool
 	searchCalls := 0
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		if handleUpdateProcessInstancePlanningIdentity(w, r) {
 			return
 		}
@@ -565,7 +607,7 @@ func TestUpdateProcessInstanceCommand_PreparedExecutionVersionCoverage(t *testin
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			server, capture := newUpdateProcessInstanceOutputServer(t, false)
+			server, capture := newUpdateProcessInstanceOutputServer(t, test.version, false)
 			args := []string{
 				"--config", writeTestConfigForVersion(t, server.URL, test.version),
 				"--automation", "--json", "update", "pi", "--key", "101", "--vars", `{"approved":true,"new":"value"}`,
@@ -589,12 +631,17 @@ func TestUpdateProcessInstanceCommand_PreparedExecutionVersionCoverage(t *testin
 	}
 }
 
+// TestUpdateProcessInstanceCommand_FullNameAndAliasBehaveIdenticallyForSingleKey preserves the existing command contract with advisory-aware fixtures.
 func TestUpdateProcessInstanceCommand_FullNameAndAliasBehaveIdenticallyForSingleKey(t *testing.T) {
 	for _, leaf := range []string{"process-instance", "pi"} {
 		t.Run(leaf, func(t *testing.T) {
 			var requestedPath string
 			searchCalls := 0
 			srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if serveVersionCheckTopology(w, r, "8.8") {
+					return
+				}
+
 				if handleUpdateProcessInstancePlanningIdentity(w, r) {
 					return
 				}
@@ -742,6 +789,10 @@ func TestUpdateProcessInstanceCommand_DryRunDestinationsAddNoRequests(t *testing
 			var requests []string
 			searchCalls := 0
 			srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if serveVersionCheckTopology(w, r, "8.10") {
+					return
+				}
+
 				if handleUpdateProcessInstancePlanningIdentity(w, r) {
 					return
 				}
@@ -791,6 +842,10 @@ func TestUpdateProcessInstanceCommand_DryRunUsesCompleteFacadePlan(t *testing.T)
 	var variableReads int
 	var mutations int
 	server := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.10") {
+			return
+		}
+
 		if handleUpdateProcessInstancePlanningIdentity(w, r) {
 			return
 		}
@@ -842,6 +897,10 @@ func TestUpdateProcessInstanceCommand_DryRunUsesCompleteFacadePlan(t *testing.T)
 func TestUpdateProcessInstanceCommand_PlanningFailurePreventsAllWrites(t *testing.T) {
 	var mutations int
 	server := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.10") {
+			return
+		}
+
 		if handleUpdateProcessInstancePlanningIdentity(w, r) {
 			return
 		}
@@ -965,7 +1024,7 @@ func TestUpdateProcessInstanceCommand_OutputModesPreserveContracts(t *testing.T)
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			server, capture := newUpdateProcessInstanceOutputServer(t, test.initialValue)
+			server, capture := newUpdateProcessInstanceOutputServer(t, "8.10", test.initialValue)
 			stdout, stderr := executeRootForProcessInstanceWithSeparateOutputs(t,
 				append([]string{"--config", writeTestConfigForVersion(t, server.URL, "8.10")}, test.args...)...,
 			)
@@ -1011,6 +1070,10 @@ func TestUpdateProcessInstanceCommand_OutputModesPreserveContracts(t *testing.T)
 func TestUpdateProcessInstanceCommand_SparseCompleteReadCanEstablishNoOp(t *testing.T) {
 	var variableReads int
 	server := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.10") {
+			return
+		}
+
 		if handleUpdateProcessInstancePlanningIdentity(w, r) {
 			return
 		}
@@ -1167,6 +1230,10 @@ func TestUpdateProcessInstanceCommand_ExplicitKeyCrossTenantExecution(t *testing
 				var mutationBody map[string]any
 
 				server := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					if serveVersionCheckTopology(w, r, version) {
+						return
+					}
+
 					switch {
 					case r.Method == http.MethodGet && r.URL.Path == "/v2/process-instances/"+tenantAdminKeysProcessInstanceKey:
 						mu.Lock()
@@ -1362,9 +1429,14 @@ func TestFormatProcessInstanceVariableUpdatePlan_RendersUnchangedWithoutArrow(t 
 	require.Equal(t, "~ hasIncident: false (unchanged)", formatProcessInstanceVariableUpdatePlan(plan))
 }
 
+// TestUpdateProcessInstanceCommand_NoPlannedChangesSkipsPromptAndMutation preserves the existing command contract with advisory-aware fixtures.
 func TestUpdateProcessInstanceCommand_NoPlannedChangesSkipsPromptAndMutation(t *testing.T) {
 	var sawSearch bool
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		if handleUpdateProcessInstancePlanningIdentity(w, r) {
 			return
 		}

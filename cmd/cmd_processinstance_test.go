@@ -97,10 +97,20 @@ func newProcessInstanceSearchCaptureServer(t *testing.T, requests *[]string) *ht
 // body and returns the provided JSON responses in order so paging tests can
 // assert sequential page fetch behavior without duplicating server scaffolding.
 func newProcessInstanceSearchCaptureServerWithResponses(t *testing.T, requests *[]string, responses ...string) *httptest.Server {
+	return newProcessInstanceSearchCaptureServerForVersion(t, "8.8", requests, responses...)
+}
+
+// newProcessInstanceSearchCaptureServerForVersion gives sparse-page fixtures a
+// matching advisory without consuming their scripted operational responses.
+func newProcessInstanceSearchCaptureServerForVersion(t *testing.T, version string, requests *[]string, responses ...string) *httptest.Server {
 	t.Helper()
 
 	served := 0
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, version) {
+			return
+		}
+
 		require.Equal(t, http.MethodPost, r.Method)
 		w.Header().Set("Content-Type", "application/json")
 
@@ -132,6 +142,10 @@ func newProcessInstanceWithElementsAndListenersServer(t *testing.T, requests *te
 	elementCount := 0
 	jobCount := 0
 	return newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
 		case "/v2/process-instances/123":

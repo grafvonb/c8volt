@@ -34,6 +34,10 @@ func TestUpdateUserTaskAssignmentPreflight(t *testing.T) {
 					prompted := !automatic && !forced && mode != "dry-run" && mode != "read failure" && mode != "invalid" && mode != "same"
 					replacement := prompted && occupied
 					server := testx.NewIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+						if serveVersionCheckTopology(w, r, "8.10") {
+							return
+						}
+
 						key := strings.TrimSuffix(strings.TrimPrefix(r.URL.Path, "/v2/user-tasks/"), "/assignment")
 						calls.Append(r.Method + " " + key)
 						w.Header().Set("Content-Type", "application/json")
@@ -213,11 +217,16 @@ func TestUpdateUserTaskAssignmentPreflight(t *testing.T) {
 	}
 }
 
+// TestUpdateUserTaskAssignmentNonterminalRequiresForce preserves the existing command contract with advisory-aware fixtures.
 func TestUpdateUserTaskAssignmentNonterminalRequiresForce(t *testing.T) {
 	for _, flag := range []string{"", "--force=false", "--allow-override"} {
 		t.Run(flag, func(t *testing.T) {
 			calls := &testx.SafeSlice[string]{}
 			server := testx.NewIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if serveVersionCheckTopology(w, r, "8.10") {
+					return
+				}
+
 				calls.Append(r.Method)
 				require.Equal(t, http.MethodGet, r.Method, "nonterminal input must never imply replacement approval")
 				w.Header().Set("Content-Type", "application/json")
@@ -259,6 +268,10 @@ func TestUpdateUserTaskAssignmentUnchanged(t *testing.T) {
 						}
 						calls := &testx.SafeSlice[string]{}
 						server := testx.NewIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+							if serveVersionCheckTopology(w, r, "8.10") {
+								return
+							}
+
 							key := strings.TrimSuffix(strings.TrimPrefix(r.URL.Path, "/v2/user-tasks/"), "/assignment")
 							calls.Append(r.Method + " " + key)
 							w.Header().Set("Content-Type", "application/json")
@@ -351,11 +364,16 @@ func TestUpdateUserTaskAssignmentUnchanged(t *testing.T) {
 	}
 }
 
+// TestUpdateUserTaskAssignmentMixedUnchanged preserves the existing command contract with advisory-aware fixtures.
 func TestUpdateUserTaskAssignmentMixedUnchanged(t *testing.T) {
 	for _, mode := range []string{"unassigned", "replace", "keys", "json", "blocked", "fail-fast"} {
 		t.Run(mode, func(t *testing.T) {
 			calls := &testx.SafeSlice[string]{}
 			server := testx.NewIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if serveVersionCheckTopology(w, r, "8.10") {
+					return
+				}
+
 				key := strings.TrimSuffix(strings.TrimPrefix(r.URL.Path, "/v2/user-tasks/"), "/assignment")
 				calls.Append(r.Method + " " + key)
 				w.Header().Set("Content-Type", "application/json")

@@ -152,10 +152,14 @@ func filteredUserTaskVariablesFixture() getUserTaskVariablesFixture {
 
 // newGetUserTaskVariablesServer provides only the user-task routes needed by
 // variable command tests and keeps page/error behavior keyed by task identity.
-func newGetUserTaskVariablesServer(t *testing.T, fixture getUserTaskVariablesFixture) (*httptest.Server, *capturedGetUserTaskVariableRequests) {
+func newGetUserTaskVariablesServer(t *testing.T, version string, fixture getUserTaskVariablesFixture) (*httptest.Server, *capturedGetUserTaskVariableRequests) {
 	t.Helper()
 	requests := new(capturedGetUserTaskVariableRequests)
 	server := testx.NewIPv4Server(t, http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		if serveVersionCheckTopology(writer, request, version) {
+			return
+		}
+
 		switch {
 		case request.Method == http.MethodPost && request.URL.Path == "/v2/user-tasks/search":
 			serveUserTaskFixtureSearch(writer, request, fixture.SearchRespond, requests)
@@ -290,7 +294,7 @@ func userTaskVariableFixtureResponse(page userTaskVariablePageFixture) []byte {
 // truncation fields, request capture, and deterministic injected failures.
 func TestGetUserTaskVariablesFixture(t *testing.T) {
 	apiTruncated, legacyTruncated := true, false
-	server, requests := newGetUserTaskVariablesServer(t, getUserTaskVariablesFixture{
+	server, requests := newGetUserTaskVariablesServer(t, "8.8", getUserTaskVariablesFixture{
 		VariablePages: map[string][]userTaskVariablePageFixture{
 			"2251799815391233": {{
 				Total: 1,
@@ -337,7 +341,7 @@ func TestFilteredUserTaskVariablesFixture(t *testing.T) {
 	require.Equal(t, userTaskFixtureLocalScope, fixture.VariablePages[userTaskShadowedMatchKey][0].Items[0].ScopeKey)
 	require.Equal(t, userTaskFixtureProcessScope, fixture.VariablePages[userTaskParentOnlyKey][0].Items[0].ScopeKey)
 
-	server, requests := newGetUserTaskVariablesServer(t, fixture)
+	server, requests := newGetUserTaskVariablesServer(t, "8.8", fixture)
 	searchBody := `{"filter":{"localVariables":[{"name":"status","value":{"$eq":"\"approved\""}}]},"page":{"limit":2}}`
 	response, err := http.Post(server.URL+"/v2/user-tasks/search", "application/json", bytes.NewBufferString(searchBody))
 	require.NoError(t, err)

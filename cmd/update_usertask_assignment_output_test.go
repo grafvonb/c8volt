@@ -25,7 +25,7 @@ func TestUpdateUserTaskAssignmentCommandOutput(t *testing.T) {
 			for _, phase := range []string{"preview", "accepted", "partial", "rejected"} {
 				for _, flags := range [][]string{nil, {"--verbose"}, {"--quiet"}, {"--json"}, {"--keys-only"}, {"--quiet", "--json"}, {"--quiet", "--keys-only"}, {"--json", "--keys-only"}} {
 					t.Run(phase+"/"+strings.Join(flags, " "), func(t *testing.T) {
-						server, calls := newUserTaskAssignmentServer(t, operation, func(w http.ResponseWriter, r *http.Request, key string) {
+						server, calls := newUserTaskAssignmentServer(t, "8.10", operation, func(w http.ResponseWriter, r *http.Request, key string) {
 							if phase == "rejected" || (phase == "partial" && key == completionKeyB) {
 								w.Header().Set("Content-Type", "application/problem+json")
 								w.WriteHeader(409)
@@ -189,7 +189,7 @@ func TestUpdateUserTaskAssignmentCommandFailureClasses(t *testing.T) {
 			} {
 				t.Run(fmt.Sprint(tc.status), func(t *testing.T) {
 					for _, override := range []bool{false, true} {
-						server, calls := newUserTaskAssignmentServer(t, operation, func(w http.ResponseWriter, r *http.Request, key string) {
+						server, calls := newUserTaskAssignmentServer(t, "8.10", operation, func(w http.ResponseWriter, r *http.Request, key string) {
 							w.Header().Set("Content-Type", "application/problem+json")
 							w.WriteHeader(tc.status)
 							fmt.Fprint(w, `{"detail":"distinctive backend failure"}`)
@@ -232,7 +232,7 @@ func TestUpdateUserTaskAssignmentCommandRenderFailure(t *testing.T) {
 
 			for _, phase := range []string{"preview", "accepted", "rejected"} {
 				t.Run(phase, func(t *testing.T) {
-					server, calls := newUserTaskAssignmentServer(t, operation, func(w http.ResponseWriter, r *http.Request, key string) {
+					server, calls := newUserTaskAssignmentServer(t, "8.10", operation, func(w http.ResponseWriter, r *http.Request, key string) {
 						if phase == "rejected" {
 							w.Header().Set("Content-Type", "application/problem+json")
 							w.WriteHeader(409)

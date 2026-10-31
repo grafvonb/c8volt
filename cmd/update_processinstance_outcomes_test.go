@@ -283,6 +283,10 @@ func newProcessInstanceOutcomeServer(t *testing.T, scenario string) (*httptest.S
 		variableReads: make(map[string]int),
 	}
 	server := testx.NewIPv4Server(t, http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		if serveVersionCheckTopology(writer, request, "8.10") {
+			return
+		}
+
 		switch {
 		case request.Method == http.MethodGet && strings.HasPrefix(request.URL.Path, "/v2/process-instances/"):
 			key := strings.TrimPrefix(request.URL.Path, "/v2/process-instances/")

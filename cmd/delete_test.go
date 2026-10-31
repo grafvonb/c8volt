@@ -384,6 +384,10 @@ func TestDeleteProcessDefinitionCommand_AcceptsFullHistoryCapabilityVersionsBefo
 			var deleteBodies []string
 			var requests []string
 			srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if serveVersionCheckTopology(w, r, version.String()) {
+					return
+				}
+
 				requests = append(requests, r.Method+" "+r.URL.Path)
 				w.Header().Set("Content-Type", "application/json")
 				switch r.URL.Path {
@@ -469,6 +473,10 @@ func TestDeleteProcessDefinitionCommand_BatchReadCheckBlocksBeforeMutation(t *te
 func TestDeleteProcessDefinitionCommand_LatestSearchUsesEffectiveTenant(t *testing.T) {
 	var requests []string
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.9") {
+			return
+		}
+
 		require.Equal(t, http.MethodPost, r.Method)
 		require.Equal(t, "/v2/process-definitions/search", r.URL.Path)
 
@@ -575,9 +583,14 @@ func TestDeleteProcessDefinitionCommand_StdinTenantMismatchUsesAdminScope(t *tes
 	require.Contains(t, string(output), "delete accepted")
 }
 
+// TestDeleteProcessDefinitionBpmnSelectorMissingFailsBeforeImpactPlanning preserves the existing command contract with advisory-aware fixtures.
 func TestDeleteProcessDefinitionBpmnSelectorMissingFailsBeforeImpactPlanning(t *testing.T) {
 	var requests []string
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.9") {
+			return
+		}
+
 		requests = append(requests, r.Method+" "+r.URL.Path)
 		switch {
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-definitions/search":
@@ -609,9 +622,14 @@ func TestDeleteProcessDefinitionBpmnSelectorMissingFailsBeforeImpactPlanning(t *
 	require.NotContains(t, string(output), "no process definitions found to delete")
 }
 
+// TestDeleteProcessDefinitionBpmnSelectorVisiblePreservesPreviewAndDeletion preserves the existing command contract with advisory-aware fixtures.
 func TestDeleteProcessDefinitionBpmnSelectorVisiblePreservesPreviewAndDeletion(t *testing.T) {
 	var requests testx.SafeSlice[string]
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.9") {
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		switch {
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-definitions/search":
@@ -643,9 +661,14 @@ func TestDeleteProcessDefinitionBpmnSelectorVisiblePreservesPreviewAndDeletion(t
 	require.Contains(t, string(output), "pd delete accepted; requested 1, ok 1, failed 0")
 }
 
+// TestDeleteProcessDefinitionDryRunStopsAfterImpactPreview preserves the existing command contract with advisory-aware fixtures.
 func TestDeleteProcessDefinitionDryRunStopsAfterImpactPreview(t *testing.T) {
 	var requests testx.SafeSlice[string]
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.9") {
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		switch {
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-definitions/search":
@@ -678,6 +701,10 @@ func TestDeleteProcessDefinitionDryRunStopsAfterImpactPreview(t *testing.T) {
 func TestDeleteProcessDefinitionCommand_RegressionPreservesSelectorPreflightForceAndNoWait(t *testing.T) {
 	var requests testx.SafeSlice[string]
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.9") {
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		switch {
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-definitions/search":
@@ -768,10 +795,15 @@ func requestBodyForPrefix(t *testing.T, requests []string, prefix string) []stri
 	return matches
 }
 
+// newTenantAdminProcessDefinitionDeleteServer keeps fixture setup aligned with the invocation's advisory version check.
 func newTenantAdminProcessDefinitionDeleteServer(t *testing.T, requests *testx.SafeSlice[string], statsRequests *testx.SafeSlice[string]) *httptest.Server {
 	t.Helper()
 
 	return newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.9") {
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		switch {
 		case r.Method == http.MethodGet && r.URL.Path == "/v2/process-definitions/"+tenantAdminKeysProcessDefinitionKey:

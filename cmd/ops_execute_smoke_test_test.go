@@ -308,7 +308,7 @@ func TestOpsExecuteSmokeTestAllTenantsRejectsBeforePlanningOrRequest(t *testing.
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var requests testx.SafeSlice[string]
-			srv := newOpsExecuteSmokeTestDryRunServer(t, &requests)
+			srv := newOpsExecuteSmokeTestDryRunServer(t, "8.8", &requests)
 			t.Cleanup(srv.Close)
 			reportPath := filepath.Join(t.TempDir(), "smoke-test.md")
 			args := append([]string{"--config", writeTestConfigForVersion(t, srv.URL, "8.8")}, tt.args...)
@@ -333,9 +333,10 @@ func TestOpsExecuteSmokeTestAllTenantsRejectsBeforePlanningOrRequestHelper(t *te
 	executeRootHelperFromArgsEnv(t, "C8VOLT_TEST_ROOT_ARGS")
 }
 
+// TestOpsExecuteSmokeTestDryRunHumanOutputPlansWithoutMutation preserves the existing command contract with advisory-aware fixtures.
 func TestOpsExecuteSmokeTestDryRunHumanOutputPlansWithoutMutation(t *testing.T) {
 	var requests testx.SafeSlice[string]
-	srv := newOpsExecuteSmokeTestDryRunServer(t, &requests)
+	srv := newOpsExecuteSmokeTestDryRunServer(t, "8.8", &requests)
 	t.Cleanup(srv.Close)
 
 	output := executeRootForProcessInstanceTest(t,
@@ -355,13 +356,13 @@ func TestOpsExecuteSmokeTestDryRunHumanOutputPlansWithoutMutation(t *testing.T) 
 	require.NotContains(t, output, "run: planned -")
 	require.NotContains(t, output, "cleanup: planned")
 	require.Contains(t, output, "outcome: planned; no changes applied")
-	require.Equal(t, []string{"GET /v2/topology"}, requests.Snapshot())
+	require.Equal(t, []string{"GET /v2/topology", "GET /v2/topology"}, requests.Snapshot())
 }
 
 // TestOpsExecuteSmokeTestDryRunJSONOutputReportsV810Fixture protects the dry-run envelope and verifies V810 reports the native fixture identity.
 func TestOpsExecuteSmokeTestDryRunJSONOutputReportsV810Fixture(t *testing.T) {
 	var requests testx.SafeSlice[string]
-	srv := newOpsExecuteSmokeTestDryRunServer(t, &requests)
+	srv := newOpsExecuteSmokeTestDryRunServer(t, "8.10", &requests)
 	t.Cleanup(srv.Close)
 
 	stdout, stderr := executeRootForProcessInstanceWithSeparateOutputs(t,
@@ -392,12 +393,13 @@ func TestOpsExecuteSmokeTestDryRunJSONOutputReportsV810Fixture(t *testing.T) {
 	connectivity := requireJSONObject(t, steps[0])
 	require.Equal(t, "connectivity", connectivity["name"])
 	require.Equal(t, "confirmed", connectivity["status"])
-	require.Equal(t, []string{"GET /v2/topology"}, requests.Snapshot())
+	require.Equal(t, []string{"GET /v2/topology", "GET /v2/topology"}, requests.Snapshot())
 }
 
+// TestOpsExecuteSmokeTestDryRunWritesMarkdownReport preserves the existing command contract with advisory-aware fixtures.
 func TestOpsExecuteSmokeTestDryRunWritesMarkdownReport(t *testing.T) {
 	var requests testx.SafeSlice[string]
-	srv := newOpsExecuteSmokeTestDryRunServer(t, &requests)
+	srv := newOpsExecuteSmokeTestDryRunServer(t, "8.8", &requests)
 	t.Cleanup(srv.Close)
 	reportPath := filepath.Join(t.TempDir(), "smoke-test.md")
 
@@ -419,12 +421,13 @@ func TestOpsExecuteSmokeTestDryRunWritesMarkdownReport(t *testing.T) {
 	require.Contains(t, report, "- File: embedded/processdefinitions/C88_MultipleSubProcessesParent.bpmn")
 	require.Contains(t, report, "- Requested Count: 1")
 	require.Contains(t, report, "- Outcome: planned")
-	require.Equal(t, []string{"GET /v2/topology"}, requests.Snapshot())
+	require.Equal(t, []string{"GET /v2/topology", "GET /v2/topology"}, requests.Snapshot())
 }
 
+// TestOpsExecuteSmokeTestDryRunExistingReportFailsBeforePreflight preserves the existing command contract with advisory-aware fixtures.
 func TestOpsExecuteSmokeTestDryRunExistingReportFailsBeforePreflight(t *testing.T) {
 	var requests testx.SafeSlice[string]
-	srv := newOpsExecuteSmokeTestDryRunServer(t, &requests)
+	srv := newOpsExecuteSmokeTestDryRunServer(t, "8.8", &requests)
 	t.Cleanup(srv.Close)
 	reportPath := filepath.Join(t.TempDir(), "smoke-test.md")
 	const existingReport = "existing report"
@@ -450,7 +453,7 @@ func TestOpsExecuteSmokeTestDryRunExistingReportFailsBeforePreflight(t *testing.
 // TestOpsExecuteSmokeTestWritesMarkdownAuditReport verifies every deployed definition and cleanup outcome reaches Markdown.
 func TestOpsExecuteSmokeTestWritesMarkdownAuditReport(t *testing.T) {
 	var requests testx.SafeSlice[string]
-	srv := newOpsExecuteSmokeTestRunWalkServer(t, &requests, nil)
+	srv := newOpsExecuteSmokeTestRunWalkServer(t, "8.8", &requests, nil)
 	t.Cleanup(srv.Close)
 	reportPath := filepath.Join(t.TempDir(), "smoke-test.md")
 
@@ -492,9 +495,10 @@ func TestOpsExecuteSmokeTestWritesMarkdownAuditReport(t *testing.T) {
 	require.NotContains(t, strings.Join(requests.Snapshot(), "\n"), "/v2/resources/pd-88/deletion")
 }
 
+// TestOpsExecuteSmokeTestWritesJSONAuditReportWithInferredFormat preserves the existing command contract with advisory-aware fixtures.
 func TestOpsExecuteSmokeTestWritesJSONAuditReportWithInferredFormat(t *testing.T) {
 	var requests testx.SafeSlice[string]
-	srv := newOpsExecuteSmokeTestRunWalkServer(t, &requests, nil)
+	srv := newOpsExecuteSmokeTestRunWalkServer(t, "8.8", &requests, nil)
 	t.Cleanup(srv.Close)
 	reportPath := filepath.Join(t.TempDir(), "smoke-test.json")
 
@@ -532,6 +536,7 @@ func TestOpsExecuteSmokeTestWritesJSONAuditReportWithInferredFormat(t *testing.T
 	require.NotContains(t, strings.Join(requests.Snapshot(), "\n"), "/v2/resources/pd-88/deletion")
 }
 
+// TestOpsExecuteSmokeTestExistingReportPreservation preserves the existing command contract with advisory-aware fixtures.
 func TestOpsExecuteSmokeTestExistingReportPreservation(t *testing.T) {
 	tests := []struct {
 		name string
@@ -554,7 +559,7 @@ func TestOpsExecuteSmokeTestExistingReportPreservation(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var requests testx.SafeSlice[string]
-			srv := newOpsExecuteSmokeTestDryRunServer(t, &requests)
+			srv := newOpsExecuteSmokeTestDryRunServer(t, "8.8", &requests)
 			t.Cleanup(srv.Close)
 			reportPath := filepath.Join(t.TempDir(), "smoke-test.md")
 			const existingReport = "existing report"
@@ -579,9 +584,10 @@ func TestOpsExecuteSmokeTestExistingReportPreservation(t *testing.T) {
 	}
 }
 
+// TestOpsExecuteSmokeTestAutomationJSONStdoutIsMachineOnly preserves the existing command contract with advisory-aware fixtures.
 func TestOpsExecuteSmokeTestAutomationJSONStdoutIsMachineOnly(t *testing.T) {
 	var requests testx.SafeSlice[string]
-	srv := newOpsExecuteSmokeTestRunWalkServer(t, &requests, nil)
+	srv := newOpsExecuteSmokeTestRunWalkServer(t, "8.8", &requests, nil)
 	t.Cleanup(srv.Close)
 	reportPath := filepath.Join(t.TempDir(), "smoke-test.json")
 
@@ -614,7 +620,7 @@ func TestOpsExecuteSmokeTestAutomationJSONStdoutIsMachineOnly(t *testing.T) {
 // emits exactly one envelope through EOF without stderr contamination.
 func TestOpsExecuteSmokeTestMachineOutputModesRemainExact(t *testing.T) {
 	var requests testx.SafeSlice[string]
-	srv := newOpsExecuteSmokeTestRunWalkServer(t, &requests, nil)
+	srv := newOpsExecuteSmokeTestRunWalkServer(t, "8.8", &requests, nil)
 	t.Cleanup(srv.Close)
 
 	stdout, stderr := executeRootForProcessInstanceWithSeparateOutputs(t,
@@ -639,7 +645,7 @@ func TestOpsExecuteSmokeTestConfirmationTerminal(t *testing.T) {
 	for _, stderrMode := range []string{"configured", "inherited"} {
 		t.Run(stderrMode, func(t *testing.T) {
 			var requests testx.SafeSlice[string]
-			srv := newOpsExecuteSmokeTestRunWalkServer(t, &requests, nil)
+			srv := newOpsExecuteSmokeTestRunWalkServer(t, "8.9", &requests, nil)
 			t.Cleanup(srv.Close)
 			capturePath := filepath.Join(t.TempDir(), "configured-stderr.txt")
 			prompt := "smoke test: deploy fixture, start 1 process instance(s), walk process-instance families, then clean up created resources.\nDo you want to proceed? [y/N]: "
@@ -704,7 +710,7 @@ func runOpsExecuteSmokeTestConfirmationTerminalHelper(t *testing.T) {
 // final smoke-test summary remains while duplicate legacy progress is hidden.
 func TestOpsExecuteSmokeTestDeploysFixtureAndRendersDeploymentOutput(t *testing.T) {
 	var requests testx.SafeSlice[string]
-	srv := newOpsExecuteSmokeTestDeploymentServer(t, &requests)
+	srv := newOpsExecuteSmokeTestDeploymentServer(t, "8.9", &requests)
 	t.Cleanup(srv.Close)
 
 	output := executeRootForProcessInstanceTest(t,
@@ -734,6 +740,7 @@ func TestOpsExecuteSmokeTestDeploysFixtureAndRendersDeploymentOutput(t *testing.
 	require.NotContains(t, output, "walk 101:")
 	require.Contains(t, output, "outcome: passed")
 	require.Equal(t, []string{
+		"GET /v2/topology",
 		"GET /v2/topology",
 		"POST /v2/deployments",
 		"GET /v2/process-definitions/pd-89-child",
@@ -795,7 +802,7 @@ func TestOpsExecuteSmokeTestCreatesAndWalksRequestedInstances(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			var requests testx.SafeSlice[string]
 			var createBodies testx.SafeSlice[string]
-			srv := newOpsExecuteSmokeTestRunWalkServer(t, &requests, &createBodies)
+			srv := newOpsExecuteSmokeTestRunWalkServer(t, "8.8", &requests, &createBodies)
 			t.Cleanup(srv.Close)
 
 			args := append([]string{
@@ -827,7 +834,7 @@ func TestOpsExecuteSmokeTestCreatesAndWalksRequestedInstances(t *testing.T) {
 // TestOpsExecuteSmokeTestVerboseProgressRendersStageCounters verifies smoke-test progress is routed to stderr while stdout keeps final output.
 func TestOpsExecuteSmokeTestVerboseProgressRendersStageCounters(t *testing.T) {
 	var requests testx.SafeSlice[string]
-	srv := newOpsExecuteSmokeTestRunWalkServer(t, &requests, nil)
+	srv := newOpsExecuteSmokeTestRunWalkServer(t, "8.8", &requests, nil)
 	t.Cleanup(srv.Close)
 
 	_, stderr := executeRootForProcessInstanceWithSeparateOutputs(t,
@@ -847,7 +854,7 @@ func TestOpsExecuteSmokeTestVerboseProgressRendersStageCounters(t *testing.T) {
 // TestOpsExecuteSmokeTestNoCleanupHumanOutputReportsRetainedResources verifies verbose output accounts for all retained definitions.
 func TestOpsExecuteSmokeTestNoCleanupHumanOutputReportsRetainedResources(t *testing.T) {
 	var requests testx.SafeSlice[string]
-	srv := newOpsExecuteSmokeTestRunWalkServer(t, &requests, nil)
+	srv := newOpsExecuteSmokeTestRunWalkServer(t, "8.8", &requests, nil)
 	t.Cleanup(srv.Close)
 
 	output := executeRootForProcessInstanceTest(t,
@@ -874,7 +881,7 @@ func TestOpsExecuteSmokeTestNoCleanupHumanOutputReportsRetainedResources(t *test
 // TestOpsExecuteSmokeTestNoCleanupJSONOutputReportsRetainedResources verifies the shared envelope carries the complete scope.
 func TestOpsExecuteSmokeTestNoCleanupJSONOutputReportsRetainedResources(t *testing.T) {
 	var requests testx.SafeSlice[string]
-	srv := newOpsExecuteSmokeTestRunWalkServer(t, &requests, nil)
+	srv := newOpsExecuteSmokeTestRunWalkServer(t, "8.8", &requests, nil)
 	t.Cleanup(srv.Close)
 
 	stdout, stderr := executeRootForProcessInstanceWithSeparateOutputs(t,
@@ -912,9 +919,10 @@ func TestOpsExecuteSmokeTestNoCleanupJSONOutputReportsRetainedResources(t *testi
 	require.NotContains(t, strings.Join(requests.Snapshot(), "\n"), "/v2/resources/pd-88/deletion")
 }
 
+// TestOpsExecuteSmokeTestMapsWorkerControlsToJSONRequest preserves the existing command contract with advisory-aware fixtures.
 func TestOpsExecuteSmokeTestMapsWorkerControlsToJSONRequest(t *testing.T) {
 	var requests testx.SafeSlice[string]
-	srv := newOpsExecuteSmokeTestDryRunServer(t, &requests)
+	srv := newOpsExecuteSmokeTestDryRunServer(t, "8.9", &requests)
 	t.Cleanup(srv.Close)
 
 	stdout, stderr := executeRootForProcessInstanceWithSeparateOutputs(t,
@@ -945,7 +953,7 @@ func TestOpsExecuteSmokeTestMapsWorkerControlsToJSONRequest(t *testing.T) {
 // TestOpsExecuteSmokeTestUsesImplicitConfirmationForCleanup verifies no-wait output counts every accepted definition request.
 func TestOpsExecuteSmokeTestUsesImplicitConfirmationForCleanup(t *testing.T) {
 	var requests testx.SafeSlice[string]
-	srv := newOpsExecuteSmokeTestRunWalkServer(t, &requests, nil)
+	srv := newOpsExecuteSmokeTestRunWalkServer(t, "8.9", &requests, nil)
 	t.Cleanup(srv.Close)
 	var prompts []string
 	prevConfirm := confirmCmdOrAbortFn
@@ -968,9 +976,10 @@ func TestOpsExecuteSmokeTestUsesImplicitConfirmationForCleanup(t *testing.T) {
 	require.Contains(t, prompts[0], "smoke test: deploy fixture, start 1 process instance(s), walk process-instance families, then clean up created resources")
 }
 
+// TestOpsExecuteSmokeTestAutomationNoCleanupDoesNotPrompt preserves the existing command contract with advisory-aware fixtures.
 func TestOpsExecuteSmokeTestAutomationNoCleanupDoesNotPrompt(t *testing.T) {
 	var requests testx.SafeSlice[string]
-	srv := newOpsExecuteSmokeTestRunWalkServer(t, &requests, nil)
+	srv := newOpsExecuteSmokeTestRunWalkServer(t, "8.8", &requests, nil)
 	t.Cleanup(srv.Close)
 	prevConfirm := confirmCmdOrAbortFn
 	confirmCmdOrAbortFn = func(_ io.Writer, _ bool, _ string) error {
@@ -990,9 +999,10 @@ func TestOpsExecuteSmokeTestAutomationNoCleanupDoesNotPrompt(t *testing.T) {
 	require.NotContains(t, strings.Join(requests.Snapshot(), "\n"), "/v2/resources/pd-88/deletion")
 }
 
+// TestOpsExecuteSmokeTestDirtyClusterSkipsProcessDefinitionCleanup preserves the existing command contract with advisory-aware fixtures.
 func TestOpsExecuteSmokeTestDirtyClusterSkipsProcessDefinitionCleanup(t *testing.T) {
 	var requests testx.SafeSlice[string]
-	srv := newOpsExecuteSmokeTestRunWalkServerWithCleanupBlocker(t, &requests, nil, "999")
+	srv := newOpsExecuteSmokeTestRunWalkServerWithCleanupBlocker(t, "8.8", &requests, nil, "999")
 	t.Cleanup(srv.Close)
 
 	output, err := testx.RunCmdSubprocess(t, "TestOpsExecuteSmokeTestInvalidLocalFlagsHelper", map[string]string{
@@ -1013,7 +1023,7 @@ func TestOpsExecuteSmokeTestDirtyClusterSkipsProcessDefinitionCleanup(t *testing
 // TestOpsExecuteSmokeTestBlockedDependencyReportsMixedEvidence verifies eligible siblings proceed while verbose and audit output explain the retained dependency.
 func TestOpsExecuteSmokeTestBlockedDependencyReportsMixedEvidence(t *testing.T) {
 	var requests testx.SafeSlice[string]
-	srv := newOpsExecuteSmokeTestRunWalkServerWithBlockedDefinition(t, &requests, nil, "pd-89-child", "999")
+	srv := newOpsExecuteSmokeTestRunWalkServerWithBlockedDefinition(t, "8.9", &requests, nil, "pd-89-child", "999")
 	t.Cleanup(srv.Close)
 	reportPath := filepath.Join(t.TempDir(), "smoke-test.md")
 
@@ -1046,7 +1056,8 @@ func TestOpsExecuteSmokeTestBlockedDependencyReportsMixedEvidence(t *testing.T) 
 	require.Contains(t, string(report), "- Retained: 1")
 }
 
-func newOpsExecuteSmokeTestDryRunServer(t *testing.T, requests *testx.SafeSlice[string]) *httptest.Server {
+// newOpsExecuteSmokeTestDryRunServer keeps fixture setup aligned with the invocation's advisory version check.
+func newOpsExecuteSmokeTestDryRunServer(t *testing.T, version string, requests *testx.SafeSlice[string]) *httptest.Server {
 	t.Helper()
 
 	return newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -1054,28 +1065,30 @@ func newOpsExecuteSmokeTestDryRunServer(t *testing.T, requests *testx.SafeSlice[
 		case r.Method == http.MethodGet && r.URL.Path == "/v2/topology":
 			requests.Append(r.Method + " " + r.URL.Path)
 			w.Header().Set("Content-Type", "application/json")
-			_, _ = w.Write([]byte(emptyClusterTopologyFixtureJSON(1, "8.8.0", 1, 1)))
+			_, _ = w.Write([]byte(emptyClusterTopologyFixtureJSON(1, version+".0", 1, 1)))
 		default:
 			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
 		}
 	}))
 }
 
-func newOpsExecuteSmokeTestDeploymentServer(t *testing.T, requests *testx.SafeSlice[string]) *httptest.Server {
-	return newOpsExecuteSmokeTestRunWalkServer(t, requests, nil)
+// newOpsExecuteSmokeTestDeploymentServer keeps fixture setup aligned with the invocation's advisory version check.
+func newOpsExecuteSmokeTestDeploymentServer(t *testing.T, version string, requests *testx.SafeSlice[string]) *httptest.Server {
+	return newOpsExecuteSmokeTestRunWalkServer(t, version, requests, nil)
 }
 
-func newOpsExecuteSmokeTestRunWalkServer(t *testing.T, requests *testx.SafeSlice[string], createBodies *testx.SafeSlice[string]) *httptest.Server {
-	return newOpsExecuteSmokeTestRunWalkServerWithCleanupBlocker(t, requests, createBodies, "")
+// newOpsExecuteSmokeTestRunWalkServer keeps fixture setup aligned with the invocation's advisory version check.
+func newOpsExecuteSmokeTestRunWalkServer(t *testing.T, version string, requests *testx.SafeSlice[string], createBodies *testx.SafeSlice[string]) *httptest.Server {
+	return newOpsExecuteSmokeTestRunWalkServerWithCleanupBlocker(t, version, requests, createBodies, "")
 }
 
 // newOpsExecuteSmokeTestRunWalkServerWithCleanupBlocker preserves the legacy fixture that blocks every deployed definition.
-func newOpsExecuteSmokeTestRunWalkServerWithCleanupBlocker(t *testing.T, requests *testx.SafeSlice[string], createBodies *testx.SafeSlice[string], cleanupBlocker string) *httptest.Server {
-	return newOpsExecuteSmokeTestRunWalkServerWithBlockedDefinition(t, requests, createBodies, "", cleanupBlocker)
+func newOpsExecuteSmokeTestRunWalkServerWithCleanupBlocker(t *testing.T, version string, requests *testx.SafeSlice[string], createBodies *testx.SafeSlice[string], cleanupBlocker string) *httptest.Server {
+	return newOpsExecuteSmokeTestRunWalkServerWithBlockedDefinition(t, version, requests, createBodies, "", cleanupBlocker)
 }
 
 // newOpsExecuteSmokeTestRunWalkServerWithBlockedDefinition can retain one exact deployed definition while allowing sibling cleanup.
-func newOpsExecuteSmokeTestRunWalkServerWithBlockedDefinition(t *testing.T, requests *testx.SafeSlice[string], createBodies *testx.SafeSlice[string], blockedDefinitionKey string, cleanupBlocker string) *httptest.Server {
+func newOpsExecuteSmokeTestRunWalkServerWithBlockedDefinition(t *testing.T, version string, requests *testx.SafeSlice[string], createBodies *testx.SafeSlice[string], blockedDefinitionKey string, cleanupBlocker string) *httptest.Server {
 	t.Helper()
 
 	var created int
@@ -1084,7 +1097,7 @@ func newOpsExecuteSmokeTestRunWalkServerWithBlockedDefinition(t *testing.T, requ
 		case r.Method == http.MethodGet && r.URL.Path == "/v2/topology":
 			requests.Append(r.Method + " " + r.URL.Path)
 			w.Header().Set("Content-Type", "application/json")
-			_, _ = w.Write([]byte(emptyClusterTopologyFixtureJSON(1, "8.8.0", 1, 1)))
+			_, _ = w.Write([]byte(emptyClusterTopologyFixtureJSON(1, version+".0", 1, 1)))
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/deployments":
 			requests.Append(r.Method + " " + r.URL.Path)
 			require.Contains(t, r.Header.Get("Content-Type"), "multipart/form-data")

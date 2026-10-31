@@ -47,6 +47,10 @@ func (f *definitionStatisticsFixture) server(t *testing.T) *httptest.Server {
 		keys = []string{"123"}
 	}
 	srv := testx.NewIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, f.version) {
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		definition := func(read int32, key string) map[string]any {
 			item := map[string]any{"processDefinitionKey": key, "processDefinitionId": "invoice", "version": 1, "tenantId": "tenant"}

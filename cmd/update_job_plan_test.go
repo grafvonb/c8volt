@@ -18,7 +18,7 @@ import (
 func TestUpdateJobCommand_RetriesDryRunLoadsCurrentJobAndSkipsMutation(t *testing.T) {
 	var requests []string
 	var patchBodies []map[string]any
-	srv := newJobUpdateServer(t, &requests, &patchBodies, []string{
+	srv := newJobUpdateServer(t, "8.8", &requests, &patchBodies, []string{
 		jobSearchResponse("2251799813711967", 1),
 	}, http.StatusNoContent)
 	t.Cleanup(srv.Close)
@@ -36,7 +36,7 @@ func TestUpdateJobCommand_RetriesDryRunLoadsCurrentJobAndSkipsMutation(t *testin
 func TestUpdateJobCommand_RetriesDryRunRendersExplicitKeyTenantContext(t *testing.T) {
 	var requests []string
 	var patchBodies []map[string]any
-	srv := newJobUpdateServer(t, &requests, &patchBodies, []string{
+	srv := newJobUpdateServer(t, "8.8", &requests, &patchBodies, []string{
 		jobSearchResponseWithTenant("2251799813711967", 1, "FAILED", tenantAdminKeysReturnedTenant),
 	}, http.StatusNoContent)
 	t.Cleanup(srv.Close)
@@ -60,7 +60,7 @@ func TestUpdateJobCommand_RetriesDryRunRendersExplicitKeyTenantContext(t *testin
 func TestUpdateJobCommand_JSONDryRunIncludesExplicitKeyTenantContext(t *testing.T) {
 	var requests []string
 	var patchBodies []map[string]any
-	srv := newJobUpdateServer(t, &requests, &patchBodies, []string{
+	srv := newJobUpdateServer(t, "8.8", &requests, &patchBodies, []string{
 		jobSearchResponseWithTenant("2251799813711967", 1, "FAILED", tenantAdminKeysReturnedTenant),
 	}, http.StatusNoContent)
 	t.Cleanup(srv.Close)
@@ -93,7 +93,7 @@ func TestUpdateJobCommand_RetriesNoOpSkipsPromptAndMutation(t *testing.T) {
 
 	var requests []string
 	var patchBodies []map[string]any
-	srv := newJobUpdateServer(t, &requests, &patchBodies, []string{
+	srv := newJobUpdateServer(t, "8.8", &requests, &patchBodies, []string{
 		jobSearchResponse("2251799813711967", 3),
 	}, http.StatusNoContent)
 	t.Cleanup(srv.Close)
@@ -110,7 +110,7 @@ func TestUpdateJobCommand_RetriesNoOpSkipsPromptAndMutation(t *testing.T) {
 func TestUpdateJobCommand_RetriesNoOpDryRunReportsNoChangesApplied(t *testing.T) {
 	var requests []string
 	var patchBodies []map[string]any
-	srv := newJobUpdateServer(t, &requests, &patchBodies, []string{
+	srv := newJobUpdateServer(t, "8.8", &requests, &patchBodies, []string{
 		jobSearchResponse("2251799813711967", 3),
 	}, http.StatusNoContent)
 	t.Cleanup(srv.Close)
@@ -127,7 +127,7 @@ func TestUpdateJobCommand_RetriesNoOpDryRunReportsNoChangesApplied(t *testing.T)
 func TestUpdateJobCommand_JSONDryRunRetriesPlanPayload(t *testing.T) {
 	var requests []string
 	var patchBodies []map[string]any
-	srv := newJobUpdateServer(t, &requests, &patchBodies, []string{
+	srv := newJobUpdateServer(t, "8.8", &requests, &patchBodies, []string{
 		jobSearchResponse("2251799813711967", 1),
 	}, http.StatusNoContent)
 	t.Cleanup(srv.Close)
@@ -155,7 +155,7 @@ func TestUpdateJobCommand_JSONDryRunRetriesPlanPayload(t *testing.T) {
 func TestUpdateJobCommand_TimeoutDryRunReportsSubmissionIntent(t *testing.T) {
 	var requests []string
 	var patchBodies []map[string]any
-	srv := newJobUpdateServer(t, &requests, &patchBodies, []string{
+	srv := newJobUpdateServer(t, "8.8", &requests, &patchBodies, []string{
 		jobSearchResponseWithState("2251799813711967", 1, "CREATED"),
 	}, http.StatusNoContent)
 	t.Cleanup(srv.Close)
@@ -173,7 +173,7 @@ func TestUpdateJobCommand_TimeoutDryRunReportsSubmissionIntent(t *testing.T) {
 func TestUpdateJobCommand_JSONDryRunRetriesAndTimeoutPlanPayload(t *testing.T) {
 	var requests []string
 	var patchBodies []map[string]any
-	srv := newJobUpdateServer(t, &requests, &patchBodies, []string{
+	srv := newJobUpdateServer(t, "8.8", &requests, &patchBodies, []string{
 		jobSearchResponseWithState("2251799813711967", 1, "CREATED"),
 	}, http.StatusNoContent)
 	t.Cleanup(srv.Close)

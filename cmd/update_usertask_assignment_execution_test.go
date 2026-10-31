@@ -28,7 +28,7 @@ func TestUpdateUserTaskAssignmentCommandWorkers(t *testing.T) {
 					var mu sync.Mutex
 					active, peak, started := 0, 0, 0
 					gates := []chan struct{}{make(chan struct{}), make(chan struct{})}
-					server, calls := newUserTaskAssignmentServer(t, operation, func(w http.ResponseWriter, r *http.Request, key string) {
+					server, calls := newUserTaskAssignmentServer(t, "8.10", operation, func(w http.ResponseWriter, r *http.Request, key string) {
 						mu.Lock()
 						active++
 						started++
@@ -86,7 +86,7 @@ func TestUpdateUserTaskAssignmentCommandFailFast(t *testing.T) {
 				t.Run(fmt.Sprint(parallel), func(t *testing.T) {
 					bothStarted := make(chan struct{})
 					var started atomic.Int32
-					server, calls := newUserTaskAssignmentServer(t, operation, func(w http.ResponseWriter, r *http.Request, key string) {
+					server, calls := newUserTaskAssignmentServer(t, "8.10", operation, func(w http.ResponseWriter, r *http.Request, key string) {
 						if parallel {
 							if started.Add(1) == 2 {
 								close(bothStarted)
@@ -144,7 +144,7 @@ func TestUpdateUserTaskAssignmentCommandCancellation(t *testing.T) {
 		t.Run(operation, func(t *testing.T) {
 			ready := make(chan struct{})
 			var once sync.Once
-			server, calls := newUserTaskAssignmentServer(t, operation, func(w http.ResponseWriter, r *http.Request, key string) {
+			server, calls := newUserTaskAssignmentServer(t, "8.10", operation, func(w http.ResponseWriter, r *http.Request, key string) {
 				if key == completionKeyA {
 					w.WriteHeader(204)
 					return
@@ -157,6 +157,10 @@ func TestUpdateUserTaskAssignmentCommandCancellation(t *testing.T) {
 				}
 			})
 			control := testx.NewIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if serveVersionCheckTopology(w, r, "8.10") {
+					return
+				}
+
 				select {
 				case <-ready:
 					w.WriteHeader(204)
@@ -191,7 +195,7 @@ func TestUpdateUserTaskAssignmentCommandAwaitsResponse(t *testing.T) {
 			started, release := make(chan struct{}), make(chan struct{})
 			var releaseOnce sync.Once
 			// Always release a blocked handler before the server cleanup, even on failure.
-			server, calls := newUserTaskAssignmentServer(t, operation, func(w http.ResponseWriter, r *http.Request, key string) {
+			server, calls := newUserTaskAssignmentServer(t, "8.10", operation, func(w http.ResponseWriter, r *http.Request, key string) {
 				close(started)
 				select {
 				case <-release:

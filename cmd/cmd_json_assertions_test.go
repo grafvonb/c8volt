@@ -111,7 +111,7 @@ func TestPagedSearchMachineOutputCleanliness(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var bodies []map[string]any
-			srv := newJobSearchServerResponses(t, &bodies,
+			srv := newJobSearchServerResponses(t, "8.9", &bodies,
 				`{"items":[{"jobKey":"2251799813711967","state":"FAILED","retries":0},{"jobKey":"2251799813711968","state":"FAILED","retries":1}],"page":{"totalItems":3,"hasMoreTotalItems":true}}`,
 				`{"items":[{"jobKey":"2251799813711969","state":"FAILED","retries":2}],"page":{"totalItems":3,"hasMoreTotalItems":false}}`,
 			)
@@ -194,6 +194,10 @@ func TestPagedProcessInstanceJSONAndKeysOnlyOutputCleanliness(t *testing.T) {
 func TestTenantContextMachineOutputCleanlinessAcrossFamilies(t *testing.T) {
 	t.Run("run JSON is one document with root tenant context", func(t *testing.T) {
 		srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if serveVersionCheckTopology(w, r, "8.9") {
+				return
+			}
+
 			require.Equal(t, http.MethodPost, r.Method)
 			require.Equal(t, "/v2/process-instances", r.URL.Path)
 			w.Header().Set("Content-Type", "application/json")
@@ -273,6 +277,10 @@ func newTenantContextMachineRunServer(t *testing.T) *httptest.Server {
 	t.Helper()
 
 	return newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.9") {
+			return
+		}
+
 		require.Equal(t, http.MethodPost, r.Method)
 		require.Equal(t, "/v2/process-instances", r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")

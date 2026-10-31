@@ -18,7 +18,7 @@ func TestUpdateUserTaskCompletionRhythm(t *testing.T) {
 		for _, destination := range []string{"configured", "inherited"} {
 			for _, scenario := range []string{"assigned", "unassigned", "lookup failed", "declined", "variables", "empty variables", "fail fast", "preview", "preview variables", "quiet", "keys", "auto confirm", "automation", "json", "warn level", "error level"} {
 				t.Run(format+"/"+destination+"/"+scenario, func(t *testing.T) {
-					server, calls, reads := newUserTaskCompletionPreflightServer(t, func(w http.ResponseWriter, r *http.Request, key string) {
+					server, calls, reads := newUserTaskCompletionPreflightServer(t, "8.10", func(w http.ResponseWriter, r *http.Request, key string) {
 						if scenario == "lookup failed" {
 							w.WriteHeader(503)
 							return

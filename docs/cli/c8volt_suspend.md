@@ -34,6 +34,7 @@ c8volt suspend [flags]
       --keys-only            output keys only (where applicable)
       --log-level string     log level (debug, info, warn, error) (default "info")
       --no-indicator         disable transient terminal activity indicators
+      --no-version-check     skip the automatic advisory gateway version check
       --profile string       config active profile name to use (e.g. dev, prod)
   -q, --quiet                suppress output except errors
       --request-rate float   maximum shared request starts per second (fractions allowed; 0 disables pacing)

@@ -204,6 +204,10 @@ func resumptionExecutionTestHandler(t *testing.T, tree bool, keys []string, next
 	executing := false
 	discovered := []string{}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.10") {
+			return
+		}
+
 		if !tree {
 			next.ServeHTTP(w, r)
 			return

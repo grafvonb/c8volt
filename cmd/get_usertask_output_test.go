@@ -15,7 +15,7 @@ import (
 // TestGetUserTaskOutput_HumanExecution verifies keyed and search execution use
 // exact compact rows, including technical identities, related keys, and omitted optional details.
 func TestGetUserTaskOutput_HumanExecution(t *testing.T) {
-	keyedServer, keyedRequests := newGetUserTaskCommandServer(t)
+	keyedServer, keyedRequests := newGetUserTaskCommandServer(t, "8.9")
 	keyedConfig := testx.WriteTestConfigForVersion(t, keyedServer.URL, "8.9")
 	stdout, stderr, err := runGetUserTaskCommand(t, keyedConfig, "", "get", "ut", "-k", "2251799815391233,2251799815391234")
 	require.NoError(t, err, stderr)
@@ -23,7 +23,7 @@ func TestGetUserTaskOutput_HumanExecution(t *testing.T) {
 	require.Equal(t, "2251799815391233 tenant-a approve_invoice CREATED   pi:2251799813711967 ei:2251799815391200 pd:2251799813689000 assignee:alice\n2251799815391234 tenant-a archive_invoice COMPLETED pi:2251799813711968 ei:2251799815391200 pd:2251799813689000 assignee:<unassigned>\nfound: 2\n", stdout)
 	require.Equal(t, int64(2), keyedRequests.Load())
 
-	searchServer, searchRequests := newGetUserTaskSearchServer(t, func(_ int, _ map[string]any) string {
+	searchServer, searchRequests := newGetUserTaskSearchServer(t, "8.9", func(_ int, _ map[string]any) string {
 		return userTaskSearchResponse(1, false, "", "2251799815391233")
 	})
 	searchConfig := testx.WriteTestConfigForVersion(t, searchServer.URL, "8.9")
@@ -53,7 +53,7 @@ func TestGetUserTaskOutput_MachineAndUnattendedModes(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			server, requests := newGetUserTaskSearchServer(t, func(_ int, _ map[string]any) string {
+			server, requests := newGetUserTaskSearchServer(t, "8.9", func(_ int, _ map[string]any) string {
 				return userTaskSearchResponse(1, false, "", "2251799815391233")
 			})
 			configPath := testx.WriteTestConfigForVersion(t, server.URL, "8.9")
@@ -91,7 +91,7 @@ func TestGetUserTaskOutput_EmptyAndTotalModes(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			server, requests := newGetUserTaskSearchServer(t, func(_ int, _ map[string]any) string {
+			server, requests := newGetUserTaskSearchServer(t, "8.9", func(_ int, _ map[string]any) string {
 				return userTaskSearchResponse(test.wantTotal, false, "")
 			})
 			configPath := testx.WriteTestConfigForVersion(t, server.URL, "8.9")
@@ -136,7 +136,7 @@ func TestGetUserTaskOutput_FilteredNonemptyModes(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			server, requests := newGetUserTaskSearchServer(t, func(_ int, _ map[string]any) string {
+			server, requests := newGetUserTaskSearchServer(t, "8.9", func(_ int, _ map[string]any) string {
 				if test.name == "total" {
 					return userTaskSearchResponse(test.wantTotal, false, "")
 				}
@@ -180,7 +180,7 @@ func TestGetUserTaskOutput_FilteredEmptyModes(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			server, requests := newGetUserTaskSearchServer(t, func(_ int, _ map[string]any) string {
+			server, requests := newGetUserTaskSearchServer(t, "8.9", func(_ int, _ map[string]any) string {
 				return userTaskSearchResponse(0, false, "")
 			})
 			configPath := testx.WriteTestConfigForVersion(t, server.URL, "8.9")
@@ -219,7 +219,7 @@ func TestGetUserTaskOutput_EmptyVariableSearchModes(t *testing.T) {
 		{name: "quiet total zero", args: []string{"--quiet", "get", "ut", "--total", "--with-vars"}, want: "0\n"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			server, requests := newGetUserTaskVariablesServer(t, getUserTaskVariablesFixture{
+			server, requests := newGetUserTaskVariablesServer(t, "8.9", getUserTaskVariablesFixture{
 				SearchRespond: func(_ int, _ map[string]any) string { return userTaskSearchResponse(0, false, "") },
 			})
 			configPath := testx.WriteTestConfigForVersion(t, server.URL, "8.9")
@@ -254,7 +254,7 @@ func TestGetUserTaskOutput_DiagnosticsStayOffStdout(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			server, requests := newGetUserTaskSearchServer(t, func(_ int, _ map[string]any) string {
+			server, requests := newGetUserTaskSearchServer(t, "8.9", func(_ int, _ map[string]any) string {
 				return userTaskSearchResponse(1, false, "", "2251799815391233")
 			})
 			configPath := testx.WriteTestConfigForVersion(t, server.URL, "8.9")

@@ -27,9 +27,10 @@ import (
 
 const testGetIncidentArgsEnv = "C8VOLT_TEST_GET_INCIDENT_ARGS"
 
+// TestGetIncidentCommand_KeyedLookupDeduplicatesFlagAndStdinKeys preserves the existing command contract with advisory-aware fixtures.
 func TestGetIncidentCommand_KeyedLookupDeduplicatesFlagAndStdinKeys(t *testing.T) {
 	var requests []string
-	srv := newIncidentLookupServer(t, &requests, map[string]string{
+	srv := newIncidentLookupServer(t, "8.8", &requests, map[string]string{
 		"2251799813685249": incidentLookupResultJSON("2251799813685249", "2251799813711967", "No retries left"),
 		"2251799813685250": incidentLookupResultJSON("2251799813685250", "2251799813711968", "Mapping failed"),
 	})
@@ -78,10 +79,11 @@ func TestGetIncidentCommand_HTTPFallbackActivityUsesCommandContext(t *testing.T)
 	requireHTTPFallbackActivityStarts(t, sink, "searching incidents")
 }
 
+// TestGetIncidentCommand_JSONOutputUsesIncidentListPayload preserves the existing command contract with advisory-aware fixtures.
 func TestGetIncidentCommand_JSONOutputUsesIncidentListPayload(t *testing.T) {
 	var requests []string
 	longMessage := "No retries left with full diagnostic context that must not be truncated in JSON"
-	srv := newIncidentLookupServer(t, &requests, map[string]string{
+	srv := newIncidentLookupServer(t, "8.9", &requests, map[string]string{
 		"2251799813685249": incidentLookupResultJSON("2251799813685249", "2251799813711967", longMessage),
 	})
 	t.Cleanup(srv.Close)
@@ -113,9 +115,10 @@ func TestGetIncidentCommand_JSONOutputUsesIncidentListPayload(t *testing.T) {
 	require.NotContains(t, output, "flowNode")
 }
 
+// TestGetIncidentCommand_KeysOnlyOutputUsesIncidentKeys preserves the existing command contract with advisory-aware fixtures.
 func TestGetIncidentCommand_KeysOnlyOutputUsesIncidentKeys(t *testing.T) {
 	var requests []string
-	srv := newIncidentLookupServer(t, &requests, map[string]string{
+	srv := newIncidentLookupServer(t, "8.8", &requests, map[string]string{
 		"2251799813685249": incidentLookupResultJSON("2251799813685249", "2251799813711967", "No retries left"),
 	})
 	t.Cleanup(srv.Close)
@@ -132,9 +135,10 @@ func TestGetIncidentCommand_KeysOnlyOutputUsesIncidentKeys(t *testing.T) {
 	require.Equal(t, "2251799813685249\n", output)
 }
 
+// TestGetIncidentCommand_PIKeysOnlyKeyedLookupUsesProcessInstanceKeys preserves the existing command contract with advisory-aware fixtures.
 func TestGetIncidentCommand_PIKeysOnlyKeyedLookupUsesProcessInstanceKeys(t *testing.T) {
 	var requests []string
-	srv := newIncidentLookupServer(t, &requests, map[string]string{
+	srv := newIncidentLookupServer(t, "8.8", &requests, map[string]string{
 		"2251799813685249": incidentLookupResultJSON("2251799813685249", "2251799813711967", "No retries left"),
 		"2251799813685250": incidentLookupResultJSON("2251799813685250", "", "Missing process instance key"),
 	})
@@ -157,9 +161,10 @@ func TestGetIncidentCommand_PIKeysOnlyKeyedLookupUsesProcessInstanceKeys(t *test
 	require.Equal(t, "2251799813711967\n", output)
 }
 
+// TestGetIncidentCommand_SearchKeysOnlyOutputUsesIncidentKeys preserves the existing command contract with advisory-aware fixtures.
 func TestGetIncidentCommand_SearchKeysOnlyOutputUsesIncidentKeys(t *testing.T) {
 	var requests []string
-	srv := newIncidentSearchCaptureServerWithResponses(t, &requests,
+	srv := newIncidentSearchCaptureServerWithResponses(t, "8.9", &requests,
 		`{"items":[{"errorMessage":"first","incidentKey":"2251799813685253","processInstanceKey":"2251799813711972","state":"ACTIVE","tenantId":"tenant-a"},{"errorMessage":"second","incidentKey":"2251799813685254","processInstanceKey":"2251799813711973","state":"ACTIVE","tenantId":"tenant-a"}],"page":{"totalItems":2,"hasMoreTotalItems":false}}`,
 	)
 	t.Cleanup(srv.Close)
@@ -176,9 +181,10 @@ func TestGetIncidentCommand_SearchKeysOnlyOutputUsesIncidentKeys(t *testing.T) {
 	require.Equal(t, "2251799813685253\n2251799813685254\n", output)
 }
 
+// TestGetIncidentCommand_SearchPIKeysOnlyOutputUsesProcessInstanceKeys preserves the existing command contract with advisory-aware fixtures.
 func TestGetIncidentCommand_SearchPIKeysOnlyOutputUsesProcessInstanceKeys(t *testing.T) {
 	var requests []string
-	srv := newIncidentSearchCaptureServerWithResponses(t, &requests,
+	srv := newIncidentSearchCaptureServerWithResponses(t, "8.9", &requests,
 		`{"items":[{"errorMessage":"first","incidentKey":"2251799813685253","processInstanceKey":"2251799813711972","state":"ACTIVE","tenantId":"tenant-a"},{"errorMessage":"second","incidentKey":"2251799813685254","processInstanceKey":"2251799813711972","state":"ACTIVE","tenantId":"tenant-a"},{"errorMessage":"missing","incidentKey":"2251799813685255","state":"ACTIVE","tenantId":"tenant-a"}],"page":{"totalItems":3,"hasMoreTotalItems":false}}`,
 	)
 	t.Cleanup(srv.Close)
@@ -195,9 +201,14 @@ func TestGetIncidentCommand_SearchPIKeysOnlyOutputUsesProcessInstanceKeys(t *tes
 	require.Equal(t, "2251799813711972\n2251799813711972\n", output)
 }
 
+// TestGetIncidentBpmnSelectorMissingFailsBeforeSearch preserves the existing command contract with advisory-aware fixtures.
 func TestGetIncidentBpmnSelectorMissingFailsBeforeSearch(t *testing.T) {
 	var requests []string
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.9") {
+			return
+		}
+
 		requests = append(requests, r.Method+" "+r.URL.Path)
 		require.Equal(t, http.MethodPost, r.Method)
 		switch r.URL.Path {
@@ -225,9 +236,14 @@ func TestGetIncidentBpmnSelectorMissingFailsBeforeSearch(t *testing.T) {
 	require.NotContains(t, output, "found: 0")
 }
 
+// TestGetIncidentBpmnSelectorVisiblePreservesEmptyOutput preserves the existing command contract with advisory-aware fixtures.
 func TestGetIncidentBpmnSelectorVisiblePreservesEmptyOutput(t *testing.T) {
 	var requests []string
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.9") {
+			return
+		}
+
 		requests = append(requests, r.Method+" "+r.URL.Path)
 		require.Equal(t, http.MethodPost, r.Method)
 		w.Header().Set("Content-Type", "application/json")
@@ -254,6 +270,7 @@ func TestGetIncidentBpmnSelectorVisiblePreservesEmptyOutput(t *testing.T) {
 	require.Equal(t, "found: 0\n", output)
 }
 
+// TestGetIncidentBpmnSelectorMissingNoPromptModes preserves the existing command contract with advisory-aware fixtures.
 func TestGetIncidentBpmnSelectorMissingNoPromptModes(t *testing.T) {
 	tests := []struct {
 		name string
@@ -270,6 +287,10 @@ func TestGetIncidentBpmnSelectorMissingNoPromptModes(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			var requests []string
 			srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if serveVersionCheckTopology(w, r, "8.9") {
+					return
+				}
+
 				requests = append(requests, r.Method+" "+r.URL.Path)
 				require.Equal(t, http.MethodPost, r.Method)
 				switch r.URL.Path {
@@ -294,9 +315,14 @@ func TestGetIncidentBpmnSelectorMissingNoPromptModes(t *testing.T) {
 	}
 }
 
+// TestGetIncidentBpmnSelectorValidationUsesTenantContext preserves the existing command contract with advisory-aware fixtures.
 func TestGetIncidentBpmnSelectorValidationUsesTenantContext(t *testing.T) {
 	var processDefinitionSearchBody string
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.9") {
+			return
+		}
+
 		require.Equal(t, http.MethodPost, r.Method)
 		switch r.URL.Path {
 		case "/v2/process-definitions/search":
@@ -348,7 +374,7 @@ func TestGetIncidentCommand_RegressionSelectionAndDisplayFlagsRemainDistinct(t *
 	)
 
 	var requests []string
-	srv := newIncidentSearchCaptureServerWithResponses(t, &requests,
+	srv := newIncidentSearchCaptureServerWithResponses(t, "8.9", &requests,
 		`{"items":[{"errorMessage":"No retries left","errorType":"JOB_NO_RETRIES","incidentKey":"2251799813685253","processInstanceKey":"2251799813711972","state":"ACTIVE","tenantId":"tenant-a"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`,
 	)
 	t.Cleanup(srv.Close)
@@ -369,9 +395,10 @@ func TestGetIncidentCommand_RegressionSelectionAndDisplayFlagsRemainDistinct(t *
 	require.Equal(t, "2251799813711972\n", output)
 }
 
+// TestGetIncidentCommand_SearchPIKeysOnlyIncrementalPagesOmitFound preserves the existing command contract with advisory-aware fixtures.
 func TestGetIncidentCommand_SearchPIKeysOnlyIncrementalPagesOmitFound(t *testing.T) {
 	var requests []string
-	srv := newIncidentSearchCaptureServerWithResponses(t, &requests,
+	srv := newIncidentSearchCaptureServerWithResponses(t, "8.9", &requests,
 		`{"items":[{"errorMessage":"first","incidentKey":"2251799813685253","processInstanceKey":"2251799813711972","state":"ACTIVE","tenantId":"tenant-a"},{"errorMessage":"second","incidentKey":"2251799813685254","processInstanceKey":"2251799813711973","state":"ACTIVE","tenantId":"tenant-a"}],"page":{"totalItems":4,"hasMoreTotalItems":true}}`,
 		`{"items":[{"errorMessage":"third","incidentKey":"2251799813685255","processInstanceKey":"2251799813711974","state":"ACTIVE","tenantId":"tenant-a"},{"errorMessage":"fourth","incidentKey":"2251799813685256","processInstanceKey":"2251799813711975","state":"ACTIVE","tenantId":"tenant-a"}],"page":{"totalItems":4,"hasMoreTotalItems":false}}`,
 	)
@@ -403,7 +430,7 @@ func TestGetIncidentCommand_SearchPIKeysOnlyIncrementalPagesOmitFound(t *testing
 // TestGetIncidentCommand_DeclinedPagingUsesCommandStderr verifies the caller passes its stderr writer and treats decline as a normal stop.
 func TestGetIncidentCommand_DeclinedPagingUsesCommandStderr(t *testing.T) {
 	var requests []string
-	srv := newIncidentSearchCaptureServerWithResponses(t, &requests,
+	srv := newIncidentSearchCaptureServerWithResponses(t, "8.9", &requests,
 		`{"items":[{"errorMessage":"first","incidentKey":"2251799813685253","processInstanceKey":"2251799813711972","state":"ACTIVE","tenantId":"tenant-a"}],"page":{"totalItems":2,"hasMoreTotalItems":true}}`,
 		`{"items":[{"errorMessage":"second","incidentKey":"2251799813685254","processInstanceKey":"2251799813711973","state":"ACTIVE","tenantId":"tenant-a"}],"page":{"totalItems":2,"hasMoreTotalItems":false}}`,
 	)
@@ -435,7 +462,7 @@ func TestGetIncidentCommand_DeclinedPagingUsesCommandStderr(t *testing.T) {
 // TestGetIncidentCommand_SearchSkipsPromptForEmptyFilteredPages verifies locally filtered empty pages do not make interactive users confirm before any rows are shown.
 func TestGetIncidentCommand_SearchSkipsPromptForEmptyFilteredPages(t *testing.T) {
 	var requests []string
-	srv := newIncidentSearchCaptureServerWithResponses(t, &requests,
+	srv := newIncidentSearchCaptureServerWithResponses(t, "8.9", &requests,
 		`{"items":[],"page":{"totalItems":3,"hasMoreTotalItems":true}}`,
 		`{"items":[{"errorMessage":"first","incidentKey":"2251799813685253","processInstanceKey":"2251799813711972","state":"ACTIVE","tenantId":"tenant-a"}],"page":{"totalItems":3,"hasMoreTotalItems":true}}`,
 		`{"items":[{"errorMessage":"second","incidentKey":"2251799813685254","processInstanceKey":"2251799813711973","state":"ACTIVE","tenantId":"tenant-a"}],"page":{"totalItems":3,"hasMoreTotalItems":false}}`,
@@ -465,9 +492,10 @@ func TestGetIncidentCommand_SearchSkipsPromptForEmptyFilteredPages(t *testing.T)
 	require.Contains(t, output, "found: 2")
 }
 
+// TestGetIncidentCommand_TotalUsesExactReportedBackendTotal preserves the existing command contract with advisory-aware fixtures.
 func TestGetIncidentCommand_TotalUsesExactReportedBackendTotal(t *testing.T) {
 	var requests []string
-	srv := newIncidentSearchCaptureServerWithResponses(t, &requests,
+	srv := newIncidentSearchCaptureServerWithResponses(t, "8.9", &requests,
 		`{"items":[{"errorMessage":"first","incidentKey":"2251799813685253","processInstanceKey":"2251799813711972","state":"ACTIVE","tenantId":"tenant-a"}],"page":{"totalItems":7,"hasMoreTotalItems":false}}`,
 	)
 	t.Cleanup(srv.Close)
@@ -483,9 +511,10 @@ func TestGetIncidentCommand_TotalUsesExactReportedBackendTotal(t *testing.T) {
 	require.Equal(t, "7\n", output)
 }
 
+// TestGetIncidentCommand_TotalCountsLocalFilteredMatchesAcrossPages preserves the existing command contract with advisory-aware fixtures.
 func TestGetIncidentCommand_TotalCountsLocalFilteredMatchesAcrossPages(t *testing.T) {
 	var requests []string
-	srv := newIncidentSearchCaptureServerWithResponses(t, &requests,
+	srv := newIncidentSearchCaptureServerWithResponses(t, "8.9", &requests,
 		`{"items":[{"errorMessage":"No retries left","incidentKey":"2251799813685257","processInstanceKey":"2251799813711976","state":"ACTIVE","tenantId":"tenant-a"},{"errorMessage":"Mapping failed","incidentKey":"2251799813685258","processInstanceKey":"2251799813711977","state":"ACTIVE","tenantId":"tenant-a"}],"page":{"totalItems":4,"hasMoreTotalItems":true}}`,
 		`{"items":[{"errorMessage":"first intentional failure","incidentKey":"2251799813685259","processInstanceKey":"2251799813711978","state":"ACTIVE","tenantId":"tenant-a"},{"errorMessage":"second INTENTIONAL issue","incidentKey":"2251799813685260","processInstanceKey":"2251799813711979","state":"ACTIVE","tenantId":"tenant-a"}],"page":{"totalItems":4,"hasMoreTotalItems":false}}`,
 	)
@@ -601,9 +630,10 @@ func TestGetIncidentCommand_RejectsPIKeysOnlyMessageOutputModifiersBeforeRequest
 	}
 }
 
+// TestGetIncidentCommand_WithNoErrorMessageOmitsHumanMessageTail preserves the existing command contract with advisory-aware fixtures.
 func TestGetIncidentCommand_WithNoErrorMessageOmitsHumanMessageTail(t *testing.T) {
 	var requests []string
-	srv := newIncidentLookupServer(t, &requests, map[string]string{
+	srv := newIncidentLookupServer(t, "8.9", &requests, map[string]string{
 		"2251799813685249": incidentLookupResultJSON("2251799813685249", "2251799813711967", "No retries left"),
 	})
 	t.Cleanup(srv.Close)
@@ -662,9 +692,10 @@ func TestGetIncidentCommand_RejectsTotalWithMachineOutput(t *testing.T) {
 	}
 }
 
+// TestGetIncidentCommand_NotFoundExitsWithNotFound preserves the existing command contract with advisory-aware fixtures.
 func TestGetIncidentCommand_NotFoundExitsWithNotFound(t *testing.T) {
 	var requests []string
-	srv := newIncidentLookupServer(t, &requests, map[string]string{})
+	srv := newIncidentLookupServer(t, "8.8", &requests, map[string]string{})
 	t.Cleanup(srv.Close)
 	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
 
@@ -693,9 +724,10 @@ func TestGetIncidentCommand_NotFoundExitsWithNotFoundHelper(t *testing.T) {
 	Execute()
 }
 
+// TestGetIncidentCommand_SearchDefaultsToActiveState preserves the existing command contract with advisory-aware fixtures.
 func TestGetIncidentCommand_SearchDefaultsToActiveState(t *testing.T) {
 	var requests []string
-	srv := newIncidentSearchCaptureServerWithResponses(t, &requests,
+	srv := newIncidentSearchCaptureServerWithResponses(t, "8.9", &requests,
 		`{"items":[{"creationTime":"2026-03-23T18:01:00Z","elementId":"task-a","elementInstanceKey":"2251799813685300","errorMessage":"No retries left","errorType":"JOB_NO_RETRIES","incidentKey":"2251799813685249","processDefinitionId":"demo","processDefinitionKey":"2251799813685200","processInstanceKey":"2251799813711967","state":"ACTIVE","tenantId":"tenant-a"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`,
 	)
 	t.Cleanup(srv.Close)
@@ -713,9 +745,10 @@ func TestGetIncidentCommand_SearchDefaultsToActiveState(t *testing.T) {
 	require.Contains(t, output, "found: 1")
 }
 
+// TestGetIncidentCommand_SearchStateAllOmitsStateFilter preserves the existing command contract with advisory-aware fixtures.
 func TestGetIncidentCommand_SearchStateAllOmitsStateFilter(t *testing.T) {
 	var requests []string
-	srv := newIncidentSearchCaptureServerWithResponses(t, &requests,
+	srv := newIncidentSearchCaptureServerWithResponses(t, "8.9", &requests,
 		`{"items":[{"errorMessage":"resolved earlier","errorType":"JOB_NO_RETRIES","incidentKey":"2251799813685250","processInstanceKey":"2251799813711968","state":"RESOLVED","tenantId":"tenant-a"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`,
 	)
 	t.Cleanup(srv.Close)
@@ -733,9 +766,10 @@ func TestGetIncidentCommand_SearchStateAllOmitsStateFilter(t *testing.T) {
 	require.Contains(t, output, "found: 1")
 }
 
+// TestGetIncidentCommand_SearchNormalizesCaseInsensitiveState preserves the existing command contract with advisory-aware fixtures.
 func TestGetIncidentCommand_SearchNormalizesCaseInsensitiveState(t *testing.T) {
 	var requests []string
-	srv := newIncidentSearchCaptureServerWithResponses(t, &requests,
+	srv := newIncidentSearchCaptureServerWithResponses(t, "8.9", &requests,
 		`{"items":[{"errorMessage":"resolved earlier","errorType":"JOB_NO_RETRIES","incidentKey":"2251799813685250","processInstanceKey":"2251799813711968","state":"RESOLVED","tenantId":"tenant-a"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`,
 	)
 	t.Cleanup(srv.Close)
@@ -762,9 +796,10 @@ func TestGetIncidentCommand_RejectsInvalidStateBeforeLookup(t *testing.T) {
 	require.Empty(t, output)
 }
 
+// TestGetIncidentCommand_SearchNormalizesCaseInsensitiveErrorType preserves the existing command contract with advisory-aware fixtures.
 func TestGetIncidentCommand_SearchNormalizesCaseInsensitiveErrorType(t *testing.T) {
 	var requests []string
-	srv := newIncidentSearchCaptureServerWithResponses(t, &requests,
+	srv := newIncidentSearchCaptureServerWithResponses(t, "8.9", &requests,
 		`{"items":[{"errorMessage":"Mapping failed","errorType":"IO_MAPPING_ERROR","incidentKey":"2251799813685251","processInstanceKey":"2251799813711969","state":"ACTIVE","tenantId":"tenant-a"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`,
 	)
 	t.Cleanup(srv.Close)
@@ -792,9 +827,10 @@ func TestGetIncidentCommand_RejectsInvalidErrorType(t *testing.T) {
 	require.Empty(t, output)
 }
 
+// TestGetIncidentCommand_SearchCoreProcessAndElementFilters preserves the existing command contract with advisory-aware fixtures.
 func TestGetIncidentCommand_SearchCoreProcessAndElementFilters(t *testing.T) {
 	var requests []string
-	srv := newIncidentSearchCaptureServerWithResponses(t, &requests,
+	srv := newIncidentSearchCaptureServerWithResponses(t, "8.9", &requests,
 		`{"items":[{"creationTime":"2026-03-23T18:01:00Z","elementId":"task-a","elementInstanceKey":"2251799813685303","errorMessage":"No retries left","errorType":"JOB_NO_RETRIES","incidentKey":"2251799813685252","processDefinitionId":"order-process","processDefinitionKey":"2251799813685201","processInstanceKey":"2251799813711970","rootProcessInstanceKey":"2251799813711971","state":"ACTIVE","tenantId":"tenant-a"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`,
 	)
 	t.Cleanup(srv.Close)
@@ -843,9 +879,10 @@ func TestGetIncidentCommand_RejectsLegacyFlowNodeFilterFlags(t *testing.T) {
 	}
 }
 
+// TestGetIncidentCommand_SearchCreationTimeWindow preserves the existing command contract with advisory-aware fixtures.
 func TestGetIncidentCommand_SearchCreationTimeWindow(t *testing.T) {
 	var requests []string
-	srv := newIncidentSearchCaptureServerWithResponses(t, &requests,
+	srv := newIncidentSearchCaptureServerWithResponses(t, "8.9", &requests,
 		`{"items":[{"creationTime":"2026-05-09T10:15:00Z","errorMessage":"No retries left","errorType":"JOB_NO_RETRIES","incidentKey":"2251799813685253","processInstanceKey":"2251799813711972","state":"ACTIVE","tenantId":"tenant-a"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`,
 	)
 	t.Cleanup(srv.Close)
@@ -867,9 +904,10 @@ func TestGetIncidentCommand_SearchCreationTimeWindow(t *testing.T) {
 	require.Contains(t, output, "found: 1")
 }
 
+// TestGetIncidentCommand_SearchCreationTimeAcceptsDateOnlyBounds preserves the existing command contract with advisory-aware fixtures.
 func TestGetIncidentCommand_SearchCreationTimeAcceptsDateOnlyBounds(t *testing.T) {
 	var requests []string
-	srv := newIncidentSearchCaptureServerWithResponses(t, &requests,
+	srv := newIncidentSearchCaptureServerWithResponses(t, "8.9", &requests,
 		`{"items":[],"page":{"totalItems":0,"hasMoreTotalItems":false}}`,
 	)
 	t.Cleanup(srv.Close)
@@ -888,9 +926,10 @@ func TestGetIncidentCommand_SearchCreationTimeAcceptsDateOnlyBounds(t *testing.T
 	require.Contains(t, output, "found: 0")
 }
 
+// TestGetIncidentCommand_SearchCreationTimeAcceptsDisplayedTimestamps preserves the existing command contract with advisory-aware fixtures.
 func TestGetIncidentCommand_SearchCreationTimeAcceptsDisplayedTimestamps(t *testing.T) {
 	var requests []string
-	srv := newIncidentSearchCaptureServerWithResponses(t, &requests,
+	srv := newIncidentSearchCaptureServerWithResponses(t, "8.9", &requests,
 		`{"items":[],"page":{"totalItems":0,"hasMoreTotalItems":false}}`,
 	)
 	t.Cleanup(srv.Close)
@@ -909,6 +948,7 @@ func TestGetIncidentCommand_SearchCreationTimeAcceptsDisplayedTimestamps(t *test
 	require.Contains(t, output, "found: 0")
 }
 
+// TestGetIncidentCommand_SearchCreationTimeRelativeDayBounds preserves the existing command contract with advisory-aware fixtures.
 func TestGetIncidentCommand_SearchCreationTimeRelativeDayBounds(t *testing.T) {
 	prevNow := relativeDayNow
 	relativeDayNow = func() time.Time {
@@ -919,7 +959,7 @@ func TestGetIncidentCommand_SearchCreationTimeRelativeDayBounds(t *testing.T) {
 	})
 
 	var requests []string
-	srv := newIncidentSearchCaptureServerWithResponses(t, &requests,
+	srv := newIncidentSearchCaptureServerWithResponses(t, "8.9", &requests,
 		`{"items":[],"page":{"totalItems":0,"hasMoreTotalItems":false}}`,
 	)
 	t.Cleanup(srv.Close)
@@ -974,9 +1014,10 @@ func TestGetIncidentCommand_RejectsInvalidCreationTimeCombinationsBeforeLookup(t
 	require.Empty(t, output)
 }
 
+// TestGetIncidentCommand_SearchAutoConfirmContinuesPagesAndHonorsLimit preserves the existing command contract with advisory-aware fixtures.
 func TestGetIncidentCommand_SearchAutoConfirmContinuesPagesAndHonorsLimit(t *testing.T) {
 	var requests []string
-	srv := newIncidentSearchCaptureServerWithResponses(t, &requests,
+	srv := newIncidentSearchCaptureServerWithResponses(t, "8.9", &requests,
 		`{"items":[{"errorMessage":"first","incidentKey":"2251799813685253","processInstanceKey":"2251799813711972","state":"ACTIVE","tenantId":"tenant-a"},{"errorMessage":"second","incidentKey":"2251799813685254","processInstanceKey":"2251799813711973","state":"ACTIVE","tenantId":"tenant-a"}],"page":{"totalItems":4,"hasMoreTotalItems":true}}`,
 		`{"items":[{"errorMessage":"third","incidentKey":"2251799813685255","processInstanceKey":"2251799813711974","state":"ACTIVE","tenantId":"tenant-a"},{"errorMessage":"fourth","incidentKey":"2251799813685256","processInstanceKey":"2251799813711975","state":"ACTIVE","tenantId":"tenant-a"}],"page":{"totalItems":4,"hasMoreTotalItems":false}}`,
 	)
@@ -1004,7 +1045,7 @@ func TestGetIncidentCommand_SearchAutoConfirmContinuesPagesAndHonorsLimit(t *tes
 // TestGetIncidentCommand_SearchVerboseProgress verifies paged incident search reports durable progress away from stdout.
 func TestGetIncidentCommand_SearchVerboseProgress(t *testing.T) {
 	var requests []string
-	srv := newIncidentSearchCaptureServerWithResponses(t, &requests,
+	srv := newIncidentSearchCaptureServerWithResponses(t, "8.9", &requests,
 		`{"items":[{"errorMessage":"first","incidentKey":"2251799813685253","processInstanceKey":"2251799813711972","state":"ACTIVE","tenantId":"tenant-a"},{"errorMessage":"second","incidentKey":"2251799813685254","processInstanceKey":"2251799813711973","state":"ACTIVE","tenantId":"tenant-a"}],"page":{"totalItems":3,"hasMoreTotalItems":true}}`,
 		`{"items":[{"errorMessage":"third","incidentKey":"2251799813685255","processInstanceKey":"2251799813711974","state":"ACTIVE","tenantId":"tenant-a"}],"page":{"totalItems":3,"hasMoreTotalItems":false}}`,
 	)
@@ -1033,7 +1074,7 @@ func TestGetIncidentCommand_SearchVerboseProgress(t *testing.T) {
 func TestGetIncidentCommand_SearchMachineOutputStaysProgressFree(t *testing.T) {
 	t.Run("json", func(t *testing.T) {
 		var requests []string
-		srv := newIncidentSearchCaptureServerWithResponses(t, &requests,
+		srv := newIncidentSearchCaptureServerWithResponses(t, "8.9", &requests,
 			`{"items":[{"errorMessage":"first","incidentKey":"2251799813685253","processInstanceKey":"2251799813711972","state":"ACTIVE","tenantId":"tenant-a"}],"page":{"totalItems":2,"hasMoreTotalItems":true}}`,
 			`{"items":[{"errorMessage":"second","incidentKey":"2251799813685254","processInstanceKey":"2251799813711973","state":"ACTIVE","tenantId":"tenant-a"}],"page":{"totalItems":2,"hasMoreTotalItems":false}}`,
 		)
@@ -1061,7 +1102,7 @@ func TestGetIncidentCommand_SearchMachineOutputStaysProgressFree(t *testing.T) {
 
 	t.Run("keys only", func(t *testing.T) {
 		var requests []string
-		srv := newIncidentSearchCaptureServerWithResponses(t, &requests,
+		srv := newIncidentSearchCaptureServerWithResponses(t, "8.9", &requests,
 			`{"items":[{"errorMessage":"first","incidentKey":"2251799813685253","processInstanceKey":"2251799813711972","state":"ACTIVE","tenantId":"tenant-a"},{"errorMessage":"second","incidentKey":"2251799813685254","processInstanceKey":"2251799813711973","state":"ACTIVE","tenantId":"tenant-a"}],"page":{"totalItems":2,"hasMoreTotalItems":false}}`,
 		)
 		t.Cleanup(srv.Close)
@@ -1082,9 +1123,10 @@ func TestGetIncidentCommand_SearchMachineOutputStaysProgressFree(t *testing.T) {
 	})
 }
 
+// TestGetIncidentCommand_SearchErrorMessageMatchesCaseInsensitiveAcrossPages preserves the existing command contract with advisory-aware fixtures.
 func TestGetIncidentCommand_SearchErrorMessageMatchesCaseInsensitiveAcrossPages(t *testing.T) {
 	var requests []string
-	srv := newIncidentSearchCaptureServerWithResponses(t, &requests,
+	srv := newIncidentSearchCaptureServerWithResponses(t, "8.9", &requests,
 		`{"items":[{"errorMessage":"No retries left","incidentKey":"2251799813685257","processInstanceKey":"2251799813711976","state":"ACTIVE","tenantId":"tenant-a"},{"errorMessage":"Mapping failed","incidentKey":"2251799813685258","processInstanceKey":"2251799813711977","state":"ACTIVE","tenantId":"tenant-a"}],"page":{"totalItems":4,"hasMoreTotalItems":true}}`,
 		`{"items":[{"errorMessage":"first intentional failure","incidentKey":"2251799813685259","processInstanceKey":"2251799813711978","state":"ACTIVE","tenantId":"tenant-a"},{"errorMessage":"second INTENTIONAL issue","incidentKey":"2251799813685260","processInstanceKey":"2251799813711979","state":"ACTIVE","tenantId":"tenant-a"}],"page":{"totalItems":4,"hasMoreTotalItems":false}}`,
 	)
@@ -1142,9 +1184,14 @@ func (incidentActivityAPI) SearchIncidentsPages(ctx context.Context, filter inci
 	return incident.SearchPagesResult{Items: page.Items, Limit: limit, Pages: 1}, nil
 }
 
-func newIncidentLookupServer(t *testing.T, requests *[]string, responses map[string]string) *httptest.Server {
+// newIncidentLookupServer keeps fixture setup aligned with the invocation's advisory version check.
+func newIncidentLookupServer(t *testing.T, version string, requests *[]string, responses map[string]string) *httptest.Server {
 	t.Helper()
 	return newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, version) {
+			return
+		}
+
 		require.Equal(t, http.MethodGet, r.Method)
 		require.True(t, strings.HasPrefix(r.URL.Path, "/v2/incidents/"))
 		*requests = append(*requests, r.Method+" "+r.URL.Path)
@@ -1159,11 +1206,16 @@ func newIncidentLookupServer(t *testing.T, requests *[]string, responses map[str
 	}))
 }
 
-func newIncidentSearchCaptureServerWithResponses(t *testing.T, requests *[]string, responses ...string) *httptest.Server {
+// newIncidentSearchCaptureServerWithResponses keeps fixture setup aligned with the invocation's advisory version check.
+func newIncidentSearchCaptureServerWithResponses(t *testing.T, version string, requests *[]string, responses ...string) *httptest.Server {
 	t.Helper()
 
 	served := 0
 	return newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, version) {
+			return
+		}
+
 		require.Equal(t, http.MethodPost, r.Method)
 		if r.URL.Path == "/v2/process-definitions/search" {
 			writeVisibleProcessDefinitionSearchResponse(w)

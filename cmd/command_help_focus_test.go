@@ -49,3 +49,11 @@ func TestProcessInstanceMutationStateHelp(t *testing.T) {
 		})
 	}
 }
+
+// TestVersionCheckHelp explains advisory scope and the independent explicit read.
+func TestVersionCheckHelp(t *testing.T) {
+	for _, fragment := range []string{"major/minor", "two seconds", "shared", "--no-version-check", "configured adapter"} {
+		require.Contains(t, Root().Long, fragment)
+	}
+	require.Contains(t, configTestConnectionCmd.Long, "disables only that advisory")
+}

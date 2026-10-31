@@ -62,7 +62,7 @@ func New(cfg *config.Config, httpClient *http.Client, log *slog.Logger, opts ...
 	}
 	c, err := camundav89.NewClientWithResponses(
 		deps.Config.APIs.Camunda.BaseURL,
-		camundav89.WithHTTPClient(deps.HTTPClient),
+		camundav89.WithHTTPClient(deps.APIClient),
 	)
 	if err != nil {
 		return nil, err

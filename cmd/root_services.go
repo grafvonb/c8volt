@@ -50,6 +50,7 @@ func installRemoteCommandServices(ctx context.Context, cfg *config.Config, log *
 	httpSvc.InstallAuthEditor(ator.Editor())
 	ctx = httpSvc.ToContext(ctx)
 	ctx = authenticator.ToContext(ctx, ator)
+	ctx = installVersionCheck(ctx, cfg, httpSvc.Client(), log)
 	initialized = true
 	return ctx, nil
 }

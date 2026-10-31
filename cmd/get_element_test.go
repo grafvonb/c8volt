@@ -210,9 +210,10 @@ func TestGetElementCommand_RejectsListenerOutputConflicts(t *testing.T) {
 	}
 }
 
+// TestGetElementCommand_SearchHumanOutput preserves the existing command contract with advisory-aware fixtures.
 func TestGetElementCommand_SearchHumanOutput(t *testing.T) {
 	var requests []string
-	srv := newElementSearchServer(t, &requests, `{
+	srv := newElementSearchServer(t, "8.8", &requests, `{
   "items": [
     {
       "elementInstanceKey": "2251799813689002",
@@ -260,7 +261,7 @@ func TestGetElementCommand_SearchHumanOutput(t *testing.T) {
 // a stable total/items payload for bounded element search results.
 func TestGetElementCommand_SearchJSONOutput(t *testing.T) {
 	var bodies []map[string]any
-	srv := newElementSearchServerResponses(t, &bodies, `{
+	srv := newElementSearchServerResponses(t, "8.8", &bodies, `{
   "items": [
     {
       "elementInstanceKey": "2251799813689002",
@@ -318,7 +319,7 @@ func TestGetElementCommand_SearchJSONOutput(t *testing.T) {
 // so automation can pipe runtime element identifiers without row text.
 func TestGetElementCommand_SearchKeysOnlyOutput(t *testing.T) {
 	var bodies []map[string]any
-	srv := newElementSearchServerResponses(t, &bodies, `{
+	srv := newElementSearchServerResponses(t, "8.9", &bodies, `{
   "items": [
     {"elementInstanceKey": "2251799813689002", "state": "ACTIVE"},
     {"elementInstanceKey": "2251799813689003", "state": "COMPLETED"}
@@ -338,7 +339,7 @@ func TestGetElementCommand_SearchKeysOnlyOutput(t *testing.T) {
 func TestGetElementCommand_SearchMachineOutputStaysProgressFree(t *testing.T) {
 	t.Run("json", func(t *testing.T) {
 		var bodies []map[string]any
-		srv := newElementSearchServerResponses(t, &bodies,
+		srv := newElementSearchServerResponses(t, "8.9", &bodies,
 			`{"items":[{"elementInstanceKey":"2251799813689002","elementId":"ship-order","type":"SERVICE_TASK","state":"ACTIVE","processInstanceKey":"2251799813688001","tenantId":"tenant-a"}],"page":{"totalItems":2,"hasMoreTotalItems":true}}`,
 			`{"items":[{"elementInstanceKey":"2251799813689003","elementId":"finish-order","type":"END_EVENT","state":"COMPLETED","processInstanceKey":"2251799813688001","tenantId":"tenant-a"}],"page":{"totalItems":2,"hasMoreTotalItems":false}}`,
 		)
@@ -366,7 +367,7 @@ func TestGetElementCommand_SearchMachineOutputStaysProgressFree(t *testing.T) {
 
 	t.Run("keys only", func(t *testing.T) {
 		var bodies []map[string]any
-		srv := newElementSearchServerResponses(t, &bodies, `{
+		srv := newElementSearchServerResponses(t, "8.9", &bodies, `{
   "items": [
     {"elementInstanceKey": "2251799813689002", "state": "ACTIVE"},
     {"elementInstanceKey": "2251799813689003", "state": "COMPLETED"}
@@ -457,7 +458,7 @@ func TestSearchElementsWithPagingRendersServiceSelectedPage(t *testing.T) {
 // rendering only the numeric count reported by the backend when exact.
 func TestGetElementCommand_SearchTotalOnlyOutput(t *testing.T) {
 	var bodies []map[string]any
-	srv := newElementSearchServerResponses(t, &bodies, `{
+	srv := newElementSearchServerResponses(t, "8.8", &bodies, `{
   "items": [
     {"elementInstanceKey": "2251799813689002", "state": "ACTIVE"}
   ],
@@ -475,7 +476,7 @@ func TestGetElementCommand_SearchTotalOnlyOutput(t *testing.T) {
 // TestGetElementCommand_SearchVerboseProgress verifies paged element search reports durable progress away from stdout.
 func TestGetElementCommand_SearchVerboseProgress(t *testing.T) {
 	var bodies []map[string]any
-	srv := newElementSearchServerResponses(t, &bodies,
+	srv := newElementSearchServerResponses(t, "8.9", &bodies,
 		`{"items":[{"elementInstanceKey":"2251799813689002","state":"ACTIVE"},{"elementInstanceKey":"2251799813689003","state":"ACTIVE"}],"page":{"totalItems":3,"hasMoreTotalItems":true}}`,
 		`{"items":[{"elementInstanceKey":"2251799813689004","state":"COMPLETED"}],"page":{"totalItems":3,"hasMoreTotalItems":false}}`,
 	)
@@ -529,9 +530,10 @@ func TestSearchElementsWithListenersUpdatesFrozenProgressActivity(t *testing.T) 
 	require.Equal(t, []string{"loading listener jobs for matching element process instance(s)"}, msgs)
 }
 
+// TestGetElementCommand_KeyedLookupHumanOutput preserves the existing command contract with advisory-aware fixtures.
 func TestGetElementCommand_KeyedLookupHumanOutput(t *testing.T) {
 	var requests []string
-	srv := newElementLookupServer(t, &requests, http.StatusOK, `{
+	srv := newElementLookupServer(t, "8.8", &requests, http.StatusOK, `{
   "elementInstanceKey": "2251799813689002",
   "elementId": "ship-order",
   "elementName": "Ship order",
@@ -577,9 +579,10 @@ func TestGetElementCommand_KeyedLookupHumanOutputHelper(t *testing.T) {
 	Execute()
 }
 
+// TestGetElementCommand_KeyedLookupJSONOutput preserves the existing command contract with advisory-aware fixtures.
 func TestGetElementCommand_KeyedLookupJSONOutput(t *testing.T) {
 	var requests []string
-	srv := newElementLookupServer(t, &requests, http.StatusOK, `{
+	srv := newElementLookupServer(t, "8.8", &requests, http.StatusOK, `{
   "elementInstanceKey": "2251799813689002",
   "elementId": "ship-order",
   "type": "SERVICE_TASK",
@@ -609,7 +612,7 @@ func TestGetElementCommand_KeyedLookupJSONOutput(t *testing.T) {
 // TestGetElementCommand_KeyedLookupWithListenersHumanOutput nests matched listener jobs under the fetched element row.
 func TestGetElementCommand_KeyedLookupWithListenersHumanOutput(t *testing.T) {
 	var requests []string
-	srv := newElementWithListenersServer(t, &requests, []string{`{
+	srv := newElementWithListenersServer(t, "8.8", &requests, []string{`{
   "elementInstanceKey": "2251799813689002",
   "elementId": "ship-order",
   "type": "SERVICE_TASK",
@@ -652,7 +655,7 @@ func TestGetElementCommand_KeyedLookupWithListenersHumanOutput(t *testing.T) {
 // TestGetElementCommand_SearchWithListenersHumanOutput preserves timestamp meaning through the search execution path.
 func TestGetElementCommand_SearchWithListenersHumanOutput(t *testing.T) {
 	var requests []string
-	srv := newElementWithListenersServer(t, &requests, []string{`{"items":[{"elementInstanceKey":"2251799813689002","elementId":"ship-order","type":"SERVICE_TASK","state":"ACTIVE","processInstanceKey":"2251799813688001","tenantId":"tenant-a","hasIncident":false}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`}, []string{
+	srv := newElementWithListenersServer(t, "8.8", &requests, []string{`{"items":[{"elementInstanceKey":"2251799813689002","elementId":"ship-order","type":"SERVICE_TASK","state":"ACTIVE","processInstanceKey":"2251799813688001","tenantId":"tenant-a","hasIncident":false}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`}, []string{
 		`{"items":[{"jobKey":"2251799813689101","kind":"EXECUTION_LISTENER","listenerEventType":"START","type":"audit-start","state":"CANCELED","retries":0,"creationTime":"2026-09-16T13:07:16.359Z","endTime":"2026-09-16T13:07:16.842Z","deadline":"2026-09-16T13:08:00Z","processInstanceKey":"2251799813688001","elementInstanceKey":"2251799813689002"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`,
 		`{"items":[],"page":{"totalItems":0,"hasMoreTotalItems":false}}`,
 	})
@@ -671,7 +674,7 @@ func TestGetElementCommand_SearchWithListenersHumanOutput(t *testing.T) {
 // TestGetElementCommand_SearchWithListenersJSONOutput preserves requested-empty arrays and omits unmatched jobs.
 func TestGetElementCommand_SearchWithListenersJSONOutput(t *testing.T) {
 	var requests []string
-	srv := newElementWithListenersServer(t, &requests, []string{`{
+	srv := newElementWithListenersServer(t, "8.8", &requests, []string{`{
   "items": [
     {"elementInstanceKey":"2251799813689002","elementId":"ship-order","type":"SERVICE_TASK","state":"ACTIVE","processInstanceKey":"2251799813688001","tenantId":"tenant-a","hasIncident":false},
     {"elementInstanceKey":"2251799813689003","elementId":"finish-order","type":"END_EVENT","state":"COMPLETED","processInstanceKey":"2251799813688001","tenantId":"tenant-a","hasIncident":false}
@@ -709,9 +712,14 @@ func TestGetElementCommand_SearchWithListenersJSONOutput(t *testing.T) {
 	require.Empty(t, second["listeners"].([]any))
 }
 
-func newElementLookupServer(t *testing.T, requests *[]string, status int, response string) *httptest.Server {
+// newElementLookupServer keeps fixture setup aligned with the invocation's advisory version check.
+func newElementLookupServer(t *testing.T, version string, requests *[]string, status int, response string) *httptest.Server {
 	t.Helper()
 	return newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, version) {
+			return
+		}
+
 		require.Equal(t, http.MethodGet, r.Method)
 		require.Equal(t, "/v2/element-instances/2251799813689002", r.URL.Path)
 		*requests = append(*requests, r.Method+" "+r.URL.Path)
@@ -721,9 +729,14 @@ func newElementLookupServer(t *testing.T, requests *[]string, status int, respon
 	}))
 }
 
-func newElementSearchServer(t *testing.T, requests *[]string, response string) *httptest.Server {
+// newElementSearchServer keeps fixture setup aligned with the invocation's advisory version check.
+func newElementSearchServer(t *testing.T, version string, requests *[]string, response string) *httptest.Server {
 	t.Helper()
 	return newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, version) {
+			return
+		}
+
 		require.Equal(t, http.MethodPost, r.Method)
 		require.Equal(t, "/v2/element-instances/search", r.URL.Path)
 		*requests = append(*requests, r.Method+" "+r.URL.Path)
@@ -744,9 +757,13 @@ func newElementSearchServer(t *testing.T, requests *[]string, response string) *
 
 // newElementSearchServerResponses captures element search request bodies while
 // returning one generated-client-compatible response per request.
-func newElementSearchServerResponses(t *testing.T, bodies *[]map[string]any, responses ...string) *httptest.Server {
+func newElementSearchServerResponses(t *testing.T, version string, bodies *[]map[string]any, responses ...string) *httptest.Server {
 	t.Helper()
 	return newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, version) {
+			return
+		}
+
 		require.Equal(t, http.MethodPost, r.Method)
 		require.Equal(t, "/v2/element-instances/search", r.URL.Path)
 		var body map[string]any
@@ -762,11 +779,15 @@ func newElementSearchServerResponses(t *testing.T, bodies *[]map[string]any, res
 }
 
 // newElementWithListenersServer serves generated-compatible element and job search responses.
-func newElementWithListenersServer(t *testing.T, requests *[]string, elementResponses []string, jobResponses []string) *httptest.Server {
+func newElementWithListenersServer(t *testing.T, version string, requests *[]string, elementResponses []string, jobResponses []string) *httptest.Server {
 	t.Helper()
 	var elementCount int
 	var jobCount int
 	return newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, version) {
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
 		case "/v2/element-instances/2251799813689002":

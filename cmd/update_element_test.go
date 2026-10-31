@@ -35,10 +35,14 @@ type elementUpdateFixture struct {
 }
 
 // newElementUpdateFixture serves exact identities and authoritative local pages only.
-func newElementUpdateFixture(t *testing.T) *elementUpdateFixture {
+func newElementUpdateFixture(t *testing.T, version string) *elementUpdateFixture {
 	t.Helper()
 	f := &elementUpdateFixture{writes: map[string]map[string]any{}, reads: map[string]int{}, local: map[string][]string{}}
 	f.server = testx.NewIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, version) {
+			return
+		}
+
 		f.mu.Lock()
 		defer f.mu.Unlock()
 		f.calls = append(f.calls, r.Method+" "+r.URL.Path)
@@ -126,7 +130,7 @@ func TestElementScopeVariablesUpdateExact(t *testing.T) {
 	for _, version := range []string{"8.8", "8.9", "8.10"} {
 		for _, noWait := range []bool{false, true} {
 			t.Run(fmt.Sprintf("%s/noWait=%t", version, noWait), func(t *testing.T) {
-				f := newElementUpdateFixture(t)
+				f := newElementUpdateFixture(t, version)
 				f.local[scopeElementA] = []string{scopeVariableJSON("same", "1", scopeElementA, false), scopeVariableJSON("change", "false", scopeElementA, false), scopeVariableJSON("untouched", "2", scopeElementA, false)}
 				f.local[scopeElementB] = []string{scopeVariableJSON("same", "1", scopeElementB, false), scopeVariableJSON("change", "true", scopeElementB, false), scopeVariableJSON("added", "null", scopeElementB, false)}
 				args := []string{"--tenant", "other-tenant", "--json", "--auto-confirm", "update", "ei", "-", "--key", scopeElementA + "," + scopeElementB, "-k", scopeElementA, "--vars", `{"same":1,"change":true,"added":null}`, "--workers", "1"}
@@ -185,7 +189,7 @@ func TestElementScopeVariablesUpdateInput(t *testing.T) {
 	}
 	for _, flags := range cases {
 		t.Run(strings.Join(flags, " "), func(t *testing.T) {
-			f := newElementUpdateFixture(t)
+			f := newElementUpdateFixture(t, "8.8")
 			_, _, err := runUpdateUserTaskCommand(t, testx.WriteTestConfig(t, f.server.URL), "", append([]string{"update", "element"}, flags...)...)
 			require.Error(t, err)
 			calls, _, _ := f.snapshot()
@@ -194,7 +198,7 @@ func TestElementScopeVariablesUpdateInput(t *testing.T) {
 	}
 	for _, payload := range []string{`{"x":null}`, `[]`, `null`, `{`} {
 		t.Run("file/"+payload, func(t *testing.T) {
-			f := newElementUpdateFixture(t)
+			f := newElementUpdateFixture(t, "8.8")
 			require.NoError(t, os.WriteFile(file, []byte(payload), 0600))
 			out, stderr, err := runUpdateUserTaskCommand(t, testx.WriteTestConfig(t, f.server.URL), "", "--json", "update", "element", "--key", scopeElementA, "--vars-file", file, "--dry-run")
 			calls, _, _ := f.snapshot()
@@ -212,7 +216,7 @@ func TestElementScopeVariablesUpdateInput(t *testing.T) {
 
 // TestElementScopeVariablesUpdatePlanningFailure prevents all writes on a late missing target.
 func TestElementScopeVariablesUpdatePlanningFailure(t *testing.T) {
-	f := newElementUpdateFixture(t)
+	f := newElementUpdateFixture(t, "8.8")
 	f.lookupFailure = scopeElementB
 	out, stderr, err := runUpdateUserTaskCommand(t, testx.WriteTestConfig(t, f.server.URL), "", "--json", "--auto-confirm", "update", "element", "--key", scopeElementA+","+scopeElementB, "--vars", `{"x":1}`)
 	require.Error(t, err)
@@ -227,7 +231,7 @@ func TestElementScopeVariablesUpdatePlanningFailure(t *testing.T) {
 
 // TestElementScopeVariablesUpdateUnsupported preserves bootstrap failure before any request.
 func TestElementScopeVariablesUpdateUnsupported(t *testing.T) {
-	f := newElementUpdateFixture(t)
+	f := newElementUpdateFixture(t, "8.7")
 	out, stderr, err := runUpdateUserTaskCommand(t, testx.WriteTestConfigForVersion(t, f.server.URL, "8.7"), "", "--json", "update", "element", "--key", scopeElementA, "--vars", "{}", "--dry-run")
 	assertUserTaskCompletionExit(t, err, 1)
 	require.Empty(t, out)
