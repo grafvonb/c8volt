@@ -696,7 +696,7 @@ func TestConfigTestConnectionCommand_JSONIncludesVersionMismatchWarning(t *testi
 	require.Len(t, result.Warnings, 1)
 	require.Contains(t, result.Warnings[0], "configured Camunda version 8.8 differs from gateway version 8.9.0")
 	require.Contains(t, result.Warnings[0], "this can cause unexpected errors")
-	require.Contains(t, stderr, "WARN version mismatch: configured 8.8, gateway 8.9.0; using 8.8")
+	require.Contains(t, stderr, "WARN version mismatch: configured 8.8, gateway 8.9.0; results may be incorrect; match config to gateway unless mismatch is intentional")
 	require.NotContains(t, stdout, "WARN")
 	require.NotContains(t, stdout, "Cluster:")
 }
@@ -860,7 +860,7 @@ func TestConfigTestConnectionCommand_VersionComparisonWarnings(t *testing.T) {
 			_, stderr := executeRootWithSeparateOutputsForTest(t, "--config", cfgPath, "config", "test-connection")
 
 			if tc.wantWarning {
-				require.Contains(t, stderr, "WARN version mismatch: configured "+tc.configuredVersion+", gateway "+tc.gatewayVersion+"; using "+tc.configuredVersion)
+				require.Contains(t, stderr, "WARN version mismatch: configured "+tc.configuredVersion+", gateway "+tc.gatewayVersion+"; results may be incorrect; match config to gateway unless mismatch is intentional")
 				return
 			}
 			require.NotContains(t, stderr, "differs from gateway version")

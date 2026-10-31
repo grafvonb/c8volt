@@ -21,10 +21,13 @@ Supports Camunda 8.8, 8.9, and 8.10.
 Camunda 8.10 baseline: 8.10.3 (final).
 Camunda 8.10 aliases: 8.10, 810, v810, v8.10. Default: 8.9.
 Before the first operational API request, check the gateway major/minor version once.
-Mismatch or lookup failure warns and retains the configured adapter. The check
-waits at most two seconds (or a shorter HTTP/workflow timeout), uses shared
+Mismatch or lookup failure warns and retains the configured adapter. A mismatch
+may produce incorrect results; match config to gateway unless mismatch is intentional.
+The check waits at most two seconds (or a shorter HTTP/workflow timeout), uses shared
 request pacing, and can add a pacing slot. Disable it with --no-version-check.
 Local commands perform no check. Explicit version and connection tests still run.
+DEBUG logging adds one summary with gateway/broker versions, available cluster
+counts and a bounded failure reason, using the same lookup and configured logger.
 
 Use capabilities to discover supported commands and automation options.
 

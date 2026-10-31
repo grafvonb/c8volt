@@ -110,7 +110,7 @@ Use the following field constraints from the data model verbatim:
 ### T003 implementation and compatibility
 
 1. Add persistent `--no-version-check` default false, with normal placement and explicit true/false behavior. No new persisted configuration key. Keep focused flag translation/checker installation/outcome access outside root.go; install a fresh gate only after existing HTTP/auth initialization, using the configured command-context logger. Clear/reset the new flag in existing test cleanup without globally disabling default checking. Local validation, help, config-only execution, local preview, and pre-operation abort must not cause a version request.
-2. Render only typed bounded outcome facts through the existing configured WARN logger; do not use direct print, a separate/global logger, extra severity/timestamp text, raw error formatting, or result renderers. Preserve match silence. Exact source examples: `version mismatch: configured 8.9, gateway 8.10.3; using 8.9`, `version check: access denied; using configured 8.9`, and `version check: timeout; using configured 8.9`. Other reasons follow the fixed [contract table](contracts/cli-version-check.md). Respect quiet/ERROR suppression, WARN visibility, format, destination, inheritance, activity routing, and existing quiet/debug precedence. Neither verbosity nor output mode independently disables the check.
+2. Render only typed bounded outcome facts through the existing configured WARN logger; do not use direct print, a separate/global logger, extra severity/timestamp text, raw error formatting, or result renderers. Preserve match silence. Current mismatch text and failure examples: `version mismatch: configured 8.9, gateway 8.10.3; results may be incorrect; match config to gateway unless mismatch is intentional`, `version check: access denied; using configured 8.9`, and `version check: timeout; using configured 8.9`. Other reasons follow the fixed [contract table](contracts/cli-version-check.md). Respect quiet/ERROR suppression, WARN visibility, format, destination, inheritance, activity routing, and existing quiet/debug precedence. Neither verbosity nor output mode independently disables the check.
 3. Preserve `config test-connection`'s real topology operation and legacy actual-result JSON warnings/parser behavior, including historically permissive `8.9.garbage`. Suppress its extra human compatibility warning only when the automatic checker produced a warning outcome, independent of log filtering. A matching advisory followed by a changed actual topology may still warn. With opt-out, explicit connection compatibility evaluation remains available. Safely bound touched human fallback messages without changing machine warning evidence. Explicit `get cluster version`/`get cluster topology` still perform their requested read separately.
 4. Keep results, prompts, existing failure conversion, partial submission evidence, and exits unchanged. Trace failed probe → typed advisory → WARN, then ordinary service failure → facade conversion → rendering/logger → original exit. Advisory failure must never trigger `ferrors`, replace an operation error, or produce an extra envelope. Do not change command schemas to solve human formatting.
 5. Update strict handlers/counters in `cmd/root_api_diagnostics_test.go`, `cmd/root_request_rate_test.go`, `cmd/config_test.go`, `cmd/request_rate_mutation_test.go`, and affected batch/terminal fixtures to account for a matching topology probe and its rate/DEBUG start. Explicit opt-out is allowed only in narrowly unrelated fixtures; never hide default-on behavior via a shared reset/helper switch. Reuse test-owned environment isolation and `testx` helpers.
@@ -189,3 +189,24 @@ There are no independent implementation tasks to run concurrently. Do not create
 | FR-015 | T003 source metadata/help, README and `make docs-content` output. |
 
 All task markers start unchecked. Completing this task-generation workflow does not mark implementation or test execution complete.
+
+
+## Follow-up: DEBUG topology summary
+
+- [x] T004 Retain safe topology facts in the advisory outcome and emit one configured DEBUG summary per attempt, including configured/gateway/broker versions, comparison result, retained adapter, available cluster counts and bounded failure reason. Keep WARN text/filtering and gateway comparison unchanged. Copy broker-version slices at callback/read boundaries. Cover sorted/deduplicated versions, unknown/unsafe metadata, all three adapters, configured/inherited plain/JSON log destinations, both DEBUG entry points, quiet/verbose/opt-out, exact results and concurrent once-only emission. Update help, README, feature contract/data model and regenerate docs in the same unit.
+
+Validation completed with isolated test-owned dependencies:
+
+- `go test ./internal/services/cluster/... ./cmd -run 'TestVersionCheck' -count=1`
+- `go test ./cmd -run 'Test(VersionCheck|APIDiagnostics|ConfigTestConnection|BulkCompletionDiagnosticLogging|CapabilityDocument|AllCommandHelp)' -count=1`
+- `go test ./internal/services/cluster -run 'TestVersionCheck' -race -count=1`
+- `make docs-content` and `git diff --check`
+
+The initial sandboxed attempts could not access the Go build cache; the permitted reruns above passed. No live-environment checks were performed. This follow-up extends the original match-silence requirement only at DEBUG; normal/verbose and WARN behavior remain unchanged.
+
+
+## Follow-up: Compact mismatch warning
+
+- [x] T005 Replace the mismatch warning with `version mismatch: configured <configured>, gateway <observed>; results may be incorrect; match config to gateway unless mismatch is intentional` Keep it a single configured WARN record, retain configured adapter selection, and leave failed-check and DEBUG messages unchanged. Update exact command/logging assertions, connection-test expectations, help and feature contract; regenerate CLI docs.
+
+Validation passed: `go test ./cmd -run 'Test(VersionCheck|ConfigTestConnection|BulkCompletionDiagnosticLogging|AllCommandHelp)' -count=1`, `make docs-content`, and `git diff --check`. Tests used isolated dependencies only.

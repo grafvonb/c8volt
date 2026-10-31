@@ -24,7 +24,12 @@ Owner: proposed `internal/domain/version_check.go`; internal only.
 | ConfiguredVersion | Effective normalized configured release line; immutable for the invocation. |
 | ObservedVersion | Safe validated display value for a successful comparison; absent on invalid data. |
 | FailureReason | Fixed enum: `access_denied`, `timeout`, `invalid_version`, `unavailable`, or `canceled`; present only for failed checks. |
+| BrokerVersions | Sorted unique validated broker release displays; `unknown` represents missing/invalid broker versions. Informational only. |
+| BrokerCount | Number of brokers in a successfully decoded topology response; omitted from DEBUG when zero/unavailable. |
+| ClusterSize, PartitionsCount, ReplicationFactor | Positive reported topology counts; zero represents unavailable/nonpositive metadata and is omitted. |
 | WarningNeeded | Derived from mismatched/failed status, independent of logger visibility. Used for explicit connection-test deduplication. |
+
+Topology facts remain available if gateway parsing fails. The callback and each outcome reader receive independent copies of the broker-version slice.
 
 No raw error, body, URL, resource key, credential, or generated response belongs in a renderable outcome. Failure causes may remain local while classifying; the probe must not return them as operational failures or add them to a JSON envelope.
 

@@ -34,7 +34,7 @@ func TestVersionCheckInvocation(t *testing.T) {
 		}{
 			{name: "match", observed: version + ".3"},
 			{name: "patch build", observed: version + ".0-alpha4+build.2"},
-			{name: "mismatch", observed: "9.10.3", warning: fmt.Sprintf("version mismatch: configured %s, gateway 9.10.3; using %s", version, version)},
+			{name: "mismatch", observed: "9.10.3", warning: fmt.Sprintf("version mismatch: configured %s, gateway 9.10.3; results may be incorrect; match config to gateway unless mismatch is intentional", version)},
 			{name: "denied", status: 403, warning: "version check: access denied; using configured " + version},
 			{name: "unauthorized", status: 401, warning: "version check: access denied; using configured " + version},
 			{name: "unavailable", status: 503, warning: "version check: unavailable; using configured " + version},
@@ -103,7 +103,7 @@ func TestVersionCheckConnectionEvidence(t *testing.T) {
 		disabled                  bool
 		machineWarning            bool
 	}{
-		{name: "duplicate mismatch", probe: "8.10.3", actual: "8.10.3", want: "version mismatch: configured 8.9, gateway 8.10.3; using 8.9", machineWarning: true},
+		{name: "duplicate mismatch", probe: "8.10.3", actual: "8.10.3", want: "version mismatch: configured 8.9, gateway 8.10.3; results may be incorrect; match config to gateway unless mismatch is intentional", machineWarning: true},
 		{name: "legacy permissive", probe: "8.9.garbage", actual: "8.9.garbage", want: "version check: invalid gateway version; using configured 8.9"},
 		{name: "changed observation", probe: "8.9.0", actual: "8.10.3", machineWarning: true},
 		{name: "opt out", actual: "8.10.3", disabled: true, machineWarning: true},
@@ -221,62 +221,83 @@ func TestVersionCheckProbeFailureBudget(t *testing.T) {
 }
 
 // TestVersionCheckSharedCommandContext checks multiple facades and concurrent
-// resources share one failed attempt and cannot dispatch before its WARN callback.
+// resources share one failed attempt and wait for its WARN and optional DEBUG records.
 func TestVersionCheckSharedCommandContext(t *testing.T) {
-	capture := &requestRateLogCapture{}
-	var probes, operations atomic.Int32
-	server := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		if r.URL.Path == "/v2/topology" {
-			probes.Add(1)
-			w.WriteHeader(403)
-			return
-		}
-		require.Contains(t, capture.String(), "WARN version check: access denied; using configured 8.9")
-		operations.Add(1)
-		fmt.Fprint(w, apiDiagnosticsProcessDefinitionFixture)
-	}))
-	t.Cleanup(server.Close)
-	cfg := writeTestConfigForVersion(t, server.URL, "8.9")
-	root := Root()
-	resetCommandTreeFlags(root)
-	resetRequestRateCommandContexts(root)
-	command := &cobra.Command{Use: "version-check-concurrent-fixture", RunE: func(cmd *cobra.Command, _ []string) error {
-		var wg sync.WaitGroup
-		failures := make(chan error, 6)
-		for range 6 {
-			cli, _, _, err := NewCli(cmd)
-			if err != nil {
-				return err
+	for _, debug := range []bool{false, true} {
+		t.Run(fmt.Sprintf("debug=%t", debug), func(t *testing.T) {
+			capture := &requestRateLogCapture{}
+			var probes, operations atomic.Int32
+			server := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				if r.URL.Path == "/v2/topology" {
+					probes.Add(1)
+					w.WriteHeader(403)
+					return
+				}
+				require.Contains(t, capture.String(), "WARN version check: access denied; using configured 8.9")
+				if debug {
+					require.Contains(t, capture.String(), "DEBUG version check: result=failed configured=8.9 gateway=unknown using=8.9 comparison=major.minor reason=access_denied")
+				}
+				operations.Add(1)
+				fmt.Fprint(w, apiDiagnosticsProcessDefinitionFixture)
+			}))
+			t.Cleanup(server.Close)
+			cfg := writeTestConfigForVersion(t, server.URL, "8.9")
+			root := Root()
+			resetCommandTreeFlags(root)
+			resetRequestRateCommandContexts(root)
+			command := &cobra.Command{Use: "version-check-concurrent-fixture", RunE: func(cmd *cobra.Command, _ []string) error {
+				var wg sync.WaitGroup
+				failures := make(chan error, 6)
+				for range 6 {
+					cli, _, _, err := NewCli(cmd)
+					if err != nil {
+						return err
+					}
+					wg.Go(func() {
+						_, err := cli.GetProcessDefinition(cmd.Context(), apiDiagnosticsProcessDefinitionKey)
+						failures <- err
+					})
+				}
+				wg.Wait()
+				close(failures)
+				for err := range failures {
+					if err != nil {
+						return err
+					}
+				}
+				return nil
+			}}
+			root.AddCommand(command)
+			defer func() {
+				root.RemoveCommand(command)
+				resetCommandTreeFlags(root)
+				resetRequestRateCommandContexts(root)
+			}()
+			root.SetOut(io.Discard)
+			root.SetErr(capture)
+			args := []string{"--config", cfg, "--log-format", "plain-time", command.Name()}
+			if debug {
+				args = append(args, "--debug")
 			}
-			wg.Go(func() {
-				_, err := cli.GetProcessDefinition(cmd.Context(), apiDiagnosticsProcessDefinitionKey)
-				failures <- err
-			})
-		}
-		wg.Wait()
-		close(failures)
-		for err := range failures {
-			if err != nil {
-				return err
+			root.SetArgs(args)
+			_, err := root.ExecuteC()
+			require.NoError(t, err)
+			require.Equal(t, int32(1), probes.Load())
+			require.Equal(t, int32(6), operations.Load())
+			var advisory [][2]string
+			for _, record := range bulkCompletionDiagnosticRecords(t, capture.String(), "plain-time") {
+				if strings.HasPrefix(record[1], "version check:") {
+					advisory = append(advisory, record)
+				}
 			}
-		}
-		return nil
-	}}
-	root.AddCommand(command)
-	defer func() {
-		root.RemoveCommand(command)
-		resetCommandTreeFlags(root)
-		resetRequestRateCommandContexts(root)
-	}()
-	root.SetOut(io.Discard)
-	root.SetErr(capture)
-	root.SetArgs([]string{"--config", cfg, "--log-format", "plain-time", command.Name()})
-	_, err := root.ExecuteC()
-	require.NoError(t, err)
-	require.Equal(t, int32(1), probes.Load())
-	require.Equal(t, int32(6), operations.Load())
-	require.Equal(t, [][2]string{{"WARN", "version check: access denied; using configured 8.9"}}, bulkCompletionDiagnosticRecords(t, capture.String(), "plain-time"))
+			expected := [][2]string{{"WARN", "version check: access denied; using configured 8.9"}}
+			if debug {
+				expected = append([][2]string{{"DEBUG", "version check: result=failed configured=8.9 gateway=unknown using=8.9 comparison=major.minor reason=access_denied"}}, expected...)
+			}
+			require.Equal(t, expected, advisory)
+		})
+	}
 }
 
 // TestVersionCheckParentCancellation preserves the original caller deadline and

@@ -113,6 +113,10 @@ func TestVersionCheckOutcomes(t *testing.T) {
 				require.Equal(t, 1, callbacks)
 				require.Equal(t, callbackOutcome, got)
 				want := d.VersionCheckOutcome{ConfiguredVersion: version.String()}
+				if tc.observed != "" {
+					want.BrokerCount = 1
+					want.BrokerVersions = []string{"99.99"}
+				}
 				if tc.reason != "" {
 					want.Status, want.FailureReason = d.VersionCheckFailed, tc.reason
 				} else {
@@ -533,4 +537,47 @@ func TestVersionCheckParentDeadline(t *testing.T) {
 	require.Equal(t, 1, calls)
 	got, _ := checker.Outcome()
 	require.Equal(t, d.VersionCheckTimeout, got.FailureReason)
+}
+
+// TestVersionCheckTopologySnapshot retains safe operational facts without letting
+// broker data affect compatibility or callers mutate the published snapshot.
+func TestVersionCheckTopologySnapshot(t *testing.T) {
+	t.Parallel()
+	for _, version := range []toolx.CamundaVersion{toolx.V88, toolx.V89, toolx.V810} {
+		t.Run(version.String(), func(t *testing.T) {
+			t.Parallel()
+			body, err := json.Marshal(map[string]any{
+				"gatewayVersion": version.String() + ".3", "clusterSize": 5,
+				"partitionsCount": 12, "replicationFactor": 3,
+				"brokers": []map[string]string{
+					{"version": "8.9.3"}, {"version": " 8.10.2 "}, {"version": "8.9.3"},
+					{"version": "8.9\nPOST https://private.invalid secret"}, {"version": ""},
+				},
+			})
+			require.NoError(t, err)
+			requests := 0
+			client := &http.Client{Transport: versionCheckTransport(func(req *http.Request) (*http.Response, error) {
+				requests++
+				return versionCheckResponse(req, 200, string(body)), nil
+			})}
+			checker := NewVersionCheck(versionCheckConfig(version), client, versionCheckLogger(), func(outcome d.VersionCheckOutcome) {
+				require.Equal(t, []string{"8.10.2", "8.9.3", "unknown"}, outcome.BrokerVersions)
+				outcome.BrokerVersions[0] = "callback mutation"
+			})
+			checker.BeforeRequest(context.Background())
+			checker.BeforeRequest(context.Background())
+			outcome, complete := checker.Outcome()
+			require.True(t, complete)
+			require.Equal(t, 1, requests)
+			require.Equal(t, d.VersionCheckMatched, outcome.Status)
+			require.Equal(t, []string{"8.10.2", "8.9.3", "unknown"}, outcome.BrokerVersions)
+			require.Equal(t, 5, outcome.BrokerCount)
+			require.EqualValues(t, 5, outcome.ClusterSize)
+			require.EqualValues(t, 12, outcome.PartitionsCount)
+			require.EqualValues(t, 3, outcome.ReplicationFactor)
+			outcome.BrokerVersions[0] = "reader mutation"
+			again, _ := checker.Outcome()
+			require.Equal(t, []string{"8.10.2", "8.9.3", "unknown"}, again.BrokerVersions)
+		})
+	}
 }

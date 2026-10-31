@@ -31,13 +31,21 @@ const (
 	VersionCheckCanceled VersionCheckFailure = "canceled"
 )
 
-// VersionCheckOutcome is an immutable value suitable for diagnostic presentation.
+// VersionCheckOutcome is a snapshot suitable for diagnostic presentation.
 // ObservedVersion is validated safe ASCII of at most 128 bytes and is absent on failure.
 type VersionCheckOutcome struct {
 	Status            VersionCheckStatus
 	ConfiguredVersion string
 	ObservedVersion   string
 	FailureReason     VersionCheckFailure
+	// BrokerVersions contains sorted unique validated releases, or "unknown" for
+	// unavailable/invalid versions. Broker versions never affect the comparison.
+	BrokerVersions []string
+	BrokerCount    int
+	// Positive topology counts are reported facts; zero means unavailable.
+	ClusterSize       int32
+	PartitionsCount   int32
+	ReplicationFactor int32
 }
 
 // WarningNeeded depends on the outcome, independently of any logger filtering.

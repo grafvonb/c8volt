@@ -6,7 +6,7 @@ nav_exclude: true
 has_toc: true
 ---
 
-> Generated from build `c8volt v4.4.0-244-g6e5f36f2-dirty`, commit `6e5f36f2`, built `2026-10-30T16:03:03Z` | Supported Camunda 8 versions: 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.3 (final)
+> Generated from build `c8volt v4.4.0-245-g335f1e44-dirty`, commit `335f1e44`, built `2026-10-31T07:06:52Z` | Supported Camunda 8 versions: 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.3 (final)
 
 <img src="./logo/c8volt_logo_transparent_w_shadow_400x244.png" alt="c8volt logo" />
 
@@ -180,6 +180,15 @@ Before the first operational API request, c8volt checks the gateway version once
 It compares major/minor release lines; patch, prerelease, build, and broker-version
 differences do not cause a mismatch. A mismatch or unavailable check produces a
 warning and keeps your configured adapter. No version is selected automatically.
+A mismatch warns that results may be incorrect and asks you to match the
+configuration to the gateway version unless the mismatch is intentional.
+With `--debug` or configured DEBUG logging, the same lookup also emits one summary
+with the comparison result, configured and gateway versions, sorted unique broker
+versions, reported broker count, cluster size, partition count, and replication
+factor when available. Failed checks include a bounded reason. Invalid or missing
+versions appear as `unknown`; unavailable or nonpositive counts are omitted.
+Broker versions are informational and do not affect the gateway comparison.
+The summary follows the configured logger and adds no requests or result output.
 
 The advisory waits at most two seconds, or a shorter HTTP timeout or workflow
 deadline. It does not retry or follow redirects. It shares authentication and

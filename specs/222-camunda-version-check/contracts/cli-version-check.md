@@ -19,7 +19,7 @@ Each eligible invocation has one advisory attempt, including failures, shared ac
 
 ## Timing and continuation
 
-The check completes immediately before the first operational HTTP call begins. A match is silent. Mismatch and failure warn and continue with the configured version if the original invocation remains active.
+The check completes immediately before the first operational HTTP call begins. A match is silent outside DEBUG. Mismatch and failure warn and continue with the configured version if the original invocation remains active.
 
 The check's complete waiting budget is at most two seconds, bounded further by a shorter positive HTTP timeout and inherited request/workflow deadline. It does not retry or follow redirects. A lookup blocked by shared request pacing still consumes the one check attempt and finishes within its budget, possibly without a dispatched request. Thus exactly one attempt does not guarantee one network start under cancellation or admission failure.
 
@@ -31,7 +31,7 @@ Exactly one automatic WARN record is eligible for emission for a mismatch or fai
 
 | Outcome | Message text for configured 8.9 |
 | --- | --- |
-| Observed 8.10.3 | `version mismatch: configured 8.9, gateway 8.10.3; using 8.9` |
+| Observed 8.10.3 | `version mismatch: configured 8.9, gateway 8.10.3; results may be incorrect; match config to gateway unless mismatch is intentional` |
 | Unauthorized or forbidden | `version check: access denied; using configured 8.9` |
 | Check timeout or bounded admission timeout | `version check: timeout; using configured 8.9` |
 | Missing/malformed/unsafe version | `version check: invalid gateway version; using configured 8.9` |
@@ -41,6 +41,19 @@ Exactly one automatic WARN record is eligible for emission for a mismatch or fai
 The canceled message names the retained configuration; it is not a promise that a canceled operation will continue. Cancellation exit semantics remain those of the operation's original context.
 
 The configured command-context logger provides severity, timestamp, format, destination, and activity integration. The message must not embed these prefixes or use direct printing. A validated version display is at most 128 bytes; failure reasons come from the fixed table, never raw error text. Normal and verbose-only output must not expose methods, URLs, bodies, credentials, resource keys, or transport chains. Existing DEBUG diagnostics remain available through `--debug` and configured DEBUG independently of verbose, honoring quiet/flag precedence and existing redaction.
+
+## DEBUG summary
+
+Each attempted advisory emits one configured DEBUG record after the topology HTTP diagnostic and before operational dispatch. `--debug` and configured DEBUG enable it independently of verbose; quiet retains existing precedence. Disabled/local checks produce none. The same response supplies all facts; no extra lookup is added.
+
+Example:
+
+```text
+version check: result=matched configured=8.9 gateway=8.9.3 using=8.9 comparison=major.minor broker_versions=[8.9.3] brokers=3 cluster_size=3 partitions=12 replication_factor=3
+version check: result=failed configured=8.9 gateway=unknown using=8.9 comparison=major.minor reason=timeout
+```
+
+Broker versions are validated, sorted lexicographically and deduplicated. Invalid/missing broker versions contribute `unknown`; an unavailable gateway is `unknown`. `brokers` counts entries returned, while `cluster_size` is the reported cluster size. Only positive available counts are shown. Valid topology facts survive gateway-version parsing failure. Failure reasons use the fixed internal enum (`access_denied`, `timeout`, `invalid_version`, `unavailable`, `canceled`), never raw error strings. WARN records above remain unchanged; broker metadata does not determine compatibility.
 
 ## Result and diagnostic separation
 

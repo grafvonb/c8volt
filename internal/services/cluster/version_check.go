@@ -10,6 +10,7 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
+	"slices"
 	"sync"
 	"time"
 
@@ -65,7 +66,9 @@ func (c *VersionCheck) BeforeRequest(ctx context.Context) {
 	c.mu.Unlock()
 	outcome := c.probe(ctx)
 	if c.callback != nil {
-		c.callback(outcome)
+		callbackOutcome := outcome
+		callbackOutcome.BrokerVersions = slices.Clone(outcome.BrokerVersions)
+		c.callback(callbackOutcome)
 	}
 	c.mu.Lock()
 	c.outcome = outcome
@@ -77,7 +80,9 @@ func (c *VersionCheck) BeforeRequest(ctx context.Context) {
 func (c *VersionCheck) Outcome() (d.VersionCheckOutcome, bool) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	return c.outcome, c.outcome.Status != ""
+	outcome := c.outcome
+	outcome.BrokerVersions = slices.Clone(outcome.BrokerVersions)
+	return outcome, outcome.Status != ""
 }
 
 // probe bounds only the advisory and retains the shared transport, jar, and controls.
@@ -106,6 +111,19 @@ func (c *VersionCheck) probe(parent context.Context) d.VersionCheckOutcome {
 		outcome.FailureReason = versionCheckFailure(ctx, err)
 		return outcome
 	}
+	outcome.BrokerCount = len(topology.Brokers)
+	outcome.ClusterSize = max(0, topology.ClusterSize)
+	outcome.PartitionsCount = max(0, topology.PartitionsCount)
+	outcome.ReplicationFactor = max(0, topology.ReplicationFactor)
+	for _, broker := range topology.Brokers {
+		version := "unknown"
+		if release, err := toolx.ParseCamundaRelease(broker.Version); err == nil {
+			version = release.Display
+		}
+		outcome.BrokerVersions = append(outcome.BrokerVersions, version)
+	}
+	slices.Sort(outcome.BrokerVersions)
+	outcome.BrokerVersions = slices.Compact(outcome.BrokerVersions)
 	observed, err := toolx.ParseCamundaRelease(topology.GatewayVersion)
 	if err != nil {
 		outcome.FailureReason = d.VersionCheckInvalidVersion
