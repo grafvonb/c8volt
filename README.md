@@ -382,6 +382,17 @@ Deploy BPMN, start a process instance, and verify the process definition Camunda
 
 `run process-instance` confirms creation once an instance is observable as ACTIVE, SUSPENDED, COMPLETED, CANCELED, or TERMINATED. A first suspended observation succeeds immediately; it confirms visibility, not execution completion. Use `expect process-instance --state completed` to verify completion separately, or `run process-instance --no-wait` to return after creation is accepted without confirming visibility. Existing creation defaults on Camunda 8.8/8.9 remain supported.
 
+On Camunda 8.10, pass `--bid` with either creation selector:
+
+```bash
+./c8volt run pi --bpmn-process-id order --bid 'order,AbC'
+./c8volt run pi --pd-key 2251799813685249 --bid 'order-123' --no-wait
+```
+
+`--bid` preserves one opaque value, including whitespace, commas, and case. Omit it to submit no ID; an explicit empty value is invalid. The maximum is 256 UTF-16 code units: 256 BMP characters or 128 supplementary emoji. Camunda 8.8/8.9 reject supplied IDs before mutation. Every `--count` attempt reuses the same ID. When backend uniqueness enforcement is enabled, repeated active root instances for the same definition and tenant may conflict; c8volt does not generate replacements.
+
+Creation JSON retains successful items and their returned IDs in one failure envelope when later work fails, with the original error class and exit status. Keys-only prints only successful keys (zero bytes if none) and retains the failure exit. Ordinary waiting uses the observed ID, even when absent; `--no-wait` uses the acceptance response without an extra read. Human creation rows and summaries now use the configured INFO logger, on stderr by default, with safely quoted IDs. Quiet or a WARN threshold suppresses these lines. JSON and keys-only remain on stdout, including with quiet. Failures use one compact aggregate ERROR; HTTP diagnostics require `--debug` or configured DEBUG, independently of verbose.
+
 Library creation calls accept an optional `BusinessId *string` in `process.ProcessInstanceData` with either `BpmnProcessId` or `ProcessDefinitionSpecificId`. Camunda 8.10 supports this input; 8.8/8.9 reject any supplied value as unsupported before mutation. Nil omits the field. A supplied ID must be nonempty, valid UTF-8, and at most 256 UTF-16 code units (for example, 256 BMP characters or 128 supplementary emoji). Whitespace, commas, and case are preserved exactly.
 
 `CreateProcessInstance`, `CreateProcessInstances`, and `CreateNProcessInstances` return the backend's business ID on `process.ProcessInstance`. Ordinary waiting uses the observed value, including absence; `WithNoWait()` retains the native acceptance response. Counted creation repeats the exact input ID, so backend uniqueness enforcement can reject repeated creations. Both collection methods return successful items alongside an error if later work fails; callers must inspect both return values. Failed or unattempted items are excluded, successful results retain their input-slot order, and no rollback or alternate ID is generated. These optional fields preserve JSON omission when absent and support keyed Go literals; consumers using unkeyed literals may need source updates.

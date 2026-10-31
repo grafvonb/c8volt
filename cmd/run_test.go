@@ -54,11 +54,19 @@ func TestRunHelp_DocumentsWaitAndVerificationRouting(t *testing.T) {
 		"This confirms creation visibility, not execution completion",
 		"--all-tenants is not supported because",
 		"./c8volt run process-instance --bpmn-process-id <bpmn-process-id> --count 3 --workers 2",
+		"--bid supplies one opaque business ID",
+		"256 UTF-16 code units",
+		"Camunda 8.8 and 8.9 reject this input",
+		"Every --count attempt uses the same business ID",
+		"Successful results survive later failures",
+		"configured INFO logger",
+		"./c8volt run pi --pd-key 2251799813685249 --bid 'order-123' --no-wait",
 		"./c8volt run process-instance --bpmn-process-id <bpmn-process-id> --keys-only | ./c8volt expect process-instance --state completed -",
 	}, nil)
 	require.Contains(t, output, "--no-wait")
 }
 
+// TestRunProcessInstanceCommand_RegressionPreservesSelectorAndWorkerContract keeps selectors and workers stable while adding a scalar identity.
 func TestRunProcessInstanceCommand_RegressionPreservesSelectorAndWorkerContract(t *testing.T) {
 	root := Root()
 	resetCommandTreeFlags(root)
@@ -83,6 +91,13 @@ func TestRunProcessInstanceCommand_RegressionPreservesSelectorAndWorkerContract(
 		Required:    false,
 		Repeated:    true,
 		Description: "specific process definition key(s) to run process instance for (mutually exclusive with --bpmn-process-id)",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "bid",
+		Type:        "string",
+		Required:    false,
+		Repeated:    false,
+		Description: "opaque business ID (Camunda 8.10 only; nonempty, maximum 256 UTF-16 code units; reused unchanged by --count)",
 	})
 	require.Contains(t, capability.Flags, FlagContract{
 		Name:        "count",
@@ -237,7 +252,7 @@ func TestRunProcessInstanceCommand_JSONInvalidInputUsesEnvelope(t *testing.T) {
 	require.Equal(t, "run process-instance", got["command"])
 }
 
-// Verifies run process-instance maps HTTP 409 responses to the conflict exit code.
+// TestRunProcessInstanceCommand_ConflictUsesConflictExitCode preserves conflict classification with bounded diagnostics.
 func TestRunProcessInstanceCommand_ConflictUsesConflictExitCode(t *testing.T) {
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if serveVersionCheckTopology(w, r, "8.8") {
@@ -268,10 +283,10 @@ func TestRunProcessInstanceCommand_ConflictUsesConflictExitCode(t *testing.T) {
 	require.True(t, ok)
 	require.Equal(t, exitcode.Conflict, exitErr.ExitCode())
 	require.Contains(t, string(output), "conflict")
-	require.Contains(t, string(output), "running process instance(s)")
+	require.Contains(t, string(output), "creating process instances: requested 1; successful 0; without successful result 1; conflict")
 }
 
-// TestRunProcessInstanceCommand_V89NoWait preserves the existing command contract with advisory-aware fixtures.
+// TestRunProcessInstanceCommand_V89NoWait preserves accepted JSON without informational service chatter.
 func TestRunProcessInstanceCommand_V89NoWait(t *testing.T) {
 	var sawRun bool
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -316,7 +331,7 @@ func TestRunProcessInstanceCommand_V89NoWait(t *testing.T) {
 	payload, ok := got["payload"].(map[string]any)
 	require.True(t, ok)
 	require.EqualValues(t, 1, payload["total"])
-	require.Contains(t, stderr, "INFO")
+	require.Empty(t, stderr)
 }
 
 // TestRunProcessInstanceCommand_V810NoWaitJSONUsesNativeCreation verifies V810 creation preserves the accepted JSON envelope.
@@ -362,7 +377,7 @@ func TestRunProcessInstanceCommand_V810NoWaitJSONUsesNativeCreation(t *testing.T
 	payload := requireJSONObject(t, got["payload"])
 	require.EqualValues(t, 1, payload["total"])
 	require.NotContains(t, stdout, "found:")
-	require.Contains(t, stderr, "INFO")
+	require.Empty(t, stderr)
 }
 
 // TestRunProcessInstanceCommand_VarsPayloadRemainsCreationInput preserves the existing command contract with advisory-aware fixtures.
@@ -489,7 +504,8 @@ apis:
 			_, err := root.ExecuteC()
 			require.NoError(t, err)
 			require.True(t, sawRun)
-			require.Contains(t, stdout.String(), "2251799813711967")
+			require.Empty(t, stdout.String())
+			require.Contains(t, stderr.String(), "2251799813711967")
 			require.Contains(t, stderr.String(), tt.wantLine)
 			require.NotContains(t, stderr.String(), "Proceed?")
 		})
@@ -571,7 +587,8 @@ func TestRunProcessInstanceCommand_ProtectedModesSuppressCreationContext(t *test
 		{
 			name:       "quiet",
 			argsPrefix: []string{"--quiet"},
-			wantStdout: "2251799813711967",
+			wantStdout: "",
+			exact:      true,
 		},
 		{
 			name:       "keys only",
@@ -639,13 +656,14 @@ func TestRunProcessInstanceCommand_NormalOutputRendersObservedState(t *testing.T
 		"--bpmn-process-id", "order-process",
 	)
 
-	require.Contains(t, stdout, "2251799813711967")
-	require.Contains(t, stdout, "order-process")
-	require.Contains(t, stdout, "COMPLETED")
-	require.Contains(t, stdout, "found: 1")
+	require.Contains(t, stderr, "2251799813711967")
+	require.Contains(t, stderr, "order-process")
+	require.Contains(t, stderr, "COMPLETED")
+	require.Contains(t, stderr, "found: 1")
 	require.NotContains(t, stdout, "(today)")
 	require.NotContains(t, stdout, `"outcome"`)
-	require.Contains(t, stderr, "waiting for pi 2251799813711967")
+	require.Empty(t, stdout)
+	require.NotContains(t, stderr, "waiting for pi 2251799813711967")
 }
 
 // Verifies JSON run output keeps the full command envelope and includes the observed state.
@@ -737,7 +755,7 @@ func TestRunProcessInstanceCommand_KeysOnlyOutputsOnlyCreatedKeys(t *testing.T) 
 	require.NotContains(t, stdout, "COMPLETED")
 	require.NotContains(t, stdout, "found:")
 	require.NotContains(t, stdout, `"outcome"`)
-	require.Contains(t, stderr, "waiting for pi 2251799813711967")
+	require.NotContains(t, stderr, "waiting for pi 2251799813711967")
 }
 
 // TestRunProcessInstanceCommand_V810KeysOnlyKeepsActivityOffStdout verifies V810 keys-only output remains pipeline-safe while activity is routed away from stdout.
@@ -757,7 +775,7 @@ func TestRunProcessInstanceCommand_V810KeysOnlyKeepsActivityOffStdout(t *testing
 	require.Equal(t, "2251799813711967\n", stdout)
 	require.NotContains(t, stdout, "COMPLETED")
 	require.NotContains(t, stdout, "waiting for pi")
-	require.Contains(t, stderr, "waiting for pi 2251799813711967")
+	require.NotContains(t, stderr, "waiting for pi 2251799813711967")
 }
 
 // TestRunProcessInstanceCommand_VerboseBulkProgressRendersCounters verifies explicit --count progress is routed to stderr.
@@ -801,7 +819,8 @@ func TestRunProcessInstanceCommand_VerboseBulkProgressRendersCounters(t *testing
 		"--workers", "1",
 	)
 
-	require.Contains(t, stdout, "found: 2")
+	require.Empty(t, stdout)
+	require.Contains(t, stderr, "found: 2")
 	require.Contains(t, stderr, "starting process instances 2/2 process instance(s)")
 	require.NotContains(t, stderr, "waiting for pi 2251799813685248")
 	require.NotContains(t, stderr, "waiting for pi 2251799813685249")
@@ -940,8 +959,7 @@ func TestRunProcessInstanceDefaultStartMilestonesAndFinalFlush(t *testing.T) {
 	require.NotContains(t, output, "pi-1 started")
 }
 
-// TestRunProcessInstanceVerboseLifecycleVocabulary verifies bulk-start progress
-// maps submitted, started, and failed wording in the command layer.
+// TestRunProcessInstanceVerboseLifecycleVocabulary retains outcome facts without forwarding raw failure details.
 func TestRunProcessInstanceVerboseLifecycleVocabulary(t *testing.T) {
 	resetProcessInstanceCommandGlobals()
 	t.Cleanup(resetProcessInstanceCommandGlobals)
@@ -961,7 +979,7 @@ func TestRunProcessInstanceVerboseLifecycleVocabulary(t *testing.T) {
 	output := stderr.String()
 	require.Contains(t, output, "pi-1 submitted (starting process instances, 1/3 process instance(s), process instances: 1)")
 	require.Contains(t, output, "pi-2 started (starting process instances, 2/3 process instance(s), process instances: 2)")
-	require.Contains(t, output, "pi-3 failed: start rejected (starting process instances, 3/3 process instance(s), 1 failed, process instances: 2)")
+	require.Contains(t, output, "pi-3 failed (starting process instances, 3/3 process instance(s), 1 failed, process instances: 2)")
 }
 
 // reportRunProcessInstanceCompletionEvent sends one facade-level bulk-start
@@ -1432,8 +1450,9 @@ func TestRunProcessInstanceCommand_SuspendedCreation(t *testing.T) {
 				require.NotContains(t, stderr, "state COMPLETED")
 				switch mode {
 				case "human":
-					require.Contains(t, stdout, "SUSPENDED")
-					require.Contains(t, stdout, "found: 1")
+					require.Empty(t, stdout)
+					require.Contains(t, stderr, "SUSPENDED")
+					require.Contains(t, stderr, "found: 1")
 					require.NotContains(t, stdout, "waiting for")
 				case "keys":
 					require.Equal(t, "123\n", stdout)

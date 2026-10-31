@@ -35,6 +35,8 @@ func appendExplicitLargeWorkProgressOption(cmd *cobra.Command, opts []processOpt
 // progress through appendExplicitLargeWorkProgressOption.
 func newRunProcessInstanceSemanticProgressReporter(cmd *cobra.Command, total int) *opsSemanticProgressReporter {
 	channel := opsProgressChannelForMode(opsProgressModeForCommand(cmd, pickMode()))
+	policy := opsSemanticProgressOutputPolicyForChannel(channel)
+	policy.FailureWarnings = false // Final creation output owns the single aggregate error.
 	return newOpsSemanticProgressReporter(cmd, opsSemanticProgressConfig{
 		Scope: opsSemanticProgressScope{
 			Phase:                     "create",
@@ -44,7 +46,7 @@ func newRunProcessInstanceSemanticProgressReporter(cmd *cobra.Command, total int
 			AffectedResource:          "process instances",
 			AffectedCoverageAvailable: true,
 		}.withLifecycleWords(opsSemanticProgressLifecycleWordsFor("started")),
-		Policy: opsSemanticProgressOutputPolicyForChannel(channel),
+		Policy: policy,
 		Now:    runProcessInstanceSemanticProgressNow,
 	})
 }
@@ -74,7 +76,7 @@ func appendRunProcessInstanceProgressOption(cmd *cobra.Command, opts []processOp
 					Total:            event.Completion.Total,
 					Identity:         event.Completion.Identity,
 					Disposition:      ops.CompletionDisposition(event.Completion.Disposition),
-					FailureDetail:    event.Completion.FailureDetail,
+					FailureDetail:    "", // Raw backend errors belong only to machine evidence and redacted DEBUG diagnostics.
 					AffectedResource: event.Completion.AffectedResource,
 					AffectedCount:    event.Completion.AffectedCount,
 				},
