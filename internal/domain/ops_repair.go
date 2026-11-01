@@ -47,6 +47,7 @@ const (
 
 // OpsRepairRequest captures one operator repair invocation.
 type OpsRepairRequest struct {
+	FrozenPlan               *OpsRepairFrozenPlan `json:"-"`
 	CommandName              string
 	Target                   OpsRepairTarget
 	DiscoveryMode            OpsRepairDiscoveryMode
@@ -76,6 +77,7 @@ type OpsRepairRequest struct {
 
 // OpsRepairFrozenSet captures the immutable target data discovered before mutation.
 type OpsRepairFrozenSet struct {
+	Selection *ProcessInstanceSelection
 	DiscoveryScopeStatus
 	Status                     OpsWorkflowStepStatus
 	Target                     OpsRepairTarget
@@ -183,6 +185,7 @@ type OpsRepairAuditReport struct {
 
 // OpsRepairResult carries the full repair workflow result across service boundaries.
 type OpsRepairResult struct {
+	FrozenPlan       *OpsRepairFrozenPlan `json:"-"`
 	Request          OpsRepairRequest
 	FrozenSet        OpsRepairFrozenSet
 	Plan             []OpsRepairPlanItem
@@ -193,4 +196,15 @@ type OpsRepairResult struct {
 	Outcome          OpsRepairOutcome
 	Errors           []string
 	Notices          []OpsRepairWorkflowNotice
+}
+
+// OpsRepairFrozenPlan retains completed selection and exact reviewed actions; it is not an authorization token.
+type OpsRepairFrozenPlan struct {
+	Selection           ProcessInstanceSelection
+	Tenant              string
+	Incidents           ProcessInstancesIncidentPlan
+	Variables           map[string]any
+	RequestedRetries    *int32
+	RequestedJobTimeout time.Duration
+	DirectIncidentsOnly bool
 }

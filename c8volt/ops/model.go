@@ -225,6 +225,7 @@ const (
 
 // RepairRequest captures one operator repair invocation.
 type RepairRequest struct {
+	FrozenPlan               *RepairFrozenPlan             `json:"-"`
 	CommandName              string                        `json:"commandName,omitempty"`
 	Target                   RepairTarget                  `json:"target,omitempty"`
 	DiscoveryMode            RepairDiscoveryMode           `json:"discoveryMode,omitempty"`
@@ -254,6 +255,7 @@ type RepairRequest struct {
 
 // RepairFrozenSet captures the immutable target data discovered before mutation.
 type RepairFrozenSet struct {
+	Selection *process.ProcessInstanceSelection `json:"selection,omitempty"`
 	DiscoveryScopeStatus
 	Status                     WorkflowStepStatus                       `json:"status,omitempty"`
 	Target                     RepairTarget                             `json:"target,omitempty"`
@@ -361,6 +363,7 @@ type RepairAuditReport struct {
 
 // RepairResult carries the full repair workflow result across the facade boundary.
 type RepairResult struct {
+	FrozenPlan       *RepairFrozenPlan              `json:"-"`
 	Request          RepairRequest                  `json:"request,omitempty"`
 	FrozenSet        RepairFrozenSet                `json:"frozenSet,omitempty"`
 	Plan             []RepairPlanItem               `json:"plan,omitempty"`
@@ -1113,4 +1116,16 @@ type AllProcessDefinitionsPurgeNotice struct {
 	Severity string            `json:"severity,omitempty"`
 	Message  string            `json:"message,omitempty"`
 	Details  map[string]string `json:"details,omitempty"`
+}
+
+// RepairFrozenPlan retains invocation-local selection and exact repair actions, separately from audit serialization.
+// Consumption revalidates receiving capability, tenant context, completion and request consistency.
+type RepairFrozenPlan struct {
+	Selection           process.ProcessInstanceSelection
+	Tenant              string
+	Incidents           incident.ProcessInstancesIncidentPlan
+	Variables           map[string]any
+	RequestedRetries    *int32
+	RequestedJobTimeout time.Duration
+	DirectIncidentsOnly bool
 }

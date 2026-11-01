@@ -85,3 +85,13 @@ func copyProcessInstanceSelectionRequest(request d.ProcessInstanceSelectionReque
 	}
 	return request
 }
+
+// ValidateProcessInstanceSelection checks receiving capability, completed collection evidence and original tenant context without I/O.
+func ValidateProcessInstanceSelection(api API, selection d.ProcessInstanceSelection, tenant string, opts ...services.CallOption) error {
+	return validateActionSelection(api, &selection, tenant, selection.Keys, opts...)
+}
+
+// CopyProcessInstanceSelection isolates nested selection criteria and observed resource data.
+func CopyProcessInstanceSelection(selection d.ProcessInstanceSelection) d.ProcessInstanceSelection {
+	return copyActionSelection(selection)
+}

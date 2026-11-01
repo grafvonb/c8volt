@@ -22,6 +22,7 @@ type IncidentWaiter interface {
 	SearchProcessInstanceIncidents(ctx context.Context, key string, opts ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error)
 }
 
+// WaitForIncidentResolved checks the reviewed incident while allowing aggregate owners to suppress per-key diagnostics.
 func WaitForIncidentResolved(ctx context.Context, s IncidentWaiter, cfg *config.Config, log *slog.Logger, key string, opts ...services.CallOption) (d.IncidentResolutionResponse, error) {
 	cCfg := services.ApplyCallOptions(opts)
 	stopActivity := logging.StartActivityWithImportance(ctx, fmt.Sprintf("waiting for incident %s resolve", key), logging.ActivityImportanceWait)
@@ -62,12 +63,16 @@ func WaitForIncidentResolved(ctx context.Context, s IncidentWaiter, cfg *config.
 				return d.IncidentResolutionResponse{Key: key, Ok: true, Status: status}, nil
 			}
 			status := fmt.Sprintf("incident %s wait stopped; attempts %d, elapsed %s, reason error", key, attempts, time.Since(start))
-			log.Error(status)
+			if cCfg.SuppressWorkflowDetailLogs {
+				log.Debug(status)
+			} else {
+				log.Error(status)
+			}
 			return d.IncidentResolutionResponse{Key: key, Ok: false, Status: status}, fmt.Errorf("%w: %s", err, status)
 		}
 		waitMsg := fmt.Sprintf("incident %s waiting; state %s, attempt %d", key, incident.State, attempts)
 		logging.UpdateActivityWithImportance(ctx, waitMsg, logging.ActivityImportanceWait)
-		logging.InfoIfVerbose(waitMsg, log, cCfg.Verbose)
+		logging.InfoIfVerbose(waitMsg, log, cCfg.Verbose && !cCfg.SuppressWorkflowDetailLogs)
 		if backoff.MaxRetries > 0 && attempts >= backoff.MaxRetries {
 			status := fmt.Sprintf("incident %s wait exceeded retries; max %d, attempts %d, elapsed %s", key, backoff.MaxRetries, attempts, time.Since(start))
 			log.Debug(status)

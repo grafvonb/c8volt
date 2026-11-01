@@ -384,3 +384,43 @@ Started: 2026-11-01 12:22:16
 - Final isolated targeted race suite passed: `go test ./internal/services/incident ./internal/services/processinstance ./c8volt/incident ./c8volt/process ./cmd -run '^TestBusinessIDResolve' -race -count=1` (cmd 12.411s). Earlier v810 paging race tests and the all-v810 owner rerun passed; targeted legacy incident/resolution/cancellation checks passed. The corrected facade fixture passed its focused rerun.
 - Full isolated `make test PKG=./...` passed with race detection and integration tags disabled (cmd 497.455s); shared v810 paging, waiter suppression and public interface additions justified breadth. The broad run began before removing unused paging helpers and the final fail-fast correction; their focused owner/race checks passed afterward. Additional machine/opaque-value tests also passed with race. `make docs-content`, touched-file formatting and `git diff --check` passed. All dependencies were owned mocks/HTTP fakes/PTY fixtures. No live environment was used; real-engine behavior remains unverified. No later task was started.
 ---
+
+---
+## Iteration 8 - 2026-11-01 15:24
+**Work Unit**: US4 T008 — completed BID process-instance repair with immutable confirmation handoff; US4 partially complete
+**Tasks Completed**:
+- [x] T008: Freeze tenant-scoped BID repair selection and owned incident/job/variable actions, retain original criteria through approval and reports, and validate receiving context before execution.
+**Tasks Remaining in Work Unit**: 2 in US4: T009 retention/orphan cleanup and T010 slow analysis.
+**Commit**: This work-unit commit
+**Files Changed**:
+- README.md
+- c8volt/ops/convert.go
+- c8volt/ops/model.go
+- c8volt/ops/repair_plan.go
+- c8volt/ops/repair_plan_test.go
+- cmd/cmd_views_ops_repair_business_id.go
+- cmd/ops_repair.go
+- cmd/ops_repair_processinstance.go
+- cmd/ops_repair_processinstance_business_id.go
+- cmd/ops_repair_processinstance_business_id_test.go
+- cmd/ops_report_markdown.go
+- cmd/ops_report_repair.go
+- docs/cli/c8volt_ops_repair_process-instance.md
+- docs/index.md
+- internal/domain/ops_repair.go
+- internal/services/incident/waiter/waiter.go
+- internal/services/ops/repair.go
+- internal/services/ops/repair_business_id.go
+- internal/services/ops/repair_business_id_test.go
+- internal/services/processinstance/selection.go
+- specs/361-business-id-selection/progress.md
+- specs/361-business-id-selection/ralph-memory.md
+- specs/361-business-id-selection/tasks.md
+**Learnings**:
+- Shared process selection and T007 incident planning now feed a copied typed repair plan; original criteria remain separate from executable observations. Receiving version, tenant/options, completion, membership and exact action inputs are checked before empty/dry-run shortcuts. Direct-incident eligibility precedes distinct limits. Facades remain mechanical; the CLI lifecycle and final formatting have dedicated owning files. No later work unit was started.
+- The first regression reproduced unsupported BID repair reaching search on an older version. Owned tests now reject fresh/keyed/prepared plans on 8.8/8.9 before operation requests, including actual v810 empty plans; they cover duplicate/sparse selection, bounded/direct eligibility, incomplete reads, changed approval-time incidents, defensive nested copies, exact mutation targets, accepted/wait/partial failures and fail-fast identities. BID variable mutation errors retain their original class under no-wait.
+- Traced service errors through facade conversion, selected views, configured logger and original exit. Repeated distinctive incident/job/variable failures are bounded aggregate ERROR records at normal/verbose/quiet levels, with independent redacted DEBUG. Plain/structured configured/inherited INFO routing, WARN/quiet suppression, machine partial evidence, one envelope/EOF/write attempt and error-code overrides passed. Real-terminal approve/decline/EOF and prompt-free empty scopes passed; exact empty human wording is asserted. Human/JSON are the supported repair formats, with existing JSON precedence over keys-only preserved.
+- JSON and Markdown audit reports preserve exact opaque criteria, selected resource observations, repairable/skipped scope and the existing ops.repair.v1 schema. Typed FrozenPlan inputs/results are excluded from JSON. Markdown escapes markup/control text; rendering performs no reads. Initial fixture corrections supplied consistent sparse-page totals, variable tenant fields and job-search confirmation responses, and corrected assertions to existing omission/error-envelope conventions.
+- Listed new tests before execution. Final targeted isolated owner/facade/command race suite passed (cmd 14.124s). Additional automation/precedence/override checks passed with race (1.048s); strengthened exact-empty wording checks passed with race (3.338s). Legacy repair and incident waiter regressions passed in the full run after correcting the new test expectations.
+- Full isolated `make test PKG=./...` passed with race detection and integration tags disabled (cmd 513.293s). Shared ops conversions and incident-wait logging justified breadth. It began before the additional automation and exact-empty assertions, which passed separately with race; runtime behavior did not change after the broad run began. `make docs-content`, touched-file gofmt and `git diff --check` passed. All backend dependencies were owned mocks/HTTP fakes/PTY fixtures; real-engine behavior remains unverified.
+---

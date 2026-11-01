@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/grafvonb/c8volt/c8volt/incident"
 	"github.com/grafvonb/c8volt/c8volt/ops"
 	"github.com/grafvonb/c8volt/config"
 	"github.com/grafvonb/c8volt/consts"
@@ -33,12 +34,15 @@ var opsRepairProcessInstanceCmd = &cobra.Command{
 
 Provide repeated --key values, newline-separated keys from stdin with '-', or process-instance search filters. Search selects incident-bearing instances; --direct-incidents-only restricts matching to direct active incidents.
 
+--bid matches one exact opaque business ID on Camunda 8.10+, within tenant scope and combined with the other search predicates. Multiple distinct matches are repaired; the limit counts distinct matching incident-bearing instances. BID planning freezes selected instances and reviewed incident, job, and variable actions before confirmation; approval never adds new targets. Dry-run may read scope but never submits changes.
+
 The workflow fixes the repairable instance and incident sets, applies requested variables once per process-instance scope, then updates related jobs, resolves incidents, and confirms clearance unless --no-wait is set.
 
 --tenant limits search; an empty tenant or --all-tenants searches across accessible tenants. Explicit keys use backend authorization without tenant filtering. --batch-size controls each discovery request; --limit caps the selected scope.
 
 Use --dry-run to inspect planned repairs without mutation, --auto-confirm or --automation for unattended repair, and --report-file to save an audit report.`,
-	Example: `  ./c8volt ops repair process-instance --key <process-instance-key> --dry-run
+	Example: `  ./c8volt ops repair process-instance --bid ORDER-123 --dry-run
+  ./c8volt ops repair process-instance --key <process-instance-key> --dry-run
   ./c8volt --tenant tenant-a ops repair process-instance --key <process-instance-key> --dry-run
   ./c8volt --all-tenants ops repair process-instance --state active --limit 5 --dry-run
   ./c8volt ops repair process-instance --state active --limit 5 --dry-run
@@ -47,6 +51,9 @@ Use --dry-run to inspect planned repairs without mutation, --auto-confirm or --a
   ./c8volt ops repair process-instance --key <process-instance-key> --vars '{"hasIncident":false}' --report-file repair-process-instance.md`,
 	Aliases: []string{"pi", "pis", "process-instances"},
 	Args: func(cmd *cobra.Command, args []string) error {
+		if searchBusinessIDFlag(cmd) != nil {
+			return nil
+		}
 		if err := validateOptionalDashArg(args); err != nil {
 			return silenceUsageForError(cmd, err)
 		}
@@ -67,6 +74,17 @@ Use --dry-run to inspect planned repairs without mutation, --auto-confirm or --a
 		cli, log, cfg, err := NewCli(cmd)
 		if err != nil {
 			handleNewCliError(cmd, log, cfg, fmt.Errorf("initializing client: %w", err))
+		}
+		if searchBusinessIDFlag(cmd) != nil {
+			if err := validateOptionalDashArg(args); err != nil {
+				handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+			}
+			if err := validateOpsRepairProcessInstanceFlagValues(cmd); err != nil {
+				handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+			}
+			if len(args) > 0 {
+				handleCommandError(cmd, log, cfg.App.NoErrCodes, mutuallyExclusiveFlagsf("stdin '-' cannot be combined with search filters"))
+			}
 		}
 		if err := requireAutomationSupport(cmd); err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
@@ -103,7 +121,7 @@ Use --dry-run to inspect planned repairs without mutation, --auto-confirm or --a
 		} else if len(stdinKeys) > 0 && len(flagOpsRepairProcessInstanceKeys) == 0 {
 			mode = ops.RepairDiscoveryModeStdin
 		}
-		selection := populatePISearchFilterOpts()
+		selection := populatePISearchFilterOpts(cmd)
 		if searchMode {
 			selection.HasIncident = new(bool)
 			*selection.HasIncident = true
@@ -132,6 +150,11 @@ Use --dry-run to inspect planned repairs without mutation, --auto-confirm or --a
 			ReportFile:               flagOpsRepairProcessInstanceReportFile,
 			ReportFormat:             reportFormat,
 			StartedAt:                time.Now().UTC(),
+		}
+		if selection.BusinessId != nil {
+			request.IncidentSelection = incident.Filter{State: flagGetPIIncidentState, ErrorType: flagGetPIIncidentErrorType, ErrorMessage: flagGetPIIncidentErrorMessage}
+			runOpsRepairProcessInstanceBusinessID(cmd, cli, log, cfg, request)
+			return
 		}
 		initializeOpsTenantContextHumanReporting(cmd, cfg, mode != ops.RepairDiscoveryModeSearch)
 		repairProgress := configureOpsRepairProgress(cmd, &request)
@@ -187,6 +210,7 @@ func init() {
 	useInvalidInputFlagErrors(opsRepairProcessInstanceCmd)
 
 	fs := opsRepairProcessInstanceCmd.Flags()
+	fs.String("bid", "", "exact opaque business ID to select incident-bearing process instances (Camunda 8.10+)")
 	fs.StringSliceVarP(&flagOpsRepairProcessInstanceKeys, "key", "k", nil, "process-instance key(s) whose active incidents should be repaired; repeat or combine with stdin '-'")
 	registerPISharedProcessDefinitionFilterFlags(fs)
 	fs.StringVar(&flagGetPIProcessDefinitionKey, "pd-key", "", "process definition key (mutually exclusive with bpmn-process-id, pd-version, and pd-version-tag)")
@@ -299,6 +323,7 @@ func hasOpsRepairProcessInstanceSearchModeFlags(cmd *cobra.Command) bool {
 		return false
 	}
 	for _, name := range []string{
+		"bid",
 		"bpmn-process-id",
 		"pd-version",
 		"pd-version-tag",

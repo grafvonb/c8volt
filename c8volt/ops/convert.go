@@ -1405,6 +1405,7 @@ func fromDomainIncidentPurgeWorkflowNotice(x d.IncidentPurgeWorkflowNotice) Inci
 // toDomainRepairRequest maps public repair controls to the service request model.
 func toDomainRepairRequest(x RepairRequest) d.OpsRepairRequest {
 	return d.OpsRepairRequest{
+		FrozenPlan:               toolx.MapPtr(x.FrozenPlan, toDomainRepairFrozenPlan),
 		CommandName:              x.CommandName,
 		Target:                   d.OpsRepairTarget(x.Target),
 		DiscoveryMode:            d.OpsRepairDiscoveryMode(x.DiscoveryMode),
@@ -1422,7 +1423,7 @@ func toDomainRepairRequest(x RepairRequest) d.OpsRepairRequest {
 		Automation:               x.Automation,
 		NoWait:                   x.NoWait,
 		OutputMode:               x.OutputMode,
-		Variables:                toolx.CopyMap(x.Variables),
+		Variables:                copyRepairVariables(x.Variables),
 		VariablesFile:            x.VariablesFile,
 		RequestedRetries:         toolx.CopyPtr(x.RequestedRetries),
 		RequestedJobTimeout:      x.RequestedJobTimeout,
@@ -1436,6 +1437,7 @@ func toDomainRepairRequest(x RepairRequest) d.OpsRepairRequest {
 // fromDomainRepairResult maps the service repair result to the public facade model.
 func fromDomainRepairResult(x d.OpsRepairResult) RepairResult {
 	return RepairResult{
+		FrozenPlan:       toolx.MapPtr(x.FrozenPlan, fromDomainRepairFrozenPlan),
 		Request:          fromDomainRepairRequest(x.Request),
 		FrozenSet:        fromDomainRepairFrozenSet(x.FrozenSet),
 		Plan:             toolx.MapSlice(x.Plan, fromDomainRepairPlanItem),
@@ -1452,6 +1454,7 @@ func fromDomainRepairResult(x d.OpsRepairResult) RepairResult {
 // fromDomainRepairRequest maps a service repair request back to public output.
 func fromDomainRepairRequest(x d.OpsRepairRequest) RepairRequest {
 	return RepairRequest{
+		FrozenPlan:               toolx.MapPtr(x.FrozenPlan, fromDomainRepairFrozenPlan),
 		CommandName:              x.CommandName,
 		Target:                   RepairTarget(x.Target),
 		DiscoveryMode:            RepairDiscoveryMode(x.DiscoveryMode),
@@ -1469,7 +1472,7 @@ func fromDomainRepairRequest(x d.OpsRepairRequest) RepairRequest {
 		Automation:               x.Automation,
 		NoWait:                   x.NoWait,
 		OutputMode:               x.OutputMode,
-		Variables:                toolx.CopyMap(x.Variables),
+		Variables:                copyRepairVariables(x.Variables),
 		VariablesFile:            x.VariablesFile,
 		RequestedRetries:         toolx.CopyPtr(x.RequestedRetries),
 		RequestedJobTimeout:      x.RequestedJobTimeout,
@@ -1483,6 +1486,7 @@ func fromDomainRepairRequest(x d.OpsRepairRequest) RepairRequest {
 // fromDomainRepairFrozenSet maps frozen repair targets to public output.
 func fromDomainRepairFrozenSet(x d.OpsRepairFrozenSet) RepairFrozenSet {
 	return RepairFrozenSet{
+		Selection:                  toolx.MapPtr(x.Selection, fromDomainRepairSelection),
 		DiscoveryScopeStatus:       fromDomainDiscoveryScopeStatus(x.DiscoveryScopeStatus),
 		Status:                     WorkflowStepStatus(x.Status),
 		Target:                     RepairTarget(x.Target),
@@ -1528,7 +1532,7 @@ func fromDomainRepairVariableScopeUpdate(x d.OpsRepairVariableScopeUpdate) Repai
 	return RepairVariableScopeUpdate{
 		ScopeKey:              x.ScopeKey,
 		VariableNames:         append([]string(nil), x.VariableNames...),
-		Payload:               toolx.CopyMap(x.Payload),
+		Payload:               copyRepairVariables(x.Payload),
 		DependentIncidentKeys: append(typex.Keys{}, x.DependentIncidentKeys...),
 		Status:                WorkflowStepStatus(x.Status),
 		Errors:                append([]string(nil), x.Errors...),
@@ -1836,9 +1840,12 @@ func toDomainProcessInstanceFilter(x process.ProcessInstanceFilter) d.ProcessIns
 		EndDateAfter:         x.EndDateAfter,
 		EndDateBefore:        x.EndDateBefore,
 		State:                d.State(x.State),
-		ParentKey:            x.ParentKey,
-		HasParent:            x.HasParent,
-		HasIncident:          x.HasIncident,
+		VariableFilters: d.ProcessInstanceVariableFilterSet{Clauses: toolx.MapSlice(x.VariableFilters.Clauses, func(c process.ProcessInstanceVariableFilterClause) d.ProcessInstanceVariableFilterClause {
+			return d.ProcessInstanceVariableFilterClause{Name: c.Name, Operator: d.ProcessInstanceVariableFilterOperator(c.Operator), Value: c.Value, Exists: toolx.CopyPtr(c.Exists), Source: c.Source}
+		})},
+		ParentKey:   x.ParentKey,
+		HasParent:   toolx.CopyPtr(x.HasParent),
+		HasIncident: toolx.CopyPtr(x.HasIncident),
 	}
 }
 
@@ -1856,9 +1863,12 @@ func fromDomainProcessInstanceFilter(x d.ProcessInstanceFilter) process.ProcessI
 		EndDateAfter:         x.EndDateAfter,
 		EndDateBefore:        x.EndDateBefore,
 		State:                process.State(x.State),
-		ParentKey:            x.ParentKey,
-		HasParent:            x.HasParent,
-		HasIncident:          x.HasIncident,
+		VariableFilters: process.ProcessInstanceVariableFilterSet{Clauses: toolx.MapSlice(x.VariableFilters.Clauses, func(c d.ProcessInstanceVariableFilterClause) process.ProcessInstanceVariableFilterClause {
+			return process.ProcessInstanceVariableFilterClause{Name: c.Name, Operator: process.ProcessInstanceVariableFilterOperator(c.Operator), Value: c.Value, Exists: toolx.CopyPtr(c.Exists), Source: c.Source}
+		})},
+		ParentKey:   x.ParentKey,
+		HasParent:   toolx.CopyPtr(x.HasParent),
+		HasIncident: toolx.CopyPtr(x.HasIncident),
 	}
 }
 
@@ -1918,7 +1928,7 @@ func fromDomainProcessInstance(x d.ProcessInstance) process.ProcessInstance {
 		StartDate:                x.StartDate,
 		State:                    process.State(x.State),
 		TenantId:                 x.TenantId,
-		Variables:                toolx.CopyMap(x.Variables),
+		Variables:                copyRepairVariables(x.Variables),
 	}
 }
 
