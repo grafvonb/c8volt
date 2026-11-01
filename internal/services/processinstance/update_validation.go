@@ -148,6 +148,7 @@ func normalizedRequestedProcessInstanceValuesEqual(a, b any) bool {
 // copyProcessInstanceVariableUpdatePlan freezes every mutable collection before workers start.
 func copyProcessInstanceVariableUpdatePlan(plan d.ProcessInstanceVariableUpdatePlan) d.ProcessInstanceVariableUpdatePlan {
 	out := plan
+	out.Selection = toolx.MapPtr(plan.Selection, copyActionSelection)
 	out.RequestedKeys = append([]string(nil), plan.RequestedKeys...)
 	out.RequestedValues = copyProcessInstanceVariableMap(plan.RequestedValues)
 	out.Instances = append([]d.ProcessInstanceVariablePlan(nil), plan.Instances...)

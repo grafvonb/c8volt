@@ -1356,3 +1356,28 @@ func (s stubProcessInstanceService) DeleteProcessInstanceExact(ctx context.Conte
 func (stubProcessAPI) ExecuteProcessInstanceDeletionPlan(context.Context, process.ProcessInstanceSelectedMutationPlan, ...options.FacadeOption) (process.ProcessInstanceDeletionResult, error) {
 	panic("unexpected selected cancellation")
 }
+
+// PlanSelectedProcessInstanceVariableUpdates rejects unexpected selected-action calls in legacy fixtures.
+func (stubProcessAPI) PlanSelectedProcessInstanceVariableUpdates(ctx context.Context, request process.ProcessInstanceSelectionRequest, variables map[string]any, opts ...options.FacadeOption) (process.ProcessInstanceVariableUpdatePlan, error) {
+	panic("unexpected selected action")
+}
+
+// PlanSelectedProcessInstanceSuspension rejects unexpected selected-action calls in legacy fixtures.
+func (stubProcessAPI) PlanSelectedProcessInstanceSuspension(ctx context.Context, request process.ProcessInstanceSelectionRequest, tree bool, opts ...options.FacadeOption) (process.ProcessInstanceSuspensionPlan, error) {
+	panic("unexpected selected action")
+}
+
+// ExecuteProcessInstanceSuspensionPlan rejects unexpected selected-action calls in legacy fixtures.
+func (stubProcessAPI) ExecuteProcessInstanceSuspensionPlan(ctx context.Context, plan process.ProcessInstanceSuspensionPlan, workers int, opts ...options.FacadeOption) (process.SuspensionResults, error) {
+	panic("unexpected selected action")
+}
+
+// PlanSelectedProcessInstanceResumption rejects unexpected selected-action calls in legacy fixtures.
+func (stubProcessAPI) PlanSelectedProcessInstanceResumption(ctx context.Context, request process.ProcessInstanceSelectionRequest, tree bool, opts ...options.FacadeOption) (process.ProcessInstanceResumptionPlan, error) {
+	panic("unexpected selected action")
+}
+
+// ExecuteProcessInstanceResumptionPlan rejects unexpected selected-action calls in legacy fixtures.
+func (stubProcessAPI) ExecuteProcessInstanceResumptionPlan(ctx context.Context, plan process.ProcessInstanceResumptionPlan, workers int, opts ...options.FacadeOption) (process.ResumptionResults, error) {
+	panic("unexpected selected action")
+}

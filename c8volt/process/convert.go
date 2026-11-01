@@ -416,6 +416,7 @@ func toDomainProcessInstanceVariableTenantContext(x options.TenantContext) d.Ten
 // toDomainProcessInstanceVariableUpdatePlan deeply copies an executable public plan.
 func toDomainProcessInstanceVariableUpdatePlan(x ProcessInstanceVariableUpdatePlan) d.ProcessInstanceVariableUpdatePlan {
 	return d.ProcessInstanceVariableUpdatePlan{
+		Selection: toolx.MapPtr(x.Selection, toDomainProcessInstanceSelection), SelectionTenant: x.SelectionTenant,
 		RequestedKeys: slices.Clone(x.RequestedKeys), RequestedValues: copyProcessInstancePlanVariableMap(x.RequestedValues),
 		Instances: toolx.MapSlice(x.Instances, toDomainProcessInstanceVariablePlan), RequestedCount: x.RequestedCount,
 		UpdateCount: x.UpdateCount, VariableAddCount: x.VariableAddCount, VariableChangeCount: x.VariableChangeCount,
@@ -525,6 +526,7 @@ func fromDomainProcessInstanceVariableTenantContext(x d.TenantContext) options.T
 // while preserving stable order, counts, and tenant evidence.
 func fromDomainProcessInstanceVariableUpdatePlan(x d.ProcessInstanceVariableUpdatePlan) ProcessInstanceVariableUpdatePlan {
 	return ProcessInstanceVariableUpdatePlan{
+		Selection: toolx.MapPtr(x.Selection, fromDomainProcessInstanceSelection), SelectionTenant: x.SelectionTenant,
 		RequestedKeys: slices.Clone(x.RequestedKeys), RequestedValues: copyProcessInstancePlanVariableMap(x.RequestedValues),
 		Instances: toolx.MapSlice(x.Instances, fromDomainProcessInstanceVariablePlan), RequestedCount: x.RequestedCount,
 		UpdateCount: x.UpdateCount, VariableAddCount: x.VariableAddCount, VariableChangeCount: x.VariableChangeCount,
@@ -533,9 +535,11 @@ func fromDomainProcessInstanceVariableUpdatePlan(x d.ProcessInstanceVariableUpda
 	}
 }
 
+// fromDomainProcessInstanceVariableUpdateResults copies selection alongside partial execution evidence.
 func fromDomainProcessInstanceVariableUpdateResults(x d.ProcessInstanceVariableUpdateResults) ProcessInstanceVariableUpdateResults {
 	return ProcessInstanceVariableUpdateResults{
-		Items: toolx.MapSlice(x.Items, fromDomainProcessInstanceVariableUpdateResult),
+		Selection: toolx.MapPtr(x.Selection, fromDomainProcessInstanceSelection),
+		Items:     toolx.MapSlice(x.Items, fromDomainProcessInstanceVariableUpdateResult),
 	}
 }
 
@@ -1024,7 +1028,7 @@ func fromDomainSuspensionResult(r d.ProcessInstanceSuspensionResult) SuspensionR
 
 // fromDomainSuspensionResults copies items and preserves an empty JSON array.
 func fromDomainSuspensionResults(r d.ProcessInstanceSuspensionResults) SuspensionResults {
-	out := SuspensionResults{Items: make([]SuspensionResult, len(r.Items))}
+	out := SuspensionResults{Selection: toolx.MapPtr(r.Selection, fromDomainProcessInstanceSelection), Items: make([]SuspensionResult, len(r.Items))}
 	for i, item := range r.Items {
 		out.Items[i] = fromDomainSuspensionResult(item)
 	}
@@ -1035,6 +1039,7 @@ func fromDomainSuspensionResults(r d.ProcessInstanceSuspensionResults) Suspensio
 // successful arrays and the zero plan on failure without interpreting observations.
 func fromDomainProcessInstanceSuspensionPlan(plan d.ProcessInstanceSuspensionPlan) ProcessInstanceSuspensionPlan {
 	return ProcessInstanceSuspensionPlan{
+		Selection: toolx.MapPtr(plan.Selection, fromDomainProcessInstanceSelection), SelectionTenant: plan.SelectionTenant, Exact: plan.Exact,
 		RequestedKeys: slices.Clone(plan.RequestedKeys),
 		Instances:     toolx.MapSlice(plan.Instances, fromDomainProcessInstanceSuspensionPlanItem),
 		TargetKeys:    slices.Clone(plan.TargetKeys),
@@ -1058,7 +1063,7 @@ func fromDomainResumptionResult(r d.ProcessInstanceResumptionResult) ResumptionR
 
 // fromDomainResumptionResults copies items and preserves an empty JSON array.
 func fromDomainResumptionResults(r d.ProcessInstanceResumptionResults) ResumptionResults {
-	out := ResumptionResults{Items: make([]ResumptionResult, len(r.Items))}
+	out := ResumptionResults{Selection: toolx.MapPtr(r.Selection, fromDomainProcessInstanceSelection), Items: make([]ResumptionResult, len(r.Items))}
 	for i, item := range r.Items {
 		out.Items[i] = fromDomainResumptionResult(item)
 	}
@@ -1069,6 +1074,7 @@ func fromDomainResumptionResults(r d.ProcessInstanceResumptionResults) Resumptio
 // successful arrays and the zero plan on failure without interpreting observations.
 func fromDomainProcessInstanceResumptionPlan(plan d.ProcessInstanceResumptionPlan) ProcessInstanceResumptionPlan {
 	return ProcessInstanceResumptionPlan{
+		Selection: toolx.MapPtr(plan.Selection, fromDomainProcessInstanceSelection), SelectionTenant: plan.SelectionTenant, Exact: plan.Exact,
 		RequestedKeys: slices.Clone(plan.RequestedKeys),
 		Instances:     toolx.MapSlice(plan.Instances, fromDomainProcessInstanceResumptionPlanItem),
 		TargetKeys:    slices.Clone(plan.TargetKeys),
@@ -1183,5 +1189,27 @@ func toDomainDryRunPIKeyExpansion(x DryRunPIKeyExpansion) d.DryRunPIKeyExpansion
 		Warning:                    x.Warning,
 		Outcome:                    d.TraversalOutcome(x.Outcome),
 		MissingAncestors:           toolx.MapSlice(x.MissingAncestors, func(m MissingAncestor) d.MissingAncestor { return d.MissingAncestor{Key: m.Key, StartKey: m.StartKey} }),
+	}
+}
+
+// toDomainProcessInstanceSuspensionPlan copies reviewed selection and descendant classifications.
+func toDomainProcessInstanceSuspensionPlan(plan ProcessInstanceSuspensionPlan) d.ProcessInstanceSuspensionPlan {
+	return d.ProcessInstanceSuspensionPlan{
+		Selection: toolx.MapPtr(plan.Selection, toDomainProcessInstanceSelection), SelectionTenant: plan.SelectionTenant, Exact: plan.Exact,
+		RequestedKeys: slices.Clone(plan.RequestedKeys), TargetKeys: slices.Clone(plan.TargetKeys),
+		Instances: toolx.MapSlice(plan.Instances, func(item ProcessInstanceSuspensionPlanItem) d.ProcessInstanceSuspensionPlanItem {
+			return d.ProcessInstanceSuspensionPlanItem{BusinessId: toolx.CopyPtr(item.BusinessId), Key: item.Key, ObservedState: d.State(item.ObservedState), Classification: d.ProcessInstanceSuspensionPlanClassification(item.Classification)}
+		}),
+	}
+}
+
+// toDomainProcessInstanceResumptionPlan copies reviewed selection and descendant classifications.
+func toDomainProcessInstanceResumptionPlan(plan ProcessInstanceResumptionPlan) d.ProcessInstanceResumptionPlan {
+	return d.ProcessInstanceResumptionPlan{
+		Selection: toolx.MapPtr(plan.Selection, toDomainProcessInstanceSelection), SelectionTenant: plan.SelectionTenant, Exact: plan.Exact,
+		RequestedKeys: slices.Clone(plan.RequestedKeys), TargetKeys: slices.Clone(plan.TargetKeys),
+		Instances: toolx.MapSlice(plan.Instances, func(item ProcessInstanceResumptionPlanItem) d.ProcessInstanceResumptionPlanItem {
+			return d.ProcessInstanceResumptionPlanItem{BusinessId: toolx.CopyPtr(item.BusinessId), Key: item.Key, ObservedState: d.State(item.ObservedState), Classification: d.ProcessInstanceResumptionPlanClassification(item.Classification)}
+		}),
 	}
 }

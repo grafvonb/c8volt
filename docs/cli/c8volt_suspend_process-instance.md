@@ -6,11 +6,15 @@ nav_exclude: true
 [CLI Reference]({{ "/cli/" | relative_url }})
 ## c8volt suspend process-instance
 
-Suspend explicitly selected active process instances
+Suspend process instances by key, business ID or subtree
 
 ### Synopsis
 
 Suspend ACTIVE process instances on Camunda 8.10 by explicit key.
+
+Select by exact business ID with --bid on Camunda 8.10, as an alternative to --key or stdin. BID discovery respects configured tenant scope and completes before approval; --limit bounds distinct matching seeds and --batch-size controls request size. Duplicate matches count once. Empty completed discovery succeeds without confirmation or mutation, including --no-wait. Errors during discovery prevent mutation. JSON retains the original criterion and reviewed scope; execution never searches the BID again after approval. A separate dry-run and later execution perform separate discoveries.
+
+Without --tree, BID selects exact instances and does not prefilter their action eligibility. With --tree, expand only selected seeds and descendants, merge overlaps, and freeze eligible targets; a seed limit never clips descendants. Neither mode selects ancestors or siblings. Explicit-key dry-runs remain local and read-free.
 
 Tree plans retain each discovered instance's own business ID when available; inspect it with --verbose or --json. Exact-key previews remain local and do not look up IDs.
 
@@ -35,6 +39,7 @@ c8volt suspend process-instance [flags]
 ### Examples
 
 ```
+  ./c8volt --tenant tenant-a suspend pi --bid 'ORDER-123' --tree --dry-run --json
   ./c8volt suspend process-instance --key <process-instance-key>
   ./c8volt suspend pi --key <key-a>,<key-b> --key <key-a> --dry-run --json
   ./c8volt suspend pi --key <process-instance-key> --tree --dry-run
@@ -46,14 +51,17 @@ c8volt suspend process-instance [flags]
 ### Options
 
 ```
-      --dry-run           preview without mutations; exact keys need no reads, --tree discovers eligible targets
-      --fail-fast         stop scheduling new instances after the first error
-  -h, --help              help for process-instance
-  -k, --key strings       process instance key(s); repeat, comma-separate or combine with stdin '-'
-      --no-wait           return after accepted suspension without confirmation reads
-      --no-worker-limit   use all queued jobs as workers when --workers is unset
-      --tree              include each selected instance and its descendants; suspend active instances only
-  -w, --workers int       maximum concurrent workers (default: min(count, 2*GOMAXPROCS, 32))
+  -n, --batch-size int32   maximum process instances per discovery request (default 1000)
+      --bid string         exact business ID to select in configured tenant scope (Camunda 8.10)
+      --dry-run            preview without mutations; exact keys need no reads, --tree discovers eligible targets
+      --fail-fast          stop scheduling new instances after the first error
+  -h, --help               help for process-instance
+  -k, --key strings        process instance key(s); repeat, comma-separate or combine with stdin '-'
+  -l, --limit int32        maximum distinct matching instances; zero selects all; tree expansion is not limited
+      --no-wait            return after accepted suspension without confirmation reads
+      --no-worker-limit    use all queued jobs as workers when --workers is unset
+      --tree               include each selected instance and its descendants; suspend active instances only
+  -w, --workers int        maximum concurrent workers (default: min(count, 2*GOMAXPROCS, 32))
 ```
 
 ### Options inherited from parent commands

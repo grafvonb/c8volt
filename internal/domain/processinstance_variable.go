@@ -113,6 +113,11 @@ type ProcessInstanceVariablePlan struct {
 // ProcessInstanceVariableUpdatePlan is the immutable-by-convention result of
 // successful collection-wide discovery and classification.
 type ProcessInstanceVariableUpdatePlan struct {
+	// Selection retains completed search provenance; nil preserves explicit-key behavior.
+	Selection *ProcessInstanceSelection `json:"selection,omitempty"`
+	// SelectionTenant binds search authorization to the receiving service.
+	SelectionTenant string `json:"selectionTenant,omitempty"`
+
 	RequestedKeys          []string
 	RequestedValues        map[string]any
 	Instances              []ProcessInstanceVariablePlan
@@ -150,6 +155,9 @@ type ProcessInstanceVariableUpdateResult struct {
 	Variables          map[string]any
 }
 
+// ProcessInstanceVariableUpdateResults retains ordered outcomes and optional selection evidence.
 type ProcessInstanceVariableUpdateResults struct {
-	Items []ProcessInstanceVariableUpdateResult
+	// Selection preserves original criteria separately from outcome identity.
+	Selection *ProcessInstanceSelection `json:"selection,omitempty"`
+	Items     []ProcessInstanceVariableUpdateResult
 }

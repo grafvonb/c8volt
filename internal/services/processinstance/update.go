@@ -68,13 +68,23 @@ func NewVariableUpdates(processInstances VariableUpdateProcessInstanceAPI, varia
 // ExecuteProcessInstanceVariableUpdates validates and freezes the complete
 // collection plan before submitting exact root payloads and optionally waiting once.
 func (s *VariableUpdateService) ExecuteProcessInstanceVariableUpdates(ctx context.Context, plan d.ProcessInstanceVariableUpdatePlan, wantedWorkers int, opts ...services.CallOption) (d.ProcessInstanceVariableUpdateResults, error) {
+	if plan.Selection != nil {
+		api, ok := s.processInstances.(API)
+		if !ok {
+			return d.ProcessInstanceVariableUpdateResults{}, fmt.Errorf("%w: selected update requires a process selection service", d.ErrPrecondition)
+		}
+		if err := validateActionSelection(api, plan.Selection, plan.SelectionTenant, plan.RequestedKeys, opts...); err != nil {
+			return d.ProcessInstanceVariableUpdateResults{}, err
+		}
+		opts = append(append([]services.CallOption(nil), opts...), services.WithIgnoreTenant())
+	}
 	frozen, err := validateAndCopyProcessInstanceVariableUpdatePlan(plan)
 	if err != nil {
 		return d.ProcessInstanceVariableUpdateResults{}, err
 	}
 	cfg := services.ApplyCallOptions(opts)
 	if cfg.DryRun || len(frozen.Instances) == 0 {
-		return d.ProcessInstanceVariableUpdateResults{Items: make([]d.ProcessInstanceVariableUpdateResult, 0)}, nil
+		return d.ProcessInstanceVariableUpdateResults{Items: make([]d.ProcessInstanceVariableUpdateResult, 0), Selection: toolx.MapPtr(frozen.Selection, copyActionSelection)}, nil
 	}
 
 	items := make([]d.ProcessInstanceVariableUpdateResult, len(frozen.Instances))
@@ -90,7 +100,7 @@ func (s *VariableUpdateService) ExecuteProcessInstanceVariableUpdates(ctx contex
 		changedIndexes = append(changedIndexes, i)
 	}
 	if len(changedIndexes) == 0 {
-		return d.ProcessInstanceVariableUpdateResults{Items: items}, nil
+		return d.ProcessInstanceVariableUpdateResults{Items: items, Selection: toolx.MapPtr(frozen.Selection, copyActionSelection)}, nil
 	}
 	if s.writer == nil {
 		return d.ProcessInstanceVariableUpdateResults{}, fmt.Errorf("%w: process-instance variable execution requires a scope variable service", d.ErrPrecondition)
@@ -130,7 +140,7 @@ func (s *VariableUpdateService) ExecuteProcessInstanceVariableUpdates(ctx contex
 		}
 		items[instanceIndex].Status = d.ProcessInstanceVariableUpdateStatusSkipped
 	}
-	results := d.ProcessInstanceVariableUpdateResults{Items: items}
+	results := d.ProcessInstanceVariableUpdateResults{Items: items, Selection: toolx.MapPtr(frozen.Selection, copyActionSelection)}
 	if cfg.NoWait {
 		return results, mutationErr
 	}

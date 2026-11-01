@@ -80,6 +80,17 @@ func (r DryRunPIKeyExpansion) HasActionableResults() bool {
 // API defines public process operations. Custom implementations must include the
 // no-I/O search validator, selection and frozen-cancellation planners, and state-control executors.
 type API interface {
+	// PlanSelectedProcessInstanceVariableUpdates preserves completed search selection through action planning or execution.
+	PlanSelectedProcessInstanceVariableUpdates(ctx context.Context, request ProcessInstanceSelectionRequest, variables map[string]any, opts ...options.FacadeOption) (ProcessInstanceVariableUpdatePlan, error)
+	// PlanSelectedProcessInstanceSuspension preserves completed search selection through action planning or execution.
+	PlanSelectedProcessInstanceSuspension(ctx context.Context, request ProcessInstanceSelectionRequest, tree bool, opts ...options.FacadeOption) (ProcessInstanceSuspensionPlan, error)
+	// ExecuteProcessInstanceSuspensionPlan preserves completed search selection through action planning or execution.
+	ExecuteProcessInstanceSuspensionPlan(ctx context.Context, plan ProcessInstanceSuspensionPlan, workers int, opts ...options.FacadeOption) (SuspensionResults, error)
+	// PlanSelectedProcessInstanceResumption preserves completed search selection through action planning or execution.
+	PlanSelectedProcessInstanceResumption(ctx context.Context, request ProcessInstanceSelectionRequest, tree bool, opts ...options.FacadeOption) (ProcessInstanceResumptionPlan, error)
+	// ExecuteProcessInstanceResumptionPlan preserves completed search selection through action planning or execution.
+	ExecuteProcessInstanceResumptionPlan(ctx context.Context, plan ProcessInstanceResumptionPlan, workers int, opts ...options.FacadeOption) (ResumptionResults, error)
+
 	// PlanProcessInstanceSelectedMutation freezes completed collection discovery and expanded families.
 	PlanProcessInstanceSelectedMutation(ctx context.Context, request ProcessInstanceSelectedMutationRequest, opts ...options.FacadeOption) (ProcessInstanceSelectedMutationPlan, error)
 	// ExecuteProcessInstanceCancellationPlan validates and submits only the reviewed distinct roots.

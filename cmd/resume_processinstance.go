@@ -21,8 +21,12 @@ var flagResumePITree bool
 var resumeProcessInstanceCmd = &cobra.Command{
 	Use:     "process-instance",
 	Aliases: []string{"pi"},
-	Short:   "Resume suspended process instances by key or subtree",
+	Short:   "Resume suspended process instances by key, business ID or subtree",
 	Long: `Resume SUSPENDED process instances on Camunda 8.10 by explicit key or selected subtree.
+
+Select by exact business ID with --bid on Camunda 8.10, as an alternative to --key or stdin. BID discovery respects configured tenant scope and completes before approval; --limit bounds distinct matching seeds and --batch-size controls request size. Duplicate matches count once. Empty completed discovery succeeds without confirmation or mutation, including --no-wait. Errors during discovery prevent mutation. JSON retains the original criterion and reviewed scope; execution never searches the BID again after approval. A separate dry-run and later execution perform separate discoveries.
+
+Without --tree, BID selects exact instances and does not prefilter their action eligibility. With --tree, expand only selected seeds and descendants, merge overlaps, and freeze eligible targets; a seed limit never clips descendants. Neither mode selects ancestors or siblings. Explicit-key dry-runs remain local and read-free.
 
 Tree plans retain each discovered instance's own business ID when available; inspect it with --verbose or --json. Exact-key previews remain local and do not look up IDs.
 
@@ -39,7 +43,8 @@ Tree execution asks once for the expanded eligible count and uses that frozen sc
 Resumption releases buffered work. Failures while processing buffered work can leave the instance suspended. Observed CANCELED or TERMINATED is a cancellation failure, never confirmed resumption. Persistent suspension, absence, unknown state or failed reads remain unconfirmed within the wait bound; missing suspendedDate alone is not proof. Resumption does not guarantee incident-free execution, process completion, or immediate subscription readiness. Multiple-key execution is not atomic and partial failure has no automatic rollback.
 
 Use --auto-confirm or --automation for unattended execution. JSON requires --dry-run, --auto-confirm or --automation and cannot be combined with --verbose. Keys-only previews list selected exact keys or eligible tree targets; execution keys indicate acceptance, not confirmed resumption, even when confirmation fails. Use JSON and the exit status for confirmation evidence. Use --verbose for per-instance submission, confirmation, and last observed state. Quiet preserves explicit machine results and required errors. Use --debug for redacted HTTP diagnostics independently of --verbose.`,
-	Example: `  ./c8volt resume process-instance --key <process-instance-key>
+	Example: `  ./c8volt --tenant tenant-a resume pi --bid 'ORDER-123' --tree --dry-run --json
+  ./c8volt resume process-instance --key <process-instance-key>
   ./c8volt resume pi --key <key-a>,<key-b> --key <key-a> --dry-run --json
   ./c8volt resume pi --key <process-instance-key> --auto-confirm --no-wait --json
   ./c8volt resume pi --key <process-instance-key> --tree --dry-run
@@ -52,6 +57,10 @@ Use --auto-confirm or --automation for unattended execution. JSON requires --dry
 			handleNewCliError(cmd, log, cfg, fmt.Errorf("initializing client: %w", err))
 			return
 		}
+		if !cmd.Flags().Changed("bid") && (cmd.Flags().Changed("limit") || cmd.Flags().Changed("batch-size")) {
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, missingDependentFlagsf("--limit and --batch-size require --bid"))
+			return
+		}
 		if err := requireAutomationSupport(cmd); err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 			return
@@ -59,6 +68,10 @@ Use --auto-confirm or --automation for unattended execution. JSON requires --dry
 		keys, err := parseResumeProcessInstanceInput(cmd, args)
 		if err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+			return
+		}
+		if cmd.Flags().Changed("bid") {
+			runResumeProcessInstanceBusinessID(cmd, cli, log, cfg)
 			return
 		}
 		if flagResumePITree {
@@ -79,6 +92,9 @@ func parseResumeProcessInstanceInput(cmd *cobra.Command, args []string) (typex.K
 	}
 	if pickMode() == RenderModeJSON && !flagDryRun && !shouldImplicitlyConfirm(cmd) {
 		return nil, missingDependentFlagsf("--json resume process-instance requires --dry-run, --auto-confirm, or --automation")
+	}
+	if cmd.Flags().Changed("bid") {
+		return nil, validateBusinessIDActionInput(cmd, args)
 	}
 	stdinKeys, err := readKeysIfDash(args)
 	if err != nil {
@@ -102,6 +118,7 @@ func parseResumeProcessInstanceInput(cmd *cobra.Command, args []string) (typex.K
 func init() {
 	resumeCmd.AddCommand(resumeProcessInstanceCmd)
 	fs := resumeProcessInstanceCmd.Flags()
+	registerBusinessIDActionFlags(resumeProcessInstanceCmd)
 	fs.StringSliceVarP(&flagResumePIKeys, "key", "k", nil, "process instance key(s); repeat, comma-separate or combine with stdin '-'")
 	fs.BoolVar(&flagResumePITree, "tree", false, "include selected instances and descendants; resume only observed SUSPENDED members")
 	fs.BoolVar(&flagDryRun, "dry-run", false, "preview exact keys locally or discover eligible tree targets; no mutations or approval")

@@ -21,8 +21,12 @@ var flagSuspendPITree bool
 var suspendProcessInstanceCmd = &cobra.Command{
 	Use:     "process-instance",
 	Aliases: []string{"pi"},
-	Short:   "Suspend explicitly selected active process instances",
+	Short:   "Suspend process instances by key, business ID or subtree",
 	Long: `Suspend ACTIVE process instances on Camunda 8.10 by explicit key.
+
+Select by exact business ID with --bid on Camunda 8.10, as an alternative to --key or stdin. BID discovery respects configured tenant scope and completes before approval; --limit bounds distinct matching seeds and --batch-size controls request size. Duplicate matches count once. Empty completed discovery succeeds without confirmation or mutation, including --no-wait. Errors during discovery prevent mutation. JSON retains the original criterion and reviewed scope; execution never searches the BID again after approval. A separate dry-run and later execution perform separate discoveries.
+
+Without --tree, BID selects exact instances and does not prefilter their action eligibility. With --tree, expand only selected seeds and descendants, merge overlaps, and freeze eligible targets; a seed limit never clips descendants. Neither mode selects ancestors or siblings. Explicit-key dry-runs remain local and read-free.
 
 Tree plans retain each discovered instance's own business ID when available; inspect it with --verbose or --json. Exact-key previews remain local and do not look up IDs.
 
@@ -39,7 +43,8 @@ Tree approval names the expanded active target count. Execution uses that frozen
 Suspension pauses engine execution while retaining runtime state and resources; it does not cancel the instance. It does not interrupt already-running worker code or undo external effects. Job completion/failure attempts are rejected during suspension, and affected jobs may execute again after resumption. Backpressure can delay or reject suspension; this is not an instantaneous emergency stop.
 
 Use --auto-confirm or --automation for unattended execution. JSON requires --dry-run, --auto-confirm or --automation and cannot be combined with --verbose. Keys-only previews list selected keys (eligible targets with --tree); execution keys indicate acceptance, not confirmed suspension, even when confirmation fails. Use JSON and the exit status for confirmation evidence. Use --verbose for per-instance submission, confirmation, and last observed state. Quiet preserves explicit machine results and required errors. Use --debug for redacted HTTP diagnostics independently of --verbose.`,
-	Example: `  ./c8volt suspend process-instance --key <process-instance-key>
+	Example: `  ./c8volt --tenant tenant-a suspend pi --bid 'ORDER-123' --tree --dry-run --json
+  ./c8volt suspend process-instance --key <process-instance-key>
   ./c8volt suspend pi --key <key-a>,<key-b> --key <key-a> --dry-run --json
   ./c8volt suspend pi --key <process-instance-key> --tree --dry-run
   ./c8volt suspend pi --key <process-instance-key> --tree --auto-confirm --json
@@ -52,6 +57,10 @@ Use --auto-confirm or --automation for unattended execution. JSON requires --dry
 			handleNewCliError(cmd, log, cfg, fmt.Errorf("initializing client: %w", err))
 			return
 		}
+		if !cmd.Flags().Changed("bid") && (cmd.Flags().Changed("limit") || cmd.Flags().Changed("batch-size")) {
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, missingDependentFlagsf("--limit and --batch-size require --bid"))
+			return
+		}
 		if err := requireAutomationSupport(cmd); err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 			return
@@ -59,6 +68,10 @@ Use --auto-confirm or --automation for unattended execution. JSON requires --dry
 		keys, err := parseSuspendProcessInstanceInput(cmd, args)
 		if err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+			return
+		}
+		if cmd.Flags().Changed("bid") {
+			runSuspendProcessInstanceBusinessID(cmd, cli, log, cfg)
 			return
 		}
 		if flagSuspendPITree {
@@ -79,6 +92,9 @@ func parseSuspendProcessInstanceInput(cmd *cobra.Command, args []string) (typex.
 	}
 	if pickMode() == RenderModeJSON && !flagDryRun && !shouldImplicitlyConfirm(cmd) {
 		return nil, missingDependentFlagsf("--json suspend process-instance requires --dry-run, --auto-confirm, or --automation")
+	}
+	if cmd.Flags().Changed("bid") {
+		return nil, validateBusinessIDActionInput(cmd, args)
 	}
 	stdinKeys, err := readKeysIfDash(args)
 	if err != nil {
@@ -102,6 +118,7 @@ func parseSuspendProcessInstanceInput(cmd *cobra.Command, args []string) (typex.
 func init() {
 	suspendCmd.AddCommand(suspendProcessInstanceCmd)
 	fs := suspendProcessInstanceCmd.Flags()
+	registerBusinessIDActionFlags(suspendProcessInstanceCmd)
 	fs.StringSliceVarP(&flagSuspendPIKeys, "key", "k", nil, "process instance key(s); repeat, comma-separate or combine with stdin '-'")
 	fs.BoolVar(&flagSuspendPITree, "tree", false, "include each selected instance and its descendants; suspend active instances only")
 	fs.BoolVar(&flagDryRun, "dry-run", false, "preview without mutations; exact keys need no reads, --tree discovers eligible targets")

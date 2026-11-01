@@ -280,3 +280,58 @@ Started: 2026-11-01 12:22:16
 - Targeted gofmt, `make docs-content` and diff checks passed. README/help/generated docs describe version/tenant rules, frozen members, seed limits, force/cascade timing, partial reports and public API compatibility. The command lifecycle is in its dedicated mode file; views own formatting, services own execution, and the facade remains mechanical.
 - All checks used the quickstart environment-isolation wrapper and test-owned mocks/HTTP servers/PTY fixtures. Untagged integration-support packages were reviewed as offline helpers; no live environment was inspected or tested. Concurrent real-engine behavior remains unverified. No later work unit was started.
 ---
+
+---
+## Iteration 6 - 2026-11-01 14:36
+**Work Unit**: US3 T006 — completed BID variable updates and exact/tree suspend/resume
+**Tasks Completed**:
+- [x] T006: Connect completed BID collection selection to frozen variable-update and state-control plans, preserving action scope, provenance, output and version contracts.
+**Tasks Remaining in Work Unit**: T007 remains in US3; four feature tasks remain overall.
+**Commit**: This work-unit commit
+**Files Changed**:
+- README.md
+- c8volt/process/api.go
+- c8volt/process/convert.go
+- c8volt/process/model.go
+- c8volt/process/selected_actions.go
+- c8volt/process/selected_actions_test.go
+- c8volt/resource/client_test.go
+- cmd/cmd_views_processinstance_update.go
+- cmd/command_contract_test.go
+- cmd/process_api_stub_test.go
+- cmd/processinstance_business_id_action.go
+- cmd/processinstance_business_id_action_test.go
+- cmd/resume_processinstance.go
+- cmd/resume_processinstance_business_id.go
+- cmd/suspend_processinstance.go
+- cmd/suspend_processinstance_business_id.go
+- cmd/update_processinstance.go
+- cmd/update_processinstance_business_id.go
+- docs/cli/c8volt_resume.md
+- docs/cli/c8volt_resume_process-instance.md
+- docs/cli/c8volt_suspend.md
+- docs/cli/c8volt_suspend_process-instance.md
+- docs/cli/c8volt_update.md
+- docs/cli/c8volt_update_process-instance.md
+- docs/cli/command-tree.md
+- docs/index.md
+- internal/domain/processinstance_resumption.go
+- internal/domain/processinstance_resumption_plan.go
+- internal/domain/processinstance_suspension.go
+- internal/domain/processinstance_suspension_plan.go
+- internal/domain/processinstance_variable.go
+- internal/services/processinstance/selected_actions.go
+- internal/services/processinstance/selected_actions_test.go
+- internal/services/processinstance/selected_actions_version_test.go
+- internal/services/processinstance/update.go
+- internal/services/processinstance/update_validation.go
+- specs/361-business-id-selection/progress.md
+- specs/361-business-id-selection/ralph-memory.md
+- specs/361-business-id-selection/tasks.md
+**Learnings**:
+- Selection and method-specific planning stay in process services; facades only copy/map/delegate. Variable updates freeze exact root payloads with no relatives; state controls use exact selected keys by default and deduplicated descendant eligibility under tree mode. Prepared-plan consumption validates receiving capability, original tenant options, completion, keys and classifications before empty/dry-run bypasses. Library no-op results retain copied selection provenance.
+- Command tests exercise complete duplicate/sparse discovery before writes, distinct seed limits without descendant clipping, changed approval-time discovery, root-local nested payloads, unchanged/ineligible/empty no-ops, waits, no-wait acceptance, partial failures and fail-fast skipped slots. Actual v810 plans passed to v88/v89 reject without requests, including empty plans. Facade tests cover deep copies, JSON round trips and partial error conversion. Existing explicit-key update/state regressions passed, including local preview request counts.
+- Traced service errors through facade conversion, selected views, configured logger and original exit. Both exact/tree state modes and variable updates pass plain/structured configured/inherited INFO/ERROR routing, quiet/WARN suppression, bounded repeated failures, independent redacted DEBUG, machine partial evidence, and exactly one envelope/EOF. Real-terminal empty scopes do not prompt; nonempty approve/decline/EOF preserve plain stderr. A new regression first failed when a keys-only update printed a human pre-approval preview; routing through the existing mode-aware helper fixed it. Empty wording is asserted exactly.
+- Listed new test names before execution. Targeted runtime/legacy validation passed after correcting two stale metadata assertions for the newly supported batch-size/limit flags. Final isolated `GORACE=atexit_sleep_ms=0 go test ./cmd ./internal/services/processinstance ./c8volt/process -run '^TestBusinessIDActions' -race -count=1` passed (cmd 22.359s), followed by the stricter empty-wording race check (3.117s). An initial focused race invocation was stopped only to use the repository's zero subprocess exit-delay setting, then rerun successfully.
+- Full isolated `make test PKG=./...` completed with race detection and integration tags disabled (cmd 478.152s); breadth is justified by shared variable execution, public plan/result conversions and facade interface changes. All runtime tests passed; its only failure was the global flag-shorthand contract, which required `-n` for batch-size and `-l` for limit. Added those aliases, regenerated docs, and passed a focused race rerun of the failed capability contract, both action metadata tests and the entire BID action command matrix. The broad run began before the last mode-aware preview and no-op provenance fixes; both passed the final owner/facade/command race suite. The full suite was not repeated for the narrowly verified shorthand correction. `make docs-content`, targeted gofmt, generated-doc guidance checks and `git diff --check` passed. All dependencies were owned fakes/mocks/PTY fixtures; real-engine behavior remains unverified. No later task was started.
+---

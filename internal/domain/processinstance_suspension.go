@@ -70,5 +70,7 @@ const (
 // order, including skipped work and partial failures. Callers initialize Items
 // to an empty array when there are no selected keys.
 type ProcessInstanceSuspensionResults struct {
-	Items []ProcessInstanceSuspensionResult `json:"items"`
+	// Selection preserves original criteria separately from outcome identity.
+	Selection *ProcessInstanceSelection         `json:"selection,omitempty"`
+	Items     []ProcessInstanceSuspensionResult `json:"items"`
 }

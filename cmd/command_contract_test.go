@@ -3155,7 +3155,7 @@ func TestSuspendProcessInstanceMetadata(t *testing.T) {
 		{Name: RenderModeJSON.String(), Supported: true, MachinePreferred: true},
 		{Name: RenderModeKeysOnly.String(), Supported: true},
 	}, cap.OutputModes)
-	for _, name := range []string{"key", "tree", "dry-run", "no-wait", "workers", "no-worker-limit", "fail-fast"} {
+	for _, name := range []string{"key", "bid", "batch-size", "limit", "tree", "dry-run", "no-wait", "workers", "no-worker-limit", "fail-fast"} {
 		require.NotNil(t, suspendProcessInstanceCmd.Flags().Lookup(name))
 	}
 	treeFlag := suspendProcessInstanceCmd.Flags().Lookup("tree")
@@ -3167,7 +3167,7 @@ func TestSuspendProcessInstanceMetadata(t *testing.T) {
 	}
 	require.Contains(t, suspendProcessInstanceCmd.Example, "--tree --dry-run")
 	require.Contains(t, suspendProcessInstanceCmd.Example, "--tree --auto-confirm")
-	for _, name := range []string{"force", "no-state-check", "state", "bpmn-process-id", "batch-size", "limit"} {
+	for _, name := range []string{"force", "no-state-check", "state", "bpmn-process-id"} {
 		require.Nil(t, suspendProcessInstanceCmd.Flags().Lookup(name))
 	}
 	for _, name := range []string{"backoff-timeout", "backoff-max-retries"} {
@@ -3185,7 +3185,7 @@ func TestSuspendProcessInstanceMetadata(t *testing.T) {
 	}
 }
 
-// TestResumeProcessInstanceMetadata protects the exact-key/tree surface and operator outcome contract.
+// TestResumeProcessInstanceMetadata protects key/BID/tree selection and operator outcomes.
 func TestResumeProcessInstanceMetadata(t *testing.T) {
 	root := Root()
 	resetCommandTreeFlags(root)
@@ -3200,10 +3200,10 @@ func TestResumeProcessInstanceMetadata(t *testing.T) {
 		{Name: RenderModeJSON.String(), Supported: true, MachinePreferred: true},
 		{Name: RenderModeKeysOnly.String(), Supported: true},
 	}, cap.OutputModes)
-	for _, name := range []string{"key", "tree", "dry-run", "no-wait", "workers", "no-worker-limit", "fail-fast"} {
+	for _, name := range []string{"key", "bid", "batch-size", "limit", "tree", "dry-run", "no-wait", "workers", "no-worker-limit", "fail-fast"} {
 		require.NotNil(t, resumeProcessInstanceCmd.Flags().Lookup(name))
 	}
-	for _, name := range []string{"force", "no-state-check", "state", "bpmn-process-id", "batch-size", "limit"} {
+	for _, name := range []string{"force", "no-state-check", "state", "bpmn-process-id"} {
 		require.Nil(t, resumeProcessInstanceCmd.Flags().Lookup(name))
 	}
 	for _, name := range []string{"backoff-timeout", "backoff-max-retries"} {

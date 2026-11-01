@@ -6,11 +6,15 @@ nav_exclude: true
 [CLI Reference]({{ "/cli/" | relative_url }})
 ## c8volt update process-instance
 
-Update process-instance variables by key
+Update process-instance variables by key or business ID
 
 ### Synopsis
 
 Update process-instance-scope variables on Camunda 8.8 or newer.
+
+Select by exact business ID with --bid on Camunda 8.10, as an alternative to --key or stdin. BID discovery respects configured tenant scope and completes before approval; --limit bounds distinct matching seeds and --batch-size controls request size. Duplicate matches count once. Empty completed discovery succeeds without confirmation or mutation, including --no-wait. Errors during discovery prevent mutation. JSON retains the original criterion and reviewed scope; execution never searches the BID again after approval. A separate dry-run and later execution perform separate discoveries.
+
+BID updates freeze each selected instance's existing root-variable plan and payload without family expansion. Per-instance failures retain partial machine evidence and one compact configured ERROR; use --verbose for outcome details.
 
 Variable plans retain each selected instance's observed business ID when available. Detailed plan rows quote it safely, and JSON preserves it exactly. Key/status-only outcomes do not add a lookup.
 
@@ -27,6 +31,7 @@ c8volt update process-instance [flags]
 ### Examples
 
 ```
+  ./c8volt --tenant tenant-a update pi --bid 'ORDER-123' --vars '{"customerTier":"gold"}' --dry-run --json
   ./c8volt update process-instance --key <process-instance-key> --vars '{"customerTier":"gold"}' --dry-run
   ./c8volt update process-instance --key <process-instance-key> --vars-file ./vars.json --dry-run
   ./c8volt --tenant tenant-a update process-instance --key <process-instance-key> --vars '{"customerTier":"gold"}' --dry-run
@@ -38,10 +43,13 @@ c8volt update process-instance [flags]
 ### Options
 
 ```
+  -n, --batch-size int32   maximum process instances per discovery request (default 1000)
+      --bid string         exact business ID to select in configured tenant scope (Camunda 8.10)
       --dry-run            preview variable updates without submitting mutation
       --fail-fast          stop scheduling new updates after the first error
   -h, --help               help for process-instance
   -k, --key strings        process instance key(s) to update; repeat or combine with stdin '-'
+  -l, --limit int32        maximum distinct matching instances; zero selects all; tree expansion is not limited
       --no-wait            return after the update request is accepted without variable confirmation
       --no-worker-limit    use all queued jobs as workers when --workers is unset
       --vars string        JSON object with variables to set on each process instance

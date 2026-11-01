@@ -46,5 +46,5 @@ c8volt suspend [flags]
 ### SEE ALSO
 
 * [c8volt]({{ "/cli/c8volt/" | relative_url }})	 - Operate Camunda 8 workflows from the command line
-* [c8volt suspend process-instance]({{ "/cli/c8volt_suspend_process-instance" | relative_url }})	 - Suspend explicitly selected active process instances
+* [c8volt suspend process-instance]({{ "/cli/c8volt_suspend_process-instance" | relative_url }})	 - Suspend process instances by key, business ID or subtree
 

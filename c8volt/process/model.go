@@ -212,6 +212,11 @@ type ProcessInstanceVariablePlan struct {
 // ProcessInstanceVariableUpdatePlan is a complete frozen collection plan
 // suitable for preview and later execution without rediscovery.
 type ProcessInstanceVariableUpdatePlan struct {
+	// Selection retains completed search provenance; nil preserves explicit-key behavior.
+	Selection *ProcessInstanceSelection `json:"selection,omitempty"`
+	// SelectionTenant binds search authorization to the receiving service.
+	SelectionTenant string `json:"selectionTenant,omitempty"`
+
 	RequestedKeys          []string                      `json:"requestedKeys"`
 	RequestedValues        map[string]any                `json:"requestedValues"`
 	Instances              []ProcessInstanceVariablePlan `json:"instances"`
@@ -259,8 +264,11 @@ func (r ProcessInstanceVariableUpdateResult) OK() bool {
 		(r.MutationAccepted && r.Status != ProcessInstanceVariableUpdateStatusMutationFailed && r.Status != ProcessInstanceVariableUpdateStatusConfirmationFailed)
 }
 
+// ProcessInstanceVariableUpdateResults retains ordered outcomes and optional selection evidence.
 type ProcessInstanceVariableUpdateResults struct {
-	Items []ProcessInstanceVariableUpdateResult `json:"items,omitempty"`
+	// Selection preserves original criteria separately from outcome identity.
+	Selection *ProcessInstanceSelection             `json:"selection,omitempty"`
+	Items     []ProcessInstanceVariableUpdateResult `json:"items,omitempty"`
 }
 
 func (r ProcessInstanceVariableUpdateResults) Totals() (total int, oks int, noks int) {
@@ -828,7 +836,9 @@ const (
 // order, including skipped work and partial failures. Callers initialize Items
 // to an empty array when there are no selected keys.
 type SuspensionResults struct {
-	Items []SuspensionResult `json:"items"`
+	// Selection preserves original criteria separately from outcome identity.
+	Selection *ProcessInstanceSelection `json:"selection,omitempty"`
+	Items     []SuspensionResult        `json:"items"`
 }
 
 // ProcessInstanceSuspensionPlan freezes discovered scope without claiming mutation evidence.
@@ -838,6 +848,13 @@ type SuspensionResults struct {
 // explicit partial/unresolved-result, or context failure returns a zero plan plus
 // error. The caller must check error before considering a no-op.
 type ProcessInstanceSuspensionPlan struct {
+	// Selection retains completed search provenance; nil preserves explicit-key behavior.
+	Selection *ProcessInstanceSelection `json:"selection,omitempty"`
+	// SelectionTenant binds search authorization to the receiving service.
+	SelectionTenant string `json:"selectionTenant,omitempty"`
+	// Exact distinguishes selected keys from descendant eligibility plans.
+	Exact bool `json:"exact,omitempty"`
+
 	// RequestedKeys: All normalized unique explicit seeds, in input order, including seeds that overlap earlier subtrees.
 	RequestedKeys typex.Keys `json:"requestedKeys"`
 	// Instances: Unique discovered members in first-seen traversal order.
@@ -937,7 +954,9 @@ const (
 // to an empty array when there are no selected keys. Accepted-but-unconfirmed
 // failures count as both accepted and failed; those counts deliberately overlap.
 type ResumptionResults struct {
-	Items []ResumptionResult `json:"items"`
+	// Selection preserves original criteria separately from outcome identity.
+	Selection *ProcessInstanceSelection `json:"selection,omitempty"`
+	Items     []ResumptionResult        `json:"items"`
 }
 
 // ProcessInstanceResumptionPlan freezes discovered scope without claiming mutation evidence.
@@ -947,6 +966,13 @@ type ResumptionResults struct {
 // explicit partial/unresolved-result, or context failure returns a zero plan plus
 // error. The caller must check error before considering a no-op.
 type ProcessInstanceResumptionPlan struct {
+	// Selection retains completed search provenance; nil preserves explicit-key behavior.
+	Selection *ProcessInstanceSelection `json:"selection,omitempty"`
+	// SelectionTenant binds search authorization to the receiving service.
+	SelectionTenant string `json:"selectionTenant,omitempty"`
+	// Exact distinguishes selected keys from descendant eligibility plans.
+	Exact bool `json:"exact,omitempty"`
+
 	// RequestedKeys: All normalized unique explicit seeds, in input order, including seeds that overlap earlier subtrees.
 	RequestedKeys typex.Keys `json:"requestedKeys"`
 	// Instances: Unique discovered members in first-seen traversal order.
