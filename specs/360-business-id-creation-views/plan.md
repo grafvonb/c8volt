@@ -124,7 +124,7 @@ No-wait success retains accepted semantics; partial failure remains a failure ev
 
 ### Views, logging, and reports
 
-The [resource-view contract](contracts/resource-views.md) is the complete implementation coverage matrix. Append a safely quoted business-ID field to existing rows only when present; preserve compact summaries and escape control characters. JSON retains exact strings. Saved Markdown uses escaped values in existing observed resource lists without leaking raw markup.
+The [resource-view contract](contracts/resource-views.md) is the complete implementation coverage matrix. Show a compact `bid:<value>` field only when present, beside the process name in process-instance rows; quote empty values and values containing characters other than letters, digits, or `-_.@/:`; preserve compact summaries and escape control characters. JSON retains exact strings. Saved Markdown uses escaped values in existing observed resource lists without leaking raw markup.
 
 Move the touched creation result and flat-row functions from the command into `cmd/cmd_views_processinstance_run.go`. Human mutation rows/summaries and verbose output use `renderHumanLine` with the configured command logger; query rows and machine results remain stdout. Keep plain prompts on configured stderr. Preserve quiet/WARN suppression, activity behavior, inherited destinations, plain/structured formats, and existing output-mode precedence.
 

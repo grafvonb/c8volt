@@ -104,6 +104,22 @@ func newObservedBusinessIDFixture(t *testing.T) *observedBusinessIDFixture {
 	return f
 }
 
+// TestProcessInstanceBusinessIDCompactCommands places a simple identity beside the name in get and walk.
+func TestProcessInstanceBusinessIDCompactCommands(t *testing.T) {
+	for _, verb := range []string{"get", "walk"} {
+		t.Run(verb, func(t *testing.T) {
+			f := newObservedBusinessIDFixture(t)
+			f.instances["2251799813685101"]["businessId"] = "bubaId"
+			args := []string{"--config", runBusinessIDConfig(t, f.server.URL, "plain-time", "info"), verb, "pi", "--key", "2251799813685101"}
+			out, stderr, err := runBusinessIDCommand(t, args, "inherited", false)
+			require.NoError(t, err)
+			require.Empty(t, stderr)
+			require.Contains(t, out, "2251799813685101 <default> order bid:bubaId v1 ACTIVE")
+			require.NotContains(t, out, `bid:"bubaId"`)
+		})
+	}
+}
+
 // assertObservedBusinessID checks each resource's own snapshot, never a parent fallback.
 func assertObservedBusinessID(t *testing.T, item map[string]any, key string) {
 	t.Helper()
@@ -158,11 +174,11 @@ func TestGetProcessInstanceBusinessID(t *testing.T) {
 						}
 						require.Equal(t, want, out)
 					case "human":
-						require.Contains(t, out, "business-id:"+strconv.Quote("new,\"ID\"\n"))
+						require.Contains(t, out, "bid:"+strconv.Quote("new,\"ID\"\n"))
 						if !keyed {
-							require.Contains(t, out, `business-id:"old"`)
-							require.Contains(t, out, `business-id:""`)
-							require.Equal(t, 3, strings.Count(out, "business-id:"))
+							require.Contains(t, out, `bid:old`)
+							require.Contains(t, out, `bid:""`)
+							require.Equal(t, 3, strings.Count(out, "bid:"))
 						}
 					default:
 						env := requireSingleJSONObjectDocument(t, out)
@@ -264,8 +280,8 @@ func TestWalkProcessInstanceBusinessID(t *testing.T) {
 						}
 						require.Equal(t, want, out)
 					} else {
-						require.Contains(t, out, "business-id:"+strconv.Quote("new,\"ID\"\n"))
-						require.Contains(t, out, `business-id:"old"`)
+						require.Contains(t, out, "bid:"+strconv.Quote("new,\"ID\"\n"))
+						require.Contains(t, out, `bid:old`)
 					}
 					// Family/flat resolve ancestry then descendants; children and parent use only one traversal.
 					gets, searches := 0, 0
@@ -394,10 +410,10 @@ func TestProcessInstanceMutationBusinessID(t *testing.T) {
 							require.Empty(t, infos)
 						} else {
 							text := strings.Join(infos, "\n")
-							require.Contains(t, text, "business-id:"+strconv.Quote("new,\"ID\"\n"))
-							require.Contains(t, text, `business-id:"old"`)
-							require.Contains(t, text, `business-id:""`)
-							require.Equal(t, 3, strings.Count(text, "business-id:"))
+							require.Contains(t, text, "bid:"+strconv.Quote("new,\"ID\"\n"))
+							require.Contains(t, text, `bid:old`)
+							require.Contains(t, text, `bid:""`)
+							require.Equal(t, 3, strings.Count(text, "bid:"))
 						}
 					}
 					gets, searches, variables := 0, 0, 0
@@ -524,7 +540,7 @@ func TestProcessInstanceBusinessIDEmptyAndLocalPreviews(t *testing.T) {
 								require.NotEmpty(t, records)
 								for _, r := range records {
 									require.Equal(t, "INFO", r[0])
-									require.NotContains(t, r[1], "business-id:")
+									require.NotContains(t, r[1], "bid:")
 								}
 							} else {
 								require.Equal(t, [][2]string{{"INFO", "found: 0"}}, records)
@@ -615,9 +631,9 @@ func TestProcessInstanceBusinessIDTreeExecution(t *testing.T) {
 								messages = append(messages, r[1])
 							}
 							text := strings.Join(messages, "\n")
-							require.Contains(t, text, `business-id:"new"`)
-							require.Contains(t, text, `business-id:"old"`)
-							require.Equal(t, 2, strings.Count(text, "business-id:"))
+							require.Contains(t, text, `bid:new`)
+							require.Contains(t, text, `bid:old`)
+							require.Equal(t, 2, strings.Count(text, "bid:"))
 						}
 					}
 				})

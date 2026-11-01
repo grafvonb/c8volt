@@ -12,7 +12,7 @@ List or fetch process instances
 
 Get process instances by key or search criteria.
 
-On Camunda 8.10, each observed instance includes its own business ID when present, including enriched results. IDs are safely quoted in rows and preserved exactly in JSON; keys and totals stay unchanged.
+On Camunda 8.10, each observed instance includes its own business ID when present, including enriched results. Human rows show bid:<value> beside the process name, quoting values only when needed; JSON preserves IDs exactly; keys and totals stay unchanged.
 
 Use a known key or search by process definition, tenant, state, incidents, variables, jobs, user tasks, and time ranges. Missing explicit keys return not-found.
 

@@ -194,7 +194,7 @@ func TestRunProcessInstanceBusinessIDSummaryLogging(t *testing.T) {
 						messages = append(messages, r[1])
 					}
 					require.Contains(t, messages, "found: 1")
-					require.Contains(t, strings.Join(messages, "\n"), `business-id:"old\n\"ID"`)
+					require.Contains(t, strings.Join(messages, "\n"), `bid:"old\n\"ID"`)
 					require.Len(t, messages, 3, "tenant, one row and summary only")
 				})
 			}

@@ -260,7 +260,7 @@ func TestOpsBusinessIDEmptyScopes(t *testing.T) {
 							messages = append(messages, r[1])
 						}
 						require.NotEmpty(t, messages)
-						require.NotContains(t, strings.Join(messages, "\n"), "business-id:")
+						require.NotContains(t, strings.Join(messages, "\n"), "bid:")
 						require.Contains(t, strings.Join(messages, "\n"), "outcome: planned;")
 					}
 					data, err := os.ReadFile(path)
@@ -312,7 +312,7 @@ func TestOpsBusinessIDSuccessfulMutation(t *testing.T) {
 							require.Equal(t, "INFO", r[0])
 							messages = append(messages, r[1])
 						}
-						require.Contains(t, strings.Join(messages, "\n"), "business-id:"+strconv.Quote(opsBusinessIDOpaque))
+						require.Contains(t, strings.Join(messages, "\n"), "bid:"+strconv.Quote(opsBusinessIDOpaque))
 					}
 					data, err := os.ReadFile(path)
 					require.NoError(t, err)

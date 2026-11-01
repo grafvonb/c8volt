@@ -7,7 +7,7 @@
 
 Optional `businessId` is a field of the resource observation. JSON omits nil and preserves any backend-provided string, including empty. Existing outer envelopes, payloads, enrichment sections, null/array semantics, and field names are unchanged. A process instance's current ID never overwrites a job, task, child instance, or listener ID.
 
-Human rows append a compact, safely quoted `business-id:<value>` when present. Use existing row conventions, escaping control characters so an opaque value cannot add lines or corrupt columns. JSON preserves the actual string. Saved Markdown must escape table delimiters, line breaks, and markup appropriately without changing the underlying value. Do not truncate or normalize the stored model field.
+Human rows show a compact `bid:<value>` when present, beside the process name in process-instance rows. Leave letters, digits, and `-_.@/:` unquoted; quote empty values and values containing other characters. Use existing row conventions, escaping control characters so an opaque value cannot add lines or corrupt columns. JSON preserves the actual string. Saved Markdown must escape table delimiters, line breaks, and markup appropriately without changing the underlying value. Do not truncate or normalize the stored model field.
 
 This is a resource-view addition, not a new ID lookup or enrichment operation. Key/status-only results, local exact-key previews, and fallback objects such as `ProcessInstance{Key: rootKey}` keep ID absent. Totals stay counts. Keys-only stays one key per line, or zero bytes for no keys. Keep empty results and quiet/machine precedence unchanged.
 

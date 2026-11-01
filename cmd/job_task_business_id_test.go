@@ -174,12 +174,12 @@ func TestJobTaskBusinessIDQueries(t *testing.T) {
 							require.Equal(t, want, out)
 						case "human":
 							if version == "8.10" {
-								require.Contains(t, out, "business-id:"+strconv.Quote("old,\"ID\"\n"))
+								require.Contains(t, out, "bid:"+strconv.Quote("old,\"ID\"\n"))
 								if count == 3 {
-									require.Contains(t, out, `business-id:""`)
+									require.Contains(t, out, `bid:""`)
 								}
 							} else {
-								require.NotContains(t, out, "business-id:")
+								require.NotContains(t, out, "bid:")
 							}
 						default:
 							payload := decodeJobTaskBusinessIDEnvelope(t, out)
@@ -265,9 +265,9 @@ func TestJobBusinessIDPlans(t *testing.T) {
 								ids := 0
 								for _, record := range records {
 									require.Equal(t, "INFO", record[0])
-									if strings.Contains(record[1], "business-id:") {
+									if strings.Contains(record[1], "bid:") {
 										ids++
-										require.True(t, strings.Contains(record[1], `business-id:"old,\"ID\"\n"`) || strings.Contains(record[1], `business-id:""`))
+										require.True(t, strings.Contains(record[1], `bid:"old,\"ID\"\n"`) || strings.Contains(record[1], `bid:""`))
 									}
 								}
 								want := 1
@@ -418,7 +418,7 @@ func TestJobBusinessIDCompletionOutcomes(t *testing.T) {
 								require.Equal(t, "INFO", record[0])
 								require.NotEqual(t, "quiet", mode)
 							}
-							if strings.Contains(record[1], "business-id:") {
+							if strings.Contains(record[1], "bid:") {
 								identities++
 							}
 						}

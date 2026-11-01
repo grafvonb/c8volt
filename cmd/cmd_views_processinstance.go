@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/grafvonb/c8volt/toolx"
@@ -103,7 +104,7 @@ func flatRowPI(it process.ProcessInstance) flatRow {
 	return flatRowPIWithTimezone(it, false)
 }
 
-// flatRowPIWithTimezone appends safely quoted identity without changing absent-value columns.
+// flatRowPIWithTimezone groups business identity with the process name.
 func flatRowPIWithTimezone(it process.ProcessInstance, showTimezoneOffset bool) flatRow {
 	pTag := " p:<root>"
 	if it.ParentKey != "" {
@@ -133,6 +134,7 @@ func flatRowPIWithTimezone(it process.ProcessInstance, showTimezoneOffset bool) 
 		it.Key,
 		it.TenantId,
 		it.BpmnProcessId,
+		processInstanceBusinessIDColumn(it.BusinessId),
 		fmt.Sprintf("v%d%s", it.ProcessVersion, vTag),
 		string(it.State),
 		"s:" + toolx.FormatTimestamp(it.StartDate, showTimezoneOffset),
@@ -140,7 +142,6 @@ func flatRowPIWithTimezone(it process.ProcessInstance, showTimezoneOffset bool) 
 		strings.TrimSpace(pTag),
 		strings.TrimSpace(incidentTag),
 		strings.TrimSpace(ageTag),
-		processInstanceBusinessIDColumn(it.BusinessId),
 	}
 }
 
@@ -244,5 +245,10 @@ func processInstanceBusinessIDColumn(value *string) string {
 	if value == nil {
 		return ""
 	}
-	return "business-id:" + strconv.Quote(*value)
+	if *value != "" && strings.IndexFunc(*value, func(r rune) bool {
+		return !unicode.IsLetter(r) && !unicode.IsDigit(r) && !strings.ContainsRune("-_.@/:", r)
+	}) == -1 {
+		return "bid:" + *value
+	}
+	return "bid:" + strconv.Quote(*value)
 }

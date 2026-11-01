@@ -190,7 +190,7 @@ func TestOpsBusinessIDPurgeCommands(t *testing.T) {
 						}
 						if workflow == "repair" {
 							require.NotContains(t, string(data), "businessId")
-							require.NotContains(t, string(data), "business-id:")
+							require.NotContains(t, string(data), "bid:")
 						}
 						if mode == "json" {
 							payload := decodeJobTaskBusinessIDEnvelope(t, stdout)
@@ -209,7 +209,7 @@ func TestOpsBusinessIDPurgeCommands(t *testing.T) {
 						if mode != "verbose" {
 							require.Empty(t, messages)
 						} else if workflow != "repair" && version == "8.10" {
-							require.Contains(t, strings.Join(messages, "\n"), "business-id:"+strconv.Quote(opsBusinessIDOpaque))
+							require.Contains(t, strings.Join(messages, "\n"), "bid:"+strconv.Quote(opsBusinessIDOpaque))
 						}
 						wantReads := map[string]int{"incident": 5, "orphan": 6, "definitions": 15, "repair": 2}[workflow]
 						if workflow == "definitions" && version == "8.9" {
@@ -263,8 +263,8 @@ func TestOpsBusinessIDReports(t *testing.T) {
 			data, err := tc.markdown()
 			require.NoError(t, err)
 			text := string(data)
-			require.Contains(t, text, `key=root state=COMPLETED business-id:"new"`)
-			require.Contains(t, text, `key=empty state=COMPLETED business-id:""`)
+			require.Contains(t, text, `key=root state=COMPLETED bid:new`)
+			require.Contains(t, text, `key=empty state=COMPLETED bid:""`)
 			require.Contains(t, text, "key=absent state=COMPLETED\n")
 			require.Contains(t, text, `\|\<tag\>\&\*\_\[link\]\(url\)`)
 			require.NotContains(t, text, "\nnext")
@@ -354,7 +354,7 @@ func TestOpsBusinessIDRetentionCommand(t *testing.T) {
 								require.Equal(t, "INFO", record[0])
 								messages = append(messages, record[1])
 							}
-							require.Contains(t, strings.Join(messages, "\n"), "business-id:"+strconv.Quote(opsBusinessIDOpaque))
+							require.Contains(t, strings.Join(messages, "\n"), "bid:"+strconv.Quote(opsBusinessIDOpaque))
 						} else {
 							require.Empty(t, records)
 						}
@@ -366,7 +366,7 @@ func TestOpsBusinessIDRetentionCommand(t *testing.T) {
 						require.NoError(t, json.Unmarshal(data, &payload))
 						require.Positive(t, assertOpsBusinessIDObservations(t, payload, expected))
 					} else {
-						require.Contains(t, string(data), `business-id:""`)
+						require.Contains(t, string(data), `bid:""`)
 						require.Contains(t, string(data), `\|\<tag\>`)
 					}
 					require.Len(t, f.requests.Snapshot(), 13, "only discovery and existing traversal reads")

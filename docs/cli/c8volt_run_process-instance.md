@@ -20,7 +20,7 @@ By default c8volt waits until created instances are observable as ACTIVE, SUSPEN
 
 On Camunda 8.10, --bid supplies one opaque business ID with either selector. Values are not trimmed or split at commas. A supplied value must be nonempty and at most 256 UTF-16 code units (a supplementary character counts as two). Camunda 8.8 and 8.9 reject this input.
 
-Every --count attempt uses the same business ID. Backend uniqueness enforcement may reject repeated active roots for the same definition and tenant. Successful results survive later failures; JSON includes them in one failure envelope and keys-only prints their keys with the original failure exit status. --no-wait reports acceptance only. Human creation rows and summaries use the configured INFO logger, including safely quoted business IDs.
+Every --count attempt uses the same business ID. Backend uniqueness enforcement may reject repeated active roots for the same definition and tenant. Successful results survive later failures; JSON includes them in one failure envelope and keys-only prints their keys with the original failure exit status. --no-wait reports acceptance only. Human creation rows and summaries use the configured INFO logger, with bid:<value> beside the process name and quoting only when needed.
 
 ```
 c8volt run process-instance [flags]

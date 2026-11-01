@@ -133,20 +133,20 @@ func TestListenerBusinessIDCommands(t *testing.T) {
 							}
 							found = true
 							if version != "8.10" || key == "job-nil" {
-								require.NotContains(t, line, "business-id:")
+								require.NotContains(t, line, "bid:")
 								continue
 							}
 							want := ""
 							if key == "job-old" {
 								want = listenerBusinessIDOld
 							}
-							require.Contains(t, line, "business-id:"+strconv.Quote(want))
-							require.NotContains(t, line, `business-id:"new"`)
+							require.Contains(t, line, "bid:"+strconv.Quote(want))
+							require.NotContains(t, line, `bid:new`)
 						}
 						require.True(t, found, "missing listener %s: %s", key, out)
 					}
 					if command.name != "element" && version == "8.10" {
-						require.Equal(t, 1, strings.Count(out, `business-id:"new"`))
+						require.Equal(t, 1, strings.Count(out, `bid:new`))
 					}
 				})
 			}

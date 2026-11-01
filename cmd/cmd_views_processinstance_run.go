@@ -68,15 +68,13 @@ func flatRowRunProcessInstanceWithTimezone(item process.ProcessInstance, showTim
 		item.Key,
 		item.TenantId,
 		item.BpmnProcessId,
+		processInstanceBusinessIDColumn(item.BusinessId),
 		version,
 	}
 	if item.State != "" {
 		row = append(row, string(item.State))
 	}
 	row = append(row, "s:"+toolx.FormatTimestamp(item.StartDate, showTimezoneOffset), parent)
-	if item.BusinessId != nil {
-		row = append(row, "business-id:"+strconv.Quote(*item.BusinessId))
-	}
 	return row
 }
 
