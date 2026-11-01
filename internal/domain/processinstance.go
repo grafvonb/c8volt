@@ -286,11 +286,26 @@ type ProcessInstanceSearchPageStep struct {
 // service-owned traversal and may stop collection without owning page math.
 type ProcessInstanceSearchPageVisitor func(ProcessInstanceSearchPageStep) (ProcessInstanceSearchPageAction, error)
 
-// ProcessInstanceSearchPagesResult captures a full or caller-stopped process-instance discovery.
+// ProcessInstanceSearchCompletion records why discovery ended. The zero value is not completion evidence.
+type ProcessInstanceSearchCompletion string
+
+const (
+	// ProcessInstanceSearchCompletionExhausted proves the requested search was exhausted.
+	ProcessInstanceSearchCompletionExhausted ProcessInstanceSearchCompletion = "exhausted"
+	// ProcessInstanceSearchCompletionLimitReached proves only the documented distinct-selection bound.
+	ProcessInstanceSearchCompletionLimitReached ProcessInstanceSearchCompletion = "limit_reached"
+	// ProcessInstanceSearchCompletionVisitorStopped records a caller stop before authoritative completion.
+	ProcessInstanceSearchCompletionVisitorStopped ProcessInstanceSearchCompletion = "visitor_stopped"
+	// ProcessInstanceSearchCompletionIncomplete retains evidence from failed or unresolved discovery.
+	ProcessInstanceSearchCompletionIncomplete ProcessInstanceSearchCompletion = "incomplete"
+)
+
+// ProcessInstanceSearchPagesResult retains discovery evidence and why traversal ended, including failures.
 type ProcessInstanceSearchPagesResult struct {
-	Items []ProcessInstance
-	Limit int32
-	Pages int32
+	Completion ProcessInstanceSearchCompletion
+	Items      []ProcessInstance
+	Limit      int32
+	Pages      int32
 }
 
 // ProcessInstanceMutationPlanRequest combines search selection with dry-run

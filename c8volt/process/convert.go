@@ -623,9 +623,10 @@ func fromDomainProcessInstancePage(x d.ProcessInstancePage) ProcessInstancePage 
 // fromDomainProcessInstanceSearchPagesResult maps service-owned traversal results into the public facade model.
 func fromDomainProcessInstanceSearchPagesResult(x d.ProcessInstanceSearchPagesResult) ProcessInstanceSearchPagesResult {
 	return ProcessInstanceSearchPagesResult{
-		Items: toolx.MapSlice(x.Items, fromDomainProcessInstance),
-		Limit: x.Limit,
-		Pages: x.Pages,
+		Completion: ProcessInstanceSearchCompletion(x.Completion),
+		Items:      toolx.MapSlice(x.Items, fromDomainProcessInstance),
+		Limit:      x.Limit,
+		Pages:      x.Pages,
 	}
 }
 

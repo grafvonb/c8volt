@@ -356,7 +356,7 @@ func TestCommandCapabilityForCommand_BasicPagedReadContracts(t *testing.T) {
 			limitDesc: "maximum number of matching process instances to return across all pages; omit to continue through all matches",
 			longFragments: []string{
 				"--batch-size controls each discovery request",
-				"--limit caps instances across all pages",
+				"--limit caps distinct matching instances across all pages",
 			},
 		},
 	}

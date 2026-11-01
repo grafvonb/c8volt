@@ -506,7 +506,7 @@ func TestGeneratedPagedWorkflowDocsDocumentContracts(t *testing.T) {
 			file: "c8volt_get_process-instance.md",
 			fragments: []string{
 				"--batch-size controls each discovery request",
-				"--limit caps instances across all pages",
+				"--limit caps distinct matching instances across all pages",
 				"number of process instances to request per page; does not cap total results",
 				"maximum number of matching process instances to return across all pages; omit to continue through all matches",
 			},

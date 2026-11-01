@@ -6,7 +6,7 @@ nav_exclude: true
 has_toc: true
 ---
 
-> Generated from build `c8volt v4.4.0-256-g4d354138-dirty`, commit `4d354138`, built `2026-10-31T13:37:11Z` | Supported Camunda 8 versions: 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.3 (final)
+> Generated from build `c8volt v4.4.0-259-gbfbdb54d-dirty`, commit `bfbdb54d`, built `2026-11-01T11:34:16Z` | Supported Camunda 8 versions: 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.3 (final)
 
 <img src="./logo/c8volt_logo_transparent_w_shadow_400x244.png" alt="c8volt logo" />
 
@@ -423,6 +423,10 @@ Use `get process-instance` for direct lookup, scoped search, variables, incident
 ./c8volt get process-instance --key <process-instance-key> --with-vars --with-incidents
 ./c8volt get process-instance --key <process-instance-key> --with-elements --with-listeners
 ```
+
+Process-instance search limits count distinct matching keys, after local filtering; duplicate observations do not consume the limit. Paging continues through sparse pages when continuation is known. Counted totals use the same traversal; compatible exact backend totals still avoid further reads. Invalid or nonadvancing continuation fails instead of claiming completed discovery. Interactive continuation and indeterminate-page stopping retain their existing policy.
+
+For Go callers, `process.ProcessInstanceSearchPagesResult.Completion` distinguishes `exhausted`, `limit_reached`, `visitor_stopped`, and `incomplete`. Only exhaustion proves all matches were read; a limit proves a bounded selection. An unset or unknown completion value is not success evidence. Errors retain available partial items/counts and their original classification. This is an additive public struct field (update unkeyed literals); custom facade implementations must set completion explicitly before consumers rely on it. Existing command JSON payloads are unchanged.
 
 Process-instance reads and state reports preserve `SUSPENDED` as a distinct, nonterminal state for paused execution. The public process state parser accepts case variations and surrounding whitespace. Compact human rows show `SUSPENDED` in the existing state column; JSON retains it in the existing state field.
 

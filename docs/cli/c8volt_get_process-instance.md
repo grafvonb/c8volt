@@ -18,7 +18,7 @@ Use a known key or search by process definition, tenant, state, incidents, varia
 
 On Camunda 8.10, JSON includes suspendedDate in UTC when the current instance response provides a nonzero timestamp. Missing timestamps are omitted on each read; this field does not represent suspension history. Human rows and keys-only output remain unchanged.
 
---batch-size controls each discovery request; --limit caps instances across all pages; --total counts matching instances. Empty searches suppress the human summary under --quiet; explicit JSON and keys-only output keep their existing contracts.
+--batch-size controls each discovery request; --limit caps distinct matching instances across all pages; --total counts matching instances. Duplicate keys do not consume the limit. Sparse pages continue when continuation is known; invalid or nonadvancing paging fails. Interactive continuation and indeterminate-page stopping keep their existing policy. Empty searches suppress the human summary under --quiet; explicit JSON and keys-only output keep their existing contracts.
 
 --tenant limits search and selector discovery. Explicit --key and stdin keys use backend authorization without tenant filtering. A --bpmn-process-id selector must match a visible process definition before discovery.
 

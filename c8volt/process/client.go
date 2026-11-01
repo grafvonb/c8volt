@@ -254,10 +254,11 @@ func (c *client) SearchProcessInstancesPages(ctx context.Context, request Proces
 }
 
 // SearchProcessInstancesTotal delegates exact-total selection and page-count fallback below the facade.
+// Partial counted progress remains available alongside a converted failure.
 func (c *client) SearchProcessInstancesTotal(ctx context.Context, request ProcessInstanceSearchRequest, visitor ProcessInstanceSearchTotalVisitor, opts ...options.FacadeOption) (int64, error) {
 	total, err := pisvc.SearchProcessInstancesTotal(ctx, c.piApi, c.incApi, toDomainProcessInstanceSearchRequest(request), toDomainProcessInstanceSearchTotalVisitor(visitor), options.MapFacadeOptionsToCallOptions(opts)...)
 	if err != nil {
-		return 0, ferr.FromDomain(err)
+		return total, ferr.FromDomain(err)
 	}
 	return total, nil
 }
