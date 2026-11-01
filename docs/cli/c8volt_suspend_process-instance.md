@@ -22,7 +22,7 @@ Default execution waits for observed SUSPENDED within the configured backoff tim
 
 With --tree, discover each selected instance and its descendants, merge overlapping subtrees, and suspend only observed ACTIVE members. Selecting a child never escalates to its ancestors or siblings. Traverse through already-suspended and terminal parents; report SUSPENDED members separately and exclude other states. Tree mode requires additional instance read/search permissions, including with --dry-run and --no-wait. Tree dry-run previews discovered eligible targets without mutations or approval. A resolved scope with no active targets succeeds without changes or approval.
 
-Tree approval names the expanded active target count. Execution uses that frozen scope without rediscovery; state races can still cause failures. Discovery retains up to 1,000 direct children per parent lookup, not a whole-tree cap. Execution is not atomic and may omit descendants created after discovery; coverage beyond the lookup limit is not guaranteed.
+Tree approval names the expanded active target count. Execution uses that frozen scope without rediscovery; state races can still cause failures. On Camunda 8.10, child discovery exhausts all pages at every depth. Execution is not atomic and may omit descendants created after discovery.
 
 Suspension pauses engine execution while retaining runtime state and resources; it does not cancel the instance. It does not interrupt already-running worker code or undo external effects. Job completion/failure attempts are rejected during suspension, and affected jobs may execute again after resumption. Backpressure can delay or reject suspension; this is not an instantaneous emergency stop.
 

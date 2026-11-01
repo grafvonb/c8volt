@@ -1326,3 +1326,8 @@ func (s stubProcessInstanceService) ValidateProcessInstanceSearchFilter(d.Proces
 func (s stubProcessAPI) ValidateProcessInstanceSearchFilter(process.ProcessInstanceFilter) error {
 	return nil
 }
+
+// ResolveProcessInstanceSelection is not expected in explicit resource facade fixtures.
+func (stubProcessAPI) ResolveProcessInstanceSelection(context.Context, process.ProcessInstanceSelectionRequest, ...options.FacadeOption) (process.ProcessInstanceSelection, error) {
+	panic("unexpected selection")
+}

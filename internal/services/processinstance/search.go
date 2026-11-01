@@ -11,6 +11,7 @@ import (
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/services"
 	"github.com/grafvonb/c8volt/internal/services/common"
+	"github.com/grafvonb/c8volt/internal/services/processinstance/searchpaging"
 	"github.com/grafvonb/c8volt/typex"
 )
 
@@ -31,13 +32,13 @@ func SearchProcessInstancesPages(ctx context.Context, piAPI API, incAPI SearchPr
 	}
 	result.Items = make([]d.ProcessInstance, 0, minPositiveProcessInstanceSearchSize(request.Page.Size, request.Limit))
 	seen := make(map[string]struct{})
-	completion, err := walkProcessInstanceSearchPages(ctx, piAPI, request, false, func(page d.ProcessInstancePage, pages int32) (d.ProcessInstanceSearchCompletion, error) {
+	completion, err := searchpaging.Walk(ctx, piAPI, request, false, func(page d.ProcessInstancePage, pages int32) (d.ProcessInstanceSearchCompletion, error) {
 		result.Pages = pages
 		filtered, err := filterProcessInstanceSearchItems(ctx, piAPI, incAPI, page.Items, request.LocalFilters, opts...)
 		if err != nil {
 			return "", err
 		}
-		page.Items = limitProcessInstanceSearchItems(distinctProcessInstanceSearchItems(filtered, seen), request.Limit, int32(len(result.Items)))
+		page.Items = limitProcessInstanceSearchItems(searchpaging.DistinctItems(filtered, seen), request.Limit, int32(len(result.Items)))
 		result.Items = append(result.Items, page.Items...)
 		limited := processInstanceSearchLimitReached(len(result.Items), request.Limit)
 		action := d.ProcessInstanceSearchPageActionContinue
@@ -47,7 +48,7 @@ func SearchProcessInstancesPages(ctx context.Context, piAPI API, incAPI SearchPr
 				return "", err
 			}
 			if action != d.ProcessInstanceSearchPageActionContinue && action != d.ProcessInstanceSearchPageActionStop {
-				return "", malformedProcessInstanceSearchMetadata("visitor action")
+				return "", searchpaging.MalformedMetadata("visitor action")
 			}
 		}
 		// A command may return Stop for a limit or terminal page; retain the stronger service evidence.
@@ -82,7 +83,7 @@ func SearchProcessInstancesTotal(ctx context.Context, piAPI API, incAPI SearchPr
 	}
 	var total int64
 	seen := make(map[string]struct{})
-	_, err = walkProcessInstanceSearchPages(ctx, piAPI, request, request.ReportedTotalAllowed && !request.LocalFilters.Active(), func(page d.ProcessInstancePage, _ int32) (d.ProcessInstanceSearchCompletion, error) {
+	_, err = searchpaging.Walk(ctx, piAPI, request, request.ReportedTotalAllowed && !request.LocalFilters.Active(), func(page d.ProcessInstancePage, _ int32) (d.ProcessInstanceSearchCompletion, error) {
 		step := d.ProcessInstanceSearchTotalStep{Page: page, TotalBefore: total}
 		if request.ReportedTotalAllowed && !request.LocalFilters.Active() && page.ReportedTotal != nil && page.ReportedTotal.Kind == d.ProcessInstanceReportedTotalKindExact {
 			total = page.ReportedTotal.Count
@@ -93,7 +94,7 @@ func SearchProcessInstancesTotal(ctx context.Context, piAPI API, incAPI SearchPr
 			if err != nil {
 				return "", err
 			}
-			step.FilteredCount = int32(len(distinctProcessInstanceSearchItems(filtered, seen)))
+			step.FilteredCount = int32(len(searchpaging.DistinctItems(filtered, seen)))
 			total += int64(step.FilteredCount)
 			step.CountingByPaging = true
 		}
@@ -161,17 +162,17 @@ func searchProcessInstancesViaDirectIncidentIndex(ctx context.Context, piAPI API
 		if page.ReportedTotal != nil {
 			metadata.ReportedTotal = &d.ProcessInstanceReportedTotal{Count: page.ReportedTotal.Count, Kind: d.ProcessInstanceReportedTotalKind(page.ReportedTotal.Kind)}
 		}
-		if err := validateProcessInstanceSearchPage(metadata); err != nil {
+		if err := searchpaging.ValidatePage(metadata); err != nil {
 			return result, err
 		}
 		rawObserved += int64(len(page.Items))
-		exhausted, err := processInstanceSearchExhausted(metadata, rawObserved)
+		exhausted, err := searchpaging.Exhausted(metadata, rawObserved)
 		if err != nil {
 			return result, err
 		}
 		if !exhausted && page.EndCursor != "" {
 			if _, exists := cursors[page.EndCursor]; exists {
-				return result, malformedProcessInstanceSearchMetadata("incident cursor did not advance or forms a cycle")
+				return result, searchpaging.MalformedMetadata("incident cursor did not advance or forms a cycle")
 			}
 		}
 		keys := make(typex.Keys, 0, len(page.Items))
@@ -200,7 +201,7 @@ func searchProcessInstancesViaDirectIncidentIndex(ctx context.Context, piAPI API
 		if exhausted {
 			break
 		}
-		next, err := advanceProcessInstanceSearchPage(metadata.Request, page.EndCursor, len(page.Items), cursors)
+		next, err := searchpaging.Advance(metadata.Request, page.EndCursor, len(page.Items), cursors)
 		if err != nil {
 			return result, err
 		}
@@ -212,7 +213,7 @@ func searchProcessInstancesViaDirectIncidentIndex(ctx context.Context, piAPI API
 			return result, err
 		}
 		if action != d.ProcessInstanceSearchPageActionStop && action != d.ProcessInstanceSearchPageActionContinue {
-			return result, malformedProcessInstanceSearchMetadata("visitor action")
+			return result, searchpaging.MalformedMetadata("visitor action")
 		}
 	}
 	if err := ctx.Err(); err != nil {

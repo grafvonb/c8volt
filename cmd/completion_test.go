@@ -57,6 +57,7 @@ func TestCompletionCommandsBypassBootstrapWithoutConfig(t *testing.T) {
 	output := executeCompletionForTest(t, "walk", "process-instance", "")
 
 	require.Contains(t, output, "--key")
+	require.Contains(t, output, "--bid")
 	require.NotContains(t, output, "configuration is invalid")
 	require.NotContains(t, output, "Usage:")
 }
@@ -98,6 +99,7 @@ func TestCompletionSuggestionsWithoutDescriptionsStayClean(t *testing.T) {
 	output := executeCompletionForTest(t, "walk", "process-instance", "")
 
 	require.Contains(t, output, "--key")
+	require.Contains(t, output, "--bid")
 	require.NotContains(t, output, "--mode")
 	requireCompletionOutputStaysUserFacing(t, output)
 }
@@ -134,4 +136,15 @@ func TestCompletionCommand_ZshUsesDescriptionBearingCompletionRequestsHelper(t *
 	root.SetOut(os.Stdout)
 	root.SetErr(os.Stderr)
 	_ = root.Execute()
+}
+
+// TestWalkProcessInstanceSelectionCompletion stops offering selectors after either alternative without bootstrapping config.
+func TestWalkProcessInstanceSelectionCompletion(t *testing.T) {
+	for _, selector := range []string{"--key", "--bid"} {
+		output := executeCompletionForTest(t, "--config", "/nonexistent/completion-config.yaml", "walk", "pi", selector, "value", "")
+		require.NotContains(t, output, "--key")
+		require.NotContains(t, output, "--bid")
+		require.NotContains(t, output, "configuration is invalid")
+		require.Contains(t, output, ":4\n")
+	}
 }

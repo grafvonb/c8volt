@@ -793,3 +793,8 @@ func (s stubTaskAPI) ExecuteUserTaskAssignments(context.Context, task.UserTaskAs
 func (s stubProcessAPI) ValidateProcessInstanceSearchFilter(process.ProcessInstanceFilter) error {
 	return nil
 }
+
+// ResolveProcessInstanceSelection rejects accidental selection in fixtures that did not authorize discovery.
+func (s stubProcessAPI) ResolveProcessInstanceSelection(context.Context, process.ProcessInstanceSelectionRequest, ...options.FacadeOption) (process.ProcessInstanceSelection, error) {
+	panic("unexpected selection")
+}

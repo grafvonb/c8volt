@@ -115,6 +115,8 @@ type API interface {
 	EnrichProcessInstancesWithElementListeners(ctx context.Context, pis ProcessInstances, opts ...options.FacadeOption) (ElementEnrichedProcessInstances, error)
 	EnrichTraversalWithIncidents(ctx context.Context, result TraversalResult, opts ...options.FacadeOption) (IncidentEnrichedTraversalResult, error)
 	LookupProcessInstanceStateByKey(ctx context.Context, key string, opts ...options.FacadeOption) (StateReport, ProcessInstance, error)
+	// ResolveProcessInstanceSelection proves collection or unique-start cardinality with retained provenance.
+	ResolveProcessInstanceSelection(ctx context.Context, request ProcessInstanceSelectionRequest, opts ...options.FacadeOption) (ProcessInstanceSelection, error)
 	SearchProcessInstancesPages(ctx context.Context, request ProcessInstanceSearchRequest, visitor ProcessInstanceSearchPageVisitor, opts ...options.FacadeOption) (ProcessInstanceSearchPagesResult, error)
 	SearchProcessInstancesTotal(ctx context.Context, request ProcessInstanceSearchRequest, visitor ProcessInstanceSearchTotalVisitor, opts ...options.FacadeOption) (int64, error)
 	PlanProcessInstanceMutationPages(ctx context.Context, request ProcessInstanceMutationPlanRequest, visitor ProcessInstanceMutationPlanVisitor, opts ...options.FacadeOption) (ProcessInstanceMutationPlanPagesResult, error)

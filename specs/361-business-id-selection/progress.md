@@ -114,3 +114,59 @@ Started: 2026-11-01 12:22:16
 - `make docs-content`, changed-file gofmt verification and `git diff --check` passed. The full `make test PKG=./...` race suite passed. The final task-validation/envelope refinement was independently checked with `go test ./cmd -run 'Test.*(BusinessIDSelection|GetUserTask)' -race -count=1` after the broad run had started; it passed. All commands used the quickstart isolation wrapper, with integration tags and inherited application/helper flags disabled.
 - New command declarations are limited to two scalar flag helpers and a view/error helper; existing search runners retain lifecycle ownership. No mutation mode, traversal expansion, or later story was implemented. No live-engine validation was performed or claimed.
 ---
+
+---
+## Iteration 3 - 2026-11-01 13:25
+**Work Unit**: US2 — complete BID walk selection and traversal (T003 complete)
+**Tasks Completed**:
+- [x] T003: Shared collection/unique selection, exhaustive v810 child traversal, BID walk dispatch and validation, retained failure evidence, output contracts and documentation.
+**Tasks Remaining in Work Unit**: 0; seven feature tasks remain, starting with T004 (US3).
+**Commit**: This work-unit commit
+**Files Changed**:
+- README.md
+- c8volt/process/api.go
+- c8volt/process/convert.go
+- c8volt/process/model.go
+- c8volt/process/selection.go
+- c8volt/process/selection_test.go
+- c8volt/process/walker.go
+- c8volt/resource/client_test.go
+- cmd/business_id_selection_test.go
+- cmd/cmd_views_walk.go
+- cmd/command_contract_test.go
+- cmd/completion_test.go
+- cmd/process_api_stub_test.go
+- cmd/resume_processinstance.go
+- cmd/suspend_processinstance.go
+- cmd/walk_processinstance.go
+- cmd/walk_processinstance_selection.go
+- cmd/walk_processinstance_selection_test.go
+- cmd/walk_test.go
+- docs/cli/c8volt_resume_process-instance.md
+- docs/cli/c8volt_suspend_process-instance.md
+- docs/cli/c8volt_walk_process-instance.md
+- docs/index.md
+- docsgen/main_test.go
+- internal/domain/processinstance_selection.go
+- internal/services/processinstance/children_paging_test.go
+- internal/services/processinstance/search.go
+- internal/services/processinstance/search_paging.go
+- internal/services/processinstance/searchpaging/paging.go
+- internal/services/processinstance/selection.go
+- internal/services/processinstance/selection_test.go
+- internal/services/processinstance/traversal/result.go
+- internal/services/processinstance/v810/service.go
+- internal/services/processinstance/walker/walker.go
+- specs/361-business-id-selection/progress.md
+- specs/361-business-id-selection/ralph-memory.md
+- specs/361-business-id-selection/tasks.md
+**Learnings**:
+- Shared selection is an internal process-service function with a thin public API delegate. Criteria, nested observations, distinct keys, completion, tenant evidence and search origin are retained. Exhausted uniqueness differs from bounded collection readiness; ambiguity, late errors and malformed missing keys cannot become successful empty walks. v88/v89 selection rejects supplied BID before search.
+- Moved T001 continuation mechanics into `processinstance/searchpaging` to let v810 child lookup reuse them without importing its parent factory package. Child lookup now exhausts all pages; walker/family results preserve incomplete observations instead of discarding them. Owned service and command fixtures include 1001 direct children plus a deeper descendant (1003 total instances), sparse pages, late errors, cyclic/unknown continuation and cancellation.
+- Actual command tests use real terminal stdin with separate configured streams. They cover tenant-scoped discovery followed by established key-authorized traversal, parent/children/family/flat/enrichment modes, duplicate versus ambiguous matches, empty human/JSON/keys/quiet combinations, auto-confirm, unsupported versions and selector conflicts. Empty selection performs only discovery and never walks, enriches or prompts. JSON decodes exactly once followed by EOF; failed output writes make one attempt.
+- Repeated two-resource enrichment failures pass both configured/inherited logger destinations and plain-time/structured formats, compact normal/verbose/quiet ERROR records, independent DEBUG by flag/configuration with redaction, preserved exit 2 and JSON traversal evidence. Failure flow is service → facade conversion → mode-aware view/error helper → configured logger or one shared envelope → original classified exit. Changed output boundaries were reviewed for direct diagnostic prints and raw error formatting; none were introduced. This read-only story introduces no mutation summaries or confirmation lifecycle.
+- Targeted service/adapter/traversal/facade checks passed with `go test ./internal/services/processinstance/... ./c8volt/process -run 'Test.*(Selection|Children|Descendants|Family|Traversal|Search|Walk|Suspend|Resume)' -count=1`. New test names were listed before their focused executions. Final `go test ./internal/services/processinstance ./c8volt/process ./cmd -run '^TestBusinessIDSelection' -race -count=1` passed after the malformed-key guard; command package took 76.214s. The added missing-key actual-command case also passed a focused race run.
+- Broader `make test PKG=./...` ran with race detection and integration tags disabled because shared paging/traversal feed mutations and operations. It found a missing resource-facade test stub method, two stale child-limit metadata assertions, and two walk shell-completion regressions; all other cases passed (full command package 438.848s). Added the stub and passed `go test ./c8volt/resource -race -count=1`. Added local key/BID selector completion, updated metadata assertions and passed `go test ./cmd -run 'Test(SuspendProcessInstanceMetadata|ResumeProcessInstanceMetadata|Completion|WalkProcessInstanceSelectionCompletion|BusinessIDSelectionWalk)' -race -count=1` (27.911s). The original full invocation failed; its specific defects are resolved by these targeted reruns rather than claiming a second full-suite pass.
+- `make docs-content`, `go test ./docsgen -count=1`, targeted gofmt and diff checks passed. README/help/generated docs now describe uniqueness, tenant scope, public API compatibility and complete v810 child discovery. CLI selection/completion lives in its focused mode file; views own empty/failure rendering; no backend loop was added to commands/facades.
+- All checks used the quickstart environment-isolation wrapper, owned mocks/HTTP servers/PTY fixtures and offline integration-support tests. Real-engine validation was not performed; concurrent backend changes remain an unverified coverage boundary. No new user story or mutation/ops BID behavior was started.
+---

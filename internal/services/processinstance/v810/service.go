@@ -19,6 +19,7 @@ import (
 	"github.com/grafvonb/c8volt/internal/services"
 	"github.com/grafvonb/c8volt/internal/services/common"
 	"github.com/grafvonb/c8volt/internal/services/httpc"
+	"github.com/grafvonb/c8volt/internal/services/processinstance/searchpaging"
 	pitraversal "github.com/grafvonb/c8volt/internal/services/processinstance/traversal"
 	"github.com/grafvonb/c8volt/internal/services/processinstance/waiter"
 	"github.com/grafvonb/c8volt/internal/services/processinstance/walker"
@@ -188,14 +189,20 @@ func (s *Service) GetProcessInstance(ctx context.Context, key string, opts ...se
 	return fromProcessInstanceResult(*payload), nil
 }
 
-// GetDirectChildrenOfProcessInstance searches for direct child process instances.
+// GetDirectChildrenOfProcessInstance exhausts every child page, preserving partial observations on failure.
 func (s *Service) GetDirectChildrenOfProcessInstance(ctx context.Context, key string, opts ...services.CallOption) ([]d.ProcessInstance, error) {
 	_ = services.ApplyCallOptions(opts)
-	resp, err := s.SearchForProcessInstances(ctx, d.ProcessInstanceFilter{ParentKey: key}, 1000, opts...)
+	request := d.ProcessInstanceSearchRequest{Filter: d.ProcessInstanceFilter{ParentKey: key}, Page: d.ProcessInstancePageRequest{Size: 1000}}
+	items := make([]d.ProcessInstance, 0)
+	seen := make(map[string]struct{})
+	_, err := searchpaging.Walk(ctx, s, request, false, func(page d.ProcessInstancePage, _ int32) (d.ProcessInstanceSearchCompletion, error) {
+		items = append(items, searchpaging.DistinctItems(page.Items, seen)...)
+		return "", nil
+	}, opts...)
 	if err != nil {
-		return nil, fmt.Errorf("search child process instances: %w", err)
+		return items, fmt.Errorf("search child process instances: %w", err)
 	}
-	return resp, nil
+	return items, nil
 }
 
 // FilterProcessInstanceWithOrphanParent returns items whose recorded parent cannot be found.

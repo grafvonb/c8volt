@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Adam Bogdan Boczek
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-package processinstance
+package searchpaging
 
 import (
 	"context"
@@ -13,9 +13,14 @@ import (
 	"github.com/grafvonb/c8volt/internal/services"
 )
 
-// walkProcessInstanceSearchPages owns continuation for collection and counted totals.
+// API is the single-page adapter boundary shared by searches and child traversal.
+type API interface {
+	SearchForProcessInstancesPage(context.Context, d.ProcessInstanceFilter, d.ProcessInstancePageRequest, ...services.CallOption) (d.ProcessInstancePage, error)
+}
+
+// Walk owns continuation for collection and counted totals.
 // A visitor can intentionally stop indeterminate pages, preserving ordinary query prompt policy.
-func walkProcessInstanceSearchPages(ctx context.Context, api API, request d.ProcessInstanceSearchRequest, exactTotalAllowed bool, observe func(d.ProcessInstancePage, int32) (d.ProcessInstanceSearchCompletion, error), opts ...services.CallOption) (d.ProcessInstanceSearchCompletion, error) {
+func Walk(ctx context.Context, api API, request d.ProcessInstanceSearchRequest, exactTotalAllowed bool, observe func(d.ProcessInstancePage, int32) (d.ProcessInstanceSearchCompletion, error), opts ...services.CallOption) (d.ProcessInstanceSearchCompletion, error) {
 	req := request.Page
 	if req.From < 0 {
 		return d.ProcessInstanceSearchCompletionIncomplete, fmt.Errorf("%w: search offset cannot be negative", d.ErrValidation)
@@ -39,12 +44,12 @@ func walkProcessInstanceSearchPages(ctx context.Context, api API, request d.Proc
 			return d.ProcessInstanceSearchCompletionIncomplete, err
 		}
 		if page.Request != req {
-			return d.ProcessInstanceSearchCompletionIncomplete, malformedProcessInstanceSearchMetadata("request")
+			return d.ProcessInstanceSearchCompletionIncomplete, MalformedMetadata("request")
 		}
 		// Count-only callers can use compatible exact metadata without proving row traversal.
 		if exactTotalAllowed && page.ReportedTotal != nil && page.ReportedTotal.Kind == d.ProcessInstanceReportedTotalKindExact {
 			if page.ReportedTotal.Count < 0 {
-				return d.ProcessInstanceSearchCompletionIncomplete, malformedProcessInstanceSearchMetadata("negative reported total")
+				return d.ProcessInstanceSearchCompletionIncomplete, MalformedMetadata("negative reported total")
 			}
 			completion, err := observe(page, pages+1)
 			if err != nil {
@@ -55,31 +60,31 @@ func walkProcessInstanceSearchPages(ctx context.Context, api API, request d.Proc
 			}
 			return completion, nil
 		}
-		if err := validateProcessInstanceSearchPage(page); err != nil {
+		if err := ValidatePage(page); err != nil {
 			return d.ProcessInstanceSearchCompletionIncomplete, err
 		}
 		for _, item := range page.Items {
 			rawKeys[item.Key] = struct{}{}
 		}
-		exhausted, err := processInstanceSearchExhausted(page, int64(request.Page.From)+int64(len(rawKeys)))
+		exhausted, err := Exhausted(page, int64(request.Page.From)+int64(len(rawKeys)))
 		if err != nil {
 			return d.ProcessInstanceSearchCompletionIncomplete, err
 		}
 		if !exhausted {
 			if page.EndCursor != "" {
 				if _, exists := seen[page.EndCursor]; exists {
-					return d.ProcessInstanceSearchCompletionIncomplete, malformedProcessInstanceSearchMetadata("cursor did not advance or forms a cycle")
+					return d.ProcessInstanceSearchCompletionIncomplete, MalformedMetadata("cursor did not advance or forms a cycle")
 				}
 			} else if len(page.Items) > 0 {
 				signature := processInstanceSearchPageSignature(page.Items)
 				if _, exists := offsetPages[signature]; exists {
-					return d.ProcessInstanceSearchCompletionIncomplete, malformedProcessInstanceSearchMetadata("offset page did not advance")
+					return d.ProcessInstanceSearchCompletionIncomplete, MalformedMetadata("offset page did not advance")
 				}
 				offsetPages[signature] = struct{}{}
 			}
 		}
 		if pages == math.MaxInt32 {
-			return d.ProcessInstanceSearchCompletionIncomplete, malformedProcessInstanceSearchMetadata("page count overflow")
+			return d.ProcessInstanceSearchCompletionIncomplete, MalformedMetadata("page count overflow")
 		}
 		pages++
 		// Keep raw advancement separate from deduplicated or locally filtered selections.
@@ -100,44 +105,44 @@ func walkProcessInstanceSearchPages(ctx context.Context, api API, request d.Proc
 		if exhausted {
 			return d.ProcessInstanceSearchCompletionExhausted, nil
 		}
-		req, err = advanceProcessInstanceSearchPage(req, page.EndCursor, rawCount, seen)
+		req, err = Advance(req, page.EndCursor, rawCount, seen)
 		if err != nil {
 			return d.ProcessInstanceSearchCompletionIncomplete, err
 		}
 	}
 }
 
-// validateProcessInstanceSearchPage rejects unknown and contradictory facts without exposing cursors in errors.
-func validateProcessInstanceSearchPage(page d.ProcessInstancePage) error {
+// ValidatePage rejects unknown and contradictory facts without exposing cursors in errors.
+func ValidatePage(page d.ProcessInstancePage) error {
 	switch page.OverflowState {
 	case d.ProcessInstanceOverflowStateNoMore, d.ProcessInstanceOverflowStateHasMore, d.ProcessInstanceOverflowStateIndeterminate:
 	default:
-		return malformedProcessInstanceSearchMetadata("continuation state")
+		return MalformedMetadata("continuation state")
 	}
 	if page.ReportedTotal == nil {
 		return nil
 	}
 	total := page.ReportedTotal
 	if total.Count < 0 {
-		return malformedProcessInstanceSearchMetadata("negative reported total")
+		return MalformedMetadata("negative reported total")
 	}
 	switch total.Kind {
 	case d.ProcessInstanceReportedTotalKindExact, d.ProcessInstanceReportedTotalKindLowerBound:
 	default:
-		return malformedProcessInstanceSearchMetadata("reported total kind")
+		return MalformedMetadata("reported total kind")
 	}
 	position := int64(page.Request.From) + int64(len(page.Items))
 	if page.OverflowState == d.ProcessInstanceOverflowStateNoMore && total.Count > position {
-		return malformedProcessInstanceSearchMetadata("terminal page before reported total")
+		return MalformedMetadata("terminal page before reported total")
 	}
 	if page.OverflowState == d.ProcessInstanceOverflowStateHasMore && total.Kind == d.ProcessInstanceReportedTotalKindExact && total.Count <= position {
-		return malformedProcessInstanceSearchMetadata("continuation beyond exact total")
+		return MalformedMetadata("continuation beyond exact total")
 	}
 	return nil
 }
 
-// processInstanceSearchExhausted resolves indeterminate metadata or permits an offset/cursor terminal probe.
-func processInstanceSearchExhausted(page d.ProcessInstancePage, observed int64) (bool, error) {
+// Exhausted resolves indeterminate metadata or permits an offset/cursor terminal probe.
+func Exhausted(page d.ProcessInstancePage, observed int64) (bool, error) {
 	switch page.OverflowState {
 	case d.ProcessInstanceOverflowStateNoMore:
 		return true, nil
@@ -148,7 +153,7 @@ func processInstanceSearchExhausted(page d.ProcessInstancePage, observed int64) 
 			if observed < page.ReportedTotal.Count {
 				// An empty ambiguous page without a cursor cannot justify skipping unseen matches.
 				if len(page.Items) == 0 && page.EndCursor == "" {
-					return false, malformedProcessInstanceSearchMetadata("unresolved empty page before reported total")
+					return false, MalformedMetadata("unresolved empty page before reported total")
 				}
 				return false, nil
 			}
@@ -158,31 +163,31 @@ func processInstanceSearchExhausted(page d.ProcessInstancePage, observed int64) 
 		}
 		return len(page.Items) == 0 && page.EndCursor == "", nil
 	default:
-		return false, malformedProcessInstanceSearchMetadata("continuation state")
+		return false, MalformedMetadata("continuation state")
 	}
 }
 
-// advanceProcessInstanceSearchPage guards cursor cycles and int32 offsets, including sparse raw pages.
-func advanceProcessInstanceSearchPage(current d.ProcessInstancePageRequest, cursor string, rawCount int, seen map[string]struct{}) (d.ProcessInstancePageRequest, error) {
+// Advance guards cursor cycles and int32 offsets, including sparse raw pages.
+func Advance(current d.ProcessInstancePageRequest, cursor string, rawCount int, seen map[string]struct{}) (d.ProcessInstancePageRequest, error) {
 	advance := int64(rawCount)
 	if advance == 0 {
 		advance = int64(current.Size)
 	}
 	position := int64(current.From) + advance
 	if advance <= 0 || position > math.MaxInt32 {
-		return current, malformedProcessInstanceSearchMetadata("offset overflow or no progress")
+		return current, MalformedMetadata("offset overflow or no progress")
 	}
 	if cursor != "" {
 		if _, exists := seen[cursor]; exists {
-			return current, malformedProcessInstanceSearchMetadata("cursor did not advance or forms a cycle")
+			return current, MalformedMetadata("cursor did not advance or forms a cycle")
 		}
 		seen[cursor] = struct{}{}
 	}
 	return d.ProcessInstancePageRequest{From: int32(position), Size: current.Size, After: cursor}, nil
 }
 
-// distinctProcessInstanceSearchItems keeps the first matching observation in backend order.
-func distinctProcessInstanceSearchItems(items []d.ProcessInstance, seen map[string]struct{}) []d.ProcessInstance {
+// DistinctItems keeps the first matching observation in backend order.
+func DistinctItems(items []d.ProcessInstance, seen map[string]struct{}) []d.ProcessInstance {
 	out := make([]d.ProcessInstance, 0, len(items))
 	for _, item := range items {
 		if _, exists := seen[item.Key]; exists {
@@ -194,8 +199,8 @@ func distinctProcessInstanceSearchItems(items []d.ProcessInstance, seen map[stri
 	return out
 }
 
-// malformedProcessInstanceSearchMetadata preserves the existing failure class with bounded, cursor-free context.
-func malformedProcessInstanceSearchMetadata(reason string) error {
+// MalformedMetadata preserves the existing failure class with bounded, cursor-free context.
+func MalformedMetadata(reason string) error {
 	return fmt.Errorf("%w: invalid process-instance search metadata: %s", d.ErrMalformedResponse, reason)
 }
 

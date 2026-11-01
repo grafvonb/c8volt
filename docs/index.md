@@ -6,7 +6,7 @@ nav_exclude: true
 has_toc: true
 ---
 
-> Generated from build `c8volt v4.4.0-260-g493dbf17-dirty`, commit `493dbf17`, built `2026-11-01T11:55:51Z` | Supported Camunda 8 versions: 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.3 (final)
+> Generated from build `c8volt v4.4.0-261-g6ecb026e-dirty`, commit `6ecb026e`, built `2026-11-01T12:23:39Z` | Supported Camunda 8 versions: 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.3 (final)
 
 <img src="./logo/c8volt_logo_transparent_w_shadow_400x244.png" alt="c8volt logo" />
 
@@ -415,6 +415,11 @@ Generated references: [deploy process-definition](./cli/c8volt_deploy_process-de
 
 Native business-ID search is available on `get pi --bid <value>` and `get ut --bid <value>` with Camunda 8.10. Both send one exact scalar criterion, AND-combined with existing predicates and tenant scope. Task search matches the task's stored ID rather than the current parent ID; `--pi-key` remains an additional task predicate. Explicit resource keys and stdin keys cannot combine with BID. Omitted input retains existing version behavior; 8.8/8.9 reject supplied IDs before discovery. Empty/invalid UTF-8 input is invalid; commas, spaces, Unicode, numeric-looking values and wildcards are literal, and search does not impose creation's length limit.
 
+`walk pi --bid ORDER-123` selects one starting instance on Camunda 8.10, within configured tenant scope. Choose either `--key` or `--bid`. Discovery must exhaust: two distinct matches are ambiguous even in one family, repeated observations of one key are not, and zero matches produce empty successful output without traversal or enrichment. Parent, children, family, flat and supported enrichment modes retain their existing scope and formatting. Selection does not invent an observed business ID for any family member. Traversal then uses the existing backend-authorized key path. On 8.10, each child lookup exhausts all pages at every depth; no 1,000-child cap remains. Later-page errors fail the walk and preserve partial evidence in JSON; discovery is not an atomic backend snapshot.
+
+Public `process.API` implementations must also implement the additive `ResolveProcessInstanceSelection` method. Its `collection` mode accepts exhausted discovery or a documented distinct-key bound; `unique_start` requires exhaustion and rejects ambiguity or bounded/incomplete discovery. Results preserve copied criteria, observations, keys, completion, tenant evidence and search origin. Check the returned error before consuming any selection. Search options remain discovery options: callers must not apply explicit-key ignore-tenant options unintentionally. Existing unkeyed struct literals may need updating for additive model fields.
+
+
 ```bash
 ./c8volt get pi --bid 'ORDER-123,ORDER-456' --state all --json
 ./c8volt get pi --bid 'ORDER-123' --direct-incidents-only --total
@@ -478,7 +483,7 @@ printf '%s\n' "$PARENT" "$CHILD" | ./c8volt resume pi --tree --auto-confirm --no
 
 Tree execution and preview require read/search permissions in addition to submission/confirmation permissions when those operations are used. Preview reports selected, discovered, suspended-target and excluded counts. Failed or incomplete discovery stops before approval or mutation. A complete plan with no eligible targets succeeds without prompts, activity or submission, including with no-wait: JSON contains `items: []` and `plan.targetKeys: []`, keys-only is zero bytes, and quiet suppresses informational summaries.
 
-For nonempty execution, one approval names the expanded eligible count. Execution uses those frozen keys without rediscovery, and JSON retains the original `plan.requestedKeys`, `plan.instances` classifications and `plan.targetKeys` alongside per-target outcomes. Discovery is advisory: state races can cause authoritative rejection. The scope is not atomic, and there is no rollback or parent-before-child execution guarantee. The existing limit is up to 1,000 direct children per parent lookup, not a whole-tree cap; coverage beyond that limit is not guaranteed, and descendants created after discovery may be omitted. No-wait skips confirmation reads, not discovery.
+For nonempty execution, one approval names the expanded eligible count. Execution uses those frozen keys without rediscovery, and JSON retains the original `plan.requestedKeys`, `plan.instances` classifications and `plan.targetKeys` alongside per-target outcomes. Discovery is advisory: state races can cause authoritative rejection. The scope is not atomic, and there is no rollback or parent-before-child execution guarantee. On Camunda 8.10, child discovery exhausts every page at every depth without a 1,000-child cap. Descendants created after discovery may still be omitted. No-wait skips confirmation reads, not discovery.
 
 ### Suspend Explicit Process Instances
 
@@ -508,7 +513,7 @@ Tree mode adds instance read/search permission requirements, including during dr
 
 Before approval, the compact plan reports selected seeds, discovered scope, active targets, already-suspended instances, and exclusions. The confirmation names the expanded active count. Execution uses only those frozen keys and final output retains the same planning counts. Tree JSON adds `plan` alongside `items`; exact-key JSON is unchanged. The plan contains `requestedKeys`, classified `instances` with their `observedState`, and ordered `targetKeys`. Only eligible targets have preview or mutation items. Keys-only preview emits eligible keys; actual execution still emits accepted keys, retaining failure exits for unconfirmed work.
 
-Tree discovery retains the existing limit of up to 1,000 direct children per parent lookup, not a whole-tree cap; coverage beyond that limit is not guaranteed. The frozen scope is not atomic: states may change before submission, and descendants created after discovery may be omitted. There is no second discovery, rollback, or parent-before-child execution guarantee. No-wait skips post-submission confirmation reads, not discovery reads.
+On Camunda 8.10, tree discovery exhausts every child page at every depth without a 1,000-child cap. The frozen scope is not atomic: states may change before submission, and descendants created after discovery may be omitted. There is no second discovery, rollback, or parent-before-child execution guarantee. No-wait skips post-submission confirmation reads, not discovery reads.
 
 Go callers can use `process.API.PlanProcessInstanceSuspension` for the same read-only plan. Check its error before treating empty `TargetKeys` as a no-op; after any required approval, pass a copy of those keys to the existing `SuspendProcessInstances` collection method. Planning observations never establish mutation acceptance or confirmation. Custom implementations of the public `process.API` interface must implement the new planner method; existing mutation method signatures and exact-key result models are unchanged.
 

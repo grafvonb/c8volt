@@ -848,8 +848,8 @@ func toDomainProcessInstanceFilter(x ProcessInstanceFilter) d.ProcessInstanceFil
 		EndDateBefore:        x.EndDateBefore,
 		State:                d.State(x.State),
 		ParentKey:            x.ParentKey,
-		HasParent:            x.HasParent,
-		HasIncident:          x.HasIncident,
+		HasParent:            toolx.CopyPtr(x.HasParent),
+		HasIncident:          toolx.CopyPtr(x.HasIncident),
 		VariableFilters:      toDomainProcessInstanceVariableFilterSet(x.VariableFilters),
 	}
 }
@@ -869,8 +869,8 @@ func fromDomainProcessInstanceFilter(x d.ProcessInstanceFilter) ProcessInstanceF
 		EndDateBefore:        x.EndDateBefore,
 		State:                State(x.State),
 		ParentKey:            x.ParentKey,
-		HasParent:            x.HasParent,
-		HasIncident:          x.HasIncident,
+		HasParent:            toolx.CopyPtr(x.HasParent),
+		HasIncident:          toolx.CopyPtr(x.HasIncident),
 		VariableFilters:      fromDomainProcessInstanceVariableFilterSet(x.VariableFilters),
 	}
 }
@@ -1078,4 +1078,31 @@ func fromDomainProcessInstanceResumptionPlan(plan d.ProcessInstanceResumptionPla
 // fromDomainProcessInstanceResumptionPlanItem maps planning facts, never execution evidence.
 func fromDomainProcessInstanceResumptionPlanItem(item d.ProcessInstanceResumptionPlanItem) ProcessInstanceResumptionPlanItem {
 	return ProcessInstanceResumptionPlanItem{BusinessId: toolx.CopyPtr(item.BusinessId), Key: item.Key, ObservedState: State(item.ObservedState), Classification: ProcessInstanceResumptionPlanClassification(item.Classification)}
+}
+
+// fromDomainProcessInstanceSelection copies provenance and observations without inferring readiness.
+func fromDomainProcessInstanceSelection(x d.ProcessInstanceSelection) ProcessInstanceSelection {
+	return ProcessInstanceSelection{
+		Request:        ProcessInstanceSelectionRequest{SearchRequest: fromDomainProcessInstanceSearchRequest(x.Request.SearchRequest), Cardinality: ProcessInstanceSelectionCardinality(x.Request.Cardinality)},
+		Origin:         x.Origin,
+		Items:          toolx.MapSlice(x.Items, fromDomainProcessInstance),
+		Keys:           append([]string(nil), x.Keys...),
+		Completion:     ProcessInstanceSearchCompletion(x.Completion),
+		Pages:          x.Pages,
+		TenantEvidence: fromDomainTenantEvidence(x.TenantEvidence),
+		IgnoreTenant:   x.IgnoreTenant,
+	}
+}
+
+// fromDomainProcessInstanceSearchRequest retains every service search control in selection evidence.
+func fromDomainProcessInstanceSearchRequest(x d.ProcessInstanceSearchRequest) ProcessInstanceSearchRequest {
+	return ProcessInstanceSearchRequest{
+		Filter:               fromDomainProcessInstanceFilter(x.Filter),
+		Page:                 ProcessInstancePageRequest(x.Page),
+		Limit:                x.Limit,
+		LocalFilters:         ProcessInstanceSearchLocalFilters(x.LocalFilters),
+		DirectIncidentIndex:  x.DirectIncidentIndex,
+		ReportedTotalAllowed: x.ReportedTotalAllowed,
+		DirectIncidentFilter: ProcessInstanceIncidentSearchFilter{State: x.DirectIncidentFilter.State, ErrorType: x.DirectIncidentFilter.ErrorType, ErrorMessage: x.DirectIncidentFilter.ErrorMessage, ProcessDefinitionKey: x.DirectIncidentFilter.ProcessDefinitionKey, ProcessDefinitionId: x.DirectIncidentFilter.ProcessDefinitionId},
+	}
 }

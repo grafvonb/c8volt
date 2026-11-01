@@ -829,7 +829,7 @@ func TestCommandCapabilityForCommand_WalkProcessInstanceElementFlagAndContract(t
 		Type:        "bool",
 		Required:    false,
 		Repeated:    false,
-		Description: "show runtime element instances for keyed process-instance walks",
+		Description: "show runtime element instances for selected process-instance walks",
 	})
 	require.Contains(t, capability.Flags, FlagContract{
 		Name:        "with-listeners",
@@ -3162,7 +3162,7 @@ func TestSuspendProcessInstanceMetadata(t *testing.T) {
 	require.Equal(t, "false", treeFlag.DefValue)
 	require.Equal(t, "bool", treeFlag.Value.Type())
 	require.Empty(t, treeFlag.Shorthand)
-	for _, text := range []string{"--tree", "descendants", "ancestors or siblings", "read/search permissions", "already-suspended and terminal parents", "frozen scope", "state races", "1,000 direct children per parent lookup", "not atomic", "created after discovery", "no active targets"} {
+	for _, text := range []string{"--tree", "descendants", "ancestors or siblings", "read/search permissions", "already-suspended and terminal parents", "frozen scope", "state races", "child discovery exhausts all pages at every depth", "not atomic", "created after discovery", "no active targets"} {
 		require.Contains(t, suspendProcessInstanceCmd.Long, text)
 	}
 	require.Contains(t, suspendProcessInstanceCmd.Example, "--tree --dry-run")
@@ -3219,7 +3219,7 @@ func TestResumeProcessInstanceMetadata(t *testing.T) {
 	require.Equal(t, "false", treeFlag.DefValue)
 	require.Equal(t, "bool", treeFlag.Value.Type())
 	require.Empty(t, treeFlag.Shorthand)
-	for _, text := range []string{"--tree", "ancestors or siblings", "independently suspended descendants", "read/search permissions", "frozen scope", "1,000 direct children per parent lookup", "created after discovery", "no suspended targets", "state races"} {
+	for _, text := range []string{"--tree", "ancestors or siblings", "independently suspended descendants", "read/search permissions", "frozen scope", "child discovery exhausts all pages at every depth", "created after discovery", "no suspended targets", "state races"} {
 		require.Contains(t, resumeProcessInstanceCmd.Long, text)
 	}
 	require.Contains(t, resumeProcessInstanceCmd.Example, "--tree --dry-run")

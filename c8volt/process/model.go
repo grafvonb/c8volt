@@ -975,3 +975,31 @@ const (
 	// ProcessInstanceResumptionPlanExcluded identifies every other observed state.
 	ProcessInstanceResumptionPlanExcluded ProcessInstanceResumptionPlanClassification = "excluded"
 )
+
+// ProcessInstanceSelectionCardinality declares the proof required by a selection consumer.
+type ProcessInstanceSelectionCardinality string
+
+const (
+	// ProcessInstanceSelectionCollection accepts exhausted or explicitly bounded distinct selections.
+	ProcessInstanceSelectionCollection ProcessInstanceSelectionCardinality = "collection"
+	// ProcessInstanceSelectionUniqueStart requires exhaustion with at most one distinct key.
+	ProcessInstanceSelectionUniqueStart ProcessInstanceSelectionCardinality = "unique_start"
+)
+
+// ProcessInstanceSelectionRequest retains search controls separately from cardinality.
+type ProcessInstanceSelectionRequest struct {
+	SearchRequest ProcessInstanceSearchRequest        `json:"searchRequest"`
+	Cardinality   ProcessInstanceSelectionCardinality `json:"cardinality"`
+}
+
+// ProcessInstanceSelection preserves copied provenance and partial evidence; an error always prevents execution.
+type ProcessInstanceSelection struct {
+	Request        ProcessInstanceSelectionRequest `json:"request"`
+	Origin         string                          `json:"origin"`
+	Items          []ProcessInstance               `json:"items"`
+	Keys           typex.Keys                      `json:"keys"`
+	Completion     ProcessInstanceSearchCompletion `json:"completion"`
+	Pages          int32                           `json:"pages"`
+	TenantEvidence TenantEvidence                  `json:"tenantEvidence"`
+	IgnoreTenant   bool                            `json:"ignoreTenant"`
+}

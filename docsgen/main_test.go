@@ -1095,7 +1095,7 @@ func TestGeneratedWalkProcessInstanceDocsDocumentListeners(t *testing.T) {
 		"./c8volt walk process-instance --key <process-instance-key> --with-elements",
 		"./c8volt walk process-instance --key <process-instance-key> --with-elements --with-listeners",
 		"--with-elements",
-		"show runtime element instances for keyed process-instance walks",
+		"show runtime element instances for selected process-instance walks",
 		"--with-listeners",
 		"include runtime listener jobs; requires --with-elements",
 	} {

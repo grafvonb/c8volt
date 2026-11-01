@@ -313,7 +313,7 @@ func TestBusinessIDSelectionDirectIncidentGuard(t *testing.T) {
 
 // TestBusinessIDSelectionFailureLogging requires one configured diagnostic or one machine envelope, with HTTP evidence confined to redacted DEBUG.
 func TestBusinessIDSelectionFailureLogging(t *testing.T) {
-	for _, resource := range []string{"pi", "ut"} {
+	for _, resource := range []string{"pi", "ut", "walk"} {
 		for _, format := range []string{"plain-time", "json"} {
 			for _, destination := range []string{"configured", "inherited"} {
 				for _, mode := range []string{"normal", "verbose", "quiet", "debug-flag", "debug-config", "json"} {
@@ -325,6 +325,25 @@ func TestBusinessIDSelectionFailureLogging(t *testing.T) {
 							}
 							calls.Append(r.URL.Path)
 							w.Header().Set("Content-Type", "application/json")
+							if resource == "walk" && r.URL.Path == "/v2/process-instances/2251799813685101" {
+								fmt.Fprint(w, `{"processInstanceKey":"2251799813685101","state":"ACTIVE"}`)
+								return
+							}
+							if resource == "walk" && r.URL.Path == "/v2/process-instances/search" {
+								var body struct {
+									Filter map[string]any `json:"filter"`
+								}
+								require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
+								switch {
+								case body.Filter["businessId"] != nil:
+									fmt.Fprint(w, `{"items":[{"processInstanceKey":"2251799813685101","state":"ACTIVE"}],"page":{"totalItems":1}}`)
+								case body.Filter["parentProcessInstanceKey"] == "2251799813685101":
+									fmt.Fprint(w, `{"items":[{"processInstanceKey":"2251799813685102","parentProcessInstanceKey":"2251799813685101","state":"ACTIVE"}],"page":{"totalItems":1}}`)
+								default:
+									fmt.Fprint(w, `{"items":[],"page":{"totalItems":0}}`)
+								}
+								return
+							}
 							if resource == "pi" && r.URL.Path == "/v2/process-instances/search" {
 								fmt.Fprint(w, `{"items":[{"processInstanceKey":"2251799813685101","state":"ACTIVE"},{"processInstanceKey":"2251799813685102","state":"ACTIVE"}],"page":{"totalItems":2}}`)
 								return
@@ -339,6 +358,9 @@ func TestBusinessIDSelectionFailureLogging(t *testing.T) {
 							level = "debug"
 						}
 						args := []string{"--config", runBusinessIDConfig(t, server.URL, format, level), "get", resource, "--bid", "ORDER", "--auto-confirm"}
+						if resource == "walk" {
+							args = []string{"--config", runBusinessIDConfig(t, server.URL, format, level), "walk", "pi", "--bid", "ORDER", "--with-incidents"}
+						}
 						if resource == "pi" {
 							args = append(args, "--with-incidents")
 						}
@@ -372,11 +394,17 @@ func TestBusinessIDSelectionFailureLogging(t *testing.T) {
 							require.ErrorIs(t, dec.Decode(new(any)), io.EOF)
 							require.Equal(t, "invalid_input", envelope["class"])
 							require.Contains(t, requireJSONObject(t, envelope["detail"])["message"], "body-only-secret")
+							if resource == "walk" {
+								require.Len(t, requireJSONObject(t, envelope["payload"])["keys"], 2)
+							}
 						} else {
 							require.Empty(t, out)
 							want := "business-ID search failed: invalid input"
 							if resource == "pi" {
 								want = "business-ID search failed: 2 selected; invalid input"
+							}
+							if resource == "walk" {
+								want = "business-ID search failed: 1 selected; invalid input"
 							}
 							require.Equal(t, []string{want}, errors)
 						}
@@ -395,6 +423,9 @@ func TestBusinessIDSelectionFailureLogging(t *testing.T) {
 						want := 1
 						if resource == "pi" {
 							want = 3
+						}
+						if resource == "walk" {
+							want = 7
 						}
 						require.Len(t, calls.Snapshot(), want)
 					})
