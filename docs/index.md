@@ -6,7 +6,7 @@ nav_exclude: true
 has_toc: true
 ---
 
-> Generated from build `c8volt v4.4.0-262-g18218ab3-dirty`, commit `18218ab3`, built `2026-11-01T12:37:23Z` | Supported Camunda 8 versions: 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.3 (final)
+> Generated from build `c8volt v4.4.0-263-gba517b6c-dirty`, commit `ba517b6c`, built `2026-11-01T12:59:05Z` | Supported Camunda 8 versions: 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.3 (final)
 
 <img src="./logo/c8volt_logo_transparent_w_shadow_400x244.png" alt="c8volt logo" />
 
@@ -425,9 +425,16 @@ Native business-ID search is available on `get pi --bid <value>` and `get ut --b
 ./c8volt --tenant tenant-a cancel pi --bid 'ORDER-123' --auto-confirm
 ```
 
-BID cancellation submits only the reviewed distinct roots, with existing state checks, force and wait/no-wait semantics. Failed or incomplete discovery submits nothing. There is no BID rediscovery after approval; native root cancellation may also affect descendants created concurrently beneath that root. A separate dry-run and later run perform separate discoveries. Partial failures retain outcomes and the original exit classification in one JSON envelope; human diagnostics use one bounded ERROR through the configured logger. This addition does not enable BID on deletion, other process mutations or maintenance operations yet.
+BID cancellation submits only the reviewed distinct roots, with existing state checks, force and wait/no-wait semantics. Failed or incomplete discovery submits nothing. There is no BID rediscovery after approval; native root cancellation may also affect descendants created concurrently beneath that root. A separate dry-run and later run perform separate discoveries. Partial failures retain outcomes and the original exit classification in one JSON envelope; human diagnostics use one bounded ERROR through the configured logger. BID is also available for frozen deletion as described below; other process mutations and maintenance operations are not enabled yet.
 
-The public process facade also adds `PlanProcessInstanceSelectedMutation` and `ExecuteProcessInstanceCancellationPlan`; custom `process.API` implementations must supply both. Plans retain copied criteria, observations, family membership/order, tenant context and separate discovery/expansion completion. Execution validates receiving-adapter capability (including on empty/prepared plans), operation, criteria, tenant context and membership before using frozen roots. Pass the same discovery options when planning and executing; the service applies key authorization only after scoped selection. Plans are in-memory run artifacts, not importable authorization tokens. Additive model fields may require updates to unkeyed Go literals.
+`delete pi --bid ORDER-123` uses the same complete, tenant-scoped selection and family preview on Camunda 8.10. It deletes only reviewed members, in children-before-parent order, retaining sibling order. A newly appearing child is never added to client delete requests; a resulting backend conflict remains a failure. Nonterminal planned members require `--force`, which retains native root cancellation and its possible cascade to concurrent descendants. Cancellation prerequisites are confirmed even under `--no-wait`; ordinary execution also verifies each deletion. A failed member stops its family before ancestors; independent families continue unless `--fail-fast` is set. JSON retains root `items`, attempted `members`, submission evidence and full frozen `scope`; keys-only retains successful roots. Empty scopes never prompt or claim acceptance. Dry-run and verbose output expose the full reviewed member set through configured INFO logging.
+
+```bash
+./c8volt --tenant tenant-a delete pi --bid 'ORDER-123' --dry-run --json
+./c8volt --tenant tenant-a delete pi --bid 'ORDER-123' --force --auto-confirm
+```
+
+The public process facade also adds `PlanProcessInstanceSelectedMutation`, `ExecuteProcessInstanceCancellationPlan` and `ExecuteProcessInstanceDeletionPlan`; custom `process.API` implementations must supply these methods. Deletion returns `ProcessInstanceDeletionResult` with root reports, attempted-member reports and submission evidence, including partial failures. Plans retain copied criteria, observations, family membership/order, tenant context and separate discovery/expansion completion. Execution validates receiving-adapter capability (including on empty/prepared plans), operation, criteria, tenant context and membership before using frozen roots. Pass the same discovery options when planning and executing; the service applies key authorization only after scoped selection. Plans are in-memory run artifacts, not importable authorization tokens. Additive model fields may require updates to unkeyed Go literals.
 
 Public `process.API` implementations must also implement the additive `ResolveProcessInstanceSelection` method. Its `collection` mode accepts exhausted discovery or a documented distinct-key bound; `unique_start` requires exhaustion and rejects ambiguity or bounded/incomplete discovery. Results preserve copied criteria, observations, keys, completion, tenant evidence and search origin. Check the returned error before consuming any selection. Search options remain discovery options: callers must not apply explicit-key ignore-tenant options unintentionally. Existing unkeyed struct literals may need updating for additive model fields.
 

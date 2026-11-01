@@ -427,7 +427,7 @@ type businessIDCancellationResult struct {
 
 // selectedMutationPreview preserves explicit incomplete evidence instead of the legacy empty-outcome default.
 func selectedMutationPreview(plan process.ProcessInstanceSelectedMutationPlan) processInstanceDryRunPreview {
-	preview := newProcessInstanceDryRunPreview("cancel", plan.Selection.Keys, plan.Expansion)
+	preview := newProcessInstanceDryRunPreview(plan.Request.Operation, plan.Selection.Keys, plan.Expansion)
 	preview.Selection = &plan.Selection
 	preview.ScopeComplete = plan.Expansion.Outcome == process.TraversalOutcomeComplete && (plan.Selection.Completion == process.ProcessInstanceSearchCompletionExhausted || plan.Selection.Completion == process.ProcessInstanceSearchCompletionLimitReached)
 	return preview

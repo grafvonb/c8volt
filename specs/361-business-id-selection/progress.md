@@ -224,3 +224,59 @@ Started: 2026-11-01 12:22:16
 - Full `make test PKG=./...` passed with race detection and integration tags disabled, including cmd (452.228s), process owners, resource/ops consumers and docsgen. This breadth was justified by shared planner/converter/interface changes. The full run started before the final narrow unselected-family guard and extra verbose fixture; final `go test ./internal/services/processinstance ./c8volt/process ./cmd -run '^TestBusinessIDCancel' -race -count=1` passed on those final changes (command package 127.137s). The standalone large verbose race fixture also passed.
 - Targeted gofmt, `make docs-content`, and diff checks passed. README/help/generated docs describe opaque BID, version/tenant rules, full frozen scope, seed limits, one confirmation, native cascade timing and public API compatibility. All validation used the quickstart isolation wrapper and test-owned mocks/HTTP servers/PTYs; untagged integration-support packages were reviewed as offline fixtures. No live environment was inspected or tested; concurrent real-engine cascade behavior remains unverified.
 ---
+
+---
+## Iteration 5 - 2026-11-01 14:09
+**Work Unit**: US3 T005 — frozen-member BID deletion completed; remaining US3 actions deferred to subsequent work units
+**Tasks Completed**:
+- [x] T005: Deliver BID deletion from frozen members with exact-key adapter mechanics, partial execution evidence, isolated acceptance coverage and documentation.
+**Tasks Remaining in Work Unit**: 0 for T005; US3 has T006–T007 remaining, and 5 feature tasks remain overall.
+**Commit**: This work-unit commit
+**Files Changed**:
+- README.md
+- c8volt/process/api.go
+- c8volt/process/client_test.go
+- c8volt/process/model.go
+- c8volt/process/selection.go
+- c8volt/process/selection_test.go
+- c8volt/resource/client_test.go
+- cmd/cancel_processinstance_business_id_test.go
+- cmd/cmd_views_processinstance_deletion.go
+- cmd/cmd_views_processinstance_dryrun.go
+- cmd/delete_processinstance.go
+- cmd/delete_processinstance_business_id.go
+- cmd/delete_processinstance_business_id_test.go
+- cmd/process_api_stub_test.go
+- docs/cli/c8volt_delete_process-instance.md
+- docs/index.md
+- internal/domain/processinstance.go
+- internal/domain/processinstance_selection.go
+- internal/services/ops/orphan_purge_test.go
+- internal/services/processdefinition/delete_test.go
+- internal/services/processinstance/api.go
+- internal/services/processinstance/bulk_test.go
+- internal/services/processinstance/business_id_search_test.go
+- internal/services/processinstance/dryrun_test.go
+- internal/services/processinstance/selected_cancel.go
+- internal/services/processinstance/selected_delete.go
+- internal/services/processinstance/selected_delete_test.go
+- internal/services/processinstance/v810/contract.go
+- internal/services/processinstance/v810/service.go
+- internal/services/processinstance/v810/service_test.go
+- internal/services/processinstance/v88/contract.go
+- internal/services/processinstance/v88/service.go
+- internal/services/processinstance/v89/contract.go
+- internal/services/processinstance/v89/service.go
+- specs/361-business-id-selection/progress.md
+- specs/361-business-id-selection/ralph-memory.md
+- specs/361-business-id-selection/tasks.md
+**Learnings**:
+- Extended the existing selected-family planner and validator for deletion. Execution validates receiving-adapter capability, criteria, operation, tenant context, completion and graph evidence before any shortcut. It derives stable postorder from reviewed parents, runs independent families through the existing worker pool, and stops a failed family before its ancestors. Explicit-key recursive behavior still delegates to the extracted version-specific exact submission/force/retry/wait mechanics.
+- Frozen scope tests preserve the 3-seed/2-root/7-member graph, duplicate/sparse discovery and seed limits. A child introduced after terminal approval is never submitted for client deletion; backend root conflicts remain explicit partial failures. Complete >1000-child JSON/verbose previews, original provenance, defensive copies, prepared-plan rejection on both older adapters and exact-key throttling retries pass. No renderer performs discovery.
+- Actual command tests cover normal/dry-run/verbose/JSON/keys/quiet, supported automation/auto-confirm/no-wait combinations, full empty payloads and zero prompts/writes, real-terminal configured/inherited approval/decline/EOF with redirected stdout, full discovery before writes, original error exits, force guards/root cancellation, mandatory no-wait prerequisites and fail-fast unattempted roots. Root items remain stable; attempted members and submission evidence preserve partial families and accepted operations whose later steps failed.
+- Traced failures from service responses/errors through copied facade conversion, the mode-aware view, configured logging and classified exit. Human success/dry-run/verbose output uses INFO with empty stdout, both logger formats/destinations and quiet/WARN suppression. Repeated backend failures retain one bounded ERROR, no raw HTTP details at normal/verbose/quiet, independent redacted DEBUG and one JSON envelope followed by EOF. Output-write failures make one attempt and retain the original operation exit. The final wording distinguishes no-wait submitted members from confirmed deletions and retains unconfirmed submission evidence.
+- New tests were listed before execution. Targeted `go test ./cmd ./internal/services/processinstance/... ./c8volt/process -run 'Test.*(BusinessIDDelete|BusinessIDCancel|DeleteProcessInstance|ProcessInstanceDryRun)' -count=1` passed (cmd 14.824s), including legacy deletion/cancellation regressions. Initial fixture errors (native POST deletion route and bounded precondition wording) were corrected before the successful run.
+- Full `make test PKG=./...` passed with race detection and integration tags disabled (cmd 459.714s); breadth was justified by shared exact-delete mechanics across all adapters, new API implementations and family worker execution. The full run began before the final human failure-wording correction; focused `go test ./cmd -run '^TestBusinessIDDelete(Logging|ChangedFamily|WaitFailures)$' -race -count=1` passed on that final change (36.691s). No second full run was needed for that narrowly verified output change.
+- Targeted gofmt, `make docs-content` and diff checks passed. README/help/generated docs describe version/tenant rules, frozen members, seed limits, force/cascade timing, partial reports and public API compatibility. The command lifecycle is in its dedicated mode file; views own formatting, services own execution, and the facade remains mechanical.
+- All checks used the quickstart environment-isolation wrapper and test-owned mocks/HTTP servers/PTY fixtures. Untagged integration-support packages were reviewed as offline helpers; no live environment was inspected or tested. Concurrent real-engine behavior remains unverified. No later work unit was started.
+---

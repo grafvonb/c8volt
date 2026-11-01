@@ -368,10 +368,13 @@ type CancelResponse struct {
 	Status     string
 }
 
+// DeleteResponse preserves submission evidence separately from confirmed deletion.
 type DeleteResponse struct {
-	Ok         bool
-	StatusCode int
-	Status     string
+	// MutationSubmitted retains accepted cancellation or deletion when later work fails.
+	MutationSubmitted bool
+	Ok                bool
+	StatusCode        int
+	Status            string
 }
 
 type StateResponse struct {

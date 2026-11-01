@@ -56,3 +56,10 @@ type ProcessInstanceSelectedMutationPlan struct {
 	Families  []ProcessInstanceMutationFamily
 	Tenant    string
 }
+
+// ProcessInstanceDeletionResult retains root outcomes and every attempted frozen member, including partial families.
+type ProcessInstanceDeletionResult struct {
+	MutationSubmitted bool
+	Roots             []Reporter
+	Members           []Reporter
+}

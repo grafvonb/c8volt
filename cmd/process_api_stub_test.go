@@ -808,3 +808,8 @@ func (stubProcessAPI) PlanProcessInstanceSelectedMutation(context.Context, proce
 func (stubProcessAPI) ExecuteProcessInstanceCancellationPlan(context.Context, process.ProcessInstanceSelectedMutationPlan, ...options.FacadeOption) (process.CancelReports, error) {
 	panic("unexpected selected cancellation")
 }
+
+// ExecuteProcessInstanceDeletionPlan rejects unconfigured frozen execution in legacy keyed fixtures.
+func (stubProcessAPI) ExecuteProcessInstanceDeletionPlan(context.Context, process.ProcessInstanceSelectedMutationPlan, ...options.FacadeOption) (process.ProcessInstanceDeletionResult, error) {
+	panic("unexpected selected cancellation")
+}

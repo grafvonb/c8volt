@@ -723,3 +723,8 @@ func (s stubDryRunProcessInstanceAPI) ValidateProcessInstanceSearchFilter(d.Proc
 func (stubDryRunProcessInstanceAPI) ProcessInstanceSearchTenant(...services.CallOption) string {
 	return ""
 }
+
+// DeleteProcessInstanceExact delegates only to the test-owned deletion stub.
+func (s stubDryRunProcessInstanceAPI) DeleteProcessInstanceExact(ctx context.Context, key string, opts ...services.CallOption) (d.DeleteResponse, error) {
+	return s.DeleteProcessInstance(ctx, key, opts...)
+}

@@ -21,23 +21,26 @@ import (
 
 // businessIDCancelFixture maps the documented RA/A1/A1a/A2/RB/B1/B2 graph to native numeric keys.
 type businessIDCancelFixture struct {
-	filters       testx.SafeSlice[map[string]any]
-	searches      atomic.Int32
-	writes        testx.SafeSlice[string]
-	children      testx.SafeSlice[string]
-	requests      testx.SafeSlice[string]
-	afterApproval atomic.Bool
-	empty         bool
-	large         bool
-	failure       string
-	bid           string
+	filters             testx.SafeSlice[map[string]any]
+	searches            atomic.Int32
+	writes              testx.SafeSlice[string]
+	deleted             testx.SafeSlice[string]
+	deletedSuccessfully testx.SafeSlice[string]
+	deletion            bool
+	children            testx.SafeSlice[string]
+	requests            testx.SafeSlice[string]
+	afterApproval       atomic.Bool
+	empty               bool
+	large               bool
+	failure             string
+	bid                 string
 }
 
 // newBusinessIDCancelFixture owns all native requests, including wait-time family re-observation.
 func newBusinessIDCancelFixture(t *testing.T, empty, large bool, failure string) (*businessIDCancelFixture, *httptest.Server) {
 	t.Helper()
 	f := &businessIDCancelFixture{empty: empty, large: large, failure: failure, bid: "ORDER-123"}
-	parent := map[string]string{"101": "", "102": "101", "103": "102", "104": "101", "201": "", "202": "201", "203": "201", "301": "", "302": "301"}
+	parent := map[string]string{"101": "", "102": "101", "103": "102", "104": "101", "201": "", "202": "201", "203": "201", "301": "", "302": "301", "999": "101"}
 	children := map[string][]string{"101": {"102", "104"}, "102": {"103"}, "201": {"202", "203"}, "301": {"302"}}
 	if large {
 		children["101"] = nil
@@ -51,7 +54,7 @@ func newBusinessIDCancelFixture(t *testing.T, empty, large bool, failure string)
 	}
 	item := func(key string) map[string]any {
 		state := "ACTIVE"
-		if f.failure == "terminal" {
+		if f.failure == "terminal" || (f.deletion && f.failure != "force" && f.failure != "cancel-wait" && f.failure != "retry-fail") {
 			state = "COMPLETED"
 		}
 		root := key
@@ -149,6 +152,9 @@ func newBusinessIDCancelFixture(t *testing.T, empty, large bool, failure string)
 				key, _ := body.Filter["parentProcessInstanceKey"].(string)
 				f.children.Append(key)
 				keys := children[key]
+				if f.deletion && f.afterApproval.Load() && key == "101" {
+					keys = append(slices.Clone(keys), "999")
+				}
 				if f.large && key == "101" {
 					if body.Page["after"] == nil {
 						keys = keys[:1000]
@@ -176,7 +182,44 @@ func newBusinessIDCancelFixture(t *testing.T, empty, large bool, failure string)
 				return
 			}
 			key := strings.TrimPrefix(r.URL.Path, "/v2/process-instances/")
+			if f.deletion && slices.Contains(f.deletedSuccessfully.Snapshot(), key) {
+				if f.failure == "delete-wait" {
+					fail()
+					return
+				}
+				w.WriteHeader(404)
+				fmt.Fprint(w, `{}`)
+				return
+			}
+			if f.failure == "cancel-wait" && len(f.writes.Snapshot()) > 0 {
+				fail()
+				return
+			}
 			require.NoError(t, json.NewEncoder(w).Encode(item(key)))
+		case f.deletion && strings.HasSuffix(r.URL.Path, "/deletion"):
+			key := strings.TrimSuffix(strings.TrimPrefix(r.URL.Path, "/v2/process-instances/"), "/deletion")
+			require.Equal(t, int32(3), f.searches.Load(), "deletion before complete selection")
+			f.deleted.Append(key)
+			if (f.failure == "delete" && (key == "101" || key == "201")) || (f.failure == "partial" && key == "201") {
+				fail()
+				return
+			}
+			if f.failure == "new-child" && key == "101" {
+				w.WriteHeader(409)
+				fmt.Fprint(w, `{}`)
+				return
+			}
+			if (f.failure == "force" || f.failure == "cancel-wait" || f.failure == "retry-fail") && len(f.writes.Snapshot()) == 0 {
+				w.WriteHeader(409)
+				fmt.Fprint(w, `{}`)
+				return
+			}
+			if f.failure == "retry-fail" {
+				fail()
+				return
+			}
+			f.deletedSuccessfully.Append(key)
+			w.WriteHeader(204)
 		case strings.HasSuffix(r.URL.Path, "/cancellation"):
 			key := strings.TrimSuffix(strings.TrimPrefix(r.URL.Path, "/v2/process-instances/"), "/cancellation")
 			require.NotEmpty(t, f.children.Snapshot(), "mutation preceded expansion")

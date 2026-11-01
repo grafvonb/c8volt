@@ -29,3 +29,9 @@ func (c *client) ExecuteProcessInstanceCancellationPlan(ctx context.Context, pla
 	result, err := pisvc.ExecuteProcessInstanceCancellationPlan(ctx, c.piApi, c.log, toDomainSelectedMutationPlan(plan), options.MapFacadeOptionsToCallOptions(opts)...)
 	return fromDomainCancelReports(result), ferrors.FromDomain(err)
 }
+
+// ExecuteProcessInstanceDeletionPlan copies reviewed scope and preserves partial member and root outcomes.
+func (c *client) ExecuteProcessInstanceDeletionPlan(ctx context.Context, plan ProcessInstanceSelectedMutationPlan, opts ...options.FacadeOption) (ProcessInstanceDeletionResult, error) {
+	result, err := pisvc.ExecuteProcessInstanceDeletionPlan(ctx, c.piApi, toDomainSelectedMutationPlan(plan), options.MapFacadeOptionsToCallOptions(opts)...)
+	return ProcessInstanceDeletionResult{MutationSubmitted: result.MutationSubmitted, DeleteReports: fromDomainDeleteReports(result.Roots), Members: fromDomainDeleteReports(result.Members).Items}, ferrors.FromDomain(err)
+}

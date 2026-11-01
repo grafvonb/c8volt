@@ -660,6 +660,14 @@ func (s *Service) DeleteProcessInstance(ctx context.Context, key string, opts ..
 		}
 	}
 
+	return s.DeleteProcessInstanceExact(ctx, key, opts...)
+}
+
+// DeleteProcessInstanceExact reuses state/force, retry and wait mechanics without discovering delete targets.
+func (s *Service) DeleteProcessInstanceExact(ctx context.Context, key string, opts ...services.CallOption) (d.DeleteResponse, error) {
+	cCfg := services.ApplyCallOptions(opts)
+	submitted := false
+
 	resp, err := services.RetryCamundaMutation(ctx, s.log, "delete pi", func(ctx context.Context) (*camundav810.DeleteProcessInstanceResponse, *http.Response, []byte, error) {
 		resp, err := s.cc.DeleteProcessInstanceWithResponse(ctx, key, camundav810.DeleteProcessInstanceJSONRequestBody{})
 		if resp == nil {
@@ -668,20 +676,36 @@ func (s *Service) DeleteProcessInstance(ctx context.Context, key string, opts ..
 		return resp, resp.HTTPResponse, resp.Body, err
 	})
 	if err != nil {
-		return d.DeleteResponse{}, err
+		return d.DeleteResponse{MutationSubmitted: submitted}, err
 	}
 	if resp.StatusCode() == http.StatusConflict {
 		if cCfg.Force {
 			common.VerboseLog(ctx, cCfg, s.log, fmt.Sprintf("pi deletion conflicted: key=%s cancellation required before deletion can proceed", key))
 			s.infoProcessInstanceDetail(cCfg, fmt.Sprintf("pi %s not terminal; cancelling before delete", key))
-			if _, _, err = s.CancelProcessInstance(ctx, key, opts...); err != nil {
-				return d.DeleteResponse{}, common.EnrichProcessInstanceDeleteCancellationFailure(err, key)
+			cancelResponse, cancelScope, cancelErr := s.CancelProcessInstance(ctx, key, opts...)
+			submitted = cancelResponse.Ok && cancelResponse.StatusCode != http.StatusOK || len(d.ProcessInstanceMutationFailures(cancelErr)) > 0
+			if cancelErr != nil {
+				return d.DeleteResponse{MutationSubmitted: submitted}, common.EnrichProcessInstanceDeleteCancellationFailure(cancelErr, key)
 			}
 			s.infoProcessInstanceDetail(cCfg, fmt.Sprintf("waiting for pi %s cancel", key))
 			states := []d.State{d.StateCompleted, d.StateCanceled, d.StateTerminated, d.StateAbsent}
 			common.VerboseProcessInstanceWaitLog(ctx, cCfg, s.cfg, s.log, "deletion prerequisite confirmation", key, []string{key}, states)
 			if _, _, err = waiter.WaitForProcessInstanceState(ctx, s, s.cfg, s.log, key, states, opts...); err != nil {
-				return d.DeleteResponse{}, fmt.Errorf("delete wait canceled: %w", err)
+				cause := fmt.Errorf("delete wait canceled: %w", err)
+				// No-wait still requires this prerequisite; retain accepted cancellation if it fails.
+				if cancelResponse.Ok && cancelResponse.StatusCode != http.StatusOK {
+					root := key
+					for _, item := range cancelScope {
+						if item.ParentKey == "" {
+							root = item.Key
+							break
+						}
+					}
+					failure := common.NewProcessInstanceCancellationConfirmationFailure("delete", root, []string{key}, common.EffectiveProcessInstanceWaitTimeout(ctx, s.cfg.App.Backoff.Timeout), cause)
+					failure.DeleteConflictKey = key
+					return d.DeleteResponse{MutationSubmitted: submitted}, failure
+				}
+				return d.DeleteResponse{MutationSubmitted: submitted}, cause
 			}
 			common.VerboseLog(ctx, cCfg, s.log, fmt.Sprintf("pi cancellation confirmed: key=%s resuming deletion", key))
 			s.infoProcessInstanceDetail(cCfg, fmt.Sprintf("retrying pi %s delete", key))
@@ -693,7 +717,7 @@ func (s *Service) DeleteProcessInstance(ctx context.Context, key string, opts ..
 				return resp, resp.HTTPResponse, resp.Body, err
 			})
 			if err != nil {
-				return d.DeleteResponse{}, err
+				return d.DeleteResponse{MutationSubmitted: submitted}, err
 			}
 		} else {
 			logging.InfoIfVerbose(fmt.Sprintf("pi %s delete blocked; state not terminal, use --force", key), s.log, cCfg.Verbose)
@@ -701,19 +725,20 @@ func (s *Service) DeleteProcessInstance(ctx context.Context, key string, opts ..
 		}
 	}
 	if err = httpc.HttpStatusErr(resp.HTTPResponse, resp.Body); err != nil {
-		return d.DeleteResponse{}, err
+		return d.DeleteResponse{MutationSubmitted: submitted}, err
 	}
 	if !cCfg.NoWait {
 		s.infoProcessInstanceDetail(cCfg, fmt.Sprintf("waiting for pi %s delete", key))
 		states := []d.State{d.StateAbsent}
 		if _, _, err = waiter.WaitForProcessInstanceState(ctx, s, s.cfg, s.log, key, states, opts...); err != nil {
-			return d.DeleteResponse{}, fmt.Errorf("delete wait absent: %w", err)
+			return d.DeleteResponse{MutationSubmitted: true, StatusCode: resp.StatusCode()}, fmt.Errorf("delete wait absent: %w", err)
 		}
 	}
 	s.infoProcessInstanceDetail(cCfg, fmt.Sprintf("pi %s deleted", key))
 	return d.DeleteResponse{
-		Ok:         true,
-		StatusCode: resp.StatusCode(),
+		MutationSubmitted: true,
+		Ok:                true,
+		StatusCode:        resp.StatusCode(),
 	}, nil
 }
 

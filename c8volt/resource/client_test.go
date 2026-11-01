@@ -1346,3 +1346,13 @@ func (stubProcessAPI) ExecuteProcessInstanceCancellationPlan(context.Context, pr
 func (stubProcessInstanceService) ProcessInstanceSearchTenant(...services.CallOption) string {
 	return ""
 }
+
+// DeleteProcessInstanceExact delegates only to the test-owned deletion stub.
+func (s stubProcessInstanceService) DeleteProcessInstanceExact(ctx context.Context, key string, opts ...services.CallOption) (d.DeleteResponse, error) {
+	return s.DeleteProcessInstance(ctx, key, opts...)
+}
+
+// ExecuteProcessInstanceDeletionPlan rejects unconfigured frozen execution in legacy keyed fixtures.
+func (stubProcessAPI) ExecuteProcessInstanceDeletionPlan(context.Context, process.ProcessInstanceSelectedMutationPlan, ...options.FacadeOption) (process.ProcessInstanceDeletionResult, error) {
+	panic("unexpected selected cancellation")
+}

@@ -2189,3 +2189,26 @@ func TestService_CombinedStatePageMetadata(t *testing.T) {
 		})
 	}
 }
+
+// TestBusinessIDDeleteExactRetry retains throttling retries without any descendant discovery or no-wait reads.
+func TestBusinessIDDeleteExactRetry(t *testing.T) {
+	t.Parallel()
+	calls := 0
+	client := newStrictCamundaClient(t)
+	client.deleteProcessInstanceWithResponse = func(_ context.Context, key camundav810.ProcessInstanceKey, _ camundav810.DeleteProcessInstanceJSONRequestBody, _ ...camundav810.RequestEditorFn) (*camundav810.DeleteProcessInstanceResponse, error) {
+		require.Equal(t, "123", string(key))
+		calls++
+		status := http.StatusNoContent
+		if calls == 1 {
+			status = http.StatusTooManyRequests
+		}
+		response := newHTTPResponse(http.MethodPost, "https://fixture.invalid/v2/process-instances/123/deletion", status, http.StatusText(status))
+		response.Header.Set("Retry-After", "0")
+		return &camundav810.DeleteProcessInstanceResponse{HTTPResponse: response}, nil
+	}
+	svc := newTestService(t, waitTestConfig(), client)
+	response, err := svc.DeleteProcessInstanceExact(context.Background(), "123", services.WithNoWait())
+	require.NoError(t, err)
+	require.True(t, response.Ok)
+	require.Equal(t, 2, calls)
+}

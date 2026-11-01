@@ -24,8 +24,8 @@ func PlanProcessInstanceSelectedMutation(ctx context.Context, api API, incAPI Se
 	if err := api.ValidateProcessInstanceSearchFilter(request.Selection.SearchRequest.Filter); err != nil {
 		return plan, err
 	}
-	if request.Operation != "cancel" || request.Selection.Cardinality != d.ProcessInstanceSelectionCollection {
-		return plan, fmt.Errorf("%w: selected cancellation requires a collection", d.ErrValidation)
+	if (request.Operation != "cancel" && request.Operation != "delete") || request.Selection.Cardinality != d.ProcessInstanceSelectionCollection {
+		return plan, fmt.Errorf("%w: selected mutation requires a cancel or delete collection", d.ErrValidation)
 	}
 	plan.Tenant = api.ProcessInstanceSearchTenant(opts...)
 	selection, err := ResolveProcessInstanceSelection(ctx, api, incAPI, request.Selection, opts...)
@@ -53,7 +53,7 @@ func PlanProcessInstanceSelectedMutation(ctx context.Context, api API, incAPI Se
 	if err != nil {
 		return plan, err
 	}
-	if err := validateSelectedCancellationPlan(api, plan, opts...); err != nil {
+	if err := validateSelectedMutationPlan(api, plan, request.Operation, opts...); err != nil {
 		plan.Expansion.Outcome = d.TraversalOutcomeUnresolved
 		return plan, err
 	}
@@ -63,7 +63,7 @@ func PlanProcessInstanceSelectedMutation(ctx context.Context, api API, incAPI Se
 // ExecuteProcessInstanceCancellationPlan validates received evidence before even an empty return,
 // then delegates only frozen roots to existing cancellation, state checks and wait mechanics.
 func ExecuteProcessInstanceCancellationPlan(ctx context.Context, api API, log *slog.Logger, plan d.ProcessInstanceSelectedMutationPlan, opts ...services.CallOption) ([]d.Reporter, error) {
-	if err := validateSelectedCancellationPlan(api, plan, opts...); err != nil {
+	if err := validateSelectedMutationPlan(api, plan, "cancel", opts...); err != nil {
 		return nil, err
 	}
 	if err := ctx.Err(); err != nil {
@@ -88,9 +88,9 @@ func ExecuteProcessInstanceCancellationPlan(ctx context.Context, api API, log *s
 	return reports, err
 }
 
-// validateSelectedCancellationPlan checks capability first, then independent completion and graph evidence.
+// validateSelectedMutationPlan checks capability first, then independent completion and graph evidence.
 // Plans are copied run artifacts; consistency checks cannot authenticate a fabricated external snapshot.
-func validateSelectedCancellationPlan(api API, plan d.ProcessInstanceSelectedMutationPlan, opts ...services.CallOption) error {
+func validateSelectedMutationPlan(api API, plan d.ProcessInstanceSelectedMutationPlan, operation string, opts ...services.CallOption) error {
 	if err := api.ValidateProcessInstanceSearchFilter(plan.Request.Selection.SearchRequest.Filter); err != nil {
 		return err
 	}
@@ -98,11 +98,11 @@ func validateSelectedCancellationPlan(api API, plan d.ProcessInstanceSelectedMut
 		return err
 	}
 	invalid := func() error {
-		return fmt.Errorf("%w: selected cancellation plan is incomplete or inconsistent", d.ErrPrecondition)
+		return fmt.Errorf("%w: selected mutation plan is incomplete or inconsistent", d.ErrPrecondition)
 	}
 	selection := plan.Selection
 	request := plan.Request.Selection
-	if plan.Request.Operation != "cancel" || request.Cardinality != d.ProcessInstanceSelectionCollection || !reflect.DeepEqual(request, selection.Request) || selection.Origin != "search" {
+	if plan.Request.Operation != operation || request.Cardinality != d.ProcessInstanceSelectionCollection || !reflect.DeepEqual(request, selection.Request) || selection.Origin != "search" {
 		return invalid()
 	}
 	if plan.Tenant != api.ProcessInstanceSearchTenant(opts...) || selection.IgnoreTenant != services.ApplyCallOptions(opts).IgnoreTenant {

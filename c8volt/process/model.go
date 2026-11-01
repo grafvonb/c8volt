@@ -1027,3 +1027,11 @@ type ProcessInstanceSelectedMutationPlan struct {
 	Families  []ProcessInstanceMutationFamily        `json:"families"`
 	Tenant    string                                 `json:"tenant"`
 }
+
+// ProcessInstanceDeletionResult retains root reports and attempted members of the reviewed scope.
+type ProcessInstanceDeletionResult struct {
+	// MutationSubmitted is run evidence rendered in the command scope, independent of root success.
+	MutationSubmitted bool `json:"mutationSubmitted"`
+	DeleteReports
+	Members []DeleteReport `json:"members,omitempty"`
+}

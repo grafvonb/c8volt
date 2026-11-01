@@ -194,3 +194,51 @@ func TestBusinessIDCancelPreparedVersionGate(t *testing.T) {
 		})
 	}
 }
+
+// TestBusinessIDDeletePreparedVersionGate rejects v810-created and empty plans on older receiving adapters before HTTP.
+func TestBusinessIDDeletePreparedVersionGate(t *testing.T) {
+	t.Parallel()
+	for _, empty := range []bool{false, true} {
+		t.Run(fmt.Sprint(empty), func(t *testing.T) {
+			var calls atomic.Int32
+			server := testx.NewIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				calls.Add(1)
+				w.Header().Set("Content-Type", "application/json")
+				if r.Method == http.MethodGet {
+					fmt.Fprint(w, `{"processInstanceKey":"101","state":"ACTIVE"}`)
+					return
+				}
+				var body struct {
+					Filter map[string]any `json:"filter"`
+				}
+				require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
+				if body.Filter["businessId"] != nil && !empty {
+					fmt.Fprint(w, `{"items":[{"processInstanceKey":"101","state":"ACTIVE"}],"page":{"totalItems":1}}`)
+				} else {
+					fmt.Fprint(w, `{"items":[],"page":{"totalItems":0}}`)
+				}
+			}))
+			defer server.Close()
+			cfg := testConfig()
+			cfg.App.CamundaVersion = toolx.V810
+			cfg.APIs.Camunda.BaseURL = server.URL
+			log := slog.New(slog.NewTextHandler(io.Discard, nil))
+			api, err := processinstance.New(cfg, server.Client(), log)
+			require.NoError(t, err)
+			request := d.ProcessInstanceSelectedMutationRequest{Operation: "delete", Selection: d.ProcessInstanceSelectionRequest{Cardinality: d.ProcessInstanceSelectionCollection, SearchRequest: d.ProcessInstanceSearchRequest{Filter: d.ProcessInstanceFilter{BusinessId: new("ORDER")}}}}
+			plan, err := processinstance.PlanProcessInstanceSelectedMutation(context.Background(), api, nil, request)
+			require.NoError(t, err)
+			before := calls.Load()
+			for _, version := range []toolx.CamundaVersion{toolx.V88, toolx.V89} {
+				cfg.App.CamundaVersion = version
+				older, err := processinstance.New(cfg, server.Client(), log)
+				require.NoError(t, err)
+				_, err = processinstance.ExecuteProcessInstanceDeletionPlan(context.Background(), older, plan)
+				require.ErrorIs(t, err, d.ErrUnsupported)
+				_, err = processinstance.PlanProcessInstanceSelectedMutation(context.Background(), older, nil, request)
+				require.ErrorIs(t, err, d.ErrUnsupported)
+			}
+			require.Equal(t, before, calls.Load())
+		})
+	}
+}

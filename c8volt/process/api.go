@@ -84,6 +84,8 @@ type API interface {
 	PlanProcessInstanceSelectedMutation(ctx context.Context, request ProcessInstanceSelectedMutationRequest, opts ...options.FacadeOption) (ProcessInstanceSelectedMutationPlan, error)
 	// ExecuteProcessInstanceCancellationPlan validates and submits only the reviewed distinct roots.
 	ExecuteProcessInstanceCancellationPlan(ctx context.Context, plan ProcessInstanceSelectedMutationPlan, opts ...options.FacadeOption) (CancelReports, error)
+	// ExecuteProcessInstanceDeletionPlan deletes reviewed members without adding live children.
+	ExecuteProcessInstanceDeletionPlan(ctx context.Context, plan ProcessInstanceSelectedMutationPlan, opts ...options.FacadeOption) (ProcessInstanceDeletionResult, error)
 	// ValidateProcessInstanceSearchFilter checks criteria and version support without backend I/O.
 	ValidateProcessInstanceSearchFilter(filter ProcessInstanceFilter) error
 	// PlanProcessInstanceSuspension freezes selected subtrees and active targets without mutation.
