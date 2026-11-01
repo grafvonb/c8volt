@@ -248,7 +248,8 @@ apis:
 			"--no-wait",
 		)
 
-		require.Contains(t, stdout, "2251799813711967")
+		require.Empty(t, stdout)
+		require.Empty(t, stderr)
 		require.NotContains(t, stdout, "creation target:")
 		require.NotContains(t, stderr, "creation target:")
 		require.NotContains(t, stdout, "tenantContext")

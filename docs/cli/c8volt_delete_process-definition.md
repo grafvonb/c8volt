@@ -12,6 +12,8 @@ Delete process definition resources
 
 Delete process definition resources from Camunda 8.9 or newer.
 
+Observed instances in force-deletion impact retain their own business IDs when available. Inspect them with --verbose or --json; count-only impact checks do not look up IDs.
+
 Before mutation, c8volt checks unfinished-instance impact (ACTIVE and SUSPENDED on Camunda 8.10; ACTIVE on older versions), required cancellation roots, affected instance families, and batch-operation read access. With --force, it cancels root instances, verifies that no unfinished instances remain, deletes affected instance history, then deletes the definition and remaining associated history.
 
 Camunda 8.10 can defer history deletion without returning a batch operation. Unless --no-wait is set, c8volt waits for a returned batch to complete and for the definition to disappear. Without a returned batch, definition disappearance is confirmed, but completion of all associated history deletion is not independently verified.

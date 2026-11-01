@@ -17,6 +17,8 @@ Select incidents using filters or explicit --inc-key values. The workflow fixes 
 
 Use --dry-run to inspect the plan without mutation, --auto-confirm or --automation for unattended deletion, and --report-file to save an audit report.
 
+Observed process-instance business IDs are retained in JSON and Markdown audit reports. Use --verbose to inspect each observed reference in the plan; key-only outcomes remain unchanged.
+
 ```
 c8volt ops purge process-instances-with-incidents [flags]
 ```

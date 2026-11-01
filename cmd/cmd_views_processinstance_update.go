@@ -10,6 +10,7 @@ import (
 
 	"github.com/grafvonb/c8volt/c8volt/ferrors"
 	"github.com/grafvonb/c8volt/c8volt/process"
+	"github.com/grafvonb/c8volt/toolx"
 	types "github.com/grafvonb/c8volt/typex"
 	"github.com/spf13/cobra"
 )
@@ -27,7 +28,10 @@ type processInstanceVariablePlannedChange struct {
 	APITruncated bool   `json:"apiTruncated,omitempty"`
 }
 
+// processInstanceVariableUpdatePlan preserves observed identity alongside the variable changes.
 type processInstanceVariableUpdatePlan struct {
+	// BusinessId is the optional identity observed during planning.
+	BusinessId         *string                                `json:"businessId,omitempty"`
 	ProcessInstanceKey string                                 `json:"processInstanceKey"`
 	Additions          []processInstanceVariablePlannedValue  `json:"additions"`
 	Changes            []processInstanceVariablePlannedChange `json:"changes"`
@@ -60,7 +64,10 @@ func newProcessInstanceVariableUpdatePreview(requestedKeys types.Keys, plans []p
 		ProcessInstances:  append([]processInstanceVariableUpdatePlan(nil), plans...),
 		MutationSubmitted: false,
 	}
-	for _, plan := range plans {
+	for i := range preview.ProcessInstances {
+		preview.ProcessInstances[i].BusinessId = toolx.CopyPtr(plans[i].BusinessId)
+	}
+	for _, plan := range preview.ProcessInstances {
 		if plan.tenantID == "" {
 			preview.unknownTenantCount++
 		} else {
@@ -229,7 +236,10 @@ func processInstanceVariableUpdateResultCounts(results process.ProcessInstanceVa
 // formatProcessInstanceVariableUpdatePlan labels only planned writes with their
 // selected root while preserving unchanged and untouched value syntax.
 func formatProcessInstanceVariableUpdatePlan(plan processInstanceVariableUpdatePlan) string {
-	parts := make([]string, 0, len(plan.Additions)+len(plan.Changes)+len(plan.UnchangedRequested)+1)
+	parts := make([]string, 0, len(plan.Additions)+len(plan.Changes)+len(plan.UnchangedRequested)+2)
+	if column := processInstanceBusinessIDColumn(plan.BusinessId); column != "" {
+		parts = append(parts, column)
+	}
 	for _, item := range plan.Changes {
 		parts = append(parts, fmt.Sprintf("~ %s (pi:%s): %s -> %s", item.Name, plan.ProcessInstanceKey, formatProcessInstanceVariablePlanValue(item.Before), formatProcessInstanceVariablePlanValue(item.After)))
 	}

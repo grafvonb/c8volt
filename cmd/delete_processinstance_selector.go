@@ -11,6 +11,7 @@ import (
 	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/grafvonb/c8volt/c8volt/tenant"
 	"github.com/grafvonb/c8volt/config"
+	"github.com/grafvonb/c8volt/toolx"
 	types "github.com/grafvonb/c8volt/typex"
 	"github.com/spf13/cobra"
 )
@@ -264,6 +265,7 @@ func aggregateDeleteSearchPlan(previews []processInstanceDryRunPreview, evidence
 	var roots types.Keys
 	var collected types.Keys
 	var requiresCancel []process.ProcessInstance
+	var selectedFinal []process.ProcessInstance
 	var missing []process.MissingAncestor
 	outcome := process.TraversalOutcomeComplete
 	var warning string
@@ -271,8 +273,11 @@ func aggregateDeleteSearchPlan(previews []processInstanceDryRunPreview, evidence
 	for _, preview := range previews {
 		roots = append(roots, preview.ResolvedRoots...)
 		collected = append(collected, preview.AffectedFamilyKeys...)
+		for _, item := range preview.SelectedFinalState {
+			selectedFinal = append(selectedFinal, process.ProcessInstance{Key: item.Key, State: item.State, BusinessId: toolx.CopyPtr(item.BusinessId)})
+		}
 		for _, item := range preview.RequiresCancelBeforeDelete {
-			requiresCancel = append(requiresCancel, process.ProcessInstance{Key: item.Key, State: item.State})
+			requiresCancel = append(requiresCancel, process.ProcessInstance{Key: item.Key, State: item.State, BusinessId: toolx.CopyPtr(item.BusinessId)})
 		}
 		for _, item := range preview.MissingAncestors {
 			missing = append(missing, process.MissingAncestor{Key: item.Key, StartKey: item.StartKey})
@@ -295,6 +300,7 @@ func aggregateDeleteSearchPlan(previews []processInstanceDryRunPreview, evidence
 		Collected:                  collected.Unique(),
 		TenantEvidence:             evidence,
 		RequiresCancelBeforeDelete: requiresCancel,
+		SelectedFinalState:         uniqueProcessInstancesByKey(selectedFinal),
 		MissingAncestors:           missing,
 		Warning:                    warning,
 		Outcome:                    outcome,

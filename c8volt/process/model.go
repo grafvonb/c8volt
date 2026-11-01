@@ -133,7 +133,9 @@ func (f ProcessDefinitionFilter) String() string {
 	return toolx.FormatActiveFields(parts)
 }
 
+// ProcessInstanceData describes creation intent; a nil BusinessId omits the optional reference.
 type ProcessInstanceData struct {
+	BusinessId                  *string        `json:"businessId,omitempty"`
 	BpmnProcessId               string         `json:"bpmnProcessId,omitempty"`               // ProcessDefinitionId in API
 	ProcessDefinitionSpecificId string         `json:"processDefinitionSpecificId,omitempty"` // ProcessDefinitionKey in API
 	ProcessDefinitionVersion    int32          `json:"processDefinitionVersion,omitempty"`
@@ -143,6 +145,7 @@ type ProcessInstanceData struct {
 
 // ProcessInstance exposes the current instance snapshot; unavailable dates are omitted from JSON.
 type ProcessInstance struct {
+	BusinessId               *string        `json:"businessId,omitempty"`
 	BpmnProcessId            string         `json:"bpmnProcessId,omitempty"`
 	EndDate                  string         `json:"endDate,omitempty"`
 	Incident                 bool           `json:"incident,omitempty"`
@@ -193,6 +196,8 @@ type ProcessInstanceVariablePlannedChange struct {
 // ProcessInstanceVariablePlan is the complete root-only classification and
 // frozen payload for one selected process instance.
 type ProcessInstanceVariablePlan struct {
+	// BusinessId is the optional identity observed during planning.
+	BusinessId         *string                                `json:"businessId,omitempty"`
 	ProcessInstanceKey string                                 `json:"processInstanceKey"`
 	ScopeKey           string                                 `json:"scopeKey"`
 	TenantId           string                                 `json:"tenantId,omitempty"`
@@ -282,7 +287,9 @@ type VariableEnrichedProcessInstances struct {
 	Items []VariableEnrichedProcessInstance `json:"items"`
 }
 
+// RuntimeListenerJob retains the listener job observation independently of its owning process.
 type RuntimeListenerJob struct {
+	BusinessId         *string    `json:"businessId,omitempty"`
 	JobKey             string     `json:"jobKey,omitempty"`
 	Kind               string     `json:"kind,omitempty"`
 	ListenerEventType  string     `json:"listenerEventType,omitempty"`
@@ -819,6 +826,8 @@ type ProcessInstanceSuspensionPlan struct {
 
 // ProcessInstanceSuspensionPlanItem records one discovery observation and its eligibility.
 type ProcessInstanceSuspensionPlanItem struct {
+	// BusinessId is the optional identity observed during planning.
+	BusinessId *string `json:"businessId,omitempty"`
 	// Key: Discovered instance identity.
 	Key string `json:"key"`
 	// ObservedState: Planning observation; never post-submission confirmation evidence.
@@ -926,6 +935,8 @@ type ProcessInstanceResumptionPlan struct {
 
 // ProcessInstanceResumptionPlanItem records one discovery observation and its eligibility.
 type ProcessInstanceResumptionPlanItem struct {
+	// BusinessId is the optional identity observed during planning.
+	BusinessId *string `json:"businessId,omitempty"`
 	// Key: Discovered instance identity.
 	Key string `json:"key"`
 	// ObservedState: Planning observation; never post-submission confirmation evidence.

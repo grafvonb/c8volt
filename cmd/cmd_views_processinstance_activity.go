@@ -54,9 +54,19 @@ type processInstanceActivityInstancesJSONWithMeta struct {
 	Meta  processInstanceAgeMeta        `json:"meta"`
 }
 
+// processInstanceActivityInstancesView preserves machine modes before rendering enriched human rows.
 func processInstanceActivityInstancesView(cmd *cobra.Command, resp processInstanceActivityInstances) error {
 	if pickMode() == RenderModeJSON {
 		return renderJSONPayload(cmd, RenderModeJSON, processInstanceActivityInstancesWithAgeMeta(resp))
+	}
+	if pickMode() == RenderModeKeysOnly {
+		for _, item := range resp.Items {
+			renderOutputLine(cmd, "%s", item.Item.Key)
+		}
+		return nil
+	}
+	if flagQuiet && len(resp.Items) == 0 {
+		return nil
 	}
 	needsIndirectIncidentWarning := renderProcessInstanceActivityRows(cmd, resp.Items)
 	if needsIndirectIncidentWarning {
@@ -378,6 +388,7 @@ func formatProcessInstanceElementListenerRows(listeners *[]process.RuntimeListen
 	return formatFlatRows(rows)
 }
 
+// flatRowProcessInstanceElementListenerWithTimezone preserves the listener’s own safely quoted identity.
 func flatRowProcessInstanceElementListenerWithTimezone(item process.RuntimeListenerJob, showTimezoneOffset bool, capturedNow time.Time) flatRow {
 	parts := flatRow{
 		item.JobKey,
@@ -399,7 +410,7 @@ func flatRowProcessInstanceElementListenerWithTimezone(item process.RuntimeListe
 	} else {
 		parts = append(parts, "")
 	}
-	parts = append(parts, prefixedElementField("dur", runtimeListenerDuration(item.CreationTime, item.EndTime, item.State, capturedNow)))
+	parts = append(parts, prefixedElementField("dur", runtimeListenerDuration(item.CreationTime, item.EndTime, item.State, capturedNow)), processInstanceBusinessIDColumn(item.BusinessId))
 	return parts
 }
 

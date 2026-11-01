@@ -91,6 +91,10 @@ func renderOpsPurgeAllProcessDefinitionsPlan(cmd *cobra.Command, result ops.AllP
 	}
 	if flagVerbose {
 		renderOpsPurgeAllProcessDefinitionsKeys(cmd, "planned candidate process-definition keys", result.DeletePlan.CandidateProcessDefinitionKeys)
+		for _, item := range result.DeletePlan.Items {
+			renderOpsObservedProcessInstances(cmd, "final state items", item.CancellationPlan.SelectedFinalState)
+			renderOpsObservedProcessInstances(cmd, "non-final affected items", item.CancellationPlan.RequiresCancelBeforeDelete)
+		}
 	}
 }
 
@@ -112,6 +116,10 @@ func renderOpsPurgeAllProcessDefinitionsDryRunDeletePreview(cmd *cobra.Command, 
 	}
 	if flagVerbose {
 		renderOpsPurgeAllProcessDefinitionsKeys(cmd, "planned candidate process-definition keys", result.DeletePlan.CandidateProcessDefinitionKeys)
+		for _, item := range result.DeletePlan.Items {
+			renderOpsObservedProcessInstances(cmd, "final state items", item.CancellationPlan.SelectedFinalState)
+			renderOpsObservedProcessInstances(cmd, "non-final affected items", item.CancellationPlan.RequiresCancelBeforeDelete)
+		}
 	}
 }
 

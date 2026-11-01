@@ -14,6 +14,7 @@ import (
 // fromDomainUserTask maps a native domain task into an independently owned public value.
 func fromDomainUserTask(x d.UserTask) UserTask {
 	return UserTask{
+		BusinessId:               toolx.CopyPtr(x.BusinessId),
 		Key:                      x.Key,
 		State:                    x.State,
 		Name:                     x.Name,
@@ -233,6 +234,7 @@ func fromDomainUserTaskVariableUpdateResults(x d.UserTaskVariableUpdateResults) 
 // service value without interpreting or replacing its metadata.
 func toDomainUserTask(x UserTask) d.UserTask {
 	return d.UserTask{
+		BusinessId:               toolx.CopyPtr(x.BusinessId),
 		Key:                      x.Key,
 		State:                    x.State,
 		Name:                     x.Name,

@@ -19,6 +19,8 @@ Unfinished instances block deletion unless --force is set: ACTIVE and SUSPENDED 
 
 Use --dry-run to inspect impact without mutation, --auto-confirm or --automation for unattended deletion, and --report-file to save an audit report.
 
+Observed process-instance business IDs are retained in JSON and Markdown audit reports. Use --verbose to inspect each observed reference in the plan; key-only outcomes remain unchanged.
+
 ```
 c8volt ops purge all-process-definitions [flags]
 ```

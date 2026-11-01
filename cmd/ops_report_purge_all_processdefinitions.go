@@ -89,6 +89,13 @@ func renderOpsPurgeAllProcessDefinitionsMarkdownReport(report ops.AllProcessDefi
 				out.WriteString(fmt.Sprintf(" suspendedProcessInstances=%d", item.SuspendedProcessInstanceCount))
 			}
 			out.WriteString("\n")
+			var observations strings.Builder
+			writeMarkdownObservedProcessInstances(&observations, item.CancellationPlan)
+			for _, line := range strings.Split(strings.TrimSuffix(observations.String(), "\n"), "\n") {
+				if line != "" {
+					out.WriteString("    " + line + "\n")
+				}
+			}
 		}
 	}
 	writeMarkdownReportList(&out, "Errors", report.DeletePlan.Errors)

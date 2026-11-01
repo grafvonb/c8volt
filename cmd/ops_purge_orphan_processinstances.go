@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/grafvonb/c8volt/c8volt/foptions"
 	"github.com/grafvonb/c8volt/c8volt/ops"
 	"github.com/grafvonb/c8volt/c8volt/tenant"
 	"github.com/grafvonb/c8volt/config"
@@ -32,7 +33,9 @@ The workflow discovers orphan candidates, fixes the target set, validates the de
 
 --tenant limits discovery; an empty tenant or --all-tenants searches across accessible tenants.
 
-Use --dry-run to inspect the plan without mutation, --auto-confirm or --automation for unattended deletion, and --report-file to save an audit report.`,
+Use --dry-run to inspect the plan without mutation, --auto-confirm or --automation for unattended deletion, and --report-file to save an audit report.
+
+Observed process-instance business IDs are retained in JSON and Markdown audit reports. Use --verbose to inspect each observed reference in the plan; key-only outcomes remain unchanged.`,
 	Example: `  ./c8volt ops purge orphan-process-instances --dry-run
   ./c8volt --tenant tenant-a ops purge orphan-process-instances --dry-run
   ./c8volt --all-tenants ops purge orphan-process-instances --dry-run
@@ -81,10 +84,15 @@ Use --dry-run to inspect the plan without mutation, --auto-confirm or --automati
 			planRequest := request
 			planRequest.DryRun = true
 			planned, err := purgeOrphanProcessInstancesWithCommandActivity(cmd, planRequest, func() (ops.OrphanPurgeResult, error) {
-				return cli.PurgeOrphanProcessInstances(cmd.Context(), planRequest, collectOptions()...)
+				return cli.PurgeOrphanProcessInstances(cmd.Context(), planRequest, append(collectOptions(), foptions.WithSuppressWorkflowDetailLogs(), foptions.WithSuppressProcessInstanceDetailLogs())...)
 			})
 			if err != nil {
-				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("plan ops purge orphan process instances: %w", err))
+				progress.Close()
+				reportErr := writeOpsPurgeOrphanProcessInstancesReport(planned, cfg, OpsWorkflowReportPreserveExisting)
+				if renderErr := renderOpsProcessInstancePurgeFailure(cmd, log, planned, "orphan purge", len(planned.DeletionPlan.RequestedKeys), planned.Deletion.Items, err, reportErr); renderErr != nil {
+					log.Error("could not render process-instance purge result")
+				}
+				exitAfterRenderedResult(cfg.App.NoErrCodes, err)
 			}
 			if err := rejectDeletePlanRequiringForce(planned.DeletionPlan.DryRunPreview); err != nil {
 				abortOpsPurgeOrphanProcessInstancesAfterReport(cmd, log, cfg, markOpsPurgeOrphanProcessInstancesLocalFailure(planned, ops.WorkflowStepStatusBlocked, err), err)
@@ -102,15 +110,16 @@ Use --dry-run to inspect the plan without mutation, --auto-confirm or --automati
 			request.DiscoveredKeys = append(typex.Keys{}, planned.Discovery.Keys...)
 		}
 		result, err := purgeOrphanProcessInstancesWithCommandActivity(cmd, request, func() (ops.OrphanPurgeResult, error) {
-			return cli.PurgeOrphanProcessInstances(cmd.Context(), request, collectOptions()...)
+			return cli.PurgeOrphanProcessInstances(cmd.Context(), request, append(collectOptions(), foptions.WithSuppressWorkflowDetailLogs(), foptions.WithSuppressProcessInstanceDetailLogs())...)
 		})
 		progress.Close()
 		result = attachOpsPurgeOrphanProcessInstancesResultTenantContext(cmd, cfg, result)
 		if err != nil {
-			if reportErr := writeOpsPurgeOrphanProcessInstancesReport(result, cfg, opsPurgeOrphanProcessInstancesReportWriteMode(result)); reportErr != nil {
-				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("ops purge orphan process instances: %w; write audit report: %v", err, reportErr))
+			reportErr := writeOpsPurgeOrphanProcessInstancesReport(result, cfg, opsPurgeOrphanProcessInstancesReportWriteMode(result))
+			if renderErr := renderOpsProcessInstancePurgeFailure(cmd, log, result, "orphan purge", len(result.DeletionPlan.RequestedKeys), result.Deletion.Items, err, reportErr); renderErr != nil {
+				log.Error("could not render process-instance purge result")
 			}
-			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("ops purge orphan process instances: %w", err))
+			exitAfterRenderedResult(cfg.App.NoErrCodes, err)
 		}
 		if err := writeOpsPurgeOrphanProcessInstancesReport(result, cfg, opsPurgeOrphanProcessInstancesReportWriteMode(result)); err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("write ops purge orphan process instances audit report: %w", err))

@@ -8,6 +8,7 @@ import (
 
 	camundav810 "github.com/grafvonb/c8volt/internal/clients/camunda/v810/camunda"
 	d "github.com/grafvonb/c8volt/internal/domain"
+	"github.com/grafvonb/c8volt/toolx"
 )
 
 func newJobKeyEqFilterPtr(v string) (*camundav810.JobKeyFilterProperty, error) {
@@ -171,8 +172,10 @@ func newSearchQueryPageRequest(from int32, limit int32) camundav810.SearchQueryP
 	return page
 }
 
+// fromJobSearchResult copies the job observation without consulting its owning instance.
 func fromJobSearchResult(r camundav810.JobSearchResult) d.Job {
 	return d.Job{
+		BusinessId:         toolx.CopyPtr(r.BusinessId),
 		Key:                string(r.JobKey),
 		State:              string(r.State),
 		Retries:            r.Retries,
@@ -193,6 +196,7 @@ func fromJobSearchResult(r camundav810.JobSearchResult) d.Job {
 }
 
 // fromJobSearchResults maps generated rows without leaking generated types past the service layer.
+// fromJobSearchResult copies the job observation without consulting its owning instance.
 func fromJobSearchResults(items []camundav810.JobSearchResult) []d.Job {
 	out := make([]d.Job, 0, len(items))
 	for _, item := range items {

@@ -3,14 +3,20 @@
 
 package domain
 
-import "time"
+import (
+	"time"
+
+	"github.com/grafvonb/c8volt/toolx"
+)
 
 const (
 	JobKindExecutionListener = "EXECUTION_LISTENER"
 	JobKindTaskListener      = "TASK_LISTENER"
 )
 
+// Job retains the backend observation, including its independently optional business identity.
 type Job struct {
+	BusinessId         *string    `json:"businessId,omitempty"`
 	Key                string     `json:"key,omitempty"`
 	State              string     `json:"state,omitempty"`
 	Retries            int32      `json:"retries"`
@@ -29,7 +35,9 @@ type Job struct {
 	TenantId           string     `json:"tenantId,omitempty"`
 }
 
+// RuntimeListenerJob retains the listener job observation independently of its owning process.
 type RuntimeListenerJob struct {
+	BusinessId         *string    `json:"businessId,omitempty"`
 	JobKey             string     `json:"jobKey,omitempty"`
 	Kind               string     `json:"kind,omitempty"`
 	ListenerEventType  string     `json:"listenerEventType,omitempty"`
@@ -48,8 +56,10 @@ type RuntimeListenerJob struct {
 	ErrorMessage       string     `json:"errorMessage,omitempty"`
 }
 
+// RuntimeListenerJobFromJob snapshots the job identity without consulting its parent.
 func RuntimeListenerJobFromJob(job Job) RuntimeListenerJob {
 	return RuntimeListenerJob{
+		BusinessId:         toolx.CopyPtr(job.BusinessId),
 		JobKey:             job.Key,
 		Kind:               job.Kind,
 		ListenerEventType:  job.ListenerEventType,

@@ -56,7 +56,7 @@ func TestCreateProcessInstancesPreservesOrderAndOptions(t *testing.T) {
 	}, got)
 }
 
-// TestCreateProcessInstancesStopsOnFirstError verifies the previous fail-on-first-error behavior stays intact.
+// TestCreateProcessInstancesStopsOnFirstError retains successful predecessors and stops at the first error.
 func TestCreateProcessInstancesStopsOnFirstError(t *testing.T) {
 	seen := []string{}
 	wantErr := errors.New("create failed")
@@ -75,7 +75,7 @@ func TestCreateProcessInstancesStopsOnFirstError(t *testing.T) {
 	})
 
 	require.ErrorIs(t, err, wantErr)
-	require.Nil(t, got)
+	require.Equal(t, []d.ProcessInstanceCreation{{Key: "created-alpha"}}, got)
 	require.Equal(t, []string{"alpha", "beta"}, seen)
 }
 
@@ -187,7 +187,7 @@ func TestCreateNProcessInstancesLogsActualSuccessAndFailureCounts(t *testing.T) 
 	got, err := CreateNProcessInstances(context.Background(), api, log, d.ProcessInstanceData{BpmnProcessId: "demo"}, 3, 1)
 
 	require.ErrorIs(t, err, wantErr)
-	require.Len(t, got, 3)
+	require.Equal(t, []d.ProcessInstanceCreation{{Key: "pi-1", BpmnProcessId: "demo"}, {Key: "pi-3", BpmnProcessId: "demo"}}, got)
 	require.Contains(t, logBuf.String(), "creating pi done; requested 3, created 2, failed 1")
 	require.NotContains(t, logBuf.String(), "creating pi done; created 3")
 }

@@ -56,3 +56,19 @@ func TestConvertDeleteProcessDefinitionUnfinished(t *testing.T) {
 	item.UnfinishedProcessInstanceKeys[0] = "changed"
 	require.Equal(t, "a", source.UnfinishedProcessInstanceKeys[0])
 }
+
+// TestProcessInstanceBusinessIDConversion preserves observed absence/empty values and owns copied pointers.
+func TestProcessInstanceBusinessIDConversion(t *testing.T) {
+	t.Parallel()
+	for _, value := range []*string{nil, new(string), func() *string { s := " new,\"ID\"\n "; return &s }()} {
+		source := d.ProcessInstance{Key: "101", BusinessId: value}
+		got := fromDomainProcessInstance(source)
+		require.Equal(t, value, got.BusinessId)
+		if value != nil {
+			require.NotSame(t, value, got.BusinessId)
+		}
+		plan := fromDomainDryRunPIKeyExpansion(d.DryRunPIKeyExpansion{SelectedFinalState: []d.ProcessInstance{source}, RequiresCancelBeforeDelete: []d.ProcessInstance{source}})
+		require.Equal(t, value, plan.SelectedFinalState[0].BusinessId)
+		require.Equal(t, value, plan.RequiresCancelBeforeDelete[0].BusinessId)
+	}
+}

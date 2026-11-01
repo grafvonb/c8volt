@@ -97,6 +97,8 @@ type ProcessInstanceVariablePlannedChange struct {
 // ProcessInstanceVariablePlan is the complete root-only classification and
 // frozen payload for one selected process instance.
 type ProcessInstanceVariablePlan struct {
+	// BusinessId is the optional identity observed during planning.
+	BusinessId         *string `json:"businessId,omitempty"`
 	ProcessInstanceKey string
 	ScopeKey           string
 	TenantId           string

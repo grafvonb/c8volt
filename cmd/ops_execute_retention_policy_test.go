@@ -957,7 +957,7 @@ func TestOpsExecuteRetentionPolicySemanticProgressModeGate(t *testing.T) {
 				},
 			}
 		},
-		QuietWarning: "retention-root-1 failed: request rejected (deletion process-instance trees, 1/1 process-instance tree(s), 1 failed, affected process instances: 1)",
+		QuietWarning: "", // Final aggregate rendering owns failure diagnostics.
 	})
 }
 

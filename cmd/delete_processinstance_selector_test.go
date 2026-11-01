@@ -719,7 +719,7 @@ func TestDeleteProcessInstanceBpmnSelectorVisiblePreservesSearchNoOp(t *testing.
 	)
 
 	require.Equal(t, []string{"POST /v2/process-definitions/search", "POST /v2/process-instances/search"}, requests)
-	require.Equal(t, "found: 0\n", output)
+	require.Regexp(t, `^\d{2}:\d{2}:\d{2}\.\d{3} INFO found: 0\n$`, output)
 }
 
 // TestDeleteProcessInstanceEmptySelectorOutput verifies empty selector deletes
@@ -782,7 +782,7 @@ func TestDeleteProcessInstanceEmptySelectorOutput(t *testing.T) {
 					require.Empty(t, stderr)
 					return
 				}
-				require.Equal(t, "found: 0\n", stdout)
+				require.Empty(t, stdout)
 				if tt.verbose {
 					require.NotContains(t, stderr, "api #", "verbose must not enable HTTP diagnostics")
 					normalized := regexp.MustCompile(`(?m)^\d{2}:\d{2}:\d{2}\.\d{3} (INFO|WARN) `).ReplaceAllString(withoutAPIDiagnosticLines(stderr), `$1 `)
@@ -796,10 +796,10 @@ func TestDeleteProcessInstanceEmptySelectorOutput(t *testing.T) {
 					if start := strings.Index(normalized, "INFO selection scope:"); start >= 0 && !tt.dryRun {
 						normalized = normalized[start:]
 					}
-					require.Equal(t, want, normalized)
+					require.Equal(t, want+"INFO found: 0\n", normalized)
 					return
 				}
-				require.Empty(t, stderr)
+				require.Equal(t, [][2]string{{"INFO", "found: 0"}}, bulkCompletionDiagnosticRecords(t, stderr, "plain-time"))
 				return
 			}
 			requireEmptyProcessInstanceSelectorOutput(t, stdout, stderr, "delete process-instance", "delete", tt.dryRun, tt.mode)
@@ -907,8 +907,8 @@ func TestDeleteProcessInstanceEmptySelectorPreservesDiscoveryRequests(t *testing
 
 			require.Equal(t, tt.wantPaths, paths)
 			tt.assert(t, bodies)
-			require.Equal(t, "found: 0\n", stdout)
-			require.Empty(t, stderr)
+			require.Empty(t, stdout)
+			require.Equal(t, [][2]string{{"INFO", "found: 0"}}, bulkCompletionDiagnosticRecords(t, stderr, "plain-time"))
 		})
 	}
 }

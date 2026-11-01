@@ -50,6 +50,7 @@ func flatRowUserTask(item task.UserTask) flatRow {
 		prefixedElementField("ei", item.ElementInstanceKey),
 		prefixedElementField("pd", item.ProcessDefinitionKey),
 		prefixedElementField("assignee", assignee),
+		processInstanceBusinessIDColumn(item.BusinessId),
 	}
 }
 

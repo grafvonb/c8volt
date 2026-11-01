@@ -110,3 +110,75 @@ func TestConvertProcessDefinitionLifecycle(t *testing.T) {
 		})
 	}
 }
+
+// TestConvertBusinessID preserves absence, exact observations, and independent pointers in every base mapping.
+func TestConvertBusinessID(t *testing.T) {
+	t.Parallel()
+	for _, value := range []*string{nil, new(""), new("  old,AbC  ")} {
+		public := fromDomainProcessInstance(d.ProcessInstance{Key: "123", BusinessId: value})
+		inward := toDomainProcessInstance(public)
+		creation := fromDomainProcessInstanceCreation(d.ProcessInstanceCreation{Key: "123", BusinessId: value})
+		input := toProcessInstanceData(ProcessInstanceData{BusinessId: value})
+		for _, got := range []*string{public.BusinessId, inward.BusinessId, creation.BusinessId, input.BusinessId} {
+			require.Equal(t, value, got)
+			if value != nil {
+				require.NotSame(t, value, got)
+			}
+		}
+		if value != nil {
+			require.NotSame(t, public.BusinessId, inward.BusinessId)
+		}
+		for _, model := range []any{public, creation, ProcessInstanceData{BusinessId: value}} {
+			payload, err := json.Marshal(model)
+			require.NoError(t, err)
+			var fields map[string]any
+			require.NoError(t, json.Unmarshal(payload, &fields))
+			if value == nil {
+				require.NotContains(t, fields, "businessId")
+			} else {
+				require.Equal(t, *value, fields["businessId"])
+			}
+		}
+		if value != nil {
+			original := *value
+			*value = "changed"
+			for _, got := range []*string{public.BusinessId, inward.BusinessId, creation.BusinessId, input.BusinessId} {
+				require.Equal(t, original, *got)
+			}
+			*public.BusinessId = "changed again"
+			require.Equal(t, original, *inward.BusinessId)
+		}
+	}
+}
+
+// TestProcessInstanceBusinessIDPlans covers every observed plan projection and mutable boundary.
+func TestProcessInstanceBusinessIDPlans(t *testing.T) {
+	t.Parallel()
+	for _, value := range []*string{nil, new(string), func() *string { s := "old,ID"; return &s }()} {
+		instance := d.ProcessInstance{Key: "101", BusinessId: value}
+		for _, got := range []ProcessInstance{
+			fromDomainIncidentEnrichedProcessInstance(d.IncidentEnrichedProcessInstance{Item: instance}).Item,
+			fromDomainVariableEnrichedProcessInstance(d.VariableEnrichedProcessInstance{Item: instance}).Item,
+			fromDomainElementEnrichedProcessInstance(d.ElementEnrichedProcessInstance{Item: instance}).Item,
+		} {
+			require.Equal(t, value, got.BusinessId)
+			if value != nil {
+				require.NotSame(t, value, got.BusinessId)
+			}
+		}
+		plan := fromDomainProcessInstanceVariablePlan(d.ProcessInstanceVariablePlan{ProcessInstanceKey: "101", BusinessId: value})
+		back := toDomainProcessInstanceVariablePlan(plan)
+		suspension := fromDomainProcessInstanceSuspensionPlanItem(d.ProcessInstanceSuspensionPlanItem{Key: "101", BusinessId: value})
+		resumption := fromDomainProcessInstanceResumptionPlanItem(d.ProcessInstanceResumptionPlanItem{Key: "101", BusinessId: value})
+		for _, got := range []*string{plan.BusinessId, back.BusinessId, suspension.BusinessId, resumption.BusinessId} {
+			require.Equal(t, value, got)
+			if value != nil {
+				require.NotSame(t, value, got)
+			}
+		}
+		if value != nil {
+			*plan.BusinessId = "changed"
+			require.Equal(t, *value, *back.BusinessId)
+		}
+	}
+}

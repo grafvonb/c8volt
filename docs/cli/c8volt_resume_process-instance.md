@@ -12,6 +12,8 @@ Resume suspended process instances by key or subtree
 
 Resume SUSPENDED process instances on Camunda 8.10 by explicit key or selected subtree.
 
+Tree plans retain each discovered instance's own business ID when available; inspect it with --verbose or --json. Exact-key previews remain local and do not look up IDs.
+
 Provide repeated or comma-separated --key values, or newline-separated keys from stdin with '-'. Keys are deduplicated in first-input order. Without --tree, each selected parent or child is independent: relatives are neither discovered nor resumed. Explicit keys use backend authorization without discovery tenant filtering.
 
 When authorization is enabled, resumption requires SUSPEND_PROCESS_INSTANCE on PROCESS_DEFINITION. Default confirmation also requires permission to read the instance. Exact-key execution has no mandatory preflight read; only the submission response establishes acceptance. Active, terminal, terminating, missing or unauthorized targets remain failures when rejected.

@@ -68,3 +68,22 @@ func TestCombinedStatePageOverflow(t *testing.T) {
 		})
 	}
 }
+
+// TestConvertBusinessID copies native observations, including empty strings, without sharing pointers.
+func TestConvertBusinessID(t *testing.T) {
+	t.Parallel()
+	for _, value := range []*string{nil, new(""), new("  old,AbC  ")} {
+		observed := fromProcessInstanceResult(camundav810.ProcessInstanceResult{BusinessId: value})
+		created := fromCreateProcessInstanceResult(camundav810.CreateProcessInstanceResult{BusinessId: value})
+		require.Equal(t, value, observed.BusinessId)
+		require.Equal(t, value, created.BusinessId)
+		if value != nil {
+			require.NotSame(t, value, observed.BusinessId)
+			require.NotSame(t, value, created.BusinessId)
+			original := *value
+			*value = "new"
+			require.Equal(t, original, *observed.BusinessId)
+			require.Equal(t, original, *created.BusinessId)
+		}
+	}
+}

@@ -2140,3 +2140,40 @@ func (workerPreviewProcessInstanceAPI) ResumeProcessInstance(context.Context, st
 func (tenantEvidenceProcessInstanceAPI) ResumeProcessInstance(context.Context, string, ...services.CallOption) (d.ProcessInstanceResumptionResult, error) {
 	return d.ProcessInstanceResumptionResult{}, d.ErrUnsupported
 }
+
+// TestProcessDefinitionImpactBusinessID retains per-instance observations through force planning without identity lookups.
+func TestProcessDefinitionImpactBusinessID(t *testing.T) {
+	t.Parallel()
+	parent, child := "new", "old"
+	chain := map[string]d.ProcessInstance{
+		"101": {Key: "101", State: d.StateActive, BusinessId: &parent},
+		"102": {Key: "102", ParentKey: "101", State: d.StateSuspended, BusinessId: &child},
+		"103": {Key: "103", ParentKey: "101", State: d.StateActive},
+		"104": {Key: "104", ParentKey: "101", State: d.StateActive, BusinessId: new(string)},
+	}
+	var searches, trees atomic.Int32
+	api := unfinishedInstanceAPI{
+		search: func(_ context.Context, filter d.ProcessInstanceFilter, _ d.ProcessInstancePageRequest, _ ...services.CallOption) (d.ProcessInstancePage, error) {
+			searches.Add(1)
+			require.Equal(t, "9001", filter.ProcessDefinitionKey)
+			return d.ProcessInstancePage{Items: []d.ProcessInstance{chain["101"]}, OverflowState: d.ProcessInstanceOverflowStateNoMore}, nil
+		},
+		tree: func(_ context.Context, key string, _ ...services.CallOption) (pitraversal.Result, error) {
+			trees.Add(1)
+			require.Equal(t, "101", key)
+			return pitraversal.Result{StartKey: key, RootKey: key, Keys: []string{"101", "102", "103", "104"}, Chain: chain, Outcome: pitraversal.OutcomeComplete}, nil
+		},
+	}
+	got, err := completeProcessDefinitionDeleteImpact(context.Background(), api, d.DeleteProcessDefinitionPlanItem{Key: "9001", ActiveProcessInstanceCount: 1, UnfinishedProcessInstanceCount: 1}, true, false, 1)
+	require.NoError(t, err)
+	require.Equal(t, int32(1), searches.Load())
+	require.Equal(t, int32(2), trees.Load())
+	items := got.CancellationPlan.RequiresCancelBeforeDelete
+	require.Len(t, items, 4)
+	parent = "changed"
+	child = "changed"
+	require.Equal(t, "new", *items[0].BusinessId)
+	require.Equal(t, "old", *items[1].BusinessId)
+	require.Nil(t, items[2].BusinessId)
+	require.Equal(t, "", *items[3].BusinessId)
+}

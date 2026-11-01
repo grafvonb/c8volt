@@ -36,7 +36,9 @@ func toDomainCompletionRequest(r CompletionRequest) (d.CompletionRequest, error)
 
 // fromDomainCompletionCandidate preserves observed facts without synthesizing lifecycle data.
 func fromDomainCompletionCandidate(c d.CompletionCandidate) CompletionCandidate {
-	return CompletionCandidate(c)
+	out := CompletionCandidate(c)
+	out.BusinessId = toolx.CopyPtr(c.BusinessId)
+	return out
 }
 
 // fromDomainPreparedCompletionBatch preserves both complete plans and incomplete observations.
@@ -61,7 +63,9 @@ func toDomainPreparedCompletionBatch(b PreparedCompletionBatch) (d.PreparedCompl
 
 // toDomainCompletionCandidate maps frozen facts without adding eligibility policy.
 func toDomainCompletionCandidate(c CompletionCandidate) d.CompletionCandidate {
-	return d.CompletionCandidate(c)
+	out := d.CompletionCandidate(c)
+	out.BusinessId = toolx.CopyPtr(c.BusinessId)
+	return out
 }
 
 // fromDomainCompletionOutcome preserves independent evidence axes and copies optional HTTP status.

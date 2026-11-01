@@ -10,6 +10,7 @@ import (
 
 // UserTask is the stable public representation of one native user task.
 type UserTask struct {
+	BusinessId               *string  `json:"businessId,omitempty"`
 	Key                      string   `json:"key"`
 	State                    string   `json:"state"`
 	Name                     string   `json:"name,omitempty"`

@@ -168,6 +168,7 @@ func opsSlowProcessAnalysisRootBarContext(items []ops.SlowProcessAnalysisProcess
 // formatOpsSlowProcessAnalysisRootRow keeps slow-analysis root rows aligned with process-instance list output.
 func formatOpsSlowProcessAnalysisRootRow(item ops.SlowProcessAnalysisProcessInstance, rootBarContext opsSlowProcessAnalysisRootBar, showTimezoneOffset bool) string {
 	row := flatRowPIWithTimezone(process.ProcessInstance{
+		BusinessId:             item.BusinessId,
 		BpmnProcessId:          item.BpmnProcessID,
 		EndDate:                item.EndDate,
 		Incident:               item.Incident,
@@ -269,7 +270,7 @@ func flatRowOpsSlowProcessAnalysisListenerWithTimezone(item ops.RuntimeListenerJ
 	} else {
 		parts = append(parts, "")
 	}
-	parts = append(parts, prefixedElementField("dur", runtimeListenerDuration(item.CreationTime, item.EndTime, item.State, capturedNow)))
+	parts = append(parts, prefixedElementField("dur", runtimeListenerDuration(item.CreationTime, item.EndTime, item.State, capturedNow)), processInstanceBusinessIDColumn(item.BusinessId))
 	return parts
 }
 

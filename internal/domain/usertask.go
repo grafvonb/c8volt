@@ -11,6 +11,7 @@ import (
 // UserTask represents one version-neutral native user task while retaining the
 // identity fields used by the legacy process-instance resolver.
 type UserTask struct {
+	BusinessId               *string `json:"businessId,omitempty"`
 	Key                      string
 	State                    string
 	Name                     string

@@ -184,7 +184,7 @@ func appendCandidate(batch *d.PreparedCompletionBatch, job d.Job) error {
 	if err := common.ValidateJobCompletionPayload(job, batch.Variables); err != nil {
 		return err
 	}
-	batch.Candidates = append(batch.Candidates, d.CompletionCandidate{Key: job.Key, ProcessInstanceKey: job.ProcessInstanceKey, ElementInstanceKey: job.ElementInstanceKey, ElementId: job.ElementId, TenantId: job.TenantId, Type: job.Type, Kind: job.Kind, ListenerEventType: job.ListenerEventType, State: job.State, Worker: job.Worker, Retries: job.Retries})
+	batch.Candidates = append(batch.Candidates, d.CompletionCandidate{BusinessId: toolx.CopyPtr(job.BusinessId), Key: job.Key, ProcessInstanceKey: job.ProcessInstanceKey, ElementInstanceKey: job.ElementInstanceKey, ElementId: job.ElementId, TenantId: job.TenantId, Type: job.Type, Kind: job.Kind, ListenerEventType: job.ListenerEventType, State: job.State, Worker: job.Worker, Retries: job.Retries})
 	if !slices.Contains(batch.TenantIDs, job.TenantId) {
 		batch.TenantIDs = append(batch.TenantIDs, job.TenantId)
 	}

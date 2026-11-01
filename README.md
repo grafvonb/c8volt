@@ -382,6 +382,29 @@ Deploy BPMN, start a process instance, and verify the process definition Camunda
 
 `run process-instance` confirms creation once an instance is observable as ACTIVE, SUSPENDED, COMPLETED, CANCELED, or TERMINATED. A first suspended observation succeeds immediately; it confirms visibility, not execution completion. Use `expect process-instance --state completed` to verify completion separately, or `run process-instance --no-wait` to return after creation is accepted without confirming visibility. Existing creation defaults on Camunda 8.8/8.9 remain supported.
 
+On Camunda 8.10, pass `--bid` with either creation selector:
+
+```bash
+./c8volt run pi --bpmn-process-id order --bid 'order,AbC'
+./c8volt run pi --pd-key 2251799813685249 --bid 'order-123' --no-wait
+```
+
+`--bid` preserves one opaque value, including whitespace, commas, and case. Omit it to submit no ID; an explicit empty value is invalid. The maximum is 256 UTF-16 code units: 256 BMP characters or 128 supplementary emoji. Camunda 8.8/8.9 reject supplied IDs before mutation. Every `--count` attempt reuses the same ID. When backend uniqueness enforcement is enabled, repeated active root instances for the same definition and tenant may conflict; c8volt does not generate replacements.
+
+Creation JSON retains successful items and their returned IDs in one failure envelope when later work fails, with the original error class and exit status. Keys-only prints only successful keys (zero bytes if none) and retains the failure exit. Ordinary waiting uses the observed ID, even when absent; `--no-wait` uses the acceptance response without an extra read. Human creation rows and summaries now use the configured INFO logger, on stderr by default, with compact `bid:<value>` fields quoted only when needed. Quiet or a WARN threshold suppresses these lines. JSON and keys-only remain on stdout, including with quiet. Failures use one compact aggregate ERROR; HTTP diagnostics require `--debug` or configured DEBUG, independently of verbose.
+
+Library creation calls accept an optional `BusinessId *string` in `process.ProcessInstanceData` with either `BpmnProcessId` or `ProcessDefinitionSpecificId`. Camunda 8.10 supports this input; 8.8/8.9 reject any supplied value as unsupported before mutation. Nil omits the field. A supplied ID must be nonempty, valid UTF-8, and at most 256 UTF-16 code units (for example, 256 BMP characters or 128 supplementary emoji). Whitespace, commas, and case are preserved exactly.
+
+`CreateProcessInstance`, `CreateProcessInstances`, and `CreateNProcessInstances` return the backend's business ID on `process.ProcessInstance`. Ordinary waiting uses the observed value, including absence; `WithNoWait()` retains the native acceptance response. Counted creation repeats the exact input ID, so backend uniqueness enforcement can reject repeated creations. Both collection methods return successful items alongside an error if later work fails; callers must inspect both return values. Failed or unattempted items are excluded, successful results retain their input-slot order, and no rollback or alternate ID is generated. These optional fields preserve JSON omission when absent and support keyed Go literals; consumers using unkeyed literals may need source updates.
+
+Process inspection (`get pi`, including age and activity enrichment) and family walks preserve each observed Camunda 8.10 instance's own optional `businessId`. A parent may show a newer ID while a child shows an older value or none. Human rows show `bid:<value>` beside the process name (for example, `C810_SimpleParent bid:bubaId v2/v2.0.0 ACTIVE`), quoting only when needed and escaping control characters; JSON retains exact strings and omits absent values. Keys-only output remains one key per line, including supported enriched keyed inspection and family walks; totals remain counts.
+
+Observed deletion/cancellation previews, variable-update plans, suspension/resumption tree plans, and process-definition deletion impact also retain IDs. Use `--verbose` for detailed mutation observations or `--json` for structured plans. These observations use the configured INFO logger in human mode; quiet and WARN suppress them. Empty cancel/delete selections now report `found: 0` through that logger rather than result stdout. Local exact-key suspension/resumption previews and key/status-only outcomes remain read-free and do not invent IDs.
+
+Job and user-task inspection on Camunda 8.10 preserves each resource's own optional `businessId`, including variable-enriched tasks, scalar job-update previews, and frozen bulk-completion candidates/outcomes. A job or task may retain an older ID or no ID even when its parent has a newer one. Observed empty strings remain present. Human rows show a compact `bid:<value>` field, quoting values only when needed; JSON keeps exact values. Preview and verbose completion rows use the configured INFO logger; query results remain on stdout. Empty job searches suppress `found: 0` under quiet while JSON and keys-only retain their existing shapes. Completion does not assign business IDs, and no extra lookup is made solely to display them.
+
+Retention, incident purge, orphan purge, and process-definition purge keep observed process-instance IDs in saved JSON and Markdown audit reports and verbose plan details. Markdown escapes markup and control characters; JSON retains exact values. Repair action plans and key/status-only outcomes remain ID-free without additional reads. Human plan details use the configured INFO logger and are suppressed by quiet or WARN level. Backend workflow failures in retention and process-instance purges retain partial plans/results in one JSON envelope and the saved report, preserve the original exit code, and emit one bounded human ERROR. Raw transport evidence remains confined to machine error fields and redacted DEBUG diagnostics; verbose alone does not enable HTTP details.
+
 Generated references: [deploy process-definition](docs/cli/c8volt_deploy_process-definition.md), [run process-instance](docs/cli/c8volt_run_process-instance.md), [get process-definition](docs/cli/c8volt_get_process-definition.md).
 
 ### Inspect Process Instances
@@ -515,6 +538,8 @@ Listener rows use `s:` for the job creation time—not worker execution start—
 ```text
 job-1 TASK_LISTENER lsnr:CREATING COMPLETED tp:updateTaskData r:0 s:2026-09-16T13:07:16.359 e:2026-09-16T13:07:16.842 dur:483ms
 ```
+
+Camunda 8.10 listener rows also retain their own optional `businessId` across element inspection, process activity, family walks, and slow-process analysis. A listener may show an older value, an empty value, or no value while the process root has a newer ID. Slow-analysis roots retain their own observed IDs in default summaries, full timelines, and JSON. Human rows safely quote IDs; JSON preserves exact values and omits absent fields. Requested-empty listener sections remain empty arrays; unrequested sections remain omitted. These query rows stay on stdout and display adds no identity lookup.
 
 The same timestamp grammar applies to listener rows from `get element`, `get process-instance`, `walk process-instance`, and `ops analyse slow-process-instances`.
 

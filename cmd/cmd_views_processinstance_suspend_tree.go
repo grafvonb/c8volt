@@ -5,6 +5,7 @@ package cmd
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/spf13/cobra"
@@ -114,5 +115,5 @@ func formatProcessInstanceSuspensionPlanItem(item process.ProcessInstanceSuspens
 	case process.ProcessInstanceSuspensionPlanEligible, process.ProcessInstanceSuspensionPlanAlreadySuspended, process.ProcessInstanceSuspensionPlanExcluded:
 		classification = string(item.Classification)
 	}
-	return fmt.Sprintf("%s: observed state: %s; classification: %s", item.Key, state, classification)
+	return strings.TrimSpace(fmt.Sprintf("%s: observed state: %s; classification: %s %s", item.Key, state, classification, processInstanceBusinessIDColumn(item.BusinessId)))
 }

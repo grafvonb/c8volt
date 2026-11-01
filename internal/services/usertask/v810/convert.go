@@ -13,6 +13,7 @@ import (
 // fields and copying candidate lists.
 func fromUserTaskResult(r camundav810.UserTaskResult) d.UserTask {
 	return d.UserTask{
+		BusinessId:               toolx.CopyPtr(r.BusinessId),
 		Key:                      r.UserTaskKey,
 		State:                    string(r.State),
 		Name:                     toolx.Deref(r.Name, ""),

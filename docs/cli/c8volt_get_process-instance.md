@@ -12,6 +12,8 @@ List or fetch process instances
 
 Get process instances by key or search criteria.
 
+On Camunda 8.10, each observed instance includes its own business ID when present, including enriched results. Human rows show bid:<value> beside the process name, quoting values only when needed; JSON preserves IDs exactly; keys and totals stay unchanged.
+
 Use a known key or search by process definition, tenant, state, incidents, variables, jobs, user tasks, and time ranges. Missing explicit keys return not-found.
 
 On Camunda 8.10, JSON includes suspendedDate in UTC when the current instance response provides a nonzero timestamp. Missing timestamps are omitted on each read; this field does not represent suspension history. Human rows and keys-only output remain unchanged.
@@ -20,7 +22,7 @@ On Camunda 8.10, JSON includes suspendedDate in UTC when the current instance re
 
 --tenant limits search and selector discovery. Explicit --key and stdin keys use backend authorization without tenant filtering. A --bpmn-process-id selector must match a visible process definition before discovery.
 
-Use --with-incidents for direct incidents, --with-vars for process-instance-scope variables, or --with-elements for runtime element instances. Add --with-listeners to --with-elements for runtime listener jobs. Listener rows use s: for job creation (not worker execution start), e: for job end, and d: for an available deadline only while the state is exactly ACTIVATED; missing times are omitted. Listener dur: measures time from job creation to its recorded end, or elapsed time for a pending job; it includes worker waiting time and is omitted when timestamps are unavailable or invalid.
+Use --with-incidents for direct incidents, --with-vars for process-instance-scope variables, or --with-elements for runtime element instances. Add --with-listeners to --with-elements for runtime listener jobs. Listener rows use s: for job creation (not worker execution start), e: for job end, and d: for an available deadline only while the state is exactly ACTIVATED; missing times are omitted. Listener dur: measures time from job creation to its recorded end, or elapsed time for a pending job; it includes worker waiting time and is omitted when timestamps are unavailable or invalid. On Camunda 8.10, listener rows retain their own observed business ID, which may differ from the process instance.
 
 Use variable-search flags to narrow list/search results natively. --var-exists requires every listed variable name to exist. --var accepts name=value equality shorthand plus advanced name.$operator=value clauses for $eq, $neq, $exists, $in, $notIn, and $like; $notin is accepted as $notIn. --var-like uses native wildcard patterns: * matches zero or more characters, ? matches one character, and escaped wildcards remain literal. Commas inside quoted values and JSON arrays stay inside the variable clause. Variable scopeKey means the scope where the variable is directly defined.
 

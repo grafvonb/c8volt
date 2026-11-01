@@ -1415,3 +1415,19 @@ func (s stubSlowProcessAnalysisJobAPI) SearchJobs(ctx context.Context, query d.J
 	}
 	return s.search(ctx, query, opts...)
 }
+
+// TestSlowAnalysisBusinessIDRoot owns the observed root identity, including nil key-only fallback and empty observations.
+func TestSlowAnalysisBusinessIDRoot(t *testing.T) {
+	t.Parallel()
+	for _, value := range []*string{nil, new(""), new("new")} {
+		source := d.ProcessInstance{Key: "root", BusinessId: value}
+		got := slowProcessAnalysisRootFromProcessInstance(source, "1s", 1000, true)
+		require.Equal(t, value, got.BusinessId)
+		require.Equal(t, "root", got.Key)
+		if value != nil {
+			before := *value
+			*value = "changed"
+			require.Equal(t, before, *got.BusinessId)
+		}
+	}
+}

@@ -579,8 +579,8 @@ func TestConfirmationEmptySelectorResults(t *testing.T) {
 				return
 			}
 			if tt.mode == RenderModeOneLine {
-				require.Equal(t, "found: 0\n", result.Stdout)
-				require.Empty(t, result.Stderr)
+				require.Empty(t, result.Stdout)
+				require.Equal(t, [][2]string{{"INFO", "found: 0"}}, bulkCompletionDiagnosticRecords(t, result.Stderr, "plain-time"))
 				return
 			}
 			requireEmptyProcessInstanceSelectorOutput(t, result.Stdout, result.Stderr, tt.operation+" process-instance", tt.operation, tt.dryRun, tt.mode)

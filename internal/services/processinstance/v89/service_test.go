@@ -1841,3 +1841,18 @@ func TestService_CombinedStateFilterUnsupported(t *testing.T) {
 	_, err := svc.SearchForProcessInstancesPage(context.Background(), d.ProcessInstanceFilter{State: d.StateActive, States: d.States{d.StateSuspended}}, d.ProcessInstancePageRequest{Size: 10})
 	require.ErrorIs(t, err, d.ErrValidation)
 }
+
+// TestServiceCreateProcessInstanceBusinessID rejects all supplied values as unsupported before mutation or value validation.
+func TestServiceCreateProcessInstanceBusinessID(t *testing.T) {
+	t.Parallel()
+	for _, value := range []string{"order,AbC", "", " ", string([]byte{0xff}), strings.Repeat("x", 257)} {
+		for _, data := range []d.ProcessInstanceData{{BpmnProcessId: "demo", BusinessId: new(value)}, {ProcessDefinitionSpecificId: "9001", BusinessId: new(value)}} {
+			svc := newTestService(t, testConfig(), newStrictCamundaClient(t))
+			got, err := svc.CreateProcessInstance(context.Background(), data)
+			require.ErrorIs(t, err, d.ErrUnsupported)
+			require.NotErrorIs(t, err, d.ErrValidation)
+			require.Contains(t, err.Error(), "requires Camunda 8.10")
+			require.Equal(t, d.ProcessInstanceCreation{}, got)
+		}
+	}
+}

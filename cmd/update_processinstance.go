@@ -21,6 +21,8 @@ var updateProcessInstanceCmd = &cobra.Command{
 	Short: "Update process-instance variables by key",
 	Long: `Update process-instance-scope variables on Camunda 8.8 or newer.
 
+Variable plans retain each selected instance's observed business ID when available. Detailed plan rows quote it safely, and JSON preserves it exactly. Key/status-only outcomes do not add a lookup.
+
 Provide repeated --key values or newline-separated keys from stdin with '-'. Supply exactly one payload source: --vars with a JSON object or --vars-file with its file path. The same variable map is applied to every unique key. Explicit keys use backend authorization without tenant filtering.
 
 c8volt reads every selected process instance's complete root-variable scope before planning additions and changes. Nested-scope variables are excluded, and truncated values remain planned changes because they cannot prove equality. After confirmation, the command writes only the prepared additions and changes locally to their recorded roots, then waits until all requested variables are visible through the same lookup as get process-instance --with-vars. Detailed previews label every planned write with its selected process-instance root as pi:<key>.

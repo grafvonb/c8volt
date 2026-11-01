@@ -147,6 +147,7 @@ func fromDomainProcessDefinitionWatchSnapshot(x d.ProcessDefinitionWatchSnapshot
 // fromDomainProcessInstance preserves current instance metadata at the public boundary.
 func fromDomainProcessInstance(x d.ProcessInstance) ProcessInstance {
 	return ProcessInstance{
+		BusinessId:               toolx.CopyPtr(x.BusinessId),
 		BpmnProcessId:            x.BpmnProcessId,
 		EndDate:                  x.EndDate,
 		Incident:                 x.Incident,
@@ -165,8 +166,10 @@ func fromDomainProcessInstance(x d.ProcessInstance) ProcessInstance {
 	}
 }
 
+// fromDomainProcessInstanceCreation copies optional business identity without inferring an absent value.
 func fromDomainProcessInstanceCreation(x d.ProcessInstanceCreation) ProcessInstance {
 	return ProcessInstance{
+		BusinessId:           toolx.CopyPtr(x.BusinessId),
 		Key:                  x.Key,
 		BpmnProcessId:        x.BpmnProcessId,
 		ProcessDefinitionKey: x.ProcessDefinitionKey,
@@ -277,8 +280,10 @@ func fromDomainProcessInstanceElement(x d.Element) ProcessInstanceElement {
 	}
 }
 
+// fromDomainRuntimeListenerJob copies optional listener identity across the facade boundary.
 func fromDomainRuntimeListenerJob(x d.RuntimeListenerJob) RuntimeListenerJob {
 	return RuntimeListenerJob{
+		BusinessId:         toolx.CopyPtr(x.BusinessId),
 		JobKey:             x.JobKey,
 		Kind:               x.Kind,
 		ListenerEventType:  x.ListenerEventType,
@@ -384,6 +389,7 @@ func toDomainProcessInstanceVariablePlannedChange(x ProcessInstanceVariablePlann
 // toDomainProcessInstanceVariablePlan copies one public root plan.
 func toDomainProcessInstanceVariablePlan(x ProcessInstanceVariablePlan) d.ProcessInstanceVariablePlan {
 	return d.ProcessInstanceVariablePlan{
+		BusinessId:         toolx.CopyPtr(x.BusinessId),
 		ProcessInstanceKey: x.ProcessInstanceKey, ScopeKey: x.ScopeKey, TenantId: x.TenantId,
 		Additions:          toolx.MapSlice(x.Additions, toDomainProcessInstanceVariablePlannedValue),
 		Changes:            toolx.MapSlice(x.Changes, toDomainProcessInstanceVariablePlannedChange),
@@ -490,6 +496,7 @@ func fromDomainProcessInstanceVariablePlannedChange(x d.ProcessInstanceVariableP
 // classification or payload values.
 func fromDomainProcessInstanceVariablePlan(x d.ProcessInstanceVariablePlan) ProcessInstanceVariablePlan {
 	return ProcessInstanceVariablePlan{
+		BusinessId:         toolx.CopyPtr(x.BusinessId),
 		ProcessInstanceKey: x.ProcessInstanceKey, ScopeKey: x.ScopeKey, TenantId: x.TenantId,
 		Additions:          toolx.MapSlice(x.Additions, fromDomainProcessInstanceVariablePlannedValue),
 		Changes:            toolx.MapSlice(x.Changes, fromDomainProcessInstanceVariablePlannedChange),
@@ -764,6 +771,7 @@ func fromDomainIncidentExpectation(x *bool) *IncidentExpectation {
 // toDomainProcessInstance preserves instance metadata when passing public results back to services.
 func toDomainProcessInstance(x ProcessInstance) d.ProcessInstance {
 	return d.ProcessInstance{
+		BusinessId:               toolx.CopyPtr(x.BusinessId),
 		BpmnProcessId:            x.BpmnProcessId,
 		EndDate:                  x.EndDate,
 		Incident:                 x.Incident,
@@ -987,8 +995,10 @@ func toDomainProcessInstanceSearchTotalVisitor(visitor ProcessInstanceSearchTota
 	}
 }
 
+// toProcessInstanceData copies optional business identity without inferring an absent value.
 func toProcessInstanceData(x ProcessInstanceData) d.ProcessInstanceData {
 	return d.ProcessInstanceData{
+		BusinessId:                  toolx.CopyPtr(x.BusinessId),
 		BpmnProcessId:               x.BpmnProcessId,
 		ProcessDefinitionSpecificId: x.ProcessDefinitionSpecificId,
 		ProcessDefinitionVersion:    x.ProcessDefinitionVersion,
@@ -1028,7 +1038,7 @@ func fromDomainProcessInstanceSuspensionPlan(plan d.ProcessInstanceSuspensionPla
 
 // fromDomainProcessInstanceSuspensionPlanItem maps planning facts, never execution evidence.
 func fromDomainProcessInstanceSuspensionPlanItem(item d.ProcessInstanceSuspensionPlanItem) ProcessInstanceSuspensionPlanItem {
-	return ProcessInstanceSuspensionPlanItem{Key: item.Key, ObservedState: State(item.ObservedState), Classification: ProcessInstanceSuspensionPlanClassification(item.Classification)}
+	return ProcessInstanceSuspensionPlanItem{BusinessId: toolx.CopyPtr(item.BusinessId), Key: item.Key, ObservedState: State(item.ObservedState), Classification: ProcessInstanceSuspensionPlanClassification(item.Classification)}
 }
 
 // fromDomainResumptionResult mechanically preserves submission and observation evidence.
@@ -1062,5 +1072,5 @@ func fromDomainProcessInstanceResumptionPlan(plan d.ProcessInstanceResumptionPla
 
 // fromDomainProcessInstanceResumptionPlanItem maps planning facts, never execution evidence.
 func fromDomainProcessInstanceResumptionPlanItem(item d.ProcessInstanceResumptionPlanItem) ProcessInstanceResumptionPlanItem {
-	return ProcessInstanceResumptionPlanItem{Key: item.Key, ObservedState: State(item.ObservedState), Classification: ProcessInstanceResumptionPlanClassification(item.Classification)}
+	return ProcessInstanceResumptionPlanItem{BusinessId: toolx.CopyPtr(item.BusinessId), Key: item.Key, ObservedState: State(item.ObservedState), Classification: ProcessInstanceResumptionPlanClassification(item.Classification)}
 }

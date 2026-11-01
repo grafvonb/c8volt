@@ -11,6 +11,7 @@ import (
 
 // RuntimeListenerJob exposes a listener job attached to a runtime element.
 type RuntimeListenerJob struct {
+	BusinessId         *string    `json:"businessId,omitempty"`
 	JobKey             string     `json:"jobKey,omitempty"`
 	Kind               string     `json:"kind,omitempty"`
 	ListenerEventType  string     `json:"listenerEventType,omitempty"`

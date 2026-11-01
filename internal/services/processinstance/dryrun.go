@@ -411,6 +411,7 @@ func uniqueMissingAncestors(items []d.MissingAncestor) []d.MissingAncestor {
 	return out
 }
 
+// nonFinalProcessInstances freezes identity from discovered non-final instances.
 func nonFinalProcessInstances(keys typex.Keys, results []pitraversal.Result) []d.ProcessInstance {
 	if len(keys) == 0 || len(results) == 0 {
 		return nil
@@ -434,6 +435,7 @@ func nonFinalProcessInstances(keys typex.Keys, results []pitraversal.Result) []d
 			continue
 		}
 		seen[key] = struct{}{}
+		pi.BusinessId = toolx.CopyPtr(pi.BusinessId)
 		out = append(out, pi)
 	}
 	if len(out) == 0 {
@@ -442,6 +444,7 @@ func nonFinalProcessInstances(keys typex.Keys, results []pitraversal.Result) []d
 	return out
 }
 
+// selectedFinalStateProcessInstances freezes identity only from observed selected terminal instances.
 func selectedFinalStateProcessInstances(keys typex.Keys, results []pitraversal.Result) []d.ProcessInstance {
 	if len(keys) == 0 || len(results) == 0 {
 		return nil
@@ -465,6 +468,7 @@ func selectedFinalStateProcessInstances(keys typex.Keys, results []pitraversal.R
 			continue
 		}
 		seen[key] = struct{}{}
+		pi.BusinessId = toolx.CopyPtr(pi.BusinessId)
 		out = append(out, pi)
 	}
 	if len(out) == 0 {

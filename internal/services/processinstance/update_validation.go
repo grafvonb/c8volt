@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	d "github.com/grafvonb/c8volt/internal/domain"
+	"github.com/grafvonb/c8volt/toolx"
 )
 
 // validateAndCopyProcessInstanceVariableUpdatePlan rejects any plan whose
@@ -151,6 +152,7 @@ func copyProcessInstanceVariableUpdatePlan(plan d.ProcessInstanceVariableUpdateP
 	out.RequestedValues = copyProcessInstanceVariableMap(plan.RequestedValues)
 	out.Instances = append([]d.ProcessInstanceVariablePlan(nil), plan.Instances...)
 	for i := range out.Instances {
+		out.Instances[i].BusinessId = toolx.CopyPtr(plan.Instances[i].BusinessId)
 		out.Instances[i].Additions = copyProcessInstancePlannedValues(plan.Instances[i].Additions)
 		out.Instances[i].Changes = append([]d.ProcessInstanceVariablePlannedChange(nil), plan.Instances[i].Changes...)
 		for j := range out.Instances[i].Changes {

@@ -556,7 +556,7 @@ func TestOpsPurgeProcessInstancesWithIncidentsExistingReportPreservation(t *test
 			name:            "locally blocked",
 			args:            []string{"ops", "purge", "process-instances-with-incidents", "--auto-confirm"},
 			withActiveChild: true,
-			want:            "write audit report: report file already exists:",
+			want:            "audit report could not be written",
 			wantRequests:    true,
 			wantExitCode:    exitcode.Error,
 		},
@@ -958,7 +958,7 @@ func TestOpsPurgeProcessInstancesWithIncidentsSemanticProgressModeGate(t *testin
 				},
 			}
 		},
-		QuietWarning: "incident-root-1 failed: request rejected (deletion process-instance trees, 1/1 process-instance tree(s), 1 failed, affected process instances: 1)",
+		QuietWarning: "", // Final aggregate rendering owns failure diagnostics.
 	})
 }
 

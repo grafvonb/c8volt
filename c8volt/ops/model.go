@@ -103,6 +103,7 @@ type SlowProcessAnalysisDetailFilters struct {
 
 // SlowProcessAnalysisProcessInstance is the root result row for one selected process instance.
 type SlowProcessAnalysisProcessInstance struct {
+	BusinessId             *string                            `json:"businessId,omitempty"`
 	Key                    string                             `json:"key,omitempty"`
 	TenantID               string                             `json:"tenantId,omitempty"`
 	BpmnProcessID          string                             `json:"bpmnProcessId,omitempty"`
@@ -152,7 +153,9 @@ type SlowProcessAnalysisTimelineEntry struct {
 	Listeners              *[]RuntimeListenerJob                `json:"listeners,omitempty"`
 }
 
+// RuntimeListenerJob retains the listener job observation independently of its owning process.
 type RuntimeListenerJob struct {
+	BusinessId         *string    `json:"businessId,omitempty"`
 	JobKey             string     `json:"jobKey,omitempty"`
 	Kind               string     `json:"kind,omitempty"`
 	ListenerEventType  string     `json:"listenerEventType,omitempty"`

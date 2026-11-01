@@ -7,6 +7,7 @@ import "time"
 
 // Job exposes one runtime job and its optional lifecycle timestamps.
 type Job struct {
+	BusinessId         *string    `json:"businessId,omitempty"`
 	Key                string     `json:"key,omitempty"`
 	State              string     `json:"state,omitempty"`
 	Retries            int32      `json:"retries"`
@@ -357,17 +358,18 @@ const (
 
 // CompletionCandidate preserves observed facts without inventing lifecycle dates.
 type CompletionCandidate struct {
-	Key                string `json:"key"`
-	ProcessInstanceKey string `json:"processInstanceKey,omitempty"`
-	ElementInstanceKey string `json:"elementInstanceKey,omitempty"`
-	ElementId          string `json:"elementId,omitempty"`
-	TenantId           string `json:"tenantId,omitempty"`
-	Type               string `json:"type,omitempty"`
-	Kind               string `json:"kind,omitempty"`
-	ListenerEventType  string `json:"listenerEventType,omitempty"`
-	State              string `json:"state,omitempty"`
-	Worker             string `json:"worker,omitempty"`
-	Retries            int32  `json:"retries"`
+	BusinessId         *string `json:"businessId,omitempty"`
+	Key                string  `json:"key"`
+	ProcessInstanceKey string  `json:"processInstanceKey,omitempty"`
+	ElementInstanceKey string  `json:"elementInstanceKey,omitempty"`
+	ElementId          string  `json:"elementId,omitempty"`
+	TenantId           string  `json:"tenantId,omitempty"`
+	Type               string  `json:"type,omitempty"`
+	Kind               string  `json:"kind,omitempty"`
+	ListenerEventType  string  `json:"listenerEventType,omitempty"`
+	State              string  `json:"state,omitempty"`
+	Worker             string  `json:"worker,omitempty"`
+	Retries            int32   `json:"retries"`
 }
 
 // PreparedCompletionBatch is an immutable in-memory selection, not an authorization

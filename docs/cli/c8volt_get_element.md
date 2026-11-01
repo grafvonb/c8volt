@@ -20,7 +20,7 @@ Searches and totals apply the configured tenant. Exact-key lookup uses backend a
 
 --batch-size controls each discovery request; --limit caps returned elements across all pages. Use --total to count matching elements, or --with-listeners to include runtime listener jobs.
 
-Listener rows label job creation time as s: (not worker execution start) and job end time as e:. They show d: only for an ACTIVATED job with a deadline, and omit unavailable timestamps. Listener dur: measures time from job creation to its recorded end, or elapsed time for a pending job; it includes worker waiting time and is omitted when timestamps are unavailable or invalid. A completed listener can appear as:
+Listener rows label job creation time as s: (not worker execution start) and job end time as e:. They show d: only for an ACTIVATED job with a deadline, and omit unavailable timestamps. Listener dur: measures time from job creation to its recorded end, or elapsed time for a pending job; it includes worker waiting time and is omitted when timestamps are unavailable or invalid. On Camunda 8.10, listener rows retain their own observed business ID, which may differ from the process instance. A completed listener can appear as:
 
   job-1 TASK_LISTENER lsnr:CREATING COMPLETED tp:updateTaskData r:0 s:2026-09-16T13:07:16.359 e:2026-09-16T13:07:16.842 dur:483ms
 
