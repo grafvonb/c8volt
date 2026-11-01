@@ -416,7 +416,7 @@ func TestCommandCapabilityForCommand_ProcessInstanceMutationPagingContracts(t *t
 			limitDesc: "maximum number of matching process instances to select for cancellation across all pages; omit to continue through all matches",
 			longFragments: []string{
 				"--batch-size controls each discovery request",
-				"--limit caps selected instances across all pages",
+				"--limit caps distinct selected instances across all pages",
 				"--workers, --fail-fast, and --no-worker-limit control planning and cancellation work",
 			},
 		},
@@ -538,6 +538,13 @@ func TestCommandContractOpsAnalyseSlowProcessInstances(t *testing.T) {
 	capability := commandCapabilityForCommand(opsAnalyseSlowProcessInstancesCmd)
 
 	require.Equal(t, "ops analyse slow-process-instances", capability.Path)
+	require.Contains(t, capability.Flags, FlagContract{
+		Name: "bid", Type: "string", Required: false, Repeated: false,
+		Description: "exact process business ID to discover on Camunda 8.10; combine with one definition selector, never explicit keys",
+	})
+	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Example, "--bid ORDER-123")
+	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Long, "empty scopes never prompt or load timelines")
+
 	require.Equal(t, CommandMutationReadOnly, capability.Mutation)
 	require.Equal(t, ContractSupportFull, capability.ContractSupport)
 	require.Equal(t, AutomationSupportFull, capability.AutomationSupport)
@@ -563,7 +570,7 @@ func TestCommandContractOpsAnalyseSlowProcessInstances(t *testing.T) {
 	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Long, "--with-full-timeline to inspect the complete chronology")
 	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Long, "--with-listeners to include runtime listener jobs")
 	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Long, "--batch-size controls each discovery request")
-	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Long, "--limit caps selected instances across all pages")
+	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Long, "--limit caps distinct selected instances across all pages")
 	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Long, "--dur-longer selects roots whose total duration exceeds a threshold")
 	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Long, "--element-id, --type, --element-state, and --dur-element-longer restrict analysis")
 	require.NotContains(t, opsAnalyseSlowProcessInstancesCmd.Long, "--duration-after")
@@ -738,7 +745,7 @@ func TestCommandCapabilityForCommand_OpsPagedDiscoveryFlagContracts(t *testing.T
 			limitDesc: "maximum number of matching process instances to freeze for analysis across all discovery pages; omit to discover all matches",
 			longFragments: []string{
 				"--batch-size controls each discovery request",
-				"--limit caps selected instances across all pages",
+				"--limit caps distinct selected instances across all pages",
 			},
 		},
 	}

@@ -60,8 +60,8 @@ func validateOpsSlowProcessAnalysisCommandArgs(cmd *cobra.Command, args []string
 	if keyedMode && hasOpsSlowProcessAnalysisSearchFilterFlags(cmd) {
 		return mutuallyExclusiveFlagsf("explicit process-instance keys cannot be combined with process-instance search filters")
 	}
-	if !keyedMode && !processDefinitionSelectorMode {
-		return localPreconditionError(fmt.Errorf("select process instances with --key, stdin '-', --bpmn-process-id, or --pd-key"))
+	if !keyedMode && !processDefinitionSelectorMode && searchBusinessIDFlag(cmd) == nil {
+		return localPreconditionError(fmt.Errorf("select process instances with --key, stdin '-', --bid, --bpmn-process-id, or --pd-key"))
 	}
 	if _, err := parseOpsSlowProcessAnalysisState(); err != nil {
 		return err
@@ -100,9 +100,9 @@ func parseOpsSlowProcessAnalysisElementState() (string, error) {
 	return normalizedElementState(flagOpsAnalyseSlowProcessInstanceElementState), nil
 }
 
-// hasOpsSlowProcessAnalysisSearchFilterFlags identifies flags valid only for process-definition discovery.
+// hasOpsSlowProcessAnalysisSearchFilterFlags identifies flags valid only for process-instance discovery.
 func hasOpsSlowProcessAnalysisSearchFilterFlags(cmd *cobra.Command) bool {
-	return flagOpsAnalyseSlowProcessInstanceStartDateAfter != "" ||
+	return searchBusinessIDFlag(cmd) != nil || flagOpsAnalyseSlowProcessInstanceStartDateAfter != "" ||
 		flagOpsAnalyseSlowProcessInstanceStartDateBefore != "" ||
 		flagOpsAnalyseSlowProcessInstanceEndDateAfter != "" ||
 		flagOpsAnalyseSlowProcessInstanceEndDateBefore != "" ||

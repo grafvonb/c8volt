@@ -144,8 +144,10 @@ func fromDomainSlowProcessAnalysisProcessDefinitionSelector(x d.SlowProcessAnaly
 	}
 }
 
+// toDomainSlowProcessAnalysisProcessInstanceSearchFilters copies the optional opaque BID independently of resource observations.
 func toDomainSlowProcessAnalysisProcessInstanceSearchFilters(x SlowProcessAnalysisProcessInstanceSearchFilters) d.SlowProcessAnalysisProcessInstanceSearchFilters {
 	return d.SlowProcessAnalysisProcessInstanceSearchFilters{
+		BusinessId:      toolx.CopyPtr(x.BusinessId),
 		State:           d.State(x.State),
 		StartDateAfter:  x.StartDateAfter,
 		StartDateBefore: x.StartDateBefore,
@@ -155,8 +157,10 @@ func toDomainSlowProcessAnalysisProcessInstanceSearchFilters(x SlowProcessAnalys
 	}
 }
 
+// fromDomainSlowProcessAnalysisProcessInstanceSearchFilters copies the optional opaque BID independently of resource observations.
 func fromDomainSlowProcessAnalysisProcessInstanceSearchFilters(x d.SlowProcessAnalysisProcessInstanceSearchFilters) SlowProcessAnalysisProcessInstanceSearchFilters {
 	return SlowProcessAnalysisProcessInstanceSearchFilters{
+		BusinessId:      toolx.CopyPtr(x.BusinessId),
 		State:           process.State(x.State),
 		StartDateAfter:  x.StartDateAfter,
 		StartDateBefore: x.StartDateBefore,
@@ -184,8 +188,10 @@ func fromDomainSlowProcessAnalysisDetailFilters(x d.SlowProcessAnalysisDetailFil
 	}
 }
 
+// fromDomainSlowProcessAnalysisResult preserves partial analysis and copied selection evidence.
 func fromDomainSlowProcessAnalysisResult(x d.SlowProcessAnalysisResult) SlowProcessAnalysisResult {
 	return SlowProcessAnalysisResult{
+		Selection:             toolx.MapPtr(x.Selection, fromDomainRepairSelection),
 		Request:               fromDomainSlowProcessAnalysisRequest(x.Request),
 		DiscoveredScopeStatus: fromDomainDiscoveryScopeStatus(x.DiscoveredScopeStatus),
 		PreflightScope:        fromDomainPreflightScopePtr(x.PreflightScope),

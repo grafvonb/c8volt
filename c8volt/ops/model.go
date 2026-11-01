@@ -45,6 +45,8 @@ type SlowProcessAnalysisSelectionMode string
 const (
 	// SlowProcessAnalysisSelectionModeExplicitKeys records flag/stdin process-instance keys.
 	SlowProcessAnalysisSelectionModeExplicitKeys SlowProcessAnalysisSelectionMode = "explicit_keys"
+	// SlowProcessAnalysisSelectionModeProcessInstanceSearch records BID-only discovery.
+	SlowProcessAnalysisSelectionModeProcessInstanceSearch SlowProcessAnalysisSelectionMode = "process_instance_search"
 	// SlowProcessAnalysisSelectionModeProcessDefinitionSearch records process-definition scoped discovery.
 	SlowProcessAnalysisSelectionModeProcessDefinitionSearch SlowProcessAnalysisSelectionMode = "process_definition_search"
 )
@@ -85,6 +87,7 @@ type SlowProcessAnalysisProcessDefinitionSelector struct {
 
 // SlowProcessAnalysisProcessInstanceSearchFilters carries process-instance discovery filters.
 type SlowProcessAnalysisProcessInstanceSearchFilters struct {
+	BusinessId      *string       `json:"businessId,omitempty"`
 	State           process.State `json:"state,omitempty"`
 	StartDateAfter  string        `json:"startDateAfter,omitempty"`
 	StartDateBefore string        `json:"startDateBefore,omitempty"`
@@ -176,6 +179,7 @@ type RuntimeListenerJob struct {
 
 // SlowProcessAnalysisResult carries the complete render-independent analysis payload.
 type SlowProcessAnalysisResult struct {
+	Selection             *process.ProcessInstanceSelection    `json:"selection,omitempty"`
 	Request               SlowProcessAnalysisRequest           `json:"request,omitempty"`
 	DiscoveredScopeStatus DiscoveryScopeStatus                 `json:"discoveredScopeStatus,omitempty"`
 	PreflightScope        *PreflightScope                      `json:"preflightScope,omitempty"`

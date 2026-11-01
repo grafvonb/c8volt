@@ -478,3 +478,40 @@ Started: 2026-11-01 12:22:16
 - Listed new tests before execution. Initial discovery tests exposed duplicate retention accounting and orphan-only limit counting; implementation corrected both. Final isolated targeted race suite passed across cmd, ops service, process service and ops facade (cmd 30.067s), including final malformed ancestry, shared dry-run option, force guards, changed-child conflict and automation/machine assertions. Additional observation conversion checks passed with race (facade .753s); bounded non-orphan real-terminal checks passed with race (.902s). Targeted legacy cleanup/deletion regressions passed.
 - Full isolated `make test PKG=./...` completed with race detection and integration tags disabled (cmd 530.992s). All runtime tests passed; the invocation failed only two stale retention help assertions in command/docsgen tests. Both were corrected to the distinct-candidate wording and their focused race rerun passed (cmd .974s, docsgen 1.238s). The broad run began before the narrow final runtime fixes, which passed the final targeted race checks. It was not repeated for the wording-only corrections. `make docs-content`, all touched Go formatting and `git diff --check` passed. All dependencies were owned mocks/HTTP fakes/PTY fixtures; no live environment was used, and real-engine behavior remains unverified. T010 was not started.
 ---
+
+---
+## Iteration 10 - 2026-11-01 16:18
+**Work Unit**: US4 T010 — completed BID-only and definition+BID slow-process analysis
+**Tasks Completed**:
+- [x] T010: Deliver exact BID slow analysis with shared distinct bounded discovery, delayed preflight, copied provenance, partial results, output/version contracts and documentation.
+**Tasks Remaining in Work Unit**: 0; all feature tasks are complete.
+**Commit**: This work-unit commit
+**Files Changed**:
+- README.md
+- c8volt/ops/convert.go
+- c8volt/ops/model.go
+- c8volt/ops/slow_process_analysis_business_id_test.go
+- cmd/cmd_views_ops_slow_process_analysis_business_id.go
+- cmd/command_contract_test.go
+- cmd/ops_analyse_slow_process_instances.go
+- cmd/ops_analyse_slow_process_instances_business_id.go
+- cmd/ops_analyse_slow_process_instances_business_id_test.go
+- cmd/ops_analyse_slow_process_instances_progress.go
+- cmd/ops_analyse_slow_process_instances_validation.go
+- docs/cli/c8volt_ops_analyse_slow-process-instances.md
+- docs/index.md
+- docs/ops/analyse-slow-process-instances.md
+- internal/domain/ops_slow_process_analysis.go
+- internal/services/ops/slow_process_analysis.go
+- internal/services/ops/slow_process_analysis_business_id.go
+- internal/services/ops/slow_process_analysis_business_id_test.go
+- specs/361-business-id-selection/progress.md
+- specs/361-business-id-selection/ralph-memory.md
+- specs/361-business-id-selection/tasks.md
+**Learnings**:
+- Reused service-owned collection selection for BID-only and definition+BID analysis; no command/facade paging loop, generated-client edits or new API method. Existing definition-only/keyed paths remain. Version/value and receiving-adapter checks precede key/empty shortcuts. Copied request filters and optional Selection retain original criteria, tenant context, distinct observations and explicit completion separately from visible analysis rows.
+- Preflight follows completed bounded discovery and precedes enrichment. Real-terminal sparse-empty completion never prompts or enriches; nonempty approve/decline/EOF retains plain configured stderr routing. JSON, keys, quiet combinations, automation and auto-confirm retain established behavior; this read-only command has no dry-run/no-wait flags or Markdown report capability. Empty JSON retains items: [] and established preflight omissions; keys are zero bytes.
+- BID enrichment preserves successful rows, original joined failures and fail-fast/context behavior. Progress counts successful loads only. Traced errors through service, facade conversion, rendering, configured logger and original exit: repeated multi-resource transport errors produce one bounded aggregate ERROR or one envelope with partial evidence and EOF; DEBUG remains independently redacted. Existing expensive-analysis WARN remains configured; successful query rows remain stdout and INFO progress obeys quiet/WARN. Writer-failure tests require one envelope attempt and the original failure exit.
+- Listed new tests before execution. The initial command regression failed on the missing --bid flag. Owner/facade regressions and native scalar/AND/tenant, duplicate/sparse/limit, unknown/cyclic/error, copy/mode round-trip, opaque-text, detail filters, real-terminal and diagnostic matrices now pass. Final all-owner isolated targeted race run passed (cmd 5.697s, ops .705s, facade 1.139s); final empty omission checks passed with race (cmd 1.822s, ops .704s). Legacy slow-analysis targeted checks passed.
+- Full isolated make test PKG=./... completed with race detection and integration tags disabled (cmd 546.121s). All runtime tests passed; the invocation failed only two stale command help-contract assertions expecting the former limit wording. Updated both to the distinct-instance wording and asserted additive BID metadata; focused race rerun passed (.954s). The full invocation was not repeated for test-only corrections. It began before the narrow empty-preflight omission fix, which passed the final targeted race checks. make docs-content, changed-file gofmt and git diff --check passed. All dependencies were test-owned mocks/HTTP/PTY fixtures; real-engine behavior remains unverified.
+---

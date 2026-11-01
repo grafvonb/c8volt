@@ -57,12 +57,14 @@ var opsAnalyseSlowProcessInstancesCmd = &cobra.Command{
 
 Root rows retain each observed process business ID in both summaries and full timelines; missing IDs stay absent.
 
-Select explicit --key values or exactly one process-definition selector. --batch-size controls each discovery request; --limit caps selected instances across all pages. Explicit keys bypass discovery paging.
+Select explicit --key values, one process-definition selector, or --bid for exact business-ID matching on Camunda 8.10. Combine --bid with one definition selector using AND within the configured tenant. Business IDs are opaque strings; commas and wildcard characters are literal. --batch-size controls each discovery request; --limit caps distinct selected instances across all pages. Explicit keys bypass discovery paging and cannot be combined with search filters. BID discovery completes before any analysis confirmation; empty scopes never prompt or load timelines.
 
 --dur-longer selects roots whose total duration exceeds a threshold. --element-id, --type, --element-state, and --dur-element-longer restrict analysis to matching element or transition details. Use --with-full-timeline to inspect the complete chronology, or --with-listeners to include runtime listener jobs. Listener rows use s: for job creation (not worker execution start), e: for job end, and d: for an available deadline only while the state is exactly ACTIVATED; missing times are omitted. Listener dur: measures time from job creation to its recorded end, or elapsed time for a pending job; it includes worker waiting time and is omitted when timestamps are unavailable or invalid. On Camunda 8.10, listener rows retain their own observed business ID, which may differ from the process instance.
 
 Durations use Go syntax such as 500ms, 30s, 5m, 1h30m, or 24h. Calendar units such as 1d are not supported.`,
-	Example: `  ./c8volt ops analyse slow-process-instances --key <process-instance-key>
+	Example: `  ./c8volt ops analyse slow-process-instances --bid ORDER-123
+  ./c8volt ops analyse slow-process-instances --bid ORDER-123 --bpmn-process-id order --limit 100
+  ./c8volt ops analyse slow-process-instances --key <process-instance-key>
   ./c8volt ops analyse slow-process-instances --bpmn-process-id <bpmn-process-id> --state active --dur-longer 5m
   ./c8volt ops analyse slow-process-instances --bpmn-process-id <bpmn-process-id> --batch-size 500 --limit 2000
   ./c8volt ops analyse slow-process-instances --pd-key <process-definition-key> --dur-element-longer 30s
@@ -72,6 +74,10 @@ Durations use Go syntax such as 500ms, 30s, 5m, 1h30m, or 24h. Calendar units su
   ./c8volt get process-instance --state active --keys-only | ./c8volt ops analyse slow-process-instances -`,
 	Aliases: []string{"slow-pi", "spi"},
 	Args: func(cmd *cobra.Command, args []string) error {
+		// Validate BID after bootstrap for configured diagnostics and one JSON envelope.
+		if searchBusinessIDFlag(cmd) != nil {
+			return nil
+		}
 		if err := validateOpsSlowProcessAnalysisCommandArgs(cmd, args); err != nil {
 			return silenceUsageForError(cmd, err)
 		}
@@ -85,6 +91,11 @@ Durations use Go syntax such as 500ms, 30s, 5m, 1h30m, or 24h. Calendar units su
 		if err := requireAutomationSupport(cmd); err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}
+		if searchBusinessIDFlag(cmd) != nil {
+			if err := validateOpsSlowProcessAnalysisCommandArgs(cmd, args); err != nil {
+				handleBusinessIDSearchError(cmd, log, cfg.App.NoErrCodes, err)
+			}
+		}
 		stdinKeys, err := readKeysIfDash(args)
 		if err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
@@ -96,6 +107,10 @@ Durations use Go syntax such as 500ms, 30s, 5m, 1h30m, or 24h. Calendar units su
 		parsed, err := buildOpsSlowProcessAnalysisCommandRequest(cmd, args, keys)
 		if err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+		}
+		if searchBusinessIDFlag(cmd) != nil {
+			runOpsSlowProcessAnalysisBusinessID(cmd, cli, log, cfg, parsed.Request)
+			return
 		}
 		progress := configureOpsSlowProcessAnalysisPreflight(cmd, &parsed.Request)
 		result, err := cli.AnalyseSlowProcessInstances(cmd.Context(), parsed.Request, collectOptions()...)
@@ -123,6 +138,7 @@ func init() {
 	useInvalidInputFlagErrors(opsAnalyseSlowProcessInstancesCmd)
 
 	fs := opsAnalyseSlowProcessInstancesCmd.Flags()
+	fs.String("bid", "", "exact process business ID to discover on Camunda 8.10; combine with one definition selector, never explicit keys")
 	fs.StringSliceVarP(&flagOpsAnalyseSlowProcessInstanceKeys, "key", "k", nil, "process-instance key(s) to analyse; repeat or combine with stdin '-'")
 	fs.StringVarP(&flagOpsAnalyseSlowProcessInstanceBpmnProcessID, "bpmn-process-id", "b", "", "BPMN process ID to discover process instances")
 	fs.StringVar(&flagOpsAnalyseSlowProcessInstancePDKey, "pd-key", "", "process definition key to discover process instances")
@@ -191,6 +207,9 @@ func buildOpsSlowProcessAnalysisCommandRequest(cmd *cobra.Command, args []string
 	stdinRequested := len(args) == 1 && args[0] == "-"
 	selectionMode := ops.SlowProcessAnalysisSelectionModeProcessDefinitionSearch
 	inputKeys := typex.Keys(nil)
+	if searchBusinessIDFlag(cmd) != nil && flagOpsAnalyseSlowProcessInstanceBpmnProcessID == "" && flagOpsAnalyseSlowProcessInstancePDKey == "" {
+		selectionMode = ops.SlowProcessAnalysisSelectionModeProcessInstanceSearch
+	}
 	if len(keys) > 0 || stdinRequested {
 		selectionMode = ops.SlowProcessAnalysisSelectionModeExplicitKeys
 		inputKeys = append(typex.Keys(nil), keys...)
@@ -208,6 +227,7 @@ func buildOpsSlowProcessAnalysisCommandRequest(cmd *cobra.Command, args []string
 				ProcessDefinitionKey: flagOpsAnalyseSlowProcessInstancePDKey,
 			},
 			ProcessInstanceFilters: ops.SlowProcessAnalysisProcessInstanceSearchFilters{
+				BusinessId:      searchBusinessIDFlag(cmd),
 				State:           state,
 				StartDateAfter:  startDateAfter,
 				StartDateBefore: startDateBefore,

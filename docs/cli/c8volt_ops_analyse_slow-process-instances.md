@@ -13,7 +13,7 @@ Analyse process-instance and runtime-element durations without changing cluster 
 
 Root rows retain each observed process business ID in both summaries and full timelines; missing IDs stay absent.
 
-Select explicit --key values or exactly one process-definition selector. --batch-size controls each discovery request; --limit caps selected instances across all pages. Explicit keys bypass discovery paging.
+Select explicit --key values, one process-definition selector, or --bid for exact business-ID matching on Camunda 8.10. Combine --bid with one definition selector using AND within the configured tenant. Business IDs are opaque strings; commas and wildcard characters are literal. --batch-size controls each discovery request; --limit caps distinct selected instances across all pages. Explicit keys bypass discovery paging and cannot be combined with search filters. BID discovery completes before any analysis confirmation; empty scopes never prompt or load timelines.
 
 --dur-longer selects roots whose total duration exceeds a threshold. --element-id, --type, --element-state, and --dur-element-longer restrict analysis to matching element or transition details. Use --with-full-timeline to inspect the complete chronology, or --with-listeners to include runtime listener jobs. Listener rows use s: for job creation (not worker execution start), e: for job end, and d: for an available deadline only while the state is exactly ACTIVATED; missing times are omitted. Listener dur: measures time from job creation to its recorded end, or elapsed time for a pending job; it includes worker waiting time and is omitted when timestamps are unavailable or invalid. On Camunda 8.10, listener rows retain their own observed business ID, which may differ from the process instance.
 
@@ -26,6 +26,8 @@ c8volt ops analyse slow-process-instances [-] [flags]
 ### Examples
 
 ```
+  ./c8volt ops analyse slow-process-instances --bid ORDER-123
+  ./c8volt ops analyse slow-process-instances --bid ORDER-123 --bpmn-process-id order --limit 100
   ./c8volt ops analyse slow-process-instances --key <process-instance-key>
   ./c8volt ops analyse slow-process-instances --bpmn-process-id <bpmn-process-id> --state active --dur-longer 5m
   ./c8volt ops analyse slow-process-instances --bpmn-process-id <bpmn-process-id> --batch-size 500 --limit 2000
@@ -40,6 +42,7 @@ c8volt ops analyse slow-process-instances [-] [flags]
 
 ```
   -n, --batch-size int32            number of process instances to inspect per discovery page; does not cap frozen analysis scope, explicit keys, or timeline details (max limit 1000 enforced by server) (default 1000)
+      --bid string                  exact process business ID to discover on Camunda 8.10; combine with one definition selector, never explicit keys
   -b, --bpmn-process-id string      BPMN process ID to discover process instances
       --dur-element-longer string   only include process instances with elements or transitions longer than this duration, for example 30s or 2m
       --dur-longer string           only include process instances whose whole duration is longer than this duration, for example 5m or 1h30m

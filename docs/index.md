@@ -6,7 +6,7 @@ nav_exclude: true
 has_toc: true
 ---
 
-> Generated from build `c8volt v4.4.0-267-g243a2764-dirty`, commit `243a2764`, built `2026-11-01T14:44:03Z` | Supported Camunda 8 versions: 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.3 (final)
+> Generated from build `c8volt v4.4.0-268-g8b4cc0e8-dirty`, commit `8b4cc0e8`, built `2026-11-01T15:09:43Z` | Supported Camunda 8 versions: 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.3 (final)
 
 <img src="./logo/c8volt_logo_transparent_w_shadow_400x244.png" alt="c8volt logo" />
 
@@ -425,7 +425,7 @@ Native business-ID search is available on `get pi --bid <value>` and `get ut --b
 ./c8volt --tenant tenant-a cancel pi --bid 'ORDER-123' --auto-confirm
 ```
 
-BID cancellation submits only the reviewed distinct roots, with existing state checks, force and wait/no-wait semantics. Failed or incomplete discovery submits nothing. There is no BID rediscovery after approval; native root cancellation may also affect descendants created concurrently beneath that root. A separate dry-run and later run perform separate discoveries. Partial failures retain outcomes and the original exit classification in one JSON envelope; human diagnostics use one bounded ERROR through the configured logger. BID is also available for frozen deletion, variable updates, suspension and resumption as described below; resolution and process-instance repair are described below. Retention and orphan cleanup support BID as described below; the slow-analysis BID selector is not enabled yet.
+BID cancellation submits only the reviewed distinct roots, with existing state checks, force and wait/no-wait semantics. Failed or incomplete discovery submits nothing. There is no BID rediscovery after approval; native root cancellation may also affect descendants created concurrently beneath that root. A separate dry-run and later run perform separate discoveries. Partial failures retain outcomes and the original exit classification in one JSON envelope; human diagnostics use one bounded ERROR through the configured logger. BID is also available for frozen deletion, variable updates, suspension and resumption as described below; resolution and process-instance repair are described below. Retention, orphan cleanup and slow analysis support BID as described below.
 
 `update pi --bid ORDER-123 --vars '{"customerTier":"gold"}'` freezes the existing root-variable plan for every distinct tenant-scoped match, without expanding families. `suspend pi --bid ORDER-123` and `resume pi --bid ORDER-123` select exact instances by default; `--tree` freezes eligible descendants only, without ancestors or siblings. These selectors require Camunda 8.10 and cannot combine with keys or stdin. `--limit` caps distinct matching seeds, not descendants, and `--batch-size` controls each discovery request. Full discovery and required planning finish before confirmation. Execution retains the original selection and reviewed payloads/targets without another BID lookup. Explicit-key state-control dry-runs remain read-free.
 
@@ -456,6 +456,17 @@ Public retention/orphan request and result models add optional typed `FrozenPlan
 ```bash
 ./c8volt --tenant tenant-a ops execute retention-policy --retention-days 30 --bid 'ORDER-123' --dry-run --json
 ./c8volt --tenant tenant-a ops purge orphan-process-instances --bid 'ORDER-123' --limit 25 --dry-run
+```
+
+`ops analyse slow-process-instances --bid ORDER-123` selects distinct matches on Camunda 8.10. Combine BID with one `--bpmn-process-id` or `--pd-key` selector and the existing state/date/no-incident predicates; explicit keys and stdin remain exclusive. Discovery uses the configured tenant, continues through sparse pages, and deduplicates before `--limit`; `--batch-size` controls each request. It freezes the bounded selection before the existing read-only preflight confirmation and loads timelines only after approval. Empty discovery never prompts or enriches. Definition-only and explicit-key analysis retain their existing behavior.
+
+Slow-analysis JSON retains the original optional `processInstanceFilters.businessId` and copied `selection` evidence separately from each root's observed ID. BID-only requests use the additive `process_instance_search` mode; definition+BID retains `process_definition_search`. Query rows remain on stdout, progress and the existing expensive-analysis warning use configured logging, and prompts use plain stderr. Quiet suppresses empty summaries and informational progress while preserving JSON and keys. Partial enrichment results and the original error class survive in one JSON envelope; normal and verbose failures use one bounded aggregate ERROR, with HTTP diagnostics only at DEBUG. No Markdown report format is added.
+
+Public `ops.SlowProcessAnalysisProcessInstanceSearchFilters` adds a copied optional `BusinessId *string` (nil is omitted; empty is invalid), and `SlowProcessAnalysisResult.Selection` is optional. Update unkeyed struct literals and selection-mode switches for these additions; custom `ops.API` implementations need no new method. Camunda 8.8/8.9 reject supplied BID before keyed or empty shortcuts.
+
+```bash
+./c8volt --tenant tenant-a ops analyse slow-pi --bid 'ORDER-123' --json
+./c8volt --tenant tenant-a ops analyse slow-pi --bid 'ORDER-123' --bpmn-process-id order --limit 100 --auto-confirm
 ```
 
 
