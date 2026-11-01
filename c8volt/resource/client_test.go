@@ -1316,3 +1316,13 @@ func (stubProcessAPI) ResumeProcessInstances(context.Context, typex.Keys, int, .
 func (stubProcessAPI) PlanProcessInstanceResumption(context.Context, typex.Keys, ...options.FacadeOption) (process.ProcessInstanceResumptionPlan, error) {
 	return process.ProcessInstanceResumptionPlan{}, ferr.ErrUnsupported
 }
+
+// ValidateProcessInstanceSearchFilter keeps isolated fixtures independent of adapter capability policy.
+func (s stubProcessInstanceService) ValidateProcessInstanceSearchFilter(d.ProcessInstanceFilter) error {
+	return nil
+}
+
+// ValidateProcessInstanceSearchFilter permits fixture selectors without backend access.
+func (s stubProcessAPI) ValidateProcessInstanceSearchFilter(process.ProcessInstanceFilter) error {
+	return nil
+}

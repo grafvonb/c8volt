@@ -1822,8 +1822,10 @@ func fromDomainIncidentDetail(x d.ProcessInstanceIncidentDetail) incident.Proces
 	}
 }
 
+// toDomainProcessInstanceFilter copies optional selection criteria across the facade boundary.
 func toDomainProcessInstanceFilter(x process.ProcessInstanceFilter) d.ProcessInstanceFilter {
 	return d.ProcessInstanceFilter{
+		BusinessId:           toolx.CopyPtr(x.BusinessId),
 		Key:                  x.Key,
 		BpmnProcessId:        x.BpmnProcessId,
 		ProcessVersion:       x.ProcessVersion,
@@ -1840,8 +1842,10 @@ func toDomainProcessInstanceFilter(x process.ProcessInstanceFilter) d.ProcessIns
 	}
 }
 
+// fromDomainProcessInstanceFilter copies optional selection criteria across the facade boundary.
 func fromDomainProcessInstanceFilter(x d.ProcessInstanceFilter) process.ProcessInstanceFilter {
 	return process.ProcessInstanceFilter{
+		BusinessId:           toolx.CopyPtr(x.BusinessId),
 		Key:                  x.Key,
 		BpmnProcessId:        x.BpmnProcessId,
 		ProcessVersion:       x.ProcessVersion,

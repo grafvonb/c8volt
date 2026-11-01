@@ -55,6 +55,8 @@ type ProcessInstanceVariableUpdateResponse struct {
 
 // ProcessInstanceFilter selects instances; singular and plural states are mutually exclusive.
 type ProcessInstanceFilter struct {
+	// BusinessId is an exact opaque criterion; nil omits it and empty is invalid.
+	BusinessId           *string `json:"businessId,omitempty"`
 	Key                  string
 	BpmnProcessId        string
 	ProcessVersion       int32
@@ -75,6 +77,9 @@ type ProcessInstanceFilter struct {
 // String renders active search criteria for diagnostic logging.
 func (f ProcessInstanceFilter) String() string {
 	parts := make([]string, 0, 15)
+	if f.BusinessId != nil {
+		parts = toolx.AppendQuotedField(parts, "businessId", *f.BusinessId)
+	}
 	parts = toolx.AppendQuotedField(parts, "key", f.Key)
 	parts = toolx.AppendQuotedField(parts, "bpmnProcessId", f.BpmnProcessId)
 	parts = toolx.AppendInt32Field(parts, "processVersion", f.ProcessVersion)

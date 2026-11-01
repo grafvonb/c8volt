@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	d "github.com/grafvonb/c8volt/internal/domain"
+	"github.com/grafvonb/c8volt/toolx"
 )
 
 // NormalizeProcessInstanceSearchFilter validates explicit plural selection before
@@ -15,6 +16,7 @@ import (
 // preserved. Combined search uses the 8.10 suspension capability on all entry
 // paths, including direct incident discovery which can bypass adapter searches.
 func NormalizeProcessInstanceSearchFilter(filter d.ProcessInstanceFilter, validateStates func(d.States) error) (d.ProcessInstanceFilter, error) {
+	filter.BusinessId = toolx.CopyPtr(filter.BusinessId)
 	if len(filter.States) == 0 {
 		return filter, validateStates(d.States{filter.State})
 	}

@@ -39,6 +39,8 @@ Provide repeated or comma-separated --key values, or newline-separated keys on s
 
 Every requested key must resolve or the command fails without a partial result. Keyed reads require Camunda 8.8 or newer and use backend authorization without discovery-tenant filtering, so --tenant does not hide an authorized task and the task's actual tenant is returned.
 
+Use --bid for exact native task business-ID search on Camunda 8.10. It matches the task's stored ID, which can differ from the current process-instance ID, without a parent lookup. Spaces, commas and wildcards are literal; empty or invalid UTF-8 input is rejected, and search has no creation-length limit. Camunda 8.8/8.9 reject supplied IDs before search. --bid combines with --pi-key and other native predicates; explicit task keys and stdin keys remain exclusive.
+
 Without keys, search by process, element, state, assignment, candidate, and effective tenant scope. Predicates are combined with AND. Supported states are ASSIGNING, CANCELED, CANCELING, COMPLETED, COMPLETING, CREATED, CREATING, FAILED, and UPDATING; state matching is case-insensitive, and all applies no state predicate. --batch-size controls each discovery request, --limit caps returned tasks across all pages, and --total emits the exact matching count.
 
 Use variable-search flags to narrow native searches by local variables on each task. --var-exists requires every listed local variable name to exist. --var accepts name=value equality shorthand plus advanced name.$operator=value clauses for $eq, $neq, $exists, $in, $notIn, and $like; $notin is accepted as $notIn. Values use the existing process-instance filter encoding: quote strings and use JSON string arrays for membership operators. --var-like uses native wildcard patterns: * matches zero or more characters, ? matches one character, and escaped wildcards remain literal. Commas inside quoted values and JSON arrays stay inside the variable clause. Variable clauses and ordinary search predicates are combined with AND. Parent-scope values do not satisfy local filters; negative and existence matching retain backend semantics.
@@ -50,7 +52,9 @@ Human rows show task key, tenant, element ID, and state, followed by related pi:
 Filtering does not retrieve variables. Add --with-vars independently to retrieve the effective variables selected by the backend for each returned task on Camunda 8.8, 8.9, or 8.10. Human output nests variables beneath their task. Values marked (inherited) come from an enclosing scope and do not satisfy task-local variable filters. With --verbose, each variable shows pi:<scopeKey> for process-instance scopes or element:<scopeKey> for element scopes; inspect these with get pi --key or get element --key respectively. --var-value-limit sets a nonnegative Unicode-character limit after structured values are compacted; zero, the default, keeps full received values. Truncation labels distinguish backend-incomplete values from display shortening. JSON always preserves received values and backend truncation metadata. Effective keys-only and --total output skip variable retrieval.
 
 Use --json for one collection envelope or --keys-only for one task key per line. Keys cannot be combined with search filters, --limit, or --total; --total also conflicts with --limit, --json, and --keys-only. Variable mutation, task mutations, forms, audit history, date filters, custom sorting, and watch mode are not provided by this command.`,
-	Example: `  ./c8volt get ut --var 'status="approved"'
+	Example: `  ./c8volt get ut --bid 'ORDER-123,ORDER-456' --json
+  ./c8volt get ut --bid 'ORDER-123' --pi-key <process-instance-key> --with-vars
+  ./c8volt get ut --var 'status="approved"'
   ./c8volt get ut --var-exists payload
   ./c8volt get ut --var-like 'email=*@example.com'
   ./c8volt get ut --assignee alice --var 'status="approved"' --limit 20
@@ -74,6 +78,10 @@ Use --json for one collection envelope or --keys-only for one task key per line.
 		if err := validateOptionalDashArg(args); err != nil {
 			return silenceUsageForError(cmd, err)
 		}
+		// BID validation runs with command context so its failures honor the shared envelope and configured logger.
+		if searchBusinessIDFlag(cmd) != nil {
+			return nil
+		}
 		return silenceUsageForError(cmd, validateGetUserTaskFlags(cmd))
 	},
 	Run: func(cmd *cobra.Command, args []string) {
@@ -81,55 +89,60 @@ Use --json for one collection envelope or --keys-only for one task key per line.
 		if err != nil {
 			handleNewCliError(cmd, log, cfg, fmt.Errorf("error creating c8volt client: %w", err))
 		}
+		if searchBusinessIDFlag(cmd) != nil {
+			if err := validateGetUserTaskFlags(cmd); err != nil {
+				handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+			}
+		}
 		if err := requireAutomationSupport(cmd); err != nil {
-			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+			handleBusinessIDSearchError(cmd, log, cfg.App.NoErrCodes, err)
 		}
 
 		stdinKeys, err := readUserTaskKeys(args)
 		if err != nil {
-			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+			handleBusinessIDSearchError(cmd, log, cfg.App.NoErrCodes, err)
 		}
 		keys := mergeAndValidateKeys(cmd, flagGetUserTaskKeys, stdinKeys, log, cfg).Unique()
 		if len(keys) == 0 {
-			request, err := newGetUserTaskSearchRequest()
+			request, err := newGetUserTaskSearchRequest(cmd)
 			if err != nil {
-				handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+				handleBusinessIDSearchError(cmd, log, cfg.App.NoErrCodes, err)
 			}
 			if flagGetUserTaskTotal {
 				total, err := cli.SearchUserTasksTotal(cmd.Context(), request, collectOptions()...)
 				if err != nil {
-					handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("get user tasks total: %w", err))
+					handleBusinessIDSearchError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("get user tasks total: %w", err))
 				}
 				if err := userTaskTotalView(cmd, total); err != nil {
-					handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("render user tasks total: %w", err))
+					handleBusinessIDSearchError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("render user tasks total: %w", err))
 				}
 				return
 			}
 			result, renderedIncrementally, err := searchUserTasksWithPaging(cmd, cli, request)
 			if err != nil {
-				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("get user tasks: %w", err))
+				handleBusinessIDSearchError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("get user tasks: %w", err))
 			}
 			if renderedIncrementally {
 				return
 			}
 			if err := renderSelectedUserTasks(cmd, cli, result); err != nil {
-				handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+				handleBusinessIDSearchError(cmd, log, cfg.App.NoErrCodes, err, len(result.Items))
 			}
 			return
 		}
 		if hasGetUserTaskSearchFlags(cmd) {
-			handleCommandError(cmd, log, cfg.App.NoErrCodes, mutuallyExclusiveFlagsf("--key cannot be combined with search filters, --limit, or --total"))
+			handleBusinessIDSearchError(cmd, log, cfg.App.NoErrCodes, mutuallyExclusiveFlagsf("--key cannot be combined with search filters, --limit, or --total"))
 		}
 		if ok, firstBadKey, _ := validateKeys(keys); !ok {
-			handleCommandError(cmd, log, cfg.App.NoErrCodes, invalidFlagValuef("user task key %q is not a valid key", firstBadKey))
+			handleBusinessIDSearchError(cmd, log, cfg.App.NoErrCodes, invalidFlagValuef("user task key %q is not a valid key", firstBadKey))
 		}
 
 		result, err := cli.GetUserTasks(cmd.Context(), keys, flagWorkers, collectOptions()...)
 		if err != nil {
-			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("get user tasks: %w", err))
+			handleBusinessIDSearchError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("get user tasks: %w", err))
 		}
 		if err := renderSelectedUserTasks(cmd, cli, result); err != nil {
-			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+			handleBusinessIDSearchError(cmd, log, cfg.App.NoErrCodes, err)
 		}
 	},
 }
@@ -140,6 +153,7 @@ func init() {
 	getCmd.AddCommand(getUserTaskCmd)
 
 	flags := getUserTaskCmd.Flags()
+	flags.String("bid", "", "exact stored task business ID (Camunda 8.10+); commas, spaces and wildcards are literal")
 	flags.StringSliceVarP(&flagGetUserTaskKeys, "key", "k", nil, "user task key(s) to fetch; repeat, comma-separate, or combine with stdin")
 	flags.StringVar(&flagGetUserTaskPIKey, "pi-key", "", "process instance key to filter in search mode")
 	flags.StringVar(&flagGetUserTaskPDKey, "pd-key", "", "process definition key to filter in search mode")
@@ -170,6 +184,9 @@ func init() {
 // validateGetUserTaskFlags rejects local key, bound, worker, and output
 // conflicts before any native task request can be issued.
 func validateGetUserTaskFlags(cmd *cobra.Command) error {
+	if err := validateSearchBusinessIDFlag(cmd); err != nil {
+		return err
+	}
 	if flagGetUserTaskBatchSize <= 0 || flagGetUserTaskBatchSize > consts.MaxPISearchSize {
 		return invalidFlagValuef("invalid value for --batch-size: %d, expected positive integer up to %d", flagGetUserTaskBatchSize, consts.MaxPISearchSize)
 	}
@@ -227,12 +244,13 @@ func validateGetUserTaskFlags(cmd *cobra.Command) error {
 
 // newGetUserTaskSearchRequest maps validated command flags into an AND-combined
 // native search request without changing case-sensitive identity predicates.
-func newGetUserTaskSearchRequest() (task.SearchRequest, error) {
+func newGetUserTaskSearchRequest(cmds ...*cobra.Command) (task.SearchRequest, error) {
 	variableFilters, err := parseUserTaskVariableFilters()
 	if err != nil {
 		return task.SearchRequest{}, err
 	}
 	return task.SearchRequest{
+		BusinessId:           searchBusinessIDFlag(cmds...),
 		ProcessInstanceKey:   strings.TrimSpace(flagGetUserTaskPIKey),
 		ProcessDefinitionKey: strings.TrimSpace(flagGetUserTaskPDKey),
 		BpmnProcessId:        strings.TrimSpace(flagGetUserTaskBpmnProcessID),
@@ -273,7 +291,7 @@ func hasGetUserTaskSearchFlags(cmd *cobra.Command) bool {
 	if cmd == nil {
 		return false
 	}
-	for _, name := range []string{"pi-key", "pd-key", "bpmn-process-id", "element-id", "state", "assignee", "candidate-user", "candidate-group", "var-exists", "var", "var-like", "limit", "total"} {
+	for _, name := range []string{"bid", "pi-key", "pd-key", "bpmn-process-id", "element-id", "state", "assignee", "candidate-user", "candidate-group", "var-exists", "var", "var-like", "limit", "total"} {
 		if cmd.Flags().Changed(name) {
 			return true
 		}

@@ -713,3 +713,8 @@ func (stubDryRunProcessInstanceAPI) ValidateProcessInstanceResumption() error {
 func (stubDryRunProcessInstanceAPI) ResumeProcessInstance(context.Context, string, ...services.CallOption) (d.ProcessInstanceResumptionResult, error) {
 	return d.ProcessInstanceResumptionResult{}, d.ErrUnsupported
 }
+
+// ValidateProcessInstanceSearchFilter keeps isolated fixtures independent of adapter capability policy.
+func (s stubDryRunProcessInstanceAPI) ValidateProcessInstanceSearchFilter(d.ProcessInstanceFilter) error {
+	return nil
+}

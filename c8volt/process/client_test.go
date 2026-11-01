@@ -3923,3 +3923,8 @@ func TestClient_SearchProcessInstancesPages_PreservesCompletionAndPartialEvidenc
 		require.Equal(t, ProcessInstanceSearchCompletion(completion), fromDomainProcessInstanceSearchPagesResult(d.ProcessInstanceSearchPagesResult{Completion: completion}).Completion)
 	}
 }
+
+// ValidateProcessInstanceSearchFilter keeps isolated fixtures independent of adapter capability policy.
+func (s stubProcessInstanceAPI) ValidateProcessInstanceSearchFilter(d.ProcessInstanceFilter) error {
+	return nil
+}

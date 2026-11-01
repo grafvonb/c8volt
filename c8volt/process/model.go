@@ -550,7 +550,10 @@ type OrphanDiscovery struct {
 	Keys   typex.Keys            `json:"keys,omitempty"`
 }
 
+// ProcessInstanceFilter combines native search predicates with AND.
 type ProcessInstanceFilter struct {
+	// BusinessId is an exact opaque criterion; nil omits it and empty is invalid.
+	BusinessId           *string                          `json:"businessId,omitempty"`
 	Key                  string                           `json:"key,omitempty"`
 	BpmnProcessId        string                           `json:"bpmnProcessId,omitempty"`
 	ProcessVersion       int32                            `json:"version,omitempty"`
@@ -567,8 +570,12 @@ type ProcessInstanceFilter struct {
 	VariableFilters      ProcessInstanceVariableFilterSet `json:"variableFilters,omitempty"`
 }
 
+// String quotes opaque criteria for diagnostic descriptions.
 func (f ProcessInstanceFilter) String() string {
 	parts := make([]string, 0, 14)
+	if f.BusinessId != nil {
+		parts = toolx.AppendQuotedField(parts, "businessId", *f.BusinessId)
+	}
 	parts = toolx.AppendQuotedField(parts, "key", f.Key)
 	parts = toolx.AppendQuotedField(parts, "bpmnProcessId", f.BpmnProcessId)
 	parts = toolx.AppendInt32Field(parts, "processVersion", f.ProcessVersion)

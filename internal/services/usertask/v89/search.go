@@ -11,10 +11,14 @@ import (
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/services"
 	"github.com/grafvonb/c8volt/internal/services/common"
+	"github.com/grafvonb/c8volt/toolx"
 )
 
 // SearchUserTasksPage executes one backend-filtered v8.9 user-task search request.
 func (s *Service) SearchUserTasksPage(ctx context.Context, query d.UserTaskSearchQuery, pageReq d.UserTaskPageRequest, opts ...services.CallOption) (d.UserTaskSearchPage, error) {
+	if err := common.ValidateBusinessIDSearch(query.BusinessId, toolx.V89); err != nil {
+		return d.UserTaskSearchPage{}, err
+	}
 	if err := pageReq.Validate(); err != nil {
 		return d.UserTaskSearchPage{}, fmt.Errorf("validate user-task search page: %w", err)
 	}

@@ -369,3 +369,8 @@ func MapStateResponsesToReports(in d.StateResponses) StateReports {
 	}
 	return out
 }
+
+// ValidateProcessInstanceSearchFilter delegates no-I/O input policy before callers perform related selector lookups.
+func (c *client) ValidateProcessInstanceSearchFilter(filter ProcessInstanceFilter) error {
+	return ferr.FromDomain(c.piApi.ValidateProcessInstanceSearchFilter(toDomainProcessInstanceFilter(filter)))
+}

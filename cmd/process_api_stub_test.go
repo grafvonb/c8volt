@@ -788,3 +788,8 @@ func (s stubTaskAPI) PrepareUserTaskAssignments(context.Context, types.Keys, str
 func (s stubTaskAPI) ExecuteUserTaskAssignments(context.Context, task.UserTaskAssignmentPlan, bool) (task.UserTaskAssignmentResults, error) {
 	panic("unexpected ExecuteUserTaskAssignments call")
 }
+
+// ValidateProcessInstanceSearchFilter permits fixture selectors without backend access.
+func (s stubProcessAPI) ValidateProcessInstanceSearchFilter(process.ProcessInstanceFilter) error {
+	return nil
+}

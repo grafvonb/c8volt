@@ -36,8 +36,9 @@ func registerPISharedProcessDefinitionFilterFlags(fs *pflag.FlagSet) {
 // populatePISearchFilterOpts converts validated command flags into the service
 // filter model. Relative-day inputs are resolved here so lower layers receive
 // concrete date bounds independent of the CLI flag style.
-func populatePISearchFilterOpts() process.ProcessInstanceFilter {
+func populatePISearchFilterOpts(cmds ...*cobra.Command) process.ProcessInstanceFilter {
 	f := process.ProcessInstanceFilter{
+		BusinessId:           searchBusinessIDFlag(cmds...),
 		ParentKey:            flagGetPIParentKey,
 		BpmnProcessId:        flagGetPIBpmnProcessID,
 		ProcessVersion:       flagGetPIProcessVersion,
@@ -75,8 +76,8 @@ func populatePISearchFilterOpts() process.ProcessInstanceFilter {
 // hasPISearchFilterFlags reports whether list/search selectors beyond the
 // default state are present. Keyed and user-task modes use this to reject
 // ambiguous combinations before any lookup work starts.
-func hasPISearchFilterFlags() bool {
-	return flagGetPIParentKey != "" ||
+func hasPISearchFilterFlags(cmds ...*cobra.Command) bool {
+	return searchBusinessIDFlag(cmds...) != nil || flagGetPIParentKey != "" ||
 		flagGetPIBpmnProcessID != "" ||
 		flagGetPIProcessVersion != 0 ||
 		flagGetPIProcessVersionTag != "" ||

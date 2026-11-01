@@ -36,6 +36,9 @@ func validatePISearchFlags(cmds ...*cobra.Command) error {
 	if len(cmds) > 0 {
 		cmd = cmds[0]
 	}
+	if err := validateSearchBusinessIDFlag(cmd); err != nil {
+		return err
+	}
 	if flagGetPISize <= 0 || flagGetPISize > consts.MaxPISearchSize {
 		return invalidFlagValuef("invalid value for --batch-size: %d, expected positive integer up to %d", flagGetPISize, consts.MaxPISearchSize)
 	}

@@ -6,7 +6,7 @@ nav_exclude: true
 has_toc: true
 ---
 
-> Generated from build `c8volt v4.4.0-259-gbfbdb54d-dirty`, commit `bfbdb54d`, built `2026-11-01T11:34:16Z` | Supported Camunda 8 versions: 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.3 (final)
+> Generated from build `c8volt v4.4.0-260-g493dbf17-dirty`, commit `493dbf17`, built `2026-11-01T11:55:51Z` | Supported Camunda 8 versions: 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.3 (final)
 
 <img src="./logo/c8volt_logo_transparent_w_shadow_400x244.png" alt="c8volt logo" />
 
@@ -412,6 +412,18 @@ Job and user-task inspection on Camunda 8.10 preserves each resource's own optio
 Retention, incident purge, orphan purge, and process-definition purge keep observed process-instance IDs in saved JSON and Markdown audit reports and verbose plan details. Markdown escapes markup and control characters; JSON retains exact values. Repair action plans and key/status-only outcomes remain ID-free without additional reads. Human plan details use the configured INFO logger and are suppressed by quiet or WARN level. Backend workflow failures in retention and process-instance purges retain partial plans/results in one JSON envelope and the saved report, preserve the original exit code, and emit one bounded human ERROR. Raw transport evidence remains confined to machine error fields and redacted DEBUG diagnostics; verbose alone does not enable HTTP details.
 
 Generated references: [deploy process-definition](./cli/c8volt_deploy_process-definition), [run process-instance](./cli/c8volt_run_process-instance), [get process-definition](./cli/c8volt_get_process-definition).
+
+Native business-ID search is available on `get pi --bid <value>` and `get ut --bid <value>` with Camunda 8.10. Both send one exact scalar criterion, AND-combined with existing predicates and tenant scope. Task search matches the task's stored ID rather than the current parent ID; `--pi-key` remains an additional task predicate. Explicit resource keys and stdin keys cannot combine with BID. Omitted input retains existing version behavior; 8.8/8.9 reject supplied IDs before discovery. Empty/invalid UTF-8 input is invalid; commas, spaces, Unicode, numeric-looking values and wildcards are literal, and search does not impose creation's length limit.
+
+```bash
+./c8volt get pi --bid 'ORDER-123,ORDER-456' --state all --json
+./c8volt get pi --bid 'ORDER-123' --direct-incidents-only --total
+./c8volt get ut --bid 'ORDER-123' --pi-key 2251799813685249 --with-vars
+```
+
+Paging, limits, totals and enrichment retain the criterion. Direct-incident PI search first selects native BID matches, then applies incident checks before the selected limit. Empty queries preserve their existing JSON shape, zero-byte keys output, and quiet behavior. Human query failures use one bounded configured ERROR; machine error evidence and original exit codes remain intact, with HTTP diagnostics available only at DEBUG.
+
+Library callers use copied optional `BusinessId *string` fields on `process.ProcessInstanceFilter` and `task.SearchRequest`; nil means omitted, while a pointer to empty is invalid. Process and operations report conversions preserve the criterion independently of observed resource IDs. Custom implementations of `process.API` must implement the no-I/O `ValidateProcessInstanceSearchFilter` method; it delegates to the matching internal adapter and is used before related selector lookups. These additive fields can require updates to unkeyed Go struct literals.
 
 ### Inspect Process Instances
 

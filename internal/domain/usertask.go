@@ -44,6 +44,8 @@ type VariableEnrichedUserTasks struct {
 // UserTaskSearchQuery carries backend predicates and collection bounds without
 // embedding tenant scope, which remains a service call option.
 type UserTaskSearchQuery struct {
+	// BusinessId is an exact opaque criterion; nil omits it and empty is invalid.
+	BusinessId           *string `json:"businessId,omitempty"`
 	ProcessInstanceKey   string
 	ProcessDefinitionKey string
 	BpmnProcessId        string

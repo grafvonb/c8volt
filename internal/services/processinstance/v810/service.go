@@ -230,6 +230,9 @@ func (s *Service) SearchForProcessInstances(ctx context.Context, filter d.Proces
 
 // SearchForProcessInstancesPage fetches and maps one v8.10 process-instance search page.
 func (s *Service) SearchForProcessInstancesPage(ctx context.Context, filter d.ProcessInstanceFilter, pageReq d.ProcessInstancePageRequest, opts ...services.CallOption) (d.ProcessInstancePage, error) {
+	if err := s.ValidateProcessInstanceSearchFilter(filter); err != nil {
+		return d.ProcessInstancePage{}, err
+	}
 	filter, err := common.NormalizeProcessInstanceSearchFilter(filter, s.ValidateProcessInstanceStates)
 	if err != nil {
 		return d.ProcessInstancePage{}, err
@@ -302,7 +305,15 @@ func (s *Service) SearchForProcessInstancesPage(ctx context.Context, filter d.Pr
 		return d.ProcessInstancePage{}, fmt.Errorf("building variable filters: %w", err)
 	}
 
+	var businessIDFilter *camundav810.StringFilterProperty
+	if filter.BusinessId != nil {
+		businessIDFilter, err = newStringEqFilterPtr(*filter.BusinessId)
+		if err != nil {
+			return d.ProcessInstancePage{}, err
+		}
+	}
 	bodyFilter := &processInstanceFilter{
+		BusinessId:                  businessIDFilter,
 		TenantId:                    tenantFilter,
 		ProcessInstanceKey:          processInstanceKeyFilter,
 		ProcessDefinitionId:         processDefinitionIDFilter,
@@ -769,4 +780,13 @@ func (s *Service) DescendantsResult(ctx context.Context, rootKey string, opts ..
 // FamilyResult returns a structured traversal result for a process instance's full family.
 func (s *Service) FamilyResult(ctx context.Context, startKey string, opts ...services.CallOption) (pitraversal.Result, error) {
 	return pitraversal.BuildFamilyResult(ctx, s, startKey, opts...)
+}
+
+// ValidateProcessInstanceSearchFilter rejects unsupported or invalid criteria before any discovery or plan shortcut.
+func (s *Service) ValidateProcessInstanceSearchFilter(filter d.ProcessInstanceFilter) error {
+	if err := common.ValidateBusinessIDSearch(filter.BusinessId, toolx.V810); err != nil {
+		return err
+	}
+	_, err := common.NormalizeProcessInstanceSearchFilter(filter, s.ValidateProcessInstanceStates)
+	return err
 }

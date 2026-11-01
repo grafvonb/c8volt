@@ -28,6 +28,8 @@ type API interface {
 	SuspendProcessInstance(ctx context.Context, key string, opts ...services.CallOption) (d.ProcessInstanceSuspensionResult, error)
 	// ValidateProcessInstanceStates checks explicit state capabilities without I/O.
 	ValidateProcessInstanceStates(states d.States) error
+	// ValidateProcessInstanceSearchFilter validates capability and criteria without I/O.
+	ValidateProcessInstanceSearchFilter(filter d.ProcessInstanceFilter) error
 	CreateProcessInstance(ctx context.Context, data d.ProcessInstanceData, opts ...services.CallOption) (d.ProcessInstanceCreation, error)
 	GetProcessInstance(ctx context.Context, key string, opts ...services.CallOption) (d.ProcessInstance, error)
 	SearchProcessInstanceVariables(ctx context.Context, key string, opts ...services.CallOption) ([]d.ProcessInstanceVariable, error)

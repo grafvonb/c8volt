@@ -78,8 +78,10 @@ func (r DryRunPIKeyExpansion) HasActionableResults() bool {
 }
 
 // API defines public process operations. Custom implementations must include the
-// suspension planner and single/collection executors; existing callers remain compatible.
+// no-I/O search validator, suspension planner and single/collection executors.
 type API interface {
+	// ValidateProcessInstanceSearchFilter checks criteria and version support without backend I/O.
+	ValidateProcessInstanceSearchFilter(filter ProcessInstanceFilter) error
 	// PlanProcessInstanceSuspension freezes selected subtrees and active targets without mutation.
 	PlanProcessInstanceSuspension(ctx context.Context, keys types.Keys, opts ...options.FacadeOption) (ProcessInstanceSuspensionPlan, error)
 	// PlanProcessInstanceResumption freezes selected subtrees and suspended targets without mutation.

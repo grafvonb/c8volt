@@ -19,7 +19,7 @@ import (
 // lookup while callers retain rendering and prompt decisions.
 func SearchProcessInstancesPages(ctx context.Context, piAPI API, incAPI SearchProcessInstanceIncidentAPI, request d.ProcessInstanceSearchRequest, visitor d.ProcessInstanceSearchPageVisitor, opts ...services.CallOption) (d.ProcessInstanceSearchPagesResult, error) {
 	result := d.ProcessInstanceSearchPagesResult{Limit: request.Limit, Completion: d.ProcessInstanceSearchCompletionIncomplete}
-	filter, err := common.NormalizeProcessInstanceSearchFilter(request.Filter, piAPI.ValidateProcessInstanceStates)
+	filter, err := normalizeValidatedProcessInstanceSearchFilter(piAPI, request.Filter)
 	if err != nil {
 		return result, err
 	}
@@ -69,7 +69,7 @@ func SearchProcessInstancesPages(ctx context.Context, piAPI API, incAPI SearchPr
 // SearchProcessInstancesTotal uses exact backend totals when compatible and
 // otherwise counts distinct filtered keys through the same validated traversal as collection.
 func SearchProcessInstancesTotal(ctx context.Context, piAPI API, incAPI SearchProcessInstanceIncidentAPI, request d.ProcessInstanceSearchRequest, visitor d.ProcessInstanceSearchTotalVisitor, opts ...services.CallOption) (int64, error) {
-	filter, err := common.NormalizeProcessInstanceSearchFilter(request.Filter, piAPI.ValidateProcessInstanceStates)
+	filter, err := normalizeValidatedProcessInstanceSearchFilter(piAPI, request.Filter)
 	if err != nil {
 		return 0, err
 	}
@@ -111,8 +111,23 @@ func SearchProcessInstancesTotal(ctx context.Context, piAPI API, incAPI SearchPr
 	return total, err
 }
 
-// normalizeProcessInstanceSearchRequest applies default page sizing once before traversal.
+// normalizeProcessInstanceSearchRequest chooses a predicate-safe route and applies default page sizing once before traversal.
 func normalizeProcessInstanceSearchRequest(request *d.ProcessInstanceSearchRequest) {
+	if request.Filter.BusinessId != nil && request.DirectIncidentIndex {
+		// The shortcut is an incident predicate as well as a routing hint.
+		// Keep that predicate when native BID selection makes the index ineligible.
+		request.LocalFilters.DirectIncidentsOnly = true
+		if request.LocalFilters.IncidentState == "" {
+			request.LocalFilters.IncidentState = request.DirectIncidentFilter.State
+		}
+		if request.LocalFilters.IncidentErrorType == "" {
+			request.LocalFilters.IncidentErrorType = request.DirectIncidentFilter.ErrorType
+		}
+		if request.LocalFilters.IncidentErrorMessage == "" {
+			request.LocalFilters.IncidentErrorMessage = request.DirectIncidentFilter.ErrorMessage
+		}
+		request.DirectIncidentIndex = false
+	}
 	if request.Page.Size <= 0 {
 		request.Page.Size = consts.MaxPISearchSize
 	}
@@ -339,4 +354,12 @@ func minPositiveProcessInstanceSearchSize(batchSize int32, limit int32) int {
 // processInstanceSearchLimitReached checks a positive caller cap after local filtering.
 func processInstanceSearchLimitReached(count int, limit int32) bool {
 	return limit > 0 && int32(count) >= limit
+}
+
+// normalizeValidatedProcessInstanceSearchFilter checks adapter capability before shortcuts, then normalizes states.
+func normalizeValidatedProcessInstanceSearchFilter(api API, filter d.ProcessInstanceFilter) (d.ProcessInstanceFilter, error) {
+	if err := api.ValidateProcessInstanceSearchFilter(filter); err != nil {
+		return filter, err
+	}
+	return common.NormalizeProcessInstanceSearchFilter(filter, api.ValidateProcessInstanceStates)
 }

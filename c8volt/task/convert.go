@@ -320,6 +320,7 @@ func toDomainVariableFilterSet(x VariableFilterSet) d.ProcessInstanceVariableFil
 // toDomainSearchRequest maps public selectors and bounds without adding tenant scope.
 func toDomainSearchRequest(x SearchRequest) d.UserTaskSearchQuery {
 	return d.UserTaskSearchQuery{
+		BusinessId:           toolx.CopyPtr(x.BusinessId),
 		ProcessInstanceKey:   x.ProcessInstanceKey,
 		ProcessDefinitionKey: x.ProcessDefinitionKey,
 		BpmnProcessId:        x.BpmnProcessId,

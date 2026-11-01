@@ -705,3 +705,8 @@ func TestProcessInstanceSearchDirectIndexCompletion(t *testing.T) {
 		})
 	}
 }
+
+// ValidateProcessInstanceSearchFilter keeps isolated fixtures independent of adapter capability policy.
+func (s pagingSearchAPI) ValidateProcessInstanceSearchFilter(d.ProcessInstanceFilter) error {
+	return nil
+}

@@ -11,10 +11,14 @@ import (
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/services"
 	"github.com/grafvonb/c8volt/internal/services/common"
+	"github.com/grafvonb/c8volt/toolx"
 )
 
 // SearchUserTasksPage executes one backend-filtered v8.10 user-task search request.
 func (s *Service) SearchUserTasksPage(ctx context.Context, query d.UserTaskSearchQuery, pageReq d.UserTaskPageRequest, opts ...services.CallOption) (d.UserTaskSearchPage, error) {
+	if err := common.ValidateBusinessIDSearch(query.BusinessId, toolx.V810); err != nil {
+		return d.UserTaskSearchPage{}, err
+	}
 	if err := pageReq.Validate(); err != nil {
 		return d.UserTaskSearchPage{}, fmt.Errorf("validate user-task search page: %w", err)
 	}
@@ -76,7 +80,15 @@ func userTaskSearchRequest(query d.UserTaskSearchQuery, pageReq d.UserTaskPageRe
 	if err != nil {
 		return camundav810.SearchUserTasksJSONRequestBody{}, err
 	}
+	var businessIDFilter *camundav810.StringFilterProperty
+	if query.BusinessId != nil {
+		businessIDFilter, err = newStringEqFilterPtr(*query.BusinessId)
+		if err != nil {
+			return camundav810.SearchUserTasksJSONRequestBody{}, err
+		}
+	}
 	filter := &camundav810.UserTaskFilter{
+		BusinessId:           businessIDFilter,
 		ProcessInstanceKey:   processInstanceKey,
 		ProcessDefinitionKey: processDefinitionKey,
 		ProcessDefinitionId:  processDefinitionID,

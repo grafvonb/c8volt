@@ -12,6 +12,8 @@ List or fetch process instances
 
 Get process instances by key or search criteria.
 
+Use --bid for exact native business-ID search on Camunda 8.10. It combines with other search predicates and tenant scope using AND, including direct-incident filters. The value is one opaque scalar: spaces, commas and wildcards are literal. Empty or invalid UTF-8 input is rejected; search has no creation-length limit. Camunda 8.8/8.9 reject supplied IDs before discovery. Keys, stdin keys and --has-user-tasks cannot be combined with --bid.
+
 On Camunda 8.10, each observed instance includes its own business ID when present, including enriched results. Human rows show bid:<value> beside the process name, quoting values only when needed; JSON preserves IDs exactly; keys and totals stay unchanged.
 
 Use a known key or search by process definition, tenant, state, incidents, variables, jobs, user tasks, and time ranges. Missing explicit keys return not-found.
@@ -35,6 +37,8 @@ c8volt get process-instance [flags]
 ### Examples
 
 ```
+  ./c8volt get pi --bid 'ORDER-123,ORDER-456' --state all --json
+  ./c8volt get pi --bid 'ORDER-123' --direct-incidents-only --total
   ./c8volt get process-instance --bpmn-process-id <bpmn-process-id> --state active --limit 5
   ./c8volt get process-instance --key <process-instance-key>
   ./c8volt get process-instance --state suspended --json
@@ -60,6 +64,7 @@ c8volt get process-instance [flags]
 
 ```
   -n, --batch-size int32                number of process instances to request per page; does not cap total results (max limit 1000 enforced by server) (default 1000)
+      --bid string                      exact business ID to filter by (Camunda 8.10+); commas, spaces and wildcards are literal
   -b, --bpmn-process-id string          BPMN process ID to filter process instances
       --children-only                   show only child process instances
       --direct-incidents-only           show only process instances with direct incident details

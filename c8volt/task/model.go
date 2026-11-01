@@ -86,6 +86,8 @@ type VariableEnrichedUserTasks struct {
 
 // SearchRequest carries native task predicates and collection bounds.
 type SearchRequest struct {
+	// BusinessId is an exact opaque criterion; nil omits it and empty is invalid.
+	BusinessId           *string           `json:"businessId,omitempty"`
 	ProcessInstanceKey   string            `json:"processInstanceKey,omitempty"`
 	ProcessDefinitionKey string            `json:"processDefinitionKey,omitempty"`
 	BpmnProcessId        string            `json:"bpmnProcessId,omitempty"`

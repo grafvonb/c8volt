@@ -63,6 +63,8 @@ var getProcessInstanceCmd = &cobra.Command{
 	Short: "List or fetch process instances",
 	Long: `Get process instances by key or search criteria.
 
+Use --bid for exact native business-ID search on Camunda 8.10. It combines with other search predicates and tenant scope using AND, including direct-incident filters. The value is one opaque scalar: spaces, commas and wildcards are literal. Empty or invalid UTF-8 input is rejected; search has no creation-length limit. Camunda 8.8/8.9 reject supplied IDs before discovery. Keys, stdin keys and --has-user-tasks cannot be combined with --bid.
+
 On Camunda 8.10, each observed instance includes its own business ID when present, including enriched results. Human rows show bid:<value> beside the process name, quoting values only when needed; JSON preserves IDs exactly; keys and totals stay unchanged.
 
 Use a known key or search by process definition, tenant, state, incidents, variables, jobs, user tasks, and time ranges. Missing explicit keys return not-found.
@@ -78,7 +80,9 @@ Use --with-incidents for direct incidents, --with-vars for process-instance-scop
 Use variable-search flags to narrow list/search results natively. --var-exists requires every listed variable name to exist. --var accepts name=value equality shorthand plus advanced name.$operator=value clauses for $eq, $neq, $exists, $in, $notIn, and $like; $notin is accepted as $notIn. --var-like uses native wildcard patterns: * matches zero or more characters, ? matches one character, and escaped wildcards remain literal. Commas inside quoted values and JSON arrays stay inside the variable clause. Variable scopeKey means the scope where the variable is directly defined.
 
 Use --has-user-tasks to fetch process instances by their owning user-task keys.`,
-	Example: `  ./c8volt get process-instance --bpmn-process-id <bpmn-process-id> --state active --limit 5
+	Example: `  ./c8volt get pi --bid 'ORDER-123,ORDER-456' --state all --json
+  ./c8volt get pi --bid 'ORDER-123' --direct-incidents-only --total
+  ./c8volt get process-instance --bpmn-process-id <bpmn-process-id> --state active --limit 5
   ./c8volt get process-instance --key <process-instance-key>
   ./c8volt get process-instance --state suspended --json
   ./c8volt get process-instance --state active --total
@@ -109,9 +113,10 @@ Use --has-user-tasks to fetch process instances by their owning user-task keys.`
 		if err := requireAutomationSupport(cmd); err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}
+		var pis process.ProcessInstances
 		ctx := cmd.Context()
 		fail := func(err error) {
-			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+			handleBusinessIDSearchError(cmd, log, cfg.App.NoErrCodes, err, len(pis.Items))
 		}
 		if cmd.Flags().Changed("workers") && flagWorkers < 1 {
 			fail(invalidFlagValuef("--workers must be positive integer"))
@@ -119,7 +124,7 @@ Use --has-user-tasks to fetch process instances by their owning user-task keys.`
 		if err := validatePISearchFlags(cmd); err != nil {
 			fail(err)
 		}
-		filterFlagsSet := hasPISearchFilterFlags()
+		filterFlagsSet := hasPISearchFilterFlags(cmd)
 
 		stdinKeys, err := readKeysIfDash(args) // only reads when args == []{"-"}
 		if err != nil {
@@ -150,7 +155,6 @@ Use --has-user-tasks to fetch process instances by their owning user-task keys.`
 		}
 
 		log.Debug(fmt.Sprintf("getting pi; mode %s", pickMode()))
-		var pis process.ProcessInstances
 		switch {
 		case ltk > 0:
 			log.Debug(fmt.Sprintf("resolving pi keys from user tasks [%s]", taskKeys))
@@ -206,12 +210,17 @@ Use --has-user-tasks to fetch process instances by their owning user-task keys.`
 				return
 			}
 		default:
+			filter := populatePISearchFilterOpts(cmd)
+			if filter.BusinessId != nil {
+				if err := cli.ValidateProcessInstanceSearchFilter(filter); err != nil {
+					fail(err)
+				}
+			}
 			result, err := validateProcessDefinitionSelectors(ctx, cli, newPIProcessDefinitionSelectorValidationRequest(), collectOptions()...)
 			if err != nil {
 				fail(err)
 			}
 			handleProcessDefinitionSelectorValidationError(cmd, log, cfg.App.NoErrCodes, cli, result)
-			filter := populatePISearchFilterOpts()
 			log.Debug(fmt.Sprintf("searching pi; filter %s", filter.String()))
 			if flagGetPITotal {
 				if flagGetPIOrphanChildrenOnly {
@@ -276,6 +285,7 @@ func init() {
 	useInvalidInputFlagErrors(getProcessInstanceCmd)
 
 	fs := getProcessInstanceCmd.Flags()
+	fs.String("bid", "", "exact business ID to filter by (Camunda 8.10+); commas, spaces and wildcards are literal")
 	fs.StringSliceVarP(&flagGetPIKeys, "key", "k", nil, "process instance key(s) to fetch")
 	fs.StringSliceVar(&flagGetPIHasUserTasks, "has-user-tasks", nil, "user task key(s) whose owning process instances should be fetched")
 	registerPISharedProcessDefinitionFilterFlags(fs)

@@ -833,8 +833,10 @@ func toDomainProcessDefinitionFilter(x ProcessDefinitionFilter) d.ProcessDefinit
 	}
 }
 
+// toDomainProcessInstanceFilter copies optional selection criteria across the facade boundary.
 func toDomainProcessInstanceFilter(x ProcessInstanceFilter) d.ProcessInstanceFilter {
 	return d.ProcessInstanceFilter{
+		BusinessId:           toolx.CopyPtr(x.BusinessId),
 		Key:                  x.Key,
 		BpmnProcessId:        x.BpmnProcessId,
 		ProcessVersion:       x.ProcessVersion,
@@ -852,8 +854,10 @@ func toDomainProcessInstanceFilter(x ProcessInstanceFilter) d.ProcessInstanceFil
 	}
 }
 
+// fromDomainProcessInstanceFilter copies optional selection criteria across the facade boundary.
 func fromDomainProcessInstanceFilter(x d.ProcessInstanceFilter) ProcessInstanceFilter {
 	return ProcessInstanceFilter{
+		BusinessId:           toolx.CopyPtr(x.BusinessId),
 		Key:                  x.Key,
 		BpmnProcessId:        x.BpmnProcessId,
 		ProcessVersion:       x.ProcessVersion,

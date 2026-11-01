@@ -407,6 +407,18 @@ Retention, incident purge, orphan purge, and process-definition purge keep obser
 
 Generated references: [deploy process-definition](docs/cli/c8volt_deploy_process-definition.md), [run process-instance](docs/cli/c8volt_run_process-instance.md), [get process-definition](docs/cli/c8volt_get_process-definition.md).
 
+Native business-ID search is available on `get pi --bid <value>` and `get ut --bid <value>` with Camunda 8.10. Both send one exact scalar criterion, AND-combined with existing predicates and tenant scope. Task search matches the task's stored ID rather than the current parent ID; `--pi-key` remains an additional task predicate. Explicit resource keys and stdin keys cannot combine with BID. Omitted input retains existing version behavior; 8.8/8.9 reject supplied IDs before discovery. Empty/invalid UTF-8 input is invalid; commas, spaces, Unicode, numeric-looking values and wildcards are literal, and search does not impose creation's length limit.
+
+```bash
+./c8volt get pi --bid 'ORDER-123,ORDER-456' --state all --json
+./c8volt get pi --bid 'ORDER-123' --direct-incidents-only --total
+./c8volt get ut --bid 'ORDER-123' --pi-key 2251799813685249 --with-vars
+```
+
+Paging, limits, totals and enrichment retain the criterion. Direct-incident PI search first selects native BID matches, then applies incident checks before the selected limit. Empty queries preserve their existing JSON shape, zero-byte keys output, and quiet behavior. Human query failures use one bounded configured ERROR; machine error evidence and original exit codes remain intact, with HTTP diagnostics available only at DEBUG.
+
+Library callers use copied optional `BusinessId *string` fields on `process.ProcessInstanceFilter` and `task.SearchRequest`; nil means omitted, while a pointer to empty is invalid. Process and operations report conversions preserve the criterion independently of observed resource IDs. Custom implementations of `process.API` must implement the no-I/O `ValidateProcessInstanceSearchFilter` method; it delegates to the matching internal adapter and is used before related selector lookups. These additive fields can require updates to unkeyed Go struct literals.
+
 ### Inspect Process Instances
 
 Use `get process-instance` for direct lookup, scoped search, variables, incidents, runtime elements, listener jobs, and process-instance keys for pipelines. Add `--with-elements` to inspect BPMN execution state, and combine it with `--with-listeners` to inspect execution and task listener jobs.
