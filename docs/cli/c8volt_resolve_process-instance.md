@@ -6,7 +6,7 @@ nav_exclude: true
 [CLI Reference]({{ "/cli/" | relative_url }})
 ## c8volt resolve process-instance
 
-Resolve process-instance incidents by key
+Resolve process-instance incidents by key or business ID
 
 ### Synopsis
 
@@ -18,6 +18,10 @@ Only incidents discovered at command start are resolved. Instances with no activ
 
 Use --dry-run to inspect the family and incident plan without mutation.
 
+On Camunda 8.10, --bid selects one exact opaque business ID in configured tenant scope. It cannot be combined with --key or stdin. All distinct matches are selected before family expansion; --limit bounds matching seeds, never relatives. --batch-size controls discovery requests.
+
+BID resolution freezes the complete family and active incident targets before confirmation. New matches or incidents after approval are not submitted. Dry-run performs discovery reads only; empty selections and families with no active incidents never prompt or submit mutation, including with --no-wait. JSON and verbose output retain the original criterion and complete reviewed work. No job or variable updates are performed.
+
 ```
 c8volt resolve process-instance [flags]
 ```
@@ -25,6 +29,7 @@ c8volt resolve process-instance [flags]
 ### Examples
 
 ```
+  ./c8volt resolve process-instance --bid ORDER-123 --dry-run
   ./c8volt resolve process-instance --key <process-instance-key> --dry-run
   ./c8volt resolve process-instance --key <process-instance-key>
   ./c8volt --tenant tenant-a resolve process-instance --key <process-instance-key> --dry-run
@@ -35,13 +40,16 @@ c8volt resolve process-instance [flags]
 ### Options
 
 ```
-      --dry-run           preview process-instance incident resolutions without submitting mutation
-      --fail-fast         stop scheduling new process-instance resolutions after the first error
-  -h, --help              help for process-instance
-  -k, --key strings       process instance key(s) to resolve; repeat or combine with stdin '-'
-      --no-wait           return after resolution requests are accepted without incident confirmation
-      --no-worker-limit   use all queued jobs as workers when --workers is unset
-  -w, --workers int       maximum concurrent workers when resolving multiple process instances (default: min(count, 2*GOMAXPROCS, 32))
+  -n, --batch-size int32   maximum process instances per discovery request (default 1000)
+      --bid string         exact business ID to select in configured tenant scope (Camunda 8.10)
+      --dry-run            preview process-instance incident resolutions without submitting mutation
+      --fail-fast          stop scheduling new process-instance resolutions after the first error
+  -h, --help               help for process-instance
+  -k, --key strings        process instance key(s) to resolve; repeat or combine with stdin '-'
+  -l, --limit int32        maximum distinct matching instances; zero selects all; tree expansion is not limited
+      --no-wait            return after resolution requests are accepted without incident confirmation
+      --no-worker-limit    use all queued jobs as workers when --workers is unset
+  -w, --workers int        maximum concurrent workers when resolving multiple process instances (default: min(count, 2*GOMAXPROCS, 32))
 ```
 
 ### Options inherited from parent commands

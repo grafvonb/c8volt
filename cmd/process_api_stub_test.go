@@ -838,3 +838,23 @@ func (stubProcessAPI) PlanSelectedProcessInstanceResumption(ctx context.Context,
 func (stubProcessAPI) ExecuteProcessInstanceResumptionPlan(ctx context.Context, plan process.ProcessInstanceResumptionPlan, workers int, opts ...options.FacadeOption) (process.ResumptionResults, error) {
 	panic("unexpected selected action")
 }
+
+// PlanSelectedProcessInstanceResolution supplies the additive selection API to legacy fixtures.
+func (s stubProcessAPI) PlanSelectedProcessInstanceResolution(context.Context, process.ProcessInstanceSelectionRequest, int, ...options.FacadeOption) (process.SelectedProcessInstanceResolutionPlan, error) {
+	return process.SelectedProcessInstanceResolutionPlan{}, nil
+}
+
+// ExecuteSelectedProcessInstanceResolution supplies the additive selection API to legacy fixtures.
+func (s stubProcessAPI) ExecuteSelectedProcessInstanceResolution(context.Context, process.SelectedProcessInstanceResolutionPlan, ...options.FacadeOption) (incident.ProcessInstanceResolutionResults, error) {
+	return incident.ProcessInstanceResolutionResults{}, nil
+}
+
+// PlanProcessInstancesIncidents supplies the additive incident plan API to legacy fixtures.
+func (s stubProcessAPI) PlanProcessInstancesIncidents(context.Context, types.Keys, ...options.FacadeOption) (incident.ProcessInstancesIncidentPlan, error) {
+	return incident.ProcessInstancesIncidentPlan{}, nil
+}
+
+// ExecuteProcessInstancesIncidentPlan supplies the additive incident plan API to legacy fixtures.
+func (s stubProcessAPI) ExecuteProcessInstancesIncidentPlan(context.Context, incident.ProcessInstancesIncidentPlan, int, ...options.FacadeOption) (incident.ProcessInstanceResolutionResults, error) {
+	return incident.ProcessInstanceResolutionResults{}, nil
+}

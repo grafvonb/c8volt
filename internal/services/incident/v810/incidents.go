@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/grafvonb/c8volt/consts"
@@ -17,6 +18,7 @@ import (
 	"github.com/grafvonb/c8volt/internal/services/httpc"
 	"github.com/grafvonb/c8volt/internal/services/incident/waiter"
 	"github.com/grafvonb/c8volt/internal/services/incidentfilter"
+	"github.com/grafvonb/c8volt/internal/services/processinstance/searchpaging"
 	"github.com/grafvonb/c8volt/toolx"
 )
 
@@ -393,54 +395,79 @@ func newIncidentSearchErrorTypeFilter(errorType string) (*camundav810.IncidentEr
 	return newIncidentErrorTypeEqFilterPtr(camundav810.IncidentErrorTypeEnum(normalized))
 }
 
+// searchProcessInstanceIncidentsPages exhausts scoped reads, rejecting malformed or cyclic continuation before planning can succeed.
 func (s *Service) searchProcessInstanceIncidentsPages(ctx context.Context, key string, filter *camundav810.IncidentFilter, errorMessage string) ([]d.ProcessInstanceIncidentDetail, error) {
-	const pageSize int32 = 1000
+	req := d.ProcessInstancePageRequest{Size: 1000}
 	var out []d.ProcessInstanceIncidentDetail
-	for from := int32(0); ; {
-		page := newSearchQueryPageRequest(d.ProcessInstancePageRequest{From: from, Size: pageSize})
-		body := camundav810.SearchProcessInstanceIncidentsJSONRequestBody{
-			Page:   &page,
-			Filter: filter,
+	seenCursors, seenPages, seenKeys := map[string]struct{}{}, map[string]bool{}, map[string]bool{}
+	for {
+		if err := ctx.Err(); err != nil {
+			return out, err
 		}
-		resp, err := s.cc.SearchProcessInstanceIncidentsWithResponse(ctx, key, body)
+		page := newIncidentSearchQueryPageRequest(d.IncidentPageRequest{From: req.From, Size: req.Size, After: req.After})
+		resp, err := s.cc.SearchProcessInstanceIncidentsWithResponse(ctx, key, camundav810.SearchProcessInstanceIncidentsJSONRequestBody{Page: &page, Filter: filter})
 		if err != nil {
-			return nil, err
+			return out, err
 		}
 		payload, err := common.RequirePayload(resp.HTTPResponse, resp.Body, resp.JSON200)
 		if err != nil {
-			return nil, err
+			return out, err
 		}
-		out = append(out, filterIncidentDetailsByMessage(errorMessage, toolx.MapSlice(payload.Items, fromIncidentResult))...)
-		if !incidentSearchHasMore(payload.Page, from, len(payload.Items), pageSize) {
-			return out, nil
+		raw := toolx.MapSlice(payload.Items, fromIncidentResult)
+		// Shared paging guards use only identities and continuation facts. This local
+		// projection never becomes a process observation or escapes into the plan.
+		metadata := d.ProcessInstancePage{
+			Request:       req,
+			EndCursor:     toolx.Deref(payload.Page.EndCursor, ""),
+			OverflowState: d.ProcessInstanceOverflowStateNoMore,
+			ReportedTotal: &d.ProcessInstanceReportedTotal{
+				Count: payload.Page.TotalItems,
+				Kind:  d.ProcessInstanceReportedTotalKindExact,
+			},
 		}
-		from += int32(len(payload.Items))
-	}
-}
-
-func filterIncidentDetailsByMessage(errorMessage string, items []d.ProcessInstanceIncidentDetail) []d.ProcessInstanceIncidentDetail {
-	out := make([]d.ProcessInstanceIncidentDetail, 0, len(items))
-	for _, item := range items {
-		if !incidentfilter.ErrorMessageContains(errorMessage, item.ErrorMessage) {
-			continue
+		if payload.Page.HasMoreTotalItems {
+			metadata.OverflowState = d.ProcessInstanceOverflowStateIndeterminate
+			metadata.ReportedTotal.Kind = d.ProcessInstanceReportedTotalKindLowerBound
+		} else if payload.Page.TotalItems > int64(req.From)+int64(len(raw)) {
+			metadata.OverflowState = d.ProcessInstanceOverflowStateHasMore
 		}
-		out = append(out, item)
+		var signature strings.Builder
+		for _, item := range raw {
+			if item.IncidentKey == "" {
+				return out, fmt.Errorf("%w: incident without key", d.ErrMalformedResponse)
+			}
+			metadata.Items = append(metadata.Items, d.ProcessInstance{Key: item.IncidentKey})
+			fmt.Fprintf(&signature, "%d:%s;", len(item.IncidentKey), item.IncidentKey)
+		}
+		if err := searchpaging.ValidatePage(metadata); err != nil {
+			return out, err
+		}
+		for _, item := range raw {
+			if !seenKeys[item.IncidentKey] {
+				seenKeys[item.IncidentKey] = true
+				if incidentfilter.ErrorMessageContains(errorMessage, item.ErrorMessage) {
+					out = append(out, item)
+				}
+			}
+		}
+		exhausted, err := searchpaging.Exhausted(metadata, int64(len(seenKeys)))
+		if err != nil {
+			return out, err
+		}
+		if exhausted {
+			return out, ctx.Err()
+		}
+		if metadata.EndCursor == "" && len(raw) > 0 {
+			if seenPages[signature.String()] {
+				return out, fmt.Errorf("%w: incident page did not advance", d.ErrMalformedResponse)
+			}
+			seenPages[signature.String()] = true
+		}
+		req, err = searchpaging.Advance(req, metadata.EndCursor, len(raw), seenCursors)
+		if err != nil {
+			return out, err
+		}
 	}
-	return out
-}
-
-func incidentSearchHasMore(page camundav810.SearchQueryPageResponse, from int32, itemCount int, pageSize int32) bool {
-	if itemCount == 0 && page.TotalItems > int64(from)+int64(pageSize) {
-		return true
-	}
-	if itemCount == 0 {
-		return false
-	}
-	visibleCount := int64(from) + int64(itemCount)
-	if page.TotalItems > visibleCount {
-		return true
-	}
-	return page.HasMoreTotalItems && itemCount >= int(pageSize)
 }
 
 func incidentSearchOverflowState(page camundav810.SearchQueryPageResponse, req d.IncidentPageRequest, itemCount int) d.ProcessInstanceOverflowState {
@@ -490,16 +517,6 @@ func (s *Service) WaitForIncidentResolved(ctx context.Context, key string, opts 
 // WaitForProcessInstanceIncidentsResolved polls process-instance incident lookup until the initial incident set is gone.
 func (s *Service) WaitForProcessInstanceIncidentsResolved(ctx context.Context, processInstanceKey string, incidentKeys []string, opts ...services.CallOption) (d.IncidentResolutionResponse, error) {
 	return waiter.WaitForProcessInstanceIncidentsResolved(ctx, s, s.cfg, s.log, processInstanceKey, incidentKeys, opts...)
-}
-
-// newSearchQueryPageRequest builds the v8.10 page request for incident lookups.
-func newSearchQueryPageRequest(pageReq d.ProcessInstancePageRequest) camundav810.SearchQueryPageRequest {
-	page := camundav810.SearchQueryPageRequest{}
-	_ = page.FromOffsetPagination(camundav810.OffsetPagination{
-		From:  &pageReq.From,
-		Limit: &pageReq.Size,
-	})
-	return page
 }
 
 func newIncidentSearchQueryPageRequest(pageReq d.IncidentPageRequest) camundav810.SearchQueryPageRequest {

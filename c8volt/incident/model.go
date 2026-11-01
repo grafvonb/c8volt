@@ -243,3 +243,10 @@ type ResolutionPlan struct {
 	SkippedIncidentKeys      []string            `json:"skippedIncidentKeys,omitempty"`
 	Errors                   []string            `json:"errors,omitempty"`
 }
+
+// ProcessInstancesIncidentPlan freezes completed instance reads and reviewed incident observations.
+type ProcessInstancesIncidentPlan struct {
+	Keys          []string                        `json:"keys,omitempty"`
+	CompletedKeys []string                        `json:"completedKeys,omitempty"`
+	Incidents     []ProcessInstanceIncidentDetail `json:"incidents,omitempty"`
+}

@@ -7,6 +7,7 @@ import (
 	"context"
 
 	options "github.com/grafvonb/c8volt/c8volt/foptions"
+	"github.com/grafvonb/c8volt/c8volt/incident"
 	types "github.com/grafvonb/c8volt/typex"
 )
 
@@ -78,8 +79,12 @@ func (r DryRunPIKeyExpansion) HasActionableResults() bool {
 }
 
 // API defines public process operations. Custom implementations must include the
-// no-I/O search validator, selection and frozen-cancellation planners, and state-control executors.
+// no-I/O search validator, selected-action planners and frozen-plan executors.
 type API interface {
+	// PlanSelectedProcessInstanceResolution freezes family and incident work from a completed selection.
+	PlanSelectedProcessInstanceResolution(ctx context.Context, request ProcessInstanceSelectionRequest, workers int, opts ...options.FacadeOption) (SelectedProcessInstanceResolutionPlan, error)
+	// ExecuteSelectedProcessInstanceResolution validates and consumes reviewed targets without rediscovery.
+	ExecuteSelectedProcessInstanceResolution(ctx context.Context, plan SelectedProcessInstanceResolutionPlan, opts ...options.FacadeOption) (incident.ProcessInstanceResolutionResults, error)
 	// PlanSelectedProcessInstanceVariableUpdates preserves completed search selection through action planning or execution.
 	PlanSelectedProcessInstanceVariableUpdates(ctx context.Context, request ProcessInstanceSelectionRequest, variables map[string]any, opts ...options.FacadeOption) (ProcessInstanceVariableUpdatePlan, error)
 	// PlanSelectedProcessInstanceSuspension preserves completed search selection through action planning or execution.

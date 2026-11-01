@@ -2601,6 +2601,7 @@ func TestCommandCapabilityForCommand_ResolveIncidentContract(t *testing.T) {
 	})
 }
 
+// TestCommandCapabilityForCommand_ResolveProcessInstanceContract preserves keyed metadata and advertises scoped BID controls.
 func TestCommandCapabilityForCommand_ResolveProcessInstanceContract(t *testing.T) {
 	root := Root()
 	resetCommandTreeFlags(root)
@@ -2649,6 +2650,12 @@ func TestCommandCapabilityForCommand_ResolveProcessInstanceContract(t *testing.T
 		Repeated:    false,
 		Description: "stop scheduling new process-instance resolutions after the first error",
 	})
+	for _, name := range []string{"bid", "limit", "batch-size"} {
+		require.NotNil(t, resolveProcessInstanceCmd.Flags().Lookup(name))
+	}
+	require.Equal(t, "string", resolveProcessInstanceCmd.Flags().Lookup("bid").Value.Type())
+	require.Contains(t, resolveProcessInstanceCmd.Long, "freezes the complete family and active incident targets before confirmation")
+	require.Contains(t, resolveProcessInstanceCmd.Example, "--bid ORDER-123 --dry-run")
 }
 
 func TestCapabilityDocumentForRoot_ResolveCommandFamily(t *testing.T) {

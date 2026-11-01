@@ -16,6 +16,7 @@ import (
 	"github.com/grafvonb/c8volt/c8volt/batchoperation"
 	ferr "github.com/grafvonb/c8volt/c8volt/ferrors"
 	options "github.com/grafvonb/c8volt/c8volt/foptions"
+	"github.com/grafvonb/c8volt/c8volt/incident"
 	"github.com/grafvonb/c8volt/c8volt/process"
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/services"
@@ -1380,4 +1381,14 @@ func (stubProcessAPI) PlanSelectedProcessInstanceResumption(ctx context.Context,
 // ExecuteProcessInstanceResumptionPlan rejects unexpected selected-action calls in legacy fixtures.
 func (stubProcessAPI) ExecuteProcessInstanceResumptionPlan(ctx context.Context, plan process.ProcessInstanceResumptionPlan, workers int, opts ...options.FacadeOption) (process.ResumptionResults, error) {
 	panic("unexpected selected action")
+}
+
+// PlanSelectedProcessInstanceResolution supplies the additive selection contract to resource fixtures.
+func (s stubProcessAPI) PlanSelectedProcessInstanceResolution(context.Context, process.ProcessInstanceSelectionRequest, int, ...options.FacadeOption) (process.SelectedProcessInstanceResolutionPlan, error) {
+	return process.SelectedProcessInstanceResolutionPlan{}, nil
+}
+
+// ExecuteSelectedProcessInstanceResolution supplies the additive selection contract to resource fixtures.
+func (s stubProcessAPI) ExecuteSelectedProcessInstanceResolution(context.Context, process.SelectedProcessInstanceResolutionPlan, ...options.FacadeOption) (incident.ProcessInstanceResolutionResults, error) {
+	return incident.ProcessInstanceResolutionResults{}, nil
 }

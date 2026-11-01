@@ -335,3 +335,52 @@ Started: 2026-11-01 12:22:16
 - Listed new test names before execution. Targeted runtime/legacy validation passed after correcting two stale metadata assertions for the newly supported batch-size/limit flags. Final isolated `GORACE=atexit_sleep_ms=0 go test ./cmd ./internal/services/processinstance ./c8volt/process -run '^TestBusinessIDActions' -race -count=1` passed (cmd 22.359s), followed by the stricter empty-wording race check (3.117s). An initial focused race invocation was stopped only to use the repository's zero subprocess exit-delay setting, then rerun successfully.
 - Full isolated `make test PKG=./...` completed with race detection and integration tags disabled (cmd 478.152s); breadth is justified by shared variable execution, public plan/result conversions and facade interface changes. All runtime tests passed; its only failure was the global flag-shorthand contract, which required `-n` for batch-size and `-l` for limit. Added those aliases, regenerated docs, and passed a focused race rerun of the failed capability contract, both action metadata tests and the entire BID action command matrix. The broad run began before the last mode-aware preview and no-op provenance fixes; both passed the final owner/facade/command race suite. The full suite was not repeated for the narrowly verified shorthand correction. `make docs-content`, targeted gofmt, generated-doc guidance checks and `git diff --check` passed. All dependencies were owned fakes/mocks/PTY fixtures; real-engine behavior remains unverified. No later task was started.
 ---
+
+---
+## Iteration 7 - 2026-11-01 14:57
+**Work Unit**: US3 T007 — completed BID process resolution with reviewed incident work
+**Tasks Completed**:
+- [x] T007: Freeze BID-selected process families and owned incident targets before confirmation; preserve reviewed execution, provenance and output/version contracts.
+**Tasks Remaining in Work Unit**: 0 in US3; T008–T010 remain in US4.
+**Commit**: This work-unit commit
+**Files Changed**:
+- README.md
+- c8volt/incident/api.go
+- c8volt/incident/client_test.go
+- c8volt/incident/model.go
+- c8volt/incident/plan.go
+- c8volt/process/api.go
+- c8volt/process/model.go
+- c8volt/process/selected_resolution.go
+- c8volt/process/selected_resolution_test.go
+- c8volt/resource/client_test.go
+- cmd/cmd_views_resolve_business_id.go
+- cmd/command_contract_test.go
+- cmd/process_api_stub_test.go
+- cmd/resolve_processinstance.go
+- cmd/resolve_processinstance_business_id.go
+- cmd/resolve_processinstance_business_id_test.go
+- docs/cli/c8volt_resolve.md
+- docs/cli/c8volt_resolve_process-instance.md
+- docs/cli/command-tree.md
+- docs/index.md
+- internal/domain/processinstance_resolution_plan.go
+- internal/services/incident/plan.go
+- internal/services/incident/plan_test.go
+- internal/services/incident/v810/incidents.go
+- internal/services/incident/v810/selected_paging_test.go
+- internal/services/incident/waiter/waiter.go
+- internal/services/processinstance/selected_cancel.go
+- internal/services/processinstance/selected_resolution.go
+- internal/services/processinstance/selected_resolution_test.go
+- specs/361-business-id-selection/progress.md
+- specs/361-business-id-selection/ralph-memory.md
+- specs/361-business-id-selection/tasks.md
+**Learnings**:
+- Process services compose the shared collection/family planner with incident-owned read-only plans. Facades only copy/map/delegate. Receiving-version, tenant, completion and membership validation precedes empty/dry-run shortcuts. Resolve retains incident-only mutations; job/variable fields remain observations and additional repair actions belong to T008.
+- v810 scoped incident paging now exhausts large/sparse/cursor/offset sequences, rejects malformed/nonprogress continuation and retains partial evidence. Owned fixtures cover 1001 incidents, overlaps, foreign observations, duplicate limits, late planning failures with zero writes, new approval-time incidents, wait/no-wait failures, and actual prepared-v810 plan rejection on both older adapters without requests. Reviewed plans/results preserve defensive copies and JSON round trips.
+- Traced errors from service through facade conversion, view, configured logger and original exit. Human summaries/previews/verbose facts are INFO; repeated backend failures emit one bounded ERROR without transport disclosure. Accepted-but-unconfirmed outcomes remain explicit. Plain/structured configured/inherited destinations, quiet/WARN, independently redacted DEBUG, machine partial evidence, one envelope/EOF/write attempt, and real-terminal empty/approve/decline/EOF paths passed. Empty payloads and human wording are asserted exactly; keys-only stays one key per line or zero bytes.
+- Listed new tests before execution. The initial command regression failed because --bid was absent, then passed after wiring. Fixed two new fixture assumptions (native tenant equality is scalar; direct service base URL includes /v2). Corrected empty automation/output expectations to existing policy. The final fail-fast regression preserves the original process-instance scheduling boundary while finishing already-running instance work.
+- Final isolated targeted race suite passed: `go test ./internal/services/incident ./internal/services/processinstance ./c8volt/incident ./c8volt/process ./cmd -run '^TestBusinessIDResolve' -race -count=1` (cmd 12.411s). Earlier v810 paging race tests and the all-v810 owner rerun passed; targeted legacy incident/resolution/cancellation checks passed. The corrected facade fixture passed its focused rerun.
+- Full isolated `make test PKG=./...` passed with race detection and integration tags disabled (cmd 497.455s); shared v810 paging, waiter suppression and public interface additions justified breadth. The broad run began before removing unused paging helpers and the final fail-fast correction; their focused owner/race checks passed afterward. Additional machine/opaque-value tests also passed with race. `make docs-content`, touched-file formatting and `git diff --check` passed. All dependencies were owned mocks/HTTP fakes/PTY fixtures. No live environment was used; real-engine behavior remains unverified. No later task was started.
+---

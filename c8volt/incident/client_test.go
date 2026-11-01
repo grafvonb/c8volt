@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"log/slog"
 	"sync/atomic"
 	"testing"
@@ -347,3 +348,33 @@ func (s stubAPI) WaitForProcessInstanceIncidentsResolved(ctx context.Context, ke
 }
 
 var _ incsvc.API = stubAPI{}
+
+// TestBusinessIDResolveIncidentFacade preserves reviewed observations, copies and original error classes through generic incident planning.
+func TestBusinessIDResolveIncidentFacade(t *testing.T) {
+	observations := []d.ProcessInstanceIncidentDetail{{IncidentKey: "i", ProcessInstanceKey: "p", State: "ACTIVE", JobKey: "job", ElementInstanceKey: "scope"}}
+	reads := 0
+	api := stubAPI{
+		searchProcessInstanceIncidents: func(_ context.Context, key string, _ ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error) {
+			reads++
+			return observations, nil
+		},
+		resolveIncident: func(_ context.Context, key string, _ ...services.CallOption) (d.IncidentResolutionResponse, error) {
+			require.Equal(t, "i", key)
+			return d.IncidentResolutionResponse{}, d.ErrConflict
+		},
+	}
+	cli := New(api, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	plan, err := cli.PlanProcessInstancesIncidents(context.Background(), typex.Keys{"p"})
+	require.NoError(t, err)
+	observations[0].JobKey = "changed"
+	require.Equal(t, "job", plan.Incidents[0].JobKey)
+	result, err := cli.ExecuteProcessInstancesIncidentPlan(context.Background(), plan, 1, options.WithDryRun())
+	require.NoError(t, err)
+	result.Items[0].Incidents[0].JobKey = "changed"
+	require.Equal(t, "job", plan.Incidents[0].JobKey)
+	result, err = cli.ExecuteProcessInstancesIncidentPlan(context.Background(), plan, 1, options.WithNoWait())
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "conflict")
+	require.Equal(t, 1, result.Failed)
+	require.Equal(t, 1, reads)
+}

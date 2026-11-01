@@ -84,6 +84,7 @@ func WaitForIncidentResolved(ctx context.Context, s IncidentWaiter, cfg *config.
 	}
 }
 
+// WaitForProcessInstanceIncidentsResolved verifies only reviewed identities; aggregate owners suppress per-instance failure records.
 func WaitForProcessInstanceIncidentsResolved(ctx context.Context, s IncidentWaiter, cfg *config.Config, log *slog.Logger, processInstanceKey string, incidentKeys []string, opts ...services.CallOption) (d.IncidentResolutionResponse, error) {
 	cCfg := services.ApplyCallOptions(opts)
 	stopActivity := logging.StartActivityWithImportance(ctx, fmt.Sprintf("waiting for pi %s incidents resolve", processInstanceKey), logging.ActivityImportanceWait)
@@ -112,7 +113,11 @@ func WaitForProcessInstanceIncidentsResolved(ctx context.Context, s IncidentWait
 		incidents, err := s.SearchProcessInstanceIncidents(ctx, processInstanceKey, opts...)
 		if err != nil {
 			status := fmt.Sprintf("pi %s incident wait stopped; attempts %d, elapsed %s, reason error", processInstanceKey, attempts, time.Since(start))
-			log.Error(status)
+			if cCfg.SuppressWorkflowDetailLogs {
+				log.Debug(status)
+			} else {
+				log.Error(status)
+			}
 			return d.IncidentResolutionResponse{Key: processInstanceKey, Ok: false, Status: status}, fmt.Errorf("%w: %s", err, status)
 		}
 		active := activeTargetIncidentKeys(processInstanceKey, targets, incidents)

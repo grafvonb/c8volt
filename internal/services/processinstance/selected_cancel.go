@@ -24,8 +24,8 @@ func PlanProcessInstanceSelectedMutation(ctx context.Context, api API, incAPI Se
 	if err := api.ValidateProcessInstanceSearchFilter(request.Selection.SearchRequest.Filter); err != nil {
 		return plan, err
 	}
-	if (request.Operation != "cancel" && request.Operation != "delete") || request.Selection.Cardinality != d.ProcessInstanceSelectionCollection {
-		return plan, fmt.Errorf("%w: selected mutation requires a cancel or delete collection", d.ErrValidation)
+	if (request.Operation != "cancel" && request.Operation != "delete" && request.Operation != "resolve") || request.Selection.Cardinality != d.ProcessInstanceSelectionCollection {
+		return plan, fmt.Errorf("%w: selected mutation requires a cancel, delete or resolve collection", d.ErrValidation)
 	}
 	plan.Tenant = api.ProcessInstanceSearchTenant(opts...)
 	selection, err := ResolveProcessInstanceSelection(ctx, api, incAPI, request.Selection, opts...)

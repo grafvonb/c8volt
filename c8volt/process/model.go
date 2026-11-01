@@ -1061,3 +1061,9 @@ type ProcessInstanceDeletionResult struct {
 	DeleteReports
 	Members []DeleteReport `json:"members,omitempty"`
 }
+
+// SelectedProcessInstanceResolutionPlan retains the original selection, family union and incident work.
+type SelectedProcessInstanceResolutionPlan struct {
+	Scope     ProcessInstanceSelectedMutationPlan   `json:"scope"`
+	Incidents incident.ProcessInstancesIncidentPlan `json:"incidents"`
+}
