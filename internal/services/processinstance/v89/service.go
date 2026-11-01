@@ -743,3 +743,11 @@ func (s *Service) ValidateProcessInstanceSearchFilter(filter d.ProcessInstanceFi
 	_, err := common.NormalizeProcessInstanceSearchFilter(filter, s.ValidateProcessInstanceStates)
 	return err
 }
+
+// ProcessInstanceSearchTenant freezes the adapter's discovery authorization context without I/O.
+func (s *Service) ProcessInstanceSearchTenant(opts ...services.CallOption) string {
+	if services.ApplyCallOptions(opts).IgnoreTenant {
+		return ""
+	}
+	return s.cfg.App.Tenant
+}

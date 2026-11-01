@@ -17,3 +17,15 @@ func (c *client) ResolveProcessInstanceSelection(ctx context.Context, request Pr
 	result, err := pisvc.ResolveProcessInstanceSelection(ctx, c.piApi, c.incApi, d.ProcessInstanceSelectionRequest{SearchRequest: toDomainProcessInstanceSearchRequest(request.SearchRequest), Cardinality: d.ProcessInstanceSelectionCardinality(request.Cardinality)}, options.MapFacadeOptionsToCallOptions(opts)...)
 	return fromDomainProcessInstanceSelection(result), ferrors.FromDomain(err)
 }
+
+// PlanProcessInstanceSelectedMutation maps the collection request and preserves partial planning evidence.
+func (c *client) PlanProcessInstanceSelectedMutation(ctx context.Context, request ProcessInstanceSelectedMutationRequest, opts ...options.FacadeOption) (ProcessInstanceSelectedMutationPlan, error) {
+	result, err := pisvc.PlanProcessInstanceSelectedMutation(ctx, c.piApi, c.incApi, toDomainSelectedMutationRequest(request), options.MapFacadeOptionsToCallOptions(opts)...)
+	return fromDomainSelectedMutationPlan(result), ferrors.FromDomain(err)
+}
+
+// ExecuteProcessInstanceCancellationPlan copies reviewed evidence and maps partial bulk outcomes.
+func (c *client) ExecuteProcessInstanceCancellationPlan(ctx context.Context, plan ProcessInstanceSelectedMutationPlan, opts ...options.FacadeOption) (CancelReports, error) {
+	result, err := pisvc.ExecuteProcessInstanceCancellationPlan(ctx, c.piApi, c.log, toDomainSelectedMutationPlan(plan), options.MapFacadeOptionsToCallOptions(opts)...)
+	return fromDomainCancelReports(result), ferrors.FromDomain(err)
+}

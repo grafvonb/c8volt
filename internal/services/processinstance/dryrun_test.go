@@ -718,3 +718,8 @@ func (stubDryRunProcessInstanceAPI) ResumeProcessInstance(context.Context, strin
 func (s stubDryRunProcessInstanceAPI) ValidateProcessInstanceSearchFilter(d.ProcessInstanceFilter) error {
 	return nil
 }
+
+// ProcessInstanceSearchTenant supplies the unfiltered context used by owned planning fixtures.
+func (stubDryRunProcessInstanceAPI) ProcessInstanceSearchTenant(...services.CallOption) string {
+	return ""
+}

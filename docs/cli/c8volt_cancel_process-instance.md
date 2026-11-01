@@ -26,6 +26,10 @@ A --bpmn-process-id selector must match a visible process definition before inst
 
 Use --verbose to explain root escalation, accepted cancellation, and confirmation waits. Use --debug for per-check state observations and HTTP diagnostics; it remains independent of --verbose. A confirmation timeout reports accepted cancellation as submitted but unconfirmed.
 
+On Camunda 8.10, --bid is one exact opaque business ID, combined with other filters. It is exclusive with --key and stdin. BID discovery freezes all distinct matching seeds and their complete families before one confirmation; --limit bounds seeds, never relatives. Different or absent business IDs on relatives do not exclude them. JSON and --verbose expose the full scope; dry-run --keys-only lists every affected key once. Unsupported versions reject BID before discovery.
+
+A BID run submits only its frozen roots, without searching again after approval. Native cancellation may also affect descendants created concurrently below those roots; a later dry-run or execution is a separate discovery.
+
 Use --dry-run to preview the affected family without cancelling. Use --auto-confirm for unattended cancellation.
 
 ```
@@ -35,6 +39,8 @@ c8volt cancel process-instance [flags]
 ### Examples
 
 ```
+  ./c8volt --tenant tenant-a cancel pi --bid ORDER-123 --dry-run --json
+  ./c8volt cancel pi --bid ORDER-123 --limit 2 --auto-confirm
   ./c8volt cancel process-instance --key <process-instance-key>
   ./c8volt cancel process-instance --key <process-instance-key> --dry-run
   ./c8volt cancel process-instance --key <process-instance-key> --force
@@ -57,6 +63,7 @@ c8volt cancel process-instance [flags]
 
 ```
   -n, --batch-size int32            number of process instances to inspect per discovery page; does not cap total selected scope (max limit 1000 enforced by server) (default 1000)
+      --bid string                  exact business ID to select (Camunda 8.10); freezes all selected families before cancellation
   -b, --bpmn-process-id string      BPMN process ID to filter process instances
       --dry-run                     preview cancel scope without submitting cancellation
       --end-date-after string       only include process instances with end date >= YYYY-MM-DD

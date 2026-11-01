@@ -5,6 +5,10 @@ Started: 2026-11-01T11:22:16Z
 
 ## Codebase Patterns
 
+- T004 selected cancellation uses `PlanProcessInstanceSelectedMutation` / `ExecuteProcessInstanceCancellationPlan` in `selected_cancel.go`, exposed through thin `process.API` delegates. Shared `dryRunCancelOrDeletePlan` expands the whole seed union once and retains partial expansion/family evidence on errors. Each `Families` entry freezes DFS parent-before-child keys plus copied observations/ParentKey; later deletion can derive children-before-parent order without reads.
+- Frozen-plan consumption validates both copied criteria against the receiving adapter before empty/shortcut returns, operation/cardinality, actual completion, bound, effective tenant/IgnoreTenant, distinct membership, parent order and seed coverage in every family. `ProcessInstanceSearchTenant` is a new no-I/O internal adapter method; update custom service stubs when needed. No readiness boolean is trusted. Plans remain invocation-local evidence, not authenticated imported snapshots.
+- BID cancellation discovery uses original tenant options; family expansion and frozen-root submission append IgnoreTenant only inside the service. Passing an expanded-key option set to plan consumption is a tenant-context mismatch. Existing bulk cancellation retains native cascade/state/force/wait behavior; no new BID lookup is performed after approval.
+
 - `ResolveProcessInstanceSelection` is a shared process-service function, exposed by a thin `process.API` method. It uses existing adapter APIs, validates capability before selection, copies criteria/observations (including nested variables), and returns ordered distinct keys, completion, page count, tenant evidence, `Origin: search`, and the evaluated `IgnoreTenant` flag. Check errors before using results: a unique-start limit remains bounded evidence, not uniqueness. A returned record without a technical key is malformed/incomplete, never an empty selection.
 - `searchpaging` is the narrow single-page traversal subpackage shared by ordinary search/total and v810 child lookup; the parent package imports version factories, so v810 cannot import it directly. Do not add a second child paging loop. v88/v89 child behavior stays unchanged.
 - v810 child lookup exhausts all pages at every depth with page size 1000 and no total cap. Walker/traversal results preserve observed chain/edges on failure; failures remain non-complete and stop recursion. Successful edges/DFS keys retain membership/order for later planners.
@@ -24,6 +28,9 @@ Started: 2026-11-01T11:22:16Z
 
 ## Decisions
 
+- T004 delivers US3 cancellation only. Planner currently accepts operation `cancel`; T005 must extend the shared validation/planning for delete and implement exact frozen-member deletion, not call the recursive delete path unchanged. Families retain membership/parents/order for that work. No delete, update, resolve, suspend/resume or ops BID mode was added here.
+- BID nonempty previews use the existing single-preview shape with optional `selection`; execution keeps `items` and adds `scope`. Empty normal/dry-run payloads remain the established CancelReports/summary shapes. Keys-only dry-run lists all affected members; execution lists successful roots. Already-terminal roots produce succeeded/no-submission even under no-wait; annotated accepted-but-unconfirmed failures retain mutationSubmitted and the original failure class.
+
 - T003 delivers US2 only: shared collection/unique selection, complete v810 children, and BID walk. No mutation/ops BID flags or frozen mutation plans are introduced. The public API addition requires the command and resource facade stubs to implement selection; adapter interfaces need no new selector method because orchestration uses the existing shared service-function pattern.
 
 - T002 delivers US1 only: native PI/task queries, copied process/ops filter conversions, native task snapshots, both shortcut guards, no-I/O capability checks and query output contracts. It does not add BID flags to mutations, walk or ops.
@@ -36,6 +43,9 @@ Started: 2026-11-01T11:22:16Z
 - Metadata errors are bounded and never include cursor values. Existing service errors retain original error identity/classification through the facade.
 
 ## Gotchas
+
+- The confirmation helper renders its final question on a new line: use `...will be canceled.\nDo you want to proceed? [y/N]: ` in PTY exchanges. `runBusinessIDCommand` now accepts optional terminal exchanges and still rejects configured-stream bypasses. Automation empty human output preserves existing INFO `found: 0`; quiet and keys-only suppress it.
+- Cancel does not register `--pd-key`; combined native predicate fixtures use its existing `--bpmn-process-id`, state and date flags. Normal human failures must use `formatBusinessIDCancellationFailure`, never raw report.Status or joined errors. Semantic per-key callbacks are deliberately absent from this lifecycle; configured summary rendering owns diagnostics, and HTTP DEBUG remains available independently.
 
 - Walk no longer marks `--key` unconditionally required: key-or-BID validation runs after bootstrap for configured diagnostics/one JSON envelope. Enrichment validators accept BID but retain their established output incompatibilities. Keep required-key metadata assertions aligned; use isolated subprocesses for no-selector errors because the command exits.
 - The shared envelope success spelling is `succeeded`, with result data under `payload`. Listener enrichment can query `/v2/jobs/search` even with no element rows. Use owned fixture responses with authoritative empty page metadata.
@@ -51,6 +61,10 @@ Started: 2026-11-01T11:22:16Z
 - `runBusinessIDCommand` in the command tests is reusable for actual root execution with real terminal stdin, separate streams, configured/inherited logger destinations and original exit codes, despite its feature-specific name.
 
 ## Reusable Commands
+
+- T004 focused owners: `go test ./internal/services/processinstance/... ./c8volt/process -run 'Test.*(BusinessIDCancel|DryRun|Search|Selection|Traversal|Children)' -count=1`; command/legacy regression: `go test ./cmd ./internal/services/processinstance ./c8volt/process -run 'Test.*(BusinessIDCancel|CancelProcessInstance|ProcessInstanceDryRun)' -count=1`.
+- T004 actual-command coverage is `cmd/cancel_processinstance_business_id_test.go`: global 3/2/7 fixture, limits, complete 1003-member JSON/verbose scope, native predicates, both configured logger formats/destinations, quiet/WARN, repeated/partial failures, independent redacted DEBUG, one envelope/write attempt, real-terminal empty/approve/decline/EOF, original exits, and accepted-unconfirmed/terminal-no-op behavior. Unit/facade tests also reject altered/old-version/empty plans and verify deep copies and JSON round trips.
+- Final T004 race selection passed: `go test ./internal/services/processinstance ./c8volt/process ./cmd -run '^TestBusinessIDCancel' -race -count=1` (command package 127.137s). Full isolated `make test PKG=./...` passed (command package 452.228s); no live engine used. Full breadth started before the final narrow unselected-family guard; that guard and the added large verbose fixture are covered by the final targeted race run.
 
 - T003 service fixtures: `TestBusinessIDSelectionCardinality`, `TestBusinessIDSelectionPartialFailure`, `TestBusinessIDSelectionCopies`, `TestBusinessIDSelectionVersionGate`, and `TestCompleteChildrenTraversal`; facade: `TestBusinessIDSelectionFacade`.
 - T003 command fixtures: `TestBusinessIDSelectionWalk*` and the `walk` branch of `TestBusinessIDSelectionFailureLogging`. They cover real-terminal empty scopes, tenant transitions, cardinality, complete 1003-member JSON, late/cyclic failures, one-envelope output errors, and repeated enrichment failures with both logger formats/destinations and independent DEBUG.
@@ -80,4 +94,4 @@ Started: 2026-11-01T11:22:16Z
 
 ## Current Handoff
 
-- T001–T003 are complete. T004 (US3 frozen cross-family BID cancellation) is next dependency-ready; recheck against `tasks.md`. Use the shared collection resolver, exhaustive v810 child traversal, retained edges/observations and existing dry-run family expansion. Preserve search tenant options separately from later key-authorized execution. No blocking dependency is known. Seven feature tasks remain.
+- T001–T004 are complete. T005 (US3 frozen-member BID deletion) is next dependency-ready; recheck against `tasks.md`. Extend T004's shared selected-plan operation validation and reuse its copied families/parents/DFS order, tenant-context checks and complete global expansion. Factor exact-key delete state/force/retry/wait mechanics without recursive rediscovery that adds new children. No blocking dependency is known. Six feature tasks remain.

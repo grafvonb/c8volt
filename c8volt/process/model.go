@@ -1003,3 +1003,27 @@ type ProcessInstanceSelection struct {
 	TenantEvidence TenantEvidence                  `json:"tenantEvidence"`
 	IgnoreTenant   bool                            `json:"ignoreTenant"`
 }
+
+// ProcessInstanceSelectedMutationRequest identifies the collection and operation to freeze.
+type ProcessInstanceSelectedMutationRequest struct {
+	Operation string                          `json:"operation"`
+	Selection ProcessInstanceSelectionRequest `json:"selection"`
+	Workers   int                             `json:"workers"`
+}
+
+// ProcessInstanceMutationFamily preserves ordered membership and observed parent relationships.
+type ProcessInstanceMutationFamily struct {
+	RootKey string            `json:"rootKey"`
+	Keys    typex.Keys        `json:"keys"`
+	Items   []ProcessInstance `json:"items"`
+}
+
+// ProcessInstanceSelectedMutationPlan retains selection separately from expanded family scope.
+// It is an invocation-local snapshot, not a transferable authorization token.
+type ProcessInstanceSelectedMutationPlan struct {
+	Request   ProcessInstanceSelectedMutationRequest `json:"request"`
+	Selection ProcessInstanceSelection               `json:"selection"`
+	Expansion DryRunPIKeyExpansion                   `json:"expansion"`
+	Families  []ProcessInstanceMutationFamily        `json:"families"`
+	Tenant    string                                 `json:"tenant"`
+}

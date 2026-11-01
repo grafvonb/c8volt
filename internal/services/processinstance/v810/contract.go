@@ -16,6 +16,8 @@ import (
 
 // API describes the process-instance operations implemented by the native v8.10 adapter.
 type API interface {
+	// ProcessInstanceSearchTenant returns the effective discovery tenant without I/O.
+	ProcessInstanceSearchTenant(opts ...services.CallOption) string
 	// ValidateProcessInstanceResumption checks mutation capability without I/O.
 	ValidateProcessInstanceResumption() error
 	// ResumeProcessInstance resumes exactly one key, confirming unless NoWait is set.

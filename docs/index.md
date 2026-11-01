@@ -6,7 +6,7 @@ nav_exclude: true
 has_toc: true
 ---
 
-> Generated from build `c8volt v4.4.0-261-g6ecb026e-dirty`, commit `6ecb026e`, built `2026-11-01T12:23:39Z` | Supported Camunda 8 versions: 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.3 (final)
+> Generated from build `c8volt v4.4.0-262-g18218ab3-dirty`, commit `18218ab3`, built `2026-11-01T12:37:23Z` | Supported Camunda 8 versions: 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.3 (final)
 
 <img src="./logo/c8volt_logo_transparent_w_shadow_400x244.png" alt="c8volt logo" />
 
@@ -416,6 +416,18 @@ Generated references: [deploy process-definition](./cli/c8volt_deploy_process-de
 Native business-ID search is available on `get pi --bid <value>` and `get ut --bid <value>` with Camunda 8.10. Both send one exact scalar criterion, AND-combined with existing predicates and tenant scope. Task search matches the task's stored ID rather than the current parent ID; `--pi-key` remains an additional task predicate. Explicit resource keys and stdin keys cannot combine with BID. Omitted input retains existing version behavior; 8.8/8.9 reject supplied IDs before discovery. Empty/invalid UTF-8 input is invalid; commas, spaces, Unicode, numeric-looking values and wildcards are literal, and search does not impose creation's length limit.
 
 `walk pi --bid ORDER-123` selects one starting instance on Camunda 8.10, within configured tenant scope. Choose either `--key` or `--bid`. Discovery must exhaust: two distinct matches are ambiguous even in one family, repeated observations of one key are not, and zero matches produce empty successful output without traversal or enrichment. Parent, children, family, flat and supported enrichment modes retain their existing scope and formatting. Selection does not invent an observed business ID for any family member. Traversal then uses the existing backend-authorized key path. On 8.10, each child lookup exhausts all pages at every depth; no 1,000-child cap remains. Later-page errors fail the walk and preserve partial evidence in JSON; discovery is not an atomic backend snapshot.
+
+`cancel pi --bid ORDER-123` on Camunda 8.10 freezes the complete matching selection and all affected families before one confirmation. It combines BID with supported filters and configured tenant scope; explicit keys/stdin are exclusive. Duplicate matches and shared roots are counted once. `--limit` bounds distinct selected seeds, never relatives: two selected children can still affect their entire family, including relatives with different IDs or none. Dry-run performs discovery without prompting or cancelling. JSON preserves full selected/root/affected arrays and selection provenance; verbose INFO output lists every member, and dry-run keys-only emits each affected key once. Normal keys-only emits successful cancellation roots. Empty selection retains successful empty output, even under `--no-wait`.
+
+```bash
+./c8volt --tenant tenant-a cancel pi --bid 'ORDER-123' --dry-run --json
+./c8volt --tenant tenant-a cancel pi --bid 'ORDER-123' --limit 2 --dry-run --verbose
+./c8volt --tenant tenant-a cancel pi --bid 'ORDER-123' --auto-confirm
+```
+
+BID cancellation submits only the reviewed distinct roots, with existing state checks, force and wait/no-wait semantics. Failed or incomplete discovery submits nothing. There is no BID rediscovery after approval; native root cancellation may also affect descendants created concurrently beneath that root. A separate dry-run and later run perform separate discoveries. Partial failures retain outcomes and the original exit classification in one JSON envelope; human diagnostics use one bounded ERROR through the configured logger. This addition does not enable BID on deletion, other process mutations or maintenance operations yet.
+
+The public process facade also adds `PlanProcessInstanceSelectedMutation` and `ExecuteProcessInstanceCancellationPlan`; custom `process.API` implementations must supply both. Plans retain copied criteria, observations, family membership/order, tenant context and separate discovery/expansion completion. Execution validates receiving-adapter capability (including on empty/prepared plans), operation, criteria, tenant context and membership before using frozen roots. Pass the same discovery options when planning and executing; the service applies key authorization only after scoped selection. Plans are in-memory run artifacts, not importable authorization tokens. Additive model fields may require updates to unkeyed Go literals.
 
 Public `process.API` implementations must also implement the additive `ResolveProcessInstanceSelection` method. Its `collection` mode accepts exhausted discovery or a documented distinct-key bound; `unique_start` requires exhaustion and rejects ambiguity or bounded/incomplete discovery. Results preserve copied criteria, observations, keys, completion, tenant evidence and search origin. Check the returned error before consuming any selection. Search options remain discovery options: callers must not apply explicit-key ignore-tenant options unintentionally. Existing unkeyed struct literals may need updating for additive model fields.
 

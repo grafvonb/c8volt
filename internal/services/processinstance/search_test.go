@@ -710,3 +710,6 @@ func TestProcessInstanceSearchDirectIndexCompletion(t *testing.T) {
 func (s pagingSearchAPI) ValidateProcessInstanceSearchFilter(d.ProcessInstanceFilter) error {
 	return nil
 }
+
+// ProcessInstanceSearchTenant supplies unfiltered context for owned service fixtures.
+func (pagingSearchAPI) ProcessInstanceSearchTenant(...services.CallOption) string { return "" }

@@ -144,7 +144,7 @@ func fromDomainProcessDefinitionWatchSnapshot(x d.ProcessDefinitionWatchSnapshot
 	}
 }
 
-// fromDomainProcessInstance preserves current instance metadata at the public boundary.
+// fromDomainProcessInstance preserves current metadata and snapshots nested variable storage at the public boundary.
 func fromDomainProcessInstance(x d.ProcessInstance) ProcessInstance {
 	return ProcessInstance{
 		BusinessId:               toolx.CopyPtr(x.BusinessId),
@@ -162,7 +162,7 @@ func fromDomainProcessInstance(x d.ProcessInstance) ProcessInstance {
 		SuspendedDate:            x.SuspendedDate,
 		State:                    State(x.State),
 		TenantId:                 x.TenantId,
-		Variables:                toolx.CopyMap(x.Variables),
+		Variables:                copyProcessInstancePlanVariableMap(x.Variables),
 	}
 }
 
@@ -769,7 +769,7 @@ func fromDomainIncidentExpectation(x *bool) *IncidentExpectation {
 	return &out
 }
 
-// toDomainProcessInstance preserves instance metadata when passing public results back to services.
+// toDomainProcessInstance preserves metadata and snapshots caller-owned observations for service plans.
 func toDomainProcessInstance(x ProcessInstance) d.ProcessInstance {
 	return d.ProcessInstance{
 		BusinessId:               toolx.CopyPtr(x.BusinessId),
@@ -787,7 +787,7 @@ func toDomainProcessInstance(x ProcessInstance) d.ProcessInstance {
 		SuspendedDate:            x.SuspendedDate,
 		State:                    d.State(x.State),
 		TenantId:                 x.TenantId,
-		Variables:                toolx.CopyMap(x.Variables),
+		Variables:                copyProcessInstancePlanVariableMap(x.Variables),
 	}
 }
 
@@ -1104,5 +1104,84 @@ func fromDomainProcessInstanceSearchRequest(x d.ProcessInstanceSearchRequest) Pr
 		DirectIncidentIndex:  x.DirectIncidentIndex,
 		ReportedTotalAllowed: x.ReportedTotalAllowed,
 		DirectIncidentFilter: ProcessInstanceIncidentSearchFilter{State: x.DirectIncidentFilter.State, ErrorType: x.DirectIncidentFilter.ErrorType, ErrorMessage: x.DirectIncidentFilter.ErrorMessage, ProcessDefinitionKey: x.DirectIncidentFilter.ProcessDefinitionKey, ProcessDefinitionId: x.DirectIncidentFilter.ProcessDefinitionId},
+	}
+}
+
+// toDomainSelectionRequest copies the original search criteria and cardinality.
+func toDomainSelectionRequest(x ProcessInstanceSelectionRequest) d.ProcessInstanceSelectionRequest {
+	return d.ProcessInstanceSelectionRequest{SearchRequest: toDomainProcessInstanceSearchRequest(x.SearchRequest), Cardinality: d.ProcessInstanceSelectionCardinality(x.Cardinality)}
+}
+
+// toDomainSelectedMutationRequest maps the reviewed operation and selection controls.
+func toDomainSelectedMutationRequest(x ProcessInstanceSelectedMutationRequest) d.ProcessInstanceSelectedMutationRequest {
+	return d.ProcessInstanceSelectedMutationRequest{Operation: x.Operation, Selection: toDomainSelectionRequest(x.Selection), Workers: x.Workers}
+}
+
+// toDomainSelectedMutationPlan isolates nested membership, observations and criteria at the facade boundary.
+func toDomainSelectedMutationPlan(x ProcessInstanceSelectedMutationPlan) d.ProcessInstanceSelectedMutationPlan {
+	return d.ProcessInstanceSelectedMutationPlan{
+		Request:   toDomainSelectedMutationRequest(x.Request),
+		Selection: toDomainProcessInstanceSelection(x.Selection),
+		Expansion: toDomainDryRunPIKeyExpansion(x.Expansion),
+		Tenant:    x.Tenant,
+		Families: toolx.MapSlice(x.Families, func(f ProcessInstanceMutationFamily) d.ProcessInstanceMutationFamily {
+			return d.ProcessInstanceMutationFamily{RootKey: f.RootKey, Keys: append([]string(nil), f.Keys...), Items: toolx.MapSlice(f.Items, toDomainProcessInstance)}
+		})}
+}
+
+// fromDomainSelectionRequest copies the original search criteria and cardinality.
+func fromDomainSelectionRequest(x d.ProcessInstanceSelectionRequest) ProcessInstanceSelectionRequest {
+	return ProcessInstanceSelectionRequest{SearchRequest: fromDomainProcessInstanceSearchRequest(x.SearchRequest), Cardinality: ProcessInstanceSelectionCardinality(x.Cardinality)}
+}
+
+// fromDomainSelectedMutationRequest maps the reviewed operation and selection controls.
+func fromDomainSelectedMutationRequest(x d.ProcessInstanceSelectedMutationRequest) ProcessInstanceSelectedMutationRequest {
+	return ProcessInstanceSelectedMutationRequest{Operation: x.Operation, Selection: fromDomainSelectionRequest(x.Selection), Workers: x.Workers}
+}
+
+// fromDomainSelectedMutationPlan isolates nested membership, observations and criteria at the facade boundary.
+func fromDomainSelectedMutationPlan(x d.ProcessInstanceSelectedMutationPlan) ProcessInstanceSelectedMutationPlan {
+	return ProcessInstanceSelectedMutationPlan{
+		Request:   fromDomainSelectedMutationRequest(x.Request),
+		Selection: fromDomainProcessInstanceSelection(x.Selection),
+		Expansion: fromDomainDryRunPIKeyExpansion(x.Expansion),
+		Tenant:    x.Tenant,
+		Families: toolx.MapSlice(x.Families, func(f d.ProcessInstanceMutationFamily) ProcessInstanceMutationFamily {
+			return ProcessInstanceMutationFamily{RootKey: f.RootKey, Keys: append([]string(nil), f.Keys...), Items: toolx.MapSlice(f.Items, fromDomainProcessInstance)}
+		})}
+}
+
+// toDomainProcessInstanceSelection preserves caller evidence without inferring completion.
+func toDomainProcessInstanceSelection(x ProcessInstanceSelection) d.ProcessInstanceSelection {
+	return d.ProcessInstanceSelection{
+		Request:        toDomainSelectionRequest(x.Request),
+		Origin:         x.Origin,
+		Items:          toolx.MapSlice(x.Items, toDomainProcessInstance),
+		Keys:           append([]string(nil), x.Keys...),
+		Completion:     d.ProcessInstanceSearchCompletion(x.Completion),
+		Pages:          x.Pages,
+		TenantEvidence: toDomainSelectionTenantEvidence(x.TenantEvidence),
+		IgnoreTenant:   x.IgnoreTenant,
+	}
+}
+
+// toDomainSelectionTenantEvidence copies target-level tenant evidence.
+func toDomainSelectionTenantEvidence(x TenantEvidence) d.TenantEvidence {
+	return d.TenantEvidence{ResolvedTenantIDs: append([]string(nil), x.ResolvedTenantIDs...), UnknownTargetCount: x.UnknownTargetCount, TargetCount: x.TargetCount, Targets: toolx.MapSlice(x.Targets, func(t TenantEvidenceTarget) d.TenantEvidenceTarget {
+		return d.TenantEvidenceTarget{Key: t.Key, TenantID: t.TenantID}
+	})}
+}
+
+// toDomainDryRunPIKeyExpansion copies frozen expansion without performing fresh discovery.
+func toDomainDryRunPIKeyExpansion(x DryRunPIKeyExpansion) d.DryRunPIKeyExpansion {
+	return d.DryRunPIKeyExpansion{
+		Roots:                      append([]string(nil), x.Roots...),
+		Collected:                  append([]string(nil), x.Collected...),
+		TenantEvidence:             toDomainSelectionTenantEvidence(x.TenantEvidence),
+		SelectedFinalState:         toolx.MapSlice(x.SelectedFinalState, toDomainProcessInstance),
+		RequiresCancelBeforeDelete: toolx.MapSlice(x.RequiresCancelBeforeDelete, toDomainProcessInstance),
+		Warning:                    x.Warning,
+		Outcome:                    d.TraversalOutcome(x.Outcome),
+		MissingAncestors:           toolx.MapSlice(x.MissingAncestors, func(m MissingAncestor) d.MissingAncestor { return d.MissingAncestor{Key: m.Key, StartKey: m.StartKey} }),
 	}
 }

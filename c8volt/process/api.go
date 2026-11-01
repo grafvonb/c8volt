@@ -78,8 +78,12 @@ func (r DryRunPIKeyExpansion) HasActionableResults() bool {
 }
 
 // API defines public process operations. Custom implementations must include the
-// no-I/O search validator, suspension planner and single/collection executors.
+// no-I/O search validator, selection and frozen-cancellation planners, and state-control executors.
 type API interface {
+	// PlanProcessInstanceSelectedMutation freezes completed collection discovery and expanded families.
+	PlanProcessInstanceSelectedMutation(ctx context.Context, request ProcessInstanceSelectedMutationRequest, opts ...options.FacadeOption) (ProcessInstanceSelectedMutationPlan, error)
+	// ExecuteProcessInstanceCancellationPlan validates and submits only the reviewed distinct roots.
+	ExecuteProcessInstanceCancellationPlan(ctx context.Context, plan ProcessInstanceSelectedMutationPlan, opts ...options.FacadeOption) (CancelReports, error)
 	// ValidateProcessInstanceSearchFilter checks criteria and version support without backend I/O.
 	ValidateProcessInstanceSearchFilter(filter ProcessInstanceFilter) error
 	// PlanProcessInstanceSuspension freezes selected subtrees and active targets without mutation.

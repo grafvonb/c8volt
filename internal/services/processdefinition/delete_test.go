@@ -2197,3 +2197,21 @@ func (tenantEvidenceProcessInstanceAPI) ValidateProcessInstanceSearchFilter(d.Pr
 func (s unfinishedInstanceAPI) ValidateProcessInstanceSearchFilter(d.ProcessInstanceFilter) error {
 	return nil
 }
+
+// ProcessInstanceSearchTenant supplies unfiltered context for owned service fixtures.
+func (cleanupEligibilityProcessInstanceAPI) ProcessInstanceSearchTenant(...services.CallOption) string {
+	return ""
+}
+
+// ProcessInstanceSearchTenant supplies unfiltered context for owned service fixtures.
+func (workerPreviewProcessInstanceAPI) ProcessInstanceSearchTenant(...services.CallOption) string {
+	return ""
+}
+
+// ProcessInstanceSearchTenant supplies unfiltered context for owned service fixtures.
+func (tenantEvidenceProcessInstanceAPI) ProcessInstanceSearchTenant(...services.CallOption) string {
+	return ""
+}
+
+// ProcessInstanceSearchTenant supplies unfiltered context for owned service fixtures.
+func (unfinishedInstanceAPI) ProcessInstanceSearchTenant(...services.CallOption) string { return "" }

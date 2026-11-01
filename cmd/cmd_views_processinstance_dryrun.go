@@ -2,9 +2,11 @@ package cmd
 
 import (
 	"fmt"
+	"net/http"
 	"strings"
 
 	"github.com/grafvonb/c8volt/c8volt/process"
+	"github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/toolx"
 	types "github.com/grafvonb/c8volt/typex"
 	"github.com/spf13/cobra"
@@ -29,7 +31,9 @@ type processInstanceDryRunRequiresCancelBeforeDelete struct {
 	State      process.State `json:"state"`
 }
 
+// processInstanceDryRunPreview retains full selected and expanded scope, including optional BID provenance.
 type processInstanceDryRunPreview struct {
+	Selection                       *process.ProcessInstanceSelection                 `json:"selection,omitempty"`
 	Operation                       string                                            `json:"operation"`
 	RequestedKeys                   []string                                          `json:"requestedKeys"`
 	ResolvedRoots                   []string                                          `json:"resolvedRoots"`
@@ -235,6 +239,10 @@ func renderProcessInstanceDryRunPreview(cmd *cobra.Command, preview processInsta
 	renderAttachedTenantContext(cmd)
 	renderHumanLine(cmd, "dry run: %s process-instance", preview.Operation)
 	renderHumanLine(cmd, "selected process instances: %d", preview.RequestedCount)
+	if preview.Selection != nil {
+		renderBusinessIDSelectionScope(cmd, *preview.Selection)
+		renderHumanLine(cmd, "dependency expansion: %d additional process instance(s) due to dependencies", max(0, preview.AffectedCount-preview.RequestedCount))
+	}
 	renderHumanLine(cmd, "process-instance trees to %s: %d", preview.Operation, preview.ResolvedRootCount)
 	renderHumanLine(cmd, "process instances in scope: %d", preview.AffectedCount)
 	printProcessInstanceDryRunSelectedFinalState(cmd, preview.Operation, preview.SelectedFinalState)
@@ -409,4 +417,96 @@ func formatProcessInstanceDryRunMissingAncestors(missingAncestors []processInsta
 		return fmt.Sprintf("missing ancestor keys: %s", strings.Join(keys, ", "))
 	}
 	return fmt.Sprintf("missing ancestor keys: %d; use --verbose to list keys", len(keys))
+}
+
+// businessIDCancellationResult adds reviewed scope to the existing cancellation items payload.
+type businessIDCancellationResult struct {
+	process.CancelReports
+	Scope processInstanceDryRunPreview `json:"scope"`
+}
+
+// selectedMutationPreview preserves explicit incomplete evidence instead of the legacy empty-outcome default.
+func selectedMutationPreview(plan process.ProcessInstanceSelectedMutationPlan) processInstanceDryRunPreview {
+	preview := newProcessInstanceDryRunPreview("cancel", plan.Selection.Keys, plan.Expansion)
+	preview.Selection = &plan.Selection
+	preview.ScopeComplete = plan.Expansion.Outcome == process.TraversalOutcomeComplete && (plan.Selection.Completion == process.ProcessInstanceSearchCompletionExhausted || plan.Selection.Completion == process.ProcessInstanceSearchCompletionLimitReached)
+	return preview
+}
+
+// renderBusinessIDCancellation renders full frozen scope or partial execution once, with no backend reads.
+func renderBusinessIDCancellation(cmd *cobra.Command, plan process.ProcessInstanceSelectedMutationPlan, reports process.CancelReports, previewOnly bool, operationErr error) error {
+	preview := selectedMutationPreview(plan)
+	submitted := len(domain.ProcessInstanceMutationFailures(operationErr)) > 0
+	for _, report := range reports.Items {
+		if report.Ok && report.StatusCode == http.StatusNoContent {
+			submitted = true
+		}
+	}
+	preview.MutationSubmitted = !previewOnly && submitted
+	payload := any(businessIDCancellationResult{CancelReports: reports, Scope: preview})
+	if previewOnly {
+		payload = preview
+	}
+	if pickMode() == RenderModeJSON {
+		if operationErr != nil {
+			envelope := resultEnvelopeForError(cmd, operationErr)
+			envelope.Payload = payload
+			return renderResultEnvelope(cmd, envelope)
+		}
+		if previewOnly || !preview.MutationSubmitted {
+			return renderSucceededResult(cmd, payload)
+		}
+		return renderCommandResult(cmd, payload)
+	}
+	if previewOnly {
+		if operationErr != nil {
+			return nil
+		}
+		return renderProcessInstanceDryRunPreview(cmd, preview)
+	}
+	if pickMode() == RenderModeKeysOnly {
+		for _, report := range reports.Items {
+			if report.Ok {
+				renderOutputLine(cmd, "%s", report.Key)
+			}
+		}
+		return nil
+	}
+	renderBusinessIDSelectionScope(cmd, plan.Selection)
+	renderHumanLine(cmd, "selected process instances: %d; roots: %d; affected process instances: %d", len(plan.Selection.Keys), len(plan.Expansion.Roots), len(plan.Expansion.Collected))
+	renderHumanLine(cmd, "dependency expansion: %d additional process instance(s) due to dependencies", max(0, len(plan.Expansion.Collected)-len(plan.Selection.Keys)))
+	if operationErr == nil && !preview.MutationSubmitted {
+		renderHumanLine(cmd, "cancellation: already terminal; no mutation submitted")
+	} else if operationErr == nil {
+		renderProcessInstanceMutationResultSummary(cmd, "cancel", toolx.MapSlice(reports.Items, func(r process.CancelReport) process.Reporter { return process.Reporter(r) }), processInstancePageImpact{Requested: len(plan.Selection.Keys), Roots: len(plan.Expansion.Roots), Affected: len(plan.Expansion.Collected)})
+	}
+	if flagVerbose {
+		printProcessInstanceDryRunKeys(cmd, "selected process-instance keys", preview.RequestedKeys)
+		printProcessInstanceDryRunKeys(cmd, "root process-instance tree keys", preview.ResolvedRoots)
+		printProcessInstanceDryRunKeys(cmd, "in-scope process-instance keys", preview.AffectedFamilyKeys)
+		for _, report := range reports.Items {
+			renderHumanLine(cmd, "cancellation root %s: successful=%t", report.Key, report.Ok)
+		}
+	}
+	return nil
+}
+
+// renderBusinessIDSelectionScope quotes opaque criteria and distinguishes bounded seeds from exhaustive discovery.
+func renderBusinessIDSelectionScope(cmd *cobra.Command, selection process.ProcessInstanceSelection) {
+	if bid := selection.Request.SearchRequest.Filter.BusinessId; bid != nil {
+		renderHumanLine(cmd, "selection business ID: %q", *bid)
+	}
+	if selection.Completion == process.ProcessInstanceSearchCompletionLimitReached {
+		renderHumanLine(cmd, "discovery user-limited: limit %d; pages %d", selection.Request.SearchRequest.Limit, selection.Pages)
+	}
+}
+
+// formatBusinessIDCancellationFailure groups all failures into one bounded diagnostic without raw backend chains.
+func formatBusinessIDCancellationFailure(plan process.ProcessInstanceSelectedMutationPlan, reports process.CancelReports, err error) string {
+	_, ok, _ := reports.Totals()
+	message := fmt.Sprintf("cancel process instances: selected %d, roots %d, successful %d; %s", len(plan.Selection.Keys), len(plan.Expansion.Roots), ok, boundedCommandFailureReason(err))
+	if n := len(domain.ProcessInstanceMutationFailures(err)); n > 0 {
+		message += fmt.Sprintf("; cancellation submitted for %d root(s), outcome unconfirmed", n)
+	}
+	return message
 }

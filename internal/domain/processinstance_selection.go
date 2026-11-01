@@ -32,3 +32,27 @@ type ProcessInstanceSelection struct {
 	TenantEvidence TenantEvidence
 	IgnoreTenant   bool
 }
+
+// ProcessInstanceSelectedMutationRequest identifies the reviewed collection operation.
+type ProcessInstanceSelectedMutationRequest struct {
+	Operation string
+	Selection ProcessInstanceSelectionRequest
+	Workers   int
+}
+
+// ProcessInstanceMutationFamily retains ordered members and observed parent relationships for one root.
+type ProcessInstanceMutationFamily struct {
+	RootKey string
+	Keys    typex.Keys
+	Items   []ProcessInstance
+}
+
+// ProcessInstanceSelectedMutationPlan is invocation-local evidence, not an authorization token.
+// Readiness is derived from discovery, complete expansion and consistent family membership.
+type ProcessInstanceSelectedMutationPlan struct {
+	Request   ProcessInstanceSelectedMutationRequest
+	Selection ProcessInstanceSelection
+	Expansion DryRunPIKeyExpansion
+	Families  []ProcessInstanceMutationFamily
+	Tenant    string
+}

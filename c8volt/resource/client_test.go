@@ -1331,3 +1331,18 @@ func (s stubProcessAPI) ValidateProcessInstanceSearchFilter(process.ProcessInsta
 func (stubProcessAPI) ResolveProcessInstanceSelection(context.Context, process.ProcessInstanceSelectionRequest, ...options.FacadeOption) (process.ProcessInstanceSelection, error) {
 	panic("unexpected selection")
 }
+
+// PlanProcessInstanceSelectedMutation rejects unconfigured selection in legacy keyed fixtures.
+func (stubProcessAPI) PlanProcessInstanceSelectedMutation(context.Context, process.ProcessInstanceSelectedMutationRequest, ...options.FacadeOption) (process.ProcessInstanceSelectedMutationPlan, error) {
+	panic("unexpected selected mutation planning")
+}
+
+// ExecuteProcessInstanceCancellationPlan rejects unconfigured frozen execution in legacy keyed fixtures.
+func (stubProcessAPI) ExecuteProcessInstanceCancellationPlan(context.Context, process.ProcessInstanceSelectedMutationPlan, ...options.FacadeOption) (process.CancelReports, error) {
+	panic("unexpected selected cancellation")
+}
+
+// ProcessInstanceSearchTenant supplies unfiltered context for owned service fixtures.
+func (stubProcessInstanceService) ProcessInstanceSearchTenant(...services.CallOption) string {
+	return ""
+}

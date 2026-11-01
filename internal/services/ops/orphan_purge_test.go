@@ -696,3 +696,6 @@ func (stubProcessInstanceAPI) ResumeProcessInstance(context.Context, string, ...
 func (s stubProcessInstanceAPI) ValidateProcessInstanceSearchFilter(d.ProcessInstanceFilter) error {
 	return nil
 }
+
+// ProcessInstanceSearchTenant supplies unfiltered context for owned service fixtures.
+func (stubProcessInstanceAPI) ProcessInstanceSearchTenant(...services.CallOption) string { return "" }

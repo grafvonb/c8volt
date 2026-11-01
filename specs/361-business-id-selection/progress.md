@@ -170,3 +170,57 @@ Started: 2026-11-01 12:22:16
 - `make docs-content`, `go test ./docsgen -count=1`, targeted gofmt and diff checks passed. README/help/generated docs now describe uniqueness, tenant scope, public API compatibility and complete v810 child discovery. CLI selection/completion lives in its focused mode file; views own empty/failure rendering; no backend loop was added to commands/facades.
 - All checks used the quickstart environment-isolation wrapper, owned mocks/HTTP servers/PTY fixtures and offline integration-support tests. Real-engine validation was not performed; concurrent backend changes remain an unverified coverage boundary. No new user story or mutation/ops BID behavior was started.
 ---
+
+---
+## Iteration 4 - 2026-11-01 13:49
+**Work Unit**: US3 T004 — frozen cross-family BID cancellation completed; remaining US3 actions deferred to subsequent work units
+**Tasks Completed**:
+- [x] T004: Deliver frozen cross-family BID cancellation, complete previews, validated execution, isolated acceptance coverage and documentation.
+**Tasks Remaining in Work Unit**: 0 for T004; US3 has T005–T007 remaining, and 6 feature tasks remain overall.
+**Commit**: This work-unit commit
+**Files Changed**:
+- README.md
+- c8volt/process/api.go
+- c8volt/process/client_test.go
+- c8volt/process/convert.go
+- c8volt/process/model.go
+- c8volt/process/selection.go
+- c8volt/process/selection_test.go
+- c8volt/resource/client_test.go
+- cmd/cancel_processinstance.go
+- cmd/cancel_processinstance_business_id.go
+- cmd/cancel_processinstance_business_id_test.go
+- cmd/cmd_views_processinstance_dryrun.go
+- cmd/process_api_stub_test.go
+- cmd/run_processinstance_business_id_test.go
+- docs/cli/c8volt_cancel_process-instance.md
+- docs/index.md
+- internal/domain/processinstance_selection.go
+- internal/services/ops/orphan_purge_test.go
+- internal/services/processdefinition/delete_test.go
+- internal/services/processinstance/api.go
+- internal/services/processinstance/business_id_search_test.go
+- internal/services/processinstance/dryrun.go
+- internal/services/processinstance/dryrun_test.go
+- internal/services/processinstance/search_test.go
+- internal/services/processinstance/selected_cancel.go
+- internal/services/processinstance/selected_cancel_test.go
+- internal/services/processinstance/v810/contract.go
+- internal/services/processinstance/v810/service.go
+- internal/services/processinstance/v88/contract.go
+- internal/services/processinstance/v88/service.go
+- internal/services/processinstance/v89/contract.go
+- internal/services/processinstance/v89/service.go
+- specs/361-business-id-selection/progress.md
+- specs/361-business-id-selection/ralph-memory.md
+- specs/361-business-id-selection/tasks.md
+**Learnings**:
+- Shared service selection now composes one global ancestry/root/family plan. Duplicate/sparse discovery produces 3 seeds, 2 roots, 7 members and 4 additional relatives; limit 2 produces the complete 4-member first family. Each distinct root is expanded once. Native >1000-child paging retains all 1003 members in JSON and verbose output. Complete discovery precedes confirmation/submission; failed, cyclic, unknown or late-child discovery submits nothing.
+- The new public planner/executor map copied criteria, selected observations, expansion and ordered family observations. Receiving adapters validate capability before even empty/prebuilt plans; 8.8/8.9 reject v810-created plans without HTTP. Consumption checks operation, criteria, completion/bounds, tenant/IgnoreTenant, distinct keys, parent membership/order and a selected seed in every family. Public/domain copies include nested variables and exact BID provenance; JSON round trips retain evidence. Added internal tenant-context method and all affected facade/service stubs together.
+- Actual command execution with real terminal stdin covers empty normal/dry-run human/JSON/keys/quiet and supported automation/auto-confirm/no-wait combinations; exact existing empty envelopes, EOF, zero-byte keys, zero prompts/mutations and request counts pass. Nonempty approval/decline/EOF uses plain configured/inherited stderr prompts with redirected stdout. A changed post-approval discovery fixture cannot add independent roots; no BID re-search occurs. Existing non-BID paging and direct-key regressions pass.
+- Successful mutation/dry-run/verbose output uses configured INFO logging with empty human stdout; both plain-time and structured formats/destinations, quiet/WARN suppression and full key membership pass. Repeated/partial root errors produce one bounded ERROR without raw HTTP details; DEBUG by flag/configuration remains redacted and independent of verbose. JSON preserves partial reports/error evidence in one envelope and exit 2; output failure makes one write attempt. Accepted-but-unconfirmed failures retain submission evidence; already-terminal no-wait roots do not claim acceptance.
+- Traced failure flow: service retains partial plan/reports and original error → facade maps evidence and converts error → view emits one selected-format result → configured logger emits a bounded human failure when applicable → exitAfterRenderedResult preserves the original class. Reviewed changed direct-output/error formatting boundaries; no raw diagnostic print or error-chain rendering was added. CLI lifecycle lives in cancel_processinstance_business_id.go, final formatting remains in views, and backend loops/planning remain in services.
+- New test names were listed before focused execution. Owner checks passed with `go test ./internal/services/processinstance/... ./c8volt/process -run 'Test.*(BusinessIDCancel|DryRun|Search|Selection|Traversal|Children)' -count=1`. Command/legacy checks passed with `go test ./cmd ./internal/services/processinstance ./c8volt/process -run 'Test.*(BusinessIDCancel|CancelProcessInstance|ProcessInstanceDryRun)' -count=1` (command package 6.446s). Initial fixture issues (page-request metadata, unknown pd-key flag, prompt newline, automation empty INFO expectation) were corrected and corresponding checks passed.
+- Full `make test PKG=./...` passed with race detection and integration tags disabled, including cmd (452.228s), process owners, resource/ops consumers and docsgen. This breadth was justified by shared planner/converter/interface changes. The full run started before the final narrow unselected-family guard and extra verbose fixture; final `go test ./internal/services/processinstance ./c8volt/process ./cmd -run '^TestBusinessIDCancel' -race -count=1` passed on those final changes (command package 127.137s). The standalone large verbose race fixture also passed.
+- Targeted gofmt, `make docs-content`, and diff checks passed. README/help/generated docs describe opaque BID, version/tenant rules, full frozen scope, seed limits, one confirmation, native cascade timing and public API compatibility. All validation used the quickstart isolation wrapper and test-owned mocks/HTTP servers/PTYs; untagged integration-support packages were reviewed as offline fixtures. No live environment was inspected or tested; concurrent real-engine cascade behavior remains unverified.
+---
