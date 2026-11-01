@@ -22,16 +22,26 @@ func ExecuteProcessInstanceDeletionPlan(ctx context.Context, api API, plan d.Pro
 	if err := validateSelectedMutationPlan(api, plan, "delete", opts...); err != nil {
 		return result, err
 	}
+	return ExecuteProcessInstanceFrozenDeletion(ctx, api, plan.Families, plan.Request.Workers, opts...)
+}
+
+// ExecuteProcessInstanceFrozenDeletion shares exact-member execution with operation-owned cleanup plans.
+// The caller validates original selection and eligibility; this boundary validates the frozen graph and action states.
+func ExecuteProcessInstanceFrozenDeletion(ctx context.Context, api API, families []d.ProcessInstanceMutationFamily, wantedWorkers int, opts ...services.CallOption) (d.ProcessInstanceDeletionResult, error) {
+	result := d.ProcessInstanceDeletionResult{}
+	if err := ValidateProcessInstanceDeletionFamilies(families); err != nil {
+		return result, err
+	}
 	if err := ctx.Err(); err != nil {
 		return result, err
 	}
 	cfg := services.ApplyCallOptions(opts)
-	if len(plan.Selection.Keys) == 0 || cfg.DryRun {
+	if len(families) == 0 || cfg.DryRun {
 		return result, nil
 	}
 	// Inspect observations themselves; callers cannot bypass force by clearing preview counts.
 	if !cfg.Force {
-		for _, family := range plan.Families {
+		for _, family := range families {
 			for _, item := range family.Items {
 				if !item.State.IsTerminal() {
 					return result, fmt.Errorf("%w: nonterminal affected process instances require --force", d.ErrPrecondition)
@@ -40,8 +50,8 @@ func ExecuteProcessInstanceDeletionPlan(ctx context.Context, api API, plan d.Pro
 		}
 	}
 	executionOpts := append(slices.Clone(opts), services.WithIgnoreTenant())
-	workers := toolx.DetermineNoOfWorkers(len(plan.Families), plan.Request.Workers, cfg.NoWorkerLimit)
-	slots, err := pool.ExecuteSlice[d.ProcessInstanceMutationFamily, *d.ProcessInstanceDeletionResult](ctx, plan.Families, workers, cfg.FailFast, func(ctx context.Context, family d.ProcessInstanceMutationFamily, _ int) (*d.ProcessInstanceDeletionResult, error) {
+	workers := toolx.DetermineNoOfWorkers(len(families), wantedWorkers, cfg.NoWorkerLimit)
+	slots, err := pool.ExecuteSlice[d.ProcessInstanceMutationFamily, *d.ProcessInstanceDeletionResult](ctx, families, workers, cfg.FailFast, func(ctx context.Context, family d.ProcessInstanceMutationFamily, _ int) (*d.ProcessInstanceDeletionResult, error) {
 		familyResult := &d.ProcessInstanceDeletionResult{Roots: []d.Reporter{{Key: family.RootKey}}}
 		for _, key := range frozenDeletionOrder(family) {
 			if err := ctx.Err(); err != nil {
@@ -65,8 +75,11 @@ func ExecuteProcessInstanceDeletionPlan(ctx context.Context, api API, plan d.Pro
 	})
 	for i, slot := range slots {
 		if slot == nil {
-			result.Roots = append(result.Roots, d.Reporter{Key: plan.Families[i].RootKey, Status: "not attempted"})
+			result.Roots = append(result.Roots, d.Reporter{Key: families[i].RootKey, Status: "not attempted"})
 			continue
+		}
+		if slot.MutationSubmitted {
+			result.SubmittedRootKeys = append(result.SubmittedRootKeys, families[i].RootKey)
 		}
 		result.MutationSubmitted = result.MutationSubmitted || slot.MutationSubmitted
 		result.Roots = append(result.Roots, slot.Roots...)
@@ -94,4 +107,31 @@ func frozenDeletionOrder(family d.ProcessInstanceMutationFamily) []string {
 	}
 	visit(family.RootKey)
 	return ordered
+}
+
+// ValidateProcessInstanceDeletionFamilies rejects duplicate, cyclic, foreign-parent or incomplete frozen membership.
+// A cleanup root may retain its observed missing parent; descendants must follow an already observed parent.
+func ValidateProcessInstanceDeletionFamilies(families []d.ProcessInstanceMutationFamily) error {
+	seen := make(map[string]bool)
+	for _, family := range families {
+		if family.RootKey == "" || len(family.Keys) == 0 || family.Keys[0] != family.RootKey || len(family.Keys) != len(family.Items) {
+			return fmt.Errorf("%w: incomplete frozen deletion family", d.ErrPrecondition)
+		}
+		parents := make(map[string]bool)
+		for i, item := range family.Items {
+			if item.Key == "" || item.Key != family.Keys[i] || seen[item.Key] || (i > 0 && !parents[item.ParentKey]) || item.ParentKey == item.Key {
+				return fmt.Errorf("%w: inconsistent frozen deletion membership", d.ErrPrecondition)
+			}
+			seen[item.Key], parents[item.Key] = true, true
+		}
+		if parents[family.Items[0].ParentKey] {
+			return fmt.Errorf("%w: cyclic frozen deletion family", d.ErrPrecondition)
+		}
+	}
+	for _, family := range families {
+		if seen[family.Items[0].ParentKey] {
+			return fmt.Errorf("%w: frozen family root has an in-scope parent", d.ErrPrecondition)
+		}
+	}
+	return nil
 }

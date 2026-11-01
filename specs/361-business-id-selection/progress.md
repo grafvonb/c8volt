@@ -424,3 +424,57 @@ Started: 2026-11-01 12:22:16
 - Listed new tests before execution. Final targeted isolated owner/facade/command race suite passed (cmd 14.124s). Additional automation/precedence/override checks passed with race (1.048s); strengthened exact-empty wording checks passed with race (3.338s). Legacy repair and incident waiter regressions passed in the full run after correcting the new test expectations.
 - Full isolated `make test PKG=./...` passed with race detection and integration tags disabled (cmd 513.293s). Shared ops conversions and incident-wait logging justified breadth. It began before the additional automation and exact-empty assertions, which passed separately with race; runtime behavior did not change after the broad run began. `make docs-content`, touched-file gofmt and `git diff --check` passed. All backend dependencies were owned mocks/HTTP fakes/PTY fixtures; real-engine behavior remains unverified.
 ---
+
+---
+## Iteration 9 - 2026-11-01 15:56
+**Work Unit**: US4 T009 — completed frozen BID retention and orphan cleanup; US4 partially complete
+**Tasks Completed**:
+- [x] T009: Freeze retention eligibility/boundaries and orphan candidate classification, preserve reviewed membership through confirmation, and execute only reviewed members with shared exact deletion.
+**Tasks Remaining in Work Unit**: 1 in US4: T010 slow analysis.
+**Commit**: This work-unit commit
+**Files Changed**:
+- README.md
+- c8volt/ops/cleanup_plan.go
+- c8volt/ops/cleanup_plan_model.go
+- c8volt/ops/cleanup_plan_test.go
+- c8volt/ops/convert.go
+- c8volt/ops/model.go
+- c8volt/ops/repair_plan.go
+- cmd/cmd_views_ops_execute_retention_policy.go
+- cmd/cmd_views_ops_processinstance.go
+- cmd/cmd_views_ops_purge_orphan_processinstances.go
+- cmd/command_contract_test.go
+- cmd/ops_cleanup_business_id.go
+- cmd/ops_cleanup_business_id_test.go
+- cmd/ops_execute_retention_policy.go
+- cmd/ops_purge_orphan_processinstances.go
+- docs/cli/c8volt_ops_execute_retention-policy.md
+- docs/cli/c8volt_ops_purge_orphan-process-instances.md
+- docs/index.md
+- docsgen/main_test.go
+- internal/domain/ops_cleanup_plan.go
+- internal/domain/ops_orphan_purge.go
+- internal/domain/ops_retention_policy.go
+- internal/domain/processinstance_selection.go
+- internal/services/ops/cleanup_business_id_test.go
+- internal/services/ops/cleanup_plan.go
+- internal/services/ops/orphan_business_id.go
+- internal/services/ops/orphan_purge.go
+- internal/services/ops/retention_business_id.go
+- internal/services/ops/retention_policy.go
+- internal/services/processinstance/orphan_discovery.go
+- internal/services/processinstance/orphan_discovery_test.go
+- internal/services/processinstance/retention_discovery.go
+- internal/services/processinstance/retention_discovery_test.go
+- internal/services/processinstance/selected_delete.go
+- internal/services/processinstance/selection.go
+- specs/361-business-id-selection/progress.md
+- specs/361-business-id-selection/ralph-memory.md
+- specs/361-business-id-selection/tasks.md
+**Learnings**:
+- Shared authoritative paging now deduplicates retention seeds before limits and bounds distinct orphan candidates before classification; non-orphans consume that bound. The latter intentionally corrects behavior for all callers and is documented. Retention skips nonfinal roots, expands eligible roots once and retains the fixed age/boundary. Typed copied plans keep original filters, observations, eligibility and ordered families separate; receiving version/context/completion/graph checks precede shortcuts. Bare BID keys cannot replace provenance.
+- Shared exact-member deletion is reused rather than copied: failed members stop their family before ancestors, workers/fail-fast/wait/force behavior is retained, and accepted submissions survive later errors. Owned approval-time changes cannot introduce new client delete targets. Native force cascade remains a backend boundary. Original criteria and observed business IDs survive JSON/Markdown reports without schema changes or rendering reads; SuspendedDate is also preserved by reused observation converters.
+- Traced service errors through facade conversion, result rendering, configured logging and original exit. Tests cover compact repeated transport failures, partial and accepted-but-unconfirmed outcomes, configured/inherited plain/structured destinations, INFO suppression under quiet/WARN, redacted DEBUG independent of verbose, exactly one JSON envelope with EOF/write attempt and machine precedence/error overrides. Real-terminal approve/decline/EOF, prompt-free empty and bounded zero-orphan scopes, exact human empty wording and zero-byte empty keys passed.
+- Listed new tests before execution. Initial discovery tests exposed duplicate retention accounting and orphan-only limit counting; implementation corrected both. Final isolated targeted race suite passed across cmd, ops service, process service and ops facade (cmd 30.067s), including final malformed ancestry, shared dry-run option, force guards, changed-child conflict and automation/machine assertions. Additional observation conversion checks passed with race (facade .753s); bounded non-orphan real-terminal checks passed with race (.902s). Targeted legacy cleanup/deletion regressions passed.
+- Full isolated `make test PKG=./...` completed with race detection and integration tags disabled (cmd 530.992s). All runtime tests passed; the invocation failed only two stale retention help assertions in command/docsgen tests. Both were corrected to the distinct-candidate wording and their focused race rerun passed (cmd .974s, docsgen 1.238s). The broad run began before the narrow final runtime fixes, which passed the final targeted race checks. It was not repeated for the wording-only corrections. `make docs-content`, all touched Go formatting and `git diff --check` passed. All dependencies were owned mocks/HTTP fakes/PTY fixtures; no live environment was used, and real-engine behavior remains unverified. T010 was not started.
+---

@@ -944,8 +944,10 @@ func fromDomainSmokeTestAuditReport(x d.SmokeTestAuditReport) SmokeTestAuditRepo
 	}
 }
 
+// toDomainOrphanPurgeRequest maps copied cleanup criteria and optional reviewed evidence.
 func toDomainOrphanPurgeRequest(x OrphanPurgeRequest) d.OrphanPurgeRequest {
 	out := d.OrphanPurgeRequest{
+		FrozenPlan:   toolx.MapPtr(x.FrozenPlan, toDomainOrphanPurgeFrozenPlan),
 		CommandName:  x.CommandName,
 		DryRun:       x.DryRun,
 		AutoConfirm:  x.AutoConfirm,
@@ -967,8 +969,10 @@ func toDomainOrphanPurgeRequest(x OrphanPurgeRequest) d.OrphanPurgeRequest {
 	return out
 }
 
+// fromDomainOrphanPurgeResult maps copied cleanup criteria and optional reviewed evidence.
 func fromDomainOrphanPurgeResult(x d.OrphanPurgeResult) OrphanPurgeResult {
 	return OrphanPurgeResult{
+		FrozenPlan:      toolx.MapPtr(x.FrozenPlan, fromDomainOrphanPurgeFrozenPlan),
 		Request:         fromDomainOrphanPurgeRequest(x.Request),
 		Discovery:       fromDomainOrphanDiscoveryResult(x.Discovery),
 		DeletionPlan:    fromDomainDeletionPlan(x.DeletionPlan),
@@ -980,8 +984,10 @@ func fromDomainOrphanPurgeResult(x d.OrphanPurgeResult) OrphanPurgeResult {
 	}
 }
 
+// fromDomainOrphanPurgeRequest maps copied cleanup criteria and optional reviewed evidence.
 func fromDomainOrphanPurgeRequest(x d.OrphanPurgeRequest) OrphanPurgeRequest {
 	out := OrphanPurgeRequest{
+		FrozenPlan:   toolx.MapPtr(x.FrozenPlan, fromDomainOrphanPurgeFrozenPlan),
 		CommandName:  x.CommandName,
 		DryRun:       x.DryRun,
 		AutoConfirm:  x.AutoConfirm,
@@ -1003,13 +1009,15 @@ func fromDomainOrphanPurgeRequest(x d.OrphanPurgeRequest) OrphanPurgeRequest {
 	return out
 }
 
+// fromDomainOrphanDiscoveryResult preserves optional completed selection provenance.
 func fromDomainOrphanDiscoveryResult(x d.OrphanDiscoveryResult) OrphanDiscoveryResult {
 	return OrphanDiscoveryResult{
-		Status:  WorkflowStepStatus(x.Status),
-		Filters: fromDomainProcessInstanceFilter(x.Filters),
-		Keys:    append([]string(nil), x.Keys...),
-		Count:   x.Count,
-		Errors:  append([]string(nil), x.Errors...),
+		Selection: toolx.MapPtr(x.Selection, fromDomainRepairSelection),
+		Status:    WorkflowStepStatus(x.Status),
+		Filters:   fromDomainProcessInstanceFilter(x.Filters),
+		Keys:      append([]string(nil), x.Keys...),
+		Count:     x.Count,
+		Errors:    append([]string(nil), x.Errors...),
 	}
 }
 
@@ -1062,8 +1070,10 @@ func fromDomainOrphanPurgeReport(x d.OrphanPurgeReport) OrphanPurgeReport {
 	}
 }
 
+// toDomainRetentionPolicyRequest maps copied cleanup criteria and optional reviewed evidence.
 func toDomainRetentionPolicyRequest(x RetentionPolicyRequest) d.RetentionPolicyRequest {
 	out := d.RetentionPolicyRequest{
+		FrozenPlan:             toolx.MapPtr(x.FrozenPlan, toDomainRetentionFrozenPlan),
 		CommandName:            x.CommandName,
 		RetentionDays:          x.RetentionDays,
 		DerivedEndDateBoundary: x.DerivedEndDateBoundary,
@@ -1091,8 +1101,10 @@ func toDomainRetentionPolicyRequest(x RetentionPolicyRequest) d.RetentionPolicyR
 	return out
 }
 
+// fromDomainRetentionPolicyResult maps copied cleanup criteria and optional reviewed evidence.
 func fromDomainRetentionPolicyResult(x d.RetentionPolicyResult) RetentionPolicyResult {
 	return RetentionPolicyResult{
+		FrozenPlan: toolx.MapPtr(x.FrozenPlan, fromDomainRetentionFrozenPlan),
 		Request:    fromDomainRetentionPolicyRequest(x.Request),
 		Discovery:  fromDomainRetentionDiscoveryResult(x.Discovery),
 		DeletePlan: fromDomainRetentionDeletePlan(x.DeletePlan),
@@ -1103,8 +1115,10 @@ func fromDomainRetentionPolicyResult(x d.RetentionPolicyResult) RetentionPolicyR
 	}
 }
 
+// fromDomainRetentionPolicyRequest maps copied cleanup criteria and optional reviewed evidence.
 func fromDomainRetentionPolicyRequest(x d.RetentionPolicyRequest) RetentionPolicyRequest {
 	out := RetentionPolicyRequest{
+		FrozenPlan:             toolx.MapPtr(x.FrozenPlan, fromDomainRetentionFrozenPlan),
 		CommandName:            x.CommandName,
 		RetentionDays:          x.RetentionDays,
 		DerivedEndDateBoundary: x.DerivedEndDateBoundary,
@@ -1132,8 +1146,10 @@ func fromDomainRetentionPolicyRequest(x d.RetentionPolicyRequest) RetentionPolic
 	return out
 }
 
+// fromDomainRetentionDiscoveryResult preserves optional completed selection provenance.
 func fromDomainRetentionDiscoveryResult(x d.RetentionDiscoveryResult) RetentionDiscoveryResult {
 	return RetentionDiscoveryResult{
+		Selection:              toolx.MapPtr(x.Selection, fromDomainRepairSelection),
 		Status:                 WorkflowStepStatus(x.Status),
 		RetentionDays:          x.RetentionDays,
 		DerivedEndDateBoundary: x.DerivedEndDateBoundary,
@@ -1911,7 +1927,7 @@ func toDomainOpsTenantEvidence(x process.TenantEvidence) d.TenantEvidence {
 	}
 }
 
-// fromDomainProcessInstance copies each observed identity without borrowing related resource values.
+// fromDomainProcessInstance preserves observed resource identity/fields and defensively copies mutable values.
 func fromDomainProcessInstance(x d.ProcessInstance) process.ProcessInstance {
 	return process.ProcessInstance{
 		BusinessId:               toolx.CopyPtr(x.BusinessId),
@@ -1926,6 +1942,7 @@ func fromDomainProcessInstance(x d.ProcessInstance) process.ProcessInstance {
 		ProcessVersion:           x.ProcessVersion,
 		ProcessVersionTag:        x.ProcessVersionTag,
 		StartDate:                x.StartDate,
+		SuspendedDate:            x.SuspendedDate,
 		State:                    process.State(x.State),
 		TenantId:                 x.TenantId,
 		Variables:                copyRepairVariables(x.Variables),

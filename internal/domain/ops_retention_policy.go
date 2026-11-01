@@ -18,7 +18,9 @@ const (
 	RetentionPolicyOutcomeFailed          RetentionPolicyOutcome = "failed"
 )
 
+// RetentionPolicyRequest carries cleanup inputs or outcomes with optional invocation-local reviewed evidence.
 type RetentionPolicyRequest struct {
+	FrozenPlan             *RetentionFrozenPlan `json:"-"`
 	CommandName            string
 	RetentionDays          int
 	DerivedEndDateBoundary string
@@ -42,7 +44,9 @@ type RetentionPolicyRequest struct {
 	Progress               func(OpsProgressEvent) `json:"-"`
 }
 
+// RetentionDiscoveryResult preserves optional selection provenance without changing legacy absence conventions.
 type RetentionDiscoveryResult struct {
+	Selection              *ProcessInstanceSelection
 	Status                 OpsWorkflowStepStatus
 	RetentionDays          int
 	DerivedEndDateBoundary string
@@ -110,7 +114,9 @@ type RetentionAuditReport struct {
 	Outcome                RetentionPolicyOutcome
 }
 
+// RetentionPolicyResult carries cleanup inputs or outcomes with optional invocation-local reviewed evidence.
 type RetentionPolicyResult struct {
+	FrozenPlan *RetentionFrozenPlan `json:"-"`
 	Request    RetentionPolicyRequest
 	Discovery  RetentionDiscoveryResult
 	DeletePlan RetentionDeletePlan

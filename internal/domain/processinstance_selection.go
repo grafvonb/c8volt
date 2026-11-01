@@ -59,6 +59,8 @@ type ProcessInstanceSelectedMutationPlan struct {
 
 // ProcessInstanceDeletionResult retains root outcomes and every attempted frozen member, including partial families.
 type ProcessInstanceDeletionResult struct {
+	// SubmittedRootKeys identifies families with an accepted mutation, including later confirmation failures.
+	SubmittedRootKeys typex.Keys
 	MutationSubmitted bool
 	Roots             []Reporter
 	Members           []Reporter

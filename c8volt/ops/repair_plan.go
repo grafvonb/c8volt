@@ -56,7 +56,7 @@ func fromDomainRepairSelection(x d.ProcessInstanceSelection) process.ProcessInst
 
 // toDomainRepairProcessInstance copies observations without replacing their IDs with criteria.
 func toDomainRepairProcessInstance(x process.ProcessInstance) d.ProcessInstance {
-	return d.ProcessInstance{BusinessId: toolx.CopyPtr(x.BusinessId), BpmnProcessId: x.BpmnProcessId, EndDate: x.EndDate, Incident: x.Incident, Key: x.Key, ParentElementInstanceKey: x.ParentElementInstanceKey, ParentKey: x.ParentKey, ProcessDefinitionKey: x.ProcessDefinitionKey, RootProcessInstanceKey: x.RootProcessInstanceKey, ProcessVersion: x.ProcessVersion, ProcessVersionTag: x.ProcessVersionTag, StartDate: x.StartDate, State: d.State(x.State), TenantId: x.TenantId, Variables: copyRepairVariables(x.Variables)}
+	return d.ProcessInstance{BusinessId: toolx.CopyPtr(x.BusinessId), BpmnProcessId: x.BpmnProcessId, EndDate: x.EndDate, Incident: x.Incident, Key: x.Key, ParentElementInstanceKey: x.ParentElementInstanceKey, ParentKey: x.ParentKey, ProcessDefinitionKey: x.ProcessDefinitionKey, RootProcessInstanceKey: x.RootProcessInstanceKey, ProcessVersion: x.ProcessVersion, ProcessVersionTag: x.ProcessVersionTag, StartDate: x.StartDate, SuspendedDate: x.SuspendedDate, State: d.State(x.State), TenantId: x.TenantId, Variables: copyRepairVariables(x.Variables)}
 }
 
 // toDomainRepairIncident copies the reviewed job and variable-owner identities.

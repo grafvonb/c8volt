@@ -636,7 +636,9 @@ const (
 	OrphanPurgeOutcomeFailed          OrphanPurgeOutcome = "failed"
 )
 
+// OrphanPurgeRequest carries cleanup inputs or outcomes with optional invocation-local reviewed evidence.
 type OrphanPurgeRequest struct {
+	FrozenPlan     *OrphanPurgeFrozenPlan        `json:"-"`
 	CommandName    string                        `json:"commandName,omitempty"`
 	DryRun         bool                          `json:"dryRun,omitempty"`
 	AutoConfirm    bool                          `json:"autoConfirm,omitempty"`
@@ -654,12 +656,14 @@ type OrphanPurgeRequest struct {
 	Progress       func(ProgressEvent)           `json:"-"`
 }
 
+// OrphanDiscoveryResult retains optional copied selection evidence for BID cleanup.
 type OrphanDiscoveryResult struct {
-	Status  WorkflowStepStatus            `json:"status,omitempty"`
-	Filters process.ProcessInstanceFilter `json:"filters,omitempty"`
-	Keys    typex.Keys                    `json:"keys,omitempty"`
-	Count   int                           `json:"count"`
-	Errors  []string                      `json:"errors,omitempty"`
+	Selection *process.ProcessInstanceSelection `json:"selection,omitempty"`
+	Status    WorkflowStepStatus                `json:"status,omitempty"`
+	Filters   process.ProcessInstanceFilter     `json:"filters,omitempty"`
+	Keys      typex.Keys                        `json:"keys,omitempty"`
+	Count     int                               `json:"count"`
+	Errors    []string                          `json:"errors,omitempty"`
 }
 
 type DeletionPlan struct {
@@ -705,15 +709,17 @@ type OrphanPurgeReport struct {
 	Outcome          OrphanPurgeOutcome            `json:"outcome,omitempty"`
 }
 
+// OrphanPurgeResult carries cleanup inputs or outcomes with optional invocation-local reviewed evidence.
 type OrphanPurgeResult struct {
-	Request         OrphanPurgeRequest    `json:"request,omitempty"`
-	Discovery       OrphanDiscoveryResult `json:"discovery,omitempty"`
-	DeletionPlan    DeletionPlan          `json:"deletionPlan,omitempty"`
-	Deletion        DeletionResult        `json:"deletion,omitempty"`
-	Report          OrphanPurgeReport     `json:"report,omitempty"`
-	DeleteRequested bool                  `json:"deleteRequested,omitempty"`
-	Outcome         OrphanPurgeOutcome    `json:"outcome,omitempty"`
-	Errors          []string              `json:"errors,omitempty"`
+	FrozenPlan      *OrphanPurgeFrozenPlan `json:"-"`
+	Request         OrphanPurgeRequest     `json:"request,omitempty"`
+	Discovery       OrphanDiscoveryResult  `json:"discovery,omitempty"`
+	DeletionPlan    DeletionPlan           `json:"deletionPlan,omitempty"`
+	Deletion        DeletionResult         `json:"deletion,omitempty"`
+	Report          OrphanPurgeReport      `json:"report,omitempty"`
+	DeleteRequested bool                   `json:"deleteRequested,omitempty"`
+	Outcome         OrphanPurgeOutcome     `json:"outcome,omitempty"`
+	Errors          []string               `json:"errors,omitempty"`
 }
 
 type RetentionPolicyOutcome string
@@ -725,7 +731,9 @@ const (
 	RetentionPolicyOutcomeFailed          RetentionPolicyOutcome = "failed"
 )
 
+// RetentionPolicyRequest carries cleanup inputs or outcomes with optional invocation-local reviewed evidence.
 type RetentionPolicyRequest struct {
+	FrozenPlan             *RetentionFrozenPlan          `json:"-"`
 	CommandName            string                        `json:"commandName,omitempty"`
 	RetentionDays          int                           `json:"retentionDays"`
 	DerivedEndDateBoundary string                        `json:"derivedEndDateBoundary,omitempty"`
@@ -749,15 +757,17 @@ type RetentionPolicyRequest struct {
 	Progress               func(ProgressEvent)           `json:"-"`
 }
 
+// RetentionDiscoveryResult retains optional copied selection evidence for BID cleanup.
 type RetentionDiscoveryResult struct {
-	Status                 WorkflowStepStatus            `json:"status,omitempty"`
-	RetentionDays          int                           `json:"retentionDays"`
-	DerivedEndDateBoundary string                        `json:"derivedEndDateBoundary,omitempty"`
-	Filters                process.ProcessInstanceFilter `json:"filters,omitempty"`
-	SeedKeys               typex.Keys                    `json:"seedKeys,omitempty"`
-	Count                  int                           `json:"count"`
-	Notices                []RetentionWorkflowNotice     `json:"notices,omitempty"`
-	Errors                 []string                      `json:"errors,omitempty"`
+	Selection              *process.ProcessInstanceSelection `json:"selection,omitempty"`
+	Status                 WorkflowStepStatus                `json:"status,omitempty"`
+	RetentionDays          int                               `json:"retentionDays"`
+	DerivedEndDateBoundary string                            `json:"derivedEndDateBoundary,omitempty"`
+	Filters                process.ProcessInstanceFilter     `json:"filters,omitempty"`
+	SeedKeys               typex.Keys                        `json:"seedKeys,omitempty"`
+	Count                  int                               `json:"count"`
+	Notices                []RetentionWorkflowNotice         `json:"notices,omitempty"`
+	Errors                 []string                          `json:"errors,omitempty"`
 }
 
 type RetentionDeletePlan struct {
@@ -817,7 +827,9 @@ type RetentionAuditReport struct {
 	Outcome                RetentionPolicyOutcome        `json:"outcome,omitempty"`
 }
 
+// RetentionPolicyResult carries cleanup inputs or outcomes with optional invocation-local reviewed evidence.
 type RetentionPolicyResult struct {
+	FrozenPlan *RetentionFrozenPlan     `json:"-"`
 	Request    RetentionPolicyRequest   `json:"request,omitempty"`
 	Discovery  RetentionDiscoveryResult `json:"discovery,omitempty"`
 	DeletePlan RetentionDeletePlan      `json:"deletePlan,omitempty"`

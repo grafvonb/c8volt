@@ -13,9 +13,13 @@ Delete orphan child process instances whose parents are missing.
 
 The workflow discovers orphan candidates, fixes the target set, validates the delete plan, and requires confirmation before deletion. Process-instance family, force, and wait rules apply.
 
+--limit counts distinct matching child candidates inspected before orphan classification, including non-orphans; duplicates do not consume the bound.
+
 --tenant limits discovery; an empty tenant or --all-tenants searches across accessible tenants.
 
 Use --dry-run to inspect the plan without mutation, --auto-confirm or --automation for unattended deletion, and --report-file to save an audit report.
+
+--bid selects one exact opaque business ID on Camunda 8.10+, combined with other predicates in tenant scope. BID cleanup completes discovery and freezes eligible families before confirmation; deletion submits only reviewed members in children-before-parent order. Dry-run reads scope without mutation. New matches or children are not added after approval; native force cancellation may cascade within a targeted family.
 
 Observed process-instance business IDs are retained in JSON and Markdown audit reports. Use --verbose to inspect each observed reference in the plan; key-only outcomes remain unchanged.
 
@@ -26,6 +30,7 @@ c8volt ops purge orphan-process-instances [flags]
 ### Examples
 
 ```
+  ./c8volt ops purge orphan-process-instances --bid ORDER-123 --limit 25 --dry-run
   ./c8volt ops purge orphan-process-instances --dry-run
   ./c8volt --tenant tenant-a ops purge orphan-process-instances --dry-run
   ./c8volt --all-tenants ops purge orphan-process-instances --dry-run
@@ -39,6 +44,7 @@ c8volt ops purge orphan-process-instances [flags]
 
 ```
   -n, --batch-size int32            number of process instances to inspect per page (max limit 1000 enforced by server) (default 1000)
+      --bid string                  exact opaque business ID to select within tenant scope (Camunda 8.10+)
   -b, --bpmn-process-id string      BPMN process ID to filter process instances
       --dry-run                     discover and validate orphan process-instance cleanup without submitting deletion requests
       --end-date-after string       only include process instances with end date >= YYYY-MM-DD

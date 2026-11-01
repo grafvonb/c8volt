@@ -42,18 +42,13 @@ func ResolveProcessInstanceSelection(ctx context.Context, api API, incAPI Search
 	found, err := SearchProcessInstancesPages(ctx, api, incAPI, request.SearchRequest, visitor, opts...)
 	result.Completion = found.Completion
 	result.Pages = found.Pages
-	evidence := common.NewTenantEvidenceAccumulator()
 	for _, item := range found.Items {
 		item.BusinessId = toolx.CopyPtr(item.BusinessId)
 		item.Variables = copyProcessInstanceVariableMap(item.Variables)
 		result.Items = append(result.Items, item)
 		result.Keys = append(result.Keys, item.Key)
-		evidence.Add(item.Key, item.TenantId)
 	}
-	result.TenantEvidence = domainTenantEvidence(evidence.Snapshot())
-	for _, item := range result.Items {
-		result.TenantEvidence.Targets = append(result.TenantEvidence.Targets, d.TenantEvidenceTarget{Key: item.Key, TenantID: item.TenantId})
-	}
+	result.TenantEvidence = selectionTenantEvidence(result.Items)
 	if err != nil {
 		return result, err
 	}
@@ -94,4 +89,17 @@ func ValidateProcessInstanceSelection(api API, selection d.ProcessInstanceSelect
 // CopyProcessInstanceSelection isolates nested selection criteria and observed resource data.
 func CopyProcessInstanceSelection(selection d.ProcessInstanceSelection) d.ProcessInstanceSelection {
 	return copyActionSelection(selection)
+}
+
+// selectionTenantEvidence summarizes actual selected observations without borrowing expanded-family tenants.
+func selectionTenantEvidence(items []d.ProcessInstance) d.TenantEvidence {
+	accumulator := common.NewTenantEvidenceAccumulator()
+	for _, item := range items {
+		accumulator.Add(item.Key, item.TenantId)
+	}
+	evidence := domainTenantEvidence(accumulator.Snapshot())
+	for _, item := range items {
+		evidence.Targets = append(evidence.Targets, d.TenantEvidenceTarget{Key: item.Key, TenantID: item.TenantId})
+	}
+	return evidence
 }

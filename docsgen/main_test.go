@@ -539,7 +539,7 @@ func TestGeneratedPagedWorkflowDocsDocumentContracts(t *testing.T) {
 			file: "c8volt_ops_execute_retention-policy.md",
 			fragments: []string{
 				"--batch-size controls each discovery request",
-				"--limit caps the selected scope",
+				"--limit caps distinct matching ended instances; family expansion is not capped",
 				"--workers, --fail-fast, and --no-worker-limit control planning and deletion",
 				"number of process instances to inspect per discovery page; does not cap total frozen scope",
 				"maximum number of matching process instances to freeze for retention cleanup; omit to discover all matches",

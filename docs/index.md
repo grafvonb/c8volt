@@ -6,7 +6,7 @@ nav_exclude: true
 has_toc: true
 ---
 
-> Generated from build `c8volt v4.4.0-266-g086d3bba-dirty`, commit `086d3bba`, built `2026-11-01T14:13:37Z` | Supported Camunda 8 versions: 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.3 (final)
+> Generated from build `c8volt v4.4.0-267-g243a2764-dirty`, commit `243a2764`, built `2026-11-01T14:44:03Z` | Supported Camunda 8 versions: 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.3 (final)
 
 <img src="./logo/c8volt_logo_transparent_w_shadow_400x244.png" alt="c8volt logo" />
 
@@ -425,7 +425,7 @@ Native business-ID search is available on `get pi --bid <value>` and `get ut --b
 ./c8volt --tenant tenant-a cancel pi --bid 'ORDER-123' --auto-confirm
 ```
 
-BID cancellation submits only the reviewed distinct roots, with existing state checks, force and wait/no-wait semantics. Failed or incomplete discovery submits nothing. There is no BID rediscovery after approval; native root cancellation may also affect descendants created concurrently beneath that root. A separate dry-run and later run perform separate discoveries. Partial failures retain outcomes and the original exit classification in one JSON envelope; human diagnostics use one bounded ERROR through the configured logger. BID is also available for frozen deletion, variable updates, suspension and resumption as described below; resolution and process-instance repair are described below. Retention, orphan cleanup and slow-analysis BID selectors are not enabled yet.
+BID cancellation submits only the reviewed distinct roots, with existing state checks, force and wait/no-wait semantics. Failed or incomplete discovery submits nothing. There is no BID rediscovery after approval; native root cancellation may also affect descendants created concurrently beneath that root. A separate dry-run and later run perform separate discoveries. Partial failures retain outcomes and the original exit classification in one JSON envelope; human diagnostics use one bounded ERROR through the configured logger. BID is also available for frozen deletion, variable updates, suspension and resumption as described below; resolution and process-instance repair are described below. Retention and orphan cleanup support BID as described below; the slow-analysis BID selector is not enabled yet.
 
 `update pi --bid ORDER-123 --vars '{"customerTier":"gold"}'` freezes the existing root-variable plan for every distinct tenant-scoped match, without expanding families. `suspend pi --bid ORDER-123` and `resume pi --bid ORDER-123` select exact instances by default; `--tree` freezes eligible descendants only, without ancestors or siblings. These selectors require Camunda 8.10 and cannot combine with keys or stdin. `--limit` caps distinct matching seeds, not descendants, and `--batch-size` controls each discovery request. Full discovery and required planning finish before confirmation. Execution retains the original selection and reviewed payloads/targets without another BID lookup. Explicit-key state-control dry-runs remain read-free.
 
@@ -444,6 +444,20 @@ Custom `process.API` implementations must add `PlanSelectedProcessInstanceResolu
 Repair JSON envelopes and JSON/Markdown audit reports retain the original BID and observed selection separately from repairable and skipped instances, using the existing `ops.repair.v1` schema. Human previews, summaries and verbose facts use the configured INFO logger; failures retain one bounded ERROR and the original exit class, while DEBUG retains redacted HTTP diagnostics. Repair supports human and JSON output; keys-only remains unsupported. BID cannot combine with explicit keys or stdin. Incident-selected repair does not gain a BID selector.
 
 Public `ops.RepairRequest` and `ops.RepairResult` add an optional typed `FrozenPlan`, excluded from JSON (`json:"-"`). For reviewed execution, pass the returned plan with the original selection and action values, setting `DryRun=false`; never replace provenance with bare keys. Receiving-version, tenant, completion, membership and payload checks still run before empty/dry-run execution. Plans are invocation-local evidence, not imported authorization; backend checks can fail reviewed work. Optional selection evidence is added to repair frozen-set reports; consumers using unkeyed public struct literals must update them. No new `ops.API` method is required.
+
+`ops execute retention-policy --retention-days 30 --bid ORDER-123` and `ops purge orphan-process-instances --bid ORDER-123` support exact opaque BID selection on Camunda 8.10, combined with existing predicates in configured tenant scope. Both finish discovery and freeze eligible families before confirmation. Execution deletes only reviewed members in children-before-parent order; new matches and children do not join the client deletion targets. A backend conflict remains an explicit failure. Existing force cancellation may cascade within a targeted family.
+
+Retention fixes its derived end-date boundary once per run. Its limit counts distinct matching ended instances, and family expansion is not capped. A non-final root remains skipped even with force; non-final descendants under a final root require `--force`. Orphan purge's limit counts distinct matching child candidates inspected **before** orphan classification, including non-orphans. This corrects the former orphan-count behavior for all callers, with or without BID; duplicates do not consume the limit, and sparse pages continue. A bounded selection containing no orphans succeeds without prompting or mutation.
+
+Cleanup dry-runs read scope without submitting mutations. Empty results keep the existing successful payloads, including under `--no-wait`. Retention supports human and JSON output; orphan purge also supports keys-only. JSON and Markdown reports keep their existing schema identifiers and preserve original criteria, selected observations, skips and expanded keys. Informational output uses the configured logger; failures use one compact ERROR, with raw HTTP diagnostics restricted to redacted DEBUG.
+
+Public retention/orphan request and result models add optional typed `FrozenPlan` fields excluded from JSON. Pass the returned plan with its original selection and fixed boundary for confirmed execution; BID plus bare `DiscoveredKeys` is rejected. Receiving-version, tenant, completed selection, eligibility and frozen graph checks run before empty/dry-run shortcuts. Optional `Discovery.Selection` retains provenance; update unkeyed struct literals as needed. No new `ops.API` method is required.
+
+```bash
+./c8volt --tenant tenant-a ops execute retention-policy --retention-days 30 --bid 'ORDER-123' --dry-run --json
+./c8volt --tenant tenant-a ops purge orphan-process-instances --bid 'ORDER-123' --limit 25 --dry-run
+```
+
 
 
 ```bash

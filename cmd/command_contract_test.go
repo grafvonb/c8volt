@@ -727,7 +727,7 @@ func TestCommandCapabilityForCommand_OpsPagedDiscoveryFlagContracts(t *testing.T
 			limitDesc: "maximum number of matching process instances to freeze for retention cleanup; omit to discover all matches",
 			longFragments: []string{
 				"--batch-size controls each discovery request",
-				"--limit caps the selected scope",
+				"--limit caps distinct matching ended instances; family expansion is not capped",
 				"--workers, --fail-fast, and --no-worker-limit control planning and deletion",
 			},
 		},

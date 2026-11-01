@@ -32,7 +32,9 @@ const (
 	OrphanPurgeOutcomeFailed          OrphanPurgeOutcome = "failed"
 )
 
+// OrphanPurgeRequest carries cleanup inputs or outcomes with optional invocation-local reviewed evidence.
 type OrphanPurgeRequest struct {
+	FrozenPlan     *OrphanPurgeFrozenPlan `json:"-"`
 	CommandName    string
 	DryRun         bool
 	AutoConfirm    bool
@@ -50,12 +52,14 @@ type OrphanPurgeRequest struct {
 	Progress       func(OpsProgressEvent) `json:"-"`
 }
 
+// OrphanDiscoveryResult preserves optional selection provenance without changing legacy absence conventions.
 type OrphanDiscoveryResult struct {
-	Status  OpsWorkflowStepStatus
-	Filters ProcessInstanceFilter
-	Keys    typex.Keys
-	Count   int
-	Errors  []string
+	Selection *ProcessInstanceSelection
+	Status    OpsWorkflowStepStatus
+	Filters   ProcessInstanceFilter
+	Keys      typex.Keys
+	Count     int
+	Errors    []string
 }
 
 type DeletionPlan struct {
@@ -101,7 +105,9 @@ type OrphanPurgeReport struct {
 	Outcome          OrphanPurgeOutcome
 }
 
+// OrphanPurgeResult carries cleanup inputs or outcomes with optional invocation-local reviewed evidence.
 type OrphanPurgeResult struct {
+	FrozenPlan      *OrphanPurgeFrozenPlan `json:"-"`
 	Request         OrphanPurgeRequest
 	Discovery       OrphanDiscoveryResult
 	DeletionPlan    DeletionPlan
