@@ -22,7 +22,7 @@ Cancellation succeeds when every affected family member is completed, canceled, 
 
 A --bpmn-process-id selector must match a visible process definition before instance discovery. An empty selection completes without confirmation or cancellation.
 
---batch-size controls each discovery request; --limit caps selected instances across all pages. --workers, --fail-fast, and --no-worker-limit control planning and cancellation work.
+--batch-size controls each discovery request; --limit caps distinct selected instances across all pages. --workers, --fail-fast, and --no-worker-limit control planning and cancellation work.
 
 Use --verbose to explain root escalation, accepted cancellation, and confirmation waits. Use --debug for per-check state observations and HTTP diagnostics; it remains independent of --verbose. A confirmation timeout reports accepted cancellation as submitted but unconfirmed.
 

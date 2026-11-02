@@ -60,6 +60,9 @@ func TestCompleteChildrenTraversal(t *testing.T) {
 						}
 						if mode == "cancel" {
 							cancel()
+							// Wait for the transport to observe cancellation before returning;
+							// otherwise an empty 200 response can race with context.Canceled.
+							<-r.Context().Done()
 							return
 						}
 						page = map[string]any{"totalItems": 1001, "hasMoreTotalItems": true, "endCursor": "sparse"}

@@ -516,7 +516,7 @@ func TestGeneratedPagedWorkflowDocsDocumentContracts(t *testing.T) {
 			file: "c8volt_cancel_process-instance.md",
 			fragments: []string{
 				"--batch-size controls each discovery request",
-				"--limit caps selected instances across all pages",
+				"--limit caps distinct selected instances across all pages",
 				"--workers, --fail-fast, and --no-worker-limit control planning and cancellation work",
 				"number of process instances to inspect per discovery page; does not cap total selected scope",
 				"maximum number of matching process instances to select for cancellation across all pages; omit to continue through all matches",
