@@ -28,7 +28,10 @@ type ReadPorts struct {
 // Errors retain partial observations with incomplete status and no completion reason.
 func Prepare(ctx context.Context, request d.CompletionRequest, tenant string, backoff config.BackoffConfig, ports ReadPorts, opts ...services.CallOption) (d.PreparedCompletionBatch, error) {
 	_ = services.ApplyCallOptions(opts)
-	batch := d.PreparedCompletionBatch{Selection: request.Selection, DiscoveryTenant: tenant, Status: d.CompletionPreparationIncomplete, Candidates: []d.CompletionCandidate{}, TenantIDs: []string{}}
+	batch := d.PreparedCompletionBatch{SetBusinessID: toolx.CopyPtr(request.SetBusinessID), Selection: request.Selection, DiscoveryTenant: tenant, Status: d.CompletionPreparationIncomplete, Candidates: []d.CompletionCandidate{}, TenantIDs: []string{}}
+	if err := d.ValidateBusinessIDAssignment(batch.SetBusinessID); err != nil {
+		return batch, err
+	}
 	batch.Selection.Keys = slices.Clone(request.Selection.Keys)
 	batch.Selection.Filter.Retries = toolx.CopyPtr(request.Selection.Filter.Retries)
 	if err := ctx.Err(); err != nil {

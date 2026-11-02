@@ -87,3 +87,56 @@ Started: 2026-11-02 15:21:10
 - Passed gofmt, env GOFLAGS= make docs-content and git diff --check. Docs generation also synced prior library documentation into docs/index.md.
 - Validation used isolated fakes/subprocesses/terminals with no live-environment tests. Real-engine eligibility, uniqueness, durability and timing remain unverified. Repository-wide make test remains T004's final delivery gate.
 ---
+
+---
+## Iteration 3 - 2026-11-02 15:53
+**Work Unit**: US2 T003 — completed atomic business-ID completion service and public API evidence
+**Tasks Completed**:
+- [x] T003: Deliver copied scalar/bulk assignment payloads, typed one-shot ports, version/value guards, scalar approval, independent evidence, isolated tests and public API documentation.
+**Tasks Remaining in Work Unit**: T003 complete; T004 remains in US2 for CLI delivery and final repository-wide validation.
+**Commit**: This work-unit commit
+**Files Changed**:
+- README.md
+- c8volt/job/client.go
+- c8volt/job/completion_assignment_test.go
+- c8volt/job/completion_plan.go
+- c8volt/job/convert.go
+- c8volt/job/model.go
+- internal/domain/job.go
+- internal/domain/job_completion.go
+- internal/services/job/completion/assignment_test.go
+- internal/services/job/completion/business_id_test.go
+- internal/services/job/completion/execute.go
+- internal/services/job/completion/execute_test.go
+- internal/services/job/completion/execution_plan.go
+- internal/services/job/completion/prepare.go
+- internal/services/job/completion/reconcile.go
+- internal/services/job/completion/reconcile_test.go
+- internal/services/job/v810/completion.go
+- internal/services/job/v810/completion_assignment.go
+- internal/services/job/v810/completion_assignment_test.go
+- internal/services/job/v810/completion_payload_test.go
+- internal/services/job/v810/completion_test.go
+- internal/services/job/v810/service.go
+- internal/services/job/v88/completion.go
+- internal/services/job/v88/completion_assignment_test.go
+- internal/services/job/v88/completion_test.go
+- internal/services/job/v88/service.go
+- internal/services/job/v89/completion.go
+- internal/services/job/v89/completion_assignment_test.go
+- internal/services/job/v89/completion_test.go
+- internal/services/job/v89/service.go
+- specs/362-late-business-id-assignment/progress.md
+- specs/362-late-business-id-assignment/ralph-memory.md
+- specs/362-late-business-id-assignment/tasks.md
+**Learnings**:
+- The first assignment evidence test failed to compile on missing payload/evidence fields, then passed after implementation. Shared reconciliation now preserves rejected/unknown assignment and original error when later reads report COMPLETED; ordinary completion behavior stays intact.
+- Added 11 assignment test functions across shared coordinator, facade and adapters, including exact atomic wire/Unicode boundaries, omission regressions, duplicate keys/two jobs in one process, immutable preparation/execution/scalar approval, old-version/invalid/non-completion guards, listener restrictions, already-completed jobs, fail-fast slots, explicit conflicts and one-shot lost/malformed responses.
+- Passed targeted service/facade selection: env GOFLAGS= go test ./internal/services/job/... ./c8volt/job -run 'Completion|WorkerOutcome' -count=1.
+- Passed full affected-package race suites: env GOFLAGS= GORACE=atexit_sleep_ms=0 go test ./internal/domain ./internal/services/job/... ./c8volt/job -race -count=1. Final public guard changes additionally passed the full c8volt/job race suite; added listener validation passed TestCompletionAssignmentValidation under race.
+- Passed repository-wide compilation: env GOFLAGS= go test ./... -run '^$' -count=1.
+- Passed affected CLI regressions: env GOFLAGS= go test ./cmd -run 'Test.*(UpdateJob|BulkCompletion)' -count=1 (22.775s).
+- Passed gofmt and git diff --check. README describes library delivery and source compatibility; no command behavior or generated clients changed. CLI docs regeneration and make test remain T004 obligations.
+- Failure review: native classifier -> coordinator preserves original failure plus independent observation -> scalar/bulk facade maps optional evidence and ferrors. New err.Error() assignments are machine evidence only; no added human print/logger boundary. T004 owns exposing this evidence safely through command output.
+- All validation used isolated fakes with GOFLAGS cleared, never live services. Real-engine eligibility, uniqueness, durability and timing remain unverified.
+---

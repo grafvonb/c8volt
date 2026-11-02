@@ -13,6 +13,12 @@ Started: 2026-11-02T14:21:10Z
 
 ## Decisions
 
+- T003 complete: optional SetBusinessID flows through domain/public worker and batch requests, prepared snapshots and typed CompletionPayload ports. CompletionAssignment is optional status/HTTP evidence; requestedBusinessId never replaces observed BusinessId.
+- v810 BID-bearing scalar completion delegates preparation/execution to the existing bulk coordinator and maps one outcome back to scalar evidence. Native acknowledgement means accepted; already-COMPLETED is not_submitted/unsatisfied. Unknown or rejected submission followed by COMPLETED retains original failure and independent observation. Plain scalar retry and plain bulk reconciliation are unchanged.
+- Scalar approval uses UpdatePlan.FreezeCompletionPayload(request) before confirmation, then request.OutcomePlan = &plan. It privately copies key/mode/value/nested variables; conversion uses that approved payload and rejects edited plan attachments or changed request key/mode. A plan supplied for assignment without freezing is rejected. T004 must wire this helper into scalar planning before prompting, preserving the error.
+- Assignment request conversion copies nested variables only when BID is present: CopyJSONMap changes float64 to json.Number, so applying it to all existing plain scalar worker requests broke a compatibility assertion. Keep omitted scalar behavior unchanged.
+- v88/v89 guard scalar, prepare, execute (including forged/empty batches) and private submission before I/O. v810 validates assignment before discovery and execution, retaining listener variable restrictions and optional-field serialization. Public UpdateJob rejects attached assignment intent rather than dropping it.
+
 - T002 complete: --set-bid dispatches before variable parsing into cmd/update_processinstance_assignment.go; cmd/cmd_views_processinstance_assignment.go owns final formatting. No service/facade changes were needed.
 - Assignment reads complete cmd.InOrStdin() input with a bounded scanner. Existing readKeysIfDash rejects empty/terminal stdin and is unsuitable here. Deliberate empty assignment stdin is a ready plan, with items/requestedKeys as empty arrays; no-key without '-' is invalid.
 - Assignment approval consumes the service-copied plan, never current flag storage. Frozen-approval regression mutates key/value flags during confirmation and verifies the original wire request. Explicit administration options preserve backend authorization and worker/fail-fast controls.
@@ -29,6 +35,10 @@ Started: 2026-11-02T14:21:10Z
 
 ## Gotchas
 
+- GetJob on v810 is POST /jobs/search with an exact jobKey filter, not GET /jobs/{key}. New atomic wire fixtures use that existing read path and distinguish it from completion submissions.
+- New public UpdatePlan private approval storage makes unkeyed external literals incompatible; README documents keyed literals and invocation-local approval. No job.API method was added.
+- T003 changed README only for library delivery; generated docs and CLI assignment completion remain T004 responsibilities. Scalar partial evidence now includes optional Submission/Observation/Assignment; T004 must retain it on error and render once.
+
 - Assignment fake lost responses classify as internal (exit 1), while HTTP 400 remains invalid_input (exit 2). Unknown assignment evidence is separate from the error class.
 - New assignment command tests live in update_processinstance_assignment{,_logging}_test.go, with owned HTTP servers, separate configured/inherited writers and actual terminal stdin. The helper clears inherited C8VOLT overrides before executing the explicit temporary config.
 - CLI docs regeneration also synced the T001 library README additions into docs/index.md. README now describes CLI assignment as delivered; atomic completion remains pending.
@@ -41,6 +51,13 @@ Started: 2026-11-02T14:21:10Z
 - Real-engine eligibility, durability, uniqueness configuration and timing were not tested; all dependencies were isolated fakes.
 
 ## Reusable Commands
+
+- env GOFLAGS= go test ./internal/services/job/... ./c8volt/job -run 'Completion|WorkerOutcome' -count=1 (passed T003; real selections, including new assignment tests).
+- env GOFLAGS= GORACE=atexit_sleep_ms=0 go test ./internal/domain ./internal/services/job/... ./c8volt/job -race -count=1 (passed T003).
+- env GOFLAGS= GORACE=atexit_sleep_ms=0 go test ./c8volt/job -race -count=1 (passed after final public administrative guard).
+- env GOFLAGS= go test ./cmd -run 'Test.*(UpdateJob|BulkCompletion)' -count=1 (passed T003, 22.775s).
+- env GOFLAGS= go test ./... -run '^$' -count=1 (repository compilation passed T003).
+- env GOFLAGS= GORACE=atexit_sleep_ms=0 go test ./internal/services/job/v810 -run TestCompletionAssignmentValidation -race -count=1 (passed after added listener guard assertion).
 
 - env GOFLAGS= go test ./cmd -run 'Test.*(BusinessIDAssignment|UpdateProcessInstance)' -count=1
 - env GOFLAGS= GORACE=atexit_sleep_ms=0 go test ./cmd -run 'Test.*(BusinessIDAssignment|UpdateProcessInstance)' -race -count=1
@@ -65,5 +82,5 @@ Started: 2026-11-02T14:21:10Z
 
 ## Current Handoff
 
-- Next dependency-ready work is T003 [US2]: atomic BID-bearing scalar/bulk completion service, public models/conversions, copied approved payloads, adapter one-shot submission and evidence-aware reconciliation. Recheck tasks.md before selection. T001/T002 complete US1; T003/T004 remain open.
-- Reuse the assignment validator and preserve plain completion behavior. T004 owns completion CLI delivery and the final repository-wide make test gate. No live-engine validation was run or is needed for implementation completion.
+- Next dependency-ready work is T004 [US2]: update job --complete --set-bid CLI parsing, frozen scalar approval via FreezeCompletionPayload, copied batch previews/results, error evidence and one-envelope rendering, full required output/logging/terminal matrix, README/help and generated docs. Recheck tasks.md before selection. T001–T003 are complete; only T004 remains open.
+- Complete final isolated make test and record actual results in quickstart.md as T004 requires. No live-engine validation was run; eligibility, durability, uniqueness and timing remain unverified. Retain original error class for unknown/rejected assignment even when completion observation says COMPLETED.

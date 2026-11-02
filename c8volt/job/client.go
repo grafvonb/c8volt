@@ -5,7 +5,9 @@ package job
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
+	"reflect"
 	"time"
 
 	"github.com/grafvonb/c8volt/c8volt/ferrors"
@@ -71,7 +73,11 @@ func (c *client) SearchJobsTotal(ctx context.Context, request SearchRequest, opt
 	return result, nil
 }
 
+// UpdateJob delegates administrative changes and rejects attached assignment intent.
 func (c *client) UpdateJob(ctx context.Context, request UpdateRequest, opts ...foptions.FacadeOption) (UpdateResult, error) {
+	if (request.WorkerOutcome != nil && request.WorkerOutcome.SetBusinessID != nil) || (request.UpdatePlan != nil && request.UpdatePlan.SetBusinessID != nil) {
+		return UpdateResult{}, fmt.Errorf("%w: business-ID assignment requires worker completion", ferrors.ErrInvalidInput)
+	}
 	result, err := c.api.UpdateJob(ctx, toDomainUpdateRequest(request), foptions.MapFacadeOptionsToCallOptions(opts)...)
 	out := fromDomainUpdateResult(result)
 	if request.UpdatePlan != nil {
@@ -85,8 +91,20 @@ func (c *client) UpdateJob(ctx context.Context, request UpdateRequest, opts ...f
 	return out, nil
 }
 
+// SubmitJobWorkerOutcome copies approved payloads and delegates without losing partial evidence.
 func (c *client) SubmitJobWorkerOutcome(ctx context.Context, request WorkerOutcomeRequest, opts ...foptions.FacadeOption) (WorkerOutcomeResult, error) {
-	result, err := c.api.SubmitJobWorkerOutcome(ctx, toDomainWorkerOutcomeRequest(request), foptions.MapFacadeOptionsToCallOptions(opts)...)
+	if request.OutcomePlan != nil && (request.SetBusinessID != nil || request.OutcomePlan.approvedCompletion != nil) {
+		plan, err := snapshotCompletionPlan(*request.OutcomePlan)
+		if err != nil {
+			return WorkerOutcomeResult{}, ferrors.FromDomain(err)
+		}
+		request.OutcomePlan = &plan
+	}
+	input, err := toDomainWorkerOutcomeRequest(request)
+	if err != nil {
+		return WorkerOutcomeResult{}, ferrors.FromDomain(err)
+	}
+	result, err := c.api.SubmitJobWorkerOutcome(ctx, input, foptions.MapFacadeOptionsToCallOptions(opts)...)
 	out := fromDomainWorkerOutcomeResult(result)
 	if request.OutcomePlan != nil {
 		plan := *request.OutcomePlan
@@ -234,17 +252,44 @@ func durationValue(value *time.Duration) time.Duration {
 	return *value
 }
 
-func toDomainWorkerOutcomeRequest(request WorkerOutcomeRequest) d.JobWorkerOutcomeRequest {
-	return d.JobWorkerOutcomeRequest{
+// toDomainWorkerOutcomeRequest rejects changed approval attachments and snapshots nested intent.
+func toDomainWorkerOutcomeRequest(request WorkerOutcomeRequest) (d.JobWorkerOutcomeRequest, error) {
+	if request.OutcomePlan != nil && (request.SetBusinessID != nil || request.OutcomePlan.SetBusinessID != nil || request.OutcomePlan.approvedCompletion != nil) {
+		p := request.OutcomePlan
+		approved := p.approvedCompletion
+		if approved == nil {
+			return d.JobWorkerOutcomeRequest{}, fmt.Errorf("%w: assignment requires a frozen approval plan", d.ErrValidation)
+		}
+		if request.Key != approved.Key || request.Mode != approved.Mode || p.Key != approved.Key || p.Mode != MutationMode(approved.Mode) || !reflect.DeepEqual(p.SetBusinessID, approved.SetBusinessID) || !reflect.DeepEqual(p.Variables, approved.Variables) {
+			return d.JobWorkerOutcomeRequest{}, fmt.Errorf("%w: completion approval changed", d.ErrValidation)
+		}
+		request.SetBusinessID = approved.SetBusinessID
+		request.Variables = approved.Variables
+	}
+	if request.SetBusinessID != nil && request.Mode != WorkerOutcomeCompletion {
+		return d.JobWorkerOutcomeRequest{}, fmt.Errorf("%w: business-ID assignment requires completion", d.ErrValidation)
+	}
+	if err := d.ValidateBusinessIDAssignment(request.SetBusinessID); err != nil {
+		return d.JobWorkerOutcomeRequest{}, err
+	}
+	variables := request.Variables
+	if request.SetBusinessID != nil {
+		var err error
+		variables, err = toolx.CopyJSONMap(request.Variables)
+		if err != nil {
+			return d.JobWorkerOutcomeRequest{}, fmt.Errorf("%w: invalid completion variables: %v", d.ErrValidation, err)
+		}
+	}
+	return d.JobWorkerOutcomeRequest{SetBusinessID: toolx.CopyPtr(request.SetBusinessID),
 		Key:                request.Key,
 		Mode:               d.JobWorkerOutcomeMode(request.Mode),
 		Message:            request.Message,
-		Variables:          request.Variables,
+		Variables:          variables,
 		Retries:            request.Retries,
 		RetryBackoffMillis: request.RetryBackoffMillis,
 		ErrorCode:          request.ErrorCode,
 		SkipConfirmation:   request.NoWait,
-	}
+	}, nil
 }
 
 func fromDomainUpdateResult(result d.JobUpdateResult) UpdateResult {
@@ -270,12 +315,13 @@ func fromDomainUpdateResult(result d.JobUpdateResult) UpdateResult {
 	}
 }
 
+// fromDomainWorkerOutcomeResult preserves assignment and independent completion evidence.
 func fromDomainWorkerOutcomeResult(result d.JobWorkerOutcomeResult) WorkerOutcomeResult {
 	status := "submitted"
 	if result.MutationError != "" {
 		status = "mutation_failed"
 	}
-	return WorkerOutcomeResult{
+	return WorkerOutcomeResult{RequestedBusinessID: toolx.CopyPtr(result.RequestedBusinessID), Assignment: fromDomainCompletionAssignment(result.Assignment), Submission: fromDomainSubmissionPtr(result.Submission), Observation: fromDomainObservationPtr(result.Observation),
 		Key:                result.Key,
 		Mode:               WorkerOutcomeMode(result.Mode),
 		Status:             status,

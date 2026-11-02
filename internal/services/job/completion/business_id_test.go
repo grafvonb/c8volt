@@ -52,7 +52,7 @@ func TestCompletionBusinessIDSnapshot(t *testing.T) {
 					}
 					return d.Job{Key: "1", State: "CREATED", Type: "work", BusinessId: toolx.Ptr("new")}, nil
 				},
-				Submit: func(context.Context, d.Job, map[string]any) (d.CompletionSubmission, error) {
+				Submit: func(context.Context, d.Job, d.CompletionPayload) (d.CompletionSubmission, error) {
 					return d.CompletionSubmission{Status: d.CompletionSubmissionAccepted}, nil
 				},
 			}, 1, services.WithNoWait())

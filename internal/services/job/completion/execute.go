@@ -21,7 +21,7 @@ import (
 // Adapters must treat the supplied payload as read-only; it is a private snapshot shared by workers.
 type ExecutionPorts struct {
 	Get    func(context.Context, string, ...services.CallOption) (d.Job, error)
-	Submit func(context.Context, d.Job, map[string]any) (d.CompletionSubmission, error)
+	Submit func(context.Context, d.Job, d.CompletionPayload) (d.CompletionSubmission, error)
 }
 
 // executionResult distinguishes unstarted pool slots from completed callback results.
@@ -51,7 +51,7 @@ func Execute(ctx context.Context, batch d.PreparedCompletionBatch, tenant string
 	report.Candidates = nil
 	report.Outcomes = make([]d.CompletionOutcome, len(batch.Candidates))
 	for i, candidate := range batch.Candidates {
-		report.Outcomes[i] = d.CompletionOutcome{Candidate: candidate, Disposition: d.CompletionDispositionNotStarted, Submission: d.CompletionSubmission{Status: d.CompletionSubmissionNotSubmitted}, Observation: d.CompletionObservation{Status: d.CompletionObservationSkipped}}
+		report.Outcomes[i] = d.CompletionOutcome{RequestedBusinessID: toolx.CopyPtr(batch.SetBusinessID), Assignment: assignmentEvidence(batch.SetBusinessID, d.CompletionSubmission{}), Candidate: candidate, Disposition: d.CompletionDispositionNotStarted, Submission: d.CompletionSubmission{Status: d.CompletionSubmissionNotSubmitted}, Observation: d.CompletionObservation{Status: d.CompletionObservationSkipped}}
 	}
 	if len(batch.Candidates) > 0 && ctx.Err() == nil && (ports.Get == nil || ports.Submit == nil) {
 		report = reportForBatch(batch)
@@ -106,12 +106,12 @@ func Execute(ctx context.Context, batch d.PreparedCompletionBatch, tenant string
 
 // reportForBatch preserves diagnostic preparation metadata without inventing execution rows.
 func reportForBatch(b d.PreparedCompletionBatch) d.CompletionBatchReport {
-	return d.CompletionBatchReport{Status: d.CompletionBatchPreparationFailed, Selection: b.Selection, DiscoveryTenant: b.DiscoveryTenant, TenantIDs: b.TenantIDs, CompletionReason: b.CompletionReason, PageCount: b.PageCount, ObservedCount: b.ObservedCount, Limited: b.Limited, Counts: d.CompletionCounts{Selected: len(b.Candidates)}, Candidates: b.Candidates}
+	return d.CompletionBatchReport{RequestedBusinessID: toolx.CopyPtr(b.SetBusinessID), Status: d.CompletionBatchPreparationFailed, Selection: b.Selection, DiscoveryTenant: b.DiscoveryTenant, TenantIDs: b.TenantIDs, CompletionReason: b.CompletionReason, PageCount: b.PageCount, ObservedCount: b.ObservedCount, Limited: b.Limited, Counts: d.CompletionCounts{Selected: len(b.Candidates)}, Candidates: b.Candidates}
 }
 
 // executeCandidate rechecks the original key and preserves submission evidence during reconciliation.
 func executeCandidate(ctx context.Context, b d.PreparedCompletionBatch, candidate d.CompletionCandidate, backoff config.BackoffConfig, ports ExecutionPorts, noWait bool, opts ...services.CallOption) (d.CompletionOutcome, error) {
-	out := d.CompletionOutcome{Candidate: candidate, Disposition: d.CompletionDispositionUnsatisfied, Submission: d.CompletionSubmission{Status: d.CompletionSubmissionNotSubmitted}}
+	out := d.CompletionOutcome{RequestedBusinessID: toolx.CopyPtr(b.SetBusinessID), Assignment: assignmentEvidence(b.SetBusinessID, d.CompletionSubmission{}), Candidate: candidate, Disposition: d.CompletionDispositionUnsatisfied, Submission: d.CompletionSubmission{Status: d.CompletionSubmissionNotSubmitted}}
 	job, observation, err := observeJob(ctx, candidate.Key, candidate.State, d.CompletionPhaseRecheck, ports.Get, opts...)
 	out.Observation = observation
 	if err != nil {
@@ -125,6 +125,10 @@ func executeCandidate(ctx context.Context, b d.PreparedCompletionBatch, candidat
 		return out, err
 	}
 	if job.State == "COMPLETED" {
+		if b.SetBusinessID != nil {
+			out.Reason = d.CompletionOutcomeOtherTerminal
+			return out, outcomeError(out)
+		}
 		out.Disposition = d.CompletionDispositionCompleted
 		return out, nil
 	}
@@ -149,7 +153,8 @@ func executeCandidate(ctx context.Context, b d.PreparedCompletionBatch, candidat
 		out.Reason = d.CompletionOutcomeInterrupted
 		return out, err
 	}
-	out.Submission, err = ports.Submit(ctx, job, b.Variables)
+	out.Submission, err = ports.Submit(ctx, job, d.CompletionPayload{Variables: b.Variables, SetBusinessID: b.SetBusinessID})
+	out.Assignment = assignmentEvidence(b.SetBusinessID, out.Submission)
 	switch out.Submission.Status {
 	case d.CompletionSubmissionAccepted:
 		out.Disposition = d.CompletionDispositionAccepted
@@ -186,4 +191,19 @@ func executeCandidate(ctx context.Context, b d.PreparedCompletionBatch, candidat
 // outcomeError classifies a known unsatisfied target without attributing completion to this invocation.
 func outcomeError(out d.CompletionOutcome) error {
 	return fmt.Errorf("%w: job %s completion unsatisfied: %s", d.ErrPrecondition, out.Candidate.Key, out.Reason)
+}
+
+// assignmentEvidence maps submission evidence only; a completed job cannot establish assignment.
+func assignmentEvidence(value *string, submission d.CompletionSubmission) *d.CompletionAssignment {
+	if value == nil {
+		return nil
+	}
+	status := string(submission.Status)
+	if status == "" {
+		status = "not_submitted"
+	}
+	if status != "not_submitted" && status != "accepted" && status != "rejected" {
+		status = "unknown"
+	}
+	return &d.CompletionAssignment{Status: status, HTTPStatus: toolx.CopyPtr(submission.HTTPStatus)}
 }
