@@ -506,7 +506,7 @@ func TestGeneratedPagedWorkflowDocsDocumentContracts(t *testing.T) {
 			file: "c8volt_get_process-instance.md",
 			fragments: []string{
 				"--batch-size controls each discovery request",
-				"--limit caps instances across all pages",
+				"--limit caps distinct matching instances across all pages",
 				"number of process instances to request per page; does not cap total results",
 				"maximum number of matching process instances to return across all pages; omit to continue through all matches",
 			},
@@ -516,7 +516,7 @@ func TestGeneratedPagedWorkflowDocsDocumentContracts(t *testing.T) {
 			file: "c8volt_cancel_process-instance.md",
 			fragments: []string{
 				"--batch-size controls each discovery request",
-				"--limit caps selected instances across all pages",
+				"--limit caps distinct selected instances across all pages",
 				"--workers, --fail-fast, and --no-worker-limit control planning and cancellation work",
 				"number of process instances to inspect per discovery page; does not cap total selected scope",
 				"maximum number of matching process instances to select for cancellation across all pages; omit to continue through all matches",
@@ -539,7 +539,7 @@ func TestGeneratedPagedWorkflowDocsDocumentContracts(t *testing.T) {
 			file: "c8volt_ops_execute_retention-policy.md",
 			fragments: []string{
 				"--batch-size controls each discovery request",
-				"--limit caps the selected scope",
+				"--limit caps distinct matching ended instances; family expansion is not capped",
 				"--workers, --fail-fast, and --no-worker-limit control planning and deletion",
 				"number of process instances to inspect per discovery page; does not cap total frozen scope",
 				"maximum number of matching process instances to freeze for retention cleanup; omit to discover all matches",
@@ -1095,7 +1095,7 @@ func TestGeneratedWalkProcessInstanceDocsDocumentListeners(t *testing.T) {
 		"./c8volt walk process-instance --key <process-instance-key> --with-elements",
 		"./c8volt walk process-instance --key <process-instance-key> --with-elements --with-listeners",
 		"--with-elements",
-		"show runtime element instances for keyed process-instance walks",
+		"show runtime element instances for selected process-instance walks",
 		"--with-listeners",
 		"include runtime listener jobs; requires --with-elements",
 	} {

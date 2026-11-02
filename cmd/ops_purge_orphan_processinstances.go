@@ -31,12 +31,17 @@ var opsPurgeOrphanProcessInstancesCmd = &cobra.Command{
 
 The workflow discovers orphan candidates, fixes the target set, validates the delete plan, and requires confirmation before deletion. Process-instance family, force, and wait rules apply.
 
+--limit counts distinct matching child candidates inspected before orphan classification, including non-orphans; duplicates do not consume the bound.
+
 --tenant limits discovery; an empty tenant or --all-tenants searches across accessible tenants.
 
 Use --dry-run to inspect the plan without mutation, --auto-confirm or --automation for unattended deletion, and --report-file to save an audit report.
 
+--bid selects one exact opaque business ID on Camunda 8.10+, combined with other predicates in tenant scope. BID cleanup completes discovery and freezes eligible families before confirmation; deletion submits only reviewed members in children-before-parent order. Dry-run reads scope without mutation. New matches or children are not added after approval; native force cancellation may cascade within a targeted family.
+
 Observed process-instance business IDs are retained in JSON and Markdown audit reports. Use --verbose to inspect each observed reference in the plan; key-only outcomes remain unchanged.`,
-	Example: `  ./c8volt ops purge orphan-process-instances --dry-run
+	Example: `  ./c8volt ops purge orphan-process-instances --bid ORDER-123 --limit 25 --dry-run
+  ./c8volt ops purge orphan-process-instances --dry-run
   ./c8volt --tenant tenant-a ops purge orphan-process-instances --dry-run
   ./c8volt --all-tenants ops purge orphan-process-instances --dry-run
   ./c8volt ops purge orphan-process-instances --dry-run --bpmn-process-id <bpmn-process-id> --limit 25
@@ -44,11 +49,20 @@ Observed process-instance business IDs are retained in JSON and Markdown audit r
   ./c8volt --verbose ops purge orphan-process-instances --state completed --limit 25 --auto-confirm
   ./c8volt ops purge orphan-process-instances --state completed --limit 25 --report-file orphan-purge.md`,
 	Aliases: []string{"orphan-pi", "opi"},
-	Args:    cobra.NoArgs,
+	Args: func(cmd *cobra.Command, args []string) error {
+		// BID validation runs after bootstrap so failures use the configured logger and one envelope.
+		if searchBusinessIDFlag(cmd) != nil {
+			return nil
+		}
+		return cobra.NoArgs(cmd, args)
+	},
 	Run: func(cmd *cobra.Command, args []string) {
 		cli, log, cfg, err := NewCli(cmd)
 		if err != nil {
 			handleNewCliError(cmd, log, cfg, fmt.Errorf("initializing client: %w", err))
+		}
+		if searchBusinessIDFlag(cmd) != nil && len(args) > 0 {
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, invalidFlagValuef("business-ID cleanup does not accept positional keys or stdin"))
 		}
 		if err := requireAutomationSupport(cmd); err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
@@ -70,13 +84,17 @@ Observed process-instance business IDs are retained in JSON and Markdown audit r
 			Automation:   automationModeEnabled(cmd),
 			NoWait:       flagNoWait,
 			OutputMode:   pickMode().String(),
-			Selection:    populatePISearchFilterOpts(),
+			Selection:    populatePISearchFilterOpts(cmd),
 			BatchSize:    resolvePISearchSize(cmd, cfg),
 			Limit:        flagGetPILimit,
 			Workers:      flagWorkers,
 			ReportFile:   flagOpsPurgeOrphanReportFile,
 			ReportFormat: flagOpsPurgeOrphanReportFormat,
 			StartedAt:    time.Now().UTC(),
+		}
+		if request.Selection.BusinessId != nil {
+			runBusinessIDOrphanPurge(cmd, cli, log, cfg, request)
+			return
 		}
 		initializeOpsTenantContextHumanReporting(cmd, cfg, false)
 		progress := configureOpsPurgeOrphanProcessInstancesProgress(cmd, &request)
@@ -130,9 +148,10 @@ Observed process-instance business IDs are retained in JSON and Markdown audit r
 	},
 }
 
+// purgeOrphanProcessInstancesWithCommandActivity distinguishes reviewed-plan execution from fresh discovery activity.
 func purgeOrphanProcessInstancesWithCommandActivity(cmd *cobra.Command, request ops.OrphanPurgeRequest, run func() (ops.OrphanPurgeResult, error)) (ops.OrphanPurgeResult, error) {
 	msg := formatOpsPurgeOrphanProcessInstancesActivity(request, false)
-	if request.DiscoveredKeys != nil {
+	if request.DiscoveredKeys != nil || request.FrozenPlan != nil {
 		msg = "deleting orphan process-instance purge scope"
 	} else if !request.DryRun {
 		msg = formatOpsPurgeOrphanProcessInstancesActivity(request, true)
@@ -163,6 +182,7 @@ func init() {
 	useInvalidInputFlagErrors(opsPurgeOrphanProcessInstancesCmd)
 
 	fs := opsPurgeOrphanProcessInstancesCmd.Flags()
+	fs.String("bid", "", "exact opaque business ID to select within tenant scope (Camunda 8.10+)")
 	fs.BoolVar(&flagDryRun, "dry-run", false, "discover and validate orphan process-instance cleanup without submitting deletion requests")
 	registerPISharedProcessDefinitionFilterFlags(fs)
 	fs.StringVar(&flagGetPIProcessDefinitionKey, "pd-key", "", "process definition key (mutually exclusive with bpmn-process-id, pd-version, and pd-version-tag)")

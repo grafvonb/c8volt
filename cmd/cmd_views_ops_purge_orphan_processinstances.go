@@ -36,6 +36,7 @@ func renderOpsPurgeOrphanProcessInstancesHuman(cmd *cobra.Command, result ops.Or
 		renderHumanLine(cmd, "purge orphan process-instances")
 	}
 	renderAttachedTenantContext(cmd)
+	renderCleanupSelection(cmd, result.Discovery.Selection)
 	if result.Discovery.Count == 0 {
 		renderHumanLine(cmd, "candidate orphan process instances: 0")
 		elapsed := opsWorkflowElapsedSuffix(result.Report.Duration)
@@ -147,7 +148,8 @@ func renderOpsPurgeOrphanProcessInstancesMarkdownReport(report ops.OrphanPurgeRe
 	writeMarkdownReportField(&out, "Outcome", string(report.Outcome))
 
 	out.WriteString("\n## Selection\n\n")
-	writeMarkdownReportField(&out, "Filters", report.SelectionFilters.String())
+	writeMarkdownReportField(&out, "Filters", escapeMarkdownOpaqueText(report.SelectionFilters.String()))
+	writeCleanupSelectionMarkdown(&out, report.Discovery.Selection)
 
 	out.WriteString("\n## Discovery\n\n")
 	writeMarkdownReportField(&out, "Status", string(report.Discovery.Status))

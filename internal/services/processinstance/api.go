@@ -20,6 +20,8 @@ import (
 
 // API defines the version-neutral process-instance service contract.
 type API interface {
+	// ProcessInstanceSearchTenant returns the effective discovery tenant without I/O.
+	ProcessInstanceSearchTenant(opts ...services.CallOption) string
 	// ValidateProcessInstanceResumption checks mutation capability without I/O.
 	ValidateProcessInstanceResumption() error
 	// ResumeProcessInstance resumes exactly one key, confirming unless NoWait is set.
@@ -30,6 +32,8 @@ type API interface {
 	SuspendProcessInstance(ctx context.Context, key string, opts ...services.CallOption) (d.ProcessInstanceSuspensionResult, error)
 	// ValidateProcessInstanceStates checks explicit state capabilities without I/O.
 	ValidateProcessInstanceStates(states d.States) error
+	// ValidateProcessInstanceSearchFilter validates capability and criteria without I/O.
+	ValidateProcessInstanceSearchFilter(filter d.ProcessInstanceFilter) error
 	CreateProcessInstance(ctx context.Context, data d.ProcessInstanceData, opts ...services.CallOption) (d.ProcessInstanceCreation, error)
 	GetProcessInstance(ctx context.Context, key string, opts ...services.CallOption) (d.ProcessInstance, error)
 	SearchProcessInstanceVariables(ctx context.Context, key string, opts ...services.CallOption) ([]d.ProcessInstanceVariable, error)
@@ -39,6 +43,8 @@ type API interface {
 	SearchForProcessInstancesPage(ctx context.Context, filter d.ProcessInstanceFilter, page d.ProcessInstancePageRequest, opts ...services.CallOption) (d.ProcessInstancePage, error)
 	SearchForProcessInstances(ctx context.Context, filter d.ProcessInstanceFilter, size int32, opts ...services.CallOption) ([]d.ProcessInstance, error)
 	CancelProcessInstance(ctx context.Context, key string, opts ...services.CallOption) (d.CancelResponse, []d.ProcessInstance, error)
+	// DeleteProcessInstanceExact submits one key without recursive target discovery.
+	DeleteProcessInstanceExact(ctx context.Context, key string, opts ...services.CallOption) (d.DeleteResponse, error)
 	DeleteProcessInstance(ctx context.Context, key string, opts ...services.CallOption) (d.DeleteResponse, error)
 	GetProcessInstanceStateByKey(ctx context.Context, key string, opts ...services.CallOption) (d.State, d.ProcessInstance, error)
 	WaitForProcessInstanceState(ctx context.Context, key string, desired d.States, opts ...services.CallOption) (d.StateResponse, d.ProcessInstance, error)

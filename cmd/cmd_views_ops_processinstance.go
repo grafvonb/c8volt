@@ -6,6 +6,7 @@ package cmd
 import (
 	"fmt"
 	"log/slog"
+	"strings"
 
 	"github.com/grafvonb/c8volt/c8volt/ops"
 	"github.com/grafvonb/c8volt/c8volt/process"
@@ -68,4 +69,27 @@ func renderOpsObservedProcessInstances(cmd *cobra.Command, label string, items [
 	for _, row := range retentionProcessInstanceItems(items) {
 		renderHumanLine(cmd, "%s: %s", label, row)
 	}
+}
+
+// renderCleanupSelection makes a deliberate candidate bound visible without logging paging chatter by default.
+func renderCleanupSelection(cmd *cobra.Command, selection *process.ProcessInstanceSelection) {
+	if selection == nil {
+		return
+	}
+	if selection.Completion == process.ProcessInstanceSearchCompletionLimitReached {
+		renderHumanLine(cmd, "discovery user-limited: limit %d; pages %d; batch size %d", selection.Request.SearchRequest.Limit, selection.Pages, selection.Request.SearchRequest.Page.Size)
+	}
+	if flagVerbose {
+		renderOpsObservedProcessInstances(cmd, "selected observations", selection.Items)
+	}
+}
+
+// writeCleanupSelectionMarkdown retains candidate provenance and observed identities without interpreting opaque text.
+func writeCleanupSelectionMarkdown(out *strings.Builder, selection *process.ProcessInstanceSelection) {
+	if selection == nil {
+		return
+	}
+	writeMarkdownReportField(out, "Selection Completion", string(selection.Completion))
+	writeMarkdownReportField(out, "Selection Limit", fmt.Sprint(selection.Request.SearchRequest.Limit))
+	writeMarkdownReportList(out, "Selected Observations", markdownProcessInstanceItems(selection.Items))
 }

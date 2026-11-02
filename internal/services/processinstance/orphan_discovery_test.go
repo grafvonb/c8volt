@@ -12,7 +12,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestDiscoverOrphanProcessInstancesLimitCountsOrphansNotCandidates(t *testing.T) {
+// TestDiscoverOrphanProcessInstancesLimitCountsDistinctCandidates verifies non-orphans consume the documented bound.
+func TestDiscoverOrphanProcessInstancesLimitCountsDistinctCandidates(t *testing.T) {
 	t.Parallel()
 
 	searches := 0
@@ -69,17 +70,16 @@ func TestDiscoverOrphanProcessInstancesLimitCountsOrphansNotCandidates(t *testin
 	})
 
 	require.NoError(t, err)
-	require.Equal(t, 2, searches)
+	require.Equal(t, 1, searches)
 	require.Equal(t, []d.ProcessInstance{
 		{Key: "orphan-1", ParentKey: "missing-1"},
-		{Key: "orphan-2", ParentKey: "missing-2"},
 	}, got.Items)
-	require.Equal(t, []string{"orphan-1", "orphan-2"}, []string(got.Keys))
+	require.Equal(t, []string{"orphan-1"}, []string(got.Keys))
 	require.Equal(t, []OrphanDiscoveryProgress{
 		{
 			Page:                  1,
 			Phase:                 "checking",
-			CurrentPageCandidates: 3,
+			CurrentPageCandidates: 2,
 			CandidatesChecked:     0,
 			OrphansFound:          0,
 			Limit:                 2,
@@ -88,31 +88,12 @@ func TestDiscoverOrphanProcessInstancesLimitCountsOrphansNotCandidates(t *testin
 		{
 			Page:                  1,
 			Phase:                 "checked",
-			CurrentPageCandidates: 3,
+			CurrentPageCandidates: 2,
 			CurrentPageOrphans:    1,
-			CandidatesChecked:     3,
+			CandidatesChecked:     2,
 			OrphansFound:          1,
 			Limit:                 2,
 			OverflowState:         d.ProcessInstanceOverflowStateHasMore,
-		},
-		{
-			Page:                  2,
-			Phase:                 "checking",
-			CurrentPageCandidates: 2,
-			CandidatesChecked:     3,
-			OrphansFound:          1,
-			Limit:                 2,
-			OverflowState:         d.ProcessInstanceOverflowStateNoMore,
-		},
-		{
-			Page:                  2,
-			Phase:                 "checked",
-			CurrentPageCandidates: 2,
-			CurrentPageOrphans:    1,
-			CandidatesChecked:     5,
-			OrphansFound:          2,
-			Limit:                 2,
-			OverflowState:         d.ProcessInstanceOverflowStateNoMore,
 		},
 	}, progress)
 }

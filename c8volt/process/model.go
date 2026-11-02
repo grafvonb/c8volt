@@ -212,6 +212,11 @@ type ProcessInstanceVariablePlan struct {
 // ProcessInstanceVariableUpdatePlan is a complete frozen collection plan
 // suitable for preview and later execution without rediscovery.
 type ProcessInstanceVariableUpdatePlan struct {
+	// Selection retains completed search provenance; nil preserves explicit-key behavior.
+	Selection *ProcessInstanceSelection `json:"selection,omitempty"`
+	// SelectionTenant binds search authorization to the receiving service.
+	SelectionTenant string `json:"selectionTenant,omitempty"`
+
 	RequestedKeys          []string                      `json:"requestedKeys"`
 	RequestedValues        map[string]any                `json:"requestedValues"`
 	Instances              []ProcessInstanceVariablePlan `json:"instances"`
@@ -259,8 +264,11 @@ func (r ProcessInstanceVariableUpdateResult) OK() bool {
 		(r.MutationAccepted && r.Status != ProcessInstanceVariableUpdateStatusMutationFailed && r.Status != ProcessInstanceVariableUpdateStatusConfirmationFailed)
 }
 
+// ProcessInstanceVariableUpdateResults retains ordered outcomes and optional selection evidence.
 type ProcessInstanceVariableUpdateResults struct {
-	Items []ProcessInstanceVariableUpdateResult `json:"items,omitempty"`
+	// Selection preserves original criteria separately from outcome identity.
+	Selection *ProcessInstanceSelection             `json:"selection,omitempty"`
+	Items     []ProcessInstanceVariableUpdateResult `json:"items,omitempty"`
 }
 
 func (r ProcessInstanceVariableUpdateResults) Totals() (total int, oks int, noks int) {
@@ -456,11 +464,26 @@ type ProcessInstanceSearchPageStep struct {
 // ProcessInstanceSearchPageVisitor observes selected pages during service-owned traversal.
 type ProcessInstanceSearchPageVisitor func(ProcessInstanceSearchPageStep) (ProcessInstanceSearchPageAction, error)
 
-// ProcessInstanceSearchPagesResult captures a full or caller-stopped process-instance discovery.
+// ProcessInstanceSearchCompletion records why discovery ended. The zero value is not completion evidence.
+type ProcessInstanceSearchCompletion string
+
+const (
+	// ProcessInstanceSearchCompletionExhausted proves the requested search was exhausted.
+	ProcessInstanceSearchCompletionExhausted ProcessInstanceSearchCompletion = "exhausted"
+	// ProcessInstanceSearchCompletionLimitReached proves only the documented distinct-selection bound.
+	ProcessInstanceSearchCompletionLimitReached ProcessInstanceSearchCompletion = "limit_reached"
+	// ProcessInstanceSearchCompletionVisitorStopped records a caller stop before authoritative completion.
+	ProcessInstanceSearchCompletionVisitorStopped ProcessInstanceSearchCompletion = "visitor_stopped"
+	// ProcessInstanceSearchCompletionIncomplete retains evidence from failed or unresolved discovery.
+	ProcessInstanceSearchCompletionIncomplete ProcessInstanceSearchCompletion = "incomplete"
+)
+
+// ProcessInstanceSearchPagesResult retains discovery evidence and why traversal ended, including failures.
 type ProcessInstanceSearchPagesResult struct {
-	Items []ProcessInstance `json:"items,omitempty"`
-	Limit int32             `json:"limit,omitempty"`
-	Pages int32             `json:"pages,omitempty"`
+	Completion ProcessInstanceSearchCompletion `json:"completion,omitempty"`
+	Items      []ProcessInstance               `json:"items,omitempty"`
+	Limit      int32                           `json:"limit,omitempty"`
+	Pages      int32                           `json:"pages,omitempty"`
 }
 
 // ProcessInstanceMutationPlanRequest combines search selection with dry-run
@@ -535,7 +558,10 @@ type OrphanDiscovery struct {
 	Keys   typex.Keys            `json:"keys,omitempty"`
 }
 
+// ProcessInstanceFilter combines native search predicates with AND.
 type ProcessInstanceFilter struct {
+	// BusinessId is an exact opaque criterion; nil omits it and empty is invalid.
+	BusinessId           *string                          `json:"businessId,omitempty"`
 	Key                  string                           `json:"key,omitempty"`
 	BpmnProcessId        string                           `json:"bpmnProcessId,omitempty"`
 	ProcessVersion       int32                            `json:"version,omitempty"`
@@ -552,8 +578,12 @@ type ProcessInstanceFilter struct {
 	VariableFilters      ProcessInstanceVariableFilterSet `json:"variableFilters,omitempty"`
 }
 
+// String quotes opaque criteria for diagnostic descriptions.
 func (f ProcessInstanceFilter) String() string {
 	parts := make([]string, 0, 14)
+	if f.BusinessId != nil {
+		parts = toolx.AppendQuotedField(parts, "businessId", *f.BusinessId)
+	}
 	parts = toolx.AppendQuotedField(parts, "key", f.Key)
 	parts = toolx.AppendQuotedField(parts, "bpmnProcessId", f.BpmnProcessId)
 	parts = toolx.AppendInt32Field(parts, "processVersion", f.ProcessVersion)
@@ -806,7 +836,9 @@ const (
 // order, including skipped work and partial failures. Callers initialize Items
 // to an empty array when there are no selected keys.
 type SuspensionResults struct {
-	Items []SuspensionResult `json:"items"`
+	// Selection preserves original criteria separately from outcome identity.
+	Selection *ProcessInstanceSelection `json:"selection,omitempty"`
+	Items     []SuspensionResult        `json:"items"`
 }
 
 // ProcessInstanceSuspensionPlan freezes discovered scope without claiming mutation evidence.
@@ -816,6 +848,13 @@ type SuspensionResults struct {
 // explicit partial/unresolved-result, or context failure returns a zero plan plus
 // error. The caller must check error before considering a no-op.
 type ProcessInstanceSuspensionPlan struct {
+	// Selection retains completed search provenance; nil preserves explicit-key behavior.
+	Selection *ProcessInstanceSelection `json:"selection,omitempty"`
+	// SelectionTenant binds search authorization to the receiving service.
+	SelectionTenant string `json:"selectionTenant,omitempty"`
+	// Exact distinguishes selected keys from descendant eligibility plans.
+	Exact bool `json:"exact,omitempty"`
+
 	// RequestedKeys: All normalized unique explicit seeds, in input order, including seeds that overlap earlier subtrees.
 	RequestedKeys typex.Keys `json:"requestedKeys"`
 	// Instances: Unique discovered members in first-seen traversal order.
@@ -915,7 +954,9 @@ const (
 // to an empty array when there are no selected keys. Accepted-but-unconfirmed
 // failures count as both accepted and failed; those counts deliberately overlap.
 type ResumptionResults struct {
-	Items []ResumptionResult `json:"items"`
+	// Selection preserves original criteria separately from outcome identity.
+	Selection *ProcessInstanceSelection `json:"selection,omitempty"`
+	Items     []ResumptionResult        `json:"items"`
 }
 
 // ProcessInstanceResumptionPlan freezes discovered scope without claiming mutation evidence.
@@ -925,6 +966,13 @@ type ResumptionResults struct {
 // explicit partial/unresolved-result, or context failure returns a zero plan plus
 // error. The caller must check error before considering a no-op.
 type ProcessInstanceResumptionPlan struct {
+	// Selection retains completed search provenance; nil preserves explicit-key behavior.
+	Selection *ProcessInstanceSelection `json:"selection,omitempty"`
+	// SelectionTenant binds search authorization to the receiving service.
+	SelectionTenant string `json:"selectionTenant,omitempty"`
+	// Exact distinguishes selected keys from descendant eligibility plans.
+	Exact bool `json:"exact,omitempty"`
+
 	// RequestedKeys: All normalized unique explicit seeds, in input order, including seeds that overlap earlier subtrees.
 	RequestedKeys typex.Keys `json:"requestedKeys"`
 	// Instances: Unique discovered members in first-seen traversal order.
@@ -953,3 +1001,69 @@ const (
 	// ProcessInstanceResumptionPlanExcluded identifies every other observed state.
 	ProcessInstanceResumptionPlanExcluded ProcessInstanceResumptionPlanClassification = "excluded"
 )
+
+// ProcessInstanceSelectionCardinality declares the proof required by a selection consumer.
+type ProcessInstanceSelectionCardinality string
+
+const (
+	// ProcessInstanceSelectionCollection accepts exhausted or explicitly bounded distinct selections.
+	ProcessInstanceSelectionCollection ProcessInstanceSelectionCardinality = "collection"
+	// ProcessInstanceSelectionUniqueStart requires exhaustion with at most one distinct key.
+	ProcessInstanceSelectionUniqueStart ProcessInstanceSelectionCardinality = "unique_start"
+)
+
+// ProcessInstanceSelectionRequest retains search controls separately from cardinality.
+type ProcessInstanceSelectionRequest struct {
+	SearchRequest ProcessInstanceSearchRequest        `json:"searchRequest"`
+	Cardinality   ProcessInstanceSelectionCardinality `json:"cardinality"`
+}
+
+// ProcessInstanceSelection preserves copied provenance and partial evidence; an error always prevents execution.
+type ProcessInstanceSelection struct {
+	Request        ProcessInstanceSelectionRequest `json:"request"`
+	Origin         string                          `json:"origin"`
+	Items          []ProcessInstance               `json:"items"`
+	Keys           typex.Keys                      `json:"keys"`
+	Completion     ProcessInstanceSearchCompletion `json:"completion"`
+	Pages          int32                           `json:"pages"`
+	TenantEvidence TenantEvidence                  `json:"tenantEvidence"`
+	IgnoreTenant   bool                            `json:"ignoreTenant"`
+}
+
+// ProcessInstanceSelectedMutationRequest identifies the collection and operation to freeze.
+type ProcessInstanceSelectedMutationRequest struct {
+	Operation string                          `json:"operation"`
+	Selection ProcessInstanceSelectionRequest `json:"selection"`
+	Workers   int                             `json:"workers"`
+}
+
+// ProcessInstanceMutationFamily preserves ordered membership and observed parent relationships.
+type ProcessInstanceMutationFamily struct {
+	RootKey string            `json:"rootKey"`
+	Keys    typex.Keys        `json:"keys"`
+	Items   []ProcessInstance `json:"items"`
+}
+
+// ProcessInstanceSelectedMutationPlan retains selection separately from expanded family scope.
+// It is an invocation-local snapshot, not a transferable authorization token.
+type ProcessInstanceSelectedMutationPlan struct {
+	Request   ProcessInstanceSelectedMutationRequest `json:"request"`
+	Selection ProcessInstanceSelection               `json:"selection"`
+	Expansion DryRunPIKeyExpansion                   `json:"expansion"`
+	Families  []ProcessInstanceMutationFamily        `json:"families"`
+	Tenant    string                                 `json:"tenant"`
+}
+
+// ProcessInstanceDeletionResult retains root reports and attempted members of the reviewed scope.
+type ProcessInstanceDeletionResult struct {
+	// MutationSubmitted is run evidence rendered in the command scope, independent of root success.
+	MutationSubmitted bool `json:"mutationSubmitted"`
+	DeleteReports
+	Members []DeleteReport `json:"members,omitempty"`
+}
+
+// SelectedProcessInstanceResolutionPlan retains the original selection, family union and incident work.
+type SelectedProcessInstanceResolutionPlan struct {
+	Scope     ProcessInstanceSelectedMutationPlan   `json:"scope"`
+	Incidents incident.ProcessInstancesIncidentPlan `json:"incidents"`
+}

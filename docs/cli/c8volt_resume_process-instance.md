@@ -6,11 +6,15 @@ nav_exclude: true
 [CLI Reference]({{ "/cli/" | relative_url }})
 ## c8volt resume process-instance
 
-Resume suspended process instances by key or subtree
+Resume suspended process instances by key, business ID or subtree
 
 ### Synopsis
 
 Resume SUSPENDED process instances on Camunda 8.10 by explicit key or selected subtree.
+
+Select by exact business ID with --bid on Camunda 8.10, as an alternative to --key or stdin. BID discovery respects configured tenant scope and completes before approval; --limit bounds distinct matching seeds and --batch-size controls request size. Duplicate matches count once. Empty completed discovery succeeds without confirmation or mutation, including --no-wait. Errors during discovery prevent mutation. JSON retains the original criterion and reviewed scope; execution never searches the BID again after approval. A separate dry-run and later execution perform separate discoveries.
+
+Without --tree, BID selects exact instances and does not prefilter their action eligibility. With --tree, expand only selected seeds and descendants, merge overlaps, and freeze eligible targets; a seed limit never clips descendants. Neither mode selects ancestors or siblings. Explicit-key dry-runs remain local and read-free.
 
 Tree plans retain each discovered instance's own business ID when available; inspect it with --verbose or --json. Exact-key previews remain local and do not look up IDs.
 
@@ -22,7 +26,7 @@ Default execution waits for observed ACTIVE or immediate COMPLETED after accepta
 
 Add --tree to include each selected instance and its descendants, merging overlapping subtrees without escalating to ancestors or siblings. Discovery traverses active and terminal parents before selecting only observed SUSPENDED members; independently suspended descendants remain eligible. All other states are excluded. Tree execution and tree dry-run require read/search permissions. Tree dry-run reports selected, discovered, eligible and excluded counts without mutation. Failed or incomplete planning stops before approval or submission. A complete plan with no suspended targets succeeds without approval, activity or mutation, including with --no-wait.
 
-Tree execution asks once for the expanded eligible count and uses that frozen scope without rediscovery. Discovery retains the limit of up to 1,000 direct children per parent lookup; coverage beyond that limit is not guaranteed. The scope is not atomic: state races can cause authoritative rejection, and descendants created after discovery may be omitted. There is no automatic rollback or parent-before-child execution guarantee. --no-wait skips confirmation reads, not tree discovery.
+Tree execution asks once for the expanded eligible count and uses that frozen scope without rediscovery. On Camunda 8.10, child discovery exhausts all pages at every depth. The scope is not atomic: state races can cause authoritative rejection, and descendants created after discovery may be omitted. There is no automatic rollback or parent-before-child execution guarantee. --no-wait skips confirmation reads, not tree discovery.
 
 Resumption releases buffered work. Failures while processing buffered work can leave the instance suspended. Observed CANCELED or TERMINATED is a cancellation failure, never confirmed resumption. Persistent suspension, absence, unknown state or failed reads remain unconfirmed within the wait bound; missing suspendedDate alone is not proof. Resumption does not guarantee incident-free execution, process completion, or immediate subscription readiness. Multiple-key execution is not atomic and partial failure has no automatic rollback.
 
@@ -35,6 +39,7 @@ c8volt resume process-instance [flags]
 ### Examples
 
 ```
+  ./c8volt --tenant tenant-a resume pi --bid 'ORDER-123' --tree --dry-run --json
   ./c8volt resume process-instance --key <process-instance-key>
   ./c8volt resume pi --key <key-a>,<key-b> --key <key-a> --dry-run --json
   ./c8volt resume pi --key <process-instance-key> --auto-confirm --no-wait --json
@@ -46,14 +51,17 @@ c8volt resume process-instance [flags]
 ### Options
 
 ```
-      --dry-run           preview exact keys locally or discover eligible tree targets; no mutations or approval
-      --fail-fast         stop scheduling new instances after the first error
-  -h, --help              help for process-instance
-  -k, --key strings       process instance key(s); repeat, comma-separate or combine with stdin '-'
-      --no-wait           return after accepted resumption without confirmation reads
-      --no-worker-limit   use all queued jobs as workers when --workers is unset
-      --tree              include selected instances and descendants; resume only observed SUSPENDED members
-  -w, --workers int       maximum concurrent workers (default: min(count, 2*GOMAXPROCS, 32))
+  -n, --batch-size int32   maximum process instances per discovery request (default 1000)
+      --bid string         exact business ID to select in configured tenant scope (Camunda 8.10)
+      --dry-run            preview exact keys locally or discover eligible tree targets; no mutations or approval
+      --fail-fast          stop scheduling new instances after the first error
+  -h, --help               help for process-instance
+  -k, --key strings        process instance key(s); repeat, comma-separate or combine with stdin '-'
+  -l, --limit int32        maximum distinct matching instances; zero selects all; tree expansion is not limited
+      --no-wait            return after accepted resumption without confirmation reads
+      --no-worker-limit    use all queued jobs as workers when --workers is unset
+      --tree               include selected instances and descendants; resume only observed SUSPENDED members
+  -w, --workers int        maximum concurrent workers (default: min(count, 2*GOMAXPROCS, 32))
 ```
 
 ### Options inherited from parent commands

@@ -15,6 +15,7 @@ import (
 
 const orphanPurgeReportSchemaVersion = "ops.orphan-process-instances.v1"
 
+// PurgeOrphanProcessInstances dispatches reviewed BID plans before legacy key/discovery shortcuts.
 func (s *Service) PurgeOrphanProcessInstances(ctx context.Context, request d.OrphanPurgeRequest, opts ...services.CallOption) (d.OrphanPurgeResult, error) {
 	started := request.StartedAt
 	if started.IsZero() {
@@ -25,6 +26,9 @@ func (s *Service) PurgeOrphanProcessInstances(ctx context.Context, request d.Orp
 	request.NoWait = request.NoWait || cfg.NoWait
 	if request.Progress == nil {
 		request.Progress = cfg.Progress
+	}
+	if request.Selection.BusinessId != nil || request.FrozenPlan != nil {
+		return s.purgeBusinessIDOrphans(ctx, request, opts...)
 	}
 	result := newOrphanPurgeResult(request)
 

@@ -20,6 +20,7 @@ import (
 
 const retentionPolicyReportSchemaVersion = "ops.retention-policy.v1"
 
+// ExecuteRetentionPolicy dispatches reviewed BID plans before legacy key/discovery shortcuts.
 func (s *Service) ExecuteRetentionPolicy(ctx context.Context, request d.RetentionPolicyRequest, opts ...services.CallOption) (d.RetentionPolicyResult, error) {
 	started := request.StartedAt
 	if started.IsZero() {
@@ -30,6 +31,9 @@ func (s *Service) ExecuteRetentionPolicy(ctx context.Context, request d.Retentio
 		request.DerivedEndDateBoundary = deriveRetentionEndDateBoundary(started, request.RetentionDays)
 	}
 	request = withRetentionPolicyOptionControls(request, opts...)
+	if request.Selection.BusinessId != nil || request.FrozenPlan != nil {
+		return s.executeBusinessIDRetention(ctx, request, opts...)
+	}
 	result := newRetentionPolicyResult(request)
 
 	if err := validateRetentionPolicyRequest(request); err != nil {

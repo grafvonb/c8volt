@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestDiscoverRetentionProcessInstancesUsesPagedEndDateFilterAndFreezesEligibleKeys retains distinct eligible observations across pages.
 func TestDiscoverRetentionProcessInstancesUsesPagedEndDateFilterAndFreezesEligibleKeys(t *testing.T) {
 	t.Parallel()
 
@@ -60,7 +61,6 @@ func TestDiscoverRetentionProcessInstancesUsesPagedEndDateFilterAndFreezesEligib
 	require.Equal(t, []d.ProcessInstance{
 		{Key: "seed-1", EndDate: "2026-02-12"},
 		{Key: "seed-2", EndDate: "2026-02-11"},
-		{Key: "seed-1", EndDate: "2026-02-12"},
 	}, got.Items)
 	require.Equal(t, []string{"seed-1", "seed-2"}, []string(got.Keys))
 }

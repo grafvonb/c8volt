@@ -16,12 +16,11 @@ import (
 // markdownProcessInstanceItems escapes markup after quoting opaque IDs, leaving
 // JSON and the underlying observations unchanged. Quoting contains control bytes.
 func markdownProcessInstanceItems(items []process.ProcessInstance) []string {
-	escape := strings.NewReplacer("\\", "\\\\", "`", "\\`", "*", "\\*", "_", "\\_", "[", "\\[", "]", "\\]", "(", "\\(", ")", "\\)", "<", "\\<", ">", "\\>", "&", "\\&", "|", "\\|", "~", "\\~")
 	out := retentionProcessInstanceItems(items)
 	for i, item := range items {
 		if item.BusinessId != nil {
 			column := processInstanceBusinessIDColumn(item.BusinessId)
-			out[i] = strings.TrimSuffix(out[i], column) + escape.Replace(column)
+			out[i] = strings.TrimSuffix(out[i], column) + escapeMarkdownOpaqueText(column)
 		}
 	}
 	return out
@@ -68,4 +67,10 @@ func formatOpsPurgeReportTime(t time.Time, cfg *config.Config) string {
 		showTimezoneOffset = cfg.App.ShowTimezoneOffset
 	}
 	return toolx.FormatTime(t.UTC(), showTimezoneOffset)
+}
+
+// escapeMarkdownOpaqueText escapes markup in already quoted, single-line opaque criteria and observations.
+func escapeMarkdownOpaqueText(value string) string {
+	escape := strings.NewReplacer("\\", "\\\\", "`", "\\`", "*", "\\*", "_", "\\_", "[", "\\[", "]", "\\]", "(", "\\(", ")", "\\)", "<", "\\<", ">", "\\>", "&", "\\&", "|", "\\|", "~", "\\~")
+	return escape.Replace(value)
 }

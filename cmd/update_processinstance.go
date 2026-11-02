@@ -18,8 +18,12 @@ var (
 // updateProcessInstanceCmd updates root-scope variables for explicitly selected process instances.
 var updateProcessInstanceCmd = &cobra.Command{
 	Use:   "process-instance",
-	Short: "Update process-instance variables by key",
+	Short: "Update process-instance variables by key or business ID",
 	Long: `Update process-instance-scope variables on Camunda 8.8 or newer.
+
+Select by exact business ID with --bid on Camunda 8.10, as an alternative to --key or stdin. BID discovery respects configured tenant scope and completes before approval; --limit bounds distinct matching seeds and --batch-size controls request size. Duplicate matches count once. Empty completed discovery succeeds without confirmation or mutation, including --no-wait. Errors during discovery prevent mutation. JSON retains the original criterion and reviewed scope; execution never searches the BID again after approval. A separate dry-run and later execution perform separate discoveries.
+
+BID updates freeze each selected instance's existing root-variable plan and payload without family expansion. Per-instance failures retain partial machine evidence and one compact configured ERROR; use --verbose for outcome details.
 
 Variable plans retain each selected instance's observed business ID when available. Detailed plan rows quote it safely, and JSON preserves it exactly. Key/status-only outcomes do not add a lookup.
 
@@ -28,7 +32,8 @@ Provide repeated --key values or newline-separated keys from stdin with '-'. Sup
 c8volt reads every selected process instance's complete root-variable scope before planning additions and changes. Nested-scope variables are excluded, and truncated values remain planned changes because they cannot prove equality. After confirmation, the command writes only the prepared additions and changes locally to their recorded roots, then waits until all requested variables are visible through the same lookup as get process-instance --with-vars. Detailed previews label every planned write with its selected process-instance root as pi:<key>.
 
 Use --dry-run to inspect changes without mutation, or --auto-confirm for unattended updates. A completed plan with no additions or changes finishes without confirmation, mutation, or verification. Use --no-wait to return after accepted root writes without confirmation. Partial failures retain accepted, failed, and skipped outcomes while returning a nonzero exit status.`,
-	Example: `  ./c8volt update process-instance --key <process-instance-key> --vars '{"customerTier":"gold"}' --dry-run
+	Example: `  ./c8volt --tenant tenant-a update pi --bid 'ORDER-123' --vars '{"customerTier":"gold"}' --dry-run --json
+  ./c8volt update process-instance --key <process-instance-key> --vars '{"customerTier":"gold"}' --dry-run
   ./c8volt update process-instance --key <process-instance-key> --vars-file ./vars.json --dry-run
   ./c8volt --tenant tenant-a update process-instance --key <process-instance-key> --vars '{"customerTier":"gold"}' --dry-run
   ./c8volt update process-instance --key <process-instance-key-a> --key <process-instance-key-b> --vars '{"customerTier":"gold"}' --dry-run
@@ -43,6 +48,10 @@ Use --dry-run to inspect changes without mutation, or --auto-confirm for unatten
 		if err != nil {
 			handleNewCliError(cmd, log, cfg, fmt.Errorf("initializing client: %w", err))
 		}
+		if !cmd.Flags().Changed("bid") && (cmd.Flags().Changed("limit") || cmd.Flags().Changed("batch-size")) {
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, missingDependentFlagsf("--limit and --batch-size require --bid"))
+			return
+		}
 		if err := requireAutomationSupport(cmd); err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}
@@ -52,6 +61,10 @@ Use --dry-run to inspect changes without mutation, or --auto-confirm for unatten
 		variables, err := parseUpdateProcessInstanceVariablesFromFlags(cmd, flagUpdatePIVars, flagUpdatePIVarsFile)
 		if err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+		}
+		if cmd.Flags().Changed("bid") {
+			runUpdateProcessInstanceBusinessID(cmd, cli, log, cfg, args, variables)
+			return
 		}
 		stdinKeys, err := readKeysIfDash(args)
 		if err != nil {
@@ -111,6 +124,7 @@ func init() {
 	updateCmd.AddCommand(updateProcessInstanceCmd)
 
 	fs := updateProcessInstanceCmd.Flags()
+	registerBusinessIDActionFlags(updateProcessInstanceCmd)
 	fs.StringSliceVarP(&flagUpdatePIKeys, "key", "k", nil, "process instance key(s) to update; repeat or combine with stdin '-'")
 	fs.StringVar(&flagUpdatePIVars, "vars", "", "JSON object with variables to set on each process instance")
 	fs.StringVar(&flagUpdatePIVarsFile, "vars-file", "", "path to JSON object file with variables to set on each process instance")

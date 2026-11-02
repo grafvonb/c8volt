@@ -75,6 +75,6 @@ c8volt update [flags]
 * [c8volt]({{ "/cli/c8volt/" | relative_url }})	 - Operate Camunda 8 workflows from the command line
 * [c8volt update element]({{ "/cli/c8volt_update_element" | relative_url }})	 - Update variables at explicit element scopes
 * [c8volt update job]({{ "/cli/c8volt_update_job" | relative_url }})	 - Update a job or complete selected jobs
-* [c8volt update process-instance]({{ "/cli/c8volt_update_process-instance" | relative_url }})	 - Update process-instance variables by key
+* [c8volt update process-instance]({{ "/cli/c8volt_update_process-instance" | relative_url }})	 - Update process-instance variables by key or business ID
 * [c8volt update user-task]({{ "/cli/c8volt_update_user-task" | relative_url }})	 - Update variables, complete, assign or unassign user tasks by key
 

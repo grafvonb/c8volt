@@ -16,6 +16,8 @@ Provide repeated or comma-separated --key values, or newline-separated keys on s
 
 Every requested key must resolve or the command fails without a partial result. Keyed reads require Camunda 8.8 or newer and use backend authorization without discovery-tenant filtering, so --tenant does not hide an authorized task and the task's actual tenant is returned.
 
+Use --bid for exact native task business-ID search on Camunda 8.10. It matches the task's stored ID, which can differ from the current process-instance ID, without a parent lookup. Spaces, commas and wildcards are literal; empty or invalid UTF-8 input is rejected, and search has no creation-length limit. Camunda 8.8/8.9 reject supplied IDs before search. --bid combines with --pi-key and other native predicates; explicit task keys and stdin keys remain exclusive.
+
 Without keys, search by process, element, state, assignment, candidate, and effective tenant scope. Predicates are combined with AND. Supported states are ASSIGNING, CANCELED, CANCELING, COMPLETED, COMPLETING, CREATED, CREATING, FAILED, and UPDATING; state matching is case-insensitive, and all applies no state predicate. --batch-size controls each discovery request, --limit caps returned tasks across all pages, and --total emits the exact matching count.
 
 Use variable-search flags to narrow native searches by local variables on each task. --var-exists requires every listed local variable name to exist. --var accepts name=value equality shorthand plus advanced name.$operator=value clauses for $eq, $neq, $exists, $in, $notIn, and $like; $notin is accepted as $notIn. Values use the existing process-instance filter encoding: quote strings and use JSON string arrays for membership operators. --var-like uses native wildcard patterns: * matches zero or more characters, ? matches one character, and escaped wildcards remain literal. Commas inside quoted values and JSON arrays stay inside the variable clause. Variable clauses and ordinary search predicates are combined with AND. Parent-scope values do not satisfy local filters; negative and existence matching retain backend semantics.
@@ -35,6 +37,8 @@ c8volt get user-task [-] [flags]
 ### Examples
 
 ```
+  ./c8volt get ut --bid 'ORDER-123,ORDER-456' --json
+  ./c8volt get ut --bid 'ORDER-123' --pi-key <process-instance-key> --with-vars
   ./c8volt get ut --var 'status="approved"'
   ./c8volt get ut --var-exists payload
   ./c8volt get ut --var-like 'email=*@example.com'
@@ -61,6 +65,7 @@ c8volt get user-task [-] [flags]
 ```
       --assignee string          exact assignee to filter in search mode
   -n, --batch-size int32         number of user tasks to request per page; does not cap total results (maximum 1000) (default 1000)
+      --bid string               exact stored task business ID (Camunda 8.10+); commas, spaces and wildcards are literal
   -b, --bpmn-process-id string   BPMN process ID to filter in search mode
       --candidate-group string   exact candidate-group membership to filter in search mode
       --candidate-user string    exact candidate-user membership to filter in search mode

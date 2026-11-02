@@ -56,6 +56,9 @@ func (s *Service) RepairProcessInstances(ctx context.Context, request d.OpsRepai
 		result.FrozenSet.Errors = []string{err.Error()}
 		return finishRepairResult(result, s.version, d.OpsRepairOutcomeFailed, err)
 	}
+	if request.ProcessInstanceSelection.BusinessId != nil || request.FrozenPlan != nil {
+		return s.repairBusinessIDProcessInstances(ctx, request, opts...)
+	}
 	if request.DiscoveryMode == d.OpsRepairDiscoveryModeSearch {
 		return s.repairFilteredProcessInstances(ctx, request, opts...)
 	}
@@ -250,9 +253,14 @@ func (s *Service) finishProcessInstanceIncidentRepair(ctx context.Context, reque
 		emitRepairFrozenScopeProgress(request, "repairing incidents", "incident(s)", done, len(incidents))
 		return item, err
 	})
-	for _, item := range items {
+	for i, item := range items {
 		if item.Plan.IncidentKey == "" {
-			continue
+			if request.ProcessInstanceSelection.BusinessId == nil {
+				continue
+			}
+			item.Plan, item.JobApplicability = newIncidentRepairPlan(request, incidents[i])
+			item.Plan.ResolutionStatus = d.OpsWorkflowStepStatusSkipped
+			item.Plan.ConfirmationStatus = d.OpsWorkflowStepStatusSkipped
 		}
 		result.Plan = append(result.Plan, item.Plan)
 		result.JobApplicability = append(result.JobApplicability, item.JobApplicability)
@@ -573,7 +581,13 @@ func (s *Service) executeRepairVariableUpdates(ctx context.Context, request d.Op
 		scopes = append(scopes, update.ScopeKey)
 		dependents[update.ScopeKey] = append(typex.Keys(nil), update.DependentIncidentKeys...)
 	}
-	results, err := pisvc.UpdateProcessInstancesVariables(ctx, s.piAPI, s.log, scopes, request.Variables, request.Workers, opts...)
+	var results d.ProcessInstanceVariableUpdateResults
+	var err error
+	if request.ProcessInstanceSelection.BusinessId != nil {
+		results, err = s.executeFrozenRepairVariables(ctx, request, scopes, opts...)
+	} else {
+		results, err = pisvc.UpdateProcessInstancesVariables(ctx, s.piAPI, s.log, scopes, request.Variables, request.Workers, opts...)
+	}
 	resultsByScope := make(map[string]d.ProcessInstanceVariableUpdateResult, len(results.Items))
 	for _, item := range results.Items {
 		if item.Key != "" {

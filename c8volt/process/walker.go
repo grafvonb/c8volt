@@ -6,6 +6,7 @@ package process
 import (
 	"context"
 
+	ferr "github.com/grafvonb/c8volt/c8volt/ferrors"
 	options "github.com/grafvonb/c8volt/c8volt/foptions"
 	pitraversal "github.com/grafvonb/c8volt/internal/services/processinstance/traversal"
 )
@@ -40,19 +41,22 @@ func (c *client) Family(ctx context.Context, startKey string, opts ...options.Fa
 	return fam, edges, fromDomainProcessInstanceMap(dchain), err
 }
 
+// AncestryResult preserves traversal evidence and maps the original service error.
 func (c *client) AncestryResult(ctx context.Context, startKey string, opts ...options.FacadeOption) (TraversalResult, error) {
 	got, err := c.piApi.AncestryResult(ctx, startKey, options.MapFacadeOptionsToCallOptions(opts)...)
-	return mapTraversalResult(got), err
+	return mapTraversalResult(got), ferr.FromDomain(err)
 }
 
+// DescendantsResult preserves traversal evidence and maps the original service error.
 func (c *client) DescendantsResult(ctx context.Context, rootKey string, opts ...options.FacadeOption) (TraversalResult, error) {
 	got, err := c.piApi.DescendantsResult(ctx, rootKey, options.MapFacadeOptionsToCallOptions(opts)...)
-	return mapTraversalResult(got), err
+	return mapTraversalResult(got), ferr.FromDomain(err)
 }
 
+// FamilyResult preserves traversal evidence and maps the original service error.
 func (c *client) FamilyResult(ctx context.Context, startKey string, opts ...options.FacadeOption) (TraversalResult, error) {
 	got, err := c.piApi.FamilyResult(ctx, startKey, options.MapFacadeOptionsToCallOptions(opts)...)
-	return mapTraversalResult(got), err
+	return mapTraversalResult(got), ferr.FromDomain(err)
 }
 
 func mapTraversalResult(in pitraversal.Result) TraversalResult {

@@ -11,6 +11,7 @@ import (
 	"github.com/grafvonb/c8volt/consts"
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/services"
+	"github.com/grafvonb/c8volt/toolx"
 )
 
 // SearchUserTasks collects all selected pages while preserving an initialized
@@ -244,6 +245,7 @@ func userTaskSearchExhausted(page d.UserTaskSearchPage, rawTotal int64) (bool, e
 // normalizeUserTaskSearchQuery applies the shared page-size default once so
 // adapters and visitor metadata observe the same effective request.
 func normalizeUserTaskSearchQuery(query *d.UserTaskSearchQuery) {
+	query.BusinessId = toolx.CopyPtr(query.BusinessId)
 	if query.BatchSize <= 0 {
 		query.BatchSize = consts.MaxPISearchSize
 	}

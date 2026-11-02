@@ -22,6 +22,8 @@ c8volt validates the affected tree before any deletion, asks for confirmation, a
 
 A --bpmn-process-id selector must match a visible process definition before instance discovery. An empty selection completes without confirmation or mutation.
 
+BID selection (--bid) uses native exact matching on Camunda 8.10+, combined with other filters in tenant scope. It freezes every selected family before confirmation. --limit caps distinct seeds, never relatives. Reviewed members are deleted children-first; a new child after approval is never added to client delete requests. Backend conflicts remain failures. Force cancellation can still cascade to concurrent descendants. Dry-run performs discovery without writes.
+
 Search mode plans all selected pages before one confirmation and deletion. --batch-size controls each discovery request; --limit caps the selected scope across all pages. --workers, --fail-fast, and --no-worker-limit control planning and deletion work.
 
 Use --verbose to explain cancellation prerequisites, root escalation, accepted cancellation, confirmation waits, and deletion resumption. Use --debug for per-check state observations and HTTP diagnostics; it remains independent of --verbose. A confirmation timeout reports accepted cancellation as submitted but unconfirmed and does not claim that deletion resumed.
@@ -36,6 +38,8 @@ c8volt delete process-instance [flags]
 
 ```
   ./c8volt delete process-instance --key <process-instance-key> --force
+  ./c8volt delete process-instance --bid ORDER-123 --dry-run
+  ./c8volt delete process-instance --bid ORDER-123 --force --auto-confirm
   ./c8volt delete process-instance --key <process-instance-key> --dry-run
   ./c8volt --tenant tenant-a delete process-instance --key <process-instance-key> --dry-run
   ./c8volt --tenant tenant-a delete process-instance --state terminated --limit 5 --dry-run
@@ -54,6 +58,7 @@ c8volt delete process-instance [flags]
 
 ```
   -n, --batch-size int32            number of process instances to inspect per discovery page; does not cap total frozen scope (max limit 1000 enforced by server) (default 1000)
+      --bid string                  exact business ID to select (Camunda 8.10+); one opaque value
   -b, --bpmn-process-id string      BPMN process ID to filter process instances
       --dry-run                     preview delete scope without submitting deletion or cancel-before-delete requests
       --end-date-after string       only include process instances with end date >= YYYY-MM-DD

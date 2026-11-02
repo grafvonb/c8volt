@@ -5,6 +5,7 @@ package processinstance
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	d "github.com/grafvonb/c8volt/internal/domain"
@@ -16,7 +17,14 @@ import (
 	"github.com/grafvonb/c8volt/typex"
 )
 
+// DryRunCancelOrDeletePlan expands distinct roots once, retaining observed partial scope on failure.
 func DryRunCancelOrDeletePlan(ctx context.Context, api API, keys typex.Keys, wantedWorkers int, opts ...services.CallOption) (d.DryRunPIKeyExpansion, error) {
+	plan, _, err := dryRunCancelOrDeletePlan(ctx, api, keys, wantedWorkers, opts...)
+	return plan, err
+}
+
+// dryRunCancelOrDeletePlan shares family expansion with consumers that need frozen membership and order.
+func dryRunCancelOrDeletePlan(ctx context.Context, api API, keys typex.Keys, wantedWorkers int, opts ...services.CallOption) (d.DryRunPIKeyExpansion, []pitraversal.Result, error) {
 	var roots typex.Keys
 	var collected typex.Keys
 	cfg := services.ApplyCallOptions(opts)
@@ -25,9 +33,7 @@ func DryRunCancelOrDeletePlan(ctx context.Context, api API, keys typex.Keys, wan
 	ancestryResults, err := pool.ExecuteSlice[string, pitraversal.Result](ctx, ukeys, ancestryWorkers, cfg.FailFast, func(ctx context.Context, key string, _ int) (pitraversal.Result, error) {
 		return api.AncestryResult(ctx, key, opts...)
 	})
-	if err != nil {
-		return d.DryRunPIKeyExpansion{}, err
-	}
+	ancestryErr := err
 	seenRoots := make(map[string]struct{}, len(ancestryResults))
 	var duplicateRoots typex.Keys
 	for _, result := range ancestryResults {
@@ -41,12 +47,17 @@ func DryRunCancelOrDeletePlan(ctx context.Context, api API, keys typex.Keys, wan
 	}
 	roots = roots.Unique()
 
+	expansionRoots := roots
+	if ancestryErr != nil {
+		expansionRoots = nil
+	}
 	descendantWorkers := toolx.DetermineNoOfWorkers(len(roots), wantedWorkers, cfg.NoWorkerLimit)
-	descendantResults, err := pool.ExecuteSlice[string, pitraversal.Result](ctx, roots, descendantWorkers, cfg.FailFast, func(ctx context.Context, root string, _ int) (pitraversal.Result, error) {
+	descendantResults, err := pool.ExecuteSlice[string, pitraversal.Result](ctx, expansionRoots, descendantWorkers, cfg.FailFast, func(ctx context.Context, root string, _ int) (pitraversal.Result, error) {
 		return api.DescendantsResult(ctx, root, opts...)
 	})
-	if err != nil {
-		return d.DryRunPIKeyExpansion{}, err
+	traversalErr := errors.Join(ancestryErr, err)
+	if traversalErr == nil {
+		traversalErr = ctx.Err()
 	}
 	for _, result := range descendantResults {
 		collected = append(collected, result.Keys...)
@@ -77,7 +88,11 @@ func DryRunCancelOrDeletePlan(ctx context.Context, api API, keys typex.Keys, wan
 		Warning:                    warning,
 		Outcome:                    outcome,
 	}
-	return plan, validateDryRunPIKeyExpansion(plan)
+	if traversalErr != nil {
+		plan.Outcome = d.TraversalOutcomeUnresolved
+		return plan, descendantResults, traversalErr
+	}
+	return plan, descendantResults, validateDryRunPIKeyExpansion(plan)
 }
 
 // PlanProcessInstanceMutationPages owns search-selected cancel/delete paging
@@ -362,6 +377,7 @@ func mergeTenantEvidenceTargets(acc *common.TenantEvidenceAccumulator, targets [
 	return targets
 }
 
+// mapDryRunTraversalWarning preserves incomplete and unknown traversal dispositions in preview evidence.
 func mapDryRunTraversalWarning(results []pitraversal.Result) (warning string, missing []d.MissingAncestor, outcome d.TraversalOutcome) {
 	outcome = d.TraversalOutcomeComplete
 	for _, result := range results {
@@ -372,12 +388,15 @@ func mapDryRunTraversalWarning(results []pitraversal.Result) (warning string, mi
 			warning = result.Warning
 		}
 		switch result.Outcome {
+		case pitraversal.OutcomeComplete:
 		case pitraversal.OutcomeUnresolved:
 			if outcome == d.TraversalOutcomeComplete {
 				outcome = d.TraversalOutcomeUnresolved
 			}
 		case pitraversal.OutcomePartial:
 			outcome = d.TraversalOutcomePartial
+		default:
+			outcome = d.TraversalOutcomeUnresolved
 		}
 	}
 	if len(missing) > 0 && warning == "" {
@@ -436,6 +455,7 @@ func nonFinalProcessInstances(keys typex.Keys, results []pitraversal.Result) []d
 		}
 		seen[key] = struct{}{}
 		pi.BusinessId = toolx.CopyPtr(pi.BusinessId)
+		pi.Variables = copyProcessInstanceVariableMap(pi.Variables)
 		out = append(out, pi)
 	}
 	if len(out) == 0 {
@@ -469,6 +489,7 @@ func selectedFinalStateProcessInstances(keys typex.Keys, results []pitraversal.R
 		}
 		seen[key] = struct{}{}
 		pi.BusinessId = toolx.CopyPtr(pi.BusinessId)
+		pi.Variables = copyProcessInstanceVariableMap(pi.Variables)
 		out = append(out, pi)
 	}
 	if len(out) == 0 {

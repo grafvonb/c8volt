@@ -15,6 +15,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// renderOpsExecuteRetentionPolicyResult renders selected results or configured INFO records, including bounded BID discovery.
 func renderOpsExecuteRetentionPolicyResult(cmd *cobra.Command, result ops.RetentionPolicyResult) error {
 	if commandUsesSharedEnvelope(cmd, pickMode()) {
 		return renderSucceededResult(cmd, result)
@@ -25,6 +26,7 @@ func renderOpsExecuteRetentionPolicyResult(cmd *cobra.Command, result ops.Retent
 		renderHumanLine(cmd, "execute retention policy")
 	}
 	renderAttachedTenantContext(cmd)
+	renderCleanupSelection(cmd, result.Discovery.Selection)
 	renderOpsExecuteRetentionPolicyDiscovery(cmd, result)
 	renderOpsExecuteRetentionPolicyDeletePlan(cmd, result)
 	renderOpsExecuteRetentionPolicyDeletion(cmd, result)
@@ -235,7 +237,8 @@ func renderOpsExecuteRetentionPolicyMarkdownReport(report ops.RetentionAuditRepo
 	writeMarkdownReportField(&out, "Outcome", string(report.Outcome))
 
 	out.WriteString("\n## Selection\n\n")
-	writeMarkdownReportField(&out, "Filters", report.SelectionFilters.String())
+	writeMarkdownReportField(&out, "Filters", escapeMarkdownOpaqueText(report.SelectionFilters.String()))
+	writeCleanupSelectionMarkdown(&out, report.Discovery.Selection)
 
 	out.WriteString("\n## Discovery\n\n")
 	writeMarkdownReportField(&out, "Status", string(report.Discovery.Status))

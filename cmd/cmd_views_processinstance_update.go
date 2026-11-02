@@ -40,7 +40,9 @@ type processInstanceVariableUpdatePlan struct {
 	tenantID           string
 }
 
+// processInstanceVariableUpdatePreview retains reviewed payloads and optional search provenance.
 type processInstanceVariableUpdatePreview struct {
+	Selection              *process.ProcessInstanceSelection   `json:"selection,omitempty"`
 	Operation              string                              `json:"operation"`
 	RequestedKeys          []string                            `json:"requestedKeys"`
 	RequestedCount         int                                 `json:"requestedCount"`
@@ -276,4 +278,61 @@ func formatProcessInstanceVariablePlanValue(value any) string {
 		return fmt.Sprint(value)
 	}
 	return string(data)
+}
+
+// renderBusinessIDVariableUpdate preserves one envelope and bounds human outcome facts.
+func renderBusinessIDVariableUpdate(cmd *cobra.Command, preview processInstanceVariableUpdatePreview, results process.ProcessInstanceVariableUpdateResults, planned bool, operationErr error) error {
+	if pickMode() == RenderModeJSON {
+		var payload any = results
+		if planned {
+			payload = preview
+		}
+		if operationErr != nil {
+			envelope := resultEnvelopeForError(cmd, operationErr)
+			envelope.Payload = payload
+			return renderResultEnvelope(cmd, envelope)
+		}
+		accepted, _, _, _ := processInstanceVariableUpdateResultCounts(results)
+		if !planned && flagNoWait && accepted > 0 {
+			return renderAcceptedResult(cmd, payload)
+		}
+		return renderSucceededResult(cmd, payload)
+	}
+	if planned {
+		if operationErr != nil {
+			return nil
+		}
+		if flagDryRun {
+			return renderUpdateProcessInstanceVariablePreview(cmd, preview)
+		}
+		return renderUpdateProcessInstanceVariablePlan(cmd, preview)
+	}
+	if pickMode() == RenderModeKeysOnly {
+		for _, item := range results.Items {
+			if item.MutationAccepted {
+				if _, err := fmt.Fprintln(cmd.OutOrStdout(), item.Key); err != nil {
+					return err
+				}
+			}
+		}
+		return nil
+	}
+	accepted, unchanged, failed, skipped := processInstanceVariableUpdateResultCounts(results)
+	renderHumanLine(cmd, "updated: %d (mutation accepted: %d, unchanged: %d, failed: %d, skipped: %d)", len(results.Items), accepted, unchanged, failed, skipped)
+	if flagVerbose {
+		for _, item := range results.Items {
+			renderHumanLine(cmd, "%s: %s", item.Key, item.Status)
+		}
+	}
+	return nil
+}
+
+// formatBusinessIDVariableUpdateFailure retains known selection counts while grouping failures by bounded class.
+func formatBusinessIDVariableUpdateFailure(plan process.ProcessInstanceVariableUpdatePlan, results process.ProcessInstanceVariableUpdateResults, err error) string {
+	selected := len(plan.RequestedKeys)
+	if plan.Selection != nil {
+		selected = len(plan.Selection.Keys)
+	}
+	_, _, failed, skipped := processInstanceVariableUpdateResultCounts(results)
+	return fmt.Sprintf("update process-instance variables: %d selected; %d failed; %d skipped; %s", selected, failed, skipped, boundedCommandFailureReason(err))
 }

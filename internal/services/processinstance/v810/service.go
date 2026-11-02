@@ -19,6 +19,7 @@ import (
 	"github.com/grafvonb/c8volt/internal/services"
 	"github.com/grafvonb/c8volt/internal/services/common"
 	"github.com/grafvonb/c8volt/internal/services/httpc"
+	"github.com/grafvonb/c8volt/internal/services/processinstance/searchpaging"
 	pitraversal "github.com/grafvonb/c8volt/internal/services/processinstance/traversal"
 	"github.com/grafvonb/c8volt/internal/services/processinstance/waiter"
 	"github.com/grafvonb/c8volt/internal/services/processinstance/walker"
@@ -188,14 +189,20 @@ func (s *Service) GetProcessInstance(ctx context.Context, key string, opts ...se
 	return fromProcessInstanceResult(*payload), nil
 }
 
-// GetDirectChildrenOfProcessInstance searches for direct child process instances.
+// GetDirectChildrenOfProcessInstance exhausts every child page, preserving partial observations on failure.
 func (s *Service) GetDirectChildrenOfProcessInstance(ctx context.Context, key string, opts ...services.CallOption) ([]d.ProcessInstance, error) {
 	_ = services.ApplyCallOptions(opts)
-	resp, err := s.SearchForProcessInstances(ctx, d.ProcessInstanceFilter{ParentKey: key}, 1000, opts...)
+	request := d.ProcessInstanceSearchRequest{Filter: d.ProcessInstanceFilter{ParentKey: key}, Page: d.ProcessInstancePageRequest{Size: 1000}}
+	items := make([]d.ProcessInstance, 0)
+	seen := make(map[string]struct{})
+	_, err := searchpaging.Walk(ctx, s, request, false, func(page d.ProcessInstancePage, _ int32) (d.ProcessInstanceSearchCompletion, error) {
+		items = append(items, searchpaging.DistinctItems(page.Items, seen)...)
+		return "", nil
+	}, opts...)
 	if err != nil {
-		return nil, fmt.Errorf("search child process instances: %w", err)
+		return items, fmt.Errorf("search child process instances: %w", err)
 	}
-	return resp, nil
+	return items, nil
 }
 
 // FilterProcessInstanceWithOrphanParent returns items whose recorded parent cannot be found.
@@ -230,6 +237,9 @@ func (s *Service) SearchForProcessInstances(ctx context.Context, filter d.Proces
 
 // SearchForProcessInstancesPage fetches and maps one v8.10 process-instance search page.
 func (s *Service) SearchForProcessInstancesPage(ctx context.Context, filter d.ProcessInstanceFilter, pageReq d.ProcessInstancePageRequest, opts ...services.CallOption) (d.ProcessInstancePage, error) {
+	if err := s.ValidateProcessInstanceSearchFilter(filter); err != nil {
+		return d.ProcessInstancePage{}, err
+	}
 	filter, err := common.NormalizeProcessInstanceSearchFilter(filter, s.ValidateProcessInstanceStates)
 	if err != nil {
 		return d.ProcessInstancePage{}, err
@@ -302,7 +312,15 @@ func (s *Service) SearchForProcessInstancesPage(ctx context.Context, filter d.Pr
 		return d.ProcessInstancePage{}, fmt.Errorf("building variable filters: %w", err)
 	}
 
+	var businessIDFilter *camundav810.StringFilterProperty
+	if filter.BusinessId != nil {
+		businessIDFilter, err = newStringEqFilterPtr(*filter.BusinessId)
+		if err != nil {
+			return d.ProcessInstancePage{}, err
+		}
+	}
 	bodyFilter := &processInstanceFilter{
+		BusinessId:                  businessIDFilter,
 		TenantId:                    tenantFilter,
 		ProcessInstanceKey:          processInstanceKeyFilter,
 		ProcessDefinitionId:         processDefinitionIDFilter,
@@ -642,6 +660,14 @@ func (s *Service) DeleteProcessInstance(ctx context.Context, key string, opts ..
 		}
 	}
 
+	return s.DeleteProcessInstanceExact(ctx, key, opts...)
+}
+
+// DeleteProcessInstanceExact reuses state/force, retry and wait mechanics without discovering delete targets.
+func (s *Service) DeleteProcessInstanceExact(ctx context.Context, key string, opts ...services.CallOption) (d.DeleteResponse, error) {
+	cCfg := services.ApplyCallOptions(opts)
+	submitted := false
+
 	resp, err := services.RetryCamundaMutation(ctx, s.log, "delete pi", func(ctx context.Context) (*camundav810.DeleteProcessInstanceResponse, *http.Response, []byte, error) {
 		resp, err := s.cc.DeleteProcessInstanceWithResponse(ctx, key, camundav810.DeleteProcessInstanceJSONRequestBody{})
 		if resp == nil {
@@ -650,20 +676,36 @@ func (s *Service) DeleteProcessInstance(ctx context.Context, key string, opts ..
 		return resp, resp.HTTPResponse, resp.Body, err
 	})
 	if err != nil {
-		return d.DeleteResponse{}, err
+		return d.DeleteResponse{MutationSubmitted: submitted}, err
 	}
 	if resp.StatusCode() == http.StatusConflict {
 		if cCfg.Force {
 			common.VerboseLog(ctx, cCfg, s.log, fmt.Sprintf("pi deletion conflicted: key=%s cancellation required before deletion can proceed", key))
 			s.infoProcessInstanceDetail(cCfg, fmt.Sprintf("pi %s not terminal; cancelling before delete", key))
-			if _, _, err = s.CancelProcessInstance(ctx, key, opts...); err != nil {
-				return d.DeleteResponse{}, common.EnrichProcessInstanceDeleteCancellationFailure(err, key)
+			cancelResponse, cancelScope, cancelErr := s.CancelProcessInstance(ctx, key, opts...)
+			submitted = cancelResponse.Ok && cancelResponse.StatusCode != http.StatusOK || len(d.ProcessInstanceMutationFailures(cancelErr)) > 0
+			if cancelErr != nil {
+				return d.DeleteResponse{MutationSubmitted: submitted}, common.EnrichProcessInstanceDeleteCancellationFailure(cancelErr, key)
 			}
 			s.infoProcessInstanceDetail(cCfg, fmt.Sprintf("waiting for pi %s cancel", key))
 			states := []d.State{d.StateCompleted, d.StateCanceled, d.StateTerminated, d.StateAbsent}
 			common.VerboseProcessInstanceWaitLog(ctx, cCfg, s.cfg, s.log, "deletion prerequisite confirmation", key, []string{key}, states)
 			if _, _, err = waiter.WaitForProcessInstanceState(ctx, s, s.cfg, s.log, key, states, opts...); err != nil {
-				return d.DeleteResponse{}, fmt.Errorf("delete wait canceled: %w", err)
+				cause := fmt.Errorf("delete wait canceled: %w", err)
+				// No-wait still requires this prerequisite; retain accepted cancellation if it fails.
+				if cancelResponse.Ok && cancelResponse.StatusCode != http.StatusOK {
+					root := key
+					for _, item := range cancelScope {
+						if item.ParentKey == "" {
+							root = item.Key
+							break
+						}
+					}
+					failure := common.NewProcessInstanceCancellationConfirmationFailure("delete", root, []string{key}, common.EffectiveProcessInstanceWaitTimeout(ctx, s.cfg.App.Backoff.Timeout), cause)
+					failure.DeleteConflictKey = key
+					return d.DeleteResponse{MutationSubmitted: submitted}, failure
+				}
+				return d.DeleteResponse{MutationSubmitted: submitted}, cause
 			}
 			common.VerboseLog(ctx, cCfg, s.log, fmt.Sprintf("pi cancellation confirmed: key=%s resuming deletion", key))
 			s.infoProcessInstanceDetail(cCfg, fmt.Sprintf("retrying pi %s delete", key))
@@ -675,7 +717,7 @@ func (s *Service) DeleteProcessInstance(ctx context.Context, key string, opts ..
 				return resp, resp.HTTPResponse, resp.Body, err
 			})
 			if err != nil {
-				return d.DeleteResponse{}, err
+				return d.DeleteResponse{MutationSubmitted: submitted}, err
 			}
 		} else {
 			logging.InfoIfVerbose(fmt.Sprintf("pi %s delete blocked; state not terminal, use --force", key), s.log, cCfg.Verbose)
@@ -683,19 +725,20 @@ func (s *Service) DeleteProcessInstance(ctx context.Context, key string, opts ..
 		}
 	}
 	if err = httpc.HttpStatusErr(resp.HTTPResponse, resp.Body); err != nil {
-		return d.DeleteResponse{}, err
+		return d.DeleteResponse{MutationSubmitted: submitted}, err
 	}
 	if !cCfg.NoWait {
 		s.infoProcessInstanceDetail(cCfg, fmt.Sprintf("waiting for pi %s delete", key))
 		states := []d.State{d.StateAbsent}
 		if _, _, err = waiter.WaitForProcessInstanceState(ctx, s, s.cfg, s.log, key, states, opts...); err != nil {
-			return d.DeleteResponse{}, fmt.Errorf("delete wait absent: %w", err)
+			return d.DeleteResponse{MutationSubmitted: true, StatusCode: resp.StatusCode()}, fmt.Errorf("delete wait absent: %w", err)
 		}
 	}
 	s.infoProcessInstanceDetail(cCfg, fmt.Sprintf("pi %s deleted", key))
 	return d.DeleteResponse{
-		Ok:         true,
-		StatusCode: resp.StatusCode(),
+		MutationSubmitted: true,
+		Ok:                true,
+		StatusCode:        resp.StatusCode(),
 	}, nil
 }
 
@@ -769,4 +812,21 @@ func (s *Service) DescendantsResult(ctx context.Context, rootKey string, opts ..
 // FamilyResult returns a structured traversal result for a process instance's full family.
 func (s *Service) FamilyResult(ctx context.Context, startKey string, opts ...services.CallOption) (pitraversal.Result, error) {
 	return pitraversal.BuildFamilyResult(ctx, s, startKey, opts...)
+}
+
+// ValidateProcessInstanceSearchFilter rejects unsupported or invalid criteria before any discovery or plan shortcut.
+func (s *Service) ValidateProcessInstanceSearchFilter(filter d.ProcessInstanceFilter) error {
+	if err := common.ValidateBusinessIDSearch(filter.BusinessId, toolx.V810); err != nil {
+		return err
+	}
+	_, err := common.NormalizeProcessInstanceSearchFilter(filter, s.ValidateProcessInstanceStates)
+	return err
+}
+
+// ProcessInstanceSearchTenant freezes the adapter's discovery authorization context without I/O.
+func (s *Service) ProcessInstanceSearchTenant(opts ...services.CallOption) string {
+	if services.ApplyCallOptions(opts).IgnoreTenant {
+		return ""
+	}
+	return s.cfg.App.Tenant
 }

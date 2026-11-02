@@ -25,15 +25,20 @@ type resolveProcessInstanceAPI interface {
 
 var resolveProcessInstanceCmd = &cobra.Command{
 	Use:   "process-instance",
-	Short: "Resolve process-instance incidents by key",
+	Short: "Resolve process-instance incidents by key or business ID",
 	Long: `Resolve active incidents in process-instance families.
 
 Provide repeated --key values or newline-separated keys from stdin with '-'. c8volt expands each target to its family, validates the affected scope, and asks for confirmation. Explicit keys use backend authorization without tenant filtering.
 
 Only incidents discovered at command start are resolved. Instances with no active incidents require no mutation. By default c8volt waits until those incidents are no longer active.
 
-Use --dry-run to inspect the family and incident plan without mutation.`,
-	Example: `  ./c8volt resolve process-instance --key <process-instance-key> --dry-run
+Use --dry-run to inspect the family and incident plan without mutation.
+
+On Camunda 8.10, --bid selects one exact opaque business ID in configured tenant scope. It cannot be combined with --key or stdin. All distinct matches are selected before family expansion; --limit bounds matching seeds, never relatives. --batch-size controls discovery requests.
+
+BID resolution freezes the complete family and active incident targets before confirmation. New matches or incidents after approval are not submitted. Dry-run performs discovery reads only; empty selections and families with no active incidents never prompt or submit mutation, including with --no-wait. JSON and verbose output retain the original criterion and complete reviewed work. No job or variable updates are performed.`,
+	Example: `  ./c8volt resolve process-instance --bid ORDER-123 --dry-run
+  ./c8volt resolve process-instance --key <process-instance-key> --dry-run
   ./c8volt resolve process-instance --key <process-instance-key>
   ./c8volt --tenant tenant-a resolve process-instance --key <process-instance-key> --dry-run
   ./c8volt resolve process-instance --key <process-instance-key> --key <another-process-instance-key>
@@ -55,6 +60,18 @@ Use --dry-run to inspect the family and incident plan without mutation.`,
 		}
 		if err := validateResolveJSONGuardrails("process-instance"); err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+		}
+		if cmd.Flags().Changed("bid") {
+			if err := validateBusinessIDActionInput(cmd, args); err != nil {
+				handleBusinessIDSearchError(cmd, log, cfg.App.NoErrCodes, err)
+				return
+			}
+			runResolveProcessInstanceBusinessID(cmd, cli, cfg, log)
+			return
+		}
+		if cmd.Flags().Changed("limit") || cmd.Flags().Changed("batch-size") {
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, invalidFlagValuef("--limit and --batch-size require --bid"))
+			return
 		}
 		stdinKeys, err := readKeysIfDash(args)
 		if err != nil {
@@ -130,6 +147,7 @@ func init() {
 	resolveCmd.AddCommand(resolveProcessInstanceCmd)
 
 	fs := resolveProcessInstanceCmd.Flags()
+	registerBusinessIDActionFlags(resolveProcessInstanceCmd)
 	fs.StringSliceVarP(&flagResolvePIKeys, "key", "k", nil, "process instance key(s) to resolve; repeat or combine with stdin '-'")
 	fs.BoolVar(&flagDryRun, "dry-run", false, "preview process-instance incident resolutions without submitting mutation")
 	fs.BoolVar(&flagNoWait, "no-wait", false, "return after resolution requests are accepted without incident confirmation")

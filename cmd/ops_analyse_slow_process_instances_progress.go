@@ -48,10 +48,14 @@ func configureOpsSlowProcessAnalysisPreflightWithPacer(cmd *cobra.Command, reque
 				printOpsSlowProcessAnalysisProgressMilestone(cmd, formatOpsETASampleWindow(*event.ETA), event, channel, pacer)
 			}
 		case ops.ProgressEventKindCompletion:
+			// The BID lifecycle emits one aggregate error after preserving partial results.
+			if request.ProcessInstanceFilters.BusinessId != nil && event.Completion != nil && event.Completion.Disposition == ops.CompletionDispositionFailed {
+				return
+			}
 			progress.Report(event)
 		}
 	}
-	if request.SelectionMode == ops.SlowProcessAnalysisSelectionModeProcessDefinitionSearch {
+	if request.SelectionMode == ops.SlowProcessAnalysisSelectionModeProcessDefinitionSearch || request.SelectionMode == ops.SlowProcessAnalysisSelectionModeProcessInstanceSearch {
 		request.ConfirmPreflight = func(scope ops.PreflightScope) error {
 			if !opsSlowProcessAnalysisPreflightConfirmationAllowed(channel) || !scope.RequiresConfirmation {
 				return nil

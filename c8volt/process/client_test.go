@@ -2445,8 +2445,9 @@ func TestClient_SearchProcessInstancesTotal_UsesExactTotalWhenAllowed(t *testing
 			assert.Equal(t, d.ProcessInstanceFilter{State: d.StateActive}, filter)
 			assert.Equal(t, d.ProcessInstancePageRequest{Size: 10}, page)
 			return d.ProcessInstancePage{
-				Request: page,
-				Items:   []d.ProcessInstance{{Key: "pi-a", State: d.StateActive}},
+				Request:       page,
+				OverflowState: d.ProcessInstanceOverflowStateHasMore,
+				Items:         []d.ProcessInstance{{Key: "pi-a", State: d.StateActive}},
 				ReportedTotal: &d.ProcessInstanceReportedTotal{
 					Count: 42,
 					Kind:  d.ProcessInstanceReportedTotalKindExact,
@@ -3873,4 +3874,65 @@ func (stubProcessInstanceAPI) ValidateProcessInstanceResumption() error { return
 // ResumeProcessInstance prevents accidental mutation through unrelated legacy fixtures.
 func (stubProcessInstanceAPI) ResumeProcessInstance(context.Context, string, ...services.CallOption) (d.ProcessInstanceResumptionResult, error) {
 	return d.ProcessInstanceResumptionResult{}, d.ErrUnsupported
+}
+
+// TestClient_SearchProcessInstancesPages_PreservesCompletionAndPartialEvidence verifies mechanical visitor mapping and converted failures.
+func TestClient_SearchProcessInstancesPages_PreservesCompletionAndPartialEvidence(t *testing.T) {
+	t.Parallel()
+	for _, fail := range []bool{false, true} {
+		t.Run(map[bool]string{false: "exhausted", true: "incomplete"}[fail], func(t *testing.T) {
+			calls := 0
+			api := stubProcessInstanceAPI{searchForProcessInstancesPage: func(_ context.Context, _ d.ProcessInstanceFilter, req d.ProcessInstancePageRequest, _ ...services.CallOption) (d.ProcessInstancePage, error) {
+				calls++
+				if calls == 2 {
+					if fail {
+						return d.ProcessInstancePage{}, d.ErrNotFound
+					}
+					return d.ProcessInstancePage{Request: req, OverflowState: d.ProcessInstanceOverflowStateNoMore}, nil
+				}
+				return d.ProcessInstancePage{Request: req, Items: []d.ProcessInstance{{Key: "1"}, {Key: "1"}}, OverflowState: d.ProcessInstanceOverflowStateHasMore}, nil
+			}}
+			cli := New(&stubProcessDefinitionAPI{}, api, stubIncidentAPI{}, slog.Default())
+			var steps []ProcessInstanceSearchPageStep
+			got, err := cli.SearchProcessInstancesPages(context.Background(), ProcessInstanceSearchRequest{Page: ProcessInstancePageRequest{Size: 2}}, func(step ProcessInstanceSearchPageStep) (ProcessInstanceSearchPageAction, error) {
+				steps = append(steps, step)
+				return ProcessInstanceSearchPageActionContinue, nil
+			})
+			if fail {
+				require.ErrorIs(t, err, ferr.ErrNotFound)
+				require.Equal(t, ProcessInstanceSearchCompletionIncomplete, got.Completion)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, ProcessInstanceSearchCompletionExhausted, got.Completion)
+			}
+			require.Equal(t, []ProcessInstance{{Key: "1"}}, got.Items)
+			require.EqualValues(t, 1, steps[0].CumulativeCount)
+			require.Len(t, steps[0].Page.Items, 1)
+			calls = 0
+			total, err := cli.SearchProcessInstancesTotal(context.Background(), ProcessInstanceSearchRequest{Page: ProcessInstancePageRequest{Size: 2}}, nil)
+			require.EqualValues(t, 1, total)
+			if fail {
+				require.ErrorIs(t, err, ferr.ErrNotFound)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+	// Unset/unknown values remain untrusted rather than becoming exhausted at conversion.
+	for _, completion := range []d.ProcessInstanceSearchCompletion{"", "future", d.ProcessInstanceSearchCompletionLimitReached, d.ProcessInstanceSearchCompletionVisitorStopped} {
+		require.Equal(t, ProcessInstanceSearchCompletion(completion), fromDomainProcessInstanceSearchPagesResult(d.ProcessInstanceSearchPagesResult{Completion: completion}).Completion)
+	}
+}
+
+// ValidateProcessInstanceSearchFilter keeps isolated fixtures independent of adapter capability policy.
+func (s stubProcessInstanceAPI) ValidateProcessInstanceSearchFilter(d.ProcessInstanceFilter) error {
+	return nil
+}
+
+// ProcessInstanceSearchTenant supplies unfiltered context for owned service fixtures.
+func (stubProcessInstanceAPI) ProcessInstanceSearchTenant(...services.CallOption) string { return "" }
+
+// DeleteProcessInstanceExact delegates only to the test-owned deletion stub.
+func (s stubProcessInstanceAPI) DeleteProcessInstanceExact(ctx context.Context, key string, opts ...services.CallOption) (d.DeleteResponse, error) {
+	return s.DeleteProcessInstance(ctx, key, opts...)
 }

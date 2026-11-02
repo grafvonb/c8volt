@@ -110,26 +110,26 @@ func BuildDescendantsResult(ctx context.Context, api LegacyAPI, rootKey string, 
 	return result, err
 }
 
+// BuildFamilyResult retains incomplete observations and their original errors instead of discarding evidence.
 func BuildFamilyResult(ctx context.Context, api LegacyAPI, startKey string, opts ...services.CallOption) (Result, error) {
 	ancestry, err := BuildAncestryResult(ctx, api, startKey, opts...)
 	if err != nil {
-		return Result{}, err
+		return ancestry, err
 	}
 	if ancestry.RootKey == "" {
 		return ancestry, nil
 	}
 
 	descendants, err := BuildDescendantsResult(ctx, api, ancestry.RootKey, opts...)
-	if err != nil {
-		return Result{}, err
-	}
-
 	result := descendants
 	result.Mode = ModeFamily
 	result.StartKey = startKey
 	result.MissingAncestors = ancestry.MissingAncestors
 	result.Warning = ancestry.Warning
 	result.Outcome = descendants.Outcome
+	if err != nil {
+		return result, err
+	}
 	if len(result.MissingAncestors) > 0 {
 		result.Outcome = OutcomePartial
 	}

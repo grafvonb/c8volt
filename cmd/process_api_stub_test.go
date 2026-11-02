@@ -788,3 +788,73 @@ func (s stubTaskAPI) PrepareUserTaskAssignments(context.Context, types.Keys, str
 func (s stubTaskAPI) ExecuteUserTaskAssignments(context.Context, task.UserTaskAssignmentPlan, bool) (task.UserTaskAssignmentResults, error) {
 	panic("unexpected ExecuteUserTaskAssignments call")
 }
+
+// ValidateProcessInstanceSearchFilter permits fixture selectors without backend access.
+func (s stubProcessAPI) ValidateProcessInstanceSearchFilter(process.ProcessInstanceFilter) error {
+	return nil
+}
+
+// ResolveProcessInstanceSelection rejects accidental selection in fixtures that did not authorize discovery.
+func (s stubProcessAPI) ResolveProcessInstanceSelection(context.Context, process.ProcessInstanceSelectionRequest, ...options.FacadeOption) (process.ProcessInstanceSelection, error) {
+	panic("unexpected selection")
+}
+
+// PlanProcessInstanceSelectedMutation rejects unconfigured selection in legacy keyed fixtures.
+func (stubProcessAPI) PlanProcessInstanceSelectedMutation(context.Context, process.ProcessInstanceSelectedMutationRequest, ...options.FacadeOption) (process.ProcessInstanceSelectedMutationPlan, error) {
+	panic("unexpected selected mutation planning")
+}
+
+// ExecuteProcessInstanceCancellationPlan rejects unconfigured frozen execution in legacy keyed fixtures.
+func (stubProcessAPI) ExecuteProcessInstanceCancellationPlan(context.Context, process.ProcessInstanceSelectedMutationPlan, ...options.FacadeOption) (process.CancelReports, error) {
+	panic("unexpected selected cancellation")
+}
+
+// ExecuteProcessInstanceDeletionPlan rejects unconfigured frozen execution in legacy keyed fixtures.
+func (stubProcessAPI) ExecuteProcessInstanceDeletionPlan(context.Context, process.ProcessInstanceSelectedMutationPlan, ...options.FacadeOption) (process.ProcessInstanceDeletionResult, error) {
+	panic("unexpected selected cancellation")
+}
+
+// PlanSelectedProcessInstanceVariableUpdates rejects unexpected selected-action calls in legacy fixtures.
+func (stubProcessAPI) PlanSelectedProcessInstanceVariableUpdates(ctx context.Context, request process.ProcessInstanceSelectionRequest, variables map[string]any, opts ...options.FacadeOption) (process.ProcessInstanceVariableUpdatePlan, error) {
+	panic("unexpected selected action")
+}
+
+// PlanSelectedProcessInstanceSuspension rejects unexpected selected-action calls in legacy fixtures.
+func (stubProcessAPI) PlanSelectedProcessInstanceSuspension(ctx context.Context, request process.ProcessInstanceSelectionRequest, tree bool, opts ...options.FacadeOption) (process.ProcessInstanceSuspensionPlan, error) {
+	panic("unexpected selected action")
+}
+
+// ExecuteProcessInstanceSuspensionPlan rejects unexpected selected-action calls in legacy fixtures.
+func (stubProcessAPI) ExecuteProcessInstanceSuspensionPlan(ctx context.Context, plan process.ProcessInstanceSuspensionPlan, workers int, opts ...options.FacadeOption) (process.SuspensionResults, error) {
+	panic("unexpected selected action")
+}
+
+// PlanSelectedProcessInstanceResumption rejects unexpected selected-action calls in legacy fixtures.
+func (stubProcessAPI) PlanSelectedProcessInstanceResumption(ctx context.Context, request process.ProcessInstanceSelectionRequest, tree bool, opts ...options.FacadeOption) (process.ProcessInstanceResumptionPlan, error) {
+	panic("unexpected selected action")
+}
+
+// ExecuteProcessInstanceResumptionPlan rejects unexpected selected-action calls in legacy fixtures.
+func (stubProcessAPI) ExecuteProcessInstanceResumptionPlan(ctx context.Context, plan process.ProcessInstanceResumptionPlan, workers int, opts ...options.FacadeOption) (process.ResumptionResults, error) {
+	panic("unexpected selected action")
+}
+
+// PlanSelectedProcessInstanceResolution supplies the additive selection API to legacy fixtures.
+func (s stubProcessAPI) PlanSelectedProcessInstanceResolution(context.Context, process.ProcessInstanceSelectionRequest, int, ...options.FacadeOption) (process.SelectedProcessInstanceResolutionPlan, error) {
+	return process.SelectedProcessInstanceResolutionPlan{}, nil
+}
+
+// ExecuteSelectedProcessInstanceResolution supplies the additive selection API to legacy fixtures.
+func (s stubProcessAPI) ExecuteSelectedProcessInstanceResolution(context.Context, process.SelectedProcessInstanceResolutionPlan, ...options.FacadeOption) (incident.ProcessInstanceResolutionResults, error) {
+	return incident.ProcessInstanceResolutionResults{}, nil
+}
+
+// PlanProcessInstancesIncidents supplies the additive incident plan API to legacy fixtures.
+func (s stubProcessAPI) PlanProcessInstancesIncidents(context.Context, types.Keys, ...options.FacadeOption) (incident.ProcessInstancesIncidentPlan, error) {
+	return incident.ProcessInstancesIncidentPlan{}, nil
+}
+
+// ExecuteProcessInstancesIncidentPlan supplies the additive incident plan API to legacy fixtures.
+func (s stubProcessAPI) ExecuteProcessInstancesIncidentPlan(context.Context, incident.ProcessInstancesIncidentPlan, int, ...options.FacadeOption) (incident.ProcessInstanceResolutionResults, error) {
+	return incident.ProcessInstanceResolutionResults{}, nil
+}

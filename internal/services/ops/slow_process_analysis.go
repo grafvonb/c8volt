@@ -5,6 +5,7 @@ package ops
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math"
 	"sort"
@@ -24,6 +25,8 @@ var slowProcessAnalysisNow = time.Now
 
 // AnalyseSlowProcessInstances coordinates read-only slow process analysis below the command layer.
 func (s *Service) AnalyseSlowProcessInstances(ctx context.Context, request d.SlowProcessAnalysisRequest, opts ...services.CallOption) (d.SlowProcessAnalysisResult, error) {
+	request.ProcessInstanceFilters.BusinessId = toolx.CopyPtr(request.ProcessInstanceFilters.BusinessId)
+	request.InputKeys = append([]string(nil), request.InputKeys...)
 	capturedAt := request.CapturedNow
 	if capturedAt.IsZero() {
 		capturedAt = slowProcessAnalysisNow().UTC()
@@ -38,6 +41,9 @@ func (s *Service) AnalyseSlowProcessInstances(ctx context.Context, request d.Slo
 	if s == nil || s.piAPI == nil {
 		return result, fmt.Errorf("%w: process-instance service is required for slow process analysis", d.ErrPrecondition)
 	}
+	if err := s.validateSlowProcessAnalysisBusinessID(request); err != nil {
+		return result, err
+	}
 	var instances []d.ProcessInstance
 	switch request.SelectionMode {
 	case d.SlowProcessAnalysisSelectionModeExplicitKeys:
@@ -51,16 +57,22 @@ func (s *Service) AnalyseSlowProcessInstances(ctx context.Context, request d.Slo
 			return result, err
 		}
 		request.InputKeys = keys
-	case d.SlowProcessAnalysisSelectionModeProcessDefinitionSearch:
-		discovery, err := slowProcessAnalysisDiscoverProcessDefinitionInstances(ctx, s.piAPI, request, opts...)
+	case d.SlowProcessAnalysisSelectionModeProcessDefinitionSearch, d.SlowProcessAnalysisSelectionModeProcessInstanceSearch:
+		var discovery slowProcessAnalysisSearchDiscovery
+		var err error
+		if request.ProcessInstanceFilters.BusinessId != nil {
+			discovery, result.Selection, err = slowProcessAnalysisDiscoverBusinessID(ctx, s.piAPI, request, opts...)
+		} else {
+			discovery, err = slowProcessAnalysisDiscoverProcessDefinitionInstances(ctx, s.piAPI, request, opts...)
+		}
+		result.DiscoveredScopeStatus = discovery.scope
+		result.PreflightScope = discovery.preflight
 		if err != nil {
 			return result, err
 		}
 		instances = discovery.items
-		result.DiscoveredScopeStatus = discovery.scope
-		result.PreflightScope = discovery.preflight
 	default:
-		return result, fmt.Errorf("%w: select process instances with explicit keys or one process-definition selector", d.ErrValidation)
+		return result, fmt.Errorf("%w: select process instances with explicit keys, a business ID, or one process-definition selector", d.ErrValidation)
 	}
 
 	frozenProgress := d.OpsFrozenScopeProgress{
@@ -71,6 +83,7 @@ func (s *Service) AnalyseSlowProcessInstances(ctx context.Context, request d.Slo
 	result.FrozenScopeProgress = &frozenProgress
 	slowProcessAnalysisEmitProgress(request, slowProcessAnalysisFrozenScopeEvent(frozenProgress))
 
+	var analysisErr error
 	enriched := d.ElementEnrichedProcessInstances{Items: make([]d.ElementEnrichedProcessInstance, 0, len(instances))}
 	if len(instances) > 0 {
 		if s.elementAPI == nil {
@@ -84,7 +97,10 @@ func (s *Service) AnalyseSlowProcessInstances(ctx context.Context, request d.Slo
 		var err error
 		enriched, frozenProgress, err = slowProcessAnalysisEnrichProcessInstances(ctx, s, request, instances, frozenProgress, opts...)
 		if err != nil {
-			return result, err
+			if request.ProcessInstanceFilters.BusinessId == nil {
+				return result, err
+			}
+			analysisErr = err
 		}
 	}
 	if len(instances) == 0 {
@@ -119,7 +135,7 @@ func (s *Service) AnalyseSlowProcessInstances(ctx context.Context, request d.Slo
 	result.Count = len(items)
 	result.Empty = len(items) == 0
 	result.Request = request
-	return result, nil
+	return result, analysisErr
 }
 
 // slowProcessAnalysisEmitProgress keeps service progress callbacks optional and nil-safe.
@@ -146,36 +162,41 @@ func slowProcessAnalysisEnrichmentProgressPhase(request d.SlowProcessAnalysisReq
 	return "loading runtime elements"
 }
 
-// slowProcessAnalysisEnrichProcessInstances emits exact frozen-scope progress and timing samples after each root enrichment succeeds.
+// slowProcessAnalysisEnrichProcessInstances retains successful BID rows and aggregates failures, honoring fail-fast.
+// Progress counts successful enrichments, never skipped or failed roots.
 func slowProcessAnalysisEnrichProcessInstances(ctx context.Context, s *Service, request d.SlowProcessAnalysisRequest, instances []d.ProcessInstance, progress d.OpsFrozenScopeProgress, opts ...services.CallOption) (d.ElementEnrichedProcessInstances, d.OpsFrozenScopeProgress, error) {
 	out := d.ElementEnrichedProcessInstances{Items: make([]d.ElementEnrichedProcessInstance, 0, len(instances))}
 	startedAt := slowProcessAnalysisNow()
-	for i, pi := range instances {
-		var (
-			enriched d.ElementEnrichedProcessInstances
-			err      error
-		)
+	cfg := services.ApplyCallOptions(opts)
+	var failures []error
+	for _, pi := range instances {
+		var enriched d.ElementEnrichedProcessInstances
+		var err error
 		if request.WithListeners {
 			enriched, err = pisvc.EnrichProcessInstancesWithElementListeners(ctx, s.elementAPI, s.jobAPI, []d.ProcessInstance{pi}, opts...)
-			if err != nil {
-				slowProcessAnalysisEmitCompletion(request, progress.Phase, progress.Total, pi.Key, d.OpsCompletionDispositionFailed, err.Error())
-				return d.ElementEnrichedProcessInstances{}, progress, fmt.Errorf("lookup runtime elements and listener jobs for slow analysis: %w", err)
-			}
 		} else {
 			enriched, err = pisvc.EnrichProcessInstancesWithElements(ctx, s.elementAPI, []d.ProcessInstance{pi}, opts...)
-			if err != nil {
-				slowProcessAnalysisEmitCompletion(request, progress.Phase, progress.Total, pi.Key, d.OpsCompletionDispositionFailed, err.Error())
-				return d.ElementEnrichedProcessInstances{}, progress, fmt.Errorf("lookup runtime elements for slow analysis: %w", err)
+		}
+		if err != nil {
+			slowProcessAnalysisEmitEnrichmentFailure(request, progress, pi.Key, err)
+			detail := "lookup runtime elements for slow analysis"
+			if request.WithListeners {
+				detail = "lookup runtime elements and listener jobs for slow analysis"
 			}
+			failures = append(failures, fmt.Errorf("%s: %w", detail, err))
+			if request.ProcessInstanceFilters.BusinessId == nil || cfg.FailFast || ctx.Err() != nil {
+				return out, progress, errors.Join(failures...)
+			}
+			continue
 		}
 		out.Items = append(out.Items, enriched.Items...)
-		progress.Done = i + 1
+		progress.Done = len(out.Items)
 		progress.Elapsed, progress.Rate, progress.ETA = slowProcessAnalysisFrozenScopeTiming(progress, startedAt, slowProcessAnalysisNow())
 		slowProcessAnalysisEmitProgress(request, slowProcessAnalysisFrozenScopeEvent(progress))
 		slowProcessAnalysisEmitCompletion(request, progress.Phase, progress.Total, pi.Key, d.OpsCompletionDispositionConfirmed, "")
 	}
 	out.Total = int32(len(out.Items))
-	return out, progress, nil
+	return out, progress, errors.Join(failures...)
 }
 
 func slowProcessAnalysisEmitCompletion(request d.SlowProcessAnalysisRequest, phase string, total int, identity string, disposition d.OpsCompletionDisposition, failureDetail string) {
@@ -459,8 +480,8 @@ func slowProcessAnalysisPreflightConfirmationText(scope d.OpsPreflightScope) str
 // slowProcessAnalysisProcessInstanceFilter maps the normalized analysis selector to process-instance search.
 func slowProcessAnalysisProcessInstanceFilter(request d.SlowProcessAnalysisRequest) (d.ProcessInstanceFilter, error) {
 	selector := request.ProcessDefinitionSelector
-	if (selector.BpmnProcessID == "") == (selector.ProcessDefinitionKey == "") {
-		return d.ProcessInstanceFilter{}, fmt.Errorf("%w: process-definition search requires exactly one selector", d.ErrValidation)
+	if (selector.BpmnProcessID != "" && selector.ProcessDefinitionKey != "") || (selector.BpmnProcessID == "" && selector.ProcessDefinitionKey == "" && request.ProcessInstanceFilters.BusinessId == nil) {
+		return d.ProcessInstanceFilter{}, fmt.Errorf("%w: process search requires a business ID or one definition selector, with at most one definition selector", d.ErrValidation)
 	}
 	hasIncident := (*bool)(nil)
 	if request.ProcessInstanceFilters.NoIncidentsOnly {
@@ -468,6 +489,7 @@ func slowProcessAnalysisProcessInstanceFilter(request d.SlowProcessAnalysisReque
 		hasIncident = &noIncident
 	}
 	filter := d.ProcessInstanceFilter{
+		BusinessId:           toolx.CopyPtr(request.ProcessInstanceFilters.BusinessId),
 		BpmnProcessId:        selector.BpmnProcessID,
 		ProcessDefinitionKey: selector.ProcessDefinitionKey,
 		State:                slowProcessAnalysisDiscoveryState(request.ProcessInstanceFilters.State),

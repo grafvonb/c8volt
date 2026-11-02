@@ -11,6 +11,7 @@ import (
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/services"
 	"github.com/grafvonb/c8volt/internal/services/common"
+	"github.com/grafvonb/c8volt/internal/services/processinstance/searchpaging"
 	"github.com/grafvonb/c8volt/typex"
 )
 
@@ -18,9 +19,10 @@ import (
 // trimming, local compatibility filtering, and optional direct incident-index
 // lookup while callers retain rendering and prompt decisions.
 func SearchProcessInstancesPages(ctx context.Context, piAPI API, incAPI SearchProcessInstanceIncidentAPI, request d.ProcessInstanceSearchRequest, visitor d.ProcessInstanceSearchPageVisitor, opts ...services.CallOption) (d.ProcessInstanceSearchPagesResult, error) {
-	filter, err := common.NormalizeProcessInstanceSearchFilter(request.Filter, piAPI.ValidateProcessInstanceStates)
+	result := d.ProcessInstanceSearchPagesResult{Limit: request.Limit, Completion: d.ProcessInstanceSearchCompletionIncomplete}
+	filter, err := normalizeValidatedProcessInstanceSearchFilter(piAPI, request.Filter)
 	if err != nil {
-		return d.ProcessInstanceSearchPagesResult{}, err
+		return result, err
 	}
 	request.Filter = filter
 	_ = services.ApplyCallOptions(opts)
@@ -28,59 +30,47 @@ func SearchProcessInstancesPages(ctx context.Context, piAPI API, incAPI SearchPr
 	if request.DirectIncidentIndex {
 		return searchProcessInstancesViaDirectIncidentIndex(ctx, piAPI, incAPI, request, visitor, opts...)
 	}
-
-	pageReq := request.Page
-	batchSize := pageReq.Size
-	items := make([]d.ProcessInstance, 0, minPositiveProcessInstanceSearchSize(batchSize, request.Limit))
-	pages := int32(0)
-	for {
-		if processInstanceSearchLimitReached(len(items), request.Limit) {
-			break
-		}
-		pageReq.Size = batchSize
-		page, err := piAPI.SearchForProcessInstancesPage(ctx, request.Filter, pageReq, opts...)
+	result.Items = make([]d.ProcessInstance, 0, minPositiveProcessInstanceSearchSize(request.Page.Size, request.Limit))
+	seen := make(map[string]struct{})
+	completion, err := searchpaging.Walk(ctx, piAPI, request, false, func(page d.ProcessInstancePage, pages int32) (d.ProcessInstanceSearchCompletion, error) {
+		result.Pages = pages
+		filtered, err := filterProcessInstanceSearchItems(ctx, piAPI, incAPI, page.Items, request.LocalFilters, opts...)
 		if err != nil {
-			return d.ProcessInstanceSearchPagesResult{}, err
+			return "", err
 		}
-		rawCount := len(page.Items)
-		filteredItems, err := filterProcessInstanceSearchItems(ctx, piAPI, incAPI, page.Items, request.LocalFilters, opts...)
-		if err != nil {
-			return d.ProcessInstanceSearchPagesResult{}, err
-		}
-		page.Items = limitProcessInstanceSearchItems(filteredItems, request.Limit, int32(len(items)))
-		items = append(items, page.Items...)
-		pages++
-
-		limitReached := processInstanceSearchLimitReached(len(items), request.Limit)
+		page.Items = limitProcessInstanceSearchItems(searchpaging.DistinctItems(filtered, seen), request.Limit, int32(len(result.Items)))
+		result.Items = append(result.Items, page.Items...)
+		limited := processInstanceSearchLimitReached(len(result.Items), request.Limit)
+		action := d.ProcessInstanceSearchPageActionContinue
 		if visitor != nil {
-			action, err := visitor(d.ProcessInstanceSearchPageStep{
-				Page:            page,
-				CumulativeCount: int32(len(items)),
-				LimitReached:    limitReached,
-			})
+			action, err = visitor(d.ProcessInstanceSearchPageStep{Page: page, CumulativeCount: int32(len(result.Items)), LimitReached: limited})
 			if err != nil {
-				return d.ProcessInstanceSearchPagesResult{}, err
+				return "", err
 			}
-			if action == d.ProcessInstanceSearchPageActionStop {
-				break
+			if action != d.ProcessInstanceSearchPageActionContinue && action != d.ProcessInstanceSearchPageActionStop {
+				return "", searchpaging.MalformedMetadata("visitor action")
 			}
 		}
-		if limitReached || page.OverflowState != d.ProcessInstanceOverflowStateHasMore {
-			break
+		// A command may return Stop for a limit or terminal page; retain the stronger service evidence.
+		if limited {
+			return d.ProcessInstanceSearchCompletionLimitReached, nil
 		}
-		pageReq = nextProcessInstanceSearchPageRequest(pageReq, page, rawCount)
-	}
-	return d.ProcessInstanceSearchPagesResult{
-		Items: items,
-		Limit: request.Limit,
-		Pages: pages,
-	}, nil
+		if page.OverflowState == d.ProcessInstanceOverflowStateNoMore {
+			return d.ProcessInstanceSearchCompletionExhausted, nil
+		}
+		if action == d.ProcessInstanceSearchPageActionStop {
+			return d.ProcessInstanceSearchCompletionVisitorStopped, nil
+		}
+		return "", nil
+	}, opts...)
+	result.Completion = completion
+	return result, err
 }
 
 // SearchProcessInstancesTotal uses exact backend totals when compatible and
-// otherwise counts filtered pages through service-owned traversal.
+// otherwise counts distinct filtered keys through the same validated traversal as collection.
 func SearchProcessInstancesTotal(ctx context.Context, piAPI API, incAPI SearchProcessInstanceIncidentAPI, request d.ProcessInstanceSearchRequest, visitor d.ProcessInstanceSearchTotalVisitor, opts ...services.CallOption) (int64, error) {
-	filter, err := common.NormalizeProcessInstanceSearchFilter(request.Filter, piAPI.ValidateProcessInstanceStates)
+	filter, err := normalizeValidatedProcessInstanceSearchFilter(piAPI, request.Filter)
 	if err != nil {
 		return 0, err
 	}
@@ -89,137 +79,148 @@ func SearchProcessInstancesTotal(ctx context.Context, piAPI API, incAPI SearchPr
 	normalizeProcessInstanceSearchRequest(&request)
 	if request.DirectIncidentIndex {
 		result, err := SearchProcessInstancesPages(ctx, piAPI, incAPI, request, nil, opts...)
-		if err != nil {
-			return 0, err
-		}
-		return int64(len(result.Items)), nil
+		return int64(len(result.Items)), err
 	}
-
-	pageReq := request.Page
-	batchSize := pageReq.Size
-	total := int64(0)
-	countingByPaging := false
-	for {
-		pageReq.Size = batchSize
-		page, err := piAPI.SearchForProcessInstancesPage(ctx, request.Filter, pageReq, opts...)
-		if err != nil {
-			return 0, err
-		}
+	var total int64
+	seen := make(map[string]struct{})
+	_, err = searchpaging.Walk(ctx, piAPI, request, request.ReportedTotalAllowed && !request.LocalFilters.Active(), func(page d.ProcessInstancePage, _ int32) (d.ProcessInstanceSearchCompletion, error) {
+		step := d.ProcessInstanceSearchTotalStep{Page: page, TotalBefore: total}
 		if request.ReportedTotalAllowed && !request.LocalFilters.Active() && page.ReportedTotal != nil && page.ReportedTotal.Kind == d.ProcessInstanceReportedTotalKindExact {
-			if visitor != nil {
-				if err := visitor(d.ProcessInstanceSearchTotalStep{
-					Page:           page,
-					FilteredCount:  int32(len(page.Items)),
-					TotalBefore:    total,
-					TotalAfter:     page.ReportedTotal.Count,
-					ExactTotalUsed: true,
-				}); err != nil {
-					return 0, err
-				}
+			total = page.ReportedTotal.Count
+			step.ExactTotalUsed = true
+			step.FilteredCount = int32(len(page.Items))
+		} else {
+			filtered, err := filterProcessInstanceSearchItems(ctx, piAPI, incAPI, page.Items, request.LocalFilters, opts...)
+			if err != nil {
+				return "", err
 			}
-			return page.ReportedTotal.Count, nil
+			step.FilteredCount = int32(len(searchpaging.DistinctItems(filtered, seen)))
+			total += int64(step.FilteredCount)
+			step.CountingByPaging = true
 		}
-
-		countingByPaging = true
-		filteredItems, err := filterProcessInstanceSearchItems(ctx, piAPI, incAPI, page.Items, request.LocalFilters, opts...)
-		if err != nil {
-			return 0, err
-		}
-		before := total
-		total += int64(len(filteredItems))
+		step.TotalAfter = total
 		if visitor != nil {
-			if err := visitor(d.ProcessInstanceSearchTotalStep{
-				Page:             page,
-				FilteredCount:    int32(len(filteredItems)),
-				TotalBefore:      before,
-				TotalAfter:       total,
-				CountingByPaging: countingByPaging,
-			}); err != nil {
-				return 0, err
+			if err := visitor(step); err != nil {
+				return "", err
 			}
 		}
-		if len(page.Items) == 0 || page.OverflowState == d.ProcessInstanceOverflowStateNoMore {
-			return total, nil
+		if step.ExactTotalUsed {
+			return d.ProcessInstanceSearchCompletionExhausted, nil
 		}
-		pageReq = nextProcessInstanceSearchPageRequest(pageReq, page, len(page.Items))
-	}
+		return "", nil
+	}, opts...)
+	return total, err
 }
 
-// normalizeProcessInstanceSearchRequest applies default page sizing once before traversal.
+// normalizeProcessInstanceSearchRequest chooses a predicate-safe route and applies default page sizing once before traversal.
 func normalizeProcessInstanceSearchRequest(request *d.ProcessInstanceSearchRequest) {
+	if request.Filter.BusinessId != nil && request.DirectIncidentIndex {
+		// The shortcut is an incident predicate as well as a routing hint.
+		// Keep that predicate when native BID selection makes the index ineligible.
+		request.LocalFilters.DirectIncidentsOnly = true
+		if request.LocalFilters.IncidentState == "" {
+			request.LocalFilters.IncidentState = request.DirectIncidentFilter.State
+		}
+		if request.LocalFilters.IncidentErrorType == "" {
+			request.LocalFilters.IncidentErrorType = request.DirectIncidentFilter.ErrorType
+		}
+		if request.LocalFilters.IncidentErrorMessage == "" {
+			request.LocalFilters.IncidentErrorMessage = request.DirectIncidentFilter.ErrorMessage
+		}
+		request.DirectIncidentIndex = false
+	}
 	if request.Page.Size <= 0 {
 		request.Page.Size = consts.MaxPISearchSize
 	}
 }
 
-// searchProcessInstancesViaDirectIncidentIndex collects unique process-instance
-// keys from incidents before loading those process instances in one bounded bulk call.
+// searchProcessInstancesViaDirectIncidentIndex applies the selected bound after loading and filtering distinct incident-owned keys.
+// The visitor still receives one aggregate page, preserving the optimized query's prompt policy.
 func searchProcessInstancesViaDirectIncidentIndex(ctx context.Context, piAPI API, incAPI SearchProcessInstanceIncidentAPI, request d.ProcessInstanceSearchRequest, visitor d.ProcessInstanceSearchPageVisitor, opts ...services.CallOption) (d.ProcessInstanceSearchPagesResult, error) {
+	result := d.ProcessInstanceSearchPagesResult{Limit: request.Limit, Completion: d.ProcessInstanceSearchCompletionIncomplete}
 	if incAPI == nil {
-		return d.ProcessInstanceSearchPagesResult{}, fmt.Errorf("%w: direct incident process-instance search requires incident lookup support", d.ErrUnsupported)
+		return result, fmt.Errorf("%w: direct incident process-instance search requires incident lookup support", d.ErrUnsupported)
 	}
-	keys, pages, err := collectDirectIncidentProcessInstanceKeys(ctx, incAPI, request, opts...)
-	if err != nil {
-		return d.ProcessInstanceSearchPagesResult{}, err
-	}
-	if len(keys) == 0 {
-		return d.ProcessInstanceSearchPagesResult{Limit: request.Limit, Pages: pages}, nil
-	}
-	items, err := GetProcessInstances(ctx, piAPI, keys, len(keys), opts...)
-	if err != nil {
-		return d.ProcessInstanceSearchPagesResult{}, fmt.Errorf("get process instances for direct incident matches: %w", err)
-	}
-	items = filterDirectIncidentIndexedProcessInstances(items, request.Filter)
-	items = limitProcessInstanceSearchItems(items, request.Limit, 0)
-	page := d.ProcessInstancePage{
-		Items:         items,
-		Request:       request.Page,
-		OverflowState: d.ProcessInstanceOverflowStateNoMore,
-	}
-	if visitor != nil {
-		if _, err := visitor(d.ProcessInstanceSearchPageStep{
-			Page:            page,
-			CumulativeCount: int32(len(items)),
-			LimitReached:    processInstanceSearchLimitReached(len(items), request.Limit),
-		}); err != nil {
-			return d.ProcessInstanceSearchPagesResult{}, err
-		}
-	}
-	return d.ProcessInstanceSearchPagesResult{Items: items, Limit: request.Limit, Pages: pages}, nil
-}
-
-// collectDirectIncidentProcessInstanceKeys keeps walking incident pages until
-// the requested number of unique process-instance keys is found or incidents end.
-func collectDirectIncidentProcessInstanceKeys(ctx context.Context, incAPI SearchProcessInstanceIncidentAPI, request d.ProcessInstanceSearchRequest, opts ...services.CallOption) (typex.Keys, int32, error) {
 	pageReq := d.IncidentPageRequest{Size: request.Page.Size}
-	limit := int(request.Limit)
-	keys := make(typex.Keys, 0, limit)
-	seen := make(map[string]struct{}, limit)
-	pages := int32(0)
+	seen := make(map[string]struct{})
+	cursors := make(map[string]struct{})
+	var rawObserved int64
+	completion := d.ProcessInstanceSearchCompletionExhausted
 	for {
+		if err := ctx.Err(); err != nil {
+			return result, err
+		}
 		page, err := incAPI.SearchIncidentsPage(ctx, request.DirectIncidentFilter, pageReq, incidentSearchOptions(request.LocalFilters, opts...)...)
 		if err != nil {
-			return nil, pages, fmt.Errorf("search direct incidents: %w", err)
+			return result, fmt.Errorf("search direct incidents: %w", err)
 		}
-		pages++
+		if err := ctx.Err(); err != nil {
+			return result, err
+		}
+		result.Pages++
+		metadata := d.ProcessInstancePage{Request: d.ProcessInstancePageRequest{From: pageReq.From, Size: pageReq.Size, After: pageReq.After}, Items: make([]d.ProcessInstance, len(page.Items)), OverflowState: page.OverflowState, EndCursor: page.EndCursor}
+		if page.ReportedTotal != nil {
+			metadata.ReportedTotal = &d.ProcessInstanceReportedTotal{Count: page.ReportedTotal.Count, Kind: d.ProcessInstanceReportedTotalKind(page.ReportedTotal.Kind)}
+		}
+		if err := searchpaging.ValidatePage(metadata); err != nil {
+			return result, err
+		}
+		rawObserved += int64(len(page.Items))
+		exhausted, err := searchpaging.Exhausted(metadata, rawObserved)
+		if err != nil {
+			return result, err
+		}
+		if !exhausted && page.EndCursor != "" {
+			if _, exists := cursors[page.EndCursor]; exists {
+				return result, searchpaging.MalformedMetadata("incident cursor did not advance or forms a cycle")
+			}
+		}
+		keys := make(typex.Keys, 0, len(page.Items))
 		for _, item := range page.Items {
 			if item.ProcessInstanceKey == "" {
 				continue
 			}
-			if _, ok := seen[item.ProcessInstanceKey]; ok {
+			if _, exists := seen[item.ProcessInstanceKey]; exists {
 				continue
 			}
 			seen[item.ProcessInstanceKey] = struct{}{}
 			keys = append(keys, item.ProcessInstanceKey)
-			if limit > 0 && len(keys) >= limit {
-				return keys, pages, nil
+		}
+		if len(keys) > 0 {
+			items, err := GetProcessInstances(ctx, piAPI, keys, len(keys), opts...)
+			selected := filterDirectIncidentIndexedProcessInstances(items, request.Filter)
+			result.Items = append(result.Items, limitProcessInstanceSearchItems(selected, request.Limit, int32(len(result.Items)))...)
+			if err != nil {
+				return result, fmt.Errorf("get process instances for direct incident matches: %w", err)
 			}
 		}
-		if page.OverflowState == d.ProcessInstanceOverflowStateNoMore {
-			return keys, pages, nil
+		if processInstanceSearchLimitReached(len(result.Items), request.Limit) {
+			completion = d.ProcessInstanceSearchCompletionLimitReached
+			break
 		}
-		pageReq = nextDirectIncidentSearchPageRequest(pageReq, page)
+		if exhausted {
+			break
+		}
+		next, err := searchpaging.Advance(metadata.Request, page.EndCursor, len(page.Items), cursors)
+		if err != nil {
+			return result, err
+		}
+		pageReq = d.IncidentPageRequest{From: next.From, Size: next.Size, After: next.After}
 	}
+	if visitor != nil && len(result.Items) > 0 {
+		action, err := visitor(d.ProcessInstanceSearchPageStep{Page: d.ProcessInstancePage{Items: result.Items, Request: request.Page, OverflowState: d.ProcessInstanceOverflowStateNoMore}, CumulativeCount: int32(len(result.Items)), LimitReached: processInstanceSearchLimitReached(len(result.Items), request.Limit)})
+		if err != nil {
+			return result, err
+		}
+		if action != d.ProcessInstanceSearchPageActionStop && action != d.ProcessInstanceSearchPageActionContinue {
+			return result, searchpaging.MalformedMetadata("visitor action")
+		}
+	}
+	if err := ctx.Err(); err != nil {
+		return result, err
+	}
+	result.Completion = completion
+	return result, nil
 }
 
 // filterProcessInstanceSearchItems applies version-neutral local filters in the
@@ -356,29 +357,10 @@ func processInstanceSearchLimitReached(count int, limit int32) bool {
 	return limit > 0 && int32(count) >= limit
 }
 
-// nextProcessInstanceSearchPageRequest advances by cursor when available and
-// otherwise by the raw backend page size to avoid local-filter skips.
-func nextProcessInstanceSearchPageRequest(current d.ProcessInstancePageRequest, page d.ProcessInstancePage, rawCount int) d.ProcessInstancePageRequest {
-	advance := rawCount
-	if advance == 0 {
-		advance = int(current.Size)
+// normalizeValidatedProcessInstanceSearchFilter checks adapter capability before shortcuts, then normalizes states.
+func normalizeValidatedProcessInstanceSearchFilter(api API, filter d.ProcessInstanceFilter) (d.ProcessInstanceFilter, error) {
+	if err := api.ValidateProcessInstanceSearchFilter(filter); err != nil {
+		return filter, err
 	}
-	nextFrom := current.From + int32(advance)
-	if page.EndCursor != "" {
-		return d.ProcessInstancePageRequest{From: nextFrom, Size: current.Size, After: page.EndCursor}
-	}
-	return d.ProcessInstancePageRequest{From: nextFrom, Size: current.Size}
-}
-
-// nextDirectIncidentSearchPageRequest advances incident pages by cursor when available.
-func nextDirectIncidentSearchPageRequest(current d.IncidentPageRequest, page d.IncidentPage) d.IncidentPageRequest {
-	advance := len(page.Items)
-	if advance == 0 {
-		advance = int(current.Size)
-	}
-	nextFrom := current.From + int32(advance)
-	if page.EndCursor != "" {
-		return d.IncidentPageRequest{From: nextFrom, Size: current.Size, After: page.EndCursor}
-	}
-	return d.IncidentPageRequest{From: nextFrom, Size: current.Size}
+	return common.NormalizeProcessInstanceSearchFilter(filter, api.ValidateProcessInstanceStates)
 }

@@ -2177,3 +2177,46 @@ func TestProcessDefinitionImpactBusinessID(t *testing.T) {
 	require.Nil(t, items[2].BusinessId)
 	require.Equal(t, "", *items[3].BusinessId)
 }
+
+// ValidateProcessInstanceSearchFilter keeps isolated fixtures independent of adapter capability policy.
+func (s cleanupEligibilityProcessInstanceAPI) ValidateProcessInstanceSearchFilter(d.ProcessInstanceFilter) error {
+	return nil
+}
+
+// ValidateProcessInstanceSearchFilter keeps isolated fixtures independent of adapter capability policy.
+func (workerPreviewProcessInstanceAPI) ValidateProcessInstanceSearchFilter(d.ProcessInstanceFilter) error {
+	return nil
+}
+
+// ValidateProcessInstanceSearchFilter keeps isolated fixtures independent of adapter capability policy.
+func (tenantEvidenceProcessInstanceAPI) ValidateProcessInstanceSearchFilter(d.ProcessInstanceFilter) error {
+	return nil
+}
+
+// ValidateProcessInstanceSearchFilter keeps isolated fixtures independent of adapter capability policy.
+func (s unfinishedInstanceAPI) ValidateProcessInstanceSearchFilter(d.ProcessInstanceFilter) error {
+	return nil
+}
+
+// ProcessInstanceSearchTenant supplies unfiltered context for owned service fixtures.
+func (cleanupEligibilityProcessInstanceAPI) ProcessInstanceSearchTenant(...services.CallOption) string {
+	return ""
+}
+
+// ProcessInstanceSearchTenant supplies unfiltered context for owned service fixtures.
+func (workerPreviewProcessInstanceAPI) ProcessInstanceSearchTenant(...services.CallOption) string {
+	return ""
+}
+
+// ProcessInstanceSearchTenant supplies unfiltered context for owned service fixtures.
+func (tenantEvidenceProcessInstanceAPI) ProcessInstanceSearchTenant(...services.CallOption) string {
+	return ""
+}
+
+// ProcessInstanceSearchTenant supplies unfiltered context for owned service fixtures.
+func (unfinishedInstanceAPI) ProcessInstanceSearchTenant(...services.CallOption) string { return "" }
+
+// DeleteProcessInstanceExact delegates only to the test-owned deletion stub.
+func (s cleanupProcessInstanceAPI) DeleteProcessInstanceExact(ctx context.Context, key string, opts ...services.CallOption) (d.DeleteResponse, error) {
+	return s.DeleteProcessInstance(ctx, key, opts...)
+}

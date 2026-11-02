@@ -122,8 +122,9 @@ func searchProcessInstancesWithPaging(cmd *cobra.Command, cli process.API, cfg *
 	return process.ProcessInstances{Total: int32(len(result.Items)), Items: result.Items}, false, nil
 }
 
+// canSearchProcessInstancesViaDirectIncidentIndex excludes predicates the incident index cannot express.
 func canSearchProcessInstancesViaDirectIncidentIndex(cmd *cobra.Command, filter process.ProcessInstanceFilter) bool {
-	if !flagGetPIDirectIncidentsOnly || flagGetPILimit <= 0 || !hasPIIncidentDetailFilters() {
+	if filter.BusinessId != nil || !flagGetPIDirectIncidentsOnly || flagGetPILimit <= 0 || !hasPIIncidentDetailFilters() {
 		return false
 	}
 	if flagGetPIWithIncidents || flagGetPIWithVars || flagGetPIIncidentsOnly || flagGetPINoIncidentsOnly {

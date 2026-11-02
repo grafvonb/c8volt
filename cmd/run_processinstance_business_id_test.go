@@ -72,14 +72,14 @@ func newRunBusinessIDFixture(t *testing.T, version string, successes int, observ
 }
 
 // runBusinessIDCommand checks terminal stdin, redirected stdout and both logger destinations.
-func runBusinessIDCommand(t *testing.T, args []string, destination string, failWriter bool) (string, string, error) {
+func runBusinessIDCommand(t *testing.T, args []string, destination string, failWriter bool, exchanges ...testx.CmdTerminalExchange) (string, string, error) {
 	t.Helper()
 	dir := t.TempDir()
 	env := map[string]string{"C8VOLT_TEST_ROOT_ARGS": marshalRootArgsForEnv(t, args), "C8VOLT_BID_DEST": destination, "C8VOLT_BID_ERR": filepath.Join(dir, "stderr"), "C8VOLT_BID_OUT": filepath.Join(dir, "stdout")}
 	if failWriter {
 		env["C8VOLT_BID_FAIL_WRITER"] = "1"
 	}
-	result := testx.NewCmdTerminalRunner().Run(t, testx.CmdTerminalRunRequest{ScopeTestName: "TestRunProcessInstanceBusinessIDHelper", Env: env})
+	result := testx.NewCmdTerminalRunner().Run(t, testx.CmdTerminalRunRequest{ScopeTestName: "TestRunProcessInstanceBusinessIDHelper", Env: env, Exchanges: exchanges})
 	if !result.Supported {
 		t.Skip(result.UnsupportedReason)
 	}

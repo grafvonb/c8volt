@@ -111,7 +111,9 @@ type processInstanceSearchQuery struct {
 	Sort   *[]camundav810.ProcessInstanceSearchQuerySortRequest `json:"sort,omitempty"`
 }
 
+// processInstanceFilter preserves native fields alongside compatibility date filters.
 type processInstanceFilter struct {
+	BusinessId                  *camundav810.StringFilterProperty               `json:"businessId,omitempty"`
 	TenantId                    *camundav810.StringFilterProperty               `json:"tenantId,omitempty"`
 	ProcessInstanceKey          *camundav810.ProcessInstanceKeyFilterProperty   `json:"processInstanceKey,omitempty"`
 	ProcessDefinitionId         *camundav810.StringFilterProperty               `json:"processDefinitionId,omitempty"`
@@ -126,8 +128,10 @@ type processInstanceFilter struct {
 	Variables                   *[]camundav810.VariableValueFilterProperty      `json:"variables,omitempty"`
 }
 
+// isEmpty retains filters containing only an optional business ID.
 func (f *processInstanceFilter) isEmpty() bool {
 	return f != nil &&
+		f.BusinessId == nil &&
 		f.TenantId == nil &&
 		f.ProcessInstanceKey == nil &&
 		f.ProcessDefinitionId == nil &&

@@ -32,6 +32,8 @@ Generated reference: [ops analyse slow-process-instances](/cli/c8volt_ops_analys
 ## Best Variants
 
 ```bash
+c8volt ops analyse slow-process-instances --bid ORDER-123
+c8volt ops analyse slow-process-instances --bid ORDER-123 --bpmn-process-id order --limit 100
 c8volt ops analyse slow-process-instances --key <process-instance-key> --with-listeners
 c8volt ops analyse slow-process-instances --bpmn-process-id <bpmn-process-id> --element-id <element-id> --dur-element-longer 30s
 ```
@@ -61,7 +63,10 @@ This command does not submit mutations. It reads process instances, runtime elem
 ## Failure And Safety Notes
 
 - The command is read-only.
-- Select either explicit process-instance keys/stdin or one process-definition selector.
+- Select explicit process-instance keys/stdin, one process-definition selector, or an exact `--bid` on Camunda 8.10. BID combines with one definition selector and existing discovery predicates; it cannot combine with explicit keys/stdin. Older versions reject BID before discovery.
+- BID is one opaque string; whitespace, commas, Unicode and wildcard characters are literal. Empty input is invalid.
+- BID discovery freezes distinct matches before confirmation and timeline loading. `--limit` caps that selected set; `--batch-size` is a per-request bound. Empty completed discovery never prompts or loads timelines.
+- JSON preserves original BID criteria and selection completion independently of observed root/listener IDs, including partial failures. BID-only input uses `process_instance_search`; definition+BID uses `process_definition_search`. No additional Markdown report is produced.
 - `--with-listeners` cannot be combined with `--keys-only`.
 - Duration thresholds use Go duration syntax such as `500ms`, `30s`, `5m`, `1h`, `1h30m`, or `24h`; calendar units such as `1d` are not accepted.
 - All supported Camunda versions provide runtime element analysis.

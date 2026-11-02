@@ -13,9 +13,11 @@ Delete process instances older than the required retention age.
 
 The workflow discovers candidates, fixes the target set, validates the delete plan, and requires confirmation before deletion. Use process-instance filters to narrow the candidates.
 
---tenant limits discovery; an empty tenant or --all-tenants searches across accessible tenants. --batch-size controls each discovery request; --limit caps the selected scope. --workers, --fail-fast, and --no-worker-limit control planning and deletion.
+--tenant limits discovery; an empty tenant or --all-tenants searches across accessible tenants. --batch-size controls each discovery request; --limit caps distinct matching ended instances; family expansion is not capped. Non-final roots are skipped even with --force; non-final descendants of final roots require --force. --workers, --fail-fast, and --no-worker-limit control planning and deletion.
 
 Use --dry-run to inspect the plan without mutation, --auto-confirm or --automation for unattended deletion, and --report-file to save an audit report.
+
+--bid selects one exact opaque business ID on Camunda 8.10+, combined with other predicates in tenant scope. BID cleanup completes discovery and freezes eligible families before confirmation; deletion submits only reviewed members in children-before-parent order. Dry-run reads scope without mutation. New matches or children are not added after approval; native force cancellation may cascade within a targeted family.
 
 Observed process-instance business IDs are retained in JSON and Markdown audit reports. Use --verbose to inspect each observed reference in the plan; key-only outcomes remain unchanged.
 
@@ -26,6 +28,7 @@ c8volt ops execute retention-policy [flags]
 ### Examples
 
 ```
+  ./c8volt ops execute retention-policy --retention-days 30 --bid ORDER-123 --dry-run
   ./c8volt ops execute retention-policy --retention-days 90 --dry-run
   ./c8volt --tenant tenant-a ops execute retention-policy --retention-days 90 --dry-run
   ./c8volt --all-tenants ops execute retention-policy --retention-days 90 --dry-run
@@ -39,6 +42,7 @@ c8volt ops execute retention-policy [flags]
 
 ```
   -n, --batch-size int32         number of process instances to inspect per discovery page; does not cap total frozen scope (max limit 1000 enforced by server) (default 1000)
+      --bid string               exact opaque business ID to select within tenant scope (Camunda 8.10+)
   -b, --bpmn-process-id string   BPMN process ID to filter process instances
       --children-only            discover only child process instances
       --dry-run                  discover and validate retention cleanup without submitting deletion requests

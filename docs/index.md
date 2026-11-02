@@ -6,7 +6,7 @@ nav_exclude: true
 has_toc: true
 ---
 
-> Generated from build `c8volt v4.4.0-256-g4d354138-dirty`, commit `4d354138`, built `2026-10-31T13:37:11Z` | Supported Camunda 8 versions: 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.3 (final)
+> Generated from build `c8volt v4.4.0-269-g20df70ba-dirty`, commit `20df70ba`, built `2026-11-02T08:07:30Z` | Supported Camunda 8 versions: 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.3 (final)
 
 <img src="./logo/c8volt_logo_transparent_w_shadow_400x244.png" alt="c8volt logo" />
 
@@ -413,6 +413,91 @@ Retention, incident purge, orphan purge, and process-definition purge keep obser
 
 Generated references: [deploy process-definition](./cli/c8volt_deploy_process-definition), [run process-instance](./cli/c8volt_run_process-instance), [get process-definition](./cli/c8volt_get_process-definition).
 
+Native business-ID search is available on `get pi --bid <value>` and `get ut --bid <value>` with Camunda 8.10. Both send one exact scalar criterion, AND-combined with existing predicates and tenant scope. Task search matches the task's stored ID rather than the current parent ID; `--pi-key` remains an additional task predicate. Explicit resource keys and stdin keys cannot combine with BID. Omitted input retains existing version behavior; 8.8/8.9 reject supplied IDs before discovery. Empty/invalid UTF-8 input is invalid; commas, spaces, Unicode, numeric-looking values and wildcards are literal, and search does not impose creation's length limit.
+
+`walk pi --bid ORDER-123` selects one starting instance on Camunda 8.10, within configured tenant scope. Choose either `--key` or `--bid`. Discovery must exhaust: two distinct matches are ambiguous even in one family, repeated observations of one key are not, and zero matches produce empty successful output without traversal or enrichment. Parent, children, family, flat and supported enrichment modes retain their existing scope and formatting. Selection does not invent an observed business ID for any family member. Traversal then uses the existing backend-authorized key path. On 8.10, each child lookup exhausts all pages at every depth; no 1,000-child cap remains. Later-page errors fail the walk and preserve partial evidence in JSON; discovery is not an atomic backend snapshot.
+
+`cancel pi --bid ORDER-123` on Camunda 8.10 freezes the complete matching selection and all affected families before one confirmation. It combines BID with supported filters and configured tenant scope; explicit keys/stdin are exclusive. Duplicate matches and shared roots are counted once. `--limit` bounds distinct selected seeds, never relatives: two selected children can still affect their entire family, including relatives with different IDs or none. Dry-run performs discovery without prompting or cancelling. JSON preserves full selected/root/affected arrays and selection provenance; verbose INFO output lists every member, and dry-run keys-only emits each affected key once. Normal keys-only emits successful cancellation roots. Empty selection retains successful empty output, even under `--no-wait`.
+
+```bash
+./c8volt --tenant tenant-a cancel pi --bid 'ORDER-123' --dry-run --json
+./c8volt --tenant tenant-a cancel pi --bid 'ORDER-123' --limit 2 --dry-run --verbose
+./c8volt --tenant tenant-a cancel pi --bid 'ORDER-123' --auto-confirm
+```
+
+BID cancellation submits only the reviewed distinct roots, with existing state checks, force and wait/no-wait semantics. Failed or incomplete discovery submits nothing. There is no BID rediscovery after approval; native root cancellation may also affect descendants created concurrently beneath that root. A separate dry-run and later run perform separate discoveries. Partial failures retain outcomes and the original exit classification in one JSON envelope; human diagnostics use one bounded ERROR through the configured logger. BID is also available for frozen deletion, variable updates, suspension and resumption as described below; resolution and process-instance repair are described below. Retention, orphan cleanup and slow analysis support BID as described below.
+
+`update pi --bid ORDER-123 --vars '{"customerTier":"gold"}'` freezes the existing root-variable plan for every distinct tenant-scoped match, without expanding families. `suspend pi --bid ORDER-123` and `resume pi --bid ORDER-123` select exact instances by default; `--tree` freezes eligible descendants only, without ancestors or siblings. These selectors require Camunda 8.10 and cannot combine with keys or stdin. `--limit` caps distinct matching seeds, not descendants, and `--batch-size` controls each discovery request. Full discovery and required planning finish before confirmation. Execution retains the original selection and reviewed payloads/targets without another BID lookup. Explicit-key state-control dry-runs remain read-free.
+
+Use `--dry-run --json` to inspect the reviewed scope. Human summaries and verbose details use configured INFO logging; failures use a bounded aggregate ERROR, and redacted HTTP diagnostics require DEBUG independently of verbose. JSON retains partial outcomes and the original failure class in one envelope. Empty completed scopes never prompt, mutate or report acceptance under `--no-wait`; empty keys-only output is zero bytes. A separate dry-run and later execution are separate discoveries.
+
+The process facade adds `PlanSelectedProcessInstanceVariableUpdates`, `PlanSelectedProcessInstanceSuspension`, `PlanSelectedProcessInstanceResumption`, `ExecuteProcessInstanceSuspensionPlan` and `ExecuteProcessInstanceResumptionPlan`. Custom `process.API` implementations must add these methods. Existing plans gain optional copied `selection`/`selectionTenant` fields; state plans also record `exact` when appropriate. Results retain optional selection evidence. Unkeyed struct literals may need updating. Pass the original discovery options when consuming a selected plan; the service validates tenant/capability/completion before applying the key-based execution authorization path, even for prepared empty plans.
+
+`resolve pi --bid ORDER-123` selects all distinct tenant-scoped matches on Camunda 8.10, expands their families once, and freezes the owned active incident targets before confirmation. `--limit` bounds seeds only; `--batch-size` controls selection requests. BID cannot combine with keys or stdin. Dry-run reads the complete scope without writes. Execution resolves only reviewed incidents and retains existing retries, waiting, no-wait and fail-fast controls; new incidents appearing after approval never join the submitted set. No job or variable updates are added. The v8.10 scoped incident lookup now exhausts sparse/cursor pages and rejects incomplete or cyclic paging instead of accepting truncated work.
+
+Resolution JSON retains existing per-instance `items` and adds the reviewed `plan` with original selection and family/incident observations. Verbose INFO lists reviewed work; compact INFO summarizes counts. Keys-only emits process-instance keys with planned or successful incident work, one per line. Empty selections preserve the existing zero-result payload, and families with no active incidents require no prompt or mutation, even under no-wait. Partial failures retain accepted-submission evidence and the original error class in one envelope; human failures use one bounded configured ERROR, with HTTP evidence confined to machine output and redacted DEBUG.
+
+Custom `process.API` implementations must add `PlanSelectedProcessInstanceResolution` and `ExecuteSelectedProcessInstanceResolution`; custom `incident.API` implementations must add `PlanProcessInstancesIncidents` and `ExecuteProcessInstancesIncidentPlan`. These methods copy reviewed observations, and the process executor validates receiving-version capability, tenant context, family membership and completed incident reads before any empty or dry-run shortcut. Pass original discovery options to selected-plan execution. Generic incident plans take explicit technical keys and do not introduce a direct incident BID selector. Plans are invocation-local evidence, not authorization tokens; backend authorization still applies at submission.
+
+`ops repair pi --bid ORDER-123 --vars '{"customerTier":"gold"}' --dry-run` on Camunda 8.10 selects distinct incident-bearing process instances in tenant scope, AND-combined with existing filters. `--limit` bounds those matching instances; duplicates do not consume the bound, and sparse pages continue. Repair acts on their direct active incidents without family expansion. Before confirmation it freezes the selected observations, incident and related job keys, and exact variable scopes/payloads. Approval does not search again or admit newly appearing incidents/jobs. Existing retry, timeout, variable confirmation, no-wait and fail-fast controls remain available. Empty completed scopes do not prompt or submit changes, including under no-wait.
+
+Repair JSON envelopes and JSON/Markdown audit reports retain the original BID and observed selection separately from repairable and skipped instances, using the existing `ops.repair.v1` schema. Human previews, summaries and verbose facts use the configured INFO logger; failures retain one bounded ERROR and the original exit class, while DEBUG retains redacted HTTP diagnostics. Repair supports human and JSON output; keys-only remains unsupported. BID cannot combine with explicit keys or stdin. Incident-selected repair does not gain a BID selector.
+
+Public `ops.RepairRequest` and `ops.RepairResult` add an optional typed `FrozenPlan`, excluded from JSON (`json:"-"`). For reviewed execution, pass the returned plan with the original selection and action values, setting `DryRun=false`; never replace provenance with bare keys. Receiving-version, tenant, completion, membership and payload checks still run before empty/dry-run execution. Plans are invocation-local evidence, not imported authorization; backend checks can fail reviewed work. Optional selection evidence is added to repair frozen-set reports; consumers using unkeyed public struct literals must update them. No new `ops.API` method is required.
+
+`ops execute retention-policy --retention-days 30 --bid ORDER-123` and `ops purge orphan-process-instances --bid ORDER-123` support exact opaque BID selection on Camunda 8.10, combined with existing predicates in configured tenant scope. Both finish discovery and freeze eligible families before confirmation. Execution deletes only reviewed members in children-before-parent order; new matches and children do not join the client deletion targets. A backend conflict remains an explicit failure. Existing force cancellation may cascade within a targeted family.
+
+Retention fixes its derived end-date boundary once per run. Its limit counts distinct matching ended instances, and family expansion is not capped. A non-final root remains skipped even with force; non-final descendants under a final root require `--force`. Orphan purge's limit counts distinct matching child candidates inspected **before** orphan classification, including non-orphans. This corrects the former orphan-count behavior for all callers, with or without BID; duplicates do not consume the limit, and sparse pages continue. A bounded selection containing no orphans succeeds without prompting or mutation.
+
+Cleanup dry-runs read scope without submitting mutations. Empty results keep the existing successful payloads, including under `--no-wait`. Retention supports human and JSON output; orphan purge also supports keys-only. JSON and Markdown reports keep their existing schema identifiers and preserve original criteria, selected observations, skips and expanded keys. Informational output uses the configured logger; failures use one compact ERROR, with raw HTTP diagnostics restricted to redacted DEBUG.
+
+Public retention/orphan request and result models add optional typed `FrozenPlan` fields excluded from JSON. Pass the returned plan with its original selection and fixed boundary for confirmed execution; BID plus bare `DiscoveredKeys` is rejected. Receiving-version, tenant, completed selection, eligibility and frozen graph checks run before empty/dry-run shortcuts. Optional `Discovery.Selection` retains provenance; update unkeyed struct literals as needed. No new `ops.API` method is required.
+
+```bash
+./c8volt --tenant tenant-a ops execute retention-policy --retention-days 30 --bid 'ORDER-123' --dry-run --json
+./c8volt --tenant tenant-a ops purge orphan-process-instances --bid 'ORDER-123' --limit 25 --dry-run
+```
+
+`ops analyse slow-process-instances --bid ORDER-123` selects distinct matches on Camunda 8.10. Combine BID with one `--bpmn-process-id` or `--pd-key` selector and the existing state/date/no-incident predicates; explicit keys and stdin remain exclusive. Discovery uses the configured tenant, continues through sparse pages, and deduplicates before `--limit`; `--batch-size` controls each request. It freezes the bounded selection before the existing read-only preflight confirmation and loads timelines only after approval. Empty discovery never prompts or enriches. Definition-only and explicit-key analysis retain their existing behavior.
+
+Slow-analysis JSON retains the original optional `processInstanceFilters.businessId` and copied `selection` evidence separately from each root's observed ID. BID-only requests use the additive `process_instance_search` mode; definition+BID retains `process_definition_search`. Query rows remain on stdout, progress and the existing expensive-analysis warning use configured logging, and prompts use plain stderr. Quiet suppresses empty summaries and informational progress while preserving JSON and keys. Partial enrichment results and the original error class survive in one JSON envelope; normal and verbose failures use one bounded aggregate ERROR, with HTTP diagnostics only at DEBUG. No Markdown report format is added.
+
+Public `ops.SlowProcessAnalysisProcessInstanceSearchFilters` adds a copied optional `BusinessId *string` (nil is omitted; empty is invalid), and `SlowProcessAnalysisResult.Selection` is optional. Update unkeyed struct literals and selection-mode switches for these additions; custom `ops.API` implementations need no new method. Camunda 8.8/8.9 reject supplied BID before keyed or empty shortcuts.
+
+```bash
+./c8volt --tenant tenant-a ops analyse slow-pi --bid 'ORDER-123' --json
+./c8volt --tenant tenant-a ops analyse slow-pi --bid 'ORDER-123' --bpmn-process-id order --limit 100 --auto-confirm
+```
+
+
+
+```bash
+./c8volt --tenant tenant-a resolve pi --bid 'ORDER-123' --dry-run --json
+./c8volt --tenant tenant-a resolve pi --bid 'ORDER-123' --auto-confirm
+```
+
+`delete pi --bid ORDER-123` uses the same complete, tenant-scoped selection and family preview on Camunda 8.10. It deletes only reviewed members, in children-before-parent order, retaining sibling order. A newly appearing child is never added to client delete requests; a resulting backend conflict remains a failure. Nonterminal planned members require `--force`, which retains native root cancellation and its possible cascade to concurrent descendants. Cancellation prerequisites are confirmed even under `--no-wait`; ordinary execution also verifies each deletion. A failed member stops its family before ancestors; independent families continue unless `--fail-fast` is set. JSON retains root `items`, attempted `members`, submission evidence and full frozen `scope`; keys-only retains successful roots. Empty scopes never prompt or claim acceptance. Dry-run and verbose output expose the full reviewed member set through configured INFO logging.
+
+```bash
+./c8volt --tenant tenant-a delete pi --bid 'ORDER-123' --dry-run --json
+./c8volt --tenant tenant-a delete pi --bid 'ORDER-123' --force --auto-confirm
+```
+
+The public process facade also adds `PlanProcessInstanceSelectedMutation`, `ExecuteProcessInstanceCancellationPlan` and `ExecuteProcessInstanceDeletionPlan`; custom `process.API` implementations must supply these methods. Deletion returns `ProcessInstanceDeletionResult` with root reports, attempted-member reports and submission evidence, including partial failures. Plans retain copied criteria, observations, family membership/order, tenant context and separate discovery/expansion completion. Execution validates receiving-adapter capability (including on empty/prepared plans), operation, criteria, tenant context and membership before using frozen roots. Pass the same discovery options when planning and executing; the service applies key authorization only after scoped selection. Plans are in-memory run artifacts, not importable authorization tokens. Additive model fields may require updates to unkeyed Go literals.
+
+Public `process.API` implementations must also implement the additive `ResolveProcessInstanceSelection` method. Its `collection` mode accepts exhausted discovery or a documented distinct-key bound; `unique_start` requires exhaustion and rejects ambiguity or bounded/incomplete discovery. Results preserve copied criteria, observations, keys, completion, tenant evidence and search origin. Check the returned error before consuming any selection. Search options remain discovery options: callers must not apply explicit-key ignore-tenant options unintentionally. Existing unkeyed struct literals may need updating for additive model fields.
+
+
+```bash
+./c8volt get pi --bid 'ORDER-123,ORDER-456' --state all --json
+./c8volt get pi --bid 'ORDER-123' --direct-incidents-only --total
+./c8volt get ut --bid 'ORDER-123' --pi-key 2251799813685249 --with-vars
+```
+
+Paging, limits, totals and enrichment retain the criterion. Direct-incident PI search first selects native BID matches, then applies incident checks before the selected limit. Empty queries preserve their existing JSON shape, zero-byte keys output, and quiet behavior. Human query failures use one bounded configured ERROR; machine error evidence and original exit codes remain intact, with HTTP diagnostics available only at DEBUG.
+
+Library callers use copied optional `BusinessId *string` fields on `process.ProcessInstanceFilter` and `task.SearchRequest`; nil means omitted, while a pointer to empty is invalid. Process and operations report conversions preserve the criterion independently of observed resource IDs. Custom implementations of `process.API` must implement the no-I/O `ValidateProcessInstanceSearchFilter` method; it delegates to the matching internal adapter and is used before related selector lookups. These additive fields can require updates to unkeyed Go struct literals.
+
 ### Inspect Process Instances
 
 Use `get process-instance` for direct lookup, scoped search, variables, incidents, runtime elements, listener jobs, and process-instance keys for pipelines. Add `--with-elements` to inspect BPMN execution state, and combine it with `--with-listeners` to inspect execution and task listener jobs.
@@ -423,6 +508,10 @@ Use `get process-instance` for direct lookup, scoped search, variables, incident
 ./c8volt get process-instance --key <process-instance-key> --with-vars --with-incidents
 ./c8volt get process-instance --key <process-instance-key> --with-elements --with-listeners
 ```
+
+Process-instance search limits count distinct matching keys, after local filtering; duplicate observations do not consume the limit. Paging continues through sparse pages when continuation is known. Counted totals use the same traversal; compatible exact backend totals still avoid further reads. Invalid or nonadvancing continuation fails instead of claiming completed discovery. Interactive continuation and indeterminate-page stopping retain their existing policy.
+
+For Go callers, `process.ProcessInstanceSearchPagesResult.Completion` distinguishes `exhausted`, `limit_reached`, `visitor_stopped`, and `incomplete`. Only exhaustion proves all matches were read; a limit proves a bounded selection. An unset or unknown completion value is not success evidence. Errors retain available partial items/counts and their original classification. This is an additive public struct field (update unkeyed literals); custom facade implementations must set completion explicitly before consumers rely on it. Existing command JSON payloads are unchanged.
 
 Process-instance reads and state reports preserve `SUSPENDED` as a distinct, nonterminal state for paused execution. The public process state parser accepts case variations and surrounding whitespace. Compact human rows show `SUSPENDED` in the existing state column; JSON retains it in the existing state field.
 
@@ -462,7 +551,7 @@ printf '%s\n' "$PARENT" "$CHILD" | ./c8volt resume pi --tree --auto-confirm --no
 
 Tree execution and preview require read/search permissions in addition to submission/confirmation permissions when those operations are used. Preview reports selected, discovered, suspended-target and excluded counts. Failed or incomplete discovery stops before approval or mutation. A complete plan with no eligible targets succeeds without prompts, activity or submission, including with no-wait: JSON contains `items: []` and `plan.targetKeys: []`, keys-only is zero bytes, and quiet suppresses informational summaries.
 
-For nonempty execution, one approval names the expanded eligible count. Execution uses those frozen keys without rediscovery, and JSON retains the original `plan.requestedKeys`, `plan.instances` classifications and `plan.targetKeys` alongside per-target outcomes. Discovery is advisory: state races can cause authoritative rejection. The scope is not atomic, and there is no rollback or parent-before-child execution guarantee. The existing limit is up to 1,000 direct children per parent lookup, not a whole-tree cap; coverage beyond that limit is not guaranteed, and descendants created after discovery may be omitted. No-wait skips confirmation reads, not discovery.
+For nonempty execution, one approval names the expanded eligible count. Execution uses those frozen keys without rediscovery, and JSON retains the original `plan.requestedKeys`, `plan.instances` classifications and `plan.targetKeys` alongside per-target outcomes. Discovery is advisory: state races can cause authoritative rejection. The scope is not atomic, and there is no rollback or parent-before-child execution guarantee. On Camunda 8.10, child discovery exhausts every page at every depth without a 1,000-child cap. Descendants created after discovery may still be omitted. No-wait skips confirmation reads, not discovery.
 
 ### Suspend Explicit Process Instances
 
@@ -492,7 +581,7 @@ Tree mode adds instance read/search permission requirements, including during dr
 
 Before approval, the compact plan reports selected seeds, discovered scope, active targets, already-suspended instances, and exclusions. The confirmation names the expanded active count. Execution uses only those frozen keys and final output retains the same planning counts. Tree JSON adds `plan` alongside `items`; exact-key JSON is unchanged. The plan contains `requestedKeys`, classified `instances` with their `observedState`, and ordered `targetKeys`. Only eligible targets have preview or mutation items. Keys-only preview emits eligible keys; actual execution still emits accepted keys, retaining failure exits for unconfirmed work.
 
-Tree discovery retains the existing limit of up to 1,000 direct children per parent lookup, not a whole-tree cap; coverage beyond that limit is not guaranteed. The frozen scope is not atomic: states may change before submission, and descendants created after discovery may be omitted. There is no second discovery, rollback, or parent-before-child execution guarantee. No-wait skips post-submission confirmation reads, not discovery reads.
+On Camunda 8.10, tree discovery exhausts every child page at every depth without a 1,000-child cap. The frozen scope is not atomic: states may change before submission, and descendants created after discovery may be omitted. There is no second discovery, rollback, or parent-before-child execution guarantee. No-wait skips post-submission confirmation reads, not discovery reads.
 
 Go callers can use `process.API.PlanProcessInstanceSuspension` for the same read-only plan. Check its error before treating empty `TargetKeys` as a no-op; after any required approval, pass a copy of those keys to the existing `SuspendProcessInstances` collection method. Planning observations never establish mutation acceptance or confirmation. Custom implementations of the public `process.API` interface must implement the new planner method; existing mutation method signatures and exact-key result models are unchanged.
 

@@ -132,7 +132,7 @@ func TestWalkProcessInstanceCommand_RegressionPreservesReadOnlyTraversalContract
 		Name:        "key",
 		Shorthand:   "k",
 		Type:        "string",
-		Required:    true,
+		Required:    false,
 		Repeated:    false,
 		Description: "start walking from this process instance key",
 	})
@@ -141,14 +141,14 @@ func TestWalkProcessInstanceCommand_RegressionPreservesReadOnlyTraversalContract
 		Type:        "bool",
 		Required:    false,
 		Repeated:    false,
-		Description: "show incident keys, states, and messages for keyed process-instance walks",
+		Description: "show incident keys, states, and messages for selected process-instance walks",
 	})
 	require.Contains(t, capability.Flags, FlagContract{
 		Name:        "with-vars",
 		Type:        "bool",
 		Required:    false,
 		Repeated:    false,
-		Description: "show process-instance-scope variables for keyed process-instance walks",
+		Description: "show process-instance-scope variables for selected process-instance walks",
 	})
 	require.False(t, flagWalkPIWithElements)
 }
@@ -1085,23 +1085,21 @@ func TestWalkProcessInstanceCommand_WithElementsLookupFailureDoesNotRenderPartia
 	require.NotContains(t, string(output), "└─ elements:")
 }
 
-// TestWalkProcessInstanceCommand_RejectsWithIncidentsWithoutKey keeps incident enrichment scoped to keyed walks.
+// TestWalkProcessInstanceCommand_RejectsWithIncidentsWithoutKey requires a key or BID before enrichment with one configured error envelope.
 func TestWalkProcessInstanceCommand_RejectsWithIncidentsWithoutKey(t *testing.T) {
-	cfgPath := writeTestConfig(t, "http://127.0.0.1:1")
-
-	root := Root()
-	buf := &bytes.Buffer{}
-	root.SetOut(buf)
-	root.SetErr(buf)
-	root.SetArgs([]string{"--config", cfgPath, "walk", "process-instance", "--with-incidents"})
-	resetCommandTreeFlags(root)
-	resetProcessInstanceCommandGlobals()
-	t.Cleanup(resetProcessInstanceCommandGlobals)
-
-	_, err := root.ExecuteC()
+	server := testx.NewIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		t.Errorf("unexpected request %s", r.URL.Path)
+		w.WriteHeader(400)
+	}))
+	defer server.Close()
+	out, stderr, err := runBusinessIDCommand(t, []string{"--config", runBusinessIDConfig(t, server.URL, "plain-time", "info"), "--no-version-check", "walk", "pi", "--with-incidents", "--json"}, "configured", false)
 	require.Error(t, err)
-	require.Contains(t, err.Error(), `required flag(s) "key" not set`)
-	require.NotContains(t, buf.String(), "127.0.0.1:1")
+	require.Empty(t, stderr)
+	dec := json.NewDecoder(strings.NewReader(out))
+	var envelope map[string]any
+	require.NoError(t, dec.Decode(&envelope))
+	require.ErrorIs(t, dec.Decode(new(any)), io.EOF)
+	require.Contains(t, requireJSONObject(t, envelope["detail"])["message"], "one of --key or --bid is required")
 }
 
 func TestWalkIncidentLines_RenderGroupedIncidentDetails(t *testing.T) {

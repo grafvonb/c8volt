@@ -713,3 +713,18 @@ func (stubDryRunProcessInstanceAPI) ValidateProcessInstanceResumption() error {
 func (stubDryRunProcessInstanceAPI) ResumeProcessInstance(context.Context, string, ...services.CallOption) (d.ProcessInstanceResumptionResult, error) {
 	return d.ProcessInstanceResumptionResult{}, d.ErrUnsupported
 }
+
+// ValidateProcessInstanceSearchFilter keeps isolated fixtures independent of adapter capability policy.
+func (s stubDryRunProcessInstanceAPI) ValidateProcessInstanceSearchFilter(d.ProcessInstanceFilter) error {
+	return nil
+}
+
+// ProcessInstanceSearchTenant supplies the unfiltered context used by owned planning fixtures.
+func (stubDryRunProcessInstanceAPI) ProcessInstanceSearchTenant(...services.CallOption) string {
+	return ""
+}
+
+// DeleteProcessInstanceExact delegates only to the test-owned deletion stub.
+func (s stubDryRunProcessInstanceAPI) DeleteProcessInstanceExact(ctx context.Context, key string, opts ...services.CallOption) (d.DeleteResponse, error) {
+	return s.DeleteProcessInstance(ctx, key, opts...)
+}

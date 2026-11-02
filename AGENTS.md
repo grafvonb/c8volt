@@ -175,5 +175,5 @@
 
 ## Active Speckit Plan
 <!-- SPECKIT START -->
-- Active Speckit implementation plan: `specs/360-business-id-creation-views/plan.md`
+- Active Speckit implementation plan: `specs/361-business-id-selection/plan.md`
 <!-- SPECKIT END -->

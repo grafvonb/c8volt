@@ -32,12 +32,18 @@ Cancellation succeeds when every affected family member is completed, canceled, 
 
 A --bpmn-process-id selector must match a visible process definition before instance discovery. An empty selection completes without confirmation or cancellation.
 
---batch-size controls each discovery request; --limit caps selected instances across all pages. --workers, --fail-fast, and --no-worker-limit control planning and cancellation work.
+--batch-size controls each discovery request; --limit caps distinct selected instances across all pages. --workers, --fail-fast, and --no-worker-limit control planning and cancellation work.
 
 Use --verbose to explain root escalation, accepted cancellation, and confirmation waits. Use --debug for per-check state observations and HTTP diagnostics; it remains independent of --verbose. A confirmation timeout reports accepted cancellation as submitted but unconfirmed.
 
+On Camunda 8.10, --bid is one exact opaque business ID, combined with other filters. It is exclusive with --key and stdin. BID discovery freezes all distinct matching seeds and their complete families before one confirmation; --limit bounds seeds, never relatives. Different or absent business IDs on relatives do not exclude them. JSON and --verbose expose the full scope; dry-run --keys-only lists every affected key once. Unsupported versions reject BID before discovery.
+
+A BID run submits only its frozen roots, without searching again after approval. Native cancellation may also affect descendants created concurrently below those roots; a later dry-run or execution is a separate discovery.
+
 Use --dry-run to preview the affected family without cancelling. Use --auto-confirm for unattended cancellation.`,
-	Example: `  ./c8volt cancel process-instance --key <process-instance-key>
+	Example: `  ./c8volt --tenant tenant-a cancel pi --bid ORDER-123 --dry-run --json
+  ./c8volt cancel pi --bid ORDER-123 --limit 2 --auto-confirm
+  ./c8volt cancel process-instance --key <process-instance-key>
   ./c8volt cancel process-instance --key <process-instance-key> --dry-run
   ./c8volt cancel process-instance --key <process-instance-key> --force
   ./c8volt --tenant tenant-a cancel process-instance --key <process-instance-key> --dry-run
@@ -72,6 +78,14 @@ Use --dry-run to preview the affected family without cancelling. Use --auto-conf
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}
 
+		if searchBusinessIDFlag(cmd) != nil {
+			if cmd.Flags().Changed("key") || len(args) > 0 {
+				handleBusinessIDSearchError(cmd, log, cfg.App.NoErrCodes, mutuallyExclusiveFlagsf("--bid cannot be combined with --key or stdin keys"))
+				return
+			}
+			runCancelProcessInstanceBusinessID(cmd, cli, cfg, log)
+			return
+		}
 		stdinKeys, err := readKeysIfDash(args) // only reads when args == []{"-"}
 		if err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
@@ -181,11 +195,13 @@ func cancelProcessInstancePage(cmd *cobra.Command, cli process.API, keys types.K
 	return cancelProcessInstancesWithPlan(cmd, cli, keys, firstPage)
 }
 
+// init registers keyed, paged and frozen BID cancellation controls on the shared command.
 func init() {
 	cancelCmd.AddCommand(cancelProcessInstanceCmd)
 	useInvalidInputFlagErrors(cancelProcessInstanceCmd)
 
 	fs := cancelProcessInstanceCmd.Flags()
+	fs.String("bid", "", "exact business ID to select (Camunda 8.10); freezes all selected families before cancellation")
 	fs.BoolVar(&flagNoWait, "no-wait", false, "return after cancellation is accepted")
 	fs.BoolVar(&flagNoStateCheck, "no-state-check", false, "skip checking the current state of the process instance before cancelling it")
 	fs.BoolVar(&flagDryRun, "dry-run", false, "preview cancel scope without submitting cancellation")

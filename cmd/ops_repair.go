@@ -43,6 +43,10 @@ func opsRepairNeedsPreflight(cmd *cobra.Command) bool {
 
 // opsRepairConfirmedRequestFromPlan pins the confirmed mutation request to the target set shown during preflight.
 func opsRepairConfirmedRequestFromPlan(request ops.RepairRequest, planned ops.RepairResult) ops.RepairRequest {
+	if request.ProcessInstanceSelection.BusinessId != nil {
+		request.FrozenPlan = planned.FrozenPlan
+		return request
+	}
 	switch request.Target {
 	case ops.RepairTargetIncident:
 		request.DiscoveryMode = ops.RepairDiscoveryModeKeyed

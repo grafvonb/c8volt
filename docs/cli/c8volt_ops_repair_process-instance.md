@@ -13,6 +13,8 @@ Repair active incidents associated with selected process instances.
 
 Provide repeated --key values, newline-separated keys from stdin with '-', or process-instance search filters. Search selects incident-bearing instances; --direct-incidents-only restricts matching to direct active incidents.
 
+--bid matches one exact opaque business ID on Camunda 8.10+, within tenant scope and combined with the other search predicates. Multiple distinct matches are repaired; the limit counts distinct matching incident-bearing instances. BID planning freezes selected instances and reviewed incident, job, and variable actions before confirmation; approval never adds new targets. Dry-run may read scope but never submits changes.
+
 The workflow fixes the repairable instance and incident sets, applies requested variables once per process-instance scope, then updates related jobs, resolves incidents, and confirms clearance unless --no-wait is set.
 
 --tenant limits search; an empty tenant or --all-tenants searches across accessible tenants. Explicit keys use backend authorization without tenant filtering. --batch-size controls each discovery request; --limit caps the selected scope.
@@ -26,6 +28,7 @@ c8volt ops repair process-instance [flags]
 ### Examples
 
 ```
+  ./c8volt ops repair process-instance --bid ORDER-123 --dry-run
   ./c8volt ops repair process-instance --key <process-instance-key> --dry-run
   ./c8volt --tenant tenant-a ops repair process-instance --key <process-instance-key> --dry-run
   ./c8volt --all-tenants ops repair process-instance --state active --limit 5 --dry-run
@@ -39,6 +42,7 @@ c8volt ops repair process-instance [flags]
 
 ```
   -n, --batch-size int32                number of process instances to inspect per discovery page; does not cap total frozen scope (max limit 1000 enforced by server) (default 1000)
+      --bid string                      exact opaque business ID to select incident-bearing process instances (Camunda 8.10+)
   -b, --bpmn-process-id string          BPMN process ID to filter process instances
       --children-only                   select only child process instances
       --direct-incidents-only           select only process instances with direct active incidents

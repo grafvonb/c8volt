@@ -356,7 +356,7 @@ func TestCommandCapabilityForCommand_BasicPagedReadContracts(t *testing.T) {
 			limitDesc: "maximum number of matching process instances to return across all pages; omit to continue through all matches",
 			longFragments: []string{
 				"--batch-size controls each discovery request",
-				"--limit caps instances across all pages",
+				"--limit caps distinct matching instances across all pages",
 			},
 		},
 	}
@@ -416,7 +416,7 @@ func TestCommandCapabilityForCommand_ProcessInstanceMutationPagingContracts(t *t
 			limitDesc: "maximum number of matching process instances to select for cancellation across all pages; omit to continue through all matches",
 			longFragments: []string{
 				"--batch-size controls each discovery request",
-				"--limit caps selected instances across all pages",
+				"--limit caps distinct selected instances across all pages",
 				"--workers, --fail-fast, and --no-worker-limit control planning and cancellation work",
 			},
 		},
@@ -538,6 +538,13 @@ func TestCommandContractOpsAnalyseSlowProcessInstances(t *testing.T) {
 	capability := commandCapabilityForCommand(opsAnalyseSlowProcessInstancesCmd)
 
 	require.Equal(t, "ops analyse slow-process-instances", capability.Path)
+	require.Contains(t, capability.Flags, FlagContract{
+		Name: "bid", Type: "string", Required: false, Repeated: false,
+		Description: "exact process business ID to discover on Camunda 8.10; combine with one definition selector, never explicit keys",
+	})
+	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Example, "--bid ORDER-123")
+	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Long, "empty scopes never prompt or load timelines")
+
 	require.Equal(t, CommandMutationReadOnly, capability.Mutation)
 	require.Equal(t, ContractSupportFull, capability.ContractSupport)
 	require.Equal(t, AutomationSupportFull, capability.AutomationSupport)
@@ -563,7 +570,7 @@ func TestCommandContractOpsAnalyseSlowProcessInstances(t *testing.T) {
 	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Long, "--with-full-timeline to inspect the complete chronology")
 	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Long, "--with-listeners to include runtime listener jobs")
 	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Long, "--batch-size controls each discovery request")
-	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Long, "--limit caps selected instances across all pages")
+	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Long, "--limit caps distinct selected instances across all pages")
 	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Long, "--dur-longer selects roots whose total duration exceeds a threshold")
 	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Long, "--element-id, --type, --element-state, and --dur-element-longer restrict analysis")
 	require.NotContains(t, opsAnalyseSlowProcessInstancesCmd.Long, "--duration-after")
@@ -727,7 +734,7 @@ func TestCommandCapabilityForCommand_OpsPagedDiscoveryFlagContracts(t *testing.T
 			limitDesc: "maximum number of matching process instances to freeze for retention cleanup; omit to discover all matches",
 			longFragments: []string{
 				"--batch-size controls each discovery request",
-				"--limit caps the selected scope",
+				"--limit caps distinct matching ended instances; family expansion is not capped",
 				"--workers, --fail-fast, and --no-worker-limit control planning and deletion",
 			},
 		},
@@ -738,7 +745,7 @@ func TestCommandCapabilityForCommand_OpsPagedDiscoveryFlagContracts(t *testing.T
 			limitDesc: "maximum number of matching process instances to freeze for analysis across all discovery pages; omit to discover all matches",
 			longFragments: []string{
 				"--batch-size controls each discovery request",
-				"--limit caps selected instances across all pages",
+				"--limit caps distinct selected instances across all pages",
 			},
 		},
 	}
@@ -829,7 +836,7 @@ func TestCommandCapabilityForCommand_WalkProcessInstanceElementFlagAndContract(t
 		Type:        "bool",
 		Required:    false,
 		Repeated:    false,
-		Description: "show runtime element instances for keyed process-instance walks",
+		Description: "show runtime element instances for selected process-instance walks",
 	})
 	require.Contains(t, capability.Flags, FlagContract{
 		Name:        "with-listeners",
@@ -2601,6 +2608,7 @@ func TestCommandCapabilityForCommand_ResolveIncidentContract(t *testing.T) {
 	})
 }
 
+// TestCommandCapabilityForCommand_ResolveProcessInstanceContract preserves keyed metadata and advertises scoped BID controls.
 func TestCommandCapabilityForCommand_ResolveProcessInstanceContract(t *testing.T) {
 	root := Root()
 	resetCommandTreeFlags(root)
@@ -2649,6 +2657,12 @@ func TestCommandCapabilityForCommand_ResolveProcessInstanceContract(t *testing.T
 		Repeated:    false,
 		Description: "stop scheduling new process-instance resolutions after the first error",
 	})
+	for _, name := range []string{"bid", "limit", "batch-size"} {
+		require.NotNil(t, resolveProcessInstanceCmd.Flags().Lookup(name))
+	}
+	require.Equal(t, "string", resolveProcessInstanceCmd.Flags().Lookup("bid").Value.Type())
+	require.Contains(t, resolveProcessInstanceCmd.Long, "freezes the complete family and active incident targets before confirmation")
+	require.Contains(t, resolveProcessInstanceCmd.Example, "--bid ORDER-123 --dry-run")
 }
 
 func TestCapabilityDocumentForRoot_ResolveCommandFamily(t *testing.T) {
@@ -3155,19 +3169,19 @@ func TestSuspendProcessInstanceMetadata(t *testing.T) {
 		{Name: RenderModeJSON.String(), Supported: true, MachinePreferred: true},
 		{Name: RenderModeKeysOnly.String(), Supported: true},
 	}, cap.OutputModes)
-	for _, name := range []string{"key", "tree", "dry-run", "no-wait", "workers", "no-worker-limit", "fail-fast"} {
+	for _, name := range []string{"key", "bid", "batch-size", "limit", "tree", "dry-run", "no-wait", "workers", "no-worker-limit", "fail-fast"} {
 		require.NotNil(t, suspendProcessInstanceCmd.Flags().Lookup(name))
 	}
 	treeFlag := suspendProcessInstanceCmd.Flags().Lookup("tree")
 	require.Equal(t, "false", treeFlag.DefValue)
 	require.Equal(t, "bool", treeFlag.Value.Type())
 	require.Empty(t, treeFlag.Shorthand)
-	for _, text := range []string{"--tree", "descendants", "ancestors or siblings", "read/search permissions", "already-suspended and terminal parents", "frozen scope", "state races", "1,000 direct children per parent lookup", "not atomic", "created after discovery", "no active targets"} {
+	for _, text := range []string{"--tree", "descendants", "ancestors or siblings", "read/search permissions", "already-suspended and terminal parents", "frozen scope", "state races", "child discovery exhausts all pages at every depth", "not atomic", "created after discovery", "no active targets"} {
 		require.Contains(t, suspendProcessInstanceCmd.Long, text)
 	}
 	require.Contains(t, suspendProcessInstanceCmd.Example, "--tree --dry-run")
 	require.Contains(t, suspendProcessInstanceCmd.Example, "--tree --auto-confirm")
-	for _, name := range []string{"force", "no-state-check", "state", "bpmn-process-id", "batch-size", "limit"} {
+	for _, name := range []string{"force", "no-state-check", "state", "bpmn-process-id"} {
 		require.Nil(t, suspendProcessInstanceCmd.Flags().Lookup(name))
 	}
 	for _, name := range []string{"backoff-timeout", "backoff-max-retries"} {
@@ -3185,7 +3199,7 @@ func TestSuspendProcessInstanceMetadata(t *testing.T) {
 	}
 }
 
-// TestResumeProcessInstanceMetadata protects the exact-key/tree surface and operator outcome contract.
+// TestResumeProcessInstanceMetadata protects key/BID/tree selection and operator outcomes.
 func TestResumeProcessInstanceMetadata(t *testing.T) {
 	root := Root()
 	resetCommandTreeFlags(root)
@@ -3200,10 +3214,10 @@ func TestResumeProcessInstanceMetadata(t *testing.T) {
 		{Name: RenderModeJSON.String(), Supported: true, MachinePreferred: true},
 		{Name: RenderModeKeysOnly.String(), Supported: true},
 	}, cap.OutputModes)
-	for _, name := range []string{"key", "tree", "dry-run", "no-wait", "workers", "no-worker-limit", "fail-fast"} {
+	for _, name := range []string{"key", "bid", "batch-size", "limit", "tree", "dry-run", "no-wait", "workers", "no-worker-limit", "fail-fast"} {
 		require.NotNil(t, resumeProcessInstanceCmd.Flags().Lookup(name))
 	}
-	for _, name := range []string{"force", "no-state-check", "state", "bpmn-process-id", "batch-size", "limit"} {
+	for _, name := range []string{"force", "no-state-check", "state", "bpmn-process-id"} {
 		require.Nil(t, resumeProcessInstanceCmd.Flags().Lookup(name))
 	}
 	for _, name := range []string{"backoff-timeout", "backoff-max-retries"} {
@@ -3219,7 +3233,7 @@ func TestResumeProcessInstanceMetadata(t *testing.T) {
 	require.Equal(t, "false", treeFlag.DefValue)
 	require.Equal(t, "bool", treeFlag.Value.Type())
 	require.Empty(t, treeFlag.Shorthand)
-	for _, text := range []string{"--tree", "ancestors or siblings", "independently suspended descendants", "read/search permissions", "frozen scope", "1,000 direct children per parent lookup", "created after discovery", "no suspended targets", "state races"} {
+	for _, text := range []string{"--tree", "ancestors or siblings", "independently suspended descendants", "read/search permissions", "frozen scope", "child discovery exhausts all pages at every depth", "created after discovery", "no suspended targets", "state races"} {
 		require.Contains(t, resumeProcessInstanceCmd.Long, text)
 	}
 	require.Contains(t, resumeProcessInstanceCmd.Example, "--tree --dry-run")

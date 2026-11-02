@@ -14,6 +14,10 @@ Inspect process-instance ancestry, descendants, or the full family.
 
 On Camunda 8.10, each observed family member retains its own business ID, including flat, tree, and enriched results. Human rows show bid:<value> beside the process name, quoting values only when needed. An absent child ID is never filled from its parent.
 
+Use --bid for an exact business-ID selection on Camunda 8.10. Discovery uses the configured tenant and must exhaust with one distinct match; two matches are ambiguous even in the same family. Zero matches return an empty result. Choose exactly one of --key or --bid.
+
+Child discovery on Camunda 8.10 exhausts every page at every depth; there is no 1,000-child cap. A failed later page fails the walk.
+
 Use --parent for ancestry or --children for descendants; the default scope is the full family. Explicit --key uses backend authorization without tenant filtering.
 
 Add --with-incidents, --with-vars, or --with-elements for incident details, process-instance-scope variables, or runtime elements. Add --with-listeners to --with-elements for runtime listener jobs. Listener rows use s: for job creation (not worker execution start), e: for job end, and d: for an available deadline only while the state is exactly ACTIVATED; missing times are omitted. Listener dur: measures time from job creation to its recorded end, or elapsed time for a pending job; it includes worker waiting time and is omitted when timestamps are unavailable or invalid. On Camunda 8.10, listener rows retain their own observed business ID, which may differ from the process instance.
@@ -27,6 +31,7 @@ c8volt walk process-instance [flags]
 ### Examples
 
 ```
+  ./c8volt walk process-instance --bid ORDER-123
   ./c8volt walk process-instance --key <process-instance-key>
   ./c8volt walk process-instance --key <process-instance-key> --with-incidents
   ./c8volt walk process-instance --key <process-instance-key> --with-vars
@@ -39,6 +44,7 @@ c8volt walk process-instance [flags]
 ### Options
 
 ```
+      --bid string                   exact business ID for one unambiguous starting instance (Camunda 8.10)
       --children                     show descendants from the selected process instance
       --flat                         render family output as a flat path instead of an ASCII tree
   -h, --help                         help for process-instance
@@ -47,10 +53,10 @@ c8volt walk process-instance [flags]
   -k, --key string                   start walking from this process instance key
       --parent                       show ancestry from the selected process instance toward the root
       --var-value-limit int          maximum characters to show for variable values when --with-vars is set; 0 disables truncation
-      --with-elements                show runtime element instances for keyed process-instance walks
-      --with-incidents               show incident keys, states, and messages for keyed process-instance walks
+      --with-elements                show runtime element instances for selected process-instance walks
+      --with-incidents               show incident keys, states, and messages for selected process-instance walks
       --with-listeners               include runtime listener jobs; requires --with-elements
-      --with-vars                    show process-instance-scope variables for keyed process-instance walks
+      --with-vars                    show process-instance-scope variables for selected process-instance walks
 ```
 
 ### Options inherited from parent commands
