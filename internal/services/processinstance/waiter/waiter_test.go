@@ -512,12 +512,13 @@ func TestWaitForProcessInstanceState(t *testing.T) {
 		assert.Equal(t, d.ProcessInstance{}, pi)
 	})
 
-	t.Run("treats 404-shaped errors as absent", func(t *testing.T) {
+	t.Run("rejects unclassified 404 text", func(t *testing.T) {
 		t.Parallel()
 
+		original := errors.New("operate returned 404")
 		waiter := stubPIWaiter{
 			getStateByKey: func(ctx context.Context, key string) (d.State, d.ProcessInstance, error) {
-				return d.StateUnknown, d.ProcessInstance{}, errors.New("operate returned 404")
+				return d.StateUnknown, d.ProcessInstance{}, original
 			},
 		}
 
@@ -530,17 +531,18 @@ func TestWaitForProcessInstanceState(t *testing.T) {
 			d.States{d.StateAbsent},
 		)
 
-		require.NoError(t, err)
-		assert.True(t, got.Ok)
-		assert.Equal(t, d.StateAbsent, got.State)
+		require.ErrorIs(t, err, original)
+		assert.False(t, got.Ok)
+		assert.Equal(t, d.StateUnknown, got.State)
 	})
 
-	t.Run("treats not-found text errors as absent", func(t *testing.T) {
+	t.Run("rejects unclassified absence text", func(t *testing.T) {
 		t.Parallel()
 
+		original := errors.New("process instance does not exist anymore")
 		waiter := stubPIWaiter{
 			getStateByKey: func(ctx context.Context, key string) (d.State, d.ProcessInstance, error) {
-				return d.StateUnknown, d.ProcessInstance{}, errors.New("process instance does not exist anymore")
+				return d.StateUnknown, d.ProcessInstance{}, original
 			},
 		}
 
@@ -553,9 +555,9 @@ func TestWaitForProcessInstanceState(t *testing.T) {
 			d.States{d.StateAbsent},
 		)
 
-		require.NoError(t, err)
-		assert.True(t, got.Ok)
-		assert.Equal(t, d.StateAbsent, got.State)
+		require.ErrorIs(t, err, original)
+		assert.False(t, got.Ok)
+		assert.Equal(t, d.StateUnknown, got.State)
 	})
 
 	t.Run("only logs polling attempts when verbose", func(t *testing.T) {

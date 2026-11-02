@@ -184,12 +184,7 @@ func stringSet(items []string) map[string]struct{} {
 	return out
 }
 
+// isIncidentAbsentErr trusts adapter classification, never URLs or response-body text.
 func isIncidentAbsentErr(err error) bool {
-	if errors.Is(err, d.ErrNotFound) {
-		return true
-	}
-	msg := strings.ToLower(err.Error())
-	return strings.Contains(msg, "404") ||
-		strings.Contains(msg, "not found") ||
-		strings.Contains(msg, "does not exist")
+	return errors.Is(err, d.ErrNotFound)
 }

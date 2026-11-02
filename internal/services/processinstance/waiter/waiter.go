@@ -308,14 +308,9 @@ func waitStateFailure(key string, lastState d.State, attempts int, elapsed time.
 	}
 }
 
+// isProcessInstanceAbsentErr trusts adapter classification, never URLs or response-body text.
 func isProcessInstanceAbsentErr(err error) bool {
-	if errors.Is(err, d.ErrNotFound) {
-		return true
-	}
-	msg := strings.ToLower(err.Error())
-	return strings.Contains(msg, "404") ||
-		strings.Contains(msg, "not found") ||
-		strings.Contains(msg, "does not exist")
+	return errors.Is(err, d.ErrNotFound)
 }
 
 func stateIn(st d.State, set d.States) bool {

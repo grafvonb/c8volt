@@ -116,7 +116,7 @@ func TestServiceCreateProcessInstanceBusinessIDObservation(t *testing.T) {
 					gets.Add(1)
 					if tc.failWait {
 						w.WriteHeader(http.StatusForbidden)
-						_, _ = io.WriteString(w, `{"title":"forbidden"}`)
+						_, _ = io.WriteString(w, `{"title":"forbidden","detail":"GET https://owned.invalid:40401/process-instances/123"}`)
 						return
 					}
 					_ = json.NewEncoder(w).Encode(map[string]any{"processInstanceKey": "123", "state": "ACTIVE", "businessId": tc.observed, "startDate": "2026-10-31T12:00:00Z"})

@@ -74,7 +74,7 @@ func newBusinessIDCleanupFixture(t *testing.T, kind string, empty bool, failure 
 		fail := func() {
 			w.Header().Set("Set-Cookie", "secret-cookie")
 			w.WriteHeader(400)
-			fmt.Fprint(w, `{"detail":"POST https://private.invalid/path?token=secret-token body-only-secret resource-key-secret"}`)
+			fmt.Fprint(w, `{"detail":"POST https://private.invalid:40401/path?token=secret-token body-only-secret resource-key-secret"}`)
 		}
 		path := r.URL.Path
 		if path == "/v2/process-instances/search" {
