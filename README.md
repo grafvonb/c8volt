@@ -401,6 +401,36 @@ Process inspection (`get pi`, including age and activity enrichment) and family 
 
 Observed deletion/cancellation previews, variable-update plans, suspension/resumption tree plans, and process-definition deletion impact also retain IDs. Use `--verbose` for detailed mutation observations or `--json` for structured plans. These observations use the configured INFO logger in human mode; quiet and WARN suppress them. Empty cancel/delete selections now report `found: 0` through that logger rather than result stdout. Local exact-key suspension/resumption previews and key/status-only outcomes remain read-free and do not invent IDs.
 
+Library callers can assign a native business ID after process start with
+`PlanProcessInstanceBusinessIDAssignments(ctx, keys, &businessID, opts...)` and
+`ExecuteProcessInstanceBusinessIDAssignments(ctx, plan, wantedWorkers, opts...)`.
+Both methods are available through `process.API` and the aggregate client.
+Camunda 8.10 supports assignment; 8.8/8.9 reject planning and execution before I/O.
+Keys must contain exactly 16 decimal digits after trimming. Planning validates
+the whole input, deduplicates in first-input order, copies keys and value, and reads
+only the exact targets for prior facts. Execution validates and snapshots the
+complete plan before any write. Incomplete or inconsistent plans cannot execute;
+an explicitly empty complete plan succeeds without mutation.
+
+Direct assignment requires a nonnil, nonblank, valid UTF-8 value of at most 256
+UTF-16 code units. Accepted surrounding spaces, commas and case remain exact.
+The backend requires an active root without a business ID and uniqueness disabled;
+a child is never redirected to its parent, and even an identical existing ID
+conflicts. A preview cannot reserve eligibility. `WithDryRun()` submits nothing;
+normal execution observes the exact ID after acknowledgement within configured
+backoff bounds, while `WithNoWait()` skips confirmation reads. Planning still
+requires exact-target read access. Neither rejection nor a lost response is
+replayed, and a lost response remains unknown. Inspect both returned results and
+errors: ordered partial results retain requested ID, prior/later observations,
+HTTP evidence, and not-started targets. Accepted but unconfirmed writes retain
+acceptance and return an error. Assignment never updates job/task/listener
+snapshots or a variable named `businessId`.
+
+External custom implementations of `process.API` (including aggregate APIs and
+test doubles) must implement these two new methods. The new plan/result structs
+are public invocation-local data, not authorization tokens; use keyed literals.
+CLI assignment and atomic job completion are separate follow-on deliveries.
+
 Job and user-task inspection on Camunda 8.10 preserves each resource's own optional `businessId`, including variable-enriched tasks, scalar job-update previews, and frozen bulk-completion candidates/outcomes. A job or task may retain an older ID or no ID even when its parent has a newer one. Observed empty strings remain present. Human rows show a compact `bid:<value>` field, quoting values only when needed; JSON keeps exact values. Preview and verbose completion rows use the configured INFO logger; query results remain on stdout. Empty job searches suppress `found: 0` under quiet while JSON and keys-only retain their existing shapes. Completion does not assign business IDs, and no extra lookup is made solely to display them.
 
 Retention, incident purge, orphan purge, and process-definition purge keep observed process-instance IDs in saved JSON and Markdown audit reports and verbose plan details. Markdown escapes markup and control characters; JSON retains exact values. Repair action plans and key/status-only outcomes remain ID-free without additional reads. Human plan details use the configured INFO logger and are suppressed by quiet or WARN level. Backend workflow failures in retention and process-instance purges retain partial plans/results in one JSON envelope and the saved report, preserve the original exit code, and emit one bounded human ERROR. Raw transport evidence remains confined to machine error fields and redacted DEBUG diagnostics; verbose alone does not enable HTTP details.

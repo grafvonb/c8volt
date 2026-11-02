@@ -16,6 +16,11 @@ import (
 
 // API describes the process-instance operations implemented by the native v8.10 adapter.
 type API interface {
+	// ValidateBusinessIDAssignment checks capability, value and observation settings without I/O.
+	ValidateBusinessIDAssignment(value *string, opts ...services.CallOption) error
+	// AssignProcessInstanceBusinessID submits once to the exact target and optionally confirms.
+	AssignProcessInstanceBusinessID(ctx context.Context, key string, value *string, opts ...services.CallOption) (d.BusinessIDAssignmentResult, error)
+
 	// ProcessInstanceSearchTenant returns the effective discovery tenant without I/O.
 	ProcessInstanceSearchTenant(opts ...services.CallOption) string
 	// ValidateProcessInstanceResumption checks mutation capability without I/O.
@@ -58,6 +63,9 @@ type API interface {
 
 // GenProcessInstanceClientCamunda captures the generated Camunda calls used by the v8.10 process-instance service.
 type GenProcessInstanceClientCamunda interface {
+	// AssignProcessInstanceBusinessIdWithResponse sends one native assignment.
+	AssignProcessInstanceBusinessIdWithResponse(context.Context, camundav810.ProcessInstanceKey, camundav810.AssignProcessInstanceBusinessIdJSONRequestBody, ...camundav810.RequestEditorFn) (*camundav810.AssignProcessInstanceBusinessIdResponse, error)
+
 	// ResumeProcessInstanceWithResponse submits resumption for exactly one supplied key.
 	ResumeProcessInstanceWithResponse(ctx context.Context, processInstanceKey camundav810.ProcessInstanceKey, body camundav810.ResumeProcessInstanceJSONRequestBody, reqEditors ...camundav810.RequestEditorFn) (*camundav810.ResumeProcessInstanceResponse, error)
 	// SuspendProcessInstanceWithResponse submits suspension for exactly one supplied key.
