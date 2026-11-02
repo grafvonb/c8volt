@@ -50,6 +50,7 @@ type completionAcceptanceServer struct {
 	nextListener            string
 	processInstanceKeys     map[string]string
 	extraFilters            map[string]string
+	expectedBID             string
 }
 
 // newCompletionAcceptanceServer rejects every endpoint outside discovery, lookup
@@ -236,7 +237,12 @@ func (f *completionAcceptanceServer) serve(t *testing.T, w http.ResponseWriter, 
 		if variables, ok := payload["variables"].(map[string]any); !ok || len(variables) != 0 {
 			t.Errorf("listener payload: %v", payload)
 		}
-		if len(payload) != 1 {
+		expectedFields := 1
+		if f.expectedBID != "" {
+			require.Equal(t, f.expectedBID, payload["businessId"])
+			expectedFields++
+		}
+		if len(payload) != expectedFields {
 			t.Errorf("unexpected optional completion fields: %v", payload)
 			w.WriteHeader(http.StatusBadRequest)
 			io.WriteString(w, `{"detail":"unset optional completion fields must be omitted"}`)
@@ -480,7 +486,9 @@ func TestBulkCompletionAcceptancePaging(t *testing.T) {
 	a, b, c := completionAcceptanceKey(0), completionAcceptanceKey(1), completionAcceptanceKey(2)
 	rowA, rowB, rowC := bulkCompletionRow(a, "CREATED"), bulkCompletionRow(b, "CREATED"), bulkCompletionRow(c, "CREATED")
 	foreign := strings.ReplaceAll(bulkCompletionRow(completionAcceptanceKey(99), "CREATED"), `"tenant-a"`, `"tenant-b"`)
-	for _, version := range []string{"8.8", "8.9", "8.10"} {
+	for _, version := range []string{"8.8", "8.9", "8.10", "8.10-assignment"} {
+		assignment := strings.HasSuffix(version, "-assignment")
+		version = strings.TrimSuffix(version, "-assignment")
 		for _, tc := range []struct {
 			name    string
 			pages   []completionAcceptancePage
@@ -499,6 +507,10 @@ func TestBulkCompletionAcceptancePaging(t *testing.T) {
 			t.Run(version+"/"+tc.name, func(t *testing.T) {
 				f, server := newCompletionAcceptanceServer(t, version, tc.pages, nil)
 				flags := []string{"--type", "cleanup", "--batch-size", "2", "--auto-confirm", "--json"}
+				if assignment {
+					f.expectedBID = "ORDER-123"
+					flags = append(flags, "--set-bid", f.expectedBID)
+				}
 				if tc.limit > 0 {
 					flags = append(flags, "--limit", strconv.Itoa(tc.limit))
 				}

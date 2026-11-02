@@ -461,7 +461,31 @@ acceptance. Task-listener variable restrictions are unchanged.
 
 The new optional fields and private scalar approval storage affect external
 unkeyed struct literals; use keyed literals. Existing `job.API` implementations
-need no new methods. CLI atomic completion is the remaining follow-on delivery.
+need no new methods. `job.ValidateCompletionBusinessID` provides the same optional
+value validation without backend I/O.
+
+CLI atomic completion is available through `update job --complete --set-bid`:
+
+```bash
+./c8volt update job --key <job-key> --complete --set-bid 'ORDER-123' --vars '{"approved":true}' --dry-run
+./c8volt update job --key <job-key> --complete --set-bid 'ORDER-123' --auto-confirm
+./c8volt update job --type cleanup --retries 0 --complete --set-bid 'ORDER-123' --dry-run
+```
+
+Use scalar, repeated/comma-separated keys, newline stdin (`-`), or existing AND
+selectors. Assignment alone does not select jobs. Keyless `--retries 0` remains
+an exact selector; keyed completion rejects it. Other mutation modes reject
+`--set-bid`. Complete selection and payload are copied before one approval.
+Collection results remain bulk even after deduplication to one key; bulk
+keys-only remains unsupported. Empty discovery/stdin skips confirmation and
+mutation, including under no-wait. JSON preserves partial/unknown evidence in
+one envelope with the original exit class. Human summaries use configured INFO
+logging, quiet keeps compact errors, and raw HTTP diagnostics require DEBUG.
+
+Direct `update pi --set-bid` and combined job completion are alternative first
+assignments: a successful direct assignment makes later combined assignment
+conflict even for the same value. Dry-run cannot guarantee backend eligibility.
+Neither route changes an ordinary variable named `businessId`.
 
 Job and user-task inspection on Camunda 8.10 preserves each resource's own optional `businessId`, including variable-enriched tasks, scalar job-update previews, and frozen bulk-completion candidates/outcomes. A job or task may retain an older ID or no ID even when its parent has a newer one. Observed empty strings remain present. Human rows show a compact `bid:<value>` field, quoting values only when needed; JSON keeps exact values. Preview and verbose completion rows use the configured INFO logger; query results remain on stdout. Empty job searches suppress `found: 0` under quiet while JSON and keys-only retain their existing shapes. Plain completion does not assign business IDs, and no extra lookup is made solely to display observed IDs.
 

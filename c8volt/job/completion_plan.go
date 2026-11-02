@@ -62,3 +62,9 @@ func snapshotCompletionPlan(p UpdatePlan) (UpdatePlan, error) {
 	p.Variables = variables
 	return p, nil
 }
+
+// ValidateCompletionBusinessID validates optional assignment intent without backend I/O.
+// Accepted bytes are preserved; nil retains ordinary completion semantics.
+func ValidateCompletionBusinessID(value *string) error {
+	return ferrors.FromDomain(d.ValidateBusinessIDAssignment(value))
+}

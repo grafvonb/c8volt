@@ -6,7 +6,7 @@ nav_exclude: true
 has_toc: true
 ---
 
-> Generated from build `c8volt v4.4.0-276-gfcb22aba-dirty`, commit `fcb22aba`, built `2026-11-02T14:34:54Z` | Supported Camunda 8 versions: 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.3 (final)
+> Generated from build `c8volt v4.4.0-278-gf83fee3b-dirty`, commit `f83fee3b`, built `2026-11-02T14:58:39Z` | Supported Camunda 8 versions: 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.3 (final)
 
 <img src="./logo/c8volt_logo_transparent_w_shadow_400x244.png" alt="c8volt logo" />
 
@@ -435,10 +435,65 @@ snapshots or a variable named `businessId`.
 External custom implementations of `process.API` (including aggregate APIs and
 test doubles) must implement these two new methods. The new plan/result structs
 are public invocation-local data, not authorization tokens; use keyed literals.
-CLI assignment is available through `update pi --set-bid`; atomic job completion
-remains a separate follow-on delivery.
+CLI assignment is available through `update pi --set-bid`.
 
-Job and user-task inspection on Camunda 8.10 preserves each resource's own optional `businessId`, including variable-enriched tasks, scalar job-update previews, and frozen bulk-completion candidates/outcomes. A job or task may retain an older ID or no ID even when its parent has a newer one. Observed empty strings remain present. Human rows show a compact `bid:<value>` field, quoting values only when needed; JSON keeps exact values. Preview and verbose completion rows use the configured INFO logger; query results remain on stdout. Empty job searches suppress `found: 0` under quiet while JSON and keys-only retain their existing shapes. Completion does not assign business IDs, and no extra lookup is made solely to display them.
+Library job completion accepts optional `SetBusinessID *string` on
+`job.WorkerOutcomeRequest` and `job.CompletionRequest`. Use completion mode with
+`SubmitJobWorkerOutcome`, or prepare and execute a batch through
+`PrepareJobCompletionBatch` and `ExecuteJobCompletionBatch`. Camunda 8.8/8.9 reject
+assignment before reads or writes, including caller-created prepared batches.
+Camunda 8.10 sends variables and business ID in one native completion request.
+Nil omits `businessId` entirely and retains plain completion behavior. Assignment
+uses the same exact-value validation and root/no-existing-ID/uniqueness-disabled
+eligibility as direct assignment; these are alternative first-assignment paths.
+
+Prepared batches copy the ID, nested variables and job selection. For scalar
+approval, create an `UpdatePlan` with matching key and completion mode, call
+`plan.FreezeCompletionPayload(request)` before confirmation, and attach it as
+`request.OutcomePlan`. The frozen payload survives edits to the original request;
+changed plan key, mode or payload is rejected. Plans are invocation-local and
+cannot be serialized and restored as approval tokens. Direct scalar calls without
+an approval plan still validate and copy payloads before service submission.
+
+Assignment-bearing completion submits at most once per distinct job, without
+fallback or replay. Distinct jobs in one process remain separate targets, so a
+later job can conflict after the first succeeds. Accepted acknowledgement records
+assignment acceptance; it does not refresh job/task/listener snapshots. A later
+`COMPLETED` observation after a lost response retains unknown assignment and the
+original error. Already-completed jobs remain unsatisfied without submission.
+Inspect both returned evidence and errors, including partial batch results.
+`WithDryRun()` submits nothing; no-wait bounds reconciliation without inventing
+acceptance. Task-listener variable restrictions are unchanged.
+
+The new optional fields and private scalar approval storage affect external
+unkeyed struct literals; use keyed literals. Existing `job.API` implementations
+need no new methods. `job.ValidateCompletionBusinessID` provides the same optional
+value validation without backend I/O.
+
+CLI atomic completion is available through `update job --complete --set-bid`:
+
+```bash
+./c8volt update job --key <job-key> --complete --set-bid 'ORDER-123' --vars '{"approved":true}' --dry-run
+./c8volt update job --key <job-key> --complete --set-bid 'ORDER-123' --auto-confirm
+./c8volt update job --type cleanup --retries 0 --complete --set-bid 'ORDER-123' --dry-run
+```
+
+Use scalar, repeated/comma-separated keys, newline stdin (`-`), or existing AND
+selectors. Assignment alone does not select jobs. Keyless `--retries 0` remains
+an exact selector; keyed completion rejects it. Other mutation modes reject
+`--set-bid`. Complete selection and payload are copied before one approval.
+Collection results remain bulk even after deduplication to one key; bulk
+keys-only remains unsupported. Empty discovery/stdin skips confirmation and
+mutation, including under no-wait. JSON preserves partial/unknown evidence in
+one envelope with the original exit class. Human summaries use configured INFO
+logging, quiet keeps compact errors, and raw HTTP diagnostics require DEBUG.
+
+Direct `update pi --set-bid` and combined job completion are alternative first
+assignments: a successful direct assignment makes later combined assignment
+conflict even for the same value. Dry-run cannot guarantee backend eligibility.
+Neither route changes an ordinary variable named `businessId`.
+
+Job and user-task inspection on Camunda 8.10 preserves each resource's own optional `businessId`, including variable-enriched tasks, scalar job-update previews, and frozen bulk-completion candidates/outcomes. A job or task may retain an older ID or no ID even when its parent has a newer one. Observed empty strings remain present. Human rows show a compact `bid:<value>` field, quoting values only when needed; JSON keeps exact values. Preview and verbose completion rows use the configured INFO logger; query results remain on stdout. Empty job searches suppress `found: 0` under quiet while JSON and keys-only retain their existing shapes. Plain completion does not assign business IDs, and no extra lookup is made solely to display observed IDs.
 
 Retention, incident purge, orphan purge, and process-definition purge keep observed process-instance IDs in saved JSON and Markdown audit reports and verbose plan details. Markdown escapes markup and control characters; JSON retains exact values. Repair action plans and key/status-only outcomes remain ID-free without additional reads. Human plan details use the configured INFO logger and are suppressed by quiet or WARN level. Backend workflow failures in retention and process-instance purges retain partial plans/results in one JSON envelope and the saved report, preserve the original exit code, and emit one bounded human ERROR. Raw transport evidence remains confined to machine error fields and redacted DEBUG diagnostics; verbose alone does not enable HTTP details.
 

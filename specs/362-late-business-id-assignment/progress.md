@@ -140,3 +140,42 @@ Started: 2026-11-02 15:21:10
 - Failure review: native classifier -> coordinator preserves original failure plus independent observation -> scalar/bulk facade maps optional evidence and ferrors. New err.Error() assignments are machine evidence only; no added human print/logger boundary. T004 owns exposing this evidence safely through command output.
 - All validation used isolated fakes with GOFLAGS cleared, never live services. Real-engine eligibility, uniqueness, durability and timing remain unverified.
 ---
+
+---
+## Iteration 4 - 2026-11-02 16:11
+**Work Unit**: US2 T004 — complete atomic business-ID assignment CLI delivery and final isolated validation
+**Tasks Completed**:
+- [x] T004: Deliver scalar/collection/stdin/selector --complete --set-bid, frozen approval, truthful evidence, output/terminal coverage, documentation and full race validation.
+**Tasks Remaining in Work Unit**: 0; no feature tasks remain
+**Commit**: This work-unit commit
+**Files Changed**:
+- README.md
+- c8volt/job/completion_plan.go
+- cmd/cmd_views_job.go
+- cmd/update_job.go
+- cmd/update_job_assignment_logging_test.go
+- cmd/update_job_assignment_test.go
+- cmd/update_job_batch.go
+- cmd/update_job_batch_acceptance_test.go
+- cmd/update_job_batch_logging_test.go
+- cmd/update_job_batch_terminal_test.go
+- cmd/update_job_outcome.go
+- cmd/update_job_plan.go
+- cmd/update_job_request.go
+- cmd/update_job_test.go
+- docs/cli/c8volt_update_job.md
+- docs/index.md
+- specs/362-late-business-id-assignment/progress.md
+- specs/362-late-business-id-assignment/quickstart.md
+- specs/362-late-business-id-assignment/ralph-memory.md
+- specs/362-late-business-id-assignment/tasks.md
+**Learnings**:
+- Shared service completion already owned one-shot execution; CLI work copies intent, freezes scalar approval, and preserves errors plus results through one envelope or bounded configured logging. No backend lifecycle or generated-client changes were needed.
+- Eight new command test functions and expanded paging/logger/terminal matrices cover atomic wire payloads, separate observed identity, scalar/bulk provenance, nonempty stdin, two jobs in one process, conflicts, completed targets, unknown response then COMPLETED, empty discovery/stdin, unsupported versions, flag edits and prompt/exit contracts.
+- Initial tests failed on the absent flag. Final targeted command selection passed in 24.992s; the last input-guard test passed separately in 1.013s. Targeted job facade tests passed in 0.667s.
+- Full env GOFLAGS= make test passed with race detection: 87 packages passed, 19 had no tests, cmd completed in 560.531s. Test target/inherited settings were checked; tagged live suites were excluded. No real engine was contacted, and eligibility/uniqueness/durability/timing remain unverified.
+- Negative mutations proved the command logging assertions reject direct stderr diagnostics, raw transport logging and stdout summaries. Production code was restored before final validation.
+- Failure path reviewed: native evidence -> coordinator -> facade error conversion -> one scalar/bulk view -> configured logger -> original exit classification. No new raw-error human output boundary remains.
+- Command cohesion gate passed: the base file adds flag/validation/dispatch only; existing focused request/outcome/plan/batch files own their lifecycle concerns and final views own rendering.
+- README/help and generated CLI/index docs updated; gofmt, git diff --check and feature local Markdown links passed. Current Handoff is terminal; no follow-up work was added.
+---

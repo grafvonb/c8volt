@@ -490,6 +490,7 @@ func strconvFormatInt32(value int32) string {
 }
 
 // resetUpdateJobFlagState restores update-job package flags shared by command tests.
+// resetUpdateJobFlagState prevents mutation intent from leaking across command tests.
 func resetUpdateJobFlagState() {
 	flagViewAsJson = false
 	flagVerbose = false
@@ -506,6 +507,7 @@ func resetUpdateJobFlagState() {
 	flagUpdateJobBPMNError = ""
 	flagUpdateJobComplete = false
 	flagUpdateJobVariables = ""
+	flagUpdateJobSetBID = ""
 	flagWorkers = 0
 	flagFailFast = false
 	flagNoWorkerLimit = false

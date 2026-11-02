@@ -5,82 +5,47 @@ Started: 2026-11-02T14:21:10Z
 
 ## Codebase Patterns
 
-- Process assignment uses the existing process service dependency in every facade constructor; aggregate c8volt/contract.go embeds process.API, so no extra constructor or aggregate method wiring is needed.
-- Service coordinator: internal/services/processinstance/business_id_assignment.go. Public thin API and copied converters: c8volt/process/business_id_assignment.go and convert.go. Native adapter and exact-key waiter own submission/observation.
-- NormalizeProcessInstanceKeys requires 16 decimal digits after trimming, deduplicating in first-input order. Keys in the planning examples are descriptive, not valid execution fixtures.
-- Existing pool helpers return zero slots for unscheduled work; the coordinator prepopulates not_submitted/skipped results and preserves those slots, joining caller cancellation explicitly.
-- Assignment result Status is not_submitted/accepted/confirmed/rejected/unknown; Confirmation is skipped/confirmed/unconfirmed. Requested, prior and later BID pointers are independent. Error is machine evidence only.
+- Process assignment coordinator: `internal/services/processinstance/business_id_assignment.go`; thin public API: `c8volt/process/business_id_assignment.go`; native adapter and exact-key waiter own submission/observation. Existing process dependencies and aggregate interface embedding supply constructor/API wiring.
+- Assignment command dispatches before variable parsing into `cmd/update_processinstance_assignment.go`; final views live in `cmd/cmd_views_processinstance_assignment.go`. Read full configured stdin with a bounded scanner: the ordinary readKeysIfDash helper rejects terminal/empty stdin and is unsuitable for deliberate empty assignment scope.
+- Job completion retains its existing request/outcome/plan/batch files. Scalar `planUpdateJob` freezes BID and nested variables with `UpdatePlan.FreezeCompletionPayload` before approval. `jobAssignmentOutcomeView` preserves scalar evidence on both success and failure; main dispatch exits after rendering instead of invoking another renderer. Batch preparation/abort reports retain requested identity and not-submitted evidence.
+- Public `job.ValidateCompletionBusinessID` delegates optional value validation to the shared domain validator without I/O. CLI parsing copies flag storage and rejects assignment outside completion. Scalar old-version validation precedes job lookup; bulk capability validation remains service-owned.
+- Human previews/results/verbose rows use renderHumanLine; compact failures use the configured ERROR logger. JSON uses one envelope with partial evidence and original error classification. Prompt text stays plain configured stderr. Empty job scopes preserve established human wording without an extra assignment line.
 
 ## Decisions
 
-- T003 complete: optional SetBusinessID flows through domain/public worker and batch requests, prepared snapshots and typed CompletionPayload ports. CompletionAssignment is optional status/HTTP evidence; requestedBusinessId never replaces observed BusinessId.
-- v810 BID-bearing scalar completion delegates preparation/execution to the existing bulk coordinator and maps one outcome back to scalar evidence. Native acknowledgement means accepted; already-COMPLETED is not_submitted/unsatisfied. Unknown or rejected submission followed by COMPLETED retains original failure and independent observation. Plain scalar retry and plain bulk reconciliation are unchanged.
-- Scalar approval uses UpdatePlan.FreezeCompletionPayload(request) before confirmation, then request.OutcomePlan = &plan. It privately copies key/mode/value/nested variables; conversion uses that approved payload and rejects edited plan attachments or changed request key/mode. A plan supplied for assignment without freezing is rejected. T004 must wire this helper into scalar planning before prompting, preserving the error.
-- Assignment request conversion copies nested variables only when BID is present: CopyJSONMap changes float64 to json.Number, so applying it to all existing plain scalar worker requests broke a compatibility assertion. Keep omitted scalar behavior unchanged.
-- v88/v89 guard scalar, prepare, execute (including forged/empty batches) and private submission before I/O. v810 validates assignment before discovery and execution, retaining listener variable restrictions and optional-field serialization. Public UpdateJob rejects attached assignment intent rather than dropping it.
-
-- T002 complete: --set-bid dispatches before variable parsing into cmd/update_processinstance_assignment.go; cmd/cmd_views_processinstance_assignment.go owns final formatting. No service/facade changes were needed.
-- Assignment reads complete cmd.InOrStdin() input with a bounded scanner. Existing readKeysIfDash rejects empty/terminal stdin and is unsuitable here. Deliberate empty assignment stdin is a ready plan, with items/requestedKeys as empty arrays; no-key without '-' is invalid.
-- Assignment approval consumes the service-copied plan, never current flag storage. Frozen-approval regression mutates key/value flags during confirmation and verifies the original wire request. Explicit administration options preserve backend authorization and worker/fail-fast controls.
-- JSON previews/empty results succeed even with no-wait; only actual accepted submissions yield an accepted envelope. Failed execution renders partial evidence once, then exits with the original class. Keys-only prints preview targets in dry-run and accepted/confirmed targets after execution.
-- Human preview/result lines use renderHumanLine; aggregate ERROR uses the configured logger and bounded counts/class. Raw errors are only machine evidence; HTTP diagnostics stay in the existing redacted DEBUG path. Normal no-wait results retain accepted/skipped evidence.
-
-
-- T001 complete: optional shared validator permits nil for future omitted job intent; the direct adapter requires nonnil. Creation still permits whitespace-only IDs.
-- Planning validates all keys/value before reads, reads only exact keys for preview facts, and retains Ready=false with incomplete evidence on failures. Empty explicit plans are Ready=true. Execution validates readiness and one-to-one ordered membership, snapshots values and scope, then uses existing worker limits.
-- Plans are invocation-local public data, not authorization tokens. Inconsistent plans fail before writes; structurally valid caller-created plans still receive adapter capability/value/timing checks.
-- 8.8/8.9 reject planning, prepared execution and direct mutation before I/O. v810 accepts only the native 204 empty acknowledgement, reuses common completion submission classification, and never invokes RetryCamundaMutation.
-- Confirmation runs only after known acceptance with configured backoff and exact-key/value checks. Unknown/rejected submission performs no reconciliation reads; accepted observation failures retain acceptance plus an error.
-- README documents library behavior/source compatibility. CLI docs are unchanged because T002 owns CLI delivery.
+- T001–T004 complete. Native assignment/atomic completion are one-shot; never replay, redirect to parents, fall back without BID, or infer assignment from a later completed job. Native 204 acknowledges acceptance; independently observed snapshots are never backfilled.
+- Shared assignment validation permits nil only for omitted job intent; direct assignment requires nonnil. Reject blank/invalid UTF-8/>256 UTF-16 units; preserve accepted bytes and creation's existing whitespace behavior.
+- Direct plans validate all input before reads, freeze stable distinct exact keys/value, and require authoritative readiness plus one-to-one ordered membership before writes. Explicit completed empty plans are valid. Plans are invocation-local data, not authorization tokens. v88/v89 reject assignment before service I/O, including forged/empty prepared requests.
+- Direct confirmation runs only after known acceptance, polling exact key/value with existing backoff. Unknown/rejected dispatch never triggers reconciliation reads. Accepted observation failure retains acceptance plus error; no-wait records skipped confirmation.
+- Job preparation copies BID, nested variables and selection. Distinct job keys remain separate even in one process. Precompleted jobs cannot satisfy assignment; unknown/rejected dispatch followed by COMPLETED keeps independent observation and original failure. Plain completion retry/reconciliation remains unchanged.
+- Scalar approved plans privately freeze key/mode/payload. Conversion rejects altered plan attachments or changed request key/mode, and uses approved payload despite original input edits. Public UpdateJob rejects assignment intent rather than dropping it. Existing listener-variable restrictions remain enforced.
+- New CLI assignment supports scalar, repeated/comma keys, newline stdin and existing selector completion. Assignment alone is not selection; keyless retries zero is exact, keyed retries remain rejected. Bulk keys-only and JSON+verbose remain unsupported. No-wait/empty/dry-run cannot invent accepted submissions.
 
 ## Gotchas
 
-- GetJob on v810 is POST /jobs/search with an exact jobKey filter, not GET /jobs/{key}. New atomic wire fixtures use that existing read path and distinguish it from completion submissions.
-- New public UpdatePlan private approval storage makes unkeyed external literals incompatible; README documents keyed literals and invocation-local approval. No job.API method was added.
-- T003 changed README only for library delivery; generated docs and CLI assignment completion remain T004 responsibilities. Scalar partial evidence now includes optional Submission/Observation/Assignment; T004 must retain it on error and render once.
-
-- Assignment fake lost responses classify as internal (exit 1), while HTTP 400 remains invalid_input (exit 2). Unknown assignment evidence is separate from the error class.
-- New assignment command tests live in update_processinstance_assignment{,_logging}_test.go, with owned HTTP servers, separate configured/inherited writers and actual terminal stdin. The helper clears inherited C8VOLT overrides before executing the explicit temporary config.
-- CLI docs regeneration also synced the T001 library README additions into docs/index.md. README now describes CLI assignment as delivered; atomic completion remains pending.
-
-
-- Generated assignment response parsing returns nil plus a parse error for malformed advertised JSON, even if an HTTP status was received. Preserve this as unknown, not authoritative rejection.
-- Test fixtures with JSON content type must supply valid problem JSON when testing typed HTTP failures; empty 503 JSON tests parse failure instead of ErrUnavailable.
-- Existing process service/public interface doubles in process, resource and cmd need alignment when adding methods. Unrelated fixtures embed the expanded interface; assignment fixtures explicitly implement its new operations.
-- The shared HTTP read retry transport only retries GET/HEAD. Assignment POST bypasses the service mutation retry helper. Error strings remain in machine results; no new human logger/output boundary exists in T001.
-- Real-engine eligibility, durability, uniqueness configuration and timing were not tested; all dependencies were isolated fakes.
+- Process key normalization requires 16 decimal digits; planning examples are descriptive. GetJob uses POST /jobs/search with exact jobKey, not GET /jobs/{key}.
+- Pool helpers leave zero slots for unscheduled work; coordinators prepopulate not-submitted/skipped outcomes and join caller cancellation explicitly.
+- CopyJSONMap converts float64 to json.Number. Copy nested variables conditionally for BID-bearing scalar requests to preserve omitted-input compatibility.
+- Generated response parsing can lose HTTP status evidence on malformed advertised JSON; retain unknown classification. HTTP error fixtures need valid problem JSON. Lost responses classify internal (exit 1); HTTP 400 is invalid_input (exit 2).
+- New public struct/private approval fields affect unkeyed external literals; use keyed literals. New process API methods require custom implementations/doubles to align; job.API gained no methods.
+- Real-terminal fixtures defaulted to 8.8; the shared terminal completion fixture now uses 8.10 so it exercises ordinary and assignment payloads. Assignment logger/terminal tests cover configured/inherited destinations, redirects, plain/structured formats, quiet/WARN, DEBUG flag/config, one envelope+EOF, accept/decline/EOF and empty scopes.
+- Docs regeneration also synchronized T003's library README additions into docs/index.md. Generated clients were not changed.
 
 ## Reusable Commands
 
-- env GOFLAGS= go test ./internal/services/job/... ./c8volt/job -run 'Completion|WorkerOutcome' -count=1 (passed T003; real selections, including new assignment tests).
-- env GOFLAGS= GORACE=atexit_sleep_ms=0 go test ./internal/domain ./internal/services/job/... ./c8volt/job -race -count=1 (passed T003).
-- env GOFLAGS= GORACE=atexit_sleep_ms=0 go test ./c8volt/job -race -count=1 (passed after final public administrative guard).
-- env GOFLAGS= go test ./cmd -run 'Test.*(UpdateJob|BulkCompletion)' -count=1 (passed T003, 22.775s).
-- env GOFLAGS= go test ./... -run '^$' -count=1 (repository compilation passed T003).
-- env GOFLAGS= GORACE=atexit_sleep_ms=0 go test ./internal/services/job/v810 -run TestCompletionAssignmentValidation -race -count=1 (passed after added listener guard assertion).
-
-- env GOFLAGS= go test ./cmd -run 'Test.*(BusinessIDAssignment|UpdateProcessInstance)' -count=1
-- env GOFLAGS= GORACE=atexit_sleep_ms=0 go test ./cmd -run 'Test.*(BusinessIDAssignment|UpdateProcessInstance)' -race -count=1
-- env GOFLAGS= GORACE=atexit_sleep_ms=0 go test ./cmd -race -count=1 (passed iteration 2 in 565.222s; allow sufficient wall time).
-- env GOFLAGS= make docs-content; git diff --check (passed iteration 2).
-- Negative mutation checks temporarily replaced assignment ERROR logging with a direct configured-stderr print and raw err.Error() logging. TestBusinessIDAssignmentLogging/plain-time/configured/failure rejected both. Restored production code passed targeted race validation.
-
-
-- env GOFLAGS= go test ./internal/domain -run TestValidateBusinessID -count=1
-- env GOFLAGS= go test ./internal/services/processinstance/... ./c8volt/process -run BusinessIDAssignment -race -count=1
-- env GOFLAGS= go test ./internal/domain ./internal/services/processinstance/... ./c8volt/process ./c8volt/resource -count=1
-- env GOFLAGS= go test ./... -run '^$' -count=1
-- gofmt on touched Go files; git diff --check.
-- All commands above passed in iteration 1. The race selection exercises nine new service/facade test functions plus their subtests; domain selection includes creation regression and assignment validation.
-- Full make test remains the T004 final delivery obligation, not performed in T001.
+- `env GOFLAGS= go test ./cmd -run 'Test.*(UpdateJob|BulkCompletion)' -count=1` passed iteration 4 (24.992s); final selection has 97 top-level tests including helper entry points. Last-added TestUpdateJobAssignmentInputGuards passed separately (1.013s). Eight new assignment test functions supplement expanded existing matrices.
+- `env GOFLAGS= go test ./c8volt/job -run 'Completion|WorkerOutcome' -count=1` passed iteration 4 (0.667s).
+- `env GOFLAGS= make test` passed iteration 4: 87 tested packages, 19 packages without tests; cmd race suite 560.531s. The target clears no flags itself, so explicitly clear GOFLAGS; integration live tests require tags. Untagged integration-directory tests validate fixtures/examples only. No inherited C8VOLT/MAKE overrides were present.
+- `env GOFLAGS= make docs-content`, gofmt on touched Go files, `git diff --check`, and feature local Markdown link checks passed.
+- Negative command tests rejected direct stderr error emission, raw runErr.Error() logging, and a human summary written to stdout; production code was restored before final targeted/full validation.
+- Earlier iterations passed direct-assignment domain/service/facade/command targeted tests, affected service/facade race suites, repository compilation, and full cmd race validation. Detailed historical commands/results remain in progress.md; current coverage is in quickstart.md.
 
 ## Do Not Repeat
 
-- Do not replay assignment, redirect a child, infer acceptance from later state, or backfill observed job/task/listener identity.
-- Do not log raw result.Error strings at normal or verbose human levels in assignment or completion. Preserve those fields for machine evidence and render bounded aggregate diagnostics through configured command logging.
-- Do not run integration targets/tags or probe live services for implementation validation.
+- Do not expose raw joined/transport/generated errors at normal or verbose human levels. Machine error fields retain original evidence; existing redacted DEBUG transport owns HTTP diagnostics.
+- Do not run live integration targets/tags, inspect/provision clusters, or probe real engines during implementation. Eligibility, uniqueness configuration, durability and timing remain unverified by these isolated checks.
+- Do not serialize scalar approval plans as authorization tokens, mutate generated clients, or add backend orchestration to command/facade layers.
 
 ## Current Handoff
 
-- Next dependency-ready work is T004 [US2]: update job --complete --set-bid CLI parsing, frozen scalar approval via FreezeCompletionPayload, copied batch previews/results, error evidence and one-envelope rendering, full required output/logging/terminal matrix, README/help and generated docs. Recheck tasks.md before selection. T001–T003 are complete; only T004 remains open.
-- Complete final isolated make test and record actual results in quickstart.md as T004 requires. No live-engine validation was run; eligibility, durability, uniqueness and timing remain unverified. Retain original error class for unknown/rejected assignment even when completion observation says COMPLETED.
+- Feature complete; no handoff required.

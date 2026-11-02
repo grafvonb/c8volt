@@ -72,3 +72,47 @@ The inspected Makefile test target runs `go test ./... -race -count=1`; it does 
 ## Completion evidence
 
 Record actual test names, commands and outcomes, separately from planned coverage. Mocked eligibility proves client response handling; it does not verify real-engine rules, durability, timing or uniqueness configuration. Keep those limitations explicit without blocking implementation on a live target.
+
+## Iteration 4 isolated validation evidence (2026-11-02)
+
+- Initial `TestUpdateJobAssignment` assertions failed on the absent `--set-bid`
+  flag before implementation, then passed after CLI wiring.
+- `env GOFLAGS= go test ./cmd -run 'Test.*(UpdateJob|BulkCompletion)' -count=1`
+  passed (24.992s). The final selection contains 97 top-level tests, including
+  helper entry points and eight new assignment test functions. The last-added
+  `TestUpdateJobAssignmentInputGuards` also passed independently (1.013s).
+- `env GOFLAGS= go test ./c8volt/job -run 'Completion|WorkerOutcome' -count=1`
+  passed (0.667s). No facade interface or backend workflow was added in T004;
+  the new public value validator delegates to the existing domain validator.
+- New command coverage includes scalar/collection/selector wire payloads in
+  normal and no-wait modes, nonempty stdin deduplication, distinct jobs in one
+  process, native conflict, precompleted targets, lost response followed by
+  COMPLETED, separate requested/observed identity, unsupported versions, and
+  scalar approval despite flag edits. Existing paging cases now also run with
+  assignment, including sparse pages and failed/incomplete discovery.
+- Assignment variants exercise the bulk success/failure logger and real-terminal
+  matrices. Scalar coverage verifies configured/inherited destinations, plain
+  and structured formats, INFO/WARN/quiet behavior, DEBUG by flag/config without
+  verbose, redaction, one envelope plus EOF, preserved exit classes, and actual
+  terminal approval/decline/EOF with redirected stdout. Empty terminal discovery
+  and stdin retain exact human wording and successful non-accepted envelopes.
+- Negative regression checks temporarily replaced the scalar configured error
+  logger with direct stderr output, exposed `runErr.Error()` at normal level,
+  and wrote its human summary to stdout. The command logger tests rejected all
+  three mutations. Production code was restored before final validation.
+- `env GOFLAGS= make docs-content`, targeted gofmt, `git diff --check`, and
+  feature Markdown local-file link checks passed. Generated `docs/index.md`
+  also incorporates the T003 library documentation from README.
+- Failure routing was reviewed from native classification through service
+  evidence, facade conversion, scalar/bulk view, configured logger, and
+  `exitAfterRenderedResult`: JSON retains the original error and partial payload
+  exactly once. Human output consumes known evidence and bounded reasons.
+- The inspected `make test` target uses `go test ./... -race -count=1`, clears
+  GOFLAGS for this run, and adds only the race-detector exit-delay optimization.
+  No inherited C8VOLT/MAKE test settings were present; integration suites require
+  explicit build tags. All exercised services are test-owned fakes. Real-engine
+  eligibility, uniqueness configuration, durability and timing remain unverified.
+- Final `env GOFLAGS= make test` passed with race detection: 87 packages passed,
+  19 had no tests, and `cmd` completed in 560.531s. Untagged tests under
+  `integration/cli` are fixture/example-validation unit tests; tagged live-engine
+  suites were not selected. No live-engine check is claimed.

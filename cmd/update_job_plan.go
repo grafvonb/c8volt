@@ -23,7 +23,13 @@ func planUpdateJob(ctx context.Context, cli c8volt.API, request job.UpdateReques
 	if err != nil {
 		return job.UpdatePlan{}, err
 	}
-	return buildUpdateJobPlan(current, request), nil
+	plan := buildUpdateJobPlan(current, request)
+	if request.WorkerOutcome != nil && request.WorkerOutcome.SetBusinessID != nil {
+		if err := plan.FreezeCompletionPayload(*request.WorkerOutcome); err != nil {
+			return plan, err
+		}
+	}
+	return plan, nil
 }
 
 // buildUpdateJobPlan compares retry state and records timeout submission intent without mutating.
