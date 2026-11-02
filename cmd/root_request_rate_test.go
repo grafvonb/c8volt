@@ -47,23 +47,39 @@ func (s *requestRateServiceStub) PauseRequestRateReporting() func() {
 
 // requestRateLogCapture synchronizes asynchronous logger output and test-controlled response release.
 type requestRateLogCapture struct {
-	mu     sync.Mutex
-	output strings.Builder
-	report chan struct{}
+	mu       sync.Mutex
+	output   strings.Builder
+	report   chan struct{}
+	requests uint64
 }
 
-// Write signals after recording a report so the fake can finish without racing a timer.
+// Write counts reported starts before notifying response waiters; idle reports
+// wake them without falsely acknowledging another HTTP request.
 func (w *requestRateLogCapture) Write(p []byte) (int, error) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	n, err := w.output.Write(p)
-	if strings.Contains(string(p), "HTTP request rate:") && w.report != nil {
-		select {
-		case w.report <- struct{}{}:
-		default:
+	if _, summary, found := strings.Cut(string(p), "HTTP request rate: "); found {
+		if count, _, ok := strings.Cut(summary, " requests in "); ok {
+			if starts, parseErr := strconv.ParseUint(count, 10, 64); parseErr == nil {
+				w.requests += starts
+			}
+		}
+		if w.report != nil {
+			select {
+			case w.report <- struct{}{}:
+			default:
+			}
 		}
 	}
 	return n, err
+}
+
+// ReportedRequests returns cumulative starts, independently of notification timing.
+func (w *requestRateLogCapture) ReportedRequests() uint64 {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	return w.requests
 }
 
 // String returns a stable snapshot while the invocation may still be running.
@@ -83,11 +99,13 @@ func appendRequestRateConfig(t *testing.T, path, interval string) {
 	require.NoError(t, file.Close())
 }
 
-// requireRequestRateSummaries verifies complete safe messages, logger framing and measured precision.
-func requireRequestRateSummaries(t *testing.T, output, format string) int {
+// requireRequestRateSummaries verifies framing and precision, returning total
+// reported starts without assuming a particular partition into timer windows.
+func requireRequestRateSummaries(t *testing.T, output, format string) uint64 {
 	t.Helper()
 	pattern := regexp.MustCompile(`^HTTP request rate: ([0-9]+) requests in ([^ ]+) \(([0-9]+\.[0-9]{2}) requests/s\)$`)
 	count := 0
+	var requests uint64
 	for line := range strings.SplitSeq(output, "\n") {
 		if !strings.Contains(line, "HTTP request rate:") {
 			continue
@@ -107,6 +125,7 @@ func requireRequestRateSummaries(t *testing.T, output, format string) int {
 		require.Len(t, match, 4, "unexpected summary: %s", message)
 		starts, err := strconv.ParseUint(match[1], 10, 64)
 		require.NoError(t, err)
+		requests += starts
 		elapsed, err := time.ParseDuration(match[2])
 		require.NoError(t, err)
 		require.Positive(t, elapsed)
@@ -115,7 +134,7 @@ func requireRequestRateSummaries(t *testing.T, output, format string) int {
 		require.InDelta(t, float64(starts)/elapsed.Seconds(), measured, 0.0051)
 	}
 	require.Positive(t, count, "expected a rate report: %s", output)
-	return count
+	return requests
 }
 
 // TestRequestRateCommandReporting exercises effective logger enablement, both destinations,
@@ -138,14 +157,22 @@ func TestRequestRateCommandReporting(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			capture := &requestRateLogCapture{report: make(chan struct{}, 10)}
+			// A timer may report an idle window before the first HTTP dispatch.
+			// Keep a stale wakeup queued so response release cannot depend on timing.
+			capture.report <- struct{}{}
 			var calls atomic.Int32
 			server := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				calls.Add(1)
+				request := calls.Add(1)
 				if tc.enabled {
-					select {
-					case <-capture.report:
-					case <-time.After(2 * time.Second):
-						t.Error("no rate summary during request")
+					deadline := time.NewTimer(2 * time.Second)
+					defer deadline.Stop()
+					for capture.ReportedRequests() < uint64(request) {
+						select {
+						case <-capture.report:
+						case <-deadline.C:
+							t.Errorf("request %d was not included in a rate summary", request)
+							return
+						}
 					}
 				} else {
 					time.Sleep(10 * time.Millisecond)
@@ -196,8 +223,8 @@ func TestRequestRateCommandReporting(t *testing.T) {
 			require.NotContains(t, stdout.String(), "HTTP request rate:")
 			output := capture.String()
 			if tc.enabled {
-				requireRequestRateSummaries(t, output, tc.format)
-				require.Equal(t, 2, strings.Count(output, "1 requests in"), "probe and operation must each be reported exactly once")
+				reported := requireRequestRateSummaries(t, output, tc.format)
+				require.Equal(t, uint64(2), reported, "probe and operation must each be reported exactly once")
 			} else {
 				require.NotContains(t, output, "HTTP request rate:")
 			}
