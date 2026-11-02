@@ -10,16 +10,23 @@ import (
 )
 
 var (
+	flagUpdatePISetBID   string
 	flagUpdatePIKeys     []string
 	flagUpdatePIVars     string
 	flagUpdatePIVarsFile string
 )
 
-// updateProcessInstanceCmd updates root-scope variables for explicitly selected process instances.
+// updateProcessInstanceCmd updates variables or assigns native identity to exact instances.
 var updateProcessInstanceCmd = &cobra.Command{
 	Use:   "process-instance",
-	Short: "Update process-instance variables by key or business ID",
-	Long: `Update process-instance-scope variables on Camunda 8.8 or newer.
+	Short: "Update process-instance variables or assign a business ID",
+	Long: `Update process-instance-scope variables on Camunda 8.8 or newer, or assign a native business ID on Camunda 8.10.
+
+Use --set-bid with explicit --key values or newline stdin to assign one exact value. It cannot be combined with --bid, --vars, --vars-file, --limit or --batch-size. All keys and the value are validated before planning; distinct targets and the value are frozen before one approval. Deliberate empty stdin succeeds without approval or mutation. Keys retain explicit backend authorization, without tenant filtering or parent/family expansion.
+
+Assignment requires an active root instance with no business ID and uniqueness disabled. The backend decides eligibility; even identical reassignment conflicts. Empty, whitespace-only, invalid UTF-8 and values exceeding 256 UTF-16 units are rejected. Spaces, commas and case in accepted values are preserved exactly. A variable named businessId remains an ordinary variable, independent of native identity. Job, task and listener snapshots are not refreshed by assignment.
+
+Assignment dry-run previews requested intent and prior observations without reserving eligibility; a later execution can race. Normal execution confirms accepted assignments by reading the exact instance. --no-wait skips confirmation and reports acceptance only. Ambiguous responses remain unknown and are never automatically replayed. Partial results preserve rejected, unknown and not-submitted outcomes with a nonzero exit status. Keys-only prints planned keys in dry-run and known accepted keys in execution; empty scope prints nothing.
 
 Select by exact business ID with --bid on Camunda 8.10, as an alternative to --key or stdin. BID discovery respects configured tenant scope and completes before approval; --limit bounds distinct matching seeds and --batch-size controls request size. Duplicate matches count once. Empty completed discovery succeeds without confirmation or mutation, including --no-wait. Errors during discovery prevent mutation. JSON retains the original criterion and reviewed scope; execution never searches the BID again after approval. A separate dry-run and later execution perform separate discoveries.
 
@@ -27,12 +34,14 @@ BID updates freeze each selected instance's existing root-variable plan and payl
 
 Variable plans retain each selected instance's observed business ID when available. Detailed plan rows quote it safely, and JSON preserves it exactly. Key/status-only outcomes do not add a lookup.
 
-Provide repeated --key values or newline-separated keys from stdin with '-'. Supply exactly one payload source: --vars with a JSON object or --vars-file with its file path. The same variable map is applied to every unique key. Explicit keys use backend authorization without tenant filtering.
+Provide repeated --key values or newline-separated keys from stdin with '-'. For variable updates, supply exactly one payload source: --vars with a JSON object or --vars-file with its file path. The same variable map is applied to every unique key. Explicit keys use backend authorization without tenant filtering.
 
 c8volt reads every selected process instance's complete root-variable scope before planning additions and changes. Nested-scope variables are excluded, and truncated values remain planned changes because they cannot prove equality. After confirmation, the command writes only the prepared additions and changes locally to their recorded roots, then waits until all requested variables are visible through the same lookup as get process-instance --with-vars. Detailed previews label every planned write with its selected process-instance root as pi:<key>.
 
 Use --dry-run to inspect changes without mutation, or --auto-confirm for unattended updates. A completed plan with no additions or changes finishes without confirmation, mutation, or verification. Use --no-wait to return after accepted root writes without confirmation. Partial failures retain accepted, failed, and skipped outcomes while returning a nonzero exit status.`,
-	Example: `  ./c8volt --tenant tenant-a update pi --bid 'ORDER-123' --vars '{"customerTier":"gold"}' --dry-run --json
+	Example: `  ./c8volt update pi --key <process-instance-key> --set-bid 'ORDER-123' --dry-run
+  ./c8volt --auto-confirm update pi --key <process-instance-key> --set-bid 'ORDER-123' --no-wait
+  ./c8volt --tenant tenant-a update pi --bid 'ORDER-123' --vars '{"customerTier":"gold"}' --dry-run --json
   ./c8volt update process-instance --key <process-instance-key> --vars '{"customerTier":"gold"}' --dry-run
   ./c8volt update process-instance --key <process-instance-key> --vars-file ./vars.json --dry-run
   ./c8volt --tenant tenant-a update process-instance --key <process-instance-key> --vars '{"customerTier":"gold"}' --dry-run
@@ -57,6 +66,10 @@ Use --dry-run to inspect changes without mutation, or --auto-confirm for unatten
 		}
 		if cmd.Flags().Changed("workers") && flagWorkers < 1 {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, invalidFlagValuef("--workers must be positive integer"))
+		}
+		if cmd.Flags().Changed("set-bid") {
+			runUpdateProcessInstanceAssignment(cmd, cli, log, cfg, args)
+			return
 		}
 		variables, err := parseUpdateProcessInstanceVariablesFromFlags(cmd, flagUpdatePIVars, flagUpdatePIVarsFile)
 		if err != nil {
@@ -120,16 +133,18 @@ Use --dry-run to inspect changes without mutation, or --auto-confirm for unatten
 	},
 }
 
+// init registers assignment and variable-update flags with the shared mutation contract.
 func init() {
 	updateCmd.AddCommand(updateProcessInstanceCmd)
 
 	fs := updateProcessInstanceCmd.Flags()
 	registerBusinessIDActionFlags(updateProcessInstanceCmd)
+	fs.StringVar(&flagUpdatePISetBID, "set-bid", "", "assign an exact native business ID to explicit process keys (Camunda 8.10)")
 	fs.StringSliceVarP(&flagUpdatePIKeys, "key", "k", nil, "process instance key(s) to update; repeat or combine with stdin '-'")
 	fs.StringVar(&flagUpdatePIVars, "vars", "", "JSON object with variables to set on each process instance")
 	fs.StringVar(&flagUpdatePIVarsFile, "vars-file", "", "path to JSON object file with variables to set on each process instance")
-	fs.BoolVar(&flagDryRun, "dry-run", false, "preview variable updates without submitting mutation")
-	fs.BoolVar(&flagNoWait, "no-wait", false, "return after the update request is accepted without variable confirmation")
+	fs.BoolVar(&flagDryRun, "dry-run", false, "preview variable updates or business-ID assignment without submitting mutation")
+	fs.BoolVar(&flagNoWait, "no-wait", false, "return after the update request is accepted without confirmation")
 	fs.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers when updating multiple process instances (default: min(count, 2*GOMAXPROCS, 32))")
 	fs.BoolVar(&flagNoWorkerLimit, "no-worker-limit", false, "use all queued jobs as workers when --workers is unset")
 	fs.BoolVar(&flagFailFast, "fail-fast", false, "stop scheduling new updates after the first error")

@@ -1391,12 +1391,18 @@ func TestCommandContractGetProcessInstanceWithListeners(t *testing.T) {
 	require.Contains(t, getProcessInstanceCmd.Example, "./c8volt get process-instance --key <process-instance-key> --with-elements --with-listeners")
 }
 
+// TestCommandCapabilityForCommand_UpdateProcessInstanceContract keeps both mutation modes discoverable.
 func TestCommandCapabilityForCommand_UpdateProcessInstanceContract(t *testing.T) {
 	root := Root()
 	resetCommandTreeFlags(root)
 
 	capability := commandCapabilityForCommand(updateProcessInstanceCmd)
 
+	require.Contains(t, capability.Flags, FlagContract{
+		Name: "set-bid", Type: "string",
+		Description: "assign an exact native business ID to explicit process keys (Camunda 8.10)",
+	})
+	require.Contains(t, updateProcessInstanceCmd.Long, "even identical reassignment conflicts")
 	require.Equal(t, "update process-instance", capability.Path)
 	require.Equal(t, CommandMutationStateChanging, capability.Mutation)
 	require.Equal(t, ContractSupportFull, capability.ContractSupport)
@@ -1429,14 +1435,14 @@ func TestCommandCapabilityForCommand_UpdateProcessInstanceContract(t *testing.T)
 		Type:        "bool",
 		Required:    false,
 		Repeated:    false,
-		Description: "preview variable updates without submitting mutation",
+		Description: "preview variable updates or business-ID assignment without submitting mutation",
 	})
 	require.Contains(t, capability.Flags, FlagContract{
 		Name:        "no-wait",
 		Type:        "bool",
 		Required:    false,
 		Repeated:    false,
-		Description: "return after the update request is accepted without variable confirmation",
+		Description: "return after the update request is accepted without confirmation",
 	})
 }
 
@@ -2885,7 +2891,7 @@ func TestUpdateProcessInstanceHelp_DocumentsVariableUpdateDiscovery(t *testing.T
 
 	output = assertCommandHelpOutput(t, []string{"update", "process-instance"}, []string{
 		"Update process-instance-scope variables",
-		"Supply exactly one payload source",
+		"For variable updates, supply exactly one payload source",
 		"--vars with a JSON object or --vars-file with its file path",
 		"repeated --key values or newline-separated keys from stdin with '-'",
 		"reads every selected process instance's complete root-variable scope",
