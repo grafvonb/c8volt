@@ -105,11 +105,27 @@ func TestCompletionAssignmentPublicGuards(t *testing.T) {
 		{Key: "1", Retries: toolx.Ptr(int32(1)), WorkerOutcome: &WorkerOutcomeRequest{SetBusinessID: toolx.Ptr("order")}},
 		{Key: "1", TimeoutMillis: toolx.Ptr(int64(100)), UpdatePlan: &UpdatePlan{SetBusinessID: toolx.Ptr("order")}},
 	} {
-		_, err := api.UpdateJob(context.Background(), r)
+		got, err := api.UpdateJob(context.Background(), r)
 		require.ErrorIs(t, err, ferrors.ErrInvalidInput)
+		require.EqualError(t, err, "invalid input: business-ID assignment requires worker completion")
+		require.Equal(t, UpdateResult{}, got)
 	}
 	for _, mode := range []WorkerOutcomeMode{WorkerOutcomeTechnicalFailure, WorkerOutcomeBPMNError, "update", "timeout"} {
 		_, err := api.SubmitJobWorkerOutcome(context.Background(), WorkerOutcomeRequest{Key: "1", Mode: mode, SetBusinessID: toolx.Ptr("order")})
 		require.ErrorIs(t, err, ferrors.ErrInvalidInput)
 	}
+}
+
+// TestCompletionApprovalLocalErrorContract preserves exact errors and leaves plans
+// unchanged when local identity or JSON validation prevents freezing approval.
+func TestCompletionApprovalLocalErrorContract(t *testing.T) {
+	t.Parallel()
+	plan := UpdatePlan{Key: "job", Mode: MutationModeCompletion}
+	before := plan
+	err := plan.FreezeCompletionPayload(WorkerOutcomeRequest{Key: "other", Mode: WorkerOutcomeCompletion})
+	require.EqualError(t, err, "invalid input: inconsistent completion plan")
+	require.Equal(t, before, plan)
+	err = plan.FreezeCompletionPayload(WorkerOutcomeRequest{Key: "job", Mode: WorkerOutcomeCompletion, Variables: map[string]any{"invalid": make(chan int)}})
+	require.EqualError(t, err, "invalid input: invalid completion variables")
+	require.Equal(t, before, plan)
 }

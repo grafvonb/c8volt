@@ -163,7 +163,7 @@ func PreviewDeleteProcessDefinitionsWithWorkers(ctx context.Context, pdApi API, 
 		for _, key := range ukeys {
 			plan.Items = append(plan.Items, d.DeleteProcessDefinitionPlanItem{Key: key})
 		}
-		plan.TenantEvidence = processDefinitionPlanTenantEvidence(plan.Items)
+		plan.TenantEvidence = ProcessDefinitionPlanTenantEvidence(plan.Items)
 		return plan, nil
 	}
 
@@ -180,13 +180,13 @@ func PreviewDeleteProcessDefinitionsWithWorkers(ctx context.Context, pdApi API, 
 		}
 		plan.Items = append(plan.Items, item)
 	}
-	plan.TenantEvidence = processDefinitionPlanTenantEvidence(plan.Items)
+	plan.TenantEvidence = ProcessDefinitionPlanTenantEvidence(plan.Items)
 	return plan, nil
 }
 
-// processDefinitionPlanTenantEvidence aggregates plan-item and nested PI
+// ProcessDefinitionPlanTenantEvidence aggregates plan-item and nested PI
 // evidence by affected target key without querying for missing tenant metadata.
-func processDefinitionPlanTenantEvidence(items []d.DeleteProcessDefinitionPlanItem) d.TenantEvidence {
+func ProcessDefinitionPlanTenantEvidence(items []d.DeleteProcessDefinitionPlanItem) d.TenantEvidence {
 	acc := common.NewTenantEvidenceAccumulator()
 	targets := make([]d.TenantEvidenceTarget, 0)
 	seen := make(map[string]struct{})
