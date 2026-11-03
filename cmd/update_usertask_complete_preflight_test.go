@@ -44,7 +44,7 @@ func TestUpdateUserTaskCompletionPreflightModes(t *testing.T) {
 							w.WriteHeader(204)
 						}
 					})
-					args := []string{"--auto-confirm", "--log-format", "plain-time", "update", "ut", "--complete", "-k", completionKeyA + "," + completionKeyB + "," + completionKeyA, "--vars", `{"approved":true}`}
+					args := []string{"--auto-confirm", "--log-format", "plain-time", "update", "ut", "--complete", "-k", completionKeyA + "," + completionKeyB + "," + completionKeyA, "--set-vars", `{"approved":true}`}
 					if scenario == "fail fast" {
 						args = append(args, "--fail-fast")
 					}
@@ -190,7 +190,7 @@ func TestUpdateUserTaskCompletionPreflightTerminal(t *testing.T) {
 						args = append(args, "--dry-run")
 					}
 					if scenario == "invalid" {
-						args = append(args, "--vars", "{} {}")
+						args = append(args, "--set-vars", "{} {}")
 					}
 					prompt := ""
 					var exchanges []testx.CmdTerminalExchange
@@ -400,7 +400,7 @@ func TestUpdateUserTaskCompletionConflictWording(t *testing.T) {
 					}
 					args := []string{"--auto-confirm", "--log-format", "plain-time", "update", "ut", "--complete", "-k", strings.Join(keys, ",")}
 					if source != "omitted" {
-						args = append(args, "--vars", source)
+						args = append(args, "--set-vars", source)
 					}
 					if mode != "human" {
 						args = append(args, "--"+mode)

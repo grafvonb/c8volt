@@ -53,6 +53,7 @@ func TestRealStateBPMNErrorFamily(t *testing.T) {
 	}
 }
 
+// runRealStateBPMNErrorScenarios records BPMN error preview and outcome evidence using suite-owned jobs.
 func runRealStateBPMNErrorScenarios(t *testing.T, profile integrationProfile, dataset realStateJobDataset) ([]evidenceRecord, error) {
 	t.Helper()
 	var records []evidenceRecord
@@ -62,8 +63,8 @@ func runRealStateBPMNErrorScenarios(t *testing.T, profile integrationProfile, da
 		return records, fmt.Errorf("real-state BPMN error dataset for profile %q has no job", profile.Name)
 	}
 
-	dryRunResult := runC8VoltForProfile(t, profile.Name, "real-state-bpmn-error-update-dry-run", "--automation", "--json", "update", "job", "--key", jobs[0].Key, "--throw-bpmn-error", "ErrorTimerCode", "--message", "c8volt real-state BPMN error dry run", "--vars", `{"c8voltBPMNError":true}`, "--dry-run")
-	dryRunRecord := realStateBPMNErrorRecord(profile, dryRunResult, "update job", "real-state-bpmn-error-update-dry-run", "json", []string{"key", "throw-bpmn-error", "message", "vars", "dry-run"}, []string{jobs[0].Key, jobs[0].ProcessInstanceKey}, true, false)
+	dryRunResult := runC8VoltForProfile(t, profile.Name, "real-state-bpmn-error-update-dry-run", "--automation", "--json", "update", "job", "--key", jobs[0].Key, "--throw-bpmn-error", "--set-error-code", "ErrorTimerCode", "--set-error-message", "c8volt real-state BPMN error dry run", "--set-vars", `{"c8voltBPMNError":true}`, "--dry-run")
+	dryRunRecord := realStateBPMNErrorRecord(profile, dryRunResult, "update job", "real-state-bpmn-error-update-dry-run", "json", []string{"key", "throw-bpmn-error", "set-error-code", "set-error-message", "set-vars", "dry-run"}, []string{jobs[0].Key, jobs[0].ProcessInstanceKey}, true, false)
 	if err := validateRealStateBPMNErrorDryRun(dryRunResult); err != nil {
 		dryRunRecord.Outcome = realStateOutcomeFailed
 		dryRunRecord.FailureClass = volumeFailureProduct
@@ -145,7 +146,7 @@ func realStateBPMNErrorConfirmedSkippedRecord(profile integrationProfile, job re
 		Profile:           profile.Name,
 		CamundaVersion:    profile.ExpectedVersion,
 		ResourceKeys:      []string{job.Key, job.ProcessInstanceKey},
-		CoveredFlags:      []string{"key", "throw-bpmn-error", "message", "vars", "auto-confirm"},
+		CoveredFlags:      []string{"key", "throw-bpmn-error", "set-error-code", "set-error-message", "set-vars", "auto-confirm"},
 		OutputMode:        "skipped",
 		DataOwnership:     []string{volumeDataSeeded, volumeDataPreexisting, "retained"},
 		RequiredState:     "BPMN error-capable job with catchable ErrorTimerCode path",

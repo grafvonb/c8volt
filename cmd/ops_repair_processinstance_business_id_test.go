@@ -180,7 +180,7 @@ func TestBusinessIDOperationsRepairScope(t *testing.T) {
 		for _, noWait := range []bool{false, true} {
 			t.Run(fmt.Sprint(dry, noWait), func(t *testing.T) {
 				f, s := newBusinessIDRepairFixture(t, false, "")
-				flags := []string{"--auto-confirm", "--json", "--vars", `{"nested":{"value":"frozen"}}`, "--job-timeout", "1m"}
+				flags := []string{"--auto-confirm", "--json", "--set-vars", `{"nested":{"value":"frozen"}}`, "--set-job-timeout", "1m"}
 				if dry {
 					flags = append(flags, "--dry-run")
 				}
@@ -317,7 +317,7 @@ func TestBusinessIDOperationsRepairConfirmation(t *testing.T) {
 					require.Equal(t, []string{"101", "102"}, f.reads.Snapshot())
 					f.approved.Store(true)
 				}}
-				out, stderr, err := runBusinessIDCommand(t, businessIDRepairArgs(t, s, "plain-time", "info", "--no-wait", "--vars", `{"nested":{"value":"frozen"}}`), destination, false, exchange)
+				out, stderr, err := runBusinessIDCommand(t, businessIDRepairArgs(t, s, "plain-time", "info", "--no-wait", "--set-vars", `{"nested":{"value":"frozen"}}`), destination, false, exchange)
 				require.Empty(t, out)
 				require.Contains(t, stderr, prompt)
 				require.NotContains(t, stderr, "INFO "+prompt)
@@ -360,7 +360,7 @@ func TestBusinessIDOperationsRepairLogging(t *testing.T) {
 							flags = append(flags, "--no-wait")
 						}
 						if failure == "variables" {
-							flags = append(flags, "--vars", `{"nested":{"value":"frozen"}}`)
+							flags = append(flags, "--set-vars", `{"nested":{"value":"frozen"}}`)
 						}
 						switch mode {
 						case "verbose", "quiet", "json", "dry-run":

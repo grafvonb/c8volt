@@ -83,7 +83,7 @@ func seedVolumeProcessInstanceDataset(t *testing.T, profile integrationProfile, 
 func discoverEmbeddedFixtureFiles(t *testing.T, profile integrationProfile) ([]string, evidenceRecord, error) {
 	t.Helper()
 	scenario := "volume-" + profile.Name + "-embed-list"
-	result := runC8VoltForProfile(t, profile.Name, scenario, "--automation", "--json", "embed", "list", "--details")
+	result := runC8VoltForProfile(t, profile.Name, scenario, "--automation", "--json", "embed", "list", "--with-paths")
 	record := commandEvidence("embed list", scenario, result, volumeOutcomePass)
 	record.Profile = profile.Name
 	record.CamundaVersion = profile.ExpectedVersion
@@ -118,11 +118,12 @@ func selectEmbeddedFixtureBySuffix(expectedVersion string, files []string, suffi
 	return embeddedFixtureSelection{}, fmt.Errorf("no embedded %s fixture found for Camunda version %q", suffix, expectedVersion)
 }
 
+// runVolumeProcessInstances attaches the run marker to every seeded instance.
 func runVolumeProcessInstances(t *testing.T, profile integrationProfile, selection embeddedFixtureSelection, deployments []seededDeployment, count int, label string) (seededProcessInstances, evidenceRecord, error) {
 	t.Helper()
 	args := []string{"--automation", "--json", "run", "process-instance"}
 	args = append(args, runSelectorArgs(selection, deployments)...)
-	args = append(args, "--count", fmt.Sprint(count), "--vars", runMarkerVars(suite.marker))
+	args = append(args, "--count", fmt.Sprint(count), "--set-vars", runMarkerVars(suite.marker))
 
 	scenario := fmt.Sprintf("volume-%s-run-%s-process-instances-%d", profile.Name, label, count)
 	result := runC8VoltForProfile(t, profile.Name, scenario, args...)
@@ -130,7 +131,7 @@ func runVolumeProcessInstances(t *testing.T, profile integrationProfile, selecti
 	record.Profile = profile.Name
 	record.CamundaVersion = profile.ExpectedVersion
 	record.DataOwnership = []string{volumeDataSeeded, "retained"}
-	record.CoveredFlags = []string{"count", "vars"}
+	record.CoveredFlags = []string{"count", "set-vars"}
 	record.OutputMode = "json"
 	if result.Err != nil {
 		record.Outcome = volumeOutcomeFail

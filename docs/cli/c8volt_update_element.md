@@ -12,7 +12,7 @@ Update variables at explicit element scopes
 
 Update local variables on selected runtime element instances on Camunda 8.8 or newer.
 
-Provide repeated or comma-separated --key values, or newline-separated keys from stdin with '-'. Supply exactly one non-null JSON object through --vars or --vars-file. Keys are deduplicated in first-input order. Explicit keys bypass the discovery tenant filter while retaining backend authorization.
+Provide repeated or comma-separated --key values, or newline-separated keys from stdin with '-'. Supply exactly one non-null JSON object through --set-vars or --set-vars-file. Keys are deduplicated in first-input order. Explicit keys bypass the discovery tenant filter while retaining backend authorization.
 
 The command reads every selected element and its complete local variables before approval. It freezes additions and changes at element:<key>, then writes only those values with local scope. Parent, sibling, descendant and called-process variables are not changed. An inherited same-name value does not prevent a local addition. Truncated values cannot prove equality. A null property assigns null; it does not delete a variable.
 
@@ -27,24 +27,24 @@ c8volt update element [flags]
 ### Examples
 
 ```
-  ./c8volt update element --key <element-key> --vars '{"approved":true}' --dry-run
-  ./c8volt update ei --key <key-a>,<key-b> --key <key-a> --vars-file ./vars.json --auto-confirm
-  printf '%s\n' "$ELEMENT_KEY_A" "$ELEMENT_KEY_B" | ./c8volt update element - --vars '{"status":null}' --auto-confirm
-  ./c8volt --json update element --key <element-key> --vars '{"approved":true}' --auto-confirm --no-wait
+  ./c8volt update element --key <element-key> --set-vars '{"approved":true}' --dry-run
+  ./c8volt update ei --key <key-a>,<key-b> --key <key-a> --set-vars-file ./vars.json --auto-confirm
+  printf '%s\n' "$ELEMENT_KEY_A" "$ELEMENT_KEY_B" | ./c8volt update element - --set-vars '{"status":null}' --auto-confirm
+  ./c8volt --json update element --key <element-key> --set-vars '{"approved":true}' --auto-confirm --no-wait
 ```
 
 ### Options
 
 ```
-      --dry-run            preview exact local changes without mutation
-      --fail-fast          stop scheduling new updates after the first error
-  -h, --help               help for element
-  -k, --key strings        runtime element key(s); repeat, comma-separate or combine with stdin '-'
-      --no-wait            return after accepted writes without local variable confirmation
-      --no-worker-limit    use all queued jobs as workers when --workers is unset
-      --vars string        JSON object with variables to set locally on each element
-      --vars-file string   path to JSON object file with variables to set locally
-  -w, --workers int        maximum concurrent workers (default: min(count, 2*GOMAXPROCS, 32))
+      --dry-run                preview exact local changes without mutation
+      --fail-fast              stop scheduling new updates after the first error
+  -h, --help                   help for element
+  -k, --key strings            runtime element key(s); repeat, comma-separate or combine with stdin '-'
+      --no-wait                return after accepted writes without local variable confirmation
+      --no-worker-limit        use all queued jobs as workers when --workers is unset
+      --set-vars string        JSON object with variables to set locally on each element
+      --set-vars-file string   path to JSON object file with variables to set locally
+  -w, --workers int            maximum concurrent workers (default: min(count, 2*GOMAXPROCS, 32))
 ```
 
 ### Options inherited from parent commands

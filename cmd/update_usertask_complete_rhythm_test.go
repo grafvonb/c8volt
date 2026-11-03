@@ -55,7 +55,7 @@ func TestUpdateUserTaskCompletionRhythm(t *testing.T) {
 						if scenario == "empty variables" {
 							vars = `{}`
 						}
-						args = append(args, "--vars", vars)
+						args = append(args, "--set-vars", vars)
 					}
 					switch scenario {
 					case "fail fast":

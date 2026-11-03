@@ -735,8 +735,8 @@ func TestGeneratedOpsDocsDocumentGroupingCommands(t *testing.T) {
 		"--key strings",
 		"--element-id string",
 		"--element-instance-key string",
-		"--retries int32",
-		"--job-timeout string",
+		"--set-retries int32",
+		"--set-job-timeout string",
 		`[c8volt ops repair]({{ "/cli/c8volt_ops_repair" | relative_url }})`,
 	} {
 		if !strings.Contains(repairIncidentDoc, want) {
@@ -1113,4 +1113,42 @@ func readGeneratedDocForTest(t *testing.T, out string, name string) string {
 		t.Fatalf("read generated docs %s: %v", name, err)
 	}
 	return string(b)
+}
+
+// TestFlagIntentGeneratedReference keeps every renamed consumer and the action/code
+// split aligned with the generated reference, without mistaking retained controls for aliases.
+func TestFlagIntentGeneratedReference(t *testing.T) {
+	for file, mappings := range map[string]map[string]string{
+		"update_element":              {"vars": "set-vars", "vars-file": "set-vars-file"},
+		"update_process-instance":     {"vars": "set-vars", "vars-file": "set-vars-file"},
+		"update_user-task":            {"vars": "set-vars", "vars-file": "set-vars-file", "assign": "set-assignee"},
+		"update_job":                  {"vars": "set-vars", "message": "set-error-message", "retry-backoff": "set-retry-backoff"},
+		"run_process-instance":        {"vars": "set-vars", "bid": "set-bid"},
+		"ops_repair_incident":         {"vars": "set-vars", "vars-file": "set-vars-file", "retries": "set-retries", "job-timeout": "set-job-timeout"},
+		"ops_repair_process-instance": {"vars": "set-vars", "vars-file": "set-vars-file", "retries": "set-retries", "job-timeout": "set-job-timeout"},
+		"get_process-definition":      {"stat": "with-stats"},
+		"embed_list":                  {"details": "with-paths"},
+		"get_incident":                {"with-no-error-message": "no-error-message"},
+	} {
+		data, err := os.ReadFile(filepath.Join("..", "docs", "cli", "c8volt_"+file+".md"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		text := string(data)
+		for old, canonical := range mappings {
+			if !strings.Contains(text, "--"+canonical+" ") {
+				t.Errorf("%s missing --%s", file, canonical)
+			}
+			if strings.Contains(text, "--"+old+" ") {
+				t.Errorf("%s retains --%s", file, old)
+			}
+		}
+		if file == "update_job" {
+			for _, name := range []string{"set-retries", "set-timeout", "retries", "timeout", "throw-bpmn-error", "set-error-code"} {
+				if !strings.Contains(text, "--"+name+" ") {
+					t.Errorf("job reference missing --%s", name)
+				}
+			}
+		}
+	}
 }

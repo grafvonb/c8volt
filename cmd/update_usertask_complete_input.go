@@ -42,7 +42,7 @@ func parseUpdateUserTaskCompletionInput(cmd *cobra.Command, args []string) (user
 	}
 
 	var variables map[string]any
-	if cmd.Flags().Changed("vars") || cmd.Flags().Changed("vars-file") {
+	if cmd.Flags().Changed("set-vars") || cmd.Flags().Changed("set-vars-file") {
 		raw, source, err := readUpdateVariablesFromFlags(cmd, flagUpdateUserTaskVars, flagUpdateUserTaskVarsFile)
 		if err != nil {
 			return userTaskCompletionInput{}, err
@@ -59,7 +59,7 @@ func parseUpdateUserTaskCompletionInput(cmd *cobra.Command, args []string) (user
 // before any float conversion. Existing variable-update decoding remains unchanged.
 func parseUserTaskCompletionVariables(raw, source string) (map[string]any, error) {
 	if raw == "" {
-		return nil, invalidFlagValuef("--vars or --vars-file is required and must be a JSON object")
+		return nil, invalidFlagValuef("--set-vars or --set-vars-file is required and must be a JSON object")
 	}
 	decoder := json.NewDecoder(strings.NewReader(raw))
 	decoder.UseNumber()

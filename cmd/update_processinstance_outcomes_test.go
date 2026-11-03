@@ -52,7 +52,7 @@ func TestUpdateProcessInstanceOutcomeConfirmation(t *testing.T) {
 			server, capture := newProcessInstanceOutcomeServer(t, test.scenario)
 			stdout, stderr, err := runProcessInstanceOutcomeCommand(t, server,
 				"--automation", "--json", "--backoff-max-retries", "2",
-				"update", "pi", "--key", "101", "--vars", `{"approved":true}`,
+				"update", "pi", "--key", "101", "--set-vars", `{"approved":true}`,
 			)
 			require.NoError(t, err, stderr)
 			require.Empty(t, stderr)
@@ -75,7 +75,7 @@ func TestUpdateProcessInstanceOutcomeNoWait(t *testing.T) {
 	server, capture := newProcessInstanceOutcomeServer(t, "normal")
 	stdout, stderr, err := runProcessInstanceOutcomeCommand(t, server,
 		"--automation", "--json", "update", "pi", "--key", "101",
-		"--vars", `{"approved":true}`, "--no-wait",
+		"--set-vars", `{"approved":true}`, "--no-wait",
 	)
 	require.NoError(t, err, stderr)
 	require.Empty(t, stderr)
@@ -102,7 +102,7 @@ func TestUpdateProcessInstanceOutcomeConfirmationFailures(t *testing.T) {
 			}
 			stdout, stderr, err := runProcessInstanceOutcomeCommand(t, server,
 				"--automation", "--json", "--backoff-max-retries", "1",
-				"update", "pi", "--key", "101", "--vars", variables,
+				"update", "pi", "--key", "101", "--set-vars", variables,
 			)
 			requireCommandExitCode(t, err, exitcode.Error)
 			require.Empty(t, stderr)
@@ -127,7 +127,7 @@ func TestUpdateProcessInstanceOutcomePartialWriterFailure(t *testing.T) {
 	server, capture := newProcessInstanceOutcomeServer(t, "partial-writer")
 	stdout, stderr, err := runProcessInstanceOutcomeCommand(t, server,
 		"--automation", "--json", "update", "pi", "--key", "101", "--key", "202",
-		"--vars", `{"approved":true}`, "--no-wait", "--workers", "1",
+		"--set-vars", `{"approved":true}`, "--no-wait", "--workers", "1",
 	)
 	requireCommandExitCode(t, err, exitcode.Error)
 	require.Empty(t, stderr)
@@ -150,7 +150,7 @@ func TestUpdateProcessInstanceOutcomeKeysRetainAcceptedConfirmationFailure(t *te
 	server, _ := newProcessInstanceOutcomeServer(t, "truncated")
 	stdout, _, err := runProcessInstanceOutcomeCommand(t, server,
 		"--automation", "--keys-only", "--backoff-max-retries", "1",
-		"update", "pi", "--key", "101", "--vars", `{"approved":true}`,
+		"update", "pi", "--key", "101", "--set-vars", `{"approved":true}`,
 	)
 	requireCommandExitCode(t, err, exitcode.Error)
 	require.Equal(t, "101\n", stdout)
@@ -163,7 +163,7 @@ func TestUpdateProcessInstanceOutcomeFailFastSkipped(t *testing.T) {
 	stdout, stderr, err := runProcessInstanceOutcomeCommand(t, server,
 		"--automation", "--json", "update", "pi",
 		"--key", "101", "--key", "202", "--key", "303",
-		"--vars", `{"approved":true}`, "--no-wait", "--workers", "1", "--fail-fast",
+		"--set-vars", `{"approved":true}`, "--no-wait", "--workers", "1", "--fail-fast",
 	)
 	requireCommandExitCode(t, err, exitcode.Error)
 	require.Empty(t, stderr)
@@ -198,7 +198,7 @@ func TestUpdateProcessInstanceOutcomeHumanModes(t *testing.T) {
 			if test.rootFlag != "" {
 				args = append(args, test.rootFlag)
 			}
-			args = append(args, "update", "pi", "--key", "101", "--key", "202", "--vars", `{"approved":true}`, "--no-wait", "--workers", "1")
+			args = append(args, "update", "pi", "--key", "101", "--key", "202", "--set-vars", `{"approved":true}`, "--no-wait", "--workers", "1")
 			stdout, stderr, err := runProcessInstanceOutcomeCommand(t, server, args...)
 			requireCommandExitCode(t, err, exitcode.Error)
 			require.Empty(t, stdout)

@@ -236,6 +236,7 @@ func seedRealStateDestructiveDataset(t *testing.T, profile integrationProfile, c
 	return realStateDestructiveDataset{Fixture: fixture, Volume: dataset, Incident: incidentDataset, Incidents: incidents}, records, nil
 }
 
+// Run explicitly authorized destructive scenarios with current CLI spellings.
 func runRealStateDestructiveScenarios(t *testing.T, profile integrationProfile, dataset realStateDestructiveDataset) ([]evidenceRecord, error) {
 	t.Helper()
 	var records []evidenceRecord
@@ -306,8 +307,8 @@ func runRealStateDestructiveScenarios(t *testing.T, profile integrationProfile, 
 	records = append(records, resolveConfirmedRecord)
 
 	repairDryRunReport := volumeOpsRepairReportPath(t, "real-state-destructive-repair-incident-dry-run", profile, "json")
-	repairDryRunResult := runC8VoltForProfile(t, profile.Name, "real-state-destructive-repair-incident-dry-run", "ops", "repair", "incident", "--key", incidents[2].IncidentKey, "--vars", `{"hasIncident":false}`, "--retries", "1", "--job-timeout", "30s", "--workers", "1", "--dry-run", "--report-file", repairDryRunReport, "--report-format", "json")
-	repairDryRunRecord := realStateDestructiveRecord(profile, dataset, repairDryRunResult, "ops repair incident", "real-state-destructive-repair-incident-dry-run", "one-line", []string{"key", "vars", "retries", "job-timeout", "workers", "dry-run", "report-file", "report-format"}, []string{incidents[2].IncidentKey, incidents[2].ProcessInstanceKey}, true, false)
+	repairDryRunResult := runC8VoltForProfile(t, profile.Name, "real-state-destructive-repair-incident-dry-run", "ops", "repair", "incident", "--key", incidents[2].IncidentKey, "--set-vars", `{"hasIncident":false}`, "--set-retries", "1", "--set-job-timeout", "30s", "--workers", "1", "--dry-run", "--report-file", repairDryRunReport, "--report-format", "json")
+	repairDryRunRecord := realStateDestructiveRecord(profile, dataset, repairDryRunResult, "ops repair incident", "real-state-destructive-repair-incident-dry-run", "one-line", []string{"key", "set-vars", "set-retries", "set-job-timeout", "workers", "dry-run", "report-file", "report-format"}, []string{incidents[2].IncidentKey, incidents[2].ProcessInstanceKey}, true, false)
 	if err := validateRealStateOpsRepairIncidentDryRun(t, profile, repairDryRunResult, repairDryRunReport, incidents[2]); err != nil {
 		repairDryRunRecord.Outcome = realStateOutcomeFailed
 		repairDryRunRecord.FailureClass = volumeFailureProduct
@@ -316,8 +317,8 @@ func runRealStateDestructiveScenarios(t *testing.T, profile integrationProfile, 
 	records = append(records, repairDryRunRecord)
 
 	repairConfirmedReport := volumeOpsRepairReportPath(t, "real-state-destructive-repair-pi-confirmed", profile, "json")
-	repairConfirmedResult := runC8VoltForProfile(t, profile.Name, "real-state-destructive-repair-pi-confirmed", "--automation", "--json", "ops", "repair", "process-instance", "--key", incidents[3].ProcessInstanceKey, "--vars", `{"hasIncident":false}`, "--retries", "1", "--job-timeout", "30s", "--workers", "1", "--report-file", repairConfirmedReport, "--report-format", "json")
-	repairConfirmedRecord := realStateDestructiveRecord(profile, dataset, repairConfirmedResult, "ops repair process-instance", "real-state-destructive-repair-pi-confirmed", "json", []string{"automation", "json", "key", "vars", "retries", "job-timeout", "workers", "report-file", "report-format"}, []string{incidents[3].IncidentKey, incidents[3].ProcessInstanceKey}, false, true)
+	repairConfirmedResult := runC8VoltForProfile(t, profile.Name, "real-state-destructive-repair-pi-confirmed", "--automation", "--json", "ops", "repair", "process-instance", "--key", incidents[3].ProcessInstanceKey, "--set-vars", `{"hasIncident":false}`, "--set-retries", "1", "--set-job-timeout", "30s", "--workers", "1", "--report-file", repairConfirmedReport, "--report-format", "json")
+	repairConfirmedRecord := realStateDestructiveRecord(profile, dataset, repairConfirmedResult, "ops repair process-instance", "real-state-destructive-repair-pi-confirmed", "json", []string{"automation", "json", "key", "set-vars", "set-retries", "set-job-timeout", "workers", "report-file", "report-format"}, []string{incidents[3].IncidentKey, incidents[3].ProcessInstanceKey}, false, true)
 	if err := validateRealStateOpsRepairConfirmed(t, profile, repairConfirmedResult, repairConfirmedReport, incidents[3], "process-instance"); err != nil {
 		repairConfirmedRecord.Outcome = realStateOutcomeFailed
 		repairConfirmedRecord.FailureClass = volumeFailureProduct

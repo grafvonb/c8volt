@@ -631,6 +631,7 @@ func TestGetProcessDefinitionSearchMachineOutputStaysProgressFree(t *testing.T) 
 	})
 }
 
+// TestGetProcessDefinitionXMLOutputRemainsKeyOnlyDisplayMode verifies canonical CLI behavior with isolated fixtures.
 func TestGetProcessDefinitionXMLOutputRemainsKeyOnlyDisplayMode(t *testing.T) {
 	tests := []struct {
 		name   string
@@ -687,12 +688,12 @@ func TestGetProcessDefinitionXMLOutputRemainsKeyOnlyDisplayMode(t *testing.T) {
 			assert: requireXMLDisplayModeIncompatibleFlag("--latest"),
 		},
 		{
-			name: "stat",
+			name: "with-stats",
 			setup: func(filter *process.ProcessDefinitionFilter) {
 				filter.Key = "2251799813685255"
 				flagGetPDWithStat = true
 			},
-			assert: requireXMLDisplayModeIncompatibleFlag("--stat"),
+			assert: requireXMLDisplayModeIncompatibleFlag("--with-stats"),
 		},
 		{
 			name: "json",

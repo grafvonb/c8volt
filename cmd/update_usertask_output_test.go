@@ -49,7 +49,7 @@ func TestUpdateUserTaskOutputModes(t *testing.T) {
 		{
 			name:      "dry run human",
 			humanMode: true,
-			args:      []string{"update", "ut", "--key", "101", "--vars", `{"approved":true}`, "--dry-run"},
+			args:      []string{"update", "ut", "--key", "101", "--set-vars", `{"approved":true}`, "--dry-run"},
 			wantOutput: "INFO selection scope: explicit resource keys; tenant filter not applied\n" +
 				"INFO affected tenants: tenant-a\n" +
 				"INFO dry run: update user-task variables: 1 user task(s), 1 change(s), 0 addition(s), 0 unchanged, 0 untouched; no changes applied\n" +
@@ -58,14 +58,14 @@ func TestUpdateUserTaskOutputModes(t *testing.T) {
 		},
 		{
 			name:      "dry run keys",
-			args:      []string{"--keys-only", "update", "ut", "--key", "101", "--vars", `{"approved":true}`, "--dry-run"},
+			args:      []string{"--keys-only", "update", "ut", "--key", "101", "--set-vars", `{"approved":true}`, "--dry-run"},
 			wantKeys:  "101\n",
 			keysMode:  true,
 			wantReads: 1,
 		},
 		{
 			name:        "dry run quiet json wins over keys",
-			args:        []string{"--quiet", "--keys-only", "--json", "update", "ut", "--key", "101", "--vars", `{"approved":true}`, "--dry-run", "--no-wait"},
+			args:        []string{"--quiet", "--keys-only", "--json", "update", "ut", "--key", "101", "--set-vars", `{"approved":true}`, "--dry-run", "--no-wait"},
 			wantOutcome: "succeeded",
 			wantReads:   1,
 		},
@@ -73,7 +73,7 @@ func TestUpdateUserTaskOutputModes(t *testing.T) {
 			name:         "no-op human",
 			humanMode:    true,
 			initialValue: true,
-			args:         []string{"update", "ut", "--key", "101", "--vars", `{"approved":true}`},
+			args:         []string{"update", "ut", "--key", "101", "--set-vars", `{"approved":true}`},
 			wantOutput: "INFO selection scope: explicit resource keys; tenant filter not applied\n" +
 				"INFO affected tenants: tenant-a\n" +
 				"INFO plan: update user-task variables: nothing to update (1 requested value(s) already match visible variables); no confirmation required\n",
@@ -82,14 +82,14 @@ func TestUpdateUserTaskOutputModes(t *testing.T) {
 		{
 			name:         "no-op no-wait json remains succeeded",
 			initialValue: true,
-			args:         []string{"--automation", "--json", "update", "ut", "--key", "101", "--vars", `{"approved":true}`, "--no-wait"},
+			args:         []string{"--automation", "--json", "update", "ut", "--key", "101", "--set-vars", `{"approved":true}`, "--no-wait"},
 			wantOutcome:  "succeeded",
 			wantReads:    1,
 		},
 		{
 			name:         "no-op keys is zero bytes",
 			initialValue: true,
-			args:         []string{"--keys-only", "update", "ut", "--key", "101", "--vars", `{"approved":true}`},
+			args:         []string{"--keys-only", "update", "ut", "--key", "101", "--set-vars", `{"approved":true}`},
 			wantKeys:     "",
 			keysMode:     true,
 			wantReads:    1,
@@ -97,7 +97,7 @@ func TestUpdateUserTaskOutputModes(t *testing.T) {
 		{
 			name:      "confirmed human",
 			humanMode: true,
-			args:      []string{"--auto-confirm", "update", "ut", "--key", "101", "--vars", `{"approved":true}`},
+			args:      []string{"--auto-confirm", "update", "ut", "--key", "101", "--set-vars", `{"approved":true}`},
 			wantOutput: "INFO updated user-task 101: confirmed\n" +
 				"INFO updated: 1 (confirmed/submitted: 1, unchanged: 0, failed: 0, skipped: 0)\n",
 			wantMutates: 1,
@@ -105,7 +105,7 @@ func TestUpdateUserTaskOutputModes(t *testing.T) {
 		},
 		{
 			name:        "accepted quiet keys",
-			args:        []string{"--quiet", "--keys-only", "--automation", "update", "ut", "--key", "101", "--vars", `{"approved":true}`, "--no-wait"},
+			args:        []string{"--quiet", "--keys-only", "--automation", "update", "ut", "--key", "101", "--set-vars", `{"approved":true}`, "--no-wait"},
 			wantKeys:    "101\n",
 			keysMode:    true,
 			wantMutates: 1,
@@ -113,7 +113,7 @@ func TestUpdateUserTaskOutputModes(t *testing.T) {
 		},
 		{
 			name:        "accepted json",
-			args:        []string{"--automation", "--json", "update", "ut", "--key", "101", "--vars", `{"approved":true}`, "--no-wait"},
+			args:        []string{"--automation", "--json", "update", "ut", "--key", "101", "--set-vars", `{"approved":true}`, "--no-wait"},
 			wantOutcome: "accepted",
 			wantMutates: 1,
 			wantReads:   1,
@@ -121,7 +121,7 @@ func TestUpdateUserTaskOutputModes(t *testing.T) {
 		{
 			name:        "quiet human suppresses result",
 			humanMode:   true,
-			args:        []string{"--quiet", "--auto-confirm", "update", "ut", "--key", "101", "--vars", `{"approved":true}`},
+			args:        []string{"--quiet", "--auto-confirm", "update", "ut", "--key", "101", "--set-vars", `{"approved":true}`},
 			wantOutput:  "",
 			wantMutates: 1,
 			wantReads:   2,
@@ -163,7 +163,7 @@ func TestUpdateUserTaskDestinationMetadataFlowsThroughCommand(t *testing.T) {
 	server, capture := newUpdateUserTaskOutputServer(t, "8.10", false, "")
 	configPath := writeTestConfigForVersion(t, server.URL, "8.10")
 	stdout, stderr, err := runUpdateUserTaskCommand(t, configPath, "",
-		"update", "ut", "--key", "103", "--vars", `{"approved":true,"middle":2,"local":true,"new":"value"}`, "--dry-run",
+		"update", "ut", "--key", "103", "--set-vars", `{"approved":true,"middle":2,"local":true,"new":"value"}`, "--dry-run",
 	)
 	require.NoError(t, err)
 	require.Empty(t, stdout)
@@ -235,7 +235,7 @@ func TestUpdateUserTaskBulkDestinationPreviewsThroughCommand(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			server, capture := newUpdateUserTaskOutputServer(t, "8.10", false, "")
 			configPath := writeTestConfigForVersion(t, server.URL, "8.10")
-			args := []string{"update", "ut", "--key", test.keys, "--vars", test.variables, "--dry-run"}
+			args := []string{"update", "ut", "--key", test.keys, "--set-vars", test.variables, "--dry-run"}
 			if test.verbose {
 				args = append([]string{"--verbose"}, args...)
 			}
@@ -277,7 +277,7 @@ func TestUpdateUserTaskPartialFailureJSON(t *testing.T) {
 	configPath := writeTestConfigForVersion(t, server.URL, "8.10")
 	stdout, _, err := runUpdateUserTaskCommand(t, configPath, "",
 		"--automation", "--json", "update", "ut",
-		"--key", "101,102", "--vars", `{"approved":true}`,
+		"--key", "101,102", "--set-vars", `{"approved":true}`,
 		"--no-wait", "--workers", "1",
 	)
 	require.Error(t, err)

@@ -482,6 +482,7 @@ func TestCommandCapabilityForCommand_UsesExplicitAutomationOutputModes(t *testin
 	}, capability.OutputModes)
 }
 
+// Repair capabilities expose submitted retry values without legacy aliases.
 func TestCommandContractOpsRepairIncident(t *testing.T) {
 	root := Root()
 	resetCommandTreeFlags(root)
@@ -506,7 +507,7 @@ func TestCommandContractOpsRepairIncident(t *testing.T) {
 		Description: "incident key(s) to repair; repeat or combine with stdin '-'",
 	})
 	require.Contains(t, capability.Flags, FlagContract{
-		Name:        "retries",
+		Name:        "set-retries",
 		Type:        "int32",
 		Required:    false,
 		Repeated:    false,
@@ -1238,7 +1239,7 @@ func TestCommandCapabilityForCommand_UpdateUserTaskContract(t *testing.T) {
 		{Name: RenderModeJSON.String(), Supported: true, MachinePreferred: true},
 		{Name: RenderModeKeysOnly.String(), Supported: true},
 	}, capability.OutputModes)
-	for _, name := range []string{"key", "complete", "assign", "unassign", "force", "vars", "vars-file", "dry-run", "no-wait", "workers", "no-worker-limit", "fail-fast"} {
+	for _, name := range []string{"key", "complete", "set-assignee", "unassign", "force", "set-vars", "set-vars-file", "dry-run", "no-wait", "workers", "no-worker-limit", "fail-fast"} {
 		require.True(t, hasFlagContractNamed(capability.Flags, name), "missing --%s", name)
 	}
 	require.False(t, flagUpdateUserTaskComplete)
@@ -1255,7 +1256,7 @@ func TestCommandCapabilityForCommand_UpdateUserTaskContract(t *testing.T) {
 	require.Contains(t, updateUserTaskCmd.Flags().Lookup("no-wait").Usage, "skip variable-update verification")
 	require.Contains(t, updateUserTaskCmd.Flags().Lookup("no-wait").Usage, "incompatible with --complete")
 	require.Contains(t, updateCmd.Long, "successful response confirms completion")
-	for _, text := range []string{"--assign", "--unassign", "--force", "reads each unique task once before approval", "warns and asks whether to replace the assignee", "acceptance unknown", "zero requests"} {
+	for _, text := range []string{"--set-assignee", "--unassign", "--force", "reads each unique task once before approval", "warns and asks whether to replace the assignee", "acceptance unknown", "zero requests"} {
 		require.Contains(t, updateUserTaskCmd.Long, text)
 	}
 	require.Contains(t, updateCmd.Long, "asks before replacing existing assignees")
@@ -1417,14 +1418,14 @@ func TestCommandCapabilityForCommand_UpdateProcessInstanceContract(t *testing.T)
 		Description: "process instance key(s) to update; repeat or combine with stdin '-'",
 	})
 	require.Contains(t, capability.Flags, FlagContract{
-		Name:        "vars",
+		Name:        "set-vars",
 		Type:        "string",
 		Required:    false,
 		Repeated:    false,
 		Description: "JSON object with variables to set on each process instance",
 	})
 	require.Contains(t, capability.Flags, FlagContract{
-		Name:        "vars-file",
+		Name:        "set-vars-file",
 		Type:        "string",
 		Required:    false,
 		Repeated:    false,
@@ -1583,14 +1584,14 @@ func TestCommandCapabilityForCommand_GetAndUpdateJobContract(t *testing.T) {
 		Description: "job key to update; for --complete, repeat or use comma-separated keys and stdin '-'",
 	})
 	require.Contains(t, updateCapability.Flags, FlagContract{
-		Name:        "retries",
+		Name:        "set-retries",
 		Type:        "int32",
 		Required:    false,
 		Repeated:    false,
-		Description: "retry count to set, remaining retries for --fail, or exact selector with keyless --complete (including 0)",
+		Description: "retry count to set or remaining retries for --fail (including 0)",
 	})
 	require.Contains(t, updateCapability.Flags, FlagContract{
-		Name:        "timeout",
+		Name:        "set-timeout",
 		Type:        "string",
 		Required:    false,
 		Repeated:    false,
@@ -1604,14 +1605,14 @@ func TestCommandCapabilityForCommand_GetAndUpdateJobContract(t *testing.T) {
 		Description: "report a technical job failure",
 	})
 	require.Contains(t, updateCapability.Flags, FlagContract{
-		Name:        "retry-backoff",
+		Name:        "set-retry-backoff",
 		Type:        "string",
 		Required:    false,
 		Repeated:    false,
 		Description: "duration before a failed job becomes retryable, for example 60s, 5m, or 1h",
 	})
 	require.Contains(t, updateCapability.Flags, FlagContract{
-		Name:        "message",
+		Name:        "set-error-message",
 		Type:        "string",
 		Required:    false,
 		Repeated:    false,
@@ -1619,10 +1620,10 @@ func TestCommandCapabilityForCommand_GetAndUpdateJobContract(t *testing.T) {
 	})
 	require.Contains(t, updateCapability.Flags, FlagContract{
 		Name:        "throw-bpmn-error",
-		Type:        "string",
+		Type:        "bool",
 		Required:    false,
 		Repeated:    false,
-		Description: "BPMN error code to throw for the job",
+		Description: "throw a BPMN error using --set-error-code (bare action only)",
 	})
 	require.Contains(t, updateCapability.Flags, FlagContract{
 		Name:        "complete",
@@ -1632,7 +1633,7 @@ func TestCommandCapabilityForCommand_GetAndUpdateJobContract(t *testing.T) {
 		Description: "complete the job through the worker outcome API",
 	})
 	require.Contains(t, updateCapability.Flags, FlagContract{
-		Name:        "vars",
+		Name:        "set-vars",
 		Type:        "string",
 		Required:    false,
 		Repeated:    false,
@@ -1775,6 +1776,7 @@ func TestCommandCapabilityForCommand_GetElementContract(t *testing.T) {
 	})
 }
 
+// TestCommandCapabilityForCommand_GetIncidentContract verifies canonical CLI behavior with isolated fixtures.
 func TestCommandCapabilityForCommand_GetIncidentContract(t *testing.T) {
 	root := Root()
 	resetCommandTreeFlags(root)
@@ -1803,7 +1805,7 @@ func TestCommandCapabilityForCommand_GetIncidentContract(t *testing.T) {
 		Description: "maximum characters to show for incident messages; 0 keeps full messages",
 	})
 	require.Contains(t, capability.Flags, FlagContract{
-		Name:        "with-no-error-message",
+		Name:        "no-error-message",
 		Type:        "bool",
 		Required:    false,
 		Repeated:    false,
@@ -2183,7 +2185,7 @@ func TestCommandCapabilityForCommand_OpsPurgeAllProcessDefinitionsContract(t *te
 		Description: "maximum concurrent workers when validating the delete plan and deleting process definitions (default: min(targets, 2*GOMAXPROCS, 32))",
 	})
 	require.NotContains(t, capability.Flags, FlagContract{Name: "xml"})
-	require.NotContains(t, capability.Flags, FlagContract{Name: "stat"})
+	require.NotContains(t, capability.Flags, FlagContract{Name: "with-stats"})
 
 	doc := capabilityDocumentForRoot(root)
 	paths := commandCapabilityPaths(doc.Commands)
@@ -2735,8 +2737,8 @@ func TestGetJobAndUpdateJobHelp_DocumentsDiscoveryAndMutationGuards(t *testing.T
 		"Update element-local, process-instance or user-task variables, complete, assign or unassign user tasks, or update job retries, timeouts, and worker outcomes",
 		"job retries, timeouts, and worker outcomes",
 		"plan and confirm updates",
-		"./c8volt update job --key <job-key> --retries 3 --dry-run",
-		"./c8volt update job --key <job-key> --timeout 5m --auto-confirm",
+		"./c8volt update job --key <job-key> --set-retries 3 --dry-run",
+		"./c8volt update job --key <job-key> --set-timeout 5m --auto-confirm",
 	}, nil)
 	require.Contains(t, output, "job")
 
@@ -2753,20 +2755,20 @@ func TestGetJobAndUpdateJobHelp_DocumentsDiscoveryAndMutationGuards(t *testing.T
 		"mutations require --dry-run, --auto-confirm, or --automation",
 		"--json cannot be combined with --verbose",
 		"Camunda 8.8 or newer",
-		"./c8volt update job --key <job-key> --retries 3 --dry-run",
-		"./c8volt update job --key <job-key> --fail --retries 0",
-		"./c8volt update job --key <job-key> --throw-bpmn-error PAYMENT_DECLINED",
-		`./c8volt update job --key <job-key> --complete --vars '{"approved":true}' --dry-run`,
-		"./c8volt --json update job --key <job-key> --retries 3 --dry-run",
+		"./c8volt update job --key <job-key> --set-retries 3 --dry-run",
+		"./c8volt update job --key <job-key> --fail --set-retries 0",
+		"./c8volt update job --key <job-key> --throw-bpmn-error --set-error-code PAYMENT_DECLINED",
+		`./c8volt update job --key <job-key> --complete --set-vars '{"approved":true}' --dry-run`,
+		"./c8volt --json update job --key <job-key> --set-retries 3 --dry-run",
 		"-k, --key string",
-		"--retries int32",
-		"--timeout string",
+		"--set-retries int32",
+		"--set-timeout string",
 		"--fail",
-		"--retry-backoff string",
-		"--message string",
-		"--throw-bpmn-error string",
+		"--set-retry-backoff string",
+		"--set-error-message string",
+		"--throw-bpmn-error",
 		"--complete",
-		"--vars string",
+		"--set-vars string",
 		"--dry-run",
 		"--auto-confirm",
 	}, nil)
@@ -2883,16 +2885,16 @@ func TestUpdateProcessInstanceHelp_DocumentsVariableUpdateDiscovery(t *testing.T
 		"Update element-local, process-instance or user-task variables, complete, assign or unassign user tasks, or update job retries, timeouts, and worker outcomes",
 		"Camunda 8.8 or newer",
 		"Requires Camunda 8.8 or newer",
-		"./c8volt update process-instance --key <process-instance-key> --vars",
-		"./c8volt update process-instance --key <process-instance-key> --vars-file",
-		"./c8volt --automation --json update process-instance --key <process-instance-key> --vars",
+		"./c8volt update process-instance --key <process-instance-key> --set-vars",
+		"./c8volt update process-instance --key <process-instance-key> --set-vars-file",
+		"./c8volt --automation --json update process-instance --key <process-instance-key> --set-vars",
 	}, nil)
 	require.Contains(t, output, "process-instance")
 
 	output = assertCommandHelpOutput(t, []string{"update", "process-instance"}, []string{
 		"Update process-instance-scope variables",
 		"For variable updates, supply exactly one payload source",
-		"--vars with a JSON object or --vars-file with its file path",
+		"--set-vars with a JSON object or --set-vars-file with its file path",
 		"repeated --key values or newline-separated keys from stdin with '-'",
 		"reads every selected process instance's complete root-variable scope",
 		"complete root-variable scope",
@@ -2900,9 +2902,9 @@ func TestUpdateProcessInstanceHelp_DocumentsVariableUpdateDiscovery(t *testing.T
 		"Use --dry-run to inspect changes without mutation",
 		"--auto-confirm for unattended updates",
 		"Camunda 8.8 or newer",
-		"./c8volt update process-instance --key <process-instance-key> --vars '{\"customerTier\":\"gold\"}' --dry-run",
-		"./c8volt update process-instance --key <process-instance-key-a> --key <process-instance-key-b> --vars",
-		"printf '%s\\n' \"$PROCESS_INSTANCE_KEY_A\" \"$PROCESS_INSTANCE_KEY_B\" | ./c8volt update process-instance - --vars",
+		"./c8volt update process-instance --key <process-instance-key> --set-vars '{\"customerTier\":\"gold\"}' --dry-run",
+		"./c8volt update process-instance --key <process-instance-key-a> --key <process-instance-key-b> --set-vars",
+		"printf '%s\\n' \"$PROCESS_INSTANCE_KEY_A\" \"$PROCESS_INSTANCE_KEY_B\" | ./c8volt update process-instance - --set-vars",
 		"-k, --key strings",
 		"--workers",
 		"--dry-run",
@@ -2913,8 +2915,8 @@ func TestUpdateProcessInstanceHelp_DocumentsVariableUpdateDiscovery(t *testing.T
 
 	aliasOutput := assertCommandHelpOutput(t, []string{"update", "pi"}, []string{
 		"Update process-instance-scope variables",
-		"--vars string",
-		"--vars-file string",
+		"--set-vars string",
+		"--set-vars-file string",
 		"--dry-run",
 		"--no-wait",
 	}, nil)
@@ -3258,4 +3260,35 @@ func TestCapabilityDocumentVersionCheck(t *testing.T) {
 		require.Contains(t, capability.Flags, FlagContract{Name: "no-version-check", Type: "bool", Description: "skip the automatic advisory gateway version check"})
 	}
 	require.Equal(t, "false", Root().PersistentFlags().Lookup("no-version-check").DefValue)
+}
+
+// TestCommandContractFlagIntentSurface covers all rename rows while retaining
+// job selector retries, HTTP timeout, action arity and unchanged enrichment controls.
+func TestCommandContractFlagIntentSurface(t *testing.T) {
+	for _, tc := range flagIntentSurface {
+		for old, canonical := range tc.names {
+			require.NotNil(t, tc.cmd.Flags().Lookup(canonical), tc.cmd.CommandPath())
+			require.Contains(t, tc.cmd.Flags().FlagUsages(), "--"+canonical+" ")
+			if tc.cmd == updateJobCmd && (old == "retries" || old == "timeout") {
+				continue
+			}
+			require.Nil(t, tc.cmd.Flags().Lookup(old), tc.cmd.CommandPath())
+			require.NotContains(t, tc.cmd.Flags().FlagUsages(), "--"+old+" ")
+			require.Equal(t, "--"+canonical, flagMigrationsForCommand(tc.cmd)[old].Replacement)
+		}
+	}
+	require.Equal(t, "bool", updateJobCmd.Flags().Lookup("throw-bpmn-error").Value.Type())
+	require.Equal(t, "string", updateJobCmd.Flags().Lookup("set-error-code").Value.Type())
+	require.NotNil(t, updateJobCmd.Flags().Lookup("retries"))
+	require.Nil(t, updateJobCmd.LocalNonPersistentFlags().Lookup("timeout"))
+	require.NotNil(t, rootCmd.PersistentFlags().Lookup("timeout"))
+	require.NotNil(t, getJobCmd.Flags().Lookup("retries"))
+	require.NotNil(t, getProcessInstanceCmd.Flags().Lookup("bid"))
+	for _, name := range []string{"with-incidents", "with-vars", "with-elements", "with-listeners"} {
+		require.NotNil(t, getProcessInstanceCmd.Flags().Lookup(name))
+	}
+	require.NotNil(t, getUserTaskCmd.Flags().Lookup("with-vars"))
+	require.NotNil(t, getClusterVersionCmd.Flags().Lookup("with-brokers"))
+	require.NotNil(t, opsAnalyseSlowProcessInstancesCmd.Flags().Lookup("with-full-timeline"))
+	require.True(t, rootCmd.PersistentFlags().Lookup("log-with-source").Hidden)
 }

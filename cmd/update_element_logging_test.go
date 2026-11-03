@@ -55,7 +55,7 @@ func TestElementScopeVariablesUpdateDiagnostics(t *testing.T) {
 					if destination == "inherited" {
 						workers = "2"
 					}
-					args := append([]string{"--config", completionLogConfig(t, f.server.URL, format, level), "--no-indicator", "--auto-confirm", "update", "ei", "--key", scopeElementA + "," + scopeElementB + "," + scopeElementC, "--vars", `{"password":"element-payload-secret"}`, "--workers", workers, "--no-wait"}, tc.flags...)
+					args := append([]string{"--config", completionLogConfig(t, f.server.URL, format, level), "--no-indicator", "--auto-confirm", "update", "ei", "--key", scopeElementA + "," + scopeElementB + "," + scopeElementC, "--set-vars", `{"password":"element-payload-secret"}`, "--workers", workers, "--no-wait"}, tc.flags...)
 					out, stderr, err := runElementScopeTerminal(t, args, destination, nil)
 					assertUserTaskCompletionExit(t, err, 2)
 					calls, writes, reads := f.snapshot()

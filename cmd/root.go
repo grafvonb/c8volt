@@ -4,7 +4,7 @@
 package cmd
 
 import (
-	"errors"
+	"context"
 	"fmt"
 	"os"
 	"strings"
@@ -13,7 +13,6 @@ import (
 	"github.com/grafvonb/c8volt/toolx"
 	"github.com/grafvonb/c8volt/toolx/logging"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 var (
@@ -81,6 +80,7 @@ log format, timestamps, and source settings use the existing logger.`, toolx.V81
   ./c8volt capabilities --json
   ./c8volt get --help`,
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+		cmd.SetContext(context.WithValue(cmd.Context(), migrationPreRunKey{}, true))
 		if hasHelpFlag(cmd) {
 			return nil
 		}
@@ -88,39 +88,18 @@ log format, timestamps, and source settings use the existing logger.`, toolx.V81
 			return silenceUsageForError(cmd, err)
 		}
 
-		v := viper.New()
-		bindings, err := initViper(v, cmd)
+		v, bindings, cfg, err := resolveLocalCommandConfig(cmd, flagQuiet, flagDebug)
 		if err != nil {
-			return silenceUsageForError(cmd, bootstrapLocalPrecondition(err))
-		}
-
-		switch {
-		case flagQuiet:
-			v.Set("log.level", "error")
-		case flagDebug:
-			v.Set("log.level", "debug")
-		}
-		cfg, err := retrieveAndNormalizeConfig(v, bindings)
-		if err != nil {
-			if errors.Is(err, config.ErrProfileNotFound) {
-				return silenceUsageForError(cmd, normalizeBootstrapError(err))
-			}
-			return silenceUsageForError(cmd, bootstrapLocalPrecondition(err))
+			return silenceUsageForError(cmd, err)
 		}
 		tenantProvenance := tenantOverrideProvenanceFromConfig(v, bindings, cfg)
-		root := cmd.Root()
-		effectiveStderr := cmd.ErrOrStderr()
-		activityWriter := logging.NewActivityWriterEnabled(effectiveStderr, indicatorEnabled(cmd, cfg))
-		root.SetErr(activityWriter)
-		ctx := cfg.ToContextWithLogWriter(cmd.Context(), activityWriter)
+		ctx := localCommandLogContext(cmd, cfg, v, indicatorEnabled(cmd, cfg))
 		ctx = tenantProvenance.ToContext(ctx)
-		ctx = logging.ToActivityContext(ctx, activityWriter)
 		log, err := logging.FromContext(ctx)
 		if err != nil {
 			return silenceUsageForError(cmd, bootstrapLocalPrecondition(fmt.Errorf("retrieve logger from context: %w", err)))
 		}
 		configSource := configSourceDescription{loadedPath: v.ConfigFileUsed()}
-		ctx = configSource.ToContext(ctx)
 
 		if configSource.loadedPath != "" {
 			log.Debug(configSource.InfoMessage())
@@ -207,14 +186,21 @@ func validationCommandPath(cmd *cobra.Command) string {
 	return strings.TrimSpace(strings.TrimPrefix(path, root.Name()))
 }
 
+// Execute preserves the selected leaf for locally prepared migration failures.
 func Execute() {
 	rootCmd.SetOut(os.Stdout)
 	rootCmd.SetErr(os.Stderr)
-	if (len(os.Args)) == 1 {
-		rootCmd.SetArgs([]string{"--help"})
+	args := os.Args[1:]
+	if len(args) == 0 {
+		args = []string{"--help"}
 	}
-	if err := rootCmd.Execute(); err != nil {
-		handleBootstrapError(rootCmd, err)
+	leaf, err := executeCommandWithMigrationContext(rootCmd, args)
+	if err != nil {
+		if _, prepared := err.(*migrationReportingError); prepared {
+			handleBootstrapError(leaf, err)
+		} else {
+			handleBootstrapError(rootCmd, err)
+		}
 	}
 }
 

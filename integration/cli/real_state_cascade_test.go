@@ -217,11 +217,12 @@ func deployRealStateCascadeDefinitions(t *testing.T, profile integrationProfile,
 	return deployments, record, nil
 }
 
+// runRealStateCascadeParentInstance records ownership evidence for the created parent.
 func runRealStateCascadeParentInstance(t *testing.T, profile integrationProfile, label string, deployment seededDeployment) (seededProcessInstances, evidenceRecord, error) {
 	t.Helper()
 	scenario := "real-state-cascade-" + label + "-run-parent"
-	result := runC8VoltForProfile(t, profile.Name, scenario, "--automation", "--json", "run", "process-instance", "--pd-key", deployment.DefinitionKey, "--vars", runMarkerVars(suite.marker))
-	record := realStateCascadeRecord(profile, realStateCascadeDataset{}, result, "run process-instance", scenario, "json", []string{"pd-key", "vars"}, false, true)
+	result := runC8VoltForProfile(t, profile.Name, scenario, "--automation", "--json", "run", "process-instance", "--pd-key", deployment.DefinitionKey, "--set-vars", runMarkerVars(suite.marker))
+	record := realStateCascadeRecord(profile, realStateCascadeDataset{}, result, "run process-instance", scenario, "json", []string{"pd-key", "set-vars"}, false, true)
 	record.DataOwnership = []string{volumeDataSeeded, "retained"}
 	if result.Err != nil {
 		record.Outcome = realStateOutcomeFailed

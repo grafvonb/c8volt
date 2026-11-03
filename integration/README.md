@@ -318,7 +318,7 @@ blocked setup rather than executed as independent waits. Earlier documentation
 examples are not executed as prerequisite mutation steps.
 Resource lookup examples remain blocked because the BPMN fixture supplies no
 resource deployment key; process-definition keys and resource IDs are not used
-as substitutes. Examples using `--vars-file ./vars.json` receive a generated
+as substitutes. Examples using `--set-vars-file ./vars.json` receive a generated
 JSON file in their evidence directory, with its path recorded as a substitution.
 Tenant roles remain optional unless explicitly required with
 `C8VOLT_IT_REQUIRE_TENANTS`. Existing real-state prerequisite-gap documentation

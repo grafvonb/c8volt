@@ -148,3 +148,18 @@ func TestWalkProcessInstanceSelectionCompletion(t *testing.T) {
 		require.Contains(t, output, ":4\n")
 	}
 }
+
+// TestCompletionFlagIntentSurface exposes canonical flags without deprecated aliases.
+func TestCompletionFlagIntentSurface(t *testing.T) {
+	for _, tc := range flagIntentSurface {
+		words := strings.Fields(strings.TrimPrefix(tc.cmd.CommandPath(), "c8volt "))
+		output := executeCompletionNoDescForTest(t, append(words, "--")...)
+		for old, canonical := range tc.names {
+			require.Contains(t, output, "--"+canonical+"\n")
+			if tc.cmd == updateJobCmd && (old == "retries" || old == "timeout") {
+				continue
+			}
+			require.NotContains(t, output, "--"+old+"\n")
+		}
+	}
+}

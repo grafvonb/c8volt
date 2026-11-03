@@ -39,8 +39,8 @@ func newCompletionInputCommand(t *testing.T, argv ...string) *cobra.Command {
 	fs := cmd.Flags()
 	fs.StringSliceVarP(&flagUpdateUserTaskKeys, "key", "k", nil, "")
 	trackUserTaskKeyInput(fs.Lookup("key"))
-	fs.StringVar(&flagUpdateUserTaskVars, "vars", "", "")
-	fs.StringVar(&flagUpdateUserTaskVarsFile, "vars-file", "", "")
+	fs.StringVar(&flagUpdateUserTaskVars, "set-vars", "", "")
+	fs.StringVar(&flagUpdateUserTaskVarsFile, "set-vars-file", "", "")
 	fs.IntVarP(&flagWorkers, "workers", "w", 0, "")
 	fs.BoolVar(&flagNoWait, "no-wait", false, "")
 	fs.BoolVar(&flagDryRun, "dry-run", false, "")
@@ -126,14 +126,14 @@ func TestUpdateUserTaskCompletionInputVariables(t *testing.T) {
 		invalid bool
 	}{
 		{name: "omitted"},
-		{name: "empty object", flags: []string{"--vars", "{}"}, want: map[string]any{}},
-		{name: "nested", flags: []string{"--vars", payload}, want: map[string]any{"nested": map[string]any{"list": []any{true, json.Number("9007199254740993"), json.Number("0.123456789012345678901"), "secret", nil}}}},
-		{name: "file", flags: []string{"--vars-file", file}, want: map[string]any{"nested": map[string]any{"list": []any{true, json.Number("9007199254740993"), json.Number("0.123456789012345678901"), "secret", nil}}}},
-		{name: "both", flags: []string{"--vars", "{}", "--vars-file", file}, invalid: true},
-		{name: "empty explicit source", flags: []string{"--vars="}, invalid: true},
-		{name: "empty file path", flags: []string{"--vars-file="}, invalid: true},
-		{name: "missing file", flags: []string{"--vars-file", filepath.Join(dir, "missing")}, invalid: true},
-		{name: "empty file", flags: []string{"--vars-file", empty}, invalid: true},
+		{name: "empty object", flags: []string{"--set-vars", "{}"}, want: map[string]any{}},
+		{name: "nested", flags: []string{"--set-vars", payload}, want: map[string]any{"nested": map[string]any{"list": []any{true, json.Number("9007199254740993"), json.Number("0.123456789012345678901"), "secret", nil}}}},
+		{name: "file", flags: []string{"--set-vars-file", file}, want: map[string]any{"nested": map[string]any{"list": []any{true, json.Number("9007199254740993"), json.Number("0.123456789012345678901"), "secret", nil}}}},
+		{name: "both", flags: []string{"--set-vars", "{}", "--set-vars-file", file}, invalid: true},
+		{name: "empty explicit source", flags: []string{"--set-vars="}, invalid: true},
+		{name: "empty file path", flags: []string{"--set-vars-file="}, invalid: true},
+		{name: "missing file", flags: []string{"--set-vars-file", filepath.Join(dir, "missing")}, invalid: true},
+		{name: "empty file", flags: []string{"--set-vars-file", empty}, invalid: true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			cmd := newCompletionInputCommand(t, append([]string{"-k", completionKeyA}, tc.flags...)...)
@@ -150,10 +150,10 @@ func TestUpdateUserTaskCompletionInputVariables(t *testing.T) {
 		})
 	}
 	for _, payload := range []string{" ", "{", "{} {}", "{} trailing", "[]", "null", "true", "12", `"text"`} {
-		for _, source := range []string{"--vars", "--vars-file"} {
+		for _, source := range []string{"--set-vars", "--set-vars-file"} {
 			t.Run(source+payload, func(t *testing.T) {
 				value := payload
-				if source == "--vars-file" {
+				if source == "--set-vars-file" {
 					value = filepath.Join(t.TempDir(), "bad.json")
 					require.NoError(t, os.WriteFile(value, []byte(payload), 0600))
 				}

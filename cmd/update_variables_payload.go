@@ -22,28 +22,28 @@ func parseUpdateVariablesFromFlags(cmd *cobra.Command, raw string, filePath stri
 
 // readUpdateVariablesFromFlags selects one source without choosing numeric decoding semantics.
 func readUpdateVariablesFromFlags(cmd *cobra.Command, raw string, filePath string) (string, string, error) {
-	varsChanged := cmd.Flags().Changed("vars")
-	varsFileChanged := cmd.Flags().Changed("vars-file")
+	varsChanged := cmd.Flags().Changed("set-vars")
+	varsFileChanged := cmd.Flags().Changed("set-vars-file")
 	if varsChanged && varsFileChanged {
-		return "", "", mutuallyExclusiveFlagsf("--vars cannot be combined with --vars-file")
+		return "", "", mutuallyExclusiveFlagsf("--set-vars cannot be combined with --set-vars-file")
 	}
 	if varsFileChanged {
 		if filePath == "" {
-			return "", "", invalidFlagValuef("--vars-file requires a file path")
+			return "", "", invalidFlagValuef("--set-vars-file requires a file path")
 		}
 		data, err := os.ReadFile(filePath)
 		if err != nil {
-			return "", "", invalidFlagValuef("--vars-file could not be read: %v", err)
+			return "", "", invalidFlagValuef("--set-vars-file could not be read: %v", err)
 		}
-		return string(data), "--vars-file", nil
+		return string(data), "--set-vars-file", nil
 	}
-	return raw, "--vars", nil
+	return raw, "--set-vars", nil
 }
 
 // parseUpdateVariables enforces the shared non-null JSON-object payload contract.
 func parseUpdateVariables(raw string, source string) (map[string]any, error) {
 	if raw == "" {
-		return nil, invalidFlagValuef("--vars or --vars-file is required and must be a JSON object")
+		return nil, invalidFlagValuef("--set-vars or --set-vars-file is required and must be a JSON object")
 	}
 	var variables map[string]any
 	if err := json.Unmarshal([]byte(raw), &variables); err != nil {

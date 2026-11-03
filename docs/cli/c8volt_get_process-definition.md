@@ -20,9 +20,9 @@ Select by key, BPMN process ID, version, or version tag. Use --xml only with --k
 
 Camunda 8.10 supplies optional lifecycle state in human rows and JSON (state): ACTIVE allows new instances, DRAINING blocks new starts while unfinished instances remain, and DELETED means runtime removal, not removal of historical data. Missing state is omitted, including on 8.8/8.9; unfamiliar values are preserved.
 
-Lifecycle and --stat counts are independent: suspended instances can keep a definition DRAINING even with zero active instances. Backend deletion does not cancel or resume instances; delete pd --force explicitly cancels unfinished instances first. These reads do not change deletion behavior.
+Lifecycle and --with-stats counts are independent: suspended instances can keep a definition DRAINING even with zero active instances. Backend deletion does not cancel or resume instances; delete pd --force explicitly cancels unfinished instances first. These reads do not change deletion behavior.
 
---stat includes exact-version statistics and requires Camunda 8.8 or newer. On Camunda 8.10, rows append su: for suspended instances, with a dash for an observed zero; active counts remain separate. JSON statistics include a suspended count and suspendedCountSupported availability flag; a supported zero omits the count. Camunda 8.8/8.9 omit the suspended token and fields because the count is unavailable. With --stat --watch, suspended count and availability changes update the row and clear stale values. Empty searches suppress the human summary under --quiet while preserving requested JSON and keys-only results.
+--with-stats includes exact-version statistics and requires Camunda 8.8 or newer. On Camunda 8.10, rows append su: for suspended instances, with a dash for an observed zero; active counts remain separate. JSON statistics include a suspended count and suspendedCountSupported availability flag; a supported zero omits the count. Camunda 8.8/8.9 omit the suspended token and fields because the count is unavailable. With --with-stats --watch, suspended count and availability changes update the row and clear stale values. Empty searches suppress the human summary under --quiet while preserving requested JSON and keys-only results.
 
 --watch repeats the lookup indefinitely by default until interrupted or retries are exhausted. It refreshes immediately, then at --watch-interval. --watch-timeout limits the session (0 = unlimited), independently of --timeout for HTTP requests and retry backoff. Request timeouts are retried while the session is active. Without a selector it observes all visible definitions.
 
@@ -43,8 +43,8 @@ c8volt get process-definition [flags]
   ./c8volt get process-definition --watch --watch-interval 2s
   ./c8volt get process-definition --watch --watch-timeout 10m
   ./c8volt get process-definition --key <process-definition-key> --json
-  ./c8volt get process-definition --key <process-definition-key> --stat
-  ./c8volt get process-definition --stat --json
+  ./c8volt get process-definition --key <process-definition-key> --with-stats
+  ./c8volt get process-definition --with-stats --json
   ./c8volt get process-definition --key <process-definition-key> --xml
 ```
 
@@ -58,10 +58,10 @@ c8volt get process-definition [flags]
       --latest                    only include the latest matching process-definition version per exact tenant/BPMN process group
       --pd-version int32          process definition version
       --pd-version-tag string     process definition version tag
-      --stat                      include process definition statistics, incident counts, and suspended counts when supported
       --watch                     repeat the process-definition lookup until interrupted, --watch-timeout is reached, or retries are exhausted
       --watch-interval duration   interval between process-definition watch refreshes after the immediate first refresh (default 1s)
       --watch-timeout duration    maximum watch session duration (0 = unlimited; requires --watch)
+      --with-stats                include process definition statistics, incident counts, and suspended counts when supported
       --xml                       output the selected process definition as raw XML (requires --key and no other filters)
 ```
 

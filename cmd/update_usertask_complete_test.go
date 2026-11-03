@@ -159,10 +159,10 @@ func TestUpdateUserTaskCompletionCommandVariables(t *testing.T) {
 		flags []string
 		want  map[string]any
 	}{
-		{"omitted", nil, nil}, {"empty", []string{"--vars", "{}"}, map[string]any{}},
-		{"matching", []string{"--vars", `{"approved":true}`}, map[string]any{"approved": true}},
-		{"inline", []string{"--vars", nested}, map[string]any{"approved": true, "count": json.Number("9007199254740993"), "nested": map[string]any{"array": []any{nil, "x", false, json.Number("0.123456789012345678901"), map[string]any{"negative": json.Number("-9007199254740993")}}}}},
-		{"file", []string{"--vars-file", file}, map[string]any{"approved": true, "count": json.Number("9007199254740993"), "nested": map[string]any{"array": []any{nil, "x", false, json.Number("0.123456789012345678901"), map[string]any{"negative": json.Number("-9007199254740993")}}}}},
+		{"omitted", nil, nil}, {"empty", []string{"--set-vars", "{}"}, map[string]any{}},
+		{"matching", []string{"--set-vars", `{"approved":true}`}, map[string]any{"approved": true}},
+		{"inline", []string{"--set-vars", nested}, map[string]any{"approved": true, "count": json.Number("9007199254740993"), "nested": map[string]any{"array": []any{nil, "x", false, json.Number("0.123456789012345678901"), map[string]any{"negative": json.Number("-9007199254740993")}}}}},
+		{"file", []string{"--set-vars-file", file}, map[string]any{"approved": true, "count": json.Number("9007199254740993"), "nested": map[string]any{"array": []any{nil, "x", false, json.Number("0.123456789012345678901"), map[string]any{"negative": json.Number("-9007199254740993")}}}}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			server, calls := newUserTaskCompletionServer(t, "8.10", nil)
@@ -206,16 +206,16 @@ func TestUpdateUserTaskCompletionCommandInvalidInputs(t *testing.T) {
 		{"zero workers", []string{"--key", completionKeyA, "--workers", "0"}, ""},
 		{"negative workers", []string{"--key", completionKeyA, "--workers", "-1"}, ""},
 		{"no wait", []string{"--key", completionKeyA, "--no-wait"}, ""},
-		{"sources", []string{"--key", completionKeyA, "--vars", "{}", "--vars-file", bad}, ""},
-		{"missing file", []string{"--key", completionKeyA, "--vars-file", filepath.Join(t.TempDir(), "missing")}, ""},
-		{"empty file", []string{"--key", completionKeyA, "--vars-file", empty}, ""},
-		{"bad file", []string{"--key", completionKeyA, "--vars-file", bad}, ""},
-		{"malformed", []string{"--key", completionKeyA, "--vars", "{"}, ""},
-		{"array", []string{"--key", completionKeyA, "--vars", "[]"}, ""},
-		{"null", []string{"--key", completionKeyA, "--vars", "null"}, ""},
-		{"scalar", []string{"--key", completionKeyA, "--vars", "42"}, ""},
-		{"trailing", []string{"--key", completionKeyA, "--vars", "{} {}"}, ""},
-		{"empty payload", []string{"--key", completionKeyA, "--vars="}, ""},
+		{"sources", []string{"--key", completionKeyA, "--set-vars", "{}", "--set-vars-file", bad}, ""},
+		{"missing file", []string{"--key", completionKeyA, "--set-vars-file", filepath.Join(t.TempDir(), "missing")}, ""},
+		{"empty file", []string{"--key", completionKeyA, "--set-vars-file", empty}, ""},
+		{"bad file", []string{"--key", completionKeyA, "--set-vars-file", bad}, ""},
+		{"malformed", []string{"--key", completionKeyA, "--set-vars", "{"}, ""},
+		{"array", []string{"--key", completionKeyA, "--set-vars", "[]"}, ""},
+		{"null", []string{"--key", completionKeyA, "--set-vars", "null"}, ""},
+		{"scalar", []string{"--key", completionKeyA, "--set-vars", "42"}, ""},
+		{"trailing", []string{"--key", completionKeyA, "--set-vars", "{} {}"}, ""},
+		{"empty payload", []string{"--key", completionKeyA, "--set-vars="}, ""},
 		{"verbose json", []string{"--key", completionKeyA, "--verbose"}, ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -262,7 +262,7 @@ func TestUpdateUserTaskCompletionCommandGuardrails(t *testing.T) {
 	require.Regexp(t, `^\d{4}/\d{2}/\d{2} .* ERROR local precondition failed: normalize config: app: version: unknown Camunda version: 8.7\n$`, unsupportedErr)
 	require.Empty(t, callsUnsupported.Snapshot())
 	server, capture := newUpdateUserTaskCommandServer(t, "8.10")
-	stdout, stderr, err := runUpdateUserTaskCommand(t, writeTestConfigForVersion(t, server.URL, "8.10"), "", "--automation", "--json", "update", "ut", "--complete=false", "--key", "2251799815391233", "--vars", `{"approved":true}`, "--no-wait")
+	stdout, stderr, err := runUpdateUserTaskCommand(t, writeTestConfigForVersion(t, server.URL, "8.10"), "", "--automation", "--json", "update", "ut", "--complete=false", "--key", "2251799815391233", "--set-vars", `{"approved":true}`, "--no-wait")
 	require.NoError(t, err, stderr)
 	envelope := decodeUserTaskCompletionEnvelope(t, stdout)
 	require.Equal(t, "accepted", envelope["outcome"])

@@ -68,7 +68,7 @@ func TestGetProcessDefinitionSuspendedTerminal(t *testing.T) {
 					return population[0], population[1]
 				}}
 				srv := fixture.server(t)
-				args := append([]string{"--config", writeTestConfigForVersion(t, srv.URL, "8.10"), "get", "process-definition", "--stat"}, flags...)
+				args := append([]string{"--config", writeTestConfigForVersion(t, srv.URL, "8.10"), "get", "process-definition", "--with-stats"}, flags...)
 				capture := filepath.Join(t.TempDir(), "stderr")
 				result := testx.NewCmdTerminalRunner().Run(t, testx.CmdTerminalRunRequest{
 					ScopeTestName: "TestGetProcessDefinitionSuspendedTerminal",
@@ -230,7 +230,7 @@ func TestGetProcessDefinitionLifecycleWatchTerminal(t *testing.T) {
 			}
 			return nil
 		}
-		root.SetArgs([]string{"--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "pd", "--watch", "--stat"})
+		root.SetArgs([]string{"--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "pd", "--watch", "--with-stats"})
 		require.NoError(t, root.Execute())
 		os.Exit(0)
 	}

@@ -52,6 +52,7 @@ func TestOpsRepairIncidentKeyTenantContextUsesExplicitSemantics(t *testing.T) {
 	require.Empty(t, got.Report.TenantID)
 }
 
+// Help must expose canonical variable sources alongside explicit-key repair controls.
 func TestOpsRepairIncidentHelpDocumentsExplicitKeyShape(t *testing.T) {
 	resetOpsRepairIncidentFlagState()
 	t.Cleanup(resetOpsRepairIncidentFlagState)
@@ -69,10 +70,10 @@ func TestOpsRepairIncidentHelpDocumentsExplicitKeyShape(t *testing.T) {
 		"--element-instance-key string",
 		"--batch-size int32",
 		"--limit int32",
-		"--retries int32",
-		"--job-timeout string",
-		"--vars string",
-		"--vars-file string",
+		"--set-retries int32",
+		"--set-job-timeout string",
+		"--set-vars string",
+		"--set-vars-file string",
 		"--report-file string",
 		"--report-format string",
 		"--dry-run",
@@ -81,12 +82,12 @@ func TestOpsRepairIncidentHelpDocumentsExplicitKeyShape(t *testing.T) {
 		"--no-worker-limit",
 		"--fail-fast",
 		"./c8volt ops repair incident --key <incident-key> --dry-run",
-		"./c8volt ops repair incident --key <incident-key> --vars '{\"hasIncident\":false}' --report-file repair-incident.md",
+		"./c8volt ops repair incident --key <incident-key> --set-vars '{\"hasIncident\":false}' --report-file repair-incident.md",
 	)
 
 	parentOutput := executeRootForProcessInstanceTest(t, "ops", "repair", "--help")
 	require.NotContains(t, parentOutput, "--key strings")
-	require.NotContains(t, parentOutput, "--retries int32")
+	require.NotContains(t, parentOutput, "--set-retries int32")
 	require.NotContains(t, output, "--flow-node-id")
 	require.NotContains(t, output, "--fni-key")
 }
@@ -244,7 +245,7 @@ func TestOpsRepairIncidentVarsDryRunShowsVariableScopes(t *testing.T) {
 
 	output, err := testx.RunCmdSubprocess(t, "TestOpsRepairIncidentCommandHelper", map[string]string{
 		"C8VOLT_TEST_CONFIG":              writeTestConfigForVersion(t, srv.URL, "8.9"),
-		"C8VOLT_TEST_OPS_REPAIR_INC_ARGS": marshalOpsRepairIncidentArgsForEnv(t, []string{"ops", "repair", "incident", "--key", "2251799813685249", "--vars", `{"approved":true}`, "--dry-run", "--verbose"}),
+		"C8VOLT_TEST_OPS_REPAIR_INC_ARGS": marshalOpsRepairIncidentArgsForEnv(t, []string{"ops", "repair", "incident", "--key", "2251799813685249", "--set-vars", `{"approved":true}`, "--dry-run", "--verbose"}),
 	})
 
 	require.NoError(t, err, string(output))
@@ -259,14 +260,14 @@ func TestOpsRepairIncidentVarsDryRunShowsVariableScopes(t *testing.T) {
 func TestOpsRepairIncidentRejectsInvalidVars(t *testing.T) {
 	output, err := testx.RunCmdSubprocess(t, "TestOpsRepairIncidentCommandHelper", map[string]string{
 		"C8VOLT_TEST_CONFIG":              writeTestConfigForVersion(t, "http://127.0.0.1:9", "8.9"),
-		"C8VOLT_TEST_OPS_REPAIR_INC_ARGS": marshalOpsRepairIncidentArgsForEnv(t, []string{"ops", "repair", "incident", "--key", "2251799813685249", "--vars", "{"}),
+		"C8VOLT_TEST_OPS_REPAIR_INC_ARGS": marshalOpsRepairIncidentArgsForEnv(t, []string{"ops", "repair", "incident", "--key", "2251799813685249", "--set-vars", "{"}),
 	})
 
 	require.Error(t, err)
 	exitErr, ok := err.(*exec.ExitError)
 	require.True(t, ok)
 	require.Equal(t, exitcode.InvalidArgs, exitErr.ExitCode())
-	require.Contains(t, string(output), "--vars must be a valid JSON object")
+	require.Contains(t, string(output), "--set-vars must be a valid JSON object")
 }
 
 func TestOpsRepairIncidentExplicitKeyNoWaitRepairsThroughServices(t *testing.T) {
@@ -379,7 +380,7 @@ func TestOpsRepairIncidentAutoConfirmReportsTenantScopeBeforeWork(t *testing.T) 
 				"--tenant", "tenant-a",
 				"ops", "repair", "incident",
 				"--key", "2251799813685249",
-				"--vars", `{"approved":true}`,
+				"--set-vars", `{"approved":true}`,
 				"--auto-confirm",
 				"--no-wait",
 			},
@@ -396,7 +397,7 @@ func TestOpsRepairIncidentAutoConfirmReportsTenantScopeBeforeWork(t *testing.T) 
 				"ops", "repair", "incident",
 				"--state", "active",
 				"--limit", "2",
-				"--vars", `{"approved":true}`,
+				"--set-vars", `{"approved":true}`,
 				"--auto-confirm",
 				"--no-wait",
 			},
@@ -460,7 +461,7 @@ func TestOpsRepairIncidentInteractiveTenantContext(t *testing.T) {
 			args: []string{
 				"ops", "repair", "incident",
 				"--key", "2251799813685249",
-				"--vars", `{"approved":true}`,
+				"--set-vars", `{"approved":true}`,
 				"--no-wait",
 			},
 			selection:             "selection scope: explicit resource keys; tenant filter not applied",
@@ -473,7 +474,7 @@ func TestOpsRepairIncidentInteractiveTenantContext(t *testing.T) {
 			args: []string{
 				"ops", "repair", "incident",
 				"--key", "2251799813685249",
-				"--vars", `{"approved":true}`,
+				"--set-vars", `{"approved":true}`,
 				"--no-wait",
 			},
 			selection:        "selection scope: explicit resource keys; tenant filter not applied",
@@ -487,7 +488,7 @@ func TestOpsRepairIncidentInteractiveTenantContext(t *testing.T) {
 				"ops", "repair", "incident",
 				"--state", "active",
 				"--limit", "2",
-				"--vars", `{"approved":true}`,
+				"--set-vars", `{"approved":true}`,
 				"--no-wait",
 			},
 			selection:             "selection scope: unfiltered across accessible tenants",
@@ -504,7 +505,7 @@ func TestOpsRepairIncidentInteractiveTenantContext(t *testing.T) {
 				"ops", "repair", "incident",
 				"--state", "active",
 				"--limit", "2",
-				"--vars", `{"approved":true}`,
+				"--set-vars", `{"approved":true}`,
 				"--no-wait",
 			},
 			selection:          "selection scope: unfiltered across accessible tenants",

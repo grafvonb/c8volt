@@ -175,5 +175,5 @@
 
 ## Active Speckit Plan
 <!-- SPECKIT START -->
-- Active Speckit implementation plan: `specs/362-late-business-id-assignment/plan.md`
+- Active Speckit implementation plan: `specs/369-standardize-flag-intent/plan.md`
 <!-- SPECKIT END -->

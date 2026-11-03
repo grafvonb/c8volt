@@ -416,3 +416,21 @@ func TestResultEnvelopeForError_UsesSharedOutcomeMapping(t *testing.T) {
 	require.NotNil(t, envelope.Detail)
 	require.Contains(t, envelope.Detail.Message, "provide either --pd-key or --bpmn-process-id")
 }
+
+// TestCapabilitiesFlagIntentSurface keeps obsolete names out of published metadata.
+func TestCapabilitiesFlagIntentSurface(t *testing.T) {
+	for _, tc := range flagIntentSurface {
+		capability := commandCapabilityForCommand(tc.cmd)
+		names := map[string]bool{}
+		for _, flag := range capability.Flags {
+			names[flag.Name] = true
+		}
+		for old, canonical := range tc.names {
+			require.True(t, names[canonical], tc.cmd.CommandPath()+" "+canonical)
+			if tc.cmd == updateJobCmd && (old == "retries" || old == "timeout") {
+				continue
+			}
+			require.False(t, names[old], tc.cmd.CommandPath()+" "+old)
+		}
+	}
+}

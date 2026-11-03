@@ -22,7 +22,7 @@ c8volt run [flags]
 
 ```
   ./c8volt run process-instance --bpmn-process-id <bpmn-process-id>
-  ./c8volt run process-instance --bpmn-process-id <bpmn-process-id> --vars '{"customerId":"1234"}'
+  ./c8volt run process-instance --bpmn-process-id <bpmn-process-id> --set-vars '{"customerId":"1234"}'
   ./c8volt run process-instance --bpmn-process-id <bpmn-process-id> --count 3 --workers 2
   ./c8volt run process-instance --bpmn-process-id <bpmn-process-id> --keys-only | ./c8volt expect process-instance --state completed -
 ```

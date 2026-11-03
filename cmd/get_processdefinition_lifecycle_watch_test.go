@@ -106,7 +106,7 @@ func TestGetProcessDefinitionLifecycleWatchConfiguredLogging(t *testing.T) {
 							return nil
 						}
 						processDefinitionWatchNow = newProcessDefinitionWatchClockForTest(time.Now(), 0, 2*time.Second, 3*time.Second, 5*time.Second, 6*time.Second, 6*time.Second)
-						args := []string{"--config", cfg, "get", "pd", "--watch", "--stat"}
+						args := []string{"--config", cfg, "get", "pd", "--watch", "--with-stats"}
 						if verbose {
 							args = append(args, "--verbose")
 						}

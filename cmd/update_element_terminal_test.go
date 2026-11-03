@@ -46,7 +46,7 @@ func TestElementScopeVariablesUpdateTerminal(t *testing.T) {
 				if tc.empty {
 					payload = "{}"
 				}
-				args := append([]string{"--config", completionLogConfig(t, f.server.URL, "plain-time", "info"), "--no-indicator", "update", "element", "--key", scopeElementA, "--vars", payload}, tc.flags...)
+				args := append([]string{"--config", completionLogConfig(t, f.server.URL, "plain-time", "info"), "--no-indicator", "update", "element", "--key", scopeElementA, "--set-vars", payload}, tc.flags...)
 				if tc.dry {
 					args = append(args, "--dry-run")
 				}
@@ -124,7 +124,7 @@ func TestElementScopeVariablesUpdateTerminal(t *testing.T) {
 func TestElementScopeVariablesUpdateTerminalPlanningFailure(t *testing.T) {
 	f := newElementUpdateFixture(t, "8.10")
 	f.lookupFailure = scopeElementB
-	args := []string{"--config", completionLogConfig(t, f.server.URL, "plain-time", "info"), "--no-indicator", "update", "element", "--key", scopeElementA + "," + scopeElementB, "--vars", `{"x":true}`}
+	args := []string{"--config", completionLogConfig(t, f.server.URL, "plain-time", "info"), "--no-indicator", "update", "element", "--key", scopeElementA + "," + scopeElementB, "--set-vars", `{"x":true}`}
 	out, stderr, err := runElementScopeTerminal(t, args, "configured", nil)
 	assertUserTaskCompletionExit(t, err, 3)
 	require.Empty(t, out)
@@ -145,7 +145,7 @@ func TestElementScopeVariablesUpdateMetadata(t *testing.T) {
 	require.Equal(t, ContractSupportFull, cap.ContractSupport)
 	require.Equal(t, AutomationSupportFull, cap.AutomationSupport)
 	require.Contains(t, cap.Aliases, "ei")
-	for _, name := range []string{"key", "vars", "vars-file", "dry-run", "workers", "no-worker-limit", "fail-fast", "no-wait"} {
+	for _, name := range []string{"key", "set-vars", "set-vars-file", "dry-run", "workers", "no-worker-limit", "fail-fast", "no-wait"} {
 		require.NotNil(t, updateElementCmd.Flags().Lookup(name))
 	}
 	require.Len(t, cap.OutputModes, 3)

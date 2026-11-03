@@ -22,15 +22,15 @@ c8volt embed list [flags]
 
 ```
   ./c8volt embed list
-  ./c8volt embed list --details
+  ./c8volt embed list --with-paths
   ./c8volt --json embed list
 ```
 
 ### Options
 
 ```
-      --details   show full embedded file paths
-  -h, --help      help for list
+  -h, --help         help for list
+      --with-paths   show full embedded file paths
 ```
 
 ### Options inherited from parent commands

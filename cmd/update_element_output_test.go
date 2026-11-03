@@ -28,7 +28,7 @@ func TestElementScopeVariablesUpdateModes(t *testing.T) {
 							if kind == "unchanged" {
 								f.local[scopeElementA] = []string{scopeVariableJSON("x", "true", scopeElementA, false)}
 							}
-							args := []string{policy, "update", "element", "--key", scopeElementA, "--vars", payload}
+							args := []string{policy, "update", "element", "--key", scopeElementA, "--set-vars", payload}
 							if dryRun {
 								args = append(args, "--dry-run")
 							}
@@ -147,7 +147,7 @@ func TestElementScopeVariablesUpdateModes(t *testing.T) {
 func TestElementScopeVariablesUpdatePreviewKeys(t *testing.T) {
 	f := newElementUpdateFixture(t, "8.10")
 	f.local[scopeElementB] = []string{scopeVariableJSON("x", "true", scopeElementB, false)}
-	out, stderr, err := runUpdateUserTaskCommand(t, completionLogConfig(t, f.server.URL, "plain-time", "info"), "", "--keys-only", "update", "element", "--key", scopeElementA+","+scopeElementB+","+scopeElementC+","+scopeElementA, "--vars", `{"x":true}`, "--dry-run")
+	out, stderr, err := runUpdateUserTaskCommand(t, completionLogConfig(t, f.server.URL, "plain-time", "info"), "", "--keys-only", "update", "element", "--key", scopeElementA+","+scopeElementB+","+scopeElementC+","+scopeElementA, "--set-vars", `{"x":true}`, "--dry-run")
 	require.NoError(t, err, stderr)
 	require.Empty(t, stderr)
 	require.Equal(t, scopeElementA+"\n"+scopeElementC+"\n", out)
@@ -164,7 +164,7 @@ func TestElementScopeVariablesUpdateConfirmationFailure(t *testing.T) {
 			t.Run(fmt.Sprintf("fast=%t/%s", failFast, mode), func(t *testing.T) {
 				f := newElementUpdateFixture(t, "8.10")
 				f.confirmationFailure = true
-				args := []string{"--auto-confirm", mode, "update", "element", "--key", scopeElementA + "," + scopeElementB, "--vars", `{"x":true}`, "--workers", "1"}
+				args := []string{"--auto-confirm", mode, "update", "element", "--key", scopeElementA + "," + scopeElementB, "--set-vars", `{"x":true}`, "--workers", "1"}
 				if failFast {
 					args = append(args, "--fail-fast")
 				}
@@ -234,7 +234,7 @@ func TestElementScopeVariablesUpdateClassifications(t *testing.T) {
 		scopeVariableJSON("same", "true", scopeElementA, false),
 		scopeVariableJSON("untouched", `{"nested":[1,2]}`, scopeElementA, false),
 	}
-	out, stderr, err := runUpdateUserTaskCommand(t, completionLogConfig(t, f.server.URL, "plain-time", "info"), "", "--json", "update", "element", "--key", scopeElementA, "--vars", `{"added":true,"change":true,"truncated":true,"same":true}`, "--dry-run", "--no-wait")
+	out, stderr, err := runUpdateUserTaskCommand(t, completionLogConfig(t, f.server.URL, "plain-time", "info"), "", "--json", "update", "element", "--key", scopeElementA, "--set-vars", `{"added":true,"change":true,"truncated":true,"same":true}`, "--dry-run", "--no-wait")
 	require.NoError(t, err, stderr)
 	require.Empty(t, stderr)
 	payload := requireJSONObject(t, requireSingleJSONObjectDocument(t, out)["payload"])
@@ -257,7 +257,7 @@ func TestElementScopeVariablesUpdateClassifications(t *testing.T) {
 func TestElementScopeVariablesUpdateMutationFailFast(t *testing.T) {
 	f := newElementUpdateFixture(t, "8.10")
 	f.mutationFailure = rejectElementUpdate
-	out, stderr, err := runUpdateUserTaskCommand(t, completionLogConfig(t, f.server.URL, "plain-time", "info"), "", "--json", "--auto-confirm", "update", "element", "--key", scopeElementA+","+scopeElementB+","+scopeElementC, "--vars", `{"x":1}`, "--workers", "1", "--no-worker-limit", "--fail-fast")
+	out, stderr, err := runUpdateUserTaskCommand(t, completionLogConfig(t, f.server.URL, "plain-time", "info"), "", "--json", "--auto-confirm", "update", "element", "--key", scopeElementA+","+scopeElementB+","+scopeElementC, "--set-vars", `{"x":1}`, "--workers", "1", "--no-worker-limit", "--fail-fast")
 	assertUserTaskCompletionExit(t, err, 2)
 	require.Empty(t, stderr)
 	env := requireSingleJSONObjectDocument(t, out)

@@ -35,7 +35,7 @@ func decodeAssignmentEnvelope(t *testing.T, output string) ResultEnvelope[userTa
 // TestUserTaskAssignmentReportPreview proves frozen intent, explicit false/true
 // override, omission for unassignment and required zero counters without backend work.
 func TestUserTaskAssignmentReportPreview(t *testing.T) {
-	for _, selector := range []string{"--assign=  opaque\n\x1bidentity  ", "--unassign"} {
+	for _, selector := range []string{"--set-assignee=  opaque\n\x1bidentity  ", "--unassign"} {
 		for _, override := range []bool{false, true} {
 			if selector == "--unassign" && override {
 				continue
@@ -313,7 +313,7 @@ func TestUserTaskAssignmentViewRequiresLogger(t *testing.T) {
 // TestUserTaskAssignmentViewBulkPreview lists each frozen key without verbose
 // and quotes control characters while preserving explicit protection wording.
 func TestUserTaskAssignmentViewBulkPreview(t *testing.T) {
-	cmd := newAssignmentInputCommand(t, "--assign=alice", "--key", completionKeyB+","+completionKeyA, "--dry-run")
+	cmd := newAssignmentInputCommand(t, "--set-assignee=alice", "--key", completionKeyB+","+completionKeyA, "--dry-run")
 	input, err := parseUpdateUserTaskAssignmentInput(cmd, nil)
 	require.NoError(t, err)
 	var out, stderr, diagnostics bytes.Buffer
@@ -329,7 +329,7 @@ func TestUserTaskAssignmentViewBulkPreview(t *testing.T) {
 // TestUserTaskAssignmentViewValidationEnvelope keeps local failure payload-free
 // using the existing error contract, with one document and no result fabrication.
 func TestUserTaskAssignmentViewValidationEnvelope(t *testing.T) {
-	cmd := newAssignmentInputCommand(t, "--assign=", "--key", completionKeyA, "--json", "--auto-confirm")
+	cmd := newAssignmentInputCommand(t, "--set-assignee=", "--key", completionKeyA, "--json", "--auto-confirm")
 	_, err := parseUpdateUserTaskAssignmentInput(cmd, nil)
 	require.ErrorIs(t, err, ferrors.ErrInvalidInput)
 	var out bytes.Buffer

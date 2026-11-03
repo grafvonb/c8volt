@@ -59,9 +59,9 @@ Use --dry-run to inspect planned repairs without mutation, --auto-confirm or --a
   ./c8volt --tenant tenant-a ops repair incident --key <incident-key> --dry-run
   ./c8volt --all-tenants ops repair incident --state active --limit 5 --dry-run
   ./c8volt ops repair incident --state active --error-type io_mapping_error --limit 5 --dry-run
-  ./c8volt ops repair incident --key <incident-key> --vars '{"hasIncident":false}' --dry-run
+  ./c8volt ops repair incident --key <incident-key> --set-vars '{"hasIncident":false}' --dry-run
   ./c8volt --verbose ops repair incident --state active --error-type io_mapping_error --limit 5 --auto-confirm
-  ./c8volt ops repair incident --key <incident-key> --vars '{"hasIncident":false}' --report-file repair-incident.md`,
+  ./c8volt ops repair incident --key <incident-key> --set-vars '{"hasIncident":false}' --report-file repair-incident.md`,
 	Aliases: []string{"inc"},
 	Args: func(cmd *cobra.Command, args []string) error {
 		if err := validateOptionalDashArg(args); err != nil {
@@ -183,10 +183,17 @@ Use --dry-run to inspect planned repairs without mutation, --auto-confirm or --a
 	},
 }
 
+// Register repair inputs and diagnostic replacements without accepting legacy flags.
 func init() {
 	opsRepairCmd.AddCommand(opsRepairIncidentCmd)
 	useInvalidInputFlagErrors(opsRepairIncidentCmd)
 
+	setFlagMigrations(opsRepairIncidentCmd, map[string]flagMigration{
+		"retries":     {Replacement: "--set-retries", TakesValue: true},
+		"job-timeout": {Replacement: "--set-job-timeout", TakesValue: true},
+		"vars":        {Replacement: "--set-vars", TakesValue: true},
+		"vars-file":   {Replacement: "--set-vars-file", TakesValue: true},
+	})
 	fs := opsRepairIncidentCmd.Flags()
 	fs.StringSliceVarP(&flagOpsRepairIncidentKeys, "key", "k", nil, "incident key(s) to repair; repeat or combine with stdin '-'")
 	fs.StringVarP(&flagOpsRepairIncidentState, "state", "s", "active", "incident state scope for search: active, pending, resolved, migrated, unknown, all")
@@ -204,10 +211,10 @@ func init() {
 	fs.IntVar(&flagOpsRepairIncidentCreationTimeOlder, "creation-time-older-days", -1, "only include incidents with creation time N days old or older")
 	fs.Int32VarP(&flagOpsRepairIncidentBatchSize, "batch-size", "n", consts.MaxPISearchSize, fmt.Sprintf("number of incidents to inspect per discovery page; does not cap total frozen scope (max limit %d enforced by server)", consts.MaxPISearchSize))
 	fs.Int32VarP(&flagOpsRepairIncidentLimit, "limit", "l", 0, "maximum number of matching incidents to freeze for repair; omit to discover all matches")
-	fs.Int32Var(&flagOpsRepairIncidentRetries, "retries", 1, "retry count to set on related jobs; 0 skips retry restoration")
-	fs.StringVar(&flagOpsRepairIncidentJobTimeoutRaw, "job-timeout", "", "timeout duration to submit for related jobs, for example 60s, 5m, or 1h")
-	fs.StringVar(&flagOpsRepairIncidentVars, "vars", "", "JSON object with variables to set once per process-instance scope before resolving dependent incidents")
-	fs.StringVar(&flagOpsRepairIncidentVarsFile, "vars-file", "", "path to JSON object file with variables to set once per process-instance scope")
+	fs.Int32Var(&flagOpsRepairIncidentRetries, "set-retries", 1, "retry count to set on related jobs; 0 skips retry restoration")
+	fs.StringVar(&flagOpsRepairIncidentJobTimeoutRaw, "set-job-timeout", "", "timeout duration to submit for related jobs, for example 60s, 5m, or 1h")
+	fs.StringVar(&flagOpsRepairIncidentVars, "set-vars", "", "JSON object with variables to set once per process-instance scope before resolving dependent incidents")
+	fs.StringVar(&flagOpsRepairIncidentVarsFile, "set-vars-file", "", "path to JSON object file with variables to set once per process-instance scope")
 	fs.StringVar(&flagOpsRepairIncidentReportFile, "report-file", "", "plan an audit report at the given path")
 	fs.StringVar(&flagOpsRepairIncidentReportFormat, "report-format", "", "audit report format: markdown, json (default inferred from report-file extension)")
 	fs.BoolVar(&flagDryRun, "dry-run", false, "freeze repair targets and preview repair steps without submitting mutations")
@@ -225,6 +232,7 @@ func init() {
 	)
 }
 
+// Validate repair selection and payload-source exclusions before planning.
 func validateOpsRepairIncidentFlagValues(cmd *cobra.Command) error {
 	if flagOpsRepairIncidentBatchSize <= 0 || flagOpsRepairIncidentBatchSize > consts.MaxPISearchSize {
 		return invalidFlagValuef("invalid value for --batch-size: %d, expected positive integer up to %d", flagOpsRepairIncidentBatchSize, consts.MaxPISearchSize)
@@ -250,10 +258,10 @@ func validateOpsRepairIncidentFlagValues(cmd *cobra.Command) error {
 		return err
 	}
 	if flagOpsRepairIncidentRetries < 0 {
-		return invalidFlagValuef("invalid value for --retries: %d, expected non-negative integer", flagOpsRepairIncidentRetries)
+		return invalidFlagValuef("invalid value for --set-retries: %d, expected non-negative integer", flagOpsRepairIncidentRetries)
 	}
-	if cmd != nil && cmd.Flags().Changed("vars") && cmd.Flags().Changed("vars-file") {
-		return mutuallyExclusiveFlagsf("--vars cannot be combined with --vars-file")
+	if cmd != nil && cmd.Flags().Changed("set-vars") && cmd.Flags().Changed("set-vars-file") {
+		return mutuallyExclusiveFlagsf("--set-vars cannot be combined with --set-vars-file")
 	}
 	if pickMode() == RenderModeJSON && flagVerbose {
 		return mutuallyExclusiveFlagsf("--json cannot be combined with --verbose for ops repair incident")
@@ -283,16 +291,17 @@ func validateOpsRepairIncidentFlagValues(cmd *cobra.Command) error {
 	return nil
 }
 
+// parseOpsRepairIncidentJobTimeout validates the supplied related-job duration.
 func parseOpsRepairIncidentJobTimeout(cmd *cobra.Command) (time.Duration, error) {
-	if cmd == nil || !cmd.Flags().Changed("job-timeout") {
+	if cmd == nil || !cmd.Flags().Changed("set-job-timeout") {
 		return 0, nil
 	}
 	timeout, err := time.ParseDuration(flagOpsRepairIncidentJobTimeoutRaw)
 	if err != nil || timeout <= 0 {
-		return 0, invalidFlagValuef("invalid value for --job-timeout: %q, expected positive duration such as 60s, 5m, or 1h", flagOpsRepairIncidentJobTimeoutRaw)
+		return 0, invalidFlagValuef("invalid value for --set-job-timeout: %q, expected positive duration such as 60s, 5m, or 1h", flagOpsRepairIncidentJobTimeoutRaw)
 	}
 	if timeout.Milliseconds() <= 0 {
-		return 0, invalidFlagValuef("invalid value for --job-timeout: %q, duration must be at least 1ms", flagOpsRepairIncidentJobTimeoutRaw)
+		return 0, invalidFlagValuef("invalid value for --set-job-timeout: %q, duration must be at least 1ms", flagOpsRepairIncidentJobTimeoutRaw)
 	}
 	return timeout, nil
 }

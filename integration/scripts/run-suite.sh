@@ -78,7 +78,7 @@ it_run_case "Fixture Setup" "deploy-user-task-fixture" "mutation" "pass" c8 embe
 
 vars_json="{\"releaseRunId\":\"${IT_RUN_ID}\",\"suite\":\"${IT_SUITE_NAME}\",\"customerTier\":\"bronze\",\"status\":\"pending\",\"payload\":\"integration-volume\"}"
 keys_file="$IT_WORKDIR/data/user-task.keys"
-it_run_capture "Data Generation" "run-volume-user-task-processes" "mutation" "pass" "$keys_file" c8 run pi -b "$simple_user_task" -n "$IT_VOLUME_COUNT" --workers 4 --vars "$vars_json" --keys-only
+it_run_capture "Data Generation" "run-volume-user-task-processes" "mutation" "pass" "$keys_file" c8 run pi -b "$simple_user_task" -n "$IT_VOLUME_COUNT" --workers 4 --set-vars "$vars_json" --keys-only
 
 first_key="$(it_first_key "$keys_file" || true)"
 key_count="$(awk '/^[0-9]+$/ { count++ } END { print count + 0 }' "$keys_file" 2>/dev/null || printf "0")"
@@ -110,8 +110,8 @@ if [ -n "$first_key" ]; then
   it_run_case "Keyed Workflows" "get-first-pi" "read-only" "pass" c8 get pi --key "$first_key"
   it_run_case "Keyed Workflows" "get-first-pi-with-vars" "read-only" "pass" c8 get pi --key "$first_key" --with-vars --var-value-limit 120
   it_run_case "Keyed Workflows" "walk-first-pi" "read-only" "pass" c8 walk pi --key "$first_key"
-  it_run_case "Mutating Workflows" "update-pi-dry-run" "dry-run" "pass" c8 update pi "${update_key_args[@]}" --vars "$update_vars_json" --dry-run
-  it_run_case "Mutating Workflows" "update-pi-real" "mutation" "pass" c8 --auto-confirm update pi "${update_key_args[@]}" --vars "$update_vars_json"
+  it_run_case "Mutating Workflows" "update-pi-dry-run" "dry-run" "pass" c8 update pi "${update_key_args[@]}" --set-vars "$update_vars_json" --dry-run
+  it_run_case "Mutating Workflows" "update-pi-real" "mutation" "pass" c8 --auto-confirm update pi "${update_key_args[@]}" --set-vars "$update_vars_json"
   it_run_case "Mutating Workflows" "update-pi-post-check" "read-only" "pass" c8 get pi --key "$first_key" --with-vars --var-value-limit 120
   it_run_case "Mutating Workflows" "cancel-pi-dry-run" "dry-run" "pass" c8 cancel pi --key "$first_key" --dry-run
   it_run_case "Mutating Workflows" "cancel-pi-real" "mutation" "pass" c8 --auto-confirm cancel pi --key "$first_key"

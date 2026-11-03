@@ -69,11 +69,17 @@ func renderCommandResult[T any](cmd *cobra.Command, payload T) error {
 // optional humanMessage replaces only human error text; JSON retains the original
 // normalized detail and class.
 func handleCommandError(cmd *cobra.Command, log *slog.Logger, noErrCodes bool, err error, humanMessage ...string) {
+	handleCommandErrorWithMode(cmd, log, noErrCodes, err, pickMode(), humanMessage...)
+}
+
+// handleCommandErrorWithMode permits diagnostic-only recovered output selection
+// without modifying the command's parsed flags or global execution inputs.
+func handleCommandErrorWithMode(cmd *cobra.Command, log *slog.Logger, noErrCodes bool, err error, mode RenderMode, humanMessage ...string) {
 	if err == nil {
 		return
 	}
 	normalized := ferrors.Normalize(err)
-	if commandUsesSharedEnvelope(cmd, pickMode()) {
+	if commandUsesSharedEnvelope(cmd, mode) {
 		_ = renderResultEnvelope(cmd, resultEnvelopeForError(cmd, normalized))
 		os.Exit(ferrors.ResolveExitCode(noErrCodes, normalized))
 	}

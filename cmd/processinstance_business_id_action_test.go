@@ -163,7 +163,7 @@ func businessIDActionArgs(t *testing.T, s *httptest.Server, verb, format, level 
 	t.Helper()
 	args := []string{"--config", runBusinessIDConfig(t, s.URL, format, level), "--tenant", "tenant-a", verb, "pi", "--bid", " ORDER,零* ", "--workers", "1"}
 	if verb == "update" {
-		args = append(args, "--vars", `{"foo":{"nested":["bar"]}}`)
+		args = append(args, "--set-vars", `{"foo":{"nested":["bar"]}}`)
 	}
 	return append(args, flags...)
 }
@@ -477,7 +477,7 @@ func TestBusinessIDActionsValidation(t *testing.T) {
 					defer s.Close()
 					args := []string{"--config", testx.WriteTestConfigForVersion(t, s.URL, version), verb, "pi", "--bid", "order", "--json", "--dry-run"}
 					if verb == "update" {
-						args = append(args, "--vars", `{"foo":1}`)
+						args = append(args, "--set-vars", `{"foo":1}`)
 					}
 					args = append(args, extra...)
 					out, stderr, err := runBusinessIDCommand(t, args, "configured", false)

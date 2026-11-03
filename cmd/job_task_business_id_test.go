@@ -225,9 +225,9 @@ func TestJobBusinessIDPlans(t *testing.T) {
 						args := []string{"--config", runBusinessIDConfig(t, srv.URL, format, level), "update", "job", "--dry-run"}
 						switch selection {
 						case "retry":
-							args = append(args, "--key", "2251799813685101", "--retries", "3")
+							args = append(args, "--key", "2251799813685101", "--set-retries", "3")
 						case "retry-noop":
-							args = append(args, "--key", "2251799813685101", "--retries", "1")
+							args = append(args, "--key", "2251799813685101", "--set-retries", "1")
 						case "scalar-complete":
 							args = append(args, "--key", "2251799813685101", "--complete")
 						case "batch":

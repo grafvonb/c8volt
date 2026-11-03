@@ -37,7 +37,7 @@ func TestUpdateUserTaskCommand_PlansSubmitsAndConfirmsScopeLocalVariables(t *tes
 
 	stdout, stderr, err := runUpdateUserTaskCommand(t, configPath, "",
 		"--automation", "--json", "update", "ut",
-		"--key", "2251799815391233", "--vars", `{"approved":true}`,
+		"--key", "2251799815391233", "--set-vars", `{"approved":true}`,
 	)
 	require.NoError(t, err)
 	require.Empty(t, stderr)
@@ -63,11 +63,11 @@ func TestUpdateUserTaskCommand_PlansSubmitsAndConfirmsScopeLocalVariables(t *tes
 // TestUpdateUserTaskPayloadParserMatchesProcessInstanceContract protects the
 // shared inline parser and preserves null property values.
 func TestUpdateUserTaskPayloadParserMatchesProcessInstanceContract(t *testing.T) {
-	got, err := parseUpdateVariables(`{"approved":null,"count":2}`, "--vars")
+	got, err := parseUpdateVariables(`{"approved":null,"count":2}`, "--set-vars")
 	require.NoError(t, err)
 	require.Equal(t, map[string]any{"approved": nil, "count": float64(2)}, got)
 
-	_, err = parseUpdateProcessInstanceVariables(`["not-an-object"]`, "--vars")
+	_, err = parseUpdateProcessInstanceVariables(`["not-an-object"]`, "--set-vars")
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "must be a valid JSON object")
 }

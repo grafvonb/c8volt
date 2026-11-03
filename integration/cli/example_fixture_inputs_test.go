@@ -20,7 +20,7 @@ func prepareExampleVarsFile(args []string, workDir, marker string) ([]string, []
 	var substitutions []string
 	for i, arg := range args {
 		name, value, inline := strings.Cut(arg, "=")
-		if name != "--vars-file" {
+		if name != "--set-vars-file" {
 			continue
 		}
 		if !inline && i+1 < len(args) {
@@ -47,10 +47,10 @@ func prepareExampleVarsFile(args []string, workDir, marker string) ([]string, []
 			if closeErr != nil {
 				return nil, nil, closeErr
 			}
-			substitutions = append(substitutions, "--vars-file "+value+"="+path)
+			substitutions = append(substitutions, "--set-vars-file "+value+"="+path)
 		}
 		if inline {
-			result[i] = "--vars-file=" + path
+			result[i] = "--set-vars-file=" + path
 		} else {
 			result[i+1] = path
 		}
@@ -79,6 +79,7 @@ func unresolvedPlaceholdersAllowed(placeholders []string) bool {
 	return len(placeholders) > 0
 }
 
+// Canonical variable-file examples receive isolated generated payload files.
 func TestExampleVarsFileFixture(t *testing.T) {
 	for _, command := range []string{"update process-instance", "update ut"} {
 		for _, inline := range []bool{false, true} {
@@ -89,9 +90,9 @@ func TestExampleVarsFileFixture(t *testing.T) {
 				}
 				original := append(strings.Fields(command), "--key", "123", "--dry-run")
 				if inline {
-					original = append(original, "--vars-file=./vars.json")
+					original = append(original, "--set-vars-file=./vars.json")
 				} else {
-					original = append(original, "--vars-file", "./vars.json")
+					original = append(original, "--set-vars-file", "./vars.json")
 				}
 				snapshot := append([]string(nil), original...)
 				args, substitutions, err := prepareExampleVarsFile(original, dir, "test-marker")
@@ -101,7 +102,7 @@ func TestExampleVarsFileFixture(t *testing.T) {
 				if !reflect.DeepEqual(original, snapshot) {
 					t.Fatal("input arguments mutated")
 				}
-				path := strings.TrimPrefix(args[len(args)-1], "--vars-file=")
+				path := strings.TrimPrefix(args[len(args)-1], "--set-vars-file=")
 				data, err := os.ReadFile(path)
 				if err != nil {
 					t.Fatal(err)
@@ -121,9 +122,10 @@ func TestExampleVarsFileFixture(t *testing.T) {
 	}
 }
 
+// Fixture substitution preserves unrelated arguments and explicit file choices.
 func TestExampleVarsFilePreservesOtherInputs(t *testing.T) {
 	dir := t.TempDir()
-	for _, args := range [][]string{{"get", "pd"}, {"--vars-file", "custom.json"}, {"--vars-file"}} {
+	for _, args := range [][]string{{"get", "pd"}, {"--set-vars-file", "custom.json"}, {"--set-vars-file"}} {
 		result, substitutions, err := prepareExampleVarsFile(args, dir, "marker")
 		if err != nil || !reflect.DeepEqual(result, args) || len(substitutions) != 0 {
 			t.Fatalf("unexpected rewrite: %v %v %v", result, substitutions, err)
@@ -133,7 +135,7 @@ func TestExampleVarsFilePreservesOtherInputs(t *testing.T) {
 	if err != nil || len(entries) != 0 {
 		t.Fatalf("unexpected fixture files: %v %v", entries, err)
 	}
-	if _, _, err := prepareExampleVarsFile([]string{"--vars-file", "./vars.json"}, filepath.Join(dir, "missing"), "marker"); err == nil {
+	if _, _, err := prepareExampleVarsFile([]string{"--set-vars-file", "./vars.json"}, filepath.Join(dir, "missing"), "marker"); err == nil {
 		t.Fatal("fixture write failure swallowed")
 	}
 }
@@ -147,12 +149,13 @@ func TestExampleMissingResourceKeyIsSetupGap(t *testing.T) {
 	}
 }
 
+// Relative evidence directories remain valid for canonical file inputs.
 func TestExampleVarsFileRelativeEvidenceDirectory(t *testing.T) {
 	t.Chdir(t.TempDir())
 	if err := os.Mkdir("evidence", 0700); err != nil {
 		t.Fatal(err)
 	}
-	args, _, err := prepareExampleVarsFile([]string{"--vars-file", "vars.json"}, "evidence", "marker")
+	args, _, err := prepareExampleVarsFile([]string{"--set-vars-file", "vars.json"}, "evidence", "marker")
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -33,7 +33,7 @@ func TestUpdateUserTaskSupportedVersions(t *testing.T) {
 			server, capture := newUpdateUserTaskCommandServer(t, version)
 			stdout, stderr, err := runUpdateUserTaskCommand(t, writeTestConfigForVersion(t, server.URL, version), "",
 				"--automation", "--json", "update", "ut", "--key", "2251799815391233",
-				"--vars", `{"approved":true}`, "--no-wait",
+				"--set-vars", `{"approved":true}`, "--no-wait",
 			)
 			require.NoError(t, err)
 			require.Empty(t, stderr)
@@ -68,7 +68,7 @@ func TestUpdateUserTaskDiscoveryErrors(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			server, capture := newUpdateUserTaskErrorServer(t, "8.10", test.scenario)
 			stdout, _, err := runUpdateUserTaskCommand(t, writeTestConfigForVersion(t, server.URL, "8.10"), "",
-				"--automation", "--json", "update", "ut", "--key", "101", "--vars", `{"approved":true}`,
+				"--automation", "--json", "update", "ut", "--key", "101", "--set-vars", `{"approved":true}`,
 			)
 			requireCommandExitCode(t, err, test.wantExit)
 			envelope := decodeSingleUserTaskUpdateEnvelope(t, stdout)
@@ -88,7 +88,7 @@ func TestUpdateUserTaskTruncatedConfirmation(t *testing.T) {
 	server, capture := newUpdateUserTaskErrorServer(t, "8.10", "truncated-confirmation")
 	stdout, _, err := runUpdateUserTaskCommand(t, writeTestConfigForVersion(t, server.URL, "8.10"), "",
 		"--backoff-max-retries", "1", "--automation", "--json", "update", "ut",
-		"--key", "101", "--vars", `{"approved":true}`,
+		"--key", "101", "--set-vars", `{"approved":true}`,
 	)
 	requireCommandExitCode(t, err, exitcode.Error)
 	envelope := decodeSingleUserTaskUpdateEnvelope(t, stdout)
@@ -110,7 +110,7 @@ func TestUpdateUserTaskPartialAcceptanceExitCode(t *testing.T) {
 	server, capture := newUpdateUserTaskOutputServer(t, "8.10", false, "202")
 	stdout, _, err := runUpdateUserTaskCommand(t, writeTestConfigForVersion(t, server.URL, "8.10"), "",
 		"--automation", "--json", "update", "ut", "--key", "101,102",
-		"--vars", `{"approved":true}`, "--no-wait", "--workers", "1",
+		"--set-vars", `{"approved":true}`, "--no-wait", "--workers", "1",
 	)
 	requireCommandExitCode(t, err, exitcode.Error)
 	envelope := decodeSingleUserTaskUpdateEnvelope(t, stdout)
@@ -144,7 +144,7 @@ func TestUpdateUserTaskFunctionalAndHTTPDiagnostics(t *testing.T) {
 			if test.rootFlag != "" {
 				args = append(args, test.rootFlag)
 			}
-			args = append(args, "update", "ut", "--key", "101", "--vars", `{"approved":true}`, "--no-wait")
+			args = append(args, "update", "ut", "--key", "101", "--set-vars", `{"approved":true}`, "--no-wait")
 			stdout, stderr, err := runUpdateUserTaskCommand(t, writeTestConfigForVersion(t, server.URL, "8.10"), "", args...)
 			require.NoError(t, err)
 			require.Empty(t, stdout)

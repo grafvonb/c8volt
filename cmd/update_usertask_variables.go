@@ -19,7 +19,7 @@ func validateUpdateUserTaskJSONConfirmation(cmd *cobra.Command) error {
 		return mutuallyExclusiveFlagsf("--json cannot be combined with --verbose for update user-task")
 	}
 	force, _ := cmd.Flags().GetBool("force")
-	if (cmd.Flags().Changed("assign") && force) || flagDryRun || pickMode() != RenderModeJSON || shouldImplicitlyConfirm(cmd) {
+	if (cmd.Flags().Changed("set-assignee") && force) || flagDryRun || pickMode() != RenderModeJSON || shouldImplicitlyConfirm(cmd) {
 		return nil
 	}
 	return missingDependentFlagsf("--json update user-task requires --dry-run, --auto-confirm, or --automation")

@@ -179,7 +179,7 @@ func seedProfileData(t *testing.T, profile integrationProfile) (seededProfileDat
 func discoverEmbeddedFixture(t *testing.T, profile integrationProfile) (embeddedFixtureSelection, evidenceRecord, error) {
 	t.Helper()
 	scenario := "seeded-" + profile.Name + "-embed-list"
-	result := runC8VoltForProfile(t, profile.Name, scenario, "--automation", "--json", "embed", "list", "--details")
+	result := runC8VoltForProfile(t, profile.Name, scenario, "--automation", "--json", "embed", "list", "--with-paths")
 	record := commandEvidence("embed list", scenario, result, "pass")
 	record.Profile = profile.Name
 	record.CamundaVersion = profile.ExpectedVersion
@@ -262,7 +262,7 @@ func runSeededProcessInstanceWithVariables(t *testing.T, profile integrationProf
 	}
 	args := []string{"--automation", "--json", "run", "process-instance"}
 	args = append(args, runSelectorArgs(selection, deployments)...)
-	args = append(args, "--vars", vars)
+	args = append(args, "--set-vars", vars)
 
 	scenario := "seeded-" + profile.Name + "-run-process-instance"
 	if label != "" {

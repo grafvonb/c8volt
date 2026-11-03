@@ -63,7 +63,7 @@ func testUpdateJobAssignmentWire(t *testing.T, noWait bool) {
 					}
 				}))
 				defer server.Close()
-				args := []string{"--config", writeTestConfigForVersion(t, server.URL, "8.10"), "update", "job", "--complete", "--set-bid", " Order,007 ", "--vars", `{"approved":true}`, "--json", "--auto-confirm"}
+				args := []string{"--config", writeTestConfigForVersion(t, server.URL, "8.10"), "update", "job", "--complete", "--set-bid", " Order,007 ", "--set-vars", `{"approved":true}`, "--json", "--auto-confirm"}
 				if noWait {
 					args = append(args, "--no-wait")
 				}
@@ -125,10 +125,10 @@ func testUpdateJobAssignmentWire(t *testing.T, noWait bool) {
 // TestUpdateJobAssignmentParsing rejects invalid intent before any client exists.
 func TestUpdateJobAssignmentParsing(t *testing.T) {
 	for _, flags := range [][]string{
-		{"--key", scalarJobKey, "--retries", "1", "--set-bid", "x"},
-		{"--key", scalarJobKey, "--timeout", "1m", "--set-bid", "x"},
-		{"--key", scalarJobKey, "--fail", "--retries", "0", "--set-bid", "x"},
-		{"--key", scalarJobKey, "--throw-bpmn-error", "x", "--set-bid", "x"},
+		{"--key", scalarJobKey, "--set-retries", "1", "--set-bid", "x"},
+		{"--key", scalarJobKey, "--set-timeout", "1m", "--set-bid", "x"},
+		{"--key", scalarJobKey, "--fail", "--set-retries", "0", "--set-bid", "x"},
+		{"--key", scalarJobKey, "--throw-bpmn-error", "--set-error-code", "x", "--set-bid", "x"},
 		{"--complete", "--set-bid", "x"},
 		{"--key", scalarJobKey, "--complete", "--set-bid", ""},
 		{"--key", scalarJobKey, "--complete", "--set-bid", "   "},
@@ -200,7 +200,7 @@ func TestUpdateJobAssignmentFrozenApproval(t *testing.T) {
 	response := jobSearchResponse(scalarJobKey, 1)
 	server := newJobCompleteServer(t, "8.10", &requests, &bodies, []string{response, response, response}, 204)
 	defer server.Close()
-	stdout, stderr := executeRootForJobTestWithSeparateOutputs(t, "--config", writeTestConfigForVersion(t, server.URL, "8.10"), "update", "job", "--key", scalarJobKey, "--complete", "--set-bid", " Order,007 ", "--vars", `{"nested":{"approved":true}}`)
+	stdout, stderr := executeRootForJobTestWithSeparateOutputs(t, "--config", writeTestConfigForVersion(t, server.URL, "8.10"), "update", "job", "--key", scalarJobKey, "--complete", "--set-bid", " Order,007 ", "--set-vars", `{"nested":{"approved":true}}`)
 	require.True(t, prompted)
 	require.Empty(t, stdout)
 	require.Contains(t, stderr, "assignment accepted")

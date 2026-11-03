@@ -84,7 +84,7 @@ func TestUpdateUserTaskAssignmentPreflight(t *testing.T) {
 					if bulk {
 						keys += "," + completionKeyB
 					}
-					args := []string{"--config", completionLogConfig(t, server.URL, format, level), "update", "ut", "--assign", "alice", "--key", keys, "--workers", "1"}
+					args := []string{"--config", completionLogConfig(t, server.URL, format, level), "update", "ut", "--set-assignee", "alice", "--key", keys, "--workers", "1"}
 					switch mode {
 					case "auto":
 						args = append(args, "--auto-confirm")
@@ -233,7 +233,7 @@ func TestUpdateUserTaskAssignmentNonterminalRequiresForce(t *testing.T) {
 				require.NoError(t, json.NewEncoder(w).Encode(map[string]string{"userTaskKey": completionKeyA, "processInstanceKey": completionKeyB, "state": "CREATED", "assignee": "bob"}))
 			}))
 			defer server.Close()
-			args := []string{"update", "ut", "-", "--assign", "alice"}
+			args := []string{"update", "ut", "-", "--set-assignee", "alice"}
 			if flag != "" {
 				args = append(args, flag)
 			}
@@ -243,7 +243,8 @@ func TestUpdateUserTaskAssignmentNonterminalRequiresForce(t *testing.T) {
 			require.NotContains(t, stderr, "[y/N]")
 			if flag == "--allow-override" {
 				require.Empty(t, calls.Snapshot())
-				require.Contains(t, stderr, "unknown flag")
+				require.Regexp(t, `^\S+ ERROR invalid input: invalid command arguments; see command help\n$`, stderr)
+				assertUserTaskCompletionExit(t, err, 2)
 				return
 			}
 			assertUserTaskCompletionExit(t, err, 6)
@@ -290,7 +291,7 @@ func TestUpdateUserTaskAssignmentUnchanged(t *testing.T) {
 						if mode == "warn" {
 							level = "warn"
 						}
-						args := []string{"--config", completionLogConfig(t, server.URL, format, level), "update", "ut", "--assign", "alice", "-k", strings.Join(keys, ",") + "," + keys[0], "--workers", "1"}
+						args := []string{"--config", completionLogConfig(t, server.URL, format, level), "update", "ut", "--set-assignee", "alice", "-k", strings.Join(keys, ",") + "," + keys[0], "--workers", "1"}
 						for _, flag := range strings.Fields(mode) {
 							if flag != "human" && flag != "warn" {
 								args = append(args, "--"+flag)
@@ -396,7 +397,7 @@ func TestUpdateUserTaskAssignmentMixedUnchanged(t *testing.T) {
 				w.WriteHeader(http.StatusNoContent)
 			}))
 			defer server.Close()
-			args := []string{"--config", completionLogConfig(t, server.URL, "json", "info"), "update", "ut", "--assign", "alice", "-k", completionKeyA + "," + completionKeyB, "--workers", "1"}
+			args := []string{"--config", completionLogConfig(t, server.URL, "json", "info"), "update", "ut", "--set-assignee", "alice", "-k", completionKeyA + "," + completionKeyB, "--workers", "1"}
 			blocked := mode == "blocked" || mode == "fail-fast"
 			machine := mode == "json" || blocked
 			prompt := "You are about to assign user-task " + completionKeyB + " to \"alice\".\nDo you want to proceed? [y/N]: "

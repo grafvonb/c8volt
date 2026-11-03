@@ -30,9 +30,9 @@ c8volt ops repair incident [flags]
   ./c8volt --tenant tenant-a ops repair incident --key <incident-key> --dry-run
   ./c8volt --all-tenants ops repair incident --state active --limit 5 --dry-run
   ./c8volt ops repair incident --state active --error-type io_mapping_error --limit 5 --dry-run
-  ./c8volt ops repair incident --key <incident-key> --vars '{"hasIncident":false}' --dry-run
+  ./c8volt ops repair incident --key <incident-key> --set-vars '{"hasIncident":false}' --dry-run
   ./c8volt --verbose ops repair incident --state active --error-type io_mapping_error --limit 5 --auto-confirm
-  ./c8volt ops repair incident --key <incident-key> --vars '{"hasIncident":false}' --report-file repair-incident.md
+  ./c8volt ops repair incident --key <incident-key> --set-vars '{"hasIncident":false}' --report-file repair-incident.md
 ```
 
 ### Options
@@ -51,7 +51,6 @@ c8volt ops repair incident [flags]
       --error-type string              case-insensitive incident error type filter for search
       --fail-fast                      stop scheduling incident repairs after the first error
   -h, --help                           help for incident
-      --job-timeout string             timeout duration to submit for related jobs, for example 60s, 5m, or 1h
   -k, --key strings                    incident key(s) to repair; repeat or combine with stdin '-'
   -l, --limit int32                    maximum number of matching incidents to freeze for repair; omit to discover all matches
       --no-wait                        return after repair mutations are accepted without incident or retry confirmation
@@ -60,11 +59,12 @@ c8volt ops repair incident [flags]
       --pi-key string                  process instance key to filter incidents
       --report-file string             plan an audit report at the given path
       --report-format string           audit report format: markdown, json (default inferred from report-file extension)
-      --retries int32                  retry count to set on related jobs; 0 skips retry restoration (default 1)
       --root-key string                root process instance key to filter incidents
+      --set-job-timeout string         timeout duration to submit for related jobs, for example 60s, 5m, or 1h
+      --set-retries int32              retry count to set on related jobs; 0 skips retry restoration (default 1)
+      --set-vars string                JSON object with variables to set once per process-instance scope before resolving dependent incidents
+      --set-vars-file string           path to JSON object file with variables to set once per process-instance scope
   -s, --state string                   incident state scope for search: active, pending, resolved, migrated, unknown, all (default "active")
-      --vars string                    JSON object with variables to set once per process-instance scope before resolving dependent incidents
-      --vars-file string               path to JSON object file with variables to set once per process-instance scope
   -w, --workers int                    maximum concurrent workers when repairing multiple incidents (default: min(count, 2*GOMAXPROCS, 32))
 ```
 

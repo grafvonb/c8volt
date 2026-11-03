@@ -140,7 +140,7 @@ func TestGetFamilyUserTaskVariables(t *testing.T) {
 func discoverUserTaskVariableFixtures(t *testing.T, profile integrationProfile) (userTaskVariableFixtures, []evidenceRecord, error) {
 	t.Helper()
 	scenario := "user-task-vars-" + profile.Name + "-embed-list"
-	result := runC8VoltForProfile(t, profile.Name, scenario, "--automation", "--json", "embed", "list", "--details")
+	result := runC8VoltForProfile(t, profile.Name, scenario, "--automation", "--json", "embed", "list", "--with-paths")
 	record := userTaskVariableEvidence(profile, "embed list", scenario, result)
 	if result.Err != nil {
 		record.Outcome = "fail"

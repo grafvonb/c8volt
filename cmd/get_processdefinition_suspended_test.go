@@ -134,7 +134,7 @@ func TestGetProcessDefinitionSuspendedStatisticsCommand(t *testing.T) {
 					t.Run(fmt.Sprintf("%s/key=%t/suspended=%d/%s", version, key, suspended, strings.Join(mode, " ")), func(t *testing.T) {
 						fixture := &definitionStatisticsFixture{version: version, population: func(int32) (int, int) { return 2, suspended }}
 						srv := fixture.server(t)
-						args := []string{"--config", writeTestConfigForVersion(t, srv.URL, version), "get", "process-definition", "--stat"}
+						args := []string{"--config", writeTestConfigForVersion(t, srv.URL, version), "get", "process-definition", "--with-stats"}
 						if key {
 							args = append(args, "--key", "123")
 						}
@@ -234,7 +234,7 @@ func TestGetProcessDefinitionLifecycleStatisticsCommand(t *testing.T) {
 					population: func(int32) (int, int) { return 0, 2 },
 				}
 				srv := fixture.server(t)
-				args := []string{"--config", writeTestConfigForVersion(t, srv.URL, "8.10"), "get", "pd", "--stat"}
+				args := []string{"--config", writeTestConfigForVersion(t, srv.URL, "8.10"), "get", "pd", "--with-stats"}
 				if key {
 					args = append(args, "--key", "123")
 				}
@@ -285,7 +285,7 @@ func TestGetProcessDefinitionLifecycleStatisticsMixedRows(t *testing.T) {
 				lifecycle:  func(_ int32, key string) string { return states[key] },
 			}
 			srv := fixture.server(t)
-			args := []string{"--config", writeTestConfigForVersion(t, srv.URL, "8.10"), "get", "pd", "--stat"}
+			args := []string{"--config", writeTestConfigForVersion(t, srv.URL, "8.10"), "get", "pd", "--with-stats"}
 			if jsonOutput {
 				args = append(args, "--json")
 			}
@@ -327,7 +327,7 @@ func TestGetProcessDefinitionLifecycleStatisticsFailure(t *testing.T) {
 				lifecycle: func(int32, string) string { return "DRAINING" },
 			}
 			srv := fixture.server(t)
-			args := []string{"get", "pd", "--stat"}
+			args := []string{"get", "pd", "--with-stats"}
 			if key {
 				args = append(args, "--key", "123")
 			}

@@ -75,7 +75,7 @@ Enter
 Show
 Sleep 1s
 Wait
-Type "./c8volt get pd --stat"
+Type "./c8volt get pd --with-stats"
 Enter
 Wait
 
@@ -97,10 +97,10 @@ Enter
 Show
 Sleep 1s
 Wait
-Type `./c8volt run pi -b C89_MultipleSubProcessesParentProcess --vars '{"businessId":12345}'`
+Type `./c8volt run pi -b C89_MultipleSubProcessesParentProcess --set-vars '{"businessId":12345}'`
 Enter
 Wait
-Type `./c8volt run pi -b C89_MultipleSubProcessesParentProcess --vars '{"businessId":67890}'`
+Type `./c8volt run pi -b C89_MultipleSubProcessesParentProcess --set-vars '{"businessId":67890}'`
 Enter
 Wait
 
@@ -122,7 +122,7 @@ Enter
 Show
 Sleep 1s
 Wait
-Type "./c8volt get pd --stat"
+Type "./c8volt get pd --with-stats"
 Enter
 Wait
 

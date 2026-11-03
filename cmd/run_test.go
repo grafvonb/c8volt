@@ -54,13 +54,13 @@ func TestRunHelp_DocumentsWaitAndVerificationRouting(t *testing.T) {
 		"This confirms creation visibility, not execution completion",
 		"--all-tenants is not supported because",
 		"./c8volt run process-instance --bpmn-process-id <bpmn-process-id> --count 3 --workers 2",
-		"--bid supplies one opaque business ID",
+		"--set-bid supplies one opaque business ID",
 		"256 UTF-16 code units",
 		"Camunda 8.8 and 8.9 reject this input",
 		"Every --count attempt uses the same business ID",
 		"Successful results survive later failures",
 		"configured INFO logger",
-		"./c8volt run pi --pd-key 2251799813685249 --bid 'order-123' --no-wait",
+		"./c8volt run pi --pd-key 2251799813685249 --set-bid 'order-123' --no-wait",
 		"./c8volt run process-instance --bpmn-process-id <bpmn-process-id> --keys-only | ./c8volt expect process-instance --state completed -",
 	}, nil)
 	require.Contains(t, output, "--no-wait")
@@ -93,7 +93,7 @@ func TestRunProcessInstanceCommand_RegressionPreservesSelectorAndWorkerContract(
 		Description: "specific process definition key(s) to run process instance for (mutually exclusive with --bpmn-process-id)",
 	})
 	require.Contains(t, capability.Flags, FlagContract{
-		Name:        "bid",
+		Name:        "set-bid",
 		Type:        "string",
 		Required:    false,
 		Repeated:    false,
@@ -126,7 +126,7 @@ func TestRunProcessInstanceCommand_AllTenantsRejectsBeforeInputValidationOrReque
 	}{
 		{
 			name: "invalid vars",
-			args: []string{"run", "process-instance", "--all-tenants", "--bpmn-process-id", "order-process", "--vars", "{"},
+			args: []string{"run", "process-instance", "--all-tenants", "--bpmn-process-id", "order-process", "--set-vars", "{"},
 		},
 		{
 			name: "bpmn selector",
@@ -153,7 +153,7 @@ func TestRunProcessInstanceCommand_AllTenantsRejectsBeforeInputValidationOrReque
 			})
 			assertAllTenantsConcreteDestinationSubprocessFailure(t, output, err, "run process-instance")
 			require.Empty(t, requests.Snapshot())
-			require.NotContains(t, string(output), "parsing --vars JSON")
+			require.NotContains(t, string(output), "parsing --set-vars JSON")
 			require.NotContains(t, string(output), "creation target:")
 			require.NotContains(t, string(output), "running process instance")
 		})
@@ -413,7 +413,7 @@ func TestRunProcessInstanceCommand_VarsPayloadRemainsCreationInput(t *testing.T)
 		"--config", cfgPath,
 		"run", "process-instance",
 		"--bpmn-process-id", "order-process",
-		"--vars", `{"customerId":"1234","priority":2}`,
+		"--set-vars", `{"customerId":"1234","priority":2}`,
 		"--no-wait",
 	)
 

@@ -289,10 +289,11 @@ func testBulkCompletionTerminalEmpty(t *testing.T, assignment bool) {
 }
 
 // bulkCompletionTerminalArgs keeps all terminal scenarios on the real command,
-// with serial execution making the expected HTTP sequence deterministic.
+// with serial execution making the expected HTTP sequence deterministic. Empty
+// canonical variables preserve listener eligibility while exercising renamed input.
 func bulkCompletionTerminalArgs(t *testing.T, serverURL string, stdin bool) []string {
 	t.Helper()
-	args := []string{"--config", writeTestConfigForVersion(t, serverURL, "8.10"), "--tenant", "tenant-a", "--no-indicator", "update", "job", "--complete", "--workers", "1"}
+	args := []string{"--config", writeTestConfigForVersion(t, serverURL, "8.10"), "--tenant", "tenant-a", "--no-indicator", "update", "job", "--complete", "--set-vars", `{}`, "--workers", "1"}
 	if stdin {
 		return append(args, "-")
 	}

@@ -51,17 +51,17 @@ func TestUpdateUserTaskTerminal(t *testing.T) {
 		wantReads     int
 		wantTaskReads int
 	}{
-		{name: "configured stderr accepts", args: []string{"update", "ut", "--key", "101", "--vars", `{"approved":true}`}, configured: true, prompt: true, preview: true, response: "yes", wantMutates: 1, wantReads: 2},
-		{name: "inherited stderr declines", args: []string{"update", "ut", "--key", "101", "--vars", `{"approved":true}`}, prompt: true, preview: true, response: "no", wantExitCode: exitcode.Error, wantReads: 1},
-		{name: "default answer declines", args: []string{"update", "ut", "--key", "101", "--vars", `{"approved":true}`}, prompt: true, preview: true, wantExitCode: exitcode.Error, wantReads: 1},
-		{name: "terminal eof aborts", args: []string{"update", "ut", "--key", "101", "--vars", `{"approved":true}`}, prompt: true, preview: true, endOfInput: true, wantExitCode: exitcode.Error, wantReads: 1},
-		{name: "dry run is prompt free", args: []string{"update", "ut", "--key", "101", "--vars", `{"approved":true}`, "--dry-run"}, preview: true, wantReads: 1},
-		{name: "no-op is prompt free", args: []string{"update", "ut", "--key", "101", "--vars", `{"approved":true}`}, initialValue: true, wantReads: 1},
-		{name: "automation no-wait is prompt free", args: []string{"--automation", "update", "ut", "--key", "101", "--vars", `{"approved":true}`, "--no-wait"}, wantMutates: 1, wantReads: 1},
-		{name: "auto-confirm is prompt free", args: []string{"--auto-confirm", "update", "ut", "--key", "101", "--vars", `{"approved":true}`}, wantMutates: 1, wantReads: 2},
+		{name: "configured stderr accepts", args: []string{"update", "ut", "--key", "101", "--set-vars", `{"approved":true}`}, configured: true, prompt: true, preview: true, response: "yes", wantMutates: 1, wantReads: 2},
+		{name: "inherited stderr declines", args: []string{"update", "ut", "--key", "101", "--set-vars", `{"approved":true}`}, prompt: true, preview: true, response: "no", wantExitCode: exitcode.Error, wantReads: 1},
+		{name: "default answer declines", args: []string{"update", "ut", "--key", "101", "--set-vars", `{"approved":true}`}, prompt: true, preview: true, wantExitCode: exitcode.Error, wantReads: 1},
+		{name: "terminal eof aborts", args: []string{"update", "ut", "--key", "101", "--set-vars", `{"approved":true}`}, prompt: true, preview: true, endOfInput: true, wantExitCode: exitcode.Error, wantReads: 1},
+		{name: "dry run is prompt free", args: []string{"update", "ut", "--key", "101", "--set-vars", `{"approved":true}`, "--dry-run"}, preview: true, wantReads: 1},
+		{name: "no-op is prompt free", args: []string{"update", "ut", "--key", "101", "--set-vars", `{"approved":true}`}, initialValue: true, wantReads: 1},
+		{name: "automation no-wait is prompt free", args: []string{"--automation", "update", "ut", "--key", "101", "--set-vars", `{"approved":true}`, "--no-wait"}, wantMutates: 1, wantReads: 1},
+		{name: "auto-confirm is prompt free", args: []string{"--auto-confirm", "update", "ut", "--key", "101", "--set-vars", `{"approved":true}`}, wantMutates: 1, wantReads: 2},
 		{
 			name:         "mixed destinations normal preview declines without writes",
-			args:         []string{"update", "ut", "--key", "103", "--vars", `{"approved":true,"middle":2,"local":true,"new":"value"}`},
+			args:         []string{"update", "ut", "--key", "103", "--set-vars", `{"approved":true,"middle":2,"local":true,"new":"value"}`},
 			prompt:       true,
 			promptText:   "You are about to update 4 requested variable value(s) on 1 user task(s).\nDo you want to proceed? [y/N]: ",
 			response:     "no",
@@ -76,7 +76,7 @@ func TestUpdateUserTaskTerminal(t *testing.T) {
 		},
 		{
 			name:          "compact bulk normal preview stays summarized",
-			args:          []string{"update", "ut", "--key", "103,104", "--vars", `{"approved":true,"middle":2,"local":true,"new":"value"}`},
+			args:          []string{"update", "ut", "--key", "103,104", "--set-vars", `{"approved":true,"middle":2,"local":true,"new":"value"}`},
 			prompt:        true,
 			promptText:    "You are about to update 8 requested variable value(s) on 2 user task(s).\nDo you want to proceed? [y/N]: ",
 			response:      "no",
@@ -91,7 +91,7 @@ func TestUpdateUserTaskTerminal(t *testing.T) {
 		},
 		{
 			name:          "verbose bulk normal preview labels every write",
-			args:          []string{"--verbose", "update", "ut", "--key", "103,104", "--vars", `{"approved":true,"middle":2,"local":true,"new":"value"}`},
+			args:          []string{"--verbose", "update", "ut", "--key", "103,104", "--set-vars", `{"approved":true,"middle":2,"local":true,"new":"value"}`},
 			prompt:        true,
 			promptText:    "You are about to update 8 requested variable value(s) on 2 user task(s).\nDo you want to proceed? [y/N]: ",
 			response:      "no",

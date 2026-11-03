@@ -841,13 +841,14 @@ func assertHasExampleFromSource(t *testing.T, examples []cliExample, sourceName 
 	t.Fatalf("no examples from %s", sourceName)
 }
 
+// Example parsing preserves empty arguments and opaque JSON values.
 func TestExampleShellFieldsPreserveEmptyArguments(t *testing.T) {
 	for _, input := range []string{`c8volt --tenant "" config show`, `c8volt --tenant '' config show`} {
 		args, err := exampleCommandArgs(input)
 		require.NoError(t, err)
 		require.Equal(t, []string{"--tenant", "", "config", "show"}, args)
 	}
-	args, err := exampleCommandArgs(`c8volt update ut --vars '{"note":"two words"}'`)
+	args, err := exampleCommandArgs(`c8volt update ut --set-vars '{"note":"two words"}'`)
 	require.NoError(t, err)
 	require.Equal(t, `{"note":"two words"}`, args[len(args)-1])
 }

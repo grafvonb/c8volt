@@ -25,17 +25,17 @@ var updateElementCmd = &cobra.Command{
 	Short:   "Update variables at explicit element scopes",
 	Long: `Update local variables on selected runtime element instances on Camunda 8.8 or newer.
 
-Provide repeated or comma-separated --key values, or newline-separated keys from stdin with '-'. Supply exactly one non-null JSON object through --vars or --vars-file. Keys are deduplicated in first-input order. Explicit keys bypass the discovery tenant filter while retaining backend authorization.
+Provide repeated or comma-separated --key values, or newline-separated keys from stdin with '-'. Supply exactly one non-null JSON object through --set-vars or --set-vars-file. Keys are deduplicated in first-input order. Explicit keys bypass the discovery tenant filter while retaining backend authorization.
 
 The command reads every selected element and its complete local variables before approval. It freezes additions and changes at element:<key>, then writes only those values with local scope. Parent, sibling, descendant and called-process variables are not changed. An inherited same-name value does not prevent a local addition. Truncated values cannot prove equality. A null property assigns null; it does not delete a variable.
 
 Use --dry-run to preview without prompts or writes. An empty object or an all-unchanged plan completes without confirmation, mutation or read-back. Normal execution confirms all requested values locally. --no-wait skips only read-back and reports accepted submissions, not confirmed values. Partial failures preserve acceptance and uncertainty with a nonzero exit; there is no rollback or resubmission after confirmation failure.
 
 JSON requires --dry-run, --auto-confirm or --automation and cannot be combined with --verbose. Keys-only previews list changed destinations; executed results list accepted destinations even if confirmation failed. Quiet preserves explicit machine results and required errors.`,
-	Example: `  ./c8volt update element --key <element-key> --vars '{"approved":true}' --dry-run
-  ./c8volt update ei --key <key-a>,<key-b> --key <key-a> --vars-file ./vars.json --auto-confirm
-  printf '%s\n' "$ELEMENT_KEY_A" "$ELEMENT_KEY_B" | ./c8volt update element - --vars '{"status":null}' --auto-confirm
-  ./c8volt --json update element --key <element-key> --vars '{"approved":true}' --auto-confirm --no-wait`,
+	Example: `  ./c8volt update element --key <element-key> --set-vars '{"approved":true}' --dry-run
+  ./c8volt update ei --key <key-a>,<key-b> --key <key-a> --set-vars-file ./vars.json --auto-confirm
+  printf '%s\n' "$ELEMENT_KEY_A" "$ELEMENT_KEY_B" | ./c8volt update element - --set-vars '{"status":null}' --auto-confirm
+  ./c8volt --json update element --key <element-key> --set-vars '{"approved":true}' --auto-confirm --no-wait`,
 	Args: func(cmd *cobra.Command, args []string) error { return validateOptionalDashArg(args) },
 	Run: func(cmd *cobra.Command, args []string) {
 		cli, log, cfg, err := NewCli(cmd)
@@ -92,10 +92,14 @@ func parseElementVariableUpdateInput(cmd *cobra.Command, args []string) (typex.K
 // init registers mutation policy and the existing worker/wait controls.
 func init() {
 	updateCmd.AddCommand(updateElementCmd)
+	setFlagMigrations(updateElementCmd, map[string]flagMigration{
+		"vars":      {Replacement: "--set-vars", TakesValue: true},
+		"vars-file": {Replacement: "--set-vars-file", TakesValue: true},
+	})
 	fs := updateElementCmd.Flags()
 	fs.StringSliceVarP(&flagUpdateElementKeys, "key", "k", nil, "runtime element key(s); repeat, comma-separate or combine with stdin '-'")
-	fs.StringVar(&flagUpdateElementVars, "vars", "", "JSON object with variables to set locally on each element")
-	fs.StringVar(&flagUpdateElementVarsFile, "vars-file", "", "path to JSON object file with variables to set locally")
+	fs.StringVar(&flagUpdateElementVars, "set-vars", "", "JSON object with variables to set locally on each element")
+	fs.StringVar(&flagUpdateElementVarsFile, "set-vars-file", "", "path to JSON object file with variables to set locally")
 	fs.BoolVar(&flagDryRun, "dry-run", false, "preview exact local changes without mutation")
 	fs.BoolVar(&flagNoWait, "no-wait", false, "return after accepted writes without local variable confirmation")
 	fs.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers (default: min(count, 2*GOMAXPROCS, 32))")

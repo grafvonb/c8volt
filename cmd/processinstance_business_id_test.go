@@ -333,7 +333,7 @@ func TestProcessInstanceMutationBusinessID(t *testing.T) {
 					case "cancel":
 						args = append(args, "cancel", "pi", "--key", "2251799813685101,2251799813685102,2251799813685103,2251799813685104")
 					case "update":
-						args = append(args, "update", "pi", "--key", "2251799813685101,2251799813685102,2251799813685103,2251799813685104", "--vars", `{"x":true}`)
+						args = append(args, "update", "pi", "--key", "2251799813685101,2251799813685102,2251799813685103,2251799813685104", "--set-vars", `{"x":true}`)
 					default:
 						args = append(args, command, "pi", "--key", "2251799813685101")
 						if command == "suspend" || command == "resume" {
