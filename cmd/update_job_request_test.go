@@ -36,11 +36,11 @@ func TestParseUpdateJobRequestParsesTechnicalFailure(t *testing.T) {
 	resetCommandTreeFlags(Root())
 	require.NoError(t, updateJobCmd.Flags().Set("fail", "true"))
 	require.NoError(t, updateJobCmd.Flags().Set("set-retries", "2"))
-	require.NoError(t, updateJobCmd.Flags().Set("retry-backoff", "5m"))
+	require.NoError(t, updateJobCmd.Flags().Set("set-retry-backoff", "5m"))
 	t.Cleanup(func() {
 		require.NoError(t, updateJobCmd.Flags().Set("fail", "false"))
 		require.NoError(t, updateJobCmd.Flags().Set("set-retries", "0"))
-		require.NoError(t, updateJobCmd.Flags().Set("retry-backoff", ""))
+		require.NoError(t, updateJobCmd.Flags().Set("set-retry-backoff", ""))
 	})
 
 	flagUpdateJobKey = "2251799813711967"
@@ -66,10 +66,12 @@ func TestParseUpdateJobRequestParsesBPMNError(t *testing.T) {
 	resetUpdateJobFlagState()
 	t.Cleanup(resetUpdateJobFlagState)
 	resetCommandTreeFlags(Root())
-	require.NoError(t, updateJobCmd.Flags().Set("throw-bpmn-error", "PAYMENT_DECLINED"))
+	require.NoError(t, updateJobCmd.Flags().Set("throw-bpmn-error", "true"))
+	require.NoError(t, updateJobCmd.Flags().Set("set-error-code", "PAYMENT_DECLINED"))
 	require.NoError(t, updateJobCmd.Flags().Set("set-vars", `{"approved":false}`))
 	t.Cleanup(func() {
-		require.NoError(t, updateJobCmd.Flags().Set("throw-bpmn-error", ""))
+		require.NoError(t, updateJobCmd.Flags().Set("throw-bpmn-error", "false"))
+		require.NoError(t, updateJobCmd.Flags().Set("set-error-code", ""))
 		require.NoError(t, updateJobCmd.Flags().Set("set-vars", ""))
 	})
 
@@ -144,11 +146,11 @@ func TestParseUpdateJobRequestRejectsTechnicalFailureValidationErrors(t *testing
 			set: func(t *testing.T) {
 				require.NoError(t, updateJobCmd.Flags().Set("fail", "true"))
 				require.NoError(t, updateJobCmd.Flags().Set("set-retries", "1"))
-				require.NoError(t, updateJobCmd.Flags().Set("retry-backoff", "0s"))
+				require.NoError(t, updateJobCmd.Flags().Set("set-retry-backoff", "0s"))
 				flagUpdateJobSetRetries = 1
 				flagUpdateJobRetryBackoffRaw = "0s"
 			},
-			message: "invalid value for --retry-backoff",
+			message: "invalid value for --set-retry-backoff",
 		},
 		{
 			name: "timeout conflict",
@@ -165,7 +167,8 @@ func TestParseUpdateJobRequestRejectsTechnicalFailureValidationErrors(t *testing
 			set: func(t *testing.T) {
 				require.NoError(t, updateJobCmd.Flags().Set("fail", "true"))
 				require.NoError(t, updateJobCmd.Flags().Set("set-retries", "1"))
-				require.NoError(t, updateJobCmd.Flags().Set("throw-bpmn-error", "PAYMENT_DECLINED"))
+				require.NoError(t, updateJobCmd.Flags().Set("throw-bpmn-error", "true"))
+				require.NoError(t, updateJobCmd.Flags().Set("set-error-code", "PAYMENT_DECLINED"))
 				flagUpdateJobSetRetries = 1
 			},
 			message: "--throw-bpmn-error cannot be combined with --fail",
@@ -207,14 +210,16 @@ func TestParseUpdateJobRequestRejectsBPMNErrorValidationErrors(t *testing.T) {
 		{
 			name: "empty code",
 			set: func(t *testing.T) {
-				require.NoError(t, updateJobCmd.Flags().Set("throw-bpmn-error", ""))
+				require.NoError(t, updateJobCmd.Flags().Set("throw-bpmn-error", "true"))
+				require.NoError(t, updateJobCmd.Flags().Set("set-error-code", ""))
 			},
-			message: "BPMN error requires a non-empty --throw-bpmn-error",
+			message: "BPMN error requires a non-empty --set-error-code",
 		},
 		{
 			name: "fail conflict",
 			set: func(t *testing.T) {
-				require.NoError(t, updateJobCmd.Flags().Set("throw-bpmn-error", "PAYMENT_DECLINED"))
+				require.NoError(t, updateJobCmd.Flags().Set("throw-bpmn-error", "true"))
+				require.NoError(t, updateJobCmd.Flags().Set("set-error-code", "PAYMENT_DECLINED"))
 				require.NoError(t, updateJobCmd.Flags().Set("fail", "true"))
 			},
 			message: "--throw-bpmn-error cannot be combined with --fail",
@@ -222,7 +227,8 @@ func TestParseUpdateJobRequestRejectsBPMNErrorValidationErrors(t *testing.T) {
 		{
 			name: "complete conflict",
 			set: func(t *testing.T) {
-				require.NoError(t, updateJobCmd.Flags().Set("throw-bpmn-error", "PAYMENT_DECLINED"))
+				require.NoError(t, updateJobCmd.Flags().Set("throw-bpmn-error", "true"))
+				require.NoError(t, updateJobCmd.Flags().Set("set-error-code", "PAYMENT_DECLINED"))
 				require.NoError(t, updateJobCmd.Flags().Set("complete", "true"))
 			},
 			message: "--throw-bpmn-error cannot be combined with --complete",
@@ -230,7 +236,8 @@ func TestParseUpdateJobRequestRejectsBPMNErrorValidationErrors(t *testing.T) {
 		{
 			name: "retries conflict",
 			set: func(t *testing.T) {
-				require.NoError(t, updateJobCmd.Flags().Set("throw-bpmn-error", "PAYMENT_DECLINED"))
+				require.NoError(t, updateJobCmd.Flags().Set("throw-bpmn-error", "true"))
+				require.NoError(t, updateJobCmd.Flags().Set("set-error-code", "PAYMENT_DECLINED"))
 				require.NoError(t, updateJobCmd.Flags().Set("set-retries", "1"))
 			},
 			message: "--throw-bpmn-error cannot be combined with --set-retries",
@@ -238,7 +245,8 @@ func TestParseUpdateJobRequestRejectsBPMNErrorValidationErrors(t *testing.T) {
 		{
 			name: "timeout conflict",
 			set: func(t *testing.T) {
-				require.NoError(t, updateJobCmd.Flags().Set("throw-bpmn-error", "PAYMENT_DECLINED"))
+				require.NoError(t, updateJobCmd.Flags().Set("throw-bpmn-error", "true"))
+				require.NoError(t, updateJobCmd.Flags().Set("set-error-code", "PAYMENT_DECLINED"))
 				require.NoError(t, updateJobCmd.Flags().Set("set-timeout", "5m"))
 			},
 			message: "--throw-bpmn-error cannot be combined with --set-timeout",
@@ -246,15 +254,17 @@ func TestParseUpdateJobRequestRejectsBPMNErrorValidationErrors(t *testing.T) {
 		{
 			name: "retry backoff conflict",
 			set: func(t *testing.T) {
-				require.NoError(t, updateJobCmd.Flags().Set("throw-bpmn-error", "PAYMENT_DECLINED"))
-				require.NoError(t, updateJobCmd.Flags().Set("retry-backoff", "5m"))
+				require.NoError(t, updateJobCmd.Flags().Set("throw-bpmn-error", "true"))
+				require.NoError(t, updateJobCmd.Flags().Set("set-error-code", "PAYMENT_DECLINED"))
+				require.NoError(t, updateJobCmd.Flags().Set("set-retry-backoff", "5m"))
 			},
-			message: "--throw-bpmn-error cannot be combined with --retry-backoff",
+			message: "--throw-bpmn-error cannot be combined with --set-retry-backoff",
 		},
 		{
 			name: "invalid variables",
 			set: func(t *testing.T) {
-				require.NoError(t, updateJobCmd.Flags().Set("throw-bpmn-error", "PAYMENT_DECLINED"))
+				require.NoError(t, updateJobCmd.Flags().Set("throw-bpmn-error", "true"))
+				require.NoError(t, updateJobCmd.Flags().Set("set-error-code", "PAYMENT_DECLINED"))
 				require.NoError(t, updateJobCmd.Flags().Set("set-vars", "{"))
 				flagUpdateJobVariables = "{"
 			},
@@ -263,7 +273,8 @@ func TestParseUpdateJobRequestRejectsBPMNErrorValidationErrors(t *testing.T) {
 		{
 			name: "non-object variables",
 			set: func(t *testing.T) {
-				require.NoError(t, updateJobCmd.Flags().Set("throw-bpmn-error", "PAYMENT_DECLINED"))
+				require.NoError(t, updateJobCmd.Flags().Set("throw-bpmn-error", "true"))
+				require.NoError(t, updateJobCmd.Flags().Set("set-error-code", "PAYMENT_DECLINED"))
 				require.NoError(t, updateJobCmd.Flags().Set("set-vars", `["bad"]`))
 				flagUpdateJobVariables = `["bad"]`
 			},
@@ -306,7 +317,8 @@ func TestParseUpdateJobRequestRejectsCompletionValidationErrors(t *testing.T) {
 			name: "bpmn conflict",
 			set: func(t *testing.T) {
 				require.NoError(t, updateJobCmd.Flags().Set("complete", "true"))
-				require.NoError(t, updateJobCmd.Flags().Set("throw-bpmn-error", "PAYMENT_DECLINED"))
+				require.NoError(t, updateJobCmd.Flags().Set("throw-bpmn-error", "true"))
+				require.NoError(t, updateJobCmd.Flags().Set("set-error-code", "PAYMENT_DECLINED"))
 			},
 			message: "--throw-bpmn-error cannot be combined with --complete",
 		},
@@ -330,9 +342,9 @@ func TestParseUpdateJobRequestRejectsCompletionValidationErrors(t *testing.T) {
 			name: "retry backoff conflict",
 			set: func(t *testing.T) {
 				require.NoError(t, updateJobCmd.Flags().Set("complete", "true"))
-				require.NoError(t, updateJobCmd.Flags().Set("retry-backoff", "5m"))
+				require.NoError(t, updateJobCmd.Flags().Set("set-retry-backoff", "5m"))
 			},
-			message: "--complete cannot be combined with --retry-backoff",
+			message: "--complete cannot be combined with --set-retry-backoff",
 		},
 		{
 			name: "invalid variables",
@@ -514,7 +526,7 @@ func TestUpdateJobBulkCompletionRequest(t *testing.T) {
 		{"invalid workers", []string{"--complete", "--type", "cleanup", "--workers", "0"}, false, false},
 		{"invalid size", []string{"--complete", "--type", "cleanup", "--batch-size", "0"}, false, false},
 		{"completion timeout", []string{"--complete", "--type", "cleanup", "--set-timeout", "1m"}, false, false},
-		{"completion message", []string{"--complete", "--type", "cleanup", "--message", "oops"}, false, false},
+		{"completion message", []string{"--complete", "--type", "cleanup", "--set-error-message", "oops"}, false, false},
 		{"completion failure", []string{"--complete", "--type", "cleanup", "--fail"}, false, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -624,7 +636,7 @@ func TestUpdateJobBulkCompletionExplicitInputValidation(t *testing.T) {
 // TestUpdateJobCollectionRejectsUnrelatedModes prevents silently widening any
 // legacy mutation mode, including repeated copies of the same key.
 func TestUpdateJobCollectionRejectsUnrelatedModes(t *testing.T) {
-	for _, mode := range [][]string{{"--set-retries", "1"}, {"--set-timeout", "1m"}, {"--fail", "--set-retries", "0"}, {"--throw-bpmn-error", "ERROR"}} {
+	for _, mode := range [][]string{{"--set-retries", "1"}, {"--set-timeout", "1m"}, {"--fail", "--set-retries", "0"}, {"--throw-bpmn-error", "--set-error-code", "ERROR"}} {
 		for _, input := range [][]string{{"--key", "123,123"}, {"--key", "123", "--key", "123"}, {"-"}} {
 			t.Run(strings.Join(append(append([]string{}, mode...), input...), " "), func(t *testing.T) {
 				resetCommandTreeFlags(Root())

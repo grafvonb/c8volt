@@ -23,7 +23,7 @@ import (
 func TestFlagIntentJobSurface(t *testing.T) {
 	require.Same(t, rootCmd.PersistentFlags().Lookup("timeout"), updateJobCmd.InheritedFlags().Lookup("timeout"))
 	capability := commandCapabilityForCommand(updateJobCmd)
-	for _, name := range []string{"set-retries", "set-timeout", "set-vars", "retries", "timeout"} {
+	for _, name := range []string{"set-retries", "set-timeout", "set-vars", "retries", "timeout", "throw-bpmn-error", "set-error-code", "set-error-message", "set-retry-backoff"} {
 		found := false
 		for _, flag := range capability.Flags {
 			found = found || flag.Name == name
@@ -33,10 +33,13 @@ func TestFlagIntentJobSurface(t *testing.T) {
 	require.Nil(t, updateJobCmd.Flags().Lookup("vars"))
 	require.Nil(t, updateJobCmd.Flags().Lookup("set-vars-file"))
 	output := executeCompletionNoDescForTest(t, "update", "job", "--")
-	for _, name := range []string{"set-retries", "set-timeout", "set-vars", "retries", "timeout"} {
+	for _, name := range []string{"set-retries", "set-timeout", "set-vars", "retries", "timeout", "throw-bpmn-error", "set-error-code", "set-error-message", "set-retry-backoff"} {
 		require.Contains(t, output, "--"+name+"\n")
 	}
-	require.NotContains(t, output, "--vars\n")
+	for _, old := range []string{"vars", "message", "retry-backoff"} {
+		require.Nil(t, updateJobCmd.Flags().Lookup(old))
+		require.NotContains(t, output, "--"+old+"\n")
+	}
 }
 
 // TestFlagIntentJobRejection checks semantic and removed-token failures before any remote bootstrap.
@@ -48,6 +51,26 @@ func TestFlagIntentJobRejection(t *testing.T) {
 		flags    []string
 		guidance string
 	}{
+		{[]string{"--key", "1", "--set-error-code", "CODE", "--throw-bpmn-error=false"}, "--set-error-code"},
+		{[]string{"--key", "1", "--throw-bpmn-error=123"}, "--set-error-code"},
+		{[]string{"--key", "1", "--throw-bpmn-error", "123", "--set-error-code", "CODE"}, "--set-error-code"},
+		{[]string{"--key", "1", "--throw-bpmn-error=true", "--set-error-code", "CODE"}, "--set-error-code"},
+		{[]string{"--key", "1", "--throw-bpmn-error=false", "--set-error-code", "CODE"}, "--set-error-code"},
+		{[]string{"--key", "1", "--throw-bpmn-error=", "--set-error-code", "CODE"}, "--set-error-code"},
+		{[]string{"--key", "1", "--throw-bpmn-error=PRIVATE", "--set-error-code", "CODE"}, "--set-error-code"},
+		{[]string{"--key", "1", "--throw-bpmn-error", "PRIVATE"}, "--set-error-code"},
+		{[]string{"--key", "1", "--throw-bpmn-error", "true"}, "--set-error-code"},
+		{[]string{"--key", "1", "--throw-bpmn-error", "false"}, "--set-error-code"},
+		{[]string{"--key", "1", "--throw-bpmn-error"}, "--set-error-code"},
+		{[]string{"--key", "1", "--throw-bpmn-error", "--set-error-code", ""}, "--set-error-code"},
+		{[]string{"--key", "1", "--throw-bpmn-error", "--set-error-code", "  "}, "--set-error-code"},
+		{[]string{"--key", "1", "--set-error-code", "PRIVATE"}, "--set-error-code"},
+		{[]string{"--key", "1", "--fail", "--set-retries", "0", "--message", "PRIVATE"}, "--set-error-message"},
+		{[]string{"--key", "1", "--fail", "--set-retries", "0", "--message", "PRIVATE", "--set-error-message", "PRIVATE"}, "--set-error-message"},
+		{[]string{"--key", "1", "--fail", "--set-retries", "0", "--set-error-message", "PRIVATE", "--message", "PRIVATE"}, "--set-error-message"},
+		{[]string{"--key", "1", "--fail", "--set-retries", "0", "--retry-backoff", "PRIVATE"}, "--set-retry-backoff"},
+		{[]string{"--key", "1", "--fail", "--set-retries", "0", "--retry-backoff", "PRIVATE", "--set-retry-backoff", "PRIVATE"}, "--set-retry-backoff"},
+		{[]string{"--key", "1", "--fail", "--set-retries", "0", "--set-retry-backoff", "PRIVATE", "--retry-backoff", "PRIVATE"}, "--set-retry-backoff"},
 		{[]string{"--key", "1", "--retries", "0"}, "--set-retries"},
 		{[]string{"--key", "1", "--fail", "--retries", "0"}, "--set-retries"},
 		{[]string{"--key", "1", "--retries", "0", "--set-retries", "0"}, "--set-retries"},
@@ -161,7 +184,7 @@ func TestFlagIntentJobHTTPWithMutation(t *testing.T) {
 	for _, flags := range [][]string{
 		{"--key", "1", "--set-retries", "0"},
 		{"--key", "1", "--fail", "--set-retries", "0"},
-		{"--key", "1", "--throw-bpmn-error", "CODE", "--set-vars", `{"x":false}`},
+		{"--key", "1", "--throw-bpmn-error", "--set-error-code", "CODE", "--set-vars", `{"x":false}`},
 		{"--key", "1", "--complete", "--set-vars", `{"x":false}`},
 		{"--key", "1,2", "--complete", "--set-vars", `{"x":false}`},
 		{"--complete", "--retries", "0", "--set-vars", `{"x":false}`},
@@ -203,4 +226,95 @@ func TestFlagIntentJobBothTimeoutPayload(t *testing.T) {
 	require.NoError(t, decoder.Decode(&envelope))
 	require.ErrorIs(t, decoder.Decode(&envelope), io.EOF)
 	require.Equal(t, []string{"POST /v2/jobs/search", "PATCH /v2/jobs/2251799813711967"}, requests)
+}
+
+// TestFlagIntentJobActionTokens uses registered arity so opaque values and the
+// terminator cannot be mistaken for attached action syntax.
+func TestFlagIntentJobActionTokens(t *testing.T) {
+	for _, tc := range []struct {
+		args     []string
+		rejected bool
+	}{
+		{[]string{"--throw-bpmn-error=true", "--set-error-code", "CODE"}, true},
+		{[]string{"--throw-bpmn-error=false"}, true},
+		{[]string{"--throw-bpmn-error="}, true},
+		{[]string{"--set-error-message", "--throw-bpmn-error=true"}, false},
+		{[]string{"--set-error-code=--throw-bpmn-error=false"}, false},
+		{[]string{"--", "--throw-bpmn-error=true"}, false},
+		{[]string{"--throw-bpmn-error", "--set-error-code", "true"}, false},
+	} {
+		_, err := migrationReportingInput(updateJobCmd, tc.args)
+		require.Equal(t, tc.rejected, err != nil, tc.args)
+	}
+}
+
+// TestFlagIntentJobOpaqueErrorPayload verifies Boolean-looking codes and exact
+// messages through command dispatch, facade conversion and native HTTP bodies.
+func TestFlagIntentJobOpaqueErrorPayload(t *testing.T) {
+	for _, code := range []string{"true", "false", " spaced code "} {
+		t.Run(code, func(t *testing.T) {
+			var requests []string
+			var bodies []map[string]any
+			server := newJobBPMNErrorServer(t, "8.8", &requests, &bodies, []string{jobSearchResponse("2251799813711967", 1)}, http.StatusNoContent)
+			t.Cleanup(server.Close)
+			stdout, stderr := executeRootForJobTestWithSeparateOutputs(t, "--config", writeTestConfigForVersion(t, server.URL, "8.8"), "update", "job", "--key", "2251799813711967", "--throw-bpmn-error", "--set-error-code", code, "--set-error-message", "--throw-bpmn-error=false", "--set-vars", `{"number":123,"ok":false}`, "--auto-confirm", "--json")
+			require.Empty(t, stderr)
+			decoder := json.NewDecoder(strings.NewReader(stdout))
+			var envelope map[string]any
+			require.NoError(t, decoder.Decode(&envelope))
+			require.ErrorIs(t, decoder.Decode(&envelope), io.EOF)
+			require.Len(t, bodies, 1)
+			requireBPMNErrorCode(t, bodies[0], code)
+			require.Equal(t, "--throw-bpmn-error=false", bodies[0]["errorMessage"])
+			require.Equal(t, map[string]any{"number": float64(123), "ok": false}, bodies[0]["variables"])
+			require.Equal(t, []string{"POST /v2/jobs/search", "POST /v2/jobs/2251799813711967/error"}, requests)
+		})
+	}
+}
+
+// TestFlagIntentJobWorkerSummaryLogging proves renamed worker inputs retain INFO
+// routing and suppression through real command execution and configured writers.
+func TestFlagIntentJobWorkerSummaryLogging(t *testing.T) {
+	for _, outcome := range scalarJobOutcomes[1:] {
+		for _, format := range []string{"plain-time", "json"} {
+			for _, destination := range []string{"configured", "inherited"} {
+				for _, mode := range []string{"success", "dry-run", "verbose", "warn", "quiet"} {
+					t.Run(outcome.name+"/"+format+"/"+destination+"/"+mode, func(t *testing.T) {
+						url, calls := scalarJobOutcomeFixture(t, "8.8", "CREATED", outcome.path, http.StatusNoContent, false)
+						cfg := writeTestConfigForVersion(t, url, "8.8")
+						data, err := os.ReadFile(cfg)
+						require.NoError(t, err)
+						level := "info"
+						if mode == "warn" {
+							level = "warn"
+						}
+						require.NoError(t, os.WriteFile(cfg, append(data, []byte("\nlog:\n  level: "+level+"\n  format: "+format+"\n")...), 0600))
+						args := append([]string{"--config", cfg, "update", "job", "--key", scalarJobKey}, outcome.flags...)
+						args = append(args, "--set-error-message", "worker message", "--auto-confirm")
+						if mode == "dry-run" || mode == "verbose" || mode == "quiet" {
+							args = append(args, "--"+mode)
+						}
+						stdout, stderr, err := runBulkCompletionTerminal(t, args, destination, true, false, nil)
+						require.NoError(t, err, stderr)
+						require.Empty(t, stdout)
+						records := bulkCompletionDiagnosticRecords(t, stderr, format)
+						if mode == "warn" || mode == "quiet" {
+							require.Empty(t, records)
+							require.Empty(t, stderr)
+						} else {
+							require.NotEmpty(t, records)
+							for _, record := range records {
+								require.Equal(t, "INFO", record[0])
+							}
+						}
+						expected := []string{"POST /v2/jobs/search"}
+						if mode != "dry-run" {
+							expected = append(expected, "POST /v2/jobs/"+scalarJobKey+"/"+outcome.path)
+						}
+						require.Equal(t, expected, calls.Snapshot())
+					})
+				}
+			}
+		}
+	}
 }

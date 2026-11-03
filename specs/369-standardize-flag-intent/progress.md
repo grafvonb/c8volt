@@ -220,3 +220,45 @@ Started: 2026-11-03 06:40:31
 - Reviewed failure flow: removed flags use existing local migration preparation, configured logger or shared envelope, and a single exit. Runtime service/facade errors retain existing conversions and renderers; creation retains bounded aggregate failures, partial payloads and exit codes. No added diagnostic prints/raw transport formatting, lifecycle declarations or backend work in CLI/facades.
 - No inherited live-test/config environment was present; GOFLAGS cleared. Tests used only test-owned fakes and isolated subprocess/terminal fixtures. Integration files and demos were edited statically only. No full cmd/race suite was warranted by this command-local rename; no live-engine validation performed.
 ---
+
+---
+## Iteration 5 - 2026-11-03 07:27
+**Work Unit**: US2 — T005 completed: separate worker actions from submitted error values
+**Tasks Completed**:
+- [x] T005: Implement and validate valueless BPMN action, explicit error code/message and technical-failure backoff flags, with migrated fixtures and documentation.
+**Tasks Remaining in Work Unit**: 0; T006 and T007 remain outside US2.
+**Commit**: This work-unit commit
+**Files Changed**:
+- README.md
+- cmd/command_contract_test.go
+- cmd/flag_intent_job_test.go
+- cmd/flag_migration.go
+- cmd/flag_migration_input.go
+- cmd/update_job.go
+- cmd/update_job_assignment_test.go
+- cmd/update_job_batch.go
+- cmd/update_job_batch_test.go
+- cmd/update_job_outcome.go
+- cmd/update_job_outcome_guard_test.go
+- cmd/update_job_outcome_test.go
+- cmd/update_job_request.go
+- cmd/update_job_request_test.go
+- cmd/update_job_test.go
+- docs/cli/c8volt_update_job.md
+- docs/index.md
+- integration/cli/all_commands_test.go
+- integration/cli/behavioral_scenarios_test.go
+- integration/cli/real_state_bpmn_error_test.go
+- integration/cli/real_state_incidents_test.go
+- integration/cli/real_state_jobs_test.go
+- specs/369-standardize-flag-intent/progress.md
+- specs/369-standardize-flag-intent/ralph-memory.md
+- specs/369-standardize-flag-intent/tasks.md
+**Learnings**:
+- Added rejection cases first and observed the old implementation fail to provide canonical error-code guidance. Canonical action/code dispatch now rejects attached action values (including true/false/empty), positional codes, absent/blank codes and code without action before remote bootstrap. Removed message/backoff names and mixed old/new forms reject through configured reporting without payload disclosure.
+- Registered-arity scanning preserves opaque values and the terminator. Native fake payload tests preserve Boolean-looking and spaced codes, exact messages and variables; existing failure retry/backoff, unsupported mode/BID, completed guard and request-count coverage remains intact.
+- Passed targeted job/parser/guard/contract tests (10.253s), supplemental migration/surface/payload/bulk logging/terminal/assignment checks (8.063s), and worker summary logging (1.518s). The new summary matrix checks human stdout is empty, INFO routing on plain/structured configured/inherited destinations, and WARN/quiet suppression for both worker actions.
+- Passed `GOFLAGS='' go test ./cmd ./config ./docsgen -count=1` (cmd 414.852s, config 0.974s, docsgen 1.707s), covering the extended shared scanner, error classes, terminal prompts, sparse/empty scopes, partial evidence and DEBUG redaction. Regenerated docs with `GOFLAGS='' make docs-content`; touched Go files formatted and `git diff --check` passed.
+- Reviewed failure flow: native service errors convert through ferrors.FromDomain; scalar worker errors retain bounded jobWorkerOutcomeErrorMessage overrides and original JSON evidence/exit codes; batch paths retain aggregate logging and single-envelope exit. Migration failures use local configured reporting. No diagnostic prints, raw error rendering, service workflows or public schemas were introduced.
+- Validation used isolated fakes and subprocess/terminal fixtures with GOFLAGS cleared. Integration invocation/evidence files were maintained statically only; no live services or integration suites were run. No new execution lifecycle or cross-story work was added.
+---

@@ -145,7 +145,17 @@ func parseUpdateJobCommandRequest(cmd *cobra.Command, args ...string) (job.Updat
 // validateUpdateJobArgs rejects ambiguous retained flag meanings before remote
 // bootstrap; the diagnostic wrapper permits only these static messages to survive.
 func validateUpdateJobArgs(cmd *cobra.Command, args []string) error {
+	if cmd.Context() != nil {
+		if argv, ok := cmd.Context().Value(migrationInvocationKey{}).([]string); ok {
+			if _, err := migrationReportingInput(cmd, argv); err != nil {
+				return &migrationSemanticError{err}
+			}
+		}
+	}
 	if err := validateOptionalDashArg(args); err != nil {
+		if cmd.Flags().Changed("throw-bpmn-error") {
+			return &migrationSemanticError{invalidFlagValuef("use the bare --throw-bpmn-error action with --set-error-code CODE; positional codes are not accepted")}
+		}
 		return err
 	}
 	if err := validateUpdateJobFlagIntent(cmd, args); err != nil {
@@ -158,6 +168,14 @@ func validateUpdateJobArgs(cmd *cobra.Command, args []string) error {
 // controls without reading stdin, decoding payloads or constructing services.
 func validateUpdateJobFlagIntent(cmd *cobra.Command, args []string) error {
 	fs := cmd.Flags()
+	if fs.Changed("set-error-code") && !flagUpdateJobThrowBPMNError {
+		return invalidFlagValuef("--set-error-code requires the bare --throw-bpmn-error action")
+	}
+	if fs.Changed("throw-bpmn-error") {
+		if !flagUpdateJobThrowBPMNError || !fs.Changed("set-error-code") || strings.TrimSpace(flagUpdateJobBPMNError) == "" {
+			return invalidFlagValuef("BPMN error requires a bare --throw-bpmn-error action and non-empty --set-error-code")
+		}
+	}
 	if fs.Changed("retries") {
 		if !flagUpdateJobComplete || fs.Changed("fail") || fs.Changed("throw-bpmn-error") {
 			return invalidFlagValuef("--retries is a selector only; use --set-retries for job retry updates or technical failure")

@@ -13,10 +13,13 @@ Started: 2026-11-03T05:40:31Z
 
 ## Decisions
 
+- T005 is complete. `throw-bpmn-error` is Boolean action storage, while `set-error-code` supplies the opaque code. `set-error-message` and `set-retry-backoff` are canonical; removed names remain diagnostic metadata only. Nonblank error codes retain exact spaces through the native body; Boolean-looking codes remain strings.
+- `flagMigration.Valueless` extends the existing registered-arity scanner to reject every attached action value. `validateUpdateJobArgs` inspects preserved original argv before bootstrap and rejects positional legacy codes with static guidance; semantic validation requires an active action and a nonblank explicitly supplied code. Opaque flag values and tokens after `--` are never scanned as action flags. Do not rely on ordinary Boolean parsing to reject `=true` or `=false`.
+
 - T004 is complete: creation uses `set-bid`/`set-vars`; both repair commands use `set-retries`/`set-job-timeout`. Repair retains default 1 and zero-as-skip, with timeout independently submitted. Existing repair variable migration mappings remain registered. Creation still has no file input; repair/get BID selectors remain unchanged.
 - Creation failure wording depends on `cmd/cmd_views_processinstance_run.go` checking `Changed("set-bid")`; keep this aligned with registration so unsupported versions retain the useful bounded business-ID reason.
 
-- T003 is complete. `flagUpdateJobRetries` remains selector-only; `flagUpdateJobSetRetries` owns submitted retries. Job mutation timeouts use `set-timeout`; removing local `timeout` restores the existing root HTTP binding without changing root_config.go. Job variables use `set-vars`; no file input was added. Worker action/code/message/backoff spelling stays unchanged until T005.
+- T003 is complete. `flagUpdateJobRetries` remains selector-only; `flagUpdateJobSetRetries` owns submitted retries. Job mutation timeouts use `set-timeout`; removing local `timeout` restores the existing root HTTP binding without changing root_config.go. Job variables use `set-vars`; no file input was added. T005 now owns the completed worker action/code/message/backoff migration.
 - `validateUpdateJobArgs` rejects retained-flag migration errors before bootstrap without reading stdin or constructing requests. `migrationSemanticError` preserves only static command-owned guidance through T001 local reporting; never wrap parser messages or supplied values in it. The command request parser also checks intent for direct callers. T005 can reuse this seam.
 
 - T002 is complete: shared update/repair sources use `set-vars`/`set-vars-file`, task assignment uses `set-assignee`. Job inline variables are now `set-vars` (T003); run inline variables are now `set-vars` (T004). Task operation strings and report schemas still use `assign`; translate only the diagnostic flag label in assignment exclusions.
@@ -47,6 +50,9 @@ Started: 2026-11-03T05:40:31Z
 
 ## Reusable Commands
 
+- `GOFLAGS='' go test ./cmd -run 'TestFlagIntentJob|TestUpdateJob|TestParseUpdateJob|TestScalarJobCompletedGuard|TestCommandContract' -count=1`
+- `GOFLAGS='' go test ./cmd -run 'TestFlagIntentJobWorkerSummaryLogging' -count=1` covers both worker actions, plain/structured INFO records, configured/inherited terminal writers, and WARN/quiet suppression.
+
 - `GOFLAGS='' go test ./cmd -run 'TestFlagIntentCreationRepair|TestRun|TestOpsRepair|TestBusinessIDOperationsRepair|TestFlagIntentVariables|TestCommandContract|TestCapabilities|TestCompletion|TestFlagParseErrors' -count=1`
 - `GOFLAGS='' go test ./cmd -run 'TestFlagIntentCreationRepair|TestFlagIntentMigration|TestFlagParseErrors' -count=1`; `GOFLAGS='' go test ./docsgen -count=1`
 
@@ -71,5 +77,5 @@ Started: 2026-11-03T05:40:31Z
 
 ## Current Handoff
 
-- Recheck tasks.md dependencies. T005 (US2 worker error action/code/message/backoff) is earliest next; T001–T004 are complete. No blockers. Iteration 4 completed T004 only; do not alter retry selection or repair zero semantics when migrating worker outcomes.
-- T004 targeted creation/repair/metadata and existing logging/terminal/sparse/empty/partial-result families passed, as did shared migration rejection checks and config/docsgen. No shared bootstrap implementation changed, so the full cmd suite was not repeated. Integration invocation text and shell syntax were maintained statically; real-engine behavior remains unverified.
+- Recheck tasks.md dependencies. T006 (US4 production migration/output acceptance) is earliest next; T001–T005 are complete. T007 follows T006. No blockers. Iteration 5 completed only T005 (US2).
+- Targeted job/parser/metadata, migration, payload, bulk logging/terminal and assignment logging checks passed. Full `GOFLAGS='' go test ./cmd ./config ./docsgen -count=1` passed (cmd 414.852s); supplemental worker summary logging passed (1.518s). Docs were regenerated and maintained integration invocation text updated statically. No live-engine validation was performed.

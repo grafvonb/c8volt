@@ -23,7 +23,7 @@ func TestUpdateJobCommand_TechnicalFailureDryRunLoadsCurrentJobAndSkipsMutation(
 	t.Cleanup(srv.Close)
 	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
 
-	output := executeRootForJobTest(t, "--config", cfgPath, "update", "job", "--key", "2251799813711967", "--fail", "--set-retries", "0", "--message", "worker unavailable", "--dry-run")
+	output := executeRootForJobTest(t, "--config", cfgPath, "update", "job", "--key", "2251799813711967", "--fail", "--set-retries", "0", "--set-error-message", "worker unavailable", "--dry-run")
 
 	require.Equal(t, []string{"POST /v2/jobs/search"}, requests)
 	require.Empty(t, failBodies)
@@ -41,7 +41,7 @@ func TestUpdateJobCommand_TechnicalFailureDryRunRendersExplicitKeyTenantContext(
 	t.Cleanup(srv.Close)
 	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
 
-	output := executeRootForJobTest(t, "--config", cfgPath, "--tenant", tenantAdminKeysSelectedTenant, "update", "job", "--key", "2251799813711967", "--fail", "--set-retries", "0", "--message", "worker unavailable", "--dry-run")
+	output := executeRootForJobTest(t, "--config", cfgPath, "--tenant", tenantAdminKeysSelectedTenant, "update", "job", "--key", "2251799813711967", "--fail", "--set-retries", "0", "--set-error-message", "worker unavailable", "--dry-run")
 
 	require.Equal(t, []string{"POST /v2/jobs/search"}, requests)
 	require.Empty(t, failBodies)
@@ -64,7 +64,7 @@ func TestUpdateJobCommand_TechnicalFailureSubmittedHumanOutput(t *testing.T) {
 	t.Cleanup(srv.Close)
 	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
 
-	output := executeRootForJobTest(t, "--config", cfgPath, "update", "job", "--key", "2251799813711967", "--fail", "--set-retries", "2", "--retry-backoff", "5m", "--message", "worker unavailable", "--auto-confirm")
+	output := executeRootForJobTest(t, "--config", cfgPath, "update", "job", "--key", "2251799813711967", "--fail", "--set-retries", "2", "--set-retry-backoff", "5m", "--set-error-message", "worker unavailable", "--auto-confirm")
 
 	require.Equal(t, []string{"POST /v2/jobs/search", "POST /v2/jobs/2251799813711967/failure"}, requests)
 	require.Len(t, failBodies, 1)
@@ -84,7 +84,7 @@ func TestUpdateJobCommand_JSONDryRunTechnicalFailurePlanPayload(t *testing.T) {
 	t.Cleanup(srv.Close)
 	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
 
-	output := executeRootForJobTest(t, "--config", cfgPath, "--json", "update", "job", "--key", "2251799813711967", "--fail", "--set-retries", "2", "--retry-backoff", "5m", "--message", "worker unavailable", "--dry-run")
+	output := executeRootForJobTest(t, "--config", cfgPath, "--json", "update", "job", "--key", "2251799813711967", "--fail", "--set-retries", "2", "--set-retry-backoff", "5m", "--set-error-message", "worker unavailable", "--dry-run")
 
 	require.Equal(t, []string{"POST /v2/jobs/search"}, requests)
 	require.Empty(t, failBodies)
@@ -111,7 +111,7 @@ func TestUpdateJobCommand_BPMNErrorDryRunLoadsCurrentJobAndSkipsMutation(t *test
 	t.Cleanup(srv.Close)
 	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
 
-	output := executeRootForJobTest(t, "--config", cfgPath, "update", "job", "--key", "2251799813711967", "--throw-bpmn-error", "PAYMENT_DECLINED", "--message", "card declined", "--set-vars", `{"approved":false}`, "--dry-run")
+	output := executeRootForJobTest(t, "--config", cfgPath, "update", "job", "--key", "2251799813711967", "--throw-bpmn-error", "--set-error-code", "PAYMENT_DECLINED", "--set-error-message", "card declined", "--set-vars", `{"approved":false}`, "--dry-run")
 
 	require.Equal(t, []string{"POST /v2/jobs/search"}, requests)
 	require.Empty(t, errorBodies)
@@ -128,7 +128,7 @@ func TestUpdateJobCommand_BPMNErrorSubmittedHumanOutput(t *testing.T) {
 	t.Cleanup(srv.Close)
 	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
 
-	output := executeRootForJobTest(t, "--config", cfgPath, "update", "job", "--key", "2251799813711967", "--throw-bpmn-error", "PAYMENT_DECLINED", "--message", "card declined", "--set-vars", `{"approved":false}`, "--auto-confirm")
+	output := executeRootForJobTest(t, "--config", cfgPath, "update", "job", "--key", "2251799813711967", "--throw-bpmn-error", "--set-error-code", "PAYMENT_DECLINED", "--set-error-message", "card declined", "--set-vars", `{"approved":false}`, "--auto-confirm")
 
 	require.Equal(t, []string{"POST /v2/jobs/search", "POST /v2/jobs/2251799813711967/error"}, requests)
 	require.Len(t, errorBodies, 1)
@@ -148,7 +148,7 @@ func TestUpdateJobCommand_JSONDryRunBPMNErrorPlanPayload(t *testing.T) {
 	t.Cleanup(srv.Close)
 	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
 
-	output := executeRootForJobTest(t, "--config", cfgPath, "--json", "update", "job", "--key", "2251799813711967", "--throw-bpmn-error", "PAYMENT_DECLINED", "--message", "card declined", "--set-vars", `{"approved":false}`, "--dry-run")
+	output := executeRootForJobTest(t, "--config", cfgPath, "--json", "update", "job", "--key", "2251799813711967", "--throw-bpmn-error", "--set-error-code", "PAYMENT_DECLINED", "--set-error-message", "card declined", "--set-vars", `{"approved":false}`, "--dry-run")
 
 	require.Equal(t, []string{"POST /v2/jobs/search"}, requests)
 	require.Empty(t, errorBodies)

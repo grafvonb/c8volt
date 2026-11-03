@@ -21,9 +21,11 @@ var (
 	flagUpdateJobRetryBackoffRaw string
 	flagUpdateJobMessage         string
 	flagUpdateJobBPMNError       string
-	flagUpdateJobComplete        bool
-	flagUpdateJobVariables       string
-	flagUpdateJobSetBID          string
+	// flagUpdateJobThrowBPMNError selects the action; token validation rejects attached values.
+	flagUpdateJobThrowBPMNError bool
+	flagUpdateJobComplete       bool
+	flagUpdateJobVariables      string
+	flagUpdateJobSetBID         string
 )
 
 // updateJobCmd retains scalar updates and routes collection completion to the frozen batch lifecycle.
@@ -31,6 +33,8 @@ var updateJobCmd = &cobra.Command{
 	Use:   "job [-]",
 	Short: "Update a job or complete selected jobs",
 	Long: `Update a Camunda job by key on Camunda 8.8 or newer.
+
+Use the bare --throw-bpmn-error action with required --set-error-code; attached action values and legacy positional codes are rejected. Use --set-error-message for outcome messages and --set-retry-backoff for technical failure backoff.
 
 Supports retry and timeout updates and worker outcomes. Use --set-retries for submitted retries and --set-timeout for the job timeout. In v5, inherited --timeout controls HTTP execution only; it never supplies a job mutation. Both timeouts may be supplied independently. Bare --retries is only a keyless completion selector, not a mutation alias. Explicit --key uses backend authorization without tenant filtering.
 
@@ -59,8 +63,8 @@ Use --dry-run to inspect the plan without mutation. With --json, mutations requi
   ./c8volt --tenant tenant-a update job --key <job-key> --set-retries 3 --dry-run
   ./c8volt update job --key <job-key> --set-retries 3 --auto-confirm
   ./c8volt update job --key <job-key> --set-timeout 5m --auto-confirm
-  ./c8volt update job --key <job-key> --fail --set-retries 0 --message "worker unavailable" --dry-run
-  ./c8volt update job --key <job-key> --throw-bpmn-error PAYMENT_DECLINED --message "card declined" --dry-run
+  ./c8volt update job --key <job-key> --fail --set-retries 0 --set-error-message "worker unavailable" --dry-run
+  ./c8volt update job --key <job-key> --throw-bpmn-error --set-error-code PAYMENT_DECLINED --set-error-message "card declined" --dry-run
   ./c8volt update job --key <job-key> --complete --set-vars '{"approved":true}' --dry-run
   ./c8volt update job --key <job-key> --complete --set-bid ORDER-123 --set-vars '{"approved":true}' --dry-run
   ./c8volt --json update job --key <job-key> --set-retries 3 --dry-run
@@ -158,9 +162,10 @@ func init() {
 	fs.Int32Var(&flagUpdateJobSetRetries, "set-retries", 0, "retry count to set or remaining retries for --fail (including 0)")
 	fs.StringVar(&flagUpdateJobTimeoutRaw, "set-timeout", "", "timeout duration to submit for the job, for example 60s, 5m, or 1h")
 	fs.BoolVar(&flagUpdateJobFail, "fail", false, "report a technical job failure")
-	fs.StringVar(&flagUpdateJobRetryBackoffRaw, "retry-backoff", "", "duration before a failed job becomes retryable, for example 60s, 5m, or 1h")
-	fs.StringVar(&flagUpdateJobMessage, "message", "", "operator message for worker outcome modes")
-	fs.StringVar(&flagUpdateJobBPMNError, "throw-bpmn-error", "", "BPMN error code to throw for the job")
+	fs.StringVar(&flagUpdateJobRetryBackoffRaw, "set-retry-backoff", "", "duration before a failed job becomes retryable, for example 60s, 5m, or 1h")
+	fs.StringVar(&flagUpdateJobMessage, "set-error-message", "", "operator message for worker outcome modes")
+	fs.BoolVar(&flagUpdateJobThrowBPMNError, "throw-bpmn-error", false, "throw a BPMN error using --set-error-code (bare action only)")
+	fs.StringVar(&flagUpdateJobBPMNError, "set-error-code", "", "BPMN error code to submit with --throw-bpmn-error")
 	fs.BoolVar(&flagUpdateJobComplete, "complete", false, "complete the job through the worker outcome API")
 	fs.StringVar(&flagUpdateJobSetBID, "set-bid", "", "assign the first business ID atomically with --complete (Camunda 8.10)")
 	fs.StringVar(&flagUpdateJobVariables, "set-vars", "", "JSON object with variables for BPMN error or completion outcomes")
@@ -182,7 +187,12 @@ func init() {
 	fs.BoolVar(&flagFailFast, "fail-fast", false, "stop scheduling new completions after the first unsatisfied outcome")
 
 	useInvalidInputFlagErrors(updateJobCmd)
-	setFlagMigrations(updateJobCmd, map[string]flagMigration{"vars": {Replacement: "--set-vars", TakesValue: true}})
+	setFlagMigrations(updateJobCmd, map[string]flagMigration{
+		"vars":             {Replacement: "--set-vars", TakesValue: true},
+		"message":          {Replacement: "--set-error-message", TakesValue: true},
+		"retry-backoff":    {Replacement: "--set-retry-backoff", TakesValue: true},
+		"throw-bpmn-error": {Replacement: "--throw-bpmn-error --set-error-code CODE", Valueless: true},
+	})
 	setCommandMutation(updateJobCmd, CommandMutationStateChanging)
 	setContractSupport(updateJobCmd, ContractSupportFull)
 	setAutomationSupport(updateJobCmd, AutomationSupportFull, "supports shared machine output, non-mutating dry-run previews, and accepted results")

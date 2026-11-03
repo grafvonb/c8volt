@@ -128,7 +128,7 @@ func TestUpdateJobAssignmentParsing(t *testing.T) {
 		{"--key", scalarJobKey, "--set-retries", "1", "--set-bid", "x"},
 		{"--key", scalarJobKey, "--set-timeout", "1m", "--set-bid", "x"},
 		{"--key", scalarJobKey, "--fail", "--set-retries", "0", "--set-bid", "x"},
-		{"--key", scalarJobKey, "--throw-bpmn-error", "x", "--set-bid", "x"},
+		{"--key", scalarJobKey, "--throw-bpmn-error", "--set-error-code", "x", "--set-bid", "x"},
 		{"--complete", "--set-bid", "x"},
 		{"--key", scalarJobKey, "--complete", "--set-bid", ""},
 		{"--key", scalarJobKey, "--complete", "--set-bid", "   "},

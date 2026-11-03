@@ -71,6 +71,9 @@ func migrationReportingInput(cmd *cobra.Command, args []string) (*cobra.Command,
 				}
 				continue
 			}
+			if migration, ok := migrations[name]; ok && migration.Valueless && attached && rejected == nil {
+				rejected = invalidFlagValuef("--%s accepts no value; use %s", name, migration.Replacement)
+			}
 			if !attached {
 				if flag.NoOptDefVal != "" {
 					value = flag.NoOptDefVal

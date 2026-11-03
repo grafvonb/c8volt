@@ -246,7 +246,7 @@ func runRealStateJobScenarios(t *testing.T, profile integrationProfile, dataset 
 	}
 	records = append(records, noWaitRecord)
 
-	failResult := runC8VoltForProfile(t, profile.Name, "real-state-jobs-update-fail-nowait", "--automation", "--json", "update", "job", "--key", jobs[5].Key, "--fail", "--set-retries", "0", "--message", "c8volt real-state job failure", "--no-wait")
+	failResult := runC8VoltForProfile(t, profile.Name, "real-state-jobs-update-fail-nowait", "--automation", "--json", "update", "job", "--key", jobs[5].Key, "--fail", "--set-retries", "0", "--set-error-message", "c8volt real-state job failure", "--no-wait")
 	failRecord := realStateJobRecord(profile, failResult, "update job", "real-state-jobs-update-fail-nowait", "json", []string{"key", "fail", "retries", "message", "no-wait"}, []string{jobs[5].Key}, false, true)
 	if err := validateRealStateJobWorkerOutcome(failResult); err != nil {
 		failRecord.Outcome = realStateOutcomeFailed

@@ -1605,14 +1605,14 @@ func TestCommandCapabilityForCommand_GetAndUpdateJobContract(t *testing.T) {
 		Description: "report a technical job failure",
 	})
 	require.Contains(t, updateCapability.Flags, FlagContract{
-		Name:        "retry-backoff",
+		Name:        "set-retry-backoff",
 		Type:        "string",
 		Required:    false,
 		Repeated:    false,
 		Description: "duration before a failed job becomes retryable, for example 60s, 5m, or 1h",
 	})
 	require.Contains(t, updateCapability.Flags, FlagContract{
-		Name:        "message",
+		Name:        "set-error-message",
 		Type:        "string",
 		Required:    false,
 		Repeated:    false,
@@ -1620,10 +1620,10 @@ func TestCommandCapabilityForCommand_GetAndUpdateJobContract(t *testing.T) {
 	})
 	require.Contains(t, updateCapability.Flags, FlagContract{
 		Name:        "throw-bpmn-error",
-		Type:        "string",
+		Type:        "bool",
 		Required:    false,
 		Repeated:    false,
-		Description: "BPMN error code to throw for the job",
+		Description: "throw a BPMN error using --set-error-code (bare action only)",
 	})
 	require.Contains(t, updateCapability.Flags, FlagContract{
 		Name:        "complete",
@@ -2756,16 +2756,16 @@ func TestGetJobAndUpdateJobHelp_DocumentsDiscoveryAndMutationGuards(t *testing.T
 		"Camunda 8.8 or newer",
 		"./c8volt update job --key <job-key> --set-retries 3 --dry-run",
 		"./c8volt update job --key <job-key> --fail --set-retries 0",
-		"./c8volt update job --key <job-key> --throw-bpmn-error PAYMENT_DECLINED",
+		"./c8volt update job --key <job-key> --throw-bpmn-error --set-error-code PAYMENT_DECLINED",
 		`./c8volt update job --key <job-key> --complete --set-vars '{"approved":true}' --dry-run`,
 		"./c8volt --json update job --key <job-key> --set-retries 3 --dry-run",
 		"-k, --key string",
 		"--set-retries int32",
 		"--set-timeout string",
 		"--fail",
-		"--retry-backoff string",
-		"--message string",
-		"--throw-bpmn-error string",
+		"--set-retry-backoff string",
+		"--set-error-message string",
+		"--throw-bpmn-error",
 		"--complete",
 		"--set-vars string",
 		"--dry-run",

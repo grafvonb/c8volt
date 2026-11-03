@@ -506,6 +506,7 @@ func resetUpdateJobFlagState() {
 	flagUpdateJobRetryBackoffRaw = ""
 	flagUpdateJobMessage = ""
 	flagUpdateJobBPMNError = ""
+	flagUpdateJobThrowBPMNError = false
 	flagUpdateJobComplete = false
 	flagUpdateJobVariables = ""
 	flagUpdateJobSetBID = ""

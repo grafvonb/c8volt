@@ -708,7 +708,7 @@ func TestUpdateJobBulkCompletionExplicitGuardrails(t *testing.T) {
 		{"--key", "1,2", "--batch-size", "10"}, {"--key", "1,2", "--type", "cleanup"},
 		{"-", "--json"}, {"-", "--retries", "0"}, {"-", "--kind", "TASK_LISTENER"},
 		{"--key", "1,2", "--fail"}, {"--key", "1,2", "--set-timeout", "1m"},
-		{"--key", "1,2", "--throw-bpmn-error", "ERROR"},
+		{"--key", "1,2", "--throw-bpmn-error", "--set-error-code", "ERROR"},
 	} {
 		t.Run(strings.Join(flags, " "), func(t *testing.T) {
 			fixture, server := newBulkCompletionFixture(t, "8.8", "normal")

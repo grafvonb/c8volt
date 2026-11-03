@@ -13,9 +13,11 @@ import (
 )
 
 // flagMigration describes rejected syntax, never an accepted flag alias.
+// Valueless restricts an existing action token without changing its Boolean metadata.
 type flagMigration struct {
 	Replacement string `json:"replacement"`
 	TakesValue  bool   `json:"takes_value"`
+	Valueless   bool   `json:"valueless,omitempty"`
 }
 
 const flagMigrationsAnnotation = "c8volt.flag-migrations"

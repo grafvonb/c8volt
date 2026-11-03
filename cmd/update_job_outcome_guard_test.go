@@ -16,13 +16,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// scalarJobOutcomes keeps all scalar worker guards on canonical action/value syntax.
 var scalarJobOutcomes = []struct {
 	name, path string
 	flags      []string
 }{
 	{"completion", "completion", []string{"--complete"}},
 	{"failure", "failure", []string{"--fail", "--set-retries", "0"}},
-	{"BPMN error", "error", []string{"--throw-bpmn-error", "EXPECTED_ERROR"}},
+	{"BPMN error", "error", []string{"--throw-bpmn-error", "--set-error-code", "EXPECTED_ERROR"}},
 }
 
 const scalarJobKey = "2251799813711967"

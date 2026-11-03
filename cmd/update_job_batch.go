@@ -22,7 +22,7 @@ func parseUpdateJobBatchRequest(cmd *cobra.Command, explicit *job.CompletionSele
 	if pickMode() == RenderModeKeysOnly {
 		return job.CompletionRequest{}, invalidFlagValuef("--keys-only is not supported for job completion")
 	}
-	for _, name := range []string{"fail", "throw-bpmn-error", "set-retries", "set-timeout", "retry-backoff", "message"} {
+	for _, name := range []string{"fail", "throw-bpmn-error", "set-retries", "set-timeout", "set-retry-backoff", "set-error-message"} {
 		if cmd.Flags().Changed(name) {
 			return job.CompletionRequest{}, mutuallyExclusiveFlagsf("--complete cannot be combined with --%s", name)
 		}

@@ -44,12 +44,12 @@ func parseUpdateJobBPMNErrorRequest(cmd *cobra.Command) (job.UpdateRequest, erro
 	if cmd.Flags().Changed("set-timeout") {
 		return job.UpdateRequest{}, mutuallyExclusiveFlagsf("--throw-bpmn-error cannot be combined with --set-timeout")
 	}
-	if cmd.Flags().Changed("retry-backoff") {
-		return job.UpdateRequest{}, mutuallyExclusiveFlagsf("--throw-bpmn-error cannot be combined with --retry-backoff")
+	if cmd.Flags().Changed("set-retry-backoff") {
+		return job.UpdateRequest{}, mutuallyExclusiveFlagsf("--throw-bpmn-error cannot be combined with --set-retry-backoff")
 	}
-	errorCode := strings.TrimSpace(flagUpdateJobBPMNError)
-	if errorCode == "" {
-		return job.UpdateRequest{}, invalidFlagValuef("BPMN error requires a non-empty --throw-bpmn-error")
+	errorCode := flagUpdateJobBPMNError
+	if strings.TrimSpace(errorCode) == "" {
+		return job.UpdateRequest{}, invalidFlagValuef("BPMN error requires a non-empty --set-error-code")
 	}
 	var variables map[string]any
 	if cmd.Flags().Changed("set-vars") {
@@ -94,11 +94,11 @@ func parseUpdateJobCompletionRequest(cmd *cobra.Command) (job.UpdateRequest, err
 	if cmd.Flags().Changed("set-timeout") {
 		return job.UpdateRequest{}, mutuallyExclusiveFlagsf("--complete cannot be combined with --set-timeout")
 	}
-	if cmd.Flags().Changed("retry-backoff") {
-		return job.UpdateRequest{}, mutuallyExclusiveFlagsf("--complete cannot be combined with --retry-backoff")
+	if cmd.Flags().Changed("set-retry-backoff") {
+		return job.UpdateRequest{}, mutuallyExclusiveFlagsf("--complete cannot be combined with --set-retry-backoff")
 	}
-	if cmd.Flags().Changed("message") {
-		return job.UpdateRequest{}, mutuallyExclusiveFlagsf("--complete cannot be combined with --message")
+	if cmd.Flags().Changed("set-error-message") {
+		return job.UpdateRequest{}, mutuallyExclusiveFlagsf("--complete cannot be combined with --set-error-message")
 	}
 	var variables map[string]any
 	if cmd.Flags().Changed("set-vars") {
@@ -165,14 +165,14 @@ func parseUpdateJobTechnicalFailureRequest(cmd *cobra.Command) (job.UpdateReques
 		Automation:      updateJobAutomationEnabled(cmd),
 		DryRun:          flagDryRun,
 	}
-	if cmd.Flags().Changed("retry-backoff") {
+	if cmd.Flags().Changed("set-retry-backoff") {
 		retryBackoff, err := time.ParseDuration(flagUpdateJobRetryBackoffRaw)
 		if err != nil || retryBackoff <= 0 {
-			return job.UpdateRequest{}, invalidFlagValuef("invalid value for --retry-backoff: %q, expected positive duration such as 60s, 5m, or 1h", flagUpdateJobRetryBackoffRaw)
+			return job.UpdateRequest{}, invalidFlagValuef("invalid value for --set-retry-backoff: %q, expected positive duration such as 60s, 5m, or 1h", flagUpdateJobRetryBackoffRaw)
 		}
 		retryBackoffMillis := retryBackoff.Milliseconds()
 		if retryBackoffMillis <= 0 {
-			return job.UpdateRequest{}, invalidFlagValuef("invalid value for --retry-backoff: %q, duration must be at least 1ms", flagUpdateJobRetryBackoffRaw)
+			return job.UpdateRequest{}, invalidFlagValuef("invalid value for --set-retry-backoff: %q, duration must be at least 1ms", flagUpdateJobRetryBackoffRaw)
 		}
 		outcome.RetryBackoff = &retryBackoff
 		outcome.RetryBackoffMillis = &retryBackoffMillis
@@ -207,8 +207,8 @@ func changedUpdateJobWorkerOutcomeFlags(cmd *cobra.Command) []string {
 	}
 	names := []string{
 		"fail",
-		"retry-backoff",
-		"message",
+		"set-retry-backoff",
+		"set-error-message",
 		"throw-bpmn-error",
 		"complete",
 		"set-vars",

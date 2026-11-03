@@ -12,6 +12,8 @@ Update a job or complete selected jobs
 
 Update a Camunda job by key on Camunda 8.8 or newer.
 
+Use the bare --throw-bpmn-error action with required --set-error-code; attached action values and legacy positional codes are rejected. Use --set-error-message for outcome messages and --set-retry-backoff for technical failure backoff.
+
 Supports retry and timeout updates and worker outcomes. Use --set-retries for submitted retries and --set-timeout for the job timeout. In v5, inherited --timeout controls HTTP execution only; it never supplies a job mutation. Both timeouts may be supplied independently. Bare --retries is only a keyless completion selector, not a mutation alias. Explicit --key uses backend authorization without tenant filtering.
 
 For bulk --complete, repeat --key, supply comma-separated keys, or use one positional '-' to read newline-separated keys. Flags precede stdin; blank lines are ignored, invalid or empty key tokens fail, and all input is validated before mutation. Duplicate keys are completed once. Empty stdin succeeds without mutation. Explicit keys retain backend authorization across tenants and show actual tenant context. One scalar key preserves the existing single-job result; every collection keeps the bulk result even after deduplication.
@@ -47,8 +49,8 @@ c8volt update job [-] [flags]
   ./c8volt --tenant tenant-a update job --key <job-key> --set-retries 3 --dry-run
   ./c8volt update job --key <job-key> --set-retries 3 --auto-confirm
   ./c8volt update job --key <job-key> --set-timeout 5m --auto-confirm
-  ./c8volt update job --key <job-key> --fail --set-retries 0 --message "worker unavailable" --dry-run
-  ./c8volt update job --key <job-key> --throw-bpmn-error PAYMENT_DECLINED --message "card declined" --dry-run
+  ./c8volt update job --key <job-key> --fail --set-retries 0 --set-error-message "worker unavailable" --dry-run
+  ./c8volt update job --key <job-key> --throw-bpmn-error --set-error-code PAYMENT_DECLINED --set-error-message "card declined" --dry-run
   ./c8volt update job --key <job-key> --complete --set-vars '{"approved":true}' --dry-run
   ./c8volt update job --key <job-key> --complete --set-bid ORDER-123 --set-vars '{"approved":true}' --dry-run
   ./c8volt --json update job --key <job-key> --set-retries 3 --dry-run
@@ -73,18 +75,19 @@ c8volt update job [-] [flags]
       --kind string                   job kind selector for --complete; case-insensitive
   -l, --limit int32                   maximum unique selector completion targets; 0 means uncapped
       --listener-event-type string    listener event selector for --complete; case-insensitive
-      --message string                operator message for worker outcome modes
       --no-wait                       skip retry confirmation; bulk completion permits one reconciliation read without polling
       --no-worker-limit               use all queued jobs as workers when --workers is unset
       --pi-key string                 process instance key selector for --complete
       --retries int32                 exact retry count selector with keyless --complete (including 0)
-      --retry-backoff string          duration before a failed job becomes retryable, for example 60s, 5m, or 1h
       --set-bid string                assign the first business ID atomically with --complete (Camunda 8.10)
+      --set-error-code string         BPMN error code to submit with --throw-bpmn-error
+      --set-error-message string      operator message for worker outcome modes
       --set-retries int32             retry count to set or remaining retries for --fail (including 0)
+      --set-retry-backoff string      duration before a failed job becomes retryable, for example 60s, 5m, or 1h
       --set-timeout string            timeout duration to submit for the job, for example 60s, 5m, or 1h
       --set-vars string               JSON object with variables for BPMN error or completion outcomes
   -s, --state string                  job state selector for --complete; case-insensitive
-      --throw-bpmn-error string       BPMN error code to throw for the job
+      --throw-bpmn-error              throw a BPMN error using --set-error-code (bare action only)
       --type string                   job type selector for --complete
       --worker string                 worker name selector for --complete
   -w, --workers int                   maximum concurrent completion workers (default: min(count, 2*GOMAXPROCS, 32))
