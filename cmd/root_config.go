@@ -13,6 +13,7 @@ import (
 
 	"github.com/grafvonb/c8volt/config"
 	"github.com/grafvonb/c8volt/consts"
+	"github.com/grafvonb/c8volt/toolx/logging"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
@@ -288,4 +289,38 @@ func hasEnvConfigByKeys(configKeys []string) bool {
 		}
 	}
 	return false
+}
+
+// resolveLocalCommandConfig shares configuration precedence without validating
+// remote credentials or creating HTTP/authentication services.
+func resolveLocalCommandConfig(cmd *cobra.Command, quiet, debug bool) (*viper.Viper, *resolverBindings, *config.Config, error) {
+	v := viper.New()
+	bindings, err := initViper(v, cmd)
+	if err != nil {
+		return nil, nil, nil, bootstrapLocalPrecondition(err)
+	}
+	switch {
+	case quiet:
+		v.Set("log.level", "error")
+	case debug:
+		v.Set("log.level", "debug")
+	}
+	cfg, err := retrieveAndNormalizeConfig(v, bindings)
+	if err != nil {
+		if errors.Is(err, config.ErrProfileNotFound) {
+			return nil, nil, nil, normalizeBootstrapError(err)
+		}
+		return nil, nil, nil, bootstrapLocalPrecondition(err)
+	}
+	return v, bindings, cfg, nil
+}
+
+// localCommandLogContext installs the configured logger on the effective stderr
+// destination. It performs no validation, logging, stdin reads or remote setup.
+func localCommandLogContext(cmd *cobra.Command, cfg *config.Config, v *viper.Viper, indicator bool) context.Context {
+	activityWriter := logging.NewActivityWriterEnabled(cmd.ErrOrStderr(), indicator)
+	cmd.Root().SetErr(activityWriter)
+	ctx := cfg.ToContextWithLogWriter(cmd.Context(), activityWriter)
+	ctx = logging.ToActivityContext(ctx, activityWriter)
+	return (configSourceDescription{loadedPath: v.ConfigFileUsed()}).ToContext(ctx)
 }

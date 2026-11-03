@@ -296,7 +296,7 @@ func activeIncidentFilterCount() int {
 // semantic validation failures.
 func useInvalidInputFlagErrors(cmd *cobra.Command) {
 	cmd.SetFlagErrorFunc(func(cmd *cobra.Command, err error) error {
-		return silenceUsageForError(cmd, invalidInputError(err))
+		return silenceUsageForError(cmd, migrationFlagError(cmd, err))
 	})
 }
 
