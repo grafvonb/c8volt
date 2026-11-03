@@ -262,3 +262,24 @@ Started: 2026-11-03 06:40:31
 - Reviewed failure flow: native service errors convert through ferrors.FromDomain; scalar worker errors retain bounded jobWorkerOutcomeErrorMessage overrides and original JSON evidence/exit codes; batch paths retain aggregate logging and single-envelope exit. Migration failures use local configured reporting. No diagnostic prints, raw error rendering, service workflows or public schemas were introduced.
 - Validation used isolated fakes and subprocess/terminal fixtures with GOFLAGS cleared. Integration invocation/evidence files were maintained statically only; no live services or integration suites were run. No new execution lifecycle or cross-story work was added.
 ---
+
+---
+## Iteration 1 - 2026-11-03 07:43
+**Work Unit**: US4 — T006 completed: production migration and output acceptance
+**Tasks Completed**:
+- [x] T006: Certify migrated write spellings, aliases, configured early reporting and preserved runtime output behavior.
+**Tasks Remaining in Work Unit**: 0; T007 remains outside US4.
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/flag_migration_test.go
+- specs/369-standardize-flag-intent/tasks.md
+- specs/369-standardize-flag-intent/ralph-memory.md
+- specs/369-standardize-flag-intent/progress.md
+**Learnings**:
+- Preserved and completed the production alias/reporting tests present at iteration start. Added real-terminal stdin rejection across write commands and configured/inherited destinations; added job-alias semantic rejection for zero retries, HTTP-only timeout and legacy BPMN codes/attached values. All tests use production Execute, temporary configs and test-owned HTTP fakes. Rejections emit one configured ERROR or one JSON envelope through EOF, never prompt/read mutation input/contact services, and preserve output precedence and no-err-codes behavior.
+- Passed `GOFLAGS='' go test ./cmd -run 'TestFlagIntentMigration|TestCommandContract|TestCapabilities|TestCompletion|TestCommandError' -count=1` (85.791s), and the new `TestFlagIntentMigrationProductionTerminal` (1.499s).
+- Passed the combined job-alias, element diagnostics/terminal, bulk completion diagnostics/summary/terminal, user-task completion/assignment diagnostics and terminals, BID assignment/repair, creation summary/failure logging, worker summary, scalar job assignment logging and process sparse-read selection (30.579s). These existing canonical fixtures retain repeated backend failure grouping, partial evidence/original exit codes, both redacted DEBUG entry points, INFO suppression, prompt routing, empty results, sparse discovery, explicit-key and abort behavior.
+- Deliberately replaced element failure logging with direct stderr output, then with raw `operationErr.Error()` logging. Each isolated `TestElementScopeVariablesUpdateDiagnostics/plain-time/configured/normal` run failed its execution assertions as required. Restored production source byte-for-byte after each fault. Final `GOFLAGS='' go test ./cmd -run 'TestFlagIntentMigration|TestFlagIntentVariablesSurface|TestFlagIntentVariablesCompletion|TestFlagIntentCreationRepairSurface|TestFlagIntentJobSurface|TestCommandCapabilityForCommand|TestElementScopeVariablesUpdateDiagnostics' -count=1` passed (13.919s).
+- Reviewed the failure path: service errors retain facade ferrors.FromDomain conversion; element execution renders partial results once, logs bounded grouped reasons for human output and exits with the original operation error. Migration preparation remains local, carries static guidance to handleBootstrapError/handleCommandErrorWithMode, and uses the existing single-render exit boundary. No production direct prints, raw error output, lifecycle declarations, backend mechanics or schema changes were added.
+- Formatted touched Go tests and passed `git diff --check`. No production/bootstrap/help change was necessary, so no documentation regeneration or repeated shared/full race suite was warranted. Existing metadata/completion acceptance was reused; query/final inventory stays in T007. No inherited live configuration variables were present; GOFLAGS was cleared and no live services or integration helpers were run. Real-engine behavior remains unverified.
+---

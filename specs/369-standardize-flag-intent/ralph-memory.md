@@ -13,6 +13,10 @@ Started: 2026-11-03T05:40:31Z
 
 ## Decisions
 
+- T006 is complete. Production migration acceptance covers all removed write spellings across leaf and ancestor aliases, equal old/new conflicts in both orders (including repair zero), retained job retry/HTTP timeout meanings, and strict BPMN action syntax across job aliases. Reporting matrices cover later config/profile/output/logger controls, no-err-codes and invalid-config fallback without remote requests or mutation-input reads.
+- `TestFlagIntentMigrationProductionHelper` uses the real command tree and Execute; its terminal mode retains actual terminal stdin and asserts it with `term.IsTerminal`. Migration terminal cases require exactly one configured/inherited diagnostic or JSON envelope, including JSON/quiet/keys precedence, with no prompts or remote requests.
+- Existing canonical runtime logging/terminal tests provide partial-result, repeated-failure, redacted DEBUG, summary suppression, empty-scope and sparse-discovery coverage. Temporary direct-stderr and raw-aggregate mutations in element execution were both detected by `TestElementScopeVariablesUpdateDiagnostics/plain-time/configured/normal`; production source was restored byte-for-byte and the final tests passed. No production/bootstrap/schema/help change was needed for T006.
+
 - T005 is complete. `throw-bpmn-error` is Boolean action storage, while `set-error-code` supplies the opaque code. `set-error-message` and `set-retry-backoff` are canonical; removed names remain diagnostic metadata only. Nonblank error codes retain exact spaces through the native body; Boolean-looking codes remain strings.
 - `flagMigration.Valueless` extends the existing registered-arity scanner to reject every attached action value. `validateUpdateJobArgs` inspects preserved original argv before bootstrap and rejects positional legacy codes with static guidance; semantic validation requires an active action and a nonblank explicitly supplied code. Opaque flag values and tokens after `--` are never scanned as action flags. Do not rely on ordinary Boolean parsing to reject `=true` or `=false`.
 
@@ -77,5 +81,5 @@ Started: 2026-11-03T05:40:31Z
 
 ## Current Handoff
 
-- Recheck tasks.md dependencies. T006 (US4 production migration/output acceptance) is earliest next; T001–T005 are complete. T007 follows T006. No blockers. Iteration 5 completed only T005 (US2).
-- Targeted job/parser/metadata, migration, payload, bulk logging/terminal and assignment logging checks passed. Full `GOFLAGS='' go test ./cmd ./config ./docsgen -count=1` passed (cmd 414.852s); supplemental worker summary logging passed (1.518s). Docs were regenerated and maintained integration invocation text updated statically. No live-engine validation was performed.
+- Recheck tasks.md dependencies. T007 (US3 query/enrichment names plus final canonical-surface inventory) is the next and only unfinished task; T001–T006 are complete. No blockers. This invocation was labeled iteration 1 by the orchestrator; earlier audit entries retain their original iteration labels.
+- T006 validation passed: required migration/contract/capabilities/completion/error selection, new real-terminal rejection cases, job-alias semantics, canonical write surfaces, and affected logging/terminal/empty/sparse/partial-result families. Final restored-source regression selection passed. No production bootstrap changes required shared cmd/config/docsgen reruns or docs regeneration; prior shared-suite evidence remains applicable. No live-engine validation was performed.

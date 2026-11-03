@@ -17,6 +17,7 @@ import (
 	"github.com/grafvonb/c8volt/testx"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/term"
 )
 
 // TestFlagIntentMigrationReporting exercises early rejection through Execute,
@@ -242,4 +243,269 @@ func TestFlagIntentMigrationTerminatorExecution(t *testing.T) {
 	require.ErrorIs(t, decoder.Decode(&record), io.EOF)
 	require.Equal(t, "ERROR", record["level"])
 	require.Equal(t, "invalid input: invalid command arguments; see command help", record["msg"])
+}
+
+// TestFlagIntentMigrationProductionAliases covers every removed write spelling
+// through every registered command alias, with equal old/new values in both orders.
+func TestFlagIntentMigrationProductionAliases(t *testing.T) {
+	var requests atomic.Int64
+	server := testx.NewIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests.Add(1)
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer server.Close()
+	cfg := testx.WriteTestConfig(t, server.URL)
+	for _, tc := range []struct {
+		cmd   *cobra.Command
+		names map[string]string
+	}{
+		{updateElementCmd, map[string]string{"vars": "set-vars", "vars-file": "set-vars-file"}},
+		{updateProcessInstanceCmd, map[string]string{"vars": "set-vars", "vars-file": "set-vars-file"}},
+		{updateUserTaskCmd, map[string]string{"vars": "set-vars", "vars-file": "set-vars-file", "assign": "set-assignee"}},
+		{updateJobCmd, map[string]string{"vars": "set-vars", "message": "set-error-message", "retry-backoff": "set-retry-backoff"}},
+		{runProcessInstanceCmd, map[string]string{"vars": "set-vars", "bid": "set-bid"}},
+		{opsRepairIncidentCmd, map[string]string{"vars": "set-vars", "vars-file": "set-vars-file", "retries": "set-retries", "job-timeout": "set-job-timeout"}},
+		{opsRepairProcessInstanceCmd, map[string]string{"vars": "set-vars", "vars-file": "set-vars-file", "retries": "set-retries", "job-timeout": "set-job-timeout"}},
+	} {
+		for _, words := range migrationCommandSpellings(tc.cmd) {
+			for old, canonical := range tc.names {
+				for _, order := range []string{"old", "old-new", "new-old"} {
+					t.Run(strings.Join(words, "/")+"/"+old+"/"+order, func(t *testing.T) {
+						value := "PRIVATE-NOT-READ"
+						if old == "retries" {
+							value = "0"
+						}
+						if old == "job-timeout" || old == "retry-backoff" {
+							value = "1m"
+						}
+						args := append([]string{}, words...)
+						if order == "new-old" {
+							args = append(args, "--"+canonical, value)
+						}
+						args = append(args, "--"+old+"="+value)
+						if order == "old-new" {
+							args = append(args, "--"+canonical, value)
+						}
+						args = append(args, "--config", cfg, "--json", "--quiet")
+						encoded, err := json.Marshal(args)
+						require.NoError(t, err)
+						stdout, stderr := runCommandErrorEnvelopeSubprocess(t, "TestFlagIntentMigrationProductionHelper", t.TempDir(), map[string]string{"C8VOLT_TEST_ARGS": string(encoded)}, "", exitcode.InvalidArgs)
+						assertCommandErrorEnvelope(t, stdout, stderr, commandErrorEnvelopeExpectation{Outcome: "invalid", Class: "invalid_input", Command: strings.TrimPrefix(tc.cmd.CommandPath(), "c8volt "), Message: "invalid input: --" + old + " was removed; use --" + canonical})
+						require.NotContains(t, stdout+stderr, "PRIVATE-NOT-READ")
+					})
+				}
+			}
+		}
+	}
+	require.Zero(t, requests.Load(), "rejected aliases must not bootstrap or execute")
+}
+
+// migrationCommandSpellings includes aliases of ancestors as well as the leaf.
+func migrationCommandSpellings(cmd *cobra.Command) [][]string {
+	if cmd == rootCmd {
+		return [][]string{{}}
+	}
+	var paths [][]string
+	for _, prefix := range migrationCommandSpellings(cmd.Parent()) {
+		for _, name := range append([]string{cmd.Name()}, cmd.Aliases...) {
+			paths = append(paths, append(append([]string{}, prefix...), name))
+		}
+	}
+	return paths
+}
+
+// TestFlagIntentMigrationProductionReporting proves production leaves inherit
+// diagnostic destinations and later controls without reading mutation input.
+func TestFlagIntentMigrationProductionReporting(t *testing.T) {
+	var requests atomic.Int64
+	server := testx.NewIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests.Add(1)
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer server.Close()
+	for _, leaf := range []*cobra.Command{updateElementCmd, updateProcessInstanceCmd, updateUserTaskCmd, updateJobCmd, runProcessInstanceCmd, opsRepairIncidentCmd, opsRepairProcessInstanceCmd} {
+		for _, format := range []string{"plain-time", "json"} {
+			for _, destination := range []string{"stderr", "leaf", "inherited"} {
+				for _, mode := range []string{"normal", "verbose", "quiet", "json", "no-err-codes", "fallback"} {
+					t.Run(leaf.CommandPath()+"/"+format+"/"+destination+"/"+mode, func(t *testing.T) {
+						dir := t.TempDir()
+						cfg := filepath.Join(dir, "config.yaml")
+						contents := "apis:\n  camunda_api:\n    base_url: " + server.URL + "\nlog:\n  level: info\n  format: plain\nprofiles:\n  diagnostic:\n    app:\n      no_err_codes: true\n"
+						if mode == "fallback" {
+							contents = "invalid: ["
+						}
+						require.NoError(t, os.WriteFile(cfg, []byte(contents), 0600))
+						args := strings.Fields(strings.TrimPrefix(leaf.CommandPath(), "c8volt "))
+						args = append(args, "--vars", "PRIVATE-NOT-READ", "--config", cfg, "--profile", "diagnostic", "--log-format", format, "--log-level", "warn")
+						wantExit := exitcode.InvalidArgs
+						if mode == "no-err-codes" {
+							wantExit = 0
+						} else {
+							args = append(args, "--no-err-codes=false")
+						}
+						if mode == "verbose" || mode == "quiet" {
+							args = append(args, "--"+mode)
+						}
+						if mode == "json" || mode == "fallback" {
+							args = append(args, "--json", "--quiet")
+						}
+						encoded, err := json.Marshal(args)
+						require.NoError(t, err)
+						capture := filepath.Join(dir, "diagnostic.log")
+						stdout, stderr := runCommandErrorEnvelopeSubprocess(t, "TestFlagIntentMigrationProductionHelper", dir, map[string]string{"C8VOLT_TEST_ARGS": string(encoded), "C8VOLT_TEST_DESTINATION": destination, "C8VOLT_TEST_CAPTURE": capture}, "", wantExit)
+						diagnostic := stderr
+						if destination != "stderr" {
+							data, err := os.ReadFile(capture)
+							require.NoError(t, err)
+							diagnostic = string(data)
+							require.Empty(t, stderr)
+						}
+						message := "invalid input: --vars was removed; use --set-vars"
+						if mode == "fallback" {
+							message += "; local diagnostic configuration could not be loaded"
+						}
+						if mode == "json" || mode == "fallback" {
+							assertCommandErrorEnvelope(t, stdout, diagnostic, commandErrorEnvelopeExpectation{Outcome: "invalid", Class: "invalid_input", Command: strings.TrimPrefix(leaf.CommandPath(), "c8volt "), Message: message})
+						} else {
+							require.Empty(t, stdout)
+							require.Equal(t, [][2]string{{"ERROR", message}}, bulkCompletionDiagnosticRecords(t, diagnostic, format))
+						}
+						require.NotContains(t, stdout+stderr+diagnostic, "PRIVATE-NOT-READ")
+					})
+				}
+			}
+		}
+	}
+	require.Zero(t, requests.Load())
+}
+
+// TestFlagIntentMigrationProductionHelper changes only I/O on real commands;
+// Execute retains all production parsing, local setup, rendering and exit logic.
+func TestFlagIntentMigrationProductionHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+	require.Equal(t, "TestFlagIntentMigrationProductionHelper", os.Getenv(testx.CmdSubprocessNameEnv))
+	var args []string
+	require.NoError(t, json.Unmarshal([]byte(os.Getenv("C8VOLT_TEST_ARGS")), &args))
+	leaf, _, err := rootCmd.Find(args)
+	require.NoError(t, err)
+	if os.Getenv("C8VOLT_TEST_TERMINAL") == "1" {
+		require.True(t, term.IsTerminal(int(os.Stdin.Fd())))
+	} else {
+		rootCmd.SetIn(migrationUnreadableInput{})
+	}
+	if destination := os.Getenv("C8VOLT_TEST_DESTINATION"); destination != "" && destination != "stderr" {
+		f, err := os.Create(os.Getenv("C8VOLT_TEST_CAPTURE"))
+		require.NoError(t, err)
+		if destination == "leaf" {
+			leaf.SetErr(f)
+		} else {
+			leaf.Parent().SetErr(f)
+		}
+	}
+	os.Args = append([]string{"c8volt"}, args...)
+	Execute()
+	os.Exit(0)
+}
+
+// TestFlagIntentMigrationProductionTerminal rejects legacy writes before any
+// prompt or remote call even when terminal stdin makes confirmation eligible.
+func TestFlagIntentMigrationProductionTerminal(t *testing.T) {
+	var requests atomic.Int64
+	server := testx.NewIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests.Add(1)
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer server.Close()
+	for _, leaf := range []*cobra.Command{updateElementCmd, updateProcessInstanceCmd, updateUserTaskCmd, updateJobCmd, runProcessInstanceCmd, opsRepairIncidentCmd, opsRepairProcessInstanceCmd} {
+		for _, destination := range []string{"leaf", "inherited"} {
+			for _, machine := range []bool{false, true} {
+				t.Run(leaf.CommandPath()+"/"+destination+"/"+map[bool]string{false: "human", true: "json"}[machine], func(t *testing.T) {
+					dir := t.TempDir()
+					capture := filepath.Join(dir, "diagnostic.log")
+					old, replacement := "vars-file", "set-vars-file"
+					// Job and creation never supported file input; use their removed inline source.
+					if leaf == updateJobCmd || leaf == runProcessInstanceCmd {
+						old, replacement = "vars", "set-vars"
+					}
+					args := strings.Fields(strings.TrimPrefix(leaf.CommandPath(), "c8volt "))
+					args = append(args, "--"+old, "PRIVATE-NOT-READ", "--config", testx.WriteTestConfig(t, server.URL), "--log-format", "plain-time")
+					if machine {
+						args = append(args, "--json", "--quiet", "--keys-only")
+					}
+					encoded, err := json.Marshal(args)
+					require.NoError(t, err)
+					result := testx.NewCmdTerminalRunner().Run(t, testx.CmdTerminalRunRequest{
+						ScopeTestName: "TestFlagIntentMigrationProductionHelper", Dir: dir,
+						Env: map[string]string{"C8VOLT_TEST_ARGS": string(encoded), "C8VOLT_TEST_DESTINATION": destination, "C8VOLT_TEST_CAPTURE": capture, "C8VOLT_TEST_TERMINAL": "1"},
+					})
+					if !result.Supported {
+						t.Skip(result.UnsupportedReason)
+					}
+					assertUserTaskCompletionExit(t, result.Err, exitcode.InvalidArgs)
+					require.Empty(t, result.Stderr)
+					data, err := os.ReadFile(capture)
+					require.NoError(t, err)
+					diagnostic := string(data)
+					message := "invalid input: --" + old + " was removed; use --" + replacement
+					if machine {
+						assertCommandErrorEnvelope(t, result.Stdout, diagnostic, commandErrorEnvelopeExpectation{Outcome: "invalid", Class: "invalid_input", Command: strings.TrimPrefix(leaf.CommandPath(), "c8volt "), Message: message})
+					} else {
+						require.Empty(t, result.Stdout)
+						require.Equal(t, [][2]string{{"ERROR", message}}, bulkCompletionDiagnosticRecords(t, diagnostic, "plain-time"))
+					}
+					require.NotContains(t, result.Stdout+diagnostic, "PRIVATE-NOT-READ")
+				})
+			}
+		}
+	}
+	require.Zero(t, requests.Load())
+}
+
+// TestFlagIntentMigrationJobAliasSemantics keeps retained filter/control names
+// and the strict action grammar consistent across job aliases, including zero.
+func TestFlagIntentMigrationJobAliasSemantics(t *testing.T) {
+	var requests atomic.Int64
+	server := testx.NewIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests.Add(1)
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer server.Close()
+	for _, words := range migrationCommandSpellings(updateJobCmd) {
+		for _, flags := range [][]string{
+			{"--retries", "0"},
+			{"--retries", "0", "--set-retries", "0"},
+			{"--set-retries", "0", "--retries", "0"},
+			{"--fail", "--retries", "0"},
+			{"--timeout", "1m"},
+			{"--throw-bpmn-error", "true"},
+			{"--throw-bpmn-error", "false"},
+			{"--throw-bpmn-error=true", "--set-error-code", "true"},
+			{"--set-error-code", "false", "--throw-bpmn-error=false"},
+			{"--throw-bpmn-error=", "--set-error-code", "CODE"},
+		} {
+			t.Run(strings.Join(append(append([]string{}, words...), flags...), "/"), func(t *testing.T) {
+				args := append(append([]string{}, words...), "--key", scalarJobKey)
+				args = append(args, flags...)
+				args = append(args, "--config", testx.WriteTestConfig(t, server.URL), "--json", "--quiet")
+				encoded, err := json.Marshal(args)
+				require.NoError(t, err)
+				stdout, stderr := runCommandErrorEnvelopeSubprocess(t, "TestFlagIntentMigrationProductionHelper", t.TempDir(), map[string]string{"C8VOLT_TEST_ARGS": string(encoded)}, "", exitcode.InvalidArgs)
+				envelope := requireSingleJSONObjectDocument(t, stdout)
+				require.Empty(t, stderr)
+				require.Equal(t, "invalid_input", envelope["class"])
+				require.Equal(t, "invalid", envelope["outcome"])
+				want := "--set-retries"
+				if strings.Contains(strings.Join(flags, " "), "--timeout") {
+					want = "--set-timeout"
+				}
+				if strings.Contains(strings.Join(flags, " "), "--throw-bpmn-error") {
+					want = "--set-error-code"
+				}
+				require.Contains(t, requireJSONObject(t, envelope["detail"])["message"], want)
+			})
+		}
+	}
+	require.Zero(t, requests.Load())
 }
