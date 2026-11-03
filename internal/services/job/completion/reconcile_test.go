@@ -54,7 +54,7 @@ func TestBulkCompletionReconciliationEvidence(t *testing.T) {
 						return d.Job{Key: "999", State: "COMPLETED"}, nil
 					}
 					return d.Job{Key: key, State: state}, nil
-				}, Submit: func(context.Context, d.Job, map[string]any) (d.CompletionSubmission, error) {
+				}, Submit: func(context.Context, d.Job, d.CompletionPayload) (d.CompletionSubmission, error) {
 					writes++
 					return evidence, submission.err
 				}}
@@ -137,7 +137,7 @@ func TestBulkCompletionReconciliationPolling(t *testing.T) {
 					return d.Job{}, d.ErrNotFound
 				}
 				return d.Job{Key: key, State: "CREATED"}, nil
-			}, Submit: func(context.Context, d.Job, map[string]any) (d.CompletionSubmission, error) {
+			}, Submit: func(context.Context, d.Job, d.CompletionPayload) (d.CompletionSubmission, error) {
 				writes++
 				if mode == "cancel after submission" {
 					cancel()
@@ -185,7 +185,7 @@ func TestBulkCompletionNoUnnecessaryReconciliation(t *testing.T) {
 			ports := ExecutionPorts{Get: func(_ context.Context, key string, _ ...services.CallOption) (d.Job, error) {
 				reads++
 				return d.Job{Key: key, State: "CREATED"}, nil
-			}, Submit: func(context.Context, d.Job, map[string]any) (d.CompletionSubmission, error) {
+			}, Submit: func(context.Context, d.Job, d.CompletionPayload) (d.CompletionSubmission, error) {
 				writes++
 				if code == 204 {
 					return d.CompletionSubmission{Status: d.CompletionSubmissionAccepted, HTTPStatus: &code}, nil

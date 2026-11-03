@@ -31,6 +31,7 @@ import (
 
 // mockCamundaClient injects version-local generated responses without backend I/O.
 type mockCamundaClient struct {
+	v810.GenProcessInstanceClientCamunda
 	resumeProcessInstanceWithResponse  func(ctx context.Context, key camundav810.ProcessInstanceKey, body camundav810.ResumeProcessInstanceJSONRequestBody, reqEditors ...camundav810.RequestEditorFn) (*camundav810.ResumeProcessInstanceResponse, error)
 	suspendProcessInstanceWithResponse func(ctx context.Context, key camundav810.ProcessInstanceKey, body camundav810.SuspendProcessInstanceJSONRequestBody, reqEditors ...camundav810.RequestEditorFn) (*camundav810.SuspendProcessInstanceResponse, error)
 	createProcessInstanceWithResponse  func(ctx context.Context, body camundav810.CreateProcessInstanceJSONRequestBody, reqEditors ...camundav810.RequestEditorFn) (*camundav810.CreateProcessInstanceResponse, error)

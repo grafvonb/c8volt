@@ -174,7 +174,11 @@ const (
 	MutationModeCompletion       MutationMode = "completion"
 )
 
+// UpdatePlan retains preview facts and an optional privately frozen completion approval.
 type UpdatePlan struct {
+	approvedCompletion *WorkerOutcomeRequest
+	// SetBusinessID is optional assignment intent, independent of observed identity.
+	SetBusinessID     *string           `json:"requestedBusinessId,omitempty"`
 	Key               string            `json:"key,omitempty"`
 	Current           Job               `json:"current,omitempty"`
 	Mode              MutationMode      `json:"mode,omitempty"`
@@ -224,7 +228,12 @@ const (
 	WorkerOutcomeCompletion       WorkerOutcomeMode = "completion"
 )
 
+// WorkerOutcomeRequest carries optional assignment only for completion.
+// Nil means absent in existing job operations. Direct assignment requires a value.
+// Copy pointers at request conversion and plan preparation boundaries. Do not share mutable caller storage.
 type WorkerOutcomeRequest struct {
+	// SetBusinessID is optional assignment intent, independent of observed identity.
+	SetBusinessID      *string `json:"requestedBusinessId,omitempty"`
 	Key                string
 	Mode               WorkerOutcomeMode
 	Message            string
@@ -241,17 +250,23 @@ type WorkerOutcomeRequest struct {
 	OutcomePlan        *UpdatePlan
 }
 
+// WorkerOutcomeResult retains requested identity separately from submission and observation.
+// No assignment field is emitted when intent is absent.
 type WorkerOutcomeResult struct {
-	Key                string            `json:"key,omitempty"`
-	Mode               WorkerOutcomeMode `json:"mode,omitempty"`
-	Status             string            `json:"status,omitempty"`
-	Plan               *UpdatePlan       `json:"plan,omitempty"`
-	MutationAccepted   bool              `json:"mutationAccepted"`
-	ConfirmationStatus string            `json:"confirmationStatus,omitempty"`
-	SubmittedRetries   *int32            `json:"submittedRetries,omitempty"`
-	SubmittedBackoffMS *int64            `json:"submittedBackoffMs,omitempty"`
-	SubmittedErrorCode string            `json:"submittedErrorCode,omitempty"`
-	Error              string            `json:"error,omitempty"`
+	Submission          *CompletionSubmission  `json:"submission,omitempty"`
+	Observation         *CompletionObservation `json:"observation,omitempty"`
+	RequestedBusinessID *string                `json:"requestedBusinessId,omitempty"`
+	Assignment          *CompletionAssignment  `json:"assignment,omitempty"`
+	Key                 string                 `json:"key,omitempty"`
+	Mode                WorkerOutcomeMode      `json:"mode,omitempty"`
+	Status              string                 `json:"status,omitempty"`
+	Plan                *UpdatePlan            `json:"plan,omitempty"`
+	MutationAccepted    bool                   `json:"mutationAccepted"`
+	ConfirmationStatus  string                 `json:"confirmationStatus,omitempty"`
+	SubmittedRetries    *int32                 `json:"submittedRetries,omitempty"`
+	SubmittedBackoffMS  *int64                 `json:"submittedBackoffMs,omitempty"`
+	SubmittedErrorCode  string                 `json:"submittedErrorCode,omitempty"`
+	Error               string                 `json:"error,omitempty"`
 }
 
 // CompletionSubmissionStatus describes only submission evidence, independently
@@ -329,9 +344,12 @@ type CompletionSelection struct {
 }
 
 // CompletionRequest combines selection with an optional completion payload.
+// Distinct job keys remain distinct even if ProcessInstanceKey is identical. Scalar/collection input provenance persists before deduplication.
 type CompletionRequest struct {
-	Selection CompletionSelection `json:"selection"`
-	Variables map[string]any      `json:"variables,omitempty"`
+	// SetBusinessID is optional assignment intent, independent of observed identity.
+	SetBusinessID *string             `json:"requestedBusinessId,omitempty"`
+	Selection     CompletionSelection `json:"selection"`
+	Variables     map[string]any      `json:"variables,omitempty"`
 }
 
 // CompletionPreparationStatus separates executable plans from partial evidence.
@@ -375,6 +393,8 @@ type CompletionCandidate struct {
 // PreparedCompletionBatch is an immutable in-memory selection, not an authorization
 // token or transactional snapshot. Incomplete candidates are diagnostic only.
 type PreparedCompletionBatch struct {
+	// SetBusinessID is optional assignment intent, independent of observed identity.
+	SetBusinessID    *string                     `json:"requestedBusinessId,omitempty"`
 	Selection        CompletionSelection         `json:"selection"`
 	DiscoveryTenant  string                      `json:"discoveryTenant"`
 	TenantIDs        []string                    `json:"tenantIds"`
@@ -467,11 +487,13 @@ const (
 
 // CompletionOutcome keeps submission, observation and final disposition independent.
 type CompletionOutcome struct {
-	Candidate   CompletionCandidate     `json:"candidate"`
-	Disposition CompletionDisposition   `json:"disposition"`
-	Submission  CompletionSubmission    `json:"submission"`
-	Observation CompletionObservation   `json:"observation"`
-	Reason      CompletionOutcomeReason `json:"reason,omitempty"`
+	RequestedBusinessID *string                 `json:"requestedBusinessId,omitempty"`
+	Assignment          *CompletionAssignment   `json:"assignment,omitempty"`
+	Candidate           CompletionCandidate     `json:"candidate"`
+	Disposition         CompletionDisposition   `json:"disposition"`
+	Submission          CompletionSubmission    `json:"submission"`
+	Observation         CompletionObservation   `json:"observation"`
+	Reason              CompletionOutcomeReason `json:"reason,omitempty"`
 }
 
 // CompletionBatchStatus identifies the lifecycle stage of an aggregate report.
@@ -503,15 +525,22 @@ type CompletionCounts struct {
 // CompletionBatchReport carries deterministic results alongside a separate returned
 // aggregate error. Preview uses candidates; execution uses outcomes, even when empty.
 type CompletionBatchReport struct {
-	Status           CompletionBatchStatus `json:"status"`
-	Selection        CompletionSelection   `json:"selection"`
-	DiscoveryTenant  string                `json:"discoveryTenant"`
-	TenantIDs        []string              `json:"tenantIds"`
-	CompletionReason CompletionReason      `json:"completionReason,omitempty"`
-	PageCount        int64                 `json:"pageCount"`
-	ObservedCount    int64                 `json:"observedCount"`
-	Limited          bool                  `json:"limited"`
-	Counts           CompletionCounts      `json:"counts"`
-	Candidates       []CompletionCandidate `json:"candidates,omitzero"`
-	Outcomes         []CompletionOutcome   `json:"outcomes,omitzero"`
+	RequestedBusinessID *string               `json:"requestedBusinessId,omitempty"`
+	Status              CompletionBatchStatus `json:"status"`
+	Selection           CompletionSelection   `json:"selection"`
+	DiscoveryTenant     string                `json:"discoveryTenant"`
+	TenantIDs           []string              `json:"tenantIds"`
+	CompletionReason    CompletionReason      `json:"completionReason,omitempty"`
+	PageCount           int64                 `json:"pageCount"`
+	ObservedCount       int64                 `json:"observedCount"`
+	Limited             bool                  `json:"limited"`
+	Counts              CompletionCounts      `json:"counts"`
+	Candidates          []CompletionCandidate `json:"candidates,omitzero"`
+	Outcomes            []CompletionOutcome   `json:"outcomes,omitzero"`
+}
+
+// CompletionAssignment retains atomic assignment evidence without inferring it from job state.
+type CompletionAssignment struct {
+	Status     string `json:"status"`
+	HTTPStatus *int   `json:"httpStatus,omitempty"`
 }

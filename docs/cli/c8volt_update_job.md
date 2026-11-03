@@ -24,7 +24,9 @@ The complete selection is frozen before one confirmation. Incomplete discovery s
 
 Completing a listener job acknowledges its work without executing its business logic. Accepted completion skips independent confirmation and does not verify process termination. Bulk requests are not automatically replayed; ambiguous outcomes use bounded observation, with at most one read under --no-wait. No retries, incidents or processes are repaired implicitly.
 
-Bulk dry-run previews show count, filters or explicit selection and tenant scope; --verbose lists candidate context. JSON retains all preview candidates or ordered execution outcomes, including partial failures. Quiet suppresses prose while preserving requested JSON. A later selector invocation discovers a fresh selection. Camunda 8.10 update plans and frozen completion candidates retain each observed job's own business ID, including in verbose rows and partial results. Completion does not assign or change business IDs.
+Bulk dry-run previews show count, filters or explicit selection and tenant scope; --verbose lists candidate context. JSON retains all preview candidates or ordered execution outcomes, including partial failures. Quiet suppresses prose while preserving requested JSON. A later selector invocation discovers a fresh selection. Camunda 8.10 update plans and frozen completion candidates retain each observed job's own business ID, including in verbose rows and partial results. Use --set-bid with --complete on Camunda 8.10 to atomically assign the first business ID and complete each job, with variables in the same request. --set-bid is payload, not a selector. Assignment requires an active root instance without a business ID and uniqueness disabled; even an identical existing ID conflicts. Direct process assignment and atomic completion are alternative first assignments.
+
+Assignment preserves the exact value, including spaces and commas; empty/blank values, invalid UTF-8 and values over 256 UTF-16 units are rejected. Preview cannot reserve eligibility. BID-bearing requests are never replayed or retried without the BID. Accepted means acknowledged, not independently confirmed; --no-wait does not establish assignment from a later COMPLETED job. Lost responses remain unknown with the original failure. Observed job/task/listener snapshots remain independent of requested identity.
 
 Bulk previews, summaries and verbose rows use the configured logger at INFO level. Bulk failures produce one compact logged error after the result summary, grouping repeated reasons. Quiet retains that error. Use --verbose for per-job outcomes and --debug or configured debug logging for HTTP diagnostics. JSON preserves the original failure evidence and partial results in one envelope.
 
@@ -48,6 +50,7 @@ c8volt update job [-] [flags]
   ./c8volt update job --key <job-key> --fail --retries 0 --message "worker unavailable" --dry-run
   ./c8volt update job --key <job-key> --throw-bpmn-error PAYMENT_DECLINED --message "card declined" --dry-run
   ./c8volt update job --key <job-key> --complete --vars '{"approved":true}' --dry-run
+  ./c8volt update job --key <job-key> --complete --set-bid ORDER-123 --vars '{"approved":true}' --dry-run
   ./c8volt --json update job --key <job-key> --retries 3 --dry-run
   ./c8volt update job --kind TASK_LISTENER --listener-event-type CANCELING --state CREATED --type removeTaskData --complete --dry-run --verbose
   ./c8volt update job --type removeTaskData --retries 0 --limit 1000 --batch-size 100 --complete --auto-confirm --json
@@ -76,6 +79,7 @@ c8volt update job [-] [flags]
       --pi-key string                 process instance key selector for --complete
       --retries int32                 retry count to set, remaining retries for --fail, or exact selector with keyless --complete (including 0)
       --retry-backoff string          duration before a failed job becomes retryable, for example 60s, 5m, or 1h
+      --set-bid string                assign the first business ID atomically with --complete (Camunda 8.10)
   -s, --state string                  job state selector for --complete; case-insensitive
       --throw-bpmn-error string       BPMN error code to throw for the job
       --timeout string                timeout duration to submit for the job, for example 60s, 5m, or 1h

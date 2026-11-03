@@ -656,6 +656,8 @@ func (s stubProcessDefinitionService) GetProcessDefinitionXML(context.Context, s
 var _ pdsvc.API = stubProcessDefinitionService{}
 
 type stubProcessInstanceService struct {
+	// Embedded contract makes unexpected assignment calls fail in unrelated fixtures.
+	pisvc.API
 	source stubProcessAPI
 }
 
@@ -961,6 +963,8 @@ func (s stubBatchOperationAPI) WaitBatchOperation(ctx context.Context, key strin
 var _ batchoperation.API = (*stubBatchOperationAPI)(nil)
 
 type stubProcessAPI struct {
+	// Embedded contract makes unexpected assignment calls fail in unrelated fixtures.
+	process.API
 	getProcessDefinition        func(context.Context, string, ...options.FacadeOption) (process.ProcessDefinition, error)
 	getProcessInstance          func(context.Context, string, ...options.FacadeOption) (process.ProcessInstance, error)
 	searchProcessInstancesPage  func(context.Context, process.ProcessInstanceFilter, process.ProcessInstancePageRequest, ...options.FacadeOption) (process.ProcessInstancePage, error)

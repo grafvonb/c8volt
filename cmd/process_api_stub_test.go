@@ -18,6 +18,8 @@ import (
 )
 
 type stubProcessAPI struct {
+	// Embedded contract makes unexpected assignment calls fail in unrelated fixtures.
+	process.API
 	dryRunCancelOrDeletePlan         func(context.Context, types.Keys, ...options.FacadeOption) (process.DryRunPIKeyExpansion, error)
 	cancelProcessInstances           func(context.Context, types.Keys, int, ...options.FacadeOption) (process.CancelReports, error)
 	deleteProcessInstances           func(context.Context, types.Keys, int, ...options.FacadeOption) (process.DeleteReports, error)

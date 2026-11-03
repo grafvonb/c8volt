@@ -68,6 +68,9 @@ func reconcile(ctx context.Context, out d.CompletionOutcome, backoff config.Back
 		if err == nil {
 			switch job.State {
 			case "COMPLETED":
+				if out.Assignment != nil {
+					return out, nil
+				}
 				out.Disposition = d.CompletionDispositionCompleted
 				out.Reason = ""
 				return out, nil

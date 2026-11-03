@@ -18,6 +18,9 @@ import (
 func executeUpdateJobWorkerOutcome(cmd *cobra.Command, cli c8volt.API, request job.UpdateRequest, plan job.UpdatePlan) error {
 	request.WorkerOutcome.OutcomePlan = &plan
 	result, err := cli.SubmitJobWorkerOutcome(cmd.Context(), *request.WorkerOutcome, collectOptions()...)
+	if request.WorkerOutcome.SetBusinessID != nil {
+		return jobAssignmentOutcomeView(cmd, result, err)
+	}
 	if err != nil {
 		return fmt.Errorf("update job: %w", err)
 	}
@@ -105,14 +108,20 @@ func parseUpdateJobCompletionRequest(cmd *cobra.Command) (job.UpdateRequest, err
 		}
 		variables = parsed
 	}
+	var bid *string
+	if cmd.Flags().Changed("set-bid") {
+		value := flagUpdateJobSetBID
+		bid = &value
+	}
 	outcome := job.WorkerOutcomeRequest{
-		Key:         flagUpdateJobKey,
-		Mode:        job.WorkerOutcomeCompletion,
-		Variables:   variables,
-		NoWait:      flagNoWait,
-		AutoConfirm: flagCmdAutoConfirm,
-		Automation:  updateJobAutomationEnabled(cmd),
-		DryRun:      flagDryRun,
+		SetBusinessID: bid,
+		Key:           flagUpdateJobKey,
+		Mode:          job.WorkerOutcomeCompletion,
+		Variables:     variables,
+		NoWait:        flagNoWait,
+		AutoConfirm:   flagCmdAutoConfirm,
+		Automation:    updateJobAutomationEnabled(cmd),
+		DryRun:        flagDryRun,
 	}
 	return job.UpdateRequest{
 		Key:           flagUpdateJobKey,

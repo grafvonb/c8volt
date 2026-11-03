@@ -79,7 +79,7 @@ func TestCompletionRequestPayload(t *testing.T) {
 				require.NoError(t, err)
 				var diagnostic string
 				if bulk {
-					got, callErr := svc.submitBulkCompletion(context.Background(), d.Job{Key: "123", Kind: d.JobKindExecutionListener}, tc.variables)
+					got, callErr := svc.submitBulkCompletion(context.Background(), d.Job{Key: "123", Kind: d.JobKindExecutionListener}, d.CompletionPayload{Variables: tc.variables})
 					err = callErr
 					diagnostic = got.Diagnostic
 					if tc.status == 204 {
@@ -136,7 +136,7 @@ func TestCompletionEncodingFailureIsReturned(t *testing.T) {
 			require.NoError(t, err)
 			vars := map[string]any{"invalid": make(chan int)}
 			if bulk {
-				got, err := svc.submitBulkCompletion(context.Background(), d.Job{Key: "123"}, vars)
+				got, err := svc.submitBulkCompletion(context.Background(), d.Job{Key: "123"}, d.CompletionPayload{Variables: vars})
 				require.ErrorIs(t, err, d.ErrValidation)
 				require.Equal(t, d.CompletionSubmissionNotSubmitted, got.Status)
 				require.Equal(t, err.Error(), got.Diagnostic)

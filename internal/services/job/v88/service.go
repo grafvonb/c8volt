@@ -397,7 +397,11 @@ func (s *Service) UpdateJob(ctx context.Context, request d.JobUpdateRequest, opt
 	return result, nil
 }
 
+// SubmitJobWorkerOutcome rejects unsupported assignment before dispatching ordinary worker outcomes.
 func (s *Service) SubmitJobWorkerOutcome(ctx context.Context, request d.JobWorkerOutcomeRequest, opts ...services.CallOption) (d.JobWorkerOutcomeResult, error) {
+	if request.SetBusinessID != nil {
+		return d.JobWorkerOutcomeResult{}, fmt.Errorf("%w: business-ID assignment requires Camunda 8.10", d.ErrUnsupported)
+	}
 	_ = services.ApplyCallOptions(opts)
 	switch request.Mode {
 	case d.JobWorkerOutcomeTechnicalFailure:

@@ -76,7 +76,7 @@ func TestBulkCompletionSubmissionEvidence(t *testing.T) {
 					return &camunda.CompleteJobResponse{HTTPResponse: response, Body: []byte(tt.body)}, tt.callErr
 				},
 			})
-			got, err := svc.submitBulkCompletion(context.Background(), d.Job{Key: "123", Kind: "BPMN_ELEMENT"}, map[string]any{"approved": true})
+			got, err := svc.submitBulkCompletion(context.Background(), d.Job{Key: "123", Kind: "BPMN_ELEMENT"}, d.CompletionPayload{Variables: map[string]any{"approved": true}})
 			require.Equal(t, 1, calls)
 			require.Equal(t, tt.want, got.Status)
 			if tt.status == 0 {
@@ -128,7 +128,7 @@ func TestBulkCompletionPreflightAndListenerPayload(t *testing.T) {
 			if tt.canceled {
 				cancel()
 			}
-			got, err := svc.submitBulkCompletion(ctx, d.Job{Key: "123", Kind: tt.kind}, tt.variables)
+			got, err := svc.submitBulkCompletion(ctx, d.Job{Key: "123", Kind: tt.kind}, d.CompletionPayload{Variables: tt.variables})
 			if tt.wantErr != nil {
 				require.ErrorIs(t, err, tt.wantErr)
 				require.Equal(t, d.CompletionSubmissionNotSubmitted, got.Status)
@@ -188,7 +188,7 @@ func TestBulkCompletionHTTP(t *testing.T) {
 			cfg.APIs.Camunda.BaseURL = server.URL
 			svc, err := New(cfg, server.Client(), nil)
 			require.NoError(t, err)
-			got, err := svc.submitBulkCompletion(context.Background(), d.Job{Key: "123", Kind: d.JobKindTaskListener}, nil)
+			got, err := svc.submitBulkCompletion(context.Background(), d.Job{Key: "123", Kind: d.JobKindTaskListener}, d.CompletionPayload{Variables: nil})
 			require.Equal(t, int32(1), calls.Load())
 			require.Equal(t, tt.want, got.Status)
 			if tt.parsed {
@@ -229,7 +229,7 @@ func TestBulkCompletionHTTPTimeout(t *testing.T) {
 	require.NoError(t, err)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
-	got, err := svc.submitBulkCompletion(ctx, d.Job{Key: "123"}, nil)
+	got, err := svc.submitBulkCompletion(ctx, d.Job{Key: "123"}, d.CompletionPayload{Variables: nil})
 	require.ErrorIs(t, err, context.DeadlineExceeded)
 	select {
 	case <-started:
@@ -272,7 +272,7 @@ func TestBulkCompletionMissingHTTPResponse(t *testing.T) {
 			return &camunda.CompleteJobResponse{}, nil
 		},
 	})
-	got, err := svc.submitBulkCompletion(context.Background(), d.Job{Key: "123"}, nil)
+	got, err := svc.submitBulkCompletion(context.Background(), d.Job{Key: "123"}, d.CompletionPayload{Variables: nil})
 	require.True(t, errors.Is(err, d.ErrMalformedResponse))
 	require.Equal(t, d.CompletionSubmissionUncertain, got.Status)
 	require.Nil(t, got.HTTPStatus)

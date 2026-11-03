@@ -37,3 +37,34 @@ func TestValidateBusinessID(t *testing.T) {
 		})
 	}
 }
+
+// TestValidateBusinessIDAssignment preserves optional omission and exact opaque values while rejecting blank assignments.
+func TestValidateBusinessIDAssignment(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name  string
+		value *string
+		valid bool
+	}{
+		{"nil", nil, true}, {"empty", new(""), false}, {"blank", new(" \t\n\u2003"), false},
+		{"invalid", new(string([]byte{0xff})), false}, {"padded", new("  AbC,001  "), true}, {"numeric", new("00123"), true},
+		{"BMP256", new(strings.Repeat("é", 256)), true}, {"BMP257", new(strings.Repeat("é", 257)), false},
+		{"supplementary256", new(strings.Repeat("😀", 128)), true}, {"supplementary257", new(strings.Repeat("😀", 128) + "a"), false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var before string
+			if tc.value != nil {
+				before = *tc.value
+			}
+			err := ValidateBusinessIDAssignment(tc.value)
+			if tc.valid {
+				require.NoError(t, err)
+			} else {
+				require.ErrorIs(t, err, ErrValidation)
+			}
+			if tc.value != nil {
+				require.Equal(t, before, *tc.value)
+			}
+		})
+	}
+}

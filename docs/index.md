@@ -6,7 +6,7 @@ nav_exclude: true
 has_toc: true
 ---
 
-> Generated from build `c8volt v4.4.0-269-g20df70ba-dirty`, commit `20df70ba`, built `2026-11-02T08:07:30Z` | Supported Camunda 8 versions: 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.3 (final)
+> Generated from build `c8volt v4.4.0-278-gf83fee3b-dirty`, commit `f83fee3b`, built `2026-11-02T14:58:39Z` | Supported Camunda 8 versions: 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.3 (final)
 
 <img src="./logo/c8volt_logo_transparent_w_shadow_400x244.png" alt="c8volt logo" />
 
@@ -407,7 +407,93 @@ Process inspection (`get pi`, including age and activity enrichment) and family 
 
 Observed deletion/cancellation previews, variable-update plans, suspension/resumption tree plans, and process-definition deletion impact also retain IDs. Use `--verbose` for detailed mutation observations or `--json` for structured plans. These observations use the configured INFO logger in human mode; quiet and WARN suppress them. Empty cancel/delete selections now report `found: 0` through that logger rather than result stdout. Local exact-key suspension/resumption previews and key/status-only outcomes remain read-free and do not invent IDs.
 
-Job and user-task inspection on Camunda 8.10 preserves each resource's own optional `businessId`, including variable-enriched tasks, scalar job-update previews, and frozen bulk-completion candidates/outcomes. A job or task may retain an older ID or no ID even when its parent has a newer one. Observed empty strings remain present. Human rows show a compact `bid:<value>` field, quoting values only when needed; JSON keeps exact values. Preview and verbose completion rows use the configured INFO logger; query results remain on stdout. Empty job searches suppress `found: 0` under quiet while JSON and keys-only retain their existing shapes. Completion does not assign business IDs, and no extra lookup is made solely to display them.
+Library callers can assign a native business ID after process start with
+`PlanProcessInstanceBusinessIDAssignments(ctx, keys, &businessID, opts...)` and
+`ExecuteProcessInstanceBusinessIDAssignments(ctx, plan, wantedWorkers, opts...)`.
+Both methods are available through `process.API` and the aggregate client.
+Camunda 8.10 supports assignment; 8.8/8.9 reject planning and execution before I/O.
+Keys must contain exactly 16 decimal digits after trimming. Planning validates
+the whole input, deduplicates in first-input order, copies keys and value, and reads
+only the exact targets for prior facts. Execution validates and snapshots the
+complete plan before any write. Incomplete or inconsistent plans cannot execute;
+an explicitly empty complete plan succeeds without mutation.
+
+Direct assignment requires a nonnil, nonblank, valid UTF-8 value of at most 256
+UTF-16 code units. Accepted surrounding spaces, commas and case remain exact.
+The backend requires an active root without a business ID and uniqueness disabled;
+a child is never redirected to its parent, and even an identical existing ID
+conflicts. A preview cannot reserve eligibility. `WithDryRun()` submits nothing;
+normal execution observes the exact ID after acknowledgement within configured
+backoff bounds, while `WithNoWait()` skips confirmation reads. Planning still
+requires exact-target read access. Neither rejection nor a lost response is
+replayed, and a lost response remains unknown. Inspect both returned results and
+errors: ordered partial results retain requested ID, prior/later observations,
+HTTP evidence, and not-started targets. Accepted but unconfirmed writes retain
+acceptance and return an error. Assignment never updates job/task/listener
+snapshots or a variable named `businessId`.
+
+External custom implementations of `process.API` (including aggregate APIs and
+test doubles) must implement these two new methods. The new plan/result structs
+are public invocation-local data, not authorization tokens; use keyed literals.
+CLI assignment is available through `update pi --set-bid`.
+
+Library job completion accepts optional `SetBusinessID *string` on
+`job.WorkerOutcomeRequest` and `job.CompletionRequest`. Use completion mode with
+`SubmitJobWorkerOutcome`, or prepare and execute a batch through
+`PrepareJobCompletionBatch` and `ExecuteJobCompletionBatch`. Camunda 8.8/8.9 reject
+assignment before reads or writes, including caller-created prepared batches.
+Camunda 8.10 sends variables and business ID in one native completion request.
+Nil omits `businessId` entirely and retains plain completion behavior. Assignment
+uses the same exact-value validation and root/no-existing-ID/uniqueness-disabled
+eligibility as direct assignment; these are alternative first-assignment paths.
+
+Prepared batches copy the ID, nested variables and job selection. For scalar
+approval, create an `UpdatePlan` with matching key and completion mode, call
+`plan.FreezeCompletionPayload(request)` before confirmation, and attach it as
+`request.OutcomePlan`. The frozen payload survives edits to the original request;
+changed plan key, mode or payload is rejected. Plans are invocation-local and
+cannot be serialized and restored as approval tokens. Direct scalar calls without
+an approval plan still validate and copy payloads before service submission.
+
+Assignment-bearing completion submits at most once per distinct job, without
+fallback or replay. Distinct jobs in one process remain separate targets, so a
+later job can conflict after the first succeeds. Accepted acknowledgement records
+assignment acceptance; it does not refresh job/task/listener snapshots. A later
+`COMPLETED` observation after a lost response retains unknown assignment and the
+original error. Already-completed jobs remain unsatisfied without submission.
+Inspect both returned evidence and errors, including partial batch results.
+`WithDryRun()` submits nothing; no-wait bounds reconciliation without inventing
+acceptance. Task-listener variable restrictions are unchanged.
+
+The new optional fields and private scalar approval storage affect external
+unkeyed struct literals; use keyed literals. Existing `job.API` implementations
+need no new methods. `job.ValidateCompletionBusinessID` provides the same optional
+value validation without backend I/O.
+
+CLI atomic completion is available through `update job --complete --set-bid`:
+
+```bash
+./c8volt update job --key <job-key> --complete --set-bid 'ORDER-123' --vars '{"approved":true}' --dry-run
+./c8volt update job --key <job-key> --complete --set-bid 'ORDER-123' --auto-confirm
+./c8volt update job --type cleanup --retries 0 --complete --set-bid 'ORDER-123' --dry-run
+```
+
+Use scalar, repeated/comma-separated keys, newline stdin (`-`), or existing AND
+selectors. Assignment alone does not select jobs. Keyless `--retries 0` remains
+an exact selector; keyed completion rejects it. Other mutation modes reject
+`--set-bid`. Complete selection and payload are copied before one approval.
+Collection results remain bulk even after deduplication to one key; bulk
+keys-only remains unsupported. Empty discovery/stdin skips confirmation and
+mutation, including under no-wait. JSON preserves partial/unknown evidence in
+one envelope with the original exit class. Human summaries use configured INFO
+logging, quiet keeps compact errors, and raw HTTP diagnostics require DEBUG.
+
+Direct `update pi --set-bid` and combined job completion are alternative first
+assignments: a successful direct assignment makes later combined assignment
+conflict even for the same value. Dry-run cannot guarantee backend eligibility.
+Neither route changes an ordinary variable named `businessId`.
+
+Job and user-task inspection on Camunda 8.10 preserves each resource's own optional `businessId`, including variable-enriched tasks, scalar job-update previews, and frozen bulk-completion candidates/outcomes. A job or task may retain an older ID or no ID even when its parent has a newer one. Observed empty strings remain present. Human rows show a compact `bid:<value>` field, quoting values only when needed; JSON keeps exact values. Preview and verbose completion rows use the configured INFO logger; query results remain on stdout. Empty job searches suppress `found: 0` under quiet while JSON and keys-only retain their existing shapes. Plain completion does not assign business IDs, and no extra lookup is made solely to display observed IDs.
 
 Retention, incident purge, orphan purge, and process-definition purge keep observed process-instance IDs in saved JSON and Markdown audit reports and verbose plan details. Markdown escapes markup and control characters; JSON retains exact values. Repair action plans and key/status-only outcomes remain ID-free without additional reads. Human plan details use the configured INFO logger and are suppressed by quiet or WARN level. Backend workflow failures in retention and process-instance purges retain partial plans/results in one JSON envelope and the saved report, preserve the original exit code, and emit one bounded human ERROR. Raw transport evidence remains confined to machine error fields and redacted DEBUG diagnostics; verbose alone does not enable HTTP details.
 
@@ -714,6 +800,17 @@ Generated references: [get incident](./cli/c8volt_get_incident), [get job](./cli
 ### Update And Verify
 
 Use dry-run first for runtime mutations, then confirm explicitly or run under automation.
+
+Use `update pi --set-bid <value>` on Camunda 8.10 to assign native identity after process start. Supply repeated `--key` values or newline-separated stdin with `-`; distinct exact targets and the value are frozen before one approval. `--bid` selects existing identity for variable updates; `--set-bid` assigns identity and cannot combine with `--bid`, `--vars`, `--vars-file`, `--limit` or `--batch-size`. Explicit keys use backend authorization without tenant filtering, parent redirection or family expansion. A variable named `businessId` remains independent.
+
+Assignment requires an active root process with no BID and uniqueness disabled. The backend enforces eligibility; assigning even the same value again conflicts. Values must be nonempty, nonblank, valid UTF-8 and at most 256 UTF-16 code units; accepted spaces, commas and case are preserved. Existing job, task and listener snapshots remain independent observations.
+
+```bash
+./c8volt update pi --key <process-instance-key> --set-bid 'ORDER-123' --dry-run
+./c8volt --auto-confirm update pi --key <process-instance-key> --set-bid 'ORDER-123'
+```
+
+A preview does not reserve eligibility: a later run can race. Normal execution observes the assigned BID on each exact instance after acknowledgement. `--no-wait` reports accepted submission with confirmation skipped. Ambiguous responses remain unknown and are never automatically replayed. JSON preserves requested, prior and later observed values and ordered partial results with the original failure exit status. Human summaries use the configured logger; verbose lists outcome facts, while HTTP diagnostics require DEBUG. Keys-only emits planned targets in dry-run and known accepted targets in execution, including accepted but unconfirmed writes. Deliberate empty stdin completes without prompt or mutation, emits one successful JSON plan (empty arrays), and emits zero bytes in keys-only mode, including with `--no-wait`. Camunda 8.8/8.9 reject assignment.
 
 `update process-instance` accepts explicit process-instance keys and writes at each selected root. Its preview reads the complete root-variable scope for every selected instance, excludes nested-scope values, and treats truncated observations as changes rather than proof that a requested value already matches. Single-instance and verbose bulk previews label every planned addition and change as `pi:<key>`. After approval, the command submits only those frozen additions and changes to their recorded local root scopes; it does not resend unchanged requested values or write unchanged instances. A completed all-unchanged plan finishes without an approval prompt, mutation, or verification; dry-run remains a preview, JSON still emits one successful envelope, and executed keys-only output is empty. The command verifies every requested value through one complete-read waiter, while `--no-wait` returns after selective writes are accepted without performing verification. Partial execution failures retain accepted, failed, and skipped per-key outcomes in the selected output format while returning a nonzero exit status. Keys-only execution prints accepted mutation keys, including writes whose later confirmation failed, and excludes unchanged, skipped, and rejected work. The additive `unchanged` status is a successful no-write outcome, while `skipped` identifies required work that fail-fast or cancellation did not start; neither implies mutation acceptance. Existing `submitted`, `confirmed`, `mutation_failed`, and `confirmation_failed` statuses retain their meanings. `update user-task` accepts explicit task keys only. It updates existing variables at the local or inherited scopes returned by `get user-task --with-vars`, creates missing names at the task's element scope, and deduplicates shared inherited writes across selected tasks. Detailed previews identify local destinations as `element:<key>` and inherited destinations as either `pi:<key>` or `element:<key>` according to the owning scope. Ordinary execution confirms the requested values at those frozen scopes; `--no-wait` reports accepted writes without confirmation. Both commands are supported on Camunda 8.8, 8.9, and 8.10.
 

@@ -78,9 +78,12 @@ type CompletionSelection struct {
 }
 
 // CompletionRequest combines selection with an optional completion payload.
+// Distinct job keys remain distinct even if ProcessInstanceKey is identical. Scalar/collection input provenance persists before deduplication.
 type CompletionRequest struct {
-	Selection CompletionSelection `json:"selection"`
-	Variables map[string]any      `json:"variables,omitempty"`
+	// SetBusinessID is optional assignment intent, independent of observed identity.
+	SetBusinessID *string             `json:"requestedBusinessId,omitempty"`
+	Selection     CompletionSelection `json:"selection"`
+	Variables     map[string]any      `json:"variables,omitempty"`
 }
 
 // CompletionPreparationStatus separates executable plans from partial evidence.
@@ -124,6 +127,8 @@ type CompletionCandidate struct {
 // PreparedCompletionBatch is an immutable in-memory selection, not an authorization
 // token or transactional snapshot. Incomplete candidates are diagnostic only.
 type PreparedCompletionBatch struct {
+	// SetBusinessID is optional assignment intent, independent of observed identity.
+	SetBusinessID    *string                     `json:"requestedBusinessId,omitempty"`
 	Selection        CompletionSelection         `json:"selection"`
 	DiscoveryTenant  string                      `json:"discoveryTenant"`
 	TenantIDs        []string                    `json:"tenantIds"`
@@ -216,11 +221,13 @@ const (
 
 // CompletionOutcome keeps submission, observation and final disposition independent.
 type CompletionOutcome struct {
-	Candidate   CompletionCandidate     `json:"candidate"`
-	Disposition CompletionDisposition   `json:"disposition"`
-	Submission  CompletionSubmission    `json:"submission"`
-	Observation CompletionObservation   `json:"observation"`
-	Reason      CompletionOutcomeReason `json:"reason,omitempty"`
+	RequestedBusinessID *string                 `json:"requestedBusinessId,omitempty"`
+	Assignment          *CompletionAssignment   `json:"assignment,omitempty"`
+	Candidate           CompletionCandidate     `json:"candidate"`
+	Disposition         CompletionDisposition   `json:"disposition"`
+	Submission          CompletionSubmission    `json:"submission"`
+	Observation         CompletionObservation   `json:"observation"`
+	Reason              CompletionOutcomeReason `json:"reason,omitempty"`
 }
 
 // CompletionBatchStatus identifies the lifecycle stage of an aggregate report.
@@ -252,15 +259,28 @@ type CompletionCounts struct {
 // CompletionBatchReport carries deterministic results alongside a separate returned
 // aggregate error. Preview uses candidates; execution uses outcomes, even when empty.
 type CompletionBatchReport struct {
-	Status           CompletionBatchStatus `json:"status"`
-	Selection        CompletionSelection   `json:"selection"`
-	DiscoveryTenant  string                `json:"discoveryTenant"`
-	TenantIDs        []string              `json:"tenantIds"`
-	CompletionReason CompletionReason      `json:"completionReason,omitempty"`
-	PageCount        int64                 `json:"pageCount"`
-	ObservedCount    int64                 `json:"observedCount"`
-	Limited          bool                  `json:"limited"`
-	Counts           CompletionCounts      `json:"counts"`
-	Candidates       []CompletionCandidate `json:"candidates,omitzero"`
-	Outcomes         []CompletionOutcome   `json:"outcomes,omitzero"`
+	RequestedBusinessID *string               `json:"requestedBusinessId,omitempty"`
+	Status              CompletionBatchStatus `json:"status"`
+	Selection           CompletionSelection   `json:"selection"`
+	DiscoveryTenant     string                `json:"discoveryTenant"`
+	TenantIDs           []string              `json:"tenantIds"`
+	CompletionReason    CompletionReason      `json:"completionReason,omitempty"`
+	PageCount           int64                 `json:"pageCount"`
+	ObservedCount       int64                 `json:"observedCount"`
+	Limited             bool                  `json:"limited"`
+	Counts              CompletionCounts      `json:"counts"`
+	Candidates          []CompletionCandidate `json:"candidates,omitzero"`
+	Outcomes            []CompletionOutcome   `json:"outcomes,omitzero"`
+}
+
+// CompletionAssignment retains atomic assignment evidence without inferring it from job state.
+type CompletionAssignment struct {
+	Status     string `json:"status"`
+	HTTPStatus *int   `json:"httpStatus,omitempty"`
+}
+
+// CompletionPayload is the copied completion intent supplied to one-shot adapters.
+type CompletionPayload struct {
+	Variables     map[string]any
+	SetBusinessID *string
 }

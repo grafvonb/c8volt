@@ -15,6 +15,7 @@ import (
 
 // snapshotExecutionBatch detaches mutable plan data before workers or normalization can access it.
 func snapshotExecutionBatch(b d.PreparedCompletionBatch) (d.PreparedCompletionBatch, error) {
+	b.SetBusinessID = toolx.CopyPtr(b.SetBusinessID)
 	b.Selection.Keys = slices.Clone(b.Selection.Keys)
 	b.Selection.Filter.Retries = toolx.CopyPtr(b.Selection.Filter.Retries)
 	b.Candidates = toolx.MapSlice(b.Candidates, func(c d.CompletionCandidate) d.CompletionCandidate {
@@ -33,6 +34,9 @@ func snapshotExecutionBatch(b d.PreparedCompletionBatch) (d.PreparedCompletionBa
 // validateExecutionBatch rejects inconsistent or non-normalized plans before any remote call.
 // These invariants detect accidental edits; plans are not durable authorization tokens.
 func validateExecutionBatch(b d.PreparedCompletionBatch, tenant string) error {
+	if err := d.ValidateBusinessIDAssignment(b.SetBusinessID); err != nil {
+		return err
+	}
 	invalid := func(detail string) error {
 		return fmt.Errorf("%w: invalid prepared completion batch: %s", d.ErrValidation, detail)
 	}

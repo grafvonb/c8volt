@@ -226,7 +226,12 @@ const (
 	JobWorkerOutcomeCompletion       JobWorkerOutcomeMode = "completion"
 )
 
+// JobWorkerOutcomeRequest carries optional assignment only for completion.
+// Nil means absent in existing job operations. Direct assignment requires a value.
+// Copy pointers at request conversion and plan preparation boundaries. Do not share mutable caller storage.
 type JobWorkerOutcomeRequest struct {
+	// SetBusinessID is optional assignment intent, independent of observed identity.
+	SetBusinessID      *string `json:"requestedBusinessId,omitempty"`
 	Key                string
 	Mode               JobWorkerOutcomeMode
 	Message            string
@@ -237,14 +242,20 @@ type JobWorkerOutcomeRequest struct {
 	SkipConfirmation   bool
 }
 
+// JobWorkerOutcomeResult retains requested identity separately from submission and observation.
+// No assignment field is emitted when intent is absent.
 type JobWorkerOutcomeResult struct {
-	Key                  string               `json:"key,omitempty"`
-	Mode                 JobWorkerOutcomeMode `json:"mode,omitempty"`
-	MutationAccepted     bool                 `json:"mutationAccepted"`
-	ConfirmationStatus   string               `json:"confirmationStatus,omitempty"`
-	SubmittedRetries     *int32               `json:"submittedRetries,omitempty"`
-	SubmittedBackoffMS   *int64               `json:"submittedBackoffMs,omitempty"`
-	SubmittedErrorCode   string               `json:"submittedErrorCode,omitempty"`
-	MutationError        string               `json:"mutationError,omitempty"`
-	UnsupportedOperation bool                 `json:"unsupportedOperation,omitempty"`
+	Submission           *CompletionSubmission  `json:"submission,omitempty"`
+	Observation          *CompletionObservation `json:"observation,omitempty"`
+	RequestedBusinessID  *string                `json:"requestedBusinessId,omitempty"`
+	Assignment           *CompletionAssignment  `json:"assignment,omitempty"`
+	Key                  string                 `json:"key,omitempty"`
+	Mode                 JobWorkerOutcomeMode   `json:"mode,omitempty"`
+	MutationAccepted     bool                   `json:"mutationAccepted"`
+	ConfirmationStatus   string                 `json:"confirmationStatus,omitempty"`
+	SubmittedRetries     *int32                 `json:"submittedRetries,omitempty"`
+	SubmittedBackoffMS   *int64                 `json:"submittedBackoffMs,omitempty"`
+	SubmittedErrorCode   string                 `json:"submittedErrorCode,omitempty"`
+	MutationError        string                 `json:"mutationError,omitempty"`
+	UnsupportedOperation bool                   `json:"unsupportedOperation,omitempty"`
 }

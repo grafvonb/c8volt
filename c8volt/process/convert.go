@@ -1213,3 +1213,30 @@ func toDomainProcessInstanceResumptionPlan(plan ProcessInstanceResumptionPlan) d
 		}),
 	}
 }
+
+// fromDomainBusinessIDAssignmentPlan isolates preview storage from service and caller mutation.
+func fromDomainBusinessIDAssignmentPlan(in d.BusinessIDAssignmentPlan) BusinessIDAssignmentPlan {
+	out := BusinessIDAssignmentPlan{RequestedBusinessID: toolx.CopyPtr(in.RequestedBusinessID), RequestedKeys: append([]string{}, in.RequestedKeys...), Ready: in.Ready, Items: make([]BusinessIDAssignmentItem, len(in.Items))}
+	for i, item := range in.Items {
+		out.Items[i] = BusinessIDAssignmentItem{Key: item.Key, PreviouslyObservedBusinessID: toolx.CopyPtr(item.PreviouslyObservedBusinessID), State: State(item.State)}
+	}
+	return out
+}
+
+// toDomainBusinessIDAssignmentPlan snapshots all public mutable storage before delegation.
+func toDomainBusinessIDAssignmentPlan(in BusinessIDAssignmentPlan) d.BusinessIDAssignmentPlan {
+	out := d.BusinessIDAssignmentPlan{RequestedBusinessID: toolx.CopyPtr(in.RequestedBusinessID), RequestedKeys: append([]string{}, in.RequestedKeys...), Ready: in.Ready, Items: make([]d.BusinessIDAssignmentItem, len(in.Items))}
+	for i, item := range in.Items {
+		out.Items[i] = d.BusinessIDAssignmentItem{Key: item.Key, PreviouslyObservedBusinessID: toolx.CopyPtr(item.PreviouslyObservedBusinessID), State: d.State(item.State)}
+	}
+	return out
+}
+
+// fromDomainBusinessIDAssignmentResults preserves ordered evidence and copies optional facts.
+func fromDomainBusinessIDAssignmentResults(in d.BusinessIDAssignmentResults) BusinessIDAssignmentResults {
+	out := BusinessIDAssignmentResults{Items: make([]BusinessIDAssignmentResult, len(in.Items))}
+	for i, item := range in.Items {
+		out.Items[i] = BusinessIDAssignmentResult{Key: item.Key, RequestedBusinessID: toolx.CopyPtr(item.RequestedBusinessID), PreviouslyObservedBusinessID: toolx.CopyPtr(item.PreviouslyObservedBusinessID), Status: item.Status, Confirmation: item.Confirmation, ObservedBusinessID: toolx.CopyPtr(item.ObservedBusinessID), HasObservation: item.HasObservation, HTTPStatus: toolx.CopyPtr(item.HTTPStatus), Error: item.Error}
+	}
+	return out
+}

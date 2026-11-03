@@ -20,6 +20,11 @@ import (
 
 // API defines the version-neutral process-instance service contract.
 type API interface {
+	// ValidateBusinessIDAssignment checks capability, value and observation settings without I/O.
+	ValidateBusinessIDAssignment(value *string, opts ...services.CallOption) error
+	// AssignProcessInstanceBusinessID submits once to the exact target and optionally confirms.
+	AssignProcessInstanceBusinessID(ctx context.Context, key string, value *string, opts ...services.CallOption) (d.BusinessIDAssignmentResult, error)
+
 	// ProcessInstanceSearchTenant returns the effective discovery tenant without I/O.
 	ProcessInstanceSearchTenant(opts ...services.CallOption) string
 	// ValidateProcessInstanceResumption checks mutation capability without I/O.

@@ -87,6 +87,14 @@ func updateJobAutomationEnabled(cmd *cobra.Command) bool {
 // parseUpdateJobCommandRequest chooses the input contract before deduplication.
 // A scalar key keeps its established request and payload shape.
 func parseUpdateJobCommandRequest(cmd *cobra.Command, args ...string) (job.UpdateRequest, *job.CompletionRequest, error) {
+	if cmd.Flags().Changed("set-bid") {
+		if !flagUpdateJobComplete || cmd.Flags().Changed("fail") || cmd.Flags().Changed("throw-bpmn-error") {
+			return job.UpdateRequest{}, nil, invalidFlagValuef("--set-bid requires --complete")
+		}
+		if err := job.ValidateCompletionBusinessID(&flagUpdateJobSetBID); err != nil {
+			return job.UpdateRequest{}, nil, invalidFlagValuef("invalid --set-bid: %v", err)
+		}
+	}
 	if err := validateOptionalDashArg(args); err != nil {
 		return job.UpdateRequest{}, nil, err
 	}

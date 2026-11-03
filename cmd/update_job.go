@@ -6,7 +6,9 @@ package cmd
 import (
 	"fmt"
 
+	"github.com/grafvonb/c8volt/c8volt/ferrors"
 	"github.com/grafvonb/c8volt/consts"
+	"github.com/grafvonb/c8volt/toolx"
 	"github.com/spf13/cobra"
 )
 
@@ -20,6 +22,7 @@ var (
 	flagUpdateJobBPMNError       string
 	flagUpdateJobComplete        bool
 	flagUpdateJobVariables       string
+	flagUpdateJobSetBID          string
 )
 
 // updateJobCmd retains scalar updates and routes collection completion to the frozen batch lifecycle.
@@ -40,7 +43,9 @@ The complete selection is frozen before one confirmation. Incomplete discovery s
 
 Completing a listener job acknowledges its work without executing its business logic. Accepted completion skips independent confirmation and does not verify process termination. Bulk requests are not automatically replayed; ambiguous outcomes use bounded observation, with at most one read under --no-wait. No retries, incidents or processes are repaired implicitly.
 
-Bulk dry-run previews show count, filters or explicit selection and tenant scope; --verbose lists candidate context. JSON retains all preview candidates or ordered execution outcomes, including partial failures. Quiet suppresses prose while preserving requested JSON. A later selector invocation discovers a fresh selection. Camunda 8.10 update plans and frozen completion candidates retain each observed job's own business ID, including in verbose rows and partial results. Completion does not assign or change business IDs.
+Bulk dry-run previews show count, filters or explicit selection and tenant scope; --verbose lists candidate context. JSON retains all preview candidates or ordered execution outcomes, including partial failures. Quiet suppresses prose while preserving requested JSON. A later selector invocation discovers a fresh selection. Camunda 8.10 update plans and frozen completion candidates retain each observed job's own business ID, including in verbose rows and partial results. Use --set-bid with --complete on Camunda 8.10 to atomically assign the first business ID and complete each job, with variables in the same request. --set-bid is payload, not a selector. Assignment requires an active root instance without a business ID and uniqueness disabled; even an identical existing ID conflicts. Direct process assignment and atomic completion are alternative first assignments.
+
+Assignment preserves the exact value, including spaces and commas; empty/blank values, invalid UTF-8 and values over 256 UTF-16 units are rejected. Preview cannot reserve eligibility. BID-bearing requests are never replayed or retried without the BID. Accepted means acknowledged, not independently confirmed; --no-wait does not establish assignment from a later COMPLETED job. Lost responses remain unknown with the original failure. Observed job/task/listener snapshots remain independent of requested identity.
 
 Bulk previews, summaries and verbose rows use the configured logger at INFO level. Bulk failures produce one compact logged error after the result summary, grouping repeated reasons. Quiet retains that error. Use --verbose for per-job outcomes and --debug or configured debug logging for HTTP diagnostics. JSON preserves the original failure evidence and partial results in one envelope.
 
@@ -56,6 +61,7 @@ Use --dry-run to inspect the plan without mutation. With --json, mutations requi
   ./c8volt update job --key <job-key> --fail --retries 0 --message "worker unavailable" --dry-run
   ./c8volt update job --key <job-key> --throw-bpmn-error PAYMENT_DECLINED --message "card declined" --dry-run
   ./c8volt update job --key <job-key> --complete --vars '{"approved":true}' --dry-run
+  ./c8volt update job --key <job-key> --complete --set-bid ORDER-123 --vars '{"approved":true}' --dry-run
   ./c8volt --json update job --key <job-key> --retries 3 --dry-run
   ./c8volt update job --kind TASK_LISTENER --listener-event-type CANCELING --state CREATED --type removeTaskData --complete --dry-run --verbose
   ./c8volt update job --type removeTaskData --retries 0 --limit 1000 --batch-size 100 --complete --auto-confirm --json
@@ -83,6 +89,9 @@ Use --dry-run to inspect the plan without mutation. With --json, mutations requi
 				exitAfterRenderedResult(cfg.App.NoErrCodes, err)
 			}
 			return
+		}
+		if request.WorkerOutcome != nil && request.WorkerOutcome.SetBusinessID != nil && cfg.App.CamundaVersion != toolx.V810 {
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("%w: business-ID assignment requires Camunda 8.10", ferrors.ErrUnsupported))
 		}
 		plan, err := planUpdateJob(cmd.Context(), cli, request)
 		if err != nil {
@@ -121,6 +130,9 @@ Use --dry-run to inspect the plan without mutation. With --json, mutations requi
 		}
 		if request.WorkerOutcome != nil {
 			if err := executeUpdateJobWorkerOutcome(cmd, cli, request, plan); err != nil {
+				if request.WorkerOutcome.SetBusinessID != nil {
+					exitAfterRenderedResult(cfg.App.NoErrCodes, err)
+				}
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, err, jobWorkerOutcomeErrorMessage(request, err, false)...)
 			}
 			return
@@ -148,6 +160,7 @@ func init() {
 	fs.StringVar(&flagUpdateJobMessage, "message", "", "operator message for worker outcome modes")
 	fs.StringVar(&flagUpdateJobBPMNError, "throw-bpmn-error", "", "BPMN error code to throw for the job")
 	fs.BoolVar(&flagUpdateJobComplete, "complete", false, "complete the job through the worker outcome API")
+	fs.StringVar(&flagUpdateJobSetBID, "set-bid", "", "assign the first business ID atomically with --complete (Camunda 8.10)")
 	fs.StringVar(&flagUpdateJobVariables, "vars", "", "JSON object with variables for BPMN error or completion outcomes")
 	fs.BoolVar(&flagDryRun, "dry-run", false, "preview job updates without submitting mutation")
 	fs.BoolVar(&flagNoWait, "no-wait", false, "skip retry confirmation; bulk completion permits one reconciliation read without polling")

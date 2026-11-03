@@ -3272,7 +3272,9 @@ func (s stubJobAPI) SubmitJobWorkerOutcome(context.Context, d.JobWorkerOutcomeRe
 
 var _ jsvc.API = stubJobAPI{}
 
+// stubProcessInstanceAPI supplies only the operations exercised by its isolated fixtures.
 type stubProcessInstanceAPI struct {
+	pisvc.API
 	waitForProcessInstanceState        func(context.Context, string, d.States, ...services.CallOption) (d.StateResponse, d.ProcessInstance, error)
 	createProcessInstance              func(context.Context, d.ProcessInstanceData, ...services.CallOption) (d.ProcessInstanceCreation, error)
 	getProcessInstance                 func(context.Context, string, ...services.CallOption) (d.ProcessInstance, error)

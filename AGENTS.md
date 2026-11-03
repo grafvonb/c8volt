@@ -175,5 +175,5 @@
 
 ## Active Speckit Plan
 <!-- SPECKIT START -->
-- Active Speckit implementation plan: `specs/361-business-id-selection/plan.md`
+- Active Speckit implementation plan: `specs/362-late-business-id-assignment/plan.md`
 <!-- SPECKIT END -->

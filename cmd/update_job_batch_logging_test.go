@@ -55,7 +55,9 @@ func TestBulkCompletionFailureSummaryBounds(t *testing.T) {
 // TestBulkCompletionDiagnosticLogging exercises real command failures and logger
 // configuration against a test-owned server, including terminal writer routing.
 func TestBulkCompletionDiagnosticLogging(t *testing.T) {
-	for _, version := range []string{"8.8", "8.9", "8.10"} {
+	for _, version := range []string{"8.8", "8.9", "8.10", "8.10-assignment"} {
+		assignment := strings.HasSuffix(version, "-assignment")
+		version = strings.TrimSuffix(version, "-assignment")
 		for _, format := range []string{"plain-time", "json"} {
 			for i, tc := range []struct {
 				name                                                                    string
@@ -126,6 +128,9 @@ func TestBulkCompletionDiagnosticLogging(t *testing.T) {
 					require.NoError(t, err)
 					require.NoError(t, file.Close())
 					args := []string{"--config", cfg, "--tenant", "tenant-a", "update", "job", "--complete", "--kind", "TASK_LISTENER", "--auto-confirm"}
+					if assignment {
+						args = append(args, "--set-bid", "ORDER-123")
+					}
 					args = append(args, tc.flags...)
 					destination := "inherited"
 					if i%2 == 1 {
@@ -269,6 +274,13 @@ func assertBulkCompletionHumanLogs(t *testing.T, stdout, stderr string) (string,
 // Successful summaries must use the configured logger too, including preview
 // and verbose rows; logger format/level and destination cannot be bypassed.
 func TestBulkCompletionSummaryLogging(t *testing.T) {
+	for _, assignment := range []bool{false, true} {
+		t.Run(fmt.Sprint("assignment=", assignment), func(t *testing.T) { testBulkCompletionSummaryLogging(t, assignment) })
+	}
+}
+
+// testBulkCompletionSummaryLogging shares the full logger matrix for both payloads.
+func testBulkCompletionSummaryLogging(t *testing.T, assignment bool) {
 	for _, format := range []string{"plain-time", "json"} {
 		for _, level := range []string{"info", "warn"} {
 			for _, flags := range [][]string{nil, {"--dry-run"}, {"--verbose"}, {"--quiet"}, {"--json"}, {"--quiet", "--json"}} {
@@ -281,6 +293,9 @@ func TestBulkCompletionSummaryLogging(t *testing.T) {
 					require.NoError(t, err)
 					require.NoError(t, f.Close())
 					args := []string{"--config", cfg, "--tenant", "tenant-a", "update", "job", "--complete", "--type", "cleanup", "--auto-confirm"}
+					if assignment {
+						args = append(args, "--set-bid", "ORDER-123")
+					}
 					args = append(args, flags...)
 					destination := "configured"
 					if format == "json" {

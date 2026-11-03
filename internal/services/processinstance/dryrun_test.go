@@ -578,7 +578,9 @@ func waitForDryRunOverlap(t *testing.T, active, max *atomic.Int32, released *ato
 	}
 }
 
+// stubDryRunProcessInstanceAPI supplies only the operations exercised by its isolated fixtures.
 type stubDryRunProcessInstanceAPI struct {
+	API
 	searchForProcessInstancesPage func(context.Context, d.ProcessInstanceFilter, d.ProcessInstancePageRequest, ...services.CallOption) (d.ProcessInstancePage, error)
 	ancestryResult                func(context.Context, string, ...services.CallOption) (pitraversal.Result, error)
 	descendantsResult             func(context.Context, string, ...services.CallOption) (pitraversal.Result, error)
