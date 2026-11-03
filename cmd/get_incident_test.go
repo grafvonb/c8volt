@@ -370,7 +370,7 @@ func TestGetIncidentCommand_RegressionSelectionAndDisplayFlagsRemainDistinct(t *
 		"--pi-keys-only",
 		"--total",
 		"--error-message-limit int",
-		"--with-no-error-message",
+		"--no-error-message",
 	)
 
 	var requests []string
@@ -597,6 +597,7 @@ func TestGetIncidentCommand_RejectsPIKeysOnlyMachineOutputModesBeforeRequest(t *
 	}
 }
 
+// TestGetIncidentCommand_RejectsPIKeysOnlyMessageOutputModifiersBeforeRequest verifies canonical CLI behavior with isolated fixtures.
 func TestGetIncidentCommand_RejectsPIKeysOnlyMessageOutputModifiersBeforeRequest(t *testing.T) {
 	for _, tc := range []struct {
 		name string
@@ -610,8 +611,8 @@ func TestGetIncidentCommand_RejectsPIKeysOnlyMessageOutputModifiersBeforeRequest
 		},
 		{
 			name: "with no error message",
-			args: []string{"get", "incident", "--key", "2251799813685249", "--pi-keys-only", "--with-no-error-message"},
-			want: "--pi-keys-only cannot be combined with --with-no-error-message",
+			args: []string{"get", "incident", "--key", "2251799813685249", "--pi-keys-only", "--no-error-message"},
+			want: "--pi-keys-only cannot be combined with --no-error-message",
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -643,7 +644,7 @@ func TestGetIncidentCommand_WithNoErrorMessageOmitsHumanMessageTail(t *testing.T
 		"--config", cfgPath,
 		"get", "incident",
 		"--key", "2251799813685249",
-		"--with-no-error-message",
+		"--no-error-message",
 	)
 
 	require.Equal(t, []string{"GET /v2/incidents/2251799813685249"}, requests)
@@ -653,15 +654,16 @@ func TestGetIncidentCommand_WithNoErrorMessageOmitsHumanMessageTail(t *testing.T
 	require.Contains(t, output, "found: 1")
 }
 
+// TestGetIncidentCommand_RejectsWithNoErrorMessageMachineOutputAndLimit verifies canonical CLI behavior with isolated fixtures.
 func TestGetIncidentCommand_RejectsWithNoErrorMessageMachineOutputAndLimit(t *testing.T) {
 	for _, tc := range []struct {
 		name string
 		args []string
 		want string
 	}{
-		{name: "json", args: []string{"--json", "get", "incident", "--key", "2251799813685249", "--with-no-error-message"}, want: "--with-no-error-message cannot be combined with --json"},
-		{name: "keys only", args: []string{"--keys-only", "get", "incident", "--key", "2251799813685249", "--with-no-error-message"}, want: "--with-no-error-message cannot be combined with --keys-only"},
-		{name: "message limit", args: []string{"get", "incident", "--key", "2251799813685249", "--with-no-error-message", "--error-message-limit", "8"}, want: "--with-no-error-message cannot be combined with --error-message-limit"},
+		{name: "json", args: []string{"--json", "get", "incident", "--key", "2251799813685249", "--no-error-message"}, want: "--no-error-message cannot be combined with --json"},
+		{name: "keys only", args: []string{"--keys-only", "get", "incident", "--key", "2251799813685249", "--no-error-message"}, want: "--no-error-message cannot be combined with --keys-only"},
+		{name: "message limit", args: []string{"get", "incident", "--key", "2251799813685249", "--no-error-message", "--error-message-limit", "8"}, want: "--no-error-message cannot be combined with --error-message-limit"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			output, err := executeRootExpectErrorForIncidentTest(t, tc.args...)

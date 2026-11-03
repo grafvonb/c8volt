@@ -30,14 +30,14 @@ Generated reference: [ops repair process-instance](/cli/c8volt_ops_repair_proces
 
 ```bash
 c8volt ops repair process-instance --direct-incidents-only --state active --limit 5 --dry-run
-c8volt ops repair process-instance --key <process-instance-key> --vars '{"hasIncident":false}' --report-file repair-process-instance.md
+c8volt ops repair process-instance --key <process-instance-key> --set-vars '{"hasIncident":false}' --report-file repair-process-instance.md
 ```
 
 ## Built From Lower-Level Commands
 
 ```bash
 c8volt get process-instance --key <process-instance-key> --with-incidents
-c8volt update process-instance --key <process-instance-key> --vars '{"hasIncident":false}'
+c8volt update process-instance --key <process-instance-key> --set-vars '{"hasIncident":false}'
 c8volt resolve incident --key <incident-key>
 ```
 

@@ -259,6 +259,9 @@ func TestFlagIntentMigrationProductionAliases(t *testing.T) {
 		cmd   *cobra.Command
 		names map[string]string
 	}{
+		{getProcessDefinitionCmd, map[string]string{"stat": "with-stats"}},
+		{embedListCmd, map[string]string{"details": "with-paths"}},
+		{getIncidentCmd, map[string]string{"with-no-error-message": "no-error-message"}},
 		{updateElementCmd, map[string]string{"vars": "set-vars", "vars-file": "set-vars-file"}},
 		{updateProcessInstanceCmd, map[string]string{"vars": "set-vars", "vars-file": "set-vars-file"}},
 		{updateUserTaskCmd, map[string]string{"vars": "set-vars", "vars-file": "set-vars-file", "assign": "set-assignee"}},
@@ -272,19 +275,26 @@ func TestFlagIntentMigrationProductionAliases(t *testing.T) {
 				for _, order := range []string{"old", "old-new", "new-old"} {
 					t.Run(strings.Join(words, "/")+"/"+old+"/"+order, func(t *testing.T) {
 						value := "PRIVATE-NOT-READ"
+						if old == "stat" || old == "details" || old == "with-no-error-message" {
+							value = "true"
+						}
 						if old == "retries" {
 							value = "0"
 						}
 						if old == "job-timeout" || old == "retry-backoff" {
 							value = "1m"
 						}
+						current := []string{"--" + canonical, value}
+						if value == "true" {
+							current = []string{"--" + canonical + "=" + value}
+						}
 						args := append([]string{}, words...)
 						if order == "new-old" {
-							args = append(args, "--"+canonical, value)
+							args = append(args, current...)
 						}
 						args = append(args, "--"+old+"="+value)
 						if order == "old-new" {
-							args = append(args, "--"+canonical, value)
+							args = append(args, current...)
 						}
 						args = append(args, "--config", cfg, "--json", "--quiet")
 						encoded, err := json.Marshal(args)

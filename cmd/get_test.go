@@ -315,7 +315,7 @@ func TestGetProcessDefinitionHelp_DocumentsJSONAndXMLModes(t *testing.T) {
 	require.Contains(t, output, "List or fetch deployed process definitions")
 	require.Contains(t, output, "Select by key, BPMN process ID, version, or version tag")
 	require.Contains(t, output, "Use --xml only with --key")
-	require.Contains(t, output, "--stat includes exact-version statistics and requires Camunda 8.8 or newer")
+	require.Contains(t, output, "--with-stats includes exact-version statistics and requires Camunda 8.8 or newer")
 	require.Contains(t, output, "exact-version statistics")
 	require.Contains(t, output, "--latest selects the newest definition per exact tenant ID and BPMN process ID")
 	require.Contains(t, output, "tenant")
@@ -1067,7 +1067,7 @@ func TestGetProcessDefinitionByKey_SelectedTenantMismatchUsesAdminScope(t *testi
 		"--json",
 		"get", "process-definition",
 		"--key", tenantAdminKeysProcessDefinitionKey,
-		"--stat",
+		"--with-stats",
 	)
 
 	require.Contains(t, requests, "GET /v2/process-definitions/"+tenantAdminKeysProcessDefinitionKey)
@@ -1127,7 +1127,7 @@ func TestGetProcessDefinitionListWithStatRendersLoadedStats(t *testing.T) {
 	output := executeRootForTest(t,
 		"--config", cfgPath,
 		"get", "process-definition",
-		"--stat",
+		"--with-stats",
 	)
 
 	require.Len(t, pdSearchRequests, 1)

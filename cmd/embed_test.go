@@ -24,7 +24,7 @@ func TestEmbedListHelp_DocumentsReadOnlyDiscoveryExamples(t *testing.T) {
 
 	require.Contains(t, output, "List bundled BPMN fixture files")
 	require.Contains(t, output, "List bundled BPMN fixture files for the configured Camunda version")
-	require.Contains(t, output, "./c8volt embed list --details")
+	require.Contains(t, output, "./c8volt embed list --with-paths")
 	require.Contains(t, output, "./c8volt --json embed list")
 }
 
@@ -40,11 +40,12 @@ func TestEmbedListCommand_FiltersFilesForConfiguredCamundaVersion(t *testing.T) 
 	require.NotContains(t, output, "processdefinitions/")
 }
 
+// TestEmbedListCommand_DetailsFiltersFilesForConfiguredCamundaVersion verifies canonical CLI behavior with isolated fixtures.
 func TestEmbedListCommand_DetailsFiltersFilesForConfiguredCamundaVersion(t *testing.T) {
 	resetEmbedCommandStateForTest()
 	cfgPath := writeTestConfigForVersion(t, "http://127.0.0.1:1", "8.9")
 
-	output := executeRootForTest(t, "--config", cfgPath, "embed", "list", "--details")
+	output := executeRootForTest(t, "--config", cfgPath, "embed", "list", "--with-paths")
 
 	require.Contains(t, output, "processdefinitions/C89_SimpleUserTask.bpmn")
 	require.Contains(t, output, "processdefinitions/C89_MultipleSubProcessesParent.bpmn")
@@ -56,7 +57,7 @@ func TestEmbedListCommand_V810UsesNativeProductionFixtures(t *testing.T) {
 	resetEmbedCommandStateForTest()
 	cfgPath := writeTestConfigForVersion(t, "http://127.0.0.1:1", "8.10")
 
-	output := executeRootForTest(t, "--config", cfgPath, "embed", "list", "--details")
+	output := executeRootForTest(t, "--config", cfgPath, "embed", "list", "--with-paths")
 
 	require.Equal(t, strings.Join([]string{
 		"processdefinitions/C810_DoubleUserTask.bpmn",

@@ -37,9 +37,11 @@ Smoke-test cleanup tracks every process definition returned by the fixture deplo
 
 `get pd` and `get pd --key <process-definition-key>` show Camunda 8.10's optional lifecycle state after the version; JSON includes `state`. `ACTIVE` allows new instances, `DRAINING` blocks new starts while unfinished instances remain, and `DELETED` means runtime removal, not removal of historical data. Missing state is omitted, including on 8.8/8.9; unfamiliar values are preserved. Keys-only and XML output are unchanged.
 
-`get process-definition --stat --json` keeps active instances in `active` and, on Camunda 8.10, reports suspended instances separately in `suspended`. The additive `suspendedCountSupported` flag is true even when the suspended count is zero and omitted. Camunda 8.8/8.9 omit both suspended fields. Statistics are published only after all required observations succeed; independently sampled state buckets can differ during transitions. Requests without `--stat` do not acquire these counts. Human lookup/list rows and `--stat --watch` append `su:` on 8.10, using `su:-` for an observed zero; older versions omit the token because the count is unavailable. Watch detects suspended-only changes, ACTIVE-to-SUSPENDED transitions, and availability changes, clearing stale counts and highlighting changed values with the existing terminal rules. Empty definition searches suppress the human summary under `--quiet` while preserving explicitly requested JSON and keys-only results.
+`get process-definition --with-stats --json` keeps active instances in `active` and, on Camunda 8.10, reports suspended instances separately in `suspended`. The additive `suspendedCountSupported` flag is true even when the suspended count is zero and omitted. Camunda 8.8/8.9 omit both suspended fields. Statistics are published only after all required observations succeed; independently sampled state buckets can differ during transitions. Requests without `--with-stats` do not acquire these counts. Human lookup/list rows and `--with-stats --watch` append `su:` on 8.10, using `su:-` for an observed zero; older versions omit the token because the count is unavailable. Watch detects suspended-only changes, ACTIVE-to-SUSPENDED transitions, and availability changes, clearing stale counts and highlighting changed values with the existing terminal rules. Empty definition searches suppress the human summary under `--quiet` while preserving explicitly requested JSON and keys-only results.
 
-With `get pd --key <process-definition-key> --stat`, state and counts remain independent:
+In v5, query enrichment uses `get pd --with-stats` and `embed list --with-paths`; incident message suppression uses `get incident --no-error-message`. Their former `--stat`, `--details`, and `--with-no-error-message` spellings are rejected with replacement guidance. Statistics, embedded paths, and incident output restrictions are unchanged.
+
+With `get pd --key <process-definition-key> --with-stats`, state and counts remain independent:
 
 ```text
 2251799813685250 tenant orders v2 DRAINING [ac:- cp:12 cx:- inc:- su:2]
@@ -377,7 +379,7 @@ Deploy BPMN, start a process instance, and verify the process definition Camunda
 ```bash
 ./c8volt deploy process-definition --file <process.bpmn>
 ./c8volt run process-instance --bpmn-process-id <bpmn-process-id>
-./c8volt get process-definition --bpmn-process-id <bpmn-process-id> --latest --stat
+./c8volt get process-definition --bpmn-process-id <bpmn-process-id> --latest --with-stats
 ```
 
 `run process-instance` confirms creation once an instance is observable as ACTIVE, SUSPENDED, COMPLETED, CANCELED, or TERMINATED. A first suspended observation succeeds immediately; it confirms visibility, not execution completion. Use `expect process-instance --state completed` to verify completion separately, or `run process-instance --no-wait` to return after creation is accepted without confirming visibility. Existing creation defaults on Camunda 8.8/8.9 remain supported.

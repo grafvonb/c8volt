@@ -28,7 +28,7 @@ var embedListCmd = &cobra.Command{
 
 Use before embed deploy or embed export to find exact file names. The selection matches embed deploy --all.`,
 	Example: `  ./c8volt embed list
-  ./c8volt embed list --details
+  ./c8volt embed list --with-paths
   ./c8volt --json embed list`,
 	Aliases: []string{"ls"},
 	Run:     runEmbedList,
@@ -77,9 +77,11 @@ func runEmbedListWithListing(cmd *cobra.Command, log *slog.Logger, cfg *config.C
 	}
 }
 
+// init registers canonical query flags and diagnostic-only legacy guidance.
 func init() {
+	setFlagMigrations(embedListCmd, map[string]flagMigration{"details": {Replacement: "--with-paths"}})
 	embedCmd.AddCommand(embedListCmd)
-	embedListCmd.Flags().BoolVar(&flagEmbedListDetails, "details", false, "show full embedded file paths")
+	embedListCmd.Flags().BoolVar(&flagEmbedListDetails, "with-paths", false, "show full embedded file paths")
 	setCommandMutation(embedListCmd, CommandMutationReadOnly)
 	setContractSupport(embedListCmd, ContractSupportFull)
 	setOutputModes(embedListCmd,

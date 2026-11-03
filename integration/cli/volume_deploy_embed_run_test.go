@@ -63,7 +63,7 @@ func runVolumeDeployEmbedRunScenarios(t *testing.T, profile integrationProfile, 
 
 	files, record, err := discoverEmbeddedFixtureFiles(t, profile)
 	record.CommandPath = "embed list"
-	record.CoveredFlags = []string{"details"}
+	record.CoveredFlags = []string{"with-paths"}
 	record.OutputMode = "json"
 	records = append(records, record)
 	if err != nil {

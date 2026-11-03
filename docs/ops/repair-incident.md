@@ -30,14 +30,14 @@ Generated reference: [ops repair incident](/cli/c8volt_ops_repair_incident).
 
 ```bash
 c8volt ops repair incident --state active --error-type io_mapping_error --limit 5 --dry-run
-c8volt ops repair incident --key <incident-key> --vars '{"hasIncident":false}' --report-file repair-incident.md
+c8volt ops repair incident --key <incident-key> --set-vars '{"hasIncident":false}' --report-file repair-incident.md
 ```
 
 ## Built From Lower-Level Commands
 
 ```bash
 c8volt get incident --key <incident-key>
-c8volt update process-instance --key <process-instance-key> --vars '{"hasIncident":false}'
+c8volt update process-instance --key <process-instance-key> --set-vars '{"hasIncident":false}'
 c8volt resolve incident --key <incident-key>
 ```
 

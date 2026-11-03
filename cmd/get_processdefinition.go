@@ -48,9 +48,9 @@ Select by key, BPMN process ID, version, or version tag. Use --xml only with --k
 
 Camunda 8.10 supplies optional lifecycle state in human rows and JSON (state): ACTIVE allows new instances, DRAINING blocks new starts while unfinished instances remain, and DELETED means runtime removal, not removal of historical data. Missing state is omitted, including on 8.8/8.9; unfamiliar values are preserved.
 
-Lifecycle and --stat counts are independent: suspended instances can keep a definition DRAINING even with zero active instances. Backend deletion does not cancel or resume instances; delete pd --force explicitly cancels unfinished instances first. These reads do not change deletion behavior.
+Lifecycle and --with-stats counts are independent: suspended instances can keep a definition DRAINING even with zero active instances. Backend deletion does not cancel or resume instances; delete pd --force explicitly cancels unfinished instances first. These reads do not change deletion behavior.
 
---stat includes exact-version statistics and requires Camunda 8.8 or newer. On Camunda 8.10, rows append su: for suspended instances, with a dash for an observed zero; active counts remain separate. JSON statistics include a suspended count and suspendedCountSupported availability flag; a supported zero omits the count. Camunda 8.8/8.9 omit the suspended token and fields because the count is unavailable. With --stat --watch, suspended count and availability changes update the row and clear stale values. Empty searches suppress the human summary under --quiet while preserving requested JSON and keys-only results.
+--with-stats includes exact-version statistics and requires Camunda 8.8 or newer. On Camunda 8.10, rows append su: for suspended instances, with a dash for an observed zero; active counts remain separate. JSON statistics include a suspended count and suspendedCountSupported availability flag; a supported zero omits the count. Camunda 8.8/8.9 omit the suspended token and fields because the count is unavailable. With --with-stats --watch, suspended count and availability changes update the row and clear stale values. Empty searches suppress the human summary under --quiet while preserving requested JSON and keys-only results.
 
 --watch repeats the lookup indefinitely by default until interrupted or retries are exhausted. It refreshes immediately, then at --watch-interval. --watch-timeout limits the session (0 = unlimited), independently of --timeout for HTTP requests and retry backoff. Request timeouts are retried while the session is active. Without a selector it observes all visible definitions.
 
@@ -63,8 +63,8 @@ Refresh summaries and verbose timing use the configured logger at INFO; slow-ref
   ./c8volt get process-definition --watch --watch-interval 2s
   ./c8volt get process-definition --watch --watch-timeout 10m
   ./c8volt get process-definition --key <process-definition-key> --json
-  ./c8volt get process-definition --key <process-definition-key> --stat
-  ./c8volt get process-definition --stat --json
+  ./c8volt get process-definition --key <process-definition-key> --with-stats
+  ./c8volt get process-definition --with-stats --json
   ./c8volt get process-definition --key <process-definition-key> --xml`,
 	Aliases: []string{"pd", "pds"},
 	Run:     runGetProcessDefinition,
@@ -161,7 +161,9 @@ func runSearchProcessDefinitions(cmd *cobra.Command, cli c8volt.API, log *slog.L
 	log.Debug(fmt.Sprintf("pd search done; found %d", pds.Total))
 }
 
+// init registers canonical query flags and diagnostic-only legacy guidance.
 func init() {
+	setFlagMigrations(getProcessDefinitionCmd, map[string]flagMigration{"stat": {Replacement: "--with-stats"}})
 	getCmd.AddCommand(getProcessDefinitionCmd)
 
 	fs := getProcessDefinitionCmd.Flags()
@@ -170,7 +172,7 @@ func init() {
 	fs.BoolVar(&flagGetPDLatest, "latest", false, "only include the latest matching process-definition version per exact tenant/BPMN process group")
 	fs.Int32Var(&flagGetPDProcessVersion, "pd-version", 0, "process definition version")
 	fs.StringVar(&flagGetPDProcessVersionTag, "pd-version-tag", "", "process definition version tag")
-	fs.BoolVar(&flagGetPDWithStat, "stat", false, "include process definition statistics, incident counts, and suspended counts when supported")
+	fs.BoolVar(&flagGetPDWithStat, "with-stats", false, "include process definition statistics, incident counts, and suspended counts when supported")
 	fs.BoolVar(&flagGetPDAsXML, "xml", false, "output the selected process definition as raw XML (requires --key and no other filters)")
 	fs.Int32VarP(&flagGetPDBatchSize, "batch-size", "n", consts.MaxPISearchSize, fmt.Sprintf("number of process definitions to request per discovery page; does not cap total results (max limit %d enforced by server)", consts.MaxPISearchSize))
 	fs.BoolVar(&flagGetPDWatch, "watch", false, "repeat the process-definition lookup until interrupted, --watch-timeout is reached, or retries are exhausted")
@@ -336,6 +338,7 @@ func processDefinitionOpsOverflowState(state process.ProcessInstanceOverflowStat
 	}
 }
 
+// validateProcessDefinitionXMLFlags keeps XML exclusive with enriched row output.
 func validateProcessDefinitionXMLFlags(filter process.ProcessDefinitionFilter) error {
 	if filter.Key == "" {
 		return missingDependentFlagsf("xml output requires --key to select a single process definition")
@@ -350,7 +353,7 @@ func validateProcessDefinitionXMLFlags(filter process.ProcessDefinitionFilter) e
 		{enabled: flagGetPDProcessVersion != 0, flag: "--pd-version"},
 		{enabled: filter.ProcessVersionTag != "", flag: "--pd-version-tag"},
 		{enabled: flagGetPDLatest, flag: "--latest"},
-		{enabled: flagGetPDWithStat, flag: "--stat"},
+		{enabled: flagGetPDWithStat, flag: "--with-stats"},
 		{enabled: flagViewAsJson, flag: "--json"},
 		{enabled: flagViewKeysOnly, flag: "--keys-only"},
 	} {

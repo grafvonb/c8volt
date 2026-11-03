@@ -81,3 +81,5 @@ does not certify aggregate catalog completeness.
 | examples | Write `examples.json` plus seeded example substitution data under `data/`. |
 | proposal reports | Write `proposals-command.json` and `proposals-embedded-bpmn.json`, using `[]` for no-gap reports. |
 | command logs and data | Write subprocess stdout/stderr under `logs/` and selected keys/resources under `data/`. |
+
+Current v5 query flags are `get process-definition --with-stats`, `embed list --with-paths`, and `get incident --no-error-message`. Write inputs use `--set-*`; job `--retries` remains a selector and inherited `--timeout` remains the HTTP control. BPMN errors use the bare `--throw-bpmn-error` action with `--set-error-code`.

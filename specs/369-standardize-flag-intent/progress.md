@@ -283,3 +283,54 @@ Started: 2026-11-03 06:40:31
 - Reviewed the failure path: service errors retain facade ferrors.FromDomain conversion; element execution renders partial results once, logs bounded grouped reasons for human output and exits with the original operation error. Migration preparation remains local, carries static guidance to handleBootstrapError/handleCommandErrorWithMode, and uses the existing single-render exit boundary. No production direct prints, raw error output, lifecycle declarations, backend mechanics or schema changes were added.
 - Formatted touched Go tests and passed `git diff --check`. No production/bootstrap/help change was necessary, so no documentation regeneration or repeated shared/full race suite was warranted. Existing metadata/completion acceptance was reused; query/final inventory stays in T007. No inherited live configuration variables were present; GOFLAGS was cleared and no live services or integration helpers were run. Real-engine behavior remains unverified.
 ---
+
+---
+## Iteration 2 - 2026-11-03 07:54
+**Work Unit**: US3 — T007 completed: query enrichment/suppression and final canonical-surface inventory
+**Tasks Completed**:
+- [x] T007: Rename query flags, preserve query behavior, and complete feature-wide surface/documentation acceptance.
+**Tasks Remaining in Work Unit**: 0; all feature tasks complete.
+**Commit**: This work-unit commit
+**Files Changed**:
+- README.md
+- cmd/capabilities_test.go
+- cmd/command_contract_test.go
+- cmd/completion_test.go
+- cmd/embed_list.go
+- cmd/embed_test.go
+- cmd/flag_intent_enrichment_test.go
+- cmd/flag_migration_test.go
+- cmd/get_incident.go
+- cmd/get_incident_test.go
+- cmd/get_processdefinition.go
+- cmd/get_processdefinition_lifecycle_watch_test.go
+- cmd/get_processdefinition_suspended_test.go
+- cmd/get_processdefinition_test.go
+- cmd/get_processdefinition_watch_terminal_test.go
+- cmd/get_test.go
+- demos/vhs/fast-start.tape
+- docs/cli/c8volt_embed_list.md
+- docs/cli/c8volt_get_incident.md
+- docs/cli/c8volt_get_process-definition.md
+- docs/index.md
+- docs/ops/repair-incident.md
+- docs/ops/repair-process-instance.md
+- docsgen/main_test.go
+- integration/assets/command-matrix.md
+- integration/cli/all_commands_test.go
+- integration/cli/behavioral_scenarios_test.go
+- integration/cli/deploy_embed_run_test.go
+- integration/cli/get_usertask_variables_test.go
+- integration/cli/volume_deploy_embed_run_test.go
+- integration/cli/volume_seed_test.go
+- specs/369-standardize-flag-intent/progress.md
+- specs/369-standardize-flag-intent/ralph-memory.md
+- specs/369-standardize-flag-intent/tasks.md
+**Learnings**:
+- Added failing command-path expectations first: old embed help lacked --with-paths, and legacy statistics syntax executed instead of producing migration guidance. Implemented the three Boolean renames with diagnostic-only mappings and preserved existing statistics/watch, embedded path, incident suppression/truncation, and output exclusion behavior.
+- Added feature-wide registration/help/capability/completion coverage for all 16 rename rows and action/code separation, including retained job retries/HTTP timeout, existing enrichment flags and hidden logging controls. Extended production alias/conflict rejection to query commands and added configured/inherited plain/structured reporting matrices for bare and explicit Boolean legacy values. Exactly one envelope/ERROR record and zero backend requests are required.
+- Passed targeted query/enrichment/surface tests (11.515s), expanded query/alias/surface selection (20.002s), and generated reference assertions (0.743s). Final `GOFLAGS='' go test ./cmd ./config ./docsgen -count=1` passed: cmd 442.971s, config 1.370s, docsgen 1.360s. This includes modified watch/terminal/metadata cases and existing partial-result, empty/sparse, error-class, logger-routing and DEBUG-redaction regressions. No broader race suite was needed for these CLI-only renames.
+- Regenerated CLI references/homepage with `GOFLAGS='' make docs-content`; formatted touched Go files and passed `git diff --check`. Static audit aligned integration invocation/coverage metadata, command matrix and VHS tape, and corrected four stale variable examples in current repair guides. No live suite or recording script was executed; historical feature evidence was preserved.
+- Reviewed error routing: removed tokens stop before bootstrap and use existing local migration preparation, configured logger and handleBootstrapError/handleCommandErrorWithMode single-render exit. Existing service/facade error conversion and query renderers remain unchanged. The diff adds no direct diagnostic print, raw error formatting, backend mechanics, lifecycle declarations or public/result-schema changes.
+- No inherited C8VOLT/GOFLAGS/helper configuration was present; GOFLAGS was explicitly cleared. All validation used isolated fakes and subprocess/terminal fixtures. Real-engine behavior remains unverified. The final handoff is terminal.
+---

@@ -75,7 +75,7 @@ Enter
 Show
 Sleep 1s
 Wait
-Type "./c8volt get pd --stat"
+Type "./c8volt get pd --with-stats"
 Enter
 Wait
 
@@ -122,7 +122,7 @@ Enter
 Show
 Sleep 1s
 Wait
-Type "./c8volt get pd --stat"
+Type "./c8volt get pd --with-stats"
 Enter
 Wait
 

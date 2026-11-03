@@ -151,7 +151,9 @@ A --bpmn-process-id selector must match a visible process definition before disc
 	},
 }
 
+// init registers canonical query flags and diagnostic-only legacy guidance.
 func init() {
+	setFlagMigrations(getIncidentCmd, map[string]flagMigration{"with-no-error-message": {Replacement: "--no-error-message"}})
 	getCmd.AddCommand(getIncidentCmd)
 
 	fs := getIncidentCmd.Flags()
@@ -174,7 +176,7 @@ func init() {
 	fs.Int32VarP(&flagGetIncidentLimit, "limit", "l", 0, "maximum number of matching incidents to return across all pages; omit to continue through all matches")
 	fs.BoolVar(&flagGetIncidentTotal, "total", false, "return only the exact numeric total of matching incidents")
 	fs.IntVar(&flagGetIncidentMessageLimit, "error-message-limit", 0, "maximum characters to show for incident messages; 0 keeps full messages")
-	fs.BoolVar(&flagGetIncidentNoErrorMessage, "with-no-error-message", false, "omit error messages from incident output")
+	fs.BoolVar(&flagGetIncidentNoErrorMessage, "no-error-message", false, "omit error messages from incident output")
 	fs.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers when fetching multiple incidents (default: min(count, 2*GOMAXPROCS, 32))")
 	fs.BoolVar(&flagNoWorkerLimit, "no-worker-limit", false, "use all queued jobs as workers when --workers is unset")
 	fs.BoolVar(&flagFailFast, "fail-fast", false, "stop scheduling new incident lookups after the first error")
@@ -185,6 +187,7 @@ func init() {
 	setAutomationSupport(getIncidentCmd, AutomationSupportFull, "supports shared machine output, stdin key pipelines, and unattended paging")
 }
 
+// validateGetIncidentFlagValues preserves selector and display exclusions for canonical flags.
 func validateGetIncidentFlagValues(cmd *cobra.Command) error {
 	if flagGetIncidentSize <= 0 || flagGetIncidentSize > consts.MaxPISearchSize {
 		return invalidFlagValuef("invalid value for --batch-size: %d, expected positive integer up to %d", flagGetIncidentSize, consts.MaxPISearchSize)
@@ -248,10 +251,10 @@ func validateGetIncidentFlagValues(cmd *cobra.Command) error {
 		return mutuallyExclusiveFlagsf("--pi-keys-only cannot be combined with --error-message-limit")
 	}
 	if flagGetIncidentPIKeysOnly && flagGetIncidentNoErrorMessage {
-		return mutuallyExclusiveFlagsf("--pi-keys-only cannot be combined with --with-no-error-message")
+		return mutuallyExclusiveFlagsf("--pi-keys-only cannot be combined with --no-error-message")
 	}
 	if flagGetIncidentNoErrorMessage && cmd != nil && cmd.Flags().Changed("error-message-limit") {
-		return mutuallyExclusiveFlagsf("--with-no-error-message cannot be combined with --error-message-limit")
+		return mutuallyExclusiveFlagsf("--no-error-message cannot be combined with --error-message-limit")
 	}
 	if pickMode() == RenderModeJSON && cmd != nil && cmd.Flags().Changed("error-message-limit") {
 		return mutuallyExclusiveFlagsf("--error-message-limit cannot be combined with --json")
@@ -260,10 +263,10 @@ func validateGetIncidentFlagValues(cmd *cobra.Command) error {
 		return mutuallyExclusiveFlagsf("--error-message-limit cannot be combined with --keys-only")
 	}
 	if pickMode() == RenderModeJSON && flagGetIncidentNoErrorMessage {
-		return mutuallyExclusiveFlagsf("--with-no-error-message cannot be combined with --json")
+		return mutuallyExclusiveFlagsf("--no-error-message cannot be combined with --json")
 	}
 	if pickMode() == RenderModeKeysOnly && flagGetIncidentNoErrorMessage {
-		return mutuallyExclusiveFlagsf("--with-no-error-message cannot be combined with --keys-only")
+		return mutuallyExclusiveFlagsf("--no-error-message cannot be combined with --keys-only")
 	}
 	if ok, firstBadKey, _ := validateKeys(flagGetIncidentKeys); !ok {
 		return invalidFlagValuef("incident key %q is not a valid key", firstBadKey)

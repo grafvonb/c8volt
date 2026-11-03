@@ -1776,6 +1776,7 @@ func TestCommandCapabilityForCommand_GetElementContract(t *testing.T) {
 	})
 }
 
+// TestCommandCapabilityForCommand_GetIncidentContract verifies canonical CLI behavior with isolated fixtures.
 func TestCommandCapabilityForCommand_GetIncidentContract(t *testing.T) {
 	root := Root()
 	resetCommandTreeFlags(root)
@@ -1804,7 +1805,7 @@ func TestCommandCapabilityForCommand_GetIncidentContract(t *testing.T) {
 		Description: "maximum characters to show for incident messages; 0 keeps full messages",
 	})
 	require.Contains(t, capability.Flags, FlagContract{
-		Name:        "with-no-error-message",
+		Name:        "no-error-message",
 		Type:        "bool",
 		Required:    false,
 		Repeated:    false,
@@ -2184,7 +2185,7 @@ func TestCommandCapabilityForCommand_OpsPurgeAllProcessDefinitionsContract(t *te
 		Description: "maximum concurrent workers when validating the delete plan and deleting process definitions (default: min(targets, 2*GOMAXPROCS, 32))",
 	})
 	require.NotContains(t, capability.Flags, FlagContract{Name: "xml"})
-	require.NotContains(t, capability.Flags, FlagContract{Name: "stat"})
+	require.NotContains(t, capability.Flags, FlagContract{Name: "with-stats"})
 
 	doc := capabilityDocumentForRoot(root)
 	paths := commandCapabilityPaths(doc.Commands)
@@ -3259,4 +3260,35 @@ func TestCapabilityDocumentVersionCheck(t *testing.T) {
 		require.Contains(t, capability.Flags, FlagContract{Name: "no-version-check", Type: "bool", Description: "skip the automatic advisory gateway version check"})
 	}
 	require.Equal(t, "false", Root().PersistentFlags().Lookup("no-version-check").DefValue)
+}
+
+// TestCommandContractFlagIntentSurface covers all rename rows while retaining
+// job selector retries, HTTP timeout, action arity and unchanged enrichment controls.
+func TestCommandContractFlagIntentSurface(t *testing.T) {
+	for _, tc := range flagIntentSurface {
+		for old, canonical := range tc.names {
+			require.NotNil(t, tc.cmd.Flags().Lookup(canonical), tc.cmd.CommandPath())
+			require.Contains(t, tc.cmd.Flags().FlagUsages(), "--"+canonical+" ")
+			if tc.cmd == updateJobCmd && (old == "retries" || old == "timeout") {
+				continue
+			}
+			require.Nil(t, tc.cmd.Flags().Lookup(old), tc.cmd.CommandPath())
+			require.NotContains(t, tc.cmd.Flags().FlagUsages(), "--"+old+" ")
+			require.Equal(t, "--"+canonical, flagMigrationsForCommand(tc.cmd)[old].Replacement)
+		}
+	}
+	require.Equal(t, "bool", updateJobCmd.Flags().Lookup("throw-bpmn-error").Value.Type())
+	require.Equal(t, "string", updateJobCmd.Flags().Lookup("set-error-code").Value.Type())
+	require.NotNil(t, updateJobCmd.Flags().Lookup("retries"))
+	require.Nil(t, updateJobCmd.LocalNonPersistentFlags().Lookup("timeout"))
+	require.NotNil(t, rootCmd.PersistentFlags().Lookup("timeout"))
+	require.NotNil(t, getJobCmd.Flags().Lookup("retries"))
+	require.NotNil(t, getProcessInstanceCmd.Flags().Lookup("bid"))
+	for _, name := range []string{"with-incidents", "with-vars", "with-elements", "with-listeners"} {
+		require.NotNil(t, getProcessInstanceCmd.Flags().Lookup(name))
+	}
+	require.NotNil(t, getUserTaskCmd.Flags().Lookup("with-vars"))
+	require.NotNil(t, getClusterVersionCmd.Flags().Lookup("with-brokers"))
+	require.NotNil(t, opsAnalyseSlowProcessInstancesCmd.Flags().Lookup("with-full-timeline"))
+	require.True(t, rootCmd.PersistentFlags().Lookup("log-with-source").Hidden)
 }

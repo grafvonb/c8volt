@@ -83,7 +83,7 @@ func seedVolumeProcessInstanceDataset(t *testing.T, profile integrationProfile, 
 func discoverEmbeddedFixtureFiles(t *testing.T, profile integrationProfile) ([]string, evidenceRecord, error) {
 	t.Helper()
 	scenario := "volume-" + profile.Name + "-embed-list"
-	result := runC8VoltForProfile(t, profile.Name, scenario, "--automation", "--json", "embed", "list", "--details")
+	result := runC8VoltForProfile(t, profile.Name, scenario, "--automation", "--json", "embed", "list", "--with-paths")
 	record := commandEvidence("embed list", scenario, result, volumeOutcomePass)
 	record.Profile = profile.Name
 	record.CamundaVersion = profile.ExpectedVersion

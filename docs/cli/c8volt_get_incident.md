@@ -58,6 +58,7 @@ c8volt get incident [flags]
   -h, --help                           help for incident
   -k, --key strings                    incident key(s) to fetch; repeat or combine with stdin '-'
   -l, --limit int32                    maximum number of matching incidents to return across all pages; omit to continue through all matches
+      --no-error-message               omit error messages from incident output
       --no-worker-limit                use all queued jobs as workers when --workers is unset
       --pd-key string                  process definition key to filter incidents
       --pi-key string                  process instance key to filter incidents
@@ -65,7 +66,6 @@ c8volt get incident [flags]
       --root-key string                root process instance key to filter incidents
   -s, --state string                   incident state scope for search: active, pending, resolved, migrated, unknown, all (default "active")
       --total                          return only the exact numeric total of matching incidents
-      --with-no-error-message          omit error messages from incident output
   -w, --workers int                    maximum concurrent workers when fetching multiple incidents (default: min(count, 2*GOMAXPROCS, 32))
 ```
 
