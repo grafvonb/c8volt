@@ -414,7 +414,7 @@ func TestPreviewDeleteProcessDefinitionsAggregatesTenantEvidence(t *testing.T) {
 func TestProcessDefinitionPlanTenantEvidenceAggregateOnlyFallbackDoesNotDoubleCountKnownTenants(t *testing.T) {
 	t.Parallel()
 
-	got := processDefinitionPlanTenantEvidence([]d.DeleteProcessDefinitionPlanItem{
+	got := ProcessDefinitionPlanTenantEvidence([]d.DeleteProcessDefinitionPlanItem{
 		{
 			Key:      "pd-1",
 			TenantId: "tenant-b",

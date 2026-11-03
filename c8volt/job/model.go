@@ -3,7 +3,11 @@
 
 package job
 
-import "time"
+import (
+	"time"
+
+	d "github.com/grafvonb/c8volt/internal/domain"
+)
 
 // Job exposes one runtime job and its optional lifecycle timestamps.
 type Job struct {
@@ -176,7 +180,7 @@ const (
 
 // UpdatePlan retains preview facts and an optional privately frozen completion approval.
 type UpdatePlan struct {
-	approvedCompletion *WorkerOutcomeRequest
+	approvedCompletion *d.JobWorkerOutcomeRequest
 	// SetBusinessID is optional assignment intent, independent of observed identity.
 	SetBusinessID     *string           `json:"requestedBusinessId,omitempty"`
 	Key               string            `json:"key,omitempty"`

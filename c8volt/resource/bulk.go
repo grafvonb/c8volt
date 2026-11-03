@@ -12,7 +12,8 @@ import (
 	types "github.com/grafvonb/c8volt/typex"
 )
 
+// DeleteProcessDefinitions maps service-owned ordered reports without reselecting keys.
 func (c *client) DeleteProcessDefinitions(ctx context.Context, keys types.Keys, wantedWorkers int, opts ...options.FacadeOption) (DeleteReports, error) {
-	responses, err := pdsvc.DeleteProcessDefinitions(ctx, c.api, c.pdApi, c.piApi, c.log, keys, wantedWorkers, options.MapFacadeOptionsToCallOptions(opts)...)
-	return fromResourceDeleteResponses(keys.Unique(), responses), ferr.FromDomain(err)
+	responses, err := pdsvc.DeleteProcessDefinitionReports(ctx, c.api, c.pdApi, c.piApi, c.log, keys, wantedWorkers, options.MapFacadeOptionsToCallOptions(opts)...)
+	return fromResourceDeleteResponses(responses), ferr.FromDomain(err)
 }

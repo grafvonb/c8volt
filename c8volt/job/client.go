@@ -5,9 +5,7 @@ package job
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
-	"reflect"
 	"time"
 
 	"github.com/grafvonb/c8volt/c8volt/ferrors"
@@ -75,8 +73,9 @@ func (c *client) SearchJobsTotal(ctx context.Context, request SearchRequest, opt
 
 // UpdateJob delegates administrative changes and rejects attached assignment intent.
 func (c *client) UpdateJob(ctx context.Context, request UpdateRequest, opts ...foptions.FacadeOption) (UpdateResult, error) {
-	if (request.WorkerOutcome != nil && request.WorkerOutcome.SetBusinessID != nil) || (request.UpdatePlan != nil && request.UpdatePlan.SetBusinessID != nil) {
-		return UpdateResult{}, fmt.Errorf("%w: business-ID assignment requires worker completion", ferrors.ErrInvalidInput)
+	assignmentRequested := (request.WorkerOutcome != nil && request.WorkerOutcome.SetBusinessID != nil) || (request.UpdatePlan != nil && request.UpdatePlan.SetBusinessID != nil)
+	if err := jsvc.ValidateAdministrativeAssignment(assignmentRequested); err != nil {
+		return UpdateResult{}, ferrors.FromDomain(err)
 	}
 	result, err := c.api.UpdateJob(ctx, toDomainUpdateRequest(request), foptions.MapFacadeOptionsToCallOptions(opts)...)
 	out := fromDomainUpdateResult(result)
@@ -252,44 +251,22 @@ func durationValue(value *time.Duration) time.Duration {
 	return *value
 }
 
-// toDomainWorkerOutcomeRequest rejects changed approval attachments and snapshots nested intent.
+// toDomainWorkerOutcomeRequest maps approval attachments into service-owned validation.
 func toDomainWorkerOutcomeRequest(request WorkerOutcomeRequest) (d.JobWorkerOutcomeRequest, error) {
-	if request.OutcomePlan != nil && (request.SetBusinessID != nil || request.OutcomePlan.SetBusinessID != nil || request.OutcomePlan.approvedCompletion != nil) {
-		p := request.OutcomePlan
-		approved := p.approvedCompletion
-		if approved == nil {
-			return d.JobWorkerOutcomeRequest{}, fmt.Errorf("%w: assignment requires a frozen approval plan", d.ErrValidation)
-		}
-		if request.Key != approved.Key || request.Mode != approved.Mode || p.Key != approved.Key || p.Mode != MutationMode(approved.Mode) || !reflect.DeepEqual(p.SetBusinessID, approved.SetBusinessID) || !reflect.DeepEqual(p.Variables, approved.Variables) {
-			return d.JobWorkerOutcomeRequest{}, fmt.Errorf("%w: completion approval changed", d.ErrValidation)
-		}
-		request.SetBusinessID = approved.SetBusinessID
-		request.Variables = approved.Variables
+	var approval *jsvc.ScalarCompletionApproval
+	if p := request.OutcomePlan; p != nil {
+		approval = &jsvc.ScalarCompletionApproval{Key: p.Key, Mode: d.JobWorkerOutcomeMode(p.Mode), SetBusinessID: p.SetBusinessID, Variables: p.Variables, Approved: p.approvedCompletion}
 	}
-	if request.SetBusinessID != nil && request.Mode != WorkerOutcomeCompletion {
-		return d.JobWorkerOutcomeRequest{}, fmt.Errorf("%w: business-ID assignment requires completion", d.ErrValidation)
+	return jsvc.PrepareJobWorkerOutcomeRequest(mapWorkerOutcomeRequest(request), approval)
+}
+
+// mapWorkerOutcomeRequest mechanically maps public intent without evaluating eligibility.
+func mapWorkerOutcomeRequest(request WorkerOutcomeRequest) d.JobWorkerOutcomeRequest {
+	return d.JobWorkerOutcomeRequest{SetBusinessID: request.SetBusinessID,
+		Key: request.Key, Mode: d.JobWorkerOutcomeMode(request.Mode), Message: request.Message,
+		Variables: request.Variables, Retries: request.Retries, RetryBackoffMillis: request.RetryBackoffMillis,
+		ErrorCode: request.ErrorCode, SkipConfirmation: request.NoWait,
 	}
-	if err := d.ValidateBusinessIDAssignment(request.SetBusinessID); err != nil {
-		return d.JobWorkerOutcomeRequest{}, err
-	}
-	variables := request.Variables
-	if request.SetBusinessID != nil {
-		var err error
-		variables, err = toolx.CopyJSONMap(request.Variables)
-		if err != nil {
-			return d.JobWorkerOutcomeRequest{}, fmt.Errorf("%w: invalid completion variables: %v", d.ErrValidation, err)
-		}
-	}
-	return d.JobWorkerOutcomeRequest{SetBusinessID: toolx.CopyPtr(request.SetBusinessID),
-		Key:                request.Key,
-		Mode:               d.JobWorkerOutcomeMode(request.Mode),
-		Message:            request.Message,
-		Variables:          variables,
-		Retries:            request.Retries,
-		RetryBackoffMillis: request.RetryBackoffMillis,
-		ErrorCode:          request.ErrorCode,
-		SkipConfirmation:   request.NoWait,
-	}, nil
 }
 
 func fromDomainUpdateResult(result d.JobUpdateResult) UpdateResult {

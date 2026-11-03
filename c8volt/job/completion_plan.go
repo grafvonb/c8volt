@@ -9,28 +9,20 @@ import (
 
 	"github.com/grafvonb/c8volt/c8volt/ferrors"
 	d "github.com/grafvonb/c8volt/internal/domain"
+	jsvc "github.com/grafvonb/c8volt/internal/services/job"
 	"github.com/grafvonb/c8volt/toolx"
 )
 
 // FreezeCompletionPayload copies the approved scalar key, mode and payload before confirmation.
 // Later request payload changes cannot replace approval; edited plan attachments are rejected.
 func (p *UpdatePlan) FreezeCompletionPayload(r WorkerOutcomeRequest) error {
-	if r.Mode != WorkerOutcomeCompletion || p.Key != r.Key || p.Mode != MutationModeCompletion {
-		return fmt.Errorf("%w: inconsistent completion plan", ferrors.ErrInvalidInput)
-	}
-	if err := d.ValidateBusinessIDAssignment(r.SetBusinessID); err != nil {
+	frozen, err := jsvc.FreezeCompletionPayload(p.Key, d.JobWorkerOutcomeMode(p.Mode), mapWorkerOutcomeRequest(r))
+	if err != nil {
 		return ferrors.FromDomain(err)
 	}
-	variables, err := toolx.CopyJSONMap(r.Variables)
-	if err != nil {
-		return fmt.Errorf("%w: invalid completion variables", ferrors.ErrInvalidInput)
-	}
-	p.Variables = variables
-	p.SetBusinessID = toolx.CopyPtr(r.SetBusinessID)
-	r.Variables, _ = toolx.CopyJSONMap(variables)
-	r.SetBusinessID = toolx.CopyPtr(r.SetBusinessID)
-	r.OutcomePlan = nil
-	p.approvedCompletion = &r
+	p.Variables, _ = toolx.CopyJSONMap(frozen.Variables)
+	p.SetBusinessID = toolx.CopyPtr(frozen.SetBusinessID)
+	p.approvedCompletion = &frozen
 	return nil
 }
 
