@@ -21,7 +21,7 @@ var scalarJobOutcomes = []struct {
 	flags      []string
 }{
 	{"completion", "completion", []string{"--complete"}},
-	{"failure", "failure", []string{"--fail", "--retries", "0"}},
+	{"failure", "failure", []string{"--fail", "--set-retries", "0"}},
 	{"BPMN error", "error", []string{"--throw-bpmn-error", "EXPECTED_ERROR"}},
 }
 
@@ -128,7 +128,7 @@ func TestScalarJobCompletedGuardVariables(t *testing.T) {
 			t.Run(outcome.name+"/"+payload, func(t *testing.T) {
 				url, calls := scalarJobOutcomeFixture(t, "8.10", "COMPLETED", outcome.path, 204, false)
 				args := append([]string{"--config", writeTestConfigForVersion(t, url, "8.10"), "update", "job", "--key", scalarJobKey}, outcome.flags...)
-				args = append(args, "--vars", payload)
+				args = append(args, "--set-vars", payload)
 				stdout, stderr, err := runBulkCompletionTerminal(t, args, "configured", false, false, nil)
 				assertScalarJobExit(t, err, 6)
 				require.Empty(t, stdout)

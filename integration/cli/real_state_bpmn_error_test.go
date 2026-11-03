@@ -53,6 +53,7 @@ func TestRealStateBPMNErrorFamily(t *testing.T) {
 	}
 }
 
+// runRealStateBPMNErrorScenarios records BPMN error preview and outcome evidence using suite-owned jobs.
 func runRealStateBPMNErrorScenarios(t *testing.T, profile integrationProfile, dataset realStateJobDataset) ([]evidenceRecord, error) {
 	t.Helper()
 	var records []evidenceRecord
@@ -62,7 +63,7 @@ func runRealStateBPMNErrorScenarios(t *testing.T, profile integrationProfile, da
 		return records, fmt.Errorf("real-state BPMN error dataset for profile %q has no job", profile.Name)
 	}
 
-	dryRunResult := runC8VoltForProfile(t, profile.Name, "real-state-bpmn-error-update-dry-run", "--automation", "--json", "update", "job", "--key", jobs[0].Key, "--throw-bpmn-error", "ErrorTimerCode", "--message", "c8volt real-state BPMN error dry run", "--vars", `{"c8voltBPMNError":true}`, "--dry-run")
+	dryRunResult := runC8VoltForProfile(t, profile.Name, "real-state-bpmn-error-update-dry-run", "--automation", "--json", "update", "job", "--key", jobs[0].Key, "--throw-bpmn-error", "ErrorTimerCode", "--message", "c8volt real-state BPMN error dry run", "--set-vars", `{"c8voltBPMNError":true}`, "--dry-run")
 	dryRunRecord := realStateBPMNErrorRecord(profile, dryRunResult, "update job", "real-state-bpmn-error-update-dry-run", "json", []string{"key", "throw-bpmn-error", "message", "vars", "dry-run"}, []string{jobs[0].Key, jobs[0].ProcessInstanceKey}, true, false)
 	if err := validateRealStateBPMNErrorDryRun(dryRunResult); err != nil {
 		dryRunRecord.Outcome = realStateOutcomeFailed

@@ -58,6 +58,7 @@ func TestRealStateIncidentsFamily(t *testing.T) {
 	}
 }
 
+// runRealStateIncidentScenarios creates incident evidence through canonical technical-failure input.
 func runRealStateIncidentScenarios(t *testing.T, profile integrationProfile, dataset realStateJobDataset) ([]evidenceRecord, error) {
 	t.Helper()
 	var records []evidenceRecord
@@ -67,7 +68,7 @@ func runRealStateIncidentScenarios(t *testing.T, profile integrationProfile, dat
 		return records, fmt.Errorf("real-state incident dataset for profile %q has %d jobs, want at least 2", profile.Name, len(jobs))
 	}
 
-	failResult := runC8VoltForProfile(t, profile.Name, "real-state-incidents-fail-job", "--automation", "--json", "update", "job", "--key", jobs[0].Key, "--fail", "--retries", "0", "--message", "c8volt real-state incident setup", "--no-wait")
+	failResult := runC8VoltForProfile(t, profile.Name, "real-state-incidents-fail-job", "--automation", "--json", "update", "job", "--key", jobs[0].Key, "--fail", "--set-retries", "0", "--message", "c8volt real-state incident setup", "--no-wait")
 	failRecord := realStateJobRecord(profile, failResult, "update job", "real-state-incidents-fail-job", "json", []string{"key", "fail", "retries", "message", "no-wait"}, []string{jobs[0].Key, jobs[0].ProcessInstanceKey}, false, true)
 	if err := validateRealStateJobWorkerOutcome(failResult); err != nil {
 		failRecord.Outcome = realStateOutcomeFailed

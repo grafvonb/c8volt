@@ -6,7 +6,7 @@ nav_exclude: true
 has_toc: true
 ---
 
-> Generated from build `c8volt v4.4.0-282-g3d60a4c9-dirty`, commit `3d60a4c9`, built `2026-11-03T05:54:58Z` | Supported Camunda 8 versions: 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.3 (final)
+> Generated from build `c8volt v4.4.0-283-g652d2546-dirty`, commit `652d2546`, built `2026-11-03T06:05:51Z` | Supported Camunda 8 versions: 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.3 (final)
 
 <img src="./logo/c8volt_logo_transparent_w_shadow_400x244.png" alt="c8volt logo" />
 
@@ -473,7 +473,7 @@ value validation without backend I/O.
 CLI atomic completion is available through `update job --complete --set-bid`:
 
 ```bash
-./c8volt update job --key <job-key> --complete --set-bid 'ORDER-123' --vars '{"approved":true}' --dry-run
+./c8volt update job --key <job-key> --complete --set-bid 'ORDER-123' --set-vars '{"approved":true}' --dry-run
 ./c8volt update job --key <job-key> --complete --set-bid 'ORDER-123' --auto-confirm
 ./c8volt update job --type cleanup --retries 0 --complete --set-bid 'ORDER-123' --dry-run
 ```
@@ -819,7 +819,7 @@ A preview does not reserve eligibility: a later run can race. Normal execution o
 ```bash
 ./c8volt update process-instance --key <process-instance-key> --set-vars '{"customerTier":"gold"}' --dry-run
 ./c8volt update user-task --key <user-task-key> --set-vars '{"approved":true}' --dry-run
-./c8volt update job --key <job-key> --retries 3 --dry-run
+./c8volt update job --key <job-key> --set-retries 3 --dry-run
 ./c8volt expect process-instance --key <process-instance-key> --state completed
 ```
 
@@ -855,6 +855,8 @@ Assignment dry-run is entirely local, including with `--force`: it lists frozen 
 Assignment-family human previews, summaries and verbose details use the configured INFO logger, leaving stdout empty. Quiet and WARN suppress INFO; failures retain one compact grouped ERROR. DEBUG diagnostics and redaction work independently of verbose. JSON emits one envelope with action, intent, ordered outcomes and all counts, retaining partial successes, uncertainty and original failure exits. Assignment includes explicit `allowOverride: false` by default; unassignment omits assignee and override fields. Keys-only preview emits the unique selection; execution emits only successful native-response keys, in input order, with zero bytes when none succeeded. Quiet preserves requested machine results. JSON execution requires auto-confirm or automation and cannot combine with verbose.
 
 For a single job, `--complete`, `--fail` and `--throw-bpmn-error` reuse the planning lookup to reject an observed `COMPLETED` job before the plan, confirmation or submission, including during dry-run (conflict exit 6). The error names the skipped request and mentions unapplied variables only when supplied, including `{}`. Other states, including `FAILED`, remain subject to backend validation. A later backend rejection keeps its original exit code; a 404 is reported as `job not found`, never inferred to mean already completed. Human errors use the configured logger with compact reasons; JSON retains the existing error evidence. No extra lookup or polling is added. Bulk completion retains its existing already-completed outcome.
+
+In v5, use `--set-retries` for retry updates and technical failures, `--set-timeout` for the job timeout, and `--set-vars` for completion/BPMN-error variables. There are no legacy mutation aliases. Bare `--retries` is only a selector for keyless completion. Inherited `--timeout` now controls HTTP execution exclusively: `--set-timeout 5m --timeout 30s` submits five minutes to the job while using a thirty-second HTTP timeout. A key plus `--timeout` alone selects no mutation and fails.
 
 Complete a selected job backlog with AND predicates. The same nine predicates as `get job` are available: `--state`, `--type`, `--pi-key`, `--element-instance-key`, `--element-id`, `--worker`, `--retries`, `--kind`, and `--listener-event-type`. Keyless `--complete --retries 0` selects zero-retry jobs; keyed completion still rejects `--retries`. Other update modes retain their single-key behavior.
 

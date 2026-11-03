@@ -24,7 +24,7 @@ func TestUpdateJobCommand_RetriesDryRunLoadsCurrentJobAndSkipsMutation(t *testin
 	t.Cleanup(srv.Close)
 	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
 
-	output := executeRootForJobTest(t, "--config", cfgPath, "update", "job", "--key", "2251799813711967", "--retries", "3", "--dry-run")
+	output := executeRootForJobTest(t, "--config", cfgPath, "update", "job", "--key", "2251799813711967", "--set-retries", "3", "--dry-run")
 
 	require.Equal(t, []string{"POST /v2/jobs/search"}, requests)
 	require.Empty(t, patchBodies)
@@ -42,7 +42,7 @@ func TestUpdateJobCommand_RetriesDryRunRendersExplicitKeyTenantContext(t *testin
 	t.Cleanup(srv.Close)
 	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
 
-	output := executeRootForJobTest(t, "--config", cfgPath, "--tenant", tenantAdminKeysSelectedTenant, "update", "job", "--key", "2251799813711967", "--retries", "3", "--dry-run")
+	output := executeRootForJobTest(t, "--config", cfgPath, "--tenant", tenantAdminKeysSelectedTenant, "update", "job", "--key", "2251799813711967", "--set-retries", "3", "--dry-run")
 
 	require.Equal(t, []string{"POST /v2/jobs/search"}, requests)
 	require.Empty(t, patchBodies)
@@ -66,7 +66,7 @@ func TestUpdateJobCommand_JSONDryRunIncludesExplicitKeyTenantContext(t *testing.
 	t.Cleanup(srv.Close)
 	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
 
-	output := executeRootForJobTest(t, "--config", cfgPath, "--tenant", tenantAdminKeysSelectedTenant, "--json", "update", "job", "--key", "2251799813711967", "--retries", "3", "--dry-run")
+	output := executeRootForJobTest(t, "--config", cfgPath, "--tenant", tenantAdminKeysSelectedTenant, "--json", "update", "job", "--key", "2251799813711967", "--set-retries", "3", "--dry-run")
 
 	require.Equal(t, []string{"POST /v2/jobs/search"}, requests)
 	require.Empty(t, patchBodies)
@@ -99,7 +99,7 @@ func TestUpdateJobCommand_RetriesNoOpSkipsPromptAndMutation(t *testing.T) {
 	t.Cleanup(srv.Close)
 	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
 
-	output := executeRootForJobTest(t, "--config", cfgPath, "update", "job", "--key", "2251799813711967", "--retries", "3")
+	output := executeRootForJobTest(t, "--config", cfgPath, "update", "job", "--key", "2251799813711967", "--set-retries", "3")
 
 	require.Equal(t, []string{"POST /v2/jobs/search"}, requests)
 	require.Empty(t, patchBodies)
@@ -116,7 +116,7 @@ func TestUpdateJobCommand_RetriesNoOpDryRunReportsNoChangesApplied(t *testing.T)
 	t.Cleanup(srv.Close)
 	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
 
-	output := executeRootForJobTest(t, "--config", cfgPath, "update", "job", "--key", "2251799813711967", "--retries", "3", "--dry-run")
+	output := executeRootForJobTest(t, "--config", cfgPath, "update", "job", "--key", "2251799813711967", "--set-retries", "3", "--dry-run")
 
 	require.Equal(t, []string{"POST /v2/jobs/search"}, requests)
 	require.Empty(t, patchBodies)
@@ -133,7 +133,7 @@ func TestUpdateJobCommand_JSONDryRunRetriesPlanPayload(t *testing.T) {
 	t.Cleanup(srv.Close)
 	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
 
-	output := executeRootForJobTest(t, "--config", cfgPath, "--json", "update", "job", "--key", "2251799813711967", "--retries", "3", "--dry-run")
+	output := executeRootForJobTest(t, "--config", cfgPath, "--json", "update", "job", "--key", "2251799813711967", "--set-retries", "3", "--dry-run")
 
 	require.Equal(t, []string{"POST /v2/jobs/search"}, requests)
 	require.Empty(t, patchBodies)
@@ -161,7 +161,7 @@ func TestUpdateJobCommand_TimeoutDryRunReportsSubmissionIntent(t *testing.T) {
 	t.Cleanup(srv.Close)
 	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
 
-	output := executeRootForJobTest(t, "--config", cfgPath, "update", "job", "--key", "2251799813711967", "--timeout", "5m", "--dry-run")
+	output := executeRootForJobTest(t, "--config", cfgPath, "update", "job", "--key", "2251799813711967", "--set-timeout", "5m", "--dry-run")
 
 	require.Equal(t, []string{"POST /v2/jobs/search"}, requests)
 	require.Empty(t, patchBodies)
@@ -179,7 +179,7 @@ func TestUpdateJobCommand_JSONDryRunRetriesAndTimeoutPlanPayload(t *testing.T) {
 	t.Cleanup(srv.Close)
 	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
 
-	output := executeRootForJobTest(t, "--config", cfgPath, "--json", "update", "job", "--key", "2251799813711967", "--retries", "3", "--timeout", "5m", "--dry-run")
+	output := executeRootForJobTest(t, "--config", cfgPath, "--json", "update", "job", "--key", "2251799813711967", "--set-retries", "3", "--set-timeout", "5m", "--dry-run")
 
 	require.Equal(t, []string{"POST /v2/jobs/search"}, requests)
 	require.Empty(t, patchBodies)

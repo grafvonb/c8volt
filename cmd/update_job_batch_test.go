@@ -234,7 +234,7 @@ func TestUpdateJobBulkCompletionFailures(t *testing.T) {
 			fixture, server := newBulkCompletionFixture(t, "8.8", scenario)
 			args := []string{"--config", writeTestConfigForVersion(t, server.URL, "8.8"), "--tenant", "tenant-a", "--json", "update", "job", "--type", "cleanup", "--complete", "--auto-confirm", "--workers", "1", "--batch-size", "1"}
 			if scenario == "variables" {
-				args = append(args, "--vars", `{"x":1}`)
+				args = append(args, "--set-vars", `{"x":1}`)
 			}
 			encoded, _ := json.Marshal(args)
 			stdout, stderr, err := testx.RunCmdSubprocessSeparate(t, "TestUpdateJobBulkCompletionHelper", map[string]string{"C8VOLT_BATCH_ARGS": string(encoded)})
@@ -363,7 +363,7 @@ func TestUpdateJobBulkCompletionConfirmation(t *testing.T) {
 
 // TestUpdateJobBulkCompletionInvalidInputs verifies CLI guards reject before any HTTP call.
 func TestUpdateJobBulkCompletionInvalidInputs(t *testing.T) {
-	for _, flags := range [][]string{{"--total"}, {"--keys-only"}, {"--json"}, {"--json", "--dry-run", "--verbose"}, {"--key", "2251799813711967"}, {"--vars", "[]"}, {"--type", ""}, {"--limit", "-1"}, {"--complete=false"}} {
+	for _, flags := range [][]string{{"--total"}, {"--keys-only"}, {"--json"}, {"--json", "--dry-run", "--verbose"}, {"--key", "2251799813711967"}, {"--set-vars", "[]"}, {"--type", ""}, {"--limit", "-1"}, {"--complete=false"}} {
 		t.Run(strings.Join(flags, " "), func(t *testing.T) {
 			fixture, server := newBulkCompletionFixture(t, "8.8", "normal")
 			args := []string{"--config", writeTestConfigForVersion(t, server.URL, "8.8"), "update", "job", "--type", "cleanup", "--complete"}
@@ -626,7 +626,7 @@ func TestUpdateJobBulkCompletionExplicitFailures(t *testing.T) {
 		{name: "empty comma", flags: []string{"--key", "1,"}},
 		{name: "empty scalar", flags: []string{"--key", ""}},
 		{name: "missing target", scenario: "explicit missing", flags: []string{"--key", "1,2"}, prepared: true},
-		{name: "listener variables", flags: []string{"--key", "1,2", "--vars", `{"x":1}`}, prepared: true},
+		{name: "listener variables", flags: []string{"--key", "1,2", "--set-vars", `{"x":1}`}, prepared: true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			fixture, server := newBulkCompletionFixture(t, "8.8", tc.scenario)
@@ -707,7 +707,7 @@ func TestUpdateJobBulkCompletionExplicitGuardrails(t *testing.T) {
 		{"--key", "1,2", "--keys-only"}, {"--key", "1,2", "--limit", "0"},
 		{"--key", "1,2", "--batch-size", "10"}, {"--key", "1,2", "--type", "cleanup"},
 		{"-", "--json"}, {"-", "--retries", "0"}, {"-", "--kind", "TASK_LISTENER"},
-		{"--key", "1,2", "--fail"}, {"--key", "1,2", "--timeout", "1m"},
+		{"--key", "1,2", "--fail"}, {"--key", "1,2", "--set-timeout", "1m"},
 		{"--key", "1,2", "--throw-bpmn-error", "ERROR"},
 	} {
 		t.Run(strings.Join(flags, " "), func(t *testing.T) {

@@ -117,3 +117,52 @@ Started: 2026-11-03 06:40:31
 - Updated source help, README migration guidance, maintained integration invocation/coverage fixtures and shared file-fixture parsing; regenerated CLI docs/homepage using `GOFLAGS='' make docs-content`. Passed touched-file gofmt verification, `git diff --check`, and `bash -n integration/scripts/run-suite.sh`.
 - Relevant inherited test/config environment was empty and GOFLAGS was cleared. All executed runtime checks used isolated fakes/subprocess/terminal fixtures; integration scripts/fixtures received static maintenance only. No live-engine behavior is established. Job/run and repair retry/timeout changes remain for their owning tasks.
 ---
+
+---
+## Iteration 3 - 2026-11-03 07:13
+**Work Unit**: US1 T003 completed; job retry/timeout intent and inline variable migration (partial US1)
+**Tasks Completed**:
+- [x] T003: Separate job retry predicates and submitted retries, restore inherited HTTP timeout, and migrate inline variables with tests and documentation.
+**Tasks Remaining in Work Unit**: T003 has none; US1 has T004 remaining.
+**Commit**: This work-unit commit
+**Files Changed**:
+- README.md
+- cmd/command_contract_test.go
+- cmd/flag_intent_job_test.go
+- cmd/flag_migration.go
+- cmd/job_task_business_id_test.go
+- cmd/update.go
+- cmd/update_job.go
+- cmd/update_job_assignment_logging_test.go
+- cmd/update_job_assignment_test.go
+- cmd/update_job_batch.go
+- cmd/update_job_batch_acceptance_test.go
+- cmd/update_job_batch_logging_test.go
+- cmd/update_job_batch_terminal_test.go
+- cmd/update_job_batch_test.go
+- cmd/update_job_outcome.go
+- cmd/update_job_outcome_guard_test.go
+- cmd/update_job_outcome_test.go
+- cmd/update_job_plan_test.go
+- cmd/update_job_request.go
+- cmd/update_job_request_test.go
+- cmd/update_job_test.go
+- docs/cli/c8volt_update.md
+- docs/cli/c8volt_update_job.md
+- docs/index.md
+- integration/cli/all_commands_test.go
+- integration/cli/behavioral_scenarios_test.go
+- integration/cli/real_state_bpmn_error_test.go
+- integration/cli/real_state_incidents_test.go
+- integration/cli/real_state_jobs_test.go
+- specs/369-standardize-flag-intent/progress.md
+- specs/369-standardize-flag-intent/ralph-memory.md
+- specs/369-standardize-flag-intent/tasks.md
+**Learnings**:
+- Changed canonical retry tests first and observed unknown-flag failure; inherited timeout identity also failed before removing the local shadow. Independent retry storage preserves explicit zero, and existing root HTTP resolution now receives the inherited execution flag without a resolver rewrite.
+- Passed focused command/migration/config/metadata checks: `GOFLAGS='' go test ./cmd -run 'TestFlagIntentJob|TestUpdateJob|TestParseUpdateJob|TestFlagIntentMigration|TestCommandContract|TestCapabilities|TestCompletion|TestScalarJobCompletedGuard|TestRetrieveAndNormalizeConfig' -count=1` (8.677s). New tests cover default/file/profile/environment/explicit HTTP precedence before and after command words, independently captured job payload, valid mutation modes with HTTP timeout, rejected legacy/mixed retry input and variable spellings, no remote calls, configured plain/structured ERROR records and one JSON envelope through EOF.
+- Broad `GOFLAGS='' go test ./cmd ./config ./docsgen -count=1` completed in 405.052s for cmd, reporting only TestJobBusinessIDPlans failures caused by two remaining bare retry mutation fixtures. Corrected those fixtures and passed the entire failing family with `GOFLAGS='' go test ./cmd -run '^TestJobBusinessIDPlans$' -count=1` (2.507s). All other cmd tests passed in the broad run; config (0.460s) and docsgen (1.778s) passed. The full broad command was not repeated after this fixture-only correction.
+- Updated existing logging/real-terminal matrices to exercise canonical variables. Nonempty listener payloads correctly failed existing preparation guards; retained that restriction and used an empty object in listener logging fixtures. Passed `GOFLAGS='' go test ./cmd -run 'TestBulkCompletionDiagnosticLogging|TestBulkCompletionSummaryLogging|TestBulkCompletionTerminal|TestUpdateJobAssignmentScalarLogging' -count=1` (7.978s). Coverage includes INFO routing/suppression, configured/inherited destinations, repeated backend failures, redacted DEBUG via flag/config, partial single envelopes, prompts, and empty-scope behavior.
+- Traced early failures through static semantic marker or removed-token map, local diagnostic configuration, configured rendering and single exit. Backend service/facade/rendering paths are unchanged. Reviewed changed output boundaries: no new direct diagnostic prints or raw transport rendering; variable JSON decoder errors retain their existing local-input contract. No new lifecycle or cross-layer dependencies.
+- Updated source examples/help, capability/completion expectations, README and maintained integration invocation inventories; regenerated docs with `GOFLAGS='' make docs-content`. Touched Go formatting and `git diff --check` passed. No inherited live-test/config environment was present; GOFLAGS was cleared. All runtime checks used isolated fakes/subprocess/terminal fixtures; integration files were maintained statically only, and real-engine behavior remains unverified.
+---

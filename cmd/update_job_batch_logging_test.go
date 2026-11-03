@@ -127,7 +127,7 @@ func TestBulkCompletionDiagnosticLogging(t *testing.T) {
 					_, err = fmt.Fprintf(file, "log:\n  level: %s\n  format: %s\n", level, format)
 					require.NoError(t, err)
 					require.NoError(t, file.Close())
-					args := []string{"--config", cfg, "--tenant", "tenant-a", "update", "job", "--complete", "--kind", "TASK_LISTENER", "--auto-confirm"}
+					args := []string{"--config", cfg, "--tenant", "tenant-a", "update", "job", "--complete", "--set-vars", `{}`, "--kind", "TASK_LISTENER", "--auto-confirm"}
 					if assignment {
 						args = append(args, "--set-bid", "ORDER-123")
 					}
@@ -280,6 +280,7 @@ func TestBulkCompletionSummaryLogging(t *testing.T) {
 }
 
 // testBulkCompletionSummaryLogging shares the full logger matrix for both payloads.
+// Empty canonical variables retain the existing listener payload restriction.
 func testBulkCompletionSummaryLogging(t *testing.T, assignment bool) {
 	for _, format := range []string{"plain-time", "json"} {
 		for _, level := range []string{"info", "warn"} {
@@ -292,7 +293,7 @@ func testBulkCompletionSummaryLogging(t *testing.T, assignment bool) {
 					_, err = fmt.Fprintf(f, "log:\n  level: %s\n  format: %s\n", level, format)
 					require.NoError(t, err)
 					require.NoError(t, f.Close())
-					args := []string{"--config", cfg, "--tenant", "tenant-a", "update", "job", "--complete", "--type", "cleanup", "--auto-confirm"}
+					args := []string{"--config", cfg, "--tenant", "tenant-a", "update", "job", "--complete", "--set-vars", `{}`, "--type", "cleanup", "--auto-confirm"}
 					if assignment {
 						args = append(args, "--set-bid", "ORDER-123")
 					}

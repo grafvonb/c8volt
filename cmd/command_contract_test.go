@@ -1583,14 +1583,14 @@ func TestCommandCapabilityForCommand_GetAndUpdateJobContract(t *testing.T) {
 		Description: "job key to update; for --complete, repeat or use comma-separated keys and stdin '-'",
 	})
 	require.Contains(t, updateCapability.Flags, FlagContract{
-		Name:        "retries",
+		Name:        "set-retries",
 		Type:        "int32",
 		Required:    false,
 		Repeated:    false,
-		Description: "retry count to set, remaining retries for --fail, or exact selector with keyless --complete (including 0)",
+		Description: "retry count to set or remaining retries for --fail (including 0)",
 	})
 	require.Contains(t, updateCapability.Flags, FlagContract{
-		Name:        "timeout",
+		Name:        "set-timeout",
 		Type:        "string",
 		Required:    false,
 		Repeated:    false,
@@ -1632,7 +1632,7 @@ func TestCommandCapabilityForCommand_GetAndUpdateJobContract(t *testing.T) {
 		Description: "complete the job through the worker outcome API",
 	})
 	require.Contains(t, updateCapability.Flags, FlagContract{
-		Name:        "vars",
+		Name:        "set-vars",
 		Type:        "string",
 		Required:    false,
 		Repeated:    false,
@@ -2735,8 +2735,8 @@ func TestGetJobAndUpdateJobHelp_DocumentsDiscoveryAndMutationGuards(t *testing.T
 		"Update element-local, process-instance or user-task variables, complete, assign or unassign user tasks, or update job retries, timeouts, and worker outcomes",
 		"job retries, timeouts, and worker outcomes",
 		"plan and confirm updates",
-		"./c8volt update job --key <job-key> --retries 3 --dry-run",
-		"./c8volt update job --key <job-key> --timeout 5m --auto-confirm",
+		"./c8volt update job --key <job-key> --set-retries 3 --dry-run",
+		"./c8volt update job --key <job-key> --set-timeout 5m --auto-confirm",
 	}, nil)
 	require.Contains(t, output, "job")
 
@@ -2753,20 +2753,20 @@ func TestGetJobAndUpdateJobHelp_DocumentsDiscoveryAndMutationGuards(t *testing.T
 		"mutations require --dry-run, --auto-confirm, or --automation",
 		"--json cannot be combined with --verbose",
 		"Camunda 8.8 or newer",
-		"./c8volt update job --key <job-key> --retries 3 --dry-run",
-		"./c8volt update job --key <job-key> --fail --retries 0",
+		"./c8volt update job --key <job-key> --set-retries 3 --dry-run",
+		"./c8volt update job --key <job-key> --fail --set-retries 0",
 		"./c8volt update job --key <job-key> --throw-bpmn-error PAYMENT_DECLINED",
-		`./c8volt update job --key <job-key> --complete --vars '{"approved":true}' --dry-run`,
-		"./c8volt --json update job --key <job-key> --retries 3 --dry-run",
+		`./c8volt update job --key <job-key> --complete --set-vars '{"approved":true}' --dry-run`,
+		"./c8volt --json update job --key <job-key> --set-retries 3 --dry-run",
 		"-k, --key string",
-		"--retries int32",
-		"--timeout string",
+		"--set-retries int32",
+		"--set-timeout string",
 		"--fail",
 		"--retry-backoff string",
 		"--message string",
 		"--throw-bpmn-error string",
 		"--complete",
-		"--vars string",
+		"--set-vars string",
 		"--dry-run",
 		"--auto-confirm",
 	}, nil)

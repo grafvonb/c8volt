@@ -38,11 +38,11 @@ func parseUpdateJobBPMNErrorRequest(cmd *cobra.Command) (job.UpdateRequest, erro
 	if cmd.Flags().Changed("complete") {
 		return job.UpdateRequest{}, mutuallyExclusiveFlagsf("--throw-bpmn-error cannot be combined with --complete")
 	}
-	if cmd.Flags().Changed("retries") {
-		return job.UpdateRequest{}, mutuallyExclusiveFlagsf("--throw-bpmn-error cannot be combined with --retries")
+	if cmd.Flags().Changed("set-retries") {
+		return job.UpdateRequest{}, mutuallyExclusiveFlagsf("--throw-bpmn-error cannot be combined with --set-retries")
 	}
-	if cmd.Flags().Changed("timeout") {
-		return job.UpdateRequest{}, mutuallyExclusiveFlagsf("--throw-bpmn-error cannot be combined with --timeout")
+	if cmd.Flags().Changed("set-timeout") {
+		return job.UpdateRequest{}, mutuallyExclusiveFlagsf("--throw-bpmn-error cannot be combined with --set-timeout")
 	}
 	if cmd.Flags().Changed("retry-backoff") {
 		return job.UpdateRequest{}, mutuallyExclusiveFlagsf("--throw-bpmn-error cannot be combined with --retry-backoff")
@@ -52,7 +52,7 @@ func parseUpdateJobBPMNErrorRequest(cmd *cobra.Command) (job.UpdateRequest, erro
 		return job.UpdateRequest{}, invalidFlagValuef("BPMN error requires a non-empty --throw-bpmn-error")
 	}
 	var variables map[string]any
-	if cmd.Flags().Changed("vars") {
+	if cmd.Flags().Changed("set-vars") {
 		parsed, err := parseUpdateJobVariables(flagUpdateJobVariables)
 		if err != nil {
 			return job.UpdateRequest{}, err
@@ -88,11 +88,11 @@ func parseUpdateJobCompletionRequest(cmd *cobra.Command) (job.UpdateRequest, err
 	if cmd.Flags().Changed("throw-bpmn-error") {
 		return job.UpdateRequest{}, mutuallyExclusiveFlagsf("--complete cannot be combined with --throw-bpmn-error")
 	}
-	if cmd.Flags().Changed("retries") {
-		return job.UpdateRequest{}, mutuallyExclusiveFlagsf("--complete cannot be combined with --retries")
+	if cmd.Flags().Changed("set-retries") {
+		return job.UpdateRequest{}, mutuallyExclusiveFlagsf("--complete cannot be combined with --set-retries")
 	}
-	if cmd.Flags().Changed("timeout") {
-		return job.UpdateRequest{}, mutuallyExclusiveFlagsf("--complete cannot be combined with --timeout")
+	if cmd.Flags().Changed("set-timeout") {
+		return job.UpdateRequest{}, mutuallyExclusiveFlagsf("--complete cannot be combined with --set-timeout")
 	}
 	if cmd.Flags().Changed("retry-backoff") {
 		return job.UpdateRequest{}, mutuallyExclusiveFlagsf("--complete cannot be combined with --retry-backoff")
@@ -101,7 +101,7 @@ func parseUpdateJobCompletionRequest(cmd *cobra.Command) (job.UpdateRequest, err
 		return job.UpdateRequest{}, mutuallyExclusiveFlagsf("--complete cannot be combined with --message")
 	}
 	var variables map[string]any
-	if cmd.Flags().Changed("vars") {
+	if cmd.Flags().Changed("set-vars") {
 		parsed, err := parseUpdateJobVariables(flagUpdateJobVariables)
 		if err != nil {
 			return job.UpdateRequest{}, err
@@ -141,19 +141,19 @@ func parseUpdateJobTechnicalFailureRequest(cmd *cobra.Command) (job.UpdateReques
 	if cmd.Flags().Changed("complete") {
 		return job.UpdateRequest{}, mutuallyExclusiveFlagsf("--fail cannot be combined with --complete")
 	}
-	if cmd.Flags().Changed("timeout") {
-		return job.UpdateRequest{}, mutuallyExclusiveFlagsf("--fail cannot be combined with --timeout")
+	if cmd.Flags().Changed("set-timeout") {
+		return job.UpdateRequest{}, mutuallyExclusiveFlagsf("--fail cannot be combined with --set-timeout")
 	}
-	if cmd.Flags().Changed("vars") {
-		return job.UpdateRequest{}, invalidFlagValuef("--vars is reserved for BPMN error and completion implementations")
+	if cmd.Flags().Changed("set-vars") {
+		return job.UpdateRequest{}, invalidFlagValuef("--set-vars is reserved for BPMN error and completion implementations")
 	}
-	if !cmd.Flags().Changed("retries") {
-		return job.UpdateRequest{}, invalidFlagValuef("technical job failure requires --retries")
+	if !cmd.Flags().Changed("set-retries") {
+		return job.UpdateRequest{}, invalidFlagValuef("technical job failure requires --set-retries")
 	}
-	if flagUpdateJobRetries < 0 {
-		return job.UpdateRequest{}, invalidFlagValuef("invalid value for --retries: %d, expected non-negative integer", flagUpdateJobRetries)
+	if flagUpdateJobSetRetries < 0 {
+		return job.UpdateRequest{}, invalidFlagValuef("invalid value for --set-retries: %d, expected non-negative integer", flagUpdateJobSetRetries)
 	}
-	retries := flagUpdateJobRetries
+	retries := flagUpdateJobSetRetries
 	outcome := job.WorkerOutcomeRequest{
 		Key:             flagUpdateJobKey,
 		Mode:            job.WorkerOutcomeTechnicalFailure,
@@ -191,11 +191,11 @@ func parseUpdateJobTechnicalFailureRequest(cmd *cobra.Command) (job.UpdateReques
 func parseUpdateJobVariables(raw string) (map[string]any, error) {
 	var decoded any
 	if err := json.Unmarshal([]byte(raw), &decoded); err != nil {
-		return nil, invalidFlagValuef("--vars must be a valid JSON object: %v", err)
+		return nil, invalidFlagValuef("--set-vars must be a valid JSON object: %v", err)
 	}
 	variables, ok := decoded.(map[string]any)
 	if !ok || variables == nil {
-		return nil, invalidFlagValuef("--vars must be a JSON object")
+		return nil, invalidFlagValuef("--set-vars must be a JSON object")
 	}
 	return variables, nil
 }
@@ -211,7 +211,7 @@ func changedUpdateJobWorkerOutcomeFlags(cmd *cobra.Command) []string {
 		"message",
 		"throw-bpmn-error",
 		"complete",
-		"vars",
+		"set-vars",
 	}
 	changed := make([]string, 0, len(names))
 	for _, name := range names {

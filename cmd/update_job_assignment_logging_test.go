@@ -39,7 +39,7 @@ func TestUpdateJobAssignmentScalarLogging(t *testing.T) {
 					_, err = fmt.Fprintf(file, "log:\n  level: %s\n  format: %s\n", level, format)
 					require.NoError(t, err)
 					require.NoError(t, file.Close())
-					args := []string{"--config", cfg, "update", "job", "--key", scalarJobKey, "--complete", "--set-bid", "ORDER-123", "--auto-confirm"}
+					args := []string{"--config", cfg, "update", "job", "--key", scalarJobKey, "--complete", "--set-vars", `{"approved":true}`, "--set-bid", "ORDER-123", "--auto-confirm"}
 					for _, flag := range []string{"verbose", "quiet", "json"} {
 						if strings.Contains(mode, flag) {
 							args = append(args, "--"+flag)

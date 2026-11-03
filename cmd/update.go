@@ -26,8 +26,8 @@ Requires Camunda 8.8 or newer. Use a resource subcommand to plan and confirm upd
   ./c8volt update user-task --key 2251799813685249 --set-assignee alice --force
   ./c8volt update user-task --key 2251799813685249 --unassign --auto-confirm
   ./c8volt update ut --key 2251799813685249 --complete --auto-confirm
-  ./c8volt update job --key <job-key> --retries 3 --dry-run
-  ./c8volt update job --key <job-key> --timeout 5m --auto-confirm
+  ./c8volt update job --key <job-key> --set-retries 3 --dry-run
+  ./c8volt update job --key <job-key> --set-timeout 5m --auto-confirm
   printf '%s\n' "$PROCESS_INSTANCE_KEY_A" "$PROCESS_INSTANCE_KEY_B" | ./c8volt update process-instance - --set-vars '{"customerTier":"gold"}' --dry-run
   printf '%s\n' "$USER_TASK_KEY_A" "$USER_TASK_KEY_B" | ./c8volt update user-task - --set-vars '{"approved":true}' --dry-run
   ./c8volt --automation --json update process-instance --key <process-instance-key> --set-vars '{"customerTier":"gold"}' --dry-run`,

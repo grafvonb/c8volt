@@ -673,7 +673,7 @@ func TestBulkCompletionAcceptanceGuards(t *testing.T) {
 				f, server := newCompletionAcceptanceServer(t, version, completionAcceptancePages([]string{bulkCompletionRow(key, "CREATED")}, 2), map[string]string{key: tc.behavior})
 				flags := []string{"--type", "cleanup", "--auto-confirm", "--json"}
 				if tc.variables {
-					flags = append(flags, "--vars", `{"approved":true}`)
+					flags = append(flags, "--set-vars", `{"approved":true}`)
 				}
 				stdout, _, err := runCompletionAcceptance(t, server, version, flags, "", false)
 				payload := requireCompletionAcceptanceFailure(t, stdout, err)

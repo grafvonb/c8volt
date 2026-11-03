@@ -95,11 +95,19 @@ func migrationFlagError(cmd *cobra.Command, fallback error) error {
 	return invalidInputError(fallback)
 }
 
+// migrationSemanticError marks static, command-owned migration diagnostics. Never
+// wrap parser errors or messages containing supplied values with this marker.
+type migrationSemanticError struct{ error }
+
 // prepareMigrationReporting loads local reporting configuration only. Invalid
 // local configuration uses the existing bootstrap fallback, with bounded text
 // rather than exposing config contents, payloads, or the original argv.
 func prepareMigrationReporting(cmd *cobra.Command, args []string, original error) error {
 	reporting, migrationErr := migrationReportingInput(cmd, args)
+	var semantic *migrationSemanticError
+	if migrationErr == nil && errors.As(original, &semantic) {
+		migrationErr = semantic.error
+	}
 	if migrationErr == nil {
 		// Cobra parse/Args errors can include arbitrary supplied values. Keep the
 		// original cause privately, with a static invalid-input diagnostic.
