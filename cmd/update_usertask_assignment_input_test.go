@@ -19,7 +19,7 @@ import (
 func newAssignmentInputCommand(t *testing.T, argv ...string) *cobra.Command {
 	t.Helper()
 	cmd := newCompletionInputCommand(t)
-	cmd.Flags().String("assign", "", "")
+	cmd.Flags().String("set-assignee", "", "")
 	cmd.Flags().Bool("unassign", false, "")
 	cmd.Flags().Bool("complete", false, "")
 	cmd.Flags().Bool("force", false, "")
@@ -33,7 +33,7 @@ func TestUpdateUserTaskAssignmentInputSelection(t *testing.T) {
 	for _, operation := range []string{"assign", "unassign"} {
 		selector := "--" + operation
 		if operation == "assign" {
-			selector += "=alice"
+			selector = "--set-assignee=alice"
 		}
 		for _, tc := range []struct {
 			name    string
@@ -92,7 +92,7 @@ func TestUpdateUserTaskAssignmentInputControls(t *testing.T) {
 	for _, operation := range []string{"assign", "unassign"} {
 		selector := "--" + operation
 		if operation == "assign" {
-			selector += "=  opaque\n\x1bidentity  "
+			selector = "--set-assignee=  opaque\n\x1bidentity  "
 		}
 		for _, tc := range []struct {
 			flags   []string
@@ -105,10 +105,10 @@ func TestUpdateUserTaskAssignmentInputControls(t *testing.T) {
 			{flags: []string{"--workers", "-1"}, invalid: true},
 			{flags: []string{"--no-wait"}, invalid: true},
 			{flags: []string{"--no-wait=false"}},
-			{flags: []string{"--vars="}, invalid: true},
-			{flags: []string{"--vars-file="}, invalid: true},
-			{flags: []string{"--vars", "{}"}, invalid: true},
-			{flags: []string{"--vars-file", "not-read.json"}, invalid: true},
+			{flags: []string{"--set-vars="}, invalid: true},
+			{flags: []string{"--set-vars-file="}, invalid: true},
+			{flags: []string{"--set-vars", "{}"}, invalid: true},
+			{flags: []string{"--set-vars-file", "not-read.json"}, invalid: true},
 			{flags: []string{"--complete"}, invalid: true},
 			{flags: []string{"--complete=false"}},
 			{flags: []string{"--force"}, invalid: operation == "unassign"},
@@ -139,7 +139,7 @@ func TestUpdateUserTaskAssignmentInputControls(t *testing.T) {
 				override, err := cmd.Flags().GetBool("force")
 				require.NoError(t, err)
 				require.Equal(t, override, input.AllowOverride)
-				require.NoError(t, cmd.Flags().Set("assign", "changed"))
+				require.NoError(t, cmd.Flags().Set("set-assignee", "changed"))
 				require.NoError(t, cmd.Flags().Set("force", "true"))
 				flagUpdateUserTaskKeys[0] = "changed"
 				require.Equal(t, completionKeyA, input.Keys[0])
@@ -148,7 +148,7 @@ func TestUpdateUserTaskAssignmentInputControls(t *testing.T) {
 			})
 		}
 	}
-	for _, flags := range [][]string{{"--assign="}, {"--assign", " \t\n"}, {"--assign=alice", "--unassign"}} {
+	for _, flags := range [][]string{{"--set-assignee="}, {"--set-assignee", " \t\n"}, {"--set-assignee=alice", "--unassign"}} {
 		t.Run(strings.Join(flags, " "), func(t *testing.T) {
 			cmd := newAssignmentInputCommand(t, append(flags, "-k", completionKeyA)...)
 			_, err := parseUpdateUserTaskAssignmentInput(cmd, nil)
@@ -166,13 +166,13 @@ func TestUpdateUserTaskAssignmentInputModes(t *testing.T) {
 		invalid   bool
 	}{
 		{},
-		{flags: []string{"--unassign=false", "--complete=false", "--vars={}"}},
+		{flags: []string{"--unassign=false", "--complete=false", "--set-vars={}"}},
 		{flags: []string{"--complete", "--unassign=false"}},
-		{flags: []string{"--assign=", "--complete=false"}, operation: "assign"},
-		{flags: []string{"--assign=alice", "--unassign=false"}, operation: "assign"},
+		{flags: []string{"--set-assignee=", "--complete=false"}, operation: "assign"},
+		{flags: []string{"--set-assignee=alice", "--unassign=false"}, operation: "assign"},
 		{flags: []string{"--unassign", "--complete=false"}, operation: "unassign"},
 		{flags: []string{"--unassign", "--complete"}, invalid: true},
-		{flags: []string{"--assign=alice", "--complete"}, invalid: true},
+		{flags: []string{"--set-assignee=alice", "--complete"}, invalid: true},
 		{flags: []string{"--force=false"}, invalid: true},
 		{flags: []string{"--force"}, invalid: true},
 		{flags: []string{"--complete", "--force=false"}, invalid: true},
@@ -197,7 +197,7 @@ func TestUpdateUserTaskAssignmentInputModes(t *testing.T) {
 // TestUpdateUserTaskAssignmentInputReader bounds scanner failures and discards
 // the entire selection after late failure, without reading unsolicited stdin.
 func TestUpdateUserTaskAssignmentInputReader(t *testing.T) {
-	for _, selector := range []string{"--assign=alice", "--unassign"} {
+	for _, selector := range []string{"--set-assignee=alice", "--unassign"} {
 		cmd := newAssignmentInputCommand(t, selector, "-k", completionKeyA)
 		broken := &completionBrokenReader{}
 		cmd.SetIn(broken)

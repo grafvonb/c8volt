@@ -25,7 +25,7 @@ func parseUpdateProcessInstanceVariablesFromFlags(cmd *cobra.Command, raw string
 	return parseUpdateVariablesFromFlags(cmd, raw, filePath)
 }
 
-// parseUpdateProcessInstanceVariables decodes the --vars JSON object used for process-instance updates.
+// parseUpdateProcessInstanceVariables decodes the --set-vars JSON object used for process-instance updates.
 func parseUpdateProcessInstanceVariables(raw string, source string) (map[string]any, error) {
 	return parseUpdateVariables(raw, source)
 }

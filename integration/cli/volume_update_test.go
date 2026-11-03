@@ -57,6 +57,7 @@ func TestVolumeUpdateFamily(t *testing.T) {
 	}
 }
 
+// Exercise variable updates with canonical inline and file sources.
 func runVolumeUpdateProcessInstanceScenarios(t *testing.T, profile integrationProfile, dataset volumeDataset) ([]evidenceRecord, error) {
 	t.Helper()
 	var records []evidenceRecord
@@ -68,8 +69,8 @@ func runVolumeUpdateProcessInstanceScenarios(t *testing.T, profile integrationPr
 
 	dryRunVar := volumeVariableName("dryRun", profile.Name)
 	dryRunPayload := fmt.Sprintf(`{%q:"planned"}`, dryRunVar)
-	dryRunResult := runC8VoltForProfile(t, profile.Name, "volume-update-pi-json-dry-run", "--automation", "--json", "update", "pi", "--key", keys[0], "--vars", dryRunPayload, "--dry-run")
-	dryRunRecord := volumeUpdateRecord(profile, dataset, dryRunResult, "volume-update-pi-json-dry-run", "json", []string{"key", "vars", "dry-run"})
+	dryRunResult := runC8VoltForProfile(t, profile.Name, "volume-update-pi-json-dry-run", "--automation", "--json", "update", "pi", "--key", keys[0], "--set-vars", dryRunPayload, "--dry-run")
+	dryRunRecord := volumeUpdateRecord(profile, dataset, dryRunResult, "volume-update-pi-json-dry-run", "json", []string{"key", "set-vars", "dry-run"})
 	if err := validateVolumeUpdateDryRun(t, profile, dryRunResult, keys[0], dryRunVar); err != nil {
 		dryRunRecord.Outcome = volumeOutcomeFail
 		dryRunRecord.FailureClass = volumeFailureProduct
@@ -79,8 +80,8 @@ func runVolumeUpdateProcessInstanceScenarios(t *testing.T, profile integrationPr
 
 	confirmedVar := volumeVariableName("confirmed", profile.Name)
 	confirmedPayload := fmt.Sprintf(`{%q:"done"}`, confirmedVar)
-	confirmedResult := runC8VoltForProfile(t, profile.Name, "volume-update-pi-json-auto-confirm-workers", "--automation", "--json", "update", "pi", "--key", keys[0], "--key", keys[1], "--vars", confirmedPayload, "--workers", "2")
-	confirmedRecord := volumeUpdateRecord(profile, dataset, confirmedResult, "volume-update-pi-json-auto-confirm-workers", "json", []string{"key", "vars", "workers"})
+	confirmedResult := runC8VoltForProfile(t, profile.Name, "volume-update-pi-json-auto-confirm-workers", "--automation", "--json", "update", "pi", "--key", keys[0], "--key", keys[1], "--set-vars", confirmedPayload, "--workers", "2")
+	confirmedRecord := volumeUpdateRecord(profile, dataset, confirmedResult, "volume-update-pi-json-auto-confirm-workers", "json", []string{"key", "set-vars", "workers"})
 	if err := validateVolumeUpdateConfirmed(t, profile, confirmedResult, keys[:2], confirmedVar); err != nil {
 		confirmedRecord.Outcome = volumeOutcomeFail
 		confirmedRecord.FailureClass = volumeFailureProduct
@@ -93,8 +94,8 @@ func runVolumeUpdateProcessInstanceScenarios(t *testing.T, profile integrationPr
 		stdinVar: "done",
 	})
 	stdinInput := strings.Join([]string{keys[2], keys[2], keys[3]}, "\n") + "\n"
-	stdinResult := runC8VoltWithInput(t, "volume-update-pi-stdin-vars-file", stdinInput, argsForProfile(profile.Name, "--automation", "--json", "update", "pi", "-", "--key", keys[2], "--vars-file", varsFile, "--no-worker-limit")...)
-	stdinRecord := volumeUpdateRecord(profile, dataset, stdinResult, "volume-update-pi-stdin-vars-file", "json", []string{"key", "vars-file", "no-worker-limit", "stdin"})
+	stdinResult := runC8VoltWithInput(t, "volume-update-pi-stdin-vars-file", stdinInput, argsForProfile(profile.Name, "--automation", "--json", "update", "pi", "-", "--key", keys[2], "--set-vars-file", varsFile, "--no-worker-limit")...)
+	stdinRecord := volumeUpdateRecord(profile, dataset, stdinResult, "volume-update-pi-stdin-vars-file", "json", []string{"key", "set-vars-file", "no-worker-limit", "stdin"})
 	stdinRecord.StdinPath = writeVolumeStdinKeys(t, "volume-update-pi-stdin-vars-file", []string{keys[2], keys[2], keys[3]})
 	if err := validateVolumeUpdateConfirmed(t, profile, stdinResult, keys[2:4], stdinVar); err != nil {
 		stdinRecord.Outcome = volumeOutcomeFail
@@ -105,8 +106,8 @@ func runVolumeUpdateProcessInstanceScenarios(t *testing.T, profile integrationPr
 
 	noWaitVar := volumeVariableName("noWait", profile.Name)
 	noWaitPayload := fmt.Sprintf(`{%q:"submitted"}`, noWaitVar)
-	noWaitResult := runC8VoltForProfile(t, profile.Name, "volume-update-pi-json-no-wait", "--automation", "--json", "update", "pi", "--key", keys[3], "--vars", noWaitPayload, "--no-wait")
-	noWaitRecord := volumeUpdateRecord(profile, dataset, noWaitResult, "volume-update-pi-json-no-wait", "json", []string{"key", "vars", "no-wait"})
+	noWaitResult := runC8VoltForProfile(t, profile.Name, "volume-update-pi-json-no-wait", "--automation", "--json", "update", "pi", "--key", keys[3], "--set-vars", noWaitPayload, "--no-wait")
+	noWaitRecord := volumeUpdateRecord(profile, dataset, noWaitResult, "volume-update-pi-json-no-wait", "json", []string{"key", "set-vars", "no-wait"})
 	if err := validateVolumeUpdateAccepted(noWaitResult, []string{keys[3]}); err != nil {
 		noWaitRecord.Outcome = volumeOutcomeFail
 		noWaitRecord.FailureClass = volumeFailureProduct

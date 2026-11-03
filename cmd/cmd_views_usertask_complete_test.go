@@ -41,7 +41,7 @@ func TestUpdateUserTaskCompletionViewParsedPreview(t *testing.T) {
 			t.Run(source+"/"+mode, func(t *testing.T) {
 				argv := []string{"-k", completionKeyB + "," + completionKeyA, "--dry-run"}
 				if source != "omitted" {
-					argv = append(argv, "--vars", source)
+					argv = append(argv, "--set-vars", source)
 				}
 				cmd := newCompletionInputCommand(t, argv...)
 				cmd.SetIn(strings.NewReader(completionKeyA + "\n"))

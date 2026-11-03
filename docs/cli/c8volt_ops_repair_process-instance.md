@@ -35,7 +35,7 @@ c8volt ops repair process-instance [flags]
   ./c8volt ops repair process-instance --state active --limit 5 --dry-run
   ./c8volt ops repair process-instance --direct-incidents-only --bpmn-process-id <bpmn-process-id> --limit 5 --dry-run
   ./c8volt --verbose ops repair process-instance --state active --limit 5 --auto-confirm
-  ./c8volt ops repair process-instance --key <process-instance-key> --vars '{"hasIncident":false}' --report-file repair-process-instance.md
+  ./c8volt ops repair process-instance --key <process-instance-key> --set-vars '{"hasIncident":false}' --report-file repair-process-instance.md
 ```
 
 ### Options
@@ -69,13 +69,13 @@ c8volt ops repair process-instance [flags]
       --report-format string            audit report format: markdown, json (default inferred from report-file extension)
       --retries int32                   retry count to set on related jobs; 0 skips retry restoration (default 1)
       --roots-only                      select only root process instances
+      --set-vars string                 JSON object with variables to set once per process-instance scope before resolving dependent incidents
+      --set-vars-file string            path to JSON object file with variables to set once per process-instance scope
       --start-date-after string         only include process instances with start date >= YYYY-MM-DD
       --start-date-before string        only include process instances with start date <= YYYY-MM-DD
       --start-date-newer-days int       only include process instances N days old or newer (0 means today) (default -1)
       --start-date-older-days int       only include process instances N days old or older (default -1)
   -s, --state string                    state to filter process instances: all, active, completed, canceled, terminated (default "all")
-      --vars string                     JSON object with variables to set once per process-instance scope before resolving dependent incidents
-      --vars-file string                path to JSON object file with variables to set once per process-instance scope
   -w, --workers int                     maximum concurrent workers when repairing multiple incidents (default: min(count, 2*GOMAXPROCS, 32))
 ```
 

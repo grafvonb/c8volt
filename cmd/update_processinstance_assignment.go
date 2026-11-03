@@ -18,7 +18,7 @@ import (
 // assignmentInput consumes all explicit input before the service validates and
 // freezes it. Deliberate empty stdin is a valid scope, unlike missing input.
 func assignmentInput(cmd *cobra.Command, args []string) (typex.Keys, error) {
-	for _, name := range []string{"bid", "vars", "vars-file", "limit", "batch-size"} {
+	for _, name := range []string{"bid", "set-vars", "set-vars-file", "limit", "batch-size"} {
 		if cmd.Flags().Changed(name) {
 			return nil, mutuallyExclusiveFlagsf("--set-bid cannot be combined with --%s", name)
 		}

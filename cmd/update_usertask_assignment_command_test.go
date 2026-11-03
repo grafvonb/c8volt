@@ -80,7 +80,7 @@ func assignmentFlags(operation string) []string {
 	if operation == "unassign" {
 		return []string{"--unassign"}
 	}
-	return []string{"--assign", " alice\nopaque "}
+	return []string{"--set-assignee", " alice\nopaque "}
 }
 
 // TestUpdateUserTaskAssignmentCommandSelection checks aliases, all input sources,
@@ -168,8 +168,8 @@ func TestUpdateUserTaskAssignmentCommandInvalidInputs(t *testing.T) {
 			{"workers negative", []string{"--key", completionKeyA, "--workers", "-1"}, ""},
 			{"no wait", []string{"--key", completionKeyA, "--no-wait"}, ""},
 			{"completion", []string{"--key", completionKeyA, "--complete"}, ""},
-			{"vars", []string{"--key", completionKeyA, "--vars="}, ""},
-			{"vars file", []string{"--key", completionKeyA, "--vars-file="}, ""},
+			{"set-vars", []string{"--key", completionKeyA, "--set-vars="}, ""},
+			{"vars file", []string{"--key", completionKeyA, "--set-vars-file="}, ""},
 			{"verbose json", []string{"--key", completionKeyA, "--verbose"}, ""},
 		} {
 			t.Run(operation+"/"+tc.name, func(t *testing.T) {
@@ -186,7 +186,7 @@ func TestUpdateUserTaskAssignmentCommandInvalidInputs(t *testing.T) {
 			})
 		}
 	}
-	for _, flags := range [][]string{{"--assign="}, {"--assign", " \t "}, {"--assign", "alice", "--unassign"}, {"--unassign", "--force=false"}, {"--force=false"}, {"--unassign=false", "--complete=false"}} {
+	for _, flags := range [][]string{{"--set-assignee="}, {"--set-assignee", " \t "}, {"--set-assignee", "alice", "--unassign"}, {"--unassign", "--force=false"}, {"--force=false"}, {"--unassign=false", "--complete=false"}} {
 		t.Run(strings.Join(flags, " "), func(t *testing.T) {
 			server, calls := newUserTaskAssignmentServer(t, "8.10", "assign", nil)
 			args := append([]string{"--json", "--auto-confirm", "update", "ut", "--key", completionKeyA}, flags...)
@@ -204,7 +204,7 @@ func assignmentModeFlag(operation string) string {
 	if operation == "unassign" {
 		return "--unassign"
 	}
-	return "--assign=alice"
+	return "--set-assignee=alice"
 }
 
 // TestUpdateUserTaskAssignmentCommandGuardrails retains JSON confirmation guards,
@@ -231,7 +231,7 @@ func TestUpdateUserTaskAssignmentCommandGuardrails(t *testing.T) {
 		})
 	}
 	server, capture := newUpdateUserTaskCommandServer(t, "8.10")
-	stdout, stderr, err := runUpdateUserTaskCommand(t, writeTestConfigForVersion(t, server.URL, "8.10"), "", "--automation", "--json", "update", "ut", "--unassign=false", "--complete=false", "--key", "2251799815391233", "--vars", `{"approved":true}`, "--no-wait")
+	stdout, stderr, err := runUpdateUserTaskCommand(t, writeTestConfigForVersion(t, server.URL, "8.10"), "", "--automation", "--json", "update", "ut", "--unassign=false", "--complete=false", "--key", "2251799815391233", "--set-vars", `{"approved":true}`, "--no-wait")
 	require.NoError(t, err, stderr)
 	envelope := decodeUserTaskCompletionEnvelope(t, stdout)
 	require.Equal(t, "accepted", envelope["outcome"])

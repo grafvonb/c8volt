@@ -75,6 +75,7 @@ func TestVolumeOpsRepairFamily(t *testing.T) {
 	}
 }
 
+// Exercise repair scenarios with shared canonical payload sources.
 func runVolumeOpsRepairScenarios(t *testing.T, profile integrationProfile, dataset volumeDataset, incidentDataset volumeIncidentDataset, incidentTargets []volumeRepairTarget) ([]evidenceRecord, error) {
 	t.Helper()
 	var records []evidenceRecord
@@ -90,8 +91,8 @@ func runVolumeOpsRepairScenarios(t *testing.T, profile integrationProfile, datas
 	}
 
 	incidentDryRunReport := volumeOpsRepairReportPath(t, "volume-ops-repair-incident-dry-run", profile, "json")
-	incidentDryRunResult := runC8VoltForProfile(t, profile.Name, "volume-ops-repair-incident-dry-run", "ops", "repair", "incident", "--bpmn-process-id", incidentDataset.BpmnProcessID, "--state", "active", "--batch-size", "1", "--limit", "1", "--workers", "1", "--retries", "2", "--job-timeout", "1m", "--vars", `{"c8voltRepair":"preview"}`, "--dry-run", "--report-file", incidentDryRunReport, "--report-format", "json")
-	incidentDryRunRecord := volumeOpsRepairRecord(profile, incidentDataset, incidentDryRunResult, "ops repair incident", "volume-ops-repair-incident-dry-run", "one-line", []string{"bpmn-process-id", "state", "batch-size", "limit", "workers", "retries", "job-timeout", "vars", "dry-run", "report-file", "report-format"}, true, false)
+	incidentDryRunResult := runC8VoltForProfile(t, profile.Name, "volume-ops-repair-incident-dry-run", "ops", "repair", "incident", "--bpmn-process-id", incidentDataset.BpmnProcessID, "--state", "active", "--batch-size", "1", "--limit", "1", "--workers", "1", "--retries", "2", "--job-timeout", "1m", "--set-vars", `{"c8voltRepair":"preview"}`, "--dry-run", "--report-file", incidentDryRunReport, "--report-format", "json")
+	incidentDryRunRecord := volumeOpsRepairRecord(profile, incidentDataset, incidentDryRunResult, "ops repair incident", "volume-ops-repair-incident-dry-run", "one-line", []string{"bpmn-process-id", "state", "batch-size", "limit", "workers", "retries", "job-timeout", "set-vars", "dry-run", "report-file", "report-format"}, true, false)
 	if err := validateVolumeOpsRepairIncidentDryRun(incidentDryRunResult, incidentDryRunReport); err != nil {
 		incidentDryRunRecord.Outcome = volumeOutcomeFail
 		incidentDryRunRecord.FailureClass = volumeFailureProduct
@@ -111,8 +112,8 @@ func runVolumeOpsRepairScenarios(t *testing.T, profile integrationProfile, datas
 
 	incidentVarsFile := volumeOpsRepairVarsFile(t, "volume-ops-repair-incident-stdin-nowait", profile)
 	incidentConfirmedReport := volumeOpsRepairReportPath(t, "volume-ops-repair-incident-stdin-nowait", profile, "json")
-	incidentConfirmedResult := runC8VoltWithInput(t, "volume-ops-repair-incident-stdin-nowait", targets[1].IncidentKey+"\n", argsForProfile(profile.Name, "--automation", "--json", "ops", "repair", "incident", "-", "--vars-file", incidentVarsFile, "--retries", "1", "--job-timeout", "30s", "--no-wait", "--no-worker-limit", "--report-file", incidentConfirmedReport, "--report-format", "json")...)
-	incidentConfirmedRecord := volumeOpsRepairRecord(profile, incidentDataset, incidentConfirmedResult, "ops repair incident", "volume-ops-repair-incident-stdin-nowait", "json", []string{"stdin", "automation", "json", "vars-file", "retries", "job-timeout", "no-wait", "no-worker-limit", "report-file", "report-format"}, false, true)
+	incidentConfirmedResult := runC8VoltWithInput(t, "volume-ops-repair-incident-stdin-nowait", targets[1].IncidentKey+"\n", argsForProfile(profile.Name, "--automation", "--json", "ops", "repair", "incident", "-", "--set-vars-file", incidentVarsFile, "--retries", "1", "--job-timeout", "30s", "--no-wait", "--no-worker-limit", "--report-file", incidentConfirmedReport, "--report-format", "json")...)
+	incidentConfirmedRecord := volumeOpsRepairRecord(profile, incidentDataset, incidentConfirmedResult, "ops repair incident", "volume-ops-repair-incident-stdin-nowait", "json", []string{"stdin", "automation", "json", "set-vars-file", "retries", "job-timeout", "no-wait", "no-worker-limit", "report-file", "report-format"}, false, true)
 	incidentConfirmedRecord.StdinPath = writeVolumeStdinKeys(t, "volume-ops-repair-incident-stdin-nowait", []string{targets[1].IncidentKey})
 	if err := validateVolumeOpsRepairConfirmed(incidentConfirmedResult, incidentConfirmedReport, "incident"); err != nil {
 		incidentConfirmedRecord.Outcome = volumeOutcomeFail
@@ -122,8 +123,8 @@ func runVolumeOpsRepairScenarios(t *testing.T, profile integrationProfile, datas
 	records = append(records, incidentConfirmedRecord)
 
 	piDryRunReport := volumeOpsRepairReportPath(t, "volume-ops-repair-pi-dry-run", profile, "json")
-	piDryRunResult := runC8VoltForProfile(t, profile.Name, "volume-ops-repair-pi-dry-run", "ops", "repair", "process-instance", "--key", targets[2].ProcessInstanceKey, "--vars", `{"c8voltRepair":"pi-preview"}`, "--retries", "2", "--job-timeout", "1m", "--workers", "1", "--dry-run", "--report-file", piDryRunReport, "--report-format", "json")
-	piDryRunRecord := volumeOpsRepairRecord(profile, incidentDataset, piDryRunResult, "ops repair process-instance", "volume-ops-repair-pi-dry-run", "one-line", []string{"key", "vars", "retries", "job-timeout", "workers", "dry-run", "report-file", "report-format"}, true, false)
+	piDryRunResult := runC8VoltForProfile(t, profile.Name, "volume-ops-repair-pi-dry-run", "ops", "repair", "process-instance", "--key", targets[2].ProcessInstanceKey, "--set-vars", `{"c8voltRepair":"pi-preview"}`, "--retries", "2", "--job-timeout", "1m", "--workers", "1", "--dry-run", "--report-file", piDryRunReport, "--report-format", "json")
+	piDryRunRecord := volumeOpsRepairRecord(profile, incidentDataset, piDryRunResult, "ops repair process-instance", "volume-ops-repair-pi-dry-run", "one-line", []string{"key", "set-vars", "retries", "job-timeout", "workers", "dry-run", "report-file", "report-format"}, true, false)
 	if err := validateVolumeOpsRepairPIDryRun(piDryRunResult, piDryRunReport); err != nil {
 		piDryRunRecord.Outcome = volumeOutcomeFail
 		piDryRunRecord.FailureClass = volumeFailureProduct
@@ -143,8 +144,8 @@ func runVolumeOpsRepairScenarios(t *testing.T, profile integrationProfile, datas
 
 	piVarsFile := volumeOpsRepairVarsFile(t, "volume-ops-repair-pi-nowait", profile)
 	piConfirmedReport := volumeOpsRepairReportPath(t, "volume-ops-repair-pi-nowait", profile, "json")
-	piConfirmedResult := runC8VoltForProfile(t, profile.Name, "volume-ops-repair-pi-nowait", "--automation", "--json", "ops", "repair", "process-instance", "--key", targets[2].ProcessInstanceKey, "--vars-file", piVarsFile, "--retries", "1", "--job-timeout", "30s", "--no-wait", "--report-file", piConfirmedReport, "--report-format", "json")
-	piConfirmedRecord := volumeOpsRepairRecord(profile, incidentDataset, piConfirmedResult, "ops repair process-instance", "volume-ops-repair-pi-nowait", "json", []string{"automation", "json", "key", "vars-file", "retries", "job-timeout", "no-wait", "report-file", "report-format"}, false, true)
+	piConfirmedResult := runC8VoltForProfile(t, profile.Name, "volume-ops-repair-pi-nowait", "--automation", "--json", "ops", "repair", "process-instance", "--key", targets[2].ProcessInstanceKey, "--set-vars-file", piVarsFile, "--retries", "1", "--job-timeout", "30s", "--no-wait", "--report-file", piConfirmedReport, "--report-format", "json")
+	piConfirmedRecord := volumeOpsRepairRecord(profile, incidentDataset, piConfirmedResult, "ops repair process-instance", "volume-ops-repair-pi-nowait", "json", []string{"automation", "json", "key", "set-vars-file", "retries", "job-timeout", "no-wait", "report-file", "report-format"}, false, true)
 	if err := validateVolumeOpsRepairConfirmed(piConfirmedResult, piConfirmedReport, "process-instance"); err != nil {
 		piConfirmedRecord.Outcome = volumeOutcomeFail
 		piConfirmedRecord.FailureClass = volumeFailureProduct

@@ -27,7 +27,7 @@ type userTaskAssignmentInput struct {
 // Assignment selects by presence; boolean selectors select only when true. An
 // empty result preserves existing completion/variable dispatch, never a new mode.
 func resolveUpdateUserTaskAssignmentMode(cmd *cobra.Command) (string, error) {
-	assign := cmd.Flags().Changed("assign")
+	assign := cmd.Flags().Changed("set-assignee")
 	unassign, _ := cmd.Flags().GetBool("unassign")
 	complete, _ := cmd.Flags().GetBool("complete")
 	active := 0
@@ -37,10 +37,10 @@ func resolveUpdateUserTaskAssignmentMode(cmd *cobra.Command) (string, error) {
 		}
 	}
 	if active > 1 {
-		return "", mutuallyExclusiveFlagsf("--assign, --unassign, and --complete are mutually exclusive")
+		return "", mutuallyExclusiveFlagsf("--set-assignee, --unassign, and --complete are mutually exclusive")
 	}
 	if cmd.Flags().Changed("force") && !assign {
-		return "", missingDependentFlagsf("--force requires --assign")
+		return "", missingDependentFlagsf("--force requires --set-assignee")
 	}
 	if assign {
 		return "assign", nil
@@ -59,16 +59,20 @@ func parseUpdateUserTaskAssignmentInput(cmd *cobra.Command, args []string) (user
 		return userTaskAssignmentInput{}, err
 	}
 	if operation == "" {
-		return userTaskAssignmentInput{}, missingDependentFlagsf("--assign or --unassign is required")
+		return userTaskAssignmentInput{}, missingDependentFlagsf("--set-assignee or --unassign is required")
 	}
 	if err := validateOptionalDashArg(args); err != nil {
 		return userTaskAssignmentInput{}, err
 	}
-	if cmd.Flags().Changed("vars") || cmd.Flags().Changed("vars-file") {
-		return userTaskAssignmentInput{}, mutuallyExclusiveFlagsf("--%s cannot be combined with --vars or --vars-file", operation)
+	actionFlag := operation
+	if operation == "assign" {
+		actionFlag = "set-assignee"
+	}
+	if cmd.Flags().Changed("set-vars") || cmd.Flags().Changed("set-vars-file") {
+		return userTaskAssignmentInput{}, mutuallyExclusiveFlagsf("--%s cannot be combined with --set-vars or --set-vars-file", actionFlag)
 	}
 	if flagNoWait {
-		return userTaskAssignmentInput{}, mutuallyExclusiveFlagsf("--%s cannot be combined with --no-wait", operation)
+		return userTaskAssignmentInput{}, mutuallyExclusiveFlagsf("--%s cannot be combined with --no-wait", actionFlag)
 	}
 	if cmd.Flags().Changed("workers") && flagWorkers < 1 {
 		return userTaskAssignmentInput{}, invalidFlagValuef("--workers must be positive integer")
@@ -81,9 +85,9 @@ func parseUpdateUserTaskAssignmentInput(cmd *cobra.Command, args []string) (user
 		input.WantedWorkers = flagWorkers
 	}
 	if operation == "assign" {
-		input.Assignee, _ = cmd.Flags().GetString("assign")
+		input.Assignee, _ = cmd.Flags().GetString("set-assignee")
 		if strings.TrimSpace(input.Assignee) == "" {
-			return userTaskAssignmentInput{}, invalidFlagValuef("--assign requires a nonblank assignee")
+			return userTaskAssignmentInput{}, invalidFlagValuef("--set-assignee requires a nonblank assignee")
 		}
 		input.AllowOverride, _ = cmd.Flags().GetBool("force")
 	}

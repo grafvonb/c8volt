@@ -340,6 +340,7 @@ func TestTimeoutFlag_RejectsInvalidDuration(t *testing.T) {
 	require.Error(t, root.PersistentFlags().Set("timeout", "eventually"))
 }
 
+// Invalid flag values must fail without contaminating result output with usage.
 func TestFlagParseErrorsDoNotPrintUsage(t *testing.T) {
 	tests := [][]string{
 		{"--config"},
@@ -347,7 +348,7 @@ func TestFlagParseErrorsDoNotPrintUsage(t *testing.T) {
 		{"run", "pi", "--vars"},
 		{"walk", "pi", "--key"},
 		{"delete", "pd", "--key"},
-		{"update", "pi", "--vars-file"},
+		{"update", "pi", "--set-vars-file"},
 	}
 
 	for _, args := range tests {

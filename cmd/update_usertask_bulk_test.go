@@ -20,7 +20,7 @@ func TestUpdateUserTaskCommand_SharedScopeWritesOnce(t *testing.T) {
 	stdout, stderr, err := runUpdateUserTaskCommand(t, configPath, "",
 		"--automation", "--json", "update", "user-task",
 		"--key", "2251799815391233,2251799815391234",
-		"--vars", `{"approved":true}`, "--no-wait", "--workers", "2",
+		"--set-vars", `{"approved":true}`, "--no-wait", "--workers", "2",
 	)
 	require.NoError(t, err)
 	require.Empty(t, stderr)
@@ -60,7 +60,7 @@ func TestUpdateUserTaskCommand_DryRunMergesAndDeduplicatesExplicitKeys(t *testin
 	stdout, stderr, err := runUpdateUserTaskCommand(t, configPath, "2251799815391234\n2251799815391233\n",
 		"--json", "update", "user-tasks", "-",
 		"--key", "2251799815391233,2251799815391233",
-		"--vars", `{"approved":true}`, "--dry-run",
+		"--set-vars", `{"approved":true}`, "--dry-run",
 	)
 	require.NoError(t, err)
 	require.Empty(t, stderr)
@@ -87,9 +87,9 @@ func TestUpdateUserTaskCommand_VarsFileMatchesInlinePlanning(t *testing.T) {
 	path := t.TempDir() + "/vars.json"
 	require.NoError(t, os.WriteFile(path, []byte(`{"approved":true}`), 0o600))
 
-	inline, _, err := runUpdateUserTaskCommand(t, configPath, "", "--json", "update", "uts", "--key", "2251799815391233", "--vars", `{"approved":true}`, "--dry-run")
+	inline, _, err := runUpdateUserTaskCommand(t, configPath, "", "--json", "update", "uts", "--key", "2251799815391233", "--set-vars", `{"approved":true}`, "--dry-run")
 	require.NoError(t, err)
-	fromFile, _, err := runUpdateUserTaskCommand(t, configPath, "", "--json", "update", "uts", "--key", "2251799815391233", "--vars-file", path, "--dry-run")
+	fromFile, _, err := runUpdateUserTaskCommand(t, configPath, "", "--json", "update", "uts", "--key", "2251799815391233", "--set-vars-file", path, "--dry-run")
 	require.NoError(t, err)
 	require.JSONEq(t, inline, fromFile)
 }
@@ -102,9 +102,9 @@ func TestUpdateUserTaskCommand_LocalValidationStopsBeforeRequests(t *testing.T) 
 		args []string
 		want string
 	}{
-		{name: "missing keys", args: []string{"update", "ut", "--vars", `{"approved":true}`}, want: "no user task keys provided"},
-		{name: "invalid workers", args: []string{"update", "ut", "--key", "2251799815391233", "--vars", `{"approved":true}`, "--workers", "0"}, want: "--workers must be positive integer"},
-		{name: "missing payload", args: []string{"update", "ut", "--key", "2251799815391233"}, want: "--vars or --vars-file is required"},
+		{name: "missing keys", args: []string{"update", "ut", "--set-vars", `{"approved":true}`}, want: "no user task keys provided"},
+		{name: "invalid workers", args: []string{"update", "ut", "--key", "2251799815391233", "--set-vars", `{"approved":true}`, "--workers", "0"}, want: "--workers must be positive integer"},
+		{name: "missing payload", args: []string{"update", "ut", "--key", "2251799815391233"}, want: "--set-vars or --set-vars-file is required"},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {

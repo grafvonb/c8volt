@@ -12,7 +12,7 @@ Update process-instance variables or assign a business ID
 
 Update process-instance-scope variables on Camunda 8.8 or newer, or assign a native business ID on Camunda 8.10.
 
-Use --set-bid with explicit --key values or newline stdin to assign one exact value. It cannot be combined with --bid, --vars, --vars-file, --limit or --batch-size. All keys and the value are validated before planning; distinct targets and the value are frozen before one approval. Deliberate empty stdin succeeds without approval or mutation. Keys retain explicit backend authorization, without tenant filtering or parent/family expansion.
+Use --set-bid with explicit --key values or newline stdin to assign one exact value. It cannot be combined with --bid, --set-vars, --set-vars-file, --limit or --batch-size. All keys and the value are validated before planning; distinct targets and the value are frozen before one approval. Deliberate empty stdin succeeds without approval or mutation. Keys retain explicit backend authorization, without tenant filtering or parent/family expansion.
 
 Assignment requires an active root instance with no business ID and uniqueness disabled. The backend decides eligibility; even identical reassignment conflicts. Empty, whitespace-only, invalid UTF-8 and values exceeding 256 UTF-16 units are rejected. Spaces, commas and case in accepted values are preserved exactly. A variable named businessId remains an ordinary variable, independent of native identity. Job, task and listener snapshots are not refreshed by assignment.
 
@@ -24,7 +24,7 @@ BID updates freeze each selected instance's existing root-variable plan and payl
 
 Variable plans retain each selected instance's observed business ID when available. Detailed plan rows quote it safely, and JSON preserves it exactly. Key/status-only outcomes do not add a lookup.
 
-Provide repeated --key values or newline-separated keys from stdin with '-'. For variable updates, supply exactly one payload source: --vars with a JSON object or --vars-file with its file path. The same variable map is applied to every unique key. Explicit keys use backend authorization without tenant filtering.
+Provide repeated --key values or newline-separated keys from stdin with '-'. For variable updates, supply exactly one payload source: --set-vars with a JSON object or --set-vars-file with its file path. The same variable map is applied to every unique key. Explicit keys use backend authorization without tenant filtering.
 
 c8volt reads every selected process instance's complete root-variable scope before planning additions and changes. Nested-scope variables are excluded, and truncated values remain planned changes because they cannot prove equality. After confirmation, the command writes only the prepared additions and changes locally to their recorded roots, then waits until all requested variables are visible through the same lookup as get process-instance --with-vars. Detailed previews label every planned write with its selected process-instance root as pi:<key>.
 
@@ -39,31 +39,31 @@ c8volt update process-instance [flags]
 ```
   ./c8volt update pi --key <process-instance-key> --set-bid 'ORDER-123' --dry-run
   ./c8volt --auto-confirm update pi --key <process-instance-key> --set-bid 'ORDER-123' --no-wait
-  ./c8volt --tenant tenant-a update pi --bid 'ORDER-123' --vars '{"customerTier":"gold"}' --dry-run --json
-  ./c8volt update process-instance --key <process-instance-key> --vars '{"customerTier":"gold"}' --dry-run
-  ./c8volt update process-instance --key <process-instance-key> --vars-file ./vars.json --dry-run
-  ./c8volt --tenant tenant-a update process-instance --key <process-instance-key> --vars '{"customerTier":"gold"}' --dry-run
-  ./c8volt update process-instance --key <process-instance-key-a> --key <process-instance-key-b> --vars '{"customerTier":"gold"}' --dry-run
-  printf '%s\n' "$PROCESS_INSTANCE_KEY_A" "$PROCESS_INSTANCE_KEY_B" | ./c8volt update process-instance - --vars '{"customerTier":"gold"}' --dry-run
-  ./c8volt --json update process-instance --key <process-instance-key> --vars '{"customerTier":"gold"}' --dry-run
+  ./c8volt --tenant tenant-a update pi --bid 'ORDER-123' --set-vars '{"customerTier":"gold"}' --dry-run --json
+  ./c8volt update process-instance --key <process-instance-key> --set-vars '{"customerTier":"gold"}' --dry-run
+  ./c8volt update process-instance --key <process-instance-key> --set-vars-file ./vars.json --dry-run
+  ./c8volt --tenant tenant-a update process-instance --key <process-instance-key> --set-vars '{"customerTier":"gold"}' --dry-run
+  ./c8volt update process-instance --key <process-instance-key-a> --key <process-instance-key-b> --set-vars '{"customerTier":"gold"}' --dry-run
+  printf '%s\n' "$PROCESS_INSTANCE_KEY_A" "$PROCESS_INSTANCE_KEY_B" | ./c8volt update process-instance - --set-vars '{"customerTier":"gold"}' --dry-run
+  ./c8volt --json update process-instance --key <process-instance-key> --set-vars '{"customerTier":"gold"}' --dry-run
 ```
 
 ### Options
 
 ```
-  -n, --batch-size int32   maximum process instances per discovery request (default 1000)
-      --bid string         exact business ID to select in configured tenant scope (Camunda 8.10)
-      --dry-run            preview variable updates or business-ID assignment without submitting mutation
-      --fail-fast          stop scheduling new updates after the first error
-  -h, --help               help for process-instance
-  -k, --key strings        process instance key(s) to update; repeat or combine with stdin '-'
-  -l, --limit int32        maximum distinct matching instances; zero selects all; tree expansion is not limited
-      --no-wait            return after the update request is accepted without confirmation
-      --no-worker-limit    use all queued jobs as workers when --workers is unset
-      --set-bid string     assign an exact native business ID to explicit process keys (Camunda 8.10)
-      --vars string        JSON object with variables to set on each process instance
-      --vars-file string   path to JSON object file with variables to set on each process instance
-  -w, --workers int        maximum concurrent workers when updating multiple process instances (default: min(count, 2*GOMAXPROCS, 32))
+  -n, --batch-size int32       maximum process instances per discovery request (default 1000)
+      --bid string             exact business ID to select in configured tenant scope (Camunda 8.10)
+      --dry-run                preview variable updates or business-ID assignment without submitting mutation
+      --fail-fast              stop scheduling new updates after the first error
+  -h, --help                   help for process-instance
+  -k, --key strings            process instance key(s) to update; repeat or combine with stdin '-'
+  -l, --limit int32            maximum distinct matching instances; zero selects all; tree expansion is not limited
+      --no-wait                return after the update request is accepted without confirmation
+      --no-worker-limit        use all queued jobs as workers when --workers is unset
+      --set-bid string         assign an exact native business ID to explicit process keys (Camunda 8.10)
+      --set-vars string        JSON object with variables to set on each process instance
+      --set-vars-file string   path to JSON object file with variables to set on each process instance
+  -w, --workers int            maximum concurrent workers when updating multiple process instances (default: min(count, 2*GOMAXPROCS, 32))
 ```
 
 ### Options inherited from parent commands

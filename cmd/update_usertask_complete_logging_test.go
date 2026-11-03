@@ -65,7 +65,7 @@ func TestUpdateUserTaskCompletionDiagnosticLogging(t *testing.T) {
 					if destination == "inherited" {
 						workers = "2"
 					}
-					args := append([]string{"--config", completionLogConfig(t, server.URL, format, level), "--auto-confirm", "update", "ut", "--complete", "--key", completionKeyA + "," + completionKeyB + ",2251799813685251", "--workers", workers, "--vars", `{"password":"completion-variable-secret"}`}, tc.flags...)
+					args := append([]string{"--config", completionLogConfig(t, server.URL, format, level), "--auto-confirm", "update", "ut", "--complete", "--key", completionKeyA + "," + completionKeyB + ",2251799813685251", "--workers", workers, "--set-vars", `{"password":"completion-variable-secret"}`}, tc.flags...)
 					stdout, stderr, err := runUserTaskCompletionTerminal(t, args, destination, nil)
 					assertUserTaskCompletionExit(t, err, 2)
 					require.Len(t, calls.Snapshot(), 3)
@@ -178,7 +178,7 @@ func TestUpdateUserTaskCompletionDiagnosticRetries(t *testing.T) {
 						if mode == "configured" {
 							level = "debug"
 						}
-						args := []string{"--auto-confirm", "update", "ut", "--complete", "--key", completionKeyA + "," + completionKeyB, "--workers", workers, "--vars", `{"password":"retry-payload-secret"}`}
+						args := []string{"--auto-confirm", "update", "ut", "--complete", "--key", completionKeyA + "," + completionKeyB, "--workers", workers, "--set-vars", `{"password":"retry-payload-secret"}`}
 						if mode == "flag" {
 							args = append(args, "--debug")
 						}

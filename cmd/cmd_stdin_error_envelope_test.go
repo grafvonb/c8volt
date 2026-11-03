@@ -30,7 +30,7 @@ var stdinErrorEnvelopeCallers = []stdinErrorEnvelopeCaller{
 	{Name: "get-process-instance", CommandPath: "get process-instance", Args: []string{"get", "process-instance", "-"}},
 	{Name: "get-user-task", CommandPath: "get user-task", Args: []string{"get", "user-task", "-"}},
 	{Name: "expect-process-instance", CommandPath: "expect process-instance", Args: []string{"expect", "process-instance", "--state", "active", "-"}},
-	{Name: "update-process-instance", CommandPath: "update process-instance", Args: []string{"update", "process-instance", "--vars", `{"updated":true}`, "--dry-run", "-"}},
+	{Name: "update-process-instance", CommandPath: "update process-instance", Args: []string{"update", "process-instance", "--set-vars", `{"updated":true}`, "--dry-run", "-"}},
 	{Name: "cancel-process-instance", CommandPath: "cancel process-instance", Args: []string{"cancel", "process-instance", "-"}},
 	{Name: "delete-process-instance", CommandPath: "delete process-instance", Args: []string{"delete", "process-instance", "-"}},
 	{Name: "resolve-process-instance", CommandPath: "resolve process-instance", Args: []string{"resolve", "process-instance", "-"}},

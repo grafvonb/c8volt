@@ -110,8 +110,8 @@ if [ -n "$first_key" ]; then
   it_run_case "Keyed Workflows" "get-first-pi" "read-only" "pass" c8 get pi --key "$first_key"
   it_run_case "Keyed Workflows" "get-first-pi-with-vars" "read-only" "pass" c8 get pi --key "$first_key" --with-vars --var-value-limit 120
   it_run_case "Keyed Workflows" "walk-first-pi" "read-only" "pass" c8 walk pi --key "$first_key"
-  it_run_case "Mutating Workflows" "update-pi-dry-run" "dry-run" "pass" c8 update pi "${update_key_args[@]}" --vars "$update_vars_json" --dry-run
-  it_run_case "Mutating Workflows" "update-pi-real" "mutation" "pass" c8 --auto-confirm update pi "${update_key_args[@]}" --vars "$update_vars_json"
+  it_run_case "Mutating Workflows" "update-pi-dry-run" "dry-run" "pass" c8 update pi "${update_key_args[@]}" --set-vars "$update_vars_json" --dry-run
+  it_run_case "Mutating Workflows" "update-pi-real" "mutation" "pass" c8 --auto-confirm update pi "${update_key_args[@]}" --set-vars "$update_vars_json"
   it_run_case "Mutating Workflows" "update-pi-post-check" "read-only" "pass" c8 get pi --key "$first_key" --with-vars --var-value-limit 120
   it_run_case "Mutating Workflows" "cancel-pi-dry-run" "dry-run" "pass" c8 cancel pi --key "$first_key" --dry-run
   it_run_case "Mutating Workflows" "cancel-pi-real" "mutation" "pass" c8 --auto-confirm cancel pi --key "$first_key"

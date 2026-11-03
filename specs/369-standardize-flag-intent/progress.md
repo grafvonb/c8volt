@@ -34,3 +34,86 @@ Started: 2026-11-03 06:40:31
 - Traced input failure through classification, local configuration, configured logger/renderer and exit. Prepared errors contain static metadata only; raw parser causes stay private. JSON uses the existing single envelope/exit path. No new direct diagnostic prints or default-logger bypass; invalid local configuration deliberately reuses the established bootstrap fallback. Existing backend aggregation and mutation output paths are unchanged.
 - No production flag rename or help/README guidance change in this foundation, so docs regeneration was unnecessary. The existing docsgen package checks passed. Durable integration guidance and T002 handoff are in ralph-memory.md.
 ---
+
+---
+## Iteration 2 - 2026-11-03 07:03
+**Work Unit**: Phase 3 / US1 — T002 canonical shared variable sources and task-assignment dispatch; completed task, partial story
+**Tasks Completed**:
+- [x] T002: Migrate shared update/repair variable sources and user-task assignment, including dispatch/exclusions, diagnostic mappings, fixtures, documentation and isolated acceptance coverage.
+**Tasks Remaining in Work Unit**: T002 complete; US1 retains T003 and T004. Five feature tasks remain.
+**Commit**: This work-unit commit
+**Files Changed**:
+- README.md
+- cmd/cmd_stdin_error_envelope_test.go
+- cmd/cmd_views_usertask_assignment_test.go
+- cmd/cmd_views_usertask_complete_test.go
+- cmd/command_contract_test.go
+- cmd/flag_intent_variables_test.go
+- cmd/ops_repair_incident.go
+- cmd/ops_repair_incident_test.go
+- cmd/ops_repair_processinstance.go
+- cmd/ops_repair_processinstance_business_id_test.go
+- cmd/ops_repair_processinstance_test.go
+- cmd/ops_repair_variables.go
+- cmd/processinstance_business_id_action_test.go
+- cmd/processinstance_business_id_test.go
+- cmd/root_test.go
+- cmd/update.go
+- cmd/update_element.go
+- cmd/update_element_logging_test.go
+- cmd/update_element_output_test.go
+- cmd/update_element_terminal_test.go
+- cmd/update_element_test.go
+- cmd/update_processinstance.go
+- cmd/update_processinstance_assignment.go
+- cmd/update_processinstance_assignment_test.go
+- cmd/update_processinstance_outcomes_test.go
+- cmd/update_processinstance_terminal_test.go
+- cmd/update_processinstance_test.go
+- cmd/update_processinstance_variables.go
+- cmd/update_usertask.go
+- cmd/update_usertask_assignment_command_test.go
+- cmd/update_usertask_assignment_input.go
+- cmd/update_usertask_assignment_input_test.go
+- cmd/update_usertask_assignment_preflight_test.go
+- cmd/update_usertask_bulk_test.go
+- cmd/update_usertask_complete_input.go
+- cmd/update_usertask_complete_input_test.go
+- cmd/update_usertask_complete_logging_test.go
+- cmd/update_usertask_complete_preflight_test.go
+- cmd/update_usertask_complete_rhythm_test.go
+- cmd/update_usertask_complete_test.go
+- cmd/update_usertask_error_test.go
+- cmd/update_usertask_output_test.go
+- cmd/update_usertask_terminal_test.go
+- cmd/update_usertask_test.go
+- cmd/update_usertask_variables.go
+- cmd/update_variables_payload.go
+- docs/cli/c8volt_ops_repair_incident.md
+- docs/cli/c8volt_ops_repair_process-instance.md
+- docs/cli/c8volt_update.md
+- docs/cli/c8volt_update_element.md
+- docs/cli/c8volt_update_process-instance.md
+- docs/cli/c8volt_update_user-task.md
+- docs/index.md
+- integration/README.md
+- integration/cli/all_commands_test.go
+- integration/cli/behavioral_scenarios_test.go
+- integration/cli/example_fixture_inputs_test.go
+- integration/cli/examples_test.go
+- integration/cli/real_state_destructive_test.go
+- integration/cli/volume_ops_repair_test.go
+- integration/cli/volume_update_test.go
+- integration/scripts/run-suite.sh
+- specs/369-standardize-flag-intent/progress.md
+- specs/369-standardize-flag-intent/ralph-memory.md
+- specs/369-standardize-flag-intent/tasks.md
+**Learnings**:
+- Changed existing command/input tests first and observed failures for unknown canonical variable flags and missing assignment dispatch. Kept exact payload/number/identity, source exclusion, BID, no-op, sparse-page, confirmation, partial-outcome and logging assertions while updating invocation spelling.
+- Passed focused variable/repair/assignment-input checks: `GOFLAGS='' go test ./cmd -run 'TestFlagIntentVariables|TestUpdateUserTaskAssignmentInput|TestUpdateUserTaskCompletionCommandVariables|TestElementScopeVariablesUpdate|TestOpsRepair' -count=1` (7.771s). Additional migration/completion/plain-and-structured logging checks passed (1.429s).
+- The broader neighboring selection exposed one expected diagnostic change for unknown `--allow-override` after adopting T001. Updated that test to require the bounded configured ERROR record and invalid-input exit, retaining zero-request/no-prompt assertions; its targeted rerun passed (0.902s). The final complete package checks passed: `GOFLAGS='' go test ./cmd ./config ./docsgen -count=1` (cmd 405.226s, config 1.390s, docsgen 1.525s), including all affected assignment, completion, variable, repair, output, terminal, root and metadata regressions.
+- Production migration tests cover every T002 removed name and equal mixed values in both orders, late config/quiet/JSON controls, one envelope with EOF and zero fake-server requests. Human rejection requires configured ERROR framing under normal/verbose/quiet with plain and structured formats. Completion and capability tests require canonical names and absent legacy registrations; the get-task assignee filter is preserved.
+- Traced removed-input rejection through the existing migration preparation, local configuration, error classification and single-render exit. Backend failures continue through unchanged services/facade conversion and existing logger/renderers; full package tests include repeated backend errors, DEBUG/redaction, partial envelopes, configured/inherited destinations, real-terminal prompts and empty-scope behavior. No new direct diagnostic prints or transport error rendering; the changed file-read error retains its existing local filesystem error contract. No new lifecycle declarations or layer changes.
+- Updated source help, README migration guidance, maintained integration invocation/coverage fixtures and shared file-fixture parsing; regenerated CLI docs/homepage using `GOFLAGS='' make docs-content`. Passed touched-file gofmt verification, `git diff --check`, and `bash -n integration/scripts/run-suite.sh`.
+- Relevant inherited test/config environment was empty and GOFLAGS was cleared. All executed runtime checks used isolated fakes/subprocess/terminal fixtures; integration scripts/fixtures received static maintenance only. No live-engine behavior is established. Job/run and repair retry/timeout changes remain for their owning tasks.
+---

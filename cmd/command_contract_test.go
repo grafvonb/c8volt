@@ -1238,7 +1238,7 @@ func TestCommandCapabilityForCommand_UpdateUserTaskContract(t *testing.T) {
 		{Name: RenderModeJSON.String(), Supported: true, MachinePreferred: true},
 		{Name: RenderModeKeysOnly.String(), Supported: true},
 	}, capability.OutputModes)
-	for _, name := range []string{"key", "complete", "assign", "unassign", "force", "vars", "vars-file", "dry-run", "no-wait", "workers", "no-worker-limit", "fail-fast"} {
+	for _, name := range []string{"key", "complete", "set-assignee", "unassign", "force", "set-vars", "set-vars-file", "dry-run", "no-wait", "workers", "no-worker-limit", "fail-fast"} {
 		require.True(t, hasFlagContractNamed(capability.Flags, name), "missing --%s", name)
 	}
 	require.False(t, flagUpdateUserTaskComplete)
@@ -1255,7 +1255,7 @@ func TestCommandCapabilityForCommand_UpdateUserTaskContract(t *testing.T) {
 	require.Contains(t, updateUserTaskCmd.Flags().Lookup("no-wait").Usage, "skip variable-update verification")
 	require.Contains(t, updateUserTaskCmd.Flags().Lookup("no-wait").Usage, "incompatible with --complete")
 	require.Contains(t, updateCmd.Long, "successful response confirms completion")
-	for _, text := range []string{"--assign", "--unassign", "--force", "reads each unique task once before approval", "warns and asks whether to replace the assignee", "acceptance unknown", "zero requests"} {
+	for _, text := range []string{"--set-assignee", "--unassign", "--force", "reads each unique task once before approval", "warns and asks whether to replace the assignee", "acceptance unknown", "zero requests"} {
 		require.Contains(t, updateUserTaskCmd.Long, text)
 	}
 	require.Contains(t, updateCmd.Long, "asks before replacing existing assignees")
@@ -1417,14 +1417,14 @@ func TestCommandCapabilityForCommand_UpdateProcessInstanceContract(t *testing.T)
 		Description: "process instance key(s) to update; repeat or combine with stdin '-'",
 	})
 	require.Contains(t, capability.Flags, FlagContract{
-		Name:        "vars",
+		Name:        "set-vars",
 		Type:        "string",
 		Required:    false,
 		Repeated:    false,
 		Description: "JSON object with variables to set on each process instance",
 	})
 	require.Contains(t, capability.Flags, FlagContract{
-		Name:        "vars-file",
+		Name:        "set-vars-file",
 		Type:        "string",
 		Required:    false,
 		Repeated:    false,
@@ -2883,16 +2883,16 @@ func TestUpdateProcessInstanceHelp_DocumentsVariableUpdateDiscovery(t *testing.T
 		"Update element-local, process-instance or user-task variables, complete, assign or unassign user tasks, or update job retries, timeouts, and worker outcomes",
 		"Camunda 8.8 or newer",
 		"Requires Camunda 8.8 or newer",
-		"./c8volt update process-instance --key <process-instance-key> --vars",
-		"./c8volt update process-instance --key <process-instance-key> --vars-file",
-		"./c8volt --automation --json update process-instance --key <process-instance-key> --vars",
+		"./c8volt update process-instance --key <process-instance-key> --set-vars",
+		"./c8volt update process-instance --key <process-instance-key> --set-vars-file",
+		"./c8volt --automation --json update process-instance --key <process-instance-key> --set-vars",
 	}, nil)
 	require.Contains(t, output, "process-instance")
 
 	output = assertCommandHelpOutput(t, []string{"update", "process-instance"}, []string{
 		"Update process-instance-scope variables",
 		"For variable updates, supply exactly one payload source",
-		"--vars with a JSON object or --vars-file with its file path",
+		"--set-vars with a JSON object or --set-vars-file with its file path",
 		"repeated --key values or newline-separated keys from stdin with '-'",
 		"reads every selected process instance's complete root-variable scope",
 		"complete root-variable scope",
@@ -2900,9 +2900,9 @@ func TestUpdateProcessInstanceHelp_DocumentsVariableUpdateDiscovery(t *testing.T
 		"Use --dry-run to inspect changes without mutation",
 		"--auto-confirm for unattended updates",
 		"Camunda 8.8 or newer",
-		"./c8volt update process-instance --key <process-instance-key> --vars '{\"customerTier\":\"gold\"}' --dry-run",
-		"./c8volt update process-instance --key <process-instance-key-a> --key <process-instance-key-b> --vars",
-		"printf '%s\\n' \"$PROCESS_INSTANCE_KEY_A\" \"$PROCESS_INSTANCE_KEY_B\" | ./c8volt update process-instance - --vars",
+		"./c8volt update process-instance --key <process-instance-key> --set-vars '{\"customerTier\":\"gold\"}' --dry-run",
+		"./c8volt update process-instance --key <process-instance-key-a> --key <process-instance-key-b> --set-vars",
+		"printf '%s\\n' \"$PROCESS_INSTANCE_KEY_A\" \"$PROCESS_INSTANCE_KEY_B\" | ./c8volt update process-instance - --set-vars",
 		"-k, --key strings",
 		"--workers",
 		"--dry-run",
@@ -2913,8 +2913,8 @@ func TestUpdateProcessInstanceHelp_DocumentsVariableUpdateDiscovery(t *testing.T
 
 	aliasOutput := assertCommandHelpOutput(t, []string{"update", "pi"}, []string{
 		"Update process-instance-scope variables",
-		"--vars string",
-		"--vars-file string",
+		"--set-vars string",
+		"--set-vars-file string",
 		"--dry-run",
 		"--no-wait",
 	}, nil)

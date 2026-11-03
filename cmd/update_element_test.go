@@ -133,7 +133,7 @@ func TestElementScopeVariablesUpdateExact(t *testing.T) {
 				f := newElementUpdateFixture(t, version)
 				f.local[scopeElementA] = []string{scopeVariableJSON("same", "1", scopeElementA, false), scopeVariableJSON("change", "false", scopeElementA, false), scopeVariableJSON("untouched", "2", scopeElementA, false)}
 				f.local[scopeElementB] = []string{scopeVariableJSON("same", "1", scopeElementB, false), scopeVariableJSON("change", "true", scopeElementB, false), scopeVariableJSON("added", "null", scopeElementB, false)}
-				args := []string{"--tenant", "other-tenant", "--json", "--auto-confirm", "update", "ei", "-", "--key", scopeElementA + "," + scopeElementB, "-k", scopeElementA, "--vars", `{"same":1,"change":true,"added":null}`, "--workers", "1"}
+				args := []string{"--tenant", "other-tenant", "--json", "--auto-confirm", "update", "ei", "-", "--key", scopeElementA + "," + scopeElementB, "-k", scopeElementA, "--set-vars", `{"same":1,"change":true,"added":null}`, "--workers", "1"}
 				if noWait {
 					args = append(args, "--no-wait")
 				}
@@ -176,16 +176,16 @@ func TestElementScopeVariablesUpdateInput(t *testing.T) {
 	file := filepath.Join(t.TempDir(), "vars.json")
 	require.NoError(t, os.WriteFile(file, []byte(`{"x":null}`), 0600))
 	cases := [][]string{
-		{"--key", scopeElementA}, {"--vars", "{}"}, {"--key", "bad", "--vars", "{}"},
-		{"--key", scopeElementA + ",", "--vars", "{}"}, {"--key", scopeElementA, "--vars", "null"},
-		{"--key", scopeElementA, "--vars", "[]"}, {"--key", scopeElementA, "--vars", "true"},
-		{"--key", scopeElementA, "--vars", "{"}, {"--key", scopeElementA, "--vars", "{} {}"},
-		{"--key", scopeElementA, "--vars", "{}", "--vars-file", file},
-		{"--key", scopeElementA, "--vars-file", file + "-missing"},
-		{"--key", scopeElementA, "--vars", "{}", "--workers", "0"},
-		{"--key", scopeElementA, "--vars", "{}", "--json"},
-		{"--key", scopeElementA, "--vars", "{}", "--json", "--verbose", "--dry-run"},
-		{"-", "--vars", "{}"}, {"unexpected", "--vars", "{}"},
+		{"--key", scopeElementA}, {"--set-vars", "{}"}, {"--key", "bad", "--set-vars", "{}"},
+		{"--key", scopeElementA + ",", "--set-vars", "{}"}, {"--key", scopeElementA, "--set-vars", "null"},
+		{"--key", scopeElementA, "--set-vars", "[]"}, {"--key", scopeElementA, "--set-vars", "true"},
+		{"--key", scopeElementA, "--set-vars", "{"}, {"--key", scopeElementA, "--set-vars", "{} {}"},
+		{"--key", scopeElementA, "--set-vars", "{}", "--set-vars-file", file},
+		{"--key", scopeElementA, "--set-vars-file", file + "-missing"},
+		{"--key", scopeElementA, "--set-vars", "{}", "--workers", "0"},
+		{"--key", scopeElementA, "--set-vars", "{}", "--json"},
+		{"--key", scopeElementA, "--set-vars", "{}", "--json", "--verbose", "--dry-run"},
+		{"-", "--set-vars", "{}"}, {"unexpected", "--set-vars", "{}"},
 	}
 	for _, flags := range cases {
 		t.Run(strings.Join(flags, " "), func(t *testing.T) {
@@ -200,7 +200,7 @@ func TestElementScopeVariablesUpdateInput(t *testing.T) {
 		t.Run("file/"+payload, func(t *testing.T) {
 			f := newElementUpdateFixture(t, "8.8")
 			require.NoError(t, os.WriteFile(file, []byte(payload), 0600))
-			out, stderr, err := runUpdateUserTaskCommand(t, testx.WriteTestConfig(t, f.server.URL), "", "--json", "update", "element", "--key", scopeElementA, "--vars-file", file, "--dry-run")
+			out, stderr, err := runUpdateUserTaskCommand(t, testx.WriteTestConfig(t, f.server.URL), "", "--json", "update", "element", "--key", scopeElementA, "--set-vars-file", file, "--dry-run")
 			calls, _, _ := f.snapshot()
 			if payload == `{"x":null}` {
 				require.NoError(t, err, stderr)
@@ -218,7 +218,7 @@ func TestElementScopeVariablesUpdateInput(t *testing.T) {
 func TestElementScopeVariablesUpdatePlanningFailure(t *testing.T) {
 	f := newElementUpdateFixture(t, "8.8")
 	f.lookupFailure = scopeElementB
-	out, stderr, err := runUpdateUserTaskCommand(t, testx.WriteTestConfig(t, f.server.URL), "", "--json", "--auto-confirm", "update", "element", "--key", scopeElementA+","+scopeElementB, "--vars", `{"x":1}`)
+	out, stderr, err := runUpdateUserTaskCommand(t, testx.WriteTestConfig(t, f.server.URL), "", "--json", "--auto-confirm", "update", "element", "--key", scopeElementA+","+scopeElementB, "--set-vars", `{"x":1}`)
 	require.Error(t, err)
 	require.Empty(t, stderr)
 	env := requireSingleJSONObjectDocument(t, out)
@@ -232,7 +232,7 @@ func TestElementScopeVariablesUpdatePlanningFailure(t *testing.T) {
 // TestElementScopeVariablesUpdateUnsupported preserves bootstrap failure before any request.
 func TestElementScopeVariablesUpdateUnsupported(t *testing.T) {
 	f := newElementUpdateFixture(t, "8.7")
-	out, stderr, err := runUpdateUserTaskCommand(t, testx.WriteTestConfigForVersion(t, f.server.URL, "8.7"), "", "--json", "update", "element", "--key", scopeElementA, "--vars", "{}", "--dry-run")
+	out, stderr, err := runUpdateUserTaskCommand(t, testx.WriteTestConfigForVersion(t, f.server.URL, "8.7"), "", "--json", "update", "element", "--key", scopeElementA, "--set-vars", "{}", "--dry-run")
 	assertUserTaskCompletionExit(t, err, 1)
 	require.Empty(t, out)
 	require.Contains(t, stderr, "8.7")

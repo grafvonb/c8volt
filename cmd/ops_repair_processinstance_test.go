@@ -74,8 +74,8 @@ func TestOpsRepairProcessInstanceHelpDocumentsSelectionShape(t *testing.T) {
 		"--limit int32",
 		"--retries int32",
 		"--job-timeout string",
-		"--vars string",
-		"--vars-file string",
+		"--set-vars string",
+		"--set-vars-file string",
 		"--report-file string",
 		"--report-format string",
 		"--dry-run",
@@ -137,7 +137,7 @@ func TestOpsRepairProcessInstanceVarsFileDryRunShowsVariableScopes(t *testing.T)
 
 	output, err := testx.RunCmdSubprocess(t, "TestOpsRepairProcessInstanceCommandHelper", map[string]string{
 		"C8VOLT_TEST_CONFIG":             writeTestConfigForVersion(t, srv.URL, "8.9"),
-		"C8VOLT_TEST_OPS_REPAIR_PI_ARGS": marshalOpsRepairProcessInstanceArgsForEnv(t, []string{"ops", "repair", "process-instance", "--key", "2251799813685251", "--vars-file", varsFile, "--dry-run", "--verbose"}),
+		"C8VOLT_TEST_OPS_REPAIR_PI_ARGS": marshalOpsRepairProcessInstanceArgsForEnv(t, []string{"ops", "repair", "process-instance", "--key", "2251799813685251", "--set-vars-file", varsFile, "--dry-run", "--verbose"}),
 	})
 
 	require.NoError(t, err, string(output))
@@ -271,7 +271,7 @@ func TestOpsRepairProcessInstanceAutoConfirmReportsTenantScopeBeforeWork(t *test
 				"--tenant", "tenant-a",
 				"ops", "repair", "process-instance",
 				"--key", "2251799813685251",
-				"--vars", `{"approved":true}`,
+				"--set-vars", `{"approved":true}`,
 				"--auto-confirm",
 				"--no-wait",
 			},
@@ -284,7 +284,7 @@ func TestOpsRepairProcessInstanceAutoConfirmReportsTenantScopeBeforeWork(t *test
 			args: []string{
 				"ops", "repair", "process-instance",
 				"--state", "active",
-				"--vars", `{"approved":true}`,
+				"--set-vars", `{"approved":true}`,
 				"--auto-confirm",
 				"--no-wait",
 			},
@@ -348,7 +348,7 @@ func TestOpsRepairProcessInstanceInteractiveTenantContext(t *testing.T) {
 			args: []string{
 				"ops", "repair", "process-instance",
 				"--key", "2251799813685251",
-				"--vars", `{"approved":true}`,
+				"--set-vars", `{"approved":true}`,
 				"--no-wait",
 			},
 			selection:          "selection scope: explicit resource keys; tenant filter not applied",
@@ -361,7 +361,7 @@ func TestOpsRepairProcessInstanceInteractiveTenantContext(t *testing.T) {
 			args: []string{
 				"ops", "repair", "process-instance",
 				"--key", "2251799813685251",
-				"--vars", `{"approved":true}`,
+				"--set-vars", `{"approved":true}`,
 				"--no-wait",
 			},
 			selection:          "selection scope: explicit resource keys; tenant filter not applied",
@@ -375,7 +375,7 @@ func TestOpsRepairProcessInstanceInteractiveTenantContext(t *testing.T) {
 				"--tenant", "",
 				"ops", "repair", "process-instance",
 				"--state", "active",
-				"--vars", `{"approved":true}`,
+				"--set-vars", `{"approved":true}`,
 				"--no-wait",
 			},
 			selection:          "selection scope: unfiltered across accessible tenants",
@@ -391,7 +391,7 @@ func TestOpsRepairProcessInstanceInteractiveTenantContext(t *testing.T) {
 				"--tenant", "",
 				"ops", "repair", "process-instance",
 				"--state", "active",
-				"--vars", `{"approved":true}`,
+				"--set-vars", `{"approved":true}`,
 				"--no-wait",
 			},
 			selection:          "selection scope: unfiltered across accessible tenants",

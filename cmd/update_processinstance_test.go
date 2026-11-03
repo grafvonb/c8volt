@@ -74,7 +74,7 @@ func TestUpdatePICommand_SubmitsV88UpdateAndConfirmsVariables(t *testing.T) {
 		"--json",
 		"update", "pi",
 		"--key", "2251799813711967",
-		"--vars", `{"foo":"bar"}`,
+		"--set-vars", `{"foo":"bar"}`,
 	)
 
 	require.True(t, sawUpdate)
@@ -133,7 +133,7 @@ func TestUpdatePICommand_V810SubmitsAndConfirmsVariables(t *testing.T) {
 		"--json",
 		"update", "process-instance",
 		"--key", "2251799813711967",
-		"--vars", `{"foo":"bar"}`,
+		"--set-vars", `{"foo":"bar"}`,
 	)
 
 	require.True(t, sawUpdate)
@@ -151,7 +151,7 @@ func TestUpdatePICommand_V810SubmitsAndConfirmsVariables(t *testing.T) {
 	require.Equal(t, "confirmed", item["confirmationStatus"])
 }
 
-// Protects the existing `update process-instance --vars` request path after adding resolve commands.
+// Protects the existing `update process-instance --set-vars` request path after adding resolve commands.
 func TestUpdatePICommand_RegressionVarsUsesVariableMutationAndConfirmation(t *testing.T) {
 	var requests []string
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -190,7 +190,7 @@ func TestUpdatePICommand_RegressionVarsUsesVariableMutationAndConfirmation(t *te
 		"--config", cfgPath,
 		"update", "pi",
 		"--key", "2251799813711967",
-		"--vars", `{"foo":"bar"}`,
+		"--set-vars", `{"foo":"bar"}`,
 		"--auto-confirm",
 	)
 
@@ -250,7 +250,7 @@ func TestUpdatePICommand_VarsFileSubmitsAndConfirmsVariables(t *testing.T) {
 		"--json",
 		"update", "pi",
 		"--key", "2251799813711967",
-		"--vars-file", varsPath,
+		"--set-vars-file", varsPath,
 	)
 
 	require.True(t, sawUpdate)
@@ -315,7 +315,7 @@ func TestUpdateProcessInstanceCommand_MultipleRepeatedKeysApplyOneVarsPayloadToE
 		"--key", "2251799813711967",
 		"--key", "2251799813711968",
 		"--key", "2251799813711967",
-		"--vars", `{"foo":"bar"}`,
+		"--set-vars", `{"foo":"bar"}`,
 	)
 
 	mu.Lock()
@@ -402,7 +402,7 @@ func TestUpdateProcessInstanceCommand_ExecutesOnlyFrozenChanges(t *testing.T) {
 		"--config", writeTestConfigForVersion(t, srv.URL, "8.10"),
 		"--automation", "--json", "update", "pi",
 		"--key", "101", "--key", "202",
-		"--vars", `{"foo":"new","same":"keep","added":{"nested":[1]}}`,
+		"--set-vars", `{"foo":"new","same":"keep","added":{"nested":[1]}}`,
 	)
 
 	mu.Lock()
@@ -473,7 +473,7 @@ func TestUpdateProcessInstanceCommand_StdinKeysMergeAndDeduplicateWithFlagKeys(t
 		"update", "pi",
 		"--key", "2251799813711967",
 		"-",
-		"--vars", `{"foo":"bar"}`,
+		"--set-vars", `{"foo":"bar"}`,
 	)
 
 	mu.Lock()
@@ -527,7 +527,7 @@ func TestUpdateProcessInstanceCommand_NoWaitReturnsSubmittedAfterImpactCheckOnly
 		"--config", cfgPath,
 		"update", "pi",
 		"--key", "2251799813711967",
-		"--vars", `{"foo":"bar"}`,
+		"--set-vars", `{"foo":"bar"}`,
 		"--no-wait",
 	)
 
@@ -572,7 +572,7 @@ func TestUpdateProcessInstanceCommand_NoWaitJSONReportsSubmittedResultsAfterImpa
 		"--json",
 		"update", "pi",
 		"--key", "2251799813711967",
-		"--vars", `{"foo":"bar"}`,
+		"--set-vars", `{"foo":"bar"}`,
 		"--no-wait",
 	)
 
@@ -610,7 +610,7 @@ func TestUpdateProcessInstanceCommand_PreparedExecutionVersionCoverage(t *testin
 			server, capture := newUpdateProcessInstanceOutputServer(t, test.version, false)
 			args := []string{
 				"--config", writeTestConfigForVersion(t, server.URL, test.version),
-				"--automation", "--json", "update", "pi", "--key", "101", "--vars", `{"approved":true,"new":"value"}`,
+				"--automation", "--json", "update", "pi", "--key", "101", "--set-vars", `{"approved":true,"new":"value"}`,
 			}
 			if test.noWait {
 				args = append(args, "--no-wait")
@@ -669,7 +669,7 @@ func TestUpdateProcessInstanceCommand_FullNameAndAliasBehaveIdenticallyForSingle
 				"--config", cfgPath,
 				"update", leaf,
 				"--key", "2251799813711967",
-				"--vars", `{"foo":"bar"}`,
+				"--set-vars", `{"foo":"bar"}`,
 			)
 
 			require.Equal(t, "/v2/element-instances/2251799813711967/variables", requestedPath)
@@ -814,7 +814,7 @@ func TestUpdateProcessInstanceCommand_DryRunDestinationsAddNoRequests(t *testing
 				"update", "pi",
 				"--key", "101",
 				"--key", "202",
-				"--vars", `{"approved":true,"new":"value"}`,
+				"--set-vars", `{"approved":true,"new":"value"}`,
 				"--dry-run",
 			}
 			if test.verbose {
@@ -870,7 +870,7 @@ func TestUpdateProcessInstanceCommand_DryRunUsesCompleteFacadePlan(t *testing.T)
 	stdout, stderr := executeRootForProcessInstanceWithSeparateOutputs(t,
 		"--config", writeTestConfigForVersion(t, server.URL, "8.10"),
 		"--json", "update", "pi", "--key", "101",
-		"--vars", `{"lateSame":"gold","nestedOnly":"requested","truncated":"visible","changed":false}`,
+		"--set-vars", `{"lateSame":"gold","nestedOnly":"requested","truncated":"visible","changed":false}`,
 		"--dry-run",
 	)
 
@@ -929,7 +929,7 @@ func TestUpdateProcessInstanceCommand_PlanningFailurePreventsAllWrites(t *testin
 	output, err := testx.RunCmdSubprocess(t, "TestUpdateProcessInstanceCommand_PlanningFailurePreventsAllWritesHelper", map[string]string{
 		"C8VOLT_TEST_CONFIG": writeTestConfigForVersion(t, server.URL, "8.10"),
 		"C8VOLT_TEST_UPDATE_ARGS": marshalUpdateArgsForEnv(t, []string{
-			"--automation", "update", "pi", "--key", "101", "--key", "202", "--vars", `{"foo":"bar"}`,
+			"--automation", "update", "pi", "--key", "101", "--key", "202", "--set-vars", `{"foo":"bar"}`,
 		}),
 	})
 
@@ -953,72 +953,72 @@ func TestUpdateProcessInstanceCommand_OutputModesPreserveContracts(t *testing.T)
 	}{
 		{
 			name:       "dry run human",
-			args:       []string{"--automation", "update", "pi", "--key", "101", "--vars", `{"approved":true}`, "--dry-run"},
+			args:       []string{"--automation", "update", "pi", "--key", "101", "--set-vars", `{"approved":true}`, "--dry-run"},
 			dryRun:     true,
 			wantStderr: "dry run: update process-instance variables: 1 process instance(s), 1 change(s), 0 addition(s), 0 unchanged, 0 untouched; no changes applied\n101: ~ approved (pi:101): false -> true\n",
 		},
 		{
 			name:     "dry run json",
-			args:     []string{"--json", "update", "pi", "--key", "101", "--vars", `{"approved":true}`, "--dry-run", "--no-wait"},
+			args:     []string{"--json", "update", "pi", "--key", "101", "--set-vars", `{"approved":true}`, "--dry-run", "--no-wait"},
 			jsonMode: true,
 			dryRun:   true,
 		},
 		{
 			name:         "dry run keys retains unchanged selected key",
 			initialValue: true,
-			args:         []string{"--keys-only", "--auto-confirm", "update", "pi", "--key", "101", "--vars", `{"approved":true}`, "--dry-run"},
+			args:         []string{"--keys-only", "--auto-confirm", "update", "pi", "--key", "101", "--set-vars", `{"approved":true}`, "--dry-run"},
 			wantStdout:   "101\n",
 			dryRun:       true,
 		},
 		{
 			name:   "dry run quiet human",
-			args:   []string{"--quiet", "update", "pi", "--key", "101", "--vars", `{"approved":true}`, "--dry-run"},
+			args:   []string{"--quiet", "update", "pi", "--key", "101", "--set-vars", `{"approved":true}`, "--dry-run"},
 			dryRun: true,
 		},
 		{
 			name:     "dry run quiet json wins over keys",
-			args:     []string{"--quiet", "--keys-only", "--json", "--automation", "update", "pi", "--key", "101", "--vars", `{"approved":true}`, "--dry-run", "--no-wait"},
+			args:     []string{"--quiet", "--keys-only", "--json", "--automation", "update", "pi", "--key", "101", "--set-vars", `{"approved":true}`, "--dry-run", "--no-wait"},
 			jsonMode: true,
 			dryRun:   true,
 		},
 		{
 			name:       "dry run quiet keys retains selected key",
-			args:       []string{"--quiet", "--keys-only", "update", "pi", "--key", "101", "--vars", `{"approved":true}`, "--dry-run", "--no-wait"},
+			args:       []string{"--quiet", "--keys-only", "update", "pi", "--key", "101", "--set-vars", `{"approved":true}`, "--dry-run", "--no-wait"},
 			wantStdout: "101\n",
 			dryRun:     true,
 		},
 		{
 			name:         "no-op human",
 			initialValue: true,
-			args:         []string{"--automation", "update", "pi", "--key", "101", "--vars", `{"approved":true}`},
+			args:         []string{"--automation", "update", "pi", "--key", "101", "--set-vars", `{"approved":true}`},
 			wantStderr:   "plan: update process-instance variables: nothing to update (1 requested value(s) already match visible variables); no confirmation required\n",
 		},
 		{
 			name:         "no-op json",
 			initialValue: true,
-			args:         []string{"--json", "--auto-confirm", "update", "pi", "--key", "101", "--vars", `{"approved":true}`},
+			args:         []string{"--json", "--auto-confirm", "update", "pi", "--key", "101", "--set-vars", `{"approved":true}`},
 			jsonMode:     true,
 		},
 		{
 			name:         "no-op keys emits zero bytes",
 			initialValue: true,
-			args:         []string{"--keys-only", "--auto-confirm", "update", "pi", "--key", "101", "--vars", `{"approved":true}`, "--no-wait"},
+			args:         []string{"--keys-only", "--auto-confirm", "update", "pi", "--key", "101", "--set-vars", `{"approved":true}`, "--no-wait"},
 		},
 		{
 			name:         "no-op quiet human",
 			initialValue: true,
-			args:         []string{"--quiet", "--automation", "update", "pi", "--key", "101", "--vars", `{"approved":true}`, "--no-wait"},
+			args:         []string{"--quiet", "--automation", "update", "pi", "--key", "101", "--set-vars", `{"approved":true}`, "--no-wait"},
 		},
 		{
 			name:         "no-op quiet json emits one success envelope",
 			initialValue: true,
-			args:         []string{"--quiet", "--keys-only", "--json", "--automation", "update", "pi", "--key", "101", "--vars", `{"approved":true}`, "--no-wait"},
+			args:         []string{"--quiet", "--keys-only", "--json", "--automation", "update", "pi", "--key", "101", "--set-vars", `{"approved":true}`, "--no-wait"},
 			jsonMode:     true,
 		},
 		{
 			name:         "no-op quiet keys emits zero bytes",
 			initialValue: true,
-			args:         []string{"--quiet", "--keys-only", "--automation", "update", "pi", "--key", "101", "--vars", `{"approved":true}`},
+			args:         []string{"--quiet", "--keys-only", "--automation", "update", "pi", "--key", "101", "--set-vars", `{"approved":true}`},
 		},
 	}
 
@@ -1103,7 +1103,7 @@ func TestUpdateProcessInstanceCommand_SparseCompleteReadCanEstablishNoOp(t *test
 
 	stdout, stderr := executeRootForProcessInstanceWithSeparateOutputs(t,
 		"--config", writeTestConfigForVersion(t, server.URL, "8.10"),
-		"--automation", "update", "pi", "--key", "101", "--vars", `{"approved":true}`,
+		"--automation", "update", "pi", "--key", "101", "--set-vars", `{"approved":true}`,
 	)
 
 	require.Empty(t, stdout)
@@ -1192,26 +1192,26 @@ func TestUpdateProcessInstanceCommand_ExplicitKeyCrossTenantExecution(t *testing
 	}{
 		{
 			name:         "complete paged dry run",
-			args:         []string{"--json", "update", "pi", "--key", tenantAdminKeysProcessInstanceKey, "--vars", `{"foo":"after"}`, "--dry-run"},
+			args:         []string{"--json", "update", "pi", "--key", tenantAdminKeysProcessInstanceKey, "--set-vars", `{"foo":"after"}`, "--dry-run"},
 			wantSearches: 2,
 			wantUpdate:   1,
 		},
 		{
 			name:         "unchanged no op",
-			args:         []string{"--automation", "--json", "update", "pi", "--key", tenantAdminKeysProcessInstanceKey, "--vars", `{"foo":"after"}`},
+			args:         []string{"--automation", "--json", "update", "pi", "--key", tenantAdminKeysProcessInstanceKey, "--set-vars", `{"foo":"after"}`},
 			wantSearches: 1,
 			wantUpdate:   0,
 		},
 		{
 			name:          "selective write with wait",
-			args:          []string{"--automation", "--json", "update", "pi", "--key", tenantAdminKeysProcessInstanceKey, "--vars", `{"foo":"after"}`},
+			args:          []string{"--automation", "--json", "update", "pi", "--key", tenantAdminKeysProcessInstanceKey, "--set-vars", `{"foo":"after"}`},
 			wantSearches:  2,
 			wantMutations: 1,
 			wantStatus:    "confirmed",
 		},
 		{
 			name:          "selective write without wait",
-			args:          []string{"--automation", "--json", "update", "pi", "--key", tenantAdminKeysProcessInstanceKey, "--vars", `{"foo":"after"}`, "--no-wait"},
+			args:          []string{"--automation", "--json", "update", "pi", "--key", tenantAdminKeysProcessInstanceKey, "--set-vars", `{"foo":"after"}`, "--no-wait"},
 			wantSearches:  1,
 			wantMutations: 1,
 			wantStatus:    "submitted",
@@ -1466,7 +1466,7 @@ func TestUpdateProcessInstanceCommand_NoPlannedChangesSkipsPromptAndMutation(t *
 		"--config", cfgPath,
 		"update", "pi",
 		"--key", "2251799813711967",
-		"--vars", `{"foo":"bar"}`,
+		"--set-vars", `{"foo":"bar"}`,
 	)
 
 	require.True(t, sawSearch)
@@ -1476,6 +1476,7 @@ func TestUpdateProcessInstanceCommand_NoPlannedChangesSkipsPromptAndMutation(t *
 	require.NotContains(t, output, "updated process-instance")
 }
 
+// Machine mutation requires explicit approval even with canonical variable inputs.
 func TestUpdateProcessInstanceCommand_JSONMutationRequiresExplicitConfirmation(t *testing.T) {
 	cfgPath := writeTestConfig(t, "http://127.0.0.1:1")
 
@@ -1485,7 +1486,7 @@ func TestUpdateProcessInstanceCommand_JSONMutationRequiresExplicitConfirmation(t
 			"--json",
 			"update", "pi",
 			"--key", "2251799813711967",
-			"--vars", `{"foo":"bar"}`,
+			"--set-vars", `{"foo":"bar"}`,
 		}),
 	})
 	require.Error(t, err)
@@ -1504,6 +1505,7 @@ func TestUpdateProcessInstanceCommand_JSONMutationRequiresExplicitConfirmation(t
 	require.Contains(t, detail["message"], "--json update process-instance requires --dry-run, --auto-confirm, or --automation")
 }
 
+// Variable updates retain the JSON and verbose exclusion.
 func TestUpdateProcessInstanceCommand_JSONRejectsVerbose(t *testing.T) {
 	cfgPath := writeTestConfig(t, "http://127.0.0.1:1")
 
@@ -1514,7 +1516,7 @@ func TestUpdateProcessInstanceCommand_JSONRejectsVerbose(t *testing.T) {
 			"--verbose",
 			"update", "pi",
 			"--key", "2251799813711967",
-			"--vars", `{"foo":"bar"}`,
+			"--set-vars", `{"foo":"bar"}`,
 			"--dry-run",
 		}),
 	})
@@ -1534,6 +1536,7 @@ func TestUpdateProcessInstanceCommand_JSONRejectsVerbose(t *testing.T) {
 	require.Contains(t, detail["message"], "--json cannot be combined with --verbose for update process-instance")
 }
 
+// Malformed or conflicting variable sources must not submit writes.
 func TestUpdateProcessInstanceCommand_InvalidVarsFailBeforeMutation(t *testing.T) {
 	cfgPath := writeTestConfig(t, "http://127.0.0.1:1")
 	malformedVarsFile := t.TempDir() + "/malformed-vars.json"
@@ -1549,43 +1552,43 @@ func TestUpdateProcessInstanceCommand_InvalidVarsFailBeforeMutation(t *testing.T
 			name:       "missing vars",
 			helperName: "TestUpdateProcessInstanceCommand_MissingVarsHelper",
 			args:       []string{"update", "pi", "--key", "2251799813711967"},
-			want:       "--vars or --vars-file is required and must be a JSON object",
+			want:       "--set-vars or --set-vars-file is required and must be a JSON object",
 		},
 		{
 			name:       "mutually exclusive vars and vars file",
 			helperName: "TestUpdateProcessInstanceCommand_MutuallyExclusiveVarsHelper",
-			args:       []string{"update", "pi", "--key", "2251799813711967", "--vars", `{"foo":"bar"}`, "--vars-file", malformedVarsFile},
-			want:       "--vars cannot be combined with --vars-file",
+			args:       []string{"update", "pi", "--key", "2251799813711967", "--set-vars", `{"foo":"bar"}`, "--set-vars-file", malformedVarsFile},
+			want:       "--set-vars cannot be combined with --set-vars-file",
 		},
 		{
 			name:       "vars file flag missing argument",
 			helperName: "TestUpdateProcessInstanceCommand_VarsFileMissingArgumentHelper",
-			args:       []string{"update", "pi", "--key", "2251799813711967", "--vars", `{"foo":"bar"}`, "--vars-file"},
-			want:       "flag needs an argument: --vars-file",
+			args:       []string{"update", "pi", "--key", "2251799813711967", "--set-vars", `{"foo":"bar"}`, "--set-vars-file"},
+			want:       "flag needs an argument: --set-vars-file",
 		},
 		{
 			name:       "malformed json",
 			helperName: "TestUpdateProcessInstanceCommand_MalformedVarsHelper",
-			args:       []string{"update", "pi", "--key", "2251799813711967", "--vars", `{"foo":`},
-			want:       "--vars must be a valid JSON object",
+			args:       []string{"update", "pi", "--key", "2251799813711967", "--set-vars", `{"foo":`},
+			want:       "--set-vars must be a valid JSON object",
 		},
 		{
 			name:       "non object json",
 			helperName: "TestUpdateProcessInstanceCommand_NonObjectVarsHelper",
-			args:       []string{"update", "pi", "--key", "2251799813711967", "--vars", `["foo"]`},
-			want:       "--vars must be a valid JSON object",
+			args:       []string{"update", "pi", "--key", "2251799813711967", "--set-vars", `["foo"]`},
+			want:       "--set-vars must be a valid JSON object",
 		},
 		{
 			name:       "missing vars file",
 			helperName: "TestUpdateProcessInstanceCommand_MissingVarsFileHelper",
-			args:       []string{"update", "pi", "--key", "2251799813711967", "--vars-file", t.TempDir() + "/missing.json"},
-			want:       "--vars-file could not be read",
+			args:       []string{"update", "pi", "--key", "2251799813711967", "--set-vars-file", t.TempDir() + "/missing.json"},
+			want:       "--set-vars-file could not be read",
 		},
 		{
 			name:       "malformed vars file",
 			helperName: "TestUpdateProcessInstanceCommand_MalformedVarsFileHelper",
-			args:       []string{"update", "pi", "--key", "2251799813711967", "--vars-file", malformedVarsFile},
-			want:       "--vars-file must be a valid JSON object",
+			args:       []string{"update", "pi", "--key", "2251799813711967", "--set-vars-file", malformedVarsFile},
+			want:       "--set-vars-file must be a valid JSON object",
 		},
 	}
 
@@ -1607,13 +1610,14 @@ func TestUpdateProcessInstanceCommand_InvalidVarsFailBeforeMutation(t *testing.T
 	}
 }
 
+// A valid variable payload cannot authorize a mutation without targets.
 func TestUpdateProcessInstanceCommand_MissingTargetsFailBeforeMutation(t *testing.T) {
 	cfgPath := writeTestConfig(t, "http://127.0.0.1:1")
 
 	t.Run("no key", func(t *testing.T) {
 		output, err := testx.RunCmdSubprocess(t, "TestUpdateProcessInstanceCommand_MissingKeyHelper", map[string]string{
 			"C8VOLT_TEST_CONFIG":      cfgPath,
-			"C8VOLT_TEST_UPDATE_ARGS": marshalUpdateArgsForEnv(t, []string{"update", "pi", "--vars", `{"foo":"bar"}`}),
+			"C8VOLT_TEST_UPDATE_ARGS": marshalUpdateArgsForEnv(t, []string{"update", "pi", "--set-vars", `{"foo":"bar"}`}),
 		})
 		require.Error(t, err)
 
@@ -1627,7 +1631,7 @@ func TestUpdateProcessInstanceCommand_MissingTargetsFailBeforeMutation(t *testin
 	t.Run("empty stdin", func(t *testing.T) {
 		output, err := testx.RunCmdSubprocessWithStdin(t, "TestUpdateProcessInstanceCommand_EmptyStdinHelper", map[string]string{
 			"C8VOLT_TEST_CONFIG":      cfgPath,
-			"C8VOLT_TEST_UPDATE_ARGS": marshalUpdateArgsForEnv(t, []string{"update", "pi", "-", "--vars", `{"foo":"bar"}`}),
+			"C8VOLT_TEST_UPDATE_ARGS": marshalUpdateArgsForEnv(t, []string{"update", "pi", "-", "--set-vars", `{"foo":"bar"}`}),
 		}, "\n")
 		require.Error(t, err)
 
