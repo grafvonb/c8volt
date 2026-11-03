@@ -735,8 +735,8 @@ func TestGeneratedOpsDocsDocumentGroupingCommands(t *testing.T) {
 		"--key strings",
 		"--element-id string",
 		"--element-instance-key string",
-		"--retries int32",
-		"--job-timeout string",
+		"--set-retries int32",
+		"--set-job-timeout string",
 		`[c8volt ops repair]({{ "/cli/c8volt_ops_repair" | relative_url }})`,
 	} {
 		if !strings.Contains(repairIncidentDoc, want) {

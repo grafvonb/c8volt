@@ -137,7 +137,7 @@ run_scenario() {
   if [ "$shape" != suspended-root ]; then model=C810_MultipleSubProcessesParent; fi
   it_run_capture "$group" create mutation pass "$prefix-created.keys" \
     c8 run pi --bpmn-process-id "$model" --count 1 --keys-only \
-      --vars "{\"releaseRunId\":\"$IT_RUN_ID\",\"scenario\":\"$group\"}" || rc=$?
+      --set-vars "{\"releaseRunId\":\"$IT_RUN_ID\",\"scenario\":\"$group\"}" || rc=$?
   # Save any returned keys before asserting success so partial creation is owned.
   awk '/^[0-9]+$/ { print }' "$prefix-created.keys" >> "$owned_roots"
   [ "$rc" -eq 0 ] || return 1

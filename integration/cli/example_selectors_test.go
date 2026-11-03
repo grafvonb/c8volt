@@ -100,7 +100,7 @@ func TestExampleLiteralResourceKeyGuard(t *testing.T) {
 		{"later literal key", "./c8volt update job --key <job-key> --key 456 --complete --dry-run", true},
 		{"owned placeholder", "./c8volt get pi --key <process-instance-key>", false},
 		{"job placeholders", "./c8volt update job --key <job-key>,<job-key> --complete --dry-run", false},
-		{"unrelated numbers", `./c8volt run pi --count 3 --vars '{"reference":"2251799813685250"}'`, false},
+		{"unrelated numbers", `./c8volt run pi --count 3 --set-vars '{"reference":"2251799813685250"}'`, false},
 		{"sample process", "./c8volt get pd --bpmn-process-id OrderProcess", true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

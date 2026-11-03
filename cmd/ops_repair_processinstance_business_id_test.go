@@ -180,7 +180,7 @@ func TestBusinessIDOperationsRepairScope(t *testing.T) {
 		for _, noWait := range []bool{false, true} {
 			t.Run(fmt.Sprint(dry, noWait), func(t *testing.T) {
 				f, s := newBusinessIDRepairFixture(t, false, "")
-				flags := []string{"--auto-confirm", "--json", "--set-vars", `{"nested":{"value":"frozen"}}`, "--job-timeout", "1m"}
+				flags := []string{"--auto-confirm", "--json", "--set-vars", `{"nested":{"value":"frozen"}}`, "--set-job-timeout", "1m"}
 				if dry {
 					flags = append(flags, "--dry-run")
 				}

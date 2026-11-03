@@ -35,16 +35,16 @@ Creation uses the configured tenant, or the default tenant when none is configur
 
 By default c8volt waits until created instances are observable as ACTIVE, SUSPENDED, COMPLETED, CANCELED, or TERMINATED. This confirms creation visibility, not execution completion. Use --no-wait to return after creation is accepted.
 
-On Camunda 8.10, --bid supplies one opaque business ID with either selector. Values are not trimmed or split at commas. A supplied value must be nonempty and at most 256 UTF-16 code units (a supplementary character counts as two). Camunda 8.8 and 8.9 reject this input.
+On Camunda 8.10, --set-bid supplies one opaque business ID with either selector. Values are not trimmed or split at commas. A supplied value must be nonempty and at most 256 UTF-16 code units (a supplementary character counts as two). Camunda 8.8 and 8.9 reject this input.
 
 Every --count attempt uses the same business ID. Backend uniqueness enforcement may reject repeated active roots for the same definition and tenant. Successful results survive later failures; JSON includes them in one failure envelope and keys-only prints their keys with the original failure exit status. --no-wait reports acceptance only. Human creation rows and summaries use the configured INFO logger, with bid:<value> beside the process name and quoting only when needed.`,
-	Example: `  ./c8volt run pi --bpmn-process-id order --bid 'order,AbC'
-  ./c8volt run pi --pd-key 2251799813685249 --bid 'order-123' --no-wait
+	Example: `  ./c8volt run pi --bpmn-process-id order --set-bid 'order,AbC'
+  ./c8volt run pi --pd-key 2251799813685249 --set-bid 'order-123' --no-wait
   ./c8volt run process-instance --bpmn-process-id <bpmn-process-id>
   ./c8volt --tenant tenant-a run process-instance --bpmn-process-id <bpmn-process-id>
-  ./c8volt run process-instance --bpmn-process-id <bpmn-process-id> --vars '{"customerId":"1234"}'
+  ./c8volt run process-instance --bpmn-process-id <bpmn-process-id> --set-vars '{"customerId":"1234"}'
   ./c8volt run process-instance --bpmn-process-id <bpmn-process-id> --count 3 --workers 2
-  ./c8volt --json run process-instance --bpmn-process-id <bpmn-process-id> --vars '{"customerId":"1234"}'
+  ./c8volt --json run process-instance --bpmn-process-id <bpmn-process-id> --set-vars '{"customerId":"1234"}'
   ./c8volt run process-instance --bpmn-process-id <bpmn-process-id> --keys-only | ./c8volt expect process-instance --state completed -
   ./c8volt run process-instance --bpmn-process-id <long-running-bpmn-process-id> --keys-only | ./c8volt expect process-instance --state active -`,
 	Aliases: []string{"pi"},
@@ -62,12 +62,12 @@ Every --count attempt uses the same business ID. Backend uniqueness enforcement 
 		var vars map[string]any
 		if flagRunPIVars != "" {
 			if err := json.Unmarshal([]byte(flagRunPIVars), &vars); err != nil {
-				handleCommandError(cmd, log, cfg.App.NoErrCodes, invalidFlagValuef("parsing --vars JSON: %v", err))
+				handleCommandError(cmd, log, cfg.App.NoErrCodes, invalidFlagValuef("parsing --set-vars JSON: %v", err))
 			}
 		}
 		var datas []process.ProcessInstanceData
 		var businessID *string
-		if cmd.Flags().Changed("bid") {
+		if cmd.Flags().Changed("set-bid") {
 			businessID = toolx.CopyPtr(&flagRunPIBusinessID)
 		}
 		tenantID := cfg.App.TargetTenant()
@@ -168,13 +168,17 @@ Every --count attempt uses the same business ID. Backend uniqueness enforcement 
 func init() {
 	runCmd.AddCommand(runProcessInstanceCmd)
 
+	setFlagMigrations(runProcessInstanceCmd, map[string]flagMigration{
+		"bid":  {Replacement: "--set-bid", TakesValue: true},
+		"vars": {Replacement: "--set-vars", TakesValue: true},
+	})
 	fs := runProcessInstanceCmd.Flags()
 	fs.StringSliceVarP(&flagRunPIProcessDefinitionBpmnProcessIds, "bpmn-process-id", "b", nil, "BPMN process ID(s) to run process instance for (mutually exclusive with --pd-key). Runs latest version unless --pd-version is specified")
 	fs.Int32Var(&flagRunPIProcessDefinitionVersion, "pd-version", 0, "specific version of the process definition to use when running by BPMN process ID (supported only with --bpmn-process-id)")
 	fs.StringSliceVar(&flagRunPIProcessDefinitionKey, "pd-key", nil, "specific process definition key(s) to run process instance for (mutually exclusive with --bpmn-process-id)")
 	fs.IntVarP(&flagRunPICount, "count", "n", 1, "number of instances to start for a single process definition")
-	fs.StringVar(&flagRunPIBusinessID, "bid", "", "opaque business ID (Camunda 8.10 only; nonempty, maximum 256 UTF-16 code units; reused unchanged by --count)")
-	fs.StringVar(&flagRunPIVars, "vars", "", "JSON-encoded variables to pass to the started process instance(s)")
+	fs.StringVar(&flagRunPIBusinessID, "set-bid", "", "opaque business ID (Camunda 8.10 only; nonempty, maximum 256 UTF-16 code units; reused unchanged by --count)")
+	fs.StringVar(&flagRunPIVars, "set-vars", "", "JSON-encoded variables to pass to the started process instance(s)")
 
 	fs.BoolVar(&flagNoWait, "no-wait", false, "return after creation is accepted")
 	fs.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers when --count > 1 (default: min(count, 2*GOMAXPROCS, 32))")

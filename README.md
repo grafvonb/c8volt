@@ -382,14 +382,14 @@ Deploy BPMN, start a process instance, and verify the process definition Camunda
 
 `run process-instance` confirms creation once an instance is observable as ACTIVE, SUSPENDED, COMPLETED, CANCELED, or TERMINATED. A first suspended observation succeeds immediately; it confirms visibility, not execution completion. Use `expect process-instance --state completed` to verify completion separately, or `run process-instance --no-wait` to return after creation is accepted without confirming visibility. Existing creation defaults on Camunda 8.8/8.9 remain supported.
 
-On Camunda 8.10, pass `--bid` with either creation selector:
+On Camunda 8.10, pass `--set-bid` with either creation selector:
 
 ```bash
-./c8volt run pi --bpmn-process-id order --bid 'order,AbC'
-./c8volt run pi --pd-key 2251799813685249 --bid 'order-123' --no-wait
+./c8volt run pi --bpmn-process-id order --set-bid 'order,AbC'
+./c8volt run pi --pd-key 2251799813685249 --set-bid 'order-123' --no-wait
 ```
 
-`--bid` preserves one opaque value, including whitespace, commas, and case. Omit it to submit no ID; an explicit empty value is invalid. The maximum is 256 UTF-16 code units: 256 BMP characters or 128 supplementary emoji. Camunda 8.8/8.9 reject supplied IDs before mutation. Every `--count` attempt reuses the same ID. When backend uniqueness enforcement is enabled, repeated active root instances for the same definition and tenant may conflict; c8volt does not generate replacements.
+`--set-bid` preserves one opaque value, including whitespace, commas, and case. Omit it to submit no ID; an explicit empty value is invalid. The maximum is 256 UTF-16 code units: 256 BMP characters or 128 supplementary emoji. Camunda 8.8/8.9 reject supplied IDs before mutation. Every `--count` attempt reuses the same ID. When backend uniqueness enforcement is enabled, repeated active root instances for the same definition and tenant may conflict; c8volt does not generate replacements.
 
 Creation JSON retains successful items and their returned IDs in one failure envelope when later work fails, with the original error class and exit status. Keys-only prints only successful keys (zero bytes if none) and retains the failure exit. Ordinary waiting uses the observed ID, even when absent; `--no-wait` uses the acceptance response without an extra read. Human creation rows and summaries now use the configured INFO logger, on stderr by default, with compact `bid:<value>` fields quoted only when needed. Quiet or a WARN threshold suppresses these lines. JSON and keys-only remain on stdout, including with quiet. Failures use one compact aggregate ERROR; HTTP diagnostics require `--debug` or configured DEBUG, independently of verbose.
 
@@ -739,6 +739,8 @@ Element searches and totals now apply the configured tenant on the server. This 
 Library callers can inspect complete element-local variables through `GetElementWithEnrichment`, `SearchElementsWithEnrichment`, and `SearchElementsPagesWithEnrichment`, using `element.Enrichment{Variables: true, Listeners: true}` to request both enrichments. The root `c8volt.New` client wires the shared services. Local reads use the element's owning process and its own runtime key as separate identities; they exclude parent, sibling and called-process scopes. Element limits bound selected elements, not their variable collections. JSON preserves raw serialized values and `apiTruncated`; variables are omitted without enrichment and serialize as `[]` after a successful empty local read. A failed or incomplete read returns an error.
 
 These three methods are additions to `element.API`: external implementations and test doubles must implement them. Existing methods and the `element.New`/`element.NewWithListeners` constructors remain available; requesting variables without the new composed dependency returns a local-precondition error. Custom service compositions can use `element.NewWithEnrichment`. Exact-key enriched reads bypass the configured discovery tenant and validate known observed tenant evidence.
+
+In v5, process creation uses `--set-bid` for the initial business ID and `--set-vars` for inline variables; no variable-file input is added. Repair uses `--set-retries` (default 1) and optional `--set-job-timeout`. **Repair `--set-retries 0` skips retry restoration; it does not write zero retries.** Removed creation `--bid`/`--vars` and repair `--retries`/`--job-timeout` inputs are rejected with replacement guidance, including mixed old/new inputs. Selection `--bid` and execution backoff controls are unchanged.
 
 In v5, variable updates and repair use `--set-vars` or `--set-vars-file`, and user-task assignment uses `--set-assignee`. The former `--vars`, `--vars-file`, and `--assign` spellings on these commands are rejected with replacement guidance; there are no legacy aliases or deprecation period.
 

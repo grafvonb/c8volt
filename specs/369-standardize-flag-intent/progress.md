@@ -166,3 +166,57 @@ Started: 2026-11-03 06:40:31
 - Traced early failures through static semantic marker or removed-token map, local diagnostic configuration, configured rendering and single exit. Backend service/facade/rendering paths are unchanged. Reviewed changed output boundaries: no new direct diagnostic prints or raw transport rendering; variable JSON decoder errors retain their existing local-input contract. No new lifecycle or cross-layer dependencies.
 - Updated source examples/help, capability/completion expectations, README and maintained integration invocation inventories; regenerated docs with `GOFLAGS='' make docs-content`. Touched Go formatting and `git diff --check` passed. No inherited live-test/config environment was present; GOFLAGS was cleared. All runtime checks used isolated fakes/subprocess/terminal fixtures; integration files were maintained statically only, and real-engine behavior remains unverified.
 ---
+
+---
+## Iteration 4 - 2026-11-03 07:17
+**Work Unit**: US1 T004 — canonical creation and repair write inputs, completed
+**Tasks Completed**:
+- [x] T004: Migrate creation BID/variables and repair retries/job timeout with payload, rejection, output and documentation coverage.
+**Tasks Remaining in Work Unit**: 0; US1 T002–T004 are complete. Next story is US2/T005.
+**Commit**: This work-unit commit
+**Files Changed**:
+- README.md
+- cmd/cmd_views_processinstance_run.go
+- cmd/command_contract_test.go
+- cmd/flag_intent_creation_repair_test.go
+- cmd/ops_repair_incident.go
+- cmd/ops_repair_incident_test.go
+- cmd/ops_repair_processinstance.go
+- cmd/ops_repair_processinstance_business_id_test.go
+- cmd/ops_repair_processinstance_test.go
+- cmd/root_test.go
+- cmd/run.go
+- cmd/run_processinstance.go
+- cmd/run_processinstance_business_id_test.go
+- cmd/run_processinstance_logging_test.go
+- cmd/run_test.go
+- demos/vhs/fast-start.tape
+- docs/cli/c8volt_ops_repair_incident.md
+- docs/cli/c8volt_ops_repair_process-instance.md
+- docs/cli/c8volt_run.md
+- docs/cli/c8volt_run_process-instance.md
+- docs/index.md
+- docsgen/main_test.go
+- integration/cli/all_commands_test.go
+- integration/cli/behavioral_scenarios_test.go
+- integration/cli/deploy_embed_run_test.go
+- integration/cli/example_selectors_test.go
+- integration/cli/real_state_cascade_test.go
+- integration/cli/real_state_destructive_test.go
+- integration/cli/real_state_incidents_test.go
+- integration/cli/volume_deploy_embed_run_test.go
+- integration/cli/volume_ops_repair_test.go
+- integration/cli/volume_seed_test.go
+- integration/scripts/run-c810-suspended.sh
+- integration/scripts/run-suite.sh
+- specs/369-standardize-flag-intent/progress.md
+- specs/369-standardize-flag-intent/ralph-memory.md
+- specs/369-standardize-flag-intent/tasks.md
+**Learnings**:
+- Changed creation/repair expectations first and observed failures for legacy registrations and unknown canonical variables before implementation. Registered only canonical flags; preserved diagnostic-only mappings and shared variable migrations. Fixed the creation failure renderer's BID presence check to retain the existing unsupported-version reason.
+- Passed `GOFLAGS='' go test ./cmd -run 'TestFlagIntentCreationRepair|TestRun|TestOpsRepair|TestBusinessIDOperationsRepair|TestFlagIntentVariables|TestCommandContract|TestCapabilities|TestCompletion|TestFlagParseErrors' -count=1` (12.209s). Includes exact creation BID/count/variables, optional inputs, version restrictions, tenant/observation behavior, repair native payload/default/zero/timeout assertions, reports, sparse/empty scopes, real-terminal confirmation and empty scope, logging destinations/severity/suppression, DEBUG redaction and partial results. Initial payload-fixture expectations were corrected to the existing generated v8.8 changeset/null contract; no backend schema changed.
+- Passed final focused `GOFLAGS='' go test ./cmd -run 'TestFlagIntentCreationRepair|TestFlagIntentMigration|TestFlagParseErrors' -count=1` (2.152s), including expanded plain/structured human rejection for creation and both repair commands. Removed/equal mixed spellings in both orders fail before requests or stdin consumption, with replacement guidance and exactly one JSON envelope through EOF.
+- Config passed (0.442s). docsgen initially exposed two stale repair flag expectations; updated them and passed `GOFLAGS='' go test ./docsgen -count=1` (1.054s). Generated documentation with `GOFLAGS='' make docs-content`; shell syntax passed for integration/scripts/run-suite.sh and integration/scripts/run-c810-suspended.sh. Touched Go files formatted and diff whitespace checked.
+- Reviewed failure flow: removed flags use existing local migration preparation, configured logger or shared envelope, and a single exit. Runtime service/facade errors retain existing conversions and renderers; creation retains bounded aggregate failures, partial payloads and exit codes. No added diagnostic prints/raw transport formatting, lifecycle declarations or backend work in CLI/facades.
+- No inherited live-test/config environment was present; GOFLAGS cleared. Tests used only test-owned fakes and isolated subprocess/terminal fixtures. Integration files and demos were edited statically only. No full cmd/race suite was warranted by this command-local rename; no live-engine validation performed.
+---

@@ -63,7 +63,7 @@ func TestRunProcessInstanceBusinessIDFailureLogging(t *testing.T) {
 				if level == "" {
 					level = "info"
 				}
-				args := []string{"--config", runBusinessIDConfig(t, srv.URL, format, level), "run", "pi", "--pd-key", "9001", "--bid", "same,ID", "--count", "4", "--workers", "2", "--no-wait"}
+				args := []string{"--config", runBusinessIDConfig(t, srv.URL, format, level), "run", "pi", "--pd-key", "9001", "--set-bid", "same,ID", "--count", "4", "--workers", "2", "--no-wait"}
 				args = append(args, tc.flags...)
 				dest := "configured"
 				if i%2 == 1 {
@@ -160,7 +160,7 @@ func TestRunProcessInstanceBusinessIDSummaryLogging(t *testing.T) {
 			for _, flags := range [][]string{nil, {"--verbose"}, {"--quiet"}, {"--json"}, {"--quiet", "--json"}, {"--keys-only"}, {"--quiet", "--keys-only"}, {"--automation", "--json"}, {"--auto-confirm"}} {
 				t.Run(format+"/"+level+"/"+strings.Join(flags, " "), func(t *testing.T) {
 					f, srv := newRunBusinessIDFixture(t, "8.10", -1, toolx.Ptr("old\n\"ID"))
-					args := []string{"--config", runBusinessIDConfig(t, srv.URL, format, level), "run", "pi", "--pd-key", "9001", "--bid", "new"}
+					args := []string{"--config", runBusinessIDConfig(t, srv.URL, format, level), "run", "pi", "--pd-key", "9001", "--set-bid", "new"}
 					args = append(args, flags...)
 					dest := "configured"
 					if format == "json" {
@@ -207,7 +207,7 @@ func TestRunProcessInstanceBusinessIDSequentialPartial(t *testing.T) {
 	for _, flags := range [][]string{{"--pd-key", "9001,9002,9003"}, {"--pd-key", "9001", "--count", "4", "--workers", "1"}, {"--pd-key", "9001", "--count", "20", "--workers", "1", "--fail-fast"}} {
 		t.Run(strings.Join(flags, " "), func(t *testing.T) {
 			f, srv := newRunBusinessIDFixture(t, "8.10", 1, toolx.Ptr("observed"))
-			args := []string{"--config", writeTestConfigForVersion(t, srv.URL, "8.10"), "--json", "run", "pi", "--bid", "same"}
+			args := []string{"--config", writeTestConfigForVersion(t, srv.URL, "8.10"), "--json", "run", "pi", "--set-bid", "same"}
 			args = append(args, flags...)
 			stdout, stderr, err := runBusinessIDCommand(t, args, "inherited", false)
 			assertRunBusinessIDExit(t, err, 6)
@@ -237,7 +237,7 @@ func TestRunProcessInstanceBusinessIDUnsupportedHuman(t *testing.T) {
 	for _, version := range []string{"8.8", "8.9"} {
 		t.Run(version, func(t *testing.T) {
 			f, srv := newRunBusinessIDFixture(t, version, -1, nil)
-			args := []string{"--config", writeTestConfigForVersion(t, srv.URL, version), "--quiet", "run", "pi", "--pd-key", "9001", "--bid", "", "--count", "3", "--workers", "2"}
+			args := []string{"--config", writeTestConfigForVersion(t, srv.URL, version), "--quiet", "run", "pi", "--pd-key", "9001", "--set-bid", "", "--count", "3", "--workers", "2"}
 			stdout, stderr, err := runBusinessIDCommand(t, args, "configured", false)
 			assertRunBusinessIDExit(t, err, 1)
 			require.Empty(t, stdout)

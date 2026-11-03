@@ -18,7 +18,7 @@ import (
 // have failed, remained unattempted, or been submitted without successful observation.
 func formatRunProcessInstanceFailure(cmd *cobra.Command, requested, returned int, err error) string {
 	reason := boundedCommandFailureReason(err)
-	if cmd.Flags().Changed("bid") && ferrors.Classify(err) == ferrors.ClassUnsupported {
+	if cmd.Flags().Changed("set-bid") && ferrors.Classify(err) == ferrors.ClassUnsupported {
 		reason = "business ID creation requires Camunda 8.10"
 	}
 	return fmt.Sprintf("creating process instances: requested %d; successful %d; without successful result %d; %s", requested, returned, requested-returned, reason)

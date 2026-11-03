@@ -345,7 +345,7 @@ func TestFlagParseErrorsDoNotPrintUsage(t *testing.T) {
 	tests := [][]string{
 		{"--config"},
 		{"get", "tenant", "--key"},
-		{"run", "pi", "--vars"},
+		{"run", "pi", "--set-vars"},
 		{"walk", "pi", "--key"},
 		{"delete", "pd", "--key"},
 		{"update", "pi", "--set-vars-file"},

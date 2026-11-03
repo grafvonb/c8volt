@@ -211,8 +211,10 @@ func init() {
 	useInvalidInputFlagErrors(opsRepairProcessInstanceCmd)
 
 	setFlagMigrations(opsRepairProcessInstanceCmd, map[string]flagMigration{
-		"vars":      {Replacement: "--set-vars", TakesValue: true},
-		"vars-file": {Replacement: "--set-vars-file", TakesValue: true},
+		"retries":     {Replacement: "--set-retries", TakesValue: true},
+		"job-timeout": {Replacement: "--set-job-timeout", TakesValue: true},
+		"vars":        {Replacement: "--set-vars", TakesValue: true},
+		"vars-file":   {Replacement: "--set-vars-file", TakesValue: true},
 	})
 	fs := opsRepairProcessInstanceCmd.Flags()
 	fs.String("bid", "", "exact opaque business ID to select incident-bearing process instances (Camunda 8.10+)")
@@ -230,8 +232,8 @@ func init() {
 	fs.StringVar(&flagGetPIIncidentErrorMessage, "incident-error-message", "", "case-insensitive incident error message substring filter for --direct-incidents-only")
 	fs.Int32VarP(&flagGetPISize, "batch-size", "n", consts.MaxPISearchSize, fmt.Sprintf("number of process instances to inspect per discovery page; does not cap total frozen scope (max limit %d enforced by server)", consts.MaxPISearchSize))
 	fs.Int32VarP(&flagGetPILimit, "limit", "l", 0, "maximum number of matching process instances to freeze for repair; omit to discover all matches")
-	fs.Int32Var(&flagOpsRepairProcessInstanceRetries, "retries", 1, "retry count to set on related jobs; 0 skips retry restoration")
-	fs.StringVar(&flagOpsRepairProcessInstanceJobTimeoutRaw, "job-timeout", "", "timeout duration to submit for related jobs, for example 60s, 5m, or 1h")
+	fs.Int32Var(&flagOpsRepairProcessInstanceRetries, "set-retries", 1, "retry count to set on related jobs; 0 skips retry restoration")
+	fs.StringVar(&flagOpsRepairProcessInstanceJobTimeoutRaw, "set-job-timeout", "", "timeout duration to submit for related jobs, for example 60s, 5m, or 1h")
 	fs.StringVar(&flagOpsRepairProcessInstanceVars, "set-vars", "", "JSON object with variables to set once per process-instance scope before resolving dependent incidents")
 	fs.StringVar(&flagOpsRepairProcessInstanceVarsFile, "set-vars-file", "", "path to JSON object file with variables to set once per process-instance scope")
 	fs.StringVar(&flagOpsRepairProcessInstanceReportFile, "report-file", "", "plan an audit report at the given path")
@@ -260,7 +262,7 @@ func validateOpsRepairProcessInstanceFlagValues(cmd *cobra.Command) error {
 		return invalidFlagValuef("--workers must be positive integer")
 	}
 	if flagOpsRepairProcessInstanceRetries < 0 {
-		return invalidFlagValuef("invalid value for --retries: %d, expected non-negative integer", flagOpsRepairProcessInstanceRetries)
+		return invalidFlagValuef("invalid value for --set-retries: %d, expected non-negative integer", flagOpsRepairProcessInstanceRetries)
 	}
 	if cmd != nil && cmd.Flags().Changed("set-vars") && cmd.Flags().Changed("set-vars-file") {
 		return mutuallyExclusiveFlagsf("--set-vars cannot be combined with --set-vars-file")
@@ -293,15 +295,15 @@ func validateOpsRepairProcessInstanceFlagValues(cmd *cobra.Command) error {
 
 // parseOpsRepairProcessInstanceJobTimeout validates the optional related-job timeout request.
 func parseOpsRepairProcessInstanceJobTimeout(cmd *cobra.Command) (time.Duration, error) {
-	if cmd == nil || !cmd.Flags().Changed("job-timeout") {
+	if cmd == nil || !cmd.Flags().Changed("set-job-timeout") {
 		return 0, nil
 	}
 	timeout, err := time.ParseDuration(flagOpsRepairProcessInstanceJobTimeoutRaw)
 	if err != nil || timeout <= 0 {
-		return 0, invalidFlagValuef("invalid value for --job-timeout: %q, expected positive duration such as 60s, 5m, or 1h", flagOpsRepairProcessInstanceJobTimeoutRaw)
+		return 0, invalidFlagValuef("invalid value for --set-job-timeout: %q, expected positive duration such as 60s, 5m, or 1h", flagOpsRepairProcessInstanceJobTimeoutRaw)
 	}
 	if timeout.Milliseconds() <= 0 {
-		return 0, invalidFlagValuef("invalid value for --job-timeout: %q, duration must be at least 1ms", flagOpsRepairProcessInstanceJobTimeoutRaw)
+		return 0, invalidFlagValuef("invalid value for --set-job-timeout: %q, duration must be at least 1ms", flagOpsRepairProcessInstanceJobTimeoutRaw)
 	}
 	return timeout, nil
 }

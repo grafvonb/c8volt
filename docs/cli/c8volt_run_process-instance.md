@@ -18,7 +18,7 @@ Creation uses the configured tenant, or the default tenant when none is configur
 
 By default c8volt waits until created instances are observable as ACTIVE, SUSPENDED, COMPLETED, CANCELED, or TERMINATED. This confirms creation visibility, not execution completion. Use --no-wait to return after creation is accepted.
 
-On Camunda 8.10, --bid supplies one opaque business ID with either selector. Values are not trimmed or split at commas. A supplied value must be nonempty and at most 256 UTF-16 code units (a supplementary character counts as two). Camunda 8.8 and 8.9 reject this input.
+On Camunda 8.10, --set-bid supplies one opaque business ID with either selector. Values are not trimmed or split at commas. A supplied value must be nonempty and at most 256 UTF-16 code units (a supplementary character counts as two). Camunda 8.8 and 8.9 reject this input.
 
 Every --count attempt uses the same business ID. Backend uniqueness enforcement may reject repeated active roots for the same definition and tenant. Successful results survive later failures; JSON includes them in one failure envelope and keys-only prints their keys with the original failure exit status. --no-wait reports acceptance only. Human creation rows and summaries use the configured INFO logger, with bid:<value> beside the process name and quoting only when needed.
 
@@ -29,13 +29,13 @@ c8volt run process-instance [flags]
 ### Examples
 
 ```
-  ./c8volt run pi --bpmn-process-id order --bid 'order,AbC'
-  ./c8volt run pi --pd-key 2251799813685249 --bid 'order-123' --no-wait
+  ./c8volt run pi --bpmn-process-id order --set-bid 'order,AbC'
+  ./c8volt run pi --pd-key 2251799813685249 --set-bid 'order-123' --no-wait
   ./c8volt run process-instance --bpmn-process-id <bpmn-process-id>
   ./c8volt --tenant tenant-a run process-instance --bpmn-process-id <bpmn-process-id>
-  ./c8volt run process-instance --bpmn-process-id <bpmn-process-id> --vars '{"customerId":"1234"}'
+  ./c8volt run process-instance --bpmn-process-id <bpmn-process-id> --set-vars '{"customerId":"1234"}'
   ./c8volt run process-instance --bpmn-process-id <bpmn-process-id> --count 3 --workers 2
-  ./c8volt --json run process-instance --bpmn-process-id <bpmn-process-id> --vars '{"customerId":"1234"}'
+  ./c8volt --json run process-instance --bpmn-process-id <bpmn-process-id> --set-vars '{"customerId":"1234"}'
   ./c8volt run process-instance --bpmn-process-id <bpmn-process-id> --keys-only | ./c8volt expect process-instance --state completed -
   ./c8volt run process-instance --bpmn-process-id <long-running-bpmn-process-id> --keys-only | ./c8volt expect process-instance --state active -
 ```
@@ -43,7 +43,6 @@ c8volt run process-instance [flags]
 ### Options
 
 ```
-      --bid string                opaque business ID (Camunda 8.10 only; nonempty, maximum 256 UTF-16 code units; reused unchanged by --count)
   -b, --bpmn-process-id strings   BPMN process ID(s) to run process instance for (mutually exclusive with --pd-key). Runs latest version unless --pd-version is specified
   -n, --count int                 number of instances to start for a single process definition (default 1)
       --fail-fast                 stop scheduling new instances after the first error
@@ -52,7 +51,8 @@ c8volt run process-instance [flags]
       --no-worker-limit           use all queued jobs as workers when --workers is unset
       --pd-key strings            specific process definition key(s) to run process instance for (mutually exclusive with --bpmn-process-id)
       --pd-version int32          specific version of the process definition to use when running by BPMN process ID (supported only with --bpmn-process-id)
-      --vars string               JSON-encoded variables to pass to the started process instance(s)
+      --set-bid string            opaque business ID (Camunda 8.10 only; nonempty, maximum 256 UTF-16 code units; reused unchanged by --count)
+      --set-vars string           JSON-encoded variables to pass to the started process instance(s)
   -w, --workers int               maximum concurrent workers when --count > 1 (default: min(count, 2*GOMAXPROCS, 32))
 ```
 

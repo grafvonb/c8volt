@@ -96,8 +96,8 @@ func runRealStateIncidentScenarios(t *testing.T, profile integrationProfile, dat
 	}
 	records = append(records, jobEvidenceRecord)
 
-	repairResult := runC8VoltForProfile(t, profile.Name, "real-state-incidents-ops-repair-dry-run", "ops", "repair", "incident", "--key", firstString(realStateIncidentKeys(incidents)), "--retries", "1", "--job-timeout", "30s", "--dry-run")
-	repairRecord := realStateIncidentRecord(profile, repairResult, "ops repair incident", "real-state-incidents-ops-repair-dry-run", "one-line", []string{"key", "retries", "job-timeout", "dry-run"}, append(realStateIncidentKeys(incidents), jobs[0].Key), true, false)
+	repairResult := runC8VoltForProfile(t, profile.Name, "real-state-incidents-ops-repair-dry-run", "ops", "repair", "incident", "--key", firstString(realStateIncidentKeys(incidents)), "--set-retries", "1", "--set-job-timeout", "30s", "--dry-run")
+	repairRecord := realStateIncidentRecord(profile, repairResult, "ops repair incident", "real-state-incidents-ops-repair-dry-run", "one-line", []string{"key", "set-retries", "set-job-timeout", "dry-run"}, append(realStateIncidentKeys(incidents), jobs[0].Key), true, false)
 	if err := validateRealStateIncidentRepairDryRun(repairResult); err != nil {
 		repairRecord.Outcome = realStateOutcomeFailed
 		repairRecord.FailureClass = volumeFailureProduct

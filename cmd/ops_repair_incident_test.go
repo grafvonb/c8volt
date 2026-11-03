@@ -70,8 +70,8 @@ func TestOpsRepairIncidentHelpDocumentsExplicitKeyShape(t *testing.T) {
 		"--element-instance-key string",
 		"--batch-size int32",
 		"--limit int32",
-		"--retries int32",
-		"--job-timeout string",
+		"--set-retries int32",
+		"--set-job-timeout string",
 		"--set-vars string",
 		"--set-vars-file string",
 		"--report-file string",
@@ -87,7 +87,7 @@ func TestOpsRepairIncidentHelpDocumentsExplicitKeyShape(t *testing.T) {
 
 	parentOutput := executeRootForProcessInstanceTest(t, "ops", "repair", "--help")
 	require.NotContains(t, parentOutput, "--key strings")
-	require.NotContains(t, parentOutput, "--retries int32")
+	require.NotContains(t, parentOutput, "--set-retries int32")
 	require.NotContains(t, output, "--flow-node-id")
 	require.NotContains(t, output, "--fni-key")
 }

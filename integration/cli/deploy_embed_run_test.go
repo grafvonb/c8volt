@@ -262,7 +262,7 @@ func runSeededProcessInstanceWithVariables(t *testing.T, profile integrationProf
 	}
 	args := []string{"--automation", "--json", "run", "process-instance"}
 	args = append(args, runSelectorArgs(selection, deployments)...)
-	args = append(args, "--vars", vars)
+	args = append(args, "--set-vars", vars)
 
 	scenario := "seeded-" + profile.Name + "-run-process-instance"
 	if label != "" {

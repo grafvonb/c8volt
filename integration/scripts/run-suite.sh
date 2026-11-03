@@ -78,7 +78,7 @@ it_run_case "Fixture Setup" "deploy-user-task-fixture" "mutation" "pass" c8 embe
 
 vars_json="{\"releaseRunId\":\"${IT_RUN_ID}\",\"suite\":\"${IT_SUITE_NAME}\",\"customerTier\":\"bronze\",\"status\":\"pending\",\"payload\":\"integration-volume\"}"
 keys_file="$IT_WORKDIR/data/user-task.keys"
-it_run_capture "Data Generation" "run-volume-user-task-processes" "mutation" "pass" "$keys_file" c8 run pi -b "$simple_user_task" -n "$IT_VOLUME_COUNT" --workers 4 --vars "$vars_json" --keys-only
+it_run_capture "Data Generation" "run-volume-user-task-processes" "mutation" "pass" "$keys_file" c8 run pi -b "$simple_user_task" -n "$IT_VOLUME_COUNT" --workers 4 --set-vars "$vars_json" --keys-only
 
 first_key="$(it_first_key "$keys_file" || true)"
 key_count="$(awk '/^[0-9]+$/ { count++ } END { print count + 0 }' "$keys_file" 2>/dev/null || printf "0")"

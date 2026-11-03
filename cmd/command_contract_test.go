@@ -482,6 +482,7 @@ func TestCommandCapabilityForCommand_UsesExplicitAutomationOutputModes(t *testin
 	}, capability.OutputModes)
 }
 
+// Repair capabilities expose submitted retry values without legacy aliases.
 func TestCommandContractOpsRepairIncident(t *testing.T) {
 	root := Root()
 	resetCommandTreeFlags(root)
@@ -506,7 +507,7 @@ func TestCommandContractOpsRepairIncident(t *testing.T) {
 		Description: "incident key(s) to repair; repeat or combine with stdin '-'",
 	})
 	require.Contains(t, capability.Flags, FlagContract{
-		Name:        "retries",
+		Name:        "set-retries",
 		Type:        "int32",
 		Required:    false,
 		Repeated:    false,

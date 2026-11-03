@@ -13,10 +13,13 @@ Started: 2026-11-03T05:40:31Z
 
 ## Decisions
 
+- T004 is complete: creation uses `set-bid`/`set-vars`; both repair commands use `set-retries`/`set-job-timeout`. Repair retains default 1 and zero-as-skip, with timeout independently submitted. Existing repair variable migration mappings remain registered. Creation still has no file input; repair/get BID selectors remain unchanged.
+- Creation failure wording depends on `cmd/cmd_views_processinstance_run.go` checking `Changed("set-bid")`; keep this aligned with registration so unsupported versions retain the useful bounded business-ID reason.
+
 - T003 is complete. `flagUpdateJobRetries` remains selector-only; `flagUpdateJobSetRetries` owns submitted retries. Job mutation timeouts use `set-timeout`; removing local `timeout` restores the existing root HTTP binding without changing root_config.go. Job variables use `set-vars`; no file input was added. Worker action/code/message/backoff spelling stays unchanged until T005.
 - `validateUpdateJobArgs` rejects retained-flag migration errors before bootstrap without reading stdin or constructing requests. `migrationSemanticError` preserves only static command-owned guidance through T001 local reporting; never wrap parser messages or supplied values in it. The command request parser also checks intent for direct callers. T005 can reuse this seam.
 
-- T002 is complete: shared update/repair sources use `set-vars`/`set-vars-file`, task assignment uses `set-assignee`. Job inline variables are now `set-vars` (T003); run inline variables remain `vars` until T004. Task operation strings and report schemas still use `assign`; translate only the diagnostic flag label in assignment exclusions.
+- T002 is complete: shared update/repair sources use `set-vars`/`set-vars-file`, task assignment uses `set-assignee`. Job inline variables are now `set-vars` (T003); run inline variables are now `set-vars` (T004). Task operation strings and report schemas still use `assign`; translate only the diagnostic flag label in assignment exclusions.
 - Keep each command's existing migration entries when T004 adds repair retry/timeout entries. `setFlagMigrations` replaces the map rather than merging it.
 - Shared completion/assignment test constructors and `assignmentFlags` now emit canonical input; their existing logging/terminal matrices cover the renamed production dispatch. Completion preserves exact JSON numbers; ordinary variable updates keep their existing decoder.
 
@@ -27,12 +30,15 @@ Started: 2026-11-03T05:40:31Z
 
 ## Gotchas
 
+- Native v8.8 job PATCH bodies use `changeset` with both nullable `retries` and `timeout` fields. Creation/repair payload fixtures assert this existing schema; zero repair retries emits no retry PATCH, while timeout still emits its own PATCH. Success subprocess helpers must `os.Exit(0)` after Execute to avoid the Go test harness appending PASS to JSON.
+- docsgen/main_test.go also asserts repair flag spellings; update those expectations alongside generated docs. Maintained integration evidence CoveredFlags must match invocation changes, even though those suites must not be executed here.
+
 - Config explicitly allows empty environment values. Timeout precedence fixtures must unset C8VOLT_HTTP_TIMEOUT to test omission; setting it to an empty string intentionally overrides file/profile input and normalization returns 30s.
 - Listener batch completion rejects nonempty variables. Logging/terminal matrices use canonical `--set-vars '{}'` to retain listener eligibility; nonempty supported payloads and listener rejection remain covered elsewhere.
 - `cmd/job_task_business_id_test.go` owns additional retry/no-op preview invocations outside the update_job test family; migrate these fixtures with retry syntax changes.
 
 - Opting into T001 reporting also bounds unknown parse/Args errors on that command. The user-task `--allow-override` rejection now asserts the configured ERROR record `invalid input: invalid command arguments; see command help` and invalid-input exit, retaining zero-request and no-prompt checks.
-- Mixed-family fixtures must migrate selectively: run `--vars` remains valid until T004; job/shared variable fixtures are canonical. Integration fixtures/scripts are edited statically only, never executed.
+- Mixed-family fixtures must migrate selectively: run `--vars` is rejected after T004; job/shared variable fixtures are canonical. Integration fixtures/scripts are edited statically only, never executed.
 
 - Profiles overlay app/auth/API/HTTP settings, not logging. Test logging precedence with base config, environment and explicit flags; test profile selection through supported app fields.
 - `--no-err-codes` intentionally converts failure exit status to zero. It does not suppress the invalid envelope/error diagnostic.
@@ -40,6 +46,9 @@ Started: 2026-11-03T05:40:31Z
 - The complete cmd package suite took 406.115s in this iteration. It contains isolated subprocess/terminal tests; do not mistake its quiet execution period for a stalled launcher.
 
 ## Reusable Commands
+
+- `GOFLAGS='' go test ./cmd -run 'TestFlagIntentCreationRepair|TestRun|TestOpsRepair|TestBusinessIDOperationsRepair|TestFlagIntentVariables|TestCommandContract|TestCapabilities|TestCompletion|TestFlagParseErrors' -count=1`
+- `GOFLAGS='' go test ./cmd -run 'TestFlagIntentCreationRepair|TestFlagIntentMigration|TestFlagParseErrors' -count=1`; `GOFLAGS='' go test ./docsgen -count=1`
 
 - `GOFLAGS='' go test ./cmd -run 'TestFlagIntentJob|TestUpdateJob|TestParseUpdateJob|TestFlagIntentMigration|TestCommandContract|TestCapabilities|TestCompletion|TestScalarJobCompletedGuard|TestRetrieveAndNormalizeConfig' -count=1`
 - `GOFLAGS='' go test ./cmd -run 'TestBulkCompletionDiagnosticLogging|TestBulkCompletionSummaryLogging|TestBulkCompletionTerminal|TestUpdateJobAssignmentScalarLogging' -count=1`
@@ -62,5 +71,5 @@ Started: 2026-11-03T05:40:31Z
 
 ## Current Handoff
 
-- Recheck tasks.md dependencies. T004 (US1 creation/repair write inputs) is earliest next; T001–T003 are complete. T005 is also ready but document order selects T004. No blockers. Iteration 3 completed T003 only; worker action/code/message/backoff remains T005 work.
-- Validation: the full cmd/config/docsgen run found only stale retry spellings in TestJobBusinessIDPlans; these were corrected and that full test family passed afterward. Other command tests and both config/docsgen passed in the broad run. Updated canonical-variable logging/terminal matrices passed separately. No live validation was performed.
+- Recheck tasks.md dependencies. T005 (US2 worker error action/code/message/backoff) is earliest next; T001–T004 are complete. No blockers. Iteration 4 completed T004 only; do not alter retry selection or repair zero semantics when migrating worker outcomes.
+- T004 targeted creation/repair/metadata and existing logging/terminal/sparse/empty/partial-result families passed, as did shared migration rejection checks and config/docsgen. No shared bootstrap implementation changed, so the full cmd suite was not repeated. Integration invocation text and shell syntax were maintained statically; real-engine behavior remains unverified.

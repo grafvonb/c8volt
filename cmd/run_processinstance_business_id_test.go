@@ -175,7 +175,7 @@ func TestRunProcessInstanceBusinessIDInputs(t *testing.T) {
 			args = append(args, tc.selector...)
 			args = append(args, tc.flags...)
 			if tc.bid != nil {
-				args = append(args, "--bid", *tc.bid)
+				args = append(args, "--set-bid", *tc.bid)
 			}
 			stdout, stderr, err := runBusinessIDCommand(t, args, "configured", false)
 			assertRunBusinessIDExit(t, err, tc.exit)
