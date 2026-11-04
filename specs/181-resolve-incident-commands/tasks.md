@@ -17,7 +17,7 @@
 
 - [x] T001 Inspect generated incident resolution methods in `internal/clients/camunda/v88/camunda/client.gen.go` and `internal/clients/camunda/v89/camunda/client.gen.go`
 - [x] T002 Inspect current mutation command patterns in `cmd/update_job.go`, `cmd/cancel_processinstance.go`, and `cmd/update_processinstance.go`
-- [x] T003 Inspect existing incident lookup tests in `internal/services/incident/v87/incidents.go`, `internal/services/incident/v88/incidents.go`, `internal/services/incident/v89/incidents.go`, `c8volt/process/client_test.go`, and `cmd/get_processinstance_test.go`
+- [x] T003 Inspect existing incident lookup tests in `internal/services/incident/v88/incidents.go`, `internal/services/incident/v89/incidents.go`, `c8volt/process/client_test.go`, and `cmd/get_processinstance_test.go`
 
 ---
 
@@ -29,10 +29,8 @@
 
 - [x] T004 Add incident resolution domain result fields or reuse existing domain models in `internal/domain/processinstance.go`
 - [x] T005 Extend the incident service API with incident resolution and state lookup methods in `internal/services/incident/api.go`
-- [x] T006 [P] Add v8.7 unsupported resolution tests in `internal/services/incident/v87/incidents_test.go`
 - [x] T007 [P] Add v8.8 resolution service tests in `internal/services/incident/v88/incidents_test.go`
 - [x] T008 [P] Add v8.9 resolution service tests in `internal/services/incident/v89/incidents_test.go`
-- [x] T009 Implement unsupported v8.7 incident resolution behavior in `internal/services/incident/v87/incidents.go` and `internal/services/incident/v87/contract.go`
 - [x] T010 Implement v8.8 incident resolution calls in `internal/services/incident/v88/incidents.go` and `internal/services/incident/v88/contract.go`
 - [x] T011 Implement v8.9 incident resolution calls in `internal/services/incident/v89/incidents.go` and `internal/services/incident/v89/contract.go`
 - [x] T012 Add incident service factory/API compile checks and version tests in `internal/services/incident/factory_test.go`
@@ -151,7 +149,7 @@
 
 - [x] T046 [US5] Update README examples and command overview for resolve workflows, including dry-run examples, in `README.md`
 - [x] T047 [US5] Regenerate CLI reference markdown with `make docs-content`, updating `docs/cli/c8volt_resolve.md`, `docs/cli/c8volt_resolve_incident.md`, `docs/cli/c8volt_resolve_process-instance.md`, and `docs/cli/index.md`
-- [x] T048 [US5] Verify no incident lookup or resolution methods were added to `internal/services/processinstance/factory.go`, `internal/services/processinstance/v87/contract.go`, `internal/services/processinstance/v88/contract.go`, or `internal/services/processinstance/v89/contract.go`
+- [x] T048 [US5] Verify no incident lookup or resolution methods were added to `internal/services/processinstance/factory.go`, `internal/services/processinstance/v88/contract.go`, or `internal/services/processinstance/v89/contract.go`
 
 **Checkpoint**: User-facing documentation and existing workflows remain consistent.
 

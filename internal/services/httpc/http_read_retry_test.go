@@ -355,10 +355,102 @@ func TestUnwrapLogTransportFindsLogTransportBehindReadRetry(t *testing.T) {
 func TestNewInstallsReadRetryTransport(t *testing.T) {
 	t.Parallel()
 
-	svc, err := New(&config.Config{HTTP: config.HTTP{Timeout: "30s"}}, nil)
+	svc, err := New(&config.Config{HTTP: config.HTTP{RequestRateReportInterval: "5s", Timeout: "30s"}}, nil)
 
 	require.NoError(t, err)
 	_, ok := svc.Client().Transport.(*ReadRetryTransport)
 	require.True(t, ok)
 	require.NotNil(t, unwrapLogTransport(svc.Client().Transport))
+}
+
+// TestReadRetryTransportSingleAttempt confines the opt-out to the marked advisory request.
+func TestReadRetryTransportSingleAttempt(t *testing.T) {
+	t.Parallel()
+	for _, first := range []readRetryRoundTripResult{
+		{resp: newReadRetryResponse(http.StatusServiceUnavailable, "unavailable")},
+		{err: temporaryReadRetryError{}},
+	} {
+		seq := &readRetrySequenceTransport{t: t, results: []readRetryRoundTripResult{
+			first,
+			{resp: newReadRetryResponse(http.StatusServiceUnavailable, "retry this ordinary read")},
+			{resp: newReadRetryResponse(http.StatusOK, "ok")},
+		}}
+		transport := &ReadRetryTransport{base: seq, policy: fastReadRetryPolicy()}
+		req := newReadRetryRequest(t, http.MethodGet)
+		resp, err := transport.RoundTrip(req.WithContext(WithoutReadRetry(req.Context())))
+		require.Equal(t, first.err, err)
+		require.Same(t, first.resp, resp)
+		require.Equal(t, 1, seq.Calls())
+		if resp != nil {
+			require.NoError(t, resp.Body.Close())
+		}
+		resp, err = transport.RoundTrip(req)
+		require.NoError(t, err)
+		require.Equal(t, http.StatusOK, resp.StatusCode)
+		require.Equal(t, 3, seq.Calls())
+		require.NoError(t, resp.Body.Close())
+	}
+}
+
+// TestRequestRateReadRetriesShareAdmission proves safe-read retries re-enter the shared allowance.
+func TestRequestRateReadRetriesShareAdmission(t *testing.T) {
+	t.Parallel()
+	for _, first := range []readRetryRoundTripResult{
+		{resp: newReadRetryResponse(http.StatusTooManyRequests, "")},
+		{resp: newReadRetryResponse(http.StatusServiceUnavailable, "")},
+		{err: temporaryReadRetryError{}},
+	} {
+		seq := &readRetrySequenceTransport{t: t, results: []readRetryRoundTripResult{first, {resp: newReadRetryResponse(200, "")}}}
+		var starts []time.Time
+		paced := newRequestRateTransport(requestRateRoundTripFunc(func(req *http.Request) (*http.Response, error) {
+			starts = append(starts, time.Now())
+			return seq.RoundTrip(req)
+		}), 20)
+		transport := &ReadRetryTransport{base: paced, policy: fastReadRetryPolicy()}
+		response, err := transport.RoundTrip(newReadRetryRequest(t, http.MethodGet))
+		require.NoError(t, err)
+		_ = response.Body.Close()
+		require.Equal(t, 2, seq.Calls())
+		require.GreaterOrEqual(t, starts[1].Sub(starts[0]), 45*time.Millisecond)
+	}
+}
+
+// TestRequestRateReadLocalDeadlineIsNotRetried catches accidental retries of an early local deadline with a live parent.
+func TestRequestRateReadLocalDeadlineIsNotRetried(t *testing.T) {
+	t.Parallel()
+	calls := 0
+	local := &RequestRateWaitError{cause: context.DeadlineExceeded}
+	transport := &ReadRetryTransport{base: requestRateRoundTripFunc(func(*http.Request) (*http.Response, error) { calls++; return nil, local }), policy: fastReadRetryPolicy()}
+	_, err := transport.RoundTrip(newReadRetryRequest(t, http.MethodGet))
+	require.ErrorIs(t, err, context.DeadlineExceeded)
+	require.Same(t, local, err)
+	require.Equal(t, 1, calls)
+}
+
+// TestReadRetryTransportScopedLogSuppression retains attempts and leaves unrelated
+// calls logging normally; workflow suppression never disables HTTP retry policy.
+func TestReadRetryTransportScopedLogSuppression(t *testing.T) {
+	t.Parallel()
+	for _, suppress := range []bool{false, true} {
+		t.Run(fmt.Sprint(suppress), func(t *testing.T) {
+			var output bytes.Buffer
+			sequence := &readRetrySequenceTransport{t: t, results: []readRetryRoundTripResult{{resp: newReadRetryResponse(503, "failure")}, {resp: newReadRetryResponse(200, "ok")}}}
+			transport := &ReadRetryTransport{base: sequence, policy: fastReadRetryPolicy(), log: slog.New(slog.NewTextHandler(&output, nil))}
+			req := newReadRetryRequest(t, http.MethodGet)
+			if suppress {
+				req = req.WithContext(WithoutReadRetryLogs(req.Context()))
+			}
+			response, err := transport.RoundTrip(req)
+			require.NoError(t, err)
+			defer response.Body.Close()
+			require.Equal(t, 200, response.StatusCode)
+			require.Equal(t, 2, sequence.Calls())
+			if suppress {
+				require.Empty(t, output.String())
+			} else {
+				require.Contains(t, output.String(), "level=INFO")
+				require.Contains(t, output.String(), "retrying")
+			}
+		})
+	}
 }

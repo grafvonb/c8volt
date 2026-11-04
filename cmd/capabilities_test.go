@@ -273,7 +273,7 @@ func TestCapabilitiesCommand_JSONIncludesPagedWorkflowContracts(t *testing.T) {
 		},
 		{
 			path:       "get incident",
-			batchDesc:  "number of incidents to request per page; does not cap total results (max limit 1000 enforced by server)",
+			batchDesc:  "incidents per discovery page (server maximum 1000)",
 			limitDesc:  "maximum number of matching incidents to return across all pages; omit to continue through all matches",
 			aliases:    []string{"incidents", "inc"},
 			mutation:   CommandMutationReadOnly,
@@ -281,32 +281,32 @@ func TestCapabilitiesCommand_JSONIncludesPagedWorkflowContracts(t *testing.T) {
 		},
 		{
 			path:       "get process-instance",
-			batchDesc:  "number of process instances to request per page; does not cap total results (max limit 1000 enforced by server)",
-			limitDesc:  "maximum number of matching process instances to return across all pages; omit to continue through all matches",
+			batchDesc:  "process instances per discovery page (server maximum 1000)",
+			limitDesc:  "maximum matching instances to return; omit for all matches",
 			aliases:    []string{"process-instances", "pi", "pis"},
 			mutation:   CommandMutationReadOnly,
 			outputMode: OutputModeContract{Name: "keys-only", Supported: true},
 		},
 		{
 			path:       "cancel process-instance",
-			batchDesc:  "number of process instances to inspect per discovery page; does not cap total selected scope (max limit 1000 enforced by server)",
-			limitDesc:  "maximum number of matching process instances to select for cancellation across all pages; omit to continue through all matches",
+			batchDesc:  "process instances per discovery page (server maximum 1000)",
+			limitDesc:  "maximum matching instances to select; omit for all matches",
 			aliases:    []string{"pi"},
 			mutation:   CommandMutationStateChanging,
 			outputMode: OutputModeContract{Name: "json", Supported: true, MachinePreferred: true},
 		},
 		{
 			path:       "delete process-instance",
-			batchDesc:  "number of process instances to inspect per discovery page; does not cap total frozen scope (max limit 1000 enforced by server)",
-			limitDesc:  "maximum number of matching process instances to freeze for deletion across all pages; omit to continue through all matches",
+			batchDesc:  "process instances per discovery page (server maximum 1000)",
+			limitDesc:  "maximum matching instances to select; omit for all matches",
 			aliases:    []string{"pi"},
 			mutation:   CommandMutationStateChanging,
 			outputMode: OutputModeContract{Name: "json", Supported: true, MachinePreferred: true},
 		},
 		{
 			path:       "ops execute retention-policy",
-			batchDesc:  "number of process instances to inspect per discovery page; does not cap total frozen scope (max limit 1000 enforced by server)",
-			limitDesc:  "maximum number of matching process instances to freeze for retention cleanup; omit to discover all matches",
+			batchDesc:  "process instances per discovery page (server maximum 1000)",
+			limitDesc:  "maximum retention candidates to select; omit for all matches",
 			aliases:    []string{"ret-pol", "rp"},
 			mutation:   CommandMutationStateChanging,
 			outputMode: OutputModeContract{Name: "json", Supported: true, MachinePreferred: true},
@@ -371,8 +371,8 @@ func TestCapabilitiesCommand_HelpDocumentsCanonicalAutomationSurface(t *testing.
 	require.Contains(t, output, "public c8volt command contract for scripts")
 	require.Contains(t, output, "command paths, flags, output modes")
 	require.Contains(t, output, "automation support")
-	require.Contains(t, output, "./c8volt capabilities")
-	require.Contains(t, output, "./c8volt capabilities --json")
+	require.Contains(t, output, "c8volt capabilities")
+	require.Contains(t, output, "c8volt capabilities --json")
 }
 
 func TestCapabilitiesHelpAndGeneratedMarkdownShareDiscoveryAnchors(t *testing.T) {
@@ -415,4 +415,22 @@ func TestResultEnvelopeForError_UsesSharedOutcomeMapping(t *testing.T) {
 	require.Equal(t, "run process-instance", envelope.Command)
 	require.NotNil(t, envelope.Detail)
 	require.Contains(t, envelope.Detail.Message, "provide either --pd-key or --bpmn-process-id")
+}
+
+// TestCapabilitiesFlagIntentSurface keeps obsolete names out of published metadata.
+func TestCapabilitiesFlagIntentSurface(t *testing.T) {
+	for _, tc := range flagIntentSurface {
+		capability := commandCapabilityForCommand(tc.cmd)
+		names := map[string]bool{}
+		for _, flag := range capability.Flags {
+			names[flag.Name] = true
+		}
+		for old, canonical := range tc.names {
+			require.True(t, names[canonical], tc.cmd.CommandPath()+" "+canonical)
+			if tc.cmd == updateJobCmd && (old == "retries" || old == "timeout") {
+				continue
+			}
+			require.False(t, names[old], tc.cmd.CommandPath()+" "+old)
+		}
+	}
 }

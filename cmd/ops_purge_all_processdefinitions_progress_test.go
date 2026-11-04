@@ -50,7 +50,7 @@ func TestOpsPurgeAllProcessDefinitionsProgressStagesUseDistinctCounters(t *testi
 	require.Equal(t, "cancelling process-instance root trees, 1/2 process-instance tree(s), affected process instances: 3, affected scope: 7 process instance(s)", lastOpsPurgeAllProcessDefinitionsProgressUpdate(t, sink))
 
 	progress.Report(ops.ProgressEvent{Kind: ops.ProgressEventKindStage, Stage: &ops.StageProgress{Phase: opsPurgeAllProcessDefinitionsDrainPhase}})
-	require.Equal(t, "waiting for active process instances to drain", lastOpsPurgeAllProcessDefinitionsProgressUpdate(t, sink))
+	require.Equal(t, "waiting for unfinished process instances to drain", lastOpsPurgeAllProcessDefinitionsProgressUpdate(t, sink))
 
 	progress.Report(ops.ProgressEvent{Kind: ops.ProgressEventKindStage, Stage: &ops.StageProgress{Phase: opsPurgeAllProcessDefinitionsHistoryDeletePhase, Total: &totalRoots}})
 	progress.Report(ops.ProgressEvent{Kind: ops.ProgressEventKindCompletion, Completion: &ops.CompletionProgress{
@@ -254,7 +254,7 @@ func TestOpsPurgeAllProcessDefinitionsProgressPacesFromFirstStage(t *testing.T) 
 }
 
 // TestOpsPurgeAllProcessDefinitionsProgressWarningDoesNotResetClock verifies
-// immediate failure evidence leaves the workflow-wide informational cadence intact.
+// failure counters leave informational cadence intact without per-key diagnostics.
 func TestOpsPurgeAllProcessDefinitionsProgressWarningDoesNotResetClock(t *testing.T) {
 	now := time.Date(2026, time.September, 4, 12, 50, 0, 0, time.UTC)
 	progress, _, stderr := newOpsPurgeAllProcessDefinitionsProgressTestWithClock(t, ops.ProgressModeHuman, func() time.Time { return now })
@@ -268,13 +268,13 @@ func TestOpsPurgeAllProcessDefinitionsProgressWarningDoesNotResetClock(t *testin
 		Disposition:   ops.CompletionDispositionFailed,
 		FailureDetail: "boom",
 	}})
-	require.Contains(t, stderr.String(), "root-1 failed: boom")
+	require.Empty(t, stderr.String())
 
 	now = now.Add(6 * time.Second)
 	progress.Report(ops.ProgressEvent{Kind: ops.ProgressEventKindCompletion, Completion: &ops.CompletionProgress{Phase: opsPurgeAllProcessDefinitionsCancelPhase, Identity: "root-2", Disposition: ops.CompletionDispositionConfirmed}})
 
 	require.Contains(t, stderr.String(), "cancelling process-instance root trees, 2/3 process-instance tree(s), 1 failed")
-	require.Equal(t, 1, strings.Count(stderr.String(), "root-1 failed"))
+	require.NotContains(t, stderr.String(), "root-1 failed")
 }
 
 // TestOpsPurgeAllProcessDefinitionsProgressCloseFlushesDirtyStagesOnce verifies

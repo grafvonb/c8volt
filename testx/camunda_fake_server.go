@@ -19,35 +19,6 @@ var collectionResponses = map[string]string{
 }
 
 // Predefined responses for single-object endpoints
-var objectResponses = map[string]string{
-	"/topology": `{
-	  "Brokers": [
-		{
-		  "Host": "camunda-platform-c87-zeebe-0.camunda-platform-c87-zeebe",
-		  "NodeId": 0,
-		  "Partitions": [
-			{
-			  "Health": "healthy",
-			  "PartitionId": 1,
-			  "Role": "leader"
-			}
-		  ],
-		  "Port": 26501,
-		  "Version": "8.7.0"
-		}
-	  ],
-	  "ClusterSize": 1,
-	  "GatewayVersion": "8.7.0",
-	  "PartitionsCount": 1,
-	  "ReplicationFactor": 1,
-	  "LastCompletedChangeId": ""
-	}`,
-	"/license": `{
-	  "licenseType": "SaaS",
-	  "validLicense": true
-	}`,
-}
-
 var objectResponsesV2 = map[string]string{
 	"/v2/topology": `{
 	  "Brokers": [
@@ -148,11 +119,6 @@ func NewFakeServer(t *testing.T) *FakeServer {
 			switch r.Method {
 			case http.MethodGet:
 				if resp, ok := collectionResponses[r.URL.Path]; ok {
-					w.Header().Set("Content-Type", "application/json")
-					_, _ = w.Write([]byte(resp))
-					return
-				}
-				if resp, ok := objectResponses[r.URL.Path]; ok {
 					w.Header().Set("Content-Type", "application/json")
 					_, _ = w.Write([]byte(resp))
 					return

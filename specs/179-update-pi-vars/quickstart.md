@@ -5,7 +5,6 @@
 Run focused command, facade, and versioned service tests while implementing:
 
 ```bash
-GOCACHE=/tmp/c8volt-gocache go test ./cmd ./c8volt/process ./internal/services/processinstance/v87 ./internal/services/processinstance/v88 ./internal/services/processinstance/v89 -count=1
 ```
 
 When iterating on waiter behavior, include:
@@ -69,7 +68,6 @@ Unsupported version:
 ./c8volt update pi --key <process-instance-key> --vars '{"customerTier":"gold"}'
 ```
 
-Run the unsupported-version scenario with a Camunda 8.7 configuration and verify it fails before mutation.
 
 ## Documentation Validation
 

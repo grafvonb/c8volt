@@ -28,7 +28,6 @@
 
 **Decision**:
 
-- Camunda 8.7 ordinary search: tenant ID ASC, BPMN process ID ASC, version DESC, key ASC through the generated generic Operate sort model.
 - Camunda 8.8-8.10 ordinary search: tenant ID ASC, process definition ID ASC, version DESC, process definition key ASC.
 - Camunda 8.8-8.10 native latest search: tenant ID ASC, process definition ID ASC, the fields accepted by that endpoint.
 
@@ -41,9 +40,7 @@
 
 ## Decision 4: Make complete latest discovery service-owned
 
-**Decision**: The version-neutral service traverses all available pages before returning latest results. Camunda 8.8-8.10 use native `isLatestVersion`; Camunda 8.7 retrieves visible versions and reduces locally by exact `(tenantID, BPMNProcessID)` identity.
 
-**Rationale**: Existing adapter-level latest calls can stop at a single 1000-row page, and the Camunda 8.7 grouping currently omits tenant identity. Central traversal closes both correctness gaps and gives CLI, facade, and watch the same behavior.
 
 **Alternatives considered**:
 
@@ -84,17 +81,6 @@
 
 - Duplicate the comparator in public types: rejected because conversion already preserves order.
 - Let tables impose their own order: rejected because JSON and keys-only consumers would not share it.
-
-## Decision 8: Preserve direct retrieval and document the 8.7 bound
-
-**Decision**: Leave direct-key and XML retrieval unchanged. Retain the existing Camunda 8.7 emulation ceiling of 1000 visible definitions and state it as a compatibility limit rather than silently claiming unbounded completeness.
-
-**Rationale**: Direct retrieval is outside collection ordering. The 8.7 API compatibility path already overfetches/window-slices up to 1000; removing that server-era constraint would expand this issue substantially.
-
-**Alternatives considered**:
-
-- Refactor all process-definition retrieval together: rejected as unrelated risk.
-- Claim identical unbounded paging on all versions: rejected because it is not operationally true for the current 8.7 adapter.
 
 ## Decision 9: Validate every contract boundary
 

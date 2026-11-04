@@ -7,14 +7,17 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"testing"
 
 	"github.com/grafvonb/c8volt/c8volt"
@@ -77,6 +80,10 @@ func TestGetProcessDefinitionNonWatchMachineModesStayCompatible(t *testing.T) {
 			serve: func(t *testing.T, requests *[]map[string]any) *httptest.Server {
 				t.Helper()
 				return newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					if serveVersionCheckTopology(w, r, "8.8") {
+						return
+					}
+
 					require.Equal(t, http.MethodGet, r.Method)
 					require.Equal(t, "/v2/process-definitions/2251799813685255/xml", r.URL.Path)
 					*requests = append(*requests, map[string]any{
@@ -107,7 +114,7 @@ func TestGetProcessDefinitionNonWatchMachineModesStayCompatible(t *testing.T) {
 			if serve == nil {
 				serve = func(t *testing.T, requests *[]map[string]any) *httptest.Server {
 					t.Helper()
-					return newProcessDefinitionSearchServerResponses(t, requests,
+					return newProcessDefinitionSearchServerResponses(t, "8.8", requests,
 						`{"items":[{"processDefinitionKey":"2251799813685255","processDefinitionId":"invoice","name":"invoice","version":3,"tenantId":"tenant","versionTag":"stable"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`,
 					)
 				}
@@ -177,6 +184,10 @@ func TestGetProcessDefinitionBaseDispatchSkipsWatchLifecycle(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			var requests []string
 			srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if serveVersionCheckTopology(w, r, "8.8") {
+					return
+				}
+
 				request := r.Method + " " + r.URL.Path
 				requests = append(requests, request)
 				require.Equal(t, tt.wantRequest, request)
@@ -199,9 +210,14 @@ func TestGetProcessDefinitionBaseDispatchSkipsWatchLifecycle(t *testing.T) {
 	}
 }
 
+// TestGetProcessDefinitionLatestSearchPreservesSelectionRequest preserves the existing command contract with advisory-aware fixtures.
 func TestGetProcessDefinitionLatestSearchPreservesSelectionRequest(t *testing.T) {
 	var requests []string
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		require.Equal(t, http.MethodPost, r.Method)
 		require.Equal(t, "/v2/process-definitions/search", r.URL.Path)
 		body, err := io.ReadAll(r.Body)
@@ -298,6 +314,10 @@ func TestGetProcessDefinitionLatestSearchPageSizeInvarianceAcrossTenants(t *test
 			var requests []map[string]any
 			servedItems := 0
 			srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if serveVersionCheckTopology(w, r, "8.9") {
+					return
+				}
+
 				require.Equal(t, http.MethodPost, r.Method)
 				require.Equal(t, "/v2/process-definitions/search", r.URL.Path)
 				var request map[string]any
@@ -354,9 +374,14 @@ apis:
 	}
 }
 
+// TestGetProcessDefinitionBpmnSelectorMissingFailsWithExplicitDiagnostic preserves the existing command contract with advisory-aware fixtures.
 func TestGetProcessDefinitionBpmnSelectorMissingFailsWithExplicitDiagnostic(t *testing.T) {
 	var requests []string
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		require.Equal(t, http.MethodPost, r.Method)
 		require.Equal(t, "/v2/process-definitions/search", r.URL.Path)
 		body, err := io.ReadAll(r.Body)
@@ -384,9 +409,14 @@ func TestGetProcessDefinitionBpmnSelectorMissingFailsWithExplicitDiagnostic(t *t
 	require.Contains(t, string(output), "[missing-process]")
 }
 
+// TestGetProcessDefinitionBpmnSelectorVisiblePreservesListing preserves the existing command contract with advisory-aware fixtures.
 func TestGetProcessDefinitionBpmnSelectorVisiblePreservesListing(t *testing.T) {
 	var requests []string
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		require.Equal(t, http.MethodPost, r.Method)
 		require.Equal(t, "/v2/process-definitions/search", r.URL.Path)
 		body, err := io.ReadAll(r.Body)
@@ -503,7 +533,7 @@ apis:
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var requests []map[string]any
-			srv := newProcessDefinitionSearchServerResponses(t, &requests, tt.responses...)
+			srv := newProcessDefinitionSearchServerResponses(t, "8.9", &requests, tt.responses...)
 			t.Cleanup(srv.Close)
 			cfgPath := tt.configPath(t, srv.URL)
 
@@ -520,7 +550,7 @@ apis:
 // TestGetProcessDefinitionSearchVerboseProgress defines the process-definition progress contract for broad listing.
 func TestGetProcessDefinitionSearchVerboseProgress(t *testing.T) {
 	var requests []map[string]any
-	srv := newProcessDefinitionSearchServerResponses(t, &requests,
+	srv := newProcessDefinitionSearchServerResponses(t, "8.9", &requests,
 		`{"items":[{"processDefinitionKey":"2251799813685255","processDefinitionId":"invoice","name":"invoice","version":3,"tenantId":"tenant","versionTag":"stable"},{"processDefinitionKey":"2251799813685256","processDefinitionId":"payment","name":"payment","version":2,"tenantId":"tenant","versionTag":"stable"}],"page":{"totalItems":3,"hasMoreTotalItems":true,"endCursor":"pd-page-2"}}`,
 		`{"items":[{"processDefinitionKey":"2251799813685257","processDefinitionId":"shipping","name":"shipping","version":1,"tenantId":"tenant","versionTag":"stable"}],"page":{"totalItems":3,"hasMoreTotalItems":false}}`,
 	)
@@ -554,7 +584,7 @@ func TestGetProcessDefinitionSearchVerboseProgress(t *testing.T) {
 func TestGetProcessDefinitionSearchMachineOutputStaysProgressFree(t *testing.T) {
 	t.Run("json", func(t *testing.T) {
 		var requests []map[string]any
-		srv := newProcessDefinitionSearchServerResponses(t, &requests,
+		srv := newProcessDefinitionSearchServerResponses(t, "8.9", &requests,
 			`{"items":[{"processDefinitionKey":"2251799813685255","processDefinitionId":"invoice","name":"invoice","version":3,"tenantId":"tenant","versionTag":"stable"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`,
 		)
 		t.Cleanup(srv.Close)
@@ -580,7 +610,7 @@ func TestGetProcessDefinitionSearchMachineOutputStaysProgressFree(t *testing.T) 
 
 	t.Run("keys only", func(t *testing.T) {
 		var requests []map[string]any
-		srv := newProcessDefinitionSearchServerResponses(t, &requests,
+		srv := newProcessDefinitionSearchServerResponses(t, "8.9", &requests,
 			`{"items":[{"processDefinitionKey":"2251799813685255","processDefinitionId":"invoice","name":"invoice","version":3,"tenantId":"tenant","versionTag":"stable"},{"processDefinitionKey":"2251799813685256","processDefinitionId":"payment","name":"payment","version":2,"tenantId":"tenant","versionTag":"stable"}],"page":{"totalItems":2,"hasMoreTotalItems":false}}`,
 		)
 		t.Cleanup(srv.Close)
@@ -601,6 +631,7 @@ func TestGetProcessDefinitionSearchMachineOutputStaysProgressFree(t *testing.T) 
 	})
 }
 
+// TestGetProcessDefinitionXMLOutputRemainsKeyOnlyDisplayMode verifies canonical CLI behavior with isolated fixtures.
 func TestGetProcessDefinitionXMLOutputRemainsKeyOnlyDisplayMode(t *testing.T) {
 	tests := []struct {
 		name   string
@@ -657,12 +688,12 @@ func TestGetProcessDefinitionXMLOutputRemainsKeyOnlyDisplayMode(t *testing.T) {
 			assert: requireXMLDisplayModeIncompatibleFlag("--latest"),
 		},
 		{
-			name: "stat",
+			name: "with-stats",
 			setup: func(filter *process.ProcessDefinitionFilter) {
 				filter.Key = "2251799813685255"
 				flagGetPDWithStat = true
 			},
-			assert: requireXMLDisplayModeIncompatibleFlag("--stat"),
+			assert: requireXMLDisplayModeIncompatibleFlag("--with-stats"),
 		},
 		{
 			name: "json",
@@ -890,11 +921,16 @@ func requireNoProcessDefinitionWatchLifecycleOutput(t *testing.T, stdout, stderr
 	require.Empty(t, stderr)
 }
 
-func newProcessDefinitionSearchServerResponses(t *testing.T, requests *[]map[string]any, responses ...string) *httptest.Server {
+// newProcessDefinitionSearchServerResponses keeps fixture setup aligned with the invocation's advisory version check.
+func newProcessDefinitionSearchServerResponses(t *testing.T, version string, requests *[]map[string]any, responses ...string) *httptest.Server {
 	t.Helper()
 
 	served := 0
 	return newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, version) {
+			return
+		}
+
 		require.Equal(t, http.MethodPost, r.Method)
 		require.Equal(t, "/v2/process-definitions/search", r.URL.Path)
 		body, err := io.ReadAll(r.Body)
@@ -918,4 +954,336 @@ func countProcessDefinitionSearchRequests(items []string) int {
 		}
 	}
 	return count
+}
+
+// TestGetProcessDefinitionLifecycle exercises real command reads and output modes
+// against a single expected fake request, so lifecycle cannot add discovery or mutations.
+// Adapter tests cover the full value vocabulary; mixed-row and mode tests cover
+// unfamiliar/DELETED values, while this table checks both read paths and omission.
+func TestGetProcessDefinitionLifecycle(t *testing.T) {
+	for _, lookup := range []bool{true, false} {
+		for _, state := range []string{"DRAINING", ""} {
+			for _, mode := range []string{"human", "json"} {
+				t.Run(strconv.FormatBool(lookup)+"/"+state+"/"+mode, func(t *testing.T) {
+					item := map[string]any{"processDefinitionKey": "123", "processDefinitionId": "orders", "version": 2, "tenantId": "tenant"}
+					if state != "" {
+						item["state"] = state
+					}
+					var payload any = item
+					method, path := http.MethodGet, "/v2/process-definitions/123"
+					args := []string{"get", "pd"}
+					if lookup {
+						args = append(args, "--key", "123")
+					} else {
+						method, path = http.MethodPost, "/v2/process-definitions/search"
+						payload = map[string]any{"items": []any{item}, "page": map[string]any{"totalItems": 1, "hasMoreTotalItems": false}}
+					}
+					if mode == "json" {
+						args = append(args, "--json")
+					}
+					var requests atomic.Int32
+					srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+						if serveVersionCheckTopology(w, r, "8.10") {
+							return
+						}
+
+						requests.Add(1)
+						require.Equal(t, method, r.Method)
+						require.Equal(t, path, r.URL.Path)
+						w.Header().Set("Content-Type", "application/json")
+						require.NoError(t, json.NewEncoder(w).Encode(payload))
+					}))
+					t.Cleanup(srv.Close)
+					cfg := writeTestConfigForVersion(t, srv.URL, "8.10")
+					stdout, stderr := executeRootForProcessDefinitionTestWithSeparateOutputs(t, append([]string{"--config", cfg}, args...)...)
+					require.EqualValues(t, 1, requests.Load())
+					require.Empty(t, stderr)
+					if mode == "json" {
+						decoder := json.NewDecoder(strings.NewReader(stdout))
+						var envelope map[string]any
+						require.NoError(t, decoder.Decode(&envelope))
+						require.ErrorIs(t, decoder.Decode(new(any)), io.EOF)
+						require.Equal(t, "succeeded", envelope["outcome"])
+						got := requireJSONObject(t, envelope["payload"])
+						if !lookup {
+							got = requireJSONObject(t, requireJSONItems(t, got["items"], 1)[0])
+						}
+						require.Equal(t, "123", got["key"])
+						if state == "" {
+							require.NotContains(t, got, "state")
+						} else {
+							require.Equal(t, state, got["state"])
+						}
+					} else {
+						want := "123 tenant orders v2"
+						if state != "" {
+							want += " " + state
+						}
+						// Existing human result renderers remove trailing row whitespace.
+						want = strings.TrimRight(want, " ")
+						want += "\n"
+						if !lookup {
+							want += "found: 1\n"
+						}
+						require.Equal(t, want, stdout)
+					}
+				})
+			}
+		}
+	}
+}
+
+// TestGetProcessDefinitionLifecycleModes keeps quiet/machine precedence and empty
+// payload conventions stable with lifecycle present, using only one search request.
+func TestGetProcessDefinitionLifecycleModes(t *testing.T) {
+	for _, empty := range []bool{false, true} {
+		for _, mode := range []struct {
+			name              string
+			flags             []string
+			json, keys, quiet bool
+		}{
+			{"human", nil, false, false, false},
+			{"quiet", []string{"--quiet"}, false, false, true},
+			{"json", []string{"--json"}, true, false, false},
+			{"keys", []string{"--keys-only"}, false, true, false},
+			{"quiet json", []string{"--quiet", "--json"}, true, false, true},
+			{"quiet keys", []string{"--quiet", "--keys-only"}, false, true, true},
+			{"automation", []string{"--automation"}, false, false, false},
+			{"auto-confirm", []string{"--auto-confirm"}, false, false, false},
+		} {
+			t.Run(strconv.FormatBool(empty)+"/"+mode.name, func(t *testing.T) {
+				body := `{"items":[{"processDefinitionKey":"123","processDefinitionId":"orders","version":2,"state":"DELETED"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`
+				if empty {
+					body = `{"items":[],"page":{"totalItems":0,"hasMoreTotalItems":false}}`
+				}
+				var requests []map[string]any
+				srv := newProcessDefinitionSearchServerResponses(t, "8.10", &requests, body)
+				t.Cleanup(srv.Close)
+				cfg := writeTestConfigForVersion(t, srv.URL, "8.10")
+				args := append([]string{"--config", cfg, "get", "pd"}, mode.flags...)
+				stdout, stderr := executeRootForProcessDefinitionTestWithSeparateOutputs(t, args...)
+				require.Len(t, requests, 1)
+				require.Empty(t, stderr)
+				if mode.json {
+					decoder := json.NewDecoder(strings.NewReader(stdout))
+					var envelope map[string]any
+					require.NoError(t, decoder.Decode(&envelope))
+					require.ErrorIs(t, decoder.Decode(new(any)), io.EOF)
+					require.Equal(t, "succeeded", envelope["outcome"])
+					payload := requireJSONObject(t, envelope["payload"])
+					if empty {
+						require.Empty(t, payload, "preserve omitted empty fields")
+					} else {
+						item := requireJSONObject(t, requireJSONItems(t, payload["items"], 1)[0])
+						require.Equal(t, "DELETED", item["state"])
+					}
+				} else {
+					want := "123 orders v2 DELETED\nfound: 1\n"
+					if mode.keys {
+						want = "123\n"
+					}
+					if empty {
+						want = "found: 0\n"
+						if mode.keys || mode.quiet {
+							want = ""
+						}
+					}
+					require.Equal(t, want, stdout)
+				}
+			})
+		}
+	}
+}
+
+// TestGetProcessDefinitionLifecycleMixedRows preserves aligned mixed availability
+// and unchanged legacy rows/JSON for both older adapters through command execution.
+func TestGetProcessDefinitionLifecycleMixedRows(t *testing.T) {
+	for _, version := range []string{"8.8", "8.9", "8.10"} {
+		for _, asJSON := range []bool{false, true} {
+			t.Run(version+"/"+strconv.FormatBool(asJSON), func(t *testing.T) {
+				var requests []map[string]any
+				srv := newProcessDefinitionSearchServerResponses(t, version, &requests,
+					`{"items":[{"processDefinitionKey":"1","processDefinitionId":"orders","version":3,"state":"ACTIVE"},{"processDefinitionKey":"2","processDefinitionId":"orders","version":2},{"processDefinitionKey":"3","processDefinitionId":"orders","version":1,"state":"FUTURE"}],"page":{"totalItems":3,"hasMoreTotalItems":false}}`)
+				t.Cleanup(srv.Close)
+				cfg := writeTestConfigForVersion(t, srv.URL, version)
+				args := []string{"--config", cfg, "get", "pd"}
+				if asJSON {
+					args = append(args, "--json")
+				}
+				stdout, stderr := executeRootForProcessDefinitionTestWithSeparateOutputs(t, args...)
+				require.Empty(t, stderr)
+				require.Len(t, requests, 1)
+				if asJSON {
+					decoder := json.NewDecoder(strings.NewReader(stdout))
+					var envelope map[string]any
+					require.NoError(t, decoder.Decode(&envelope))
+					require.ErrorIs(t, decoder.Decode(new(any)), io.EOF)
+					require.Equal(t, "succeeded", envelope["outcome"])
+					items := requireJSONItems(t, requireJSONObject(t, envelope["payload"])["items"], 3)
+					for i, raw := range items {
+						item := requireJSONObject(t, raw)
+						if version != "8.10" || i == 1 {
+							require.NotContains(t, item, "state")
+						} else {
+							require.Equal(t, []string{"ACTIVE", "", "FUTURE"}[i], item["state"])
+						}
+					}
+				} else if version == "8.10" {
+					require.Equal(t, "1 orders v3 ACTIVE\n2 orders v2\n3 orders v1 FUTURE\nfound: 3\n", stdout)
+				} else {
+					require.Equal(t, "1 orders v3\n2 orders v2\n3 orders v1\nfound: 3\n", stdout)
+				}
+			})
+		}
+	}
+}
+
+// TestGetProcessDefinitionLifecycleNotFound distinguishes an absent key from a
+// returned DELETED item, retaining the failure exit and single JSON envelope.
+func TestGetProcessDefinitionLifecycleNotFound(t *testing.T) {
+	for _, mode := range []string{"human", "json"} {
+		t.Run(mode, func(t *testing.T) {
+			var requests atomic.Int32
+			srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if serveVersionCheckTopology(w, r, "8.10") {
+					return
+				}
+
+				requests.Add(1)
+				require.Equal(t, http.MethodGet, r.Method)
+				require.Equal(t, "/v2/process-definitions/123", r.URL.Path)
+				w.WriteHeader(http.StatusNotFound)
+			}))
+			t.Cleanup(srv.Close)
+			cfg := writeTestConfigForVersion(t, srv.URL, "8.10")
+			stdout, stderr := runCommandErrorEnvelopeSubprocess(t, processDefinitionErrorEnvelopeHelper, "", map[string]string{
+				"C8VOLT_TEST_CONFIG":       cfg,
+				"C8VOLT_TEST_OUTPUT_MODE":  mode,
+				"C8VOLT_TEST_COMMAND_ARGS": marshalRootArgsForEnv(t, []string{"--log-format", "json", "get", "pd", "--key", "123"}),
+			}, "", exitcode.NotFound)
+			require.EqualValues(t, 1, requests.Load())
+			if mode == "json" {
+				require.Empty(t, stderr)
+				decoder := json.NewDecoder(strings.NewReader(stdout))
+				var envelope map[string]any
+				require.NoError(t, decoder.Decode(&envelope))
+				require.ErrorIs(t, decoder.Decode(new(any)), io.EOF)
+				require.Equal(t, "failed", envelope["outcome"])
+				require.Equal(t, "not_found", envelope["class"])
+			} else {
+				require.Empty(t, stdout)
+				decoder := json.NewDecoder(strings.NewReader(stderr))
+				var record map[string]any
+				require.NoError(t, decoder.Decode(&record))
+				require.ErrorIs(t, decoder.Decode(new(any)), io.EOF)
+				require.Equal(t, "ERROR", record["level"])
+				require.Equal(t, "get process definition: not found", record["msg"])
+				require.NotContains(t, stderr, srv.URL)
+				require.NotContains(t, stderr, "GET")
+			}
+		})
+	}
+}
+
+// TestGetProcessDefinitionLifecycleLookupDiagnostics exercises bounded failures
+// through configured loggers, preserving machine evidence and redacted DEBUG only.
+func TestGetProcessDefinitionLifecycleLookupDiagnostics(t *testing.T) {
+	for _, format := range []string{"plain", "json"} {
+		for _, route := range []string{"inherited", "configured"} {
+			for _, mode := range []string{"normal", "verbose", "quiet", "json", "debug-flag", "debug-config"} {
+				t.Run(format+"/"+route+"/"+mode, func(t *testing.T) {
+					var requests atomic.Int32
+					srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+						if serveVersionCheckTopology(w, r, "8.10") {
+							return
+						}
+
+						requests.Add(1)
+						require.Equal(t, "GET /v2/process-definitions/8675309", r.Method+" "+r.URL.Path)
+						w.Header().Set("Content-Type", "application/json")
+						w.WriteHeader(http.StatusNotFound)
+						_, _ = w.Write([]byte(`{"message":"definition-body GET https://definition-secret.invalid/8675309","access_token":"definition-token-secret"}`))
+					}))
+					t.Cleanup(srv.Close)
+					level := "info"
+					if mode == "debug-config" {
+						level = "debug"
+					}
+					cfg := writeRawTestConfig(t, fmt.Sprintf("app:\n  camunda_version: \"8.10\"\nauth:\n  mode: none\napis:\n  camunda_api:\n    base_url: %s\nlog:\n  level: %s\n  format: %s\n", srv.URL, level, format))
+					args := []string{"get", "pd", "--key", "8675309"}
+					if mode == "verbose" || mode == "quiet" {
+						args = append(args, "--"+mode)
+					}
+					if mode == "debug-flag" {
+						args = append(args, "--debug")
+					}
+					capture := filepath.Join(t.TempDir(), "diagnostics")
+					stdout, stderr, runErr := testx.RunCmdSubprocessInDirWithSeparateOutputs(t, processDefinitionErrorEnvelopeHelper, "", map[string]string{
+						"C8VOLT_TEST_CONFIG": cfg, "C8VOLT_TEST_OUTPUT_MODE": mode,
+						"C8VOLT_TEST_COMMAND_ARGS": marshalRootArgsForEnv(t, args),
+						"C8VOLT_TEST_PD_LOG_DEST":  capture, "C8VOLT_TEST_PD_LOG_ROUTE": route,
+					}, "")
+					var exitErr *exec.ExitError
+					require.ErrorAs(t, runErr, &exitErr, stdout+stderr)
+					require.Equal(t, exitcode.NotFound, exitErr.ExitCode(), stdout+stderr)
+					diagnostics, err := os.ReadFile(capture)
+					require.NoError(t, err)
+					require.Empty(t, stderr, "all diagnostics must honor the configured destination")
+					require.EqualValues(t, 1, requests.Load())
+					if mode == "json" {
+						decoder := json.NewDecoder(strings.NewReader(stdout))
+						var envelope map[string]any
+						require.NoError(t, decoder.Decode(&envelope))
+						require.ErrorIs(t, decoder.Decode(new(any)), io.EOF)
+						require.Equal(t, "failed", envelope["outcome"])
+						require.Equal(t, "not_found", envelope["class"])
+						require.Contains(t, requireJSONObject(t, envelope["detail"])["message"], "definition-body")
+						require.Empty(t, diagnostics)
+						return
+					}
+					require.Empty(t, stdout)
+					require.Equal(t, 1, strings.Count(string(diagnostics), "get process definition: not found"))
+					require.NotContains(t, string(diagnostics), "definition-token-secret")
+					if strings.HasPrefix(mode, "debug-") {
+						require.Contains(t, string(diagnostics), "api #")
+						require.Contains(t, string(diagnostics), "/v2/process-definitions/8675309")
+					} else {
+						for _, marker := range []string{"GET", srv.URL, "definition-secret.invalid", "definition-body"} {
+							require.NotContains(t, string(diagnostics), marker)
+						}
+						if mode != "verbose" {
+							require.NotContains(t, string(diagnostics), "8675309")
+						}
+						if format == "plain" {
+							lines := strings.Split(strings.TrimSuffix(string(diagnostics), "\n"), "\n")
+							var messages []string
+							for _, line := range lines {
+								require.Regexp(t, `^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}[+-]\d{2}:\d{2} `, line)
+								messages = append(messages, strings.SplitN(line, " ", 2)[1])
+							}
+							want := []string{"ERROR get process definition: not found"}
+							if mode == "verbose" {
+								want = append([]string{"INFO retrieving process definition"}, want...)
+							}
+							require.Equal(t, want, messages)
+						} else {
+							decoder := json.NewDecoder(bytes.NewReader(diagnostics))
+							if mode == "verbose" {
+								var info map[string]any
+								require.NoError(t, decoder.Decode(&info))
+								require.Equal(t, "INFO", info["level"])
+								require.Equal(t, "retrieving process definition", info["msg"])
+								require.Equal(t, "8675309", info["key"])
+							}
+							var record map[string]any
+							require.NoError(t, decoder.Decode(&record))
+							require.ErrorIs(t, decoder.Decode(new(any)), io.EOF)
+							require.Equal(t, "ERROR", record["level"])
+							require.Equal(t, "get process definition: not found", record["msg"])
+						}
+					}
+				})
+			}
+		}
+	}
 }

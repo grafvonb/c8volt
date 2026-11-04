@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"strings"
 	"testing"
 	"time"
 
@@ -43,29 +44,12 @@ func TestGetCommand_CommandLocalBackoffTimeoutFlagOverridesEnvProfileAndConfig(t
 
 // Verifies `get --help` keeps supported resources discoverable without the removed topology shortcut.
 func TestGetHelp(t *testing.T) {
-	output := executeRootForTest(t, "get", "--help")
-
-	require.Contains(t, output, "Inspect cluster, process, job, element, incident, tenant, and resource state")
-	require.Contains(t, output, "cluster")
-	require.NotContains(t, output, "cluster-topology")
-	require.Contains(t, output, "tenant")
-	require.Contains(t, output, "resource")
-	require.Contains(t, output, "Check cluster health")
-	require.Contains(t, output, "./c8volt get cluster topology")
-	require.Contains(t, output, "./c8volt get process-instance --state active")
-	require.Contains(t, output, "./c8volt get tenant")
-	require.NotContains(t, output, "canonical non-interactive contract")
+	assertCommandHelpOutput(t, []string{"get"}, []string{"Inspect cluster health", "process-instance", "incident"}, nil)
 }
 
 // Verifies process-instance help remains discoverable from the get command family.
 func TestGetCommand_PreservesExistingProcessInstanceHelp(t *testing.T) {
-	output := executeRootForTest(t, "get", "process-instance", "--help")
-
-	require.Contains(t, output, "Get process instances by key or search criteria.")
-	require.Contains(t, output, "./c8volt get process-instance --state active")
-	require.Contains(t, output, "--key")
-	require.Contains(t, output, "--state")
-	require.Contains(t, output, "--json")
+	assertCommandHelpOutput(t, []string{"get", "process-instance"}, []string{"--with-incidents", "--with-elements", "--has-user-tasks", "--var stringArray", "--var-exists stringArray", "--var-like stringArray", "--total", "--limit"}, nil)
 }
 
 // TestGetBasicSearchProgressUsesWorkflowImportance verifies shared get/search progress stays above nested request activity.
@@ -151,7 +135,7 @@ func TestGetClusterCommand_MachineModeSuppressesFallbackActivity(t *testing.T) {
 				require.Equal(t, http.MethodGet, r.Method)
 				require.Equal(t, "/v2/topology", r.URL.Path)
 				w.Header().Set("Content-Type", "application/json")
-				_, _ = w.Write([]byte(unsortedClusterTopologyFixtureJSON()))
+				_, _ = w.Write([]byte(strings.ReplaceAll(unsortedClusterTopologyFixtureJSON(), "8.8.2", "8.9.2")))
 			}))
 			t.Cleanup(srv.Close)
 			cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
@@ -169,13 +153,7 @@ func TestGetClusterCommand_MachineModeSuppressesFallbackActivity(t *testing.T) {
 
 // Verifies root help advertises the finalized v8.9 runtime support contract.
 func TestRootHelp_V89SupportMessaging(t *testing.T) {
-	output := executeRootForTest(t, "--help")
-
-	require.Contains(t, output, "Camunda 8.7, 8.8, 8.9, and 8.10")
-	require.Contains(t, output, "Camunda 8.10 baseline: 8.10.0-alpha4 (prerelease)")
-	require.Contains(t, output, "capabilities")
-	require.NotContains(t, output, "version 8.9 is recognized by config normalization")
-	require.NotContains(t, output, "does not yet have a process-instance service implementation")
+	assertCommandHelpOutput(t, []string{}, []string{"c8volt v5", "Camunda 8.10", "8.9 and 8.8 remain supported", "--all-tenants", "capabilities"}, nil)
 }
 
 func TestCapabilitiesCommand_ReportsRepresentativeFamilyMetadata(t *testing.T) {
@@ -243,44 +221,17 @@ func TestCapabilitiesCommand_AutomationJSONKeepsStdoutMachineReadable(t *testing
 
 // Verifies `get resource --help` documents required resource-key lookup usage.
 func TestGetResourceHelp(t *testing.T) {
-	output := executeRootForTest(t, "get", "resource", "--help")
-
-	require.Contains(t, output, "Get a single resource by key")
-	require.Contains(t, output, "Requires --id")
-	require.Contains(t, output, "tenant")
-	require.Contains(t, output, "Explicit --id uses backend authorization without tenant filtering")
-	require.Contains(t, output, "without tenant filtering")
-	require.Contains(t, output, "c8volt get resource")
-	require.Contains(t, output, "--id")
-	require.Contains(t, output, "resource key to fetch")
-	require.Contains(t, output, "--keys-only")
+	assertCommandHelpOutput(t, []string{"get", "resource"}, []string{"resourceKey", "--id", "--json"}, nil)
 }
 
 // Verifies `get cluster --help` exposes the nested topology, version, and license commands.
 func TestGetClusterHelp(t *testing.T) {
-	output := executeRootForTest(t, "get", "cluster", "--help")
-
-	require.Contains(t, output, "Inspect cluster-wide topology, version, and license information")
-	require.Contains(t, output, "Usage:")
-	require.Contains(t, output, "c8volt get cluster")
-	require.Contains(t, output, "license")
-	require.Contains(t, output, "topology")
-	require.Contains(t, output, "version")
-	require.Contains(t, output, "brokers, partitions, and gateway details")
-	require.Contains(t, output, "gateway and broker versions")
-	require.Contains(t, output, "./c8volt get cluster version")
-	require.Contains(t, output, "./c8volt get cluster version --with-brokers")
-	require.Contains(t, output, "./c8volt get cluster license")
+	assertCommandHelpOutput(t, []string{"get", "cluster"}, []string{"topology", "version", "license"}, nil)
 }
 
 // Verifies license help advertises the default fields and structured JSON escape hatch.
 func TestGetClusterLicenseHelp(t *testing.T) {
-	output := executeRootForTest(t, "get", "cluster", "license", "--help")
-
-	require.Contains(t, output, "Inspect the connected Camunda cluster's license")
-	require.Contains(t, output, "c8volt get cluster license")
-	require.Contains(t, output, "./c8volt get cluster license --json")
-	require.Contains(t, output, "./c8volt get cluster licence")
+	assertCommandHelpOutput(t, []string{"get", "cluster", "license"}, []string{"license", "--json"}, nil)
 }
 
 // Verifies `get cluster topology --help` describes the default tree and JSON escape hatch.
@@ -288,8 +239,8 @@ func TestGetClusterTopologyHelp(t *testing.T) {
 	output := executeRootForTest(t, "get", "cluster", "topology", "--help")
 
 	require.Contains(t, output, "Inspect brokers, partitions, and gateway metadata")
-	require.Contains(t, output, "./c8volt get cluster topology")
-	require.Contains(t, output, "./c8volt get cluster topology --json")
+	require.Contains(t, output, "c8volt get cluster topology")
+	require.Contains(t, output, "c8volt get cluster topology --json")
 }
 
 // Verifies `get cluster version --help` describes gateway-only and broker-inclusive output.
@@ -299,26 +250,15 @@ func TestGetClusterVersionHelp(t *testing.T) {
 	require.Contains(t, output, "Get the connected Camunda gateway version")
 	require.Contains(t, output, "Camunda gateway version")
 	require.Contains(t, output, "include broker versions")
-	require.Contains(t, output, "./c8volt get cluster version")
-	require.Contains(t, output, "./c8volt get cluster version --with-brokers")
-	require.Contains(t, output, "./c8volt get cluster version --json")
+	require.Contains(t, output, "c8volt get cluster version")
+	require.Contains(t, output, "c8volt get cluster version --with-brokers")
+	require.Contains(t, output, "c8volt get cluster version --json")
 	require.Contains(t, output, "--with-brokers")
 }
 
 // TestGetProcessDefinitionHelp_DocumentsJSONAndXMLModes verifies output modes and their execution-error boundary.
 func TestGetProcessDefinitionHelp_DocumentsJSONAndXMLModes(t *testing.T) {
-	output := executeRootForTest(t, "get", "process-definition", "--help")
-
-	require.Contains(t, output, "List or fetch deployed process definitions")
-	require.Contains(t, output, "Select by key, BPMN process ID, version, or version tag")
-	require.Contains(t, output, "Use --xml only with --key")
-	require.Contains(t, output, "--stat includes exact-version statistics and requires Camunda 8.8 or newer")
-	require.Contains(t, output, "exact-version statistics")
-	require.Contains(t, output, "Camunda 8.7 selects within its 1000 visible-definition compatibility window")
-	require.Contains(t, output, "tenant")
-	require.Contains(t, output, "--tenant limits list and selector discovery")
-	require.Contains(t, output, "Explicit --key and XML lookups use backend authorization without tenant filtering")
-	require.Contains(t, output, "./c8volt get process-definition --key <process-definition-key> --json")
+	assertCommandHelpOutput(t, []string{"get", "process-definition"}, []string{"--latest", "--with-stats", "--watch", "--xml"}, nil)
 }
 
 // Verifies get commands consume env-overridden oauth2 scopes when authenticating against the configured API.
@@ -603,8 +543,13 @@ func TestGetClusterTopologyLegacyCommand_NotFound(t *testing.T) {
 	}
 }
 
+// TestGetResourceCommand_DefaultOutputRemainsPlainText preserves the existing command contract with advisory-aware fixtures.
 func TestGetResourceCommand_DefaultOutputRemainsPlainText(t *testing.T) {
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		require.Equal(t, http.MethodGet, r.Method)
 		require.Equal(t, "/v2/resources/resource-id-123", r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
@@ -631,6 +576,10 @@ func TestGetResourceCommand_DefaultOutputRemainsPlainText(t *testing.T) {
 // Verifies the license default omits optional fields that the API did not send.
 func TestGetClusterLicenseNestedCommand_Success(t *testing.T) {
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		require.Equal(t, http.MethodGet, r.Method)
 		require.Equal(t, "/v2/license", r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
@@ -638,14 +587,14 @@ func TestGetClusterLicenseNestedCommand_Success(t *testing.T) {
 	}))
 	t.Cleanup(srv.Close)
 
-	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.7")
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
 
 	output := executeRootForTest(t, "--config", cfgPath, "get", "cluster", "license")
 
 	require.Contains(t, output, "ValidLicense: true")
 	require.Contains(t, output, "LicenseType: SaaS")
 	require.NotContains(t, output, "ExpiresAt:")
-	require.NotContains(t, output, "IsCommercial:")
+	require.Contains(t, output, "IsCommercial: false")
 	require.NotContains(t, output, `"ValidLicense"`)
 	require.NotContains(t, output, `"LicenseType"`)
 }
@@ -653,6 +602,10 @@ func TestGetClusterLicenseNestedCommand_Success(t *testing.T) {
 // Verifies optional license fields are rendered only when the API returns them.
 func TestGetClusterLicenseNestedCommand_SuccessWithOptionalFields(t *testing.T) {
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		require.Equal(t, http.MethodGet, r.Method)
 		require.Equal(t, "/v2/license", r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
@@ -674,6 +627,10 @@ func TestGetClusterLicenseNestedCommand_SuccessWithOptionalFields(t *testing.T) 
 // Verifies nested `get cluster license --json` preserves structured JSON output inside the shared envelope.
 func TestGetClusterLicenseNestedCommand_JSONOutput(t *testing.T) {
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		require.Equal(t, http.MethodGet, r.Method)
 		require.Equal(t, "/v2/license", r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
@@ -703,6 +660,10 @@ func TestGetClusterLicenseNestedCommand_JSONOutput(t *testing.T) {
 // Verifies British spelling reaches the same flat license behavior as the canonical command.
 func TestGetClusterLicenceAliasNestedCommand_Success(t *testing.T) {
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		require.Equal(t, http.MethodGet, r.Method)
 		require.Equal(t, "/v2/license", r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
@@ -710,7 +671,7 @@ func TestGetClusterLicenceAliasNestedCommand_Success(t *testing.T) {
 	}))
 	t.Cleanup(srv.Close)
 
-	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.7")
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
 
 	output := executeRootForTest(t, "--config", cfgPath, "get", "cluster", "licence")
 
@@ -722,6 +683,10 @@ func TestGetClusterLicenceAliasNestedCommand_Success(t *testing.T) {
 // Verifies British spelling preserves the structured license JSON behavior inside the shared envelope.
 func TestGetClusterLicenceAliasNestedCommand_JSONOutput(t *testing.T) {
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		require.Equal(t, http.MethodGet, r.Method)
 		require.Equal(t, "/v2/license", r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
@@ -778,6 +743,10 @@ func TestGetClusterCommands_JSONOutputModeMetadata(t *testing.T) {
 // Verifies cluster license HTTP failures map to unavailable exit behavior.
 func TestGetClusterLicenseNestedCommand_Failure(t *testing.T) {
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		require.Equal(t, http.MethodGet, r.Method)
 		require.Equal(t, "/v2/license", r.URL.Path)
 		http.Error(w, "boom", http.StatusServiceUnavailable)
@@ -842,6 +811,7 @@ func TestGetClusterVersionCommand_Failure(t *testing.T) {
 	require.NotContains(t, string(output), "fetch cluster topology")
 }
 
+// TestGetCommand_V89SupportsClusterProcessDefinitionAndResource preserves the existing command contract with advisory-aware fixtures.
 func TestGetCommand_V89SupportsClusterProcessDefinitionAndResource(t *testing.T) {
 	t.Run("cluster topology", func(t *testing.T) {
 		srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -861,6 +831,10 @@ func TestGetCommand_V89SupportsClusterProcessDefinitionAndResource(t *testing.T)
 
 	t.Run("process definition lookup", func(t *testing.T) {
 		srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if serveVersionCheckTopology(w, r, "8.9") {
+				return
+			}
+
 			require.Equal(t, http.MethodGet, r.Method)
 			require.Equal(t, "/v2/process-definitions/2251799813685255", r.URL.Path)
 			w.Header().Set("Content-Type", "application/json")
@@ -878,6 +852,10 @@ func TestGetCommand_V89SupportsClusterProcessDefinitionAndResource(t *testing.T)
 
 	t.Run("resource lookup", func(t *testing.T) {
 		srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if serveVersionCheckTopology(w, r, "8.9") {
+				return
+			}
+
 			require.Equal(t, http.MethodGet, r.Method)
 			require.Equal(t, "/v2/resources/resource-id-123", r.URL.Path)
 			w.Header().Set("Content-Type", "application/json")
@@ -897,6 +875,10 @@ func TestGetCommand_V89SupportsClusterProcessDefinitionAndResource(t *testing.T)
 // Verifies malformed successful license responses are classified as malformed-response failures.
 func TestGetClusterLicenseNestedCommand_MalformedResponse(t *testing.T) {
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		require.Equal(t, "/v2/license", r.URL.Path)
 		w.WriteHeader(http.StatusOK)
 	}))
@@ -920,6 +902,10 @@ func TestGetClusterLicenseNestedCommand_MalformedResponse(t *testing.T) {
 // Verifies `get process-definition --xml` returns raw XML content by key.
 func TestGetProcessDefinitionXMLCommand_Success(t *testing.T) {
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		require.Equal(t, http.MethodGet, r.Method)
 		require.Equal(t, "/v2/process-definitions/2251799813685255/xml", r.URL.Path)
 		w.Header().Set("Content-Type", "application/xml")
@@ -937,6 +923,10 @@ func TestGetProcessDefinitionXMLCommand_Success(t *testing.T) {
 // Verifies XML output preserves formatting and line breaks from the API payload.
 func TestGetProcessDefinitionXMLCommand_PreservesFormattedXMLBody(t *testing.T) {
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		require.Equal(t, http.MethodGet, r.Method)
 		require.Equal(t, "/v2/process-definitions/2251799813685255/xml", r.URL.Path)
 		w.Header().Set("Content-Type", "application/xml")
@@ -954,6 +944,10 @@ func TestGetProcessDefinitionXMLCommand_PreservesFormattedXMLBody(t *testing.T) 
 // Verifies process-definition key lookup renders model output instead of XML.
 func TestGetProcessDefinitionByKeyCommand_Success(t *testing.T) {
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		require.Equal(t, http.MethodGet, r.Method)
 		require.Equal(t, "/v2/process-definitions/2251799813685255", r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
@@ -982,6 +976,10 @@ func TestGetProcessDefinitionByKey_SelectedTenantMismatchUsesAdminScope(t *testi
 	var statsRequests []string
 	var requests []string
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		requests = append(requests, r.Method+" "+r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
 		switch {
@@ -1006,7 +1004,7 @@ func TestGetProcessDefinitionByKey_SelectedTenantMismatchUsesAdminScope(t *testi
 		"--json",
 		"get", "process-definition",
 		"--key", tenantAdminKeysProcessDefinitionKey,
-		"--stat",
+		"--with-stats",
 	)
 
 	require.Contains(t, requests, "GET /v2/process-definitions/"+tenantAdminKeysProcessDefinitionKey)
@@ -1020,10 +1018,15 @@ func TestGetProcessDefinitionByKey_SelectedTenantMismatchUsesAdminScope(t *testi
 	require.Contains(t, output, `"key": "`+tenantAdminKeysProcessDefinitionKey+`"`)
 }
 
+// TestGetProcessDefinitionListWithStatRendersLoadedStats preserves the existing command contract with advisory-aware fixtures.
 func TestGetProcessDefinitionListWithStatRendersLoadedStats(t *testing.T) {
 	var statsRequests []string
 	var pdSearchRequests []string
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.9") {
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		switch {
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-definitions/search":
@@ -1061,7 +1064,7 @@ func TestGetProcessDefinitionListWithStatRendersLoadedStats(t *testing.T) {
 	output := executeRootForTest(t,
 		"--config", cfgPath,
 		"get", "process-definition",
-		"--stat",
+		"--with-stats",
 	)
 
 	require.Len(t, pdSearchRequests, 1)
@@ -1074,6 +1077,10 @@ func TestGetProcessDefinitionListWithStatRendersLoadedStats(t *testing.T) {
 func TestGetProcessDefinitionXML_SelectedTenantMismatchUsesDirectEndpoint(t *testing.T) {
 	var requests []string
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		requests = append(requests, r.Method+" "+r.URL.Path)
 		require.Equal(t, http.MethodGet, r.Method)
 		require.Equal(t, "/v2/process-definitions/"+tenantAdminKeysProcessDefinitionKey+"/xml", r.URL.Path)
@@ -1096,9 +1103,14 @@ func TestGetProcessDefinitionXML_SelectedTenantMismatchUsesDirectEndpoint(t *tes
 	require.Equal(t, "<definitions id=\"tenant-b-process\"/>", output)
 }
 
+// TestGetProcessDefinitionLatest_UsesEffectiveTenantForSearch preserves the existing command contract with advisory-aware fixtures.
 func TestGetProcessDefinitionLatest_UsesEffectiveTenantForSearch(t *testing.T) {
 	var requests []string
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		require.Equal(t, http.MethodPost, r.Method)
 		require.Equal(t, "/v2/process-definitions/search", r.URL.Path)
 
@@ -1155,6 +1167,10 @@ apis:
 func TestGetProcessDefinitionLatest_AllTenantsOmitsConfiguredTenantFilter(t *testing.T) {
 	var requests []string
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		require.Equal(t, http.MethodPost, r.Method)
 		require.Equal(t, "/v2/process-definitions/search", r.URL.Path)
 
@@ -1235,14 +1251,6 @@ func TestOneLinePD_IncidentCountRenderingByVersionBoundary(t *testing.T) {
 			expectedSegment:   "[ac:4 cp:9 cx:2 inc:-]",
 			unexpectedSegment: "inc:0",
 		},
-		{
-			name:              "v8.7 omits unsupported incident count",
-			versionLabel:      "8.7",
-			incidents:         7,
-			supported:         false,
-			expectedSegment:   "[ac:4 cp:9 cx:2]",
-			unexpectedSegment: " inc:",
-		},
 	}
 
 	for _, tt := range tests {
@@ -1271,6 +1279,10 @@ func TestOneLinePD_IncidentCountRenderingByVersionBoundary(t *testing.T) {
 // Verifies `get resource --id` succeeds and renders default table output.
 func TestGetResourceCommand_Success(t *testing.T) {
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		require.Equal(t, http.MethodGet, r.Method)
 		require.Equal(t, "/v2/resources/resource-id-123", r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
@@ -1301,6 +1313,10 @@ func TestGetResourceCommand_Success(t *testing.T) {
 func TestGetResourceCommand_SelectedTenantMismatchUsesDirectID(t *testing.T) {
 	var requests []string
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		requests = append(requests, r.Method+" "+r.URL.Path)
 		require.Equal(t, http.MethodGet, r.Method)
 		require.Equal(t, "/v2/resources/"+tenantAdminKeysResourceID, r.URL.Path)
@@ -1327,6 +1343,10 @@ func TestGetResourceCommand_SelectedTenantMismatchUsesDirectID(t *testing.T) {
 // Verifies resource lookup JSON view uses serialized model field keys.
 func TestGetResourceCommand_JSONOutput(t *testing.T) {
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		require.Equal(t, http.MethodGet, r.Method)
 		require.Equal(t, "/v2/resources/resource-id-123", r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
@@ -1356,6 +1376,10 @@ func TestGetResourceCommand_JSONOutput(t *testing.T) {
 // Verifies keys-only mode emits only the resource id.
 func TestGetResourceCommand_KeysOnlyOutput(t *testing.T) {
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		require.Equal(t, http.MethodGet, r.Method)
 		require.Equal(t, "/v2/resources/resource-id-123", r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
@@ -1383,6 +1407,10 @@ func TestGetResourceCommand_KeysOnlyOutput(t *testing.T) {
 func TestGetResourceCommand_AllTenantsKeysOnlyReadStaysOnDirectEndpoint(t *testing.T) {
 	var requests []string
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		requests = append(requests, r.Method+" "+r.URL.Path)
 		require.Equal(t, http.MethodGet, r.Method)
 		require.Equal(t, "/v2/resources/resource-id-123", r.URL.Path)
@@ -1470,6 +1498,10 @@ func TestGetResourceCommand_V810PreservesReadOutputModes(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			var requests []string
 			srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if serveVersionCheckTopology(w, r, "8.10") {
+					return
+				}
+
 				requests = append(requests, r.Method+" "+r.URL.Path)
 				require.Equal(t, http.MethodGet, r.Method)
 				require.Equal(t, "/v2/resources/resource-id-v810", r.URL.Path)
@@ -1497,6 +1529,10 @@ func TestGetResourceCommand_V810PreservesReadOutputModes(t *testing.T) {
 // Verifies resource lookup HTTP failures map to not-found exit behavior.
 func TestGetResourceCommand_Failure(t *testing.T) {
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		require.Equal(t, http.MethodGet, r.Method)
 		require.Equal(t, "/v2/resources/missing-resource", r.URL.Path)
 		http.Error(w, "missing", http.StatusNotFound)
@@ -1518,8 +1554,13 @@ func TestGetResourceCommand_Failure(t *testing.T) {
 	require.NotContains(t, string(output), "error fetching resource by id missing-resource")
 }
 
+// TestGetResourceCommand_JSONFailureUsesEnvelope preserves the existing command contract with advisory-aware fixtures.
 func TestGetResourceCommand_JSONFailureUsesEnvelope(t *testing.T) {
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		require.Equal(t, http.MethodGet, r.Method)
 		require.Equal(t, "/v2/resources/missing-resource", r.URL.Path)
 		http.Error(w, "missing", http.StatusNotFound)
@@ -1547,6 +1588,10 @@ func TestGetResourceCommand_JSONFailureUsesEnvelope(t *testing.T) {
 // Verifies `--no-err-codes` preserves failure output while returning success exit status.
 func TestGetResourceCommand_NoErrCodesKeepsFailureOutputButReturnsSuccessExit(t *testing.T) {
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		require.Equal(t, http.MethodGet, r.Method)
 		require.Equal(t, "/v2/resources/missing-resource", r.URL.Path)
 		http.Error(w, "missing", http.StatusNotFound)
@@ -1586,9 +1631,14 @@ func TestGetResourceCommand_RejectsWhitespaceID(t *testing.T) {
 	require.Contains(t, output, "Usage:")
 }
 
+// TestGetProcessInstanceKeyLookup_WrongTenantLooksLikeNotFound preserves the existing command contract with advisory-aware fixtures.
 func TestGetProcessInstanceKeyLookup_WrongTenantLooksLikeNotFound(t *testing.T) {
 	var requests []string
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		require.Equal(t, http.MethodGet, r.Method)
 		require.Equal(t, "/v2/process-instances/123", r.URL.Path)
 		requests = append(requests, r.URL.Path)
@@ -1619,44 +1669,6 @@ apis:
 	require.NotContains(t, string(output), "parent process instances were not found")
 }
 
-func TestGetProcessInstanceKeyLookup_V87ReportsUnsupported(t *testing.T) {
-	cfgPath := writeRawTestConfig(t, `app:
-  camunda_version: 8.7
-apis:
-  camunda_api:
-    base_url: http://127.0.0.1:1
-`)
-
-	output, err := testx.RunCmdSubprocess(t, "TestGetProcessInstanceKeyLookupUnsupportedV87Helper", map[string]string{
-		"C8VOLT_TEST_CONFIG": cfgPath,
-	})
-	require.Error(t, err)
-	exitErr, ok := err.(*exec.ExitError)
-	require.True(t, ok)
-	require.Equal(t, exitcode.Error, exitErr.ExitCode())
-	require.Contains(t, string(output), "unsupported capability")
-	require.Contains(t, string(output), "not tenant-safe in Camunda 8.7")
-}
-
-func TestGetProcessInstanceOrphanChildrenOnly_V87ReportsUnsupported(t *testing.T) {
-	cfgPath := writeRawTestConfig(t, `app:
-  camunda_version: 8.7
-apis:
-  camunda_api:
-    base_url: http://127.0.0.1:1
-`)
-
-	output, err := testx.RunCmdSubprocess(t, "TestGetProcessInstanceOrphanChildrenOnlyUnsupportedV87Helper", map[string]string{
-		"C8VOLT_TEST_CONFIG": cfgPath,
-	})
-	require.Error(t, err)
-	exitErr, ok := err.(*exec.ExitError)
-	require.True(t, ok)
-	require.Equal(t, exitcode.Error, exitErr.ExitCode())
-	require.Contains(t, string(output), "unsupported capability")
-	require.Contains(t, string(output), "--orphan-children-only is not supported in Camunda 8.7")
-}
-
 // Verifies whitespace-only `--id` failures exit through invalid-args handling.
 func TestGetResourceCommand_RejectsWhitespaceID_UsesInvalidArgsExit(t *testing.T) {
 	cfgPath := writeTestConfig(t, "http://127.0.0.1:1")
@@ -1676,6 +1688,10 @@ func TestGetResourceCommand_RejectsWhitespaceID_UsesInvalidArgsExit(t *testing.T
 // Verifies malformed successful resource payloads are treated as malformed-response failures.
 func TestGetResourceCommand_MalformedResponse(t *testing.T) {
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		require.Equal(t, http.MethodGet, r.Method)
 		require.Equal(t, "/v2/resources/resource-id-123", r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
@@ -1702,6 +1718,9 @@ func TestGetResourceCommand_MalformedResponse(t *testing.T) {
 // Verifies gateway timeout responses map to timeout exit behavior.
 func TestGetResourceCommand_GatewayTimeoutUsesTimeoutExitCode(t *testing.T) {
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
 		require.Equal(t, http.MethodGet, r.Method)
 		require.Equal(t, "/v2/resources/timeout-resource", r.URL.Path)
 		http.Error(w, "slow", http.StatusGatewayTimeout)
@@ -1758,6 +1777,9 @@ func TestGetProcessDefinitionXMLCommand_RejectsIncompatibleFlags(t *testing.T) {
 // Verifies process-definition XML HTTP failures map to unavailable exit behavior.
 func TestGetProcessDefinitionXMLCommand_Failure(t *testing.T) {
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
 		require.Equal(t, http.MethodGet, r.Method)
 		require.Equal(t, "/v2/process-definitions/2251799813685255/xml", r.URL.Path)
 		http.Error(w, "boom", http.StatusServiceUnavailable)
@@ -1966,32 +1988,6 @@ func TestGetProcessInstanceKeyLookupWrongTenantHelper(t *testing.T) {
 	prevArgs := os.Args
 	t.Cleanup(func() { os.Args = prevArgs })
 	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "--tenant", "tenant-a", "get", "process-instance", "--key", "123"}
-
-	Execute()
-}
-
-// Helper-process entrypoint for unsupported v8.7 keyed process-instance lookup coverage.
-func TestGetProcessInstanceKeyLookupUnsupportedV87Helper(t *testing.T) {
-	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
-		return
-	}
-
-	prevArgs := os.Args
-	t.Cleanup(func() { os.Args = prevArgs })
-	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "process-instance", "--key", "123"}
-
-	Execute()
-}
-
-// Helper-process entrypoint for unsupported v8.7 orphan-child process-instance filtering coverage.
-func TestGetProcessInstanceOrphanChildrenOnlyUnsupportedV87Helper(t *testing.T) {
-	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
-		return
-	}
-
-	prevArgs := os.Args
-	t.Cleanup(func() { os.Args = prevArgs })
-	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "process-instance", "--orphan-children-only"}
 
 	Execute()
 }

@@ -54,9 +54,19 @@ type processInstanceActivityInstancesJSONWithMeta struct {
 	Meta  processInstanceAgeMeta        `json:"meta"`
 }
 
+// processInstanceActivityInstancesView preserves machine modes before rendering enriched human rows.
 func processInstanceActivityInstancesView(cmd *cobra.Command, resp processInstanceActivityInstances) error {
 	if pickMode() == RenderModeJSON {
 		return renderJSONPayload(cmd, RenderModeJSON, processInstanceActivityInstancesWithAgeMeta(resp))
+	}
+	if pickMode() == RenderModeKeysOnly {
+		for _, item := range resp.Items {
+			renderOutputLine(cmd, "%s", item.Item.Key)
+		}
+		return nil
+	}
+	if flagQuiet && len(resp.Items) == 0 {
+		return nil
 	}
 	needsIndirectIncidentWarning := renderProcessInstanceActivityRows(cmd, resp.Items)
 	if needsIndirectIncidentWarning {
@@ -337,7 +347,7 @@ func formatProcessInstanceElementTreeLines(elements []process.ProcessInstanceEle
 	lines := make([]string, 0, len(elementRows))
 	for i, element := range elements {
 		lines = append(lines, incidentTreeBranch(i, len(elements))+elementRows[i])
-		listenerRows := formatProcessInstanceElementListenerRows(element.Listeners, showTimezoneOffset)
+		listenerRows := formatProcessInstanceElementListenerRows(element.Listeners, showTimezoneOffset, capturedNow)
 		if len(listenerRows) == 0 {
 			continue
 		}
@@ -367,18 +377,19 @@ func flatRowProcessInstanceElementWithTimezone(item process.ProcessInstanceEleme
 	return parts
 }
 
-func formatProcessInstanceElementListenerRows(listeners *[]process.RuntimeListenerJob, showTimezoneOffset bool) []string {
+func formatProcessInstanceElementListenerRows(listeners *[]process.RuntimeListenerJob, showTimezoneOffset bool, capturedNow time.Time) []string {
 	if listeners == nil || len(*listeners) == 0 {
 		return nil
 	}
 	rows := make([]flatRow, 0, len(*listeners))
 	for _, listener := range *listeners {
-		rows = append(rows, flatRowProcessInstanceElementListenerWithTimezone(listener, showTimezoneOffset))
+		rows = append(rows, flatRowProcessInstanceElementListenerWithTimezone(listener, showTimezoneOffset, capturedNow))
 	}
 	return formatFlatRows(rows)
 }
 
-func flatRowProcessInstanceElementListenerWithTimezone(item process.RuntimeListenerJob, showTimezoneOffset bool) flatRow {
+// flatRowProcessInstanceElementListenerWithTimezone preserves the listener’s own safely quoted identity.
+func flatRowProcessInstanceElementListenerWithTimezone(item process.RuntimeListenerJob, showTimezoneOffset bool, capturedNow time.Time) flatRow {
 	parts := flatRow{
 		item.JobKey,
 		item.Kind,
@@ -399,6 +410,7 @@ func flatRowProcessInstanceElementListenerWithTimezone(item process.RuntimeListe
 	} else {
 		parts = append(parts, "")
 	}
+	parts = append(parts, prefixedElementField("dur", runtimeListenerDuration(item.CreationTime, item.EndTime, item.State, capturedNow)), processInstanceBusinessIDColumn(item.BusinessId))
 	return parts
 }
 

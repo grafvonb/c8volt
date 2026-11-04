@@ -4,6 +4,7 @@
 package cmd
 
 import (
+	"fmt"
 	"log/slog"
 	"os"
 	"strings"
@@ -13,14 +14,16 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// renderResultEnvelope writes exactly one shared-contract value and reports
+// destination failures so callers cannot mistake dropped output for success.
 func renderResultEnvelope[T any](cmd *cobra.Command, envelope ResultEnvelope[T]) error {
 	if envelope.TenantContext == nil {
 		if ctx, ok := attachedTenantContext(cmd); ok {
 			envelope.TenantContext = ctx
 		}
 	}
-	cmd.Print(toolx.ToJSONString(envelope))
-	return nil
+	_, err := fmt.Fprint(cmd.OutOrStdout(), toolx.ToJSONString(envelope))
+	return err
 }
 
 func renderSucceededResult[T any](cmd *cobra.Command, payload T) error {
@@ -66,16 +69,26 @@ func renderCommandResult[T any](cmd *cobra.Command, payload T) error {
 // optional humanMessage replaces only human error text; JSON retains the original
 // normalized detail and class.
 func handleCommandError(cmd *cobra.Command, log *slog.Logger, noErrCodes bool, err error, humanMessage ...string) {
+	handleCommandErrorWithMode(cmd, log, noErrCodes, err, pickMode(), humanMessage...)
+}
+
+// handleCommandErrorWithMode permits diagnostic-only recovered output selection
+// without modifying the command's parsed flags or global execution inputs.
+func handleCommandErrorWithMode(cmd *cobra.Command, log *slog.Logger, noErrCodes bool, err error, mode RenderMode, humanMessage ...string) {
 	if err == nil {
 		return
 	}
 	normalized := ferrors.Normalize(err)
-	if commandUsesSharedEnvelope(cmd, pickMode()) {
+	if commandUsesSharedEnvelope(cmd, mode) {
 		_ = renderResultEnvelope(cmd, resultEnvelopeForError(cmd, normalized))
 		os.Exit(ferrors.ResolveExitCode(noErrCodes, normalized))
 	}
 	if len(humanMessage) > 0 {
 		log.Error(humanMessage[0])
+		os.Exit(ferrors.ResolveExitCode(noErrCodes, normalized))
+	}
+	if commandHasRequestRateWaitFailure(normalized) {
+		log.Error(boundedCommandFailureReason(normalized))
 		os.Exit(ferrors.ResolveExitCode(noErrCodes, normalized))
 	}
 	ferrors.HandleAndExit(log, noErrCodes, normalized)
@@ -113,4 +126,14 @@ func outcomeForError(err error) Outcome {
 	default:
 		return OutcomeFailed
 	}
+}
+
+// boundedCommandFailureReason retains local unsent evidence without rendering
+// URLs, wrapped transport errors, or implying that earlier work was not sent.
+func boundedCommandFailureReason(err error) string {
+	reason := strings.ReplaceAll(string(ferrors.Classify(err)), "_", " ")
+	if commandHasRequestRateWaitFailure(err) {
+		reason += "; request not sent: request-rate wait (other attempts may have been submitted)"
+	}
+	return reason
 }

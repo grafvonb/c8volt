@@ -12,7 +12,7 @@ Add a shared ops-scale preflight and progress UX for c8volt commands that can pr
 
 ## Technical Context
 
-**Language/Version**: Go, using the repository's current Go module and existing generated Camunda 8.7/8.8/8.9 clients
+**Language/Version**: Go, using the repository's current Go module and existing generated Camunda 8.8/8.9 clients
 
 **Primary Dependencies**: Cobra for CLI command wiring, Viper-backed configuration, existing `toolx/logging` activity sink/writer, existing `toolx/pool`, existing internal service/facade packages
 

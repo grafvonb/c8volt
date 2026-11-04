@@ -8,9 +8,34 @@ import (
 	"strings"
 	"time"
 
+	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/grafvonb/c8volt/config"
 	"github.com/grafvonb/c8volt/toolx"
 )
+
+// markdownProcessInstanceItems escapes markup after quoting opaque IDs, leaving
+// JSON and the underlying observations unchanged. Quoting contains control bytes.
+func markdownProcessInstanceItems(items []process.ProcessInstance) []string {
+	out := retentionProcessInstanceItems(items)
+	for i, item := range items {
+		if item.BusinessId != nil {
+			column := processInstanceBusinessIDColumn(item.BusinessId)
+			out[i] = strings.TrimSuffix(out[i], column) + escapeMarkdownOpaqueText(column)
+		}
+	}
+	return out
+}
+
+// writeMarkdownObservedProcessInstances preserves optional preview sections and
+// does not turn a key-only plan into fabricated observations.
+func writeMarkdownObservedProcessInstances(out *strings.Builder, preview process.DryRunPIKeyExpansion) {
+	if len(preview.SelectedFinalState) > 0 {
+		writeMarkdownReportList(out, "Final State Items", markdownProcessInstanceItems(preview.SelectedFinalState))
+	}
+	if len(preview.RequiresCancelBeforeDelete) > 0 {
+		writeMarkdownReportList(out, "Non-Final Affected Items", markdownProcessInstanceItems(preview.RequiresCancelBeforeDelete))
+	}
+}
 
 // writeMarkdownReportField renders one shared Markdown report field with a placeholder for empty values.
 func writeMarkdownReportField(out *strings.Builder, name string, value string) {
@@ -42,4 +67,10 @@ func formatOpsPurgeReportTime(t time.Time, cfg *config.Config) string {
 		showTimezoneOffset = cfg.App.ShowTimezoneOffset
 	}
 	return toolx.FormatTime(t.UTC(), showTimezoneOffset)
+}
+
+// escapeMarkdownOpaqueText escapes markup in already quoted, single-line opaque criteria and observations.
+func escapeMarkdownOpaqueText(value string) string {
+	escape := strings.NewReplacer("\\", "\\\\", "`", "\\`", "*", "\\*", "_", "\\_", "[", "\\[", "]", "\\]", "(", "\\(", ")", "\\)", "<", "\\<", ">", "\\>", "&", "\\&", "|", "\\|", "~", "\\~")
+	return escape.Replace(value)
 }

@@ -9,7 +9,6 @@ Started: 2026-05-06 12:15:57
 - `run pi` now builds a run-specific process-definition selector validation request from `flagRunPIProcessDefinitionBpmnProcessIds` and `flagRunPIProcessDefinitionVersion`; it uses latest-definition validation when no version is supplied and exact-version search when `--pd-version` is present.
 - BPMN-based `run pi` validates selectors before constructing `ProcessInstanceData`, so mixed visible/missing multi-ID starts fail without submitting any `/v2/process-instances` create request.
 - Existing `run pi` command tests that start by BPMN process ID need a visible process-definition search fixture before the create fixture because validation now precedes starts.
-- `cancel pi` and `delete pi` search-selected paths now run `validatePISearchVersionSupport` before process-definition selector preflight so Camunda 8.7 unsupported date-filter errors stay local and avoid network calls.
 - Mutating process-instance selector guards live at the start of the keyless search branch, after sufficient-filter validation and before `populatePISearchFilterOpts`, preserving keyed `--key` paths and non-BPMN searches.
 - Shared process-instance command tests that use `newProcessInstanceSearchCaptureServerWithResponses` now provide a visible `order-process` process-definition response while continuing to capture only process-instance search request bodies.
 - Process-definition selector failures now route through `processDefinitionSelectorValidationError`, which keeps the existing local-precondition error text but can optionally ask interactive human users whether to list visible process definitions.
@@ -145,7 +144,6 @@ Started: 2026-05-06 12:15:57
 - specs/175-validate-pd-selectors/tasks.md
 - specs/175-validate-pd-selectors/progress.md
 **Learnings**:
-- Capability checks that previously came from process-instance search services must happen before selector preflight, otherwise unsupported Camunda 8.7 date-filter runs can fail on process-definition network validation first.
 - Search-selected mutation tests need a visible process-definition fixture whenever `--bpmn-process-id` is part of the command under test.
 - `--auto-confirm` is useful in missing-selector subprocess tests because it guarantees the recovery listing prompt stays suppressed while still exercising command-level validation.
 ---
@@ -208,5 +206,4 @@ Started: 2026-05-06 12:15:57
 **Learnings**:
 - Command help is the source for generated CLI reference wording, so selector diagnostics and prompt policy should be documented in Cobra `Long` descriptions.
 - The docs homepage source is `README.md`; `docs/index.md` should be regenerated through `make docs-content`.
-- Validation passed with `GOCACHE=/tmp/c8volt-gocache go test ./cmd ./c8volt/process ./internal/services/processdefinition/v87 ./internal/services/processdefinition/v88 ./internal/services/processdefinition/v89 -count=1` and `make test`.
 ---

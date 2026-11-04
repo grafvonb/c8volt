@@ -29,10 +29,10 @@ func parseUpdateJobRequest(cmd *cobra.Command) (job.UpdateRequest, error) {
 	if workerFlags := changedUpdateJobWorkerOutcomeFlags(cmd); len(workerFlags) > 0 {
 		return job.UpdateRequest{}, invalidFlagValuef("job worker outcome flags are reserved for the BPMN error and completion implementations: %s", strings.Join(workerFlags, ", "))
 	}
-	retriesChanged := cmd.Flags().Changed("retries")
-	timeoutChanged := cmd.Flags().Changed("timeout")
+	retriesChanged := cmd.Flags().Changed("set-retries")
+	timeoutChanged := cmd.Flags().Changed("set-timeout")
 	if !retriesChanged && !timeoutChanged {
-		return job.UpdateRequest{}, invalidFlagValuef("update job requires --retries, --timeout, or both")
+		return job.UpdateRequest{}, invalidFlagValuef("update job requires --set-retries, --set-timeout, or both")
 	}
 	request := job.UpdateRequest{
 		Key:         flagUpdateJobKey,
@@ -42,21 +42,21 @@ func parseUpdateJobRequest(cmd *cobra.Command) (job.UpdateRequest, error) {
 		DryRun:      flagDryRun,
 	}
 	if retriesChanged {
-		if flagUpdateJobRetries < 0 {
-			return job.UpdateRequest{}, invalidFlagValuef("invalid value for --retries: %d, expected non-negative integer", flagUpdateJobRetries)
+		if flagUpdateJobSetRetries < 0 {
+			return job.UpdateRequest{}, invalidFlagValuef("invalid value for --set-retries: %d, expected non-negative integer", flagUpdateJobSetRetries)
 		}
-		retries := flagUpdateJobRetries
+		retries := flagUpdateJobSetRetries
 		request.Retries = &retries
 		request.ConfirmRetries = !flagNoWait
 	}
 	if timeoutChanged {
 		timeout, err := time.ParseDuration(flagUpdateJobTimeoutRaw)
 		if err != nil || timeout <= 0 {
-			return job.UpdateRequest{}, invalidFlagValuef("invalid value for --timeout: %q, expected positive duration such as 60s, 5m, or 1h", flagUpdateJobTimeoutRaw)
+			return job.UpdateRequest{}, invalidFlagValuef("invalid value for --set-timeout: %q, expected positive duration such as 60s, 5m, or 1h", flagUpdateJobTimeoutRaw)
 		}
 		timeoutMillis := timeout.Milliseconds()
 		if timeoutMillis <= 0 {
-			return job.UpdateRequest{}, invalidFlagValuef("invalid value for --timeout: %q, duration must be at least 1ms", flagUpdateJobTimeoutRaw)
+			return job.UpdateRequest{}, invalidFlagValuef("invalid value for --set-timeout: %q, duration must be at least 1ms", flagUpdateJobTimeoutRaw)
 		}
 		request.Timeout = &timeout
 		request.TimeoutRaw = flagUpdateJobTimeoutRaw
@@ -87,6 +87,17 @@ func updateJobAutomationEnabled(cmd *cobra.Command) bool {
 // parseUpdateJobCommandRequest chooses the input contract before deduplication.
 // A scalar key keeps its established request and payload shape.
 func parseUpdateJobCommandRequest(cmd *cobra.Command, args ...string) (job.UpdateRequest, *job.CompletionRequest, error) {
+	if err := validateUpdateJobFlagIntent(cmd, args); err != nil {
+		return job.UpdateRequest{}, nil, err
+	}
+	if cmd.Flags().Changed("set-bid") {
+		if !flagUpdateJobComplete || cmd.Flags().Changed("fail") || cmd.Flags().Changed("throw-bpmn-error") {
+			return job.UpdateRequest{}, nil, invalidFlagValuef("--set-bid requires --complete")
+		}
+		if err := job.ValidateCompletionBusinessID(&flagUpdateJobSetBID); err != nil {
+			return job.UpdateRequest{}, nil, invalidFlagValuef("invalid --set-bid: %v", err)
+		}
+	}
 	if err := validateOptionalDashArg(args); err != nil {
 		return job.UpdateRequest{}, nil, err
 	}
@@ -129,4 +140,55 @@ func parseUpdateJobCommandRequest(cmd *cobra.Command, args ...string) (job.Updat
 	}
 	request, err := parseUpdateJobRequest(cmd)
 	return request, nil, err
+}
+
+// validateUpdateJobArgs rejects ambiguous retained flag meanings before remote
+// bootstrap; the diagnostic wrapper permits only these static messages to survive.
+func validateUpdateJobArgs(cmd *cobra.Command, args []string) error {
+	if cmd.Context() != nil {
+		if argv, ok := cmd.Context().Value(migrationInvocationKey{}).([]string); ok {
+			if _, err := migrationReportingInput(cmd, argv); err != nil {
+				return &migrationSemanticError{err}
+			}
+		}
+	}
+	if err := validateOptionalDashArg(args); err != nil {
+		if cmd.Flags().Changed("throw-bpmn-error") {
+			return &migrationSemanticError{invalidFlagValuef("use the bare --throw-bpmn-error action with --set-error-code CODE; positional codes are not accepted")}
+		}
+		return err
+	}
+	if err := validateUpdateJobFlagIntent(cmd, args); err != nil {
+		return &migrationSemanticError{err}
+	}
+	return nil
+}
+
+// validateUpdateJobFlagIntent separates predicates, submitted values and HTTP
+// controls without reading stdin, decoding payloads or constructing services.
+func validateUpdateJobFlagIntent(cmd *cobra.Command, args []string) error {
+	fs := cmd.Flags()
+	if fs.Changed("set-error-code") && !flagUpdateJobThrowBPMNError {
+		return invalidFlagValuef("--set-error-code requires the bare --throw-bpmn-error action")
+	}
+	if fs.Changed("throw-bpmn-error") {
+		if !flagUpdateJobThrowBPMNError || !fs.Changed("set-error-code") || strings.TrimSpace(flagUpdateJobBPMNError) == "" {
+			return invalidFlagValuef("BPMN error requires a bare --throw-bpmn-error action and non-empty --set-error-code")
+		}
+	}
+	if fs.Changed("retries") {
+		if !flagUpdateJobComplete || fs.Changed("fail") || fs.Changed("throw-bpmn-error") {
+			return invalidFlagValuef("--retries is a selector only; use --set-retries for job retry updates or technical failure")
+		}
+		if fs.Changed("key") || len(args) > 0 {
+			return mutuallyExclusiveFlagsf("keyed --complete cannot be combined with --retries")
+		}
+	}
+	if flagUpdateJobComplete && fs.Changed("set-retries") {
+		return mutuallyExclusiveFlagsf("--complete cannot be combined with --set-retries")
+	}
+	if fs.Changed("timeout") && !fs.Changed("set-timeout") && !fs.Changed("set-retries") && !fs.Changed("complete") && !fs.Changed("fail") && !fs.Changed("throw-bpmn-error") {
+		return invalidFlagValuef("--timeout controls HTTP execution only; use --set-timeout to update the job timeout")
+	}
+	return nil
 }

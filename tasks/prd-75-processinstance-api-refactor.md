@@ -21,15 +21,7 @@ Refactor the internal processinstance service to improve readability and maintai
 **Acceptance Criteria:**
 - `internal/services/processinstance/api.go` explicitly defines the preserved shared service surface for the refactor.
 - `internal/services/processinstance/factory_test.go` verifies supported version routing and unsupported version failure behavior.
-- `internal/services/processinstance/v87/contract.go` and `internal/services/processinstance/v88/contract.go` reflect the generated-client operations required by the settled service surface.
-
-### US-002: Refactor waiter and walker backed v8.7 processinstance behavior without regression
-**Description:** Simplify the v8.7 processinstance implementation so create, search, cancel, delete, and traversal flows are easier to maintain while keeping observable behavior unchanged.
-
-**Acceptance Criteria:**
-- `internal/services/processinstance/v87/service.go` preserves current create, get, search, cancel, delete, and family-traversal behavior for existing callers.
-- Success-path payload validation follows repository-native patterns where applicable and still rejects malformed success responses.
-- Automated tests in `internal/services/processinstance/v87/service_test.go` cover preserved success, malformed-response, and error behavior.
+- `internal/services/processinstance/v88/contract.go` reflect the generated-client operations required by the settled service surface.
 
 ### US-003: Refactor waiter and walker backed v8.8 processinstance behavior without regression
 **Description:** Simplify the v8.8 processinstance implementation while preserving current create, get, search, wait-for-state, cancel, delete, and traversal semantics.
@@ -100,20 +92,17 @@ Refactor the internal processinstance service to improve readability and maintai
 
 ## Implementation Notes
 
-- Use `internal/services/processinstance/api.go`, `internal/services/processinstance/factory.go`, `internal/services/processinstance/v87/service.go`, and `internal/services/processinstance/v88/service.go` as the canonical refactor surface.
 - Treat `internal/services/processinstance/waiter/waiter.go` and `internal/services/processinstance/walker/walker.go` as compatibility-critical helpers whose semantics must stay stable even if call sites are simplified.
 - Use the existing refactored cluster service as the reference pattern for acceptable cleanup shape.
 - Prefer `internal/services/common.RequirePayload` over duplicating nil-payload checks where it fits the current success-path contract, while preserving repository guidance for zero-value payload validation on single-object responses.
 - Keep the generated-client coverage review mandatory, but keep any actual capability addition conditional and bounded to one coherent slice.
 - The leading capability candidates come from generated processinstance endpoints already exposed by the supported clients, such as sequence-flow, flow-node-statistics, or variable-search operations; the final implementation may still defer all of them if none fits the current service surface cleanly enough.
-- Add missing focused v8.7 and helper-level tests instead of relying only on existing factory or user-facing command coverage.
 - Keep documentation changes conditional: only update `README.md` and regenerate CLI docs if the final capability decision becomes user-visible.
 - Preserve repository guidance from `AGENTS.md`, including incremental refactoring, behavior preservation, adjacent test updates, and final `make test`.
 
 ## Validation
 
 - Update `internal/services/processinstance/factory_test.go`.
-- Add or update `internal/services/processinstance/v87/service_test.go`.
 - Add or update `internal/services/processinstance/v88/service_test.go`.
 - Add helper-level regression coverage in `internal/services/processinstance/waiter/waiter_test.go` and `internal/services/processinstance/walker/walker_test.go` if helper behavior or call sites are refactored.
 - Record the final validation sequence in `specs/75-processinstance-api-refactor/quickstart.md`.

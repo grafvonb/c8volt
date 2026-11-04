@@ -32,7 +32,6 @@ c8volt update job --key <job-key> --retries invalid
 c8volt update job --key <job-key> --timeout invalid
 c8volt --json update job --key <job-key> --retries 3
 c8volt --json --verbose update job --key <job-key> --retries 3 --dry-run
-c8volt update job --key <job-key> --retries 3 # with Camunda 8.7 config
 ```
 
 Expected behavior:
@@ -43,7 +42,6 @@ Expected behavior:
 - Invalid timeout durations fail validation before calling Camunda.
 - Non-dry-run JSON mutations fail before lookup or mutation unless `--auto-confirm` or automation mode is supplied.
 - `--json --verbose` fails before lookup or mutation for `update job`, including dry-run mode.
-- Camunda 8.7 job updates fail with an unsupported-version error before mutation.
 
 ## Lookup Behavior
 

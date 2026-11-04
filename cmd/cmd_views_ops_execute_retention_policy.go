@@ -15,6 +15,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// renderOpsExecuteRetentionPolicyResult renders selected results or configured INFO records, including bounded BID discovery.
 func renderOpsExecuteRetentionPolicyResult(cmd *cobra.Command, result ops.RetentionPolicyResult) error {
 	if commandUsesSharedEnvelope(cmd, pickMode()) {
 		return renderSucceededResult(cmd, result)
@@ -25,6 +26,7 @@ func renderOpsExecuteRetentionPolicyResult(cmd *cobra.Command, result ops.Retent
 		renderHumanLine(cmd, "execute retention policy")
 	}
 	renderAttachedTenantContext(cmd)
+	renderCleanupSelection(cmd, result.Discovery.Selection)
 	renderOpsExecuteRetentionPolicyDiscovery(cmd, result)
 	renderOpsExecuteRetentionPolicyDeletePlan(cmd, result)
 	renderOpsExecuteRetentionPolicyDeletion(cmd, result)
@@ -57,6 +59,7 @@ func renderOpsExecuteRetentionPolicyDiscovery(cmd *cobra.Command, result ops.Ret
 	}
 }
 
+// renderOpsExecuteRetentionPolicyDeletePlan keeps observed resource details behind verbose.
 func renderOpsExecuteRetentionPolicyDeletePlan(cmd *cobra.Command, result ops.RetentionPolicyResult) {
 	if result.DeletePlan.Status != "" {
 		if result.Request.DryRun {
@@ -91,12 +94,15 @@ func renderOpsExecuteRetentionPolicyDeletePlan(cmd *cobra.Command, result ops.Re
 			printOpsExecuteRetentionPolicyKeys(cmd, "candidate keys", result.DeletePlan.SeedKeys)
 			printOpsExecuteRetentionPolicyKeys(cmd, "skipped candidate keys", result.DeletePlan.SkippedSeedKeys)
 			printOpsExecuteRetentionPolicyItems(cmd, "skipped non-final roots", result.DeletePlan.SkippedNonFinalRoots)
+			renderOpsObservedProcessInstances(cmd, "final state items", result.DeletePlan.FinalStateItems)
+			renderOpsObservedProcessInstances(cmd, "non-final affected items", result.DeletePlan.NonFinalAffectedItems)
 			printOpsExecuteRetentionPolicyKeys(cmd, "resolved root keys", result.DeletePlan.ResolvedRootKeys)
 			printOpsExecuteRetentionPolicyKeys(cmd, "affected process-instance keys", result.DeletePlan.AffectedKeys)
 		}
 	}
 }
 
+// renderOpsExecuteRetentionPolicyDryRunDeletePreview renders the frozen scope without adding reads.
 func renderOpsExecuteRetentionPolicyDryRunDeletePreview(cmd *cobra.Command, result ops.RetentionPolicyResult) {
 	if result.DeletePlan.Status == ops.WorkflowStepStatusSkipped {
 		renderHumanLine(cmd, "delete preview: skipped (no retention cleanup targets)")
@@ -130,6 +136,8 @@ func renderOpsExecuteRetentionPolicyDryRunDeletePreview(cmd *cobra.Command, resu
 		printOpsExecuteRetentionPolicyKeys(cmd, "candidate keys", result.DeletePlan.SeedKeys)
 		printOpsExecuteRetentionPolicyKeys(cmd, "skipped candidate keys", result.DeletePlan.SkippedSeedKeys)
 		printOpsExecuteRetentionPolicyItems(cmd, "skipped non-final roots", result.DeletePlan.SkippedNonFinalRoots)
+		renderOpsObservedProcessInstances(cmd, "final state items", result.DeletePlan.FinalStateItems)
+		renderOpsObservedProcessInstances(cmd, "non-final affected items", result.DeletePlan.NonFinalAffectedItems)
 		printOpsExecuteRetentionPolicyKeys(cmd, "resolved root keys", result.DeletePlan.ResolvedRootKeys)
 		printOpsExecuteRetentionPolicyKeys(cmd, "affected process-instance keys", result.DeletePlan.AffectedKeys)
 	}
@@ -202,6 +210,7 @@ func renderOpsExecuteRetentionPolicyJSONReport(report ops.RetentionAuditReport) 
 	return buf.Bytes(), nil
 }
 
+// renderOpsExecuteRetentionPolicyMarkdownReport escapes observed identities without altering stored values.
 func renderOpsExecuteRetentionPolicyMarkdownReport(report ops.RetentionAuditReport, cfg *config.Config) ([]byte, error) {
 	var out strings.Builder
 	out.WriteString("# Execute Retention Policy Audit Report\n\n")
@@ -228,7 +237,8 @@ func renderOpsExecuteRetentionPolicyMarkdownReport(report ops.RetentionAuditRepo
 	writeMarkdownReportField(&out, "Outcome", string(report.Outcome))
 
 	out.WriteString("\n## Selection\n\n")
-	writeMarkdownReportField(&out, "Filters", report.SelectionFilters.String())
+	writeMarkdownReportField(&out, "Filters", escapeMarkdownOpaqueText(report.SelectionFilters.String()))
+	writeCleanupSelectionMarkdown(&out, report.Discovery.Selection)
 
 	out.WriteString("\n## Discovery\n\n")
 	writeMarkdownReportField(&out, "Status", string(report.Discovery.Status))
@@ -245,10 +255,10 @@ func renderOpsExecuteRetentionPolicyMarkdownReport(report ops.RetentionAuditRepo
 	writeMarkdownReportList(&out, "Resolved Root Keys", report.DeletePlan.ResolvedRootKeys)
 	writeMarkdownReportList(&out, "Affected Keys", report.DeletePlan.AffectedKeys)
 	writeMarkdownReportList(&out, "Duplicate Keys", report.DeletePlan.DuplicateKeys)
-	writeMarkdownReportList(&out, "Final State Items", retentionProcessInstanceItems(report.DeletePlan.FinalStateItems))
-	writeMarkdownReportList(&out, "Non-Final Affected Items", retentionProcessInstanceItems(report.DeletePlan.NonFinalAffectedItems))
+	writeMarkdownReportList(&out, "Final State Items", markdownProcessInstanceItems(report.DeletePlan.FinalStateItems))
+	writeMarkdownReportList(&out, "Non-Final Affected Items", markdownProcessInstanceItems(report.DeletePlan.NonFinalAffectedItems))
 	writeMarkdownReportList(&out, "Skipped Candidate Keys", report.DeletePlan.SkippedSeedKeys)
-	writeMarkdownReportList(&out, "Skipped Non-Final Roots", retentionProcessInstanceItems(report.DeletePlan.SkippedNonFinalRoots))
+	writeMarkdownReportList(&out, "Skipped Non-Final Roots", markdownProcessInstanceItems(report.DeletePlan.SkippedNonFinalRoots))
 	writeMarkdownReportList(&out, "Missing Ancestors", retentionMissingAncestorItems(report.DeletePlan.MissingAncestors))
 	writeMarkdownReportList(&out, "Traversal Warnings", report.DeletePlan.TraversalWarnings)
 	writeMarkdownReportList(&out, "Errors", report.DeletePlan.Errors)
@@ -271,10 +281,11 @@ func renderOpsExecuteRetentionPolicyMarkdownReport(report ops.RetentionAuditRepo
 	return []byte(out.String()), nil
 }
 
+// retentionProcessInstanceItems retains each observation’s own optional identity on one line.
 func retentionProcessInstanceItems(items []process.ProcessInstance) []string {
 	out := make([]string, 0, len(items))
 	for _, item := range items {
-		out = append(out, fmt.Sprintf("key=%s state=%s", item.Key, item.State))
+		out = append(out, strings.TrimSpace(fmt.Sprintf("key=%s state=%s %s", item.Key, item.State, processInstanceBusinessIDColumn(item.BusinessId))))
 	}
 	return out
 }

@@ -50,7 +50,6 @@ go test ./c8volt/ferrors ./c8volt/foptions -count=1
 go test ./c8volt/process -run 'Test.*(Cancel|Delete|Wait|Error)' -count=1
 ```
 
-Verify all four adapters are exercised, including v87 search-based state lookup. New cases must cover scoped suppression/direct diagnostics, timeout evidence, terminal first/repeated check, max attempts, canceled entry/sleep/lookup, absence, lookup errors, concurrent keys, and unchanged worker/fail-fast behavior. Facade tests must prove exact prior error text/classification and inspectable original evidence via `errors.Is`/`errors.As`, including joined/mixed classes and repeated normalization.
 
 ## 4. Validate output and real-terminal compatibility
 

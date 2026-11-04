@@ -30,22 +30,20 @@ const (
 )
 
 var walkProcessInstanceCmd = &cobra.Command{
-	Use:   "process-instance",
-	Short: "Inspect the parent/child tree of process instances",
-	Long: `Inspect process-instance ancestry, descendants, or the full family.
+	ValidArgsFunction: completeWalkPISelector,
+	Use:               "process-instance",
+	Short:             "Inspect the parent/child tree of process instances",
+	Long: `Inspect the process-instance family around a key.
 
-Use --parent for ancestry or --children for descendants; the default scope is the full family. Explicit --key uses backend authorization without tenant filtering.
+Use --parent for ancestry or --children for descendants; the default includes
+both. Add --with-incidents, --with-vars, or --with-elements for details.
+Add --with-listeners to --with-elements for listener jobs.
 
-Add --with-incidents, --with-vars, or --with-elements for incident details, process-instance-scope variables, or runtime elements. Add --with-listeners to --with-elements for runtime listener jobs. Listener rows use s: for job creation (not worker execution start), e: for job end, and d: for an available deadline only while the state is exactly ACTIVATED; missing times are omitted.
-
-When an ancestor is missing but reachable family data remains, walk returns the available family. Direct single-resource lookups remain strict.`,
-	Example: `  ./c8volt walk process-instance --key <process-instance-key>
-  ./c8volt walk process-instance --key <process-instance-key> --with-incidents
-  ./c8volt walk process-instance --key <process-instance-key> --with-vars
-  ./c8volt walk process-instance --key <process-instance-key> --with-elements
-  ./c8volt walk process-instance --key <process-instance-key> --with-elements --with-listeners
-  ./c8volt walk process-instance --key <process-instance-key> --flat
-  ./c8volt walk process-instance --key <process-instance-key> --parent`,
+Alternatively, select by exact --bid (only c8.10+). It must identify one instance;
+multiple matches are ambiguous.`,
+	Example: `  c8volt walk process-instance --key <process-instance-key>
+  c8volt walk process-instance --key <process-instance-key> --with-incidents
+  c8volt walk process-instance --key <process-instance-key> --with-elements --with-listeners`,
 	Aliases: []string{"pi", "pis"},
 	Run: func(cmd *cobra.Command, args []string) {
 		cli, log, cfg, err := NewCli(cmd)
@@ -54,6 +52,9 @@ When an ancestor is missing but reachable family data remains, walk returns the 
 		}
 		if err := requireAutomationSupport(cmd); err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+		}
+		if err := validateWalkPISelection(cmd); err != nil {
+			handleBusinessIDSearchError(cmd, log, cfg.App.NoErrCodes, err)
 		}
 		if err := validateWalkPIWithIncidentsUsage(cmd); err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
@@ -68,6 +69,16 @@ When an ancestor is missing but reachable family data remains, walk returns the 
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}
 
+		walkKey, selection, err := resolveWalkPIStart(cmd, cli)
+		if err != nil {
+			handleBusinessIDWalkError(cmd, log, cfg.App.NoErrCodes, err, selection, len(selection.Keys))
+		}
+		if walkKey == "" {
+			if err := emptyWalkSelectionView(cmd); err != nil {
+				handleWalkRenderError(cmd, log, cfg.App.NoErrCodes, err)
+			}
+			return
+		}
 		type walker struct {
 			fetch        func() (process.TraversalResult, error)
 			view         func(*cobra.Command, process.TraversalResult) error
@@ -77,7 +88,7 @@ When an ancestor is missing but reachable family data remains, walk returns the 
 		walkers := map[string]walker{
 			walkPIModeParent: {
 				fetch: func() (process.TraversalResult, error) {
-					return cli.AncestryResult(cmd.Context(), flagWalkPIKey, appendExplicitLargeWorkProgressOption(cmd, collectExplicitPIAdminInputOptions())...)
+					return cli.AncestryResult(cmd.Context(), walkKey, appendExplicitLargeWorkProgressOption(cmd, collectExplicitPIAdminInputOptions())...)
 				},
 				view: func(cmd *cobra.Command, result process.TraversalResult) error {
 					if pickMode() == RenderModeJSON {
@@ -99,7 +110,7 @@ When an ancestor is missing but reachable family data remains, walk returns the 
 			},
 			walkPIModeChildren: {
 				fetch: func() (process.TraversalResult, error) {
-					return cli.DescendantsResult(cmd.Context(), flagWalkPIKey, appendExplicitLargeWorkProgressOption(cmd, collectExplicitPIAdminInputOptions())...)
+					return cli.DescendantsResult(cmd.Context(), walkKey, appendExplicitLargeWorkProgressOption(cmd, collectExplicitPIAdminInputOptions())...)
 				},
 				view: func(cmd *cobra.Command, result process.TraversalResult) error {
 					if pickMode() == RenderModeJSON {
@@ -113,17 +124,17 @@ When an ancestor is missing but reachable family data remains, walk returns the 
 			},
 			walkPIModeFamily: {
 				fetch: func() (process.TraversalResult, error) {
-					return cli.FamilyResult(cmd.Context(), flagWalkPIKey, appendExplicitLargeWorkProgressOption(cmd, collectExplicitPIAdminInputOptions())...)
+					return cli.FamilyResult(cmd.Context(), walkKey, appendExplicitLargeWorkProgressOption(cmd, collectExplicitPIAdminInputOptions())...)
 				},
 				view: func(cmd *cobra.Command, result process.TraversalResult) error {
 					if pickMode() == RenderModeJSON {
 						return renderJSONPayload(cmd, RenderModeJSON, traversalPayload(result))
 					}
-					if !flagWalkPIFlat {
+					if !flagWalkPIFlat && pickMode() != RenderModeKeysOnly {
 						if len(result.Keys) == 0 {
 							return nil
 						}
-						if err := renderFamilyTree(cmd, result.RootKey, result.Edges, result.Chain, flagWalkPIKey); err != nil {
+						if err := renderFamilyTree(cmd, result.RootKey, result.Edges, result.Chain, walkKey); err != nil {
 							return err
 						}
 						printTraversalWarning(cmd, result)
@@ -154,7 +165,7 @@ When an ancestor is missing but reachable family data remains, walk returns the 
 		w := walkers[selectedMode]
 		result, err := w.fetch()
 		if err != nil {
-			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+			handleBusinessIDWalkError(cmd, log, cfg.App.NoErrCodes, err, traversalPayload(result), len(selection.Keys))
 		}
 		if flagWalkPIWithIncidents || flagWalkPIWithVars || flagWalkPIWithElements {
 			adminInputOpts := appendExplicitLargeWorkProgressOption(cmd, collectExplicitPIAdminInputOptions())
@@ -164,14 +175,14 @@ When an ancestor is missing but reachable family data remains, walk returns the 
 			if flagWalkPIWithIncidents {
 				incidentEnriched, err = cli.EnrichTraversalWithIncidents(cmd.Context(), result, adminInputIncidentOpts...)
 				if err != nil {
-					handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+					handleBusinessIDWalkError(cmd, log, cfg.App.NoErrCodes, err, traversalPayload(result), len(selection.Keys))
 				}
 			}
 			var variableEnriched process.VariableEnrichedProcessInstances
 			if flagWalkPIWithVars {
 				variableEnriched, err = cli.EnrichProcessInstancesWithVariables(cmd.Context(), walkedInstances, adminInputOpts...)
 				if err != nil {
-					handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+					handleBusinessIDWalkError(cmd, log, cfg.App.NoErrCodes, err, traversalPayload(result), len(selection.Keys))
 				}
 			}
 			var elementEnriched process.ElementEnrichedProcessInstances
@@ -182,60 +193,61 @@ When an ancestor is missing but reachable family data remains, walk returns the 
 					elementEnriched, err = enrichProcessInstancesWithElementActivityOptions(cmd, cli, walkedInstances, adminInputOpts)
 				}
 				if err != nil {
-					handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("walk process instance elements: %w", err))
+					handleBusinessIDWalkError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("walk process instance elements: %w", err), traversalPayload(result), len(selection.Keys))
 				}
 			}
 			activityItems := activityItemsFromTraversal(result, incidentEnriched, variableEnriched, elementEnriched, flagWalkPIWithIncidents)
 			if err != nil {
-				handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+				handleBusinessIDWalkError(cmd, log, cfg.App.NoErrCodes, err, traversalPayload(result), len(selection.Keys))
 			}
 			switch pickMode() {
 			case RenderModeJSON:
 				if flagWalkPIWithIncidents && !flagWalkPIWithVars && !flagWalkPIWithElements {
 					if err := renderJSONPayload(cmd, RenderModeJSON, incidentEnrichedTraversalPayload(incidentEnriched)); err != nil {
-						handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+						handleWalkRenderError(cmd, log, cfg.App.NoErrCodes, err)
 					}
 					return
 				}
 				if err := renderJSONPayload(cmd, RenderModeJSON, activityTraversalPayload(result, activityItems)); err != nil {
-					handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+					handleWalkRenderError(cmd, log, cfg.App.NoErrCodes, err)
 				}
 				return
 			case RenderModeOneLine:
 				if flagWalkPIWithIncidents && !flagWalkPIWithVars && !flagWalkPIWithElements {
 					if err := w.enrichedView(cmd, incidentEnriched); err != nil {
-						handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+						handleWalkRenderError(cmd, log, cfg.App.NoErrCodes, err)
 					}
 					return
 				}
 				if err := walkActivityView(cmd, selectedMode, result, activityItems); err != nil {
-					handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+					handleWalkRenderError(cmd, log, cfg.App.NoErrCodes, err)
 				}
 				return
 			}
 		}
 		if err := w.view(cmd, result); err != nil {
-			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+			handleWalkRenderError(cmd, log, cfg.App.NoErrCodes, err)
 		}
 	},
 }
 
+// init registers one starting selector and the existing traversal/enrichment controls.
 func init() {
 	walkCmd.AddCommand(walkProcessInstanceCmd)
 
 	fs := walkProcessInstanceCmd.Flags()
 	fs.StringVarP(&flagWalkPIKey, "key", "k", "", "start walking from this process instance key")
-	_ = walkProcessInstanceCmd.MarkFlagRequired("key")
+	fs.String("bid", "", "exact business ID for one unambiguous starting instance (only c8.10+)")
 
 	fs.BoolVar(&flagWalkPIModeParent, "parent", false, "show ancestry from the selected process instance toward the root")
 	fs.BoolVar(&flagWalkPIModeChildren, "children", false, "show descendants from the selected process instance")
 	fs.BoolVar(&flagWalkPIFlat, "flat", false, "render family output as a flat path instead of an ASCII tree")
-	fs.BoolVar(&flagWalkPIWithIncidents, "with-incidents", false, "show incident keys, states, and messages for keyed process-instance walks")
+	fs.BoolVar(&flagWalkPIWithIncidents, "with-incidents", false, "show incident keys, states, and messages for selected process-instance walks")
 	fs.StringVar(&flagGetPIIncidentState, "incident-state", "active", "incident state scope for --with-incidents: active, pending, resolved, migrated, unknown, all")
 	fs.IntVar(&flagGetPIIncidentMessageLimit, "incident-message-limit", 0, "maximum characters to show for incident messages when --with-incidents is set; 0 disables truncation")
-	fs.BoolVar(&flagWalkPIWithVars, "with-vars", false, "show process-instance-scope variables for keyed process-instance walks")
+	fs.BoolVar(&flagWalkPIWithVars, "with-vars", false, "show process-instance-scope variables for selected process-instance walks")
 	fs.IntVar(&flagGetPIVarValueLimit, "var-value-limit", 0, "maximum characters to show for variable values when --with-vars is set; 0 disables truncation")
-	fs.BoolVar(&flagWalkPIWithElements, "with-elements", false, "show runtime element instances for keyed process-instance walks")
+	fs.BoolVar(&flagWalkPIWithElements, "with-elements", false, "show runtime element instances for selected process-instance walks")
 	fs.BoolVar(&flagWalkPIWithListeners, "with-listeners", false, "include runtime listener jobs; requires --with-elements")
 
 	setCommandMutation(walkProcessInstanceCmd, CommandMutationReadOnly)
@@ -254,8 +266,8 @@ func validateWalkPIWithVarsUsage(cmd *cobra.Command) error {
 	if !flagWalkPIWithVars {
 		return nil
 	}
-	if strings.TrimSpace(flagWalkPIKey) == "" {
-		return invalidFlagValuef("--with-vars requires --key")
+	if strings.TrimSpace(flagWalkPIKey) == "" && searchBusinessIDFlag(cmd) == nil {
+		return invalidFlagValuef("--with-vars requires --key or --bid")
 	}
 	if flagViewKeysOnly {
 		return mutuallyExclusiveFlagsf("--with-vars cannot be combined with --keys-only")
@@ -280,8 +292,8 @@ func validateWalkPIWithIncidentsUsage(cmd *cobra.Command) error {
 	if !flagWalkPIWithIncidents {
 		return nil
 	}
-	if strings.TrimSpace(flagWalkPIKey) == "" {
-		return invalidFlagValuef("--with-incidents requires --key")
+	if strings.TrimSpace(flagWalkPIKey) == "" && searchBusinessIDFlag(cmd) == nil {
+		return invalidFlagValuef("--with-incidents requires --key or --bid")
 	}
 	if flagViewKeysOnly {
 		return mutuallyExclusiveFlagsf("--with-incidents cannot be combined with --keys-only")
@@ -310,8 +322,8 @@ func validateWalkPIWithElementsUsage(cmd *cobra.Command) error {
 	if !flagWalkPIWithElements {
 		return nil
 	}
-	if strings.TrimSpace(flagWalkPIKey) == "" {
-		return invalidFlagValuef("--with-elements requires --key")
+	if strings.TrimSpace(flagWalkPIKey) == "" && searchBusinessIDFlag(cmd) == nil {
+		return invalidFlagValuef("--with-elements requires --key or --bid")
 	}
 	if flagViewKeysOnly {
 		return mutuallyExclusiveFlagsf("--with-elements cannot be combined with --keys-only")

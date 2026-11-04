@@ -38,7 +38,6 @@ c8volt walk pi --key <process-instance-key> --with-vars --with-incidents --with-
 - `--with-elements` requires `--key`.
 - `--keys-only --with-elements` fails before remote element enrichment.
 - Existing `--with-vars` and `--with-incidents` validation remains unchanged.
-- Camunda 8.7 returns the existing unsupported element-search capability error.
 
 ## Human Output Contract
 

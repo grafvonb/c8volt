@@ -4,14 +4,23 @@
 package process
 
 import (
+	"bytes"
+	"encoding/json"
+	"io"
+	"reflect"
+	"slices"
+
+	options "github.com/grafvonb/c8volt/c8volt/foptions"
 	d "github.com/grafvonb/c8volt/internal/domain"
 	pisvc "github.com/grafvonb/c8volt/internal/services/processinstance"
 	pitraversal "github.com/grafvonb/c8volt/internal/services/processinstance/traversal"
 	"github.com/grafvonb/c8volt/toolx"
 )
 
+// fromDomainProcessDefinition preserves supplied lifecycle values without inference or normalization.
 func fromDomainProcessDefinition(x d.ProcessDefinition) ProcessDefinition {
 	return ProcessDefinition{
+		State:             x.State,
 		BpmnProcessId:     x.BpmnProcessId,
 		Key:               x.Key,
 		Name:              x.Name,
@@ -22,13 +31,16 @@ func fromDomainProcessDefinition(x d.ProcessDefinition) ProcessDefinition {
 	}
 }
 
+// fromProcessDefinitionStatistics maps public counts without exposing internal cleanup evidence.
 func fromProcessDefinitionStatistics(r d.ProcessDefinitionStatistics) ProcessDefinitionStatistics {
 	return ProcessDefinitionStatistics{
-		Active:                 r.Active,
-		Canceled:               r.Canceled,
-		Completed:              r.Completed,
-		Incidents:              r.Incidents,
-		IncidentCountSupported: r.IncidentCountSupported,
+		Active:                  r.Active,
+		Suspended:               r.Suspended,
+		SuspendedCountSupported: r.SuspendedCountSupported,
+		Canceled:                r.Canceled,
+		Completed:               r.Completed,
+		Incidents:               r.Incidents,
+		IncidentCountSupported:  r.IncidentCountSupported,
 	}
 }
 
@@ -132,8 +144,10 @@ func fromDomainProcessDefinitionWatchSnapshot(x d.ProcessDefinitionWatchSnapshot
 	}
 }
 
+// fromDomainProcessInstance preserves current metadata and snapshots nested variable storage at the public boundary.
 func fromDomainProcessInstance(x d.ProcessInstance) ProcessInstance {
 	return ProcessInstance{
+		BusinessId:               toolx.CopyPtr(x.BusinessId),
 		BpmnProcessId:            x.BpmnProcessId,
 		EndDate:                  x.EndDate,
 		Incident:                 x.Incident,
@@ -145,14 +159,17 @@ func fromDomainProcessInstance(x d.ProcessInstance) ProcessInstance {
 		ProcessVersion:           x.ProcessVersion,
 		ProcessVersionTag:        x.ProcessVersionTag,
 		StartDate:                x.StartDate,
+		SuspendedDate:            x.SuspendedDate,
 		State:                    State(x.State),
 		TenantId:                 x.TenantId,
-		Variables:                toolx.CopyMap(x.Variables),
+		Variables:                copyProcessInstancePlanVariableMap(x.Variables),
 	}
 }
 
+// fromDomainProcessInstanceCreation copies optional business identity without inferring an absent value.
 func fromDomainProcessInstanceCreation(x d.ProcessInstanceCreation) ProcessInstance {
 	return ProcessInstance{
+		BusinessId:           toolx.CopyPtr(x.BusinessId),
 		Key:                  x.Key,
 		BpmnProcessId:        x.BpmnProcessId,
 		ProcessDefinitionKey: x.ProcessDefinitionKey,
@@ -263,8 +280,10 @@ func fromDomainProcessInstanceElement(x d.Element) ProcessInstanceElement {
 	}
 }
 
+// fromDomainRuntimeListenerJob copies optional listener identity across the facade boundary.
 func fromDomainRuntimeListenerJob(x d.RuntimeListenerJob) RuntimeListenerJob {
 	return RuntimeListenerJob{
+		BusinessId:         toolx.CopyPtr(x.BusinessId),
 		JobKey:             x.JobKey,
 		Kind:               x.Kind,
 		ListenerEventType:  x.ListenerEventType,
@@ -350,13 +369,177 @@ func fromDomainProcessInstanceVariableUpdateResult(x d.ProcessInstanceVariableUp
 		StatusCode:         x.StatusCode,
 		Message:            x.Message,
 		Error:              x.Error,
-		Variables:          toolx.CopyMap(x.Variables),
+		Variables:          copyProcessInstancePlanVariableMap(x.Variables),
 	}
 }
 
+// toDomainProcessInstanceVariablePlannedValue copies one public classified value.
+func toDomainProcessInstanceVariablePlannedValue(x ProcessInstanceVariablePlannedValue) d.ProcessInstanceVariablePlannedValue {
+	return d.ProcessInstanceVariablePlannedValue{Name: x.Name, Value: copyProcessInstancePlanVariableValue(x.Value), APITruncated: x.APITruncated}
+}
+
+// toDomainProcessInstanceVariablePlannedChange copies one public classified change.
+func toDomainProcessInstanceVariablePlannedChange(x ProcessInstanceVariablePlannedChange) d.ProcessInstanceVariablePlannedChange {
+	return d.ProcessInstanceVariablePlannedChange{
+		Name: x.Name, Before: copyProcessInstancePlanVariableValue(x.Before),
+		After: copyProcessInstancePlanVariableValue(x.After), APITruncated: x.APITruncated,
+	}
+}
+
+// toDomainProcessInstanceVariablePlan copies one public root plan.
+func toDomainProcessInstanceVariablePlan(x ProcessInstanceVariablePlan) d.ProcessInstanceVariablePlan {
+	return d.ProcessInstanceVariablePlan{
+		BusinessId:         toolx.CopyPtr(x.BusinessId),
+		ProcessInstanceKey: x.ProcessInstanceKey, ScopeKey: x.ScopeKey, TenantId: x.TenantId,
+		Additions:          toolx.MapSlice(x.Additions, toDomainProcessInstanceVariablePlannedValue),
+		Changes:            toolx.MapSlice(x.Changes, toDomainProcessInstanceVariablePlannedChange),
+		UnchangedRequested: toolx.MapSlice(x.UnchangedRequested, toDomainProcessInstanceVariablePlannedValue),
+		Untouched:          toolx.MapSlice(x.Untouched, toDomainProcessInstanceVariablePlannedValue),
+		MutationVariables:  copyProcessInstancePlanVariableMap(x.MutationVariables),
+		VerificationValues: copyProcessInstancePlanVariableMap(x.VerificationValues),
+	}
+}
+
+// toDomainProcessInstanceVariableTenantContext copies public tenant evidence.
+func toDomainProcessInstanceVariableTenantContext(x options.TenantContext) d.TenantContext {
+	return d.TenantContext{
+		Mode: d.TenantContextMode(x.Mode), Filter: d.TenantContextFilter(x.Filter),
+		ConfiguredTenantID: x.ConfiguredTenantID, TargetTenantID: x.TargetTenantID,
+		ResolvedTenantIDs: slices.Clone(x.ResolvedTenantIDs), UnknownTargetCount: x.UnknownTargetCount,
+		CrossTenant: x.CrossTenant,
+		Warnings: toolx.MapSlice(x.Warnings, func(w options.TenantContextWarning) d.TenantContextWarning {
+			return d.TenantContextWarning{Code: d.TenantContextWarningCode(w.Code), Message: w.Message}
+		}),
+	}
+}
+
+// toDomainProcessInstanceVariableUpdatePlan deeply copies an executable public plan.
+func toDomainProcessInstanceVariableUpdatePlan(x ProcessInstanceVariableUpdatePlan) d.ProcessInstanceVariableUpdatePlan {
+	return d.ProcessInstanceVariableUpdatePlan{
+		Selection: toolx.MapPtr(x.Selection, toDomainProcessInstanceSelection), SelectionTenant: x.SelectionTenant,
+		RequestedKeys: slices.Clone(x.RequestedKeys), RequestedValues: copyProcessInstancePlanVariableMap(x.RequestedValues),
+		Instances: toolx.MapSlice(x.Instances, toDomainProcessInstanceVariablePlan), RequestedCount: x.RequestedCount,
+		UpdateCount: x.UpdateCount, VariableAddCount: x.VariableAddCount, VariableChangeCount: x.VariableChangeCount,
+		VariableUnchangedCount: x.VariableUnchangedCount, VariableUntouchedCount: x.VariableUntouchedCount,
+		MutationSubmitted: x.MutationSubmitted, TenantContext: toDomainProcessInstanceVariableTenantContext(x.TenantContext),
+	}
+}
+
+// copyProcessInstancePlanVariableValue isolates mutable JSON storage while
+// retaining the established representation of ordinary interface collections.
+func copyProcessInstancePlanVariableValue(value any) any {
+	switch value := value.(type) {
+	case nil:
+		return nil
+	case map[string]any:
+		return copyProcessInstancePlanVariableMap(value)
+	case []any:
+		out := make([]any, len(value))
+		for i := range value {
+			out[i] = copyProcessInstancePlanVariableValue(value[i])
+		}
+		return out
+	case json.RawMessage:
+		return append(json.RawMessage(nil), value...)
+	default:
+		return snapshotTypedProcessInstancePlanJSONValue(value)
+	}
+}
+
+// snapshotTypedProcessInstancePlanJSONValue round-trips typed JSON collections
+// into the same concrete type to sever their backing storage at the facade.
+func snapshotTypedProcessInstancePlanJSONValue(value any) any {
+	raw, err := json.Marshal(value)
+	if err != nil {
+		return value
+	}
+	target := reflect.New(reflect.TypeOf(value))
+	decoder := json.NewDecoder(bytes.NewReader(raw))
+	decoder.UseNumber()
+	if err := decoder.Decode(target.Interface()); err != nil {
+		return value
+	}
+	if err := decoder.Decode(&struct{}{}); err != io.EOF {
+		return value
+	}
+	return target.Elem().Interface()
+}
+
+// copyProcessInstancePlanVariableMap copies a variable map without sharing
+// nested object or array values across the facade boundary.
+func copyProcessInstancePlanVariableMap(values map[string]any) map[string]any {
+	if values == nil {
+		return nil
+	}
+	out := make(map[string]any, len(values))
+	for name, value := range values {
+		out[name] = copyProcessInstancePlanVariableValue(value)
+	}
+	return out
+}
+
+// fromDomainProcessInstanceVariablePlannedValue maps one classified value and
+// copies its nested JSON data.
+func fromDomainProcessInstanceVariablePlannedValue(x d.ProcessInstanceVariablePlannedValue) ProcessInstanceVariablePlannedValue {
+	return ProcessInstanceVariablePlannedValue{Name: x.Name, Value: copyProcessInstancePlanVariableValue(x.Value), APITruncated: x.APITruncated}
+}
+
+// fromDomainProcessInstanceVariablePlannedChange maps one classified change
+// and copies both observed and requested values.
+func fromDomainProcessInstanceVariablePlannedChange(x d.ProcessInstanceVariablePlannedChange) ProcessInstanceVariablePlannedChange {
+	return ProcessInstanceVariablePlannedChange{
+		Name: x.Name, Before: copyProcessInstancePlanVariableValue(x.Before),
+		After: copyProcessInstancePlanVariableValue(x.After), APITruncated: x.APITruncated,
+	}
+}
+
+// fromDomainProcessInstanceVariablePlan maps one root plan without sharing its
+// classification or payload values.
+func fromDomainProcessInstanceVariablePlan(x d.ProcessInstanceVariablePlan) ProcessInstanceVariablePlan {
+	return ProcessInstanceVariablePlan{
+		BusinessId:         toolx.CopyPtr(x.BusinessId),
+		ProcessInstanceKey: x.ProcessInstanceKey, ScopeKey: x.ScopeKey, TenantId: x.TenantId,
+		Additions:          toolx.MapSlice(x.Additions, fromDomainProcessInstanceVariablePlannedValue),
+		Changes:            toolx.MapSlice(x.Changes, fromDomainProcessInstanceVariablePlannedChange),
+		UnchangedRequested: toolx.MapSlice(x.UnchangedRequested, fromDomainProcessInstanceVariablePlannedValue),
+		Untouched:          toolx.MapSlice(x.Untouched, fromDomainProcessInstanceVariablePlannedValue),
+		MutationVariables:  copyProcessInstancePlanVariableMap(x.MutationVariables),
+		VerificationValues: copyProcessInstancePlanVariableMap(x.VerificationValues),
+	}
+}
+
+// fromDomainProcessInstanceVariableTenantContext maps frozen tenant evidence
+// into the public options model with independent slices.
+func fromDomainProcessInstanceVariableTenantContext(x d.TenantContext) options.TenantContext {
+	return options.TenantContext{
+		Mode: options.TenantContextMode(x.Mode), Filter: options.TenantContextFilter(x.Filter),
+		ConfiguredTenantID: x.ConfiguredTenantID, TargetTenantID: x.TargetTenantID,
+		ResolvedTenantIDs: slices.Clone(x.ResolvedTenantIDs), UnknownTargetCount: x.UnknownTargetCount,
+		CrossTenant: x.CrossTenant,
+		Warnings: toolx.MapSlice(x.Warnings, func(w d.TenantContextWarning) options.TenantContextWarning {
+			return options.TenantContextWarning{Code: options.TenantContextWarningCode(w.Code), Message: w.Message}
+		}),
+	}
+}
+
+// fromDomainProcessInstanceVariableUpdatePlan maps the complete frozen plan
+// while preserving stable order, counts, and tenant evidence.
+func fromDomainProcessInstanceVariableUpdatePlan(x d.ProcessInstanceVariableUpdatePlan) ProcessInstanceVariableUpdatePlan {
+	return ProcessInstanceVariableUpdatePlan{
+		Selection: toolx.MapPtr(x.Selection, fromDomainProcessInstanceSelection), SelectionTenant: x.SelectionTenant,
+		RequestedKeys: slices.Clone(x.RequestedKeys), RequestedValues: copyProcessInstancePlanVariableMap(x.RequestedValues),
+		Instances: toolx.MapSlice(x.Instances, fromDomainProcessInstanceVariablePlan), RequestedCount: x.RequestedCount,
+		UpdateCount: x.UpdateCount, VariableAddCount: x.VariableAddCount, VariableChangeCount: x.VariableChangeCount,
+		VariableUnchangedCount: x.VariableUnchangedCount, VariableUntouchedCount: x.VariableUntouchedCount,
+		MutationSubmitted: x.MutationSubmitted, TenantContext: fromDomainProcessInstanceVariableTenantContext(x.TenantContext),
+	}
+}
+
+// fromDomainProcessInstanceVariableUpdateResults copies selection alongside partial execution evidence.
 func fromDomainProcessInstanceVariableUpdateResults(x d.ProcessInstanceVariableUpdateResults) ProcessInstanceVariableUpdateResults {
 	return ProcessInstanceVariableUpdateResults{
-		Items: toolx.MapSlice(x.Items, fromDomainProcessInstanceVariableUpdateResult),
+		Selection: toolx.MapPtr(x.Selection, fromDomainProcessInstanceSelection),
+		Items:     toolx.MapSlice(x.Items, fromDomainProcessInstanceVariableUpdateResult),
 	}
 }
 
@@ -444,9 +627,10 @@ func fromDomainProcessInstancePage(x d.ProcessInstancePage) ProcessInstancePage 
 // fromDomainProcessInstanceSearchPagesResult maps service-owned traversal results into the public facade model.
 func fromDomainProcessInstanceSearchPagesResult(x d.ProcessInstanceSearchPagesResult) ProcessInstanceSearchPagesResult {
 	return ProcessInstanceSearchPagesResult{
-		Items: toolx.MapSlice(x.Items, fromDomainProcessInstance),
-		Limit: x.Limit,
-		Pages: x.Pages,
+		Completion: ProcessInstanceSearchCompletion(x.Completion),
+		Items:      toolx.MapSlice(x.Items, fromDomainProcessInstance),
+		Limit:      x.Limit,
+		Pages:      x.Pages,
 	}
 }
 
@@ -589,8 +773,10 @@ func fromDomainIncidentExpectation(x *bool) *IncidentExpectation {
 	return &out
 }
 
+// toDomainProcessInstance preserves metadata and snapshots caller-owned observations for service plans.
 func toDomainProcessInstance(x ProcessInstance) d.ProcessInstance {
 	return d.ProcessInstance{
+		BusinessId:               toolx.CopyPtr(x.BusinessId),
 		BpmnProcessId:            x.BpmnProcessId,
 		EndDate:                  x.EndDate,
 		Incident:                 x.Incident,
@@ -602,9 +788,10 @@ func toDomainProcessInstance(x ProcessInstance) d.ProcessInstance {
 		ProcessVersion:           x.ProcessVersion,
 		ProcessVersionTag:        x.ProcessVersionTag,
 		StartDate:                x.StartDate,
+		SuspendedDate:            x.SuspendedDate,
 		State:                    d.State(x.State),
 		TenantId:                 x.TenantId,
-		Variables:                toolx.CopyMap(x.Variables),
+		Variables:                copyProcessInstancePlanVariableMap(x.Variables),
 	}
 }
 
@@ -650,8 +837,10 @@ func toDomainProcessDefinitionFilter(x ProcessDefinitionFilter) d.ProcessDefinit
 	}
 }
 
+// toDomainProcessInstanceFilter copies optional selection criteria across the facade boundary.
 func toDomainProcessInstanceFilter(x ProcessInstanceFilter) d.ProcessInstanceFilter {
 	return d.ProcessInstanceFilter{
+		BusinessId:           toolx.CopyPtr(x.BusinessId),
 		Key:                  x.Key,
 		BpmnProcessId:        x.BpmnProcessId,
 		ProcessVersion:       x.ProcessVersion,
@@ -663,14 +852,16 @@ func toDomainProcessInstanceFilter(x ProcessInstanceFilter) d.ProcessInstanceFil
 		EndDateBefore:        x.EndDateBefore,
 		State:                d.State(x.State),
 		ParentKey:            x.ParentKey,
-		HasParent:            x.HasParent,
-		HasIncident:          x.HasIncident,
+		HasParent:            toolx.CopyPtr(x.HasParent),
+		HasIncident:          toolx.CopyPtr(x.HasIncident),
 		VariableFilters:      toDomainProcessInstanceVariableFilterSet(x.VariableFilters),
 	}
 }
 
+// fromDomainProcessInstanceFilter copies optional selection criteria across the facade boundary.
 func fromDomainProcessInstanceFilter(x d.ProcessInstanceFilter) ProcessInstanceFilter {
 	return ProcessInstanceFilter{
+		BusinessId:           toolx.CopyPtr(x.BusinessId),
 		Key:                  x.Key,
 		BpmnProcessId:        x.BpmnProcessId,
 		ProcessVersion:       x.ProcessVersion,
@@ -682,8 +873,8 @@ func fromDomainProcessInstanceFilter(x d.ProcessInstanceFilter) ProcessInstanceF
 		EndDateBefore:        x.EndDateBefore,
 		State:                State(x.State),
 		ParentKey:            x.ParentKey,
-		HasParent:            x.HasParent,
-		HasIncident:          x.HasIncident,
+		HasParent:            toolx.CopyPtr(x.HasParent),
+		HasIncident:          toolx.CopyPtr(x.HasIncident),
 		VariableFilters:      fromDomainProcessInstanceVariableFilterSet(x.VariableFilters),
 	}
 }
@@ -813,12 +1004,239 @@ func toDomainProcessInstanceSearchTotalVisitor(visitor ProcessInstanceSearchTota
 	}
 }
 
+// toProcessInstanceData copies optional business identity without inferring an absent value.
 func toProcessInstanceData(x ProcessInstanceData) d.ProcessInstanceData {
 	return d.ProcessInstanceData{
+		BusinessId:                  toolx.CopyPtr(x.BusinessId),
 		BpmnProcessId:               x.BpmnProcessId,
 		ProcessDefinitionSpecificId: x.ProcessDefinitionSpecificId,
 		ProcessDefinitionVersion:    x.ProcessDefinitionVersion,
 		Variables:                   toolx.CopyMap(x.Variables),
 		TenantId:                    x.TenantId,
 	}
+}
+
+// fromDomainSuspensionResult mechanically preserves submission and observation evidence.
+func fromDomainSuspensionResult(r d.ProcessInstanceSuspensionResult) SuspensionResult {
+	return SuspensionResult{
+		Key: r.Key, Status: SuspensionStatus(r.Status),
+		Submission: SuspensionSubmission(r.Submission), Confirmation: SuspensionConfirmation(r.Confirmation),
+		StatusCode: r.StatusCode, HasObservation: r.HasObservation,
+		LastObservedState: State(r.LastObservedState), SuspendedDate: r.SuspendedDate, Error: r.Error,
+	}
+}
+
+// fromDomainSuspensionResults copies items and preserves an empty JSON array.
+func fromDomainSuspensionResults(r d.ProcessInstanceSuspensionResults) SuspensionResults {
+	out := SuspensionResults{Selection: toolx.MapPtr(r.Selection, fromDomainProcessInstanceSelection), Items: make([]SuspensionResult, len(r.Items))}
+	for i, item := range r.Items {
+		out.Items[i] = fromDomainSuspensionResult(item)
+	}
+	return out
+}
+
+// fromDomainProcessInstanceSuspensionPlan copies all slices, retaining non-nil
+// successful arrays and the zero plan on failure without interpreting observations.
+func fromDomainProcessInstanceSuspensionPlan(plan d.ProcessInstanceSuspensionPlan) ProcessInstanceSuspensionPlan {
+	return ProcessInstanceSuspensionPlan{
+		Selection: toolx.MapPtr(plan.Selection, fromDomainProcessInstanceSelection), SelectionTenant: plan.SelectionTenant, Exact: plan.Exact,
+		RequestedKeys: slices.Clone(plan.RequestedKeys),
+		Instances:     toolx.MapSlice(plan.Instances, fromDomainProcessInstanceSuspensionPlanItem),
+		TargetKeys:    slices.Clone(plan.TargetKeys),
+	}
+}
+
+// fromDomainProcessInstanceSuspensionPlanItem maps planning facts, never execution evidence.
+func fromDomainProcessInstanceSuspensionPlanItem(item d.ProcessInstanceSuspensionPlanItem) ProcessInstanceSuspensionPlanItem {
+	return ProcessInstanceSuspensionPlanItem{BusinessId: toolx.CopyPtr(item.BusinessId), Key: item.Key, ObservedState: State(item.ObservedState), Classification: ProcessInstanceSuspensionPlanClassification(item.Classification)}
+}
+
+// fromDomainResumptionResult mechanically preserves submission and observation evidence.
+func fromDomainResumptionResult(r d.ProcessInstanceResumptionResult) ResumptionResult {
+	return ResumptionResult{
+		Key: r.Key, Status: ResumptionStatus(r.Status),
+		Submission: ResumptionSubmission(r.Submission), Confirmation: ResumptionConfirmation(r.Confirmation),
+		StatusCode: r.StatusCode, HasObservation: r.HasObservation,
+		LastObservedState: State(r.LastObservedState), SuspendedDate: r.SuspendedDate, Error: r.Error,
+	}
+}
+
+// fromDomainResumptionResults copies items and preserves an empty JSON array.
+func fromDomainResumptionResults(r d.ProcessInstanceResumptionResults) ResumptionResults {
+	out := ResumptionResults{Selection: toolx.MapPtr(r.Selection, fromDomainProcessInstanceSelection), Items: make([]ResumptionResult, len(r.Items))}
+	for i, item := range r.Items {
+		out.Items[i] = fromDomainResumptionResult(item)
+	}
+	return out
+}
+
+// fromDomainProcessInstanceResumptionPlan copies all slices, retaining non-nil
+// successful arrays and the zero plan on failure without interpreting observations.
+func fromDomainProcessInstanceResumptionPlan(plan d.ProcessInstanceResumptionPlan) ProcessInstanceResumptionPlan {
+	return ProcessInstanceResumptionPlan{
+		Selection: toolx.MapPtr(plan.Selection, fromDomainProcessInstanceSelection), SelectionTenant: plan.SelectionTenant, Exact: plan.Exact,
+		RequestedKeys: slices.Clone(plan.RequestedKeys),
+		Instances:     toolx.MapSlice(plan.Instances, fromDomainProcessInstanceResumptionPlanItem),
+		TargetKeys:    slices.Clone(plan.TargetKeys),
+	}
+}
+
+// fromDomainProcessInstanceResumptionPlanItem maps planning facts, never execution evidence.
+func fromDomainProcessInstanceResumptionPlanItem(item d.ProcessInstanceResumptionPlanItem) ProcessInstanceResumptionPlanItem {
+	return ProcessInstanceResumptionPlanItem{BusinessId: toolx.CopyPtr(item.BusinessId), Key: item.Key, ObservedState: State(item.ObservedState), Classification: ProcessInstanceResumptionPlanClassification(item.Classification)}
+}
+
+// fromDomainProcessInstanceSelection copies provenance and observations without inferring readiness.
+func fromDomainProcessInstanceSelection(x d.ProcessInstanceSelection) ProcessInstanceSelection {
+	return ProcessInstanceSelection{
+		Request:        ProcessInstanceSelectionRequest{SearchRequest: fromDomainProcessInstanceSearchRequest(x.Request.SearchRequest), Cardinality: ProcessInstanceSelectionCardinality(x.Request.Cardinality)},
+		Origin:         x.Origin,
+		Items:          toolx.MapSlice(x.Items, fromDomainProcessInstance),
+		Keys:           append([]string(nil), x.Keys...),
+		Completion:     ProcessInstanceSearchCompletion(x.Completion),
+		Pages:          x.Pages,
+		TenantEvidence: fromDomainTenantEvidence(x.TenantEvidence),
+		IgnoreTenant:   x.IgnoreTenant,
+	}
+}
+
+// fromDomainProcessInstanceSearchRequest retains every service search control in selection evidence.
+func fromDomainProcessInstanceSearchRequest(x d.ProcessInstanceSearchRequest) ProcessInstanceSearchRequest {
+	return ProcessInstanceSearchRequest{
+		Filter:               fromDomainProcessInstanceFilter(x.Filter),
+		Page:                 ProcessInstancePageRequest(x.Page),
+		Limit:                x.Limit,
+		LocalFilters:         ProcessInstanceSearchLocalFilters(x.LocalFilters),
+		DirectIncidentIndex:  x.DirectIncidentIndex,
+		ReportedTotalAllowed: x.ReportedTotalAllowed,
+		DirectIncidentFilter: ProcessInstanceIncidentSearchFilter{State: x.DirectIncidentFilter.State, ErrorType: x.DirectIncidentFilter.ErrorType, ErrorMessage: x.DirectIncidentFilter.ErrorMessage, ProcessDefinitionKey: x.DirectIncidentFilter.ProcessDefinitionKey, ProcessDefinitionId: x.DirectIncidentFilter.ProcessDefinitionId},
+	}
+}
+
+// toDomainSelectionRequest copies the original search criteria and cardinality.
+func toDomainSelectionRequest(x ProcessInstanceSelectionRequest) d.ProcessInstanceSelectionRequest {
+	return d.ProcessInstanceSelectionRequest{SearchRequest: toDomainProcessInstanceSearchRequest(x.SearchRequest), Cardinality: d.ProcessInstanceSelectionCardinality(x.Cardinality)}
+}
+
+// toDomainSelectedMutationRequest maps the reviewed operation and selection controls.
+func toDomainSelectedMutationRequest(x ProcessInstanceSelectedMutationRequest) d.ProcessInstanceSelectedMutationRequest {
+	return d.ProcessInstanceSelectedMutationRequest{Operation: x.Operation, Selection: toDomainSelectionRequest(x.Selection), Workers: x.Workers}
+}
+
+// toDomainSelectedMutationPlan isolates nested membership, observations and criteria at the facade boundary.
+func toDomainSelectedMutationPlan(x ProcessInstanceSelectedMutationPlan) d.ProcessInstanceSelectedMutationPlan {
+	return d.ProcessInstanceSelectedMutationPlan{
+		Request:   toDomainSelectedMutationRequest(x.Request),
+		Selection: toDomainProcessInstanceSelection(x.Selection),
+		Expansion: toDomainDryRunPIKeyExpansion(x.Expansion),
+		Tenant:    x.Tenant,
+		Families: toolx.MapSlice(x.Families, func(f ProcessInstanceMutationFamily) d.ProcessInstanceMutationFamily {
+			return d.ProcessInstanceMutationFamily{RootKey: f.RootKey, Keys: append([]string(nil), f.Keys...), Items: toolx.MapSlice(f.Items, toDomainProcessInstance)}
+		})}
+}
+
+// fromDomainSelectionRequest copies the original search criteria and cardinality.
+func fromDomainSelectionRequest(x d.ProcessInstanceSelectionRequest) ProcessInstanceSelectionRequest {
+	return ProcessInstanceSelectionRequest{SearchRequest: fromDomainProcessInstanceSearchRequest(x.SearchRequest), Cardinality: ProcessInstanceSelectionCardinality(x.Cardinality)}
+}
+
+// fromDomainSelectedMutationRequest maps the reviewed operation and selection controls.
+func fromDomainSelectedMutationRequest(x d.ProcessInstanceSelectedMutationRequest) ProcessInstanceSelectedMutationRequest {
+	return ProcessInstanceSelectedMutationRequest{Operation: x.Operation, Selection: fromDomainSelectionRequest(x.Selection), Workers: x.Workers}
+}
+
+// fromDomainSelectedMutationPlan isolates nested membership, observations and criteria at the facade boundary.
+func fromDomainSelectedMutationPlan(x d.ProcessInstanceSelectedMutationPlan) ProcessInstanceSelectedMutationPlan {
+	return ProcessInstanceSelectedMutationPlan{
+		Request:   fromDomainSelectedMutationRequest(x.Request),
+		Selection: fromDomainProcessInstanceSelection(x.Selection),
+		Expansion: fromDomainDryRunPIKeyExpansion(x.Expansion),
+		Tenant:    x.Tenant,
+		Families: toolx.MapSlice(x.Families, func(f d.ProcessInstanceMutationFamily) ProcessInstanceMutationFamily {
+			return ProcessInstanceMutationFamily{RootKey: f.RootKey, Keys: append([]string(nil), f.Keys...), Items: toolx.MapSlice(f.Items, fromDomainProcessInstance)}
+		})}
+}
+
+// toDomainProcessInstanceSelection preserves caller evidence without inferring completion.
+func toDomainProcessInstanceSelection(x ProcessInstanceSelection) d.ProcessInstanceSelection {
+	return d.ProcessInstanceSelection{
+		Request:        toDomainSelectionRequest(x.Request),
+		Origin:         x.Origin,
+		Items:          toolx.MapSlice(x.Items, toDomainProcessInstance),
+		Keys:           append([]string(nil), x.Keys...),
+		Completion:     d.ProcessInstanceSearchCompletion(x.Completion),
+		Pages:          x.Pages,
+		TenantEvidence: toDomainSelectionTenantEvidence(x.TenantEvidence),
+		IgnoreTenant:   x.IgnoreTenant,
+	}
+}
+
+// toDomainSelectionTenantEvidence copies target-level tenant evidence.
+func toDomainSelectionTenantEvidence(x TenantEvidence) d.TenantEvidence {
+	return d.TenantEvidence{ResolvedTenantIDs: append([]string(nil), x.ResolvedTenantIDs...), UnknownTargetCount: x.UnknownTargetCount, TargetCount: x.TargetCount, Targets: toolx.MapSlice(x.Targets, func(t TenantEvidenceTarget) d.TenantEvidenceTarget {
+		return d.TenantEvidenceTarget{Key: t.Key, TenantID: t.TenantID}
+	})}
+}
+
+// toDomainDryRunPIKeyExpansion copies frozen expansion without performing fresh discovery.
+func toDomainDryRunPIKeyExpansion(x DryRunPIKeyExpansion) d.DryRunPIKeyExpansion {
+	return d.DryRunPIKeyExpansion{
+		Roots:                      append([]string(nil), x.Roots...),
+		Collected:                  append([]string(nil), x.Collected...),
+		TenantEvidence:             toDomainSelectionTenantEvidence(x.TenantEvidence),
+		SelectedFinalState:         toolx.MapSlice(x.SelectedFinalState, toDomainProcessInstance),
+		RequiresCancelBeforeDelete: toolx.MapSlice(x.RequiresCancelBeforeDelete, toDomainProcessInstance),
+		Warning:                    x.Warning,
+		Outcome:                    d.TraversalOutcome(x.Outcome),
+		MissingAncestors:           toolx.MapSlice(x.MissingAncestors, func(m MissingAncestor) d.MissingAncestor { return d.MissingAncestor{Key: m.Key, StartKey: m.StartKey} }),
+	}
+}
+
+// toDomainProcessInstanceSuspensionPlan copies reviewed selection and descendant classifications.
+func toDomainProcessInstanceSuspensionPlan(plan ProcessInstanceSuspensionPlan) d.ProcessInstanceSuspensionPlan {
+	return d.ProcessInstanceSuspensionPlan{
+		Selection: toolx.MapPtr(plan.Selection, toDomainProcessInstanceSelection), SelectionTenant: plan.SelectionTenant, Exact: plan.Exact,
+		RequestedKeys: slices.Clone(plan.RequestedKeys), TargetKeys: slices.Clone(plan.TargetKeys),
+		Instances: toolx.MapSlice(plan.Instances, func(item ProcessInstanceSuspensionPlanItem) d.ProcessInstanceSuspensionPlanItem {
+			return d.ProcessInstanceSuspensionPlanItem{BusinessId: toolx.CopyPtr(item.BusinessId), Key: item.Key, ObservedState: d.State(item.ObservedState), Classification: d.ProcessInstanceSuspensionPlanClassification(item.Classification)}
+		}),
+	}
+}
+
+// toDomainProcessInstanceResumptionPlan copies reviewed selection and descendant classifications.
+func toDomainProcessInstanceResumptionPlan(plan ProcessInstanceResumptionPlan) d.ProcessInstanceResumptionPlan {
+	return d.ProcessInstanceResumptionPlan{
+		Selection: toolx.MapPtr(plan.Selection, toDomainProcessInstanceSelection), SelectionTenant: plan.SelectionTenant, Exact: plan.Exact,
+		RequestedKeys: slices.Clone(plan.RequestedKeys), TargetKeys: slices.Clone(plan.TargetKeys),
+		Instances: toolx.MapSlice(plan.Instances, func(item ProcessInstanceResumptionPlanItem) d.ProcessInstanceResumptionPlanItem {
+			return d.ProcessInstanceResumptionPlanItem{BusinessId: toolx.CopyPtr(item.BusinessId), Key: item.Key, ObservedState: d.State(item.ObservedState), Classification: d.ProcessInstanceResumptionPlanClassification(item.Classification)}
+		}),
+	}
+}
+
+// fromDomainBusinessIDAssignmentPlan isolates preview storage from service and caller mutation.
+func fromDomainBusinessIDAssignmentPlan(in d.BusinessIDAssignmentPlan) BusinessIDAssignmentPlan {
+	out := BusinessIDAssignmentPlan{RequestedBusinessID: toolx.CopyPtr(in.RequestedBusinessID), RequestedKeys: append([]string{}, in.RequestedKeys...), Ready: in.Ready, Items: make([]BusinessIDAssignmentItem, len(in.Items))}
+	for i, item := range in.Items {
+		out.Items[i] = BusinessIDAssignmentItem{Key: item.Key, PreviouslyObservedBusinessID: toolx.CopyPtr(item.PreviouslyObservedBusinessID), State: State(item.State)}
+	}
+	return out
+}
+
+// toDomainBusinessIDAssignmentPlan snapshots all public mutable storage before delegation.
+func toDomainBusinessIDAssignmentPlan(in BusinessIDAssignmentPlan) d.BusinessIDAssignmentPlan {
+	out := d.BusinessIDAssignmentPlan{RequestedBusinessID: toolx.CopyPtr(in.RequestedBusinessID), RequestedKeys: append([]string{}, in.RequestedKeys...), Ready: in.Ready, Items: make([]d.BusinessIDAssignmentItem, len(in.Items))}
+	for i, item := range in.Items {
+		out.Items[i] = d.BusinessIDAssignmentItem{Key: item.Key, PreviouslyObservedBusinessID: toolx.CopyPtr(item.PreviouslyObservedBusinessID), State: d.State(item.State)}
+	}
+	return out
+}
+
+// fromDomainBusinessIDAssignmentResults preserves ordered evidence and copies optional facts.
+func fromDomainBusinessIDAssignmentResults(in d.BusinessIDAssignmentResults) BusinessIDAssignmentResults {
+	out := BusinessIDAssignmentResults{Items: make([]BusinessIDAssignmentResult, len(in.Items))}
+	for i, item := range in.Items {
+		out.Items[i] = BusinessIDAssignmentResult{Key: item.Key, RequestedBusinessID: toolx.CopyPtr(item.RequestedBusinessID), PreviouslyObservedBusinessID: toolx.CopyPtr(item.PreviouslyObservedBusinessID), Status: item.Status, Confirmation: item.Confirmation, ObservedBusinessID: toolx.CopyPtr(item.ObservedBusinessID), HasObservation: item.HasObservation, HTTPStatus: toolx.CopyPtr(item.HTTPStatus), Error: item.Error}
+	}
+	return out
 }

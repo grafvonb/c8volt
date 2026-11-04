@@ -123,6 +123,7 @@ func opsSmokeTestSemanticProgressScope(completion ops.CompletionProgress) (opsSe
 		CoreResource:  completion.CoreResource,
 		Total:         completion.Total,
 		SubmittedVerb: "submitted",
+		SkippedVerb:   "skipped",
 		FailedVerb:    "failed",
 	}
 	switch phase {
@@ -132,7 +133,7 @@ func opsSmokeTestSemanticProgressScope(completion ops.CompletionProgress) (opsSe
 		scope.ConfirmedVerb = "started"
 	case "walking process-instance families":
 		scope.ConfirmedVerb = "walked"
-	case "cleaning up smoke-test process instances", "cleaning up smoke-test process definition":
+	case "cleaning up smoke-test process instances", "cleaning up smoke-test process definitions":
 		scope.ConfirmedVerb = "deleted"
 	default:
 		return opsSemanticProgressScope{}, false

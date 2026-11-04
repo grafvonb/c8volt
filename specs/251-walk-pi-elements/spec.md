@@ -61,7 +61,6 @@ As an automation author, I can request JSON output for walked process instances 
 - Walked process instances may have zero, one, or many runtime elements.
 - A process-instance row may have both detail sections and child process instances; child rows must not appear nested under an `elements:` section.
 - Element lookup may fail for one or more walked process instances; the command must fail rather than presenting partially enriched success output.
-- Camunda 8.7 environments do not support the required element-search capability and must return the same unsupported-capability outcome used by existing process-instance element enrichment.
 - Existing `--with-vars` and `--with-incidents` validation and rendering behavior must remain unchanged when `--with-elements` is absent.
 
 ## Requirements *(mandatory)*
@@ -80,7 +79,6 @@ As an automation author, I can request JSON output for walked process instances 
 - **FR-010**: The system MUST reject `--keys-only --with-elements` with a clear validation error before any remote element enrichment occurs.
 - **FR-011**: The system MUST preserve existing validation for `--with-vars` and `--with-incidents`.
 - **FR-012**: Element lookup failures MUST fail the command rather than reporting partially enriched success.
-- **FR-013**: Camunda 8.7 usage MUST return the existing unsupported element-search capability outcome used by current element enrichment.
 - **FR-014**: The feature MUST NOT add element-specific filters, listener enrichment, job enrichment, metrics enrichment, traversal-selection changes, parent/child discovery changes, or missing-ancestor behavior changes.
 
 ### Key Entities *(include if feature involves data)*

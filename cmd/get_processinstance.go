@@ -61,37 +61,19 @@ var (
 var getProcessInstanceCmd = &cobra.Command{
 	Use:   "process-instance",
 	Short: "List or fetch process instances",
-	Long: `Get process instances by key or search criteria.
+	Long: `Inspect process instances by key or search by definition, state, incidents,
+variables, or time range. Search filters combine with AND.
 
-Use a known key or search by process definition, tenant, state, incidents, variables, jobs, user tasks, and time ranges. Missing explicit keys return not-found.
+Use --bid for one exact business ID (only c8.10+); commas and wildcards are literal.
+Add --with-incidents for incident details, --with-vars for root variables, or
+--with-elements for runtime elements. Add --with-listeners to --with-elements
+for listener jobs.
 
---batch-size controls each discovery request; --limit caps instances across all pages; --total counts matching instances.
-
---tenant limits search and selector discovery. Explicit --key and stdin keys use backend authorization without tenant filtering. A --bpmn-process-id selector must match a visible process definition before discovery.
-
-Use --with-incidents for direct incidents, --with-vars for process-instance-scope variables, or --with-elements for runtime element instances. Add --with-listeners to --with-elements for runtime listener jobs. Listener rows use s: for job creation (not worker execution start), e: for job end, and d: for an available deadline only while the state is exactly ACTIVATED; missing times are omitted.
-
-Use variable-search flags to narrow list/search results natively on Camunda 8.8 or newer; Camunda 8.7 returns an unsupported-version error for those flags. --var-exists requires every listed variable name to exist. --var accepts name=value equality shorthand plus advanced name.$operator=value clauses for $eq, $neq, $exists, $in, $notIn, and $like; $notin is accepted as $notIn. --var-like uses native wildcard patterns: * matches zero or more characters, ? matches one character, and escaped wildcards remain literal. Commas inside quoted values and JSON arrays stay inside the variable clause. Variable scopeKey means the scope where the variable is directly defined.
-
-Use --has-user-tasks to fetch process instances by their owning user-task keys.`,
-	Example: `  ./c8volt get process-instance --bpmn-process-id <bpmn-process-id> --state active --limit 5
-  ./c8volt get process-instance --key <process-instance-key>
-  ./c8volt get process-instance --state active --total
-  ./c8volt get process-instance --has-user-tasks <user-task-key>
-  ./c8volt get process-instance --incidents-only --with-incidents --limit 5
-  ./c8volt get process-instance --direct-incidents-only --incident-error-type io_mapping_error --incident-error-message intentional --limit 5
-  ./c8volt get process-instance --var-exists payload,email --limit 5
-  ./c8volt get process-instance --var 'status="approved"' --limit 5
-  ./c8volt get process-instance --var 'status.$in=["approved","pending"]' --limit 5
-  ./c8volt get process-instance --var-like 'email=*@example.com,customerId=CUST-????' --limit 5
-  ./c8volt get process-instance --state active --with-vars --var-value-limit 120 --limit 5
-  ./c8volt get process-instance --key <process-instance-key> --with-incidents
-  ./c8volt get process-instance --key <process-instance-key> --with-vars
-  ./c8volt get process-instance --key <process-instance-key> --with-vars --var-value-limit 120
-  ./c8volt get process-instance --key <process-instance-key> --with-elements
-  ./c8volt get process-instance --key <process-instance-key> --with-elements --with-listeners
-  ./c8volt get process-instance --start-date-after 2026-05-01 --start-date-before 2026-05-31 --limit 5
-  ./c8volt get process-instance --key <process-instance-key> --key <another-process-instance-key>`,
+Use --limit to bound search results or --total to count matches. Explicit keys
+cannot be combined with search filters.`,
+	Example: `  c8volt get process-instance --key <process-instance-key> --with-incidents
+  c8volt get process-instance --bpmn-process-id order --state active --limit 10
+  c8volt get process-instance --bid ORDER-123 --json`,
 	Aliases: []string{"process-instances", "pi", "pis"},
 	Args: func(cmd *cobra.Command, args []string) error {
 		return validateOptionalDashArg(args)
@@ -104,9 +86,10 @@ Use --has-user-tasks to fetch process instances by their owning user-task keys.`
 		if err := requireAutomationSupport(cmd); err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}
+		var pis process.ProcessInstances
 		ctx := cmd.Context()
 		fail := func(err error) {
-			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+			handleBusinessIDSearchError(cmd, log, cfg.App.NoErrCodes, err, len(pis.Items))
 		}
 		if cmd.Flags().Changed("workers") && flagWorkers < 1 {
 			fail(invalidFlagValuef("--workers must be positive integer"))
@@ -114,7 +97,7 @@ Use --has-user-tasks to fetch process instances by their owning user-task keys.`
 		if err := validatePISearchFlags(cmd); err != nil {
 			fail(err)
 		}
-		filterFlagsSet := hasPISearchFilterFlags()
+		filterFlagsSet := hasPISearchFilterFlags(cmd)
 
 		stdinKeys, err := readKeysIfDash(args) // only reads when args == []{"-"}
 		if err != nil {
@@ -143,14 +126,8 @@ Use --has-user-tasks to fetch process instances by their owning user-task keys.`
 		if err := validatePIWithElementsUsage(lk, filterFlagsSet); err != nil {
 			fail(err)
 		}
-		if lk == 0 && ltk == 0 {
-			if err := validatePISearchVersionSupport(cfg); err != nil {
-				fail(err)
-			}
-		}
 
 		log.Debug(fmt.Sprintf("getting pi; mode %s", pickMode()))
-		var pis process.ProcessInstances
 		switch {
 		case ltk > 0:
 			log.Debug(fmt.Sprintf("resolving pi keys from user tasks [%s]", taskKeys))
@@ -206,12 +183,17 @@ Use --has-user-tasks to fetch process instances by their owning user-task keys.`
 				return
 			}
 		default:
+			filter := populatePISearchFilterOpts(cmd)
+			if filter.BusinessId != nil {
+				if err := cli.ValidateProcessInstanceSearchFilter(filter); err != nil {
+					fail(err)
+				}
+			}
 			result, err := validateProcessDefinitionSelectors(ctx, cli, newPIProcessDefinitionSelectorValidationRequest(), collectOptions()...)
 			if err != nil {
 				fail(err)
 			}
 			handleProcessDefinitionSelectorValidationError(cmd, log, cfg.App.NoErrCodes, cli, result)
-			filter := populatePISearchFilterOpts()
 			log.Debug(fmt.Sprintf("searching pi; filter %s", filter.String()))
 			if flagGetPITotal {
 				if flagGetPIOrphanChildrenOnly {
@@ -276,13 +258,14 @@ func init() {
 	useInvalidInputFlagErrors(getProcessInstanceCmd)
 
 	fs := getProcessInstanceCmd.Flags()
+	fs.String("bid", "", "exact business ID to filter by (only c8.10+); commas, spaces and wildcards are literal")
 	fs.StringSliceVarP(&flagGetPIKeys, "key", "k", nil, "process instance key(s) to fetch")
 	fs.StringSliceVar(&flagGetPIHasUserTasks, "has-user-tasks", nil, "user task key(s) whose owning process instances should be fetched")
 	registerPISharedProcessDefinitionFilterFlags(fs)
 	fs.StringVar(&flagGetPIProcessDefinitionKey, "pd-key", "", "process definition key (mutually exclusive with bpmn-process-id, pd-version, and pd-version-tag)")
 	registerPISharedDateRangeFlags(fs)
-	fs.Int32VarP(&flagGetPISize, "batch-size", "n", consts.MaxPISearchSize, fmt.Sprintf("number of process instances to request per page; does not cap total results (max limit %d enforced by server)", consts.MaxPISearchSize))
-	fs.Int32VarP(&flagGetPILimit, "limit", "l", 0, "maximum number of matching process instances to return across all pages; omit to continue through all matches")
+	fs.Int32VarP(&flagGetPISize, "batch-size", "n", consts.MaxPISearchSize, fmt.Sprintf("process instances per discovery page (server maximum %d)", consts.MaxPISearchSize))
+	fs.Int32VarP(&flagGetPILimit, "limit", "l", 0, "maximum matching instances to return; omit for all matches")
 	fs.BoolVar(&flagGetPITotal, "total", false, "return only the numeric total of matching process instances; capped backend totals are counted by paging")
 	fs.BoolVar(&flagGetPIWithIncidents, "with-incidents", false, "include direct incident keys, states, and messages for keyed or list/search process-instance output")
 	fs.StringVar(&flagGetPIIncidentState, "incident-state", "active", "incident state scope for keyed --with-incidents: active, pending, resolved, migrated, unknown, all")
@@ -299,7 +282,9 @@ func init() {
 
 	// filtering options
 	fs.StringVar(&flagGetPIParentKey, "parent-key", "", "parent process instance key to filter process instances")
-	fs.StringVarP(&flagGetPIState, "state", "s", "all", "state to filter process instances: all, active, completed, canceled, terminated")
+	fs.StringVarP(&flagGetPIState, "state", "s", "all", "state to filter process instances: all, active, suspended (only c8.10+), completed, canceled, terminated")
+
+	_ = getProcessInstanceCmd.RegisterFlagCompletionFunc("state", processInstanceStateCompletion(false))
 
 	fs.BoolVar(&flagGetPIRootsOnly, "roots-only", false, "show only root process instances")
 	fs.BoolVar(&flagGetPIChildrenOnly, "children-only", false, "show only child process instances")
@@ -310,7 +295,7 @@ func init() {
 	fs.BoolVar(&flagGetPIDirectIncidentsOnly, "direct-incidents-only", false, "show only process instances with direct incident details")
 	fs.BoolVar(&flagGetPINoIncidentsOnly, "no-incidents-only", false, "show only process instances that have no incidents")
 
-	fs.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers when --batch-size > 1 (default: min(batch-size, 2*GOMAXPROCS, 32))")
+	fs.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers; omit for an automatic limit")
 	fs.BoolVar(&flagNoWorkerLimit, "no-worker-limit", false, "use all queued jobs as workers when --workers is unset")
 	fs.BoolVar(&flagFailFast, "fail-fast", false, "stop scheduling new instances after the first error")
 

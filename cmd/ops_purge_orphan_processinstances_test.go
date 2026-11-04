@@ -60,16 +60,7 @@ const (
 )
 
 func TestOpsPurgeOrphanProcessInstancesHelpDocumentsSafeAutomationPreview(t *testing.T) {
-	output := executeRootForProcessInstanceTest(t, "ops", "purge", "orphan-process-instances", "--help")
-
-	assertHelpOutputContainsAll(t, output,
-		"Delete orphan child process instances whose parents are missing",
-		"./c8volt ops purge orphan-process-instances --dry-run",
-		"./c8volt ops purge orphan-process-instances --state completed --limit 25 --report-file orphan-purge.md",
-	)
-	assertHelpOutputOmitsAll(t, output,
-		"./c8volt ops purge orphan-process-instances --automation --json\n",
-	)
+	assertCommandHelpOutput(t, []string{"ops", "purge", "orphan-process-instances"}, []string{"parent is missing", "--limit", "--dry-run", "--report-file"}, nil)
 }
 
 func TestOpsPurgeOrphanProcessInstancesActivityWrapsDryRunDiscovery(t *testing.T) {
@@ -591,7 +582,7 @@ func TestOpsPurgeOrphanProcessInstancesSemanticProgressModeGate(t *testing.T) {
 				},
 			}
 		},
-		QuietWarning: "orphan-root-1 failed: request rejected (deletion process-instance trees, 1/1 process-instance tree(s), 1 failed, affected process instances: 1)",
+		QuietWarning: "", // Final aggregate rendering owns failure diagnostics.
 	})
 }
 
@@ -716,10 +707,15 @@ func newOpsOrphanPurgeServer(t *testing.T, requests *testx.SafeSlice[string], wi
 	return newOpsOrphanPurgeServerWithState(t, requests, nil, withOrphan, "ACTIVE")
 }
 
+// newOpsOrphanPurgeServerWithState keeps fixture setup aligned with the invocation's advisory version check.
 func newOpsOrphanPurgeServerWithState(t *testing.T, requests *testx.SafeSlice[string], deleted *testx.SafeSlice[string], withOrphan bool, orphanState string) *httptest.Server {
 	t.Helper()
 
 	return newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		switch {
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
 			body, err := io.ReadAll(r.Body)

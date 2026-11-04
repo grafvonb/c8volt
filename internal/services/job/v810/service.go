@@ -65,7 +65,7 @@ func New(cfg *config.Config, httpClient *http.Client, log *slog.Logger, opts ...
 	}
 	c, err := camundav810.NewClientWithResponses(
 		deps.Config.APIs.Camunda.BaseURL,
-		camundav810.WithHTTPClient(deps.HTTPClient),
+		camundav810.WithHTTPClient(deps.APIClient),
 	)
 	if err != nil {
 		return nil, err
@@ -410,6 +410,9 @@ func (s *Service) UpdateJob(ctx context.Context, request d.JobUpdateRequest, opt
 
 // SubmitJobWorkerOutcome submits the requested worker outcome through the native v8.10 lifecycle endpoint.
 func (s *Service) SubmitJobWorkerOutcome(ctx context.Context, request d.JobWorkerOutcomeRequest, opts ...services.CallOption) (d.JobWorkerOutcomeResult, error) {
+	if request.SetBusinessID != nil {
+		return s.submitJobAssignmentCompletion(ctx, request, opts...)
+	}
 	_ = services.ApplyCallOptions(opts)
 	switch request.Mode {
 	case d.JobWorkerOutcomeTechnicalFailure:
@@ -548,7 +551,8 @@ func newCompleteJobRequestBody(request d.JobWorkerOutcomeRequest) camundav810.Co
 		variables = map[string]any{}
 	}
 	return camundav810.CompleteJobJSONRequestBody{
-		Variables: &variables,
+		BusinessId: request.SetBusinessID,
+		Variables:  &variables,
 	}
 }
 

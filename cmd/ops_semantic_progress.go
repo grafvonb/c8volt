@@ -24,6 +24,7 @@ type opsSemanticProgressScope struct {
 	AffectedCoverageAvailable bool
 	SubmittedVerb             string
 	ConfirmedVerb             string
+	SkippedVerb               string
 	FailedVerb                string
 }
 
@@ -32,6 +33,7 @@ type opsSemanticProgressScope struct {
 type opsSemanticProgressLifecycleWords struct {
 	Submitted string
 	Confirmed string
+	Skipped   string
 	Failed    string
 }
 
@@ -247,6 +249,7 @@ func opsSemanticProgressLifecycleWordsFor(confirmed string) opsSemanticProgressL
 	return opsSemanticProgressLifecycleWords{
 		Submitted: "submitted",
 		Confirmed: confirmed,
+		Skipped:   "skipped",
 		Failed:    "failed",
 	}
 }
@@ -256,6 +259,7 @@ func opsSemanticProgressLifecycleWordsFor(confirmed string) opsSemanticProgressL
 func (s opsSemanticProgressScope) withLifecycleWords(words opsSemanticProgressLifecycleWords) opsSemanticProgressScope {
 	s.SubmittedVerb = strings.TrimSpace(words.Submitted)
 	s.ConfirmedVerb = strings.TrimSpace(words.Confirmed)
+	s.SkippedVerb = strings.TrimSpace(words.Skipped)
 	s.FailedVerb = strings.TrimSpace(words.Failed)
 	return s
 }

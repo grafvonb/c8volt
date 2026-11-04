@@ -43,7 +43,6 @@ c8volt walk pi -k <process-instance-key> --flat --with-elements --with-listeners
 - `get element --keys-only --with-listeners` fails before element or listener lookup.
 - `ops analyse slow-process-instances --keys-only --with-listeners` fails before analysis lookup.
 - `--with-listeners` may not be combined with count-only modes such as `--total`.
-- Camunda 8.7 returns the established unsupported job-search/listener-lookup error style.
 
 ## Human Output Contract
 

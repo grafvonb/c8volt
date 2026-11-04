@@ -6,52 +6,25 @@ nav_order: 2
 has_toc: true
 ---
 
-# c8volt ops execute retention-policy
+# Execute retention policy
 
-## Purpose
+Delete finished process instances older than the retention age. The workflow fixes the candidate set, plans family deletion, and records the outcome.
 
-Retention cleanup is simple to describe but risky to perform by hand. `c8volt ops execute retention-policy` discovers finished process instances older than the requested age, freezes the set, builds the normal delete plan, and records the result.
-
-## In Action
-
-<img src="../../assets/screencasts/ops-execute-retention-policy.gif" alt="c8volt ops execute retention-policy demo" />
-
-## Use When
-
-- finished process instances should be removed by age
-- cleanup must be previewed before mutation
-- the run needs a Markdown or JSON audit report
-
-## Basic Usage
+## Examples
 
 ```bash
-c8volt ops execute retention-policy --retention-days 90 --dry-run
+c8volt ops execute retention-policy --retention-days 90 --bpmn-process-id order --dry-run
+c8volt ops execute retention-policy --retention-days 90 --bpmn-process-id order --auto-confirm --report-file retention.md
 ```
 
-Generated reference: [ops execute retention-policy](/cli/c8volt_ops_execute_retention-policy).
+## Execution
 
-## Best Variants
+The age filter uses instance end dates. `--limit` caps eligible selected instances; family expansion can include newer relatives. Review that scope before scheduling recurring cleanup.
 
-```bash
-c8volt ops execute retention-policy --retention-days 90 --bpmn-process-id <bpmn-process-id> --state completed --limit 25 --dry-run
-c8volt ops execute retention-policy --retention-days 90 --bpmn-process-id <bpmn-process-id> --state completed --limit 25 --report-file retention-report.md
-```
+Instances whose root is still unfinished are skipped, even with `--force`. Unfinished descendants of a finished root require `--force`.
 
-## Built From Lower-Level Commands
+Deletion processes children before parents and waits for disappearance by default. Required cancellation checks run before deletion.
 
-For an unattended pipeline, select the process and skip deletion when discovery returns no keys:
+See the [shared ops controls](/ops/#shared-controls) for discovery, confirmation, tenant scope, and reports.
 
-```bash
-keys=$(c8volt get process-instance --bpmn-process-id <bpmn-process-id> --end-date-older-days <days> --keys-only) &&
-if [ -n "$keys" ]; then
-  printf '%s\n' "$keys" | c8volt delete process-instance --auto-confirm -
-fi
-```
-
-Generated references: [get process-instance](/cli/c8volt_get_process-instance), [delete process-instance](/cli/c8volt_delete_process-instance).
-
-## Safety
-
-`--dry-run` reports the frozen retention set and delete plan without mutation. Real execution confirms or runs under automation, deletes through normal process-instance delete planning, waits unless disabled, and can write Markdown or JSON reports. Discovery page size and frozen scope are separate: use `--batch-size` for request size and `--limit` only when the retention scope should intentionally stop early.
-
-A named tenant limits discovery. An empty tenant or `--all-tenants` searches across tenants visible to the authenticated identity. `--all-tenants` conflicts with an explicit `--tenant` value.
+[Command reference](/cli/c8volt_ops_execute_retention-policy) · [get process-instance](/cli/c8volt_get_process-instance) · [delete process-instance](/cli/c8volt_delete_process-instance)

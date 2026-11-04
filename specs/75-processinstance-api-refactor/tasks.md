@@ -17,8 +17,6 @@
 
 **Purpose**: Capture the exact reviewed service surface, helper boundaries, and generated-client coverage candidates before code changes
 
-- [ ] T001 Review the current processinstance service flow and helper boundaries in `/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/api.go`, `/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/factory.go`, `/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/waiter/waiter.go`, `/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/walker/walker.go`, `/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v87/service.go`, and `/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v88/service.go`
-- [ ] T002 Review the supported generated processinstance client operations and current contract surface in `/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v87/contract.go`, `/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v88/contract.go`, `/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/clients/camunda/v87/camunda/client.gen.go`, `/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/clients/camunda/v87/operate/client.gen.go`, `/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/clients/camunda/v88/camunda/client.gen.go`, and `/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/clients/camunda/v88/operate/client.gen.go`
 - [ ] T003 Review the current processinstance regression surface and validation path in `/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/factory_test.go`, `/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/75-processinstance-api-refactor/quickstart.md`, `/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/README.md`, and `/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/docs/cli/`
 
 ---
@@ -30,7 +28,7 @@
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
 - [ ] T004 Define the preserved shared processinstance service surface and the rule for any partial-version capability addition in `/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/api.go`
-- [ ] T005 [P] Prepare version-specific generated-client contract updates needed for the refactor and any approved capability review outcome in `/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v87/contract.go` and `/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v88/contract.go`
+- [ ] T005 [P] Prepare version-specific generated-client contract updates needed for the refactor and any approved capability review outcome in `/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v88/contract.go`
 - [ ] T006 [P] Expand factory coverage for preserved version routing and unknown-version behavior in `/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/factory_test.go`
 
 **Checkpoint**: Foundation ready - user story implementation can now begin in priority order or parallel where noted
@@ -45,17 +43,13 @@
 
 ### Tests for User Story 1
 
-- [ ] T007 [P] [US1] Add v8.7 regression tests for create, get, search, cancel, delete, and malformed-response behavior in `/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v87/service_test.go`
 - [ ] T008 [P] [US1] Add v8.8 regression tests for create, get, search, cancel, delete, and malformed-response behavior in `/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v88/service_test.go`
 - [ ] T009 [P] [US1] Add helper-level regression tests for polling and traversal invariants in `/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/waiter/waiter_test.go` and `/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/walker/walker_test.go`
 
 ### Implementation for User Story 1
 
 - [ ] T010 [US1] Refactor shared API declarations and factory readability without changing behavior in `/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/api.go` and `/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/factory.go`
-- [ ] T011 [P] [US1] Simplify v8.7 service control flow, payload validation, and helper interaction paths in `/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v87/service.go`, `/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v87/bulk.go`, and `/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v87/convert.go`
 - [ ] T012 [P] [US1] Simplify v8.8 service control flow, payload validation, and helper interaction paths in `/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v88/service.go`, `/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v88/bulk.go`, and `/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v88/convert.go`
-- [ ] T013 [US1] Reconcile shared response-validation and helper usage with repository-native patterns in `/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/common/response.go`, `/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v87/service.go`, and `/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v88/service.go`
-- [ ] T014 [US1] Simplify waiter and walker call sites without changing their semantics in `/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/waiter/waiter.go`, `/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/walker/walker.go`, `/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v87/service.go`, and `/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v88/service.go`
 
 **Checkpoint**: At this point, User Story 1 should be fully functional and testable independently
 
@@ -69,14 +63,12 @@
 
 ### Tests for User Story 2
 
-- [ ] T015 [P] [US2] Add v8.7 tests for the approved generated-client coverage decision in `/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v87/service_test.go` and `/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v87/contract.go`
 - [ ] T016 [P] [US2] Add v8.8 tests for the approved generated-client coverage decision in `/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v88/service_test.go` and `/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v88/contract.go`
 
 ### Implementation for User Story 2
 
 - [ ] T017 [US2] Record the final generated-processinstance capability review and add-or-defer rationale in `/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/75-processinstance-api-refactor/research.md`
 - [ ] T018 [US2] Update the shared processinstance service interface to either expose the approved missing capability or explicitly preserve the bounded current surface in `/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/api.go`
-- [ ] T019 [US2] Implement the approved generated-client coverage decision for v8.7, including unsupported-version behavior if applicable, in `/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v87/service.go` and `/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v87/contract.go`
 - [ ] T020 [US2] Implement the approved generated-client coverage decision for v8.8, including unsupported-version behavior if applicable, in `/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v88/service.go` and `/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v88/contract.go`
 - [ ] T021 [US2] Update the processinstance data-shape notes for the final service surface in `/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/75-processinstance-api-refactor/data-model.md`
 
@@ -92,12 +84,12 @@
 
 ### Tests for User Story 3
 
-- [ ] T022 [P] [US3] Expand cross-version regression cases for edge-case state transitions, empty-success payloads, unsupported-version capability behavior, and delete or cancel follow-up failures in `/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v87/service_test.go` and `/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v88/service_test.go`
+- [ ] T022 [P] [US3] Expand cross-version regression cases for edge-case state transitions, empty-success payloads, unsupported-version capability behavior, and delete or cancel follow-up failures in `/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v88/service_test.go`
 - [ ] T023 [P] [US3] Add final shared-surface regression coverage for the settled processinstance API and factory behavior in `/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/factory_test.go`
 
 ### Implementation for User Story 3
 
-- [ ] T024 [US3] Tighten processinstance service test fixtures and helper builders for long-term maintainability in `/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v87/service_test.go`, `/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v88/service_test.go`, `/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/waiter/waiter_test.go`, and `/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/walker/walker_test.go`
+- [ ] T024 [US3] Tighten processinstance service test fixtures and helper builders for long-term maintainability in `/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v88/service_test.go`, `/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/waiter/waiter_test.go`, and `/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/walker/walker_test.go`
 - [ ] T025 [US3] Update the final validation sequence and documentation-impact decision in `/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/75-processinstance-api-refactor/quickstart.md`
 - [ ] T026 [US3] If User Story 2 adds a user-visible processinstance workflow, update `/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/README.md` and regenerate docs under `/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/docs/cli/`
 
@@ -153,12 +145,10 @@
 
 ```bash
 # Launch User Story 1 regression coverage tasks together:
-Task: "Add v8.7 regression tests for create, get, search, cancel, delete, and malformed-response behavior in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v87/service_test.go"
 Task: "Add v8.8 regression tests for create, get, search, cancel, delete, and malformed-response behavior in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v88/service_test.go"
 Task: "Add helper-level regression tests for polling and traversal invariants in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/waiter/waiter_test.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/walker/walker_test.go"
 
 # Launch version-specific refactors together after the shared API/factory cleanup:
-Task: "Simplify v8.7 service control flow, payload validation, and helper interaction paths in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v87/service.go, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v87/bulk.go, and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v87/convert.go"
 Task: "Simplify v8.8 service control flow, payload validation, and helper interaction paths in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v88/service.go, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v88/bulk.go, and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v88/convert.go"
 ```
 
@@ -168,7 +158,6 @@ Task: "Simplify v8.8 service control flow, payload validation, and helper intera
 
 ```bash
 # Launch generated-client coverage tests for both supported versions together:
-Task: "Add v8.7 tests for the approved generated-client coverage decision in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v87/service_test.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v87/contract.go"
 Task: "Add v8.8 tests for the approved generated-client coverage decision in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v88/service_test.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v88/contract.go"
 ```
 

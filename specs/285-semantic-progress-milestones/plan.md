@@ -18,7 +18,7 @@ Add exact, operator-facing completion milestones to long-running commands by ext
 
 **Testing**: Go `testing` with Testify; `testx/activitysink`, fake HTTP services, and injected clocks; targeted package tests with `-race`, then `make test`
 
-**Target Platform**: Cross-platform c8volt CLI against supported Camunda 8.7, 8.8, 8.9, and 8.10 clusters
+**Target Platform**: Cross-platform c8volt CLI against supported Camunda 8.8, 8.9, and 8.10 clusters
 
 **Project Type**: Go CLI with public facades and version-neutral/versioned internal service layers
 

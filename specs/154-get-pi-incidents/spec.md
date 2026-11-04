@@ -73,13 +73,11 @@ As an operator in tenant-aware environments, I want incident lookups to use tena
 
 **Why this priority**: The issue explicitly calls out tenant-aware lookup paths and version-specific support boundaries. Correctness and safety matter more than opportunistic fallback behavior.
 
-**Independent Test**: Run service-level and command-level tests that verify tenant filters are included for supported versions and unsupported-version behavior is clear for Camunda 8.7 when tenant-safe keyed incident lookup is unavailable.
 
 **Acceptance Scenarios**:
 
 1. **Given** a tenant is configured, **When** incident enrichment is requested for a keyed process instance, **Then** the incident lookup includes tenant filtering.
 2. **Given** Camunda 8.8 or 8.9 is configured, **When** `--with-incidents` is used with `--key`, **Then** the command uses the generated Camunda incident search capability and returns matching incident details.
-3. **Given** Camunda 8.7 cannot provide tenant-safe keyed incident enrichment, **When** `--with-incidents` is used with `--key`, **Then** the command fails with the repository's existing unsupported-capability style instead of falling back to tenant-unsafe direct incident lookup.
 
 ### Edge Cases
 
@@ -90,7 +88,6 @@ As an operator in tenant-aware environments, I want incident lookups to use tena
 - Incident results with empty error messages must not break human-readable or JSON rendering.
 - Human-readable incident messages must render as indented `incident <incident-key>:` lines directly below the matching process-instance row.
 - A configured tenant must be included in incident lookup filters when the incident search API supports tenant filtering.
-- Camunda 8.7 must not use a tenant-unsafe direct incident lookup as a fallback for this feature.
 - Existing `--incidents-only` and `--no-incidents-only` search-mode behavior must remain unchanged.
 - Existing default human-readable and JSON process-instance output must remain unchanged when `--with-incidents` is omitted.
 
@@ -113,7 +110,6 @@ As an operator in tenant-aware environments, I want incident lookups to use tena
 - **FR-013**: Incident enrichment MUST use tenant-aware incident lookup paths where the configured Camunda version supports them.
 - **FR-014**: If a tenant is configured and the incident search API supports tenant filtering, the incident lookup MUST include the configured tenant.
 - **FR-015**: Camunda 8.8 and 8.9 support MUST use generated Camunda client incident search APIs that expose process-instance-key and tenant filters and return error messages.
-- **FR-016**: Camunda 8.7 MUST return the repository's existing unsupported-capability style for `--with-incidents` when tenant-safe keyed incident enrichment cannot be implemented.
 - **FR-017**: The implementation MUST NOT use a tenant-unsafe direct incident lookup as the primary incident enrichment path.
 - **FR-018**: Command help and generated user-facing documentation MUST describe `--with-incidents`, its keyed-only scope, and its incident-key/message purpose.
 - **FR-019**: Automated tests MUST cover validation, human-readable output, JSON output, tenant-aware request construction, multiple keys, no-incident results, default-output preservation, search-mode incident-filter preservation, and version-specific unsupported behavior.
@@ -138,7 +134,6 @@ As an operator in tenant-aware environments, I want incident lookups to use tena
 - **SC-006**: Automated tests show multiple keys keep incident details attached to the correct process-instance key.
 - **SC-007**: Automated tests show process instances without returned incidents still render successfully.
 - **SC-008**: Service-level tests for supported versions verify incident search requests include process-instance-key filtering and configured tenant filtering.
-- **SC-009**: Version-specific tests verify Camunda 8.7 returns the existing unsupported-capability style for this flag when tenant-safe enrichment is unavailable.
 - **SC-010**: Help output or generated CLI documentation includes `--with-incidents` and states that it applies to keyed process-instance lookup.
 
 ## Assumptions

@@ -2,7 +2,7 @@
 
 ## Decision: Creation confirmation should wait for observable lifecycle states
 
-**Rationale**: The current v8.7, v8.8, and v8.9 process-instance creation flows call `WaitForProcessInstanceState` with only `StateActive`. The issue requires successful confirmation when the created instance is observable as `active`, `completed`, `canceled`, or `terminated`. Reusing the existing waiter with a broader desired state set keeps retry, timeout, logging, and absent handling in the established service boundary.
+**Rationale**: The current v8.8 and v8.9 process-instance creation flows call `WaitForProcessInstanceState` with only `StateActive`. The issue requires successful confirmation when the created instance is observable as `active`, `completed`, `canceled`, or `terminated`. Reusing the existing waiter with a broader desired state set keeps retry, timeout, logging, and absent handling in the established service boundary.
 
 **Alternatives considered**:
 

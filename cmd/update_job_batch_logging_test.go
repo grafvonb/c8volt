@@ -55,7 +55,9 @@ func TestBulkCompletionFailureSummaryBounds(t *testing.T) {
 // TestBulkCompletionDiagnosticLogging exercises real command failures and logger
 // configuration against a test-owned server, including terminal writer routing.
 func TestBulkCompletionDiagnosticLogging(t *testing.T) {
-	for _, version := range []string{"8.8", "8.9", "8.10"} {
+	for _, version := range []string{"8.8", "8.9", "8.10", "8.10-assignment"} {
+		assignment := strings.HasSuffix(version, "-assignment")
+		version = strings.TrimSuffix(version, "-assignment")
 		for _, format := range []string{"plain-time", "json"} {
 			for i, tc := range []struct {
 				name                                                                    string
@@ -76,10 +78,16 @@ func TestBulkCompletionDiagnosticLogging(t *testing.T) {
 				{name: "suppressed exit", flags: []string{"--no-err-codes"}, suppressExit: true},
 			} {
 				t.Run(version+"/"+format+"/"+tc.name, func(t *testing.T) {
-					var writes atomic.Int32
+					var writes, probes atomic.Int32
 					keys := []string{completionAcceptanceKey(0), completionAcceptanceKey(1), completionAcceptanceKey(2), completionAcceptanceKey(3)}
 					server := testx.NewIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 						w.Header().Set("Content-Type", "application/json")
+						if r.URL.Path == "/v2/topology" {
+							probes.Add(1)
+							w.WriteHeader(403)
+							io.WriteString(w, `{"detail":"POST https://private.invalid/secret body-only-secret leaseToken"}`)
+							return
+						}
 						if r.Method == http.MethodPost && r.URL.Path == "/v2/jobs/search" && !tc.preparation {
 							var body struct {
 								Filter map[string]any `json:"filter"`
@@ -119,7 +127,10 @@ func TestBulkCompletionDiagnosticLogging(t *testing.T) {
 					_, err = fmt.Fprintf(file, "log:\n  level: %s\n  format: %s\n", level, format)
 					require.NoError(t, err)
 					require.NoError(t, file.Close())
-					args := []string{"--config", cfg, "--tenant", "tenant-a", "update", "job", "--complete", "--kind", "TASK_LISTENER", "--auto-confirm"}
+					args := []string{"--config", cfg, "--tenant", "tenant-a", "update", "job", "--complete", "--set-vars", `{}`, "--kind", "TASK_LISTENER", "--auto-confirm"}
+					if assignment {
+						args = append(args, "--set-bid", "ORDER-123")
+					}
 					args = append(args, tc.flags...)
 					destination := "inherited"
 					if i%2 == 1 {
@@ -144,12 +155,16 @@ func TestBulkCompletionDiagnosticLogging(t *testing.T) {
 					} else {
 						require.Equal(t, int32(4), writes.Load())
 					}
+					require.Equal(t, int32(1), probes.Load())
 					records := bulkCompletionDiagnosticRecords(t, stderr, format)
+					warnings := []string{}
 					errors := []string{}
 					debugs := []string{}
 					infos := []string{}
 					for _, record := range records {
 						switch record[0] {
+						case "WARN":
+							warnings = append(warnings, record[1])
 						case "ERROR":
 							errors = append(errors, record[1])
 						case "DEBUG":
@@ -159,6 +174,11 @@ func TestBulkCompletionDiagnosticLogging(t *testing.T) {
 						default:
 							t.Errorf("unexpected log level: %s", record[0])
 						}
+					}
+					if tc.quiet {
+						require.Empty(t, warnings)
+					} else {
+						require.Equal(t, []string{"version check: access denied; using configured " + version}, warnings)
 					}
 					if tc.json {
 						require.Empty(t, errors)
@@ -254,18 +274,29 @@ func assertBulkCompletionHumanLogs(t *testing.T, stdout, stderr string) (string,
 // Successful summaries must use the configured logger too, including preview
 // and verbose rows; logger format/level and destination cannot be bypassed.
 func TestBulkCompletionSummaryLogging(t *testing.T) {
+	for _, assignment := range []bool{false, true} {
+		t.Run(fmt.Sprint("assignment=", assignment), func(t *testing.T) { testBulkCompletionSummaryLogging(t, assignment) })
+	}
+}
+
+// testBulkCompletionSummaryLogging shares the full logger matrix for both payloads.
+// Empty canonical variables retain the existing listener payload restriction.
+func testBulkCompletionSummaryLogging(t *testing.T, assignment bool) {
 	for _, format := range []string{"plain-time", "json"} {
 		for _, level := range []string{"info", "warn"} {
 			for _, flags := range [][]string{nil, {"--dry-run"}, {"--verbose"}, {"--quiet"}, {"--json"}, {"--quiet", "--json"}} {
 				t.Run(format+"/"+level+"/"+strings.Join(flags, " "), func(t *testing.T) {
-					_, server := newBulkCompletionFixture(t, "normal")
+					_, server := newBulkCompletionFixture(t, "8.10", "normal")
 					cfg := writeTestConfigForVersion(t, server.URL, "8.10")
 					f, err := os.OpenFile(cfg, os.O_APPEND|os.O_WRONLY, 0600)
 					require.NoError(t, err)
 					_, err = fmt.Fprintf(f, "log:\n  level: %s\n  format: %s\n", level, format)
 					require.NoError(t, err)
 					require.NoError(t, f.Close())
-					args := []string{"--config", cfg, "--tenant", "tenant-a", "update", "job", "--complete", "--type", "cleanup", "--auto-confirm"}
+					args := []string{"--config", cfg, "--tenant", "tenant-a", "update", "job", "--complete", "--set-vars", `{}`, "--type", "cleanup", "--auto-confirm"}
+					if assignment {
+						args = append(args, "--set-bid", "ORDER-123")
+					}
 					args = append(args, flags...)
 					destination := "configured"
 					if format == "json" {

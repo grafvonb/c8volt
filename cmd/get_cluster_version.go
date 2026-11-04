@@ -17,9 +17,9 @@ var getClusterVersionCmd = &cobra.Command{
 	Long: `Get the connected Camunda gateway version.
 
 Use --with-brokers to include broker versions.`,
-	Example: `  ./c8volt get cluster version
-  ./c8volt get cluster version --with-brokers
-  ./c8volt get cluster version --json`,
+	Example: `  c8volt get cluster version
+  c8volt get cluster version --with-brokers
+  c8volt get cluster version --json`,
 	Args: cobra.NoArgs,
 	Run:  runGetClusterVersion,
 }

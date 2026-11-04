@@ -75,7 +75,6 @@ internal/
 └── services/
     └── processdefinition/
         ├── api.go
-        ├── v87/
         ├── v88/
         └── v89/
 

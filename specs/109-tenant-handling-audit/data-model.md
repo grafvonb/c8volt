@@ -6,7 +6,7 @@
 - **Key attributes**:
   - Resolved tenant value
   - Winning source: `Flag`, `Environment`, `Profile`, or `BaseConfig`
-  - Version context: `8.7`, `8.8`, or future `8.9` planning note
+  - Version context: `8.8`, or future `8.9` planning note
   - Whether the tenant is the implicit default or an explicit named tenant
 - **Invariants**:
   - One command execution has one effective tenant context.
@@ -55,7 +55,6 @@
   - Preferred tenant-safe lookup strategy
   - Unsupported-operation notes
 - **Current repository mapping**:
-  - `8.7`: supported service exists, search-backed flows remain tenant-safe, but keyed direct lookup and keyed state-check seams stay explicitly unsupported where no tenant-safe upstream equivalent exists
   - `8.8`: supported service exists and search-backed lookup/state behavior is the tenant-safe authority for direct-get-adjacent flows
   - `8.9`: version normalizes in config/tooling, but no process-instance service implementation exists yet, so process-instance runtime support is still unavailable
 
@@ -108,4 +107,3 @@
   - Whether `--force` applies
 - **Behavioral rules**:
   - Mutation must not proceed when the target can only be seen through a cross-tenant leak.
-  - Unsupported tenant safety in `v87` must stop the unsafe segment before mutation occurs.

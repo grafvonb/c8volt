@@ -12,7 +12,6 @@ import (
 	"github.com/grafvonb/c8volt/internal/services"
 	"github.com/grafvonb/c8volt/internal/services/variable"
 	v810 "github.com/grafvonb/c8volt/internal/services/variable/v810"
-	v87 "github.com/grafvonb/c8volt/internal/services/variable/v87"
 	v88 "github.com/grafvonb/c8volt/internal/services/variable/v88"
 	v89 "github.com/grafvonb/c8volt/internal/services/variable/v89"
 	"github.com/grafvonb/c8volt/toolx"
@@ -26,13 +25,6 @@ func TestFactory_SupportedVersions(t *testing.T) {
 		version toolx.CamundaVersion
 		assert  func(*testing.T, variable.API)
 	}{
-		{
-			name:    "v87",
-			version: toolx.V87,
-			assert: func(t *testing.T, svc variable.API) {
-				require.IsType(t, &v87.Service{}, svc)
-			},
-		},
 		{
 			name:    "v88",
 			version: toolx.V88,
@@ -77,7 +69,6 @@ func TestFactory_StableVersionSelectionUnchanged(t *testing.T) {
 		version toolx.CamundaVersion
 		assert  func(*testing.T, variable.API)
 	}{
-		{name: "v87", version: toolx.V87, assert: func(t *testing.T, svc variable.API) { require.IsType(t, &v87.Service{}, svc) }},
 		{name: "v88", version: toolx.V88, assert: func(t *testing.T, svc variable.API) { require.IsType(t, &v88.Service{}, svc) }},
 		{name: "v89", version: toolx.V89, assert: func(t *testing.T, svc variable.API) { require.IsType(t, &v89.Service{}, svc) }},
 		{name: "current-default", version: toolx.CurrentCamundaVersion, assert: func(t *testing.T, svc variable.API) { require.IsType(t, &v89.Service{}, svc) }},

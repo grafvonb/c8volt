@@ -121,6 +121,26 @@ func TestEnrichProcessInstancesWithVariablesPreservesOrderAndProcessScope(t *tes
 	}, got.Items[1].Variables)
 }
 
+// TestEnrichProcessInstancesWithVariablesRejectsLaterCompleteReadFailure verifies
+// enrichment never exposes a partially enriched collection when a later root read fails.
+func TestEnrichProcessInstancesWithVariablesRejectsLaterCompleteReadFailure(t *testing.T) {
+	wantErr := errors.New("later variable page failed")
+	var requested []string
+	got, err := EnrichProcessInstancesWithVariables(context.Background(), stubVariableSearcher{
+		search: func(_ context.Context, key string, _ ...services.CallOption) ([]d.ProcessInstanceVariable, error) {
+			requested = append(requested, key)
+			if key == "pi-b" {
+				return nil, wantErr
+			}
+			return []d.ProcessInstanceVariable{{Name: "ready", ProcessInstanceKey: key, ScopeKey: key}}, nil
+		},
+	}, []d.ProcessInstance{{Key: "pi-a"}, {Key: "pi-b"}, {Key: "pi-c"}})
+
+	require.ErrorIs(t, err, wantErr)
+	require.Empty(t, got)
+	require.Equal(t, []string{"pi-a", "pi-b"}, requested)
+}
+
 // TestEnrichProcessInstancesWithElementsPreservesOrderFiltersPerKeyAndSortsElements verifies service-owned element association semantics.
 func TestEnrichProcessInstancesWithElementsPreservesOrderFiltersPerKeyAndSortsElements(t *testing.T) {
 	seen := []string{}

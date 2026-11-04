@@ -83,7 +83,6 @@ As a c8volt operator or automation author, I want slow-run analysis in establish
 
 ### Edge Cases
 
-- Camunda 8.7 must return the established unsupported-version error for this command.
 - The British and American spellings, `ops analyse slow-process-instances` and `ops analyze slow-process-instances`, must behave the same.
 - Exactly one target selection mode must be used: explicit keys or process-definition search.
 - Explicit-key mode must accept repeated `--key` or `-k` values, one stdin marker `-`, or both.
@@ -113,7 +112,6 @@ As a c8volt operator or automation author, I want slow-run analysis in establish
 
 - **FR-001**: The system MUST provide a read-only slow process instance analysis command under both `c8volt ops analyse slow-process-instances` and `c8volt ops analyze slow-process-instances`.
 - **FR-002**: The command MUST support Camunda 8.8 and Camunda 8.9.
-- **FR-003**: The command MUST return the established unsupported-version error for Camunda 8.7.
 - **FR-004**: The command MUST present factual timings only and MUST NOT select a bottleneck, name a cause, or imply that a timing proves BPMN or system causality.
 - **FR-005**: The command MUST require exactly one selection mode: explicit process-instance keys or process-definition search.
 - **FR-006**: Explicit-key mode MUST accept repeated `--key` and `-k` values.
@@ -201,7 +199,6 @@ As a c8volt operator or automation author, I want slow-run analysis in establish
 - **SC-008**: Detail filtering never changes relative-duration calculations, never creates synthetic transitions, and keeps the process-instance root visible.
 - **SC-009**: Human bars always describe duration share, while JSON relative indicators appear only when at least three comparable measurements exist and tied durations receive the same percentile.
 - **SC-010**: JSON consumers can read captured analysis time, process durations, ordered timeline entries, comparison sample counts, relative percentiles, and process-duration shares using explicit field names.
-- **SC-011**: Camunda 8.7 attempts return the established unsupported-version result without mutating operational state.
 - **SC-012**: The command remains read-only across all successful and failed scenarios.
 
 ## Assumptions

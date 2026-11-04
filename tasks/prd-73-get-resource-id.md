@@ -91,7 +91,7 @@ Add a repository-native `c8volt get resource --id <id>` command that exposes the
 - Extend `c8volt/resource/api.go`, `c8volt/resource/client.go`, `c8volt/resource/model.go`, and `c8volt/contract.go` rather than calling internal services directly from command code.
 - Add the new command in `cmd/get_resource.go` and keep it aligned with current Cobra patterns used by other `get` subcommands.
 - Add resource-specific rendering in `cmd/cmd_views_get.go` instead of inventing a parallel view system.
-- Preserve malformed-success behavior by keeping the current `internal/services/common.RequirePayload` semantics already used in `internal/services/resource/v87/service.go` and `internal/services/resource/v88/service.go`.
+- Preserve malformed-success behavior by keeping the current `internal/services/common.RequirePayload` semantics already used in `internal/services/resource/v88/service.go`.
 - Keep the feature scoped to metadata/details lookup only; raw resource content remains a follow-up concern if ever needed.
 - Update command help first, then regenerate `docs/cli/` with `make docs` rather than hand-editing generated pages.
 - Follow repository guidance from `AGENTS.md`, including adjacent test updates and final `make test`.
@@ -100,7 +100,6 @@ Add a repository-native `c8volt get resource --id <id>` command that exposes the
 
 - Update `cmd/get_test.go` with resource-command success, validation, and help-output coverage.
 - Add or update regression coverage in `c8volt/resource/client_test.go`.
-- Add or update single-resource retrieval and malformed-success tests in `internal/services/resource/v87/service_test.go`.
 - Add or update single-resource retrieval and malformed-success tests in `internal/services/resource/v88/service_test.go`.
 - Run `go test ./cmd -run 'TestGet.*Resource' -count=1`.
 - Run `go test ./c8volt/resource ./internal/services/resource/... -count=1`.

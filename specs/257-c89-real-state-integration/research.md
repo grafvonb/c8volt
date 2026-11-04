@@ -14,7 +14,7 @@
 
 **Rationale**: The current goal is a strong 8.9 foundation. Camunda minor releases happen regularly, so scenario names, gap artifacts, and evidence must remain version-aware, but expanding this feature into a broad version matrix would delay the real-state foundation.
 
-**Alternatives considered**: Building simultaneous 8.7/8.8/8.9/8.10 coverage was rejected for this feature because it would overload scope. Hard-coding 8.9 assumptions without version evidence was rejected because it would make future minor-release extension expensive.
+**Alternatives considered**: Building simultaneous 8.8/8.9/8.10 coverage was rejected for this feature because it would overload scope. Hard-coding 8.9 assumptions without version evidence was rejected because it would make future minor-release extension expensive.
 
 ## Decision: Prefer C8volt Commands For Setup, With Spec-Owned Gap Tracking
 

@@ -26,7 +26,6 @@ Improve the existing read-only `c8volt ops analyse slow-process-instances` human
 
 **Performance Goals**: Preserve existing analysis work and avoid extra remote lookups; default human summarization should operate on the already-calculated visible timeline for each root and scale linearly with timeline row count
 
-**Constraints**: Read-only behavior; supports the existing Camunda 8.8 and 8.9 analysis path; Camunda 8.7 behavior remains unchanged; JSON output and keys-only output remain unchanged; `--with-full-timeline` affects human rendering only; existing selection, filtering, duration calculation, and ordering semantics remain unchanged
 
 **Scale/Scope**: One focused presentation change to an existing command, including flag/help examples, human renderer summary selection, hidden-row summary, renderer/command contract tests, README updates, and generated CLI docs
 

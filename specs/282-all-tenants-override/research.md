@@ -4,12 +4,10 @@
 
 **Decision**: Add `--all-tenants` as a root persistent boolean flag. Resolve base configuration, active profile, environment, and the existing `--tenant` flag through the current Viper path first. When `--all-tenants` is active, capture the resolved configured tenant for private provenance and then set the effective `cfg.App.Tenant` to the existing empty-filter value before the config enters command context or remote services are installed.
 
-**Rationale**: `cmd/root.go` and `cmd/root_config.go` already own configuration precedence. Existing read/search/service paths interpret an empty `cfg.App.Tenant` as unfiltered discovery, so a root-only override reaches every applicable command without facade or service changes. Applying it after configuration normalization is essential for Camunda 8.7, where an omitted tenant otherwise normalizes to `<default>`; applying it before the config enters context ensures commands and services receive the overridden value.
 
 **Alternatives considered**:
 
 - Bind `--all-tenants` as a new durable config field: rejected because the issue defines an explicit command-line override, not a profile/environment/configuration concept.
-- Force the raw `tenant` flag to empty before Viper resolution: rejected because it obscures provenance and makes profile, environment, explicit-empty, and Camunda 8.7 behavior brittle.
 - Add per-command tenant options: rejected because it duplicates central resolution and can drift across command families.
 
 ## Decision 2: Validate tenant choices before configuration and command work
@@ -105,7 +103,7 @@ If the configured tenant was already empty, omit override provenance chatter and
 ## Resolved Technical Context
 
 - No new dependency, storage, public facade API, backend API, or generated client is required.
-- The change is version-neutral across Camunda 8.7, 8.8, 8.9, and 8.10.
+- The change is version-neutral across Camunda 8.8, 8.9, and 8.10.
 - The four concrete-destination leaves are complete based on production call-site inspection for deployment, process creation, and smoke-test execution.
 - Capability metadata and runtime validation share one source of truth.
 - All Phase 0 questions are resolved; no technical context remains undecided.

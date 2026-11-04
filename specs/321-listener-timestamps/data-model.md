@@ -37,4 +37,3 @@ Retain `Listeners *[]RuntimeListenerJob` semantics: nil means not requested; a p
 - Only exact `ACTIVATED` plus non-nil deadline produces human `d:`.
 - JSON preserves supplied deadlines in every state.
 - No new state transitions, mutations, persistence, migrations, duration values, or validation of lifecycle ordering are introduced.
-- v87 lookup remains unsupported; v88/v89/v810 responses with missing fields remain valid.

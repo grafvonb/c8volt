@@ -149,10 +149,11 @@ func TestOpsAnalyseSlowProcessInstancesWithListenersMapsRequest(t *testing.T) {
 }
 
 func TestOpsAnalyseSlowProcessInstancesHelpDocumentsListenerTimestampGrammar(t *testing.T) {
-	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Long, "s: for job creation (not worker execution start), e: for job end")
-	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Long, "d: for an available deadline only while the state is exactly ACTIVATED")
+	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Long, "--with-listeners")
+	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Example, "--with-listeners")
 }
 
+// TestOpsAnalyseSlowProcessInstancesWithListenersCommandRendersLifecycleTimestamps preserves the existing command contract with advisory-aware fixtures.
 func TestOpsAnalyseSlowProcessInstancesWithListenersCommandRendersLifecycleTimestamps(t *testing.T) {
 	for _, tc := range []struct {
 		name string
@@ -165,6 +166,10 @@ func TestOpsAnalyseSlowProcessInstancesWithListenersCommandRendersLifecycleTimes
 			var requests testx.SafeSlice[string]
 			const key = "2251799813685249"
 			srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if serveVersionCheckTopology(w, r, "8.8") {
+					return
+				}
+
 				requests.Append(r.Method + " " + r.URL.Path)
 				w.Header().Set("Content-Type", "application/json")
 				switch r.URL.Path {
@@ -186,7 +191,7 @@ func TestOpsAnalyseSlowProcessInstancesWithListenersCommandRendersLifecycleTimes
 			args = append(args, tc.args...)
 			stdout, stderr := executeRootForProcessInstanceWithSeparateOutputs(t, args...)
 
-			require.Contains(t, stdout, "job-exec-1 EXECUTION_LISTENER lsnr:END COMPLETED tp:audit-end r:0 s:2026-09-16T13:07:16.359 e:2026-09-16T13:07:16.842")
+			require.Contains(t, stdout, "job-exec-1 EXECUTION_LISTENER lsnr:END COMPLETED tp:audit-end r:0 s:2026-09-16T13:07:16.359 e:2026-09-16T13:07:16.842 dur:483ms")
 			require.NotContains(t, stdout, "d:2026-09-16T13:08:00.000")
 			require.Empty(t, stderr)
 			require.ElementsMatch(t, []string{
@@ -205,6 +210,10 @@ func TestOpsAnalyseSlowProcessInstancesWithListenersCommandJSONPreservesTimestam
 	var requests testx.SafeSlice[string]
 	const key = "2251799813685249"
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		requests.Append(r.Method + " " + r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
@@ -405,4 +414,23 @@ func resetOpsSlowProcessAnalysisTestFlags(t *testing.T) *cobra.Command {
 	flags.BoolVar(&flagOpsAnalyseSlowProcessInstanceWithFullTimeline, "with-full-timeline", false, "")
 	flags.BoolVar(&flagOpsAnalyseSlowProcessInstanceWithListeners, "with-listeners", false, "")
 	return cmd
+}
+
+// TestOpsSlowProcessSuspendedStateVocabulary retains the analysis-specific ABSENT
+// restriction while documenting its already-supported read-only suspended selector.
+func TestOpsSlowProcessSuspendedStateVocabulary(t *testing.T) {
+	previous := flagOpsAnalyseSlowProcessInstanceState
+	t.Cleanup(func() { flagOpsAnalyseSlowProcessInstanceState = previous })
+	flagOpsAnalyseSlowProcessInstanceState = "sUsPeNdEd"
+	state, err := parseOpsSlowProcessAnalysisState()
+	require.NoError(t, err)
+	require.Equal(t, process.StateSuspended, state)
+	flagOpsAnalyseSlowProcessInstanceState = "absent"
+	_, err = parseOpsSlowProcessAnalysisState()
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "suspended requires Camunda 8.10")
+	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Flags().Lookup("state").Usage, "suspended (only c8.10+)")
+	output := executeCompletionForTest(t, "ops", "analyse", "slow-process-instances", "--state", "")
+	require.Contains(t, output, "suspended\tonly c8.10+")
+	require.NotContains(t, output, "absent\n")
 }

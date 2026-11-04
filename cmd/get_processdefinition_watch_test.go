@@ -162,6 +162,53 @@ func TestGetProcessDefinitionWatchRepeatedStatisticsRefreshesKeepRowOrder(t *tes
 	}
 }
 
+// TestGetProcessDefinitionWatchSuspendedAvailability uses the existing watch
+// runner to prove support loss and missing statistics clear the displayed row.
+func TestGetProcessDefinitionWatchSuspendedAvailability(t *testing.T) {
+	resetGetProcessDefinitionCommandGlobals()
+	t.Cleanup(resetGetProcessDefinitionCommandGlobals)
+	flagGetPDWithStat = true
+	statistics := []*process.ProcessDefinitionStatistics{
+		{Active: 2, Suspended: 3, SuspendedCountSupported: true},
+		{Active: 2, Suspended: 4, SuspendedCountSupported: true},
+		{Active: 1, Suspended: 5, SuspendedCountSupported: true},
+		{Active: 1, SuspendedCountSupported: true},
+		{Active: 1},
+		{Active: 1, SuspendedCountSupported: true},
+		nil,
+		nil,
+	}
+	calls := 0
+	cli := processDefinitionWatchTestAPI{collect: func(_ context.Context, _ process.ProcessDefinitionWatchSnapshotRequest, _ ...options.FacadeOption) (process.ProcessDefinitionWatchSnapshot, error) {
+		item := process.ProcessDefinition{Key: "123", TenantId: "tenant", BpmnProcessId: "invoice", ProcessVersion: 1, Statistics: statistics[calls]}
+		calls++
+		return process.ProcessDefinitionWatchSnapshot{Items: []process.ProcessDefinition{item}, Total: 1}, nil
+	}}
+	result := executeGetProcessDefinitionWatchHarnessForTest(t, processDefinitionWatchHarness{
+		cli: cli,
+		sleep: func(context.Context, time.Duration) error {
+			if calls == len(statistics) {
+				return context.Canceled
+			}
+			return nil
+		},
+	})
+	require.NoError(t, result.err)
+	require.Equal(t, len(statistics), calls)
+	frames := strings.Split(result.stdout, processDefinitionWatchRepaintControlSequenceForTest)[1:]
+	require.Len(t, frames, len(statistics))
+	for i, tail := range []string{
+		" [ac:2 cp:- cx:- su:3]", " [ac:2 cp:- cx:- su:4] *",
+		" [ac:1 cp:- cx:- su:5] *", " [ac:1 cp:- cx:- su:-] *",
+		" [ac:1 cp:- cx:-] *", " [ac:1 cp:- cx:- su:-] *", " *", "",
+	} {
+		require.Equal(t, "123 tenant invoice v1"+tail+"\nfound: 1\n", frames[i])
+	}
+	require.Equal(t, 6, strings.Count(result.stderr, "INFO 1 updated, 0 new, 0 removed\n"))
+	require.Equal(t, 2, strings.Count(result.stderr, "INFO 0 updated, 0 new, 0 removed\n"))
+	require.Empty(t, watchDiagnosticsWithoutSummaries(result.stderr))
+}
+
 // TestGetProcessDefinitionWatchEightRefreshChangeSequence exercises the full
 // baseline, recovery, removal, empty, and reappearance contract end to end.
 func TestGetProcessDefinitionWatchEightRefreshChangeSequence(t *testing.T) {
@@ -242,11 +289,14 @@ func TestGetProcessDefinitionWatchEightRefreshChangeSequence(t *testing.T) {
 }
 
 // TestRenderProcessDefinitionWatchRefresh_WriteFailuresKeepBaseline verifies
-// repaint, row, and footer failures cannot consume a candidate.
+// repaint, row, and footer failures cannot consume lifecycle or count changes.
 func TestRenderProcessDefinitionWatchRefresh_WriteFailuresKeepBaseline(t *testing.T) {
-	previous := process.ProcessDefinition{Key: "a", TenantId: "tenant", BpmnProcessId: "invoice", ProcessVersion: 1}
-	current := process.ProcessDefinition{Key: "a", TenantId: "tenant", BpmnProcessId: "invoice", ProcessVersion: 2}
-	rowLen := len("a tenant invoice v2 *\n")
+	previous := process.ProcessDefinition{Key: "a", TenantId: "tenant", BpmnProcessId: "invoice", ProcessVersion: 1, Statistics: &process.ProcessDefinitionStatistics{Suspended: 1, SuspendedCountSupported: true}}
+	current := previous
+	previous.State = "ACTIVE"
+	current.State = "DRAINING"
+	current.Statistics = &process.ProcessDefinitionStatistics{Suspended: 2, SuspendedCountSupported: true}
+	rowLen := len("a tenant invoice v1 DRAINING [ac:- cp:- cx:- su:2] *\n")
 
 	for _, tt := range []struct {
 		name  string
@@ -262,12 +312,19 @@ func TestRenderProcessDefinitionWatchRefresh_WriteFailuresKeepBaseline(t *testin
 			cmd := &cobra.Command{Use: "process-definition"}
 			cmd.SetOut(&processDefinitionWatchFailWriter{remaining: tt.limit})
 			cmd.SetErr(&bytes.Buffer{})
+			cmd.SetContext(logging.ToContext(context.Background(), slog.New(logging.NewPlainHandler(cmd.ErrOrStderr(), slog.LevelInfo))))
 
 			err := renderProcessDefinitionWatchRefresh(cmd, &baseline, process.ProcessDefinitionWatchSnapshot{Items: []process.ProcessDefinition{current}, Total: 1})
 
-			require.Error(t, err)
+			require.ErrorContains(t, err, "injected watch output failure")
+			require.Equal(t, "ACTIVE", baseline.byKey["a"].state)
 			probe := baseline.candidate([]process.ProcessDefinition{current})
 			require.Equal(t, 1, probe.updated, "failed output must retain the prior baseline")
+			var recovered bytes.Buffer
+			cmd.SetOut(&recovered)
+			require.NoError(t, renderProcessDefinitionWatchRefresh(cmd, &baseline, process.ProcessDefinitionWatchSnapshot{Items: []process.ProcessDefinition{current}, Total: 1}))
+			require.Equal(t, "DRAINING", baseline.byKey["a"].state)
+			require.Contains(t, recovered.String(), "DRAINING [ac:- cp:- cx:- su:2] *")
 		})
 	}
 }
@@ -1167,6 +1224,8 @@ type processDefinitionWatchRunResult struct {
 
 const processDefinitionWatchRepaintControlSequenceForTest = "\x1b[H\x1b[2J"
 
+// executeGetProcessDefinitionWatchHarnessForTest runs deterministic refreshes
+// with separate streams and an explicitly configured plain-time logger.
 func executeGetProcessDefinitionWatchHarnessForTest(t *testing.T, h processDefinitionWatchHarness) processDefinitionWatchRunResult {
 	t.Helper()
 
@@ -1175,7 +1234,7 @@ func executeGetProcessDefinitionWatchHarnessForTest(t *testing.T, h processDefin
 	var stderr bytes.Buffer
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stderr)
-	cmd.SetContext(logging.ToContext(context.Background(), slog.New(logging.NewPlainHandler(&stderr, slog.LevelInfo))))
+	cmd.SetContext(logging.ToContext(context.Background(), slog.New(logging.NewPlainHandler(&stderr, slog.LevelInfo).WithTimestampLayout(logging.PlainTimeTimestampLayout))))
 
 	previousSleep := processDefinitionWatchSleep
 	previousNow := processDefinitionWatchNow
@@ -1333,7 +1392,12 @@ func TestGetProcessDefinitionWatchOutputParityAssertions(t *testing.T) {
 				requireProcessDefinitionWatchRepaintCount(t, result, 1)
 				require.Equal(t, "2251799813685255 tenant invoice v3\nfound: 1\n", result.stdoutWithoutRepaintControls())
 				require.NotContains(t, result.stdoutWithoutRepaintControls(), "snapshot")
-				require.Equal(t, tt.wantStderr, watchDiagnosticsWithoutSummaries(result.stderr))
+				diagnostics := watchDiagnosticsWithoutSummaries(result.stderr)
+				if tt.wantStderr == "" {
+					require.Empty(t, diagnostics)
+				} else {
+					require.Regexp(t, `^\d{2}:\d{2}:\d{2}\.\d{3} INFO `+regexp.QuoteMeta(tt.wantStderr)+`$`, diagnostics)
+				}
 			})
 		}
 	})
@@ -1415,10 +1479,12 @@ func TestRenderProcessDefinitionWatchRefresh_SummaryFailureKeepsBaseline(t *test
 			} else {
 				cmd.SetErr(&processDefinitionWatchFailWriter{})
 			}
+			cmd.SetContext(logging.ToContext(context.Background(), slog.New(logging.NewPlainHandler(cmd.ErrOrStderr(), slog.LevelInfo))))
 			baseline := processDefinitionWatchBaseline{}
-			err := renderProcessDefinitionWatchRefresh(cmd, &baseline, process.ProcessDefinitionWatchSnapshot{})
+			baseline.commit(baseline.candidate([]process.ProcessDefinition{{Key: "a", State: "ACTIVE"}}))
+			err := renderProcessDefinitionWatchRefresh(cmd, &baseline, process.ProcessDefinitionWatchSnapshot{Items: []process.ProcessDefinition{{Key: "a", State: "DRAINING"}}})
 			require.ErrorContains(t, err, "injected watch output failure")
-			require.False(t, baseline.initialized)
+			require.Equal(t, "ACTIVE", baseline.byKey["a"].state)
 			require.Equal(t, processDefinitionWatchRepaintControlSequenceForTest, stdout.String())
 		})
 	}
@@ -1431,6 +1497,7 @@ func TestRenderProcessDefinitionWatchRefresh_SummaryFollowsRepaint(t *testing.T)
 	var terminal bytes.Buffer
 	cmd.SetOut(&terminal)
 	cmd.SetErr(&terminal)
+	cmd.SetContext(logging.ToContext(context.Background(), slog.New(logging.NewPlainHandler(cmd.ErrOrStderr(), slog.LevelInfo).WithTimestampLayout(logging.PlainTimeTimestampLayout))))
 	baseline := processDefinitionWatchBaseline{}
 	for i := 0; i < 2; i++ {
 		require.NoError(t, renderProcessDefinitionWatchRefresh(cmd, &baseline, process.ProcessDefinitionWatchSnapshot{}))

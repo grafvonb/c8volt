@@ -5,10 +5,8 @@ package cmd
 
 import (
 	"encoding/json"
-	"fmt"
-	"sort"
-	"strconv"
 
+	"github.com/grafvonb/c8volt/c8volt/ferrors"
 	"github.com/grafvonb/c8volt/c8volt/foptions"
 	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/grafvonb/c8volt/toolx"
@@ -22,25 +20,25 @@ var (
 
 	flagRunPICount int
 	flagRunPIVars  string // JSON string with variables
+	// flagRunPIBusinessID is scalar; flag presence distinguishes omission from explicit empty.
+	flagRunPIBusinessID string
 )
 
 var runProcessInstanceCmd = &cobra.Command{
 	Use:   "process-instance",
 	Short: "Start process instances and confirm creation",
-	Long: `Start process instances and confirm creation.
+	Long: `Start process instances and wait until they are visible.
 
-Use a BPMN process ID for the latest version or a process-definition key for an exact definition. All requested BPMN IDs must be visible before any instance is started.
+Use --bpmn-process-id for the latest version or --pd-key for an exact definition.
+Supply initial variables with --set-vars and create multiple instances with
+--count. Creation uses one configured tenant.
 
-Creation uses the configured tenant, or the default tenant when none is configured. --all-tenants is not supported because creation requires one destination tenant.
-
-By default c8volt waits until created instances are observable as ACTIVE, COMPLETED, CANCELED, or TERMINATED.`,
-	Example: `  ./c8volt run process-instance --bpmn-process-id <bpmn-process-id>
-  ./c8volt --tenant tenant-a run process-instance --bpmn-process-id <bpmn-process-id>
-  ./c8volt run process-instance --bpmn-process-id <bpmn-process-id> --vars '{"customerId":"1234"}'
-  ./c8volt run process-instance --bpmn-process-id <bpmn-process-id> --count 3 --workers 2
-  ./c8volt --json run process-instance --bpmn-process-id <bpmn-process-id> --vars '{"customerId":"1234"}'
-  ./c8volt run process-instance --bpmn-process-id <bpmn-process-id> --keys-only | ./c8volt expect process-instance --state completed -
-  ./c8volt run process-instance --bpmn-process-id <long-running-bpmn-process-id> --keys-only | ./c8volt expect process-instance --state active -`,
+--set-bid assigns a native business ID at creation (only c8.10+). The same ID is
+used for every --count attempt; backend uniqueness rules still apply.
+Creation confirmation does not mean the process has completed.`,
+	Example: `  c8volt run process-instance --bpmn-process-id order
+  c8volt run process-instance --bpmn-process-id order --set-vars '{"customerId":"1234"}'
+  c8volt run process-instance --bpmn-process-id order --set-bid ORDER-123`,
 	Aliases: []string{"pi"},
 	Run: func(cmd *cobra.Command, args []string) {
 		cli, log, cfg, err := NewCli(cmd)
@@ -56,11 +54,14 @@ By default c8volt waits until created instances are observable as ACTIVE, COMPLE
 		var vars map[string]any
 		if flagRunPIVars != "" {
 			if err := json.Unmarshal([]byte(flagRunPIVars), &vars); err != nil {
-				handleCommandError(cmd, log, cfg.App.NoErrCodes, invalidFlagValuef("parsing --vars JSON: %v", err))
+				handleCommandError(cmd, log, cfg.App.NoErrCodes, invalidFlagValuef("parsing --set-vars JSON: %v", err))
 			}
 		}
 		var datas []process.ProcessInstanceData
-		var contextForErr string
+		var businessID *string
+		if cmd.Flags().Changed("set-bid") {
+			businessID = toolx.CopyPtr(&flagRunPIBusinessID)
+		}
 		tenantID := cfg.App.TargetTenant()
 		fopts := collectOptions()
 		switch {
@@ -78,9 +79,9 @@ By default c8volt waits until created instances are observable as ACTIVE, COMPLE
 					ProcessDefinitionSpecificId: pdID,
 					Variables:                   vars,
 					TenantId:                    tenantID,
+					BusinessId:                  toolx.CopyPtr(businessID),
 				})
 			}
-			contextForErr = fmt.Sprintf("process definition ID(s) %v", flagRunPIProcessDefinitionKey)
 
 		case len(flagRunPIProcessDefinitionBpmnProcessIds) > 0:
 			if len(flagRunPIProcessDefinitionBpmnProcessIds) > 1 && flagRunPIProcessDefinitionVersion != 0 {
@@ -100,9 +101,9 @@ By default c8volt waits until created instances are observable as ACTIVE, COMPLE
 					ProcessDefinitionVersion: flagRunPIProcessDefinitionVersion, // 0 = latest
 					Variables:                vars,
 					TenantId:                 tenantID,
+					BusinessId:               toolx.CopyPtr(businessID),
 				})
 			}
-			contextForErr = fmt.Sprintf("BPMN process ID(s) %v", flagRunPIProcessDefinitionBpmnProcessIds)
 
 		default:
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, missingDependentFlagsf("provide either --pd-key or --bpmn-process-id"))
@@ -114,127 +115,65 @@ By default c8volt waits until created instances are observable as ACTIVE, COMPLE
 		if flagFailFast {
 			fopts = append(fopts, foptions.WithFailFast())
 		}
-		if flagRunPICount <= 1 {
-			var created []process.ProcessInstance
-			created, err = cli.CreateProcessInstances(cmd.Context(), datas, fopts...)
-			if err != nil {
-				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("running process instance(s) for %s: %w", contextForErr, err))
-			}
-			attachTenantContext(cmd, withTenantContextEvidence(tenantCtx, processInstanceTenantIDs(created), 0))
-			if err := renderRunProcessInstanceResult(cmd, process.ProcessInstances{
-				Total: int32(len(created)),
-				Items: created,
-			}); err != nil {
-				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("render process-instance result: %w", err))
-			}
-			return
-		}
-		if len(datas) > 1 {
-			handleCommandError(cmd, log, cfg.App.NoErrCodes,
-				forbiddenFlagCombinationf("--count requires exactly one process definition; got %d", len(datas)))
-		}
+		requested := len(datas)
+		// The CLI owns final output; service details and raw progress errors must
+		// not bypass its aggregate failure and configured logger contract.
 		fopts = append(fopts, foptions.WithSuppressWorkflowDetailLogs())
-		runProgress := newRunProcessInstanceSemanticProgressReporter(cmd, flagRunPICount)
-		fopts = appendRunProcessInstanceProgressOption(cmd, fopts, runProgress)
-		created, err := cli.CreateNProcessInstances(cmd.Context(), datas[0], flagRunPICount, flagWorkers, fopts...)
-		runProgress.Close()
-		if err != nil {
-			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("running %d process instances for %s: %w", flagRunPICount, contextForErr, err))
+		var created []process.ProcessInstance
+		if flagRunPICount <= 1 {
+			created, err = cli.CreateProcessInstances(cmd.Context(), datas, fopts...)
+		} else {
+			if len(datas) > 1 {
+				handleCommandError(cmd, log, cfg.App.NoErrCodes,
+					forbiddenFlagCombinationf("--count requires exactly one process definition; got %d", len(datas)))
+			}
+			requested = flagRunPICount
+			runProgress := newRunProcessInstanceSemanticProgressReporter(cmd, requested)
+			fopts = appendRunProcessInstanceProgressOption(cmd, fopts, runProgress)
+			created, err = cli.CreateNProcessInstances(cmd.Context(), datas[0], requested, flagWorkers, fopts...)
+			runProgress.Close()
+			sortRunProcessInstancesForOutput(created)
 		}
-		sortRunProcessInstancesForOutput(created)
 		attachTenantContext(cmd, withTenantContextEvidence(tenantCtx, processInstanceTenantIDs(created), 0))
-		if err := renderRunProcessInstanceResult(cmd, process.ProcessInstances{
+		runErr := ferrors.Normalize(err)
+		renderErr := renderRunProcessInstanceResult(cmd, process.ProcessInstances{
 			Total: int32(len(created)),
 			Items: created,
-		}); err != nil {
-			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("render process-instance result: %w", err))
+		}, runErr)
+		if runErr != nil {
+			if !commandUsesSharedEnvelope(cmd, pickMode()) {
+				log.Error(formatRunProcessInstanceFailure(cmd, requested, len(created), runErr))
+			}
+			exitAfterRenderedResult(cfg.App.NoErrCodes, runErr)
+		}
+		if renderErr != nil {
+			// A write was already attempted; do not render another envelope.
+			if !commandUsesSharedEnvelope(cmd, pickMode()) {
+				log.Error("render process-instance result: output write failed")
+			}
+			exitAfterRenderedResult(cfg.App.NoErrCodes, ferrors.Normalize(renderErr))
 		}
 	},
 }
 
-// renderRunProcessInstanceResult keeps JSON on the shared mutation envelope while rendering human output as a compact creation result.
-func renderRunProcessInstanceResult(cmd *cobra.Command, result process.ProcessInstances) error {
-	if commandUsesSharedEnvelope(cmd, pickMode()) {
-		return renderCommandResult(cmd, result)
-	}
-	mode := pickMode()
-	if mode == RenderModeKeysOnly {
-		for _, item := range result.Items {
-			renderOutputLine(cmd, "%s", item.Key)
-		}
-		return nil
-	}
-	rows := make([]flatRow, 0, len(result.Items))
-	for _, item := range result.Items {
-		rows = append(rows, flatRowRunProcessInstanceWithTimezone(item, commandShowTimezoneOffset(cmd)))
-	}
-	for _, line := range formatFlatRows(rows) {
-		renderOutputLine(cmd, "%s", line)
-	}
-	renderOutputLine(cmd, "found: %d", len(result.Items))
-	return nil
-}
-
-func flatRowRunProcessInstanceWithTimezone(item process.ProcessInstance, showTimezoneOffset bool) flatRow {
-	parent := "p:<root>"
-	if item.ParentKey != "" {
-		parent = "p:" + item.ParentKey
-	}
-	version := fmt.Sprintf("v%d", item.ProcessVersion)
-	if item.ProcessVersionTag != "" {
-		version += "/" + item.ProcessVersionTag
-	}
-	row := flatRow{
-		item.Key,
-		item.TenantId,
-		item.BpmnProcessId,
-		version,
-	}
-	if item.State != "" {
-		row = append(row, string(item.State))
-	}
-	row = append(row, "s:"+toolx.FormatTimestamp(item.StartDate, showTimezoneOffset), parent)
-	return row
-}
-
-func sortRunProcessInstancesForOutput(items []process.ProcessInstance) {
-	sort.SliceStable(items, func(i, j int) bool {
-		left := items[i]
-		right := items[j]
-		if left.StartDate != right.StartDate {
-			if left.StartDate == "" {
-				return false
-			}
-			if right.StartDate == "" {
-				return true
-			}
-			return left.StartDate < right.StartDate
-		}
-		return runProcessInstanceKeyLess(left.Key, right.Key)
-	})
-}
-
-func runProcessInstanceKeyLess(left, right string) bool {
-	li, lerr := strconv.ParseUint(left, 10, 64)
-	ri, rerr := strconv.ParseUint(right, 10, 64)
-	if lerr == nil && rerr == nil {
-		return li < ri
-	}
-	return left < right
-}
-
+// init registers creation selectors, scalar identity and existing execution controls.
 func init() {
 	runCmd.AddCommand(runProcessInstanceCmd)
 
+	setFlagMigrations(runProcessInstanceCmd, map[string]flagMigration{
+		"bid":  {Replacement: "--set-bid", TakesValue: true},
+		"vars": {Replacement: "--set-vars", TakesValue: true},
+	})
 	fs := runProcessInstanceCmd.Flags()
-	fs.StringSliceVarP(&flagRunPIProcessDefinitionBpmnProcessIds, "bpmn-process-id", "b", nil, "BPMN process ID(s) to run process instance for (mutually exclusive with --pd-key). Runs latest version unless --pd-version is specified")
-	fs.Int32Var(&flagRunPIProcessDefinitionVersion, "pd-version", 0, "specific version of the process definition to use when running by BPMN process ID (supported only with --bpmn-process-id)")
-	fs.StringSliceVar(&flagRunPIProcessDefinitionKey, "pd-key", nil, "specific process definition key(s) to run process instance for (mutually exclusive with --bpmn-process-id)")
+	fs.StringSliceVarP(&flagRunPIProcessDefinitionBpmnProcessIds, "bpmn-process-id", "b", nil, "BPMN process IDs to start; latest version unless --pd-version is set")
+	fs.Int32Var(&flagRunPIProcessDefinitionVersion, "pd-version", 0, "definition version to start; requires --bpmn-process-id")
+	fs.StringSliceVar(&flagRunPIProcessDefinitionKey, "pd-key", nil, "exact definition keys to start; cannot combine with --bpmn-process-id")
 	fs.IntVarP(&flagRunPICount, "count", "n", 1, "number of instances to start for a single process definition")
-	fs.StringVar(&flagRunPIVars, "vars", "", "JSON-encoded variables to pass to the started process instance(s)")
+	fs.StringVar(&flagRunPIBusinessID, "set-bid", "", "business ID to assign at creation (only c8.10+)")
+	fs.StringVar(&flagRunPIVars, "set-vars", "", "JSON-encoded variables to pass to the started process instance(s)")
 
 	fs.BoolVar(&flagNoWait, "no-wait", false, "return after creation is accepted")
-	fs.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers when --count > 1 (default: min(count, 2*GOMAXPROCS, 32))")
+	fs.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers; omit for an automatic limit")
 	fs.BoolVar(&flagNoWorkerLimit, "no-worker-limit", false, "use all queued jobs as workers when --workers is unset")
 	fs.BoolVar(&flagFailFast, "fail-fast", false, "stop scheduling new instances after the first error")
 

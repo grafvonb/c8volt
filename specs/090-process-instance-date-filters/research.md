@@ -8,14 +8,6 @@
   - Fetch unfiltered results and post-filter in `c8volt`: rejected because it would be less efficient, could miss matches beyond the current server-side page size, and would diverge from existing search behavior.
   - Add date filtering only in the facade layer: rejected because the v8.8 backend already supports the needed semantics directly.
 
-## Decision 2: Reject date filters on v8.7 instead of emulating them
-
-- **Decision**: When any new date flag is present, return a clear not-implemented error from the v8.7 process-instance search path.
-- **Rationale**: The feature spec explicitly limits support to v8.8 and requires a clear not-implemented response on v8.7. Preserving that boundary avoids hidden behavior differences and prevents partial emulation across older Operate search requests.
-- **Alternatives considered**:
-  - Emulate filtering by fetching and narrowing results locally on v8.7: rejected because it violates the requested version behavior and risks inconsistent result completeness.
-  - Silently ignore date filters on v8.7: rejected because it would be misleading and unsafe for scripted use.
-
 ## Decision 3: Keep validation in the command-layer search path
 
 - **Decision**: Parse and validate the new date flags in `cmd/get_processinstance.go` before the search request is dispatched.

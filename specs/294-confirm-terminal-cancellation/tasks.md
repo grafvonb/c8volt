@@ -36,7 +36,6 @@ description: "Implementation tasks for issue #294"
 
 ### Tests for User Story 1
 
-- [x] T003 [P] [US1] Extend `internal/services/processinstance/v87/service_test.go` under `TestService_CancelProcessInstance` with contract A–E: completed descendant, active-to-completed during polling, disappearance after keys are discovered, mixed terminal family, completed root with still-active descendant during confirmation, active/unknown timeout and interruption controls, and all four terminal-root no-ops (including real not-found mapping). Assert zero cancellation requests and the data-model constraint "Terminal-root no-op has `Ok=true`, code 200, existing status wording; no added fields". Use short configured waits and strict request counters; run this package with `-run TestService_CancelProcessInstance -count=1` and capture expected regression failures before its implementation task.
 
 - [x] T004 [P] [US1] Extend `internal/services/processinstance/v88/service_test.go` under `TestService_CancelProcessInstance` with contract A–E: completed descendant, active-to-completed during polling, disappearance after keys are discovered, mixed terminal family, completed root with still-active descendant during confirmation, active/unknown timeout and interruption controls, and all four terminal-root no-ops (including real not-found mapping). Assert zero cancellation requests and the data-model constraint "Terminal-root no-op has `Ok=true`, code 200, existing status wording; no added fields". Use short configured waits and strict request counters; run this package with `-run TestService_CancelProcessInstance -count=1` and capture expected regression failures before its implementation task.
 
@@ -47,7 +46,6 @@ description: "Implementation tasks for issue #294"
 
 ### Implementation for User Story 1
 
-- [x] T007 [P] [US1] Update `internal/services/processinstance/v87/service.go` cancellation-family desired states to COMPLETED, CANCELED, TERMINATED, ABSENT, honoring "Cleanup accepts exactly the four terminal states; active/unknown do not qualify" and "Every included key must satisfy its wait; discovery timing and membership rules stay unchanged". Under the existing state-check guard only, map `errors.Is(err, d.ErrNotFound)` to local absent state; return other errors unchanged and set `Ok: true` on the existing terminal no-op response. Keep status code/text, getters, retry calls, family discovery, and NoWait/NoStateCheck guards intact. Run gofmt and the matching cancellation tests after the paired test task.
 
 - [x] T008 [P] [US1] Update `internal/services/processinstance/v88/service.go` cancellation-family desired states to COMPLETED, CANCELED, TERMINATED, ABSENT, honoring "Cleanup accepts exactly the four terminal states; active/unknown do not qualify" and "Every included key must satisfy its wait; discovery timing and membership rules stay unchanged". Under the existing state-check guard only, map `errors.Is(err, d.ErrNotFound)` to local absent state; return other errors unchanged and set `Ok: true` on the existing terminal no-op response. Keep status code/text, getters, retry calls, family discovery, and NoWait/NoStateCheck guards intact. Run gofmt and the matching cancellation tests after the paired test task.
 
@@ -57,7 +55,7 @@ description: "Implementation tasks for issue #294"
 
 - [x] T011 [US1] Extend `internal/services/processinstance/bulk_test.go` to assert "Bulk cancellation propagates the corrected no-op success value": terminal and absent no-op results remain successful in reports and totals with existing status fields. Reuse existing API doubles and leave `internal/services/processinstance/bulk.go` unchanged; run `go test ./internal/services/processinstance -run "Test.*Cancel" -count=1`.
 
-- [x] T012 [US1] Run cancellation tests across `internal/services/processinstance/v87/service_test.go`, `internal/services/processinstance/v88/service_test.go`, `internal/services/processinstance/v89/service_test.go`, and `internal/services/processinstance/v810/service_test.go` with `go test ./internal/services/processinstance/... -run "Test.*Cancel" -count=1`; record the US1 matrix results in `specs/294-confirm-terminal-cancellation/quickstart.md` and confirm all original failing cases now pass.
+- [x] T012 [US1] Run cancellation tests across `internal/services/processinstance/v88/service_test.go`, `internal/services/processinstance/v89/service_test.go`, and `internal/services/processinstance/v810/service_test.go` with `go test ./internal/services/processinstance/... -run "Test.*Cancel" -count=1`; record the US1 matrix results in `specs/294-confirm-terminal-cancellation/quickstart.md` and confirm all original failing cases now pass.
 
 
 **Checkpoint**: US1 is a demonstrable MVP; complete all stories and final checks before declaring issue #294 finished.
@@ -69,7 +67,6 @@ description: "Implementation tasks for issue #294"
 
 ### Tests for User Story 2
 
-- [x] T013 [P] [US2] Extend `internal/services/processinstance/v87/service_test.go` under `TestService_DeleteProcessInstance` for wrong-state force recovery with completed and absent cancellation-confirmation observations (contract I). Ensure the follow-up wait is actually exercised, assert delete retry and final absence verification, preserve its existing unconditional recovery wait with NoWait, and retain later deletion-failure outcomes. Run matching tests and demonstrate the old two-state follow-up wait fails before the paired production edit.
 
 - [x] T014 [P] [US2] Extend `internal/services/processinstance/v88/service_test.go` under `TestService_DeleteProcessInstance` for wrong-state force recovery with completed and absent cancellation-confirmation observations (contract I). Ensure the follow-up wait is actually exercised, assert delete retry and final absence verification, preserve its existing unconditional recovery wait with NoWait, and retain later deletion-failure outcomes. Run matching tests and demonstrate the old two-state follow-up wait fails before the paired production edit.
 
@@ -80,7 +77,6 @@ description: "Implementation tasks for issue #294"
 
 ### Implementation for User Story 2
 
-- [x] T017 [P] [US2] Extend only the forced-delete recovery cancellation desired-state list in `internal/services/processinstance/v87/service.go` to COMPLETED, CANCELED, TERMINATED, ABSENT. Preserve the unconditional intermediate wait, final absent-only deletion wait and its existing NoWait guard, mutation retries, and failure propagation; run gofmt and this package with `-run TestService_DeleteProcessInstance -count=1` after its paired regression task.
 
 - [x] T018 [P] [US2] Extend only the forced-delete recovery cancellation desired-state list in `internal/services/processinstance/v88/service.go` to COMPLETED, CANCELED, TERMINATED, ABSENT. Preserve the unconditional intermediate wait, final absent-only deletion wait and its existing NoWait guard, mutation retries, and failure propagation; run gofmt and this package with `-run TestService_DeleteProcessInstance -count=1` after its paired regression task.
 
@@ -102,7 +98,6 @@ description: "Implementation tasks for issue #294"
 
 ### Compatibility tests for User Story 3
 
-- [x] T023 [P] [US3] Extend or reuse cases in `internal/services/processinstance/v87/service_test.go` for contract F–H: invoke the real service-backed explicit expectation path for all four terminal states; preserve canceled/terminated equivalence and completed/absent rejection; verify NoWait and NoStateCheck individually and together by read/submission counts, strict getter not-found behavior, unrelated read errors, submission retry/error outcomes, and family-discovery errors before polling. Use `TestService_CancelProcessInstance`/`TestService_DeleteProcessInstance` subtests where relevant and document any additional expectation test prefix in the validation task. Do not change production matching or flag behavior.
 
 - [x] T024 [P] [US3] Extend or reuse cases in `internal/services/processinstance/v88/service_test.go` for contract F–H: invoke the real service-backed explicit expectation path for all four terminal states; preserve canceled/terminated equivalence and completed/absent rejection; verify NoWait and NoStateCheck individually and together by read/submission counts, strict getter not-found behavior, unrelated read errors, submission retry/error outcomes, and family-discovery errors before polling. Use `TestService_CancelProcessInstance`/`TestService_DeleteProcessInstance` subtests where relevant and document any additional expectation test prefix in the validation task. Do not change production matching or flag behavior.
 
@@ -153,15 +148,13 @@ T001 → T002 → US1 (T003–T012) → US2 (T013–T022) → US3 (T023–T030) 
 
 ### User Story 1
 
-After T002, write the v87 tests (T003) and v88 tests (T004) in separate files concurrently. After their failing checks, the respective v87 and v88 production changes (T007/T008) can proceed concurrently. The same pattern applies to v89/v810.
 
 ### User Story 2
 
-After T012, write recovery cases T013/T014 in the separate v87/v88 test files concurrently, then implement T017/T018 after each test prerequisite. Finish the single real-cleanup regression T021 separately.
+After T012, write recovery cases T013/T014 in the separate v88 test files concurrently, then implement T017/T018 after each test prerequisite. Finish the single real-cleanup regression T021 separately.
 
 ### User Story 3
 
-After T022, the v87 compatibility suite (T023), shared waiter tests (T027), and command expectation tests (T028) can proceed concurrently because their files differ. Run the integrated validation T030 after the entire wave.
 
 ## Requirement Coverage
 

@@ -17,7 +17,6 @@ Represents a process instance created by a run-style command.
 
 **Validation rules**:
 
-- A non-empty key is required for wait-based confirmation, except for existing v8.7 compatibility behavior where the API cannot return a usable key.
 - `state` must reflect the observed process instance state when confirmation performs a lookup.
 - Creation confirmation must not synthesize success for absent/not-found observations.
 

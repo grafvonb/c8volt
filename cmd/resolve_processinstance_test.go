@@ -26,10 +26,15 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestResolveProcessInstanceCommand_DiscoversResolvesAndWaitsForConfirmation preserves the existing command contract with advisory-aware fixtures.
 func TestResolveProcessInstanceCommand_DiscoversResolvesAndWaitsForConfirmation(t *testing.T) {
 	var searches int
 	var sawResolve bool
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
 		case "/v2/process-instances/2251799813685250/incidents/search":
@@ -192,11 +197,16 @@ func TestResolveProcessInstancesWithPlan_ExplicitKeyRendersActualTenant(t *testi
 	require.NotContains(t, output, "selection scope: "+tenantAdminKeysSelectedTenant)
 }
 
+// TestResolveProcessInstanceCommand_ParentFamilyScopeResolvesChildIncident preserves the existing command contract with advisory-aware fixtures.
 func TestResolveProcessInstanceCommand_ParentFamilyScopeResolvesChildIncident(t *testing.T) {
 	var incidentSearches testx.SafeSlice[string]
 	var resolvedIncidents testx.SafeSlice[string]
 	var childIncidentSearches testx.AtomicCounter
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
 		case "/v2/process-instances/2251799813735367/incidents/search":
@@ -244,10 +254,15 @@ func TestResolveProcessInstanceCommand_ParentFamilyScopeResolvesChildIncident(t 
 	require.Contains(t, output, "resolved process-instances: 2")
 }
 
+// TestResolveProcessInstanceCommand_AliasRepeatedKeysAndStdinDeduplicate preserves the existing command contract with advisory-aware fixtures.
 func TestResolveProcessInstanceCommand_AliasRepeatedKeysAndStdinDeduplicate(t *testing.T) {
 	searchCounts := map[string]int{}
 	resolveCounts := map[string]int{}
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
 		case "/v2/process-instances/2251799813685250/incidents/search":
@@ -298,9 +313,14 @@ func TestResolveProcessInstanceCommand_AliasRepeatedKeysAndStdinDeduplicate(t *t
 	require.Contains(t, output, "resolved process-instances: 2")
 }
 
+// TestResolveProcessInstanceCommand_NoActiveIncidentsReportsSkipped preserves the existing command contract with advisory-aware fixtures.
 func TestResolveProcessInstanceCommand_NoActiveIncidentsReportsSkipped(t *testing.T) {
 	var sawResolve bool
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
 		case "/v2/process-instances/2251799813685250/incidents/search":
@@ -333,9 +353,14 @@ func TestResolveProcessInstanceCommand_NoActiveIncidentsReportsSkipped(t *testin
 	require.Contains(t, output, "resolved process-instances: 1")
 }
 
+// TestResolveProcessInstanceCommand_DryRunDiscoversIncidentsAndDoesNotMutate preserves the existing command contract with advisory-aware fixtures.
 func TestResolveProcessInstanceCommand_DryRunDiscoversIncidentsAndDoesNotMutate(t *testing.T) {
 	var searches int
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
 		case "/v2/process-instances/2251799813685250/incidents/search":
@@ -367,8 +392,13 @@ func TestResolveProcessInstanceCommand_DryRunDiscoversIncidentsAndDoesNotMutate(
 	require.Contains(t, output, "no changes applied")
 }
 
+// TestResolveProcessInstanceCommand_DryRunNoActiveIncidentsReportsSkipped preserves the existing command contract with advisory-aware fixtures.
 func TestResolveProcessInstanceCommand_DryRunNoActiveIncidentsReportsSkipped(t *testing.T) {
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
 		case "/v2/process-instances/2251799813685250/incidents/search":
@@ -397,8 +427,13 @@ func TestResolveProcessInstanceCommand_DryRunNoActiveIncidentsReportsSkipped(t *
 	require.Contains(t, output, "no changes applied")
 }
 
+// TestResolveProcessInstanceCommand_JSONDryRunReturnsStablePlanPayload preserves the existing command contract with advisory-aware fixtures.
 func TestResolveProcessInstanceCommand_JSONDryRunReturnsStablePlanPayload(t *testing.T) {
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
 		case "/v2/process-instances/2251799813685250/incidents/search":
@@ -437,6 +472,7 @@ func TestResolveProcessInstanceCommand_JSONDryRunReturnsStablePlanPayload(t *tes
 	require.Equal(t, false, item["mutationSubmitted"])
 }
 
+// TestResolveProcessInstanceCommand_InvalidKeysAndLookupFailure preserves the existing command contract with advisory-aware fixtures.
 func TestResolveProcessInstanceCommand_InvalidKeysAndLookupFailure(t *testing.T) {
 	cfgPath := writeTestConfigForVersion(t, "http://127.0.0.1:1", "8.8")
 
@@ -468,6 +504,10 @@ func TestResolveProcessInstanceCommand_InvalidKeysAndLookupFailure(t *testing.T)
 
 	t.Run("lookup failure", func(t *testing.T) {
 		srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if serveVersionCheckTopology(w, r, "8.8") {
+				return
+			}
+
 			switch r.URL.Path {
 			case "/v2/process-instances/2251799813685250/incidents/search":
 				require.Equal(t, http.MethodPost, r.Method)
@@ -506,10 +546,15 @@ func TestResolveProcessInstanceCommand_JSONRejectsVerbose(t *testing.T) {
 	require.Contains(t, string(output), "--json cannot be combined with --verbose for resolve process-instance")
 }
 
+// TestResolveProcessInstanceCommand_NoWaitPartialFailureRendersSuccessfulTargets preserves the existing command contract with advisory-aware fixtures.
 func TestResolveProcessInstanceCommand_NoWaitPartialFailureRendersSuccessfulTargets(t *testing.T) {
 	searchCounts := map[string]int{}
 	resolveCounts := map[string]int{}
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
 		case "/v2/process-instances/2251799813685250/incidents/search":
@@ -555,9 +600,14 @@ func TestResolveProcessInstanceCommand_NoWaitPartialFailureRendersSuccessfulTarg
 	require.Contains(t, string(output), "resolved process-instances: 2 (confirmed/submitted/skipped: 1, failed: 1)")
 }
 
+// TestResolveProcessInstanceCommand_FailFastStopsAfterFirstLookupFailure preserves the existing command contract with advisory-aware fixtures.
 func TestResolveProcessInstanceCommand_FailFastStopsAfterFirstLookupFailure(t *testing.T) {
 	var searches int
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		switch r.URL.Path {
 		case "/v2/process-instances/2251799813685250/incidents/search":
 			require.Equal(t, http.MethodPost, r.Method)
@@ -589,9 +639,14 @@ func TestResolveProcessInstanceCommand_FailFastStopsAfterFirstLookupFailure(t *t
 	require.NotContains(t, string(output), "2251799813685260")
 }
 
+// TestResolveProcessInstanceCommand_TimeoutReportsConfirmationFailure preserves the existing command contract with advisory-aware fixtures.
 func TestResolveProcessInstanceCommand_TimeoutReportsConfirmationFailure(t *testing.T) {
 	var searches int
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
 		case "/v2/process-instances/2251799813685250/incidents/search":

@@ -5,7 +5,6 @@ package cmd
 
 import (
 	"bytes"
-	"encoding/json"
 	"mime"
 	"net/http"
 	"os"
@@ -25,8 +24,8 @@ func TestEmbedListHelp_DocumentsReadOnlyDiscoveryExamples(t *testing.T) {
 
 	require.Contains(t, output, "List bundled BPMN fixture files")
 	require.Contains(t, output, "List bundled BPMN fixture files for the configured Camunda version")
-	require.Contains(t, output, "./c8volt embed list --details")
-	require.Contains(t, output, "./c8volt --json embed list")
+	require.Contains(t, output, "c8volt embed list --with-paths")
+	require.Contains(t, output, "c8volt --json embed list")
 }
 
 func TestEmbedListCommand_FiltersFilesForConfiguredCamundaVersion(t *testing.T) {
@@ -37,20 +36,19 @@ func TestEmbedListCommand_FiltersFilesForConfiguredCamundaVersion(t *testing.T) 
 
 	require.Contains(t, output, "C88_SimpleUserTask.bpmn")
 	require.Contains(t, output, "C88_MultipleSubProcessesParent.bpmn")
-	require.NotContains(t, output, "C87_")
 	require.NotContains(t, output, "C89_")
 	require.NotContains(t, output, "processdefinitions/")
 }
 
+// TestEmbedListCommand_DetailsFiltersFilesForConfiguredCamundaVersion verifies canonical CLI behavior with isolated fixtures.
 func TestEmbedListCommand_DetailsFiltersFilesForConfiguredCamundaVersion(t *testing.T) {
 	resetEmbedCommandStateForTest()
 	cfgPath := writeTestConfigForVersion(t, "http://127.0.0.1:1", "8.9")
 
-	output := executeRootForTest(t, "--config", cfgPath, "embed", "list", "--details")
+	output := executeRootForTest(t, "--config", cfgPath, "embed", "list", "--with-paths")
 
 	require.Contains(t, output, "processdefinitions/C89_SimpleUserTask.bpmn")
 	require.Contains(t, output, "processdefinitions/C89_MultipleSubProcessesParent.bpmn")
-	require.NotContains(t, output, "processdefinitions/C87_")
 	require.NotContains(t, output, "processdefinitions/C88_")
 }
 
@@ -59,7 +57,7 @@ func TestEmbedListCommand_V810UsesNativeProductionFixtures(t *testing.T) {
 	resetEmbedCommandStateForTest()
 	cfgPath := writeTestConfigForVersion(t, "http://127.0.0.1:1", "8.10")
 
-	output := executeRootForTest(t, "--config", cfgPath, "embed", "list", "--details")
+	output := executeRootForTest(t, "--config", cfgPath, "embed", "list", "--with-paths")
 
 	require.Equal(t, strings.Join([]string{
 		"processdefinitions/C810_DoubleUserTask.bpmn",
@@ -71,7 +69,6 @@ func TestEmbedListCommand_V810UsesNativeProductionFixtures(t *testing.T) {
 		"processdefinitions/C810_SimpleUserTask.bpmn",
 		"processdefinitions/C810_SimpleUserTaskWithIncident.bpmn",
 	}, "\n"), strings.TrimSpace(output))
-	require.NotContains(t, output, "processdefinitions/C87_")
 	require.NotContains(t, output, "processdefinitions/C88_")
 	require.NotContains(t, output, "processdefinitions/C89_")
 }
@@ -81,7 +78,7 @@ func TestEmbedExportHelp_DocumentsSelectionWorkflow(t *testing.T) {
 
 	require.Contains(t, output, "Export bundled BPMN fixtures to local files")
 	require.Contains(t, output, "Use --all for the configured Camunda version")
-	require.Contains(t, output, "./c8volt embed export --all --out ./fixtures")
+	require.Contains(t, output, "c8volt embed export --all --out ./fixtures")
 	require.Contains(t, output, "quote patterns in the shell like zsh")
 }
 
@@ -105,7 +102,6 @@ func TestEmbedExportCommand_AllFiltersFilesForConfiguredCamundaVersion(t *testin
 	require.Contains(t, output, "exported")
 	require.FileExists(t, filepath.Join(outDir, "processdefinitions", "C88_SimpleUserTask.bpmn"))
 	require.FileExists(t, filepath.Join(outDir, "processdefinitions", "C88_MultipleSubProcessesParent.bpmn"))
-	require.NoFileExists(t, filepath.Join(outDir, "processdefinitions", "C87_SimpleUserTask.bpmn"))
 	require.NoFileExists(t, filepath.Join(outDir, "processdefinitions", "C89_SimpleUserTask.bpmn"))
 }
 
@@ -125,11 +121,16 @@ func TestEmbedExportCommand_FileSelectionCanStillExportOtherVersions(t *testing.
 	require.NoFileExists(t, filepath.Join(outDir, "processdefinitions", "C88_SimpleUserTask.bpmn"))
 }
 
+// TestEmbedDeployCommand_RegressionPreservesSelectedFixtureDeployOnly preserves the existing command contract with advisory-aware fixtures.
 func TestEmbedDeployCommand_RegressionPreservesSelectedFixtureDeployOnly(t *testing.T) {
 	resetEmbedCommandStateForTest()
 	var sawDeploy bool
 
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.9") {
+			return
+		}
+
 		switch {
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/deployments":
 			sawDeploy = true
@@ -206,44 +207,7 @@ func TestEmbedDeployCommand_AllTenantsRejectsBeforeEmbeddedOrRequestWork(t *test
 	}
 }
 
-func TestEmbedDeployCommand_AllRunFallsBackToBPMNIDForV87(t *testing.T) {
-	resetEmbedCommandStateForTest()
-	var sawDeploy bool
-	var sawRun bool
-
-	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch {
-		case r.Method == http.MethodPost && r.URL.Path == "/v2/deployments":
-			sawDeploy = true
-			w.Header().Set("Content-Type", "application/json")
-			_, _ = w.Write([]byte(`{"tenantId":"<default>"}`))
-		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances":
-			sawRun = true
-			defer r.Body.Close()
-
-			var body map[string]any
-			require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
-			require.NotEmpty(t, body["processDefinitionId"])
-			require.Equal(t, "<default>", body["tenantId"])
-
-			w.Header().Set("Content-Type", "application/json")
-			_, _ = w.Write([]byte(`{"processDefinitionId":"order-process","processDefinitionVersion":1,"tenantId":"<default>","variables":{}}`))
-		default:
-			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
-		}
-	}))
-	t.Cleanup(srv.Close)
-
-	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.7")
-
-	output, err := testx.RunCmdSubprocess(t, "TestEmbedDeployCommand_AllRunFallsBackToBPMNIDForV87Helper", map[string]string{
-		"C8VOLT_TEST_CONFIG": cfgPath,
-	})
-	require.NoError(t, err, string(output))
-	require.True(t, sawDeploy)
-	require.True(t, sawRun)
-}
-
+// TestEmbedDeployCommand_CreationContextPrecedesDeploymentRequest preserves the existing command contract with advisory-aware fixtures.
 func TestEmbedDeployCommand_CreationContextPrecedesDeploymentRequest(t *testing.T) {
 	resetEmbedCommandStateForTest()
 	stdout := &bytes.Buffer{}
@@ -251,6 +215,10 @@ func TestEmbedDeployCommand_CreationContextPrecedesDeploymentRequest(t *testing.
 	var sawDeploy bool
 
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		switch {
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/deployments":
 			sawDeploy = true
@@ -321,23 +289,6 @@ func TestEmbedExportCommand_FileSelectionCanStillExportOtherVersionsHelper(t *te
 		"embed", "export",
 		"--file", "processdefinitions/C89_SimpleUserTask.bpmn",
 		"--out", os.Getenv("C8VOLT_TEST_EXPORT_OUT"),
-	})
-	root.SetOut(os.Stdout)
-	root.SetErr(os.Stderr)
-	_ = root.Execute()
-}
-
-func TestEmbedDeployCommand_AllRunFallsBackToBPMNIDForV87Helper(t *testing.T) {
-	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
-		return
-	}
-
-	root := Root()
-	root.SetArgs([]string{
-		"--config", os.Getenv("C8VOLT_TEST_CONFIG"),
-		"embed", "deploy",
-		"--all",
-		"--run",
 	})
 	root.SetOut(os.Stdout)
 	root.SetErr(os.Stderr)

@@ -10,10 +10,10 @@ var resolveCmd = &cobra.Command{
 	Short: "Resolve operational incidents",
 	Long: `Resolve operational incidents.
 
-Choose incident keys or process-instance families. Resolution changes state and waits for clearance unless --no-wait is set.`,
-	Example: `  ./c8volt resolve incident --key <incident-key>
-  ./c8volt resolve incident --key <incident-key> --key <another-incident-key>
-  printf '%s\n' "$INCIDENT_KEY_A" "$INCIDENT_KEY_B" | ./c8volt resolve incident -`,
+Choose incident keys or process-instance families. Resolution changes state and waits for clearance by default.`,
+	Example: `  c8volt resolve incident --key <incident-key>
+  c8volt resolve incident --key <incident-key> --key <another-incident-key>
+  printf '%s\n' "$INCIDENT_KEY_A" "$INCIDENT_KEY_B" | c8volt resolve incident -`,
 	Aliases: []string{"res"},
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return cmd.Help()

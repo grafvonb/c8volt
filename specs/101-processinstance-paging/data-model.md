@@ -39,7 +39,6 @@
   - `Indeterminate`: additional matching items may remain, but the command cannot prove it after the version-specific fallback
 - **Version behavior**:
   - `8.8`: derive from native search page metadata exposed by the generated Camunda client
-  - `8.7`: derive from the service-layer fallback strategy because the current Operate response type does not expose equivalent page metadata
 - **Invariant**:
   - `Indeterminate` must stop the command with a warning rather than silently finish or silently continue.
 
@@ -84,6 +83,5 @@
 - **Purpose**: Captures the repository-visible difference between the two supported API versions.
 - **States**:
   - `v8.8 native metadata`: search results include page metadata that can drive overflow decisions directly
-  - `v8.7 fallback`: search results require a service-side fallback strategy to infer whether more matches remain
 - **Invariant**:
   - The command must never describe `8.9` as supported by this feature.

@@ -6,7 +6,7 @@
 - **Rationale**: The repository already uses this structure for internal services, and the issue explicitly forbids crucial structural changes, package renames, and layout changes. Localized cleanup is the safest way to improve readability while preserving behavior.
 - **Alternatives considered**:
   - Introduce a new cross-version shared processdefinition base type: rejected because it increases abstraction weight and broadens the refactor surface.
-  - Collapse v87 and v88 into one implementation: rejected because the generated clients and supported capabilities still differ in important ways.
+  - Collapse v88 into one implementation: rejected because the generated clients and supported capabilities still differ in important ways.
 
 ## Decision 2: Extract only small shared helpers for duplicated behavior
 
@@ -18,7 +18,7 @@
 
 ## Decision 3: Treat generated-client coverage review as mandatory and XML retrieval as the leading capability candidate
 
-- **Decision**: Review supported generated processdefinition client capabilities across v87 and v88 and treat XML retrieval as the leading missing-capability candidate because both versions expose an XML retrieval method that the shared service does not currently surface.
+- **Decision**: Review supported generated processdefinition client capabilities across v88 and treat XML retrieval as the leading missing-capability candidate because both versions expose an XML retrieval method that the shared service does not currently surface.
 - **Rationale**: The issue requires a generated-client coverage review and asks for reasonable missing functionality where appropriate. XML retrieval is bounded, clearly related to the existing processdefinition service, and available in both supported versions, which makes it a stronger candidate than version-specific or structurally broader additions.
 - **Alternatives considered**:
   - Force a new capability regardless of fit: rejected because it could create unnecessary behavior change.
@@ -27,11 +27,9 @@
 
 ## Decision 4: Preserve the current mixed-version semantics where they already differ
 
-- **Decision**: Keep the current version-specific behavior differences that are already part of the service contract, such as v8.7 rejecting statistics requests while v8.8 can enrich results with statistics.
 - **Rationale**: The issue asks for refactoring and reasonable capability additions, not behavioral convergence across versions. Preserving existing supported differences avoids accidental regressions while still allowing clearer code structure.
 - **Alternatives considered**:
   - Normalize all version differences into one behavior model: rejected because that would likely change current behavior and expand scope beyond a low-risk refactor.
-  - Remove v8.8 statistics support to align with v8.7: rejected because it would be a regression.
 
 ## Decision 5: Use existing service and factory tests as the primary validation surface
 

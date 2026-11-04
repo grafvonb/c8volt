@@ -20,6 +20,9 @@ func jobView(cmd *cobra.Command, item job.Job) error {
 // jobsView renders searched jobs using the same row format as keyed lookup and
 // leaves JSON output as one collection payload.
 func jobsView(cmd *cobra.Command, result job.SearchResult) error {
+	if flagQuiet && len(result.Items) == 0 && pickMode() == RenderModeOneLine {
+		return nil
+	}
 	return listOrJSONFlat(cmd, result, result.Items, pickMode(), flatRowJobWithTimezoneForMode(cmd), jobKey)
 }
 
@@ -103,21 +106,29 @@ func jobWorkerOutcomeResultView(cmd *cobra.Command, result job.WorkerOutcomeResu
 	return nil
 }
 
+// jobUpdatePlanView logs the observed plan identity without adding discovery or changing machine payloads.
 func jobUpdatePlanView(cmd *cobra.Command, plan job.UpdatePlan, label string) error {
 	if pickMode() == RenderModeJSON {
 		return renderJSONPayload(cmd, RenderModeJSON, plan)
 	}
 	renderAttachedTenantContext(cmd)
 	status := jobUpdatePlanHumanStatus(plan, label)
+	if plan.SetBusinessID != nil {
+		renderHumanLine(cmd, "requested business ID: %q; atomic completion; acceptance subject to backend eligibility", *plan.SetBusinessID)
+	}
+	identity := ""
+	if column := processInstanceBusinessIDColumn(plan.Current.BusinessId); column != "" {
+		identity = " " + column
+	}
 	if !plan.HasMaterialChange() {
-		renderHumanLine(cmd, "%s: update job %s: nothing to update; %s", label, plan.Key, status)
+		renderHumanLine(cmd, "%s: update job %s: nothing to update; %s%s", label, plan.Key, status, identity)
 		return nil
 	}
 	if status != "" {
-		renderHumanLine(cmd, "%s: update job %s: %s; %s", label, plan.Key, formatJobUpdatePlanItems(plan.Items), status)
+		renderHumanLine(cmd, "%s: update job %s: %s; %s%s", label, plan.Key, formatJobUpdatePlanItems(plan.Items), status, identity)
 		return nil
 	}
-	renderHumanLine(cmd, "%s: update job %s: %s", label, plan.Key, formatJobUpdatePlanItems(plan.Items))
+	renderHumanLine(cmd, "%s: update job %s: %s%s", label, plan.Key, formatJobUpdatePlanItems(plan.Items), identity)
 	return nil
 }
 
@@ -143,6 +154,7 @@ func flatRowJob(item job.Job) flatRow {
 	return flatRowJobWithTimezone(item, false)
 }
 
+// flatRowJobWithTimezone appends safely quoted observed identity to the established job columns.
 func flatRowJobWithTimezone(item job.Job, showTimezoneOffset bool) flatRow {
 	parts := flatRow{
 		item.Key,
@@ -180,7 +192,7 @@ func flatRowJobWithTimezone(item job.Job, showTimezoneOffset bool) flatRow {
 	} else {
 		parts = append(parts, "")
 	}
-	return parts
+	return append(parts, processInstanceBusinessIDColumn(item.BusinessId))
 }
 
 func prefixedJobField(prefix string, value string) string {
@@ -251,15 +263,19 @@ const jobCompletionListenerConsequence = "Completing a listener job acknowledges
 
 // jobCompletionConfirmationPrompt describes the exact frozen count and scope.
 func jobCompletionConfirmationPrompt(batch job.PreparedCompletionBatch) string {
+	consequence := jobCompletionListenerConsequence
+	if batch.SetBusinessID != nil {
+		consequence += fmt.Sprintf(" Requested business ID: %q (atomic completion).", *batch.SetBusinessID)
+	}
 	scope := tenantContextPrimaryHumanLine(newDiscoveryTenantContext(batch.DiscoveryTenant))
 	if batch.Selection.Mode == job.CompletionSelectionExplicit {
 		scope = tenantContextPrimaryHumanLine(newExplicitKeysTenantContext(batch.DiscoveryTenant))
 		if len(batch.TenantIDs) > 0 {
 			scope += "; affected tenants: " + strings.Join(batch.TenantIDs, ", ")
 		}
-		return fmt.Sprintf("You are about to complete %d explicitly selected job(s); %s. %s Do you want to proceed?", len(batch.Candidates), scope, jobCompletionListenerConsequence)
+		return fmt.Sprintf("You are about to complete %d explicitly selected job(s); %s. %s Do you want to proceed?", len(batch.Candidates), scope, consequence)
 	}
-	return fmt.Sprintf("You are about to complete %d selected job(s); %s; filters: %s. %s Do you want to proceed?", len(batch.Candidates), scope, jobCompletionFilterText(batch.Selection.Filter), jobCompletionListenerConsequence)
+	return fmt.Sprintf("You are about to complete %d selected job(s); %s; filters: %s. %s Do you want to proceed?", len(batch.Candidates), scope, jobCompletionFilterText(batch.Selection.Filter), consequence)
 }
 
 // jobCompletionFilterText renders normalized AND predicates in stable CLI order.
@@ -297,6 +313,9 @@ func jobCompletionBatchView(cmd *cobra.Command, report job.CompletionBatchReport
 		label = "dry run: job completion"
 	}
 	renderHumanLine(cmd, "%s", label)
+	if report.RequestedBusinessID != nil && report.Counts.Selected > 0 {
+		renderHumanLine(cmd, "requested business ID: %q; atomic completion; observed snapshots unchanged", *report.RequestedBusinessID)
+	}
 	if report.Selection.Mode == job.CompletionSelectionExplicit {
 		renderHumanLine(cmd, "selection: explicit keys")
 	} else {
@@ -346,7 +365,11 @@ func jobCompletionBatchView(cmd *cobra.Command, report job.CompletionBatchReport
 			renderHumanLine(cmd, "%s", jobCompletionCandidateRow(candidate))
 		}
 		for _, outcome := range report.Outcomes {
-			renderHumanLine(cmd, "%s disposition:%s submission:%s observation:%s reason:%s", jobCompletionCandidateRow(outcome.Candidate), outcome.Disposition, outcome.Submission.Status, outcome.Observation.Status, outcome.Reason)
+			assignment := ""
+			if outcome.Assignment != nil {
+				assignment = " assignment:" + outcome.Assignment.Status
+			}
+			renderHumanLine(cmd, "%s disposition:%s submission:%s observation:%s reason:%s%s", jobCompletionCandidateRow(outcome.Candidate), outcome.Disposition, outcome.Submission.Status, outcome.Observation.Status, outcome.Reason, assignment)
 		}
 	}
 	return nil
@@ -354,5 +377,45 @@ func jobCompletionBatchView(cmd *cobra.Command, report job.CompletionBatchReport
 
 // jobCompletionCandidateRow reuses ordinary job rows with only observed facts.
 func jobCompletionCandidateRow(candidate job.CompletionCandidate) string {
-	return oneLineJob(job.Job{Key: candidate.Key, ProcessInstanceKey: candidate.ProcessInstanceKey, ElementInstanceKey: candidate.ElementInstanceKey, ElementId: candidate.ElementId, TenantId: candidate.TenantId, Type: candidate.Type, Kind: candidate.Kind, ListenerEventType: candidate.ListenerEventType, State: candidate.State, Worker: candidate.Worker, Retries: candidate.Retries})
+	return oneLineJob(job.Job{BusinessId: candidate.BusinessId, Key: candidate.Key, ProcessInstanceKey: candidate.ProcessInstanceKey, ElementInstanceKey: candidate.ElementInstanceKey, ElementId: candidate.ElementId, TenantId: candidate.TenantId, Type: candidate.Type, Kind: candidate.Kind, ListenerEventType: candidate.ListenerEventType, State: candidate.State, Worker: candidate.Worker, Retries: candidate.Retries})
+}
+
+// jobSearchSummaryView keeps empty quiet searches silent without suppressing machine results.
+func jobSearchSummaryView(cmd *cobra.Command, total int) {
+	if pickMode() == RenderModeOneLine && !(flagQuiet && total == 0) {
+		renderOutputLine(cmd, "found: %d", total)
+	}
+}
+
+// jobAssignmentOutcomeView preserves scalar evidence on failure and renders once.
+// Raw errors remain machine evidence; human diagnostics use the configured logger.
+func jobAssignmentOutcomeView(cmd *cobra.Command, result job.WorkerOutcomeResult, runErr error) error {
+	if pickMode() == RenderModeJSON {
+		envelope := ResultEnvelope[any]{Outcome: OutcomeSucceeded, Command: commandPath(cmd), Payload: result}
+		if runErr != nil {
+			envelope = resultEnvelopeForError(cmd, runErr)
+			envelope.Payload = result
+		} else if flagNoWait && result.MutationAccepted {
+			envelope.Outcome = OutcomeAccepted
+		}
+		if err := renderResultEnvelope(cmd, envelope); err != nil {
+			return err
+		}
+	} else {
+		renderAttachedTenantContext(cmd)
+		status := "not_submitted"
+		if result.Assignment != nil {
+			status = result.Assignment.Status
+		}
+		renderHumanLine(cmd, "updated job %s: atomic completion assignment %s; independent confirmation skipped", result.Key, status)
+		if flagVerbose && result.RequestedBusinessID != nil {
+			renderHumanLine(cmd, "requested business ID: %q; observed snapshots unchanged", *result.RequestedBusinessID)
+		}
+		if runErr != nil {
+			log, _ := bootstrapFailureContext(cmd)
+			request := job.UpdateRequest{WorkerOutcome: &job.WorkerOutcomeRequest{Mode: job.WorkerOutcomeCompletion}}
+			log.Error(jobWorkerOutcomeErrorMessage(request, runErr, false)[0])
+		}
+	}
+	return runErr
 }

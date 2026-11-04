@@ -94,7 +94,7 @@ func TestDeleteCommands_RegressionPreservesCleanupContracts(t *testing.T) {
 		Type:        "bool",
 		Required:    false,
 		Repeated:    false,
-		Description: "force cancellation of the process instance(s), prior to deletion",
+		Description: "cancel unfinished process-instance roots before deleting history and definitions",
 	})
 }
 
@@ -127,42 +127,39 @@ func TestDeleteProcessDefinitionSemanticProgressDefaultMilestonesAndFinalFlush(t
 	require.NotContains(t, output, "pd-2 deleted")
 }
 
-// TestDeleteProcessDefinitionSemanticProgressModeGate verifies basic
-// process-definition deletion progress keeps machine modes silent while quiet
-// still reports failures on stderr.
+// TestDeleteProcessDefinitionSemanticProgressModeGate keeps machine/quiet progress
+// silent; the command's final aggregate owns failure diagnostics in every mode.
 func TestDeleteProcessDefinitionSemanticProgressModeGate(t *testing.T) {
-	assertOpsCompletionProgressModeGate(t, opsCompletionProgressModeGateCase{
-		Configure: func(cmd *cobra.Command) (func(ops.ProgressEvent), func()) {
+	for _, mode := range []string{"json", "keys", "quiet", "automation"} {
+		t.Run(mode, func(t *testing.T) {
+			resetSemanticProgressModeFlags(t)
+			switch mode {
+			case "json":
+				flagViewAsJson = true
+			case "keys":
+				flagViewKeysOnly = true
+			case "quiet":
+				flagQuiet = true
+			case "automation":
+				flagCmdAutomation = true
+			}
+			cmd, stderr := newSemanticProgressStderrCommand()
+			stdout := &bytes.Buffer{}
+			cmd.SetOut(stdout)
 			progress := newProcessDefinitionDeleteSemanticProgress(cmd, 1)
 			progress.Start(1)
-			return progress.Report, progress.Close
-		},
-		Event: func(disposition ops.CompletionDisposition, detail string) ops.ProgressEvent {
-			return ops.ProgressEvent{
-				Kind: ops.ProgressEventKindCompletion,
-				Completion: &ops.CompletionProgress{
-					Phase:         processDefinitionDeleteCompletionPhase,
-					CoreResource:  "process definition(s)",
-					Total:         1,
-					Identity:      "pd-1",
-					Disposition:   disposition,
-					FailureDetail: detail,
-				},
-			}
-		},
-		QuietWarning: "pd-1 failed: request rejected (deleting process definitions, 1/1 process definition(s), 1 failed)",
-	})
+			progress.Report(ops.ProgressEvent{Kind: ops.ProgressEventKindCompletion, Completion: &ops.CompletionProgress{Phase: processDefinitionDeleteCompletionPhase, Total: 1, Identity: "pd-1", Disposition: ops.CompletionDispositionFailed, FailureDetail: "raw backend failure"}})
+			progress.Close()
+			require.Empty(t, stdout.String())
+			require.Empty(t, stderr.String())
+		})
+	}
 }
 
 // TestDeleteProcessDefinitionHelp_DocumentsTenantContract verifies destructive
 // definition help separates selector discovery from explicit admin keys.
 func TestDeleteProcessDefinitionHelp_DocumentsTenantContract(t *testing.T) {
-	output := executeRootForTest(t, "delete", "process-definition", "--help")
-
-	require.Contains(t, output, "tenant")
-	require.Contains(t, output, "--tenant limits BPMN selector discovery")
-	require.Contains(t, output, "Explicit --key and stdin keys use backend authorization without tenant filtering")
-	require.Contains(t, output, "--dry-run")
+	assertCommandHelpOutput(t, []string{"delete", "process-definition"}, []string{"Unfinished instances block deletion", "--force", "--dry-run", "--tenant"}, nil)
 }
 
 // TestDeleteCommand_CommandLocalBackoffTimeoutFlagOverridesEnvProfileAndConfig verifies command-local timeout precedence.
@@ -178,43 +175,9 @@ func TestDeleteCommand_CommandLocalBackoffTimeoutFlagOverridesEnvProfileAndConfi
 
 // TestDeleteHelp_DocumentsDestructiveConfirmationPaths verifies delete help explains confirmation paths.
 func TestDeleteHelp_DocumentsDestructiveConfirmationPaths(t *testing.T) {
-	output := assertCommandHelpOutput(t, []string{"delete"}, []string{
-		"Delete process instances or process definitions",
-		"--auto-confirm",
-		"validate its scope and confirm deletion",
-		"./c8volt delete process-definition --bpmn-process-id <bpmn-process-id> --latest --auto-confirm",
-	}, nil)
-	require.Contains(t, output, "process-instance")
-	require.Contains(t, output, "process-definition")
-
-	output = assertCommandHelpOutput(t, []string{"delete", "process-instance"}, []string{
-		"validates the affected tree before any deletion",
-		"Nonterminal instances block deletion unless --force is set",
-		"--force allows cancellation when deletion encounters a nonterminal instance",
-		"--auto-confirm for unattended",
-		"process instance key(s) to delete; repeat or combine with stdin '-'",
-		"number of process instances to inspect per discovery page; does not cap total frozen scope",
-		"maximum number of matching process instances to freeze for deletion across all pages; omit to continue through all matches",
-		"./c8volt delete process-instance --state terminated --batch-size 250 --limit 5 --dry-run",
-		"./c8volt delete process-instance --bpmn-process-id <bpmn-process-id> --state terminated --batch-size 250 --limit 5 --dry-run",
-	}, []string{"--count"})
-	require.Contains(t, output, "--force")
-	require.Contains(t, output, "--batch-size int32")
-	require.Contains(t, output, "--limit int32")
-
-	output = assertCommandHelpOutput(t, []string{"delete", "process-definition"}, []string{
-		"Delete process definition resources from Camunda",
-		"Before mutation, c8volt checks active-instance impact",
-		"Camunda 8.9 or newer",
-		"associated history",
-		"delete process-instance --bpmn-process-id <bpmn-process-id>",
-		"Use --dry-run to preview impact without mutation",
-		"./c8volt delete process-definition --key <process-definition-key> --dry-run",
-		"./c8volt delete process-definition --bpmn-process-id <bpmn-process-id> --latest --dry-run",
-		"--auto-confirm for unattended",
-		"./c8volt delete process-definition --bpmn-process-id <bpmn-process-id> --latest --auto-confirm",
-	}, nil)
-	require.NotContains(t, output, "--allow-inconsistent")
+	assertCommandHelpOutput(t, []string{"delete"}, []string{"--dry-run", "process-definition", "process-instance"}, nil)
+	assertCommandHelpOutput(t, []string{"delete", "process-instance"}, []string{"children before parents", "--force", "--dry-run"}, nil)
+	assertCommandHelpOutput(t, []string{"delete", "process-definition"}, []string{"Unfinished instances block deletion", "--force", "--dry-run", "--tenant"}, nil)
 }
 
 // TestDeleteProcessDefinitionImpact_RenderForceImpact verifies the destructive
@@ -232,8 +195,9 @@ func TestDeleteProcessDefinitionImpact_RenderForceImpact(t *testing.T) {
 	renderDeleteProcessDefinitionImpact(cmd, resource.DeleteProcessDefinitionPlan{
 		Items: []resource.DeleteProcessDefinitionPlanItem{
 			{
-				Key:                        "pd-1",
-				ActiveProcessInstanceCount: 2,
+				Key:                            "pd-1",
+				ActiveProcessInstanceCount:     2,
+				UnfinishedProcessInstanceCount: 2,
 				CancellationPlan: process.DryRunPIKeyExpansion{
 					Roots:     typex.Keys{"root-1"},
 					Collected: typex.Keys{"root-1", "child-1"},
@@ -244,7 +208,7 @@ func TestDeleteProcessDefinitionImpact_RenderForceImpact(t *testing.T) {
 
 	output := buf.String()
 	require.Contains(t, output, "deletion is irreversible")
-	require.Contains(t, output, "delete impact check: 1 process definition(s); 2 active process instance(s) found; no changes made yet")
+	require.Contains(t, output, "delete impact check: 1 process definition(s); 2 unfinished process instance(s) found; no changes made yet")
 	require.Contains(t, output, "--force will cancel 1 root process instance(s), then delete 2 affected process instance(s), before deleting process definitions")
 	require.NotContains(t, output, "WARNING:")
 }
@@ -266,9 +230,10 @@ func TestDeleteProcessDefinitionImpact_RendersTenantWarningsBeforeImpact(t *test
 	renderDeleteProcessDefinitionImpact(cmd, resource.DeleteProcessDefinitionPlan{
 		Items: []resource.DeleteProcessDefinitionPlanItem{
 			{
-				Key:                        "pd-1",
-				TenantId:                   "tenant-b",
-				ActiveProcessInstanceCount: 2,
+				Key:                            "pd-1",
+				TenantId:                       "tenant-b",
+				ActiveProcessInstanceCount:     2,
+				UnfinishedProcessInstanceCount: 2,
 				CancellationPlan: process.DryRunPIKeyExpansion{
 					Roots:     typex.Keys{"root-1"},
 					Collected: typex.Keys{"root-1", "child-1"},
@@ -282,7 +247,7 @@ func TestDeleteProcessDefinitionImpact_RendersTenantWarningsBeforeImpact(t *test
 		"selection scope: unfiltered across accessible tenants",
 		"affected tenants: tenant-a, tenant-b",
 		"tenant metadata is unknown for 1 target",
-		"delete impact check: 1 process definition(s); 2 active process instance(s) found; no changes made yet",
+		"delete impact check: 1 process definition(s); 2 unfinished process instance(s) found; no changes made yet",
 		"--force will cancel 1 root process instance(s), then delete 2 affected process instance(s), before deleting process definitions",
 	)
 	require.Equal(t, 1, strings.Count(output, "affected tenants: tenant-a, tenant-b"))
@@ -346,7 +311,7 @@ func TestDeleteProcessDefinitionCommand_DashStdinSatisfiesTargetSelector(t *test
 // TestDeleteProcessDefinitionCommand_RejectsUnsupportedFullHistoryVersionsBeforeMutation keeps
 // unsupported process-definition history delete capability failures before any remote request.
 func TestDeleteProcessDefinitionCommand_RejectsUnsupportedFullHistoryVersionsBeforeMutation(t *testing.T) {
-	for _, version := range []toolx.CamundaVersion{toolx.V87, toolx.V88} {
+	for _, version := range []toolx.CamundaVersion{toolx.V88} {
 		t.Run(version.String(), func(t *testing.T) {
 			var called bool
 			srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -380,6 +345,10 @@ func TestDeleteProcessDefinitionCommand_AcceptsFullHistoryCapabilityVersionsBefo
 			var deleteBodies []string
 			var requests []string
 			srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if serveVersionCheckTopology(w, r, version.String()) {
+					return
+				}
+
 				requests = append(requests, r.Method+" "+r.URL.Path)
 				w.Header().Set("Content-Type", "application/json")
 				switch r.URL.Path {
@@ -465,6 +434,10 @@ func TestDeleteProcessDefinitionCommand_BatchReadCheckBlocksBeforeMutation(t *te
 func TestDeleteProcessDefinitionCommand_LatestSearchUsesEffectiveTenant(t *testing.T) {
 	var requests []string
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.9") {
+			return
+		}
+
 		require.Equal(t, http.MethodPost, r.Method)
 		require.Equal(t, "/v2/process-definitions/search", r.URL.Path)
 
@@ -571,9 +544,14 @@ func TestDeleteProcessDefinitionCommand_StdinTenantMismatchUsesAdminScope(t *tes
 	require.Contains(t, string(output), "delete accepted")
 }
 
+// TestDeleteProcessDefinitionBpmnSelectorMissingFailsBeforeImpactPlanning preserves the existing command contract with advisory-aware fixtures.
 func TestDeleteProcessDefinitionBpmnSelectorMissingFailsBeforeImpactPlanning(t *testing.T) {
 	var requests []string
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.9") {
+			return
+		}
+
 		requests = append(requests, r.Method+" "+r.URL.Path)
 		switch {
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-definitions/search":
@@ -605,9 +583,14 @@ func TestDeleteProcessDefinitionBpmnSelectorMissingFailsBeforeImpactPlanning(t *
 	require.NotContains(t, string(output), "no process definitions found to delete")
 }
 
+// TestDeleteProcessDefinitionBpmnSelectorVisiblePreservesPreviewAndDeletion preserves the existing command contract with advisory-aware fixtures.
 func TestDeleteProcessDefinitionBpmnSelectorVisiblePreservesPreviewAndDeletion(t *testing.T) {
 	var requests testx.SafeSlice[string]
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.9") {
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		switch {
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-definitions/search":
@@ -636,12 +619,17 @@ func TestDeleteProcessDefinitionBpmnSelectorVisiblePreservesPreviewAndDeletion(t
 		"POST /v2/resources/2251799813685255/deletion",
 	}, requests.Snapshot())
 	require.Contains(t, string(output), "delete impact check: 1 process definition(s); process-instance state check skipped; no changes made yet")
-	require.Contains(t, string(output), "pd 2251799813685255; delete accepted; batch batch-2251799813685255")
+	require.Contains(t, string(output), "pd delete accepted; requested 1, ok 1, failed 0")
 }
 
+// TestDeleteProcessDefinitionDryRunStopsAfterImpactPreview preserves the existing command contract with advisory-aware fixtures.
 func TestDeleteProcessDefinitionDryRunStopsAfterImpactPreview(t *testing.T) {
 	var requests testx.SafeSlice[string]
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.9") {
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		switch {
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-definitions/search":
@@ -670,9 +658,14 @@ func TestDeleteProcessDefinitionDryRunStopsAfterImpactPreview(t *testing.T) {
 	require.NotContains(t, string(output), "delete accepted")
 }
 
+// TestDeleteProcessDefinitionCommand_RegressionPreservesSelectorPreflightForceAndNoWait retains selector scope and accepted aggregate output.
 func TestDeleteProcessDefinitionCommand_RegressionPreservesSelectorPreflightForceAndNoWait(t *testing.T) {
 	var requests testx.SafeSlice[string]
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.9") {
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		switch {
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-definitions/search":
@@ -705,8 +698,8 @@ func TestDeleteProcessDefinitionCommand_RegressionPreservesSelectorPreflightForc
 	})
 
 	require.NoError(t, err, string(output))
-	require.Contains(t, string(output), "delete impact check: 1 process definition(s); no active process instances found; no changes made yet")
-	require.Contains(t, string(output), "pd 2251799813685255 invoice v3/stable tenant; delete accepted; batch batch-2251799813685255")
+	require.Contains(t, string(output), "delete impact check: 1 process definition(s); no unfinished process instances found; no changes made yet")
+	require.NotContains(t, string(output), "delete accepted; batch", "default output hides per-key lifecycle detail")
 	require.NotContains(t, string(output), "pd delete done; requested")
 
 	got := requests.Snapshot()
@@ -763,10 +756,15 @@ func requestBodyForPrefix(t *testing.T, requests []string, prefix string) []stri
 	return matches
 }
 
+// newTenantAdminProcessDefinitionDeleteServer keeps fixture setup aligned with the invocation's advisory version check.
 func newTenantAdminProcessDefinitionDeleteServer(t *testing.T, requests *testx.SafeSlice[string], statsRequests *testx.SafeSlice[string]) *httptest.Server {
 	t.Helper()
 
 	return newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.9") {
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		switch {
 		case r.Method == http.MethodGet && r.URL.Path == "/v2/process-definitions/"+tenantAdminKeysProcessDefinitionKey:
@@ -964,6 +962,7 @@ func TestDeleteProcessDefinitionDryRunStopsAfterImpactPreviewHelper(t *testing.T
 	_ = root.Execute()
 }
 
+// TestDeleteProcessDefinitionCommand_RegressionPreservesSelectorPreflightForceAndNoWait retains selector scope and accepted aggregate output.
 func TestDeleteProcessDefinitionCommand_RegressionPreservesSelectorPreflightForceAndNoWaitHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return

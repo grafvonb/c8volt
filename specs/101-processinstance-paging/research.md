@@ -24,14 +24,6 @@
   - Infer overflow only from `len(items) == limit`: rejected because it throws away metadata the API already provides and cannot distinguish exact-boundary final pages as confidently.
   - Perform unconditional look-ahead fetches even on `8.8`: rejected because the native metadata should reduce unnecessary extra requests.
 
-## Decision 4: Treat v8.7 overflow detection as a fallback path and stop/warn when it stays indeterminate
-
-- **Decision**: Implement a version-appropriate fallback strategy for `8.7` because the current Operate search response type does not expose the same page metadata as v8.8, and stop with a warning if that fallback still cannot prove whether more matches remain.
-- **Rationale**: The issue requires version-aware behavior and explicitly forbids silent continuation or silent truncation. The current `internal/services/processinstance/v87` seam can decide how much continuation evidence the Operate API provides; if it cannot provide a trustworthy answer, the safest CLI behavior is to stop and warn.
-- **Alternatives considered**:
-  - Assume no overflow when a v8.7 page is full: rejected because it reintroduces silent truncation risk.
-  - Always auto-continue while pages remain full: rejected because it can overrun intended scope without trustworthy confirmation.
-
 ## Decision 5: Treat user-declined continuation as a successful partial completion
 
 - **Decision**: When the user declines a continuation prompt after one or more processed pages, stop normally and report that only the processed pages were completed.

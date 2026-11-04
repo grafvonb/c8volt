@@ -120,7 +120,6 @@ As a maintainer, I want job functionality isolated from existing process-instanc
 
 1. **Given** `c8volt get pi --with-incidents` already exposes `jobKey`, **When** the new job commands are added, **Then** the existing incident output remains unchanged.
 2. **Given** `c8volt update pi --vars` already has planning, dry-run, submitted, confirmed, confirmation-failed, and mutation-failed result semantics, **When** job updates are added, **Then** process-instance variable update behavior remains unchanged.
-3. **Given** Camunda 8.7 is configured, **When** get job or update is attempted, **Then** unsupported-version errors are reported before unsupported mutation paths are used.
 
 ### Edge Cases
 
@@ -140,7 +139,6 @@ As a maintainer, I want job functionality isolated from existing process-instanc
 - `--no-wait` skips confirmation polling but still distinguishes accepted mutation from mutation failure.
 - Confirmation timeout or retry exhaustion reports confirmation failure without claiming success.
 - Mutation failure and confirmation failure are distinguishable in human-readable and JSON output.
-- Camunda 8.7 is unsupported for this feature beyond explicit unsupported-version errors.
 - Job fail, complete, BPMN error, variable update, retryBackOff, and bulk update flows are out of scope.
 
 ## Requirements *(mandatory)*
@@ -152,7 +150,6 @@ As a maintainer, I want job functionality isolated from existing process-instanc
 - **FR-003**: Both job commands MUST require `--key`.
 - **FR-004**: Job get MUST support Camunda 8.8 and 8.9.
 - **FR-005**: Job updates MUST support Camunda 8.8 and 8.9 only.
-- **FR-006**: Camunda 8.7 usage MUST fail with unsupported-version errors before unsupported mutation paths are used.
 - **FR-007**: Job get MUST return job details including key, state, retries, deadline when present, process instance key, element instance key, error fields when present, and tenant metadata when available.
 - **FR-008**: Job get MUST report a not-found outcome suitable for both human-readable and JSON modes when no job exists for the supplied key.
 - **FR-009**: `update job` MUST require at least one update flag from `--retries` or `--timeout`.
@@ -172,7 +169,7 @@ As a maintainer, I want job functionality isolated from existing process-instanc
 - **FR-023**: Mutation failure and confirmation failure MUST be distinguishable in human-readable and JSON output.
 - **FR-024**: Job update results MUST follow the same submitted, confirmed, confirmation-failed, and mutation-failed pattern as process-instance variable updates where confirmation is available; timeout-only updates use submitted or mutation-failed outcomes.
 - **FR-025**: Job get, job updates, and job update confirmation MUST stay within a dedicated job service boundary.
-- **FR-026**: Job service code MUST include shared API/factory behavior, versioned services for 8.7, 8.8, and 8.9, and compile-time conformance checks matching existing service package patterns.
+- **FR-026**: Job service code MUST include shared API/factory behavior, versioned services for 8.8 and 8.9, and compile-time conformance checks matching existing service package patterns.
 - **FR-027**: Job functionality MUST NOT be mixed into process-instance services, incident services, or facade-only helpers.
 - **FR-028**: Command output MUST use existing command context logger and activity plumbing for submitted and confirmed output.
 - **FR-029**: Existing `get pi --with-incidents` behavior MUST remain unchanged and continue to expose `jobKey`.
@@ -181,7 +178,6 @@ As a maintainer, I want job functionality isolated from existing process-instanc
 - **FR-032**: Automated tests MUST cover successful job get on Camunda 8.8 and 8.9.
 - **FR-033**: Automated tests MUST cover not-found job errors in human-readable and JSON modes.
 - **FR-034**: Automated tests MUST cover retries update with confirmation, timeout update without deadline confirmation, combined retries and timeout update with retries-only confirmation, and `--no-wait`.
-- **FR-035**: Automated tests MUST cover mutation failure, confirmation failure, invalid inputs, missing required flags, and Camunda 8.7 unsupported-version behavior.
 - **FR-036**: Automated tests MUST cover unchanged `get pi --with-incidents` and `update pi --vars` behavior.
 - **FR-037**: `update job` MUST support `--dry-run` for all valid retry and timeout update requests.
 - **FR-038**: `update job --dry-run` MUST load the current job state through the same lookup behavior as `c8volt get job --key <job-key>` and MUST NOT submit a mutation.
@@ -203,7 +199,6 @@ As a maintainer, I want job functionality isolated from existing process-instanc
 - **Timeout Duration**: User input such as `60s`, `5m`, or `1h` converted to milliseconds for submission.
 - **Observed Deadline**: The timestamp returned by job get for display and diagnosis; it is not used to confirm timeout updates.
 - **Job Update Result**: The command outcome indicating submitted, confirmed, confirmation-failed, or mutation-failed state.
-- **Unsupported Version Error**: The explicit failure returned when the command is used against Camunda 8.7 for unsupported job functionality.
 
 ## Success Criteria *(mandatory)*
 
@@ -217,7 +212,6 @@ As a maintainer, I want job functionality isolated from existing process-instanc
 - **SC-006**: Automated tests show `--no-wait` returns submitted output without confirmation polling.
 - **SC-007**: Automated tests show mutation failure and confirmation failure are reported as distinct outcomes in human-readable and JSON output.
 - **SC-008**: Automated tests show invalid retries, invalid timeout values, missing `--key`, and missing update flags fail before calling Camunda.
-- **SC-009**: Automated tests show Camunda 8.7 fails with unsupported-version errors before unsupported mutation paths are used.
 - **SC-010**: Automated tests show `get pi --with-incidents` still exposes `jobKey` unchanged.
 - **SC-011**: Automated tests show `update pi --vars` behavior and confirmation semantics remain unchanged.
 - **SC-012**: Automated tests or static checks show job get, update, and confirmation behavior are not added to process-instance or incident service APIs.

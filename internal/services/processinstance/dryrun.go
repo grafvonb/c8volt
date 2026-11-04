@@ -5,6 +5,7 @@ package processinstance
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	d "github.com/grafvonb/c8volt/internal/domain"
@@ -16,15 +17,14 @@ import (
 	"github.com/grafvonb/c8volt/typex"
 )
 
-type legacyDryRunTraversalOnly interface {
-	LegacyDryRunTraversalOnly() bool
+// DryRunCancelOrDeletePlan expands distinct roots once, retaining observed partial scope on failure.
+func DryRunCancelOrDeletePlan(ctx context.Context, api API, keys typex.Keys, wantedWorkers int, opts ...services.CallOption) (d.DryRunPIKeyExpansion, error) {
+	plan, _, err := dryRunCancelOrDeletePlan(ctx, api, keys, wantedWorkers, opts...)
+	return plan, err
 }
 
-func DryRunCancelOrDeletePlan(ctx context.Context, api API, keys typex.Keys, wantedWorkers int, opts ...services.CallOption) (d.DryRunPIKeyExpansion, error) {
-	if legacyOnly, ok := api.(legacyDryRunTraversalOnly); ok && legacyOnly.LegacyDryRunTraversalOnly() {
-		return dryRunCancelOrDeletePlanLegacy(ctx, api, keys, wantedWorkers, opts...)
-	}
-
+// dryRunCancelOrDeletePlan shares family expansion with consumers that need frozen membership and order.
+func dryRunCancelOrDeletePlan(ctx context.Context, api API, keys typex.Keys, wantedWorkers int, opts ...services.CallOption) (d.DryRunPIKeyExpansion, []pitraversal.Result, error) {
 	var roots typex.Keys
 	var collected typex.Keys
 	cfg := services.ApplyCallOptions(opts)
@@ -33,9 +33,7 @@ func DryRunCancelOrDeletePlan(ctx context.Context, api API, keys typex.Keys, wan
 	ancestryResults, err := pool.ExecuteSlice[string, pitraversal.Result](ctx, ukeys, ancestryWorkers, cfg.FailFast, func(ctx context.Context, key string, _ int) (pitraversal.Result, error) {
 		return api.AncestryResult(ctx, key, opts...)
 	})
-	if err != nil {
-		return d.DryRunPIKeyExpansion{}, err
-	}
+	ancestryErr := err
 	seenRoots := make(map[string]struct{}, len(ancestryResults))
 	var duplicateRoots typex.Keys
 	for _, result := range ancestryResults {
@@ -49,12 +47,17 @@ func DryRunCancelOrDeletePlan(ctx context.Context, api API, keys typex.Keys, wan
 	}
 	roots = roots.Unique()
 
+	expansionRoots := roots
+	if ancestryErr != nil {
+		expansionRoots = nil
+	}
 	descendantWorkers := toolx.DetermineNoOfWorkers(len(roots), wantedWorkers, cfg.NoWorkerLimit)
-	descendantResults, err := pool.ExecuteSlice[string, pitraversal.Result](ctx, roots, descendantWorkers, cfg.FailFast, func(ctx context.Context, root string, _ int) (pitraversal.Result, error) {
+	descendantResults, err := pool.ExecuteSlice[string, pitraversal.Result](ctx, expansionRoots, descendantWorkers, cfg.FailFast, func(ctx context.Context, root string, _ int) (pitraversal.Result, error) {
 		return api.DescendantsResult(ctx, root, opts...)
 	})
-	if err != nil {
-		return d.DryRunPIKeyExpansion{}, err
+	traversalErr := errors.Join(ancestryErr, err)
+	if traversalErr == nil {
+		traversalErr = ctx.Err()
 	}
 	for _, result := range descendantResults {
 		collected = append(collected, result.Keys...)
@@ -85,47 +88,11 @@ func DryRunCancelOrDeletePlan(ctx context.Context, api API, keys typex.Keys, wan
 		Warning:                    warning,
 		Outcome:                    outcome,
 	}
-	return plan, validateDryRunPIKeyExpansion(plan)
-}
-
-func dryRunCancelOrDeletePlanLegacy(ctx context.Context, api API, keys typex.Keys, wantedWorkers int, opts ...services.CallOption) (d.DryRunPIKeyExpansion, error) {
-	var roots typex.Keys
-	var collected typex.Keys
-	cfg := services.ApplyCallOptions(opts)
-	ukeys := keys.Unique()
-	ancestryWorkers := toolx.DetermineNoOfWorkers(len(ukeys), wantedWorkers, cfg.NoWorkerLimit)
-	legacyRoots, err := pool.ExecuteSlice[string, string](ctx, ukeys, ancestryWorkers, cfg.FailFast, func(ctx context.Context, key string, _ int) (string, error) {
-		rootKey, _, _, err := api.Ancestry(ctx, key, opts...)
-		return rootKey, err
-	})
-	if err != nil {
-		return d.DryRunPIKeyExpansion{}, err
+	if traversalErr != nil {
+		plan.Outcome = d.TraversalOutcomeUnresolved
+		return plan, descendantResults, traversalErr
 	}
-	for _, rootKey := range legacyRoots {
-		if rootKey != "" {
-			roots = append(roots, rootKey)
-		}
-	}
-	roots = roots.Unique()
-
-	descendantWorkers := toolx.DetermineNoOfWorkers(len(roots), wantedWorkers, cfg.NoWorkerLimit)
-	descendantLists, err := pool.ExecuteSlice[string, typex.Keys](ctx, roots, descendantWorkers, cfg.FailFast, func(ctx context.Context, root string, _ int) (typex.Keys, error) {
-		desc, _, _, err := api.Descendants(ctx, root, opts...)
-		return desc, err
-	})
-	if err != nil {
-		return d.DryRunPIKeyExpansion{}, err
-	}
-	for _, desc := range descendantLists {
-		collected = append(collected, desc...)
-	}
-	collected = collected.Unique()
-	return d.DryRunPIKeyExpansion{
-		Roots:          roots,
-		Collected:      collected,
-		TenantEvidence: tenantEvidenceFromKeys(collected),
-		Outcome:        d.TraversalOutcomeComplete,
-	}, nil
+	return plan, descendantResults, validateDryRunPIKeyExpansion(plan)
 }
 
 // PlanProcessInstanceMutationPages owns search-selected cancel/delete paging
@@ -381,19 +348,6 @@ func mergeTraversalTenantEvidence(tenantByKey map[string]string, chain map[strin
 	}
 }
 
-// tenantEvidenceFromKeys marks key-only legacy dry-run targets as unknown without enrichment.
-func tenantEvidenceFromKeys(keys typex.Keys) d.TenantEvidence {
-	acc := common.NewTenantEvidenceAccumulator()
-	targets := make([]d.TenantEvidenceTarget, 0, len(keys.Unique()))
-	for _, key := range keys.Unique() {
-		acc.Add(key, "")
-		targets = append(targets, d.TenantEvidenceTarget{Key: key})
-	}
-	evidence := domainTenantEvidence(acc.Snapshot())
-	evidence.Targets = targets
-	return evidence
-}
-
 // domainTenantEvidence converts service accumulator output into a domain plan value.
 func domainTenantEvidence(snapshot common.TenantEvidenceSnapshot) d.TenantEvidence {
 	return d.TenantEvidence{
@@ -423,6 +377,7 @@ func mergeTenantEvidenceTargets(acc *common.TenantEvidenceAccumulator, targets [
 	return targets
 }
 
+// mapDryRunTraversalWarning preserves incomplete and unknown traversal dispositions in preview evidence.
 func mapDryRunTraversalWarning(results []pitraversal.Result) (warning string, missing []d.MissingAncestor, outcome d.TraversalOutcome) {
 	outcome = d.TraversalOutcomeComplete
 	for _, result := range results {
@@ -433,12 +388,15 @@ func mapDryRunTraversalWarning(results []pitraversal.Result) (warning string, mi
 			warning = result.Warning
 		}
 		switch result.Outcome {
+		case pitraversal.OutcomeComplete:
 		case pitraversal.OutcomeUnresolved:
 			if outcome == d.TraversalOutcomeComplete {
 				outcome = d.TraversalOutcomeUnresolved
 			}
 		case pitraversal.OutcomePartial:
 			outcome = d.TraversalOutcomePartial
+		default:
+			outcome = d.TraversalOutcomeUnresolved
 		}
 	}
 	if len(missing) > 0 && warning == "" {
@@ -472,6 +430,7 @@ func uniqueMissingAncestors(items []d.MissingAncestor) []d.MissingAncestor {
 	return out
 }
 
+// nonFinalProcessInstances freezes identity from discovered non-final instances.
 func nonFinalProcessInstances(keys typex.Keys, results []pitraversal.Result) []d.ProcessInstance {
 	if len(keys) == 0 || len(results) == 0 {
 		return nil
@@ -495,6 +454,8 @@ func nonFinalProcessInstances(keys typex.Keys, results []pitraversal.Result) []d
 			continue
 		}
 		seen[key] = struct{}{}
+		pi.BusinessId = toolx.CopyPtr(pi.BusinessId)
+		pi.Variables = copyProcessInstanceVariableMap(pi.Variables)
 		out = append(out, pi)
 	}
 	if len(out) == 0 {
@@ -503,6 +464,7 @@ func nonFinalProcessInstances(keys typex.Keys, results []pitraversal.Result) []d
 	return out
 }
 
+// selectedFinalStateProcessInstances freezes identity only from observed selected terminal instances.
 func selectedFinalStateProcessInstances(keys typex.Keys, results []pitraversal.Result) []d.ProcessInstance {
 	if len(keys) == 0 || len(results) == 0 {
 		return nil
@@ -526,6 +488,8 @@ func selectedFinalStateProcessInstances(keys typex.Keys, results []pitraversal.R
 			continue
 		}
 		seen[key] = struct{}{}
+		pi.BusinessId = toolx.CopyPtr(pi.BusinessId)
+		pi.Variables = copyProcessInstanceVariableMap(pi.Variables)
 		out = append(out, pi)
 	}
 	if len(out) == 0 {

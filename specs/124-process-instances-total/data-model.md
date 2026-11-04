@@ -29,7 +29,7 @@
 
 ## Reported Total Semantics
 
-- **Purpose**: Normalizes how count-only mode interprets backend totals across `v8.7`, `v8.8`, and `v8.9`.
+- **Purpose**: Normalizes how count-only mode interprets backend totals across `v8.8` and `v8.9`.
 - **States**:
   - `Exact`: `ReportedTotal.Kind=Exact`, so the reported total is authoritative for the current search
   - `LowerBound`: `ReportedTotal.Kind=LowerBound`, so the reported total is useful but the backend marked it as capped

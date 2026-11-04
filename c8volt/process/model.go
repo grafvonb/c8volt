@@ -9,12 +9,15 @@ import (
 	"time"
 
 	ferr "github.com/grafvonb/c8volt/c8volt/ferrors"
+	options "github.com/grafvonb/c8volt/c8volt/foptions"
 	"github.com/grafvonb/c8volt/c8volt/incident"
 	"github.com/grafvonb/c8volt/toolx"
 	"github.com/grafvonb/c8volt/typex"
 )
 
+// ProcessDefinition preserves definition metadata and optional backend lifecycle observations.
 type ProcessDefinition struct {
+	State             string                       `json:"state,omitempty"`
 	BpmnProcessId     string                       `json:"bpmnProcessId,omitempty"`
 	Key               string                       `json:"key,omitempty"`
 	Name              string                       `json:"name,omitempty"`
@@ -24,12 +27,15 @@ type ProcessDefinition struct {
 	Statistics        *ProcessDefinitionStatistics `json:"statistics,omitempty"`
 }
 
+// ProcessDefinitionStatistics preserves separate observed state counts and their availability.
 type ProcessDefinitionStatistics struct {
-	Active                 int64 `json:"active"`
-	Canceled               int64 `json:"canceled"`
-	Completed              int64 `json:"completed"`
-	Incidents              int64 `json:"incidents"`
-	IncidentCountSupported bool  `json:"incidentCountSupported,omitempty"`
+	Active                  int64 `json:"active"`
+	Suspended               int64 `json:"suspended,omitempty"`
+	SuspendedCountSupported bool  `json:"suspendedCountSupported,omitempty"`
+	Canceled                int64 `json:"canceled"`
+	Completed               int64 `json:"completed"`
+	Incidents               int64 `json:"incidents"`
+	IncidentCountSupported  bool  `json:"incidentCountSupported,omitempty"`
 }
 
 type ProcessDefinitions struct {
@@ -127,7 +133,9 @@ func (f ProcessDefinitionFilter) String() string {
 	return toolx.FormatActiveFields(parts)
 }
 
+// ProcessInstanceData describes creation intent; a nil BusinessId omits the optional reference.
 type ProcessInstanceData struct {
+	BusinessId                  *string        `json:"businessId,omitempty"`
 	BpmnProcessId               string         `json:"bpmnProcessId,omitempty"`               // ProcessDefinitionId in API
 	ProcessDefinitionSpecificId string         `json:"processDefinitionSpecificId,omitempty"` // ProcessDefinitionKey in API
 	ProcessDefinitionVersion    int32          `json:"processDefinitionVersion,omitempty"`
@@ -135,7 +143,9 @@ type ProcessInstanceData struct {
 	TenantId                    string         `json:"tenantId,omitempty"`
 }
 
+// ProcessInstance exposes the current instance snapshot; unavailable dates are omitted from JSON.
 type ProcessInstance struct {
+	BusinessId               *string        `json:"businessId,omitempty"`
 	BpmnProcessId            string         `json:"bpmnProcessId,omitempty"`
 	EndDate                  string         `json:"endDate,omitempty"`
 	Incident                 bool           `json:"incident,omitempty"`
@@ -148,6 +158,7 @@ type ProcessInstance struct {
 	ProcessVersion           int32          `json:"processVersion,omitempty"`
 	ProcessVersionTag        string         `json:"processVersionTag,omitempty"`
 	StartDate                string         `json:"startDate,omitempty"`
+	SuspendedDate            string         `json:"suspendedDate,omitempty"`
 	State                    State          `json:"state,omitempty"`
 	TenantId                 string         `json:"tenantId,omitempty"`
 	Variables                map[string]any `json:"variables,omitempty"`
@@ -165,6 +176,60 @@ type ProcessInstanceVariable struct {
 	APITruncated       bool   `json:"apiTruncated"`
 }
 
+// ProcessInstanceVariablePlannedValue describes an addition, unchanged
+// request, or untouched root variable in a frozen update plan.
+type ProcessInstanceVariablePlannedValue struct {
+	Name         string `json:"name"`
+	Value        any    `json:"value"`
+	APITruncated bool   `json:"apiTruncated,omitempty"`
+}
+
+// ProcessInstanceVariablePlannedChange preserves the observed and requested
+// values for a root variable that needs mutation.
+type ProcessInstanceVariablePlannedChange struct {
+	Name         string `json:"name"`
+	Before       any    `json:"before"`
+	After        any    `json:"after"`
+	APITruncated bool   `json:"apiTruncated,omitempty"`
+}
+
+// ProcessInstanceVariablePlan is the complete root-only classification and
+// frozen payload for one selected process instance.
+type ProcessInstanceVariablePlan struct {
+	// BusinessId is the optional identity observed during planning.
+	BusinessId         *string                                `json:"businessId,omitempty"`
+	ProcessInstanceKey string                                 `json:"processInstanceKey"`
+	ScopeKey           string                                 `json:"scopeKey"`
+	TenantId           string                                 `json:"tenantId,omitempty"`
+	Additions          []ProcessInstanceVariablePlannedValue  `json:"additions"`
+	Changes            []ProcessInstanceVariablePlannedChange `json:"changes"`
+	UnchangedRequested []ProcessInstanceVariablePlannedValue  `json:"unchangedRequested"`
+	Untouched          []ProcessInstanceVariablePlannedValue  `json:"untouched"`
+	MutationVariables  map[string]any                         `json:"mutationVariables,omitempty"`
+	VerificationValues map[string]any                         `json:"verificationValues"`
+}
+
+// ProcessInstanceVariableUpdatePlan is a complete frozen collection plan
+// suitable for preview and later execution without rediscovery.
+type ProcessInstanceVariableUpdatePlan struct {
+	// Selection retains completed search provenance; nil preserves explicit-key behavior.
+	Selection *ProcessInstanceSelection `json:"selection,omitempty"`
+	// SelectionTenant binds search authorization to the receiving service.
+	SelectionTenant string `json:"selectionTenant,omitempty"`
+
+	RequestedKeys          []string                      `json:"requestedKeys"`
+	RequestedValues        map[string]any                `json:"requestedValues"`
+	Instances              []ProcessInstanceVariablePlan `json:"instances"`
+	RequestedCount         int                           `json:"requestedCount"`
+	UpdateCount            int                           `json:"updateCount"`
+	VariableAddCount       int                           `json:"variableAddCount"`
+	VariableChangeCount    int                           `json:"variableChangeCount"`
+	VariableUnchangedCount int                           `json:"variableUnchangedCount"`
+	VariableUntouchedCount int                           `json:"variableUntouchedCount"`
+	MutationSubmitted      bool                          `json:"mutationSubmitted"`
+	TenantContext          options.TenantContext         `json:"tenantContext"`
+}
+
 type ProcessInstanceVariableUpdateStatus string
 
 const (
@@ -172,6 +237,10 @@ const (
 	ProcessInstanceVariableUpdateStatusConfirmed          ProcessInstanceVariableUpdateStatus = "confirmed"
 	ProcessInstanceVariableUpdateStatusMutationFailed     ProcessInstanceVariableUpdateStatus = "mutation_failed"
 	ProcessInstanceVariableUpdateStatusConfirmationFailed ProcessInstanceVariableUpdateStatus = "confirmation_failed"
+	// ProcessInstanceVariableUpdateStatusUnchanged means planning found no required write.
+	ProcessInstanceVariableUpdateStatusUnchanged ProcessInstanceVariableUpdateStatus = "unchanged"
+	// ProcessInstanceVariableUpdateStatusSkipped means required work was not started.
+	ProcessInstanceVariableUpdateStatusSkipped ProcessInstanceVariableUpdateStatus = "skipped"
 )
 
 type ProcessInstanceVariableUpdateRequest struct {
@@ -191,11 +260,15 @@ type ProcessInstanceVariableUpdateResult struct {
 }
 
 func (r ProcessInstanceVariableUpdateResult) OK() bool {
-	return r.MutationAccepted && r.Status != ProcessInstanceVariableUpdateStatusMutationFailed && r.Status != ProcessInstanceVariableUpdateStatusConfirmationFailed
+	return r.Status == ProcessInstanceVariableUpdateStatusUnchanged ||
+		(r.MutationAccepted && r.Status != ProcessInstanceVariableUpdateStatusMutationFailed && r.Status != ProcessInstanceVariableUpdateStatusConfirmationFailed)
 }
 
+// ProcessInstanceVariableUpdateResults retains ordered outcomes and optional selection evidence.
 type ProcessInstanceVariableUpdateResults struct {
-	Items []ProcessInstanceVariableUpdateResult `json:"items,omitempty"`
+	// Selection preserves original criteria separately from outcome identity.
+	Selection *ProcessInstanceSelection             `json:"selection,omitempty"`
+	Items     []ProcessInstanceVariableUpdateResult `json:"items,omitempty"`
 }
 
 func (r ProcessInstanceVariableUpdateResults) Totals() (total int, oks int, noks int) {
@@ -222,7 +295,9 @@ type VariableEnrichedProcessInstances struct {
 	Items []VariableEnrichedProcessInstance `json:"items"`
 }
 
+// RuntimeListenerJob retains the listener job observation independently of its owning process.
 type RuntimeListenerJob struct {
+	BusinessId         *string    `json:"businessId,omitempty"`
 	JobKey             string     `json:"jobKey,omitempty"`
 	Kind               string     `json:"kind,omitempty"`
 	ListenerEventType  string     `json:"listenerEventType,omitempty"`
@@ -389,11 +464,26 @@ type ProcessInstanceSearchPageStep struct {
 // ProcessInstanceSearchPageVisitor observes selected pages during service-owned traversal.
 type ProcessInstanceSearchPageVisitor func(ProcessInstanceSearchPageStep) (ProcessInstanceSearchPageAction, error)
 
-// ProcessInstanceSearchPagesResult captures a full or caller-stopped process-instance discovery.
+// ProcessInstanceSearchCompletion records why discovery ended. The zero value is not completion evidence.
+type ProcessInstanceSearchCompletion string
+
+const (
+	// ProcessInstanceSearchCompletionExhausted proves the requested search was exhausted.
+	ProcessInstanceSearchCompletionExhausted ProcessInstanceSearchCompletion = "exhausted"
+	// ProcessInstanceSearchCompletionLimitReached proves only the documented distinct-selection bound.
+	ProcessInstanceSearchCompletionLimitReached ProcessInstanceSearchCompletion = "limit_reached"
+	// ProcessInstanceSearchCompletionVisitorStopped records a caller stop before authoritative completion.
+	ProcessInstanceSearchCompletionVisitorStopped ProcessInstanceSearchCompletion = "visitor_stopped"
+	// ProcessInstanceSearchCompletionIncomplete retains evidence from failed or unresolved discovery.
+	ProcessInstanceSearchCompletionIncomplete ProcessInstanceSearchCompletion = "incomplete"
+)
+
+// ProcessInstanceSearchPagesResult retains discovery evidence and why traversal ended, including failures.
 type ProcessInstanceSearchPagesResult struct {
-	Items []ProcessInstance `json:"items,omitempty"`
-	Limit int32             `json:"limit,omitempty"`
-	Pages int32             `json:"pages,omitempty"`
+	Completion ProcessInstanceSearchCompletion `json:"completion,omitempty"`
+	Items      []ProcessInstance               `json:"items,omitempty"`
+	Limit      int32                           `json:"limit,omitempty"`
+	Pages      int32                           `json:"pages,omitempty"`
 }
 
 // ProcessInstanceMutationPlanRequest combines search selection with dry-run
@@ -468,7 +558,10 @@ type OrphanDiscovery struct {
 	Keys   typex.Keys            `json:"keys,omitempty"`
 }
 
+// ProcessInstanceFilter combines native search predicates with AND.
 type ProcessInstanceFilter struct {
+	// BusinessId is an exact opaque criterion; nil omits it and empty is invalid.
+	BusinessId           *string                          `json:"businessId,omitempty"`
 	Key                  string                           `json:"key,omitempty"`
 	BpmnProcessId        string                           `json:"bpmnProcessId,omitempty"`
 	ProcessVersion       int32                            `json:"version,omitempty"`
@@ -485,8 +578,12 @@ type ProcessInstanceFilter struct {
 	VariableFilters      ProcessInstanceVariableFilterSet `json:"variableFilters,omitempty"`
 }
 
+// String quotes opaque criteria for diagnostic descriptions.
 func (f ProcessInstanceFilter) String() string {
 	parts := make([]string, 0, 14)
+	if f.BusinessId != nil {
+		parts = toolx.AppendQuotedField(parts, "businessId", *f.BusinessId)
+	}
 	parts = toolx.AppendQuotedField(parts, "key", f.Key)
 	parts = toolx.AppendQuotedField(parts, "bpmnProcessId", f.BpmnProcessId)
 	parts = toolx.AppendInt32Field(parts, "processVersion", f.ProcessVersion)
@@ -670,4 +767,342 @@ type ProcessInstanceExpectationReports struct {
 
 func (r ProcessInstanceExpectationReports) Totals() (total int, oks int, noks int) {
 	return TotalsOf(r.Items)
+}
+
+// SuspensionResult separates submission proof from observation of
+// the selected instance. Error is machine evidence, never human diagnostic text.
+type SuspensionResult struct {
+	Key          string                 `json:"key"`
+	Status       SuspensionStatus       `json:"status"`
+	Submission   SuspensionSubmission   `json:"submission"`
+	Confirmation SuspensionConfirmation `json:"confirmation"`
+	// StatusCode is the last valid submission status, never a read status.
+	StatusCode int `json:"statusCode,omitempty"`
+	// HasObservation distinguishes no observation from an observed UNKNOWN state.
+	HasObservation    bool  `json:"hasObservation"`
+	LastObservedState State `json:"lastObservedState,omitempty"`
+	// SuspendedDate comes only from the latest successful matching observation.
+	SuspendedDate string `json:"suspendedDate,omitempty"`
+	Error         string `json:"error,omitempty"`
+}
+
+// SuspensionStatus describes workflow disposition, not engine state.
+type SuspensionStatus string
+
+const (
+	// SuspensionStatusPreview records a local preview without I/O.
+	SuspensionStatusPreview SuspensionStatus = "preview"
+	// SuspensionStatusAccepted records acceptance without confirmation.
+	SuspensionStatusAccepted SuspensionStatus = "accepted"
+	// SuspensionStatusConfirmed requires accepted submission and observed SUSPENDED.
+	SuspensionStatusConfirmed SuspensionStatus = "confirmed"
+	// SuspensionStatusFailed records a failure other than timeout or interruption.
+	SuspensionStatusFailed SuspensionStatus = "failed"
+	// SuspensionStatusTimedOut retains evidence when a deadline or attempt bound ends work.
+	SuspensionStatusTimedOut SuspensionStatus = "timed_out"
+	// SuspensionStatusInterrupted records caller cancellation without inferring rejection.
+	SuspensionStatusInterrupted SuspensionStatus = "interrupted"
+	// SuspensionStatusNotAttempted identifies work that was not started.
+	SuspensionStatusNotAttempted SuspensionStatus = "not_attempted"
+)
+
+// SuspensionSubmission retains cumulative evidence across submission retries.
+type SuspensionSubmission string
+
+const (
+	// SuspensionSubmissionNotSubmitted means no request was dispatched.
+	SuspensionSubmissionNotSubmitted SuspensionSubmission = "not_submitted"
+	// SuspensionSubmissionAccepted requires a valid documented acceptance response.
+	SuspensionSubmissionAccepted SuspensionSubmission = "accepted"
+	// SuspensionSubmissionRejected requires explicit rejection and no earlier ambiguity.
+	SuspensionSubmissionRejected SuspensionSubmission = "rejected"
+	// SuspensionSubmissionUnknown retains ambiguity until a valid acceptance occurs.
+	SuspensionSubmissionUnknown SuspensionSubmission = "unknown"
+)
+
+// SuspensionConfirmation records observation independently of submission.
+type SuspensionConfirmation string
+
+const (
+	// SuspensionConfirmationNotRequested covers previews, no-wait, skipped and unaccepted work.
+	SuspensionConfirmationNotRequested SuspensionConfirmation = "not_requested"
+	// SuspensionConfirmationUnconfirmed means accepted work awaits proof of SUSPENDED.
+	SuspensionConfirmationUnconfirmed SuspensionConfirmation = "unconfirmed"
+	// SuspensionConfirmationConfirmed requires a matching SUSPENDED observation after acceptance.
+	SuspensionConfirmationConfirmed SuspensionConfirmation = "confirmed"
+)
+
+// SuspensionResults retains one item per normalized key in input
+// order, including skipped work and partial failures. Callers initialize Items
+// to an empty array when there are no selected keys.
+type SuspensionResults struct {
+	// Selection preserves original criteria separately from outcome identity.
+	Selection *ProcessInstanceSelection `json:"selection,omitempty"`
+	Items     []SuspensionResult        `json:"items"`
+}
+
+// ProcessInstanceSuspensionPlan freezes discovered scope without claiming mutation evidence.
+// TargetKeys is exactly the ordered projection of Instances classified eligible.
+// Each target appears once; parent/child identities remain distinct.
+// Successful planning exposes non-nil arrays. Any discovery, malformed-response,
+// explicit partial/unresolved-result, or context failure returns a zero plan plus
+// error. The caller must check error before considering a no-op.
+type ProcessInstanceSuspensionPlan struct {
+	// Selection retains completed search provenance; nil preserves explicit-key behavior.
+	Selection *ProcessInstanceSelection `json:"selection,omitempty"`
+	// SelectionTenant binds search authorization to the receiving service.
+	SelectionTenant string `json:"selectionTenant,omitempty"`
+	// Exact distinguishes selected keys from descendant eligibility plans.
+	Exact bool `json:"exact,omitempty"`
+
+	// RequestedKeys: All normalized unique explicit seeds, in input order, including seeds that overlap earlier subtrees.
+	RequestedKeys typex.Keys `json:"requestedKeys"`
+	// Instances: Unique discovered members in first-seen traversal order.
+	Instances []ProcessInstanceSuspensionPlanItem `json:"instances"`
+	// TargetKeys: Frozen eligible mutation keys in the same order as their entries in Instances.
+	TargetKeys typex.Keys `json:"targetKeys"`
+}
+
+// ProcessInstanceSuspensionPlanItem records one discovery observation and its eligibility.
+type ProcessInstanceSuspensionPlanItem struct {
+	// BusinessId is the optional identity observed during planning.
+	BusinessId *string `json:"businessId,omitempty"`
+	// Key: Discovered instance identity.
+	Key string `json:"key"`
+	// ObservedState: Planning observation; never post-submission confirmation evidence.
+	ObservedState  State                                       `json:"observedState"`
+	Classification ProcessInstanceSuspensionPlanClassification `json:"classification"`
+}
+
+// ProcessInstanceSuspensionPlanClassification separates eligibility from existing suspension.
+type ProcessInstanceSuspensionPlanClassification string
+
+const (
+	// ProcessInstanceSuspensionPlanEligible identifies an observed ACTIVE target.
+	ProcessInstanceSuspensionPlanEligible ProcessInstanceSuspensionPlanClassification = "eligible"
+	// ProcessInstanceSuspensionPlanAlreadySuspended records existing suspension, not a new mutation.
+	ProcessInstanceSuspensionPlanAlreadySuspended ProcessInstanceSuspensionPlanClassification = "already_suspended"
+	// ProcessInstanceSuspensionPlanExcluded identifies every other observed state.
+	ProcessInstanceSuspensionPlanExcluded ProcessInstanceSuspensionPlanClassification = "excluded"
+)
+
+// ResumptionResult separates submission proof from observation of
+// the selected instance. Error is machine evidence, never human diagnostic text.
+type ResumptionResult struct {
+	Key          string                 `json:"key"`
+	Status       ResumptionStatus       `json:"status"`
+	Submission   ResumptionSubmission   `json:"submission"`
+	Confirmation ResumptionConfirmation `json:"confirmation"`
+	// StatusCode is the last valid submission status, never a read status.
+	StatusCode int `json:"statusCode,omitempty"`
+	// HasObservation distinguishes no observation from an observed UNKNOWN state.
+	HasObservation    bool  `json:"hasObservation"`
+	LastObservedState State `json:"lastObservedState,omitempty"`
+	// SuspendedDate comes only from the latest successful matching observation.
+	SuspendedDate string `json:"suspendedDate,omitempty"`
+	Error         string `json:"error,omitempty"`
+}
+
+// ResumptionStatus describes workflow disposition, not engine state.
+type ResumptionStatus string
+
+const (
+	// ResumptionStatusPreview records a local preview without I/O.
+	ResumptionStatusPreview ResumptionStatus = "preview"
+	// ResumptionStatusAccepted records acceptance without confirmation.
+	ResumptionStatusAccepted ResumptionStatus = "accepted"
+	// ResumptionStatusConfirmed requires accepted submission and observed ACTIVE or COMPLETED.
+	ResumptionStatusConfirmed ResumptionStatus = "confirmed"
+	// ResumptionStatusFailed records a failure other than timeout or interruption.
+	ResumptionStatusFailed ResumptionStatus = "failed"
+	// ResumptionStatusTimedOut retains evidence when a deadline or attempt bound ends work.
+	ResumptionStatusTimedOut ResumptionStatus = "timed_out"
+	// ResumptionStatusInterrupted records caller cancellation without inferring rejection.
+	ResumptionStatusInterrupted ResumptionStatus = "interrupted"
+	// ResumptionStatusNotAttempted identifies work that was not started.
+	ResumptionStatusNotAttempted ResumptionStatus = "not_attempted"
+)
+
+// ResumptionSubmission retains cumulative evidence across submission retries.
+type ResumptionSubmission string
+
+const (
+	// ResumptionSubmissionNotSubmitted means no request was dispatched.
+	ResumptionSubmissionNotSubmitted ResumptionSubmission = "not_submitted"
+	// ResumptionSubmissionAccepted requires a valid documented acceptance response.
+	ResumptionSubmissionAccepted ResumptionSubmission = "accepted"
+	// ResumptionSubmissionRejected requires explicit rejection and no earlier ambiguity.
+	ResumptionSubmissionRejected ResumptionSubmission = "rejected"
+	// ResumptionSubmissionUnknown retains ambiguity until a valid acceptance occurs.
+	ResumptionSubmissionUnknown ResumptionSubmission = "unknown"
+)
+
+// ResumptionConfirmation records observation independently of submission.
+type ResumptionConfirmation string
+
+const (
+	// ResumptionConfirmationNotRequested covers previews, no-wait, skipped and unaccepted work.
+	ResumptionConfirmationNotRequested ResumptionConfirmation = "not_requested"
+	// ResumptionConfirmationUnconfirmed means accepted work awaits proof of ACTIVE or COMPLETED.
+	ResumptionConfirmationUnconfirmed ResumptionConfirmation = "unconfirmed"
+	// ResumptionConfirmationConfirmed requires a matching ACTIVE or COMPLETED observation after acceptance.
+	ResumptionConfirmationConfirmed ResumptionConfirmation = "confirmed"
+)
+
+// ResumptionResults retains one item per normalized key in input
+// order, including skipped work and partial failures. Callers initialize Items
+// to an empty array when there are no selected keys. Accepted-but-unconfirmed
+// failures count as both accepted and failed; those counts deliberately overlap.
+type ResumptionResults struct {
+	// Selection preserves original criteria separately from outcome identity.
+	Selection *ProcessInstanceSelection `json:"selection,omitempty"`
+	Items     []ResumptionResult        `json:"items"`
+}
+
+// ProcessInstanceResumptionPlan freezes discovered scope without claiming mutation evidence.
+// TargetKeys is exactly the ordered projection of Instances classified eligible.
+// Each target appears once; parent/child identities remain distinct.
+// Successful planning exposes non-nil arrays. Any discovery, malformed-response,
+// explicit partial/unresolved-result, or context failure returns a zero plan plus
+// error. The caller must check error before considering a no-op.
+type ProcessInstanceResumptionPlan struct {
+	// Selection retains completed search provenance; nil preserves explicit-key behavior.
+	Selection *ProcessInstanceSelection `json:"selection,omitempty"`
+	// SelectionTenant binds search authorization to the receiving service.
+	SelectionTenant string `json:"selectionTenant,omitempty"`
+	// Exact distinguishes selected keys from descendant eligibility plans.
+	Exact bool `json:"exact,omitempty"`
+
+	// RequestedKeys: All normalized unique explicit seeds, in input order, including seeds that overlap earlier subtrees.
+	RequestedKeys typex.Keys `json:"requestedKeys"`
+	// Instances: Unique discovered members in first-seen traversal order.
+	Instances []ProcessInstanceResumptionPlanItem `json:"instances"`
+	// TargetKeys: Frozen eligible mutation keys in the same order as their entries in Instances.
+	TargetKeys typex.Keys `json:"targetKeys"`
+}
+
+// ProcessInstanceResumptionPlanItem records one discovery observation and its eligibility.
+type ProcessInstanceResumptionPlanItem struct {
+	// BusinessId is the optional identity observed during planning.
+	BusinessId *string `json:"businessId,omitempty"`
+	// Key: Discovered instance identity.
+	Key string `json:"key"`
+	// ObservedState: Planning observation; never post-submission confirmation evidence.
+	ObservedState  State                                       `json:"observedState"`
+	Classification ProcessInstanceResumptionPlanClassification `json:"classification"`
+}
+
+// ProcessInstanceResumptionPlanClassification identifies eligibility observed during complete discovery.
+type ProcessInstanceResumptionPlanClassification string
+
+const (
+	// ProcessInstanceResumptionPlanEligible identifies an observed SUSPENDED target.
+	ProcessInstanceResumptionPlanEligible ProcessInstanceResumptionPlanClassification = "eligible"
+	// ProcessInstanceResumptionPlanExcluded identifies every other observed state.
+	ProcessInstanceResumptionPlanExcluded ProcessInstanceResumptionPlanClassification = "excluded"
+)
+
+// ProcessInstanceSelectionCardinality declares the proof required by a selection consumer.
+type ProcessInstanceSelectionCardinality string
+
+const (
+	// ProcessInstanceSelectionCollection accepts exhausted or explicitly bounded distinct selections.
+	ProcessInstanceSelectionCollection ProcessInstanceSelectionCardinality = "collection"
+	// ProcessInstanceSelectionUniqueStart requires exhaustion with at most one distinct key.
+	ProcessInstanceSelectionUniqueStart ProcessInstanceSelectionCardinality = "unique_start"
+)
+
+// ProcessInstanceSelectionRequest retains search controls separately from cardinality.
+type ProcessInstanceSelectionRequest struct {
+	SearchRequest ProcessInstanceSearchRequest        `json:"searchRequest"`
+	Cardinality   ProcessInstanceSelectionCardinality `json:"cardinality"`
+}
+
+// ProcessInstanceSelection preserves copied provenance and partial evidence; an error always prevents execution.
+type ProcessInstanceSelection struct {
+	Request        ProcessInstanceSelectionRequest `json:"request"`
+	Origin         string                          `json:"origin"`
+	Items          []ProcessInstance               `json:"items"`
+	Keys           typex.Keys                      `json:"keys"`
+	Completion     ProcessInstanceSearchCompletion `json:"completion"`
+	Pages          int32                           `json:"pages"`
+	TenantEvidence TenantEvidence                  `json:"tenantEvidence"`
+	IgnoreTenant   bool                            `json:"ignoreTenant"`
+}
+
+// ProcessInstanceSelectedMutationRequest identifies the collection and operation to freeze.
+type ProcessInstanceSelectedMutationRequest struct {
+	Operation string                          `json:"operation"`
+	Selection ProcessInstanceSelectionRequest `json:"selection"`
+	Workers   int                             `json:"workers"`
+}
+
+// ProcessInstanceMutationFamily preserves ordered membership and observed parent relationships.
+type ProcessInstanceMutationFamily struct {
+	RootKey string            `json:"rootKey"`
+	Keys    typex.Keys        `json:"keys"`
+	Items   []ProcessInstance `json:"items"`
+}
+
+// ProcessInstanceSelectedMutationPlan retains selection separately from expanded family scope.
+// It is an invocation-local snapshot, not a transferable authorization token.
+type ProcessInstanceSelectedMutationPlan struct {
+	Request   ProcessInstanceSelectedMutationRequest `json:"request"`
+	Selection ProcessInstanceSelection               `json:"selection"`
+	Expansion DryRunPIKeyExpansion                   `json:"expansion"`
+	Families  []ProcessInstanceMutationFamily        `json:"families"`
+	Tenant    string                                 `json:"tenant"`
+}
+
+// ProcessInstanceDeletionResult retains root reports and attempted members of the reviewed scope.
+type ProcessInstanceDeletionResult struct {
+	// MutationSubmitted is run evidence rendered in the command scope, independent of root success.
+	MutationSubmitted bool `json:"mutationSubmitted"`
+	DeleteReports
+	Members []DeleteReport `json:"members,omitempty"`
+}
+
+// SelectedProcessInstanceResolutionPlan retains the original selection, family union and incident work.
+type SelectedProcessInstanceResolutionPlan struct {
+	Scope     ProcessInstanceSelectedMutationPlan   `json:"scope"`
+	Incidents incident.ProcessInstancesIncidentPlan `json:"incidents"`
+}
+
+// BusinessIDAssignmentPlan holds complete explicit scope; previews do not guarantee eligibility.
+type BusinessIDAssignmentPlan struct {
+	// Required exact frozen assignment
+	RequestedBusinessID *string `json:"requestedBusinessId"`
+	// Complete validated keys, normalized and deduplicated in stable order
+	RequestedKeys []string `json:"requestedKeys"`
+	// One item per distinct target; never expanded to parent/family
+	Items []BusinessIDAssignmentItem `json:"items"`
+	// Authoritative complete preparation or incomplete diagnostic evidence.
+	Ready bool `json:"ready"`
+}
+
+// BusinessIDAssignmentItem contains exact-target preview facts, never inferred family facts.
+type BusinessIDAssignmentItem struct {
+	Key string `json:"key"`
+	// Optional prior fact; absence is not synthesized
+	PreviouslyObservedBusinessID *string `json:"previouslyObservedBusinessId,omitempty"`
+	State                        State   `json:"state,omitempty"`
+}
+
+// BusinessIDAssignmentResult separates submission evidence from later exact-key observation.
+// Status is not_submitted, accepted, confirmed, rejected or unknown; confirmation is skipped, confirmed or unconfirmed.
+type BusinessIDAssignmentResult struct {
+	Key                          string  `json:"key"`
+	RequestedBusinessID          *string `json:"requestedBusinessId"`
+	PreviouslyObservedBusinessID *string `json:"previouslyObservedBusinessId,omitempty"`
+	Status                       string  `json:"status"`
+	Confirmation                 string  `json:"confirmation"`
+	ObservedBusinessID           *string `json:"observedBusinessId,omitempty"`
+	HasObservation               bool    `json:"hasObservation"`
+	HTTPStatus                   *int    `json:"httpStatus,omitempty"`
+	Error                        string  `json:"error,omitempty"`
+}
+
+// BusinessIDAssignmentResults preserves input order, including targets never submitted.
+type BusinessIDAssignmentResults struct {
+	Items []BusinessIDAssignmentResult `json:"items"`
 }

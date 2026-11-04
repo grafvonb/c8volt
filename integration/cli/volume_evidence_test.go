@@ -5,7 +5,11 @@
 
 package cli_test
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/grafvonb/c8volt/integration/internal/validation"
+)
 
 type volumeFamilyReport struct {
 	Family       string               `json:"family"`
@@ -19,6 +23,7 @@ type volumeFamilyReport struct {
 
 type volumeSummary struct {
 	ScenarioCount      int                 `json:"scenarioCount"`
+	Outcomes           map[string]int      `json:"outcomes"`
 	CommandsCovered    []string            `json:"commandsCovered"`
 	FlagsCovered       map[string][]string `json:"flagsCovered,omitempty"`
 	OutputModesCovered map[string][]string `json:"outputModesCovered,omitempty"`
@@ -61,6 +66,7 @@ func evidenceRecordsOrEmpty(records []evidenceRecord) []evidenceRecord {
 
 func summarizeVolumeRecords(records []evidenceRecord) volumeSummary {
 	summary := volumeSummary{
+		Outcomes:           map[string]int{},
 		FlagsCovered:       map[string][]string{},
 		OutputModesCovered: map[string][]string{},
 		DataOwnership:      map[string][]string{},
@@ -68,6 +74,7 @@ func summarizeVolumeRecords(records []evidenceRecord) volumeSummary {
 	commands := map[string]struct{}{}
 	for _, record := range records {
 		summary.ScenarioCount++
+		summary.Outcomes[record.Outcome]++
 		if record.CommandPath != "" {
 			commands[record.CommandPath] = struct{}{}
 		}
@@ -80,7 +87,7 @@ func summarizeVolumeRecords(records []evidenceRecord) volumeSummary {
 		for _, ownership := range record.DataOwnership {
 			summary.DataOwnership[ownership] = append(summary.DataOwnership[ownership], record.ScenarioName)
 		}
-		if record.Outcome != volumeOutcomePass {
+		if validation.EvidenceOutcomeFailed(record.Outcome) {
 			summary.Failures = append(summary.Failures, record.ScenarioName)
 		}
 	}

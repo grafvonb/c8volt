@@ -104,7 +104,6 @@ As a c8volt user, I want `get incident` to follow existing command validation, h
 **Acceptance Scenarios**:
 
 1. **Given** invalid flag combinations, **When** the user combines keyed lookup with search filters or combines `--total` with other machine output modes, **Then** c8volt rejects the command before remote calls with existing wording style.
-2. **Given** a v8.7 target or another unsupported version, **When** the user runs unsupported incident operations, **Then** c8volt fails clearly before issuing unsupported requests.
 3. **Given** existing process-instance incident commands, **When** this feature is added, **Then** `get pi --with-incidents`, `--incidents-only`, `--direct-incidents-only`, and related filters keep their existing semantics.
 
 ### Edge Cases
@@ -143,7 +142,6 @@ As a c8volt user, I want `get incident` to follow existing command validation, h
 - **FR-014**: Search/list mode MUST support `--pi-key`, `--root-key`, `--pd-key`, `--bpmn-process-id`, `--flow-node-id`, and `--fni-key`.
 - **FR-015**: Search/list mode MUST support `--creation-time-after` and `--creation-time-before` using the incident `creationTime` field.
 - **FR-016**: Invalid date or timestamp values MUST fail locally with clear flag validation errors before remote calls.
-- **FR-017**: v8.7 MUST fail clearly before unsupported tenant-safe incident operations.
 - **FR-018**: v8.8 compatibility paths MUST avoid request shapes known to fail with `Request property [filter] cannot be parsed`.
 - **FR-019**: v8.9 SHOULD use server-side filters where semantics are safe, including tenant, state, error type, process context, flow node, and creation time bounds.
 - **FR-020**: Any local post-filtering MUST page through all relevant results until search is exhausted or the explicit command limit is reached.
@@ -182,7 +180,6 @@ As a c8volt user, I want `get incident` to follow existing command validation, h
 - **SC-005**: `--total` returns an exact numeric count after all server-side and local filters are applied.
 - **SC-006**: Default incident rows include `creationTime` and an age derived from `creationTime`.
 - **SC-007**: JSON output preserves full incident details and does not truncate messages.
-- **SC-008**: v8.7 and incompatible v8.8 request paths fail or fall back before issuing known unsupported or broken requests.
 - **SC-009**: Existing process-instance incident behavior remains unchanged under regression tests.
 
 ## Assumptions

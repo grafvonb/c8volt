@@ -55,7 +55,6 @@
 
 - [x] T014 [P] [US1] Add service tests for element attachment, per-key filtering, process-instance order, element sorting, and search error propagation in `internal/services/processinstance/enrichment_test.go`
 - [x] T015 [P] [US1] Add process facade tests for element enrichment conversion and error mapping in `c8volt/process/client_test.go`
-- [x] T016 [P] [US1] Add keyed command validation tests for `--with-elements`, `--with-elements --total`, `--keys-only --with-elements`, keyed search-filter conflicts, and Camunda 8.7 unsupported behavior in `cmd/get_processinstance_test.go`
 - [x] T017 [P] [US1] Add keyed activity rendering tests for `elements:`, active rows without `e:`, incident markers, aligned element columns, and no `element:<id>` suffix in `cmd/cmd_views_get_test.go`
 
 ### Implementation for User Story 1
@@ -90,7 +89,6 @@
 - [x] T029 [US2] Apply element enrichment to incremental one-line/page rendering paths in `cmd/get_processinstance_search.go`
 - [x] T030 [US2] Preserve process-instance page counts, limits, and continuation prompts while rendering enriched rows in `cmd/get_processinstance_paging.go` and `cmd/get_processinstance_search.go`
 - [x] T031 [US2] Ensure process-instance filters remain authoritative and element-specific filters are not added in `cmd/get_processinstance.go` and `cmd/get_processinstance_validation.go`
-- [x] T032 [US2] Surface reused element-service Camunda 8.7 unsupported errors as command failures in `cmd/get_processinstance.go` and `c8volt/process/client.go`
 
 **Checkpoint**: User Stories 1 and 2 both work independently, with list/search preserving process-instance selection semantics.
 
@@ -204,7 +202,6 @@ Task: "T036 [US3] Add command contract tests in cmd/command_contract_test.go"
 1. Complete Phase 1 setup.
 2. Complete Phase 2 foundational contracts and wiring.
 3. Complete Phase 3 keyed element enrichment.
-4. Validate keyed `c8volt get pi --key <process-instance-key> --with-elements` and Camunda 8.7 unsupported behavior.
 
 ### Incremental Delivery
 

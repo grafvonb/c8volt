@@ -51,16 +51,16 @@ As a c8volt maintainer, I want the C810 definitions to follow the established C8
 
 ### User Story 3 - Preserve Existing Compatibility Lines (Priority: P1)
 
-As an operator using Camunda 8.7, 8.8, or 8.9, I want native C810 definitions to be additive so that my existing embedded definitions and runtime selection remain unchanged.
+As an operator using Camunda 8.8, or 8.9, I want native C810 definitions to be additive so that my existing embedded definitions and runtime selection remain unchanged.
 
 **Why this priority**: Finalizing 8.10 support must not alter the stable process definitions already used by existing installations and automation.
 
-**Independent Test**: Compare all existing C87, C88, and C89 embedded definitions before and after the feature, exercise their established selection behavior, and confirm that no live Camunda 8.10 integration assets were added.
+**Independent Test**: Compare all existing C88 and C89 embedded definitions before and after the feature, exercise their established selection behavior, and confirm that no live Camunda 8.10 integration assets were added.
 
 **Acceptance Scenarios**:
 
-1. **Given** an existing C87, C88, or C89 definition, **When** native C810 definitions are added, **Then** the existing definition remains byte-for-byte unchanged.
-2. **Given** Camunda 8.7, 8.8, or 8.9 is selected, **When** embedded resources are listed, exported, deployed, or used by a smoke workflow, **Then** the same version-matched family is selected as before.
+1. **Given** an existing C88 or C89 definition, **When** native C810 definitions are added, **Then** the existing definition remains byte-for-byte unchanged.
+2. **Given** Camunda 8.8, or 8.9 is selected, **When** embedded resources are listed, exported, deployed, or used by a smoke workflow, **Then** the same version-matched family is selected as before.
 3. **Given** an unknown Camunda version, **When** embedded or smoke-test selection is requested, **Then** selection fails explicitly instead of inheriting the newest fixture family.
 4. **Given** issue #275 is completed, **When** the Camunda 8.10 feature artifacts from issue #273 are reviewed, **Then** they describe native C810 definitions rather than C89 reuse.
 
@@ -86,9 +86,9 @@ As an operator using Camunda 8.7, 8.8, or 8.9, I want native C810 definitions to
 - **FR-007**: Every native 8.10 definition MUST preserve the corresponding C89 workflow structure, element and sequence-flow identities, task configuration, incident behavior, variable mappings, call-activity propagation settings, diagram layout, and process version tag.
 - **FR-008**: Selecting Camunda 8.10 MUST select the C810 embedded family for listing, export, embedded deployment, and smoke-test workflows.
 - **FR-009**: Camunda 8.10 selection MUST NOT select C89 definitions as a compatibility fallback.
-- **FR-010**: Camunda 8.7, 8.8, and 8.9 MUST retain their existing embedded-family selection behavior.
+- **FR-010**: Camunda 8.8 and 8.9 MUST retain their existing embedded-family selection behavior.
 - **FR-011**: Unknown versions MUST fail embedded or smoke-test selection explicitly and MUST NOT inherit the newest known definition family.
-- **FR-012**: Existing C87, C88, and C89 embedded process definitions MUST remain byte-for-byte unchanged.
+- **FR-012**: Existing C88 and C89 embedded process definitions MUST remain byte-for-byte unchanged.
 - **FR-013**: The feature MUST provide automated verification that each C810 filename, process identity, process name, diagram reference, target-platform declaration, and cross-process reference is correct.
 - **FR-014**: The feature MUST provide automated verification that each C810 definition is behaviorally and structurally equivalent to its corresponding C89 definition after normalizing only the permitted version-specific identity and metadata differences.
 - **FR-015**: The feature MUST preserve existing embedded listing, export, deployment, smoke-test, failure, and operator-output contracts except for replacing C89 selections with C810 selections when Camunda 8.10 is configured.
@@ -102,7 +102,7 @@ As an operator using Camunda 8.7, 8.8, or 8.9, I want native C810 definitions to
 - **C89 Source Definition**: The corresponding stable definition whose established workflow behavior is preserved by its C810 counterpart.
 - **Version-Specific Definition Identity**: The filename, process identity, process name, diagram ownership reference, target-platform declaration, and cross-process references that distinguish one compatibility line from another.
 - **Fixture Selection Mapping**: The explicit association between a supported Camunda compatibility line and its embedded definition prefix.
-- **Protected Stable Definition**: Any existing C87, C88, or C89 definition that must remain byte-for-byte unchanged.
+- **Protected Stable Definition**: Any existing C88 or C89 definition that must remain byte-for-byte unchanged.
 
 ## Success Criteria *(mandatory)*
 
@@ -113,7 +113,7 @@ As an operator using Camunda 8.7, 8.8, or 8.9, I want native C810 definitions to
 - **SC-003**: 100% of cross-process references in the C810 family resolve to existing C810 definitions, with zero C89 references remaining.
 - **SC-004**: All eight C810 definitions are behaviorally and structurally equivalent to their C89 counterparts after permitted version-specific differences are normalized.
 - **SC-005**: Camunda 8.10 embedded listing, export, deployment, and smoke selection use C810 definitions in 100% of covered scenarios and select zero C89 definitions.
-- **SC-006**: Existing C87, C88, and C89 embedded definitions have zero content changes and retain all established selection behavior.
+- **SC-006**: Existing C88 and C89 embedded definitions have zero content changes and retain all established selection behavior.
 - **SC-007**: Unknown-version selection fails in 100% of covered cases without falling back to C810 or another known family.
 - **SC-008**: Review finds zero new live Camunda 8.10 integration assets in the feature changes.
 - **SC-009**: All affected issue #273 artifacts consistently describe native C810 definitions, leaving zero active requirements for V810-to-C89 production-fixture reuse.
@@ -136,7 +136,7 @@ As an operator using Camunda 8.7, 8.8, or 8.9, I want native C810 definitions to
 ### Out of Scope
 
 - New Camunda 8.10-specific workflow behavior.
-- Changes to existing C87, C88, or C89 definitions.
+- Changes to existing C88 or C89 definitions.
 - Live Camunda 8.10 integration profiles, environments, scripts, build targets, or real-state scenarios.
 - Client-generation modernization.
 - Camunda 8.11 support.

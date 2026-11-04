@@ -339,6 +339,7 @@ func TestService_Deploy_DefaultsEmptyTenantToDefaultTenant(t *testing.T) {
 // service always asks Camunda to delete history through the unified API.
 func TestService_Delete(t *testing.T) {
 	ctx := context.Background()
+	operationType := camundav810.BatchOperationTypeEnumDELETEPROCESSDEFINITION
 
 	t.Run("DefaultDeletesHistoryAndWaitsForBatchCompletion", func(t *testing.T) {
 		svc := newTestService(t, "tenant", &mockResourceClient{
@@ -367,7 +368,7 @@ func TestService_Delete(t *testing.T) {
 					HTTPResponse: newHTTPResponse(http.MethodGet, "https://camunda.local/v2/batch-operations/batch-1", http.StatusOK, "200 OK"),
 					JSON200: &camundav810.BatchOperationResponse{
 						BatchOperationKey:  "batch-1",
-						BatchOperationType: camundav810.BatchOperationTypeEnumDELETEPROCESSDEFINITION,
+						BatchOperationType: &operationType,
 						State:              camundav810.BatchOperationStateEnumCOMPLETED,
 					},
 				}, nil
@@ -427,7 +428,7 @@ func TestService_Delete(t *testing.T) {
 					HTTPResponse: newHTTPResponse(http.MethodGet, "https://camunda.local/v2/batch-operations/batch-1", http.StatusOK, "200 OK"),
 					JSON200: &camundav810.BatchOperationResponse{
 						BatchOperationKey:  "batch-1",
-						BatchOperationType: camundav810.BatchOperationTypeEnumDELETEPROCESSDEFINITION,
+						BatchOperationType: &operationType,
 						State:              camundav810.BatchOperationStateEnumCOMPLETED,
 					},
 				}, nil
@@ -452,7 +453,7 @@ func TestService_Delete(t *testing.T) {
 		assert.Equal(t, string(camundav810.BatchOperationStateEnumCOMPLETED), resp.BatchState)
 	})
 
-	t.Run("DefaultAcceptsDeferredHistoryWithoutBatch", func(t *testing.T) {
+	t.Run("AcceptsDrainingWithoutHistoryBatch", func(t *testing.T) {
 		svc := newTestService(t, "tenant", &mockResourceClient{
 			createDeploymentWithBodyWithResponse: func(ctx context.Context, contentType string, body io.Reader, reqEditors ...camundav810.RequestEditorFn) (*camundav810.CreateDeploymentResponse, error) {
 				t.Fatalf("unexpected deploy call")
@@ -487,10 +488,33 @@ func TestService_Delete(t *testing.T) {
 
 		require.NoError(t, err)
 		assert.True(t, resp.Ok)
+		assert.Contains(t, resp.Status, "deletion accepted")
 		assert.True(t, resp.DeleteHistory)
 		assert.Empty(t, resp.BatchOperationKey)
 		assert.Empty(t, resp.BatchState)
 	})
+}
+
+func TestService_DeleteRejectsMalformedPayload(t *testing.T) {
+	for name, payload := range map[string]*camundav810.DeleteResourceResponse{
+		"missing":        nil,
+		"empty":          {},
+		"wrong resource": {ResourceKey: "other"},
+		"empty batch":    {ResourceKey: "resource-1", BatchOperation: &camundav810.BatchOperationCreatedResult{}},
+	} {
+		t.Run(name, func(t *testing.T) {
+			svc := newTestService(t, "tenant", &mockResourceClient{
+				deleteResourceWithResponse: func(context.Context, string, camundav810.DeleteResourceOpJSONRequestBody, ...camundav810.RequestEditorFn) (*camundav810.DeleteResourceOpResponse, error) {
+					return &camundav810.DeleteResourceOpResponse{
+						HTTPResponse: newHTTPResponse(http.MethodPost, "https://camunda.local/v2/resources/resource-1/deletion", http.StatusOK, "200 OK"),
+						JSON200:      payload,
+					}, nil
+				},
+			}, &mockProcessDefinitionClient{})
+			_, err := svc.Delete(context.Background(), "resource-1")
+			require.ErrorIs(t, err, d.ErrMalformedResponse)
+		})
+	}
 }
 
 // TestService_Get verifies v8.10 resource mapping and decoded-empty protection.

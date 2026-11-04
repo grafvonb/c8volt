@@ -4,7 +4,6 @@
 
 Every current maintainer inventory that claims to enumerate supported Camunda runtime adapters or generated contracts must include:
 
-- V87 / `v87`
 - V88 / `v88`
 - V89 / `v89`
 - V810 / `v810`
@@ -57,7 +56,6 @@ A non-match is not accepted as compatible. Issue #277 does not convert these dia
 | Operator template and help | Authored template and command metadata | Correct source, test rendered output |
 | Operator overview | README, authored CLI landing page, and version metadata | Change only when a concrete mismatch exists |
 | Generated documentation | Existing documentation workflow | Never hand-edit; regenerate from source |
-| Live integration guidance | Existing stable integration matrix | Preserve V87–V89 scope |
 | Completed implementation history | #273 tasks, progress, and Ralph memory | Preserve with supersession context |
 
 ## Protected Boundaries
@@ -68,6 +66,6 @@ Except for the intentional omitted-version promotion from V88 to V89, the refine
 - explicit runtime service selection and version-specific behavior;
 - configuration normalization rules other than the V89 fallback;
 - generated Camunda clients and provenance;
-- C87, C88, C89, and C810 BPMN definitions;
+- C88, C89, and C810 BPMN definitions;
 - live integration profiles, scripts, targets, and scenarios;
 - the active Camunda 8.10 source baseline.

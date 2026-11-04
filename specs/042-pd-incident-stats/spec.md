@@ -16,7 +16,6 @@
 ### Session 2026-04-21
 
 - Q: What should the displayed "incident count" represent for `get pd --stat`? → A: Count process instances with at least one active incident.
-- Q: How should `get pd --stat` render unsupported incident statistics on versions like 8.7? → A: Omit the `in:` field entirely.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -46,7 +45,6 @@ As a maintainer, I want unsupported platform versions to omit the incident field
 
 **Acceptance Scenarios**:
 
-1. **Given** version 8.7 cannot provide a reliable count of process instances with active incidents for a process definition, **When** the operator runs `get pd --stat`, **Then** the output omits the `in:` field rather than showing a potentially wrong number or unsupported placeholder.
 2. **Given** supported and unsupported platform versions are both exercised in tests, **When** maintainers compare the outputs, **Then** only the supported versions expose the `in:` field and unsupported versions omit it.
 
 ---
@@ -81,7 +79,6 @@ As a maintainer, I want automated coverage for the version-specific incident-sta
 - **FR-002**: The system MUST keep the existing `get pd --stat` output format unchanged except for including the `in:` field only when a reliable incident-bearing process-instance count is available.
 - **FR-003**: For platform version 8.8, the system MUST report the current number of process instances with at least one active incident for process definitions when the command is run with `--stat`.
 - **FR-004**: For platform version 8.9, the system MUST report the current number of process instances with at least one active incident for process definitions when the command is run with `--stat`.
-- **FR-005**: For platform version 8.7, if the process-instance count cannot be derived reliably, the system MUST omit the `in:` field rather than displaying an inferred or incorrect number.
 - **FR-006**: The reported incident value for supported versions MUST stay consistent with the reliable incident-related data available for the same process definition at the time of the command and must count each affected process instance at most once.
 - **FR-007**: The system MUST preserve the existing values and formatting for the other reported process-definition statistics fields when the `in:` field is present or omitted.
 - **FR-008**: The system MUST handle process definitions with zero process instances that have active incidents on supported versions without omitting the `in:` field.
@@ -101,14 +98,12 @@ As a maintainer, I want automated coverage for the version-specific incident-sta
 ### Measurable Outcomes
 
 - **SC-001**: On platform versions 8.8 and 8.9, `get pd --stat` includes an `in:` field showing the current number of process instances with active incidents for a process definition.
-- **SC-002**: On platform version 8.7, `get pd --stat` omits the `in:` field unless the affected-process-instance count can be derived reliably.
 - **SC-003**: For supported versions, the displayed incident value matches the reliable incident-related data returned for the same process definition in automated test coverage, with each affected process instance counted at most once.
 - **SC-004**: Existing non-incident statistics fields in `get pd --stat` remain unchanged in output format and meaning after the feature is implemented, regardless of whether the `in:` field is present.
 - **SC-005**: Automated tests fail if a future change causes supported versions to lose the incident-bearing process-instance count or unsupported versions to display guessed counts.
 
 ## Assumptions
 
-- Platform versions 8.8 and 8.9 expose enough reliable incident-related data to support this feature, while version 8.7 may not.
 - The `in:` field in `get pd --stat` is intended to represent the number of process instances that currently have at least one active incident for the process definition at command execution time and should be omitted when unsupported.
 - Existing command formatting and surrounding statistics semantics should remain stable unless the issue explicitly requires otherwise.
 - The repository already has an established place to add version-focused tests for process-definition statistics behavior.

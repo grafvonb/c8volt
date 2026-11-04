@@ -19,11 +19,32 @@ import (
 )
 
 type mockUserTaskClient struct {
-	getUserTaskWithResponse func(context.Context, camundav810.UserTaskKey, ...camundav810.RequestEditorFn) (*camundav810.GetUserTaskResponse, error)
+	getUserTaskWithResponse                      func(context.Context, camundav810.UserTaskKey, ...camundav810.RequestEditorFn) (*camundav810.GetUserTaskResponse, error)
+	searchUserTasksWithResponse                  func(context.Context, camundav810.SearchUserTasksJSONRequestBody, ...camundav810.RequestEditorFn) (*camundav810.SearchUserTasksResponse, error)
+	searchUserTaskEffectiveVariablesWithResponse func(context.Context, camundav810.UserTaskKey, *camundav810.SearchUserTaskEffectiveVariablesParams, camundav810.SearchUserTaskEffectiveVariablesJSONRequestBody, ...camundav810.RequestEditorFn) (*camundav810.SearchUserTaskEffectiveVariablesResponse, error)
 }
 
+// GetUserTaskWithResponse delegates the generated task lookup to the configured test callback.
 func (m *mockUserTaskClient) GetUserTaskWithResponse(ctx context.Context, key camundav810.UserTaskKey, reqEditors ...camundav810.RequestEditorFn) (*camundav810.GetUserTaskResponse, error) {
 	return m.getUserTaskWithResponse(ctx, key, reqEditors...)
+}
+
+// SearchUserTasksWithResponse delegates native search requests to the test-specific callback.
+func (m *mockUserTaskClient) SearchUserTasksWithResponse(ctx context.Context, body camundav810.SearchUserTasksJSONRequestBody, reqEditors ...camundav810.RequestEditorFn) (*camundav810.SearchUserTasksResponse, error) {
+	return m.searchUserTasksWithResponse(ctx, body, reqEditors...)
+}
+
+// SearchUserTaskEffectiveVariablesWithResponse delegates effective-variable requests to the test-specific callback.
+func (m *mockUserTaskClient) SearchUserTaskEffectiveVariablesWithResponse(ctx context.Context, key camundav810.UserTaskKey, params *camundav810.SearchUserTaskEffectiveVariablesParams, body camundav810.SearchUserTaskEffectiveVariablesJSONRequestBody, reqEditors ...camundav810.RequestEditorFn) (*camundav810.SearchUserTaskEffectiveVariablesResponse, error) {
+	if m.searchUserTaskEffectiveVariablesWithResponse == nil {
+		panic("unexpected SearchUserTaskEffectiveVariablesWithResponse call")
+	}
+	return m.searchUserTaskEffectiveVariablesWithResponse(ctx, key, params, body, reqEditors...)
+}
+
+// CompleteUserTaskWithResponse rejects mutation from existing read-only fixtures.
+func (m *mockUserTaskClient) CompleteUserTaskWithResponse(context.Context, camundav810.UserTaskKey, camundav810.CompleteUserTaskJSONRequestBody, ...camundav810.RequestEditorFn) (*camundav810.CompleteUserTaskResponse, error) {
+	panic("unexpected CompleteUserTaskWithResponse call")
 }
 
 var _ v810.GenUserTaskClientCamunda = (*mockUserTaskClient)(nil)
@@ -116,6 +137,29 @@ func TestService_GetUserTask_ReturnsNotFoundForTenantMismatch(t *testing.T) {
 	require.NotContains(t, err.Error(), "fallback")
 }
 
+// TestService_GetUserTask_RejectsIdentityMismatch pins V810's native response-key validation before resolver use.
+func TestService_GetUserTask_RejectsIdentityMismatch(t *testing.T) {
+	svc := newTestService(t, &mockUserTaskClient{
+		getUserTaskWithResponse: func(_ context.Context, key camundav810.UserTaskKey, _ ...camundav810.RequestEditorFn) (*camundav810.GetUserTaskResponse, error) {
+			require.Equal(t, camundav810.UserTaskKey("2251799815391233"), key)
+			return &camundav810.GetUserTaskResponse{
+				HTTPResponse: newHTTPResponse(http.MethodGet, "https://camunda.local/v2/user-tasks/2251799815391233", http.StatusOK, "200 OK"),
+				JSON200: &camundav810.UserTaskResult{
+					UserTaskKey:        "2251799815399999",
+					ProcessInstanceKey: "2251799813711967",
+					TenantId:           "tenant-a",
+				},
+			}, nil
+		},
+	})
+
+	_, err := svc.GetUserTask(context.Background(), "2251799815391233")
+
+	require.Error(t, err)
+	require.ErrorIs(t, err, d.ErrMalformedResponse)
+	require.Contains(t, err.Error(), "user task 2251799815391233 returned mismatched task 2251799815399999")
+}
+
 // TestService_GetUserTask_RejectsMissingProcessInstanceKey protects command callers from rendering incomplete lookup results.
 func TestService_GetUserTask_RejectsMissingProcessInstanceKey(t *testing.T) {
 	svc := newTestService(t, &mockUserTaskClient{
@@ -137,6 +181,8 @@ func TestService_GetUserTask_RejectsMissingProcessInstanceKey(t *testing.T) {
 	require.Contains(t, err.Error(), "user task 2251799815391233 has no process instance key")
 }
 
+// newTestService creates a quiet service with an injected Camunda client and an optional tenant
+// override.
 func newTestService(t *testing.T, client *mockUserTaskClient, tenantID ...string) *v810.Service {
 	t.Helper()
 
@@ -154,6 +200,7 @@ func newTestService(t *testing.T, client *mockUserTaskClient, tenantID ...string
 	return svc
 }
 
+// testConfig provides a Camunda base URL for constructing services with injected test clients.
 func testConfig() *config.Config {
 	return &config.Config{
 		APIs: config.APIs{
@@ -164,6 +211,8 @@ func testConfig() *config.Config {
 	}
 }
 
+// newHTTPResponse builds response status and request metadata for adapter tests and panics on an
+// invalid fixture URL.
 func newHTTPResponse(method, rawURL string, statusCode int, status string) *http.Response {
 	u, err := url.Parse(rawURL)
 	if err != nil {
@@ -177,4 +226,14 @@ func newHTTPResponse(method, rawURL string, statusCode int, status string) *http
 			URL:    u,
 		},
 	}
+}
+
+// AssignUserTaskWithResponse rejects unexpected assignment in this unrelated fixture.
+func (m *mockUserTaskClient) AssignUserTaskWithResponse(context.Context, camundav810.UserTaskKey, camundav810.AssignUserTaskJSONRequestBody, ...camundav810.RequestEditorFn) (*camundav810.AssignUserTaskResponse, error) {
+	panic("unexpected user-task assignment")
+}
+
+// UnassignUserTaskWithResponse rejects unexpected removal in this unrelated fixture.
+func (m *mockUserTaskClient) UnassignUserTaskWithResponse(context.Context, camundav810.UserTaskKey, ...camundav810.RequestEditorFn) (*camundav810.UnassignUserTaskResponse, error) {
+	panic("unexpected user-task unassignment")
 }

@@ -7,7 +7,6 @@
 - `--count` overrides the shared config for the current command only.
 - `--auto-confirm` continues across additional pages without prompting; otherwise the CLI prompts between pages.
 - Direct `--key` flows for `cancel process-instance` and `delete process-instance` still bypass paging.
-- Camunda `8.8` uses native page metadata for overflow detection. Camunda `8.7` uses the Operate fallback and stops with a warning when overflow remains indeterminate.
 
 ## Verification Focus
 
@@ -15,7 +14,6 @@
 2. Treat [`README.md`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/README.md) as the source for user-facing guidance and regenerate `docs/cli/` from Cobra metadata instead of editing generated docs by hand.
 3. Keep output aligned across `get`, `cancel`, and `delete`: page size used, current-page count, cumulative count, and continuation or warning state should stay in the same operator-facing shape.
 4. Preserve the non-error partial-completion path when a user declines continuation after one or more pages.
-5. Preserve the warning-stop path for Camunda `8.7` full pages without a trustworthy total.
 
 ## Suggested Verification Commands
 

@@ -416,7 +416,7 @@ func formatOpsSemanticProgressCompletion(scope opsSemanticProgressScope, aggrega
 	}
 	verb := opsSemanticProgressLifecycleVerb(scope, completion.Disposition)
 	line := fmt.Sprintf("%s %s", identity, strings.TrimSpace(verb))
-	if detail := strings.TrimSpace(completion.FailureDetail); detail != "" && completion.Disposition == ops.CompletionDispositionFailed {
+	if detail := strings.TrimSpace(completion.FailureDetail); detail != "" && (completion.Disposition == ops.CompletionDispositionFailed || completion.Disposition == ops.CompletionDispositionSkipped) {
 		line += ": " + detail
 	}
 	return line + " (" + formatOpsSemanticProgressAggregate(scope, aggregate) + ")"
@@ -436,6 +436,11 @@ func opsSemanticProgressLifecycleVerb(scope opsSemanticProgressScope, dispositio
 			return verb
 		}
 		return "failed"
+	case ops.CompletionDispositionSkipped:
+		if verb := strings.TrimSpace(scope.SkippedVerb); verb != "" {
+			return verb
+		}
+		return "skipped"
 	default:
 		if verb := strings.TrimSpace(scope.ConfirmedVerb); verb != "" {
 			return verb

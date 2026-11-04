@@ -216,7 +216,7 @@ Started: 2026-09-12 19:35:54
 ## Iteration 12 - 2026-09-12 21:56
 **Work Unit**: US3 Interpret failures and partial evidence accurately (T024 retry and client wiring)
 **Tasks Completed**:
-- [x] T024: Added retry/redirect boundary regressions and supplied-client wiring coverage across Camunda 8.7-8.10, Operate and Tasklist paths.
+- [x] T024: Added retry/redirect boundary regressions and supplied-client wiring coverage across Camunda 8.8–8.10, Operate and Tasklist paths.
 **Tasks Remaining in Work Unit**: 3 US3 tasks (T026-T028)
 **Commit**: This work-unit commit
 **Files Changed**:

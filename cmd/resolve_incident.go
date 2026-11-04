@@ -19,10 +19,8 @@ var resolveIncidentCmd = &cobra.Command{
 	Long: `Resolve incidents by key.
 
 Provide repeated --key values or newline-separated keys from stdin with '-'. Each unique incident is resolved once. By default c8volt waits until it is no longer active.`,
-	Example: `  ./c8volt resolve incident --key <incident-key>
-  ./c8volt resolve incident --key <incident-key> --key <another-incident-key>
-  printf '%s\n' "$INCIDENT_KEY_A" "$INCIDENT_KEY_B" | ./c8volt resolve incident -
-  printf '%s\n' "$INCIDENT_KEY_A" | ./c8volt resolve incident --key "$INCIDENT_KEY_B" -`,
+	Example: `  c8volt resolve incident --key <incident-key>
+  c8volt resolve incident --key <incident-key> --key <another-incident-key>`,
 	Aliases: []string{"inc"},
 	Args: func(cmd *cobra.Command, args []string) error {
 		return validateOptionalDashArg(args)
@@ -71,7 +69,7 @@ func init() {
 	fs.StringSliceVarP(&flagResolveIncidentKeys, "key", "k", nil, "incident key(s) to resolve; repeat or combine with stdin '-'")
 	fs.BoolVar(&flagDryRun, "dry-run", false, "preview incident resolutions without submitting mutation")
 	fs.BoolVar(&flagNoWait, "no-wait", false, "return after the resolution request is accepted without incident confirmation")
-	fs.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers when resolving multiple incidents (default: min(count, 2*GOMAXPROCS, 32))")
+	fs.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers; omit for an automatic limit")
 	fs.BoolVar(&flagNoWorkerLimit, "no-worker-limit", false, "use all queued jobs as workers when --workers is unset")
 	fs.BoolVar(&flagFailFast, "fail-fast", false, "stop scheduling new incident resolutions after the first error")
 

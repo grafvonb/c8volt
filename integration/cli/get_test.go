@@ -21,6 +21,7 @@ func TestGetFamily(t *testing.T) {
 		"get process-instance",
 		"get resource",
 		"get tenant",
+		"get user-task",
 	})
 	runBehavioralCoverageScenarios(t, "get")
 }

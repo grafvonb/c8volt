@@ -10,27 +10,21 @@ Update a job or complete selected jobs
 
 ### Synopsis
 
-Update a Camunda job by key on Camunda 8.8 or newer.
+Update job retries or timeout, or submit worker outcomes.
 
-Supports retry and timeout updates and worker outcomes. Explicit --key uses backend authorization without tenant filtering.
+Use --set-retries for retries and --set-timeout for the job timeout.
+Timeout updates require an activated job. Inherited --timeout controls HTTP
+requests only. Use --complete to complete a job, --fail with --set-retries to
+fail it, or --throw-bpmn-error with --set-error-code to report a BPMN error.
+Add --set-error-message for context.
 
-For bulk --complete, repeat --key, supply comma-separated keys, or use one positional '-' to read newline-separated keys. Flags precede stdin; blank lines are ignored, invalid or empty key tokens fail, and all input is validated before mutation. Duplicate keys are completed once. Empty stdin succeeds without mutation. Explicit keys retain backend authorization across tenants and show actual tenant context. One scalar key preserves the existing single-job result; every collection keeps the bulk result even after deduplication.
+Completion accepts explicit keys or search filters. --retries is an exact
+completion filter, including zero; it never writes retries. The selection is
+frozen before confirmation. Completing a listener acknowledges its work without
+executing its business logic. Other actions require one key.
 
-For selector --complete, omit --key and supply one or more AND predicates: --state, --type, --pi-key, --element-instance-key, --element-id, --worker, --retries, --kind, or --listener-event-type. Explicit --retries 0 is an exact selector in this mode; keyed --complete still rejects --retries. Other update modes require one scalar key and reject collections and selectors.
-
-Selector discovery uses the configured tenant; --tenant overrides it, and empty --tenant or --all-tenants searches all accessible tenants. --batch-size controls each page; --limit caps unique selected jobs (0 means uncapped). Controls alone do not select jobs. Explicit keys cannot combine with predicates or search controls.
-
-The complete selection is frozen before one confirmation. Incomplete discovery submits nothing. Empty results succeed without confirmation or mutation. --workers bounds concurrency; --fail-fast stops new work after an unsatisfied result. New sequential listener jobs require another invocation.
-
-Completing a listener job acknowledges its work without executing its business logic. Accepted completion skips independent confirmation and does not verify process termination. Bulk requests are not automatically replayed; ambiguous outcomes use bounded observation, with at most one read under --no-wait. No retries, incidents or processes are repaired implicitly.
-
-Bulk dry-run previews show count, filters or explicit selection and tenant scope; --verbose lists candidate context. JSON retains all preview candidates or ordered execution outcomes, including partial failures. Quiet suppresses prose while preserving requested JSON. A later selector invocation discovers a fresh selection.
-
-Bulk previews, summaries and verbose rows use the configured logger at INFO level. Bulk failures produce one compact logged error after the result summary, grouping repeated reasons. Quiet retains that error. Use --verbose for per-job outcomes and --debug or configured debug logging for HTTP diagnostics. JSON preserves the original failure evidence and partial results in one envelope.
-
-c8volt plans the update and asks for confirmation before material interactive mutations. Retry updates are verified by reading the job; timeout updates and worker outcomes return after acceptance without waiting for confirmation.
-
-Use --dry-run to inspect the plan without mutation. With --json, mutations require --dry-run, --auto-confirm, or --automation; --json cannot be combined with --verbose.
+Use --dry-run to review the plan. Retry updates are verified; timeout updates
+and worker outcomes return after acceptance. JSON retains partial failures.
 
 ```
 c8volt update job [-] [flags]
@@ -39,18 +33,9 @@ c8volt update job [-] [flags]
 ### Examples
 
 ```
-  ./c8volt update job --key <job-key> --retries 3 --dry-run
-  ./c8volt --tenant tenant-a update job --key <job-key> --retries 3 --dry-run
-  ./c8volt update job --key <job-key> --retries 3 --auto-confirm
-  ./c8volt update job --key <job-key> --timeout 5m --auto-confirm
-  ./c8volt update job --key <job-key> --fail --retries 0 --message "worker unavailable" --dry-run
-  ./c8volt update job --key <job-key> --throw-bpmn-error PAYMENT_DECLINED --message "card declined" --dry-run
-  ./c8volt update job --key <job-key> --complete --vars '{"approved":true}' --dry-run
-  ./c8volt --json update job --key <job-key> --retries 3 --dry-run
-  ./c8volt update job --kind TASK_LISTENER --listener-event-type CANCELING --state CREATED --type removeTaskData --complete --dry-run --verbose
-  ./c8volt update job --type removeTaskData --retries 0 --limit 1000 --batch-size 100 --complete --auto-confirm --json
-  ./c8volt update job --key 2251799870796844,2251799870796848 --key 2251799870796849 --complete --dry-run
-  ./c8volt update job - --complete --auto-confirm --json < reviewed-job-keys.txt
+  c8volt update job --key <job-key> --set-retries 3 --dry-run
+  c8volt update job --key <job-key> --set-retries 3
+  c8volt update job --key <job-key> --complete --set-vars '{"approved":true}'
 ```
 
 ### Options
@@ -68,37 +53,43 @@ c8volt update job [-] [flags]
       --kind string                   job kind selector for --complete; case-insensitive
   -l, --limit int32                   maximum unique selector completion targets; 0 means uncapped
       --listener-event-type string    listener event selector for --complete; case-insensitive
-      --message string                operator message for worker outcome modes
       --no-wait                       skip retry confirmation; bulk completion permits one reconciliation read without polling
       --no-worker-limit               use all queued jobs as workers when --workers is unset
       --pi-key string                 process instance key selector for --complete
-      --retries int32                 retry count to set, remaining retries for --fail, or exact selector with keyless --complete (including 0)
-      --retry-backoff string          duration before a failed job becomes retryable, for example 60s, 5m, or 1h
+      --retries int32                 exact retry count selector with keyless --complete (including 0)
+      --set-bid string                assign the first business ID atomically with --complete (only c8.10+)
+      --set-error-code string         BPMN error code to submit with --throw-bpmn-error
+      --set-error-message string      operator message for worker outcome modes
+      --set-retries int32             retry count to set or remaining retries for --fail (including 0)
+      --set-retry-backoff string      duration before a failed job becomes retryable, for example 60s, 5m, or 1h
+      --set-timeout string            timeout duration to submit for the job, for example 60s, 5m, or 1h
+      --set-vars string               JSON object with variables for BPMN error or completion outcomes
   -s, --state string                  job state selector for --complete; case-insensitive
-      --throw-bpmn-error string       BPMN error code to throw for the job
-      --timeout string                timeout duration to submit for the job, for example 60s, 5m, or 1h
+      --throw-bpmn-error              throw a BPMN error; requires --set-error-code
       --type string                   job type selector for --complete
-      --vars string                   JSON object with variables for BPMN error or completion outcomes
       --worker string                 worker name selector for --complete
-  -w, --workers int                   maximum concurrent completion workers (default: min(count, 2*GOMAXPROCS, 32))
+  -w, --workers int                   maximum concurrent completion workers; omit for an automatic limit
 ```
 
 ### Options inherited from parent commands
 
 ```
-      --all-tenants        clear configured tenant filtering and search all tenants visible to the authenticated user; mutually exclusive with --tenant
-  -y, --auto-confirm       auto-confirm prompts for non-interactive use
-      --automation         enable non-interactive mode for commands that explicitly support it
-      --config string      path to config file
-      --debug              enable debug logging
-  -j, --json               output as JSON (where applicable)
-      --keys-only          output keys only (where applicable)
-      --log-level string   log level (debug, info, warn, error) (default "info")
-      --no-indicator       disable transient terminal activity indicators
-      --profile string     config active profile name to use (e.g. dev, prod)
-  -q, --quiet              suppress output except errors
-      --tenant string      tenant ID for discovery/search, selection, create, deploy, and run flows; explicit empty values can clear configured discovery filters, and explicit keys/IDs remain backend-authorized
-  -v, --verbose            show additional output
+      --all-tenants          search all accessible tenants; cannot combine with --tenant
+  -y, --auto-confirm         auto-confirm prompts for non-interactive use
+      --automation           enable non-interactive mode for commands that explicitly support it
+      --config string        path to config file
+      --debug                enable debug logging
+  -j, --json                 output as JSON (where applicable)
+      --keys-only            output keys only (where applicable)
+      --log-level string     log level (debug, info, warn, error) (default "info")
+      --no-indicator         disable transient terminal activity indicators
+      --no-version-check     skip the automatic advisory gateway version check
+      --profile string       config active profile name to use (e.g. dev, prod)
+  -q, --quiet                suppress output except errors
+      --request-rate float   maximum shared request starts per second (fractions allowed; 0 disables pacing)
+      --tenant string        tenant for discovery and creation; explicit keys use backend authorization
+      --timeout duration     HTTP request timeout (default 30s)
+  -v, --verbose              show additional output
 ```
 
 ### SEE ALSO

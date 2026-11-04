@@ -46,8 +46,15 @@ func bootstrapLocalPrecondition(err error) error {
 	return ferrors.WrapClass(ferrors.ErrLocalPrecondition, err)
 }
 
+// handleBootstrapError routes prepared migration failures through the existing
+// command renderer once; unrelated bootstrap failures retain their fallback.
 func handleBootstrapError(cmd *cobra.Command, err error) {
 	log, noErrCodes := bootstrapFailureContext(cmd)
+	var migration *migrationReportingError
+	if errors.As(err, &migration) {
+		handleCommandErrorWithMode(cmd, log, migration.noErrCodes, migration.cause, migration.mode)
+		return
+	}
 	ferrors.HandleAndExit(log, noErrCodes, normalizeBootstrapError(err))
 }
 

@@ -13,6 +13,9 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
+
+	"github.com/grafvonb/c8volt/integration/internal/validation"
 )
 
 func TestVolumeDeployEmbedRunFamily(t *testing.T) {
@@ -63,7 +66,7 @@ func runVolumeDeployEmbedRunScenarios(t *testing.T, profile integrationProfile, 
 
 	files, record, err := discoverEmbeddedFixtureFiles(t, profile)
 	record.CommandPath = "embed list"
-	record.CoveredFlags = []string{"details"}
+	record.CoveredFlags = []string{"with-paths"}
 	record.OutputMode = "json"
 	records = append(records, record)
 	if err != nil {
@@ -200,6 +203,7 @@ func runVolumeDeployProcessDefinitionScenarios(t *testing.T, profile integration
 	return confirmedDeployments, records, nil
 }
 
+// runVolumeRunProcessInstanceScenarios records creation behavior across output and worker modes.
 func runVolumeRunProcessInstanceScenarios(t *testing.T, profile integrationProfile, selection embeddedFixtureSelection, deployments []seededDeployment, datasetCount int) (volumeDataset, []evidenceRecord, error) {
 	t.Helper()
 	var records []evidenceRecord
@@ -219,12 +223,12 @@ func runVolumeRunProcessInstanceScenarios(t *testing.T, profile integrationProfi
 	humanCount := boundedVolumeRunCount(datasetCount, 4)
 	humanArgs := []string{"run", "pi"}
 	humanArgs = append(humanArgs, runSelectorArgs(selection, deployments)...)
-	humanArgs = append(humanArgs, "--count", fmt.Sprint(humanCount), "--workers", "2", "--vars", runMarkerVars(suite.marker))
+	humanArgs = append(humanArgs, "--count", fmt.Sprint(humanCount), "--workers", "2", "--set-vars", runMarkerVars(suite.marker))
 	humanResult := runC8VoltForProfile(t, profile.Name, "volume-run-pi-human-count-workers", humanArgs...)
 	humanRecord := commandEvidence("run process-instance", "volume-run-pi-human-count-workers", humanResult, volumeOutcomePass)
 	humanRecord.Profile = profile.Name
 	humanRecord.CamundaVersion = profile.ExpectedVersion
-	humanRecord.CoveredFlags = []string{"count", "workers", "vars", "pd-key"}
+	humanRecord.CoveredFlags = []string{"count", "workers", "set-vars", "pd-key"}
 	humanRecord.OutputMode = "one-line"
 	humanRecord.DataOwnership = []string{volumeDataSeeded, "retained"}
 	if err := validateVolumeRunHumanResult(humanResult, humanCount); err != nil {
@@ -232,17 +236,24 @@ func runVolumeRunProcessInstanceScenarios(t *testing.T, profile integrationProfi
 		humanRecord.FailureClass = volumeFailureProduct
 		failures = append(failures, fmt.Sprintf("volume-run-pi-human-count-workers: %v", err))
 	}
-	humanKeys := extractNumericTokensFromOutput(humanResult.Stdout)
+	humanKeys, _ := validation.HumanCreationKeys(humanResult.Stdout, humanResult.Stderr, humanCount)
+	for _, key := range humanKeys {
+		if err := requireProcessInstanceStateEventually(t, profile, key, []string{"ACTIVE"}, 30*time.Second); err != nil {
+			humanRecord.Outcome = volumeOutcomeFail
+			humanRecord.FailureClass = volumeFailureProduct
+			failures = append(failures, err.Error())
+		}
+	}
 	humanRecord.ResourceKeys = humanKeys
 	dataset.PositiveProcessInstanceKeys = append(dataset.PositiveProcessInstanceKeys, humanKeys...)
 	records = append(records, humanRecord)
 
 	keysOnlyCount := boundedVolumeRunCount(datasetCount, 2)
-	keysResult := runC8VoltForProfile(t, profile.Name, "volume-run-pi-keys-only-no-worker-limit", "--keys-only", "run", "pi", "--pd-key", firstString(processDefinitionKeys(deployments)), "--count", fmt.Sprint(keysOnlyCount), "--no-worker-limit", "--vars", runMarkerVars(suite.marker))
+	keysResult := runC8VoltForProfile(t, profile.Name, "volume-run-pi-keys-only-no-worker-limit", "--keys-only", "run", "pi", "--pd-key", firstString(processDefinitionKeys(deployments)), "--count", fmt.Sprint(keysOnlyCount), "--no-worker-limit", "--set-vars", runMarkerVars(suite.marker))
 	keysRecord := commandEvidence("run process-instance", "volume-run-pi-keys-only-no-worker-limit", keysResult, volumeOutcomePass)
 	keysRecord.Profile = profile.Name
 	keysRecord.CamundaVersion = profile.ExpectedVersion
-	keysRecord.CoveredFlags = []string{"pd-key", "count", "no-worker-limit", "vars"}
+	keysRecord.CoveredFlags = []string{"pd-key", "count", "no-worker-limit", "set-vars"}
 	keysRecord.OutputMode = "keys-only"
 	keysRecord.DataOwnership = []string{volumeDataSeeded, "retained"}
 	keys, err := validateVolumeRunKeysOnlyResult(keysResult, keysOnlyCount)
@@ -255,11 +266,11 @@ func runVolumeRunProcessInstanceScenarios(t *testing.T, profile integrationProfi
 	dataset.PositiveProcessInstanceKeys = append(dataset.PositiveProcessInstanceKeys, keys...)
 	records = append(records, keysRecord)
 
-	noWaitResult := runC8VoltForProfile(t, profile.Name, "volume-run-pi-json-no-wait", "--automation", "--json", "run", "pi", "--pd-key", firstString(processDefinitionKeys(deployments)), "--no-wait", "--vars", runMarkerVars(suite.marker))
+	noWaitResult := runC8VoltForProfile(t, profile.Name, "volume-run-pi-json-no-wait", "--automation", "--json", "run", "pi", "--pd-key", firstString(processDefinitionKeys(deployments)), "--no-wait", "--set-vars", runMarkerVars(suite.marker))
 	noWaitRecord := commandEvidence("run process-instance", "volume-run-pi-json-no-wait", noWaitResult, volumeOutcomePass)
 	noWaitRecord.Profile = profile.Name
 	noWaitRecord.CamundaVersion = profile.ExpectedVersion
-	noWaitRecord.CoveredFlags = []string{"pd-key", "no-wait", "vars"}
+	noWaitRecord.CoveredFlags = []string{"pd-key", "no-wait", "set-vars"}
 	noWaitRecord.OutputMode = "json"
 	noWaitRecord.DataOwnership = []string{volumeDataSeeded, "retained"}
 	noWaitKeys, err := validateVolumeRunJSONResult(noWaitResult, 1, "accepted")
@@ -273,11 +284,11 @@ func runVolumeRunProcessInstanceScenarios(t *testing.T, profile integrationProfi
 	records = append(records, noWaitRecord)
 
 	jsonCount := boundedVolumeRunCount(datasetCount, 3)
-	jsonResult := runC8VoltForProfile(t, profile.Name, "volume-run-pi-json-count-fail-fast", "--automation", "--json", "run", "pi", "--bpmn-process-id", selection.BpmnProcessID, "--count", fmt.Sprint(jsonCount), "--fail-fast", "--vars", runMarkerVars(suite.marker))
+	jsonResult := runC8VoltForProfile(t, profile.Name, "volume-run-pi-json-count-fail-fast", "--automation", "--json", "run", "pi", "--bpmn-process-id", selection.BpmnProcessID, "--count", fmt.Sprint(jsonCount), "--fail-fast", "--set-vars", runMarkerVars(suite.marker))
 	jsonRecord := commandEvidence("run process-instance", "volume-run-pi-json-count-fail-fast", jsonResult, volumeOutcomePass)
 	jsonRecord.Profile = profile.Name
 	jsonRecord.CamundaVersion = profile.ExpectedVersion
-	jsonRecord.CoveredFlags = []string{"bpmn-process-id", "count", "fail-fast", "vars"}
+	jsonRecord.CoveredFlags = []string{"bpmn-process-id", "count", "fail-fast", "set-vars"}
 	jsonRecord.OutputMode = "json"
 	jsonRecord.DataOwnership = []string{volumeDataSeeded, volumeDataPreexisting, "retained"}
 	jsonKeys, err := validateVolumeRunJSONResult(jsonResult, jsonCount, "succeeded")
@@ -322,17 +333,11 @@ func validateVolumeRunHumanResult(result commandResult, wantCount int) error {
 	if err := requireVolumeCommandSuccess(result, "run pi human volume"); err != nil {
 		return err
 	}
-	if err := requireFinalOutcomeText(result.Stdout); err != nil {
+	if _, err := validation.HumanCreationKeys(result.Stdout, result.Stderr, wantCount); err != nil {
 		return err
-	}
-	if !strings.Contains(result.Stdout, fmt.Sprintf("found: %d", wantCount)) {
-		return fmt.Errorf("run pi human output missing found count %d: %q", wantCount, compactLogSnippet(result.Stdout, 300))
 	}
 	if err := requireRunPIHumanBulkStderrClean(result.Stderr); err != nil {
 		return err
-	}
-	if got := len(extractNumericTokensFromOutput(result.Stdout)); got < wantCount {
-		return fmt.Errorf("run pi human output exposed %d numeric keys, want at least %d", got, wantCount)
 	}
 	return nil
 }

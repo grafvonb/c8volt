@@ -31,7 +31,7 @@ type processDefinitionDeploySemanticProgress struct {
 }
 
 // newProcessDefinitionDeploySemanticProgress returns a lazy reporter wrapper
-// so v8.7 deployments stay silent when services cannot prove definition keys.
+// so deployments stay silent when services cannot prove definition keys.
 func newProcessDefinitionDeploySemanticProgress(cmd *cobra.Command) *processDefinitionDeploySemanticProgress {
 	return &processDefinitionDeploySemanticProgress{cmd: cmd}
 }

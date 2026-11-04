@@ -150,7 +150,6 @@ As an operator, I want the command help and generated docs to explain the XML op
 
 - Update `cmd/get_test.go`.
 - Update process facade regression coverage in `c8volt/process/` as needed.
-- Update `internal/services/processdefinition/v87/service_test.go`.
 - Update `internal/services/processdefinition/v88/service_test.go`.
 - Run `go test ./cmd -run 'TestGet.*ProcessDefinition.*XML|TestGet.*ProcessDefinition.*Help' -count=1`.
 - Run `go test ./c8volt/process ./internal/services/processdefinition/... -count=1`.

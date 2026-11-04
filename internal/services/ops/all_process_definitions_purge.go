@@ -73,7 +73,7 @@ func (s *Service) PurgeAllProcessDefinitions(ctx context.Context, request d.AllP
 	}
 
 	if !request.DryRun && plan.RequiresForce {
-		err = fmt.Errorf("%w: refusing to delete all-process-definitions purge scope: %d active process instance(s) are affected; no delete request was submitted; use --force to cancel active process instances before delete", d.ErrPrecondition, plan.ActiveProcessInstanceCount)
+		err = fmt.Errorf("%w: refusing to delete all-process-definitions purge scope: %s are affected; no delete request was submitted; use --force to cancel unfinished process instances before delete", d.ErrPrecondition, allProcessDefinitionsPurgeUnfinishedSummary(plan))
 		result.Deletion.Status = d.OpsWorkflowStepStatusBlocked
 		result.Deletion.Errors = []string{err.Error()}
 		return finishAllProcessDefinitionsPurgeResult(result, d.AllProcessDefinitionsPurgeOutcomeFailed, err)
@@ -136,10 +136,17 @@ func buildAllProcessDefinitionsPurgeDeletePlan(ctx context.Context, pdAPI pdsvc.
 	}
 	plan.ActiveProcessInstanceCount = activeProcessInstanceCountForProcessDefinitionPlan(preview.Items)
 	plan.AffectedProcessInstanceCount = affectedProcessInstanceCountForProcessDefinitionPlan(preview.Items)
-	plan.RequiresForce = !force && plan.ActiveProcessInstanceCount > 0
+	plan.SuspendedCountSupported = err == nil && !preview.StateCheckSkipped && len(preview.Items) == len(candidates) && len(candidates) > 0
+	for _, item := range preview.Items {
+		plan.SuspendedProcessInstanceCount += item.SuspendedProcessInstanceCount
+		plan.UnfinishedProcessInstanceCount += item.UnfinishedProcessInstances()
+		plan.SuspendedCountSupported = plan.SuspendedCountSupported && item.SuspendedCountSupported
+	}
+	plan.RequiresForce = !force && plan.UnfinishedProcessInstanceCount > 0
 	return plan, err
 }
 
+// activeProcessInstanceCountForProcessDefinitionPlan preserves the active-only display total.
 func activeProcessInstanceCountForProcessDefinitionPlan(items []d.DeleteProcessDefinitionPlanItem) int64 {
 	var total int64
 	for _, item := range items {
@@ -148,22 +155,30 @@ func activeProcessInstanceCountForProcessDefinitionPlan(items []d.DeleteProcessD
 	return total
 }
 
+// affectedProcessInstanceCountForProcessDefinitionPlan deduplicates known families
+// and unfinished keys, using count fallback only for undiscovered workload.
 func affectedProcessInstanceCountForProcessDefinitionPlan(items []d.DeleteProcessDefinitionPlanItem) int64 {
-	var fallback int64
+	var fallback, unfinished int64
 	var affectedKeys typex.Keys
 	for _, item := range items {
+		unfinished += item.UnfinishedProcessInstances()
 		collected := item.CancellationPlan.Collected.Unique()
 		if len(collected) == 0 {
-			fallback += item.ActiveProcessInstances()
-			continue
+			collected = typex.Keys(item.UnfinishedProcessInstanceKeys).Unique()
+			fallback += max(0, item.UnfinishedProcessInstances()-int64(len(collected)))
 		}
 		affectedKeys = append(affectedKeys, collected...)
 	}
-	total := int64(len(affectedKeys.Unique())) + fallback
-	if active := activeProcessInstanceCountForProcessDefinitionPlan(items); total < active {
-		total = active
+	return max(int64(len(affectedKeys.Unique()))+fallback, unfinished)
+}
+
+// allProcessDefinitionsPurgeUnfinishedSummary keeps authoritative evidence separate from display buckets.
+func allProcessDefinitionsPurgeUnfinishedSummary(plan d.AllProcessDefinitionsPurgeDeletePlan) string {
+	summary := fmt.Sprintf("%d unfinished process instance(s)", plan.UnfinishedProcessInstanceCount)
+	if plan.SuspendedCountSupported {
+		summary += fmt.Sprintf(" (active %d, suspended %d)", plan.ActiveProcessInstanceCount, plan.SuspendedProcessInstanceCount)
 	}
-	return total
+	return summary
 }
 
 // deletionStatusForResourceDeleteResponses maps resource delete reports into workflow step status.

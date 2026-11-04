@@ -38,11 +38,9 @@
 - [x] T009 Add dedicated job facade interface and client shell in `c8volt/job/api.go` and `c8volt/job/client.go`
 - [x] T010 Add shared job service API and compile-time conformance expectations in `internal/services/job/api.go`
 - [x] T011 Add job service factory and factory tests in `internal/services/job/factory.go` and `internal/services/job/factory_test.go`
-- [x] T012 Add v8.7 unsupported job service shell in `internal/services/job/v87/contract.go`, `internal/services/job/v87/service.go`, and `internal/services/job/v87/service_test.go`
 - [x] T013 Add v8.8 and v8.9 job service shells with compile-time conformance in `internal/services/job/v88/contract.go`, `internal/services/job/v88/service.go`, `internal/services/job/v89/contract.go`, and `internal/services/job/v89/service.go`
 - [x] T014 Add command shells for `get job` and `update job` registration in `cmd/get_job.go` and `cmd/update_job.go`
 - [x] T015 Add command contract discovery tests for `get job` and `update job` metadata in `cmd/command_contract_test.go`
-- [x] T016 Run `GOCACHE=/tmp/c8volt-gocache go test ./cmd ./c8volt/job ./internal/domain ./internal/services/job ./internal/services/job/v87 -run 'Test(CommandCapability|Job|Unsupported)' -count=1` and fix foundational regressions
 - [x] T078 Add job update plan models for current job state, requested retries, requested timeout, material-change classification, dry-run status, and mutation-submitted status in `c8volt/job/model.go` or the command-local model file chosen during discovery
 - [x] T079 Add command contract tests proving `update job` exposes `--dry-run`, marks the command state-changing, and keeps mutation metadata automation-compatible in `cmd/command_contract_test.go`
 - [x] T080 Add command validation tests proving `update job --json --verbose` is rejected before lookup or mutation in `cmd/update_job_test.go`
@@ -183,13 +181,10 @@
 - [x] T059 [P] [US6] Add regression test proving `get pi --with-incidents` still exposes `jobKey` unchanged in `cmd/get_processinstance_test.go`
 - [x] T060 [P] [US6] Add regression test proving `update pi --vars` planning, dry-run, and confirmation semantics remain unchanged in `cmd/update_processinstance_test.go`
 - [x] T061 [P] [US6] Add boundary test or static assertion that `internal/services/processinstance/api.go` and `internal/services/incident/api.go` do not expose get job/update/confirmation methods in `cmd/command_contract_test.go` or a focused internal test
-- [x] T062 [P] [US6] Add command/service test proving Camunda 8.7 job update fails unsupported before mutation in `cmd/update_job_test.go` or `internal/services/job/v87/service_test.go`
 
 ### Implementation for User Story 6
 
-- [x] T063 [US6] Ensure job service factory returns unsupported 8.7 behavior and supported 8.8/8.9 behavior in `internal/services/job/factory.go`
 - [x] T064 [US6] Keep command service wiring pointed at `c8volt/job` and `internal/services/job` without adding job methods to process-instance or incident APIs in `cmd/cmd_services.go`, `c8volt/job/client.go`, and `internal/services/job/api.go`
-- [x] T065 [US6] Run `GOCACHE=/tmp/c8volt-gocache go test ./cmd ./c8volt/job ./internal/services/job/v87 ./internal/services/processinstance/v88 ./internal/services/processinstance/v89 -run 'Test(GetProcessInstance.*Incident|UpdateProcessInstance|UpdateJob.*Unsupported|ServiceBoundary)' -count=1` and fix regressions
 
 **Checkpoint**: User Story 6 is independently complete when service boundaries are preserved and related existing commands keep their behavior.
 
@@ -211,8 +206,6 @@
 
 **Purpose**: Final cleanup, formatting, and repository-wide proof.
 
-- [x] T071 [P] Run `gofmt -w cmd/get_job.go cmd/get_job_test.go cmd/update_job.go cmd/update_job_test.go cmd/command_contract_test.go cmd/get_processinstance_test.go cmd/update_processinstance_test.go c8volt/job/api.go c8volt/job/client.go c8volt/job/client_test.go c8volt/job/model.go internal/domain/job.go internal/domain/job_test.go internal/services/job/api.go internal/services/job/factory.go internal/services/job/factory_test.go internal/services/job/waiter/waiter.go internal/services/job/waiter/waiter_test.go internal/services/job/v87/contract.go internal/services/job/v87/service.go internal/services/job/v87/service_test.go internal/services/job/v88/contract.go internal/services/job/v88/convert.go internal/services/job/v88/service.go internal/services/job/v88/service_test.go internal/services/job/v89/contract.go internal/services/job/v89/convert.go internal/services/job/v89/service.go internal/services/job/v89/service_test.go`
-- [x] T072 Run `GOCACHE=/tmp/c8volt-gocache go test ./cmd ./c8volt/job ./internal/domain ./internal/services/job ./internal/services/job/waiter ./internal/services/job/v87 ./internal/services/job/v88 ./internal/services/job/v89 -count=1` and fix regressions
 - [x] T073 Run `make docs-content` and fix documentation generation issues
 - [x] T074 Run `make test` and fix repository validation failures
 - [x] T075 [P] Review [quickstart.md](./quickstart.md) against implemented behavior and update if command examples or validation commands changed

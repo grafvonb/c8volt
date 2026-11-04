@@ -63,7 +63,6 @@ Expected:
 ### Unsupported Version
 
 ```bash
-./c8volt --camunda-version 8.7 get pi --var-exists customerId
 ```
 
 Expected:
@@ -79,7 +78,6 @@ Run targeted tests first:
 go test ./cmd -run 'TestGetProcessInstance|TestCommandContract' -count=1
 go test ./c8volt/process -run 'TestClient_SearchProcessInstances' -count=1
 go test ./internal/services/processinstance/v88 ./internal/services/processinstance/v89 -run 'Test.*Variable' -count=1
-go test ./internal/services/processinstance/v87 -run 'Test.*Unsupported' -count=1
 ```
 
 Refresh docs after command metadata or help changes:

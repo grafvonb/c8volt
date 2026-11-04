@@ -24,7 +24,6 @@ Preserve job creation and end timestamps through the existing versioned service,
 
 **Performance Goals**: Zero additional discovery requests; constant additional formatting work per displayed listener. No new timers, loops, or polling.
 
-**Constraints**: Optional values remain independently nil; preserve instants, configured timestamp formatting, JSON envelopes, listener-array omission/empty distinctions, and recorded deadlines. Camunda v87 job lookup remains unsupported. No generated files are hand-edited.
 
 **Scale/Scope**: Three versioned job converters; two domain structs; four public model/conversion boundaries; three listener row renderers covering four commands; associated tests and command documentation.
 
@@ -65,7 +64,6 @@ specs/321-listener-timestamps/
 internal/domain/job.go
 internal/services/job/{v88,v89,v810}/convert.go
 internal/services/job/{v88,v89,v810}/service_test.go
-internal/services/job/v87/                 # preserve unsupported behavior
 internal/services/element/enrichment.go   # existing attachment; regression coverage
 internal/services/processinstance/enrichment.go
 internal/services/ops/slow_process_analysis.go

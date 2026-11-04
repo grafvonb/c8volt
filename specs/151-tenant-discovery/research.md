@@ -6,17 +6,13 @@ Decision: Support tenant discovery through generated Camunda `v8.8` and `v8.9` c
 
 Rationale: Both `internal/clients/camunda/v88/camunda/client.gen.go` and `internal/clients/camunda/v89/camunda/client.gen.go` expose `SearchTenants`, `GetTenant`, `TenantSearchQueryRequest`, `TenantFilter`, `TenantSearchQuerySortRequest`, and `TenantResult`. `TenantResult` exposes the non-sensitive display fields needed by the issue: `tenantId`, `name`, and `description`.
 
-Shape review 2026-05-01: No field mismatch found. `v8.8` and `v8.9` tenant shapes are aligned for the planned conversion path: `TenantResult.TenantId`, `TenantResult.Name`, nullable `TenantResult.Description`, request-level `TenantFilter` with optional `TenantId` and `Name`, and search sort requests are present in both versions. `v8.7` still has no matching `SearchTenants` or `GetTenant` generated methods.
 
 Alternatives considered: Calling generated clients directly from command code was rejected because the issue explicitly requires service-layer support and the repository consistently hides generated clients behind versioned internal services.
 
 ## Unsupported Version Handling
 
-Decision: Treat `v8.7` tenant discovery as unsupported unless implementation discovers an equivalent generated tenant-management surface during coding.
 
-Rationale: The current `v8.7` generated client search did not show `SearchTenants` or `GetTenant` equivalents, while the repository already has `domain.ErrUnsupported` and facade error mapping for unsupported capability behavior.
 
-Alternatives considered: Returning an empty list for `v8.7` was rejected because it would be misleading. Local fallback discovery through unrelated APIs was rejected because it would not provide the tenant-management contract requested in the issue.
 
 ## Filtering Semantics
 

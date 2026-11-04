@@ -24,14 +24,6 @@
   - Use `SearchIncidents` and deduplicate `ProcessInstanceKey` client-side: rejected as a fallback option only if the grouped endpoint proves unusable, because it increases response volume and pushes aggregation work into repository code.
   - Keep the older `GetProcessDefinitionStatistics` endpoint alone: rejected because its `Incidents` field reflects incident totals at the element aggregation layer, not the clarified process-instance count.
 
-## Decision 4: Keep `v8.7` unsupported for `in:`
-
-- **Decision**: Treat the `v8.7` incident count as unsupported and omit the `in:` segment entirely on that version.
-- **Rationale**: The current `v87` processdefinition service rejects `WithStat` outright through `ensureStatsSupported(...)`, and the repository’s `v87` Operate client/service flow does not expose the newer grouped incident-process-instance statistics seam used by `v8.8` and `v8.9`. The clarified spec prefers omission over a guessed or placeholder count.
-- **Alternatives considered**:
-  - Approximate the value by pulling incidents and deduplicating process-instance keys through a new `v87` side path: rejected because the plan should remain repository-native and low-risk unless a reliable existing surface already exists.
-  - Keep `in:-` as the unsupported marker: rejected because clarification explicitly chose omitting `in:` entirely.
-
 ## Decision 5: The shared process-definition statistics model needs a supported-vs-unsupported distinction
 
 - **Decision**: Extend the shared/domain process-definition statistics representation with `IncidentCountSupported bool` so it can distinguish “incident count is supported and equals zero” from “incident count is unsupported and should not render.”
@@ -61,14 +53,12 @@
 - [`cmd/get_processdefinition.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processdefinition.go) is the sole CLI entry point for `get process-definition`, and `flagGetPDWithStat` controls whether versioned services are enriched through `WithStat`.
 - [`cmd/cmd_views_get.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cmd_views_get.go) owns the visible one-line `get pd` rendering through `oneLinePD(...)`.
 - [`internal/services/processdefinition/v88/service.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processdefinition/v88/service.go) and [`internal/services/processdefinition/v89/service.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processdefinition/v89/service.go) already enrich process definitions with stats when `WithStat` is enabled.
-- [`internal/services/processdefinition/v87/service.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processdefinition/v87/service.go) currently rejects `WithStat`, making `v8.7` the natural unsupported boundary.
 
 ## Setup Inventory: Existing `get process-definition --stat` Flow
 
 - `cmd/get_processdefinition.go` exposes `--stat` through `flagGetPDWithStat`, and `collectOptions()` in `cmd/cmd_options.go` forwards that flag into the facade as `options.WithStat()`.
 - `c8volt/process/client.go` passes facade options straight through to the versioned processdefinition services, so the CLI does not branch on version when stats are requested.
 - `internal/services/processdefinition/v88/service.go` and `internal/services/processdefinition/v89/service.go` both call `retrieveProcessDefinitionStats(...)` from their search and lookup paths when `WithStat` is enabled, which means supported-version incident enrichment belongs inside those service implementations.
-- `internal/services/processdefinition/v87/service.go` blocks `WithStat` in `ensureStatsSupported(...)`, so any unsupported-version behavior change must be implemented deliberately rather than assumed from existing v8.8/v8.9 logic.
 - `cmd/cmd_views_get.go` renders the final one-line output in `oneLinePD(...)` and currently prints a fixed `[ac:%s cp:%s cx:%s in:%s]` segment whenever `Statistics != nil`, using `zeroAsMinus(...)` for all four fields.
 
 ## Setup Inventory: Shared Stats Model Constraint
@@ -80,7 +70,6 @@
 ## Setup Inventory: Existing Regression Anchors
 
 - `internal/services/processdefinition/v88/service_test.go` and `internal/services/processdefinition/v89/service_test.go` already cover `WithStat` enrichment via `GetProcessDefinitionStatisticsWithResponse`, so they are the primary seams for proving the supported-version incident source changes without regressing `ac`, `cp`, or `cx`.
-- `internal/services/processdefinition/v87/service_test.go` already asserts that `WithStat` is unsupported on `v8.7`, so it is the anchor for keeping the unsupported boundary truthful.
 - `cmd/get_test.go` is the command-level regression seam for `get process-definition` help text and rendered output, and `cmd/cmd_views_get.go` contains the concrete `oneLinePD(...)` formatter that those tests need to protect.
 - `c8volt/process/client_test.go` already proves the facade forwards `WithStat`, making it the right place to protect any shared model or conversion changes that affect public process-definition statistics.
 
@@ -94,6 +83,5 @@
 ## Regression Anchors
 
 - [`internal/services/processdefinition/v88/service_test.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processdefinition/v88/service_test.go) and [`internal/services/processdefinition/v89/service_test.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processdefinition/v89/service_test.go) already cover `WithStat` enrichment and are the right place to prove the new incident-bearing process-instance count behavior.
-- [`internal/services/processdefinition/v87/service_test.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processdefinition/v87/service_test.go) already proves `WithStat` is unsupported and should be updated to reflect the final `v8.7` truthfulness contract.
 - [`cmd/get_test.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_test.go) is the natural command-level anchor for `get process-definition --stat` rendering expectations across supported and unsupported versions.
 - [`c8volt/process/client_test.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/c8volt/process/client_test.go) is the right shared-facade regression seam if the public process-definition statistics model changes.

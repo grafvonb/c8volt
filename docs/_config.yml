@@ -1,9 +1,9 @@
 # SPDX-FileCopyrightText: 2026 Adam Bogdan Boczek
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-title: "c8volt Camunda 8 CLI"
-description: "c8volt is an independent Camunda 8 CLI for operations, automation, recovery, cleanup, and workflow-state verification."
-tagline: "Independent Camunda 8 CLI for workflow operations, automation, recovery, cleanup, and verification"
+title: "c8volt — Camunda CLI for operations"
+description: "Independent Camunda CLI for DevOps: deploy BPMN, operate user tasks, repair incidents, clean up process families, and verify outcomes. Supports Camunda 8.10, 8.9 and 8.8."
+tagline: "Camunda CLI for deployment, recovery, cleanup, and verified automation"
 logo: "/logo/c8volt_logo_transparent_w_shadow_400x244_dim.png"
 lang: "en-US"
 

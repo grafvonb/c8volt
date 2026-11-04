@@ -21,7 +21,7 @@
 - [x] T002 [P] Inspect existing expect command tests and helper subprocess patterns in `cmd/expect_test.go` and `cmd/process_api_stub_test.go`
 - [x] T003 [P] Inspect process facade wait APIs and reports in `c8volt/process/api.go`, `c8volt/process/client.go`, `c8volt/process/bulk.go`, and `c8volt/process/model.go`
 - [x] T004 [P] Inspect shared process-instance waiter behavior and tests in `internal/services/processinstance/waiter/waiter.go` and `internal/services/processinstance/waiter/waiter_test.go`
-- [x] T005 [P] Inspect versioned process-instance service contracts and incident mappings in `internal/services/processinstance/api.go`, `internal/services/processinstance/v87/`, `internal/services/processinstance/v88/`, and `internal/services/processinstance/v89/`
+- [x] T005 [P] Inspect versioned process-instance service contracts and incident mappings in `internal/services/processinstance/api.go`, `internal/services/processinstance/v88/`, and `internal/services/processinstance/v89/`
 - [x] T006 [P] Inspect process-instance expectation docs in `README.md`, `docs/index.md`, and `docs/cli/c8volt_expect_process-instance.md`
 
 ---
@@ -36,7 +36,7 @@
 - [x] T008 Add combined process-instance expectation request/report types for optional state and incident expectations in `c8volt/process/model.go`
 - [x] T009 Extend the public process facade API with a combined process-instance expectation wait method in `c8volt/process/api.go`
 - [x] T010 Extend the internal process-instance service API with a combined expectation wait method in `internal/services/processinstance/api.go`
-- [x] T011 Extend versioned service contracts to include the combined expectation wait method in `internal/services/processinstance/v87/contract.go`, `internal/services/processinstance/v88/contract.go`, and `internal/services/processinstance/v89/contract.go`
+- [x] T011 Extend versioned service contracts to include the combined expectation wait method in `internal/services/processinstance/v88/contract.go`, and `internal/services/processinstance/v89/contract.go`
 - [x] T012 Add shared matcher helpers for state and incident expectations in `internal/services/processinstance/waiter/waiter.go`
 - [x] T013 Add command-level flag storage and strict validation scaffolding for `--incident` without changing runtime behavior yet in `cmd/expect_processinstance.go`
 
@@ -60,7 +60,7 @@
 
 - [x] T017 [US1] Implement combined expectation waiting for a single process instance in `internal/services/processinstance/waiter/waiter.go`
 - [x] T018 [US1] Implement combined expectation waiting for multiple process instances with existing worker controls in `internal/services/processinstance/waiter/waiter.go`
-- [x] T019 [US1] Delegate versioned services to the shared combined waiter in `internal/services/processinstance/v87/service.go`, `internal/services/processinstance/v88/service.go`, and `internal/services/processinstance/v89/service.go`
+- [x] T019 [US1] Delegate versioned services to the shared combined waiter in `internal/services/processinstance/v88/service.go`, and `internal/services/processinstance/v89/service.go`
 - [x] T020 [US1] Map combined expectation wait results through the public process facade in `c8volt/process/client.go` and `c8volt/process/bulk.go`
 - [x] T021 [US1] Wire `cmd/expect_processinstance.go` to call the combined expectation wait path when `--incident true` is provided
 - [x] T022 [US1] Run `go test ./cmd ./c8volt/process ./internal/services/processinstance/waiter -run 'TestExpect|TestClient_.*Incident|TestWait.*Incident' -count=1` and fix regressions
@@ -164,8 +164,6 @@
 
 **Purpose**: Final cleanup, validation, and repository-wide proof.
 
-- [x] T050 [P] Run `gofmt -w cmd/expect.go cmd/expect_processinstance.go cmd/expect_test.go cmd/command_contract_test.go cmd/process_api_stub_test.go c8volt/process/api.go c8volt/process/bulk.go c8volt/process/client.go c8volt/process/model.go c8volt/process/client_test.go internal/services/processinstance/api.go internal/services/processinstance/waiter/waiter.go internal/services/processinstance/waiter/waiter_test.go internal/services/processinstance/v87/contract.go internal/services/processinstance/v87/service.go internal/services/processinstance/v88/contract.go internal/services/processinstance/v88/service.go internal/services/processinstance/v89/contract.go internal/services/processinstance/v89/service.go`
-- [x] T051 Run `go test ./cmd ./c8volt/process ./internal/services/processinstance/waiter ./internal/services/processinstance/v87 ./internal/services/processinstance/v88 ./internal/services/processinstance/v89 -count=1` and fix regressions
 - [x] T052 Run `make docs-content` and fix documentation generation issues
 - [x] T053 Run `make test` and fix repository validation failures
 - [x] T054 [P] Review `specs/170-process-incident-expect/quickstart.md` against implemented behavior and update if command examples changed

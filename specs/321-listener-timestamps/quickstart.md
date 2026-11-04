@@ -19,7 +19,6 @@ Extend existing test names or use a `Timestamp`/`Listener` name for new coverage
 
 Expected proofs:
 
-1. v88/v89/v810 mapping retains distinct source times; missing-field fixtures still succeed; v87 unsupported behavior stays intact.
 2. Every public mapping preserves both values independently; absent fields disappear from JSON while non-active deadlines remain.
 3. All four commands obey the [output contract](contracts/listener-timestamps.md). Use command execution fixtures to detect mapping loss, not just constructed view objects.
 4. Row tests cover both listener kinds, completed/activated/canceled/created/failed/blank/unknown states, all creation/end presence combinations, absent deadlines, and mixed rows with error fields. Assert tag order, stable alignment, no fabricated values, and existing offset formatting.
@@ -58,10 +57,8 @@ For planning-only edits, validate Markdown links, required artifacts, whitespace
 
 The targeted checks above were executed successfully during Ralph iterations 2–6, with these explicit additions and narrower selections where the consolidated patterns do not name every regression:
 
-- `go test ./internal/services/job/v87 -run 'TestService_GetJob_Unsupported|TestService_SearchJobs_Unsupported' -count=1 -v` passed, preserving the unsupported-version boundary.
 - `go test ./c8volt/job -run 'TestClient_SearchJobsPage_OmitsMissingTimestamps' -count=1` passed, covering the single-page conversion not uniquely selected by the consolidated job pattern.
 - The element command selection included keyed and search human output, JSON output, help, validation, and the shared timestamp-column tests.
-- The process/walk/slow-analysis command selection included keyed, list, family, children, parent, flat, normal-timeline, full-timeline, JSON, and v8.7 unsupported paths.
 - Original facade and enrichment selections covered populated, requested-empty, and unrequested listener collections, retained deadlines, timestamp transport, and ownership/request assertions. Independent optional-field coverage was distributed across the suite; the listener-enriched analysis test checked the root duration but did not yet compare complete analysis results. The review follow-up below closes those specific gaps.
 - `make docs-content` completed after the command-source guidance changes. Final review confirmed the four generated command references match their source descriptions, README and generated index use the same timestamp definitions, all touched Go files produce an empty `gofmt -d`, and `git diff --check main...HEAD` passes.
 

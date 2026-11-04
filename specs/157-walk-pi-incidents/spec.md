@@ -73,13 +73,11 @@ As an operator in tenant-aware environments, I want walk incident enrichment to 
 
 **Why this priority**: The issue explicitly requires tenant-aware lookup paths and version-specific support boundaries. Safety and clear unsupported behavior matter more than opportunistic fallback behavior.
 
-**Independent Test**: Run facade, command, and service-level tests proving supported versions include tenant filtering and Camunda 8.7 fails with the existing unsupported-capability style when tenant-safe enrichment is unavailable.
 
 **Acceptance Scenarios**:
 
 1. **Given** a tenant is configured, **When** incident enrichment is requested for walked process instances, **Then** incident lookup includes tenant filtering where the Camunda request body supports it.
 2. **Given** Camunda 8.8 or 8.9 is configured, **When** `walk pi --key <key> --with-incidents` is used, **Then** the command uses the generated Camunda process-instance incident search capability.
-3. **Given** Camunda 8.7 cannot provide tenant-safe keyed incident enrichment, **When** `--with-incidents` is used with walk, **Then** the command fails with the repository's existing unsupported-capability style instead of falling back to tenant-unsafe direct incident lookup.
 
 ### Edge Cases
 
@@ -93,7 +91,6 @@ As an operator in tenant-aware environments, I want walk incident enrichment to 
 - JSON output must preserve traversal metadata such as mode, outcome, root key, keys, edges, warnings, and missing ancestors.
 - Incident results with empty error messages must not break human-readable or JSON rendering.
 - Tenant filtering must be included in incident lookup when a tenant is configured and supported.
-- Camunda 8.7 must not use a tenant-unsafe direct incident lookup as a fallback for this feature.
 - Existing default walk output must remain unchanged when `--with-incidents` is omitted.
 
 ## Requirements *(mandatory)*
@@ -117,7 +114,6 @@ As an operator in tenant-aware environments, I want walk incident enrichment to 
 - **FR-015**: Camunda 8.8 and 8.9 support MUST use generated Camunda client incident search APIs that expose the process-instance-key path parameter and return incident messages.
 - **FR-016**: Incident search request bodies MUST avoid redundant `filter.processInstanceKey` values when the process-instance key is already scoped by the generated API path and that redundancy would be rejected by Camunda.
 - **FR-017**: If incident lookup fails for any walked process instance while `--with-incidents` is requested, the command MUST fail instead of rendering partially enriched output.
-- **FR-018**: Camunda 8.7 MUST return the repository's existing unsupported-capability style for `--with-incidents` when tenant-safe keyed incident enrichment cannot be implemented.
 - **FR-019**: The implementation MUST NOT use a tenant-unsafe direct incident lookup as the primary incident enrichment path.
 - **FR-020**: Command help and generated user-facing documentation MUST describe `--with-incidents`, its keyed-walk scope, and its incident-message purpose.
 - **FR-021**: Automated tests MUST cover validation, human-readable output, JSON output, tenant-aware request construction, incident lookup failure, no-incident results, default-output preservation, traversal preservation, key-only rejection, and version-specific unsupported behavior where applicable.
@@ -145,7 +141,6 @@ As an operator in tenant-aware environments, I want walk incident enrichment to 
 - **SC-007**: Automated tests show process instances without returned incidents still render successfully.
 - **SC-008**: Service or facade tests for supported versions verify incident search requests include configured tenant filtering and do not redundantly send a rejected process-instance-key filter.
 - **SC-009**: Automated command or facade tests show incident lookup failure causes the command to fail rather than render partial incident data.
-- **SC-010**: Version-specific tests verify Camunda 8.7 returns the existing unsupported-capability style for this flag when tenant-safe enrichment is unavailable.
 - **SC-011**: Help output or generated CLI documentation includes `--with-incidents` and states that it applies to keyed process-instance walks.
 
 ## Assumptions

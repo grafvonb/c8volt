@@ -7,6 +7,7 @@ import (
 	"context"
 
 	options "github.com/grafvonb/c8volt/c8volt/foptions"
+	"github.com/grafvonb/c8volt/c8volt/incident"
 	types "github.com/grafvonb/c8volt/typex"
 )
 
@@ -77,7 +78,49 @@ func (r DryRunPIKeyExpansion) HasActionableResults() bool {
 	return len(r.Roots) > 0 || len(r.Collected) > 0
 }
 
+// API defines public process operations. Custom implementations must include the
+// no-I/O search validator, selected-action planners and frozen-plan executors.
 type API interface {
+	// PlanProcessInstanceBusinessIDAssignments freezes validated explicit targets and requested assignment.
+	PlanProcessInstanceBusinessIDAssignments(context.Context, types.Keys, *string, ...options.FacadeOption) (BusinessIDAssignmentPlan, error)
+	// ExecuteProcessInstanceBusinessIDAssignments preserves ordered partial evidence alongside failures.
+	ExecuteProcessInstanceBusinessIDAssignments(context.Context, BusinessIDAssignmentPlan, int, ...options.FacadeOption) (BusinessIDAssignmentResults, error)
+
+	// PlanSelectedProcessInstanceResolution freezes family and incident work from a completed selection.
+	PlanSelectedProcessInstanceResolution(ctx context.Context, request ProcessInstanceSelectionRequest, workers int, opts ...options.FacadeOption) (SelectedProcessInstanceResolutionPlan, error)
+	// ExecuteSelectedProcessInstanceResolution validates and consumes reviewed targets without rediscovery.
+	ExecuteSelectedProcessInstanceResolution(ctx context.Context, plan SelectedProcessInstanceResolutionPlan, opts ...options.FacadeOption) (incident.ProcessInstanceResolutionResults, error)
+	// PlanSelectedProcessInstanceVariableUpdates preserves completed search selection through action planning or execution.
+	PlanSelectedProcessInstanceVariableUpdates(ctx context.Context, request ProcessInstanceSelectionRequest, variables map[string]any, opts ...options.FacadeOption) (ProcessInstanceVariableUpdatePlan, error)
+	// PlanSelectedProcessInstanceSuspension preserves completed search selection through action planning or execution.
+	PlanSelectedProcessInstanceSuspension(ctx context.Context, request ProcessInstanceSelectionRequest, tree bool, opts ...options.FacadeOption) (ProcessInstanceSuspensionPlan, error)
+	// ExecuteProcessInstanceSuspensionPlan preserves completed search selection through action planning or execution.
+	ExecuteProcessInstanceSuspensionPlan(ctx context.Context, plan ProcessInstanceSuspensionPlan, workers int, opts ...options.FacadeOption) (SuspensionResults, error)
+	// PlanSelectedProcessInstanceResumption preserves completed search selection through action planning or execution.
+	PlanSelectedProcessInstanceResumption(ctx context.Context, request ProcessInstanceSelectionRequest, tree bool, opts ...options.FacadeOption) (ProcessInstanceResumptionPlan, error)
+	// ExecuteProcessInstanceResumptionPlan preserves completed search selection through action planning or execution.
+	ExecuteProcessInstanceResumptionPlan(ctx context.Context, plan ProcessInstanceResumptionPlan, workers int, opts ...options.FacadeOption) (ResumptionResults, error)
+
+	// PlanProcessInstanceSelectedMutation freezes completed collection discovery and expanded families.
+	PlanProcessInstanceSelectedMutation(ctx context.Context, request ProcessInstanceSelectedMutationRequest, opts ...options.FacadeOption) (ProcessInstanceSelectedMutationPlan, error)
+	// ExecuteProcessInstanceCancellationPlan validates and submits only the reviewed distinct roots.
+	ExecuteProcessInstanceCancellationPlan(ctx context.Context, plan ProcessInstanceSelectedMutationPlan, opts ...options.FacadeOption) (CancelReports, error)
+	// ExecuteProcessInstanceDeletionPlan deletes reviewed members without adding live children.
+	ExecuteProcessInstanceDeletionPlan(ctx context.Context, plan ProcessInstanceSelectedMutationPlan, opts ...options.FacadeOption) (ProcessInstanceDeletionResult, error)
+	// ValidateProcessInstanceSearchFilter checks criteria and version support without backend I/O.
+	ValidateProcessInstanceSearchFilter(filter ProcessInstanceFilter) error
+	// PlanProcessInstanceSuspension freezes selected subtrees and active targets without mutation.
+	PlanProcessInstanceSuspension(ctx context.Context, keys types.Keys, opts ...options.FacadeOption) (ProcessInstanceSuspensionPlan, error)
+	// PlanProcessInstanceResumption freezes selected subtrees and suspended targets without mutation.
+	PlanProcessInstanceResumption(ctx context.Context, keys types.Keys, opts ...options.FacadeOption) (ProcessInstanceResumptionPlan, error)
+	// ResumeProcessInstance uses the collection workflow for one key; default confirmation requires ACTIVE or COMPLETED after acceptance.
+	ResumeProcessInstance(ctx context.Context, key string, opts ...options.FacadeOption) (ResumptionResult, error)
+	// ResumeProcessInstances returns ordered independent outcomes, including partial failures and unattempted keys.
+	ResumeProcessInstances(ctx context.Context, keys types.Keys, wantedWorkers int, opts ...options.FacadeOption) (ResumptionResults, error)
+	// SuspendProcessInstance targets one explicit key and confirms SUSPENDED unless NoWait is set.
+	SuspendProcessInstance(ctx context.Context, key string, opts ...options.FacadeOption) (SuspensionResult, error)
+	// SuspendProcessInstances returns ordered per-key evidence even when some workflows fail.
+	SuspendProcessInstances(ctx context.Context, keys types.Keys, wantedWorkers int, opts ...options.FacadeOption) (SuspensionResults, error)
 	SearchProcessDefinitions(ctx context.Context, filter ProcessDefinitionFilter, opts ...options.FacadeOption) (ProcessDefinitions, error)
 	SearchProcessDefinitionsLatest(ctx context.Context, filter ProcessDefinitionFilter, opts ...options.FacadeOption) (ProcessDefinitions, error)
 	SearchProcessDefinitionsPages(ctx context.Context, request ProcessDefinitionSearchRequest, visitor ProcessDefinitionSearchPageVisitor, opts ...options.FacadeOption) (ProcessDefinitionSearchPagesResult, error)
@@ -90,6 +133,8 @@ type API interface {
 	GetProcessInstance(ctx context.Context, key string, opts ...options.FacadeOption) (ProcessInstance, error)
 	LookupProcessInstance(ctx context.Context, key string, opts ...options.FacadeOption) (ProcessInstance, error)
 	SearchProcessInstanceVariables(ctx context.Context, key string, opts ...options.FacadeOption) ([]ProcessInstanceVariable, error)
+	PlanProcessInstanceVariableUpdates(ctx context.Context, keys types.Keys, variables map[string]any, opts ...options.FacadeOption) (ProcessInstanceVariableUpdatePlan, error)
+	ExecuteProcessInstanceVariableUpdates(ctx context.Context, plan ProcessInstanceVariableUpdatePlan, wantedWorkers int, opts ...options.FacadeOption) (ProcessInstanceVariableUpdateResults, error)
 	UpdateProcessInstanceVariables(ctx context.Context, request ProcessInstanceVariableUpdateRequest, opts ...options.FacadeOption) (ProcessInstanceVariableUpdateResult, error)
 	EnrichProcessInstancesWithIncidents(ctx context.Context, pis ProcessInstances, opts ...options.FacadeOption) (IncidentEnrichedProcessInstances, error)
 	EnrichProcessInstancesWithVariables(ctx context.Context, pis ProcessInstances, opts ...options.FacadeOption) (VariableEnrichedProcessInstances, error)
@@ -97,6 +142,8 @@ type API interface {
 	EnrichProcessInstancesWithElementListeners(ctx context.Context, pis ProcessInstances, opts ...options.FacadeOption) (ElementEnrichedProcessInstances, error)
 	EnrichTraversalWithIncidents(ctx context.Context, result TraversalResult, opts ...options.FacadeOption) (IncidentEnrichedTraversalResult, error)
 	LookupProcessInstanceStateByKey(ctx context.Context, key string, opts ...options.FacadeOption) (StateReport, ProcessInstance, error)
+	// ResolveProcessInstanceSelection proves collection or unique-start cardinality with retained provenance.
+	ResolveProcessInstanceSelection(ctx context.Context, request ProcessInstanceSelectionRequest, opts ...options.FacadeOption) (ProcessInstanceSelection, error)
 	SearchProcessInstancesPages(ctx context.Context, request ProcessInstanceSearchRequest, visitor ProcessInstanceSearchPageVisitor, opts ...options.FacadeOption) (ProcessInstanceSearchPagesResult, error)
 	SearchProcessInstancesTotal(ctx context.Context, request ProcessInstanceSearchRequest, visitor ProcessInstanceSearchTotalVisitor, opts ...options.FacadeOption) (int64, error)
 	PlanProcessInstanceMutationPages(ctx context.Context, request ProcessInstanceMutationPlanRequest, visitor ProcessInstanceMutationPlanVisitor, opts ...options.FacadeOption) (ProcessInstanceMutationPlanPagesResult, error)

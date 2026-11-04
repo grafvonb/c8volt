@@ -17,7 +17,7 @@
 - Public facade options live in `c8volt/foptions`; public facade error conversion lives in `c8volt/ferrors`.
 - Version-neutral domain types live in `internal/domain`.
 - Version-neutral service contracts and factories live in `internal/services/<area>`.
-- Camunda version-specific adapters live in `internal/services/<area>/v87`, `v88`, `v89`, and `v810`.
+- Camunda version-specific adapters live in `internal/services/<area>/v88`, `v89`, and `v810`.
 - Generated Camunda clients live in `internal/clients/camunda`; avoid hand-editing generated code unless explicitly required.
 - Shared production helpers live in `toolx`; shared test helpers live in `testx`.
 - Feature planning artifacts live under `specs/<feature>/`.
@@ -27,7 +27,7 @@
 - `cmd` may call public facades and command support helpers, but must not call generated Camunda clients or versioned service implementations directly.
 - Public facades should be thin: map public inputs to internal service inputs, delegate to internal services, map outputs back, and convert errors through `c8volt/ferrors`.
 - Backend mechanics such as pagination loops, worker pools, polling, retries, wait loops, dependency expansion, and mutation workflows belong in internal services, not in CLI commands or public facades.
-- Keep version-specific API differences explicit in the matching `v87`, `v88`, `v89`, or `v810` service package.
+- Keep version-specific API differences explicit in the matching `v88`, `v89`, or `v810` service package.
 - Reuse `toolx`, `toolx/pool`, `internal/services/common`, and `testx` helpers before adding new helper code.
 
 ## CLI And Operator UX
@@ -41,6 +41,7 @@
 ### Mandatory Diagnostic Logging
 - Human errors, warnings, and diagnostic messages MUST use the configured command-context logger through the established command/error helpers. Writing to the correct stderr stream alone is not compliance. Do not emit diagnostics with `cmd.PrintErr*`, `fmt.Fprint*`, `fmt.Print*`, builtin `print`/`println`, or direct stdout/stderr writes; do not create a separate logger or use a global/default logger to bypass command configuration. Bootstrap failures must use the existing bootstrap/error fallback helpers.
 - Keep the distinction explicit: selected-format results use the result renderers on stdout; interactive prompts use plain text on configured stderr; diagnostics use the configured logger. Do not move result payloads into the logger or add logger prefixes to prompts.
+- Human mutation summaries, dry-run summaries, and verbose outcome details MUST use established command-context logger helpers such as `renderHumanLine`. They are informational logger output, not stdout result payloads. JSON envelopes, keys-only output, and ordinary query result rows remain selected-format stdout results; interactive prompts remain plain configured stderr. Respect the configured logger level, format, destination, and activity writer; do not add timestamp or severity prefixes to message text.
 - Classify output before implementing a new execution mode, including its failure path. Batch, partial-result, and exit-after-render paths are not exceptions to logger use. Preserve partial results and the original error class/exit code, render a shared JSON envelope exactly once, and do not invoke a second error renderer after that envelope.
 - Never print or log raw joined errors, transport errors, or generated-client errors at normal human levels. Replacing a direct print with `log.Error(err.Error())` does not satisfy this rule when the error contains HTTP diagnostics. Use one compact aggregate error for a failed batch, with counts and a useful bounded reason; group repeated causes instead of printing one transport failure per key.
 - Full URLs, HTTP methods, raw request/response bodies, cursors, and wrapped transport chains belong only in the existing DEBUG diagnostics path with its redaction rules. `--verbose` alone must not enable them. Keep useful per-resource outcome facts under verbose and preserve established machine-readable error evidence without changing its schema to fix human formatting.
@@ -51,6 +52,7 @@
 - Include a multi-resource failure with repeated backend errors containing a distinctive URL, method, body and resource key. At normal level and with verbose alone, assert compact aggregate diagnostics and absence of raw HTTP details on **both** streams. Under quiet, retain the compact error while suppressing informational output. Under JSON, decode exactly one envelope with EOF and retain partial results and the original failure exit code.
 - Verify DEBUG visibility through both `--debug` and configured debug level, independently of verbose, using only isolated fakes. Verify diagnostic redaction and keep stdout free of diagnostic records. Check the active plain and structured logger formats; do not assume structured attributes appear in every handler. Account for existing flag precedence when combining modes.
 - Required checks must detect the violation: reverting logger routing to a direct stderr print or exposing the raw aggregate at normal level must fail the assertions. Passing happy-path, result-stdout-only, or renderer-only tests does not establish compliance.
+- Test successful mutation summaries, dry-run summaries, and verbose outcome details through command execution as well: require empty human stdout, INFO records on configured/inherited logger destinations, plain and structured formats, and suppression at WARN level and under quiet. Keep machine results and plain prompts independently asserted. Direct stdout or stderr prints must fail these checks.
 
 ### Empty Results And Successful No-Ops
 - Treat empty results and early returns as part of the command's output contract.
@@ -134,16 +136,44 @@
 - For generated Camunda clients, prefer updating the OpenAPI mutation or refresh workflow under `api/` and regenerating clients.
 - Speckit memory under `.speckit/memory` and feature artifacts under `specs/` are project context and should be preserved.
 
+## Launching Ralph
+
+- On macOS, use Terminal.app via `osascript` and Terminal's `do script` command for Ralph launches unless the user requests another terminal. A request to launch Ralph authorizes this normal launch mechanism; computer-use UI automation is not a prerequisite.
+- Use the shell execution tool and its normal approval/escalation mechanism when required. A computer-use tool's inability to control Terminal.app does not establish that shell-based AppleScript is unavailable. Report the specific restriction; do not bypass an actual shell approval denial or a higher-priority prohibition.
+- Follow the `speckit-ralph-run` skill for prerequisite checks and configuration resolution. Launch the orchestrator only; do not implement tasks inline. Set the working directory to the repository root and quote every argument across shell and AppleScript boundaries.
+- Distinguish the launcher's arguments, the child agent's sandbox mode, and this chat's tool permissions. Inspect the orchestrator before making claims about `--sandbox danger-full-access`; when it already supplies that Codex option, no launcher flag or change to this chat's permissions is needed.
+- Keep the launch visible and interruptible with Ctrl+C. Capture output in a fresh temporary log outside the repository while displaying it in Terminal.app, and preserve the orchestrator's exit status. An opened window, echoed command, or hidden PTY alone does not prove launch success.
+- Verify fresh orchestrator startup output within the skill's bounded check: the selected feature header and iteration line, or its documented immediate completion/failure result. Then report the observed status, configuration, and terminal location and stop monitoring.
+- Once a command has been dispatched, never start another loop merely because verification failed. Inspect the existing launch output and report uncertainty or the concrete error; avoid duplicate runs. Do not ask the user to paste commands manually until the permitted launch mechanism has been attempted or a specific applicable restriction prevents it.
+
+## Task Planning For Ralph
+
+- Apply these rules when creating or revising feature plans and `tasks.md`, before Ralph starts.
+- Treat each implementation task as a cohesive work unit that leaves the project compiling and passes relevant checks.
+- Include implementation, necessary fixtures, tests, formatting, and targeted validation in the same task.
+- Treat context reading, branch checks, routine review, and progress tracking as work-unit responsibilities, not standalone tasks.
+- Keep interface changes, affected implementations, and required test-double updates together when separating them would break compilation.
+- Build shared behavior once. Do not implement a single-item workflow and later rebuild it for collection input when both are already required.
+- Use user stories for acceptance coverage; avoid story boundaries that require repeated changes to the same underlying behavior. Respect Ralph's permitted story scope when grouping work for execution.
+- Split tasks only when each part has a distinct, independently verifiable result or when the combined work would exceed a practical iteration. Do not consolidate tasks into oversized units merely to reduce the count.
+- Do not create tasks solely to enable hypothetical parallel execution.
+- Before finalizing `tasks.md`, review adjacent tasks for consolidation and explain any deliberate separation of tightly coupled work.
+- Preserve all requirements and meaningful tests when consolidating. Fewer tasks must not mean reduced coverage.
+- For a feature extending existing command patterns, more than ten tasks triggers a consolidation review, not an automatic rejection or request for approval.
+
 ## Git And Commit Rules
-- Reuse existing issue or feature branches when they already exist.
+- Never use the `codex/` prefix for new branches.
+- Name new issue-backed branches `<issue-number>-<slug>`.
+- Reuse existing issue or feature branches when they already exist; do not rename them without explicit instruction.
 - For GitHub issue-backed Spec Kit work, the GitHub issue number is authoritative for the `specs/<number>-<slug>/` prefix and feature branch label. This overrides `.specify/extensions/git/git-config.yml` `branch_numbering: sequential`; pass the issue number explicitly with `--number <issue>` or correct the generated folder and references before planning or implementation continues.
 - Commit messages must follow Conventional Commits format.
 - Add a scope in parentheses when a clear scope exists.
-- Reference the issue in the subject when applicable.
+- Every issue-associated commit MUST end its subject with a space followed by the bare issue number, such as `#331`. Do not wrap the issue reference in parentheses or brackets. Example: `docs(specs): refine implementation tasks #331`.
+- Before committing issue-associated work, verify the subject ends with ` #<issue-number>`.
 - Prefer small commits grouped by purpose.
 - Run the closest relevant checks before committing when the repository provides them.
 
 ## Active Speckit Plan
 <!-- SPECKIT START -->
-- Active Speckit implementation plan: `specs/345-bulk-job-completion/plan.md`
+- Active Speckit implementation plan: `specs/369-standardize-flag-intent/plan.md`
 <!-- SPECKIT END -->

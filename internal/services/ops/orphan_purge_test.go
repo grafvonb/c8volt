@@ -557,6 +557,7 @@ func TestPurgeOrphanProcessInstancesSuppressesDefaultDeleteSummary(t *testing.T)
 
 type stubProcessInstanceAPI struct {
 	pisvc.API
+	validateStates        func(d.States) error
 	createProcessInstance func(context.Context, d.ProcessInstanceData, ...services.CallOption) (d.ProcessInstanceCreation, error)
 	getProcessInstances   func(context.Context, typex.Keys, int, ...services.CallOption) ([]d.ProcessInstance, error)
 	searchVariables       func(context.Context, string, ...services.CallOption) ([]d.ProcessInstanceVariable, error)
@@ -665,4 +666,41 @@ func typexKeys(keys ...string) typex.Keys {
 
 func opsIntPtr(v int) *int {
 	return &v
+}
+
+// ValidateProcessInstanceStates defaults to older active-only capability unless a test opts into suspension.
+func (s stubProcessInstanceAPI) ValidateProcessInstanceStates(states d.States) error {
+	if s.validateStates != nil {
+		return s.validateStates(states)
+	}
+	return d.ErrUnsupported
+}
+
+// ValidateProcessInstanceSuspension keeps unrelated legacy fixtures explicitly unsupported.
+func (stubProcessInstanceAPI) ValidateProcessInstanceSuspension() error { return d.ErrUnsupported }
+
+// SuspendProcessInstance prevents accidental mutation through unrelated legacy fixtures.
+func (stubProcessInstanceAPI) SuspendProcessInstance(context.Context, string, ...services.CallOption) (d.ProcessInstanceSuspensionResult, error) {
+	return d.ProcessInstanceSuspensionResult{}, d.ErrUnsupported
+}
+
+// ValidateProcessInstanceResumption keeps unrelated legacy fixtures explicitly unsupported.
+func (stubProcessInstanceAPI) ValidateProcessInstanceResumption() error { return d.ErrUnsupported }
+
+// ResumeProcessInstance prevents accidental mutation through unrelated legacy fixtures.
+func (stubProcessInstanceAPI) ResumeProcessInstance(context.Context, string, ...services.CallOption) (d.ProcessInstanceResumptionResult, error) {
+	return d.ProcessInstanceResumptionResult{}, d.ErrUnsupported
+}
+
+// ValidateProcessInstanceSearchFilter keeps isolated fixtures independent of adapter capability policy.
+func (s stubProcessInstanceAPI) ValidateProcessInstanceSearchFilter(d.ProcessInstanceFilter) error {
+	return nil
+}
+
+// ProcessInstanceSearchTenant supplies unfiltered context for owned service fixtures.
+func (stubProcessInstanceAPI) ProcessInstanceSearchTenant(...services.CallOption) string { return "" }
+
+// DeleteProcessInstanceExact delegates only to the test-owned deletion stub.
+func (s stubProcessInstanceAPI) DeleteProcessInstanceExact(ctx context.Context, key string, opts ...services.CallOption) (d.DeleteResponse, error) {
+	return s.DeleteProcessInstance(ctx, key, opts...)
 }

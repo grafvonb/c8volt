@@ -27,6 +27,10 @@ type CmdTerminalExchange struct {
 	Prompt     string
 	Response   string
 	EndOfInput bool
+	// ResponseDelay keeps the prompt open to exercise asynchronous output while input is pending.
+	ResponseDelay time.Duration
+	// BeforeResponse observes captured output while input is still pending.
+	BeforeResponse func(stdout, stderr string)
 }
 
 // CmdTerminalRunRequest describes an exactly selected helper subprocess whose
@@ -153,7 +157,24 @@ func (r cmdTerminalSubprocessRunner) Run(t *testing.T, request CmdTerminalRunReq
 			result.Err = cmdTerminalWaitError(err, exchange.Prompt, timeout, childErr)
 			return result
 		}
+		if exchange.ResponseDelay > 0 {
+			delay := time.NewTimer(exchange.ResponseDelay)
+			select {
+			case <-delay.C:
+			case <-childDone:
+				delay.Stop()
+				result.Err = fmt.Errorf("terminal subprocess exited before delayed response to %q", exchange.Prompt)
+				return result
+			case <-deadline.C:
+				delay.Stop()
+				result.Err = fmt.Errorf("terminal subprocess timed out before delayed response to %q", exchange.Prompt)
+				return result
+			}
+		}
 
+		if exchange.BeforeResponse != nil {
+			exchange.BeforeResponse(stdout.String(), stderr.String())
+		}
 		var input []byte
 		if exchange.EndOfInput {
 			input = []byte{allocation.canonicalEOF}

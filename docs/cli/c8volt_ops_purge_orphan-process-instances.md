@@ -9,13 +9,13 @@ Purge orphan child process instances
 
 ### Synopsis
 
-Delete orphan child process instances whose parents are missing.
+Delete child process instances whose parent is missing.
 
-The workflow discovers orphan candidates, fixes the target set, validates the delete plan, and requires confirmation before deletion. Process-instance family, force, and wait rules apply.
+The workflow discovers orphan candidates and plans family deletion before
+confirmation. Use --dry-run to review the scope and --report-file to save an
+audit report. Use --auto-confirm for unattended execution.
 
---tenant limits discovery; an empty tenant or --all-tenants searches across accessible tenants.
-
-Use --dry-run to inspect the plan without mutation, --auto-confirm or --automation for unattended deletion, and --report-file to save an audit report.
+--limit bounds child candidates inspected, including those found to have parents.
 
 ```
 c8volt ops purge orphan-process-instances [flags]
@@ -24,19 +24,15 @@ c8volt ops purge orphan-process-instances [flags]
 ### Examples
 
 ```
-  ./c8volt ops purge orphan-process-instances --dry-run
-  ./c8volt --tenant tenant-a ops purge orphan-process-instances --dry-run
-  ./c8volt --tenant "" ops purge orphan-process-instances --dry-run
-  ./c8volt ops purge orphan-process-instances --dry-run --bpmn-process-id <bpmn-process-id> --limit 25
-  ./c8volt ops purge orphan-process-instances --state completed --limit 25
-  ./c8volt --verbose ops purge orphan-process-instances --state completed --limit 25 --auto-confirm
-  ./c8volt ops purge orphan-process-instances --state completed --limit 25 --report-file orphan-purge.md
+  c8volt ops purge orphan-process-instances --dry-run
+  c8volt ops purge orphan-process-instances --state completed --report-file orphans.md
 ```
 
 ### Options
 
 ```
   -n, --batch-size int32            number of process instances to inspect per page (max limit 1000 enforced by server) (default 1000)
+      --bid string                  exact opaque business ID to select within tenant scope (only c8.10+)
   -b, --bpmn-process-id string      BPMN process ID to filter process instances
       --dry-run                     discover and validate orphan process-instance cleanup without submitting deletion requests
       --end-date-after string       only include process instances with end date >= YYYY-MM-DD
@@ -62,26 +58,28 @@ c8volt ops purge orphan-process-instances [flags]
       --start-date-newer-days int   only include process instances N days old or newer (0 means today) (default -1)
       --start-date-older-days int   only include process instances N days old or older (default -1)
   -s, --state string                state to filter process instances: all, active, completed, canceled, terminated (default "all")
-  -w, --workers int                 maximum concurrent workers when validating the delete plan (default: min(targets, 2*GOMAXPROCS, 32))
+  -w, --workers int                 maximum concurrent workers; omit for an automatic limit
 ```
 
 ### Options inherited from parent commands
 
 ```
-      --all-tenants        clear configured tenant filtering and search all tenants visible to the authenticated user; mutually exclusive with --tenant
-  -y, --auto-confirm       auto-confirm prompts for non-interactive use
-      --automation         enable non-interactive mode for commands that explicitly support it
-      --config string      path to config file
-      --debug              enable debug logging
-  -j, --json               output as JSON (where applicable)
-      --keys-only          output keys only (where applicable)
-      --log-level string   log level (debug, info, warn, error) (default "info")
-      --no-indicator       disable transient terminal activity indicators
-      --profile string     config active profile name to use (e.g. dev, prod)
-  -q, --quiet              suppress output except errors
-      --tenant string      tenant ID for discovery/search, selection, create, deploy, and run flows; explicit empty values can clear configured discovery filters, and explicit keys/IDs remain backend-authorized
-      --timeout duration   HTTP request timeout (default 30s)
-  -v, --verbose            show additional output
+      --all-tenants          search all accessible tenants; cannot combine with --tenant
+  -y, --auto-confirm         auto-confirm prompts for non-interactive use
+      --automation           enable non-interactive mode for commands that explicitly support it
+      --config string        path to config file
+      --debug                enable debug logging
+  -j, --json                 output as JSON (where applicable)
+      --keys-only            output keys only (where applicable)
+      --log-level string     log level (debug, info, warn, error) (default "info")
+      --no-indicator         disable transient terminal activity indicators
+      --no-version-check     skip the automatic advisory gateway version check
+      --profile string       config active profile name to use (e.g. dev, prod)
+  -q, --quiet                suppress output except errors
+      --request-rate float   maximum shared request starts per second (fractions allowed; 0 disables pacing)
+      --tenant string        tenant for discovery and creation; explicit keys use backend authorization
+      --timeout duration     HTTP request timeout (default 30s)
+  -v, --verbose              show additional output
 ```
 
 ### SEE ALSO

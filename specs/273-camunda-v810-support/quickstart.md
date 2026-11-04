@@ -14,7 +14,6 @@ Review [version selection](contracts/version-selection.md), [generation](contrac
 ## 1. Record Protected Baselines
 
 ```bash
-git diff -- internal/clients/camunda/v87 internal/clients/camunda/v88 internal/clients/camunda/v89
 git diff -- integration
 ```
 
@@ -64,7 +63,7 @@ go test ./internal/services/ops -run 'AllProcessDefinitions|SupportedVersion|Uns
 go test ./cmd -run 'DeleteProcessDefinition|AllProcessDefinitions|V810|Version|Help' -count=1
 ```
 
-Direct/bulk deletion share one predicate; V89/V810 pass and V87/V88 retain rejection. Unsupported mutations stop before remote mutation. Human, JSON, keys-only, prompt, activity, and exit behavior remains stable.
+Direct/bulk deletion share one predicate; V89/V810 pass and V88 retain rejection. Unsupported mutations stop before remote mutation. Human, JSON, keys-only, prompt, activity, and exit behavior remains stable.
 
 ## 6. Regenerate and Verify Documentation
 
@@ -78,7 +77,6 @@ README, API guidance, root help, version output, docs homepage, and CLI referenc
 ## 7. Recheck Protected Boundaries
 
 ```bash
-git diff -- internal/clients/camunda/v87 internal/clients/camunda/v88 internal/clients/camunda/v89
 git diff -- integration
 ```
 

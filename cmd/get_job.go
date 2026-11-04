@@ -33,19 +33,13 @@ var (
 var getJobCmd = &cobra.Command{
 	Use:   "job",
 	Short: "Inspect or search jobs",
-	Long: `Inspect or search Camunda jobs.
+	Long: `Inspect a job by key or search by state, type, process instance, worker, or retries.
 
-Use --key for a known job. Otherwise search by state, type, process instance, element instance, BPMN element, worker, retries, job kind, or listener event type.
-
-Search and --total use the configured tenant; --tenant overrides it. An empty --tenant or --all-tenants searches all accessible tenants. Explicit --key lookup uses backend authorization without the discovery tenant filter.
-
---batch-size controls each discovery request; --limit caps jobs across all pages; --total counts matching jobs. Discovery follows raw page continuation and reports an incomplete-search error if pagination cannot establish completion.
-
-Requires Camunda 8.8 or newer.`,
-	Example: `  ./c8volt get job --key <job-key>
-  ./c8volt get job --state failed --batch-size 10 --limit 50
-  ./c8volt get job --state failed --total
-  ./c8volt --json get job --key <job-key>`,
+Use --retries 0 to find jobs with no retries remaining. Combine filters with AND.
+Use --limit to bound results or --total to count matches.`,
+	Example: `  c8volt get job --key <job-key>
+  c8volt get job --state failed --retries 0 --limit 10
+  c8volt get job --pi-key <process-instance-key> --json`,
 	Args: cobra.NoArgs,
 	Run: func(cmd *cobra.Command, args []string) {
 		if err := validateGetJobFlags(cmd); err != nil {
@@ -219,8 +213,7 @@ func effectiveGetJobLimit() int32 {
 	return 0
 }
 
-// validJobStates is the explicit Camunda v8.8-or-newer job state allowlist for
-// local search validation.
+// validJobStates is the explicit job state allowlist for local search validation.
 var validJobStates = []string{
 	"CANCELED",
 	"COMPLETED",
@@ -230,6 +223,7 @@ var validJobStates = []string{
 	"MIGRATED",
 	"RETRIES_UPDATED",
 	"TIMED_OUT",
+	"TIMEOUT_UPDATED",
 }
 
 // validJobKinds is the explicit Camunda v8.8-or-newer job kind allowlist for local

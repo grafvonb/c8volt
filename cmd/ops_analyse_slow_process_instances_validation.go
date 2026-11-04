@@ -60,8 +60,8 @@ func validateOpsSlowProcessAnalysisCommandArgs(cmd *cobra.Command, args []string
 	if keyedMode && hasOpsSlowProcessAnalysisSearchFilterFlags(cmd) {
 		return mutuallyExclusiveFlagsf("explicit process-instance keys cannot be combined with process-instance search filters")
 	}
-	if !keyedMode && !processDefinitionSelectorMode {
-		return localPreconditionError(fmt.Errorf("select process instances with --key, stdin '-', --bpmn-process-id, or --pd-key"))
+	if !keyedMode && !processDefinitionSelectorMode && searchBusinessIDFlag(cmd) == nil {
+		return localPreconditionError(fmt.Errorf("select process instances with --key, stdin '-', --bid, --bpmn-process-id, or --pd-key"))
 	}
 	if _, err := parseOpsSlowProcessAnalysisState(); err != nil {
 		return err
@@ -100,9 +100,9 @@ func parseOpsSlowProcessAnalysisElementState() (string, error) {
 	return normalizedElementState(flagOpsAnalyseSlowProcessInstanceElementState), nil
 }
 
-// hasOpsSlowProcessAnalysisSearchFilterFlags identifies flags valid only for process-definition discovery.
+// hasOpsSlowProcessAnalysisSearchFilterFlags identifies flags valid only for process-instance discovery.
 func hasOpsSlowProcessAnalysisSearchFilterFlags(cmd *cobra.Command) bool {
-	return flagOpsAnalyseSlowProcessInstanceStartDateAfter != "" ||
+	return searchBusinessIDFlag(cmd) != nil || flagOpsAnalyseSlowProcessInstanceStartDateAfter != "" ||
 		flagOpsAnalyseSlowProcessInstanceStartDateBefore != "" ||
 		flagOpsAnalyseSlowProcessInstanceEndDateAfter != "" ||
 		flagOpsAnalyseSlowProcessInstanceEndDateBefore != "" ||
@@ -116,7 +116,7 @@ func hasOpsSlowProcessAnalysisSearchFilterFlags(cmd *cobra.Command) bool {
 func parseOpsSlowProcessAnalysisState() (process.State, error) {
 	state, ok := process.ParseState(flagOpsAnalyseSlowProcessInstanceState)
 	if !ok || state == process.StateAbsent {
-		return "", invalidFlagValuef("invalid value for --state: %q, expected active, completed, canceled, terminated, or all", flagOpsAnalyseSlowProcessInstanceState)
+		return "", invalidFlagValuef("invalid value for --state: %q, expected active, suspended, completed, canceled, terminated, or all; suspended requires Camunda 8.10", flagOpsAnalyseSlowProcessInstanceState)
 	}
 	if state == process.StateAll {
 		return "", nil

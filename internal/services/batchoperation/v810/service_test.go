@@ -6,11 +6,13 @@ package v810
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"log/slog"
 	"net/http"
 	"net/url"
 	"testing"
+	"time"
 
 	"github.com/grafvonb/c8volt/config"
 	camundav810 "github.com/grafvonb/c8volt/internal/clients/camunda/v810/camunda"
@@ -136,6 +138,7 @@ func TestService_CancelProcessInstances_MalformedPayload(t *testing.T) {
 // TestService_WaitForCompletion verifies V810 poll conversion, success state, and failed-item errors.
 func TestService_WaitForCompletion(t *testing.T) {
 	ctx := context.Background()
+	operationType := camundav810.BatchOperationTypeEnumCANCELPROCESSINSTANCE
 
 	t.Run("MapsCompletionCounts", func(t *testing.T) {
 		svc := newTestService(t, &mockBatchOperationClient{
@@ -145,7 +148,7 @@ func TestService_WaitForCompletion(t *testing.T) {
 					HTTPResponse: newHTTPResponse(http.MethodGet, "https://camunda.local/v2/batch-operations/batch-1", http.StatusOK, "200 OK"),
 					JSON200: &camundav810.BatchOperationResponse{
 						BatchOperationKey:        "batch-1",
-						BatchOperationType:       camundav810.BatchOperationTypeEnumCANCELPROCESSINSTANCE,
+						BatchOperationType:       &operationType,
 						State:                    camundav810.BatchOperationStateEnumCOMPLETED,
 						OperationsTotalCount:     10,
 						OperationsCompletedCount: 10,
@@ -159,9 +162,32 @@ func TestService_WaitForCompletion(t *testing.T) {
 
 		require.NoError(t, err)
 		assert.Equal(t, "batch-1", op.Key)
+		assert.Equal(t, "CANCEL_PROCESS_INSTANCE", op.Type)
 		assert.Equal(t, int32(10), op.OperationsTotalCount)
 		assert.Equal(t, int32(10), op.OperationsCompletedCount)
 		assert.Equal(t, int32(0), op.OperationsFailedCount)
+	})
+
+	t.Run("CompletesWithoutOptionalOperationType", func(t *testing.T) {
+		svc := newTestService(t, &mockBatchOperationClient{
+			getBatchOperationWithResponse: func(ctx context.Context, batchOperationKey camundav810.BatchOperationKey, reqEditors ...camundav810.RequestEditorFn) (*camundav810.GetBatchOperationResponse, error) {
+				var payload camundav810.BatchOperationResponse
+				require.NoError(t, json.Unmarshal([]byte(`{"batchOperationKey":"batch-1","state":"COMPLETED","operationsTotalCount":1,"operationsCompletedCount":1,"operationsFailedCount":0}`), &payload))
+				return &camundav810.GetBatchOperationResponse{
+					HTTPResponse: newHTTPResponse(http.MethodGet, "https://camunda.local/v2/batch-operations/batch-1", http.StatusOK, "200 OK"),
+					JSON200:      &payload,
+				}, nil
+			},
+		})
+
+		op, err := svc.WaitForCompletion(ctx, "batch-1")
+
+		require.NoError(t, err)
+		assert.Equal(t, "batch-1", op.Key)
+		assert.Empty(t, op.Type)
+		assert.Equal(t, "COMPLETED", op.State)
+		assert.Equal(t, int32(1), op.OperationsCompletedCount)
+		assert.Equal(t, http.StatusOK, op.StatusCode)
 	})
 
 	t.Run("FailsWhenCompletedBatchHasFailedItems", func(t *testing.T) {
@@ -171,7 +197,7 @@ func TestService_WaitForCompletion(t *testing.T) {
 					HTTPResponse: newHTTPResponse(http.MethodGet, "https://camunda.local/v2/batch-operations/batch-2", http.StatusOK, "200 OK"),
 					JSON200: &camundav810.BatchOperationResponse{
 						BatchOperationKey:        "batch-2",
-						BatchOperationType:       camundav810.BatchOperationTypeEnumCANCELPROCESSINSTANCE,
+						BatchOperationType:       &operationType,
 						State:                    camundav810.BatchOperationStateEnumCOMPLETED,
 						OperationsTotalCount:     10,
 						OperationsCompletedCount: 9,
@@ -191,6 +217,114 @@ func TestService_WaitForCompletion(t *testing.T) {
 		assert.Contains(t, err.Error(), "1/10 failed item")
 		assert.Contains(t, err.Error(), "query rejected")
 	})
+
+	t.Run("RetriesTemporaryInvisibility", func(t *testing.T) {
+		calls := 0
+		svc := newTestService(t, &mockBatchOperationClient{
+			getBatchOperationWithResponse: func(ctx context.Context, batchOperationKey camundav810.BatchOperationKey, reqEditors ...camundav810.RequestEditorFn) (*camundav810.GetBatchOperationResponse, error) {
+				calls++
+				if calls == 1 {
+					return &camundav810.GetBatchOperationResponse{
+						Body:         []byte(`{"title":"NOT_FOUND","status":404,"detail":"batch is not visible yet"}`),
+						HTTPResponse: newHTTPResponse(http.MethodGet, "https://camunda.local/v2/batch-operations/batch-late", http.StatusNotFound, "404 Not Found"),
+					}, nil
+				}
+				return completedBatchResponse("batch-late", operationType, 2, 2, 0), nil
+			},
+		})
+
+		op, err := svc.WaitForCompletion(ctx, "batch-late")
+
+		require.NoError(t, err)
+		assert.Equal(t, 2, calls)
+		assert.Equal(t, "COMPLETED", op.State)
+	})
+
+	t.Run("RejectsTerminalFailureWithoutFailedItemCount", func(t *testing.T) {
+		svc := newTestService(t, &mockBatchOperationClient{
+			getBatchOperationWithResponse: func(ctx context.Context, batchOperationKey camundav810.BatchOperationKey, reqEditors ...camundav810.RequestEditorFn) (*camundav810.GetBatchOperationResponse, error) {
+				return &camundav810.GetBatchOperationResponse{
+					HTTPResponse: newHTTPResponse(http.MethodGet, "https://camunda.local/v2/batch-operations/batch-failed", http.StatusOK, "200 OK"),
+					JSON200: &camundav810.BatchOperationResponse{
+						BatchOperationKey:        "batch-failed",
+						BatchOperationType:       &operationType,
+						State:                    camundav810.BatchOperationStateEnumFAILED,
+						OperationsTotalCount:     3,
+						OperationsCompletedCount: 1,
+					},
+				}, nil
+			},
+		})
+
+		op, err := svc.WaitForCompletion(ctx, "batch-failed")
+
+		require.Error(t, err)
+		assert.Equal(t, "FAILED", op.State)
+		assert.Contains(t, err.Error(), "finished with state FAILED")
+	})
+
+	t.Run("HonorsContextDeadlineWhileActive", func(t *testing.T) {
+		waitCtx, cancel := context.WithTimeout(ctx, 10*time.Millisecond)
+		defer cancel()
+		svc := newTestService(t, &mockBatchOperationClient{
+			getBatchOperationWithResponse: func(ctx context.Context, batchOperationKey camundav810.BatchOperationKey, reqEditors ...camundav810.RequestEditorFn) (*camundav810.GetBatchOperationResponse, error) {
+				return &camundav810.GetBatchOperationResponse{
+					HTTPResponse: newHTTPResponse(http.MethodGet, "https://camunda.local/v2/batch-operations/batch-active", http.StatusOK, "200 OK"),
+					JSON200: &camundav810.BatchOperationResponse{
+						BatchOperationKey:  "batch-active",
+						BatchOperationType: &operationType,
+						State:              camundav810.BatchOperationStateEnumACTIVE,
+					},
+				}, nil
+			},
+		})
+
+		op, err := svc.WaitForCompletion(waitCtx, "batch-active")
+
+		require.Error(t, err)
+		assert.True(t, errors.Is(err, context.DeadlineExceeded))
+		assert.Equal(t, "ACTIVE", op.State)
+	})
+}
+
+// TestBatchOperationFromPayloadPreservesDocumentedLifecycle verifies every
+// generated 8.10 batch state is decoded literally without inventing DRAINING.
+func TestBatchOperationFromPayloadPreservesDocumentedLifecycle(t *testing.T) {
+	states := []camundav810.BatchOperationStateEnum{
+		camundav810.BatchOperationStateEnumCREATED,
+		camundav810.BatchOperationStateEnumACTIVE,
+		camundav810.BatchOperationStateEnumSUSPENDED,
+		camundav810.BatchOperationStateEnumCOMPLETED,
+		camundav810.BatchOperationStateEnumPARTIALLYCOMPLETED,
+		camundav810.BatchOperationStateEnumFAILED,
+		camundav810.BatchOperationStateEnumCANCELED,
+	}
+	for _, state := range states {
+		t.Run(string(state), func(t *testing.T) {
+			op := batchOperationFromPayload(&camundav810.BatchOperationResponse{
+				BatchOperationKey: "batch-1",
+				State:             state,
+			}, http.StatusOK, "200 OK")
+
+			assert.Equal(t, string(state), op.State)
+			assert.NotEqual(t, "DRAINING", op.State)
+		})
+	}
+}
+
+// completedBatchResponse builds a terminal generated response for polling tests.
+func completedBatchResponse(key string, operationType camundav810.BatchOperationTypeEnum, total int32, completed int32, failed int32) *camundav810.GetBatchOperationResponse {
+	return &camundav810.GetBatchOperationResponse{
+		HTTPResponse: newHTTPResponse(http.MethodGet, "https://camunda.local/v2/batch-operations/"+key, http.StatusOK, "200 OK"),
+		JSON200: &camundav810.BatchOperationResponse{
+			BatchOperationKey:        key,
+			BatchOperationType:       &operationType,
+			State:                    camundav810.BatchOperationStateEnumCOMPLETED,
+			OperationsTotalCount:     total,
+			OperationsCompletedCount: completed,
+			OperationsFailedCount:    failed,
+		},
+	}
 }
 
 // newTestService creates a V810 service around the supplied mock generated client.

@@ -15,6 +15,8 @@ type SlowProcessAnalysisSelectionMode string
 const (
 	// SlowProcessAnalysisSelectionModeExplicitKeys records flag/stdin process-instance keys.
 	SlowProcessAnalysisSelectionModeExplicitKeys SlowProcessAnalysisSelectionMode = "explicit_keys"
+	// SlowProcessAnalysisSelectionModeProcessInstanceSearch records BID-only discovery.
+	SlowProcessAnalysisSelectionModeProcessInstanceSearch SlowProcessAnalysisSelectionMode = "process_instance_search"
 	// SlowProcessAnalysisSelectionModeProcessDefinitionSearch records process-definition scoped discovery.
 	SlowProcessAnalysisSelectionModeProcessDefinitionSearch SlowProcessAnalysisSelectionMode = "process_definition_search"
 )
@@ -55,12 +57,13 @@ type SlowProcessAnalysisProcessDefinitionSelector struct {
 
 // SlowProcessAnalysisProcessInstanceSearchFilters carries discovery-only process-instance filters.
 type SlowProcessAnalysisProcessInstanceSearchFilters struct {
-	State           State  `json:"state,omitempty"`
-	StartDateAfter  string `json:"startDateAfter,omitempty"`
-	StartDateBefore string `json:"startDateBefore,omitempty"`
-	EndDateAfter    string `json:"endDateAfter,omitempty"`
-	EndDateBefore   string `json:"endDateBefore,omitempty"`
-	NoIncidentsOnly bool   `json:"noIncidentsOnly,omitempty"`
+	BusinessId      *string `json:"businessId,omitempty"`
+	State           State   `json:"state,omitempty"`
+	StartDateAfter  string  `json:"startDateAfter,omitempty"`
+	StartDateBefore string  `json:"startDateBefore,omitempty"`
+	EndDateAfter    string  `json:"endDateAfter,omitempty"`
+	EndDateBefore   string  `json:"endDateBefore,omitempty"`
+	NoIncidentsOnly bool    `json:"noIncidentsOnly,omitempty"`
 }
 
 // SlowProcessAnalysisDetailFilters carries post-calculation timeline visibility filters.
@@ -73,6 +76,7 @@ type SlowProcessAnalysisDetailFilters struct {
 
 // SlowProcessAnalysisProcessInstance is the root result row for one selected process instance.
 type SlowProcessAnalysisProcessInstance struct {
+	BusinessId             *string                            `json:"businessId,omitempty"`
 	Key                    string                             `json:"key,omitempty"`
 	TenantID               string                             `json:"tenantId,omitempty"`
 	BpmnProcessID          string                             `json:"bpmnProcessId,omitempty"`
@@ -124,6 +128,7 @@ type SlowProcessAnalysisTimelineEntry struct {
 
 // SlowProcessAnalysisResult carries the complete render-independent analysis payload.
 type SlowProcessAnalysisResult struct {
+	Selection             *ProcessInstanceSelection            `json:"selection,omitempty"`
 	Request               SlowProcessAnalysisRequest           `json:"request,omitempty"`
 	DiscoveredScopeStatus DiscoveryScopeStatus                 `json:"discoveredScopeStatus,omitempty"`
 	PreflightScope        *OpsPreflightScope                   `json:"preflightScope,omitempty"`

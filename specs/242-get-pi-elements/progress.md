@@ -98,7 +98,6 @@ Started: 2026-07-16 17:20:23
 - [x] T029: Apply element enrichment to incremental page rendering
 - [x] T030: Preserve process-instance page counts, limits, and prompts while rendering enriched rows
 - [x] T031: Keep process-instance filters authoritative without element-specific filters
-- [x] T032: Surface reused element-service Camunda 8.7 unsupported errors for list/search
 **Tasks Remaining in Work Unit**: 0
 **Commit**: This work-unit commit
 **Files Changed**:

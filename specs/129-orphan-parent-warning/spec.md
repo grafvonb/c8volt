@@ -74,7 +74,6 @@ As a maintainer, I want direct single-resource lookups and absent-state waiting 
 - Tree or list rendering must remain usable when family data is partial rather than presenting an empty result solely because one ancestor lookup failed.
 - Delete and cancel preparation must distinguish between process-instance keys that were resolved successfully and ancestor keys that were missing so operators can act on the valid subset knowingly.
 - Direct key-based lookup and waiter flows must stay strict even if they share supporting services with traversal-oriented commands.
-- Version-specific process-instance service paths for `v87`, `v88`, and `v89` may differ internally, but the user-facing contract for affected traversal and preflight flows must remain consistent where those paths apply.
 
 ## Requirements *(mandatory)*
 
@@ -95,7 +94,6 @@ As a maintainer, I want direct single-resource lookups and absent-state waiting 
 - **FR-009**: The system MUST preserve a strict not-found error for direct key-based process-instance retrieval when the requested process instance itself is missing.
 - **FR-010**: The system MUST preserve the current absent/deleted waiter behavior without loosening or reinterpreting success conditions for wait flows.
 - **FR-011**: The system MUST let callers distinguish resolved family keys from missing ancestor keys through one shared structured warning contract so destructive preparation flows can act on the valid subset knowingly.
-- **FR-012**: Regression coverage MUST verify the partial-result warning contract across the applicable `v87`, `v88`, and `v89` process-instance service paths.
 
 ### Key Entities *(include if feature involves data)*
 
@@ -117,7 +115,6 @@ As a maintainer, I want direct single-resource lookups and absent-state waiting 
 - **SC-003b**: Automated coverage shows affected traversal and preflight flows return a normal failure when no process-instance data can be resolved, even if missing-ancestor metadata is available.
 - **SC-004**: Automated coverage confirms direct key-based process-instance retrieval still returns the normal not-found error when the requested instance is absent.
 - **SC-005**: Automated coverage confirms absent/deleted waiter behavior remains unchanged after the feature is implemented.
-- **SC-006**: Regression coverage exercises the applicable `v87`, `v88`, and `v89` process-instance service paths for the orphan-parent warning contract.
 
 ## Assumptions
 

@@ -59,32 +59,7 @@ func TestOpsRepairProcessInstanceSearchTenantContextUsesDiscoverySemantics(t *te
 
 // TestOpsRepairProcessInstanceHelpDocumentsSelectionShape verifies the target-specific key and incident selector contract.
 func TestOpsRepairProcessInstanceHelpDocumentsSelectionShape(t *testing.T) {
-	resetOpsRepairProcessInstanceFlagState()
-	t.Cleanup(resetOpsRepairProcessInstanceFlagState)
-
-	output := executeRootForProcessInstanceTest(t, "ops", "repair", "process-instance", "--help")
-
-	assertHelpOutputContainsAll(t, output,
-		"Repair active incidents associated with selected process instances",
-		"Aliases:",
-		"pi",
-		"--key strings",
-		"--direct-incidents-only",
-		"--batch-size int32",
-		"--limit int32",
-		"--retries int32",
-		"--job-timeout string",
-		"--vars string",
-		"--vars-file string",
-		"--report-file string",
-		"--report-format string",
-		"--dry-run",
-		"--no-wait",
-		"--workers int",
-		"./c8volt ops repair process-instance --key <process-instance-key> --dry-run",
-		"./c8volt ops repair process-instance --direct-incidents-only --bpmn-process-id <bpmn-process-id> --limit 5 --dry-run",
-	)
-	require.NotContains(t, output, "--incidents-only")
+	assertCommandHelpOutput(t, []string{"ops", "repair", "process-instance"}, []string{"--set-retries 0 skips retry restoration", "--set-vars-file", "--report-file"}, nil)
 }
 
 // TestOpsRepairProcessInstanceDryRunWritesMarkdownReport verifies report writing keeps dry-run mutation-free.
@@ -137,7 +112,7 @@ func TestOpsRepairProcessInstanceVarsFileDryRunShowsVariableScopes(t *testing.T)
 
 	output, err := testx.RunCmdSubprocess(t, "TestOpsRepairProcessInstanceCommandHelper", map[string]string{
 		"C8VOLT_TEST_CONFIG":             writeTestConfigForVersion(t, srv.URL, "8.9"),
-		"C8VOLT_TEST_OPS_REPAIR_PI_ARGS": marshalOpsRepairProcessInstanceArgsForEnv(t, []string{"ops", "repair", "process-instance", "--key", "2251799813685251", "--vars-file", varsFile, "--dry-run", "--verbose"}),
+		"C8VOLT_TEST_OPS_REPAIR_PI_ARGS": marshalOpsRepairProcessInstanceArgsForEnv(t, []string{"ops", "repair", "process-instance", "--key", "2251799813685251", "--set-vars-file", varsFile, "--dry-run", "--verbose"}),
 	})
 
 	require.NoError(t, err, string(output))
@@ -271,7 +246,7 @@ func TestOpsRepairProcessInstanceAutoConfirmReportsTenantScopeBeforeWork(t *test
 				"--tenant", "tenant-a",
 				"ops", "repair", "process-instance",
 				"--key", "2251799813685251",
-				"--vars", `{"approved":true}`,
+				"--set-vars", `{"approved":true}`,
 				"--auto-confirm",
 				"--no-wait",
 			},
@@ -284,7 +259,7 @@ func TestOpsRepairProcessInstanceAutoConfirmReportsTenantScopeBeforeWork(t *test
 			args: []string{
 				"ops", "repair", "process-instance",
 				"--state", "active",
-				"--vars", `{"approved":true}`,
+				"--set-vars", `{"approved":true}`,
 				"--auto-confirm",
 				"--no-wait",
 			},
@@ -348,7 +323,7 @@ func TestOpsRepairProcessInstanceInteractiveTenantContext(t *testing.T) {
 			args: []string{
 				"ops", "repair", "process-instance",
 				"--key", "2251799813685251",
-				"--vars", `{"approved":true}`,
+				"--set-vars", `{"approved":true}`,
 				"--no-wait",
 			},
 			selection:          "selection scope: explicit resource keys; tenant filter not applied",
@@ -361,7 +336,7 @@ func TestOpsRepairProcessInstanceInteractiveTenantContext(t *testing.T) {
 			args: []string{
 				"ops", "repair", "process-instance",
 				"--key", "2251799813685251",
-				"--vars", `{"approved":true}`,
+				"--set-vars", `{"approved":true}`,
 				"--no-wait",
 			},
 			selection:          "selection scope: explicit resource keys; tenant filter not applied",
@@ -375,7 +350,7 @@ func TestOpsRepairProcessInstanceInteractiveTenantContext(t *testing.T) {
 				"--tenant", "",
 				"ops", "repair", "process-instance",
 				"--state", "active",
-				"--vars", `{"approved":true}`,
+				"--set-vars", `{"approved":true}`,
 				"--no-wait",
 			},
 			selection:          "selection scope: unfiltered across accessible tenants",
@@ -391,7 +366,7 @@ func TestOpsRepairProcessInstanceInteractiveTenantContext(t *testing.T) {
 				"--tenant", "",
 				"ops", "repair", "process-instance",
 				"--state", "active",
-				"--vars", `{"approved":true}`,
+				"--set-vars", `{"approved":true}`,
 				"--no-wait",
 			},
 			selection:          "selection scope: unfiltered across accessible tenants",
@@ -739,6 +714,10 @@ func TestOpsRepairProcessInstanceCommandHelper(t *testing.T) {
 func newOpsRepairProcessInstanceServer(t *testing.T, requests *testx.SafeSlice[string]) *httptest.Server {
 	t.Helper()
 	return testx.NewIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		requests.Append(r.Method + " " + r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {

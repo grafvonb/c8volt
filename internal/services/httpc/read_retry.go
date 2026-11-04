@@ -33,6 +33,23 @@ type readRetryPolicy struct {
 	logInterval time.Duration
 }
 
+type withoutReadRetryKey struct{}
+
+// withoutReadRetryLogsKey scopes functional retry-log suppression to one workflow.
+type withoutReadRetryLogsKey struct{}
+
+// WithoutReadRetryLogs leaves retry policy and HTTP DEBUG diagnostics intact while
+// allowing an owning workflow to aggregate its human diagnostics exactly once.
+func WithoutReadRetryLogs(ctx context.Context) context.Context {
+	return context.WithValue(ctx, withoutReadRetryLogsKey{}, true)
+}
+
+// WithoutReadRetry limits advisory reads to one transport attempt. Other requests
+// retain the default policy; the returned context must only wrap the intended read.
+func WithoutReadRetry(ctx context.Context) context.Context {
+	return context.WithValue(ctx, withoutReadRetryKey{}, true)
+}
+
 // ReadRetryTransport owns bounded retry mechanics for safe Camunda read requests.
 type ReadRetryTransport struct {
 	base       http.RoundTripper
@@ -44,7 +61,7 @@ type ReadRetryTransport struct {
 
 // RoundTrip retries safe Camunda read requests after transient transport or server failures.
 func (t *ReadRetryTransport) RoundTrip(req *http.Request) (*http.Response, error) {
-	if req == nil || !isReadRetryMethod(req.Method) {
+	if req == nil || !isReadRetryMethod(req.Method) || req.Context().Value(withoutReadRetryKey{}) == true {
 		return t.rt().RoundTrip(req)
 	}
 	policy := normalizeReadRetryPolicy(t.policy)
@@ -116,7 +133,11 @@ func isReadRetryMethod(method string) bool {
 	}
 }
 
+// shouldRetryReadResult excludes locally unsent requests before backend retry classification.
 func shouldRetryReadResult(ctx context.Context, resp *http.Response, err error) (bool, string) {
+	if IsRequestRateWaitError(err) {
+		return false, ""
+	}
 	if ctx != nil && ctx.Err() != nil {
 		return false, ""
 	}
@@ -234,8 +255,9 @@ func sleepReadRetry(ctx context.Context, delay time.Duration) error {
 	}
 }
 
+// logRetry emits functional retry detail unless the calling workflow owns diagnostics.
 func (t *ReadRetryTransport) logRetry(req *http.Request, reason string, delay time.Duration, policy readRetryPolicy) {
-	if t.log == nil {
+	if t.log == nil || req.Context().Value(withoutReadRetryLogsKey{}) == true {
 		return
 	}
 	operation := strings.TrimSpace(httpActivityMessage(req))

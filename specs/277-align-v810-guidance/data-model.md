@@ -12,8 +12,8 @@ This feature changes documentation state rather than runtime data. The model def
 | default runtime | V89 | Intentionally supersedes the V88 default recorded by #273 |
 | active source baseline | `8.10.0-alpha4` prerelease | Disclosed separately from operator identity |
 | baseline lifecycle | replace in place | Later 8.10 sources do not create parallel identities |
-| service-adapter family | native V810 | Listed alongside V87, V88, and V89 |
-| generated-contract family | native V810 | Listed alongside V87, V88, and V89 |
+| service-adapter family | native V810 | Listed alongside V88, and V89 |
+| generated-contract family | native V810 | Listed alongside V88, and V89 |
 | embedded family | C810 | No active C89 fallback permitted |
 | live integration coverage | stable versions through 8.9 | No V810 integration profile is implied |
 
@@ -70,7 +70,6 @@ This feature changes documentation state rather than runtime data. The model def
 | #273 specification gateway requirements | active normative | Clarify diagnostic semantics |
 | #273 fixture specification, plan, research, data model, quickstart, and service contract | active normative | Verify C810 consistency; change only on concrete drift |
 | #273 checked tasks, progress, and Ralph memory | historical record | Preserve; retain existing #275 supersession context |
-| Integration profile and real-state matrices | integration-only | Preserve stable V87–V89 scope |
 | Configuration example template | active operator guidance | Add V810 and default disclosure |
 | Authored command help | active operator guidance | Complete the gateway diagnostic matrix |
 | README, API guide, CLI landing page, and command metadata | active operator source | Verify against contract; edit only on concrete drift |

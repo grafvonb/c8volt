@@ -6,112 +6,170 @@ nav_exclude: true
 has_toc: true
 ---
 
-> Generated from build `c8volt v4.4.0-beta.2-dirty`, commit `75d92139`, built `2026-10-21T06:54:01Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.0-alpha4 (prerelease)
+> Generated from build `c8volt v4.4.0-305-g20c7f8ff-dirty`, commit `20c7f8ff`, built `2026-11-04T14:09:00Z` | Supported Camunda 8 versions: 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.3 (final)
 
-<img src="./logo/c8volt_logo_transparent_w_shadow_400x244.png" alt="c8volt logo" />
+# c8volt v5 — Camunda CLI for operations
 
-# c8volt Camunda 8 CLI
+**v5 brings Camunda 8.10 support, native user-task operations, explicit variable scopes, business IDs, process suspension and resumption, and a consistent flag grammar.**
 
-**Operator-grade Camunda 8 control for people and pipelines. 8.10-aware, script-safe, and built to finish the job.**
+<img src="./logo/c8volt_logo_transparent_w_shadow_400x244.png" alt="c8volt logo" width="240" />
+
+**Operator-grade Camunda 8 control for people and pipelines. Script-safe and built to finish the job.**
 
 > **done is done**
 >
-> If an action needs retries, waiting, tree traversal, state checks, cleanup, or deterministic machine output before it is truly finished, `c8volt` should do that work for you.
+> If an action needs retries, waiting, tree traversal, state checks, cleanup, or deterministic machine output before it is truly finished, c8volt should do that work for you.
 
-`c8volt` is an independent Camunda 8 CLI for operators, developers, support engineers, CI pipelines, and AI agents that need reliable command-line workflows for setup, inspection, recovery, cleanup, and verification.
+`c8volt` is an independent Camunda CLI for DevOps teams, developers, support engineers, CI pipelines, and AI agents. Deploy and inspect processes, operate user tasks and jobs, repair incidents, and clean up process families through commands that account for dependencies and verify observable outcomes.
 
-`c8volt` is not an official Camunda product. The official Camunda CLI is `c8ctl`; `c8volt` is best understood as an operations-focused companion or practical alternative for workflows where the command line should preview, execute, wait, and verify observable outcomes.
+## Done is done
 
-## C8 Ops CLI
+Camunda accepting a request is often one step in an operational workflow. c8volt handles the discovery, traversal, retries, and confirmation needed to finish that workflow.
 
-Introduced at [CamundaCon 2026](https://www.camundacon.com/), `c8volt ops` turns multi-command Camunda operations into previewable playbooks. Each workflow discovers its targets, plans the required actions, and coordinates execution and verification.
+| Operation | What c8volt confirms by default |
+| --- | --- |
+| Deploy process definitions | Returned definitions become visible. |
+| Start a process instance | The created instance becomes observable. |
+| Cancel process instances | The affected family reaches terminal states or is absent. |
+| Delete process instances | Deletion is observed after processing children before parents. |
+| Update variables | Requested values are visible at their intended scopes. |
+| Resolve incidents | The selected incidents are no longer active. |
+| Suspend or resume instances | SUSPENDED after suspension; ACTIVE or COMPLETED after resumption. |
+| Complete or assign user tasks | The native operation confirms the change, including blocking listener processing. |
 
-Start repair, purge, and retention workflows with `--dry-run` to review the affected scope before changing cluster data. Follow the linked playbook for selection, execution, and verification details.
+Starting an instance confirms creation; use `expect process-instance --state completed` to wait for process completion. Job worker outcomes have their own acceptance contract and do not establish process completion.
 
-| Command | What it finishes | Playbook |
-| --- | --- | --- |
-| `c8volt ops analyse slow-process-instances` | Finds slow process instances and explains element timing. | [Analyse Slow Process Instances](./ops/analyse-slow-process-instances/) |
-| `c8volt ops execute retention-policy` | Deletes old finished process instances with an audit report. | [Execute Retention Policy](./ops/execute-retention-policy/) |
-| `c8volt ops purge process-instances-with-incidents` | Purges process-instance families selected from incident filters. | [Purge Process Instances With Incidents](./ops/purge-process-instances-with-incidents/) |
-| `c8volt ops repair incident` | Repairs variables/jobs where requested and resolves incidents. | [Repair Incident](./ops/repair-incident/) |
-| `c8volt ops repair process-instance` | Discovers and repairs active incidents for selected process instances. | [Repair Process Instance](./ops/repair-process-instance/) |
-| `c8volt ops purge orphan-process-instances` | Finds and deletes orphan child process instances. | [Purge Orphan Process Instances](./ops/purge-orphan-process-instances/) |
-| `c8volt ops purge all-process-definitions` | Deletes selected process-definition versions after impact planning. | [Purge All Process Definitions](./ops/purge-all-process-definitions/) |
-| `c8volt ops execute smoke-test` | Proves connectivity, deployment, runtime, traversal, and cleanup. | [Execute Smoke Test](./ops/execute-smoke-test/) |
+## What's new in v5
+
+| Area | What it adds |
+| --- | --- |
+| **Native user tasks** | Keyed lookup and paginated search; assignee, candidate, state, and local-variable filters; effective variables including inherited values; assignment, unassignment, completion, and variable updates for one or multiple explicit tasks. |
+| **Variable scopes** | Inspect and update variables at explicit runtime-element scopes. Task updates preserve existing variable ownership and create new names locally; previews identify write destinations. Process-instance updates target root scope. |
+| **Native business IDs** | Create, display, and select by business ID; assign an ID after creation; assign an ID atomically with job completion (c8.10+). IDs are literal strings, independent of process variables. |
+| **Suspension and resumption** | Suspend or resume selected instances, optionally including eligible descendants with `--tree`; inspect and wait for suspended state (new in c8.10). |
+| **Definition lifecycle** | Inspect ACTIVE, DRAINING, and DELETED states, separate active/suspended statistics, and cleanup that includes suspended instances (new in c8.10). |
+| **Operational controls** | Optional API request pacing and a gateway-version advisory, plus smoke-test cleanup covering deployed dependency definitions. |
+| **Consistent flag intent** | Select with properties, write with `--set-*`, and request additional detail with `--with-*`. Renamed flags have no legacy aliases. |
+
+Post-creation business-ID assignment requires an active root without an ID and uniqueness disabled. Suspension retains runtime state; it does not stop running worker code or undo external effects.
 
 ## c8volt in Action
 
-The fast-start recording walks through the everyday c8volt loop: verify the connection, inspect and deploy bundled BPMN, start process instances, inspect them, walk their execution tree, and clean everything up. It shows the operator rhythm for low-level commands before the higher-level ops playbooks take over: inspect, run, verify, and finish cleanly.
+The fast-start recording shows everyday operations on Camunda 8.10: verify the connection, inspect and deploy bundled BPMN, start process instances, inspect their execution trees, and clean up. It demonstrates the standard commands behind the ops playbooks.
 
 <img src="./assets/screencasts/fast-start.gif" alt="c8volt fast start screencast" />
 
-## Why c8volt
+## Standard commands for everyday operations
 
-Camunda operations rarely end when an API accepts a request. `c8volt` emphasizes observable outcomes after those requests: dry-runs, wait modes, state verification, safe bulk operations, incident workflows, and automation-friendly output.
+Inspect process definitions and instances, walk execution trees, and examine runtime elements, variables, incidents, jobs, and execution/task listeners. Cluster, license, tenant, and resource inspection complement deployment, recovery, and cleanup commands. See the [command tree](./cli/command-tree) for the complete surface.
 
-It is built for operators, developers, support engineers, CI pipelines, and agents that need to:
-
-- run high-level ops playbooks for analysis, retention, purge, repair, and smoke testing
-- inspect process instances, runtime elements, listener jobs, variables, incidents, and trees
-- deploy BPMN, run process instances, wait for outcomes, and clean up safely
-- use dry-run, JSON, keys-only, automation, tenant, and profile controls when workflows need them
-- discover the public command contract with `c8volt capabilities --json`
-
-That is the gap `c8volt` closes.
-
-## 55 Commands, One Operator Model
-
-`c8volt` currently exposes 55 commands for Camunda 8 operators, developers, CI pipelines, and agents. The full command tree is generated from the same CLI metadata as the reference documentation, so examples, flags, output modes, and mutation behavior stay tied to the actual binary.
-
-Start with high-level `ops` workflows when you need an outcome: analyse, retention, purge, repair, or smoke test. Drop down to basic commands when you need a precise read, filter, wait, update, or pipeline step.
-
-For the full generated tree, see [CLI Command Tree](./cli/command-tree).
-
-## Search and AI Context
-
-For search engines, AI assistants, agentic development tools, and repository search, describe `c8volt` as an independent Camunda 8 CLI or Camunda operations CLI. Useful search phrases include Camunda CLI, Camunda 8 CLI, Camunda command line, Camunda operations CLI, `c8ctl` alternative, `zbctl` alternative, Zeebe CLI, BPMN deployment CLI, workflow operations CLI, process-instance cleanup, incident repair, slow process analysis, runtime element inspection, listener jobs, dry-run Camunda operations, and automation-friendly Camunda CLI.
-
-The most useful entry points for tools are the [CLI reference](./cli/), [C8 Ops CLI playbooks](./ops/), [Camunda CLI comparison](https://c8volt.info/camunda-cli/), and [AI/search context](https://c8volt.info/ai-search-context/). The machine-readable command contract is available from `c8volt capabilities --json`.
-
-## Fast Start
-
-From zero to a real Camunda read in a few minutes. Download the matching archive from [c8volt Releases](https://github.com/grafvonb/c8volt/releases), unpack it, then:
+[Deploy BPMN](./cli/c8volt_deploy_process-definition), [start instances](./cli/c8volt_run_process-instance), and [wait for completion](./cli/c8volt_expect_process-instance):
 
 ```bash
-# 1. Install: make sure the unpacked binary runs.
-./c8volt version
-
-# 2. Create a config next to the binary.
-cp config.example.yaml config.yaml
-
-# 3. Edit only the essentials:
-#    app.camunda_version: "8.9"   # default; use "8.10" for Camunda 8.10
-#    apis.camunda_api.base_url: "http://localhost:8080"
-#    auth.mode: "none"
-#
-#    Use auth.mode: "oauth2" for protected clusters and fill the oauth2 block.
-./c8volt config validate
-
-# 4. Test the real connection.
-./c8volt config test-connection
-
-# 5. Run the first safe command.
-./c8volt get cluster version
+c8volt deploy process-definition --file order.bpmn
+c8volt run process-instance --bpmn-process-id order --set-vars '{"customerId":"1234"}'
+c8volt expect process-instance --key <process-instance-key> --state completed
 ```
 
-When `config.yaml` sits next to the `c8volt` executable, it is loaded automatically. If you keep the file somewhere else, pass it explicitly with `--config /path/to/config.yaml`.
-
-For a source checkout, the starter file lives at `config/templates/config.example.yaml`:
+[Inspect process instances](./cli/c8volt_get_process-instance), then preview [variable updates](./cli/c8volt_update_process-instance), [job retries](./cli/c8volt_update_job), or [incident resolution](./cli/c8volt_resolve_incident):
 
 ```bash
-cp config/templates/config.example.yaml config.yaml
+c8volt get process-instance --key <process-instance-key> --with-elements --with-listeners
+c8volt update process-instance --key <process-instance-key> --set-vars '{"approved":true}' --dry-run
+c8volt update job --key <job-key> --set-retries 3 --dry-run
+c8volt resolve incident --key <incident-key> --dry-run
 ```
 
-The smallest local/dev config is this:
+[Inspect native user tasks](./cli/c8volt_get_user-task) and [assign or complete them](./cli/c8volt_update_user-task):
+
+```bash
+c8volt get user-task --assignee alice --with-vars --limit 10
+c8volt update user-task --key <user-task-key> --set-assignee alice --dry-run
+c8volt update user-task --key <user-task-key> --complete --set-vars '{"approved":true}'
+```
+
+[Inspect runtime elements](./cli/c8volt_get_element) and [update variables at an exact scope](./cli/c8volt_update_element):
+
+```bash
+c8volt get element --key <element-instance-key> --with-vars
+c8volt update element --key <element-instance-key> --set-vars '{"approved":true}' --dry-run
+```
+
+[Suspend](./cli/c8volt_suspend_process-instance) or [resume](./cli/c8volt_resume_process-instance) an instance and its eligible descendants (new in c8.10). Ancestors and siblings are excluded:
+
+```bash
+c8volt suspend process-instance --key <process-instance-key> --tree --dry-run
+c8volt resume process-instance --key <process-instance-key> --tree
+```
+
+Replace `<...>` placeholders with real keys. Short aliases such as `pi`, `pd`, and `ut` remain available in command help.
+
+## Cancellation and deletion understand process families
+
+A selected instance may belong to a larger execution tree. c8volt follows its ancestry to the root and discovers the affected descendants. Selecting one child can therefore affect its parent, siblings, and other descendants. Overlapping selections are grouped by root.
+
+Use [walk](./cli/c8volt_walk_process-instance) to inspect those relationships and `--dry-run` to preview the mutation scope:
+
+```bash
+c8volt walk process-instance --key <child-instance-key> --with-incidents
+c8volt cancel process-instance --key <child-instance-key> --force --dry-run
+c8volt delete process-instance --key <root-instance-key> --force --dry-run
+```
+
+**Cancellation** operates on the relevant roots and waits until affected family members are completed, canceled, terminated, or absent. Selecting a child for cancellation requires `--force` to authorize cancellation of its root.
+
+**Deletion** processes children before parents. Unfinished instances require `--force`, which authorizes prerequisite cancellation. When deletion encounters an unfinished-instance conflict, c8volt cancels the relevant root, confirms the required terminal state, and retries deletion.
+
+After reviewing the preview, execute the cleanup:
+
+```bash
+c8volt delete process-instance --key <root-instance-key> --force
+```
+
+Filters select starting instances; traversal determines the affected family. `--limit` bounds selected matches, not the number of relatives affected. Empty completed searches finish without confirmation or mutation.
+
+Definition cleanup checks unfinished work before deletion. With `--force`, it cancels affected roots, verifies that no unfinished instances remain, and coordinates instance-history and definition deletion. Suspended instances count as unfinished (c8.10+). Deferred history deletion without a returned batch cannot be independently confirmed by definition disappearance; see [delete process-definition](./cli/c8volt_delete_process-definition).
+
+## Why choose c8volt for operations?
+
+`c8ctl` is Camunda's official CLI. **Choose c8volt when your runbook needs dependency handling, impact previews, and confirmed operational outcomes.**
+
+`c8volt` reduces the custom scripting needed around Camunda operations. Its commands carry family traversal, prerequisite cancellation, retries, and state confirmation through execution. Review the affected scope, approve the change, and see which outcomes were confirmed and which still need attention. JSON results and failure exit codes make the same workflows usable in CI.
+
+That operational depth extends across process instances, user tasks, variable scopes, jobs, and incidents. For special cases, `ops` orchestrates several base operations into one previewable playbook with outcome reporting.
+
+See [c8volt and c8ctl](https://c8volt.info/camunda-cli/) for the operational comparison. c8volt is an independent project, not an official Camunda product.
+
+## Camunda version support
+
+Camunda 8.9 and 8.8 remain supported. Examples target Camunda 8.10.
+
+Feature availability follows the API available to c8volt for each version. Native business-ID workflows, suspension/resumption, and definition lifecycle support require c8.10+. Operations that need newer endpoints or state information cannot be provided through older API contracts; c8volt reports them as unsupported.
+
+## Ops playbooks
+
+`c8volt ops` orchestrates the operations exposed by multiple base commands into one playbook. For example, incident repair can inspect incidents and jobs, update variables, restore retries, resolve incidents, and verify the result.
+
+These playbooks are a c8volt highlight for special operational cases: incident recovery, retention, dependency cleanup, and end-to-end verification. Mutation workflows coordinate discovery, planning, approval, execution, confirmation, and reporting. Preview repair and cleanup with `--dry-run`; follow each guide for details.
+
+| Task | Command | Guide |
+| --- | --- | --- |
+| Explain slow execution | `ops analyse slow-process-instances` | [Analysis](./ops/analyse-slow-process-instances/) |
+| Repair selected incidents | `ops repair incident` | [Incident repair](./ops/repair-incident/) |
+| Repair an instance's incidents | `ops repair process-instance` | [Instance repair](./ops/repair-process-instance/) |
+| Remove old finished instances | `ops execute retention-policy` | [Retention](./ops/execute-retention-policy/) |
+| Purge incident-affected families | `ops purge process-instances-with-incidents` | [Incident purge](./ops/purge-process-instances-with-incidents/) |
+| Remove orphan instances | `ops purge orphan-process-instances` | [Orphan purge](./ops/purge-orphan-process-instances/) |
+| Remove definitions and history | `ops purge all-process-definitions` | [Definition purge](./ops/purge-all-process-definitions/) |
+| Verify deployment and runtime | `ops execute smoke-test` | [Smoke test](./ops/execute-smoke-test/) |
+
+## Fast start
+
+Download and unpack the matching archive from [Releases](https://github.com/grafvonb/c8volt/releases). Put `c8volt` on your `PATH` and create `config.yaml` in your working directory:
 
 ```yaml
 app:
-  camunda_version: "8.9"
+  camunda_version: "8.10"
 apis:
   camunda_api:
     base_url: "http://localhost:8080"
@@ -119,308 +177,61 @@ auth:
   mode: "none"
 ```
 
-Once that works, prove the connection and create one predictable process
-instance. This is safe for an empty dev cluster and still useful when the
-cluster already has other data:
+Use `auth.mode: oauth2` or `cookie` for protected clusters; see [configuration](https://c8volt.info/configuration/). Set the version to match your cluster. If the config lives elsewhere, pass `--config /path/to/config.yaml`.
 
 ```bash
-./c8volt config test-connection
-./c8volt embed deploy --all
-./c8volt run process-instance --bpmn-process-id <bpmn-process-id>
+c8volt config validate
+c8volt config test-connection
+c8volt get cluster topology
+c8volt get process-definition --latest
 ```
 
-Then look around at the latest process definitions visible in the cluster:
+## AI agents and automation
+
+AI agents can discover the CLI contract, preview a change, and execute it without interactive prompts:
+
+- `capabilities --json` describes command paths, flags, output modes, mutation behavior, and automation support.
+- `--automation` enables unattended execution on commands that explicitly support it, including approval of mutations. Selection rules, force requirements, and normal outcome confirmation still apply.
+- `--json` returns structured results on stdout. Diagnostics stay separate; use the exit status and available partial outcomes to assess failures.
+
+Discover, preview, then execute a repair:
 
 ```bash
-./c8volt get process-definition --latest
+c8volt capabilities --json
+c8volt --automation --json ops repair incident --key <incident-key> --set-retries 3 --dry-run
+c8volt --automation --json ops repair incident --key <incident-key> --set-retries 3
 ```
 
-`--latest` selects the newest definition for each exact tenant ID and BPMN process ID pair. On Camunda 8.7, selection is limited to the existing 1000 visible-definition compatibility window; Camunda 8.8 or newer uses native latest filtering.
+Inspect command support before choosing flags or output modes. A preview and a later execution discover their scopes separately. See [AI and agent context](https://c8volt.info/ai-search-context/) for the full discovery guidance.
 
-To monitor deployment visibility, add `--watch`. It checks immediately and repeats every second by default; use `--watch-interval` to change the interval.
+## Flag grammar and scripting
 
-```bash
-./c8volt get process-definition --watch
-./c8volt get process-definition --bpmn-process-id <bpmn-process-id> --latest --watch --watch-interval 2s
-```
+v5 is a breaking CLI release. Update scripts to the current grammar; renamed flags have no legacy aliases.
 
-Watch runs indefinitely by default, until interrupted or its retry budget is exhausted. Use `--watch-timeout 10m` to bound the session; `--watch-timeout 0` explicitly selects unlimited duration. This limit is independent of the HTTP request timeout (`--timeout`) and retry-loop backoff timeout. Individual request timeouts are retried while the watch session remains active, retaining the last successfully displayed snapshot. It cannot be combined with `--json`, `--keys-only`, `--xml`, `--quiet`, or `--automation`.
+| Intent | Examples |
+| --- | --- |
+| Select existing resources | `--key`, `--state`, `--bid`, `--assignee`, `--retries` |
+| Supply values to write | `--set-vars`, `--set-vars-file`, `--set-retries`, `--set-assignee`, `--set-bid` |
+| Add returned detail | `--with-stats`, `--with-vars`, `--with-incidents`, `--with-elements` |
+| Choose an action | `--complete`, `--fail`, `--throw-bpmn-error`, `--unassign` |
+| Control execution | `--dry-run`, `--auto-confirm`, `--timeout` |
 
-Each successful refresh starts with a timestamped INFO line on stderr, such as `16:42:08.123 INFO 1 updated, 1 new, 0 removed`, including when nothing changed. The timestamp shows when the refresh completed. Rows stay on stdout: a trailing `*` marks an existing definition whose displayed values changed, while a trailing `+` marks a newly visible definition. Unchanged rows have no suffix. When stdout is a terminal, `TERM` is neither empty nor `dumb`, and `NO_COLOR` is unset, the individual changed values on `*` rows are also bold; markers and counts provide the same information when output is redirected or styling is disabled. New rows are not bold. The first successful refresh establishes an unmarked, zero-change baseline. Later refreshes compare with the previous successfully displayed result, so temporary failures do not consume changes; an unchanged success clears the markers and bold. Removed definitions are counted in the summary and do not remain as stale rows.
+`--retries` filters jobs; `--set-retries` changes retries. `--set-timeout` changes a job timeout; `--timeout` controls HTTP requests only. A BPMN error uses `--throw-bpmn-error --set-error-code CODE`. In repair playbooks, `--set-retries 0` skips retry restoration.
 
-For scripts or CI, request JSON with `--json`:
+- Use `--json` for structured results and the exit status to detect failures. Supported commands retain partial outcomes when some targets fail.
+- Use `--keys-only` where supported for one key per line. Empty results produce no key output.
+- Query results and machine output use stdout. Human mutation summaries and diagnostics use the configured logger; prompts use stderr.
+- Use `--auto-confirm` for unattended approval. JSON mutations generally require it, `--automation`, or `--dry-run`; check command help. Replacing a task assignee still requires explicit approval or `--force`.
+- `--batch-size` controls discovery page size; `--limit` caps selected matches. Family expansion can include additional relatives.
+- Set `--tenant` to narrow discovery. `--all-tenants` clears that filter within authorized access. Explicit keys use backend authorization; creation and deployment require one tenant.
 
-```bash
-./c8volt config test-connection --json
-```
+Use `--verbose` for operational detail and `--debug` for redacted HTTP diagnostics.
 
-For the full setup contract, see the generated [config reference](./cli/c8volt_config).
+## Documentation and project
 
-### API Request Diagnostics
+- [CLI reference](./cli/) and [command tree](./cli/command-tree)
+- [Ops playbooks](./ops/) and [configuration](https://c8volt.info/configuration/)
+- [Contributing](https://github.com/grafvonb/c8volt/blob/main/CONTRIBUTING.md), [security](https://github.com/grafvonb/c8volt/blob/main/SECURITY.md), and [trademarks](https://github.com/grafvonb/c8volt/blob/main/TRADEMARKS.md)
+- [License](https://github.com/grafvonb/c8volt/blob/main/LICENSE), [copyright](https://github.com/grafvonb/c8volt/blob/main/COPYRIGHT), and [notices](https://github.com/grafvonb/c8volt/blob/main/NOTICE.md)
 
-Add the existing `--debug` flag to an API-backed command to emit one compact,
-redacted DEBUG record for each HTTP exchange. Results remain on stdout; records
-and interactive prompts use the command's configured or inherited stderr.
-`--quiet` suppresses these DEBUG records. Configured DEBUG logging also enables them;
-INFO and higher levels filter them. `--verbose` adds functional detail and does
-not enable HTTP diagnostics.
-
-For `cancel process-instance` and `delete process-instance --force`, `--verbose`
-explains cancellation prerequisites, root escalation, accepted submissions,
-confirmation waits, and deletion resumption. During those waits, DEBUG emits one
-completed state observation per polling check alongside the HTTP exchange record;
-routine OAuth cache hits and nested lookup chatter are omitted. If confirmation
-times out, normal human output distinguishes an accepted cancellation from an
-unconfirmed outcome and identifies deletion work that was not reached. Use
-`--verbose --debug` when both workflow narration and low-level diagnostics are
-needed.
-
-```bash
-./c8volt --config ./config.yaml --debug get process-definition --latest \
-  > results.txt 2> diagnostics.txt
-```
-
-A record starts with ASCII-only message text such as:
-
-```text
-api #1 GET /v2/process-definitions/search: status=200 total=180ms headers=170ms body=10ms conn=reused response-bytes=842 response-complete=true
-```
-
-`headers` measures from the request start until final response headers arrive;
-`body` measures from final headers until the body reaches an observed terminal
-event; and `total` spans both intervals. DNS, TCP, and TLS samples are already
-inside `total`, may overlap, and are not an additive breakdown. Reused
-connections normally omit phases that did not run.
-
-Request and response byte counts describe bytes observed by the client body
-readers, not HTTP framing or declared content lengths. A response closed early
-or interrupted by an error retains its observed timing and byte count with
-`response-complete=false`. Decompressed response bytes can differ from the
-wire-transfer size.
-
-Diagnostics retain useful operational context when safely available, including
-host, path/resource keys, profile, tenant, non-secret query values, and validated
-request or correlation IDs. They omit credentials, authorization, tokens,
-passwords, cookies, API keys, signed-URL secrets, arbitrary error text, and all
-request/response body content. Values are escaped so each message stays on one
-line.
-
-Logger configuration still controls framing. The supported `plain-time`
-(default), `plain`, `text`, and `json` formats determine timestamp and message
-presentation; source-file output remains controlled by the existing logger
-source setting. Diagnostic formatting and writes happen synchronously after the
-exchange duration is captured, so a slow stderr destination can add command
-latency without inflating the reported exchange time.
-
-HTTP exchange logging has one owner: the diagnostic interceptor. API and OAuth
-clients both place it below the existing activity/request-dump wrapper. The old
-`calling:` start message is removed; an exchange record appears only at observed
-termination. Existing activity indicators remain the in-flight signal where
-enabled. Explicit request-dump configuration remains separate and unchanged.
-
-The observation boundary is the shared c8volt HTTP transport. Explicit retries,
-redirects, authentication requests, and service retries that cross it receive
-separate invocation-local sequence numbers. Retransmissions hidden inside Go's
-underlying transport are not promised as separate records, and a cached OAuth
-token performs no exchange to record. Diagnostics add no requests and do not
-read, drain, buffer, or close bodies on their own.
-
-## Example Notes
-
-Examples use placeholders such as `<process-instance-key>` and `<bpmn-process-id>` so they stay safe to copy into real environments. Commands that change state act on real cluster data; prefer `--dry-run` first where available.
-
-Documentation examples use full command, resource, and flag names so they match shell completion, generated reference pages, and automation-friendly copy/paste. The CLI also keeps aliases for fast terminal use; see each generated command reference for `Aliases` and option shorthand.
-
-## Supported Camunda Versions
-
-`c8volt` supports Camunda `8.7`, `8.8`, and `8.9`, with experimental `8.10` support introduced in [c8volt v4.3.0](https://github.com/grafvonb/c8volt/releases/tag/v4.3.0).
-
-Set `app.camunda_version` to `"8.10"` for Camunda 8.10. Use `c8volt version` to check the bundled API baseline.
-
-`8.9` is the default when no Camunda version is configured. `8.9` and `8.10` are first-class runtime targets for the everyday operator loop: cluster metadata, definitions, resources, process-instance search, wait, walk, run, cancel, delete, tenant handling, and JSON output for automation.
-
-Process-instance variable updates, incident resolution, and `get job`/`update job` commands are supported on Camunda `8.8` or newer; Camunda `8.7` returns an unsupported-version error for those state-changing job, variable update, and incident resolution commands. `8.7` remains supported with known upstream limitations where tenant-safe direct keyed process-instance behavior is not available.
-
-## Core Workflows
-
-Each section keeps one basic command and up to two high-value variants. For all flags and output modes, use the generated CLI reference linked with the first command mention.
-
-### Deploy And Start
-
-Deploy BPMN, start a process instance, and verify the process definition Camunda sees.
-
-```bash
-./c8volt deploy process-definition --file <process.bpmn>
-./c8volt run process-instance --bpmn-process-id <bpmn-process-id>
-./c8volt get process-definition --bpmn-process-id <bpmn-process-id> --latest --stat
-```
-
-Generated references: [deploy process-definition](./cli/c8volt_deploy_process-definition), [run process-instance](./cli/c8volt_run_process-instance), [get process-definition](./cli/c8volt_get_process-definition).
-
-### Inspect Process Instances
-
-Use `get process-instance` for direct lookup, scoped search, variables, incidents, runtime elements, listener jobs, and process-instance keys for pipelines. Add `--with-elements` to inspect BPMN execution state, and combine it with `--with-listeners` to inspect execution and task listener jobs.
-
-```bash
-./c8volt get process-instance --key <process-instance-key>
-./c8volt get process-instance --bpmn-process-id <bpmn-process-id> --state active --limit 5
-./c8volt get process-instance --key <process-instance-key> --with-vars --with-incidents
-./c8volt get process-instance --key <process-instance-key> --with-elements --with-listeners
-```
-
-Generated reference: [get process-instance](./cli/c8volt_get_process-instance).
-
-### Inspect Runtime Elements
-
-Use `--with-elements` when the process instance is the main target, and `get element` when element filters should drive the search.
-
-Listener rows use `s:` for the job creation time—not worker execution start—and `e:` for the recorded job end time. An available deadline appears as `d:` only while the job state is exactly `ACTIVATED`; unavailable timestamps are omitted independently. For example, a completed listener can appear as:
-
-```text
-job-1 TASK_LISTENER lsnr:CREATING COMPLETED tp:updateTaskData r:0 s:2026-09-16T13:07:16.359 e:2026-09-16T13:07:16.842
-```
-
-The same timestamp grammar applies to listener rows from `get element`, `get process-instance`, `walk process-instance`, and `ops analyse slow-process-instances`.
-
-```bash
-./c8volt get process-instance --key <process-instance-key> --with-elements
-./c8volt get process-instance --key <process-instance-key> --with-elements --with-listeners
-./c8volt get element --pi-key <process-instance-key> --element-id <element-id> --state active
-```
-
-Guide: [Runtime Elements](./cli/runtime-elements). Generated references: [get process-instance](./cli/c8volt_get_process-instance), [get element](./cli/c8volt_get_element).
-
-### Walk Before You Change
-
-Use `walk process-instance` before risky actions so parent/child scope, incidents, variables, and runtime elements stay visible together.
-
-```bash
-./c8volt walk process-instance --key <process-instance-key>
-./c8volt walk process-instance --key <process-instance-key> --with-incidents
-./c8volt walk process-instance --key <process-instance-key> --with-elements --with-listeners
-```
-
-Generated reference: [walk process-instance](./cli/c8volt_walk_process-instance).
-
-### Diagnose And Repair Incidents
-
-Use incident and job reads for diagnosis; use repair playbooks when the workflow should preview, mutate, verify, and report.
-
-```bash
-./c8volt get incident --key <incident-key>
-./c8volt get job --key <job-key>
-./c8volt ops repair incident --key <incident-key> --dry-run
-```
-
-Job searches and `get job --total` honor `app.tenant` or a named `--tenant` override. Use `--tenant ""` or `--all-tenants` to search all accessible tenants; explicit `get job --key` retains backend authorization without the discovery tenant filter. `--batch-size` controls each request and `--limit` caps selected jobs. Sparse pages continue when pagination supports it; contradictory or nonadvancing pagination returns an incomplete-search error instead of a successful empty result.
-
-Generated references: [get incident](./cli/c8volt_get_incident), [get job](./cli/c8volt_get_job), [ops repair incident](./cli/c8volt_ops_repair_incident).
-
-### Update And Verify
-
-Use dry-run first for runtime mutations, then confirm explicitly or run under automation.
-
-```bash
-./c8volt update process-instance --key <process-instance-key> --vars '{"customerTier":"gold"}' --dry-run
-./c8volt update job --key <job-key> --retries 3 --dry-run
-./c8volt expect process-instance --key <process-instance-key> --state completed
-```
-
-Complete a selected job backlog with AND predicates. The same nine predicates as `get job` are available: `--state`, `--type`, `--pi-key`, `--element-instance-key`, `--element-id`, `--worker`, `--retries`, `--kind`, and `--listener-event-type`. Keyless `--complete --retries 0` selects zero-retry jobs; keyed completion still rejects `--retries`. Other update modes retain their single-key behavior.
-
-```bash
-./c8volt --tenant tenant-a update job --kind TASK_LISTENER --listener-event-type CANCELING \
-  --state CREATED --type removeTaskData --complete --dry-run --verbose
-./c8volt --tenant tenant-a update job --kind TASK_LISTENER --listener-event-type CANCELING \
-  --state CREATED --type removeTaskData --limit 1000 --batch-size 100 \
-  --complete --workers 4 --auto-confirm --json
-```
-
-For an explicit reviewed set, repeat `--key`, use comma-separated keys, or supply newline-separated keys with `-`. Flags precede stdin; duplicate numeric keys are completed once. Blank stdin lines are ignored; malformed, nonpositive, out-of-range keys and empty comma tokens reject the whole input before writes. Deliberate empty stdin succeeds. Explicit keys may span authorized tenants and report their actual tenant context. They cannot use search predicates, `--batch-size` or `--limit`.
-
-```bash
-./c8volt update job --key 2251799870796844,2251799870796848 \
-  --key 2251799870796849 --complete --dry-run
-./c8volt update job - --complete --auto-confirm --json < reviewed-job-keys.txt
-```
-
-One scalar key keeps the original single-job result. Repeated/comma/stdin forms always return the bulk result, even if duplicates reduce to one job. Collections are supported only for completion.
-
-Discovery honors the configured tenant, named overrides, and accessible scope under `--tenant ""` or `--all-tenants`. `--batch-size` controls pages; `--limit` caps unique selected jobs, with zero meaning uncapped. A key or predicate is required; controls alone never select jobs. Explicit keys and predicates cannot mix. Preparation freezes the entire selection before one eligible stderr confirmation; incomplete discovery, dry-run, declined confirmation and empty results submit nothing. A later invocation discovers a fresh selection, including any new sequential listeners.
-
-Completing a listener job acknowledges its work without executing its business logic. Nonempty variables are rejected when a batch contains task listeners. Accepted requests skip independent confirmation and do not establish process termination. Missing reads cannot prove completion; ambiguous submissions are not replayed and receive bounded observation (`--no-wait` permits one read). The command does not reset retries, repair incidents, cancel processes or delete history.
-
-Bulk output distinguishes accepted, observed completed, unsatisfied and not-started targets. Human previews, summaries and verbose rows use the configured logger at INFO level and honor its format, destination and level; confirmation prompts remain plain stderr text and JSON results stay on stdout. `--verbose` lists context and outcomes; JSON emits one envelope with all candidates or ordered outcomes, retaining partial results on failure. `--quiet` keeps requested JSON. Empty selections succeed without prompts, including under `--no-wait`; unsatisfied or interrupted batches fail. `--workers` bounds execution and `--fail-fast` stops new scheduling. JSON mutations require `--auto-confirm` or `--automation`; JSON dry-run is also supported. No keys-only output is provided.
-
-Human failures produce one compact logged error after the result summary, grouping repeated reasons. Quiet retains the error. HTTP diagnostics require `--debug` or configured debug logging; verbose alone shows per-job outcomes without raw HTTP errors. JSON retains the original failure evidence in its single result envelope.
-
-Generated references: [update process-instance](./cli/c8volt_update_process-instance), [update job](./cli/c8volt_update_job), [expect process-instance](./cli/c8volt_expect_process-instance).
-
-### Cancel And Delete Safely
-
-Use dry-run to preview process-instance family scope before cancellation or historical deletion.
-
-Cancellation confirmation succeeds when every affected family member is completed, canceled, terminated, or no longer present. This terminal cleanup rule does not broaden explicit state checks: `expect process-instance --state canceled` continues to match only canceled or terminated instances, not completed or absent ones.
-
-When selectors match no process instances, cancel and delete complete successfully without confirmation or mutation. This also applies to `--dry-run`. A `--bpmn-process-id` selector must first match a visible process definition.
-
-```bash
-./c8volt cancel process-instance --key <process-instance-key> --dry-run
-./c8volt delete process-instance --key <process-instance-key> --dry-run
-./c8volt cancel process-instance --state active --dry-run --json
-./c8volt delete process-instance --state terminated --keys-only
-./c8volt get process-instance --bpmn-process-id <bpmn-process-id> --state terminated --keys-only | ./c8volt delete process-instance --dry-run -
-./c8volt --verbose delete process-instance --state terminated --limit 25 --auto-confirm
-```
-
-Generated references: [cancel process-instance](./cli/c8volt_cancel_process-instance), [delete process-instance](./cli/c8volt_delete_process-instance).
-
-## Configuration And Automation
-
-`c8volt` loads `config.yaml` next to the binary by default, or a specific file from `--config`. Settings resolve in this order:
-
-```text
-flag > env > profile > base config > default
-```
-
-Useful setup and automation commands:
-
-```bash
-./c8volt config validate
-./c8volt --profile <profile-name> config test-connection
-./c8volt capabilities --json
-```
-
-Generated references: [config](./cli/c8volt_config), [capabilities](./cli/c8volt_capabilities).
-
-### Tenant Scope
-
-Configure `app.tenant` when everyday discovery should stay narrowed to one tenant. Use `--all-tenants` when a single invocation should clear that configured tenant filter and search without a tenant field:
-
-```bash
-./c8volt --all-tenants get process-instance --state active --limit 10
-./c8volt get process-definition --all-tenants --latest
-```
-
-Both forms are supported because `--all-tenants` is inherited from the root command. The option is command-line-only, conflicts with any explicit `--tenant` value including `--tenant ""`, and `--all-tenants=false` is the same as not setting it.
-
-This clears the discovery filter only. Camunda still limits results to resources the authenticated identity can access. Explicit resource keys are not restricted by the tenant filter.
-
-Commands that create or deploy into one tenant reject `--all-tenants`: `deploy process-definition`, `embed deploy`, `run process-instance`, and `ops execute smoke-test`. Direct resource-key commands keep their existing backend authorization behavior; the flag does not grant broader direct-key access.
-
-## Documentation
-
-- Project site: [c8volt.info](https://c8volt.info)
-- Generated CLI reference: [c8volt.info/cli](https://c8volt.info/cli/)
-- Releases: [github.com/grafvonb/c8volt/releases](https://github.com/grafvonb/c8volt/releases)
-
-## Project Governance
-
-- License and copyright: [LICENSE](https://github.com/grafvonb/c8volt/blob/main/LICENSE), [COPYRIGHT](https://github.com/grafvonb/c8volt/blob/main/COPYRIGHT), and [NOTICE.md](https://github.com/grafvonb/c8volt/blob/main/NOTICE.md)
-- Trademark policy: [TRADEMARKS.md](https://github.com/grafvonb/c8volt/blob/main/TRADEMARKS.md)
-- Contributing and DCO sign-off: [CONTRIBUTING.md](https://github.com/grafvonb/c8volt/blob/main/CONTRIBUTING.md)
-- Security reporting: [SECURITY.md](https://github.com/grafvonb/c8volt/blob/main/SECURITY.md)
-
-## Copyright
-
-(c) 2026 Adam Bogdan Boczek | <a href="https://boczek.info" target="_blank" rel="noopener noreferrer">boczek.info</a>
+(c) 2026 Adam Bogdan Boczek · [boczek.info](https://boczek.info)

@@ -75,14 +75,12 @@ As a CLI user, I want malformed payloads, missing targets, and unsupported Camun
 
 **Why this priority**: Validation protects a new state-changing command from accidental or unsupported mutations.
 
-**Independent Test**: Run invalid invocations for malformed JSON, non-object JSON, missing variables, missing keys/stdin, and Camunda 8.7, then verify each fails before calling the variable update endpoint.
 
 **Acceptance Scenarios**:
 
 1. **Given** `--vars` is missing, **When** the command runs, **Then** it fails with a clear validation error.
 2. **Given** `--vars` is malformed JSON or a JSON value that is not an object, **When** the command runs, **Then** it fails before any mutation request is sent.
 3. **Given** no process instance key is supplied by `--key` or stdin `-`, **When** the command runs, **Then** it fails using existing target-selector validation behavior.
-4. **Given** the active Camunda configuration is 8.7, **When** the command runs, **Then** it fails with an unsupported-version error before attempting mutation.
 
 ### Edge Cases
 
@@ -92,7 +90,6 @@ As a CLI user, I want malformed payloads, missing targets, and unsupported Camun
 - Requested values may include nested objects, arrays, strings, numbers, booleans, or null inside the top-level object.
 - Keys supplied by repeated `--key` flags and stdin `-` are merged and deduplicated using existing behavior.
 - Missing stdin input for `-` fails consistently with existing stdin key handling.
-- Camunda 8.7 is unsupported for this command and fails before mutation.
 - Confirmation timeout or retry exhaustion reports confirmation failure for the affected key.
 - Batch output reports each process instance independently in human-readable and JSON modes.
 - Existing `run --vars` and `get process-instance --with-vars` behavior remains unchanged.
@@ -113,7 +110,6 @@ As a CLI user, I want malformed payloads, missing targets, and unsupported Camun
 - **FR-007**: The command MUST apply the same variable map to every selected process instance.
 - **FR-008**: For Camunda 8.8 and 8.9, the command MUST use the generated Camunda client capability for `PUT /element-instances/{elementInstanceKey}/variables`.
 - **FR-009**: The command MUST use the selected process instance key as the `elementInstanceKey`.
-- **FR-010**: The command MUST reject Camunda 8.7 configurations with an unsupported-version error before attempting mutation.
 - **FR-011**: By default, after submitting an update, the command MUST confirm visibility by reusing the same backend lookup path as `c8volt get process-instance --key <key> --with-vars`.
 - **FR-012**: Confirmation MUST wait until every requested variable name has the requested normalized JSON value visible for each updated process instance.
 - **FR-013**: Confirmation MUST compare normalized JSON values rather than raw string formatting.
@@ -132,7 +128,6 @@ As a CLI user, I want malformed payloads, missing targets, and unsupported Camun
 - **FR-026**: Automated tests MUST cover repeated `--key` values, stdin key input via `-`, merging, and deduplication.
 - **FR-027**: Automated tests MUST cover `--no-wait` accepted/submitted output without confirmation polling.
 - **FR-028**: Automated tests MUST cover malformed JSON, non-object JSON, missing `--vars`, and missing target keys.
-- **FR-029**: Automated tests MUST cover Camunda 8.7 unsupported-version rejection before mutation.
 - **FR-030**: Automated tests MUST cover confirmation failure when requested values are not visible before timeout or retry exhaustion.
 - **FR-031**: User-facing command help and generated documentation MUST describe the new command, alias, required flags, stdin key behavior, `--no-wait`, version support, and examples.
 
@@ -144,7 +139,6 @@ As a CLI user, I want malformed payloads, missing targets, and unsupported Camun
 - **Update Result**: The per-process-instance outcome indicating whether the mutation request was accepted, confirmed, failed during mutation, or failed during confirmation.
 - **Confirmation Lookup**: The post-mutation process-instance variable read path equivalent to `get process-instance --key <key> --with-vars`.
 - **Normalized Variable Value**: The canonical JSON comparison form used to determine whether a returned variable value matches the requested value.
-- **Unsupported Version Error**: The explicit failure returned when the command is used against Camunda 8.7.
 
 ## Success Criteria *(mandatory)*
 
@@ -157,7 +151,6 @@ As a CLI user, I want malformed payloads, missing targets, and unsupported Camun
 - **SC-005**: Automated tests show keys from stdin `-` are accepted and deduplicated with repeated `--key` values.
 - **SC-006**: Automated tests show `--no-wait` returns accepted/submitted results without confirmation polling.
 - **SC-007**: Automated tests show malformed JSON, non-object JSON, missing `--vars`, and missing target keys fail before mutation.
-- **SC-008**: Automated tests show Camunda 8.7 fails with an unsupported-version error before mutation.
 - **SC-009**: Automated tests show confirmation failure is reported when requested variable values are not visible before waiter exhaustion.
 - **SC-010**: Automated tests show existing `run --vars` and `get process-instance --with-vars` behavior remains unchanged.
 - **SC-011**: Help output, examples, and generated CLI documentation accurately describe command usage, alias, required selectors, `--no-wait`, version support, and automation/state-changing metadata.

@@ -96,7 +96,6 @@
 
 ## Versioned Traversal Adapter
 
-- **Purpose**: Represents the version-specific service (`v87`, `v88`, `v89`) that delegates traversal to the shared walker while preserving each version’s existing direct lookup/state semantics.
 - **Fields**:
   - Version identifier
   - Shared walker delegation status
@@ -104,6 +103,5 @@
   - State-check behavior
   - Traversal partial-result compatibility
 - **Current mapping**:
-  - `v8.7`: shared traversal via walker, but direct key/state lookups remain strict unsupported for tenant-unsafe seams
   - `v8.8`: shared traversal via walker, tenant-safe direct lookup/state behavior already exists
   - `v8.9`: shared traversal via walker, tenant-safe direct lookup/state behavior already exists

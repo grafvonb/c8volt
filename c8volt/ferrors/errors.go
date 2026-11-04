@@ -13,10 +13,11 @@ import (
 	"github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/exitcode"
 	"github.com/grafvonb/c8volt/internal/services"
+	"github.com/grafvonb/c8volt/internal/services/httpc"
 	"github.com/grafvonb/c8volt/toolx"
 )
 
-// mutationError preserves inspection of cancellation failure facts without
+// mutationError preserves inspection of cancellation and local admission facts without
 // changing the class chain used by ordinary normalization and exit handling.
 type mutationError struct{ classified, cause error }
 
@@ -26,10 +27,10 @@ func (e *mutationError) Error() string { return e.classified.Error() }
 // Unwrap exposes the selected class chain, keeping ordinary classification priority intact.
 func (e *mutationError) Unwrap() error { return e.classified }
 
-// Cause exposes the original cancellation error tree for collecting failure annotations.
+// Cause exposes the original error tree for collecting failure annotations.
 func (e *mutationError) Cause() error { return e.cause }
 
-// As delegates typed cause inspection to the original cancellation error.
+// As delegates typed cause inspection to the original annotated error.
 func (e *mutationError) As(target any) bool { return errors.As(e.cause, target) }
 
 // Is preserves the selected facade class while allowing non-class causes to be inspected.
@@ -267,7 +268,7 @@ func isNormalized(err error) bool {
 }
 
 // wrap attaches a failure-class sentinel while preserving error text exactly once.
-// Only cancellation annotations retain inspectable original causes; ordinary
+// Cancellation and local admission annotations retain original causes; ordinary
 // errors keep the established class-only wrapping contract.
 func wrap(classErr error, err error) error {
 	if err == nil || errors.Is(err, classErr) {
@@ -275,7 +276,7 @@ func wrap(classErr error, err error) error {
 	}
 	classified := fmt.Errorf("%w: %v", classErr, err)
 	var failure *domain.ProcessInstanceMutationFailure
-	if errors.As(err, &failure) {
+	if errors.As(err, &failure) || httpc.IsRequestRateWaitError(err) {
 		return &mutationError{classified: classified, cause: err}
 	}
 	return classified

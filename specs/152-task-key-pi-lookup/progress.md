@@ -21,7 +21,6 @@ Started: 2026-05-01 12:35:04
 - Native user-task services should use `common.RequirePayload(resp.HTTPResponse, resp.Body, resp.JSON200)` for generated Camunda response handling, matching other native service implementations.
 - Native user-task services treat an empty resolved `ProcessInstanceKey` as `domain.ErrMalformedResponse`.
 - Task-key conflict validation runs after merging `--key` and stdin keys but before version support and API calls, so command tests can assert zero HTTP requests for invalid selector/search combinations.
-- v8.7 user-task lookup returns a domain unsupported error directly from `internal/services/usertask/v87`, with no Tasklist or Operate client construction.
 - Generated CLI docs are sourced from Cobra command metadata through `make docs-content`, and `docs/index.md` is regenerated from `README.md` by `docsgen`.
 
 ---
@@ -51,7 +50,6 @@ Started: 2026-05-01 12:35:04
 - specs/152-task-key-pi-lookup/tasks.md
 - specs/152-task-key-pi-lookup/progress.md
 **Learnings**:
-- Contract and quickstart expectations match the implementation and docs: 8.8/8.9 native user-task resolution, explicit 8.7 unsupported behavior, no Tasklist or Operate fallback, selector conflicts, JSON/human examples, and direct keyed rendering parity are represented.
 - `gofmt -w cmd c8volt internal/services/usertask` produced no file changes.
 - Passing focused validation: `GOCACHE=/tmp/c8volt-go-build go test ./cmd -run 'TestGetProcessInstance(Command_HasUserTasks|Help_DocumentsHasUserTasksLookup)' -count=1` and `GOCACHE=/tmp/c8volt-go-build go test ./docsgen -run 'TestGeneratedProcessInstanceDocsDocumentHasUserTasksLookup' -count=1`.
 - T043 remains open because the required targeted command fails in `cmd` with `httptest: failed to listen on a port: listen tcp6 [::1]:0: bind: operation not permitted` from `TestDeployProcessDefinitionCommand_TenantFlagOverridesEnvProfileAndConfig`; other packages in that command passed.
@@ -77,7 +75,6 @@ Started: 2026-05-01 12:35:04
 ## Iteration 6 - 2026-05-01 13:06:14 CEST
 **User Story**: User Story 4 - Discover Task-Key Lookup In Help And Docs
 **Tasks Completed**:
-- [x] T034: Add help-output assertions for `--has-user-tasks`, human example, JSON example, and 8.7 unsupported wording
 - [x] T035: Add docs contract check for generated `get process-instance` docs
 - [x] T036: Update command help and examples for has-user-tasks lookup
 - [x] T037: Update README examples and process-instance lookup documentation
@@ -134,8 +131,6 @@ Started: 2026-05-01 12:35:04
 - internal/domain/usertask.go
 - internal/services/usertask/api.go
 - internal/services/usertask/factory.go
-- internal/services/usertask/v87/contract.go
-- internal/services/usertask/v87/service.go
 - internal/services/usertask/v88/contract.go
 - internal/services/usertask/v88/service.go
 - internal/services/usertask/v89/contract.go
@@ -148,7 +143,6 @@ Started: 2026-05-01 12:35:04
 - specs/152-task-key-pi-lookup/progress.md
 **Learnings**:
 - The foundational seam can stay independent of command flag behavior by exposing `task.API.ResolveProcessInstanceKeyFromUserTask` and wiring it through the root c8volt client.
-- Camunda 8.7 has-user-tasks lookup should remain native-only and unsupported; the v87 user-task service does not construct Tasklist or Operate clients.
 - Broad `go test ./cmd` execution is blocked in this sandbox because `httptest` cannot bind localhost ports; `GOCACHE=/tmp/c8volt-go-build go test ./cmd -run '^$' -count=1` passed as a compile check, and `GOCACHE=/tmp/c8volt-go-build go test ./c8volt ./c8volt/task ./internal/services/usertask/... -count=1` passed.
 - The sandbox also blocks writes inside `.git`, so this completed work unit could not be staged or committed from Codex.
 ---
@@ -190,11 +184,9 @@ Started: 2026-05-01 12:35:04
 ## Iteration 4 - 2026-05-01 12:55:15 CEST
 **User Story**: User Story 2 - Reject Unsupported Or Ambiguous Task-Key Requests
 **Tasks Completed**: 
-- [x] T019: Add 8.7 unsupported user-task service test
 - [x] T020: Add command validation tests for `--has-user-tasks` with `--key` and stdin key input
 - [x] T021: Add command validation tests for `--has-user-tasks` with process-instance search filters
 - [x] T022: Add command validation tests for `--has-user-tasks` with `--total` and `--limit`
-- [x] T023: Implement explicit 8.7 unsupported behavior for has-user-tasks lookup
 - [x] T024: Add has-user-tasks mutual-exclusion validation for `--key`, stdin `-`, filters, `--total`, and `--limit`
 - [x] T025: Ensure validation rejects conflicts before native user-task or process-instance lookup calls
 - [x] T026: Run focused US2 validation
@@ -203,13 +195,10 @@ Started: 2026-05-01 12:35:04
 **Files Changed**: 
 - cmd/get_processinstance.go
 - cmd/get_processinstance_test.go
-- internal/services/usertask/v87/service.go
-- internal/services/usertask/v87/service_test.go
 - specs/152-task-key-pi-lookup/tasks.md
 - specs/152-task-key-pi-lookup/progress.md
 **Learnings**:
 - `validatePIHasUserTasksMode` can reject key/stdin, search filters, `--total`, and `--limit` after stdin key merging while still preventing all user-task and process-instance HTTP calls.
-- `GOCACHE=/tmp/c8volt-go-build go test ./internal/services/usertask/v87 -count=1` and `GOCACHE=/tmp/c8volt-go-build go test ./cmd -run 'TestGetProcessInstanceCommand_(RejectsHasUserTasksConflictsBeforeLookup|HasUserTasksUnsupportedOnV87)' -count=1` passed.
 - The requested `GOCACHE=/tmp/c8volt-go-build go test ./cmd ./c8volt/task ./internal/services/usertask/... -count=1` remains blocked by the unrelated sandbox `httptest` IPv6 bind failure in `TestDeployProcessDefinitionCommand_TenantFlagOverridesEnvProfileAndConfig`; `GOCACHE=/tmp/c8volt-go-build go test ./cmd -run '^$' -count=1 && GOCACHE=/tmp/c8volt-go-build go test ./c8volt/task ./internal/services/usertask/... -count=1` passed.
 - `git add -A` failed with `.git/index.lock: Operation not permitted`, so this completed work unit could not be committed from Codex.
 ---
@@ -253,7 +242,7 @@ Started: 2026-05-01 12:35:04
 **Learnings**:
 - T043 remains blocked: `GOCACHE=/tmp/c8volt-go-build go test ./cmd ./c8volt/process ./c8volt/task ./internal/services/usertask/... ./internal/services/processinstance/... -count=1` fails in `cmd` when `TestDeployProcessDefinitionCommand_TenantFlagOverridesEnvProfileAndConfig` panics because `httptest` cannot bind `tcp6 [::1]:0` in this sandbox.
 - In the targeted validation, `c8volt/process`, `c8volt/task`, all `internal/services/usertask/...`, and all `internal/services/processinstance/...` packages outside `cmd` passed.
-- T044 remains blocked: `GOCACHE=/tmp/c8volt-go-build make test` fails on the same sandbox localhost bind limitation in `cmd`, `internal/services/auth/cookie`, and `internal/services/cluster/v87` and `internal/services/cluster/v88`.
+- T044 remains blocked: `GOCACHE=/tmp/c8volt-go-build make test` fails on the same sandbox localhost bind limitation in `cmd`, `internal/services/auth/cookie`, and `internal/services/cluster/v88`.
 ---
 
 ---
@@ -268,7 +257,7 @@ Started: 2026-05-01 12:35:04
 **Learnings**:
 - T043 remains blocked: `GOCACHE=/tmp/c8volt-go-build go test ./cmd ./c8volt/process ./c8volt/task ./internal/services/usertask/... ./internal/services/processinstance/... -count=1` fails only in `cmd` when `TestDeployProcessDefinitionCommand_TenantFlagOverridesEnvProfileAndConfig` panics because `httptest` cannot bind `tcp6 [::1]:0`.
 - In the targeted validation, `c8volt/process`, `c8volt/task`, all `internal/services/usertask/...`, and all `internal/services/processinstance/...` packages outside `cmd` passed.
-- T044 remains blocked: `GOCACHE=/tmp/c8volt-go-build make test` fails on the same sandbox localhost bind limitation in `cmd`, `internal/services/auth/cookie`, and `internal/services/cluster/v87` and `internal/services/cluster/v88`.
+- T044 remains blocked: `GOCACHE=/tmp/c8volt-go-build make test` fails on the same sandbox localhost bind limitation in `cmd`, `internal/services/auth/cookie`, and `internal/services/cluster/v88`.
 ---
 
 ---
@@ -283,7 +272,6 @@ Started: 2026-05-01 12:35:04
 **Learnings**:
 - T043 remains blocked: `GOCACHE=/tmp/c8volt-go-build go test ./cmd ./c8volt/process ./c8volt/task ./internal/services/usertask/... ./internal/services/processinstance/... -count=1` fails in `cmd` when `TestDeployProcessDefinitionCommand_TenantFlagOverridesEnvProfileAndConfig` panics because `httptest` cannot bind `tcp6 [::1]:0`.
 - In the targeted validation, `c8volt/process`, `c8volt/task`, all `internal/services/usertask/...`, and all `internal/services/processinstance/...` packages outside `cmd` passed.
-- T044 remains blocked: `GOCACHE=/tmp/c8volt-go-build make test` fails on the same sandbox localhost bind limitation in `cmd`, `internal/services/auth/cookie`, `internal/services/cluster/v87`, and `internal/services/cluster/v88`; other listed packages completed before the final `FAIL`.
 ---
 
 ---
@@ -297,7 +285,6 @@ Started: 2026-05-01 12:35:04
 - specs/152-task-key-pi-lookup/progress.md
 **Learnings**:
 - T043 remains blocked: `GOCACHE=/tmp/c8volt-go-build go test ./cmd ./c8volt/process ./c8volt/task ./internal/services/usertask/... ./internal/services/processinstance/... -count=1` fails in `cmd` when `TestDeployProcessDefinitionCommand_TenantFlagOverridesEnvProfileAndConfig` panics because `httptest` cannot bind `tcp6 [::1]:0`; the targeted non-`cmd` packages passed.
-- T044 remains blocked: `GOCACHE=/tmp/c8volt-go-build make test` runs `go test ./... -race -count=1` and fails on the same sandbox localhost bind limitation in `cmd`, `internal/services/auth/cookie`, `internal/services/cluster/v87`, and `internal/services/cluster/v88`; other packages shown in output passed before the final `FAIL`.
 ---
 
 ---
@@ -312,7 +299,6 @@ Started: 2026-05-01 12:35:04
 **Learnings**:
 - T043 remains blocked: `GOCACHE=/tmp/c8volt-go-build go test ./cmd ./c8volt/process ./c8volt/task ./internal/services/usertask/... ./internal/services/processinstance/... -count=1` still fails in `cmd` when `TestDeployProcessDefinitionCommand_TenantFlagOverridesEnvProfileAndConfig` panics because `httptest` cannot bind `tcp6 [::1]:0`.
 - In T043, `c8volt/process`, `c8volt/task`, all `internal/services/usertask/...`, and all `internal/services/processinstance/...` packages outside `cmd` passed.
-- T044 remains blocked: `GOCACHE=/tmp/c8volt-go-build make test` runs `go test ./... -race -count=1` and fails on the same sandbox localhost bind limitation in `cmd`, `internal/services/auth/cookie`, `internal/services/cluster/v87`, and `internal/services/cluster/v88`; the user-task packages passed under the race-enabled run before the final `FAIL`.
 ---
 
 ---
@@ -327,7 +313,6 @@ Started: 2026-05-01 12:35:04
 **Learnings**:
 - T043 remains blocked: `GOCACHE=/tmp/c8volt-go-build go test ./cmd ./c8volt/process ./c8volt/task ./internal/services/usertask/... ./internal/services/processinstance/... -count=1` fails in `cmd` when `TestDeployProcessDefinitionCommand_TenantFlagOverridesEnvProfileAndConfig` panics because `httptest` cannot bind `tcp6 [::1]:0`.
 - In T043, `c8volt/process`, `c8volt/task`, all `internal/services/usertask/...`, and all `internal/services/processinstance/...` packages outside `cmd` passed.
-- T044 remains blocked: `GOCACHE=/tmp/c8volt-go-build make test` runs `go test ./... -race -count=1` and fails on the same sandbox localhost bind limitation in `cmd`, `internal/services/auth/cookie`, `internal/services/cluster/v87`, and `internal/services/cluster/v88`; task-key and process-instance packages passed before the final `FAIL`.
 ---
 
 ---
@@ -342,7 +327,6 @@ Started: 2026-05-01 12:35:04
 **Learnings**:
 - T043 remains blocked: `GOCACHE=/tmp/c8volt-go-build go test ./cmd ./c8volt/process ./c8volt/task ./internal/services/usertask/... ./internal/services/processinstance/... -count=1` fails in `cmd` when `TestDeployProcessDefinitionCommand_TenantFlagOverridesEnvProfileAndConfig` panics because `httptest` cannot bind `tcp6 [::1]:0`.
 - In T043, `c8volt/process`, `c8volt/task`, all `internal/services/usertask/...`, and all `internal/services/processinstance/...` packages outside `cmd` passed.
-- T044 remains blocked: `GOCACHE=/tmp/c8volt-go-build make test` runs `go test ./... -race -count=1` and fails on the same sandbox localhost bind limitation in `cmd`, `internal/services/auth/cookie`, `internal/services/cluster/v87`, and `internal/services/cluster/v88`; task-key and process-instance packages passed before the final `FAIL`.
 ---
 
 ---
@@ -356,7 +340,6 @@ Started: 2026-05-01 12:35:04
 - specs/152-task-key-pi-lookup/progress.md
 **Learnings**:
 - T043 remains blocked: `GOCACHE=/tmp/c8volt-go-build go test ./cmd ./c8volt/process ./c8volt/task ./internal/services/usertask/... ./internal/services/processinstance/... -count=1` fails in `cmd` when `TestDeployProcessDefinitionCommand_TenantFlagOverridesEnvProfileAndConfig` panics because `httptest` cannot bind `tcp6 [::1]:0`; all listed non-`cmd` packages passed.
-- T044 remains blocked: `GOCACHE=/tmp/c8volt-go-build make test` runs `go test ./... -race -count=1` and fails on the same sandbox localhost bind limitation in `cmd`, `internal/services/auth/cookie`, `internal/services/cluster/v87`, and `internal/services/cluster/v88`; task-key, process-instance, docsgen, and other non-listener packages shown in output passed before the final `FAIL`.
 ---
 
 ---
@@ -370,7 +353,6 @@ Started: 2026-05-01 12:35:04
 - specs/152-task-key-pi-lookup/progress.md
 **Learnings**:
 - T043 remains blocked: `GOCACHE=/tmp/c8volt-go-build go test ./cmd ./c8volt/process ./c8volt/task ./internal/services/usertask/... ./internal/services/processinstance/... -count=1` fails in `cmd` when `TestDeployProcessDefinitionCommand_TenantFlagOverridesEnvProfileAndConfig` panics because `httptest` cannot bind `tcp6 [::1]:0`; all listed non-`cmd` packages passed.
-- T044 remains blocked: `GOCACHE=/tmp/c8volt-go-build make test` runs `go test ./... -race -count=1` and fails on the same sandbox localhost bind limitation in `cmd`, `internal/services/auth/cookie`, `internal/services/cluster/v87`, and `internal/services/cluster/v88`; task-key, process-instance, docsgen, and other non-listener packages shown in output passed before the final `FAIL`.
 ---
 
 ---
@@ -384,7 +366,6 @@ Started: 2026-05-01 12:35:04
 - specs/152-task-key-pi-lookup/progress.md
 **Learnings**:
 - T043 remains blocked: `GOCACHE=/tmp/c8volt-go-build go test ./cmd ./c8volt/process ./c8volt/task ./internal/services/usertask/... ./internal/services/processinstance/... -count=1` fails in `cmd` when `TestDeployProcessDefinitionCommand_TenantFlagOverridesEnvProfileAndConfig` panics because `httptest` cannot bind `tcp6 [::1]:0`; all listed non-`cmd` packages passed.
-- T044 remains blocked: `GOCACHE=/tmp/c8volt-go-build make test` runs `go test ./... -race -count=1` and fails on the same sandbox localhost bind limitation in `cmd`, `internal/services/auth/cookie`, `internal/services/cluster/v87`, and `internal/services/cluster/v88`; task-key, process-instance, docsgen, and process-instance packages shown in output passed before the final `FAIL`.
 ---
 
 ---
@@ -398,7 +379,6 @@ Started: 2026-05-01 12:35:04
 - specs/152-task-key-pi-lookup/progress.md
 **Learnings**:
 - T043 remains blocked: `GOCACHE=/tmp/c8volt-go-build go test ./cmd ./c8volt/process ./c8volt/task ./internal/services/usertask/... ./internal/services/processinstance/... -count=1` fails in `cmd` when `TestDeployProcessDefinitionCommand_TenantFlagOverridesEnvProfileAndConfig` panics because `httptest` cannot bind `tcp6 [::1]:0`; all listed non-`cmd` packages passed.
-- T044 remains blocked: `GOCACHE=/tmp/c8volt-go-build make test` runs `go test ./... -race -count=1` and fails on the same sandbox localhost bind limitation in `cmd`, `internal/services/auth/cookie`, `internal/services/cluster/v87`, and `internal/services/cluster/v88`; task-key, process-instance, docsgen, and other non-listener packages shown in output passed before the final `FAIL`.
 ---
 
 ---
@@ -412,7 +392,6 @@ Started: 2026-05-01 12:35:04
 - specs/152-task-key-pi-lookup/progress.md
 **Learnings**:
 - T043 remains blocked: `GOCACHE=/tmp/c8volt-go-build go test ./cmd ./c8volt/process ./c8volt/task ./internal/services/usertask/... ./internal/services/processinstance/... -count=1` fails in `cmd` when `TestDeployProcessDefinitionCommand_TenantFlagOverridesEnvProfileAndConfig` panics because `httptest` cannot bind `tcp6 [::1]:0`; all listed non-`cmd` packages passed.
-- T044 remains blocked: `GOCACHE=/tmp/c8volt-go-build make test` runs `go test ./... -race -count=1` and fails on the same sandbox localhost bind limitation in `cmd`, `internal/services/auth/cookie`, `internal/services/cluster/v87`, and `internal/services/cluster/v88`; task-key, process-instance, docsgen, and other non-listener packages shown in output passed before the final `FAIL`.
 ---
 
 ---
@@ -426,7 +405,6 @@ Started: 2026-05-01 12:35:04
 - specs/152-task-key-pi-lookup/progress.md
 **Learnings**:
 - T043 remains blocked: `GOCACHE=/tmp/c8volt-go-build go test ./cmd ./c8volt/process ./c8volt/task ./internal/services/usertask/... ./internal/services/processinstance/... -count=1` fails in `cmd` when `TestDeployProcessDefinitionCommand_TenantFlagOverridesEnvProfileAndConfig` panics because `httptest` cannot bind `tcp6 [::1]:0`; all listed non-`cmd` packages passed.
-- T044 remains blocked: `GOCACHE=/tmp/c8volt-go-build make test` runs `go test ./... -race -count=1` and fails on the same sandbox localhost bind limitation in `cmd`, `internal/services/auth/cookie`, `internal/services/cluster/v87`, and `internal/services/cluster/v88`; task-key, process-instance, docsgen, and other non-listener packages shown in output passed before the final `FAIL`.
 ---
 
 ---
@@ -440,7 +418,6 @@ Started: 2026-05-01 12:35:04
 - specs/152-task-key-pi-lookup/progress.md
 **Learnings**:
 - T043 remains blocked: `GOCACHE=/tmp/c8volt-go-build go test ./cmd ./c8volt/process ./c8volt/task ./internal/services/usertask/... ./internal/services/processinstance/... -count=1` fails in `cmd` when `TestDeployProcessDefinitionCommand_TenantFlagOverridesEnvProfileAndConfig` panics because `httptest` cannot bind `tcp6 [::1]:0`; all listed non-`cmd` packages passed.
-- T044 remains blocked: `GOCACHE=/tmp/c8volt-go-build make test` runs `go test ./... -race -count=1` and fails on the same sandbox localhost bind limitation in `cmd`, `internal/services/auth/cookie`, `internal/services/cluster/v87`, and `internal/services/cluster/v88`; task-key, process-instance, docsgen, and other non-listener packages shown in output passed before the final `FAIL`.
 ---
 
 ---
@@ -454,7 +431,6 @@ Started: 2026-05-01 12:35:04
 - specs/152-task-key-pi-lookup/progress.md
 **Learnings**:
 - T043 remains blocked: `GOCACHE=/tmp/c8volt-go-build go test ./cmd ./c8volt/process ./c8volt/task ./internal/services/usertask/... ./internal/services/processinstance/... -count=1` fails in `cmd` when `TestDeployProcessDefinitionCommand_TenantFlagOverridesEnvProfileAndConfig` panics because `httptest` cannot bind `tcp6 [::1]:0`; all listed non-`cmd` packages passed.
-- T044 remains blocked: `GOCACHE=/tmp/c8volt-go-build make test` runs `go test ./... -race -count=1` and fails on the same sandbox localhost bind limitation in `cmd`, `internal/services/auth/cookie`, `internal/services/cluster/v87`, and `internal/services/cluster/v88`; task-key, process-instance, docsgen, and other non-listener packages shown in output passed before the final `FAIL`.
 ---
 
 ---
@@ -468,7 +444,6 @@ Started: 2026-05-01 12:35:04
 - specs/152-task-key-pi-lookup/progress.md
 **Learnings**:
 - T043 remains blocked: `GOCACHE=/tmp/c8volt-go-build go test ./cmd ./c8volt/process ./c8volt/task ./internal/services/usertask/... ./internal/services/processinstance/... -count=1` fails in `cmd` when `TestDeployProcessDefinitionCommand_TenantFlagOverridesEnvProfileAndConfig` panics because `httptest` cannot bind `tcp6 [::1]:0`; all listed non-`cmd` packages passed.
-- T044 remains blocked: `GOCACHE=/tmp/c8volt-go-build make test` runs `go test ./... -race -count=1` and fails on the same sandbox localhost bind limitation in `cmd`, `internal/services/auth/cookie`, `internal/services/cluster/v87`, and `internal/services/cluster/v88`; task-key and process-instance packages passed before the final `FAIL`.
 ---
 
 ---
@@ -482,7 +457,6 @@ Started: 2026-05-01 12:35:04
 - specs/152-task-key-pi-lookup/progress.md
 **Learnings**:
 - T043 remains blocked: `GOCACHE=/tmp/c8volt-go-build go test ./cmd ./c8volt/process ./c8volt/task ./internal/services/usertask/... ./internal/services/processinstance/... -count=1` fails in `cmd` when `TestDeployProcessDefinitionCommand_TenantFlagOverridesEnvProfileAndConfig` panics because `httptest` cannot bind `tcp6 [::1]:0`; all listed non-`cmd` packages passed.
-- T044 remains blocked: `GOCACHE=/tmp/c8volt-go-build make test` runs `go test ./... -race -count=1` and fails on the same sandbox localhost bind limitation in `cmd`, `internal/services/auth/cookie`, `internal/services/cluster/v87`, and `internal/services/cluster/v88`; task-key, process-instance, docsgen, and other non-listener packages shown in output passed before the final `FAIL`.
 ---
 
 ---
@@ -496,7 +470,6 @@ Started: 2026-05-01 12:35:04
 - specs/152-task-key-pi-lookup/progress.md
 **Learnings**:
 - T043 remains blocked: `GOCACHE=/tmp/c8volt-go-build go test ./cmd ./c8volt/process ./c8volt/task ./internal/services/usertask/... ./internal/services/processinstance/... -count=1` fails in `cmd` when `TestDeployProcessDefinitionCommand_TenantFlagOverridesEnvProfileAndConfig` panics because `httptest` cannot bind `tcp6 [::1]:0`; all listed non-`cmd` packages passed.
-- T044 remains blocked: `GOCACHE=/tmp/c8volt-go-build make test` runs `go test ./... -race -count=1` and fails on the same sandbox localhost bind limitation in `cmd`, `internal/services/auth/cookie`, `internal/services/cluster/v87`, and `internal/services/cluster/v88`; task-key, process-instance, docsgen, and other non-listener packages shown in output passed before the final `FAIL`.
 ---
 
 ---
@@ -510,7 +483,6 @@ Started: 2026-05-01 12:35:04
 - specs/152-task-key-pi-lookup/progress.md
 **Learnings**:
 - T043 remains blocked: `GOCACHE=/tmp/c8volt-go-build go test ./cmd ./c8volt/process ./c8volt/task ./internal/services/usertask/... ./internal/services/processinstance/... -count=1` fails in `cmd` when `TestDeployProcessDefinitionCommand_TenantFlagOverridesEnvProfileAndConfig` panics because `httptest` cannot bind `tcp6 [::1]:0`; all listed non-`cmd` packages passed.
-- T044 remains blocked: `GOCACHE=/tmp/c8volt-go-build make test` runs `go test ./... -race -count=1` and fails on the same sandbox localhost bind limitation in `cmd`, `internal/services/auth/cookie`, `internal/services/cluster/v87`, and `internal/services/cluster/v88`; task-key and process-instance packages passed before the final `FAIL`.
 ---
 
 ---
@@ -524,7 +496,6 @@ Started: 2026-05-01 12:35:04
 - specs/152-task-key-pi-lookup/progress.md
 **Learnings**:
 - T043 remains blocked: `GOCACHE=/tmp/c8volt-go-build go test ./cmd ./c8volt/process ./c8volt/task ./internal/services/usertask/... ./internal/services/processinstance/... -count=1` fails in `cmd` when `TestDeployProcessDefinitionCommand_TenantFlagOverridesEnvProfileAndConfig` panics because `httptest` cannot bind `tcp6 [::1]:0`; `c8volt/process`, `c8volt/task`, all `internal/services/usertask/...`, and all `internal/services/processinstance/...` packages passed.
-- T044 remains blocked: `GOCACHE=/tmp/c8volt-go-build make test` runs `go test ./... -race -count=1` and fails on the same sandbox localhost bind limitation in `cmd`, `internal/services/auth/cookie`, `internal/services/cluster/v87`, and `internal/services/cluster/v88`; task-key and process-instance packages passed before the final `FAIL`.
 ---
 
 ---
@@ -538,7 +509,6 @@ Started: 2026-05-01 12:35:04
 - specs/152-task-key-pi-lookup/progress.md
 **Learnings**:
 - T043 remains blocked: `GOCACHE=/tmp/c8volt-go-build go test ./cmd ./c8volt/process ./c8volt/task ./internal/services/usertask/... ./internal/services/processinstance/... -count=1` fails in `cmd` when `TestDeployProcessDefinitionCommand_TenantFlagOverridesEnvProfileAndConfig` panics because `httptest` cannot bind `tcp6 [::1]:0`; `c8volt/process`, `c8volt/task`, all `internal/services/usertask/...`, and all `internal/services/processinstance/...` packages passed.
-- T044 remains blocked: `GOCACHE=/tmp/c8volt-go-build make test` runs `go test ./... -race -count=1` and fails on the same sandbox localhost bind limitation in `cmd`, `internal/services/auth/cookie`, `internal/services/cluster/v87`, and `internal/services/cluster/v88`; task-key and process-instance packages passed before the final `FAIL`.
 ---
 
 ---
@@ -553,7 +523,6 @@ Started: 2026-05-01 12:35:04
 **Learnings**:
 - T043 remains blocked: `GOCACHE=/tmp/c8volt-go-build go test ./cmd ./c8volt/process ./c8volt/task ./internal/services/usertask/... ./internal/services/processinstance/... -count=1` fails in `cmd` when `TestDeployProcessDefinitionCommand_TenantFlagOverridesEnvProfileAndConfig` panics because `httptest` cannot bind `tcp6 [::1]:0`; `c8volt/process`, `c8volt/task`, all `internal/services/usertask/...`, and all `internal/services/processinstance/...` packages passed.
 - Feature-focused `cmd` checks still pass: `go test ./cmd -run TestGetProcessInstanceCommand_HasUserTasksLookupUsesNativeUserTaskAndKeyedProcessInstance -count=1` and `go test ./cmd -run '^$' -count=1`.
-- T044 remains blocked: `GOCACHE=/tmp/c8volt-go-build make test` runs `go test ./... -race -count=1` and fails on the same sandbox localhost bind limitation in `cmd`, `internal/services/auth/cookie`, `internal/services/cluster/v87`, and `internal/services/cluster/v88`; task-key and process-instance packages passed before the final `FAIL`.
 ---
 
 ---

@@ -18,7 +18,6 @@
 **Purpose**: Capture the existing `get` command, resource facade, and regression surfaces before implementation
 
 - [ ] T001 Review the current `get` command and view helpers in `/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get.go`, `/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processdefinition.go`, `/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cmd_views_get.go`, and `/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_test.go`
-- [ ] T002 Review the current resource facade and service lookup surface in `/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/c8volt/contract.go`, `/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/c8volt/resource/api.go`, `/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/c8volt/resource/client.go`, `/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/domain/resource.go`, `/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/resource/api.go`, `/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/resource/v87/service.go`, and `/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/resource/v88/service.go`
 
 ---
 
@@ -45,14 +44,14 @@
 ### Tests for User Story 1
 
 - [ ] T006 [P] [US1] Add command tests for resource lookup success and not-found failure behavior in `/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_test.go`
-- [ ] T007 [P] [US1] Add versioned service regression tests for single-resource retrieval and malformed-payload handling in `/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/resource/v87/service_test.go` and `/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/resource/v88/service_test.go`
+- [ ] T007 [P] [US1] Add versioned service regression tests for single-resource retrieval and malformed-payload handling in `/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/resource/v88/service_test.go`
 
 ### Implementation for User Story 1
 
 - [ ] T008 [US1] Implement the public single-resource retrieval method and domain-to-facade mapping in `/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/c8volt/resource/client.go` and `/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/c8volt/resource/model.go`
 - [ ] T009 [US1] Add the `get resource` Cobra command and route it through `cli.GetResource(...)` in `/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_resource.go`
 - [ ] T010 [US1] Add a single-resource renderer for resource details/object output in `/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cmd_views_get.go`
-- [ ] T011 [US1] Preserve current malformed-response error behavior for both supported versions while exposing lookup through the CLI path in `/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/resource/v87/service.go` and `/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/resource/v88/service.go`
+- [ ] T011 [US1] Preserve current malformed-response error behavior for both supported versions while exposing lookup through the CLI path in `/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/resource/v88/service.go`
 
 **Checkpoint**: At this point, User Story 1 should be fully functional and testable independently
 
@@ -67,7 +66,6 @@
 ### Tests for User Story 2
 
 - [ ] T012 [P] [US2] Add command tests for missing, empty, and invalid `--id` validation behavior in `/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_test.go`
-- [ ] T013 [P] [US2] Add facade and service regression tests for consistent error mapping and single-item resource output shape in `/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/c8volt/resource/client_test.go`, `/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/resource/v87/service_test.go`, and `/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/resource/v88/service_test.go`
 
 ### Implementation for User Story 2
 
@@ -148,7 +146,6 @@
 ```bash
 # Launch User Story 1 lookup regression coverage together:
 Task: "Add command tests for resource lookup success and not-found failure behavior in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_test.go"
-Task: "Add versioned service regression tests for single-resource retrieval and malformed-payload handling in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/resource/v87/service_test.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/resource/v88/service_test.go"
 ```
 
 ---
@@ -158,7 +155,6 @@ Task: "Add versioned service regression tests for single-resource retrieval and 
 ```bash
 # Launch User Story 2 convention-hardening coverage together:
 Task: "Add command tests for missing, empty, and invalid --id validation behavior in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_test.go"
-Task: "Add facade and service regression tests for consistent error mapping and single-item resource output shape in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/c8volt/resource/client_test.go, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/resource/v87/service_test.go, and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/resource/v88/service_test.go"
 ```
 
 ---

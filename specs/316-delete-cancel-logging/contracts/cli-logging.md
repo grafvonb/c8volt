@@ -73,7 +73,6 @@ Machine error envelopes continue to use original normalized error text/classific
 
 - No added requests, discovery, mutations, sleeps, retries, or changed cancellation/deletion ordering.
 - Existing family and single-key checks remain; successful submission is never described as rollback or definitive cancellation failure solely because confirmation timed out.
-- Direct lookups retain useful diagnostics; v87 retains search-based tenant-safe state lookup and unsupported direct-get behavior.
 - JSON contains exactly one applicable envelope/value followed by EOF, with existing null/empty/omission rules.
 - Keys-only contains only result keys, one per line; empty scopes produce zero bytes.
 - Dry-run remains a preview; no-wait retains submission semantics; completed empty scope submits no mutations and prompts for none.
@@ -84,4 +83,4 @@ Machine error envelopes continue to use original normalized error text/classific
 
 Use the full command execution path for the reported timeout and a successful confirmation/resumption companion. Exercise default, verbose, DEBUG, verbose+DEBUG, configured DEBUG, quiet, automation, JSON, keys-only, and supported combinations. Include quiet+JSON, quiet+keys, and machine output with DEBUG. Retain dry-run, no-wait, empty/sparse discovery, explicit keys, abort, and error regressions.
 
-Run shared waiter and adapter tests for v87/v88/v89/v810, with absent, lookup-failure, deadline, max-attempt, and concurrent-root cases. Test redaction using seeded credentials, not production secrets. Real-terminal tests must run on a supported platform; skipped terminal tests are reported rather than counted as validation.
+Run shared waiter and adapter tests for v88/v89/v810, with absent, lookup-failure, deadline, max-attempt, and concurrent-root cases. Test redaction using seeded credentials, not production secrets. Real-terminal tests must run on a supported platform; skipped terminal tests are reported rather than counted as validation.

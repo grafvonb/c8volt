@@ -16,6 +16,25 @@ import (
 
 // API describes the process-instance operations implemented by the native v8.10 adapter.
 type API interface {
+	// ValidateBusinessIDAssignment checks capability, value and observation settings without I/O.
+	ValidateBusinessIDAssignment(value *string, opts ...services.CallOption) error
+	// AssignProcessInstanceBusinessID submits once to the exact target and optionally confirms.
+	AssignProcessInstanceBusinessID(ctx context.Context, key string, value *string, opts ...services.CallOption) (d.BusinessIDAssignmentResult, error)
+
+	// ProcessInstanceSearchTenant returns the effective discovery tenant without I/O.
+	ProcessInstanceSearchTenant(opts ...services.CallOption) string
+	// ValidateProcessInstanceResumption checks mutation capability without I/O.
+	ValidateProcessInstanceResumption() error
+	// ResumeProcessInstance resumes exactly one key, confirming unless NoWait is set.
+	ResumeProcessInstance(ctx context.Context, key string, opts ...services.CallOption) (d.ProcessInstanceResumptionResult, error)
+	// ValidateProcessInstanceSuspension checks mutation capability without I/O.
+	ValidateProcessInstanceSuspension() error
+	// SuspendProcessInstance suspends exactly one key, confirming unless NoWait is set.
+	SuspendProcessInstance(ctx context.Context, key string, opts ...services.CallOption) (d.ProcessInstanceSuspensionResult, error)
+	// ValidateProcessInstanceStates checks explicit state capabilities without I/O.
+	ValidateProcessInstanceStates(states d.States) error
+	// ValidateProcessInstanceSearchFilter validates capability and criteria without I/O.
+	ValidateProcessInstanceSearchFilter(filter d.ProcessInstanceFilter) error
 	CreateProcessInstance(ctx context.Context, data d.ProcessInstanceData, opts ...services.CallOption) (d.ProcessInstanceCreation, error)
 	GetProcessInstance(ctx context.Context, key string, opts ...services.CallOption) (d.ProcessInstance, error)
 	SearchProcessInstanceVariables(ctx context.Context, key string, opts ...services.CallOption) ([]d.ProcessInstanceVariable, error)
@@ -25,6 +44,8 @@ type API interface {
 	SearchForProcessInstancesPage(ctx context.Context, filter d.ProcessInstanceFilter, page d.ProcessInstancePageRequest, opts ...services.CallOption) (d.ProcessInstancePage, error)
 	SearchForProcessInstances(ctx context.Context, filter d.ProcessInstanceFilter, size int32, opts ...services.CallOption) ([]d.ProcessInstance, error)
 	CancelProcessInstance(ctx context.Context, key string, opts ...services.CallOption) (d.CancelResponse, []d.ProcessInstance, error)
+	// DeleteProcessInstanceExact never discovers additional client delete targets.
+	DeleteProcessInstanceExact(ctx context.Context, key string, opts ...services.CallOption) (d.DeleteResponse, error)
 	DeleteProcessInstance(ctx context.Context, key string, opts ...services.CallOption) (d.DeleteResponse, error)
 	GetProcessInstanceStateByKey(ctx context.Context, key string, opts ...services.CallOption) (d.State, d.ProcessInstance, error)
 	WaitForProcessInstanceState(ctx context.Context, key string, desired d.States, opts ...services.CallOption) (d.StateResponse, d.ProcessInstance, error)
@@ -42,6 +63,13 @@ type API interface {
 
 // GenProcessInstanceClientCamunda captures the generated Camunda calls used by the v8.10 process-instance service.
 type GenProcessInstanceClientCamunda interface {
+	// AssignProcessInstanceBusinessIdWithResponse sends one native assignment.
+	AssignProcessInstanceBusinessIdWithResponse(context.Context, camundav810.ProcessInstanceKey, camundav810.AssignProcessInstanceBusinessIdJSONRequestBody, ...camundav810.RequestEditorFn) (*camundav810.AssignProcessInstanceBusinessIdResponse, error)
+
+	// ResumeProcessInstanceWithResponse submits resumption for exactly one supplied key.
+	ResumeProcessInstanceWithResponse(ctx context.Context, processInstanceKey camundav810.ProcessInstanceKey, body camundav810.ResumeProcessInstanceJSONRequestBody, reqEditors ...camundav810.RequestEditorFn) (*camundav810.ResumeProcessInstanceResponse, error)
+	// SuspendProcessInstanceWithResponse submits suspension for exactly one supplied key.
+	SuspendProcessInstanceWithResponse(ctx context.Context, processInstanceKey camundav810.ProcessInstanceKey, body camundav810.SuspendProcessInstanceJSONRequestBody, reqEditors ...camundav810.RequestEditorFn) (*camundav810.SuspendProcessInstanceResponse, error)
 	CancelProcessInstanceWithResponse(ctx context.Context, processInstanceKey string, body camundav810.CancelProcessInstanceJSONRequestBody, reqEditors ...camundav810.RequestEditorFn) (*camundav810.CancelProcessInstanceResponse, error)
 	CreateProcessInstanceWithResponse(ctx context.Context, body camundav810.CreateProcessInstanceJSONRequestBody, reqEditors ...camundav810.RequestEditorFn) (*camundav810.CreateProcessInstanceResponse, error)
 	DeleteProcessInstanceWithResponse(ctx context.Context, processInstanceKey camundav810.ProcessInstanceKey, body camundav810.DeleteProcessInstanceJSONRequestBody, reqEditors ...camundav810.RequestEditorFn) (*camundav810.DeleteProcessInstanceResponse, error)
@@ -50,3 +78,8 @@ type GenProcessInstanceClientCamunda interface {
 }
 
 var _ GenProcessInstanceClientCamunda = (*camundav810.ClientWithResponses)(nil)
+
+// ValidateProcessInstanceStates permits explicit suspension on Camunda 8.10.
+func (s *Service) ValidateProcessInstanceStates(states d.States) error {
+	return nil
+}

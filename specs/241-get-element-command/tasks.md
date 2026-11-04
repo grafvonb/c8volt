@@ -19,7 +19,7 @@
 **Purpose**: Create the feature package/file structure without behavior.
 
 - [x] T001 Create public facade package placeholders in `c8volt/element/api.go`, `c8volt/element/model.go`, `c8volt/element/client.go`, `c8volt/element/convert.go`, and `c8volt/element/client_test.go`
-- [x] T002 [P] Create internal element service package placeholders in `internal/services/element/api.go`, `internal/services/element/factory.go`, `internal/services/element/v87/service.go`, `internal/services/element/v88/contract.go`, `internal/services/element/v88/convert.go`, `internal/services/element/v88/service.go`, `internal/services/element/v88/service_test.go`, `internal/services/element/v89/contract.go`, `internal/services/element/v89/convert.go`, `internal/services/element/v89/service.go`, and `internal/services/element/v89/service_test.go`
+- [x] T002 [P] Create internal element service package placeholders in `internal/services/element/api.go`, `internal/services/element/factory.go`, `internal/services/element/v88/contract.go`, `internal/services/element/v88/convert.go`, `internal/services/element/v88/service.go`, `internal/services/element/v88/service_test.go`, `internal/services/element/v89/contract.go`, `internal/services/element/v89/convert.go`, `internal/services/element/v89/service.go`, and `internal/services/element/v89/service_test.go`
 - [x] T003 [P] Create command package placeholders in `cmd/get_element.go`, `cmd/get_element_search.go`, `cmd/get_element_test.go`, `cmd/cmd_views_element.go`, and `cmd/cmd_views_element_test.go`
 - [x] T004 [P] Verify generated Camunda element instance operations are present and record no generated-client edits are needed in `specs/241-get-element-command/research.md`
 
@@ -33,7 +33,7 @@
 
 - [x] T005 Define version-neutral element domain types, page types, reported-total types, and search query types in `internal/domain/element.go`
 - [x] T006 Define the internal element service API and version assertions in `internal/services/element/api.go`
-- [x] T007 Implement the element service factory for Camunda 8.7, 8.8, and 8.9 in `internal/services/element/factory.go`
+- [x] T007 Implement the element service factory for Camunda 8.8 and 8.9 in `internal/services/element/factory.go`
 - [x] T008 Implement public element facade models and JSON field tags in `c8volt/element/model.go`
 - [x] T009 Implement public/internal conversion helpers in `c8volt/element/convert.go`
 - [x] T010 Implement the public element facade API and thin client delegation in `c8volt/element/api.go` and `c8volt/element/client.go`
@@ -45,13 +45,10 @@
 
 ## Phase 3: User Story 1 - Fetch One Runtime Element Instance (Priority: P1) MVP
 
-**Goal**: Operators can fetch one runtime element instance by element instance key, with supported 8.8/8.9 behavior and clear 8.7 unsupported behavior.
 
-**Independent Test**: Run `c8volt get element --key <element-instance-key>` against mocked 8.8/8.9 responses and verify one matching element instance is returned; run the same command against 8.7 and verify unsupported-version failure.
 
 ### Tests for User Story 1
 
-- [x] T012 [P] [US1] Add v87 unsupported direct lookup service tests in `internal/services/element/v87/service_test.go`
 - [x] T013 [P] [US1] Add v88 direct lookup service tests for successful payload mapping and missing/not-found handling in `internal/services/element/v88/service_test.go`
 - [x] T014 [P] [US1] Add v89 direct lookup service tests for successful payload mapping and missing/not-found handling in `internal/services/element/v89/service_test.go`
 - [x] T015 [P] [US1] Add facade direct lookup conversion and error mapping tests in `c8volt/element/client_test.go`
@@ -59,7 +56,6 @@
 
 ### Implementation for User Story 1
 
-- [x] T017 [US1] Implement Camunda 8.7 unsupported element operations in `internal/services/element/v87/service.go`
 - [x] T018 [US1] Implement v88 generated client contract and direct lookup conversion helpers in `internal/services/element/v88/contract.go` and `internal/services/element/v88/convert.go`
 - [x] T019 [US1] Implement v88 direct lookup using `GetElementInstanceWithResponse` in `internal/services/element/v88/service.go`
 - [x] T020 [US1] Implement v89 generated client contract and direct lookup conversion helpers in `internal/services/element/v89/contract.go` and `internal/services/element/v89/convert.go`
@@ -203,7 +199,6 @@ Task: "T038 [US3] Add command contract tests in cmd/command_contract_test.go"
 1. Complete Phase 1 setup.
 2. Complete Phase 2 foundational contracts and wiring.
 3. Complete Phase 3 direct lookup.
-4. Validate `c8volt get element --key <element-instance-key>` and unsupported Camunda 8.7 behavior.
 
 ### Incremental Delivery
 

@@ -77,7 +77,7 @@ Represents the result of evaluating one version-aware service family against the
 ### Invariants
 
 - Every version-aware factory has exactly one explicit alpha outcome.
-- No alpha adapter imports a v8.7, v8.8, or v8.9 generated client.
+- No alpha adapter imports a v8.8, or v8.9 generated client.
 - Unsupported mutations fail before an external mutation is attempted.
 
 ## Capability Record
@@ -99,7 +99,7 @@ Represents one user-facing support claim.
 
 | Field | Description |
 |-------|-------------|
-| Stable versions | `8.7`, `8.8`, `8.9` |
+| Stable versions | `8.8`, `8.9` |
 | Experimental versions | `8.10-alpha` |
 | Experimental baseline | `8.10.0-alpha4` |
 | Default runtime | Existing `8.8` default |

@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/grafvonb/c8volt/config"
+	"github.com/grafvonb/c8volt/toolx"
 )
 
 type camundaReleaseLineComparison int
@@ -71,4 +72,17 @@ func parseMajorMinorVersion(version string) (string, bool) {
 		return "", false
 	}
 	return fmt.Sprintf("%d.%d", major, minor), true
+}
+
+// camundaHumanCompatibilityWarnings retains legacy comparison but never echoes
+// unsafe gateway text into normal diagnostics; machine evidence stays unchanged.
+func camundaHumanCompatibilityWarnings(configuredVersion, gatewayVersion string) []string {
+	warnings := camundaReleaseLineCompatibilityWarnings(configuredVersion, gatewayVersion)
+	if len(warnings) == 0 {
+		return nil
+	}
+	if _, err := toolx.ParseCamundaRelease(gatewayVersion); err != nil {
+		return []string{fmt.Sprintf("version check: invalid gateway version; using configured %s", configuredVersion)}
+	}
+	return warnings
 }

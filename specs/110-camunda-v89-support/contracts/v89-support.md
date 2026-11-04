@@ -8,7 +8,7 @@
 | Supported-version lists | User-facing support lists include `8.9`, and runtime-implemented version messaging matches that support boundary |
 | Factory selection | `cluster`, `processdefinition`, `processinstance`, and `resource` factories return native `v89` implementations when `app.camunda_version` is `v8.9` |
 | Unsupported version handling | Missing or unsupported versions continue to fail through the existing unknown-version error path |
-| Implemented-version error text | Runtime unsupported-version errors now list `8.7`, `8.8`, and `8.9` because all four versioned service families have native `v89` implementations |
+| Implemented-version error text | Runtime unsupported-version errors now list `8.8` and `8.9` because all four versioned service families have native `v89` implementations |
 
 ## Foundational Phase Gate
 
@@ -54,11 +54,9 @@ At least one explicit `v8.9` execution test is required for each repository comm
 
 | Version | Required behavior |
 |--------|-------------------|
-| `v8.7` | Existing runtime behavior remains unchanged |
 | `v8.8` | Existing runtime behavior remains unchanged |
 | `v8.9` | Adds the same command-family support scope currently available on `v8.8` |
 
-Adding `v8.9` support must not silently regress or reclassify `v8.7` or `v8.8` behavior.
 
 ## Documentation Release Gate Contract
 

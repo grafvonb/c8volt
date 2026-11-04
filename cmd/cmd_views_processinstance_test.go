@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"io"
 	"strings"
 	"testing"
 	"time"
@@ -1123,4 +1124,46 @@ func TestIncidentEnrichedProcessInstancesView_HumanIndirectMarkersRenderMultiple
 	require.Less(t, strings.Index(output, "124 tenant demo-b"), strings.LastIndex(output, "└─ "+indirectProcessTreeIncidentNote))
 	require.Less(t, strings.LastIndex(output, "└─ "+indirectProcessTreeIncidentNote), strings.Index(output, indirectProcessTreeIncidentWarning))
 	require.Less(t, strings.Index(output, indirectProcessTreeIncidentWarning), strings.Index(output, "found: 2"))
+}
+
+// TestListProcessInstancesView_Suspended preserves the compact row and machine-output contracts for paused instances.
+func TestListProcessInstancesView_Suspended(t *testing.T) {
+	previousNow := relativeDayNow
+	relativeDayNow = func() time.Time { return time.Date(2026, 2, 1, 12, 0, 0, 0, time.UTC) }
+	t.Cleanup(func() { relativeDayNow = previousNow })
+	instance := process.ProcessInstance{Key: "123", TenantId: "tenant", BpmnProcessId: "order", ProcessVersion: 1, State: process.StateSuspended, StartDate: "2026-02-01T07:00:00Z"}
+	require.Equal(t, "123 tenant order v1 SUSPENDED s:2026-02-01T07:00:00.000 p:<root> (today)", oneLinePI(instance))
+	for _, tt := range []struct {
+		name       string
+		json, keys bool
+	}{
+		{name: "human"}, {name: "json", json: true}, {name: "keys", keys: true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			resetProcessInstanceCommandGlobals()
+			t.Cleanup(resetProcessInstanceCommandGlobals)
+			flagViewAsJson, flagViewKeysOnly = tt.json, tt.keys
+			command := &cobra.Command{Use: "process-instance"}
+			setContractSupport(command, ContractSupportFull)
+			stdout, stderr := &bytes.Buffer{}, &bytes.Buffer{}
+			command.SetOut(stdout)
+			command.SetErr(stderr)
+			require.NoError(t, listProcessInstancesView(command, process.ProcessInstances{Total: 1, Items: []process.ProcessInstance{instance}}))
+			require.Empty(t, stderr.String())
+			switch {
+			case tt.json:
+				decoder := json.NewDecoder(stdout)
+				var envelope ResultEnvelope[processInstancesJSONWithMeta]
+				require.NoError(t, decoder.Decode(&envelope))
+				require.Equal(t, OutcomeSucceeded, envelope.Outcome)
+				require.Equal(t, []process.ProcessInstance{instance}, envelope.Payload.Items)
+				var extra any
+				require.ErrorIs(t, decoder.Decode(&extra), io.EOF)
+			case tt.keys:
+				require.Equal(t, "123\n", stdout.String())
+			default:
+				require.Equal(t, "123 tenant order v1 SUSPENDED s:2026-02-01T07:00:00.000 p:<root> (today)\nfound: 1\n", stdout.String())
+			}
+		})
+	}
 }

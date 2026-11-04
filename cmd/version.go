@@ -47,9 +47,9 @@ func buildYear() int {
 var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Print version information",
-	Long:  `Show the c8volt version, build metadata, supported Camunda versions, and active Camunda 8.10 baseline.`,
-	Example: `  ./c8volt version
-  ./c8volt version --json`,
+	Long:  `Show the c8volt version, build metadata, and supported Camunda versions.`,
+	Example: `  c8volt version
+  c8volt version --json`,
 	Run: func(cmd *cobra.Command, args []string) {
 		info := CurrentBuildInfo()
 		if flagViewAsJson {

@@ -10,17 +10,16 @@ List or fetch deployed process definitions
 
 ### Synopsis
 
-List or fetch deployed process definitions.
+Inspect deployed process definitions. Use --latest for the newest version of
+each tenant and BPMN process ID, or --key for one exact definition.
 
-Select by key, BPMN process ID, version, or version tag. Use --xml only with --key. A --bpmn-process-id selector must match a visible definition.
+Add --with-stats for instance and incident counts. Lifecycle state and suspended
+counts are available only c8.10+. DRAINING blocks new starts while unfinished
+instances remain; active and suspended counts are separate.
 
---tenant limits list and selector discovery. Explicit --key and XML lookups use backend authorization without tenant filtering.
-
---latest selects the newest definition per exact tenant ID and BPMN process ID, breaking version ties by the lowest exact-text key. Camunda 8.7 selects within its 1000 visible-definition compatibility window; Camunda 8.8 or newer uses native latest filtering.
-
---stat includes exact-version statistics and requires Camunda 8.8 or newer.
-
---watch repeats the lookup indefinitely by default until interrupted or retries are exhausted. --watch-timeout sets an optional session limit (0 = unlimited), independently of --timeout for individual HTTP requests and the retry-loop backoff timeout. Individual request timeouts are retried while the session remains active. It starts immediately; --watch-interval controls subsequent checks. Without a selector it observes all visible definitions. Each successful refresh logs a timestamped INFO summary, including when nothing changed, compared with the previous successfully displayed refresh, for example: 16:42:08.123 INFO 1 updated, 1 new, 0 removed. Rows end with * for changed definitions and + for new definitions; unchanged rows have no suffix; on supported terminal output, changed displayed values are also bold. Bold falls back to plain markers when TERM is empty or dumb, NO_COLOR is set, or output is redirected. The first successful refresh establishes an unmarked baseline. Failed refreshes do not replace that baseline, and an unchanged success clears prior markers and bold. Removed definitions contribute to the summary without leaving stale rows. --watch cannot be combined with --json, --keys-only, --xml, --quiet, or --automation.
+Use --watch to refresh until interrupted, or --xml to retrieve the BPMN model.
+Watch requires human output and cannot be combined with --json, --keys-only,
+--xml, --quiet, or --automation.
 
 ```
 c8volt get process-definition [flags]
@@ -29,49 +28,47 @@ c8volt get process-definition [flags]
 ### Examples
 
 ```
-  ./c8volt get process-definition --latest
-  ./c8volt get process-definition --bpmn-process-id <bpmn-process-id> --latest
-  ./c8volt get process-definition --bpmn-process-id <bpmn-process-id> --latest --watch
-  ./c8volt get process-definition --watch --watch-interval 2s
-  ./c8volt get process-definition --watch --watch-timeout 10m
-  ./c8volt get process-definition --key <process-definition-key> --json
-  ./c8volt get process-definition --key <process-definition-key> --xml
+  c8volt get process-definition --latest
+  c8volt get process-definition --bpmn-process-id order --with-stats
+  c8volt get process-definition --bpmn-process-id order --latest --watch
 ```
 
 ### Options
 
 ```
-  -n, --batch-size int32          number of process definitions to request per discovery page; does not cap total results (max limit 1000 enforced by server) (default 1000)
+  -n, --batch-size int32          process definitions per discovery page (server maximum 1000) (default 1000)
   -b, --bpmn-process-id string    BPMN process ID to filter process instances
   -h, --help                      help for process-definition
   -k, --key string                process definition key to fetch
       --latest                    only include the latest matching process-definition version per exact tenant/BPMN process group
       --pd-version int32          process definition version
       --pd-version-tag string     process definition version tag
-      --stat                      include process definition statistics; 8.8 or newer includes incident counts, 8.7 unsupported
-      --watch                     repeat the process-definition lookup until interrupted, --watch-timeout is reached, or retries are exhausted
+      --watch                     repeat the process-definition lookup until stopped
       --watch-interval duration   interval between process-definition watch refreshes after the immediate first refresh (default 1s)
       --watch-timeout duration    maximum watch session duration (0 = unlimited; requires --watch)
+      --with-stats                include process definition statistics, incident counts, and suspended counts when supported
       --xml                       output the selected process definition as raw XML (requires --key and no other filters)
 ```
 
 ### Options inherited from parent commands
 
 ```
-      --all-tenants        clear configured tenant filtering and search all tenants visible to the authenticated user; mutually exclusive with --tenant
-  -y, --auto-confirm       auto-confirm prompts for non-interactive use
-      --automation         enable non-interactive mode for commands that explicitly support it
-      --config string      path to config file
-      --debug              enable debug logging
-  -j, --json               output as JSON (where applicable)
-      --keys-only          output keys only (where applicable)
-      --log-level string   log level (debug, info, warn, error) (default "info")
-      --no-indicator       disable transient terminal activity indicators
-      --profile string     config active profile name to use (e.g. dev, prod)
-  -q, --quiet              suppress output except errors
-      --tenant string      tenant ID for discovery/search, selection, create, deploy, and run flows; explicit empty values can clear configured discovery filters, and explicit keys/IDs remain backend-authorized
-      --timeout duration   HTTP request timeout (default 30s)
-  -v, --verbose            show additional output
+      --all-tenants          search all accessible tenants; cannot combine with --tenant
+  -y, --auto-confirm         auto-confirm prompts for non-interactive use
+      --automation           enable non-interactive mode for commands that explicitly support it
+      --config string        path to config file
+      --debug                enable debug logging
+  -j, --json                 output as JSON (where applicable)
+      --keys-only            output keys only (where applicable)
+      --log-level string     log level (debug, info, warn, error) (default "info")
+      --no-indicator         disable transient terminal activity indicators
+      --no-version-check     skip the automatic advisory gateway version check
+      --profile string       config active profile name to use (e.g. dev, prod)
+  -q, --quiet                suppress output except errors
+      --request-rate float   maximum shared request starts per second (fractions allowed; 0 disables pacing)
+      --tenant string        tenant for discovery and creation; explicit keys use backend authorization
+      --timeout duration     HTTP request timeout (default 30s)
+  -v, --verbose              show additional output
 ```
 
 ### SEE ALSO

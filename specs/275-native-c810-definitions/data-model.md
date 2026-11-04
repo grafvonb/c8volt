@@ -43,7 +43,6 @@ Each filename is the listed identity plus `.bpmn`.
 
 | Camunda version | Production prefix |
 |---|---|
-| 8.7 | `C87_` |
 | 8.8 | `C88_` |
 | 8.9 | `C89_` |
 | 8.10 | `C810_` |

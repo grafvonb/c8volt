@@ -27,7 +27,11 @@ func TestCmdTerminalRunnerSequencesPrompts(t *testing.T) {
 		Env:           map[string]string{"C8VOLT_TERMINAL_RUNNER_VALUE": "ready"},
 		Exchanges: []CmdTerminalExchange{
 			{Prompt: "repeated prompt: ", Response: "alpha"},
-			{Prompt: "repeated prompt: ", Response: "beta"},
+			{Prompt: "repeated prompt: ", Response: "beta", ResponseDelay: 20 * time.Millisecond,
+				BeforeResponse: func(stdout, stderr string) {
+					require.Equal(t, "terminal=true env=ready\n", stdout)
+					require.Equal(t, "repeated prompt: repeated prompt: ", stderr)
+				}},
 			{Prompt: "eof prompt: ", EndOfInput: true},
 		},
 		Timeout: 3 * time.Second,

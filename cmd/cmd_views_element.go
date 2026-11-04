@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/grafvonb/c8volt/c8volt/element"
+	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/grafvonb/c8volt/toolx"
 	"github.com/spf13/cobra"
 )
@@ -41,7 +42,7 @@ func elementsView(cmd *cobra.Command, result element.SearchResult) error {
 		return nil
 	}
 	renderElementRowsWithListeners(cmd, result.Items, capturedNow)
-	renderOutputLine(cmd, "found: %d", len(result.Items))
+	renderElementSearchSummary(cmd, len(result.Items))
 	return nil
 }
 
@@ -101,8 +102,11 @@ func flatRowElementWithTimezone(item element.Element, showTimezoneOffset bool, c
 	return parts
 }
 
-// renderElementRowsWithListeners prints aligned element rows and optional nested listener rows.
+// renderElementRowsWithListeners preserves element/listener rows and adds local variables with sibling tree connectors.
 func renderElementRowsWithListeners(cmd *cobra.Command, items []element.Element, capturedNow time.Time) {
+	if flagQuiet {
+		return
+	}
 	rows := make([]flatRow, 0, len(items))
 	showTimezoneOffset := commandShowTimezoneOffset(cmd)
 	for _, item := range items {
@@ -111,31 +115,42 @@ func renderElementRowsWithListeners(cmd *cobra.Command, items []element.Element,
 	elementLines := formatFlatRows(rows)
 	for i, item := range items {
 		renderOutputLine(cmd, "%s", elementLines[i])
-		listenerRows := formatElementListenerRows(item.Listeners, showTimezoneOffset)
-		if len(listenerRows) == 0 {
-			continue
+		listenerRows := formatElementListenerRows(item.Listeners, showTimezoneOffset, capturedNow)
+		hasVars := item.Variables != nil && len(*item.Variables) > 0
+		if len(listenerRows) > 0 {
+			branch, indent := "└─ ", "   "
+			if hasVars {
+				branch, indent = "├─ ", "│  "
+			}
+			renderOutputLine(cmd, "%slisteners:", branch)
+			for j, row := range listenerRows {
+				renderOutputLine(cmd, "%s%s%s", indent, incidentTreeBranch(j, len(listenerRows)), row)
+			}
 		}
-		renderOutputLine(cmd, "└─ listeners:")
-		for j, row := range listenerRows {
-			renderOutputLine(cmd, "   %s%s", incidentTreeBranch(j, len(listenerRows)), row)
+		if hasVars {
+			renderOutputLine(cmd, "└─ vars:")
+			for j, variable := range *item.Variables {
+				line := variableValueHumanLine(process.ProcessInstanceVariable{Name: variable.Name, Value: variable.Value, APITruncated: variable.APITruncated}, 0)
+				renderOutputLine(cmd, "   %s%s", incidentTreeBranch(j, len(*item.Variables)), line)
+			}
 		}
 	}
 }
 
 // formatElementListenerRows renders element-owned listener jobs using the shared listener row grammar.
-func formatElementListenerRows(listeners *[]element.RuntimeListenerJob, showTimezoneOffset bool) []string {
+func formatElementListenerRows(listeners *[]element.RuntimeListenerJob, showTimezoneOffset bool, capturedNow time.Time) []string {
 	if listeners == nil || len(*listeners) == 0 {
 		return nil
 	}
 	rows := make([]flatRow, 0, len(*listeners))
 	for _, listener := range *listeners {
-		rows = append(rows, flatRowElementListenerWithTimezone(listener, showTimezoneOffset))
+		rows = append(rows, flatRowElementListenerWithTimezone(listener, showTimezoneOffset, capturedNow))
 	}
 	return formatFlatRows(rows)
 }
 
 // flatRowElementListenerWithTimezone formats one runtime listener job below an element row.
-func flatRowElementListenerWithTimezone(item element.RuntimeListenerJob, showTimezoneOffset bool) flatRow {
+func flatRowElementListenerWithTimezone(item element.RuntimeListenerJob, showTimezoneOffset bool, capturedNow time.Time) flatRow {
 	parts := flatRow{
 		item.JobKey,
 		item.Kind,
@@ -156,6 +171,7 @@ func flatRowElementListenerWithTimezone(item element.RuntimeListenerJob, showTim
 	} else {
 		parts = append(parts, "")
 	}
+	parts = append(parts, prefixedElementField("dur", runtimeListenerDuration(item.CreationTime, item.EndTime, item.State, capturedNow)), processInstanceBusinessIDColumn(item.BusinessId))
 	return parts
 }
 
@@ -176,4 +192,23 @@ func elementIncidentMarker(item element.Element) string {
 		return "inc!:" + item.IncidentKey
 	}
 	return "inc!"
+}
+
+// renderElementSearchSummary handles completed and empty searches without contaminating machine output.
+func renderElementSearchSummary(cmd *cobra.Command, count int) {
+	if pickMode() == RenderModeOneLine && !flagQuiet {
+		renderOutputLine(cmd, "found: %d", count)
+	}
+}
+
+// renderElementSearchPage renders selected keys or enriched rows without recomputing selection.
+func renderElementSearchPage(cmd *cobra.Command, items []element.Element, capturedNow time.Time) error {
+	if pickMode() == RenderModeKeysOnly {
+		for _, item := range items {
+			renderOutputLine(cmd, "%s", elementKey(item))
+		}
+	} else {
+		renderElementRowsWithListeners(cmd, items, capturedNow)
+	}
+	return nil
 }

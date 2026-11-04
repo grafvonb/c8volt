@@ -14,8 +14,10 @@ import (
 	"github.com/grafvonb/c8volt/toolx"
 )
 
+// fromProcessInstanceResult maps a fresh backend snapshot, clearing absent date metadata.
 func fromProcessInstanceResult(r camundav810.ProcessInstanceResult) d.ProcessInstance {
 	return d.ProcessInstance{
+		BusinessId:               toolx.CopyPtr(r.BusinessId),
 		BpmnProcessId:            r.ProcessDefinitionId,
 		EndDate:                  formatTimePtr(r.EndDate),
 		Incident:                 r.HasIncident,
@@ -27,6 +29,7 @@ func fromProcessInstanceResult(r camundav810.ProcessInstanceResult) d.ProcessIns
 		ProcessVersion:           r.ProcessDefinitionVersion,
 		ProcessVersionTag:        valueOrEmpty(r.ProcessDefinitionVersionTag),
 		StartDate:                formatTime(r.StartDate),
+		SuspendedDate:            formatTimePtr(r.SuspendedDate),
 		State:                    d.State(r.State),
 		TenantId:                 r.TenantId,
 	}
@@ -46,12 +49,14 @@ func formatTimePtr(p *time.Time) string {
 	return formatTime(*p)
 }
 
+// toProcessInstanceCreationInstruction preserves exact optional identity for either selector.
 func toProcessInstanceCreationInstruction(in d.ProcessInstanceData) (camundav810.ProcessInstanceCreationInstruction, error) {
 	var instr camundav810.ProcessInstanceCreationInstruction
 	switch {
 	case in.BpmnProcessId != "":
 		err := instr.FromProcessInstanceCreationInstructionById(
 			camundav810.ProcessInstanceCreationInstructionById{
+				BusinessId:               toolx.CopyPtr(in.BusinessId),
 				ProcessDefinitionId:      in.BpmnProcessId,
 				ProcessDefinitionVersion: normalizeVersion(in.ProcessDefinitionVersion),
 				Variables:                toolx.PtrCopyMap(in.Variables),
@@ -62,6 +67,7 @@ func toProcessInstanceCreationInstruction(in d.ProcessInstanceData) (camundav810
 	case in.ProcessDefinitionSpecificId != "":
 		err := instr.FromProcessInstanceCreationInstructionByKey(
 			camundav810.ProcessInstanceCreationInstructionByKey{
+				BusinessId:           toolx.CopyPtr(in.BusinessId),
 				ProcessDefinitionKey: in.ProcessDefinitionSpecificId,
 				Variables:            toolx.PtrCopyMap(in.Variables),
 				TenantId:             toolx.PtrIf(in.TenantId, ""),
@@ -85,8 +91,10 @@ func normalizeVersion(v int32) *int32 {
 	}
 }
 
+// fromCreateProcessInstanceResult copies native acceptance evidence without input fallback.
 func fromCreateProcessInstanceResult(r camundav810.CreateProcessInstanceResult) d.ProcessInstanceCreation {
 	return d.ProcessInstanceCreation{
+		BusinessId:               toolx.CopyPtr(r.BusinessId),
 		Key:                      r.ProcessInstanceKey,
 		BpmnProcessId:            r.ProcessDefinitionId,
 		ProcessDefinitionKey:     r.ProcessDefinitionKey,
@@ -103,7 +111,9 @@ type processInstanceSearchQuery struct {
 	Sort   *[]camundav810.ProcessInstanceSearchQuerySortRequest `json:"sort,omitempty"`
 }
 
+// processInstanceFilter preserves native fields alongside compatibility date filters.
 type processInstanceFilter struct {
+	BusinessId                  *camundav810.StringFilterProperty               `json:"businessId,omitempty"`
 	TenantId                    *camundav810.StringFilterProperty               `json:"tenantId,omitempty"`
 	ProcessInstanceKey          *camundav810.ProcessInstanceKeyFilterProperty   `json:"processInstanceKey,omitempty"`
 	ProcessDefinitionId         *camundav810.StringFilterProperty               `json:"processDefinitionId,omitempty"`
@@ -118,8 +128,10 @@ type processInstanceFilter struct {
 	Variables                   *[]camundav810.VariableValueFilterProperty      `json:"variables,omitempty"`
 }
 
+// isEmpty retains filters containing only an optional business ID.
 func (f *processInstanceFilter) isEmpty() bool {
 	return f != nil &&
+		f.BusinessId == nil &&
 		f.TenantId == nil &&
 		f.ProcessInstanceKey == nil &&
 		f.ProcessDefinitionId == nil &&
@@ -134,11 +146,15 @@ func (f *processInstanceFilter) isEmpty() bool {
 		f.Variables == nil
 }
 
+// processInstanceSearchQueryResult retains missing total metadata separately from zero.
 type processInstanceSearchQueryResult struct {
-	Items []camundav810.ProcessInstanceResult `json:"items"`
-	Page  camundav810.SearchQueryPageResponse `json:"page"`
+	TotalItemsKnown bool                                `json:"-"`
+	Items           []camundav810.ProcessInstanceResult `json:"items"`
+	Page            camundav810.SearchQueryPageResponse `json:"page"`
 }
 
+// decodeSearchProcessInstancesResponse preserves absent or null totals as unknown
+// rather than allowing generated zero values to prove an empty search scope.
 func decodeSearchProcessInstancesResponse(body []byte, page *camundav810.ProcessInstanceSearchQueryResult) (processInstanceSearchQueryResult, error) {
 	if len(bytesTrimSpace(body)) == 0 {
 		return processInstanceSearchQueryResult{}, d.ErrMalformedResponse
@@ -147,6 +163,15 @@ func decodeSearchProcessInstancesResponse(body []byte, page *camundav810.Process
 	if err := json.Unmarshal(body, &result); err != nil {
 		return processInstanceSearchQueryResult{}, err
 	}
+	var metadata struct {
+		Page struct {
+			TotalItems *int64 `json:"totalItems"`
+		} `json:"page"`
+	}
+	if err := json.Unmarshal(body, &metadata); err != nil {
+		return processInstanceSearchQueryResult{}, err
+	}
+	result.TotalItemsKnown = metadata.Page.TotalItems != nil && *metadata.Page.TotalItems >= 0
 	result.Page = page.Page
 	return result, nil
 }
@@ -261,4 +286,20 @@ func valueOrEmpty[T ~string](v *T) T {
 
 func bytesTrimSpace(b []byte) []byte {
 	return bytes.TrimSpace(b)
+}
+
+// newProcessInstanceStateFilterPtr keeps scalar equality requests intact and
+// maps normalized plural values to the generated advanced union representation.
+func newProcessInstanceStateFilterPtr(filter d.ProcessInstanceFilter) (*camundav810.ProcessInstanceStateFilterProperty, error) {
+	if len(filter.States) == 0 {
+		return newProcessInstanceStateEqFilterPtr(string(normalizeSearchState(filter.State)))
+	}
+	states := toolx.MapSlice(filter.States, func(state d.State) camundav810.ProcessInstanceStateEnum {
+		return camundav810.ProcessInstanceStateEnum(state)
+	})
+	var result camundav810.ProcessInstanceStateFilterProperty
+	if err := result.FromAdvancedProcessInstanceStateFilter(camundav810.AdvancedProcessInstanceStateFilter{In: &states}); err != nil {
+		return nil, err
+	}
+	return &result, nil
 }

@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/grafvonb/c8volt/c8volt/foptions"
 	"github.com/grafvonb/c8volt/c8volt/incident"
 	"github.com/grafvonb/c8volt/c8volt/ops"
 	"github.com/grafvonb/c8volt/c8volt/tenant"
@@ -45,21 +46,14 @@ var (
 var opsPurgeProcessInstancesWithIncidentsCmd = &cobra.Command{
 	Use:   "process-instances-with-incidents",
 	Short: "Purge process instances selected by incidents",
-	Long: `Delete process-instance families selected through incidents.
+	Long: `Delete process-instance families selected by incidents.
 
-Select incidents using filters or explicit --inc-key values. The workflow fixes the candidate process-instance set, validates the delete plan, and requires confirmation before deletion. Incident matching only selects candidates; process-instance family, force, and wait rules govern deletion.
-
---tenant limits incident discovery; an empty tenant or --all-tenants searches across accessible tenants. Explicit incident keys use backend authorization without tenant filtering. --batch-size controls each discovery request; --limit caps the selected scope.
-
-Use --dry-run to inspect the plan without mutation, --auto-confirm or --automation for unattended deletion, and --report-file to save an audit report.`,
-	Example: `  ./c8volt ops purge process-instances-with-incidents --dry-run
-  ./c8volt ops purge process-instances-with-incidents --inc-key <incident-key> --dry-run
-  ./c8volt --tenant tenant-a ops purge process-instances-with-incidents --inc-key <incident-key> --dry-run
-  ./c8volt --tenant "" ops purge process-instances-with-incidents --state active --limit 5 --dry-run
-  ./c8volt ops purge process-instances-with-incidents --state active --error-type io_mapping_error --dry-run
-  ./c8volt ops purge process-instances-with-incidents --state active --error-type io_mapping_error --limit 5 --force
-  ./c8volt --verbose ops purge process-instances-with-incidents --state active --error-type io_mapping_error --limit 5 --force --auto-confirm
-  ./c8volt ops purge process-instances-with-incidents --state active --error-type io_mapping_error --limit 5 --force --report-file incident-purge.md`,
+Select incidents by --inc-key or filters such as --error-type. The workflow
+plans family deletion before confirmation; unfinished instances require --force.
+Use --dry-run to review the scope and --report-file to save an audit report.
+Use --auto-confirm for unattended execution.`,
+	Example: `  c8volt ops purge process-instances-with-incidents --error-type io_mapping_error --dry-run
+  c8volt ops purge process-instances-with-incidents --inc-key <incident-key> --force --report-file purge.md`,
 	Aliases: []string{"pi-with-incidents", "piwi"},
 	Args:    cobra.NoArgs,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -101,10 +95,15 @@ Use --dry-run to inspect the plan without mutation, --auto-confirm or --automati
 			planRequest := request
 			planRequest.DryRun = true
 			planned, err := purgeProcessInstancesWithIncidentsWithCommandActivity(cmd, planRequest, func() (ops.IncidentPurgeResult, error) {
-				return cli.PurgeProcessInstancesWithIncidents(cmd.Context(), planRequest, collectOptions()...)
+				return cli.PurgeProcessInstancesWithIncidents(cmd.Context(), planRequest, append(collectOptions(), foptions.WithSuppressWorkflowDetailLogs(), foptions.WithSuppressProcessInstanceDetailLogs())...)
 			})
 			if err != nil {
-				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("plan ops purge process-instances with incidents: %w", err))
+				progress.Close()
+				reportErr := writeOpsPurgeProcessInstancesWithIncidentsReport(planned, cfg, OpsWorkflowReportPreserveExisting)
+				if renderErr := renderOpsProcessInstancePurgeFailure(cmd, log, planned, "incident purge", len(planned.DeletePlan.CandidateProcessInstanceKeys), planned.Deletion.Items, err, reportErr); renderErr != nil {
+					log.Error("could not render process-instance purge result")
+				}
+				exitAfterRenderedResult(cfg.App.NoErrCodes, err)
 			}
 			if err := rejectOpsPurgeProcessInstancesWithIncidentsPlanRequiringForce(planned.DeletePlan); err != nil {
 				abortOpsPurgeProcessInstancesWithIncidentsAfterReport(cmd, log, cfg, markOpsPurgeProcessInstancesWithIncidentsLocalFailure(planned, ops.WorkflowStepStatusBlocked, err), err)
@@ -125,15 +124,16 @@ Use --dry-run to inspect the plan without mutation, --auto-confirm or --automati
 			request.DiscoveredScopeStatus = planned.Discovery.DiscoveryScopeStatus
 		}
 		result, err := purgeProcessInstancesWithIncidentsWithCommandActivity(cmd, request, func() (ops.IncidentPurgeResult, error) {
-			return cli.PurgeProcessInstancesWithIncidents(cmd.Context(), request, collectOptions()...)
+			return cli.PurgeProcessInstancesWithIncidents(cmd.Context(), request, append(collectOptions(), foptions.WithSuppressWorkflowDetailLogs(), foptions.WithSuppressProcessInstanceDetailLogs())...)
 		})
 		progress.Close()
 		result = attachOpsPurgeProcessInstancesWithIncidentsResultTenantContext(cmd, cfg, result)
 		if err != nil {
-			if reportErr := writeOpsPurgeProcessInstancesWithIncidentsReport(result, cfg, opsPurgeProcessInstancesWithIncidentsReportWriteMode(result)); reportErr != nil {
-				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("ops purge process-instances with incidents: %w; write audit report: %v", err, reportErr))
+			reportErr := writeOpsPurgeProcessInstancesWithIncidentsReport(result, cfg, opsPurgeProcessInstancesWithIncidentsReportWriteMode(result))
+			if renderErr := renderOpsProcessInstancePurgeFailure(cmd, log, result, "incident purge", len(result.DeletePlan.CandidateProcessInstanceKeys), result.Deletion.Items, err, reportErr); renderErr != nil {
+				log.Error("could not render process-instance purge result")
 			}
-			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("ops purge process-instances with incidents: %w", err))
+			exitAfterRenderedResult(cfg.App.NoErrCodes, err)
 		}
 		if err := writeOpsPurgeProcessInstancesWithIncidentsReport(result, cfg, opsPurgeProcessInstancesWithIncidentsReportWriteMode(result)); err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("write ops purge process-instances with incidents audit report: %w", err))
@@ -163,10 +163,10 @@ func init() {
 	fs.StringVar(&flagOpsPurgeIncidentCreationTimeBefore, "creation-time-before", "", "only include incidents with creation time <= RFC3339 timestamp, c8volt timestamp, or YYYY-MM-DD")
 	fs.IntVar(&flagOpsPurgeIncidentCreationTimeNewer, "creation-time-newer-days", -1, "only include incidents with creation time N days old or newer (0 means today)")
 	fs.IntVar(&flagOpsPurgeIncidentCreationTimeOlder, "creation-time-older-days", -1, "only include incidents with creation time N days old or older")
-	fs.Int32VarP(&flagOpsPurgeIncidentBatchSize, "batch-size", "n", consts.MaxPISearchSize, fmt.Sprintf("number of incidents to inspect per discovery page; does not cap total frozen scope (max limit %d enforced by server)", consts.MaxPISearchSize))
-	fs.Int32VarP(&flagOpsPurgeIncidentLimit, "limit", "l", 0, "maximum number of matching incidents to freeze before candidate process-instance dedupe; omit to discover all matches")
+	fs.Int32VarP(&flagOpsPurgeIncidentBatchSize, "batch-size", "n", consts.MaxPISearchSize, fmt.Sprintf("incidents per discovery page (server maximum %d)", consts.MaxPISearchSize))
+	fs.Int32VarP(&flagOpsPurgeIncidentLimit, "limit", "l", 0, "maximum matching incidents to select; omit for all matches")
 	fs.BoolVar(&flagDryRun, "dry-run", false, "discover and validate incident-based process-instance cleanup without submitting deletion requests")
-	fs.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers when validating the delete plan and deleting roots (default: min(targets, 2*GOMAXPROCS, 32))")
+	fs.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers; omit for an automatic limit")
 	fs.BoolVar(&flagNoWorkerLimit, "no-worker-limit", false, "use all queued jobs as workers when --workers is unset")
 	fs.BoolVar(&flagFailFast, "fail-fast", false, "stop scheduling validation or deletion work after the first error")
 	fs.BoolVar(&flagNoWait, "no-wait", false, "return after deletion requests are accepted without deletion confirmation")

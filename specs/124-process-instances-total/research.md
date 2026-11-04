@@ -27,7 +27,6 @@
 ## Decision 4: Carry backend-reported totals through the shared page model instead of teaching `cmd/` about version-specific response shapes
 
 - **Decision**: Extend shared domain/public process-instance page models with an optional `ReportedTotal{Count, Kind}` value where `Kind` is either `exact` or `lower_bound`, and absence means no trustworthy backend total is available.
-- **Rationale**: `internal/services/processinstance/v88/service.go` and `v89/service.go` already see `totalItems` and `hasMoreTotalItems`, while `v87/service.go` has access to the Operate payload total pointer. Today that information is reduced to `OverflowState` before reaching `cmd/`. A small shared metadata seam lets the command stay version-agnostic.
 - **Alternatives considered**:
   - Compute count-only behavior separately in each versioned service with a new command-specific API: rejected because it would add parallel service entry points for one display concern.
   - Infer totals in `cmd/` from `OverflowState` plus item counts: rejected because that loses the clarified lower-bound semantics for capped totals.
@@ -68,7 +67,6 @@
 - `cmd/get_processinstance.go` is the right command seam for `--total`, because it already owns process-instance search flag validation, keyed-vs-search branching, and final response rendering.
 - `cmd/cmd_views_get.go` keeps current non-`--total` detail rendering centralized for one-line, JSON, and keys-only modes, which supports a small short-circuit design rather than a render-framework change.
 - `internal/services/processinstance/v88/service.go` and `v89/service.go` already see `payload.Page.TotalItems` and `HasMoreTotalItems`, but only pass `OverflowState` upward today.
-- `internal/services/processinstance/v87/service.go` already sees `payload.Total` from Operate search responses and can surface that as the best available reported total for count-only mode.
 - `Makefile` already defines `make docs-content` as the supported CLI-doc regeneration path and `make test` as the repository-wide validation gate.
 
 ## Regression Anchors
@@ -76,4 +74,3 @@
 - [`cmd/get_processinstance_test.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance_test.go) is the best command-level anchor for `--total` output, zero-match behavior, and invalid flag combinations.
 - [`cmd/cmd_processinstance_test.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cmd_processinstance_test.go) contains reusable request and paging helpers if request-capture or shared command fixtures are needed.
 - [`c8volt/process/client_test.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/c8volt/process/client_test.go) is the right seam for new shared page-metadata conversion coverage.
-- [`internal/services/processinstance/v87/service_test.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v87/service_test.go), [`v88/service_test.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v88/service_test.go), and [`v89/service_test.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v89/service_test.go) are the right seams for reported-total and lower-bound metadata behavior.

@@ -307,7 +307,6 @@ Rules:
 ## Unsupported Version Contract
 
 - Camunda 8.8 and 8.9 are supported.
-- Camunda 8.7 returns the established unsupported-version error.
 - Unsupported-version failures must not render partial success output.
 
 ## Read-Only Contract

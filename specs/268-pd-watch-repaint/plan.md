@@ -12,7 +12,7 @@ Fix `get process-definition --watch` / `get pd --watch` so it behaves like a liv
 
 ## Technical Context
 
-**Language/Version**: Go 1.26 with the repository's existing Cobra CLI and generated Camunda 8.7/8.8/8.9 clients
+**Language/Version**: Go 1.26 with the repository's existing Cobra CLI and generated Camunda 8.8/8.9 clients
 
 **Primary Dependencies**: Cobra command wiring, existing render-mode helpers in `cmd`, reusable watch runner in `toolx/watch`, Viper-backed config, public `c8volt/process` facade, internal `processdefinition` services, generated docs tooling
 

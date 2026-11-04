@@ -13,7 +13,7 @@ import (
 // TestGetElementCommand_DeclinedPagingUsesCommandStderr verifies the caller passes its stderr writer and stops before another element page.
 func TestGetElementCommand_DeclinedPagingUsesCommandStderr(t *testing.T) {
 	var bodies []map[string]any
-	srv := newElementSearchServerResponses(t, &bodies,
+	srv := newElementSearchServerResponses(t, "8.9", &bodies,
 		`{"items":[{"elementInstanceKey":"2251799813689002","state":"ACTIVE"}],"page":{"totalItems":2,"hasMoreTotalItems":true}}`,
 		`{"items":[{"elementInstanceKey":"2251799813689003","state":"ACTIVE"}],"page":{"totalItems":2,"hasMoreTotalItems":false}}`,
 	)

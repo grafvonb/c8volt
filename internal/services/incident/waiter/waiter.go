@@ -22,6 +22,7 @@ type IncidentWaiter interface {
 	SearchProcessInstanceIncidents(ctx context.Context, key string, opts ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error)
 }
 
+// WaitForIncidentResolved checks the reviewed incident while allowing aggregate owners to suppress per-key diagnostics.
 func WaitForIncidentResolved(ctx context.Context, s IncidentWaiter, cfg *config.Config, log *slog.Logger, key string, opts ...services.CallOption) (d.IncidentResolutionResponse, error) {
 	cCfg := services.ApplyCallOptions(opts)
 	stopActivity := logging.StartActivityWithImportance(ctx, fmt.Sprintf("waiting for incident %s resolve", key), logging.ActivityImportanceWait)
@@ -62,12 +63,16 @@ func WaitForIncidentResolved(ctx context.Context, s IncidentWaiter, cfg *config.
 				return d.IncidentResolutionResponse{Key: key, Ok: true, Status: status}, nil
 			}
 			status := fmt.Sprintf("incident %s wait stopped; attempts %d, elapsed %s, reason error", key, attempts, time.Since(start))
-			log.Error(status)
+			if cCfg.SuppressWorkflowDetailLogs {
+				log.Debug(status)
+			} else {
+				log.Error(status)
+			}
 			return d.IncidentResolutionResponse{Key: key, Ok: false, Status: status}, fmt.Errorf("%w: %s", err, status)
 		}
 		waitMsg := fmt.Sprintf("incident %s waiting; state %s, attempt %d", key, incident.State, attempts)
 		logging.UpdateActivityWithImportance(ctx, waitMsg, logging.ActivityImportanceWait)
-		logging.InfoIfVerbose(waitMsg, log, cCfg.Verbose)
+		logging.InfoIfVerbose(waitMsg, log, cCfg.Verbose && !cCfg.SuppressWorkflowDetailLogs)
 		if backoff.MaxRetries > 0 && attempts >= backoff.MaxRetries {
 			status := fmt.Sprintf("incident %s wait exceeded retries; max %d, attempts %d, elapsed %s", key, backoff.MaxRetries, attempts, time.Since(start))
 			log.Debug(status)
@@ -84,6 +89,7 @@ func WaitForIncidentResolved(ctx context.Context, s IncidentWaiter, cfg *config.
 	}
 }
 
+// WaitForProcessInstanceIncidentsResolved verifies only reviewed identities; aggregate owners suppress per-instance failure records.
 func WaitForProcessInstanceIncidentsResolved(ctx context.Context, s IncidentWaiter, cfg *config.Config, log *slog.Logger, processInstanceKey string, incidentKeys []string, opts ...services.CallOption) (d.IncidentResolutionResponse, error) {
 	cCfg := services.ApplyCallOptions(opts)
 	stopActivity := logging.StartActivityWithImportance(ctx, fmt.Sprintf("waiting for pi %s incidents resolve", processInstanceKey), logging.ActivityImportanceWait)
@@ -112,7 +118,11 @@ func WaitForProcessInstanceIncidentsResolved(ctx context.Context, s IncidentWait
 		incidents, err := s.SearchProcessInstanceIncidents(ctx, processInstanceKey, opts...)
 		if err != nil {
 			status := fmt.Sprintf("pi %s incident wait stopped; attempts %d, elapsed %s, reason error", processInstanceKey, attempts, time.Since(start))
-			log.Error(status)
+			if cCfg.SuppressWorkflowDetailLogs {
+				log.Debug(status)
+			} else {
+				log.Error(status)
+			}
 			return d.IncidentResolutionResponse{Key: processInstanceKey, Ok: false, Status: status}, fmt.Errorf("%w: %s", err, status)
 		}
 		active := activeTargetIncidentKeys(processInstanceKey, targets, incidents)
@@ -174,12 +184,7 @@ func stringSet(items []string) map[string]struct{} {
 	return out
 }
 
+// isIncidentAbsentErr trusts adapter classification, never URLs or response-body text.
 func isIncidentAbsentErr(err error) bool {
-	if errors.Is(err, d.ErrNotFound) {
-		return true
-	}
-	msg := strings.ToLower(err.Error())
-	return strings.Contains(msg, "404") ||
-		strings.Contains(msg, "not found") ||
-		strings.Contains(msg, "does not exist")
+	return errors.Is(err, d.ErrNotFound)
 }

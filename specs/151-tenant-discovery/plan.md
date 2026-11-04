@@ -5,15 +5,12 @@
 
 ## Summary
 
-Add `c8volt get tenant` as a read-only tenant discovery command with list, single-tenant lookup, literal name filtering, JSON output, generated CLI docs, invalid flag-combination handling for `--key` plus `--filter`, and version-aware unsupported behavior. The implementation should follow the existing command/facade/internal-service layering used by `get process-instance`: command code remains thin, a new tenant facade exposes domain-safe tenant data, versioned internal tenant services wrap the generated Camunda tenant client methods for `v8.8` and `v8.9`, and `v8.7` reports the repository's existing unsupported-capability style because its generated clients do not expose tenant-management search/get APIs.
 
 ## Technical Context
 
 **Language/Version**: Go 1.26  
 **Primary Dependencies**: standard library, `github.com/spf13/cobra`, `github.com/spf13/viper`, `github.com/stretchr/testify`, generated Camunda clients under `internal/clients/camunda/v88/camunda` and `internal/clients/camunda/v89/camunda`, existing render/error helpers in `cmd/`, existing service/facade patterns under `internal/services/*` and `c8volt/*`  
 **Storage**: No persistent storage changes; command reads configuration/profile/authentication through existing root/global flag handling  
-**Testing**: `go test`, `make test`, command regression tests under `cmd/`, facade tests under `c8volt/tenant/`, versioned service tests under `internal/services/tenant/v87`, `v88`, and `v89`  
-**Target Platform**: Cross-platform CLI for local and CI use against supported Camunda versions; tenant discovery supported for `v8.8` and `v8.9`, unsupported explicitly for `v8.7`  
 **Project Type**: CLI  
 **Performance Goals**: Tenant listing should perform one tenant search request per command execution for normal list/filter output, single-tenant lookup should perform one tenant get request on supported versions, and local sort/filter overhead should be linear in returned tenant count  
 **Constraints**: Preserve existing `get` command behavior, keep command code out of generated-client details, avoid sensitive fields in human or JSON output, use literal contains filtering only, reject `--key` plus `--filter` as invalid, sort by name then tenant ID, use existing unsupported and not-found error mapping, update generated CLI docs if command help changes, finish with targeted tests and `make test`  
@@ -72,9 +69,6 @@ internal/services/tenant/
 ├── api.go
 ├── factory.go
 ├── factory_test.go
-├── v87/
-│   ├── service.go
-│   └── service_test.go
 ├── v88/
 │   ├── contract.go
 │   ├── convert.go
@@ -90,14 +84,12 @@ README.md
 docs/cli/
 ```
 
-**Structure Decision**: Add a small tenant domain/facade/service slice that mirrors existing repository-native service families. `cmd/get_tenant.go` should use the public facade and render helpers, while `internal/services/tenant/{v88,v89}` own generated-client requests and conversions. `v87` remains an explicit unsupported service so the factory and command can report the existing unsupported-capability style without special branching in command code.
 
 ## Phase 0: Research
 
 Research findings are captured in [research.md](/Users/adam.boczek/.codex/worktrees/38de/c8volt/specs/151-tenant-discovery/research.md).
 
 - Confirm generated tenant APIs exist for `v8.8` and `v8.9`: `SearchTenants` and `GetTenant` with `TenantSearchQueryRequest`, `TenantFilter`, `TenantSearchQuerySortRequest`, and `TenantResult`.
-- Confirm `v8.7` generated clients do not expose equivalent tenant-management search/get methods and should therefore fail explicitly through the unsupported-capability path.
 - Confirm the command should keep filtering simple: local `strings.Contains` on tenant name after service retrieval is sufficient and intentionally treats wildcard/glob/regex syntax as literal text.
 - Confirm `--key` and `--filter` are mutually exclusive because filtering is list-only and keyed lookup must not be silently broadened, narrowed, or altered.
 - Confirm sort behavior should be deterministic in the CLI/facade layer even if upstream sorting is requested, using name then tenant ID so tests do not depend on upstream response order.
@@ -112,7 +104,6 @@ Design artifacts are captured in:
 - [contracts/tenant-command.md](/Users/adam.boczek/.codex/worktrees/38de/c8volt/specs/151-tenant-discovery/contracts/tenant-command.md)
 
 - Add `internal/domain.Tenant` plus sort/filter helpers close to the domain or facade conversion code.
-- Add `internal/services/tenant.API` with list/search and get-by-ID operations. `v88` and `v89` call generated Camunda tenant APIs; `v87` returns `domain.ErrUnsupported` wrapped with a concise tenant-management operation description.
 - Add `c8volt/tenant.API` and facade methods that map domain errors through `c8volt/ferrors` and return JSON-ready public tenant models.
 - Wire the tenant facade into `c8volt.API` and `c8volt.New` alongside existing cluster/process/resource/task facades.
 - Add `cmd/get_tenant.go` with `--key` and `--filter`, command aliases only if they match existing naming conventions, automation support, read-only mutation classification, JSON support, and validation that `--key` and `--filter` are rejected together as an invalid flag combination.
@@ -123,7 +114,6 @@ Design artifacts are captured in:
 
 | Version | Tenant list | Tenant lookup | Planned behavior |
 |---------|-------------|---------------|------------------|
-| `v8.7` | Unsupported | Unsupported | Return existing unsupported-capability style for tenant discovery operations |
 | `v8.8` | Supported through generated `SearchTenants` | Supported through generated `GetTenant` | Convert tenant results to the shared tenant model |
 | `v8.9` | Supported through generated `SearchTenants` | Supported through generated `GetTenant` | Match `v8.8` behavior unless generated field shapes differ |
 

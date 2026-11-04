@@ -59,7 +59,7 @@ As a Camunda operator, I want search-based `cancel process-instance` and `delete
 
 ### User Story 3 - Receive Version-Aware Overflow Handling and Clear Operator Feedback (Priority: P3)
 
-As a Camunda operator, I want overflow detection and paging behavior to follow the actual capabilities of Camunda 8.7 and 8.8 so I can trust the command behavior for my configured version and understand what the command is doing at each step.
+As a Camunda operator, I want overflow detection and paging behavior to follow the actual capabilities of Camunda 8.8 so I can trust the command behavior for my configured version and understand what the command is doing at each step.
 
 **Why this priority**: Version-aware behavior and clear operator messaging are required to avoid misleading results and to keep the user experience consistent across supported versions.
 
@@ -67,9 +67,8 @@ As a Camunda operator, I want overflow detection and paging behavior to follow t
 
 **Acceptance Scenarios**:
 
-1. **Given** the configured Camunda version is `8.7` and a search matches more instances than fit in one page, **When** the user runs one of the affected commands, **Then** the command applies the version-specific overflow detection behavior defined for `8.7` and clearly communicates whether more matching instances exist.
 2. **Given** the configured Camunda version is `8.8` and a search matches more instances than fit in one page, **When** the user runs one of the affected commands, **Then** the command applies the version-specific overflow detection behavior defined for `8.8` and clearly communicates whether more matching instances exist.
-3. **Given** the configured Camunda version is outside the supported scope for this feature, **When** the user runs one of the affected search-based commands expecting paging support, **Then** the command preserves existing behavior for unsupported versions and does not claim support beyond `8.7` and `8.8`.
+3. **Given** the configured Camunda version is outside the supported scope for this feature, **When** the user runs one of the affected search-based commands expecting paging support, **Then** the command preserves existing behavior for unsupported versions and does not claim support beyond `8.8`.
 
 ### Edge Cases
 
@@ -106,12 +105,11 @@ As a Camunda operator, I want overflow detection and paging behavior to follow t
 - **FR-013a**: The system MUST clearly report the cumulative number of items returned or processed across all completed pages in the current command execution.
 - **FR-014**: The system MUST clearly report whether additional matching process instances remain after the current page.
 - **FR-015**: The system MUST clearly report whether execution is prompting for continuation or auto-continuing.
-- **FR-016**: The system MUST implement overflow detection and paging behavior explicitly for Camunda `8.7`.
 - **FR-017**: The system MUST implement overflow detection and paging behavior explicitly for Camunda `8.8`.
 - **FR-018**: The system MUST preserve current behavior for versions outside the supported scope of this feature rather than implying support for them.
 - **FR-019**: The system MUST preserve current behavior for direct, non-search process-instance workflows that are outside the paging scope of this issue.
 - **FR-020**: The system MUST keep operator-facing paging behavior consistent across `get process-instance`, search-based `cancel process-instance`, and search-based `delete process-instance`.
-- **FR-021**: The system MUST include automated coverage for default paging, configured default paging, `--count` override behavior, overflow detection, prompt-driven continuation, auto-confirm continuation, exact-boundary non-overflow, cross-page processing, and version-specific behavior for `8.7` and `8.8`.
+- **FR-021**: The system MUST include automated coverage for default paging, configured default paging, `--count` override behavior, overflow detection, prompt-driven continuation, auto-confirm continuation, exact-boundary non-overflow, cross-page processing, and version-specific behavior for `8.8`.
 
 ### Key Entities *(include if feature involves data)*
 
@@ -119,7 +117,7 @@ As a Camunda operator, I want overflow detection and paging behavior to follow t
 - **Paged Result Window**: The current set of matching process instances returned or acted on before a continuation decision is required.
 - **Overflow State**: The determination of whether additional matching process instances remain beyond the current page for the configured version.
 - **Continuation Decision**: The operator-visible decision point that either prompts for the next page or continues automatically when `--auto-confirm` is active.
-- **Version Paging Rule**: The version-specific rule set that defines how `8.7` and `8.8` determine overflow and continue paging.
+- **Version Paging Rule**: The version-specific rule set that defines how `8.8` determine overflow and continue paging.
 
 ## Success Criteria *(mandatory)*
 
@@ -133,7 +131,7 @@ As a Camunda operator, I want overflow detection and paging behavior to follow t
 - **SC-005**: Users of search-based `cancel process-instance` and `delete process-instance` with `--auto-confirm` enabled continue across overflowing result sets without interactive prompts.
 - **SC-006**: Operator-facing output for all affected commands always identifies the page size used, the number of items handled in the current page, the cumulative number of items handled so far, whether more matches remain, and whether the command is prompting or auto-continuing.
 - **SC-006a**: Users who decline a continuation prompt after one or more processed pages receive a non-error partial-completion summary that makes it clear the remaining matching items were not processed.
-- **SC-007**: Supported Camunda `8.7` and `8.8` environments both demonstrate explicit, version-aware overflow handling in automated coverage.
+- **SC-007**: Supported Camunda `8.8` environments both demonstrate explicit, version-aware overflow handling in automated coverage.
 - **SC-007a**: When overflow cannot be determined even after the version-specific fallback path, the command stops without silent continuation and warns operators that more matching items may remain.
 - **SC-008**: No user-facing documentation or specification text for this feature claims support for Camunda `8.9`.
 

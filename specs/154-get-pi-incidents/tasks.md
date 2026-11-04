@@ -109,22 +109,17 @@
 
 ## Phase 6: User Story 4 - Respect Tenant and Version Boundaries (Priority: P4)
 
-**Goal**: Supported versions use tenant-aware incident search; v8.7 fails explicitly rather than falling back to tenant-unsafe behavior.
 
-**Independent Test**: Run service tests that inspect incident request bodies and command tests for unsupported v8.7 behavior.
 
 ### Tests for User Story 4
 
 - [x] T035 [P] [US4] Add `v88` tenant-filter request construction assertions in `internal/services/processinstance/v88/service_test.go`
 - [x] T036 [P] [US4] Add `v89` tenant-filter request construction assertions in `internal/services/processinstance/v89/service_test.go`
-- [x] T037 [P] [US4] Add `v87` unsupported incident lookup service test in `internal/services/processinstance/v87/service_test.go`
-- [x] T038 [P] [US4] Add command unsupported-version test for `--with-incidents` on Camunda 8.7 in `cmd/get_processinstance_test.go`
 
 ### Implementation for User Story 4
 
 - [x] T039 [US4] Include configured tenant in `v88` incident search filters in `internal/services/processinstance/v88/service.go`
 - [x] T040 [US4] Include configured tenant in `v89` incident search filters in `internal/services/processinstance/v89/service.go`
-- [x] T041 [US4] Implement `v87` incident lookup as explicit unsupported in `internal/services/processinstance/v87/service.go`
 - [x] T042 [US4] Ensure unsupported errors map through existing facade and command handlers in `c8volt/process/client.go` and `cmd/get_processinstance.go`
 
 **Checkpoint**: All user stories are independently functional.
@@ -139,7 +134,6 @@
 - [x] T044 Regenerate CLI documentation with `make docs-content`
 - [x] T045 [P] Review README process-instance examples and update `README.md` only if the new flag belongs in existing examples
 - [x] T046 [P] Run `gofmt` on changed Go files in `cmd/`, `c8volt/process/`, `internal/domain/`, and `internal/services/processinstance/`
-- [x] T047 Run targeted validation with `go test ./cmd ./c8volt/process ./internal/services/processinstance/v87 ./internal/services/processinstance/v88 ./internal/services/processinstance/v89 -count=1`
 - [x] T048 Run full repository validation with `make test`
 - [x] T049 Confirm `specs/154-get-pi-incidents/quickstart.md` scenarios match final command behavior
 

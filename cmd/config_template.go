@@ -10,12 +10,10 @@ import (
 )
 
 var configTemplateCmd = &cobra.Command{
-	Use:   "template",
-	Short: "Print a blank configuration template",
-	Long: `Print a blank configuration template.
-
-Equivalent to config show --template.`,
-	Example: `  ./c8volt config template`,
+	Use:     "template",
+	Short:   "Print a blank configuration template",
+	Long:    `Print a starter configuration template. Set app.camunda_version to match your cluster.`,
+	Example: `  c8volt config template`,
 	Run: func(cmd *cobra.Command, args []string) {
 		log, _ := logging.FromContext(cmd.Context())
 		templateCfg, yCfg, err := renderBlankConfigTemplateYAML()

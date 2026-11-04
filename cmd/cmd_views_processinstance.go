@@ -5,8 +5,10 @@ package cmd
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/grafvonb/c8volt/toolx"
@@ -28,9 +30,13 @@ func processInstanceTotalView(cmd *cobra.Command, total int64) error {
 	return err
 }
 
+// listProcessInstancesView preserves explicit machine results and suppresses empty human summaries in quiet mode.
 func listProcessInstancesView(cmd *cobra.Command, resp process.ProcessInstances) error {
 	if pickMode() == RenderModeJSON {
 		return renderJSONPayload(cmd, RenderModeJSON, processInstancesWithAgeMeta(resp))
+	}
+	if flagQuiet && len(resp.Items) == 0 && pickMode() == RenderModeOneLine {
+		return nil
 	}
 	return listOrJSONFlat(cmd, resp, resp.Items, pickMode(), func(it process.ProcessInstance) flatRow {
 		return flatRowPIWithTimezone(it, commandShowTimezoneOffset(cmd))
@@ -59,7 +65,7 @@ func renderEmptyProcessInstanceSelectorResult(cmd *cobra.Command, operation stri
 		if flagQuiet {
 			return nil
 		}
-		renderOutputLine(cmd, "found: %d", 0)
+		renderHumanLine(cmd, "found: %d", 0)
 		return nil
 	}
 }
@@ -98,6 +104,7 @@ func flatRowPI(it process.ProcessInstance) flatRow {
 	return flatRowPIWithTimezone(it, false)
 }
 
+// flatRowPIWithTimezone groups business identity with the process name.
 func flatRowPIWithTimezone(it process.ProcessInstance, showTimezoneOffset bool) flatRow {
 	pTag := " p:<root>"
 	if it.ParentKey != "" {
@@ -127,6 +134,7 @@ func flatRowPIWithTimezone(it process.ProcessInstance, showTimezoneOffset bool) 
 		it.Key,
 		it.TenantId,
 		it.BpmnProcessId,
+		processInstanceBusinessIDColumn(it.BusinessId),
 		fmt.Sprintf("v%d%s", it.ProcessVersion, vTag),
 		string(it.State),
 		"s:" + toolx.FormatTimestamp(it.StartDate, showTimezoneOffset),
@@ -230,4 +238,17 @@ func printMissingAncestorKeyWarning(print func(string, ...interface{}), keys []s
 		return
 	}
 	print("missing ancestor keys: %d (use --verbose to list keys)\n", len(keys))
+}
+
+// processInstanceBusinessIDColumn keeps opaque observed values on one line; nil adds no column.
+func processInstanceBusinessIDColumn(value *string) string {
+	if value == nil {
+		return ""
+	}
+	if *value != "" && strings.IndexFunc(*value, func(r rune) bool {
+		return !unicode.IsLetter(r) && !unicode.IsDigit(r) && !strings.ContainsRune("-_.@/:", r)
+	}) == -1 {
+		return "bid:" + *value
+	}
+	return "bid:" + strconv.Quote(*value)
 }

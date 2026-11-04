@@ -12,7 +12,7 @@ Tenant handling must distinguish c8volt-produced candidate sets from explicit op
 
 ## Technical Context
 
-**Language/Version**: Go, following the repository's current module and supported Camunda 8.7, 8.8, and 8.9 boundaries. This feature changes Camunda 8.8 and 8.9 behavior only.
+**Language/Version**: Go, following the repository's current module and supported Camunda 8.8 and 8.9 boundaries. This feature changes Camunda 8.8 and 8.9 behavior only.
 
 **Primary Dependencies**: Cobra command layer, c8volt public facade packages, internal service interfaces, generated Camunda clients, `c8volt/foptions`, `internal/services.CallOption`, `toolx`, and existing test helpers.
 
@@ -26,7 +26,6 @@ Tenant handling must distinguish c8volt-produced candidate sets from explicit op
 
 **Performance Goals**: Preserve existing discovery paging and keyed lookup performance. No added remote validation call should be introduced solely to enforce tenant matching for explicit admin input.
 
-**Constraints**: Preserve mutation safety, automation behavior, output contracts, deterministic key handling, generated-client isolation, existing `<default>` tenant behavior, and explicit unsupported-version behavior. Do not rewrite Camunda 8.7 tenant behavior.
 
 **Scale/Scope**: Tenant-sensitive process-instance, process-definition, resource, and bulk/stdin command paths for Camunda 8.8 and 8.9.
 

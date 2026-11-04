@@ -12,12 +12,6 @@
 
 **Field naming mismatch**: The generated Camunda clients expose BPMN flow-node metadata as `ElementId`/`elementId` and `ElementInstanceKey`/`elementInstanceKey`. The feature model uses `FlowNodeId`/`flowNodeId` and `FlowNodeInstanceKey`/`flowNodeInstanceKey`, so conversion helpers must map generated element fields into the public flow-node fields.
 
-## Decision: Treat v8.7 incident enrichment as unsupported
-
-**Rationale**: The existing v8.7 process-instance direct lookup path is already constrained by tenant-safety limits. Even though older generated clients expose incident search shapes, this feature must not create a tenant-unsafe enrichment path for keyed lookup.
-
-**Alternatives considered**: Falling back to general incident search or Operate direct incident lookup was rejected because it could undermine the tenant-safety boundary called out in the issue.
-
 ## Decision: Use an enriched output wrapper only when the flag is present
 
 **Rationale**: Current default JSON serializes `process.ProcessInstances` and current human output uses `oneLinePI`. Adding incident details directly to the base process-instance model would risk changing default output for callers that did not request the feature. Human-readable incident messages should instead render as indented `incident <incident-key>:` lines directly below the matching row when enrichment is requested.

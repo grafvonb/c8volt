@@ -20,7 +20,6 @@
 - [x] T001 Inspect keyed process-instance lookup, validation, and render dispatch in `cmd/get_processinstance.go`
 - [x] T002 [P] Inspect incident enrichment facade and command patterns in `c8volt/process/client.go`, `c8volt/process/model.go`, and `cmd/cmd_views_processinstance_incidents.go`
 - [x] T003 [P] Inspect v8.8/v8.9 generated `/variables/search` request and response types in `internal/clients/camunda/v88/camunda/client.gen.go` and `internal/clients/camunda/v89/camunda/client.gen.go`
-- [x] T004 [P] Inspect v8.7 process-instance API surface and decide whether variable search is unsupported or available through an existing client in `internal/services/processinstance/v87/contract.go`
 - [x] T005 [P] Inspect process-instance command docs and generated documentation paths in `README.md`, `docs/index.md`, `docs/cli/`, and `docsgen/`
 
 ---
@@ -33,11 +32,10 @@
 
 - [x] T006 Add `ProcessInstanceVariable`, `VariableEnrichedProcessInstance`, and `VariableEnrichedProcessInstances` facade models in `c8volt/process/model.go`
 - [x] T007 Add matching domain variable models in `internal/domain/processinstance.go`
-- [x] T008 Add process-instance service API method signatures for searching process-instance variables in `internal/services/processinstance/api.go`, `internal/services/processinstance/v87/contract.go`, `internal/services/processinstance/v88/contract.go`, and `internal/services/processinstance/v89/contract.go`
+- [x] T008 Add process-instance service API method signatures for searching process-instance variables in `internal/services/processinstance/api.go`, `internal/services/processinstance/v88/contract.go`, and `internal/services/processinstance/v89/contract.go`
 - [x] T009 Add process facade API methods for searching and enriching process instances with variables in `c8volt/process/api.go`
 - [x] T010 Add domain/facade conversion helpers for process-instance variables in `c8volt/process/convert.go`
 - [x] T011 Add v8.8/v8.9 variable conversion helpers and raw value/truncation decoding support in `internal/services/processinstance/v88/convert.go` and `internal/services/processinstance/v89/convert.go`
-- [x] T012 Run `GOCACHE=/tmp/c8volt-gocache go test ./c8volt/process ./internal/services/processinstance/v87 ./internal/services/processinstance/v88 ./internal/services/processinstance/v89 -run 'Test.*Variable|Test.*API' -count=1` and fix foundational compile/test failures
 
 **Checkpoint**: Shared variable types and contracts compile before command behavior is wired.
 
@@ -61,7 +59,6 @@
 
 - [x] T018 [US1] Implement v8.8 process-instance variable search in `internal/services/processinstance/v88/service.go` or a dedicated `variables.go`
 - [x] T019 [US1] Implement v8.9 process-instance variable search in `internal/services/processinstance/v89/service.go` or a dedicated `variables.go`
-- [x] T020 [US1] Implement explicit v8.7 behavior for `--with-vars` in `internal/services/processinstance/v87/service.go` or a dedicated `variables.go`
 - [x] T021 [US1] Implement facade-level variable search and enrichment in `c8volt/process/client.go`
 - [x] T022 [US1] Add `--with-vars` flag storage, reset behavior, help text, and keyed-mode validation in `cmd/get_processinstance.go` and `cmd/get_processinstance_test.go`
 - [x] T023 [US1] Add human variable-enriched renderer in `cmd/cmd_views_processinstance_vars.go`
@@ -130,7 +127,6 @@
 - [x] T045 [P] Update site documentation source examples in `docs/index.md`
 - [x] T046 Add or update command contract/help tests for `--with-vars` and `--var-value-limit` in `cmd/command_contract_test.go` or `cmd/get_processinstance_test.go`
 - [x] T047 Run `make docs-content` and fix generated documentation issues under `docs/cli/`
-- [x] T048 Run `GOCACHE=/tmp/c8volt-gocache go test ./cmd ./c8volt/process ./internal/services/processinstance/v87 ./internal/services/processinstance/v88 ./internal/services/processinstance/v89 -count=1` and fix regressions
 - [x] T049 Run `make test` and fix repository validation failures
 - [x] T050 [P] Review [quickstart.md](./quickstart.md) against implemented behavior and update if command examples or validation commands changed
 - [x] T051 Verify `git diff` contains only issue #173 implementation, docs, generated docs, and Speckit artifacts before commit

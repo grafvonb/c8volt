@@ -5,12 +5,37 @@ package cmd
 
 import (
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/grafvonb/c8volt/testx"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 )
+
+// TestProcessInstanceStateCompletion verifies local, command-specific candidates without bootstrap.
+func TestProcessInstanceStateCompletion(t *testing.T) {
+	for _, verb := range []string{"get", "expect"} {
+		t.Run(verb, func(t *testing.T) {
+			output := executeCompletionForTest(t, "--config", "/nonexistent/completion-config.yaml", verb, "process-instance", "--state", "")
+			require.Contains(t, output, "suspended\tonly c8.10+\n")
+			require.Contains(t, output, "active\n")
+			require.Contains(t, output, ":4\n")
+			require.NotContains(t, output, "UNKNOWN")
+			if verb == "get" {
+				require.Contains(t, output, "all\n")
+				require.NotContains(t, output, "absent\n")
+			} else {
+				require.Contains(t, output, "absent\n")
+				require.NotContains(t, output, "all\n")
+			}
+			partial := executeCompletionNoDescForTest(t, verb, "process-instance", "--state", "sUs")
+			require.Contains(t, strings.ToLower(partial), "suspended\n")
+			require.NotContains(t, partial, "active\n")
+			requireCompletionOutputStaysUserFacing(t, output)
+		})
+	}
+}
 
 // Protects bootstrap bypass from matching only by leaf command name; nested commands like
 // `get cluster version` still need the full service bootstrap.
@@ -32,6 +57,7 @@ func TestCompletionCommandsBypassBootstrapWithoutConfig(t *testing.T) {
 	output := executeCompletionForTest(t, "walk", "process-instance", "")
 
 	require.Contains(t, output, "--key")
+	require.Contains(t, output, "--bid")
 	require.NotContains(t, output, "configuration is invalid")
 	require.NotContains(t, output, "Usage:")
 }
@@ -63,6 +89,7 @@ func TestNestedCompletion_SubcommandsStayUserFacing(t *testing.T) {
 
 	require.Contains(t, output, "process-definition\tList or fetch deployed process definitions\n")
 	require.Contains(t, output, "process-instance\tList or fetch process instances\n")
+	require.Contains(t, output, "user-task\tFetch or search native user tasks\n")
 	require.Contains(t, output, "tenant\tList tenants\n")
 	requireCompletionOutputStaysUserFacing(t, output)
 }
@@ -72,6 +99,7 @@ func TestCompletionSuggestionsWithoutDescriptionsStayClean(t *testing.T) {
 	output := executeCompletionForTest(t, "walk", "process-instance", "")
 
 	require.Contains(t, output, "--key")
+	require.Contains(t, output, "--bid")
 	require.NotContains(t, output, "--mode")
 	requireCompletionOutputStaysUserFacing(t, output)
 }
@@ -108,4 +136,30 @@ func TestCompletionCommand_ZshUsesDescriptionBearingCompletionRequestsHelper(t *
 	root.SetOut(os.Stdout)
 	root.SetErr(os.Stderr)
 	_ = root.Execute()
+}
+
+// TestWalkProcessInstanceSelectionCompletion stops offering selectors after either alternative without bootstrapping config.
+func TestWalkProcessInstanceSelectionCompletion(t *testing.T) {
+	for _, selector := range []string{"--key", "--bid"} {
+		output := executeCompletionForTest(t, "--config", "/nonexistent/completion-config.yaml", "walk", "pi", selector, "value", "")
+		require.NotContains(t, output, "--key")
+		require.NotContains(t, output, "--bid")
+		require.NotContains(t, output, "configuration is invalid")
+		require.Contains(t, output, ":4\n")
+	}
+}
+
+// TestCompletionFlagIntentSurface exposes canonical flags without deprecated aliases.
+func TestCompletionFlagIntentSurface(t *testing.T) {
+	for _, tc := range flagIntentSurface {
+		words := strings.Fields(strings.TrimPrefix(tc.cmd.CommandPath(), "c8volt "))
+		output := executeCompletionNoDescForTest(t, append(words, "--")...)
+		for old, canonical := range tc.names {
+			require.Contains(t, output, "--"+canonical+"\n")
+			if tc.cmd == updateJobCmd && (old == "retries" || old == "timeout") {
+				continue
+			}
+			require.NotContains(t, output, "--"+old+"\n")
+		}
+	}
 }

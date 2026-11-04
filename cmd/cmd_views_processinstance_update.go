@@ -8,7 +8,9 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/grafvonb/c8volt/c8volt/ferrors"
 	"github.com/grafvonb/c8volt/c8volt/process"
+	"github.com/grafvonb/c8volt/toolx"
 	types "github.com/grafvonb/c8volt/typex"
 	"github.com/spf13/cobra"
 )
@@ -26,7 +28,10 @@ type processInstanceVariablePlannedChange struct {
 	APITruncated bool   `json:"apiTruncated,omitempty"`
 }
 
+// processInstanceVariableUpdatePlan preserves observed identity alongside the variable changes.
 type processInstanceVariableUpdatePlan struct {
+	// BusinessId is the optional identity observed during planning.
+	BusinessId         *string                                `json:"businessId,omitempty"`
 	ProcessInstanceKey string                                 `json:"processInstanceKey"`
 	Additions          []processInstanceVariablePlannedValue  `json:"additions"`
 	Changes            []processInstanceVariablePlannedChange `json:"changes"`
@@ -35,7 +40,9 @@ type processInstanceVariableUpdatePlan struct {
 	tenantID           string
 }
 
+// processInstanceVariableUpdatePreview retains reviewed payloads and optional search provenance.
 type processInstanceVariableUpdatePreview struct {
+	Selection              *process.ProcessInstanceSelection   `json:"selection,omitempty"`
 	Operation              string                              `json:"operation"`
 	RequestedKeys          []string                            `json:"requestedKeys"`
 	RequestedCount         int                                 `json:"requestedCount"`
@@ -59,7 +66,10 @@ func newProcessInstanceVariableUpdatePreview(requestedKeys types.Keys, plans []p
 		ProcessInstances:  append([]processInstanceVariableUpdatePlan(nil), plans...),
 		MutationSubmitted: false,
 	}
-	for _, plan := range plans {
+	for i := range preview.ProcessInstances {
+		preview.ProcessInstances[i].BusinessId = toolx.CopyPtr(plans[i].BusinessId)
+	}
+	for _, plan := range preview.ProcessInstances {
 		if plan.tenantID == "" {
 			preview.unknownTenantCount++
 		} else {
@@ -102,8 +112,14 @@ func renderUpdateProcessInstanceVariablePreview(cmd *cobra.Command, preview proc
 	return nil
 }
 
-// renderUpdateProcessInstanceVariablePlan renders the pre-mutation confirmation plan.
+// renderUpdateProcessInstanceVariablePlan renders the confirmation or successful no-op plan.
 func renderUpdateProcessInstanceVariablePlan(cmd *cobra.Command, preview processInstanceVariableUpdatePreview) error {
+	if commandUsesSharedEnvelope(cmd, pickMode()) {
+		return renderSucceededResult(cmd, preview)
+	}
+	if pickMode() == RenderModeKeysOnly {
+		return nil
+	}
 	renderProcessInstanceVariableUpdatePlanHuman(cmd, preview, "plan")
 	return nil
 }
@@ -146,35 +162,91 @@ func renderUpdateProcessInstanceVariableResults(cmd *cobra.Command, results proc
 	if commandUsesSharedEnvelope(cmd, pickMode()) {
 		return renderCommandResult(cmd, results)
 	}
+	return renderUpdateProcessInstanceVariableResultsHumanOrKeys(cmd, results)
+}
+
+// renderUpdateProcessInstanceVariableFailure preserves partial outcomes in the
+// selected result surface while the command retains its nonzero exit behavior.
+func renderUpdateProcessInstanceVariableFailure(cmd *cobra.Command, results process.ProcessInstanceVariableUpdateResults, operationErr error) error {
+	if commandUsesSharedEnvelope(cmd, pickMode()) {
+		normalized := ferrors.Normalize(operationErr)
+		class := string(ferrors.Classify(normalized))
+		return renderResultEnvelope(cmd, ResultEnvelope[process.ProcessInstanceVariableUpdateResults]{
+			Outcome: outcomeForError(normalized),
+			Class:   class,
+			Command: commandPath(cmd),
+			Payload: results,
+			Detail:  &ResultDetail{Message: strings.TrimSpace(normalized.Error()), Class: class},
+		})
+	}
+	return renderUpdateProcessInstanceVariableResultsHumanOrKeys(cmd, results)
+}
+
+// renderUpdateProcessInstanceVariableResultsHumanOrKeys keeps keys-only output
+// acceptance-based and exposes every terminal state in compact human output.
+func renderUpdateProcessInstanceVariableResultsHumanOrKeys(cmd *cobra.Command, results process.ProcessInstanceVariableUpdateResults) error {
+	if pickMode() == RenderModeKeysOnly {
+		for _, item := range results.Items {
+			if item.MutationAccepted {
+				renderOutputLine(cmd, "%s", item.Key)
+			}
+		}
+		return nil
+	}
 	for _, item := range results.Items {
 		switch item.Status {
 		case process.ProcessInstanceVariableUpdateStatusConfirmed:
 			renderHumanLine(cmd, "updated process-instance %s: confirmed", item.Key)
 		case process.ProcessInstanceVariableUpdateStatusSubmitted:
 			renderHumanLine(cmd, "updated process-instance %s: submitted", item.Key)
+		case process.ProcessInstanceVariableUpdateStatusUnchanged:
+			renderHumanLine(cmd, "updated process-instance %s: unchanged", item.Key)
 		case process.ProcessInstanceVariableUpdateStatusConfirmationFailed:
 			renderHumanLine(cmd, "updated process-instance %s: confirmation failed: %s", item.Key, item.Error)
 		case process.ProcessInstanceVariableUpdateStatusMutationFailed:
 			renderHumanLine(cmd, "updated process-instance %s: mutation failed: %s", item.Key, item.Error)
+		case process.ProcessInstanceVariableUpdateStatusSkipped:
+			renderHumanLine(cmd, "updated process-instance %s: skipped", item.Key)
 		default:
 			renderHumanLine(cmd, "updated process-instance %s: %s", item.Key, item.Status)
 		}
 	}
-	total, ok, failed := results.Totals()
-	renderHumanLine(cmd, "updated: %d (confirmed/submitted: %d, failed: %d)", total, ok, failed)
-	if failed > 0 {
-		return fmt.Errorf("one or more process-instance variable updates failed")
-	}
+	accepted, unchanged, failed, skipped := processInstanceVariableUpdateResultCounts(results)
+	renderHumanLine(cmd, "updated: %d (mutation accepted: %d, unchanged: %d, failed: %d, skipped: %d)", len(results.Items), accepted, unchanged, failed, skipped)
 	return nil
 }
 
+// processInstanceVariableUpdateResultCounts separates mutation acceptance from
+// workflow success so accepted confirmation failures remain visible.
+func processInstanceVariableUpdateResultCounts(results process.ProcessInstanceVariableUpdateResults) (accepted, unchanged, failed, skipped int) {
+	for _, item := range results.Items {
+		if item.MutationAccepted {
+			accepted++
+		}
+		switch item.Status {
+		case process.ProcessInstanceVariableUpdateStatusUnchanged:
+			unchanged++
+		case process.ProcessInstanceVariableUpdateStatusSkipped:
+			skipped++
+		case process.ProcessInstanceVariableUpdateStatusMutationFailed, process.ProcessInstanceVariableUpdateStatusConfirmationFailed:
+			failed++
+		}
+	}
+	return accepted, unchanged, failed, skipped
+}
+
+// formatProcessInstanceVariableUpdatePlan labels only planned writes with their
+// selected root while preserving unchanged and untouched value syntax.
 func formatProcessInstanceVariableUpdatePlan(plan processInstanceVariableUpdatePlan) string {
-	parts := make([]string, 0, len(plan.Additions)+len(plan.Changes)+len(plan.UnchangedRequested)+1)
+	parts := make([]string, 0, len(plan.Additions)+len(plan.Changes)+len(plan.UnchangedRequested)+2)
+	if column := processInstanceBusinessIDColumn(plan.BusinessId); column != "" {
+		parts = append(parts, column)
+	}
 	for _, item := range plan.Changes {
-		parts = append(parts, fmt.Sprintf("~ %s: %s -> %s", item.Name, formatProcessInstanceVariablePlanValue(item.Before), formatProcessInstanceVariablePlanValue(item.After)))
+		parts = append(parts, fmt.Sprintf("~ %s (pi:%s): %s -> %s", item.Name, plan.ProcessInstanceKey, formatProcessInstanceVariablePlanValue(item.Before), formatProcessInstanceVariablePlanValue(item.After)))
 	}
 	for _, item := range plan.Additions {
-		parts = append(parts, fmt.Sprintf("+ %s: %s", item.Name, formatProcessInstanceVariablePlanValue(item.Value)))
+		parts = append(parts, fmt.Sprintf("+ %s (pi:%s): %s", item.Name, plan.ProcessInstanceKey, formatProcessInstanceVariablePlanValue(item.Value)))
 	}
 	for _, item := range plan.UnchangedRequested {
 		parts = append(parts, fmt.Sprintf("~ %s: %s (unchanged)", item.Name, formatProcessInstanceVariablePlanValue(item.Value)))
@@ -206,4 +278,61 @@ func formatProcessInstanceVariablePlanValue(value any) string {
 		return fmt.Sprint(value)
 	}
 	return string(data)
+}
+
+// renderBusinessIDVariableUpdate preserves one envelope and bounds human outcome facts.
+func renderBusinessIDVariableUpdate(cmd *cobra.Command, preview processInstanceVariableUpdatePreview, results process.ProcessInstanceVariableUpdateResults, planned bool, operationErr error) error {
+	if pickMode() == RenderModeJSON {
+		var payload any = results
+		if planned {
+			payload = preview
+		}
+		if operationErr != nil {
+			envelope := resultEnvelopeForError(cmd, operationErr)
+			envelope.Payload = payload
+			return renderResultEnvelope(cmd, envelope)
+		}
+		accepted, _, _, _ := processInstanceVariableUpdateResultCounts(results)
+		if !planned && flagNoWait && accepted > 0 {
+			return renderAcceptedResult(cmd, payload)
+		}
+		return renderSucceededResult(cmd, payload)
+	}
+	if planned {
+		if operationErr != nil {
+			return nil
+		}
+		if flagDryRun {
+			return renderUpdateProcessInstanceVariablePreview(cmd, preview)
+		}
+		return renderUpdateProcessInstanceVariablePlan(cmd, preview)
+	}
+	if pickMode() == RenderModeKeysOnly {
+		for _, item := range results.Items {
+			if item.MutationAccepted {
+				if _, err := fmt.Fprintln(cmd.OutOrStdout(), item.Key); err != nil {
+					return err
+				}
+			}
+		}
+		return nil
+	}
+	accepted, unchanged, failed, skipped := processInstanceVariableUpdateResultCounts(results)
+	renderHumanLine(cmd, "updated: %d (mutation accepted: %d, unchanged: %d, failed: %d, skipped: %d)", len(results.Items), accepted, unchanged, failed, skipped)
+	if flagVerbose {
+		for _, item := range results.Items {
+			renderHumanLine(cmd, "%s: %s", item.Key, item.Status)
+		}
+	}
+	return nil
+}
+
+// formatBusinessIDVariableUpdateFailure retains known selection counts while grouping failures by bounded class.
+func formatBusinessIDVariableUpdateFailure(plan process.ProcessInstanceVariableUpdatePlan, results process.ProcessInstanceVariableUpdateResults, err error) string {
+	selected := len(plan.RequestedKeys)
+	if plan.Selection != nil {
+		selected = len(plan.Selection.Keys)
+	}
+	_, _, failed, skipped := processInstanceVariableUpdateResultCounts(results)
+	return fmt.Sprintf("update process-instance variables: %d selected; %d failed; %d skipped; %s", selected, failed, skipped, boundedCommandFailureReason(err))
 }

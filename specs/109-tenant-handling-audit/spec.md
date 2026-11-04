@@ -17,7 +17,6 @@
 
 - Q: How should `v8.9` be handled for this feature scope? → A: Audit `v8.9` too, but only change it if the tenant-handling bug or contract gap is actually present.
 - Q: What should tenant mismatch look like on supported tenant-safe operations? → A: Treat tenant mismatch as not found.
-- Q: How broad should unsupported behavior be in `v8.7` when only part of a command flow cannot be made tenant-safe? → A: Only the specific `v8.7` operation or flow segment that cannot be tenant-safe should be reported as unsupported.
 - Q: How broad should the audit and new regression coverage be across tenant-aware commands? → A: Audit all tenant-aware command families and add new regression coverage for all of them.
 - Q: How should derived tenant sources be covered in regression testing? → A: Cover env, profile, and base config separately.
 
@@ -96,9 +95,6 @@ As a maintainer, I want tenant-safe behavior defined consistently across support
 - **FR-009**: The system MUST review tenant-aware command paths across direct lookup, search, traversal, wait, cancel, delete, and mixed-flow operations instead of limiting the fix to one command.
 - **FR-009a**: The system MUST audit all tenant-aware command families in scope for tenant correctness instead of limiting the review to only the commands explicitly named in the issue description.
 - **FR-010**: The system MUST prioritize correct tenant-safe behavior for platform version 8.8 where supported upstream behavior exists.
-- **FR-011**: The system MUST only change platform version 8.7 behavior when equivalent tenant-safe behavior is truly supported for the affected operation.
-- **FR-012**: When an affected operation cannot be made tenant-safe for platform version 8.7, the system MUST return a clear user-facing unsupported outcome for that specific operation or flow segment and tenant scenario.
-- **FR-012b**: The system MUST avoid reporting an entire command family as unsupported in platform version 8.7 when only a narrower operation or flow segment lacks tenant-safe support.
 - **FR-012a**: The system MUST audit affected tenant-aware operations on platform version 8.9 for parity with the tenant-handling contract and only change version 8.9 behavior where the same contract gap is actually present.
 - **FR-013**: Regression coverage MUST cover matching-tenant, wrong-tenant, non-existing-tenant, and default-tenant scenarios for affected tenant-aware commands.
 - **FR-013a**: New or updated regression coverage MUST be added for all audited tenant-aware command families rather than only the paths that end up changing behavior.
@@ -126,8 +122,6 @@ As a maintainer, I want tenant-safe behavior defined consistently across support
 - **SC-003a**: Every tenant-aware command family in scope has explicit regression coverage for its relevant tenant-handling behavior by the end of the feature.
 - **SC-003b**: Automated coverage demonstrates tenant-correct behavior separately for environment-derived, profile-derived, and base-config-derived tenant selection across the command families in scope.
 - **SC-004**: Platform version 8.8 command paths in scope enforce the documented tenant-safe contract for affected operations.
-- **SC-005**: Any platform version 8.7 operation or flow segment that cannot guarantee equivalent tenant-safe behavior produces a clear unsupported outcome in covered scenarios instead of a misleading partial success.
-- **SC-005b**: Regression coverage demonstrates that unsupported `v8.7` outcomes are scoped to the unsafe operation or flow segment rather than unnecessarily blocking separate tenant-safe behavior.
 - **SC-005a**: Platform version 8.9 command paths in scope are audited against the same tenant-handling contract, and only the paths with a confirmed gap require behavioral change or added regression coverage.
 - **SC-006**: Maintainers can identify one explicit tenant-handling contract in the specification and supporting regression coverage without needing to infer different rules for different command flows.
 
@@ -140,5 +134,4 @@ As a maintainer, I want tenant-safe behavior defined consistently across support
 - The audit and regression work should cover every tenant-aware command family in scope, even if some families ultimately need only confirmation and tests rather than behavior changes.
 - Version-specific behavior may differ, but the user-facing contract must still make supported and unsupported scenarios explicit.
 - Platform version 8.9 should be reviewed for the same tenant-handling risks, but changes there are only required if the audit finds the same bug or contract gap.
-- Unsupported `v8.7` behavior should be as narrow as possible and limited to the exact operation or flow segment that cannot be made tenant-safe.
 - Derived tenant sources should be treated as distinct regression cases because tenant propagation bugs may differ across environment, profile, and base-config resolution paths.

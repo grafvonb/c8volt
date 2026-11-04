@@ -16,14 +16,17 @@ import (
 // submitBulkCompletion is the private coordinator port for a single intentional
 // completion attempt. The supplied job must be the coordinator's latest recheck;
 // this adapter validates payload compatibility but never re-reads or retries.
-func (s *Service) submitBulkCompletion(ctx context.Context, job d.Job, variables map[string]any) (d.CompletionSubmission, error) {
+func (s *Service) submitBulkCompletion(ctx context.Context, job d.Job, payload d.CompletionPayload) (d.CompletionSubmission, error) {
+	if err := d.ValidateBusinessIDAssignment(payload.SetBusinessID); err != nil {
+		return d.CompletionSubmission{Status: d.CompletionSubmissionNotSubmitted}, err
+	}
 	if err := ctx.Err(); err != nil {
 		return d.CompletionSubmission{Status: d.CompletionSubmissionNotSubmitted, Diagnostic: err.Error()}, err
 	}
-	if err := common.ValidateJobCompletionPayload(job, variables); err != nil {
+	if err := common.ValidateJobCompletionPayload(job, payload.Variables); err != nil {
 		return d.CompletionSubmission{Status: d.CompletionSubmissionNotSubmitted, Diagnostic: err.Error()}, err
 	}
-	body := newCompleteJobRequestBody(d.JobWorkerOutcomeRequest{Key: job.Key, Variables: variables})
+	body := newCompleteJobRequestBody(d.JobWorkerOutcomeRequest{Key: job.Key, Variables: payload.Variables, SetBusinessID: payload.SetBusinessID})
 	response, err := s.completeJobWithResponse(ctx, camunda.JobKey(job.Key), body)
 	if response == nil {
 		return common.ClassifyJobCompletionSubmission(nil, nil, err)

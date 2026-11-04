@@ -512,3 +512,180 @@ func (f fakeJobService) PrepareJobCompletionBatch(context.Context, d.CompletionR
 func (f fakeJobService) ExecuteJobCompletionBatch(context.Context, d.PreparedCompletionBatch, int, ...services.CallOption) (d.CompletionBatchReport, error) {
 	return d.CompletionBatchReport{}, errors.New("unexpected completion execution")
 }
+
+// fakeEnrichmentService exposes mapping boundaries without reimplementing service mechanics.
+type fakeEnrichmentService struct {
+	get    func(context.Context, string, d.ElementEnrichment, ...services.CallOption) (d.Element, error)
+	search func(context.Context, d.ElementSearchQuery, d.ElementEnrichment, ...services.CallOption) (d.ElementSearchResult, error)
+	pages  func(context.Context, d.ElementSearchQuery, d.ElementEnrichment, d.ElementSearchPageVisitor, ...services.CallOption) (d.ElementSearchPagesResult, error)
+}
+
+// GetElementWithEnrichment delegates the exact-key fixture.
+func (f fakeEnrichmentService) GetElementWithEnrichment(ctx context.Context, key string, e d.ElementEnrichment, opts ...services.CallOption) (d.Element, error) {
+	return f.get(ctx, key, e, opts...)
+}
+
+// SearchElementsWithEnrichment delegates the collected fixture.
+func (f fakeEnrichmentService) SearchElementsWithEnrichment(ctx context.Context, q d.ElementSearchQuery, e d.ElementEnrichment, opts ...services.CallOption) (d.ElementSearchResult, error) {
+	return f.search(ctx, q, e, opts...)
+}
+
+// SearchElementsPagesWithEnrichment delegates the paged fixture.
+func (f fakeEnrichmentService) SearchElementsPagesWithEnrichment(ctx context.Context, q d.ElementSearchQuery, e d.ElementEnrichment, v d.ElementSearchPageVisitor, opts ...services.CallOption) (d.ElementSearchPagesResult, error) {
+	return f.pages(ctx, q, e, v, opts...)
+}
+
+// TestElementScopeVariablesMapping preserves raw values, completeness, optional fields and independent backing arrays.
+func TestElementScopeVariablesMapping(t *testing.T) {
+	t.Parallel()
+	values := []d.ProcessInstanceVariable{{Name: "amount", Value: `{"value": 1.00}`, VariableKey: "V", ProcessInstanceKey: "P", ScopeKey: "E", TenantId: "T", APITruncated: true}, {Name: "empty", Value: "null", ProcessInstanceKey: "P", ScopeKey: "E"}}
+	item := d.Element{ElementInstanceKey: "E", Variables: &values}
+	api := NewWithEnrichment(nil, nil, fakeEnrichmentService{get: func(_ context.Context, key string, e d.ElementEnrichment, opts ...services.CallOption) (d.Element, error) {
+		require.Equal(t, "E", key)
+		require.Equal(t, d.ElementEnrichment{Variables: true, Listeners: true}, e)
+		require.True(t, services.ApplyCallOptions(opts).IgnoreTenant)
+		return item, nil
+	}}, nil)
+	got, err := api.GetElementWithEnrichment(context.Background(), "E", Enrichment{Variables: true, Listeners: true}, options.WithIgnoreTenant())
+	require.NoError(t, err)
+	raw, err := json.Marshal(got.Variables)
+	require.NoError(t, err)
+	require.JSONEq(t, `[{"name":"amount","value":"{\"value\": 1.00}","variableKey":"V","processInstanceKey":"P","scopeKey":"E","tenantId":"T","apiTruncated":true},{"name":"empty","value":"null","processInstanceKey":"P","scopeKey":"E","apiTruncated":false}]`, string(raw))
+	(*got.Variables)[0].Value = "changed"
+	require.Equal(t, `{"value": 1.00}`, values[0].Value)
+	for _, tc := range []struct {
+		name   string
+		values *[]d.ProcessInstanceVariable
+		want   string
+	}{
+		{"omitted", nil, `{"hasIncident":false}`},
+		{"empty", new([]d.ProcessInstanceVariable{}), `{"hasIncident":false,"variables":[]}`},
+		{"nil slice", new([]d.ProcessInstanceVariable(nil)), `{"hasIncident":false,"variables":[]}`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			raw, err := json.Marshal(fromDomainElement(d.Element{Variables: tc.values}))
+			require.NoError(t, err)
+			require.JSONEq(t, tc.want, string(raw))
+		})
+	}
+}
+
+// TestElementScopeVariablesFacadeDelegation maps filters, page facts, visitor actions and errors mechanically.
+func TestElementScopeVariablesFacadeDelegation(t *testing.T) {
+	t.Parallel()
+	request := SearchRequest{Key: "E", ProcessInstanceKey: "P", ElementId: "review", State: "ACTIVE", Type: "USER_TASK", ProcessDefinitionKey: "D", BpmnProcessId: "process", BatchSize: 4, Limit: 7}
+	vars := []d.ProcessInstanceVariable{{Name: "local", Value: "1", ProcessInstanceKey: "P", ScopeKey: "E"}}
+	item := d.Element{ElementInstanceKey: "E", Variables: &vars}
+	service := fakeEnrichmentService{
+		search: func(_ context.Context, q d.ElementSearchQuery, e d.ElementEnrichment, opts ...services.CallOption) (d.ElementSearchResult, error) {
+			require.Equal(t, toDomainSearchRequest(request), q)
+			require.Equal(t, d.ElementEnrichment{Variables: true}, e)
+			require.True(t, services.ApplyCallOptions(opts).IgnoreTenant)
+			return d.ElementSearchResult{Items: []d.Element{item}, Total: 1}, nil
+		},
+		pages: func(_ context.Context, q d.ElementSearchQuery, e d.ElementEnrichment, v d.ElementSearchPageVisitor, opts ...services.CallOption) (d.ElementSearchPagesResult, error) {
+			require.Equal(t, toDomainSearchRequest(request), q)
+			require.Equal(t, d.ElementEnrichment{Variables: true, Listeners: true}, e)
+			require.True(t, services.ApplyCallOptions(opts).IgnoreTenant)
+			action, err := v(d.ElementSearchPageStep{Page: d.ElementSearchPage{Items: []d.Element{item}, Request: d.ElementPageRequest{From: 4, Size: 3}, OverflowState: d.ProcessInstanceOverflowStateHasMore, ReportedTotal: &d.ElementReportedTotal{Count: 12, Kind: d.ElementReportedTotalKindLowerBound}}, CumulativeCount: 7, LimitReached: true})
+			require.Equal(t, d.ElementSearchPageActionStop, action)
+			require.ErrorIs(t, err, d.ErrForbidden)
+			require.Equal(t, "1", vars[0].Value)
+			return d.ElementSearchPagesResult{Items: []d.Element{item}, Total: 1, Pages: 2}, d.ErrNotFound
+		},
+	}
+	api := NewWithEnrichment(nil, nil, service, nil)
+	got, err := api.SearchElementsWithEnrichment(context.Background(), request, Enrichment{Variables: true}, options.WithIgnoreTenant())
+	require.NoError(t, err)
+	require.Equal(t, int32(1), got.Total)
+	require.Len(t, *got.Items[0].Variables, 1)
+	visits := 0
+	pages, err := api.SearchElementsPagesWithEnrichment(context.Background(), request, Enrichment{Variables: true, Listeners: true}, func(step SearchPageStep) (SearchPageAction, error) {
+		visits++
+		require.Equal(t, PageRequest{From: 4, Size: 3}, step.Page.Request)
+		require.Equal(t, OverflowStateHasMore, step.Page.OverflowState)
+		require.Equal(t, &ReportedTotal{Count: 12, Kind: ReportedTotalKindLowerBound}, step.Page.ReportedTotal)
+		require.Equal(t, int32(7), step.CumulativeCount)
+		require.True(t, step.LimitReached)
+		(*step.Page.Items[0].Variables)[0].Value = "caller change"
+		return SearchPageActionStop, d.ErrForbidden
+	}, options.WithIgnoreTenant())
+	require.ErrorIs(t, err, ferrors.ErrNotFound)
+	require.Equal(t, 1, visits)
+	require.Equal(t, int32(2), pages.Pages)
+	require.Len(t, pages.Items, 1)
+	require.NotNil(t, pages.Items[0].Variables)
+	for _, op := range []string{"get", "search", "pages"} {
+		t.Run(op, func(t *testing.T) {
+			service.get = func(context.Context, string, d.ElementEnrichment, ...services.CallOption) (d.Element, error) {
+				return d.Element{}, d.ErrForbidden
+			}
+			service.search = func(context.Context, d.ElementSearchQuery, d.ElementEnrichment, ...services.CallOption) (d.ElementSearchResult, error) {
+				return d.ElementSearchResult{}, d.ErrForbidden
+			}
+			service.pages = func(_ context.Context, _ d.ElementSearchQuery, _ d.ElementEnrichment, v d.ElementSearchPageVisitor, _ ...services.CallOption) (d.ElementSearchPagesResult, error) {
+				require.Nil(t, v)
+				return d.ElementSearchPagesResult{}, d.ErrForbidden
+			}
+			api := NewWithEnrichment(nil, nil, service, nil)
+			var err error
+			switch op {
+			case "get":
+				_, err = api.GetElementWithEnrichment(context.Background(), "E", Enrichment{Variables: true})
+			case "search":
+				_, err = api.SearchElementsWithEnrichment(context.Background(), request, Enrichment{Variables: true})
+			case "pages":
+				_, err = api.SearchElementsPagesWithEnrichment(context.Background(), request, Enrichment{Variables: true}, nil)
+			}
+			require.ErrorIs(t, err, ferrors.ErrLocalPrecondition)
+		})
+	}
+}
+
+// TestElementScopeVariablesLegacyConstructors keeps ordinary operations usable and reports unwired capabilities before discovery.
+func TestElementScopeVariablesLegacyConstructors(t *testing.T) {
+	t.Parallel()
+	for _, withListeners := range []bool{false, true} {
+		t.Run(map[bool]string{false: "New", true: "NewWithListeners"}[withListeners], func(t *testing.T) {
+			gets := 0
+			base := fakeElementService{get: func(context.Context, string, ...services.CallOption) (d.Element, error) {
+				gets++
+				return d.Element{ElementInstanceKey: "E", ProcessInstanceKey: "P"}, nil
+			}, search: func(context.Context, d.ElementSearchQuery, ...services.CallOption) (d.ElementSearchResult, error) {
+				return d.ElementSearchResult{}, nil
+			}, pages: func(_ context.Context, _ d.ElementSearchQuery, v d.ElementSearchPageVisitor, _ ...services.CallOption) (d.ElementSearchPagesResult, error) {
+				require.Nil(t, v)
+				return d.ElementSearchPagesResult{}, nil
+			}}
+			api := New(base, nil)
+			if withListeners {
+				api = NewWithListeners(base, fakeJobService{search: func(context.Context, d.JobSearchQuery, ...services.CallOption) (d.JobSearchResult, error) {
+					return d.JobSearchResult{}, nil
+				}}, nil)
+			}
+			_, err := api.GetElementWithEnrichment(context.Background(), "E", Enrichment{Variables: true})
+			require.ErrorIs(t, err, ferrors.ErrLocalPrecondition)
+			_, err = api.SearchElementsWithEnrichment(context.Background(), SearchRequest{}, Enrichment{Variables: true})
+			require.ErrorIs(t, err, ferrors.ErrLocalPrecondition)
+			_, err = api.SearchElementsPagesWithEnrichment(context.Background(), SearchRequest{}, Enrichment{Variables: true}, nil)
+			require.ErrorIs(t, err, ferrors.ErrLocalPrecondition)
+			require.Zero(t, gets)
+			got, err := api.GetElementWithEnrichment(context.Background(), "E", Enrichment{})
+			require.NoError(t, err)
+			require.Nil(t, got.Variables)
+			require.Nil(t, got.Listeners)
+			require.Equal(t, 1, gets)
+			_, err = api.SearchElementsWithEnrichment(context.Background(), SearchRequest{}, Enrichment{})
+			require.NoError(t, err)
+			_, err = api.SearchElementsPagesWithEnrichment(context.Background(), SearchRequest{}, Enrichment{}, nil)
+			require.NoError(t, err)
+			got, err = api.GetElementWithEnrichment(context.Background(), "E", Enrichment{Listeners: true})
+			if withListeners {
+				require.NoError(t, err)
+				require.NotNil(t, got.Listeners)
+			} else {
+				require.ErrorIs(t, err, ferrors.ErrLocalPrecondition)
+			}
+		})
+	}
+}

@@ -10,12 +10,10 @@ Inspect and validate c8volt configuration
 
 ### Synopsis
 
-Inspect and validate c8volt configuration.
+Inspect configuration, print a starter template, or test the connection.
 
-Use `config show` to view effective settings, validate configuration, or print
-a blank template. Use `config validate` to check the effective configuration
-directly, `config template` to print a starter configuration file, or
-`config test-connection` to validate configuration and test Camunda reachability.
+Settings resolve as: flag > environment > profile > base config > default.
+Use --profile to select an environment.
 
 ```
 c8volt config [flags]
@@ -24,13 +22,9 @@ c8volt config [flags]
 ### Examples
 
 ```
-  ./c8volt config show
-  ./c8volt --config ./config.yaml config validate
-  ./c8volt config template
-  ./c8volt --config ./config.yaml config test-connection
-  ./c8volt --config ./config.yaml config show --validate
-  ./c8volt config show --template
-  ./c8volt --profile <profile-name> config show
+  c8volt config template
+  c8volt config validate
+  c8volt config test-connection
 ```
 
 ### Options
@@ -42,20 +36,22 @@ c8volt config [flags]
 ### Options inherited from parent commands
 
 ```
-      --all-tenants        clear configured tenant filtering and search all tenants visible to the authenticated user; mutually exclusive with --tenant
-  -y, --auto-confirm       auto-confirm prompts for non-interactive use
-      --automation         enable non-interactive mode for commands that explicitly support it
-      --config string      path to config file
-      --debug              enable debug logging
-  -j, --json               output as JSON (where applicable)
-      --keys-only          output keys only (where applicable)
-      --log-level string   log level (debug, info, warn, error) (default "info")
-      --no-indicator       disable transient terminal activity indicators
-      --profile string     config active profile name to use (e.g. dev, prod)
-  -q, --quiet              suppress output except errors
-      --tenant string      tenant ID for discovery/search, selection, create, deploy, and run flows; explicit empty values can clear configured discovery filters, and explicit keys/IDs remain backend-authorized
-      --timeout duration   HTTP request timeout (default 30s)
-  -v, --verbose            show additional output
+      --all-tenants          search all accessible tenants; cannot combine with --tenant
+  -y, --auto-confirm         auto-confirm prompts for non-interactive use
+      --automation           enable non-interactive mode for commands that explicitly support it
+      --config string        path to config file
+      --debug                enable debug logging
+  -j, --json                 output as JSON (where applicable)
+      --keys-only            output keys only (where applicable)
+      --log-level string     log level (debug, info, warn, error) (default "info")
+      --no-indicator         disable transient terminal activity indicators
+      --no-version-check     skip the automatic advisory gateway version check
+      --profile string       config active profile name to use (e.g. dev, prod)
+  -q, --quiet                suppress output except errors
+      --request-rate float   maximum shared request starts per second (fractions allowed; 0 disables pacing)
+      --tenant string        tenant for discovery and creation; explicit keys use backend authorization
+      --timeout duration     HTTP request timeout (default 30s)
+  -v, --verbose              show additional output
 ```
 
 ### SEE ALSO

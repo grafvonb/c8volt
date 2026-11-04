@@ -12,7 +12,6 @@
 1. Start at the reported process-instance walk path:
    - [`internal/services/processinstance/walker/walker.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/walker/walker.go)
    - [`internal/services/processinstance/v88/service.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v88/service.go)
-   - [`internal/services/processinstance/v87/service.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v87/service.go)
    - [`internal/services/processinstance/v89/service.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v89/service.go)
 2. Identify the deepest layer that should own the root failure detail, then convert outer wrappers to stage-only breadcrumbs where needed.
 3. Sweep the other confirmed duplication-pattern families:

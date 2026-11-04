@@ -23,9 +23,11 @@ func TestProcessInstanceListenerRowsUseSharedTimestampGrammar(t *testing.T) {
 		{JobKey: "job-active", Kind: "TASK_LISTENER", ListenerEventType: "COMPLETING", State: "ACTIVATED", Type: "notify", Worker: "worker-a", CreationTime: &creation, Deadline: &deadline, ErrorCode: "E1", ErrorMessage: "failed"},
 	}
 
-	lines := formatProcessInstanceElementListenerRows(&listeners, true)
+	lines := formatProcessInstanceElementListenerRows(&listeners, true, deadline)
 
 	require.Len(t, lines, 2)
+	require.True(t, strings.HasSuffix(lines[0], "dur:483ms"))
+	require.True(t, strings.HasSuffix(lines[1], "dur:43.641s"))
 	require.Contains(t, lines[0], "s:2026-09-16T13:07:16.359+02:00 e:2026-09-16T13:07:16.842+02:00")
 	require.NotContains(t, lines[0], "d:")
 	require.Contains(t, lines[1], "s:2026-09-16T13:07:16.359+02:00")

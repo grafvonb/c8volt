@@ -57,15 +57,12 @@ As a CLI user, I want end-date filters to work alongside existing search filters
 
 As a CLI user, I want invalid date input and unsupported version usage to fail clearly so I can correct the command or understand the version limitation immediately.
 
-**Why this priority**: Clear failure behavior is necessary for trust in the CLI and is explicitly required for both validation and v8.7 compatibility handling.
 
-**Independent Test**: Can be fully tested by running the command with malformed dates, inverted ranges, and any new date flag on v8.7, then verifying that the returned error is clear and follows the existing command error path.
 
 **Acceptance Scenarios**:
 
 1. **Given** a user provides a date that is not valid date-only input, **When** the command is executed, **Then** the command fails before search execution with a clear validation error identifying the invalid value.
 2. **Given** a user provides both `after` and `before` for the same field and the `after` date is later than the `before` date, **When** the command is executed, **Then** the command fails before search execution with a clear validation error describing the invalid range.
-3. **Given** the configured Camunda version is v8.7, **When** the user supplies any of the new date flags, **Then** the command returns a clear not-implemented result through the existing error model and does not execute the date-filtered search.
 
 ### Edge Cases
 
@@ -76,7 +73,6 @@ As a CLI user, I want invalid date input and unsupported version usage to fail c
 - Providing only one bound for a given field must still narrow results correctly without requiring the paired bound.
 - Start-date bounds and end-date bounds must be validated independently so an invalid range for one field cannot be masked by valid input for the other.
 - Existing filters that already reduce the result set must continue to apply even when date filters are also present.
-- On v8.7, any one of the four new flags must trigger the unsupported-version response, even if the other command arguments are otherwise valid.
 
 ## Requirements *(mandatory)*
 
@@ -95,9 +91,7 @@ As a CLI user, I want invalid date input and unsupported version usage to fail c
 - **FR-011**: On v8.8, the system MUST apply the requested date filters to process-instance search results using the defined inclusive semantics.
 - **FR-012**: On v8.8, the system MUST exclude process instances with no `endDate` whenever one or more `--end-date-*` filters are provided.
 - **FR-013**: On v8.8, the system MUST combine date filters with existing process-instance filters as additional narrowing constraints without changing the current behavior of existing filters.
-- **FR-014**: On v8.7, the system MUST return a clear not-implemented result through the existing error path whenever any of the new date flags is used.
 - **FR-015**: The system MUST preserve current command behavior when none of the new date flags is provided.
-- **FR-016**: The system MUST include automated coverage for valid v8.8 filtering, inclusive boundary behavior, invalid date formats, invalid ranges, and v8.7 not-implemented responses.
 
 ### Key Entities *(include if feature involves data)*
 
@@ -113,8 +107,6 @@ As a CLI user, I want invalid date input and unsupported version usage to fail c
 - **SC-001**: Users can retrieve process instances by inclusive start-date bounds on v8.8 with correct results for lower bound only, upper bound only, and combined range inputs.
 - **SC-002**: Users can retrieve process instances by inclusive end-date bounds on v8.8, with instances lacking an `endDate` excluded whenever end-date filters are used, and the result set remains narrowed correctly when existing filters are also supplied.
 - **SC-003**: Every invalid date format or inverted date range submitted through the new flags is rejected before search execution with a clear validation failure.
-- **SC-004**: Every use of the new date flags on v8.7 returns a clear not-implemented result through the existing error path.
-- **SC-005**: Automated tests cover the new v8.8 success paths, inclusive boundary cases, validation failures, and v8.7 unsupported-version behavior.
 
 ## Assumptions
 

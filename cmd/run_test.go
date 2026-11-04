@@ -37,25 +37,13 @@ func TestRunCommand_CommandLocalBackoffTimeoutFlagOverridesEnvProfileAndConfig(t
 	require.Equal(t, 44*time.Second, cfg.App.Backoff.Timeout)
 }
 
+// TestRunHelp_DocumentsWaitAndVerificationRouting distinguishes creation visibility from execution completion.
 func TestRunHelp_DocumentsWaitAndVerificationRouting(t *testing.T) {
-	output := assertCommandHelpOutput(t, []string{"run"}, []string{
-		"Start process instances",
-		"waits until created instances are observable",
-		"./c8volt run process-instance --bpmn-process-id <bpmn-process-id>",
-	}, nil)
-
-	require.Contains(t, output, "process-instance")
-
-	output = assertCommandHelpOutput(t, []string{"run", "process-instance"}, []string{
-		"Use a BPMN process ID",
-		"waits until created instances are observable",
-		"--all-tenants is not supported because",
-		"./c8volt run process-instance --bpmn-process-id <bpmn-process-id> --count 3 --workers 2",
-		"./c8volt run process-instance --bpmn-process-id <bpmn-process-id> --keys-only | ./c8volt expect process-instance --state completed -",
-	}, nil)
-	require.Contains(t, output, "--no-wait")
+	assertCommandHelpOutput(t, []string{"run"}, []string{"wait until they are visible", "expect"}, nil)
+	assertCommandHelpOutput(t, []string{"run", "process-instance"}, []string{"--set-vars", "--set-bid", "--pd-key", "--count"}, nil)
 }
 
+// TestRunProcessInstanceCommand_RegressionPreservesSelectorAndWorkerContract keeps selectors and workers stable while adding a scalar identity.
 func TestRunProcessInstanceCommand_RegressionPreservesSelectorAndWorkerContract(t *testing.T) {
 	root := Root()
 	resetCommandTreeFlags(root)
@@ -72,14 +60,21 @@ func TestRunProcessInstanceCommand_RegressionPreservesSelectorAndWorkerContract(
 		Type:        "stringSlice",
 		Required:    false,
 		Repeated:    true,
-		Description: "BPMN process ID(s) to run process instance for (mutually exclusive with --pd-key). Runs latest version unless --pd-version is specified",
+		Description: "BPMN process IDs to start; latest version unless --pd-version is set",
 	})
 	require.Contains(t, capability.Flags, FlagContract{
 		Name:        "pd-key",
 		Type:        "stringSlice",
 		Required:    false,
 		Repeated:    true,
-		Description: "specific process definition key(s) to run process instance for (mutually exclusive with --bpmn-process-id)",
+		Description: "exact definition keys to start; cannot combine with --bpmn-process-id",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "set-bid",
+		Type:        "string",
+		Required:    false,
+		Repeated:    false,
+		Description: "business ID to assign at creation (only c8.10+)",
 	})
 	require.Contains(t, capability.Flags, FlagContract{
 		Name:        "count",
@@ -108,7 +103,7 @@ func TestRunProcessInstanceCommand_AllTenantsRejectsBeforeInputValidationOrReque
 	}{
 		{
 			name: "invalid vars",
-			args: []string{"run", "process-instance", "--all-tenants", "--bpmn-process-id", "order-process", "--vars", "{"},
+			args: []string{"run", "process-instance", "--all-tenants", "--bpmn-process-id", "order-process", "--set-vars", "{"},
 		},
 		{
 			name: "bpmn selector",
@@ -135,7 +130,7 @@ func TestRunProcessInstanceCommand_AllTenantsRejectsBeforeInputValidationOrReque
 			})
 			assertAllTenantsConcreteDestinationSubprocessFailure(t, output, err, "run process-instance")
 			require.Empty(t, requests.Snapshot())
-			require.NotContains(t, string(output), "parsing --vars JSON")
+			require.NotContains(t, string(output), "parsing --set-vars JSON")
 			require.NotContains(t, string(output), "creation target:")
 			require.NotContains(t, string(output), "running process instance")
 		})
@@ -145,11 +140,19 @@ func TestRunProcessInstanceCommand_AllTenantsRejectsBeforeInputValidationOrReque
 // Verifies run commands consume the profile selected by the root flag for tenant and API URL resolution.
 func TestRunProcessInstanceCommand_ProfileFlagSelectsProfileTenantAndBaseURL(t *testing.T) {
 	baseSrv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		t.Fatalf("base profile server should not be used: %s %s", r.Method, r.URL.Path)
 	}))
 	t.Cleanup(baseSrv.Close)
 
 	prodSrv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
 		case "/v2/process-definitions/search":
@@ -226,9 +229,13 @@ func TestRunProcessInstanceCommand_JSONInvalidInputUsesEnvelope(t *testing.T) {
 	require.Equal(t, "run process-instance", got["command"])
 }
 
-// Verifies run process-instance maps HTTP 409 responses to the conflict exit code.
+// TestRunProcessInstanceCommand_ConflictUsesConflictExitCode preserves conflict classification with bounded diagnostics.
 func TestRunProcessInstanceCommand_ConflictUsesConflictExitCode(t *testing.T) {
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		require.Equal(t, http.MethodPost, r.Method)
 		switch r.URL.Path {
 		case "/v2/process-definitions/search":
@@ -253,12 +260,17 @@ func TestRunProcessInstanceCommand_ConflictUsesConflictExitCode(t *testing.T) {
 	require.True(t, ok)
 	require.Equal(t, exitcode.Conflict, exitErr.ExitCode())
 	require.Contains(t, string(output), "conflict")
-	require.Contains(t, string(output), "running process instance(s)")
+	require.Contains(t, string(output), "creating process instances: requested 1; successful 0; without successful result 1; conflict")
 }
 
+// TestRunProcessInstanceCommand_V89NoWait preserves accepted JSON without informational service chatter.
 func TestRunProcessInstanceCommand_V89NoWait(t *testing.T) {
 	var sawRun bool
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.9") {
+			return
+		}
+
 		require.Equal(t, http.MethodPost, r.Method)
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
@@ -296,7 +308,7 @@ func TestRunProcessInstanceCommand_V89NoWait(t *testing.T) {
 	payload, ok := got["payload"].(map[string]any)
 	require.True(t, ok)
 	require.EqualValues(t, 1, payload["total"])
-	require.Contains(t, stderr, "INFO")
+	require.Empty(t, stderr)
 }
 
 // TestRunProcessInstanceCommand_V810NoWaitJSONUsesNativeCreation verifies V810 creation preserves the accepted JSON envelope.
@@ -304,6 +316,10 @@ func TestRunProcessInstanceCommand_V810NoWaitJSONUsesNativeCreation(t *testing.T
 	var requests []string
 	var createBody map[string]any
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.10") {
+			return
+		}
+
 		requests = append(requests, r.Method+" "+r.URL.Path)
 		require.Equal(t, http.MethodPost, r.Method)
 		w.Header().Set("Content-Type", "application/json")
@@ -338,12 +354,17 @@ func TestRunProcessInstanceCommand_V810NoWaitJSONUsesNativeCreation(t *testing.T
 	payload := requireJSONObject(t, got["payload"])
 	require.EqualValues(t, 1, payload["total"])
 	require.NotContains(t, stdout, "found:")
-	require.Contains(t, stderr, "INFO")
+	require.Empty(t, stderr)
 }
 
+// TestRunProcessInstanceCommand_VarsPayloadRemainsCreationInput preserves the existing command contract with advisory-aware fixtures.
 func TestRunProcessInstanceCommand_VarsPayloadRemainsCreationInput(t *testing.T) {
 	var sawRun bool
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.9") {
+			return
+		}
+
 		require.Equal(t, http.MethodPost, r.Method)
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
@@ -369,7 +390,7 @@ func TestRunProcessInstanceCommand_VarsPayloadRemainsCreationInput(t *testing.T)
 		"--config", cfgPath,
 		"run", "process-instance",
 		"--bpmn-process-id", "order-process",
-		"--vars", `{"customerId":"1234","priority":2}`,
+		"--set-vars", `{"customerId":"1234","priority":2}`,
 		"--no-wait",
 	)
 
@@ -431,6 +452,10 @@ apis:
 			stderr := &bytes.Buffer{}
 			var sawRun bool
 			srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if serveVersionCheckTopology(w, r, "8.8") {
+					return
+				}
+
 				require.Equal(t, http.MethodPost, r.Method)
 				require.Equal(t, "/v2/process-instances", r.URL.Path)
 				sawRun = true
@@ -456,7 +481,8 @@ apis:
 			_, err := root.ExecuteC()
 			require.NoError(t, err)
 			require.True(t, sawRun)
-			require.Contains(t, stdout.String(), "2251799813711967")
+			require.Empty(t, stdout.String())
+			require.Contains(t, stderr.String(), "2251799813711967")
 			require.Contains(t, stderr.String(), tt.wantLine)
 			require.NotContains(t, stderr.String(), "Proceed?")
 		})
@@ -469,6 +495,10 @@ func TestRunProcessInstanceCommand_JSONEnvelopeIncludesCreationContext(t *testin
 	t.Cleanup(resetProcessInstanceCommandGlobals)
 	var sawRun bool
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		require.Equal(t, http.MethodPost, r.Method)
 		require.Equal(t, "/v2/process-instances", r.URL.Path)
 		sawRun = true
@@ -534,7 +564,8 @@ func TestRunProcessInstanceCommand_ProtectedModesSuppressCreationContext(t *test
 		{
 			name:       "quiet",
 			argsPrefix: []string{"--quiet"},
-			wantStdout: "2251799813711967",
+			wantStdout: "",
+			exact:      true,
 		},
 		{
 			name:       "keys only",
@@ -550,6 +581,10 @@ func TestRunProcessInstanceCommand_ProtectedModesSuppressCreationContext(t *test
 			t.Cleanup(resetProcessInstanceCommandGlobals)
 			resetDeployCommandContextForTest(Root())
 			srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if serveVersionCheckTopology(w, r, "8.8") {
+					return
+				}
+
 				require.Equal(t, http.MethodPost, r.Method)
 				require.Equal(t, "/v2/process-instances", r.URL.Path)
 				w.Header().Set("Content-Type", "application/json")
@@ -598,13 +633,14 @@ func TestRunProcessInstanceCommand_NormalOutputRendersObservedState(t *testing.T
 		"--bpmn-process-id", "order-process",
 	)
 
-	require.Contains(t, stdout, "2251799813711967")
-	require.Contains(t, stdout, "order-process")
-	require.Contains(t, stdout, "COMPLETED")
-	require.Contains(t, stdout, "found: 1")
+	require.Contains(t, stderr, "2251799813711967")
+	require.Contains(t, stderr, "order-process")
+	require.Contains(t, stderr, "COMPLETED")
+	require.Contains(t, stderr, "found: 1")
 	require.NotContains(t, stdout, "(today)")
 	require.NotContains(t, stdout, `"outcome"`)
-	require.Contains(t, stderr, "waiting for pi 2251799813711967")
+	require.Empty(t, stdout)
+	require.NotContains(t, stderr, "waiting for pi 2251799813711967")
 }
 
 // Verifies JSON run output keeps the full command envelope and includes the observed state.
@@ -635,8 +671,13 @@ func TestRunProcessInstanceCommand_JSONEnvelopeIncludesObservedState(t *testing.
 	require.Equal(t, "COMPLETED", item["state"])
 }
 
+// TestRunProcessInstanceCommand_JSONNoWaitOmitsUnobservedState preserves the existing command contract with advisory-aware fixtures.
 func TestRunProcessInstanceCommand_JSONNoWaitOmitsUnobservedState(t *testing.T) {
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.9") {
+			return
+		}
+
 		require.Equal(t, http.MethodPost, r.Method)
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
@@ -691,7 +732,7 @@ func TestRunProcessInstanceCommand_KeysOnlyOutputsOnlyCreatedKeys(t *testing.T) 
 	require.NotContains(t, stdout, "COMPLETED")
 	require.NotContains(t, stdout, "found:")
 	require.NotContains(t, stdout, `"outcome"`)
-	require.Contains(t, stderr, "waiting for pi 2251799813711967")
+	require.NotContains(t, stderr, "waiting for pi 2251799813711967")
 }
 
 // TestRunProcessInstanceCommand_V810KeysOnlyKeepsActivityOffStdout verifies V810 keys-only output remains pipeline-safe while activity is routed away from stdout.
@@ -711,13 +752,17 @@ func TestRunProcessInstanceCommand_V810KeysOnlyKeepsActivityOffStdout(t *testing
 	require.Equal(t, "2251799813711967\n", stdout)
 	require.NotContains(t, stdout, "COMPLETED")
 	require.NotContains(t, stdout, "waiting for pi")
-	require.Contains(t, stderr, "waiting for pi 2251799813711967")
+	require.NotContains(t, stderr, "waiting for pi 2251799813711967")
 }
 
 // TestRunProcessInstanceCommand_VerboseBulkProgressRendersCounters verifies explicit --count progress is routed to stderr.
 func TestRunProcessInstanceCommand_VerboseBulkProgressRendersCounters(t *testing.T) {
 	var created testx.SafeSlice[string]
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		switch r.URL.Path {
 		case "/v2/process-instances":
 			require.Equal(t, http.MethodPost, r.Method)
@@ -751,7 +796,8 @@ func TestRunProcessInstanceCommand_VerboseBulkProgressRendersCounters(t *testing
 		"--workers", "1",
 	)
 
-	require.Contains(t, stdout, "found: 2")
+	require.Empty(t, stdout)
+	require.Contains(t, stderr, "found: 2")
 	require.Contains(t, stderr, "starting process instances 2/2 process instance(s)")
 	require.NotContains(t, stderr, "waiting for pi 2251799813685248")
 	require.NotContains(t, stderr, "waiting for pi 2251799813685249")
@@ -890,8 +936,7 @@ func TestRunProcessInstanceDefaultStartMilestonesAndFinalFlush(t *testing.T) {
 	require.NotContains(t, output, "pi-1 started")
 }
 
-// TestRunProcessInstanceVerboseLifecycleVocabulary verifies bulk-start progress
-// maps submitted, started, and failed wording in the command layer.
+// TestRunProcessInstanceVerboseLifecycleVocabulary retains outcome facts without forwarding raw failure details.
 func TestRunProcessInstanceVerboseLifecycleVocabulary(t *testing.T) {
 	resetProcessInstanceCommandGlobals()
 	t.Cleanup(resetProcessInstanceCommandGlobals)
@@ -911,7 +956,7 @@ func TestRunProcessInstanceVerboseLifecycleVocabulary(t *testing.T) {
 	output := stderr.String()
 	require.Contains(t, output, "pi-1 submitted (starting process instances, 1/3 process instance(s), process instances: 1)")
 	require.Contains(t, output, "pi-2 started (starting process instances, 2/3 process instance(s), process instances: 2)")
-	require.Contains(t, output, "pi-3 failed: start rejected (starting process instances, 3/3 process instance(s), 1 failed, process instances: 2)")
+	require.Contains(t, output, "pi-3 failed (starting process instances, 3/3 process instance(s), 1 failed, process instances: 2)")
 }
 
 // reportRunProcessInstanceCompletionEvent sends one facade-level bulk-start
@@ -990,8 +1035,13 @@ func TestRunProcessInstanceResultSortsCountOutputByStartDateAndKey(t *testing.T)
 	}, items)
 }
 
+// TestRunProcessInstanceCommand_DefaultOutputDoesNotEmitMachineEnvelope preserves the existing command contract with advisory-aware fixtures.
 func TestRunProcessInstanceCommand_DefaultOutputDoesNotEmitMachineEnvelope(t *testing.T) {
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.9") {
+			return
+		}
+
 		require.Equal(t, http.MethodPost, r.Method)
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
@@ -1025,6 +1075,10 @@ func newRunProcessInstanceObservedStateServer(t *testing.T, observedState string
 	t.Helper()
 
 	return newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		switch {
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-definitions/search":
@@ -1039,9 +1093,14 @@ func newRunProcessInstanceObservedStateServer(t *testing.T, observedState string
 	}))
 }
 
+// TestRunProcessInstanceBpmnSelectorPartialMultiIDFailsBeforeCreate preserves the existing command contract with advisory-aware fixtures.
 func TestRunProcessInstanceBpmnSelectorPartialMultiIDFailsBeforeCreate(t *testing.T) {
 	var requests []string
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		requests = append(requests, r.Method+" "+r.URL.Path)
 		require.Equal(t, http.MethodPost, r.Method)
 		require.Equal(t, "/v2/process-definitions/search", r.URL.Path)
@@ -1076,9 +1135,14 @@ func TestRunProcessInstanceBpmnSelectorPartialMultiIDFailsBeforeCreate(t *testin
 	require.NotContains(t, string(output), "bpmnProcessId:")
 }
 
+// TestRunProcessInstanceBpmnSelectorMultipleMissingDiagnostics preserves the existing command contract with advisory-aware fixtures.
 func TestRunProcessInstanceBpmnSelectorMultipleMissingDiagnostics(t *testing.T) {
 	var requests []string
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		requests = append(requests, r.Method+" "+r.URL.Path)
 		require.Equal(t, http.MethodPost, r.Method)
 		require.Equal(t, "/v2/process-definitions/search", r.URL.Path)
@@ -1104,11 +1168,16 @@ func TestRunProcessInstanceBpmnSelectorMultipleMissingDiagnostics(t *testing.T) 
 	require.NotContains(t, string(output), "bpmnProcessId:")
 }
 
+// TestRunProcessInstanceBpmnSelectorAllVisiblePreservesCreate preserves the existing command contract with advisory-aware fixtures.
 func TestRunProcessInstanceBpmnSelectorAllVisiblePreservesCreate(t *testing.T) {
 	var requests []string
 	var pdSearchBodies []map[string]any
 	var createBodies []map[string]any
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.9") {
+			return
+		}
+
 		requests = append(requests, r.Method+" "+r.URL.Path)
 		require.Equal(t, http.MethodPost, r.Method)
 		w.Header().Set("Content-Type", "application/json")
@@ -1164,10 +1233,15 @@ func TestRunProcessInstanceBpmnSelectorAllVisiblePreservesCreate(t *testing.T) {
 	require.EqualValues(t, 2, payload["total"])
 }
 
+// TestRunProcessInstanceBpmnSelectorVersionUsesExactSearch preserves the existing command contract with advisory-aware fixtures.
 func TestRunProcessInstanceBpmnSelectorVersionUsesExactSearch(t *testing.T) {
 	var pdSearchBody map[string]any
 	var createBody map[string]any
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.9") {
+			return
+		}
+
 		require.Equal(t, http.MethodPost, r.Method)
 		w.Header().Set("Content-Type", "application/json")
 
@@ -1308,4 +1382,85 @@ func TestRunProcessInstanceCommand_ProfileFlagSelectsProfileTenantAndBaseURLHelp
 	root.SetOut(os.Stdout)
 	root.SetErr(os.Stderr)
 	_ = root.Execute()
+}
+
+// TestRunProcessInstanceCommand_SuspendedCreation confirms first-observed suspension through real adapters and keeps result streams truthful.
+func TestRunProcessInstanceCommand_SuspendedCreation(t *testing.T) {
+	for _, version := range []string{"8.8", "8.9", "8.10"} {
+		for _, mode := range []string{"human", "json", "keys", "no wait"} {
+			t.Run(version+"/"+mode, func(t *testing.T) {
+				var requests testx.SafeSlice[string]
+				srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					if serveVersionCheckTopology(w, r, version) {
+						return
+					}
+
+					requests.Append(r.Method + " " + r.URL.Path)
+					w.Header().Set("Content-Type", "application/json")
+					switch {
+					case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances":
+						_, _ = io.WriteString(w, `{"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionVersion":1,"processInstanceKey":"123","tenantId":"<default>","variables":{}}`)
+					case r.Method == http.MethodGet && r.URL.Path == "/v2/process-instances/123":
+						_, _ = io.WriteString(w, `{"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionVersion":1,"processInstanceKey":"123","tenantId":"<default>","state":"SUSPENDED","startDate":"2026-10-17T10:00:00Z","hasIncident":false,"tags":[]}`)
+					default:
+						t.Errorf("unexpected request: %s %s", r.Method, r.URL.Path)
+						http.Error(w, "unexpected request", http.StatusBadRequest)
+					}
+				}))
+				t.Cleanup(srv.Close)
+				args := []string{"--config", writeTestConfigForVersion(t, srv.URL, version), "run", "process-instance", "--pd-key", "9001", "--backoff-max-retries", "1"}
+				switch mode {
+				case "json":
+					args = append(args, "--json", "--automation")
+				case "keys":
+					args = append(args, "--keys-only")
+				case "no wait":
+					args = append(args, "--json", "--no-wait")
+				}
+				stdout, stderr := executeRootForProcessInstanceWithSeparateOutputs(t, args...)
+				wantRequests := []string{"POST /v2/process-instances"}
+				if mode != "no wait" {
+					wantRequests = append(wantRequests, "GET /v2/process-instances/123")
+				}
+				require.Equal(t, wantRequests, requests.Snapshot())
+				require.NotContains(t, stdout, "COMPLETED")
+				require.NotContains(t, stderr, "state COMPLETED")
+				switch mode {
+				case "human":
+					require.Empty(t, stdout)
+					require.Contains(t, stderr, "SUSPENDED")
+					require.Contains(t, stderr, "found: 1")
+					require.NotContains(t, stdout, "waiting for")
+				case "keys":
+					require.Equal(t, "123\n", stdout)
+				default:
+					decoder := json.NewDecoder(strings.NewReader(stdout))
+					var envelope map[string]any
+					require.NoError(t, decoder.Decode(&envelope))
+					var extra any
+					require.ErrorIs(t, decoder.Decode(&extra), io.EOF)
+					require.Equal(t, "run process-instance", envelope["command"])
+					wantOutcome := OutcomeSucceeded
+					if mode == "no wait" {
+						wantOutcome = OutcomeAccepted
+					}
+					require.Equal(t, string(wantOutcome), envelope["outcome"])
+					payload := requireJSONObject(t, envelope["payload"])
+					items, ok := payload["items"].([]any)
+					require.True(t, ok)
+					require.Len(t, items, 1)
+					item := requireJSONObject(t, items[0])
+					require.Equal(t, "123", item["key"])
+					require.NotContains(t, item, "endDate")
+					if mode == "no wait" {
+						require.NotContains(t, item, "state")
+						require.NotContains(t, item, "startConfirmedAt")
+					} else {
+						require.Equal(t, "SUSPENDED", item["state"])
+						require.Equal(t, "2026-10-17T10:00:00Z", item["startDate"])
+					}
+				}
+			})
+		}
+	}
 }

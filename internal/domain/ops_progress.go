@@ -80,6 +80,8 @@ const (
 	OpsCompletionDispositionSubmitted OpsCompletionDisposition = "submitted"
 	// OpsCompletionDispositionConfirmed means the command's configured wait or proof contract completed.
 	OpsCompletionDispositionConfirmed OpsCompletionDisposition = "confirmed"
+	// OpsCompletionDispositionSkipped means the tracked item completed without mutation because workflow controls or safety policy retained it.
+	OpsCompletionDispositionSkipped OpsCompletionDisposition = "skipped"
 	// OpsCompletionDispositionFailed means the configured completion boundary was not reached.
 	OpsCompletionDispositionFailed OpsCompletionDisposition = "failed"
 )

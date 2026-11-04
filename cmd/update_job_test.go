@@ -9,15 +9,11 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"os"
-	"os/exec"
 	"strconv"
 	"strings"
 	"testing"
 
 	"github.com/grafvonb/c8volt/c8volt/job"
-	"github.com/grafvonb/c8volt/internal/exitcode"
-	"github.com/grafvonb/c8volt/testx"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 )
@@ -26,14 +22,14 @@ import (
 func TestUpdateJobCommand_RetriesConfirmedHumanOutput(t *testing.T) {
 	var requests []string
 	var patchBodies []map[string]any
-	srv := newJobUpdateServer(t, &requests, &patchBodies, []string{
+	srv := newJobUpdateServer(t, "8.8", &requests, &patchBodies, []string{
 		jobSearchResponse("2251799813711967", 1),
 		jobSearchResponse("2251799813711967", 3),
 	}, http.StatusNoContent)
 	t.Cleanup(srv.Close)
 	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
 
-	output := executeRootForJobTest(t, "--config", cfgPath, "update", "job", "--key", "2251799813711967", "--retries", "3", "--auto-confirm")
+	output := executeRootForJobTest(t, "--config", cfgPath, "update", "job", "--key", "2251799813711967", "--set-retries", "3", "--auto-confirm")
 
 	require.Equal(t, []string{"POST /v2/jobs/search", "PATCH /v2/jobs/2251799813711967", "POST /v2/jobs/search"}, requests)
 	require.Len(t, patchBodies, 1)
@@ -46,14 +42,14 @@ func TestUpdateJobCommand_RetriesConfirmedHumanOutput(t *testing.T) {
 func TestUpdateJobCommand_RetriesConfirmedRendersExplicitKeyTenantContext(t *testing.T) {
 	var requests []string
 	var patchBodies []map[string]any
-	srv := newJobUpdateServer(t, &requests, &patchBodies, []string{
+	srv := newJobUpdateServer(t, "8.8", &requests, &patchBodies, []string{
 		jobSearchResponseWithTenant("2251799813711967", 1, "FAILED", tenantAdminKeysReturnedTenant),
 		jobSearchResponseWithTenant("2251799813711967", 3, "FAILED", tenantAdminKeysReturnedTenant),
 	}, http.StatusNoContent)
 	t.Cleanup(srv.Close)
 	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
 
-	output := executeRootForJobTest(t, "--config", cfgPath, "--tenant", tenantAdminKeysSelectedTenant, "update", "job", "--key", "2251799813711967", "--retries", "3", "--auto-confirm")
+	output := executeRootForJobTest(t, "--config", cfgPath, "--tenant", tenantAdminKeysSelectedTenant, "update", "job", "--key", "2251799813711967", "--set-retries", "3", "--auto-confirm")
 
 	require.Equal(t, []string{"POST /v2/jobs/search", "PATCH /v2/jobs/2251799813711967", "POST /v2/jobs/search"}, requests)
 	require.Len(t, patchBodies, 1)
@@ -70,14 +66,14 @@ func TestUpdateJobCommand_RetriesConfirmedRendersExplicitKeyTenantContext(t *tes
 func TestUpdateJobCommand_RetriesConfirmedJSONOutput(t *testing.T) {
 	var requests []string
 	var patchBodies []map[string]any
-	srv := newJobUpdateServer(t, &requests, &patchBodies, []string{
+	srv := newJobUpdateServer(t, "8.8", &requests, &patchBodies, []string{
 		jobSearchResponse("2251799813711967", 1),
 		jobSearchResponse("2251799813711967", 3),
 	}, http.StatusNoContent)
 	t.Cleanup(srv.Close)
 	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
 
-	output := executeRootForJobTest(t, "--config", cfgPath, "--json", "update", "job", "--key", "2251799813711967", "--retries", "3", "--auto-confirm")
+	output := executeRootForJobTest(t, "--config", cfgPath, "--json", "update", "job", "--key", "2251799813711967", "--set-retries", "3", "--auto-confirm")
 
 	require.Equal(t, []string{"POST /v2/jobs/search", "PATCH /v2/jobs/2251799813711967", "POST /v2/jobs/search"}, requests)
 	require.Len(t, patchBodies, 1)
@@ -107,14 +103,14 @@ func TestUpdateJobCommand_MaterialInteractiveRetriesUpdateRequiresConfirmation(t
 
 	var requests []string
 	var patchBodies []map[string]any
-	srv := newJobUpdateServer(t, &requests, &patchBodies, []string{
+	srv := newJobUpdateServer(t, "8.8", &requests, &patchBodies, []string{
 		jobSearchResponse("2251799813711967", 1),
 		jobSearchResponse("2251799813711967", 3),
 	}, http.StatusNoContent)
 	t.Cleanup(srv.Close)
 	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
 
-	output := executeRootForJobTest(t, "--config", cfgPath, "update", "job", "--key", "2251799813711967", "--retries", "3")
+	output := executeRootForJobTest(t, "--config", cfgPath, "update", "job", "--key", "2251799813711967", "--set-retries", "3")
 
 	require.Contains(t, prompt, "You are about to update job 2251799813711967")
 	require.Equal(t, []string{"POST /v2/jobs/search", "PATCH /v2/jobs/2251799813711967", "POST /v2/jobs/search"}, requests)
@@ -137,14 +133,14 @@ func TestUpdateJobCommand_V810PromptedRetriesUpdatePreservesConfirmationFlow(t *
 
 	var requests []string
 	var patchBodies []map[string]any
-	srv := newJobUpdateServer(t, &requests, &patchBodies, []string{
+	srv := newJobUpdateServer(t, "8.10", &requests, &patchBodies, []string{
 		jobSearchResponse("2251799813711967", 1),
 		jobSearchResponse("2251799813711967", 3),
 	}, http.StatusNoContent)
 	t.Cleanup(srv.Close)
 	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.10")
 
-	output := executeRootForJobTest(t, "--config", cfgPath, "update", "job", "--key", "2251799813711967", "--retries", "3")
+	output := executeRootForJobTest(t, "--config", cfgPath, "update", "job", "--key", "2251799813711967", "--set-retries", "3")
 
 	require.Equal(t, "You are about to update job 2251799813711967. Do you want to proceed?", prompt)
 	require.Equal(t, []string{"POST /v2/jobs/search", "PATCH /v2/jobs/2251799813711967", "POST /v2/jobs/search"}, requests)
@@ -197,13 +193,13 @@ func TestUpdateJobRetriesAndTimeoutViewShowsRetriesConfirmedAndTimeoutSubmitted(
 func TestUpdateJobCommand_TimeoutSubmittedHumanOutputWithoutConfirmationPolling(t *testing.T) {
 	var requests []string
 	var patchBodies []map[string]any
-	srv := newJobUpdateServer(t, &requests, &patchBodies, []string{
+	srv := newJobUpdateServer(t, "8.8", &requests, &patchBodies, []string{
 		jobSearchResponseWithState("2251799813711967", 1, "CREATED"),
 	}, http.StatusNoContent)
 	t.Cleanup(srv.Close)
 	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
 
-	output := executeRootForJobTest(t, "--config", cfgPath, "update", "job", "--key", "2251799813711967", "--timeout", "5m", "--auto-confirm")
+	output := executeRootForJobTest(t, "--config", cfgPath, "update", "job", "--key", "2251799813711967", "--set-timeout", "5m", "--auto-confirm")
 
 	require.Equal(t, []string{"POST /v2/jobs/search", "PATCH /v2/jobs/2251799813711967"}, requests)
 	require.Len(t, patchBodies, 1)
@@ -216,14 +212,14 @@ func TestUpdateJobCommand_TimeoutSubmittedHumanOutputWithoutConfirmationPolling(
 func TestUpdateJobCommand_RetriesAndTimeoutConfirmsRetriesOnly(t *testing.T) {
 	var requests []string
 	var patchBodies []map[string]any
-	srv := newJobUpdateServer(t, &requests, &patchBodies, []string{
+	srv := newJobUpdateServer(t, "8.8", &requests, &patchBodies, []string{
 		jobSearchResponseWithState("2251799813711967", 1, "CREATED"),
 		jobSearchResponse("2251799813711967", 3),
 	}, http.StatusNoContent)
 	t.Cleanup(srv.Close)
 	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
 
-	output := executeRootForJobTest(t, "--config", cfgPath, "update", "job", "--key", "2251799813711967", "--retries", "3", "--timeout", "5m", "--auto-confirm")
+	output := executeRootForJobTest(t, "--config", cfgPath, "update", "job", "--key", "2251799813711967", "--set-retries", "3", "--set-timeout", "5m", "--auto-confirm")
 
 	require.Equal(t, []string{"POST /v2/jobs/search", "PATCH /v2/jobs/2251799813711967", "POST /v2/jobs/search"}, requests)
 	require.Len(t, patchBodies, 1)
@@ -237,13 +233,13 @@ func TestUpdateJobCommand_RetriesAndTimeoutConfirmsRetriesOnly(t *testing.T) {
 func TestUpdateJobCommand_NoWaitSkipsRetryConfirmation(t *testing.T) {
 	var requests []string
 	var patchBodies []map[string]any
-	srv := newJobUpdateServer(t, &requests, &patchBodies, []string{
+	srv := newJobUpdateServer(t, "8.8", &requests, &patchBodies, []string{
 		jobSearchResponse("2251799813711967", 1),
 	}, http.StatusNoContent)
 	t.Cleanup(srv.Close)
 	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
 
-	output := executeRootForJobTest(t, "--config", cfgPath, "update", "job", "--key", "2251799813711967", "--retries", "3", "--no-wait", "--auto-confirm")
+	output := executeRootForJobTest(t, "--config", cfgPath, "update", "job", "--key", "2251799813711967", "--set-retries", "3", "--no-wait", "--auto-confirm")
 
 	require.Equal(t, []string{"POST /v2/jobs/search", "PATCH /v2/jobs/2251799813711967"}, requests)
 	require.Len(t, patchBodies, 1)
@@ -256,13 +252,13 @@ func TestUpdateJobCommand_NoWaitSkipsRetryConfirmation(t *testing.T) {
 func TestUpdateJobCommand_NoWaitJSONSubmittedResult(t *testing.T) {
 	var requests []string
 	var patchBodies []map[string]any
-	srv := newJobUpdateServer(t, &requests, &patchBodies, []string{
+	srv := newJobUpdateServer(t, "8.8", &requests, &patchBodies, []string{
 		jobSearchResponse("2251799813711967", 1),
 	}, http.StatusNoContent)
 	t.Cleanup(srv.Close)
 	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
 
-	output := executeRootForJobTest(t, "--config", cfgPath, "--json", "update", "job", "--key", "2251799813711967", "--retries", "3", "--no-wait", "--auto-confirm")
+	output := executeRootForJobTest(t, "--config", cfgPath, "--json", "update", "job", "--key", "2251799813711967", "--set-retries", "3", "--no-wait", "--auto-confirm")
 
 	require.Equal(t, []string{"POST /v2/jobs/search", "PATCH /v2/jobs/2251799813711967"}, requests)
 	require.Len(t, patchBodies, 1)
@@ -292,13 +288,13 @@ func TestUpdateJobCommand_NoWaitStillRequiresInteractiveConfirmationForMaterialU
 
 	var requests []string
 	var patchBodies []map[string]any
-	srv := newJobUpdateServer(t, &requests, &patchBodies, []string{
+	srv := newJobUpdateServer(t, "8.8", &requests, &patchBodies, []string{
 		jobSearchResponse("2251799813711967", 1),
 	}, http.StatusNoContent)
 	t.Cleanup(srv.Close)
 	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
 
-	output := executeRootForJobTest(t, "--config", cfgPath, "update", "job", "--key", "2251799813711967", "--retries", "3", "--no-wait")
+	output := executeRootForJobTest(t, "--config", cfgPath, "update", "job", "--key", "2251799813711967", "--set-retries", "3", "--no-wait")
 
 	require.Contains(t, prompt, "You are about to update job 2251799813711967")
 	require.Equal(t, []string{"POST /v2/jobs/search", "PATCH /v2/jobs/2251799813711967"}, requests)
@@ -309,41 +305,15 @@ func TestUpdateJobCommand_NoWaitStillRequiresInteractiveConfirmationForMaterialU
 	require.NotContains(t, output, "confirmed retries")
 }
 
-// TestUpdateJobCommand_UnsupportedV87FailsBeforeMutation verifies the update job command wiring behavior covered by this scenario.
-func TestUpdateJobCommand_UnsupportedV87FailsBeforeMutation(t *testing.T) {
-	cfgPath := writeTestConfigForVersion(t, "http://127.0.0.1:1", "8.7")
-
-	output, err := testx.RunCmdSubprocess(t, "TestUpdateJobCommand_UnsupportedV87FailsBeforeMutationHelper", map[string]string{
-		"C8VOLT_TEST_CONFIG": cfgPath,
-	})
-	require.Error(t, err)
-
-	exitErr, ok := err.(*exec.ExitError)
-	require.True(t, ok)
-	require.Equal(t, exitcode.Error, exitErr.ExitCode())
-	require.Contains(t, string(output), "get job")
-	require.Contains(t, string(output), "Camunda 8.8")
-	require.NotContains(t, string(output), "updated job")
-}
-
-// TestUpdateJobCommand_UnsupportedV87FailsBeforeMutationHelper verifies the update job command wiring behavior covered by this scenario.
-func TestUpdateJobCommand_UnsupportedV87FailsBeforeMutationHelper(t *testing.T) {
-	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
-		return
-	}
-
-	prevArgs := os.Args
-	t.Cleanup(func() { os.Args = prevArgs })
-	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "update", "job", "--key", "2251799813711967", "--retries", "3", "--auto-confirm"}
-
-	Execute()
-}
-
 // newJobUpdateServer returns a fake update endpoint that records retry and timeout mutation requests.
-func newJobUpdateServer(t *testing.T, requests *[]string, patchBodies *[]map[string]any, searchResponses []string, updateStatus int) *httptest.Server {
+func newJobUpdateServer(t *testing.T, version string, requests *[]string, patchBodies *[]map[string]any, searchResponses []string, updateStatus int) *httptest.Server {
 	t.Helper()
 	searchIndex := 0
 	return newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, version) {
+			return
+		}
+
 		*requests = append(*requests, r.Method+" "+r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
 		switch {
@@ -367,10 +337,14 @@ func newJobUpdateServer(t *testing.T, requests *[]string, patchBodies *[]map[str
 }
 
 // newJobFailServer returns a fake worker-failure endpoint that records submitted failure bodies.
-func newJobFailServer(t *testing.T, requests *[]string, failBodies *[]map[string]any, searchResponses []string, failStatus int) *httptest.Server {
+func newJobFailServer(t *testing.T, version string, requests *[]string, failBodies *[]map[string]any, searchResponses []string, failStatus int) *httptest.Server {
 	t.Helper()
 	searchIndex := 0
 	return newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, version) {
+			return
+		}
+
 		*requests = append(*requests, r.Method+" "+r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
 		switch {
@@ -394,10 +368,14 @@ func newJobFailServer(t *testing.T, requests *[]string, failBodies *[]map[string
 }
 
 // newJobBPMNErrorServer returns a fake BPMN error endpoint that records submitted error bodies.
-func newJobBPMNErrorServer(t *testing.T, requests *[]string, errorBodies *[]map[string]any, searchResponses []string, errorStatus int) *httptest.Server {
+func newJobBPMNErrorServer(t *testing.T, version string, requests *[]string, errorBodies *[]map[string]any, searchResponses []string, errorStatus int) *httptest.Server {
 	t.Helper()
 	searchIndex := 0
 	return newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, version) {
+			return
+		}
+
 		*requests = append(*requests, r.Method+" "+r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
 		switch {
@@ -421,10 +399,14 @@ func newJobBPMNErrorServer(t *testing.T, requests *[]string, errorBodies *[]map[
 }
 
 // newJobCompleteServer returns a fake completion endpoint that records submitted variable payloads.
-func newJobCompleteServer(t *testing.T, requests *[]string, completeBodies *[]map[string]any, searchResponses []string, completeStatus int) *httptest.Server {
+func newJobCompleteServer(t *testing.T, version string, requests *[]string, completeBodies *[]map[string]any, searchResponses []string, completeStatus int) *httptest.Server {
 	t.Helper()
 	searchIndex := 0
 	return newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, version) {
+			return
+		}
+
 		*requests = append(*requests, r.Method+" "+r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
 		switch {
@@ -508,6 +490,7 @@ func strconvFormatInt32(value int32) string {
 }
 
 // resetUpdateJobFlagState restores update-job package flags shared by command tests.
+// resetUpdateJobFlagState prevents mutation intent from leaking across command tests.
 func resetUpdateJobFlagState() {
 	flagViewAsJson = false
 	flagVerbose = false
@@ -517,13 +500,16 @@ func resetUpdateJobFlagState() {
 	flagCmdAutomation = false
 	flagUpdateJobKey = ""
 	flagUpdateJobRetries = 0
+	flagUpdateJobSetRetries = 0
 	flagUpdateJobTimeoutRaw = ""
 	flagUpdateJobFail = false
 	flagUpdateJobRetryBackoffRaw = ""
 	flagUpdateJobMessage = ""
 	flagUpdateJobBPMNError = ""
+	flagUpdateJobThrowBPMNError = false
 	flagUpdateJobComplete = false
 	flagUpdateJobVariables = ""
+	flagUpdateJobSetBID = ""
 	flagWorkers = 0
 	flagFailFast = false
 	flagNoWorkerLimit = false

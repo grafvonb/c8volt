@@ -27,10 +27,7 @@
 - [x] T005 Implement tenant sort and literal name-filter helpers in `internal/domain/tenant.go`
 - [x] T006 [P] Add domain helper tests for tenant sorting and literal filtering in `internal/domain/tenant_test.go`
 - [x] T007 Define `internal/services/tenant.API` list and get operations in `internal/services/tenant/api.go`
-- [x] T008 Implement tenant service factory with `v87`, `v88`, and `v89` routing in `internal/services/tenant/factory.go`
 - [x] T009 [P] Add tenant factory version routing tests in `internal/services/tenant/factory_test.go`
-- [x] T010 Implement `v87` unsupported tenant service in `internal/services/tenant/v87/service.go`
-- [x] T011 [P] Add `v87` unsupported service tests in `internal/services/tenant/v87/service_test.go`
 - [x] T012 Define public tenant facade models in `c8volt/tenant/model.go`
 - [x] T013 Implement tenant facade conversion helpers in `c8volt/tenant/convert.go`
 - [x] T014 Implement tenant facade client in `c8volt/tenant/client.go`
@@ -122,12 +119,10 @@
 
 **Goal**: Tenant discovery supports JSON output and unsupported-version behavior consistently across command modes.
 
-**Independent Test**: Run JSON command tests for list and keyed modes, plus unsupported-version tests for `v8.7`.
 
 ### Tests for User Story 4
 
 - [x] T046 [P] [US4] Add JSON list and keyed command tests in `cmd/get_tenant_test.go`
-- [x] T047 [P] [US4] Add `v8.7` unsupported command tests in `cmd/get_tenant_test.go`
 - [x] T048 [P] [US4] Add generated-client sensitive-field exclusion assertions in `c8volt/tenant/client_test.go`
 - [x] T049 [P] [US4] Add existing `get` command preservation smoke test in `cmd/get_test.go`
 

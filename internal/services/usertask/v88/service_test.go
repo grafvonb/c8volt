@@ -22,11 +22,35 @@ import (
 )
 
 type mockUserTaskCamundaClient struct {
-	searchUserTasksWithResponse func(context.Context, camundav88.SearchUserTasksJSONRequestBody, ...camundav88.RequestEditorFn) (*camundav88.SearchUserTasksResponse, error)
+	getUserTaskWithResponse                      func(context.Context, camundav88.UserTaskKey, ...camundav88.RequestEditorFn) (*camundav88.GetUserTaskResponse, error)
+	searchUserTasksWithResponse                  func(context.Context, camundav88.SearchUserTasksJSONRequestBody, ...camundav88.RequestEditorFn) (*camundav88.SearchUserTasksResponse, error)
+	searchUserTaskEffectiveVariablesWithResponse func(context.Context, camundav88.UserTaskKey, *camundav88.SearchUserTaskEffectiveVariablesParams, camundav88.SearchUserTaskEffectiveVariablesJSONRequestBody, ...camundav88.RequestEditorFn) (*camundav88.SearchUserTaskEffectiveVariablesResponse, error)
 }
 
+// GetUserTaskWithResponse delegates direct reads while making accidental legacy-test calls explicit.
+func (m *mockUserTaskCamundaClient) GetUserTaskWithResponse(ctx context.Context, key camundav88.UserTaskKey, reqEditors ...camundav88.RequestEditorFn) (*camundav88.GetUserTaskResponse, error) {
+	if m.getUserTaskWithResponse == nil {
+		return nil, fmt.Errorf("unexpected native user-task read for %s", key)
+	}
+	return m.getUserTaskWithResponse(ctx, key, reqEditors...)
+}
+
+// SearchUserTasksWithResponse delegates the generated task search to the configured test callback.
 func (m *mockUserTaskCamundaClient) SearchUserTasksWithResponse(ctx context.Context, body camundav88.SearchUserTasksJSONRequestBody, reqEditors ...camundav88.RequestEditorFn) (*camundav88.SearchUserTasksResponse, error) {
 	return m.searchUserTasksWithResponse(ctx, body, reqEditors...)
+}
+
+// SearchUserTaskEffectiveVariablesWithResponse delegates effective-variable requests to the test-specific callback.
+func (m *mockUserTaskCamundaClient) SearchUserTaskEffectiveVariablesWithResponse(ctx context.Context, key camundav88.UserTaskKey, params *camundav88.SearchUserTaskEffectiveVariablesParams, body camundav88.SearchUserTaskEffectiveVariablesJSONRequestBody, reqEditors ...camundav88.RequestEditorFn) (*camundav88.SearchUserTaskEffectiveVariablesResponse, error) {
+	if m.searchUserTaskEffectiveVariablesWithResponse == nil {
+		panic("unexpected SearchUserTaskEffectiveVariablesWithResponse call")
+	}
+	return m.searchUserTaskEffectiveVariablesWithResponse(ctx, key, params, body, reqEditors...)
+}
+
+// CompleteUserTaskWithResponse rejects mutation from existing read-only fixtures.
+func (m *mockUserTaskCamundaClient) CompleteUserTaskWithResponse(context.Context, camundav88.UserTaskKey, camundav88.CompleteUserTaskJSONRequestBody, ...camundav88.RequestEditorFn) (*camundav88.CompleteUserTaskResponse, error) {
+	panic("unexpected CompleteUserTaskWithResponse call")
 }
 
 var _ v88.GenUserTaskClientCamunda = (*mockUserTaskCamundaClient)(nil)
@@ -35,6 +59,7 @@ type mockUserTaskTasklistClient struct {
 	getTaskByIdWithResponse func(context.Context, string, ...tasklistv88.RequestEditorFn) (*tasklistv88.GetTaskByIdResponse, error)
 }
 
+// GetTaskByIdWithResponse delegates the legacy Tasklist lookup to the configured test callback.
 func (m *mockUserTaskTasklistClient) GetTaskByIdWithResponse(ctx context.Context, body string, reqEditors ...tasklistv88.RequestEditorFn) (*tasklistv88.GetTaskByIdResponse, error) {
 	return m.getTaskByIdWithResponse(ctx, body, reqEditors...)
 }
@@ -97,6 +122,67 @@ func TestService_GetUserTask_FallsBackToTasklistAfterPrimaryMiss(t *testing.T) {
 	require.Equal(t, "2251799815391233", task.Key)
 	require.Equal(t, "2251799813711967", task.ProcessInstanceKey)
 	require.Equal(t, "tenant-a", task.TenantId)
+}
+
+// TestService_GetUserTask_RejectsFallbackTenantMismatch pins tenant enforcement after the legacy Tasklist lookup.
+func TestService_GetUserTask_RejectsFallbackTenantMismatch(t *testing.T) {
+	svc := newTestServiceWithTasklist(t, &mockUserTaskCamundaClient{
+		searchUserTasksWithResponse: func(_ context.Context, body camundav88.SearchUserTasksJSONRequestBody, _ ...camundav88.RequestEditorFn) (*camundav88.SearchUserTasksResponse, error) {
+			requireUserTaskSearchBody(t, body, "2251799815391233", "tenant-a")
+			return &camundav88.SearchUserTasksResponse{
+				HTTPResponse: newHTTPResponse(http.MethodPost, "https://camunda.local/v2/user-tasks/search", http.StatusOK, "200 OK"),
+				JSON200:      &camundav88.UserTaskSearchQueryResult{},
+			}, nil
+		},
+	}, &mockUserTaskTasklistClient{
+		getTaskByIdWithResponse: func(_ context.Context, taskID string, _ ...tasklistv88.RequestEditorFn) (*tasklistv88.GetTaskByIdResponse, error) {
+			require.Equal(t, "2251799815391233", taskID)
+			return &tasklistv88.GetTaskByIdResponse{
+				HTTPResponse: newHTTPResponse(http.MethodGet, "https://tasklist.local/v1/tasks/2251799815391233", http.StatusOK, "200 OK"),
+				JSON200: &tasklistv88.TaskResponse{
+					Id:                 ptr("2251799815391233"),
+					ProcessInstanceKey: ptr("2251799813711967"),
+					TenantId:           ptr("tenant-b"),
+				},
+			}, nil
+		},
+	}, "tenant-a")
+
+	_, err := svc.GetUserTask(context.Background(), "2251799815391233")
+
+	require.Error(t, err)
+	require.ErrorIs(t, err, d.ErrNotFound)
+	require.Contains(t, err.Error(), "fallback user task 2251799815391233 was not found or is not visible to the configured tenant")
+}
+
+// TestService_GetUserTask_RejectsFallbackIdentityMismatch pins identity validation after the legacy Tasklist lookup.
+func TestService_GetUserTask_RejectsFallbackIdentityMismatch(t *testing.T) {
+	svc := newTestServiceWithTasklist(t, &mockUserTaskCamundaClient{
+		searchUserTasksWithResponse: func(_ context.Context, body camundav88.SearchUserTasksJSONRequestBody, _ ...camundav88.RequestEditorFn) (*camundav88.SearchUserTasksResponse, error) {
+			requireUserTaskSearchBody(t, body, "2251799815391233", "")
+			return &camundav88.SearchUserTasksResponse{
+				HTTPResponse: newHTTPResponse(http.MethodPost, "https://camunda.local/v2/user-tasks/search", http.StatusOK, "200 OK"),
+				JSON200:      &camundav88.UserTaskSearchQueryResult{},
+			}, nil
+		},
+	}, &mockUserTaskTasklistClient{
+		getTaskByIdWithResponse: func(_ context.Context, taskID string, _ ...tasklistv88.RequestEditorFn) (*tasklistv88.GetTaskByIdResponse, error) {
+			require.Equal(t, "2251799815391233", taskID)
+			return &tasklistv88.GetTaskByIdResponse{
+				HTTPResponse: newHTTPResponse(http.MethodGet, "https://tasklist.local/v1/tasks/2251799815391233", http.StatusOK, "200 OK"),
+				JSON200: &tasklistv88.TaskResponse{
+					Id:                 ptr("2251799815399999"),
+					ProcessInstanceKey: ptr("2251799813711967"),
+				},
+			}, nil
+		},
+	})
+
+	_, err := svc.GetUserTask(context.Background(), "2251799815391233")
+
+	require.Error(t, err)
+	require.ErrorIs(t, err, d.ErrMalformedResponse)
+	require.Contains(t, err.Error(), "fallback user task 2251799815391233 returned mismatched task 2251799815399999")
 }
 
 // TestService_GetUserTask_DoesNotCallFallbackAfterPrimarySuccess keeps deprecated Tasklist calls out of the modern v2 success path.
@@ -287,11 +373,15 @@ func TestService_GetUserTask_RejectsMissingProcessInstanceKey(t *testing.T) {
 	require.Contains(t, err.Error(), "user task 2251799815391233 has no process instance key")
 }
 
+// newTestService creates a test service with the supplied Camunda client and no injected Tasklist
+// fallback.
 func newTestService(t *testing.T, camundaClient *mockUserTaskCamundaClient, tenantID ...string) *v88.Service {
 	t.Helper()
 	return newTestServiceWithTasklist(t, camundaClient, nil, tenantID...)
 }
 
+// newTestServiceWithTasklist creates a quiet service with injected Camunda and optional Tasklist
+// clients and an optional tenant override.
 func newTestServiceWithTasklist(t *testing.T, camundaClient *mockUserTaskCamundaClient, tasklistClient *mockUserTaskTasklistClient, tenantID ...string) *v88.Service {
 	t.Helper()
 
@@ -313,6 +403,8 @@ func newTestServiceWithTasklist(t *testing.T, camundaClient *mockUserTaskCamunda
 	return svc
 }
 
+// requireUserTaskSearchBody checks the serialized task-key filter and requires the tenant filter
+// only when a tenant is supplied.
 func requireUserTaskSearchBody(t *testing.T, body camundav88.SearchUserTasksJSONRequestBody, taskKey, tenantID string) {
 	t.Helper()
 	raw, err := json.Marshal(body)
@@ -325,6 +417,7 @@ func requireUserTaskSearchBody(t *testing.T, body camundav88.SearchUserTasksJSON
 	require.Contains(t, string(raw), fmt.Sprintf(`"tenantId":"%s"`, tenantID))
 }
 
+// testConfig provides a Camunda base URL for constructing services with injected test clients.
 func testConfig() *config.Config {
 	return &config.Config{
 		APIs: config.APIs{
@@ -335,6 +428,8 @@ func testConfig() *config.Config {
 	}
 }
 
+// newHTTPResponse builds response status and request metadata for adapter tests and panics on an
+// invalid fixture URL.
 func newHTTPResponse(method, rawURL string, statusCode int, status string) *http.Response {
 	u, err := url.Parse(rawURL)
 	if err != nil {
@@ -350,6 +445,17 @@ func newHTTPResponse(method, rawURL string, statusCode int, status string) *http
 	}
 }
 
+// ptr returns a pointer to a fixture value for optional generated API fields.
 func ptr[T any](v T) *T {
 	return &v
+}
+
+// AssignUserTaskWithResponse rejects unexpected assignment in this unrelated fixture.
+func (m *mockUserTaskCamundaClient) AssignUserTaskWithResponse(context.Context, camundav88.UserTaskKey, camundav88.AssignUserTaskJSONRequestBody, ...camundav88.RequestEditorFn) (*camundav88.AssignUserTaskResponse, error) {
+	panic("unexpected user-task assignment")
+}
+
+// UnassignUserTaskWithResponse rejects unexpected removal in this unrelated fixture.
+func (m *mockUserTaskCamundaClient) UnassignUserTaskWithResponse(context.Context, camundav88.UserTaskKey, ...camundav88.RequestEditorFn) (*camundav88.UnassignUserTaskResponse, error) {
+	panic("unexpected user-task unassignment")
 }

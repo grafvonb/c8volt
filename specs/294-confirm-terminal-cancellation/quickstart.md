@@ -7,7 +7,6 @@ Use the repository root, Go 1.26 with toolchain go1.26.2 available, and the exis
 ## Targeted checks
 
 ```sh
-go test ./internal/services/processinstance/v87 ./internal/services/processinstance/v88 ./internal/services/processinstance/v89 ./internal/services/processinstance/v810 -run 'TestService_(CancelProcessInstance|DeleteProcessInstance)' -count=1
 go test ./internal/services/processinstance/waiter -run 'TestWaitForProcessInstance' -count=1
 go test ./internal/services/processinstance -run 'Test.*Cancel' -count=1
 go test ./internal/services/processdefinition -run 'Test(CleanupProcessDefinitionDeletePlanForceScope|DeleteProcessDefinitions)' -count=1
@@ -43,7 +42,7 @@ Run `gofmt -w` on each touched Go file before these checks. Inspect generated do
 - Environment verified: `go.mod` requires Go 1.26 and selects toolchain go1.26.2; `go version` reported `go1.26.2 darwin/arm64`.
 - Active feature verified: `.specify/feature.json` selects `specs/294-confirm-terminal-cancellation`.
 - Repository guidance verified from `AGENTS.md` and `specs/ralph-implementation-rules.md`; branch remained `develop` and dependencies were unchanged.
-- Versioned cancellation/deletion command passed for v87, v88, v89, and v810. The current filter selected no tests in v89 and v810, which is baseline evidence only and must be addressed by the later test-mapping task.
+- Versioned cancellation/deletion command passed for v88, v89, and v810. The current filter selected no tests in v89 and v810, which is baseline evidence only and must be addressed by the later test-mapping task.
 - Waiter cancellation-state command passed.
 - Process-instance bulk cancellation command passed.
 - Process-definition cleanup/deletion command passed.
@@ -56,7 +55,6 @@ The versioned cancellation tests do not share one top-level name. Use these actu
 
 | Version | Cancellation cases | Forced-delete cases | Local fixture seam |
 | --- | --- | --- | --- |
-| 8.7 | `TestService_CancelProcessInstance` | `TestService_DeleteProcessInstance` | `newTestService` with strict Camunda/Operate clients; override only expected generated-client calls |
 | 8.8 | `TestService_CancelProcessInstance` | `TestService_DeleteProcessInstance` | `newTestService`, `newStrictCamundaClient`, and `newStrictOperateClient`; unexpected calls fail immediately |
 | 8.9 | `TestService_CancelAndDeleteProcessInstance` | `TestService_CancelAndDeleteProcessInstance` | `newTestService` with a strict version-local Camunda client; cancellation and deletion are subtests of the combined prefix |
 | 8.10 | `TestService_CancelAndDeleteProcessInstance` | `TestService_CancelAndDeleteProcessInstance` | `newTestService` with a strict version-local Camunda client; cancellation and deletion are subtests of the combined prefix |
@@ -79,18 +77,10 @@ All four versioned suites already expose `waitTestConfig`, configured with fixed
 
 The shared waiter intentionally remains unchanged: it fans family waits across unique keys and requires every scheduled key to return success; only its existing not-found detection maps an observation to ABSENT; and state equivalence remains limited to CANCELED/TERMINATED. In `delete_test.go`, the existing callback-only `cleanupProcessInstanceAPI` is suitable for downstream failure controls but cannot prove row A. The focused cleanup regression therefore needs a small file-local adapter/client double that delegates cancellation to the real 8.8 service while reusing `processDefinitionStageSequence`, `controlledProcessDefinitionAPI`, and the current force-cleanup entry point. Do not introduce a shared test framework.
 
-Prefix inventory was verified with `go test -list`: the original `TestService_(CancelProcessInstance|DeleteProcessInstance)` filter selects 8.7/8.8 only, while 8.9/8.10 require `TestService_CancelAndDeleteProcessInstance`. Until the later suites are renamed, use this coverage-safe command:
+Prefix inventory was verified with `go test -list`: the original `TestService_(CancelProcessInstance|DeleteProcessInstance)` filter selects 8.8 only, while 8.9/8.10 require `TestService_CancelAndDeleteProcessInstance`. Until the later suites are renamed, use this coverage-safe command:
 
 ```sh
-go test ./internal/services/processinstance/v87 ./internal/services/processinstance/v88 ./internal/services/processinstance/v89 ./internal/services/processinstance/v810 -run 'TestService_(CancelProcessInstance|DeleteProcessInstance|CancelAndDeleteProcessInstance)$' -count=1
 ```
-
-## US1 v8.7 proof — Iteration 3 (2026-09-10)
-
-- Before T007, `go test ./internal/services/processinstance/v87 -run TestService_CancelProcessInstance -count=1` failed the new terminal-root checks because `Ok` was false and the absent precheck propagated `ErrNotFound`. The first family cases also exposed that v8.7 cancellation routed its existing family walk through the intentionally unsupported public direct getter.
-- T007 now uses the existing tenant-safe traversal adapter for that same family walk, accepts COMPLETED/CANCELED/TERMINATED/ABSENT during cancellation confirmation, locally maps only wrapped `ErrNotFound` to ABSENT in the guarded precheck, and returns the existing no-op response with `Ok=true`.
-- The focused cancellation command passes all contract A–E cases, including completed and disappearing descendants, active-to-completed polling, a mixed terminal family, active/unknown timeout controls, context interruption, and all four terminal-root no-ops with zero cancellation submissions.
-- `go test ./internal/services/processinstance/v87 -count=1`, `git diff --check`, and `make test` (`go test ./... -race -count=1`) passed after the correction.
 
 ## US1 v8.8 proof — Iteration 4 (2026-09-10)
 
@@ -117,15 +107,8 @@ go test ./internal/services/processinstance/v87 ./internal/services/processinsta
 
 - `TestCancelProcessInstancesPropagatesTerminalNoOpSuccess` proves completed and absent root no-op responses preserve `Ok=true`, HTTP 200, and the existing status text through bulk reports; reporter totals count both results as successful with zero failures.
 - `go test ./internal/services/processinstance -run 'Test.*Cancel' -count=1` passed the focused bulk cancellation suite.
-- `go test ./internal/services/processinstance/... -run 'Test.*Cancel' -count=1` passed cancellation tests for v8.7, v8.8, v8.9, and v8.10. The traversal, waiter, and walker packages reported no matching tests, while the process-instance root and all four version packages ran matching cancellation coverage successfully.
+- `go test ./internal/services/processinstance/... -run 'Test.*Cancel' -count=1` passed cancellation tests for v8.8, v8.9, and v8.10. The traversal, waiter, and walker packages reported no matching tests, while the process-instance root and all four version packages ran matching cancellation coverage successfully.
 - All original contract A–E regression cases now pass across the four supported adapters, including terminal and absent no-op success propagation through bulk reporting.
-
-## US2 v8.7 forced-delete recovery — Iteration 8 (2026-09-10)
-
-- The first T013 run exposed stale direct-get wiring in v8.7 deletion scope discovery. Routing only that internal walk through the existing tenant-safe traversal adapter then isolated the intended regression: the old CANCELED/TERMINATED recovery wait timed out for both completed and absent observations.
-- T017 now accepts COMPLETED/CANCELED/TERMINATED/ABSENT in the forced-delete recovery wait. The recovery wait remains unconditional under `WithNoWait`, the delete mutation is retried, and the ordinary path still performs its final absent-only verification.
-- A controlled forbidden response after successful cancellation confirmation remains a deletion failure; terminal cancellation does not fabricate overall delete success.
-- `go test ./internal/services/processinstance/v87 -run TestService_DeleteProcessInstance -count=1`, the full v8.7 package, `git diff --check`, and `make test` (`go test ./... -race -count=1`) passed after the correction.
 
 ## US2 v8.8 forced-delete recovery — Iteration 9 (2026-09-10)
 
@@ -162,13 +145,11 @@ The runnable service prefixes covering contract rows F–H are:
 
 | Version | Explicit canceled expectation (F) | Opt-outs and error boundaries (G–H) | Strict not-found control (H) |
 | --- | --- | --- | --- |
-| 8.7 | `TestService_WaitForProcessInstanceExpectation` | `TestService_CancelProcessInstance`, `TestService_DeleteProcessInstance` | `TestService_GetProcessInstanceStateByKey` |
 | 8.8 | `TestService_WaitForProcessInstanceExpectation` | `TestService_CancelProcessInstance`, `TestService_DeleteProcessInstance` | `TestService_GetProcessInstance`, `TestService_GetProcessInstanceStateByKey` |
 | 8.9 | `TestService_WaitForProcessInstanceExpectation` | `TestService_CancelAndDeleteProcessInstance` | `TestService_SearchAndLookup` |
 | 8.10 | `TestService_WaitForProcessInstanceExpectation` | `TestService_CancelAndDeleteProcessInstance` | `TestService_SearchAndLookup` |
 
 - `go test ./internal/services/processinstance/... -count=1` passed all process-instance packages, so the strict getter controls are included without relying on a narrower lifecycle filter.
-- The coverage-safe focused command `go test ./internal/services/processinstance/v87 ./internal/services/processinstance/v88 ./internal/services/processinstance/v89 ./internal/services/processinstance/v810 -run 'TestService_(CancelProcessInstance|DeleteProcessInstance|CancelAndDeleteProcessInstance|WaitForProcessInstanceExpectation)$' -count=1` passed in all four version packages and selects every added F–H adapter regression.
 - Shared matching is covered by `TestWaitForProcessInstanceExpectation_ExplicitCanceledCompatibility`; command behavior is covered by `TestExpectProcessInstanceCommand_StateMismatchRemainsStrict` and `TestCancelProcessInstancesWithPlan_TerminalNoOpPreservesCommandContracts`.
 - `go test ./cmd -run 'Test(Cancel|Expect)' -count=1` passed and selects both added command regressions together with the surrounding cancellation and expectation compatibility suite.
 

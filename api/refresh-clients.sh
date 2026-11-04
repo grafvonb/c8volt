@@ -3,14 +3,14 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 # Purpose:
-#   Run the full client refresh workflow: fetch upstream specs and regenerate
-#   all checked-in Go clients.
+#   Fetch upstream specs and regenerate OAuth2 and the runtime-used Camunda
+#   8.8/8.9 clients, or refresh Camunda 8.10 with the isolated --target v810 flow.
 #
 # Usage:
 #   bash api/refresh-clients.sh
 #   bash api/refresh-clients.sh --commit
 #   bash api/refresh-clients.sh --camunda-tag 8.8.19 --camunda-docs-tag 8.8.196
-#   bash api/refresh-clients.sh --target v810 --camunda-tag 8.10.0-alpha4
+#   bash api/refresh-clients.sh --target v810 --camunda-tag 8.10.3
 #
 # Notes:
 #   This is the top-level entrypoint for the end-to-end workflow. It passes the

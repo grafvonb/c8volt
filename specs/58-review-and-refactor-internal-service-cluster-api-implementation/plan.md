@@ -25,7 +25,6 @@ Refactor the internal cluster service to reduce duplication between supported Ca
 
 - `Operational proof`: Pass. The current cluster workflow already verifies the requested topology fetch through returned service results; the refactor preserves this behavior. Any added capability must keep the same observable proof model or explicitly document why verification is not applicable.
 - `CLI compatibility`: Pass. No command names, flags, Cobra wiring, output format, or exit-code changes are planned unless a narrow new cluster capability is surfaced intentionally. If no CLI changes are introduced, the plan remains internal-only.
-- `Validation`: Pass. Update `internal/services/cluster/v87/service_test.go`, `internal/services/cluster/v88/service_test.go`, `internal/services/cluster/factory_test.go`, and any relevant integration coverage in `testx/integration87/cluster_test.go` or `testx/integration88/cluster_test.go`. Run `make test` before completion.
 - `Documentation parity`: Pass with conditional update. If the feature remains internal-only, `README.md` and generated CLI docs do not change. If a user-visible cluster capability is added, update `README.md` and regenerate CLI docs with `make docs`.
 - `Complexity control`: Pass. Reuse the repository-native service/factory/contract structure and existing generated clients. Do not add dependencies. Prefer localized helper extraction or shared normalization patterns over new cross-package abstraction layers.
 
@@ -33,7 +32,7 @@ Refactor the internal cluster service to reduce duplication between supported Ca
 
 Research findings are captured in [research.md](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/058-review-and-refactor-internal-service-cluster-api-implementation/research.md).
 
-- Confirm the lowest-risk refactor shape for duplicated v87/v88 cluster services.
+- Confirm the lowest-risk refactor shape for duplicated v88 cluster services.
 - Review generated cluster client capabilities for supported versions and decide whether any missing service method is worth adding within the issue constraints.
 - Confirm the required validation surface and documentation impact based on whether the final change is internal-only or user-visible.
 
@@ -85,11 +84,6 @@ internal/services/cluster/
 ├── api.go
 ├── factory.go
 ├── factory_test.go
-├── v87/
-│   ├── contract.go
-│   ├── convert.go
-│   ├── service.go
-│   └── service_test.go
 └── v88/
     ├── contract.go
     ├── convert.go
@@ -100,12 +94,10 @@ internal/services/common/
 └── *.go
 
 internal/clients/camunda/
-├── v87/camunda/client.gen.go
 └── v88/camunda/client.gen.go
 
 testx/
 ├── fake_server.go
-├── integration87/cluster_test.go
 └── integration88/cluster_test.go
 
 README.md

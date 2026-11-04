@@ -27,6 +27,7 @@ import (
 	rsvc "github.com/grafvonb/c8volt/internal/services/resource"
 	tsvc "github.com/grafvonb/c8volt/internal/services/tenant"
 	utsvc "github.com/grafvonb/c8volt/internal/services/usertask"
+	varsvc "github.com/grafvonb/c8volt/internal/services/variable"
 
 	"github.com/grafvonb/c8volt/c8volt/cluster"
 	"github.com/grafvonb/c8volt/c8volt/job"
@@ -110,14 +111,20 @@ func New(opts ...Option) (API, error) {
 	if err != nil {
 		return nil, err
 	}
+	variableAPI, err := varsvc.New(c.cfg, c.http, c.log)
+	if err != nil {
+		return nil, err
+	}
+	utUpdateAPI := utsvc.NewVariableUpdates(utAPI, variableAPI, c.cfg, c.log)
+	piUpdateAPI := pisvc.NewVariableUpdates(piAPI, variableAPI, c.cfg, c.log)
 
 	cl := client{
 		ClusterAPI:        cluster.New(cAPI, c.log),
-		ProcessAPI:        process.NewWithElementListeners(pdAPI, piAPI, incAPI, eAPI, jAPI, c.log),
+		ProcessAPI:        process.NewWithVariableUpdates(pdAPI, piAPI, incAPI, eAPI, jAPI, piUpdateAPI, c.log),
 		IncidentAPI:       incident.New(incAPI, c.log),
-		TaskAPI:           task.New(pdAPI, piAPI, utAPI, c.log),
+		TaskAPI:           task.NewWithVariableUpdates(pdAPI, piAPI, utAPI, utUpdateAPI, c.log),
 		JobAPI:            job.New(jAPI, c.log),
-		ElementAPI:        element.NewWithListeners(eAPI, jAPI, c.log),
+		ElementAPI:        element.NewWithVariableUpdates(eAPI, jAPI, esvc.NewEnrichment(eAPI, jAPI, variableAPI), esvc.NewVariableUpdates(eAPI, variableAPI, c.cfg), c.log),
 		OpsAPI:            ops.New(opsAPI, c.log),
 		BatchOperationAPI: batchoperation.New(batchAPI, c.log),
 		TenantAPI:         tenant.New(tAPI, c.log),

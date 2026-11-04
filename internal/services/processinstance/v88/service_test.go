@@ -166,10 +166,14 @@ func TestService_CreateProcessInstance(t *testing.T) {
 
 	t.Run("SuccessWaitsForObservableCreationStates", func(t *testing.T) {
 		tests := []struct {
-			name  string
-			state string
+			name    string
+			state   string
+			delayed bool
 		}{
 			{name: "Active", state: "ACTIVE"},
+			{name: "Suspended", state: "SUSPENDED"},
+			{name: "DelayedSuspended", state: "SUSPENDED", delayed: true},
+			{name: "Canceled", state: "CANCELED"},
 			{name: "Completed", state: "COMPLETED"},
 			{name: "Terminal", state: "TERMINATED"},
 		}
@@ -177,7 +181,11 @@ func TestService_CreateProcessInstance(t *testing.T) {
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
 				getCalls := 0
-				svc := newTestService(t, waitTestConfig(), &mockCamundaClient{
+				// Attempts drive delayed visibility without depending on a wall-clock timeout.
+				cfg := waitTestConfig()
+				cfg.App.Backoff.Timeout = 0
+				cfg.App.Backoff.InitialDelay = 0
+				svc := newTestService(t, cfg, &mockCamundaClient{
 					createProcessInstanceWithResponse: func(ctx context.Context, body camundav88.CreateProcessInstanceJSONRequestBody, reqEditors ...camundav88.RequestEditorFn) (*camundav88.CreateProcessInstanceResponse, error) {
 						return &camundav88.CreateProcessInstanceResponse{
 							HTTPResponse: newHTTPResponse(http.MethodPost, "https://camunda.local/v2/process-instances", http.StatusOK, "200 OK"),
@@ -192,6 +200,11 @@ func TestService_CreateProcessInstance(t *testing.T) {
 					},
 					getProcessInstanceWithResponse: func(ctx context.Context, key string, reqEditors ...camundav88.RequestEditorFn) (*camundav88.GetProcessInstanceResponse, error) {
 						getCalls++
+						if tt.delayed && getCalls == 1 {
+							return &camundav88.GetProcessInstanceResponse{
+								HTTPResponse: newHTTPResponse(http.MethodGet, "https://camunda.local/v2/process-instances/123", http.StatusNotFound, "404 Not Found"),
+							}, nil
+						}
 						assert.Equal(t, "123", key)
 						return &camundav88.GetProcessInstanceResponse{
 							HTTPResponse: newHTTPResponse(http.MethodGet, "https://camunda.local/v2/process-instances/123", http.StatusOK, "200 OK"),
@@ -209,7 +222,14 @@ func TestService_CreateProcessInstance(t *testing.T) {
 				assert.Equal(t, "2026-03-23T18:00:00Z", creation.StartDate)
 				assert.Equal(t, d.State(tt.state), creation.State)
 				assert.NotEmpty(t, creation.StartConfirmedAt)
-				assert.Equal(t, 1, getCalls)
+				wantCalls := 1
+				if tt.delayed {
+					wantCalls = 2
+				}
+				assert.Equal(t, wantCalls, getCalls)
+				if tt.state == "SUSPENDED" {
+					assert.False(t, creation.State.IsTerminal())
+				}
 			})
 		}
 	})
@@ -2120,5 +2140,33 @@ func newHTTPResponse(method, rawURL string, statusCode int, status string) *http
 			Method: method,
 			URL:    u,
 		},
+	}
+}
+
+// TestService_CombinedStateFilterUnsupported keeps plural selection from being
+// silently discarded on older adapters; strict clients reject any backend call.
+func TestService_CombinedStateFilterUnsupported(t *testing.T) {
+	t.Parallel()
+	svc := newTestService(t, testConfig(), newStrictCamundaClient(t), newStrictOperateClient(t))
+	for _, states := range []d.States{{d.StateActive}, {d.StateActive, d.StateCompleted}, {d.StateActive, d.StateSuspended}} {
+		_, err := svc.SearchForProcessInstancesPage(context.Background(), d.ProcessInstanceFilter{States: states}, d.ProcessInstancePageRequest{Size: 10})
+		require.ErrorIs(t, err, d.ErrUnsupported)
+	}
+	_, err := svc.SearchForProcessInstancesPage(context.Background(), d.ProcessInstanceFilter{State: d.StateActive, States: d.States{d.StateSuspended}}, d.ProcessInstancePageRequest{Size: 10})
+	require.ErrorIs(t, err, d.ErrValidation)
+}
+
+// TestServiceCreateProcessInstanceBusinessID rejects all supplied values as unsupported before mutation or value validation.
+func TestServiceCreateProcessInstanceBusinessID(t *testing.T) {
+	t.Parallel()
+	for _, value := range []string{"order,AbC", "", " ", string([]byte{0xff}), strings.Repeat("x", 257)} {
+		for _, data := range []d.ProcessInstanceData{{BpmnProcessId: "demo", BusinessId: new(value)}, {ProcessDefinitionSpecificId: "9001", BusinessId: new(value)}} {
+			svc := newTestService(t, testConfig(), newStrictCamundaClient(t), newStrictOperateClient(t))
+			got, err := svc.CreateProcessInstance(context.Background(), data)
+			require.ErrorIs(t, err, d.ErrUnsupported)
+			require.NotErrorIs(t, err, d.ErrValidation)
+			require.Contains(t, err.Error(), "requires Camunda 8.10")
+			require.Equal(t, d.ProcessInstanceCreation{}, got)
+		}
 	}
 }

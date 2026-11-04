@@ -15,9 +15,13 @@ import (
 
 // snapshotExecutionBatch detaches mutable plan data before workers or normalization can access it.
 func snapshotExecutionBatch(b d.PreparedCompletionBatch) (d.PreparedCompletionBatch, error) {
+	b.SetBusinessID = toolx.CopyPtr(b.SetBusinessID)
 	b.Selection.Keys = slices.Clone(b.Selection.Keys)
 	b.Selection.Filter.Retries = toolx.CopyPtr(b.Selection.Filter.Retries)
-	b.Candidates = slices.Clone(b.Candidates)
+	b.Candidates = toolx.MapSlice(b.Candidates, func(c d.CompletionCandidate) d.CompletionCandidate {
+		c.BusinessId = toolx.CopyPtr(c.BusinessId)
+		return c
+	})
 	b.TenantIDs = slices.Clone(b.TenantIDs)
 	variables, err := toolx.CopyJSONMap(b.Variables)
 	b.Variables = variables
@@ -30,6 +34,9 @@ func snapshotExecutionBatch(b d.PreparedCompletionBatch) (d.PreparedCompletionBa
 // validateExecutionBatch rejects inconsistent or non-normalized plans before any remote call.
 // These invariants detect accidental edits; plans are not durable authorization tokens.
 func validateExecutionBatch(b d.PreparedCompletionBatch, tenant string) error {
+	if err := d.ValidateBusinessIDAssignment(b.SetBusinessID); err != nil {
+		return err
+	}
 	invalid := func(detail string) error {
 		return fmt.Errorf("%w: invalid prepared completion batch: %s", d.ErrValidation, detail)
 	}
@@ -59,7 +66,7 @@ func validateExecutionBatch(b d.PreparedCompletionBatch, tenant string) error {
 		}
 		seen[c.Key] = true
 		keys = append(keys, c.Key)
-		job := d.Job{Key: c.Key, State: c.State, Type: c.Type, ProcessInstanceKey: c.ProcessInstanceKey, ElementInstanceKey: c.ElementInstanceKey, ElementId: c.ElementId, Worker: c.Worker, Retries: c.Retries, Kind: c.Kind, ListenerEventType: c.ListenerEventType, TenantId: c.TenantId}
+		job := d.Job{BusinessId: toolx.CopyPtr(c.BusinessId), Key: c.Key, State: c.State, Type: c.Type, ProcessInstanceKey: c.ProcessInstanceKey, ElementInstanceKey: c.ElementInstanceKey, ElementId: c.ElementId, Worker: c.Worker, Retries: c.Retries, Kind: c.Kind, ListenerEventType: c.ListenerEventType, TenantId: c.TenantId}
 		if !Matches(job, b.Selection, b.DiscoveryTenant) {
 			return invalid("candidate outside prepared scope")
 		}

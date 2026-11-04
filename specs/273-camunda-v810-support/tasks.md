@@ -21,7 +21,6 @@
 
 **Purpose**: Produce the pinned unified V810 client safely. This phase blocks all user stories because runtime identity must point at a reproducible, isolated contract.
 
-**Critical**: No user-story implementation begins until the generated client compiles and protected v8.7-v8.9 trees remain unchanged.
 
 - [x] T003 [P] Add failing target, tag, commit, output-escape, missing-tool, mutation-no-op, and atomic-publication cases to `api/tests/v810_generation_test.sh`
 - [x] T004 [P] Add failing provenance schema, ordered-transformation, hash, nondeterministic-field, and second-run checks in `api/tests/v810_provenance_test.py`
@@ -74,7 +73,7 @@
 - [x] T022 [P] [US2] Add V810 factory, deployment visibility, tenant conversion, success, error, and confirmation cases for resources and tenants in `internal/services/resource/factory_test.go`, `internal/services/resource/v810/`, `internal/services/tenant/factory_test.go`, and `internal/services/tenant/v810/`
 - [x] T023 [P] [US2] Add V810 unified user-task factory/behavior tests that reject any Tasklist fallback and prove explicit unavailable/not-found outcomes in `internal/services/usertask/factory_test.go` and `internal/services/usertask/v810/`
 - [x] T024 [P] [US2] Add version-neutral incident state/error-type normalization tests that do not import generated enums in `internal/services/incidentfilter/incidentfilter_test.go` and extend the rejection rules in `internal/services/v810_source_boundary_test.go`
-- [x] T025 [P] [US2] Add named full-process-definition-history capability tests for V87/V88 rejection and V89/V810 acceptance before discovery/mutation in `toolx/camunda_capabilities_test.go`, `cmd/delete_processdefinition_test.go`, `cmd/ops_purge_all_processdefinitions_test.go`, and `internal/services/ops/all_process_definitions_purge_test.go`
+- [x] T025 [P] [US2] Add named full-process-definition-history capability tests for V88 rejection and V89/V810 acceptance before discovery/mutation in `toolx/camunda_capabilities_test.go`, `cmd/delete_processdefinition_test.go`, `cmd/ops_purge_all_processdefinitions_test.go`, and `internal/services/ops/all_process_definitions_purge_test.go`
 
 ### Implementation for User Story 2
 
@@ -98,7 +97,6 @@
 
 ## Phase 5: User Story 3 - Preserve Stable Version Behavior (Priority: P1)
 
-**Goal**: Prove V810 is additive: V87-V89 clients and behavior, the V88 default, and the real-cluster integration harness remain unchanged.
 
 **Independent Test**: Compare protected client and integration baselines, run all stable-version factory/command regression tests, and verify V810 production fixtures use native C810 content only through an explicit mapping.
 
@@ -107,13 +105,10 @@
 ### Tests for User Story 3
 
 - [x] T039 [P] [US3] Add explicit V810-to-C89 production fixture mapping and stable-version selection tests in `toolx/fixture_compatibility_test.go`, `cmd/embed_test.go`, and `internal/services/ops/smoke_test_test.go`
-- [x] T040 [P] [US3] Extend current-default and V87-V89 selection regressions in `internal/services/batchoperation/factory_test.go`, `internal/services/cluster/factory_test.go`, `internal/services/element/factory_test.go`, `internal/services/incident/factory_test.go`, `internal/services/job/factory_test.go`, `internal/services/processdefinition/factory_test.go`, `internal/services/processinstance/factory_test.go`, `internal/services/resource/factory_test.go`, `internal/services/tenant/factory_test.go`, `internal/services/usertask/factory_test.go`, and `internal/services/variable/factory_test.go`
-- [x] T041 [P] [US3] Add repository allowlist assertions for unchanged v87-v89 generated trees and zero V810 integration assets in `api/tests/v810_repository_boundary_test.sh`
 
 ### Implementation for User Story 3
 
 - [x] T042 [US3] Implement the named V810-to-C89 production fixture mapping and update embedded/smoke consumers in `toolx/fixture_compatibility.go`, `cmd/embed_files.go`, and `internal/services/ops/smoke_test_service.go`
-- [x] T043 [US3] Run stable V87-V89 package/command regressions and repository boundary checks, resolving any regression only in V810/shared compatibility files identified by `api/tests/v810_repository_boundary_test.sh`
 
 **Checkpoint**: Stable behavior and protected artifacts match their pre-feature baseline, and `integration/` has no V810 changes.
 
@@ -148,7 +143,6 @@
 - [x] T050 Regenerate `docs/cli/` and `docs/index.md` with the `Makefile` `docs-content` target and verify no generated CLI documentation was hand-edited
 - [x] T051 Run `gofmt` on all touched Go files and execute the focused validation sequence documented in `specs/273-camunda-v810-support/quickstart.md`
 - [x] T052 Run the race-enabled repository gate from the `Makefile` `test` target and resolve all failures in their owning production/test files
-- [x] T053 Verify `git diff --check`, deterministic V810 regeneration, unchanged `internal/clients/camunda/v87`, `v88`, `v89`, and zero feature changes under `integration/` using `api/tests/v810_repository_boundary_test.sh`
 
 ---
 

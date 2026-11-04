@@ -4,12 +4,33 @@
 package process
 
 import (
+	"encoding/json"
 	"fmt"
 	"testing"
 
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/stretchr/testify/require"
 )
+
+// TestProcessInstanceVariableUpdateResultOKTreatsUnchangedAsSuccess verifies
+// successful no-ops affect totals without implying mutation acceptance.
+func TestProcessInstanceVariableUpdateResultOKTreatsUnchangedAsSuccess(t *testing.T) {
+	t.Parallel()
+
+	unchanged := ProcessInstanceVariableUpdateResult{Status: ProcessInstanceVariableUpdateStatusUnchanged}
+	skipped := ProcessInstanceVariableUpdateResult{Status: ProcessInstanceVariableUpdateStatusSkipped}
+	results := ProcessInstanceVariableUpdateResults{Items: []ProcessInstanceVariableUpdateResult{unchanged, skipped}}
+
+	require.True(t, unchanged.OK())
+	require.False(t, unchanged.MutationAccepted)
+	require.False(t, skipped.OK())
+	require.Equal(t, []int{2, 1, 1}, totalsSlice(results.Totals()))
+}
+
+// totalsSlice makes the multi-value totals result convenient to compare.
+func totalsSlice(total, oks, noks int) []int {
+	return []int{total, oks, noks}
+}
 
 func TestProcessDefinitionFilterString_RendersOnlyActiveFields(t *testing.T) {
 	require.Equal(t, "none", fmt.Sprintf("%+v", ProcessDefinitionFilter{}))
@@ -145,4 +166,20 @@ func TestDryRunPIKeyExpansionConversionCopiesTenantEvidence(t *testing.T) {
 		UnknownTargetCount: 1,
 		TargetCount:        3,
 	}, got.TenantEvidence)
+}
+
+// TestProcessDefinitionLifecycleJSON keeps the additive public field optional and open-ended.
+func TestProcessDefinitionLifecycleJSON(t *testing.T) {
+	t.Parallel()
+	for _, state := range []string{"ACTIVE", "DRAINING", "DELETED", " future-State ", ""} {
+		raw, err := json.Marshal(ProcessDefinition{Key: "123", State: state})
+		require.NoError(t, err)
+		var object map[string]any
+		require.NoError(t, json.Unmarshal(raw, &object))
+		if state == "" {
+			require.NotContains(t, object, "state")
+		} else {
+			require.Equal(t, state, object["state"])
+		}
+	}
 }

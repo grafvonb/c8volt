@@ -14,11 +14,8 @@ var expectCmd = &cobra.Command{
 
 Use after run, cancel, or delete when success depends on an observed
 process-instance state or incident marker.`,
-	Example: `  ./c8volt expect process-instance --key <process-instance-key> --state active
-  ./c8volt expect process-instance --key <process-instance-key> --incident true
-  ./c8volt expect process-instance --key <process-instance-key> --state active --incident false
-  ./c8volt expect process-instance --key <process-instance-key> --state absent
-  ./c8volt get process-instance --key <process-instance-key> --keys-only | ./c8volt expect process-instance --incident true -`,
+	Example: `  c8volt expect process-instance --key <process-instance-key> --state completed
+  c8volt expect process-instance --key <process-instance-key> --incident false`,
 	Aliases: []string{"e", "exp"},
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return cmd.Help()

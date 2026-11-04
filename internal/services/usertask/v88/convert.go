@@ -10,11 +10,23 @@ import (
 	"github.com/grafvonb/c8volt/toolx"
 )
 
+// fromUserTaskResult maps a generated Camunda task into the domain model, normalizing optional
+// fields and copying candidate lists.
 func fromUserTaskResult(r camundav88.UserTaskResult) d.UserTask {
 	return d.UserTask{
-		Key:                r.UserTaskKey,
-		ProcessInstanceKey: r.ProcessInstanceKey,
-		TenantId:           r.TenantId,
+		Key:                      r.UserTaskKey,
+		State:                    string(r.State),
+		Name:                     toolx.Deref(r.Name, ""),
+		ElementId:                r.ElementId,
+		ElementInstanceKey:       r.ElementInstanceKey,
+		Assignee:                 toolx.Deref(r.Assignee, ""),
+		CandidateUsers:           append([]string(nil), r.CandidateUsers...),
+		CandidateGroups:          append([]string(nil), r.CandidateGroups...),
+		ProcessInstanceKey:       r.ProcessInstanceKey,
+		ProcessDefinitionKey:     r.ProcessDefinitionKey,
+		ProcessDefinitionId:      r.ProcessDefinitionId,
+		ProcessDefinitionVersion: r.ProcessDefinitionVersion,
+		TenantId:                 r.TenantId,
 	}
 }
 

@@ -144,8 +144,10 @@ func fromDomainSlowProcessAnalysisProcessDefinitionSelector(x d.SlowProcessAnaly
 	}
 }
 
+// toDomainSlowProcessAnalysisProcessInstanceSearchFilters copies the optional opaque BID independently of resource observations.
 func toDomainSlowProcessAnalysisProcessInstanceSearchFilters(x SlowProcessAnalysisProcessInstanceSearchFilters) d.SlowProcessAnalysisProcessInstanceSearchFilters {
 	return d.SlowProcessAnalysisProcessInstanceSearchFilters{
+		BusinessId:      toolx.CopyPtr(x.BusinessId),
 		State:           d.State(x.State),
 		StartDateAfter:  x.StartDateAfter,
 		StartDateBefore: x.StartDateBefore,
@@ -155,8 +157,10 @@ func toDomainSlowProcessAnalysisProcessInstanceSearchFilters(x SlowProcessAnalys
 	}
 }
 
+// fromDomainSlowProcessAnalysisProcessInstanceSearchFilters copies the optional opaque BID independently of resource observations.
 func fromDomainSlowProcessAnalysisProcessInstanceSearchFilters(x d.SlowProcessAnalysisProcessInstanceSearchFilters) SlowProcessAnalysisProcessInstanceSearchFilters {
 	return SlowProcessAnalysisProcessInstanceSearchFilters{
+		BusinessId:      toolx.CopyPtr(x.BusinessId),
 		State:           process.State(x.State),
 		StartDateAfter:  x.StartDateAfter,
 		StartDateBefore: x.StartDateBefore,
@@ -184,8 +188,10 @@ func fromDomainSlowProcessAnalysisDetailFilters(x d.SlowProcessAnalysisDetailFil
 	}
 }
 
+// fromDomainSlowProcessAnalysisResult preserves partial analysis and copied selection evidence.
 func fromDomainSlowProcessAnalysisResult(x d.SlowProcessAnalysisResult) SlowProcessAnalysisResult {
 	return SlowProcessAnalysisResult{
+		Selection:             toolx.MapPtr(x.Selection, fromDomainRepairSelection),
 		Request:               fromDomainSlowProcessAnalysisRequest(x.Request),
 		DiscoveredScopeStatus: fromDomainDiscoveryScopeStatus(x.DiscoveredScopeStatus),
 		PreflightScope:        fromDomainPreflightScopePtr(x.PreflightScope),
@@ -658,8 +664,10 @@ func toDomainProgressChannel(x ProgressChannel) d.OpsProgressChannel {
 	}
 }
 
+// fromDomainSlowProcessAnalysisProcessInstance copies root identity and independent timeline observations.
 func fromDomainSlowProcessAnalysisProcessInstance(x d.SlowProcessAnalysisProcessInstance) SlowProcessAnalysisProcessInstance {
 	return SlowProcessAnalysisProcessInstance{
+		BusinessId:             toolx.CopyPtr(x.BusinessId),
 		Key:                    x.Key,
 		TenantID:               x.TenantID,
 		BpmnProcessID:          x.BpmnProcessID,
@@ -711,8 +719,10 @@ func fromDomainSlowProcessAnalysisTimelineEntry(x d.SlowProcessAnalysisTimelineE
 	}
 }
 
+// fromDomainRuntimeListenerJob copies optional listener identity across the facade boundary.
 func fromDomainRuntimeListenerJob(x d.RuntimeListenerJob) RuntimeListenerJob {
 	return RuntimeListenerJob{
+		BusinessId:         toolx.CopyPtr(x.BusinessId),
 		JobKey:             x.JobKey,
 		Kind:               x.Kind,
 		ListenerEventType:  x.ListenerEventType,
@@ -769,7 +779,20 @@ func fromDomainSmokeTestDeploymentResult(x d.SmokeTestDeploymentResult) SmokeTes
 		ProcessDefinitionVersion: x.ProcessDefinitionVersion,
 		TenantID:                 x.TenantID,
 		TenantEvidence:           fromDomainOpsTenantEvidence(x.TenantEvidence),
+		ProcessDefinitions:       toolx.MapSlice(x.ProcessDefinitions, fromDomainSmokeTestDeployedDefinition),
+		DefinitionScopeComplete:  x.DefinitionScopeComplete,
 		Errors:                   append([]string(nil), x.Errors...),
+	}
+}
+
+// fromDomainSmokeTestDeployedDefinition mechanically maps deployment identity evidence.
+func fromDomainSmokeTestDeployedDefinition(x d.SmokeTestDeployedDefinition) SmokeTestDeployedDefinition {
+	return SmokeTestDeployedDefinition{
+		ProcessDefinitionKey:     x.ProcessDefinitionKey,
+		BpmnProcessID:            x.BpmnProcessID,
+		ProcessDefinitionVersion: x.ProcessDefinitionVersion,
+		TenantID:                 x.TenantID,
+		ResourceName:             x.ResourceName,
 	}
 }
 
@@ -855,6 +878,33 @@ func fromDomainSmokeTestProcessDefinitionCleanupResult(x d.SmokeTestProcessDefin
 	}
 }
 
+// fromDomainSmokeTestDefinitionCleanupItem preserves per-definition cleanup facts at the public boundary.
+func fromDomainSmokeTestDefinitionCleanupItem(x d.SmokeTestDefinitionCleanupItem) SmokeTestDefinitionCleanupItem {
+	return SmokeTestDefinitionCleanupItem{
+		Definition:  fromDomainSmokeTestDeployedDefinition(x.Definition),
+		Eligibility: fromDomainSmokeTestCleanupEligibility(x.Eligibility),
+		Cleanup:     fromDomainSmokeTestProcessDefinitionCleanupResult(x.Cleanup),
+		Disposition: SmokeTestDefinitionCleanupDisposition(x.Disposition),
+		Reason:      x.Reason,
+	}
+}
+
+// fromDomainSmokeTestDefinitionCleanupSummary maps the optional authoritative collection aggregate.
+func fromDomainSmokeTestDefinitionCleanupSummary(x *d.SmokeTestDefinitionCleanupSummary) *SmokeTestDefinitionCleanupSummary {
+	if x == nil {
+		return nil
+	}
+	return &SmokeTestDefinitionCleanupSummary{
+		Status:      WorkflowStepStatus(x.Status),
+		Total:       x.Total,
+		Confirmed:   x.Confirmed,
+		Submitted:   x.Submitted,
+		Retained:    x.Retained,
+		Failed:      x.Failed,
+		Unattempted: x.Unattempted,
+	}
+}
+
 func fromDomainSmokeTestCleanupResult(x d.SmokeTestCleanupResult) SmokeTestCleanupResult {
 	return SmokeTestCleanupResult{
 		ProcessInstanceCleanup:       fromDomainSmokeTestProcessInstanceCleanupResult(x.ProcessInstanceCleanup),
@@ -865,6 +915,8 @@ func fromDomainSmokeTestCleanupResult(x d.SmokeTestCleanupResult) SmokeTestClean
 		RetainedProcessDefinitionKey: x.RetainedProcessDefinitionKey,
 		RetainedBpmnProcessID:        x.RetainedBpmnProcessID,
 		RetainedTenantID:             x.RetainedTenantID,
+		DefinitionResults:            toolx.MapSlice(x.DefinitionResults, fromDomainSmokeTestDefinitionCleanupItem),
+		DefinitionSummary:            fromDomainSmokeTestDefinitionCleanupSummary(x.DefinitionSummary),
 		Errors:                       append([]string(nil), x.Errors...),
 	}
 }
@@ -898,8 +950,10 @@ func fromDomainSmokeTestAuditReport(x d.SmokeTestAuditReport) SmokeTestAuditRepo
 	}
 }
 
+// toDomainOrphanPurgeRequest maps copied cleanup criteria and optional reviewed evidence.
 func toDomainOrphanPurgeRequest(x OrphanPurgeRequest) d.OrphanPurgeRequest {
 	out := d.OrphanPurgeRequest{
+		FrozenPlan:   toolx.MapPtr(x.FrozenPlan, toDomainOrphanPurgeFrozenPlan),
 		CommandName:  x.CommandName,
 		DryRun:       x.DryRun,
 		AutoConfirm:  x.AutoConfirm,
@@ -921,8 +975,10 @@ func toDomainOrphanPurgeRequest(x OrphanPurgeRequest) d.OrphanPurgeRequest {
 	return out
 }
 
+// fromDomainOrphanPurgeResult maps copied cleanup criteria and optional reviewed evidence.
 func fromDomainOrphanPurgeResult(x d.OrphanPurgeResult) OrphanPurgeResult {
 	return OrphanPurgeResult{
+		FrozenPlan:      toolx.MapPtr(x.FrozenPlan, fromDomainOrphanPurgeFrozenPlan),
 		Request:         fromDomainOrphanPurgeRequest(x.Request),
 		Discovery:       fromDomainOrphanDiscoveryResult(x.Discovery),
 		DeletionPlan:    fromDomainDeletionPlan(x.DeletionPlan),
@@ -934,8 +990,10 @@ func fromDomainOrphanPurgeResult(x d.OrphanPurgeResult) OrphanPurgeResult {
 	}
 }
 
+// fromDomainOrphanPurgeRequest maps copied cleanup criteria and optional reviewed evidence.
 func fromDomainOrphanPurgeRequest(x d.OrphanPurgeRequest) OrphanPurgeRequest {
 	out := OrphanPurgeRequest{
+		FrozenPlan:   toolx.MapPtr(x.FrozenPlan, fromDomainOrphanPurgeFrozenPlan),
 		CommandName:  x.CommandName,
 		DryRun:       x.DryRun,
 		AutoConfirm:  x.AutoConfirm,
@@ -957,13 +1015,15 @@ func fromDomainOrphanPurgeRequest(x d.OrphanPurgeRequest) OrphanPurgeRequest {
 	return out
 }
 
+// fromDomainOrphanDiscoveryResult preserves optional completed selection provenance.
 func fromDomainOrphanDiscoveryResult(x d.OrphanDiscoveryResult) OrphanDiscoveryResult {
 	return OrphanDiscoveryResult{
-		Status:  WorkflowStepStatus(x.Status),
-		Filters: fromDomainProcessInstanceFilter(x.Filters),
-		Keys:    append([]string(nil), x.Keys...),
-		Count:   x.Count,
-		Errors:  append([]string(nil), x.Errors...),
+		Selection: toolx.MapPtr(x.Selection, fromDomainRepairSelection),
+		Status:    WorkflowStepStatus(x.Status),
+		Filters:   fromDomainProcessInstanceFilter(x.Filters),
+		Keys:      append([]string(nil), x.Keys...),
+		Count:     x.Count,
+		Errors:    append([]string(nil), x.Errors...),
 	}
 }
 
@@ -1016,8 +1076,10 @@ func fromDomainOrphanPurgeReport(x d.OrphanPurgeReport) OrphanPurgeReport {
 	}
 }
 
+// toDomainRetentionPolicyRequest maps copied cleanup criteria and optional reviewed evidence.
 func toDomainRetentionPolicyRequest(x RetentionPolicyRequest) d.RetentionPolicyRequest {
 	out := d.RetentionPolicyRequest{
+		FrozenPlan:             toolx.MapPtr(x.FrozenPlan, toDomainRetentionFrozenPlan),
 		CommandName:            x.CommandName,
 		RetentionDays:          x.RetentionDays,
 		DerivedEndDateBoundary: x.DerivedEndDateBoundary,
@@ -1045,8 +1107,10 @@ func toDomainRetentionPolicyRequest(x RetentionPolicyRequest) d.RetentionPolicyR
 	return out
 }
 
+// fromDomainRetentionPolicyResult maps copied cleanup criteria and optional reviewed evidence.
 func fromDomainRetentionPolicyResult(x d.RetentionPolicyResult) RetentionPolicyResult {
 	return RetentionPolicyResult{
+		FrozenPlan: toolx.MapPtr(x.FrozenPlan, fromDomainRetentionFrozenPlan),
 		Request:    fromDomainRetentionPolicyRequest(x.Request),
 		Discovery:  fromDomainRetentionDiscoveryResult(x.Discovery),
 		DeletePlan: fromDomainRetentionDeletePlan(x.DeletePlan),
@@ -1057,8 +1121,10 @@ func fromDomainRetentionPolicyResult(x d.RetentionPolicyResult) RetentionPolicyR
 	}
 }
 
+// fromDomainRetentionPolicyRequest maps copied cleanup criteria and optional reviewed evidence.
 func fromDomainRetentionPolicyRequest(x d.RetentionPolicyRequest) RetentionPolicyRequest {
 	out := RetentionPolicyRequest{
+		FrozenPlan:             toolx.MapPtr(x.FrozenPlan, fromDomainRetentionFrozenPlan),
 		CommandName:            x.CommandName,
 		RetentionDays:          x.RetentionDays,
 		DerivedEndDateBoundary: x.DerivedEndDateBoundary,
@@ -1086,8 +1152,10 @@ func fromDomainRetentionPolicyRequest(x d.RetentionPolicyRequest) RetentionPolic
 	return out
 }
 
+// fromDomainRetentionDiscoveryResult preserves optional completed selection provenance.
 func fromDomainRetentionDiscoveryResult(x d.RetentionDiscoveryResult) RetentionDiscoveryResult {
 	return RetentionDiscoveryResult{
+		Selection:              toolx.MapPtr(x.Selection, fromDomainRepairSelection),
 		Status:                 WorkflowStepStatus(x.Status),
 		RetentionDays:          x.RetentionDays,
 		DerivedEndDateBoundary: x.DerivedEndDateBoundary,
@@ -1359,6 +1427,7 @@ func fromDomainIncidentPurgeWorkflowNotice(x d.IncidentPurgeWorkflowNotice) Inci
 // toDomainRepairRequest maps public repair controls to the service request model.
 func toDomainRepairRequest(x RepairRequest) d.OpsRepairRequest {
 	return d.OpsRepairRequest{
+		FrozenPlan:               toolx.MapPtr(x.FrozenPlan, toDomainRepairFrozenPlan),
 		CommandName:              x.CommandName,
 		Target:                   d.OpsRepairTarget(x.Target),
 		DiscoveryMode:            d.OpsRepairDiscoveryMode(x.DiscoveryMode),
@@ -1376,7 +1445,7 @@ func toDomainRepairRequest(x RepairRequest) d.OpsRepairRequest {
 		Automation:               x.Automation,
 		NoWait:                   x.NoWait,
 		OutputMode:               x.OutputMode,
-		Variables:                toolx.CopyMap(x.Variables),
+		Variables:                copyRepairVariables(x.Variables),
 		VariablesFile:            x.VariablesFile,
 		RequestedRetries:         toolx.CopyPtr(x.RequestedRetries),
 		RequestedJobTimeout:      x.RequestedJobTimeout,
@@ -1390,6 +1459,7 @@ func toDomainRepairRequest(x RepairRequest) d.OpsRepairRequest {
 // fromDomainRepairResult maps the service repair result to the public facade model.
 func fromDomainRepairResult(x d.OpsRepairResult) RepairResult {
 	return RepairResult{
+		FrozenPlan:       toolx.MapPtr(x.FrozenPlan, fromDomainRepairFrozenPlan),
 		Request:          fromDomainRepairRequest(x.Request),
 		FrozenSet:        fromDomainRepairFrozenSet(x.FrozenSet),
 		Plan:             toolx.MapSlice(x.Plan, fromDomainRepairPlanItem),
@@ -1406,6 +1476,7 @@ func fromDomainRepairResult(x d.OpsRepairResult) RepairResult {
 // fromDomainRepairRequest maps a service repair request back to public output.
 func fromDomainRepairRequest(x d.OpsRepairRequest) RepairRequest {
 	return RepairRequest{
+		FrozenPlan:               toolx.MapPtr(x.FrozenPlan, fromDomainRepairFrozenPlan),
 		CommandName:              x.CommandName,
 		Target:                   RepairTarget(x.Target),
 		DiscoveryMode:            RepairDiscoveryMode(x.DiscoveryMode),
@@ -1423,7 +1494,7 @@ func fromDomainRepairRequest(x d.OpsRepairRequest) RepairRequest {
 		Automation:               x.Automation,
 		NoWait:                   x.NoWait,
 		OutputMode:               x.OutputMode,
-		Variables:                toolx.CopyMap(x.Variables),
+		Variables:                copyRepairVariables(x.Variables),
 		VariablesFile:            x.VariablesFile,
 		RequestedRetries:         toolx.CopyPtr(x.RequestedRetries),
 		RequestedJobTimeout:      x.RequestedJobTimeout,
@@ -1437,6 +1508,7 @@ func fromDomainRepairRequest(x d.OpsRepairRequest) RepairRequest {
 // fromDomainRepairFrozenSet maps frozen repair targets to public output.
 func fromDomainRepairFrozenSet(x d.OpsRepairFrozenSet) RepairFrozenSet {
 	return RepairFrozenSet{
+		Selection:                  toolx.MapPtr(x.Selection, fromDomainRepairSelection),
 		DiscoveryScopeStatus:       fromDomainDiscoveryScopeStatus(x.DiscoveryScopeStatus),
 		Status:                     WorkflowStepStatus(x.Status),
 		Target:                     RepairTarget(x.Target),
@@ -1482,7 +1554,7 @@ func fromDomainRepairVariableScopeUpdate(x d.OpsRepairVariableScopeUpdate) Repai
 	return RepairVariableScopeUpdate{
 		ScopeKey:              x.ScopeKey,
 		VariableNames:         append([]string(nil), x.VariableNames...),
-		Payload:               toolx.CopyMap(x.Payload),
+		Payload:               copyRepairVariables(x.Payload),
 		DependentIncidentKeys: append(typex.Keys{}, x.DependentIncidentKeys...),
 		Status:                WorkflowStepStatus(x.Status),
 		Errors:                append([]string(nil), x.Errors...),
@@ -1659,6 +1731,9 @@ func fromDomainAllProcessDefinitionsPurgeDeletePlan(x d.AllProcessDefinitionsPur
 		DuplicateCandidateProcessDefinitionKeys: append(typex.Keys{}, x.DuplicateCandidateProcessDefinitionKeys...),
 		AffectedProcessInstanceCount:            x.AffectedProcessInstanceCount,
 		ActiveProcessInstanceCount:              x.ActiveProcessInstanceCount,
+		SuspendedProcessInstanceCount:           x.SuspendedProcessInstanceCount,
+		SuspendedCountSupported:                 x.SuspendedCountSupported,
+		UnfinishedProcessInstanceCount:          x.UnfinishedProcessInstanceCount,
 		RequiresConfirmation:                    x.RequiresConfirmation,
 		RequiresForce:                           x.RequiresForce,
 		Errors:                                  append([]string(nil), x.Errors...),
@@ -1773,8 +1848,10 @@ func fromDomainIncidentDetail(x d.ProcessInstanceIncidentDetail) incident.Proces
 	}
 }
 
+// toDomainProcessInstanceFilter copies optional selection criteria across the facade boundary.
 func toDomainProcessInstanceFilter(x process.ProcessInstanceFilter) d.ProcessInstanceFilter {
 	return d.ProcessInstanceFilter{
+		BusinessId:           toolx.CopyPtr(x.BusinessId),
 		Key:                  x.Key,
 		BpmnProcessId:        x.BpmnProcessId,
 		ProcessVersion:       x.ProcessVersion,
@@ -1785,14 +1862,19 @@ func toDomainProcessInstanceFilter(x process.ProcessInstanceFilter) d.ProcessIns
 		EndDateAfter:         x.EndDateAfter,
 		EndDateBefore:        x.EndDateBefore,
 		State:                d.State(x.State),
-		ParentKey:            x.ParentKey,
-		HasParent:            x.HasParent,
-		HasIncident:          x.HasIncident,
+		VariableFilters: d.ProcessInstanceVariableFilterSet{Clauses: toolx.MapSlice(x.VariableFilters.Clauses, func(c process.ProcessInstanceVariableFilterClause) d.ProcessInstanceVariableFilterClause {
+			return d.ProcessInstanceVariableFilterClause{Name: c.Name, Operator: d.ProcessInstanceVariableFilterOperator(c.Operator), Value: c.Value, Exists: toolx.CopyPtr(c.Exists), Source: c.Source}
+		})},
+		ParentKey:   x.ParentKey,
+		HasParent:   toolx.CopyPtr(x.HasParent),
+		HasIncident: toolx.CopyPtr(x.HasIncident),
 	}
 }
 
+// fromDomainProcessInstanceFilter copies optional selection criteria across the facade boundary.
 func fromDomainProcessInstanceFilter(x d.ProcessInstanceFilter) process.ProcessInstanceFilter {
 	return process.ProcessInstanceFilter{
+		BusinessId:           toolx.CopyPtr(x.BusinessId),
 		Key:                  x.Key,
 		BpmnProcessId:        x.BpmnProcessId,
 		ProcessVersion:       x.ProcessVersion,
@@ -1803,9 +1885,12 @@ func fromDomainProcessInstanceFilter(x d.ProcessInstanceFilter) process.ProcessI
 		EndDateAfter:         x.EndDateAfter,
 		EndDateBefore:        x.EndDateBefore,
 		State:                process.State(x.State),
-		ParentKey:            x.ParentKey,
-		HasParent:            x.HasParent,
-		HasIncident:          x.HasIncident,
+		VariableFilters: process.ProcessInstanceVariableFilterSet{Clauses: toolx.MapSlice(x.VariableFilters.Clauses, func(c d.ProcessInstanceVariableFilterClause) process.ProcessInstanceVariableFilterClause {
+			return process.ProcessInstanceVariableFilterClause{Name: c.Name, Operator: process.ProcessInstanceVariableFilterOperator(c.Operator), Value: c.Value, Exists: toolx.CopyPtr(c.Exists), Source: c.Source}
+		})},
+		ParentKey:   x.ParentKey,
+		HasParent:   toolx.CopyPtr(x.HasParent),
+		HasIncident: toolx.CopyPtr(x.HasIncident),
 	}
 }
 
@@ -1848,8 +1933,10 @@ func toDomainOpsTenantEvidence(x process.TenantEvidence) d.TenantEvidence {
 	}
 }
 
+// fromDomainProcessInstance preserves observed resource identity/fields and defensively copies mutable values.
 func fromDomainProcessInstance(x d.ProcessInstance) process.ProcessInstance {
 	return process.ProcessInstance{
+		BusinessId:               toolx.CopyPtr(x.BusinessId),
 		BpmnProcessId:            x.BpmnProcessId,
 		EndDate:                  x.EndDate,
 		Incident:                 x.Incident,
@@ -1861,9 +1948,10 @@ func fromDomainProcessInstance(x d.ProcessInstance) process.ProcessInstance {
 		ProcessVersion:           x.ProcessVersion,
 		ProcessVersionTag:        x.ProcessVersionTag,
 		StartDate:                x.StartDate,
+		SuspendedDate:            x.SuspendedDate,
 		State:                    process.State(x.State),
 		TenantId:                 x.TenantId,
-		Variables:                toolx.CopyMap(x.Variables),
+		Variables:                copyRepairVariables(x.Variables),
 	}
 }
 
@@ -1903,30 +1991,38 @@ func fromDomainProcessDefinition(x d.ProcessDefinition) process.ProcessDefinitio
 	}
 }
 
+// fromDomainProcessDefinitionStatistics maps public counts without exposing internal cleanup evidence.
 func fromDomainProcessDefinitionStatistics(x *d.ProcessDefinitionStatistics) *process.ProcessDefinitionStatistics {
 	if x == nil {
 		return nil
 	}
 	return &process.ProcessDefinitionStatistics{
-		Active:                 x.Active,
-		Canceled:               x.Canceled,
-		Completed:              x.Completed,
-		Incidents:              x.Incidents,
-		IncidentCountSupported: x.IncidentCountSupported,
+		Active:                  x.Active,
+		Suspended:               x.Suspended,
+		SuspendedCountSupported: x.SuspendedCountSupported,
+		Canceled:                x.Canceled,
+		Completed:               x.Completed,
+		Incidents:               x.Incidents,
+		IncidentCountSupported:  x.IncidentCountSupported,
 	}
 }
 
+// fromDomainDeleteProcessDefinitionPlanItem copies observed cleanup evidence across the public boundary.
 func fromDomainDeleteProcessDefinitionPlanItem(x d.DeleteProcessDefinitionPlanItem) resource.DeleteProcessDefinitionPlanItem {
 	return resource.DeleteProcessDefinitionPlanItem{
-		Key:                        x.Key,
-		BpmnProcessId:              x.BpmnProcessId,
-		ProcessVersion:             x.ProcessVersion,
-		ProcessVersionTag:          x.ProcessVersionTag,
-		TenantId:                   x.TenantId,
-		ActiveProcessInstanceCount: x.ActiveProcessInstanceCount,
-		ActiveProcessInstanceKeys:  append([]string(nil), x.ActiveProcessInstanceKeys...),
-		CancellationPlan:           fromDomainDryRunPIKeyExpansion(x.CancellationPlan),
-		Warnings:                   append([]string(nil), x.Warnings...),
+		Key:                            x.Key,
+		BpmnProcessId:                  x.BpmnProcessId,
+		ProcessVersion:                 x.ProcessVersion,
+		ProcessVersionTag:              x.ProcessVersionTag,
+		TenantId:                       x.TenantId,
+		ActiveProcessInstanceCount:     x.ActiveProcessInstanceCount,
+		ActiveProcessInstanceKeys:      append([]string(nil), x.ActiveProcessInstanceKeys...),
+		SuspendedProcessInstanceCount:  x.SuspendedProcessInstanceCount,
+		SuspendedCountSupported:        x.SuspendedCountSupported,
+		UnfinishedProcessInstanceCount: x.UnfinishedProcessInstanceCount,
+		UnfinishedProcessInstanceKeys:  append([]string(nil), x.UnfinishedProcessInstanceKeys...),
+		CancellationPlan:               fromDomainDryRunPIKeyExpansion(x.CancellationPlan),
+		Warnings:                       append([]string(nil), x.Warnings...),
 	}
 }
 

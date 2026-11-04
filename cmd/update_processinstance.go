@@ -10,27 +10,29 @@ import (
 )
 
 var (
+	flagUpdatePISetBID   string
 	flagUpdatePIKeys     []string
 	flagUpdatePIVars     string
 	flagUpdatePIVarsFile string
 )
 
+// updateProcessInstanceCmd updates variables or assigns native identity to exact instances.
 var updateProcessInstanceCmd = &cobra.Command{
 	Use:   "process-instance",
-	Short: "Update process-instance variables by key",
-	Long: `Update process-instance-scope variables on Camunda 8.8 or newer.
+	Short: "Update process-instance variables or assign a business ID",
+	Long: `Update root-scope variables on selected process instances.
 
-Provide repeated --key values or newline-separated keys from stdin with '-'. Supply exactly one payload source: --vars with a JSON object or --vars-file with its file path. The same variable map is applied to every unique key. Explicit keys use backend authorization without tenant filtering.
+Select by key or exact --bid (only c8.10+), then supply one JSON object through
+--set-vars or --set-vars-file. The plan changes only root variables and waits
+until requested values are visible. Unchanged plans need no writes.
 
-c8volt loads current variables, plans additions and changes, asks for confirmation, and waits until the requested variables are visible through the same lookup as get process-instance --with-vars.
-
-Use --dry-run to inspect changes without mutation, or --auto-confirm for unattended updates.`,
-	Example: `  ./c8volt update process-instance --key <process-instance-key> --vars '{"customerTier":"gold"}' --dry-run
-  ./c8volt update process-instance --key <process-instance-key> --vars-file ./vars.json --dry-run
-  ./c8volt --tenant tenant-a update process-instance --key <process-instance-key> --vars '{"customerTier":"gold"}' --dry-run
-  ./c8volt update process-instance --key <process-instance-key-a> --key <process-instance-key-b> --vars '{"customerTier":"gold"}' --dry-run
-  printf '%s\n' "$PROCESS_INSTANCE_KEY_A" "$PROCESS_INSTANCE_KEY_B" | ./c8volt update process-instance - --vars '{"customerTier":"gold"}' --dry-run
-  ./c8volt --json update process-instance --key <process-instance-key> --vars '{"customerTier":"gold"}' --dry-run`,
+Alternatively, --set-bid assigns the first native business ID to an active root
+instance with uniqueness disabled (only c8.10+). Use explicit keys; assignment
+cannot be combined with variable updates, and reassignment conflicts.
+Use --dry-run to review the plan.`,
+	Example: `  c8volt update process-instance --key <process-instance-key> --set-vars '{"customerTier":"gold"}' --dry-run
+  c8volt update process-instance --key <process-instance-key> --set-vars-file vars.json
+  c8volt update process-instance --bid ORDER-123 --set-vars '{"approved":true}' --dry-run`,
 	Aliases: []string{"pi"},
 	Args: func(cmd *cobra.Command, args []string) error {
 		return validateOptionalDashArg(args)
@@ -40,15 +42,27 @@ Use --dry-run to inspect changes without mutation, or --auto-confirm for unatten
 		if err != nil {
 			handleNewCliError(cmd, log, cfg, fmt.Errorf("initializing client: %w", err))
 		}
+		if !cmd.Flags().Changed("bid") && (cmd.Flags().Changed("limit") || cmd.Flags().Changed("batch-size")) {
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, missingDependentFlagsf("--limit and --batch-size require --bid"))
+			return
+		}
 		if err := requireAutomationSupport(cmd); err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}
 		if cmd.Flags().Changed("workers") && flagWorkers < 1 {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, invalidFlagValuef("--workers must be positive integer"))
 		}
+		if cmd.Flags().Changed("set-bid") {
+			runUpdateProcessInstanceAssignment(cmd, cli, log, cfg, args)
+			return
+		}
 		variables, err := parseUpdateProcessInstanceVariablesFromFlags(cmd, flagUpdatePIVars, flagUpdatePIVarsFile)
 		if err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+		}
+		if cmd.Flags().Changed("bid") {
+			runUpdateProcessInstanceBusinessID(cmd, cli, log, cfg, args, variables)
+			return
 		}
 		stdinKeys, err := readKeysIfDash(args)
 		if err != nil {
@@ -61,10 +75,11 @@ Use --dry-run to inspect changes without mutation, or --auto-confirm for unatten
 		if err := validateUpdateProcessInstanceJSONConfirmation(cmd); err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}
-		preview, err := planUpdateProcessInstanceVariables(cmd.Context(), cmd, cli, keys, variables)
+		prepared, err := planUpdateProcessInstanceVariables(cmd.Context(), cmd, cli, keys, variables)
 		if err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("plan process-instance variable update: %w", err))
 		}
+		preview := prepared.preview
 		if flagDryRun {
 			if err := renderUpdateProcessInstanceVariablePreview(cmd, preview); err != nil {
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("render update dry-run result: %w", err))
@@ -87,9 +102,15 @@ Use --dry-run to inspect changes without mutation, or --auto-confirm for unatten
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 			}
 		}
-		results, err := cli.UpdateProcessInstancesVariables(cmd.Context(), keys, variables, flagWorkers, collectExplicitPIAdminInputOptions()...)
-		if err != nil {
-			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("update process-instance variables: %w", err))
+		results, executeErr := cli.ExecuteProcessInstanceVariableUpdates(cmd.Context(), prepared.plan, flagWorkers, collectExplicitPIAdminInputOptions()...)
+		if executeErr != nil {
+			if len(results.Items) > 0 {
+				if err := renderUpdateProcessInstanceVariableFailure(cmd, results, executeErr); err != nil {
+					handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("render partial update result: %w", err))
+				}
+				exitAfterRenderedResult(cfg.App.NoErrCodes, executeErr)
+			}
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("update process-instance variables: %w", executeErr))
 		}
 		if err := renderUpdateProcessInstanceVariableResults(cmd, results); err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("render update result: %w", err))
@@ -97,16 +118,23 @@ Use --dry-run to inspect changes without mutation, or --auto-confirm for unatten
 	},
 }
 
+// init registers assignment and variable-update flags with the shared mutation contract.
 func init() {
 	updateCmd.AddCommand(updateProcessInstanceCmd)
 
+	setFlagMigrations(updateProcessInstanceCmd, map[string]flagMigration{
+		"vars":      {Replacement: "--set-vars", TakesValue: true},
+		"vars-file": {Replacement: "--set-vars-file", TakesValue: true},
+	})
 	fs := updateProcessInstanceCmd.Flags()
+	registerBusinessIDActionFlags(updateProcessInstanceCmd)
+	fs.StringVar(&flagUpdatePISetBID, "set-bid", "", "assign an exact native business ID to explicit process keys (only c8.10+)")
 	fs.StringSliceVarP(&flagUpdatePIKeys, "key", "k", nil, "process instance key(s) to update; repeat or combine with stdin '-'")
-	fs.StringVar(&flagUpdatePIVars, "vars", "", "JSON object with variables to set on each process instance")
-	fs.StringVar(&flagUpdatePIVarsFile, "vars-file", "", "path to JSON object file with variables to set on each process instance")
-	fs.BoolVar(&flagDryRun, "dry-run", false, "preview variable updates without submitting mutation")
-	fs.BoolVar(&flagNoWait, "no-wait", false, "return after the update request is accepted without variable confirmation")
-	fs.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers when updating multiple process instances (default: min(count, 2*GOMAXPROCS, 32))")
+	fs.StringVar(&flagUpdatePIVars, "set-vars", "", "JSON object with variables to set on each process instance")
+	fs.StringVar(&flagUpdatePIVarsFile, "set-vars-file", "", "path to JSON object file with variables to set on each process instance")
+	fs.BoolVar(&flagDryRun, "dry-run", false, "preview variable updates or business-ID assignment without submitting mutation")
+	fs.BoolVar(&flagNoWait, "no-wait", false, "return after the update request is accepted without confirmation")
+	fs.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers; omit for an automatic limit")
 	fs.BoolVar(&flagNoWorkerLimit, "no-worker-limit", false, "use all queued jobs as workers when --workers is unset")
 	fs.BoolVar(&flagFailFast, "fail-fast", false, "stop scheduling new updates after the first error")
 

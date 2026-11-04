@@ -41,6 +41,7 @@ func WithClient(c GenResourceClientCamunda, pdc GenProcessDefinitionClientCamund
 	}
 }
 
+// New prepares the versioned adapter with lazy invocation preflight on generated requests.
 func New(cfg *config.Config, httpClient *http.Client, log *slog.Logger, opts ...Option) (*Service, error) {
 	deps, err := common.PrepareServiceDeps(cfg, httpClient, log)
 	if err != nil {
@@ -48,7 +49,7 @@ func New(cfg *config.Config, httpClient *http.Client, log *slog.Logger, opts ...
 	}
 	c, err := camundav810.NewClientWithResponses(
 		deps.Config.APIs.Camunda.BaseURL,
-		camundav810.WithHTTPClient(deps.HTTPClient),
+		camundav810.WithHTTPClient(deps.APIClient),
 	)
 	if err != nil {
 		return nil, err
@@ -106,6 +107,9 @@ func (s *Service) Delete(ctx context.Context, resourceKey string, opts ...servic
 	// definition finishes draining, with no batch returned. The definition
 	// workflow still confirms disappearance unless NoWait is set; do not
 	// invent a completed history batch or replay the mutation to obtain one.
+	if result.BatchOperationKey == "" {
+		result.Status = fmt.Sprintf("%s; deletion accepted", result.Status)
+	}
 	if !result.DeleteHistory || cCfg.NoWait || result.BatchOperationKey == "" {
 		return result, nil
 	}

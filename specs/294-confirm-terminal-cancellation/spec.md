@@ -86,7 +86,7 @@ As an automation author, I want explicit state expectations and existing command
 - **FR-006**: Explicit `expect process-instance --state canceled` matching MUST remain unchanged: `COMPLETED` and `ABSENT` MUST NOT become matches, and the existing `CANCELED`/`TERMINATED` equivalence MUST remain intact.
 - **FR-007**: Existing CLI output wording and formats, public result models, retries, flag semantics, and outcome reporting MUST remain unchanged apart from correcting the false cancellation-confirmation failures identified here. In particular, `--no-wait` and `--no-state-check` MUST retain their current behavior.
 - **FR-008**: Existing submission errors, read errors, timeouts, and interruptions MUST retain their handling unless an observed state satisfies FR-001. Absence MUST use existing detection semantics, rather than treating arbitrary failures as absence.
-- **FR-009**: Acceptance coverage MUST verify completed descendants, natural completion during confirmation, already-terminal root no-ops, disappearance during confirmation, continued waiting for nonterminal members, and unchanged explicit cancelled-state expectations for Camunda 8.7, 8.8, 8.9, and 8.10.
+- **FR-009**: Acceptance coverage MUST verify completed descendants, natural completion during confirmation, already-terminal root no-ops, disappearance during confirmation, continued waiting for nonterminal members, and unchanged explicit cancelled-state expectations for Camunda 8.8, 8.9, and 8.10.
 - **FR-010**: At least one focused process-definition cleanup acceptance test MUST include a completed descendant and verify that the existing cleanup workflow can finish without a false cancellation timeout.
 
 ### Key Entities
@@ -112,5 +112,5 @@ As an automation author, I want explicit state expectations and existing command
 - Existing family discovery, target selection, permissions, force eligibility, and absence detection remain authoritative; this feature changes which observed states satisfy cancellation confirmation.
 - The successful no-op for an already-terminal root uses the existing precheck behavior and does not expand family discovery or override `--no-state-check`.
 - Existing timeout limits and polling behavior are sufficient; the issue requires correcting acceptance semantics rather than introducing a new performance target.
-- Camunda 8.7, 8.8, 8.9, and 8.10 are the required compatibility matrix. Existing cleanup and state-expectation capabilities provide the dependencies for the acceptance scenarios.
+- Camunda 8.8, 8.9, and 8.10 are the required compatibility matrix. Existing cleanup and state-expectation capabilities provide the dependencies for the acceptance scenarios.
 - Planning will apply repository architecture, test, and documentation requirements, including recording whether documentation changes are necessary for this behavior correction.

@@ -97,11 +97,6 @@ internal/services/resource/
 ├── api.go
 ├── factory.go
 ├── factory_test.go
-├── v87/
-│   ├── contract.go
-│   ├── convert.go
-│   ├── service.go
-│   └── service_test.go
 └── v88/
     ├── contract.go
     ├── convert.go

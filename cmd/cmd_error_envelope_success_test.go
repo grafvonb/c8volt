@@ -23,6 +23,10 @@ func TestCommandErrorEnvelopeSuccess(t *testing.T) {
 	t.Run("flag and stdin keys retain order and caller deduplication", func(t *testing.T) {
 		var requests testx.SafeSlice[string]
 		server := testx.NewIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if serveVersionCheckTopology(w, r, "8.8") {
+				return
+			}
+
 			require.Equal(t, http.MethodGet, r.Method)
 			key := strings.TrimPrefix(r.URL.Path, "/v2/process-instances/")
 			require.Contains(t, []string{"2251799813711967", "2251799813711968", "2251799813711969"}, key)
@@ -82,6 +86,10 @@ func TestCommandErrorEnvelopeSuccess(t *testing.T) {
 	t.Run("process-definition list key and XML outputs remain distinct", func(t *testing.T) {
 		var requests testx.SafeSlice[string]
 		server := testx.NewIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if serveVersionCheckTopology(w, r, "8.8") {
+				return
+			}
+
 			requests.Append(r.Method + " " + r.URL.Path)
 			switch {
 			case r.Method == http.MethodPost && r.URL.Path == "/v2/process-definitions/search":

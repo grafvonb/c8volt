@@ -21,7 +21,6 @@ Started: 2026-09-16T02:43:39Z
 
 - The active feature pointer, branch, task artifacts, and plan agree on `321-listener-timestamps`; no conflict with `AGENTS.md`, constitution v2.0.0, or `specs/ralph-implementation-rules.md` was found.
 - Use the repository-declared Go 1.26 / go1.26.2 toolchain and proportionate targeted validation; setup-only artifact changes do not require runtime tests.
-- Preserve supplied timestamps without version cutoffs in v88, v89, and v810; missing/null values remain nil, while v87 retrieval stays explicitly unsupported.
 
 ## Gotchas
 
@@ -32,7 +31,6 @@ Started: 2026-09-16T02:43:39Z
 - `.specify/scripts/bash/check-prerequisites.sh --json --require-tasks --include-tasks`
 - `go test ./internal/domain -run 'RuntimeListenerJob|Timestamp' -count=1`
 - `go test ./internal/services/job/... -run 'TestSearchJobsByKey|TestService_SearchJobs|Timestamp' -count=1`
-- `go test ./internal/services/job/v87 -run 'TestService_GetJob_Unsupported|TestService_SearchJobs_Unsupported' -count=1 -v`
 - `go test ./c8volt/element -run 'Listener|Timestamp' -count=1`
 - `go test ./cmd -run 'GetElement|ElementListener|ListenerTimestamp' -count=1`
 - `go test ./c8volt/process ./c8volt/ops -run 'Listener|Timestamp|SlowProcessAnalysis' -count=1`

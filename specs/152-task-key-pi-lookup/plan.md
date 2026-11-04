@@ -5,7 +5,6 @@
 
 ## Summary
 
-Add repeatable `--has-user-tasks` as a lookup selector on `get process-instance` / `get pi`. For Camunda 8.8 and 8.9, resolve owning process-instance keys through tenant-aware native generated Camunda v2 user-task search, then pass those resolved keys into the existing keyed process-instance lookup and rendering path. Camunda 8.7 must reject `--has-user-tasks` explicitly, and the command must reject combinations with other selectors, search filters, `--total`, or `--limit`.
 
 ## Technical Context
 
@@ -16,7 +15,6 @@ Add repeatable `--has-user-tasks` as a lookup selector on `get process-instance`
 **Target Platform**: CLI on the repository's supported platforms  
 **Project Type**: Go CLI  
 **Performance Goals**: Task-key lookup performs one tenant-aware user-task search per user task key plus the existing keyed process-instance lookup; no fallback API fan-out  
-**Constraints**: Use only native Camunda v2 user-task search for 8.8/8.9; reject 8.7; do not call Tasklist or Operate for user-task resolution; preserve existing output shape after resolution  
 **Scale/Scope**: One or more user task keys resolve to owning process instances per command invocation
 
 ## Constitution Check
@@ -69,7 +67,6 @@ internal/
     └── usertask/
         ├── api.go
         ├── factory.go
-        ├── v87/
         ├── v88/
         └── v89/
 
@@ -94,7 +91,6 @@ See [research.md](./research.md).
 
 ## Post-Design Constitution Check
 
-- **Operational Proof Over Intent**: PASS. The design requires tests that assert the user-task call resolves before process-instance rendering and that 8.7 does not perform fallback calls.
 - **CLI-First, Script-Safe Interfaces**: PASS. The CLI contract defines accepted commands, invalid combinations, exit behavior, and output preservation.
 - **Tests and Validation Are Mandatory**: PASS. The task plan will include command-level tests, version service tests, docs tests, generated-doc validation, targeted Go tests, and `make test`.
 - **Documentation Matches User Behavior**: PASS. README/help/generated docs are explicit deliverables.

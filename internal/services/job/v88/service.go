@@ -48,6 +48,7 @@ func WithLogger(logger *slog.Logger) Option {
 	}
 }
 
+// New prepares the versioned adapter with lazy invocation preflight on generated requests.
 func New(cfg *config.Config, httpClient *http.Client, log *slog.Logger, opts ...Option) (*Service, error) {
 	deps, err := common.PrepareServiceDeps(cfg, httpClient, log)
 	if err != nil {
@@ -55,7 +56,7 @@ func New(cfg *config.Config, httpClient *http.Client, log *slog.Logger, opts ...
 	}
 	c, err := camundav88.NewClientWithResponses(
 		deps.Config.APIs.Camunda.BaseURL,
-		camundav88.WithHTTPClient(deps.HTTPClient),
+		camundav88.WithHTTPClient(deps.APIClient),
 	)
 	if err != nil {
 		return nil, err
@@ -396,7 +397,11 @@ func (s *Service) UpdateJob(ctx context.Context, request d.JobUpdateRequest, opt
 	return result, nil
 }
 
+// SubmitJobWorkerOutcome rejects unsupported assignment before dispatching ordinary worker outcomes.
 func (s *Service) SubmitJobWorkerOutcome(ctx context.Context, request d.JobWorkerOutcomeRequest, opts ...services.CallOption) (d.JobWorkerOutcomeResult, error) {
+	if request.SetBusinessID != nil {
+		return d.JobWorkerOutcomeResult{}, fmt.Errorf("%w: business-ID assignment requires Camunda 8.10", d.ErrUnsupported)
+	}
 	_ = services.ApplyCallOptions(opts)
 	switch request.Mode {
 	case d.JobWorkerOutcomeTechnicalFailure:

@@ -12,19 +12,14 @@ Operate Camunda 8 workflows from the command line
 
 ### Synopsis
 
-c8volt: Camunda 8 Operations CLI.
+Operate Camunda 8 with c8volt v5: inspect, repair, deploy, and clean up.
 
-Deploy BPMN models, start process instances, inspect workflow state, wait for
-state changes, walk process trees, cancel, and delete.
+Documentation and examples target Camunda 8.10; 8.9 and 8.8 remain supported.
+Set app.camunda_version to match your cluster. Start with config test-connection,
+then use ops playbooks for repair, retention, purge, and runtime analysis.
 
-Supports Camunda 8.7, 8.8, 8.9, and 8.10.
-Camunda 8.10 baseline: 8.10.0-alpha4 (prerelease).
-Camunda 8.10 aliases: 8.10, 810, v810, v8.10. Default: 8.9.
-Use capabilities to discover supported commands and automation options.
-
-On API-backed commands, --debug emits redacted request diagnostics at DEBUG
-alongside other configured logs. --quiet and log-level filtering still apply;
-log format, timestamps, and source settings use the existing logger.
+Preview changes with --dry-run where supported. Use --auto-confirm for unattended
+execution and --json for scripts. See capabilities --json for command support.
 
 ```
 c8volt [flags]
@@ -33,35 +28,31 @@ c8volt [flags]
 ### Examples
 
 ```
-  ./c8volt config show --template
-  ./c8volt --config ./config.yaml config show --validate
-  ./c8volt get cluster topology
-  ./c8volt --config ./config.yaml --debug get process-definition --latest
-  ./c8volt --all-tenants get process-instance --state active
-  ./c8volt embed deploy --all --run
-  ./c8volt run process-instance --bpmn-process-id <bpmn-process-id>
-  ./c8volt capabilities --json
-  ./c8volt get --help
+  c8volt config test-connection
+  c8volt get process-instance --state active --limit 10
+  c8volt ops repair incident --key <incident-key> --dry-run
 ```
 
 ### Options
 
 ```
-      --all-tenants        clear configured tenant filtering and search all tenants visible to the authenticated user; mutually exclusive with --tenant
-  -y, --auto-confirm       auto-confirm prompts for non-interactive use
-      --automation         enable non-interactive mode for commands that explicitly support it
-      --config string      path to config file
-      --debug              enable debug logging
-  -h, --help               help for c8volt
-  -j, --json               output as JSON (where applicable)
-      --keys-only          output keys only (where applicable)
-      --log-level string   log level (debug, info, warn, error) (default "info")
-      --no-indicator       disable transient terminal activity indicators
-      --profile string     config active profile name to use (e.g. dev, prod)
-  -q, --quiet              suppress output except errors
-      --tenant string      tenant ID for discovery/search, selection, create, deploy, and run flows; explicit empty values can clear configured discovery filters, and explicit keys/IDs remain backend-authorized
-      --timeout duration   HTTP request timeout (default 30s)
-  -v, --verbose            show additional output
+      --all-tenants          search all accessible tenants; cannot combine with --tenant
+  -y, --auto-confirm         auto-confirm prompts for non-interactive use
+      --automation           enable non-interactive mode for commands that explicitly support it
+      --config string        path to config file
+      --debug                enable debug logging
+  -h, --help                 help for c8volt
+  -j, --json                 output as JSON (where applicable)
+      --keys-only            output keys only (where applicable)
+      --log-level string     log level (debug, info, warn, error) (default "info")
+      --no-indicator         disable transient terminal activity indicators
+      --no-version-check     skip the automatic advisory gateway version check
+      --profile string       config active profile name to use (e.g. dev, prod)
+  -q, --quiet                suppress output except errors
+      --request-rate float   maximum shared request starts per second (fractions allowed; 0 disables pacing)
+      --tenant string        tenant for discovery and creation; explicit keys use backend authorization
+      --timeout duration     HTTP request timeout (default 30s)
+  -v, --verbose              show additional output
 ```
 
 ### SEE ALSO
@@ -76,7 +67,9 @@ c8volt [flags]
 * [c8volt get]({{ "/cli/c8volt_get" | relative_url }})	 - Inspect cluster, process, job, element, incident, tenant, and resource state
 * [c8volt ops]({{ "/cli/c8volt_ops" | relative_url }})	 - Run operational playbooks
 * [c8volt resolve]({{ "/cli/c8volt_resolve" | relative_url }})	 - Resolve operational incidents
+* [c8volt resume]({{ "/cli/c8volt_resume" | relative_url }})	 - Resume suspended process instances
 * [c8volt run]({{ "/cli/c8volt_run" | relative_url }})	 - Start process instances
+* [c8volt suspend]({{ "/cli/c8volt_suspend" | relative_url }})	 - Suspend active process instances
 * [c8volt update]({{ "/cli/c8volt_update" | relative_url }})	 - Update existing resources
 * [c8volt version]({{ "/cli/c8volt_version" | relative_url }})	 - Print version information
 * [c8volt walk]({{ "/cli/c8volt_walk" | relative_url }})	 - Inspect process-instance relationships

@@ -10,8 +10,7 @@ Started: 2026-05-01 13:08:19
 - New Go packages use SPDX copyright/license headers before the package clause.
 - Facade and internal service packages expose an `API` interface from `api.go`; early skeleton packages may keep that interface empty until implementation tasks add methods.
 - Domain structs live in `internal/domain` with JSON tags when values may flow to public or command-facing output.
-- Generated `v8.8` and `v8.9` tenant client shapes match for the planned tenant discovery path; `v8.7` has no generated `SearchTenants` or `GetTenant` methods.
-- Internal service factories route by `toolx.CamundaVersion`; tests cover `v8.7`, `v8.8`, `v8.9`, unknown versions, and `toolx.CurrentCamundaVersion` resolving to `v8.8`.
+- Internal service factories route by `toolx.CamundaVersion`; tests cover `v8.8`, `v8.9`, unknown versions, and `toolx.CurrentCamundaVersion` resolving to `v8.8`.
 - Public facade clients translate `foptions.FacadeOption` values to internal `services.CallOption` values, convert domain models to public JSON-ready models, and map domain errors through `ferrors.FromDomain`.
 - Top-level `c8volt.New` wires each internal service factory into a public facade, embeds the facade interface in the root client struct, and exposes matching type aliases.
 - Unsupported version services wrap `domain.ErrUnsupported` with operation-specific text so facade normalization can classify the failure consistently.
@@ -19,7 +18,6 @@ Started: 2026-05-01 13:08:19
 - Public tenant facade filtering stays local: commands pass raw `--filter` text as `tenant.TenantFilter.NameContains`, the facade applies the domain literal-contains helper before final sorting, and versioned services remain unaware of CLI filter semantics.
 - `get` list renderers should use the shared `listOrJSON` helper so one-line, `--keys-only`, and JSON/envelope modes stay consistent with existing command output behavior.
 - Single-item `get` renderers should use the shared `itemView` helper so human, `--keys-only`, and JSON/envelope modes stay consistent with existing command output behavior.
-- Unsupported-version command tests can use helper subprocesses with a `v8.7` config and `http://127.0.0.1:1` base URL because tenant services fail before making network calls.
 - Phase 7 validation tasks remain unchecked unless the required commands pass end-to-end; package-level tenant passes do not satisfy T057/T058 when `cmd` or unrelated packages fail under listener restrictions.
 - Listener-dependent tests should route through `testx.NewIPv4Server`, `testx.NewIPv4TLSServer`, or the `cmd` package `newIPv4Server` wrapper so listener-restricted environments skip cleanly instead of panicking in `httptest.NewServer`.
 
@@ -49,10 +47,7 @@ Started: 2026-05-01 13:08:19
 - [x] T005: Implement tenant sort and literal name-filter helpers in `internal/domain/tenant.go`
 - [x] T006: Add domain helper tests for tenant sorting and literal filtering in `internal/domain/tenant_test.go`
 - [x] T007: Define `internal/services/tenant.API` list and get operations in `internal/services/tenant/api.go`
-- [x] T008: Implement tenant service factory with `v87`, `v88`, and `v89` routing in `internal/services/tenant/factory.go`
 - [x] T009: Add tenant factory version routing tests in `internal/services/tenant/factory_test.go`
-- [x] T010: Implement `v87` unsupported tenant service in `internal/services/tenant/v87/service.go`
-- [x] T011: Add `v87` unsupported service tests in `internal/services/tenant/v87/service_test.go`
 - [x] T012: Define public tenant facade models in `c8volt/tenant/model.go`
 - [x] T013: Implement tenant facade conversion helpers in `c8volt/tenant/convert.go`
 - [x] T014: Implement tenant facade client in `c8volt/tenant/client.go`
@@ -67,9 +62,6 @@ Started: 2026-05-01 13:08:19
 - internal/services/tenant/api.go
 - internal/services/tenant/factory.go
 - internal/services/tenant/factory_test.go
-- internal/services/tenant/v87/contract.go
-- internal/services/tenant/v87/service.go
-- internal/services/tenant/v87/service_test.go
 - internal/services/tenant/v88/contract.go
 - internal/services/tenant/v88/service.go
 - internal/services/tenant/v89/contract.go
@@ -196,7 +188,6 @@ Started: 2026-05-01 13:08:19
 **User Story**: User Story 4 - Structured Output and Version-Aware Support
 **Tasks Completed**:
 - [x] T046: Add JSON list and keyed command tests in `cmd/get_tenant_test.go`
-- [x] T047: Add `v8.7` unsupported command tests in `cmd/get_tenant_test.go`
 - [x] T048: Add generated-client sensitive-field exclusion assertions in `c8volt/tenant/client_test.go`
 - [x] T049: Add existing `get` command preservation smoke test in `cmd/get_test.go`
 - [x] T050: Ensure tenant list JSON output uses the public tenant model in `cmd/cmd_views_get.go`
@@ -262,7 +253,6 @@ Started: 2026-05-01 13:08:19
 - specs/151-tenant-discovery/progress.md
 **Learnings**:
 - `GOCACHE=/tmp/c8volt-go-build go test ./internal/services/tenant/... ./c8volt/tenant ./cmd -run 'Test.*Tenant' -count=1` passes `internal/services/tenant/...` and `c8volt/tenant`, then fails in `cmd/deploy_test.go` because `httptest.NewServer` cannot bind a listener in this sandbox.
-- `GOCACHE=/tmp/c8volt-go-build make test` passes the tenant packages and many unrelated packages, then fails on listener-restricted `httptest` usage in `cmd/deploy_test.go`, `internal/services/auth/cookie`, and `internal/services/cluster/v87`/`v88`.
 - T057 and T058 remain unchecked because the required validation commands did not pass end-to-end.
 ---
 ---
@@ -311,7 +301,6 @@ Started: 2026-05-01 13:08:19
 - specs/151-tenant-discovery/progress.md
 **Learnings**:
 - `GOCACHE=/tmp/c8volt-go-build go test ./internal/services/tenant/... ./c8volt/tenant ./cmd -run 'Test.*Tenant' -count=1` still passes `internal/services/tenant/...` and `c8volt/tenant`, then fails in `cmd/deploy_test.go` because `httptest.NewServer` cannot bind a listener in this sandbox.
-- `GOCACHE=/tmp/c8volt-go-build make test` still passes the tenant packages and many unrelated packages, then fails on listener-restricted `httptest` usage in `cmd/deploy_test.go`, `internal/services/auth/cookie`, and `internal/services/cluster/v87`/`v88`.
 - T057 and T058 remain unchecked because the required validation commands did not pass end-to-end.
 ---
 ---
@@ -325,7 +314,6 @@ Started: 2026-05-01 13:08:19
 - specs/151-tenant-discovery/progress.md
 **Learnings**:
 - `GOCACHE=/tmp/c8volt-go-build go test ./internal/services/tenant/... ./c8volt/tenant ./cmd -run 'Test.*Tenant' -count=1` passes `internal/services/tenant/...` and `c8volt/tenant`, then fails in `cmd/deploy_test.go` because `httptest.NewServer` cannot bind a listener in this sandbox.
-- `GOCACHE=/tmp/c8volt-go-build make test` passes tenant packages and many unrelated packages, then fails on listener-restricted `httptest` usage in `cmd/deploy_test.go`, `internal/services/auth/cookie`, and `internal/services/cluster/v87`/`v88`.
 - T057 and T058 remain unchecked because the required validation commands did not pass end-to-end.
 ---
 ---
@@ -339,6 +327,5 @@ Started: 2026-05-01 13:08:19
 - specs/151-tenant-discovery/progress.md
 **Learnings**:
 - `GOCACHE=/tmp/c8volt-go-build go test ./internal/services/tenant/... ./c8volt/tenant ./cmd -run 'Test.*Tenant' -count=1` still passes `internal/services/tenant/...` and `c8volt/tenant`, then fails in `cmd/deploy_test.go` because `httptest.NewServer` cannot bind a listener in this sandbox.
-- `GOCACHE=/tmp/c8volt-go-build make test` still passes tenant packages and many unrelated packages, then fails on listener-restricted `httptest` usage in `cmd/deploy_test.go`, `internal/services/auth/cookie`, and `internal/services/cluster/v87`/`v88`.
 - T057 and T058 remain unchecked because the required validation commands did not pass end-to-end.
 ---

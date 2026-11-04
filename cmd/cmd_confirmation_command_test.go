@@ -58,6 +58,10 @@ func TestConfirmationCommand(t *testing.T) {
 			configuredCapturePath := filepath.Join(t.TempDir(), "configured-stderr.txt")
 			var requests testx.SafeSlice[string]
 			srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if serveVersionCheckTopology(w, r, "8.9") {
+					return
+				}
+
 				requests.Append(r.Method + " " + r.URL.Path)
 				require.Equal(t, http.MethodPost, r.Method)
 				require.Equal(t, "/v2/resources/2251799813685255/deletion", r.URL.Path)

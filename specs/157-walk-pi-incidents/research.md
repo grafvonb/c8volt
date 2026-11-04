@@ -2,7 +2,6 @@
 
 ## Decision: Reuse issue #154 incident detail models and lookup behavior
 
-**Rationale**: Issue #154 already introduced `ProcessInstanceIncidentDetail`, enriched process-instance output, tenant-aware incident search methods, and v8.7 unsupported behavior. Reusing those models keeps this feature aligned with existing output conventions and avoids adding a parallel incident representation for walk.
 
 **Issue #154 review**: The persisted issue text and current code agree on the core fields needed here: incident key, process-instance key, tenant ID, state, error type, error message, flow-node/job metadata, root process-instance key, and process-definition identifiers. No field mismatch was found between the issue #154 behavior and the walk enrichment needs. Walk-specific output should add traversal metadata around the same incident detail model rather than changing the incident fields.
 
@@ -37,15 +36,6 @@
 
 - Return the issue #154 `IncidentEnrichedProcessInstances` payload directly. Rejected because it would drop walk-specific traversal metadata.
 - Add incidents to all default `ProcessInstance` JSON. Rejected because default output must remain unchanged when `--with-incidents` is omitted.
-
-## Decision: v8.7 remains explicit unsupported for incident enrichment
-
-**Rationale**: Issue #157 repeats the tenant-safety requirement from issue #154. The existing v8.7 incident lookup path returns unsupported because tenant-safe keyed enrichment cannot be guaranteed from the current boundary.
-
-**Alternatives considered**:
-
-- Use a tenant-unsafe direct incident lookup fallback. Rejected by the issue and repository safety guidance.
-- Silently omit incidents on v8.7. Rejected because it would make diagnostics misleading.
 
 ## Decision: Incident enrichment failure fails the command
 

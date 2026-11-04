@@ -75,7 +75,7 @@ func TestBulkCompletionExecuteGuards(t *testing.T) {
 			ports := ExecutionPorts{Get: func(context.Context, string, ...services.CallOption) (d.Job, error) {
 				calls.Add(1)
 				return d.Job{}, nil
-			}, Submit: func(context.Context, d.Job, map[string]any) (d.CompletionSubmission, error) {
+			}, Submit: func(context.Context, d.Job, d.CompletionPayload) (d.CompletionSubmission, error) {
 				calls.Add(1)
 				return d.CompletionSubmission{}, nil
 			}}
@@ -159,11 +159,11 @@ func TestBulkCompletionExecuteRechecks(t *testing.T) {
 					tc.mutate(&j)
 				}
 				return j, tc.readErr
-			}, Submit: func(_ context.Context, j d.Job, v map[string]any) (d.CompletionSubmission, error) {
+			}, Submit: func(_ context.Context, j d.Job, v d.CompletionPayload) (d.CompletionSubmission, error) {
 				writes++
 				require.Equal(t, tc.state, j.State)
 				require.Zero(t, j.Retries)
-				require.Equal(t, b.Variables, v)
+				require.Equal(t, b.Variables, v.Variables)
 				return d.CompletionSubmission{Status: d.CompletionSubmissionAccepted}, nil
 			}}
 			r, err := Execute(context.Background(), b, "tenant", config.BackoffConfig{}, ports, 1, services.WithForce(), services.WithNoStateCheck(), services.WithIgnoreTenant())
@@ -192,7 +192,7 @@ func TestBulkCompletionExecuteContinueAndFailFast(t *testing.T) {
 			var submitted []string
 			ports := ExecutionPorts{Get: func(_ context.Context, key string, _ ...services.CallOption) (d.Job, error) {
 				return d.Job{Key: key, State: "CREATED"}, nil
-			}, Submit: func(_ context.Context, j d.Job, _ map[string]any) (d.CompletionSubmission, error) {
+			}, Submit: func(_ context.Context, j d.Job, _ d.CompletionPayload) (d.CompletionSubmission, error) {
 				submitted = append(submitted, j.Key)
 				if j.Key == "2" {
 					return d.CompletionSubmission{Status: d.CompletionSubmissionRejected}, d.ErrForbidden
@@ -227,7 +227,7 @@ func TestBulkCompletionExecuteInflight(t *testing.T) {
 	var started atomic.Int32
 	ports := ExecutionPorts{Get: func(_ context.Context, key string, _ ...services.CallOption) (d.Job, error) {
 		return d.Job{Key: key, State: "CREATED"}, nil
-	}, Submit: func(ctx context.Context, j d.Job, _ map[string]any) (d.CompletionSubmission, error) {
+	}, Submit: func(ctx context.Context, j d.Job, _ d.CompletionPayload) (d.CompletionSubmission, error) {
 		if started.Add(1) == 2 {
 			close(bothStarted)
 		}
@@ -266,7 +266,7 @@ func TestBulkCompletionExecuteConcurrencyAndCancellation(t *testing.T) {
 	var active, peak, writes atomic.Int32
 	ports := ExecutionPorts{Get: func(_ context.Context, key string, _ ...services.CallOption) (d.Job, error) {
 		return d.Job{Key: key, State: "CREATED"}, nil
-	}, Submit: func(_ context.Context, j d.Job, _ map[string]any) (d.CompletionSubmission, error) {
+	}, Submit: func(_ context.Context, j d.Job, _ d.CompletionPayload) (d.CompletionSubmission, error) {
 		n := active.Add(1)
 		for old := peak.Load(); n > old && !peak.CompareAndSwap(old, n); old = peak.Load() {
 		}
@@ -284,7 +284,7 @@ func TestBulkCompletionExecuteConcurrencyAndCancellation(t *testing.T) {
 	for _, count := range []int{1, 3} {
 		b = preparedForExecution(t, count)
 		ctx, cancel := context.WithCancel(context.Background())
-		ports.Submit = func(context.Context, d.Job, map[string]any) (d.CompletionSubmission, error) {
+		ports.Submit = func(context.Context, d.Job, d.CompletionPayload) (d.CompletionSubmission, error) {
 			cancel()
 			return d.CompletionSubmission{Status: d.CompletionSubmissionAccepted}, nil
 		}
@@ -331,7 +331,7 @@ func TestBulkCompletionExecuteSearchScope(t *testing.T) {
 						j := original
 						change(&j)
 						return j, nil
-					}, Submit: func(context.Context, d.Job, map[string]any) (d.CompletionSubmission, error) {
+					}, Submit: func(context.Context, d.Job, d.CompletionPayload) (d.CompletionSubmission, error) {
 						writes++
 						return d.CompletionSubmission{Status: d.CompletionSubmissionAccepted}, nil
 					}}
@@ -380,7 +380,7 @@ func TestBulkCompletionExecuteDefaultWorkerPolicy(t *testing.T) {
 			ready := make(chan struct{})
 			ports := ExecutionPorts{Get: func(_ context.Context, key string, _ ...services.CallOption) (d.Job, error) {
 				return d.Job{Key: key, State: "CREATED"}, nil
-			}, Submit: func(ctx context.Context, _ d.Job, _ map[string]any) (d.CompletionSubmission, error) {
+			}, Submit: func(ctx context.Context, _ d.Job, _ d.CompletionPayload) (d.CompletionSubmission, error) {
 				n := active.Add(1)
 				defer active.Add(-1)
 				for old := peak.Load(); n > old && !peak.CompareAndSwap(old, n); old = peak.Load() {

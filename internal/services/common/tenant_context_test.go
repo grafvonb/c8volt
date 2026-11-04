@@ -129,7 +129,6 @@ func TestEffectiveTenant_UsesNormalizedVersionSpecificTenantSemantics(t *testing
 		version    toolx.CamundaVersion
 		wantTenant string
 	}{
-		{name: "v87 omitted tenant becomes default tenant", version: toolx.V87, wantTenant: config.DefaultTenant},
 		{name: "v88 omitted tenant stays unfiltered", version: toolx.V88},
 		{name: "v89 omitted tenant stays unfiltered", version: toolx.V89},
 		{name: "v810 omitted tenant stays unfiltered", version: toolx.V810},

@@ -4,6 +4,7 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -33,27 +34,23 @@ var (
 	flagGetPDWatchTimeout      time.Duration
 )
 
+// getProcessDefinitionCmd exposes definition reads and their existing output modes.
 var getProcessDefinitionCmd = &cobra.Command{
 	Use:   "process-definition",
 	Short: "List or fetch deployed process definitions",
-	Long: `List or fetch deployed process definitions.
+	Long: `Inspect deployed process definitions. Use --latest for the newest version of
+each tenant and BPMN process ID, or --key for one exact definition.
 
-Select by key, BPMN process ID, version, or version tag. Use --xml only with --key. A --bpmn-process-id selector must match a visible definition.
+Add --with-stats for instance and incident counts. Lifecycle state and suspended
+counts are available only c8.10+. DRAINING blocks new starts while unfinished
+instances remain; active and suspended counts are separate.
 
---tenant limits list and selector discovery. Explicit --key and XML lookups use backend authorization without tenant filtering.
-
---latest selects the newest definition per exact tenant ID and BPMN process ID, breaking version ties by the lowest exact-text key. Camunda 8.7 selects within its 1000 visible-definition compatibility window; Camunda 8.8 or newer uses native latest filtering.
-
---stat includes exact-version statistics and requires Camunda 8.8 or newer.
-
---watch repeats the lookup indefinitely by default until interrupted or retries are exhausted. --watch-timeout sets an optional session limit (0 = unlimited), independently of --timeout for individual HTTP requests and the retry-loop backoff timeout. Individual request timeouts are retried while the session remains active. It starts immediately; --watch-interval controls subsequent checks. Without a selector it observes all visible definitions. Each successful refresh logs a timestamped INFO summary, including when nothing changed, compared with the previous successfully displayed refresh, for example: 16:42:08.123 INFO 1 updated, 1 new, 0 removed. Rows end with * for changed definitions and + for new definitions; unchanged rows have no suffix; on supported terminal output, changed displayed values are also bold. Bold falls back to plain markers when TERM is empty or dumb, NO_COLOR is set, or output is redirected. The first successful refresh establishes an unmarked baseline. Failed refreshes do not replace that baseline, and an unchanged success clears prior markers and bold. Removed definitions contribute to the summary without leaving stale rows. --watch cannot be combined with --json, --keys-only, --xml, --quiet, or --automation.`,
-	Example: `  ./c8volt get process-definition --latest
-  ./c8volt get process-definition --bpmn-process-id <bpmn-process-id> --latest
-  ./c8volt get process-definition --bpmn-process-id <bpmn-process-id> --latest --watch
-  ./c8volt get process-definition --watch --watch-interval 2s
-  ./c8volt get process-definition --watch --watch-timeout 10m
-  ./c8volt get process-definition --key <process-definition-key> --json
-  ./c8volt get process-definition --key <process-definition-key> --xml`,
+Use --watch to refresh until interrupted, or --xml to retrieve the BPMN model.
+Watch requires human output and cannot be combined with --json, --keys-only,
+--xml, --quiet, or --automation.`,
+	Example: `  c8volt get process-definition --latest
+  c8volt get process-definition --bpmn-process-id order --with-stats
+  c8volt get process-definition --bpmn-process-id order --latest --watch`,
 	Aliases: []string{"pd", "pds"},
 	Run:     runGetProcessDefinition,
 }
@@ -99,17 +96,21 @@ func runGetProcessDefinitionXML(cmd *cobra.Command, cli c8volt.API, log *slog.Lo
 	}
 }
 
+// runGetProcessDefinitionByKey preserves machine error evidence while bounding human diagnostics.
 func runGetProcessDefinitionByKey(cmd *cobra.Command, cli c8volt.API, log *slog.Logger, noErrCodes bool, key string) {
 	log.Debug(fmt.Sprintf("getting pd %s", key))
 	pd, err := cli.GetProcessDefinition(cmd.Context(), key, collectExplicitAdminInputOptions()...)
 	if err != nil {
-		handleCommandError(cmd, log, noErrCodes, fmt.Errorf("get process definition: %w", err))
+		handleCommandError(cmd, log, noErrCodes, fmt.Errorf("get process definition: %w", err),
+			"get process definition: "+boundedCommandFailureReason(err))
 	}
 	if err := processDefinitionView(cmd, pd); err != nil {
 		ferrors.HandleAndExit(log, noErrCodes, fmt.Errorf("error rendering key-only view: %w", err))
 	}
 }
 
+// runSearchProcessDefinitions preserves selector diagnostics while keeping backend
+// failure evidence in JSON and DEBUG rather than normal human logs.
 func runSearchProcessDefinitions(cmd *cobra.Command, cli c8volt.API, log *slog.Logger, noErrCodes bool, filter process.ProcessDefinitionFilter) {
 	log.Debug(fmt.Sprintf("searching pd; filter %s", filter.String()))
 
@@ -120,7 +121,11 @@ func runSearchProcessDefinitions(cmd *cobra.Command, cli c8volt.API, log *slog.L
 	if filter.BpmnProcessId != "" {
 		result, err := validateProcessDefinitionSelectorsForCommand(cmd.Context(), cmd, cli, newGetPDProcessDefinitionSelectorValidationRequest(), collectOptions()...)
 		if err != nil {
-			handleCommandError(cmd, log, noErrCodes, err)
+			var missing processDefinitionSelectorMissingError
+			if errors.As(err, &missing) {
+				handleCommandError(cmd, log, noErrCodes, err)
+			}
+			handleCommandError(cmd, log, noErrCodes, err, "validate process definition selector: "+boundedCommandFailureReason(err))
 		}
 		if !result.Valid() {
 			handleProcessDefinitionSelectorValidationError(cmd, log, noErrCodes, cli, result)
@@ -132,7 +137,8 @@ func runSearchProcessDefinitions(cmd *cobra.Command, cli c8volt.API, log *slog.L
 		pds, err = searchProcessDefinitionsWithPaging(cmd, cli, filter)
 	}
 	if err != nil {
-		handleCommandError(cmd, log, noErrCodes, fmt.Errorf("search process definitions: %w", err))
+		handleCommandError(cmd, log, noErrCodes, fmt.Errorf("search process definitions: %w", err),
+			"search process definitions: "+boundedCommandFailureReason(err))
 	}
 	if err := listProcessDefinitionsView(cmd, pds); err != nil {
 		ferrors.HandleAndExit(log, noErrCodes, fmt.Errorf("error rendering items view: %w", err))
@@ -140,7 +146,9 @@ func runSearchProcessDefinitions(cmd *cobra.Command, cli c8volt.API, log *slog.L
 	log.Debug(fmt.Sprintf("pd search done; found %d", pds.Total))
 }
 
+// init registers canonical query flags and diagnostic-only legacy guidance.
 func init() {
+	setFlagMigrations(getProcessDefinitionCmd, map[string]flagMigration{"stat": {Replacement: "--with-stats"}})
 	getCmd.AddCommand(getProcessDefinitionCmd)
 
 	fs := getProcessDefinitionCmd.Flags()
@@ -149,10 +157,10 @@ func init() {
 	fs.BoolVar(&flagGetPDLatest, "latest", false, "only include the latest matching process-definition version per exact tenant/BPMN process group")
 	fs.Int32Var(&flagGetPDProcessVersion, "pd-version", 0, "process definition version")
 	fs.StringVar(&flagGetPDProcessVersionTag, "pd-version-tag", "", "process definition version tag")
-	fs.BoolVar(&flagGetPDWithStat, "stat", false, "include process definition statistics; 8.8 or newer includes incident counts, 8.7 unsupported")
+	fs.BoolVar(&flagGetPDWithStat, "with-stats", false, "include process definition statistics, incident counts, and suspended counts when supported")
 	fs.BoolVar(&flagGetPDAsXML, "xml", false, "output the selected process definition as raw XML (requires --key and no other filters)")
-	fs.Int32VarP(&flagGetPDBatchSize, "batch-size", "n", consts.MaxPISearchSize, fmt.Sprintf("number of process definitions to request per discovery page; does not cap total results (max limit %d enforced by server)", consts.MaxPISearchSize))
-	fs.BoolVar(&flagGetPDWatch, "watch", false, "repeat the process-definition lookup until interrupted, --watch-timeout is reached, or retries are exhausted")
+	fs.Int32VarP(&flagGetPDBatchSize, "batch-size", "n", consts.MaxPISearchSize, fmt.Sprintf("process definitions per discovery page (server maximum %d)", consts.MaxPISearchSize))
+	fs.BoolVar(&flagGetPDWatch, "watch", false, "repeat the process-definition lookup until stopped")
 	fs.Var(toolx.NewDurationStringValue(defaultGetPDWatchInterval.String(), &flagGetPDWatchInterval), "watch-interval", "interval between process-definition watch refreshes after the immediate first refresh")
 	fs.DurationVar(&flagGetPDWatchTimeout, "watch-timeout", 0, "maximum watch session duration (0 = unlimited; requires --watch)")
 
@@ -315,6 +323,7 @@ func processDefinitionOpsOverflowState(state process.ProcessInstanceOverflowStat
 	}
 }
 
+// validateProcessDefinitionXMLFlags keeps XML exclusive with enriched row output.
 func validateProcessDefinitionXMLFlags(filter process.ProcessDefinitionFilter) error {
 	if filter.Key == "" {
 		return missingDependentFlagsf("xml output requires --key to select a single process definition")
@@ -329,7 +338,7 @@ func validateProcessDefinitionXMLFlags(filter process.ProcessDefinitionFilter) e
 		{enabled: flagGetPDProcessVersion != 0, flag: "--pd-version"},
 		{enabled: filter.ProcessVersionTag != "", flag: "--pd-version-tag"},
 		{enabled: flagGetPDLatest, flag: "--latest"},
-		{enabled: flagGetPDWithStat, flag: "--stat"},
+		{enabled: flagGetPDWithStat, flag: "--with-stats"},
 		{enabled: flagViewAsJson, flag: "--json"},
 		{enabled: flagViewKeysOnly, flag: "--keys-only"},
 	} {

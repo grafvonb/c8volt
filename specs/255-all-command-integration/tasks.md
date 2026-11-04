@@ -306,7 +306,7 @@ Always validate inventory and profile readiness before destructive scenarios. Ru
 - [x] T097 Add executable `deploy`, `embed`, and `run` scenarios covering aliases, required selectors, variables, count, no-wait, output checks, and version-specific behavior per FR-013/US4/AC1
 - [x] T098 Add destructive `update`, `cancel`, `delete`, and `resolve` scenarios covering dry-run or preview behavior, confirmed mutation paths, validation failures, workers, no-wait, seeded data, and pre-existing data evidence per FR-015/US4/AC3
 - [x] T099 Add dedicated real `ops analyse`, `ops execute`, `ops purge`, and `ops repair` scenarios with report files, JSON or keys-only outputs, dry-run, confirmed execution, and version-specific unsupported behavior per FR-012/SC-005
-- [x] T100 Add an explicit selected-profile version matrix for Camunda 8.7, 8.8, and 8.9 and enforce expected supported or unsupported command behavior per FR-004/US4/AC2
+- [x] T100 Add an explicit selected-profile version matrix for Camunda 8.8 and 8.9 and enforce expected supported or unsupported command behavior per FR-004/US4/AC2
 - [x] T101 Make example validation fail with actionable source-location evidence for blocked or skipped examples unless they are explicitly allowed by policy, and ensure read-only examples execute where possible per FR-016/SC-006
 - [x] T102 Require destructive example warnings to come from the actual help or generated CLI documentation source rather than harness-generated warning text per FR-017
 - [x] T103 Extend actual command-family evidence to classify seeded, pre-existing, mutated, retained, and cleanup-failed data for each relevant command scenario per FR-018/SC-008

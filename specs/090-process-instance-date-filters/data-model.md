@@ -40,14 +40,12 @@
   - Bounds are interpreted in the configured Camunda environment’s local calendar day.
 - **Transformation rules**:
   - For v8.8, convert day inputs into datetime filters suitable for generated-client `$gte`/`$lte` comparisons.
-  - For v8.7, the presence of any date bound short-circuits to not implemented.
 
 ## Version Capability Rule
 
 - **Purpose**: Determines whether a search request using the new date fields is executable.
 - **States**:
   - `v8.8`: request proceeds with native date filtering.
-  - `v8.7`: request fails with not-implemented error when any date field is present.
 - **Invariants**:
   - Requests without new date fields keep current behavior on both versions.
   - Capability handling remains inside the existing versioned process-instance service split.
@@ -78,4 +76,3 @@
   - Invalid date format.
   - Inverted date range for start date or end date.
   - Direct lookup attempted with search-only date filters.
-  - Unsupported version path for any date-filtered search on v8.7.

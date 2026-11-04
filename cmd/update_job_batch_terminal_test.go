@@ -29,6 +29,13 @@ const bulkCompletionTerminalReady = "test terminal input ready\n"
 // TestBulkCompletionTerminalStreams proves real terminal decisions, inherited and
 // command-specific error writers, file redirection, and prompt-free machine modes.
 func TestBulkCompletionTerminalStreams(t *testing.T) {
+	for _, assignment := range []bool{false, true} {
+		t.Run(fmt.Sprint("assignment=", assignment), func(t *testing.T) { testBulkCompletionTerminalStreams(t, assignment) })
+	}
+}
+
+// testBulkCompletionTerminalStreams applies the terminal contract to both payload variants.
+func testBulkCompletionTerminalStreams(t *testing.T, assignment bool) {
 	tests := []struct {
 		name, destination, response string
 		flags                       []string
@@ -61,19 +68,26 @@ func TestBulkCompletionTerminalStreams(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			calls, server := newBulkCompletionTerminalServer(t, false, tt.partial)
 			args := bulkCompletionTerminalArgs(t, server.URL, false)
+			if assignment {
+				args = append(args, "--set-bid", "ORDER-123")
+			}
+			prompt := bulkCompletionTerminalPrompt
+			if assignment {
+				prompt = strings.Replace(prompt, "logic.\n", "logic. Requested business ID: \"ORDER-123\" (atomic completion).\n", 1)
+			}
 			args = append(args, tt.flags...)
 			preview := slices.Contains(tt.flags, "--dry-run")
 			jsonMode := slices.Contains(tt.flags, "--json")
 			prompted := !preview && !slices.Contains(tt.flags, "--auto-confirm") && !slices.Contains(tt.flags, "--automation")
 			var exchanges []testx.CmdTerminalExchange
 			if prompted {
-				exchanges = []testx.CmdTerminalExchange{{Prompt: bulkCompletionTerminalPrompt, Response: tt.response, EndOfInput: tt.eof}}
+				exchanges = []testx.CmdTerminalExchange{{Prompt: prompt, Response: tt.response, EndOfInput: tt.eof}}
 			}
 			stdout, stderr, runErr := runBulkCompletionTerminal(t, args, tt.destination, tt.redirect, false, exchanges)
 			if !jsonMode {
 				prefix := ""
 				if prompted {
-					prefix = bulkCompletionTerminalPrompt
+					prefix = prompt
 				}
 				require.True(t, strings.HasPrefix(stderr, prefix))
 				var diagnostics string
@@ -92,7 +106,7 @@ func TestBulkCompletionTerminalStreams(t *testing.T) {
 			// one configured ERROR record, not a direct stderr print.
 			wantStderr := ""
 			if prompted {
-				wantStderr = bulkCompletionTerminalPrompt
+				wantStderr = prompt
 			}
 			if tt.decline {
 				require.True(t, strings.HasPrefix(stderr, wantStderr), stderr)
@@ -178,12 +192,22 @@ func TestBulkCompletionTerminalStreams(t *testing.T) {
 // TestBulkCompletionTerminalEmpty keeps terminal stdin open for empty discovery
 // and supplies canonical EOF for empty stdin; neither may request confirmation.
 func TestBulkCompletionTerminalEmpty(t *testing.T) {
+	for _, assignment := range []bool{false, true} {
+		t.Run(fmt.Sprint("assignment=", assignment), func(t *testing.T) { testBulkCompletionTerminalEmpty(t, assignment) })
+	}
+}
+
+// testBulkCompletionTerminalEmpty applies the terminal contract to both payload variants.
+func testBulkCompletionTerminalEmpty(t *testing.T, assignment bool) {
 	for _, stdin := range []bool{false, true} {
 		for _, lifecycle := range []string{"normal", "dry-run", "no-wait"} {
 			for _, mode := range []string{"human", "verbose", "quiet", "json", "quiet-json"} {
 				t.Run(fmt.Sprintf("stdin=%t/%s/%s", stdin, lifecycle, mode), func(t *testing.T) {
 					calls, server := newBulkCompletionTerminalServer(t, true, false)
 					args := bulkCompletionTerminalArgs(t, server.URL, stdin)
+					if assignment {
+						args = append(args, "--set-bid", "ORDER-123")
+					}
 					if lifecycle != "normal" {
 						args = append(args, "--"+lifecycle)
 					}
@@ -265,10 +289,11 @@ func TestBulkCompletionTerminalEmpty(t *testing.T) {
 }
 
 // bulkCompletionTerminalArgs keeps all terminal scenarios on the real command,
-// with serial execution making the expected HTTP sequence deterministic.
+// with serial execution making the expected HTTP sequence deterministic. Empty
+// canonical variables preserve listener eligibility while exercising renamed input.
 func bulkCompletionTerminalArgs(t *testing.T, serverURL string, stdin bool) []string {
 	t.Helper()
-	args := []string{"--config", writeTestConfigForVersion(t, serverURL, "8.8"), "--tenant", "tenant-a", "--no-indicator", "update", "job", "--complete", "--workers", "1"}
+	args := []string{"--config", writeTestConfigForVersion(t, serverURL, "8.10"), "--tenant", "tenant-a", "--no-indicator", "update", "job", "--complete", "--set-vars", `{}`, "--workers", "1"}
 	if stdin {
 		return append(args, "-")
 	}
@@ -281,6 +306,10 @@ func newBulkCompletionTerminalServer(t *testing.T, empty, partial bool) (*testx.
 	t.Helper()
 	calls := &testx.SafeSlice[string]{}
 	server := testx.NewIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.10") {
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		if r.Method == http.MethodPost && r.URL.Path == "/v2/jobs/search" {
 			var body struct {

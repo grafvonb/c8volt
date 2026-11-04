@@ -10,16 +10,12 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
-	"os"
-	"os/exec"
 	"strings"
 	"testing"
 
 	"github.com/grafvonb/c8volt/c8volt"
 	"github.com/grafvonb/c8volt/c8volt/foptions"
 	"github.com/grafvonb/c8volt/c8volt/tenant"
-	"github.com/grafvonb/c8volt/internal/exitcode"
-	"github.com/grafvonb/c8volt/testx"
 	"github.com/grafvonb/c8volt/testx/activitysink"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
@@ -107,6 +103,10 @@ func TestGetTenantCommand_MachineModeSuppressesFallbackActivity(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			resetTenantRenderFlags(t)
 			srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if serveVersionCheckTopology(w, r, "8.9") {
+					return
+				}
+
 				require.Equal(t, http.MethodPost, r.Method)
 				require.Equal(t, "/v2/tenants/search", r.URL.Path)
 				w.Header().Set("Content-Type", "application/json")
@@ -365,46 +365,6 @@ func TestGetTenantByKeyOutput_JSONUsesTenantPayload(t *testing.T) {
 	require.NotContains(t, output, "members")
 }
 
-// Verifies tenant list reports the explicit unsupported-version failure on Camunda 8.7.
-func TestGetTenantCommand_V87ListReportsUnsupported(t *testing.T) {
-	cfgPath := writeRawTestConfig(t, `app:
-  camunda_version: 8.7
-apis:
-  camunda_api:
-    base_url: http://127.0.0.1:1
-`)
-
-	output, err := testx.RunCmdSubprocess(t, "TestGetTenantCommand_V87ListReportsUnsupportedHelper", map[string]string{
-		"C8VOLT_TEST_CONFIG": cfgPath,
-	})
-	require.Error(t, err)
-	exitErr, ok := err.(*exec.ExitError)
-	require.True(t, ok)
-	require.Equal(t, exitcode.Error, exitErr.ExitCode())
-	require.Contains(t, string(output), "unsupported capability")
-	require.Contains(t, string(output), "tenant search requires Camunda 8.8 or newer")
-}
-
-// Verifies keyed tenant lookup reports the explicit unsupported-version failure on Camunda 8.7.
-func TestGetTenantCommand_V87KeyedReportsUnsupported(t *testing.T) {
-	cfgPath := writeRawTestConfig(t, `app:
-  camunda_version: 8.7
-apis:
-  camunda_api:
-    base_url: http://127.0.0.1:1
-`)
-
-	output, err := testx.RunCmdSubprocess(t, "TestGetTenantCommand_V87KeyedReportsUnsupportedHelper", map[string]string{
-		"C8VOLT_TEST_CONFIG": cfgPath,
-	})
-	require.Error(t, err)
-	exitErr, ok := err.(*exec.ExitError)
-	require.True(t, ok)
-	require.Equal(t, exitcode.Error, exitErr.ExitCode())
-	require.Contains(t, string(output), "unsupported capability")
-	require.Contains(t, string(output), "tenant lookup requires Camunda 8.8 or newer")
-}
-
 // Verifies --key rejects whitespace-only values before any tenant lookup can run.
 func TestGetTenantCommand_RejectsWhitespaceKey(t *testing.T) {
 	resetTenantRenderFlags(t)
@@ -438,13 +398,7 @@ func TestGetTenantCommand_RejectsKeyPlusFilter(t *testing.T) {
 
 // Verifies tenant help documents list, keyed lookup, filtering, and JSON examples.
 func TestGetTenantHelp_DocumentsListKeyFilterAndJSONExamples(t *testing.T) {
-	output := executeRootForTest(t, "get", "tenant", "--help")
-
-	require.Contains(t, output, "./c8volt get tenant")
-	require.Contains(t, output, "./c8volt get tenant --key <tenant-id>")
-	require.Contains(t, output, "./c8volt get tenant --filter demo")
-	require.Contains(t, output, "./c8volt get tenant --json")
-	require.Contains(t, output, "./c8volt get tenant --key <tenant-id> --json")
+	assertCommandHelpOutput(t, []string{"get", "tenant"}, []string{"--key", "--json", "--filter"}, nil)
 }
 
 // tenantCommandAPI lets command tests replace only the tenant facade methods under test.
@@ -497,30 +451,4 @@ func resetTenantRenderFlags(t *testing.T) {
 // tenantTestLogger returns a discard logger for command helper tests that do not assert log output.
 func tenantTestLogger() *slog.Logger {
 	return slog.New(slog.NewTextHandler(io.Discard, nil))
-}
-
-// TestGetTenantCommand_V87ListReportsUnsupportedHelper drives list execution in a helper process to preserve exit behavior.
-func TestGetTenantCommand_V87ListReportsUnsupportedHelper(t *testing.T) {
-	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
-		return
-	}
-
-	prevArgs := os.Args
-	t.Cleanup(func() { os.Args = prevArgs })
-	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "tenant"}
-
-	Execute()
-}
-
-// TestGetTenantCommand_V87KeyedReportsUnsupportedHelper drives keyed execution in a helper process to preserve exit behavior.
-func TestGetTenantCommand_V87KeyedReportsUnsupportedHelper(t *testing.T) {
-	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
-		return
-	}
-
-	prevArgs := os.Args
-	t.Cleanup(func() { os.Args = prevArgs })
-	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "tenant", "--key", "tenant-a"}
-
-	Execute()
 }

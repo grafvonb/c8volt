@@ -7,7 +7,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"sort"
 	"strings"
 
 	camundav88 "github.com/grafvonb/c8volt/internal/clients/camunda/v88/camunda"
@@ -15,31 +14,60 @@ import (
 	"github.com/grafvonb/c8volt/internal/services"
 	"github.com/grafvonb/c8volt/internal/services/common"
 	"github.com/grafvonb/c8volt/internal/services/httpc"
+	variablesearch "github.com/grafvonb/c8volt/internal/services/variable/search"
 	"github.com/grafvonb/c8volt/internal/services/variable/waiter"
-	"github.com/grafvonb/c8volt/toolx"
 )
 
-// SearchProcessInstanceVariables returns untruncated process-scope variables for a v8.8 process instance.
+// SearchProcessInstanceVariables returns every untruncated root-scope variable.
 func (s *Service) SearchProcessInstanceVariables(ctx context.Context, key string, opts ...services.CallOption) ([]d.ProcessInstanceVariable, error) {
-	_ = services.ApplyCallOptions(opts)
-	s.log.Debug(fmt.Sprintf("searching pi %s variables", key))
-	processInstanceKeyFilter, err := common.NewProcessInstanceKeyEqFilterPtr(key)
-	if err != nil {
-		return nil, fmt.Errorf("building process-instance variable filter: %w", err)
+	return variablesearch.ProcessInstanceVariables(ctx, s, key, opts...)
+}
+
+// SearchProcessInstanceVariablesPage reads one normalized v8.8 variable page.
+func (s *Service) SearchProcessInstanceVariablesPage(ctx context.Context, key string, pageReq d.ProcessInstanceVariablePageRequest, opts ...services.CallOption) (d.ProcessInstanceVariablePage, error) {
+	return s.searchVariablesPage(ctx, d.ScopeVariableQuery{ProcessInstanceKey: key, ScopeKey: key}, pageReq, false, opts...)
+}
+
+// SearchScopeVariables reads all variables owned directly by the selected scope.
+func (s *Service) SearchScopeVariables(ctx context.Context, query d.ScopeVariableQuery, opts ...services.CallOption) ([]d.ProcessInstanceVariable, error) {
+	return variablesearch.ScopeVariables(ctx, s, query, opts...)
+}
+
+// SearchScopeVariablesPage validates identity before requesting a local page.
+func (s *Service) SearchScopeVariablesPage(ctx context.Context, query d.ScopeVariableQuery, pageReq d.ProcessInstanceVariablePageRequest, opts ...services.CallOption) (d.ProcessInstanceVariablePage, error) {
+	if err := query.Validate(); err != nil {
+		return d.ProcessInstanceVariablePage{}, err
 	}
-	scopeKeyFilter, err := common.NewScopeKeyEqFilterPtr(key)
+	return s.searchVariablesPage(ctx, query, pageReq, true, opts...)
+}
+
+// searchVariablesPage shares wire requests while preserving legacy root errors
+// and filtering; only explicit local reads enforce selected-scope identity evidence.
+func (s *Service) searchVariablesPage(ctx context.Context, query d.ScopeVariableQuery, pageReq d.ProcessInstanceVariablePageRequest, strictScope bool, opts ...services.CallOption) (d.ProcessInstanceVariablePage, error) {
+	if err := pageReq.Validate(); err != nil {
+		return d.ProcessInstanceVariablePage{}, fmt.Errorf("validate process-instance variable page: %w", err)
+	}
+	callCfg := services.ApplyCallOptions(opts)
+	s.log.Debug(fmt.Sprintf("searching pi %s scope %s variables", query.ProcessInstanceKey, query.ScopeKey))
+	processInstanceKeyFilter, err := common.NewProcessInstanceKeyEqFilterPtr(query.ProcessInstanceKey)
 	if err != nil {
-		return nil, fmt.Errorf("building process-instance variable scope filter: %w", err)
+		return d.ProcessInstanceVariablePage{}, fmt.Errorf("building process-instance variable filter: %w", err)
+	}
+	scopeKeyFilter, err := common.NewScopeKeyEqFilterPtr(query.ScopeKey)
+	if err != nil {
+		return d.ProcessInstanceVariablePage{}, fmt.Errorf("building process-instance variable scope filter: %w", err)
 	}
 	var tenantID *camundav88.TenantId
-	if s.cfg.App.Tenant != "" {
+	if !callCfg.IgnoreTenant && s.cfg.App.Tenant != "" {
 		tenant := camundav88.TenantId(s.cfg.App.Tenant)
 		tenantID = &tenant
 	}
-	from := int32(0)
-	size := int32(1000)
 	page := camundav88.SearchQueryPageRequest{}
-	_ = page.FromOffsetPagination(camundav88.OffsetPagination{From: &from, Limit: &size})
+	if pageReq.After != "" {
+		_ = page.FromCursorForwardPagination(camundav88.CursorForwardPagination{After: camundav88.EndCursor(pageReq.After), Limit: &pageReq.Size})
+	} else {
+		_ = page.FromOffsetPagination(camundav88.OffsetPagination{From: &pageReq.From, Limit: &pageReq.Size})
+	}
 	order := camundav88.ASC
 	sortByName := []camundav88.VariableSearchQuerySortRequest{{
 		Field: camundav88.VariableSearchQuerySortRequestFieldName,
@@ -57,20 +85,19 @@ func (s *Service) SearchProcessInstanceVariables(ctx context.Context, key string
 	truncateValues := false
 	resp, err := s.cc.SearchVariablesWithResponse(ctx, &camundav88.SearchVariablesParams{TruncateValues: &truncateValues}, body)
 	if err != nil {
-		return nil, err
+		return d.ProcessInstanceVariablePage{}, err
+	}
+	if resp == nil {
+		return d.ProcessInstanceVariablePage{}, fmt.Errorf("%w: empty variable search response", d.ErrMalformedResponse)
 	}
 	if _, err := common.RequirePayload(resp.HTTPResponse, resp.Body, resp.JSON200); err != nil {
-		return nil, err
+		return d.ProcessInstanceVariablePage{}, err
 	}
-	payload, err := decodeSearchVariablesResponse(resp.Body, resp.JSON200)
+	payload, err := decodeSearchVariablesResponse(resp.Body, pageReq, query, strictScope)
 	if err != nil {
-		return nil, fmt.Errorf("decode process-instance variables: %w", err)
+		return d.ProcessInstanceVariablePage{}, fmt.Errorf("decode process-instance variables: %w", err)
 	}
-	variables := toolx.MapSlice(payload.Items, fromVariableSearchResult)
-	sort.SliceStable(variables, func(i, j int) bool {
-		return variables[i].Name < variables[j].Name
-	})
-	return variables, nil
+	return payload, nil
 }
 
 // UpdateProcessInstanceVariables writes variables to the process instance element scope and confirms visibility unless no-wait is set.
@@ -112,6 +139,64 @@ func (s *Service) UpdateProcessInstanceVariables(ctx context.Context, key string
 		return result, err
 	} else if len(missing) > 0 {
 		return result, fmt.Errorf("requested variable value(s) not visible for process instance %s: %s", key, strings.Join(missing, ", "))
+	}
+	return result, nil
+}
+
+// UpdateScopeVariables writes variables strictly to the requested element scope without confirmation reads.
+func (s *Service) UpdateScopeVariables(ctx context.Context, scopeKey string, variables map[string]any, opts ...services.CallOption) (d.ScopeVariableUpdateResponse, error) {
+	_ = services.ApplyCallOptions(opts)
+	result := d.ScopeVariableUpdateResponse{ScopeKey: scopeKey, SubmissionStatus: d.ScopeVariableSubmissionNotSent}
+	if strings.TrimSpace(scopeKey) == "" {
+		return result, fmt.Errorf("%w: scope key must not be blank", d.ErrValidation)
+	}
+	if len(variables) == 0 {
+		return result, fmt.Errorf("%w: scope variables must not be empty", d.ErrValidation)
+	}
+	if _, err := common.NewScopeKeyEqFilterPtr(scopeKey); err != nil {
+		return result, err
+	}
+	local := true
+	body := camundav88.CreateElementInstanceVariablesJSONRequestBody{
+		Local:     &local,
+		Variables: variables,
+	}
+	resp, err := services.RetryCamundaMutation(ctx, s.log, "update scope variables", func(ctx context.Context) (*camundav88.CreateElementInstanceVariablesResponse, *http.Response, []byte, error) {
+		// Check before dispatch; a generic error returned after calling the client
+		// cannot by itself prove that the attempt was unsent.
+		if err := ctx.Err(); err != nil {
+			return nil, nil, nil, err
+		}
+		attemptCtx, observation := httpc.BeginRequestRateAttempt(ctx)
+		resp, err := s.cc.CreateElementInstanceVariablesWithResponse(attemptCtx, camundav88.ElementInstanceKey(scopeKey), body)
+		var response *http.Response
+		var responseBody []byte
+		if resp != nil {
+			response, responseBody = resp.HTTPResponse, resp.Body
+		}
+		localErr := observation.Failure()
+		common.RecordScopeVariableSubmission(&result, response, responseBody, err, localErr)
+		// Restore local admission classification if Client.Timeout substituted
+		// its own error. Return it to the unchanged retry policy as well.
+		if localErr != nil {
+			err = localErr
+		}
+		return resp, response, responseBody, err
+	})
+	if err != nil {
+		return result, err
+	}
+	if resp == nil {
+		return result, fmt.Errorf("%w: empty scope variable update response", d.ErrMalformedResponse)
+	}
+	result.StatusCode = resp.StatusCode()
+	result.Status = resp.Status()
+	if err := httpc.HttpStatusErr(resp.HTTPResponse, resp.Body); err != nil {
+		return result, err
+	}
+	result.Accepted = true
+	if result.Status == "" {
+		result.Status = http.StatusText(result.StatusCode)
 	}
 	return result, nil
 }

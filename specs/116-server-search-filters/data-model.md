@@ -32,10 +32,6 @@
   - Capability state: `RequestSide` or `ClientFallback`
   - Request encoding note
 - **Current mapping**:
-  - `roots-only`: `ClientFallback` on `v8.7`, `RequestSide` on `v8.8` and `v8.9`
-  - `children-only`: `ClientFallback` on `v8.7`, `RequestSide` on `v8.8` and `v8.9`
-  - `incidents-only`: `ClientFallback` on `v8.7`, `RequestSide` on `v8.8` and `v8.9`
-  - `no-incidents-only`: `ClientFallback` on `v8.7`, `RequestSide` on `v8.8` and `v8.9`
   - `orphan-children-only`: `ClientFallback` on all versions
 
 ## Process-Instance Search Request

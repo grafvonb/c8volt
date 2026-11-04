@@ -5,6 +5,8 @@ package v88
 
 import (
 	"context"
+	"fmt"
+	"strings"
 
 	camundav88 "github.com/grafvonb/c8volt/internal/clients/camunda/v88/camunda"
 	operatev88 "github.com/grafvonb/c8volt/internal/clients/camunda/v88/operate"
@@ -14,7 +16,27 @@ import (
 	"github.com/grafvonb/c8volt/typex"
 )
 
+// API describes the process-instance operations implemented by the v8.8 adapter.
 type API interface {
+	// ValidateBusinessIDAssignment checks capability, value and observation settings without I/O.
+	ValidateBusinessIDAssignment(value *string, opts ...services.CallOption) error
+	// AssignProcessInstanceBusinessID submits once to the exact target and optionally confirms.
+	AssignProcessInstanceBusinessID(ctx context.Context, key string, value *string, opts ...services.CallOption) (d.BusinessIDAssignmentResult, error)
+
+	// ProcessInstanceSearchTenant returns the effective discovery tenant without I/O.
+	ProcessInstanceSearchTenant(opts ...services.CallOption) string
+	// ValidateProcessInstanceResumption checks mutation capability without I/O.
+	ValidateProcessInstanceResumption() error
+	// ResumeProcessInstance resumes exactly one key, confirming unless NoWait is set.
+	ResumeProcessInstance(ctx context.Context, key string, opts ...services.CallOption) (d.ProcessInstanceResumptionResult, error)
+	// ValidateProcessInstanceSuspension checks mutation capability without I/O.
+	ValidateProcessInstanceSuspension() error
+	// SuspendProcessInstance suspends exactly one key, confirming unless NoWait is set.
+	SuspendProcessInstance(ctx context.Context, key string, opts ...services.CallOption) (d.ProcessInstanceSuspensionResult, error)
+	// ValidateProcessInstanceStates checks explicit state capabilities without I/O.
+	ValidateProcessInstanceStates(states d.States) error
+	// ValidateProcessInstanceSearchFilter validates capability and criteria without I/O.
+	ValidateProcessInstanceSearchFilter(filter d.ProcessInstanceFilter) error
 	CreateProcessInstance(ctx context.Context, data d.ProcessInstanceData, opts ...services.CallOption) (d.ProcessInstanceCreation, error)
 	GetProcessInstance(ctx context.Context, key string, opts ...services.CallOption) (d.ProcessInstance, error)
 	SearchProcessInstanceVariables(ctx context.Context, key string, opts ...services.CallOption) ([]d.ProcessInstanceVariable, error)
@@ -24,6 +46,8 @@ type API interface {
 	SearchForProcessInstancesPage(ctx context.Context, filter d.ProcessInstanceFilter, page d.ProcessInstancePageRequest, opts ...services.CallOption) (d.ProcessInstancePage, error)
 	SearchForProcessInstances(ctx context.Context, filter d.ProcessInstanceFilter, size int32, opts ...services.CallOption) ([]d.ProcessInstance, error)
 	CancelProcessInstance(ctx context.Context, key string, opts ...services.CallOption) (d.CancelResponse, []d.ProcessInstance, error)
+	// DeleteProcessInstanceExact never discovers additional client delete targets.
+	DeleteProcessInstanceExact(ctx context.Context, key string, opts ...services.CallOption) (d.DeleteResponse, error)
 	DeleteProcessInstance(ctx context.Context, key string, opts ...services.CallOption) (d.DeleteResponse, error)
 	GetProcessInstanceStateByKey(ctx context.Context, key string, opts ...services.CallOption) (d.State, d.ProcessInstance, error)
 	WaitForProcessInstanceState(ctx context.Context, key string, desired d.States, opts ...services.CallOption) (d.StateResponse, d.ProcessInstance, error)
@@ -53,3 +77,14 @@ type GenProcessInstanceClientOperate interface {
 var _ API = (*Service)(nil)
 var _ GenProcessInstanceClientCamunda = (*camundav88.ClientWithResponses)(nil)
 var _ GenProcessInstanceClientOperate = (*operatev88.ClientWithResponses)(nil)
+
+// ValidateProcessInstanceStates rejects explicit suspension on this older adapter.
+// Implicit creation visibility uses the generic waiter and bypasses this guard.
+func (s *Service) ValidateProcessInstanceStates(states d.States) error {
+	for _, state := range states {
+		if strings.EqualFold(strings.TrimSpace(string(state)), string(d.StateSuspended)) {
+			return fmt.Errorf("%w: SUSPENDED process-instance state requires Camunda 8.10 (configured 8.8)", d.ErrUnsupported)
+		}
+	}
+	return nil
+}

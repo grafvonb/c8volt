@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/grafvonb/c8volt/c8volt/element"
+	"github.com/grafvonb/c8volt/c8volt/foptions"
 	"github.com/grafvonb/c8volt/consts"
 	"github.com/grafvonb/c8volt/toolx"
 	"github.com/spf13/cobra"
@@ -25,29 +26,20 @@ var (
 	flagGetElementLimit         int32
 	flagGetElementTotal         bool
 	flagGetElementWithListeners bool
+	flagGetElementWithVars      bool
 )
 
 var getElementCmd = &cobra.Command{
 	Use:   "element",
 	Short: "List or fetch runtime element instances",
-	Long: `List or fetch Camunda runtime element instances.
+	Long: `Inspect runtime element instances by key or process context.
 
-Use --key for a known element instance. Otherwise search by process instance, BPMN element ID, state, type, process definition, or BPMN process ID.
-
---batch-size controls each discovery request; --limit caps returned elements across all pages. Use --total to count matching elements, or --with-listeners to include runtime listener jobs.
-
-Listener rows label job creation time as s: (not worker execution start) and job end time as e:. They show d: only for an ACTIVATED job with a deadline, and omit unavailable timestamps. A completed listener can appear as:
-
-  job-1 TASK_LISTENER lsnr:CREATING COMPLETED tp:updateTaskData r:0 s:2026-09-16T13:07:16.359 e:2026-09-16T13:07:16.842
-
-Requires Camunda 8.8 or newer.`,
-	Example: `  ./c8volt get element --key <element-instance-key>
-  ./c8volt get element --key <element-instance-key> --with-listeners
-  ./c8volt get element --pi-key <process-instance-key> --limit 10
-  ./c8volt get element --pi-key <process-instance-key> --with-listeners
-  ./c8volt get element --pi-key <process-instance-key> --total
-  ./c8volt --json get element --pi-key <process-instance-key> --limit 5
-  ./c8volt --json get element --key <element-instance-key> --with-listeners`,
+Use --pi-key to inspect a process instance's elements. Add --with-vars for
+variables owned directly by each element, or --with-listeners for listener jobs.
+Parent-scope variables are excluded. Listener duration includes worker waiting time.`,
+	Example: `  c8volt get element --pi-key <process-instance-key> --limit 10
+  c8volt get element --key <element-instance-key> --with-vars
+  c8volt get element --pi-key <process-instance-key> --with-listeners`,
 	Aliases: []string{"ei"},
 	Args:    cobra.NoArgs,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -64,7 +56,7 @@ Requires Camunda 8.8 or newer.`,
 		if strings.TrimSpace(flagGetElementKey) != "" {
 			item, err := getElementItem(cmd, cli, strings.TrimSpace(flagGetElementKey))
 			if err != nil {
-				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("get element: %w", err))
+				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("get element: %w", err), "get element: "+boundedCommandFailureReason(err))
 			}
 			if err := elementView(cmd, item); err != nil {
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("render element: %w", err))
@@ -75,7 +67,7 @@ Requires Camunda 8.8 or newer.`,
 		if flagGetElementTotal {
 			total, err := searchElementsTotal(cmd, cli, searchRequest)
 			if err != nil {
-				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("get elements total: %w", err))
+				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("get elements total: %w", err), "get elements total: "+boundedCommandFailureReason(err))
 			}
 			if err := processInstanceTotalView(cmd, total); err != nil {
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("render elements total: %w", err))
@@ -84,7 +76,7 @@ Requires Camunda 8.8 or newer.`,
 		}
 		result, renderedIncrementally, err := searchElementsForCommand(cmd, cli, searchRequest)
 		if err != nil {
-			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("get elements: %w", err))
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("get elements: %w", err), "get elements: "+boundedCommandFailureReason(err))
 		}
 		if renderedIncrementally {
 			return
@@ -95,6 +87,7 @@ Requires Camunda 8.8 or newer.`,
 	},
 }
 
+// init registers element selection/enrichment flags and its read-only automation contract.
 func init() {
 	getCmd.AddCommand(getElementCmd)
 
@@ -109,6 +102,7 @@ func init() {
 	fs.Int32VarP(&flagGetElementBatchSize, "batch-size", "n", consts.MaxPISearchSize, fmt.Sprintf("number of elements to request per page; does not cap total results (max limit %d enforced by server)", consts.MaxPISearchSize))
 	fs.Int32VarP(&flagGetElementLimit, "limit", "l", 0, "maximum number of matching elements to return across all pages; omit to continue through all matches")
 	fs.BoolVar(&flagGetElementTotal, "total", false, "return only the numeric total of matching elements")
+	fs.BoolVar(&flagGetElementWithVars, "with-vars", false, "include complete element-local variables; skipped for keys-only and total output")
 	fs.BoolVar(&flagGetElementWithListeners, "with-listeners", false, "include runtime listener jobs")
 
 	useInvalidInputFlagErrors(getElementCmd)
@@ -176,14 +170,28 @@ func validateGetElementFlagValues(cmd *cobra.Command) error {
 	return nil
 }
 
-// getElementItem selects plain or listener-enriched keyed element lookup.
+// getElementItem binds explicit lookup and dependent enrichment to the selected key across discovery tenants.
 func getElementItem(cmd *cobra.Command, cli element.API, key string) (element.Element, error) {
+	opts := append(collectOptions(), foptions.WithIgnoreTenant())
+	if getElementVariableEnrichmentEnabled() {
+		if flagGetElementWithListeners {
+			stopActivity := startCommandActivity(cmd, "loading listener jobs for 1 process instance(s)")
+			defer stopActivity()
+			opts = appendFrozenScopeProgressOption(cmd, opts)
+		}
+		return cli.GetElementWithEnrichment(cmd.Context(), key, element.Enrichment{Variables: true, Listeners: flagGetElementWithListeners}, opts...)
+	}
 	if flagGetElementWithListeners {
 		stopActivity := startCommandActivity(cmd, "loading listener jobs for 1 process instance(s)")
 		defer stopActivity()
-		return cli.GetElementWithListeners(cmd.Context(), key, appendFrozenScopeProgressOption(cmd, collectOptions())...)
+		return cli.GetElementWithListeners(cmd.Context(), key, appendFrozenScopeProgressOption(cmd, opts)...)
 	}
-	return cli.GetElement(cmd.Context(), key, collectOptions()...)
+	return cli.GetElement(cmd.Context(), key, opts...)
+}
+
+// getElementVariableEnrichmentEnabled resolves suppression before dispatch without bypassing flag validation.
+func getElementVariableEnrichmentEnabled() bool {
+	return flagGetElementWithVars && !flagGetElementTotal && pickMode() != RenderModeKeysOnly
 }
 
 func newGetElementSearchRequest(cmd *cobra.Command) element.SearchRequest {

@@ -43,7 +43,6 @@
 - **Current mapping**:
   - `v8.8`: `Supported`
   - `v8.9`: `Supported`
-  - `v8.7`: `Unsupported`
 
 ## Supported-Version Incident Count Source
 
@@ -70,7 +69,6 @@
 - **Planned rules**:
   - If stats are not requested, no bracketed stats segment is shown.
   - If stats are requested on `v8.8`/`v8.9`, render `ac`, `cp`, `cx`, and `in`, with `in:0` allowed.
-  - If stats are requested on `v8.7`, preserve the other available output but omit `in:` entirely.
 - **Invariant**:
   - The feature must not change ordering, identifiers, or non-incident stats formatting outside the incident-segment rule.
 
@@ -78,12 +76,10 @@
 
 - **Purpose**: Provides version-specific processdefinition search and lookup behavior behind the shared `processdefinition.API`.
 - **Members**:
-  - `v87.Service`
   - `v88.Service`
   - `v89.Service`
 - **Behavioral rules**:
   - `v88` and `v89` may enrich `Statistics` from multiple repository-native endpoints when `WithStat` is enabled.
-  - `v87` must preserve current unsupported behavior for incident count semantics instead of synthesizing a derived value through a new side architecture.
 
 ## Documentation Contract Record
 
@@ -91,7 +87,6 @@
 - **Fields**:
   - Affected command: `get process-definition --stat`
   - Supported versions: `8.8`, `8.9`
-  - Unsupported version behavior: `8.7 omits in:`
   - Regeneration path: `make docs-content`
 - **Invariant**:
   - Documentation updates belong to the same implementation slice because the output contract changes.

@@ -14,7 +14,7 @@ import (
 )
 
 func TestRealStateListenersFamily(t *testing.T) {
-	profiles := selectedRealStateC89Profiles(t)
+	profiles := selectedRealStateProfiles(t)
 
 	report := realStateFamilyReport{
 		Family:   "listeners",

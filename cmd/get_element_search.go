@@ -12,11 +12,15 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// searchElementsForCommand selects collected listener search or the existing paging renderer.
+// searchElementsForCommand preserves collected listener selection and paged variable-only inspection.
 func searchElementsForCommand(cmd *cobra.Command, cli element.API, request element.SearchRequest) (element.SearchResult, bool, error) {
 	if flagGetElementWithListeners {
 		stopActivity := startCommandActivity(cmd, "loading listener jobs for matching element process instance(s)")
 		defer stopActivity()
+		if getElementVariableEnrichmentEnabled() {
+			result, err := cli.SearchElementsWithEnrichment(cmd.Context(), request, element.Enrichment{Variables: true, Listeners: true}, appendFrozenScopeProgressOption(cmd, collectOptions())...)
+			return result, false, err
+		}
 		result, err := cli.SearchElementsWithListeners(cmd.Context(), request, appendFrozenScopeProgressOption(cmd, collectOptions())...)
 		return result, false, err
 	}
@@ -31,17 +35,8 @@ func searchElementsWithPaging(cmd *cobra.Command, cli element.API, request eleme
 	processedTotal := 0
 	pageNumber := 0
 	capturedNow := time.Now().UTC()
-	printFoundAndReturn := func() (element.SearchResult, bool, error) {
-		if incremental {
-			if pickMode() == RenderModeOneLine {
-				renderOutputLine(cmd, "found: %d", processedTotal)
-			}
-			return element.SearchResult{}, true, nil
-		}
-		return element.SearchResult{}, false, nil
-	}
 
-	result, err := cli.SearchElementsPages(cmd.Context(), request, func(step element.SearchPageStep) (element.SearchPageAction, error) {
+	visitor := func(step element.SearchPageStep) (element.SearchPageAction, error) {
 		page := step.Page
 		pageNumber++
 		processedTotal = int(step.CumulativeCount)
@@ -86,12 +81,20 @@ func searchElementsWithPaging(cmd *cobra.Command, cli element.API, request eleme
 			return element.SearchPageActionStop, err
 		}
 		return element.SearchPageActionContinue, nil
-	}, collectOptions()...)
+	}
+	var result element.SearchPagesResult
+	var err error
+	if getElementVariableEnrichmentEnabled() {
+		result, err = cli.SearchElementsPagesWithEnrichment(cmd.Context(), request, element.Enrichment{Variables: true}, visitor, collectOptions()...)
+	} else {
+		result, err = cli.SearchElementsPages(cmd.Context(), request, visitor, collectOptions()...)
+	}
 	if err != nil {
 		return element.SearchResult{}, false, err
 	}
 	if incremental {
-		return printFoundAndReturn()
+		renderElementSearchSummary(cmd, processedTotal)
+		return element.SearchResult{}, true, nil
 	}
 	return element.SearchResult{Items: result.Items, Total: result.Total}, false, nil
 }
@@ -139,26 +142,6 @@ func describeElementOverflowState(state element.OverflowState) string {
 		return "yes"
 	}
 	return "no"
-}
-
-// renderElementSearchPage renders one page in the current incremental output mode.
-func renderElementSearchPage(cmd *cobra.Command, items []element.Element, capturedNow time.Time) error {
-	switch pickMode() {
-	case RenderModeKeysOnly:
-		for _, item := range items {
-			renderOutputLine(cmd, "%s", item.ElementInstanceKey)
-		}
-	default:
-		rowOf := flatRowElementWithTimezoneForMode(cmd, capturedNow)
-		rows := make([]flatRow, 0, len(items))
-		for _, item := range items {
-			rows = append(rows, rowOf(item))
-		}
-		for _, line := range formatFlatRows(rows) {
-			renderOutputLine(cmd, "%s", line)
-		}
-	}
-	return nil
 }
 
 func elementOpsReportedTotal(page element.Page) (*int64, ops.TotalCertainty) {

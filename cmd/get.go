@@ -10,19 +10,13 @@ import (
 var getCmd = &cobra.Command{
 	Use:   "get",
 	Short: "Inspect cluster, process, job, element, incident, tenant, and resource state",
-	Long: `Inspect cluster, process, job, element, incident, tenant, and resource state without changing it.
+	Long: `Inspect cluster health, deployed definitions, process instances, tasks, jobs,
+elements, and incidents without changing them.
 
-Check cluster health, list deployed process definitions, inspect process
-instances, inspect jobs, elements, and incidents by key or search, list visible tenants, or fetch a known resource.`,
-	Example: `  ./c8volt get cluster topology
-  ./c8volt get process-definition --latest
-  ./c8volt get process-instance --state active --limit 5
-  ./c8volt get job --key <job-key>
-  ./c8volt get element --pi-key <process-instance-key> --limit 10
-  ./c8volt get incident --key <incident-key>
-  ./c8volt get incident --state active --error-type io_mapping_error --pi-keys-only
-  ./c8volt get tenant
-  ./c8volt get resource --id <resource-key>`,
+Choose a resource command to look up a key or search with filters.`,
+	Example: `  c8volt get cluster topology
+  c8volt get process-instance --state active --limit 10
+  c8volt get incident --state active --limit 10`,
 	Aliases: []string{"g", "read"},
 	Args:    cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {

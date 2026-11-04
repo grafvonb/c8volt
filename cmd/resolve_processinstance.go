@@ -25,19 +25,16 @@ type resolveProcessInstanceAPI interface {
 
 var resolveProcessInstanceCmd = &cobra.Command{
 	Use:   "process-instance",
-	Short: "Resolve process-instance incidents by key",
-	Long: `Resolve active incidents in process-instance families.
+	Short: "Resolve process-instance incidents by key or business ID",
+	Long: `Resolve active incidents in selected process-instance families.
 
-Provide repeated --key values or newline-separated keys from stdin with '-'. c8volt expands each target to its family, validates the affected scope, and asks for confirmation. Explicit keys use backend authorization without tenant filtering.
+Select by key or exact --bid (only c8.10+). The workflow fixes the family and
+incident scope before confirmation, then waits for clearance. It does not
+change variables or job retries; use ops repair for those changes.
 
-Only incidents discovered at command start are resolved. Instances with no active incidents require no mutation. By default c8volt waits until those incidents are no longer active.
-
-Use --dry-run to inspect the family and incident plan without mutation.`,
-	Example: `  ./c8volt resolve process-instance --key <process-instance-key> --dry-run
-  ./c8volt resolve process-instance --key <process-instance-key>
-  ./c8volt --tenant tenant-a resolve process-instance --key <process-instance-key> --dry-run
-  ./c8volt resolve process-instance --key <process-instance-key> --key <another-process-instance-key>
-  printf '%s\n' "$PROCESS_INSTANCE_KEY_A" "$PROCESS_INSTANCE_KEY_B" | ./c8volt resolve process-instance -`,
+Use --dry-run to review the plan. Families without active incidents need no change.`,
+	Example: `  c8volt resolve process-instance --key <process-instance-key> --dry-run
+  c8volt resolve process-instance --key <process-instance-key>`,
 	Aliases: []string{"pi"},
 	Args: func(cmd *cobra.Command, args []string) error {
 		return validateOptionalDashArg(args)
@@ -55,6 +52,18 @@ Use --dry-run to inspect the family and incident plan without mutation.`,
 		}
 		if err := validateResolveJSONGuardrails("process-instance"); err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+		}
+		if cmd.Flags().Changed("bid") {
+			if err := validateBusinessIDActionInput(cmd, args); err != nil {
+				handleBusinessIDSearchError(cmd, log, cfg.App.NoErrCodes, err)
+				return
+			}
+			runResolveProcessInstanceBusinessID(cmd, cli, cfg, log)
+			return
+		}
+		if cmd.Flags().Changed("limit") || cmd.Flags().Changed("batch-size") {
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, invalidFlagValuef("--limit and --batch-size require --bid"))
+			return
 		}
 		stdinKeys, err := readKeysIfDash(args)
 		if err != nil {
@@ -130,10 +139,11 @@ func init() {
 	resolveCmd.AddCommand(resolveProcessInstanceCmd)
 
 	fs := resolveProcessInstanceCmd.Flags()
+	registerBusinessIDActionFlags(resolveProcessInstanceCmd)
 	fs.StringSliceVarP(&flagResolvePIKeys, "key", "k", nil, "process instance key(s) to resolve; repeat or combine with stdin '-'")
 	fs.BoolVar(&flagDryRun, "dry-run", false, "preview process-instance incident resolutions without submitting mutation")
 	fs.BoolVar(&flagNoWait, "no-wait", false, "return after resolution requests are accepted without incident confirmation")
-	fs.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers when resolving multiple process instances (default: min(count, 2*GOMAXPROCS, 32))")
+	fs.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers; omit for an automatic limit")
 	fs.BoolVar(&flagNoWorkerLimit, "no-worker-limit", false, "use all queued jobs as workers when --workers is unset")
 	fs.BoolVar(&flagFailFast, "fail-fast", false, "stop scheduling new process-instance resolutions after the first error")
 

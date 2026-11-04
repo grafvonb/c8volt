@@ -65,9 +65,15 @@ type AllProcessDefinitionsPurgeDeletePlan struct {
 	DuplicateCandidateProcessDefinitionKeys typex.Keys
 	AffectedProcessInstanceCount            int64
 	ActiveProcessInstanceCount              int64
-	RequiresConfirmation                    bool
-	RequiresForce                           bool
-	Errors                                  []string
+	// SuspendedProcessInstanceCount is the separately observed suspended bucket.
+	SuspendedProcessInstanceCount int64
+	// SuspendedCountSupported requires complete supported observations across the plan.
+	SuspendedCountSupported bool
+	// UnfinishedProcessInstanceCount is authoritative cleanup evidence, independent of display buckets.
+	UnfinishedProcessInstanceCount int64
+	RequiresConfirmation           bool
+	RequiresForce                  bool
+	Errors                         []string
 }
 
 // AllProcessDefinitionsPurgeDeletionResult captures mutation submission and confirmation output.

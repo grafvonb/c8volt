@@ -14,7 +14,6 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/grafvonb/c8volt/c8volt/ferrors"
 	"github.com/grafvonb/c8volt/c8volt/foptions"
 	facade "github.com/grafvonb/c8volt/c8volt/job"
 	d "github.com/grafvonb/c8volt/internal/domain"
@@ -28,7 +27,7 @@ import (
 // enforce discovery tenant, retain explicit authorization, and reject unsupported empty batches.
 func TestBulkCompletionPreparationAdapters(t *testing.T) {
 	t.Parallel()
-	for _, version := range []toolx.CamundaVersion{toolx.V87, toolx.V88, toolx.V89, toolx.V810} {
+	for _, version := range []toolx.CamundaVersion{toolx.V88, toolx.V89, toolx.V810} {
 		t.Run(string(version), func(t *testing.T) {
 			t.Parallel()
 			for _, mode := range []string{"search", "explicit", "empty", "incomplete", "listener_payload"} {
@@ -95,20 +94,11 @@ func TestBulkCompletionPreparationAdapters(t *testing.T) {
 					if mode == "explicit" {
 						request.Selection = d.CompletionSelection{Mode: d.CompletionSelectionExplicit, InputForm: d.CompletionInputCollection, Keys: []string{"9007199254740993", "2", "2"}}
 					}
-					if mode == "empty" && version == toolx.V87 {
-						request.Selection = d.CompletionSelection{Mode: d.CompletionSelectionExplicit, InputForm: d.CompletionInputStdin}
-					}
 					if mode == "listener_payload" {
 						request.Variables = map[string]any{"x": true}
 					}
 					batch, err := svc.PrepareJobCompletionBatch(context.Background(), request, services.WithIgnoreTenant(), services.WithForce(), services.WithNoStateCheck(), services.WithDryRun())
 					require.Zero(t, writes.Load())
-					if version == toolx.V87 {
-						require.ErrorIs(t, err, d.ErrUnsupported)
-						require.Zero(t, reads.Load())
-						require.Equal(t, d.CompletionPreparationIncomplete, batch.Status)
-						return
-					}
 					if mode == "incomplete" || mode == "listener_payload" {
 						require.Error(t, err)
 						require.Equal(t, d.CompletionPreparationIncomplete, batch.Status)
@@ -140,7 +130,7 @@ func TestBulkCompletionPreparationAdapters(t *testing.T) {
 // proving strict direct-call dry-run, cross-tenant explicit keys, one-shot HTTP evidence and no hidden mutations.
 func TestBulkCompletionExecutionAdapters(t *testing.T) {
 	t.Parallel()
-	for _, version := range []toolx.CamundaVersion{toolx.V87, toolx.V88, toolx.V89, toolx.V810} {
+	for _, version := range []toolx.CamundaVersion{toolx.V88, toolx.V89, toolx.V810} {
 		t.Run(string(version), func(t *testing.T) {
 			t.Parallel()
 			for _, mode := range []string{"accepted", "dry-run", "empty", "conflict completed", "uncertain missing", "listener changed", "completed", "canceled"} {
@@ -227,11 +217,7 @@ func TestBulkCompletionExecutionAdapters(t *testing.T) {
 						request.Variables = map[string]any{"work": true}
 					}
 					batch, prepareErr := api.PrepareJobCompletionBatch(context.Background(), request)
-					if version != toolx.V87 {
-						require.NoError(t, prepareErr)
-					} else {
-						require.ErrorIs(t, prepareErr, ferrors.ErrUnsupported)
-					}
+					require.NoError(t, prepareErr)
 					before := reads.Load()
 					executing.Store(true)
 					opts := []foptions.FacadeOption{foptions.WithNoWait(), foptions.WithForce(), foptions.WithNoStateCheck(), foptions.WithIgnoreTenant()}
@@ -240,12 +226,6 @@ func TestBulkCompletionExecutionAdapters(t *testing.T) {
 					}
 					report, err := api.ExecuteJobCompletionBatch(context.Background(), batch, 2, opts...)
 					require.Zero(t, unexpected.Load())
-					if version == toolx.V87 {
-						require.ErrorIs(t, err, ferrors.ErrUnsupported)
-						require.Zero(t, reads.Load())
-						require.Zero(t, writes.Load())
-						return
-					}
 					require.Equal(t, "tenant", report.DiscoveryTenant)
 					switch mode {
 					case "dry-run":

@@ -63,8 +63,6 @@ Expected result: c8volt submits the selected worker outcome through supported Ca
 ## Validate Unsupported Version
 
 ```bash
-c8volt --camunda-version 8.7 get job --state failed
-c8volt --camunda-version 8.7 update job --key <job-key> --complete --auto-confirm
 ```
 
 Expected result: unsupported capability errors are returned before unsupported mutation paths are used.
@@ -72,7 +70,6 @@ Expected result: unsupported capability errors are returned before unsupported m
 ## Validation Commands
 
 ```bash
-go test ./cmd ./c8volt/job ./internal/domain ./internal/services/job ./internal/services/job/v87 ./internal/services/job/v88 ./internal/services/job/v89 -count=1
 make docs-content
 make test
 ```

@@ -25,7 +25,7 @@ type realStateIncident struct {
 }
 
 func TestRealStateIncidentsFamily(t *testing.T) {
-	profiles := selectedRealStateC89Profiles(t)
+	profiles := selectedRealStateProfiles(t)
 
 	report := realStateFamilyReport{
 		Family:   "incidents",
@@ -58,6 +58,7 @@ func TestRealStateIncidentsFamily(t *testing.T) {
 	}
 }
 
+// runRealStateIncidentScenarios creates incident evidence through canonical technical-failure input.
 func runRealStateIncidentScenarios(t *testing.T, profile integrationProfile, dataset realStateJobDataset) ([]evidenceRecord, error) {
 	t.Helper()
 	var records []evidenceRecord
@@ -67,8 +68,8 @@ func runRealStateIncidentScenarios(t *testing.T, profile integrationProfile, dat
 		return records, fmt.Errorf("real-state incident dataset for profile %q has %d jobs, want at least 2", profile.Name, len(jobs))
 	}
 
-	failResult := runC8VoltForProfile(t, profile.Name, "real-state-incidents-fail-job", "--automation", "--json", "update", "job", "--key", jobs[0].Key, "--fail", "--retries", "0", "--message", "c8volt real-state incident setup", "--no-wait")
-	failRecord := realStateJobRecord(profile, failResult, "update job", "real-state-incidents-fail-job", "json", []string{"key", "fail", "retries", "message", "no-wait"}, []string{jobs[0].Key, jobs[0].ProcessInstanceKey}, false, true)
+	failResult := runC8VoltForProfile(t, profile.Name, "real-state-incidents-fail-job", "--automation", "--json", "update", "job", "--key", jobs[0].Key, "--fail", "--set-retries", "0", "--set-error-message", "c8volt real-state incident setup", "--no-wait")
+	failRecord := realStateJobRecord(profile, failResult, "update job", "real-state-incidents-fail-job", "json", []string{"key", "fail", "set-retries", "set-error-message", "no-wait"}, []string{jobs[0].Key, jobs[0].ProcessInstanceKey}, false, true)
 	if err := validateRealStateJobWorkerOutcome(failResult); err != nil {
 		failRecord.Outcome = realStateOutcomeFailed
 		failRecord.FailureClass = volumeFailureProduct
@@ -95,8 +96,8 @@ func runRealStateIncidentScenarios(t *testing.T, profile integrationProfile, dat
 	}
 	records = append(records, jobEvidenceRecord)
 
-	repairResult := runC8VoltForProfile(t, profile.Name, "real-state-incidents-ops-repair-dry-run", "ops", "repair", "incident", "--key", firstString(realStateIncidentKeys(incidents)), "--retries", "1", "--job-timeout", "30s", "--dry-run")
-	repairRecord := realStateIncidentRecord(profile, repairResult, "ops repair incident", "real-state-incidents-ops-repair-dry-run", "one-line", []string{"key", "retries", "job-timeout", "dry-run"}, append(realStateIncidentKeys(incidents), jobs[0].Key), true, false)
+	repairResult := runC8VoltForProfile(t, profile.Name, "real-state-incidents-ops-repair-dry-run", "ops", "repair", "incident", "--key", firstString(realStateIncidentKeys(incidents)), "--set-retries", "1", "--set-job-timeout", "30s", "--dry-run")
+	repairRecord := realStateIncidentRecord(profile, repairResult, "ops repair incident", "real-state-incidents-ops-repair-dry-run", "one-line", []string{"key", "set-retries", "set-job-timeout", "dry-run"}, append(realStateIncidentKeys(incidents), jobs[0].Key), true, false)
 	if err := validateRealStateIncidentRepairDryRun(repairResult); err != nil {
 		repairRecord.Outcome = realStateOutcomeFailed
 		repairRecord.FailureClass = volumeFailureProduct

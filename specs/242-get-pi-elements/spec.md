@@ -66,7 +66,6 @@ As a c8volt operator, I want element enrichment to work alongside variables and 
 
 ### Edge Cases
 
-- Camunda 8.7 must return a clear unsupported-version error for `--with-elements`.
 - `--with-elements` must be rejected with `--total` because totals describe process instances and cannot include enrichment sections.
 - Keyed process-instance lookup with `--with-elements` must reject incompatible search-mode filters consistently with existing enrichment behavior.
 - `--keys-only --with-elements` must be rejected with a clear validation error.
@@ -87,7 +86,6 @@ As a c8volt operator, I want element enrichment to work alongside variables and 
 - **FR-005**: The feature MUST reuse the runtime element inspection behavior delivered by the standalone element command from issue #241 rather than defining a separate user-facing element lookup contract.
 - **FR-006**: The feature MUST preserve existing process-instance tenant behavior when selecting process instances and attaching elements.
 - **FR-007**: The feature MUST preserve existing process-instance paging semantics: `--batch-size` controls process-instance page size, `--limit` limits process instances, interactive prompts are based on process-instance pages, and bounded JSON output aggregates selected process instances into one payload.
-- **FR-008**: The system MUST return a clear unsupported-version error for Camunda 8.7 when `--with-elements` is requested.
 - **FR-009**: Human output MUST add an `elements:` section under each enriched process instance when `--with-elements` is used.
 - **FR-010**: Element rows in human output MUST use the compact element shape with columns ordered as element instance key, type, element identifier, state, start date, optional end date, and optional incident marker.
 - **FR-011**: Element row columns MUST remain aligned across rows with different type, element identifier, and state widths.
@@ -124,7 +122,6 @@ As a c8volt operator, I want element enrichment to work alongside variables and 
 - **SC-006**: JSON consumers can read attached element instances under each process-instance item for keyed and list/search results.
 - **SC-007**: Combined variable, incident, and element enrichment renders stable sections without missing or duplicated data.
 - **SC-008**: Invalid combinations, including `--with-elements --total`, `--keys-only --with-elements`, and incompatible keyed/search filter combinations, fail before presenting misleading output.
-- **SC-009**: Camunda 8.7 attempts with `--with-elements` return a clear unsupported-version result without mutating operational state.
 
 ## Assumptions
 

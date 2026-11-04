@@ -18,7 +18,6 @@ The shared process-instance search filter must distinguish between:
 
 | Version | `roots-only` / `children-only` | `incidents-only` / `no-incidents-only` | `orphan-children-only` |
 |--------|---------------------------------|-----------------------------------------|-------------------------|
-| `v8.7` | Client-side fallback | Client-side fallback | Client-side fallback |
 | `v8.8` | Request-side pushdown | Request-side pushdown | Client-side fallback |
 | `v8.9` | Request-side pushdown | Request-side pushdown | Client-side fallback |
 
@@ -59,6 +58,5 @@ The feature is incomplete unless tests prove:
 - shared filter mapping carries the new optional semantics correctly
 - `v8.8` request bodies include the pushed-down predicates
 - `v8.9` request bodies include the pushed-down predicates
-- `v8.7` request bodies omit unsupported pushed-down predicates
 - command-level paging behavior shows the supported-version improvement
 - `orphan-children-only` remains client-side

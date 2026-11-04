@@ -83,7 +83,6 @@ Expected result:
 
 ```sh
 GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'Test.*ProcessDefinitionSelector|Test.*Bpmn.*Selector|TestRunProcessInstance.*Bpmn' -count=1
-GOCACHE=/tmp/c8volt-gocache go test ./cmd ./c8volt/process ./internal/services/processdefinition/v87 ./internal/services/processdefinition/v88 ./internal/services/processdefinition/v89 -count=1
 make docs-content
 make test
 ```

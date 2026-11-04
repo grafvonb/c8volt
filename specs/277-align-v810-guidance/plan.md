@@ -101,7 +101,6 @@ docs/cli/c8volt_config_test-connection.md  # regenerate from authored help
 ## Design Sequence
 
 1. Establish an explicit guidance classification from [data-model.md](data-model.md): active normative guidance may be corrected; generated derivatives follow their source; historical completed records remain unchanged and rely on the existing #275 supersession context.
-2. Update the current maintainer and architecture inventories to include V810 wherever all supported adapters, generated clients, capability reviews, or newest-runtime guidance are enumerated. Set V89 as the default, retain version-neutral layering rules, and leave integration-only 8.7–8.9 matrices unchanged because live V810 integration remains out of scope.
 3. Correct the shipped configuration template to list 8.10 and distinguish the supported set from the V89 default. Add a focused assertion against rendered template output for the V89 fallback and verify the source-only supported-version comment with a content scan.
 4. Refine #273 FR-006 and SC-002 to use the gateway result language already defined by its version-selection contract: same release line is a match; different release line is a diagnostic non-match; empty or unparseable output is an unverifiable diagnostic; neither creates a new hard-failure contract.
 5. Clarify the authored `config test-connection` help with the same gateway outcomes, update its nearby test, and regenerate its CLI reference through `make docs-content` rather than editing generated Markdown.

@@ -70,7 +70,6 @@ internal/
         ├── waiter/
         │   ├── waiter.go
         │   └── waiter_test.go
-        ├── v87/
         ├── v88/
         └── v89/
 

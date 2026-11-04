@@ -29,7 +29,7 @@ func TestBulkCompletionAcceptanceListenerHierarchy(t *testing.T) {
 						processKeys[key] = completionAcceptanceKey(100 + i)
 						rows = append(rows, strings.ReplaceAll(bulkCompletionRow(key, "CREATED"), `"2251799813711000"`, strconv.Quote(processKeys[key])))
 					}
-					f, server := newCompletionAcceptanceServer(t, completionAcceptancePages(rows, 2), nil)
+					f, server := newCompletionAcceptanceServer(t, version, completionAcceptancePages(rows, 2), nil)
 					// These inputs are immutable before any command request starts.
 					f.processInstanceKeys = processKeys
 					f.extraFilters = map[string]string{"state": "CREATED", "kind": "TASK_LISTENER", "listenerEventType": "CANCELING"}

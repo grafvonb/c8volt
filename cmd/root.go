@@ -4,7 +4,7 @@
 package cmd
 
 import (
-	"errors"
+	"context"
 	"fmt"
 	"os"
 	"strings"
@@ -13,7 +13,6 @@ import (
 	"github.com/grafvonb/c8volt/toolx"
 	"github.com/grafvonb/c8volt/toolx/logging"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 var (
@@ -35,29 +34,19 @@ func Root() *cobra.Command { return rootCmd }
 var rootCmd = &cobra.Command{
 	Use:   "c8volt",
 	Short: "Operate Camunda 8 workflows from the command line",
-	Long: `c8volt: Camunda 8 Operations CLI.
+	Long: `Operate Camunda 8 with c8volt v5: inspect, repair, deploy, and clean up.
 
-Deploy BPMN models, start process instances, inspect workflow state, wait for
-state changes, walk process trees, cancel, and delete.
+Documentation and examples target Camunda 8.10; 8.9 and 8.8 remain supported.
+Set app.camunda_version to match your cluster. Start with config test-connection,
+then use ops playbooks for repair, retention, purge, and runtime analysis.
 
-Supports Camunda 8.7, 8.8, 8.9, and 8.10.
-Camunda 8.10 baseline: 8.10.0-alpha4 (prerelease).
-Camunda 8.10 aliases: 8.10, 810, v810, v8.10. Default: 8.9.
-Use capabilities to discover supported commands and automation options.
-
-On API-backed commands, --debug emits redacted request diagnostics at DEBUG
-alongside other configured logs. --quiet and log-level filtering still apply;
-log format, timestamps, and source settings use the existing logger.`,
-	Example: `  ./c8volt config show --template
-  ./c8volt --config ./config.yaml config show --validate
-  ./c8volt get cluster topology
-  ./c8volt --config ./config.yaml --debug get process-definition --latest
-  ./c8volt --all-tenants get process-instance --state active
-  ./c8volt embed deploy --all --run
-  ./c8volt run process-instance --bpmn-process-id <bpmn-process-id>
-  ./c8volt capabilities --json
-  ./c8volt get --help`,
+Preview changes with --dry-run where supported. Use --auto-confirm for unattended
+execution and --json for scripts. See capabilities --json for command support.`,
+	Example: `  c8volt config test-connection
+  c8volt get process-instance --state active --limit 10
+  c8volt ops repair incident --key <incident-key> --dry-run`,
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+		cmd.SetContext(context.WithValue(cmd.Context(), migrationPreRunKey{}, true))
 		if hasHelpFlag(cmd) {
 			return nil
 		}
@@ -65,39 +54,18 @@ log format, timestamps, and source settings use the existing logger.`,
 			return silenceUsageForError(cmd, err)
 		}
 
-		v := viper.New()
-		bindings, err := initViper(v, cmd)
+		v, bindings, cfg, err := resolveLocalCommandConfig(cmd, flagQuiet, flagDebug)
 		if err != nil {
-			return silenceUsageForError(cmd, bootstrapLocalPrecondition(err))
-		}
-
-		switch {
-		case flagQuiet:
-			v.Set("log.level", "error")
-		case flagDebug:
-			v.Set("log.level", "debug")
-		}
-		cfg, err := retrieveAndNormalizeConfig(v, bindings)
-		if err != nil {
-			if errors.Is(err, config.ErrProfileNotFound) {
-				return silenceUsageForError(cmd, normalizeBootstrapError(err))
-			}
-			return silenceUsageForError(cmd, bootstrapLocalPrecondition(err))
+			return silenceUsageForError(cmd, err)
 		}
 		tenantProvenance := tenantOverrideProvenanceFromConfig(v, bindings, cfg)
-		root := cmd.Root()
-		effectiveStderr := cmd.ErrOrStderr()
-		activityWriter := logging.NewActivityWriterEnabled(effectiveStderr, indicatorEnabled(cmd, cfg))
-		root.SetErr(activityWriter)
-		ctx := cfg.ToContextWithLogWriter(cmd.Context(), activityWriter)
+		ctx := localCommandLogContext(cmd, cfg, v, indicatorEnabled(cmd, cfg))
 		ctx = tenantProvenance.ToContext(ctx)
-		ctx = logging.ToActivityContext(ctx, activityWriter)
 		log, err := logging.FromContext(ctx)
 		if err != nil {
 			return silenceUsageForError(cmd, bootstrapLocalPrecondition(fmt.Errorf("retrieve logger from context: %w", err)))
 		}
 		configSource := configSourceDescription{loadedPath: v.ConfigFileUsed()}
-		ctx = configSource.ToContext(ctx)
 
 		if configSource.loadedPath != "" {
 			log.Debug(configSource.InfoMessage())
@@ -184,17 +152,25 @@ func validationCommandPath(cmd *cobra.Command) string {
 	return strings.TrimSpace(strings.TrimPrefix(path, root.Name()))
 }
 
+// Execute preserves the selected leaf for locally prepared migration failures.
 func Execute() {
 	rootCmd.SetOut(os.Stdout)
 	rootCmd.SetErr(os.Stderr)
-	if (len(os.Args)) == 1 {
-		rootCmd.SetArgs([]string{"--help"})
+	args := os.Args[1:]
+	if len(args) == 0 {
+		args = []string{"--help"}
 	}
-	if err := rootCmd.Execute(); err != nil {
-		handleBootstrapError(rootCmd, err)
+	leaf, err := executeCommandWithMigrationContext(rootCmd, args)
+	if err != nil {
+		if _, prepared := err.(*migrationReportingError); prepared {
+			handleBootstrapError(leaf, err)
+		} else {
+			handleBootstrapError(rootCmd, err)
+		}
 	}
 }
 
+// init registers root flags and command metadata once for the singleton tree.
 func init() {
 	useInvalidInputFlagErrors(rootCmd)
 
@@ -204,6 +180,7 @@ func init() {
 	pf.BoolVarP(&flagCmdAutoConfirm, "auto-confirm", "y", false, "auto-confirm prompts for non-interactive use")
 	pf.BoolVarP(&flagVerbose, "verbose", "v", false, "show additional output")
 	pf.BoolVar(&flagNoIndicator, "no-indicator", false, "disable transient terminal activity indicators")
+	pf.BoolVar(&flagNoVersionCheck, "no-version-check", false, "skip the automatic advisory gateway version check")
 	pf.BoolVar(&flagDebug, "debug", false, "enable debug logging")
 	pf.BoolVarP(&flagViewAsJson, "json", "j", false, "output as JSON (where applicable)")
 	pf.BoolVar(&flagViewKeysOnly, "keys-only", false, "output keys only (where applicable)")
@@ -211,13 +188,14 @@ func init() {
 	pf.String("config", "", "path to config file")
 	pf.String("profile", "", "config active profile name to use (e.g. dev, prod)")
 	pf.Var(toolx.NewDurationStringValue("30s", &flagHTTPTimeout), "timeout", "HTTP request timeout")
+	pf.Float64("request-rate", 0, "maximum shared request starts per second (fractions allowed; 0 disables pacing)")
 
 	pf.String("log-level", "info", "log level (debug, info, warn, error)")
 	pf.String("log-format", "plain-time", "log format (plain-time, plain, json, text)")
 	pf.Bool("log-with-source", false, "include source file and line number in logs")
 
-	pf.String("tenant", "", "tenant ID for discovery/search, selection, create, deploy, and run flows; explicit empty values can clear configured discovery filters, and explicit keys/IDs remain backend-authorized")
-	pf.BoolVar(&flagAllTenants, "all-tenants", false, "clear configured tenant filtering and search all tenants visible to the authenticated user; mutually exclusive with --tenant")
+	pf.String("tenant", "", "tenant for discovery and creation; explicit keys use backend authorization")
+	pf.BoolVar(&flagAllTenants, "all-tenants", false, "search all accessible tenants; cannot combine with --tenant")
 	pf.BoolVar(&flagNoErrCodes, "no-err-codes", false, "suppress error codes in error outputs")
 
 	pf.String("camunda-version", string(toolx.CurrentCamundaVersion), fmt.Sprintf("Camunda version (%s) expected; aliases include 810, v810, and v8.10 for 8.10. Causes usage of specific API versions.", toolx.SupportedCamundaVersionsString()))

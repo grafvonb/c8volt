@@ -5,6 +5,7 @@ package v89
 
 import (
 	"context"
+	"fmt"
 
 	camunda "github.com/grafvonb/c8volt/internal/clients/camunda/v89/camunda"
 	d "github.com/grafvonb/c8volt/internal/domain"
@@ -16,14 +17,20 @@ import (
 // submitBulkCompletion is the private coordinator port for a single intentional
 // completion attempt. The supplied job must be the coordinator's latest recheck;
 // this adapter validates payload compatibility but never re-reads or retries.
-func (s *Service) submitBulkCompletion(ctx context.Context, job d.Job, variables map[string]any) (d.CompletionSubmission, error) {
+func (s *Service) submitBulkCompletion(ctx context.Context, job d.Job, payload d.CompletionPayload) (d.CompletionSubmission, error) {
+	if payload.SetBusinessID != nil {
+		return d.CompletionSubmission{Status: d.CompletionSubmissionNotSubmitted}, fmt.Errorf("%w: business-ID assignment requires Camunda 8.10", d.ErrUnsupported)
+	}
+	if err := d.ValidateBusinessIDAssignment(payload.SetBusinessID); err != nil {
+		return d.CompletionSubmission{Status: d.CompletionSubmissionNotSubmitted}, err
+	}
 	if err := ctx.Err(); err != nil {
 		return d.CompletionSubmission{Status: d.CompletionSubmissionNotSubmitted, Diagnostic: err.Error()}, err
 	}
-	if err := common.ValidateJobCompletionPayload(job, variables); err != nil {
+	if err := common.ValidateJobCompletionPayload(job, payload.Variables); err != nil {
 		return d.CompletionSubmission{Status: d.CompletionSubmissionNotSubmitted, Diagnostic: err.Error()}, err
 	}
-	body := newCompleteJobRequestBody(d.JobWorkerOutcomeRequest{Key: job.Key, Variables: variables})
+	body := newCompleteJobRequestBody(d.JobWorkerOutcomeRequest{Key: job.Key, Variables: payload.Variables, SetBusinessID: payload.SetBusinessID})
 	response, err := s.c.CompleteJobWithResponse(ctx, camunda.JobKey(job.Key), body)
 	if response == nil {
 		return common.ClassifyJobCompletionSubmission(nil, nil, err)
@@ -34,10 +41,16 @@ func (s *Service) submitBulkCompletion(ctx context.Context, job d.Job, variables
 // PrepareJobCompletionBatch delegates read-only traversal to the shared coordinator
 // while retaining this adapter's key-only authorization and normalized page evidence.
 func (s *Service) PrepareJobCompletionBatch(ctx context.Context, request d.CompletionRequest, opts ...services.CallOption) (d.PreparedCompletionBatch, error) {
+	if request.SetBusinessID != nil {
+		return d.PreparedCompletionBatch{}, fmt.Errorf("%w: business-ID assignment requires Camunda 8.10", d.ErrUnsupported)
+	}
 	return completion.Prepare(ctx, request, common.EffectiveTenant(s.cfg), s.cfg.App.Backoff, completion.ReadPorts{Get: s.GetJob, Search: s.SearchJobsPage}, opts...)
 }
 
 // ExecuteJobCompletionBatch injects version-owned key reads and one-shot submission into the shared workflow.
 func (s *Service) ExecuteJobCompletionBatch(ctx context.Context, batch d.PreparedCompletionBatch, wantedWorkers int, opts ...services.CallOption) (d.CompletionBatchReport, error) {
+	if batch.SetBusinessID != nil {
+		return d.CompletionBatchReport{}, fmt.Errorf("%w: business-ID assignment requires Camunda 8.10", d.ErrUnsupported)
+	}
 	return completion.Execute(ctx, batch, common.EffectiveTenant(s.cfg), s.cfg.App.Backoff, completion.ExecutionPorts{Get: s.GetJob, Submit: s.submitBulkCompletion}, wantedWorkers, opts...)
 }

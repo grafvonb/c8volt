@@ -110,7 +110,6 @@ As a maintainer and automation user, I want new job behavior to follow existing 
 **Acceptance Scenarios**:
 
 1. **Given** Camunda 8.8 or 8.9 is configured, **When** the new get and update job paths run, **Then** c8volt uses supported generated-client capabilities through existing service and facade boundaries.
-2. **Given** Camunda 8.7 is configured, **When** a new job search or worker outcome mutation path is requested, **Then** c8volt fails before mutation with a clear unsupported capability error.
 3. **Given** command metadata, README examples, and generated CLI docs are inspected, **When** the feature is complete, **Then** they accurately describe the new job search filters, outcome modes, version support, dry-run, confirmation, JSON, and automation behavior.
 
 ### Edge Cases
@@ -127,7 +126,6 @@ As a maintainer and automation user, I want new job behavior to follow existing 
 - State-changing update modes support dry-run, confirmation, JSON guardrails, no-wait where applicable, and automation behavior consistent with existing `update job`.
 - Dry-run never submits a mutation and must clearly show which worker outcome or update would be submitted.
 - Human and JSON outputs distinguish validation failure, mutation failure, submitted, confirmed, and unsupported-version outcomes where those states apply.
-- Camunda 8.7 fails before unsupported mutation paths are used.
 
 ### Forward Real-State Validation Note
 
@@ -172,7 +170,6 @@ This setup should remain distinct from listener-job coverage. Listener jobs prov
 - **FR-025**: All state-changing update modes MUST support confirmation, JSON guardrails, and automation behavior consistent with existing `update job`.
 - **FR-026**: All state-changing update modes MUST report human-readable and JSON outcomes through existing command result patterns.
 - **FR-027**: Camunda 8.8 and 8.9 MUST be supported for new search and worker outcome behavior through generated clients where those upstream capabilities exist.
-- **FR-028**: Camunda 8.7 MUST fail before unsupported new job search or worker outcome mutation paths with a clear unsupported capability error.
 - **FR-029**: Job service and facade behavior MUST preserve existing c8volt layering and MUST NOT put generated-client request construction in command code.
 - **FR-030**: Command contract metadata MUST describe mutation behavior, automation support, output modes, and required flags for the changed commands.
 - **FR-031**: User-facing help, README examples, and generated CLI documentation MUST describe new job search filters, worker outcome modes, version support, and safety controls.
@@ -194,7 +191,6 @@ This setup should remain distinct from listener-job coverage. Listener jobs prov
 - **BPMN Error Request**: A worker outcome containing modeled error code and optional message.
 - **Completion Request**: A worker outcome containing optional completion variables.
 - **Mutation Plan**: A dry-run and confirmation payload describing the selected job, requested update or worker outcome, and whether mutation will be submitted.
-- **Unsupported Capability Error**: The explicit failure returned before unsupported job search or worker outcome mutation paths on Camunda 8.7.
 
 ## Success Criteria *(mandatory)*
 
@@ -209,7 +205,6 @@ This setup should remain distinct from listener-job coverage. Listener jobs prov
 - **SC-007**: Automated tests show `update job --throw-bpmn-error` submits the expected BPMN error request and handles dry-run, confirmation, JSON, automation, and unsupported-version paths.
 - **SC-008**: Automated tests show `update job --complete --vars <json>` submits the expected completion request and handles variable parsing, dry-run, confirmation, JSON, automation, and unsupported-version paths.
 - **SC-009**: Automated tests show `--fail`, `--throw-bpmn-error`, and `--complete` are mutually exclusive.
-- **SC-010**: Automated tests show Camunda 8.7 fails before unsupported new job search or worker outcome mutation requests are submitted.
 - **SC-011**: Command contract tests show updated mutation, automation, output mode, and required flag metadata for changed commands.
 - **SC-012**: README, help text, and generated CLI documentation match the implemented search filters, outcome modes, examples, and version support.
 - **SC-013**: Relevant targeted command/service tests pass, followed by the closest broader repository validation command.

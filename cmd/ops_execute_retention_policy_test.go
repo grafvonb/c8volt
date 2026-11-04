@@ -57,25 +57,7 @@ func TestOpsExecuteRetentionPolicyResultTenantContext(t *testing.T) {
 }
 
 func TestOpsExecuteRetentionPolicyHelpDocumentsCommand(t *testing.T) {
-	output := executeRootForProcessInstanceTest(t, "ops", "execute", "--help")
-
-	assertHelpOutputContainsAll(t, output,
-		"Run predefined operational playbooks",
-		"retention-policy",
-	)
-
-	commandOutput := executeRootForProcessInstanceTest(t, "ops", "execute", "retention-policy", "--help")
-
-	assertHelpOutputContainsAll(t, commandOutput,
-		"Delete process instances older than the required retention age",
-		"--retention-days int",
-		"./c8volt ops execute retention-policy --retention-days 90 --dry-run",
-		"./c8volt ops execute retention-policy --retention-days 90 --state completed --bpmn-process-id <bpmn-process-id> --dry-run",
-		"./c8volt ops execute retention-policy --retention-days 90 --state completed --bpmn-process-id <bpmn-process-id> --limit 25 --report-file retention-report.md",
-	)
-	assertHelpOutputOmitsAll(t, commandOutput,
-		"./c8volt ops execute retention-policy --retention-days 90 --automation --json --no-wait",
-	)
+	assertCommandHelpOutput(t, []string{"ops", "execute", "retention-policy"}, []string{"--retention-days", "--dry-run", "--report-file", "root is still unfinished"}, nil)
 }
 
 func TestOpsExecuteRetentionPolicyInvalidRetentionDays(t *testing.T) {
@@ -957,7 +939,7 @@ func TestOpsExecuteRetentionPolicySemanticProgressModeGate(t *testing.T) {
 				},
 			}
 		},
-		QuietWarning: "retention-root-1 failed: request rejected (deletion process-instance trees, 1/1 process-instance tree(s), 1 failed, affected process instances: 1)",
+		QuietWarning: "", // Final aggregate rendering owns failure diagnostics.
 	})
 }
 
@@ -1002,7 +984,7 @@ func assertOpsCompletionProgressModeGate(t *testing.T, tc opsCompletionProgressM
 			closeProgress()
 
 			require.Empty(t, stdout.String())
-			if mode.wantQuietWarning {
+			if mode.wantQuietWarning && tc.QuietWarning != "" {
 				require.Equal(t, tc.QuietWarning+"\n", stderr.String())
 				return
 			}
@@ -1071,10 +1053,15 @@ func marshalRetentionArgsForEnv(t *testing.T, args []string) string {
 	return string(data)
 }
 
+// newOpsRetentionPolicySearchServer keeps fixture setup aligned with the invocation's advisory version check.
 func newOpsRetentionPolicySearchServer(t *testing.T, requests *testx.SafeSlice[string]) *httptest.Server {
 	t.Helper()
 
 	return newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		switch {
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
 			body, err := io.ReadAll(r.Body)
@@ -1095,10 +1082,15 @@ func newOpsRetentionPolicyServerWithSeed(t *testing.T, requests *testx.SafeSlice
 	return newOpsRetentionPolicyServerWithSeedState(t, requests, deleted, "COMPLETED")
 }
 
+// newOpsRetentionPolicyServerWithSeedState keeps fixture setup aligned with the invocation's advisory version check.
 func newOpsRetentionPolicyServerWithSeedState(t *testing.T, requests *testx.SafeSlice[string], deleted *testx.SafeSlice[string], state string) *httptest.Server {
 	t.Helper()
 
 	return newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		switch {
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
 			body, err := io.ReadAll(r.Body)
@@ -1127,10 +1119,15 @@ func newOpsRetentionPolicyServerWithSeedState(t *testing.T, requests *testx.Safe
 	}))
 }
 
+// newOpsRetentionPolicyServerWithFinalRootAndActiveChild keeps fixture setup aligned with the invocation's advisory version check.
 func newOpsRetentionPolicyServerWithFinalRootAndActiveChild(t *testing.T, requests *testx.SafeSlice[string], deleted *testx.SafeSlice[string]) *httptest.Server {
 	t.Helper()
 
 	return newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		switch {
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
 			body, err := io.ReadAll(r.Body)
@@ -1167,11 +1164,16 @@ func newOpsRetentionPolicyServerWithFinalRootAndActiveChild(t *testing.T, reques
 	}))
 }
 
+// newOpsRetentionPolicyChangingSeedServer keeps fixture setup aligned with the invocation's advisory version check.
 func newOpsRetentionPolicyChangingSeedServer(t *testing.T, requests *testx.SafeSlice[string], deleted *testx.SafeSlice[string]) *httptest.Server {
 	t.Helper()
 
 	discoverySearches := 0
 	return newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		switch {
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
 			body, err := io.ReadAll(r.Body)

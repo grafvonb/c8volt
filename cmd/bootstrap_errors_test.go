@@ -28,9 +28,7 @@ func TestRootCommand_V89SupportMessagingIsUpdated(t *testing.T) {
 
 	root := Root()
 
-	require.Contains(t, root.Long, "Camunda 8.7, 8.8, 8.9, and 8.10")
-	require.Contains(t, root.Long, "Camunda 8.10 baseline: 8.10.0-alpha4 (prerelease)")
-	require.Contains(t, root.Long, "Default: 8.9")
+	require.Contains(t, root.Long, "8.9 and 8.8 remain supported")
 	require.NotContains(t, root.Long, "version 8.9 is recognized by config normalization")
 	require.Contains(t, root.PersistentFlags().Lookup("camunda-version").Usage, toolx.SupportedCamundaVersionsString())
 }
@@ -57,7 +55,8 @@ func TestNewCliConstructsSupportedV89Client(t *testing.T) {
 			},
 		},
 		HTTP: config.HTTP{
-			Timeout: "30s",
+			RequestRateReportInterval: "5s",
+			Timeout:                   "30s",
 		},
 	}
 	ctx := cfg.ToContext(context.Background())
@@ -86,7 +85,8 @@ func TestNewCliConstructsSupportedV810Client(t *testing.T) {
 			},
 		},
 		HTTP: config.HTTP{
-			Timeout: "30s",
+			RequestRateReportInterval: "5s",
+			Timeout:                   "30s",
 		},
 	}
 	ctx := cfg.ToContext(context.Background())
@@ -368,4 +368,81 @@ func TestExecute_AllTenantsTenantConflictUsesInvalidInputBeforeConfigHelper(t *t
 	os.Args = append([]string{"c8volt"}, args...)
 
 	Execute()
+}
+
+// TestBootstrapMigrationLocalContext verifies recovery uses ordinary config
+// precedence and isolated values, without constructing remote service context.
+func TestBootstrapMigrationLocalContext(t *testing.T) {
+	for _, tt := range []struct {
+		name       string
+		controls   []string
+		level      string
+		noErrCodes bool
+	}{
+		{name: "environment", level: "warn", noErrCodes: true},
+		{name: "explicit", controls: []string{"--log-level=error", "--no-err-codes=false"}, level: "error"},
+		{name: "debug", controls: []string{"--debug"}, level: "debug", noErrCodes: true},
+		{name: "quiet overrides debug", controls: []string{"--debug", "--quiet"}, level: "error", noErrCodes: true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Setenv("C8VOLT_LOG_LEVEL", "warn")
+			dir := t.TempDir()
+			path := filepath.Join(dir, "config.yaml")
+			require.NoError(t, os.WriteFile(path, []byte("log:\n  level: info\n  format: json\nprofiles:\n  diagnostic:\n    app:\n      no_err_codes: true\n"), 0600))
+			root := &cobra.Command{Use: "test"}
+			leaf := &cobra.Command{Use: "resource"}
+			root.AddCommand(leaf)
+			for _, name := range []string{"config", "profile", "log-level", "log-format"} {
+				root.PersistentFlags().String(name, "", "")
+			}
+			for _, name := range []string{"quiet", "debug", "json", "no-err-codes"} {
+				root.PersistentFlags().Bool(name, false, "")
+			}
+			setFlagMigrations(leaf, map[string]flagMigration{"old": {Replacement: "--new"}})
+			leaf.SetContext(context.Background())
+			original := errors.New("private parser cause")
+			args := append([]string{"--old", "--config", path, "--profile=diagnostic", "--json"}, tt.controls...)
+			prepared := prepareMigrationReporting(leaf, args, original)
+			var report *migrationReportingError
+			require.ErrorAs(t, prepared, &report)
+			require.ErrorIs(t, prepared, original)
+			require.Equal(t, RenderModeJSON, report.mode)
+			require.Equal(t, tt.noErrCodes, report.noErrCodes)
+			cfg, err := config.FromContext(leaf.Context())
+			require.NoError(t, err)
+			require.Equal(t, "diagnostic", cfg.ActiveProfile)
+			require.Equal(t, tt.level, cfg.Log.Level)
+			require.Equal(t, "json", cfg.Log.Format)
+			_, err = httpc.FromContext(leaf.Context())
+			require.ErrorIs(t, err, httpc.ErrNoHttpServiceInContext)
+			require.False(t, root.PersistentFlags().Changed("profile"))
+			require.False(t, root.PersistentFlags().Changed("json"))
+			require.NotContains(t, prepared.Error(), original.Error())
+		})
+	}
+}
+
+// TestBootstrapMigrationConfigurationOverrides ensures local reporting honors
+// explicit configuration flags even when the base configuration cannot normalize.
+func TestBootstrapMigrationConfigurationOverrides(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.yaml")
+	require.NoError(t, os.WriteFile(path, []byte("app:\n  camunda_version: invalid\nhttp:\n  timeout: 45s\nlog:\n  format: json\n"), 0600))
+	root := &cobra.Command{Use: "test"}
+	leaf := &cobra.Command{Use: "resource"}
+	root.AddCommand(leaf)
+	root.PersistentFlags().String("config", "", "")
+	root.PersistentFlags().String("camunda-version", "8.9", "")
+	root.PersistentFlags().String("timeout", "30s", "")
+	root.PersistentFlags().Float64("request-rate", 0, "")
+	setFlagMigrations(leaf, map[string]flagMigration{"old": {Replacement: "--new"}})
+	leaf.SetContext(context.Background())
+	prepared := prepareMigrationReporting(leaf, []string{"--old", "--config", path, "--camunda-version=8.10", "--timeout=10s", "--request-rate=1.5"}, errors.New("rejected"))
+	require.NotContains(t, prepared.Error(), "could not be loaded")
+	cfg, err := config.FromContext(leaf.Context())
+	require.NoError(t, err)
+	require.Equal(t, toolx.V810, cfg.App.CamundaVersion)
+	require.Equal(t, "10s", cfg.HTTP.Timeout)
+	require.Equal(t, 1.5, cfg.HTTP.RequestRate)
+	require.False(t, root.PersistentFlags().Changed("camunda-version"))
 }

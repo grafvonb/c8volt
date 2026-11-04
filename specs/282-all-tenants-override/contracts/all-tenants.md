@@ -27,7 +27,6 @@ When active, the flag overrides the tenant produced by the established order of 
 | named tenant | false | named tenant |
 | empty | false | empty |
 | named tenant from base/profile/environment | true | empty |
-| Camunda 8.7 normalized `<default>` | true | empty |
 | already empty | true | empty |
 
 For applicable discovery requests, empty means the tenant filter field is omitted. Results remain limited to resources visible to the authenticated identity.
@@ -125,5 +124,5 @@ Capability document version remains `v1` because the field is additive and no ex
 - “All tenants” means no tenant filter within the authenticated caller's visibility; it is not tenant enumeration and not an authorization bypass.
 - No mapping to `WithIgnoreTenant` or equivalent behavior is allowed.
 - Existing backend 403/404 and resource-visibility behavior remains authoritative for direct-key operations.
-- Existing invocations without active `--all-tenants` are unchanged across Camunda 8.7, 8.8, 8.9, and 8.10.
+- Existing invocations without active `--all-tenants` are unchanged across Camunda 8.8, 8.9, and 8.10.
 - No public facade, service contract, adapter, request schema, or generated client changes are part of this contract.

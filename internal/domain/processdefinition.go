@@ -9,7 +9,9 @@ import (
 	"github.com/grafvonb/c8volt/toolx"
 )
 
+// ProcessDefinition preserves definition metadata and optional backend lifecycle observations.
 type ProcessDefinition struct {
+	State             string                       `json:"state,omitempty"`
 	BpmnProcessId     string                       `json:"bpmnProcessId,omitempty"`
 	Key               string                       `json:"key,omitempty"`
 	Name              string                       `json:"name,omitempty"`
@@ -19,12 +21,17 @@ type ProcessDefinition struct {
 	Statistics        *ProcessDefinitionStatistics `json:"statistics,omitempty"`
 }
 
+// ProcessDefinitionStatistics preserves separate observed state counts and their availability.
 type ProcessDefinitionStatistics struct {
-	Active                 int64 `json:"active,omitempty"`
-	Canceled               int64 `json:"canceled,omitempty"`
-	Completed              int64 `json:"completed,omitempty"`
-	Incidents              int64 `json:"incidents,omitempty"`
-	IncidentCountSupported bool  `json:"incidentCountSupported,omitempty"`
+	Active                  int64 `json:"active,omitempty"`
+	Suspended               int64 `json:"suspended,omitempty"`
+	SuspendedCountSupported bool  `json:"suspendedCountSupported,omitempty"`
+	Canceled                int64 `json:"canceled,omitempty"`
+	Completed               int64 `json:"completed,omitempty"`
+	Incidents               int64 `json:"incidents,omitempty"`
+	IncidentCountSupported  bool  `json:"incidentCountSupported,omitempty"`
+	// Unfinished is an authoritative union observation, never a sum of separate reads.
+	Unfinished *int64 `json:"-"`
 }
 
 type ProcessDefinitionFilter struct {

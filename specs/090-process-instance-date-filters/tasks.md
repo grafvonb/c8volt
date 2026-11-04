@@ -3,7 +3,6 @@
 **Input**: Design documents from `/specs/090-process-instance-date-filters/`
 **Prerequisites**: plan.md (required), spec.md (required for user stories), research.md, data-model.md, contracts/
 
-**Tests**: Tests are required for this feature because the specification explicitly calls for automated coverage of v8.8 happy paths, inclusive bounds, invalid formats, invalid ranges, and v8.7 not-implemented behavior.
 
 **Organization**: Tasks are grouped by user story to enable independent implementation and testing of each story.
 
@@ -81,17 +80,14 @@
 
 **Goal**: Reject malformed or unsupported date-filter usage with clear command and version-specific errors.
 
-**Independent Test**: Run `c8volt get process-instance` with malformed dates, inverted ranges, `--key` plus date filters, and any date flag on a v8.7 config, then verify early validation failures or a clear not-implemented result through the existing error model.
 
 ### Tests for User Story 3
 
 - [x] T015 [US3] Add command coverage for invalid date formats, invalid ranges, and `--key` incompatibility in cmd/get_processinstance_test.go
-- [x] T016 [US3] Add v8.7 service coverage for date-filter not-implemented behavior in internal/services/processinstance/v87/service_test.go
 
 ### Implementation for User Story 3
 
 - [x] T017 [US3] Implement date-range validation and direct-lookup rejection for date filters in cmd/get_processinstance.go
-- [x] T018 [US3] Implement v8.7 date-filter rejection through the existing service error path in internal/services/processinstance/v87/service.go
 
 **Checkpoint**: User Story 3 delivers clear failures for invalid or unsupported inputs without changing non-date behavior.
 
@@ -105,7 +101,6 @@
 - [x] T020 Update user-facing command documentation and examples in README.md
 - [x] T021 Regenerate CLI reference output for the command in docs/cli/c8volt_get_process-instance.md via `make docs-content` and `make docs`
 - [x] T022 Refresh feature smoke-check steps after implementation in specs/090-process-instance-date-filters/quickstart.md
-- [x] T023 Run repository validation from Makefile and stabilize affected tests in Makefile, cmd/get_processinstance_test.go, internal/services/processinstance/v87/service_test.go, and internal/services/processinstance/v88/service_test.go
 
 ---
 
@@ -165,7 +160,6 @@ Task: "Add v8.8 service coverage for end-date mapping and missing endDate exclus
 ```bash
 # Prepare User Story 3 coverage in parallel:
 Task: "Add command coverage for invalid date formats, invalid ranges, and --key incompatibility in cmd/get_processinstance_test.go"
-Task: "Add v8.7 service coverage for date-filter not-implemented behavior in internal/services/processinstance/v87/service_test.go"
 ```
 
 ---

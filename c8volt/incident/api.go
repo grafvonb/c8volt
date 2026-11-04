@@ -11,6 +11,10 @@ import (
 )
 
 type API interface {
+	// PlanProcessInstancesIncidents reads all reviewed incident targets before execution.
+	PlanProcessInstancesIncidents(ctx context.Context, keys types.Keys, opts ...options.FacadeOption) (ProcessInstancesIncidentPlan, error)
+	// ExecuteProcessInstancesIncidentPlan submits only reviewed active incidents.
+	ExecuteProcessInstancesIncidentPlan(ctx context.Context, plan ProcessInstancesIncidentPlan, workers int, opts ...options.FacadeOption) (ProcessInstanceResolutionResults, error)
 	GetIncident(ctx context.Context, key string, opts ...options.FacadeOption) (ProcessInstanceIncidentDetail, error)
 	GetIncidents(ctx context.Context, keys types.Keys, wantedWorkers int, opts ...options.FacadeOption) (Incidents, error)
 	SearchIncidents(ctx context.Context, filter Filter, size int32, opts ...options.FacadeOption) (Incidents, error)

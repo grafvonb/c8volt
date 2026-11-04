@@ -4,9 +4,12 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
+	"log/slog"
 	"strings"
 
+	"github.com/grafvonb/c8volt/c8volt/ferrors"
 	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/spf13/cobra"
 )
@@ -37,13 +40,16 @@ func familyView(cmd *cobra.Command, path KeysPath, chain Chain) error {
 	return pathView(cmd, path, chain, pickMode(), " ⇄ \n")
 }
 
+// pathView retains selected-format output, including zero bytes for an empty key path.
 func pathView(cmd *cobra.Command, path KeysPath, chain Chain, mode RenderMode, sep string) error {
 	items := pathItems(path, chain)
 	switch mode {
 	case RenderModeJSON:
 		return renderJSONPayload(cmd, mode, items)
 	case RenderModeKeysOnly:
-		renderOutputLine(cmd, "%s", strings.Join(mapItems(items, func(it process.ProcessInstance) string { return it.Key }), "\n"))
+		for _, item := range items {
+			renderOutputLine(cmd, "%s", item.Key)
+		}
 	default: // RenderModeOneLine
 		showTimezoneOffset := commandShowTimezoneOffset(cmd)
 		renderOutputLine(cmd, "%s", strings.Join(mapItems(items, func(it process.ProcessInstance) string {
@@ -140,4 +146,50 @@ func renderFamilyTree(cmd *cobra.Command, rootKey string, edges map[string][]str
 	}
 	walk(rootKey, "")
 	return nil
+}
+
+// emptyWalkSelectionView preserves the selected traversal shape without walking or enriching an absent seed.
+func emptyWalkSelectionView(cmd *cobra.Command) error {
+	mode := process.TraversalModeFamily
+	if flagWalkPIModeParent {
+		mode = process.TraversalModeAncestry
+	} else if flagWalkPIModeChildren {
+		mode = process.TraversalModeDescendants
+	}
+	result := process.TraversalResult{Mode: mode, Outcome: process.TraversalOutcomeComplete}
+	if pickMode() != RenderModeJSON {
+		return nil
+	}
+	if flagWalkPIWithIncidents && !flagWalkPIWithVars && !flagWalkPIWithElements {
+		return renderJSONPayload(cmd, RenderModeJSON, incidentEnrichedTraversalPayload(process.IncidentEnrichedTraversalResult{Mode: mode, Outcome: process.TraversalOutcomeComplete}))
+	}
+	if flagWalkPIWithIncidents || flagWalkPIWithVars || flagWalkPIWithElements {
+		return renderJSONPayload(cmd, RenderModeJSON, activityTraversalPayload(result, nil))
+	}
+	return renderJSONPayload(cmd, RenderModeJSON, traversalPayload(result))
+}
+
+// handleBusinessIDWalkError emits partial evidence once while retaining bounded configured diagnostics and the original exit class.
+func handleBusinessIDWalkError(cmd *cobra.Command, log *slog.Logger, noErrCodes bool, err error, payload any, selected int) {
+	if searchBusinessIDFlag(cmd) != nil && commandUsesSharedEnvelope(cmd, pickMode()) {
+		envelope := resultEnvelopeForError(cmd, err)
+		envelope.Payload = payload
+		_ = renderResultEnvelope(cmd, envelope)
+		exitAfterRenderedResult(noErrCodes, err)
+		return
+	}
+	if selection, ok := payload.(process.ProcessInstanceSelection); ok && errors.Is(err, ferrors.ErrLocalPrecondition) && len(selection.Keys) > 1 {
+		handleCommandError(cmd, log, noErrCodes, err, "business-ID selection is ambiguous: multiple distinct process instances; use --key to choose one")
+		return
+	}
+	handleBusinessIDSearchError(cmd, log, noErrCodes, err, selected)
+}
+
+// handleWalkRenderError never attempts a second envelope after a BID result write failed.
+func handleWalkRenderError(cmd *cobra.Command, log *slog.Logger, noErrCodes bool, err error) {
+	if searchBusinessIDFlag(cmd) != nil && commandUsesSharedEnvelope(cmd, pickMode()) {
+		exitAfterRenderedResult(noErrCodes, err)
+		return
+	}
+	handleBusinessIDSearchError(cmd, log, noErrCodes, err)
 }

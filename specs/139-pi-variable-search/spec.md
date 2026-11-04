@@ -96,12 +96,10 @@ Operators receive predictable behavior across supported Camunda versions, includ
 
 **Why this priority**: Version clarity prevents false confidence in search results and keeps tenant-aware process-instance behavior consistent with existing workflows.
 
-**Independent Test**: Can be tested by running the same variable-search command under supported 8.8 and 8.9 configurations and under an 8.7 configuration, then verifying supported versions search natively and 8.7 fails before implying unsupported behavior.
 
 **Acceptance Scenarios**:
 
 1. **Given** the configured runtime is 8.8 or 8.9, **When** a user supplies variable-search flags, **Then** the command searches process instances using the native variable search contract for that runtime.
-2. **Given** the configured runtime is 8.7, **When** a user supplies any new variable-search flag, **Then** the command fails with an explicit unsupported-version error.
 3. **Given** an existing tenant-aware process-instance search, **When** variable filters are added, **Then** tenant handling remains consistent with the same command without variable filters.
 
 ---
@@ -128,7 +126,6 @@ Operators and automation authors can discover the new variable filters, quoting 
 - `$like` must follow documented native wildcard behavior: `*` matches zero or more characters, `?` matches one character, and escaped wildcards remain literal.
 - The command must not silently fall back to Operate-backed process-instance search for variable filters.
 - Existing non-variable filters, output modes, pagination, and tenant behavior must not regress when no variable filters are supplied.
-- 8.7 must remain valid for existing process-instance search behavior when the new variable-search flags are absent.
 
 ## Requirements *(mandatory)*
 
@@ -146,7 +143,6 @@ Operators and automation authors can discover the new variable filters, quoting 
 - **FR-010**: The system MUST preserve commas inside JSON arrays and quoted strings when parsing variable filter clauses.
 - **FR-011**: The system MUST fail with clear input errors for malformed variable filter expressions.
 - **FR-012**: The system MUST support variable-search behavior for configured Camunda 8.8 and 8.9 runtimes using native Camunda variable search semantics.
-- **FR-013**: The system MUST return an explicit unsupported-version error for Camunda 8.7 when any new variable-search flag is used.
 - **FR-014**: The system MUST avoid Operate-backed implementation paths for this feature.
 - **FR-015**: The system MUST keep tenant-aware behavior consistent with existing process-instance search flows.
 - **FR-016**: The system MUST document `$like` wildcard and escaping behavior with examples.
@@ -167,7 +163,6 @@ Operators and automation authors can discover the new variable filters, quoting 
 
 - **SC-001**: Automated tests prove variable existence, equality shorthand, like shorthand, and each advanced operator produce the expected process-instance search behavior.
 - **SC-002**: Automated tests prove comma parsing preserves arrays and quoted values without splitting clauses incorrectly.
-- **SC-003**: Automated tests prove 8.8 and 8.9 support the new variable-search flags and 8.7 returns an explicit unsupported-version error for those flags.
 - **SC-004**: Help text and generated documentation include concrete examples for `--var-exists`, `--var`, `--var-like`, `$in`, `$notIn`, `$like`, and wildcard escaping.
 - **SC-005**: Existing process-instance search tests continue to pass for searches that do not use variable-search flags.
 - **SC-006**: Repository validation for the affected command, facade, service, docs, and contract areas passes before tasks are marked complete.
@@ -178,5 +173,4 @@ Operators and automation authors can discover the new variable filters, quoting 
 - Existing process-instance filtering, sorting, pagination, output modes, and tenant behavior remain in scope for compatibility unless explicitly changed by variable filters.
 - Variable values follow the native serialized value contract expected by supported Camunda runtimes.
 - The feature does not add write behavior; it only filters process-instance search results.
-- Camunda 8.7 remains supported for existing process-instance search behavior but not for the new variable-search flags.
 - Planning, task generation, and Ralph iterations must apply `specs/ralph-implementation-rules.md`.

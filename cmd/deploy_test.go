@@ -33,23 +33,8 @@ func TestDeployCommand_CommandLocalBackoffTimeoutFlagOverridesEnvProfileAndConfi
 }
 
 func TestDeployHelp_DocumentsWaitContractsAndFollowUp(t *testing.T) {
-	output := assertCommandHelpOutput(t, []string{"deploy"}, []string{
-		"Deploy BPMN resources to Camunda",
-		"`deploy process-definition`",
-		"`embed deploy`",
-		"./c8volt deploy process-definition --file ./fixtures/processdefinitions/<embedded-process>.bpmn --run",
-		"./c8volt embed deploy --all --run",
-	}, nil)
-	require.Contains(t, output, "process-definition")
-
-	output = assertCommandHelpOutput(t, []string{"deploy", "process-definition"}, []string{
-		"By default c8volt waits for deployment confirmation",
-		"Use --run to start one process instance",
-		"--all-tenants is not supported because",
-		"./c8volt deploy process-definition --file ./fixtures/processdefinitions/<embedded-process>.bpmn --run",
-	}, nil)
-	require.Contains(t, output, "--run")
-	require.NotContains(t, output, "--expected-status")
+	assertCommandHelpOutput(t, []string{"deploy"}, []string{"deploy process-definition --file order.bpmn", "--run"}, nil)
+	assertCommandHelpOutput(t, []string{"deploy", "process-definition"}, []string{"--file", "--run", "one destination tenant"}, nil)
 }
 
 // TestDeployProcessDefinitionSemanticProgressVerboseItemsReplaceMilestones
@@ -109,11 +94,16 @@ func TestDeployProcessDefinitionSemanticProgressModeGate(t *testing.T) {
 	})
 }
 
+// TestDeployProcessDefinitionCommand_TenantFlagOverridesEnvProfileAndConfig preserves the existing command contract with advisory-aware fixtures.
 func TestDeployProcessDefinitionCommand_TenantFlagOverridesEnvProfileAndConfig(t *testing.T) {
 	t.Setenv("C8VOLT_APP_TENANT", "env-tenant")
 
 	var sawDeploy bool
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		switch {
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/deployments":
 			sawDeploy = true
@@ -196,49 +186,14 @@ func TestDeployProcessDefinitionCommand_AllTenantsRejectsBeforeInputOrRequest(t 
 	}
 }
 
-func TestDeployProcessDefinitionCommand_RunFallsBackToBPMNIDForV87(t *testing.T) {
-	var sawDeploy bool
-	var sawRun bool
-	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch {
-		case r.Method == http.MethodPost && r.URL.Path == "/v2/deployments":
-			sawDeploy = true
-			w.Header().Set("Content-Type", "application/json")
-			_, _ = w.Write([]byte(`{"tenantId":"<default>"}`))
-		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances":
-			sawRun = true
-			defer r.Body.Close()
-			var body map[string]any
-			require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
-			require.Equal(t, "order-process", body["processDefinitionId"])
-			require.Equal(t, "<default>", body["tenantId"])
-			w.Header().Set("Content-Type", "application/json")
-			_, _ = w.Write([]byte(`{"processDefinitionId":"order-process","processDefinitionVersion":1,"tenantId":"<default>","variables":{}}`))
-		default:
-			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
-		}
-	}))
-	t.Cleanup(srv.Close)
-
-	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.7")
-	bpmnPath := writeTempFile(t, "order-process.bpmn", []byte(`<?xml version="1.0" encoding="UTF-8"?>
-<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL">
-  <bpmn:process id="order-process" isExecutable="true" />
-</bpmn:definitions>`))
-
-	output, err := testx.RunCmdSubprocess(t, "TestDeployProcessDefinitionCommand_RunFallsBackToBPMNIDForV87Helper", map[string]string{
-		"C8VOLT_TEST_CONFIG":    cfgPath,
-		"C8VOLT_TEST_BPMN_PATH": bpmnPath,
-	})
-	require.NoError(t, err, string(output))
-
-	require.True(t, sawDeploy)
-	require.True(t, sawRun)
-}
-
+// TestDeployProcessDefinitionCommand_V89NoWait preserves the existing command contract with advisory-aware fixtures.
 func TestDeployProcessDefinitionCommand_V89NoWait(t *testing.T) {
 	var sawDeploy bool
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.9") {
+			return
+		}
+
 		switch {
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/deployments":
 			sawDeploy = true
@@ -276,6 +231,7 @@ func TestDeployProcessDefinitionCommand_V89NoWait(t *testing.T) {
 	require.Len(t, payload, 1)
 }
 
+// TestDeployProcessDefinitionCommand_CreationContextPrecedesDeploymentRequest preserves the existing command contract with advisory-aware fixtures.
 func TestDeployProcessDefinitionCommand_CreationContextPrecedesDeploymentRequest(t *testing.T) {
 	tests := []struct {
 		name       string
@@ -323,6 +279,10 @@ apis:
 			stderr := &bytes.Buffer{}
 			var sawDeploy bool
 			srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if serveVersionCheckTopology(w, r, "8.8") {
+					return
+				}
+
 				switch {
 				case r.Method == http.MethodPost && r.URL.Path == "/v2/deployments":
 					sawDeploy = true
@@ -359,10 +319,15 @@ apis:
 	}
 }
 
+// TestDeployProcessDefinitionCommand_JSONEnvelopeIncludesCreationContext preserves the existing command contract with advisory-aware fixtures.
 func TestDeployProcessDefinitionCommand_JSONEnvelopeIncludesCreationContext(t *testing.T) {
 	resetDeployCommandStateForTest()
 	var sawDeploy bool
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		switch {
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/deployments":
 			sawDeploy = true
@@ -416,10 +381,15 @@ apis:
 	require.Empty(t, tenantContext["warnings"])
 }
 
+// TestDeployProcessDefinitionCommand_QuietSuppressesCreationContext preserves the existing command contract with advisory-aware fixtures.
 func TestDeployProcessDefinitionCommand_QuietSuppressesCreationContext(t *testing.T) {
 	resetDeployCommandStateForTest()
 	var sawDeploy bool
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.9") {
+			return
+		}
+
 		switch {
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/deployments":
 			sawDeploy = true
@@ -449,23 +419,6 @@ func TestDeployProcessDefinitionCommand_QuietSuppressesCreationContext(t *testin
 	require.Empty(t, stdout)
 	require.NotContains(t, stderr, "creation target:")
 	require.NotContains(t, stderr, "pd deploy done")
-}
-
-func TestDeployProcessDefinitionCommand_RunFallsBackToBPMNIDForV87Helper(t *testing.T) {
-	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
-		return
-	}
-
-	root := Root()
-	root.SetArgs([]string{
-		"--config", os.Getenv("C8VOLT_TEST_CONFIG"),
-		"deploy", "process-definition",
-		"--file", os.Getenv("C8VOLT_TEST_BPMN_PATH"),
-		"--run",
-	})
-	root.SetOut(os.Stdout)
-	root.SetErr(os.Stderr)
-	_ = root.Execute()
 }
 
 func TestDeployProcessDefinitionCommand_TenantFlagOverridesEnvProfileAndConfigHelper(t *testing.T) {

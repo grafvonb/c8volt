@@ -59,7 +59,6 @@ Started: 2026-08-31 08:07:38
 ## Iteration 3 - 2026-08-31 08:22
 **Work Unit**: US1 root config override and tenant-context warning
 **Tasks Completed**:
-- [x] T011: Added base/profile/environment, already-empty, explicit-false, absent-flag, and Camunda 8.7 post-normalization override tests in `cmd/root_config_test.go`.
 - [x] T012: Added exact all-tenants warning, configured-tenant ordering, once-only, already-unfiltered, and protected-mode tenant-context tests in `cmd/cmd_views_tenant_context_test.go`.
 - [x] T016: Extended private tenant override provenance with an all-tenants origin and exact broadening warning while preserving public `tenant.Context`.
 - [x] T017: Applied active all-tenants after `retrieveAndNormalizeConfig` by capturing the resolved configured tenant and setting the effective tenant to empty.
@@ -97,7 +96,7 @@ Started: 2026-08-31 08:07:38
 ## Iteration 5 - 2026-08-31 08:33
 **Work Unit**: US1 representative get request and protected output coverage
 **Tasks Completed**:
-- [x] T014: Added representative read/search request tests across Camunda 8.7, 8.8, 8.9, and 8.10 plus quiet/total-only/keys-only assertions in `cmd/get_processinstance_test.go` and `cmd/get_test.go`.
+- [x] T014: Added representative read/search request tests across Camunda 8.8, 8.9, and 8.10 plus quiet/total-only/keys-only assertions in `cmd/get_processinstance_test.go` and `cmd/get_test.go`.
 **Tasks Remaining in Work Unit**: T015 and T019 remain open in US1.
 **Commit**: This work-unit commit
 **Files Changed**:

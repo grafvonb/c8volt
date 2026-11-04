@@ -26,7 +26,6 @@ Add `--with-listeners` to element-oriented process investigation views so runtim
 
 **Constraints**: Preserve existing output when `--with-listeners` is absent; reject listener enrichment without element context and with keys-only output before remote enrichment; fail the whole command on requested listener lookup errors instead of rendering partial success; omit listener jobs that cannot be matched to an element instance; keep command-layer code out of generated Camunda clients and versioned service implementations
 
-**Scale/Scope**: Keyed and search/list element views, keyed process-instance views with elements, walk process-instance family/children/parent/flat modes with elements, and keyed slow-process analysis; supports Camunda 8.8 and 8.9 job search; Camunda 8.7 returns existing unsupported-version style errors
 
 ## Constitution Check
 
@@ -94,7 +93,6 @@ internal/services/processinstance/
 
 internal/services/job/
 ├── api.go                                 # existing job search service surface
-├── v87/                                  # unsupported job search behavior
 ├── v88/                                  # listener job search through generated Camunda API
 └── v89/                                  # listener job search through generated Camunda API
 
@@ -106,7 +104,6 @@ README.md                                  # user-facing examples and behavior n
 docs/cli/                                  # regenerated CLI reference from command metadata
 ```
 
-**Structure Decision**: Use the existing single Go CLI project layout. Command wiring and rendering remain in `cmd`; public data contracts remain in `c8volt/process` and `c8volt/ops`; listener enrichment mechanics live in internal services; version-specific job lookup stays behind `internal/services/job/v88` and `v89` with `v87` unsupported behavior.
 
 ## Complexity Tracking
 

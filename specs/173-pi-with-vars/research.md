@@ -32,6 +32,5 @@
 
 ## Decision: Handle API-version support explicitly
 
-**Rationale**: The v8.8/v8.9 Camunda client surface includes `/variables/search`. The v8.7 process-instance service does not expose an equivalent generated Camunda variable search method in its current contract. The implementation must either add a version-appropriate v8.7 lookup using its available client surface or return a clear unsupported error when `--with-vars` is used with v8.7.
 
 **Alternatives considered**: Silently returning no variables for unsupported versions was rejected because it would look like a successful empty process-instance variable list.

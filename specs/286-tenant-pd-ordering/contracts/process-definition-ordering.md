@@ -33,7 +33,6 @@ The displayed default tenant identifier `<default>` is compared as ordinary exac
 - `--latest` MUST return at most one newest matching definition per represented group.
 - If the greatest version is tied, exact-text ascending key order selects the deterministic representative.
 - Camunda 8.8-8.10 MUST retain native latest filtering and complete the available page traversal.
-- Camunda 8.7 MUST reduce visible versions locally by the same group and tie rules.
 - The final latest collection MUST use the canonical order.
 
 ## Output Modes
@@ -52,7 +51,6 @@ Renderers MUST preserve the service-provided sequence rather than define indepen
 - `--stat` enriches the same ordered definitions in place.
 - Active-instance counts, incident counts, and all other volatile statistics MUST NOT affect ordering.
 - The ordered key sequence with and without statistics MUST match for the same collection.
-- Existing unsupported-statistics behavior on Camunda 8.7 remains unchanged.
 
 ## Filtering and Tenant Visibility
 
@@ -63,10 +61,9 @@ Renderers MUST preserve the service-provided sequence rather than define indepen
 
 ## Version Compatibility
 
-- Equivalent data available on Camunda 8.7, 8.8, 8.9, and 8.10 MUST produce the same canonical sequence.
+- Equivalent data available on Camunda 8.8, 8.9, and 8.10 MUST produce the same canonical sequence.
 - Adapters MAY use different generated request structures and supported sort fields.
 - Final version-neutral normalization MUST hide those backend ordering differences.
-- Camunda 8.7 retains its existing emulated search ceiling of 1000 visible definitions; completeness claims for 8.7 apply within that compatibility window.
 - No generated Camunda client is edited for this feature.
 
 ## Documentation

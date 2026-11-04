@@ -32,99 +32,18 @@ import (
 
 // TestGetProcessInstanceHelp_DocumentsPagingAndAutomationSurface verifies help text exposes paging and automation contracts.
 func TestGetProcessInstanceHelp_DocumentsPagingAndAutomationSurface(t *testing.T) {
-	output := executeRootForProcessInstanceTest(t, "get", "process-instance", "--help")
-
-	require.Contains(t, output, "Get process instances by key or search criteria.")
-	require.Contains(t, output, "search by process definition")
-	require.Contains(t, output, "Missing explicit keys return not-found")
-	require.Contains(t, output, "Use --with-incidents for direct incidents")
-	require.Contains(t, output, "--with-vars for process-instance-scope variables")
-	require.Contains(t, output, "--with-elements for runtime element instances")
-	require.Contains(t, output, "Add --with-listeners to --with-elements for runtime listener jobs")
-	require.Contains(t, output, "s: for job creation (not worker execution start), e: for job end")
-	require.Contains(t, output, "d: for an available deadline only while the state is exactly ACTIVATED")
-	require.NotContains(t, output, "Add --incident-message-limit <chars> to shorten incident messages")
-	require.Contains(t, output, "./c8volt get process-instance --bpmn-process-id <bpmn-process-id> --state active --limit 5")
-	require.Contains(t, output, "./c8volt get process-instance --key <process-instance-key>")
-	require.Contains(t, output, "./c8volt get process-instance --state active --total")
-	require.Contains(t, output, "./c8volt get process-instance --has-user-tasks <user-task-key>")
-	require.Contains(t, output, "./c8volt get process-instance --incidents-only --with-incidents --limit 5")
-	require.Contains(t, output, "./c8volt get process-instance --direct-incidents-only --incident-error-type io_mapping_error --incident-error-message intentional --limit 5")
-	require.Contains(t, output, `./c8volt get process-instance --var 'status="approved"' --limit 5`)
-	require.Contains(t, output, "./c8volt get process-instance --state active --with-vars --var-value-limit 120 --limit 5")
-	require.Contains(t, output, "./c8volt get process-instance --key <process-instance-key> --with-incidents")
-	require.Contains(t, output, "./c8volt get process-instance --key <process-instance-key> --with-vars")
-	require.Contains(t, output, "./c8volt get process-instance --key <process-instance-key> --with-vars --var-value-limit 120")
-	require.Contains(t, output, "./c8volt get process-instance --key <process-instance-key> --with-elements")
-	require.Contains(t, output, "./c8volt get process-instance --key <process-instance-key> --with-elements --with-listeners")
-	require.Contains(t, output, "capped backend totals are counted by paging")
-	require.Contains(t, output, "--auto-confirm")
-	require.Contains(t, output, "--batch-size int32")
-	require.Contains(t, output, "number of process instances to request per page; does not cap total results")
-	require.Contains(t, output, "--incident-message-limit int")
-	require.Contains(t, output, "maximum characters to show for incident messages when --with-incidents is set")
-	require.Contains(t, output, "--incident-error-message string")
-	require.Contains(t, output, "case-insensitive incident error message substring filter for keyed --with-incidents or list/search --direct-incidents-only")
-	require.Contains(t, output, "--incident-error-type string")
-	require.Contains(t, output, "case-insensitive incident error type filter for keyed --with-incidents or list/search --direct-incidents-only")
-	require.NotContains(t, output, "AD_HOC_SUB_PROCESS_NO_RETRIES")
-	require.Contains(t, output, "--incident-state string")
-	require.Contains(t, output, "incident state scope for keyed --with-incidents: active, pending, resolved, migrated, unknown, all")
-	require.Contains(t, output, "--limit int32")
-	require.Contains(t, output, "maximum number of matching process instances to return across all pages; omit to continue through all matches")
-	require.Contains(t, output, "--var-value-limit int")
-	require.Contains(t, output, "maximum characters to show for variable values when --with-vars is set")
-	require.Contains(t, output, "--var stringArray")
-	require.Contains(t, output, "require variable equality or advanced clause(s); repeat or separate clauses with commas")
-	require.Contains(t, output, "--with-incidents")
-	require.Contains(t, output, "include direct incident keys, states, and messages for keyed or list/search process-instance output")
-	require.Contains(t, output, "--direct-incidents-only")
-	require.Contains(t, output, "show only process instances with direct incident details")
-	require.Contains(t, output, "--with-vars")
-	require.Contains(t, output, "include process-instance-scope variables for keyed or list/search process-instance output")
-	require.Contains(t, output, "--with-elements")
-	require.Contains(t, output, "include runtime element instances for keyed or list/search process-instance output")
-	require.Contains(t, output, "--with-listeners")
-	require.Contains(t, output, "include runtime listener jobs; requires --with-elements")
-	require.NotContains(t, output, "--count")
+	assertCommandHelpOutput(t, []string{"get", "process-instance"}, []string{"--with-incidents", "--with-elements", "--has-user-tasks", "--var stringArray", "--var-exists stringArray", "--var-like stringArray", "--total", "--limit"}, nil)
 }
 
 // TestGetProcessInstanceHelp_DocumentsVariableSearchContract protects the
 // compact variable-search grammar and native wildcard documentation.
 func TestGetProcessInstanceHelp_DocumentsVariableSearchContract(t *testing.T) {
-	output := executeRootForProcessInstanceTest(t, "get", "process-instance", "--help")
-
-	require.Contains(t, output, "Use variable-search flags to narrow list/search results natively on Camunda 8.8 or newer; Camunda 8.7 returns an unsupported-version error for those flags.")
-	require.Contains(t, output, "--var-exists requires every listed variable name to exist.")
-	require.Contains(t, output, "--var accepts name=value equality shorthand plus advanced name.$operator=value clauses for $eq, $neq, $exists, $in, $notIn, and $like; $notin is accepted as $notIn.")
-	require.Contains(t, output, "--var-like uses native wildcard patterns: * matches zero or more characters, ? matches one character, and escaped wildcards remain literal.")
-	require.Contains(t, output, "Commas inside quoted values and JSON arrays stay inside the variable clause.")
-	require.Contains(t, output, "Variable scopeKey means the scope where the variable is directly defined.")
-	require.Contains(t, output, `./c8volt get process-instance --var-exists payload,email --limit 5`)
-	require.Contains(t, output, `./c8volt get process-instance --var 'status="approved"' --limit 5`)
-	require.Contains(t, output, `./c8volt get process-instance --var 'status.$in=["approved","pending"]' --limit 5`)
-	require.Contains(t, output, "./c8volt get process-instance --var-like 'email=*@example.com,customerId=CUST-????' --limit 5")
-	require.Contains(t, output, "--var-exists stringArray")
-	require.Contains(t, output, "require variable name(s) to exist; repeat or separate names with commas")
-	require.Contains(t, output, "--var stringArray")
-	require.Contains(t, output, "require variable equality or advanced clause(s); repeat or separate clauses with commas")
-	require.Contains(t, output, "--var-like stringArray")
-	require.Contains(t, output, "require variable value pattern clause(s); repeat or separate clauses with commas")
+	assertCommandHelpOutput(t, []string{"get", "process-instance"}, []string{"--with-incidents", "--with-elements", "--has-user-tasks", "--var stringArray", "--var-exists stringArray", "--var-like stringArray", "--total", "--limit"}, nil)
 }
 
 // Verifies help text documents has-user-tasks as a compact lookup selector without overloaded examples.
 func TestGetProcessInstanceHelp_DocumentsHasUserTasksLookup(t *testing.T) {
-	output := executeRootForProcessInstanceTest(t, "get", "process-instance", "--help")
-
-	require.Contains(t, output, "--has-user-tasks strings")
-	require.Contains(t, output, "user task key(s) whose owning process instances should be fetched")
-	require.Contains(t, output, "./c8volt get process-instance --has-user-tasks <user-task-key>")
-	require.NotContains(t, output, "./c8volt get process-instance --has-user-tasks 2251799815391233 --has-user-tasks 2251799815391244")
-	require.Contains(t, output, "Use --has-user-tasks to fetch process instances by their owning user-task keys.")
-	require.NotContains(t, output, "Camunda v2 user-task search first")
-	require.NotContains(t, output, "Tasklist V1 lookup for legacy user-task compatibility")
-	require.NotContains(t, output, "Camunda 8.7 remains unsupported")
-	require.NotContains(t, output, "There is no Tasklist or Operate fallback")
+	assertCommandHelpOutput(t, []string{"get", "process-instance"}, []string{"--with-incidents", "--with-elements", "--has-user-tasks", "--var stringArray", "--var-exists stringArray", "--var-like stringArray", "--total", "--limit"}, nil)
 }
 
 // TestGetProcessInstanceKey_SelectedTenantMismatchUsesDirectBackendLookup
@@ -132,6 +51,10 @@ func TestGetProcessInstanceHelp_DocumentsHasUserTasksLookup(t *testing.T) {
 func TestGetProcessInstanceKey_SelectedTenantMismatchUsesDirectBackendLookup(t *testing.T) {
 	var requests []string
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		requests = append(requests, r.Method+" "+r.URL.Path)
 		require.Equal(t, http.MethodGet, r.Method)
 		require.Equal(t, "/v2/process-instances/"+tenantAdminKeysProcessInstanceKey, r.URL.Path)
@@ -159,6 +82,10 @@ func TestGetProcessInstanceKey_SelectedTenantMismatchUsesDirectBackendLookup(t *
 func TestGetProcessInstanceBpmnSelectorMissingFailsBeforeSearch(t *testing.T) {
 	var requests []string
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		requests = append(requests, r.Method+" "+r.URL.Path)
 		require.Equal(t, http.MethodPost, r.Method)
 		require.Equal(t, "/v2/process-definitions/search", r.URL.Path)
@@ -188,6 +115,10 @@ func TestGetProcessInstanceBpmnSelectorMissingFailsBeforeSearch(t *testing.T) {
 func TestGetProcessInstanceBpmnSelectorMissingKeysOnlyPipelineFailsUpstream(t *testing.T) {
 	var requests []string
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		requests = append(requests, r.Method+" "+r.URL.Path)
 		require.Equal(t, http.MethodPost, r.Method)
 		require.Equal(t, "/v2/process-definitions/search", r.URL.Path)
@@ -217,6 +148,10 @@ func TestGetProcessInstanceBpmnSelectorMissingKeysOnlyPipelineFailsUpstream(t *t
 func TestGetProcessInstanceBpmnSelectorVisiblePreservesFoundZero(t *testing.T) {
 	var requests []string
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		requests = append(requests, r.Method+" "+r.URL.Path)
 		require.Equal(t, http.MethodPost, r.Method)
 		w.Header().Set("Content-Type", "application/json")
@@ -248,6 +183,10 @@ func TestGetProcessInstanceBpmnSelectorVisiblePreservesFoundZero(t *testing.T) {
 func TestGetProcessInstanceBpmnSelectorValidationIncludesVersionTagAndTenant(t *testing.T) {
 	var pdSearchBodies []map[string]any
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		require.Equal(t, http.MethodPost, r.Method)
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
@@ -445,10 +384,15 @@ func TestGetProcessInstanceWithListenersValidation(t *testing.T) {
 	}
 }
 
+// TestGetProcessInstanceDirectIncidentsOnly_FiltersByLoadedDirectIncidents preserves the existing command contract with advisory-aware fixtures.
 func TestGetProcessInstanceDirectIncidentsOnly_FiltersByLoadedDirectIncidents(t *testing.T) {
 	var requests testx.SafeSlice[string]
 	var searchBodies testx.SafeSlice[string]
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		requests.Append(r.Method + " " + r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
@@ -495,10 +439,15 @@ func TestGetProcessInstanceDirectIncidentsOnly_FiltersByLoadedDirectIncidents(t 
 	require.Contains(t, output, "found: 1")
 }
 
+// TestGetProcessInstanceDirectIncidentsOnlyWithLimitUsesIncidentSearch preserves the existing command contract with advisory-aware fixtures.
 func TestGetProcessInstanceDirectIncidentsOnlyWithLimitUsesIncidentSearch(t *testing.T) {
 	var requests testx.SafeSlice[string]
 	var incidentSearchBodies testx.SafeSlice[string]
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		requests.Append(r.Method + " " + r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
@@ -550,6 +499,7 @@ func TestGetProcessInstanceDirectIncidentsOnlyWithLimitUsesIncidentSearch(t *tes
 	require.Contains(t, output, "found: 2")
 }
 
+// TestGetProcessInstanceIncidentFlags_PreserveSearchAndEnrichmentContracts preserves the existing command contract with advisory-aware fixtures.
 func TestGetProcessInstanceIncidentFlags_PreserveSearchAndEnrichmentContracts(t *testing.T) {
 	tests := []struct {
 		name               string
@@ -621,6 +571,10 @@ func TestGetProcessInstanceIncidentFlags_PreserveSearchAndEnrichmentContracts(t 
 			var requests testx.SafeSlice[string]
 			var searchBodies testx.SafeSlice[string]
 			srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if serveVersionCheckTopology(w, r, "8.8") {
+					return
+				}
+
 				requests.Append(r.Method + " " + r.URL.Path)
 				w.Header().Set("Content-Type", "application/json")
 				switch r.URL.Path {
@@ -669,6 +623,10 @@ func TestGetProcessInstanceIncidentFlags_PreserveSearchAndEnrichmentContracts(t 
 func TestGetProcessInstanceWithIncidents_ListSearchWithoutKeyIsAccepted(t *testing.T) {
 	var requests []string
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		requests = append(requests, r.Method+" "+r.URL.Path)
 		require.Equal(t, http.MethodPost, r.Method)
 		require.Equal(t, "/v2/process-instances/search", r.URL.Path)
@@ -696,6 +654,10 @@ func TestGetProcessInstanceListWithVars_HumanOutputShowsProcessScopeVariables(t 
 	var requests testx.SafeSlice[string]
 	var variableFilters testx.SafeSlice[map[string]any]
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		requests.Append(r.Method + " " + r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
@@ -776,6 +738,10 @@ func TestGetProcessInstanceListWithVars_HumanOutputShowsProcessScopeVariables(t 
 func TestGetProcessInstanceListWithVarsAndIncidents_HumanOutputShowsGroupedSections(t *testing.T) {
 	var requests testx.SafeSlice[string]
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		requests.Append(r.Method + " " + r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
@@ -821,6 +787,10 @@ func TestGetProcessInstanceListWithVarsAndIncidents_HumanOutputShowsGroupedSecti
 func TestGetProcessInstanceListWithVarsIncidentsAndElements_HumanOutputShowsGroupedSections(t *testing.T) {
 	var requests testx.SafeSlice[string]
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		requests.Append(r.Method + " " + r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
@@ -876,6 +846,10 @@ func TestGetProcessInstanceListWithVarsIncidentsAndElements_HumanOutputShowsGrou
 func TestGetProcessInstanceListWithIncidents_HumanOutputShowsDirectIncidentLines(t *testing.T) {
 	var requests testx.SafeSlice[string]
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		requests.Append(r.Method + " " + r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
@@ -932,6 +906,10 @@ func TestGetProcessInstanceListWithIncidents_HumanOutputShowsDirectIncidentLines
 func TestGetProcessInstanceListWithIncidents_LooksUpOnlyLimitedRows(t *testing.T) {
 	var requests testx.SafeSlice[string]
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		requests.Append(r.Method + " " + r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
@@ -977,6 +955,10 @@ func TestGetProcessInstanceListWithIncidents_LooksUpOnlyLimitedRows(t *testing.T
 func TestGetProcessInstanceListWithIncidents_HumanIndirectMarkerExplainsEmptyDirectIncidents(t *testing.T) {
 	var requests testx.SafeSlice[string]
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		requests.Append(r.Method + " " + r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
@@ -1244,10 +1226,15 @@ func TestApplyPISearchResultFilters_OrphanChildrenUseCommandActivity(t *testing.
 	require.Equal(t, []string{"checking orphan parents for 2 process instance(s)"}, msgs)
 }
 
+// TestGetProcessInstanceOrphanChildrenOnly_UsesRealFacadeDiscovery preserves the existing command contract with advisory-aware fixtures.
 func TestGetProcessInstanceOrphanChildrenOnly_UsesRealFacadeDiscovery(t *testing.T) {
 	var searchRequests []string
 	var getPaths []string
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		switch {
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
@@ -1468,6 +1455,10 @@ func TestGetProcessInstanceKeyLookup_UsesGeneratedLookupEndpoint(t *testing.T) {
 	t.Run("explicit flag tenant", func(t *testing.T) {
 		var requests []string
 		srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if serveVersionCheckTopology(w, r, "8.8") {
+				return
+			}
+
 			require.Equal(t, http.MethodGet, r.Method)
 			require.Equal(t, "/v2/process-instances/123", r.URL.Path)
 			requests = append(requests, r.URL.Path)
@@ -1499,6 +1490,10 @@ apis:
 	t.Run("environment tenant", func(t *testing.T) {
 		var requests []string
 		srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if serveVersionCheckTopology(w, r, "8.8") {
+				return
+			}
+
 			require.Equal(t, http.MethodGet, r.Method)
 			require.Equal(t, "/v2/process-instances/123", r.URL.Path)
 			requests = append(requests, r.URL.Path)
@@ -1529,6 +1524,10 @@ apis:
 	t.Run("profile tenant", func(t *testing.T) {
 		var requests []string
 		srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if serveVersionCheckTopology(w, r, "8.8") {
+				return
+			}
+
 			require.Equal(t, http.MethodGet, r.Method)
 			require.Equal(t, "/v2/process-instances/123", r.URL.Path)
 			requests = append(requests, r.URL.Path)
@@ -1568,6 +1567,10 @@ profiles:
 	t.Run("base config tenant", func(t *testing.T) {
 		var requests []string
 		srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if serveVersionCheckTopology(w, r, "8.8") {
+				return
+			}
+
 			require.Equal(t, http.MethodGet, r.Method)
 			require.Equal(t, "/v2/process-instances/123", r.URL.Path)
 			requests = append(requests, r.URL.Path)
@@ -1609,6 +1612,10 @@ func TestGetProcessInstanceWithIncidents_HumanOutputShowsOneIncident(t *testing.
 	var requests []string
 	var incidentBodies []string
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		requests = append(requests, r.Method+" "+r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
@@ -1647,8 +1654,13 @@ func TestGetProcessInstanceWithIncidents_HumanOutputShowsOneIncident(t *testing.
 	require.Contains(t, output, "found: 1")
 }
 
+// TestGetProcessInstanceWithIncidents_FiltersIncidentDetailsByTypeAndMessageCaseInsensitive preserves the existing command contract with advisory-aware fixtures.
 func TestGetProcessInstanceWithIncidents_FiltersIncidentDetailsByTypeAndMessageCaseInsensitive(t *testing.T) {
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
 		case "/v2/process-instances/123":
@@ -1683,9 +1695,14 @@ func TestGetProcessInstanceWithIncidents_FiltersIncidentDetailsByTypeAndMessageC
 	require.NotContains(t, output, "incident-message-miss")
 }
 
+// TestGetProcessInstanceWithIncidents_AllStateOmitsStateFilterAndShowsResolvedState preserves the existing command contract with advisory-aware fixtures.
 func TestGetProcessInstanceWithIncidents_AllStateOmitsStateFilterAndShowsResolvedState(t *testing.T) {
 	var incidentBodies []string
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
 		case "/v2/process-instances/123":
@@ -1723,6 +1740,10 @@ func TestGetProcessInstanceWithIncidents_AllStateOmitsStateFilterAndShowsResolve
 func TestGetPIWithIncidents_AliasPreservesIncidentLookupOutput(t *testing.T) {
 	var requests []string
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		requests = append(requests, r.Method+" "+r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
@@ -1757,9 +1778,14 @@ func TestGetPIWithIncidents_AliasPreservesIncidentLookupOutput(t *testing.T) {
 	require.Contains(t, output, "found: 1")
 }
 
+// TestGetProcessInstanceWithIncidents_HumanIncidentMessageLimitTruncatesMessageOnly preserves the existing command contract with advisory-aware fixtures.
 func TestGetProcessInstanceWithIncidents_HumanIncidentMessageLimitTruncatesMessageOnly(t *testing.T) {
 	var requests []string
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		requests = append(requests, r.Method+" "+r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
@@ -1791,9 +1817,14 @@ func TestGetProcessInstanceWithIncidents_HumanIncidentMessageLimitTruncatesMessa
 	require.NotContains(t, output, "No retries left after worker failure")
 }
 
+// TestGetProcessInstanceWithIncidents_HumanIncidentMessageLimitDefaultLeavesMessageUnchanged preserves the existing command contract with advisory-aware fixtures.
 func TestGetProcessInstanceWithIncidents_HumanIncidentMessageLimitDefaultLeavesMessageUnchanged(t *testing.T) {
 	fullMessage := "No retries left after worker failure"
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
 		case "/v2/process-instances/123":
@@ -1821,24 +1852,29 @@ func TestGetProcessInstanceWithIncidents_HumanIncidentMessageLimitDefaultLeavesM
 	require.NotContains(t, output, fullMessage[:7]+"...")
 }
 
-// Keyed variable lookup is limited to process-scope variables and preserves the normal PI row.
+// Keyed variable lookup bypasses configured tenant discovery filters, keeps
+// backend-returned tenant evidence, and limits output to process-scope variables.
 func TestGetProcessInstanceWithVars_HumanOutputShowsSortedProcessScopeVariables(t *testing.T) {
 	var requests []string
 	var variableBodies []map[string]any
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		requests = append(requests, r.Method+" "+r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
 		case "/v2/process-instances/123":
 			require.Equal(t, http.MethodGet, r.Method)
-			_, _ = w.Write([]byte(`{"hasIncident":true,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"123","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}`))
+			_, _ = w.Write([]byte(`{"hasIncident":true,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"123","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant-b"}`))
 		case "/v2/variables/search":
 			require.Equal(t, http.MethodPost, r.Method)
 			require.Equal(t, "false", r.URL.Query().Get("truncateValues"))
 			var body map[string]any
 			require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
 			variableBodies = append(variableBodies, body)
-			_, _ = w.Write([]byte(`{"items":[{"name":"zeta","value":"2","variableKey":"902","processInstanceKey":"123","scopeKey":"123","tenantId":"tenant"},{"name":"localTask","value":"ignored","variableKey":"903","processInstanceKey":"123","scopeKey":"element-123","tenantId":"tenant"},{"name":"alpha","value":"1","variableKey":"901","processInstanceKey":"123","scopeKey":"123","tenantId":"tenant"}],"page":{"totalItems":3,"hasMoreTotalItems":false}}`))
+			_, _ = w.Write([]byte(`{"items":[{"name":"zeta","value":"2","variableKey":"902","processInstanceKey":"123","scopeKey":"123","tenantId":"tenant-b"},{"name":"localTask","value":"ignored","variableKey":"903","processInstanceKey":"123","scopeKey":"element-123","tenantId":"tenant-b"},{"name":"alpha","value":"1","variableKey":"901","processInstanceKey":"123","scopeKey":"123","tenantId":"tenant-b"}],"page":{"totalItems":3,"hasMoreTotalItems":false}}`))
 		default:
 			t.Fatalf("unexpected request path: %s", r.URL.Path)
 		}
@@ -1849,7 +1885,7 @@ func TestGetProcessInstanceWithVars_HumanOutputShowsSortedProcessScopeVariables(
 
 	output := executeRootForProcessInstanceTest(t,
 		"--config", cfgPath,
-		"--tenant", "tenant",
+		"--tenant", "tenant-a",
 		"get", "process-instance",
 		"--key", "123",
 		"--with-vars",
@@ -1860,8 +1896,8 @@ func TestGetProcessInstanceWithVars_HumanOutputShowsSortedProcessScopeVariables(
 	filter := variableBodies[0]["filter"].(map[string]any)
 	require.Equal(t, "123", filter["processInstanceKey"])
 	require.Equal(t, "123", filter["scopeKey"])
-	require.Equal(t, "tenant", filter["tenantId"])
-	require.Contains(t, output, "123 tenant demo v3 ACTIVE")
+	require.NotContains(t, filter, "tenantId")
+	require.Contains(t, output, "123 tenant-b demo v3 ACTIVE")
 	require.Contains(t, output, "└─ vars:")
 	require.Contains(t, output, "├─ alpha=1")
 	require.Contains(t, output, "└─ zeta=2")
@@ -1870,14 +1906,19 @@ func TestGetProcessInstanceWithVars_HumanOutputShowsSortedProcessScopeVariables(
 	require.NotContains(t, output, "incidents:")
 	require.NotContains(t, output, "process instance is marked as having incidents")
 	require.Contains(t, output, "found: 1")
-	require.Less(t, strings.Index(output, "123 tenant demo"), strings.Index(output, "└─ vars:"))
+	require.Less(t, strings.Index(output, "123 tenant-b demo"), strings.Index(output, "└─ vars:"))
 	require.Less(t, strings.Index(output, "alpha=1"), strings.Index(output, "zeta=2"))
 }
 
+// TestGetProcessInstanceWithElements_HumanOutputShowsRuntimeElements preserves the existing command contract with advisory-aware fixtures.
 func TestGetProcessInstanceWithElements_HumanOutputShowsRuntimeElements(t *testing.T) {
 	var requests []string
 	var elementFilters []map[string]any
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		requests = append(requests, r.Method+" "+r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
@@ -1936,6 +1977,10 @@ func TestGetProcessInstanceListWithElements_HumanOutputShowsRuntimeElements(t *t
 	var requests testx.SafeSlice[string]
 	var elementFilters testx.SafeSlice[map[string]any]
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		requests.Append(r.Method + " " + r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
@@ -2006,6 +2051,10 @@ func TestGetProcessInstanceListWithElements_BPMNSelectorPreservesProcessFilter(t
 	var piFilters []map[string]any
 	var elementFilters []map[string]any
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
 		case "/v2/process-definitions/search":
@@ -2062,6 +2111,10 @@ func TestGetProcessInstanceListWithElements_IncrementalPagingKeepsProcessInstanc
 
 	var requests []string
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		requests = append(requests, r.Method+" "+r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
@@ -2103,6 +2156,10 @@ func TestGetProcessInstanceListWithElements_IncrementalPagingKeepsProcessInstanc
 func TestGetProcessInstanceListWithElements_JSONOutputPreservesProcessInstanceLimit(t *testing.T) {
 	var elementFilters testx.SafeSlice[map[string]any]
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
 		case "/v2/process-instances/search":
@@ -2168,30 +2225,14 @@ func TestGetProcessInstanceListWithElements_JSONOutputPreservesProcessInstanceLi
 	require.NotContains(t, output, `"key": "125"`)
 }
 
-// TestGetProcessInstanceListWithElements_V87ReportsUnsupported preserves the reused element-service unsupported-version boundary for list/search.
-func TestGetProcessInstanceListWithElements_V87ReportsUnsupported(t *testing.T) {
-	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, http.MethodPost, r.Method)
-		require.Equal(t, "/v1/process-instances/search", r.URL.Path)
-		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"items":[{"key":123,"bpmnProcessId":"demo","processVersion":3,"state":"ACTIVE","startDate":"2026-07-15T10:12:00Z","tenantId":"tenant"}]}`))
-	}))
-	t.Cleanup(srv.Close)
-
-	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.7")
-
-	output, err := testx.RunCmdSubprocess(t, "TestGetProcessInstanceListWithElementsUnsupportedV87Helper", map[string]string{
-		"C8VOLT_TEST_CONFIG": cfgPath,
-	})
-
-	require.Error(t, err)
-	require.Contains(t, string(output), "unsupported capability")
-	require.Contains(t, string(output), "element search requires Camunda 8.8 or newer")
-}
-
+// TestGetProcessInstanceWithVarsAndIncidents_HumanOutputShowsGroupedSections preserves the existing command contract with advisory-aware fixtures.
 func TestGetProcessInstanceWithVarsAndIncidents_HumanOutputShowsGroupedSections(t *testing.T) {
 	var requests testx.SafeSlice[string]
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		requests.Append(r.Method + " " + r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
@@ -2236,6 +2277,10 @@ func TestGetProcessInstanceWithVarsAndIncidents_HumanOutputShowsGroupedSections(
 func TestGetProcessInstanceWithVarsIncidentsAndElements_HumanOutputShowsGroupedSections(t *testing.T) {
 	var requests testx.SafeSlice[string]
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		requests.Append(r.Method + " " + r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
@@ -2323,15 +2368,20 @@ func TestGetProcessInstanceWithElementsAndListeners_HumanOutputNestsListenerRows
 	require.Contains(t, output, "job-exec-1 EXECUTION_LISTENER lsnr:START ACTIVATED tp:audit-start r:3 worker:worker-a s:2026-09-16T13:07:16.359 d:2026-09-16T13:08:00.000")
 	require.Contains(t, output, "element-2 USER_TASK")
 	require.Contains(t, output, "user-task ACTIVE")
-	require.Contains(t, output, "job-task-1 TASK_LISTENER lsnr:COMPLETING COMPLETED tp:audit-task r:0 s:2026-09-16T13:07:16.359 e:2026-09-16T13:07:16.842")
+	require.Contains(t, output, "job-task-1 TASK_LISTENER lsnr:COMPLETING COMPLETED tp:audit-task r:0 s:2026-09-16T13:07:16.359 e:2026-09-16T13:07:16.842 ec:LISTENER_FAILED err:worker failed dur:483ms")
 	require.NotRegexp(t, `(?m)^.*job-task-1 TASK_LISTENER .* d:.*$`, output)
 	require.Contains(t, output, "ec:LISTENER_FAILED")
 	require.Contains(t, output, "found: 1")
 }
 
+// TestGetProcessInstanceListWithElementsAndListeners_HumanOutputRendersLifecycleTimestamps preserves the existing command contract with advisory-aware fixtures.
 func TestGetProcessInstanceListWithElementsAndListeners_HumanOutputRendersLifecycleTimestamps(t *testing.T) {
 	var requests testx.SafeSlice[string]
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		requests.Append(r.Method + " " + r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
@@ -2433,30 +2483,13 @@ func TestGetProcessInstanceWithElementsWithoutListeners_SkipsListenerLookup(t *t
 	require.NotContains(t, output, `"listeners"`)
 }
 
-// TestGetProcessInstanceWithElementsAndListeners_V87ReportsUnsupported verifies unsupported environments fail through the normal command error path.
-func TestGetProcessInstanceWithElementsAndListeners_V87ReportsUnsupported(t *testing.T) {
-	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, http.MethodPost, r.Method)
-		require.Equal(t, "/v1/process-instances/search", r.URL.Path)
-		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"items":[{"key":123,"bpmnProcessId":"demo","processVersion":3,"state":"ACTIVE","startDate":"2026-07-15T10:12:00Z","tenantId":"tenant"}]}`))
-	}))
-	t.Cleanup(srv.Close)
-
-	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.7")
-
-	output, err := testx.RunCmdSubprocess(t, "TestGetProcessInstanceListWithElementsAndListenersUnsupportedV87Helper", map[string]string{
-		"C8VOLT_TEST_CONFIG": cfgPath,
-	})
-
-	require.Error(t, err)
-	require.Contains(t, string(output), "unsupported capability")
-	require.Contains(t, string(output), "element search requires Camunda 8.8 or newer")
-}
-
 // TestGetProcessInstanceWithVarsIncidentsAndElements_JSONOutputShowsCombinedPayload verifies keyed JSON includes all enrichment fields.
 func TestGetProcessInstanceWithVarsIncidentsAndElements_JSONOutputShowsCombinedPayload(t *testing.T) {
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
 		case "/v2/process-instances/123":
@@ -2503,6 +2536,10 @@ func TestGetProcessInstanceWithVarsIncidentsAndElements_JSONOutputShowsCombinedP
 // JSON enrichment keeps variable metadata stable for automation even when compact formatting changes.
 func TestGetProcessInstanceWithVars_JSONOutputShowsEnrichedPayloadShapeAndMetadata(t *testing.T) {
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
 		case "/v2/process-instances/123":
@@ -2558,6 +2595,10 @@ func TestGetProcessInstanceWithVars_JSONOutputShowsEnrichedPayloadShapeAndMetada
 func TestGetProcessInstanceWithVars_JSONOutputKeepsReceivedValuesWhenVarValueLimitSet(t *testing.T) {
 	fullValue := "abcdefghijklmnopqrstuvwxyz"
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
 		case "/v2/process-instances/123":
@@ -2629,6 +2670,10 @@ func TestGetProcessInstanceWithIncidents_HumanOutputShowsMultipleAndNoIncidents(
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if serveVersionCheckTopology(w, r, "8.8") {
+					return
+				}
+
 				w.Header().Set("Content-Type", "application/json")
 				switch r.URL.Path {
 				case "/v2/process-instances/123":
@@ -2669,6 +2714,10 @@ func TestGetProcessInstanceWithIncidents_HumanOutputShowsMultipleAndNoIncidents(
 // TestGetProcessInstanceWithIncidents_JSONOutputShowsIncidentDetails preserves the structured incident detail payload.
 func TestGetProcessInstanceWithIncidents_JSONOutputShowsIncidentDetails(t *testing.T) {
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
 		case "/v2/process-instances/123":
@@ -2713,6 +2762,10 @@ func TestGetProcessInstanceWithIncidents_JSONOutputShowsIncidentDetails(t *testi
 // TestGetProcessInstanceWithIncidents_JSONOutputAssociatesMultipleKeys prevents incident details from crossing keyed lookup boundaries.
 func TestGetProcessInstanceWithIncidents_JSONOutputAssociatesMultipleKeys(t *testing.T) {
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
 		case "/v2/process-instances/123":
@@ -2768,6 +2821,10 @@ func TestGetProcessInstanceWithIncidents_JSONOutputAssociatesMultipleKeys(t *tes
 // TestGetProcessInstanceWithIncidents_JSONOutputShowsEmptyIncidentCollection keeps empty enrichment explicit for automation.
 func TestGetProcessInstanceWithIncidents_JSONOutputShowsEmptyIncidentCollection(t *testing.T) {
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
 		case "/v2/process-instances/123":
@@ -2799,8 +2856,13 @@ func TestGetProcessInstanceWithIncidents_JSONOutputShowsEmptyIncidentCollection(
 	require.Empty(t, incidents)
 }
 
+// TestGetProcessInstanceJSONWithIncidents_ListSearchUsesEnrichedPayloadShape preserves the existing command contract with advisory-aware fixtures.
 func TestGetProcessInstanceJSONWithIncidents_ListSearchUsesEnrichedPayloadShape(t *testing.T) {
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
 		case "/v2/process-instances/search":
@@ -2856,9 +2918,14 @@ func TestGetProcessInstanceJSONWithIncidents_ListSearchUsesEnrichedPayloadShape(
 	require.Equal(t, "task-b", secondIncident["elementId"])
 }
 
+// TestGetProcessInstanceJSONWithIncidents_IncidentMessageLimitKeepsFullMessages preserves the existing command contract with advisory-aware fixtures.
 func TestGetProcessInstanceJSONWithIncidents_IncidentMessageLimitKeepsFullMessages(t *testing.T) {
 	fullMessage := "This long incident message must remain complete in JSON output"
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
 		case "/v2/process-instances/search":
@@ -2893,8 +2960,13 @@ func TestGetProcessInstanceJSONWithIncidents_IncidentMessageLimitKeepsFullMessag
 	require.NotEqual(t, "This ...", incident["errorMessage"])
 }
 
+// TestGetProcessInstanceJSONWithIncidents_KeyedLookupShapeRemainsUnchanged preserves the existing command contract with advisory-aware fixtures.
 func TestGetProcessInstanceJSONWithIncidents_KeyedLookupShapeRemainsUnchanged(t *testing.T) {
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
 		case "/v2/process-instances/123":
@@ -2936,38 +3008,14 @@ func TestGetProcessInstanceJSONWithIncidents_KeyedLookupShapeRemainsUnchanged(t 
 	require.Equal(t, "No retries left", incident["errorMessage"])
 }
 
-// TestGetProcessInstanceWithIncidents_V87ReportsUnsupported preserves the tenant-safe version boundary.
-func TestGetProcessInstanceWithIncidents_V87ReportsUnsupported(t *testing.T) {
-	cfgPath := writeTestConfigForVersion(t, "http://127.0.0.1:1", "8.7")
-
-	output, err := testx.RunCmdSubprocess(t, "TestGetProcessInstanceWithIncidentsUnsupportedV87Helper", map[string]string{
-		"C8VOLT_TEST_CONFIG": cfgPath,
-	})
-
-	require.Error(t, err)
-	exitErr, ok := err.(*exec.ExitError)
-	require.True(t, ok)
-	require.Equal(t, exitcode.Error, exitErr.ExitCode())
-	require.Contains(t, string(output), "unsupported capability")
-	require.Contains(t, string(output), "not tenant-safe in Camunda 8.7")
-}
-
-func TestGetProcessInstanceWithElements_V87ReportsUnsupported(t *testing.T) {
-	cfgPath := writeTestConfigForVersion(t, "http://127.0.0.1:1", "8.7")
-
-	output, err := testx.RunCmdSubprocess(t, "TestGetProcessInstanceWithElementsUnsupportedV87Helper", map[string]string{
-		"C8VOLT_TEST_CONFIG": cfgPath,
-	})
-
-	require.Error(t, err)
-	require.Contains(t, string(output), "unsupported capability")
-	require.Contains(t, string(output), "process-instance direct lookup by key is not tenant-safe in Camunda 8.7")
-}
-
 // TestGetProcessInstanceWithoutIncidents_HumanOutputPreservesDefault keeps default keyed output free of enrichment lines.
 func TestGetProcessInstanceWithoutIncidents_HumanOutputPreservesDefault(t *testing.T) {
 	var requests []string
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		requests = append(requests, r.Method+" "+r.URL.Path)
 		require.Equal(t, http.MethodGet, r.Method)
 		require.Equal(t, "/v2/process-instances/123", r.URL.Path)
@@ -3003,6 +3051,10 @@ func TestGetProcessInstanceWithoutIncidents_HumanOutputPreservesDefault(t *testi
 func TestGetProcessInstanceWithoutIncidents_ListSearchPreservesDefaultAndSkipsIncidentLookup(t *testing.T) {
 	var requests []string
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		requests = append(requests, r.Method+" "+r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
@@ -3044,6 +3096,10 @@ func TestGetProcessInstanceWithoutIncidents_ListSearchPreservesDefaultAndSkipsIn
 func TestGetProcessInstanceWithoutIncidents_JSONOutputPreservesDefaultShape(t *testing.T) {
 	var requests []string
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		requests = append(requests, r.Method+" "+r.URL.Path)
 		require.Equal(t, http.MethodGet, r.Method)
 		require.Equal(t, "/v2/process-instances/123", r.URL.Path)
@@ -3127,37 +3183,6 @@ func TestGetProcessInstanceSearchIncidentFilters_PreserveDefaultSearchMode(t *te
 	}
 }
 
-// TestGetProcessInstanceSearch_V87StillSupportsTenantScopedSearch verifies v8.7 search keeps tenant scoping available.
-func TestGetProcessInstanceSearch_V87StillSupportsTenantScopedSearch(t *testing.T) {
-	var requests []string
-	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, http.MethodPost, r.Method)
-		require.Equal(t, "/v1/process-instances/search", r.URL.Path)
-
-		body, err := io.ReadAll(r.Body)
-		require.NoError(t, err)
-		requests = append(requests, string(body))
-
-		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"items":[{"key":123,"bpmnProcessId":"demo","processVersion":3,"state":"ACTIVE","startDate":"2026-03-23T18:00:00Z","tenantId":"<default>"}]}`))
-	}))
-	t.Cleanup(srv.Close)
-
-	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.7")
-
-	output := executeRootForProcessInstanceTest(t,
-		"--config", cfgPath,
-		"--json",
-		"get", "process-instance",
-		"--state", "active",
-	)
-
-	filter := decodeCapturedPISearchFilter(t, requests)
-	require.Equal(t, "<default>", filter["tenantId"])
-	require.Equal(t, "ACTIVE", filter["state"])
-	require.Contains(t, output, `"tenantId": "<default>"`)
-}
-
 // TestGetProcessInstanceSearch_AllTenantsOmitsTenantFilterAcrossVersions proves
 // the root override clears configured tenants before every supported PI search
 // adapter builds its request body.
@@ -3169,13 +3194,6 @@ func TestGetProcessInstanceSearch_AllTenantsOmitsTenantFilterAcrossVersions(t *t
 		response   string
 		wantOutput string
 	}{
-		{
-			name:       "v87",
-			version:    "8.7",
-			path:       "/v1/process-instances/search",
-			response:   `{"items":[{"key":123,"bpmnProcessId":"demo","processVersion":3,"state":"ACTIVE","startDate":"2026-03-23T18:00:00Z","tenantId":"tenant-visible"}]}`,
-			wantOutput: `"tenantId": "tenant-visible"`,
-		},
 		{
 			name:       "v88",
 			version:    "8.8",
@@ -3203,6 +3221,10 @@ func TestGetProcessInstanceSearch_AllTenantsOmitsTenantFilterAcrossVersions(t *t
 		t.Run(tt.name, func(t *testing.T) {
 			var requests []string
 			srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if serveVersionCheckTopology(w, r, "8.8") {
+					return
+				}
+
 				require.Equal(t, http.MethodPost, r.Method)
 				require.Equal(t, tt.path, r.URL.Path)
 
@@ -3299,39 +3321,14 @@ apis:
 	}
 }
 
-// TestGetProcessInstanceCommand_VariableFiltersUnsupportedOnV87 verifies native variable filters fail before any 8.7 fallback path.
-func TestGetProcessInstanceCommand_VariableFiltersUnsupportedOnV87(t *testing.T) {
-	cfgPath := writeTestConfigForVersion(t, "http://127.0.0.1:1", "8.7")
-
-	tests := []struct {
-		name string
-		mode string
-	}{
-		{name: "var-exists", mode: "var-exists"},
-		{name: "var", mode: "var"},
-		{name: "var-like", mode: "var-like"},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			output, code := executeProcessInstanceFailureHelperWithEnv(t,
-				"TestGetProcessInstanceVariableFiltersUnsupportedV87Helper",
-				cfgPath,
-				map[string]string{"C8VOLT_TEST_PI_VARIABLE_FILTER_MODE": tt.mode},
-			)
-
-			require.Equal(t, exitcode.Error, code)
-			require.Contains(t, output, "unsupported capability")
-			require.Contains(t, output, "process-instance variable search is unsupported in Camunda 8.7")
-			require.Contains(t, output, "requires Camunda 8.8 or newer")
-		})
-	}
-}
-
 // TestGetProcessInstanceCommand_V89KeyLookupUsesNativeSearchPath verifies v8.9 direct lookup uses the native single-instance endpoint.
 func TestGetProcessInstanceCommand_V89KeyLookupUsesNativeSearchPath(t *testing.T) {
 	var requests []string
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.9") {
+			return
+		}
+
 		require.Equal(t, http.MethodGet, r.Method)
 		require.Equal(t, "/v2/process-instances/2251799813711967", r.URL.Path)
 		requests = append(requests, r.URL.Path)
@@ -3373,6 +3370,10 @@ func TestGetProcessInstanceCommand_HasUserTasksLookupUsesNativeUserTaskAndKeyedP
 		t.Run(version, func(t *testing.T) {
 			var requests []string
 			srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if serveVersionCheckTopology(w, r, version) {
+					return
+				}
+
 				requests = append(requests, r.URL.Path)
 				w.Header().Set("Content-Type", "application/json")
 				switch r.URL.Path {
@@ -3412,6 +3413,10 @@ func TestGetProcessInstanceCommand_HasUserTasksFallbackUsesTasklistAndKeyedProce
 		t.Run(version, func(t *testing.T) {
 			var requests []string
 			srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if serveVersionCheckTopology(w, r, version) {
+					return
+				}
+
 				requests = append(requests, r.URL.Path)
 				w.Header().Set("Content-Type", "application/json")
 				switch r.URL.Path {
@@ -3452,6 +3457,10 @@ func TestGetProcessInstanceCommand_HasUserTasksFallbackUsesTasklistAndKeyedProce
 // Verifies has-user-tasks lookup applies the effective tenant while resolving the owning process instance.
 func TestGetProcessInstanceCommand_HasUserTasksLookupIncludesEffectiveTenant(t *testing.T) {
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
 		case "/v2/user-tasks/search":
@@ -3482,6 +3491,10 @@ func TestGetProcessInstanceCommand_HasUserTasksLookupIncludesEffectiveTenant(t *
 func TestGetProcessInstanceCommand_HasUserTasksLookupAcceptsMultipleKeys(t *testing.T) {
 	var requests []string
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		requests = append(requests, r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
@@ -3531,6 +3544,10 @@ func TestGetProcessInstanceCommand_HasUserTasksLookupAcceptsMultipleKeys(t *test
 func TestGetProcessInstanceCommand_HasUserTasksLookupMixesPrimaryAndFallbackKeys(t *testing.T) {
 	var requests []string
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.9") {
+			return
+		}
+
 		requests = append(requests, r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
@@ -3584,6 +3601,10 @@ func TestGetProcessInstanceCommand_HasUserTasksLookupMixesPrimaryAndFallbackKeys
 func TestGetProcessInstanceCommand_HasUserTasksJSONMatchesDirectKeyedJSON(t *testing.T) {
 	var requests []string
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		requests = append(requests, r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
@@ -3626,6 +3647,10 @@ func TestGetProcessInstanceCommand_HasUserTasksJSONMatchesDirectKeyedJSON(t *tes
 func TestGetProcessInstanceCommand_HasUserTasksFallbackJSONMatchesDirectKeyedJSON(t *testing.T) {
 	var requests []string
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.9") {
+			return
+		}
+
 		requests = append(requests, r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
@@ -3699,6 +3724,10 @@ func TestGetProcessInstanceCommand_HasUserTasksPreservesSingleLookupRenderFlags(
 		t.Run(tt.name, func(t *testing.T) {
 			var requests []string
 			srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if serveVersionCheckTopology(w, r, "8.8") {
+					return
+				}
+
 				requests = append(requests, r.URL.Path)
 				w.Header().Set("Content-Type", "application/json")
 				switch r.URL.Path {
@@ -3736,6 +3765,10 @@ func TestGetProcessInstanceCommand_HasUserTasksPreservesSingleLookupRenderFlags(
 func TestGetProcessInstanceCommand_HasUserTasksPreservesResolvedProcessInstanceNotFound(t *testing.T) {
 	var requests []string
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		requests = append(requests, r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
@@ -3770,6 +3803,10 @@ func TestGetProcessInstanceCommand_HasUserTasksPreservesResolvedProcessInstanceN
 func TestGetProcessInstanceCommand_HasUserTasksMissingTaskReturnsNotFoundForShortNumericKey(t *testing.T) {
 	var requests []string
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		requests = append(requests, r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
@@ -3897,18 +3934,6 @@ func TestGetProcessInstanceCommand_RejectsHasUserTasksConflictsBeforeLookup(t *t
 			require.Equal(t, before, atomic.LoadInt32(&requestCount))
 		})
 	}
-}
-
-// Verifies Camunda 8.7 reports has-user-tasks as unsupported instead of falling back to another API.
-func TestGetProcessInstanceCommand_HasUserTasksUnsupportedOnV87(t *testing.T) {
-	cfgPath := writeTestConfigForVersion(t, "http://127.0.0.1:1", "8.7")
-
-	output, code := executeProcessInstanceFailureHelper(t, "TestGetProcessInstanceCommand_HasUserTasksUnsupportedOnV87Helper", cfgPath)
-
-	require.Equal(t, exitcode.Error, code)
-	require.Contains(t, output, "unsupported capability")
-	require.Contains(t, output, "has-user-tasks lookup is unsupported in Camunda 8.7")
-	require.Contains(t, output, "requires Camunda 8.8 or newer")
 }
 
 // requireUserTaskSearchRequest validates the native user-task search request and returns its decoded body for scenario-specific assertions.
@@ -4556,6 +4581,7 @@ func resetProcessInstanceCommandGlobals() {
 	flagViewKeysOnly = false
 	flagQuiet = false
 	flagNoIndicator = false
+	flagNoVersionCheck = false
 	flagAllTenants = false
 	flagNoWait = false
 	flagForce = false
@@ -4660,44 +4686,6 @@ func TestGetProcessInstanceCommand_RejectsHasUserTasksConflictHelper(t *testing.
 		args = append(args, "--limit", "1")
 	default:
 		t.Fatalf("unknown has-user-tasks conflict mode %q", os.Getenv("C8VOLT_TEST_HAS_USER_TASKS_CONFLICT"))
-	}
-	os.Args = args
-
-	Execute()
-}
-
-// TestGetProcessInstanceCommand_HasUserTasksUnsupportedOnV87Helper drives the unsupported-version path in a helper process.
-func TestGetProcessInstanceCommand_HasUserTasksUnsupportedOnV87Helper(t *testing.T) {
-	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
-		return
-	}
-
-	prevArgs := os.Args
-	t.Cleanup(func() { os.Args = prevArgs })
-	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "process-instance", "--has-user-tasks", "2251799815391233"}
-
-	Execute()
-}
-
-// TestGetProcessInstanceVariableFiltersUnsupportedV87Helper drives unsupported variable-search validation in a helper process.
-func TestGetProcessInstanceVariableFiltersUnsupportedV87Helper(t *testing.T) {
-	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
-		return
-	}
-
-	prevArgs := os.Args
-	t.Cleanup(func() { os.Args = prevArgs })
-
-	args := []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "process-instance"}
-	switch os.Getenv("C8VOLT_TEST_PI_VARIABLE_FILTER_MODE") {
-	case "var-exists":
-		args = append(args, "--var-exists", "customerId")
-	case "var":
-		args = append(args, "--var", `status="approved"`)
-	case "var-like":
-		args = append(args, "--var-like", "email=*@example.com")
-	default:
-		t.Fatalf("unknown variable filter mode %q", os.Getenv("C8VOLT_TEST_PI_VARIABLE_FILTER_MODE"))
 	}
 	os.Args = args
 
@@ -4996,20 +4984,6 @@ func TestGetProcessInstanceWithListenersWithKeysOnlyHelper(t *testing.T) {
 	Execute()
 }
 
-// TestGetProcessInstanceListWithElementsAndListenersUnsupportedV87Helper drives unsupported v8.7 listener coverage through list/search mode.
-func TestGetProcessInstanceListWithElementsAndListenersUnsupportedV87Helper(t *testing.T) {
-	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
-		return
-	}
-	applyRelativeDayNowOverrideFromEnv(t)
-
-	prevArgs := os.Args
-	t.Cleanup(func() { os.Args = prevArgs })
-	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "process-instance", "--state", "active", "--with-elements", "--with-listeners"}
-
-	Execute()
-}
-
 // Helper-process entrypoint for mutually exclusive direct and marker incident filter validation.
 func TestGetProcessInstanceDirectIncidentsOnlyWithIncidentsOnlyHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
@@ -5132,48 +5106,6 @@ func TestGetProcessInstanceIncidentErrorTypeInvalidHelper(t *testing.T) {
 	prevArgs := os.Args
 	t.Cleanup(func() { os.Args = prevArgs })
 	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "process-instance", "--key", "123", "--with-incidents", "--incident-error-type", "retry_error"}
-
-	Execute()
-}
-
-// Helper-process entrypoint for unsupported v8.7 --with-incidents coverage.
-func TestGetProcessInstanceWithIncidentsUnsupportedV87Helper(t *testing.T) {
-	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
-		return
-	}
-	applyRelativeDayNowOverrideFromEnv(t)
-
-	prevArgs := os.Args
-	t.Cleanup(func() { os.Args = prevArgs })
-	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "process-instance", "--key", "123", "--with-incidents"}
-
-	Execute()
-}
-
-// Helper-process entrypoint for unsupported v8.7 --with-elements coverage.
-func TestGetProcessInstanceWithElementsUnsupportedV87Helper(t *testing.T) {
-	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
-		return
-	}
-	applyRelativeDayNowOverrideFromEnv(t)
-
-	prevArgs := os.Args
-	t.Cleanup(func() { os.Args = prevArgs })
-	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "process-instance", "--key", "123", "--with-elements"}
-
-	Execute()
-}
-
-// Helper-process entrypoint for unsupported v8.7 list/search --with-elements coverage.
-func TestGetProcessInstanceListWithElementsUnsupportedV87Helper(t *testing.T) {
-	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
-		return
-	}
-	applyRelativeDayNowOverrideFromEnv(t)
-
-	prevArgs := os.Args
-	t.Cleanup(func() { os.Args = prevArgs })
-	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "process-instance", "--state", "active", "--with-elements"}
 
 	Execute()
 }

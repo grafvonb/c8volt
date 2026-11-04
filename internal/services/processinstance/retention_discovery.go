@@ -5,10 +5,12 @@ package processinstance
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/grafvonb/c8volt/consts"
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/services"
+	"github.com/grafvonb/c8volt/internal/services/processinstance/searchpaging"
 	"github.com/grafvonb/c8volt/typex"
 )
 
@@ -29,54 +31,50 @@ type RetentionDiscoveryProgress struct {
 	LimitReached        bool
 }
 
+// RetentionDiscovery retains completed selection evidence alongside eligible seeds.
 type RetentionDiscovery struct {
-	Filter d.ProcessInstanceFilter
-	Items  []d.ProcessInstance
-	Keys   typex.Keys
+	Selection d.ProcessInstanceSelection
+	Filter    d.ProcessInstanceFilter
+	Items     []d.ProcessInstance
+	Keys      typex.Keys
 }
 
+// DiscoverRetentionProcessInstances shares authoritative paging and counts distinct ended seeds before the bound.
 func DiscoverRetentionProcessInstances(ctx context.Context, api RetentionDiscoveryAPI, request RetentionDiscoveryRequest, opts ...services.CallOption) (RetentionDiscovery, error) {
-	filter := request.Filter
-	pageReq := d.ProcessInstancePageRequest{Size: normalizeRetentionDiscoveryBatchSize(request.BatchSize)}
-	out := RetentionDiscovery{Filter: filter}
-	cumulative := 0
-	seen := 0
-	pageNumber := 0
-
-	for {
-		page, err := api.SearchForProcessInstancesPage(ctx, filter, pageReq, opts...)
-		if err != nil {
-			return RetentionDiscovery{}, err
-		}
-		pageNumber++
-		seen += len(page.Items)
-		limitReached := false
-		selected := 0
-		if len(page.Items) > 0 {
-			items := limitRetentionDiscoveryItems(filterRetentionDiscoveryItems(page.Items), request.Limit, cumulative)
-			selected = len(items)
-			out.Items = append(out.Items, items...)
-			for _, item := range items {
-				out.Keys = append(out.Keys, item.Key)
-			}
-			cumulative += len(items)
-			limitReached = request.Limit > 0 && cumulative >= int(request.Limit)
-		}
-		reportRetentionDiscoveryProgress(request.Progress, RetentionDiscoveryProgress{
-			Page:                page,
-			PageNumber:          pageNumber,
-			CurrentPageCount:    len(page.Items),
-			CurrentPageSelected: selected,
-			CandidatesSeen:      seen,
-			CandidatesFrozen:    cumulative,
-			LimitReached:        limitReached,
-		})
-		if shouldStopRetentionDiscovery(page, request.Limit, cumulative) {
-			out.Keys = out.Keys.Unique()
-			return out, nil
-		}
-		pageReq = nextRetentionDiscoveryPageRequest(pageReq, page)
+	selectionRequest := d.ProcessInstanceSelectionRequest{Cardinality: d.ProcessInstanceSelectionCollection, SearchRequest: d.ProcessInstanceSearchRequest{Filter: request.Filter, Page: d.ProcessInstancePageRequest{Size: normalizeRetentionDiscoveryBatchSize(request.BatchSize)}, Limit: request.Limit}}
+	selectionRequest = copyProcessInstanceSelectionRequest(selectionRequest)
+	out := RetentionDiscovery{Filter: selectionRequest.SearchRequest.Filter}
+	out.Selection = d.ProcessInstanceSelection{Request: selectionRequest, Origin: "search", IgnoreTenant: services.ApplyCallOptions(opts).IgnoreTenant, Completion: d.ProcessInstanceSearchCompletionIncomplete}
+	if request.Limit < 0 {
+		return out, fmt.Errorf("%w: retention limit must be nonnegative", d.ErrValidation)
 	}
+	seen := make(map[string]struct{})
+	candidates := 0
+	completion, err := searchpaging.Walk(ctx, api, selectionRequest.SearchRequest, false, func(page d.ProcessInstancePage, number int32) (d.ProcessInstanceSearchCompletion, error) {
+		out.Selection.Pages = number
+		candidates += len(page.Items)
+		items := searchpaging.DistinctItems(filterRetentionDiscoveryItems(page.Items), seen)
+		items = limitRetentionDiscoveryItems(items, request.Limit, len(out.Items))
+		for _, item := range items {
+			if item.Key == "" {
+				return "", fmt.Errorf("%w: retention candidate has no key", d.ErrMalformedResponse)
+			}
+			out.Items = append(out.Items, item)
+			out.Keys = append(out.Keys, item.Key)
+		}
+		limited := request.Limit > 0 && len(out.Items) >= int(request.Limit)
+		reportRetentionDiscoveryProgress(request.Progress, RetentionDiscoveryProgress{Page: page, PageNumber: int(number), CurrentPageCount: len(page.Items), CurrentPageSelected: len(items), CandidatesSeen: candidates, CandidatesFrozen: len(out.Items), LimitReached: limited})
+		if limited {
+			return d.ProcessInstanceSearchCompletionLimitReached, nil
+		}
+		return "", nil
+	}, opts...)
+	out.Selection.Completion = completion
+	out.Selection.Items, out.Selection.Keys = out.Items, out.Keys
+	out.Selection.TenantEvidence = selectionTenantEvidence(out.Selection.Items)
+	out.Selection = CopyProcessInstanceSelection(out.Selection)
+	out.Items, out.Keys = out.Selection.Items, out.Selection.Keys
+	return out, err
 }
 
 func reportRetentionDiscoveryProgress(progress func(RetentionDiscoveryProgress), event RetentionDiscoveryProgress) {
@@ -116,23 +114,4 @@ func limitRetentionDiscoveryItems(items []d.ProcessInstance, limit int32, cumula
 		return items[:remaining]
 	}
 	return items
-}
-
-func shouldStopRetentionDiscovery(page d.ProcessInstancePage, limit int32, cumulative int) bool {
-	if limit > 0 && cumulative >= int(limit) {
-		return true
-	}
-	if len(page.Items) == 0 {
-		return true
-	}
-	return page.OverflowState != d.ProcessInstanceOverflowStateHasMore
-}
-
-func nextRetentionDiscoveryPageRequest(current d.ProcessInstancePageRequest, page d.ProcessInstancePage) d.ProcessInstancePageRequest {
-	next := d.ProcessInstancePageRequest{From: current.From + int32(len(page.Items)), Size: current.Size}
-	if page.EndCursor != "" {
-		next.After = page.EndCursor
-		return next
-	}
-	return next
 }

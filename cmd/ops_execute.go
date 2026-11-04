@@ -11,10 +11,8 @@ var opsExecuteCmd = &cobra.Command{
 	Long: `Run predefined operational playbooks.
 
 Choose retention-policy to clean up old process instances or smoke-test to verify deployment, execution, and cleanup.`,
-	Example: `  ./c8volt ops execute --help
-  ./c8volt ops execute retention-policy --retention-days 90 --dry-run
-  ./c8volt ops execute smoke-test --dry-run
-  ./c8volt capabilities --json`,
+	Example: `  c8volt ops execute retention-policy --retention-days 90 --dry-run
+  c8volt ops execute smoke-test --dry-run`,
 	Args: cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return cmd.Help()

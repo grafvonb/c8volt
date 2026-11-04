@@ -28,6 +28,7 @@ func renderOpsPurgeOrphanProcessInstancesResult(cmd *cobra.Command, result ops.O
 	}
 }
 
+// renderOpsPurgeOrphanProcessInstancesHuman logs observed details only under verbose.
 func renderOpsPurgeOrphanProcessInstancesHuman(cmd *cobra.Command, result ops.OrphanPurgeResult) error {
 	if result.Request.DryRun {
 		renderHumanLine(cmd, "dry run: purge orphan process-instances")
@@ -35,6 +36,7 @@ func renderOpsPurgeOrphanProcessInstancesHuman(cmd *cobra.Command, result ops.Or
 		renderHumanLine(cmd, "purge orphan process-instances")
 	}
 	renderAttachedTenantContext(cmd)
+	renderCleanupSelection(cmd, result.Discovery.Selection)
 	if result.Discovery.Count == 0 {
 		renderHumanLine(cmd, "candidate orphan process instances: 0")
 		elapsed := opsWorkflowElapsedSuffix(result.Report.Duration)
@@ -53,6 +55,8 @@ func renderOpsPurgeOrphanProcessInstancesHuman(cmd *cobra.Command, result ops.Or
 	renderHumanLine(cmd, "candidate orphan process instances: %d", result.Discovery.Count)
 	if flagVerbose {
 		renderHumanLine(cmd, "candidate keys: %s", strings.Join(result.Discovery.Keys, ", "))
+		renderOpsObservedProcessInstances(cmd, "final state items", result.DeletionPlan.DryRunPreview.SelectedFinalState)
+		renderOpsObservedProcessInstances(cmd, "non-final affected items", result.DeletionPlan.DryRunPreview.RequiresCancelBeforeDelete)
 	}
 	if result.Request.DryRun {
 		renderHumanLine(cmd, "delete preview: %d orphan candidate(s), %d affected process instance(s) across %d root(s) would be deleted",
@@ -123,6 +127,7 @@ func renderOpsPurgeOrphanProcessInstancesJSONReport(report ops.OrphanPurgeReport
 	return buf.Bytes(), nil
 }
 
+// renderOpsPurgeOrphanProcessInstancesMarkdownReport preserves the observed preview alongside key-only outcomes.
 func renderOpsPurgeOrphanProcessInstancesMarkdownReport(report ops.OrphanPurgeReport, cfg *config.Config) ([]byte, error) {
 	var out strings.Builder
 	out.WriteString("# Purge Orphan Process Instances Audit Report\n\n")
@@ -143,7 +148,8 @@ func renderOpsPurgeOrphanProcessInstancesMarkdownReport(report ops.OrphanPurgeRe
 	writeMarkdownReportField(&out, "Outcome", string(report.Outcome))
 
 	out.WriteString("\n## Selection\n\n")
-	writeMarkdownReportField(&out, "Filters", report.SelectionFilters.String())
+	writeMarkdownReportField(&out, "Filters", escapeMarkdownOpaqueText(report.SelectionFilters.String()))
+	writeCleanupSelectionMarkdown(&out, report.Discovery.Selection)
 
 	out.WriteString("\n## Discovery\n\n")
 	writeMarkdownReportField(&out, "Status", string(report.Discovery.Status))
@@ -157,6 +163,7 @@ func renderOpsPurgeOrphanProcessInstancesMarkdownReport(report ops.OrphanPurgeRe
 	writeMarkdownReportList(&out, "Candidate Keys", report.DeletionPlan.RequestedKeys)
 	writeMarkdownReportList(&out, "Root Keys", report.DeletionPlan.RootKeys)
 	writeMarkdownReportList(&out, "Affected Keys", report.DeletionPlan.AffectedKeys)
+	writeMarkdownObservedProcessInstances(&out, report.DeletionPlan.DryRunPreview)
 	writeMarkdownReportList(&out, "Errors", report.DeletionPlan.Errors)
 
 	out.WriteString("\n## Deletion\n\n")

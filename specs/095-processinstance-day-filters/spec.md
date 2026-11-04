@@ -59,13 +59,11 @@ As a CLI user, I want invalid relative-day input, conflicting filter combination
 
 **Why this priority**: Clear validation is required to keep bulk process-instance operations safe and to preserve the behavior contract already established for the absolute date filters.
 
-**Independent Test**: Can be fully tested by running the affected commands with negative values, conflicting absolute and relative filters, invalid derived ranges, and any new relative-day flag on v8.7, then verifying that each path fails clearly before a search-based action occurs.
 
 **Acceptance Scenarios**:
 
 1. **Given** a user provides a negative value to any `*-days` flag, **When** the command is executed, **Then** the command fails with a clear validation error identifying the invalid non-negative day requirement.
 2. **Given** a user mixes `--start-date-older-days` with `--start-date-after` or any other relative and absolute flag pair for the same field, **When** the command is executed, **Then** the command fails with a clear validation error instead of choosing one input silently.
-3. **Given** the configured Camunda version is v8.7, **When** the user supplies any of the new relative day-based flags to `get process-instance`, `cancel process-instance`, or `delete process-instance`, **Then** the command returns a clear not-implemented response through the existing error model and does not execute a date-filtered search.
 
 ### Edge Cases
 
@@ -76,7 +74,6 @@ As a CLI user, I want invalid relative-day input, conflicting filter combination
 - A process instance with no `endDate` must be excluded whenever `--end-date-newer-days` or `--end-date-older-days` is used.
 - Mixing an absolute date flag and a relative day flag for the same field must be rejected even if the two inputs would point to the same calendar day.
 - A value of `0` days must be accepted and interpreted using the configured Camunda environment's local calendar day, matching the existing absolute date filters.
-- Any use of the new relative day-based flags on v8.7 must trigger the unsupported-version response, even if the other command arguments are otherwise valid.
 - Commands outside `get process-instance`, `cancel process-instance`, and `delete process-instance` remain out of scope for this feature.
 
 ## Requirements *(mandatory)*
@@ -102,10 +99,8 @@ As a CLI user, I want invalid relative-day input, conflicting filter combination
 - **FR-017**: On v8.8, the system MUST combine the derived date filters with existing process-instance search filters without changing the current behavior of those existing filters.
 - **FR-018**: The system MUST reject any `cancel process-instance` or `delete process-instance` invocation that combines explicit `--key` values with one or more relative day-based flags.
 - **FR-019**: On v8.8, the system MUST preserve direct `--key` behavior for `cancel process-instance` and `delete process-instance` when none of the new relative day-based flags is used.
-- **FR-020**: On v8.7, the system MUST return a clear not-implemented response through the existing error path whenever any of the new relative day-based flags is used with the affected commands.
 - **FR-021**: The system MUST preserve current behavior for all affected commands when none of the new relative day-based flags is provided.
 - **FR-022**: The system MUST update command help and examples for the affected commands to describe the new relative day-based shortcut flags.
-- **FR-023**: The system MUST include automated coverage for happy-path conversion, inclusive boundary behavior, configured-local-day derivation, missing `endDate` exclusion, invalid or negative values, conflicting absolute and relative inputs, invalid derived ranges, invalid `--key` plus relative-day combinations, preserved direct-key behavior, and v8.7 unsupported-version responses.
 
 ### Key Entities *(include if feature involves data)*
 
@@ -113,7 +108,6 @@ As a CLI user, I want invalid relative-day input, conflicting filter combination
 - **Derived Date Bound**: The absolute day boundary produced from a relative day filter input and used with the same inclusive semantics as the existing absolute date filters.
 - **Process Instance Search Request**: The complete set of search criteria for `get process-instance`, `cancel process-instance`, or `delete process-instance`, including existing filters plus any derived date bounds.
 - **Command Mode**: The distinction between search-based selection and direct key-based targeting, which determines when relative day flags participate in command behavior.
-- **Version Capability Rule**: The version-specific rule that enables the feature on v8.8 and rejects it as not implemented on v8.7.
 
 ## Success Criteria *(mandatory)*
 
@@ -126,7 +120,6 @@ As a CLI user, I want invalid relative-day input, conflicting filter combination
 - **SC-005**: Every invalid negative day value, conflicting absolute-plus-relative field combination, and invalid derived range is rejected before any search-based action is executed.
 - **SC-006**: Every invalid `--key` plus relative-day flag combination is rejected before any search-based or key-based action is executed.
 - **SC-007**: Direct key-based `cancel process-instance` and `delete process-instance` behavior remains unchanged when relative day-based flags are not used.
-- **SC-008**: Every use of the new relative day-based flags on v8.7 returns a clear not-implemented response through the existing error path.
 - **SC-009**: Automated tests cover the new conversion paths, configured-local-day derivation, missing-`endDate` exclusion, validation failures, invalid `--key` combinations, preserved key-based behavior, and unsupported-version behavior across the affected commands.
 
 ## Assumptions

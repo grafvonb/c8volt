@@ -114,4 +114,3 @@ Missing or empty sections are omitted unless existing incident marker behavior r
 - `--with-elements` with keyed lookup and search-mode filters is invalid.
 - `--limit` applies only to process instances.
 - Element-specific filters are not accepted on `get pi`; use `get element` / `get ei` instead.
-- Camunda 8.7 returns unsupported-version errors when element enrichment is requested.

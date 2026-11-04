@@ -10,11 +10,10 @@ Wait for process instances to satisfy expectations
 
 ### Synopsis
 
-Wait for process instances to satisfy requested state and incident expectations.
+Wait for selected process instances to satisfy state or incident expectations.
 
-Tenant contract: explicit --key and stdin process-instance targets are backend-authorized admin input; returned tenant metadata may differ from the selected tenant.
-
-Use after `run`, `cancel`, or `delete` when a command returns before the final state or incident marker is visible.
+Use after a mutation when an observed outcome matters. Repeat --state to accept
+any listed state. Suspended-state expectations are available only c8.10+.
 
 ```
 c8volt expect process-instance [flags]
@@ -23,12 +22,8 @@ c8volt expect process-instance [flags]
 ### Examples
 
 ```
-  ./c8volt expect process-instance --key <process-instance-key> --state active
-  ./c8volt expect process-instance --key <process-instance-key> --incident true
-  ./c8volt expect process-instance --key <process-instance-key> --state active --incident false
-  ./c8volt expect process-instance --key <process-instance-key> --state completed --state absent
-  ./c8volt expect process-instance --key <process-instance-key> --state canceled
-  ./c8volt get process-instance --key <process-instance-key> --keys-only | ./c8volt expect process-instance --incident true -
+  c8volt expect process-instance --key <process-instance-key> --state completed
+  c8volt expect process-instance --key <process-instance-key> --incident false
 ```
 
 ### Options
@@ -39,27 +34,29 @@ c8volt expect process-instance [flags]
       --incident string   incident expectation; valid values are: [true, false]
   -k, --key strings       process instance key(s) to watch
       --no-worker-limit   use all queued jobs as workers when --workers is unset
-  -s, --state strings     state expectation; valid values are: [active, completed, canceled, terminated, absent]
-  -w, --workers int       maximum concurrent workers when --count > 1 (default: min(count, 2*GOMAXPROCS, 32))
+  -s, --state strings     state expectation; valid values are: [active, suspended, completed, canceled, terminated, absent]; suspended: only c8.10+
+  -w, --workers int       maximum concurrent workers; omit for an automatic limit
 ```
 
 ### Options inherited from parent commands
 
 ```
-      --all-tenants        clear configured tenant filtering and search all tenants visible to the authenticated user; mutually exclusive with --tenant
-  -y, --auto-confirm       auto-confirm prompts for non-interactive use
-      --automation         enable non-interactive mode for commands that explicitly support it
-      --config string      path to config file
-      --debug              enable debug logging
-  -j, --json               output as JSON (where applicable)
-      --keys-only          output keys only (where applicable)
-      --log-level string   log level (debug, info, warn, error) (default "info")
-      --no-indicator       disable transient terminal activity indicators
-      --profile string     config active profile name to use (e.g. dev, prod)
-  -q, --quiet              suppress output except errors
-      --tenant string      tenant ID for discovery/search, selection, create, deploy, and run flows; explicit empty values can clear configured discovery filters, and explicit keys/IDs remain backend-authorized
-      --timeout duration   HTTP request timeout (default 30s)
-  -v, --verbose            show additional output
+      --all-tenants          search all accessible tenants; cannot combine with --tenant
+  -y, --auto-confirm         auto-confirm prompts for non-interactive use
+      --automation           enable non-interactive mode for commands that explicitly support it
+      --config string        path to config file
+      --debug                enable debug logging
+  -j, --json                 output as JSON (where applicable)
+      --keys-only            output keys only (where applicable)
+      --log-level string     log level (debug, info, warn, error) (default "info")
+      --no-indicator         disable transient terminal activity indicators
+      --no-version-check     skip the automatic advisory gateway version check
+      --profile string       config active profile name to use (e.g. dev, prod)
+  -q, --quiet                suppress output except errors
+      --request-rate float   maximum shared request starts per second (fractions allowed; 0 disables pacing)
+      --tenant string        tenant for discovery and creation; explicit keys use backend authorization
+      --timeout duration     HTTP request timeout (default 30s)
+  -v, --verbose              show additional output
 ```
 
 ### SEE ALSO

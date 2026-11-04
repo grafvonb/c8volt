@@ -20,12 +20,12 @@ import (
 func (s *Service) completeJobWithResponse(ctx context.Context, key camunda.JobKey, body camunda.CompleteJobJSONRequestBody) (*camunda.CompleteJobResponse, error) {
 	payload, err := json.Marshal(struct {
 		camunda.CompleteJobJSONRequestBody
-		BusinessId *camunda.BusinessId `json:"businessId,omitempty"`
-		LeaseToken *string             `json:"leaseToken,omitempty"`
+		BusinessId    *camunda.BusinessId    `json:"businessId,omitempty"`
+		JobLeaseToken *camunda.JobLeaseToken `json:"jobLeaseToken,omitempty"`
 	}{
 		CompleteJobJSONRequestBody: body,
 		BusinessId:                 body.BusinessId,
-		LeaseToken:                 body.LeaseToken,
+		JobLeaseToken:              body.JobLeaseToken,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("encode job completion request: %w", err)

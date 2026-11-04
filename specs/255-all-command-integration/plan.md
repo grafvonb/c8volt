@@ -14,11 +14,11 @@ Add a destructive all-command integration suite under `integration/` that valida
 **Primary Dependencies**: Go `testing`, subprocess execution against built `c8volt` binary, Cobra command contract through `c8volt capabilities --json`, existing `integration/` evidence conventions, embedded BPMN fixtures, default local c8volt configuration
 **Storage**: Filesystem evidence directory outside `docs/`, defaulting to a temporary work directory and overrideable by suite environment
 **Testing**: `go test -tags=integration ./integration/cli -count=1 -timeout=60m` for the suite; normal repository validation remains `make test`
-**Target Platform**: Developer/release-validator machines that can run the Go test suite and reach disposable local Camunda 8.7/8.8/8.9 profiles
+**Target Platform**: Developer/release-validator machines that can run the Go test suite and reach disposable local Camunda 8.8/8.9 profiles
 **Project Type**: Go CLI integration harness
 **Performance Goals**: Build the binary once per test run; keep command inventory and profile gates under 30 seconds on a healthy local setup; allow full destructive suite runtime up to 60 minutes
 **Constraints**: Do not pass `--config`; do not generate private config; do not override auth mode; use existing local profiles only; tolerate clean and dirty clusters; broad mutation against selected disposable clusters is allowed; keep suite artifacts under `integration/`; do not edit generated `docs/cli/*` as part of harness work
-**Scale/Scope**: 55 current command nodes, every command-local flag in the coverage manifest, aliases, output modes, grouping commands, version behavior for configured 8.7/8.8/8.9 profiles, all high-level ops workflows, help and generated CLI example validation
+**Scale/Scope**: 55 current command nodes, every command-local flag in the coverage manifest, aliases, output modes, grouping commands, version behavior for configured 8.8/8.9 profiles, all high-level ops workflows, help and generated CLI example validation
 
 ## Constitution Check
 

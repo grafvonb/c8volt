@@ -7,7 +7,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/grafvonb/c8volt/c8volt/incident"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -16,6 +15,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/grafvonb/c8volt/c8volt/incident"
 
 	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/grafvonb/c8volt/internal/exitcode"
@@ -27,12 +28,20 @@ import (
 // Verifies walk commands consume env-overridden API base URLs during traversal requests.
 func TestWalkProcessInstanceCommand_EnvBaseURLOverridesProfileAndBaseConfig(t *testing.T) {
 	baseSrv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		t.Fatalf("base/profile server should not be used: %s %s", r.Method, r.URL.Path)
 	}))
 	t.Cleanup(baseSrv.Close)
 
 	searchCalls := 0
 	envSrv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		switch {
 		case r.Method == http.MethodGet && r.URL.Path == "/v2/process-instances/2251799813685255":
 			w.Header().Set("Content-Type", "application/json")
@@ -77,32 +86,8 @@ profiles:
 }
 
 func TestWalkHelp_DocumentsTraversalVerificationGuidance(t *testing.T) {
-	output := assertCommandHelpOutput(t, []string{"walk"}, []string{
-		"Inspect process-instance relationships",
-		"Inspect ancestry, descendants",
-		"./c8volt walk process-instance --key <process-instance-key>",
-	}, nil)
-	require.Contains(t, output, "process-instance")
-
-	output = assertCommandHelpOutput(t, []string{"walk", "process-instance"}, []string{
-		"the default scope is the full family",
-		"walk returns the available family",
-		"./c8volt walk process-instance --key <process-instance-key> --with-incidents",
-		"./c8volt walk process-instance --key <process-instance-key> --with-vars",
-		"./c8volt walk process-instance --key <process-instance-key> --with-elements",
-		"./c8volt walk process-instance --key <process-instance-key> --with-elements --with-listeners",
-		"./c8volt walk process-instance --key <process-instance-key> --flat",
-	}, nil)
-	require.Contains(t, output, "--flat")
-	require.Contains(t, output, "--with-elements")
-	require.Contains(t, output, "--with-listeners")
-	require.Contains(t, output, "s: for job creation (not worker execution start), e: for job end")
-	require.Contains(t, output, "d: for an available deadline only while the state is exactly ACTIVATED")
-	require.Contains(t, output, "--incident-message-limit int")
-	require.Contains(t, output, "--incident-state string")
-	require.Contains(t, output, "incident state scope for --with-incidents: active, pending, resolved, migrated, unknown, all")
-	require.NotContains(t, output, "--tree")
-	require.NotContains(t, output, "--family")
+	assertCommandHelpOutput(t, []string{"walk"}, []string{"process-instance", "--children"}, nil)
+	assertCommandHelpOutput(t, []string{"walk", "process-instance"}, []string{"--parent", "--children", "--with-elements", "multiple matches are ambiguous"}, nil)
 }
 
 // TestWalkProcessInstanceCommand_RegressionPreservesReadOnlyTraversalContract keeps walk metadata and flag-state reset behavior stable.
@@ -123,7 +108,7 @@ func TestWalkProcessInstanceCommand_RegressionPreservesReadOnlyTraversalContract
 		Name:        "key",
 		Shorthand:   "k",
 		Type:        "string",
-		Required:    true,
+		Required:    false,
 		Repeated:    false,
 		Description: "start walking from this process instance key",
 	})
@@ -132,14 +117,14 @@ func TestWalkProcessInstanceCommand_RegressionPreservesReadOnlyTraversalContract
 		Type:        "bool",
 		Required:    false,
 		Repeated:    false,
-		Description: "show incident keys, states, and messages for keyed process-instance walks",
+		Description: "show incident keys, states, and messages for selected process-instance walks",
 	})
 	require.Contains(t, capability.Flags, FlagContract{
 		Name:        "with-vars",
 		Type:        "bool",
 		Required:    false,
 		Repeated:    false,
-		Description: "show process-instance-scope variables for keyed process-instance walks",
+		Description: "show process-instance-scope variables for selected process-instance walks",
 	})
 	require.False(t, flagWalkPIWithElements)
 }
@@ -221,6 +206,10 @@ func TestWalkProcessInstanceCommand_WithElementsFamilyHumanOutputShowsRuntimeEle
 	var elementFilters []map[string]any
 
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.9") {
+			return
+		}
+
 		requests = append(requests, r.Method+" "+r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
 		switch {
@@ -294,7 +283,7 @@ func TestWalkProcessInstanceCommand_WithElementsFamilyHumanOutputShowsRuntimeEle
 // TestWalkProcessInstanceCommand_WithListenersFamilyHumanOutputNestsListenerRows verifies default family traversal keeps listener details inside element blocks.
 func TestWalkProcessInstanceCommand_WithListenersFamilyHumanOutputNestsListenerRows(t *testing.T) {
 	var requests []string
-	srv := newWalkProcessInstanceWithListenersServer(t, &requests, map[string]string{
+	srv := newWalkProcessInstanceWithListenersServer(t, "8.9", &requests, map[string]string{
 		"123": walkedElementInstancesSearchJSON(t,
 			walkedElementInstanceFixture("element-root", "123", "root-task", false, ""),
 		),
@@ -340,7 +329,7 @@ func TestWalkProcessInstanceCommand_WithListenersFamilyHumanOutputNestsListenerR
 	require.Contains(t, output, "│     └─ listeners:\n│        └─ job-exec-root EXECUTION_LISTENER lsnr:START ACTIVATED tp:audit-start r:3 worker:worker-a s:2026-09-16T13:07:16.359 d:2026-09-16T13:08:00.000")
 	require.Contains(t, output, "└─ 124 tenant demo v3 ACTIVE")
 	require.Contains(t, output, "   └─ elements:\n      └─ element-child SERVICE_TASK child-task ACTIVE")
-	require.Contains(t, output, "         └─ listeners:\n            └─ job-task-child TASK_LISTENER lsnr:COMPLETING CANCELED tp:audit-task r:0 s:2026-09-16T13:07:16.359 e:2026-09-16T13:07:16.842")
+	require.Contains(t, output, "         └─ listeners:\n            └─ job-task-child TASK_LISTENER lsnr:COMPLETING CANCELED tp:audit-task r:0 s:2026-09-16T13:07:16.359 e:2026-09-16T13:07:16.842 ec:LISTENER_FAILED err:worker failed dur:483ms")
 	require.NotRegexp(t, `(?m)^.*job-task-child TASK_LISTENER .* d:.*$`, output)
 	require.Contains(t, output, "ec:LISTENER_FAILED")
 	require.Less(t, strings.Index(output, "element-root"), strings.Index(output, "job-exec-root"))
@@ -351,6 +340,10 @@ func TestWalkProcessInstanceCommand_WithListenersFamilyHumanOutputNestsListenerR
 // TestWalkProcessInstanceCommand_WithElementsKeepsEmptyOwnersVisible verifies a walked row with no elements does not gain placeholder detail rows.
 func TestWalkProcessInstanceCommand_WithElementsKeepsEmptyOwnersVisible(t *testing.T) {
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.9") {
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		switch {
 		case r.Method == http.MethodGet && r.URL.Path == "/v2/process-instances/123":
@@ -382,6 +375,10 @@ func TestWalkProcessInstanceCommand_WithElementsKeepsEmptyOwnersVisible(t *testi
 // TestWalkProcessInstanceCommand_WithElementsRendersIncidentMarkers keeps element incident markers aligned with get process-instance output.
 func TestWalkProcessInstanceCommand_WithElementsRendersIncidentMarkers(t *testing.T) {
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.9") {
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		switch {
 		case r.Method == http.MethodGet && r.URL.Path == "/v2/process-instances/123":
@@ -420,6 +417,10 @@ func TestWalkProcessInstanceCommand_ChildrenWithElementsPreservesDescendantSelec
 	var elementFilters []map[string]any
 
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.9") {
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		switch {
 		case r.Method == http.MethodGet && r.URL.Path == "/v2/process-instances/123":
@@ -522,7 +523,7 @@ func TestWalkProcessInstanceCommand_WithListenersChildrenParentAndFlatModes(t *t
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var requests []string
-			srv := newWalkProcessInstanceWithListenersServer(t, &requests, map[string]string{
+			srv := newWalkProcessInstanceWithListenersServer(t, "8.9", &requests, map[string]string{
 				"123": walkedElementInstancesSearchJSON(t,
 					walkedElementInstanceFixture("element-123", "123", "task-123", false, ""),
 				),
@@ -561,6 +562,10 @@ func TestWalkProcessInstanceCommand_ParentWithElementsPreservesAncestryOrder(t *
 	var elementFilters []map[string]any
 
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.9") {
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		switch {
 		case r.Method == http.MethodGet && r.URL.Path == "/v2/process-instances/125":
@@ -614,6 +619,10 @@ func TestWalkProcessInstanceCommand_ParentWithElementsPreservesAncestryOrder(t *
 // TestWalkProcessInstanceCommand_FlatWithElementsPreservesPathSeparators verifies flat family rendering keeps relationship separators around detail sections.
 func TestWalkProcessInstanceCommand_FlatWithElementsPreservesPathSeparators(t *testing.T) {
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.9") {
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		switch {
 		case r.Method == http.MethodGet && r.URL.Path == "/v2/process-instances/123":
@@ -666,6 +675,10 @@ func TestWalkProcessInstanceCommand_DefaultFamilyWithoutElementsDoesNotSearchEle
 	var requests []string
 
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.9") {
+			return
+		}
+
 		requests = append(requests, r.Method+" "+r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
 		switch {
@@ -701,6 +714,10 @@ func TestWalkProcessInstanceCommand_DefaultFamilyWithoutElementsDoesNotSearchEle
 // TestWalkProcessInstanceCommand_WithElementsPartialTraversalPreservesWarning keeps missing-ancestor diagnostics visible after element enrichment.
 func TestWalkProcessInstanceCommand_WithElementsPartialTraversalPreservesWarning(t *testing.T) {
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.9") {
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		switch {
 		case r.Method == http.MethodGet && r.URL.Path == "/v2/process-instances/123":
@@ -739,6 +756,10 @@ func TestWalkProcessInstanceCommand_WithElementsPartialTraversalPreservesWarning
 // TestWalkProcessInstanceCommand_WithElementsJSONOutputPreservesTraversalMetadata keeps scripted walk metadata and per-item element arrays together.
 func TestWalkProcessInstanceCommand_WithElementsJSONOutputPreservesTraversalMetadata(t *testing.T) {
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.9") {
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		switch {
 		case r.Method == http.MethodGet && r.URL.Path == "/v2/process-instances/123":
@@ -807,7 +828,7 @@ func TestWalkProcessInstanceCommand_WithElementsJSONOutputPreservesTraversalMeta
 // TestWalkProcessInstanceCommand_WithListenersJSONOutputPreservesEmptyArraysAndOmitsUnmatchedJobs verifies traversal JSON carries requested listener arrays under elements.
 func TestWalkProcessInstanceCommand_WithListenersJSONOutputPreservesEmptyArraysAndOmitsUnmatchedJobs(t *testing.T) {
 	var requests []string
-	srv := newWalkProcessInstanceWithListenersServer(t, &requests, map[string]string{
+	srv := newWalkProcessInstanceWithListenersServer(t, "8.9", &requests, map[string]string{
 		"123": walkedElementInstancesSearchJSON(t,
 			walkedElementInstanceFixture("element-root", "123", "root-task", false, ""),
 			walkedElementInstanceFixture("element-empty", "123", "empty-task", false, ""),
@@ -867,7 +888,7 @@ func TestWalkProcessInstanceCommand_WithListenersJSONOutputPreservesEmptyArraysA
 // TestWalkProcessInstanceCommand_WithElementsWithoutListenersSkipsListenerLookup keeps existing element-only walks free of job search calls.
 func TestWalkProcessInstanceCommand_WithElementsWithoutListenersSkipsListenerLookup(t *testing.T) {
 	var requests []string
-	srv := newWalkProcessInstanceWithListenersServer(t, &requests, map[string]string{
+	srv := newWalkProcessInstanceWithListenersServer(t, "8.9", &requests, map[string]string{
 		"123": walkedElementInstancesSearchJSON(t,
 			walkedElementInstanceFixture("element-root", "123", "root-task", false, ""),
 		),
@@ -925,44 +946,13 @@ func TestWalkProcessInstanceCommand_WithListenersValidation(t *testing.T) {
 	}
 }
 
-// TestWalkProcessInstanceCommand_WithListenersUnsupportedV87 verifies listener lookup failures surface through the normal command error path.
-func TestWalkProcessInstanceCommand_WithListenersUnsupportedV87(t *testing.T) {
-	searchCalls := 0
-	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, http.MethodPost, r.Method)
-		require.Equal(t, "/v1/process-instances/search", r.URL.Path)
-		w.Header().Set("Content-Type", "application/json")
-		switch searchCalls {
-		case 0:
-			searchCalls++
-			_, _ = w.Write([]byte(`{"items":[{"key":123,"bpmnProcessId":"demo","processVersion":3,"state":"ACTIVE","startDate":"2026-03-23T18:00:00Z","tenantId":"tenant"}],"total":1}`))
-		default:
-			searchCalls++
-			_, _ = w.Write([]byte(`{"items":[],"total":0}`))
-		}
-	}))
-	t.Cleanup(srv.Close)
-
-	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.7")
-
-	output, err := testx.RunCmdSubprocess(t, "TestWalkProcessInstanceCommand_WithListenersUnsupportedV87Helper", map[string]string{
-		"C8VOLT_TEST_CONFIG": cfgPath,
-	})
-	require.Error(t, err)
-
-	exitErr, ok := err.(*exec.ExitError)
-	require.True(t, ok)
-	require.Equal(t, exitcode.Error, exitErr.ExitCode())
-	require.Equal(t, 2, searchCalls)
-	require.Contains(t, string(output), "unsupported capability")
-	require.Contains(t, string(output), "element search requires Camunda 8.8 or newer")
-	require.NotContains(t, string(output), "tenant demo v3")
-	require.NotContains(t, string(output), "└─ elements:")
-}
-
 // TestWalkProcessInstanceCommand_WithVarsIncidentsAndElementsOutputShowsGroupedSections verifies combined enrichment uses stable section and JSON fields.
 func TestWalkProcessInstanceCommand_WithVarsIncidentsAndElementsOutputShowsGroupedSections(t *testing.T) {
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.9") {
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		switch {
 		case r.Method == http.MethodGet && r.URL.Path == "/v2/process-instances/123":
@@ -1038,53 +1028,13 @@ func TestWalkProcessInstanceCommand_RejectsKeysOnlyWithElements(t *testing.T) {
 	require.NotContains(t, string(output), "127.0.0.1:1")
 }
 
-// TestWalkProcessInstanceCommand_WithElementsUnsupportedV87 preserves the reused element-service unsupported-version boundary.
-func TestWalkProcessInstanceCommand_WithElementsUnsupportedV87(t *testing.T) {
-	searchCalls := 0
-	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, http.MethodPost, r.Method)
-		require.Equal(t, "/v1/process-instances/search", r.URL.Path)
-
-		body, err := io.ReadAll(r.Body)
-		require.NoError(t, err)
-		request := decodeCapturedPISearchRequest(t, string(body))
-		filter, _ := request["filter"].(map[string]any)
-
-		w.Header().Set("Content-Type", "application/json")
-		switch {
-		case searchCalls == 0:
-			require.NotContains(t, filter, "parentKey")
-			searchCalls++
-			_, _ = w.Write([]byte(`{"items":[{"key":123,"bpmnProcessId":"demo","processVersion":3,"state":"ACTIVE","startDate":"2026-03-23T18:00:00Z","tenantId":"tenant"}],"total":1}`))
-		case filter["parentKey"] == float64(123):
-			searchCalls++
-			_, _ = w.Write([]byte(`{"items":[],"total":0}`))
-		default:
-			t.Fatalf("unexpected search body: %s", string(body))
-		}
-	}))
-	t.Cleanup(srv.Close)
-
-	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.7")
-
-	output, err := testx.RunCmdSubprocess(t, "TestWalkProcessInstanceCommand_WithElementsUnsupportedV87Helper", map[string]string{
-		"C8VOLT_TEST_CONFIG": cfgPath,
-	})
-	require.Error(t, err)
-
-	exitErr, ok := err.(*exec.ExitError)
-	require.True(t, ok)
-	require.Equal(t, exitcode.Error, exitErr.ExitCode())
-	require.Equal(t, 2, searchCalls)
-	require.Contains(t, string(output), "unsupported capability")
-	require.Contains(t, string(output), "element search requires Camunda 8.8 or newer")
-	require.NotContains(t, string(output), "tenant demo v3")
-	require.NotContains(t, string(output), "└─ elements:")
-}
-
 // TestWalkProcessInstanceCommand_WithElementsLookupFailureDoesNotRenderPartialTraversal fails before showing partial enriched output.
 func TestWalkProcessInstanceCommand_WithElementsLookupFailureDoesNotRenderPartialTraversal(t *testing.T) {
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.9") {
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		switch {
 		case r.Method == http.MethodGet && r.URL.Path == "/v2/process-instances/123":
@@ -1111,23 +1061,21 @@ func TestWalkProcessInstanceCommand_WithElementsLookupFailureDoesNotRenderPartia
 	require.NotContains(t, string(output), "└─ elements:")
 }
 
-// TestWalkProcessInstanceCommand_RejectsWithIncidentsWithoutKey keeps incident enrichment scoped to keyed walks.
+// TestWalkProcessInstanceCommand_RejectsWithIncidentsWithoutKey requires a key or BID before enrichment with one configured error envelope.
 func TestWalkProcessInstanceCommand_RejectsWithIncidentsWithoutKey(t *testing.T) {
-	cfgPath := writeTestConfig(t, "http://127.0.0.1:1")
-
-	root := Root()
-	buf := &bytes.Buffer{}
-	root.SetOut(buf)
-	root.SetErr(buf)
-	root.SetArgs([]string{"--config", cfgPath, "walk", "process-instance", "--with-incidents"})
-	resetCommandTreeFlags(root)
-	resetProcessInstanceCommandGlobals()
-	t.Cleanup(resetProcessInstanceCommandGlobals)
-
-	_, err := root.ExecuteC()
+	server := testx.NewIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		t.Errorf("unexpected request %s", r.URL.Path)
+		w.WriteHeader(400)
+	}))
+	defer server.Close()
+	out, stderr, err := runBusinessIDCommand(t, []string{"--config", runBusinessIDConfig(t, server.URL, "plain-time", "info"), "--no-version-check", "walk", "pi", "--with-incidents", "--json"}, "configured", false)
 	require.Error(t, err)
-	require.Contains(t, err.Error(), `required flag(s) "key" not set`)
-	require.NotContains(t, buf.String(), "127.0.0.1:1")
+	require.Empty(t, stderr)
+	dec := json.NewDecoder(strings.NewReader(out))
+	var envelope map[string]any
+	require.NoError(t, dec.Decode(&envelope))
+	require.ErrorIs(t, dec.Decode(new(any)), io.EOF)
+	require.Contains(t, requireJSONObject(t, envelope["detail"])["message"], "one of --key or --bid is required")
 }
 
 func TestWalkIncidentLines_RenderGroupedIncidentDetails(t *testing.T) {
@@ -1165,6 +1113,10 @@ func TestWalkProcessInstanceCommand_WithIncidentsChildrenHumanOutputShowsInciden
 	var incidentRequests testx.SafeSlice[string]
 
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.9") {
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		switch {
 		case r.Method == http.MethodGet && r.URL.Path == "/v2/process-instances/123":
@@ -1201,10 +1153,15 @@ func TestWalkProcessInstanceCommand_WithIncidentsChildrenHumanOutputShowsInciden
 	require.NotContains(t, output, "Root job failed")
 }
 
+// TestWalkProcessInstanceCommand_WithVarsAndIncidentsChildrenHumanOutputShowsGroupedSections preserves the existing command contract with advisory-aware fixtures.
 func TestWalkProcessInstanceCommand_WithVarsAndIncidentsChildrenHumanOutputShowsGroupedSections(t *testing.T) {
 	var requests []string
 
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.9") {
+			return
+		}
+
 		requests = append(requests, r.Method+" "+r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
 		switch {
@@ -1252,10 +1209,15 @@ func TestWalkProcessInstanceCommand_WithVarsAndIncidentsChildrenHumanOutputShows
 	require.Less(t, strings.Index(output, "├─ vars:"), strings.Index(output, "└─ incidents:"))
 }
 
+// TestWalkProcessInstanceCommand_WithVarsOnlyDoesNotShowIncidentSectionForIncidentMarker preserves the existing command contract with advisory-aware fixtures.
 func TestWalkProcessInstanceCommand_WithVarsOnlyDoesNotShowIncidentSectionForIncidentMarker(t *testing.T) {
 	var requests []string
 
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.9") {
+			return
+		}
+
 		requests = append(requests, r.Method+" "+r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
 		switch {
@@ -1304,6 +1266,10 @@ func TestWalkProcessInstanceCommand_WithIncidentsFamilyHumanOutputShowsMultipleI
 	var incidentRequests testx.SafeSlice[string]
 
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.9") {
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		switch {
 		case r.Method == http.MethodGet && r.URL.Path == "/v2/process-instances/123":
@@ -1357,6 +1323,10 @@ func TestWalkProcessInstanceCommand_WithIncidentsParentHumanOutputOmitsIncidentL
 	var incidentRequests testx.SafeSlice[string]
 
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.9") {
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		switch {
 		case r.Method == http.MethodGet && r.URL.Path == "/v2/process-instances/124":
@@ -1397,6 +1367,10 @@ func TestWalkProcessInstanceCommand_WithIncidentsParentHumanOutputOmitsIncidentL
 // TestWalkProcessInstanceCommand_WithIncidentsJSONOutputShowsIncidentDetails preserves incident details in traversal JSON.
 func TestWalkProcessInstanceCommand_WithIncidentsJSONOutputShowsIncidentDetails(t *testing.T) {
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.9") {
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		switch {
 		case r.Method == http.MethodGet && r.URL.Path == "/v2/process-instances/123":
@@ -1444,6 +1418,10 @@ func TestWalkProcessInstanceCommand_WithIncidentsJSONOutputShowsIncidentDetails(
 // TestWalkProcessInstanceCommand_WithIncidentsJSONOutputAssociatesMultipleKeys prevents cross-key incident leakage.
 func TestWalkProcessInstanceCommand_WithIncidentsJSONOutputAssociatesMultipleKeys(t *testing.T) {
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.9") {
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		switch {
 		case r.Method == http.MethodGet && r.URL.Path == "/v2/process-instances/123":
@@ -1499,6 +1477,10 @@ func TestWalkProcessInstanceCommand_WithIncidentsJSONOutputAssociatesMultipleKey
 // TestWalkProcessInstanceCommand_WithIncidentsJSONOutputShowsEmptyIncidentCollection keeps empty enrichment explicit.
 func TestWalkProcessInstanceCommand_WithIncidentsJSONOutputShowsEmptyIncidentCollection(t *testing.T) {
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.9") {
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		switch {
 		case r.Method == http.MethodGet && r.URL.Path == "/v2/process-instances/123":
@@ -1534,6 +1516,10 @@ func TestWalkProcessInstanceCommand_WithIncidentsJSONOutputShowsEmptyIncidentCol
 // TestWalkProcessInstanceCommand_WithIncidentsJSONOutputPreservesTraversalMetadata keeps walk metadata intact after enrichment.
 func TestWalkProcessInstanceCommand_WithIncidentsJSONOutputPreservesTraversalMetadata(t *testing.T) {
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.9") {
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		switch {
 		case r.Method == http.MethodGet && r.URL.Path == "/v2/process-instances/123":
@@ -1590,6 +1576,10 @@ func TestWalkProcessInstanceCommand_DefaultChildrenHumanOutputUnchangedWithoutWi
 	incidentRequests := 0
 
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.9") {
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		switch {
 		case r.Method == http.MethodGet && r.URL.Path == "/v2/process-instances/123":
@@ -1633,6 +1623,10 @@ func TestWalkProcessInstanceCommand_DefaultChildrenHumanOutputUnchangedWithoutWi
 // TestWalkProcessInstanceCommand_DefaultJSONOutputUnchangedWithoutWithIncidents protects the default traversal JSON shape.
 func TestWalkProcessInstanceCommand_DefaultJSONOutputUnchangedWithoutWithIncidents(t *testing.T) {
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.9") {
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		switch {
 		case r.Method == http.MethodGet && r.URL.Path == "/v2/process-instances/123":
@@ -1682,6 +1676,10 @@ func TestWalkProcessInstanceCommand_DefaultJSONOutputUnchangedWithoutWithInciden
 // TestWalkProcessInstanceCommand_DefaultFamilyTreeLayoutUnchangedWithoutWithIncidents protects the plain tree renderer.
 func TestWalkProcessInstanceCommand_DefaultFamilyTreeLayoutUnchangedWithoutWithIncidents(t *testing.T) {
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.9") {
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		switch {
 		case r.Method == http.MethodGet && r.URL.Path == "/v2/process-instances/123":
@@ -1727,6 +1725,10 @@ func TestWalkProcessInstanceCommand_DefaultFamilyTreeLayoutUnchangedWithoutWithI
 // TestWalkProcessInstanceCommand_WithIncidentsFamilyTreeOutputShowsIncidentUnderMatchingNode preserves tree ownership and indentation.
 func TestWalkProcessInstanceCommand_WithIncidentsFamilyTreeOutputShowsIncidentUnderMatchingNode(t *testing.T) {
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.9") {
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		switch {
 		case r.Method == http.MethodGet && r.URL.Path == "/v2/process-instances/123":
@@ -1775,6 +1777,10 @@ func TestWalkProcessInstanceCommand_WithIncidentsFamilyTreeOutputShowsIncidentUn
 // TestWalkProcessInstanceCommand_WithIncidentsPartialTraversalPreservesWarning keeps traversal warnings visible after enrichment.
 func TestWalkProcessInstanceCommand_WithIncidentsPartialTraversalPreservesWarning(t *testing.T) {
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.9") {
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		switch {
 		case r.Method == http.MethodGet && r.URL.Path == "/v2/process-instances/123":
@@ -1827,6 +1833,10 @@ func TestWalkProcessInstanceCommand_RejectsKeysOnlyWithIncidents(t *testing.T) {
 // TestWalkProcessInstanceCommand_WithIncidentsLookupFailureDoesNotRenderPartialTraversal fails before showing partial enriched output.
 func TestWalkProcessInstanceCommand_WithIncidentsLookupFailureDoesNotRenderPartialTraversal(t *testing.T) {
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.9") {
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		switch {
 		case r.Method == http.MethodGet && r.URL.Path == "/v2/process-instances/123":
@@ -1853,10 +1863,15 @@ func TestWalkProcessInstanceCommand_WithIncidentsLookupFailureDoesNotRenderParti
 	require.NotContains(t, string(output), "inc!")
 }
 
+// TestWalkProcessInstanceCommand_V89ChildrenTraversalUsesNativeSearchPath preserves the existing command contract with advisory-aware fixtures.
 func TestWalkProcessInstanceCommand_V89ChildrenTraversalUsesNativeSearchPath(t *testing.T) {
 	var requests []string
 
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.9") {
+			return
+		}
+
 		switch {
 		case r.Method == http.MethodGet && r.URL.Path == "/v2/process-instances/2251799813685255":
 			w.Header().Set("Content-Type", "application/json")
@@ -1909,8 +1924,13 @@ func TestWalkProcessInstanceCommand_V89ChildrenTraversalUsesNativeSearchPath(t *
 	require.Equal(t, "complete", payload["outcome"])
 }
 
+// TestWalkProcessInstanceCommand_PartialTraversalRendersWarningsAndJSONMetadata preserves the existing command contract with advisory-aware fixtures.
 func TestWalkProcessInstanceCommand_PartialTraversalRendersWarningsAndJSONMetadata(t *testing.T) {
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.9") {
+			return
+		}
+
 		switch {
 		case r.Method == http.MethodGet && r.URL.Path == "/v2/process-instances/123":
 			w.Header().Set("Content-Type", "application/json")
@@ -1994,10 +2014,15 @@ func TestWalkProcessInstanceCommand_PartialTraversalRendersWarningsAndJSONMetada
 	})
 }
 
+// TestWalkProcessInstanceCommand_KeyTraversalOmitsSelectedTenant preserves the existing command contract with advisory-aware fixtures.
 func TestWalkProcessInstanceCommand_KeyTraversalOmitsSelectedTenant(t *testing.T) {
 	var requests []string
 
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.9") {
+			return
+		}
+
 		switch {
 		case r.Method == http.MethodGet && r.URL.Path == "/v2/process-instances/2251799813685255":
 			w.Header().Set("Content-Type", "application/json")
@@ -2061,6 +2086,10 @@ func TestWalkProcessInstanceCommand_KeyTenantMismatchUsesAdminTraversal(t *testi
 	var searchRequests []string
 
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		switch {
 		case r.Method == http.MethodGet && r.URL.Path == "/v2/process-instances/"+tenantAdminKeysProcessInstanceKey:
@@ -2102,6 +2131,10 @@ func TestWalkProcessInstanceCommand_WithIncidentsUsesEffectiveTenantForIncidentS
 	var incidentRequests testx.SafeSlice[string]
 
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.9") {
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		switch {
 		case r.Method == http.MethodGet && r.URL.Path == "/v2/process-instances/123":
@@ -2149,51 +2182,13 @@ apis:
 	require.NotContains(t, filter, "processInstanceKey")
 }
 
-// TestWalkProcessInstanceCommand_WithIncidentsUnsupportedV87 preserves the tenant-safe version boundary.
-func TestWalkProcessInstanceCommand_WithIncidentsUnsupportedV87(t *testing.T) {
-	searchCalls := 0
-	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, http.MethodPost, r.Method)
-		require.Equal(t, "/v1/process-instances/search", r.URL.Path)
-
-		body, err := io.ReadAll(r.Body)
-		require.NoError(t, err)
-		request := decodeCapturedPISearchRequest(t, string(body))
-		filter, _ := request["filter"].(map[string]any)
-
-		w.Header().Set("Content-Type", "application/json")
-		switch {
-		case searchCalls == 0:
-			require.NotContains(t, filter, "parentKey")
-			searchCalls++
-			_, _ = w.Write([]byte(`{"items":[{"key":123,"bpmnProcessId":"demo","processVersion":3,"state":"ACTIVE","startDate":"2026-03-23T18:00:00Z","tenantId":"tenant"}],"total":1}`))
-		case filter["parentKey"] == float64(123):
-			searchCalls++
-			_, _ = w.Write([]byte(`{"items":[],"total":0}`))
-		default:
-			t.Fatalf("unexpected search body: %s", string(body))
-		}
-	}))
-	t.Cleanup(srv.Close)
-
-	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.7")
-
-	output, err := testx.RunCmdSubprocess(t, "TestWalkProcessInstanceCommand_WithIncidentsUnsupportedV87Helper", map[string]string{
-		"C8VOLT_TEST_CONFIG": cfgPath,
-	})
-	require.Error(t, err)
-
-	exitErr, ok := err.(*exec.ExitError)
-	require.True(t, ok)
-	require.Equal(t, exitcode.Error, exitErr.ExitCode())
-	require.Equal(t, 2, searchCalls)
-	require.Contains(t, string(output), "unsupported capability")
-	require.Contains(t, string(output), "process-instance incident lookup is not tenant-safe in Camunda 8.7")
-	require.NotContains(t, string(output), "  inc ")
-}
-
+// TestWalkProcessInstanceCommand_FailureKeepsSingleRootDetail preserves the existing command contract with advisory-aware fixtures.
 func TestWalkProcessInstanceCommand_FailureKeepsSingleRootDetail(t *testing.T) {
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		require.Equal(t, http.MethodGet, r.Method)
 		require.Equal(t, "/v2/process-instances/2251799813685255", r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
@@ -2223,8 +2218,13 @@ func TestWalkProcessInstanceCommand_FailureKeepsSingleRootDetail(t *testing.T) {
 	require.NotContains(t, string(output), "parent process instances were not found")
 }
 
+// TestWalkProcessInstanceCommand_DefaultOutputRemainsHumanReadable preserves the existing command contract with advisory-aware fixtures.
 func TestWalkProcessInstanceCommand_DefaultOutputRemainsHumanReadable(t *testing.T) {
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.9") {
+			return
+		}
+
 		switch {
 		case r.Method == http.MethodGet && r.URL.Path == "/v2/process-instances/2251799813685255":
 			w.Header().Set("Content-Type", "application/json")
@@ -2362,34 +2362,6 @@ func TestWalkProcessInstanceCommand_WithElementsLookupFailureDoesNotRenderPartia
 	_ = root.Execute()
 }
 
-// TestWalkProcessInstanceCommand_WithIncidentsUnsupportedV87Helper exercises unsupported v8.7 enrichment in a subprocess.
-func TestWalkProcessInstanceCommand_WithIncidentsUnsupportedV87Helper(t *testing.T) {
-	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
-		return
-	}
-
-	root := Root()
-	resetCommandTreeFlags(root)
-	root.SetArgs([]string{"--config", os.Getenv("C8VOLT_TEST_CONFIG"), "--tenant", "tenant", "walk", "process-instance", "--key", "123", "--children", "--with-incidents"})
-	root.SetOut(os.Stdout)
-	root.SetErr(os.Stderr)
-	_ = root.Execute()
-}
-
-// TestWalkProcessInstanceCommand_WithElementsUnsupportedV87Helper exercises unsupported v8.7 element enrichment in a subprocess.
-func TestWalkProcessInstanceCommand_WithElementsUnsupportedV87Helper(t *testing.T) {
-	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
-		return
-	}
-
-	root := Root()
-	resetCommandTreeFlags(root)
-	root.SetArgs([]string{"--config", os.Getenv("C8VOLT_TEST_CONFIG"), "--tenant", "tenant", "walk", "process-instance", "--key", "123", "--children", "--with-elements"})
-	root.SetOut(os.Stdout)
-	root.SetErr(os.Stderr)
-	_ = root.Execute()
-}
-
 // TestWalkProcessInstanceCommand_WithListenersWithoutElementsHelper exercises missing listener element context in a subprocess.
 func TestWalkProcessInstanceCommand_WithListenersWithoutElementsHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
@@ -2413,20 +2385,6 @@ func TestWalkProcessInstanceCommand_WithListenersWithKeysOnlyHelper(t *testing.T
 	root := Root()
 	resetCommandTreeFlags(root)
 	root.SetArgs([]string{"--config", os.Getenv("C8VOLT_TEST_CONFIG"), "--keys-only", "walk", "process-instance", "--key", "123", "--with-elements", "--with-listeners"})
-	root.SetOut(os.Stdout)
-	root.SetErr(os.Stderr)
-	_ = root.Execute()
-}
-
-// TestWalkProcessInstanceCommand_WithListenersUnsupportedV87Helper exercises unsupported listener enrichment in a subprocess.
-func TestWalkProcessInstanceCommand_WithListenersUnsupportedV87Helper(t *testing.T) {
-	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
-		return
-	}
-
-	root := Root()
-	resetCommandTreeFlags(root)
-	root.SetArgs([]string{"--config", os.Getenv("C8VOLT_TEST_CONFIG"), "--tenant", "tenant", "walk", "process-instance", "--key", "123", "--children", "--with-elements", "--with-listeners"})
 	root.SetOut(os.Stdout)
 	root.SetErr(os.Stderr)
 	_ = root.Execute()
@@ -2570,11 +2528,15 @@ func walkedElementInstancesSearchJSON(t *testing.T, items ...map[string]any) str
 
 // newWalkProcessInstanceWithListenersServer serves traversal, element, and
 // listener-job responses keyed by process instance for walk enrichment tests.
-func newWalkProcessInstanceWithListenersServer(t *testing.T, requests *[]string, elementResponses map[string]string, jobResponses map[string][]string) *httptest.Server {
+func newWalkProcessInstanceWithListenersServer(t *testing.T, version string, requests *[]string, elementResponses map[string]string, jobResponses map[string][]string) *httptest.Server {
 	t.Helper()
 
 	jobCounts := map[string]int{}
 	return newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, version) {
+			return
+		}
+
 		*requests = append(*requests, r.Method+" "+r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
 		switch {

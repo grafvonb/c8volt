@@ -96,6 +96,5 @@ The process facade exposes walk enrichment through traversal-specific public mod
 - Incident details attach to the matching process-instance key.
 - Tenant filtering is included when a tenant is configured and the generated request body supports it.
 - v8.8 and v8.9 use the generated `SearchProcessInstanceIncidentsWithResponse` operation.
-- v8.7 returns the existing unsupported-capability style for requested incident enrichment.
 - Any incident lookup failure propagates as command failure.
 - No tenant-unsafe direct incident lookup may be used as the primary path.

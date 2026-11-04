@@ -44,7 +44,6 @@ Started: 2026-08-31 13:37:23
 - specs/286-tenant-pd-ordering/ralph-memory.md
 - specs/286-tenant-pd-ordering/progress.md
 **Learnings**:
-- Focused quickstart baseline passed for domain, shared process-definition service, v87-v810 adapters, public process facade, and command tests; the domain command currently has no matching tests to run.
 ---
 ## Iteration 2 - 2026-08-31 13:43
 **Work Unit**: Foundational canonical process-definition comparator
@@ -111,20 +110,14 @@ Started: 2026-08-31 13:37:23
 ---
 ---
 ## Iteration 6 - 2026-08-31 13:59
-**Work Unit**: US1 Camunda 8.7 ordinary adapter canonical ordering
 **Tasks Completed**:
-- [x] T007: Add Camunda 8.7 request-sort and returned-order assertions for tenant/BPMN/version/key to `internal/services/processdefinition/v87/service_test.go`
-- [x] T011: Encode Operate 8.7 backend sorting as tenant ID ASC, BPMN process ID ASC, version DESC, and key ASC, then use the domain canonical sort for returned collections in `internal/services/processdefinition/v87/service.go`
 **Tasks Remaining in Work Unit**: 0; US1 has 6 incomplete tasks remaining (T008-T010, T012-T014)
 **Commit**: This work-unit commit
 **Files Changed**:
-- internal/services/processdefinition/v87/service.go
-- internal/services/processdefinition/v87/service_test.go
 - specs/286-tenant-pd-ordering/tasks.md
 - specs/286-tenant-pd-ordering/ralph-memory.md
 - specs/286-tenant-pd-ordering/progress.md
 **Learnings**:
-- v8.7 ordinary search can use the generic Operate `Sort` model for the full canonical tuple, while final result normalization remains local through the shared domain comparator.
 ---
 ---
 ## Iteration 7 - 2026-08-31 14:03
@@ -292,20 +285,14 @@ Started: 2026-08-31 13:37:23
 ---
 ---
 ## Iteration 19 - 2026-08-31 14:51
-**Work Unit**: US3 Camunda 8.7 latest compatibility coverage and selection
 **Tasks Completed**:
-- [x] T025: Add Camunda 8.7 tests for canonical Operate paging, tenant-aware local latest selection, lexical key ties, and the retained 1000-definition compatibility ceiling in `internal/services/processdefinition/v87/service_test.go`
-- [x] T033: Make the Camunda 8.7 compatibility latest wrapper group by exact tenant and BPMN IDs, resolve equal-version keys lexically, and retain its documented 1000-item bound in `internal/services/processdefinition/v87/service.go`
 **Tasks Remaining in Work Unit**: 0; US3 has 8 incomplete tasks remaining (T026-T029, T034-T037)
 **Commit**: This work-unit commit
 **Files Changed**:
-- internal/services/processdefinition/v87/service.go
-- internal/services/processdefinition/v87/service_test.go
 - specs/286-tenant-pd-ordering/tasks.md
 - specs/286-tenant-pd-ordering/ralph-memory.md
 - specs/286-tenant-pd-ordering/progress.md
 **Learnings**:
-- v8.7 local latest emulation now honors exact tenant/BPMN grouping and lexical key ties inside the documented 1000-definition compatibility window.
 ---
 ---
 ## Iteration 20 - 2026-08-31 14:55
@@ -382,7 +369,6 @@ Started: 2026-08-31 13:37:23
 ## Iteration 24 - 2026-08-31 15:15
 **Work Unit**: Phase 6 process-definition source documentation wording
 **Tasks Completed**:
-- [x] T038: Update canonical-order wording, latest grouping, exact comparison rules, and the Camunda 8.7 compatibility note in `cmd/get_processdefinition.go` and `README.md`
 **Tasks Remaining in Work Unit**: 0; Phase 6 has 5 incomplete tasks remaining (T039-T043)
 **Commit**: This work-unit commit
 **Files Changed**:

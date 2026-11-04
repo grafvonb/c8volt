@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"log/slog"
 	"net/http"
 	"sync/atomic"
@@ -15,6 +16,7 @@ import (
 	"github.com/grafvonb/c8volt/c8volt/batchoperation"
 	ferr "github.com/grafvonb/c8volt/c8volt/ferrors"
 	options "github.com/grafvonb/c8volt/c8volt/foptions"
+	"github.com/grafvonb/c8volt/c8volt/incident"
 	"github.com/grafvonb/c8volt/c8volt/process"
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/services"
@@ -402,7 +404,7 @@ func TestClient_PreviewDeleteProcessDefinitions_ExpandsRootsForForce(t *testing.
 	assert.Equal(t, 1, started)
 	assert.Equal(t, 1, stopped)
 	assert.Equal(t, []string{
-		"checking active pi and roots for 1 pd; dry run",
+		"checking unfinished pi and roots for 1 pd; dry run",
 	}, msgs)
 }
 
@@ -654,6 +656,8 @@ func (s stubProcessDefinitionService) GetProcessDefinitionXML(context.Context, s
 var _ pdsvc.API = stubProcessDefinitionService{}
 
 type stubProcessInstanceService struct {
+	// Embedded contract makes unexpected assignment calls fail in unrelated fixtures.
+	pisvc.API
 	source stubProcessAPI
 }
 
@@ -959,6 +963,8 @@ func (s stubBatchOperationAPI) WaitBatchOperation(ctx context.Context, key strin
 var _ batchoperation.API = (*stubBatchOperationAPI)(nil)
 
 type stubProcessAPI struct {
+	// Embedded contract makes unexpected assignment calls fail in unrelated fixtures.
+	process.API
 	getProcessDefinition        func(context.Context, string, ...options.FacadeOption) (process.ProcessDefinition, error)
 	getProcessInstance          func(context.Context, string, ...options.FacadeOption) (process.ProcessInstance, error)
 	searchProcessInstancesPage  func(context.Context, process.ProcessInstanceFilter, process.ProcessInstancePageRequest, ...options.FacadeOption) (process.ProcessInstancePage, error)
@@ -1023,6 +1029,16 @@ func (stubProcessAPI) LookupProcessInstanceStateByKey(context.Context, string, .
 }
 
 func (stubProcessAPI) SearchProcessInstanceVariables(context.Context, string, ...options.FacadeOption) ([]process.ProcessInstanceVariable, error) {
+	panic("unexpected call")
+}
+
+// PlanProcessInstanceVariableUpdates rejects accidental prepared planning in resource facade tests.
+func (stubProcessAPI) PlanProcessInstanceVariableUpdates(context.Context, typex.Keys, map[string]any, ...options.FacadeOption) (process.ProcessInstanceVariableUpdatePlan, error) {
+	panic("unexpected call")
+}
+
+// ExecuteProcessInstanceVariableUpdates rejects accidental prepared execution in resource facade tests.
+func (stubProcessAPI) ExecuteProcessInstanceVariableUpdates(context.Context, process.ProcessInstanceVariableUpdatePlan, int, ...options.FacadeOption) (process.ProcessInstanceVariableUpdateResults, error) {
 	panic("unexpected call")
 }
 
@@ -1185,3 +1201,198 @@ func (stubProcessAPI) PlanProcessInstanceMutationPages(context.Context, process.
 }
 
 var _ process.API = stubProcessAPI{}
+
+// ValidateProcessInstanceStates permits the resource fixtures independently of version policy.
+func (s stubProcessInstanceService) ValidateProcessInstanceStates(d.States) error {
+	return d.ErrUnsupported
+}
+
+// suspendedDefinitionService keeps authoritative union evidence inside the domain fixture.
+type suspendedDefinitionService struct {
+	pdsvc.API
+	statistics *d.ProcessDefinitionStatistics
+}
+
+// GetProcessDefinition supplies observed statistics without going through public statistics.
+func (s suspendedDefinitionService) GetProcessDefinition(_ context.Context, k string, o ...services.CallOption) (d.ProcessDefinition, error) {
+	return d.ProcessDefinition{Key: k, Statistics: s.statistics}, nil
+}
+
+// TestClient_PreviewDeleteProcessDefinitionsUnfinished preserves separate buckets,
+// authoritative union counts, unsupported evidence and read-free bypass plans.
+func TestClient_PreviewDeleteProcessDefinitionsUnfinished(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		stat  *d.ProcessDefinitionStatistics
+		count int64
+		bad   bool
+	}{
+		{"supported", &d.ProcessDefinitionStatistics{Active: 2, Suspended: 3, SuspendedCountSupported: true, Unfinished: new(int64(5))}, 5, false},
+		{"supported zero", &d.ProcessDefinitionStatistics{SuspendedCountSupported: true, Unfinished: new(int64(0))}, 0, false},
+		{"transition", &d.ProcessDefinitionStatistics{Active: 0, Suspended: 0, SuspendedCountSupported: true, Unfinished: new(int64(1))}, 1, false},
+		{"older", &d.ProcessDefinitionStatistics{Active: 2}, 2, false},
+		{"missing", &d.ProcessDefinitionStatistics{SuspendedCountSupported: true}, 0, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			cli := New(nil, suspendedDefinitionService{statistics: tc.stat}, nil, slog.New(slog.NewTextHandler(io.Discard, nil)))
+			plan, err := cli.PreviewDeleteProcessDefinitions(context.Background(), typex.Keys{"pd"})
+			if tc.bad {
+				require.ErrorIs(t, err, ferr.ErrMalformedResponse)
+				require.Empty(t, plan.Items)
+				return
+			}
+			require.NoError(t, err)
+			require.Len(t, plan.Items, 1)
+			require.Equal(t, tc.count, plan.Items[0].UnfinishedProcessInstances())
+			totals := plan.Totals()
+			require.Equal(t, tc.count, totals.UnfinishedProcessInstances)
+			require.Equal(t, tc.stat.Active, totals.ActiveProcessInstances)
+			require.Equal(t, tc.stat.Suspended, totals.SuspendedProcessInstances)
+			require.Equal(t, tc.stat.SuspendedCountSupported, totals.SuspendedCountSupported)
+		})
+	}
+	cli := New(nil, nil, nil, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	skipped, err := cli.PreviewDeleteProcessDefinitions(context.Background(), typex.Keys{"pd"}, options.WithNoStateCheck(), options.WithForce())
+	require.NoError(t, err)
+	require.True(t, skipped.StateCheckSkipped)
+	require.False(t, skipped.Totals().SuspendedCountSupported)
+}
+
+// TestConvertDeleteProcessDefinitionUnfinished verifies copied keys, additive JSON
+// tags and count fallback without redefining existing active-only semantics.
+func TestConvertDeleteProcessDefinitionUnfinished(t *testing.T) {
+	source := d.DeleteProcessDefinitionPlanItem{Key: "pd", ActiveProcessInstanceCount: 2, ActiveProcessInstanceKeys: []string{"a"}, SuspendedProcessInstanceCount: 3, SuspendedCountSupported: true, UnfinishedProcessInstanceCount: 1, UnfinishedProcessInstanceKeys: []string{"a", "s"}}
+	item := fromDomainDeleteProcessDefinitionPlanItem(source)
+	require.Equal(t, int64(2), item.UnfinishedProcessInstances())
+	require.Equal(t, int64(2), item.ActiveProcessInstances())
+	raw, err := json.Marshal(item)
+	require.NoError(t, err)
+	for _, field := range []string{`"suspendedProcessInstanceCount":3`, `"suspendedCountSupported":true`, `"unfinishedProcessInstanceCount":1`, `"unfinishedProcessInstanceKeys":["a","s"]`} {
+		require.Contains(t, string(raw), field)
+	}
+	item.UnfinishedProcessInstanceKeys[0] = "changed"
+	require.Equal(t, "a", source.UnfinishedProcessInstanceKeys[0])
+	totals := (DeleteProcessDefinitionPlan{Items: []DeleteProcessDefinitionPlanItem{item, {}}}).Totals()
+	require.False(t, totals.SuspendedCountSupported, "mixed unavailable evidence cannot claim complete support")
+}
+
+// ValidateProcessInstanceSuspension keeps unrelated legacy fixtures explicitly unsupported.
+func (stubProcessInstanceService) ValidateProcessInstanceSuspension() error { return d.ErrUnsupported }
+
+// SuspendProcessInstance prevents accidental mutation through unrelated legacy fixtures.
+func (stubProcessInstanceService) SuspendProcessInstance(context.Context, string, ...services.CallOption) (d.ProcessInstanceSuspensionResult, error) {
+	return d.ProcessInstanceSuspensionResult{}, d.ErrUnsupported
+}
+
+// SuspendProcessInstance rejects suspension in unrelated resource fixtures.
+func (stubProcessAPI) SuspendProcessInstance(context.Context, string, ...options.FacadeOption) (process.SuspensionResult, error) {
+	return process.SuspensionResult{}, ferr.ErrUnsupported
+}
+
+// SuspendProcessInstances rejects suspension in unrelated resource fixtures.
+func (stubProcessAPI) SuspendProcessInstances(context.Context, typex.Keys, int, ...options.FacadeOption) (process.SuspensionResults, error) {
+	return process.SuspensionResults{Items: []process.SuspensionResult{}}, ferr.ErrUnsupported
+}
+
+// PlanProcessInstanceSuspension rejects planning in unrelated legacy fixtures.
+func (stubProcessAPI) PlanProcessInstanceSuspension(context.Context, typex.Keys, ...options.FacadeOption) (process.ProcessInstanceSuspensionPlan, error) {
+	return process.ProcessInstanceSuspensionPlan{}, ferr.ErrUnsupported
+}
+
+// ValidateProcessInstanceResumption keeps unrelated legacy fixtures explicitly unsupported.
+func (stubProcessInstanceService) ValidateProcessInstanceResumption() error { return d.ErrUnsupported }
+
+// ResumeProcessInstance prevents accidental mutation through unrelated legacy fixtures.
+func (stubProcessInstanceService) ResumeProcessInstance(context.Context, string, ...services.CallOption) (d.ProcessInstanceResumptionResult, error) {
+	return d.ProcessInstanceResumptionResult{}, d.ErrUnsupported
+}
+
+// ResumeProcessInstance rejects resumption in unrelated resource fixtures.
+func (stubProcessAPI) ResumeProcessInstance(context.Context, string, ...options.FacadeOption) (process.ResumptionResult, error) {
+	return process.ResumptionResult{}, ferr.ErrUnsupported
+}
+
+// ResumeProcessInstances rejects resumption in unrelated resource fixtures.
+func (stubProcessAPI) ResumeProcessInstances(context.Context, typex.Keys, int, ...options.FacadeOption) (process.ResumptionResults, error) {
+	return process.ResumptionResults{Items: []process.ResumptionResult{}}, ferr.ErrUnsupported
+}
+
+// PlanProcessInstanceResumption rejects planning in unrelated legacy fixtures.
+func (stubProcessAPI) PlanProcessInstanceResumption(context.Context, typex.Keys, ...options.FacadeOption) (process.ProcessInstanceResumptionPlan, error) {
+	return process.ProcessInstanceResumptionPlan{}, ferr.ErrUnsupported
+}
+
+// ValidateProcessInstanceSearchFilter keeps isolated fixtures independent of adapter capability policy.
+func (s stubProcessInstanceService) ValidateProcessInstanceSearchFilter(d.ProcessInstanceFilter) error {
+	return nil
+}
+
+// ValidateProcessInstanceSearchFilter permits fixture selectors without backend access.
+func (s stubProcessAPI) ValidateProcessInstanceSearchFilter(process.ProcessInstanceFilter) error {
+	return nil
+}
+
+// ResolveProcessInstanceSelection is not expected in explicit resource facade fixtures.
+func (stubProcessAPI) ResolveProcessInstanceSelection(context.Context, process.ProcessInstanceSelectionRequest, ...options.FacadeOption) (process.ProcessInstanceSelection, error) {
+	panic("unexpected selection")
+}
+
+// PlanProcessInstanceSelectedMutation rejects unconfigured selection in legacy keyed fixtures.
+func (stubProcessAPI) PlanProcessInstanceSelectedMutation(context.Context, process.ProcessInstanceSelectedMutationRequest, ...options.FacadeOption) (process.ProcessInstanceSelectedMutationPlan, error) {
+	panic("unexpected selected mutation planning")
+}
+
+// ExecuteProcessInstanceCancellationPlan rejects unconfigured frozen execution in legacy keyed fixtures.
+func (stubProcessAPI) ExecuteProcessInstanceCancellationPlan(context.Context, process.ProcessInstanceSelectedMutationPlan, ...options.FacadeOption) (process.CancelReports, error) {
+	panic("unexpected selected cancellation")
+}
+
+// ProcessInstanceSearchTenant supplies unfiltered context for owned service fixtures.
+func (stubProcessInstanceService) ProcessInstanceSearchTenant(...services.CallOption) string {
+	return ""
+}
+
+// DeleteProcessInstanceExact delegates only to the test-owned deletion stub.
+func (s stubProcessInstanceService) DeleteProcessInstanceExact(ctx context.Context, key string, opts ...services.CallOption) (d.DeleteResponse, error) {
+	return s.DeleteProcessInstance(ctx, key, opts...)
+}
+
+// ExecuteProcessInstanceDeletionPlan rejects unconfigured frozen execution in legacy keyed fixtures.
+func (stubProcessAPI) ExecuteProcessInstanceDeletionPlan(context.Context, process.ProcessInstanceSelectedMutationPlan, ...options.FacadeOption) (process.ProcessInstanceDeletionResult, error) {
+	panic("unexpected selected cancellation")
+}
+
+// PlanSelectedProcessInstanceVariableUpdates rejects unexpected selected-action calls in legacy fixtures.
+func (stubProcessAPI) PlanSelectedProcessInstanceVariableUpdates(ctx context.Context, request process.ProcessInstanceSelectionRequest, variables map[string]any, opts ...options.FacadeOption) (process.ProcessInstanceVariableUpdatePlan, error) {
+	panic("unexpected selected action")
+}
+
+// PlanSelectedProcessInstanceSuspension rejects unexpected selected-action calls in legacy fixtures.
+func (stubProcessAPI) PlanSelectedProcessInstanceSuspension(ctx context.Context, request process.ProcessInstanceSelectionRequest, tree bool, opts ...options.FacadeOption) (process.ProcessInstanceSuspensionPlan, error) {
+	panic("unexpected selected action")
+}
+
+// ExecuteProcessInstanceSuspensionPlan rejects unexpected selected-action calls in legacy fixtures.
+func (stubProcessAPI) ExecuteProcessInstanceSuspensionPlan(ctx context.Context, plan process.ProcessInstanceSuspensionPlan, workers int, opts ...options.FacadeOption) (process.SuspensionResults, error) {
+	panic("unexpected selected action")
+}
+
+// PlanSelectedProcessInstanceResumption rejects unexpected selected-action calls in legacy fixtures.
+func (stubProcessAPI) PlanSelectedProcessInstanceResumption(ctx context.Context, request process.ProcessInstanceSelectionRequest, tree bool, opts ...options.FacadeOption) (process.ProcessInstanceResumptionPlan, error) {
+	panic("unexpected selected action")
+}
+
+// ExecuteProcessInstanceResumptionPlan rejects unexpected selected-action calls in legacy fixtures.
+func (stubProcessAPI) ExecuteProcessInstanceResumptionPlan(ctx context.Context, plan process.ProcessInstanceResumptionPlan, workers int, opts ...options.FacadeOption) (process.ResumptionResults, error) {
+	panic("unexpected selected action")
+}
+
+// PlanSelectedProcessInstanceResolution supplies the additive selection contract to resource fixtures.
+func (s stubProcessAPI) PlanSelectedProcessInstanceResolution(context.Context, process.ProcessInstanceSelectionRequest, int, ...options.FacadeOption) (process.SelectedProcessInstanceResolutionPlan, error) {
+	return process.SelectedProcessInstanceResolutionPlan{}, nil
+}
+
+// ExecuteSelectedProcessInstanceResolution supplies the additive selection contract to resource fixtures.
+func (s stubProcessAPI) ExecuteSelectedProcessInstanceResolution(context.Context, process.SelectedProcessInstanceResolutionPlan, ...options.FacadeOption) (incident.ProcessInstanceResolutionResults, error) {
+	return incident.ProcessInstanceResolutionResults{}, nil
+}

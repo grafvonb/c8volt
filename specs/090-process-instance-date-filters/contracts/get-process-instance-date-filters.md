@@ -25,7 +25,6 @@ New flags:
 | `after` and `before` can be combined per field | Treat them as inclusive range bounds |
 | `after > before` for the same field | Reject with validation error |
 | New date flags used with `--key` | Reject because date filters apply only to list/search behavior |
-| New date flags used on v8.7 | Return not-implemented error through existing error path |
 
 ## Search Semantics
 
@@ -45,7 +44,6 @@ New flags:
 | Version | Mapping |
 |---------|---------|
 | `v8.8` | Map date bounds to native process-instance search filter datetime comparisons |
-| `v8.7` | Reject any date-filtered request as not implemented |
 
 ## Output Expectations
 

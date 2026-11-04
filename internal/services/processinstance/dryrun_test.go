@@ -17,6 +17,39 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestDryRunCancelOrDeletePlan_SuspendedOverlap keeps suspended scope unfinished and collapses shared roots.
+func TestDryRunCancelOrDeletePlan_SuspendedOverlap(t *testing.T) {
+	t.Parallel()
+	chain := map[string]d.ProcessInstance{
+		"123": {Key: "123", State: d.StateSuspended},
+		"456": {Key: "456", ParentKey: "123", State: d.StateActive},
+	}
+	var expansions atomic.Int32
+	api := stubDryRunProcessInstanceAPI{
+		ancestryResult: func(_ context.Context, key string, _ ...services.CallOption) (pitraversal.Result, error) {
+			keys := []string{"123"}
+			if key == "456" {
+				keys = []string{"456", "123"}
+			}
+			return pitraversal.Result{Mode: pitraversal.ModeAncestry, StartKey: key, RootKey: "123", Keys: keys, Chain: chain, Outcome: pitraversal.OutcomeComplete}, nil
+		},
+		descendantsResult: func(_ context.Context, root string, _ ...services.CallOption) (pitraversal.Result, error) {
+			expansions.Add(1)
+			require.Equal(t, "123", root)
+			return pitraversal.Result{Mode: pitraversal.ModeDescendants, RootKey: root, Keys: []string{"123", "456"}, Chain: chain, Outcome: pitraversal.OutcomeComplete}, nil
+		},
+	}
+	got, err := DryRunCancelOrDeletePlan(context.Background(), api, typex.Keys{"123", "456"}, 2)
+	require.NoError(t, err)
+	require.Equal(t, typex.Keys{"123"}, got.Roots)
+	require.Equal(t, typex.Keys{"123"}, got.DuplicateRoots)
+	require.Equal(t, typex.Keys{"123", "456"}, got.Collected)
+	require.Empty(t, got.SelectedFinalState)
+	require.ElementsMatch(t, []d.ProcessInstance{chain["123"], chain["456"]}, got.RequiresCancelBeforeDelete)
+	require.Equal(t, d.TraversalOutcomeComplete, got.Outcome)
+	require.Equal(t, int32(1), expansions.Load())
+}
+
 // TestDryRunCancelOrDeletePlan_UsesBoundedWorkersForDependencyTraversal proves
 // independent ancestry and descendant expansion are not serialized during
 // high-volume cancel/delete impact planning.
@@ -520,36 +553,6 @@ func TestDryRunCancelOrDeletePlan_MarksMissingTraversalTenantMetadataUnknown(t *
 	}, got.TenantEvidence)
 }
 
-// TestDryRunCancelOrDeletePlan_LegacyKeyOnlyTenantEvidenceUnknown proves the
-// v8.7 key-only traversal path does not perform enrichment requests for tenants.
-func TestDryRunCancelOrDeletePlan_LegacyKeyOnlyTenantEvidenceUnknown(t *testing.T) {
-	ctx := context.Background()
-
-	api := legacyDryRunProcessInstanceAPI{
-		ancestry: func(_ context.Context, key string, _ ...services.CallOption) (string, []string, map[string]d.ProcessInstance, error) {
-			require.Equal(t, "child-1", key)
-			return "root-1", []string{"child-1", "root-1"}, nil, nil
-		},
-		descendants: func(_ context.Context, root string, _ ...services.CallOption) ([]string, map[string][]string, map[string]d.ProcessInstance, error) {
-			require.Equal(t, "root-1", root)
-			return []string{"root-1", "child-1"}, nil, nil, nil
-		},
-	}
-
-	got, err := DryRunCancelOrDeletePlan(ctx, api, typex.Keys{"child-1"}, 1, services.WithIgnoreTenant())
-
-	require.NoError(t, err)
-	require.Equal(t, d.TenantEvidence{
-		ResolvedTenantIDs:  []string{},
-		UnknownTargetCount: 2,
-		TargetCount:        2,
-		Targets: []d.TenantEvidenceTarget{
-			{Key: "root-1"},
-			{Key: "child-1"},
-		},
-	}, got.TenantEvidence)
-}
-
 func waitForDryRunOverlap(t *testing.T, active, max *atomic.Int32, released *atomic.Bool, release chan struct{}, phase string) func() {
 	t.Helper()
 	current := active.Add(1)
@@ -575,7 +578,9 @@ func waitForDryRunOverlap(t *testing.T, active, max *atomic.Int32, released *ato
 	}
 }
 
+// stubDryRunProcessInstanceAPI supplies only the operations exercised by its isolated fixtures.
 type stubDryRunProcessInstanceAPI struct {
+	API
 	searchForProcessInstancesPage func(context.Context, d.ProcessInstanceFilter, d.ProcessInstancePageRequest, ...services.CallOption) (d.ProcessInstancePage, error)
 	ancestryResult                func(context.Context, string, ...services.CallOption) (pitraversal.Result, error)
 	descendantsResult             func(context.Context, string, ...services.CallOption) (pitraversal.Result, error)
@@ -688,30 +693,40 @@ func (stubDryRunIncidentAPI) SearchProcessInstanceIncidents(context.Context, str
 	return nil, errors.New("unexpected process instance incident search")
 }
 
-// legacyDryRunProcessInstanceAPI opts into key-only traversal for legacy dry-run coverage.
-type legacyDryRunProcessInstanceAPI struct {
-	stubDryRunProcessInstanceAPI
-	ancestry    func(context.Context, string, ...services.CallOption) (string, []string, map[string]d.ProcessInstance, error)
-	descendants func(context.Context, string, ...services.CallOption) ([]string, map[string][]string, map[string]d.ProcessInstance, error)
+// ValidateProcessInstanceStates permits existing fixtures independently of version policy.
+func (s stubDryRunProcessInstanceAPI) ValidateProcessInstanceStates(d.States) error { return nil }
+
+// ValidateProcessInstanceSuspension keeps unrelated legacy fixtures explicitly unsupported.
+func (stubDryRunProcessInstanceAPI) ValidateProcessInstanceSuspension() error {
+	return d.ErrUnsupported
 }
 
-// LegacyDryRunTraversalOnly routes the test double through the v8.7 key-only dry-run path.
-func (s legacyDryRunProcessInstanceAPI) LegacyDryRunTraversalOnly() bool {
-	return true
+// SuspendProcessInstance prevents accidental mutation through unrelated legacy fixtures.
+func (stubDryRunProcessInstanceAPI) SuspendProcessInstance(context.Context, string, ...services.CallOption) (d.ProcessInstanceSuspensionResult, error) {
+	return d.ProcessInstanceSuspensionResult{}, d.ErrUnsupported
 }
 
-// Ancestry returns the configured legacy ancestry response without tenant evidence.
-func (s legacyDryRunProcessInstanceAPI) Ancestry(ctx context.Context, key string, opts ...services.CallOption) (string, []string, map[string]d.ProcessInstance, error) {
-	if s.ancestry == nil {
-		return "", nil, nil, errors.New("unexpected legacy ancestry")
-	}
-	return s.ancestry(ctx, key, opts...)
+// ValidateProcessInstanceResumption keeps unrelated legacy fixtures explicitly unsupported.
+func (stubDryRunProcessInstanceAPI) ValidateProcessInstanceResumption() error {
+	return d.ErrUnsupported
 }
 
-// Descendants returns the configured legacy descendants response without tenant evidence.
-func (s legacyDryRunProcessInstanceAPI) Descendants(ctx context.Context, root string, opts ...services.CallOption) ([]string, map[string][]string, map[string]d.ProcessInstance, error) {
-	if s.descendants == nil {
-		return nil, nil, nil, errors.New("unexpected legacy descendants")
-	}
-	return s.descendants(ctx, root, opts...)
+// ResumeProcessInstance prevents accidental mutation through unrelated legacy fixtures.
+func (stubDryRunProcessInstanceAPI) ResumeProcessInstance(context.Context, string, ...services.CallOption) (d.ProcessInstanceResumptionResult, error) {
+	return d.ProcessInstanceResumptionResult{}, d.ErrUnsupported
+}
+
+// ValidateProcessInstanceSearchFilter keeps isolated fixtures independent of adapter capability policy.
+func (s stubDryRunProcessInstanceAPI) ValidateProcessInstanceSearchFilter(d.ProcessInstanceFilter) error {
+	return nil
+}
+
+// ProcessInstanceSearchTenant supplies the unfiltered context used by owned planning fixtures.
+func (stubDryRunProcessInstanceAPI) ProcessInstanceSearchTenant(...services.CallOption) string {
+	return ""
+}
+
+// DeleteProcessInstanceExact delegates only to the test-owned deletion stub.
+func (s stubDryRunProcessInstanceAPI) DeleteProcessInstanceExact(ctx context.Context, key string, opts ...services.CallOption) (d.DeleteResponse, error) {
+	return s.DeleteProcessInstance(ctx, key, opts...)
 }

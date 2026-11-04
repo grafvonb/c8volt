@@ -31,6 +31,41 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestClient_SuspendedDateEnrichment preserves current metadata through both
+// facade conversion directions instead of retaining a prior enriched snapshot.
+func TestClient_SuspendedDateEnrichment(t *testing.T) {
+	t.Parallel()
+	var calls atomic.Int32
+	incAPI := stubIncidentAPI{
+		searchProcessInstanceIncidents: func(_ context.Context, key string, _ ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error) {
+			calls.Add(1)
+			require.Equal(t, "123", key)
+			return []d.ProcessInstanceIncidentDetail{{IncidentKey: "incident", ProcessInstanceKey: key}}, nil
+		},
+	}
+	client := New(nil, stubProcessInstanceAPI{}, incAPI, slog.Default())
+	var got IncidentEnrichedProcessInstances
+	for _, date := range []string{"2026-10-17T08:30:00.123456789Z", ""} {
+		var err error
+		got, err = client.EnrichProcessInstancesWithIncidents(context.Background(), ProcessInstances{
+			Total: 1, Items: []ProcessInstance{{Key: "123", State: StateSuspended, SuspendedDate: date}},
+		})
+		require.NoError(t, err)
+		require.Len(t, got.Items, 1)
+		require.Equal(t, date, got.Items[0].Item.SuspendedDate)
+		require.Equal(t, StateSuspended, got.Items[0].Item.State)
+		require.Len(t, got.Items[0].Incidents, 1)
+		raw, err := json.Marshal(got)
+		require.NoError(t, err)
+		if date == "" {
+			require.NotContains(t, string(raw), "suspendedDate")
+		} else {
+			require.Contains(t, string(raw), `"suspendedDate":"`+date+`"`)
+		}
+	}
+	require.EqualValues(t, 2, calls.Load())
+}
+
 // TestClient_GetProcessDefinitionXML verifies facade option translation for
 // XML retrieval. The key and call options must pass through unchanged because
 // the service layer owns the Camunda-specific request details.
@@ -160,7 +195,8 @@ func TestClient_GetProcessDefinition_MapsIncidentCountSupportState(t *testing.T)
 			assert.Equal(t, "2251799813685255", key)
 			assert.True(t, cfg.WithStat)
 			return d.ProcessDefinition{
-				Key: "2251799813685255",
+				State: "ACTIVE",
+				Key:   "2251799813685255",
 				Statistics: &d.ProcessDefinitionStatistics{
 					Active:                 7,
 					Canceled:               3,
@@ -180,6 +216,7 @@ func TestClient_GetProcessDefinition_MapsIncidentCountSupportState(t *testing.T)
 	assert.Equal(t, int64(7), pd.Statistics.Active)
 	assert.Equal(t, int64(0), pd.Statistics.Incidents)
 	assert.True(t, pd.Statistics.IncidentCountSupported)
+	require.Equal(t, "ACTIVE", pd.State)
 }
 
 // TestClient_GetProcessDefinition_TenantMismatchUsesExplicitAdminInput verifies
@@ -267,7 +304,7 @@ func TestClient_SearchProcessDefinitions_MapsProcessDefinitionSelectorFilter(t *
 			}, filter)
 			assert.Equal(t, pdsvc.MaxResultSize, size)
 			assert.True(t, services.ApplyCallOptions(opts).Verbose)
-			return []d.ProcessDefinition{{Key: "2251799813685255", BpmnProcessId: "order-process"}}, nil
+			return []d.ProcessDefinition{{Key: "2251799813685255", BpmnProcessId: "order-process", State: "DELETED"}}, nil
 		},
 	}
 
@@ -281,6 +318,7 @@ func TestClient_SearchProcessDefinitions_MapsProcessDefinitionSelectorFilter(t *
 	require.NoError(t, err)
 	require.Len(t, items.Items, 1)
 	assert.Equal(t, "order-process", items.Items[0].BpmnProcessId)
+	require.Equal(t, "DELETED", items.Items[0].State)
 }
 
 // TestClient_SearchProcessDefinitions_PreservesCanonicalServiceOrder verifies
@@ -414,7 +452,7 @@ func TestClient_SearchProcessDefinitionsLatest_MapsProcessDefinitionSelectorFilt
 			return d.ProcessDefinitionPage{
 				Request:       page,
 				OverflowState: d.ProcessInstanceOverflowStateNoMore,
-				Items:         []d.ProcessDefinition{{Key: "2251799813685255", BpmnProcessId: "order-process"}},
+				Items:         []d.ProcessDefinition{{Key: "2251799813685255", BpmnProcessId: "order-process", State: "DRAINING"}},
 			}, nil
 		},
 	}
@@ -428,6 +466,7 @@ func TestClient_SearchProcessDefinitionsLatest_MapsProcessDefinitionSelectorFilt
 	require.NoError(t, err)
 	require.Len(t, items.Items, 1)
 	assert.Equal(t, "order-process", items.Items[0].BpmnProcessId)
+	require.Equal(t, "DRAINING", items.Items[0].State)
 }
 
 // TestClient_SearchProcessDefinitionsLatest_UsesCompletePagedLatestTraversal
@@ -505,6 +544,7 @@ func TestClient_SearchProcessDefinitionsLatest_ConvertsDomainErrors(t *testing.T
 	require.ErrorIs(t, err, ferr.ErrUnsupported)
 }
 
+// TestClient_SearchProcessDefinitionsPages_MapsTraversalRequestAndVisitor preserves lifecycle, paging metadata, and options across the visitor and final result.
 func TestClient_SearchProcessDefinitionsPages_MapsTraversalRequestAndVisitor(t *testing.T) {
 	t.Parallel()
 
@@ -521,7 +561,7 @@ func TestClient_SearchProcessDefinitionsPages_MapsTraversalRequestAndVisitor(t *
 					Count: 1,
 					Kind:  d.ProcessDefinitionReportedTotalKindExact,
 				},
-				Items: []d.ProcessDefinition{{Key: "2251799813685255", BpmnProcessId: "order-process"}},
+				Items: []d.ProcessDefinition{{Key: "2251799813685255", BpmnProcessId: "order-process", State: " future-State "}},
 			}, nil
 		},
 	}
@@ -543,6 +583,8 @@ func TestClient_SearchProcessDefinitionsPages_MapsTraversalRequestAndVisitor(t *
 	assert.Equal(t, int64(1), steps[0].Page.ReportedTotal.Count)
 	assert.Equal(t, ProcessDefinitionReportedTotalKindExact, steps[0].Page.ReportedTotal.Kind)
 	assert.EqualValues(t, 1, steps[0].CumulativeCount)
+	require.Equal(t, " future-State ", result.Items[0].State)
+	require.Equal(t, " future-State ", steps[0].Page.Items[0].State)
 }
 
 // TestClient_SearchProcessDefinitionsPages_PreservesCanonicalTraversalOrder
@@ -693,6 +735,7 @@ func TestClient_CollectProcessDefinitionWatchSnapshot_DelegatesSnapshotCollectio
 					Kind:  d.ProcessDefinitionReportedTotalKindExact,
 				},
 				Items: []d.ProcessDefinition{{
+					State:             "DRAINING",
 					Key:               "2251799813685255",
 					BpmnProcessId:     "invoice",
 					ProcessVersionTag: "stable",
@@ -717,6 +760,7 @@ func TestClient_CollectProcessDefinitionWatchSnapshot_DelegatesSnapshotCollectio
 	assert.Equal(t, ProcessDefinitionReportedTotalKindExact, got.ReportedTotal.Kind)
 	require.Len(t, got.Items, 1)
 	assert.Equal(t, "invoice", got.Items[0].BpmnProcessId)
+	require.Equal(t, "DRAINING", got.Items[0].State)
 }
 
 // TestClient_CollectProcessDefinitionWatchSnapshot_ConvertsDomainErrors verifies
@@ -2401,8 +2445,9 @@ func TestClient_SearchProcessInstancesTotal_UsesExactTotalWhenAllowed(t *testing
 			assert.Equal(t, d.ProcessInstanceFilter{State: d.StateActive}, filter)
 			assert.Equal(t, d.ProcessInstancePageRequest{Size: 10}, page)
 			return d.ProcessInstancePage{
-				Request: page,
-				Items:   []d.ProcessInstance{{Key: "pi-a", State: d.StateActive}},
+				Request:       page,
+				OverflowState: d.ProcessInstanceOverflowStateHasMore,
+				Items:         []d.ProcessInstance{{Key: "pi-a", State: d.StateActive}},
 				ReportedTotal: &d.ProcessInstanceReportedTotal{
 					Count: 42,
 					Kind:  d.ProcessInstanceReportedTotalKindExact,
@@ -3227,7 +3272,10 @@ func (s stubJobAPI) SubmitJobWorkerOutcome(context.Context, d.JobWorkerOutcomeRe
 
 var _ jsvc.API = stubJobAPI{}
 
+// stubProcessInstanceAPI supplies only the operations exercised by its isolated fixtures.
 type stubProcessInstanceAPI struct {
+	pisvc.API
+	waitForProcessInstanceState        func(context.Context, string, d.States, ...services.CallOption) (d.StateResponse, d.ProcessInstance, error)
 	createProcessInstance              func(context.Context, d.ProcessInstanceData, ...services.CallOption) (d.ProcessInstanceCreation, error)
 	getProcessInstance                 func(context.Context, string, ...services.CallOption) (d.ProcessInstance, error)
 	searchForProcessInstances          func(context.Context, d.ProcessInstanceFilter, int32, ...services.CallOption) ([]d.ProcessInstance, error)
@@ -3429,9 +3477,12 @@ func (s stubProcessInstanceAPI) GetProcessInstanceStateByKey(ctx context.Context
 	return s.getProcessInstanceStateByKey(ctx, key, opts...)
 }
 
-// WaitForProcessInstanceState panics when a facade test accidentally waits for one process instance.
-func (stubProcessInstanceAPI) WaitForProcessInstanceState(context.Context, string, d.States, ...services.CallOption) (d.StateResponse, d.ProcessInstance, error) {
-	panic("unexpected call")
+// WaitForProcessInstanceState delegates configured waits and rejects unexpected calls.
+func (s stubProcessInstanceAPI) WaitForProcessInstanceState(ctx context.Context, key string, states d.States, opts ...services.CallOption) (d.StateResponse, d.ProcessInstance, error) {
+	if s.waitForProcessInstanceState == nil {
+		panic("unexpected call")
+	}
+	return s.waitForProcessInstanceState(ctx, key, states, opts...)
 }
 
 // WaitForProcessInstanceExpectation delegates to the per-test callback and panics on unexpected single expectation waits.
@@ -3517,6 +3568,290 @@ func (s stubProcessInstanceAPI) WaitForProcessInstancesExpectation(ctx context.C
 
 var _ pisvc.API = stubProcessInstanceAPI{}
 
+type facadeProcessInstanceVariableUpdateAPI struct {
+	plan       d.ProcessInstanceVariableUpdatePlan
+	results    d.ProcessInstanceVariableUpdateResults
+	err        error
+	keys       typex.Keys
+	variables  map[string]any
+	executed   d.ProcessInstanceVariableUpdatePlan
+	workers    int
+	callConfig *services.CallCfg
+}
+
+// PlanProcessInstanceVariableUpdates records facade mapping and returns a controlled plan.
+func (a *facadeProcessInstanceVariableUpdateAPI) PlanProcessInstanceVariableUpdates(_ context.Context, keys typex.Keys, variables map[string]any, opts ...services.CallOption) (d.ProcessInstanceVariableUpdatePlan, error) {
+	a.keys = append(typex.Keys(nil), keys...)
+	a.variables = variables
+	a.callConfig = services.ApplyCallOptions(opts)
+	return a.plan, a.err
+}
+
+// ExecuteProcessInstanceVariableUpdates records facade conversion and returns controlled outcomes.
+func (a *facadeProcessInstanceVariableUpdateAPI) ExecuteProcessInstanceVariableUpdates(_ context.Context, plan d.ProcessInstanceVariableUpdatePlan, workers int, opts ...services.CallOption) (d.ProcessInstanceVariableUpdateResults, error) {
+	a.executed = plan
+	a.workers = workers
+	a.callConfig = services.ApplyCallOptions(opts)
+	return a.results, a.err
+}
+
+// TestClientPlanProcessInstanceVariableUpdatesCopiesAndDelegates verifies the
+// public facade maps options and deeply isolates mutable planning values.
+func TestClientPlanProcessInstanceVariableUpdatesCopiesAndDelegates(t *testing.T) {
+	t.Parallel()
+
+	serviceValue := map[string]any{"nested": []any{"service"}}
+	updateAPI := &facadeProcessInstanceVariableUpdateAPI{plan: d.ProcessInstanceVariableUpdatePlan{
+		RequestedKeys: []string{"pi-a"}, RequestedValues: map[string]any{"payload": serviceValue}, RequestedCount: 1, UpdateCount: 1,
+		Instances: []d.ProcessInstanceVariablePlan{{
+			ProcessInstanceKey: "pi-a", ScopeKey: "pi-a", TenantId: "tenant-a",
+			Additions:         []d.ProcessInstanceVariablePlannedValue{{Name: "payload", Value: serviceValue}},
+			MutationVariables: map[string]any{"payload": serviceValue}, VerificationValues: map[string]any{"payload": serviceValue},
+		}},
+		TenantContext: d.TenantContext{Mode: d.TenantContextModeExplicitKeys, Filter: d.TenantContextFilterNotApplied, ResolvedTenantIDs: []string{"tenant-a"}},
+	}}
+	cli := NewWithVariableUpdates(&stubProcessDefinitionAPI{}, stubProcessInstanceAPI{}, stubIncidentAPI{}, nil, nil, updateAPI, slog.Default())
+	input := map[string]any{"payload": map[string]any{"nested": []any{"caller"}}}
+
+	plan, err := cli.PlanProcessInstanceVariableUpdates(context.Background(), typex.Keys{"pi-a"}, input, options.WithFailFast())
+
+	require.NoError(t, err)
+	require.Equal(t, typex.Keys{"pi-a"}, updateAPI.keys)
+	require.True(t, updateAPI.callConfig.FailFast)
+	input["payload"].(map[string]any)["nested"].([]any)[0] = "mutated"
+	require.Equal(t, "caller", updateAPI.variables["payload"].(map[string]any)["nested"].([]any)[0])
+	serviceValue["nested"].([]any)[0] = "changed-after-return"
+	require.Equal(t, "service", plan.RequestedValues["payload"].(map[string]any)["nested"].([]any)[0])
+	require.Equal(t, "service", plan.Instances[0].MutationVariables["payload"].(map[string]any)["nested"].([]any)[0])
+	require.Equal(t, []string{"tenant-a"}, plan.TenantContext.ResolvedTenantIDs)
+}
+
+type facadeProcessInstanceTypedValues map[string]facadeProcessInstanceTypedList
+
+type facadeProcessInstanceTypedList []string
+
+// TestClientProcessInstanceVariableUpdatesSnapshotTypedAndRawJSON verifies both
+// facade directions isolate typed collections and mutable raw JSON storage.
+func TestClientProcessInstanceVariableUpdatesSnapshotTypedAndRawJSON(t *testing.T) {
+	t.Parallel()
+
+	serviceTyped := facadeProcessInstanceTypedValues{"items": {"service"}}
+	serviceRaw := json.RawMessage(`{"raw":"service"}`)
+	resultTyped := facadeProcessInstanceTypedValues{"items": {"result"}}
+	resultRaw := json.RawMessage(`{"raw":"result"}`)
+	updateAPI := &facadeProcessInstanceVariableUpdateAPI{
+		plan: d.ProcessInstanceVariableUpdatePlan{
+			RequestedKeys: []string{"pi-a"}, RequestedValues: map[string]any{"raw": serviceRaw, "typed": serviceTyped},
+			RequestedCount: 1, UpdateCount: 1, VariableAddCount: 2,
+			Instances: []d.ProcessInstanceVariablePlan{{
+				ProcessInstanceKey: "pi-a", ScopeKey: "pi-a",
+				Additions:          []d.ProcessInstanceVariablePlannedValue{{Name: "raw", Value: serviceRaw}, {Name: "typed", Value: serviceTyped}},
+				MutationVariables:  map[string]any{"raw": serviceRaw, "typed": serviceTyped},
+				VerificationValues: map[string]any{"raw": serviceRaw, "typed": serviceTyped},
+			}},
+		},
+		results: d.ProcessInstanceVariableUpdateResults{Items: []d.ProcessInstanceVariableUpdateResult{{
+			Key: "pi-a", Status: d.ProcessInstanceVariableUpdateStatusSubmitted, MutationAccepted: true,
+			Variables: map[string]any{"raw": resultRaw, "typed": resultTyped},
+		}}},
+	}
+	cli := NewWithVariableUpdates(&stubProcessDefinitionAPI{}, stubProcessInstanceAPI{}, stubIncidentAPI{}, nil, nil, updateAPI, slog.Default())
+	callerTyped := facadeProcessInstanceTypedValues{"items": {"caller"}}
+	callerRaw := json.RawMessage(`{"raw":"caller"}`)
+
+	plan, err := cli.PlanProcessInstanceVariableUpdates(context.Background(), typex.Keys{"pi-a"}, map[string]any{"raw": callerRaw, "typed": callerTyped})
+	require.NoError(t, err)
+	callerTyped["items"][0] = "mutated"
+	callerRaw[8] = 'X'
+	require.Equal(t, "caller", updateAPI.variables["typed"].(facadeProcessInstanceTypedValues)["items"][0])
+	require.JSONEq(t, `{"raw":"caller"}`, string(updateAPI.variables["raw"].(json.RawMessage)))
+
+	serviceTyped["items"][0] = "mutated"
+	serviceRaw[8] = 'X'
+	require.Equal(t, "service", plan.RequestedValues["typed"].(facadeProcessInstanceTypedValues)["items"][0])
+	require.JSONEq(t, `{"raw":"service"}`, string(plan.RequestedValues["raw"].(json.RawMessage)))
+
+	results, err := cli.ExecuteProcessInstanceVariableUpdates(context.Background(), plan, 1, options.WithNoWait())
+	require.NoError(t, err)
+	plan.RequestedValues["typed"].(facadeProcessInstanceTypedValues)["items"][0] = "caller-mutated"
+	plan.RequestedValues["raw"].(json.RawMessage)[8] = 'Y'
+	require.Equal(t, "service", updateAPI.executed.RequestedValues["typed"].(facadeProcessInstanceTypedValues)["items"][0])
+	require.JSONEq(t, `{"raw":"service"}`, string(updateAPI.executed.RequestedValues["raw"].(json.RawMessage)))
+	resultTyped["items"][0] = "service-mutated"
+	resultRaw[8] = 'X'
+	require.Equal(t, "result", results.Items[0].Variables["typed"].(facadeProcessInstanceTypedValues)["items"][0])
+	require.JSONEq(t, `{"raw":"result"}`, string(results.Items[0].Variables["raw"].(json.RawMessage)))
+}
+
+// TestClientPlanProcessInstanceVariableUpdatesConvertsErrorsAndPreservesConstructors
+// verifies legacy facade constructors remain usable and the new method fails clearly.
+func TestClientPlanProcessInstanceVariableUpdatesConvertsErrorsAndPreservesConstructors(t *testing.T) {
+	t.Parallel()
+
+	legacy := New(&stubProcessDefinitionAPI{}, stubProcessInstanceAPI{}, stubIncidentAPI{}, slog.Default())
+	_, err := legacy.PlanProcessInstanceVariableUpdates(context.Background(), typex.Keys{"pi-a"}, map[string]any{"value": true})
+	require.ErrorIs(t, err, ferr.ErrLocalPrecondition)
+
+	updateAPI := &facadeProcessInstanceVariableUpdateAPI{err: d.ErrUnavailable}
+	cli := NewWithVariableUpdates(&stubProcessDefinitionAPI{}, stubProcessInstanceAPI{}, stubIncidentAPI{}, nil, nil, updateAPI, slog.Default())
+	plan, err := cli.PlanProcessInstanceVariableUpdates(context.Background(), typex.Keys{"pi-a"}, map[string]any{"value": true})
+	require.ErrorIs(t, err, ferr.ErrUnavailable)
+	require.Equal(t, ProcessInstanceVariableUpdatePlan{}, plan)
+}
+
+// TestClientExecuteProcessInstanceVariableUpdatesCopiesAndReturnsPartialResults verifies
+// execution plan isolation, option delegation, status conversion, and error preservation.
+func TestClientExecuteProcessInstanceVariableUpdatesCopiesAndReturnsPartialResults(t *testing.T) {
+	t.Parallel()
+
+	serviceValue := map[string]any{"nested": []any{"service"}}
+	updateAPI := &facadeProcessInstanceVariableUpdateAPI{
+		results: d.ProcessInstanceVariableUpdateResults{Items: []d.ProcessInstanceVariableUpdateResult{{
+			Key: "pi-a", Status: d.ProcessInstanceVariableUpdateStatusSubmitted, MutationAccepted: true,
+			ConfirmationStatus: "skipped", Variables: map[string]any{"payload": serviceValue},
+		}}},
+		err: d.ErrUnavailable,
+	}
+	cli := NewWithVariableUpdates(&stubProcessDefinitionAPI{}, stubProcessInstanceAPI{}, stubIncidentAPI{}, nil, nil, updateAPI, slog.Default())
+	callerValue := map[string]any{"nested": []any{"caller"}}
+	plan := ProcessInstanceVariableUpdatePlan{
+		RequestedKeys: []string{"pi-a"}, RequestedValues: map[string]any{"payload": callerValue}, RequestedCount: 1, UpdateCount: 1, VariableAddCount: 1,
+		Instances: []ProcessInstanceVariablePlan{{
+			ProcessInstanceKey: "pi-a", ScopeKey: "pi-a",
+			Additions:         []ProcessInstanceVariablePlannedValue{{Name: "payload", Value: callerValue}},
+			MutationVariables: map[string]any{"payload": callerValue}, VerificationValues: map[string]any{"payload": callerValue},
+		}},
+	}
+
+	results, err := cli.ExecuteProcessInstanceVariableUpdates(context.Background(), plan, 3, options.WithNoWait(), options.WithFailFast())
+
+	require.ErrorIs(t, err, ferr.ErrUnavailable)
+	require.Equal(t, 3, updateAPI.workers)
+	require.True(t, updateAPI.callConfig.NoWait)
+	require.True(t, updateAPI.callConfig.FailFast)
+	callerValue["nested"].([]any)[0] = "mutated"
+	require.Equal(t, "caller", updateAPI.executed.RequestedValues["payload"].(map[string]any)["nested"].([]any)[0])
+	serviceValue["nested"].([]any)[0] = "changed-after-return"
+	require.Equal(t, "service", results.Items[0].Variables["payload"].(map[string]any)["nested"].([]any)[0])
+	require.Equal(t, ProcessInstanceVariableUpdateStatusSubmitted, results.Items[0].Status)
+	require.True(t, results.Items[0].MutationAccepted)
+}
+
+// TestClientExecuteProcessInstanceVariableUpdatesRequiresComposedDependency verifies
+// legacy facade constructors fail before attempting prepared execution.
+func TestClientExecuteProcessInstanceVariableUpdatesRequiresComposedDependency(t *testing.T) {
+	t.Parallel()
+
+	legacy := New(&stubProcessDefinitionAPI{}, stubProcessInstanceAPI{}, stubIncidentAPI{}, slog.Default())
+	_, err := legacy.ExecuteProcessInstanceVariableUpdates(context.Background(), ProcessInstanceVariableUpdatePlan{}, 1)
+	require.ErrorIs(t, err, ferr.ErrLocalPrecondition)
+}
+
+// TestClient_ProcessInstanceStateReports preserves observed states and the existing parsed-versus-raw report contracts.
+func TestClient_ProcessInstanceStateReports(t *testing.T) {
+	t.Parallel()
+	for _, tt := range []struct {
+		observed d.State
+		parsed   State
+	}{
+		{"SUSPENDED", StateSuspended},
+		{"suspended", StateSuspended},
+		{"SuSpEnDeD", StateSuspended},
+		{" suspended ", StateSuspended},
+		{d.StateCanceled, StateCanceled},
+		{"cancelled", StateCanceled},
+		{d.StateTerminated, StateTerminated},
+		{d.StateAbsent, StateAbsent},
+		{d.StateUnknown, StateUnknown},
+		{"FUTURE_STATE", StateUnknown},
+	} {
+		t.Run(string(tt.observed), func(t *testing.T) {
+			instance := d.ProcessInstance{Key: "123", State: tt.observed}
+			response := d.ProcessInstanceExpectationResponse{Key: "123", Ok: true, State: tt.observed, Status: "observed"}
+			api := stubProcessInstanceAPI{
+				getProcessInstance: func(context.Context, string, ...services.CallOption) (d.ProcessInstance, error) { return instance, nil },
+				getProcessInstanceStateByKey: func(context.Context, string, ...services.CallOption) (d.State, d.ProcessInstance, error) {
+					return tt.observed, instance, nil
+				},
+				waitForProcessInstanceState: func(context.Context, string, d.States, ...services.CallOption) (d.StateResponse, d.ProcessInstance, error) {
+					return d.StateResponse{State: tt.observed, Status: "observed"}, instance, nil
+				},
+				waitForProcessInstanceExpectation: func(context.Context, string, d.ProcessInstanceExpectationRequest, ...services.CallOption) (d.ProcessInstanceExpectationResponse, d.ProcessInstance, error) {
+					return response, instance, nil
+				},
+				waitForProcessInstancesExpectation: func(context.Context, typex.Keys, d.ProcessInstanceExpectationRequest, int, ...services.CallOption) (d.ProcessInstanceExpectationResponses, error) {
+					return d.ProcessInstanceExpectationResponses{Items: []d.ProcessInstanceExpectationResponse{response}}, nil
+				},
+			}
+			cli := New(&stubProcessDefinitionAPI{}, api, stubIncidentAPI{}, slog.Default())
+			ctx := context.Background()
+			got, err := cli.GetProcessInstance(ctx, "123")
+			require.NoError(t, err)
+			require.Equal(t, State(tt.observed), got.State)
+			lookup, got, err := cli.LookupProcessInstanceStateByKey(ctx, "123")
+			require.NoError(t, err)
+			require.Equal(t, StateReport{Key: "123", State: tt.parsed, Status: string(tt.observed)}, lookup)
+			require.Equal(t, State(tt.observed), got.State)
+			state, got, err := cli.WaitForProcessInstanceState(ctx, "123", States{tt.parsed})
+			require.NoError(t, err)
+			require.Equal(t, StateReport{Key: "123", State: tt.parsed, Status: "observed"}, state)
+			require.Equal(t, State(tt.observed), got.State)
+			request := ProcessInstanceExpectationRequest{States: States{tt.parsed}}
+			expectation, got, err := cli.WaitForProcessInstanceExpectation(ctx, "123", request)
+			require.NoError(t, err)
+			require.Equal(t, ProcessInstanceExpectationReport{Key: "123", Ok: true, State: State(tt.observed), Status: "observed"}, expectation)
+			require.Equal(t, State(tt.observed), got.State)
+			reports, err := cli.WaitForProcessInstancesExpectation(ctx, typex.Keys{"123"}, request, 1)
+			require.NoError(t, err)
+			require.Equal(t, []ProcessInstanceExpectationReport{expectation}, reports.Items)
+			stateReports := MapStateResponsesToReports(d.StateResponses{Items: []d.StateResponse{{State: tt.observed, Status: "observed"}}})
+			require.Equal(t, []StateReport{{State: State(tt.observed), Status: "observed"}}, stateReports.Items)
+		})
+	}
+}
+
+// ValidateProcessInstanceStates permits existing fixtures independently of version policy.
+func (s stubProcessInstanceAPI) ValidateProcessInstanceStates(d.States) error { return nil }
+
+// TestClient_CreateProcessInstance_SuspendedVisibility preserves observed state and start date without inventing execution completion.
+func TestClient_CreateProcessInstance_SuspendedVisibility(t *testing.T) {
+	t.Parallel()
+	for _, noWait := range []bool{false, true} {
+		t.Run(map[bool]string{false: "confirmed", true: "no wait"}[noWait], func(t *testing.T) {
+			t.Parallel()
+			calls := 0
+			api := stubProcessInstanceAPI{createProcessInstance: func(_ context.Context, data d.ProcessInstanceData, opts ...services.CallOption) (d.ProcessInstanceCreation, error) {
+				calls++
+				require.Equal(t, "demo", data.BpmnProcessId)
+				require.Equal(t, noWait, services.ApplyCallOptions(opts).NoWait)
+				result := d.ProcessInstanceCreation{Key: "123", BpmnProcessId: data.BpmnProcessId, StartDate: "2026-10-17T10:00:00Z"}
+				if !noWait {
+					result.State = d.StateSuspended
+					result.StartConfirmedAt = "2026-10-17T10:00:01Z"
+				}
+				return result, nil
+			}}
+			cli := New(&stubProcessDefinitionAPI{}, api, stubIncidentAPI{}, slog.Default())
+			var opts []options.FacadeOption
+			if noWait {
+				opts = append(opts, options.WithNoWait())
+			}
+			got, err := cli.CreateProcessInstance(context.Background(), ProcessInstanceData{BpmnProcessId: "demo"}, opts...)
+			require.NoError(t, err)
+			require.Equal(t, 1, calls)
+			require.Equal(t, "123", got.Key)
+			require.Equal(t, "2026-10-17T10:00:00Z", got.StartDate)
+			require.Empty(t, got.EndDate)
+			require.False(t, got.State.IsTerminal())
+			if noWait {
+				require.Empty(t, got.State)
+			} else {
+				require.Equal(t, StateSuspended, got.State)
+			}
+		})
+	}
+}
+
 // PrepareJobCompletionBatch rejects unexpected batch calls in unrelated facade tests.
 func (s stubJobAPI) PrepareJobCompletionBatch(context.Context, d.CompletionRequest, ...services.CallOption) (d.PreparedCompletionBatch, error) {
 	panic("unexpected completion preparation")
@@ -3525,4 +3860,81 @@ func (s stubJobAPI) PrepareJobCompletionBatch(context.Context, d.CompletionReque
 // ExecuteJobCompletionBatch rejects unexpected batch calls in unrelated facade tests.
 func (s stubJobAPI) ExecuteJobCompletionBatch(context.Context, d.PreparedCompletionBatch, int, ...services.CallOption) (d.CompletionBatchReport, error) {
 	return d.CompletionBatchReport{}, errors.New("unexpected completion execution")
+}
+
+// ValidateProcessInstanceSuspension keeps unrelated legacy fixtures explicitly unsupported.
+func (stubProcessInstanceAPI) ValidateProcessInstanceSuspension() error { return d.ErrUnsupported }
+
+// SuspendProcessInstance prevents accidental mutation through unrelated legacy fixtures.
+func (stubProcessInstanceAPI) SuspendProcessInstance(context.Context, string, ...services.CallOption) (d.ProcessInstanceSuspensionResult, error) {
+	return d.ProcessInstanceSuspensionResult{}, d.ErrUnsupported
+}
+
+// ValidateProcessInstanceResumption keeps unrelated legacy fixtures explicitly unsupported.
+func (stubProcessInstanceAPI) ValidateProcessInstanceResumption() error { return d.ErrUnsupported }
+
+// ResumeProcessInstance prevents accidental mutation through unrelated legacy fixtures.
+func (stubProcessInstanceAPI) ResumeProcessInstance(context.Context, string, ...services.CallOption) (d.ProcessInstanceResumptionResult, error) {
+	return d.ProcessInstanceResumptionResult{}, d.ErrUnsupported
+}
+
+// TestClient_SearchProcessInstancesPages_PreservesCompletionAndPartialEvidence verifies mechanical visitor mapping and converted failures.
+func TestClient_SearchProcessInstancesPages_PreservesCompletionAndPartialEvidence(t *testing.T) {
+	t.Parallel()
+	for _, fail := range []bool{false, true} {
+		t.Run(map[bool]string{false: "exhausted", true: "incomplete"}[fail], func(t *testing.T) {
+			calls := 0
+			api := stubProcessInstanceAPI{searchForProcessInstancesPage: func(_ context.Context, _ d.ProcessInstanceFilter, req d.ProcessInstancePageRequest, _ ...services.CallOption) (d.ProcessInstancePage, error) {
+				calls++
+				if calls == 2 {
+					if fail {
+						return d.ProcessInstancePage{}, d.ErrNotFound
+					}
+					return d.ProcessInstancePage{Request: req, OverflowState: d.ProcessInstanceOverflowStateNoMore}, nil
+				}
+				return d.ProcessInstancePage{Request: req, Items: []d.ProcessInstance{{Key: "1"}, {Key: "1"}}, OverflowState: d.ProcessInstanceOverflowStateHasMore}, nil
+			}}
+			cli := New(&stubProcessDefinitionAPI{}, api, stubIncidentAPI{}, slog.Default())
+			var steps []ProcessInstanceSearchPageStep
+			got, err := cli.SearchProcessInstancesPages(context.Background(), ProcessInstanceSearchRequest{Page: ProcessInstancePageRequest{Size: 2}}, func(step ProcessInstanceSearchPageStep) (ProcessInstanceSearchPageAction, error) {
+				steps = append(steps, step)
+				return ProcessInstanceSearchPageActionContinue, nil
+			})
+			if fail {
+				require.ErrorIs(t, err, ferr.ErrNotFound)
+				require.Equal(t, ProcessInstanceSearchCompletionIncomplete, got.Completion)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, ProcessInstanceSearchCompletionExhausted, got.Completion)
+			}
+			require.Equal(t, []ProcessInstance{{Key: "1"}}, got.Items)
+			require.EqualValues(t, 1, steps[0].CumulativeCount)
+			require.Len(t, steps[0].Page.Items, 1)
+			calls = 0
+			total, err := cli.SearchProcessInstancesTotal(context.Background(), ProcessInstanceSearchRequest{Page: ProcessInstancePageRequest{Size: 2}}, nil)
+			require.EqualValues(t, 1, total)
+			if fail {
+				require.ErrorIs(t, err, ferr.ErrNotFound)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+	// Unset/unknown values remain untrusted rather than becoming exhausted at conversion.
+	for _, completion := range []d.ProcessInstanceSearchCompletion{"", "future", d.ProcessInstanceSearchCompletionLimitReached, d.ProcessInstanceSearchCompletionVisitorStopped} {
+		require.Equal(t, ProcessInstanceSearchCompletion(completion), fromDomainProcessInstanceSearchPagesResult(d.ProcessInstanceSearchPagesResult{Completion: completion}).Completion)
+	}
+}
+
+// ValidateProcessInstanceSearchFilter keeps isolated fixtures independent of adapter capability policy.
+func (s stubProcessInstanceAPI) ValidateProcessInstanceSearchFilter(d.ProcessInstanceFilter) error {
+	return nil
+}
+
+// ProcessInstanceSearchTenant supplies unfiltered context for owned service fixtures.
+func (stubProcessInstanceAPI) ProcessInstanceSearchTenant(...services.CallOption) string { return "" }
+
+// DeleteProcessInstanceExact delegates only to the test-owned deletion stub.
+func (s stubProcessInstanceAPI) DeleteProcessInstanceExact(ctx context.Context, key string, opts ...services.CallOption) (d.DeleteResponse, error) {
+	return s.DeleteProcessInstance(ctx, key, opts...)
 }

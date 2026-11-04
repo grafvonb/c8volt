@@ -25,20 +25,15 @@ var (
 var opsExecuteSmokeTestCmd = &cobra.Command{
 	Use:   "smoke-test",
 	Short: "Execute a cluster smoke test workflow",
-	Long: `Verify a configured Camunda environment through deployment, execution, and cleanup.
+	Long: `Test the connection, deploy a bundled fixture, start instances, and inspect
+their process families.
 
-The workflow validates the profile, deploys the bundled multiple-subprocess fixture for the configured Camunda version, starts instances, and walks their families.
-
-Unless --no-cleanup is set, cleanup removes created process instances. It deletes the fixture definition only when no unrelated instances use it; otherwise the definition is retained.
-
-Creation uses the configured tenant, or the default tenant when none is configured. --all-tenants is not supported because creation requires one destination tenant.
-
-Use --dry-run to validate the plan without mutation.`,
-	Example: `  ./c8volt ops execute smoke-test --dry-run
-  ./c8volt --tenant tenant-a ops execute smoke-test --dry-run
-  ./c8volt ops execute smoke-test --report-file smoke-test.md
-  ./c8volt --verbose ops execute smoke-test --count 5 --auto-confirm
-  ./c8volt ops execute smoke-test --count 5 --report-file smoke-test.md`,
+Cleanup removes created instances and fixture definitions unless unrelated
+instances still use them. Identical deployments can reuse existing definition
+versions, which cleanup can also remove. Use --dry-run to preview the steps or
+--report-file to save the result. This workflow creates and deletes cluster data.`,
+	Example: `  c8volt ops execute smoke-test --dry-run
+  c8volt ops execute smoke-test --report-file smoke-test.md`,
 	Aliases: []string{"st"},
 	Args:    cobra.NoArgs,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -107,10 +102,10 @@ func init() {
 
 	fs := opsExecuteSmokeTestCmd.Flags()
 	fs.IntVarP(&flagOpsExecuteSmokeTestCount, "count", "n", 1, "number of process instances to create from the deployed smoke-test definition")
-	fs.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers when creating, walking, or cleaning smoke-test resources (default: min(count, 2*GOMAXPROCS, 32))")
+	fs.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers; omit for an automatic limit")
 	fs.BoolVar(&flagNoWorkerLimit, "no-worker-limit", false, "use all queued smoke-test jobs as workers when --workers is unset")
 	fs.BoolVar(&flagFailFast, "fail-fast", false, "stop scheduling smoke-test work after the first error")
-	fs.BoolVar(&flagOpsExecuteSmokeTestNoCleanup, "no-cleanup", false, "retain created process instances and the deployed process definition")
+	fs.BoolVar(&flagOpsExecuteSmokeTestNoCleanup, "no-cleanup", false, "retain created process instances and all deployed fixture process definitions")
 	fs.BoolVar(&flagDryRun, "dry-run", false, "validate the smoke-test plan without submitting mutation requests")
 	fs.BoolVar(&flagNoWait, "no-wait", false, "return after cleanup requests are accepted without deletion confirmation")
 	fs.StringVar(&flagOpsExecuteSmokeTestReportFile, "report-file", "", "write an audit report to the given path")
@@ -119,10 +114,17 @@ func init() {
 	setCommandMutation(opsExecuteSmokeTestCmd, CommandMutationStateChanging)
 	setContractSupport(opsExecuteSmokeTestCmd, ContractSupportFull)
 	setAutomationSupport(opsExecuteSmokeTestCmd, AutomationSupportFull, "supports unattended dry-run previews and implicitly confirmed smoke-test cleanup with shared machine output")
+	setOutputModes(opsExecuteSmokeTestCmd,
+		OutputModeContract{Name: RenderModeOneLine.String(), Supported: true},
+		OutputModeContract{Name: RenderModeJSON.String(), Supported: true, MachinePreferred: true},
+	)
 	setAllTenantsSupport(opsExecuteSmokeTestCmd, AllTenantsSupportRejectedConcreteDestination)
 }
 
 func validateOpsExecuteSmokeTestFlags(cmd *cobra.Command) error {
+	if flagViewKeysOnly {
+		return invalidFlagValuef("--keys-only is not supported for ops execute smoke-test")
+	}
 	if flagOpsExecuteSmokeTestCount < 1 {
 		return invalidFlagValuef("invalid value for --count: %d, expected positive integer", flagOpsExecuteSmokeTestCount)
 	}

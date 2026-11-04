@@ -28,7 +28,6 @@
   - `renderOptions`: existing single process-instance output options.
   - `version`: configured Camunda version.
 - **State Transitions**:
-  - `requested` -> `unsupported` on 8.7.
   - `requested` -> `task-not-found` when the user task does not exist.
   - `requested` -> `resolution-error` when the user task lacks an owning process-instance key.
   - `requested` -> `process-instance-lookup` when the owning key is available.

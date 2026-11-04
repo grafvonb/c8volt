@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/grafvonb/c8volt/c8volt/foptions"
 	"github.com/grafvonb/c8volt/c8volt/ops"
 	"github.com/grafvonb/c8volt/c8volt/tenant"
 	"github.com/grafvonb/c8volt/config"
@@ -26,26 +27,30 @@ var (
 var opsPurgeOrphanProcessInstancesCmd = &cobra.Command{
 	Use:   "orphan-process-instances",
 	Short: "Purge orphan child process instances",
-	Long: `Delete orphan child process instances whose parents are missing.
+	Long: `Delete child process instances whose parent is missing.
 
-The workflow discovers orphan candidates, fixes the target set, validates the delete plan, and requires confirmation before deletion. Process-instance family, force, and wait rules apply.
+The workflow discovers orphan candidates and plans family deletion before
+confirmation. Use --dry-run to review the scope and --report-file to save an
+audit report. Use --auto-confirm for unattended execution.
 
---tenant limits discovery; an empty tenant or --all-tenants searches across accessible tenants.
-
-Use --dry-run to inspect the plan without mutation, --auto-confirm or --automation for unattended deletion, and --report-file to save an audit report.`,
-	Example: `  ./c8volt ops purge orphan-process-instances --dry-run
-  ./c8volt --tenant tenant-a ops purge orphan-process-instances --dry-run
-  ./c8volt --tenant "" ops purge orphan-process-instances --dry-run
-  ./c8volt ops purge orphan-process-instances --dry-run --bpmn-process-id <bpmn-process-id> --limit 25
-  ./c8volt ops purge orphan-process-instances --state completed --limit 25
-  ./c8volt --verbose ops purge orphan-process-instances --state completed --limit 25 --auto-confirm
-  ./c8volt ops purge orphan-process-instances --state completed --limit 25 --report-file orphan-purge.md`,
+--limit bounds child candidates inspected, including those found to have parents.`,
+	Example: `  c8volt ops purge orphan-process-instances --dry-run
+  c8volt ops purge orphan-process-instances --state completed --report-file orphans.md`,
 	Aliases: []string{"orphan-pi", "opi"},
-	Args:    cobra.NoArgs,
+	Args: func(cmd *cobra.Command, args []string) error {
+		// BID validation runs after bootstrap so failures use the configured logger and one envelope.
+		if searchBusinessIDFlag(cmd) != nil {
+			return nil
+		}
+		return cobra.NoArgs(cmd, args)
+	},
 	Run: func(cmd *cobra.Command, args []string) {
 		cli, log, cfg, err := NewCli(cmd)
 		if err != nil {
 			handleNewCliError(cmd, log, cfg, fmt.Errorf("initializing client: %w", err))
+		}
+		if searchBusinessIDFlag(cmd) != nil && len(args) > 0 {
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, invalidFlagValuef("business-ID cleanup does not accept positional keys or stdin"))
 		}
 		if err := requireAutomationSupport(cmd); err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
@@ -67,7 +72,7 @@ Use --dry-run to inspect the plan without mutation, --auto-confirm or --automati
 			Automation:   automationModeEnabled(cmd),
 			NoWait:       flagNoWait,
 			OutputMode:   pickMode().String(),
-			Selection:    populatePISearchFilterOpts(),
+			Selection:    populatePISearchFilterOpts(cmd),
 			BatchSize:    resolvePISearchSize(cmd, cfg),
 			Limit:        flagGetPILimit,
 			Workers:      flagWorkers,
@@ -75,16 +80,25 @@ Use --dry-run to inspect the plan without mutation, --auto-confirm or --automati
 			ReportFormat: flagOpsPurgeOrphanReportFormat,
 			StartedAt:    time.Now().UTC(),
 		}
+		if request.Selection.BusinessId != nil {
+			runBusinessIDOrphanPurge(cmd, cli, log, cfg, request)
+			return
+		}
 		initializeOpsTenantContextHumanReporting(cmd, cfg, false)
 		progress := configureOpsPurgeOrphanProcessInstancesProgress(cmd, &request)
 		if !flagDryRun && !effectiveAutoConfirm {
 			planRequest := request
 			planRequest.DryRun = true
 			planned, err := purgeOrphanProcessInstancesWithCommandActivity(cmd, planRequest, func() (ops.OrphanPurgeResult, error) {
-				return cli.PurgeOrphanProcessInstances(cmd.Context(), planRequest, collectOptions()...)
+				return cli.PurgeOrphanProcessInstances(cmd.Context(), planRequest, append(collectOptions(), foptions.WithSuppressWorkflowDetailLogs(), foptions.WithSuppressProcessInstanceDetailLogs())...)
 			})
 			if err != nil {
-				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("plan ops purge orphan process instances: %w", err))
+				progress.Close()
+				reportErr := writeOpsPurgeOrphanProcessInstancesReport(planned, cfg, OpsWorkflowReportPreserveExisting)
+				if renderErr := renderOpsProcessInstancePurgeFailure(cmd, log, planned, "orphan purge", len(planned.DeletionPlan.RequestedKeys), planned.Deletion.Items, err, reportErr); renderErr != nil {
+					log.Error("could not render process-instance purge result")
+				}
+				exitAfterRenderedResult(cfg.App.NoErrCodes, err)
 			}
 			if err := rejectDeletePlanRequiringForce(planned.DeletionPlan.DryRunPreview); err != nil {
 				abortOpsPurgeOrphanProcessInstancesAfterReport(cmd, log, cfg, markOpsPurgeOrphanProcessInstancesLocalFailure(planned, ops.WorkflowStepStatusBlocked, err), err)
@@ -102,15 +116,16 @@ Use --dry-run to inspect the plan without mutation, --auto-confirm or --automati
 			request.DiscoveredKeys = append(typex.Keys{}, planned.Discovery.Keys...)
 		}
 		result, err := purgeOrphanProcessInstancesWithCommandActivity(cmd, request, func() (ops.OrphanPurgeResult, error) {
-			return cli.PurgeOrphanProcessInstances(cmd.Context(), request, collectOptions()...)
+			return cli.PurgeOrphanProcessInstances(cmd.Context(), request, append(collectOptions(), foptions.WithSuppressWorkflowDetailLogs(), foptions.WithSuppressProcessInstanceDetailLogs())...)
 		})
 		progress.Close()
 		result = attachOpsPurgeOrphanProcessInstancesResultTenantContext(cmd, cfg, result)
 		if err != nil {
-			if reportErr := writeOpsPurgeOrphanProcessInstancesReport(result, cfg, opsPurgeOrphanProcessInstancesReportWriteMode(result)); reportErr != nil {
-				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("ops purge orphan process instances: %w; write audit report: %v", err, reportErr))
+			reportErr := writeOpsPurgeOrphanProcessInstancesReport(result, cfg, opsPurgeOrphanProcessInstancesReportWriteMode(result))
+			if renderErr := renderOpsProcessInstancePurgeFailure(cmd, log, result, "orphan purge", len(result.DeletionPlan.RequestedKeys), result.Deletion.Items, err, reportErr); renderErr != nil {
+				log.Error("could not render process-instance purge result")
 			}
-			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("ops purge orphan process instances: %w", err))
+			exitAfterRenderedResult(cfg.App.NoErrCodes, err)
 		}
 		if err := writeOpsPurgeOrphanProcessInstancesReport(result, cfg, opsPurgeOrphanProcessInstancesReportWriteMode(result)); err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("write ops purge orphan process instances audit report: %w", err))
@@ -121,9 +136,10 @@ Use --dry-run to inspect the plan without mutation, --auto-confirm or --automati
 	},
 }
 
+// purgeOrphanProcessInstancesWithCommandActivity distinguishes reviewed-plan execution from fresh discovery activity.
 func purgeOrphanProcessInstancesWithCommandActivity(cmd *cobra.Command, request ops.OrphanPurgeRequest, run func() (ops.OrphanPurgeResult, error)) (ops.OrphanPurgeResult, error) {
 	msg := formatOpsPurgeOrphanProcessInstancesActivity(request, false)
-	if request.DiscoveredKeys != nil {
+	if request.DiscoveredKeys != nil || request.FrozenPlan != nil {
 		msg = "deleting orphan process-instance purge scope"
 	} else if !request.DryRun {
 		msg = formatOpsPurgeOrphanProcessInstancesActivity(request, true)
@@ -154,6 +170,7 @@ func init() {
 	useInvalidInputFlagErrors(opsPurgeOrphanProcessInstancesCmd)
 
 	fs := opsPurgeOrphanProcessInstancesCmd.Flags()
+	fs.String("bid", "", "exact opaque business ID to select within tenant scope (only c8.10+)")
 	fs.BoolVar(&flagDryRun, "dry-run", false, "discover and validate orphan process-instance cleanup without submitting deletion requests")
 	registerPISharedProcessDefinitionFilterFlags(fs)
 	fs.StringVar(&flagGetPIProcessDefinitionKey, "pd-key", "", "process definition key (mutually exclusive with bpmn-process-id, pd-version, and pd-version-tag)")
@@ -164,7 +181,7 @@ func init() {
 	fs.StringVarP(&flagGetPIState, "state", "s", "all", "state to filter process instances: all, active, completed, canceled, terminated")
 	fs.BoolVar(&flagGetPIIncidentsOnly, "incidents-only", false, "show only process instances that have incidents")
 	fs.BoolVar(&flagGetPINoIncidentsOnly, "no-incidents-only", false, "show only process instances that have no incidents")
-	fs.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers when validating the delete plan (default: min(targets, 2*GOMAXPROCS, 32))")
+	fs.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers; omit for an automatic limit")
 	fs.BoolVar(&flagNoWorkerLimit, "no-worker-limit", false, "use all queued jobs as workers when --workers is unset")
 	fs.BoolVar(&flagFailFast, "fail-fast", false, "stop scheduling validation work after the first error")
 	fs.BoolVar(&flagNoWait, "no-wait", false, "return after deletion requests are accepted without deletion confirmation")

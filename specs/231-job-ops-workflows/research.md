@@ -4,7 +4,6 @@
 
 **Decision**: Build on the current `cmd/get_job.go`, `cmd/update_job.go`, `c8volt/job`, `internal/domain/job.go`, and `internal/services/job` packages.
 
-**Rationale**: Issue #180 already established job keyed lookup, retry/timeout update, dry-run planning, retry confirmation, v8.7 unsupported behavior, v8.8/v8.9 service adapters, command views, and generated docs. Extending that boundary preserves layering and avoids duplicating job behavior in ops workflows.
 
 **Alternatives considered**: Add separate `ops job` or worker-specific verbs. Rejected because the issue explicitly asks for low-level primitives centered on `get job` and `update job`.
 
@@ -23,14 +22,6 @@
 **Rationale**: The generated clients already expose these methods. Keeping request construction in versioned services preserves the generated-client boundary and allows explicit version differences.
 
 **Alternatives considered**: Call generated clients directly from command code. Rejected because it violates the repository layering rules and makes the CLI contract version-fragile.
-
-## Decision: Keep v8.7 Unsupported Before Mutation
-
-**Decision**: v8.7 service paths should fail before unsupported job search or worker outcome mutation calls.
-
-**Rationale**: The existing job service already uses explicit unsupported behavior for unsupported v8.7 operations. The issue acceptance criteria require a clear unsupported capability error before mutation.
-
-**Alternatives considered**: Attempt best-effort legacy Operate/Tasklist fallbacks. Rejected because the source issue requires generated-client support for v8.8/v8.9 and explicit v8.7 failure.
 
 ## Decision: Make Worker Outcomes Mutually Exclusive
 

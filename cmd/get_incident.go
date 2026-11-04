@@ -39,26 +39,13 @@ var (
 var getIncidentCmd = &cobra.Command{
 	Use:   "incident",
 	Short: "List or fetch incidents",
-	Long: `Get Camunda incidents by key or search criteria.
+	Long: `Inspect incidents by key or search filters. Search defaults to active incidents.
 
-Provide repeated --key values or newline-separated keys from stdin with '-'. Each unique incident key is fetched once.
-
-Without keys, search by state, error type, error message, process context, element context, and creation time. Search defaults to active incidents. --batch-size controls each discovery request; --limit caps incidents across all pages; --total counts matching incidents.
-
-A --bpmn-process-id selector must match a visible process definition before discovery.`,
-	Example: `  ./c8volt get incident --key <incident-key>
-  ./c8volt get incident --key <incident-key> --key <another-incident-key>
-  printf '%s\n' "$INCIDENT_KEY_A" "$INCIDENT_KEY_B" | ./c8volt get incident -
-  ./c8volt get incident --state active --keys-only | ./c8volt get incident -
-  ./c8volt get incident --state active --limit 5
-  ./c8volt get incident --state resolved --error-type io_mapping_error --limit 5
-  ./c8volt get incident --state active --error-type io_mapping_error --pi-keys-only
-  ./c8volt get incident --state active --error-type io_mapping_error --pi-keys-only | ./c8volt cancel process-instance --dry-run -
-  ./c8volt get incident --error-message "intentional" --limit 5
-  ./c8volt get incident --creation-time-after 2026-05-01T00:00:00Z --creation-time-before 2026-05-31T00:00:00Z --limit 5
-  ./c8volt get incident --pi-key <process-instance-key> --element-id <element-id>
-  ./c8volt --json get incident --key <incident-key>
-  ./c8volt --keys-only get incident --key <incident-key>`,
+Use --error-type or --pi-key to narrow the scope. Add --pi-keys-only to pass
+affected process-instance keys to another command. Use --limit to bound a search.`,
+	Example: `  c8volt get incident --key <incident-key>
+  c8volt get incident --state active --error-type io_mapping_error --limit 10
+  c8volt get incident --pi-key <process-instance-key> --json`,
 	Aliases: []string{"incidents", "inc"},
 	Args: func(cmd *cobra.Command, args []string) error {
 		if err := validateOptionalDashArg(args); err != nil {
@@ -151,7 +138,9 @@ A --bpmn-process-id selector must match a visible process definition before disc
 	},
 }
 
+// init registers canonical query flags and diagnostic-only legacy guidance.
 func init() {
+	setFlagMigrations(getIncidentCmd, map[string]flagMigration{"with-no-error-message": {Replacement: "--no-error-message"}})
 	getCmd.AddCommand(getIncidentCmd)
 
 	fs := getIncidentCmd.Flags()
@@ -170,12 +159,12 @@ func init() {
 	fs.StringVar(&flagGetIncidentCreationTimeBefore, "creation-time-before", "", "only include incidents with creation time <= RFC3339 timestamp, c8volt timestamp, or YYYY-MM-DD")
 	fs.IntVar(&flagGetIncidentCreationTimeNewer, "creation-time-newer-days", -1, "only include incidents with creation time N days old or newer (0 means today)")
 	fs.IntVar(&flagGetIncidentCreationTimeOlder, "creation-time-older-days", -1, "only include incidents with creation time N days old or older")
-	fs.Int32VarP(&flagGetIncidentSize, "batch-size", "n", consts.MaxPISearchSize, fmt.Sprintf("number of incidents to request per page; does not cap total results (max limit %d enforced by server)", consts.MaxPISearchSize))
+	fs.Int32VarP(&flagGetIncidentSize, "batch-size", "n", consts.MaxPISearchSize, fmt.Sprintf("incidents per discovery page (server maximum %d)", consts.MaxPISearchSize))
 	fs.Int32VarP(&flagGetIncidentLimit, "limit", "l", 0, "maximum number of matching incidents to return across all pages; omit to continue through all matches")
 	fs.BoolVar(&flagGetIncidentTotal, "total", false, "return only the exact numeric total of matching incidents")
 	fs.IntVar(&flagGetIncidentMessageLimit, "error-message-limit", 0, "maximum characters to show for incident messages; 0 keeps full messages")
-	fs.BoolVar(&flagGetIncidentNoErrorMessage, "with-no-error-message", false, "omit error messages from incident output")
-	fs.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers when fetching multiple incidents (default: min(count, 2*GOMAXPROCS, 32))")
+	fs.BoolVar(&flagGetIncidentNoErrorMessage, "no-error-message", false, "omit error messages from incident output")
+	fs.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers; omit for an automatic limit")
 	fs.BoolVar(&flagNoWorkerLimit, "no-worker-limit", false, "use all queued jobs as workers when --workers is unset")
 	fs.BoolVar(&flagFailFast, "fail-fast", false, "stop scheduling new incident lookups after the first error")
 
@@ -185,6 +174,7 @@ func init() {
 	setAutomationSupport(getIncidentCmd, AutomationSupportFull, "supports shared machine output, stdin key pipelines, and unattended paging")
 }
 
+// validateGetIncidentFlagValues preserves selector and display exclusions for canonical flags.
 func validateGetIncidentFlagValues(cmd *cobra.Command) error {
 	if flagGetIncidentSize <= 0 || flagGetIncidentSize > consts.MaxPISearchSize {
 		return invalidFlagValuef("invalid value for --batch-size: %d, expected positive integer up to %d", flagGetIncidentSize, consts.MaxPISearchSize)
@@ -248,10 +238,10 @@ func validateGetIncidentFlagValues(cmd *cobra.Command) error {
 		return mutuallyExclusiveFlagsf("--pi-keys-only cannot be combined with --error-message-limit")
 	}
 	if flagGetIncidentPIKeysOnly && flagGetIncidentNoErrorMessage {
-		return mutuallyExclusiveFlagsf("--pi-keys-only cannot be combined with --with-no-error-message")
+		return mutuallyExclusiveFlagsf("--pi-keys-only cannot be combined with --no-error-message")
 	}
 	if flagGetIncidentNoErrorMessage && cmd != nil && cmd.Flags().Changed("error-message-limit") {
-		return mutuallyExclusiveFlagsf("--with-no-error-message cannot be combined with --error-message-limit")
+		return mutuallyExclusiveFlagsf("--no-error-message cannot be combined with --error-message-limit")
 	}
 	if pickMode() == RenderModeJSON && cmd != nil && cmd.Flags().Changed("error-message-limit") {
 		return mutuallyExclusiveFlagsf("--error-message-limit cannot be combined with --json")
@@ -260,10 +250,10 @@ func validateGetIncidentFlagValues(cmd *cobra.Command) error {
 		return mutuallyExclusiveFlagsf("--error-message-limit cannot be combined with --keys-only")
 	}
 	if pickMode() == RenderModeJSON && flagGetIncidentNoErrorMessage {
-		return mutuallyExclusiveFlagsf("--with-no-error-message cannot be combined with --json")
+		return mutuallyExclusiveFlagsf("--no-error-message cannot be combined with --json")
 	}
 	if pickMode() == RenderModeKeysOnly && flagGetIncidentNoErrorMessage {
-		return mutuallyExclusiveFlagsf("--with-no-error-message cannot be combined with --keys-only")
+		return mutuallyExclusiveFlagsf("--no-error-message cannot be combined with --keys-only")
 	}
 	if ok, firstBadKey, _ := validateKeys(flagGetIncidentKeys); !ok {
 		return invalidFlagValuef("incident key %q is not a valid key", firstBadKey)

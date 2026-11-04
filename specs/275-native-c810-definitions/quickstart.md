@@ -42,7 +42,7 @@ Expected: V810 selects `C810_MultipleSubProcessesParent` and its two required ch
 ## 4. Verify protected boundaries
 
 ```bash
-git diff --exit-code f2658425 -- ':(glob)embedded/processdefinitions/C87_*.bpmn' ':(glob)embedded/processdefinitions/C88_*.bpmn' ':(glob)embedded/processdefinitions/C89_*.bpmn'
+git diff --exit-code f2658425 -- ':(glob)embedded/processdefinitions/C88_*.bpmn' ':(glob)embedded/processdefinitions/C89_*.bpmn'
 git diff --exit-code f2658425 -- integration Makefile
 ```
 

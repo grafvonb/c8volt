@@ -4,8 +4,10 @@
 package cmd
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"os"
 	"os/exec"
@@ -16,6 +18,7 @@ import (
 
 	"github.com/grafvonb/c8volt/config"
 	"github.com/grafvonb/c8volt/internal/exitcode"
+	"github.com/grafvonb/c8volt/internal/services/httpc"
 	"github.com/grafvonb/c8volt/testx"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -24,67 +27,23 @@ import (
 )
 
 func TestConfigHelp_ExplainsEffectiveConfigurationWorkflow(t *testing.T) {
-	output := executeRootForTest(t, "config", "--help")
-
-	require.Contains(t, output, "Inspect and validate c8volt configuration")
-	require.Contains(t, output, "view effective settings")
-	require.Contains(t, output, "`config show`")
-	require.Contains(t, output, "`config validate`")
-	require.Contains(t, output, "`config template`")
-	require.Contains(t, output, "`config test-connection`")
-	require.Contains(t, output, "show")
-	require.Contains(t, output, "validate")
-	require.Contains(t, output, "template")
-	require.Contains(t, output, "test-connection")
-	require.Contains(t, output, "./c8volt config show")
-	require.Contains(t, output, "./c8volt --config ./config.yaml config validate")
-	require.Contains(t, output, "./c8volt config template")
-	require.Contains(t, output, "./c8volt --config ./config.yaml config test-connection")
-	require.Contains(t, output, "./c8volt config show --template")
+	assertCommandHelpOutput(t, []string{"config"}, []string{"flag > environment > profile > base config > default", "test-connection", "template"}, nil)
 }
 
 func TestConfigShowHelp_ExplainsEffectiveConfigExamples(t *testing.T) {
-	output := executeRootForTest(t, "config", "show", "--help")
-
-	require.Contains(t, output, "Show effective configuration with sensitive values sanitized")
-	require.Contains(t, output, "flag > env > profile > base config > default")
-	require.Contains(t, output, "compatibility shortcuts")
-	require.Contains(t, output, "./c8volt --config ./config.yaml config show --validate")
-	require.Contains(t, output, "--validate")
-	require.Contains(t, output, "compatibility shortcut: validate the effective configuration")
-	require.Contains(t, output, "--template")
-	require.Contains(t, output, "compatibility shortcut: print a blank configuration template")
+	assertCommandHelpOutput(t, []string{"config", "show"}, []string{"secrets redacted", "--profile"}, nil)
 }
 
 func TestConfigValidateHelp_ExplainsDirectValidation(t *testing.T) {
-	output := executeRootForTest(t, "config", "validate", "--help")
-
-	require.Contains(t, output, "Validate effective configuration")
-	require.Contains(t, output, "same validation as config show --validate")
-	require.Contains(t, output, "./c8volt --config ./config.yaml config validate")
-	require.NotContains(t, output, "--template")
+	assertCommandHelpOutput(t, []string{"config", "validate"}, []string{"without contacting Camunda", "--profile"}, nil)
 }
 
 func TestConfigTemplateHelp_ExplainsDirectTemplateRendering(t *testing.T) {
-	output := executeRootForTest(t, "config", "template", "--help")
-
-	require.Contains(t, output, "Print a blank configuration template")
-	require.Contains(t, output, "Equivalent to config show --template")
-	require.Contains(t, output, "./c8volt config template")
-	require.NotContains(t, output, "--validate")
+	assertCommandHelpOutput(t, []string{"config", "template"}, []string{"starter configuration template", "app.camunda_version"}, nil)
 }
 
 func TestConfigTestConnectionHelp_ExplainsConnectionDiagnostic(t *testing.T) {
-	output := executeRootForTest(t, "config", "test-connection", "--help")
-
-	require.Contains(t, output, "Validate configuration and test Camunda reachability")
-	require.Contains(t, output, "validates it locally, and retrieves cluster topology")
-	require.Contains(t, output, "patch and prerelease differences on the same line are accepted")
-	require.Contains(t, output, "compare the configured and observed major/minor release lines")
-	require.Contains(t, output, "unknown gateway version")
-	require.Contains(t, output, "does not fail an otherwise successful connection test")
-	require.Contains(t, output, "./c8volt --config ./config.yaml config test-connection")
-	require.NotContains(t, output, "--template")
+	assertCommandHelpOutput(t, []string{"config", "test-connection"}, []string{"gateway version", "does not fail", "--profile"}, nil)
 }
 
 func TestConfigTestConnectionCommand_RegressionPreservesReadOnlyJSONContract(t *testing.T) {
@@ -388,6 +347,7 @@ func TestConfigShowCommand_TemplatePreservesBlankTemplateOutput(t *testing.T) {
 
 	require.Equal(t, expected+"\n", output)
 	require.Contains(t, output, `camunda_version: "8.9"`)
+	require.Contains(t, output, "no_version_check: false")
 	require.Contains(t, output, "mode: oauth2|cookie|none")
 	require.Contains(t, output, "format: plain-time|plain|text|json")
 	require.NotContains(t, output, "'*****'")
@@ -462,6 +422,7 @@ apis:
 	require.Contains(t, string(output), "auth.oauth2.token_url")
 }
 
+// TestConfigTestConnectionCommand_SuccessLogsAndPrintsTopology preserves the existing command contract with advisory-aware fixtures.
 func TestConfigTestConnectionCommand_SuccessLogsAndPrintsTopology(t *testing.T) {
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodGet, r.Method)
@@ -484,10 +445,11 @@ func TestConfigTestConnectionCommand_SuccessLogsAndPrintsTopology(t *testing.T) 
 		"└─ Broker 3: broker-c.internal:26503 version=8.8.0\n", stdout)
 	require.Contains(t, stderr, "INFO config loaded: "+cfgPath)
 	require.Contains(t, stderr, "INFO config profile default")
-	require.Contains(t, stderr, "INFO camunda connection ok; base URL "+srv.URL+"/v2")
+	require.Contains(t, stderr, "INFO camunda connection ok")
 	require.NotContains(t, stderr, "WARN")
 }
 
+// TestConfigTestConnectionCommand_JSONOutput preserves the existing command contract with advisory-aware fixtures.
 func TestConfigTestConnectionCommand_JSONOutput(t *testing.T) {
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodGet, r.Method)
@@ -535,9 +497,10 @@ profiles:
 	require.NotContains(t, stdout, "INFO")
 	require.Contains(t, stdout, `"ok": true`)
 	require.Contains(t, stdout, `"base_url": "`+srv.URL+`/v2"`)
-	require.Contains(t, stderr, "INFO camunda connection ok; base URL "+srv.URL+"/v2")
+	require.Contains(t, stderr, "INFO camunda connection ok")
 }
 
+// TestConfigTestConnectionCommand_HumanRendersConfigurationTenantContext preserves the existing command contract with advisory-aware fixtures.
 func TestConfigTestConnectionCommand_HumanRendersConfigurationTenantContext(t *testing.T) {
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodGet, r.Method)
@@ -561,8 +524,8 @@ apis:
 
 	require.Contains(t, stdout, "Cluster: GatewayVersion=8.8.2")
 	require.Contains(t, stderr, "INFO selection scope: tenant-a only")
-	require.Contains(t, stderr, "INFO camunda connection ok; base URL "+srv.URL+"/v2")
-	require.Less(t, strings.Index(stderr, "INFO selection scope: tenant-a only"), strings.Index(stderr, "INFO camunda connection ok; base URL "+srv.URL+"/v2"))
+	require.Contains(t, stderr, "INFO camunda connection ok")
+	require.Less(t, strings.Index(stderr, "INFO selection scope: tenant-a only"), strings.Index(stderr, "INFO camunda connection ok"))
 }
 
 // Verifies all-tenants human diagnostics report the private broadening
@@ -595,7 +558,7 @@ apis:
 	require.Contains(t, stderr, "INFO selection scope: unfiltered across accessible tenants")
 	require.Less(t, strings.Index(stderr, "INFO configured tenant: tenant-a"), strings.Index(stderr, "WARN --all-tenants overrides"))
 	require.Less(t, strings.Index(stderr, "WARN --all-tenants overrides"), strings.Index(stderr, "INFO selection scope: unfiltered across accessible tenants"))
-	require.Less(t, strings.Index(stderr, "INFO selection scope: unfiltered across accessible tenants"), strings.Index(stderr, "INFO camunda connection ok; base URL "+srv.URL+"/v2"))
+	require.Less(t, strings.Index(stderr, "INFO selection scope: unfiltered across accessible tenants"), strings.Index(stderr, "INFO camunda connection ok"))
 }
 
 func TestConfigTestConnectionCommand_JSONIncludesConfigurationTenantContext(t *testing.T) {
@@ -668,9 +631,10 @@ apis:
 	require.NotContains(t, stderr, "configured tenant:")
 	require.NotContains(t, stderr, "--all-tenants overrides")
 	require.NotContains(t, stderr, "selection scope:")
-	require.Contains(t, stderr, "INFO camunda connection ok; base URL "+srv.URL+"/v2")
+	require.Contains(t, stderr, "INFO camunda connection ok")
 }
 
+// TestConfigTestConnectionCommand_JSONIncludesVersionMismatchWarning preserves the existing command contract with advisory-aware fixtures.
 func TestConfigTestConnectionCommand_JSONIncludesVersionMismatchWarning(t *testing.T) {
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodGet, r.Method)
@@ -689,7 +653,7 @@ func TestConfigTestConnectionCommand_JSONIncludesVersionMismatchWarning(t *testi
 	require.Len(t, result.Warnings, 1)
 	require.Contains(t, result.Warnings[0], "configured Camunda version 8.8 differs from gateway version 8.9.0")
 	require.Contains(t, result.Warnings[0], "this can cause unexpected errors")
-	require.Contains(t, stderr, "WARN "+result.Warnings[0])
+	require.Contains(t, stderr, "WARN version mismatch: configured 8.8, gateway 8.9.0; results may be incorrect; match config to gateway unless mismatch is intentional")
 	require.NotContains(t, stdout, "WARN")
 	require.NotContains(t, stdout, "Cluster:")
 }
@@ -758,6 +722,7 @@ func TestConfigTestConnectionCommand_RemoteFailureUsesStandardErrorPath(t *testi
 	require.NotContains(t, string(output), "configuration is invalid")
 }
 
+// TestConfigTestConnectionCommand_LogsConfigSource preserves the existing command contract with advisory-aware fixtures.
 func TestConfigTestConnectionCommand_LogsConfigSource(t *testing.T) {
 	t.Run("loaded config file", func(t *testing.T) {
 		srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -802,7 +767,7 @@ profiles:
 
 		require.Contains(t, stderr, "INFO config loaded: "+cfgPath)
 		require.Contains(t, stderr, "INFO config profile prod")
-		require.Contains(t, stderr, "INFO camunda connection ok; base URL "+srv.URL+"/v2")
+		require.Contains(t, stderr, "INFO camunda connection ok")
 	})
 
 	t.Run("no config file loaded", func(t *testing.T) {
@@ -825,6 +790,7 @@ profiles:
 	})
 }
 
+// TestConfigTestConnectionCommand_VersionComparisonWarnings preserves the existing command contract with advisory-aware fixtures.
 func TestConfigTestConnectionCommand_VersionComparisonWarnings(t *testing.T) {
 	testCases := []struct {
 		name              string
@@ -851,7 +817,7 @@ func TestConfigTestConnectionCommand_VersionComparisonWarnings(t *testing.T) {
 			_, stderr := executeRootWithSeparateOutputsForTest(t, "--config", cfgPath, "config", "test-connection")
 
 			if tc.wantWarning {
-				require.Contains(t, stderr, "WARN configured Camunda version "+tc.configuredVersion+" differs from gateway version "+tc.gatewayVersion+" by major/minor version; this can cause unexpected errors because Camunda APIs can differ between versions; correct the configured version unless there is a very good reason to keep this mismatch")
+				require.Contains(t, stderr, "WARN version mismatch: configured "+tc.configuredVersion+", gateway "+tc.gatewayVersion+"; results may be incorrect; match config to gateway unless mismatch is intentional")
 				return
 			}
 			require.NotContains(t, stderr, "differs from gateway version")
@@ -1308,4 +1274,256 @@ func resolveCommandConfigForTest(t *testing.T, cmd *cobra.Command, cfgPath strin
 	cfg, err := retrieveAndNormalizeConfig(v, bindings)
 	require.NoError(t, err)
 	return cfg
+}
+
+// TestRequestRateRootPrecedence exercises the persistent flag through normal command resolution, including explicit zero.
+func TestRequestRateRootPrecedence(t *testing.T) {
+	clearRequestRateTestEnvironment(t)
+	for _, tc := range []struct {
+		name, env, flag string
+		want            float64
+	}{
+		{name: "profile", want: 4},
+		{name: "env fraction", env: "0.5", want: 0.5},
+		{name: "env zero", env: "0"},
+		{name: "flag fraction", env: "3", flag: "0.5", want: 0.5},
+		{name: "flag zero", env: "3", flag: "0"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if tc.env != "" {
+				t.Setenv("C8VOLT_HTTP_REQUEST_RATE", tc.env)
+			}
+			cfgPath := writeRawTestConfig(t, "active_profile: dev\nhttp:\n  request_rate: 8\nprofiles:\n  dev:\n    http:\n      request_rate: 4\n")
+			args := []string{"--config", cfgPath, "config", "show"}
+			if tc.flag != "" {
+				args = append(args, "--request-rate", tc.flag)
+			}
+			stdout, _ := executeAPIDiagnosticsRoot(t, args...)
+			var cfg config.Config
+			require.NoError(t, yaml.Unmarshal([]byte(stdout), &cfg))
+			require.Equal(t, tc.want, cfg.HTTP.RequestRate)
+		})
+	}
+}
+
+// TestRequestRateInvalidBeforeBootstrap rejects every invalid source before authentication or API requests.
+func TestRequestRateInvalidBeforeBootstrap(t *testing.T) {
+	clearRequestRateTestEnvironment(t)
+	var calls atomic.Int32
+	server := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { calls.Add(1); w.WriteHeader(500) }))
+	t.Cleanup(server.Close)
+	for _, source := range []string{"flag", "file", "profile", "env"} {
+		for _, value := range []string{"-1", "NaN", "+Inf", "-Inf", "wrong", ""} {
+			t.Run(source+"/"+value, func(t *testing.T) {
+				configPath := writeAPIDiagnosticsCommandConfig(t, server.URL, "cookie")
+				if source == "file" || source == "profile" {
+					contents, err := os.ReadFile(configPath)
+					require.NoError(t, err)
+					fragment := fmt.Sprintf("http:\n  request_rate: %q\n", value)
+					if source == "profile" {
+						fragment = fmt.Sprintf("active_profile: dev\nprofiles:\n  dev:\n    http:\n      request_rate: %q\n", value)
+					}
+					require.NoError(t, os.WriteFile(configPath, append(contents, []byte(fragment)...), 0o600))
+				}
+				if source == "env" {
+					t.Setenv("C8VOLT_HTTP_REQUEST_RATE", value)
+				}
+				root := Root()
+				resetCommandTreeFlags(root)
+				resetGetProcessDefinitionCommandGlobals()
+				t.Cleanup(func() { resetCommandTreeFlags(root); resetGetProcessDefinitionCommandGlobals() })
+				stdout, stderr := &bytes.Buffer{}, &bytes.Buffer{}
+				root.SetOut(stdout)
+				root.SetErr(stderr)
+				args := []string{"--config", configPath, "get", "process-definition", "--key", apiDiagnosticsProcessDefinitionKey}
+				if source == "flag" {
+					args = append(args, "--request-rate="+value)
+				}
+				root.SetArgs(args)
+				_, err := root.ExecuteC()
+				require.Error(t, err)
+				require.Contains(t, strings.ReplaceAll(err.Error(), "-", "_"), "request_rate")
+				require.Zero(t, calls.Load())
+				require.NotContains(t, stdout.String(), "api #")
+				require.NotContains(t, stderr.String(), "api #")
+			})
+		}
+	}
+}
+
+// TestRequestRateRootCookieBootstrapSharesAllowance proves login consumes the API's
+// shared allowance without relying on server-arrival gaps after client admission.
+func TestRequestRateRootCookieBootstrapSharesAllowance(t *testing.T) {
+	clearRequestRateTestEnvironment(t)
+	for _, tc := range []struct {
+		rate    string
+		blocked bool
+	}{
+		{rate: "0"},
+		{rate: "20"},
+		// One token per 1,000 seconds leaves no second allowance within the
+		// API's one-second deadline, regardless of ordinary CI scheduling jitter.
+		{rate: "0.001", blocked: true},
+	} {
+		t.Run(tc.rate, func(t *testing.T) {
+			var paths testx.SafeSlice[string]
+			server := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				paths.Append(r.URL.Path)
+				if serveVersionCheckTopology(w, r, "8.9") {
+					return
+				}
+				switch r.URL.Path {
+				case "/api/login":
+					http.SetCookie(w, &http.Cookie{Name: "SESSION", Value: "fake-cookie", Path: "/"})
+					_, _ = w.Write([]byte(`{}`))
+				case "/v2/process-definitions/" + apiDiagnosticsProcessDefinitionKey:
+					w.Header().Set("Content-Type", "application/json")
+					_, _ = w.Write([]byte(apiDiagnosticsProcessDefinitionFixture))
+				default:
+					http.NotFound(w, r)
+				}
+			}))
+			t.Cleanup(server.Close)
+			path := writeAPIDiagnosticsCommandConfig(t, server.URL, "cookie")
+			root := Root()
+			resetCommandTreeFlags(root)
+			resetRequestRateCommandContexts(root)
+			// Return the facade error instead of invoking the production command's
+			// os.Exit path, while retaining real root bootstrap and client wiring.
+			probe := &cobra.Command{Use: "request-rate-cookie-bootstrap-probe", SilenceUsage: true, SilenceErrors: true, RunE: func(cmd *cobra.Command, _ []string) error {
+				cli, _, _, err := NewCli(cmd)
+				if err != nil {
+					return err
+				}
+				ctx := cmd.Context()
+				if tc.blocked {
+					var cancel context.CancelFunc
+					ctx, cancel = context.WithTimeout(ctx, time.Second)
+					defer cancel()
+				}
+				item, err := cli.GetProcessDefinition(ctx, apiDiagnosticsProcessDefinitionKey)
+				if err != nil {
+					return err
+				}
+				return renderSucceededResult(cmd, item)
+			}}
+			root.AddCommand(probe)
+			t.Cleanup(func() {
+				root.RemoveCommand(probe)
+				resetCommandTreeFlags(root)
+				resetRequestRateCommandContexts(root)
+			})
+			stdout, stderr := &bytes.Buffer{}, &bytes.Buffer{}
+			root.SetOut(stdout)
+			root.SetErr(stderr)
+			root.SetArgs([]string{"--config", path, "--request-rate", tc.rate, "--debug", "--log-format", "plain", probe.Name(), "--json"})
+			_, err := root.ExecuteC()
+			if tc.blocked {
+				require.ErrorIs(t, err, context.DeadlineExceeded)
+				require.True(t, httpc.IsRequestRateWaitError(err), "the shared allowance must reject API admission locally")
+				require.Equal(t, []string{"/api/login"}, paths.Snapshot(), "the rejected API request must never reach the server")
+				require.Empty(t, stdout.String())
+				require.Equal(t, 1, strings.Count(stderr.String(), "DEBUG api #"))
+			} else {
+				require.NoError(t, err)
+				requireSingleJSONValue(t, stdout.String())
+				require.Equal(t, []string{"/api/login", "/v2/topology", "/v2/process-definitions/" + apiDiagnosticsProcessDefinitionKey}, paths.Snapshot())
+				require.Equal(t, 3, strings.Count(stderr.String(), "DEBUG api #"))
+			}
+			require.NotContains(t, stdout.String(), "DEBUG")
+			require.NotContains(t, stderr.String(), "fake-cookie")
+			require.Nil(t, currentHTTPService, "root finalization must release the shared service")
+		})
+	}
+}
+
+// TestRequestRateTemplateDefault makes the disabled default discoverable in generated configuration.
+func TestRequestRateTemplateDefault(t *testing.T) {
+	clearRequestRateTestEnvironment(t)
+	stdout, _ := executeAPIDiagnosticsRoot(t, "config", "template")
+	require.Contains(t, stdout, "request_rate: 0")
+	stdout, _ = executeAPIDiagnosticsRoot(t, "--help")
+	require.Contains(t, stdout, "--request-rate")
+}
+
+// clearRequestRateTestEnvironment isolates root fixtures from inherited profiles, endpoints and credentials.
+func clearRequestRateTestEnvironment(t *testing.T) {
+	t.Helper()
+	for _, entry := range os.Environ() {
+		key, _, _ := strings.Cut(entry, "=")
+		if strings.HasPrefix(key, "C8VOLT_") {
+			t.Setenv(key, os.Getenv(key))
+			require.NoError(t, os.Unsetenv(key))
+		}
+	}
+}
+
+// TestRequestRateReportIntervalRootConfig verifies omission, profile/env zero and template export without an interval flag.
+func TestRequestRateReportIntervalRootConfig(t *testing.T) {
+	isolateRequestRateEnvironment(t)
+	for _, tc := range []struct {
+		name, input, env, want string
+		template               bool
+	}{
+		{name: "default", want: "5s"},
+		{name: "template", want: "5s", template: true},
+		{name: "base", input: "http:\n  request_rate_report_interval: 10s\n", want: "10s"},
+		{name: "profile", input: "active_profile: dev\nhttp:\n  request_rate_report_interval: 10s\nprofiles:\n  dev:\n    http:\n      request_rate_report_interval: 0s\n", want: "0s"},
+		{name: "environment", input: "http:\n  request_rate_report_interval: 10s\n", env: "0s", want: "0s"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if tc.env != "" {
+				t.Setenv("C8VOLT_HTTP_REQUEST_RATE_REPORT_INTERVAL", tc.env)
+			}
+			path := writeRawTestConfig(t, tc.input)
+			args := []string{"--config", path, "config", "show"}
+			if tc.template {
+				args = append(args, "--template")
+			}
+			stdout, _ := executeAPIDiagnosticsRoot(t, args...)
+			var cfg config.Config
+			require.NoError(t, yaml.Unmarshal([]byte(stdout), &cfg))
+			require.Equal(t, tc.want, cfg.HTTP.RequestRateReportInterval)
+			require.Nil(t, Root().PersistentFlags().Lookup("request-rate-report-interval"))
+		})
+	}
+}
+
+// TestRequestRateReportIntervalInvalidBeforeBootstrap rejects explicit empty and malformed durations from every source before login.
+func TestRequestRateReportIntervalInvalidBeforeBootstrap(t *testing.T) {
+	isolateRequestRateEnvironment(t)
+	var calls atomic.Int32
+	server := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { calls.Add(1); w.WriteHeader(500) }))
+	defer server.Close()
+	for _, source := range []string{"file", "profile", "env"} {
+		for _, value := range []string{"", " ", "-1s", "wrong", "NaN", "true"} {
+			t.Run(source+"/"+value, func(t *testing.T) {
+				path := writeAPIDiagnosticsCommandConfig(t, server.URL, "cookie")
+				if source == "env" {
+					t.Setenv("C8VOLT_HTTP_REQUEST_RATE_REPORT_INTERVAL", value)
+				} else if source == "file" {
+					appendRequestRateConfig(t, path, value)
+				} else {
+					file, err := os.OpenFile(path, os.O_APPEND|os.O_WRONLY, 0600)
+					require.NoError(t, err)
+					_, err = fmt.Fprintf(file, "active_profile: dev\nprofiles:\n  dev:\n    http:\n      request_rate_report_interval: %q\n", value)
+					require.NoError(t, err)
+					require.NoError(t, file.Close())
+				}
+				root := Root()
+				resetCommandTreeFlags(root)
+				resetRequestRateCommandContexts(root)
+				defer func() { resetCommandTreeFlags(root); resetRequestRateCommandContexts(root) }()
+				var stdout, stderr bytes.Buffer
+				root.SetOut(&stdout)
+				root.SetErr(&stderr)
+				root.SetArgs([]string{"--config", path, "get", "process-definition", "--key", apiDiagnosticsProcessDefinitionKey})
+				_, err := root.ExecuteC()
+				require.ErrorContains(t, err, "http.request_rate_report_interval")
+				require.Zero(t, calls.Load())
+				require.Empty(t, stdout.String())
+				require.Nil(t, currentHTTPService)
+			})
+		}
+	}
 }

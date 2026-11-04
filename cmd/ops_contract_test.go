@@ -233,7 +233,7 @@ func opsModeContractArgs(configPath string, modeFlags, commandArgs []string) []s
 func runOpsAllProcessDefinitionsModeContract(t *testing.T, execute bool, modeFlags ...string) (string, string, bool) {
 	var requests testx.SafeSlice[string]
 	var deleted testx.SafeSlice[string]
-	srv := newOpsPurgeAllProcessDefinitionsServer(t, &requests, &deleted, 0)
+	srv := newOpsPurgeAllProcessDefinitionsServer(t, "8.9", &requests, &deleted, 0)
 	t.Cleanup(srv.Close)
 	commandArgs := []string{"ops", "purge", "all-process-definitions"}
 	if execute {
@@ -265,7 +265,7 @@ func runOpsOrphanProcessInstancesModeContract(t *testing.T, execute bool, modeFl
 func runOpsIncidentProcessInstancesModeContract(t *testing.T, execute bool, modeFlags ...string) (string, string, bool) {
 	var requests testx.SafeSlice[string]
 	var deleted testx.SafeSlice[string]
-	srv := newOpsIncidentPurgeServer(t, &requests, &deleted, false)
+	srv := newOpsIncidentPurgeServer(t, "8.9", &requests, &deleted, false)
 	t.Cleanup(srv.Close)
 	commandArgs := []string{"ops", "purge", "process-instances-with-incidents"}
 	if execute {

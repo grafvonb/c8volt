@@ -12,7 +12,7 @@ Make the shared terminal activity indicator hierarchical so high-level command a
 
 ## Technical Context
 
-**Language/Version**: Go 1.26 with the repository's existing Cobra CLI and generated Camunda 8.7/8.8/8.9 clients
+**Language/Version**: Go 1.26 with the repository's existing Cobra CLI and generated Camunda 8.8/8.9 clients
 
 **Primary Dependencies**: Existing `toolx/logging` activity writer/sink, `internal/services/httpc` transport, Cobra command context wiring, existing internal service/facade option patterns, `testx/activitysink` for activity assertions
 

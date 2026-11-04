@@ -9,13 +9,12 @@ Purge process instances selected by incidents
 
 ### Synopsis
 
-Delete process-instance families selected through incidents.
+Delete process-instance families selected by incidents.
 
-Select incidents using filters or explicit --inc-key values. The workflow fixes the candidate process-instance set, validates the delete plan, and requires confirmation before deletion. Incident matching only selects candidates; process-instance family, force, and wait rules govern deletion.
-
---tenant limits incident discovery; an empty tenant or --all-tenants searches across accessible tenants. Explicit incident keys use backend authorization without tenant filtering. --batch-size controls each discovery request; --limit caps the selected scope.
-
-Use --dry-run to inspect the plan without mutation, --auto-confirm or --automation for unattended deletion, and --report-file to save an audit report.
+Select incidents by --inc-key or filters such as --error-type. The workflow
+plans family deletion before confirmation; unfinished instances require --force.
+Use --dry-run to review the scope and --report-file to save an audit report.
+Use --auto-confirm for unattended execution.
 
 ```
 c8volt ops purge process-instances-with-incidents [flags]
@@ -24,20 +23,14 @@ c8volt ops purge process-instances-with-incidents [flags]
 ### Examples
 
 ```
-  ./c8volt ops purge process-instances-with-incidents --dry-run
-  ./c8volt ops purge process-instances-with-incidents --inc-key <incident-key> --dry-run
-  ./c8volt --tenant tenant-a ops purge process-instances-with-incidents --inc-key <incident-key> --dry-run
-  ./c8volt --tenant "" ops purge process-instances-with-incidents --state active --limit 5 --dry-run
-  ./c8volt ops purge process-instances-with-incidents --state active --error-type io_mapping_error --dry-run
-  ./c8volt ops purge process-instances-with-incidents --state active --error-type io_mapping_error --limit 5 --force
-  ./c8volt --verbose ops purge process-instances-with-incidents --state active --error-type io_mapping_error --limit 5 --force --auto-confirm
-  ./c8volt ops purge process-instances-with-incidents --state active --error-type io_mapping_error --limit 5 --force --report-file incident-purge.md
+  c8volt ops purge process-instances-with-incidents --error-type io_mapping_error --dry-run
+  c8volt ops purge process-instances-with-incidents --inc-key <incident-key> --force --report-file purge.md
 ```
 
 ### Options
 
 ```
-  -n, --batch-size int32               number of incidents to inspect per discovery page; does not cap total frozen scope (max limit 1000 enforced by server) (default 1000)
+  -n, --batch-size int32               incidents per discovery page (server maximum 1000) (default 1000)
   -b, --bpmn-process-id string         BPMN process ID to filter incidents
       --creation-time-after string     only include incidents with creation time >= RFC3339 timestamp, c8volt timestamp, or YYYY-MM-DD
       --creation-time-before string    only include incidents with creation time <= RFC3339 timestamp, c8volt timestamp, or YYYY-MM-DD
@@ -52,7 +45,7 @@ c8volt ops purge process-instances-with-incidents [flags]
       --force                          allow cancellation when deletion encounters nonterminal process instances
   -h, --help                           help for process-instances-with-incidents
       --inc-key strings                incident key(s) to select for candidate discovery
-  -l, --limit int32                    maximum number of matching incidents to freeze before candidate process-instance dedupe; omit to discover all matches
+  -l, --limit int32                    maximum matching incidents to select; omit for all matches
       --no-wait                        return after deletion requests are accepted without deletion confirmation
       --no-worker-limit                use all queued jobs as workers when --workers is unset
       --pd-key string                  process definition key to filter incidents
@@ -61,26 +54,28 @@ c8volt ops purge process-instances-with-incidents [flags]
       --report-format string           audit report format: markdown, json (default inferred from report-file extension)
       --root-key string                root process instance key to filter incidents
   -s, --state string                   incident state scope for discovery: active, pending, resolved, migrated, unknown, all (default "active")
-  -w, --workers int                    maximum concurrent workers when validating the delete plan and deleting roots (default: min(targets, 2*GOMAXPROCS, 32))
+  -w, --workers int                    maximum concurrent workers; omit for an automatic limit
 ```
 
 ### Options inherited from parent commands
 
 ```
-      --all-tenants        clear configured tenant filtering and search all tenants visible to the authenticated user; mutually exclusive with --tenant
-  -y, --auto-confirm       auto-confirm prompts for non-interactive use
-      --automation         enable non-interactive mode for commands that explicitly support it
-      --config string      path to config file
-      --debug              enable debug logging
-  -j, --json               output as JSON (where applicable)
-      --keys-only          output keys only (where applicable)
-      --log-level string   log level (debug, info, warn, error) (default "info")
-      --no-indicator       disable transient terminal activity indicators
-      --profile string     config active profile name to use (e.g. dev, prod)
-  -q, --quiet              suppress output except errors
-      --tenant string      tenant ID for discovery/search, selection, create, deploy, and run flows; explicit empty values can clear configured discovery filters, and explicit keys/IDs remain backend-authorized
-      --timeout duration   HTTP request timeout (default 30s)
-  -v, --verbose            show additional output
+      --all-tenants          search all accessible tenants; cannot combine with --tenant
+  -y, --auto-confirm         auto-confirm prompts for non-interactive use
+      --automation           enable non-interactive mode for commands that explicitly support it
+      --config string        path to config file
+      --debug                enable debug logging
+  -j, --json                 output as JSON (where applicable)
+      --keys-only            output keys only (where applicable)
+      --log-level string     log level (debug, info, warn, error) (default "info")
+      --no-indicator         disable transient terminal activity indicators
+      --no-version-check     skip the automatic advisory gateway version check
+      --profile string       config active profile name to use (e.g. dev, prod)
+  -q, --quiet                suppress output except errors
+      --request-rate float   maximum shared request starts per second (fractions allowed; 0 disables pacing)
+      --tenant string        tenant for discovery and creation; explicit keys use backend authorization
+      --timeout duration     HTTP request timeout (default 30s)
+  -v, --verbose              show additional output
 ```
 
 ### SEE ALSO

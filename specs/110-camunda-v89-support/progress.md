@@ -76,7 +76,7 @@ Started: 2026-04-17 08:42:48
 ## Iteration 9 - 2026-04-17 10:25 CEST
 **User Story**: User Story 2 - Keep Version Selection Predictable
 **Tasks Completed**:
-- [x] T017: Add regression coverage for supported-version selection and preserved `v8.7`/`v8.8` behavior
+- [x] T017: Add regression coverage for supported-version selection and preserved `v8.8` behavior
 - [x] T018: Add bootstrap and config regression coverage for `v8.9` support messaging and unsupported-version failures
 - [x] T019: Add process-instance-specific regression coverage that proves final native `v8.9` paths stay on the `v89` Camunda client boundary and any temporary fallback stays documented/non-final
 - [x] T020: Update root command version messaging and supported-version behavior for `v8.9`

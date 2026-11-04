@@ -6,49 +6,25 @@ nav_order: 8
 has_toc: true
 ---
 
-# c8volt ops execute smoke-test
+# Execute smoke test
 
-## Purpose
+Check that a profile can connect, deploy a bundled fixture, start instances, inspect their families, and clean up.
 
-A profile can look valid and still fail at the first real operational step. `c8volt ops execute smoke-test` proves the configured environment by connecting, deploying a c8volt-owned fixture, starting process instances, walking them, and cleaning up.
-
-## In Action
-
-<img src="../../assets/screencasts/ops-execute-smoke-test.gif" alt="c8volt ops execute smoke-test demo" />
-
-## Use When
-
-- a profile should be verified end to end
-- deployment, runtime, traversal, and cleanup should be tested together
-- CI or operators need a report that the profile passed
-
-## Basic Usage
+## Examples
 
 ```bash
 c8volt ops execute smoke-test --dry-run
-```
-
-Generated reference: [ops execute smoke-test](/cli/c8volt_ops_execute_smoke-test).
-
-## Best Variants
-
-```bash
 c8volt ops execute smoke-test --report-file smoke-test.md
-c8volt ops execute smoke-test --no-cleanup --report-file smoke-test.md
 ```
 
-## Built From Lower-Level Commands
+## Execution
 
-```bash
-c8volt config test-connection
-c8volt run process-instance --bpmn-process-id <bpmn-process-id>
-c8volt walk process-instance --key <created-process-instance-key>
-```
+Dry-run checks connectivity and previews the steps without deploying or starting instances. The workflow requires one destination tenant and rejects `--all-tenants`.
 
-Generated references: [config test-connection](/cli/c8volt_config_test-connection), [run process-instance](/cli/c8volt_run_process-instance), [walk process-instance](/cli/c8volt_walk_process-instance), [delete process-instance](/cli/c8volt_delete_process-instance).
+Execution creates and deletes cluster data. Cleanup tracks every deployed fixture definition, including dependencies, and removes it only when no unrelated instances use it. Identical deployments can reuse existing definition versions, which cleanup can also remove. Retained or failed cleanup is reported.
 
-## Safety
+Deployment and instance creation are confirmed before inspecting the families.
 
-`--dry-run` reports the planned smoke-test steps without mutation. Real execution creates c8volt-owned runtime data and cleans it up unless `--no-cleanup` is supplied. On Camunda 8.8, prefer `--no-cleanup` because full process-definition deletion is supported by c8volt from Camunda 8.9 onward.
+See the [shared ops controls](/ops/#shared-controls) for discovery, confirmation, tenant scope, and reports.
 
-Creation uses the configured tenant, or the default tenant when none is configured. This workflow rejects `--all-tenants`, including with `--dry-run`, because it requires one destination tenant.
+[Command reference](/cli/c8volt_ops_execute_smoke-test) · [config test-connection](/cli/c8volt_config_test-connection) · [run process-instance](/cli/c8volt_run_process-instance) · [walk process-instance](/cli/c8volt_walk_process-instance)

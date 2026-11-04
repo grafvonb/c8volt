@@ -5,7 +5,6 @@
 - Every version-aware factory has an explicit `toolx.V810` case.
 - Every V810 adapter implements the existing version-neutral API.
 - V810 adapters import only `internal/clients/camunda/v810/camunda` among generated clients.
-- V810 adapters import no v87-v89 service package/client and no Operate, Tasklist, or Administration SM client.
 - Conversion stays inside each `v810` package.
 - `cmd/` and `c8volt/` import no generated clients/versioned implementations.
 - Paging, polling, retries, traversal, waiters, confirmation, errors, facades, and rendering remain version-neutral.
@@ -31,7 +30,7 @@ New 8.10 schemas do not add commands/public APIs unless an existing workflow req
 
 ## Capability and Fixture Contracts
 
-- Full process-definition history deletion includes V89 and V810 through one named predicate; V87/V88 retain pre-mutation rejection.
+- Full process-definition history deletion includes V89 and V810 through one named predicate; V88 retain pre-mutation rejection.
 - No generic version ordering is introduced.
 - V810 production embedded/smoke fixtures map explicitly to `C810_` while reports remain `8.10`.
 - No live 8.10 integration fixture or integration selection is added.

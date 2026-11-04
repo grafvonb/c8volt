@@ -50,6 +50,7 @@ func WithLogger(logger *slog.Logger) Option {
 	}
 }
 
+// New prepares the versioned adapter with lazy invocation preflight on generated requests.
 func New(cfg *config.Config, httpClient *http.Client, log *slog.Logger, opts ...Option) (*Service, error) {
 	deps, err := common.PrepareServiceDeps(cfg, httpClient, log)
 	if err != nil {
@@ -57,7 +58,7 @@ func New(cfg *config.Config, httpClient *http.Client, log *slog.Logger, opts ...
 	}
 	c, err := camundav89.NewClientWithResponses(
 		deps.Config.APIs.Camunda.BaseURL,
-		camundav89.WithHTTPClient(deps.HTTPClient),
+		camundav89.WithHTTPClient(deps.APIClient),
 	)
 	if err != nil {
 		return nil, err
@@ -100,7 +101,7 @@ func (s *Service) SearchProcessDefinitionsPage(ctx context.Context, filter d.Pro
 	if err != nil {
 		return d.ProcessDefinitionPage{}, fmt.Errorf("building process definition search request: %w", err)
 	}
-	common.VerboseLog(ctx, cCfg, s.log, "searching process definitions", "baseURL", s.cfg.APIs.Camunda.BaseURL, "body", body)
+	common.VerboseLog(ctx, cCfg, s.log, "searching process definitions")
 	bodyJSON, err := json.Marshal(body)
 	if err != nil {
 		return d.ProcessDefinitionPage{}, err

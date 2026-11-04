@@ -1,76 +1,47 @@
-# c8volt VHS recordings
+# Documentation recordings
 
-This directory contains reproducible terminal recordings for c8volt docs.
+VHS tapes show Camunda 8.10 workflows with current v5 syntax. They are source files; checked-in GIFs are recordings of earlier builds and must be regenerated before reuse in v5 documentation.
 
-The checked-in files are recording source only. The real `config.yaml` used by
-recordings is generated into `/tmp/c8volt-vhs/bin/config.yaml` so tapes can show
-normal commands without `--config`, while OAuth secrets stay out of the
-repository. Tapes use `--no-indicator` on longer live operations to avoid
-transient spinner frames in the captured terminal.
+Recording contacts a real cluster and changes data. Run it only as a separately requested recording workflow against a chosen target; it is not implementation validation.
 
-## Prerequisites
+## Setup
 
-- `vhs`
-- `ttyd`
-- `ffmpeg`
-- `go`
-- a reachable Camunda 8.9 cluster
-- OAuth client credentials for that cluster
+Install `vhs`, `ttyd`, `ffmpeg`, Go, and Python 3.8+. Recordings reuse your normal c8volt configuration, including its active profile, authentication, tenant, and environment overrides. All supported auth modes work: none, cookie, and OAuth2.
 
-On macOS, VHS can be installed with Homebrew:
+To select a different config or profile:
 
 ```bash
-brew install vhs
+export C8VOLT_CONFIG="$HOME/.config/c8volt/config.yaml"
+export C8VOLT_ACTIVE_PROFILE="c810"
 ```
 
-VHS requires `ttyd` and `ffmpeg` on `PATH`.
+Without these overrides, normal config discovery and the configured active profile apply. The effective config must use `app.camunda_version: "8.10"`. There are no separate VHS credentials; see [recording.env.example](config/recording.env.example).
 
-## Environment
+Before starting VHS, the renderer validates the config and runs `config test-connection --json`. It requires a reachable Camunda 8.10 gateway, matching configuration, 8.10 brokers, and healthy partitions. Invalid config, authentication failures, version mismatches, and unhealthy or incomplete topology stop the recording before the tape runs. This check confirms topology access; individual demo commands still require their own permissions.
 
-Export the recording-only variables before rendering:
+## Record
+
+| Recording | Target |
+| --- | --- |
+| Quick start | `make demo-vhs-fast-start` |
+| Smoke test | `make demo-vhs-st` |
+| Retention | `make demo-vhs-rp` |
+| Orphan purge | `make demo-vhs-opi` |
+| Incident purge | `make demo-vhs-piwi` |
+| Definition purge | `make demo-vhs-apd` |
+| Incident repair | `make demo-vhs-inc` |
+| Instance repair | `make demo-vhs-pi` |
+
+Direct selection is also available:
 
 ```bash
-export C8VOLT_VHS_C89_BASE_URL="https://camunda.example.com"
-export C8VOLT_VHS_OAUTH_TOKEN_URL="https://login.example.com/oauth/token"
-export C8VOLT_VHS_OAUTH_CLIENT_ID="c8volt"
-export C8VOLT_VHS_OAUTH_CLIENT_SECRET="..."
+./demos/vhs/scripts/render.sh fast-start --config "$HOME/.config/c8volt/config.yaml" --profile c810
 ```
 
-Optional scope variables are also supported when the target OAuth provider
-requires explicit per-API scopes:
+The renderer builds c8volt and copies the selected config into a private temporary directory. Preflight and recording use that same copy and profile. Authentication stays with c8volt; the renderer sets human logging and interactive defaults for the tapes. The temporary directory is removed on exit, and the original config is unchanged. GIFs are written under `docs/assets/screencasts/`.
+
+`make demo-vhs-check` checks local tools only. Isolated preflight tests build c8volt and use test-owned HTTP servers without starting VHS:
 
 ```bash
-export C8VOLT_VHS_OAUTH_CAMUNDA_SCOPE="camunda-api.write"
-export C8VOLT_VHS_OAUTH_OPERATE_SCOPE="operate-api.read"
-export C8VOLT_VHS_OAUTH_TASKLIST_SCOPE="tasklist-api.read"
+python3 -B -m unittest discover -s demos/vhs/scripts -p 'test_*.py'
 ```
-
-## Render
-
-Render a screencast with its Make target or short alias:
-
-| Screencast | Make target | Short alias |
-| --- | --- | --- |
-| Fast Start | `make demo-vhs-fast-start` | |
-| Execute Smoke Test | `make demo-vhs-ops-execute-smoke-test` | `make demo-vhs-st` |
-| Execute Retention Policy | `make demo-vhs-ops-execute-retention-policy` | `make demo-vhs-rp` |
-| Purge Orphan Process Instances | `make demo-vhs-ops-purge-orphan-process-instances` | `make demo-vhs-opi` |
-| Purge Process Instances With Incidents | `make demo-vhs-ops-purge-process-instances-with-incidents` | `make demo-vhs-piwi` |
-| Purge All Process Definitions | `make demo-vhs-ops-purge-all-process-definitions` | `make demo-vhs-apd` |
-| Repair Incident | `make demo-vhs-ops-repair-incident` | `make demo-vhs-inc` |
-| Repair Process Instance | `make demo-vhs-ops-repair-process-instance` | `make demo-vhs-pi` |
-
-The render script builds `./bin/c8volt`, creates `/tmp/c8volt-vhs`, copies the
-binary into `/tmp/c8volt-vhs/bin/c8volt`, writes the recording-only
-`/tmp/c8volt-vhs/bin/config.yaml`, and runs VHS from the repository root.
-
-Generated media is written to:
-
-- `docs/assets/screencasts/fast-start.gif`
-- `docs/assets/screencasts/ops-execute-smoke-test.gif`
-- `docs/assets/screencasts/ops-execute-retention-policy.gif`
-- `docs/assets/screencasts/ops-purge-orphan-process-instances.gif`
-- `docs/assets/screencasts/ops-purge-process-instances-with-incidents.gif`
-- `docs/assets/screencasts/ops-purge-all-process-definitions.gif`
-- `docs/assets/screencasts/ops-repair-incident.gif`
-- `docs/assets/screencasts/ops-repair-process-instance.gif`

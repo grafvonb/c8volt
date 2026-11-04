@@ -17,7 +17,6 @@ Audit duplicated CLI error composition across the repository and refactor the af
 **Project Type**: CLI  
 **Performance Goals**: No user-visible regression in command startup or normal command execution; error rendering changes must remain negligible compared with existing command and HTTP work while producing shorter, easier-to-scan failure output  
 **Constraints**: Preserve existing Cobra command surfaces, keep `ferrors` classification/normalization/exit-code behavior unchanged, preserve shared class prefixes such as `resource not found:`, fix duplication at repository-native wrapping seams instead of inventing a parallel error framework, allow breadcrumb shortening only when meaning stays equivalent, add representative regression coverage for each affected error-pattern family, and finish with `make test`  
-**Scale/Scope**: Shared error rendering in [`c8volt/ferrors/errors.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/c8volt/ferrors/errors.go), command wrappers under `cmd/`, process-instance traversal and mutation helpers under [`internal/services/processinstance/walker/walker.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/walker/walker.go) and versioned services under `internal/services/processinstance/v87`, `v88`, and `v89`, plus any additional repository error paths discovered during the audit that share the same duplication pattern and feed user-facing CLI output
 
 ## Constitution Check
 
@@ -77,9 +76,6 @@ internal/services/
 │   ├── waiter/
 │   │   ├── waiter.go
 │   │   └── waiter_test.go
-│   ├── v87/
-│   │   ├── service.go
-│   │   └── service_test.go
 │   ├── v88/
 │   │   ├── service.go
 │   │   └── service_test.go
@@ -110,8 +106,6 @@ Research findings are captured in [research.md](/Users/adam.boczek/Development/W
 
 | Pattern family | Primary owner layer | Representative audited seams | Out-of-scope for this feature |
 |--------|----------------------|------------------------------|-------------------------------|
-| Process-instance lookup and traversal | `internal/services/processinstance/walker` plus versioned process-instance services | `walker.Ancestry`, `walker.Descendants`, `walker.Family`, `v88.Service.GetProcessInstance`, `v89.Service.GetProcessInstance`, the equivalent lookup and family wrappers in `v87` | Rewording successful logs or non-user-facing debug output |
-| Process-instance mutation and wait follow-up | Versioned process-instance services plus `internal/services/processinstance/waiter` | `CancelProcessInstance`, `DeleteProcessInstance`, `GetProcessInstanceStateByKey`, and waiter-backed `waiting for ... failed` wrappers in `v87`, `v88`, and `v89` | Changing cancellation, delete, or wait semantics |
 | Single-resource command fetch wrappers | `cmd/` command handlers | `cmd/get_processdefinition.go`, `cmd/get_resource.go`, `cmd/get_cluster_license.go`, `cmd/get_cluster_topology.go`, and `cmd/get_processinstance.go` fetch wrappers | Help text, flag parsing, or command routing unrelated to failure composition |
 | Resource/client orchestration wrappers | `c8volt/resource` client code that feeds CLI commands | `c8volt/resource/client.go` delete/wait wrappers that can restate already-complete lower-layer failures | Internal-only wrappers that never surface through CLI rendering |
 
@@ -148,7 +142,7 @@ Design artifacts are captured in:
 | Pattern family | Required anchor files | What those anchors must continue proving |
 |--------|------------------------|------------------------------------------|
 | Process-instance lookup/traversal | `cmd/walk_test.go`, `internal/services/processinstance/walker/walker_test.go` | Ordered breadcrumbs remain visible while lookup/traversal root detail is rendered once |
-| Process-instance mutation/wait | `cmd/cancel_test.go`, `cmd/delete_test.go`, `internal/services/processinstance/v87/service_test.go`, `internal/services/processinstance/v88/service_test.go` | Cancel/delete/wait failures keep the shared class prefix and avoid repeated key/failure prose |
+| Process-instance mutation/wait | `cmd/cancel_test.go`, `cmd/delete_test.go`, `internal/services/processinstance/v88/service_test.go` | Cancel/delete/wait failures keep the shared class prefix and avoid repeated key/failure prose |
 | Single-resource fetch wrappers | `cmd/get_test.go` plus focused `get_*` command tests as needed | Top-level fetch wrappers stop restating already-complete lower-layer failures |
 | Shared class/exit behavior | `c8volt/ferrors/errors_test.go`, `cmd/bootstrap_errors_test.go` | Dedup cleanup does not change normalization, classification, or exit-code behavior |
 

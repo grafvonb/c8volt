@@ -296,7 +296,6 @@ Started: 2026-08-31 19:14:26
 **Files Changed**:
 - internal/services/resource/payload/payload.go
 - internal/services/resource/payload/payload_test.go
-- internal/services/resource/v87/service_test.go
 - internal/services/resource/v88/service.go
 - internal/services/resource/v88/service_test.go
 - internal/services/resource/v89/service.go
@@ -307,8 +306,6 @@ Started: 2026-08-31 19:14:26
 - specs/285-semantic-progress-milestones/ralph-memory.md
 - specs/285-semantic-progress-milestones/progress.md
 **Learnings**:
-- Validation passed: `go test ./internal/services/resource/payload ./internal/services/resource/v87 ./internal/services/resource/v88 ./internal/services/resource/v89 ./internal/services/resource/v810 -run 'Deploy|Visibility|Completion' -race -count=1`, `go test ./internal/services/resource/... -race -count=1`, and `git diff --check`.
-- Deployment completion facts now use returned process-definition keys for v8.8-v8.10; v8.7 remains silent because its response cannot prove per-definition identity.
 ---
 ---
 ## Iteration 9 - 2026-08-31 20:10
@@ -420,8 +417,6 @@ Started: 2026-08-31 19:14:26
 - specs/285-semantic-progress-milestones/ralph-memory.md
 - specs/285-semantic-progress-milestones/progress.md
 **Learnings**:
-- Validation passed: `go test ./cmd -run 'TestProcessDefinitionDeploySemanticProgress|TestAppendProcessDefinitionDeployProgressOptions|TestProcessDefinitionDeleteSemanticProgressRoutesFacadeCompletion|TestOpsPurgeAllProcessDefinitionsProgressKeepsDiscoverySeparate' -race -count=1`, `go test ./internal/services/resource/payload ./internal/services/resource/v87 ./internal/services/resource/v88 ./internal/services/resource/v89 ./internal/services/resource/v810 -run 'Deploy|Visibility|Completion' -race -count=1`, `go test ./cmd -run 'Deploy|ProcessDefinitionDeploy|Progress|Activity' -race -count=1`, `go test ./internal/services/resource/... -race -count=1`, and `git diff --check`.
-- Deployment command reporters are lazy and phase-isolated so v8.7 deployments without process-definition keys stay silent and later `--run` creation completions cannot open a deployment activity.
 ---
 ---
 ## Iteration 15 - 2026-08-31 20:51
@@ -507,9 +502,7 @@ Started: 2026-08-31 19:14:26
 **Learnings**:
 - Validation passed: `go test ./cmd -run 'Progress|Activity' -race -count=1` -> `ok github.com/grafvonb/c8volt/cmd 7.509s`.
 - Validation passed: `go test ./toolx/logging -race -count=1` -> `ok github.com/grafvonb/c8volt/toolx/logging 1.350s`.
-- Validation passed: `go test ./internal/services/processinstance/... -run 'Progress|Cancel|Delete|CreateNProcessInstances' -race -count=1` -> `ok` for `internal/services/processinstance`, `traversal`, `v810`, `v87`, `v88`, `v89`, `waiter`, and `walker`.
 - Validation passed: `go test ./internal/services/processdefinition ./internal/services/ops -run 'DeleteProcessDefinitionResources.*Completion|DeleteProcessDefinitionResourcesStopsOnDeleteHistoryRequestShapeError|PurgeAllProcessDefinitionsForceCleanupDeduplicatesProcessInstanceRoots' -race -count=1` -> `ok` for `internal/services/processdefinition` and `internal/services/ops`.
-- Validation passed: `go test ./internal/services/resource/payload ./internal/services/resource/v87 ./internal/services/resource/v88 ./internal/services/resource/v89 ./internal/services/resource/v810 -run 'Deploy|Visibility|Completion' -race -count=1` -> `ok` for all listed resource packages.
 - Validation passed: `go test ./internal/services/ops/... -run 'Progress|Purge|Repair|Smoke|SlowProcessAnalysis' -race -count=1` -> `ok github.com/grafvonb/c8volt/internal/services/ops 1.448s`.
 - Validation passed: `go test ./cmd ./internal/services/processinstance/waiter ./internal/services/ops ./internal/services/processinstance -run 'RunProcessInstance|OpsAnalyseSlowProcessInstances|ExpectProcessInstance|WaitForProcessInstances|SlowProcessAnalysis|CreateNProcessInstances' -race -count=1` -> `ok` for `cmd`, `internal/services/processinstance/waiter`, `internal/services/ops`, and `internal/services/processinstance`.
 - Validation passed: `go test ./cmd -run 'ProcessInstance|ProcessDefinition|Purge|Retention|Orphan|Incident|Repair|Smoke|Deploy|Run|Analyse|Expect|Progress|Activity' -race -count=1` -> `ok github.com/grafvonb/c8volt/cmd 99.431s`.

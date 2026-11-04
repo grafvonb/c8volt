@@ -120,7 +120,14 @@ func renderOpsRepairMarkdownReport(report ops.RepairAuditReport, cfg *config.Con
 	writeMarkdownReportField(&out, "Target", string(report.FrozenSet.Target))
 	writeMarkdownReportField(&out, "Discovery Mode", string(report.FrozenSet.DiscoveryMode))
 	writeMarkdownReportField(&out, "Incident Filters", report.FrozenSet.IncidentFilters.String())
-	writeMarkdownReportField(&out, "Process Filters", report.FrozenSet.ProcessFilters.String())
+	processFilters := report.FrozenSet.ProcessFilters.String()
+	if report.FrozenSet.ProcessFilters.BusinessId != nil {
+		processFilters = escapeMarkdownOpaqueText(processFilters)
+	}
+	writeMarkdownReportField(&out, "Process Filters", processFilters)
+	if report.FrozenSet.Selection != nil {
+		writeMarkdownReportList(&out, "Selected Process Instances", markdownProcessInstanceItems(report.FrozenSet.Selection.Items))
+	}
 	writeMarkdownReportList(&out, "Input Keys", report.FrozenSet.InputKeys)
 	writeMarkdownReportList(&out, "Incident Keys", report.FrozenSet.IncidentKeys)
 	writeMarkdownReportList(&out, "Process-Instance Keys", report.FrozenSet.ProcessInstanceKeys)

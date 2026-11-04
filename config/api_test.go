@@ -158,3 +158,30 @@ func TestAPIsNormalize_WarnsAndCorrectsCamundaWrongDefaultVersion(t *testing.T) 
 	require.Contains(t, apis.Warnings()[0], `"https://camunda.example.test/v1"`)
 	require.Contains(t, apis.Warnings()[0], `"https://camunda.example.test/v2"`)
 }
+
+// TestAPIsNormalize_PreservesPhysicalTenantRoute verifies API version
+// normalization never strips or reorders the physical routing prefix.
+func TestAPIsNormalize_PreservesPhysicalTenantRoute(t *testing.T) {
+	apis := APIs{
+		Camunda: API{BaseURL: "https://camunda.example.test/physical-tenants/tenant-a"},
+	}
+
+	err := apis.Normalize()
+	require.NoError(t, err)
+	require.Equal(t, "https://camunda.example.test/physical-tenants/tenant-a/v2", apis.Camunda.BaseURL)
+	require.Equal(t, "https://camunda.example.test/physical-tenants/tenant-a/v1", apis.Operate.BaseURL)
+	require.Equal(t, "https://camunda.example.test/physical-tenants/tenant-a/v1", apis.Tasklist.BaseURL)
+}
+
+// TestAPIsNormalize_ReplacesVersionAfterPhysicalTenantRoute covers already
+// versioned physical endpoints without collapsing the route to the host root.
+func TestAPIsNormalize_ReplacesVersionAfterPhysicalTenantRoute(t *testing.T) {
+	apis := APIs{
+		Camunda: API{BaseURL: "https://camunda.example.test/physical-tenants/tenant-a/v1"},
+	}
+
+	err := apis.Normalize()
+	require.NoError(t, err)
+	require.Equal(t, "https://camunda.example.test/physical-tenants/tenant-a/v2", apis.Camunda.BaseURL)
+	require.Len(t, apis.Warnings(), 1)
+}

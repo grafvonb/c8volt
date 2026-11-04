@@ -35,20 +35,20 @@ func TestRootHelp_PreservesHumanTaxonomyAndDiscoveryCommand(t *testing.T) {
 		"embed",
 		"version",
 		"capabilities",
-		"Use capabilities to discover supported commands and automation options",
-		"Camunda 8.7, 8.8, 8.9, and 8.10",
-		"Camunda 8.10 baseline: 8.10.0-alpha4 (prerelease)",
-		"--debug emits redacted request diagnostics at DEBUG",
-		"alongside other configured logs",
-		"--quiet and log-level filtering still",
-		"log format, timestamps, and source settings use the existing logger",
+		"capabilities --json",
+		"Camunda 8.10; 8.9 and 8.8 remain supported",
+		"Set app.camunda_version to match your cluster",
+		"enable debug logging",
+		"--debug",
+		"--quiet",
+		"--log-level",
 		"--automation",
 		"Examples:",
-		"./c8volt config show --template",
-		"./c8volt get cluster topology",
-		"./c8volt --config ./config.yaml --debug get process-definition --latest",
-		"./c8volt capabilities --json",
-		"./c8volt --config ./config.yaml config show --validate",
+		"c8volt config test-connection",
+		"c8volt get process-instance --state active --limit 10",
+		"c8volt ops repair incident --key <incident-key> --dry-run",
+		"capabilities --json",
+		"c8volt config test-connection",
 	)
 	assertHelpOutputOmitsAll(t, output,
 		"__complete",
@@ -70,11 +70,11 @@ func TestRootHelpAndGeneratedMarkdownShareDiscoveryAnchors(t *testing.T) {
 	markdown := renderMarkdownForCommand(t, root)
 
 	for _, anchor := range []string{
-		"Use capabilities to discover supported commands and automation options",
-		"Camunda 8.7, 8.8, 8.9, and 8.10",
-		"Camunda 8.10 baseline: 8.10.0-alpha4 (prerelease)",
-		"--debug emits redacted request diagnostics at DEBUG",
-		"./c8volt --config ./config.yaml --debug get process-definition --latest",
+		"capabilities --json",
+		"Camunda 8.10; 8.9 and 8.8 remain supported",
+		"Set app.camunda_version to match your cluster",
+		"enable debug logging",
+		"c8volt ops repair incident --key <incident-key> --dry-run",
 	} {
 		require.Contains(t, helpOutput, anchor)
 		require.Contains(t, markdown, anchor)
@@ -138,20 +138,8 @@ func TestProcessInstanceHelp_ExposesCompactGlobalFlags(t *testing.T) {
 // all-tenants flag discoverable for tenant-scoped read/search commands without
 // suggesting it bypasses backend authorization.
 func TestAllTenantsHelp_DocumentsRootAndApplicableCommand(t *testing.T) {
-	rootOutput := executeRootForTest(t, "--help")
-	assertHelpOutputContainsAll(t, rootOutput,
-		"--all-tenants",
-		"clear configured tenant filtering and search all tenants visible to the authenticated user; mutually exclusive with --tenant",
-		"./c8volt --all-tenants get process-instance --state active",
-	)
-
-	processInstanceOutput := executeRootForTest(t, "get", "process-instance", "--help")
-	assertHelpOutputContainsAll(t, processInstanceOutput,
-		"--tenant limits search and selector discovery",
-		"Explicit --key and stdin keys use backend authorization without tenant filtering",
-		"--all-tenants",
-		"clear configured tenant filtering and search all tenants visible to the authenticated user; mutually exclusive with --tenant",
-	)
+	assertCommandHelpOutput(t, []string{}, []string{"c8volt v5", "Camunda 8.10", "8.9 and 8.8 remain supported", "--all-tenants", "capabilities"}, nil)
+	assertCommandHelpOutput(t, []string{"get", "process-instance"}, []string{"--with-incidents", "--with-elements", "--has-user-tasks", "--var stringArray", "--var-exists stringArray", "--var-like stringArray", "--total", "--limit"}, nil)
 }
 
 // TestAllTenantsRootFlag_DefaultsFalse verifies the inherited override starts inactive
@@ -340,14 +328,15 @@ func TestTimeoutFlag_RejectsInvalidDuration(t *testing.T) {
 	require.Error(t, root.PersistentFlags().Set("timeout", "eventually"))
 }
 
+// Invalid flag values must fail without contaminating result output with usage.
 func TestFlagParseErrorsDoNotPrintUsage(t *testing.T) {
 	tests := [][]string{
 		{"--config"},
 		{"get", "tenant", "--key"},
-		{"run", "pi", "--vars"},
+		{"run", "pi", "--set-vars"},
 		{"walk", "pi", "--key"},
 		{"delete", "pd", "--key"},
-		{"update", "pi", "--vars-file"},
+		{"update", "pi", "--set-vars-file"},
 	}
 
 	for _, args := range tests {

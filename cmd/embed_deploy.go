@@ -25,12 +25,10 @@ var embedDeployCmd = &cobra.Command{
 	Short: "Deploy bundled BPMN fixtures",
 	Long: "Deploy bundled BPMN fixtures.\n\n" +
 		"Use `--all` for the configured Camunda version, or pass one or more `--file` values from `embed list`. " +
-		"Add --run to start one process instance after deployment. " +
+		"Add --run to start one process instance per deployed process definition. " +
 		"--all-tenants is not supported because deployment requires one destination tenant.",
-	Example: `  ./c8volt embed list
-  ./c8volt embed deploy --all
-  ./c8volt embed deploy --file processdefinitions/<embedded-process>.bpmn
-  ./c8volt embed deploy --all --run`,
+	Example: `  c8volt embed deploy --all
+  c8volt embed deploy --file processdefinitions/C810_SimpleUserTask.bpmn`,
 	Aliases: []string{"dep"},
 	Run: func(cmd *cobra.Command, args []string) {
 		cli, log, cfg, err := NewCli(cmd)
@@ -110,7 +108,7 @@ func init() {
 	fs.BoolVar(&flagEmbedDeployAll, "all", false, "deploy all embedded files for the configured Camunda version")
 	embedDeployCmd.MarkFlagsMutuallyExclusive("file", "all")
 
-	fs.BoolVar(&flagEmbedDeployWithRun, "run", false, "start one process instance after deployment")
+	fs.BoolVar(&flagEmbedDeployWithRun, "run", false, "start one process instance per deployed process definition")
 
 	setAllTenantsSupport(embedDeployCmd, AllTenantsSupportRejectedConcreteDestination)
 }

@@ -66,7 +66,6 @@ Expected result:
 ## Scenario 5: Unsupported Version
 
 ```bash
-./c8volt --camunda-version 8.7 get tenant
 ```
 
 Expected result:

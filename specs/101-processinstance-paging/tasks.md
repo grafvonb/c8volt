@@ -3,7 +3,7 @@
 **Input**: Design documents from `/specs/101-processinstance-paging/`
 **Prerequisites**: plan.md (required), spec.md (required for user stories), research.md, data-model.md, contracts/
 
-**Tests**: Tests are required for this feature because the specification explicitly calls for automated coverage of default paging, shared config defaults, `--count` override behavior, overflow detection, prompt-driven continuation, auto-confirm continuation, exact-boundary non-overflow, cross-page processing, partial completion, warning-stop behavior, and version-specific handling for `8.7` and `8.8`.
+**Tests**: Tests are required for this feature because the specification explicitly calls for automated coverage of default paging, shared config defaults, `--count` override behavior, overflow detection, prompt-driven continuation, auto-confirm continuation, exact-boundary non-overflow, cross-page processing, partial completion, warning-stop behavior, and version-specific handling for `8.8`.
 
 **Organization**: Tasks are grouped by user story to enable independent implementation and testing of each story.
 
@@ -83,19 +83,17 @@
 
 ## Phase 5: User Story 3 - Receive Version-Aware Overflow Handling and Clear Operator Feedback (Priority: P3)
 
-**Goal**: Deliver explicit version-aware overflow behavior for `8.7` and `8.8`, including partial-completion summaries, warning-stop behavior, and consistent operator-facing output across all affected commands.
+**Goal**: Deliver explicit version-aware overflow behavior for `8.8`, including partial-completion summaries, warning-stop behavior, and consistent operator-facing output across all affected commands.
 
-**Independent Test**: Run the affected commands on `8.7` and `8.8` fixtures that exercise exact-boundary pages, pages with additional matches, user-declined continuation, and indeterminate fallback behavior; verify the commands report current-page and cumulative counts, stop cleanly on partial completion, and warn when overflow cannot be proven.
+**Independent Test**: Run the affected commands on `8.8` fixtures that exercise exact-boundary pages, pages with additional matches, user-declined continuation, and indeterminate fallback behavior; verify the commands report current-page and cumulative counts, stop cleanly on partial completion, and warn when overflow cannot be proven.
 
 ### Tests for User Story 3
 
 - [x] T019 [P] [US3] Add command coverage for partial-completion summaries, cumulative counts, and warning-stop behavior in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance_test.go, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cancel_test.go, and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/delete_test.go
-- [x] T020 [P] [US3] Add v8.7 service regression coverage for fallback overflow detection and indeterminate-warning behavior in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v87/service_test.go
 - [x] T021 [P] [US3] Add cross-version paging metadata contract coverage in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/c8volt/process/client_test.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v88/service_test.go
 
 ### Implementation for User Story 3
 
-- [x] T022 [US3] Implement v8.7 fallback overflow detection and indeterminate-warning signaling in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v87/service.go
 - [x] T023 [US3] Implement partial-completion and warning-stop summaries in the shared command paging helpers in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance.go
 - [x] T024 [US3] Align cross-command paging output wording and continuation-state reporting in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance.go, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cancel_processinstance.go, and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/delete_processinstance.go
 
@@ -161,7 +159,6 @@ Task: "Add v8.8 service coverage for native page metadata and exact-boundary non
 ```bash
 # Prepare User Story 3 regression coverage in parallel:
 Task: "Add command coverage for partial-completion summaries, cumulative counts, and warning-stop behavior in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance_test.go, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cancel_test.go, and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/delete_test.go"
-Task: "Add v8.7 service regression coverage for fallback overflow detection and indeterminate-warning behavior in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v87/service_test.go"
 Task: "Add cross-version paging metadata contract coverage in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/c8volt/process/client_test.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v88/service_test.go"
 ```
 

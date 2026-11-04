@@ -10,15 +10,10 @@ Inspect or search jobs
 
 ### Synopsis
 
-Inspect or search Camunda jobs.
+Inspect a job by key or search by state, type, process instance, worker, or retries.
 
-Use --key for a known job. Otherwise search by state, type, process instance, element instance, BPMN element, worker, retries, job kind, or listener event type.
-
-Search and --total use the configured tenant; --tenant overrides it. An empty --tenant or --all-tenants searches all accessible tenants. Explicit --key lookup uses backend authorization without the discovery tenant filter.
-
---batch-size controls each discovery request; --limit caps jobs across all pages; --total counts matching jobs. Discovery follows raw page continuation and reports an incomplete-search error if pagination cannot establish completion.
-
-Requires Camunda 8.8 or newer.
+Use --retries 0 to find jobs with no retries remaining. Combine filters with AND.
+Use --limit to bound results or --total to count matches.
 
 ```
 c8volt get job [flags]
@@ -27,10 +22,9 @@ c8volt get job [flags]
 ### Examples
 
 ```
-  ./c8volt get job --key <job-key>
-  ./c8volt get job --state failed --batch-size 10 --limit 50
-  ./c8volt get job --state failed --total
-  ./c8volt --json get job --key <job-key>
+  c8volt get job --key <job-key>
+  c8volt get job --state failed --retries 0 --limit 10
+  c8volt get job --pi-key <process-instance-key> --json
 ```
 
 ### Options
@@ -56,20 +50,22 @@ c8volt get job [flags]
 ### Options inherited from parent commands
 
 ```
-      --all-tenants        clear configured tenant filtering and search all tenants visible to the authenticated user; mutually exclusive with --tenant
-  -y, --auto-confirm       auto-confirm prompts for non-interactive use
-      --automation         enable non-interactive mode for commands that explicitly support it
-      --config string      path to config file
-      --debug              enable debug logging
-  -j, --json               output as JSON (where applicable)
-      --keys-only          output keys only (where applicable)
-      --log-level string   log level (debug, info, warn, error) (default "info")
-      --no-indicator       disable transient terminal activity indicators
-      --profile string     config active profile name to use (e.g. dev, prod)
-  -q, --quiet              suppress output except errors
-      --tenant string      tenant ID for discovery/search, selection, create, deploy, and run flows; explicit empty values can clear configured discovery filters, and explicit keys/IDs remain backend-authorized
-      --timeout duration   HTTP request timeout (default 30s)
-  -v, --verbose            show additional output
+      --all-tenants          search all accessible tenants; cannot combine with --tenant
+  -y, --auto-confirm         auto-confirm prompts for non-interactive use
+      --automation           enable non-interactive mode for commands that explicitly support it
+      --config string        path to config file
+      --debug                enable debug logging
+  -j, --json                 output as JSON (where applicable)
+      --keys-only            output keys only (where applicable)
+      --log-level string     log level (debug, info, warn, error) (default "info")
+      --no-indicator         disable transient terminal activity indicators
+      --no-version-check     skip the automatic advisory gateway version check
+      --profile string       config active profile name to use (e.g. dev, prod)
+  -q, --quiet                suppress output except errors
+      --request-rate float   maximum shared request starts per second (fractions allowed; 0 disables pacing)
+      --tenant string        tenant for discovery and creation; explicit keys use backend authorization
+      --timeout duration     HTTP request timeout (default 30s)
+  -v, --verbose              show additional output
 ```
 
 ### SEE ALSO

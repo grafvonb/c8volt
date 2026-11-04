@@ -356,6 +356,10 @@ func TestCancelProcessInstanceDryRun_SearchTenantScopedCandidates(t *testing.T) 
 	var fetched testx.SafeSlice[string]
 
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		switch {
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
@@ -637,9 +641,14 @@ func TestCancelProcessInstanceSearchScaffold_UsesTempConfigAndCapturesSearchRequ
 	require.NotContains(t, output, "no process instance keys provided or found to cancel")
 }
 
+// TestCancelProcessInstanceBpmnSelectorMissingFailsBeforeSearch preserves the existing command contract with advisory-aware fixtures.
 func TestCancelProcessInstanceBpmnSelectorMissingFailsBeforeSearch(t *testing.T) {
 	var requests []string
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		requests = append(requests, r.Method+" "+r.URL.Path)
 		require.Equal(t, http.MethodPost, r.Method)
 		switch r.URL.Path {
@@ -664,6 +673,7 @@ func TestCancelProcessInstanceBpmnSelectorMissingFailsBeforeSearch(t *testing.T)
 	require.NotContains(t, output, "found: 0")
 }
 
+// TestCancelProcessInstanceBpmnSelectorMissingMachineModesDoNotPrompt preserves the existing command contract with advisory-aware fixtures.
 func TestCancelProcessInstanceBpmnSelectorMissingMachineModesDoNotPrompt(t *testing.T) {
 	tests := []struct {
 		name   string
@@ -677,6 +687,10 @@ func TestCancelProcessInstanceBpmnSelectorMissingMachineModesDoNotPrompt(t *test
 		t.Run(tt.name, func(t *testing.T) {
 			var requests []string
 			srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if serveVersionCheckTopology(w, r, "8.8") {
+					return
+				}
+
 				requests = append(requests, r.Method+" "+r.URL.Path)
 				require.Equal(t, http.MethodPost, r.Method)
 				switch r.URL.Path {
@@ -702,9 +716,14 @@ func TestCancelProcessInstanceBpmnSelectorMissingMachineModesDoNotPrompt(t *test
 	}
 }
 
+// TestCancelProcessInstanceBpmnSelectorVisiblePreservesSearchNoOp preserves the existing command contract with advisory-aware fixtures.
 func TestCancelProcessInstanceBpmnSelectorVisiblePreservesSearchNoOp(t *testing.T) {
 	var requests []string
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		requests = append(requests, r.Method+" "+r.URL.Path)
 		require.Equal(t, http.MethodPost, r.Method)
 		w.Header().Set("Content-Type", "application/json")
@@ -729,7 +748,7 @@ func TestCancelProcessInstanceBpmnSelectorVisiblePreservesSearchNoOp(t *testing.
 	)
 
 	require.Equal(t, []string{"POST /v2/process-definitions/search", "POST /v2/process-instances/search"}, requests)
-	require.Equal(t, "found: 0\n", output)
+	require.Regexp(t, `^\d{2}:\d{2}:\d{2}\.\d{3} INFO found: 0\n$`, output)
 }
 
 // TestCancelProcessInstanceEmptySelectorOutput verifies empty selector cancels
@@ -792,7 +811,7 @@ func TestCancelProcessInstanceEmptySelectorOutput(t *testing.T) {
 					require.Empty(t, stderr)
 					return
 				}
-				require.Equal(t, "found: 0\n", stdout)
+				require.Empty(t, stdout)
 				if tt.verbose {
 					require.NotContains(t, stderr, "api #", "verbose must not enable HTTP diagnostics")
 					normalized := regexp.MustCompile(`(?m)^\d{2}:\d{2}:\d{2}\.\d{3} (INFO|WARN) `).ReplaceAllString(withoutAPIDiagnosticLines(stderr), `$1 `)
@@ -806,10 +825,10 @@ func TestCancelProcessInstanceEmptySelectorOutput(t *testing.T) {
 					if start := strings.Index(normalized, "INFO selection scope:"); start >= 0 && !tt.dryRun {
 						normalized = normalized[start:]
 					}
-					require.Equal(t, want, normalized)
+					require.Equal(t, want+"INFO found: 0\n", normalized)
 					return
 				}
-				require.Empty(t, stderr)
+				require.Equal(t, [][2]string{{"INFO", "found: 0"}}, bulkCompletionDiagnosticRecords(t, stderr, "plain-time"))
 				return
 			}
 			requireEmptyProcessInstanceSelectorOutput(t, stdout, stderr, "cancel process-instance", "cancel", tt.dryRun, tt.mode)
@@ -887,6 +906,10 @@ func TestCancelProcessInstanceEmptySelectorPreservesDiscoveryRequests(t *testing
 			var paths []string
 			var bodies []string
 			srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if serveVersionCheckTopology(w, r, "8.8") {
+					return
+				}
+
 				paths = append(paths, r.Method+" "+r.URL.Path)
 				body, err := io.ReadAll(r.Body)
 				require.NoError(t, err)
@@ -913,8 +936,8 @@ func TestCancelProcessInstanceEmptySelectorPreservesDiscoveryRequests(t *testing
 
 			require.Equal(t, tt.wantPaths, paths)
 			tt.assert(t, bodies)
-			require.Equal(t, "found: 0\n", stdout)
-			require.Empty(t, stderr)
+			require.Empty(t, stdout)
+			require.Equal(t, [][2]string{{"INFO", "found: 0"}}, bulkCompletionDiagnosticRecords(t, stderr, "plain-time"))
 		})
 	}
 }
@@ -925,6 +948,10 @@ func TestCancelProcessInstanceCommand_SearchSelectionUsesDateFiltersAndCancelsMa
 	var cancelled testx.SafeSlice[string]
 
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		switch {
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-definitions/search":
 			writeVisibleProcessDefinitionSearchResponse(w)
@@ -984,6 +1011,10 @@ func TestCancelProcessInstanceCommand_SearchSelectionUsesRelativeDayFiltersAndCa
 	var cancelled testx.SafeSlice[string]
 
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		switch {
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-definitions/search":
 			writeVisibleProcessDefinitionSearchResponse(w)
@@ -1077,6 +1108,10 @@ func TestCancelProcessInstanceCommand_SearchPagingPromptFlow(t *testing.T) {
 	var searchMu sync.Mutex
 
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		switch {
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
 			body, err := io.ReadAll(r.Body)
@@ -1163,68 +1198,6 @@ func TestCancelProcessInstanceCommand_SearchPagingPromptFlow(t *testing.T) {
 	require.NotContains(t, output, "next step: auto-continue")
 }
 
-// TestCancelProcessInstanceCommand_SearchPagingPromptFlowV87IncludesDependencyTotals verifies v8.7 paging includes dependency totals.
-func TestCancelProcessInstanceCommand_SearchPagingPromptFlowV87IncludesDependencyTotals(t *testing.T) {
-	var requests testx.SafeSlice[string]
-	var cancelled testx.SafeSlice[string]
-	searchPage := 0
-	var searchMu sync.Mutex
-
-	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch {
-		case r.Method == http.MethodPost && r.URL.Path == "/v1/process-instances/search":
-			body, err := io.ReadAll(r.Body)
-			require.NoError(t, err)
-			requests.Append(string(body))
-
-			searchBody := decodeCapturedPISearchRequest(t, string(body))
-			filter, _ := searchBody["filter"].(map[string]any)
-			if filter != nil {
-				if parentKey, ok := filter["parentKey"]; ok && parentKey != nil {
-					parent := int64(parentKey.(float64))
-					if parent != 701 && parent != 702 {
-						w.Header().Set("Content-Type", "application/json")
-						_, _ = w.Write([]byte(`{"items":[]}`))
-						return
-					}
-					w.Header().Set("Content-Type", "application/json")
-					_, _ = w.Write([]byte(fmt.Sprintf(`{"items":[{"key":%d,"parentKey":%d,"bpmnProcessId":"demo","processVersion":3,"state":"ACTIVE","startDate":"2026-03-23T18:00:00Z","tenantId":"tenant"}]}`, parent+1000, parent)))
-					return
-				}
-			}
-
-			w.Header().Set("Content-Type", "application/json")
-			searchMu.Lock()
-			defer searchMu.Unlock()
-			switch searchPage {
-			case 0:
-				_, _ = w.Write([]byte(`{"items":[{"key":701,"bpmnProcessId":"demo","processVersion":3,"state":"ACTIVE","startDate":"2026-03-23T18:00:00Z","tenantId":"tenant"},{"key":702,"bpmnProcessId":"demo","processVersion":3,"state":"ACTIVE","startDate":"2026-03-23T18:00:00Z","tenantId":"tenant"}],"total":3}`))
-			case 1:
-				_, _ = w.Write([]byte(`{"items":[{"key":701,"bpmnProcessId":"demo","processVersion":3,"state":"ACTIVE","startDate":"2026-03-23T18:00:00Z","tenantId":"tenant"},{"key":702,"bpmnProcessId":"demo","processVersion":3,"state":"ACTIVE","startDate":"2026-03-23T18:00:00Z","tenantId":"tenant"},{"key":703,"bpmnProcessId":"demo","processVersion":3,"state":"ACTIVE","startDate":"2026-03-23T18:00:00Z","tenantId":"tenant"}],"total":3}`))
-			default:
-				t.Fatalf("unexpected top-level search request %d", searchPage)
-			}
-			searchPage++
-		case r.Method == http.MethodPost && (r.URL.Path == "/v2/process-instances/701/cancellation" || r.URL.Path == "/v2/process-instances/702/cancellation" || r.URL.Path == "/v2/process-instances/703/cancellation"):
-			cancelled.Append(r.URL.Path)
-			w.WriteHeader(http.StatusAccepted)
-		default:
-			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
-		}
-	}))
-	t.Cleanup(srv.Close)
-
-	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.7")
-	output, code := executeCancelProcessInstanceFailureHelper(t, "TestCancelProcessInstanceCommand_SearchPagingPromptFlowV87IncludesDependencyTotalsHelper", cfgPath)
-
-	sizes := decodeCapturedTopLevelPISearchSizes(t, requests.Snapshot())
-	require.Equal(t, exitcode.Error, code)
-	require.Equal(t, []float64{2}, sizes)
-	require.Empty(t, cancelled.Snapshot())
-	require.Contains(t, output, "unsupported capability")
-	require.Contains(t, output, "process-instance direct lookup by key is not tenant-safe in Camunda 8.7")
-}
-
 // TestCancelProcessInstancePage_PrintsOrphanWarningForPagedImpactCheck verifies paged impact-check warnings are printed.
 func TestCancelProcessInstancePage_PrintsOrphanWarningForPagedImpactCheck(t *testing.T) {
 	resetProcessInstanceCommandGlobals()
@@ -1276,6 +1249,10 @@ func TestCancelProcessInstanceCommand_SearchPagingAutoConfirmFlow(t *testing.T) 
 	searchPage := 0
 
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		switch {
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
 			body, err := io.ReadAll(r.Body)
@@ -1364,6 +1341,10 @@ func TestCancelProcessInstanceCommand_SearchPagingLimitFlow(t *testing.T) {
 	searchPage := 0
 
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		switch {
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
 			body, err := io.ReadAll(r.Body)
@@ -1452,6 +1433,10 @@ func TestCancelProcessInstanceCommand_SearchPagingBatchSizeLimitFlow(t *testing.
 	var cancelled testx.SafeSlice[string]
 
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		switch {
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
 			body, err := io.ReadAll(r.Body)
@@ -1531,6 +1516,10 @@ func TestCancelProcessInstanceCommand_SearchPagingAutomationFlow(t *testing.T) {
 	searchPage := 0
 
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		switch {
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
 			body, err := io.ReadAll(r.Body)
@@ -1618,6 +1607,10 @@ func TestCancelProcessInstanceCommand_SearchPagingPartialCompletionSummary(t *te
 	var cancelled testx.SafeSlice[string]
 
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		switch {
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
 			body, err := io.ReadAll(r.Body)
@@ -1695,6 +1688,10 @@ func TestCancelProcessInstanceCommand_SearchPagingWarningStopSummary(t *testing.
 	var cancelled testx.SafeSlice[string]
 
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		switch {
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
 			body, err := io.ReadAll(r.Body)
@@ -1792,28 +1789,6 @@ func TestCancelProcessInstanceCommand_RejectsInvalidDateRange(t *testing.T) {
 	require.Contains(t, output, `invalid range for --end-date-after and --end-date-before: "2026-02-01" is later than "2026-01-31"`)
 }
 
-// Verifies process-instance date filters are rejected for Camunda 8.7 where the capability is unsupported.
-func TestCancelProcessInstanceCommand_RejectsDateFiltersOnV87(t *testing.T) {
-	cfgPath := writeTestConfigForVersion(t, "http://127.0.0.1:1", "8.7")
-
-	output, code := executeCancelProcessInstanceFailureHelper(t, "TestCancelProcessInstanceCommand_RejectsDateFiltersOnV87Helper", cfgPath)
-
-	require.Equal(t, exitcode.Error, code)
-	require.Contains(t, output, "unsupported capability")
-	require.Contains(t, output, "process-instance date filters require Camunda 8.8")
-}
-
-// Verifies relative-day process-instance filters are also rejected for Camunda 8.7.
-func TestCancelProcessInstanceCommand_RejectsRelativeDayFiltersOnV87(t *testing.T) {
-	cfgPath := writeTestConfigForVersion(t, "http://127.0.0.1:1", "8.7")
-
-	output, code := executeCancelProcessInstanceFailureHelper(t, "TestCancelProcessInstanceCommand_RejectsRelativeDayFiltersOnV87Helper", cfgPath)
-
-	require.Equal(t, exitcode.Error, code)
-	require.Contains(t, output, "unsupported capability")
-	require.Contains(t, output, "process-instance date filters require Camunda 8.8")
-}
-
 // Helper-process entrypoint for the search scaffold failure test.
 func TestCancelProcessInstanceSearchScaffoldHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
@@ -1863,20 +1838,6 @@ func TestCancelProcessInstanceBpmnSelectorMissingAutomationHelper(t *testing.T) 
 	prevArgs := os.Args
 	t.Cleanup(func() { os.Args = prevArgs })
 	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "--automation", "cancel", "process-instance", "--state", "active", "--bpmn-process-id", "missing-process"}
-
-	Execute()
-}
-
-// TestCancelProcessInstanceCommand_SearchPagingPromptFlowV87IncludesDependencyTotalsHelper is the helper-process entrypoint for v8.7 paging.
-func TestCancelProcessInstanceCommand_SearchPagingPromptFlowV87IncludesDependencyTotalsHelper(t *testing.T) {
-	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
-		return
-	}
-	applyRelativeDayNowOverrideFromEnv(t)
-
-	prevArgs := os.Args
-	t.Cleanup(func() { os.Args = prevArgs })
-	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "--tenant", "tenant", "--verbose", "cancel", "process-instance", "--state", "active", "--no-wait", "--batch-size", "2"}
 
 	Execute()
 }
@@ -1975,34 +1936,6 @@ func TestCancelProcessInstanceCommand_RejectsInvalidDateRangeHelper(t *testing.T
 	prevArgs := os.Args
 	t.Cleanup(func() { os.Args = prevArgs })
 	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "cancel", "process-instance", "--end-date-after", "2026-02-01", "--end-date-before", "2026-01-31"}
-
-	Execute()
-}
-
-// Helper-process entrypoint for version capability validation on Camunda 8.7.
-func TestCancelProcessInstanceCommand_RejectsDateFiltersOnV87Helper(t *testing.T) {
-	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
-		return
-	}
-	applyRelativeDayNowOverrideFromEnv(t)
-
-	prevArgs := os.Args
-	t.Cleanup(func() { os.Args = prevArgs })
-	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "cancel", "process-instance", "--state", "active", "--bpmn-process-id", "order-process", "--start-date-after", "2026-01-01"}
-
-	Execute()
-}
-
-// Helper-process entrypoint for relative-day version capability validation on Camunda 8.7.
-func TestCancelProcessInstanceCommand_RejectsRelativeDayFiltersOnV87Helper(t *testing.T) {
-	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
-		return
-	}
-	applyRelativeDayNowOverrideFromEnv(t)
-
-	prevArgs := os.Args
-	t.Cleanup(func() { os.Args = prevArgs })
-	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "cancel", "process-instance", "--state", "active", "--bpmn-process-id", "order-process", "--start-date-newer-days", "30"}
 
 	Execute()
 }

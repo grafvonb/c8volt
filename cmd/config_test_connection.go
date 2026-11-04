@@ -15,14 +15,12 @@ import (
 var configTestConnectionCmd = &cobra.Command{
 	Use:   "test-connection",
 	Short: "Test configured Camunda connection",
-	Long: `Validate configuration and test Camunda reachability.
+	Long: `Validate configuration and test the connection to Camunda.
 
-Loads the effective configuration, validates it locally, and retrieves cluster topology. Compatibility checks compare the configured and observed major/minor release lines; patch and prerelease differences on the same line are accepted. A version mismatch or unknown gateway version does not fail an otherwise successful connection test.`,
-	Example: `  ./c8volt --config ./config.yaml config test-connection
-  ./c8volt --config ./config.yaml config test-connection --json
-  ./c8volt --profile <profile-name> config test-connection
-  ./c8volt --tenant tenant-a config test-connection
-  ./c8volt --tenant "" config test-connection --json`,
+Report the gateway version and warn if it differs from the configured release
+line. A version warning does not fail an otherwise successful connection test.`,
+	Example: `  c8volt config test-connection
+  c8volt --profile production config test-connection`,
 	Run: func(cmd *cobra.Command, args []string) {
 		log, _ := logging.FromContext(cmd.Context())
 		cfg, err := config.FromContext(cmd.Context())
@@ -52,13 +50,15 @@ Loads the effective configuration, validates it locally, and retrieves cluster t
 		}
 		topology, err := cli.GetClusterTopology(cmd.Context())
 		if err != nil {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("config test-connection: %w", err))
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("config test-connection: %w", err), "config test-connection: "+boundedCommandFailureReason(err))
 		}
 
-		log.Info(fmt.Sprintf("camunda connection ok; base URL %s", cfg.APIs.Camunda.BaseURL))
+		log.Info("camunda connection ok")
 		warnings := camundaReleaseLineCompatibilityWarnings(string(cfg.App.CamundaVersion), topology.GatewayVersion)
-		for _, warning := range warnings {
-			log.Warn(warning)
+		if !versionCheckWarned(cmd.Context()) {
+			for _, warning := range camundaHumanCompatibilityWarnings(string(cfg.App.CamundaVersion), topology.GatewayVersion) {
+				log.Warn(warning)
+			}
 		}
 		if pickMode() == RenderModeJSON {
 			if err := renderJSONPayload(cmd, RenderModeJSON, newConfigTestConnectionView(cfg, configSource, topology, warnings, tenantCtx)); err != nil {

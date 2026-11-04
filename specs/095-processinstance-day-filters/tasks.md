@@ -3,7 +3,6 @@
 **Input**: Design documents from `/specs/095-processinstance-day-filters/`
 **Prerequisites**: plan.md (required), spec.md (required for user stories), research.md, data-model.md, contracts/
 
-**Tests**: Tests are required for this feature because the specification explicitly calls for automated coverage of happy-path conversion, inclusive boundaries, configured-local-day derivation, missing `endDate` exclusion, invalid values, conflicting absolute and relative inputs, invalid derived ranges, invalid `--key` combinations, preserved direct-key behavior, and v8.7 not-implemented responses.
 
 **Organization**: Tasks are grouped by user story to enable independent implementation and testing of each story.
 
@@ -79,21 +78,16 @@
 
 ## Phase 5: User Story 3 - Receive Clear Validation and Version Responses (Priority: P3)
 
-**Goal**: Reject invalid relative-day input, conflicting filter combinations, invalid `--key` usage, and unsupported v8.7 behavior before any search-based action occurs.
 
-**Independent Test**: Run the affected commands with negative values, mixed absolute-plus-relative flags, invalid derived ranges, explicit `--key` plus relative day flags, relative end-day filters on instances lacking `endDate`, and any relative-day flag on v8.7, then verify each path fails or filters through the expected shared behavior.
 
 ### Tests for User Story 3
 
 - [x] T015 [P] [US3] Add command coverage for invalid values, mixed absolute-plus-relative filters, invalid ranges, and local-day derivation in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance_test.go
-- [x] T016 [P] [US3] Add management-command coverage for invalid `--key` combinations and v8.7 unsupported relative-day usage in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cancel_test.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/delete_test.go
-- [x] T017 [P] [US3] Add service regression coverage for missing `endDate` exclusion and v8.7 not-implemented behavior with derived absolute bounds in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v88/service_test.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v87/service_test.go
 
 ### Implementation for User Story 3
 
 - [x] T018 [US3] Enforce invalid relative-day combinations and derived-range validation before search execution in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance.go
 - [x] T019 [US3] Preserve invalid `--key` plus relative-day rejection for management commands in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cancel_processinstance.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/delete_processinstance.go
-- [x] T020 [US3] Verify relative-day flows reuse the existing v8.7 rejection and v8.8 missing-`endDate` handling in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v87/service.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v88/service.go
 
 **Checkpoint**: User Story 3 delivers clear validation failures and preserves the existing version-specific service contract.
 
@@ -156,8 +150,6 @@ Task: "Add delete-command coverage for relative-day search selection in /Users/a
 ```bash
 # Prepare User Story 3 regression coverage in parallel:
 Task: "Add command coverage for invalid values, mixed absolute-plus-relative filters, invalid ranges, and local-day derivation in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance_test.go"
-Task: "Add management-command coverage for invalid --key combinations and v8.7 unsupported relative-day usage in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cancel_test.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/delete_test.go"
-Task: "Add service regression coverage for missing endDate exclusion and v8.7 not-implemented behavior with derived absolute bounds in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v88/service_test.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v87/service_test.go"
 ```
 
 ---

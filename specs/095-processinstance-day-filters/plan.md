@@ -5,18 +5,16 @@
 
 ## Summary
 
-Add four relative day-based date shortcut flags to `c8volt get process-instance`, `c8volt cancel process-instance`, and `c8volt delete process-instance` by reusing the existing absolute date-filter pipeline from issues `#90` and `#93`. The implementation should keep validation in the current command-layer search helpers, derive absolute date bounds using the configured Camunda environment's local day, preserve direct `--key` workflows by rejecting mixed usage, rely on existing v8.8 native filtering and v8.7 not-implemented behavior, and update tests plus CLI documentation in the same change.
 
 ## Technical Context
 
 **Language/Version**: Go 1.25.3  
 **Primary Dependencies**: standard library, `github.com/spf13/cobra`, `github.com/spf13/viper`, `github.com/stretchr/testify`, existing process-instance command helpers in `cmd/`, shared facade/domain filters in `c8volt/process` and `internal/domain`, generated Camunda clients under `internal/clients/camunda/...`, existing versioned services under `internal/services/processinstance/...`  
 **Storage**: N/A  
-**Testing**: `go test`, `make test`, command tests under `cmd/`, shared facade regression tests in `c8volt/process`, versioned service tests under `internal/services/processinstance/v87` and `internal/services/processinstance/v88`  
-**Target Platform**: CLI for local and CI use against Camunda 8.7 and 8.8 environments  
+**Testing**: `go test`, `make test`, command tests under `cmd/`, shared facade regression tests in `c8volt/process`, versioned service tests under `internal/services/processinstance/v88`
+**Target Platform**: CLI for local and CI use against Camunda 8.8 environments
 **Project Type**: CLI  
 **Performance Goals**: Preserve existing server-side process-instance filtering behavior and avoid client-side overfetching while supporting relative-day convenience inputs across result sets up to the current search limit  
-**Constraints**: Reuse the issue `#90` and `#93` absolute date-filter semantics rather than adding a parallel filtering path, derive relative day bounds using the configured Camunda environment's local day, reject explicit `--key` combined with relative day flags, preserve current command behavior when new flags are absent, keep v8.7 behavior as not implemented through the shared error model, update `README.md` and regenerate `docs/cli/` for the new user-visible flags  
 **Scale/Scope**: Three existing commands (`get process-instance`, `cancel process-instance`, `delete process-instance`), shared search-helper validation and filter population in `cmd/get_processinstance.go`, existing shared filter models and versioned process-instance services, targeted command/facade/service tests, and user-facing CLI documentation
 
 ## Constitution Check
@@ -66,10 +64,6 @@ internal/domain/
 
 internal/services/processinstance/
 ├── api.go
-├── v87/
-│   ├── contract.go
-│   ├── service.go
-│   └── service_test.go
 └── v88/
     ├── contract.go
     ├── service.go
@@ -82,11 +76,10 @@ docs/cli/
 └── c8volt_delete_process-instance.md
 ```
 
-**Structure Decision**: Keep the feature inside the repository’s existing command search-helper seam. `cmd/get_processinstance.go` remains the canonical home for shared process-instance search flag parsing, search-filter detection, and validation helpers already used by `cancel_processinstance.go` and `delete_processinstance.go`. Shared filter shape stays in `c8volt/process/model.go` and `internal/domain/processinstance.go`, while version-specific date behavior stays in `internal/services/processinstance/v87/service.go` and `internal/services/processinstance/v88/service.go`. User-visible documentation changes stay in `README.md` plus regenerated files under `docs/cli/`.
+**Structure Decision**: Keep the feature inside the repository’s existing command search-helper seam. `cmd/get_processinstance.go` remains the canonical home for shared process-instance search flag parsing, search-filter detection, and validation helpers already used by `cancel_processinstance.go` and `delete_processinstance.go`. Shared filter shape stays in `c8volt/process/model.go` and `internal/domain/processinstance.go`, while version-specific date behavior stays in `internal/services/processinstance/v88/service.go`. User-visible documentation changes stay in `README.md` plus regenerated files under `docs/cli/`.
 
 ## Phase 0: Research
 
-- Confirm that the existing absolute date-filter pipeline from issue `#90` already provides the right shared-model, v8.8 mapping, v8.7 rejection, and missing-`endDate` behavior so the new feature can be implemented as an input-conversion layer rather than a second filter stack.
 - Confirm the safest repository-native place to derive relative day inputs into absolute date bounds while preserving existing `validatePISearchFlags()`, `hasPISearchFilterFlags()`, and `populatePISearchFilterOpts()` behavior used across `get`, `cancel`, and `delete`.
 - Confirm the configured-environment local-day rule and explicit `--key` incompatibility should remain shared across all three commands.
 - Confirm documentation and test obligations for new relative day flags on already-documented commands.
@@ -96,7 +89,6 @@ docs/cli/
 - Add shared relative-day flag variables and command registration for `--start-date-newer-days`, `--start-date-older-days`, `--end-date-newer-days`, and `--end-date-older-days` across `get process-instance`, `cancel process-instance`, and `delete process-instance`.
 - Reuse the existing command-layer validation seam to parse non-negative integer day values, reject mixed absolute-plus-relative filters for the same field, reject invalid derived ranges, and reject explicit `--key` combined with relative day filters before any search-based action occurs.
 - Derive relative day shortcuts into the existing absolute date bound fields used by `process.ProcessInstanceFilter` so downstream facade and service layers continue to operate on the canonical absolute filter model.
-- Keep v8.8 behavior inside the existing native process-instance search mapping and keep v8.7 behavior inside the existing not-implemented service path; add lower-level tests only where the new derived inputs change observable request construction.
 - Update README examples and regenerate CLI docs so the three command surfaces advertise the new shortcut flags consistently with the shipped command help.
 
 ## Phase 2: Task Planning Approach

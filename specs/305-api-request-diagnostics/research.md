@@ -8,7 +8,7 @@ All design questions identified during planning are resolved below. Research use
 
 **Decision:** Implement the observer in `internal/services/httpc`, below existing retry and logging wrappers: `AuthTransport → ReadRetryTransport → LogTransport → DiagnosticsTransport → base transport`. Disabled diagnostics leave the existing transport chain unchanged. A single invocation-owned collector is shared by its API and authentication clients.
 
-**Rationale:** `httpc.New` in `internal/services/httpc/service.go` creates the shared client; `cmd/root_services.go` installs it before authenticator initialization. `cmd/cmd_cli.go` passes that client through `c8volt.WithHTTPClient` to all versioned service factories. This covers Camunda 8.7–8.10 and the existing Operate/Tasklist clients without generated code or individual command instrumentation.
+**Rationale:** `httpc.New` in `internal/services/httpc/service.go` creates the shared client; `cmd/root_services.go` installs it before authenticator initialization. `cmd/cmd_cli.go` passes that client through `c8volt.WithHTTPClient` to all versioned service factories. This covers Camunda 8.8–8.10 and the existing Operate/Tasklist clients without generated code or individual command instrumentation.
 
 **Alternatives considered:** Command/facade observation duplicates logic and hides retries; an observer outside `ReadRetryTransport` collapses attempts; changes to generated clients are unnecessary and violate the source constraints.
 

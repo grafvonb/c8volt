@@ -19,7 +19,6 @@
 
 - [x] T001 Inventory tenant-aware command families and shared flow seams in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance.go, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/walk.go, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cancel.go, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/delete.go, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/run.go, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/109-tenant-handling-audit/research.md, and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/109-tenant-handling-audit/quickstart.md
 - [x] T002 [P] Confirm version support and current process-instance factory boundaries in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/toolx/version.go, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/factory.go, and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/factory_test.go
-- [x] T003 [P] Inspect existing tenant-related regression seams in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v87/service_test.go, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v88/service_test.go, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/walker/walker_test.go, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/waiter/waiter_test.go, and tenant-aware command tests under /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/
 
 ---
 
@@ -47,16 +46,13 @@
 ### Tests for User Story 1
 
 - [x] T008 [P] [US1] Add `v88` service tests for tenant-safe direct lookup and supported wrong-tenant `not found` behavior in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v88/service_test.go
-- [x] T009 [P] [US1] Add `v87` service tests for supported direct-lookup cases and explicit unsupported outcomes where tenant-safe retrieval is impossible in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v87/service_test.go
 - [x] T010 [P] [US1] Add command regression tests for direct process-instance lookup with explicit `--tenant`, environment-derived tenant, profile-derived tenant, and base-config-derived tenant in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance_test.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_test.go
 
 ### Implementation for User Story 1
 
 - [x] T011 [US1] Implement tenant-safe direct lookup and state lookup behavior in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v88/service.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v88/contract.go
-- [x] T012 [US1] Audit and narrow `v87` direct lookup behavior to supported tenant-safe cases plus exact unsupported outcomes in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v87/service.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v87/contract.go
 - [x] T013 [US1] Normalize facade and command handling for tenant-safe `not found` and unsupported outcomes in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/c8volt/process/client.go, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance.go, and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/root.go
 
-**Checkpoint**: User Story 1 is independently testable: direct tenant-aware lookups are safe, supported wrong-tenant requests resolve as `not found`, and unsafe `v87` segments fail explicitly.
 
 ---
 
@@ -69,16 +65,12 @@
 ### Tests for User Story 2
 
 - [x] T014 [P] [US2] Add walker and waiter regression tests for tenant-safe ancestry, descendants, family, and state polling behavior in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/walker/walker_test.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/waiter/waiter_test.go
-- [x] T015 [P] [US2] Add versioned service tests for mixed search plus direct-get flows, cancel preflight, and delete preflight behavior in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v87/service_test.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v88/service_test.go
 - [x] T016 [P] [US2] Add command-family regression tests for `walk`, `cancel`, `delete`, and `run` tenant propagation across flag/env/profile/base-config sources in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/walk_test.go, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cancel_test.go, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/delete_test.go, and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/run_test.go
 
 ### Implementation for User Story 2
 
-- [x] T017 [US2] Implement tenant-safe traversal and direct-child lookup behavior in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/walker/walker.go, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v88/service.go, and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v87/service.go
-- [x] T018 [US2] Implement tenant-aware wait, cancel, and delete preflight handling with narrowly scoped unsupported outcomes in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/waiter/waiter.go, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v88/service.go, and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v87/service.go
 - [x] T019 [US2] Align tenant-aware command flows with the service-layer contract in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/walk.go, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cancel.go, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/delete.go, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/run.go, and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/expect.go
 
-**Checkpoint**: User Story 2 is independently testable: mixed flows preserve tenant boundaries end to end, and unsupported `v87` behavior is constrained to exact unsafe operations.
 
 ---
 
@@ -86,12 +78,10 @@
 
 **Goal**: Make the supported-version matrix, tenant contract, and `8.9` planning boundary explicit in tests, docs, and planning artifacts so future work stays aligned.
 
-**Independent Test**: Review service factory behavior, versioned tests, and operator-facing guidance, then verify maintainers can identify the supported `v87`/`v88` contract, exact unsupported `v87` segments, and the current no-runtime-support status for `8.9`.
 
 ### Tests for User Story 3
 
 - [x] T020 [P] [US3] Add or update factory and version-matrix tests for supported runtime versions and unsupported `8.9` process-instance service behavior in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/factory_test.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/config/app_test.go
-- [x] T021 [P] [US3] Add regression coverage that proves unsupported `v87` outcomes are scoped to exact unsafe segments and do not block safe command-family behavior in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v87/service_test.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/*test.go
 
 ### Implementation for User Story 3
 
@@ -153,7 +143,6 @@
 ```bash
 # Prepare User Story 1 direct-lookup coverage in parallel:
 Task: "Add `v88` service tests for tenant-safe direct lookup and supported wrong-tenant `not found` behavior in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v88/service_test.go"
-Task: "Add `v87` service tests for supported direct-lookup cases and explicit unsupported outcomes where tenant-safe retrieval is impossible in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v87/service_test.go"
 Task: "Add command regression tests for direct process-instance lookup with explicit `--tenant`, environment-derived tenant, profile-derived tenant, and base-config-derived tenant in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance_test.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_test.go"
 ```
 
@@ -162,7 +151,6 @@ Task: "Add command regression tests for direct process-instance lookup with expl
 ```bash
 # Prepare User Story 2 mixed-flow coverage in parallel:
 Task: "Add walker and waiter regression tests for tenant-safe ancestry, descendants, family, and state polling behavior in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/walker/walker_test.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/waiter/waiter_test.go"
-Task: "Add versioned service tests for mixed search plus direct-get flows, cancel preflight, and delete preflight behavior in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v87/service_test.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v88/service_test.go"
 Task: "Add command-family regression tests for `walk`, `cancel`, `delete`, and `run` tenant propagation across flag/env/profile/base-config sources in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/walk_test.go, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cancel_test.go, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/delete_test.go, and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/run_test.go"
 ```
 

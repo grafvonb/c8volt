@@ -91,7 +91,8 @@ func printOpsProcessInstancePurgeProgressEvent(cmd *cobra.Command, event ops.Pro
 	}
 }
 
-// Report forwards matching deletion completion facts into the lazy reporter.
+// Report forwards completion facts while retaining raw errors only in reports
+// and redacted DEBUG transport diagnostics, independently of verbose.
 func (p *opsProcessInstancePurgeSemanticProgress) Report(event ops.ProgressEvent) {
 	if p == nil || event.Kind != ops.ProgressEventKindCompletion || event.Completion == nil {
 		return
@@ -100,6 +101,9 @@ func (p *opsProcessInstancePurgeSemanticProgress) Report(event ops.ProgressEvent
 	reporter := p.reporterLocked(*event.Completion)
 	p.mu.Unlock()
 	if reporter != nil {
+		completion := *event.Completion
+		completion.FailureDetail = ""
+		event.Completion = &completion
 		reporter.Report(event)
 	}
 }
@@ -130,9 +134,11 @@ func (p *opsProcessInstancePurgeSemanticProgress) reporterLocked(completion ops.
 	}
 	if p.reporter == nil {
 		channel := opsProgressChannelForMode(opsProgressModeForCommand(p.cmd, pickMode()))
+		policy := opsSemanticProgressOutputPolicyForChannel(channel)
+		policy.FailureWarnings = false // The final result owns the aggregate ERROR.
 		p.reporter = newOpsSemanticProgressReporter(p.cmd, opsSemanticProgressConfig{
 			Scope:  processInstanceMutationSemanticProgressScope("delete", completion.Total, completion.AffectedCount != nil),
-			Policy: opsSemanticProgressOutputPolicyForChannel(channel),
+			Policy: policy,
 			Now:    opsProcessInstancePurgeSemanticProgressNow,
 		})
 	}

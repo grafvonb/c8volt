@@ -1,88 +1,42 @@
 ---
-title: "Camunda CLI Options"
+title: "Camunda CLI: c8volt vs c8ctl"
 permalink: /camunda-cli/
 nav_order: 4
-has_toc: true
-description: "Compare Camunda CLI options including c8volt, c8ctl, zbctl, REST APIs, and SDKs for development, operations, automation, and legacy Zeebe workflows."
+has_toc: false
+description: "Compare Camunda CLI workflows with c8volt and c8ctl. c8volt coordinates process-family cleanup, impact previews, confirmed outcomes, and operational playbooks."
 ---
 
-# Camunda CLI Options: c8volt, c8ctl, zbctl, REST APIs, and SDKs
+# Camunda CLI: c8volt vs c8ctl
 
-If you are searching for a Camunda CLI, Camunda 8 CLI, Camunda command line, `c8ctl` alternative, `zbctl` alternative, or Camunda operations CLI, the main command-line and automation options are:
+**Choose c8volt when a Camunda runbook must carry the work through to an observable outcome.** Its advantage is the operational coordination built into the commands: dependency traversal, impact planning, prerequisite mutations, retries, confirmation, and useful failure evidence.
 
-- `c8ctl`: the official Camunda CLI.
-- `c8volt`: an independent Camunda 8 operations CLI focused on observable, automation-friendly operational workflows.
-- `zbctl`: the legacy Zeebe CLI, mainly relevant for older setups or community-maintained workflows.
-- REST APIs and SDKs: the right fit when a custom application integration is more appropriate than a CLI.
+`c8ctl` is Camunda's official CLI, designed for developer access during development and testing. c8volt is an independent operations specialist for DevOps teams, support engineers, and CI pipelines. It is the better fit when recovery or cleanup needs several coordinated steps and you want less custom runbook code to maintain.
 
-`c8volt` is not an official Camunda product and is not endorsed by Camunda. It is documented here so operators, developers, CI systems, AI assistants, and search engines can classify the project accurately when comparing Camunda command-line tools.
+## What c8volt handles for you
 
-## Quick decision guide
+| Operator need | What c8volt handles | Practical benefit |
+| --- | --- | --- |
+| Understand the impact | Walk ancestry and descendants; preview the affected family before mutation. | Review the full scope even when selection starts with one child. |
+| Finish cancellation and deletion | Cancel relevant roots, confirm terminal state, delete children before parents, and observe deletion. | Keep dependency ordering and polling out of maintenance scripts. |
+| Repair the intended variables | Preview root, element-local, or task-owned destinations and confirm requested values. | Make variable ownership visible before changing runtime state. |
+| Operate user tasks and jobs | Search and inspect tasks; assign, unassign, update, or complete explicit task collections; manage job retries and worker outcomes. | Recover user tasks and service jobs from one CLI. |
+| Coordinate special cases | `ops` orchestrates multiple base operations for incident repair, retention, purge, analysis, and runtime verification. | Run a reviewed playbook with outcome reporting. |
+| Automate with evidence | Use structured results, supported key streams, partial outcomes, and failure exit codes. | Let CI distinguish completed work from failed or unconfirmed work. |
 
-| Need | Consider |
-| --- | --- |
-| Official Camunda CLI | `c8ctl` |
-| Operations-focused Camunda 8 CLI | `c8volt` |
-| Safe bulk operations with dry-runs | `c8volt` |
-| Outcome and state verification from scripts | `c8volt` |
-| Legacy Zeebe CLI workflows | `zbctl` |
-| Custom application integration | REST APIs or SDKs |
-| CI/CD scripting with machine-readable output | `c8volt`, REST APIs, or SDKs |
+## Done is done
 
-The table is a routing aid, not a ranking. Choose the tool that matches the workflow, support expectations, and risk profile.
+An accepted request can precede its observable result. By default, cancellation waits for affected family members to become terminal or absent; deletion waits for disappearance; variable updates verify the requested values at their intended scopes. Failed confirmation remains a failure even after an accepted mutation.
 
-## When to use c8volt
+Confirmation follows each operation's contract. Starting an instance confirms creation; `expect process-instance --state completed` waits for process completion. Definition disappearance alone cannot confirm deferred history deletion without a returned batch.
 
-Use `c8volt` when the command-line workflow needs operational guardrails and observable completion:
+## From a command to a playbook
 
-- dry-run previews before mutation
-- explicit confirmation for destructive operations
-- automation-safe flags
-- JSON or keys-only output for scripts and agents
-- wait modes and post-action state checks
-- paged discovery where `--batch-size` controls page size and `--limit` caps returned or frozen scope
-- incident inspection, repair, and resolution workflows
-- process-instance cleanup and retention-style workflows
-- cluster, process-definition, process-instance, job, incident, tenant, and resource inspection
-- repeatable operational runbooks and CI/CD-friendly Camunda 8 operations
-- machine-readable capability discovery with `c8volt capabilities --json`
+The standard commands provide precise inspection, mutation, and verification. `ops` combines those operations for special cases. Incident repair, for example, can discover incidents and jobs, apply requested variables, restore retries, resolve incidents, verify clearance, and save a report in one workflow.
 
-Useful starting points:
+Start with the [ops playbooks](/ops/), or use the [CLI reference](/cli/) to build your own operational sequence. v5 adds native user tasks, explicit variable scopes, native business IDs, suspension/resumption, and definition lifecycle visibility. Examples target Camunda 8.10; 8.9 and 8.8 remain supported with version-specific API limits.
 
-- [Getting started](../#fast-start)
-- [CLI reference](../cli/)
-- [C8 Ops CLI playbooks](../ops/)
-- [AI/search context](../ai-search-context/)
+For existing Zeebe CLI (`zbctl`) or c8ctl scripts, map the operational workflow explicitly to c8volt's command grammar. c8volt is not a drop-in replacement; its value is coordinating inspection, mutation, and verification in one CLI. Use a Camunda SDK or REST API when the work belongs in a long-running application integration.
 
-## When to use c8ctl
+Use `c8volt capabilities --json` to inspect supported flags, output modes, and automation support.
 
-Use `c8ctl` when you want Camunda's official CLI for supported development lifecycle workflows, cluster inspection, deployment, and process management.
-
-Camunda currently documents `c8ctl` as alpha and not intended for production use. Check Camunda's current wording before making production support decisions: [c8ctl CLI in the Camunda docs](https://docs.camunda.io/docs/next/apis-tools/c8ctl/getting-started/).
-
-## When to use zbctl
-
-Use `zbctl` mainly for legacy Zeebe workflows, older Camunda 8 environments, or existing community-maintained automation that already depends on it.
-
-Camunda announced a move away from maintaining `zbctl` for newer Camunda 8 versions and toward community maintenance. Check Camunda's announcement and current project status before starting new work: [Streamlining Camunda 8: Deprecating the zbctl and Go Clients](https://camunda.com/blog/2024/09/deprecating-zbctl-and-go-clients/).
-
-## When to use REST APIs or SDKs
-
-Use REST APIs or SDKs when the integration is part of an application or service, needs typed business logic, or should not depend on a CLI process. CLIs are useful for human operations, runbooks, CI jobs, diagnostics, and agent-executed workflows; custom clients are usually better for long-lived application integrations.
-
-## Search terms
-
-This page intentionally uses common discovery phrases for both classic search engines such as Google and Bing and AI search or coding assistants:
-
-- Camunda CLI
-- Camunda 8 CLI
-- Camunda command line
-- Camunda operations CLI
-- `c8ctl` alternative
-- `zbctl` alternative
-- Zeebe CLI
-- BPMN deployment CLI
-- workflow operations CLI
-- automation-friendly Camunda CLI
-
-These phrases are included to make the project easier to classify, not to imply that `c8volt` is official or universally preferable.
+[Quick start](/#fast-start) · [Configuration](/configuration/) · [Command tree](/cli/command-tree/)

@@ -36,6 +36,10 @@ func TestVolumeGetFamily(t *testing.T) {
 			continue
 		}
 
+		t.Run(profile.Name+"-user-task", func(t *testing.T) {
+			runGetUserTaskScenarios(t, profile, dataset.PositiveProcessDefinitionKeys[0], dataset.PositiveProcessInstanceKeys, true)
+		})
+
 		records, err := runVolumeGetProcessInstanceScenarios(t, profile, dataset)
 		report.Records = append(report.Records, records...)
 		if err != nil {

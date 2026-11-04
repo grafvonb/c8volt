@@ -5,19 +5,18 @@
 
 ## Summary
 
-Refactor orphan-parent handling in the shared process-instance walker and the flows that compose it so `walk`, delete preflight, cancel preflight, and indirect process-definition cleanup return structured partial results plus warnings instead of failing hard when a non-start ancestor is missing. The design keeps direct key lookup and waiter-based absent/deleted confirmation strict, introduces one shared machine-readable missing-ancestor contract across `v87`, `v88`, and `v89`, and scopes successful warning outcomes only to flows that still resolved at least one actionable process instance.
 
 ## Technical Context
 
 **Language/Version**: Go 1.26  
-**Primary Dependencies**: standard library, `github.com/spf13/cobra`, `github.com/spf13/viper`, `github.com/stretchr/testify`, existing process-instance services under `internal/services/processinstance/{v87,v88,v89}`, shared helpers in `internal/services/processinstance/walker`, `internal/services/processinstance/waiter`, and facade wrappers under `c8volt/process`  
+**Primary Dependencies**: standard library, `github.com/spf13/cobra`, `github.com/spf13/viper`, `github.com/stretchr/testify`, existing process-instance services under `internal/services/processinstance/{v88,v89}`, shared helpers in `internal/services/processinstance/walker`, `internal/services/processinstance/waiter`, and facade wrappers under `c8volt/process`
 **Storage**: No persistent datastore changes; existing file-based config and in-memory traversal/preflight structures only  
 **Testing**: `go test`, `make test`, command regression tests under `cmd/`, shared walker/waiter tests under `internal/services/processinstance/`, and facade-level tests under `c8volt/process`  
-**Target Platform**: Cross-platform CLI for local and CI use against supported Camunda `8.7`, `8.8`, and `8.9` process-instance runtimes  
+**Target Platform**: Cross-platform CLI for local and CI use against supported Camunda `8.8` and `8.9` process-instance runtimes
 **Project Type**: CLI  
 **Performance Goals**: Preserve current traversal/preflight responsiveness for normal trees, avoid repeated follow-up lookups beyond the existing ancestry/descendant traversal pattern, and keep partial-result handling deterministic without widening waiter polling behavior  
 **Constraints**: Preserve existing Cobra command surfaces and render modes, keep direct `get process-instance --key` and absent/deleted waiter behavior strict, reuse the shared process-instance API instead of introducing a parallel traversal subsystem, expose one structured missing-ancestor contract across affected flows, keep warning-based success limited to cases with at least one actionable result, update docs only if the shipped operator-visible behavior changes, and finish with targeted tests plus `make test`  
-**Scale/Scope**: Shared walker logic in [`internal/services/processinstance/walker/walker.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/walker/walker.go), facade dry-run expansion in [`c8volt/process/dryrun.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/c8volt/process/dryrun.go), command entry points in [`cmd/walk_processinstance.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/walk_processinstance.go), [`cmd/cancel_processinstance.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cancel_processinstance.go), [`cmd/delete_processinstance.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/delete_processinstance.go), strict lookup/wait seams in [`cmd/get_processinstance.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance.go) and [`internal/services/processinstance/waiter/waiter.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/waiter/waiter.go), plus versioned process-instance services under `internal/services/processinstance/{v87,v88,v89}` and relevant operator docs in [`README.md`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/README.md) and generated `docs/cli/`
+**Scale/Scope**: Shared walker logic in [`internal/services/processinstance/walker/walker.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/walker/walker.go), facade dry-run expansion in [`c8volt/process/dryrun.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/c8volt/process/dryrun.go), command entry points in [`cmd/walk_processinstance.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/walk_processinstance.go), [`cmd/cancel_processinstance.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cancel_processinstance.go), [`cmd/delete_processinstance.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/delete_processinstance.go), strict lookup/wait seams in [`cmd/get_processinstance.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance.go) and [`internal/services/processinstance/waiter/waiter.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/waiter/waiter.go), plus versioned process-instance services under `internal/services/processinstance/{v88,v89}` and relevant operator docs in [`README.md`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/README.md) and generated `docs/cli/`
 
 ## Constitution Check
 
@@ -73,9 +72,6 @@ internal/services/processinstance/
 ├── waiter/
 │   ├── waiter.go
 │   └── waiter_test.go
-├── v87/
-│   ├── service.go
-│   └── service_test.go
 ├── v88/
 │   ├── service.go
 │   └── service_test.go
@@ -99,7 +95,6 @@ Research findings are captured in [research.md](/Users/adam.boczek/Development/W
 - Confirm where orphan-parent failure currently originates and how much partial state the walker already accumulates before returning `services.ErrOrphanedInstance`.
 - Confirm which downstream flows depend on `Ancestry`, `Descendants`, or `Family`: direct `walk`, facade dry-run expansion, cancel preflight, delete preflight, indirect process-definition cleanup, and any versioned service force/delete helper that composes the walker.
 - Confirm the existing strict boundaries that must not change: direct `GetProcessInstance`, `GetProcessInstanceStateByKey` waiter semantics for absent/deleted success, and current not-found rendering contracts.
-- Confirm current version support in the repository: `v87`, `v88`, and `v89` all exist in the process-instance factory and must share the same orphan-parent contract where their traversal uses the shared walker.
 - Confirm the best regression seams for partial-result success vs fully unresolved failure behavior across walker, facade, and command tests.
 
 ## Phase 1: Design & Contracts
@@ -112,7 +107,6 @@ Design artifacts are captured in:
 
 - Replace the current orphan-parent error-only walker outcome with a shared partial-result structure that retains resolved keys, resolved chain/edges, and machine-readable missing ancestor keys.
 - Introduce shared `TraversalResult`/`DryRunPIKeyExpansion` API seams so callers can adopt the partial-result contract incrementally without breaking the current tuple-based traversal methods in one step.
-- Keep the shared traversal contract version-neutral: `v87`, `v88`, and `v89` all delegate ancestry/family traversal through the same walker, so the warning/partial-result semantics should not fork by version unless a version-specific test proves an adapter need.
 - Make success/failure boundaries explicit: affected traversal and preflight flows succeed with warnings only when at least one actionable result was resolved, and they fail normally when nothing was resolved.
 - Preserve strict direct lookup and waiter semantics by confining the new contract to traversal and dependency-expansion callers rather than altering `GetProcessInstance` or the waiter's absent/deleted logic.
 - Thread the structured warning contract through command rendering and dry-run expansion so `walk`, `cancel`, `delete`, and indirect resource cleanup can surface partial results consistently without duplicating orphan parsing logic.
@@ -155,7 +149,6 @@ Task generation should break the work into dependency-ordered slices:
 
 - The shared walker is the critical seam: once it can distinguish resolved chain data from missing ancestors, the rest of the feature should consume that contract rather than recreate it.
 - `c8volt/process/dryrun.go` is the main operator-impact seam after the walker because both cancel and delete preflight depend on it for actionable impact calculation.
-- `v87`, `v88`, and `v89` already all expose `Ancestry`, `Descendants`, and `Family` through the shared walker, so the feature should target cross-version contract consistency with versioned regression coverage rather than version-specific behavior forks.
 - Direct `GetProcessInstanceStateByKey` and waiter absent/deleted handling are explicitly out of scope for behavior change and should only receive non-regression tests.
 
 ## Final Verification Notes

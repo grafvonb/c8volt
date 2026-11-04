@@ -81,7 +81,6 @@ As a CLI user reading help or documentation, I want the task-key lookup behavior
 1. **Given** a user views help for `get process-instance` or `get pi`, **When** `--has-user-tasks` is listed, **Then** the help text describes v2-first lookup with Tasklist V1 fallback for 8.8 and 8.9.
 2. **Given** generated CLI docs are refreshed, **When** the affected command pages are inspected, **Then** they no longer claim that no Tasklist fallback exists.
 3. **Given** a user reads user-facing documentation, **When** task-key lookup is described, **Then** it states that the fallback exists for legacy user-task compatibility and depends on deprecated Tasklist V1 behavior.
-4. **Given** the active Camunda version is 8.7, **When** the operator runs `c8volt get pi --has-user-tasks=<task-key>`, **Then** the command still fails with the existing explicit unsupported-version error before attempting either lookup path.
 
 ### Edge Cases
 
@@ -90,7 +89,6 @@ As a CLI user reading help or documentation, I want the task-key lookup behavior
 - A task missing from both lookup paths must return the same not-found style outcome expected by current task-key lookup.
 - A fallback task without a usable process-instance key must return a clear resolution error.
 - Fallback authentication, authorization, configuration, malformed response, network, and server errors must not be masked as not found.
-- Camunda 8.7 must remain unsupported for `--has-user-tasks` and must not attempt fallback lookup.
 - Existing selector conflicts for `--has-user-tasks` with `--key`, stdin key input, search filters, `--total`, or `--limit` must remain unchanged.
 - Existing render flags valid for direct single process-instance lookup must continue to behave the same after fallback resolution.
 - Tenant visibility must not be broadened beyond the configured task and process-instance lookup context.
@@ -111,7 +109,6 @@ As a CLI user reading help or documentation, I want the task-key lookup behavior
 - **FR-010**: If both primary and fallback lookups miss, the system MUST return a clear not-found style error.
 - **FR-011**: If fallback lookup returns a task without a usable process-instance key, the system MUST return a clear resolution error.
 - **FR-012**: Fallback authentication, authorization, configuration, malformed response, network, and server failures MUST be surfaced without being converted to not found.
-- **FR-013**: Camunda 8.7 MUST remain explicitly unsupported for `--has-user-tasks`.
 - **FR-014**: Existing `--has-user-tasks` selector conflict validation MUST remain unchanged.
 - **FR-015**: Repeated `--has-user-tasks` values MUST resolve independently, allowing one task to resolve through primary lookup and another through fallback in the same command.
 - **FR-016**: Tenant-aware behavior MUST remain consistent with the configured task and process-instance lookup context.
@@ -125,7 +122,6 @@ As a CLI user reading help or documentation, I want the task-key lookup behavior
 - **FR-024**: Automated tests MUST cover both-lookups-missing not-found behavior.
 - **FR-025**: Automated tests MUST cover fallback task results without a usable process-instance key.
 - **FR-026**: Automated tests MUST cover fallback auth, config, or server failures being surfaced distinctly from not found.
-- **FR-027**: Automated tests MUST cover Camunda 8.7 remaining unsupported without fallback.
 - **FR-028**: Automated tests MUST cover updated help text or user-facing command contract changes where relevant.
 
 ### Key Entities *(include if feature involves data)*
@@ -136,7 +132,6 @@ As a CLI user reading help or documentation, I want the task-key lookup behavior
 - **Fallback Task Result**: A task result from the fallback path that can provide the owning process-instance key.
 - **Owning Process Instance Key**: The process-instance identifier extracted from either lookup path and passed into existing process-instance lookup behavior.
 - **Fallback-Eligible Miss**: A primary lookup outcome that means the task key was not found or not visible, and therefore may be retried through fallback.
-- **Unsupported Version Error**: The explicit failure returned when `--has-user-tasks` is used against Camunda 8.7.
 
 ## Success Criteria *(mandatory)*
 
@@ -149,8 +144,6 @@ As a CLI user reading help or documentation, I want the task-key lookup behavior
 - **SC-005**: Automated tests show a task key absent from both lookup paths returns the existing not-found style error.
 - **SC-006**: Automated tests show fallback task results without usable process-instance keys fail clearly.
 - **SC-007**: Automated tests show fallback auth, config, malformed response, network, or server failures are not reported as not found.
-- **SC-008**: Automated tests show Camunda 8.7 still fails with an explicit unsupported-version message before fallback is attempted.
-- **SC-009**: Help output and generated docs describe v2-first lookup, Tasklist V1 fallback, 8.8/8.9 support, and 8.7 unsupported behavior.
 - **SC-010**: Repository validation passes with the closest relevant targeted tests and the broader project test command required by the constitution.
 
 ## Assumptions

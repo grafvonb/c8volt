@@ -12,6 +12,7 @@ import (
 	"github.com/grafvonb/c8volt/c8volt/job"
 	"github.com/grafvonb/c8volt/config"
 	"github.com/grafvonb/c8volt/consts"
+	"github.com/grafvonb/c8volt/toolx"
 	"github.com/spf13/cobra"
 )
 
@@ -21,7 +22,7 @@ func parseUpdateJobBatchRequest(cmd *cobra.Command, explicit *job.CompletionSele
 	if pickMode() == RenderModeKeysOnly {
 		return job.CompletionRequest{}, invalidFlagValuef("--keys-only is not supported for job completion")
 	}
-	for _, name := range []string{"fail", "throw-bpmn-error", "timeout", "retry-backoff", "message"} {
+	for _, name := range []string{"fail", "throw-bpmn-error", "set-retries", "set-timeout", "set-retry-backoff", "set-error-message"} {
 		if cmd.Flags().Changed(name) {
 			return job.CompletionRequest{}, mutuallyExclusiveFlagsf("--complete cannot be combined with --%s", name)
 		}
@@ -31,6 +32,10 @@ func parseUpdateJobBatchRequest(cmd *cobra.Command, explicit *job.CompletionSele
 		return job.CompletionRequest{}, invalidFlagValuef("--workers must be positive")
 	}
 	request := job.CompletionRequest{}
+	if fs.Changed("set-bid") {
+		value := flagUpdateJobSetBID
+		request.SetBusinessID = &value
+	}
 	if explicit != nil {
 		if fs.Changed("retries") {
 			return request, mutuallyExclusiveFlagsf("keyed --complete cannot be combined with --retries")
@@ -43,7 +48,7 @@ func parseUpdateJobBatchRequest(cmd *cobra.Command, explicit *job.CompletionSele
 		}
 		request.Selection = selection
 	}
-	if fs.Changed("vars") {
+	if fs.Changed("set-vars") {
 		variables, err := parseUpdateJobVariables(flagUpdateJobVariables)
 		if err != nil {
 			return request, err
@@ -139,7 +144,12 @@ func runUpdateJobBatch(cmd *cobra.Command, cli job.API, cfg *config.Config, requ
 			report.Candidates = nil
 			report.Counts.NotStarted = len(batch.Candidates)
 			for _, candidate := range batch.Candidates {
-				report.Outcomes = append(report.Outcomes, job.CompletionOutcome{Candidate: candidate, Disposition: job.CompletionDispositionNotStarted, Submission: job.CompletionSubmission{Status: job.CompletionSubmissionNotSubmitted}, Observation: job.CompletionObservation{Status: job.CompletionObservationSkipped}, Reason: job.CompletionOutcomeDeclined})
+				outcome := job.CompletionOutcome{Candidate: candidate, Disposition: job.CompletionDispositionNotStarted, Submission: job.CompletionSubmission{Status: job.CompletionSubmissionNotSubmitted}, Observation: job.CompletionObservation{Status: job.CompletionObservationSkipped}, Reason: job.CompletionOutcomeDeclined}
+				if batch.SetBusinessID != nil {
+					outcome.RequestedBusinessID = toolx.CopyPtr(batch.SetBusinessID)
+					outcome.Assignment = &job.CompletionAssignment{Status: "not_submitted"}
+				}
+				report.Outcomes = append(report.Outcomes, outcome)
 			}
 			return finishUpdateJobBatch(cmd, report, err)
 		}
@@ -151,7 +161,7 @@ func runUpdateJobBatch(cmd *cobra.Command, cli job.API, cfg *config.Config, requ
 // jobCompletionPreparationReport preserves partial evidence or declined selection
 // without fabricating successful submission or observation.
 func jobCompletionPreparationReport(batch job.PreparedCompletionBatch, status job.CompletionBatchStatus) job.CompletionBatchReport {
-	return job.CompletionBatchReport{Status: status, Selection: batch.Selection, DiscoveryTenant: batch.DiscoveryTenant, TenantIDs: batch.TenantIDs, CompletionReason: batch.CompletionReason, PageCount: batch.PageCount, ObservedCount: batch.ObservedCount, Limited: batch.Limited, Counts: job.CompletionCounts{Selected: len(batch.Candidates)}, Candidates: batch.Candidates}
+	return job.CompletionBatchReport{RequestedBusinessID: toolx.CopyPtr(batch.SetBusinessID), Status: status, Selection: batch.Selection, DiscoveryTenant: batch.DiscoveryTenant, TenantIDs: batch.TenantIDs, CompletionReason: batch.CompletionReason, PageCount: batch.PageCount, ObservedCount: batch.ObservedCount, Limited: batch.Limited, Counts: job.CompletionCounts{Selected: len(batch.Candidates)}, Candidates: batch.Candidates}
 }
 
 // finishUpdateJobBatch renders the partial payload before logging one compact

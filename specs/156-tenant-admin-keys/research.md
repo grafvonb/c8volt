@@ -26,11 +26,8 @@
 
 ## Decision: Scope behavior changes to Camunda 8.8 and 8.9
 
-**Rationale**: The issue explicitly excludes Camunda 8.7. Existing documentation already notes upstream limitations where tenant-safe direct keyed process-instance behavior is not available for 8.7. The implementation should keep v8.7 behavior intact and avoid expanding the compatibility matrix inside this issue.
 
 **Alternatives considered**:
-- Rewrite v8.7 tenant behavior for consistency: rejected as out of scope.
-- Hide v8.7 differences behind command-layer special cases: rejected because version-specific behavior belongs below the command surface where existing factories and services own it.
 
 ## Decision: Update help/docs through command metadata and generated docs
 

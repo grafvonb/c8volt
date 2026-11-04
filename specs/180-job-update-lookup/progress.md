@@ -15,8 +15,6 @@ Started: 2026-05-08 11:45:05
 - Cobra command files use package-level flag variables, register subcommands in `init()`, call `NewCli(cmd)` inside command execution, validate automation with `requireAutomationSupport(cmd)`, collect shared facade options with `collectOptions()`, and attach machine-contract metadata with `setCommandMutation`, `setContractSupport`, `setAutomationSupport`, and `setFlagContractRequired`.
 - State-changing update commands use command-local planning before mutation, reject JSON plus verbose output, require `--auto-confirm` or `--automation` for non-dry-run JSON mutations, render dry-runs before mutation, skip prompts for no-op plans, and use `shouldImplicitlyConfirm(cmd)` plus `confirmCmdOrAbortFn` for material interactive changes.
 - Process-instance variable update planning currently lives in `cmd/update_processinstance_variables.go` and rendering payloads live in `cmd/cmd_views_processinstance_update.go`; the task references to `cmd/update_processinstance_payload.go` and `cmd/update_processinstance_plan.go` are stale.
-- Service packages follow `api.go`, `factory.go`, versioned `v87`/`v88`/`v89` subpackages, compile-time interface assertions, and `New(cfg, httpClient, log)` factories that switch on `cfg.App.CamundaVersion`.
-- Unsupported version behavior returns domain `ErrUnsupported` from the versioned service, as seen in tenant v8.7 and process-instance variable update v8.7 paths.
 - Generated Camunda v8.8 and v8.9 clients expose `SearchJobsWithResponse(ctx, JobSearchQuery, ...)`, `UpdateJobWithResponse(ctx, jobKey, JobUpdateRequest, ...)`, `JobSearchResult`, and `JobChangeset` with `Retries *int32` and `Timeout *int64`; `JobFailRequest` has `RetryBackOff`, which is separate from the update endpoint and remains out of scope.
 - Single-key get job uses generated job search with a `jobKey` equality filter and a small offset page, returns an empty domain job as a not-found result, and treats duplicate matches as malformed response state.
 - Waiters use `cfg.App.Backoff`, optional context deadlines, `backoff.InitialDelay` plus `backoff.NextDelay`, max-retry checks, verbose polling logs, and return confirmation failure without converting it into mutation success.
@@ -58,7 +56,6 @@ Started: 2026-05-08 11:45:05
 - [x] T009: Add dedicated job facade interface and client shell
 - [x] T010: Add shared job service API and compile-time conformance expectations
 - [x] T011: Add job service factory and factory tests
-- [x] T012: Add v8.7 unsupported job service shell and tests
 - [x] T013: Add v8.8 and v8.9 job service shells with compile-time conformance
 - [x] T014: Add command shells for `get job` and `update job`
 - [x] T015: Add command contract discovery tests for job command metadata
@@ -86,9 +83,6 @@ Started: 2026-05-08 11:45:05
 - internal/services/job/api.go
 - internal/services/job/factory.go
 - internal/services/job/factory_test.go
-- internal/services/job/v87/contract.go
-- internal/services/job/v87/service.go
-- internal/services/job/v87/service_test.go
 - internal/services/job/v88/contract.go
 - internal/services/job/v88/service.go
 - internal/services/job/v89/contract.go
@@ -253,8 +247,6 @@ Started: 2026-05-08 11:45:05
 - [x] T059: Add regression test proving `get pi --with-incidents` still exposes `jobKey` unchanged
 - [x] T060: Add regression test proving `update pi --vars` planning, dry-run, and confirmation semantics remain unchanged
 - [x] T061: Add boundary test proving process-instance and incident APIs do not expose job operations
-- [x] T062: Add command/service test proving Camunda 8.7 job update fails unsupported before mutation
-- [x] T063: Ensure job service factory returns unsupported 8.7 behavior and supported 8.8/8.9 behavior
 - [x] T064: Keep command service wiring pointed at job services without adding job methods to process-instance or incident APIs
 - [x] T065: Run targeted US6 validation
 **Tasks Remaining in Story**: None - story complete
@@ -265,7 +257,6 @@ Started: 2026-05-08 11:45:05
 - specs/180-job-update-lookup/tasks.md
 - specs/180-job-update-lookup/progress.md
 **Learnings**:
-- Existing `get pi --with-incidents` and `update pi --vars` tests already exercise the required regression paths; US6 added explicit boundary reflection coverage and a command-level 8.7 unsupported-before-mutation assertion.
 - Validation passed with the T065 command, plus `./internal/services/job` included to exercise the new boundary reflection test.
 ---
 

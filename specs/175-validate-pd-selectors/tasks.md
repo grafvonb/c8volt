@@ -145,7 +145,6 @@
 - [x] T044 [P] Update site documentation source examples in `docs/index.md`
 - [x] T045 Add or update command contract/help tests for selector diagnostics and prompt policy in `cmd/command_contract_test.go` or `cmd/get_processinstance_test.go`
 - [x] T046 Run `make docs-content` and fix generated documentation issues under `docs/cli/`
-- [x] T047 Run `GOCACHE=/tmp/c8volt-gocache go test ./cmd ./c8volt/process ./internal/services/processdefinition/v87 ./internal/services/processdefinition/v88 ./internal/services/processdefinition/v89 -count=1` and fix regressions
 - [x] T048 Run `make test` and fix repository validation failures
 - [x] T049 [P] Review [quickstart.md](./quickstart.md) against implemented behavior and update if command examples or validation commands changed
 - [x] T050 Verify `git diff` contains only issue #175 implementation, docs, generated docs, and Speckit artifacts before commit

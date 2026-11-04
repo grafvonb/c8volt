@@ -11,7 +11,6 @@ Started: 2026-05-05 21:28:44
 - Incident enrichment is the nearest pattern: facade methods `SearchProcessInstanceIncidents` and `EnrichProcessInstancesWithIncidents` preserve item order, filter details back to the owning process-instance key, and render via a dedicated `cmd/cmd_views_processinstance_incidents.go` file with an age-meta JSON wrapper.
 - Shared process-instance service contracts live in `internal/services/processinstance/api.go` plus each versioned `contract.go`; versioned service interfaces also mirror the generated client methods they call.
 - v8.8/v8.9 generated Camunda clients expose `SearchVariablesWithResponse` for `/variables/search`, including filters and `truncateValues`, but `VariableResultBase` omits returned `value` and `isTruncated`; later implementation likely needs focused raw response decoding at the service boundary.
-- v8.7 has an Operate generated `/variables/search` surface (`SearchVariablesForProcessInstancesWithResponse`) whose `Variable` model includes `processInstanceKey`, `scopeKey`, `value`, and `truncated`; this supports an explicit v8.7 implementation path unless later runtime validation proves otherwise.
 - User-facing docs source starts in `README.md`; `docs/index.md` is synced from README by `docsgen`, and `docs/cli/` command reference is generated from Cobra via `make docs-content`.
 - Shared facade API changes require updating test stubs in `cmd/process_api_stub_test.go` and `c8volt/resource/client_test.go` even when the runtime command behavior is not wired yet.
 - v8.8/v8.9 variable raw decoding should read `value` from the response body and accept both `isTruncated` and legacy `truncated` markers when converting to `APITruncated`.
@@ -29,7 +28,6 @@ Started: 2026-05-05 21:28:44
 - [x] T001: Inspect keyed process-instance lookup, validation, and render dispatch in `cmd/get_processinstance.go`
 - [x] T002: Inspect incident enrichment facade and command patterns in `c8volt/process/client.go`, `c8volt/process/model.go`, and `cmd/cmd_views_processinstance_incidents.go`
 - [x] T003: Inspect v8.8/v8.9 generated `/variables/search` request and response types in `internal/clients/camunda/v88/camunda/client.gen.go` and `internal/clients/camunda/v89/camunda/client.gen.go`
-- [x] T004: Inspect v8.7 process-instance API surface and decide whether variable search is unsupported or available through an existing client in `internal/services/processinstance/v87/contract.go`
 - [x] T005: Inspect process-instance command docs and generated documentation paths in `README.md`, `docs/index.md`, `docs/cli/`, and `docsgen/`
 **Tasks Remaining in Story**: None - story complete
 **Commit**: Recorded in Git history for this iteration
@@ -39,7 +37,6 @@ Started: 2026-05-05 21:28:44
 **Learnings**:
 - Keyed lookup is already the right insertion point for `--with-vars`; list/search variable enrichment should stay rejected until a later contract explicitly enables it.
 - v8.8/v8.9 generated clients can build `/variables/search` requests but do not expose value/truncation fields through typed results.
-- v8.7 should not be assumed unsupported: the Operate client has a variable search endpoint with the required value/truncation fields.
 - Generated CLI docs should be regenerated with `make docs-content` after Cobra help/examples change.
 ---
 ---
@@ -48,7 +45,7 @@ Started: 2026-05-05 21:28:44
 **Tasks Completed**:
 - [x] T006: Add `ProcessInstanceVariable`, `VariableEnrichedProcessInstance`, and `VariableEnrichedProcessInstances` facade models in `c8volt/process/model.go`
 - [x] T007: Add matching domain variable models in `internal/domain/processinstance.go`
-- [x] T008: Add process-instance service API method signatures for searching process-instance variables in `internal/services/processinstance/api.go`, `internal/services/processinstance/v87/contract.go`, `internal/services/processinstance/v88/contract.go`, and `internal/services/processinstance/v89/contract.go`
+- [x] T008: Add process-instance service API method signatures for searching process-instance variables in `internal/services/processinstance/api.go`, `internal/services/processinstance/v88/contract.go`, and `internal/services/processinstance/v89/contract.go`
 - [x] T009: Add process facade API methods for searching and enriching process instances with variables in `c8volt/process/api.go`
 - [x] T010: Add domain/facade conversion helpers for process-instance variables in `c8volt/process/convert.go`
 - [x] T011: Add v8.8/v8.9 variable conversion helpers and raw value/truncation decoding support in `internal/services/processinstance/v88/convert.go` and `internal/services/processinstance/v89/convert.go`
@@ -65,8 +62,6 @@ Started: 2026-05-05 21:28:44
 - cmd/process_api_stub_test.go
 - internal/domain/processinstance.go
 - internal/services/processinstance/api.go
-- internal/services/processinstance/v87/contract.go
-- internal/services/processinstance/v87/variables.go
 - internal/services/processinstance/v88/contract.go
 - internal/services/processinstance/v88/convert.go
 - internal/services/processinstance/v88/service_test.go
@@ -80,7 +75,6 @@ Started: 2026-05-05 21:28:44
 **Learnings**:
 - The foundational interface expansion compiles cleanly with placeholder service methods; user-visible command behavior remains unwired for the next work unit.
 - v8.8/v8.9 generated typed variable results still omit value/truncation fields, so service implementation should decode from raw response bodies before mapping variables.
-- Validation passed with `GOCACHE=/tmp/c8volt-gocache go test ./c8volt/process ./internal/services/processinstance/v87 ./internal/services/processinstance/v88 ./internal/services/processinstance/v89 -run 'Test.*Variable|Test.*API' -count=1` and a compile-only check for `./cmd ./c8volt/resource`.
 ---
 ---
 ## Iteration 3 - 2026-05-05 21:51:30 CEST
@@ -93,7 +87,6 @@ Started: 2026-05-05 21:28:44
 - [x] T017: Add command/view tests proving element-scoped variables with a different `scopeKey` are excluded in `cmd/get_processinstance_test.go` or `cmd/cmd_views_get_test.go`
 - [x] T018: Implement v8.8 process-instance variable search in `internal/services/processinstance/v88/variables.go`
 - [x] T019: Implement v8.9 process-instance variable search in `internal/services/processinstance/v89/variables.go`
-- [x] T020: Implement explicit v8.7 behavior for `--with-vars` in `internal/services/processinstance/v87/variables.go`
 - [x] T021: Implement facade-level variable search and enrichment in `c8volt/process/client.go`
 - [x] T022: Add `--with-vars` flag storage, reset behavior, help text, and keyed-mode validation in `cmd/get_processinstance.go` and `cmd/get_processinstance_test.go`
 - [x] T023: Add human variable-enriched renderer in `cmd/cmd_views_processinstance_vars.go`
@@ -110,9 +103,6 @@ Started: 2026-05-05 21:28:44
 - cmd/get_processinstance_test.go
 - cmd/process_api_stub_test.go
 - internal/services/common/filter.go
-- internal/services/processinstance/v87/contract.go
-- internal/services/processinstance/v87/service_test.go
-- internal/services/processinstance/v87/variables.go
 - internal/services/processinstance/v88/service_test.go
 - internal/services/processinstance/v88/variables.go
 - internal/services/processinstance/v89/convert.go
@@ -123,8 +113,6 @@ Started: 2026-05-05 21:28:44
 **Learnings**:
 - v8.8/v8.9 variable search needs `truncateValues=false` as a query parameter so human output receives full values by default.
 - The service requests process-instance and scope filters, and the facade also filters by both keys to guard against broad or unexpected backend responses.
-- v8.7 has an Operate variable search endpoint and now maps it explicitly instead of returning unsupported from the service method.
-- Validation passed with `GOCACHE=/tmp/c8volt-gocache go test ./cmd ./c8volt/process ./internal/services/processinstance/v88 ./internal/services/processinstance/v89 -run 'Test.*Var|Test.*Variable' -count=1` plus `GOCACHE=/tmp/c8volt-gocache go test ./internal/services/processinstance/v87 -run 'Test.*Variable|TestService_' -count=1`.
 ---
 ---
 ## Iteration 4 - 2026-05-05 21:57:18 CEST
@@ -205,5 +193,4 @@ Started: 2026-05-05 21:28:44
 **Learnings**:
 - `docs/index.md` should not be hand-maintained independently for README-derived content; `make docs-content` syncs it after README edits.
 - `docs/cli/c8volt_get_process-instance.md` is generated from Cobra help, so flag wording belongs in `cmd/get_processinstance.go` and can be protected through command capability/help tests.
-- Validation passed with `make docs-content`, `GOCACHE=/tmp/c8volt-gocache go test ./cmd ./c8volt/process ./internal/services/processinstance/v87 ./internal/services/processinstance/v88 ./internal/services/processinstance/v89 -count=1`, and `make test`.
 ---

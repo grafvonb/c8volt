@@ -25,15 +25,23 @@ type Service struct {
 	log *slog.Logger
 }
 
+// ClientCamunda returns the configured Camunda client used by the user-task adapter.
 func (s *Service) ClientCamunda() GenUserTaskClientCamunda { return s.cc }
+
+// ClientTasklist returns the optional Tasklist client used for legacy task lookup fallback.
 func (s *Service) ClientTasklist() GenUserTaskClientTasklist {
 	return s.ct
 }
+
+// Config returns the configuration used by the user-task service.
 func (s *Service) Config() *config.Config { return s.cfg }
-func (s *Service) Logger() *slog.Logger   { return s.log }
+
+// Logger returns the logger used by the user-task service.
+func (s *Service) Logger() *slog.Logger { return s.log }
 
 type Option func(*Service)
 
+// WithClientCamunda replaces the generated Camunda client when a non-nil override is supplied.
 func WithClientCamunda(c GenUserTaskClientCamunda) Option {
 	return func(s *Service) {
 		if c != nil {
@@ -51,6 +59,7 @@ func WithClientTasklist(c GenUserTaskClientTasklist) Option {
 	}
 }
 
+// WithLogger replaces the service logger when a non-nil override is supplied.
 func WithLogger(logger *slog.Logger) Option {
 	return func(s *Service) {
 		if logger != nil {
@@ -59,6 +68,8 @@ func WithLogger(logger *slog.Logger) Option {
 	}
 }
 
+// New creates the Camunda 8.8 user-task adapter with an optional Tasklist fallback and applies
+// dependency overrides.
 func New(cfg *config.Config, httpClient *http.Client, log *slog.Logger, opts ...Option) (*Service, error) {
 	deps, err := common.PrepareServiceDeps(cfg, httpClient, log)
 	if err != nil {
@@ -66,7 +77,7 @@ func New(cfg *config.Config, httpClient *http.Client, log *slog.Logger, opts ...
 	}
 	c, err := camundav88.NewClientWithResponses(
 		deps.Config.APIs.Camunda.BaseURL,
-		camundav88.WithHTTPClient(deps.HTTPClient),
+		camundav88.WithHTTPClient(deps.APIClient),
 	)
 	if err != nil {
 		return nil, err
@@ -75,7 +86,7 @@ func New(cfg *config.Config, httpClient *http.Client, log *slog.Logger, opts ...
 	if deps.Config.APIs.Tasklist.BaseURL != "" {
 		t, err = tasklistv88.NewClientWithResponses(
 			deps.Config.APIs.Tasklist.BaseURL,
-			tasklistv88.WithHTTPClient(deps.HTTPClient),
+			tasklistv88.WithHTTPClient(deps.APIClient),
 		)
 		if err != nil {
 			return nil, err
@@ -106,6 +117,49 @@ func (s *Service) GetUserTask(ctx context.Context, key string, opts ...services.
 	return s.searchFallbackTask(ctx, key)
 }
 
+// GetNativeUserTask reads one task directly without applying discovery-tenant filtering or legacy Tasklist fallback.
+func (s *Service) GetNativeUserTask(ctx context.Context, key string, opts ...services.CallOption) (d.UserTask, error) {
+	_ = services.ApplyCallOptions(opts)
+	s.log.Debug(fmt.Sprintf("getting native user task %s", key))
+	resp, err := s.cc.GetUserTaskWithResponse(ctx, camundav88.UserTaskKey(key))
+	if err != nil {
+		return d.UserTask{}, fmt.Errorf("get native user task: %w", err)
+	}
+	payload, err := common.RequirePayload(resp.HTTPResponse, resp.Body, resp.JSON200)
+	if err != nil {
+		if errors.Is(err, d.ErrNotFound) {
+			return d.UserTask{}, nativeUserTaskNotFound(key)
+		}
+		return d.UserTask{}, fmt.Errorf("get native user task: %w", err)
+	}
+	task := fromUserTaskResult(*payload)
+	if err := validateNativeUserTask(task, key); err != nil {
+		return d.UserTask{}, err
+	}
+	return task, nil
+}
+
+// validateNativeUserTask rejects successful payloads that cannot satisfy the stable task identity contract.
+func validateNativeUserTask(task d.UserTask, key string) error {
+	if task.Key != key {
+		return fmt.Errorf("%w: native user task %s returned mismatched task %s", d.ErrMalformedResponse, key, task.Key)
+	}
+	if task.State == "" {
+		return fmt.Errorf("%w: native user task %s has no state", d.ErrMalformedResponse, key)
+	}
+	if task.ProcessInstanceKey == "" {
+		return fmt.Errorf("%w: native user task %s has no process instance key", d.ErrMalformedResponse, key)
+	}
+	return nil
+}
+
+// nativeUserTaskNotFound keeps direct-read misses independent from configured discovery tenant semantics.
+func nativeUserTaskNotFound(key string) error {
+	return fmt.Errorf("%w: native user task %s", d.ErrNotFound, key)
+}
+
+// searchPrimaryUserTask looks up a task through the tenant-filtered Camunda search and rejects
+// missing, duplicate, or incomplete results.
 func (s *Service) searchPrimaryUserTask(ctx context.Context, key string) (d.UserTask, error) {
 	s.log.Debug(fmt.Sprintf("searching user task %s", key))
 	body, err := searchUserTaskRequest(common.EffectiveTenant(s.cfg), key)

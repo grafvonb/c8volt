@@ -3,7 +3,6 @@
 **Input**: Design documents from `/specs/093-extend-pi-date-filters/`
 **Prerequisites**: plan.md (required), spec.md (required for user stories), research.md, data-model.md, contracts/
 
-**Tests**: Tests are required for this feature because the specification explicitly calls for automated coverage of v8.8 success paths, inclusive bounds, empty search results, invalid formats, invalid ranges, invalid `--key` plus date-filter combinations, and v8.7 not-implemented behavior.
 
 **Organization**: Tasks are grouped by user story to enable independent implementation and testing of each story.
 
@@ -79,17 +78,13 @@
 
 **Goal**: Reject malformed or unsupported date-filter usage with clear failures before any cancellation or deletion occurs.
 
-**Independent Test**: Run the cancel/delete commands with malformed dates, inverted ranges, explicit `--key` plus date filters, and v8.7 date-filtered usage, then verify that each fails through the correct validation or not-implemented path.
 
 ### Tests for User Story 3
 
-- [x] T013 [P] [US3] Add cancel command coverage for invalid dates, invalid ranges, `--key` plus date-filter rejection, and v8.7 unsupported behavior in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cancel_test.go
-- [x] T014 [P] [US3] Add delete command coverage for invalid dates, invalid ranges, `--key` plus date-filter rejection, and v8.7 unsupported behavior in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/delete_test.go
 
 ### Implementation for User Story 3
 
 - [x] T015 [US3] Enforce invalid `--key` plus date-filter combinations and date validation failures before management actions in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cancel_processinstance.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/delete_processinstance.go
-- [x] T016 [US3] Verify v8.7 date-filtered management flows continue through the existing shared not-implemented service path using /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cancel_processinstance.go, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/delete_processinstance.go, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v87/service.go, and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v87/service_test.go
 
 **Checkpoint**: User Story 3 delivers clear failures for invalid and unsupported management-command date-filter usage.
 
@@ -142,8 +137,6 @@
 
 ```bash
 # Prepare User Story 3 regression coverage in parallel:
-Task: "Add cancel command coverage for invalid dates, invalid ranges, --key plus date-filter rejection, and v8.7 unsupported behavior in cmd/cancel_test.go"
-Task: "Add delete command coverage for invalid dates, invalid ranges, --key plus date-filter rejection, and v8.7 unsupported behavior in cmd/delete_test.go"
 ```
 
 ---

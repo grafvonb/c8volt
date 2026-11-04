@@ -22,6 +22,10 @@ const commandErrorEnvelopeModesHelper = "TestCommandErrorEnvelopeModesHelper"
 func TestCommandErrorEnvelopeModes(t *testing.T) {
 	var requests atomic.Int32
 	server := testx.NewIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, "8.8") {
+			return
+		}
+
 		requests.Add(1)
 		require.Equal(t, http.MethodGet, r.Method)
 		require.Equal(t, "/v2/license", r.URL.Path)

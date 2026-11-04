@@ -149,6 +149,11 @@ func TestFormatOpsSemanticProgressCompletionUsesLifecycleVocabulary(t *testing.T
 		Identity:    "item-1",
 		Disposition: ops.CompletionDispositionConfirmed,
 	}))
+	require.Equal(t, "item-1 skipped: retained by safety policy (running work, 1/3 item(s))", formatOpsSemanticProgressCompletion(scope, aggregate, ops.CompletionProgress{
+		Identity:      "item-1",
+		Disposition:   ops.CompletionDispositionSkipped,
+		FailureDetail: "retained by safety policy",
+	}))
 	require.Equal(t, "item-1 failed: boom (running work, 1/3 item(s))", formatOpsSemanticProgressCompletion(scope, aggregate, ops.CompletionProgress{
 		Identity:      "item-1",
 		Disposition:   ops.CompletionDispositionFailed,

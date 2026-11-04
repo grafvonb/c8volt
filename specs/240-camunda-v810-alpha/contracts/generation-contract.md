@@ -24,7 +24,7 @@ The exact option spelling may follow the existing shell parser, but this invocat
 
 1. Parse and validate target, tag, source, and destination.
 2. Reject legacy docs options or any output outside the alpha directory.
-3. Capture fingerprints for generated v8.7, v8.8, and v8.9 directories.
+3. Capture fingerprints for generated v8.8 and v8.9 directories.
 4. Resolve the tag and verify the expected commit.
 5. Fetch sources into a temporary target-specific directory.
 6. Bundle and mutate the source in temporary storage.

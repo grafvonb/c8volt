@@ -11,7 +11,9 @@ import (
 	"github.com/grafvonb/c8volt/toolx"
 )
 
+// ProcessInstance contains the current backend snapshot, including optional date metadata.
 type ProcessInstance struct {
+	BusinessId               *string
 	BpmnProcessId            string
 	EndDate                  string
 	Incident                 bool
@@ -23,6 +25,7 @@ type ProcessInstance struct {
 	ProcessVersion           int32
 	ProcessVersionTag        string
 	StartDate                string
+	SuspendedDate            string
 	State                    State
 	TenantId                 string
 	Variables                map[string]any
@@ -50,7 +53,10 @@ type ProcessInstanceVariableUpdateResponse struct {
 	Status     string
 }
 
+// ProcessInstanceFilter selects instances; singular and plural states are mutually exclusive.
 type ProcessInstanceFilter struct {
+	// BusinessId is an exact opaque criterion; nil omits it and empty is invalid.
+	BusinessId           *string `json:"businessId,omitempty"`
 	Key                  string
 	BpmnProcessId        string
 	ProcessVersion       int32
@@ -61,14 +67,19 @@ type ProcessInstanceFilter struct {
 	EndDateAfter         string
 	EndDateBefore        string
 	State                State
+	States               States
 	ParentKey            string
 	HasParent            *bool
 	HasIncident          *bool
 	VariableFilters      ProcessInstanceVariableFilterSet
 }
 
+// String renders active search criteria for diagnostic logging.
 func (f ProcessInstanceFilter) String() string {
-	parts := make([]string, 0, 14)
+	parts := make([]string, 0, 15)
+	if f.BusinessId != nil {
+		parts = toolx.AppendQuotedField(parts, "businessId", *f.BusinessId)
+	}
 	parts = toolx.AppendQuotedField(parts, "key", f.Key)
 	parts = toolx.AppendQuotedField(parts, "bpmnProcessId", f.BpmnProcessId)
 	parts = toolx.AppendInt32Field(parts, "processVersion", f.ProcessVersion)
@@ -79,6 +90,7 @@ func (f ProcessInstanceFilter) String() string {
 	parts = toolx.AppendQuotedField(parts, "endDateAfter", f.EndDateAfter)
 	parts = toolx.AppendQuotedField(parts, "endDateBefore", f.EndDateBefore)
 	parts = toolx.AppendRawField(parts, "state", f.State.String())
+	parts = toolx.AppendRawField(parts, "states", f.States.String())
 	parts = toolx.AppendQuotedField(parts, "parentKey", f.ParentKey)
 	parts = toolx.AppendBoolPtrField(parts, "hasParent", f.HasParent)
 	parts = toolx.AppendBoolPtrField(parts, "hasIncident", f.HasIncident)
@@ -279,11 +291,26 @@ type ProcessInstanceSearchPageStep struct {
 // service-owned traversal and may stop collection without owning page math.
 type ProcessInstanceSearchPageVisitor func(ProcessInstanceSearchPageStep) (ProcessInstanceSearchPageAction, error)
 
-// ProcessInstanceSearchPagesResult captures a full or caller-stopped process-instance discovery.
+// ProcessInstanceSearchCompletion records why discovery ended. The zero value is not completion evidence.
+type ProcessInstanceSearchCompletion string
+
+const (
+	// ProcessInstanceSearchCompletionExhausted proves the requested search was exhausted.
+	ProcessInstanceSearchCompletionExhausted ProcessInstanceSearchCompletion = "exhausted"
+	// ProcessInstanceSearchCompletionLimitReached proves only the documented distinct-selection bound.
+	ProcessInstanceSearchCompletionLimitReached ProcessInstanceSearchCompletion = "limit_reached"
+	// ProcessInstanceSearchCompletionVisitorStopped records a caller stop before authoritative completion.
+	ProcessInstanceSearchCompletionVisitorStopped ProcessInstanceSearchCompletion = "visitor_stopped"
+	// ProcessInstanceSearchCompletionIncomplete retains evidence from failed or unresolved discovery.
+	ProcessInstanceSearchCompletionIncomplete ProcessInstanceSearchCompletion = "incomplete"
+)
+
+// ProcessInstanceSearchPagesResult retains discovery evidence and why traversal ended, including failures.
 type ProcessInstanceSearchPagesResult struct {
-	Items []ProcessInstance
-	Limit int32
-	Pages int32
+	Completion ProcessInstanceSearchCompletion
+	Items      []ProcessInstance
+	Limit      int32
+	Pages      int32
 }
 
 // ProcessInstanceMutationPlanRequest combines search selection with dry-run
@@ -341,10 +368,13 @@ type CancelResponse struct {
 	Status     string
 }
 
+// DeleteResponse preserves submission evidence separately from confirmed deletion.
 type DeleteResponse struct {
-	Ok         bool
-	StatusCode int
-	Status     string
+	// MutationSubmitted retains accepted cancellation or deletion when later work fails.
+	MutationSubmitted bool
+	Ok                bool
+	StatusCode        int
+	Status            string
 }
 
 type StateResponse struct {
@@ -378,7 +408,9 @@ type ProcessInstanceExpectationResponses struct {
 	Items []ProcessInstanceExpectationResponse
 }
 
+// ProcessInstanceData describes creation intent; a nil BusinessId omits the optional reference.
 type ProcessInstanceData struct {
+	BusinessId                  *string
 	BpmnProcessId               string // ProcessDefinitionId in API
 	ProcessDefinitionSpecificId string // ProcessDefinitionKey in API
 	ProcessDefinitionVersion    int32
@@ -386,7 +418,9 @@ type ProcessInstanceData struct {
 	TenantId                    string
 }
 
+// ProcessInstanceCreation retains native acceptance or successfully observed creation facts.
 type ProcessInstanceCreation struct {
+	BusinessId               *string        `json:"businessId,omitempty"`
 	Key                      string         `json:"key,omitempty"`
 	BpmnProcessId            string         `json:"bpmnProcessId,omitempty"`        // ProcessDefinitionId in API
 	ProcessDefinitionKey     string         `json:"processDefinitionKey,omitempty"` // ProcessDefinitionKey in API

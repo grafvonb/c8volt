@@ -23,12 +23,9 @@ var deployProcessDefinitionCmd = &cobra.Command{
 Deployment uses the configured tenant, or the default tenant when none is configured. --all-tenants is not supported because deployment requires one destination tenant.
 
 By default c8volt waits for deployment confirmation. Use --run to start one process instance for each deployed definition.`,
-	Example: `  ./c8volt embed export --file processdefinitions/<embedded-process>.bpmn --out ./fixtures
-  ./c8volt deploy process-definition --file ./fixtures/processdefinitions/<embedded-process>.bpmn
-  ./c8volt --tenant tenant-a deploy process-definition --file ./fixtures/processdefinitions/<embedded-process>.bpmn
-  ./c8volt deploy process-definition --file ./fixtures/processdefinitions/<embedded-process>.bpmn --run
-  ./c8volt --verbose deploy process-definition --file ./fixtures/processdefinitions/<embedded-process>.bpmn
-  ./c8volt get process-definition --bpmn-process-id <bpmn-process-id> --latest --json`,
+	Example: `  c8volt deploy process-definition --file order.bpmn
+  c8volt deploy process-definition --file order.bpmn --run
+  c8volt --tenant tenant-a deploy process-definition --file order.bpmn`,
 	Aliases: []string{"pd"},
 	Run: func(cmd *cobra.Command, args []string) {
 		cli, log, cfg, err := NewCli(cmd)

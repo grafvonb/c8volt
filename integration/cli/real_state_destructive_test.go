@@ -6,12 +6,18 @@
 package cli_test
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"net/http"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/grafvonb/c8volt/c8volt/process"
+	"github.com/grafvonb/c8volt/internal/services/httpc"
 )
 
 type realStateDestructiveDataset struct {
@@ -21,8 +27,146 @@ type realStateDestructiveDataset struct {
 	Incidents []realStateIncident   `json:"incidents,omitempty"`
 }
 
+// TestRealStateProcessDefinitionDraining observes an owned definition through
+// get pd JSON, then verifies disappearance after canceling its held instance.
+// A valid null deletion batch is accepted; rejecting it remains a regression failure.
+func TestRealStateProcessDefinitionDraining(t *testing.T) {
+	profiles := selectedBatchProfiles(t)
+	var evidence []batchScenarioEvidence
+	var productFailures []string
+	for _, profile := range profiles {
+		dataset, _, err := seedIsolatedHeldDataset(t, profile, "draining", 1)
+		if err != nil {
+			t.Errorf("seed draining dataset for profile %q: %v", profile.Name, err)
+			continue
+		}
+		if len(dataset.PositiveProcessDefinitionKeys) == 0 || len(dataset.PositiveProcessInstanceKeys) == 0 {
+			t.Errorf("draining dataset for profile %q is missing owned definition or instance keys", profile.Name)
+			continue
+		}
+
+		definitionKey := dataset.PositiveProcessDefinitionKeys[0]
+		instanceKey := dataset.PositiveProcessInstanceKeys[0]
+		client, err := newLiveBatchClient(profile.Name)
+		if err != nil {
+			t.Errorf("create draining client for profile %q: %v", profile.Name, err)
+			continue
+		}
+		result := runC8VoltForProfile(t, profile.Name, "real-state-process-definition-draining-submit", "--automation", "--json", "delete", "pd", "--key", definitionKey, "--no-state-check", "--no-wait")
+		combined := result.Stdout + "\n" + result.Stderr
+		knownNullBatchFailure := result.Err != nil && strings.Contains(combined, "history deletion requested but Camunda did not return a batch operation")
+		if result.Err != nil && !knownNullBatchFailure {
+			t.Errorf("submit draining deletion for profile %q: %v; %s", profile.Name, result.Err, compactLogSnippet(combined, 500))
+			continue
+		}
+
+		state, err := requireProcessDefinitionStateEventually(t, profile.Name, definitionKey, "DRAINING", time.Minute)
+		if err != nil {
+			t.Errorf("observe draining definition for profile %q: %v", profile.Name, err)
+			continue
+		}
+		evidence = append(evidence, batchScenarioEvidence{
+			Profile: profile.Name, ObservedVersion: profile.ActualVersion,
+			Scenario: "process-definition-draining", State: state, Proof: "live-post-state",
+		})
+
+		accepted, err := client.api.CancelProcessInstancesBatch(context.Background(), process.ProcessInstanceFilter{
+			ProcessDefinitionKey: definitionKey,
+			State:                process.StateActive,
+		})
+		if err == nil {
+			_, err = client.api.WaitBatchOperation(context.Background(), accepted.Key)
+		}
+		if err != nil {
+			t.Errorf("release held draining instance %s for profile %q: %v", instanceKey, profile.Name, err)
+			continue
+		}
+		if err := requireProcessDefinitionGoneFromAPI(client, definitionKey, 2*time.Minute); err != nil {
+			t.Errorf("draining cleanup for profile %q: %v", profile.Name, err)
+			continue
+		}
+		if knownNullBatchFailure {
+			productFailures = append(productFailures, fmt.Sprintf("profile %s rejected a valid null deletion batch after observing %s", profile.Name, state))
+		}
+	}
+	writeJSON(t, "process-definition-draining-evidence.json", evidence)
+	if len(productFailures) > 0 {
+		reason := strings.Join(productFailures, "; ")
+		t.Fatalf("process-definition draining exposed the unwaived v8.10 adapter defect: %s", reason)
+	}
+}
+
+// requireProcessDefinitionStateEventually observes lifecycle through bounded CLI
+// executions and accepts only one successful envelope for the exact owned key.
+func requireProcessDefinitionStateEventually(t *testing.T, profile, key, wanted string, timeout time.Duration) (string, error) {
+	t.Helper()
+	deadline := time.Now().Add(timeout)
+	var last string
+	for attempt := 1; ; attempt++ {
+		result := runC8VoltForProfile(t, profile, fmt.Sprintf("real-state-definition-lifecycle-%d", attempt),
+			"--json", "--timeout", "10s", "--backoff-max-retries", "0", "get", "pd", "--key", key)
+		if result.Err != nil {
+			last = fmt.Sprintf("CLI exited %d: %s", result.ExitCode, compactLogSnippet(result.Stderr, 500))
+		} else {
+			var envelope struct {
+				Outcome string                    `json:"outcome"`
+				Payload process.ProcessDefinition `json:"payload"`
+			}
+			decoder := json.NewDecoder(strings.NewReader(result.Stdout))
+			if err := decoder.Decode(&envelope); err != nil {
+				return last, fmt.Errorf("decode definition lifecycle envelope: %w", err)
+			}
+			if err := decoder.Decode(new(any)); err != io.EOF {
+				return last, fmt.Errorf("expected EOF after definition lifecycle envelope, got %v", err)
+			}
+			if envelope.Outcome != "succeeded" || envelope.Payload.Key != key {
+				return last, fmt.Errorf("definition lifecycle envelope outcome=%q key=%q, want succeeded for %s", envelope.Outcome, envelope.Payload.Key, key)
+			}
+			last = envelope.Payload.State
+			if last == wanted {
+				return last, nil
+			}
+		}
+		if time.Now().After(deadline) {
+			return last, fmt.Errorf("process definition %s state = %q, want %q", key, last, wanted)
+		}
+		time.Sleep(2 * time.Second)
+	}
+}
+
+// requireProcessDefinitionGoneFromAPI bounds draining cleanup independently
+// of command rendering and treats only an authoritative 404 as absence.
+func requireProcessDefinitionGoneFromAPI(client liveBatchClient, key string, timeout time.Duration) error {
+	deadline := time.Now().Add(timeout)
+	var last error
+	for {
+		resp, err := client.generated.GetProcessDefinitionWithResponse(context.Background(), key)
+		switch {
+		case err != nil:
+			last = err
+		case resp == nil:
+			last = errors.New("process-definition lookup returned no response")
+		case resp.StatusCode() == http.StatusNotFound:
+			return nil
+		default:
+			last = httpc.HttpStatusErr(resp.HTTPResponse, resp.Body)
+			if last == nil {
+				state := "unknown"
+				if resp.JSON200 != nil {
+					state = string(resp.JSON200.State)
+				}
+				last = fmt.Errorf("process definition %s remains visible in state %s", key, state)
+			}
+		}
+		if time.Now().After(deadline) {
+			return last
+		}
+		time.Sleep(2 * time.Second)
+	}
+}
+
 func TestRealStateDestructiveFamily(t *testing.T) {
-	profiles := selectedRealStateC89Profiles(t)
+	profiles := selectedRealStateProfiles(t)
 
 	report := realStateFamilyReport{
 		Family:   "destructive",
@@ -92,6 +236,7 @@ func seedRealStateDestructiveDataset(t *testing.T, profile integrationProfile, c
 	return realStateDestructiveDataset{Fixture: fixture, Volume: dataset, Incident: incidentDataset, Incidents: incidents}, records, nil
 }
 
+// Run explicitly authorized destructive scenarios with current CLI spellings.
 func runRealStateDestructiveScenarios(t *testing.T, profile integrationProfile, dataset realStateDestructiveDataset) ([]evidenceRecord, error) {
 	t.Helper()
 	var records []evidenceRecord
@@ -162,8 +307,8 @@ func runRealStateDestructiveScenarios(t *testing.T, profile integrationProfile, 
 	records = append(records, resolveConfirmedRecord)
 
 	repairDryRunReport := volumeOpsRepairReportPath(t, "real-state-destructive-repair-incident-dry-run", profile, "json")
-	repairDryRunResult := runC8VoltForProfile(t, profile.Name, "real-state-destructive-repair-incident-dry-run", "ops", "repair", "incident", "--key", incidents[2].IncidentKey, "--vars", `{"hasIncident":false}`, "--retries", "1", "--job-timeout", "30s", "--workers", "1", "--dry-run", "--report-file", repairDryRunReport, "--report-format", "json")
-	repairDryRunRecord := realStateDestructiveRecord(profile, dataset, repairDryRunResult, "ops repair incident", "real-state-destructive-repair-incident-dry-run", "one-line", []string{"key", "vars", "retries", "job-timeout", "workers", "dry-run", "report-file", "report-format"}, []string{incidents[2].IncidentKey, incidents[2].ProcessInstanceKey}, true, false)
+	repairDryRunResult := runC8VoltForProfile(t, profile.Name, "real-state-destructive-repair-incident-dry-run", "ops", "repair", "incident", "--key", incidents[2].IncidentKey, "--set-vars", `{"hasIncident":false}`, "--set-retries", "1", "--set-job-timeout", "30s", "--workers", "1", "--dry-run", "--report-file", repairDryRunReport, "--report-format", "json")
+	repairDryRunRecord := realStateDestructiveRecord(profile, dataset, repairDryRunResult, "ops repair incident", "real-state-destructive-repair-incident-dry-run", "one-line", []string{"key", "set-vars", "set-retries", "set-job-timeout", "workers", "dry-run", "report-file", "report-format"}, []string{incidents[2].IncidentKey, incidents[2].ProcessInstanceKey}, true, false)
 	if err := validateRealStateOpsRepairIncidentDryRun(t, profile, repairDryRunResult, repairDryRunReport, incidents[2]); err != nil {
 		repairDryRunRecord.Outcome = realStateOutcomeFailed
 		repairDryRunRecord.FailureClass = volumeFailureProduct
@@ -172,8 +317,8 @@ func runRealStateDestructiveScenarios(t *testing.T, profile integrationProfile, 
 	records = append(records, repairDryRunRecord)
 
 	repairConfirmedReport := volumeOpsRepairReportPath(t, "real-state-destructive-repair-pi-confirmed", profile, "json")
-	repairConfirmedResult := runC8VoltForProfile(t, profile.Name, "real-state-destructive-repair-pi-confirmed", "--automation", "--json", "ops", "repair", "process-instance", "--key", incidents[3].ProcessInstanceKey, "--vars", `{"hasIncident":false}`, "--retries", "1", "--job-timeout", "30s", "--workers", "1", "--report-file", repairConfirmedReport, "--report-format", "json")
-	repairConfirmedRecord := realStateDestructiveRecord(profile, dataset, repairConfirmedResult, "ops repair process-instance", "real-state-destructive-repair-pi-confirmed", "json", []string{"automation", "json", "key", "vars", "retries", "job-timeout", "workers", "report-file", "report-format"}, []string{incidents[3].IncidentKey, incidents[3].ProcessInstanceKey}, false, true)
+	repairConfirmedResult := runC8VoltForProfile(t, profile.Name, "real-state-destructive-repair-pi-confirmed", "--automation", "--json", "ops", "repair", "process-instance", "--key", incidents[3].ProcessInstanceKey, "--set-vars", `{"hasIncident":false}`, "--set-retries", "1", "--set-job-timeout", "30s", "--workers", "1", "--report-file", repairConfirmedReport, "--report-format", "json")
+	repairConfirmedRecord := realStateDestructiveRecord(profile, dataset, repairConfirmedResult, "ops repair process-instance", "real-state-destructive-repair-pi-confirmed", "json", []string{"automation", "json", "key", "set-vars", "set-retries", "set-job-timeout", "workers", "report-file", "report-format"}, []string{incidents[3].IncidentKey, incidents[3].ProcessInstanceKey}, false, true)
 	if err := validateRealStateOpsRepairConfirmed(t, profile, repairConfirmedResult, repairConfirmedReport, incidents[3], "process-instance"); err != nil {
 		repairConfirmedRecord.Outcome = realStateOutcomeFailed
 		repairConfirmedRecord.FailureClass = volumeFailureProduct

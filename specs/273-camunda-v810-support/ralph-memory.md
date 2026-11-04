@@ -39,7 +39,7 @@ Started: 2026-08-12T16:38:49Z
 - `internal/services/incidentfilter` now owns version-neutral canonical incident state/error-type validation without generated-client imports; the list includes V810 `SECRET_RESOLUTION_ERROR`.
 - `internal/services/v810_source_boundary_test.go` scans `incidentfilter` production and test files to reject generated Camunda client imports, in addition to V810 adapter and cmd/facade boundary scans.
 - `toolx.SupportsFullProcessDefinitionHistoryDeletion` is the named capability for full process-definition history deletion and explicitly returns true only for V89 and V810.
-- Direct process-definition deletion and all-process-definitions purge both consume the named capability; V87/V88 still fail before remote discovery or mutation, while V89/V810 pass the local gate.
+- Direct process-definition deletion and all-process-definitions purge both consume the named capability; V88 still fail before remote discovery or mutation, while V89/V810 pass the local gate.
 - `c8volt/client_test.go` now proves full V810 top-level construction by calling one blocked-transport method through each facade surface plus process-instance variable lookup for the nested V810 variable service.
 - `cmd/bootstrap_errors_test.go` now expects `NewCli` to construct a V810-backed client successfully; V810 is no longer a staged unsupported bootstrap identity.
 - V810 command fake-server coverage now proves resource read human/JSON/keys-only modes, process-definition deletion request/confirmation lifecycle, job update prompt/confirmation flow, process-instance variable update confirmation, and run process-instance JSON/keys-only activity routing without production command changes.
@@ -47,8 +47,7 @@ Started: 2026-08-12T16:38:49Z
 - User Story 2 T038 validation passed all eleven quickstart service-family suites, `go test ./c8volt -run 'TestNew_V810' -count=1`, and the V810/source-boundary scan in `internal/services`.
 - `toolx.ProductionFixturePrefix` owns production embedded/smoke fixture compatibility; V810 maps explicitly to `C89_` while `toolx.V810.FilePrefix()` remains `unknown` so version identity is not overloaded.
 - Embed list/export-all filtering and ops smoke-test fixture selection consume `ProductionFixturePrefix`; unknown versions still produce no embed selection or a pre-mutation smoke-test precondition failure.
-- Each of the eleven version-aware service factory test files now has `TestFactory_StableVersionSelectionUnchanged`, which separately asserts V87, V88, V89, and `toolx.CurrentCamundaVersion` still select stable adapters after adding V810.
-- `api/tests/v810_repository_boundary_test.sh` guards the US3 repository boundary by requiring clean v87-v89 generated client trees, a clean `integration/` tree, no untracked files in those paths, and no V810/C810/8.10 integration path or content references.
+- Each of the eleven version-aware service factory test files now has `TestFactory_StableVersionSelectionUnchanged`, which separately asserts V88, V89, and `toolx.CurrentCamundaVersion` still select stable adapters after adding V810.
 - US4 generation-transition tests now stub only `api/generate-v810-client.sh` inside detached worktrees so `api/refresh-clients.sh` target/tag routing, in-place `v810/camunda` publication, deterministic reruns, failure rollback, and no `v810alpha`/`v810rc`/`v810final` paths are verified without upstream fetches.
 - US4 provenance identity invariance lives in `api/tests/v810_provenance_test.py`; use `canonical_command_for_tag` and keep generated client/provenance parent paths fixed to `internal/clients/camunda/v810/camunda` for later alpha/RC/final tag scenarios.
 - US4 baseline identity tests now cover later alpha/RC/final tag replacements in `toolx/camunda_baseline_test.go` and command JSON/human output separation in `cmd/version_test.go`; supported-version discovery must keep reporting only `8.10`, never baseline tag/status strings.
@@ -62,7 +61,6 @@ Started: 2026-08-12T16:38:49Z
 - T051 `gofmt` over the feature's changed Go files produced no Go-file diff; focused quickstart validation passed for identity/default/fixtures, command help/version/embed/V810, all eleven service suites, V810 client construction, capability gates, generated-client compile, source-boundary scans, docs generation, and docs/version/help tests.
 - Running `make docs-content` after a new work-unit commit advances `docs/index.md` build metadata to the current pre-commit `git describe`/commit/date even when CLI markdown content is otherwise unchanged.
 - T052 race-enabled repository gate passed with `make test`, which runs `go test ./... -race -count=1`; no production or test fixes were required.
-- T053 final boundary audit passed `git diff --check`, two pinned `bash api/refresh-clients.sh --target v810 --camunda-tag 8.10.0-alpha4` regeneration runs with no V810 diff, `bash api/tests/v810_repository_boundary_test.sh`, and clean protected v87-v89/integration diffs.
 
 ## Decisions
 - V810 adapter boundary checks allow only `github.com/grafvonb/c8volt/internal/clients/camunda/v810/camunda` among generated Camunda clients.

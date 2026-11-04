@@ -14,9 +14,8 @@ var getClusterLicenseCmd = &cobra.Command{
 	Aliases: []string{"licence"},
 	Short:   "Show connected cluster license",
 	Long:    `Inspect the connected Camunda cluster's license.`,
-	Example: `  ./c8volt get cluster license
-  ./c8volt get cluster license --json
-  ./c8volt get cluster licence`,
+	Example: `  c8volt get cluster license
+  c8volt get cluster license --json`,
 	Args: cobra.NoArgs,
 	Run:  runGetClusterLicense,
 }

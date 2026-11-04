@@ -6,10 +6,11 @@ package cmd
 import (
 	"context"
 	"encoding/json"
-	"github.com/grafvonb/c8volt/c8volt/incident"
 	"testing"
 
+	ferr "github.com/grafvonb/c8volt/c8volt/ferrors"
 	options "github.com/grafvonb/c8volt/c8volt/foptions"
+	"github.com/grafvonb/c8volt/c8volt/incident"
 	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/grafvonb/c8volt/c8volt/task"
 	types "github.com/grafvonb/c8volt/typex"
@@ -17,6 +18,8 @@ import (
 )
 
 type stubProcessAPI struct {
+	// Embedded contract makes unexpected assignment calls fail in unrelated fixtures.
+	process.API
 	dryRunCancelOrDeletePlan         func(context.Context, types.Keys, ...options.FacadeOption) (process.DryRunPIKeyExpansion, error)
 	cancelProcessInstances           func(context.Context, types.Keys, int, ...options.FacadeOption) (process.CancelReports, error)
 	deleteProcessInstances           func(context.Context, types.Keys, int, ...options.FacadeOption) (process.DeleteReports, error)
@@ -37,15 +40,94 @@ type stubProcessAPI struct {
 	enrichProcessInstanceElements    func(context.Context, process.ProcessInstances, ...options.FacadeOption) (process.ElementEnrichedProcessInstances, error)
 	enrichProcessInstanceListeners   func(context.Context, process.ProcessInstances, ...options.FacadeOption) (process.ElementEnrichedProcessInstances, error)
 	searchProcessInstanceVariables   func(context.Context, string, ...options.FacadeOption) ([]process.ProcessInstanceVariable, error)
+	planProcessInstanceVariables     func(context.Context, types.Keys, map[string]any, ...options.FacadeOption) (process.ProcessInstanceVariableUpdatePlan, error)
+	executeProcessInstanceVariables  func(context.Context, process.ProcessInstanceVariableUpdatePlan, int, ...options.FacadeOption) (process.ProcessInstanceVariableUpdateResults, error)
 	updateProcessInstancesVars       func(context.Context, types.Keys, map[string]any, int, ...options.FacadeOption) (process.ProcessInstanceVariableUpdateResults, error)
 	resolveProcessInstancesIncidents func(context.Context, types.Keys, int, ...options.FacadeOption) (incident.ProcessInstanceResolutionResults, error)
 }
 
 type stubTaskAPI struct {
+	completeUserTasks                       func(context.Context, types.Keys, map[string]any, int, ...options.FacadeOption) (task.UserTaskCompletionResults, error)
+	getUserTask                             func(context.Context, string, ...options.FacadeOption) (task.UserTask, error)
+	getUserTasks                            func(context.Context, types.Keys, int, ...options.FacadeOption) (task.UserTasks, error)
+	searchUserTasks                         func(context.Context, task.SearchRequest, ...options.FacadeOption) (task.UserTasks, error)
+	searchUserTasksPages                    func(context.Context, task.SearchRequest, task.SearchPageVisitor, ...options.FacadeOption) (task.SearchPagesResult, error)
+	searchUserTasksTotal                    func(context.Context, task.SearchRequest, ...options.FacadeOption) (int64, error)
+	enrichUserTasksWithVariables            func(context.Context, task.UserTasks, ...options.FacadeOption) (task.VariableEnrichedUserTasks, error)
 	resolveProcessInstanceKeyFromUserTask   func(context.Context, string, ...options.FacadeOption) (string, error)
 	resolveProcessInstanceKeysFromUserTasks func(context.Context, types.Keys, ...options.FacadeOption) (types.Keys, error)
+	planUserTaskVariableUpdates             func(context.Context, types.Keys, map[string]any, ...options.FacadeOption) (task.UserTaskVariableUpdatePlan, error)
+	executeUserTaskVariableUpdates          func(context.Context, task.UserTaskVariableUpdatePlan, int, ...options.FacadeOption) (task.UserTaskVariableUpdateResults, error)
 }
 
+// PlanUserTaskVariableUpdates delegates update planning to the configured command-test callback
+// and rejects unexpected calls.
+func (s stubTaskAPI) PlanUserTaskVariableUpdates(ctx context.Context, keys types.Keys, variables map[string]any, opts ...options.FacadeOption) (task.UserTaskVariableUpdatePlan, error) {
+	if s.planUserTaskVariableUpdates == nil {
+		panic("unexpected call")
+	}
+	return s.planUserTaskVariableUpdates(ctx, keys, variables, opts...)
+}
+
+// ExecuteUserTaskVariableUpdates delegates frozen-plan execution to the configured command-test
+// callback and rejects unexpected calls.
+func (s stubTaskAPI) ExecuteUserTaskVariableUpdates(ctx context.Context, plan task.UserTaskVariableUpdatePlan, wantedWorkers int, opts ...options.FacadeOption) (task.UserTaskVariableUpdateResults, error) {
+	if s.executeUserTaskVariableUpdates == nil {
+		panic("unexpected call")
+	}
+	return s.executeUserTaskVariableUpdates(ctx, plan, wantedWorkers, opts...)
+}
+
+// GetUserTask delegates one native task read to the configured command-test behavior.
+func (s stubTaskAPI) GetUserTask(ctx context.Context, taskKey string, opts ...options.FacadeOption) (task.UserTask, error) {
+	if s.getUserTask == nil {
+		panic("unexpected call")
+	}
+	return s.getUserTask(ctx, taskKey, opts...)
+}
+
+// GetUserTasks delegates bulk native task reads to the configured command-test behavior.
+func (s stubTaskAPI) GetUserTasks(ctx context.Context, taskKeys types.Keys, wantedWorkers int, opts ...options.FacadeOption) (task.UserTasks, error) {
+	if s.getUserTasks == nil {
+		panic("unexpected call")
+	}
+	return s.getUserTasks(ctx, taskKeys, wantedWorkers, opts...)
+}
+
+// SearchUserTasks delegates collected search to the configured command-test behavior.
+func (s stubTaskAPI) SearchUserTasks(ctx context.Context, request task.SearchRequest, opts ...options.FacadeOption) (task.UserTasks, error) {
+	if s.searchUserTasks == nil {
+		panic("unexpected call")
+	}
+	return s.searchUserTasks(ctx, request, opts...)
+}
+
+// SearchUserTasksPages delegates visitor search to the configured command-test behavior.
+func (s stubTaskAPI) SearchUserTasksPages(ctx context.Context, request task.SearchRequest, visitor task.SearchPageVisitor, opts ...options.FacadeOption) (task.SearchPagesResult, error) {
+	if s.searchUserTasksPages == nil {
+		panic("unexpected call")
+	}
+	return s.searchUserTasksPages(ctx, request, visitor, opts...)
+}
+
+// SearchUserTasksTotal delegates exact counting to the configured command-test behavior.
+func (s stubTaskAPI) SearchUserTasksTotal(ctx context.Context, request task.SearchRequest, opts ...options.FacadeOption) (int64, error) {
+	if s.searchUserTasksTotal == nil {
+		panic("unexpected call")
+	}
+	return s.searchUserTasksTotal(ctx, request, opts...)
+}
+
+// EnrichUserTasksWithVariables delegates selected-task enrichment to configured command-test behavior.
+func (s stubTaskAPI) EnrichUserTasksWithVariables(ctx context.Context, tasks task.UserTasks, opts ...options.FacadeOption) (task.VariableEnrichedUserTasks, error) {
+	if s.enrichUserTasksWithVariables == nil {
+		panic("unexpected call")
+	}
+	return s.enrichUserTasksWithVariables(ctx, tasks, opts...)
+}
+
+// ResolveProcessInstanceKeyFromUserTask delegates single-task resolution to the configured
+// command-test callback and rejects unexpected calls.
 func (s stubTaskAPI) ResolveProcessInstanceKeyFromUserTask(ctx context.Context, taskKey string, opts ...options.FacadeOption) (string, error) {
 	if s.resolveProcessInstanceKeyFromUserTask == nil {
 		panic("unexpected call")
@@ -53,6 +135,8 @@ func (s stubTaskAPI) ResolveProcessInstanceKeyFromUserTask(ctx context.Context, 
 	return s.resolveProcessInstanceKeyFromUserTask(ctx, taskKey, opts...)
 }
 
+// ResolveProcessInstanceKeysFromUserTasks uses the configured bulk resolver or falls back to
+// ordered single-task lookups, stopping on the first error.
 func (s stubTaskAPI) ResolveProcessInstanceKeysFromUserTasks(ctx context.Context, taskKeys types.Keys, opts ...options.FacadeOption) (types.Keys, error) {
 	if s.resolveProcessInstanceKeysFromUserTasks != nil {
 		return s.resolveProcessInstanceKeysFromUserTasks(ctx, taskKeys, opts...)
@@ -579,6 +663,22 @@ func (stubProcessAPI) GetProcessInstances(context.Context, types.Keys, int, ...o
 	panic("unexpected call")
 }
 
+// PlanProcessInstanceVariableUpdates delegates frozen planning to the configured command-test callback.
+func (s stubProcessAPI) PlanProcessInstanceVariableUpdates(ctx context.Context, keys types.Keys, variables map[string]any, opts ...options.FacadeOption) (process.ProcessInstanceVariableUpdatePlan, error) {
+	if s.planProcessInstanceVariables == nil {
+		panic("unexpected call")
+	}
+	return s.planProcessInstanceVariables(ctx, keys, variables, opts...)
+}
+
+// ExecuteProcessInstanceVariableUpdates delegates frozen execution to the configured command-test callback.
+func (s stubProcessAPI) ExecuteProcessInstanceVariableUpdates(ctx context.Context, plan process.ProcessInstanceVariableUpdatePlan, workers int, opts ...options.FacadeOption) (process.ProcessInstanceVariableUpdateResults, error) {
+	if s.executeProcessInstanceVariables == nil {
+		panic("unexpected call")
+	}
+	return s.executeProcessInstanceVariables(ctx, plan, workers, opts...)
+}
+
 func (stubProcessAPI) CreateNProcessInstances(context.Context, process.ProcessInstanceData, int, int, ...options.FacadeOption) ([]process.ProcessInstance, error) {
 	panic("unexpected call")
 }
@@ -625,3 +725,138 @@ func (s stubProcessAPI) DryRunCancelOrDeletePlan(ctx context.Context, keys types
 
 var _ process.API = stubProcessAPI{}
 var _ task.API = stubTaskAPI{}
+
+// CompleteUserTasks fails closed unless the test explicitly supplies native completion behavior.
+func (s stubTaskAPI) CompleteUserTasks(ctx context.Context, keys types.Keys, variables map[string]any, workers int, opts ...options.FacadeOption) (task.UserTaskCompletionResults, error) {
+	if s.completeUserTasks == nil {
+		panic("unexpected CompleteUserTasks call")
+	}
+	return s.completeUserTasks(ctx, keys, variables, workers, opts...)
+}
+
+// PrepareUserTaskCompletions rejects unexpected completion preparation in unrelated command fixtures.
+func (s stubTaskAPI) PrepareUserTaskCompletions(context.Context, types.Keys, map[string]any, int, ...options.FacadeOption) (task.UserTaskCompletionPlan, error) {
+	panic("unexpected PrepareUserTaskCompletions call")
+}
+
+// ExecuteUserTaskCompletions rejects unexpected completion execution in unrelated command fixtures.
+func (s stubTaskAPI) ExecuteUserTaskCompletions(context.Context, task.UserTaskCompletionPlan) (task.UserTaskCompletionResults, error) {
+	panic("unexpected ExecuteUserTaskCompletions call")
+}
+
+// SuspendProcessInstance rejects suspension in legacy command fixtures.
+func (stubProcessAPI) SuspendProcessInstance(context.Context, string, ...options.FacadeOption) (process.SuspensionResult, error) {
+	return process.SuspensionResult{}, ferr.ErrUnsupported
+}
+
+// SuspendProcessInstances rejects suspension in legacy command fixtures.
+func (stubProcessAPI) SuspendProcessInstances(context.Context, types.Keys, int, ...options.FacadeOption) (process.SuspensionResults, error) {
+	return process.SuspensionResults{Items: []process.SuspensionResult{}}, ferr.ErrUnsupported
+}
+
+// PlanProcessInstanceSuspension rejects planning in unrelated legacy fixtures.
+func (stubProcessAPI) PlanProcessInstanceSuspension(context.Context, types.Keys, ...options.FacadeOption) (process.ProcessInstanceSuspensionPlan, error) {
+	return process.ProcessInstanceSuspensionPlan{}, ferr.ErrUnsupported
+}
+
+// ResumeProcessInstance rejects resumption in legacy command fixtures.
+func (stubProcessAPI) ResumeProcessInstance(context.Context, string, ...options.FacadeOption) (process.ResumptionResult, error) {
+	return process.ResumptionResult{}, ferr.ErrUnsupported
+}
+
+// ResumeProcessInstances rejects resumption in legacy command fixtures.
+func (stubProcessAPI) ResumeProcessInstances(context.Context, types.Keys, int, ...options.FacadeOption) (process.ResumptionResults, error) {
+	return process.ResumptionResults{Items: []process.ResumptionResult{}}, ferr.ErrUnsupported
+}
+
+// PlanProcessInstanceResumption rejects planning in unrelated legacy fixtures.
+func (stubProcessAPI) PlanProcessInstanceResumption(context.Context, types.Keys, ...options.FacadeOption) (process.ProcessInstanceResumptionPlan, error) {
+	return process.ProcessInstanceResumptionPlan{}, ferr.ErrUnsupported
+}
+
+// AssignUserTasks fails closed on assignment in unrelated command fixtures.
+func (s stubTaskAPI) AssignUserTasks(context.Context, types.Keys, string, int, ...options.FacadeOption) (task.UserTaskAssignmentResults, error) {
+	panic("unexpected AssignUserTasks call")
+}
+
+// UnassignUserTasks fails closed on assignment removal in unrelated command fixtures.
+func (s stubTaskAPI) UnassignUserTasks(context.Context, types.Keys, int, ...options.FacadeOption) (task.UserTaskAssignmentResults, error) {
+	panic("unexpected UnassignUserTasks call")
+}
+
+func (s stubTaskAPI) PrepareUserTaskAssignments(context.Context, types.Keys, string, int, ...options.FacadeOption) (task.UserTaskAssignmentPlan, error) {
+	panic("unexpected PrepareUserTaskAssignments call")
+}
+func (s stubTaskAPI) ExecuteUserTaskAssignments(context.Context, task.UserTaskAssignmentPlan, bool) (task.UserTaskAssignmentResults, error) {
+	panic("unexpected ExecuteUserTaskAssignments call")
+}
+
+// ValidateProcessInstanceSearchFilter permits fixture selectors without backend access.
+func (s stubProcessAPI) ValidateProcessInstanceSearchFilter(process.ProcessInstanceFilter) error {
+	return nil
+}
+
+// ResolveProcessInstanceSelection rejects accidental selection in fixtures that did not authorize discovery.
+func (s stubProcessAPI) ResolveProcessInstanceSelection(context.Context, process.ProcessInstanceSelectionRequest, ...options.FacadeOption) (process.ProcessInstanceSelection, error) {
+	panic("unexpected selection")
+}
+
+// PlanProcessInstanceSelectedMutation rejects unconfigured selection in legacy keyed fixtures.
+func (stubProcessAPI) PlanProcessInstanceSelectedMutation(context.Context, process.ProcessInstanceSelectedMutationRequest, ...options.FacadeOption) (process.ProcessInstanceSelectedMutationPlan, error) {
+	panic("unexpected selected mutation planning")
+}
+
+// ExecuteProcessInstanceCancellationPlan rejects unconfigured frozen execution in legacy keyed fixtures.
+func (stubProcessAPI) ExecuteProcessInstanceCancellationPlan(context.Context, process.ProcessInstanceSelectedMutationPlan, ...options.FacadeOption) (process.CancelReports, error) {
+	panic("unexpected selected cancellation")
+}
+
+// ExecuteProcessInstanceDeletionPlan rejects unconfigured frozen execution in legacy keyed fixtures.
+func (stubProcessAPI) ExecuteProcessInstanceDeletionPlan(context.Context, process.ProcessInstanceSelectedMutationPlan, ...options.FacadeOption) (process.ProcessInstanceDeletionResult, error) {
+	panic("unexpected selected cancellation")
+}
+
+// PlanSelectedProcessInstanceVariableUpdates rejects unexpected selected-action calls in legacy fixtures.
+func (stubProcessAPI) PlanSelectedProcessInstanceVariableUpdates(ctx context.Context, request process.ProcessInstanceSelectionRequest, variables map[string]any, opts ...options.FacadeOption) (process.ProcessInstanceVariableUpdatePlan, error) {
+	panic("unexpected selected action")
+}
+
+// PlanSelectedProcessInstanceSuspension rejects unexpected selected-action calls in legacy fixtures.
+func (stubProcessAPI) PlanSelectedProcessInstanceSuspension(ctx context.Context, request process.ProcessInstanceSelectionRequest, tree bool, opts ...options.FacadeOption) (process.ProcessInstanceSuspensionPlan, error) {
+	panic("unexpected selected action")
+}
+
+// ExecuteProcessInstanceSuspensionPlan rejects unexpected selected-action calls in legacy fixtures.
+func (stubProcessAPI) ExecuteProcessInstanceSuspensionPlan(ctx context.Context, plan process.ProcessInstanceSuspensionPlan, workers int, opts ...options.FacadeOption) (process.SuspensionResults, error) {
+	panic("unexpected selected action")
+}
+
+// PlanSelectedProcessInstanceResumption rejects unexpected selected-action calls in legacy fixtures.
+func (stubProcessAPI) PlanSelectedProcessInstanceResumption(ctx context.Context, request process.ProcessInstanceSelectionRequest, tree bool, opts ...options.FacadeOption) (process.ProcessInstanceResumptionPlan, error) {
+	panic("unexpected selected action")
+}
+
+// ExecuteProcessInstanceResumptionPlan rejects unexpected selected-action calls in legacy fixtures.
+func (stubProcessAPI) ExecuteProcessInstanceResumptionPlan(ctx context.Context, plan process.ProcessInstanceResumptionPlan, workers int, opts ...options.FacadeOption) (process.ResumptionResults, error) {
+	panic("unexpected selected action")
+}
+
+// PlanSelectedProcessInstanceResolution supplies the additive selection API to legacy fixtures.
+func (s stubProcessAPI) PlanSelectedProcessInstanceResolution(context.Context, process.ProcessInstanceSelectionRequest, int, ...options.FacadeOption) (process.SelectedProcessInstanceResolutionPlan, error) {
+	return process.SelectedProcessInstanceResolutionPlan{}, nil
+}
+
+// ExecuteSelectedProcessInstanceResolution supplies the additive selection API to legacy fixtures.
+func (s stubProcessAPI) ExecuteSelectedProcessInstanceResolution(context.Context, process.SelectedProcessInstanceResolutionPlan, ...options.FacadeOption) (incident.ProcessInstanceResolutionResults, error) {
+	return incident.ProcessInstanceResolutionResults{}, nil
+}
+
+// PlanProcessInstancesIncidents supplies the additive incident plan API to legacy fixtures.
+func (s stubProcessAPI) PlanProcessInstancesIncidents(context.Context, types.Keys, ...options.FacadeOption) (incident.ProcessInstancesIncidentPlan, error) {
+	return incident.ProcessInstancesIncidentPlan{}, nil
+}
+
+// ExecuteProcessInstancesIncidentPlan supplies the additive incident plan API to legacy fixtures.
+func (s stubProcessAPI) ExecuteProcessInstancesIncidentPlan(context.Context, incident.ProcessInstancesIncidentPlan, int, ...options.FacadeOption) (incident.ProcessInstanceResolutionResults, error) {
+	return incident.ProcessInstanceResolutionResults{}, nil
+}

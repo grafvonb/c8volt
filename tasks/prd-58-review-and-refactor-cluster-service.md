@@ -140,9 +140,7 @@ As a contributor, I want tests, verification steps, and documentation impact to 
 ## Validation
 
 - Update `internal/services/cluster/factory_test.go`.
-- Update `internal/services/cluster/v87/service_test.go`.
 - Update `internal/services/cluster/v88/service_test.go`.
-- Update `testx/integration87/cluster_test.go` and `testx/integration88/cluster_test.go` as needed.
 - Run the targeted cluster validation sequence.
 - Run `make test`.
 - If user-visible docs change, run the CLI docs generation flow and verify the updated output.

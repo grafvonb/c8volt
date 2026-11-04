@@ -68,13 +68,22 @@ INTEGRATION_CLI_REAL_STATE_TARGETS := \
 	integration-cli-real-state-retention \
 	integration-cli-real-state-destructive \
 	integration-cli-real-state-cascade
+INTEGRATION_CLI_COMMON_TARGETS := \
+	integration-cli-common-preflight \
+	integration-cli-common-examples
+INTEGRATION_CLI_FOCUSED_TARGETS := \
+	integration-cli-process-lifecycle \
+	integration-cli-batch \
+	integration-cli-tenants
 INTEGRATION_TEST_TARGETS := \
+	integration-cli-common \
+	$(INTEGRATION_CLI_FOCUSED_TARGETS) \
 	integration-test \
 	integration-test-volume \
 	integration-test-real-state \
 	integration-test-all
 
-.PHONY: help all tidy generate generate-clients build test licenses lint fmt vet clean install run cover cover.html release docs docs-content docs-site-install docs-site-serve demo-vhs-check integration-test-confirm $(DEMO_VHS_TARGETS) $(DEMO_VHS_ALIASES) $(INTEGRATION_CLI_TARGETS) $(INTEGRATION_CLI_VOLUME_TARGETS) $(INTEGRATION_CLI_REAL_STATE_TARGETS) $(INTEGRATION_TEST_TARGETS)
+.PHONY: help all tidy generate generate-clients build test licenses lint fmt vet clean install run cover cover.html release docs docs-content docs-site-install docs-site-serve demo-vhs-check integration-test-confirm $(DEMO_VHS_TARGETS) $(DEMO_VHS_ALIASES) $(INTEGRATION_CLI_TARGETS) $(INTEGRATION_CLI_VOLUME_TARGETS) $(INTEGRATION_CLI_REAL_STATE_TARGETS) $(INTEGRATION_CLI_COMMON_TARGETS) $(INTEGRATION_CLI_FOCUSED_TARGETS) $(INTEGRATION_TEST_TARGETS)
 
 help: ## Show all available Make targets with a short description.
 	@awk 'BEGIN {FS = ":.*## "}; /^[a-zA-Z0-9_.-]+:.*## / {printf "%-55s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -107,7 +116,7 @@ docs-site-build-root: docs-content ## Build docs for hosts that serve the site f
 docs-site-serve: docs-content ## Serve the local Jekyll docs site with live reload after refreshing generated docs content.
 	./scripts/docs-site.sh serve
 
-demo-vhs-check: ## Verify local VHS recording prerequisites and required recording environment variables.
+demo-vhs-check: ## Verify local VHS recording tools; rendering also checks the configured Camunda 8.10 target.
 	./demos/vhs/scripts/check-vhs.sh
 
 demo-vhs-fast-start: ## Render the live Camunda-backed Fast Start VHS screencast.
@@ -159,9 +168,20 @@ run: build ## Build the binary and print the CLI help output.
 	./$(BIN_DIR)/$(BINARY) --help
 
 test: ## Run the full Go test suite with the race detector enabled.
-	go test $(PKG) -race -count=1
+	# Avoid a one-second race-detector exit delay for every CLI test subprocess.
+	GORACE="$(GORACE) atexit_sleep_ms=0" go test $(PKG) -race -count=1
 
 integration-test-confirm:
+	@if [ "$(C8VOLT_IT_SHOW_SETTINGS)" = "1" ]; then \
+		printf '\nIntegration release validation\n'; \
+		printf '  Profile(s):          %s\n' "$${C8VOLT_IT_PROFILES:-<unset>}"; \
+		printf '  Requested Camunda:   %s\n' "$${C8VOLT_IT_RELEASE_VERSION:-<exploratory>}"; \
+		printf '  Evidence directory:  %s\n' "$${C8VOLT_IT_WORKDIR:-separate temporary directory per test group}"; \
+		printf '  Required tenants:    %s\n' "$${C8VOLT_IT_REQUIRE_TENANTS:-none}"; \
+		printf '  Build binary:        %s (1=yes, 0=reuse)\n' "$${C8VOLT_IT_BUILD:-1}"; \
+		printf '  Slice timeouts:      baseline=%s volume=%s real-state=%s\n' "$${C8VOLT_IT_TIMEOUT:-60m}" "$${C8VOLT_IT_VOLUME_TIMEOUT:-90m}" "$${C8VOLT_IT_REAL_STATE_TIMEOUT:-90m}"; \
+		printf '  Server version is verified before mutations.\n\n'; \
+	fi
 	@if [ "$(C8VOLT_IT_AUTOMATION)" = "1" ]; then \
 		echo "Skipping integration test confirmation."; \
 	else \
@@ -174,9 +194,31 @@ integration-test: $(INTEGRATION_CLI_TARGETS) ## Run all baseline CLI integration
 
 integration-test-volume: $(INTEGRATION_CLI_VOLUME_TARGETS) ## Run all volume CLI integration test slices.
 
-integration-test-real-state: $(INTEGRATION_CLI_REAL_STATE_TARGETS) ## Run all C89 real-state integration test slices.
+integration-test-real-state: $(INTEGRATION_CLI_REAL_STATE_TARGETS) ## Run all 8.9/8.10 real-state integration test slices.
 
-integration-test-all: integration-test integration-test-volume integration-test-real-state ## Run baseline, volume, and real-state integration slices.
+integration-cli-common: $(INTEGRATION_CLI_COMMON_TARGETS) ## Run common inventory, manifest, profile, smoke, and example validation.
+
+# Aggregate defaults only; environment and make command-line values override them.
+integration-test-all: C8VOLT_IT_SHOW_SETTINGS := 1
+integration-test-all: export C8VOLT_IT_PROFILES ?= c810local
+integration-test-all: export C8VOLT_IT_RELEASE_VERSION ?= 8.10
+integration-test-all: integration-test-confirm ## Run all integration groups directly and sequentially with visible output.
+	$(MAKE) --no-print-directory -j1 C8VOLT_IT_AUTOMATION=1 C8VOLT_IT_SHOW_SETTINGS=0 integration-cli-common $(INTEGRATION_CLI_FOCUSED_TARGETS) integration-test integration-test-volume integration-test-real-state
+
+integration-cli-common-preflight: ## Run nonmutating inventory, manifest, profile, and smoke validation.
+	$(C8VOLT_IT_GO_TEST) $(C8VOLT_IT_GO_TEST_FLAGS) -run '^(TestCommandInventory|TestCoverageManifest|TestCoverageManifestValidationReportsMissingAndStalePaths|TestCoverageManifestValidationReportsMissingLeafFlags|TestBehavioralScenarioCatalogCoversConvergenceContract|TestCoreBehavioralCoverage|TestProfiles|TestReadOnlySmoke)$$' -count=1 -timeout=$(C8VOLT_IT_TIMEOUT)
+
+integration-cli-common-examples: integration-test-confirm ## Run example validation, including eligible disposable-target mutations.
+	$(C8VOLT_IT_GO_TEST) $(C8VOLT_IT_GO_TEST_FLAGS) -run '^TestExamples$$' -count=1 -timeout=$(C8VOLT_IT_TIMEOUT)
+
+integration-cli-batch: integration-test-confirm ## Run focused Camunda 8.10 batch lifecycle and process-definition draining validation.
+	$(C8VOLT_IT_GO_TEST) $(C8VOLT_IT_GO_TEST_FLAGS) -run '^(TestBatchFamily|TestRealStateProcessDefinitionDraining)$$' -count=1 -timeout=$(C8VOLT_IT_REAL_STATE_TIMEOUT)
+
+integration-cli-tenants: integration-test-confirm ## Run focused logical and physical tenant boundary validation.
+	$(C8VOLT_IT_GO_TEST) $(C8VOLT_IT_GO_TEST_FLAGS) -run '^(TestLogicalTenantFamily|TestPhysicalTenantFamily)$$' -count=1 -timeout=$(C8VOLT_IT_REAL_STATE_TIMEOUT)
+
+integration-cli-process-lifecycle: integration-test-confirm ## Run focused 8.10 suspend/resume lifecycle integration tests.
+	$(C8VOLT_IT_GO_TEST) $(C8VOLT_IT_GO_TEST_FLAGS) -run '^TestProcessInstanceLifecycle$$' -count=1 -timeout=$(C8VOLT_IT_TIMEOUT)
 
 integration-cli-get: integration-test-confirm ## Run destructive CLI integration tests for get commands.
 	$(C8VOLT_IT_GO_TEST) $(C8VOLT_IT_GO_TEST_FLAGS) -run TestGetFamily -count=1 -timeout=$(C8VOLT_IT_TIMEOUT)
@@ -214,28 +256,28 @@ integration-cli-ops-purge-volume: integration-test-confirm ## Run destructive vo
 integration-cli-ops-repair-volume: integration-test-confirm ## Run destructive volume CLI integration tests for ops repair commands.
 	$(C8VOLT_IT_GO_TEST) $(C8VOLT_IT_GO_TEST_FLAGS) -run TestVolumeOpsRepairFamily -count=1 -timeout=$(C8VOLT_IT_VOLUME_TIMEOUT)
 
-integration-cli-real-state-gaps: integration-test-confirm ## Run non-destructive C89 real-state gap and matrix validation.
+integration-cli-real-state-gaps: integration-test-confirm ## Run non-destructive 8.9/8.10 real-state gap and matrix validation.
 	$(C8VOLT_IT_GO_TEST) $(C8VOLT_IT_GO_TEST_FLAGS) -run TestRealStateGapFamily -count=1 -timeout=$(C8VOLT_IT_REAL_STATE_TIMEOUT)
 
-integration-cli-real-state-jobs: integration-test-confirm ## Run destructive C89 real-state integration tests for jobs.
+integration-cli-real-state-jobs: integration-test-confirm ## Run destructive 8.9/8.10 real-state integration tests for jobs.
 	$(C8VOLT_IT_GO_TEST) $(C8VOLT_IT_GO_TEST_FLAGS) -run TestRealStateJobsFamily -count=1 -timeout=$(C8VOLT_IT_REAL_STATE_TIMEOUT)
 
-integration-cli-real-state-incidents: integration-test-confirm ## Run destructive C89 real-state integration tests for incidents.
+integration-cli-real-state-incidents: integration-test-confirm ## Run destructive 8.9/8.10 real-state integration tests for incidents.
 	$(C8VOLT_IT_GO_TEST) $(C8VOLT_IT_GO_TEST_FLAGS) -run TestRealStateIncidentsFamily -count=1 -timeout=$(C8VOLT_IT_REAL_STATE_TIMEOUT)
 
-integration-cli-real-state-listeners: integration-test-confirm ## Run destructive C89 real-state integration tests for listener state.
+integration-cli-real-state-listeners: integration-test-confirm ## Run destructive 8.9/8.10 real-state integration tests for listener state.
 	$(C8VOLT_IT_GO_TEST) $(C8VOLT_IT_GO_TEST_FLAGS) -run TestRealStateListenersFamily -count=1 -timeout=$(C8VOLT_IT_REAL_STATE_TIMEOUT)
 
-integration-cli-real-state-bpmn-error: integration-test-confirm ## Run destructive C89 real-state integration tests for BPMN error job state.
+integration-cli-real-state-bpmn-error: integration-test-confirm ## Run destructive 8.9/8.10 real-state integration tests for BPMN error job state.
 	$(C8VOLT_IT_GO_TEST) $(C8VOLT_IT_GO_TEST_FLAGS) -run TestRealStateBPMNErrorFamily -count=1 -timeout=$(C8VOLT_IT_REAL_STATE_TIMEOUT)
 
-integration-cli-real-state-retention: integration-test-confirm ## Run destructive C89 real-state integration tests for retention semantics.
+integration-cli-real-state-retention: integration-test-confirm ## Run destructive 8.9/8.10 real-state integration tests for retention semantics.
 	$(C8VOLT_IT_GO_TEST) $(C8VOLT_IT_GO_TEST_FLAGS) -run TestRealStateRetentionFamily -count=1 -timeout=$(C8VOLT_IT_REAL_STATE_TIMEOUT)
 
-integration-cli-real-state-destructive: integration-test-confirm ## Run destructive C89 real-state integration tests for destructive post-state semantics.
+integration-cli-real-state-destructive: integration-test-confirm ## Run destructive 8.9/8.10 real-state integration tests for destructive post-state semantics.
 	$(C8VOLT_IT_GO_TEST) $(C8VOLT_IT_GO_TEST_FLAGS) -run TestRealStateDestructiveFamily -count=1 -timeout=$(C8VOLT_IT_REAL_STATE_TIMEOUT)
 
-integration-cli-real-state-cascade: integration-test-confirm ## Run destructive C89 real-state integration tests for parent/child cascade semantics.
+integration-cli-real-state-cascade: integration-test-confirm ## Run destructive 8.9/8.10 real-state integration tests for parent/child cascade semantics.
 	$(C8VOLT_IT_GO_TEST) $(C8VOLT_IT_GO_TEST_FLAGS) -run TestRealStateCascadeFamily -count=1 -timeout=$(C8VOLT_IT_REAL_STATE_TIMEOUT)
 
 integration-cli-walk: integration-test-confirm ## Run destructive CLI integration tests for walk commands.
@@ -285,7 +327,7 @@ clean: ## Remove local build artifacts and coverage output.
 
 cover: ## Generate a text coverage report and print the total coverage summary.
 	mkdir -p $(COVER_DIR)
-	go test $(PKG) -race -covermode=atomic -coverprofile=$(COVER_OUT)
+	GORACE="$(GORACE) atexit_sleep_ms=0" go test $(PKG) -race -covermode=atomic -coverprofile=$(COVER_OUT)
 	go tool cover -func=$(COVER_OUT) | tail -n 1
 
 cover.html: cover ## Generate the HTML coverage report after collecting coverage data.

@@ -2,8 +2,6 @@
 
 ## Decision 1: Reuse the issue `#90` shared filter and service support
 
-- **Decision**: Keep the new work scoped to the management command surfaces and reuse the existing shared process-instance filter fields plus the versioned v8.8/v8.7 service behavior already added for issue `#90`.
-- **Rationale**: The repository already contains `StartDateAfter`, `StartDateBefore`, `EndDateAfter`, and `EndDateBefore` in the shared facade/domain models, along with v8.8 date-filter mapping and v8.7 unsupported handling. Reusing that path keeps the follow-up change small and repository-native.
 - **Alternatives considered**:
   - Re-implement date-filter mapping separately for cancel/delete: rejected because it would duplicate working issue `#90` behavior.
   - Add management-only filter structures in `cmd/`: rejected because it would create a parallel model path for the same process-instance search semantics.
@@ -43,7 +41,7 @@
 ## Decision 6: Expand tests at the command seam and rely on existing versioned service coverage
 
 - **Decision**: Add targeted cancel/delete command tests for new flags and invalid combinations, while keeping the deeper versioned date-filter semantics covered by the existing issue `#90` service tests unless a gap is discovered.
-- **Rationale**: The new behavior introduced by issue `#93` is primarily command-surface exposure and validation. Existing v8.7/v8.8 service behavior is already covered for the shared filter path, so the highest-value new tests sit at the command seam.
+- **Rationale**: The new behavior introduced by issue `#93` is primarily command-surface exposure and validation. Existing v8.8 service behavior is already covered for the shared filter path, so the highest-value new tests sit at the command seam.
 - **Alternatives considered**:
   - Rebuild all date-filter coverage in new service tests: rejected because it duplicates existing coverage rather than validating the new integration point.
   - Rely only on manual smoke checks: rejected because the constitution requires automated validation for changed behavior.

@@ -63,7 +63,6 @@ embedded/
 ├── fs.go
 ├── fs_test.go                            # C810 inventory and normalized parity checks
 └── processdefinitions/
-    ├── C87_*.bpmn                        # protected, unchanged
     ├── C88_*.bpmn                        # protected, unchanged
     ├── C89_*.bpmn                        # behavioral source, unchanged
     └── C810_*.bpmn                       # eight new native definitions

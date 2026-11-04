@@ -66,7 +66,6 @@ Render a stable JSON dry-run plan:
 ./c8volt --json resolve process-instance --key 2251799813685250 --dry-run
 ```
 
-Verify unsupported-version behavior with a Camunda 8.7 test configuration:
 
 ```bash
 ./c8volt resolve incident --key 2251799813685249

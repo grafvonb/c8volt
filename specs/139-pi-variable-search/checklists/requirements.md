@@ -32,5 +32,4 @@
 ## Notes
 
 - GitHub issue traceability is recorded in `spec.md`.
-- The feature explicitly preserves the no-Operate implementation constraint and the 8.7 unsupported path from issue #139.
 - Ralph launch and implementation instructions must include `--implementation-context specs/ralph-implementation-rules.md`.

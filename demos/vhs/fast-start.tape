@@ -42,7 +42,7 @@ Enter
 Show
 Sleep 1s
 Wait
-Type "./c8volt get pd"
+Type "./c8volt get process-definition"
 Enter
 Wait
 
@@ -75,7 +75,7 @@ Enter
 Show
 Sleep 1s
 Wait
-Type "./c8volt get pd --stat"
+Type "./c8volt get process-definition --with-stats"
 Enter
 Wait
 
@@ -86,7 +86,7 @@ Enter
 Show
 Sleep 1s
 Wait
-Type "./c8volt get pi -b C89_MultipleSubProcessesParentProcess --total"
+Type "./c8volt get process-instance --bpmn-process-id C810_MultipleSubProcessesParent --total"
 Enter
 Wait
 
@@ -97,10 +97,10 @@ Enter
 Show
 Sleep 1s
 Wait
-Type `./c8volt run pi -b C89_MultipleSubProcessesParentProcess --vars '{"businessId":12345}'`
+Type `./c8volt run process-instance --bpmn-process-id C810_MultipleSubProcessesParent --set-vars '{"orderId":12345}'`
 Enter
 Wait
-Type `./c8volt run pi -b C89_MultipleSubProcessesParentProcess --vars '{"businessId":67890}'`
+Type `./c8volt run process-instance --bpmn-process-id C810_MultipleSubProcessesParent --set-vars '{"orderId":67890}'`
 Enter
 Wait
 
@@ -111,7 +111,7 @@ Enter
 Show
 Sleep 1s
 Wait
-Type "./c8volt get pi -b C89_MultipleSubProcessesParentProcess --total"
+Type "./c8volt get process-instance --bpmn-process-id C810_MultipleSubProcessesParent --total"
 Enter
 Wait
 
@@ -122,7 +122,7 @@ Enter
 Show
 Sleep 1s
 Wait
-Type "./c8volt get pd --stat"
+Type "./c8volt get process-definition --with-stats"
 Enter
 Wait
 
@@ -133,7 +133,7 @@ Enter
 Show
 Sleep 1s
 Wait
-Type "./c8volt get pi -b C89_MultipleSubProcessesParentProcess --with-vars"
+Type "./c8volt get process-instance --bpmn-process-id C810_MultipleSubProcessesParent --with-vars"
 Enter
 Wait
 
@@ -144,7 +144,7 @@ Enter
 Show
 Sleep 1s
 Wait
-Type "C8_VOLT_PI=$(./c8volt get pi -b C89_MultipleSubProcessesParentProcess --limit 1 --keys-only)"
+Type "C8_VOLT_PI=$(./c8volt get process-instance --bpmn-process-id C810_MultipleSubProcessesParent --limit 1 --keys-only)"
 Enter
 Wait
 Type "echo $C8_VOLT_PI"
@@ -158,7 +158,7 @@ Enter
 Show
 Sleep 1s
 Wait
-Type "./c8volt walk pi --key $C8_VOLT_PI"
+Type "./c8volt walk process-instance --key $C8_VOLT_PI"
 Enter
 Wait
 
@@ -169,7 +169,7 @@ Enter
 Show
 Sleep 1s
 Wait
-Type "./c8volt delete pi -b C89_MultipleSubProcessesParentProcess --force --dry-run"
+Type "./c8volt delete process-instance --bpmn-process-id C810_MultipleSubProcessesParent --force --dry-run"
 Enter
 Wait
 
@@ -180,7 +180,7 @@ Enter
 Show
 Sleep 1s
 Wait
-Type "./c8volt delete pi -b C89_MultipleSubProcessesParentProcess --force"
+Type "./c8volt delete process-instance --bpmn-process-id C810_MultipleSubProcessesParent --force"
 Enter
 Sleep 1s
 Type "y"
@@ -194,7 +194,7 @@ Enter
 Show
 Sleep 1s
 Wait
-Type "./c8volt get pi -b C89_MultipleSubProcessesParentProcess --total"
+Type "./c8volt get process-instance --bpmn-process-id C810_MultipleSubProcessesParent --total"
 Enter
 Wait
 

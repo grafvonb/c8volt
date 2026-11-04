@@ -10,21 +10,15 @@ Cancel process instances by key or filters
 
 ### Synopsis
 
-Cancel process instances by key or search filters.
+Cancel process instances selected by key or search filters.
 
-By default c8volt validates the affected root and descendant instances, asks for confirmation, and waits until cancellation is observed. Use --force when a selected child must be escalated to its root instance.
+The plan includes affected instance families. Selecting a child requires --force
+to cancel its root. By default, wait until every affected instance is terminal
+or absent. Use --dry-run to review the family before cancellation.
 
-Cancellation succeeds when every affected family member is completed, canceled, terminated, or absent. The explicit expect process-instance --state canceled check still requires canceled or terminated instances.
-
---tenant limits search-derived selection. An empty tenant or --all-tenants leaves discovery unfiltered across accessible tenants. Explicit --key and stdin keys use backend authorization without tenant filtering.
-
-A --bpmn-process-id selector must match a visible process definition before instance discovery. An empty selection completes without confirmation or cancellation.
-
---batch-size controls each discovery request; --limit caps selected instances across all pages. --workers, --fail-fast, and --no-worker-limit control planning and cancellation work.
-
-Use --verbose to explain root escalation, accepted cancellation, and confirmation waits. Use --debug for per-check state observations and HTTP diagnostics; it remains independent of --verbose. A confirmation timeout reports accepted cancellation as submitted but unconfirmed.
-
-Use --dry-run to preview the affected family without cancelling. Use --auto-confirm for unattended cancellation.
+Use --limit to bound matching seeds; family members are included in full.
+Business-ID selection with --bid is available only c8.10+.
+Empty searches finish without confirmation or mutation.
 
 ```
 c8volt cancel process-instance [flags]
@@ -33,28 +27,16 @@ c8volt cancel process-instance [flags]
 ### Examples
 
 ```
-  ./c8volt cancel process-instance --key <process-instance-key>
-  ./c8volt cancel process-instance --key <process-instance-key> --dry-run
-  ./c8volt cancel process-instance --key <process-instance-key> --force
-  ./c8volt --tenant tenant-a cancel process-instance --key <process-instance-key> --dry-run
-  ./c8volt --tenant tenant-a cancel process-instance --state active --limit 5 --dry-run
-  ./c8volt --tenant "" cancel process-instance --state active --limit 5 --dry-run
-  ./c8volt cancel process-instance --state active --batch-size 250 --limit 5 --dry-run
-  ./c8volt cancel process-instance --state active --json --dry-run
-  ./c8volt cancel process-instance --state active --keys-only
-  ./c8volt cancel process-instance --state active --start-date-before 2026-05-31 --limit 5 --dry-run
-  ./c8volt cancel process-instance --state active --start-date-newer-days 30 --limit 5 --dry-run
-  ./c8volt cancel process-instance --bpmn-process-id <bpmn-process-id> --state active --limit 5 --auto-confirm
-  ./c8volt --verbose cancel process-instance --state active --limit 25 --auto-confirm
-  ./c8volt --verbose --debug cancel process-instance --key <process-instance-key> --force
-  ./c8volt expect process-instance --key <process-instance-key> --state canceled
-  ./c8volt get process-instance --key <process-instance-key> --keys-only | ./c8volt cancel process-instance --auto-confirm -
+  c8volt cancel process-instance --key <process-instance-key> --dry-run
+  c8volt cancel process-instance --bpmn-process-id order --state active --dry-run
+  c8volt cancel process-instance --key <child-instance-key> --force
 ```
 
 ### Options
 
 ```
-  -n, --batch-size int32            number of process instances to inspect per discovery page; does not cap total selected scope (max limit 1000 enforced by server) (default 1000)
+  -n, --batch-size int32            process instances per discovery page (server maximum 1000) (default 1000)
+      --bid string                  exact business ID to select (only c8.10+)
   -b, --bpmn-process-id string      BPMN process ID to filter process instances
       --dry-run                     preview cancel scope without submitting cancellation
       --end-date-after string       only include process instances with end date >= YYYY-MM-DD
@@ -65,7 +47,7 @@ c8volt cancel process-instance [flags]
       --force                       cancel the root instance when a selected instance is a child
   -h, --help                        help for process-instance
   -k, --key strings                 process instance key(s) to cancel
-  -l, --limit int32                 maximum number of matching process instances to select for cancellation across all pages; omit to continue through all matches
+  -l, --limit int32                 maximum matching instances to select; omit for all matches
       --no-state-check              skip checking the current state of the process instance before cancelling it
       --no-wait                     return after cancellation is accepted
       --no-worker-limit             use all queued jobs as workers when --workers is unset
@@ -75,27 +57,29 @@ c8volt cancel process-instance [flags]
       --start-date-before string    only include process instances with start date <= YYYY-MM-DD
       --start-date-newer-days int   only include process instances N days old or newer (0 means today) (default -1)
       --start-date-older-days int   only include process instances N days old or older (default -1)
-  -s, --state string                state to filter process instances: all, active, completed, canceled, terminated (default "all")
-  -w, --workers int                 maximum concurrent workers for queued work; mutation work uses root trees (default: min(queued work, 2*GOMAXPROCS, 32)); independent of discovery page size
+  -s, --state string                state to filter process instances: all, active, suspended (only c8.10+), completed, canceled, terminated (default "all")
+  -w, --workers int                 maximum concurrent workers; omit for an automatic limit
 ```
 
 ### Options inherited from parent commands
 
 ```
-      --all-tenants        clear configured tenant filtering and search all tenants visible to the authenticated user; mutually exclusive with --tenant
-  -y, --auto-confirm       auto-confirm prompts for non-interactive use
-      --automation         enable non-interactive mode for commands that explicitly support it
-      --config string      path to config file
-      --debug              enable debug logging
-  -j, --json               output as JSON (where applicable)
-      --keys-only          output keys only (where applicable)
-      --log-level string   log level (debug, info, warn, error) (default "info")
-      --no-indicator       disable transient terminal activity indicators
-      --profile string     config active profile name to use (e.g. dev, prod)
-  -q, --quiet              suppress output except errors
-      --tenant string      tenant ID for discovery/search, selection, create, deploy, and run flows; explicit empty values can clear configured discovery filters, and explicit keys/IDs remain backend-authorized
-      --timeout duration   HTTP request timeout (default 30s)
-  -v, --verbose            show additional output
+      --all-tenants          search all accessible tenants; cannot combine with --tenant
+  -y, --auto-confirm         auto-confirm prompts for non-interactive use
+      --automation           enable non-interactive mode for commands that explicitly support it
+      --config string        path to config file
+      --debug                enable debug logging
+  -j, --json                 output as JSON (where applicable)
+      --keys-only            output keys only (where applicable)
+      --log-level string     log level (debug, info, warn, error) (default "info")
+      --no-indicator         disable transient terminal activity indicators
+      --no-version-check     skip the automatic advisory gateway version check
+      --profile string       config active profile name to use (e.g. dev, prod)
+  -q, --quiet                suppress output except errors
+      --request-rate float   maximum shared request starts per second (fractions allowed; 0 disables pacing)
+      --tenant string        tenant for discovery and creation; explicit keys use backend authorization
+      --timeout duration     HTTP request timeout (default 30s)
+  -v, --verbose              show additional output
 ```
 
 ### SEE ALSO

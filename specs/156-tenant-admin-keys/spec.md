@@ -81,7 +81,6 @@ As an operator or automation author, I want help text and user-facing documentat
 ### Edge Cases
 
 - Camunda 8.8 and 8.9 may expose different tenant filtering support; each supported version must preserve its current backend-compatible discovery behavior.
-- Camunda 8.7 tenant behavior is out of scope and must not be rewritten as part of this feature.
 - Returned resource metadata may identify a different tenant than the selected `--tenant`; explicit input flows may display that returned tenant for operator visibility.
 - Search-derived destructive flows may still perform dependency expansion, but expansion must remain tied to the intended discovered scope.
 - Direct keys supplied by flags and direct keys supplied through stdin must be treated consistently as explicit operator input.
@@ -107,7 +106,6 @@ As an operator or automation author, I want help text and user-facing documentat
 - **FR-012**: User-facing help and documentation MUST explain that `--tenant` scopes discovery, search, selection, create, deploy, and run flows where supported, while explicit keys, IDs, stdin keys, and direct flag values remain backend-authorized admin input.
 - **FR-013**: Tests MUST cover at least one tenant-scoped discovery/search-derived flow for Camunda 8.8 or 8.9.
 - **FR-014**: Tests MUST cover at least one explicit direct-key flow for Camunda 8.8 or 8.9 where selected tenant and returned metadata differ.
-- **FR-015**: The implementation MUST NOT rewrite Camunda 8.7 tenant behavior as part of this issue.
 
 ### Key Entities *(include if feature involves data)*
 

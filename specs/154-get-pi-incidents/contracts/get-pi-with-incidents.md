@@ -85,4 +85,3 @@ Expected payload shape:
 
 - `v8.8`: Supported through generated process-instance incident search.
 - `v8.9`: Supported through generated process-instance incident search.
-- `v8.7`: Unsupported for this flag when tenant-safe keyed enrichment cannot be guaranteed.

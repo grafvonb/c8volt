@@ -33,22 +33,17 @@ var (
 var opsPurgeAllProcessDefinitionsCmd = &cobra.Command{
 	Use:   "all-process-definitions",
 	Short: "Purge all selected process definitions",
-	Long: `Delete selected process definitions and their associated history on Camunda 8.9 or newer.
+	Long: `Delete selected process definitions and associated history.
 
-Select definitions with the same filters as get process-definition, or provide explicit --key values. The workflow fixes the candidate set, validates delete impact, and requires confirmation before deletion.
+Select versions by key or the same filters as get process-definition.
+Unfinished instances block deletion. With --force, cancel affected roots, wait
+for unfinished work to drain, then delete instance history and definitions.
+Suspended instances count as unfinished only c8.10+.
 
-Active-instance impact blocks deletion unless --force is set. Forced cleanup cancels root instances, waits for active instances to drain, deletes instance history, then deletes the definitions.
-
---tenant limits selector discovery; an empty tenant or --all-tenants searches across accessible tenants. Explicit keys use backend authorization without tenant filtering. --batch-size controls each discovery request; --limit caps the selected scope.
-
-Use --dry-run to inspect impact without mutation, --auto-confirm or --automation for unattended deletion, and --report-file to save an audit report.`,
-	Example: `  ./c8volt ops purge all-process-definitions --dry-run
-  ./c8volt --tenant tenant-a ops purge all-process-definitions --bpmn-process-id <bpmn-process-id> --latest --dry-run
-  ./c8volt --tenant "" ops purge all-process-definitions --bpmn-process-id <bpmn-process-id> --latest --dry-run
-  ./c8volt ops purge all-process-definitions --bpmn-process-id <bpmn-process-id> --latest --dry-run
-  ./c8volt ops purge all-process-definitions --bpmn-process-id <bpmn-process-id> --latest --force
-  ./c8volt --verbose ops purge all-process-definitions --bpmn-process-id <bpmn-process-id> --latest --auto-confirm
-  ./c8volt ops purge all-process-definitions --key <process-definition-key> --force --report-file process-definition-purge.md`,
+Use --dry-run to review the affected families and --report-file to save an audit
+report. Use --auto-confirm for unattended execution.`,
+	Example: `  c8volt ops purge all-process-definitions --bpmn-process-id order --dry-run
+  c8volt ops purge all-process-definitions --bpmn-process-id order --force --report-file purge.md`,
 	Aliases: []string{"all-pds", "apd"},
 	Args:    validateOpsPurgeAllProcessDefinitionsArgs,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -91,7 +86,7 @@ Use --dry-run to inspect impact without mutation, --auto-confirm or --automation
 				return cli.PurgeAllProcessDefinitions(cmd.Context(), planRequest, collectOptions()...)
 			})
 			if err != nil {
-				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("plan ops purge all process definitions: %w", err))
+				abortOpsPurgeAllProcessDefinitionsAfterReport(cmd, log, cfg, planned, fmt.Errorf("plan ops purge all process definitions: %w", err))
 			}
 			if err := rejectOpsPurgeAllProcessDefinitionsPlanRequiringForce(planned.DeletePlan); err != nil {
 				abortOpsPurgeAllProcessDefinitionsAfterReport(cmd, log, cfg, markOpsPurgeAllProcessDefinitionsLocalFailure(planned, ops.WorkflowStepStatusBlocked, err), err)
@@ -115,10 +110,8 @@ Use --dry-run to inspect impact without mutation, --auto-confirm or --automation
 		executionProgress.Close()
 		result = attachOpsPurgeAllProcessDefinitionsResultTenantContext(cmd, cfg, result)
 		if err != nil {
-			if reportErr := writeOpsPurgeAllProcessDefinitionsReport(result, cfg, opsPurgeAllProcessDefinitionsReportWriteMode(result)); reportErr != nil {
-				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("ops purge all process definitions: %w; write audit report: %v", err, reportErr))
-			}
-			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("ops purge all process definitions: %w", err))
+			abortOpsPurgeAllProcessDefinitionsAfterReport(cmd, log, cfg, result, fmt.Errorf("ops purge all process definitions: %w", err))
+			return
 		}
 		if err := writeOpsPurgeAllProcessDefinitionsReport(result, cfg, opsPurgeAllProcessDefinitionsReportWriteMode(result)); err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("write ops purge all process definitions audit report: %w", err))
@@ -139,14 +132,14 @@ func init() {
 	fs.Int32Var(&flagOpsPurgeAllPDProcessVersion, "pd-version", 0, "process definition version to filter candidate discovery")
 	fs.StringVar(&flagOpsPurgeAllPDProcessVersionTag, "pd-version-tag", "", "process definition version tag to filter candidate discovery")
 	fs.BoolVar(&flagOpsPurgeAllPDLatest, "latest", false, "only include the latest matching process-definition version(s)")
-	fs.Int32VarP(&flagOpsPurgeAllPDBatchSize, "batch-size", "n", consts.MaxPISearchSize, fmt.Sprintf("number of process definitions to inspect per discovery page; does not cap total frozen scope (max limit %d enforced by server)", consts.MaxPISearchSize))
+	fs.Int32VarP(&flagOpsPurgeAllPDBatchSize, "batch-size", "n", consts.MaxPISearchSize, fmt.Sprintf("process definitions per discovery page (server maximum %d)", consts.MaxPISearchSize))
 	fs.Int32VarP(&flagOpsPurgeAllPDLimit, "limit", "l", 0, "maximum number of matching process definitions to freeze for purge; omit to discover all matches")
 	fs.BoolVar(&flagDryRun, "dry-run", false, "discover and validate process-definition cleanup without submitting deletion requests")
-	fs.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers when validating the delete plan and deleting process definitions (default: min(targets, 2*GOMAXPROCS, 32))")
+	fs.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers; omit for an automatic limit")
 	fs.BoolVar(&flagNoWorkerLimit, "no-worker-limit", false, "use all queued jobs as workers when --workers is unset")
 	fs.BoolVar(&flagFailFast, "fail-fast", false, "stop scheduling validation or deletion work after the first error")
 	fs.BoolVar(&flagNoWait, "no-wait", false, "return after deletion requests are accepted without deletion confirmation")
-	fs.BoolVar(&flagForce, "force", false, "force cancellation of affected active process instances before deleting process definitions")
+	fs.BoolVar(&flagForce, "force", false, "force cancellation of affected unfinished process instances before deleting process definitions")
 	fs.StringVar(&flagOpsPurgeAllPDReportFile, "report-file", "", "write an audit report to the given path")
 	fs.StringVar(&flagOpsPurgeAllPDReportFormat, "report-format", "", "audit report format: markdown, json (default inferred from report-file extension)")
 
@@ -212,23 +205,28 @@ func formatOpsPurgeAllProcessDefinitionsActivity(request ops.AllProcessDefinitio
 	return "running process-definition purge workflow"
 }
 
-// rejectOpsPurgeAllProcessDefinitionsPlanRequiringForce blocks mutation before prompting when active process instances are affected.
+// rejectOpsPurgeAllProcessDefinitionsPlanRequiringForce blocks mutation before prompting when unfinished process instances are affected.
 func rejectOpsPurgeAllProcessDefinitionsPlanRequiringForce(plan ops.AllProcessDefinitionsPurgeDeletePlan) error {
 	if flagForce || !plan.RequiresForce {
 		return nil
 	}
 	return localPreconditionError(fmt.Errorf(
-		"refusing to delete all-process-definitions purge scope: %d active process instance(s) are affected; no delete request was submitted; use --force to cancel active process instances before delete",
-		plan.ActiveProcessInstanceCount,
+		"refusing to delete all-process-definitions purge scope: %s are affected; no delete request was submitted; use --force to cancel unfinished process instances before delete",
+		opsPurgeAllProcessDefinitionsUnfinishedSummary(plan),
 	))
 }
 
 // abortOpsPurgeAllProcessDefinitionsAfterReport writes available audit data before surfacing local aborts.
 func abortOpsPurgeAllProcessDefinitionsAfterReport(cmd *cobra.Command, log *slog.Logger, cfg *config.Config, result ops.AllProcessDefinitionsPurgeResult, err error) {
-	if reportErr := writeOpsPurgeAllProcessDefinitionsReport(result, cfg, OpsWorkflowReportPreserveExisting); reportErr != nil {
-		handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("%w; write audit report: %v", err, reportErr))
+	reportFailed := false
+	if reportErr := writeOpsPurgeAllProcessDefinitionsReport(result, cfg, opsPurgeAllProcessDefinitionsReportWriteMode(result)); reportErr != nil {
+		reportFailed = true
+		err = fmt.Errorf("%w; write audit report: %v", err, reportErr)
 	}
-	handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+	if renderErr := renderOpsPurgeAllProcessDefinitionsFailure(cmd, log, result, err, reportFailed); renderErr != nil {
+		log.Error("could not render process-definition purge result")
+	}
+	exitAfterRenderedResult(cfg.App.NoErrCodes, err)
 }
 
 // markOpsPurgeAllProcessDefinitionsLocalFailure records local blockers in the audit report shape.

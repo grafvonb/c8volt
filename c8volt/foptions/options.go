@@ -78,7 +78,10 @@ func WithProgress(progress func(ProgressEvent)) FacadeOption {
 
 type FacadeOption func(*FacadeCfg)
 
+// FacadeCfg holds evaluated public options for a facade call.
 type FacadeCfg struct {
+	// UserTaskAssignmentOverride permits replacing an existing assignee only when explicitly enabled.
+	UserTaskAssignmentOverride        bool
 	NoStateCheck                      bool
 	Force                             bool
 	NoWait                            bool
@@ -122,6 +125,8 @@ const (
 	CompletionDispositionSubmitted CompletionDisposition = "submitted"
 	// CompletionDispositionConfirmed means the command's configured wait or proof contract completed.
 	CompletionDispositionConfirmed CompletionDisposition = "confirmed"
+	// CompletionDispositionSkipped means the tracked item completed without mutation because workflow controls or safety policy retained it.
+	CompletionDispositionSkipped CompletionDisposition = "skipped"
 	// CompletionDispositionFailed means the configured completion boundary was not reached.
 	CompletionDispositionFailed CompletionDisposition = "failed"
 )
@@ -253,6 +258,9 @@ func ApplyFacadeOptions(opts []FacadeOption) *FacadeCfg {
 func MapFacadeOptionsToCallOptions(opts []FacadeOption) []services.CallOption {
 	c := ApplyFacadeOptions(opts)
 	var out []services.CallOption
+	if c.UserTaskAssignmentOverride {
+		out = append(out, services.WithUserTaskAssignmentOverride())
+	}
 	if c.NoStateCheck {
 		out = append(out, services.WithNoStateCheck())
 	}
@@ -454,4 +462,10 @@ func fromDomainCompletionProgressPtr(progress *d.OpsCompletionProgress) *Complet
 		AffectedCount:    progress.AffectedCount,
 	}
 	return &out
+}
+
+// WithUserTaskAssignmentOverride explicitly permits replacing an existing task assignee.
+// It applies only to assignment; unassignment rejects this option when enabled.
+func WithUserTaskAssignmentOverride() FacadeOption {
+	return func(c *FacadeCfg) { c.UserTaskAssignmentOverride = true }
 }

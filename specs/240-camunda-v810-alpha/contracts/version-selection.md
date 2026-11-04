@@ -33,7 +33,7 @@ The following values must return the existing unknown-version error and must not
 ## Discovery and output
 
 - Supported and implemented version collections include `V810Alpha` after all factories are wired.
-- Stable grouping contains `8.7`, `8.8`, and `8.9`.
+- Stable grouping contains `8.8` and `8.9`.
 - Experimental grouping contains `8.10-alpha` with baseline `8.10.0-alpha4`.
 - Human root help, `version`, README, and generated docs show stable and experimental support separately.
 - Existing JSON envelope and existing field types remain unchanged.
@@ -43,8 +43,8 @@ Recommended additive payload shape:
 
 ```json
 {
-  "supportedCamundaVersions": "8.7, 8.8, 8.9, 8.10-alpha",
-  "stableCamundaVersions": "8.7, 8.8, 8.9",
+  "supportedCamundaVersions": "8.8, 8.9, 8.10-alpha",
+  "stableCamundaVersions": "8.8, 8.9",
   "experimentalCamundaVersions": "8.10-alpha",
   "experimentalCamundaBaseline": "8.10.0-alpha4"
 }
@@ -52,6 +52,6 @@ Recommended additive payload shape:
 
 ## Compatibility guarantees
 
-- Selecting 8.7, 8.8, or 8.9 produces the same factory paths and command behavior as before this feature.
+- Selecting 8.8, or 8.9 produces the same factory paths and command behavior as before this feature.
 - Adding alpha does not alter the default.
 - No output calls `8.10-alpha` stable, generally available, or equivalent to final 8.10.

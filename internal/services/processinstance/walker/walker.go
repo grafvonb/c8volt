@@ -59,6 +59,7 @@ func Ancestry(ctx context.Context, s PIWalker, startKey string, opts ...services
 	}
 }
 
+// Descendants exhausts child discovery at each depth and retains observed membership on failure.
 func Descendants(ctx context.Context, s PIWalker, rootKey string, opts ...services.CallOption) (desc []string, edges map[string][]string, chain map[string]d.ProcessInstance, err error) {
 	_ = services.ApplyCallOptions(opts)
 
@@ -92,15 +93,20 @@ func Descendants(ctx context.Context, s PIWalker, rootKey string, opts ...servic
 		}
 
 		children, e := s.GetDirectChildrenOfProcessInstance(ctx, parent, opts...)
-		if e != nil {
-			return fmt.Errorf("descendants children: %w", e)
-		}
 
 		// keep an entry even if no children (useful for tree rendering)
 		if _, ok := edges[parent]; !ok {
 			edges[parent] = nil
 		}
 
+		// Preserve all observed direct children even when a later page failed; never recurse after failure.
+		if e != nil {
+			for _, it := range children {
+				edges[parent] = append(edges[parent], it.Key)
+				chain[it.Key] = it
+			}
+			return fmt.Errorf("descendants children: %w", e)
+		}
 		for i := range children {
 			it := children[i]
 			k := it.Key
@@ -116,7 +122,10 @@ func Descendants(ctx context.Context, s PIWalker, rootKey string, opts ...servic
 	}
 
 	if err = dfs(rootKey); err != nil {
-		return nil, nil, nil, err
+		if len(chain) == 0 && len(desc) == 0 {
+			return nil, nil, nil, err
+		}
+		return desc, edges, chain, err
 	}
 	return desc, edges, chain, nil
 }

@@ -55,8 +55,6 @@ Represents canonical comparison between requested and observed variable values.
 
 ## Unsupported Version Error
 
-Represents the explicit failure for Camunda 8.7.
 
-- **Trigger**: update process-instance command runs against a Camunda 8.7 configuration.
 - **Timing**: returned before any mutation request is attempted.
 - **Output**: clear unsupported-version message consistent with existing domain/facade errors.

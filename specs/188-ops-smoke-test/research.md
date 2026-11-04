@@ -21,11 +21,11 @@
 
 ## Decision: Use version-matched embedded multiple-subprocess fixtures
 
-**Rationale**: The repository already ships `C87_MultipleSubProcessesParent.bpmn`, `C88_MultipleSubProcessesParent.bpmn`, and `C89_MultipleSubProcessesParent.bpmn`. Selecting from the configured Camunda version proves the same fixture family across supported runtimes and fails early if a fixture is missing.
+**Rationale**: The repository already ships `C88_MultipleSubProcessesParent.bpmn` and `C89_MultipleSubProcessesParent.bpmn`. Selecting from the configured Camunda version proves the same fixture family across supported runtimes and fails early if a fixture is missing.
 
 **Alternatives considered**:
 
-- Always use the C89 fixture. Rejected because the command must support configured 8.7, 8.8, and 8.9 runtimes.
+- Always use the C89 fixture. Rejected because the command must support configured 8.8 and 8.9 runtimes.
 - Allow arbitrary BPMN files. Rejected as out of scope and less deterministic for smoke-test reporting.
 
 ## Decision: Prefer the deployed process-definition key for process-instance creation

@@ -50,14 +50,20 @@ type completionAcceptanceServer struct {
 	nextListener            string
 	processInstanceKeys     map[string]string
 	extraFilters            map[string]string
+	expectedBID             string
 }
 
 // newCompletionAcceptanceServer rejects every endpoint outside discovery, lookup
 // and completion, making hidden repair/history/process mutations test failures.
-func newCompletionAcceptanceServer(t *testing.T, pages []completionAcceptancePage, behavior map[string]string) (*completionAcceptanceServer, *httptest.Server) {
+func newCompletionAcceptanceServer(t *testing.T, version string, pages []completionAcceptancePage, behavior map[string]string) (*completionAcceptanceServer, *httptest.Server) {
 	t.Helper()
 	f := &completionAcceptanceServer{pages: pages, behavior: behavior, expectedPages: len(pages), reads: map[string]int{}, writes: map[string]int{}, cancelReady: make(chan struct{})}
-	server := testx.NewIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { f.serve(t, w, r) }))
+	server := testx.NewIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveVersionCheckTopology(w, r, version) {
+			return
+		}
+		f.serve(t, w, r)
+	}))
 	t.Cleanup(server.Close)
 	return f, server
 }
@@ -231,7 +237,12 @@ func (f *completionAcceptanceServer) serve(t *testing.T, w http.ResponseWriter, 
 		if variables, ok := payload["variables"].(map[string]any); !ok || len(variables) != 0 {
 			t.Errorf("listener payload: %v", payload)
 		}
-		if len(payload) != 1 {
+		expectedFields := 1
+		if f.expectedBID != "" {
+			require.Equal(t, f.expectedBID, payload["businessId"])
+			expectedFields++
+		}
+		if len(payload) != expectedFields {
 			t.Errorf("unexpected optional completion fields: %v", payload)
 			w.WriteHeader(http.StatusBadRequest)
 			io.WriteString(w, `{"detail":"unset optional completion fields must be omitted"}`)
@@ -396,7 +407,7 @@ func TestBulkCompletionAcceptanceScale(t *testing.T) {
 				behaviors[key] = kinds[i%len(kinds)]
 			}
 			rows = append(rows, rows[101]) // Duplicate on a later page cannot replay completion.
-			previewFixture, previewServer := newCompletionAcceptanceServer(t, completionAcceptancePages(rows, 100), behaviors)
+			previewFixture, previewServer := newCompletionAcceptanceServer(t, version, completionAcceptancePages(rows, 100), behaviors)
 			preview, previewStderr, previewErr := runCompletionAcceptance(t, previewServer, version, []string{"--type", "cleanup", "--batch-size", "100", "--dry-run", "--json"}, "", false)
 			require.NoError(t, previewErr, previewStderr)
 			previewEnvelope := decodeBulkCompletionEnvelope(t, preview)
@@ -416,7 +427,7 @@ func TestBulkCompletionAcceptanceScale(t *testing.T) {
 			require.Empty(t, previewFixture.reads)
 			require.Empty(t, previewFixture.writes)
 			require.Empty(t, previewStderr)
-			f, server := newCompletionAcceptanceServer(t, completionAcceptancePages(rows, 100), behaviors)
+			f, server := newCompletionAcceptanceServer(t, version, completionAcceptancePages(rows, 100), behaviors)
 			f.gate = make(chan struct{})
 			f.gateSize = 4
 			stdout, stderr, err := runCompletionAcceptance(t, server, version, []string{"--type", "cleanup", "--batch-size", "100", "--auto-confirm", "--json", "--no-wait"}, "", false)
@@ -475,7 +486,9 @@ func TestBulkCompletionAcceptancePaging(t *testing.T) {
 	a, b, c := completionAcceptanceKey(0), completionAcceptanceKey(1), completionAcceptanceKey(2)
 	rowA, rowB, rowC := bulkCompletionRow(a, "CREATED"), bulkCompletionRow(b, "CREATED"), bulkCompletionRow(c, "CREATED")
 	foreign := strings.ReplaceAll(bulkCompletionRow(completionAcceptanceKey(99), "CREATED"), `"tenant-a"`, `"tenant-b"`)
-	for _, version := range []string{"8.8", "8.9", "8.10"} {
+	for _, version := range []string{"8.8", "8.9", "8.10", "8.10-assignment"} {
+		assignment := strings.HasSuffix(version, "-assignment")
+		version = strings.TrimSuffix(version, "-assignment")
 		for _, tc := range []struct {
 			name    string
 			pages   []completionAcceptancePage
@@ -492,8 +505,12 @@ func TestBulkCompletionAcceptancePaging(t *testing.T) {
 			{name: "discovery error", pages: []completionAcceptancePage{{rows: []string{rowA, rowB}, total: 3}, {status: 400}}, failed: true, offsets: []int{0, 2}},
 		} {
 			t.Run(version+"/"+tc.name, func(t *testing.T) {
-				f, server := newCompletionAcceptanceServer(t, tc.pages, nil)
+				f, server := newCompletionAcceptanceServer(t, version, tc.pages, nil)
 				flags := []string{"--type", "cleanup", "--batch-size", "2", "--auto-confirm", "--json"}
+				if assignment {
+					f.expectedBID = "ORDER-123"
+					flags = append(flags, "--set-bid", f.expectedBID)
+				}
 				if tc.limit > 0 {
 					flags = append(flags, "--limit", strconv.Itoa(tc.limit))
 				}
@@ -547,7 +564,7 @@ func TestBulkCompletionAcceptanceReconciliation(t *testing.T) {
 			{"rejected", "rejected", "not_completed", "unsatisfied", 1, false},
 		} {
 			t.Run(fmt.Sprintf("%s/%s/no-wait=%t", version, tc.behavior, tc.noWait), func(t *testing.T) {
-				f, server := newCompletionAcceptanceServer(t, completionAcceptancePages([]string{bulkCompletionRow(key, "CREATED")}, 2), map[string]string{key: tc.behavior})
+				f, server := newCompletionAcceptanceServer(t, version, completionAcceptancePages([]string{bulkCompletionRow(key, "CREATED")}, 2), map[string]string{key: tc.behavior})
 				flags := []string{"--type", "cleanup", "--auto-confirm", "--json"}
 				if tc.noWait {
 					flags = append(flags, "--no-wait")
@@ -602,7 +619,7 @@ func TestBulkCompletionAcceptanceStops(t *testing.T) {
 				if scenario == "interrupt execution" {
 					behavior[keys[1]] = "interrupt"
 				}
-				f, server := newCompletionAcceptanceServer(t, completionAcceptancePages(rows, 2), behavior)
+				f, server := newCompletionAcceptanceServer(t, version, completionAcceptancePages(rows, 2), behavior)
 				f.interruptPreparation = scenario == "interrupt preparation"
 				flags := []string{"--type", "cleanup", "--batch-size", "2", "--workers", "1", "--auto-confirm", "--json", "--no-wait"}
 				if scenario == "fail fast" {
@@ -653,10 +670,10 @@ func TestBulkCompletionAcceptanceGuards(t *testing.T) {
 			{behavior: "variables", variables: true},
 		} {
 			t.Run(version+"/"+tc.behavior, func(t *testing.T) {
-				f, server := newCompletionAcceptanceServer(t, completionAcceptancePages([]string{bulkCompletionRow(key, "CREATED")}, 2), map[string]string{key: tc.behavior})
+				f, server := newCompletionAcceptanceServer(t, version, completionAcceptancePages([]string{bulkCompletionRow(key, "CREATED")}, 2), map[string]string{key: tc.behavior})
 				flags := []string{"--type", "cleanup", "--auto-confirm", "--json"}
 				if tc.variables {
-					flags = append(flags, "--vars", `{"approved":true}`)
+					flags = append(flags, "--set-vars", `{"approved":true}`)
 				}
 				stdout, _, err := runCompletionAcceptance(t, server, version, flags, "", false)
 				payload := requireCompletionAcceptanceFailure(t, stdout, err)
@@ -703,7 +720,7 @@ func TestBulkCompletionAcceptanceOutputMatrix(t *testing.T) {
 					if scenario == "incomplete" {
 						pages = []completionAcceptancePage{{rows: []string{bulkCompletionRow(key, "CREATED")}, total: 2}, {status: 400}}
 					}
-					f, server := newCompletionAcceptanceServer(t, pages, nil)
+					f, server := newCompletionAcceptanceServer(t, version, pages, nil)
 					flags := []string{"--type", "cleanup", "--batch-size", "1"}
 					if scenario == "empty stdin" {
 						flags = []string{"-"}
@@ -820,17 +837,16 @@ func TestBulkCompletionAcceptanceOutputMatrix(t *testing.T) {
 	}
 }
 
-// TestBulkCompletionAcceptanceUnsupported preserves v87 capability rejection even
+// TestBulkCompletionAcceptanceUnsupported preserves retired-version rejection even
 // when stdin is empty; no backend request or fabricated successful no-op is allowed.
 func TestBulkCompletionAcceptanceUnsupported(t *testing.T) {
 	for _, flags := range [][]string{{"--type", "cleanup", "--auto-confirm", "--json"}, {"-", "--auto-confirm", "--json"}, {"-", "--dry-run", "--json"}} {
 		t.Run(strings.Join(flags, " "), func(t *testing.T) {
-			f, server := newCompletionAcceptanceServer(t, nil, nil)
-			stdout, _, err := runCompletionAcceptance(t, server, "8.7", flags, "", false)
-			payload := requireCompletionAcceptanceFailure(t, stdout, err)
-			require.Equal(t, "preparation_failed", payload["status"])
-			require.Equal(t, []any{}, payload["candidates"])
-			require.NotContains(t, payload, "outcomes")
+			f, server := newCompletionAcceptanceServer(t, version, nil, nil)
+			stdout, stderr, err := runCompletionAcceptance(t, server, "8.7", flags, "", false)
+			require.Error(t, err)
+			require.Empty(t, stdout)
+			require.Contains(t, stderr, "unknown Camunda version: 8.7")
 			require.Empty(t, f.calls)
 		})
 	}
@@ -842,7 +858,7 @@ func TestBulkCompletionAcceptanceSequentialListener(t *testing.T) {
 	for _, version := range []string{"8.8", "8.9", "8.10"} {
 		t.Run(version, func(t *testing.T) {
 			key := completionAcceptanceKey(0)
-			f, server := newCompletionAcceptanceServer(t, completionAcceptancePages([]string{bulkCompletionRow(key, "CREATED")}, 1), map[string]string{key: "spawn listener"})
+			f, server := newCompletionAcceptanceServer(t, version, completionAcceptancePages([]string{bulkCompletionRow(key, "CREATED")}, 1), map[string]string{key: "spawn listener"})
 			stdout, stderr, err := runCompletionAcceptance(t, server, version, []string{"--type", "cleanup", "--auto-confirm", "--json"}, "", false)
 			require.NoError(t, err, stdout, stderr)
 			require.Empty(t, stderr)

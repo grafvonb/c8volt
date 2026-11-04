@@ -35,40 +35,13 @@ func TestRetrieveAndNormalizeConfig_BindsAutomationFlagAndEnvironment(t *testing
 }
 
 // TestRetrieveAndNormalizeConfig_VersionSpecificEmptyTenantSemantics verifies root
-// config loading applies Camunda 8.7 default-tenant normalization without
-// converting explicitly empty or newer-version discovery configuration.
+// config loading preserves unfiltered discovery when the tenant is omitted.
 func TestRetrieveAndNormalizeConfig_VersionSpecificEmptyTenantSemantics(t *testing.T) {
 	tests := []struct {
 		name       string
 		configYAML string
 		wantTenant string
 	}{
-		{
-			name: "v87 omitted tenant defaults to default tenant",
-			configYAML: `
-app:
-  camunda_version: "8.7"
-auth:
-  mode: none
-apis:
-  camunda_api:
-    base_url: http://camunda.example.test
-`,
-			wantTenant: config.DefaultTenant,
-		},
-		{
-			name: "v87 explicit empty tenant stays unfiltered",
-			configYAML: `
-app:
-  camunda_version: "8.7"
-  tenant: ""
-auth:
-  mode: none
-apis:
-  camunda_api:
-    base_url: http://camunda.example.test
-`,
-		},
 		{
 			name: "v88 omitted tenant stays unfiltered",
 			configYAML: `
@@ -238,23 +211,6 @@ apis:
     base_url: http://camunda.example.test
 `,
 			wantTenant: "base-tenant",
-		},
-		{
-			name: "v87 default tenant after normalization",
-			configYAML: `
-app:
-  camunda_version: "8.7"
-auth:
-  mode: none
-apis:
-  camunda_api:
-    base_url: http://camunda.example.test
-`,
-			allTenantsFlag: stringPtr("true"),
-			wantProvenance: tenantOverrideProvenance{
-				ConfiguredTenantID: config.DefaultTenant,
-				AllTenants:         true,
-			},
 		},
 	}
 

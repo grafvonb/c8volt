@@ -105,8 +105,6 @@ Represents the local decision to proceed with a planned material update.
 
 ## Unsupported Version Error
 
-Represents the explicit failure for unsupported Camunda 8.7 job behavior.
 
-- **Trigger**: job update runs against a Camunda 8.7 configuration.
 - **Timing**: returned before any unsupported mutation request is attempted.
 - **Output**: clear unsupported-version message consistent with existing domain/facade errors.

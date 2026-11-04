@@ -4,11 +4,6 @@
 package cmd
 
 import (
-	"bytes"
-	"encoding/json"
-	"fmt"
-	"strings"
-
 	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/spf13/cobra"
 )
@@ -64,53 +59,5 @@ func variableEnrichedProcessInstancesWithAgeMeta(resp process.VariableEnrichedPr
 
 // processInstanceVariableHumanLine keeps values one-line while preserving explicit API/CLI truncation markers.
 func processInstanceVariableHumanLine(variable process.ProcessInstanceVariable) string {
-	value := compactProcessInstanceVariableValue(variable.Value)
-	value, cliTruncated := truncateProcessInstanceVariableHumanValue(value, flagGetPIVarValueLimit)
-	labels := processInstanceVariableTruncationLabels(variable.APITruncated, cliTruncated)
-	if labels != "" {
-		return fmt.Sprintf("%s=%s [%s]", variable.Name, value, labels)
-	}
-	return fmt.Sprintf("%s=%s", variable.Name, value)
-}
-
-// compactProcessInstanceVariableValue JSON-compacts object and array values while leaving other values unchanged.
-func compactProcessInstanceVariableValue(value string) string {
-	trimmed := strings.TrimSpace(value)
-	if trimmed == "" {
-		return value
-	}
-	if !strings.HasPrefix(trimmed, "{") && !strings.HasPrefix(trimmed, "[") {
-		return value
-	}
-	var buf bytes.Buffer
-	if err := json.Compact(&buf, []byte(trimmed)); err != nil {
-		return value
-	}
-	return buf.String()
-}
-
-// truncateProcessInstanceVariableHumanValue applies the CLI display limit and reports whether truncation occurred.
-func truncateProcessInstanceVariableHumanValue(value string, limit int) (string, bool) {
-	if limit <= 0 {
-		return value, false
-	}
-	runes := []rune(value)
-	if len(runes) <= limit {
-		return value, false
-	}
-	return string(runes[:limit]) + "...", true
-}
-
-// processInstanceVariableTruncationLabels summarizes API-side and CLI-side truncation markers.
-func processInstanceVariableTruncationLabels(apiTruncated bool, cliTruncated bool) string {
-	switch {
-	case apiTruncated && cliTruncated:
-		return "api-truncated,cli-truncated"
-	case apiTruncated:
-		return "api-truncated"
-	case cliTruncated:
-		return "cli-truncated"
-	default:
-		return ""
-	}
+	return variableValueHumanLine(variable, flagGetPIVarValueLimit)
 }

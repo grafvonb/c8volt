@@ -5,6 +5,7 @@ package cmd
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -112,6 +113,10 @@ func TestGetProcessInstanceTotalOutput(t *testing.T) {
 				// Incident enrichment issues concurrent requests; capture them safely.
 				var requests testx.SafeSlice[string]
 				srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					if serveVersionCheckTopology(w, r, "8.8") {
+						return
+					}
+
 					requests.Append(r.Method + " " + r.URL.Path)
 					w.Header().Set("Content-Type", "application/json")
 					switch r.URL.Path {
@@ -148,12 +153,14 @@ func TestGetProcessInstanceTotalOutput(t *testing.T) {
 		}
 	})
 
+	// Terminal fixtures reconcile the earlier capped estimate with observed results;
+	// an empty page that still promises 10,000 matches must now fail as incomplete.
 	t.Run("capped reported total falls back to cursor paging for exact count", func(t *testing.T) {
 		var requests []string
 		srv := newProcessInstanceSearchCaptureServerWithResponses(t, &requests,
 			`{"items":[{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"123","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"},{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"124","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}],"page":{"totalItems":10000,"hasMoreTotalItems":true,"endCursor":"cursor-1","startCursor":null}}`,
 			`{"items":[{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"125","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}],"page":{"totalItems":10000,"hasMoreTotalItems":true,"endCursor":"cursor-2","startCursor":"cursor-1"}}`,
-			`{"items":[],"page":{"totalItems":10000,"hasMoreTotalItems":true,"endCursor":null,"startCursor":"cursor-2"}}`,
+			`{"items":[],"page":{"totalItems":3,"hasMoreTotalItems":true,"endCursor":null,"startCursor":"cursor-2"}}`,
 		)
 		t.Cleanup(srv.Close)
 
@@ -191,7 +198,7 @@ func TestGetProcessInstanceTotalOutput(t *testing.T) {
 		srv := newProcessInstanceSearchCaptureServerWithResponses(t, &requests,
 			`{"items":[{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"123","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"},{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"124","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}],"page":{"totalItems":10000,"hasMoreTotalItems":true,"endCursor":"cursor-1","startCursor":null}}`,
 			`{"items":[{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"125","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}],"page":{"totalItems":10000,"hasMoreTotalItems":true,"endCursor":"cursor-2","startCursor":"cursor-1"}}`,
-			`{"items":[],"page":{"totalItems":10000,"hasMoreTotalItems":true,"endCursor":null,"startCursor":"cursor-2"}}`,
+			`{"items":[],"page":{"totalItems":3,"hasMoreTotalItems":true,"endCursor":null,"startCursor":"cursor-2"}}`,
 		)
 		t.Cleanup(srv.Close)
 
@@ -218,7 +225,7 @@ func TestGetProcessInstanceTotalOutput(t *testing.T) {
 		srv := newProcessInstanceSearchCaptureServerWithResponses(t, &requests,
 			`{"items":[{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"123","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"},{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"124","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}],"page":{"totalItems":10000,"hasMoreTotalItems":true,"endCursor":"cursor-1","startCursor":null}}`,
 			`{"items":[{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"125","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}],"page":{"totalItems":10000,"hasMoreTotalItems":true,"endCursor":"cursor-2","startCursor":"cursor-1"}}`,
-			`{"items":[],"page":{"totalItems":10000,"hasMoreTotalItems":true,"endCursor":null,"startCursor":"cursor-2"}}`,
+			`{"items":[],"page":{"totalItems":3,"hasMoreTotalItems":true,"endCursor":null,"startCursor":"cursor-2"}}`,
 		)
 		t.Cleanup(srv.Close)
 
@@ -790,40 +797,6 @@ func TestGetProcessInstancePagingFlow(t *testing.T) {
 		require.Contains(t, output, "discovering process instances, page 1, 2 seen")
 	})
 
-	t.Run("v87 fallback keeps final filtered results even when the request stays broad", func(t *testing.T) {
-		var requests []string
-		srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			require.Equal(t, http.MethodPost, r.Method)
-			require.Equal(t, "/v1/process-instances/search", r.URL.Path)
-
-			body, err := io.ReadAll(r.Body)
-			require.NoError(t, err)
-			requests = append(requests, string(body))
-
-			w.Header().Set("Content-Type", "application/json")
-			_, _ = w.Write([]byte(`{"items":[{"key":123,"bpmnProcessId":"demo","processVersion":3,"state":"ACTIVE","startDate":"2026-03-23T18:00:00Z","tenantId":"tenant","parentKey":456,"incident":true},{"key":124,"bpmnProcessId":"demo","processVersion":3,"state":"ACTIVE","startDate":"2026-03-23T18:00:00Z","tenantId":"tenant","incident":false}]}`))
-		}))
-		t.Cleanup(srv.Close)
-
-		cfgPath := writeTestConfigForVersion(t, srv.URL, "8.7")
-
-		output := executeRootForProcessInstanceTest(t,
-			"--config", cfgPath,
-			"--tenant", "tenant",
-			"--json",
-			"get", "process-instance",
-			"--children-only",
-			"--incidents-only",
-		)
-
-		filter := decodeCapturedPISearchFilter(t, requests)
-		require.NotContains(t, filter, "parentKey")
-		require.NotContains(t, filter, "hasIncident")
-		require.Contains(t, output, `"total": 1`)
-		require.Contains(t, output, `"key": "123"`)
-		require.NotContains(t, output, `"key": "124"`)
-	})
-
 	t.Run("orphan-child filtering stays on follow-up lookups for supported versions", func(t *testing.T) {
 		for _, version := range []string{"8.8", "8.9"} {
 			t.Run(version, func(t *testing.T) {
@@ -831,6 +804,10 @@ func TestGetProcessInstancePagingFlow(t *testing.T) {
 				var getPaths []string
 				call := 0
 				srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					if serveVersionCheckTopology(w, r, version) {
+						return
+					}
+
 					call++
 					w.Header().Set("Content-Type", "application/json")
 					if call == 1 {
@@ -957,4 +934,46 @@ func TestPIContinuationProgress(t *testing.T) {
 
 		require.Equal(t, processInstanceContinuationWarningStop, summary.ContinuationState)
 	})
+}
+
+// TestGetProcessInstanceSuspendedSparsePaging keeps an empty locally filtered page
+// from ending discovery and keeps continuation text off the keys-only stream.
+func TestGetProcessInstanceSuspendedSparsePaging(t *testing.T) {
+	for _, machine := range []bool{false, true} {
+		t.Run(fmt.Sprint(machine), func(t *testing.T) {
+			var requests []string
+			child := strings.Replace(suspendedInstanceFixture, `"tenantId":"tenant"`, `"tenantId":"tenant","parentProcessInstanceKey":"999"`, 1)
+			srv := newProcessInstanceSearchCaptureServerForVersion(t, "8.10", &requests,
+				fmt.Sprintf(`{"items":[%s],"page":{"totalItems":2,"hasMoreTotalItems":false,"endCursor":"first"}}`, child),
+				fmt.Sprintf(`{"items":[%s],"page":{"totalItems":2,"hasMoreTotalItems":false}}`, suspendedInstanceFixture),
+			)
+			t.Cleanup(srv.Close)
+			args := []string{"--config", writeTestConfigForVersion(t, srv.URL, "8.10"), "get", "pi", "--state", "suspended", "--roots-only", "--batch-size", "1"}
+			prompt := "Fetched 0 process instance(s) on this page (0 loaded). More matching process instances remain.\nContinue? [y/N]: "
+			exchanges := []testx.CmdTerminalExchange{{Prompt: prompt, Response: "y"}}
+			if machine {
+				args = append(args, "--json")
+				exchanges = nil
+			} else {
+				args = append(args, "--keys-only")
+			}
+			env := suspendedCommandEnv(t, args)
+			env["C8VOLT_SUSPENDED_TERMINAL"] = "1"
+			result := testx.NewCmdTerminalRunner().Run(t, testx.CmdTerminalRunRequest{ScopeTestName: "TestSuspendedCommandHelper", Env: env, Exchanges: exchanges, Timeout: 5 * time.Second})
+			require.True(t, result.Supported, result.UnsupportedReason)
+			require.NoError(t, result.Err, result.Stderr)
+			require.Len(t, requests, 2)
+			pages := decodeCapturedPISearchPages(t, requests)
+			require.Equal(t, "first", pages[1]["after"])
+			if machine {
+				payload := decodeSuspendedEnvelope(t, result.Stdout)["payload"].(map[string]any)
+				require.EqualValues(t, 1, payload["total"])
+				require.Len(t, payload["items"], 1)
+				require.Empty(t, result.Stderr)
+			} else {
+				require.Equal(t, "123\n", result.Stdout)
+				require.Equal(t, prompt, result.Stderr)
+			}
+		})
+	}
 }

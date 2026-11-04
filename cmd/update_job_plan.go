@@ -10,8 +10,10 @@ import (
 	"strings"
 
 	"github.com/grafvonb/c8volt/c8volt"
+	"github.com/grafvonb/c8volt/c8volt/ferrors"
 	"github.com/grafvonb/c8volt/c8volt/job"
 	"github.com/grafvonb/c8volt/config"
+	"github.com/grafvonb/c8volt/toolx"
 	"github.com/spf13/cobra"
 )
 
@@ -21,11 +23,18 @@ func planUpdateJob(ctx context.Context, cli c8volt.API, request job.UpdateReques
 	if err != nil {
 		return job.UpdatePlan{}, err
 	}
-	return buildUpdateJobPlan(current, request), nil
+	plan := buildUpdateJobPlan(current, request)
+	if request.WorkerOutcome != nil && request.WorkerOutcome.SetBusinessID != nil {
+		if err := plan.FreezeCompletionPayload(*request.WorkerOutcome); err != nil {
+			return plan, err
+		}
+	}
+	return plan, nil
 }
 
 // buildUpdateJobPlan compares retry state and records timeout submission intent without mutating.
 func buildUpdateJobPlan(current job.Job, request job.UpdateRequest) job.UpdatePlan {
+	current.BusinessId = toolx.CopyPtr(current.BusinessId)
 	plan := job.UpdatePlan{
 		Key:               request.Key,
 		Current:           current,
@@ -86,6 +95,7 @@ func attachUpdateJobExplicitTenantContext(cmd *cobra.Command, cfg *config.Config
 
 // buildWorkerOutcomeUpdatePlan renders worker outcomes through the same dry-run and confirmation plan shape used by retry and timeout updates.
 func buildWorkerOutcomeUpdatePlan(current job.Job, request job.UpdateRequest) job.UpdatePlan {
+	current.BusinessId = toolx.CopyPtr(current.BusinessId)
 	outcome := request.WorkerOutcome
 	plan := job.UpdatePlan{
 		Key:               request.Key,
@@ -148,6 +158,9 @@ func buildWorkerOutcomeUpdatePlan(current job.Job, request job.UpdateRequest) jo
 // validateUpdateJobPlanPreconditions rejects planned updates that Camunda cannot accept for the current job state.
 func validateUpdateJobPlanPreconditions(plan job.UpdatePlan, request job.UpdateRequest) error {
 	if request.WorkerOutcome != nil {
+		if strings.EqualFold(plan.Current.State, "COMPLETED") {
+			return fmt.Errorf("%w: %s", ferrors.ErrConflict, formatCompletedJobGuard(*request.WorkerOutcome))
+		}
 		return nil
 	}
 	if request.TimeoutMillis == nil {

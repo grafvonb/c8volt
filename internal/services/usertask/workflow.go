@@ -10,6 +10,8 @@ import (
 	types "github.com/grafvonb/c8volt/typex"
 )
 
+// ResolveProcessInstanceKeys resolves each task to its process instance in input order and stops
+// at the first lookup error.
 func ResolveProcessInstanceKeys(ctx context.Context, api API, taskKeys types.Keys, opts ...services.CallOption) (types.Keys, error) {
 	processInstanceKeys := make(types.Keys, 0, len(taskKeys))
 	for _, taskKey := range taskKeys {

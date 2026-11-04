@@ -4,7 +4,7 @@
 
 **Rationale**: `cmd/root.go` creates one `httpc.Service`, `c8volt/client.go` passes its `*http.Client` into all public facades and internal services, and generated Camunda clients use that client for requests. A retrying transport in this path covers command families generically without per-command code.
 
-**Alternatives considered**: Adding retries inside process-instance orphan detection was rejected because it solves only the observed command. Adding retries inside every versioned service was rejected because it duplicates behavior across v87/v88/v89 adapters. Adding partial-result handling was rejected because the customer problem is a transient read failure, not a requirement to continue after persistent bad resources.
+**Alternatives considered**: Adding retries inside process-instance orphan detection was rejected because it solves only the observed command. Adding retries inside every versioned service was rejected because it duplicates behavior across v88/v89 adapters. Adding partial-result handling was rejected because the customer problem is a transient read failure, not a requirement to continue after persistent bad resources.
 
 ## Decision: Limit this issue to GET and HEAD requests
 

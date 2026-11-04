@@ -8,8 +8,10 @@ import (
 	d "github.com/grafvonb/c8volt/internal/domain"
 )
 
+// fromProcessDefinitionResult preserves supplied lifecycle values without inference or normalization.
 func fromProcessDefinitionResult(r camundav810.ProcessDefinitionResult) d.ProcessDefinition {
 	return d.ProcessDefinition{
+		State:             string(r.State),
 		BpmnProcessId:     r.ProcessDefinitionId,
 		Key:               r.ProcessDefinitionKey,
 		Name:              valueOrEmpty(r.Name),

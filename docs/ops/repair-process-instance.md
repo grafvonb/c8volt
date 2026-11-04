@@ -6,45 +6,26 @@ nav_order: 5
 has_toc: true
 ---
 
-# c8volt ops repair process-instance
+# Repair process instance
 
-## Purpose
+Discover active incidents for selected process instances, then apply the incident repair workflow.
 
-Support work often starts from process-instance keys or filters, not incident keys. `c8volt ops repair process-instance` discovers active incidents for selected process instances, freezes the repairable set, then reuses the incident repair workflow.
-
-## Use When
-
-- process-instance selectors are easier than incident keys
-- only active incidents for selected instances should be repaired
-- process-instance discovery, incident repair, and reporting should be one workflow
-
-## Basic Usage
+## Examples
 
 ```bash
 c8volt ops repair process-instance --key <process-instance-key> --dry-run
+c8volt ops repair process-instance --bpmn-process-id order --set-retries 3 --report-file repair.md
+c8volt ops repair process-instance --key <process-instance-key> --set-vars-file vars.json --dry-run
 ```
 
-Generated reference: [ops repair process-instance](/cli/c8volt_ops_repair_process-instance).
+## Execution
 
-## Best Variants
+Use keys or search filters to select instances. The workflow fixes instance and active-incident targets before confirmation and deduplicates shared repairs. `--limit` caps selected instances; instances without active incidents need no change.
 
-```bash
-c8volt ops repair process-instance --direct-incidents-only --state active --limit 5 --dry-run
-c8volt ops repair process-instance --key <process-instance-key> --vars '{"hasIncident":false}' --report-file repair-process-instance.md
-```
+Requested variables are applied once per process-instance scope. Repair sets related job retries to 1 by default; `--set-retries` changes that value and `--set-retries 0` skips retry restoration. `--set-job-timeout` optionally changes job timeouts.
 
-## Built From Lower-Level Commands
+The workflow waits until selected incidents are no longer active by default. Failed variable updates block their dependent resolutions.
 
-```bash
-c8volt get process-instance --key <process-instance-key> --with-incidents
-c8volt update process-instance --key <process-instance-key> --vars '{"hasIncident":false}'
-c8volt resolve incident --key <incident-key>
-```
+See the [shared ops controls](/ops/#shared-controls) for discovery, confirmation, tenant scope, and reports.
 
-Generated references: [get process-instance](/cli/c8volt_get_process-instance), [update process-instance](/cli/c8volt_update_process-instance), [update job](/cli/c8volt_update_job), [resolve incident](/cli/c8volt_resolve_incident).
-
-## Safety
-
-`--dry-run` shows selected process instances, discovered active incidents, and planned repair steps without mutation. Real execution skips instances with no repairable incident, deduplicates shared targets, and reports the same repair outcomes as `ops repair incident`.
-
-A named tenant limits discovery. An empty tenant or `--all-tenants` searches across tenants visible to the authenticated identity. `--all-tenants` conflicts with an explicit `--tenant` value. Explicit keys use backend authorization without tenant filtering.
+[Command reference](/cli/c8volt_ops_repair_process-instance) · [get process-instance](/cli/c8volt_get_process-instance) · [update process-instance](/cli/c8volt_update_process-instance) · [update job](/cli/c8volt_update_job) · [resolve incident](/cli/c8volt_resolve_incident)

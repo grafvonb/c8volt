@@ -18,13 +18,13 @@ import (
 func TestUpdateJobCommand_RetriesDryRunLoadsCurrentJobAndSkipsMutation(t *testing.T) {
 	var requests []string
 	var patchBodies []map[string]any
-	srv := newJobUpdateServer(t, &requests, &patchBodies, []string{
+	srv := newJobUpdateServer(t, "8.8", &requests, &patchBodies, []string{
 		jobSearchResponse("2251799813711967", 1),
 	}, http.StatusNoContent)
 	t.Cleanup(srv.Close)
 	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
 
-	output := executeRootForJobTest(t, "--config", cfgPath, "update", "job", "--key", "2251799813711967", "--retries", "3", "--dry-run")
+	output := executeRootForJobTest(t, "--config", cfgPath, "update", "job", "--key", "2251799813711967", "--set-retries", "3", "--dry-run")
 
 	require.Equal(t, []string{"POST /v2/jobs/search"}, requests)
 	require.Empty(t, patchBodies)
@@ -36,13 +36,13 @@ func TestUpdateJobCommand_RetriesDryRunLoadsCurrentJobAndSkipsMutation(t *testin
 func TestUpdateJobCommand_RetriesDryRunRendersExplicitKeyTenantContext(t *testing.T) {
 	var requests []string
 	var patchBodies []map[string]any
-	srv := newJobUpdateServer(t, &requests, &patchBodies, []string{
+	srv := newJobUpdateServer(t, "8.8", &requests, &patchBodies, []string{
 		jobSearchResponseWithTenant("2251799813711967", 1, "FAILED", tenantAdminKeysReturnedTenant),
 	}, http.StatusNoContent)
 	t.Cleanup(srv.Close)
 	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
 
-	output := executeRootForJobTest(t, "--config", cfgPath, "--tenant", tenantAdminKeysSelectedTenant, "update", "job", "--key", "2251799813711967", "--retries", "3", "--dry-run")
+	output := executeRootForJobTest(t, "--config", cfgPath, "--tenant", tenantAdminKeysSelectedTenant, "update", "job", "--key", "2251799813711967", "--set-retries", "3", "--dry-run")
 
 	require.Equal(t, []string{"POST /v2/jobs/search"}, requests)
 	require.Empty(t, patchBodies)
@@ -60,13 +60,13 @@ func TestUpdateJobCommand_RetriesDryRunRendersExplicitKeyTenantContext(t *testin
 func TestUpdateJobCommand_JSONDryRunIncludesExplicitKeyTenantContext(t *testing.T) {
 	var requests []string
 	var patchBodies []map[string]any
-	srv := newJobUpdateServer(t, &requests, &patchBodies, []string{
+	srv := newJobUpdateServer(t, "8.8", &requests, &patchBodies, []string{
 		jobSearchResponseWithTenant("2251799813711967", 1, "FAILED", tenantAdminKeysReturnedTenant),
 	}, http.StatusNoContent)
 	t.Cleanup(srv.Close)
 	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
 
-	output := executeRootForJobTest(t, "--config", cfgPath, "--tenant", tenantAdminKeysSelectedTenant, "--json", "update", "job", "--key", "2251799813711967", "--retries", "3", "--dry-run")
+	output := executeRootForJobTest(t, "--config", cfgPath, "--tenant", tenantAdminKeysSelectedTenant, "--json", "update", "job", "--key", "2251799813711967", "--set-retries", "3", "--dry-run")
 
 	require.Equal(t, []string{"POST /v2/jobs/search"}, requests)
 	require.Empty(t, patchBodies)
@@ -93,13 +93,13 @@ func TestUpdateJobCommand_RetriesNoOpSkipsPromptAndMutation(t *testing.T) {
 
 	var requests []string
 	var patchBodies []map[string]any
-	srv := newJobUpdateServer(t, &requests, &patchBodies, []string{
+	srv := newJobUpdateServer(t, "8.8", &requests, &patchBodies, []string{
 		jobSearchResponse("2251799813711967", 3),
 	}, http.StatusNoContent)
 	t.Cleanup(srv.Close)
 	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
 
-	output := executeRootForJobTest(t, "--config", cfgPath, "update", "job", "--key", "2251799813711967", "--retries", "3")
+	output := executeRootForJobTest(t, "--config", cfgPath, "update", "job", "--key", "2251799813711967", "--set-retries", "3")
 
 	require.Equal(t, []string{"POST /v2/jobs/search"}, requests)
 	require.Empty(t, patchBodies)
@@ -110,13 +110,13 @@ func TestUpdateJobCommand_RetriesNoOpSkipsPromptAndMutation(t *testing.T) {
 func TestUpdateJobCommand_RetriesNoOpDryRunReportsNoChangesApplied(t *testing.T) {
 	var requests []string
 	var patchBodies []map[string]any
-	srv := newJobUpdateServer(t, &requests, &patchBodies, []string{
+	srv := newJobUpdateServer(t, "8.8", &requests, &patchBodies, []string{
 		jobSearchResponse("2251799813711967", 3),
 	}, http.StatusNoContent)
 	t.Cleanup(srv.Close)
 	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
 
-	output := executeRootForJobTest(t, "--config", cfgPath, "update", "job", "--key", "2251799813711967", "--retries", "3", "--dry-run")
+	output := executeRootForJobTest(t, "--config", cfgPath, "update", "job", "--key", "2251799813711967", "--set-retries", "3", "--dry-run")
 
 	require.Equal(t, []string{"POST /v2/jobs/search"}, requests)
 	require.Empty(t, patchBodies)
@@ -127,13 +127,13 @@ func TestUpdateJobCommand_RetriesNoOpDryRunReportsNoChangesApplied(t *testing.T)
 func TestUpdateJobCommand_JSONDryRunRetriesPlanPayload(t *testing.T) {
 	var requests []string
 	var patchBodies []map[string]any
-	srv := newJobUpdateServer(t, &requests, &patchBodies, []string{
+	srv := newJobUpdateServer(t, "8.8", &requests, &patchBodies, []string{
 		jobSearchResponse("2251799813711967", 1),
 	}, http.StatusNoContent)
 	t.Cleanup(srv.Close)
 	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
 
-	output := executeRootForJobTest(t, "--config", cfgPath, "--json", "update", "job", "--key", "2251799813711967", "--retries", "3", "--dry-run")
+	output := executeRootForJobTest(t, "--config", cfgPath, "--json", "update", "job", "--key", "2251799813711967", "--set-retries", "3", "--dry-run")
 
 	require.Equal(t, []string{"POST /v2/jobs/search"}, requests)
 	require.Empty(t, patchBodies)
@@ -155,13 +155,13 @@ func TestUpdateJobCommand_JSONDryRunRetriesPlanPayload(t *testing.T) {
 func TestUpdateJobCommand_TimeoutDryRunReportsSubmissionIntent(t *testing.T) {
 	var requests []string
 	var patchBodies []map[string]any
-	srv := newJobUpdateServer(t, &requests, &patchBodies, []string{
+	srv := newJobUpdateServer(t, "8.8", &requests, &patchBodies, []string{
 		jobSearchResponseWithState("2251799813711967", 1, "CREATED"),
 	}, http.StatusNoContent)
 	t.Cleanup(srv.Close)
 	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
 
-	output := executeRootForJobTest(t, "--config", cfgPath, "update", "job", "--key", "2251799813711967", "--timeout", "5m", "--dry-run")
+	output := executeRootForJobTest(t, "--config", cfgPath, "update", "job", "--key", "2251799813711967", "--set-timeout", "5m", "--dry-run")
 
 	require.Equal(t, []string{"POST /v2/jobs/search"}, requests)
 	require.Empty(t, patchBodies)
@@ -173,13 +173,13 @@ func TestUpdateJobCommand_TimeoutDryRunReportsSubmissionIntent(t *testing.T) {
 func TestUpdateJobCommand_JSONDryRunRetriesAndTimeoutPlanPayload(t *testing.T) {
 	var requests []string
 	var patchBodies []map[string]any
-	srv := newJobUpdateServer(t, &requests, &patchBodies, []string{
+	srv := newJobUpdateServer(t, "8.8", &requests, &patchBodies, []string{
 		jobSearchResponseWithState("2251799813711967", 1, "CREATED"),
 	}, http.StatusNoContent)
 	t.Cleanup(srv.Close)
 	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
 
-	output := executeRootForJobTest(t, "--config", cfgPath, "--json", "update", "job", "--key", "2251799813711967", "--retries", "3", "--timeout", "5m", "--dry-run")
+	output := executeRootForJobTest(t, "--config", cfgPath, "--json", "update", "job", "--key", "2251799813711967", "--set-retries", "3", "--set-timeout", "5m", "--dry-run")
 
 	require.Equal(t, []string{"POST /v2/jobs/search"}, requests)
 	require.Empty(t, patchBodies)

@@ -20,12 +20,13 @@ import (
 )
 
 type client struct {
-	pdApi  pdsvc.API
-	piApi  pisvc.API
-	incApi incsvc.API
-	elApi  esvc.API
-	jobApi jsvc.API
-	log    *slog.Logger
+	pdApi     pdsvc.API
+	piApi     pisvc.API
+	incApi    incsvc.API
+	elApi     esvc.API
+	jobApi    jsvc.API
+	updateApi pisvc.VariableUpdateAPI
+	log       *slog.Logger
 }
 
 // New creates a process facade with incident lookup routed through the incident service layer.
@@ -42,13 +43,15 @@ func NewWithElements(pdApi pdsvc.API, piApi pisvc.API, incApi incsvc.API, elApi 
 // NewWithElementListeners creates a process facade with runtime-element and
 // listener-job lookup dependencies routed through their service layers.
 func NewWithElementListeners(pdApi pdsvc.API, piApi pisvc.API, incApi incsvc.API, elApi esvc.API, jobApi jsvc.API, log *slog.Logger) API {
+	return NewWithVariableUpdates(pdApi, piApi, incApi, elApi, jobApi, nil, log)
+}
+
+// NewWithVariableUpdates creates a process facade with the composed variable
+// planning workflow while preserving all earlier constructors.
+func NewWithVariableUpdates(pdApi pdsvc.API, piApi pisvc.API, incApi incsvc.API, elApi esvc.API, jobApi jsvc.API, updateApi pisvc.VariableUpdateAPI, log *slog.Logger) API {
 	return &client{
-		pdApi:  pdApi,
-		piApi:  piApi,
-		incApi: incApi,
-		elApi:  elApi,
-		jobApi: jobApi,
-		log:    log,
+		pdApi: pdApi, piApi: piApi, incApi: incApi, elApi: elApi, jobApi: jobApi,
+		updateApi: updateApi, log: log,
 	}
 }
 
@@ -214,13 +217,10 @@ func (c *client) CreateProcessInstance(ctx context.Context, data ProcessInstance
 	return fromDomainProcessInstanceCreation(pic), nil
 }
 
-// CreateProcessInstances maps public creation input and delegates ordered creation to the process-instance service.
+// CreateProcessInstances delegates ordered creation and preserves successful predecessors alongside a later error.
 func (c *client) CreateProcessInstances(ctx context.Context, datas []ProcessInstanceData, opts ...options.FacadeOption) ([]ProcessInstance, error) {
 	pics, err := pisvc.CreateProcessInstances(ctx, c.piApi, toolx.MapSlice(datas, toProcessInstanceData), options.MapFacadeOptionsToCallOptions(opts)...)
-	if err != nil {
-		return nil, ferr.FromDomain(err)
-	}
-	return toolx.MapSlice(pics, fromDomainProcessInstanceCreation), nil
+	return toolx.MapSlice(pics, fromDomainProcessInstanceCreation), ferr.FromDomain(err)
 }
 
 func (c *client) SearchProcessInstances(ctx context.Context, filter ProcessInstanceFilter, size int32, opts ...options.FacadeOption) (ProcessInstances, error) {
@@ -254,10 +254,11 @@ func (c *client) SearchProcessInstancesPages(ctx context.Context, request Proces
 }
 
 // SearchProcessInstancesTotal delegates exact-total selection and page-count fallback below the facade.
+// Partial counted progress remains available alongside a converted failure.
 func (c *client) SearchProcessInstancesTotal(ctx context.Context, request ProcessInstanceSearchRequest, visitor ProcessInstanceSearchTotalVisitor, opts ...options.FacadeOption) (int64, error) {
 	total, err := pisvc.SearchProcessInstancesTotal(ctx, c.piApi, c.incApi, toDomainProcessInstanceSearchRequest(request), toDomainProcessInstanceSearchTotalVisitor(visitor), options.MapFacadeOptionsToCallOptions(opts)...)
 	if err != nil {
-		return 0, ferr.FromDomain(err)
+		return total, ferr.FromDomain(err)
 	}
 	return total, nil
 }
@@ -367,4 +368,9 @@ func MapStateResponsesToReports(in d.StateResponses) StateReports {
 		out.Items[i] = MapStateResponseToReport(r)
 	}
 	return out
+}
+
+// ValidateProcessInstanceSearchFilter delegates no-I/O input policy before callers perform related selector lookups.
+func (c *client) ValidateProcessInstanceSearchFilter(filter ProcessInstanceFilter) error {
+	return ferr.FromDomain(c.piApi.ValidateProcessInstanceSearchFilter(toDomainProcessInstanceFilter(filter)))
 }

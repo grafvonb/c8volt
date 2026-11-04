@@ -10,17 +10,11 @@ List or fetch runtime element instances
 
 ### Synopsis
 
-List or fetch Camunda runtime element instances.
+Inspect runtime element instances by key or process context.
 
-Use --key for a known element instance. Otherwise search by process instance, BPMN element ID, state, type, process definition, or BPMN process ID.
-
---batch-size controls each discovery request; --limit caps returned elements across all pages. Use --total to count matching elements, or --with-listeners to include runtime listener jobs.
-
-Listener rows label job creation time as s: (not worker execution start) and job end time as e:. They show d: only for an ACTIVATED job with a deadline, and omit unavailable timestamps. A completed listener can appear as:
-
-  job-1 TASK_LISTENER lsnr:CREATING COMPLETED tp:updateTaskData r:0 s:2026-09-16T13:07:16.359 e:2026-09-16T13:07:16.842
-
-Requires Camunda 8.8 or newer.
+Use --pi-key to inspect a process instance's elements. Add --with-vars for
+variables owned directly by each element, or --with-listeners for listener jobs.
+Parent-scope variables are excluded. Listener duration includes worker waiting time.
 
 ```
 c8volt get element [flags]
@@ -29,13 +23,9 @@ c8volt get element [flags]
 ### Examples
 
 ```
-  ./c8volt get element --key <element-instance-key>
-  ./c8volt get element --key <element-instance-key> --with-listeners
-  ./c8volt get element --pi-key <process-instance-key> --limit 10
-  ./c8volt get element --pi-key <process-instance-key> --with-listeners
-  ./c8volt get element --pi-key <process-instance-key> --total
-  ./c8volt --json get element --pi-key <process-instance-key> --limit 5
-  ./c8volt --json get element --key <element-instance-key> --with-listeners
+  c8volt get element --pi-key <process-instance-key> --limit 10
+  c8volt get element --key <element-instance-key> --with-vars
+  c8volt get element --pi-key <process-instance-key> --with-listeners
 ```
 
 ### Options
@@ -53,25 +43,28 @@ c8volt get element [flags]
       --total                    return only the numeric total of matching elements
       --type string              runtime element type to filter in search mode; case-insensitive
       --with-listeners           include runtime listener jobs
+      --with-vars                include complete element-local variables; skipped for keys-only and total output
 ```
 
 ### Options inherited from parent commands
 
 ```
-      --all-tenants        clear configured tenant filtering and search all tenants visible to the authenticated user; mutually exclusive with --tenant
-  -y, --auto-confirm       auto-confirm prompts for non-interactive use
-      --automation         enable non-interactive mode for commands that explicitly support it
-      --config string      path to config file
-      --debug              enable debug logging
-  -j, --json               output as JSON (where applicable)
-      --keys-only          output keys only (where applicable)
-      --log-level string   log level (debug, info, warn, error) (default "info")
-      --no-indicator       disable transient terminal activity indicators
-      --profile string     config active profile name to use (e.g. dev, prod)
-  -q, --quiet              suppress output except errors
-      --tenant string      tenant ID for discovery/search, selection, create, deploy, and run flows; explicit empty values can clear configured discovery filters, and explicit keys/IDs remain backend-authorized
-      --timeout duration   HTTP request timeout (default 30s)
-  -v, --verbose            show additional output
+      --all-tenants          search all accessible tenants; cannot combine with --tenant
+  -y, --auto-confirm         auto-confirm prompts for non-interactive use
+      --automation           enable non-interactive mode for commands that explicitly support it
+      --config string        path to config file
+      --debug                enable debug logging
+  -j, --json                 output as JSON (where applicable)
+      --keys-only            output keys only (where applicable)
+      --log-level string     log level (debug, info, warn, error) (default "info")
+      --no-indicator         disable transient terminal activity indicators
+      --no-version-check     skip the automatic advisory gateway version check
+      --profile string       config active profile name to use (e.g. dev, prod)
+  -q, --quiet                suppress output except errors
+      --request-rate float   maximum shared request starts per second (fractions allowed; 0 disables pacing)
+      --tenant string        tenant for discovery and creation; explicit keys use backend authorization
+      --timeout duration     HTTP request timeout (default 30s)
+  -v, --verbose              show additional output
 ```
 
 ### SEE ALSO

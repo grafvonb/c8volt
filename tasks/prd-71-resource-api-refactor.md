@@ -20,15 +20,7 @@ Refactor the internal resource service to improve readability and maintainabilit
 **Acceptance Criteria:**
 - `internal/services/resource/api.go` explicitly defines the preserved shared service surface for the refactor.
 - `internal/services/resource/factory_test.go` verifies supported version routing and unsupported version failure behavior.
-- `internal/services/resource/v87/contract.go` and `internal/services/resource/v88/contract.go` reflect the generated-client operations required by the settled service surface.
-
-### US-002: Refactor v8.7 resource behavior without regression
-**Description:** Simplify the v8.7 resource service implementation so deploy and delete flows are easier to maintain while keeping observable behavior unchanged.
-
-**Acceptance Criteria:**
-- `internal/services/resource/v87/service.go` preserves existing deploy and delete behavior for current callers.
-- Success-path payload validation follows repository-native patterns and still rejects malformed success responses.
-- Automated tests in `internal/services/resource/v87/service_test.go` cover preserved deploy, delete, and malformed-response behavior.
+- `internal/services/resource/v88/contract.go` reflect the generated-client operations required by the settled service surface.
 
 ### US-003: Refactor v8.8 resource behavior without regression
 **Description:** Simplify the v8.8 resource service implementation while preserving current deploy, delete, and wait-for-confirmation behavior.
@@ -89,19 +81,17 @@ Refactor the internal resource service to improve readability and maintainabilit
 
 ## Implementation Notes
 
-- Use `internal/services/resource/api.go`, `internal/services/resource/factory.go`, and the existing v8.7/v8.8 service packages as the canonical refactor surface.
+- Use `internal/services/resource/api.go`, `internal/services/resource/factory.go`, and the existing v8.8 service packages as the canonical refactor surface.
 - Treat the existing refactored cluster service as the reference pattern for acceptable cleanup shape.
 - Prefer `internal/services/common.RequirePayload` over duplicating nil-payload checks where it fits the current success-path contract.
 - Keep the generated-client coverage review mandatory, but keep any actual capability addition conditional.
 - Resource metadata lookup is the leading candidate for a low-risk missing capability because both supported generated clients expose read-by-key operations; raw content retrieval is lower priority because it would likely need broader shape decisions.
-- Add missing focused v8.7 service tests instead of relying only on v8.8 coverage and factory tests.
 - Keep documentation changes conditional: only update `README.md` and regenerate CLI docs if the final capability decision becomes user-visible.
 - Preserve repository guidance from `AGENTS.md`, including incremental refactoring, behavior preservation, adjacent test updates, and final `make test`.
 
 ## Validation
 
 - Update `internal/services/resource/factory_test.go`.
-- Add or update `internal/services/resource/v87/service_test.go`.
 - Update `internal/services/resource/v88/service_test.go`.
 - Record the final validation sequence in `specs/71-resource-api-refactor/quickstart.md`.
 - Run `go test ./internal/services/resource/... -race -count=1`.

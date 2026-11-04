@@ -12,7 +12,7 @@ Affected ops workflows currently freeze a single bounded discovery result before
 
 ## Technical Context
 
-**Language/Version**: Go, following the repository's current module and supported Camunda 8.7, 8.8, and 8.9 boundaries.
+**Language/Version**: Go, following the repository's current module and supported Camunda 8.8 and 8.9 boundaries.
 
 **Primary Dependencies**: Cobra command layer, c8volt public facade packages, internal service interfaces, generated Camunda clients, `toolx`, `toolx/pool`, and existing test helpers.
 
@@ -68,13 +68,7 @@ internal/domain/
 internal/services/incident/
 ├── api.go
 ├── lookup.go
-└── v87|v88|v89/
-
-internal/services/processdefinition/
 ├── api.go
-└── v87|v88|v89/
-
-internal/services/ops/
 ├── incident_purge.go
 ├── repair.go
 ├── all_process_definitions_purge.go

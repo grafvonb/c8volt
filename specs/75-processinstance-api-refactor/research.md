@@ -6,7 +6,7 @@
 - **Rationale**: The repository already uses this structure successfully for other service areas, and the issue explicitly forbids crucial structural changes, package renames, and layout changes. Localized cleanup is the safest way to improve maintainability while preserving behavior across create, search, cancel, delete, and tree-walk flows.
 - **Alternatives considered**:
   - Introduce a new cross-version shared processinstance base type: rejected because it increases abstraction weight and broadens the refactor surface.
-  - Collapse v87 and v88 into one implementation: rejected because generated-client request and response shapes differ materially across versions.
+  - Collapse v88 into one implementation: rejected because generated-client request and response shapes differ materially across versions.
   - Fold waiter or walker logic back into the versioned services: rejected because those helpers already provide useful separation for polling and graph traversal behavior.
 
 ## Decision 2: Normalize duplicated response validation through repository-native helpers where they fit
@@ -67,22 +67,18 @@
 
 1. **Process instance call hierarchy**
    - **Availability**: v8.8 only (`GetProcessInstanceCallHierarchyWithResponse`)
-   - **Why deferred**: The existing `walker` helper already provides the maintained ancestry and family semantics used by callers today. Adding a second hierarchy path would create overlapping behavior with a new unsupported-version contract for v8.7.
 
 2. **Process instance sequence flows**
    - **Availability**: v8.8 only (`GetProcessInstanceSequenceFlowsWithResponse`)
-   - **Why deferred**: This would need new domain modeling and tests for a result shape that has no current caller in the processinstance package. The benefit is narrow, while the unsupported-version path for v8.7 would become part of the shared API immediately.
 
 3. **Process instance statistics**
    - **Availability**: v8.8 only (`GetProcessInstanceStatisticsWithResponse`)
    - **Why deferred**: The repository already models statistics in the `processdefinition` service, but not for process instances. Exposing this now would require new processinstance statistics types and conversion rules, which is beyond a bounded refactor slice.
 
 4. **Variable search or retrieval**
-   - **Availability**: v8.8 exposes variable search and get endpoints; v8.7 exposes element-variable mutation primitives instead of a matching processinstance read surface.
    - **Why deferred**: Variables already live in their own service area (`internal/services/variable`). Pulling variable access into processinstance would blur existing package boundaries and still leave mismatched supported-version behavior.
 
 5. **Incident search scoped to a process instance**
-   - **Availability**: v8.8 has `SearchProcessInstanceIncidentsWithResponse`; v8.7 exposes incident search through broader incident endpoints instead of a matching processinstance-scoped operation.
    - **Why deferred**: A shared processinstance API for incidents would need new cross-version adaptation logic or a one-version unsupported path, but incidents are not part of the current processinstance result model or caller workflows.
 
 6. **Migrate or modify process instance**

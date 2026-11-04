@@ -18,7 +18,7 @@ Expose the meaning of the effective tenant before tenant-sensitive operations wi
 
 **Testing**: Go `testing`, Testify, command execution tests, facade/service unit tests, `make test` (`go test ./... -race -count=1`)
 
-**Target Platform**: Cross-platform CLI targeting Camunda 8.7, 8.8, 8.9, and 8.10
+**Target Platform**: Cross-platform CLI targeting Camunda 8.8, 8.9, and 8.10
 
 **Project Type**: Go CLI with public facade packages and versioned backend adapters
 
@@ -129,7 +129,6 @@ Research decisions and rejected alternatives are recorded in [research.md](./res
 
 ## Compatibility and Risk Controls
 
-- Empty tenant remains unfiltered discovery for 8.8–8.10 and reflects the normalized default-only behavior already used by 8.7; creation continues to use `TargetTenant()`.
 - Explicit keys continue to set `IgnoreTenant`; tenant mismatch is evidence, never a new local rejection.
 - Structured output receives an optional `tenantContext` object. Full-contract results add it alongside the existing envelope payload; raw structured views and audit reports use the same object and field names.
 - Audit `tenantId` remains as a deprecated compatibility field only when it truthfully denotes a named filter or creation target. It is omitted for unfiltered work and must never be synthesized with `ViewTenant()`.

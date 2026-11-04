@@ -20,44 +20,55 @@ func processDefinitionView(cmd *cobra.Command, item process.ProcessDefinition) e
 	return itemView(cmd, item, pickMode(), oneLinePD, func(it process.ProcessDefinition) string { return it.Key })
 }
 
-// listProcessDefinitionsView renders process-definition collections in human, JSON, or keys-only mode.
+// listProcessDefinitionsView preserves requested results while suppressing
+// empty human summaries in quiet mode.
 func listProcessDefinitionsView(cmd *cobra.Command, resp process.ProcessDefinitions) error {
+	if flagQuiet && len(resp.Items) == 0 && pickMode() == RenderModeOneLine {
+		return nil
+	}
 	return listOrJSONFlat(cmd, resp, resp.Items, pickMode(), flatRowPD, func(it process.ProcessDefinition) string { return it.Key })
 }
 
 // processDefinitionDisplay owns the unstyled values that determine both an
 // ordinary row and watch-mode change identity.
 type processDefinitionDisplay struct {
-	key                    string
-	tenantID               string
-	bpmnProcessID          string
-	version                string
-	statisticsPresent      bool
-	active                 string
-	completed              string
-	canceled               string
-	incidentCountSupported bool
-	incidents              string
+	key                     string
+	tenantID                string
+	bpmnProcessID           string
+	version                 string
+	state                   string
+	statisticsPresent       bool
+	active                  string
+	completed               string
+	canceled                string
+	incidentCountSupported  bool
+	incidents               string
+	suspendedCountSupported bool
+	suspended               string
 }
 
 // processDefinitionChangedFields preserves value-level change identity for
 // watch styling without making plain marker rendering depend on ANSI text.
 type processDefinitionChangedFields struct {
-	tenantID               bool
-	bpmnProcessID          bool
-	version                bool
-	statisticsPresent      bool
-	active                 bool
-	completed              bool
-	canceled               bool
-	incidentCountSupported bool
-	incidents              bool
+	tenantID                bool
+	bpmnProcessID           bool
+	version                 bool
+	state                   bool
+	statisticsPresent       bool
+	active                  bool
+	completed               bool
+	canceled                bool
+	incidentCountSupported  bool
+	incidents               bool
+	suspendedCountSupported bool
+	suspended               bool
 }
 
 // any reports whether an existing definition changed any displayed value.
 func (f processDefinitionChangedFields) any() bool {
-	return f.tenantID || f.bpmnProcessID || f.version || f.statisticsPresent ||
-		f.active || f.completed || f.canceled || f.incidentCountSupported || f.incidents
+	return f.tenantID || f.bpmnProcessID || f.version || f.state || f.statisticsPresent ||
+		f.active || f.completed || f.canceled || f.incidentCountSupported || f.incidents ||
+		f.suspendedCountSupported || f.suspended
 }
 
 // processDefinitionWatchRow combines one current display projection with its
@@ -85,15 +96,14 @@ const (
 
 // processDefinitionWatchView renders one complete refresh and returns the
 // first write failure so unseen candidates never become the baseline. The INFO
-// summary uses configured stderr; row suffixes and results use stdout.
+// summary uses the configured logger; row suffixes and results use stdout.
 func processDefinitionWatchView(cmd *cobra.Command, candidate processDefinitionWatchCandidate, bold bool) error {
 	if cmd == nil {
 		return nil
 	}
 	w := cmd.OutOrStdout()
 	message := fmt.Sprintf("%d updated, %d new, %d removed", candidate.updated, candidate.new, candidate.removed)
-	handler := logging.NewPlainHandler(cmd.ErrOrStderr(), slog.LevelInfo).WithTimestampLayout(logging.PlainTimeTimestampLayout)
-	if err := handler.Handle(cmd.Context(), slog.NewRecord(time.Now(), slog.LevelInfo, message, 0)); err != nil {
+	if err := renderProcessDefinitionWatchSummary(cmd, message); err != nil {
 		return err
 	}
 	for i, line := range formatProcessDefinitionWatchRows(candidate.rows, bold) {
@@ -105,6 +115,20 @@ func processDefinitionWatchView(cmd *cobra.Command, candidate processDefinitionW
 		}
 	}
 	return writeProcessDefinitionWatchLine(w, "found: %d", len(candidate.rows))
+}
+
+// renderProcessDefinitionWatchSummary uses the configured handler directly so an
+// enabled write failure prevents baseline commit. Filtered INFO is a successful
+// no-op; missing logger context must not silently select a fallback destination.
+func renderProcessDefinitionWatchSummary(cmd *cobra.Command, message string) error {
+	log, err := logging.FromContext(cmd.Context())
+	if err != nil {
+		return err
+	}
+	if !log.Enabled(cmd.Context(), slog.LevelInfo) {
+		return nil
+	}
+	return log.Handler().Handle(cmd.Context(), slog.NewRecord(time.Now(), slog.LevelInfo, message, 0))
 }
 
 // formatProcessDefinitionWatchRows computes alignment from plain values before
@@ -148,6 +172,8 @@ func formatProcessDefinitionWatchColumn(row processDefinitionWatchRow, columnInd
 	case 3:
 		return formatProcessDefinitionWatchValue(display.version, bold && row.changed.version)
 	case 4:
+		return formatProcessDefinitionWatchValue(display.state, bold && row.changed.state)
+	case 5:
 		return formatProcessDefinitionWatchStatistics(display, row.changed, bold)
 	default:
 		return ""
@@ -164,11 +190,16 @@ func formatProcessDefinitionWatchStatistics(display processDefinitionDisplay, ch
 	if display.incidentCountSupported {
 		incidentTag = fmt.Sprintf(" inc:%s", formatProcessDefinitionWatchValue(display.incidents, bold && changed.incidents))
 	}
-	return fmt.Sprintf("[ac:%s cp:%s cx:%s%s]",
+	suspendedTag := ""
+	if display.suspendedCountSupported {
+		suspendedTag = fmt.Sprintf(" su:%s", formatProcessDefinitionWatchValue(display.suspended, bold && changed.suspended))
+	}
+	return fmt.Sprintf("[ac:%s cp:%s cx:%s%s%s]",
 		formatProcessDefinitionWatchValue(display.active, bold && changed.active),
 		formatProcessDefinitionWatchValue(display.completed, bold && changed.completed),
 		formatProcessDefinitionWatchValue(display.canceled, bold && changed.canceled),
 		incidentTag,
+		suspendedTag,
 	)
 }
 
@@ -215,6 +246,7 @@ func newProcessDefinitionDisplay(it process.ProcessDefinition) processDefinition
 	}
 	display := processDefinitionDisplay{
 		key:           it.Key,
+		state:         it.State,
 		tenantID:      it.TenantId,
 		bpmnProcessID: it.BpmnProcessId,
 		version:       fmt.Sprintf("v%d%s", it.ProcessVersion, vTag),
@@ -229,19 +261,27 @@ func newProcessDefinitionDisplay(it process.ProcessDefinition) processDefinition
 		if stats.IncidentCountSupported {
 			display.incidents = zeroAsMinus(stats.Incidents)
 		}
+		display.suspendedCountSupported = stats.SuspendedCountSupported
+		if stats.SuspendedCountSupported {
+			display.suspended = zeroAsMinus(stats.Suspended)
+		}
 	}
 	return display
 }
 
 // flatRow reconstructs the established ordinary row bytes from owned display values.
 func (d processDefinitionDisplay) flatRow() flatRow {
-	row := flatRow{d.key, d.tenantID, d.bpmnProcessID, d.version}
+	row := flatRow{d.key, d.tenantID, d.bpmnProcessID, d.version, d.state}
 	if d.statisticsPresent {
 		incidentTag := ""
 		if d.incidentCountSupported {
 			incidentTag = fmt.Sprintf(" inc:%s", d.incidents)
 		}
-		row = append(row, fmt.Sprintf("[ac:%s cp:%s cx:%s%s]", d.active, d.completed, d.canceled, incidentTag))
+		suspendedTag := ""
+		if d.suspendedCountSupported {
+			suspendedTag = fmt.Sprintf(" su:%s", d.suspended)
+		}
+		row = append(row, fmt.Sprintf("[ac:%s cp:%s cx:%s%s%s]", d.active, d.completed, d.canceled, incidentTag, suspendedTag))
 	}
 	return row
 }
@@ -249,14 +289,17 @@ func (d processDefinitionDisplay) flatRow() flatRow {
 // changedFields compares semantic displayed values before alignment or styling.
 func (d processDefinitionDisplay) changedFields(previous processDefinitionDisplay) processDefinitionChangedFields {
 	return processDefinitionChangedFields{
-		tenantID:               d.tenantID != previous.tenantID,
-		bpmnProcessID:          d.bpmnProcessID != previous.bpmnProcessID,
-		version:                d.version != previous.version,
-		statisticsPresent:      d.statisticsPresent != previous.statisticsPresent,
-		active:                 d.active != previous.active,
-		completed:              d.completed != previous.completed,
-		canceled:               d.canceled != previous.canceled,
-		incidentCountSupported: d.incidentCountSupported != previous.incidentCountSupported,
-		incidents:              d.incidents != previous.incidents,
+		tenantID:                d.tenantID != previous.tenantID,
+		bpmnProcessID:           d.bpmnProcessID != previous.bpmnProcessID,
+		version:                 d.version != previous.version,
+		state:                   d.state != previous.state,
+		statisticsPresent:       d.statisticsPresent != previous.statisticsPresent,
+		active:                  d.active != previous.active,
+		completed:               d.completed != previous.completed,
+		canceled:                d.canceled != previous.canceled,
+		incidentCountSupported:  d.incidentCountSupported != previous.incidentCountSupported,
+		incidents:               d.incidents != previous.incidents,
+		suspendedCountSupported: d.suspendedCountSupported != previous.suspendedCountSupported,
+		suspended:               d.suspended != previous.suspended,
 	}
 }

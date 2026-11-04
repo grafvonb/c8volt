@@ -86,6 +86,7 @@ func TestAPIDiagnosticsTransportPreservesTraceAndInformationalResponses(t *testi
 	cfg.HTTP.Timeout = "1s"
 	service, err := New(cfg, slog.New(slog.NewTextHandler(io.Discard, nil)), WithDiagnostics())
 	require.NoError(t, err)
+	defer service.Close()
 	// Replace the gated-away collector with an admitted one while retaining the real base transport.
 	logTransport := unwrapLogTransport(service.Client().Transport)
 	require.NotNil(t, logTransport)
@@ -234,9 +235,13 @@ func TestAPIDiagnosticsServiceStackPlacesObservationBelowRetriesAndLogging(t *te
 	cfg.HTTP.Timeout = "1s"
 	service, err := New(cfg, logging.New(logging.LoggerConfig{Writer: &output, Level: "debug", Format: "plain"}), WithDiagnostics())
 	require.NoError(t, err)
+	defer service.Close()
 	retry, ok := service.Client().Transport.(*ReadRetryTransport)
 	require.True(t, ok)
-	logTransport, ok := retry.base.(*LogTransport)
+	rateTransport, ok := retry.base.(*RequestRateTransport)
+	require.True(t, ok)
+	require.Nil(t, rateTransport.limiter)
+	logTransport, ok := rateTransport.base.(*LogTransport)
 	require.True(t, ok)
 	diagnostics, ok := logTransport.base.(*DiagnosticsTransport)
 	require.True(t, ok)

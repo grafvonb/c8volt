@@ -28,7 +28,10 @@ type ReadPorts struct {
 // Errors retain partial observations with incomplete status and no completion reason.
 func Prepare(ctx context.Context, request d.CompletionRequest, tenant string, backoff config.BackoffConfig, ports ReadPorts, opts ...services.CallOption) (d.PreparedCompletionBatch, error) {
 	_ = services.ApplyCallOptions(opts)
-	batch := d.PreparedCompletionBatch{Selection: request.Selection, DiscoveryTenant: tenant, Status: d.CompletionPreparationIncomplete, Candidates: []d.CompletionCandidate{}, TenantIDs: []string{}}
+	batch := d.PreparedCompletionBatch{SetBusinessID: toolx.CopyPtr(request.SetBusinessID), Selection: request.Selection, DiscoveryTenant: tenant, Status: d.CompletionPreparationIncomplete, Candidates: []d.CompletionCandidate{}, TenantIDs: []string{}}
+	if err := d.ValidateBusinessIDAssignment(batch.SetBusinessID); err != nil {
+		return batch, err
+	}
 	batch.Selection.Keys = slices.Clone(request.Selection.Keys)
 	batch.Selection.Filter.Retries = toolx.CopyPtr(request.Selection.Filter.Retries)
 	if err := ctx.Err(); err != nil {
@@ -74,7 +77,7 @@ func normalizeSelection(s *d.CompletionSelection) error {
 		value *string
 		valid []string
 	}{
-		{&f.State, []string{"CANCELED", "COMPLETED", "CREATED", "ERROR_THROWN", "FAILED", "MIGRATED", "RETRIES_UPDATED", "TIMED_OUT"}},
+		{&f.State, []string{"CANCELED", "COMPLETED", "CREATED", "ERROR_THROWN", "FAILED", "MIGRATED", "RETRIES_UPDATED", "TIMED_OUT", "TIMEOUT_UPDATED"}},
 		{&f.Kind, []string{"AD_HOC_SUB_PROCESS", "BPMN_ELEMENT", "EXECUTION_LISTENER", "TASK_LISTENER"}},
 		{&f.ListenerEventType, []string{"ASSIGNING", "CANCELING", "COMPLETING", "CREATING", "END", "START", "UNSPECIFIED", "UPDATING"}},
 	} {
@@ -184,7 +187,7 @@ func appendCandidate(batch *d.PreparedCompletionBatch, job d.Job) error {
 	if err := common.ValidateJobCompletionPayload(job, batch.Variables); err != nil {
 		return err
 	}
-	batch.Candidates = append(batch.Candidates, d.CompletionCandidate{Key: job.Key, ProcessInstanceKey: job.ProcessInstanceKey, ElementInstanceKey: job.ElementInstanceKey, ElementId: job.ElementId, TenantId: job.TenantId, Type: job.Type, Kind: job.Kind, ListenerEventType: job.ListenerEventType, State: job.State, Worker: job.Worker, Retries: job.Retries})
+	batch.Candidates = append(batch.Candidates, d.CompletionCandidate{BusinessId: toolx.CopyPtr(job.BusinessId), Key: job.Key, ProcessInstanceKey: job.ProcessInstanceKey, ElementInstanceKey: job.ElementInstanceKey, ElementId: job.ElementId, TenantId: job.TenantId, Type: job.Type, Kind: job.Kind, ListenerEventType: job.ListenerEventType, State: job.State, Worker: job.Worker, Retries: job.Retries})
 	if !slices.Contains(batch.TenantIDs, job.TenantId) {
 		batch.TenantIDs = append(batch.TenantIDs, job.TenantId)
 	}

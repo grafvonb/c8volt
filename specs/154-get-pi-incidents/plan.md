@@ -5,19 +5,15 @@
 
 ## Summary
 
-Add `--with-incidents` to `c8volt get process-instance` / `get pi` for direct keyed lookup only. The implementation should keep command code thin, extend the process facade and process-instance service interfaces with tenant-aware incident search, implement supported Camunda 8.8 and 8.9 paths through generated `SearchProcessInstanceIncidentsWithResponse`, return the existing unsupported-capability style for Camunda 8.7, and render incident messages only when the new flag is requested so existing default output remains unchanged.
 
 ## Technical Context
 
 **Language/Version**: Go 1.26  
 **Primary Dependencies**: standard library, `github.com/spf13/cobra`, generated Camunda clients under `internal/clients/camunda/v88/camunda` and `internal/clients/camunda/v89/camunda`, existing process facade/service packages, existing render/error helpers in `cmd/`  
 **Storage**: No persistent storage changes; reads current config/profile/root flag tenant through existing command bootstrap  
-**Testing**: `go test`, `make test`, command tests under `cmd/`, facade tests under `c8volt/process/`, versioned service tests under `internal/services/processinstance/v87`, `v88`, and `v89`  
-**Target Platform**: Cross-platform CLI for local and CI use against supported Camunda versions; incident enrichment supported for `v8.8` and `v8.9`, unsupported explicitly for `v8.7` when tenant-safe keyed enrichment is unavailable  
 **Project Type**: CLI  
 **Performance Goals**: Keyed lookup with `--with-incidents` performs one incident search per returned key and no incident search when the flag is omitted; multiple keys preserve existing worker behavior for process-instance lookup and may enrich results after the keyed results are known  
 **Constraints**: Preserve existing keyed default output, preserve search-mode incident filters, reject `--with-incidents` outside keyed mode, avoid tenant-unsafe direct incident lookup, include configured tenant in incident search filters where supported, update generated CLI docs, finish with targeted tests and `make test`  
-**Scale/Scope**: Command validation/rendering in `cmd/get_processinstance.go`, base process-instance rendering in `cmd/cmd_views_get.go`, incident-enriched rendering in `cmd/cmd_views_processinstance_incidents.go`, process public models/facade in `c8volt/process/`, domain/service interfaces in `internal/domain/processinstance.go` and `internal/services/processinstance/api.go`, versioned implementations in `internal/services/processinstance/v87`, `v88`, and `v89`, generated-client contract interfaces in `internal/services/processinstance/v88/contract.go` and `v89/contract.go`, tests in matching packages, docs under `docs/cli/` and README review
 
 ## Constitution Check
 
@@ -67,9 +63,6 @@ internal/domain/
 
 internal/services/processinstance/
 ├── api.go
-├── v87/
-│   ├── service.go
-│   └── service_test.go
 ├── v88/
 │   ├── contract.go
 │   ├── convert.go
@@ -92,7 +85,6 @@ docs/cli/
 Research findings are captured in [research.md](/Users/adam.boczek/.codex/worktrees/5d96/c8volt/specs/154-get-pi-incidents/research.md).
 
 - Confirmed `v8.8` and `v8.9` generated Camunda clients expose `SearchProcessInstanceIncidentsWithResponse(ctx, processInstanceKey, body, ...)`, `IncidentSearchQuery`, `IncidentFilter`, `IncidentResult`, and `ErrorMessage`.
-- Confirmed `v8.7` exposes older general incident search methods, but existing `v87` process-instance direct lookup is explicitly not tenant-safe. This feature should return unsupported for `v8.7` rather than add a tenant-unsafe enrichment path.
 - Confirmed the current public `process.ProcessInstance` model has only the boolean incident marker. Incident details should be additive and only appear in an enriched output wrapper when `--with-incidents` is requested.
 - Confirmed current human output is a compact one-line row with `inc!`. Incident messages should render as indented `incident <incident-key>:` lines directly below the matching process-instance row only when requested, leaving `oneLinePI` behavior unchanged for default output.
 - Confirmed JSON output currently serializes `process.ProcessInstances`. `--with-incidents --json` needs an explicit enriched shape instead of silently changing `process.ProcessInstance` for all JSON callers.
@@ -109,7 +101,6 @@ Design artifacts are captured in:
 - Add a process facade method for incident lookup by process-instance key, plus a helper that enriches a keyed `ProcessInstances` result without altering default `ProcessInstances` JSON.
 - Extend `internal/services/processinstance.API` with a tenant-aware process-instance incident search method.
 - Extend `v88` and `v89` generated-client interfaces with `SearchProcessInstanceIncidentsWithResponse`; build request bodies with process-instance-key filtering, tenant filtering when configured, and stable page sizing.
-- Keep `v87` implementation as explicit unsupported for this method because tenant-safe keyed incident enrichment cannot be guaranteed from the current service boundary.
 - Add `--with-incidents` validation in keyed mode only, before any process-instance or incident lookup side effect.
 - Add an enriched render path for `--with-incidents` that preserves existing default render path when the flag is absent.
 - Regenerate CLI docs through `make docs-content` after help text changes.
@@ -118,7 +109,6 @@ Design artifacts are captured in:
 
 | Version | Incident enrichment | Planned behavior |
 |---------|---------------------|------------------|
-| `v8.7` | Unsupported | Return existing unsupported-capability style for `--with-incidents` because tenant-safe keyed enrichment is unavailable |
 | `v8.8` | Supported | Use generated `SearchProcessInstanceIncidentsWithResponse` and include configured tenant in incident search filter |
 | `v8.9` | Supported | Match `v8.8` behavior with the `v89` generated client types |
 

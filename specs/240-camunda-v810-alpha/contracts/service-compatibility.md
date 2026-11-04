@@ -27,7 +27,7 @@
 
 ## Capability contract
 
-History-safe process-definition deletion is supported for `V89` and `V810Alpha`. Both direct process-definition deletion and all-process-definitions purge consume the same named predicate. V87 and V88 retain their existing unsupported result.
+History-safe process-definition deletion is supported for `V89` and `V810Alpha`. Both direct process-definition deletion and all-process-definitions purge consume the same named predicate. V88 retain their existing unsupported result.
 
 No generic version ordering is introduced. Future stable 8.10 support must explicitly join each capability set.
 

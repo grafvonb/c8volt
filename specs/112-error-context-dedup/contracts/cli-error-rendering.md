@@ -57,8 +57,8 @@ The audited owner layers for those families are:
 
 | Pattern family | Owner layer | Representative files |
 |--------|-------------|----------------------|
-| Process-instance lookup/traversal | walker plus versioned process-instance services | `internal/services/processinstance/walker/walker.go`, `internal/services/processinstance/v87/service.go`, `internal/services/processinstance/v88/service.go`, `internal/services/processinstance/v89/service.go` |
-| Process-instance mutation/wait | versioned process-instance services plus waiter-backed follow-up wrappers | `internal/services/processinstance/v87/service.go`, `internal/services/processinstance/v88/service.go`, `internal/services/processinstance/v89/service.go`, `internal/services/processinstance/waiter/waiter.go` |
+| Process-instance lookup/traversal | walker plus versioned process-instance services | `internal/services/processinstance/walker/walker.go`, `internal/services/processinstance/v88/service.go`, `internal/services/processinstance/v89/service.go` |
+| Process-instance mutation/wait | versioned process-instance services plus waiter-backed follow-up wrappers | `internal/services/processinstance/v88/service.go`, `internal/services/processinstance/v89/service.go`, `internal/services/processinstance/waiter/waiter.go` |
 | Single-resource fetch wrappers | command handlers | `cmd/get_processdefinition.go`, `cmd/get_resource.go`, `cmd/get_cluster_license.go`, `cmd/get_cluster_topology.go`, `cmd/get_processinstance.go` |
 | Resource/client orchestration wrappers | CLI-facing resource client wrappers | `c8volt/resource/client.go` |
 
@@ -78,7 +78,7 @@ Confirmed regression anchors for the setup audit are:
 | Family | Anchor files |
 |--------|--------------|
 | Process-instance lookup/traversal | `cmd/walk_test.go`, `internal/services/processinstance/walker/walker_test.go` |
-| Process-instance mutation/wait | `cmd/cancel_test.go`, `cmd/delete_test.go`, `internal/services/processinstance/v87/service_test.go`, `internal/services/processinstance/v88/service_test.go` |
+| Process-instance mutation/wait | `cmd/cancel_test.go`, `cmd/delete_test.go`, `internal/services/processinstance/v88/service_test.go` |
 | Single-resource fetch wrappers | `cmd/get_test.go` and focused `get_*` command tests |
 | Shared class/exit behavior | `c8volt/ferrors/errors_test.go`, `cmd/bootstrap_errors_test.go` |
 | Cluster license/topology unavailable and malformed-response paths | `cmd/get_test.go` plus shared unavailable-prefix checks in `c8volt/ferrors/errors_test.go` |

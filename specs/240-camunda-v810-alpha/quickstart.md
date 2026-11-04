@@ -22,9 +22,7 @@ Expected resolved commit: `4a76f06c9df8ad0a6c64fe88b92c618c2ebf2ef6`.
 Capture the stable generated-client diff before generation:
 
 ```bash
-git diff -- internal/clients/camunda/v87 internal/clients/camunda/v88 internal/clients/camunda/v89
 bash api/refresh-clients.sh --target v810alpha --camunda-tag 8.10.0-alpha4
-git diff -- internal/clients/camunda/v87 internal/clients/camunda/v88 internal/clients/camunda/v89
 ```
 
 Expected outcomes:
@@ -77,7 +75,7 @@ go test ./internal/services/ops ./cmd -run 'DeleteProcessDefinition|AllProcessDe
 Expected outcomes:
 
 - history-safe process-definition deletion accepts v8.9 and alpha
-- v8.7 and v8.8 remain unsupported
+- v8.8 remain unsupported
 - unsupported mutations fail before requests
 - existing human, JSON, keys-only, prompt, and exit behavior stays unchanged
 
@@ -88,7 +86,6 @@ make docs-content
 go test ./docsgen ./cmd -run 'Docs|Version|Help' -count=1
 ```
 
-Inspect README, root help, version output, docs index, and generated CLI references. Each must present 8.7-8.9 as stable support and `8.10-alpha` as experimental support pinned to `8.10.0-alpha4`.
 
 ## 7. Run the live pinned-alpha smoke
 

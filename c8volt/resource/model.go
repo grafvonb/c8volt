@@ -4,7 +4,8 @@
 package resource
 
 import (
-	"slices"
+	pdsvc "github.com/grafvonb/c8volt/internal/services/processdefinition"
+	"github.com/grafvonb/c8volt/toolx"
 
 	"github.com/grafvonb/c8volt/c8volt/process"
 )
@@ -62,18 +63,29 @@ type DeleteProcessDefinitionPlan struct {
 	Warnings              []string                          `json:"warnings,omitempty"`
 }
 
+// DeleteProcessDefinitionPlanItem preserves separate display counts and authoritative cleanup evidence.
 type DeleteProcessDefinitionPlanItem struct {
-	Key                        string                       `json:"key,omitempty"`
-	BpmnProcessId              string                       `json:"bpmnProcessId,omitempty"`
-	ProcessVersion             int32                        `json:"processVersion,omitempty"`
-	ProcessVersionTag          string                       `json:"versionTag,omitempty"`
-	TenantId                   string                       `json:"tenantId,omitempty"`
-	ActiveProcessInstanceCount int64                        `json:"activeProcessInstanceCount,omitempty"`
-	ActiveProcessInstanceKeys  []string                     `json:"activeProcessInstanceKeys,omitempty"`
-	CancellationPlan           process.DryRunPIKeyExpansion `json:"cancellationPlan,omitempty"`
-	Warnings                   []string                     `json:"warnings,omitempty"`
+	Key                            string                       `json:"key,omitempty"`
+	BpmnProcessId                  string                       `json:"bpmnProcessId,omitempty"`
+	ProcessVersion                 int32                        `json:"processVersion,omitempty"`
+	ProcessVersionTag              string                       `json:"versionTag,omitempty"`
+	TenantId                       string                       `json:"tenantId,omitempty"`
+	ActiveProcessInstanceCount     int64                        `json:"activeProcessInstanceCount,omitempty"`
+	ActiveProcessInstanceKeys      []string                     `json:"activeProcessInstanceKeys,omitempty"`
+	SuspendedProcessInstanceCount  int64                        `json:"suspendedProcessInstanceCount,omitempty"`
+	SuspendedCountSupported        bool                         `json:"suspendedCountSupported,omitempty"`
+	UnfinishedProcessInstanceCount int64                        `json:"unfinishedProcessInstanceCount,omitempty"`
+	UnfinishedProcessInstanceKeys  []string                     `json:"unfinishedProcessInstanceKeys,omitempty"`
+	CancellationPlan               process.DryRunPIKeyExpansion `json:"cancellationPlan,omitempty"`
+	Warnings                       []string                     `json:"warnings,omitempty"`
 }
 
+// UnfinishedProcessInstances returns the observed count without understating discovered keys.
+func (i DeleteProcessDefinitionPlanItem) UnfinishedProcessInstances() int64 {
+	return max(i.UnfinishedProcessInstanceCount, int64(len(i.UnfinishedProcessInstanceKeys)))
+}
+
+// ActiveProcessInstances retains the active-only count/key fallback.
 func (i DeleteProcessDefinitionPlanItem) ActiveProcessInstances() int64 {
 	if i.ActiveProcessInstanceCount > 0 {
 		return i.ActiveProcessInstanceCount
@@ -81,10 +93,14 @@ func (i DeleteProcessDefinitionPlanItem) ActiveProcessInstances() int64 {
 	return int64(len(i.ActiveProcessInstanceKeys))
 }
 
+// Totals aggregates observed workload without presenting skipped or unavailable suspension as measured zero.
 func (p DeleteProcessDefinitionPlan) Totals() DeleteProcessDefinitionPlanTotals {
-	totals := DeleteProcessDefinitionPlanTotals{ProcessDefinitions: len(p.Items)}
+	totals := DeleteProcessDefinitionPlanTotals{ProcessDefinitions: len(p.Items), SuspendedCountSupported: !p.StateCheckSkipped && len(p.Items) > 0}
 	for _, item := range p.Items {
 		totals.ActiveProcessInstances += item.ActiveProcessInstances()
+		totals.SuspendedProcessInstances += item.SuspendedProcessInstanceCount
+		totals.UnfinishedProcessInstances += item.UnfinishedProcessInstances()
+		totals.SuspendedCountSupported = totals.SuspendedCountSupported && item.SuspendedCountSupported
 		totals.CancellationRoots += len(item.CancellationPlan.Roots)
 		totals.CancellationAffected += len(item.CancellationPlan.Collected)
 		totals.Warnings += len(item.Warnings)
@@ -96,100 +112,18 @@ func (p DeleteProcessDefinitionPlan) Totals() DeleteProcessDefinitionPlanTotals 
 // TenantEvidence aggregates tenant metadata already present in the process-definition
 // impact plan and any nested process-instance cancellation plan.
 func (p DeleteProcessDefinitionPlan) TenantEvidence() process.TenantEvidence {
-	evidence := processDefinitionPlanTenantEvidence{}
-	for _, item := range p.Items {
-		evidence.Add("pd", item.Key, item.TenantId)
-		evidence.MergeProcessInstanceEvidence(item.CancellationPlan.TenantEvidence)
-	}
-	return evidence.Snapshot()
+	evidence := pdsvc.ProcessDefinitionPlanTenantEvidence(toolx.MapSlice(p.Items, toDomainDeletePlanEvidenceItem))
+	return fromDomainPlanTenantEvidence(evidence)
 }
 
-// processDefinitionPlanTenantEvidence accumulates tenant observations across
-// process-definition items and nested process-instance cancellation plans.
-type processDefinitionPlanTenantEvidence struct {
-	tenantSet          map[string]struct{}
-	seenTargets        map[string]struct{}
-	targets            []process.TenantEvidenceTarget
-	targetCount        int
-	unknownTargetCount int
-}
-
-// Add records one affected process-definition or process-instance target,
-// counting missing tenant IDs as unknown evidence.
-func (e *processDefinitionPlanTenantEvidence) Add(kind string, key string, tenantID string) {
-	if key == "" {
-		return
-	}
-	e.ensureMaps()
-	seenKey := kind + ":" + key
-	if _, ok := e.seenTargets[seenKey]; ok {
-		return
-	}
-	e.seenTargets[seenKey] = struct{}{}
-	e.targetCount++
-	if tenantID == "" {
-		e.unknownTargetCount++
-	} else {
-		e.tenantSet[tenantID] = struct{}{}
-	}
-	e.targets = append(e.targets, process.TenantEvidenceTarget{Key: key, TenantID: tenantID})
-}
-
-// MergeProcessInstanceEvidence folds nested cancellation evidence into the
-// process-definition impact evidence without double-counting repeated targets.
-func (e *processDefinitionPlanTenantEvidence) MergeProcessInstanceEvidence(nested process.TenantEvidence) {
-	if len(nested.Targets) > 0 {
-		for _, target := range nested.Targets {
-			e.Add("pi", target.Key, target.TenantID)
-		}
-		return
-	}
-	e.ensureMaps()
-	for _, tenantID := range nested.ResolvedTenantIDs {
-		if tenantID != "" {
-			e.tenantSet[tenantID] = struct{}{}
-		}
-	}
-	e.unknownTargetCount += nested.UnknownTargetCount
-	e.targetCount += nested.TargetCount
-}
-
-// Snapshot returns deterministic public tenant evidence for command context.
-func (e *processDefinitionPlanTenantEvidence) Snapshot() process.TenantEvidence {
-	e.ensureMaps()
-	resolvedTenantIDs := make([]string, 0, len(e.tenantSet))
-	for tenantID := range e.tenantSet {
-		resolvedTenantIDs = append(resolvedTenantIDs, tenantID)
-	}
-	return process.TenantEvidence{
-		ResolvedTenantIDs:  sortProcessDefinitionPlanTenantIDs(resolvedTenantIDs),
-		UnknownTargetCount: e.unknownTargetCount,
-		TargetCount:        e.targetCount,
-		Targets:            append([]process.TenantEvidenceTarget(nil), e.targets...),
-	}
-}
-
-// ensureMaps lazily initializes aggregation maps for zero-value use.
-func (e *processDefinitionPlanTenantEvidence) ensureMaps() {
-	if e.tenantSet == nil {
-		e.tenantSet = make(map[string]struct{})
-	}
-	if e.seenTargets == nil {
-		e.seenTargets = make(map[string]struct{})
-	}
-}
-
-// sortProcessDefinitionPlanTenantIDs keeps command-rendered resource tenant
-// evidence deterministic for previews and structured envelopes.
-func sortProcessDefinitionPlanTenantIDs(ids []string) []string {
-	slices.Sort(ids)
-	return slices.Compact(ids)
-}
-
+// DeleteProcessDefinitionPlanTotals keeps direct workload distinct from expanded cancellation families.
 type DeleteProcessDefinitionPlanTotals struct {
-	ProcessDefinitions     int   `json:"processDefinitions"`
-	ActiveProcessInstances int64 `json:"activeProcessInstances"`
-	CancellationRoots      int   `json:"cancellationRoots"`
-	CancellationAffected   int   `json:"cancellationAffected"`
-	Warnings               int   `json:"warnings"`
+	SuspendedProcessInstances  int64 `json:"suspendedProcessInstances,omitempty"`
+	SuspendedCountSupported    bool  `json:"suspendedCountSupported,omitempty"`
+	UnfinishedProcessInstances int64 `json:"unfinishedProcessInstances,omitempty"`
+	ProcessDefinitions         int   `json:"processDefinitions"`
+	ActiveProcessInstances     int64 `json:"activeProcessInstances"`
+	CancellationRoots          int   `json:"cancellationRoots"`
+	CancellationAffected       int   `json:"cancellationAffected"`
+	Warnings                   int   `json:"warnings"`
 }

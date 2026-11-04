@@ -54,14 +54,11 @@ func fromResourceDeleteResponse(key string, resp d.ResourceDeleteResponse, ok bo
 	}
 }
 
-func fromResourceDeleteResponses(keys []string, responses []d.ResourceDeleteResponse) DeleteReports {
+// fromResourceDeleteResponses preserves the identity selected by the service, including unattempted slots.
+func fromResourceDeleteResponses(responses []d.ResourceDeleteResponse) DeleteReports {
 	items := make([]DeleteReport, 0, len(responses))
-	for i, resp := range responses {
-		key := ""
-		if i < len(keys) {
-			key = keys[i]
-		}
-		items = append(items, fromResourceDeleteResponse(key, resp, resp.Ok))
+	for _, resp := range responses {
+		items = append(items, fromResourceDeleteResponse(resp.Key, resp, resp.Ok))
 	}
 	return DeleteReports{Items: items}
 }
@@ -75,17 +72,22 @@ func fromDomainDeleteProcessDefinitionPlan(plan d.DeleteProcessDefinitionPlan) D
 	}
 }
 
+// fromDomainDeleteProcessDefinitionPlanItem copies observed cleanup evidence across the public boundary.
 func fromDomainDeleteProcessDefinitionPlanItem(item d.DeleteProcessDefinitionPlanItem) DeleteProcessDefinitionPlanItem {
 	return DeleteProcessDefinitionPlanItem{
-		Key:                        item.Key,
-		BpmnProcessId:              item.BpmnProcessId,
-		ProcessVersion:             item.ProcessVersion,
-		ProcessVersionTag:          item.ProcessVersionTag,
-		TenantId:                   item.TenantId,
-		ActiveProcessInstanceCount: item.ActiveProcessInstanceCount,
-		ActiveProcessInstanceKeys:  append([]string(nil), item.ActiveProcessInstanceKeys...),
-		CancellationPlan:           fromDomainDryRunPIKeyExpansion(item.CancellationPlan),
-		Warnings:                   append([]string(nil), item.Warnings...),
+		Key:                            item.Key,
+		BpmnProcessId:                  item.BpmnProcessId,
+		ProcessVersion:                 item.ProcessVersion,
+		ProcessVersionTag:              item.ProcessVersionTag,
+		TenantId:                       item.TenantId,
+		ActiveProcessInstanceCount:     item.ActiveProcessInstanceCount,
+		ActiveProcessInstanceKeys:      append([]string(nil), item.ActiveProcessInstanceKeys...),
+		SuspendedProcessInstanceCount:  item.SuspendedProcessInstanceCount,
+		SuspendedCountSupported:        item.SuspendedCountSupported,
+		UnfinishedProcessInstanceCount: item.UnfinishedProcessInstanceCount,
+		UnfinishedProcessInstanceKeys:  append([]string(nil), item.UnfinishedProcessInstanceKeys...),
+		CancellationPlan:               fromDomainDryRunPIKeyExpansion(item.CancellationPlan),
+		Warnings:                       append([]string(nil), item.Warnings...),
 	}
 }
 
@@ -111,8 +113,10 @@ func fromDomainDryRunPIKeyExpansion(x d.DryRunPIKeyExpansion) process.DryRunPIKe
 	}
 }
 
+// fromDomainProcessInstance copies observed impact identities across the facade boundary.
 func fromDomainProcessInstance(x d.ProcessInstance) process.ProcessInstance {
 	return process.ProcessInstance{
+		BusinessId:               toolx.CopyPtr(x.BusinessId),
 		BpmnProcessId:            x.BpmnProcessId,
 		EndDate:                  x.EndDate,
 		Incident:                 x.Incident,
@@ -140,4 +144,30 @@ func toDeploymentUnitDatas(units []DeploymentUnitData) []d.DeploymentUnitData {
 		}
 	}
 	return result
+}
+
+// toDomainDeletePlanEvidenceItem maps only existing tenant observations; it never discovers missing targets.
+func toDomainDeletePlanEvidenceItem(item DeleteProcessDefinitionPlanItem) d.DeleteProcessDefinitionPlanItem {
+	e := item.CancellationPlan.TenantEvidence
+	return d.DeleteProcessDefinitionPlanItem{Key: item.Key, TenantId: item.TenantId,
+		CancellationPlan: d.DryRunPIKeyExpansion{TenantEvidence: d.TenantEvidence{
+			ResolvedTenantIDs: append([]string(nil), e.ResolvedTenantIDs...), UnknownTargetCount: e.UnknownTargetCount, TargetCount: e.TargetCount,
+			Targets: toolx.MapSlice(e.Targets, func(t process.TenantEvidenceTarget) d.TenantEvidenceTarget {
+				return d.TenantEvidenceTarget{Key: t.Key, TenantID: t.TenantID}
+			}),
+		}},
+	}
+}
+
+// fromDomainPlanTenantEvidence preserves the public empty-slice conventions and isolates returned observations.
+func fromDomainPlanTenantEvidence(e d.TenantEvidence) process.TenantEvidence {
+	var targets []process.TenantEvidenceTarget
+	if len(e.Targets) > 0 {
+		targets = toolx.MapSlice(e.Targets, func(t d.TenantEvidenceTarget) process.TenantEvidenceTarget {
+			return process.TenantEvidenceTarget{Key: t.Key, TenantID: t.TenantID}
+		})
+	}
+	return process.TenantEvidence{ResolvedTenantIDs: append([]string{}, e.ResolvedTenantIDs...),
+		UnknownTargetCount: e.UnknownTargetCount, TargetCount: e.TargetCount, Targets: targets,
+	}
 }

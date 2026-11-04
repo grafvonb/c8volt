@@ -11,18 +11,29 @@ type DeleteProcessDefinitionPlan struct {
 	TenantEvidence        TenantEvidence
 }
 
+// DeleteProcessDefinitionPlanItem preserves separate display counts and authoritative cleanup evidence.
 type DeleteProcessDefinitionPlanItem struct {
-	Key                        string
-	BpmnProcessId              string
-	ProcessVersion             int32
-	ProcessVersionTag          string
-	TenantId                   string
-	ActiveProcessInstanceCount int64
-	ActiveProcessInstanceKeys  []string
-	CancellationPlan           DryRunPIKeyExpansion
-	Warnings                   []string
+	Key                            string
+	BpmnProcessId                  string
+	ProcessVersion                 int32
+	ProcessVersionTag              string
+	TenantId                       string
+	ActiveProcessInstanceCount     int64
+	ActiveProcessInstanceKeys      []string
+	SuspendedProcessInstanceCount  int64
+	SuspendedCountSupported        bool
+	UnfinishedProcessInstanceCount int64
+	UnfinishedProcessInstanceKeys  []string
+	CancellationPlan               DryRunPIKeyExpansion
+	Warnings                       []string
 }
 
+// UnfinishedProcessInstances returns the observed count without understating discovered keys.
+func (i DeleteProcessDefinitionPlanItem) UnfinishedProcessInstances() int64 {
+	return max(i.UnfinishedProcessInstanceCount, int64(len(i.UnfinishedProcessInstanceKeys)))
+}
+
+// ActiveProcessInstances retains the active-only count/key fallback.
 func (i DeleteProcessDefinitionPlanItem) ActiveProcessInstances() int64 {
 	if i.ActiveProcessInstanceCount > 0 {
 		return i.ActiveProcessInstanceCount

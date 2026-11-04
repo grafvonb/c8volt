@@ -24,7 +24,6 @@ Create `cmd/update_job.go` and register `c8volt update job --key <job-key>` belo
 
 ## Decision: Create A Dedicated Job Service Package
 
-Add `internal/services/job` with shared `api.go`, `factory.go`, versioned `v87`, `v88`, and `v89` services, and compile-time API conformance checks.
 
 **Rationale**: The issue explicitly requires job get, job update, and confirmation to stay inside a job service boundary. Existing services follow this package/factory/version layout, and a dedicated package prevents job behavior from leaking into process-instance or incident services.
 

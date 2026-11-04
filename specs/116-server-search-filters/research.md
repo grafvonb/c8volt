@@ -24,14 +24,6 @@
   - Leave incident filtering local everywhere: rejected because the generated `v88` and `v89` search APIs already support the same boolean filter server-side.
   - Reuse state filtering to approximate incidents: rejected because incident presence is not equivalent to process instance state.
 
-## Decision 4: Keep `v8.7` on client-side fallback for these four semantics
-
-- **Decision**: Preserve local post-fetch filtering for roots/children/incidents/no-incidents on `v8.7`.
-- **Rationale**: `internal/services/processinstance/v87/searchProcessInstancesRequest(...)` currently maps only explicit equality-style fields such as process ID, version, state, and `ParentKey`. The Operate request shape in current repo code does not provide a reliable parent-key existence predicate or incident-presence predicate that matches the CLI flags.
-- **Alternatives considered**:
-  - Approximate roots/children by mixing broad search plus partial request fields on `v8.7`: rejected because it would still overfetch and would not faithfully represent the CLI flag meaning.
-  - Declare the flags unsupported on `v8.7`: rejected because the issue and clarified spec prefer preserving current semantics through client-side fallback where request-side support is absent.
-
 ## Decision 5: Push down all four semantics on `v8.8` and `v8.9`
 
 - **Decision**: Implement request-side filtering for roots-only, children-only, incidents-only, and no-incidents-only in both `v88` and `v89`.
@@ -52,7 +44,6 @@
 ## Decision 7: The broader `get` audit should be explicit and should retain already-adopted seams
 
 - **Decision**: Treat `get process-definition --latest` as an additional qualifying seam, record it as already adopted in this repository, and keep bounded no-addition rationale for the remaining audited `get` commands.
-- **Rationale**: The implementation audit found that `get process-definition --latest` follows the same broad-fetch-versus-request-pushdown rule across versions: `v8.8` and `v8.9` already send `isLatestVersion=true`, while `v8.7` still computes "latest" from a broader response because Operate cannot express the same predicate. `get resource`, `get cluster`, `get cluster topology`, and `get cluster license` are direct lookups with no comparable post-fetch narrowing seam.
 - **Alternatives considered**:
   - Treat the audit as automatically satisfied by process-instance work alone: rejected because the issue explicitly broadens the scope.
   - Expand scope preemptively to unrelated `get` commands without evidence of the same pattern: rejected because it risks needless churn and parallel structures.
@@ -70,7 +61,6 @@
 - [`cmd/get_processinstance.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance.go) translates shared search filters in `populatePISearchFilterOpts()` and then applies `roots-only`, `children-only`, `orphan-children-only`, `incidents-only`, and `no-incidents-only` afterward in `applyPISearchResultFilters(...)`.
 - [`c8volt/process/model.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/c8volt/process/model.go) and [`internal/domain/processinstance.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/domain/processinstance.go) currently expose only `ParentKey` and no request-side boolean fields for parent presence or incident presence.
 - [`internal/services/processinstance/v88/service.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v88/service.go) and [`internal/services/processinstance/v89/service.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v89/service.go) already build explicit Camunda search request bodies and can be extended to encode additional predicates.
-- [`internal/services/processinstance/v87/service.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v87/service.go) still builds an Operate search request with only equality-style fields and therefore remains the fallback version for these semantics.
 
 ## Generated-Client Capability Notes
 
@@ -83,15 +73,12 @@
 - [`cmd/get_processinstance_test.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance_test.go) and [`cmd/cmd_processinstance_test.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cmd_processinstance_test.go) are the natural command-level anchors for paging and request-capture behavior.
 - [`c8volt/process/client_test.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/c8volt/process/client_test.go) should cover the new shared filter field mapping into the domain layer.
 - [`internal/services/processinstance/v88/service_test.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v88/service_test.go) and [`internal/services/processinstance/v89/service_test.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v89/service_test.go) should prove request-side predicate encoding for supported versions.
-- [`internal/services/processinstance/v87/service_test.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v87/service_test.go) should prove that unsupported pushdown is intentionally absent while final results still honor the CLI flags through fallback behavior.
-- [`internal/services/processdefinition/v87/service_test.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processdefinition/v87/service_test.go), [`internal/services/processdefinition/v88/service_test.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processdefinition/v88/service_test.go), and [`internal/services/processdefinition/v89/service_test.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processdefinition/v89/service_test.go) already cover the audited `get process-definition --latest` seam: `v8.7` proves client-side "latest" selection from a broad fetch, and `v8.8`/`v8.9` prove request-side `isLatestVersion` pushdown.
 
 ## Audit Outcome: Other `get` Command Families
 
 | Command family / flag | Qualifies for same pattern | Outcome |
 |--------|----------------------------|---------|
 | `get process-instance` filter flags | Yes | In-scope feature work implemented in this feature |
-| `get process-definition --latest` | Yes | Already adopted: `v8.8`/`v8.9` request-side `isLatestVersion`, `v8.7` client-side fallback retained and covered |
 | `get resource --id` | No | Direct single-resource lookup, no post-fetch narrowing seam |
 | `get cluster topology` / `get cluster license` | No | Direct read-only fetches, no filter pushdown seam |
 | `get variable` | No | Command is not surfaced and has no implemented request flow to audit |
@@ -100,7 +87,6 @@
 
 - `cmd/get_processinstance.go` keeps the request-side search filter narrow to equality and date fields in `populatePISearchFilterOpts()` and only applies `--roots-only`, `--children-only`, `--orphan-children-only`, `--incidents-only`, and `--no-incidents-only` afterward in `applyPISearchResultFilters(...)`.
 - `cmd/get_processinstance.go` runs paging through `searchProcessInstancesWithPaging(...)`, which means any filter left client-side can distort the page-level counts and continuation prompt before `applyPISearchResultFilters(...)` trims the visible items.
-- `internal/services/processinstance/v87/service.go` builds the Operate request in `searchProcessInstancesRequest(...)` with tenant, explicit selectors, state, and `ParentKey` equality only; it has no request-side seam for parent presence/absence or incident presence/absence.
 - `internal/services/processinstance/v88/service.go` builds a typed `camundav88.ProcessInstanceFilter` in `SearchForProcessInstancesPage(...)`, so `HasIncident` and advanced `ParentProcessInstanceKey` encoding can be added there without changing the command surface.
 - `internal/services/processinstance/v89/service.go` builds the JSON search body in `SearchForProcessInstancesPage(...)` through the local `processInstanceFilter` wrapper, which already supports advanced filter serialization such as `"$exists"` and is the right place for the same pushdown semantics as `v8.8`.
 
@@ -114,6 +100,5 @@
 
 - `internal/services/processinstance/v88/service_test.go` already captures the serialized request body in `TestService_SearchForProcessInstances` and page metadata in `TestService_SearchForProcessInstancesPage_UsesNativePageMetadata`, so parent/incident pushdown assertions can extend those existing seams.
 - `internal/services/processinstance/v89/service_test.go` already captures raw JSON bodies in `TestService_SearchAndLookup` and asserts advanced filter serialization such as `"$exists":true`, making it the strongest existing anchor for parent-presence pushdown on `v8.9`.
-- `internal/services/processinstance/v87/service_test.go` already covers `SearchForProcessInstances` request construction plus fallback overflow behavior in `TestService_SearchForProcessInstancesPage_FallbackOverflowDetection`, so unsupported-predicate omission belongs there rather than in command-local tests.
 - `cmd/cmd_processinstance_test.go` provides reusable request-decoding helpers such as `decodeCapturedPISearchFilter(...)` and `decodeCapturedTopLevelPISearchPages(...)`, which are the shared test seams for command paging regressions.
 - `cmd/get_processinstance_test.go` already exercises tenant-scoped search requests, date-filter serialization, and `populatePISearchFilterOpts()`, so supported-version paging and fallback regressions should extend that file instead of creating parallel command fixtures.

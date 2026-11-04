@@ -4,16 +4,12 @@
 package cmd
 
 import (
-	"fmt"
 	"strings"
 	"time"
 
-	"github.com/grafvonb/c8volt/c8volt/ferrors"
 	"github.com/grafvonb/c8volt/c8volt/process"
-	"github.com/grafvonb/c8volt/config"
 	"github.com/grafvonb/c8volt/consts"
 	"github.com/grafvonb/c8volt/internal/services/incidentfilter"
-	"github.com/grafvonb/c8volt/toolx"
 	"github.com/spf13/cobra"
 )
 
@@ -40,6 +36,9 @@ func validatePISearchFlags(cmds ...*cobra.Command) error {
 	if len(cmds) > 0 {
 		cmd = cmds[0]
 	}
+	if err := validateSearchBusinessIDFlag(cmd); err != nil {
+		return err
+	}
 	if flagGetPISize <= 0 || flagGetPISize > consts.MaxPISearchSize {
 		return invalidFlagValuef("invalid value for --batch-size: %d, expected positive integer up to %d", flagGetPISize, consts.MaxPISearchSize)
 	}
@@ -48,7 +47,7 @@ func validatePISearchFlags(cmds ...*cobra.Command) error {
 	}
 	if flagGetPIState != "" && flagGetPIState != "all" {
 		if _, ok := process.ParseState(flagGetPIState); !ok {
-			return invalidFlagValuef("invalid value for --state: %q, valid values are: %s", flagGetPIState, process.ValidStateStrings())
+			return invalidFlagValuef("invalid value for --state: %q, valid values are: %s; suspended requires Camunda 8.10", flagGetPIState, process.ValidStateStrings())
 		}
 	}
 	if flagGetPITotal {
@@ -297,29 +296,8 @@ func activeIncidentFilterCount() int {
 // semantic validation failures.
 func useInvalidInputFlagErrors(cmd *cobra.Command) {
 	cmd.SetFlagErrorFunc(func(cmd *cobra.Command, err error) error {
-		return silenceUsageForError(cmd, invalidInputError(err))
+		return silenceUsageForError(cmd, migrationFlagError(cmd, err))
 	})
-}
-
-// validatePISearchVersionSupport rejects search filters whose behavior is not
-// available or tenant-safe on the configured Camunda version.
-func validatePISearchVersionSupport(cfg *config.Config) error {
-	if cfg == nil {
-		return nil
-	}
-	if (hasPIDateFilterFlags() || hasPIRelativeDayFilterFlags()) && cfg.App.CamundaVersion == toolx.V87 {
-		return ferrors.WrapClass(ferrors.ErrUnsupported,
-			fmt.Errorf("process-instance date filters require Camunda 8.8"))
-	}
-	if hasPIVariableFilterFlags() && cfg.App.CamundaVersion == toolx.V87 {
-		return ferrors.WrapClass(ferrors.ErrUnsupported,
-			fmt.Errorf("process-instance variable search is unsupported in Camunda 8.7; requires Camunda 8.8 or newer"))
-	}
-	if flagGetPIOrphanChildrenOnly && cfg.App.CamundaVersion == toolx.V87 {
-		return ferrors.WrapClass(ferrors.ErrUnsupported,
-			fmt.Errorf("--orphan-children-only is not supported in Camunda 8.7 because orphan-parent follow-up lookup is not tenant-safe"))
-	}
-	return nil
 }
 
 // validatePIMixedDateFilterInputs rejects using absolute dates and relative-day

@@ -6,12 +6,15 @@
 package cli_test
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
 	"testing"
+
+	"github.com/grafvonb/c8volt/integration/internal/validation"
 )
 
 type seededDataReport struct {
@@ -176,7 +179,7 @@ func seedProfileData(t *testing.T, profile integrationProfile) (seededProfileDat
 func discoverEmbeddedFixture(t *testing.T, profile integrationProfile) (embeddedFixtureSelection, evidenceRecord, error) {
 	t.Helper()
 	scenario := "seeded-" + profile.Name + "-embed-list"
-	result := runC8VoltForProfile(t, profile.Name, scenario, "--automation", "--json", "embed", "list", "--details")
+	result := runC8VoltForProfile(t, profile.Name, scenario, "--automation", "--json", "embed", "list", "--with-paths")
 	record := commandEvidence("embed list", scenario, result, "pass")
 	record.Profile = profile.Name
 	record.CamundaVersion = profile.ExpectedVersion
@@ -207,7 +210,16 @@ func discoverEmbeddedFixture(t *testing.T, profile integrationProfile) (embedded
 // deployEmbeddedFixture deploys the selected embedded BPMN through the CLI.
 func deployEmbeddedFixture(t *testing.T, profile integrationProfile, selection embeddedFixtureSelection) ([]seededDeployment, evidenceRecord, error) {
 	t.Helper()
+	return deployEmbeddedFixtureWithLabel(t, profile, selection, "")
+}
+
+// deployEmbeddedFixtureWithLabel keeps scenario-owned command evidence distinct while preserving the default deploy helper behavior.
+func deployEmbeddedFixtureWithLabel(t *testing.T, profile integrationProfile, selection embeddedFixtureSelection, label string) ([]seededDeployment, evidenceRecord, error) {
+	t.Helper()
 	scenario := "seeded-" + profile.Name + "-embed-deploy"
+	if label != "" {
+		scenario = "seeded-" + profile.Name + "-" + label + "-embed-deploy"
+	}
 	result := runC8VoltForProfile(t, profile.Name, scenario, "--automation", "--json", "embed", "deploy", "--file", selection.Path)
 	record := commandEvidence("embed deploy", scenario, result, "pass")
 	record.Profile = profile.Name
@@ -238,11 +250,24 @@ func deployEmbeddedFixture(t *testing.T, profile integrationProfile, selection e
 // runSeededProcessInstance starts one process instance with the suite run marker.
 func runSeededProcessInstance(t *testing.T, profile integrationProfile, selection embeddedFixtureSelection, deployments []seededDeployment) (seededProcessInstances, evidenceRecord, error) {
 	t.Helper()
+	return runSeededProcessInstanceWithVariables(t, profile, selection, deployments, nil, "")
+}
+
+// runSeededProcessInstanceWithVariables starts one process instance while preserving typed scenario values and an authoritative suite marker.
+func runSeededProcessInstanceWithVariables(t *testing.T, profile integrationProfile, selection embeddedFixtureSelection, deployments []seededDeployment, variables map[string]any, label string) (seededProcessInstances, evidenceRecord, error) {
+	t.Helper()
+	vars, err := seededVariablePayload(variables, suite.marker)
+	if err != nil {
+		return seededProcessInstances{}, evidenceRecord{}, fmt.Errorf("encode run variables for profile %q: %w", profile.Name, err)
+	}
 	args := []string{"--automation", "--json", "run", "process-instance"}
 	args = append(args, runSelectorArgs(selection, deployments)...)
-	args = append(args, "--vars", runMarkerVars(suite.marker))
+	args = append(args, "--set-vars", vars)
 
 	scenario := "seeded-" + profile.Name + "-run-process-instance"
+	if label != "" {
+		scenario = "seeded-" + profile.Name + "-run-" + label + "-process-instance"
+	}
 	result := runC8VoltForProfile(t, profile.Name, scenario, args...)
 	record := commandEvidence("run process-instance", scenario, result, "pass")
 	record.Profile = profile.Name
@@ -268,6 +293,47 @@ func runSeededProcessInstance(t *testing.T, profile integrationProfile, selectio
 	}
 	record.ResourceKeys = keys
 	return instances, record, nil
+}
+
+// seededVariablePayload copies caller values before adding the marker so scenarios cannot override run ownership.
+func seededVariablePayload(variables map[string]any, marker string) (string, error) {
+	payload := make(map[string]any, len(variables)+1)
+	for name, value := range variables {
+		payload[name] = value
+	}
+	payload["c8voltITRunId"] = marker
+	encoded, err := json.Marshal(payload)
+	if err != nil {
+		return "", err
+	}
+	return string(encoded), nil
+}
+
+// TestSeededVariablePayload verifies typed values, marker precedence, and the unchanged marker-only default.
+func TestSeededVariablePayload(t *testing.T) {
+	tests := []struct {
+		name      string
+		variables map[string]any
+		want      string
+	}{
+		{name: "default", want: `{"c8voltITRunId":"run-1"}`},
+		{name: "typed and authoritative", variables: map[string]any{
+			"c8voltITRunId": "caller-value",
+			"enabled":       false,
+			"number":        99,
+		}, want: `{"c8voltITRunId":"run-1","enabled":false,"number":99}`},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := seededVariablePayload(tc.variables, "run-1")
+			if err != nil {
+				t.Fatalf("seededVariablePayload: %v", err)
+			}
+			if got != tc.want {
+				t.Fatalf("seededVariablePayload = %s, want %s", got, tc.want)
+			}
+		})
+	}
 }
 
 // assertSeededProcessInstancesObservable checks suite-created keys directly without assuming global cluster counts.
@@ -306,25 +372,20 @@ func assertSeededProcessInstancesObservable(t *testing.T, profile integrationPro
 
 // selectEmbeddedSeedFixture chooses the simple user-task fixture for the profile's Camunda minor version.
 func selectEmbeddedSeedFixture(expectedVersion string, files []string) (embeddedFixtureSelection, error) {
-	prefix, err := embeddedFixturePrefix(expectedVersion)
+	path, err := validation.SelectEmbeddedFixture(expectedVersion, "SimpleUserTask.bpmn", files)
 	if err != nil {
 		return embeddedFixtureSelection{}, err
 	}
-	wantSuffix := prefix + "SimpleUserTask.bpmn"
-	for _, file := range files {
-		if strings.HasSuffix(file, wantSuffix) {
-			return embeddedFixtureSelection{Path: file}, nil
-		}
-	}
-	return embeddedFixtureSelection{}, fmt.Errorf("no embedded SimpleUserTask fixture found for Camunda version %q", expectedVersion)
+	return embeddedFixtureSelection{Path: path}, nil
 }
 
+// TestEmbeddedFixturePrefix preserves version-specific fixture selection across
+// all baseline and release-validation minors.
 func TestEmbeddedFixturePrefix(t *testing.T) {
 	tests := []struct {
 		version string
 		want    string
 	}{
-		{version: "8.7", want: "C87_"},
 		{version: "8.8", want: "C88_"},
 		{version: "8.9", want: "C89_"},
 		{version: "8.10", want: "C810_"},
@@ -345,18 +406,7 @@ func TestEmbeddedFixturePrefix(t *testing.T) {
 
 // embeddedFixturePrefix converts a Camunda minor version into the embedded fixture filename prefix.
 func embeddedFixturePrefix(expectedVersion string) (string, error) {
-	switch {
-	case strings.Contains(expectedVersion, "8.7"):
-		return "C87_", nil
-	case strings.Contains(expectedVersion, "8.8"):
-		return "C88_", nil
-	case strings.Contains(expectedVersion, "8.9"):
-		return "C89_", nil
-	case strings.Contains(expectedVersion, "8.10"):
-		return "C810_", nil
-	default:
-		return "", fmt.Errorf("unsupported embedded fixture version %q", expectedVersion)
-	}
+	return validation.EmbeddedFixturePrefix(expectedVersion)
 }
 
 // embeddedFixtureBpmnProcessID reads the fixture's BPMN process id for fallback run selectors.

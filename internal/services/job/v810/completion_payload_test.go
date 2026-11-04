@@ -32,7 +32,7 @@ func TestCompletionRequestPayload(t *testing.T) {
 		}{
 			{name: "nil variables", status: 204},
 			{name: "empty variables", variables: map[string]any{}, status: 204},
-			{name: "nested null variables", variables: map[string]any{"leaseToken": nil, "businessId": nil, "approved": true, "nested": map[string]any{"unset": nil}}, status: 204},
+			{name: "nested null variables", variables: map[string]any{"jobLeaseToken": nil, "businessId": nil, "approved": true, "nested": map[string]any{"unset": nil}}, status: 204},
 			{name: "backend rejection", status: 400, response: `{"title":"Bad Request","detail":"a lease token is required for this job"}`, wantErr: d.ErrBadRequest},
 			{name: "authorization rejection", status: 401, response: `{"title":"Unauthorized","detail":"completion is not authorized"}`, wantErr: d.ErrUnauthorized},
 			{name: "server error", status: 500, response: `{"title":"Internal Server Error","detail":"backend failure"}`, wantErr: d.ErrInternal},
@@ -54,7 +54,7 @@ func TestCompletionRequestPayload(t *testing.T) {
 					var body map[string]json.RawMessage
 					require.NoError(t, json.Unmarshal(raw, &body))
 					w.Header().Set("Content-Type", "application/problem+json")
-					for _, field := range []string{"leaseToken", "businessId"} {
+					for _, field := range []string{"jobLeaseToken", "businessId"} {
 						if _, exists := body[field]; exists {
 							w.WriteHeader(400)
 							io.WriteString(w, `{"title":"Bad Request","detail":"optional field must be omitted, not null"}`)
@@ -79,7 +79,7 @@ func TestCompletionRequestPayload(t *testing.T) {
 				require.NoError(t, err)
 				var diagnostic string
 				if bulk {
-					got, callErr := svc.submitBulkCompletion(context.Background(), d.Job{Key: "123", Kind: d.JobKindExecutionListener}, tc.variables)
+					got, callErr := svc.submitBulkCompletion(context.Background(), d.Job{Key: "123", Kind: d.JobKindExecutionListener}, d.CompletionPayload{Variables: tc.variables})
 					err = callErr
 					diagnostic = got.Diagnostic
 					if tc.status == 204 {
@@ -136,7 +136,7 @@ func TestCompletionEncodingFailureIsReturned(t *testing.T) {
 			require.NoError(t, err)
 			vars := map[string]any{"invalid": make(chan int)}
 			if bulk {
-				got, err := svc.submitBulkCompletion(context.Background(), d.Job{Key: "123"}, vars)
+				got, err := svc.submitBulkCompletion(context.Background(), d.Job{Key: "123"}, d.CompletionPayload{Variables: vars})
 				require.ErrorIs(t, err, d.ErrValidation)
 				require.Equal(t, d.CompletionSubmissionNotSubmitted, got.Status)
 				require.Equal(t, err.Error(), got.Diagnostic)
@@ -157,10 +157,10 @@ func TestCompletionEncodingFailureIsReturned(t *testing.T) {
 // explicit lease/business ID, changing result data, or stripping null variables.
 func TestCompletionOptionalValuesPreserved(t *testing.T) {
 	for _, payload := range []string{
-		`{"variables":{"leaseToken":null,"nested":{"businessId":null}},"result":{"type":"userTask","denied":false}}`,
-		`{"variables":{},"leaseToken":"lease-42","businessId":"business-7","result":{"type":"userTask","denied":false}}`,
-		`{"variables":{},"leaseToken":"","businessId":""}`,
-		`{"variables":{},"leaseToken":"lease-42"}`,
+		`{"variables":{"jobLeaseToken":null,"nested":{"businessId":null}},"result":{"type":"userTask","denied":false}}`,
+		`{"variables":{},"jobLeaseToken":"lease-42","businessId":"business-7","result":{"type":"userTask","denied":false}}`,
+		`{"variables":{},"jobLeaseToken":"","businessId":""}`,
+		`{"variables":{},"jobLeaseToken":"lease-42"}`,
 		`{"variables":{},"businessId":"business-7"}`,
 	} {
 		t.Run(payload, func(t *testing.T) {

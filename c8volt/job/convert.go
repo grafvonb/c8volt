@@ -31,18 +31,20 @@ func toDomainCompletionRequest(r CompletionRequest) (d.CompletionRequest, error)
 	if err != nil {
 		return d.CompletionRequest{}, fmt.Errorf("%w: invalid completion variables: %v", d.ErrValidation, err)
 	}
-	return d.CompletionRequest{Selection: toDomainCompletionSelection(r.Selection), Variables: variables}, nil
+	return d.CompletionRequest{SetBusinessID: toolx.CopyPtr(r.SetBusinessID), Selection: toDomainCompletionSelection(r.Selection), Variables: variables}, nil
 }
 
 // fromDomainCompletionCandidate preserves observed facts without synthesizing lifecycle data.
 func fromDomainCompletionCandidate(c d.CompletionCandidate) CompletionCandidate {
-	return CompletionCandidate(c)
+	out := CompletionCandidate(c)
+	out.BusinessId = toolx.CopyPtr(c.BusinessId)
+	return out
 }
 
 // fromDomainPreparedCompletionBatch preserves both complete plans and incomplete observations.
 func fromDomainPreparedCompletionBatch(b d.PreparedCompletionBatch) (PreparedCompletionBatch, error) {
 	variables, err := toolx.CopyJSONMap(b.Variables)
-	out := PreparedCompletionBatch{Selection: fromDomainCompletionSelection(b.Selection), DiscoveryTenant: b.DiscoveryTenant, TenantIDs: slices.Clone(b.TenantIDs), Candidates: toolx.MapSlice(b.Candidates, fromDomainCompletionCandidate), Status: CompletionPreparationStatus(b.Status), CompletionReason: CompletionReason(b.CompletionReason), PageCount: b.PageCount, ObservedCount: b.ObservedCount, Limited: b.Limited, Variables: variables}
+	out := PreparedCompletionBatch{SetBusinessID: toolx.CopyPtr(b.SetBusinessID), Selection: fromDomainCompletionSelection(b.Selection), DiscoveryTenant: b.DiscoveryTenant, TenantIDs: slices.Clone(b.TenantIDs), Candidates: toolx.MapSlice(b.Candidates, fromDomainCompletionCandidate), Status: CompletionPreparationStatus(b.Status), CompletionReason: CompletionReason(b.CompletionReason), PageCount: b.PageCount, ObservedCount: b.ObservedCount, Limited: b.Limited, Variables: variables}
 	if err != nil {
 		return out, fmt.Errorf("%w: invalid prepared completion variables: %v", d.ErrMalformedResponse, err)
 	}
@@ -52,7 +54,7 @@ func fromDomainPreparedCompletionBatch(b d.PreparedCompletionBatch) (PreparedCom
 // toDomainPreparedCompletionBatch snapshots the public in-memory plan before service validation.
 func toDomainPreparedCompletionBatch(b PreparedCompletionBatch) (d.PreparedCompletionBatch, error) {
 	variables, err := toolx.CopyJSONMap(b.Variables)
-	out := d.PreparedCompletionBatch{Selection: toDomainCompletionSelection(b.Selection), DiscoveryTenant: b.DiscoveryTenant, TenantIDs: slices.Clone(b.TenantIDs), Candidates: toolx.MapSlice(b.Candidates, toDomainCompletionCandidate), Status: d.CompletionPreparationStatus(b.Status), CompletionReason: d.CompletionReason(b.CompletionReason), PageCount: b.PageCount, ObservedCount: b.ObservedCount, Limited: b.Limited, Variables: variables}
+	out := d.PreparedCompletionBatch{SetBusinessID: toolx.CopyPtr(b.SetBusinessID), Selection: toDomainCompletionSelection(b.Selection), DiscoveryTenant: b.DiscoveryTenant, TenantIDs: slices.Clone(b.TenantIDs), Candidates: toolx.MapSlice(b.Candidates, toDomainCompletionCandidate), Status: d.CompletionPreparationStatus(b.Status), CompletionReason: d.CompletionReason(b.CompletionReason), PageCount: b.PageCount, ObservedCount: b.ObservedCount, Limited: b.Limited, Variables: variables}
 	if err != nil {
 		return out, fmt.Errorf("%w: invalid prepared completion variables: %v", d.ErrValidation, err)
 	}
@@ -61,15 +63,25 @@ func toDomainPreparedCompletionBatch(b PreparedCompletionBatch) (d.PreparedCompl
 
 // toDomainCompletionCandidate maps frozen facts without adding eligibility policy.
 func toDomainCompletionCandidate(c CompletionCandidate) d.CompletionCandidate {
-	return d.CompletionCandidate(c)
+	out := d.CompletionCandidate(c)
+	out.BusinessId = toolx.CopyPtr(c.BusinessId)
+	return out
 }
 
 // fromDomainCompletionOutcome preserves independent evidence axes and copies optional HTTP status.
 func fromDomainCompletionOutcome(o d.CompletionOutcome) CompletionOutcome {
-	return CompletionOutcome{Candidate: fromDomainCompletionCandidate(o.Candidate), Disposition: CompletionDisposition(o.Disposition), Reason: CompletionOutcomeReason(o.Reason), Submission: CompletionSubmission{Status: CompletionSubmissionStatus(o.Submission.Status), HTTPStatus: toolx.CopyPtr(o.Submission.HTTPStatus), Diagnostic: o.Submission.Diagnostic}, Observation: CompletionObservation{Status: CompletionObservationStatus(o.Observation.Status), State: o.Observation.State, Phase: CompletionObservationPhase(o.Observation.Phase), Diagnostic: o.Observation.Diagnostic}}
+	return CompletionOutcome{RequestedBusinessID: toolx.CopyPtr(o.RequestedBusinessID), Assignment: fromDomainCompletionAssignment(o.Assignment), Candidate: fromDomainCompletionCandidate(o.Candidate), Disposition: CompletionDisposition(o.Disposition), Reason: CompletionOutcomeReason(o.Reason), Submission: CompletionSubmission{Status: CompletionSubmissionStatus(o.Submission.Status), HTTPStatus: toolx.CopyPtr(o.Submission.HTTPStatus), Diagnostic: o.Submission.Diagnostic}, Observation: CompletionObservation{Status: CompletionObservationStatus(o.Observation.Status), State: o.Observation.State, Phase: CompletionObservationPhase(o.Observation.Phase), Diagnostic: o.Observation.Diagnostic}}
 }
 
 // fromDomainCompletionBatchReport maps partial and successful reports without interpreting errors or counts.
 func fromDomainCompletionBatchReport(r d.CompletionBatchReport) CompletionBatchReport {
-	return CompletionBatchReport{Status: CompletionBatchStatus(r.Status), Selection: fromDomainCompletionSelection(r.Selection), DiscoveryTenant: r.DiscoveryTenant, TenantIDs: slices.Clone(r.TenantIDs), CompletionReason: CompletionReason(r.CompletionReason), PageCount: r.PageCount, ObservedCount: r.ObservedCount, Limited: r.Limited, Counts: CompletionCounts(r.Counts), Candidates: toolx.MapSlice(r.Candidates, fromDomainCompletionCandidate), Outcomes: toolx.MapSlice(r.Outcomes, fromDomainCompletionOutcome)}
+	return CompletionBatchReport{RequestedBusinessID: toolx.CopyPtr(r.RequestedBusinessID), Status: CompletionBatchStatus(r.Status), Selection: fromDomainCompletionSelection(r.Selection), DiscoveryTenant: r.DiscoveryTenant, TenantIDs: slices.Clone(r.TenantIDs), CompletionReason: CompletionReason(r.CompletionReason), PageCount: r.PageCount, ObservedCount: r.ObservedCount, Limited: r.Limited, Counts: CompletionCounts(r.Counts), Candidates: toolx.MapSlice(r.Candidates, fromDomainCompletionCandidate), Outcomes: toolx.MapSlice(r.Outcomes, fromDomainCompletionOutcome)}
+}
+
+// fromDomainCompletionAssignment copies optional evidence without changing attribution.
+func fromDomainCompletionAssignment(a *d.CompletionAssignment) *CompletionAssignment {
+	if a == nil {
+		return nil
+	}
+	return &CompletionAssignment{Status: a.Status, HTTPStatus: toolx.CopyPtr(a.HTTPStatus)}
 }
