@@ -18,6 +18,12 @@ Standard commands deploy and inspect processes, walk families, operate user task
 
 v5 adds native user-task search, variables, assignment, unassignment, and completion; explicit element-local variable updates; business-ID workflows; suspension/resumption; and definition lifecycle visibility. Documentation and examples target Camunda 8.10; 8.9 and 8.8 remain supported. Native business IDs, suspension/resumption, and definition lifecycle support require c8.10+ in c8volt.
 
+## Agent workflow
+
+Use `c8volt capabilities --json` to discover command paths, flags, output modes, mutation behavior, and automation support. Preview supported mutations with `--dry-run`, then use `--automation --json` for unattended execution and structured results. Automation approves mutations but retains selection rules, force requirements, and outcome confirmation. A preview and a later execution discover their scopes separately.
+
+See the [agent workflow examples](/#ai-agents-and-automation).
+
 ## Command grammar
 
 - Bare properties select existing resources: `--key`, `--state`, `--bid`, `--retries`.

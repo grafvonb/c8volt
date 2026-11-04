@@ -6,7 +6,7 @@ nav_exclude: true
 has_toc: true
 ---
 
-> Generated from build `c8volt v4.4.0-295-gbee4398f-dirty`, commit `bee4398f`, built `2026-11-04T08:09:35Z` | Supported Camunda 8 versions: 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.3 (final)
+> Generated from build `c8volt v4.4.0-296-gaa4e1e45-dirty`, commit `aa4e1e45`, built `2026-11-04T08:30:18Z` | Supported Camunda 8 versions: 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.3 (final)
 
 # c8volt v5 — Camunda 8.10 operations
 
@@ -20,7 +20,7 @@ has_toc: true
 >
 > If an action needs retries, waiting, tree traversal, state checks, cleanup, or deterministic machine output before it is truly finished, c8volt should do that work for you.
 
-`c8volt` is an independent Camunda CLI for DevOps teams, developers, and support engineers. Deploy and inspect processes, operate user tasks and jobs, repair incidents, and clean up process families through commands that account for dependencies and verify observable outcomes.
+`c8volt` is an independent Camunda CLI for DevOps teams, developers, support engineers, CI pipelines, and AI agents. Deploy and inspect processes, operate user tasks and jobs, repair incidents, and clean up process families through commands that account for dependencies and verify observable outcomes.
 
 ## Done is done
 
@@ -182,7 +182,25 @@ c8volt get cluster topology
 c8volt get process-definition --latest
 ```
 
-## Flag grammar and automation
+## AI agents and automation
+
+AI agents can discover the CLI contract, preview a change, and execute it without interactive prompts:
+
+- `capabilities --json` describes command paths, flags, output modes, mutation behavior, and automation support.
+- `--automation` enables unattended execution on commands that explicitly support it, including approval of mutations. Selection rules, force requirements, and normal outcome confirmation still apply.
+- `--json` returns structured results on stdout. Diagnostics stay separate; use the exit status and available partial outcomes to assess failures.
+
+Discover, preview, then execute a repair:
+
+```bash
+c8volt capabilities --json
+c8volt --automation --json ops repair incident --key <incident-key> --set-retries 3 --dry-run
+c8volt --automation --json ops repair incident --key <incident-key> --set-retries 3
+```
+
+Inspect command support before choosing flags or output modes. A preview and a later execution discover their scopes separately. See [AI and agent context](https://c8volt.info/ai-search-context/) for the full discovery guidance.
+
+## Flag grammar and scripting
 
 v5 is a breaking CLI release. Update scripts to the current grammar; renamed flags have no legacy aliases.
 
@@ -203,7 +221,7 @@ v5 is a breaking CLI release. Update scripts to the current grammar; renamed fla
 - `--batch-size` controls discovery page size; `--limit` caps selected matches. Family expansion can include additional relatives.
 - Set `--tenant` to narrow discovery. `--all-tenants` clears that filter within authorized access. Explicit keys use backend authorization; creation and deployment require one tenant.
 
-Use `--verbose` for operational detail and `--debug` for redacted HTTP diagnostics. Discover command, output, and automation support with `c8volt capabilities --json`.
+Use `--verbose` for operational detail and `--debug` for redacted HTTP diagnostics.
 
 ## Documentation and project
 
