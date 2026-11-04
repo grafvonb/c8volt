@@ -21,8 +21,8 @@ var opsRepairCmd = &cobra.Command{
 	Long: `Repair incidents and affected process instances.
 
 Choose a target command to select resources, update variables or jobs, resolve incidents, and verify recovery.`,
-	Example: `  ./c8volt ops repair --help
-  ./c8volt capabilities --json`,
+	Example: `  c8volt ops repair incident --key <incident-key> --dry-run
+  c8volt ops repair process-instance --key <process-instance-key> --dry-run`,
 	Args: cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return cmd.Help()

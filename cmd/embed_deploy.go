@@ -27,10 +27,8 @@ var embedDeployCmd = &cobra.Command{
 		"Use `--all` for the configured Camunda version, or pass one or more `--file` values from `embed list`. " +
 		"Add --run to start one process instance after deployment. " +
 		"--all-tenants is not supported because deployment requires one destination tenant.",
-	Example: `  ./c8volt embed list
-  ./c8volt embed deploy --all
-  ./c8volt embed deploy --file processdefinitions/<embedded-process>.bpmn
-  ./c8volt embed deploy --all --run`,
+	Example: `  c8volt embed deploy --all
+  c8volt embed deploy --file processdefinitions/C810_SimpleUserTask.bpmn`,
 	Aliases: []string{"dep"},
 	Run: func(cmd *cobra.Command, args []string) {
 		cli, log, cfg, err := NewCli(cmd)

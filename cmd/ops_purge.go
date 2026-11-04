@@ -11,9 +11,8 @@ var opsPurgeCmd = &cobra.Command{
 	Long: `Remove operational resources through validated cleanup workflows.
 
 Choose a subcommand to purge process definitions, orphan instances, or instances selected by incidents.`,
-	Example: `  ./c8volt ops purge --help
-  ./c8volt ops purge orphan-process-instances --dry-run
-  ./c8volt ops purge orphan-process-instances --state completed --limit 25 --auto-confirm --report-file orphan-purge.md`,
+	Example: `  c8volt ops purge orphan-process-instances --dry-run
+  c8volt ops purge all-process-definitions --bpmn-process-id order --dry-run`,
 	Args: cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return cmd.Help()

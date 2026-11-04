@@ -18,7 +18,7 @@ func TestProcessInstanceStateCompletion(t *testing.T) {
 	for _, verb := range []string{"get", "expect"} {
 		t.Run(verb, func(t *testing.T) {
 			output := executeCompletionForTest(t, "--config", "/nonexistent/completion-config.yaml", verb, "process-instance", "--state", "")
-			require.Contains(t, output, "suspended\tRequires Camunda 8.10\n")
+			require.Contains(t, output, "suspended\tonly c8.10+\n")
 			require.Contains(t, output, "active\n")
 			require.Contains(t, output, ":4\n")
 			require.NotContains(t, output, "UNKNOWN")

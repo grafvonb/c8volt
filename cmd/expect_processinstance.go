@@ -20,16 +20,12 @@ var (
 var expectProcessInstanceCmd = &cobra.Command{
 	Use:   "process-instance",
 	Short: "Wait for process instances to satisfy expectations",
-	Long: "Wait for process instances to satisfy requested state and incident expectations.\n\n" +
-		"Tenant contract: explicit --key and stdin process-instance targets are backend-authorized admin input; returned tenant metadata may differ from the selected tenant.\n\n" +
-		"Use after `run`, `cancel`, or `delete` when a command returns before the final state or incident marker is visible.",
-	Example: `  ./c8volt expect process-instance --key <process-instance-key> --state active
-  ./c8volt expect process-instance --key <process-instance-key> --state suspended
-  ./c8volt expect process-instance --key <process-instance-key> --incident true
-  ./c8volt expect process-instance --key <process-instance-key> --state active --incident false
-  ./c8volt expect process-instance --key <process-instance-key> --state completed --state absent
-  ./c8volt expect process-instance --key <process-instance-key> --state canceled
-  ./c8volt get process-instance --key <process-instance-key> --keys-only | ./c8volt expect process-instance --incident true -`,
+	Long: `Wait for selected process instances to satisfy state or incident expectations.
+
+Use after a mutation when an observed outcome matters. Repeat --state to accept
+any listed state. Suspended-state expectations are available only c8.10+.`,
+	Example: `  c8volt expect process-instance --key <process-instance-key> --state completed
+  c8volt expect process-instance --key <process-instance-key> --incident false`,
 	Aliases: []string{"pi"},
 	Args: func(cmd *cobra.Command, args []string) error {
 		return validateOptionalDashArg(args)
@@ -138,11 +134,11 @@ func init() {
 
 	fs := expectProcessInstanceCmd.Flags()
 	fs.StringSliceVarP(&flagExpectPIKeys, "key", "k", nil, "process instance key(s) to watch")
-	fs.StringSliceVarP(&flagExpectPIStates, "state", "s", nil, "state expectation; valid values are: [active, suspended, completed, canceled, terminated, absent]; suspended requires Camunda 8.10")
+	fs.StringSliceVarP(&flagExpectPIStates, "state", "s", nil, "state expectation; valid values are: [active, suspended, completed, canceled, terminated, absent]; suspended: only c8.10+")
 	_ = expectProcessInstanceCmd.RegisterFlagCompletionFunc("state", processInstanceStateCompletion(true))
 	fs.StringVar(&flagExpectPIIncident, "incident", "", "incident expectation; valid values are: [true, false]")
 
-	fs.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers when --count > 1 (default: min(count, 2*GOMAXPROCS, 32))")
+	fs.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers; omit for an automatic limit")
 	fs.BoolVar(&flagNoWorkerLimit, "no-worker-limit", false, "use all queued jobs as workers when --workers is unset")
 	fs.BoolVar(&flagFailFast, "fail-fast", false, "stop scheduling new instances after the first error")
 

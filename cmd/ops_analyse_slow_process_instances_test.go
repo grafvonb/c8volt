@@ -149,8 +149,8 @@ func TestOpsAnalyseSlowProcessInstancesWithListenersMapsRequest(t *testing.T) {
 }
 
 func TestOpsAnalyseSlowProcessInstancesHelpDocumentsListenerTimestampGrammar(t *testing.T) {
-	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Long, "s: for job creation (not worker execution start), e: for job end")
-	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Long, "d: for an available deadline only while the state is exactly ACTIVATED")
+	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Long, "--with-listeners")
+	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Example, "--with-listeners")
 }
 
 // TestOpsAnalyseSlowProcessInstancesWithListenersCommandRendersLifecycleTimestamps preserves the existing command contract with advisory-aware fixtures.
@@ -429,8 +429,8 @@ func TestOpsSlowProcessSuspendedStateVocabulary(t *testing.T) {
 	_, err = parseOpsSlowProcessAnalysisState()
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "suspended requires Camunda 8.10")
-	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Flags().Lookup("state").Usage, "suspended (Camunda 8.10)")
+	require.Contains(t, opsAnalyseSlowProcessInstancesCmd.Flags().Lookup("state").Usage, "suspended (only c8.10+)")
 	output := executeCompletionForTest(t, "ops", "analyse", "slow-process-instances", "--state", "")
-	require.Contains(t, output, "suspended\tRequires Camunda 8.10")
+	require.Contains(t, output, "suspended\tonly c8.10+")
 	require.NotContains(t, output, "absent\n")
 }

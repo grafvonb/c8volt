@@ -1,76 +1,33 @@
-# c8volt VHS recordings
+# Documentation recordings
 
-This directory contains reproducible terminal recordings for c8volt docs.
+VHS tapes show Camunda 8.10 workflows with current v5 syntax. They are source files; checked-in GIFs are recordings of earlier builds and must be regenerated before reuse in v5 documentation.
 
-The checked-in files are recording source only. The real `config.yaml` used by
-recordings is generated into `/tmp/c8volt-vhs/bin/config.yaml` so tapes can show
-normal commands without `--config`, while OAuth secrets stay out of the
-repository. Tapes use `--no-indicator` on longer live operations to avoid
-transient spinner frames in the captured terminal.
+Recording contacts a real cluster and changes data. Run it only as a separately requested recording workflow against a chosen target; it is not implementation validation.
 
-## Prerequisites
+## Setup
 
-- `vhs`
-- `ttyd`
-- `ffmpeg`
-- `go`
-- a reachable Camunda 8.9 cluster
-- OAuth client credentials for that cluster
-
-On macOS, VHS can be installed with Homebrew:
+Install `vhs`, `ttyd`, `ffmpeg`, and Go. Provide a Camunda 8.10 target and OAuth credentials:
 
 ```bash
-brew install vhs
-```
-
-VHS requires `ttyd` and `ffmpeg` on `PATH`.
-
-## Environment
-
-Export the recording-only variables before rendering:
-
-```bash
-export C8VOLT_VHS_C89_BASE_URL="https://camunda.example.com"
+export C8VOLT_VHS_C810_BASE_URL="https://camunda.example.com"
 export C8VOLT_VHS_OAUTH_TOKEN_URL="https://login.example.com/oauth/token"
 export C8VOLT_VHS_OAUTH_CLIENT_ID="c8volt"
 export C8VOLT_VHS_OAUTH_CLIENT_SECRET="..."
 ```
 
-Optional scope variables are also supported when the target OAuth provider
-requires explicit per-API scopes:
+Optional API scopes are listed in [recording.env.example](config/recording.env.example). Keep credentials out of the repository.
 
-```bash
-export C8VOLT_VHS_OAUTH_CAMUNDA_SCOPE="camunda-api.write"
-export C8VOLT_VHS_OAUTH_OPERATE_SCOPE="operate-api.read"
-export C8VOLT_VHS_OAUTH_TASKLIST_SCOPE="tasklist-api.read"
-```
+## Record
 
-## Render
+| Recording | Target |
+| --- | --- |
+| Quick start | `make demo-vhs-fast-start` |
+| Smoke test | `make demo-vhs-st` |
+| Retention | `make demo-vhs-rp` |
+| Orphan purge | `make demo-vhs-opi` |
+| Incident purge | `make demo-vhs-piwi` |
+| Definition purge | `make demo-vhs-apd` |
+| Incident repair | `make demo-vhs-inc` |
+| Instance repair | `make demo-vhs-pi` |
 
-Render a screencast with its Make target or short alias:
-
-| Screencast | Make target | Short alias |
-| --- | --- | --- |
-| Fast Start | `make demo-vhs-fast-start` | |
-| Execute Smoke Test | `make demo-vhs-ops-execute-smoke-test` | `make demo-vhs-st` |
-| Execute Retention Policy | `make demo-vhs-ops-execute-retention-policy` | `make demo-vhs-rp` |
-| Purge Orphan Process Instances | `make demo-vhs-ops-purge-orphan-process-instances` | `make demo-vhs-opi` |
-| Purge Process Instances With Incidents | `make demo-vhs-ops-purge-process-instances-with-incidents` | `make demo-vhs-piwi` |
-| Purge All Process Definitions | `make demo-vhs-ops-purge-all-process-definitions` | `make demo-vhs-apd` |
-| Repair Incident | `make demo-vhs-ops-repair-incident` | `make demo-vhs-inc` |
-| Repair Process Instance | `make demo-vhs-ops-repair-process-instance` | `make demo-vhs-pi` |
-
-The render script builds `./bin/c8volt`, creates `/tmp/c8volt-vhs`, copies the
-binary into `/tmp/c8volt-vhs/bin/c8volt`, writes the recording-only
-`/tmp/c8volt-vhs/bin/config.yaml`, and runs VHS from the repository root.
-
-Generated media is written to:
-
-- `docs/assets/screencasts/fast-start.gif`
-- `docs/assets/screencasts/ops-execute-smoke-test.gif`
-- `docs/assets/screencasts/ops-execute-retention-policy.gif`
-- `docs/assets/screencasts/ops-purge-orphan-process-instances.gif`
-- `docs/assets/screencasts/ops-purge-process-instances-with-incidents.gif`
-- `docs/assets/screencasts/ops-purge-all-process-definitions.gif`
-- `docs/assets/screencasts/ops-repair-incident.gif`
-- `docs/assets/screencasts/ops-repair-process-instance.gif`
+The renderer builds the binary, prepares `/tmp/c8volt-vhs/bin/config.yaml`, and runs the selected tape. Private config stays outside the repository. GIFs are written under `docs/assets/screencasts/`. See [recording.example.yml](config/recording.example.yml) for the generated config shape.

@@ -8,11 +8,11 @@ import "github.com/spf13/cobra"
 var opsCmd = &cobra.Command{
 	Use:   "ops",
 	Short: "Run operational playbooks",
-	Long: `Run operational playbooks for analysis, retention, purge, repair, and cluster smoke testing.
-
-Choose a subcommand for a specific workflow.`,
-	Example: `  ./c8volt ops --help
-  ./c8volt capabilities --json`,
+	Long: `Run playbooks for incident repair, retention, cleanup, runtime analysis,
+and connection testing. Start with --dry-run on workflows that change data.`,
+	Example: `  c8volt ops repair incident --key <incident-key> --dry-run
+  c8volt ops execute retention-policy --retention-days 90 --dry-run
+  c8volt ops analyse slow-process-instances --bpmn-process-id order --dur-longer 5m`,
 	Aliases: []string{"operations"},
 	Args:    cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {

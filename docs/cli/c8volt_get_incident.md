@@ -10,13 +10,10 @@ List or fetch incidents
 
 ### Synopsis
 
-Get Camunda incidents by key or search criteria.
+Inspect incidents by key or search filters. Search defaults to active incidents.
 
-Provide repeated --key values or newline-separated keys from stdin with '-'. Each unique incident key is fetched once.
-
-Without keys, search by state, error type, error message, process context, element context, and creation time. Search defaults to active incidents. --batch-size controls each discovery request; --limit caps incidents across all pages; --total counts matching incidents.
-
-A --bpmn-process-id selector must match a visible process definition before discovery.
+Use --error-type or --pi-key to narrow the scope. Add --pi-keys-only to pass
+affected process-instance keys to another command. Use --limit to bound a search.
 
 ```
 c8volt get incident [flags]
@@ -25,25 +22,15 @@ c8volt get incident [flags]
 ### Examples
 
 ```
-  ./c8volt get incident --key <incident-key>
-  ./c8volt get incident --key <incident-key> --key <another-incident-key>
-  printf '%s\n' "$INCIDENT_KEY_A" "$INCIDENT_KEY_B" | ./c8volt get incident -
-  ./c8volt get incident --state active --keys-only | ./c8volt get incident -
-  ./c8volt get incident --state active --limit 5
-  ./c8volt get incident --state resolved --error-type io_mapping_error --limit 5
-  ./c8volt get incident --state active --error-type io_mapping_error --pi-keys-only
-  ./c8volt get incident --state active --error-type io_mapping_error --pi-keys-only | ./c8volt cancel process-instance --dry-run -
-  ./c8volt get incident --error-message "intentional" --limit 5
-  ./c8volt get incident --creation-time-after 2026-05-01T00:00:00Z --creation-time-before 2026-05-31T00:00:00Z --limit 5
-  ./c8volt get incident --pi-key <process-instance-key> --element-id <element-id>
-  ./c8volt --json get incident --key <incident-key>
-  ./c8volt --keys-only get incident --key <incident-key>
+  c8volt get incident --key <incident-key>
+  c8volt get incident --state active --error-type io_mapping_error --limit 10
+  c8volt get incident --pi-key <process-instance-key> --json
 ```
 
 ### Options
 
 ```
-  -n, --batch-size int32               number of incidents to request per page; does not cap total results (max limit 1000 enforced by server) (default 1000)
+  -n, --batch-size int32               incidents per discovery page (server maximum 1000) (default 1000)
   -b, --bpmn-process-id string         BPMN process ID to validate and filter incidents
       --creation-time-after string     only include incidents with creation time >= RFC3339 timestamp, c8volt timestamp, or YYYY-MM-DD
       --creation-time-before string    only include incidents with creation time <= RFC3339 timestamp, c8volt timestamp, or YYYY-MM-DD
@@ -66,13 +53,13 @@ c8volt get incident [flags]
       --root-key string                root process instance key to filter incidents
   -s, --state string                   incident state scope for search: active, pending, resolved, migrated, unknown, all (default "active")
       --total                          return only the exact numeric total of matching incidents
-  -w, --workers int                    maximum concurrent workers when fetching multiple incidents (default: min(count, 2*GOMAXPROCS, 32))
+  -w, --workers int                    maximum concurrent workers; omit for an automatic limit
 ```
 
 ### Options inherited from parent commands
 
 ```
-      --all-tenants          clear configured tenant filtering and search all tenants visible to the authenticated user; mutually exclusive with --tenant
+      --all-tenants          search all accessible tenants; cannot combine with --tenant
   -y, --auto-confirm         auto-confirm prompts for non-interactive use
       --automation           enable non-interactive mode for commands that explicitly support it
       --config string        path to config file
@@ -85,7 +72,7 @@ c8volt get incident [flags]
       --profile string       config active profile name to use (e.g. dev, prod)
   -q, --quiet                suppress output except errors
       --request-rate float   maximum shared request starts per second (fractions allowed; 0 disables pacing)
-      --tenant string        tenant ID for discovery/search, selection, create, deploy, and run flows; explicit empty values can clear configured discovery filters, and explicit keys/IDs remain backend-authorized
+      --tenant string        tenant for discovery and creation; explicit keys use backend authorization
       --timeout duration     HTTP request timeout (default 30s)
   -v, --verbose              show additional output
 ```

@@ -38,34 +38,19 @@ var (
 var getProcessDefinitionCmd = &cobra.Command{
 	Use:   "process-definition",
 	Short: "List or fetch deployed process definitions",
-	Long: `List or fetch deployed process definitions.
+	Long: `Inspect deployed process definitions. Use --latest for the newest version of
+each tenant and BPMN process ID, or --key for one exact definition.
 
-Select by key, BPMN process ID, version, or version tag. Use --xml only with --key. A --bpmn-process-id selector must match a visible definition.
+Add --with-stats for instance and incident counts. Lifecycle state and suspended
+counts are available only c8.10+. DRAINING blocks new starts while unfinished
+instances remain; active and suspended counts are separate.
 
---tenant limits list and selector discovery. Explicit --key and XML lookups use backend authorization without tenant filtering.
-
---latest selects the newest definition per exact tenant ID and BPMN process ID using native latest filtering, breaking version ties by the lowest exact-text key.
-
-Camunda 8.10 supplies optional lifecycle state in human rows and JSON (state): ACTIVE allows new instances, DRAINING blocks new starts while unfinished instances remain, and DELETED means runtime removal, not removal of historical data. Missing state is omitted, including on 8.8/8.9; unfamiliar values are preserved.
-
-Lifecycle and --with-stats counts are independent: suspended instances can keep a definition DRAINING even with zero active instances. Backend deletion does not cancel or resume instances; delete pd --force explicitly cancels unfinished instances first. These reads do not change deletion behavior.
-
---with-stats includes exact-version statistics and requires Camunda 8.8 or newer. On Camunda 8.10, rows append su: for suspended instances, with a dash for an observed zero; active counts remain separate. JSON statistics include a suspended count and suspendedCountSupported availability flag; a supported zero omits the count. Camunda 8.8/8.9 omit the suspended token and fields because the count is unavailable. With --with-stats --watch, suspended count and availability changes update the row and clear stale values. Empty searches suppress the human summary under --quiet while preserving requested JSON and keys-only results.
-
---watch repeats the lookup indefinitely by default until interrupted or retries are exhausted. It refreshes immediately, then at --watch-interval. --watch-timeout limits the session (0 = unlimited), independently of --timeout for HTTP requests and retry backoff. Request timeouts are retried while the session is active. Without a selector it observes all visible definitions.
-
-A trailing * marks changed definitions and + marks new ones; changed displayed values are also bold on supported terminals when TERM is set and not dumb, and NO_COLOR is unset. Redirected output uses plain markers. Lifecycle and statistics changes count once per row. The first refresh is unmarked; later refreshes compare with the last successfully displayed result. Failures preserve that baseline, omitted values disappear, and unchanged refreshes clear markers. Returned DELETED rows remain visible until absent from a successful refresh.
-
-Refresh summaries and verbose timing use the configured logger at INFO; slow-refresh warnings use WARN. Suppressing INFO does not suppress rows. --watch cannot be combined with --json, --keys-only, --xml, --quiet, or --automation.`,
-	Example: `  ./c8volt get process-definition --latest
-  ./c8volt get process-definition --bpmn-process-id <bpmn-process-id> --latest
-  ./c8volt get process-definition --bpmn-process-id <bpmn-process-id> --latest --watch
-  ./c8volt get process-definition --watch --watch-interval 2s
-  ./c8volt get process-definition --watch --watch-timeout 10m
-  ./c8volt get process-definition --key <process-definition-key> --json
-  ./c8volt get process-definition --key <process-definition-key> --with-stats
-  ./c8volt get process-definition --with-stats --json
-  ./c8volt get process-definition --key <process-definition-key> --xml`,
+Use --watch to refresh until interrupted, or --xml to retrieve the BPMN model.
+Watch requires human output and cannot be combined with --json, --keys-only,
+--xml, --quiet, or --automation.`,
+	Example: `  c8volt get process-definition --latest
+  c8volt get process-definition --bpmn-process-id order --with-stats
+  c8volt get process-definition --bpmn-process-id order --latest --watch`,
 	Aliases: []string{"pd", "pds"},
 	Run:     runGetProcessDefinition,
 }
@@ -174,8 +159,8 @@ func init() {
 	fs.StringVar(&flagGetPDProcessVersionTag, "pd-version-tag", "", "process definition version tag")
 	fs.BoolVar(&flagGetPDWithStat, "with-stats", false, "include process definition statistics, incident counts, and suspended counts when supported")
 	fs.BoolVar(&flagGetPDAsXML, "xml", false, "output the selected process definition as raw XML (requires --key and no other filters)")
-	fs.Int32VarP(&flagGetPDBatchSize, "batch-size", "n", consts.MaxPISearchSize, fmt.Sprintf("number of process definitions to request per discovery page; does not cap total results (max limit %d enforced by server)", consts.MaxPISearchSize))
-	fs.BoolVar(&flagGetPDWatch, "watch", false, "repeat the process-definition lookup until interrupted, --watch-timeout is reached, or retries are exhausted")
+	fs.Int32VarP(&flagGetPDBatchSize, "batch-size", "n", consts.MaxPISearchSize, fmt.Sprintf("process definitions per discovery page (server maximum %d)", consts.MaxPISearchSize))
+	fs.BoolVar(&flagGetPDWatch, "watch", false, "repeat the process-definition lookup until stopped")
 	fs.Var(toolx.NewDurationStringValue(defaultGetPDWatchInterval.String(), &flagGetPDWatchInterval), "watch-interval", "interval between process-definition watch refreshes after the immediate first refresh")
 	fs.DurationVar(&flagGetPDWatchTimeout, "watch-timeout", 0, "maximum watch session duration (0 = unlimited; requires --watch)")
 

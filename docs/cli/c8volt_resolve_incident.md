@@ -21,10 +21,8 @@ c8volt resolve incident [flags]
 ### Examples
 
 ```
-  ./c8volt resolve incident --key <incident-key>
-  ./c8volt resolve incident --key <incident-key> --key <another-incident-key>
-  printf '%s\n' "$INCIDENT_KEY_A" "$INCIDENT_KEY_B" | ./c8volt resolve incident -
-  printf '%s\n' "$INCIDENT_KEY_A" | ./c8volt resolve incident --key "$INCIDENT_KEY_B" -
+  c8volt resolve incident --key <incident-key>
+  c8volt resolve incident --key <incident-key> --key <another-incident-key>
 ```
 
 ### Options
@@ -36,13 +34,13 @@ c8volt resolve incident [flags]
   -k, --key strings       incident key(s) to resolve; repeat or combine with stdin '-'
       --no-wait           return after the resolution request is accepted without incident confirmation
       --no-worker-limit   use all queued jobs as workers when --workers is unset
-  -w, --workers int       maximum concurrent workers when resolving multiple incidents (default: min(count, 2*GOMAXPROCS, 32))
+  -w, --workers int       maximum concurrent workers; omit for an automatic limit
 ```
 
 ### Options inherited from parent commands
 
 ```
-      --all-tenants          clear configured tenant filtering and search all tenants visible to the authenticated user; mutually exclusive with --tenant
+      --all-tenants          search all accessible tenants; cannot combine with --tenant
   -y, --auto-confirm         auto-confirm prompts for non-interactive use
       --automation           enable non-interactive mode for commands that explicitly support it
       --config string        path to config file
@@ -55,7 +53,7 @@ c8volt resolve incident [flags]
       --profile string       config active profile name to use (e.g. dev, prod)
   -q, --quiet                suppress output except errors
       --request-rate float   maximum shared request starts per second (fractions allowed; 0 disables pacing)
-      --tenant string        tenant ID for discovery/search, selection, create, deploy, and run flows; explicit empty values can clear configured discovery filters, and explicit keys/IDs remain backend-authorized
+      --tenant string        tenant for discovery and creation; explicit keys use backend authorization
       --timeout duration     HTTP request timeout (default 30s)
   -v, --verbose              show additional output
 ```

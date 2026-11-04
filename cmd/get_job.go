@@ -33,21 +33,13 @@ var (
 var getJobCmd = &cobra.Command{
 	Use:   "job",
 	Short: "Inspect or search jobs",
-	Long: `Inspect or search Camunda jobs.
+	Long: `Inspect a job by key or search by state, type, process instance, worker, or retries.
 
-Use --key for a known job. Otherwise search by state, type, process instance, element instance, BPMN element, worker, retries, job kind, or listener event type.
-
-Search and --total use the configured tenant; --tenant overrides it. An empty --tenant or --all-tenants searches all accessible tenants. Explicit --key lookup uses backend authorization without the discovery tenant filter.
-
---batch-size controls each discovery request; --limit caps jobs across all pages; --total counts matching jobs. Discovery follows raw page continuation and reports an incomplete-search error if pagination cannot establish completion.
-
-Camunda 8.10 observations include each job's own business ID when supplied by the backend. Related process IDs are never substituted. Empty searches respect --quiet while requested machine results remain available.
-
-Requires Camunda 8.8 or newer.`,
-	Example: `  ./c8volt get job --key <job-key>
-  ./c8volt get job --state failed --batch-size 10 --limit 50
-  ./c8volt get job --state failed --total
-  ./c8volt --json get job --key <job-key>`,
+Use --retries 0 to find jobs with no retries remaining. Combine filters with AND.
+Use --limit to bound results or --total to count matches.`,
+	Example: `  c8volt get job --key <job-key>
+  c8volt get job --state failed --retries 0 --limit 10
+  c8volt get job --pi-key <process-instance-key> --json`,
 	Args: cobra.NoArgs,
 	Run: func(cmd *cobra.Command, args []string) {
 		if err := validateGetJobFlags(cmd); err != nil {

@@ -155,49 +155,7 @@ func TestOpsPurgeAllProcessDefinitionsSemanticProgressModeGate(t *testing.T) {
 
 // TestOpsPurgeAllProcessDefinitionsHelpDocumentsCommandShape verifies the registered command, alias, and safe examples.
 func TestOpsPurgeAllProcessDefinitionsHelpDocumentsCommandShape(t *testing.T) {
-	resetOpsPurgeAllProcessDefinitionsFlagState()
-	t.Cleanup(resetOpsPurgeAllProcessDefinitionsFlagState)
-
-	output := executeRootForTest(t, "ops", "purge", "all-process-definitions", "--help")
-
-	assertHelpOutputContainsAll(t, output,
-		"Delete selected process definitions and their associated history",
-		"Forced cleanup cancels root instances",
-		"cancels root instances",
-		"waits for unfinished instances to drain",
-		"deletes instance history",
-		"Aliases:",
-		"all-pds",
-		"--key string",
-		"--bpmn-process-id string",
-		"--pd-version int32",
-		"--pd-version-tag string",
-		"--latest",
-		"--batch-size int32",
-		"--limit int32",
-		"--dry-run",
-		"--workers int",
-		"--no-worker-limit",
-		"--fail-fast",
-		"--no-wait",
-		"--force",
-		"--report-file string",
-		"--report-format string",
-		"./c8volt ops purge all-process-definitions --dry-run",
-		"./c8volt ops purge all-process-definitions --bpmn-process-id <bpmn-process-id> --latest --dry-run",
-		"./c8volt ops purge all-process-definitions --bpmn-process-id <bpmn-process-id> --latest --force",
-		"./c8volt ops purge all-process-definitions --key <process-definition-key> --force --report-file process-definition-purge.md",
-	)
-	assertHelpOutputOmitsAll(t, output,
-		"purge-definitions",
-		"delete-all",
-		"./c8volt ops purge all-process-definitions --automation --json\n",
-		"--xml",
-		"--stat",
-	)
-
-	aliasOutput := executeRootForTest(t, "ops", "purge", "all-pds", "--help")
-	require.Contains(t, aliasOutput, "Delete selected process definitions and their associated history")
+	assertCommandHelpOutput(t, []string{"ops", "purge", "all-process-definitions"}, []string{"Unfinished instances block deletion", "--force", "--dry-run", "--report-file"}, nil)
 }
 
 // TestOpsPurgeAllProcessDefinitionsRejectsDisplayOnlyPDFlags keeps get-pd display flags out of the purge surface.

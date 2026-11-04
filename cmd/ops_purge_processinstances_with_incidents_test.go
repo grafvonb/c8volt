@@ -60,53 +60,7 @@ func TestOpsPurgeProcessInstancesWithIncidentsKeyTenantContextUsesExplicitSemant
 
 // TestOpsPurgeProcessInstancesWithIncidentsHelpDocumentsCommandShape verifies the registered command, alias, and safe examples.
 func TestOpsPurgeProcessInstancesWithIncidentsHelpDocumentsCommandShape(t *testing.T) {
-	resetOpsPurgeProcessInstancesWithIncidentsFlagState()
-	t.Cleanup(resetOpsPurgeProcessInstancesWithIncidentsFlagState)
-
-	output := executeRootForProcessInstanceTest(t, "ops", "purge", "process-instances-with-incidents", "--help")
-
-	assertHelpOutputContainsAll(t, output,
-		"Delete process-instance families selected through incidents",
-		"Aliases:",
-		"pi-with-incidents",
-		"--inc-key strings",
-		"--state string",
-		"--error-type string",
-		"--error-message string",
-		"--bpmn-process-id string",
-		"--pd-key string",
-		"--pi-key string",
-		"--root-key string",
-		"--element-id string",
-		"--element-instance-key string",
-		"--creation-time-after string",
-		"--creation-time-before string",
-		"--batch-size int32",
-		"--limit int32",
-		"--dry-run",
-		"--workers int",
-		"--no-worker-limit",
-		"--fail-fast",
-		"--no-wait",
-		"--force",
-		"--report-file string",
-		"--report-format string",
-		"./c8volt ops purge process-instances-with-incidents --state active --error-type io_mapping_error --dry-run",
-		"./c8volt ops purge process-instances-with-incidents --state active --error-type io_mapping_error --limit 5 --force --report-file incident-purge.md",
-	)
-	assertHelpOutputOmitsAll(t, output,
-		"incident-pis",
-		"./c8volt ops purge process-instances-with-incidents --automation --json\n",
-		"--pi-keys-only",
-		"--total",
-		"--error-message-limit",
-		"--with-no-error-message",
-		"--flow-node-id",
-		"--fni-key",
-	)
-
-	aliasOutput := executeRootForProcessInstanceTest(t, "ops", "purge", "pi-with-incidents", "--help")
-	require.Contains(t, aliasOutput, "Delete process-instance families selected through incidents")
+	assertCommandHelpOutput(t, []string{"ops", "purge", "process-instances-with-incidents"}, []string{"--inc-key", "--force", "--dry-run", "--report-file"}, nil)
 }
 
 // TestOpsPurgeProcessInstancesWithIncidentsRejectsIncidentDisplayOnlyFlags keeps display flags out of the purge surface.

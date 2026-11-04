@@ -9,19 +9,13 @@ Purge orphan child process instances
 
 ### Synopsis
 
-Delete orphan child process instances whose parents are missing.
+Delete child process instances whose parent is missing.
 
-The workflow discovers orphan candidates, fixes the target set, validates the delete plan, and requires confirmation before deletion. Process-instance family, force, and wait rules apply.
+The workflow discovers orphan candidates and plans family deletion before
+confirmation. Use --dry-run to review the scope and --report-file to save an
+audit report. Use --auto-confirm for unattended execution.
 
---limit counts distinct matching child candidates inspected before orphan classification, including non-orphans; duplicates do not consume the bound.
-
---tenant limits discovery; an empty tenant or --all-tenants searches across accessible tenants.
-
-Use --dry-run to inspect the plan without mutation, --auto-confirm or --automation for unattended deletion, and --report-file to save an audit report.
-
---bid selects one exact opaque business ID on Camunda 8.10+, combined with other predicates in tenant scope. BID cleanup completes discovery and freezes eligible families before confirmation; deletion submits only reviewed members in children-before-parent order. Dry-run reads scope without mutation. New matches or children are not added after approval; native force cancellation may cascade within a targeted family.
-
-Observed process-instance business IDs are retained in JSON and Markdown audit reports. Use --verbose to inspect each observed reference in the plan; key-only outcomes remain unchanged.
+--limit bounds child candidates inspected, including those found to have parents.
 
 ```
 c8volt ops purge orphan-process-instances [flags]
@@ -30,21 +24,15 @@ c8volt ops purge orphan-process-instances [flags]
 ### Examples
 
 ```
-  ./c8volt ops purge orphan-process-instances --bid ORDER-123 --limit 25 --dry-run
-  ./c8volt ops purge orphan-process-instances --dry-run
-  ./c8volt --tenant tenant-a ops purge orphan-process-instances --dry-run
-  ./c8volt --all-tenants ops purge orphan-process-instances --dry-run
-  ./c8volt ops purge orphan-process-instances --dry-run --bpmn-process-id <bpmn-process-id> --limit 25
-  ./c8volt ops purge orphan-process-instances --state completed --limit 25
-  ./c8volt --verbose ops purge orphan-process-instances --state completed --limit 25 --auto-confirm
-  ./c8volt ops purge orphan-process-instances --state completed --limit 25 --report-file orphan-purge.md
+  c8volt ops purge orphan-process-instances --dry-run
+  c8volt ops purge orphan-process-instances --state completed --report-file orphans.md
 ```
 
 ### Options
 
 ```
   -n, --batch-size int32            number of process instances to inspect per page (max limit 1000 enforced by server) (default 1000)
-      --bid string                  exact opaque business ID to select within tenant scope (Camunda 8.10+)
+      --bid string                  exact opaque business ID to select within tenant scope (only c8.10+)
   -b, --bpmn-process-id string      BPMN process ID to filter process instances
       --dry-run                     discover and validate orphan process-instance cleanup without submitting deletion requests
       --end-date-after string       only include process instances with end date >= YYYY-MM-DD
@@ -70,13 +58,13 @@ c8volt ops purge orphan-process-instances [flags]
       --start-date-newer-days int   only include process instances N days old or newer (0 means today) (default -1)
       --start-date-older-days int   only include process instances N days old or older (default -1)
   -s, --state string                state to filter process instances: all, active, completed, canceled, terminated (default "all")
-  -w, --workers int                 maximum concurrent workers when validating the delete plan (default: min(targets, 2*GOMAXPROCS, 32))
+  -w, --workers int                 maximum concurrent workers; omit for an automatic limit
 ```
 
 ### Options inherited from parent commands
 
 ```
-      --all-tenants          clear configured tenant filtering and search all tenants visible to the authenticated user; mutually exclusive with --tenant
+      --all-tenants          search all accessible tenants; cannot combine with --tenant
   -y, --auto-confirm         auto-confirm prompts for non-interactive use
       --automation           enable non-interactive mode for commands that explicitly support it
       --config string        path to config file
@@ -89,7 +77,7 @@ c8volt ops purge orphan-process-instances [flags]
       --profile string       config active profile name to use (e.g. dev, prod)
   -q, --quiet                suppress output except errors
       --request-rate float   maximum shared request starts per second (fractions allowed; 0 disables pacing)
-      --tenant string        tenant ID for discovery/search, selection, create, deploy, and run flows; explicit empty values can clear configured discovery filters, and explicit keys/IDs remain backend-authorized
+      --tenant string        tenant for discovery and creation; explicit keys use backend authorization
       --timeout duration     HTTP request timeout (default 30s)
   -v, --verbose              show additional output
 ```

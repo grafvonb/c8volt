@@ -14,7 +14,7 @@ for cmd in "${required_commands[@]}"; do
 done
 
 required_env=(
-  C8VOLT_VHS_C89_BASE_URL
+  C8VOLT_VHS_C810_BASE_URL
   C8VOLT_VHS_OAUTH_TOKEN_URL
   C8VOLT_VHS_OAUTH_CLIENT_ID
   C8VOLT_VHS_OAUTH_CLIENT_SECRET

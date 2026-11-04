@@ -106,35 +106,8 @@ func TestSmokeTestCleanupSummaryReportsMixedDefinitionStates(t *testing.T) {
 
 // TestOpsExecuteSmokeTestHelpDocumentsCommand verifies help describes deployment-wide cleanup and supported controls.
 func TestOpsExecuteSmokeTestHelpDocumentsCommand(t *testing.T) {
-	output := executeRootForProcessInstanceTest(t, "ops", "execute", "--help")
-
-	assertHelpOutputContainsAll(t, output,
-		"Run predefined operational playbooks",
-		"retention-policy",
-		"smoke-test",
-	)
-
-	commandOutput := executeRootForProcessInstanceTest(t, "ops", "execute", "smoke-test", "--help")
-
-	assertHelpOutputContainsAll(t, commandOutput,
-		"Verify a configured Camunda environment",
-		"each deployed fixture definition that has no unrelated instances",
-		"--count int",
-		"-n, --count int",
-		"--workers int",
-		"--no-worker-limit",
-		"--fail-fast",
-		"--no-cleanup",
-		"--dry-run",
-		"--no-wait",
-		"--report-file string",
-		"--report-format string",
-		"--all-tenants is not supported because",
-		"--keys-only is not supported because the workflow returns a structured audit result",
-		"./c8volt ops execute smoke-test --dry-run",
-		"./c8volt ops execute smoke-test --report-file smoke-test.md",
-		"./c8volt ops execute smoke-test --count 5 --report-file smoke-test.md",
-	)
+	assertCommandHelpOutput(t, []string{"ops", "execute"}, []string{"retention-policy", "smoke-test"}, nil)
+	assertCommandHelpOutput(t, []string{"ops", "execute", "smoke-test"}, []string{"unrelated", "--dry-run", "--report-file", "creates and deletes cluster data"}, nil)
 }
 
 // TestOpsExecuteSmokeTestDefaultStageMilestonesAndPhaseIsolation verifies

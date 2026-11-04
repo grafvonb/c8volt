@@ -37,12 +37,10 @@ var (
 )
 
 var opsAnalyseCmd = &cobra.Command{
-	Use:   "analyse",
-	Short: "Discover read-only operational analyses",
-	Long: "Discover read-only operational analyses.\n\n" +
-		"The analyse command family groups inspection workflows that combine existing runtime resources without mutating cluster state.",
-	Example: `  ./c8volt ops analyse --help
-  ./c8volt ops analyse slow-process-instances --help`,
+	Use:     "analyse",
+	Short:   "Discover read-only operational analyses",
+	Long:    `Inspect runtime performance without changing cluster data.`,
+	Example: `  c8volt ops analyse slow-process-instances --bpmn-process-id order --dur-longer 5m`,
 	Aliases: []string{"analyze"},
 	Args:    cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {
@@ -53,25 +51,17 @@ var opsAnalyseCmd = &cobra.Command{
 var opsAnalyseSlowProcessInstancesCmd = &cobra.Command{
 	Use:   "slow-process-instances [-]",
 	Short: "Analyse slow process-instance timings",
-	Long: `Analyse process-instance and runtime-element durations without changing cluster state.
+	Long: `Find slow process instances and the elements contributing to their duration.
 
-Root rows retain each observed process business ID in both summaries and full timelines; missing IDs stay absent.
+Select a process with --bpmn-process-id or inspect one instance with --key.
+Use --dur-longer for total duration, or --element-id and --dur-element-longer
+for a specific element. Add --with-listeners to include listener jobs.
 
-Select explicit --key values, one process-definition selector, or --bid for exact business-ID matching on Camunda 8.10. Combine --bid with one definition selector using AND within the configured tenant. Business IDs are opaque strings; commas and wildcard characters are literal. --batch-size controls each discovery request; --limit caps distinct selected instances across all pages. Explicit keys bypass discovery paging and cannot be combined with search filters. BID discovery completes before any analysis confirmation; empty scopes never prompt or load timelines.
-
---dur-longer selects roots whose total duration exceeds a threshold. --element-id, --type, --element-state, and --dur-element-longer restrict analysis to matching element or transition details. Use --with-full-timeline to inspect the complete chronology, or --with-listeners to include runtime listener jobs. Listener rows use s: for job creation (not worker execution start), e: for job end, and d: for an available deadline only while the state is exactly ACTIVATED; missing times are omitted. Listener dur: measures time from job creation to its recorded end, or elapsed time for a pending job; it includes worker waiting time and is omitted when timestamps are unavailable or invalid. On Camunda 8.10, listener rows retain their own observed business ID, which may differ from the process instance.
-
-Durations use Go syntax such as 500ms, 30s, 5m, 1h30m, or 24h. Calendar units such as 1d are not supported.`,
-	Example: `  ./c8volt ops analyse slow-process-instances --bid ORDER-123
-  ./c8volt ops analyse slow-process-instances --bid ORDER-123 --bpmn-process-id order --limit 100
-  ./c8volt ops analyse slow-process-instances --key <process-instance-key>
-  ./c8volt ops analyse slow-process-instances --bpmn-process-id <bpmn-process-id> --state active --dur-longer 5m
-  ./c8volt ops analyse slow-process-instances --bpmn-process-id <bpmn-process-id> --batch-size 500 --limit 2000
-  ./c8volt ops analyse slow-process-instances --pd-key <process-definition-key> --dur-element-longer 30s
-  ./c8volt ops analyse slow-process-instances --key <process-instance-key> --with-full-timeline
-  ./c8volt ops analyse slow-process-instances --key <process-instance-key> --with-listeners
-  ./c8volt ops analyse slow-process-instances --bpmn-process-id <bpmn-process-id> --element-id <element-id> --dur-element-longer 30s
-  ./c8volt get process-instance --state active --keys-only | ./c8volt ops analyse slow-process-instances -`,
+Durations use values such as 30s, 5m, or 24h. Use --limit to bound analysis.
+Business-ID selection with --bid is available only c8.10+.`,
+	Example: `  c8volt ops analyse slow-process-instances --bpmn-process-id order --state active --dur-longer 5m
+  c8volt ops analyse slow-process-instances --key <process-instance-key> --with-listeners
+  c8volt ops analyse slow-process-instances --bpmn-process-id order --element-id payment --dur-element-longer 30s`,
 	Aliases: []string{"slow-pi", "spi"},
 	Args: func(cmd *cobra.Command, args []string) error {
 		// Validate BID after bootstrap for configured diagnostics and one JSON envelope.
@@ -138,18 +128,18 @@ func init() {
 	useInvalidInputFlagErrors(opsAnalyseSlowProcessInstancesCmd)
 
 	fs := opsAnalyseSlowProcessInstancesCmd.Flags()
-	fs.String("bid", "", "exact process business ID to discover on Camunda 8.10; combine with one definition selector, never explicit keys")
+	fs.String("bid", "", "exact process business ID to select (only c8.10+)")
 	fs.StringSliceVarP(&flagOpsAnalyseSlowProcessInstanceKeys, "key", "k", nil, "process-instance key(s) to analyse; repeat or combine with stdin '-'")
 	fs.StringVarP(&flagOpsAnalyseSlowProcessInstanceBpmnProcessID, "bpmn-process-id", "b", "", "BPMN process ID to discover process instances")
 	fs.StringVar(&flagOpsAnalyseSlowProcessInstancePDKey, "pd-key", "", "process definition key to discover process instances")
-	fs.StringVarP(&flagOpsAnalyseSlowProcessInstanceState, "state", "s", "all", "state to filter discovered process instances: all, active, suspended (Camunda 8.10), completed, canceled, terminated")
+	fs.StringVarP(&flagOpsAnalyseSlowProcessInstanceState, "state", "s", "all", "state to filter discovered process instances: all, active, suspended (only c8.10+), completed, canceled, terminated")
 	fs.StringVar(&flagOpsAnalyseSlowProcessInstanceStartDateAfter, "start-date-after", "", "only include process instances with start date >= RFC3339 timestamp, c8volt timestamp, or YYYY-MM-DD")
 	fs.StringVar(&flagOpsAnalyseSlowProcessInstanceStartDateBefore, "start-date-before", "", "only include process instances with start date <= RFC3339 timestamp, c8volt timestamp, or YYYY-MM-DD")
 	fs.StringVar(&flagOpsAnalyseSlowProcessInstanceEndDateAfter, "end-date-after", "", "only include process instances with end date >= RFC3339 timestamp, c8volt timestamp, or YYYY-MM-DD")
 	fs.StringVar(&flagOpsAnalyseSlowProcessInstanceEndDateBefore, "end-date-before", "", "only include process instances with end date <= RFC3339 timestamp, c8volt timestamp, or YYYY-MM-DD")
 	fs.BoolVar(&flagOpsAnalyseSlowProcessInstanceNoIncidentsOnly, "no-incidents-only", false, "only include process instances without incidents during discovery")
-	fs.Int32VarP(&flagOpsAnalyseSlowProcessInstanceBatchSize, "batch-size", "n", consts.MaxPISearchSize, fmt.Sprintf("number of process instances to inspect per discovery page; does not cap frozen analysis scope, explicit keys, or timeline details (max limit %d enforced by server)", consts.MaxPISearchSize))
-	fs.Int32VarP(&flagOpsAnalyseSlowProcessInstanceLimit, "limit", "l", 0, "maximum number of matching process instances to freeze for analysis across all discovery pages; omit to discover all matches")
+	fs.Int32VarP(&flagOpsAnalyseSlowProcessInstanceBatchSize, "batch-size", "n", consts.MaxPISearchSize, fmt.Sprintf("process instances per discovery page (server maximum %d)", consts.MaxPISearchSize))
+	fs.Int32VarP(&flagOpsAnalyseSlowProcessInstanceLimit, "limit", "l", 0, "maximum matching instances to analyse; omit for all matches")
 	fs.StringVar(&flagOpsAnalyseSlowProcessInstanceElementID, "element-id", "", "BPMN element ID to include in the analysis")
 	fs.StringVar(&flagOpsAnalyseSlowProcessInstanceType, "type", "", "runtime element type to include in the analysis")
 	_ = opsAnalyseSlowProcessInstancesCmd.RegisterFlagCompletionFunc("state", processInstanceStateCompletion(false))

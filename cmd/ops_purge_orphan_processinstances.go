@@ -27,27 +27,15 @@ var (
 var opsPurgeOrphanProcessInstancesCmd = &cobra.Command{
 	Use:   "orphan-process-instances",
 	Short: "Purge orphan child process instances",
-	Long: `Delete orphan child process instances whose parents are missing.
+	Long: `Delete child process instances whose parent is missing.
 
-The workflow discovers orphan candidates, fixes the target set, validates the delete plan, and requires confirmation before deletion. Process-instance family, force, and wait rules apply.
+The workflow discovers orphan candidates and plans family deletion before
+confirmation. Use --dry-run to review the scope and --report-file to save an
+audit report. Use --auto-confirm for unattended execution.
 
---limit counts distinct matching child candidates inspected before orphan classification, including non-orphans; duplicates do not consume the bound.
-
---tenant limits discovery; an empty tenant or --all-tenants searches across accessible tenants.
-
-Use --dry-run to inspect the plan without mutation, --auto-confirm or --automation for unattended deletion, and --report-file to save an audit report.
-
---bid selects one exact opaque business ID on Camunda 8.10+, combined with other predicates in tenant scope. BID cleanup completes discovery and freezes eligible families before confirmation; deletion submits only reviewed members in children-before-parent order. Dry-run reads scope without mutation. New matches or children are not added after approval; native force cancellation may cascade within a targeted family.
-
-Observed process-instance business IDs are retained in JSON and Markdown audit reports. Use --verbose to inspect each observed reference in the plan; key-only outcomes remain unchanged.`,
-	Example: `  ./c8volt ops purge orphan-process-instances --bid ORDER-123 --limit 25 --dry-run
-  ./c8volt ops purge orphan-process-instances --dry-run
-  ./c8volt --tenant tenant-a ops purge orphan-process-instances --dry-run
-  ./c8volt --all-tenants ops purge orphan-process-instances --dry-run
-  ./c8volt ops purge orphan-process-instances --dry-run --bpmn-process-id <bpmn-process-id> --limit 25
-  ./c8volt ops purge orphan-process-instances --state completed --limit 25
-  ./c8volt --verbose ops purge orphan-process-instances --state completed --limit 25 --auto-confirm
-  ./c8volt ops purge orphan-process-instances --state completed --limit 25 --report-file orphan-purge.md`,
+--limit bounds child candidates inspected, including those found to have parents.`,
+	Example: `  c8volt ops purge orphan-process-instances --dry-run
+  c8volt ops purge orphan-process-instances --state completed --report-file orphans.md`,
 	Aliases: []string{"orphan-pi", "opi"},
 	Args: func(cmd *cobra.Command, args []string) error {
 		// BID validation runs after bootstrap so failures use the configured logger and one envelope.
@@ -182,7 +170,7 @@ func init() {
 	useInvalidInputFlagErrors(opsPurgeOrphanProcessInstancesCmd)
 
 	fs := opsPurgeOrphanProcessInstancesCmd.Flags()
-	fs.String("bid", "", "exact opaque business ID to select within tenant scope (Camunda 8.10+)")
+	fs.String("bid", "", "exact opaque business ID to select within tenant scope (only c8.10+)")
 	fs.BoolVar(&flagDryRun, "dry-run", false, "discover and validate orphan process-instance cleanup without submitting deletion requests")
 	registerPISharedProcessDefinitionFilterFlags(fs)
 	fs.StringVar(&flagGetPIProcessDefinitionKey, "pd-key", "", "process definition key (mutually exclusive with bpmn-process-id, pd-version, and pd-version-tag)")
@@ -193,7 +181,7 @@ func init() {
 	fs.StringVarP(&flagGetPIState, "state", "s", "all", "state to filter process instances: all, active, completed, canceled, terminated")
 	fs.BoolVar(&flagGetPIIncidentsOnly, "incidents-only", false, "show only process instances that have incidents")
 	fs.BoolVar(&flagGetPINoIncidentsOnly, "no-incidents-only", false, "show only process instances that have no incidents")
-	fs.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers when validating the delete plan (default: min(targets, 2*GOMAXPROCS, 32))")
+	fs.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers; omit for an automatic limit")
 	fs.BoolVar(&flagNoWorkerLimit, "no-worker-limit", false, "use all queued jobs as workers when --workers is unset")
 	fs.BoolVar(&flagFailFast, "fail-fast", false, "stop scheduling validation work after the first error")
 	fs.BoolVar(&flagNoWait, "no-wait", false, "return after deletion requests are accepted without deletion confirmation")

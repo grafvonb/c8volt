@@ -9,15 +9,14 @@ Analyse slow process-instance timings
 
 ### Synopsis
 
-Analyse process-instance and runtime-element durations without changing cluster state.
+Find slow process instances and the elements contributing to their duration.
 
-Root rows retain each observed process business ID in both summaries and full timelines; missing IDs stay absent.
+Select a process with --bpmn-process-id or inspect one instance with --key.
+Use --dur-longer for total duration, or --element-id and --dur-element-longer
+for a specific element. Add --with-listeners to include listener jobs.
 
-Select explicit --key values, one process-definition selector, or --bid for exact business-ID matching on Camunda 8.10. Combine --bid with one definition selector using AND within the configured tenant. Business IDs are opaque strings; commas and wildcard characters are literal. --batch-size controls each discovery request; --limit caps distinct selected instances across all pages. Explicit keys bypass discovery paging and cannot be combined with search filters. BID discovery completes before any analysis confirmation; empty scopes never prompt or load timelines.
-
---dur-longer selects roots whose total duration exceeds a threshold. --element-id, --type, --element-state, and --dur-element-longer restrict analysis to matching element or transition details. Use --with-full-timeline to inspect the complete chronology, or --with-listeners to include runtime listener jobs. Listener rows use s: for job creation (not worker execution start), e: for job end, and d: for an available deadline only while the state is exactly ACTIVATED; missing times are omitted. Listener dur: measures time from job creation to its recorded end, or elapsed time for a pending job; it includes worker waiting time and is omitted when timestamps are unavailable or invalid. On Camunda 8.10, listener rows retain their own observed business ID, which may differ from the process instance.
-
-Durations use Go syntax such as 500ms, 30s, 5m, 1h30m, or 24h. Calendar units such as 1d are not supported.
+Durations use values such as 30s, 5m, or 24h. Use --limit to bound analysis.
+Business-ID selection with --bid is available only c8.10+.
 
 ```
 c8volt ops analyse slow-process-instances [-] [flags]
@@ -26,23 +25,16 @@ c8volt ops analyse slow-process-instances [-] [flags]
 ### Examples
 
 ```
-  ./c8volt ops analyse slow-process-instances --bid ORDER-123
-  ./c8volt ops analyse slow-process-instances --bid ORDER-123 --bpmn-process-id order --limit 100
-  ./c8volt ops analyse slow-process-instances --key <process-instance-key>
-  ./c8volt ops analyse slow-process-instances --bpmn-process-id <bpmn-process-id> --state active --dur-longer 5m
-  ./c8volt ops analyse slow-process-instances --bpmn-process-id <bpmn-process-id> --batch-size 500 --limit 2000
-  ./c8volt ops analyse slow-process-instances --pd-key <process-definition-key> --dur-element-longer 30s
-  ./c8volt ops analyse slow-process-instances --key <process-instance-key> --with-full-timeline
-  ./c8volt ops analyse slow-process-instances --key <process-instance-key> --with-listeners
-  ./c8volt ops analyse slow-process-instances --bpmn-process-id <bpmn-process-id> --element-id <element-id> --dur-element-longer 30s
-  ./c8volt get process-instance --state active --keys-only | ./c8volt ops analyse slow-process-instances -
+  c8volt ops analyse slow-process-instances --bpmn-process-id order --state active --dur-longer 5m
+  c8volt ops analyse slow-process-instances --key <process-instance-key> --with-listeners
+  c8volt ops analyse slow-process-instances --bpmn-process-id order --element-id payment --dur-element-longer 30s
 ```
 
 ### Options
 
 ```
-  -n, --batch-size int32            number of process instances to inspect per discovery page; does not cap frozen analysis scope, explicit keys, or timeline details (max limit 1000 enforced by server) (default 1000)
-      --bid string                  exact process business ID to discover on Camunda 8.10; combine with one definition selector, never explicit keys
+  -n, --batch-size int32            process instances per discovery page (server maximum 1000) (default 1000)
+      --bid string                  exact process business ID to select (only c8.10+)
   -b, --bpmn-process-id string      BPMN process ID to discover process instances
       --dur-element-longer string   only include process instances with elements or transitions longer than this duration, for example 30s or 2m
       --dur-longer string           only include process instances whose whole duration is longer than this duration, for example 5m or 1h30m
@@ -52,12 +44,12 @@ c8volt ops analyse slow-process-instances [-] [flags]
       --end-date-before string      only include process instances with end date <= RFC3339 timestamp, c8volt timestamp, or YYYY-MM-DD
   -h, --help                        help for slow-process-instances
   -k, --key strings                 process-instance key(s) to analyse; repeat or combine with stdin '-'
-  -l, --limit int32                 maximum number of matching process instances to freeze for analysis across all discovery pages; omit to discover all matches
+  -l, --limit int32                 maximum matching instances to analyse; omit for all matches
       --no-incidents-only           only include process instances without incidents during discovery
       --pd-key string               process definition key to discover process instances
       --start-date-after string     only include process instances with start date >= RFC3339 timestamp, c8volt timestamp, or YYYY-MM-DD
       --start-date-before string    only include process instances with start date <= RFC3339 timestamp, c8volt timestamp, or YYYY-MM-DD
-  -s, --state string                state to filter discovered process instances: all, active, suspended (Camunda 8.10), completed, canceled, terminated (default "all")
+  -s, --state string                state to filter discovered process instances: all, active, suspended (only c8.10+), completed, canceled, terminated (default "all")
       --type string                 runtime element type to include in the analysis
       --with-full-timeline          show complete chronological element and transition detail
       --with-listeners              include runtime listener jobs
@@ -66,7 +58,7 @@ c8volt ops analyse slow-process-instances [-] [flags]
 ### Options inherited from parent commands
 
 ```
-      --all-tenants          clear configured tenant filtering and search all tenants visible to the authenticated user; mutually exclusive with --tenant
+      --all-tenants          search all accessible tenants; cannot combine with --tenant
   -y, --auto-confirm         auto-confirm prompts for non-interactive use
       --automation           enable non-interactive mode for commands that explicitly support it
       --config string        path to config file
@@ -79,7 +71,7 @@ c8volt ops analyse slow-process-instances [-] [flags]
       --profile string       config active profile name to use (e.g. dev, prod)
   -q, --quiet                suppress output except errors
       --request-rate float   maximum shared request starts per second (fractions allowed; 0 disables pacing)
-      --tenant string        tenant ID for discovery/search, selection, create, deploy, and run flows; explicit empty values can clear configured discovery filters, and explicit keys/IDs remain backend-authorized
+      --tenant string        tenant for discovery and creation; explicit keys use backend authorization
       --timeout duration     HTTP request timeout (default 30s)
   -v, --verbose              show additional output
 ```

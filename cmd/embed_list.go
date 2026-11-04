@@ -27,9 +27,9 @@ var embedListCmd = &cobra.Command{
 	Long: `List bundled BPMN fixture files for the configured Camunda version.
 
 Use before embed deploy or embed export to find exact file names. The selection matches embed deploy --all.`,
-	Example: `  ./c8volt embed list
-  ./c8volt embed list --with-paths
-  ./c8volt --json embed list`,
+	Example: `  c8volt embed list
+  c8volt embed list --with-paths
+  c8volt --json embed list`,
 	Aliases: []string{"ls"},
 	Run:     runEmbedList,
 }

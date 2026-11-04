@@ -10,27 +10,15 @@ Suspend process instances by key, business ID or subtree
 
 ### Synopsis
 
-Suspend ACTIVE process instances on Camunda 8.10 by explicit key.
+Suspend active process instances (only c8.10+).
 
-Select by exact business ID with --bid on Camunda 8.10, as an alternative to --key or stdin. BID discovery respects configured tenant scope and completes before approval; --limit bounds distinct matching seeds and --batch-size controls request size. Duplicate matches count once. Empty completed discovery succeeds without confirmation or mutation, including --no-wait. Errors during discovery prevent mutation. JSON retains the original criterion and reviewed scope; execution never searches the BID again after approval. A separate dry-run and later execution perform separate discoveries.
+Select exact keys or one exact --bid. Add --tree to include active descendants;
+ancestors and siblings are excluded. The target set is fixed before confirmation.
+By default, wait until suspension is observed.
 
-Without --tree, BID selects exact instances and does not prefilter their action eligibility. With --tree, expand only selected seeds and descendants, merge overlaps, and freeze eligible targets; a seed limit never clips descendants. Neither mode selects ancestors or siblings. Explicit-key dry-runs remain local and read-free.
-
-Tree plans retain each discovered instance's own business ID when available; inspect it with --verbose or --json. Exact-key previews remain local and do not look up IDs.
-
-Provide repeated or comma-separated --key values, or newline-separated keys from stdin with '-'. Keys are deduplicated in first-input order. Without --tree, each selected parent or child is independent: relatives are neither discovered nor suspended. Explicit keys use backend authorization without discovery tenant filtering.
-
-When authorization is enabled, suspension requires SUSPEND_PROCESS_INSTANCE on PROCESS_DEFINITION. Default confirmation also requires permission to read the instance. Without --tree, there is no mandatory preflight read; only the submission response establishes acceptance. Already-suspended, terminal, terminating, missing or unauthorized targets remain failures when rejected.
-
-Default execution waits for observed SUSPENDED within the configured backoff timeout (two minutes by default, adjustable with --backoff-timeout). --timeout bounds each HTTP request. --no-wait returns accepted submission without confirmation reads. Partial failures retain acceptance and observation evidence with a nonzero exit. Without --tree, --dry-run previews exact keys without reads, writes or confirmation prompts; eligibility is not checked, including with --no-wait.
-
-With --tree, discover each selected instance and its descendants, merge overlapping subtrees, and suspend only observed ACTIVE members. Selecting a child never escalates to its ancestors or siblings. Traverse through already-suspended and terminal parents; report SUSPENDED members separately and exclude other states. Tree mode requires additional instance read/search permissions, including with --dry-run and --no-wait. Tree dry-run previews discovered eligible targets without mutations or approval. A resolved scope with no active targets succeeds without changes or approval.
-
-Tree approval names the expanded active target count. Execution uses that frozen scope without rediscovery; state races can still cause failures. On Camunda 8.10, child discovery exhausts all pages at every depth. Execution is not atomic and may omit descendants created after discovery.
-
-Suspension pauses engine execution while retaining runtime state and resources; it does not cancel the instance. It does not interrupt already-running worker code or undo external effects. Job completion/failure attempts are rejected during suspension, and affected jobs may execute again after resumption. Backpressure can delay or reject suspension; this is not an instantaneous emergency stop.
-
-Use --auto-confirm or --automation for unattended execution. JSON requires --dry-run, --auto-confirm or --automation and cannot be combined with --verbose. Keys-only previews list selected keys (eligible targets with --tree); execution keys indicate acceptance, not confirmed suspension, even when confirmation fails. Use JSON and the exit status for confirmation evidence. Use --verbose for per-instance submission, confirmation, and last observed state. Quiet preserves explicit machine results and required errors. Use --debug for redacted HTTP diagnostics independently of --verbose.
+Use --dry-run to preview. An exact-key preview makes no requests; tree and BID
+previews discover scope. Suspension does not stop running worker code or undo
+external effects. Partial failures do not roll back accepted changes.
 
 ```
 c8volt suspend process-instance [flags]
@@ -39,20 +27,16 @@ c8volt suspend process-instance [flags]
 ### Examples
 
 ```
-  ./c8volt --tenant tenant-a suspend pi --bid 'ORDER-123' --tree --dry-run --json
-  ./c8volt suspend process-instance --key <process-instance-key>
-  ./c8volt suspend pi --key <key-a>,<key-b> --key <key-a> --dry-run --json
-  ./c8volt suspend pi --key <process-instance-key> --tree --dry-run
-  ./c8volt suspend pi --key <process-instance-key> --tree --auto-confirm --json
-  ./c8volt suspend pi --key <process-instance-key> --auto-confirm --no-wait --json
-  printf '%s\n' "$INSTANCE_A" "$INSTANCE_B" | ./c8volt suspend pi --auto-confirm -
+  c8volt suspend process-instance --key <process-instance-key> --dry-run
+  c8volt suspend process-instance --key <process-instance-key> --tree --dry-run
+  c8volt suspend process-instance --key <process-instance-key> --tree --auto-confirm
 ```
 
 ### Options
 
 ```
   -n, --batch-size int32   maximum process instances per discovery request (default 1000)
-      --bid string         exact business ID to select in configured tenant scope (Camunda 8.10)
+      --bid string         exact business ID to select in configured tenant scope (only c8.10+)
       --dry-run            preview without mutations; exact keys need no reads, --tree discovers eligible targets
       --fail-fast          stop scheduling new instances after the first error
   -h, --help               help for process-instance
@@ -61,13 +45,13 @@ c8volt suspend process-instance [flags]
       --no-wait            return after accepted suspension without confirmation reads
       --no-worker-limit    use all queued jobs as workers when --workers is unset
       --tree               include each selected instance and its descendants; suspend active instances only
-  -w, --workers int        maximum concurrent workers (default: min(count, 2*GOMAXPROCS, 32))
+  -w, --workers int        maximum concurrent workers; omit for an automatic limit
 ```
 
 ### Options inherited from parent commands
 
 ```
-      --all-tenants          clear configured tenant filtering and search all tenants visible to the authenticated user; mutually exclusive with --tenant
+      --all-tenants          search all accessible tenants; cannot combine with --tenant
   -y, --auto-confirm         auto-confirm prompts for non-interactive use
       --automation           enable non-interactive mode for commands that explicitly support it
       --config string        path to config file
@@ -80,7 +64,7 @@ c8volt suspend process-instance [flags]
       --profile string       config active profile name to use (e.g. dev, prod)
   -q, --quiet                suppress output except errors
       --request-rate float   maximum shared request starts per second (fractions allowed; 0 disables pacing)
-      --tenant string        tenant ID for discovery/search, selection, create, deploy, and run flows; explicit empty values can clear configured discovery filters, and explicit keys/IDs remain backend-authorized
+      --tenant string        tenant for discovery and creation; explicit keys use backend authorization
       --timeout duration     HTTP request timeout (default 30s)
   -v, --verbose              show additional output
 ```

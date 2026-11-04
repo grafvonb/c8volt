@@ -17,12 +17,12 @@ var flagGetResourceID string
 var getResourceCmd = &cobra.Command{
 	Use:   "resource",
 	Short: "Get a resource by key",
-	Long: "Get a single resource by key.\n\n" +
-		"Requires --id with the resourceKey from the resource deployment response, not its resourceId or the deploymentKey.\n\n" +
-		"Explicit --id uses backend authorization without tenant filtering.",
-	Example: `  ./c8volt get resource --id <resource-key>
-  ./c8volt --json get resource --id <resource-key>
-  ./c8volt --keys-only get resource --id <resource-key>`,
+	Long: `Retrieve a deployed resource with --id.
+
+Use the resourceKey returned by deployment, rather than resourceId or deploymentKey.`,
+	Example: `  c8volt get resource --id <resource-key>
+  c8volt --json get resource --id <resource-key>
+  c8volt --keys-only get resource --id <resource-key>`,
 	Aliases: []string{"r"},
 	Args: func(cmd *cobra.Command, args []string) error {
 		_, err := validatedResourceID()

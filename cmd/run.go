@@ -10,13 +10,12 @@ import (
 var runCmd = &cobra.Command{
 	Use:   "run",
 	Short: "Start process instances",
-	Long: `Start process instances.
+	Long: `Start process instances and wait until they are visible.
 
-The process-instance command waits until created instances are observable as ACTIVE, SUSPENDED, COMPLETED, CANCELED, or TERMINATED. This confirms creation visibility, not execution completion. Use --no-wait to return after creation is accepted.`,
-	Example: `  ./c8volt run process-instance --bpmn-process-id <bpmn-process-id>
-  ./c8volt run process-instance --bpmn-process-id <bpmn-process-id> --set-vars '{"customerId":"1234"}'
-  ./c8volt run process-instance --bpmn-process-id <bpmn-process-id> --count 3 --workers 2
-  ./c8volt run process-instance --bpmn-process-id <bpmn-process-id> --keys-only | ./c8volt expect process-instance --state completed -`,
+Creation confirmation does not mean the process has completed. Use expect
+process-instance when execution must reach a particular state.`,
+	Example: `  c8volt run process-instance --bpmn-process-id order
+  c8volt run process-instance --bpmn-process-id order --set-vars '{"customerId":"1234"}'`,
 	Aliases: []string{"r"},
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return cmd.Help()

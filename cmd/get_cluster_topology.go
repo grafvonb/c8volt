@@ -15,8 +15,8 @@ var getClusterTopologyNestedCmd = &cobra.Command{
 	Use:   "topology",
 	Short: "Inspect connected cluster topology",
 	Long:  `Inspect brokers, partitions, and gateway metadata for the connected Camunda cluster.`,
-	Example: `  ./c8volt get cluster topology
-  ./c8volt get cluster topology --json`,
+	Example: `  c8volt get cluster topology
+  c8volt get cluster topology --json`,
 	Run: runGetClusterTopology,
 }
 

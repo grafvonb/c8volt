@@ -1,25 +1,23 @@
-# c8volt
+# c8volt v5
 
-`c8volt` is an independent Camunda 8 CLI for operators, developers, support engineers, CI pipelines, and AI agents.
+Independent Camunda operations CLI for DevOps teams. Documentation targets
+Camunda 8.10; 8.9 and 8.8 remain supported. Version-specific features are marked
+"only c8.10+". Not an official Camunda product.
 
-It focuses on operational workflows where the observable result matters, not only whether an API request was accepted. Typical workflows include configuration checks, deployment, cluster inspection, process-instance operations, cancellation, deletion, cleanup, incident workflows, dry-runs, wait modes, state verification, and automation-friendly output.
+Inspect state, analyse slow instances, repair incidents, deploy BPMN, and clean
+up runtime data and history. Preview mutations with --dry-run where supported.
 
-`c8volt` is not an official Camunda product. The official Camunda CLI is `c8ctl`. `c8volt` is best described as an operations-focused Camunda 8 CLI and a practical companion or alternative for operational workflows.
+Flag grammar: bare properties select; --set-* writes; --with-* adds detail.
+--retries selects jobs; --set-retries writes retries. --timeout controls HTTP;
+update job --set-timeout changes the job timeout. No aliases for renamed flags in v5.
 
-Useful search phrases: Camunda CLI, Camunda 8 CLI, Camunda command line, Camunda operations CLI, independent Camunda CLI, automation-friendly Camunda CLI, workflow operations CLI, BPMN deployment CLI, process-instance cleanup CLI, Camunda incident repair CLI, c8ctl alternative, zbctl alternative, Zeebe CLI.
+Use c8volt capabilities --json for command support, flags, and output modes.
 
-Important docs:
-
-- Home and fast start: https://c8volt.info/
+- Quick start: https://c8volt.info/#fast-start
+- Configuration: https://c8volt.info/configuration/
+- Ops playbooks: https://c8volt.info/ops/
 - CLI reference: https://c8volt.info/cli/
-- C8 Ops CLI playbooks: https://c8volt.info/ops/
-- Camunda CLI comparison: https://c8volt.info/camunda-cli/
-- AI and search context: https://c8volt.info/ai-search-context/
-- GitHub repository: https://github.com/grafvonb/c8volt
+- Command tree: https://c8volt.info/cli/command-tree/
+- Tool context: https://c8volt.info/ai-search-context/
+- Repository: https://github.com/grafvonb/c8volt
 - Releases: https://github.com/grafvonb/c8volt/releases
-
-Machine-readable command context:
-
-- `c8volt capabilities --json`
-- command `--json` output where supported
-- selected `--keys-only` output for pipelines

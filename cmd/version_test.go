@@ -88,7 +88,7 @@ func TestVersionHelp_DocumentsReadOnlyAutomationGuidance(t *testing.T) {
 	output := executeRootForTest(t, "version", "--help")
 
 	require.Contains(t, output, "Show the c8volt version, build metadata")
-	require.Contains(t, output, "./c8volt version --json")
+	require.Contains(t, output, "c8volt version --json")
 }
 
 // firstVersionOutputLineContaining extracts a single line from version output

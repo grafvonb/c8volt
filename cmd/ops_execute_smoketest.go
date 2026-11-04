@@ -25,20 +25,14 @@ var (
 var opsExecuteSmokeTestCmd = &cobra.Command{
 	Use:   "smoke-test",
 	Short: "Execute a cluster smoke test workflow",
-	Long: `Verify a configured Camunda environment through deployment, execution, and cleanup.
+	Long: `Test the connection, deploy a bundled fixture, start instances, and inspect
+their process families.
 
-The workflow validates the profile, deploys the bundled multiple-subprocess fixture for the configured Camunda version, starts instances, and walks their families.
-
-Unless --no-cleanup is set, cleanup removes created process instances and each deployed fixture definition that has no unrelated instances. Definitions that fail this safety check are retained and reported individually.
-
-Creation uses the configured tenant, or the default tenant when none is configured. --all-tenants is not supported because creation requires one destination tenant.
-
-Use --dry-run to validate the plan without mutation. Use --json for machine-readable output; --keys-only is not supported because the workflow returns a structured audit result rather than a key stream.`,
-	Example: `  ./c8volt ops execute smoke-test --dry-run
-  ./c8volt --tenant tenant-a ops execute smoke-test --dry-run
-  ./c8volt ops execute smoke-test --report-file smoke-test.md
-  ./c8volt --verbose ops execute smoke-test --count 5 --auto-confirm
-  ./c8volt ops execute smoke-test --count 5 --report-file smoke-test.md`,
+Cleanup removes created instances and fixture definitions unless unrelated
+instances still use them. Use --dry-run to preview the steps or --report-file
+to save the result. This workflow creates and deletes cluster data.`,
+	Example: `  c8volt ops execute smoke-test --dry-run
+  c8volt ops execute smoke-test --report-file smoke-test.md`,
 	Aliases: []string{"st"},
 	Args:    cobra.NoArgs,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -107,7 +101,7 @@ func init() {
 
 	fs := opsExecuteSmokeTestCmd.Flags()
 	fs.IntVarP(&flagOpsExecuteSmokeTestCount, "count", "n", 1, "number of process instances to create from the deployed smoke-test definition")
-	fs.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers when creating, walking, or cleaning smoke-test resources (default: min(count, 2*GOMAXPROCS, 32))")
+	fs.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers; omit for an automatic limit")
 	fs.BoolVar(&flagNoWorkerLimit, "no-worker-limit", false, "use all queued smoke-test jobs as workers when --workers is unset")
 	fs.BoolVar(&flagFailFast, "fail-fast", false, "stop scheduling smoke-test work after the first error")
 	fs.BoolVar(&flagOpsExecuteSmokeTestNoCleanup, "no-cleanup", false, "retain created process instances and all deployed fixture process definitions")

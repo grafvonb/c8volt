@@ -33,24 +33,17 @@ var (
 var opsPurgeAllProcessDefinitionsCmd = &cobra.Command{
 	Use:   "all-process-definitions",
 	Short: "Purge all selected process definitions",
-	Long: `Delete selected process definitions and their associated history on Camunda 8.9 or newer.
+	Long: `Delete selected process definitions and associated history.
 
-Select definitions with the same filters as get process-definition, or provide explicit --key values. The workflow fixes the candidate set, validates delete impact, and requires confirmation before deletion.
+Select versions by key or the same filters as get process-definition.
+Unfinished instances block deletion. With --force, cancel affected roots, wait
+for unfinished work to drain, then delete instance history and definitions.
+Suspended instances count as unfinished only c8.10+.
 
-Unfinished instances block deletion unless --force is set: ACTIVE and SUSPENDED on Camunda 8.10, ACTIVE on older versions. Forced cleanup cancels root instances, waits for unfinished instances to drain, deletes instance history, then deletes the definitions. --no-wait skips final deletion confirmation, but preserves required cleanup checks.
-
---tenant limits selector discovery; an empty tenant or --all-tenants searches across accessible tenants. Explicit keys use backend authorization without tenant filtering. --batch-size controls each discovery request; --limit caps the selected scope.
-
-Use --dry-run to inspect impact without mutation, --auto-confirm or --automation for unattended deletion, and --report-file to save an audit report.
-
-Observed process-instance business IDs are retained in JSON and Markdown audit reports. Use --verbose to inspect each observed reference in the plan; key-only outcomes remain unchanged.`,
-	Example: `  ./c8volt ops purge all-process-definitions --dry-run
-  ./c8volt --tenant tenant-a ops purge all-process-definitions --bpmn-process-id <bpmn-process-id> --latest --dry-run
-  ./c8volt --all-tenants ops purge all-process-definitions --bpmn-process-id <bpmn-process-id> --latest --dry-run
-  ./c8volt ops purge all-process-definitions --bpmn-process-id <bpmn-process-id> --latest --dry-run
-  ./c8volt ops purge all-process-definitions --bpmn-process-id <bpmn-process-id> --latest --force
-  ./c8volt --verbose ops purge all-process-definitions --bpmn-process-id <bpmn-process-id> --latest --auto-confirm
-  ./c8volt ops purge all-process-definitions --key <process-definition-key> --force --report-file process-definition-purge.md`,
+Use --dry-run to review the affected families and --report-file to save an audit
+report. Use --auto-confirm for unattended execution.`,
+	Example: `  c8volt ops purge all-process-definitions --bpmn-process-id order --dry-run
+  c8volt ops purge all-process-definitions --bpmn-process-id order --force --report-file purge.md`,
 	Aliases: []string{"all-pds", "apd"},
 	Args:    validateOpsPurgeAllProcessDefinitionsArgs,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -139,10 +132,10 @@ func init() {
 	fs.Int32Var(&flagOpsPurgeAllPDProcessVersion, "pd-version", 0, "process definition version to filter candidate discovery")
 	fs.StringVar(&flagOpsPurgeAllPDProcessVersionTag, "pd-version-tag", "", "process definition version tag to filter candidate discovery")
 	fs.BoolVar(&flagOpsPurgeAllPDLatest, "latest", false, "only include the latest matching process-definition version(s)")
-	fs.Int32VarP(&flagOpsPurgeAllPDBatchSize, "batch-size", "n", consts.MaxPISearchSize, fmt.Sprintf("number of process definitions to inspect per discovery page; does not cap total frozen scope (max limit %d enforced by server)", consts.MaxPISearchSize))
+	fs.Int32VarP(&flagOpsPurgeAllPDBatchSize, "batch-size", "n", consts.MaxPISearchSize, fmt.Sprintf("process definitions per discovery page (server maximum %d)", consts.MaxPISearchSize))
 	fs.Int32VarP(&flagOpsPurgeAllPDLimit, "limit", "l", 0, "maximum number of matching process definitions to freeze for purge; omit to discover all matches")
 	fs.BoolVar(&flagDryRun, "dry-run", false, "discover and validate process-definition cleanup without submitting deletion requests")
-	fs.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers when validating the delete plan and deleting process definitions (default: min(targets, 2*GOMAXPROCS, 32))")
+	fs.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers; omit for an automatic limit")
 	fs.BoolVar(&flagNoWorkerLimit, "no-worker-limit", false, "use all queued jobs as workers when --workers is unset")
 	fs.BoolVar(&flagFailFast, "fail-fast", false, "stop scheduling validation or deletion work after the first error")
 	fs.BoolVar(&flagNoWait, "no-wait", false, "return after deletion requests are accepted without deletion confirmation")

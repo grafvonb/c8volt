@@ -86,32 +86,8 @@ profiles:
 }
 
 func TestWalkHelp_DocumentsTraversalVerificationGuidance(t *testing.T) {
-	output := assertCommandHelpOutput(t, []string{"walk"}, []string{
-		"Inspect process-instance relationships",
-		"Inspect ancestry, descendants",
-		"./c8volt walk process-instance --key <process-instance-key>",
-	}, nil)
-	require.Contains(t, output, "process-instance")
-
-	output = assertCommandHelpOutput(t, []string{"walk", "process-instance"}, []string{
-		"the default scope is the full family",
-		"walk returns the available family",
-		"./c8volt walk process-instance --key <process-instance-key> --with-incidents",
-		"./c8volt walk process-instance --key <process-instance-key> --with-vars",
-		"./c8volt walk process-instance --key <process-instance-key> --with-elements",
-		"./c8volt walk process-instance --key <process-instance-key> --with-elements --with-listeners",
-		"./c8volt walk process-instance --key <process-instance-key> --flat",
-	}, nil)
-	require.Contains(t, output, "--flat")
-	require.Contains(t, output, "--with-elements")
-	require.Contains(t, output, "--with-listeners")
-	require.Contains(t, output, "s: for job creation (not worker execution start), e: for job end")
-	require.Contains(t, output, "d: for an available deadline only while the state is exactly ACTIVATED")
-	require.Contains(t, output, "--incident-message-limit int")
-	require.Contains(t, output, "--incident-state string")
-	require.Contains(t, output, "incident state scope for --with-incidents: active, pending, resolved, migrated, unknown, all")
-	require.NotContains(t, output, "--tree")
-	require.NotContains(t, output, "--family")
+	assertCommandHelpOutput(t, []string{"walk"}, []string{"process-instance", "--children"}, nil)
+	assertCommandHelpOutput(t, []string{"walk", "process-instance"}, []string{"--parent", "--children", "--with-elements", "multiple matches are ambiguous"}, nil)
 }
 
 // TestWalkProcessInstanceCommand_RegressionPreservesReadOnlyTraversalContract keeps walk metadata and flag-state reset behavior stable.

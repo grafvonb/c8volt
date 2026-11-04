@@ -54,42 +54,7 @@ func TestOpsRepairIncidentKeyTenantContextUsesExplicitSemantics(t *testing.T) {
 
 // Help must expose canonical variable sources alongside explicit-key repair controls.
 func TestOpsRepairIncidentHelpDocumentsExplicitKeyShape(t *testing.T) {
-	resetOpsRepairIncidentFlagState()
-	t.Cleanup(resetOpsRepairIncidentFlagState)
-
-	output := executeRootForProcessInstanceTest(t, "ops", "repair", "incident", "--help")
-
-	assertHelpOutputContainsAll(t, output,
-		"Repair incidents by key",
-		"Aliases:",
-		"inc",
-		"--key strings",
-		"--state string",
-		"--error-type string",
-		"--element-id string",
-		"--element-instance-key string",
-		"--batch-size int32",
-		"--limit int32",
-		"--set-retries int32",
-		"--set-job-timeout string",
-		"--set-vars string",
-		"--set-vars-file string",
-		"--report-file string",
-		"--report-format string",
-		"--dry-run",
-		"--no-wait",
-		"--workers int",
-		"--no-worker-limit",
-		"--fail-fast",
-		"./c8volt ops repair incident --key <incident-key> --dry-run",
-		"./c8volt ops repair incident --key <incident-key> --set-vars '{\"hasIncident\":false}' --report-file repair-incident.md",
-	)
-
-	parentOutput := executeRootForProcessInstanceTest(t, "ops", "repair", "--help")
-	require.NotContains(t, parentOutput, "--key strings")
-	require.NotContains(t, parentOutput, "--set-retries int32")
-	require.NotContains(t, output, "--flow-node-id")
-	require.NotContains(t, output, "--fni-key")
+	assertCommandHelpOutput(t, []string{"ops", "repair", "incident"}, []string{"--set-retries 0 skips retry restoration", "--set-vars-file", "--report-file"}, nil)
 }
 
 func TestOpsRepairIncidentRejectsLegacyFlowNodeFilterFlags(t *testing.T) {

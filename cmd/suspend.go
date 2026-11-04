@@ -9,7 +9,7 @@ import "github.com/spf13/cobra"
 var suspendCmd = &cobra.Command{
 	Use:   "suspend",
 	Short: "Suspend active process instances",
-	Long:  "Suspend explicitly selected active process instances on Camunda 8.10, preserving runtime state and resources.",
+	Long:  `Pause process execution while retaining runtime state (only c8.10+).`,
 	RunE:  func(cmd *cobra.Command, args []string) error { return cmd.Help() },
 }
 

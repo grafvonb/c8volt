@@ -15,8 +15,8 @@ var capabilitiesCmd = &cobra.Command{
 	Short: "Describe commands for scripts and agents",
 	Long: "Describe the public c8volt command contract for scripts, CI jobs, and agents.\n\n" +
 		"Use --json for command paths, flags, output modes, mutation behavior, contract support, and automation support.",
-	Example: `  ./c8volt capabilities
-  ./c8volt capabilities --json`,
+	Example: `  c8volt capabilities
+  c8volt capabilities --json`,
 	Args: cobra.NoArgs,
 	Run: func(cmd *cobra.Command, args []string) {
 		doc := capabilityDocumentForRoot(Root())

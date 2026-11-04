@@ -9,7 +9,7 @@ import "github.com/spf13/cobra"
 var resumeCmd = &cobra.Command{
 	Use:   "resume",
 	Short: "Resume suspended process instances",
-	Long:  "Resume explicitly selected suspended process instances on Camunda 8.10, releasing suspended execution.",
+	Long:  `Resume suspended process execution (only c8.10+).`,
 	RunE:  func(cmd *cobra.Command, args []string) error { return cmd.Help() },
 }
 

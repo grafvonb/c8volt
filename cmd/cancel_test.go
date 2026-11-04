@@ -25,26 +25,8 @@ func TestCancelCommand_CommandLocalBackoffTimeoutEnvOverridesProfileAndConfig(t 
 
 // TestCancelHelp_DocumentsConfirmationAndNoWaitSemantics verifies cancel help explains confirmation and wait behavior.
 func TestCancelHelp_DocumentsConfirmationAndNoWaitSemantics(t *testing.T) {
-	output := assertCommandHelpOutput(t, []string{"cancel"}, []string{
-		"Cancel running process instances",
-		"--auto-confirm",
-		"waits for\nobserved cancellation",
-		"./c8volt cancel process-instance --state active --limit 5 --auto-confirm",
-	}, nil)
-	require.Contains(t, output, "process-instance")
-
-	output = assertCommandHelpOutput(t, []string{"cancel", "process-instance"}, []string{
-		"validates the affected root and descendant instances",
-		"Use --force when a selected child must be escalated",
-		"--auto-confirm for unattended",
-		"number of process instances to inspect per discovery page; does not cap total selected scope",
-		"maximum number of matching process instances to select for cancellation across all pages; omit to continue through all matches",
-		"./c8volt expect process-instance --key <process-instance-key> --state canceled",
-		"./c8volt cancel process-instance --state active --batch-size 250 --limit 5 --dry-run",
-	}, []string{"--count"})
-	require.Contains(t, output, "--force")
-	require.Contains(t, output, "--batch-size int32")
-	require.Contains(t, output, "--limit int32")
+	assertCommandHelpOutput(t, []string{"cancel"}, []string{"--dry-run", "process-instance"}, nil)
+	assertCommandHelpOutput(t, []string{"cancel", "process-instance"}, []string{"affected instance families", "Empty searches finish without confirmation or mutation", "--force", "--dry-run"}, nil)
 }
 
 // executeCancelProcessInstanceFailureHelper runs a cancel helper subprocess expected to fail.

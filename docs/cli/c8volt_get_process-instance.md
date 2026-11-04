@@ -10,25 +10,16 @@ List or fetch process instances
 
 ### Synopsis
 
-Get process instances by key or search criteria.
+Inspect process instances by key or search by definition, state, incidents,
+variables, or time range. Search filters combine with AND.
 
-Use --bid for exact native business-ID search on Camunda 8.10. It combines with other search predicates and tenant scope using AND, including direct-incident filters. The value is one opaque scalar: spaces, commas and wildcards are literal. Empty or invalid UTF-8 input is rejected; search has no creation-length limit. Camunda 8.8/8.9 reject supplied IDs before discovery. Keys, stdin keys and --has-user-tasks cannot be combined with --bid.
+Use --bid for one exact business ID (only c8.10+); commas and wildcards are literal.
+Add --with-incidents for incident details, --with-vars for root variables, or
+--with-elements for runtime elements. Add --with-listeners to --with-elements
+for listener jobs.
 
-On Camunda 8.10, each observed instance includes its own business ID when present, including enriched results. Human rows show bid:<value> beside the process name, quoting values only when needed; JSON preserves IDs exactly; keys and totals stay unchanged.
-
-Use a known key or search by process definition, tenant, state, incidents, variables, jobs, user tasks, and time ranges. Missing explicit keys return not-found.
-
-On Camunda 8.10, JSON includes suspendedDate in UTC when the current instance response provides a nonzero timestamp. Missing timestamps are omitted on each read; this field does not represent suspension history. Human rows and keys-only output remain unchanged.
-
---batch-size controls each discovery request; --limit caps distinct matching instances across all pages; --total counts matching instances. Duplicate keys do not consume the limit. Sparse pages continue when continuation is known; invalid or nonadvancing paging fails. Interactive continuation and indeterminate-page stopping keep their existing policy. Empty searches suppress the human summary under --quiet; explicit JSON and keys-only output keep their existing contracts.
-
---tenant limits search and selector discovery. Explicit --key and stdin keys use backend authorization without tenant filtering. A --bpmn-process-id selector must match a visible process definition before discovery.
-
-Use --with-incidents for direct incidents, --with-vars for process-instance-scope variables, or --with-elements for runtime element instances. Add --with-listeners to --with-elements for runtime listener jobs. Listener rows use s: for job creation (not worker execution start), e: for job end, and d: for an available deadline only while the state is exactly ACTIVATED; missing times are omitted. Listener dur: measures time from job creation to its recorded end, or elapsed time for a pending job; it includes worker waiting time and is omitted when timestamps are unavailable or invalid. On Camunda 8.10, listener rows retain their own observed business ID, which may differ from the process instance.
-
-Use variable-search flags to narrow list/search results natively. --var-exists requires every listed variable name to exist. --var accepts name=value equality shorthand plus advanced name.$operator=value clauses for $eq, $neq, $exists, $in, $notIn, and $like; $notin is accepted as $notIn. --var-like uses native wildcard patterns: * matches zero or more characters, ? matches one character, and escaped wildcards remain literal. Commas inside quoted values and JSON arrays stay inside the variable clause. Variable scopeKey means the scope where the variable is directly defined.
-
-Use --has-user-tasks to fetch process instances by their owning user-task keys.
+Use --limit to bound search results or --total to count matches. Explicit keys
+cannot be combined with search filters.
 
 ```
 c8volt get process-instance [flags]
@@ -37,34 +28,16 @@ c8volt get process-instance [flags]
 ### Examples
 
 ```
-  ./c8volt get pi --bid 'ORDER-123,ORDER-456' --state all --json
-  ./c8volt get pi --bid 'ORDER-123' --direct-incidents-only --total
-  ./c8volt get process-instance --bpmn-process-id <bpmn-process-id> --state active --limit 5
-  ./c8volt get process-instance --key <process-instance-key>
-  ./c8volt get process-instance --state suspended --json
-  ./c8volt get process-instance --state active --total
-  ./c8volt get process-instance --has-user-tasks <user-task-key>
-  ./c8volt get process-instance --incidents-only --with-incidents --limit 5
-  ./c8volt get process-instance --direct-incidents-only --incident-error-type io_mapping_error --incident-error-message intentional --limit 5
-  ./c8volt get process-instance --var-exists payload,email --limit 5
-  ./c8volt get process-instance --var 'status="approved"' --limit 5
-  ./c8volt get process-instance --var 'status.$in=["approved","pending"]' --limit 5
-  ./c8volt get process-instance --var-like 'email=*@example.com,customerId=CUST-????' --limit 5
-  ./c8volt get process-instance --state active --with-vars --var-value-limit 120 --limit 5
-  ./c8volt get process-instance --key <process-instance-key> --with-incidents
-  ./c8volt get process-instance --key <process-instance-key> --with-vars
-  ./c8volt get process-instance --key <process-instance-key> --with-vars --var-value-limit 120
-  ./c8volt get process-instance --key <process-instance-key> --with-elements
-  ./c8volt get process-instance --key <process-instance-key> --with-elements --with-listeners
-  ./c8volt get process-instance --start-date-after 2026-05-01 --start-date-before 2026-05-31 --limit 5
-  ./c8volt get process-instance --key <process-instance-key> --key <another-process-instance-key>
+  c8volt get process-instance --key <process-instance-key> --with-incidents
+  c8volt get process-instance --bpmn-process-id order --state active --limit 10
+  c8volt get process-instance --bid ORDER-123 --json
 ```
 
 ### Options
 
 ```
-  -n, --batch-size int32                number of process instances to request per page; does not cap total results (max limit 1000 enforced by server) (default 1000)
-      --bid string                      exact business ID to filter by (Camunda 8.10+); commas, spaces and wildcards are literal
+  -n, --batch-size int32                process instances per discovery page (server maximum 1000) (default 1000)
+      --bid string                      exact business ID to filter by (only c8.10+); commas, spaces and wildcards are literal
   -b, --bpmn-process-id string          BPMN process ID to filter process instances
       --children-only                   show only child process instances
       --direct-incidents-only           show only process instances with direct incident details
@@ -81,7 +54,7 @@ c8volt get process-instance [flags]
       --incident-state string           incident state scope for keyed --with-incidents: active, pending, resolved, migrated, unknown, all (default "active")
       --incidents-only                  show only process instances that have incidents
   -k, --key strings                     process instance key(s) to fetch
-  -l, --limit int32                     maximum number of matching process instances to return across all pages; omit to continue through all matches
+  -l, --limit int32                     maximum matching instances to return; omit for all matches
       --no-incidents-only               show only process instances that have no incidents
       --no-worker-limit                 use all queued jobs as workers when --workers is unset
       --orphan-children-only            show only child instances with missing parents
@@ -94,7 +67,7 @@ c8volt get process-instance [flags]
       --start-date-before string        only include process instances with start date <= YYYY-MM-DD
       --start-date-newer-days int       only include process instances N days old or newer (0 means today) (default -1)
       --start-date-older-days int       only include process instances N days old or older (default -1)
-  -s, --state string                    state to filter process instances: all, active, suspended (Camunda 8.10), completed, canceled, terminated (default "all")
+  -s, --state string                    state to filter process instances: all, active, suspended (only c8.10+), completed, canceled, terminated (default "all")
       --total                           return only the numeric total of matching process instances; capped backend totals are counted by paging
       --var stringArray                 require variable equality or advanced clause(s); repeat or separate clauses with commas
       --var-exists stringArray          require variable name(s) to exist; repeat or separate names with commas
@@ -104,13 +77,13 @@ c8volt get process-instance [flags]
       --with-incidents                  include direct incident keys, states, and messages for keyed or list/search process-instance output
       --with-listeners                  include runtime listener jobs; requires --with-elements
       --with-vars                       include process-instance-scope variables for keyed or list/search process-instance output
-  -w, --workers int                     maximum concurrent workers when --batch-size > 1 (default: min(batch-size, 2*GOMAXPROCS, 32))
+  -w, --workers int                     maximum concurrent workers; omit for an automatic limit
 ```
 
 ### Options inherited from parent commands
 
 ```
-      --all-tenants          clear configured tenant filtering and search all tenants visible to the authenticated user; mutually exclusive with --tenant
+      --all-tenants          search all accessible tenants; cannot combine with --tenant
   -y, --auto-confirm         auto-confirm prompts for non-interactive use
       --automation           enable non-interactive mode for commands that explicitly support it
       --config string        path to config file
@@ -123,7 +96,7 @@ c8volt get process-instance [flags]
       --profile string       config active profile name to use (e.g. dev, prod)
   -q, --quiet                suppress output except errors
       --request-rate float   maximum shared request starts per second (fractions allowed; 0 disables pacing)
-      --tenant string        tenant ID for discovery/search, selection, create, deploy, and run flows; explicit empty values can clear configured discovery filters, and explicit keys/IDs remain backend-authorized
+      --tenant string        tenant for discovery and creation; explicit keys use backend authorization
       --timeout duration     HTTP request timeout (default 30s)
   -v, --verbose              show additional output
 ```

@@ -9,17 +9,15 @@ Purge all selected process definitions
 
 ### Synopsis
 
-Delete selected process definitions and their associated history on Camunda 8.9 or newer.
+Delete selected process definitions and associated history.
 
-Select definitions with the same filters as get process-definition, or provide explicit --key values. The workflow fixes the candidate set, validates delete impact, and requires confirmation before deletion.
+Select versions by key or the same filters as get process-definition.
+Unfinished instances block deletion. With --force, cancel affected roots, wait
+for unfinished work to drain, then delete instance history and definitions.
+Suspended instances count as unfinished only c8.10+.
 
-Unfinished instances block deletion unless --force is set: ACTIVE and SUSPENDED on Camunda 8.10, ACTIVE on older versions. Forced cleanup cancels root instances, waits for unfinished instances to drain, deletes instance history, then deletes the definitions. --no-wait skips final deletion confirmation, but preserves required cleanup checks.
-
---tenant limits selector discovery; an empty tenant or --all-tenants searches across accessible tenants. Explicit keys use backend authorization without tenant filtering. --batch-size controls each discovery request; --limit caps the selected scope.
-
-Use --dry-run to inspect impact without mutation, --auto-confirm or --automation for unattended deletion, and --report-file to save an audit report.
-
-Observed process-instance business IDs are retained in JSON and Markdown audit reports. Use --verbose to inspect each observed reference in the plan; key-only outcomes remain unchanged.
+Use --dry-run to review the affected families and --report-file to save an audit
+report. Use --auto-confirm for unattended execution.
 
 ```
 c8volt ops purge all-process-definitions [flags]
@@ -28,19 +26,14 @@ c8volt ops purge all-process-definitions [flags]
 ### Examples
 
 ```
-  ./c8volt ops purge all-process-definitions --dry-run
-  ./c8volt --tenant tenant-a ops purge all-process-definitions --bpmn-process-id <bpmn-process-id> --latest --dry-run
-  ./c8volt --all-tenants ops purge all-process-definitions --bpmn-process-id <bpmn-process-id> --latest --dry-run
-  ./c8volt ops purge all-process-definitions --bpmn-process-id <bpmn-process-id> --latest --dry-run
-  ./c8volt ops purge all-process-definitions --bpmn-process-id <bpmn-process-id> --latest --force
-  ./c8volt --verbose ops purge all-process-definitions --bpmn-process-id <bpmn-process-id> --latest --auto-confirm
-  ./c8volt ops purge all-process-definitions --key <process-definition-key> --force --report-file process-definition-purge.md
+  c8volt ops purge all-process-definitions --bpmn-process-id order --dry-run
+  c8volt ops purge all-process-definitions --bpmn-process-id order --force --report-file purge.md
 ```
 
 ### Options
 
 ```
-  -n, --batch-size int32         number of process definitions to inspect per discovery page; does not cap total frozen scope (max limit 1000 enforced by server) (default 1000)
+  -n, --batch-size int32         process definitions per discovery page (server maximum 1000) (default 1000)
   -b, --bpmn-process-id string   BPMN process ID to filter candidate process definitions
       --dry-run                  discover and validate process-definition cleanup without submitting deletion requests
       --fail-fast                stop scheduling validation or deletion work after the first error
@@ -55,13 +48,13 @@ c8volt ops purge all-process-definitions [flags]
       --pd-version-tag string    process definition version tag to filter candidate discovery
       --report-file string       write an audit report to the given path
       --report-format string     audit report format: markdown, json (default inferred from report-file extension)
-  -w, --workers int              maximum concurrent workers when validating the delete plan and deleting process definitions (default: min(targets, 2*GOMAXPROCS, 32))
+  -w, --workers int              maximum concurrent workers; omit for an automatic limit
 ```
 
 ### Options inherited from parent commands
 
 ```
-      --all-tenants          clear configured tenant filtering and search all tenants visible to the authenticated user; mutually exclusive with --tenant
+      --all-tenants          search all accessible tenants; cannot combine with --tenant
   -y, --auto-confirm         auto-confirm prompts for non-interactive use
       --automation           enable non-interactive mode for commands that explicitly support it
       --config string        path to config file
@@ -74,7 +67,7 @@ c8volt ops purge all-process-definitions [flags]
       --profile string       config active profile name to use (e.g. dev, prod)
   -q, --quiet                suppress output except errors
       --request-rate float   maximum shared request starts per second (fractions allowed; 0 disables pacing)
-      --tenant string        tenant ID for discovery/search, selection, create, deploy, and run flows; explicit empty values can clear configured discovery filters, and explicit keys/IDs remain backend-authorized
+      --tenant string        tenant for discovery and creation; explicit keys use backend authorization
       --timeout duration     HTTP request timeout (default 30s)
   -v, --verbose              show additional output
 ```

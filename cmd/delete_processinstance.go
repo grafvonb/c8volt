@@ -20,40 +20,18 @@ var (
 var deleteProcessInstanceCmd = &cobra.Command{
 	Use:   "process-instance",
 	Short: "Delete process instances by key or filters",
-	Long: `Delete process instances by key or search filters.
+	Long: `Delete process instances and their history by key or search filters.
 
-Observed delete previews retain each instance's business ID when available. Use --verbose to inspect IDs alongside final-state and cancellation details; JSON preserves them exactly. Empty selections report found: 0 through the configured INFO logger.
+The plan includes affected families and deletes children before parents.
+Unfinished instances require --force, which permits cancellation before retrying
+deletion. By default, wait until deletion is observed.
 
-c8volt validates the affected tree before any deletion, asks for confirmation, and waits until deletion is observed. Nonterminal instances block deletion unless --force is set.
-
---force allows cancellation when deletion encounters a nonterminal instance. Deletion traverses children first and retries after cancellation; the entire scope is not canceled before any deletion.
-
---tenant limits search-derived selection. An empty tenant or --all-tenants leaves discovery unfiltered across accessible tenants. Explicit --key and stdin keys use backend authorization without tenant filtering.
-
-A --bpmn-process-id selector must match a visible process definition before instance discovery. An empty selection completes without confirmation or mutation.
-
-BID selection (--bid) uses native exact matching on Camunda 8.10+, combined with other filters in tenant scope. It freezes every selected family before confirmation. --limit caps distinct seeds, never relatives. Reviewed members are deleted children-first; a new child after approval is never added to client delete requests. Backend conflicts remain failures. Force cancellation can still cascade to concurrent descendants. Dry-run performs discovery without writes.
-
-Search mode plans all selected pages before one confirmation and deletion. --batch-size controls each discovery request; --limit caps the selected scope across all pages. --workers, --fail-fast, and --no-worker-limit control planning and deletion work.
-
-Use --verbose to explain cancellation prerequisites, root escalation, accepted cancellation, confirmation waits, and deletion resumption. Use --debug for per-check state observations and HTTP diagnostics; it remains independent of --verbose. A confirmation timeout reports accepted cancellation as submitted but unconfirmed and does not claim that deletion resumed.
-
-Use --dry-run to preview the affected family without deleting or cancelling. Use --auto-confirm for unattended deletion.`,
-	Example: `  ./c8volt delete process-instance --key <process-instance-key> --force
-  ./c8volt delete process-instance --bid ORDER-123 --dry-run
-  ./c8volt delete process-instance --bid ORDER-123 --force --auto-confirm
-  ./c8volt delete process-instance --key <process-instance-key> --dry-run
-  ./c8volt --tenant tenant-a delete process-instance --key <process-instance-key> --dry-run
-  ./c8volt --tenant tenant-a delete process-instance --state terminated --limit 5 --dry-run
-  ./c8volt --all-tenants delete process-instance --state terminated --limit 5 --dry-run
-  ./c8volt delete process-instance --state terminated --batch-size 250 --limit 5 --dry-run
-  ./c8volt delete process-instance --state terminated --json --dry-run
-  ./c8volt delete process-instance --state terminated --keys-only
-  ./c8volt delete process-instance --state terminated --end-date-after 2026-05-01 --end-date-before 2026-05-31 --limit 5 --dry-run
-  ./c8volt delete process-instance --bpmn-process-id <bpmn-process-id> --state terminated --batch-size 250 --limit 5 --dry-run
-  ./c8volt --verbose delete process-instance --state terminated --limit 25 --auto-confirm
-  ./c8volt --verbose --debug delete process-instance --key <process-instance-key> --force
-  ./c8volt expect process-instance --key <process-instance-key> --state absent`,
+Use --dry-run to review the family. --limit bounds matching seeds, not relatives.
+Business-ID selection with --bid is available only c8.10+.
+Empty searches finish without confirmation or mutation.`,
+	Example: `  c8volt delete process-instance --key <process-instance-key> --dry-run
+  c8volt delete process-instance --bpmn-process-id order --state completed --dry-run
+  c8volt delete process-instance --key <process-instance-key> --force`,
 	Aliases: []string{"pi"},
 	Args: func(cmd *cobra.Command, args []string) error {
 		return validateOptionalDashArg(args)
@@ -204,23 +182,23 @@ func init() {
 	useInvalidInputFlagErrors(deleteProcessInstanceCmd)
 
 	fs := deleteProcessInstanceCmd.Flags()
-	fs.String("bid", "", "exact business ID to select (Camunda 8.10+); one opaque value")
+	fs.String("bid", "", "exact business ID to select (only c8.10+); one opaque value")
 	fs.BoolVar(&flagNoWait, "no-wait", false, "return after deletion is accepted")
 	fs.BoolVar(&flagNoStateCheck, "no-state-check", false, "skip checking the current state of the process instance before deleting it")
 	fs.BoolVar(&flagDryRun, "dry-run", false, "preview delete scope without submitting deletion or cancel-before-delete requests")
 	fs.StringSliceVarP(&flagDeletePIKeys, "key", "k", nil, "process instance key(s) to delete; repeat or combine with stdin '-'")
 	fs.BoolVar(&flagForce, "force", false, "allow cancellation when deletion encounters nonterminal process instances")
 
-	fs.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers for queued work; mutation work uses root trees (default: min(queued work, 2*GOMAXPROCS, 32)); independent of discovery page size")
+	fs.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers; omit for an automatic limit")
 	fs.BoolVar(&flagNoWorkerLimit, "no-worker-limit", false, "use all queued jobs as workers when --workers is unset")
 	fs.BoolVar(&flagFailFast, "fail-fast", false, "stop scheduling new instances after the first error")
 
 	// flags from get process instance for filtering
 	registerPISharedProcessDefinitionFilterFlags(fs)
 	registerPISharedDateRangeFlags(fs)
-	fs.Int32VarP(&flagGetPISize, "batch-size", "n", consts.MaxPISearchSize, fmt.Sprintf("number of process instances to inspect per discovery page; does not cap total frozen scope (max limit %d enforced by server)", consts.MaxPISearchSize))
-	fs.Int32VarP(&flagGetPILimit, "limit", "l", 0, "maximum number of matching process instances to freeze for deletion across all pages; omit to continue through all matches")
-	fs.StringVarP(&flagGetPIState, "state", "s", "all", "state to filter process instances: all, active, suspended (Camunda 8.10), completed, canceled, terminated")
+	fs.Int32VarP(&flagGetPISize, "batch-size", "n", consts.MaxPISearchSize, fmt.Sprintf("process instances per discovery page (server maximum %d)", consts.MaxPISearchSize))
+	fs.Int32VarP(&flagGetPILimit, "limit", "l", 0, "maximum matching instances to select; omit for all matches")
+	fs.StringVarP(&flagGetPIState, "state", "s", "all", "state to filter process instances: all, active, suspended (only c8.10+), completed, canceled, terminated")
 
 	setCommandMutation(deleteProcessInstanceCmd, CommandMutationStateChanging)
 	setContractSupport(deleteProcessInstanceCmd, ContractSupportFull)

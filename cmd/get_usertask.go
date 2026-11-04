@@ -33,46 +33,18 @@ var (
 var getUserTaskCmd = &cobra.Command{
 	Use:   "user-task [-]",
 	Short: "Fetch or search native user tasks",
-	Long: `Get native Camunda user tasks by key or search criteria.
+	Long: `Inspect native user tasks by key or search by state, assignee, candidate group,
+process instance, or variables. Search filters combine with AND.
 
-Provide repeated or comma-separated --key values, or newline-separated keys on stdin. A trailing '-' explicitly selects stdin; nonterminal stdin is also detected without it. Each unique key is fetched once in first-input order.
+Use --bid for one exact task business ID (only c8.10+). Variable filters match
+local variables; --with-vars retrieves effective variables, including inherited
+values. Use --limit to bound search results or --total to count matches.
 
-Every requested key must resolve or the command fails without a partial result. Keyed reads require Camunda 8.8 or newer and use backend authorization without discovery-tenant filtering, so --tenant does not hide an authorized task and the task's actual tenant is returned.
-
-Use --bid for exact native task business-ID search on Camunda 8.10. It matches the task's stored ID, which can differ from the current process-instance ID, without a parent lookup. Spaces, commas and wildcards are literal; empty or invalid UTF-8 input is rejected, and search has no creation-length limit. Camunda 8.8/8.9 reject supplied IDs before search. --bid combines with --pi-key and other native predicates; explicit task keys and stdin keys remain exclusive.
-
-Without keys, search by process, element, state, assignment, candidate, and effective tenant scope. Predicates are combined with AND. Supported states are ASSIGNING, CANCELED, CANCELING, COMPLETED, COMPLETING, CREATED, CREATING, FAILED, and UPDATING; state matching is case-insensitive, and all applies no state predicate. --batch-size controls each discovery request, --limit caps returned tasks across all pages, and --total emits the exact matching count.
-
-Use variable-search flags to narrow native searches by local variables on each task. --var-exists requires every listed local variable name to exist. --var accepts name=value equality shorthand plus advanced name.$operator=value clauses for $eq, $neq, $exists, $in, $notIn, and $like; $notin is accepted as $notIn. Values use the existing process-instance filter encoding: quote strings and use JSON string arrays for membership operators. --var-like uses native wildcard patterns: * matches zero or more characters, ? matches one character, and escaped wildcards remain literal. Commas inside quoted values and JSON arrays stay inside the variable clause. Variable clauses and ordinary search predicates are combined with AND. Parent-scope values do not satisfy local filters; negative and existence matching retain backend semantics.
-
-Interactive searches offer another page separately from command results when more matches remain. Use --auto-confirm or --automation for unattended paging. --quiet suppresses human results but preserves explicitly requested JSON, keys-only, and numeric total output.
-
-Human rows show task key, tenant, element ID, and state, followed by related pi:, ei:, and pd: keys. Assignment appears as assignee:<user> when assigned, otherwise assignee:<unassigned>. Camunda 8.10 rows append the task's own quoted business ID when observed; JSON and variable-enriched results preserve the same value or absence without a related-process lookup. Task name, BPMN process ID, and process-definition version are available in JSON. Other empty optional fields are omitted.
-
-Filtering does not retrieve variables. Add --with-vars independently to retrieve the effective variables selected by the backend for each returned task on Camunda 8.8, 8.9, or 8.10. Human output nests variables beneath their task. Values marked (inherited) come from an enclosing scope and do not satisfy task-local variable filters. With --verbose, each variable shows pi:<scopeKey> for process-instance scopes or element:<scopeKey> for element scopes; inspect these with get pi --key or get element --key respectively. --var-value-limit sets a nonnegative Unicode-character limit after structured values are compacted; zero, the default, keeps full received values. Truncation labels distinguish backend-incomplete values from display shortening. JSON always preserves received values and backend truncation metadata. Effective keys-only and --total output skip variable retrieval.
-
-Use --json for one collection envelope or --keys-only for one task key per line. Keys cannot be combined with search filters, --limit, or --total; --total also conflicts with --limit, --json, and --keys-only. Variable mutation, task mutations, forms, audit history, date filters, custom sorting, and watch mode are not provided by this command.`,
-	Example: `  ./c8volt get ut --bid 'ORDER-123,ORDER-456' --json
-  ./c8volt get ut --bid 'ORDER-123' --pi-key <process-instance-key> --with-vars
-  ./c8volt get ut --var 'status="approved"'
-  ./c8volt get ut --var-exists payload
-  ./c8volt get ut --var-like 'email=*@example.com'
-  ./c8volt get ut --assignee alice --var 'status="approved"' --limit 20
-  ./c8volt get ut --var 'status="approved"' --total
-  ./c8volt get ut --var 'status="approved"' --with-vars
-  ./c8volt get ut --key <user-task-key> --with-vars
-  ./c8volt get ut --assignee alice --limit 10 --with-vars
-  ./c8volt get ut --pi-key <process-instance-key> --with-vars --var-value-limit 120
-  ./c8volt --json get ut --key <user-task-key> --with-vars
-  ./c8volt get user-task --key <user-task-key>
-  ./c8volt get ut -k <user-task-key>,<another-user-task-key>
-  ./c8volt get user-task --state created --assignee alice --limit 25
-  ./c8volt get user-task --candidate-group accounting --total
-  ./c8volt --automation --keys-only get user-task --batch-size 100
-  printf '%s\n' "$USER_TASK_KEY" | ./c8volt get user-tasks
-  printf '%s\n' "$USER_TASK_KEY" | ./c8volt get uts -
-  ./c8volt --json get user-task --key <user-task-key>
-  ./c8volt --keys-only get user-task --key <user-task-key>`,
+Repeat --key or read newline-separated keys from stdin with '-'. Explicit keys
+cannot be combined with search filters.`,
+	Example: `  c8volt get user-task --key <user-task-key> --with-vars
+  c8volt get user-task --state created --assignee alice --limit 10
+  c8volt get user-task --candidate-group accounting --total`,
 	Aliases: []string{"user-tasks", "ut", "uts"},
 	Args: func(cmd *cobra.Command, args []string) error {
 		if err := validateOptionalDashArg(args); err != nil {
@@ -153,7 +125,7 @@ func init() {
 	getCmd.AddCommand(getUserTaskCmd)
 
 	flags := getUserTaskCmd.Flags()
-	flags.String("bid", "", "exact stored task business ID (Camunda 8.10+); commas, spaces and wildcards are literal")
+	flags.String("bid", "", "exact stored task business ID (only c8.10+); commas, spaces and wildcards are literal")
 	flags.StringSliceVarP(&flagGetUserTaskKeys, "key", "k", nil, "user task key(s) to fetch; repeat, comma-separate, or combine with stdin")
 	flags.StringVar(&flagGetUserTaskPIKey, "pi-key", "", "process instance key to filter in search mode")
 	flags.StringVar(&flagGetUserTaskPDKey, "pd-key", "", "process definition key to filter in search mode")

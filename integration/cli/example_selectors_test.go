@@ -22,11 +22,16 @@ func hasHardCodedDemoSelector(command string) bool {
 	}
 	for i, arg := range args {
 		flag, value, inline := strings.Cut(arg, "=")
-		if flag != "-k" && flag != "--key" && flag != "--id" && !(strings.HasPrefix(flag, "--") && strings.HasSuffix(flag, "-key")) {
-			continue
-		}
 		if !inline && i+1 < len(args) {
 			value = args[i+1]
+		}
+		// Common v5 examples use a sample process or local file; neither is
+		// assumed to exist in a release target's independently seeded scope.
+		if ((flag == "--bpmn-process-id" || flag == "-b") && value == "order") || (flag == "--file" && value == "order.bpmn") {
+			return true
+		}
+		if flag != "-k" && flag != "--key" && flag != "--id" && !(strings.HasPrefix(flag, "--") && strings.HasSuffix(flag, "-key")) {
+			continue
 		}
 		for _, key := range strings.Split(value, ",") {
 			if _, err := strconv.ParseUint(strings.TrimSpace(key), 10, 64); err == nil {
@@ -102,6 +107,9 @@ func TestExampleLiteralResourceKeyGuard(t *testing.T) {
 		{"job placeholders", "./c8volt update job --key <job-key>,<job-key> --complete --dry-run", false},
 		{"unrelated numbers", `./c8volt run pi --count 3 --set-vars '{"reference":"2251799813685250"}'`, false},
 		{"sample process", "./c8volt get pd --bpmn-process-id OrderProcess", true},
+		{"v5 sample process", "c8volt ops repair process-instance --bpmn-process-id order --dry-run", true},
+		{"v5 sample BPMN file", "c8volt deploy process-definition --file order.bpmn", true},
+		{"process placeholder", "c8volt get process-instance --bpmn-process-id <bpmn-process-id>", false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			if got := hasHardCodedDemoSelector(tc.command); got != tc.blocked {

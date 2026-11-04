@@ -9,9 +9,7 @@ Discover read-only operational analyses
 
 ### Synopsis
 
-Discover read-only operational analyses.
-
-The analyse command family groups inspection workflows that combine existing runtime resources without mutating cluster state.
+Inspect runtime performance without changing cluster data.
 
 ```
 c8volt ops analyse [flags]
@@ -20,8 +18,7 @@ c8volt ops analyse [flags]
 ### Examples
 
 ```
-  ./c8volt ops analyse --help
-  ./c8volt ops analyse slow-process-instances --help
+  c8volt ops analyse slow-process-instances --bpmn-process-id order --dur-longer 5m
 ```
 
 ### Options
@@ -33,7 +30,7 @@ c8volt ops analyse [flags]
 ### Options inherited from parent commands
 
 ```
-      --all-tenants          clear configured tenant filtering and search all tenants visible to the authenticated user; mutually exclusive with --tenant
+      --all-tenants          search all accessible tenants; cannot combine with --tenant
   -y, --auto-confirm         auto-confirm prompts for non-interactive use
       --automation           enable non-interactive mode for commands that explicitly support it
       --config string        path to config file
@@ -46,7 +43,7 @@ c8volt ops analyse [flags]
       --profile string       config active profile name to use (e.g. dev, prod)
   -q, --quiet                suppress output except errors
       --request-rate float   maximum shared request starts per second (fractions allowed; 0 disables pacing)
-      --tenant string        tenant ID for discovery/search, selection, create, deploy, and run flows; explicit empty values can clear configured discovery filters, and explicit keys/IDs remain backend-authorized
+      --tenant string        tenant for discovery and creation; explicit keys use backend authorization
       --timeout duration     HTTP request timeout (default 30s)
   -v, --verbose              show additional output
 ```

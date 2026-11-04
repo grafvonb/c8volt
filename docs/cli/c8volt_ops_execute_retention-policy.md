@@ -9,17 +9,12 @@ Execute process-instance retention cleanup
 
 ### Synopsis
 
-Delete process instances older than the required retention age.
+Delete finished process instances older than --retention-days.
 
-The workflow discovers candidates, fixes the target set, validates the delete plan, and requires confirmation before deletion. Use process-instance filters to narrow the candidates.
-
---tenant limits discovery; an empty tenant or --all-tenants searches across accessible tenants. --batch-size controls each discovery request; --limit caps distinct matching ended instances; family expansion is not capped. Non-final roots are skipped even with --force; non-final descendants of final roots require --force. --workers, --fail-fast, and --no-worker-limit control planning and deletion.
-
-Use --dry-run to inspect the plan without mutation, --auto-confirm or --automation for unattended deletion, and --report-file to save an audit report.
-
---bid selects one exact opaque business ID on Camunda 8.10+, combined with other predicates in tenant scope. BID cleanup completes discovery and freezes eligible families before confirmation; deletion submits only reviewed members in children-before-parent order. Dry-run reads scope without mutation. New matches or children are not added after approval; native force cancellation may cascade within a targeted family.
-
-Observed process-instance business IDs are retained in JSON and Markdown audit reports. Use --verbose to inspect each observed reference in the plan; key-only outcomes remain unchanged.
+Narrow the scope by process and state. The workflow discovers candidates,
+plans family deletion, and skips instances whose root is still unfinished.
+Use --dry-run to review the plan, then --auto-confirm for unattended execution.
+Save an audit report with --report-file.
 
 ```
 c8volt ops execute retention-policy [flags]
@@ -28,21 +23,15 @@ c8volt ops execute retention-policy [flags]
 ### Examples
 
 ```
-  ./c8volt ops execute retention-policy --retention-days 30 --bid ORDER-123 --dry-run
-  ./c8volt ops execute retention-policy --retention-days 90 --dry-run
-  ./c8volt --tenant tenant-a ops execute retention-policy --retention-days 90 --dry-run
-  ./c8volt --all-tenants ops execute retention-policy --retention-days 90 --dry-run
-  ./c8volt ops execute retention-policy --retention-days 90 --state completed --bpmn-process-id <bpmn-process-id> --dry-run
-  ./c8volt ops execute retention-policy --retention-days 90 --state completed --bpmn-process-id <bpmn-process-id> --limit 25
-  ./c8volt --verbose ops execute retention-policy --retention-days 90 --state completed --limit 25 --auto-confirm
-  ./c8volt ops execute retention-policy --retention-days 90 --state completed --bpmn-process-id <bpmn-process-id> --limit 25 --report-file retention-report.md
+  c8volt ops execute retention-policy --retention-days 90 --bpmn-process-id order --dry-run
+  c8volt ops execute retention-policy --retention-days 90 --bpmn-process-id order --auto-confirm --report-file retention.md
 ```
 
 ### Options
 
 ```
-  -n, --batch-size int32         number of process instances to inspect per discovery page; does not cap total frozen scope (max limit 1000 enforced by server) (default 1000)
-      --bid string               exact opaque business ID to select within tenant scope (Camunda 8.10+)
+  -n, --batch-size int32         process instances per discovery page (server maximum 1000) (default 1000)
+      --bid string               exact opaque business ID to select within tenant scope (only c8.10+)
   -b, --bpmn-process-id string   BPMN process ID to filter process instances
       --children-only            discover only child process instances
       --dry-run                  discover and validate retention cleanup without submitting deletion requests
@@ -51,7 +40,7 @@ c8volt ops execute retention-policy [flags]
   -h, --help                     help for retention-policy
       --incidents-only           discover only process instances that have incidents
   -k, --key strings              unsupported explicit process-instance key selector
-  -l, --limit int32              maximum number of matching process instances to freeze for retention cleanup; omit to discover all matches
+  -l, --limit int32              maximum retention candidates to select; omit for all matches
       --no-incidents-only        discover only process instances that have no incidents
       --no-state-check           skip checking process-instance state before deleting
       --no-wait                  return after deletion requests are accepted without deletion confirmation
@@ -65,13 +54,13 @@ c8volt ops execute retention-policy [flags]
       --retention-days int       required non-negative age in days for process-instance retention eligibility
       --roots-only               discover only root process instances
   -s, --state string             state to filter process instances: all, active, completed, canceled, terminated (default "all")
-  -w, --workers int              maximum concurrent workers when validating the delete plan and deleting roots (default: min(targets, 2*GOMAXPROCS, 32))
+  -w, --workers int              maximum concurrent workers; omit for an automatic limit
 ```
 
 ### Options inherited from parent commands
 
 ```
-      --all-tenants          clear configured tenant filtering and search all tenants visible to the authenticated user; mutually exclusive with --tenant
+      --all-tenants          search all accessible tenants; cannot combine with --tenant
   -y, --auto-confirm         auto-confirm prompts for non-interactive use
       --automation           enable non-interactive mode for commands that explicitly support it
       --config string        path to config file
@@ -84,7 +73,7 @@ c8volt ops execute retention-policy [flags]
       --profile string       config active profile name to use (e.g. dev, prod)
   -q, --quiet                suppress output except errors
       --request-rate float   maximum shared request starts per second (fractions allowed; 0 disables pacing)
-      --tenant string        tenant ID for discovery/search, selection, create, deploy, and run flows; explicit empty values can clear configured discovery filters, and explicit keys/IDs remain backend-authorized
+      --tenant string        tenant for discovery and creation; explicit keys use backend authorization
       --timeout duration     HTTP request timeout (default 30s)
   -v, --verbose              show additional output
 ```

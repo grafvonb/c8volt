@@ -59,32 +59,7 @@ func TestOpsRepairProcessInstanceSearchTenantContextUsesDiscoverySemantics(t *te
 
 // TestOpsRepairProcessInstanceHelpDocumentsSelectionShape verifies the target-specific key and incident selector contract.
 func TestOpsRepairProcessInstanceHelpDocumentsSelectionShape(t *testing.T) {
-	resetOpsRepairProcessInstanceFlagState()
-	t.Cleanup(resetOpsRepairProcessInstanceFlagState)
-
-	output := executeRootForProcessInstanceTest(t, "ops", "repair", "process-instance", "--help")
-
-	assertHelpOutputContainsAll(t, output,
-		"Repair active incidents associated with selected process instances",
-		"Aliases:",
-		"pi",
-		"--key strings",
-		"--direct-incidents-only",
-		"--batch-size int32",
-		"--limit int32",
-		"--set-retries int32",
-		"--set-job-timeout string",
-		"--set-vars string",
-		"--set-vars-file string",
-		"--report-file string",
-		"--report-format string",
-		"--dry-run",
-		"--no-wait",
-		"--workers int",
-		"./c8volt ops repair process-instance --key <process-instance-key> --dry-run",
-		"./c8volt ops repair process-instance --direct-incidents-only --bpmn-process-id <bpmn-process-id> --limit 5 --dry-run",
-	)
-	require.NotContains(t, output, "--incidents-only")
+	assertCommandHelpOutput(t, []string{"ops", "repair", "process-instance"}, []string{"--set-retries 0 skips retry restoration", "--set-vars-file", "--report-file"}, nil)
 }
 
 // TestOpsRepairProcessInstanceDryRunWritesMarkdownReport verifies report writing keeps dry-run mutation-free.

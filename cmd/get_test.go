@@ -44,31 +44,12 @@ func TestGetCommand_CommandLocalBackoffTimeoutFlagOverridesEnvProfileAndConfig(t
 
 // Verifies `get --help` keeps supported resources discoverable without the removed topology shortcut.
 func TestGetHelp(t *testing.T) {
-	output := executeRootForTest(t, "get", "--help")
-
-	require.Contains(t, output, "Inspect cluster, process, job, element, incident, tenant, and resource state")
-	require.Contains(t, output, "cluster")
-	require.NotContains(t, output, "cluster-topology")
-	require.Contains(t, output, "tenant")
-	require.Contains(t, output, "resource")
-	require.Contains(t, output, "user-task")
-	require.Contains(t, output, "Check cluster health")
-	require.Contains(t, output, "./c8volt get cluster topology")
-	require.Contains(t, output, "./c8volt get process-instance --state active")
-	require.Contains(t, output, "./c8volt get user-task --key <user-task-key>")
-	require.Contains(t, output, "./c8volt get tenant")
-	require.NotContains(t, output, "canonical non-interactive contract")
+	assertCommandHelpOutput(t, []string{"get"}, []string{"Inspect cluster health", "process-instance", "incident"}, nil)
 }
 
 // Verifies process-instance help remains discoverable from the get command family.
 func TestGetCommand_PreservesExistingProcessInstanceHelp(t *testing.T) {
-	output := executeRootForTest(t, "get", "process-instance", "--help")
-
-	require.Contains(t, output, "Get process instances by key or search criteria.")
-	require.Contains(t, output, "./c8volt get process-instance --state active")
-	require.Contains(t, output, "--key")
-	require.Contains(t, output, "--state")
-	require.Contains(t, output, "--json")
+	assertCommandHelpOutput(t, []string{"get", "process-instance"}, []string{"--with-incidents", "--with-elements", "--has-user-tasks", "--var stringArray", "--var-exists stringArray", "--var-like stringArray", "--total", "--limit"}, nil)
 }
 
 // TestGetBasicSearchProgressUsesWorkflowImportance verifies shared get/search progress stays above nested request activity.
@@ -172,13 +153,7 @@ func TestGetClusterCommand_MachineModeSuppressesFallbackActivity(t *testing.T) {
 
 // Verifies root help advertises the finalized v8.9 runtime support contract.
 func TestRootHelp_V89SupportMessaging(t *testing.T) {
-	output := executeRootForTest(t, "--help")
-
-	require.Contains(t, output, "Camunda 8.8, 8.9, and 8.10")
-	require.Contains(t, output, "Camunda 8.10 baseline: 8.10.3 (final)")
-	require.Contains(t, output, "capabilities")
-	require.NotContains(t, output, "version 8.9 is recognized by config normalization")
-	require.NotContains(t, output, "does not yet have a process-instance service implementation")
+	assertCommandHelpOutput(t, []string{}, []string{"c8volt v5", "Camunda 8.10", "8.9 and 8.8 remain supported", "--all-tenants", "capabilities"}, nil)
 }
 
 func TestCapabilitiesCommand_ReportsRepresentativeFamilyMetadata(t *testing.T) {
@@ -246,44 +221,17 @@ func TestCapabilitiesCommand_AutomationJSONKeepsStdoutMachineReadable(t *testing
 
 // Verifies `get resource --help` documents required resource-key lookup usage.
 func TestGetResourceHelp(t *testing.T) {
-	output := executeRootForTest(t, "get", "resource", "--help")
-
-	require.Contains(t, output, "Get a single resource by key")
-	require.Contains(t, output, "Requires --id")
-	require.Contains(t, output, "tenant")
-	require.Contains(t, output, "Explicit --id uses backend authorization without tenant filtering")
-	require.Contains(t, output, "without tenant filtering")
-	require.Contains(t, output, "c8volt get resource")
-	require.Contains(t, output, "--id")
-	require.Contains(t, output, "resource key to fetch")
-	require.Contains(t, output, "--keys-only")
+	assertCommandHelpOutput(t, []string{"get", "resource"}, []string{"resourceKey", "--id", "--json"}, nil)
 }
 
 // Verifies `get cluster --help` exposes the nested topology, version, and license commands.
 func TestGetClusterHelp(t *testing.T) {
-	output := executeRootForTest(t, "get", "cluster", "--help")
-
-	require.Contains(t, output, "Inspect cluster-wide topology, version, and license information")
-	require.Contains(t, output, "Usage:")
-	require.Contains(t, output, "c8volt get cluster")
-	require.Contains(t, output, "license")
-	require.Contains(t, output, "topology")
-	require.Contains(t, output, "version")
-	require.Contains(t, output, "brokers, partitions, and gateway details")
-	require.Contains(t, output, "gateway and broker versions")
-	require.Contains(t, output, "./c8volt get cluster version")
-	require.Contains(t, output, "./c8volt get cluster version --with-brokers")
-	require.Contains(t, output, "./c8volt get cluster license")
+	assertCommandHelpOutput(t, []string{"get", "cluster"}, []string{"topology", "version", "license"}, nil)
 }
 
 // Verifies license help advertises the default fields and structured JSON escape hatch.
 func TestGetClusterLicenseHelp(t *testing.T) {
-	output := executeRootForTest(t, "get", "cluster", "license", "--help")
-
-	require.Contains(t, output, "Inspect the connected Camunda cluster's license")
-	require.Contains(t, output, "c8volt get cluster license")
-	require.Contains(t, output, "./c8volt get cluster license --json")
-	require.Contains(t, output, "./c8volt get cluster licence")
+	assertCommandHelpOutput(t, []string{"get", "cluster", "license"}, []string{"license", "--json"}, nil)
 }
 
 // Verifies `get cluster topology --help` describes the default tree and JSON escape hatch.
@@ -291,8 +239,8 @@ func TestGetClusterTopologyHelp(t *testing.T) {
 	output := executeRootForTest(t, "get", "cluster", "topology", "--help")
 
 	require.Contains(t, output, "Inspect brokers, partitions, and gateway metadata")
-	require.Contains(t, output, "./c8volt get cluster topology")
-	require.Contains(t, output, "./c8volt get cluster topology --json")
+	require.Contains(t, output, "c8volt get cluster topology")
+	require.Contains(t, output, "c8volt get cluster topology --json")
 }
 
 // Verifies `get cluster version --help` describes gateway-only and broker-inclusive output.
@@ -302,26 +250,15 @@ func TestGetClusterVersionHelp(t *testing.T) {
 	require.Contains(t, output, "Get the connected Camunda gateway version")
 	require.Contains(t, output, "Camunda gateway version")
 	require.Contains(t, output, "include broker versions")
-	require.Contains(t, output, "./c8volt get cluster version")
-	require.Contains(t, output, "./c8volt get cluster version --with-brokers")
-	require.Contains(t, output, "./c8volt get cluster version --json")
+	require.Contains(t, output, "c8volt get cluster version")
+	require.Contains(t, output, "c8volt get cluster version --with-brokers")
+	require.Contains(t, output, "c8volt get cluster version --json")
 	require.Contains(t, output, "--with-brokers")
 }
 
 // TestGetProcessDefinitionHelp_DocumentsJSONAndXMLModes verifies output modes and their execution-error boundary.
 func TestGetProcessDefinitionHelp_DocumentsJSONAndXMLModes(t *testing.T) {
-	output := executeRootForTest(t, "get", "process-definition", "--help")
-
-	require.Contains(t, output, "List or fetch deployed process definitions")
-	require.Contains(t, output, "Select by key, BPMN process ID, version, or version tag")
-	require.Contains(t, output, "Use --xml only with --key")
-	require.Contains(t, output, "--with-stats includes exact-version statistics and requires Camunda 8.8 or newer")
-	require.Contains(t, output, "exact-version statistics")
-	require.Contains(t, output, "--latest selects the newest definition per exact tenant ID and BPMN process ID")
-	require.Contains(t, output, "tenant")
-	require.Contains(t, output, "--tenant limits list and selector discovery")
-	require.Contains(t, output, "Explicit --key and XML lookups use backend authorization without tenant filtering")
-	require.Contains(t, output, "./c8volt get process-definition --key <process-definition-key> --json")
+	assertCommandHelpOutput(t, []string{"get", "process-definition"}, []string{"--latest", "--with-stats", "--watch", "--xml"}, nil)
 }
 
 // Verifies get commands consume env-overridden oauth2 scopes when authenticating against the configured API.

@@ -21,17 +21,11 @@ var (
 var configShowCmd = &cobra.Command{
 	Use:   "show",
 	Short: "Show effective configuration",
-	Long: `Show effective configuration with sensitive values sanitized.
+	Long: `Show effective configuration with secrets redacted.
 
-Precedence: flag > env > profile > base config > default. A named tenant limits discovery; an empty tenant leaves discovery unfiltered.
-
---validate and --template are compatibility shortcuts for config validate and config template.`,
-	Example: `  ./c8volt config show
-  ./c8volt --config ./config.yaml --profile <profile-name> config show
-  ./c8volt --tenant tenant-a config show
-  ./c8volt --all-tenants config show
-  ./c8volt --config ./config.yaml config show --validate
-  ./c8volt config show --template`,
+Settings resolve as: flag > environment > profile > base config > default.`,
+	Example: `  c8volt config show
+  c8volt --profile production config show`,
 	Run: func(cmd *cobra.Command, args []string) {
 		log, _ := logging.FromContext(cmd.Context())
 		cfg, err := config.FromContext(cmd.Context())

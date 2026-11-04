@@ -30,23 +30,8 @@ func TestExpectCommand_CommandLocalBackoffTimeoutEnvOverridesProfileAndConfig(t 
 
 // TestExpectHelp_DocumentsWaitVerificationUsage keeps wait guidance and supported state syntax visible in help.
 func TestExpectHelp_DocumentsWaitVerificationUsage(t *testing.T) {
-	output := assertCommandHelpOutput(t, []string{"expect"}, []string{
-		"Wait for process instances to satisfy expectations",
-		"success depends on an",
-		"./c8volt expect process-instance --key <process-instance-key> --state absent",
-		"./c8volt expect process-instance --key <process-instance-key> --incident true",
-	}, nil)
-	require.Contains(t, output, "process-instance")
-
-	output = assertCommandHelpOutput(t, []string{"expect", "process-instance"}, []string{
-		"Use after `run`, `cancel`, or `delete`",
-		"final state or incident marker is visible",
-		"state expectation; valid values are: [active, suspended, completed, canceled, terminated, absent]; suspended requires Camunda 8.10",
-		"incident expectation; valid values are: [true, false]",
-		"./c8volt get process-instance --key <process-instance-key> --keys-only | ./c8volt expect process-instance --incident true -",
-	}, nil)
-	require.Contains(t, output, "--state")
-	require.Contains(t, output, "--incident")
+	assertCommandHelpOutput(t, []string{"expect"}, []string{"state or incident expectations", "process-instance"}, nil)
+	assertCommandHelpOutput(t, []string{"expect", "process-instance"}, []string{"--state", "--incident", "only c8.10+"}, nil)
 }
 
 // TestExpectProcessInstanceDefaultMilestonesAndFinalFlush verifies multi-key

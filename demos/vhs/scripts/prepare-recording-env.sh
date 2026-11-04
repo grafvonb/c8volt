@@ -36,7 +36,7 @@ write_scope_if_set() {
   fi
 }
 
-require_env C8VOLT_VHS_C89_BASE_URL
+require_env C8VOLT_VHS_C810_BASE_URL
 require_env C8VOLT_VHS_OAUTH_TOKEN_URL
 require_env C8VOLT_VHS_OAUTH_CLIENT_ID
 require_env C8VOLT_VHS_OAUTH_CLIENT_SECRET
@@ -54,7 +54,7 @@ cp "${ROOT_DIR}/bin/c8volt" "${BIN_DIR}/c8volt"
 chmod 700 "${BIN_DIR}/c8volt"
 
 {
-  printf 'active_profile: c89\n\n'
+  printf 'active_profile: c810\n\n'
   printf 'auth:\n'
   printf '  mode: oauth2\n'
   printf '  oauth2:\n'
@@ -75,13 +75,13 @@ chmod 700 "${BIN_DIR}/c8volt"
   fi
   printf '\n'
   printf 'profiles:\n'
-  printf '  c89:\n'
+  printf '  c810:\n'
   printf '    app:\n'
-  printf '      camunda_version: "8.9"\n'
+  printf '      camunda_version: "8.10"\n'
   printf '    apis:\n'
   printf '      camunda_api:\n'
   printf '        base_url: '
-  yaml_quote "${C8VOLT_VHS_C89_BASE_URL}"
+  yaml_quote "${C8VOLT_VHS_C810_BASE_URL}"
   printf '\n\n'
   printf 'log:\n'
   printf '  format: plain-time\n'

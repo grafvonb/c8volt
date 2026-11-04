@@ -7,62 +7,38 @@ nav_exclude: false
 has_toc: true
 ---
 
-# Runtime Elements
+# Runtime elements and listeners
 
-Runtime element inspection shows what is happening inside a process instance: active BPMN elements, completed elements, timing, incidents, and optional listener jobs. Use it when the process-instance row alone is too coarse.
+Inspect runtime elements when a process is slow or blocked and its process-instance row does not explain why. Examples target Camunda 8.10.
 
-## Use When
-
-- a process instance is active but the slow or blocked BPMN element is not obvious
-- incident context needs the owning element, job, or listener detail beside it
-- operators or developers need the lower-level data behind slow-process analysis
-
-## Process Instance Context
-
-Use `get process-instance --with-elements` when the process instance is the primary target and runtime element rows are supporting context.
+## Inspect an instance
 
 ```bash
-c8volt get process-instance --key <process-instance-key> --with-elements
 c8volt get process-instance --key <process-instance-key> --with-elements --with-listeners
-c8volt get process-instance --bpmn-process-id <bpmn-process-id> --state active --with-elements --limit 5
-```
-
-Element rows appear under the owning process-instance row. `--with-listeners` requires `--with-elements` and nests execution/task listener jobs under matching element rows.
-
-Generated reference: [get process-instance]({{ "/cli/c8volt_get_process-instance" | relative_url }}).
-
-## Element-Centric Search
-
-Use `get element` when the element instance is the primary target or when element-specific filters should drive the result set.
-
-```bash
-c8volt get element --key <element-instance-key>
-c8volt get element --pi-key <process-instance-key> --element-id <element-id> --state active
-c8volt --json get element --pi-key <process-instance-key> --with-listeners
-```
-
-Search filters combine with AND semantics. Use the generated reference for totals, keys-only output, page size, and all supported filters.
-
-Generated reference: [get element]({{ "/cli/c8volt_get_element" | relative_url }}).
-
-## Walk With Runtime Context
-
-Use `walk process-instance --with-elements` when ancestry, descendants, or the full process-instance family tree must stay visible beside runtime element state.
-
-```bash
+c8volt get element --pi-key <process-instance-key> --state active --limit 10
 c8volt walk process-instance --key <process-instance-key> --with-elements
-c8volt walk process-instance --key <process-instance-key> --with-elements --with-listeners
 ```
 
-Generated reference: [walk process-instance]({{ "/cli/c8volt_walk_process-instance" | relative_url }}).
+`--with-listeners` requires `--with-elements` on process-instance and walk commands. `get element` can include listeners directly. Search predicates combine with AND.
 
-## Slow Analysis
-
-`ops analyse slow-process-instances` is the higher-level workflow built from the same runtime data. Use it when the goal is to rank slow roots and explain their slowest contributors.
+## Read variables
 
 ```bash
-c8volt ops analyse slow-process-instances --bpmn-process-id <bpmn-process-id> --state active --dur-longer 5m
-c8volt ops analyse slow-process-instances --key <process-instance-key> --with-listeners
+c8volt get element --key <element-instance-key> --with-vars
+c8volt get user-task --key <user-task-key> --with-vars
 ```
 
-Playbook: [Analyse Slow Process Instances]({{ "/ops/analyse-slow-process-instances/" | relative_url }}). Generated reference: [ops analyse slow-process-instances]({{ "/cli/c8volt_ops_analyse_slow-process-instances" | relative_url }}).
+Element variables belong directly to that element; parent scopes are excluded. User-task variables can include inherited values. Variable updates preserve existing owning scopes; element updates always write locally.
+
+## Read listener timing
+
+| Label | Meaning |
+| --- | --- |
+| `s:` | Job creation time, including waiting before worker execution |
+| `e:` | Recorded job end time |
+| `d:` | Deadline, shown only for an activated job |
+| `dur:` | Time from creation to end, or elapsed time for a pending job |
+
+Unavailable timestamps are omitted. Listener duration includes worker waiting time. Each job or task retains its own observed business ID (**only c8.10+**); a parent ID is not substituted.
+
+For duration-based diagnosis, use the [slow-instance playbook](/ops/analyse-slow-process-instances/). Exact flags are in [get element](/cli/c8volt_get_element) and [walk process-instance](/cli/c8volt_walk_process-instance).

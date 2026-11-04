@@ -13,9 +13,8 @@ var deleteCmd = &cobra.Command{
 	Long: `Delete process instances or process definitions.
 
 Choose a resource command to validate its scope and confirm deletion.`,
-	Example: `  ./c8volt delete process-instance --key <process-instance-key> --force
-  ./c8volt delete process-instance --state terminated --batch-size 250 --limit 5 --dry-run
-  ./c8volt delete process-definition --bpmn-process-id <bpmn-process-id> --latest --auto-confirm`,
+	Example: `  c8volt delete process-instance --key <process-instance-key> --dry-run
+  c8volt delete process-definition --bpmn-process-id order --dry-run`,
 	Aliases: []string{"d", "del", "remove", "rm"},
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return cmd.Help()

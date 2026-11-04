@@ -21,12 +21,9 @@ var getTenantCmd = &cobra.Command{
 	Use:   "tenant",
 	Short: "List tenants",
 	Long:  `List tenants visible to the configured environment.`,
-	Example: `  ./c8volt get tenant
-  ./c8volt get tenant --key <tenant-id>
-  ./c8volt get tenant --filter demo
-  ./c8volt get tenant --json
-  ./c8volt get tenant --key <tenant-id> --json
-  ./c8volt get tenant --keys-only`,
+	Example: `  c8volt get tenant
+  c8volt get tenant --key <tenant-id>
+  c8volt get tenant --json`,
 	Aliases: []string{"tenants"},
 	Args: func(cmd *cobra.Command, args []string) error {
 		return validateTenantLookupFlags(cmd)

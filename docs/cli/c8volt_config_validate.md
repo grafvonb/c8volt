@@ -10,9 +10,7 @@ Validate effective configuration
 
 ### Synopsis
 
-Validate effective configuration.
-
-Loads the effective configuration using the normal precedence rules and applies the same validation as config show --validate.
+Validate effective configuration without contacting Camunda.
 
 ```
 c8volt config validate [flags]
@@ -21,10 +19,8 @@ c8volt config validate [flags]
 ### Examples
 
 ```
-  ./c8volt --config ./config.yaml config validate
-  ./c8volt --profile <profile-name> config validate
-  ./c8volt --tenant tenant-a config validate
-  ./c8volt --all-tenants config validate
+  c8volt config validate
+  c8volt --profile production config validate
 ```
 
 ### Options
@@ -36,7 +32,7 @@ c8volt config validate [flags]
 ### Options inherited from parent commands
 
 ```
-      --all-tenants          clear configured tenant filtering and search all tenants visible to the authenticated user; mutually exclusive with --tenant
+      --all-tenants          search all accessible tenants; cannot combine with --tenant
   -y, --auto-confirm         auto-confirm prompts for non-interactive use
       --automation           enable non-interactive mode for commands that explicitly support it
       --config string        path to config file
@@ -49,7 +45,7 @@ c8volt config validate [flags]
       --profile string       config active profile name to use (e.g. dev, prod)
   -q, --quiet                suppress output except errors
       --request-rate float   maximum shared request starts per second (fractions allowed; 0 disables pacing)
-      --tenant string        tenant ID for discovery/search, selection, create, deploy, and run flows; explicit empty values can clear configured discovery filters, and explicit keys/IDs remain backend-authorized
+      --tenant string        tenant for discovery and creation; explicit keys use backend authorization
       --timeout duration     HTTP request timeout (default 30s)
   -v, --verbose              show additional output
 ```

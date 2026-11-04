@@ -9,17 +9,14 @@ Repair incidents selected by process instances
 
 ### Synopsis
 
-Repair active incidents associated with selected process instances.
+Repair active incidents for selected process instances.
 
-Provide repeated --key values, newline-separated keys from stdin with '-', or process-instance search filters. Search selects incident-bearing instances; --direct-incidents-only restricts matching to direct active incidents.
+Select by key or process filters. The workflow fixes the incident targets,
+applies requested variables, restores related job retries, resolves incidents,
+and waits for clearance. --set-retries 0 skips retry restoration.
 
---bid matches one exact opaque business ID on Camunda 8.10+, within tenant scope and combined with the other search predicates. Multiple distinct matches are repaired; the limit counts distinct matching incident-bearing instances. BID planning freezes selected instances and reviewed incident, job, and variable actions before confirmation; approval never adds new targets. Dry-run may read scope but never submits changes.
-
-The workflow fixes the repairable instance and incident sets, applies requested variables once per process-instance scope, then updates related jobs, resolves incidents, and confirms clearance unless --no-wait is set.
-
---tenant limits search; an empty tenant or --all-tenants searches across accessible tenants. Explicit keys use backend authorization without tenant filtering. --batch-size controls each discovery request; --limit caps the selected scope.
-
-Use --dry-run to inspect planned repairs without mutation, --auto-confirm or --automation for unattended repair, and --report-file to save an audit report.
+Use --dry-run to review the repair plan and --report-file to save an audit report.
+Use --auto-confirm for unattended execution.
 
 ```
 c8volt ops repair process-instance [flags]
@@ -28,21 +25,15 @@ c8volt ops repair process-instance [flags]
 ### Examples
 
 ```
-  ./c8volt ops repair process-instance --bid ORDER-123 --dry-run
-  ./c8volt ops repair process-instance --key <process-instance-key> --dry-run
-  ./c8volt --tenant tenant-a ops repair process-instance --key <process-instance-key> --dry-run
-  ./c8volt --all-tenants ops repair process-instance --state active --limit 5 --dry-run
-  ./c8volt ops repair process-instance --state active --limit 5 --dry-run
-  ./c8volt ops repair process-instance --direct-incidents-only --bpmn-process-id <bpmn-process-id> --limit 5 --dry-run
-  ./c8volt --verbose ops repair process-instance --state active --limit 5 --auto-confirm
-  ./c8volt ops repair process-instance --key <process-instance-key> --set-vars '{"hasIncident":false}' --report-file repair-process-instance.md
+  c8volt ops repair process-instance --key <process-instance-key> --dry-run
+  c8volt ops repair process-instance --bpmn-process-id order --set-retries 3 --report-file repair.md
 ```
 
 ### Options
 
 ```
-  -n, --batch-size int32                number of process instances to inspect per discovery page; does not cap total frozen scope (max limit 1000 enforced by server) (default 1000)
-      --bid string                      exact opaque business ID to select incident-bearing process instances (Camunda 8.10+)
+  -n, --batch-size int32                process instances per discovery page (server maximum 1000) (default 1000)
+      --bid string                      exact opaque business ID to select incident-bearing process instances (only c8.10+)
   -b, --bpmn-process-id string          BPMN process ID to filter process instances
       --children-only                   select only child process instances
       --direct-incidents-only           select only process instances with direct active incidents
@@ -76,13 +67,13 @@ c8volt ops repair process-instance [flags]
       --start-date-newer-days int       only include process instances N days old or newer (0 means today) (default -1)
       --start-date-older-days int       only include process instances N days old or older (default -1)
   -s, --state string                    state to filter process instances: all, active, completed, canceled, terminated (default "all")
-  -w, --workers int                     maximum concurrent workers when repairing multiple incidents (default: min(count, 2*GOMAXPROCS, 32))
+  -w, --workers int                     maximum concurrent workers; omit for an automatic limit
 ```
 
 ### Options inherited from parent commands
 
 ```
-      --all-tenants          clear configured tenant filtering and search all tenants visible to the authenticated user; mutually exclusive with --tenant
+      --all-tenants          search all accessible tenants; cannot combine with --tenant
   -y, --auto-confirm         auto-confirm prompts for non-interactive use
       --automation           enable non-interactive mode for commands that explicitly support it
       --config string        path to config file
@@ -95,7 +86,7 @@ c8volt ops repair process-instance [flags]
       --profile string       config active profile name to use (e.g. dev, prod)
   -q, --quiet                suppress output except errors
       --request-rate float   maximum shared request starts per second (fractions allowed; 0 disables pacing)
-      --tenant string        tenant ID for discovery/search, selection, create, deploy, and run flows; explicit empty values can clear configured discovery filters, and explicit keys/IDs remain backend-authorized
+      --tenant string        tenant for discovery and creation; explicit keys use backend authorization
       --timeout duration     HTTP request timeout (default 30s)
   -v, --verbose              show additional output
 ```

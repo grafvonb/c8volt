@@ -29,7 +29,7 @@ func processInstanceStateCompletion(expectation bool) func(*cobra.Command, []str
 			// Preserve the typed prefix so shells can match case variants too.
 			value = prefix + value[len(prefix):]
 			if state == process.StateSuspended {
-				value += "\tRequires Camunda 8.10"
+				value += "\tonly c8.10+"
 			}
 			candidates = append(candidates, value)
 		}

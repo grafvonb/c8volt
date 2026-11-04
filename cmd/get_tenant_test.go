@@ -398,13 +398,7 @@ func TestGetTenantCommand_RejectsKeyPlusFilter(t *testing.T) {
 
 // Verifies tenant help documents list, keyed lookup, filtering, and JSON examples.
 func TestGetTenantHelp_DocumentsListKeyFilterAndJSONExamples(t *testing.T) {
-	output := executeRootForTest(t, "get", "tenant", "--help")
-
-	require.Contains(t, output, "./c8volt get tenant")
-	require.Contains(t, output, "./c8volt get tenant --key <tenant-id>")
-	require.Contains(t, output, "./c8volt get tenant --filter demo")
-	require.Contains(t, output, "./c8volt get tenant --json")
-	require.Contains(t, output, "./c8volt get tenant --key <tenant-id> --json")
+	assertCommandHelpOutput(t, []string{"get", "tenant"}, []string{"--key", "--json", "--filter"}, nil)
 }
 
 // tenantCommandAPI lets command tests replace only the tenant facade methods under test.

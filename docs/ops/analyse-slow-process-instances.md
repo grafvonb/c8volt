@@ -6,67 +6,22 @@ nav_order: 1
 has_toc: true
 ---
 
-# c8volt ops analyse slow-process-instances
+# Analyse slow process instances
 
-## Purpose
+Find slow process instances and identify the runtime elements contributing to their duration. This command is read-only.
 
-Slow process-instance diagnosis usually requires several separate reads: find candidate process instances, inspect runtime elements, compare durations, check incidents, and correlate listener jobs. By hand, that is noisy and easy to misread.
-
-`c8volt ops analyse slow-process-instances` freezes a process-instance scope, enriches it with runtime element timing, sorts roots by measured duration, and shows the slowest contributors without mutating cluster state.
-
-## Use When
-
-- finding active or finished process instances whose runtime exceeds an expected duration
-- narrowing analysis by element ID, element type, element state, or element duration
-- checking listener jobs in the same context as runtime elements
-- producing JSON or keys-only output for automation and agents
-
-## Basic Usage
+## Examples
 
 ```bash
-c8volt ops analyse slow-process-instances --bpmn-process-id <bpmn-process-id> --state active --dur-longer 5m
-```
-
-Generated reference: [ops analyse slow-process-instances](/cli/c8volt_ops_analyse_slow-process-instances).
-
-## Best Variants
-
-```bash
-c8volt ops analyse slow-process-instances --bid ORDER-123
-c8volt ops analyse slow-process-instances --bid ORDER-123 --bpmn-process-id order --limit 100
+c8volt ops analyse slow-process-instances --bpmn-process-id order --state active --dur-longer 5m
 c8volt ops analyse slow-process-instances --key <process-instance-key> --with-listeners
-c8volt ops analyse slow-process-instances --bpmn-process-id <bpmn-process-id> --element-id <element-id> --dur-element-longer 30s
+c8volt ops analyse slow-process-instances --bpmn-process-id order --element-id payment --dur-element-longer 30s
 ```
 
-## Built From Lower-Level Commands
+## Execution
 
-The implemented command calls c8volt services directly, but conceptually it composes the same basic reads an operator would run by hand:
+Use `--limit` to bound the selected instances. Durations use values such as `30s`, `5m`, or `24h`; `1d` is not supported. Listener duration includes worker waiting time. Select by exact `--bid` when useful (**only c8.10+**).
 
-```bash
-c8volt get process-instance --bpmn-process-id <bpmn-process-id> --state active
-c8volt get element --pi-key <process-instance-key>
-c8volt get job --pi-key <process-instance-key> --kind TASK_LISTENER
-```
+See the [shared ops controls](/ops/#shared-controls) for discovery, confirmation, tenant scope, and reports.
 
-Generated references: [get process-instance](/cli/c8volt_get_process-instance), [get element](/cli/c8volt_get_element), [get job](/cli/c8volt_get_job).
-
-## Output
-
-Use `--with-full-timeline` to inspect the complete chronology of process and runtime-element activity.
-
-Selector-based analysis uses discovery tenant semantics. A named tenant configuration limits discovery; `--all-tenants` clears that filter for the run, within authenticated Camunda visibility. The flag conflicts with any explicit `--tenant` value. Explicit process-instance keys use backend authorization for those keys rather than tenant-filtered discovery.
-
-## Read-Only Execution
-
-This command does not submit mutations. It reads process instances, runtime elements, and optional listener jobs, then calculates durations from available timestamps. Active process instances use the command capture time as the current endpoint for duration calculation.
-
-## Failure And Safety Notes
-
-- The command is read-only.
-- Select explicit process-instance keys/stdin, one process-definition selector, or an exact `--bid` on Camunda 8.10. BID combines with one definition selector and existing discovery predicates; it cannot combine with explicit keys/stdin. Older versions reject BID before discovery.
-- BID is one opaque string; whitespace, commas, Unicode and wildcard characters are literal. Empty input is invalid.
-- BID discovery freezes distinct matches before confirmation and timeline loading. `--limit` caps that selected set; `--batch-size` is a per-request bound. Empty completed discovery never prompts or loads timelines.
-- JSON preserves original BID criteria and selection completion independently of observed root/listener IDs, including partial failures. BID-only input uses `process_instance_search`; definition+BID uses `process_definition_search`. No additional Markdown report is produced.
-- `--with-listeners` cannot be combined with `--keys-only`.
-- Duration thresholds use Go duration syntax such as `500ms`, `30s`, `5m`, `1h`, `1h30m`, or `24h`; calendar units such as `1d` are not accepted.
-- All supported Camunda versions provide runtime element analysis.
+[Command reference](/cli/c8volt_ops_analyse_slow-process-instances) · [get process-instance](/cli/c8volt_get_process-instance) · [get element](/cli/c8volt_get_element) · [get job](/cli/c8volt_get_job)

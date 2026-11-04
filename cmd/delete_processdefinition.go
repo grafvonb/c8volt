@@ -25,30 +25,17 @@ var (
 var deleteProcessDefinitionCmd = &cobra.Command{
 	Use:   "process-definition",
 	Short: "Delete process definition resources",
-	Long: `Delete process definition resources from Camunda 8.9 or newer.
+	Long: `Delete deployed process definitions and associated history.
 
-Observed instances in force-deletion impact retain their own business IDs when available. Inspect them with --verbose or --json; count-only impact checks do not look up IDs.
+Unfinished instances block deletion. With --force, cancel affected roots, verify
+that unfinished work has drained, then delete instance history and definitions.
+Suspended instances count as unfinished only c8.10+.
 
-Before mutation, c8volt checks unfinished-instance impact (ACTIVE and SUSPENDED on Camunda 8.10; ACTIVE on older versions), required cancellation roots, affected instance families, and batch-operation read access. With --force, it cancels root instances, verifies that no unfinished instances remain, deletes affected instance history, then deletes the definition and remaining associated history.
-
-Camunda 8.10 can defer history deletion without returning a batch operation. Unless --no-wait is set, c8volt waits for a returned batch to complete and for the definition to disappear. Without a returned batch, definition disappearance is confirmed, but completion of all associated history deletion is not independently verified.
-
---no-wait skips final deletion confirmation, but still verifies unfinished work has drained before dependent history deletion. --no-state-check skips impact reads and automatic cancellation, retaining the existing backend-enforced bypass.
-
---tenant limits BPMN selector discovery. An empty tenant or --all-tenants leaves discovery unfiltered across accessible tenants. Explicit --key and stdin keys use backend authorization without tenant filtering. A --bpmn-process-id selector must match visible definitions before impact planning.
-
-Use --dry-run to preview impact without mutation, or --auto-confirm for unattended deletion. To delete only a definition's instances, use delete process-instance --bpmn-process-id <bpmn-process-id>.`,
-	Example: `  ./c8volt delete process-definition --key <process-definition-key> --auto-confirm
-  ./c8volt delete process-definition --key <process-definition-key> --dry-run
-  ./c8volt --tenant tenant-a delete process-definition --key <process-definition-key> --dry-run
-  ./c8volt --tenant tenant-a delete process-definition --bpmn-process-id <bpmn-process-id> --latest --dry-run
-  ./c8volt --all-tenants delete process-definition --bpmn-process-id <bpmn-process-id> --latest --dry-run
-  ./c8volt delete process-definition --bpmn-process-id <bpmn-process-id> --latest --force
-  ./c8volt delete process-definition --bpmn-process-id <bpmn-process-id> --latest --dry-run
-  ./c8volt delete process-definition --bpmn-process-id <bpmn-process-id> --latest --auto-confirm
-  ./c8volt --verbose delete process-definition --bpmn-process-id <bpmn-process-id> --latest --auto-confirm
-  ./c8volt get process-definition --bpmn-process-id <bpmn-process-id> --latest --json
-  ./c8volt get process-definition --bpmn-process-id <bpmn-process-id> --latest --keys-only | ./c8volt delete process-definition --auto-confirm -`,
+Use --dry-run to review impact. By default, wait for definition removal and any
+returned deletion batch. Deferred history deletion without a batch cannot be
+independently confirmed. Use delete process-instance to remove instances alone.`,
+	Example: `  c8volt delete process-definition --key <process-definition-key> --dry-run
+  c8volt delete process-definition --bpmn-process-id order --force`,
 	Aliases: []string{"pd"},
 	Args: func(cmd *cobra.Command, args []string) error {
 		return validateOptionalDashArg(args)
@@ -195,7 +182,7 @@ func init() {
 	fs.BoolVar(&flagDeletePDLatest, "latest", false, "fetch the latest version(s) of the given BPMN process(s)")
 
 	fs.BoolVar(&flagForce, "force", false, "cancel unfinished process-instance roots before deleting history and definitions")
-	fs.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers when --count > 1 (default: min(count, 2*GOMAXPROCS, 32))")
+	fs.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers; omit for an automatic limit")
 	fs.BoolVar(&flagNoWorkerLimit, "no-worker-limit", false, "use all queued jobs as workers when --workers is unset")
 	fs.BoolVar(&flagFailFast, "fail-fast", false, "stop scheduling new instances after the first error")
 

@@ -12,41 +12,14 @@ Operate Camunda 8 workflows from the command line
 
 ### Synopsis
 
-c8volt: Camunda 8 Operations CLI.
+Operate Camunda 8 with c8volt v5: inspect, repair, deploy, and clean up.
 
-Deploy BPMN models, start process instances, inspect workflow state, wait for
-state changes, walk process trees, suspend, cancel, and delete.
+Documentation and examples target Camunda 8.10; 8.9 and 8.8 remain supported.
+Set app.camunda_version to match your cluster. Start with config test-connection,
+then use ops playbooks for repair, retention, purge, and runtime analysis.
 
-Supports Camunda 8.8, 8.9, and 8.10.
-Camunda 8.10 baseline: 8.10.3 (final).
-Camunda 8.10 aliases: 8.10, 810, v810, v8.10. Default: 8.9.
-Before the first operational API request, check the gateway major/minor version once.
-Mismatch or lookup failure warns and retains the configured adapter. A mismatch
-may produce incorrect results; match config to gateway unless mismatch is intentional.
-The check waits at most two seconds (or a shorter HTTP/workflow timeout), uses shared
-request pacing, and can add a pacing slot. Disable it with --no-version-check.
-Set app.no_version_check in base/profile configuration or C8VOLT_APP_NO_VERSION_CHECK
-in the environment. Explicit --no-version-check=true/false overrides either setting.
-Local commands perform no check. Explicit version and connection tests still run.
-DEBUG logging adds one summary with gateway/broker versions, available cluster
-counts and a bounded failure reason, using the same lookup and configured logger.
-
-Use capabilities to discover supported commands and automation options.
-
-Use --request-rate to pace shared request starts per second for this invocation
-(default 0, disabled; positive fractions allowed). It does not change worker
-concurrency or extend request/workflow deadlines. Explicit zero overrides config.
-Local wait failures identify an unsent request; earlier work may already be accepted.
-
-DEBUG request-rate summaries work with or without pacing. Configure
-http.request_rate_report_interval (default 5s; e.g. 10s; 0s disables summaries).
-They report actual starts, elapsed time and requests/second through the configured
-logger. Summaries pause during manual input and exclude that time from the reported
-duration and rate. Reporting stops with the invocation; short commands may emit no summary.
-
-On API-backed commands, --debug emits redacted request diagnostics at DEBUG
-alongside other configured logs. --quiet and log-level filtering still apply;
-log format, timestamps, and source settings use the existing logger.
+Preview changes with --dry-run where supported. Use --auto-confirm for unattended
+execution and --json for scripts. See capabilities --json for command support.
 
 ```
 c8volt [flags]
@@ -55,22 +28,15 @@ c8volt [flags]
 ### Examples
 
 ```
-  ./c8volt config show --template
-  ./c8volt --config ./config.yaml config show --validate
-  ./c8volt get cluster topology
-  ./c8volt --request-rate 10 cancel process-instance --state active
-  ./c8volt --config ./config.yaml --debug get process-definition --latest
-  ./c8volt --all-tenants get process-instance --state active
-  ./c8volt embed deploy --all --run
-  ./c8volt run process-instance --bpmn-process-id <bpmn-process-id>
-  ./c8volt capabilities --json
-  ./c8volt get --help
+  c8volt config test-connection
+  c8volt get process-instance --state active --limit 10
+  c8volt ops repair incident --key <incident-key> --dry-run
 ```
 
 ### Options
 
 ```
-      --all-tenants          clear configured tenant filtering and search all tenants visible to the authenticated user; mutually exclusive with --tenant
+      --all-tenants          search all accessible tenants; cannot combine with --tenant
   -y, --auto-confirm         auto-confirm prompts for non-interactive use
       --automation           enable non-interactive mode for commands that explicitly support it
       --config string        path to config file
@@ -84,7 +50,7 @@ c8volt [flags]
       --profile string       config active profile name to use (e.g. dev, prod)
   -q, --quiet                suppress output except errors
       --request-rate float   maximum shared request starts per second (fractions allowed; 0 disables pacing)
-      --tenant string        tenant ID for discovery/search, selection, create, deploy, and run flows; explicit empty values can clear configured discovery filters, and explicit keys/IDs remain backend-authorized
+      --tenant string        tenant for discovery and creation; explicit keys use backend authorization
       --timeout duration     HTTP request timeout (default 30s)
   -v, --verbose              show additional output
 ```

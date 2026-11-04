@@ -22,34 +22,18 @@ var suspendProcessInstanceCmd = &cobra.Command{
 	Use:     "process-instance",
 	Aliases: []string{"pi"},
 	Short:   "Suspend process instances by key, business ID or subtree",
-	Long: `Suspend ACTIVE process instances on Camunda 8.10 by explicit key.
+	Long: `Suspend active process instances (only c8.10+).
 
-Select by exact business ID with --bid on Camunda 8.10, as an alternative to --key or stdin. BID discovery respects configured tenant scope and completes before approval; --limit bounds distinct matching seeds and --batch-size controls request size. Duplicate matches count once. Empty completed discovery succeeds without confirmation or mutation, including --no-wait. Errors during discovery prevent mutation. JSON retains the original criterion and reviewed scope; execution never searches the BID again after approval. A separate dry-run and later execution perform separate discoveries.
+Select exact keys or one exact --bid. Add --tree to include active descendants;
+ancestors and siblings are excluded. The target set is fixed before confirmation.
+By default, wait until suspension is observed.
 
-Without --tree, BID selects exact instances and does not prefilter their action eligibility. With --tree, expand only selected seeds and descendants, merge overlaps, and freeze eligible targets; a seed limit never clips descendants. Neither mode selects ancestors or siblings. Explicit-key dry-runs remain local and read-free.
-
-Tree plans retain each discovered instance's own business ID when available; inspect it with --verbose or --json. Exact-key previews remain local and do not look up IDs.
-
-Provide repeated or comma-separated --key values, or newline-separated keys from stdin with '-'. Keys are deduplicated in first-input order. Without --tree, each selected parent or child is independent: relatives are neither discovered nor suspended. Explicit keys use backend authorization without discovery tenant filtering.
-
-When authorization is enabled, suspension requires SUSPEND_PROCESS_INSTANCE on PROCESS_DEFINITION. Default confirmation also requires permission to read the instance. Without --tree, there is no mandatory preflight read; only the submission response establishes acceptance. Already-suspended, terminal, terminating, missing or unauthorized targets remain failures when rejected.
-
-Default execution waits for observed SUSPENDED within the configured backoff timeout (two minutes by default, adjustable with --backoff-timeout). --timeout bounds each HTTP request. --no-wait returns accepted submission without confirmation reads. Partial failures retain acceptance and observation evidence with a nonzero exit. Without --tree, --dry-run previews exact keys without reads, writes or confirmation prompts; eligibility is not checked, including with --no-wait.
-
-With --tree, discover each selected instance and its descendants, merge overlapping subtrees, and suspend only observed ACTIVE members. Selecting a child never escalates to its ancestors or siblings. Traverse through already-suspended and terminal parents; report SUSPENDED members separately and exclude other states. Tree mode requires additional instance read/search permissions, including with --dry-run and --no-wait. Tree dry-run previews discovered eligible targets without mutations or approval. A resolved scope with no active targets succeeds without changes or approval.
-
-Tree approval names the expanded active target count. Execution uses that frozen scope without rediscovery; state races can still cause failures. On Camunda 8.10, child discovery exhausts all pages at every depth. Execution is not atomic and may omit descendants created after discovery.
-
-Suspension pauses engine execution while retaining runtime state and resources; it does not cancel the instance. It does not interrupt already-running worker code or undo external effects. Job completion/failure attempts are rejected during suspension, and affected jobs may execute again after resumption. Backpressure can delay or reject suspension; this is not an instantaneous emergency stop.
-
-Use --auto-confirm or --automation for unattended execution. JSON requires --dry-run, --auto-confirm or --automation and cannot be combined with --verbose. Keys-only previews list selected keys (eligible targets with --tree); execution keys indicate acceptance, not confirmed suspension, even when confirmation fails. Use JSON and the exit status for confirmation evidence. Use --verbose for per-instance submission, confirmation, and last observed state. Quiet preserves explicit machine results and required errors. Use --debug for redacted HTTP diagnostics independently of --verbose.`,
-	Example: `  ./c8volt --tenant tenant-a suspend pi --bid 'ORDER-123' --tree --dry-run --json
-  ./c8volt suspend process-instance --key <process-instance-key>
-  ./c8volt suspend pi --key <key-a>,<key-b> --key <key-a> --dry-run --json
-  ./c8volt suspend pi --key <process-instance-key> --tree --dry-run
-  ./c8volt suspend pi --key <process-instance-key> --tree --auto-confirm --json
-  ./c8volt suspend pi --key <process-instance-key> --auto-confirm --no-wait --json
-  printf '%s\n' "$INSTANCE_A" "$INSTANCE_B" | ./c8volt suspend pi --auto-confirm -`,
+Use --dry-run to preview. An exact-key preview makes no requests; tree and BID
+previews discover scope. Suspension does not stop running worker code or undo
+external effects. Partial failures do not roll back accepted changes.`,
+	Example: `  c8volt suspend process-instance --key <process-instance-key> --dry-run
+  c8volt suspend process-instance --key <process-instance-key> --tree --dry-run
+  c8volt suspend process-instance --key <process-instance-key> --tree --auto-confirm`,
 	Args: func(cmd *cobra.Command, args []string) error { return validateOptionalDashArg(args) },
 	Run: func(cmd *cobra.Command, args []string) {
 		cli, log, cfg, err := NewCli(cmd)
@@ -123,7 +107,7 @@ func init() {
 	fs.BoolVar(&flagSuspendPITree, "tree", false, "include each selected instance and its descendants; suspend active instances only")
 	fs.BoolVar(&flagDryRun, "dry-run", false, "preview without mutations; exact keys need no reads, --tree discovers eligible targets")
 	fs.BoolVar(&flagNoWait, "no-wait", false, "return after accepted suspension without confirmation reads")
-	fs.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers (default: min(count, 2*GOMAXPROCS, 32))")
+	fs.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers; omit for an automatic limit")
 	fs.BoolVar(&flagNoWorkerLimit, "no-worker-limit", false, "use all queued jobs as workers when --workers is unset")
 	fs.BoolVar(&flagFailFast, "fail-fast", false, "stop scheduling new instances after the first error")
 	useInvalidInputFlagErrors(suspendProcessInstanceCmd)

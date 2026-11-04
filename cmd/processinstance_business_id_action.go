@@ -10,7 +10,7 @@ import (
 
 // registerBusinessIDActionFlags keeps scalar selection controls local to each action.
 func registerBusinessIDActionFlags(cmd *cobra.Command) {
-	cmd.Flags().String("bid", "", "exact business ID to select in configured tenant scope (Camunda 8.10)")
+	cmd.Flags().String("bid", "", "exact business ID to select in configured tenant scope (only c8.10+)")
 	cmd.Flags().Int32P("limit", "l", 0, "maximum distinct matching instances; zero selects all; tree expansion is not limited")
 	cmd.Flags().Int32P("batch-size", "n", 1000, "maximum process instances per discovery request")
 }

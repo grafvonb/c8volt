@@ -22,34 +22,18 @@ var resumeProcessInstanceCmd = &cobra.Command{
 	Use:     "process-instance",
 	Aliases: []string{"pi"},
 	Short:   "Resume suspended process instances by key, business ID or subtree",
-	Long: `Resume SUSPENDED process instances on Camunda 8.10 by explicit key or selected subtree.
+	Long: `Resume suspended process instances (only c8.10+).
 
-Select by exact business ID with --bid on Camunda 8.10, as an alternative to --key or stdin. BID discovery respects configured tenant scope and completes before approval; --limit bounds distinct matching seeds and --batch-size controls request size. Duplicate matches count once. Empty completed discovery succeeds without confirmation or mutation, including --no-wait. Errors during discovery prevent mutation. JSON retains the original criterion and reviewed scope; execution never searches the BID again after approval. A separate dry-run and later execution perform separate discoveries.
+Select exact keys or one exact --bid. Add --tree to include suspended descendants;
+ancestors and siblings are excluded. The target set is fixed before confirmation.
+By default, wait until ACTIVE or immediate COMPLETED is observed.
 
-Without --tree, BID selects exact instances and does not prefilter their action eligibility. With --tree, expand only selected seeds and descendants, merge overlaps, and freeze eligible targets; a seed limit never clips descendants. Neither mode selects ancestors or siblings. Explicit-key dry-runs remain local and read-free.
-
-Tree plans retain each discovered instance's own business ID when available; inspect it with --verbose or --json. Exact-key previews remain local and do not look up IDs.
-
-Provide repeated or comma-separated --key values, or newline-separated keys from stdin with '-'. Keys are deduplicated in first-input order. Without --tree, each selected parent or child is independent: relatives are neither discovered nor resumed. Explicit keys use backend authorization without discovery tenant filtering.
-
-When authorization is enabled, resumption requires SUSPEND_PROCESS_INSTANCE on PROCESS_DEFINITION. Default confirmation also requires permission to read the instance. Exact-key execution has no mandatory preflight read; only the submission response establishes acceptance. Active, terminal, terminating, missing or unauthorized targets remain failures when rejected.
-
-Default execution waits for observed ACTIVE or immediate COMPLETED after acceptance within the configured backoff timeout (two minutes by default, adjustable with --backoff-timeout). --timeout bounds each HTTP request. --no-wait returns accepted submission without confirmation reads. Partial failures retain acceptance and observation evidence with a nonzero exit. Without --tree, --dry-run previews exact keys without reads, writes or confirmation prompts; eligibility is not checked, including with --no-wait.
-
-Add --tree to include each selected instance and its descendants, merging overlapping subtrees without escalating to ancestors or siblings. Discovery traverses active and terminal parents before selecting only observed SUSPENDED members; independently suspended descendants remain eligible. All other states are excluded. Tree execution and tree dry-run require read/search permissions. Tree dry-run reports selected, discovered, eligible and excluded counts without mutation. Failed or incomplete planning stops before approval or submission. A complete plan with no suspended targets succeeds without approval, activity or mutation, including with --no-wait.
-
-Tree execution asks once for the expanded eligible count and uses that frozen scope without rediscovery. On Camunda 8.10, child discovery exhausts all pages at every depth. The scope is not atomic: state races can cause authoritative rejection, and descendants created after discovery may be omitted. There is no automatic rollback or parent-before-child execution guarantee. --no-wait skips confirmation reads, not tree discovery.
-
-Resumption releases buffered work. Failures while processing buffered work can leave the instance suspended. Observed CANCELED or TERMINATED is a cancellation failure, never confirmed resumption. Persistent suspension, absence, unknown state or failed reads remain unconfirmed within the wait bound; missing suspendedDate alone is not proof. Resumption does not guarantee incident-free execution, process completion, or immediate subscription readiness. Multiple-key execution is not atomic and partial failure has no automatic rollback.
-
-Use --auto-confirm or --automation for unattended execution. JSON requires --dry-run, --auto-confirm or --automation and cannot be combined with --verbose. Keys-only previews list selected exact keys or eligible tree targets; execution keys indicate acceptance, not confirmed resumption, even when confirmation fails. Use JSON and the exit status for confirmation evidence. Use --verbose for per-instance submission, confirmation, and last observed state. Quiet preserves explicit machine results and required errors. Use --debug for redacted HTTP diagnostics independently of --verbose.`,
-	Example: `  ./c8volt --tenant tenant-a resume pi --bid 'ORDER-123' --tree --dry-run --json
-  ./c8volt resume process-instance --key <process-instance-key>
-  ./c8volt resume pi --key <key-a>,<key-b> --key <key-a> --dry-run --json
-  ./c8volt resume pi --key <process-instance-key> --auto-confirm --no-wait --json
-  ./c8volt resume pi --key <process-instance-key> --tree --dry-run
-  ./c8volt resume pi --key <parent-key>,<child-key> --tree --auto-confirm --json
-  printf '%s\n' "$INSTANCE_A" "$INSTANCE_B" | ./c8volt resume pi --auto-confirm -`,
+Use --dry-run to preview. An exact-key preview makes no requests; tree and BID
+previews discover scope. Resumption releases buffered work and does not guarantee
+incident-free execution. Partial failures do not roll back accepted changes.`,
+	Example: `  c8volt resume process-instance --key <process-instance-key> --dry-run
+  c8volt resume process-instance --key <process-instance-key> --tree --dry-run
+  c8volt resume process-instance --key <process-instance-key> --tree --auto-confirm`,
 	Args: func(cmd *cobra.Command, args []string) error { return validateOptionalDashArg(args) },
 	Run: func(cmd *cobra.Command, args []string) {
 		cli, log, cfg, err := NewCli(cmd)
@@ -123,7 +107,7 @@ func init() {
 	fs.BoolVar(&flagResumePITree, "tree", false, "include selected instances and descendants; resume only observed SUSPENDED members")
 	fs.BoolVar(&flagDryRun, "dry-run", false, "preview exact keys locally or discover eligible tree targets; no mutations or approval")
 	fs.BoolVar(&flagNoWait, "no-wait", false, "return after accepted resumption without confirmation reads")
-	fs.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers (default: min(count, 2*GOMAXPROCS, 32))")
+	fs.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers; omit for an automatic limit")
 	fs.BoolVar(&flagNoWorkerLimit, "no-worker-limit", false, "use all queued jobs as workers when --workers is unset")
 	fs.BoolVar(&flagFailFast, "fail-fast", false, "stop scheduling new instances after the first error")
 	useInvalidInputFlagErrors(resumeProcessInstanceCmd)

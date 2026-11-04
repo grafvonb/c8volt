@@ -14,9 +14,9 @@ var embedCmd = &cobra.Command{
 
 Use ` + "`embed list`" + ` to see bundled files, ` + "`embed deploy`" + ` to deploy fixtures, or
 ` + "`embed export`" + ` to inspect or edit files locally.`,
-	Example: `  ./c8volt embed list
-  ./c8volt embed deploy --all --run
-  ./c8volt embed export --all --out ./fixtures`,
+	Example: `  c8volt embed list
+  c8volt embed deploy --all --run
+  c8volt embed export --all --out ./fixtures`,
 	Aliases: []string{"em", "emb"},
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return cmd.Help()

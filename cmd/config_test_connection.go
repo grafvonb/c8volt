@@ -15,14 +15,12 @@ import (
 var configTestConnectionCmd = &cobra.Command{
 	Use:   "test-connection",
 	Short: "Test configured Camunda connection",
-	Long: `Validate configuration and test Camunda reachability.
+	Long: `Validate configuration and test the connection to Camunda.
 
-Loads the effective configuration, validates it locally, and retrieves cluster topology. Compatibility checks compare the configured and observed major/minor release lines; patch and prerelease differences on the same line are accepted. A version mismatch or unknown gateway version does not fail an otherwise successful connection test. The automatic advisory runs separately before this requested topology read; --no-version-check disables only that advisory. JSON compatibility warnings always describe the requested read.`,
-	Example: `  ./c8volt --config ./config.yaml config test-connection
-  ./c8volt --config ./config.yaml config test-connection --json
-  ./c8volt --profile <profile-name> config test-connection
-  ./c8volt --tenant tenant-a config test-connection
-  ./c8volt --all-tenants config test-connection --json`,
+Report the gateway version and warn if it differs from the configured release
+line. A version warning does not fail an otherwise successful connection test.`,
+	Example: `  c8volt config test-connection
+  c8volt --profile production config test-connection`,
 	Run: func(cmd *cobra.Command, args []string) {
 		log, _ := logging.FromContext(cmd.Context())
 		cfg, err := config.FromContext(cmd.Context())

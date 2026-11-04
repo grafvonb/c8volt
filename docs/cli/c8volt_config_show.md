@@ -10,11 +10,9 @@ Show effective configuration
 
 ### Synopsis
 
-Show effective configuration with sensitive values sanitized.
+Show effective configuration with secrets redacted.
 
-Precedence: flag > env > profile > base config > default. A named tenant limits discovery; an empty tenant leaves discovery unfiltered.
-
---validate and --template are compatibility shortcuts for config validate and config template.
+Settings resolve as: flag > environment > profile > base config > default.
 
 ```
 c8volt config show [flags]
@@ -23,12 +21,8 @@ c8volt config show [flags]
 ### Examples
 
 ```
-  ./c8volt config show
-  ./c8volt --config ./config.yaml --profile <profile-name> config show
-  ./c8volt --tenant tenant-a config show
-  ./c8volt --all-tenants config show
-  ./c8volt --config ./config.yaml config show --validate
-  ./c8volt config show --template
+  c8volt config show
+  c8volt --profile production config show
 ```
 
 ### Options
@@ -42,7 +36,7 @@ c8volt config show [flags]
 ### Options inherited from parent commands
 
 ```
-      --all-tenants          clear configured tenant filtering and search all tenants visible to the authenticated user; mutually exclusive with --tenant
+      --all-tenants          search all accessible tenants; cannot combine with --tenant
   -y, --auto-confirm         auto-confirm prompts for non-interactive use
       --automation           enable non-interactive mode for commands that explicitly support it
       --config string        path to config file
@@ -55,7 +49,7 @@ c8volt config show [flags]
       --profile string       config active profile name to use (e.g. dev, prod)
   -q, --quiet                suppress output except errors
       --request-rate float   maximum shared request starts per second (fractions allowed; 0 disables pacing)
-      --tenant string        tenant ID for discovery/search, selection, create, deploy, and run flows; explicit empty values can clear configured discovery filters, and explicit keys/IDs remain backend-authorized
+      --tenant string        tenant for discovery and creation; explicit keys use backend authorization
       --timeout duration     HTTP request timeout (default 30s)
   -v, --verbose              show additional output
 ```

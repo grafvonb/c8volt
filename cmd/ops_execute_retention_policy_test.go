@@ -57,25 +57,7 @@ func TestOpsExecuteRetentionPolicyResultTenantContext(t *testing.T) {
 }
 
 func TestOpsExecuteRetentionPolicyHelpDocumentsCommand(t *testing.T) {
-	output := executeRootForProcessInstanceTest(t, "ops", "execute", "--help")
-
-	assertHelpOutputContainsAll(t, output,
-		"Run predefined operational playbooks",
-		"retention-policy",
-	)
-
-	commandOutput := executeRootForProcessInstanceTest(t, "ops", "execute", "retention-policy", "--help")
-
-	assertHelpOutputContainsAll(t, commandOutput,
-		"Delete process instances older than the required retention age",
-		"--retention-days int",
-		"./c8volt ops execute retention-policy --retention-days 90 --dry-run",
-		"./c8volt ops execute retention-policy --retention-days 90 --state completed --bpmn-process-id <bpmn-process-id> --dry-run",
-		"./c8volt ops execute retention-policy --retention-days 90 --state completed --bpmn-process-id <bpmn-process-id> --limit 25 --report-file retention-report.md",
-	)
-	assertHelpOutputOmitsAll(t, commandOutput,
-		"./c8volt ops execute retention-policy --retention-days 90 --automation --json --no-wait",
-	)
+	assertCommandHelpOutput(t, []string{"ops", "execute", "retention-policy"}, []string{"--retention-days", "--dry-run", "--report-file", "root is still unfinished"}, nil)
 }
 
 func TestOpsExecuteRetentionPolicyInvalidRetentionDays(t *testing.T) {

@@ -6,45 +6,22 @@ nav_order: 4
 has_toc: true
 ---
 
-# c8volt ops repair incident
+# Repair incident
 
-## Purpose
+Repair selected incidents in one plan: apply requested variables, restore related job retries, resolve incidents, and wait for clearance.
 
-Incident repair is rarely one API call. `c8volt ops repair incident` freezes incident targets, optionally updates variables or related jobs, resolves incidents, confirms the result where possible, and records every step.
-
-## Use When
-
-- incident keys or incident filters define the repair target
-- variable repair, job retry/timeout repair, and incident resolution should stay in one plan
-- the run needs dry-run preview and audit output
-
-## Basic Usage
+## Examples
 
 ```bash
 c8volt ops repair incident --key <incident-key> --dry-run
+c8volt ops repair incident --key <incident-key> --set-retries 3 --set-vars-file vars.json --report-file repair.md
+c8volt ops repair incident --state active --error-type io_mapping_error --limit 10 --dry-run
 ```
 
-Generated reference: [ops repair incident](/cli/c8volt_ops_repair_incident).
+## Execution
 
-## Best Variants
+Use keys or search filters, not both. Variables are applied once per process-instance scope. `--set-retries 0` skips retry restoration; `--set-job-timeout` optionally changes related job timeouts. Incidents without a related job still proceed to resolution.
 
-```bash
-c8volt ops repair incident --state active --error-type io_mapping_error --limit 5 --dry-run
-c8volt ops repair incident --key <incident-key> --set-vars '{"hasIncident":false}' --report-file repair-incident.md
-```
+See the [shared ops controls](/ops/#shared-controls) for discovery, confirmation, tenant scope, and reports.
 
-## Built From Lower-Level Commands
-
-```bash
-c8volt get incident --key <incident-key>
-c8volt update process-instance --key <process-instance-key> --set-vars '{"hasIncident":false}'
-c8volt resolve incident --key <incident-key>
-```
-
-Generated references: [get incident](/cli/c8volt_get_incident), [update process-instance](/cli/c8volt_update_process-instance), [update job](/cli/c8volt_update_job), [resolve incident](/cli/c8volt_resolve_incident).
-
-## Safety
-
-`--dry-run` shows selected incidents and planned variable, job, and resolution steps without mutation. Real execution submits only the requested repair actions and reports planned, skipped, submitted, confirmed, and failed work. Keyed mode and search mode are mutually exclusive.
-
-A named tenant limits discovery. An empty tenant or `--all-tenants` searches across tenants visible to the authenticated identity. `--all-tenants` conflicts with an explicit `--tenant` value. Explicit keys use backend authorization without tenant filtering.
+[Command reference](/cli/c8volt_ops_repair_incident) · [get incident](/cli/c8volt_get_incident) · [update process-instance](/cli/c8volt_update_process-instance) · [update job](/cli/c8volt_update_job) · [resolve incident](/cli/c8volt_resolve_incident)

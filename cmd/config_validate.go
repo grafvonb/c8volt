@@ -15,13 +15,9 @@ import (
 var configValidateCmd = &cobra.Command{
 	Use:   "validate",
 	Short: "Validate effective configuration",
-	Long: `Validate effective configuration.
-
-Loads the effective configuration using the normal precedence rules and applies the same validation as config show --validate.`,
-	Example: `  ./c8volt --config ./config.yaml config validate
-  ./c8volt --profile <profile-name> config validate
-  ./c8volt --tenant tenant-a config validate
-  ./c8volt --all-tenants config validate`,
+	Long:  `Validate effective configuration without contacting Camunda.`,
+	Example: `  c8volt config validate
+  c8volt --profile production config validate`,
 	Run: func(cmd *cobra.Command, args []string) {
 		log, _ := logging.FromContext(cmd.Context())
 		cfg, err := config.FromContext(cmd.Context())

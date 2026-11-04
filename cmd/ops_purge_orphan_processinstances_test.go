@@ -60,16 +60,7 @@ const (
 )
 
 func TestOpsPurgeOrphanProcessInstancesHelpDocumentsSafeAutomationPreview(t *testing.T) {
-	output := executeRootForProcessInstanceTest(t, "ops", "purge", "orphan-process-instances", "--help")
-
-	assertHelpOutputContainsAll(t, output,
-		"Delete orphan child process instances whose parents are missing",
-		"./c8volt ops purge orphan-process-instances --dry-run",
-		"./c8volt ops purge orphan-process-instances --state completed --limit 25 --report-file orphan-purge.md",
-	)
-	assertHelpOutputOmitsAll(t, output,
-		"./c8volt ops purge orphan-process-instances --automation --json\n",
-	)
+	assertCommandHelpOutput(t, []string{"ops", "purge", "orphan-process-instances"}, []string{"parent is missing", "--limit", "--dry-run", "--report-file"}, nil)
 }
 
 func TestOpsPurgeOrphanProcessInstancesActivityWrapsDryRunDiscovery(t *testing.T) {

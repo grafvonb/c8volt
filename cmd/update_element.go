@@ -23,19 +23,14 @@ var updateElementCmd = &cobra.Command{
 	Use:     "element",
 	Aliases: []string{"ei"},
 	Short:   "Update variables at explicit element scopes",
-	Long: `Update local variables on selected runtime element instances on Camunda 8.8 or newer.
+	Long: `Update variables owned directly by selected runtime elements.
 
-Provide repeated or comma-separated --key values, or newline-separated keys from stdin with '-'. Supply exactly one non-null JSON object through --set-vars or --set-vars-file. Keys are deduplicated in first-input order. Explicit keys bypass the discovery tenant filter while retaining backend authorization.
-
-The command reads every selected element and its complete local variables before approval. It freezes additions and changes at element:<key>, then writes only those values with local scope. Parent, sibling, descendant and called-process variables are not changed. An inherited same-name value does not prevent a local addition. Truncated values cannot prove equality. A null property assigns null; it does not delete a variable.
-
-Use --dry-run to preview without prompts or writes. An empty object or an all-unchanged plan completes without confirmation, mutation or read-back. Normal execution confirms all requested values locally. --no-wait skips only read-back and reports accepted submissions, not confirmed values. Partial failures preserve acceptance and uncertainty with a nonzero exit; there is no rollback or resubmission after confirmation failure.
-
-JSON requires --dry-run, --auto-confirm or --automation and cannot be combined with --verbose. Keys-only previews list changed destinations; executed results list accepted destinations even if confirmation failed. Quiet preserves explicit machine results and required errors.`,
-	Example: `  ./c8volt update element --key <element-key> --set-vars '{"approved":true}' --dry-run
-  ./c8volt update ei --key <key-a>,<key-b> --key <key-a> --set-vars-file ./vars.json --auto-confirm
-  printf '%s\n' "$ELEMENT_KEY_A" "$ELEMENT_KEY_B" | ./c8volt update element - --set-vars '{"status":null}' --auto-confirm
-  ./c8volt --json update element --key <element-key> --set-vars '{"approved":true}' --auto-confirm --no-wait`,
+Provide keys and one JSON object through --set-vars or --set-vars-file.
+The plan changes only element-local values; parent and sibling scopes are excluded.
+Use --dry-run to review additions and changes. Unchanged plans need no writes.
+By default, wait until requested values are visible.`,
+	Example: `  c8volt update element --key <element-instance-key> --set-vars '{"approved":true}' --dry-run
+  c8volt update element --key <element-instance-key> --set-vars-file vars.json`,
 	Args: func(cmd *cobra.Command, args []string) error { return validateOptionalDashArg(args) },
 	Run: func(cmd *cobra.Command, args []string) {
 		cli, log, cfg, err := NewCli(cmd)
@@ -102,7 +97,7 @@ func init() {
 	fs.StringVar(&flagUpdateElementVarsFile, "set-vars-file", "", "path to JSON object file with variables to set locally")
 	fs.BoolVar(&flagDryRun, "dry-run", false, "preview exact local changes without mutation")
 	fs.BoolVar(&flagNoWait, "no-wait", false, "return after accepted writes without local variable confirmation")
-	fs.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers (default: min(count, 2*GOMAXPROCS, 32))")
+	fs.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers; omit for an automatic limit")
 	fs.BoolVar(&flagNoWorkerLimit, "no-worker-limit", false, "use all queued jobs as workers when --workers is unset")
 	fs.BoolVar(&flagFailFast, "fail-fast", false, "stop scheduling new updates after the first error")
 	useInvalidInputFlagErrors(updateElementCmd)

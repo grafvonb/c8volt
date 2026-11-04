@@ -6,48 +6,21 @@ nav_order: 3
 has_toc: true
 ---
 
-# c8volt ops purge process-instances-with-incidents
+# Purge process instances with incidents
 
-## Purpose
+Use incident keys or filters to select process-instance families for deletion.
 
-Incident cleanup often begins with incident filters, not process-instance keys. `c8volt ops purge process-instances-with-incidents` discovers matching incidents, freezes the affected process-instance keys, then runs deterministic family-scope delete planning.
-
-## In Action
-
-<img src="../../assets/screencasts/ops-purge-process-instances-with-incidents.gif" alt="c8volt ops purge process-instances-with-incidents demo" />
-
-## Use When
-
-- incident filters should define the purge candidate set
-- deletion must still use normal process-instance family safety
-- an operator or agent needs a stable report of selected incidents and deleted instances
-
-## Basic Usage
+## Examples
 
 ```bash
-c8volt ops purge process-instances-with-incidents --state active --error-type io_mapping_error --dry-run
+c8volt ops purge process-instances-with-incidents --error-type io_mapping_error --dry-run
+c8volt ops purge process-instances-with-incidents --inc-key <incident-key> --force --report-file purge.md
 ```
 
-Generated reference: [ops purge process-instances-with-incidents](/cli/c8volt_ops_purge_process-instances-with-incidents).
+## Execution
 
-## Best Variants
+Incident matching selects candidates; deletion still follows process-instance family rules. Unfinished instances require `--force`. The preview includes relatives affected by cancellation and deletion.
 
-```bash
-c8volt ops purge process-instances-with-incidents --inc-key <incident-key> --dry-run
-c8volt ops purge process-instances-with-incidents --state active --error-type io_mapping_error --limit 5 --force --report-file incident-purge.md
-```
+See the [shared ops controls](/ops/#shared-controls) for discovery, confirmation, tenant scope, and reports.
 
-## Built From Lower-Level Commands
-
-```bash
-c8volt get incident --state active --error-type io_mapping_error --pi-keys-only
-c8volt delete process-instance -
-```
-
-Generated references: [get incident](/cli/c8volt_get_incident), [delete process-instance](/cli/c8volt_delete_process-instance).
-
-## Safety
-
-`--dry-run` reports the discovered incidents, frozen process-instance keys, and delete plan without mutation. Real execution requires confirmation unless automation controls are used. Incident matching is discovery only; deletion still follows the same process-instance family rules as `delete process-instance`.
-
-A named tenant limits discovery. An empty tenant or `--all-tenants` searches across tenants visible to the authenticated identity. `--all-tenants` conflicts with an explicit `--tenant` value. Explicit keys use backend authorization without tenant filtering.
+[Command reference](/cli/c8volt_ops_purge_process-instances-with-incidents) · [get incident](/cli/c8volt_get_incident) · [delete process-instance](/cli/c8volt_delete_process-instance)

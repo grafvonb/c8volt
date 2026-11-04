@@ -20,45 +20,18 @@ var (
 var cancelProcessInstanceCmd = &cobra.Command{
 	Use:   "process-instance",
 	Short: "Cancel process instances by key or filters",
-	Long: `Cancel process instances by key or search filters.
+	Long: `Cancel process instances selected by key or search filters.
 
-Observed final-state preview entries retain their own business IDs when available. Use --verbose to inspect them; JSON preserves them exactly. Empty selections report found: 0 through the configured INFO logger.
+The plan includes affected instance families. Selecting a child requires --force
+to cancel its root. By default, wait until every affected instance is terminal
+or absent. Use --dry-run to review the family before cancellation.
 
-By default c8volt validates the affected root and descendant instances, asks for confirmation, and waits until cancellation is observed. Use --force when a selected child must be escalated to its root instance.
-
-Cancellation succeeds when every affected family member is completed, canceled, terminated, or absent. The explicit expect process-instance --state canceled check still requires canceled or terminated instances.
-
---tenant limits search-derived selection. An empty tenant or --all-tenants leaves discovery unfiltered across accessible tenants. Explicit --key and stdin keys use backend authorization without tenant filtering.
-
-A --bpmn-process-id selector must match a visible process definition before instance discovery. An empty selection completes without confirmation or cancellation.
-
---batch-size controls each discovery request; --limit caps distinct selected instances across all pages. --workers, --fail-fast, and --no-worker-limit control planning and cancellation work.
-
-Use --verbose to explain root escalation, accepted cancellation, and confirmation waits. Use --debug for per-check state observations and HTTP diagnostics; it remains independent of --verbose. A confirmation timeout reports accepted cancellation as submitted but unconfirmed.
-
-On Camunda 8.10, --bid is one exact opaque business ID, combined with other filters. It is exclusive with --key and stdin. BID discovery freezes all distinct matching seeds and their complete families before one confirmation; --limit bounds seeds, never relatives. Different or absent business IDs on relatives do not exclude them. JSON and --verbose expose the full scope; dry-run --keys-only lists every affected key once. Unsupported versions reject BID before discovery.
-
-A BID run submits only its frozen roots, without searching again after approval. Native cancellation may also affect descendants created concurrently below those roots; a later dry-run or execution is a separate discovery.
-
-Use --dry-run to preview the affected family without cancelling. Use --auto-confirm for unattended cancellation.`,
-	Example: `  ./c8volt --tenant tenant-a cancel pi --bid ORDER-123 --dry-run --json
-  ./c8volt cancel pi --bid ORDER-123 --limit 2 --auto-confirm
-  ./c8volt cancel process-instance --key <process-instance-key>
-  ./c8volt cancel process-instance --key <process-instance-key> --dry-run
-  ./c8volt cancel process-instance --key <process-instance-key> --force
-  ./c8volt --tenant tenant-a cancel process-instance --key <process-instance-key> --dry-run
-  ./c8volt --tenant tenant-a cancel process-instance --state active --limit 5 --dry-run
-  ./c8volt --all-tenants cancel process-instance --state active --limit 5 --dry-run
-  ./c8volt cancel process-instance --state active --batch-size 250 --limit 5 --dry-run
-  ./c8volt cancel process-instance --state active --json --dry-run
-  ./c8volt cancel process-instance --state active --keys-only
-  ./c8volt cancel process-instance --state active --start-date-before 2026-05-31 --limit 5 --dry-run
-  ./c8volt cancel process-instance --state active --start-date-newer-days 30 --limit 5 --dry-run
-  ./c8volt cancel process-instance --bpmn-process-id <bpmn-process-id> --state active --limit 5 --auto-confirm
-  ./c8volt --verbose cancel process-instance --state active --limit 25 --auto-confirm
-  ./c8volt --verbose --debug cancel process-instance --key <process-instance-key> --force
-  ./c8volt expect process-instance --key <process-instance-key> --state canceled
-  ./c8volt get process-instance --key <process-instance-key> --keys-only | ./c8volt cancel process-instance --auto-confirm -`,
+Use --limit to bound matching seeds; family members are included in full.
+Business-ID selection with --bid is available only c8.10+.
+Empty searches finish without confirmation or mutation.`,
+	Example: `  c8volt cancel process-instance --key <process-instance-key> --dry-run
+  c8volt cancel process-instance --bpmn-process-id order --state active --dry-run
+  c8volt cancel process-instance --key <child-instance-key> --force`,
 	Aliases: []string{"pi"},
 	Args: func(cmd *cobra.Command, args []string) error {
 		return validateOptionalDashArg(args)
@@ -201,7 +174,7 @@ func init() {
 	useInvalidInputFlagErrors(cancelProcessInstanceCmd)
 
 	fs := cancelProcessInstanceCmd.Flags()
-	fs.String("bid", "", "exact business ID to select (Camunda 8.10); freezes all selected families before cancellation")
+	fs.String("bid", "", "exact business ID to select (only c8.10+)")
 	fs.BoolVar(&flagNoWait, "no-wait", false, "return after cancellation is accepted")
 	fs.BoolVar(&flagNoStateCheck, "no-state-check", false, "skip checking the current state of the process instance before cancelling it")
 	fs.BoolVar(&flagDryRun, "dry-run", false, "preview cancel scope without submitting cancellation")
@@ -209,16 +182,16 @@ func init() {
 	fs.StringSliceVarP(&flagCancelPIKeys, "key", "k", nil, "process instance key(s) to cancel")
 	fs.BoolVar(&flagForce, "force", false, "cancel the root instance when a selected instance is a child")
 
-	fs.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers for queued work; mutation work uses root trees (default: min(queued work, 2*GOMAXPROCS, 32)); independent of discovery page size")
+	fs.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers; omit for an automatic limit")
 	fs.BoolVar(&flagNoWorkerLimit, "no-worker-limit", false, "use all queued jobs as workers when --workers is unset")
 	fs.BoolVar(&flagFailFast, "fail-fast", false, "stop scheduling new instances after the first error")
 
 	// flags from get process instance for filtering
 	registerPISharedProcessDefinitionFilterFlags(fs)
 	registerPISharedDateRangeFlags(fs)
-	fs.Int32VarP(&flagGetPISize, "batch-size", "n", consts.MaxPISearchSize, fmt.Sprintf("number of process instances to inspect per discovery page; does not cap total selected scope (max limit %d enforced by server)", consts.MaxPISearchSize))
-	fs.Int32VarP(&flagGetPILimit, "limit", "l", 0, "maximum number of matching process instances to select for cancellation across all pages; omit to continue through all matches")
-	fs.StringVarP(&flagGetPIState, "state", "s", "all", "state to filter process instances: all, active, suspended (Camunda 8.10), completed, canceled, terminated")
+	fs.Int32VarP(&flagGetPISize, "batch-size", "n", consts.MaxPISearchSize, fmt.Sprintf("process instances per discovery page (server maximum %d)", consts.MaxPISearchSize))
+	fs.Int32VarP(&flagGetPILimit, "limit", "l", 0, "maximum matching instances to select; omit for all matches")
+	fs.StringVarP(&flagGetPIState, "state", "s", "all", "state to filter process instances: all, active, suspended (only c8.10+), completed, canceled, terminated")
 
 	setCommandMutation(cancelProcessInstanceCmd, CommandMutationStateChanging)
 	setContractSupport(cancelProcessInstanceCmd, ContractSupportFull)

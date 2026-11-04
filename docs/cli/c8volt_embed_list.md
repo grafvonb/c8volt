@@ -21,9 +21,9 @@ c8volt embed list [flags]
 ### Examples
 
 ```
-  ./c8volt embed list
-  ./c8volt embed list --with-paths
-  ./c8volt --json embed list
+  c8volt embed list
+  c8volt embed list --with-paths
+  c8volt --json embed list
 ```
 
 ### Options
@@ -36,7 +36,7 @@ c8volt embed list [flags]
 ### Options inherited from parent commands
 
 ```
-      --all-tenants          clear configured tenant filtering and search all tenants visible to the authenticated user; mutually exclusive with --tenant
+      --all-tenants          search all accessible tenants; cannot combine with --tenant
   -y, --auto-confirm         auto-confirm prompts for non-interactive use
       --automation           enable non-interactive mode for commands that explicitly support it
       --config string        path to config file
@@ -49,7 +49,7 @@ c8volt embed list [flags]
       --profile string       config active profile name to use (e.g. dev, prod)
   -q, --quiet                suppress output except errors
       --request-rate float   maximum shared request starts per second (fractions allowed; 0 disables pacing)
-      --tenant string        tenant ID for discovery/search, selection, create, deploy, and run flows; explicit empty values can clear configured discovery filters, and explicit keys/IDs remain backend-authorized
+      --tenant string        tenant for discovery and creation; explicit keys use backend authorization
       --timeout duration     HTTP request timeout (default 30s)
   -v, --verbose              show additional output
 ```

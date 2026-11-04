@@ -34,11 +34,12 @@ func TestGetElementCommand_ValidateDirectLookupKey(t *testing.T) {
 
 // TestGetElementCommand_ListenerTimestampHelp documents lifecycle meanings and missing-value behavior at the command source.
 func TestGetElementCommand_ListenerTimestampHelp(t *testing.T) {
-	require.Contains(t, getElementCmd.Long, "job creation time as s: (not worker execution start)")
-	require.Contains(t, getElementCmd.Long, "job end time as e:")
-	require.Contains(t, getElementCmd.Long, "d: only for an ACTIVATED job with a deadline")
-	require.Contains(t, getElementCmd.Long, "omit unavailable timestamps")
-	require.Contains(t, getElementCmd.Long, "s:2026-09-16T13:07:16.359 e:2026-09-16T13:07:16.842")
+	require.Contains(t, getElementCmd.Long, "Listener duration includes worker waiting time")
+	data, err := os.ReadFile("../docs/cli/runtime-elements.md")
+	require.NoError(t, err)
+	for _, term := range []string{"Job creation time", "Recorded job end time", "activated job", "Unavailable timestamps are omitted"} {
+		require.Contains(t, string(data), term)
+	}
 }
 
 // TestGetElementCommand_HTTPFallbackActivityUsesCommandContext verifies element search preserves fallback activity.

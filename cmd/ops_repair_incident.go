@@ -48,20 +48,14 @@ var opsRepairIncidentCmd = &cobra.Command{
 	Short: "Repair incidents by key or filter",
 	Long: `Repair incidents by key or search filters.
 
-Provide repeated --key values, newline-separated keys from stdin with '-', or search filters. Keyed mode and search mode are mutually exclusive.
+The workflow fixes the target set, applies requested variables, restores related
+job retries, resolves incidents, and waits for clearance. Related-job timeout
+updates are optional. --set-retries 0 skips retry restoration.
 
-The workflow fixes the incident target set, applies requested variables once per process-instance scope, updates retries and timeouts for related jobs, and resolves incidents. Incidents without related jobs still proceed to resolution. Unless --no-wait is set, it confirms that incidents are cleared.
-
---tenant limits search; an empty tenant or --all-tenants searches across accessible tenants. Explicit keys use backend authorization without tenant filtering. --batch-size controls each discovery request; --limit caps the selected scope.
-
-Use --dry-run to inspect planned repairs without mutation, --auto-confirm or --automation for unattended repair, and --report-file to save an audit report.`,
-	Example: `  ./c8volt ops repair incident --key <incident-key> --dry-run
-  ./c8volt --tenant tenant-a ops repair incident --key <incident-key> --dry-run
-  ./c8volt --all-tenants ops repair incident --state active --limit 5 --dry-run
-  ./c8volt ops repair incident --state active --error-type io_mapping_error --limit 5 --dry-run
-  ./c8volt ops repair incident --key <incident-key> --set-vars '{"hasIncident":false}' --dry-run
-  ./c8volt --verbose ops repair incident --state active --error-type io_mapping_error --limit 5 --auto-confirm
-  ./c8volt ops repair incident --key <incident-key> --set-vars '{"hasIncident":false}' --report-file repair-incident.md`,
+Use --dry-run to review the repair plan and --report-file to save an audit report.
+Use --auto-confirm for unattended execution.`,
+	Example: `  c8volt ops repair incident --key <incident-key> --dry-run
+  c8volt ops repair incident --key <incident-key> --set-retries 3 --set-vars-file vars.json --report-file repair.md`,
 	Aliases: []string{"inc"},
 	Args: func(cmd *cobra.Command, args []string) error {
 		if err := validateOptionalDashArg(args); err != nil {
@@ -209,7 +203,7 @@ func init() {
 	fs.StringVar(&flagOpsRepairIncidentCreationTimeBefore, "creation-time-before", "", "only include incidents with creation time <= RFC3339 timestamp, c8volt timestamp, or YYYY-MM-DD")
 	fs.IntVar(&flagOpsRepairIncidentCreationTimeNewer, "creation-time-newer-days", -1, "only include incidents with creation time N days old or newer (0 means today)")
 	fs.IntVar(&flagOpsRepairIncidentCreationTimeOlder, "creation-time-older-days", -1, "only include incidents with creation time N days old or older")
-	fs.Int32VarP(&flagOpsRepairIncidentBatchSize, "batch-size", "n", consts.MaxPISearchSize, fmt.Sprintf("number of incidents to inspect per discovery page; does not cap total frozen scope (max limit %d enforced by server)", consts.MaxPISearchSize))
+	fs.Int32VarP(&flagOpsRepairIncidentBatchSize, "batch-size", "n", consts.MaxPISearchSize, fmt.Sprintf("incidents per discovery page (server maximum %d)", consts.MaxPISearchSize))
 	fs.Int32VarP(&flagOpsRepairIncidentLimit, "limit", "l", 0, "maximum number of matching incidents to freeze for repair; omit to discover all matches")
 	fs.Int32Var(&flagOpsRepairIncidentRetries, "set-retries", 1, "retry count to set on related jobs; 0 skips retry restoration")
 	fs.StringVar(&flagOpsRepairIncidentJobTimeoutRaw, "set-job-timeout", "", "timeout duration to submit for related jobs, for example 60s, 5m, or 1h")
@@ -219,7 +213,7 @@ func init() {
 	fs.StringVar(&flagOpsRepairIncidentReportFormat, "report-format", "", "audit report format: markdown, json (default inferred from report-file extension)")
 	fs.BoolVar(&flagDryRun, "dry-run", false, "freeze repair targets and preview repair steps without submitting mutations")
 	fs.BoolVar(&flagNoWait, "no-wait", false, "return after repair mutations are accepted without incident or retry confirmation")
-	fs.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers when repairing multiple incidents (default: min(count, 2*GOMAXPROCS, 32))")
+	fs.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers; omit for an automatic limit")
 	fs.BoolVar(&flagNoWorkerLimit, "no-worker-limit", false, "use all queued jobs as workers when --workers is unset")
 	fs.BoolVar(&flagFailFast, "fail-fast", false, "stop scheduling incident repairs after the first error")
 

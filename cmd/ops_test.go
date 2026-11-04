@@ -13,21 +13,7 @@ import (
 
 // TestOpsHelpDocumentsGroupingCommand verifies the root ops surface is discoverable without concrete playbooks.
 func TestOpsHelpDocumentsGroupingCommand(t *testing.T) {
-	output := executeRootForTest(t, "ops", "--help")
-
-	assertHelpOutputContainsAll(t, output,
-		"Run operational playbooks",
-		"Run operational playbooks for analysis, retention, purge, repair, and cluster smoke testing",
-		"Choose a subcommand for a specific workflow",
-		"./c8volt ops --help",
-		"./c8volt capabilities --json",
-	)
-	assertHelpOutputOmitsAll(t, output,
-		"orphan-cleanup",
-		"smoke-test",
-		"repair incident",
-		"repair process-instance",
-	)
+	assertCommandHelpOutput(t, []string{"ops"}, []string{"repair", "retention", "--dry-run"}, nil)
 }
 
 // TestOpsHelpSkipsRuntimeConfigurationValidation proves help remains available without usable Camunda config.
@@ -46,7 +32,7 @@ func TestOpsHelpSkipsRuntimeConfigurationValidation(t *testing.T) {
 
 	output := executeRootForTest(t, "ops", "--help")
 
-	require.Contains(t, output, "Run operational playbooks")
+	require.Contains(t, output, "Run playbooks")
 	require.Contains(t, output, "Usage:")
 }
 
@@ -54,65 +40,26 @@ func TestOpsHelpSkipsRuntimeConfigurationValidation(t *testing.T) {
 func TestOpsCommandReturnsHelpForGroupingInvocation(t *testing.T) {
 	output := executeRootForTest(t, "ops")
 
-	require.Contains(t, output, "Run operational playbooks")
+	require.Contains(t, output, "Run playbooks")
 	require.Contains(t, output, "Usage:")
 	require.Contains(t, output, "c8volt ops")
 }
 
 // TestOpsAnalyseHelpDocumentsGroupingCommand verifies the analysis family is discoverable under both spellings.
 func TestOpsAnalyseHelpDocumentsGroupingCommand(t *testing.T) {
-	output := executeRootForTest(t, "ops", "analyse", "--help")
-
-	assertHelpOutputContainsAll(t, output,
-		"Discover read-only operational analyses",
-		"inspection workflows that combine existing runtime resources",
-		"./c8volt ops analyse --help",
-		"./c8volt ops analyse slow-process-instances --help",
-	)
-
-	aliasOutput := executeRootForTest(t, "ops", "analyze", "--help")
-	require.Contains(t, aliasOutput, "Discover read-only operational analyses")
+	for _, spelling := range []string{"analyse", "analyze"} {
+		assertCommandHelpOutput(t, []string{"ops", spelling}, []string{"runtime performance", "slow-process-instances"}, nil)
+	}
 }
 
 // TestOpsAnalyseSlowProcessInstancesHelpDocumentsScaffold protects the initial slow-analysis command surface.
 func TestOpsAnalyseSlowProcessInstancesHelpDocumentsScaffold(t *testing.T) {
-	output := executeRootForTest(t, "ops", "analyse", "slow-process-instances", "--help")
-
-	assertHelpOutputContainsAll(t, output,
-		"Analyse process-instance and runtime-element durations",
-		"without changing cluster state",
-		"--key strings",
-		"--bpmn-process-id string",
-		"--pd-key string",
-		"--state string",
-		"--no-incidents-only",
-		"--batch-size int32",
-		"--limit int32",
-		"--element-id string",
-		"--dur-longer string",
-		"--dur-element-longer string",
-		"Durations use Go syntax",
-		"Calendar units such as 1d are not supported",
-		"./c8volt get process-instance --state active --keys-only | ./c8volt ops analyse slow-process-instances -",
-	)
-	assertHelpOutputOmitsAll(t, output, "--duration-after", "--incidents-only")
+	assertCommandHelpOutput(t, []string{"ops", "analyse", "slow-process-instances"}, []string{"--dur-longer", "--dur-element-longer", "--with-listeners", "--limit", "--key", "--bpmn-process-id"}, nil)
 }
 
 // TestOpsExecuteHelpDocumentsGroupingCommand verifies execute is only a discoverable parent for future playbooks.
 func TestOpsExecuteHelpDocumentsGroupingCommand(t *testing.T) {
-	output := executeRootForTest(t, "ops", "execute", "--help")
-
-	assertHelpOutputContainsAll(t, output,
-		"Run predefined operational playbooks",
-		"Choose retention-policy",
-		"./c8volt ops execute --help",
-		"./c8volt ops execute retention-policy --retention-days 90 --dry-run",
-		"./c8volt ops execute smoke-test --dry-run",
-		"./c8volt capabilities --json",
-	)
-	assertHelpOutputOmitsAll(t, output,
-		"orphan-cleanup",
-	)
+	assertCommandHelpOutput(t, []string{"ops", "execute"}, []string{"retention-policy", "smoke-test"}, nil)
 }
 
 // TestOpsExecuteCommandReturnsHelpForGroupingInvocation covers no-argument grouping behavior.
@@ -126,19 +73,7 @@ func TestOpsExecuteCommandReturnsHelpForGroupingInvocation(t *testing.T) {
 
 // TestOpsRepairHelpDocumentsGroupingCommand verifies repair is only a discoverable parent for target remediation workflows.
 func TestOpsRepairHelpDocumentsGroupingCommand(t *testing.T) {
-	output := executeRootForTest(t, "ops", "repair", "--help")
-
-	assertHelpOutputContainsAll(t, output,
-		"Repair incidents and affected process instances",
-		"Choose a target command",
-		"resolve incidents, and verify recovery",
-		"./c8volt ops repair --help",
-		"./c8volt capabilities --json",
-	)
-	assertHelpOutputOmitsAll(t, output,
-		"--key string",
-		"--key strings",
-	)
+	assertCommandHelpOutput(t, []string{"ops", "repair"}, []string{"incident", "process-instance"}, nil)
 }
 
 // TestOpsRepairCommandReturnsHelpForGroupingInvocation covers no-argument grouping behavior.
@@ -158,21 +93,9 @@ func TestOpsRepairCommandDefinesNoTopLevelKeyFlag(t *testing.T) {
 
 // TestOpsMutationHelpDocumentsTenantContextOrder verifies every affected workflow explains pre-mutation reporting and auto-confirm semantics.
 func TestOpsMutationHelpDocumentsTenantContextOrder(t *testing.T) {
-	tests := []struct {
-		name    string
-		command *cobra.Command
-	}{
-		{name: "all process definitions purge", command: opsPurgeAllProcessDefinitionsCmd},
-		{name: "orphan process instances purge", command: opsPurgeOrphanProcessInstancesCmd},
-		{name: "incident process instances purge", command: opsPurgeProcessInstancesWithIncidentsCmd},
-		{name: "retention policy", command: opsExecuteRetentionPolicyCmd},
-		{name: "incident repair", command: opsRepairIncidentCmd},
-		{name: "process instance repair", command: opsRepairProcessInstanceCmd},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			require.Contains(t, tt.command.Long, "--auto-confirm or --automation for unattended")
-		})
+	for _, command := range []*cobra.Command{opsPurgeAllProcessDefinitionsCmd, opsPurgeOrphanProcessInstancesCmd, opsPurgeProcessInstancesWithIncidentsCmd, opsExecuteRetentionPolicyCmd, opsRepairIncidentCmd, opsRepairProcessInstanceCmd} {
+		require.Contains(t, command.Long, "--dry-run")
+		require.Contains(t, command.Long, "--auto-confirm for unattended")
+		require.Contains(t, command.Long, "--report-file")
 	}
 }

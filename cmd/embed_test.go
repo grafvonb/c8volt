@@ -24,8 +24,8 @@ func TestEmbedListHelp_DocumentsReadOnlyDiscoveryExamples(t *testing.T) {
 
 	require.Contains(t, output, "List bundled BPMN fixture files")
 	require.Contains(t, output, "List bundled BPMN fixture files for the configured Camunda version")
-	require.Contains(t, output, "./c8volt embed list --with-paths")
-	require.Contains(t, output, "./c8volt --json embed list")
+	require.Contains(t, output, "c8volt embed list --with-paths")
+	require.Contains(t, output, "c8volt --json embed list")
 }
 
 func TestEmbedListCommand_FiltersFilesForConfiguredCamundaVersion(t *testing.T) {
@@ -78,7 +78,7 @@ func TestEmbedExportHelp_DocumentsSelectionWorkflow(t *testing.T) {
 
 	require.Contains(t, output, "Export bundled BPMN fixtures to local files")
 	require.Contains(t, output, "Use --all for the configured Camunda version")
-	require.Contains(t, output, "./c8volt embed export --all --out ./fixtures")
+	require.Contains(t, output, "c8volt embed export --all --out ./fixtures")
 	require.Contains(t, output, "quote patterns in the shell like zsh")
 }
 

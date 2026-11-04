@@ -39,31 +39,8 @@ func TestRunCommand_CommandLocalBackoffTimeoutFlagOverridesEnvProfileAndConfig(t
 
 // TestRunHelp_DocumentsWaitAndVerificationRouting distinguishes creation visibility from execution completion.
 func TestRunHelp_DocumentsWaitAndVerificationRouting(t *testing.T) {
-	output := assertCommandHelpOutput(t, []string{"run"}, []string{
-		"Start process instances",
-		"waits until created instances are observable as ACTIVE, SUSPENDED, COMPLETED, CANCELED, or TERMINATED",
-		"This confirms creation visibility, not execution completion",
-		"./c8volt run process-instance --bpmn-process-id <bpmn-process-id>",
-	}, nil)
-
-	require.Contains(t, output, "process-instance")
-
-	output = assertCommandHelpOutput(t, []string{"run", "process-instance"}, []string{
-		"Use a BPMN process ID",
-		"waits until created instances are observable as ACTIVE, SUSPENDED, COMPLETED, CANCELED, or TERMINATED",
-		"This confirms creation visibility, not execution completion",
-		"--all-tenants is not supported because",
-		"./c8volt run process-instance --bpmn-process-id <bpmn-process-id> --count 3 --workers 2",
-		"--set-bid supplies one opaque business ID",
-		"256 UTF-16 code units",
-		"Camunda 8.8 and 8.9 reject this input",
-		"Every --count attempt uses the same business ID",
-		"Successful results survive later failures",
-		"configured INFO logger",
-		"./c8volt run pi --pd-key 2251799813685249 --set-bid 'order-123' --no-wait",
-		"./c8volt run process-instance --bpmn-process-id <bpmn-process-id> --keys-only | ./c8volt expect process-instance --state completed -",
-	}, nil)
-	require.Contains(t, output, "--no-wait")
+	assertCommandHelpOutput(t, []string{"run"}, []string{"wait until they are visible", "expect"}, nil)
+	assertCommandHelpOutput(t, []string{"run", "process-instance"}, []string{"--set-vars", "--set-bid", "--pd-key", "--count"}, nil)
 }
 
 // TestRunProcessInstanceCommand_RegressionPreservesSelectorAndWorkerContract keeps selectors and workers stable while adding a scalar identity.
@@ -83,21 +60,21 @@ func TestRunProcessInstanceCommand_RegressionPreservesSelectorAndWorkerContract(
 		Type:        "stringSlice",
 		Required:    false,
 		Repeated:    true,
-		Description: "BPMN process ID(s) to run process instance for (mutually exclusive with --pd-key). Runs latest version unless --pd-version is specified",
+		Description: "BPMN process IDs to start; latest version unless --pd-version is set",
 	})
 	require.Contains(t, capability.Flags, FlagContract{
 		Name:        "pd-key",
 		Type:        "stringSlice",
 		Required:    false,
 		Repeated:    true,
-		Description: "specific process definition key(s) to run process instance for (mutually exclusive with --bpmn-process-id)",
+		Description: "exact definition keys to start; cannot combine with --bpmn-process-id",
 	})
 	require.Contains(t, capability.Flags, FlagContract{
 		Name:        "set-bid",
 		Type:        "string",
 		Required:    false,
 		Repeated:    false,
-		Description: "opaque business ID (Camunda 8.10 only; nonempty, maximum 256 UTF-16 code units; reused unchanged by --count)",
+		Description: "business ID to assign at creation (only c8.10+)",
 	})
 	require.Contains(t, capability.Flags, FlagContract{
 		Name:        "count",

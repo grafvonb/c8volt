@@ -30,25 +30,16 @@ var (
 var opsRepairProcessInstanceCmd = &cobra.Command{
 	Use:   "process-instance",
 	Short: "Repair incidents selected by process instances",
-	Long: `Repair active incidents associated with selected process instances.
+	Long: `Repair active incidents for selected process instances.
 
-Provide repeated --key values, newline-separated keys from stdin with '-', or process-instance search filters. Search selects incident-bearing instances; --direct-incidents-only restricts matching to direct active incidents.
+Select by key or process filters. The workflow fixes the incident targets,
+applies requested variables, restores related job retries, resolves incidents,
+and waits for clearance. --set-retries 0 skips retry restoration.
 
---bid matches one exact opaque business ID on Camunda 8.10+, within tenant scope and combined with the other search predicates. Multiple distinct matches are repaired; the limit counts distinct matching incident-bearing instances. BID planning freezes selected instances and reviewed incident, job, and variable actions before confirmation; approval never adds new targets. Dry-run may read scope but never submits changes.
-
-The workflow fixes the repairable instance and incident sets, applies requested variables once per process-instance scope, then updates related jobs, resolves incidents, and confirms clearance unless --no-wait is set.
-
---tenant limits search; an empty tenant or --all-tenants searches across accessible tenants. Explicit keys use backend authorization without tenant filtering. --batch-size controls each discovery request; --limit caps the selected scope.
-
-Use --dry-run to inspect planned repairs without mutation, --auto-confirm or --automation for unattended repair, and --report-file to save an audit report.`,
-	Example: `  ./c8volt ops repair process-instance --bid ORDER-123 --dry-run
-  ./c8volt ops repair process-instance --key <process-instance-key> --dry-run
-  ./c8volt --tenant tenant-a ops repair process-instance --key <process-instance-key> --dry-run
-  ./c8volt --all-tenants ops repair process-instance --state active --limit 5 --dry-run
-  ./c8volt ops repair process-instance --state active --limit 5 --dry-run
-  ./c8volt ops repair process-instance --direct-incidents-only --bpmn-process-id <bpmn-process-id> --limit 5 --dry-run
-  ./c8volt --verbose ops repair process-instance --state active --limit 5 --auto-confirm
-  ./c8volt ops repair process-instance --key <process-instance-key> --set-vars '{"hasIncident":false}' --report-file repair-process-instance.md`,
+Use --dry-run to review the repair plan and --report-file to save an audit report.
+Use --auto-confirm for unattended execution.`,
+	Example: `  c8volt ops repair process-instance --key <process-instance-key> --dry-run
+  c8volt ops repair process-instance --bpmn-process-id order --set-retries 3 --report-file repair.md`,
 	Aliases: []string{"pi", "pis", "process-instances"},
 	Args: func(cmd *cobra.Command, args []string) error {
 		if searchBusinessIDFlag(cmd) != nil {
@@ -217,7 +208,7 @@ func init() {
 		"vars-file":   {Replacement: "--set-vars-file", TakesValue: true},
 	})
 	fs := opsRepairProcessInstanceCmd.Flags()
-	fs.String("bid", "", "exact opaque business ID to select incident-bearing process instances (Camunda 8.10+)")
+	fs.String("bid", "", "exact opaque business ID to select incident-bearing process instances (only c8.10+)")
 	fs.StringSliceVarP(&flagOpsRepairProcessInstanceKeys, "key", "k", nil, "process-instance key(s) whose active incidents should be repaired; repeat or combine with stdin '-'")
 	registerPISharedProcessDefinitionFilterFlags(fs)
 	fs.StringVar(&flagGetPIProcessDefinitionKey, "pd-key", "", "process definition key (mutually exclusive with bpmn-process-id, pd-version, and pd-version-tag)")
@@ -230,7 +221,7 @@ func init() {
 	fs.StringVar(&flagGetPIIncidentState, "incident-state", "active", "incident state scope for --direct-incidents-only: active, pending, resolved, migrated, unknown, all")
 	fs.StringVar(&flagGetPIIncidentErrorType, "incident-error-type", "", "case-insensitive incident error type filter for --direct-incidents-only")
 	fs.StringVar(&flagGetPIIncidentErrorMessage, "incident-error-message", "", "case-insensitive incident error message substring filter for --direct-incidents-only")
-	fs.Int32VarP(&flagGetPISize, "batch-size", "n", consts.MaxPISearchSize, fmt.Sprintf("number of process instances to inspect per discovery page; does not cap total frozen scope (max limit %d enforced by server)", consts.MaxPISearchSize))
+	fs.Int32VarP(&flagGetPISize, "batch-size", "n", consts.MaxPISearchSize, fmt.Sprintf("process instances per discovery page (server maximum %d)", consts.MaxPISearchSize))
 	fs.Int32VarP(&flagGetPILimit, "limit", "l", 0, "maximum number of matching process instances to freeze for repair; omit to discover all matches")
 	fs.Int32Var(&flagOpsRepairProcessInstanceRetries, "set-retries", 1, "retry count to set on related jobs; 0 skips retry restoration")
 	fs.StringVar(&flagOpsRepairProcessInstanceJobTimeoutRaw, "set-job-timeout", "", "timeout duration to submit for related jobs, for example 60s, 5m, or 1h")
@@ -240,7 +231,7 @@ func init() {
 	fs.StringVar(&flagOpsRepairProcessInstanceReportFormat, "report-format", "", "audit report format: markdown, json (default inferred from report-file extension)")
 	fs.BoolVar(&flagDryRun, "dry-run", false, "freeze repair targets and preview repair steps without submitting mutations")
 	fs.BoolVar(&flagNoWait, "no-wait", false, "return after repair mutations are accepted without incident or retry confirmation")
-	fs.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers when repairing multiple incidents (default: min(count, 2*GOMAXPROCS, 32))")
+	fs.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers; omit for an automatic limit")
 	fs.BoolVar(&flagNoWorkerLimit, "no-worker-limit", false, "use all queued jobs as workers when --workers is unset")
 	fs.BoolVar(&flagFailFast, "fail-fast", false, "stop scheduling incident repairs after the first error")
 

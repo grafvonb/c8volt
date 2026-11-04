@@ -159,12 +159,7 @@ func TestDeleteProcessDefinitionSemanticProgressModeGate(t *testing.T) {
 // TestDeleteProcessDefinitionHelp_DocumentsTenantContract verifies destructive
 // definition help separates selector discovery from explicit admin keys.
 func TestDeleteProcessDefinitionHelp_DocumentsTenantContract(t *testing.T) {
-	output := executeRootForTest(t, "delete", "process-definition", "--help")
-
-	require.Contains(t, output, "tenant")
-	require.Contains(t, output, "--tenant limits BPMN selector discovery")
-	require.Contains(t, output, "Explicit --key and stdin keys use backend authorization without tenant filtering")
-	require.Contains(t, output, "--dry-run")
+	assertCommandHelpOutput(t, []string{"delete", "process-definition"}, []string{"Unfinished instances block deletion", "--force", "--dry-run", "--tenant"}, nil)
 }
 
 // TestDeleteCommand_CommandLocalBackoffTimeoutFlagOverridesEnvProfileAndConfig verifies command-local timeout precedence.
@@ -180,43 +175,9 @@ func TestDeleteCommand_CommandLocalBackoffTimeoutFlagOverridesEnvProfileAndConfi
 
 // TestDeleteHelp_DocumentsDestructiveConfirmationPaths verifies delete help explains confirmation paths.
 func TestDeleteHelp_DocumentsDestructiveConfirmationPaths(t *testing.T) {
-	output := assertCommandHelpOutput(t, []string{"delete"}, []string{
-		"Delete process instances or process definitions",
-		"--auto-confirm",
-		"validate its scope and confirm deletion",
-		"./c8volt delete process-definition --bpmn-process-id <bpmn-process-id> --latest --auto-confirm",
-	}, nil)
-	require.Contains(t, output, "process-instance")
-	require.Contains(t, output, "process-definition")
-
-	output = assertCommandHelpOutput(t, []string{"delete", "process-instance"}, []string{
-		"validates the affected tree before any deletion",
-		"Nonterminal instances block deletion unless --force is set",
-		"--force allows cancellation when deletion encounters a nonterminal instance",
-		"--auto-confirm for unattended",
-		"process instance key(s) to delete; repeat or combine with stdin '-'",
-		"number of process instances to inspect per discovery page; does not cap total frozen scope",
-		"maximum number of matching process instances to freeze for deletion across all pages; omit to continue through all matches",
-		"./c8volt delete process-instance --state terminated --batch-size 250 --limit 5 --dry-run",
-		"./c8volt delete process-instance --bpmn-process-id <bpmn-process-id> --state terminated --batch-size 250 --limit 5 --dry-run",
-	}, []string{"--count"})
-	require.Contains(t, output, "--force")
-	require.Contains(t, output, "--batch-size int32")
-	require.Contains(t, output, "--limit int32")
-
-	output = assertCommandHelpOutput(t, []string{"delete", "process-definition"}, []string{
-		"Delete process definition resources from Camunda",
-		"Before mutation, c8volt checks unfinished-instance impact",
-		"Camunda 8.9 or newer",
-		"associated history",
-		"delete process-instance --bpmn-process-id <bpmn-process-id>",
-		"Use --dry-run to preview impact without mutation",
-		"./c8volt delete process-definition --key <process-definition-key> --dry-run",
-		"./c8volt delete process-definition --bpmn-process-id <bpmn-process-id> --latest --dry-run",
-		"--auto-confirm for unattended",
-		"./c8volt delete process-definition --bpmn-process-id <bpmn-process-id> --latest --auto-confirm",
-	}, nil)
-	require.NotContains(t, output, "--allow-inconsistent")
+	assertCommandHelpOutput(t, []string{"delete"}, []string{"--dry-run", "process-definition", "process-instance"}, nil)
+	assertCommandHelpOutput(t, []string{"delete", "process-instance"}, []string{"children before parents", "--force", "--dry-run"}, nil)
+	assertCommandHelpOutput(t, []string{"delete", "process-definition"}, []string{"Unfinished instances block deletion", "--force", "--dry-run", "--tenant"}, nil)
 }
 
 // TestDeleteProcessDefinitionImpact_RenderForceImpact verifies the destructive

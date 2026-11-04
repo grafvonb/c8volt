@@ -10,19 +10,14 @@ Inspect the parent/child tree of process instances
 
 ### Synopsis
 
-Inspect process-instance ancestry, descendants, or the full family.
+Inspect the process-instance family around a key.
 
-On Camunda 8.10, each observed family member retains its own business ID, including flat, tree, and enriched results. Human rows show bid:<value> beside the process name, quoting values only when needed. An absent child ID is never filled from its parent.
+Use --parent for ancestry or --children for descendants; the default includes
+both. Add --with-incidents, --with-vars, or --with-elements for details.
+Add --with-listeners to --with-elements for listener jobs.
 
-Use --bid for an exact business-ID selection on Camunda 8.10. Discovery uses the configured tenant and must exhaust with one distinct match; two matches are ambiguous even in the same family. Zero matches return an empty result. Choose exactly one of --key or --bid.
-
-Child discovery on Camunda 8.10 exhausts every page at every depth; there is no 1,000-child cap. A failed later page fails the walk.
-
-Use --parent for ancestry or --children for descendants; the default scope is the full family. Explicit --key uses backend authorization without tenant filtering.
-
-Add --with-incidents, --with-vars, or --with-elements for incident details, process-instance-scope variables, or runtime elements. Add --with-listeners to --with-elements for runtime listener jobs. Listener rows use s: for job creation (not worker execution start), e: for job end, and d: for an available deadline only while the state is exactly ACTIVATED; missing times are omitted. Listener dur: measures time from job creation to its recorded end, or elapsed time for a pending job; it includes worker waiting time and is omitted when timestamps are unavailable or invalid. On Camunda 8.10, listener rows retain their own observed business ID, which may differ from the process instance.
-
-When an ancestor is missing but reachable family data remains, walk returns the available family. Direct single-resource lookups remain strict.
+Alternatively, select by exact --bid (only c8.10+). It must identify one instance;
+multiple matches are ambiguous.
 
 ```
 c8volt walk process-instance [flags]
@@ -31,20 +26,15 @@ c8volt walk process-instance [flags]
 ### Examples
 
 ```
-  ./c8volt walk process-instance --bid ORDER-123
-  ./c8volt walk process-instance --key <process-instance-key>
-  ./c8volt walk process-instance --key <process-instance-key> --with-incidents
-  ./c8volt walk process-instance --key <process-instance-key> --with-vars
-  ./c8volt walk process-instance --key <process-instance-key> --with-elements
-  ./c8volt walk process-instance --key <process-instance-key> --with-elements --with-listeners
-  ./c8volt walk process-instance --key <process-instance-key> --flat
-  ./c8volt walk process-instance --key <process-instance-key> --parent
+  c8volt walk process-instance --key <process-instance-key>
+  c8volt walk process-instance --key <process-instance-key> --with-incidents
+  c8volt walk process-instance --key <process-instance-key> --with-elements --with-listeners
 ```
 
 ### Options
 
 ```
-      --bid string                   exact business ID for one unambiguous starting instance (Camunda 8.10)
+      --bid string                   exact business ID for one unambiguous starting instance (only c8.10+)
       --children                     show descendants from the selected process instance
       --flat                         render family output as a flat path instead of an ASCII tree
   -h, --help                         help for process-instance
@@ -62,7 +52,7 @@ c8volt walk process-instance [flags]
 ### Options inherited from parent commands
 
 ```
-      --all-tenants          clear configured tenant filtering and search all tenants visible to the authenticated user; mutually exclusive with --tenant
+      --all-tenants          search all accessible tenants; cannot combine with --tenant
   -y, --auto-confirm         auto-confirm prompts for non-interactive use
       --automation           enable non-interactive mode for commands that explicitly support it
       --config string        path to config file
@@ -75,7 +65,7 @@ c8volt walk process-instance [flags]
       --profile string       config active profile name to use (e.g. dev, prod)
   -q, --quiet                suppress output except errors
       --request-rate float   maximum shared request starts per second (fractions allowed; 0 disables pacing)
-      --tenant string        tenant ID for discovery/search, selection, create, deploy, and run flows; explicit empty values can clear configured discovery filters, and explicit keys/IDs remain backend-authorized
+      --tenant string        tenant for discovery and creation; explicit keys use backend authorization
       --timeout duration     HTTP request timeout (default 30s)
   -v, --verbose              show additional output
 ```

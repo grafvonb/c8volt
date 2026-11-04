@@ -4,10 +4,10 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BIN="${BIN:-$ROOT_DIR/c8volt}"
 CONFIG="${CONFIG:-$ROOT_DIR/config.yaml}"
-FAST_BPMN="${FAST_BPMN:-C89_NoOpCompletion_Process}"
-ACTIVE_BPMN="${ACTIVE_BPMN:-C89_SimpleUserTask_Process}"
-FAST_FIXTURE="${FAST_FIXTURE:-processdefinitions/C89_NoOpCompletionProcess.bpmn}"
-ACTIVE_FIXTURE="${ACTIVE_FIXTURE:-processdefinitions/C89_SimpleUserTaskProcess.bpmn}"
+FAST_BPMN="${FAST_BPMN:-C810_NoOpCompletion}"
+ACTIVE_BPMN="${ACTIVE_BPMN:-C810_SimpleUserTask}"
+FAST_FIXTURE="${FAST_FIXTURE:-processdefinitions/C810_NoOpCompletion.bpmn}"
+ACTIVE_FIXTURE="${ACTIVE_FIXTURE:-processdefinitions/C810_SimpleUserTask.bpmn}"
 
 active_keys=()
 
@@ -49,7 +49,7 @@ run_c8volt embed deploy --file "$FAST_FIXTURE" >/dev/null
 run_c8volt embed deploy --file "$ACTIVE_FIXTURE" >/dev/null
 
 log "smoke 1: fast completion succeeds and normal output shows COMPLETED"
-normal_output="$(run_c8volt run pi -b "$FAST_BPMN")"
+normal_output="$(run_c8volt run pi -b "$FAST_BPMN" 2>&1)"
 printf '%s\n' "$normal_output" | grep -q 'COMPLETED' ||
   fail "normal run output did not include COMPLETED; output was: $normal_output"
 

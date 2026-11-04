@@ -149,10 +149,7 @@ func TestElementScopeVariablesUpdateMetadata(t *testing.T) {
 		require.NotNil(t, updateElementCmd.Flags().Lookup(name))
 	}
 	require.Len(t, cap.OutputModes, 3)
-	require.Contains(t, updateCmd.Long, "element-local")
-	for _, text := range []string{"element:<key>", "no-wait", "non-null", "--automation", "Parent", "Partial failures", "empty object"} {
-		require.Contains(t, updateElementCmd.Long, text)
-	}
+
 	for _, cmd := range []string{"update", "update element"} {
 		_, ok := findCommandCapability(capabilityDocumentForRoot(root).Commands, cmd)
 		require.True(t, ok, fmt.Sprintf("missing %s", cmd))

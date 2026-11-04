@@ -29,25 +29,14 @@ var (
 var opsExecuteRetentionPolicyCmd = &cobra.Command{
 	Use:   "retention-policy",
 	Short: "Execute process-instance retention cleanup",
-	Long: `Delete process instances older than the required retention age.
+	Long: `Delete finished process instances older than --retention-days.
 
-The workflow discovers candidates, fixes the target set, validates the delete plan, and requires confirmation before deletion. Use process-instance filters to narrow the candidates.
-
---tenant limits discovery; an empty tenant or --all-tenants searches across accessible tenants. --batch-size controls each discovery request; --limit caps distinct matching ended instances; family expansion is not capped. Non-final roots are skipped even with --force; non-final descendants of final roots require --force. --workers, --fail-fast, and --no-worker-limit control planning and deletion.
-
-Use --dry-run to inspect the plan without mutation, --auto-confirm or --automation for unattended deletion, and --report-file to save an audit report.
-
---bid selects one exact opaque business ID on Camunda 8.10+, combined with other predicates in tenant scope. BID cleanup completes discovery and freezes eligible families before confirmation; deletion submits only reviewed members in children-before-parent order. Dry-run reads scope without mutation. New matches or children are not added after approval; native force cancellation may cascade within a targeted family.
-
-Observed process-instance business IDs are retained in JSON and Markdown audit reports. Use --verbose to inspect each observed reference in the plan; key-only outcomes remain unchanged.`,
-	Example: `  ./c8volt ops execute retention-policy --retention-days 30 --bid ORDER-123 --dry-run
-  ./c8volt ops execute retention-policy --retention-days 90 --dry-run
-  ./c8volt --tenant tenant-a ops execute retention-policy --retention-days 90 --dry-run
-  ./c8volt --all-tenants ops execute retention-policy --retention-days 90 --dry-run
-  ./c8volt ops execute retention-policy --retention-days 90 --state completed --bpmn-process-id <bpmn-process-id> --dry-run
-  ./c8volt ops execute retention-policy --retention-days 90 --state completed --bpmn-process-id <bpmn-process-id> --limit 25
-  ./c8volt --verbose ops execute retention-policy --retention-days 90 --state completed --limit 25 --auto-confirm
-  ./c8volt ops execute retention-policy --retention-days 90 --state completed --bpmn-process-id <bpmn-process-id> --limit 25 --report-file retention-report.md`,
+Narrow the scope by process and state. The workflow discovers candidates,
+plans family deletion, and skips instances whose root is still unfinished.
+Use --dry-run to review the plan, then --auto-confirm for unattended execution.
+Save an audit report with --report-file.`,
+	Example: `  c8volt ops execute retention-policy --retention-days 90 --bpmn-process-id order --dry-run
+  c8volt ops execute retention-policy --retention-days 90 --bpmn-process-id order --auto-confirm --report-file retention.md`,
 	Aliases: []string{"ret-pol", "rp"},
 	Args: func(cmd *cobra.Command, args []string) error {
 		// BID validation runs after bootstrap so failures use the configured logger and one envelope.
@@ -169,20 +158,20 @@ func init() {
 
 	fs := opsExecuteRetentionPolicyCmd.Flags()
 	fs.IntVar(&flagOpsExecuteRetentionPolicyRetentionDays, "retention-days", 0, "required non-negative age in days for process-instance retention eligibility")
-	fs.String("bid", "", "exact opaque business ID to select within tenant scope (Camunda 8.10+)")
+	fs.String("bid", "", "exact opaque business ID to select within tenant scope (only c8.10+)")
 	fs.BoolVar(&flagDryRun, "dry-run", false, "discover and validate retention cleanup without submitting deletion requests")
 	fs.StringSliceVarP(&flagGetPIKeys, "key", "k", nil, "unsupported explicit process-instance key selector")
 	registerPISharedProcessDefinitionFilterFlags(fs)
 	fs.StringVar(&flagGetPIProcessDefinitionKey, "pd-key", "", "process definition key (mutually exclusive with bpmn-process-id, pd-version, and pd-version-tag)")
-	fs.Int32VarP(&flagGetPISize, "batch-size", "n", consts.MaxPISearchSize, fmt.Sprintf("number of process instances to inspect per discovery page; does not cap total frozen scope (max limit %d enforced by server)", consts.MaxPISearchSize))
-	fs.Int32VarP(&flagGetPILimit, "limit", "l", 0, "maximum number of matching process instances to freeze for retention cleanup; omit to discover all matches")
+	fs.Int32VarP(&flagGetPISize, "batch-size", "n", consts.MaxPISearchSize, fmt.Sprintf("process instances per discovery page (server maximum %d)", consts.MaxPISearchSize))
+	fs.Int32VarP(&flagGetPILimit, "limit", "l", 0, "maximum retention candidates to select; omit for all matches")
 	fs.StringVar(&flagGetPIParentKey, "parent-key", "", "parent process instance key to narrow retention discovery")
 	fs.StringVarP(&flagGetPIState, "state", "s", "all", "state to filter process instances: all, active, completed, canceled, terminated")
 	fs.BoolVar(&flagGetPIRootsOnly, "roots-only", false, "discover only root process instances")
 	fs.BoolVar(&flagGetPIChildrenOnly, "children-only", false, "discover only child process instances")
 	fs.BoolVar(&flagGetPIIncidentsOnly, "incidents-only", false, "discover only process instances that have incidents")
 	fs.BoolVar(&flagGetPINoIncidentsOnly, "no-incidents-only", false, "discover only process instances that have no incidents")
-	fs.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers when validating the delete plan and deleting roots (default: min(targets, 2*GOMAXPROCS, 32))")
+	fs.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers; omit for an automatic limit")
 	fs.BoolVar(&flagNoWorkerLimit, "no-worker-limit", false, "use all queued jobs as workers when --workers is unset")
 	fs.BoolVar(&flagFailFast, "fail-fast", false, "stop scheduling validation or deletion work after the first error")
 	fs.BoolVar(&flagNoWait, "no-wait", false, "return after deletion requests are accepted without deletion confirmation")

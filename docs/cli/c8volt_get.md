@@ -10,10 +10,10 @@ Inspect cluster, process, job, element, incident, tenant, and resource state
 
 ### Synopsis
 
-Inspect cluster, process, job, element, incident, tenant, and resource state without changing it.
+Inspect cluster health, deployed definitions, process instances, tasks, jobs,
+elements, and incidents without changing them.
 
-Check cluster health, list deployed process definitions, inspect process
-instances, fetch or search native user tasks, inspect jobs, elements, and incidents by key or search, list visible tenants, or fetch a known resource. Add get element --with-vars for complete element-local variables, optionally together with --with-listeners.
+Choose a resource command to look up a key or search with filters.
 
 ```
 c8volt get [flags]
@@ -22,19 +22,9 @@ c8volt get [flags]
 ### Examples
 
 ```
-  ./c8volt get cluster topology
-  ./c8volt get process-definition --latest
-  ./c8volt get process-instance --state active --limit 5
-  ./c8volt get user-task --key <user-task-key>
-  ./c8volt get user-task --state created --limit 25
-  ./c8volt get user-task --candidate-group accounting --total
-  ./c8volt get job --key <job-key>
-  ./c8volt get element --pi-key <process-instance-key> --limit 10
-  ./c8volt get ei --key <element-instance-key> --with-vars
-  ./c8volt get incident --key <incident-key>
-  ./c8volt get incident --state active --error-type io_mapping_error --pi-keys-only
-  ./c8volt get tenant
-  ./c8volt get resource --id <resource-key>
+  c8volt get cluster topology
+  c8volt get process-instance --state active --limit 10
+  c8volt get incident --state active --limit 10
 ```
 
 ### Options
@@ -46,7 +36,7 @@ c8volt get [flags]
 ### Options inherited from parent commands
 
 ```
-      --all-tenants          clear configured tenant filtering and search all tenants visible to the authenticated user; mutually exclusive with --tenant
+      --all-tenants          search all accessible tenants; cannot combine with --tenant
   -y, --auto-confirm         auto-confirm prompts for non-interactive use
       --automation           enable non-interactive mode for commands that explicitly support it
       --config string        path to config file
@@ -59,7 +49,7 @@ c8volt get [flags]
       --profile string       config active profile name to use (e.g. dev, prod)
   -q, --quiet                suppress output except errors
       --request-rate float   maximum shared request starts per second (fractions allowed; 0 disables pacing)
-      --tenant string        tenant ID for discovery/search, selection, create, deploy, and run flows; explicit empty values can clear configured discovery filters, and explicit keys/IDs remain backend-authorized
+      --tenant string        tenant for discovery and creation; explicit keys use backend authorization
       --timeout duration     HTTP request timeout (default 30s)
   -v, --verbose              show additional output
 ```

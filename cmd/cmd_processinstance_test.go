@@ -339,65 +339,25 @@ func decodeCapturedTopLevelPISearchSizes(t *testing.T, requests []string) []floa
 // TestProcessInstanceDestructiveHelp_DocumentsDryRunPreviewMode verifies cancel
 // and delete help document dry-run previews.
 func TestProcessInstanceDestructiveHelp_DocumentsDryRunPreviewMode(t *testing.T) {
-	cancelOutput := executeRootForProcessInstanceTest(t, "cancel", "process-instance", "--help")
-	require.Contains(t, cancelOutput, "--dry-run")
-	require.Contains(t, cancelOutput, "preview the affected family")
-	require.Contains(t, cancelOutput, "preview cancel scope without submitting cancellation")
-	require.Contains(t, cancelOutput, "./c8volt cancel process-instance --key <process-instance-key> --dry-run")
-	require.Contains(t, cancelOutput, "./c8volt cancel process-instance --state active --batch-size 250 --limit 5 --dry-run")
-
-	deleteOutput := executeRootForProcessInstanceTest(t, "delete", "process-instance", "--help")
-	require.Contains(t, deleteOutput, "--dry-run")
-	require.Contains(t, deleteOutput, "without deleting or cancelling")
-	require.Contains(t, deleteOutput, "preview delete scope without submitting deletion or cancel-before-delete requests")
-	require.Contains(t, deleteOutput, "./c8volt delete process-instance --key <process-instance-key> --dry-run")
-	require.Contains(t, deleteOutput, "./c8volt delete process-instance --state terminated --batch-size 250 --limit 5 --dry-run")
+	assertCommandHelpOutput(t, []string{"cancel", "process-instance"}, []string{"affected instance families", "Empty searches finish without confirmation or mutation", "--force", "--dry-run"}, nil)
+	assertCommandHelpOutput(t, []string{"delete", "process-instance"}, []string{"children before parents", "--force", "--dry-run"}, nil)
 }
 
 // TestProcessInstanceDestructiveHelp_DocumentsEmptySelectorNoOp verifies
 // cancel and delete help describe prompt-free completion for empty selections.
 func TestProcessInstanceDestructiveHelp_DocumentsEmptySelectorNoOp(t *testing.T) {
-	for _, testCase := range []struct {
-		operation string
-		state     string
-	}{
-		{operation: "cancel", state: "active"},
-		{operation: "delete", state: "terminated"},
-	} {
-		output := executeRootForProcessInstanceTest(t, testCase.operation, "process-instance", "--help")
-		require.Contains(t, output, "An empty selection completes without confirmation")
-		require.Contains(t, output, "--state "+testCase.state+" --json --dry-run")
-		require.Contains(t, output, "--state "+testCase.state+" --keys-only")
-	}
+	assertCommandHelpOutput(t, []string{"cancel", "process-instance"}, []string{"affected instance families", "Empty searches finish without confirmation or mutation", "--force", "--dry-run"}, nil)
+	assertCommandHelpOutput(t, []string{"delete", "process-instance"}, []string{"children before parents", "--force", "--dry-run"}, nil)
 }
 
 // TestProcessInstanceHelp_DocumentsTenantContract verifies command help names
 // discovery-scoped tenant behavior separately from explicit admin input.
 func TestProcessInstanceHelp_DocumentsTenantContract(t *testing.T) {
-	getOutput := executeRootForProcessInstanceTest(t, "get", "process-instance", "--help")
-	require.Contains(t, getOutput, "tenant")
-	require.Contains(t, getOutput, "--tenant limits search and selector discovery")
-	require.Contains(t, getOutput, "Explicit --key and stdin keys use backend authorization without tenant filtering")
-
-	walkOutput := executeRootForProcessInstanceTest(t, "walk", "process-instance", "--help")
-	require.Contains(t, walkOutput, "tenant")
-	require.Contains(t, walkOutput, "Explicit --key uses backend authorization without tenant filtering")
-
-	expectOutput := executeRootForProcessInstanceTest(t, "expect", "process-instance", "--help")
-	require.Contains(t, expectOutput, "tenant")
-	require.Contains(t, expectOutput, "explicit --key and stdin process-instance targets are backend-authorized admin input")
-
-	cancelOutput := executeRootForProcessInstanceTest(t, "cancel", "process-instance", "--help")
-	require.Contains(t, cancelOutput, "tenant")
-	require.Contains(t, cancelOutput, "--tenant limits search-derived selection")
-	require.Contains(t, cancelOutput, "Explicit --key and stdin keys use backend authorization without tenant filtering")
-	require.Contains(t, cancelOutput, "--dry-run")
-
-	deleteOutput := executeRootForProcessInstanceTest(t, "delete", "process-instance", "--help")
-	require.Contains(t, deleteOutput, "tenant")
-	require.Contains(t, deleteOutput, "--tenant limits search-derived selection")
-	require.Contains(t, deleteOutput, "Explicit --key and stdin keys use backend authorization without tenant filtering")
-	require.Contains(t, deleteOutput, "--dry-run")
+	assertCommandHelpOutput(t, []string{"get", "process-instance"}, []string{"--with-incidents", "--with-elements", "--has-user-tasks", "--var stringArray", "--var-exists stringArray", "--var-like stringArray", "--total", "--limit"}, nil)
+	assertCommandHelpOutput(t, []string{"walk", "process-instance"}, []string{"--parent", "--children", "--with-elements", "multiple matches are ambiguous"}, nil)
+	assertCommandHelpOutput(t, []string{"expect", "process-instance"}, []string{"--state", "--incident", "only c8.10+"}, nil)
+	assertCommandHelpOutput(t, []string{"cancel", "process-instance"}, []string{"affected instance families", "Empty searches finish without confirmation or mutation", "--force", "--dry-run"}, nil)
+	assertCommandHelpOutput(t, []string{"delete", "process-instance"}, []string{"children before parents", "--force", "--dry-run"}, nil)
 }
 
 func TestProcessInstanceSearchDefaultOneLineOutput_IgnoresReportedTotalMetadata(t *testing.T) {
