@@ -43,4 +43,4 @@ v5 removes renamed legacy spellings without aliases. Do not infer support for a 
 - [CLI reference](/cli/) and [command tree](/cli/command-tree/)
 - [Releases](https://github.com/grafvonb/c8volt/releases)
 
-Query and machine results use stdout; human mutation summaries and diagnostics use the configured logger. Prompts use stderr. Use exit status and structured partial outcomes to assess failed batches. `--no-wait` reports acceptance rather than confirmed completion where supported; required prerequisites still apply. Starting an instance confirms creation, not process completion. Confirmation and output support follow each command's contract.
+Query and machine results use stdout; human mutation summaries and diagnostics use the configured logger. Prompts use stderr. Use exit status and structured partial outcomes to assess failed batches. Starting an instance confirms creation, not process completion. Confirmation and output support follow each command's contract.

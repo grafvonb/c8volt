@@ -6,7 +6,7 @@ nav_exclude: true
 has_toc: true
 ---
 
-> Generated from build `c8volt v4.4.0-302-g5ad89fac`, commit `5ad89fac`, built `2026-11-04T12:14:00Z` | Supported Camunda 8 versions: 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.3 (final)
+> Generated from build `c8volt v4.4.0-304-g3f63f68b-dirty`, commit `3f63f68b`, built `2026-11-04T13:52:13Z` | Supported Camunda 8 versions: 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.3 (final)
 
 # c8volt v5 — Camunda CLI for operations
 
@@ -38,8 +38,6 @@ Camunda accepting a request is often one step in an operational workflow. c8volt
 | Complete or assign user tasks | The native operation confirms the change, including blocking listener processing. |
 
 Starting an instance confirms creation; use `expect process-instance --state completed` to wait for process completion. Job worker outcomes have their own acceptance contract and do not establish process completion.
-
-Where supported, `--no-wait` returns after acceptance. It retains prerequisite checks needed to continue a workflow. If a request was accepted but required confirmation fails, c8volt reports the distinction and returns a failure.
 
 ## What's new in v5
 
@@ -120,7 +118,7 @@ c8volt delete process-instance --key <root-instance-key> --force --dry-run
 
 **Cancellation** operates on the relevant roots and waits until affected family members are completed, canceled, terminated, or absent. Selecting a child for cancellation requires `--force` to authorize cancellation of its root.
 
-**Deletion** processes children before parents. Unfinished instances require `--force`, which authorizes prerequisite cancellation. When deletion encounters an unfinished-instance conflict, c8volt cancels the relevant root, confirms the required terminal state, and retries deletion. That prerequisite confirmation remains necessary with `--no-wait`.
+**Deletion** processes children before parents. Unfinished instances require `--force`, which authorizes prerequisite cancellation. When deletion encounters an unfinished-instance conflict, c8volt cancels the relevant root, confirms the required terminal state, and retries deletion.
 
 After reviewing the preview, execute the cleanup:
 

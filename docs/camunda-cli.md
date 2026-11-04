@@ -27,7 +27,7 @@ description: "Compare Camunda CLI workflows with c8volt and c8ctl. c8volt coordi
 
 An accepted request can precede its observable result. By default, cancellation waits for affected family members to become terminal or absent; deletion waits for disappearance; variable updates verify the requested values at their intended scopes. Failed confirmation remains a failure even after an accepted mutation.
 
-Confirmation follows each operation's contract. Starting an instance confirms creation; `expect process-instance --state completed` waits for process completion. Where supported, `--no-wait` skips final confirmation while retaining required prerequisites. Definition disappearance alone cannot confirm deferred history deletion without a returned batch.
+Confirmation follows each operation's contract. Starting an instance confirms creation; `expect process-instance --state completed` waits for process completion. Definition disappearance alone cannot confirm deferred history deletion without a returned batch.
 
 ## From a command to a playbook
 

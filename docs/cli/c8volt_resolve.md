@@ -12,7 +12,7 @@ Resolve operational incidents
 
 Resolve operational incidents.
 
-Choose incident keys or process-instance families. Resolution changes state and waits for clearance unless --no-wait is set.
+Choose incident keys or process-instance families. Resolution changes state and waits for clearance by default.
 
 ```
 c8volt resolve [flags]
