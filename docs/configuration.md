@@ -1,7 +1,7 @@
 ---
 title: "Configuration"
 permalink: /configuration/
-nav_order: 2
+nav_order: 7
 has_toc: true
 ---
 

@@ -1,6 +1,6 @@
 ---
 title: "CLI Reference"
-nav_order: 7
+nav_order: 2
 nav_exclude: false
 has_children: true
 has_toc: false
