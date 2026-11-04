@@ -37,7 +37,7 @@ c8volt update element --key <element-instance-key> --set-vars-file vars.json --d
 c8volt update user-task --key <user-task-key> --set-vars-file vars.json --dry-run
 ```
 
-Element updates write locally. User-task updates preserve existing owning scopes and create new names at the task's element scope. Process-instance updates write to each selected instance's root scope. Previews show the destinations; normal execution confirms requested values there. Use `--no-wait` to skip read-back where supported.
+Element updates write locally. User-task updates preserve existing owning scopes and create new names at the task's element scope. Process-instance updates write to each selected instance's root scope. Previews show the destinations; normal execution confirms requested values there.
 
 ## Read listener timing
 

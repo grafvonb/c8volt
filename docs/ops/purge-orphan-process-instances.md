@@ -21,7 +21,7 @@ c8volt ops purge orphan-process-instances --state completed --report-file orphan
 
 `--limit` caps child candidates inspected, including candidates that still have a parent. The preview expands each orphan's affected family.
 
-Unfinished instances require `--force`. Deletion processes children before parents and normally waits for disappearance. `--no-wait` skips final deletion confirmation; required cancellation checks still run.
+Unfinished instances require `--force`. Deletion processes children before parents and waits for disappearance by default. Required cancellation checks run before deletion.
 
 See the [shared ops controls](/ops/#shared-controls) for discovery, confirmation, tenant scope, and reports.
 

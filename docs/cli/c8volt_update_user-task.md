@@ -34,6 +34,7 @@ c8volt update user-task [-] [flags]
   c8volt update user-task --key <user-task-key> --set-vars-file vars.json --dry-run
   c8volt update user-task --key <user-task-key> --complete --set-vars '{"approved":true}'
   c8volt update user-task --key <user-task-key> --set-assignee alice --dry-run
+  c8volt update user-task --key <user-task-key> --unassign
 ```
 
 ### Options

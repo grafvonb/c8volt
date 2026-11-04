@@ -23,7 +23,7 @@ c8volt embed [flags]
 
 ```
   c8volt embed list
-  c8volt embed deploy --all --run
+  c8volt embed deploy --all
   c8volt embed export --all --out ./fixtures
 ```
 

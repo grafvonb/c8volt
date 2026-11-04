@@ -12,7 +12,7 @@ Deploy bundled BPMN fixtures
 
 Deploy bundled BPMN fixtures.
 
-Use `--all` for the configured Camunda version, or pass one or more `--file` values from `embed list`. Add --run to start one process instance after deployment. --all-tenants is not supported because deployment requires one destination tenant.
+Use `--all` for the configured Camunda version, or pass one or more `--file` values from `embed list`. Add --run to start one process instance per deployed process definition. --all-tenants is not supported because deployment requires one destination tenant.
 
 ```
 c8volt embed deploy [flags]
@@ -32,7 +32,7 @@ c8volt embed deploy [flags]
   -f, --file strings   embedded file(s) to deploy (repeatable)
   -h, --help           help for deploy
       --no-wait        return after deployment is accepted
-      --run            start one process instance after deployment
+      --run            start one process instance per deployed process definition
 ```
 
 ### Options inherited from parent commands

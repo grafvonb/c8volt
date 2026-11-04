@@ -35,7 +35,8 @@ Use --dry-run to preview. Completion and assignment await the backend response
 and cannot be combined with --no-wait.`,
 	Example: `  c8volt update user-task --key <user-task-key> --set-vars-file vars.json --dry-run
   c8volt update user-task --key <user-task-key> --complete --set-vars '{"approved":true}'
-  c8volt update user-task --key <user-task-key> --set-assignee alice --dry-run`,
+  c8volt update user-task --key <user-task-key> --set-assignee alice --dry-run
+  c8volt update user-task --key <user-task-key> --unassign`,
 	Aliases: []string{"user-tasks", "ut", "uts"},
 	Args: func(cmd *cobra.Command, args []string) error {
 		return validateOptionalDashArg(args)

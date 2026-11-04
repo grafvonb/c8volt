@@ -13,9 +13,10 @@ Update a job or complete selected jobs
 Update job retries or timeout, or submit worker outcomes.
 
 Use --set-retries for retries and --set-timeout for the job timeout.
-Inherited --timeout controls HTTP requests only. Use --complete to complete a
-job, --fail with --set-retries to fail it, or --throw-bpmn-error with
---set-error-code to report a BPMN error. Add --set-error-message for context.
+Timeout updates require an activated job. Inherited --timeout controls HTTP
+requests only. Use --complete to complete a job, --fail with --set-retries to
+fail it, or --throw-bpmn-error with --set-error-code to report a BPMN error.
+Add --set-error-message for context.
 
 Completion accepts explicit keys or search filters. --retries is an exact
 completion filter, including zero; it never writes retries. The selection is
@@ -33,10 +34,8 @@ c8volt update job [-] [flags]
 
 ```
   c8volt update job --key <job-key> --set-retries 3 --dry-run
-  c8volt update job --key <job-key> --set-timeout 5m
+  c8volt update job --key <job-key> --set-retries 3
   c8volt update job --key <job-key> --complete --set-vars '{"approved":true}'
-  c8volt update job --key <job-key> --fail --set-retries 0 --set-error-message "worker unavailable"
-  c8volt update job --key <job-key> --throw-bpmn-error --set-error-code PAYMENT_DECLINED
 ```
 
 ### Options

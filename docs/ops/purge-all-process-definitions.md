@@ -23,7 +23,7 @@ Select definition versions by key or filters. `--limit` caps selected definition
 
 Unfinished instances block deletion. `--force` cancels affected roots, waits for unfinished work to drain, deletes instance history, then deletes definitions. Suspended instances count as unfinished (c8.10+).
 
-By default, confirm definition removal and any returned history-deletion batch. `--no-wait` skips final confirmation; required drain checks still run. Deferred history deletion without a returned batch cannot be independently confirmed.
+By default, confirm definition removal and any returned history-deletion batch. Required drain checks run before deletion. Deferred history deletion without a returned batch cannot be independently confirmed.
 
 See the [shared ops controls](/ops/#shared-controls) for discovery, confirmation, tenant scope, and reports.
 

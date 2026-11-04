@@ -32,6 +32,6 @@ Controls vary by playbook; the command reference lists supported flags and outpu
 - **Approval:** inspect the plan before confirming. Use `--auto-confirm` or supported `--automation` for unattended runs. A later invocation discovers a fresh scope.
 - **Tenants:** a named tenant narrows discovery; `--all-tenants` clears that filter within authorized access. Explicit keys use backend authorization. Creation requires one destination tenant.
 - **Completion:** mutations normally wait for an observed outcome. Where supported, `--no-wait` reports acceptance; required safety checks still run.
-- **Reports:** mutation playbooks support `--report-file report.md`; use `--report-format json` for a JSON file. Use a new report path for previews. Reports retain available partial outcomes. Analysis returns command results directly. Use `--json` for machine output and the exit status to detect failure.
+- **Reports:** mutation playbooks support `--report-file report.md`; use `--report-format json` for a JSON file. Use a new path for each preview or execution; existing files are not overwritten. Reports retain available partial outcomes. Analysis returns command results directly. Use `--json` for machine output and the exit status to detect failure.
 
 Use `--verbose` for per-resource outcomes and `--debug` for redacted HTTP diagnostics. See [configuration](/configuration/) for profiles, authentication, and logging, and the [CLI reference](/cli/) for all flags.

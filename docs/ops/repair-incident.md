@@ -24,7 +24,7 @@ Use keys or search filters, not both. Search defaults to active incidents; `--li
 
 Requested variables are applied once per process-instance scope. Repair sets related job retries to 1 by default; `--set-retries` changes that value and `--set-retries 0` skips retry restoration. `--set-job-timeout` optionally changes job timeouts. Incidents without a related job still proceed to resolution.
 
-By default, wait until selected incidents are no longer active. Failed variable updates block their dependent resolutions. `--no-wait` skips post-action confirmation.
+By default, wait until selected incidents are no longer active. Failed variable updates block their dependent resolutions.
 
 See the [shared ops controls](/ops/#shared-controls) for discovery, confirmation, tenant scope, and reports.
 

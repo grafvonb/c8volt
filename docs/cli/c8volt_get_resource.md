@@ -10,9 +10,12 @@ Get a resource by key
 
 ### Synopsis
 
-Retrieve a deployed resource with --id.
+Retrieve deployed resource metadata with --id.
 
-Use the resourceKey returned by deployment, rather than resourceId or deploymentKey.
+Use the resourceKey from the resource's deployment metadata, rather than
+resourceId, deploymentKey, or processDefinitionKey. Keys-only output contains
+the resource ID; JSON includes its resource key. For BPMN XML, use
+get process-definition with --key and --xml.
 
 ```
 c8volt get resource [flags]
@@ -23,7 +26,6 @@ c8volt get resource [flags]
 ```
   c8volt get resource --id <resource-key>
   c8volt --json get resource --id <resource-key>
-  c8volt --keys-only get resource --id <resource-key>
 ```
 
 ### Options

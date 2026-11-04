@@ -33,12 +33,12 @@ For OAuth, replace the authentication block and set the gateway URL under `apis.
 auth:
   mode: "oauth2"
   oauth2:
-    token_url: "https://login.example.com/oauth/token"
+    token_url: "https://login.example.com/oauth"
     client_id: "c8volt"
     client_secret: ""
 ```
 
-Supply the secret through `C8VOLT_AUTH_OAUTH2_CLIENT_SECRET`. Cookie authentication is also supported; see the [config reference](/cli/c8volt_config).
+Set `token_url` to the provider path before `/token`; c8volt appends `/token`. Supply the secret through `C8VOLT_AUTH_OAUTH2_CLIENT_SECRET`. Cookie authentication is also supported; see the [config reference](/cli/c8volt_config).
 
 ## Profiles and precedence
 

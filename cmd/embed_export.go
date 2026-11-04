@@ -29,7 +29,7 @@ var embedExportCmd = &cobra.Command{
 	Long: "Export bundled BPMN fixtures to local files.\n\n" +
 		"Use --all for the configured Camunda version, or repeat --file with exact names or quoted globs.",
 	Example: `  c8volt embed export --all --out ./fixtures
-  c8volt embed export --file 'processdefinitions/*.bpmn' --out ./fixtures
+  c8volt embed export --file 'processdefinitions/C810_*.bpmn' --out ./fixtures
   c8volt embed export --file processdefinitions/<embedded-process>.bpmn --out ./fixtures`,
 	Aliases:    []string{"exp", "extract"},
 	SuggestFor: []string{"exprot", "exrpot", "exract", "extrat"},

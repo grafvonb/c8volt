@@ -13,8 +13,9 @@ Test the connection, deploy a bundled fixture, start instances, and inspect
 their process families.
 
 Cleanup removes created instances and fixture definitions unless unrelated
-instances still use them. Use --dry-run to preview the steps or --report-file
-to save the result. This workflow creates and deletes cluster data.
+instances still use them. Identical deployments can reuse existing definition
+versions, which cleanup can also remove. Use --dry-run to preview the steps or
+--report-file to save the result. This workflow creates and deletes cluster data.
 
 ```
 c8volt ops execute smoke-test [flags]

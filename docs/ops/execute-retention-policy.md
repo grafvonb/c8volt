@@ -23,7 +23,7 @@ The age filter uses instance end dates. `--limit` caps eligible selected instanc
 
 Instances whose root is still unfinished are skipped, even with `--force`. Unfinished descendants of a finished root require `--force`.
 
-Deletion processes children before parents and normally waits for disappearance. `--no-wait` skips final deletion confirmation; required cancellation checks still run.
+Deletion processes children before parents and waits for disappearance by default. Required cancellation checks run before deletion.
 
 See the [shared ops controls](/ops/#shared-controls) for discovery, confirmation, tenant scope, and reports.
 
