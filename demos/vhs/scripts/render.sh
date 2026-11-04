@@ -5,8 +5,8 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
-if [[ $# -ne 1 ]]; then
-  echo "usage: $0 <tape-name>" >&2
+if [[ $# -lt 1 ]]; then
+  echo "usage: $0 <tape-name> [--config <path>] [--profile <name>]" >&2
   echo >&2
   echo "available tapes:" >&2
   find "${ROOT_DIR}/demos/vhs" -maxdepth 1 -type f -name '*.tape' -exec basename {} .tape \; | sort | sed 's/^/  /' >&2
@@ -14,6 +14,11 @@ if [[ $# -ne 1 ]]; then
 fi
 
 SCENARIO="${1%.tape}"
+shift
+if [[ ! "${SCENARIO}" =~ ^[a-z0-9-]+$ ]]; then
+  echo "error: invalid tape name" >&2
+  exit 1
+fi
 TAPE="${ROOT_DIR}/demos/vhs/${SCENARIO}.tape"
 
 if [[ ! -f "${TAPE}" ]]; then
@@ -33,12 +38,13 @@ fi
 
 "${ROOT_DIR}/demos/vhs/scripts/check-vhs.sh"
 
+make -C "${ROOT_DIR}" build
+RECORDING_DIR="$("${ROOT_DIR}/demos/vhs/scripts/prepare-recording-env.sh" "${TAPE}" "$@")"
+trap 'rm -rf -- "${RECORDING_DIR}"' EXIT
 cd "${ROOT_DIR}"
-make build
-"${ROOT_DIR}/demos/vhs/scripts/prepare-recording-env.sh"
 mkdir -p "${ROOT_DIR}/docs/assets/screencasts"
 
-vhs "${TAPE}"
+vhs "${RECORDING_DIR}/recording.tape"
 
 output_dir="${ROOT_DIR}/$(dirname "${OUTPUT_PATH}")"
 output_name="$(basename "${OUTPUT_PATH}")"

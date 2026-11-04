@@ -4,7 +4,7 @@
 
 set -euo pipefail
 
-required_commands=(vhs ttyd ffmpeg go)
+required_commands=(vhs ttyd ffmpeg go python3)
 
 for cmd in "${required_commands[@]}"; do
   if ! command -v "${cmd}" >/dev/null 2>&1; then
@@ -13,18 +13,9 @@ for cmd in "${required_commands[@]}"; do
   fi
 done
 
-required_env=(
-  C8VOLT_VHS_C810_BASE_URL
-  C8VOLT_VHS_OAUTH_TOKEN_URL
-  C8VOLT_VHS_OAUTH_CLIENT_ID
-  C8VOLT_VHS_OAUTH_CLIENT_SECRET
-)
-
-for name in "${required_env[@]}"; do
-  if [[ -z "${!name:-}" ]]; then
-    echo "error: required environment variable '${name}' is not set" >&2
-    exit 1
-  fi
-done
+if ! python3 -c 'import sys; sys.exit(sys.version_info < (3, 8))'; then
+  echo "error: Python 3.8 or newer is required" >&2
+  exit 1
+fi
 
 echo "ok: VHS recording prerequisites are available"

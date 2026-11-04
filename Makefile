@@ -116,7 +116,7 @@ docs-site-build-root: docs-content ## Build docs for hosts that serve the site f
 docs-site-serve: docs-content ## Serve the local Jekyll docs site with live reload after refreshing generated docs content.
 	./scripts/docs-site.sh serve
 
-demo-vhs-check: ## Verify local VHS recording prerequisites and required recording environment variables.
+demo-vhs-check: ## Verify local VHS recording tools; rendering also checks the configured Camunda 8.10 target.
 	./demos/vhs/scripts/check-vhs.sh
 
 demo-vhs-fast-start: ## Render the live Camunda-backed Fast Start VHS screencast.
