@@ -20,7 +20,11 @@ c8volt ops repair process-instance --key <process-instance-key> --set-vars-file 
 
 ## Execution
 
-The workflow fixes instance and incident targets before confirmation and deduplicates shared repairs. Instances without repairable incidents need no change. `--set-retries 0` skips retry restoration; `--set-job-timeout` optionally changes related job timeouts.
+Use keys or search filters to select instances. The workflow fixes instance and active-incident targets before confirmation and deduplicates shared repairs. `--limit` caps selected instances; instances without active incidents need no change.
+
+Requested variables are applied once per process-instance scope. Repair sets related job retries to 1 by default; `--set-retries` changes that value and `--set-retries 0` skips retry restoration. `--set-job-timeout` optionally changes job timeouts.
+
+By default, wait until selected incidents are no longer active. Failed variable updates block their dependent resolutions. `--no-wait` skips post-action confirmation.
 
 See the [shared ops controls](/ops/#shared-controls) for discovery, confirmation, tenant scope, and reports.
 

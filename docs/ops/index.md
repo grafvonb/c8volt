@@ -8,7 +8,9 @@ has_toc: true
 
 # Ops playbooks
 
-Use `c8volt ops` to inspect performance, repair incidents, and clean up Camunda data. Playbooks discover targets, prepare a plan, execute approved changes, and report outcomes. Examples target Camunda 8.10.
+`c8volt ops` orchestrates the operations exposed by multiple base commands into one playbook. It is a c8volt highlight for special cases that otherwise need a maintenance script: incident recovery, retention, dependency cleanup, and runtime verification. Examples target Camunda 8.10.
+
+For example, incident repair can inspect incidents and jobs, apply requested variables, restore retries, resolve incidents, and verify clearance. Mutation playbooks coordinate discovery, impact planning, approval, execution, and confirmation, with reports for review and automation. Analysis remains read-only.
 
 | Task | Playbook |
 | --- | --- |
@@ -23,11 +25,13 @@ Use `c8volt ops` to inspect performance, repair incidents, and clean up Camunda 
 
 ## Shared controls
 
+Controls vary by playbook; the command reference lists supported flags and output modes.
+
 - **Preview:** use `--dry-run` on mutation workflows. A preview can read cluster state but makes no changes. Analysis is read-only.
 - **Scope:** `--batch-size` controls discovery page size; `--limit` bounds selected candidates. Family expansion may include additional relatives. Complete empty discovery needs no confirmation or mutation.
 - **Approval:** inspect the plan before confirming. Use `--auto-confirm` or supported `--automation` for unattended runs. A later invocation discovers a fresh scope.
 - **Tenants:** a named tenant narrows discovery; `--all-tenants` clears that filter within authorized access. Explicit keys use backend authorization. Creation requires one destination tenant.
 - **Completion:** mutations normally wait for an observed outcome. Where supported, `--no-wait` reports acceptance; required safety checks still run.
-- **Reports:** use `--report-file report.md` to save an audit report; use `--report-format json` for a JSON file. `--json` selects machine output. Failed runs retain available partial outcomes and a nonzero exit status.
+- **Reports:** mutation playbooks support `--report-file report.md`; use `--report-format json` for a JSON file. Use a new report path for previews. Reports retain available partial outcomes. Analysis returns command results directly. Use `--json` for machine output and the exit status to detect failure.
 
 Use `--verbose` for per-resource outcomes and `--debug` for redacted HTTP diagnostics. See [configuration](/configuration/) for profiles, authentication, and logging, and the [CLI reference](/cli/) for all flags.

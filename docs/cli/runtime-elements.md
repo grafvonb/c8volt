@@ -28,7 +28,16 @@ c8volt get element --key <element-instance-key> --with-vars
 c8volt get user-task --key <user-task-key> --with-vars
 ```
 
-Element variables belong directly to that element; parent scopes are excluded. User-task variables can include inherited values. Variable updates preserve existing owning scopes; element updates always write locally.
+Element reads return variables owned directly by that element; parent scopes are excluded. User-task reads return effective variables, including inherited values.
+
+## Update variables
+
+```bash
+c8volt update element --key <element-instance-key> --set-vars-file vars.json --dry-run
+c8volt update user-task --key <user-task-key> --set-vars-file vars.json --dry-run
+```
+
+Element updates write locally. User-task updates preserve existing owning scopes and create new names at the task's element scope. Process-instance updates write to each selected instance's root scope. Previews show the destinations; normal execution confirms requested values there. Use `--no-wait` to skip read-back where supported.
 
 ## Read listener timing
 
@@ -39,6 +48,8 @@ Element variables belong directly to that element; parent scopes are excluded. U
 | `d:` | Deadline, shown only for an activated job |
 | `dur:` | Time from creation to end, or elapsed time for a pending job |
 
-Unavailable timestamps are omitted. Listener duration includes worker waiting time. Each job or task retains its own observed business ID (**only c8.10+**); a parent ID is not substituted.
+Unavailable timestamps are omitted. Listener duration includes worker waiting time. Each job or task retains its own observed business ID (c8.10+); a parent ID is not substituted.
 
-For duration-based diagnosis, use the [slow-instance playbook](/ops/analyse-slow-process-instances/). Exact flags are in [get element](/cli/c8volt_get_element) and [walk process-instance](/cli/c8volt_walk_process-instance).
+For duration-based diagnosis, use the [slow-instance playbook](/ops/analyse-slow-process-instances/).
+
+[get element](/cli/c8volt_get_element) · [update element](/cli/c8volt_update_element) · [update user-task](/cli/c8volt_update_user-task) · [walk process-instance](/cli/c8volt_walk_process-instance)

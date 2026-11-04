@@ -43,3 +43,33 @@ Tests cleared inherited integration/configuration controls and build tags and us
 The follow-up review corrected limit and worker descriptions that incorrectly advertised explicit zero as unlimited or automatic. Commands that distinguish omission from zero now say to omit the flag. Existing zero-value rejection tests remain intact, with focused help checks added for the wording.
 
 The local example checker now also validates pipeline command segments, rejects unexpected positional arguments, and accepts canonical attached error-code values. Dedicated negative cases verify that malformed or legacy BPMN-error examples cannot pass the check. No command execution logic was changed.
+
+## Subpage implementation review — follow-up
+
+The earlier counts and editorial choices record the initial audit. Subsequent README revisions restore the v5 feature scope, “done is done”, standard commands before family cleanup, and benefit-led c8ctl positioning. Version notes are now plain parenthetical hints.
+
+Reviewed all 15 authored subpages plus README against command registration, validation, configuration resolution, renderers, and service workflows. The 63 generated command references were regenerated from source; all 69 public/framework help pages rendered locally without diagnostics. Generated clients, upstream API snapshots, vendored site dependencies, and historical feature evidence were not rewritten.
+
+Corrections and clarifications:
+
+- Config lookup starts in the working directory, not the executable directory. README and the configuration guide now match `cmd/root_config.go`.
+- Runtime-variable guidance distinguishes process-instance root scope, exact element-local scope, and task effective/owning scopes, including new task-local names and read-back confirmation.
+- Repair guides state the default retry count of 1, zero-as-skip behavior, active-incident selection, and variable failures blocking dependent resolution.
+- Cleanup guides explain what each limit counts: incidents, ended retention seeds, inspected orphan candidates, or definition versions. Retention uses end dates and may expand to newer relatives.
+- Smoke-test dry-run checks connectivity without mutations. No-wait affects cleanup confirmation; deployment, creation visibility, and traversal proof remain.
+- Full process-definition/history purge requires c8.9+; suspended-instance handling requires c8.10+. Deferred history deletion remains distinct from definition disappearance.
+- Shared report guidance distinguishes mutation audit files from analysis results and recommends a fresh report path for previews.
+- Every ops playbook retains the same purpose → examples → execution → shared controls → references structure. Execution explains selection before mutation and confirmation. All eight remain under 200 words, including front matter and references.
+
+Validation passed:
+
+- Targeted command example/help, configuration validation/redaction, and config-precedence tests.
+- Targeted isolated ops-service tests for repair, smoke-test proof/cleanup, orphan and definition purge, retention, and business-ID cleanup.
+- Retention-discovery service tests for end-date selection and eligible-seed limits.
+- `go test ./docsgen ./config -count=1` and `make docs-content`.
+- Local validation of the README config and the guide's local, OAuth, and profile configurations, using only the read-only `config validate` command and a dummy OAuth secret.
+- All 69 help pages and the capability inventory from a fresh local binary.
+- Static checks of 51 command-example lines, 93 local links/routes, Markdown fences, canonical flags, version hints, README section order, and generated homepage synchronization.
+- Final diff and whitespace review. No production Go code or command behavior changed.
+
+All service validation used isolated test-owned dependencies. No live Camunda, integration, smoke-test workflow, or recording was executed; real-engine behavior was not revalidated.

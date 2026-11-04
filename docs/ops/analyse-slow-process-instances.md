@@ -20,7 +20,11 @@ c8volt ops analyse slow-process-instances --bpmn-process-id order --element-id p
 
 ## Execution
 
-Use `--limit` to bound the selected instances. Durations use values such as `30s`, `5m`, or `24h`; `1d` is not supported. Listener duration includes worker waiting time. Select by exact `--bid` when useful (**only c8.10+**).
+Select exact keys or discover instances by process definition or exact `--bid` (c8.10+). `--limit` caps discovered instances before duration filtering; fewer results may remain after analysis.
+
+Durations use values such as `30s`, `5m`, or `24h`; `1d` is not supported. Listener duration includes worker waiting time.
+
+Use `--json` for structured analysis or `--keys-only` for matching process-instance keys.
 
 See the [shared ops controls](/ops/#shared-controls) for discovery, confirmation, tenant scope, and reports.
 

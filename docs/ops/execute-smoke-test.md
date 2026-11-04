@@ -19,7 +19,11 @@ c8volt ops execute smoke-test --report-file smoke-test.md
 
 ## Execution
 
-Execution creates and deletes cluster data. Cleanup tracks every deployed fixture definition and removes it only when no unrelated instances use it. Retained or failed cleanup is reported. The workflow requires one destination tenant and rejects `--all-tenants`.
+Dry-run checks connectivity and previews the steps without deploying or starting instances. The workflow requires one destination tenant and rejects `--all-tenants`.
+
+Execution creates and deletes cluster data. Cleanup tracks every deployed fixture definition, including dependencies, and removes it only when no unrelated instances use it. Retained or failed cleanup is reported.
+
+Deployment and instance creation are confirmed before inspecting the families. `--no-wait` skips cleanup deletion confirmation only; it does not skip the runtime checks.
 
 See the [shared ops controls](/ops/#shared-controls) for discovery, confirmation, tenant scope, and reports.
 

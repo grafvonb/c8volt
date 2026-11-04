@@ -8,7 +8,9 @@ has_toc: false
 
 # CLI reference
 
-Command pages are generated from the executable's command tree. Use them for exact flags, aliases, and supported output modes. Examples target Camunda 8.10; 8.9 and 8.8 remain supported. Features requiring 8.10 are marked **only c8.10+**.
+Command pages are generated from the executable's command tree. Use them for exact flags, aliases, and supported output modes. Examples target Camunda 8.10; 8.9 and 8.8 remain supported with version-specific API limits.
+
+Standard commands provide inspection, dependency traversal, mutation, and outcome confirmation. `ops` orchestrates multiple base operations into playbooks for special cases. See [why choose c8volt](/camunda-cli/) for the operational benefits.
 
 - [Command tree](/cli/command-tree/)
 - [Root command and global flags](/cli/c8volt/)
@@ -19,6 +21,8 @@ Command pages are generated from the executable's command tree. Use them for exa
 | Task | Commands |
 | --- | --- |
 | Inspect | `get`, `walk`, `ops analyse` |
+| Operate native user tasks | `get user-task`, `update user-task` |
+| Inspect and update exact variable scopes | `get element`, `update element`, `update process-instance`, `update user-task` |
 | Deploy and start | `deploy`, `embed`, `run` |
 | Change state or variables | `update`, `resolve`, `suspend`, `resume` |
 | Clean up | `cancel`, `delete`, `ops purge`, `ops execute retention-policy` |

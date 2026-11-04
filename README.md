@@ -2,8 +2,6 @@
 
 **v5 brings Camunda 8.10 support, native user-task operations, explicit variable scopes, business IDs, process suspension and resumption, and a consistent flag grammar.**
 
-Camunda 8.9 and 8.8 remain supported. Examples target Camunda 8.10; features requiring it are marked **only c8.10+**.
-
 <img src="./docs/logo/c8volt_logo_transparent_w_shadow_400x244.png" alt="c8volt logo" width="240" />
 
 **Operator-grade Camunda 8 control for people and pipelines. Script-safe and built to finish the job.**
@@ -30,38 +28,12 @@ Camunda accepting a request is often one step in an operational workflow. c8volt
 | Delete process instances | Deletion is observed after processing children before parents. |
 | Update variables | Requested values are visible at their intended scopes. |
 | Resolve incidents | The selected incidents are no longer active. |
-| Suspend or resume instances (**only c8.10+**) | SUSPENDED after suspension; ACTIVE or COMPLETED after resumption. |
+| Suspend or resume instances | SUSPENDED after suspension; ACTIVE or COMPLETED after resumption. |
 | Complete or assign user tasks | The native operation confirms the change, including blocking listener processing. |
 
 Starting an instance confirms creation; use `expect process-instance --state completed` to wait for process completion. Job worker outcomes have their own acceptance contract and do not establish process completion.
 
 Where supported, `--no-wait` returns after acceptance. It retains prerequisite checks needed to continue a workflow. If a request was accepted but required confirmation fails, c8volt reports the distinction and returns a failure.
-
-## Cancellation and deletion understand process families
-
-A selected instance may belong to a larger execution tree. c8volt follows its ancestry to the root and discovers the affected descendants. Selecting one child can therefore affect its parent, siblings, and other descendants. Overlapping selections are grouped by root.
-
-Use `walk` to inspect those relationships and `--dry-run` to preview the mutation scope:
-
-```bash
-c8volt walk process-instance --key <child-instance-key> --with-incidents
-c8volt cancel process-instance --key <child-instance-key> --force --dry-run
-c8volt delete process-instance --key <root-instance-key> --force --dry-run
-```
-
-**Cancellation** operates on the relevant roots and waits until affected family members are completed, canceled, terminated, or absent. Selecting a child for cancellation requires `--force` to authorize cancellation of its root.
-
-**Deletion** processes children before parents. Unfinished instances require `--force`, which authorizes prerequisite cancellation. When deletion encounters an unfinished-instance conflict, c8volt cancels the relevant root, confirms the required terminal state, and retries deletion. That prerequisite confirmation remains necessary with `--no-wait`.
-
-After reviewing the preview, execute the cleanup:
-
-```bash
-c8volt delete process-instance --key <root-instance-key> --force
-```
-
-Filters select starting instances; traversal determines the affected family. `--limit` bounds selected matches, not the number of relatives affected. Empty completed searches finish without confirmation or mutation.
-
-Definition cleanup checks unfinished work before deletion. With `--force`, it cancels affected roots, verifies that no unfinished instances remain, and coordinates instance-history and definition deletion. Suspended instances count as unfinished (**only c8.10+**). Deferred history deletion without a returned batch cannot be independently confirmed by definition disappearance; see [delete process-definition](docs/cli/c8volt_delete_process-definition.md).
 
 ## What's new in v5
 
@@ -69,9 +41,9 @@ Definition cleanup checks unfinished work before deletion. With `--force`, it ca
 | --- | --- |
 | **Native user tasks** | Keyed lookup and paginated search; assignee, candidate, state, and local-variable filters; effective variables including inherited values; assignment, unassignment, completion, and variable updates for one or multiple explicit tasks. |
 | **Variable scopes** | Inspect and update variables at explicit runtime-element scopes. Task updates preserve existing variable ownership and create new names locally; previews identify write destinations. Process-instance updates target root scope. |
-| **Native business IDs — only c8.10+** | Create, display, and select by business ID; assign an ID after creation; assign an ID atomically with job completion. IDs are literal strings, independent of process variables. |
-| **Suspension and resumption — only c8.10+** | Suspend or resume selected instances, optionally including eligible descendants with `--tree`; inspect and wait for suspended state. |
-| **Definition lifecycle — only c8.10+** | Inspect ACTIVE, DRAINING, and DELETED states, separate active/suspended statistics, and cleanup that includes suspended instances. |
+| **Native business IDs** | Create, display, and select by business ID; assign an ID after creation; assign an ID atomically with job completion (c8.10+). IDs are literal strings, independent of process variables. |
+| **Suspension and resumption** | Suspend or resume selected instances, optionally including eligible descendants with `--tree`; inspect and wait for suspended state (new in c8.10). |
+| **Definition lifecycle** | Inspect ACTIVE, DRAINING, and DELETED states, separate active/suspended statistics, and cleanup that includes suspended instances (new in c8.10). |
 | **Operational controls** | Optional API request pacing and a gateway-version advisory, plus smoke-test cleanup covering deployed dependency definitions. |
 | **Consistent flag intent** | Select with properties, write with `--set-*`, and request additional detail with `--with-*`. Renamed flags have no legacy aliases. |
 
@@ -113,7 +85,7 @@ c8volt get element --key <element-instance-key> --with-vars
 c8volt update element --key <element-instance-key> --set-vars '{"approved":true}' --dry-run
 ```
 
-Suspend or resume an instance and its eligible descendants (**only c8.10+**). Ancestors and siblings are excluded:
+Suspend or resume an instance and its eligible descendants (new in c8.10). Ancestors and siblings are excluded:
 
 ```bash
 c8volt suspend process-instance --key <process-instance-key> --tree --dry-run
@@ -122,15 +94,53 @@ c8volt resume process-instance --key <process-instance-key> --tree
 
 Replace `<...>` placeholders with real keys. Short aliases such as `pi`, `pd`, and `ut` remain available in command help.
 
-## c8volt and c8ctl
+## Cancellation and deletion understand process families
 
-[`c8ctl`](https://docs.camunda.io/docs/apis-tools/c8ctl/getting-started/) is Camunda's official CLI. Its workflows include cluster inspection, local Camunda Run management, deployment and file watching, profiles, identity management, and plugins. It also supports [creating a process instance and waiting for completion](https://docs.camunda.io/docs/apis-tools/c8ctl/cluster-inspection/#await-process-instance-completion).
+A selected instance may belong to a larger execution tree. c8volt follows its ancestry to the root and discovers the affected descendants. Selecting one child can therefore affect its parent, siblings, and other descendants. Overlapping selections are grouped by root.
 
-`c8volt` is an independent companion or alternative for operational workflows that need dependency traversal, impact previews, root-aware cancellation, child-first deletion, post-action state checks, and structured bulk outcomes. Its standard commands provide those mechanics; `ops` combines them into repeatable analysis, repair, retention, and cleanup playbooks. c8volt is not an official Camunda product.
+Use `walk` to inspect those relationships and `--dry-run` to preview the mutation scope:
+
+```bash
+c8volt walk process-instance --key <child-instance-key> --with-incidents
+c8volt cancel process-instance --key <child-instance-key> --force --dry-run
+c8volt delete process-instance --key <root-instance-key> --force --dry-run
+```
+
+**Cancellation** operates on the relevant roots and waits until affected family members are completed, canceled, terminated, or absent. Selecting a child for cancellation requires `--force` to authorize cancellation of its root.
+
+**Deletion** processes children before parents. Unfinished instances require `--force`, which authorizes prerequisite cancellation. When deletion encounters an unfinished-instance conflict, c8volt cancels the relevant root, confirms the required terminal state, and retries deletion. That prerequisite confirmation remains necessary with `--no-wait`.
+
+After reviewing the preview, execute the cleanup:
+
+```bash
+c8volt delete process-instance --key <root-instance-key> --force
+```
+
+Filters select starting instances; traversal determines the affected family. `--limit` bounds selected matches, not the number of relatives affected. Empty completed searches finish without confirmation or mutation.
+
+Definition cleanup checks unfinished work before deletion. With `--force`, it cancels affected roots, verifies that no unfinished instances remain, and coordinates instance-history and definition deletion. Suspended instances count as unfinished (c8.10+). Deferred history deletion without a returned batch cannot be independently confirmed by definition disappearance; see [delete process-definition](docs/cli/c8volt_delete_process-definition.md).
+
+## Why choose c8volt for operations?
+
+`c8ctl` is Camunda's official CLI. **Choose c8volt when your runbook needs dependency handling, impact previews, and confirmed operational outcomes.**
+
+`c8volt` reduces the custom scripting needed around Camunda operations. Its commands carry family traversal, prerequisite cancellation, retries, and state confirmation through execution. Review the affected scope, approve the change, and see which outcomes were confirmed and which still need attention. JSON results and failure exit codes make the same workflows usable in CI.
+
+That operational depth extends across process instances, user tasks, variable scopes, jobs, and incidents. For special cases, `ops` orchestrates several base operations into one previewable playbook with outcome reporting.
+
+See [c8volt and c8ctl](https://c8volt.info/camunda-cli/) for the operational comparison. c8volt is an independent project, not an official Camunda product.
+
+## Camunda version support
+
+Camunda 8.9 and 8.8 remain supported. Examples target Camunda 8.10.
+
+Feature availability follows the API available to c8volt for each version. Native business-ID workflows, suspension/resumption, and definition lifecycle support require c8.10+. Operations that need newer endpoints or state information cannot be provided through older API contracts; c8volt reports them as unsupported.
 
 ## Ops playbooks
 
-Use a playbook when a task combines several operational steps. Preview repair and cleanup with `--dry-run`; follow each guide for selection and verification details.
+`c8volt ops` orchestrates the operations exposed by multiple base commands into one playbook. For example, incident repair can inspect incidents and jobs, update variables, restore retries, resolve incidents, and verify the result.
+
+These playbooks are a c8volt highlight for special operational cases: incident recovery, retention, dependency cleanup, and end-to-end verification. Mutation workflows coordinate discovery, planning, approval, execution, confirmation, and reporting. Preview repair and cleanup with `--dry-run`; follow each guide for details.
 
 | Task | Command | Guide |
 | --- | --- | --- |
@@ -145,7 +155,7 @@ Use a playbook when a task combines several operational steps. Preview repair an
 
 ## Fast start
 
-Download and unpack the matching archive from [Releases](https://github.com/grafvonb/c8volt/releases). Put `c8volt` on your `PATH` and create `config.yaml` next to the binary:
+Download and unpack the matching archive from [Releases](https://github.com/grafvonb/c8volt/releases). Put `c8volt` on your `PATH` and create `config.yaml` in your working directory:
 
 ```yaml
 app:

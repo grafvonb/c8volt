@@ -19,7 +19,9 @@ c8volt ops purge process-instances-with-incidents --inc-key <incident-key> --for
 
 ## Execution
 
-Incident matching selects candidates; deletion still follows process-instance family rules. Unfinished instances require `--force`. The preview includes relatives affected by cancellation and deletion.
+Use incident keys or search filters. Search defaults to active incidents; `--limit` caps selected incidents, not the number of affected process instances. The preview includes relatives affected by cancellation and deletion.
+
+Unfinished instances require `--force`. Deletion processes children before parents and normally waits for disappearance. `--no-wait` skips final deletion confirmation; required cancellation checks still run.
 
 See the [shared ops controls](/ops/#shared-controls) for discovery, confirmation, tenant scope, and reports.
 

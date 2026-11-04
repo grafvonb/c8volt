@@ -20,7 +20,11 @@ c8volt ops repair incident --state active --error-type io_mapping_error --limit 
 
 ## Execution
 
-Use keys or search filters, not both. Variables are applied once per process-instance scope. `--set-retries 0` skips retry restoration; `--set-job-timeout` optionally changes related job timeouts. Incidents without a related job still proceed to resolution.
+Use keys or search filters, not both. Search defaults to active incidents; `--limit` caps selected incidents. Non-active incidents are not resolved.
+
+Requested variables are applied once per process-instance scope. Repair sets related job retries to 1 by default; `--set-retries` changes that value and `--set-retries 0` skips retry restoration. `--set-job-timeout` optionally changes job timeouts. Incidents without a related job still proceed to resolution.
+
+By default, wait until selected incidents are no longer active. Failed variable updates block their dependent resolutions. `--no-wait` skips post-action confirmation.
 
 See the [shared ops controls](/ops/#shared-controls) for discovery, confirmation, tenant scope, and reports.
 

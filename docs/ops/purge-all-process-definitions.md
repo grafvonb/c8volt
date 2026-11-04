@@ -8,7 +8,7 @@ has_toc: true
 
 # Purge all process definitions
 
-Delete selected process-definition versions and associated history after reviewing instance impact.
+Delete selected process-definition versions and associated history after reviewing instance impact (c8.9+).
 
 ## Examples
 
@@ -19,7 +19,11 @@ c8volt ops purge all-process-definitions --bpmn-process-id order --force --repor
 
 ## Execution
 
-Unfinished instances block deletion. `--force` cancels affected roots, waits for unfinished work to drain, deletes instance history, then deletes definitions. Suspended instances count as unfinished **only c8.10+**. Expanded families can include instances outside the selected definitions. Required drain checks still run with `--no-wait`. Deferred history deletion without a returned batch cannot be independently confirmed.
+Select definition versions by key or filters. `--limit` caps selected definitions; expanded families can include instances outside those definitions.
+
+Unfinished instances block deletion. `--force` cancels affected roots, waits for unfinished work to drain, deletes instance history, then deletes definitions. Suspended instances count as unfinished (c8.10+).
+
+By default, confirm definition removal and any returned history-deletion batch. `--no-wait` skips final confirmation; required drain checks still run. Deferred history deletion without a returned batch cannot be independently confirmed.
 
 See the [shared ops controls](/ops/#shared-controls) for discovery, confirmation, tenant scope, and reports.
 

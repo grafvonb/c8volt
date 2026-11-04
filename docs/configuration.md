@@ -11,7 +11,7 @@ Set the gateway URL, authentication, and Camunda version before running operatio
 
 ## Local cluster
 
-Save `config.yaml` next to the executable, or pass `--config /path/to/config.yaml`:
+Save `config.yaml` in your working directory, or pass `--config /path/to/config.yaml`:
 
 ```yaml
 app:
@@ -23,11 +23,11 @@ auth:
   mode: "none"
 ```
 
-The built-in version default remains 8.9. Set 8.10 explicitly as shown. `c8volt config template` prints the full starter template; the release archive also includes `config.example.yaml`.
+Without `--config`, c8volt searches the working directory, then the XDG and user configuration directories, then `/etc/c8volt`. The built-in version default remains 8.9; set 8.10 explicitly as shown. Use `c8volt config template` for the full template, or the release archive's `config.example.yaml`.
 
 ## Protected cluster
 
-For OAuth, replace the authentication block and use your gateway's URL:
+For OAuth, replace the authentication block and set the gateway URL under `apis.camunda_api.base_url`:
 
 ```yaml
 auth:
