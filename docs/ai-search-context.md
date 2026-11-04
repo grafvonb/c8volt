@@ -3,12 +3,12 @@ title: "AI and Search Context"
 permalink: /ai-search-context/
 nav_order: 6
 has_toc: false
-description: "Current product scope and command grammar for tools indexing c8volt."
+description: "Independent Camunda CLI for DevOps, CI pipelines, and AI agents: operational scope, verified outcomes, and command discovery."
 ---
 
 # c8volt context
 
-`c8volt` is an independent Camunda operations CLI for DevOps teams, support engineers, CI pipelines, and agents. Its operating principle is **done is done**: carry operational work through dependency handling and confirmation of the command's stated outcome. It is not an official Camunda product.
+`c8volt` is an independent Camunda CLI for DevOps teams, support engineers, CI pipelines, and AI agents operating Camunda 8. Its operating principle is **done is done**: carry operational work through dependency handling and confirmation of the command's stated outcome. It is not an official Camunda product.
 
 ## Why choose c8volt
 

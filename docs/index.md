@@ -6,9 +6,9 @@ nav_exclude: true
 has_toc: true
 ---
 
-> Generated from build `c8volt v4.4.0-296-gaa4e1e45-dirty`, commit `aa4e1e45`, built `2026-11-04T08:30:18Z` | Supported Camunda 8 versions: 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.3 (final)
+> Generated from build `c8volt v4.4.0-299-g346225e3-dirty`, commit `346225e3`, built `2026-11-04T10:37:30Z` | Supported Camunda 8 versions: 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.3 (final)
 
-# c8volt v5 — Camunda 8.10 operations
+# c8volt v5 — Camunda CLI for operations
 
 **v5 brings Camunda 8.10 support, native user-task operations, explicit variable scopes, business IDs, process suspension and resumption, and a consistent flag grammar.**
 
@@ -55,11 +55,17 @@ Where supported, `--no-wait` returns after acceptance. It retains prerequisite c
 
 Post-creation business-ID assignment requires an active root without an ID and uniqueness disabled. Suspension retains runtime state; it does not stop running worker code or undo external effects.
 
+## c8volt in Action
+
+The fast-start recording shows everyday operations on Camunda 8.10: verify the connection, inspect and deploy bundled BPMN, start process instances, inspect their execution trees, and clean up. It demonstrates the standard commands behind the ops playbooks.
+
+<img src="./assets/screencasts/fast-start.gif" alt="c8volt fast start screencast" />
+
 ## Standard commands for everyday operations
 
 Inspect process definitions and instances, walk execution trees, and examine runtime elements, variables, incidents, jobs, and execution/task listeners. Cluster, license, tenant, and resource inspection complement deployment, recovery, and cleanup commands. See the [command tree](./cli/command-tree) for the complete surface.
 
-Deploy, start, and wait for completion:
+[Deploy BPMN](./cli/c8volt_deploy_process-definition), [start instances](./cli/c8volt_run_process-instance), and [wait for completion](./cli/c8volt_expect_process-instance):
 
 ```bash
 c8volt deploy process-definition --file order.bpmn
@@ -67,7 +73,7 @@ c8volt run process-instance --bpmn-process-id order --set-vars '{"customerId":"1
 c8volt expect process-instance --key <process-instance-key> --state completed
 ```
 
-Inspect execution and preview changes:
+[Inspect process instances](./cli/c8volt_get_process-instance), then preview [variable updates](./cli/c8volt_update_process-instance), [job retries](./cli/c8volt_update_job), or [incident resolution](./cli/c8volt_resolve_incident):
 
 ```bash
 c8volt get process-instance --key <process-instance-key> --with-elements --with-listeners
@@ -76,7 +82,7 @@ c8volt update job --key <job-key> --set-retries 3 --dry-run
 c8volt resolve incident --key <incident-key> --dry-run
 ```
 
-Search and operate native user tasks:
+[Inspect native user tasks](./cli/c8volt_get_user-task) and [assign or complete them](./cli/c8volt_update_user-task):
 
 ```bash
 c8volt get user-task --assignee alice --with-vars --limit 10
@@ -84,14 +90,14 @@ c8volt update user-task --key <user-task-key> --set-assignee alice --dry-run
 c8volt update user-task --key <user-task-key> --complete --set-vars '{"approved":true}'
 ```
 
-Inspect and change an exact runtime-element scope:
+[Inspect runtime elements](./cli/c8volt_get_element) and [update variables at an exact scope](./cli/c8volt_update_element):
 
 ```bash
 c8volt get element --key <element-instance-key> --with-vars
 c8volt update element --key <element-instance-key> --set-vars '{"approved":true}' --dry-run
 ```
 
-Suspend or resume an instance and its eligible descendants (new in c8.10). Ancestors and siblings are excluded:
+[Suspend](./cli/c8volt_suspend_process-instance) or [resume](./cli/c8volt_resume_process-instance) an instance and its eligible descendants (new in c8.10). Ancestors and siblings are excluded:
 
 ```bash
 c8volt suspend process-instance --key <process-instance-key> --tree --dry-run
@@ -104,7 +110,7 @@ Replace `<...>` placeholders with real keys. Short aliases such as `pi`, `pd`, a
 
 A selected instance may belong to a larger execution tree. c8volt follows its ancestry to the root and discovers the affected descendants. Selecting one child can therefore affect its parent, siblings, and other descendants. Overlapping selections are grouped by root.
 
-Use `walk` to inspect those relationships and `--dry-run` to preview the mutation scope:
+Use [walk](./cli/c8volt_walk_process-instance) to inspect those relationships and `--dry-run` to preview the mutation scope:
 
 ```bash
 c8volt walk process-instance --key <child-instance-key> --with-incidents
