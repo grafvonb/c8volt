@@ -12,6 +12,7 @@ import "testing"
 func TestUpdateFamily(t *testing.T) {
 	runFamilyCoverageScenarios(t, "update", []string{
 		"update",
+		"update element",
 		"update job",
 		"update process-instance",
 		"update user-task",

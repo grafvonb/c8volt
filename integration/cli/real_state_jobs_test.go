@@ -211,7 +211,7 @@ func runRealStateJobScenarios(t *testing.T, profile integrationProfile, dataset 
 	records = append(records, getHumanRecord)
 
 	dryRunResult := runC8VoltForProfile(t, profile.Name, "real-state-jobs-update-dry-run", "--automation", "--json", "update", "job", "--key", jobs[1].Key, "--set-retries", "3", "--dry-run")
-	dryRunRecord := realStateJobRecord(profile, dryRunResult, "update job", "real-state-jobs-update-dry-run", "json", []string{"key", "retries", "dry-run"}, []string{jobs[1].Key}, true, false)
+	dryRunRecord := realStateJobRecord(profile, dryRunResult, "update job", "real-state-jobs-update-dry-run", "json", []string{"key", "set-retries", "dry-run"}, []string{jobs[1].Key}, true, false)
 	if err := validateRealStateJobUpdatePlan(dryRunResult, true, false); err != nil {
 		dryRunRecord.Outcome = realStateOutcomeFailed
 		dryRunRecord.FailureClass = volumeFailureProduct
@@ -220,7 +220,7 @@ func runRealStateJobScenarios(t *testing.T, profile integrationProfile, dataset 
 	records = append(records, dryRunRecord)
 
 	timeoutDryRunResult := runC8VoltForProfile(t, profile.Name, "real-state-jobs-update-timeout-dry-run", "--automation", "--json", "update", "job", "--key", jobs[2].Key, "--set-timeout", "30s", "--dry-run")
-	timeoutDryRunRecord := realStateJobRecord(profile, timeoutDryRunResult, "update job", "real-state-jobs-update-timeout-dry-run", "json", []string{"key", "timeout", "dry-run"}, []string{jobs[2].Key}, true, false)
+	timeoutDryRunRecord := realStateJobRecord(profile, timeoutDryRunResult, "update job", "real-state-jobs-update-timeout-dry-run", "json", []string{"key", "set-timeout", "dry-run"}, []string{jobs[2].Key}, true, false)
 	if err := validateRealStateJobUpdatePlan(timeoutDryRunResult, true, false); err != nil {
 		timeoutDryRunRecord.Outcome = realStateOutcomeFailed
 		timeoutDryRunRecord.FailureClass = volumeFailureProduct
@@ -229,7 +229,7 @@ func runRealStateJobScenarios(t *testing.T, profile integrationProfile, dataset 
 	records = append(records, timeoutDryRunRecord)
 
 	retryResult := runC8VoltForProfile(t, profile.Name, "real-state-jobs-update-retries", "--automation", "--json", "update", "job", "--key", jobs[3].Key, "--set-retries", "4", "--auto-confirm")
-	retryRecord := realStateJobRecord(profile, retryResult, "update job", "real-state-jobs-update-retries", "json", []string{"key", "retries", "auto-confirm"}, []string{jobs[3].Key}, false, true)
+	retryRecord := realStateJobRecord(profile, retryResult, "update job", "real-state-jobs-update-retries", "json", []string{"key", "set-retries", "auto-confirm"}, []string{jobs[3].Key}, false, true)
 	if err := validateRealStateJobUpdateResult(retryResult, "confirmed"); err != nil {
 		retryRecord.Outcome = realStateOutcomeFailed
 		retryRecord.FailureClass = volumeFailureProduct
@@ -238,7 +238,7 @@ func runRealStateJobScenarios(t *testing.T, profile integrationProfile, dataset 
 	records = append(records, retryRecord)
 
 	noWaitResult := runC8VoltForProfile(t, profile.Name, "real-state-jobs-update-nowait", "--automation", "--json", "update", "job", "--key", jobs[4].Key, "--set-retries", "2", "--no-wait")
-	noWaitRecord := realStateJobRecord(profile, noWaitResult, "update job", "real-state-jobs-update-nowait", "json", []string{"key", "retries", "no-wait"}, []string{jobs[4].Key}, false, true)
+	noWaitRecord := realStateJobRecord(profile, noWaitResult, "update job", "real-state-jobs-update-nowait", "json", []string{"key", "set-retries", "no-wait"}, []string{jobs[4].Key}, false, true)
 	if err := validateRealStateJobUpdateResult(noWaitResult, "submitted"); err != nil {
 		noWaitRecord.Outcome = realStateOutcomeFailed
 		noWaitRecord.FailureClass = volumeFailureProduct
@@ -247,7 +247,7 @@ func runRealStateJobScenarios(t *testing.T, profile integrationProfile, dataset 
 	records = append(records, noWaitRecord)
 
 	failResult := runC8VoltForProfile(t, profile.Name, "real-state-jobs-update-fail-nowait", "--automation", "--json", "update", "job", "--key", jobs[5].Key, "--fail", "--set-retries", "0", "--set-error-message", "c8volt real-state job failure", "--no-wait")
-	failRecord := realStateJobRecord(profile, failResult, "update job", "real-state-jobs-update-fail-nowait", "json", []string{"key", "fail", "retries", "message", "no-wait"}, []string{jobs[5].Key}, false, true)
+	failRecord := realStateJobRecord(profile, failResult, "update job", "real-state-jobs-update-fail-nowait", "json", []string{"key", "fail", "set-retries", "set-error-message", "no-wait"}, []string{jobs[5].Key}, false, true)
 	if err := validateRealStateJobWorkerOutcome(failResult); err != nil {
 		failRecord.Outcome = realStateOutcomeFailed
 		failRecord.FailureClass = volumeFailureProduct

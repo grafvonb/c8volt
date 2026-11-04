@@ -17,6 +17,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/grafvonb/c8volt/integration/internal/validation"
 	camundav810 "github.com/grafvonb/c8volt/internal/clients/camunda/v810/camunda"
 	"github.com/stretchr/testify/require"
 )
@@ -40,7 +41,9 @@ func requireSuspendedProfile(t *testing.T, profile integrationProfile) integrati
 	writeJSON(t, "suspended-profile-"+profile.Name+".json", ready)
 	require.NoError(t, err)
 	require.Equal(t, "8.10", ready.ExpectedVersion, "suspension fixture requires configured minor 8.10")
-	require.Equal(t, "8.10.4", ready.ActualVersion, "suspension acceptance requires observed server patch 8.10.4 before mutation")
+	minor, err := validation.ObservedMinor(ready.ActualVersion)
+	require.NoError(t, err)
+	require.Equal(t, "8.10", minor, "suspension acceptance requires an observed 8.10 server before mutation")
 	return ready
 }
 
@@ -152,6 +155,9 @@ func (f *suspendedFixture) run(t *testing.T, name string, args ...string) comman
 	record := commandEvidence(strings.Join(args[:2], " "), name, result, "pass")
 	record.Profile, record.CamundaVersion = f.profile.Name, f.profile.ActualVersion
 	record.DataOwnership = []string{"seeded"}
+	if slices.Contains(args, "--json") {
+		record.OutputMode = "json"
+	}
 	if args[0] == "suspend" || args[0] == "resume" {
 		record.CommandPath = args[0] + " process-instance"
 		record.OutputMode = "json"
@@ -160,7 +166,7 @@ func (f *suspendedFixture) run(t *testing.T, name string, args ...string) comman
 				record.CoveredFlags = append(record.CoveredFlags, strings.SplitN(strings.TrimPrefix(arg, "--"), "=", 2)[0])
 			}
 		}
-		record.VersionBehavior = "observed-8.10.4-before-mutation"
+		record.VersionBehavior = "observed-8.10-before-mutation"
 		record.Preview = slices.Contains(args, "--dry-run")
 		if record.Preview {
 			record.Behavior = behaviorPreview

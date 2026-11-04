@@ -206,7 +206,7 @@ integration-test-all: integration-test-confirm ## Run all integration groups dir
 	$(MAKE) --no-print-directory -j1 C8VOLT_IT_AUTOMATION=1 C8VOLT_IT_SHOW_SETTINGS=0 integration-cli-common $(INTEGRATION_CLI_FOCUSED_TARGETS) integration-test integration-test-volume integration-test-real-state
 
 integration-cli-common-preflight: ## Run nonmutating inventory, manifest, profile, and smoke validation.
-	$(C8VOLT_IT_GO_TEST) $(C8VOLT_IT_GO_TEST_FLAGS) -run '^(TestCommandInventory|TestCoverageManifest|TestProfiles|TestReadOnlySmoke)$$' -count=1 -timeout=$(C8VOLT_IT_TIMEOUT)
+	$(C8VOLT_IT_GO_TEST) $(C8VOLT_IT_GO_TEST_FLAGS) -run '^(TestCommandInventory|TestCoverageManifest|TestCoverageManifestValidationReportsMissingAndStalePaths|TestCoverageManifestValidationReportsMissingLeafFlags|TestBehavioralScenarioCatalogCoversConvergenceContract|TestCoreBehavioralCoverage|TestProfiles|TestReadOnlySmoke)$$' -count=1 -timeout=$(C8VOLT_IT_TIMEOUT)
 
 integration-cli-common-examples: integration-test-confirm ## Run example validation, including eligible disposable-target mutations.
 	$(C8VOLT_IT_GO_TEST) $(C8VOLT_IT_GO_TEST_FLAGS) -run '^TestExamples$$' -count=1 -timeout=$(C8VOLT_IT_TIMEOUT)
@@ -217,7 +217,7 @@ integration-cli-batch: integration-test-confirm ## Run focused Camunda 8.10 batc
 integration-cli-tenants: integration-test-confirm ## Run focused logical and physical tenant boundary validation.
 	$(C8VOLT_IT_GO_TEST) $(C8VOLT_IT_GO_TEST_FLAGS) -run '^(TestLogicalTenantFamily|TestPhysicalTenantFamily)$$' -count=1 -timeout=$(C8VOLT_IT_REAL_STATE_TIMEOUT)
 
-integration-cli-process-lifecycle: integration-test-confirm ## Run focused 8.10.4 suspend/resume lifecycle integration tests.
+integration-cli-process-lifecycle: integration-test-confirm ## Run focused 8.10 suspend/resume lifecycle integration tests.
 	$(C8VOLT_IT_GO_TEST) $(C8VOLT_IT_GO_TEST_FLAGS) -run '^TestProcessInstanceLifecycle$$' -count=1 -timeout=$(C8VOLT_IT_TIMEOUT)
 
 integration-cli-get: integration-test-confirm ## Run destructive CLI integration tests for get commands.
@@ -256,28 +256,28 @@ integration-cli-ops-purge-volume: integration-test-confirm ## Run destructive vo
 integration-cli-ops-repair-volume: integration-test-confirm ## Run destructive volume CLI integration tests for ops repair commands.
 	$(C8VOLT_IT_GO_TEST) $(C8VOLT_IT_GO_TEST_FLAGS) -run TestVolumeOpsRepairFamily -count=1 -timeout=$(C8VOLT_IT_VOLUME_TIMEOUT)
 
-integration-cli-real-state-gaps: integration-test-confirm ## Run non-destructive C89 real-state gap and matrix validation.
+integration-cli-real-state-gaps: integration-test-confirm ## Run non-destructive 8.9/8.10 real-state gap and matrix validation.
 	$(C8VOLT_IT_GO_TEST) $(C8VOLT_IT_GO_TEST_FLAGS) -run TestRealStateGapFamily -count=1 -timeout=$(C8VOLT_IT_REAL_STATE_TIMEOUT)
 
-integration-cli-real-state-jobs: integration-test-confirm ## Run destructive C89 real-state integration tests for jobs.
+integration-cli-real-state-jobs: integration-test-confirm ## Run destructive 8.9/8.10 real-state integration tests for jobs.
 	$(C8VOLT_IT_GO_TEST) $(C8VOLT_IT_GO_TEST_FLAGS) -run TestRealStateJobsFamily -count=1 -timeout=$(C8VOLT_IT_REAL_STATE_TIMEOUT)
 
-integration-cli-real-state-incidents: integration-test-confirm ## Run destructive C89 real-state integration tests for incidents.
+integration-cli-real-state-incidents: integration-test-confirm ## Run destructive 8.9/8.10 real-state integration tests for incidents.
 	$(C8VOLT_IT_GO_TEST) $(C8VOLT_IT_GO_TEST_FLAGS) -run TestRealStateIncidentsFamily -count=1 -timeout=$(C8VOLT_IT_REAL_STATE_TIMEOUT)
 
-integration-cli-real-state-listeners: integration-test-confirm ## Run destructive C89 real-state integration tests for listener state.
+integration-cli-real-state-listeners: integration-test-confirm ## Run destructive 8.9/8.10 real-state integration tests for listener state.
 	$(C8VOLT_IT_GO_TEST) $(C8VOLT_IT_GO_TEST_FLAGS) -run TestRealStateListenersFamily -count=1 -timeout=$(C8VOLT_IT_REAL_STATE_TIMEOUT)
 
-integration-cli-real-state-bpmn-error: integration-test-confirm ## Run destructive C89 real-state integration tests for BPMN error job state.
+integration-cli-real-state-bpmn-error: integration-test-confirm ## Run destructive 8.9/8.10 real-state integration tests for BPMN error job state.
 	$(C8VOLT_IT_GO_TEST) $(C8VOLT_IT_GO_TEST_FLAGS) -run TestRealStateBPMNErrorFamily -count=1 -timeout=$(C8VOLT_IT_REAL_STATE_TIMEOUT)
 
-integration-cli-real-state-retention: integration-test-confirm ## Run destructive C89 real-state integration tests for retention semantics.
+integration-cli-real-state-retention: integration-test-confirm ## Run destructive 8.9/8.10 real-state integration tests for retention semantics.
 	$(C8VOLT_IT_GO_TEST) $(C8VOLT_IT_GO_TEST_FLAGS) -run TestRealStateRetentionFamily -count=1 -timeout=$(C8VOLT_IT_REAL_STATE_TIMEOUT)
 
-integration-cli-real-state-destructive: integration-test-confirm ## Run destructive C89 real-state integration tests for destructive post-state semantics.
+integration-cli-real-state-destructive: integration-test-confirm ## Run destructive 8.9/8.10 real-state integration tests for destructive post-state semantics.
 	$(C8VOLT_IT_GO_TEST) $(C8VOLT_IT_GO_TEST_FLAGS) -run TestRealStateDestructiveFamily -count=1 -timeout=$(C8VOLT_IT_REAL_STATE_TIMEOUT)
 
-integration-cli-real-state-cascade: integration-test-confirm ## Run destructive C89 real-state integration tests for parent/child cascade semantics.
+integration-cli-real-state-cascade: integration-test-confirm ## Run destructive 8.9/8.10 real-state integration tests for parent/child cascade semantics.
 	$(C8VOLT_IT_GO_TEST) $(C8VOLT_IT_GO_TEST_FLAGS) -run TestRealStateCascadeFamily -count=1 -timeout=$(C8VOLT_IT_REAL_STATE_TIMEOUT)
 
 integration-cli-walk: integration-test-confirm ## Run destructive CLI integration tests for walk commands.

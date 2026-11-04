@@ -69,7 +69,7 @@ func runRealStateIncidentScenarios(t *testing.T, profile integrationProfile, dat
 	}
 
 	failResult := runC8VoltForProfile(t, profile.Name, "real-state-incidents-fail-job", "--automation", "--json", "update", "job", "--key", jobs[0].Key, "--fail", "--set-retries", "0", "--set-error-message", "c8volt real-state incident setup", "--no-wait")
-	failRecord := realStateJobRecord(profile, failResult, "update job", "real-state-incidents-fail-job", "json", []string{"key", "fail", "retries", "message", "no-wait"}, []string{jobs[0].Key, jobs[0].ProcessInstanceKey}, false, true)
+	failRecord := realStateJobRecord(profile, failResult, "update job", "real-state-incidents-fail-job", "json", []string{"key", "fail", "set-retries", "set-error-message", "no-wait"}, []string{jobs[0].Key, jobs[0].ProcessInstanceKey}, false, true)
 	if err := validateRealStateJobWorkerOutcome(failResult); err != nil {
 		failRecord.Outcome = realStateOutcomeFailed
 		failRecord.FailureClass = volumeFailureProduct

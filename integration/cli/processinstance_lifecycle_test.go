@@ -42,16 +42,17 @@ type lifecycleItem struct {
 }
 
 // TestProcessInstanceLifecycle uses only owned held instances on an explicitly
-// selected 8.10.4 profile. Each scenario cleans up before the next one starts.
+// selected 8.10 profile. Each scenario cleans up before the next one starts.
 func TestProcessInstanceLifecycle(t *testing.T) {
 	writeSuspendedRevisionEvidence(t)
 	for _, operation := range []string{"suspend", "resume"} {
 		runFamilyCoverageScenarios(t, operation, []string{operation, operation + " process-instance"})
+		runBehavioralCoverageScenarios(t, operation)
 	}
 	for _, profile := range requireSelectedProfiles(t) {
 		t.Run(profile.Name, func(t *testing.T) {
 			if profile.ExpectedVersion != "8.10" {
-				t.Skip("process-instance lifecycle requires an explicitly selected 8.10.4 profile")
+				t.Skip("process-instance lifecycle requires an explicitly selected 8.10 profile")
 			}
 			t.Run("explicit-round-trip", func(t *testing.T) { testLifecycleRoundTrip(t, profile) })
 			t.Run("tree-boundaries", func(t *testing.T) { testLifecycleTree(t, profile) })
@@ -312,7 +313,7 @@ func lifecycleBehaviorScenarios() []behaviorScenario {
 				CommandPath:     operation + " process-instance",
 				Name:            "TestProcessInstanceLifecycle/explicit-round-trip/" + operation + "-" + behavior,
 				RequiresProfile: true, OutputMode: "json", Behavior: behavior,
-				VersionBehavior: "observed-8.10.4-before-mutation", DataOwnership: []string{"seeded"},
+				VersionBehavior: "observed-8.10-before-mutation", DataOwnership: []string{"seeded"},
 				Preview: preview, ConfirmedMutation: !preview, WantJSON: true, CoveredFlags: flags,
 			})
 		}

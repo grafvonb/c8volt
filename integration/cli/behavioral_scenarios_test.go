@@ -68,6 +68,7 @@ func TestBehavioralScenarioCatalogCoversConvergenceContract(t *testing.T) {
 	// Lifecycle operations need ordered state preparation; their dedicated test
 	// owns preview and confirmed execution instead of the generic seeded runner.
 	scenarios := append(allBehaviorScenarios(), lifecycleBehaviorScenarios()...)
+	scenarios = append(scenarios, operatorUpdateBehaviorScenarios()...)
 	requireBehaviorScenarioCatalog(t, scenarios, commandCoverageManifest)
 }
 

@@ -16,10 +16,8 @@ import (
 )
 
 type configTestConnectionPayload struct {
-	OK      bool `json:"ok"`
-	Cluster struct {
-		GatewayVersion string `json:"gateway_version"`
-	} `json:"cluster"`
+	OK      bool                       `json:"ok"`
+	Cluster validation.ClusterTopology `json:"cluster"`
 }
 
 // TestRejectExplicitGeneratedConfigUsage preserves the suite contract that real runs never pass --config.
@@ -158,6 +156,9 @@ func checkProfileReadiness(t *testing.T, profile integrationProfile) (integratio
 		return record, fmt.Errorf("profile %q connection JSON invalid: %w", profile.Name, err)
 	}
 	record.ActualVersion = payload.Cluster.GatewayVersion
+	if err := validation.ValidateTopology(payload.Cluster); err != nil {
+		return record, fmt.Errorf("profile %q topology is not ready: %w", profile.Name, err)
+	}
 	if requested := strings.TrimSpace(os.Getenv("C8VOLT_IT_RELEASE_VERSION")); requested != "" {
 		if err := validateRequestedCamundaVersion(requested, record.ActualVersion); err != nil {
 			return record, fmt.Errorf("profile %q: %w", profile.Name, err)

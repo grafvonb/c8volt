@@ -58,10 +58,13 @@ func prepareExampleVarsFile(args []string, workDir, marker string) ([]string, []
 	return result, substitutions, nil
 }
 
-// unresolvedPlaceholdersAllowed documents setup states this suite records as blocked until fixture proposals exist.
+// unresolvedPlaceholdersAllowed records prerequisites that dedicated family
+// slices cover beyond the generic held-task example seed.
 func unresolvedPlaceholdersAllowed(placeholders []string) bool {
+	// Child selection is exercised by the cascade/lifecycle family fixtures.
 	allowed := map[string]struct{}{
 		"<job-key>":              {},
+		"<child-instance-key>":   {},
 		"<incident-key>":         {},
 		"<another-incident-key>": {},
 		"<resource-id>":          {},

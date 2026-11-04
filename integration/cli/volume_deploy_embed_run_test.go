@@ -13,6 +13,9 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
+
+	"github.com/grafvonb/c8volt/integration/internal/validation"
 )
 
 func TestVolumeDeployEmbedRunFamily(t *testing.T) {
@@ -233,7 +236,14 @@ func runVolumeRunProcessInstanceScenarios(t *testing.T, profile integrationProfi
 		humanRecord.FailureClass = volumeFailureProduct
 		failures = append(failures, fmt.Sprintf("volume-run-pi-human-count-workers: %v", err))
 	}
-	humanKeys := extractNumericTokensFromOutput(humanResult.Stdout)
+	humanKeys, _ := validation.HumanCreationKeys(humanResult.Stdout, humanResult.Stderr, humanCount)
+	for _, key := range humanKeys {
+		if err := requireProcessInstanceStateEventually(t, profile, key, []string{"ACTIVE"}, 30*time.Second); err != nil {
+			humanRecord.Outcome = volumeOutcomeFail
+			humanRecord.FailureClass = volumeFailureProduct
+			failures = append(failures, err.Error())
+		}
+	}
 	humanRecord.ResourceKeys = humanKeys
 	dataset.PositiveProcessInstanceKeys = append(dataset.PositiveProcessInstanceKeys, humanKeys...)
 	records = append(records, humanRecord)
@@ -323,17 +333,11 @@ func validateVolumeRunHumanResult(result commandResult, wantCount int) error {
 	if err := requireVolumeCommandSuccess(result, "run pi human volume"); err != nil {
 		return err
 	}
-	if err := requireFinalOutcomeText(result.Stdout); err != nil {
+	if _, err := validation.HumanCreationKeys(result.Stdout, result.Stderr, wantCount); err != nil {
 		return err
-	}
-	if !strings.Contains(result.Stdout, fmt.Sprintf("found: %d", wantCount)) {
-		return fmt.Errorf("run pi human output missing found count %d: %q", wantCount, compactLogSnippet(result.Stdout, 300))
 	}
 	if err := requireRunPIHumanBulkStderrClean(result.Stderr); err != nil {
 		return err
-	}
-	if got := len(extractNumericTokensFromOutput(result.Stdout)); got < wantCount {
-		return fmt.Errorf("run pi human output exposed %d numeric keys, want at least %d", got, wantCount)
 	}
 	return nil
 }

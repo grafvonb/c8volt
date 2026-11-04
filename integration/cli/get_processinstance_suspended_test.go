@@ -19,14 +19,14 @@ import (
 )
 
 // TestGetFamilySuspendedState covers reads, selectors, expectations, CLI resumption
-// and fresh timestamp snapshots on 8.10.4; integration-cli-get includes this prefix.
+// and fresh timestamp snapshots on 8.10; integration-cli-get includes this prefix.
 func TestGetFamilySuspendedState(t *testing.T) {
 	writeSuspendedRevisionEvidence(t)
 	for _, profile := range requireSelectedProfiles(t) {
 		t.Run(profile.Name, func(t *testing.T) {
 			// Older profiles keep their baseline get slice; this skip is never live acceptance.
 			if profile.ExpectedVersion != "8.10" {
-				t.Skip("suspension scenario requires a disposable 8.10.4 server")
+				t.Skip("suspension scenario requires a disposable 8.10 server")
 			}
 			fixture := newSuspendedFixture(t, profile)
 			keys := fixture.dataset.PositiveProcessInstanceKeys

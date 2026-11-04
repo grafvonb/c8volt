@@ -15,7 +15,7 @@ C8VOLT_IT_PROFILES=c810local C8VOLT_IT_RELEASE_VERSION=8.10 \
 
 The aggregate runs common checks, focused batch/tenant checks, baseline, volume, and real-state groups sequentially. It prints settings and asks once before mutation. It stops on the first failing group. Use `C8VOLT_IT_AUTOMATION=1` only for an explicitly authorized unattended run.
 
-Profiles come from the normal local c8volt configuration under `$HOME/.config/c8volt`. Do not substitute a generated private config. Every family checks the observed gateway release before mutating. Baseline and volume groups support 8.10, 8.9, and 8.8; real-state groups support 8.10 and 8.9.
+Profiles come from the normal local c8volt configuration under `$HOME/.config/c8volt`. Do not substitute a generated private config. Every family checks gateway and broker releases and partition health before mutating. Baseline and volume groups support 8.10, 8.9, and 8.8; real-state groups support 8.10 and 8.9.
 
 ## Select a group
 
@@ -40,7 +40,7 @@ Use a separate `C8VOLT_IT_WORKDIR` per invocation. The default timeouts are 60 m
 
 ## Coverage and gates
 
-- **Suspension/resumption:** the held-instance and lifecycle scenarios require observed patch `8.10.4` before fixture mutation. The configured release remains `8.10`; older minors skip these scenarios, and other observed patches fail the gate. CLI suspension/resumption drives the main lifecycle proof. Independent reads confirm state and timestamp omission; cleanup resumes owned suspended instances before deletion.
+- **Suspension/resumption:** the held-instance and lifecycle scenarios require an observed `8.10` server before fixture mutation. Later 8.10 patches remain eligible; older minors skip these scenarios. CLI suspension/resumption drives the main lifecycle proof. Independent reads confirm state and timestamp omission; cleanup resumes owned suspended instances before deletion.
 - **Definition draining:** observe `DRAINING`, then cancel owned work and verify definition disappearance independently. A null batch operation can be valid. Definition disappearance does not prove that deferred history deletion has finished.
 - **Logical tenants:** supply existing tenant-A, tenant-B, dual-authorized, and restricted-A profiles in the role file. Positive visibility precedes absence assertions. Explicit keys test authorization independently of discovery filters.
 - **Physical tenants:** profiles must target distinct declared `/physical-tenants/<id>/v2` routes on one declared cluster. A default-route profile establishes equivalence. This proves routing and resource separation, not storage or compute isolation.
@@ -68,7 +68,7 @@ Use Make/Go exit status and per-group evidence. A passing run covers executed sc
 | Command stdout and stderr | `logs/` |
 | Run summary | `run.json`, `summary.md` |
 
-Expectation examples run only when their requested conditions match the fixture. Resource lookup examples require a real resource deployment key; a definition key is not a substitute. Variable-file examples receive a generated JSON fixture. Retry-update validation does not establish bulk job-completion coverage.
+Expectation examples run only when their requested conditions match the fixture. Resource lookup requires an actual `resourceKey`; deployment and definition keys are not substitutes. The get slice deploys an inert generic resource for positive lookup and logical-ID keys-only checks. Variable-file examples receive a generated JSON fixture. The update slice also verifies bulk task assignment/unassignment/completion, task-variable ownership, post-creation business IDs, and an activated job’s timeout and completion business ID. Report-path regressions check preservation of existing files and execution with a fresh path. Retry-update validation does not establish bulk job-completion coverage.
 
 See [command matrix](assets/command-matrix.md), [UX checklist](assets/ux-review-checklist.md), and the relevant `specs/` validation records for scenario evidence and remaining gaps. Historical records retain the versions and commands used at the time.
 
