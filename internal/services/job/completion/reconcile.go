@@ -42,7 +42,7 @@ func observeJob(ctx context.Context, key, lastState string, phase d.CompletionOb
 	switch job.State {
 	case "COMPLETED":
 		observation.Status = d.CompletionObservationCompleted
-	case "CREATED", "FAILED", "TIMED_OUT", "RETRIES_UPDATED", "MIGRATED", "CANCELED", "ERROR_THROWN":
+	case "CREATED", "FAILED", "TIMED_OUT", "TIMEOUT_UPDATED", "RETRIES_UPDATED", "MIGRATED", "CANCELED", "ERROR_THROWN":
 		observation.Status = d.CompletionObservationNotCompleted
 	default:
 		observation.Status = d.CompletionObservationUnknown

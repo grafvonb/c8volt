@@ -213,8 +213,7 @@ func effectiveGetJobLimit() int32 {
 	return 0
 }
 
-// validJobStates is the explicit Camunda v8.8-or-newer job state allowlist for
-// local search validation.
+// validJobStates is the explicit job state allowlist for local search validation.
 var validJobStates = []string{
 	"CANCELED",
 	"COMPLETED",
@@ -224,6 +223,7 @@ var validJobStates = []string{
 	"MIGRATED",
 	"RETRIES_UPDATED",
 	"TIMED_OUT",
+	"TIMEOUT_UPDATED",
 }
 
 // validJobKinds is the explicit Camunda v8.8-or-newer job kind allowlist for local

@@ -77,7 +77,7 @@ func normalizeSelection(s *d.CompletionSelection) error {
 		value *string
 		valid []string
 	}{
-		{&f.State, []string{"CANCELED", "COMPLETED", "CREATED", "ERROR_THROWN", "FAILED", "MIGRATED", "RETRIES_UPDATED", "TIMED_OUT"}},
+		{&f.State, []string{"CANCELED", "COMPLETED", "CREATED", "ERROR_THROWN", "FAILED", "MIGRATED", "RETRIES_UPDATED", "TIMED_OUT", "TIMEOUT_UPDATED"}},
 		{&f.Kind, []string{"AD_HOC_SUB_PROCESS", "BPMN_ELEMENT", "EXECUTION_LISTENER", "TASK_LISTENER"}},
 		{&f.ListenerEventType, []string{"ASSIGNING", "CANCELING", "COMPLETING", "CREATING", "END", "START", "UNSPECIFIED", "UPDATING"}},
 	} {

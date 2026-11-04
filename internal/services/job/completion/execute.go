@@ -144,7 +144,7 @@ func executeCandidate(ctx context.Context, b d.PreparedCompletionBatch, candidat
 	case "CANCELED", "ERROR_THROWN":
 		out.Reason = d.CompletionOutcomeOtherTerminal
 		return out, outcomeError(out)
-	case "CREATED", "FAILED", "TIMED_OUT", "RETRIES_UPDATED", "MIGRATED":
+	case "CREATED", "FAILED", "TIMED_OUT", "TIMEOUT_UPDATED", "RETRIES_UPDATED", "MIGRATED":
 	default:
 		out.Reason = d.CompletionOutcomeUnsupportedState
 		return out, outcomeError(out)
