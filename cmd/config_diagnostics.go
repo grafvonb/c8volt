@@ -74,15 +74,16 @@ func parseMajorMinorVersion(version string) (string, bool) {
 	return fmt.Sprintf("%d.%d", major, minor), true
 }
 
-// camundaHumanCompatibilityWarnings retains legacy comparison but never echoes
-// unsafe gateway text into normal diagnostics; machine evidence stays unchanged.
+// camundaHumanCompatibilityWarnings uses bounded version evidence for human
+// diagnostics; the legacy machine warning contract remains separate.
 func camundaHumanCompatibilityWarnings(configuredVersion, gatewayVersion string) []string {
-	warnings := camundaReleaseLineCompatibilityWarnings(configuredVersion, gatewayVersion)
-	if len(warnings) == 0 {
-		return nil
-	}
-	if _, err := toolx.ParseCamundaRelease(gatewayVersion); err != nil {
+	gateway, err := toolx.ParseCamundaRelease(gatewayVersion)
+	if err != nil {
 		return []string{fmt.Sprintf("version check: invalid gateway version; using configured %s", configuredVersion)}
 	}
-	return warnings
+	configured, err := toolx.ParseCamundaRelease(configuredVersion)
+	if err == nil && (configured.Major != gateway.Major || configured.Minor != gateway.Minor) {
+		return []string{fmt.Sprintf("version mismatch: configured %s, gateway %s; results may be incorrect; match config to gateway unless mismatch is intentional", configured.Display, gateway.Display)}
+	}
+	return nil
 }

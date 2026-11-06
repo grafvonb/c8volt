@@ -17,7 +17,7 @@ import (
 	"github.com/grafvonb/c8volt/toolx"
 )
 
-// mutationError preserves inspection of cancellation and local admission facts without
+// mutationError preserves inspection of mutation, connection and local admission facts without
 // changing the class chain used by ordinary normalization and exit handling.
 type mutationError struct{ classified, cause error }
 
@@ -268,7 +268,7 @@ func isNormalized(err error) bool {
 }
 
 // wrap attaches a failure-class sentinel while preserving error text exactly once.
-// Cancellation and local admission annotations retain original causes; ordinary
+// Mutation, connection and local admission annotations retain original causes; ordinary
 // errors keep the established class-only wrapping contract.
 func wrap(classErr error, err error) error {
 	if err == nil || errors.Is(err, classErr) {
@@ -276,7 +276,7 @@ func wrap(classErr error, err error) error {
 	}
 	classified := fmt.Errorf("%w: %v", classErr, err)
 	var failure *domain.ProcessInstanceMutationFailure
-	if errors.As(err, &failure) || httpc.IsRequestRateWaitError(err) {
+	if errors.As(err, &failure) || httpc.IsRequestRateWaitError(err) || httpc.HasFailureDetails(err) {
 		return &mutationError{classified: classified, cause: err}
 	}
 	return classified

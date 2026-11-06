@@ -7,12 +7,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
 	"testing"
 	"time"
 
 	"github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/exitcode"
 	"github.com/grafvonb/c8volt/internal/services"
+	"github.com/grafvonb/c8volt/internal/services/httpc"
 	"github.com/grafvonb/c8volt/toolx"
 	"github.com/stretchr/testify/require"
 )
@@ -368,4 +370,23 @@ func TestMutationClassPreservesPriorityWithoutLeakingInnerClasses(t *testing.T) 
 		require.Equal(t, ClassInvalidInput, Classify(joined))
 		require.Len(t, domain.ProcessInstanceMutationFailures(joined), 1)
 	}
+}
+
+// Connection annotations retain status and authentication facts without changing
+// error text, exit policy or the selected outer facade class.
+func TestConnectionFailureAnnotations(t *testing.T) {
+	req, err := http.NewRequest(http.MethodGet, "https://private.invalid/v2/topology", nil)
+	require.NoError(t, err)
+	raw := httpc.HttpStatusErr(&http.Response{Request: req, StatusCode: 503}, []byte("body-secret"))
+	converted := Normalize(httpc.AuthenticationFailure(raw))
+	_, _, status, authentication := httpc.FailureDetails(converted)
+	require.Equal(t, 503, status)
+	require.True(t, authentication)
+	require.EqualError(t, raw, "service unavailable: 503 GET https://private.invalid/v2/topology (body-secret)")
+	require.EqualError(t, converted, "service unavailable: "+raw.Error())
+	require.Equal(t, ClassUnavailable, Classify(converted))
+	require.Equal(t, exitcode.Unavailable, ExitCode(converted))
+	outer := WrapClass(ErrLocalPrecondition, converted)
+	require.Equal(t, ClassLocalPrecondition, Classify(outer))
+	require.NotErrorIs(t, outer, ErrUnavailable)
 }

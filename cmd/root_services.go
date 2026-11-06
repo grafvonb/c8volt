@@ -45,7 +45,7 @@ func installRemoteCommandServices(ctx context.Context, cfg *config.Config, log *
 		return ctx, bootstrapLocalPrecondition(fmt.Errorf("create authenticator: %w", err))
 	}
 	if err := ator.Init(ctx); err != nil {
-		return ctx, normalizeBootstrapError(fmt.Errorf("initialize authenticator: %w", err))
+		return ctx, normalizeBootstrapError(fmt.Errorf("initialize authenticator: %w", httpc.AuthenticationFailure(err)))
 	}
 	httpSvc.InstallAuthEditor(ator.Editor())
 	ctx = httpSvc.ToContext(ctx)
