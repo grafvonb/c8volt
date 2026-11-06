@@ -10,7 +10,6 @@ import (
 	"github.com/grafvonb/c8volt/c8volt/ferrors"
 	"github.com/grafvonb/c8volt/c8volt/tenant"
 	"github.com/grafvonb/c8volt/config"
-	"github.com/grafvonb/c8volt/internal/services/httpc"
 )
 
 // configConnectionFailureMessage renders only typed, bounded failure evidence.
@@ -20,7 +19,7 @@ func configConnectionFailureMessage(err error) string {
 	if commandHasRequestRateWaitFailure(err) {
 		return prefix + boundedCommandFailureReason(err)
 	}
-	failure, reason, status, authentication := httpc.FailureDetails(err)
+	failure, reason, status, authentication := commandConnectionFailureDetails(err)
 	target := "gateway"
 	if authentication {
 		target = "authentication service"
