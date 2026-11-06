@@ -7,7 +7,6 @@ implementation work.
 ## Inputs
 
 - Target Camunda minor: 8.10
-- Initial release baseline: 8.10.3
 - Fixture prefix: C810
 - Default config: `./config.yaml`
 - Default profile: `kind-camunda-platform-local-c810`

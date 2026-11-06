@@ -5,7 +5,6 @@ package cmd
 
 import (
 	"encoding/json"
-	"strings"
 	"testing"
 
 	"github.com/grafvonb/c8volt/toolx"
@@ -18,12 +17,10 @@ func TestCurrentBuildInfoIncludesSupportedCamundaVersions(t *testing.T) {
 	info := CurrentBuildInfo()
 
 	require.Equal(t, toolx.SupportedCamundaVersionsString(), info.SupportedCamundaVersions)
-	require.Equal(t, toolx.V810Baseline().Tag, info.Camunda810Baseline)
-	require.Equal(t, toolx.V810Baseline().Status, info.Camunda810BaselineStatus)
 }
 
 // TestVersionCommandJSONIncludesSupportedCamundaVersions verifies JSON version
-// output follows the additive supported-version discovery contract.
+// output reports supported release lines without obsolete source-pin hints.
 func TestVersionCommandJSONIncludesSupportedCamundaVersions(t *testing.T) {
 	output := executeRootForTest(t, "version", "--json")
 
@@ -37,37 +34,11 @@ func TestVersionCommandJSONIncludesSupportedCamundaVersions(t *testing.T) {
 	require.Equal(t, "version", envelope.Command)
 	payload := envelope.Payload
 	require.Equal(t, toolx.SupportedCamundaVersionsString(), payload["supportedCamundaVersions"])
-	require.Equal(t, "8.10.3", payload["camunda810Baseline"])
-	require.Equal(t, "final", payload["camunda810BaselineStatus"])
-}
-
-// TestVersionCommandSeparatesBaselineMetadataFromVersionIdentity verifies
-// baseline tag/status updates cannot leak into supported-version discovery.
-func TestVersionCommandSeparatesBaselineMetadataFromVersionIdentity(t *testing.T) {
-	jsonOutput := executeRootForTest(t, "version", "--json")
-
-	var envelope struct {
-		Payload map[string]string `json:"payload"`
+	require.Len(t, payload, 4)
+	for _, field := range []string{"version", "commit", "date", "supportedCamundaVersions"} {
+		require.Contains(t, payload, field)
 	}
-	require.NoError(t, json.Unmarshal([]byte(jsonOutput), &envelope))
-
-	supportedVersions := envelope.Payload["supportedCamundaVersions"]
-	baselineTag := envelope.Payload["camunda810Baseline"]
-	baselineStatus := envelope.Payload["camunda810BaselineStatus"]
-	require.Equal(t, "8.8, 8.9, 8.10", supportedVersions)
-	require.Equal(t, toolx.V810Baseline().Tag, baselineTag)
-	require.Equal(t, toolx.V810Baseline().Status, baselineStatus)
-	require.NotContains(t, supportedVersions, baselineTag)
-	require.NotContains(t, supportedVersions, baselineStatus)
-	require.NotContains(t, supportedVersions, "alpha")
-	require.NotContains(t, supportedVersions, "rc")
-	require.NotContains(t, supportedVersions, "8.10.0")
-
-	humanOutput := executeRootForTest(t, "version")
-	supportedLine := firstVersionOutputLineContaining(t, humanOutput, "Supported Camunda versions:")
-	require.Contains(t, supportedLine, "Supported Camunda versions: "+supportedVersions)
-	require.NotContains(t, supportedLine, baselineTag)
-	require.Contains(t, humanOutput, "Camunda 8.10 baseline: "+baselineTag+" ("+baselineStatus+")")
+	requireSingleJSONValue(t, output)
 }
 
 // TestVersionCommand_DefaultOutputRemainsCompactPlainText verifies human output
@@ -77,7 +48,8 @@ func TestVersionCommand_DefaultOutputRemainsCompactPlainText(t *testing.T) {
 
 	require.Contains(t, output, "c8volt ")
 	require.Contains(t, output, "Supported Camunda versions: "+toolx.SupportedCamundaVersionsString())
-	require.Contains(t, output, "Camunda 8.10 baseline: 8.10.3 (final)")
+	require.NotContains(t, output, "baseline")
+	require.NotContains(t, output, "8.10.3")
 	require.NotContains(t, output, `"outcome"`)
 	require.NotContains(t, output, `"command"`)
 }
@@ -89,18 +61,4 @@ func TestVersionHelp_DocumentsReadOnlyAutomationGuidance(t *testing.T) {
 
 	require.Contains(t, output, "Show the c8volt version, build metadata")
 	require.Contains(t, output, "c8volt version --json")
-}
-
-// firstVersionOutputLineContaining extracts a single line from version output
-// while tolerating the logger prefix present in command test harness output.
-func firstVersionOutputLineContaining(t *testing.T, output string, text string) string {
-	t.Helper()
-
-	for _, line := range strings.Split(output, "\n") {
-		if strings.Contains(line, text) {
-			return line
-		}
-	}
-	require.Failf(t, "missing version output line", "text %q not found in %q", text, output)
-	return ""
 }

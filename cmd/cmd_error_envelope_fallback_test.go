@@ -58,7 +58,7 @@ func TestCommandErrorEnvelopeFallback(t *testing.T) {
 			scenario:     "config-test-connection",
 			wantExitCode: exitcode.InvalidArgs,
 			wantMessage:  "config test-connection",
-			wantRequests: 2,
+			wantRequests: 1,
 		},
 		{
 			name:         "real-embed-command",

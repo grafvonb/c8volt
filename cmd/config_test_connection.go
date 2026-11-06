@@ -8,6 +8,7 @@ import (
 
 	"github.com/grafvonb/c8volt/c8volt/ferrors"
 	"github.com/grafvonb/c8volt/config"
+	"github.com/grafvonb/c8volt/internal/services/httpc"
 	"github.com/grafvonb/c8volt/toolx/logging"
 	"github.com/spf13/cobra"
 )
@@ -18,7 +19,8 @@ var configTestConnectionCmd = &cobra.Command{
 	Long: `Validate configuration and test the connection to Camunda.
 
 Report the gateway version and warn if it differs from the configured release
-line. A version warning does not fail an otherwise successful connection test.`,
+line. A version warning does not fail an otherwise successful connection test.
+On failure, report a concise reason and a suggested check.`,
 	Example: `  c8volt config test-connection
   c8volt --profile production config test-connection`,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -40,7 +42,7 @@ line. A version warning does not fail an otherwise successful connection test.`,
 
 		ctx, err := installRemoteCommandServices(cmd.Context(), cfg, log)
 		if err != nil {
-			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, err, configConnectionFailureMessage(err))
 		}
 		cmd.SetContext(ctx)
 
@@ -48,9 +50,13 @@ line. A version warning does not fail an otherwise successful connection test.`,
 		if err != nil {
 			handleNewCliError(cmd, log, cfg, err)
 		}
-		topology, err := cli.GetClusterTopology(cmd.Context())
+		// The explicit topology operation supplies version evidence as well as the
+		// connection result. Own its compact failure diagnostic while retaining
+		// normal timeout/retries and redacted DEBUG exchanges, without a second probe.
+		connectionCtx := httpc.WithoutReadRetryLogs(httpc.BypassBeforeRequest(cmd.Context()))
+		topology, err := cli.GetClusterTopology(connectionCtx)
 		if err != nil {
-			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("config test-connection: %w", err), "config test-connection: "+boundedCommandFailureReason(err))
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("config test-connection: %w", err), configConnectionFailureMessage(err))
 		}
 
 		log.Info("camunda connection ok")

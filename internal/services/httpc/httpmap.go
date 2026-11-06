@@ -23,16 +23,16 @@ func HttpStatusErr(hr *http.Response, body []byte) error {
 		reason := http.StatusText(hr.StatusCode)
 		// avoid e.g. "unauthorized" twice
 		if strings.EqualFold(reason, err.Error()) {
-			return fmt.Errorf(
+			return WithHTTPStatus(fmt.Errorf(
 				"%w: %d %s %s (%s)",
 				err,
 				hr.StatusCode,
 				hr.Request.Method,
 				hr.Request.URL.String(),
 				sb,
-			)
+			), hr.StatusCode)
 		}
-		return fmt.Errorf(
+		return WithHTTPStatus(fmt.Errorf(
 			"%w: %d %s %s %s (%s)",
 			err,
 			hr.StatusCode,
@@ -40,7 +40,7 @@ func HttpStatusErr(hr *http.Response, body []byte) error {
 			hr.Request.Method,
 			hr.Request.URL.String(),
 			sb,
-		)
+		), hr.StatusCode)
 	}
 	return nil
 }

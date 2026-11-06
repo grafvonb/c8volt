@@ -14,6 +14,7 @@ Validate configuration and test the connection to Camunda.
 
 Report the gateway version and warn if it differs from the configured release
 line. A version warning does not fail an otherwise successful connection test.
+On failure, report a concise reason and a suggested check.
 
 ```
 c8volt config test-connection [flags]
