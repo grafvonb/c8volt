@@ -129,7 +129,7 @@ func (s *Service) Editor() authenticator.RequestEditor {
 		}
 		tok, err := s.RetrieveTokenForAPI(ctx, target)
 		if err != nil {
-			return err
+			return httpc.AuthenticationFailure(err)
 		}
 		req.Header.Set(s.headerName, s.prefix+tok)
 		return nil

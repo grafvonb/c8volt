@@ -17,6 +17,7 @@ import (
 	"github.com/grafvonb/c8volt/config"
 	"github.com/grafvonb/c8volt/internal/services/auth/authenticator"
 	"github.com/grafvonb/c8volt/internal/services/common"
+	"github.com/grafvonb/c8volt/internal/services/httpc"
 )
 
 var _ authenticator.Authenticator = (*Service)(nil)
@@ -104,7 +105,7 @@ func (s *Service) Init(ctx context.Context) error {
 	}()
 
 	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
-		return fmt.Errorf("login failed: %d (%s)", resp.StatusCode, http.StatusText(resp.StatusCode))
+		return httpc.WithHTTPStatus(fmt.Errorf("login failed: %d (%s)", resp.StatusCode, http.StatusText(resp.StatusCode)), resp.StatusCode)
 	}
 
 	// Verify we received at least one cookie for the base host.

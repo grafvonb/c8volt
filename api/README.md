@@ -1,6 +1,6 @@
 # Camunda client generation
 
-Use the dedicated 8.10 flow for the current client baseline:
+Use the dedicated flow to regenerate the Camunda 8.10 client:
 
 ```sh
 bash api/refresh-clients.sh --target v810 --camunda-tag 8.10.3
@@ -18,14 +18,14 @@ Run generation from the repository root. It fetches the pinned upstream OpenAPI 
 
 The default `bash api/refresh-clients.sh` refreshes retained 8.8/8.9 clients and OAuth2. It does not refresh 8.10. Do not remove component clients with runtime consumers.
 
-## Update the 8.10 baseline
+## Update the 8.10 generated client
 
 1. Choose the upstream tag and run the dedicated refresh command.
 2. Check `internal/clients/camunda/v810/camunda/provenance.json` and `client.gen.go`.
 3. Align `toolx/camunda_baseline.go` with the provenance tag, commit, and release status.
 4. Run the isolated guards below, relevant Go tests, and `make docs-content`.
 
-The current baseline is `8.10.3`, commit `3961b79c3fdaf43c48691ed77672d6db42d0abcc`. A later patch replaces the same `v810/camunda` client; the operator version remains `8.10`.
+The generated client uses upstream tag `8.10.3`, commit `3961b79c3fdaf43c48691ed77672d6db42d0abcc`, for reproducible generation. A later source pin replaces the same `v810/camunda` client; runtime selection remains `8.10`.
 
 The source is `zeebe/gateway-protocol/src/main/proto/v2/rest-api.yaml` in `camunda/camunda`. Provenance records source and generated hashes, ordered mutation hashes, tool versions, and the reproduction command. Publication stages files and restores the previous directory if the final move fails. Older client directories remain unchanged.
 

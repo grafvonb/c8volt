@@ -61,7 +61,7 @@ c8volt --profile production config test-connection
 c8volt --profile production config show
 ```
 
-`config show` redacts secrets. Validation is local; `test-connection` contacts Camunda. Before operational requests, an automatic gateway-version advisory warns on a release-line mismatch and keeps the configured adapter.
+`config show` redacts secrets. Validation is local; `test-connection` contacts Camunda and uses the same topology response to check the gateway version. Failures report a concise reason and a suggested check, including network, TLS and authentication problems. Other API commands run an automatic version advisory before their operation. A mismatch warns without changing the configured adapter.
 
 ## Tenant scope
 

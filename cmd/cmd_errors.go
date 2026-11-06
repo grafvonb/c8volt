@@ -85,3 +85,9 @@ func commandInputError(kind error, format string, args ...any) error {
 func commandHasRequestRateWaitFailure(err error) bool {
 	return httpc.IsRequestRateWaitError(err)
 }
+
+// commandConnectionFailureDetails keeps transport inspection in command error
+// support; renderers receive only bounded failure facts.
+func commandConnectionFailureDetails(err error) (failure, reason string, status int, authentication bool) {
+	return httpc.FailureDetails(err)
+}

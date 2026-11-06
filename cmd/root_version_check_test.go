@@ -95,30 +95,27 @@ func serveVersionCheckTopology(w http.ResponseWriter, r *http.Request, version s
 	return true
 }
 
-// TestVersionCheckConnectionEvidence keeps legacy actual-result warnings separate
-// from safe automatic warnings, including changing observations and opt-out.
+// TestVersionCheckConnectionEvidence uses the explicit topology response for
+// bounded human warnings while preserving legacy machine evidence and opt-out.
 func TestVersionCheckConnectionEvidence(t *testing.T) {
 	for _, tc := range []struct {
-		name, probe, actual, want string
-		disabled                  bool
-		machineWarning            bool
+		name, actual, want string
+		disabled           bool
+		machineWarning     bool
 	}{
-		{name: "duplicate mismatch", probe: "8.10.3", actual: "8.10.3", want: "version mismatch: configured 8.9, gateway 8.10.3; results may be incorrect; match config to gateway unless mismatch is intentional", machineWarning: true},
-		{name: "legacy permissive", probe: "8.9.garbage", actual: "8.9.garbage", want: "version check: invalid gateway version; using configured 8.9"},
-		{name: "changed observation", probe: "8.9.0", actual: "8.10.3", machineWarning: true},
-		{name: "opt out", actual: "8.10.3", disabled: true, machineWarning: true},
+		{name: "mismatch", actual: "8.10.3", want: "version mismatch: configured 8.9, gateway 8.10.3; results may be incorrect; match config to gateway unless mismatch is intentional", machineWarning: true},
+		{name: "legacy permissive", actual: "8.9.garbage", want: "version check: invalid gateway version; using configured 8.9"},
+		{name: "match", actual: "8.9.3"},
+		{name: "opt out", actual: "8.10.3", disabled: true, want: "version mismatch: configured 8.9, gateway 8.10.3; results may be incorrect; match config to gateway unless mismatch is intentional", machineWarning: true},
 		{name: "unsafe fallback", actual: "9.10\nPOST https://private.invalid secret", disabled: true, want: "version check: invalid gateway version; using configured 8.9", machineWarning: true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			var calls atomic.Int32
 			server := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				require.Equal(t, "/v2/topology", r.URL.Path)
-				value := tc.actual
-				if calls.Add(1) == 1 && !tc.disabled {
-					value = tc.probe
-				}
+				calls.Add(1)
 				w.Header().Set("Content-Type", "application/json")
-				require.NoError(t, json.NewEncoder(w).Encode(map[string]any{"gatewayVersion": value}))
+				require.NoError(t, json.NewEncoder(w).Encode(map[string]any{"gatewayVersion": tc.actual}))
 			}))
 			t.Cleanup(server.Close)
 			cfg := writeTestConfigForVersion(t, server.URL, "8.9")
@@ -132,16 +129,12 @@ func TestVersionCheckConnectionEvidence(t *testing.T) {
 			require.NoError(t, json.Unmarshal([]byte(stdout), &result))
 			require.Equal(t, tc.machineWarning, len(result.Warnings) > 0)
 			require.Equal(t, camundaReleaseLineCompatibilityWarnings("8.9", tc.actual), result.Warnings)
-			warning := tc.want
-			if warning == "" {
-				warning = result.Warnings[0]
-			}
-			require.Equal(t, [][2]string{{"WARN", warning}}, bulkCompletionDiagnosticRecords(t, stderr, "plain-time"))
-			if tc.disabled {
-				require.Equal(t, int32(1), calls.Load())
+			if tc.want == "" {
+				require.Empty(t, stderr)
 			} else {
-				require.Equal(t, int32(2), calls.Load())
+				require.Equal(t, [][2]string{{"WARN", tc.want}}, bulkCompletionDiagnosticRecords(t, stderr, "plain-time"))
 			}
+			require.Equal(t, int32(1), calls.Load())
 			require.NotContains(t, stderr, "private.invalid")
 		})
 	}
@@ -364,8 +357,8 @@ func TestVersionCheckLocalTerminalAbort(t *testing.T) {
 	}
 }
 
-// TestVersionCheckConnectionFailure preserves the operational exit while both
-// advisory and explicit failures remain bounded configured logger records.
+// TestVersionCheckConnectionFailure preserves the operational exit and emits
+// one bounded diagnostic from the explicit request without an advisory warning.
 func TestVersionCheckConnectionFailure(t *testing.T) {
 	var calls atomic.Int32
 	server := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -380,7 +373,7 @@ func TestVersionCheckConnectionFailure(t *testing.T) {
 	require.ErrorAs(t, err, &exitErr)
 	require.Equal(t, 1, exitErr.ExitCode())
 	require.Empty(t, stdout)
-	require.Equal(t, int32(2), calls.Load())
+	require.Equal(t, int32(1), calls.Load())
 	var warnings, failures []string
 	for _, record := range bulkCompletionDiagnosticRecords(t, stderr, "plain-time") {
 		switch record[0] {
@@ -393,9 +386,8 @@ func TestVersionCheckConnectionFailure(t *testing.T) {
 			t.Fatalf("unexpected record: %v", record)
 		}
 	}
-	require.Equal(t, []string{"version check: access denied; using configured 8.9"}, warnings)
-	require.Len(t, failures, 1)
-	require.Contains(t, failures[0], "config test-connection:")
+	require.Empty(t, warnings)
+	require.Equal(t, []string{"config test-connection: gateway HTTP 403: access denied; check credentials, roles and API permissions"}, failures)
 	for _, bad := range []string{server.URL, "POST", "GET", "private.invalid", "body-secret", "key-secret"} {
 		require.NotContains(t, stdout+stderr, bad)
 	}

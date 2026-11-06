@@ -6,7 +6,7 @@ nav_exclude: true
 has_toc: true
 ---
 
-> Generated from build `c8volt v4.4.0-305-g20c7f8ff-dirty`, commit `20c7f8ff`, built `2026-11-04T14:09:00Z` | Supported Camunda 8 versions: 8.8, 8.9, 8.10 | Camunda 8.10 baseline: 8.10.3 (final)
+> Generated from build `c8volt v5.0.0-1-gc47b9e69-dirty`, commit `c47b9e69`, built `2026-11-06T08:13:09Z` | Supported Camunda 8 versions: 8.8, 8.9, 8.10
 
 # c8volt v5 — Camunda CLI for operations
 
