@@ -9,10 +9,11 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+source "$SCRIPT_DIR/generation-tools.sh"
 
 CAMUNDA_REPOSITORY="https://github.com/camunda/camunda.git"
-PINNED_TAG="8.10.3"
-PINNED_COMMIT="3961b79c3fdaf43c48691ed77672d6db42d0abcc"
+PINNED_TAG="8.10.9"
+PINNED_COMMIT="b4d625e70555b54f03966c7cd5331c8d5ce92a85"
 SOURCE_SPEC="zeebe/gateway-protocol/src/main/proto/v2/rest-api.yaml"
 SOURCE_SPEC_DIR="${SOURCE_SPEC%/*}"
 OUTPUT_DIR="$REPO_ROOT/internal/clients/camunda/v810/camunda"
@@ -323,7 +324,7 @@ prepare_spec() {
   local current
 
   mkdir -p "$prepared_dir"
-  redocly bundle "$source" -o "$bundled" >/dev/null || exit 1
+  generation_redocly bundle "$source" -o "$bundled" >/dev/null || exit 1
   current="$bundled"
 
   for i in "${!MUTATION_PATHS[@]}"; do
@@ -361,18 +362,8 @@ compile_generated_client() {
 
   mkdir -p "$compile_dir"
   cp "$generated_client" "$compile_dir/client.gen.go"
-  cat >"$compile_dir/go.mod" <<'EOF'
-module c8volt-v810-generated-compile
-
-go 1.26
-
-require (
-	github.com/oapi-codegen/nullable v1.1.0
-	github.com/oapi-codegen/runtime v1.4.0
-)
-EOF
-
-  (cd "$compile_dir" && GOWORK=off go mod tidy && GOWORK=off go test ./...)
+  cp "$REPO_ROOT/go.mod" "$REPO_ROOT/go.sum" "$compile_dir/"
+  (cd "$compile_dir" && GOWORK=off go mod edit -module=c8volt-v810-generated-compile && GOWORK=off go test -mod=readonly ./...)
 }
 
 tool_version() {
@@ -380,10 +371,10 @@ tool_version() {
 
   case "$name" in
     redocly)
-      redocly --version 2>&1 | awk 'NF {last=$0} END {print last}'
+      generation_redocly --version
       ;;
     oapi-codegen)
-      oapi-codegen -version 2>&1 | awk '/^v?[0-9]+[.][0-9]+[.][0-9]+/ {version=$0} END {sub(/^v/, "", version); print version}'
+      generation_oapi_codegen -version 2>&1 | awk '/^v?[0-9]+[.][0-9]+[.][0-9]+/ {version=$0} END {sub(/^v/, "", version); print version}'
       ;;
   esac
 }
@@ -420,7 +411,8 @@ PY
     "$(tool_version redocly)" \
     "$(tool_version oapi-codegen)" \
     "$(sha256_file "$prepared_spec")" \
-    "$(sha256_file "$generated_client")" <<'PY'
+    "$(sha256_file "$generated_client")" \
+    "$(sha256_file "$SCRIPT_DIR/oapi-codegen.yaml")" <<'PY'
 import json
 import sys
 from pathlib import Path
@@ -435,6 +427,7 @@ from pathlib import Path
     oapi_codegen_version,
     prepared_hash,
     generated_hash,
+    generator_config_hash,
 ) = sys.argv[1:]
 
 provenance = {
@@ -451,6 +444,7 @@ provenance = {
     },
     "preparedSpecSha256": prepared_hash,
     "generatedClientSha256": generated_hash,
+    "generatorConfigSha256": generator_config_hash,
     "command": f"bash api/refresh-clients.sh --target v810 --camunda-tag {tag}",
 }
 
@@ -642,11 +636,11 @@ fi
 validate_target_path
 validate_tag "$CAMUNDA_TAG"
 
-need redocly
-need oapi-codegen
+generation_redocly --version >/dev/null
 need python3
 need go
 need git
+generation_oapi_codegen -version >/dev/null
 
 TMP_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/c8volt-v810-client.XXXXXX")"
 trap cleanup EXIT

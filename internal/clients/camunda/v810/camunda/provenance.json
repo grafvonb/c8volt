@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "repository": "https://github.com/camunda/camunda.git",
-  "tag": "8.10.3",
-  "commit": "3961b79c3fdaf43c48691ed77672d6db42d0abcc",
+  "tag": "8.10.9",
+  "commit": "b4d625e70555b54f03966c7cd5331c8d5ce92a85",
   "sourceSpec": "zeebe/gateway-protocol/src/main/proto/v2/rest-api.yaml",
   "sourceSpecSha256": "857109dabcb998801f749282836a6d2af1a137284d538161801f0c348ae57837",
   "transformations": [
@@ -28,10 +28,11 @@
     }
   ],
   "tools": {
-    "redocly": "2.29.2",
-    "oapi-codegen": "2.5.0"
+    "redocly": "2.76.0",
+    "oapi-codegen": "2.8.2"
   },
-  "preparedSpecSha256": "461a1cc051a021a3cf937dbfd28a92537cf9b8b4381bcfb9ad6ab6e1d1f91d1b",
-  "generatedClientSha256": "589351ac972ab595af721f2e9647a273819e56a9601f7af2aaaf98e6def2f319",
-  "command": "bash api/refresh-clients.sh --target v810 --camunda-tag 8.10.3"
+  "preparedSpecSha256": "275509af8f198607be1f1189009375cb267964c725a894327185d7691ffe80c8",
+  "generatedClientSha256": "3316bb26d0d23bb28af51c8a279c9eaa68354c07f8c694f027563ec6e928e52e",
+  "generatorConfigSha256": "c7d6a1c3d3e122fd322f10fe14c9e5b8a865c7c0ad182b207ce43ef914390fe3",
+  "command": "bash api/refresh-clients.sh --target v810 --camunda-tag 8.10.9"
 }
