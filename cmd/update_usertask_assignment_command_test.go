@@ -55,7 +55,7 @@ func newUserTaskAssignmentServer(t *testing.T, version string, operation string,
 		var body map[string]any
 		if operation == "assign" {
 			require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
-			if version == "8.10" {
+			if version != "8.8" {
 				require.Len(t, body, 2)
 				require.NotContains(t, body, "action")
 			} else {
@@ -136,7 +136,7 @@ func TestUpdateUserTaskAssignmentCommandSelection(t *testing.T) {
 						require.Equal(t, tc.keys[i], row.Key)
 						if operation == "assign" {
 							wantBody := map[string]any{"assignee": " alice\nopaque ", "allowOverride": override}
-							if version != "8.10" {
+							if version == "8.8" {
 								wantBody["action"] = nil
 							}
 							require.Equal(t, wantBody, row.Body)

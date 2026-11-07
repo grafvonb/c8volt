@@ -137,7 +137,7 @@ func TestUpdateUserTaskCompletionCommandSelection(t *testing.T) {
 				for i, row := range rows {
 					require.Equal(t, tc.keys[i], row.Key)
 					wantBody := map[string]any{}
-					if version != "8.10" {
+					if version == "8.8" {
 						wantBody = map[string]any{"action": nil, "variables": nil}
 					}
 					require.Equal(t, wantBody, row.Body)

@@ -50,4 +50,9 @@ if generation_redocly bundle spec.yaml -o bundled.yaml >stdout 2>stderr; then
 fi
 grep -Fq 'redocly version mismatch: need 2.76.0, got 0.0.0' stderr
 test ! -e "$GENERATION_TEST_LOG"
+if bash "$REPO_ROOT/api/generate-v810-client.sh" --target v89 --camunda-tag 8.9.28 >stdout 2>stderr; then
+  echo 'the 8.10 compatibility entry point must reject retargeting' >&2
+  exit 1
+fi
+grep -Fq 'Unknown argument: --target' stderr
 echo 'ok api/tests/generation_tools_test.sh'

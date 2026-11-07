@@ -4,13 +4,14 @@
 
 # Purpose:
 #   Fetch upstream specs and regenerate OAuth2 and the runtime-used Camunda
-#   8.8/8.9 clients, or refresh Camunda 8.10 with the isolated --target v810 flow.
+#   8.8/8.9 clients, or refresh one unified API client with --target.
 #
 # Usage:
 #   bash api/refresh-clients.sh
 #   bash api/refresh-clients.sh --commit
 #   bash api/refresh-clients.sh --camunda-tag 8.8.19 --camunda-docs-tag 8.8.196
 #   bash api/refresh-clients.sh --target v810 --camunda-tag 8.10.9
+#   bash api/refresh-clients.sh --target v89 --camunda-tag 8.9.28
 #
 # Notes:
 #   This is the top-level entrypoint for the end-to-end workflow. It passes the
@@ -25,29 +26,27 @@ CAMUNDA_TAG=""
 CAMUNDA_DOCS_TAG=""
 TARGET=""
 
-V810_TARGET="v810"
-
 usage() {
   cat <<'EOF'
 Usage:
   bash api/refresh-clients.sh [--camunda-tag <tag>] [--camunda-docs-tag <tag>] [--commit]
-  bash api/refresh-clients.sh --target v810 --camunda-tag <8.10-tag>
+  bash api/refresh-clients.sh --target <v89|v810> --camunda-tag <tag>
 
 Options:
-  --target <target>         Generate only the named isolated client target. Supported: v810.
+  --target <target>         Generate only the named unified client. Supported: v89, v810.
   --camunda-tag <tag>       Fetch a specific tag from camunda/camunda for the /v2 spec.
   --camunda-docs-tag <tag>  Fetch a specific tag from camunda/camunda-docs for legacy component specs.
   --commit                  Pass commit mode through to api/3-generate-clients-from-fetched-specs.sh.
 EOF
 }
 
-validate_v810_target_path() {
+validate_target_path() {
   local target="$1"
   local output_dir
 
   case "$target" in
     *..*|*/*)
-      echo "V810 output path escapes repository" >&2
+      echo "Camunda client output path escapes repository" >&2
       exit 1
       ;;
   esac
@@ -57,7 +56,7 @@ validate_v810_target_path() {
     "$REPO_ROOT"/internal/clients/camunda/*/camunda)
       ;;
     *)
-      echo "V810 output path escapes repository" >&2
+      echo "Camunda client output path escapes repository" >&2
       exit 1
       ;;
   esac
@@ -118,9 +117,9 @@ while (($# > 0)); do
 done
 
 if [ -n "$TARGET" ]; then
-  validate_v810_target_path "$TARGET"
+  validate_target_path "$TARGET"
 
-  if [ "$TARGET" != "$V810_TARGET" ]; then
+  if [ "$TARGET" != v810 ] && [ "$TARGET" != v89 ]; then
     echo "Unknown target: $TARGET" >&2
     usage >&2
     exit 1
@@ -132,9 +131,12 @@ if [ -n "$TARGET" ]; then
     exit 1
   fi
 
-  validate_v810_tag "$CAMUNDA_TAG"
-
-  "$SCRIPT_DIR/generate-v810-client.sh" --camunda-tag "$CAMUNDA_TAG"
+  if [ "$TARGET" = v810 ]; then
+    validate_v810_tag "$CAMUNDA_TAG"
+    "$SCRIPT_DIR/generate-v810-client.sh" --camunda-tag "$CAMUNDA_TAG"
+  else
+    bash "$SCRIPT_DIR/generate-camunda-client.sh" --target "$TARGET" --camunda-tag "$CAMUNDA_TAG"
+  fi
   exit 0
 fi
 

@@ -6,6 +6,14 @@ Use the dedicated flow to regenerate the Camunda 8.10 client:
 bash api/refresh-clients.sh --target v810 --camunda-tag 8.10.9
 ```
 
+Refresh the Camunda 8.9 unified client independently:
+
+```sh
+bash api/refresh-clients.sh --target v89 --camunda-tag 8.9.28
+```
+
+This pins tag `8.9.28`, commit `2bfd882b69363aa4bbdab4ae2925c010b5100476`. It preserves the separate Tasklist fallback, whose specification comes from `camunda/camunda-docs`, and the 8.8/8.10 clients.
+
 Run generation from the repository root. It fetches the pinned upstream OpenAPI source, applies local mutations, and generates Go code. It does not contact a running Camunda cluster.
 
 The scripts use the `oapi-codegen` tool pinned in `go.mod`, regardless of the binary on PATH. Redocly must match the version in `api/generation-tools.sh`:
@@ -23,7 +31,7 @@ Keep `go-yit` on the YAML v3-compatible revision required by `yaml-jsonpath`; it
 | Version | Runtime clients | Refresh |
 | --- | --- | --- |
 | 8.10 | Unified Camunda API | `--target v810 --camunda-tag <tag>` |
-| 8.9 | Unified API, Tasklist | Default refresh |
+| 8.9 | Unified API, Tasklist | `--target v89 --camunda-tag <tag>` for unified API; default refresh for Tasklist |
 | 8.8 | Unified API, Operate, Tasklist | Default refresh |
 
 The default `bash api/refresh-clients.sh` refreshes retained 8.8/8.9 clients and OAuth2. It does not refresh 8.10. Do not remove component clients with runtime consumers.
@@ -47,6 +55,7 @@ Tool selection, provenance, and boundary checks use local files or test-owned fi
 bash api/tests/generation_tools_test.sh
 bash api/tests/v810_generation_test.sh
 python3 api/tests/v810_provenance_test.py
+python3 api/tests/v89_provenance_test.py
 bash api/tests/v810_repository_boundary_test.sh
 go test ./internal/clients/camunda/v810/camunda -count=1
 ```
@@ -69,6 +78,7 @@ Networked reproducibility is separate. `C8VOLT_V810_NETWORK_REPRODUCIBILITY=1 py
 | `1-fetch-camunda-docs-api-specs.sh` | Fetch legacy component specs from `camunda/camunda-docs` |
 | `3-generate-clients-from-fetched-specs.sh` | Generate retained 8.8/8.9 and OAuth2 clients from fetched specs |
 | `generate-go-client.sh` | Generate one client with `oapi-codegen` |
+| `generate-camunda-client.sh` | Shared isolated generation and provenance for v89/v810 |
 | `2-bundle-camunda-docs-v2-spec.sh` | Optional legacy bundler, outside the current refresh pipeline |
 
 The 8.10 mutation chain under `api/mutations/` preserves search queries, search results, process-instance filters, and job-result discrimination, then resolves operation-ID collisions. Keep its order and hashes aligned with provenance. Prefer changing this chain and regenerating over editing generated clients.

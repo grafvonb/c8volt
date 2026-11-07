@@ -121,7 +121,7 @@ func TestService_WaitForCompletion(t *testing.T) {
 					HTTPResponse: newHTTPResponse(http.MethodGet, "https://camunda.local/v2/batch-operations/batch-1", http.StatusOK, "200 OK"),
 					JSON200: &camundav89.BatchOperationResponse{
 						BatchOperationKey:        "batch-1",
-						BatchOperationType:       camundav89.BatchOperationTypeEnumCANCELPROCESSINSTANCE,
+						BatchOperationType:       new(camundav89.BatchOperationTypeEnumCANCELPROCESSINSTANCE),
 						State:                    camundav89.BatchOperationStateEnumCOMPLETED,
 						OperationsTotalCount:     10,
 						OperationsCompletedCount: 10,
@@ -147,7 +147,7 @@ func TestService_WaitForCompletion(t *testing.T) {
 					HTTPResponse: newHTTPResponse(http.MethodGet, "https://camunda.local/v2/batch-operations/batch-2", http.StatusOK, "200 OK"),
 					JSON200: &camundav89.BatchOperationResponse{
 						BatchOperationKey:        "batch-2",
-						BatchOperationType:       camundav89.BatchOperationTypeEnumCANCELPROCESSINSTANCE,
+						BatchOperationType:       new(camundav89.BatchOperationTypeEnumCANCELPROCESSINSTANCE),
 						State:                    camundav89.BatchOperationStateEnumCOMPLETED,
 						OperationsTotalCount:     10,
 						OperationsCompletedCount: 9,
@@ -212,4 +212,10 @@ func newHTTPResponse(method string, rawURL string, statusCode int, status string
 			URL:    u,
 		},
 	}
+}
+
+func TestBatchOperationFromPayloadWithoutType(t *testing.T) {
+	operation := batchOperationFromPayload(&camundav89.BatchOperationResponse{BatchOperationKey: "batch-1"}, 200, "200 OK")
+	require.Equal(t, "batch-1", operation.Key)
+	require.Empty(t, operation.Type)
 }

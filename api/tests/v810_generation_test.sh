@@ -525,7 +525,7 @@ test_refresh_rejects_output_escape_before_writes() {
 
   assert_failure_output_contains \
     "escaped output path is rejected" \
-    "V810 output path escapes repository" \
+    "Camunda client output path escapes repository" \
     "$worktree/api/refresh-clients.sh" --target ../v810 --camunda-tag 8.10.9
   assert_v810_publication_unchanged "$worktree" "$before"
   assert_not_exists "$worktree/../escaped-v810"
