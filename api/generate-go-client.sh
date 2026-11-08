@@ -15,11 +15,14 @@
 
 set -euo pipefail
 
-need() { command -v "$1" >/dev/null 2>&1 || { echo "missing tool: $1" >&2; exit 127; }; }
-need oapi-codegen
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/generation-tools.sh"
 
 src="${1:-${SRC:-}}"
 out="${2:-${OUT:-}}"
 pkg="${3:-${PKG:-}}"
 
-oapi-codegen -generate types,client -package "$pkg" -o "$out" "$src"
+[[ "$src" = /* || "$src" = https://* || "$src" = http://* ]] || src="$PWD/$src"
+[[ "$out" = /* ]] || out="$PWD/$out"
+
+generation_oapi_codegen -config "$SCRIPT_DIR/oapi-codegen.yaml" -generate types,client -package "$pkg" -o "$out" "$src"

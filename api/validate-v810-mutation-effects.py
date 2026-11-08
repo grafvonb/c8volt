@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
-"""Verify that each V810 OpenAPI mutation made its intended semantic change."""
+"""Verify that each OpenAPI mutation made its intended semantic change."""
 
+import copy
 import re
 import sys
 from pathlib import Path
@@ -149,6 +150,15 @@ def validate(before: dict, after: dict, suffix: str) -> int:
                 raise ValueError(f"schema {name} has the wrong discriminator")
             if old != new:
                 changed += 1
+    elif suffix == "v88-opids-fixed":
+        expected = copy.deepcopy(before)
+        operation = expected["paths"]["/resources/{resourceKey}/deletion"]["post"]
+        if operation.get("operationId") != "deleteResource":
+            raise ValueError("expected the Camunda 8.8 deleteResource operation")
+        operation["operationId"] = "deleteResourceOp"
+        if expected != after:
+            raise ValueError("8.8 operation-ID mutation changed more than the client name")
+        changed = 1
     elif suffix == "opids-fixed":
         schema_names = set(before_schemas)
         before_paths = before.get("paths", {})

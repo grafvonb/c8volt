@@ -61,8 +61,8 @@ func TestService_GetElement_MapsPayload(t *testing.T) {
 					EndDate:                &end,
 					ProcessInstanceKey:     "2251799813688001",
 					RootProcessInstanceKey: &rootKey,
-					ProcessDefinitionId:    "order-process",
-					ProcessDefinitionKey:   "2251799813687001",
+					ProcessDefinitionId:    new(camundav810.ProcessDefinitionId("order-process")),
+					ProcessDefinitionKey:   new(camundav810.ProcessDefinitionKey("2251799813687001")),
 					TenantId:               "tenant-a",
 					HasIncident:            true,
 					IncidentKey:            &incidentKey,
@@ -93,6 +93,12 @@ func TestService_GetElement_MapsPayload(t *testing.T) {
 }
 
 // TestService_GetElement_NotFound preserves the shared domain not-found classification.
+func TestFromElementInstanceResultWithoutDefinition(t *testing.T) {
+	element := fromElementInstanceResult(camundav810.ElementInstanceResult{})
+	require.Empty(t, element.ProcessDefinitionId)
+	require.Empty(t, element.ProcessDefinitionKey)
+}
+
 func TestService_GetElement_NotFound(t *testing.T) {
 	svc := newElementServiceTest(t, &mockElementClient{
 		getElementInstanceWithResponse: func(_ context.Context, key camundav810.ElementInstanceKey, _ ...camundav810.RequestEditorFn) (*camundav810.GetElementInstanceResponse, error) {
@@ -139,8 +145,8 @@ func TestService_SearchElements_ConstructsFiltersAndConvertsRows(t *testing.T) {
 						EndDate:                &end,
 						ProcessInstanceKey:     "2251799813688001",
 						RootProcessInstanceKey: &rootKey,
-						ProcessDefinitionId:    "order-process",
-						ProcessDefinitionKey:   "2251799813687001",
+						ProcessDefinitionId:    new(camundav810.ProcessDefinitionId("order-process")),
+						ProcessDefinitionKey:   new(camundav810.ProcessDefinitionKey("2251799813687001")),
 						TenantId:               "tenant-a",
 						HasIncident:            true,
 						IncidentKey:            &incidentKey,

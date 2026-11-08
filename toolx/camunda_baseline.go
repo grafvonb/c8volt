@@ -17,8 +17,8 @@ type CamundaBaseline struct {
 var v810Baseline = CamundaBaseline{
 	Version:    V810,
 	Status:     "final",
-	Tag:        "8.10.3",
-	Commit:     "3961b79c3fdaf43c48691ed77672d6db42d0abcc",
+	Tag:        "8.10.9",
+	Commit:     "b4d625e70555b54f03966c7cd5331c8d5ce92a85",
 	Repository: "https://github.com/camunda/camunda.git",
 	SourceSpec: "zeebe/gateway-protocol/src/main/proto/v2/rest-api.yaml",
 }

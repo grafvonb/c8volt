@@ -136,7 +136,8 @@ func TestUpdateUserTaskCompletionCommandSelection(t *testing.T) {
 				require.Len(t, rows, len(tc.keys))
 				for i, row := range rows {
 					require.Equal(t, tc.keys[i], row.Key)
-					require.Equal(t, map[string]any{"action": nil, "variables": nil}, row.Body)
+					wantBody := map[string]any{}
+					require.Equal(t, wantBody, row.Body)
 				}
 				tenant := requireJSONObject(t, envelope["tenantContext"])
 				require.Equal(t, "explicit_keys", tenant["mode"])

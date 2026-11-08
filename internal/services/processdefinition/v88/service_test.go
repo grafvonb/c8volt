@@ -79,7 +79,7 @@ func TestService_SearchProcessDefinitions(t *testing.T) {
 				resp := &camundav88.SearchProcessDefinitionsResponse{
 					HTTPResponse: newHTTPResponse(http.MethodPost, "https://example.com/v2/process-definitions", http.StatusOK, "200 OK"),
 					JSON200: &camundav88.ProcessDefinitionSearchQueryResult{
-						Items: []camundav88.ProcessDefinitionResult{makeProcessDefinitionResult("proc", "123", 2)},
+						Items: new([]camundav88.ProcessDefinitionResult{makeProcessDefinitionResult("proc", "123", 2)}),
 					},
 				}
 				m.On("SearchProcessDefinitionsWithResponse", mock.Anything, mock.Anything).Return(resp, nil)
@@ -127,7 +127,7 @@ func TestService_SearchProcessDefinitions(t *testing.T) {
 				resp := &camundav88.SearchProcessDefinitionsResponse{
 					HTTPResponse: newHTTPResponse(http.MethodPost, "https://example.com/v2/process-definitions", http.StatusOK, "200"),
 					JSON200: &camundav88.ProcessDefinitionSearchQueryResult{
-						Items: []camundav88.ProcessDefinitionResult{makeProcessDefinitionResult("proc", "123", 2)},
+						Items: new([]camundav88.ProcessDefinitionResult{makeProcessDefinitionResult("proc", "123", 2)}),
 					},
 				}
 				m.On("SearchProcessDefinitionsWithResponse", mock.Anything, mock.Anything).Return(resp, nil)
@@ -155,7 +155,7 @@ func TestService_SearchProcessDefinitions(t *testing.T) {
 				resp := &camundav88.SearchProcessDefinitionsResponse{
 					HTTPResponse: newHTTPResponse(http.MethodPost, "https://example.com/v2/process-definitions", http.StatusOK, "200"),
 					JSON200: &camundav88.ProcessDefinitionSearchQueryResult{
-						Items: []camundav88.ProcessDefinitionResult{makeProcessDefinitionResult("proc", "123", 2)},
+						Items: new([]camundav88.ProcessDefinitionResult{makeProcessDefinitionResult("proc", "123", 2)}),
 					},
 				}
 				m.On("SearchProcessDefinitionsWithResponse", mock.Anything, mock.Anything).Return(resp, nil)
@@ -179,7 +179,7 @@ func TestService_SearchProcessDefinitions(t *testing.T) {
 				resp := &camundav88.SearchProcessDefinitionsResponse{
 					HTTPResponse: newHTTPResponse(http.MethodPost, "https://example.com/v2/process-definitions", http.StatusOK, "200"),
 					JSON200: &camundav88.ProcessDefinitionSearchQueryResult{
-						Items: []camundav88.ProcessDefinitionResult{makeProcessDefinitionResult("proc", "123", 2)},
+						Items: new([]camundav88.ProcessDefinitionResult{makeProcessDefinitionResult("proc", "123", 2)}),
 					},
 				}
 				m.On("SearchProcessDefinitionsWithResponse", mock.Anything, mock.Anything).Return(resp, nil)
@@ -194,7 +194,7 @@ func TestService_SearchProcessDefinitions(t *testing.T) {
 				resp := &camundav88.SearchProcessDefinitionsResponse{
 					HTTPResponse: newHTTPResponse(http.MethodPost, "https://example.com/v2/process-definitions", http.StatusOK, "200"),
 					JSON200: &camundav88.ProcessDefinitionSearchQueryResult{
-						Items: []camundav88.ProcessDefinitionResult{makeProcessDefinitionResult("proc", "123", 2)},
+						Items: new([]camundav88.ProcessDefinitionResult{makeProcessDefinitionResult("proc", "123", 2)}),
 					},
 				}
 				m.On("SearchProcessDefinitionsWithResponse", mock.Anything, mock.Anything).Return(resp, nil)
@@ -243,14 +243,14 @@ func TestService_SearchProcessDefinitions_RequestsCanonicalSortAndNormalizesResu
 	resp := &camundav88.SearchProcessDefinitionsResponse{
 		HTTPResponse: newHTTPResponse(http.MethodPost, "https://example.com/v2/process-definitions", http.StatusOK, "200 OK"),
 		JSON200: &camundav88.ProcessDefinitionSearchQueryResult{
-			Items: []camundav88.ProcessDefinitionResult{
+			Items: new([]camundav88.ProcessDefinitionResult{
 				makeTenantProcessDefinitionResult("tenant-b", "order", "202", 9),
 				makeTenantProcessDefinitionResult("tenant-a", "invoice", "10", 4),
 				makeTenantProcessDefinitionResult("tenant-a", "invoice", "2", 4),
 				makeTenantProcessDefinitionResult("tenant-a", "order", "111", 9),
 				makeTenantProcessDefinitionResult("tenant-a", "order", "112", 10),
 				makeTenantProcessDefinitionResult("tenant-b", "alpha", "301", 1),
-			},
+			}),
 		},
 	}
 
@@ -284,14 +284,14 @@ func TestService_SearchProcessDefinitionsWithStat_PreservesCanonicalOrderAndStat
 		return &camundav88.SearchProcessDefinitionsResponse{
 			HTTPResponse: newHTTPResponse(http.MethodPost, "https://example.com/v2/process-definitions", http.StatusOK, "200 OK"),
 			JSON200: &camundav88.ProcessDefinitionSearchQueryResult{
-				Items: []camundav88.ProcessDefinitionResult{
+				Items: new([]camundav88.ProcessDefinitionResult{
 					makeTenantProcessDefinitionResult("tenant-b", "order", "202", 9),
 					makeTenantProcessDefinitionResult("tenant-a", "invoice", "10", 4),
 					makeTenantProcessDefinitionResult("tenant-a", "invoice", "2", 4),
 					makeTenantProcessDefinitionResult("tenant-a", "order", "111", 9),
 					makeTenantProcessDefinitionResult("tenant-a", "order", "112", 10),
 					makeTenantProcessDefinitionResult("tenant-b", "alpha", "301", 1),
-				},
+				}),
 			},
 		}
 	}
@@ -345,7 +345,7 @@ func TestService_SearchProcessDefinitionsWithStat_UsesActivityIndicator(t *testi
 	resp := &camundav88.SearchProcessDefinitionsResponse{
 		HTTPResponse: newHTTPResponse(http.MethodPost, "https://example.com/v2/process-definitions", http.StatusOK, "200"),
 		JSON200: &camundav88.ProcessDefinitionSearchQueryResult{
-			Items: []camundav88.ProcessDefinitionResult{makeProcessDefinitionResult("proc", "123", 2)},
+			Items: new([]camundav88.ProcessDefinitionResult{makeProcessDefinitionResult("proc", "123", 2)}),
 		},
 	}
 	m.On("SearchProcessDefinitionsWithResponse", mock.Anything, mock.Anything).Return(resp, nil)
@@ -381,7 +381,7 @@ func TestService_SearchProcessDefinitionsLatestForcesLatest(t *testing.T) {
 	resp := &camundav88.SearchProcessDefinitionsResponse{
 		HTTPResponse: newHTTPResponse(http.MethodPost, "https://example.com/v2/process-definitions", http.StatusOK, "200"),
 		JSON200: &camundav88.ProcessDefinitionSearchQueryResult{
-			Items: []camundav88.ProcessDefinitionResult{makeProcessDefinitionResult("proc", "123", 1)},
+			Items: new([]camundav88.ProcessDefinitionResult{makeProcessDefinitionResult("proc", "123", 1)}),
 		},
 	}
 
@@ -435,13 +435,13 @@ func TestService_SearchProcessDefinitionsPage_LatestUsesNativeFilterSortAndCurso
 	firstResp := &camundav88.SearchProcessDefinitionsResponse{
 		HTTPResponse: newHTTPResponse(http.MethodPost, "https://example.com/v2/process-definitions", http.StatusOK, "200 OK"),
 		JSON200: &camundav88.ProcessDefinitionSearchQueryResult{
-			Items: []camundav88.ProcessDefinitionResult{
+			Items: new([]camundav88.ProcessDefinitionResult{
 				makeTenantProcessDefinitionResult("tenant-b", "invoice", "201", 4),
 				makeTenantProcessDefinitionResult("tenant-a", "order", "101", 3),
-			},
+			}),
 			Page: camundav88.SearchQueryPageResponse{
 				EndCursor:         &firstEnd,
-				HasMoreTotalItems: true,
+				HasMoreTotalItems: new(true),
 				TotalItems:        10000,
 			},
 		},
@@ -449,9 +449,9 @@ func TestService_SearchProcessDefinitionsPage_LatestUsesNativeFilterSortAndCurso
 	secondResp := &camundav88.SearchProcessDefinitionsResponse{
 		HTTPResponse: newHTTPResponse(http.MethodPost, "https://example.com/v2/process-definitions", http.StatusOK, "200 OK"),
 		JSON200: &camundav88.ProcessDefinitionSearchQueryResult{
-			Items: []camundav88.ProcessDefinitionResult{
+			Items: new([]camundav88.ProcessDefinitionResult{
 				makeTenantProcessDefinitionResult("tenant-b", "order", "202", 2),
-			},
+			}),
 			Page: camundav88.SearchQueryPageResponse{
 				EndCursor:  &secondEnd,
 				TotalItems: 3,
@@ -503,7 +503,7 @@ func TestService_SearchProcessDefinitions_IncludesTenantFilterWhenConfigured(t *
 	resp := &camundav88.SearchProcessDefinitionsResponse{
 		HTTPResponse: newHTTPResponse(http.MethodPost, "https://example.com/v2/process-definitions", http.StatusOK, "200 OK"),
 		JSON200: &camundav88.ProcessDefinitionSearchQueryResult{
-			Items: []camundav88.ProcessDefinitionResult{makeProcessDefinitionResult("proc", "123", 2)},
+			Items: new([]camundav88.ProcessDefinitionResult{makeProcessDefinitionResult("proc", "123", 2)}),
 		},
 	}
 
@@ -534,7 +534,7 @@ func TestService_SearchProcessDefinitions_IncidentSearchIncludesTenantFilterWhen
 	resp := &camundav88.SearchProcessDefinitionsResponse{
 		HTTPResponse: newHTTPResponse(http.MethodPost, "https://example.com/v2/process-definitions", http.StatusOK, "200 OK"),
 		JSON200: &camundav88.ProcessDefinitionSearchQueryResult{
-			Items: []camundav88.ProcessDefinitionResult{makeProcessDefinitionResult("proc", "123", 2)},
+			Items: new([]camundav88.ProcessDefinitionResult{makeProcessDefinitionResult("proc", "123", 2)}),
 		},
 	}
 	m.On("SearchProcessDefinitionsWithResponse", mock.Anything, mock.Anything).Return(resp, nil)
@@ -568,10 +568,10 @@ func TestService_SearchProcessDefinitionsPage_UsesNativePageMetadata(t *testing.
 	resp := &camundav88.SearchProcessDefinitionsResponse{
 		HTTPResponse: newHTTPResponse(http.MethodPost, "https://example.com/v2/process-definitions", http.StatusOK, "200 OK"),
 		JSON200: &camundav88.ProcessDefinitionSearchQueryResult{
-			Items: []camundav88.ProcessDefinitionResult{makeProcessDefinitionResult("proc", "123", 2)},
+			Items: new([]camundav88.ProcessDefinitionResult{makeProcessDefinitionResult("proc", "123", 2)}),
 			Page: camundav88.SearchQueryPageResponse{
 				EndCursor:         &end,
-				HasMoreTotalItems: true,
+				HasMoreTotalItems: new(true),
 				TotalItems:        10000,
 			},
 		},
@@ -608,7 +608,7 @@ func TestService_SearchProcessDefinitionsPage_TreatsExactCursorFinalPageAsNoMore
 	resp := &camundav88.SearchProcessDefinitionsResponse{
 		HTTPResponse: newHTTPResponse(http.MethodPost, "https://example.com/v2/process-definitions", http.StatusOK, "200 OK"),
 		JSON200: &camundav88.ProcessDefinitionSearchQueryResult{
-			Items: []camundav88.ProcessDefinitionResult{makeProcessDefinitionResult("proc", "125", 2)},
+			Items: new([]camundav88.ProcessDefinitionResult{makeProcessDefinitionResult("proc", "125", 2)}),
 			Page: camundav88.SearchQueryPageResponse{
 				EndCursor:  &end,
 				TotalItems: 3,
@@ -905,11 +905,11 @@ func testConfig() *config.Config {
 
 func makeProcessDefinitionResult(id, key string, version int32) camundav88.ProcessDefinitionResult {
 	return camundav88.ProcessDefinitionResult{
-		ProcessDefinitionId:  id,
-		ProcessDefinitionKey: key,
+		ProcessDefinitionId:  new(id),
+		ProcessDefinitionKey: new(key),
 		Name:                 new("name-" + id),
-		Version:              version,
-		TenantId:             "tenant",
+		Version:              new(version),
+		TenantId:             new("tenant"),
 		VersionTag:           new("tag"),
 	}
 }
@@ -918,7 +918,7 @@ func makeProcessDefinitionResult(id, key string, version int32) camundav88.Proce
 // sort fields populated.
 func makeTenantProcessDefinitionResult(tenantID, id, key string, version int32) camundav88.ProcessDefinitionResult {
 	pd := makeProcessDefinitionResult(id, key, version)
-	pd.TenantId = tenantID
+	pd.TenantId = &tenantID
 	return pd
 }
 
@@ -984,7 +984,7 @@ func makeSearchProcessInstancesPageResponse(total int64, hasMore bool, itemCount
 	items := make([]camundav88.ProcessInstanceResult, itemCount)
 	page := camundav88.SearchQueryPageResponse{
 		TotalItems:        total,
-		HasMoreTotalItems: hasMore,
+		HasMoreTotalItems: new(hasMore),
 	}
 	if endCursor != "" {
 		cursor := camundav88.EndCursor(endCursor)

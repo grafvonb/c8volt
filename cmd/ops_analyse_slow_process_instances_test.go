@@ -166,7 +166,7 @@ func TestOpsAnalyseSlowProcessInstancesWithListenersCommandRendersLifecycleTimes
 			var requests testx.SafeSlice[string]
 			const key = "2251799813685249"
 			srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				if serveVersionCheckTopology(w, r, "8.8") {
+				if serveVersionCheckTopology(w, r, "8.10") {
 					return
 				}
 
@@ -187,7 +187,7 @@ func TestOpsAnalyseSlowProcessInstancesWithListenersCommandRendersLifecycleTimes
 			}))
 			t.Cleanup(srv.Close)
 
-			args := []string{"--config", writeTestConfigForVersion(t, srv.URL, "8.8"), "--no-indicator", "ops", "analyse", "slow-process-instances", "--key", key, "--with-listeners"}
+			args := []string{"--config", writeTestConfigForVersion(t, srv.URL, "8.10"), "--no-indicator", "ops", "analyse", "slow-process-instances", "--key", key, "--with-listeners"}
 			args = append(args, tc.args...)
 			stdout, stderr := executeRootForProcessInstanceWithSeparateOutputs(t, args...)
 
@@ -210,7 +210,7 @@ func TestOpsAnalyseSlowProcessInstancesWithListenersCommandJSONPreservesTimestam
 	var requests testx.SafeSlice[string]
 	const key = "2251799813685249"
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if serveVersionCheckTopology(w, r, "8.8") {
+		if serveVersionCheckTopology(w, r, "8.10") {
 			return
 		}
 
@@ -239,7 +239,7 @@ func TestOpsAnalyseSlowProcessInstancesWithListenersCommandJSONPreservesTimestam
 	t.Cleanup(srv.Close)
 
 	stdout, stderr := executeRootForProcessInstanceWithSeparateOutputs(t,
-		"--config", writeTestConfigForVersion(t, srv.URL, "8.8"), "--no-indicator", "--json",
+		"--config", writeTestConfigForVersion(t, srv.URL, "8.10"), "--no-indicator", "--json",
 		"ops", "analyse", "slow-process-instances", "--key", key, "--with-listeners",
 	)
 

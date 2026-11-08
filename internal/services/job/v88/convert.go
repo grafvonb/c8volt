@@ -153,7 +153,6 @@ func fromJobSearchResult(r camundav88.JobSearchResult) d.Job {
 		Key:                string(r.JobKey),
 		State:              string(r.State),
 		Retries:            r.Retries,
-		CreationTime:       r.CreationTime,
 		EndTime:            r.EndTime,
 		Deadline:           r.Deadline,
 		Type:               r.Type,
@@ -162,7 +161,7 @@ func fromJobSearchResult(r camundav88.JobSearchResult) d.Job {
 		ListenerEventType:  string(r.ListenerEventType),
 		ProcessInstanceKey: string(r.ProcessInstanceKey),
 		ElementInstanceKey: string(r.ElementInstanceKey),
-		ElementId:          elementIDValue(r.ElementId),
+		ElementId:          string(r.ElementId),
 		ErrorCode:          stringPtrValue(r.ErrorCode),
 		ErrorMessage:       stringPtrValue(r.ErrorMessage),
 		TenantId:           string(r.TenantId),
@@ -194,12 +193,4 @@ func stringPtrValue(value *string) string {
 		return ""
 	}
 	return *value
-}
-
-// elementIDValue unwraps the optional generated element ID alias.
-func elementIDValue(value *camundav88.ElementId) string {
-	if value == nil {
-		return ""
-	}
-	return string(*value)
 }

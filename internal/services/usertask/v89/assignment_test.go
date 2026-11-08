@@ -103,7 +103,7 @@ func TestAssignUserTaskWirePayload(t *testing.T) {
 						if action == "assign" {
 							var body map[string]any
 							require.NoError(t, json.Unmarshal(raw, &body))
-							require.Equal(t, map[string]any{"assignee": "  opaque|用户\nidentity  ", "allowOverride": override, "action": nil}, body)
+							require.Equal(t, map[string]any{"assignee": "  opaque|用户\nidentity  ", "allowOverride": override}, body)
 						} else {
 							require.Empty(t, raw)
 						}

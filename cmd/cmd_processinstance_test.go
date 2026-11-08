@@ -135,14 +135,14 @@ func newProcessInstanceSearchCaptureServerForVersion(t *testing.T, version strin
 // newProcessInstanceWithElementsAndListenersServer serves a keyed process
 // instance plus ordered element and listener job search responses for activity
 // enrichment command tests.
-func newProcessInstanceWithElementsAndListenersServer(t *testing.T, requests *testx.SafeSlice[string], elementResponses []string, jobResponses []string) *httptest.Server {
+func newProcessInstanceWithElementsAndListenersServer(t *testing.T, version string, requests *testx.SafeSlice[string], elementResponses []string, jobResponses []string) *httptest.Server {
 	t.Helper()
 
 	var mu sync.Mutex
 	elementCount := 0
 	jobCount := 0
 	return newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if serveVersionCheckTopology(w, r, "8.8") {
+		if serveVersionCheckTopology(w, r, version) {
 			return
 		}
 

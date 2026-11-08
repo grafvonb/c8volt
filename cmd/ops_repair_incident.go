@@ -196,7 +196,7 @@ func init() {
 	fs.StringVarP(&flagOpsRepairIncidentBpmnProcessID, "bpmn-process-id", "b", "", "BPMN process ID to filter incidents")
 	fs.StringVar(&flagOpsRepairIncidentPDKey, "pd-key", "", "process definition key to filter incidents")
 	fs.StringVar(&flagOpsRepairIncidentPIKey, "pi-key", "", "process instance key to filter incidents")
-	fs.StringVar(&flagOpsRepairIncidentRootKey, "root-key", "", "root process instance key to filter incidents")
+	fs.StringVar(&flagOpsRepairIncidentRootKey, "root-key", "", "root process instance key to filter incidents (only c8.9+)")
 	fs.StringVar(&flagOpsRepairIncidentElementID, "element-id", "", "BPMN element ID to filter incidents")
 	fs.StringVar(&flagOpsRepairIncidentElementInstanceKey, "element-instance-key", "", "element instance key to filter incidents")
 	fs.StringVar(&flagOpsRepairIncidentCreationTimeAfter, "creation-time-after", "", "only include incidents with creation time >= RFC3339 timestamp, c8volt timestamp, or YYYY-MM-DD")

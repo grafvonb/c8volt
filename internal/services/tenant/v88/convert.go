@@ -12,8 +12,8 @@ import (
 // fromTenantResult converts the generated v8.8 tenant payload into the shared domain model.
 func fromTenantResult(x camundav88.TenantResult) d.Tenant {
 	return d.Tenant{
-		TenantId:    string(x.TenantId),
-		Name:        x.Name,
+		TenantId:    string(toolx.Deref(x.TenantId, "")),
+		Name:        toolx.Deref(x.Name, ""),
 		Description: toolx.Deref(x.Description, ""),
 	}
 }

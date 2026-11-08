@@ -161,6 +161,11 @@ setup_tmpdir() {
 
 cleanup_tmpdir() {
   if [ -n "${TEST_TMPDIR:-}" ]; then
+    for worktree in "$TEST_TMPDIR"/*; do
+      if [ -f "$worktree/.git" ]; then
+        git -C "$REPO_ROOT" worktree remove --force "$worktree" >/dev/null 2>&1 || true
+      fi
+    done
     rm -rf "$TEST_TMPDIR"
   fi
 }
@@ -197,7 +202,7 @@ make_repo_worktree() {
   local worktree="$TEST_TMPDIR/$name"
 
   git -C "$REPO_ROOT" worktree add -q --detach "$worktree" HEAD
-  git -C "$REPO_ROOT" diff --binary HEAD -- api | git -C "$worktree" apply
+  git -C "$REPO_ROOT" diff --binary HEAD -- api go.mod go.sum | git -C "$worktree" apply
   while IFS= read -r -d '' path; do
     mkdir -p "$worktree/$(dirname "$path")"
     cp "$REPO_ROOT/$path" "$worktree/$path"
@@ -346,7 +351,7 @@ install_fake_git_commit_mismatch() {
 #!/usr/bin/env bash
 for arg in "\$@"; do
   if [ "\$arg" = "ls-remote" ]; then
-    printf '%s\t%s\n' "0000000000000000000000000000000000000000" "refs/tags/8.10.3^{}"
+    printf '%s\t%s\n' "0000000000000000000000000000000000000000" "refs/tags/8.10.9^{}"
     exit 0
   fi
 done
@@ -413,12 +418,12 @@ test_fake_tool_and_assertions() {
   local output
   local log
 
-  install_fake_tool redocly 0 "redocly 2.0.0"
-  output="$(redocly --version)"
+  install_fake_tool fixture-generation-tool 0 "fixture 2.0.0"
+  output="$(fixture-generation-tool --version)"
   log="$(cat "$(fake_tool_log)")"
 
-  assert_eq "redocly 2.0.0" "$output" "fake tool stdout"
-  assert_contains "$log" "redocly --version" "fake tool invocation log"
+  assert_eq "fixture 2.0.0" "$output" "fake tool stdout"
+  assert_contains "$log" "fixture-generation-tool --version" "fake tool invocation log"
   assert_success "true succeeds" true
   assert_failure "false fails" false
   reset_path
@@ -458,7 +463,7 @@ test_refresh_rejects_unknown_target_before_writes() {
   assert_failure_output_contains \
     "unknown target is rejected" \
     "Unknown target: v999" \
-    "$worktree/api/refresh-clients.sh" --target v999 --camunda-tag 8.10.3
+    "$worktree/api/refresh-clients.sh" --target v999 --camunda-tag 8.10.9
   assert_v810_publication_unchanged "$worktree" "$before"
 }
 
@@ -504,8 +509,8 @@ test_refresh_rejects_commit_mismatch_before_writes() {
   install_fake_git_commit_mismatch
   assert_failure_output_contains \
     "pinned commit mismatch is rejected" \
-    "Commit mismatch for v810 tag 8.10.3" \
-    "$worktree/api/refresh-clients.sh" --target v810 --camunda-tag 8.10.3
+    "Commit mismatch for v810 tag 8.10.9" \
+    "$worktree/api/refresh-clients.sh" --target v810 --camunda-tag 8.10.9
   assert_v810_publication_unchanged "$worktree" "$before"
   reset_path
 }
@@ -520,8 +525,8 @@ test_refresh_rejects_output_escape_before_writes() {
 
   assert_failure_output_contains \
     "escaped output path is rejected" \
-    "V810 output path escapes repository" \
-    "$worktree/api/refresh-clients.sh" --target ../v810 --camunda-tag 8.10.3
+    "Camunda client output path escapes repository" \
+    "$worktree/api/refresh-clients.sh" --target ../v810 --camunda-tag 8.10.9
   assert_v810_publication_unchanged "$worktree" "$before"
   assert_not_exists "$worktree/../escaped-v810"
 }
@@ -537,8 +542,25 @@ test_refresh_names_missing_generation_tool_before_writes() {
   assert_failure_output_contains \
     "missing redocly is reported" \
     "missing tool: redocly" \
-    env PATH="/bin:/usr/bin" "$worktree/api/refresh-clients.sh" --target v810 --camunda-tag 8.10.3
+    env PATH="/bin:/usr/bin" "$worktree/api/refresh-clients.sh" --target v810 --camunda-tag 8.10.9
   assert_v810_publication_unchanged "$worktree" "$before"
+}
+
+test_refresh_rejects_wrong_bundler_before_writes() {
+  local worktree
+  local before
+
+  worktree="$(make_repo_worktree wrong-bundler-worktree)"
+  before="$(checksum_optional_v810_publication "$worktree")"
+  COMMAND_OUTPUT="$TEST_TMPDIR/wrong-bundler.out"
+  reset_path
+  install_fake_tool redocly 0 "0.0.0"
+  assert_failure_output_contains \
+    "wrong Redocly version is rejected" \
+    "redocly version mismatch: need 2.76.0, got 0.0.0" \
+    "$worktree/api/refresh-clients.sh" --target v810 --camunda-tag 8.10.9
+  assert_v810_publication_unchanged "$worktree" "$before"
+  reset_path
 }
 
 test_refresh_rejects_mutation_no_op_before_publication() {
@@ -553,7 +575,7 @@ test_refresh_rejects_mutation_no_op_before_publication() {
   assert_failure_output_contains \
     "mutation no-op is rejected" \
     "mutation produced no expected semantic effect: api/mutations/mutate-search-query-schemas.py" \
-    "$worktree/api/refresh-clients.sh" --target v810 --camunda-tag 8.10.3
+    "$worktree/api/refresh-clients.sh" --target v810 --camunda-tag 8.10.9
   assert_v810_publication_unchanged "$worktree" "$before"
 }
 
@@ -569,7 +591,7 @@ test_refresh_rejects_repository_changes_outside_output_allowlist() {
   assert_failure_output_contains \
     "repository changes outside the output allowlist are rejected" \
     "Repository changed outside the V810 output allowlist during generation" \
-    "$worktree/api/refresh-clients.sh" --target v810 --camunda-tag 8.10.3
+    "$worktree/api/refresh-clients.sh" --target v810 --camunda-tag 8.10.9
   assert_v810_publication_unchanged "$worktree" "$before"
 }
 
@@ -586,7 +608,7 @@ test_refresh_failure_preserves_existing_publication_atomically() {
   assert_failure_output_contains \
     "failed generation leaves existing publication intact" \
     "missing tool: redocly" \
-    env PATH="/bin:/usr/bin" "$worktree/api/refresh-clients.sh" --target v810 --camunda-tag 8.10.3
+    env PATH="/bin:/usr/bin" "$worktree/api/refresh-clients.sh" --target v810 --camunda-tag 8.10.9
 
   after="$(checksum_v810_publication "$worktree")"
   assert_eq "$before" "$after" "existing v810 publication changed after failed generation"
@@ -603,19 +625,19 @@ test_refresh_updates_later_810_baselines_in_place() {
 
   assert_success \
     "later patch baseline is accepted" \
-    "$worktree/api/refresh-clients.sh" --target v810 --camunda-tag 8.10.4
+    "$worktree/api/refresh-clients.sh" --target v810 --camunda-tag 8.10.10
   assert_file_contains "$output_dir/client.gen.go" "package camunda" "v810 package identity changed"
-  assert_file_contains "$output_dir/client.gen.go" "8.10.4" "later patch was not published"
-  assert_file_contains "$output_dir/provenance.json" '"tag":"8.10.4"' "later patch provenance tag"
-  assert_file_contains "$output_dir/provenance.json" "--target v810 --camunda-tag 8.10.4" "later patch command"
+  assert_file_contains "$output_dir/client.gen.go" "8.10.10" "later patch was not published"
+  assert_file_contains "$output_dir/provenance.json" '"tag":"8.10.10"' "later patch provenance tag"
+  assert_file_contains "$output_dir/provenance.json" "--target v810 --camunda-tag 8.10.10" "later patch command"
 
   assert_success \
     "second later patch baseline is accepted" \
-    "$worktree/api/refresh-clients.sh" --target v810 --camunda-tag 8.10.5
-  assert_file_contains "$output_dir/client.gen.go" "8.10.5" "second later patch was not published"
-  assert_file_contains "$output_dir/provenance.json" '"tag":"8.10.5"' "second later patch provenance tag"
-  assert_file_contains "$worktree/stub-v810-generator.log" "--camunda-tag 8.10.4" "later patch dispatch"
-  assert_file_contains "$worktree/stub-v810-generator.log" "--camunda-tag 8.10.5" "second later patch dispatch"
+    "$worktree/api/refresh-clients.sh" --target v810 --camunda-tag 8.10.11
+  assert_file_contains "$output_dir/client.gen.go" "8.10.11" "second later patch was not published"
+  assert_file_contains "$output_dir/provenance.json" '"tag":"8.10.11"' "second later patch provenance tag"
+  assert_file_contains "$worktree/stub-v810-generator.log" "--camunda-tag 8.10.10" "later patch dispatch"
+  assert_file_contains "$worktree/stub-v810-generator.log" "--camunda-tag 8.10.11" "second later patch dispatch"
   assert_not_exists "$worktree/internal/clients/camunda/v810alpha"
   assert_not_exists "$worktree/internal/clients/camunda/v810rc"
   assert_not_exists "$worktree/internal/clients/camunda/v810final"
@@ -631,11 +653,11 @@ test_refresh_later_baseline_rerun_is_deterministic() {
 
   assert_success \
     "first later baseline generation succeeds" \
-    "$worktree/api/refresh-clients.sh" --target v810 --camunda-tag 8.10.4
+    "$worktree/api/refresh-clients.sh" --target v810 --camunda-tag 8.10.10
   before="$(checksum_v810_publication "$worktree")"
   assert_success \
     "second later baseline generation succeeds" \
-    "$worktree/api/refresh-clients.sh" --target v810 --camunda-tag 8.10.4
+    "$worktree/api/refresh-clients.sh" --target v810 --camunda-tag 8.10.10
   after="$(checksum_v810_publication "$worktree")"
 
   assert_eq "$before" "$after" "later v810 baseline rerun changed published artifacts"
@@ -653,10 +675,10 @@ test_refresh_later_baseline_failure_rolls_back() {
 
   assert_failure_output_contains \
     "failed later baseline generation rolls back" \
-    "stubbed generation failure for 8.10.4-rollback-fail" \
-    "$worktree/api/refresh-clients.sh" --target v810 --camunda-tag 8.10.4-rollback-fail
+    "stubbed generation failure for 8.10.10-rollback-fail" \
+    "$worktree/api/refresh-clients.sh" --target v810 --camunda-tag 8.10.10-rollback-fail
   assert_v810_publication_unchanged "$worktree" "$before"
-  assert_file_not_contains "$(v810_output_dir "$worktree")/provenance.json" "8.10.4-rollback-fail" "failed baseline leaked into provenance"
+  assert_file_not_contains "$(v810_output_dir "$worktree")/provenance.json" "8.10.10-rollback-fail" "failed baseline leaked into provenance"
 }
 
 main() {
@@ -674,6 +696,7 @@ main() {
   test_refresh_rejects_commit_mismatch_before_writes
   test_refresh_rejects_output_escape_before_writes
   test_refresh_names_missing_generation_tool_before_writes
+  test_refresh_rejects_wrong_bundler_before_writes
   test_refresh_rejects_mutation_no_op_before_publication
   test_refresh_rejects_repository_changes_outside_output_allowlist
   test_refresh_failure_preserves_existing_publication_atomically

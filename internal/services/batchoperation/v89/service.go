@@ -17,6 +17,7 @@ import (
 	"github.com/grafvonb/c8volt/internal/services"
 	"github.com/grafvonb/c8volt/internal/services/common"
 	"github.com/grafvonb/c8volt/internal/services/httpc"
+	"github.com/grafvonb/c8volt/toolx"
 	"github.com/grafvonb/c8volt/toolx/poller"
 )
 
@@ -149,7 +150,7 @@ func batchOperationFromPayload(payload *camundav89.BatchOperationResponse, statu
 	}
 	return d.BatchOperation{
 		Key:                      payload.BatchOperationKey,
-		Type:                     string(payload.BatchOperationType),
+		Type:                     string(toolx.Deref(payload.BatchOperationType, "")),
 		State:                    string(payload.State),
 		OperationsTotalCount:     payload.OperationsTotalCount,
 		OperationsCompletedCount: payload.OperationsCompletedCount,

@@ -157,7 +157,7 @@ func TestService_SearchJobs_ConstructsFiltersAndConvertsRows(t *testing.T) {
 						EndTime:            &endTime,
 						Type:               "payment-worker",
 						Worker:             "worker-a",
-						Kind:               camundav89.BPMNELEMENT,
+						Kind:               camundav89.JobKindEnumBPMNELEMENT,
 						ListenerEventType:  camundav89.JobListenerEventTypeEnumCOMPLETING,
 						ProcessInstanceKey: "2251799813711000",
 						ElementInstanceKey: "2251799813711001",

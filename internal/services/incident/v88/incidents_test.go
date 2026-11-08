@@ -75,22 +75,20 @@ func TestGetIncidentMapsDetail(t *testing.T) {
 		getIncident: func(_ context.Context, key camundav88.IncidentKey, _ ...camundav88.RequestEditorFn) (*camundav88.GetIncidentResponse, error) {
 			require.Equal(t, "2251799813685249", key)
 			jobKey := "2251799813685251"
-			rootKey := "2251799813685250"
 			return &camundav88.GetIncidentResponse{
 				HTTPResponse: testHTTPResponse(http.StatusOK),
 				JSON200: &camundav88.IncidentResult{
-					IncidentKey:            "2251799813685249",
-					ProcessInstanceKey:     "2251799813685250",
-					TenantId:               "tenant-a",
-					State:                  camundav88.IncidentStateEnumACTIVE,
-					ErrorType:              camundav88.IncidentErrorTypeEnumJOBNORETRIES,
-					ErrorMessage:           "no retries left",
-					ElementId:              "task-a",
-					ElementInstanceKey:     "2251799813685252",
-					JobKey:                 &jobKey,
-					RootProcessInstanceKey: &rootKey,
-					ProcessDefinitionKey:   "2251799813685253",
-					ProcessDefinitionId:    "order-process",
+					IncidentKey:          new("2251799813685249"),
+					ProcessInstanceKey:   new("2251799813685250"),
+					TenantId:             new("tenant-a"),
+					State:                new(camundav88.IncidentResultStateACTIVE),
+					ErrorType:            new(camundav88.IncidentResultErrorTypeJOBNORETRIES),
+					ErrorMessage:         new("no retries left"),
+					ElementId:            new("task-a"),
+					ElementInstanceKey:   new("2251799813685252"),
+					JobKey:               &jobKey,
+					ProcessDefinitionKey: new("2251799813685253"),
+					ProcessDefinitionId:  new("order-process"),
 				},
 			}, nil
 		},
@@ -100,18 +98,17 @@ func TestGetIncidentMapsDetail(t *testing.T) {
 
 	require.NoError(t, err)
 	require.Equal(t, d.ProcessInstanceIncidentDetail{
-		IncidentKey:            "2251799813685249",
-		ProcessInstanceKey:     "2251799813685250",
-		TenantId:               "tenant-a",
-		State:                  "ACTIVE",
-		ErrorType:              "JOB_NO_RETRIES",
-		ErrorMessage:           "no retries left",
-		ElementId:              "task-a",
-		ElementInstanceKey:     "2251799813685252",
-		JobKey:                 "2251799813685251",
-		RootProcessInstanceKey: "2251799813685250",
-		ProcessDefinitionKey:   "2251799813685253",
-		ProcessDefinitionId:    "order-process",
+		IncidentKey:          "2251799813685249",
+		ProcessInstanceKey:   "2251799813685250",
+		TenantId:             "tenant-a",
+		State:                "ACTIVE",
+		ErrorType:            "JOB_NO_RETRIES",
+		ErrorMessage:         "no retries left",
+		ElementId:            "task-a",
+		ElementInstanceKey:   "2251799813685252",
+		JobKey:               "2251799813685251",
+		ProcessDefinitionKey: "2251799813685253",
+		ProcessDefinitionId:  "order-process",
 	}, got)
 }
 
@@ -120,17 +117,17 @@ func TestSearchIncidentsPageKeepsAdapterBoundaryElementFields(t *testing.T) {
 
 	svc := newTestService(t, mockIncidentClient{
 		searchIncidents: func(_ context.Context, body camundav88.SearchIncidentsJSONRequestBody, _ ...camundav88.RequestEditorFn) (*camundav88.SearchIncidentsResponse, error) {
-			require.Nil(t, body.Filter)
+			requireIncidentRequestOmitsFilter(t, body)
 			return &camundav88.SearchIncidentsResponse{
 				HTTPResponse: testHTTPResponse(http.StatusOK),
 				JSON200: &camundav88.IncidentSearchQueryResult{
-					Items: []camundav88.IncidentResult{{
-						IncidentKey:        "2251799813685249",
-						ProcessInstanceKey: "2251799813685250",
-						State:              camundav88.IncidentStateEnumACTIVE,
-						ElementId:          "task-a",
-						ElementInstanceKey: "2251799813685252",
-					}},
+					Items: new([]camundav88.IncidentResult{{
+						IncidentKey:        new("2251799813685249"),
+						ProcessInstanceKey: new("2251799813685250"),
+						State:              new(camundav88.IncidentResultStateACTIVE),
+						ElementId:          new("task-a"),
+						ElementInstanceKey: new("2251799813685252"),
+					}}),
 					Page: camundav88.SearchQueryPageResponse{TotalItems: 1},
 				},
 			}, nil
@@ -155,7 +152,7 @@ func TestWaitForIncidentResolvedPollsUntilNotFound(t *testing.T) {
 			if attempts == 1 {
 				return &camundav88.GetIncidentResponse{
 					HTTPResponse: testHTTPResponse(http.StatusOK),
-					JSON200:      &camundav88.IncidentResult{IncidentKey: key, State: camundav88.IncidentStateEnumACTIVE},
+					JSON200:      &camundav88.IncidentResult{IncidentKey: new(key), State: new(camundav88.IncidentResultStateACTIVE)},
 				}, nil
 			}
 			return &camundav88.GetIncidentResponse{HTTPResponse: testHTTPResponse(http.StatusNotFound), Body: []byte(`{"message":"not found"}`)}, nil
@@ -177,19 +174,19 @@ func TestWaitForProcessInstanceIncidentsResolvedPollsInitialSetOnly(t *testing.T
 	svc := newTestService(t, mockIncidentClient{
 		searchProcessInstanceIncidents: func(_ context.Context, key string, body camundav88.SearchProcessInstanceIncidentsJSONRequestBody, _ ...camundav88.RequestEditorFn) (*camundav88.SearchProcessInstanceIncidentsResponse, error) {
 			require.Equal(t, "2251799813685250", key)
-			require.Nil(t, body.Filter)
+			requireIncidentRequestOmitsFilter(t, body)
 			require.NotNil(t, body.Page)
 			attempts++
 			items := []camundav88.IncidentResult{
-				{IncidentKey: "other", ProcessInstanceKey: "2251799813685250", State: camundav88.IncidentStateEnumACTIVE},
-				{IncidentKey: "resolved-target", ProcessInstanceKey: "2251799813685250", State: camundav88.IncidentStateEnumRESOLVED},
+				{IncidentKey: new("other"), ProcessInstanceKey: new("2251799813685250"), State: new(camundav88.IncidentResultStateACTIVE)},
+				{IncidentKey: new("resolved-target"), ProcessInstanceKey: new("2251799813685250"), State: new(camundav88.IncidentResultStateRESOLVED)},
 			}
 			if attempts == 1 {
-				items = append(items, camundav88.IncidentResult{IncidentKey: "2251799813685249", ProcessInstanceKey: "2251799813685250", State: camundav88.IncidentStateEnumACTIVE})
+				items = append(items, camundav88.IncidentResult{IncidentKey: new("2251799813685249"), ProcessInstanceKey: new("2251799813685250"), State: new(camundav88.IncidentResultStateACTIVE)})
 			}
 			return &camundav88.SearchProcessInstanceIncidentsResponse{
 				HTTPResponse: testHTTPResponse(http.StatusOK),
-				JSON200:      &camundav88.IncidentSearchQueryResult{Items: items},
+				JSON200:      &camundav88.IncidentSearchQueryResult{Items: new(items)},
 			}, nil
 		},
 	})
@@ -226,18 +223,18 @@ func TestSearchProcessInstanceIncidentsUsesRequestedStateScope(t *testing.T) {
 			svc := newTestService(t, mockIncidentClient{
 				searchProcessInstanceIncidents: func(_ context.Context, key string, body camundav88.SearchProcessInstanceIncidentsJSONRequestBody, _ ...camundav88.RequestEditorFn) (*camundav88.SearchProcessInstanceIncidentsResponse, error) {
 					require.Equal(t, "2251799813685250", key)
-					require.Nil(t, body.Filter)
+					requireIncidentRequestOmitsFilter(t, body)
 					require.NotNil(t, body.Page)
 					return &camundav88.SearchProcessInstanceIncidentsResponse{
 						HTTPResponse: testHTTPResponse(http.StatusOK),
-						JSON200: &camundav88.IncidentSearchQueryResult{Items: []camundav88.IncidentResult{
-							{IncidentKey: "active", ProcessInstanceKey: "2251799813685250", State: camundav88.IncidentStateEnumACTIVE},
-							{IncidentKey: "pending", ProcessInstanceKey: "2251799813685250", State: camundav88.IncidentStateEnumPENDING},
-							{IncidentKey: "resolved", ProcessInstanceKey: "2251799813685250", State: camundav88.IncidentStateEnumRESOLVED},
-							{IncidentKey: "migrated", ProcessInstanceKey: "2251799813685250", State: camundav88.IncidentStateEnumMIGRATED},
-							{IncidentKey: "unknown", ProcessInstanceKey: "2251799813685250", State: camundav88.IncidentStateEnumUNKNOWN},
-							{IncidentKey: "child-active", ProcessInstanceKey: "child", State: camundav88.IncidentStateEnumACTIVE},
-						}},
+						JSON200: &camundav88.IncidentSearchQueryResult{Items: new([]camundav88.IncidentResult{
+							{IncidentKey: new("active"), ProcessInstanceKey: new("2251799813685250"), State: new(camundav88.IncidentResultStateACTIVE)},
+							{IncidentKey: new("pending"), ProcessInstanceKey: new("2251799813685250"), State: new(camundav88.IncidentResultStatePENDING)},
+							{IncidentKey: new("resolved"), ProcessInstanceKey: new("2251799813685250"), State: new(camundav88.IncidentResultStateRESOLVED)},
+							{IncidentKey: new("migrated"), ProcessInstanceKey: new("2251799813685250"), State: new(camundav88.IncidentResultStateMIGRATED)},
+							{IncidentKey: new("unknown"), ProcessInstanceKey: new("2251799813685250"), State: new(camundav88.IncidentResultState("UNKNOWN"))},
+							{IncidentKey: new("child-active"), ProcessInstanceKey: new("child"), State: new(camundav88.IncidentResultStateACTIVE)},
+						})},
 					}, nil
 				},
 			})
@@ -261,21 +258,21 @@ func TestSearchProcessInstanceIncidentsPaginatesBeforeLocalFiltering(t *testing.
 	svc := newTestService(t, mockIncidentClient{
 		searchProcessInstanceIncidents: func(_ context.Context, key string, body camundav88.SearchProcessInstanceIncidentsJSONRequestBody, _ ...camundav88.RequestEditorFn) (*camundav88.SearchProcessInstanceIncidentsResponse, error) {
 			require.Equal(t, "2251799813685250", key)
-			require.Nil(t, body.Filter)
+			requireIncidentRequestOmitsFilter(t, body)
 			require.NotNil(t, body.Page)
 			page, err := body.Page.AsOffsetPagination()
 			require.NoError(t, err)
 			require.NotNil(t, page.From)
 			fromValues = append(fromValues, *page.From)
 
-			items := []camundav88.IncidentResult{{IncidentKey: "skip-first-page", ProcessInstanceKey: "2251799813685250", State: camundav88.IncidentStateEnumACTIVE, ErrorType: camundav88.IncidentErrorTypeEnumJOBNORETRIES, ErrorMessage: "no retries left"}}
+			items := []camundav88.IncidentResult{{IncidentKey: new("skip-first-page"), ProcessInstanceKey: new("2251799813685250"), State: new(camundav88.IncidentResultStateACTIVE), ErrorType: new(camundav88.IncidentResultErrorTypeJOBNORETRIES), ErrorMessage: new("no retries left")}}
 			pageResp := camundav88.SearchQueryPageResponse{TotalItems: 2}
 			if *page.From > 0 {
-				items = []camundav88.IncidentResult{{IncidentKey: "match-second-page", ProcessInstanceKey: "2251799813685250", State: camundav88.IncidentStateEnumACTIVE, ErrorType: camundav88.IncidentErrorTypeEnumIOMAPPINGERROR, ErrorMessage: "Intentional mapping failure"}}
+				items = []camundav88.IncidentResult{{IncidentKey: new("match-second-page"), ProcessInstanceKey: new("2251799813685250"), State: new(camundav88.IncidentResultStateACTIVE), ErrorType: new(camundav88.IncidentResultErrorTypeIOMAPPINGERROR), ErrorMessage: new("Intentional mapping failure")}}
 			}
 			return &camundav88.SearchProcessInstanceIncidentsResponse{
 				HTTPResponse: testHTTPResponse(http.StatusOK),
-				JSON200:      &camundav88.IncidentSearchQueryResult{Items: items, Page: pageResp},
+				JSON200:      &camundav88.IncidentSearchQueryResult{Items: new(items), Page: pageResp},
 			}, nil
 		},
 	})
@@ -296,7 +293,7 @@ func TestSearchIncidentsPageUsesTopLevelEndpointAndLocalCompatibilityFilters(t *
 	createdAt := time.Date(2026, 5, 9, 10, 0, 0, 0, time.UTC)
 	svc := newTestService(t, mockIncidentClient{
 		searchIncidents: func(_ context.Context, body camundav88.SearchIncidentsJSONRequestBody, _ ...camundav88.RequestEditorFn) (*camundav88.SearchIncidentsResponse, error) {
-			require.Nil(t, body.Filter)
+			requireIncidentRequestOmitsFilter(t, body)
 			require.NotNil(t, body.Page)
 			page, err := body.Page.AsOffsetPagination()
 			require.NoError(t, err)
@@ -304,17 +301,15 @@ func TestSearchIncidentsPageUsesTopLevelEndpointAndLocalCompatibilityFilters(t *
 			require.EqualValues(t, 25, *page.From)
 			require.NotNil(t, page.Limit)
 			require.EqualValues(t, 10, *page.Limit)
-			rootKey := "root-a"
-			otherRoot := "root-b"
+
 			return &camundav88.SearchIncidentsResponse{
 				HTTPResponse: testHTTPResponse(http.StatusOK),
 				JSON200: &camundav88.IncidentSearchQueryResult{
-					Items: []camundav88.IncidentResult{
-						{IncidentKey: "skip-state", ProcessInstanceKey: "pi-a", State: camundav88.IncidentStateEnumACTIVE, ErrorType: camundav88.IncidentErrorTypeEnumIOMAPPINGERROR, ErrorMessage: "intentional", ElementId: "task-a", ElementInstanceKey: "fni-a", CreationTime: createdAt, RootProcessInstanceKey: &rootKey, ProcessDefinitionKey: "pd-key", ProcessDefinitionId: "pd-id"},
-						{IncidentKey: "match", ProcessInstanceKey: "pi-a", State: camundav88.IncidentStateEnumRESOLVED, ErrorType: camundav88.IncidentErrorTypeEnumIOMAPPINGERROR, ErrorMessage: "Intentional failure", ElementId: "task-a", ElementInstanceKey: "fni-a", CreationTime: createdAt, RootProcessInstanceKey: &rootKey, ProcessDefinitionKey: "pd-key", ProcessDefinitionId: "pd-id"},
-						{IncidentKey: "skip-key", ProcessInstanceKey: "pi-a", State: camundav88.IncidentStateEnumRESOLVED, ErrorType: camundav88.IncidentErrorTypeEnumIOMAPPINGERROR, ErrorMessage: "Intentional failure", ElementId: "task-a", ElementInstanceKey: "fni-a", CreationTime: createdAt, RootProcessInstanceKey: &rootKey, ProcessDefinitionKey: "pd-key", ProcessDefinitionId: "pd-id"},
-						{IncidentKey: "skip-root", ProcessInstanceKey: "pi-a", State: camundav88.IncidentStateEnumRESOLVED, ErrorType: camundav88.IncidentErrorTypeEnumIOMAPPINGERROR, ErrorMessage: "Intentional failure", ElementId: "task-a", ElementInstanceKey: "fni-a", CreationTime: createdAt, RootProcessInstanceKey: &otherRoot, ProcessDefinitionKey: "pd-key", ProcessDefinitionId: "pd-id"},
-					},
+					Items: new([]camundav88.IncidentResult{
+						{IncidentKey: new("skip-state"), ProcessInstanceKey: new("pi-a"), State: new(camundav88.IncidentResultStateACTIVE), ErrorType: new(camundav88.IncidentResultErrorTypeIOMAPPINGERROR), ErrorMessage: new("intentional"), ElementId: new("task-a"), ElementInstanceKey: new("fni-a"), CreationTime: new(createdAt), ProcessDefinitionKey: new("pd-key"), ProcessDefinitionId: new("pd-id")},
+						{IncidentKey: new("match"), ProcessInstanceKey: new("pi-a"), State: new(camundav88.IncidentResultStateRESOLVED), ErrorType: new(camundav88.IncidentResultErrorTypeIOMAPPINGERROR), ErrorMessage: new("Intentional failure"), ElementId: new("task-a"), ElementInstanceKey: new("fni-a"), CreationTime: new(createdAt), ProcessDefinitionKey: new("pd-key"), ProcessDefinitionId: new("pd-id")},
+						{IncidentKey: new("skip-key"), ProcessInstanceKey: new("pi-a"), State: new(camundav88.IncidentResultStateRESOLVED), ErrorType: new(camundav88.IncidentResultErrorTypeIOMAPPINGERROR), ErrorMessage: new("Intentional failure"), ElementId: new("task-a"), ElementInstanceKey: new("fni-a"), CreationTime: new(createdAt), ProcessDefinitionKey: new("pd-key"), ProcessDefinitionId: new("pd-id")},
+					}),
 					Page: camundav88.SearchQueryPageResponse{TotalItems: 3},
 				},
 			}, nil
@@ -322,18 +317,17 @@ func TestSearchIncidentsPageUsesTopLevelEndpointAndLocalCompatibilityFilters(t *
 	})
 
 	got, err := svc.SearchIncidentsPage(context.Background(), d.IncidentFilter{
-		Keys:                   []string{"match"},
-		State:                  "resolved",
-		ErrorType:              "io_mapping_error",
-		ErrorMessage:           "intentional",
-		ProcessInstanceKey:     "pi-a",
-		RootProcessInstanceKey: "root-a",
-		ProcessDefinitionKey:   "pd-key",
-		ProcessDefinitionId:    "pd-id",
-		ElementId:              "task-a",
-		ElementInstanceKey:     "fni-a",
-		CreationTimeAfter:      "2026-05-09T09:00:00Z",
-		CreationTimeBefore:     "2026-05-09T11:00:00Z",
+		Keys:                 []string{"match"},
+		State:                "resolved",
+		ErrorType:            "io_mapping_error",
+		ErrorMessage:         "intentional",
+		ProcessInstanceKey:   "pi-a",
+		ProcessDefinitionKey: "pd-key",
+		ProcessDefinitionId:  "pd-id",
+		ElementId:            "task-a",
+		ElementInstanceKey:   "fni-a",
+		CreationTimeAfter:    "2026-05-09T09:00:00Z",
+		CreationTimeBefore:   "2026-05-09T11:00:00Z",
 	}, d.IncidentPageRequest{From: 25, Size: 10})
 
 	require.NoError(t, err)
@@ -348,7 +342,7 @@ func TestSearchIncidentsPaginatesMessageFilteringBeyondFirstPage(t *testing.T) {
 	var fromValues []int32
 	svc := newTestService(t, mockIncidentClient{
 		searchIncidents: func(_ context.Context, body camundav88.SearchIncidentsJSONRequestBody, _ ...camundav88.RequestEditorFn) (*camundav88.SearchIncidentsResponse, error) {
-			require.Nil(t, body.Filter)
+			requireIncidentRequestOmitsFilter(t, body)
 			require.NotNil(t, body.Page)
 			page, err := body.Page.AsOffsetPagination()
 			require.NoError(t, err)
@@ -356,17 +350,17 @@ func TestSearchIncidentsPaginatesMessageFilteringBeyondFirstPage(t *testing.T) {
 			fromValues = append(fromValues, *page.From)
 
 			items := []camundav88.IncidentResult{
-				{IncidentKey: "skip-first-page", ProcessInstanceKey: "pi-a", State: camundav88.IncidentStateEnumACTIVE, ErrorMessage: "No retries left"},
+				{IncidentKey: new("skip-first-page"), ProcessInstanceKey: new("pi-a"), State: new(camundav88.IncidentResultStateACTIVE), ErrorMessage: new("No retries left")},
 			}
 			pageResp := camundav88.SearchQueryPageResponse{TotalItems: 2}
 			if *page.From > 0 {
 				items = []camundav88.IncidentResult{
-					{IncidentKey: "match-second-page", ProcessInstanceKey: "pi-b", State: camundav88.IncidentStateEnumACTIVE, ErrorMessage: "INTENTIONAL failure"},
+					{IncidentKey: new("match-second-page"), ProcessInstanceKey: new("pi-b"), State: new(camundav88.IncidentResultStateACTIVE), ErrorMessage: new("INTENTIONAL failure")},
 				}
 			}
 			return &camundav88.SearchIncidentsResponse{
 				HTTPResponse: testHTTPResponse(http.StatusOK),
-				JSON200:      &camundav88.IncidentSearchQueryResult{Items: items, Page: pageResp},
+				JSON200:      &camundav88.IncidentSearchQueryResult{Items: new(items), Page: pageResp},
 			}, nil
 		},
 	})
@@ -391,14 +385,14 @@ func TestSearchIncidentsStopsAtRequestedSizeAfterLocalFiltering(t *testing.T) {
 	svc := newTestService(t, mockIncidentClient{
 		searchIncidents: func(_ context.Context, body camundav88.SearchIncidentsJSONRequestBody, _ ...camundav88.RequestEditorFn) (*camundav88.SearchIncidentsResponse, error) {
 			requests = append(requests, body)
-			require.Nil(t, body.Filter)
+			requireIncidentRequestOmitsFilter(t, body)
 			return &camundav88.SearchIncidentsResponse{
 				HTTPResponse: testHTTPResponse(http.StatusOK),
 				JSON200: &camundav88.IncidentSearchQueryResult{
-					Items: []camundav88.IncidentResult{
-						{IncidentKey: "match-a", ProcessInstanceKey: "pi-a", State: camundav88.IncidentStateEnumACTIVE, ErrorMessage: "intentional failure"},
-						{IncidentKey: "match-b", ProcessInstanceKey: "pi-b", State: camundav88.IncidentStateEnumACTIVE, ErrorMessage: "intentional failure"},
-					},
+					Items: new([]camundav88.IncidentResult{
+						{IncidentKey: new("match-a"), ProcessInstanceKey: new("pi-a"), State: new(camundav88.IncidentResultStateACTIVE), ErrorMessage: new("intentional failure")},
+						{IncidentKey: new("match-b"), ProcessInstanceKey: new("pi-b"), State: new(camundav88.IncidentResultStateACTIVE), ErrorMessage: new("intentional failure")},
+					}),
 					Page: camundav88.SearchQueryPageResponse{TotalItems: 2},
 				},
 			}, nil
@@ -421,7 +415,7 @@ func TestSearchIncidentsPaginatesStateAndTypeFilteringBeyondFirstPage(t *testing
 	var fromValues []int32
 	svc := newTestService(t, mockIncidentClient{
 		searchIncidents: func(_ context.Context, body camundav88.SearchIncidentsJSONRequestBody, _ ...camundav88.RequestEditorFn) (*camundav88.SearchIncidentsResponse, error) {
-			require.Nil(t, body.Filter)
+			requireIncidentRequestOmitsFilter(t, body)
 			require.NotNil(t, body.Page)
 			page, err := body.Page.AsOffsetPagination()
 			require.NoError(t, err)
@@ -429,17 +423,17 @@ func TestSearchIncidentsPaginatesStateAndTypeFilteringBeyondFirstPage(t *testing
 			fromValues = append(fromValues, *page.From)
 
 			items := []camundav88.IncidentResult{
-				{IncidentKey: "skip-first-page", ProcessInstanceKey: "pi-a", State: camundav88.IncidentStateEnumRESOLVED, ErrorType: camundav88.IncidentErrorTypeEnumJOBNORETRIES},
+				{IncidentKey: new("skip-first-page"), ProcessInstanceKey: new("pi-a"), State: new(camundav88.IncidentResultStateRESOLVED), ErrorType: new(camundav88.IncidentResultErrorTypeJOBNORETRIES)},
 			}
 			pageResp := camundav88.SearchQueryPageResponse{TotalItems: 2}
 			if *page.From > 0 {
 				items = []camundav88.IncidentResult{
-					{IncidentKey: "match-second-page", ProcessInstanceKey: "pi-b", State: camundav88.IncidentStateEnumACTIVE, ErrorType: camundav88.IncidentErrorTypeEnumIOMAPPINGERROR},
+					{IncidentKey: new("match-second-page"), ProcessInstanceKey: new("pi-b"), State: new(camundav88.IncidentResultStateACTIVE), ErrorType: new(camundav88.IncidentResultErrorTypeIOMAPPINGERROR)},
 				}
 			}
 			return &camundav88.SearchIncidentsResponse{
 				HTTPResponse: testHTTPResponse(http.StatusOK),
-				JSON200:      &camundav88.IncidentSearchQueryResult{Items: items, Page: pageResp},
+				JSON200:      &camundav88.IncidentSearchQueryResult{Items: new(items), Page: pageResp},
 			}, nil
 		},
 	})
@@ -460,7 +454,7 @@ func TestSearchIncidentsPaginatesCreationTimeFilteringBeyondFirstPage(t *testing
 	var fromValues []int32
 	svc := newTestService(t, mockIncidentClient{
 		searchIncidents: func(_ context.Context, body camundav88.SearchIncidentsJSONRequestBody, _ ...camundav88.RequestEditorFn) (*camundav88.SearchIncidentsResponse, error) {
-			require.Nil(t, body.Filter)
+			requireIncidentRequestOmitsFilter(t, body)
 			require.NotNil(t, body.Page)
 			page, err := body.Page.AsOffsetPagination()
 			require.NoError(t, err)
@@ -468,17 +462,17 @@ func TestSearchIncidentsPaginatesCreationTimeFilteringBeyondFirstPage(t *testing
 			fromValues = append(fromValues, *page.From)
 
 			items := []camundav88.IncidentResult{
-				{IncidentKey: "skip-first-page", ProcessInstanceKey: "pi-a", State: camundav88.IncidentStateEnumACTIVE, CreationTime: time.Date(2026, 5, 9, 8, 59, 0, 0, time.UTC)},
+				{IncidentKey: new("skip-first-page"), ProcessInstanceKey: new("pi-a"), State: new(camundav88.IncidentResultStateACTIVE), CreationTime: new(time.Date(2026, 5, 9, 8, 59, 0, 0, time.UTC))},
 			}
 			pageResp := camundav88.SearchQueryPageResponse{TotalItems: 2}
 			if *page.From > 0 {
 				items = []camundav88.IncidentResult{
-					{IncidentKey: "match-second-page", ProcessInstanceKey: "pi-b", State: camundav88.IncidentStateEnumACTIVE, CreationTime: time.Date(2026, 5, 9, 10, 0, 0, 0, time.UTC)},
+					{IncidentKey: new("match-second-page"), ProcessInstanceKey: new("pi-b"), State: new(camundav88.IncidentResultStateACTIVE), CreationTime: new(time.Date(2026, 5, 9, 10, 0, 0, 0, time.UTC))},
 				}
 			}
 			return &camundav88.SearchIncidentsResponse{
 				HTTPResponse: testHTTPResponse(http.StatusOK),
-				JSON200:      &camundav88.IncidentSearchQueryResult{Items: items, Page: pageResp},
+				JSON200:      &camundav88.IncidentSearchQueryResult{Items: new(items), Page: pageResp},
 			}, nil
 		},
 	})
@@ -498,14 +492,14 @@ func TestSearchIncidentsDateOnlyCreationTimeBeforeUsesInclusiveDay(t *testing.T)
 
 	svc := newTestService(t, mockIncidentClient{
 		searchIncidents: func(_ context.Context, body camundav88.SearchIncidentsJSONRequestBody, _ ...camundav88.RequestEditorFn) (*camundav88.SearchIncidentsResponse, error) {
-			require.Nil(t, body.Filter)
+			requireIncidentRequestOmitsFilter(t, body)
 			return &camundav88.SearchIncidentsResponse{
 				HTTPResponse: testHTTPResponse(http.StatusOK),
 				JSON200: &camundav88.IncidentSearchQueryResult{
-					Items: []camundav88.IncidentResult{
-						{IncidentKey: "match-end-of-day", ProcessInstanceKey: "pi-a", State: camundav88.IncidentStateEnumACTIVE, CreationTime: time.Date(2026, 5, 10, 23, 0, 0, 0, time.UTC)},
-						{IncidentKey: "skip-next-day", ProcessInstanceKey: "pi-b", State: camundav88.IncidentStateEnumACTIVE, CreationTime: time.Date(2026, 5, 11, 0, 0, 0, 0, time.UTC)},
-					},
+					Items: new([]camundav88.IncidentResult{
+						{IncidentKey: new("match-end-of-day"), ProcessInstanceKey: new("pi-a"), State: new(camundav88.IncidentResultStateACTIVE), CreationTime: new(time.Date(2026, 5, 10, 23, 0, 0, 0, time.UTC))},
+						{IncidentKey: new("skip-next-day"), ProcessInstanceKey: new("pi-b"), State: new(camundav88.IncidentResultStateACTIVE), CreationTime: new(time.Date(2026, 5, 11, 0, 0, 0, 0, time.UTC))},
+					}),
 					Page: camundav88.SearchQueryPageResponse{TotalItems: 2},
 				},
 			}, nil
@@ -526,14 +520,14 @@ func TestSearchIncidentsC8voltCreationTimestampIsUTC(t *testing.T) {
 
 	svc := newTestService(t, mockIncidentClient{
 		searchIncidents: func(_ context.Context, body camundav88.SearchIncidentsJSONRequestBody, _ ...camundav88.RequestEditorFn) (*camundav88.SearchIncidentsResponse, error) {
-			require.Nil(t, body.Filter)
+			requireIncidentRequestOmitsFilter(t, body)
 			return &camundav88.SearchIncidentsResponse{
 				HTTPResponse: testHTTPResponse(http.StatusOK),
 				JSON200: &camundav88.IncidentSearchQueryResult{
-					Items: []camundav88.IncidentResult{
-						{IncidentKey: "match", ProcessInstanceKey: "pi-a", State: camundav88.IncidentStateEnumACTIVE, CreationTime: time.Date(2026, 5, 25, 20, 9, 11, 100000000, time.UTC)},
-						{IncidentKey: "skip-before", ProcessInstanceKey: "pi-b", State: camundav88.IncidentStateEnumACTIVE, CreationTime: time.Date(2026, 5, 25, 20, 9, 10, 999000000, time.UTC)},
-					},
+					Items: new([]camundav88.IncidentResult{
+						{IncidentKey: new("match"), ProcessInstanceKey: new("pi-a"), State: new(camundav88.IncidentResultStateACTIVE), CreationTime: new(time.Date(2026, 5, 25, 20, 9, 11, 100000000, time.UTC))},
+						{IncidentKey: new("skip-before"), ProcessInstanceKey: new("pi-b"), State: new(camundav88.IncidentResultStateACTIVE), CreationTime: new(time.Date(2026, 5, 25, 20, 9, 10, 999000000, time.UTC))},
+					}),
 					Page: camundav88.SearchQueryPageResponse{TotalItems: 2},
 				},
 			}, nil
@@ -554,26 +548,24 @@ func TestSearchIncidentsPageDoesNotSendBrokenV88FilterShapeForLocalFilters(t *te
 
 	svc := newTestService(t, mockIncidentClient{
 		searchIncidents: func(_ context.Context, body camundav88.SearchIncidentsJSONRequestBody, _ ...camundav88.RequestEditorFn) (*camundav88.SearchIncidentsResponse, error) {
-			require.Nil(t, body.Filter)
+			requireIncidentRequestOmitsFilter(t, body)
 			require.NotNil(t, body.Page)
-			rootKey := "root-a"
 			return &camundav88.SearchIncidentsResponse{
 				HTTPResponse: testHTTPResponse(http.StatusOK),
 				JSON200: &camundav88.IncidentSearchQueryResult{
-					Items: []camundav88.IncidentResult{
+					Items: new([]camundav88.IncidentResult{
 						{
-							IncidentKey:            "match",
-							ProcessInstanceKey:     "pi-a",
-							RootProcessInstanceKey: &rootKey,
-							ProcessDefinitionKey:   "pd-key",
-							ProcessDefinitionId:    "pd-id",
-							ElementId:              "task-a",
-							ElementInstanceKey:     "fni-a",
-							State:                  camundav88.IncidentStateEnumACTIVE,
-							ErrorType:              camundav88.IncidentErrorTypeEnumJOBNORETRIES,
-							ErrorMessage:           "intentional failure",
+							IncidentKey:          new("match"),
+							ProcessInstanceKey:   new("pi-a"),
+							ProcessDefinitionKey: new("pd-key"),
+							ProcessDefinitionId:  new("pd-id"),
+							ElementId:            new("task-a"),
+							ElementInstanceKey:   new("fni-a"),
+							State:                new(camundav88.IncidentResultStateACTIVE),
+							ErrorType:            new(camundav88.IncidentResultErrorTypeJOBNORETRIES),
+							ErrorMessage:         new("intentional failure"),
 						},
-					},
+					}),
 					Page: camundav88.SearchQueryPageResponse{TotalItems: 1},
 				},
 			}, nil
@@ -581,15 +573,14 @@ func TestSearchIncidentsPageDoesNotSendBrokenV88FilterShapeForLocalFilters(t *te
 	})
 
 	got, err := svc.SearchIncidentsPage(context.Background(), d.IncidentFilter{
-		State:                  "active",
-		ErrorType:              "job_no_retries",
-		ErrorMessage:           "intentional",
-		ProcessInstanceKey:     "pi-a",
-		RootProcessInstanceKey: "root-a",
-		ProcessDefinitionKey:   "pd-key",
-		ProcessDefinitionId:    "pd-id",
-		ElementId:              "task-a",
-		ElementInstanceKey:     "fni-a",
+		State:                "active",
+		ErrorType:            "job_no_retries",
+		ErrorMessage:         "intentional",
+		ProcessInstanceKey:   "pi-a",
+		ProcessDefinitionKey: "pd-key",
+		ProcessDefinitionId:  "pd-id",
+		ElementId:            "task-a",
+		ElementInstanceKey:   "fni-a",
 	}, d.IncidentPageRequest{Size: 10})
 
 	require.NoError(t, err)
@@ -668,3 +659,27 @@ func statusCodeOrOK(status int) int {
 }
 
 var _ v88.GenIncidentClientCamunda = mockIncidentClient{}
+
+// A missing filter must stay absent on the wire for both incident search requests.
+func requireIncidentRequestOmitsFilter(t *testing.T, body any) {
+	t.Helper()
+	data, err := json.Marshal(body)
+	require.NoError(t, err)
+	var request map[string]any
+	require.NoError(t, json.Unmarshal(data, &request))
+	require.NotContains(t, request, "filter")
+}
+
+func TestSearchIncidentsRejectsUnavailableRootFilterBeforeRequest(t *testing.T) {
+	t.Parallel()
+	svc := newTestService(t, mockIncidentClient{
+		searchIncidents: func(context.Context, camundav88.SearchIncidentsJSONRequestBody, ...camundav88.RequestEditorFn) (*camundav88.SearchIncidentsResponse, error) {
+			t.Fatal("unsupported root filter must not send a request")
+			return nil, nil
+		},
+	})
+	page, err := svc.SearchIncidentsPage(context.Background(), d.IncidentFilter{RootProcessInstanceKey: "root-a"}, d.IncidentPageRequest{Size: 10})
+	require.ErrorIs(t, err, d.ErrUnsupported)
+	require.Contains(t, err.Error(), "unavailable in Camunda 8.8")
+	require.Empty(t, page.Items)
+}
