@@ -61,9 +61,8 @@ func (m *mockJobClient) FailJobWithResponse(ctx context.Context, jobKey camundav
 	return m.failJobWithResponse(ctx, jobKey, body, reqEditors...)
 }
 
-// TestSearchJobsByKey verifies v8.8 key lookup preserves all supplied job timestamps.
+// TestSearchJobsByKey verifies v8.8 key lookup preserves supported job timestamps (8.8 has no creationTime).
 func TestSearchJobsByKey(t *testing.T) {
-	creationTime := time.Date(2026, 5, 8, 8, 10, 0, 0, time.FixedZone("UTC+02", 2*60*60))
 	endTime := time.Date(2026, 5, 8, 9, 20, 0, 0, time.FixedZone("UTC-04", -4*60*60))
 	deadline := time.Date(2026, 5, 8, 10, 15, 0, 0, time.UTC)
 	svc := newJobServiceTest(t, &mockJobClient{
@@ -76,7 +75,6 @@ func TestSearchJobsByKey(t *testing.T) {
 						JobKey:             "2251799813711967",
 						State:              camundav88.JobStateEnum("FAILED"),
 						Retries:            2,
-						CreationTime:       &creationTime,
 						EndTime:            &endTime,
 						Deadline:           &deadline,
 						ProcessInstanceKey: "2251799813711000",
@@ -97,7 +95,6 @@ func TestSearchJobsByKey(t *testing.T) {
 		Key:                "2251799813711967",
 		State:              "FAILED",
 		Retries:            2,
-		CreationTime:       &creationTime,
 		EndTime:            &endTime,
 		Deadline:           &deadline,
 		ProcessInstanceKey: "2251799813711000",
@@ -130,7 +127,6 @@ func TestService_GetJob_NotFound(t *testing.T) {
 func TestService_SearchJobs_ConstructsFiltersAndConvertsRows(t *testing.T) {
 	retries := int32(0)
 	elementID := camundav88.ElementId("charge-card")
-	creationTime := time.Date(2026, 5, 8, 8, 10, 0, 0, time.FixedZone("UTC+02", 2*60*60))
 	endTime := time.Date(2026, 5, 8, 9, 20, 0, 0, time.FixedZone("UTC-04", -4*60*60))
 	svc := newJobServiceTest(t, &mockJobClient{
 		searchJobsWithResponse: func(_ context.Context, body camundav88.SearchJobsJSONRequestBody, _ ...camundav88.RequestEditorFn) (*camundav88.SearchJobsResponse, error) {
@@ -153,28 +149,24 @@ func TestService_SearchJobs_ConstructsFiltersAndConvertsRows(t *testing.T) {
 						JobKey:             "2251799813711967",
 						State:              camundav88.JobStateEnumFAILED,
 						Retries:            retries,
-						CreationTime:       &creationTime,
 						EndTime:            &endTime,
 						Type:               "payment-worker",
 						Worker:             "worker-a",
-						Kind:               camundav88.BPMNELEMENT,
+						Kind:               camundav88.JobKindEnumBPMNELEMENT,
 						ListenerEventType:  camundav88.JobListenerEventTypeEnumCOMPLETING,
 						ProcessInstanceKey: "2251799813711000",
 						ElementInstanceKey: "2251799813711001",
-						ElementId:          &elementID,
+						ElementId:          elementID,
 						TenantId:           "tenant-a",
 					}, {
-						JobKey:       "creation-only",
-						CreationTime: &creationTime,
-						EndTime:      nil,
+						JobKey:  "timestamps-absent",
+						EndTime: nil,
 					}, {
-						JobKey:       "end-only",
-						CreationTime: nil,
-						EndTime:      &endTime,
+						JobKey:  "end-only",
+						EndTime: &endTime,
 					}, {
-						JobKey:       "timestamps-null",
-						CreationTime: nil,
-						EndTime:      nil,
+						JobKey:  "timestamps-null",
+						EndTime: nil,
 					}},
 				},
 			}, nil
@@ -203,9 +195,9 @@ func TestService_SearchJobs_ConstructsFiltersAndConvertsRows(t *testing.T) {
 	require.Equal(t, "BPMN_ELEMENT", result.Items[0].Kind)
 	require.Equal(t, "COMPLETING", result.Items[0].ListenerEventType)
 	require.Equal(t, "charge-card", result.Items[0].ElementId)
-	require.Equal(t, &creationTime, result.Items[0].CreationTime)
+	require.Nil(t, result.Items[0].CreationTime)
 	require.Equal(t, &endTime, result.Items[0].EndTime)
-	require.Equal(t, &creationTime, result.Items[1].CreationTime)
+	require.Nil(t, result.Items[1].CreationTime)
 	require.Nil(t, result.Items[1].EndTime)
 	require.Nil(t, result.Items[2].CreationTime)
 	require.Equal(t, &endTime, result.Items[2].EndTime)
@@ -382,7 +374,7 @@ func TestService_SearchJobsTotalFallsBackToPageCounting(t *testing.T) {
 					Items: items,
 					Page: camundav88.SearchQueryPageResponse{
 						TotalItems:        1,
-						HasMoreTotalItems: true,
+						HasMoreTotalItems: new(true),
 					},
 				},
 			}, nil
@@ -773,7 +765,7 @@ func TestJobSearchIncompleteMetadata(t *testing.T) {
 		items []camundav88.JobSearchResult
 	}{
 		{name: "empty exact with more", page: camundav88.SearchQueryPageResponse{TotalItems: 3}},
-		{name: "empty lower bound", page: camundav88.SearchQueryPageResponse{TotalItems: 0, HasMoreTotalItems: true}},
+		{name: "empty lower bound", page: camundav88.SearchQueryPageResponse{TotalItems: 0, HasMoreTotalItems: new(true)}},
 		{name: "negative total", page: camundav88.SearchQueryPageResponse{TotalItems: -1}},
 		{name: "rows contradict exact total", items: []camundav88.JobSearchResult{{JobKey: "1"}}},
 	} {
@@ -925,7 +917,7 @@ func TestJobSearchTotalEvidence(t *testing.T) {
 					items = nil
 				}
 				return &camundav88.SearchJobsResponse{HTTPResponse: okHTTPResponse(), JSON200: &camundav88.JobSearchQueryResult{
-					Items: items, Page: camundav88.SearchQueryPageResponse{TotalItems: 1, HasMoreTotalItems: !exact},
+					Items: items, Page: camundav88.SearchQueryPageResponse{TotalItems: 1, HasMoreTotalItems: new(!exact)},
 				}}, nil
 			}})
 			total, err := svc.SearchJobsTotal(context.Background(), d.JobSearchQuery{BatchSize: 10})

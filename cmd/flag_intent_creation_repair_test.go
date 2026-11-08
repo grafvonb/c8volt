@@ -160,10 +160,10 @@ func TestFlagIntentCreationRepairPayloads(t *testing.T) {
 			flags []string
 			want  []map[string]any
 		}{
-			{name: "default", want: []map[string]any{{"changeset": map[string]any{"retries": float64(1), "timeout": nil}}}},
-			{name: "explicit", flags: []string{"--set-retries", "3"}, want: []map[string]any{{"changeset": map[string]any{"retries": float64(3), "timeout": nil}}}},
+			{name: "default", want: []map[string]any{{"changeset": map[string]any{"retries": float64(1)}}}},
+			{name: "explicit", flags: []string{"--set-retries", "3"}, want: []map[string]any{{"changeset": map[string]any{"retries": float64(3)}}}},
 			{name: "zero", flags: []string{"--set-retries", "0"}},
-			{name: "timeout with zero", flags: []string{"--set-retries", "0", "--set-job-timeout", "1500ms"}, want: []map[string]any{{"changeset": map[string]any{"timeout": float64(1500), "retries": nil}}}},
+			{name: "timeout with zero", flags: []string{"--set-retries", "0", "--set-job-timeout", "1500ms"}, want: []map[string]any{{"changeset": map[string]any{"timeout": float64(1500)}}}},
 		} {
 			t.Run(noun+"/"+tc.name, func(t *testing.T) {
 				var requests testx.SafeSlice[string]

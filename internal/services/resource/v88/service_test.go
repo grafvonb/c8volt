@@ -88,10 +88,6 @@ func (m *mockProcessDefinitionClient) SearchIncidentsWithResponse(ctx context.Co
 	panic("unexpected SearchIncidentsWithResponse call")
 }
 
-func (m *mockProcessDefinitionClient) GetProcessDefinitionInstanceVersionStatisticsWithResponse(ctx context.Context, body camundav88.GetProcessDefinitionInstanceVersionStatisticsJSONRequestBody, reqEditors ...camundav88.RequestEditorFn) (*camundav88.GetProcessDefinitionInstanceVersionStatisticsResponse, error) {
-	panic("unexpected GetProcessDefinitionInstanceVersionStatisticsWithResponse call")
-}
-
 // TestService_Deploy verifies the v8.8 deployment flow across both modes.
 // With no-wait the deployment response is returned immediately; without it the
 // service confirms that returned process definition keys are visible before
@@ -221,8 +217,8 @@ func TestService_Deploy(t *testing.T) {
 				getProcessDefinitionWithResponse: func(ctx context.Context, key string, reqEditors ...camundav88.RequestEditorFn) (*camundav88.GetProcessDefinitionResponse, error) {
 					assert.Equal(t, "proc-2", key)
 					respBody := camundav88.ProcessDefinitionResult{
-						ProcessDefinitionId:  "demo",
-						ProcessDefinitionKey: "proc-2",
+						ProcessDefinitionId:  new("demo"),
+						ProcessDefinitionKey: new("proc-2"),
 					}
 					return &camundav88.GetProcessDefinitionResponse{
 						HTTPResponse: newHTTPResponse(http.MethodGet, "https://camunda.local/v2/process-definitions/proc-2", http.StatusOK, "200 OK"),
@@ -351,7 +347,7 @@ func TestService_DeployEmitsConfirmedCompletionFactsWhenDefinitionsAreVisible(t 
 			lookedUp = append(lookedUp, key)
 			return &camundav88.GetProcessDefinitionResponse{
 				HTTPResponse: newHTTPResponse(http.MethodGet, "https://camunda.local/v2/process-definitions/"+key, http.StatusOK, "200 OK"),
-				JSON200:      &camundav88.ProcessDefinitionResult{ProcessDefinitionKey: key},
+				JSON200:      &camundav88.ProcessDefinitionResult{ProcessDefinitionKey: new(key)},
 			}, nil
 		},
 	})
@@ -464,11 +460,11 @@ func TestService_Get(t *testing.T) {
 					return &camundav88.GetResourceResponse{
 						HTTPResponse: newHTTPResponse(http.MethodGet, "https://camunda.local/v2/resources/resource-1", http.StatusOK, "200 OK"),
 						JSON200: &camundav88.ResourceResult{
-							ResourceId:   "demo-process",
-							ResourceKey:  "resource-1",
-							ResourceName: "demo.bpmn",
-							TenantId:     "tenant-a",
-							Version:      7,
+							ResourceId:   new("demo-process"),
+							ResourceKey:  new("resource-1"),
+							ResourceName: new("demo.bpmn"),
+							TenantId:     new("tenant-a"),
+							Version:      new(int32(7)),
 							VersionTag:   new("v1"),
 						},
 					}, nil
@@ -612,8 +608,8 @@ func TestService_ProcessDefinitionDeployPoller(t *testing.T) {
 		}, &mockProcessDefinitionClient{
 			getProcessDefinitionWithResponse: func(ctx context.Context, key string, reqEditors ...camundav88.RequestEditorFn) (*camundav88.GetProcessDefinitionResponse, error) {
 				respBody := camundav88.ProcessDefinitionResult{
-					ProcessDefinitionId:  "demo",
-					ProcessDefinitionKey: "proc-1",
+					ProcessDefinitionId:  new("demo"),
+					ProcessDefinitionKey: new("proc-1"),
 				}
 				return &camundav88.GetProcessDefinitionResponse{
 					HTTPResponse: newHTTPResponse(http.MethodGet, "https://camunda.local/v2/process-definitions/proc-1", http.StatusOK, "200 OK"),

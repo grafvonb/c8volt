@@ -28,12 +28,16 @@ func TestListenerTimestampCommandsHonorTimezoneConfig(t *testing.T) {
 		{"walk", []string{"walk", "process-instance", "--key", key, "--with-elements", "--with-listeners"}},
 		{"analysis", []string{"ops", "analyse", "slow-process-instances", "--key", key, "--with-listeners"}},
 	} {
-		for _, showOffset := range []bool{false, true} {
-			t.Run(fmt.Sprintf("%s/offset=%t", command.name, showOffset), func(t *testing.T) {
+		for _, scenario := range []struct {
+			version    string
+			showOffset bool
+		}{{"8.8", false}, {"8.8", true}, {"8.10", false}, {"8.10", true}} {
+			version, showOffset := scenario.version, scenario.showOffset
+			t.Run(fmt.Sprintf("%s/%s/offset=%t", version, command.name, showOffset), func(t *testing.T) {
 				var requests testx.SafeSlice[string]
 				process := `{"processInstanceKey":"2251799813685249","processDefinitionKey":"9001","processDefinitionId":"demo","processDefinitionVersion":1,"state":"ACTIVE","startDate":"2026-09-16T12:00:00Z","tenantId":"tenant","hasIncident":false}`
 				srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-					if serveVersionCheckTopology(w, r, "8.8") {
+					if serveVersionCheckTopology(w, r, version) {
 						return
 					}
 
@@ -68,7 +72,7 @@ func TestListenerTimestampCommandsHonorTimezoneConfig(t *testing.T) {
 					}
 				}))
 				t.Cleanup(srv.Close)
-				cfgPath := testx.WriteTestConfigForVersion(t, srv.URL, "8.8")
+				cfgPath := testx.WriteTestConfigForVersion(t, srv.URL, version)
 				cfg, err := os.ReadFile(cfgPath)
 				require.NoError(t, err)
 				cfg = []byte(strings.Replace(string(cfg), "app:\n", fmt.Sprintf("app:\n  show_timezone_offset: %t\n", showOffset), 1))
@@ -87,7 +91,11 @@ func TestListenerTimestampCommandsHonorTimezoneConfig(t *testing.T) {
 					}
 					found = true
 					fields := strings.Fields(line)
-					require.Contains(t, fields, "s:2026-09-16T13:07:16.359"+suffix)
+					if version == "8.8" {
+						require.NotContains(t, fields, "s:2026-09-16T13:07:16.359"+suffix)
+					} else {
+						require.Contains(t, fields, "s:2026-09-16T13:07:16.359"+suffix)
+					}
 					require.Contains(t, fields, "e:2026-09-16T13:07:16.842"+suffix)
 					require.Contains(t, fields, "d:2026-09-16T13:08:00.000"+suffix)
 				}

@@ -613,7 +613,7 @@ func TestGetElementCommand_KeyedLookupJSONOutput(t *testing.T) {
 // TestGetElementCommand_KeyedLookupWithListenersHumanOutput nests matched listener jobs under the fetched element row.
 func TestGetElementCommand_KeyedLookupWithListenersHumanOutput(t *testing.T) {
 	var requests []string
-	srv := newElementWithListenersServer(t, "8.8", &requests, []string{`{
+	srv := newElementWithListenersServer(t, "8.10", &requests, []string{`{
   "elementInstanceKey": "2251799813689002",
   "elementId": "ship-order",
   "type": "SERVICE_TASK",
@@ -627,7 +627,7 @@ func TestGetElementCommand_KeyedLookupWithListenersHumanOutput(t *testing.T) {
 		`{"items":[{"jobKey":"2251799813689102","kind":"TASK_LISTENER","listenerEventType":"COMPLETING","type":"audit-task","state":"ACTIVATED","retries":0,"worker":"worker-a","creationTime":"2026-09-16T13:09:00Z","deadline":"2026-09-16T13:10:00Z","processInstanceKey":"2251799813688001","elementInstanceKey":"2251799813689002","elementId":"ship-order","tenantId":"tenant-a","errorCode":"LISTENER_FAILED","errorMessage":"worker failed"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`,
 	})
 	t.Cleanup(srv.Close)
-	cfgPath := testx.WriteTestConfigForVersion(t, srv.URL, "8.8")
+	cfgPath := testx.WriteTestConfigForVersion(t, srv.URL, "8.10")
 
 	output, stderr := executeRootForElementTestWithSeparateOutputs(t, "--config", cfgPath, "get", "element", "--key", "2251799813689002", "--with-listeners")
 
@@ -656,12 +656,12 @@ func TestGetElementCommand_KeyedLookupWithListenersHumanOutput(t *testing.T) {
 // TestGetElementCommand_SearchWithListenersHumanOutput preserves timestamp meaning through the search execution path.
 func TestGetElementCommand_SearchWithListenersHumanOutput(t *testing.T) {
 	var requests []string
-	srv := newElementWithListenersServer(t, "8.8", &requests, []string{`{"items":[{"elementInstanceKey":"2251799813689002","elementId":"ship-order","type":"SERVICE_TASK","state":"ACTIVE","processInstanceKey":"2251799813688001","tenantId":"tenant-a","hasIncident":false}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`}, []string{
+	srv := newElementWithListenersServer(t, "8.10", &requests, []string{`{"items":[{"elementInstanceKey":"2251799813689002","elementId":"ship-order","type":"SERVICE_TASK","state":"ACTIVE","processInstanceKey":"2251799813688001","tenantId":"tenant-a","hasIncident":false}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`}, []string{
 		`{"items":[{"jobKey":"2251799813689101","kind":"EXECUTION_LISTENER","listenerEventType":"START","type":"audit-start","state":"CANCELED","retries":0,"creationTime":"2026-09-16T13:07:16.359Z","endTime":"2026-09-16T13:07:16.842Z","deadline":"2026-09-16T13:08:00Z","processInstanceKey":"2251799813688001","elementInstanceKey":"2251799813689002"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`,
 		`{"items":[],"page":{"totalItems":0,"hasMoreTotalItems":false}}`,
 	})
 	t.Cleanup(srv.Close)
-	cfgPath := testx.WriteTestConfigForVersion(t, srv.URL, "8.8")
+	cfgPath := testx.WriteTestConfigForVersion(t, srv.URL, "8.10")
 
 	stdout, stderr := executeRootForElementTestWithSeparateOutputs(t, "--config", cfgPath, "get", "element", "--pi-key", "2251799813688001", "--with-listeners")
 
@@ -675,7 +675,7 @@ func TestGetElementCommand_SearchWithListenersHumanOutput(t *testing.T) {
 // TestGetElementCommand_SearchWithListenersJSONOutput preserves requested-empty arrays and omits unmatched jobs.
 func TestGetElementCommand_SearchWithListenersJSONOutput(t *testing.T) {
 	var requests []string
-	srv := newElementWithListenersServer(t, "8.8", &requests, []string{`{
+	srv := newElementWithListenersServer(t, "8.10", &requests, []string{`{
   "items": [
     {"elementInstanceKey":"2251799813689002","elementId":"ship-order","type":"SERVICE_TASK","state":"ACTIVE","processInstanceKey":"2251799813688001","tenantId":"tenant-a","hasIncident":false},
     {"elementInstanceKey":"2251799813689003","elementId":"finish-order","type":"END_EVENT","state":"COMPLETED","processInstanceKey":"2251799813688001","tenantId":"tenant-a","hasIncident":false}
@@ -686,7 +686,7 @@ func TestGetElementCommand_SearchWithListenersJSONOutput(t *testing.T) {
 		`{"items":[{"jobKey":"2251799813689102","kind":"TASK_LISTENER","listenerEventType":"COMPLETING","type":"audit-task","state":"CANCELED","retries":0,"endTime":"2026-09-16T13:09:16.842-03:00","deadline":"2026-09-16T13:10:00-03:00","processInstanceKey":"2251799813688001","elementInstanceKey":"2251799813689002","elementId":"ship-order","tenantId":"tenant-a"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`,
 	})
 	t.Cleanup(srv.Close)
-	cfgPath := testx.WriteTestConfigForVersion(t, srv.URL, "8.8")
+	cfgPath := testx.WriteTestConfigForVersion(t, srv.URL, "8.10")
 
 	output, stderr := executeRootForElementTestWithSeparateOutputs(t, "--config", cfgPath, "--json", "get", "element", "--pi-key", "2251799813688001", "--with-listeners")
 

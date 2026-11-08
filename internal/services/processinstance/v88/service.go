@@ -400,7 +400,7 @@ func pickProcessInstanceOverflowState(page camundav88.SearchQueryPageResponse, r
 	if page.TotalItems > visibleCount {
 		return d.ProcessInstanceOverflowStateHasMore
 	}
-	if page.HasMoreTotalItems && req.Size > 0 && itemCount >= int(req.Size) {
+	if toolx.Deref(page.HasMoreTotalItems, false) && req.Size > 0 && itemCount >= int(req.Size) {
 		return d.ProcessInstanceOverflowStateHasMore
 	}
 	if page.TotalItems == 0 {
@@ -414,7 +414,7 @@ func pickProcessInstanceReportedTotal(page camundav88.SearchQueryPageResponse, i
 		return nil
 	}
 	kind := d.ProcessInstanceReportedTotalKindExact
-	if page.HasMoreTotalItems {
+	if toolx.Deref(page.HasMoreTotalItems, false) {
 		kind = d.ProcessInstanceReportedTotalKindLowerBound
 	}
 	return &d.ProcessInstanceReportedTotal{

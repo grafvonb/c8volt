@@ -55,4 +55,9 @@ if bash "$REPO_ROOT/api/generate-v810-client.sh" --target v89 --camunda-tag 8.9.
   exit 1
 fi
 grep -Fq 'Unknown argument: --target' stderr
+if bash "$REPO_ROOT/api/refresh-clients.sh" --target v88 --camunda-tag 8.9.28 >stdout 2>stderr; then
+  echo 'the 8.8 target must reject a different release line' >&2
+  exit 1
+fi
+grep -Fq 'Invalid Camunda tag for v88' stderr
 echo 'ok api/tests/generation_tools_test.sh'

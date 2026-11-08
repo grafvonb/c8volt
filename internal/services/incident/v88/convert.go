@@ -14,29 +14,19 @@ import (
 // fromIncidentResult maps a Camunda incident result to the shared domain detail model.
 func fromIncidentResult(r camundav88.IncidentResult) d.ProcessInstanceIncidentDetail {
 	return d.ProcessInstanceIncidentDetail{
-		IncidentKey:            r.IncidentKey,
-		CreationTime:           incidentCreationTime(r.CreationTime),
-		ProcessInstanceKey:     r.ProcessInstanceKey,
-		TenantId:               r.TenantId,
-		State:                  string(r.State),
-		ErrorType:              string(r.ErrorType),
-		ErrorMessage:           r.ErrorMessage,
-		ElementId:              r.ElementId,
-		ElementInstanceKey:     r.ElementInstanceKey,
-		JobKey:                 toolx.Deref(r.JobKey, ""),
-		RootProcessInstanceKey: toolx.Deref(r.RootProcessInstanceKey, ""),
-		ProcessDefinitionKey:   r.ProcessDefinitionKey,
-		ProcessDefinitionId:    r.ProcessDefinitionId,
+		IncidentKey:          toolx.Deref(r.IncidentKey, ""),
+		CreationTime:         incidentCreationTime(toolx.Deref(r.CreationTime, time.Time{})),
+		ProcessInstanceKey:   toolx.Deref(r.ProcessInstanceKey, ""),
+		TenantId:             toolx.Deref(r.TenantId, ""),
+		State:                string(toolx.Deref(r.State, "")),
+		ErrorType:            string(toolx.Deref(r.ErrorType, "")),
+		ErrorMessage:         toolx.Deref(r.ErrorMessage, ""),
+		ElementId:            toolx.Deref(r.ElementId, ""),
+		ElementInstanceKey:   toolx.Deref(r.ElementInstanceKey, ""),
+		JobKey:               toolx.Deref(r.JobKey, ""),
+		ProcessDefinitionKey: toolx.Deref(r.ProcessDefinitionKey, ""),
+		ProcessDefinitionId:  toolx.Deref(r.ProcessDefinitionId, ""),
 	}
-}
-
-// newIncidentStateEqFilterPtr builds a v8.8 incident state equality filter.
-func newIncidentStateEqFilterPtr(v camundav88.IncidentStateEnum) (*camundav88.IncidentStateFilterProperty, error) {
-	var f camundav88.IncidentStateFilterProperty
-	if err := f.FromIncidentStateFilterProperty0(v); err != nil {
-		return nil, err
-	}
-	return new(f), nil
 }
 
 func incidentCreationTime(t time.Time) string {

@@ -76,8 +76,8 @@ func TestService_GetUserTask_ResolvesProcessInstanceKey(t *testing.T) {
 				JSON200: &camundav88.UserTaskSearchQueryResult{
 					Items: []camundav88.UserTaskResult{{
 						UserTaskKey:        "2251799815391233",
-						ProcessInstanceKey: "2251799813711967",
-						TenantId:           "tenant-a",
+						ProcessInstanceKey: new("2251799813711967"),
+						TenantId:           new("tenant-a"),
 					}},
 				},
 			}, nil
@@ -195,8 +195,8 @@ func TestService_GetUserTask_DoesNotCallFallbackAfterPrimarySuccess(t *testing.T
 				JSON200: &camundav88.UserTaskSearchQueryResult{
 					Items: []camundav88.UserTaskResult{{
 						UserTaskKey:        "2251799815391233",
-						ProcessInstanceKey: "2251799813711967",
-						TenantId:           "tenant-a",
+						ProcessInstanceKey: new("2251799813711967"),
+						TenantId:           new("tenant-a"),
 					}},
 				},
 			}, nil
@@ -225,8 +225,8 @@ func TestService_GetUserTask_IncludesConfiguredTenantFilter(t *testing.T) {
 				JSON200: &camundav88.UserTaskSearchQueryResult{
 					Items: []camundav88.UserTaskResult{{
 						UserTaskKey:        "2251799815391233",
-						ProcessInstanceKey: "2251799813711967",
-						TenantId:           "tenant-a",
+						ProcessInstanceKey: new("2251799813711967"),
+						TenantId:           new("tenant-a"),
 					}},
 				},
 			}, nil
@@ -359,7 +359,7 @@ func TestService_GetUserTask_RejectsMissingProcessInstanceKey(t *testing.T) {
 				JSON200: &camundav88.UserTaskSearchQueryResult{
 					Items: []camundav88.UserTaskResult{{
 						UserTaskKey:        "2251799815391233",
-						ProcessInstanceKey: "",
+						ProcessInstanceKey: new(""),
 					}},
 				},
 			}, nil

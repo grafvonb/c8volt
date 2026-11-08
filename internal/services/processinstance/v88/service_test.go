@@ -920,7 +920,7 @@ func TestService_SearchForProcessInstancesPage_UsesNativePageMetadata(t *testing
 						},
 						Page: camundav88.SearchQueryPageResponse{
 							TotalItems:        2,
-							HasMoreTotalItems: true,
+							HasMoreTotalItems: new(true),
 						},
 					},
 				}, nil
@@ -949,7 +949,7 @@ func TestService_SearchForProcessInstancesPage_UsesNativePageMetadata(t *testing
 						Items: []camundav88.ProcessInstanceResult{},
 						Page: camundav88.SearchQueryPageResponse{
 							TotalItems:        10000,
-							HasMoreTotalItems: true,
+							HasMoreTotalItems: new(true),
 						},
 					},
 				}, nil
@@ -1034,7 +1034,7 @@ func TestService_SearchForProcessInstancesPage_UsesCursorAndCompatibilityFilters
 					},
 					Page: camundav88.SearchQueryPageResponse{
 						TotalItems:        10000,
-						HasMoreTotalItems: true,
+						HasMoreTotalItems: new(true),
 						EndCursor:         &endCursor,
 					},
 				},
@@ -2102,7 +2102,7 @@ func makeProcessInstanceResult(key string, state string, parentKey string) *camu
 		HasIncident:                 false,
 		ProcessDefinitionId:         "demo",
 		ProcessDefinitionKey:        "9001",
-		ProcessDefinitionName:       new("demo"),
+		ProcessDefinitionName:       "demo",
 		ProcessDefinitionVersion:    3,
 		ProcessDefinitionVersionTag: new("stable"),
 		ProcessInstanceKey:          key,

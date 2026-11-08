@@ -56,7 +56,7 @@ func TestService_CheckReadAccess(t *testing.T) {
 				return &camundav88.SearchBatchOperationsResponse{
 					HTTPResponse: newHTTPResponse(http.MethodPost, "https://camunda.local/v2/batch-operations/search", http.StatusOK, "200 OK"),
 					JSON200: &camundav88.BatchOperationSearchQueryResult{
-						Items: []camundav88.BatchOperationResponse{},
+						Items: new([]camundav88.BatchOperationResponse{}),
 						Page:  camundav88.SearchQueryPageResponse{},
 					},
 				}, nil
@@ -93,8 +93,8 @@ func TestService_CancelProcessInstances(t *testing.T) {
 			return &camundav88.CancelProcessInstancesBatchOperationResponse{
 				HTTPResponse: newHTTPResponse(http.MethodPost, "https://camunda.local/v2/process-instances/cancellation", http.StatusOK, "200 OK"),
 				JSON200: &camundav88.BatchOperationCreatedResult{
-					BatchOperationKey:  "cancel-batch-1",
-					BatchOperationType: camundav88.BatchOperationTypeEnumCANCELPROCESSINSTANCE,
+					BatchOperationKey:  new("cancel-batch-1"),
+					BatchOperationType: new(camundav88.BatchOperationTypeEnumCANCELPROCESSINSTANCE),
 				},
 			}, nil
 		},
@@ -120,12 +120,12 @@ func TestService_WaitForCompletion(t *testing.T) {
 				return &camundav88.GetBatchOperationResponse{
 					HTTPResponse: newHTTPResponse(http.MethodGet, "https://camunda.local/v2/batch-operations/batch-1", http.StatusOK, "200 OK"),
 					JSON200: &camundav88.BatchOperationResponse{
-						BatchOperationKey:        "batch-1",
-						BatchOperationType:       camundav88.BatchOperationTypeEnumCANCELPROCESSINSTANCE,
-						State:                    camundav88.BatchOperationStateEnumCOMPLETED,
-						OperationsTotalCount:     10,
-						OperationsCompletedCount: 10,
-						OperationsFailedCount:    0,
+						BatchOperationKey:        new("batch-1"),
+						BatchOperationType:       new(camundav88.BatchOperationTypeEnumCANCELPROCESSINSTANCE),
+						State:                    new(camundav88.BatchOperationResponseStateCOMPLETED),
+						OperationsTotalCount:     new(int32(10)),
+						OperationsCompletedCount: new(int32(10)),
+						OperationsFailedCount:    new(int32(0)),
 					},
 				}, nil
 			},
@@ -146,15 +146,15 @@ func TestService_WaitForCompletion(t *testing.T) {
 				return &camundav88.GetBatchOperationResponse{
 					HTTPResponse: newHTTPResponse(http.MethodGet, "https://camunda.local/v2/batch-operations/batch-2", http.StatusOK, "200 OK"),
 					JSON200: &camundav88.BatchOperationResponse{
-						BatchOperationKey:        "batch-2",
-						BatchOperationType:       camundav88.BatchOperationTypeEnumCANCELPROCESSINSTANCE,
-						State:                    camundav88.BatchOperationStateEnumCOMPLETED,
-						OperationsTotalCount:     10,
-						OperationsCompletedCount: 9,
-						OperationsFailedCount:    1,
-						Errors: []camundav88.BatchOperationError{
-							{PartitionId: 1, Type: camundav88.QUERYFAILED, Message: "query rejected"},
-						},
+						BatchOperationKey:        new("batch-2"),
+						BatchOperationType:       new(camundav88.BatchOperationTypeEnumCANCELPROCESSINSTANCE),
+						State:                    new(camundav88.BatchOperationResponseStateCOMPLETED),
+						OperationsTotalCount:     new(int32(10)),
+						OperationsCompletedCount: new(int32(9)),
+						OperationsFailedCount:    new(int32(1)),
+						Errors: new([]camundav88.BatchOperationError{
+							{PartitionId: new(int32(1)), Type: new(camundav88.QUERYFAILED), Message: new("query rejected")},
+						}),
 					},
 				}, nil
 			},

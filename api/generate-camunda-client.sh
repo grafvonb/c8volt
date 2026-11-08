@@ -13,7 +13,6 @@ source "$SCRIPT_DIR/generation-tools.sh"
 
 CAMUNDA_REPOSITORY="https://github.com/camunda/camunda.git"
 SOURCE_SPEC="zeebe/gateway-protocol/src/main/proto/v2/rest-api.yaml"
-SOURCE_SPEC_DIR="${SOURCE_SPEC%/*}"
 TMP_ROOT=""
 
 MUTATION_PATHS=(
@@ -52,10 +51,10 @@ REQUIRED_SYMBOLS=(
 usage() {
   cat <<'EOF'
 Usage:
-  bash api/generate-camunda-client.sh --target <v89|v810> --camunda-tag <tag>
+  bash api/generate-camunda-client.sh --target <v88|v89|v810> --camunda-tag <tag>
 
 Options:
-  --target <target>   Unified client to refresh: v89 or v810.
+  --target <target>   Unified client to refresh: v88, v89 or v810.
   --camunda-tag <tag> Source tag from the matching Camunda release line.
 EOF
 }
@@ -406,6 +405,7 @@ PY
     "$TARGET" \
     "$tag" \
     "$commit" \
+    "$SOURCE_SPEC" \
     "$source_hash" \
     "$(cat "$transformation_json")" \
     "$(tool_version redocly)" \
@@ -422,6 +422,7 @@ from pathlib import Path
     target,
     tag,
     commit,
+    source_spec,
     source_hash,
     transformations_json,
     redocly_version,
@@ -436,7 +437,7 @@ provenance = {
     "repository": "https://github.com/camunda/camunda.git",
     "tag": tag,
     "commit": commit,
-    "sourceSpec": "zeebe/gateway-protocol/src/main/proto/v2/rest-api.yaml",
+    "sourceSpec": source_spec,
     "sourceSpecSha256": source_hash,
     "transformations": json.loads(transformations_json),
     "tools": {
@@ -644,6 +645,15 @@ if [ -z "$CAMUNDA_TAG" ]; then
 fi
 
 case "$TARGET" in
+  v88)
+    MINOR="8.8"
+    TARGET_LABEL="V88"
+    PINNED_TAG="8.8.46"
+    PINNED_COMMIT="1cd0dcf5af730abd49ffc859e21d9da35178ee62"
+    SOURCE_SPEC="zeebe/gateway-protocol/src/main/proto/rest-api.yaml"
+    MUTATION_PATHS[4]="api/mutations/mutate-v88-operation-ids.py"
+    MUTATION_SUFFIXES[4]="v88-opids-fixed"
+    ;;
   v810)
     MINOR="8.10"
     TARGET_LABEL="V810"
@@ -662,6 +672,7 @@ case "$TARGET" in
     exit 1
     ;;
 esac
+SOURCE_SPEC_DIR="${SOURCE_SPEC%/*}"
 OUTPUT_DIR="$REPO_ROOT/internal/clients/camunda/$TARGET/camunda"
 
 validate_target_path

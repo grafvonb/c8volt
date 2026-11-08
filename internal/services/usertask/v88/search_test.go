@@ -28,7 +28,7 @@ func TestService_SearchUserTasksPage_MapsAllFiltersAndPaginationUnions(t *testin
 		check func(*testing.T, camundav88.SearchQueryPageRequest)
 	}{
 		{name: "limit", page: d.UserTaskPageRequest{Size: 100}, check: func(t *testing.T, page camundav88.SearchQueryPageRequest) {
-			got, err := page.AsLimitPagination()
+			got, err := page.AsOffsetPagination()
 			require.NoError(t, err)
 			require.Equal(t, int32(100), *got.Limit)
 		}},
@@ -171,10 +171,10 @@ func TestService_SearchUserTasksPage_MapsItemsAndPageFacts(t *testing.T) {
 	endCursor := camundav88.EndCursor("cursor-b")
 	payload := &camundav88.UserTaskSearchQueryResult{
 		Items: []camundav88.UserTaskResult{{
-			UserTaskKey: "task-a", State: camundav88.UserTaskStateEnumCREATED,
-			ElementId: "approve_invoice", ProcessInstanceKey: "process-a", TenantId: "tenant-a",
+			UserTaskKey: "task-a", State: new(camundav88.UserTaskStateEnumCREATED),
+			ElementId: new("approve_invoice"), ProcessInstanceKey: new("process-a"), TenantId: new("tenant-a"),
 		}},
-		Page: camundav88.SearchQueryPageResponse{EndCursor: &endCursor, TotalItems: 500, HasMoreTotalItems: true},
+		Page: camundav88.SearchQueryPageResponse{EndCursor: &endCursor, TotalItems: 500, HasMoreTotalItems: new(true)},
 	}
 	svc := newTestService(t, &mockUserTaskCamundaClient{searchUserTasksWithResponse: func(context.Context, camundav88.SearchUserTasksJSONRequestBody, ...camundav88.RequestEditorFn) (*camundav88.SearchUserTasksResponse, error) {
 		return v88SearchResponse(http.StatusOK, payload), nil

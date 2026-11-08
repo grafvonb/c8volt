@@ -15,6 +15,7 @@ import (
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/services"
 	"github.com/grafvonb/c8volt/internal/services/common"
+	"github.com/grafvonb/c8volt/toolx"
 )
 
 // Service adapts Camunda 8.8 runtime element endpoints to the internal API.
@@ -188,12 +189,12 @@ func (s *Service) SearchElementsPage(ctx context.Context, query d.ElementSearchQ
 	if err != nil {
 		return d.ElementSearchPage{}, err
 	}
-	items := trimElementSearchPageResults(payload.Items, payload.Page, pageReq.From, pageSize)
+	items := trimElementSearchPageResults(toolx.Deref(payload.Items, nil), payload.Page, pageReq.From, pageSize)
 	return d.ElementSearchPage{
 		Items:         fromElementInstanceResults(items),
 		Request:       d.ElementPageRequest{From: pageReq.From, Size: pageSize},
 		OverflowState: pickElementSearchOverflowState(payload.Page, pageReq.From, len(items), pageSize),
-		ReportedTotal: newElementReportedTotal(payload.Page.TotalItems, payload.Page.HasMoreTotalItems),
+		ReportedTotal: newElementReportedTotal(payload.Page.TotalItems, toolx.Deref(payload.Page.HasMoreTotalItems, false)),
 	}, nil
 }
 
@@ -268,7 +269,7 @@ func trimElementSearchPageResults(items []camundav88.ElementInstanceResult, page
 // complete only when their metadata no longer advertises remaining results.
 func pickElementSearchOverflowState(page camundav88.SearchQueryPageResponse, from int32, itemCount int, pageSize int32) d.ProcessInstanceOverflowState {
 	if itemCount == 0 {
-		if page.TotalItems > int64(from) || page.HasMoreTotalItems {
+		if page.TotalItems > int64(from) || toolx.Deref(page.HasMoreTotalItems, false) {
 			return d.ProcessInstanceOverflowStateHasMore
 		}
 		return d.ProcessInstanceOverflowStateNoMore
@@ -277,7 +278,7 @@ func pickElementSearchOverflowState(page camundav88.SearchQueryPageResponse, fro
 	if page.TotalItems > nextFrom {
 		return d.ProcessInstanceOverflowStateHasMore
 	}
-	if page.HasMoreTotalItems && itemCount >= int(pageSize) {
+	if toolx.Deref(page.HasMoreTotalItems, false) && itemCount >= int(pageSize) {
 		return d.ProcessInstanceOverflowStateHasMore
 	}
 	return d.ProcessInstanceOverflowStateNoMore

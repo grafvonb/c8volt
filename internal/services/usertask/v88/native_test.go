@@ -49,7 +49,7 @@ func TestService_GetNativeUserTask_UsesDirectGetAndPreservesForeignTenant(t *tes
 	require.Equal(t, "2251799813689000", task.ProcessDefinitionKey)
 	require.Equal(t, "invoice", task.ProcessDefinitionId)
 	require.Equal(t, int32(7), task.ProcessDefinitionVersion)
-	payload.CandidateUsers[0] = "changed"
+	(*payload.CandidateUsers)[0] = "changed"
 	require.Equal(t, []string{"bob"}, task.CandidateUsers)
 
 	payload = nativeUserTaskResult(nil, nil)
@@ -97,12 +97,12 @@ func TestService_GetNativeUserTask_RejectsBackendAndMalformedResponses(t *testin
 
 // nativeUserTaskResult builds a complete V88 payload while allowing nullable native strings to vary.
 func nativeUserTaskResult(name, assignee *string) camundav88.UserTaskResult {
-	return camundav88.UserTaskResult{UserTaskKey: "2251799815391233", State: "CREATED", Name: name, ElementId: "approve_invoice", ElementInstanceKey: "2251799815391222", Assignee: assignee, CandidateUsers: []string{"bob"}, CandidateGroups: []string{"accounting"}, ProcessInstanceKey: "2251799813711967", ProcessDefinitionKey: "2251799813689000", ProcessDefinitionId: "invoice", ProcessDefinitionVersion: 7, TenantId: "foreign-tenant"}
+	return camundav88.UserTaskResult{UserTaskKey: "2251799815391233", State: new(camundav88.UserTaskStateEnumCREATED), Name: name, ElementId: new("approve_invoice"), ElementInstanceKey: new("2251799815391222"), Assignee: assignee, CandidateUsers: new([]string{"bob"}), CandidateGroups: new([]string{"accounting"}), ProcessInstanceKey: new("2251799813711967"), ProcessDefinitionKey: new("2251799813689000"), ProcessDefinitionId: new("invoice"), ProcessDefinitionVersion: new(int32(7)), TenantId: new("foreign-tenant")}
 }
 
 // nativeUserTaskResultPtr creates the minimum payload needed to exercise V88 identity validation.
 func nativeUserTaskResultPtr(key string, state camundav88.UserTaskStateEnum, processInstanceKey string) *camundav88.UserTaskResult {
-	return &camundav88.UserTaskResult{UserTaskKey: key, State: state, ProcessInstanceKey: processInstanceKey}
+	return &camundav88.UserTaskResult{UserTaskKey: key, State: new(state), ProcessInstanceKey: new(processInstanceKey)}
 }
 
 // nativeUserTaskHTTPResponse creates a generated V88 response with the requested status and payload.

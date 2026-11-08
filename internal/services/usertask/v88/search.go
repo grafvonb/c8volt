@@ -114,7 +114,7 @@ func newUserTaskSearchPageRequest(pageReq d.UserTaskPageRequest) camundav88.Sear
 	case pageReq.From != 0:
 		_ = page.FromOffsetPagination(camundav88.OffsetPagination{From: &pageReq.From, Limit: &pageReq.Size})
 	default:
-		_ = page.FromLimitPagination(camundav88.LimitPagination{Limit: &pageReq.Size})
+		_ = page.FromOffsetPagination(camundav88.OffsetPagination{Limit: &pageReq.Size})
 	}
 	return page
 }
@@ -133,7 +133,7 @@ func userTaskSearchPage(payload camundav88.UserTaskSearchQueryResult, pageReq d.
 		endCursor = string(*payload.Page.EndCursor)
 	}
 	totalKind := d.UserTaskReportedTotalKindExact
-	if payload.Page.HasMoreTotalItems {
+	if toolx.Deref(payload.Page.HasMoreTotalItems, false) {
 		totalKind = d.UserTaskReportedTotalKindLowerBound
 	}
 	rawCount := int32(len(payload.Items))
@@ -144,7 +144,7 @@ func userTaskSearchPage(payload camundav88.UserTaskSearchQueryResult, pageReq d.
 		EndCursor:     endCursor,
 		ReportedTotal: &d.UserTaskReportedTotal{Count: payload.Page.TotalItems, Kind: totalKind},
 		ContinuationState: userTaskContinuationState(
-			pageReq, rawCount, endCursor, payload.Page.TotalItems, payload.Page.HasMoreTotalItems,
+			pageReq, rawCount, endCursor, payload.Page.TotalItems, toolx.Deref(payload.Page.HasMoreTotalItems, false),
 		),
 	}, nil
 }

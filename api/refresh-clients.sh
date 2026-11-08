@@ -12,6 +12,7 @@
 #   bash api/refresh-clients.sh --camunda-tag 8.8.19 --camunda-docs-tag 8.8.196
 #   bash api/refresh-clients.sh --target v810 --camunda-tag 8.10.9
 #   bash api/refresh-clients.sh --target v89 --camunda-tag 8.9.28
+#   bash api/refresh-clients.sh --target v88 --camunda-tag 8.8.46
 #
 # Notes:
 #   This is the top-level entrypoint for the end-to-end workflow. It passes the
@@ -30,11 +31,11 @@ usage() {
   cat <<'EOF'
 Usage:
   bash api/refresh-clients.sh [--camunda-tag <tag>] [--camunda-docs-tag <tag>] [--commit]
-  bash api/refresh-clients.sh --target <v89|v810> --camunda-tag <tag>
+  bash api/refresh-clients.sh --target <v88|v89|v810> --camunda-tag <tag>
 
 Options:
-  --target <target>         Generate only the named unified client. Supported: v89, v810.
-  --camunda-tag <tag>       Fetch a specific tag from camunda/camunda for the /v2 spec.
+  --target <target>         Generate only the named unified client. Supported: v88, v89, v810.
+  --camunda-tag <tag>       Fetch a specific tag from camunda/camunda for the unified API spec.
   --camunda-docs-tag <tag>  Fetch a specific tag from camunda/camunda-docs for legacy component specs.
   --commit                  Pass commit mode through to api/3-generate-clients-from-fetched-specs.sh.
 EOF
@@ -119,7 +120,7 @@ done
 if [ -n "$TARGET" ]; then
   validate_target_path "$TARGET"
 
-  if [ "$TARGET" != v810 ] && [ "$TARGET" != v89 ]; then
+  if [ "$TARGET" != v810 ] && [ "$TARGET" != v89 ] && [ "$TARGET" != v88 ]; then
     echo "Unknown target: $TARGET" >&2
     usage >&2
     exit 1

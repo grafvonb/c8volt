@@ -89,7 +89,7 @@ func (s *Service) SearchTenants(ctx context.Context, filter d.TenantFilter, size
 	if err != nil {
 		return nil, err
 	}
-	out := toolx.MapSlice(payload.Items, fromTenantResult)
+	out := toolx.MapSlice(toolx.Deref(payload.Items, nil), fromTenantResult)
 	out = d.FilterTenantsByNameOrIDContains(out, filter.NameContains)
 	common.VerboseLog(ctx, cCfg, s.log, "found tenants", "count", len(out))
 	return out, nil
@@ -115,7 +115,7 @@ func (s *Service) GetTenant(ctx context.Context, tenantID string, opts ...servic
 // searchTenantsRequest builds the stable sorted tenant search request used for discovery output.
 func searchTenantsRequest(size int32) camundav88.SearchTenantsJSONRequestBody {
 	page := camundav88.SearchQueryPageRequest{}
-	_ = page.FromLimitPagination(camundav88.LimitPagination{Limit: &size})
+	_ = page.FromOffsetPagination(camundav88.OffsetPagination{Limit: &size})
 	order := camundav88.ASC
 	sort := []camundav88.TenantSearchQuerySortRequest{
 		{Field: camundav88.TenantSearchQuerySortRequestFieldName, Order: &order},

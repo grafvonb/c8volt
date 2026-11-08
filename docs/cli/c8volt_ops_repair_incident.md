@@ -53,7 +53,7 @@ c8volt ops repair incident [flags]
       --pi-key string                  process instance key to filter incidents
       --report-file string             plan an audit report at the given path
       --report-format string           audit report format: markdown, json (default inferred from report-file extension)
-      --root-key string                root process instance key to filter incidents
+      --root-key string                root process instance key to filter incidents (only c8.9+)
       --set-job-timeout string         timeout duration to submit for related jobs, for example 60s, 5m, or 1h
       --set-retries int32              retry count to set on related jobs; 0 skips retry restoration (default 1)
       --set-vars string                JSON object with variables to set once per process-instance scope before resolving dependent incidents

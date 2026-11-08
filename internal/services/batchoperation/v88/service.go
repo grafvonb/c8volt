@@ -17,6 +17,7 @@ import (
 	"github.com/grafvonb/c8volt/internal/services"
 	"github.com/grafvonb/c8volt/internal/services/common"
 	"github.com/grafvonb/c8volt/internal/services/httpc"
+	"github.com/grafvonb/c8volt/toolx"
 	"github.com/grafvonb/c8volt/toolx/poller"
 )
 
@@ -98,8 +99,8 @@ func (s *Service) CancelProcessInstances(ctx context.Context, filter d.ProcessIn
 		return d.BatchOperation{}, d.ErrMalformedResponse
 	}
 	return d.BatchOperation{
-		Key:        resp.JSON200.BatchOperationKey,
-		Type:       string(resp.JSON200.BatchOperationType),
+		Key:        toolx.Deref(resp.JSON200.BatchOperationKey, ""),
+		Type:       string(toolx.Deref(resp.JSON200.BatchOperationType, "")),
 		StatusCode: resp.StatusCode(),
 		Status:     resp.Status(),
 	}, nil
@@ -122,19 +123,19 @@ func (s *Service) WaitForCompletion(ctx context.Context, batchOperationKey strin
 			return poller.JobPollStatus{}, err
 		}
 		result = batchOperationFromPayload(payload, resp.StatusCode(), resp.Status())
-		switch payload.State {
-		case camundav88.BatchOperationStateEnumCOMPLETED:
+		switch toolx.Deref(payload.State, "") {
+		case camundav88.BatchOperationResponseStateCOMPLETED:
 			if result.OperationsFailedCount > 0 {
 				return poller.JobPollStatus{}, batchOperationFailedError(result)
 			}
 			return poller.JobPollStatus{Success: true, Message: fmt.Sprintf("batch operation %s completed (%d/%d completed, %d failed)", batchOperationKey, result.OperationsCompletedCount, result.OperationsTotalCount, result.OperationsFailedCount)}, nil
-		case camundav88.BatchOperationStateEnumFAILED, camundav88.BatchOperationStateEnumCANCELED, camundav88.BatchOperationStateEnumPARTIALLYCOMPLETED:
+		case camundav88.BatchOperationResponseStateFAILED, camundav88.BatchOperationResponseStateCANCELED, camundav88.BatchOperationResponseStatePARTIALLYCOMPLETED:
 			if result.OperationsFailedCount > 0 {
 				return poller.JobPollStatus{}, batchOperationFailedError(result)
 			}
-			return poller.JobPollStatus{}, fmt.Errorf("batch operation %s finished with state %s (%d/%d completed, %d failed)", batchOperationKey, payload.State, result.OperationsCompletedCount, result.OperationsTotalCount, result.OperationsFailedCount)
+			return poller.JobPollStatus{}, fmt.Errorf("batch operation %s finished with state %s (%d/%d completed, %d failed)", batchOperationKey, toolx.Deref(payload.State, ""), result.OperationsCompletedCount, result.OperationsTotalCount, result.OperationsFailedCount)
 		default:
-			return poller.JobPollStatus{Success: false, Message: fmt.Sprintf("batch operation %s state %s (%d/%d completed, %d failed)", batchOperationKey, payload.State, result.OperationsCompletedCount, result.OperationsTotalCount, result.OperationsFailedCount)}, nil
+			return poller.JobPollStatus{Success: false, Message: fmt.Sprintf("batch operation %s state %s (%d/%d completed, %d failed)", batchOperationKey, toolx.Deref(payload.State, ""), result.OperationsCompletedCount, result.OperationsTotalCount, result.OperationsFailedCount)}, nil
 		}
 	}
 	if err := poller.WaitForCompletion(ctx, s.log, poller.DefaultCompletionTimeout, true, poll); err != nil {
@@ -148,13 +149,13 @@ func batchOperationFromPayload(payload *camundav88.BatchOperationResponse, statu
 		return d.BatchOperation{}
 	}
 	return d.BatchOperation{
-		Key:                      payload.BatchOperationKey,
-		Type:                     string(payload.BatchOperationType),
-		State:                    string(payload.State),
-		OperationsTotalCount:     payload.OperationsTotalCount,
-		OperationsCompletedCount: payload.OperationsCompletedCount,
-		OperationsFailedCount:    payload.OperationsFailedCount,
-		Errors:                   batchOperationErrorMessages(payload.Errors),
+		Key:                      toolx.Deref(payload.BatchOperationKey, ""),
+		Type:                     string(toolx.Deref(payload.BatchOperationType, "")),
+		State:                    string(toolx.Deref(payload.State, "")),
+		OperationsTotalCount:     toolx.Deref(payload.OperationsTotalCount, 0),
+		OperationsCompletedCount: toolx.Deref(payload.OperationsCompletedCount, 0),
+		OperationsFailedCount:    toolx.Deref(payload.OperationsFailedCount, 0),
+		Errors:                   batchOperationErrorMessages(toolx.Deref(payload.Errors, nil)),
 		StatusCode:               statusCode,
 		Status:                   status,
 	}
@@ -164,14 +165,14 @@ func batchOperationErrorMessages(errors []camundav88.BatchOperationError) []stri
 	out := make([]string, 0, len(errors))
 	for _, item := range errors {
 		parts := make([]string, 0, 3)
-		if item.PartitionId != 0 {
-			parts = append(parts, fmt.Sprintf("partition %d", item.PartitionId))
+		if toolx.Deref(item.PartitionId, 0) != 0 {
+			parts = append(parts, fmt.Sprintf("partition %d", toolx.Deref(item.PartitionId, 0)))
 		}
-		if item.Type != "" {
-			parts = append(parts, string(item.Type))
+		if toolx.Deref(item.Type, "") != "" {
+			parts = append(parts, string(toolx.Deref(item.Type, "")))
 		}
-		if item.Message != "" {
-			parts = append(parts, item.Message)
+		if toolx.Deref(item.Message, "") != "" {
+			parts = append(parts, toolx.Deref(item.Message, ""))
 		}
 		if len(parts) > 0 {
 			out = append(out, strings.Join(parts, ": "))

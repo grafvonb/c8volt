@@ -18,6 +18,7 @@ import (
 	"github.com/grafvonb/c8volt/internal/services/common"
 	"github.com/grafvonb/c8volt/internal/services/httpc"
 	"github.com/grafvonb/c8volt/internal/services/job/waiter"
+	"github.com/grafvonb/c8volt/toolx"
 )
 
 type Service struct {
@@ -235,7 +236,7 @@ func (s *Service) SearchJobsPage(ctx context.Context, query d.JobSearchQuery, pa
 	}
 	items := trimJobSearchPageResults(payload.Items, payload.Page, pageReq.From, pageSize)
 	nextFrom := int64(pageReq.From) + int64(len(items))
-	if payload.Page.TotalItems < 0 || (!payload.Page.HasMoreTotalItems && nextFrom > payload.Page.TotalItems) || nextFrom > math.MaxInt32 {
+	if payload.Page.TotalItems < 0 || (!toolx.Deref(payload.Page.HasMoreTotalItems, false) && nextFrom > payload.Page.TotalItems) || nextFrom > math.MaxInt32 {
 		return d.JobSearchPage{}, fmt.Errorf("%w: incomplete job search: inconsistent total or offset", d.ErrMalformedResponse)
 	}
 	overflow := pickJobSearchOverflowState(payload.Page, pageReq.From, len(items))
@@ -262,7 +263,7 @@ func (s *Service) SearchJobsPage(ctx context.Context, query d.JobSearchQuery, pa
 		Items:         selected,
 		Request:       d.JobPageRequest{From: pageReq.From, Size: pageSize, After: pageReq.After},
 		OverflowState: overflow,
-		ReportedTotal: newJobReportedTotal(payload.Page.TotalItems, payload.Page.HasMoreTotalItems),
+		ReportedTotal: newJobReportedTotal(payload.Page.TotalItems, toolx.Deref(payload.Page.HasMoreTotalItems, false)),
 		RawItemCount:  int32(len(payload.Items)),
 		NextFrom:      int32(nextFrom),
 		EndCursor:     endCursor,
@@ -331,11 +332,11 @@ func trimJobSearchPageResults(items []camundav88.JobSearchResult, page camundav8
 func pickJobSearchOverflowState(page camundav88.SearchQueryPageResponse, from int32, itemCount int) d.ProcessInstanceOverflowState {
 	// A capped total still permits exhaustion after its lower bound has been passed.
 	// Empty pages below that bound (or with a cursor) need continuation evidence.
-	if itemCount == 0 && page.HasMoreTotalItems && int64(from) > page.TotalItems && stringPtrValue(page.EndCursor) == "" {
+	if itemCount == 0 && toolx.Deref(page.HasMoreTotalItems, false) && int64(from) > page.TotalItems && stringPtrValue(page.EndCursor) == "" {
 		return d.ProcessInstanceOverflowStateNoMore
 	}
 	nextFrom := int64(from) + int64(itemCount)
-	if page.TotalItems > nextFrom || page.HasMoreTotalItems {
+	if page.TotalItems > nextFrom || toolx.Deref(page.HasMoreTotalItems, false) {
 		return d.ProcessInstanceOverflowStateHasMore
 	}
 	return d.ProcessInstanceOverflowStateNoMore
