@@ -43,7 +43,6 @@ func (m *mockElementClient) SearchElementInstancesWithResponse(ctx context.Conte
 func TestService_GetElement_MapsPayload(t *testing.T) {
 	start := time.Date(2026, 7, 15, 10, 12, 1, 123, time.UTC)
 	end := time.Date(2026, 7, 15, 10, 13, 2, 456, time.UTC)
-	rootKey := camundav88.ProcessInstanceKey("2251799813688001")
 	incidentKey := camundav88.IncidentKey("2251799813687777")
 	svc := newElementServiceTest(t, &mockElementClient{
 		getElementInstanceWithResponse: func(_ context.Context, key camundav88.ElementInstanceKey, _ ...camundav88.RequestEditorFn) (*camundav88.GetElementInstanceResponse, error) {
@@ -51,20 +50,19 @@ func TestService_GetElement_MapsPayload(t *testing.T) {
 			return &camundav88.GetElementInstanceResponse{
 				HTTPResponse: okHTTPResponse(),
 				JSON200: &camundav88.ElementInstanceResult{
-					ElementInstanceKey:     key,
-					ElementId:              "ship-order",
-					ElementName:            "Ship order",
-					Type:                   camundav88.ElementInstanceResultType("SERVICE_TASK"),
-					State:                  camundav88.ElementInstanceStateEnum("ACTIVE"),
-					StartDate:              start,
-					EndDate:                &end,
-					ProcessInstanceKey:     "2251799813688001",
-					RootProcessInstanceKey: &rootKey,
-					ProcessDefinitionId:    "order-process",
-					ProcessDefinitionKey:   "2251799813687001",
-					TenantId:               "tenant-a",
-					HasIncident:            true,
-					IncidentKey:            &incidentKey,
+					ElementInstanceKey:   key,
+					ElementId:            "ship-order",
+					ElementName:          "Ship order",
+					Type:                 camundav88.ElementInstanceResultType("SERVICE_TASK"),
+					State:                camundav88.ElementInstanceStateEnum("ACTIVE"),
+					StartDate:            start,
+					EndDate:              &end,
+					ProcessInstanceKey:   "2251799813688001",
+					ProcessDefinitionId:  "order-process",
+					ProcessDefinitionKey: "2251799813687001",
+					TenantId:             "tenant-a",
+					HasIncident:          true,
+					IncidentKey:          &incidentKey,
 				},
 			}, nil
 		},
@@ -74,20 +72,19 @@ func TestService_GetElement_MapsPayload(t *testing.T) {
 
 	require.NoError(t, err)
 	require.Equal(t, d.Element{
-		ElementInstanceKey:     "2251799813689002",
-		ElementId:              "ship-order",
-		ElementName:            "Ship order",
-		Type:                   "SERVICE_TASK",
-		State:                  "ACTIVE",
-		StartDate:              "2026-07-15T10:12:01.000000123Z",
-		EndDate:                "2026-07-15T10:13:02.000000456Z",
-		ProcessInstanceKey:     "2251799813688001",
-		RootProcessInstanceKey: "2251799813688001",
-		ProcessDefinitionId:    "order-process",
-		ProcessDefinitionKey:   "2251799813687001",
-		TenantId:               "tenant-a",
-		HasIncident:            true,
-		IncidentKey:            "2251799813687777",
+		ElementInstanceKey:   "2251799813689002",
+		ElementId:            "ship-order",
+		ElementName:          "Ship order",
+		Type:                 "SERVICE_TASK",
+		State:                "ACTIVE",
+		StartDate:            "2026-07-15T10:12:01.000000123Z",
+		EndDate:              "2026-07-15T10:13:02.000000456Z",
+		ProcessInstanceKey:   "2251799813688001",
+		ProcessDefinitionId:  "order-process",
+		ProcessDefinitionKey: "2251799813687001",
+		TenantId:             "tenant-a",
+		HasIncident:          true,
+		IncidentKey:          "2251799813687777",
 	}, element)
 }
 
@@ -111,7 +108,6 @@ func TestService_GetElement_NotFound(t *testing.T) {
 func TestService_SearchElements_ConstructsFiltersAndConvertsRows(t *testing.T) {
 	start := time.Date(2026, 7, 15, 10, 12, 1, 0, time.UTC)
 	end := time.Date(2026, 7, 15, 10, 13, 2, 0, time.UTC)
-	rootKey := camundav88.ProcessInstanceKey("2251799813688001")
 	incidentKey := camundav88.IncidentKey("2251799813687777")
 	svc := newElementServiceTest(t, &mockElementClient{
 		searchElementInstancesWithResponse: func(_ context.Context, body camundav88.SearchElementInstancesJSONRequestBody, _ ...camundav88.RequestEditorFn) (*camundav88.SearchElementInstancesResponse, error) {
@@ -126,22 +122,21 @@ func TestService_SearchElements_ConstructsFiltersAndConvertsRows(t *testing.T) {
 			return &camundav88.SearchElementInstancesResponse{
 				HTTPResponse: okHTTPResponse(),
 				JSON200: &camundav88.ElementInstanceSearchQueryResult{
-					Items: []camundav88.ElementInstanceResult{{
-						ElementInstanceKey:     "2251799813689002",
-						ElementId:              "ship-order",
-						ElementName:            "Ship order",
-						Type:                   camundav88.ElementInstanceResultType("SERVICE_TASK"),
-						State:                  camundav88.ElementInstanceStateEnumACTIVE,
-						StartDate:              start,
-						EndDate:                &end,
-						ProcessInstanceKey:     "2251799813688001",
-						RootProcessInstanceKey: &rootKey,
-						ProcessDefinitionId:    "order-process",
-						ProcessDefinitionKey:   "2251799813687001",
-						TenantId:               "tenant-a",
-						HasIncident:            true,
-						IncidentKey:            &incidentKey,
-					}},
+					Items: new([]camundav88.ElementInstanceResult{{
+						ElementInstanceKey:   "2251799813689002",
+						ElementId:            "ship-order",
+						ElementName:          "Ship order",
+						Type:                 camundav88.ElementInstanceResultType("SERVICE_TASK"),
+						State:                camundav88.ElementInstanceStateEnumACTIVE,
+						StartDate:            start,
+						EndDate:              &end,
+						ProcessInstanceKey:   "2251799813688001",
+						ProcessDefinitionId:  "order-process",
+						ProcessDefinitionKey: "2251799813687001",
+						TenantId:             "tenant-a",
+						HasIncident:          true,
+						IncidentKey:          &incidentKey,
+					}}),
 					Page: camundav88.SearchQueryPageResponse{TotalItems: 1},
 				},
 			}, nil
@@ -162,20 +157,19 @@ func TestService_SearchElements_ConstructsFiltersAndConvertsRows(t *testing.T) {
 	require.Equal(t, int32(1), result.Total)
 	require.Len(t, result.Items, 1)
 	require.Equal(t, d.Element{
-		ElementInstanceKey:     "2251799813689002",
-		ElementId:              "ship-order",
-		ElementName:            "Ship order",
-		Type:                   "SERVICE_TASK",
-		State:                  "ACTIVE",
-		StartDate:              "2026-07-15T10:12:01Z",
-		EndDate:                "2026-07-15T10:13:02Z",
-		ProcessInstanceKey:     "2251799813688001",
-		RootProcessInstanceKey: "2251799813688001",
-		ProcessDefinitionId:    "order-process",
-		ProcessDefinitionKey:   "2251799813687001",
-		TenantId:               "tenant-a",
-		HasIncident:            true,
-		IncidentKey:            "2251799813687777",
+		ElementInstanceKey:   "2251799813689002",
+		ElementId:            "ship-order",
+		ElementName:          "Ship order",
+		Type:                 "SERVICE_TASK",
+		State:                "ACTIVE",
+		StartDate:            "2026-07-15T10:12:01Z",
+		EndDate:              "2026-07-15T10:13:02Z",
+		ProcessInstanceKey:   "2251799813688001",
+		ProcessDefinitionId:  "order-process",
+		ProcessDefinitionKey: "2251799813687001",
+		TenantId:             "tenant-a",
+		HasIncident:          true,
+		IncidentKey:          "2251799813687777",
 	}, result.Items[0])
 }
 
@@ -193,12 +187,12 @@ func TestService_SearchElementsPagesByBatchSizeUntilComplete(t *testing.T) {
 			return &camundav88.SearchElementInstancesResponse{
 				HTTPResponse: okHTTPResponse(),
 				JSON200: &camundav88.ElementInstanceSearchQueryResult{
-					Items: []camundav88.ElementInstanceResult{{
+					Items: new([]camundav88.ElementInstanceResult{{
 						ElementInstanceKey: key,
 						ElementId:          "ship-order",
 						Type:               camundav88.ElementInstanceResultType("SERVICE_TASK"),
 						State:              camundav88.ElementInstanceStateEnumACTIVE,
-					}},
+					}}),
 					Page: camundav88.SearchQueryPageResponse{
 						TotalItems: 2,
 					},
@@ -234,12 +228,12 @@ func TestService_SearchElementsPagesByBatchSizeUntilLimit(t *testing.T) {
 			return &camundav88.SearchElementInstancesResponse{
 				HTTPResponse: okHTTPResponse(),
 				JSON200: &camundav88.ElementInstanceSearchQueryResult{
-					Items: []camundav88.ElementInstanceResult{{
+					Items: new([]camundav88.ElementInstanceResult{{
 						ElementInstanceKey: key,
 						ElementId:          "ship-order",
 						Type:               camundav88.ElementInstanceResultType("SERVICE_TASK"),
 						State:              camundav88.ElementInstanceStateEnumACTIVE,
-					}},
+					}}),
 					Page: camundav88.SearchQueryPageResponse{TotalItems: 3},
 				},
 			}, nil
@@ -267,7 +261,7 @@ func TestService_SearchElementsLimitCapsFinalPageSize(t *testing.T) {
 			return &camundav88.SearchElementInstancesResponse{
 				HTTPResponse: okHTTPResponse(),
 				JSON200: &camundav88.ElementInstanceSearchQueryResult{
-					Items: []camundav88.ElementInstanceResult{
+					Items: new([]camundav88.ElementInstanceResult{
 						{
 							ElementInstanceKey: "2251799813689002",
 							ElementId:          "ship-order",
@@ -286,7 +280,7 @@ func TestService_SearchElementsLimitCapsFinalPageSize(t *testing.T) {
 							Type:               camundav88.ElementInstanceResultType("SERVICE_TASK"),
 							State:              camundav88.ElementInstanceStateEnumACTIVE,
 						},
-					},
+					}),
 					Page: camundav88.SearchQueryPageResponse{TotalItems: 3},
 				},
 			}, nil
@@ -318,12 +312,12 @@ func TestService_SearchElementsPagesStopsWhenVisitorStops(t *testing.T) {
 			return &camundav88.SearchElementInstancesResponse{
 				HTTPResponse: okHTTPResponse(),
 				JSON200: &camundav88.ElementInstanceSearchQueryResult{
-					Items: []camundav88.ElementInstanceResult{{
+					Items: new([]camundav88.ElementInstanceResult{{
 						ElementInstanceKey: "2251799813689002",
 						ElementId:          "ship-order",
 						Type:               camundav88.ElementInstanceResultType("SERVICE_TASK"),
 						State:              camundav88.ElementInstanceStateEnumACTIVE,
-					}},
+					}}),
 					Page: camundav88.SearchQueryPageResponse{TotalItems: 2},
 				},
 			}, nil
@@ -371,10 +365,10 @@ func TestService_SearchElementsTotalFallsBackToPageCounting(t *testing.T) {
 			return &camundav88.SearchElementInstancesResponse{
 				HTTPResponse: okHTTPResponse(),
 				JSON200: &camundav88.ElementInstanceSearchQueryResult{
-					Items: items,
+					Items: new(items),
 					Page: camundav88.SearchQueryPageResponse{
 						TotalItems:        total,
-						HasMoreTotalItems: more,
+						HasMoreTotalItems: new(more),
 					},
 				},
 			}, nil
@@ -401,13 +395,13 @@ func TestService_SearchElementsPageReportsLowerBoundTotal(t *testing.T) {
 			return &camundav88.SearchElementInstancesResponse{
 				HTTPResponse: okHTTPResponse(),
 				JSON200: &camundav88.ElementInstanceSearchQueryResult{
-					Items: []camundav88.ElementInstanceResult{{
+					Items: new([]camundav88.ElementInstanceResult{{
 						ElementInstanceKey: "2251799813689002",
 						ElementId:          "ship-order",
 						Type:               camundav88.ElementInstanceResultType("SERVICE_TASK"),
 						State:              camundav88.ElementInstanceStateEnumACTIVE,
-					}},
-					Page: camundav88.SearchQueryPageResponse{TotalItems: 10000, HasMoreTotalItems: true},
+					}}),
+					Page: camundav88.SearchQueryPageResponse{TotalItems: 10000, HasMoreTotalItems: new(true)},
 				},
 			}, nil
 		},
@@ -514,7 +508,7 @@ func TestElementSearchTenant(t *testing.T) {
 					if page.From < len(selected) {
 						items = append(items, selected[page.From])
 					}
-					return &camundav88.SearchElementInstancesResponse{HTTPResponse: okHTTPResponse(), JSON200: &camundav88.ElementInstanceSearchQueryResult{Items: items, Page: camundav88.SearchQueryPageResponse{TotalItems: int64(len(selected)), HasMoreTotalItems: mode == "fallback total" && len(items) > 0}}}, nil
+					return &camundav88.SearchElementInstancesResponse{HTTPResponse: okHTTPResponse(), JSON200: &camundav88.ElementInstanceSearchQueryResult{Items: new(items), Page: camundav88.SearchQueryPageResponse{TotalItems: int64(len(selected)), HasMoreTotalItems: new(mode == "fallback total" && len(items) > 0)}}}, nil
 				}})
 				svc.cfg.App.Tenant = tc.tenant
 				opts := []services.CallOption{}
@@ -614,7 +608,7 @@ func TestElementScopeVariablesSparseSelection(t *testing.T) {
 							total = 2
 						}
 					}
-					return &camundav88.SearchElementInstancesResponse{HTTPResponse: okHTTPResponse(), JSON200: &camundav88.ElementInstanceSearchQueryResult{Items: items, Page: camundav88.SearchQueryPageResponse{TotalItems: total, HasMoreTotalItems: more}}}, nil
+					return &camundav88.SearchElementInstancesResponse{HTTPResponse: okHTTPResponse(), JSON200: &camundav88.ElementInstanceSearchQueryResult{Items: new(items), Page: camundav88.SearchQueryPageResponse{TotalItems: total, HasMoreTotalItems: new(more)}}}, nil
 				}})
 				query := d.ElementSearchQuery{BatchSize: 1}
 				if mode == "limit" {

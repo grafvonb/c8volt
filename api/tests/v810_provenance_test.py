@@ -25,11 +25,11 @@ PROVENANCE_PATH = (
 GENERATED_CLIENT_PATH = (
     REPO_ROOT / "internal/clients/camunda/v810/camunda/client.gen.go"
 )
-EXPECTED_TAG = "8.10.3"
-EXPECTED_COMMIT = "3961b79c3fdaf43c48691ed77672d6db42d0abcc"
+EXPECTED_TAG = "8.10.9"
+EXPECTED_COMMIT = "b4d625e70555b54f03966c7cd5331c8d5ce92a85"
 EXPECTED_SOURCE_SPEC_SHA256 = "857109dabcb998801f749282836a6d2af1a137284d538161801f0c348ae57837"
-EXPECTED_PREPARED_SPEC_SHA256 = "461a1cc051a021a3cf937dbfd28a92537cf9b8b4381bcfb9ad6ab6e1d1f91d1b"
-EXPECTED_GENERATED_CLIENT_SHA256 = "589351ac972ab595af721f2e9647a273819e56a9601f7af2aaaf98e6def2f319"
+EXPECTED_PREPARED_SPEC_SHA256 = "275509af8f198607be1f1189009375cb267964c725a894327185d7691ffe80c8"
+EXPECTED_GENERATED_CLIENT_SHA256 = "3316bb26d0d23bb28af51c8a279c9eaa68354c07f8c694f027563ec6e928e52e"
 EXPECTED_OUTPUT_PARTS = ("internal", "clients", "camunda", "v810", "camunda")
 EXPECTED_TRANSFORMATIONS = {
     "api/mutations/mutate-search-query-schemas.py": "3687396193df5ade934b1b275ae525801e6f9b27d92f23cdd81ae205898b031a",
@@ -38,7 +38,7 @@ EXPECTED_TRANSFORMATIONS = {
     "api/mutations/mutate-fix-jobresult-discriminator.py": "529946717b8a19f75594bcd5e21f370b283911549e628b1cce06edb7e416530f",
     "api/mutations/mutate-fix-camunda-v2-operation-id-collisions.py": "ffefa6aecb897d32fca4f3af93a26bc1127554e5119d2e2579ca8cdf5b45bfd9",
 }
-EXPECTED_TOOLS = {"redocly": "2.29.2", "oapi-codegen": "2.5.0"}
+EXPECTED_TOOLS = {"redocly": "2.76.0", "oapi-codegen": "2.8.2"}
 EXPECTED_KEYS = {
     "schemaVersion",
     "repository",
@@ -50,6 +50,7 @@ EXPECTED_KEYS = {
     "tools",
     "preparedSpecSha256",
     "generatedClientSha256",
+    "generatorConfigSha256",
     "command",
 }
 DISALLOWED_KEY_FRAGMENTS = (
@@ -106,13 +107,13 @@ def fingerprint_tree(root: Path) -> str:
 def apply_working_api_changes(checkout: Path) -> None:
     """Overlay current API edits so local validation exercises the proposed guard."""
     diff = subprocess.check_output(
-        ["git", "diff", "--binary", "HEAD", "--", "api"], cwd=REPO_ROOT
+        ["git", "diff", "--binary", "HEAD", "--", "api", "go.mod", "go.sum"], cwd=REPO_ROOT
     )
     if diff:
         subprocess.run(["git", "apply"], cwd=checkout, input=diff, check=True)
 
     untracked = subprocess.check_output(
-        ["git", "ls-files", "--others", "--exclude-standard", "-z", "--", "api"],
+        ["git", "ls-files", "--others", "--exclude-standard", "-z", "--", "api", "go.mod", "go.sum"],
         cwd=REPO_ROOT,
     ).split(b"\0")
     for raw_path in filter(None, untracked):
@@ -157,7 +158,7 @@ class V810ProvenanceTest(unittest.TestCase):
         """Later patch tags still update the same v810 artifacts."""
         provenance = load_provenance()
 
-        for tag in ("8.10.4", "8.10.5"):
+        for tag in ("8.10.10", "8.10.11"):
             with self.subTest(tag=tag):
                 updated = dict(provenance)
                 updated["tag"] = tag
@@ -177,6 +178,14 @@ class V810ProvenanceTest(unittest.TestCase):
             self.assertEqual(sha256_file(REPO_ROOT / item["path"]), item["sha256"])
 
         self.assertEqual(EXPECTED_TOOLS, provenance["tools"])
+        go_mod = (REPO_ROOT / "go.mod").read_text(encoding="utf-8")
+        generator = re.search(r"github.com/oapi-codegen/oapi-codegen/v2 v(\S+)", go_mod)
+        self.assertIsNotNone(generator)
+        self.assertEqual(generator.group(1), provenance["tools"]["oapi-codegen"])
+        tools = (REPO_ROOT / "api/generation-tools.sh").read_text(encoding="utf-8")
+        bundler = re.search(r'^GENERATION_REDOCLY_VERSION="([^"]+)"', tools, re.MULTILINE)
+        self.assertIsNotNone(bundler)
+        self.assertEqual(bundler.group(1), provenance["tools"]["redocly"])
 
     def test_recorded_hashes_match_current_artifacts(self) -> None:
         """Content hashes must agree with the checked-in generated client."""
@@ -185,6 +194,10 @@ class V810ProvenanceTest(unittest.TestCase):
         self.assertRegex(provenance["sourceSpecSha256"], SHA256_RE)
         self.assertRegex(provenance["preparedSpecSha256"], SHA256_RE)
         self.assertRegex(provenance["generatedClientSha256"], SHA256_RE)
+        self.assertEqual(
+            sha256_file(REPO_ROOT / "api/oapi-codegen.yaml"),
+            provenance["generatorConfigSha256"],
+        )
         self.assertEqual(EXPECTED_SOURCE_SPEC_SHA256, provenance["sourceSpecSha256"])
         self.assertEqual(EXPECTED_PREPARED_SPEC_SHA256, provenance["preparedSpecSha256"])
         self.assertEqual(EXPECTED_GENERATED_CLIENT_SHA256, provenance["generatedClientSha256"])

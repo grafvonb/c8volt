@@ -367,7 +367,7 @@ func TestService_Delete(t *testing.T) {
 					HTTPResponse: newHTTPResponse(http.MethodGet, "https://camunda.local/v2/batch-operations/batch-1", http.StatusOK, "200 OK"),
 					JSON200: &camundav89.BatchOperationResponse{
 						BatchOperationKey:  "batch-1",
-						BatchOperationType: camundav89.BatchOperationTypeEnumDELETEPROCESSDEFINITION,
+						BatchOperationType: new(camundav89.BatchOperationTypeEnumDELETEPROCESSDEFINITION),
 						State:              camundav89.BatchOperationStateEnumCOMPLETED,
 					},
 				}, nil
@@ -427,7 +427,7 @@ func TestService_Delete(t *testing.T) {
 					HTTPResponse: newHTTPResponse(http.MethodGet, "https://camunda.local/v2/batch-operations/batch-1", http.StatusOK, "200 OK"),
 					JSON200: &camundav89.BatchOperationResponse{
 						BatchOperationKey:  "batch-1",
-						BatchOperationType: camundav89.BatchOperationTypeEnumDELETEPROCESSDEFINITION,
+						BatchOperationType: new(camundav89.BatchOperationTypeEnumDELETEPROCESSDEFINITION),
 						State:              camundav89.BatchOperationStateEnumCOMPLETED,
 					},
 				}, nil

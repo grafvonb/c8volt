@@ -50,7 +50,7 @@ c8volt get incident [flags]
       --pd-key string                  process definition key to filter incidents
       --pi-key string                  process instance key to filter incidents
       --pi-keys-only                   return only process instance keys for matching incidents
-      --root-key string                root process instance key to filter incidents
+      --root-key string                root process instance key to filter incidents (only c8.9+)
   -s, --state string                   incident state scope for search: active, pending, resolved, migrated, unknown, all (default "active")
       --total                          return only the exact numeric total of matching incidents
   -w, --workers int                    maximum concurrent workers; omit for an automatic limit

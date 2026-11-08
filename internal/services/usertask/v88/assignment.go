@@ -25,7 +25,7 @@ func (s *Service) AssignUserTask(ctx context.Context, key string, assignee strin
 	return common.AssignUserTaskSubmission(ctx, key, log, func(ctx context.Context) (*http.Response, []byte, error) {
 		// Each attempt owns its pointers; a client cannot change the frozen policy or identity for a retry.
 		identity, override := assignee, allowOverride
-		body := camunda.AssignUserTaskJSONRequestBody{Assignee: &identity, AllowOverride: &override}
+		body := camunda.AssignUserTaskJSONRequestBody{Assignee: identity, AllowOverride: &override}
 		response, err := s.cc.AssignUserTaskWithResponse(ctx, camunda.UserTaskKey(key), body)
 		if response == nil {
 			return nil, nil, err

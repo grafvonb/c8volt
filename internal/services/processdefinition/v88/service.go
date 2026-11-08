@@ -109,7 +109,7 @@ func (s *Service) SearchProcessDefinitionsPage(ctx context.Context, filter d.Pro
 	if err != nil {
 		return d.ProcessDefinitionPage{}, err
 	}
-	items := toolx.MapSlice(payload.Items, fromProcessDefinitionResult)
+	items := toolx.MapSlice(toolx.Deref(payload.Items, nil), fromProcessDefinitionResult)
 	if cCfg.WithStat {
 		for i := range items {
 			if items[i].Key == "" {
@@ -245,7 +245,7 @@ func (s *Service) countProcessInstancesForDefinitionSearch(ctx context.Context, 
 		return 0, err
 	}
 	s.logProcessDefinitionStatsPage(ctx, pd, label, req, resp, 0)
-	if !resp.JSON200.Page.HasMoreTotalItems {
+	if !toolx.Deref(resp.JSON200.Page.HasMoreTotalItems, false) {
 		return resp.JSON200.Page.TotalItems, nil
 	}
 
@@ -299,7 +299,7 @@ func (s *Service) logProcessDefinitionStatsPage(ctx context.Context, pd d.Proces
 		totalBefore,
 		totalBefore+int64(items),
 		page.TotalItems,
-		page.HasMoreTotalItems,
+		toolx.Deref(page.HasMoreTotalItems, false),
 		processDefinitionStatsEndCursor(page),
 	))
 }
@@ -373,7 +373,7 @@ func newProcessDefinitionReportedTotal(page camundav88.SearchQueryPageResponse) 
 		return nil
 	}
 	kind := d.ProcessDefinitionReportedTotalKindExact
-	if page.HasMoreTotalItems {
+	if toolx.Deref(page.HasMoreTotalItems, false) {
 		kind = d.ProcessDefinitionReportedTotalKindLowerBound
 	}
 	return &d.ProcessDefinitionReportedTotal{Count: page.TotalItems, Kind: kind}
@@ -385,7 +385,7 @@ func pickProcessDefinitionOverflowState(page camundav88.SearchQueryPageResponse,
 		return d.ProcessInstanceOverflowStateNoMore
 	}
 	if req.After != "" {
-		if page.HasMoreTotalItems {
+		if toolx.Deref(page.HasMoreTotalItems, false) {
 			return d.ProcessInstanceOverflowStateHasMore
 		}
 		return d.ProcessInstanceOverflowStateNoMore
@@ -394,7 +394,7 @@ func pickProcessDefinitionOverflowState(page camundav88.SearchQueryPageResponse,
 	if page.TotalItems > visibleCount {
 		return d.ProcessInstanceOverflowStateHasMore
 	}
-	if page.HasMoreTotalItems && req.Size > 0 && itemCount >= int(req.Size) {
+	if toolx.Deref(page.HasMoreTotalItems, false) && req.Size > 0 && itemCount >= int(req.Size) {
 		return d.ProcessInstanceOverflowStateHasMore
 	}
 	if page.TotalItems == 0 {

@@ -103,20 +103,19 @@ func newSearchQueryPageRequest(from int32, limit int32) camundav88.SearchQueryPa
 // version-neutral element model used by facades and commands.
 func fromElementInstanceResult(r camundav88.ElementInstanceResult) d.Element {
 	return d.Element{
-		ElementInstanceKey:     string(r.ElementInstanceKey),
-		ElementId:              string(r.ElementId),
-		ElementName:            r.ElementName,
-		Type:                   string(r.Type),
-		State:                  string(r.State),
-		StartDate:              formatElementTime(r.StartDate),
-		EndDate:                formatElementTimePtr(r.EndDate),
-		ProcessInstanceKey:     string(r.ProcessInstanceKey),
-		RootProcessInstanceKey: string(toolx.Deref(r.RootProcessInstanceKey, "")),
-		ProcessDefinitionId:    string(r.ProcessDefinitionId),
-		ProcessDefinitionKey:   string(r.ProcessDefinitionKey),
-		TenantId:               string(r.TenantId),
-		HasIncident:            r.HasIncident,
-		IncidentKey:            string(toolx.Deref(r.IncidentKey, "")),
+		ElementInstanceKey:   string(r.ElementInstanceKey),
+		ElementId:            string(r.ElementId),
+		ElementName:          r.ElementName,
+		Type:                 string(r.Type),
+		State:                string(r.State),
+		StartDate:            formatElementTime(r.StartDate),
+		EndDate:              formatElementTimePtr(r.EndDate),
+		ProcessInstanceKey:   string(r.ProcessInstanceKey),
+		ProcessDefinitionId:  string(r.ProcessDefinitionId),
+		ProcessDefinitionKey: string(r.ProcessDefinitionKey),
+		TenantId:             string(r.TenantId),
+		HasIncident:          r.HasIncident,
+		IncidentKey:          string(toolx.Deref(r.IncidentKey, "")),
 	}
 }
 

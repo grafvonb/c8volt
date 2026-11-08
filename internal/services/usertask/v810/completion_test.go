@@ -71,9 +71,9 @@ func TestCompleteUserTaskWirePayload(t *testing.T) {
 		variables map[string]any
 		wire      string
 	}{
-		{"omitted", nil, `{"action":null,"variables":null}`},
-		{"empty", map[string]any{}, `{"action":null,"variables":{}}`},
-		{"nested", map[string]any{"object": map[string]any{"values": []any{true, nil, "text", json.Number("9007199254740993")}}}, `{"action":null,"variables":{"object":{"values":[true,null,"text",9007199254740993]}}}`},
+		{"omitted", nil, `{}`},
+		{"empty", map[string]any{}, `{"variables":{}}`},
+		{"nested", map[string]any{"object": map[string]any{"values": []any{true, nil, "text", json.Number("9007199254740993")}}}, `{"variables":{"object":{"values":[true,null,"text",9007199254740993]}}}`},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			calls := 0

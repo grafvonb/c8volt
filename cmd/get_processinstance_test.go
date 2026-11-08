@@ -2334,7 +2334,7 @@ func TestGetProcessInstanceWithVarsIncidentsAndElements_HumanOutputShowsGroupedS
 // TestGetProcessInstanceWithElementsAndListeners_HumanOutputNestsListenerRows verifies keyed process-instance enrichment keeps listener rows inside the elements section.
 func TestGetProcessInstanceWithElementsAndListeners_HumanOutputNestsListenerRows(t *testing.T) {
 	var requests testx.SafeSlice[string]
-	srv := newProcessInstanceWithElementsAndListenersServer(t, &requests, []string{`{"items":[
+	srv := newProcessInstanceWithElementsAndListenersServer(t, "8.10", &requests, []string{`{"items":[
 		{"elementInstanceKey":"element-1","elementId":"task-a","type":"SERVICE_TASK","state":"ACTIVE","startDate":"2026-07-15T10:12:01Z","processInstanceKey":"123","processDefinitionKey":"9001","tenantId":"tenant","hasIncident":false},
 		{"elementInstanceKey":"element-2","elementId":"user-task","type":"USER_TASK","state":"ACTIVE","startDate":"2026-07-15T10:12:02Z","processInstanceKey":"123","processDefinitionKey":"9001","tenantId":"tenant","hasIncident":false}
 	],"page":{"totalItems":2,"hasMoreTotalItems":false}}`}, []string{
@@ -2343,7 +2343,7 @@ func TestGetProcessInstanceWithElementsAndListeners_HumanOutputNestsListenerRows
 	})
 	t.Cleanup(srv.Close)
 
-	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.10")
 
 	output := executeRootForProcessInstanceTest(t,
 		"--config", cfgPath,
@@ -2378,7 +2378,7 @@ func TestGetProcessInstanceWithElementsAndListeners_HumanOutputNestsListenerRows
 func TestGetProcessInstanceListWithElementsAndListeners_HumanOutputRendersLifecycleTimestamps(t *testing.T) {
 	var requests testx.SafeSlice[string]
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if serveVersionCheckTopology(w, r, "8.8") {
+		if serveVersionCheckTopology(w, r, "8.10") {
 			return
 		}
 
@@ -2398,7 +2398,7 @@ func TestGetProcessInstanceListWithElementsAndListeners_HumanOutputRendersLifecy
 	t.Cleanup(srv.Close)
 
 	stdout, stderr := executeRootForProcessInstanceWithSeparateOutputs(t,
-		"--config", writeTestConfigForVersion(t, srv.URL, "8.8"), "--no-indicator",
+		"--config", writeTestConfigForVersion(t, srv.URL, "8.10"), "--no-indicator",
 		"get", "process-instance", "--state", "active", "--with-elements", "--with-listeners",
 	)
 
@@ -2415,7 +2415,7 @@ func TestGetProcessInstanceListWithElementsAndListeners_HumanOutputRendersLifecy
 // TestGetProcessInstanceWithElementsAndListeners_JSONOutputPreservesEmptyArraysAndOmitsUnmatchedJobs verifies requested listener arrays survive JSON rendering.
 func TestGetProcessInstanceWithElementsAndListeners_JSONOutputPreservesEmptyArraysAndOmitsUnmatchedJobs(t *testing.T) {
 	var requests testx.SafeSlice[string]
-	srv := newProcessInstanceWithElementsAndListenersServer(t, &requests, []string{`{"items":[
+	srv := newProcessInstanceWithElementsAndListenersServer(t, "8.10", &requests, []string{`{"items":[
 		{"elementInstanceKey":"element-1","elementId":"task-a","type":"SERVICE_TASK","state":"ACTIVE","processInstanceKey":"123","processDefinitionKey":"9001","tenantId":"tenant","hasIncident":false},
 		{"elementInstanceKey":"element-empty","elementId":"empty-task","type":"SERVICE_TASK","state":"ACTIVE","processInstanceKey":"123","processDefinitionKey":"9001","tenantId":"tenant","hasIncident":false}
 	],"page":{"totalItems":2,"hasMoreTotalItems":false}}`}, []string{
@@ -2424,7 +2424,7 @@ func TestGetProcessInstanceWithElementsAndListeners_JSONOutputPreservesEmptyArra
 	})
 	t.Cleanup(srv.Close)
 
-	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.10")
 
 	output, stderr := executeRootForProcessInstanceWithSeparateOutputs(t,
 		"--config", cfgPath,
@@ -2462,7 +2462,7 @@ func TestGetProcessInstanceWithElementsAndListeners_JSONOutputPreservesEmptyArra
 // TestGetProcessInstanceWithElementsWithoutListeners_SkipsListenerLookup keeps the existing element-only path free of job search calls and listener fields.
 func TestGetProcessInstanceWithElementsWithoutListeners_SkipsListenerLookup(t *testing.T) {
 	var requests testx.SafeSlice[string]
-	srv := newProcessInstanceWithElementsAndListenersServer(t, &requests, []string{`{"items":[{"elementInstanceKey":"element-1","elementId":"task-a","type":"SERVICE_TASK","state":"ACTIVE","processInstanceKey":"123","processDefinitionKey":"9001","tenantId":"tenant","hasIncident":false}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`}, nil)
+	srv := newProcessInstanceWithElementsAndListenersServer(t, "8.8", &requests, []string{`{"items":[{"elementInstanceKey":"element-1","elementId":"task-a","type":"SERVICE_TASK","state":"ACTIVE","processInstanceKey":"123","processDefinitionKey":"9001","tenantId":"tenant","hasIncident":false}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`}, nil)
 	t.Cleanup(srv.Close)
 
 	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")

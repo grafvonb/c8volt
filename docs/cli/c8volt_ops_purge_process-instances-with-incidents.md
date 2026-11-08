@@ -52,7 +52,7 @@ c8volt ops purge process-instances-with-incidents [flags]
       --pi-key string                  process instance key to filter incidents
       --report-file string             write an audit report to the given path
       --report-format string           audit report format: markdown, json (default inferred from report-file extension)
-      --root-key string                root process instance key to filter incidents
+      --root-key string                root process instance key to filter incidents (only c8.9+)
   -s, --state string                   incident state scope for discovery: active, pending, resolved, migrated, unknown, all (default "active")
   -w, --workers int                    maximum concurrent workers; omit for an automatic limit
 ```

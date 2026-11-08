@@ -155,10 +155,10 @@ func nextIncidentSearchPageRequest(current d.IncidentPageRequest, page d.Inciden
 // issues with richer filter request shapes.
 func (s *Service) SearchIncidentsPage(ctx context.Context, filter d.IncidentFilter, pageReq d.IncidentPageRequest, opts ...services.CallOption) (d.IncidentPage, error) {
 	_ = services.ApplyCallOptions(opts)
-	tenantFilter, err := common.NewStringEqFilterPtr(common.EffectiveTenant(s.cfg))
-	if err != nil {
-		return d.IncidentPage{}, fmt.Errorf("building tenant incident filter: %w", err)
+	if filter.RootProcessInstanceKey != "" {
+		return d.IncidentPage{}, fmt.Errorf("%w: root process instance incident filtering is unavailable in Camunda 8.8", d.ErrUnsupported)
 	}
+	tenantFilter := toolx.PtrIf(common.EffectiveTenant(s.cfg), "")
 	bodyFilter := &camundav88.IncidentFilter{TenantId: tenantFilter}
 	if bodyFilter.TenantId == nil {
 		bodyFilter = nil
@@ -176,12 +176,12 @@ func (s *Service) SearchIncidentsPage(ctx context.Context, filter d.IncidentFilt
 	if err != nil {
 		return d.IncidentPage{}, err
 	}
-	items := filterIncidentSearchResults(filter, common.EffectiveTenant(s.cfg), payload.Items)
+	items := filterIncidentSearchResults(filter, common.EffectiveTenant(s.cfg), toolx.Deref(payload.Items, nil))
 	return d.IncidentPage{
 		Items:         items,
 		Request:       pageReq,
-		OverflowState: incidentSearchOverflowState(payload.Page, pageReq, len(payload.Items)),
-		ReportedTotal: incidentReportedTotal(payload.Page, len(payload.Items), incidentLocalFilteringRequired(filter)),
+		OverflowState: incidentSearchOverflowState(payload.Page, pageReq, len(toolx.Deref(payload.Items, nil))),
+		ReportedTotal: incidentReportedTotal(payload.Page, len(toolx.Deref(payload.Items, nil)), incidentLocalFilteringRequired(filter)),
 		EndCursor:     toolx.Deref(payload.Page.EndCursor, ""),
 	}, nil
 }
@@ -213,7 +213,8 @@ func minPositiveIncidentSearchSize(batchSize int32, limit int32) int {
 
 func filterIncidentResults(key string, tenant string, state string, errorType string, errorMessage string, items []camundav88.IncidentResult) []d.ProcessInstanceIncidentDetail {
 	out := make([]d.ProcessInstanceIncidentDetail, 0, len(items))
-	for _, item := range items {
+	for _, raw := range items {
+		item := fromIncidentResult(raw)
 		if item.ProcessInstanceKey != key {
 			continue
 		}
@@ -229,14 +230,15 @@ func filterIncidentResults(key string, tenant string, state string, errorType st
 		if !incidentfilter.ErrorMessageContains(errorMessage, item.ErrorMessage) {
 			continue
 		}
-		out = append(out, fromIncidentResult(item))
+		out = append(out, item)
 	}
 	return out
 }
 
 func filterIncidentSearchResults(filter d.IncidentFilter, tenant string, items []camundav88.IncidentResult) []d.ProcessInstanceIncidentDetail {
 	out := make([]d.ProcessInstanceIncidentDetail, 0, len(items))
-	for _, item := range items {
+	for _, raw := range items {
+		item := fromIncidentResult(raw)
 		if !incidentKeyMatches(filter.Keys, item.IncidentKey) {
 			continue
 		}
@@ -255,9 +257,6 @@ func filterIncidentSearchResults(filter d.IncidentFilter, tenant string, items [
 		if filter.ProcessInstanceKey != "" && item.ProcessInstanceKey != filter.ProcessInstanceKey {
 			continue
 		}
-		if filter.RootProcessInstanceKey != "" && toolx.Deref(item.RootProcessInstanceKey, "") != filter.RootProcessInstanceKey {
-			continue
-		}
 		if filter.ProcessDefinitionKey != "" && item.ProcessDefinitionKey != filter.ProcessDefinitionKey {
 			continue
 		}
@@ -270,22 +269,22 @@ func filterIncidentSearchResults(filter d.IncidentFilter, tenant string, items [
 		if filter.ElementInstanceKey != "" && item.ElementInstanceKey != filter.ElementInstanceKey {
 			continue
 		}
-		if !incidentCreationTimeMatches(incidentCreationTime(item.CreationTime), filter.CreationTimeAfter, filter.CreationTimeBefore) {
+		if !incidentCreationTimeMatches(item.CreationTime, filter.CreationTimeAfter, filter.CreationTimeBefore) {
 			continue
 		}
-		out = append(out, fromIncidentResult(item))
+		out = append(out, item)
 	}
 	return out
 }
 
-func incidentStateMatches(want string, got camundav88.IncidentStateEnum) bool {
+func incidentStateMatches(want string, got string) bool {
 	state, ok := incidentfilter.NormalizeState(want)
 	if !ok {
 		return false
 	}
 	switch state {
 	case "", "active":
-		return got == camundav88.IncidentStateEnumACTIVE
+		return strings.EqualFold(got, "ACTIVE")
 	case "all":
 		return true
 	default:
@@ -366,7 +365,6 @@ func incidentLocalFilteringRequired(filter d.IncidentFilter) bool {
 		filter.ErrorType != "" ||
 		filter.ErrorMessage != "" ||
 		filter.ProcessInstanceKey != "" ||
-		filter.RootProcessInstanceKey != "" ||
 		filter.ProcessDefinitionKey != "" ||
 		filter.ProcessDefinitionId != "" ||
 		filter.ElementId != "" ||
@@ -403,11 +401,11 @@ func (s *Service) searchProcessInstanceIncidentsPages(ctx context.Context, key s
 		if err != nil {
 			return nil, err
 		}
-		out = append(out, filterIncidentResults(key, tenant, callCfg.IncidentState, callCfg.IncidentErrorType, callCfg.IncidentErrorMessage, payload.Items)...)
-		if !incidentSearchHasMore(payload.Page, from, len(payload.Items), pageSize) {
+		out = append(out, filterIncidentResults(key, tenant, callCfg.IncidentState, callCfg.IncidentErrorType, callCfg.IncidentErrorMessage, toolx.Deref(payload.Items, nil))...)
+		if !incidentSearchHasMore(payload.Page, from, len(toolx.Deref(payload.Items, nil)), pageSize) {
 			return out, nil
 		}
-		from += int32(len(payload.Items))
+		from += int32(len(toolx.Deref(payload.Items, nil)))
 	}
 }
 
@@ -422,7 +420,7 @@ func incidentSearchHasMore(page camundav88.SearchQueryPageResponse, from int32, 
 	if page.TotalItems > visibleCount {
 		return true
 	}
-	return page.HasMoreTotalItems && itemCount >= int(pageSize)
+	return toolx.Deref(page.HasMoreTotalItems, false) && itemCount >= int(pageSize)
 }
 
 func incidentSearchOverflowState(page camundav88.SearchQueryPageResponse, req d.IncidentPageRequest, itemCount int) d.ProcessInstanceOverflowState {
@@ -436,7 +434,7 @@ func incidentSearchOverflowState(page camundav88.SearchQueryPageResponse, req d.
 	if page.TotalItems > visibleCount {
 		return d.ProcessInstanceOverflowStateHasMore
 	}
-	if page.HasMoreTotalItems {
+	if toolx.Deref(page.HasMoreTotalItems, false) {
 		return d.ProcessInstanceOverflowStateIndeterminate
 	}
 	return d.ProcessInstanceOverflowStateNoMore
@@ -447,35 +445,12 @@ func incidentReportedTotal(page camundav88.SearchQueryPageResponse, itemCount in
 		return nil
 	}
 	kind := d.IncidentReportedTotalKindExact
-	if page.HasMoreTotalItems {
+	if toolx.Deref(page.HasMoreTotalItems, false) {
 		kind = d.IncidentReportedTotalKindLowerBound
 	}
 	return &d.IncidentReportedTotal{
 		Count: page.TotalItems,
 		Kind:  kind,
-	}
-}
-
-func newIncidentSearchStateFilter(state string) (*camundav88.IncidentStateFilterProperty, error) {
-	normalized, ok := incidentfilter.NormalizeState(state)
-	if !ok {
-		return nil, fmt.Errorf("unsupported incident state %q", state)
-	}
-	switch normalized {
-	case "", "active":
-		return newIncidentStateEqFilterPtr(camundav88.IncidentStateEnumACTIVE)
-	case "pending":
-		return newIncidentStateEqFilterPtr(camundav88.IncidentStateEnumPENDING)
-	case "resolved":
-		return newIncidentStateEqFilterPtr(camundav88.IncidentStateEnumRESOLVED)
-	case "migrated":
-		return newIncidentStateEqFilterPtr(camundav88.IncidentStateEnumMIGRATED)
-	case "unknown":
-		return newIncidentStateEqFilterPtr(camundav88.IncidentStateEnumUNKNOWN)
-	case "all":
-		return nil, nil
-	default:
-		return nil, fmt.Errorf("unsupported incident state %q", state)
 	}
 }
 

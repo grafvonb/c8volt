@@ -18,6 +18,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+source "$SCRIPT_DIR/generation-tools.sh"
 cd "$SCRIPT_DIR"
 
 DO_COMMIT=false
@@ -106,11 +107,6 @@ bundle_camunda_v2_spec() {
     return 0
   fi
 
-  if ! command -v redocly >/dev/null 2>&1; then
-    echo "missing tool: redocly" >&2
-    exit 127
-  fi
-
   local spec_dir
   local spec_name
   local bundled_path
@@ -119,7 +115,7 @@ bundle_camunda_v2_spec() {
   spec_name="$(basename "${spec_path%.yaml}")"
   bundled_path="${spec_dir}/${spec_name}-bundled.yaml"
 
-  redocly bundle "$spec_path" -o "$bundled_path" >/dev/null
+  generation_redocly bundle "$spec_path" -o "$bundled_path" >/dev/null
   echo "$bundled_path"
 }
 

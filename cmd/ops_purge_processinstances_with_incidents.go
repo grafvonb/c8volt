@@ -156,7 +156,7 @@ func init() {
 	fs.StringVarP(&flagOpsPurgeIncidentBpmnProcessID, "bpmn-process-id", "b", "", "BPMN process ID to filter incidents")
 	fs.StringVar(&flagOpsPurgeIncidentPDKey, "pd-key", "", "process definition key to filter incidents")
 	fs.StringVar(&flagOpsPurgeIncidentPIKey, "pi-key", "", "process instance key to filter incidents")
-	fs.StringVar(&flagOpsPurgeIncidentRootKey, "root-key", "", "root process instance key to filter incidents")
+	fs.StringVar(&flagOpsPurgeIncidentRootKey, "root-key", "", "root process instance key to filter incidents (only c8.9+)")
 	fs.StringVar(&flagOpsPurgeIncidentElementID, "element-id", "", "BPMN element ID to filter incidents")
 	fs.StringVar(&flagOpsPurgeIncidentElementInstanceKey, "element-instance-key", "", "element instance key to filter incidents")
 	fs.StringVar(&flagOpsPurgeIncidentCreationTimeAfter, "creation-time-after", "", "only include incidents with creation time >= RFC3339 timestamp, c8volt timestamp, or YYYY-MM-DD")

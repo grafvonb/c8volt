@@ -63,10 +63,10 @@ func TestService_SearchTenants(t *testing.T) {
 				resp := &camundav88.SearchTenantsResponse{
 					HTTPResponse: newHTTPResponse(http.MethodPost, "https://example.com/tenants/search", http.StatusOK, "200 OK"),
 					JSON200: &camundav88.TenantSearchQueryResult{
-						Items: []camundav88.TenantResult{
-							{TenantId: "tenant-b", Name: "Beta"},
-							{TenantId: "tenant-a", Name: "Alpha", Description: &desc},
-						},
+						Items: new([]camundav88.TenantResult{
+							{TenantId: new("tenant-b"), Name: new("Beta")},
+							{TenantId: new("tenant-a"), Name: new("Alpha"), Description: &desc},
+						}),
 					},
 				}
 				m.On("SearchTenantsWithResponse", mock.Anything, mock.MatchedBy(func(body camundav88.SearchTenantsJSONRequestBody) bool {
@@ -89,11 +89,11 @@ func TestService_SearchTenants(t *testing.T) {
 				resp := &camundav88.SearchTenantsResponse{
 					HTTPResponse: newHTTPResponse(http.MethodPost, "https://example.com/tenants/search", http.StatusOK, "200 OK"),
 					JSON200: &camundav88.TenantSearchQueryResult{
-						Items: []camundav88.TenantResult{
-							{TenantId: "dev01", Name: "Development Stage 01"},
-							{TenantId: "tenant-dev", Name: "Beta"},
-							{TenantId: "tenant-prod", Name: "Production"},
-						},
+						Items: new([]camundav88.TenantResult{
+							{TenantId: new("dev01"), Name: new("Development Stage 01")},
+							{TenantId: new("tenant-dev"), Name: new("Beta")},
+							{TenantId: new("tenant-prod"), Name: new("Production")},
+						}),
 					},
 				}
 				m.On("SearchTenantsWithResponse", mock.Anything, mock.Anything).Return(resp, nil)
@@ -172,8 +172,8 @@ func TestService_GetTenant(t *testing.T) {
 				resp := &camundav88.GetTenantResponse{
 					HTTPResponse: newHTTPResponse(http.MethodGet, "https://example.com/tenants/tenant-a", http.StatusOK, "200 OK"),
 					JSON200: &camundav88.TenantResult{
-						TenantId:    "tenant-a",
-						Name:        "Alpha",
+						TenantId:    new("tenant-a"),
+						Name:        new("Alpha"),
 						Description: &desc,
 					},
 				}

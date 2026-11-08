@@ -1,0 +1,8 @@
+# SPDX-FileCopyrightText: 2026 Adam Bogdan Boczek
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+# Preserve the established client surface without unused validation/getter helpers.
+output-options:
+  skip-enum-validate: true
+  skip-response-body-getters: true
+  skip-client-response-content-type: true
