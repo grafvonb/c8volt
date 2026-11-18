@@ -77,4 +77,6 @@ Use `--request-rate 10` to pace shared request starts per second. The default, z
 
 Query results, JSON, and keys use stdout. Human mutation summaries and diagnostics use the configured logger; interactive prompts use stderr. `--quiet` suppresses informational output while retaining errors and requested machine results.
 
+Known connection and authentication failures explain the cause and suggest a next check without DEBUG. For example, an authentication service connection refusal directs you to check its configured host, port, and availability. Unknown failures retain their existing error class; machine error details and exit codes are unchanged.
+
 Use `--verbose` for per-resource outcomes. `--debug` or `log.level: debug` enables redacted HTTP diagnostics independently of verbose. Configure logging with `log.level` and `log.format`; formats are `plain-time`, `plain`, `text`, and `json`.

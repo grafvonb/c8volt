@@ -219,6 +219,7 @@ v5 is a breaking CLI release. Update scripts to the current grammar; renamed fla
 - `--batch-size` controls discovery page size; `--limit` caps selected matches. Family expansion can include additional relatives.
 - Set `--tenant` to narrow discovery. `--all-tenants` clears that filter within authorized access. Explicit keys use backend authorization; creation and deployment require one tenant.
 
+Known connection and authentication failures include a bounded cause and a useful next check without DEBUG.
 Use `--verbose` for operational detail and `--debug` for redacted HTTP diagnostics.
 
 ## Documentation and project

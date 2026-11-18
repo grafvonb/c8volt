@@ -95,7 +95,7 @@ func TestRunProcessInstanceBusinessIDFailureLogging(t *testing.T) {
 					require.Empty(t, errors)
 					require.Empty(t, infos)
 				} else {
-					require.Equal(t, []string{fmt.Sprintf("creating process instances: requested 4; successful %d; without successful result %d; conflict", tc.successes, 4-tc.successes)}, errors)
+					require.Equal(t, []string{fmt.Sprintf("creating process instances: requested 4; successful %d; without successful result %d; gateway HTTP 409: request rejected; check the selected profile and service configuration", tc.successes, 4-tc.successes)}, errors)
 				}
 				if slices.Contains(tc.flags, "--quiet") || level == "warn" || slices.Contains(tc.flags, "--keys-only") {
 					require.Empty(t, infos)

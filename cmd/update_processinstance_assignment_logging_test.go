@@ -255,7 +255,7 @@ func TestBusinessIDAssignmentLogging(t *testing.T) {
 					} else {
 						require.Empty(t, stdout)
 						if failed {
-							reason := "invalid input"
+							reason := "gateway HTTP 400: request rejected; check the selected profile and service configuration"
 							rejected, unknown, unconfirmed := 2, 0, 0
 							if tc.scenario == "unknown" {
 								rejected, unknown = 0, 2
@@ -263,7 +263,7 @@ func TestBusinessIDAssignmentLogging(t *testing.T) {
 							}
 							expected := fmt.Sprintf("business-ID assignment: 2 selected; %d rejected, %d unknown, %d accepted unconfirmed, 0 not submitted; %s", rejected, unknown, unconfirmed, reason)
 							if tc.scenario == "planning" {
-								expected = "business-ID assignment: preparation or approval failed; no changes submitted; invalid input"
+								expected = "business-ID assignment: preparation or approval failed; no changes submitted; gateway HTTP 400: request rejected; check the selected profile and service configuration"
 							}
 							require.Equal(t, []string{expected}, errors)
 						} else {

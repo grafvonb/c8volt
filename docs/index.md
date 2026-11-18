@@ -6,7 +6,7 @@ nav_exclude: true
 has_toc: true
 ---
 
-> Generated from build `c8volt v5.0.0-1-gc47b9e69-dirty`, commit `c47b9e69`, built `2026-11-06T08:13:09Z` | Supported Camunda 8 versions: 8.8, 8.9, 8.10
+> Generated from build `c8volt v5.0.0-10-gf0b163b7-dirty`, commit `f0b163b7`, built `2026-11-18T17:39:32Z` | Supported Camunda 8 versions: 8.8, 8.9, 8.10
 
 # c8volt v5 — Camunda CLI for operations
 
@@ -225,6 +225,7 @@ v5 is a breaking CLI release. Update scripts to the current grammar; renamed fla
 - `--batch-size` controls discovery page size; `--limit` caps selected matches. Family expansion can include additional relatives.
 - Set `--tenant` to narrow discovery. `--all-tenants` clears that filter within authorized access. Explicit keys use backend authorization; creation and deployment require one tenant.
 
+Known connection and authentication failures include a bounded cause and a useful next check without DEBUG.
 Use `--verbose` for operational detail and `--debug` for redacted HTTP diagnostics.
 
 ## Documentation and project

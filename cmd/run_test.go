@@ -251,7 +251,7 @@ func TestRunProcessInstanceCommand_ConflictUsesConflictExitCode(t *testing.T) {
 
 	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
 
-	output, err := testx.RunCmdSubprocess(t, "TestRunProcessInstanceCommand_ConflictUsesConflictExitCodeHelper", map[string]string{
+	stdout, stderr, err := testx.RunCmdSubprocessSeparate(t, "TestRunProcessInstanceCommand_ConflictUsesConflictExitCodeHelper", map[string]string{
 		"C8VOLT_TEST_CONFIG": cfgPath,
 	})
 	require.Error(t, err)
@@ -259,8 +259,16 @@ func TestRunProcessInstanceCommand_ConflictUsesConflictExitCode(t *testing.T) {
 	exitErr, ok := err.(*exec.ExitError)
 	require.True(t, ok)
 	require.Equal(t, exitcode.Conflict, exitErr.ExitCode())
-	require.Contains(t, string(output), "conflict")
-	require.Contains(t, string(output), "creating process instances: requested 1; successful 0; without successful result 1; conflict")
+	require.Empty(t, stdout)
+	var errorMessages []string
+	for _, record := range bulkCompletionDiagnosticRecords(t, stderr, "plain-time") {
+		if record[0] == "ERROR" {
+			errorMessages = append(errorMessages, record[1])
+		}
+	}
+	require.Equal(t, []string{"creating process instances: requested 1; successful 0; without successful result 1; gateway HTTP 409: request rejected; check the selected profile and service configuration"}, errorMessages)
+	require.NotContains(t, stderr, srv.URL)
+	require.NotContains(t, stderr, "already exists")
 }
 
 // TestRunProcessInstanceCommand_V89NoWait preserves accepted JSON without informational service chatter.

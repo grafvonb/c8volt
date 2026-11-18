@@ -20,6 +20,7 @@ then use ops playbooks for repair, retention, purge, and runtime analysis.
 
 Preview changes with --dry-run where supported. Use --auto-confirm for unattended
 execution and --json for scripts. See capabilities --json for command support.
+Known connection and authentication failures include guidance without --debug.
 
 ```
 c8volt [flags]

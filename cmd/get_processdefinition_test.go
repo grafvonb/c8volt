@@ -1177,7 +1177,7 @@ func TestGetProcessDefinitionLifecycleNotFound(t *testing.T) {
 				require.NoError(t, decoder.Decode(&record))
 				require.ErrorIs(t, decoder.Decode(new(any)), io.EOF)
 				require.Equal(t, "ERROR", record["level"])
-				require.Equal(t, "get process definition: not found", record["msg"])
+				require.Equal(t, "get process definition: gateway HTTP 404: endpoint not found; check the Camunda API base URL and proxy routing", record["msg"])
 				require.NotContains(t, stderr, srv.URL)
 				require.NotContains(t, stderr, "GET")
 			}
@@ -1242,7 +1242,7 @@ func TestGetProcessDefinitionLifecycleLookupDiagnostics(t *testing.T) {
 						return
 					}
 					require.Empty(t, stdout)
-					require.Equal(t, 1, strings.Count(string(diagnostics), "get process definition: not found"))
+					require.Equal(t, 1, strings.Count(string(diagnostics), "get process definition: gateway HTTP 404: endpoint not found; check the Camunda API base URL and proxy routing"))
 					require.NotContains(t, string(diagnostics), "definition-token-secret")
 					if strings.HasPrefix(mode, "debug-") {
 						require.Contains(t, string(diagnostics), "api #")
@@ -1261,7 +1261,7 @@ func TestGetProcessDefinitionLifecycleLookupDiagnostics(t *testing.T) {
 								require.Regexp(t, `^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}[+-]\d{2}:\d{2} `, line)
 								messages = append(messages, strings.SplitN(line, " ", 2)[1])
 							}
-							want := []string{"ERROR get process definition: not found"}
+							want := []string{"ERROR get process definition: gateway HTTP 404: endpoint not found; check the Camunda API base URL and proxy routing"}
 							if mode == "verbose" {
 								want = append([]string{"INFO retrieving process definition"}, want...)
 							}
@@ -1279,7 +1279,7 @@ func TestGetProcessDefinitionLifecycleLookupDiagnostics(t *testing.T) {
 							require.NoError(t, decoder.Decode(&record))
 							require.ErrorIs(t, decoder.Decode(new(any)), io.EOF)
 							require.Equal(t, "ERROR", record["level"])
-							require.Equal(t, "get process definition: not found", record["msg"])
+							require.Equal(t, "get process definition: gateway HTTP 404: endpoint not found; check the Camunda API base URL and proxy routing", record["msg"])
 						}
 					}
 				})
