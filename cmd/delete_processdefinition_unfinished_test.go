@@ -214,126 +214,166 @@ func TestDeleteProcessDefinitionUnfinishedCommand(t *testing.T) {
 func TestDeleteProcessDefinitionUnfinishedDiagnosticLogging(t *testing.T) {
 	isolateRequestRateEnvironment(t)
 	for _, format := range []string{"plain-time", "json"} {
-		for i, tc := range []struct {
-			name                                                   string
-			flags                                                  []string
-			configDebug, debug, machine, quiet, partial, preflight bool
-		}{
-			{name: "normal"}, {name: "verbose", flags: []string{"--verbose"}}, {name: "quiet", flags: []string{"--quiet"}, quiet: true},
-			{name: "debug", flags: []string{"--debug"}, debug: true}, {name: "configured debug", configDebug: true, debug: true},
-			{name: "quiet overrides debug", flags: []string{"--quiet", "--debug"}, configDebug: true, quiet: true},
-			{name: "JSON", flags: []string{"--json"}, machine: true}, {name: "partial JSON", flags: []string{"--json", "--quiet"}, machine: true, quiet: true, partial: true},
-			{name: "partial verbose", flags: []string{"--verbose"}, partial: true}, {name: "preflight", preflight: true},
-		} {
-			t.Run(format+"/"+tc.name, func(t *testing.T) {
-				var mutations atomic.Int32
-				srv := testx.NewIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-					if serveVersionCheckTopology(w, r, "8.10") {
-						return
-					}
-
-					w.Header().Set("Content-Type", "application/json")
-					if r.URL.Path == "/v2/process-instances/search" && !tc.preflight {
-						io.WriteString(w, `{"items":[],"page":{"totalItems":0}}`)
-						return
-					}
-					if strings.HasPrefix(r.URL.Path, "/v2/process-definitions/") {
-						io.WriteString(w, opsAllProcessDefinitionsPurgeDefinitionJSON(strings.TrimPrefix(r.URL.Path, "/v2/process-definitions/"), "invoice", 1))
-						return
-					}
-					if strings.HasPrefix(r.URL.Path, "/v2/resources/") && strings.HasSuffix(r.URL.Path, "/deletion") {
-						mutations.Add(1)
-						if tc.partial && strings.Contains(r.URL.Path, "/123/") {
-							io.WriteString(w, `{"resourceKey":"123","batchOperation":null}`)
+		for _, destination := range []string{"inherited", "configured"} {
+			for _, tc := range []struct {
+				name                                                               string
+				flags                                                              []string
+				configDebug, configWarn, debug, machine, quiet, partial, preflight bool
+			}{
+				{name: "normal"}, {name: "warn", configWarn: true, flags: []string{"--verbose"}}, {name: "verbose", flags: []string{"--verbose"}}, {name: "quiet", flags: []string{"--quiet"}, quiet: true},
+				{name: "debug", flags: []string{"--debug"}, debug: true}, {name: "configured debug", configDebug: true, debug: true},
+				{name: "quiet overrides debug", flags: []string{"--quiet", "--debug"}, configDebug: true, quiet: true},
+				{name: "quiet configured debug", flags: []string{"--quiet"}, configDebug: true, quiet: true},
+				{name: "quiet flag debug", flags: []string{"--quiet", "--debug"}, quiet: true},
+				{name: "partial normal", partial: true},
+				{name: "partial quiet", flags: []string{"--quiet"}, quiet: true, partial: true},
+				{name: "partial debug", flags: []string{"--debug"}, debug: true, partial: true},
+				{name: "partial configured debug", configDebug: true, debug: true, partial: true},
+				{name: "partial debug JSON", flags: []string{"--json", "--debug"}, machine: true, debug: true, partial: true},
+				{name: "JSON", flags: []string{"--json"}, machine: true}, {name: "partial JSON", flags: []string{"--json", "--quiet"}, machine: true, quiet: true, partial: true},
+				{name: "partial verbose", flags: []string{"--verbose"}, partial: true}, {name: "preflight", preflight: true},
+			} {
+				t.Run(format+"/"+destination+"/"+tc.name, func(t *testing.T) {
+					var mutations, definitions, searches, failures atomic.Int32
+					srv := testx.NewIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+						if serveVersionCheckTopology(w, r, "8.10") {
 							return
 						}
-					} else if !tc.preflight {
-						t.Errorf("unexpected request %s", r.URL.Path)
+
+						w.Header().Set("Content-Type", "application/json")
+						if r.URL.Path == "/v2/process-instances/search" {
+							require.Equal(t, http.MethodPost, r.Method)
+							searches.Add(1)
+							if !tc.preflight {
+								io.WriteString(w, `{"items":[],"page":{"totalItems":0}}`)
+								return
+							}
+						}
+						if strings.HasPrefix(r.URL.Path, "/v2/process-definitions/") {
+							require.Equal(t, http.MethodGet, r.Method)
+							definitions.Add(1)
+							io.WriteString(w, opsAllProcessDefinitionsPurgeDefinitionJSON(strings.TrimPrefix(r.URL.Path, "/v2/process-definitions/"), "invoice", 1))
+							return
+						}
+						if strings.HasPrefix(r.URL.Path, "/v2/resources/") && strings.HasSuffix(r.URL.Path, "/deletion") {
+							require.Equal(t, http.MethodPost, r.Method)
+							mutations.Add(1)
+							if tc.partial && strings.Contains(r.URL.Path, "/123/") {
+								io.WriteString(w, `{"resourceKey":"123","batchOperation":null}`)
+								return
+							}
+						} else if r.URL.Path != "/v2/process-instances/search" {
+							t.Errorf("unexpected request %s", r.URL.Path)
+						}
+						failures.Add(1)
+						w.WriteHeader(400)
+						io.WriteString(w, `{"detail":"POST https://private.invalid/secret body-only-secret resource-secret-456 token=password cursor-secret-381\nERROR forged-line-381", "access_token":"credential-secret-381"}`)
+					}))
+					t.Cleanup(srv.Close)
+					cfg := definitionDeleteLogConfig(t, srv.URL, format, tc.configDebug)
+					if tc.configWarn {
+						data, err := os.ReadFile(cfg)
+						require.NoError(t, err)
+						require.NoError(t, os.WriteFile(cfg, []byte(strings.ReplaceAll(string(data), "level: info", "level: warn")), 0600))
 					}
-					w.WriteHeader(400)
-					io.WriteString(w, `{"detail":"POST https://private.invalid/secret body-only-secret resource-secret-456 token=password"}`)
-				}))
-				t.Cleanup(srv.Close)
-				args := []string{"--config", definitionDeleteLogConfig(t, srv.URL, format, tc.configDebug), "delete", "process-definition", "--key", "123,456,789", "--no-wait", "--auto-confirm", "--workers", "1"}
-				args = append(args, tc.flags...)
-				destination := "inherited"
-				if i%2 == 1 {
-					destination = "configured"
-				}
-				stdout, stderr, err := runDefinitionDeleteTerminal(t, args, destination, nil)
-				var exitErr *exec.ExitError
-				require.ErrorAs(t, err, &exitErr)
-				require.Equal(t, 2, exitErr.ExitCode())
-				records := bulkCompletionDiagnosticRecords(t, stderr, format)
-				errors, debugs := []string{}, []string{}
-				for _, record := range records {
-					switch record[0] {
-					case "ERROR":
-						errors = append(errors, record[1])
-					case "DEBUG":
-						debugs = append(debugs, record[1])
-					case "INFO":
-						require.False(t, tc.quiet)
-					case "WARN":
-						require.False(t, tc.quiet)
-					default:
-						t.Errorf("unexpected severity %s", record[0])
-					}
-				}
-				if tc.machine {
-					require.Empty(t, errors)
-					decoder := json.NewDecoder(strings.NewReader(stdout))
-					var envelope map[string]any
-					require.NoError(t, decoder.Decode(&envelope))
-					require.ErrorIs(t, decoder.Decode(new(any)), io.EOF)
-					require.Equal(t, "invalid_input", envelope["class"])
-					require.Contains(t, requireJSONObject(t, envelope["detail"])["message"], "body-only-secret")
-					payload := requireJSONObject(t, envelope["payload"])
-					items := payload["items"].([]any)
-					require.Len(t, items, 3)
-					ok := 0
-					for _, item := range items {
-						if requireJSONObject(t, item)["ok"] == true {
-							ok++
+					args := []string{"--config", cfg, "delete", "process-definition", "--key", "123,456,789", "--no-wait", "--auto-confirm", "--workers", "1"}
+					args = append(args, tc.flags...)
+					stdout, stderr, err := runDefinitionDeleteTerminal(t, args, destination, nil)
+					var exitErr *exec.ExitError
+					require.ErrorAs(t, err, &exitErr)
+					require.Equal(t, 2, exitErr.ExitCode())
+					records := bulkCompletionDiagnosticRecords(t, stderr, format)
+					errors, debugs := []string{}, []string{}
+					for _, record := range records {
+						switch record[0] {
+						case "ERROR":
+							errors = append(errors, record[1])
+						case "DEBUG":
+							debugs = append(debugs, record[1])
+						case "INFO":
+							require.False(t, tc.quiet || tc.configWarn)
+						case "WARN":
+							require.False(t, tc.quiet)
+						default:
+							t.Errorf("unexpected severity %s", record[0])
 						}
 					}
-					want := 0
-					if tc.partial {
-						want = 1
-					}
-					require.Equal(t, want, ok)
-				} else {
-					require.Empty(t, stdout)
-					require.Len(t, errors, 1)
-					stage := "deleting process definitions"
-					success := 0
-					if tc.partial {
-						success = 1
+					if tc.machine {
+						require.Empty(t, errors)
+						decoder := json.NewDecoder(strings.NewReader(stdout))
+						var envelope map[string]any
+						require.NoError(t, decoder.Decode(&envelope))
+						require.ErrorIs(t, decoder.Decode(new(any)), io.EOF)
+						require.Equal(t, "invalid_input", envelope["class"])
+						require.Equal(t, "invalid", envelope["outcome"])
+						for _, marker := range []string{"POST", "https://private.invalid/secret", "body-only-secret", "resource-secret-456", "token=password", "cursor-secret-381", "forged-line-381", "credential-secret-381"} {
+							require.Contains(t, requireJSONObject(t, envelope["detail"])["message"], marker)
+						}
+						payload := requireJSONObject(t, envelope["payload"])
+						items := payload["items"].([]any)
+						require.Len(t, items, 3)
+						ok := 0
+						for _, item := range items {
+							if requireJSONObject(t, item)["ok"] == true {
+								ok++
+							}
+						}
+						want := 0
+						if tc.partial {
+							want = 1
+						}
+						require.Equal(t, want, ok)
+					} else {
+						require.Empty(t, stdout)
+						require.Len(t, errors, 1)
+						stage := "deleting process definitions"
+						success := 0
+						if tc.partial {
+							success = 1
+						}
+						if tc.preflight {
+							stage = "checking delete impact"
+						}
+						require.Equal(t, fmt.Sprintf("%s: selected 3, accepted %d; outcome unconfirmed; gateway HTTP 400: request rejected; check the selected profile and service configuration", stage, success), errors[0])
 					}
 					if tc.preflight {
-						stage = "checking delete impact"
+						require.Zero(t, mutations.Load())
+						require.EqualValues(t, 1, failures.Load())
+						require.EqualValues(t, 1, definitions.Load())
+						require.EqualValues(t, 1, searches.Load())
+					} else {
+						require.Equal(t, int32(3), mutations.Load())
+						wantFailures := int32(3)
+						if tc.partial {
+							wantFailures--
+						}
+						require.Equal(t, wantFailures, failures.Load())
+						// Preview and execution each read all three definitions; each read
+						// includes six statistics queries (including the unfinished union).
+						require.EqualValues(t, 6, definitions.Load())
+						require.EqualValues(t, 36, searches.Load())
 					}
-					require.Equal(t, fmt.Sprintf("%s: selected 3, accepted %d; outcome unconfirmed; gateway HTTP 400: request rejected; check the selected profile and service configuration", stage, success), errors[0])
-				}
-				if tc.preflight {
-					require.Zero(t, mutations.Load())
-				} else {
-					require.Equal(t, int32(3), mutations.Load())
-				}
-				for _, bad := range []string{"body-only-secret", "private.invalid", "resource-secret-456", "token=password"} {
-					require.NotContains(t, stderr, bad)
-				}
-				if tc.debug {
-					require.NotEmpty(t, debugs)
-					require.Contains(t, strings.Join(debugs, "\n"), "POST /v2/resources/")
-					require.Contains(t, strings.Join(debugs, "\n"), "status=400")
-				} else {
-					require.Empty(t, debugs)
-					for _, bad := range []string{srv.URL, "POST", "/v2/resources/"} {
+					for _, bad := range []string{"body-only-secret", "private.invalid", "resource-secret-456", "token=password", "cursor-secret-381", "forged-line-381", "credential-secret-381"} {
 						require.NotContains(t, stderr, bad)
+						if !tc.machine {
+							require.NotContains(t, stdout, bad)
+						}
 					}
-				}
-			})
+					if tc.debug {
+						require.NotEmpty(t, debugs)
+						require.Contains(t, strings.Join(debugs, "\n"), "POST /v2/resources/")
+						require.Contains(t, strings.Join(debugs, "\n"), "status=400")
+					} else {
+						require.Empty(t, debugs)
+						for _, bad := range []string{srv.URL, "POST", "/v2/resources/"} {
+							require.NotContains(t, stderr, bad)
+							if !tc.machine {
+								require.NotContains(t, stdout, bad)
+							}
+						}
+					}
+				})
+			}
 		}
 	}
 }

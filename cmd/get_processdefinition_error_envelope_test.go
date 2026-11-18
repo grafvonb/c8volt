@@ -233,7 +233,7 @@ func TestGetProcessDefinitionLifecycleSearchDiagnostics(t *testing.T) {
 	for _, selector := range []bool{false, true} {
 		for _, format := range []string{"plain", "json"} {
 			for _, route := range []string{"configured", "inherited"} {
-				for _, mode := range []string{"normal", "verbose", "quiet", "json", "debug-flag", "debug-config"} {
+				for _, mode := range []string{"normal", "verbose", "quiet", "json", "debug-flag", "debug-config", "warn", "quiet-debug-flag", "quiet-debug-config"} {
 					t.Run(fmt.Sprintf("selector=%v/%s/%s/%s", selector, format, route, mode), func(t *testing.T) {
 						var requests atomic.Int32
 						server := testx.NewIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -249,8 +249,10 @@ func TestGetProcessDefinitionLifecycleSearchDiagnostics(t *testing.T) {
 						}))
 						t.Cleanup(server.Close)
 						level := "info"
-						if mode == "debug-config" {
+						if mode == "debug-config" || mode == "quiet-debug-config" {
 							level = "debug"
+						} else if mode == "warn" {
+							level = "warn"
 						}
 						cfg := writeRawTestConfig(t, fmt.Sprintf("app:\n  camunda_version: \"8.10\"\nauth:\n  mode: none\napis:\n  camunda_api:\n    base_url: %s\nlog:\n  level: %s\n  format: %s\n", server.URL, level, format))
 						args := []string{"get", "pd"}
@@ -262,7 +264,10 @@ func TestGetProcessDefinitionLifecycleSearchDiagnostics(t *testing.T) {
 						if mode == "quiet" || mode == "verbose" {
 							args = append(args, "--"+mode)
 						}
-						if mode == "debug-flag" {
+						if mode == "quiet-debug-flag" || mode == "quiet-debug-config" {
+							args = append(args, "--quiet")
+						}
+						if mode == "debug-flag" || mode == "quiet-debug-flag" {
 							args = append(args, "--debug")
 						}
 						capture := filepath.Join(t.TempDir(), "diagnostics")
@@ -291,16 +296,21 @@ func TestGetProcessDefinitionLifecycleSearchDiagnostics(t *testing.T) {
 						}
 						require.Empty(t, stdout)
 						require.Equal(t, 1, strings.Count(diagnostics, message))
-						require.NotContains(t, diagnostics, "search-token-secret")
+						require.NotContains(t, stdout+stderr+diagnostics, "search-token-secret")
 						if strings.HasPrefix(mode, "debug-") {
 							require.Contains(t, diagnostics, "api #")
 							require.Contains(t, diagnostics, "/v2/process-definitions/search")
 						} else {
 							for _, secret := range []string{"POST", server.URL, "search-secret.invalid", "8675309", "repeated-backend-body"} {
-								require.NotContains(t, diagnostics, secret)
+								require.NotContains(t, stdout+stderr+diagnostics, secret)
 							}
 						}
 						requireProcessDefinitionErrorDiagnostic(t, diagnostics, format, message)
+						if strings.HasPrefix(mode, "quiet") || mode == "warn" {
+							for _, severity := range []string{"INFO", "DEBUG"} {
+								require.NotContains(t, diagnostics, severity)
+							}
+						}
 					})
 				}
 			}
@@ -336,11 +346,13 @@ func (f *processDefinitionRefusalTransport) RoundTrip(req *http.Request) (*http.
 func testProcessDefinitionAuthenticationRefusal(t *testing.T) {
 	for _, format := range []string{"plain", "json"} {
 		for _, route := range []string{"configured", "inherited"} {
-			for _, mode := range []string{"normal", "verbose", "quiet", "json", "debug-flag", "debug-config"} {
+			for _, mode := range []string{"normal", "verbose", "quiet", "json", "debug-flag", "debug-config", "warn", "quiet-debug-flag", "quiet-debug-config"} {
 				t.Run(format+"/"+route+"/"+mode, func(t *testing.T) {
 					level := "info"
-					if mode == "debug-config" {
+					if mode == "debug-config" || mode == "quiet-debug-config" {
 						level = "debug"
+					} else if mode == "warn" {
+						level = "warn"
 					}
 					cfg := writeRawTestConfig(t, fmt.Sprintf(`app: {camunda_version: "8.10"}
 auth:
@@ -353,7 +365,10 @@ log: {level: %s, format: %s}
 					if mode == "quiet" || mode == "verbose" {
 						args = append(args, "--"+mode)
 					}
-					if mode == "debug-flag" {
+					if mode == "quiet-debug-flag" || mode == "quiet-debug-config" {
+						args = append(args, "--quiet")
+					}
+					if mode == "debug-flag" || mode == "quiet-debug-flag" {
 						args = append(args, "--debug")
 					}
 					capture := filepath.Join(t.TempDir(), "diagnostics")
@@ -388,7 +403,7 @@ log: {level: %s, format: %s}
 					require.Empty(t, stdout)
 					message := "search process definitions: authentication service connection refused; check the configured host and port and that the service is running"
 					requireProcessDefinitionErrorDiagnostic(t, diagnostics, format, message)
-					if mode == "quiet" {
+					if strings.HasPrefix(mode, "quiet") || mode == "warn" {
 						for _, severity := range []string{"INFO", "WARN", "DEBUG"} {
 							require.NotContains(t, diagnostics, severity)
 						}

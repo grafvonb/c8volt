@@ -12,17 +12,25 @@ Started: 2026-11-18T17:36:22Z
 
 ## Decisions
 
+- T002/US2 is complete with tests only. Search adds WARN and quiet overriding each DEBUG source. Connection and deletion matrices now exercise both configured and inherited writers for every covered mode; WARN+verbose suppresses INFO while retaining ERROR. Batch partial success runs through normal/verbose/quiet, both DEBUG sources and JSON+DEBUG.
+- Batch fixtures seed credentials, URL/method/body, cursor, resource key and forged-line markers; human sinks reject them, while original machine detail retains them. JSON keeps one envelope plus EOF, `invalid_input` class, `invalid` outcome and exit 2, with three reports and zero/one accepted item.
+
 - T001/US1 is complete. Runtime changes stay in the two planned view files; root metadata/docs were updated and generated. No service, facade, normalization, logger, JSON, exit, retry, or command-handler changes.
 - Formatter cases cover raw/wrapped/joined and normalized typed causes, status zero, all specified statuses, auth attribution, misleading text, class-only/lost-evidence fallback, cancellation and local-admission precedence. Config-specific exact fallbacks remain tested.
 - Trace reviewed: OAuth editor adds `AuthenticationFailure`; versioned search and facade forward it; command supplies bounded human override; handler logs ERROR through its configured logger or renders the original JSON envelope before exiting. Batch rendering retains partial reports and exits once. No new raw-error interpolation or diagnostic print was introduced.
 
 ## Gotchas
 
+- Existing deletion fixture performs 6 definition reads and 36 statistics searches (preview and execution each read 3 definitions, with 6 statistics queries per read), then 3 mutation requests. Partial success has 2 failures; all-failure has 3. Preflight failure stops after 1 definition read / 1 search / 0 mutations. HTTP 400 machine outcome is `invalid`, not `failed`.
+
 - This machine's selected `/Users/adam.boczek/Development/Lang/go/go1.26.10` lacks `vet`. Use the complete cached same-version toolchain via `GOROOT=/Users/adam.boczek/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.10.darwin-arm64`; retain vet, `GOENV=off`, and empty `GOFLAGS`.
 - Direct `httpc.New` test configs require `RequestRateReportInterval: "0s"`. A canceled transport admission creates real typed local-unsent evidence without network dispatch.
 - Docs generation refreshes the homepage build provenance automatically. Generated output was reviewed, not hand-edited.
 
 ## Reusable Commands
+
+- T002 passed: `go test ./cmd -run '^(TestGetProcessDefinitionLifecycleSearchDiagnostics|TestConfigConnectionDiagnosticLogging|TestDeleteProcessDefinitionUnfinishedDiagnosticLogging)$' -count=1` (11.659s).
+- Batch mutation-detection selector: `go test ./cmd -run '^TestDeleteProcessDefinitionUnfinishedDiagnosticLogging$/^(plain-time|json)$/^configured$/^normal$' -count=1`. Both direct configured-stderr output and appended raw joined error fail; restored production passes (0.741s).
 
 - Prefix Go checks and docs generation with `GOROOT=/Users/adam.boczek/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.10.darwin-arm64 GOENV=off GOFLAGS=` on this machine.
 - T001 passed: `go test ./cmd -run '^(TestBoundedCommandFailureReasons|TestConfigConnectionFailureReasons|TestConfigConnectionDiagnosticLogging|TestCommandErrorEnvelopeProcessDefinition|TestGetProcessDefinitionLifecycleSearchDiagnostics|TestDeleteProcessDefinitionUnfinishedDiagnosticLogging)$' -count=1`.
@@ -37,4 +45,4 @@ Started: 2026-11-18T17:36:22Z
 
 ## Current Handoff
 
-- Next dependency-ready work is T002 / US2: identify and fill missing adversarial logger/destination combinations in the existing search, connection and repeated-deletion fixtures. T001 baseline passes; retain its shared implementation and exact wording. Recheck selection against tasks.md. T003 depends on T002 and remains untouched. No blocking dependencies.
+- Next dependency-ready work is T003 / US3: complete execution/automation compatibility coverage using the finalized safety matrix. T001 and T002 are validated and complete. Recheck selection against tasks.md; do not redo production formatting or the completed safety matrix. No blocking dependencies.
