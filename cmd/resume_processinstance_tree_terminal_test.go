@@ -257,7 +257,7 @@ func TestResumeProcessInstanceTreePlanningFailure(t *testing.T) {
 						require.Contains(t, requireJSONObject(t, env["detail"])["message"], "body-only-secret")
 					} else {
 						require.Empty(t, out)
-						require.Equal(t, []string{"plan process instance resumption: local precondition"}, errors)
+						require.Equal(t, []string{"plan process instance resumption: gateway HTTP 403: access denied; check credentials, roles and API permissions"}, errors)
 					}
 					for _, bad := range []string{"private.invalid", "body-only-secret", "private-cursor", "resumption-token-secret"} {
 						require.NotContains(t, stderr, bad)

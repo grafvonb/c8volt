@@ -71,7 +71,7 @@ func TestElementScopeVariablesGetDiagnostics(t *testing.T) {
 						require.Contains(t, requireJSONObject(t, env["detail"])["message"], "body-only-secret")
 						require.NotEqual(t, "succeeded", env["outcome"])
 					} else {
-						require.Equal(t, []string{"get elements: invalid input"}, errors)
+						require.Equal(t, []string{"get elements: gateway HTTP 400: request rejected; check the selected profile and service configuration"}, errors)
 						if tc.quiet {
 							require.Empty(t, stdout)
 						} else {

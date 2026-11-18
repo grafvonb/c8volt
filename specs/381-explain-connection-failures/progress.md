@@ -87,3 +87,18 @@ Started: 2026-11-18 18:36:22
 - Reviewed OAuth/status/local-admission evidence through service aggregation and facade preservation to bounded command rendering, configured logger or single JSON envelope, and original exit resolution. No production files, direct diagnostic writes, raw-error interpolation, execution modes or public contracts changed. Touched-file gofmt and git diff --check passed; generated docs do not need regeneration for test-only changes.
 - All dependencies were test-owned HTTP fakes, the child-only refusal transport or isolated terminal/subprocess execution; inherited application/helper settings were cleared. No live environment, integration/smoke target or full race suite ran. Real-engine behavior remains unverified. All tasks are complete and memory now contains the terminal handoff.
 ---
+
+## CI follow-up - 2026-11-18
+**Status**: Validated locally. The full isolated repository race/coverage suite passed; changes are ready for commit.
+**Cause**: The shared formatter changed recognized HTTP causes for more existing callers than the original focused selectors covered. The whole pre-fix command package exposed 17 failing top-level groups (425 failing test/subtest events, including repeated compatibility fixtures), all due to stale human-message expectations.
+**Changes**:
+- Updated exact human expectations across 14 affected command test files for HTTP 400/403/404/409/500 causes, retaining aggregate counts, machine evidence/classes, partial results, exits, confirmations, and request counts.
+- Strengthened quiet-purge validation to require one whole ERROR record. Creation-conflict validation now captures stdout/stderr separately, requires the exact logger ERROR, and excludes raw URL/body text while preserving exit code 6.
+- Extended quickstart guidance to inventory every shared-formatter consumer and use whole-package discovery plus CI-equivalent race/coverage validation for this demonstrated broader impact. No production behavior, facade/transport/error conversion, or generated docs changed.
+**Validation**:
+- Reproduced the reported business-ID selection failure with no skips. An initial sandboxed attempt skipped fake listeners and was not accepted as validation; reran outside that restriction using only isolated fixtures.
+- Corrected focused selectors passed with 450, 114, 63, and 1 test/subtest events respectively and no failures/skips, using the complete cached Go 1.26.10 toolchain with vet enabled.
+- Full validation command: `go test ./... -race -covermode=atomic -coverprofile=/private/tmp/c8volt-381-ci-r2ia4d22/coverage.out -count=1 -timeout=20m -json`, with isolated application/helper environment, `GOENV=off`, empty `GOFLAGS`, and `GORACE` exit sleep disabled as in the CI coverage target. Output stays outside the repository.
+- No live-environment, integration, smoke, deployment, or real-resource validation ran. Historical Ralph iteration evidence above is preserved.
+- Full suite passed with 20,119 test/subtest events across 104 tested packages, zero failures, zero skipped tests, and no race reports. Two additional packages have no test files. The atomic coverage profile was generated successfully. The full command-package check is included in this pass; no second full run is needed for these prose-only evidence updates.
+- Touched Go files are formatted, and final diff/whitespace/link checks passed. Fixes are test expectations and stronger logger assertions only; the production formatter and machine/error contracts are unchanged.

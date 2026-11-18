@@ -129,7 +129,7 @@ func TestElementScopeVariablesUpdateTerminalPlanningFailure(t *testing.T) {
 	assertUserTaskCompletionExit(t, err, 3)
 	require.Empty(t, out)
 	require.NotContains(t, stderr, "proceed?")
-	require.Equal(t, [][2]string{{"ERROR", "plan element variable update: not found"}}, bulkCompletionDiagnosticRecords(t, stderr, "plain-time"))
+	require.Equal(t, [][2]string{{"ERROR", "plan element variable update: gateway HTTP 404: endpoint not found; check the Camunda API base URL and proxy routing"}}, bulkCompletionDiagnosticRecords(t, stderr, "plain-time"))
 	calls, writes, _ := f.snapshot()
 	require.Len(t, calls, 3)
 	require.Empty(t, writes)

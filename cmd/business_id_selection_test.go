@@ -399,12 +399,12 @@ func TestBusinessIDSelectionFailureLogging(t *testing.T) {
 							}
 						} else {
 							require.Empty(t, out)
-							want := "business-ID search failed: invalid input"
+							want := "business-ID search failed: gateway HTTP 400: request rejected; check the selected profile and service configuration"
 							if resource == "pi" {
-								want = "business-ID search failed: 2 selected; invalid input"
+								want = "business-ID search failed: 2 selected; gateway HTTP 400: request rejected; check the selected profile and service configuration"
 							}
 							if resource == "walk" {
-								want = "business-ID search failed: 1 selected; invalid input"
+								want = "business-ID search failed: 1 selected; gateway HTTP 400: request rejected; check the selected profile and service configuration"
 							}
 							require.Equal(t, []string{want}, errors)
 						}

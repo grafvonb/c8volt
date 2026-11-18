@@ -55,6 +55,19 @@ Expected: selected/accepted counts and aggregate prefix remain exact; only recog
 
 Review assertions to ensure a direct stderr print or raw aggregate would fail: severity and whole-record validation, independent destinations, zero human stdout bytes, no duplicate ERROR, exact aggregate counts, and forbidden markers are required. A substring assertion alone is insufficient.
 
+### Shared formatter consumer coverage
+
+The initial focused selectors missed existing callers, and CI exposed stale class-only human expectations. Inventory all `boundedCommandFailureReason` consumers, including business-ID selection/cancel/delete/assignment/slow analysis, element reads, definition lookup, purge, process creation, and suspension/resumption planning. Update only the human expectations whose typed evidence now produces recognized guidance; preserve machine classes/detail, command-specific overrides, unknown fallback, logger/redaction checks, exits, partial results, and request counts. Do not calculate expected text with the production formatter.
+
+Use the whole command package to find remaining consumers, then run the CI-equivalent race/coverage suite after the affected selectors pass. This broader check is justified by the demonstrated shared-output regression:
+
+```sh
+GOENV=off GOFLAGS= go test ./cmd -count=1
+GOENV=off GOFLAGS= make cover
+```
+
+Use the same isolated environment and test-owned dependencies described above. Inspect test events for skips as well as failures: a sandbox-denied fake listener does not validate a command. Record the broader coverage once it passes; do not repeat it for subsequent documentation-only edits.
+
 ## 4. Formatting and documentation
 
 Format only touched Go files using `gofmt -w` with explicit paths. Update README, configuration diagnostics guidance, and concise root help metadata as described in the plan, then regenerate:

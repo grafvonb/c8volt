@@ -337,7 +337,7 @@ func TestBusinessIDOperationsSlowFailureLogging(t *testing.T) {
 								require.NotContains(t, []string{"quiet", "warn"}, mode)
 							}
 						}
-						require.Equal(t, []string{"analyse slow process instances: selected 3, analysed 1; invalid input"}, errorMessages)
+						require.Equal(t, []string{"analyse slow process instances: selected 3, analysed 1; gateway HTTP 400: request rejected; check the selected profile and service configuration"}, errorMessages)
 						require.Contains(t, out, "2251799813685101")
 						require.NotContains(t, out, "2251799813685102")
 						for _, secret := range []string{"private.invalid", "secret-token", "secret-cookie", "body-only-secret", "resource-key-secret"} {
@@ -384,7 +384,7 @@ func TestBusinessIDOperationsSlowDiscoveryFailure(t *testing.T) {
 				require.Empty(t, stderr)
 			} else {
 				require.Empty(t, out)
-				require.Equal(t, [][2]string{{"ERROR", "analyse slow process instances: selected 1, analysed 0; invalid input"}}, bulkCompletionDiagnosticRecords(t, stderr, "plain-time"))
+				require.Equal(t, [][2]string{{"ERROR", "analyse slow process instances: selected 1, analysed 0; gateway HTTP 400: request rejected; check the selected profile and service configuration"}}, bulkCompletionDiagnosticRecords(t, stderr, "plain-time"))
 				require.NotContains(t, stderr, "private.invalid")
 			}
 		})
