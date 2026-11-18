@@ -19,6 +19,28 @@ func configConnectionFailureMessage(err error) string {
 	if commandHasRequestRateWaitFailure(err) {
 		return prefix + boundedCommandFailureReason(err)
 	}
+	failure, _, _, _ := commandConnectionFailureDetails(err)
+	if failure == "CANCELED" {
+		return prefix + "connection test canceled"
+	}
+	if reason, recognized := recognizedConnectionFailureReason(err, true); recognized {
+		return prefix + reason
+	}
+	switch ferrors.Classify(err) {
+	case ferrors.ClassTimeout:
+		return prefix + "gateway timed out; check service availability, network access and configured timeout"
+	case ferrors.ClassMalformedResponse:
+		return prefix + "invalid gateway response; check the Camunda API base URL and proxy routing"
+	case ferrors.ClassLocalPrecondition, ferrors.ClassInvalidInput:
+		return prefix + "connection setup failed; check the selected profile and configuration"
+	default:
+		return prefix + "unexpected connection failure; use --debug for diagnostic details"
+	}
+}
+
+// recognizedConnectionFailureReason shares typed, bounded cause wording. Cancellation
+// and class-only fallbacks remain caller-owned; topologyEndpoint only selects 404 advice.
+func recognizedConnectionFailureReason(err error, topologyEndpoint bool) (string, bool) {
 	failure, reason, status, authentication := commandConnectionFailureDetails(err)
 	target := "gateway"
 	if authentication {
@@ -26,21 +48,21 @@ func configConnectionFailureMessage(err error) string {
 	}
 	switch failure {
 	case "CANCELED":
-		return prefix + "connection test canceled"
+		return "", false
 	case "TIMEOUT":
-		return prefix + target + " timed out; check service availability, network access and configured timeout"
+		return target + " timed out; check service availability, network access and configured timeout", true
 	case "DNS_ERROR":
-		return prefix + "cannot resolve " + target + " host; check the configured hostname and DNS"
+		return "cannot resolve " + target + " host; check the configured hostname and DNS", true
 	case "TLS_ERROR":
-		return prefix + target + " TLS certificate validation failed; check the certificate trust, hostname and expiry"
+		return target + " TLS certificate validation failed; check the certificate trust, hostname and expiry", true
 	case "INVALID_RESPONSE":
-		return prefix + "invalid " + target + " response; check the configured URL and proxy routing"
+		return "invalid " + target + " response; check the configured URL and proxy routing", true
 	}
 	switch reason {
 	case "connection-refused":
-		return prefix + target + " connection refused; check the configured host and port and that the service is running"
+		return target + " connection refused; check the configured host and port and that the service is running", true
 	case "connection-reset", "unexpected-eof":
-		return prefix + target + " connection interrupted; check the service and proxy"
+		return target + " connection interrupted; check the service and proxy", true
 	}
 	if status != 0 {
 		var hint string
@@ -50,7 +72,10 @@ func configConnectionFailureMessage(err error) string {
 		case 403:
 			hint = "access denied; check credentials, roles and API permissions"
 		case 404:
-			hint = "topology endpoint not found; check the Camunda API base URL and proxy routing"
+			hint = "endpoint not found; check the Camunda API base URL and proxy routing"
+			if topologyEndpoint {
+				hint = "topology " + hint
+			}
 		case 429:
 			hint = "rate limit reached; retry later or reduce request rate"
 		case 500, 502, 503, 504:
@@ -64,21 +89,12 @@ func configConnectionFailureMessage(err error) string {
 		if authentication && status == 404 {
 			hint = "authentication endpoint not found; check the authentication URL and proxy routing"
 		}
-		return fmt.Sprintf("%s%s HTTP %d: %s", prefix, target, status, hint)
+		return fmt.Sprintf("%s HTTP %d: %s", target, status, hint), true
 	}
 	if authentication {
-		return prefix + "authentication failed; check the authentication configuration; use --debug for diagnostic details"
+		return "authentication failed; check the authentication configuration; use --debug for diagnostic details", true
 	}
-	switch ferrors.Classify(err) {
-	case ferrors.ClassTimeout:
-		return prefix + "gateway timed out; check service availability, network access and configured timeout"
-	case ferrors.ClassMalformedResponse:
-		return prefix + "invalid gateway response; check the Camunda API base URL and proxy routing"
-	case ferrors.ClassLocalPrecondition, ferrors.ClassInvalidInput:
-		return prefix + "connection setup failed; check the selected profile and configuration"
-	default:
-		return prefix + "unexpected connection failure; use --debug for diagnostic details"
-	}
+	return "", false
 }
 
 type configTestConnectionView struct {

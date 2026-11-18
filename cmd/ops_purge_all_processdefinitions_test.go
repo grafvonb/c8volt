@@ -1007,7 +1007,7 @@ func TestOpsPurgeAllProcessDefinitionsQuietForceCleanupFailureCompatibility(t *t
 	require.Error(t, err, stderr)
 	require.Empty(t, stdout)
 	require.NotContains(t, stderr, opsAllProcessDefinitionsPurgeRootA+" failed:")
-	require.Contains(t, stderr, "ERROR process-definition purge: selected 2, accepted 0; outcome unconfirmed; internal")
+	require.Equal(t, [][2]string{{"ERROR", "process-definition purge: selected 2, accepted 0; outcome unconfirmed; gateway HTTP 500: service error; check service health and proxy logs"}}, bulkCompletionDiagnosticRecords(t, stderr, "plain-time"))
 	require.NotContains(t, stderr, "waiting for unfinished process instances to drain")
 	require.NotContains(t, stderr, "deleting process-instance histories")
 	require.NotContains(t, stderr, "deleting process definitions")

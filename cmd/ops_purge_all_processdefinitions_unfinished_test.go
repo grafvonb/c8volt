@@ -134,7 +134,7 @@ func TestOpsPurgeAllProcessDefinitionsUnfinishedDiagnosticLogging(t *testing.T) 
 					if tc.preflight {
 						stage = "process-definition purge"
 					}
-					require.Equal(t, fmt.Sprintf("%s: selected 3, accepted %d; outcome unconfirmed; invalid input", stage, success), errors[0])
+					require.Equal(t, fmt.Sprintf("%s: selected 3, accepted %d; outcome unconfirmed; gateway HTTP 400: request rejected; check the selected profile and service configuration", stage, success), errors[0])
 				}
 				if tc.preflight {
 					require.Zero(t, mutations.Load())

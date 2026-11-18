@@ -175,5 +175,5 @@
 
 ## Active Speckit Plan
 <!-- SPECKIT START -->
-- Active Speckit implementation plan: `specs/369-standardize-flag-intent/plan.md`
+- Active Speckit implementation plan: `specs/381-explain-connection-failures/plan.md`
 <!-- SPECKIT END -->

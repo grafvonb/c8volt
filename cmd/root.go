@@ -41,7 +41,8 @@ Set app.camunda_version to match your cluster. Start with config test-connection
 then use ops playbooks for repair, retention, purge, and runtime analysis.
 
 Preview changes with --dry-run where supported. Use --auto-confirm for unattended
-execution and --json for scripts. See capabilities --json for command support.`,
+execution and --json for scripts. See capabilities --json for command support.
+Known connection and authentication failures include guidance without --debug.`,
 	Example: `  c8volt config test-connection
   c8volt get process-instance --state active --limit 10
   c8volt ops repair incident --key <incident-key> --dry-run`,

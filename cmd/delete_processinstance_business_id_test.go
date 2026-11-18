@@ -310,7 +310,7 @@ func TestBusinessIDDeleteLogging(t *testing.T) {
 								if failure == "partial" {
 									success = 1
 								}
-								require.Equal(t, []string{fmt.Sprintf("delete process instances: selected 3, roots 2, successful %d, submitted members %d; invalid input", success, 5+success)}, errors)
+								require.Equal(t, []string{fmt.Sprintf("delete process instances: selected 3, roots 2, successful %d, submitted members %d; gateway HTTP 400: request rejected; check the selected profile and service configuration", success, 5+success)}, errors)
 							}
 						}
 						for _, secret := range []string{"private.invalid", "secret-token", "secret-cookie", "body-only-secret", "resource-key-secret"} {

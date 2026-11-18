@@ -36,6 +36,11 @@ func TestConfigConnectionFailureReasons(t *testing.T) {
 		{x509.UnknownAuthorityError{}, "gateway TLS certificate validation failed; check the certificate trust, hostname and expiry"},
 		{context.DeadlineExceeded, "gateway timed out; check service availability, network access and configured timeout"},
 		{context.Canceled, "connection test canceled"},
+		{httpc.AuthenticationFailure(httpc.WithHTTPStatus(context.Canceled, 401)), "connection test canceled"},
+		{ferrors.ErrTimeout, "gateway timed out; check service availability, network access and configured timeout"},
+		{ferrors.ErrMalformedResponse, "invalid gateway response; check the Camunda API base URL and proxy routing"},
+		{ferrors.ErrLocalPrecondition, "connection setup failed; check the selected profile and configuration"},
+		{ferrors.ErrInvalidInput, "connection setup failed; check the selected profile and configuration"},
 		{syscall.ECONNRESET, "gateway connection interrupted; check the service and proxy"},
 		{&json.SyntaxError{}, "invalid gateway response; check the configured URL and proxy routing"},
 		{httpc.WithHTTPStatus(errors.New("raw"), 404), "gateway HTTP 404: topology endpoint not found; check the Camunda API base URL and proxy routing"},
@@ -49,8 +54,10 @@ func TestConfigConnectionFailureReasons(t *testing.T) {
 }
 
 // Execute real command failures with isolated HTTP responses. This covers the
-// logger boundary, auth stage, retries, JSON policy and successful single reads.
+// logger destinations and level precedence, auth stage, retries and JSON policy,
+// including quiet JSON and suppressed failure exits.
 func TestConfigConnectionDiagnosticLogging(t *testing.T) {
+	isolateRequestRateEnvironment(t)
 	for _, tc := range []struct {
 		name, auth, message    string
 		status, requests, exit int
@@ -64,49 +71,54 @@ func TestConfigConnectionDiagnosticLogging(t *testing.T) {
 		{"oauth2-success", "oauth2", "", 200, 2, 0},
 	} {
 		for _, format := range []string{"plain-time", "json"} {
-			for _, mode := range []struct {
-				name, level string
-				flags       []string
-				debug       bool
-			}{
-				{"normal", "info", nil, false},
-				{"verbose", "info", []string{"--verbose"}, false},
-				{"quiet", "info", []string{"--quiet"}, false},
-				{"json", "info", []string{"--json"}, false},
-				{"quiet-json", "info", []string{"--quiet", "--json"}, false},
-				{"debug", "info", []string{"--debug"}, true},
-				{"configured-debug", "debug", nil, true},
-				{"quiet-debug", "debug", []string{"--quiet", "--debug"}, false},
-				{"command-writer", "info", nil, false},
-				{"no-error-codes", "info", []string{"--no-err-codes"}, false},
-			} {
-				if tc.status == 200 && mode.name != "normal" {
-					continue
-				}
-				t.Run(tc.name+"/"+format+"/"+mode.name, func(t *testing.T) {
-					var calls atomic.Int32
-					server := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-						calls.Add(1)
-						if tc.status != 200 {
-							path := map[string]string{"none": "/v2/topology", "cookie": "/api/login", "oauth2": "/oauth/token"}[tc.auth]
-							require.Equal(t, path, r.URL.Path)
-							// Both status text and body contain untrusted diagnostic markers.
-							conn, rw, err := w.(http.Hijacker).Hijack()
-							require.NoError(t, err)
-							defer conn.Close()
-							body := `{"detail":"POST https://private.invalid body-secret resource-key"}`
-							fmt.Fprintf(rw, "HTTP/1.1 %d POST https://private.invalid body-secret\r\nContent-Type: application/json\r\nContent-Length: %d\r\nRetry-After: 0\r\nConnection: close\r\n\r\n%s", tc.status, len(body), body)
-							require.NoError(t, rw.Flush())
-							return
-						}
-						w.Header().Set("Content-Type", "application/json")
-						http.SetCookie(w, &http.Cookie{Name: "SESSION", Value: "cookie-secret", Path: "/"})
-						body := map[string]string{"/api/login": `{}`, "/oauth/token": `{"access_token":"token-secret","expires_in":120}`, "/v2/topology": `{"gatewayVersion":"8.10.6"}`}[r.URL.Path]
-						require.NotEmpty(t, body, "unexpected request path")
-						fmt.Fprint(w, body)
-					}))
-					t.Cleanup(server.Close)
-					cfg := writeRawTestConfig(t, fmt.Sprintf(`app: {camunda_version: "8.10"}
+			for _, route := range []string{"inherited", "command-writer"} {
+				for _, mode := range []struct {
+					name, level string
+					flags       []string
+					debug       bool
+				}{
+					{"normal", "info", nil, false},
+					{"verbose", "info", []string{"--verbose"}, false},
+					{"quiet", "info", []string{"--quiet"}, false},
+					{"json", "info", []string{"--json"}, false},
+					{"quiet-json", "info", []string{"--quiet", "--json"}, false},
+					{"debug", "info", []string{"--debug"}, true},
+					{"configured-debug", "debug", nil, true},
+					{"quiet-debug", "debug", []string{"--quiet", "--debug"}, false},
+					{"warn", "warn", []string{"--verbose"}, false},
+					{"quiet-configured-debug", "debug", []string{"--quiet"}, false},
+					{"quiet-flag-debug", "info", []string{"--quiet", "--debug"}, false},
+					{"no-error-codes", "info", []string{"--no-err-codes"}, false},
+					{"json-no-error-codes", "info", []string{"--json", "--no-err-codes"}, false},
+					{"quiet-json-no-error-codes", "info", []string{"--quiet", "--json", "--no-err-codes"}, false},
+				} {
+					if tc.status == 200 && mode.name != "normal" && !strings.Contains(mode.name, "json") {
+						continue
+					}
+					t.Run(tc.name+"/"+format+"/"+route+"/"+mode.name, func(t *testing.T) {
+						var calls atomic.Int32
+						server := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+							calls.Add(1)
+							if tc.status != 200 {
+								path := map[string]string{"none": "/v2/topology", "cookie": "/api/login", "oauth2": "/oauth/token"}[tc.auth]
+								require.Equal(t, path, r.URL.Path)
+								// Both status text and body contain untrusted diagnostic markers.
+								conn, rw, err := w.(http.Hijacker).Hijack()
+								require.NoError(t, err)
+								defer conn.Close()
+								body := `{"detail":"POST https://private.invalid body-secret resource-key"}`
+								fmt.Fprintf(rw, "HTTP/1.1 %d POST https://private.invalid body-secret\r\nContent-Type: application/json\r\nContent-Length: %d\r\nRetry-After: 0\r\nConnection: close\r\n\r\n%s", tc.status, len(body), body)
+								require.NoError(t, rw.Flush())
+								return
+							}
+							w.Header().Set("Content-Type", "application/json")
+							http.SetCookie(w, &http.Cookie{Name: "SESSION", Value: "cookie-secret", Path: "/"})
+							body := map[string]string{"/api/login": `{}`, "/oauth/token": `{"access_token":"token-secret","expires_in":120}`, "/v2/topology": `{"gatewayVersion":"8.10.6"}`}[r.URL.Path]
+							require.NotEmpty(t, body, "unexpected request path")
+							fmt.Fprint(w, body)
+						}))
+						t.Cleanup(server.Close)
+						cfg := writeRawTestConfig(t, fmt.Sprintf(`app: {camunda_version: "8.10"}
 auth:
   mode: %s
   cookie: {base_url: %q, username: operator, password: credential-secret}
@@ -114,58 +126,68 @@ auth:
 apis: {camunda_api: {base_url: %q}}
 log: {level: %s, format: %s}
 `, tc.auth, server.URL, server.URL+"/oauth", server.URL, mode.level, format))
-					flags, debug := mode.flags, mode.debug
-					if tc.status == 200 {
-						flags, debug = []string{"--json", "--debug"}, true
-					}
-					args := append([]string{"--config", cfg, "--no-indicator", "config", "test-connection"}, flags...)
-					logFile := filepath.Join(t.TempDir(), "diagnostics")
-					wantExit := tc.exit
-					if mode.name == "no-error-codes" {
-						wantExit = 0
-					}
-					stdout, stderr := runCommandErrorEnvelopeSubprocess(t, "TestConfigConnectionDiagnosticsHelper", "", map[string]string{
-						"C8VOLT_TEST_COMMAND_ARGS":           marshalRootArgsForEnv(t, args),
-						"C8VOLT_TEST_CONNECTION_LOG":         logFile,
-						"C8VOLT_TEST_CONNECTION_DESTINATION": mode.name,
-					}, "", wantExit)
-					require.Empty(t, stderr, "diagnostics must follow the configured logger destination")
-					data, err := os.ReadFile(logFile)
-					require.NoError(t, err)
-					diagnostics := string(data)
-					records := bulkCompletionDiagnosticRecords(t, diagnostics, format)
-					if tc.status == 200 {
-						requireSingleJSONValue(t, stdout)
-						var result configTestConnectionView
-						require.NoError(t, json.Unmarshal([]byte(stdout), &result))
-						require.True(t, result.OK)
-						require.Equal(t, "8.10.6", result.Cluster.GatewayVersion)
-						require.Nil(t, result.Warnings)
-					} else {
-						require.Empty(t, stdout, "preserve existing failure policy even with --json")
-						var errors []string
-						for _, record := range records {
-							if record[0] == "ERROR" {
-								errors = append(errors, record[1])
+						flags, debug := mode.flags, mode.debug
+						if tc.status == 200 && mode.name == "normal" {
+							flags, debug = []string{"--json", "--debug"}, true
+						}
+						args := append([]string{"--config", cfg, "--no-indicator", "config", "test-connection"}, flags...)
+						logFile := filepath.Join(t.TempDir(), "diagnostics")
+						wantExit := tc.exit
+						if strings.HasSuffix(mode.name, "no-error-codes") {
+							wantExit = 0
+						}
+						stdout, stderr := runCommandErrorEnvelopeSubprocess(t, "TestConfigConnectionDiagnosticsHelper", "", map[string]string{
+							"C8VOLT_TEST_COMMAND_ARGS":           marshalRootArgsForEnv(t, args),
+							"C8VOLT_TEST_CONNECTION_LOG":         logFile,
+							"C8VOLT_TEST_CONNECTION_DESTINATION": route,
+						}, "", wantExit)
+						require.Empty(t, stderr, "diagnostics must follow the configured logger destination")
+						data, err := os.ReadFile(logFile)
+						require.NoError(t, err)
+						diagnostics := string(data)
+						records := bulkCompletionDiagnosticRecords(t, diagnostics, format)
+						if tc.status == 200 {
+							requireSingleJSONValue(t, stdout)
+							var result configTestConnectionView
+							require.NoError(t, json.Unmarshal([]byte(stdout), &result))
+							require.True(t, result.OK)
+							require.Equal(t, server.URL+"/v2", result.BaseURL)
+							require.Equal(t, cfg, result.ConfigFile)
+							for _, record := range records {
+								require.Contains(t, []string{"INFO", "DEBUG"}, record[0])
 							}
-							require.NotEqual(t, "WARN", record[0], "no duplicate advisory")
+							if strings.HasPrefix(mode.name, "quiet") {
+								require.Empty(t, records)
+							}
+							require.Equal(t, "8.10.6", result.Cluster.GatewayVersion)
+							require.Nil(t, result.Warnings)
+						} else {
+							require.Empty(t, stdout, "preserve existing failure policy even with --json")
+							var errors []string
+							for _, record := range records {
+								if record[0] == "ERROR" {
+									errors = append(errors, record[1])
+								}
+								require.NotEqual(t, "WARN", record[0], "no duplicate advisory")
+							}
+							require.Equal(t, []string{"config test-connection: " + tc.message}, errors)
+							if strings.HasPrefix(mode.name, "quiet") || mode.level == "warn" {
+								require.Len(t, records, 1)
+							}
 						}
-						require.Equal(t, []string{"config test-connection: " + tc.message}, errors)
-						if strings.HasPrefix(mode.name, "quiet") {
-							require.Len(t, records, 1)
+						require.Equal(t, int32(tc.requests), calls.Load())
+						require.Equal(t, debug, strings.Contains(diagnostics, "api #"))
+						for _, secret := range []string{"private.invalid", "body-secret", "resource-key", "credential-secret", "cookie-secret", "token-secret"} {
+							require.NotContains(t, stdout+stderr+diagnostics, secret)
 						}
-					}
-					require.Equal(t, int32(tc.requests), calls.Load())
-					require.Equal(t, debug, strings.Contains(diagnostics, "api #"))
-					for _, secret := range []string{"private.invalid", "body-secret", "resource-key", "credential-secret", "cookie-secret", "token-secret"} {
-						require.NotContains(t, stdout+diagnostics, secret)
-					}
-					if !debug {
-						for _, raw := range []string{server.URL, "GET", "POST", "/v2/"} {
-							require.NotContains(t, diagnostics, raw)
+						if !debug {
+							// Successful JSON retains base_url; failures already require empty stdout.
+							for _, raw := range []string{server.URL, "GET", "POST", "/v2/"} {
+								require.NotContains(t, stderr+diagnostics, raw)
+							}
 						}
-					}
-				})
+					})
+				}
 			}
 		}
 	}
