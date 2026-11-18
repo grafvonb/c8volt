@@ -135,11 +135,11 @@ func TestCommandErrorEnvelopeProcessDefinition(t *testing.T) {
 	})
 }
 
-// assertProcessDefinitionErrorMatrix checks JSON and human streams with both
+// assertProcessDefinitionErrorMatrix checks JSON, quiet JSON and human streams with both
 // exit policies while proving validation and rendering do not add requests.
 func assertProcessDefinitionErrorMatrix(t *testing.T, cfgPath string, commandArgs []string, humanArgs []string, exitCode int, outcome string, class string, message string, humanMessage string, requests *atomic.Int32, wantRequests int32) {
 	t.Helper()
-	for _, outputMode := range []string{"json", "human"} {
+	for _, outputMode := range []string{"json", "quiet-json", "human"} {
 		for _, suppressExit := range []bool{false, true} {
 			name := outputMode
 			if suppressExit {
@@ -163,7 +163,7 @@ func assertProcessDefinitionErrorMatrix(t *testing.T, cfgPath string, commandArg
 					"C8VOLT_TEST_NO_ERR_CODES": boolEnv(suppressExit),
 					"C8VOLT_TEST_COMMAND_ARGS": marshalRootArgsForEnv(t, args),
 				}, "", wantExitCode)
-				if outputMode == "json" {
+				if outputMode != "human" {
 					require.NotContains(t, stderr, message, "JSON must not duplicate the final failure diagnostic")
 					require.NotContains(t, stderr, " ERROR ", "JSON may retain retry context but not a human error result")
 					assertCommandErrorEnvelope(t, stdout, "", commandErrorEnvelopeExpectation{
@@ -196,8 +196,11 @@ func TestCommandErrorEnvelopeProcessDefinitionHelper(t *testing.T) {
 	var commandArgs []string
 	require.NoError(t, json.Unmarshal([]byte(os.Getenv("C8VOLT_TEST_COMMAND_ARGS")), &commandArgs))
 	args := []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "--backoff-max-retries", "0"}
-	if os.Getenv("C8VOLT_TEST_OUTPUT_MODE") == "json" {
+	if mode := os.Getenv("C8VOLT_TEST_OUTPUT_MODE"); mode == "json" || mode == "quiet-json" {
 		args = append(args, "--json")
+	}
+	if os.Getenv("C8VOLT_TEST_OUTPUT_MODE") == "quiet-json" {
+		args = append(args, "--quiet")
 	}
 	if os.Getenv("C8VOLT_TEST_NO_ERR_CODES") == "1" {
 		args = append(args, "--no-err-codes")
@@ -342,11 +345,12 @@ func (f *processDefinitionRefusalTransport) RoundTrip(req *http.Request) (*http.
 }
 
 // testProcessDefinitionAuthenticationRefusal exercises the original failure through
-// auth, facade normalization, configured logging, machine rendering and process exit.
+// auth, facade normalization, configured logging, machine rendering and process exit,
+// including quiet JSON and both exit policies without losing original error detail.
 func testProcessDefinitionAuthenticationRefusal(t *testing.T) {
 	for _, format := range []string{"plain", "json"} {
 		for _, route := range []string{"configured", "inherited"} {
-			for _, mode := range []string{"normal", "verbose", "quiet", "json", "debug-flag", "debug-config", "warn", "quiet-debug-flag", "quiet-debug-config"} {
+			for _, mode := range []string{"normal", "verbose", "quiet", "json", "debug-flag", "debug-config", "warn", "quiet-debug-flag", "quiet-debug-config", "quiet-json", "no-error-codes", "quiet-no-error-codes", "json-no-error-codes", "quiet-json-no-error-codes"} {
 				t.Run(format+"/"+route+"/"+mode, func(t *testing.T) {
 					level := "info"
 					if mode == "debug-config" || mode == "quiet-debug-config" {
@@ -362,23 +366,33 @@ apis: {camunda_api: {base_url: "http://gateway-refusal.invalid"}}
 log: {level: %s, format: %s}
 `, level, format))
 					args := []string{"get", "pd", "--no-version-check"}
-					if mode == "quiet" || mode == "verbose" {
+					if mode == "verbose" {
 						args = append(args, "--"+mode)
 					}
-					if mode == "quiet-debug-flag" || mode == "quiet-debug-config" {
+					if strings.HasPrefix(mode, "quiet") {
 						args = append(args, "--quiet")
 					}
 					if mode == "debug-flag" || mode == "quiet-debug-flag" {
 						args = append(args, "--debug")
 					}
+					outputMode := "human"
+					if strings.Contains(mode, "json") {
+						outputMode = "json"
+					}
+					suppressExit := strings.Contains(mode, "no-error-codes")
+					wantExit := exitcode.Error
+					if suppressExit {
+						wantExit = 0
+					}
 					capture := filepath.Join(t.TempDir(), "diagnostics")
 					counts := filepath.Join(t.TempDir(), "counts")
 					stdout, stderr := runCommandErrorEnvelopeSubprocess(t, processDefinitionErrorEnvelopeHelper, "", map[string]string{
-						"C8VOLT_TEST_CONFIG": cfg, "C8VOLT_TEST_OUTPUT_MODE": mode,
+						"C8VOLT_TEST_CONFIG": cfg, "C8VOLT_TEST_OUTPUT_MODE": outputMode,
+						"C8VOLT_TEST_NO_ERR_CODES": boolEnv(suppressExit),
 						"C8VOLT_TEST_COMMAND_ARGS": marshalRootArgsForEnv(t, args),
 						"C8VOLT_TEST_PD_LOG_DEST":  capture, "C8VOLT_TEST_PD_LOG_ROUTE": route,
 						"C8VOLT_TEST_PD_REFUSAL_COUNTS": counts,
-					}, "", exitcode.Error)
+					}, "", wantExit)
 					require.Empty(t, stderr, "diagnostics must follow the selected logger destination")
 					data, err := os.ReadFile(counts)
 					require.NoError(t, err)
@@ -386,7 +400,7 @@ log: {level: %s, format: %s}
 					data, err = os.ReadFile(capture)
 					require.NoError(t, err)
 					diagnostics := string(data)
-					if mode == "json" {
+					if outputMode == "json" {
 						decoder := json.NewDecoder(strings.NewReader(stdout))
 						var envelope map[string]any
 						require.NoError(t, decoder.Decode(&envelope))
@@ -394,7 +408,9 @@ log: {level: %s, format: %s}
 						require.Equal(t, "internal", envelope["class"])
 						require.Equal(t, "failed", envelope["outcome"])
 						require.Equal(t, "get process-definition", envelope["command"])
-						message := requireJSONObject(t, envelope["detail"])["message"]
+						detail := requireJSONObject(t, envelope["detail"])
+						require.Equal(t, "internal", detail["class"])
+						message := detail["message"]
 						require.Equal(t, `internal error: search process definitions: Post "http://gateway-refusal.invalid/v2/process-definitions/search": retrieve token: Post "http://auth-refusal.invalid/oauth/token": dial tcp: connection refused`, message)
 						require.NotContains(t, envelope, "payload")
 						require.Empty(t, diagnostics)

@@ -23,8 +23,10 @@ import (
 const apiDiagnosticsProcessDefinitionKey = "2251799813685255"
 const apiDiagnosticsInvocationHelper = "TestAPIDiagnosticsInvocationHelper"
 
-// TestAPIDiagnosticsCommandReadPreservesResultsAndRequests verifies inherited debug placement enables probe and operation diagnostics without changing command results or traffic.
+// TestAPIDiagnosticsCommandReadPreservesResultsAndRequests verifies inherited debug
+// placement preserves each successful read and its exact advisory/operation traffic.
 func TestAPIDiagnosticsCommandReadPreservesResultsAndRequests(t *testing.T) {
+	isolateRequestRateEnvironment(t)
 	var requests atomic.Int32
 	server := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
 		requests.Add(1)
@@ -45,13 +47,18 @@ func TestAPIDiagnosticsCommandReadPreservesResultsAndRequests(t *testing.T) {
 		"--config", configPath, "--log-format", "plain",
 		"get", "process-definition", "--key", apiDiagnosticsProcessDefinitionKey,
 	)
+	require.NotEmpty(t, baselineStdout)
 	require.NotContains(t, baselineStderr, "api #")
+	require.Equal(t, int32(2), requests.Load())
 
 	for _, args := range [][]string{
 		{"--debug", "--config", configPath, "--log-format", "plain", "get", "process-definition", "--key", apiDiagnosticsProcessDefinitionKey},
 		{"--config", configPath, "--log-format", "plain", "get", "process-definition", "--key", apiDiagnosticsProcessDefinitionKey, "--debug"},
 	} {
+		before := requests.Load()
 		stdout, stderr := executeAPIDiagnosticsRoot(t, args...)
+		require.Equal(t, before+2, requests.Load())
+		require.NotContains(t, stderr, " ERROR ")
 		require.Equal(t, baselineStdout, stdout)
 		require.Equal(t, 2, strings.Count(stderr, "api #"))
 		require.Contains(t, stderr, "api #2 GET /v2/process-definitions/"+apiDiagnosticsProcessDefinitionKey+": status=200")

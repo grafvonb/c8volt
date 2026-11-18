@@ -203,12 +203,13 @@ func decodeRequestRateEnvelope(t *testing.T, stdout string) map[string]any {
 
 // TestRequestRateMutationLocalFailure traces unsent admission through service,
 // facade, selected output, logger and exit, retaining an earlier accepted delete.
+// A rejected first delete adds typed HTTP evidence to prove local wait precedence.
 // Opt out of advisory traffic to isolate the fixed operational admission slots.
 func TestRequestRateMutationLocalFailure(t *testing.T) {
 	isolateRequestRateEnvironment(t)
-	for _, operation := range []string{"cancel", "delete", "definition", "purge"} {
+	for _, operation := range []string{"cancel", "delete", "definition", "definition-rejected", "purge"} {
 		for _, format := range []string{"plain-time", "json"} {
-			for i, flags := range [][]string{nil, {"--verbose"}, {"--quiet"}, {"--json"}, {"--quiet", "--json"}} {
+			for i, flags := range [][]string{nil, {"--verbose"}, {"--quiet"}, {"--json"}, {"--quiet", "--json"}, {"--no-err-codes"}, {"--json", "--no-err-codes"}, {"--quiet", "--json", "--no-err-codes"}} {
 				t.Run(operation+"/"+format+"/"+strings.Join(flags, " "), func(t *testing.T) {
 					var requests testx.SafeSlice[string]
 					server := testx.NewIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -216,6 +217,11 @@ func TestRequestRateMutationLocalFailure(t *testing.T) {
 						w.Header().Set("Content-Type", "application/json")
 						switch r.URL.Path {
 						case "/v2/resources/123/deletion":
+							if operation == "definition-rejected" {
+								// One dispatched failure plus two unsent waits form the real service aggregate.
+								http.Error(w, "POST https://mixed.invalid body-secret resource-key", http.StatusGatewayTimeout)
+								return
+							}
 							io.WriteString(w, `{"resourceKey":"123","batchOperation":null}`)
 						case "/v2/process-instances/123":
 							io.WriteString(w, opsAllProcessDefinitionsPurgeProcessInstanceJSON("123", "123", "900", "ACTIVE"))
@@ -237,7 +243,7 @@ func TestRequestRateMutationLocalFailure(t *testing.T) {
 					switch operation {
 					case "cancel", "delete":
 						args = append(args, operation, "process-instance", "--key", "123,456,789")
-					case "definition":
+					case "definition", "definition-rejected":
 						args = append(args, "delete", "process-definition", "--key", "123,456,789", "--no-state-check")
 					case "purge":
 						args = append(args, "ops", "purge", "all-process-definitions", "--key", "2251799813685123")
@@ -249,9 +255,13 @@ func TestRequestRateMutationLocalFailure(t *testing.T) {
 						destination = "configured"
 					}
 					stdout, stderr, runErr := runRequestRateMutation(t, args, destination, 0)
-					var exitErr *exec.ExitError
-					require.ErrorAs(t, runErr, &exitErr)
-					require.Equal(t, exitcode.Timeout, exitErr.ExitCode(), stdout+stderr)
+					if slices.Contains(flags, "--no-err-codes") {
+						require.NoError(t, runErr)
+					} else {
+						var exitErr *exec.ExitError
+						require.ErrorAs(t, runErr, &exitErr)
+						require.Equal(t, exitcode.Timeout, exitErr.ExitCode(), stdout+stderr)
+					}
 					require.Len(t, requests.Snapshot(), 1, "unsent work must neither dispatch nor retry")
 					records := bulkCompletionDiagnosticRecords(t, stderr, format)
 					var errorMessages []string
@@ -267,13 +277,23 @@ func TestRequestRateMutationLocalFailure(t *testing.T) {
 					if strings.Contains(strings.Join(flags, " "), "--json") {
 						envelope := decodeRequestRateEnvelope(t, stdout)
 						require.Equal(t, "timeout", envelope["class"])
+						require.Equal(t, "failed", envelope["outcome"])
 						require.Contains(t, requireJSONObject(t, envelope["detail"])["message"], "request not sent")
 						require.Empty(t, errorMessages)
-						if operation == "definition" {
+						if strings.HasPrefix(operation, "definition") {
 							items := requireJSONObject(t, envelope["payload"])["items"].([]any)
 							require.Len(t, items, 3)
-							require.Equal(t, true, requireJSONObject(t, items[0])["ok"])
-							require.NotEqual(t, true, requireJSONObject(t, items[1])["ok"])
+							if operation == "definition" {
+								require.Equal(t, true, requireJSONObject(t, items[0])["ok"])
+							} else {
+								require.NotContains(t, requireJSONObject(t, items[0]), "ok", "false remains omitted")
+							}
+							require.NotContains(t, requireJSONObject(t, items[1]), "ok")
+							require.NotContains(t, requireJSONObject(t, items[2]), "ok")
+							if operation == "definition-rejected" {
+								require.Contains(t, requireJSONObject(t, envelope["detail"])["message"], "504")
+								require.Contains(t, requireJSONObject(t, envelope["detail"])["message"], "body-secret")
+							}
 						}
 					} else {
 						require.Empty(t, stdout)
@@ -281,11 +301,15 @@ func TestRequestRateMutationLocalFailure(t *testing.T) {
 						require.Contains(t, errorMessages[0], "request not sent")
 						require.Contains(t, errorMessages[0], "request-rate wait")
 						require.Less(t, len(errorMessages[0]), 240)
-						if operation == "definition" {
-							require.Contains(t, errorMessages[0], "accepted 1")
+						if strings.HasPrefix(operation, "definition") {
+							accepted := 1
+							if operation == "definition-rejected" {
+								accepted = 0
+							}
+							require.Equal(t, fmt.Sprintf("deleting process definitions: selected 3, accepted %d; outcome unconfirmed; timeout; request not sent: request-rate wait (other attempts may have been submitted)", accepted), errorMessages[0])
 						}
 					}
-					for _, bad := range []string{server.URL, "POST", "Get ", "/v2/"} {
+					for _, bad := range []string{server.URL, "POST", "Get ", "/v2/", "mixed.invalid", "body-secret", "resource-key", "gateway HTTP"} {
 						require.NotContains(t, stderr, bad)
 					}
 				})
@@ -622,4 +646,12 @@ func TestRequestRateReportingPartialFailure(t *testing.T) {
 	require.Equal(t, 1, strings.Count(stderr, "1 requests in"), "unsent attempts must not be counted")
 	require.NotContains(t, stderr, "2 requests in")
 	require.NotContains(t, stderr, "3 requests in")
+}
+
+// TestConnectionFailureConfirmationCompatibility reuses real-terminal acceptance
+// and abort checks with inherited configuration cleared before starting helpers.
+func TestConnectionFailureConfirmationCompatibility(t *testing.T) {
+	isolateRequestRateEnvironment(t)
+	t.Run("mutation prompts", TestProcessInstanceConfirmationTerminal)
+	t.Run("diagnostics and activity", TestAPIDiagnosticsTerminalCancellation)
 }

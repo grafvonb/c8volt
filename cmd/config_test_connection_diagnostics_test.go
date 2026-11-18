@@ -54,7 +54,8 @@ func TestConfigConnectionFailureReasons(t *testing.T) {
 }
 
 // Execute real command failures with isolated HTTP responses. This covers the
-// logger destinations and level precedence, auth stage, retries and JSON policy.
+// logger destinations and level precedence, auth stage, retries and JSON policy,
+// including quiet JSON and suppressed failure exits.
 func TestConfigConnectionDiagnosticLogging(t *testing.T) {
 	isolateRequestRateEnvironment(t)
 	for _, tc := range []struct {
@@ -88,8 +89,10 @@ func TestConfigConnectionDiagnosticLogging(t *testing.T) {
 					{"quiet-configured-debug", "debug", []string{"--quiet"}, false},
 					{"quiet-flag-debug", "info", []string{"--quiet", "--debug"}, false},
 					{"no-error-codes", "info", []string{"--no-err-codes"}, false},
+					{"json-no-error-codes", "info", []string{"--json", "--no-err-codes"}, false},
+					{"quiet-json-no-error-codes", "info", []string{"--quiet", "--json", "--no-err-codes"}, false},
 				} {
-					if tc.status == 200 && mode.name != "normal" {
+					if tc.status == 200 && mode.name != "normal" && !strings.Contains(mode.name, "json") {
 						continue
 					}
 					t.Run(tc.name+"/"+format+"/"+route+"/"+mode.name, func(t *testing.T) {
@@ -124,13 +127,13 @@ apis: {camunda_api: {base_url: %q}}
 log: {level: %s, format: %s}
 `, tc.auth, server.URL, server.URL+"/oauth", server.URL, mode.level, format))
 						flags, debug := mode.flags, mode.debug
-						if tc.status == 200 {
+						if tc.status == 200 && mode.name == "normal" {
 							flags, debug = []string{"--json", "--debug"}, true
 						}
 						args := append([]string{"--config", cfg, "--no-indicator", "config", "test-connection"}, flags...)
 						logFile := filepath.Join(t.TempDir(), "diagnostics")
 						wantExit := tc.exit
-						if mode.name == "no-error-codes" {
+						if strings.HasSuffix(mode.name, "no-error-codes") {
 							wantExit = 0
 						}
 						stdout, stderr := runCommandErrorEnvelopeSubprocess(t, "TestConfigConnectionDiagnosticsHelper", "", map[string]string{
@@ -148,6 +151,14 @@ log: {level: %s, format: %s}
 							var result configTestConnectionView
 							require.NoError(t, json.Unmarshal([]byte(stdout), &result))
 							require.True(t, result.OK)
+							require.Equal(t, server.URL+"/v2", result.BaseURL)
+							require.Equal(t, cfg, result.ConfigFile)
+							for _, record := range records {
+								require.Contains(t, []string{"INFO", "DEBUG"}, record[0])
+							}
+							if strings.HasPrefix(mode.name, "quiet") {
+								require.Empty(t, records)
+							}
 							require.Equal(t, "8.10.6", result.Cluster.GatewayVersion)
 							require.Nil(t, result.Warnings)
 						} else {
@@ -170,8 +181,9 @@ log: {level: %s, format: %s}
 							require.NotContains(t, stdout+stderr+diagnostics, secret)
 						}
 						if !debug {
+							// Successful JSON retains base_url; failures already require empty stdout.
 							for _, raw := range []string{server.URL, "GET", "POST", "/v2/"} {
-								require.NotContains(t, stdout+stderr+diagnostics, raw)
+								require.NotContains(t, stderr+diagnostics, raw)
 							}
 						}
 					})

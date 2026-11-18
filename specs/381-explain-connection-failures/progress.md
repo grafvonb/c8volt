@@ -61,3 +61,29 @@ Started: 2026-11-18 18:36:22
 - Reviewed resource adapter → typed HTTP status → service aggregate → facade conversion → bounded human renderer/configured logger or single partial JSON envelope → original exit resolution. No production files, output boundaries, execution modes, prompts, activity controls or public contracts changed. Touched-file gofmt and git diff --check passed; no docs regeneration is needed for these test-only changes.
 - All dependencies were isolated HTTP fakes or the child-only refusal transport, with inherited application/helper configuration cleared. No live environment, integration/smoke target or full race suite ran; real-engine behavior remains unverified. Next work is T003.
 ---
+
+---
+## Iteration 3 - 2026-11-18 18:51
+**Work Unit**: US3 — T003 complete: execution and automation compatibility coverage
+**Tasks Completed**:
+- [x] T003: Complete isolated output/exit, mixed request-rate evidence, successful-result and real-terminal compatibility checks.
+**Tasks Remaining in Work Unit**: 0; no feature tasks remain
+**Commit**: This work-unit commit
+**Files Changed**:
+- cmd/config_test_connection_diagnostics_test.go
+- cmd/get_processdefinition_error_envelope_test.go
+- cmd/request_rate_mutation_test.go
+- cmd/root_api_diagnostics_test.go
+- specs/381-explain-connection-failures/tasks.md
+- specs/381-explain-connection-failures/ralph-memory.md
+- specs/381-explain-connection-failures/progress.md
+**Learnings**:
+- Added quiet+JSON and suppressed-exit combinations to the original OAuth refusal and existing error-envelope cases. Original detail/class/outcome, one envelope plus EOF, configured/inherited diagnostics and one token attempt with zero gateway/other requests remain intact. Connection-test failures still emit a bounded logger error with empty stdout even when JSON is selected; suppressed exit changes only process status.
+- Extended request-rate local-failure cases with exit suppression and a first HTTP 504 deletion rejection followed by two unsent waits. Human output retains the exact bounded timeout/request-rate aggregate (selected 3, accepted 0); JSON retains three reports and original HTTP/body evidence. The accepted-first variant retains one successful report. Both dispatch exactly one request without retrying unsent work.
+- Initial assertions exposed two existing machine contracts: failed deletion reports omit false `ok`, and successful connection JSON includes `base_url`. Confirmed the model/view definitions and corrected only test expectations. Successful connection cases now assert base URL/config file, version, nil warnings, one JSON value, quiet logger suppression and unchanged authentication/request counts. Successful reads assert two requests per invocation and identical results with both DEBUG placements.
+- A temporary precedence mutation moved connection recognition ahead of request-rate evidence. The mixed-failure verbose execution test failed because gateway timeout guidance replaced `request not sent`; restored production byte-for-byte. The focused mixed-failure/refusal checks passed (3.341s), and the corrected connection matrix passed (9.873s).
+- Final validation passed: `go test ./cmd -run '^(TestRequestRateMutationLocalFailure|TestRequestRateMutationInterruption|TestRequestRateCancellationConfirmation|TestRequestRateReportingPartialFailure|TestAPIDiagnosticsCommandReadPreservesResultsAndRequests|TestCommandErrorEnvelopeProcessDefinition|TestConfigConnectionDiagnosticLogging|TestBoundedCommandFailureReasons|TestGetProcessDefinitionLifecycleSearchDiagnostics|TestConfigConnectionFailureReasons|TestConnectionFailureConfirmationCompatibility)$' -count=1 -json` (49.751s; 625 passing test/subtest events, zero failures or skips). Confirmed all selector names before running. Used the complete cached Go 1.26.10 GOROOT, `GOENV=off` and empty `GOFLAGS`; vet remained enabled.
+- The terminal wrapper reuses real Darwin PTY fixtures for accepted and aborted cancel/delete prompts, configured/inherited destinations, quiet JSON, EOF, empty scopes and activity. Existing invocation interruption, accepted-cancellation confirmation and partial-reporting assertions passed without lifecycle or timing-policy changes.
+- Reviewed OAuth/status/local-admission evidence through service aggregation and facade preservation to bounded command rendering, configured logger or single JSON envelope, and original exit resolution. No production files, direct diagnostic writes, raw-error interpolation, execution modes or public contracts changed. Touched-file gofmt and git diff --check passed; generated docs do not need regeneration for test-only changes.
+- All dependencies were test-owned HTTP fakes, the child-only refusal transport or isolated terminal/subprocess execution; inherited application/helper settings were cleared. No live environment, integration/smoke target or full race suite ran. Real-engine behavior remains unverified. All tasks are complete and memory now contains the terminal handoff.
+---
