@@ -15,7 +15,12 @@ import (
 // configConnectionFailureMessage renders only typed, bounded failure evidence.
 // Detailed HTTP records remain in the existing redacted DEBUG diagnostics path.
 func configConnectionFailureMessage(err error) string {
-	prefix := "config test-connection: "
+	return connectionFailureMessage("config test-connection: ", err)
+}
+
+// connectionFailureMessage reuses the connection-test guidance for bounded
+// command errors with known connection or authentication evidence.
+func connectionFailureMessage(prefix string, err error) string {
 	if commandHasRequestRateWaitFailure(err) {
 		return prefix + boundedCommandFailureReason(err)
 	}

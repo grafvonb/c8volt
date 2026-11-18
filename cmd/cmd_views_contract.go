@@ -128,12 +128,22 @@ func outcomeForError(err error) Outcome {
 	}
 }
 
-// boundedCommandFailureReason retains local unsent evidence without rendering
-// URLs, wrapped transport errors, or implying that earlier work was not sent.
+// boundedCommandFailureReason explains known connection failures without raw
+// HTTP details, preserving the existing class and local unsent fallback.
 func boundedCommandFailureReason(err error) string {
 	reason := strings.ReplaceAll(string(ferrors.Classify(err)), "_", " ")
 	if commandHasRequestRateWaitFailure(err) {
 		reason += "; request not sent: request-rate wait (other attempts may have been submitted)"
+		return reason
+	}
+	failure, transportReason, status, authentication := commandConnectionFailureDetails(err)
+	if failure == "CANCELED" {
+		return reason
+	}
+	if authentication || status == 401 || status == 403 ||
+		failure == "DNS_ERROR" || failure == "TLS_ERROR" || failure == "TIMEOUT" ||
+		transportReason == "connection-refused" || transportReason == "connection-reset" || transportReason == "unexpected-eof" {
+		return connectionFailureMessage("", err)
 	}
 	return reason
 }

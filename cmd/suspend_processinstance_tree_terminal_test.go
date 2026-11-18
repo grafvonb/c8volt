@@ -257,7 +257,7 @@ func TestSuspendProcessInstanceTreePlanningFailure(t *testing.T) {
 						require.Contains(t, requireJSONObject(t, env["detail"])["message"], "body-only-secret")
 					} else {
 						require.Empty(t, out)
-						require.Equal(t, []string{"plan process instance suspension: local precondition"}, errors)
+						require.Equal(t, []string{"plan process instance suspension: gateway HTTP 403: access denied; check credentials, roles and API permissions"}, errors)
 					}
 					for _, bad := range []string{"private.invalid", "body-only-secret", "private-cursor", "suspension-token-secret"} {
 						require.NotContains(t, stderr, bad)
