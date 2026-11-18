@@ -7,12 +7,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"sync/atomic"
+	"syscall"
 	"testing"
 
 	"github.com/grafvonb/c8volt/internal/exitcode"
@@ -25,6 +27,7 @@ const processDefinitionErrorEnvelopeHelper = "TestCommandErrorEnvelopeProcessDef
 // TestCommandErrorEnvelopeProcessDefinition verifies all reachable corrected
 // retrieval, selector, search, and XML validation branches use one result.
 func TestCommandErrorEnvelopeProcessDefinition(t *testing.T) {
+	isolateRequestRateEnvironment(t)
 	t.Run("runtime-failures", func(t *testing.T) {
 		tests := []struct {
 			name         string
@@ -37,7 +40,7 @@ func TestCommandErrorEnvelopeProcessDefinition(t *testing.T) {
 		}{
 			{
 				name:         "by-key",
-				humanMessage: "get process definition: unavailable",
+				humanMessage: "get process definition: gateway HTTP 503: service error; check service health and proxy logs",
 				args:         []string{"get", "process-definition", "--key", "123"},
 				method:       http.MethodGet,
 				requestPath:  "/v2/process-definitions/123",
@@ -48,7 +51,7 @@ func TestCommandErrorEnvelopeProcessDefinition(t *testing.T) {
 			},
 			{
 				name:         "selector",
-				humanMessage: "validate process definition selector: unavailable",
+				humanMessage: "validate process definition selector: gateway HTTP 503: service error; check service health and proxy logs",
 				args:         []string{"get", "process-definition", "--bpmn-process-id", "order"},
 				method:       http.MethodPost,
 				requestPath:  "/v2/process-definitions/search",
@@ -59,7 +62,7 @@ func TestCommandErrorEnvelopeProcessDefinition(t *testing.T) {
 			},
 			{
 				name:         "paged-search",
-				humanMessage: "search process definitions: unavailable",
+				humanMessage: "search process definitions: gateway HTTP 503: service error; check service health and proxy logs",
 				args:         []string{"get", "process-definition"},
 				method:       http.MethodPost,
 				requestPath:  "/v2/process-definitions/search",
@@ -186,6 +189,10 @@ func TestCommandErrorEnvelopeProcessDefinitionHelper(t *testing.T) {
 	}
 	require.Equal(t, processDefinitionErrorEnvelopeHelper, os.Getenv(testx.CmdSubprocessNameEnv))
 
+	if counts := os.Getenv("C8VOLT_TEST_PD_REFUSAL_COUNTS"); counts != "" {
+		// Replacement is child-only and never delegates unexpected targets to the network.
+		http.DefaultTransport = &processDefinitionRefusalTransport{countsPath: counts}
+	}
 	var commandArgs []string
 	require.NoError(t, json.Unmarshal([]byte(os.Getenv("C8VOLT_TEST_COMMAND_ARGS")), &commandArgs))
 	args := []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "--backoff-max-retries", "0"}
@@ -221,6 +228,8 @@ func TestCommandErrorEnvelopeProcessDefinitionHelper(t *testing.T) {
 // TestGetProcessDefinitionLifecycleSearchDiagnostics traces ordinary search and
 // selector HTTP failures through configured loggers and the unchanged JSON envelope.
 func TestGetProcessDefinitionLifecycleSearchDiagnostics(t *testing.T) {
+	isolateRequestRateEnvironment(t)
+	t.Run("oauth-refusal", testProcessDefinitionAuthenticationRefusal)
 	for _, selector := range []bool{false, true} {
 		for _, format := range []string{"plain", "json"} {
 			for _, route := range []string{"configured", "inherited"} {
@@ -245,10 +254,10 @@ func TestGetProcessDefinitionLifecycleSearchDiagnostics(t *testing.T) {
 						}
 						cfg := writeRawTestConfig(t, fmt.Sprintf("app:\n  camunda_version: \"8.10\"\nauth:\n  mode: none\napis:\n  camunda_api:\n    base_url: %s\nlog:\n  level: %s\n  format: %s\n", server.URL, level, format))
 						args := []string{"get", "pd"}
-						message := "search process definitions: unavailable"
+						message := "search process definitions: gateway HTTP 503: service error; check service health and proxy logs"
 						if selector {
 							args = append(args, "--bpmn-process-id", "invoice")
-							message = "validate process definition selector: unavailable"
+							message = "validate process definition selector: gateway HTTP 503: service error; check service health and proxy logs"
 						}
 						if mode == "quiet" || mode == "verbose" {
 							args = append(args, "--"+mode)
@@ -291,29 +300,138 @@ func TestGetProcessDefinitionLifecycleSearchDiagnostics(t *testing.T) {
 								require.NotContains(t, diagnostics, secret)
 							}
 						}
-						if format == "plain" {
-							require.Contains(t, diagnostics, " ERROR "+message+"\n")
-							require.Equal(t, 1, strings.Count(diagnostics, " ERROR "))
-						} else {
-							decoder := json.NewDecoder(strings.NewReader(diagnostics))
-							errors := 0
-							for {
-								var record map[string]any
-								err := decoder.Decode(&record)
-								if err == io.EOF {
-									break
-								}
-								require.NoError(t, err)
-								if record["level"] == "ERROR" {
-									errors++
-									require.Equal(t, message, record["msg"])
-								}
-							}
-							require.Equal(t, 1, errors)
-						}
+						requireProcessDefinitionErrorDiagnostic(t, diagnostics, format, message)
 					})
 				}
 			}
 		}
 	}
+}
+
+// processDefinitionRefusalTransport reproduces token refusal without a live socket.
+type processDefinitionRefusalTransport struct {
+	countsPath       string
+	auth, unexpected int
+}
+
+// RoundTrip persists counts before the command exits and rejects all other traffic.
+func (f *processDefinitionRefusalTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	expected := req.Method == http.MethodPost && req.URL.String() == "http://auth-refusal.invalid/oauth/token"
+	if expected {
+		f.auth++
+	} else {
+		f.unexpected++
+	}
+	if err := os.WriteFile(f.countsPath, []byte(fmt.Sprintf("%d %d", f.auth, f.unexpected)), 0600); err != nil {
+		return nil, err
+	}
+	if !expected {
+		return nil, fmt.Errorf("unexpected fake transport target")
+	}
+	return nil, &net.OpError{Op: "dial", Net: "tcp", Err: syscall.ECONNREFUSED}
+}
+
+// testProcessDefinitionAuthenticationRefusal exercises the original failure through
+// auth, facade normalization, configured logging, machine rendering and process exit.
+func testProcessDefinitionAuthenticationRefusal(t *testing.T) {
+	for _, format := range []string{"plain", "json"} {
+		for _, route := range []string{"configured", "inherited"} {
+			for _, mode := range []string{"normal", "verbose", "quiet", "json", "debug-flag", "debug-config"} {
+				t.Run(format+"/"+route+"/"+mode, func(t *testing.T) {
+					level := "info"
+					if mode == "debug-config" {
+						level = "debug"
+					}
+					cfg := writeRawTestConfig(t, fmt.Sprintf(`app: {camunda_version: "8.10"}
+auth:
+  mode: oauth2
+  oauth2: {token_url: "http://auth-refusal.invalid/oauth", client_id: operator, client_secret: refusal-credential-secret}
+apis: {camunda_api: {base_url: "http://gateway-refusal.invalid"}}
+log: {level: %s, format: %s}
+`, level, format))
+					args := []string{"get", "pd", "--no-version-check"}
+					if mode == "quiet" || mode == "verbose" {
+						args = append(args, "--"+mode)
+					}
+					if mode == "debug-flag" {
+						args = append(args, "--debug")
+					}
+					capture := filepath.Join(t.TempDir(), "diagnostics")
+					counts := filepath.Join(t.TempDir(), "counts")
+					stdout, stderr := runCommandErrorEnvelopeSubprocess(t, processDefinitionErrorEnvelopeHelper, "", map[string]string{
+						"C8VOLT_TEST_CONFIG": cfg, "C8VOLT_TEST_OUTPUT_MODE": mode,
+						"C8VOLT_TEST_COMMAND_ARGS": marshalRootArgsForEnv(t, args),
+						"C8VOLT_TEST_PD_LOG_DEST":  capture, "C8VOLT_TEST_PD_LOG_ROUTE": route,
+						"C8VOLT_TEST_PD_REFUSAL_COUNTS": counts,
+					}, "", exitcode.Error)
+					require.Empty(t, stderr, "diagnostics must follow the selected logger destination")
+					data, err := os.ReadFile(counts)
+					require.NoError(t, err)
+					require.Equal(t, "1 0", string(data), "one failed token attempt and no gateway or other requests")
+					data, err = os.ReadFile(capture)
+					require.NoError(t, err)
+					diagnostics := string(data)
+					if mode == "json" {
+						decoder := json.NewDecoder(strings.NewReader(stdout))
+						var envelope map[string]any
+						require.NoError(t, decoder.Decode(&envelope))
+						require.ErrorIs(t, decoder.Decode(new(any)), io.EOF)
+						require.Equal(t, "internal", envelope["class"])
+						require.Equal(t, "failed", envelope["outcome"])
+						require.Equal(t, "get process-definition", envelope["command"])
+						message := requireJSONObject(t, envelope["detail"])["message"]
+						require.Equal(t, `internal error: search process definitions: Post "http://gateway-refusal.invalid/v2/process-definitions/search": retrieve token: Post "http://auth-refusal.invalid/oauth/token": dial tcp: connection refused`, message)
+						require.NotContains(t, envelope, "payload")
+						require.Empty(t, diagnostics)
+						return
+					}
+					require.Empty(t, stdout)
+					message := "search process definitions: authentication service connection refused; check the configured host and port and that the service is running"
+					requireProcessDefinitionErrorDiagnostic(t, diagnostics, format, message)
+					if mode == "quiet" {
+						for _, severity := range []string{"INFO", "WARN", "DEBUG"} {
+							require.NotContains(t, diagnostics, severity)
+						}
+					}
+					require.NotContains(t, stdout+stderr+diagnostics, "refusal-credential-secret")
+					if strings.HasPrefix(mode, "debug-") {
+						require.Contains(t, diagnostics, "api #")
+						require.Contains(t, diagnostics, "/oauth/token")
+					} else {
+						for _, marker := range []string{"POST", "http://", "auth-refusal.invalid", "gateway-refusal.invalid", "/oauth/token", "dial tcp", "api #"} {
+							require.NotContains(t, stdout+stderr+diagnostics, marker)
+						}
+					}
+				})
+			}
+		}
+	}
+}
+
+// requireProcessDefinitionErrorDiagnostic checks complete ERROR records so a direct
+// stderr write, raw aggregate, missing severity or duplicate emission cannot pass.
+func requireProcessDefinitionErrorDiagnostic(t *testing.T, diagnostics, format, message string) {
+	t.Helper()
+	if format == "plain" {
+		require.Contains(t, diagnostics, " ERROR "+message+"\n")
+		require.Equal(t, 1, strings.Count(diagnostics, " ERROR "))
+		require.Equal(t, 1, strings.Count(diagnostics, message))
+		return
+	}
+	decoder := json.NewDecoder(strings.NewReader(diagnostics))
+	var messages []string
+	for {
+		var record map[string]any
+		err := decoder.Decode(&record)
+		if err == io.EOF {
+			break
+		}
+		require.NoError(t, err)
+		if record["level"] == "ERROR" {
+			msg, ok := record["msg"].(string)
+			require.True(t, ok)
+			messages = append(messages, msg)
+		}
+	}
+	require.Equal(t, []string{message}, messages)
 }

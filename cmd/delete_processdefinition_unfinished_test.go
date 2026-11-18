@@ -212,6 +212,7 @@ func TestDeleteProcessDefinitionUnfinishedCommand(t *testing.T) {
 // TestDeleteProcessDefinitionUnfinishedDiagnosticLogging catches direct stderr
 // bypasses, duplicate errors, raw HTTP disclosure and dropped partial results.
 func TestDeleteProcessDefinitionUnfinishedDiagnosticLogging(t *testing.T) {
+	isolateRequestRateEnvironment(t)
 	for _, format := range []string{"plain-time", "json"} {
 		for i, tc := range []struct {
 			name                                                   string
@@ -312,7 +313,7 @@ func TestDeleteProcessDefinitionUnfinishedDiagnosticLogging(t *testing.T) {
 					if tc.preflight {
 						stage = "checking delete impact"
 					}
-					require.Equal(t, fmt.Sprintf("%s: selected 3, accepted %d; outcome unconfirmed; invalid input", stage, success), errors[0])
+					require.Equal(t, fmt.Sprintf("%s: selected 3, accepted %d; outcome unconfirmed; gateway HTTP 400: request rejected; check the selected profile and service configuration", stage, success), errors[0])
 				}
 				if tc.preflight {
 					require.Zero(t, mutations.Load())

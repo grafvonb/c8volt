@@ -36,6 +36,11 @@ func TestConfigConnectionFailureReasons(t *testing.T) {
 		{x509.UnknownAuthorityError{}, "gateway TLS certificate validation failed; check the certificate trust, hostname and expiry"},
 		{context.DeadlineExceeded, "gateway timed out; check service availability, network access and configured timeout"},
 		{context.Canceled, "connection test canceled"},
+		{httpc.AuthenticationFailure(httpc.WithHTTPStatus(context.Canceled, 401)), "connection test canceled"},
+		{ferrors.ErrTimeout, "gateway timed out; check service availability, network access and configured timeout"},
+		{ferrors.ErrMalformedResponse, "invalid gateway response; check the Camunda API base URL and proxy routing"},
+		{ferrors.ErrLocalPrecondition, "connection setup failed; check the selected profile and configuration"},
+		{ferrors.ErrInvalidInput, "connection setup failed; check the selected profile and configuration"},
 		{syscall.ECONNRESET, "gateway connection interrupted; check the service and proxy"},
 		{&json.SyntaxError{}, "invalid gateway response; check the configured URL and proxy routing"},
 		{httpc.WithHTTPStatus(errors.New("raw"), 404), "gateway HTTP 404: topology endpoint not found; check the Camunda API base URL and proxy routing"},
@@ -51,6 +56,7 @@ func TestConfigConnectionFailureReasons(t *testing.T) {
 // Execute real command failures with isolated HTTP responses. This covers the
 // logger boundary, auth stage, retries, JSON policy and successful single reads.
 func TestConfigConnectionDiagnosticLogging(t *testing.T) {
+	isolateRequestRateEnvironment(t)
 	for _, tc := range []struct {
 		name, auth, message    string
 		status, requests, exit int
